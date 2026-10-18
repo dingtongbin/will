@@ -2,7 +2,6 @@
 package lexer
 
 import (
-	"fmt"
 	"unicode/utf8"
 
 	"github.com/will-lang/will/internal/diag"
@@ -10,31 +9,11 @@ import (
 	"github.com/will-lang/will/internal/token"
 )
 
-// Lexical diagnostic codes are stable once published.
-const (
-	// CodeInvalidChar reports a byte that cannot start any token.
-	CodeInvalidChar = "E1001"
-	// CodeUnterminatedComment reports a block comment without a closing marker.
-	CodeUnterminatedComment = "E1002"
-	// CodeBadNumber reports a malformed numeric literal.
-	CodeBadNumber = "E1003"
-	// CodeUnterminatedString reports a string literal without a closing quote.
-	CodeUnterminatedString = "E1004"
-	// CodeUnterminatedChar reports a character literal without a closing quote.
-	CodeUnterminatedChar = "E1005"
-	// CodeBadChar reports a character literal that does not hold exactly one character.
-	CodeBadChar = "E1006"
-	// CodeBadEscape reports an escape sequence the language does not define.
-	CodeBadEscape = "E1007"
-	// CodeBadHexEscape reports a malformed \xNN escape.
-	CodeBadHexEscape = "E1008"
-	// CodeBadUnicodeEscape reports a malformed \u escape.
-	CodeBadUnicodeEscape = "E1009"
-	// CodeUnicodeInBytes reports a unicode escape inside a byte string.
-	CodeUnicodeInBytes = "E1010"
-)
-
 // Scan tokenizes src and returns the token stream followed by EOF.
+//
+// Byte-level rules are checked for the whole file before scanning, so a
+// malformed byte inside a comment or literal is still reported with a
+// position.
 func Scan(file string, src []byte) ([]token.Token, []diag.Diagnostic) {
 	l := &Lexer{
 		file: file,
@@ -42,7 +21,9 @@ func Scan(file string, src []byte) ([]token.Token, []diag.Diagnostic) {
 		line: 1,
 		col:  1,
 	}
-	l.run()
+	if l.checkFile() {
+		l.run()
+	}
 	l.toks = append(l.toks, token.Token{
 		Kind: token.EOF,
 		Pos:  l.pos(),
@@ -129,8 +110,8 @@ func (l *Lexer) emit(kind token.Kind, start source.Pos, startOff int) token.Toke
 	return t
 }
 
-func (l *Lexer) errorAt(pos source.Pos, code, message, help string) {
-	l.bag.Error(pos, code, message, help)
+func (l *Lexer) report(pos source.Pos, m diag.Message) {
+	l.bag.Report(pos, m)
 }
 
 func (l *Lexer) scanIdent() {
@@ -152,70 +133,126 @@ func (l *Lexer) scanIdent() {
 func (l *Lexer) scanOperator() {
 	startOff := l.off
 	start := l.pos()
-	three := ""
-	if l.off+3 <= len(l.src) {
-		three = string(l.src[l.off : l.off+3])
+	b := l.src[l.off]
+
+	if b == '.' {
+		switch {
+		case l.peek(1) == '.' && l.peek(2) == '.':
+			l.advance()
+			l.advance()
+			l.advance()
+			l.emit(token.DotDotDot, start, startOff)
+			return
+		case l.peek(1) == '.':
+			l.advance()
+			l.advance()
+			l.emit(token.DotDot, start, startOff)
+			return
+		case isASCIIDigit(l.peek(1)):
+			l.report(start, diag.InvalidNumber)
+			l.advance()
+			for isASCIIDigit(l.peek(0)) {
+				l.advance()
+			}
+			l.emit(token.Invalid, start, startOff)
+			return
+		}
 	}
-	switch three {
-	case "...":
+	if b == ':' && l.peek(1) == ':' {
+		l.report(start, diag.BadSymbol)
 		l.advance()
 		l.advance()
-		l.advance()
-		l.emit(token.DotDotDot, start, startOff)
+		l.emit(token.Invalid, start, startOff)
 		return
-	case "<<%":
+	}
+	if b == ';' {
+		l.report(start, diag.BadSymbol)
 		l.advance()
-		l.advance()
-		l.advance()
-		l.emit(token.ShlWrap, start, startOff)
+		l.emit(token.Invalid, start, startOff)
 		return
 	}
-	two := ""
-	if l.off+2 <= len(l.src) {
-		two = string(l.src[l.off : l.off+2])
-	}
-	if kind, ok := twoChar[two]; ok {
-		l.advance()
-		l.advance()
-		l.emit(kind, start, startOff)
-		return
-	}
-	if kind, ok := oneChar[l.src[l.off]]; ok {
-		l.advance()
-		l.emit(kind, start, startOff)
-		return
-	}
-	r, size := utf8.DecodeRune(l.src[l.off:])
-	if r == utf8.RuneError && size == 1 {
-		l.advance()
-		l.errorAt(start, CodeInvalidChar, "unexpected byte in source", "source files must be valid UTF-8")
-	} else {
-		for i := 0; i < size; i++ {
+	if kind, n := l.matchFixed(); n > 0 {
+		for i := 0; i < n; i++ {
 			l.advance()
 		}
-		l.errorAt(start, CodeInvalidChar, fmt.Sprintf("unexpected character %q", r), "remove the character or write it inside a string literal")
+		l.emit(kind, start, startOff)
+		return
+	}
+	if kind, ok := oneChar[b]; ok {
+		l.advance()
+		l.emit(kind, start, startOff)
+		return
+	}
+
+	// Byte-level checks already reported non-ASCII and control bytes; skip
+	// them here so one bad byte does not produce a second diagnostic.
+	if b < 0x80 {
+		if b >= 0x20 && b <= 0x7E {
+			l.report(start, diag.BadSymbol)
+		}
+		l.advance()
+		l.emit(token.Invalid, start, startOff)
+		return
+	}
+	_, size := utf8.DecodeRune(l.src[l.off:])
+	for i := 0; i < size; i++ {
+		l.advance()
 	}
 	l.emit(token.Invalid, start, startOff)
 }
 
-var twoChar = map[string]token.Kind{
-	"+%": token.PlusWrap,
-	"-%": token.MinusWrap,
-	"*%": token.StarWrap,
-	"+|": token.PlusSat,
-	"-|": token.MinusSat,
-	"*|": token.StarSat,
-	"<<": token.Shl,
-	">>": token.Shr,
-	"&&": token.AndAnd,
-	"||": token.OrOr,
-	"==": token.Eq,
-	"!=": token.Ne,
-	"<=": token.Le,
-	">=": token.Ge,
-	"..": token.DotDot,
-	"->": token.Arrow,
-	"=>": token.FatArrow,
+// matchFixed matches operators with a fixed spelling of two or more bytes.
+// Longer spellings are tried first so that <<%= never scans as <<%.
+func (l *Lexer) matchFixed() (token.Kind, int) {
+	rest := l.src[l.off:]
+	for _, op := range fixedOps {
+		if len(rest) >= len(op.text) && string(rest[:len(op.text)]) == op.text {
+			return op.kind, len(op.text)
+		}
+	}
+	return token.Invalid, 0
+}
+
+type fixedOp struct {
+	text string
+	kind token.Kind
+}
+
+var fixedOps = []fixedOp{
+	{"<<%=", token.ShlWrapAssign},
+	{"+%=", token.PlusWrapAssign},
+	{"-%=", token.MinusWrapAssign},
+	{"*%=", token.StarWrapAssign},
+	{"+|=", token.PlusSatAssign},
+	{"-|=", token.MinusSatAssign},
+	{"*|=", token.StarSatAssign},
+	{"<<=", token.ShlAssign},
+	{">>=", token.ShrAssign},
+	{"<<%", token.ShlWrap},
+	{"+%", token.PlusWrap},
+	{"-%", token.MinusWrap},
+	{"*%", token.StarWrap},
+	{"+|", token.PlusSat},
+	{"-|", token.MinusSat},
+	{"*|", token.StarSat},
+	{"<<", token.Shl},
+	{">>", token.Shr},
+	{"&&", token.AndAnd},
+	{"||", token.OrOr},
+	{"==", token.Eq},
+	{"!=", token.Ne},
+	{"<=", token.Le},
+	{">=", token.Ge},
+	{"->", token.Arrow},
+	{"=>", token.FatArrow},
+	{"+=", token.AddAssign},
+	{"-=", token.SubAssign},
+	{"*=", token.MulAssign},
+	{"/=", token.DivAssign},
+	{"%=", token.ModAssign},
+	{"&=", token.AndAssign},
+	{"|=", token.OrAssign},
+	{"^=", token.XorAssign},
 }
 
 var oneChar = map[byte]token.Kind{
@@ -235,7 +272,6 @@ var oneChar = map[byte]token.Kind{
 	'.': token.Dot,
 	',': token.Comma,
 	':': token.Colon,
-	';': token.Semicolon,
 	'?': token.Question,
 	'(': token.LParen,
 	')': token.RParen,

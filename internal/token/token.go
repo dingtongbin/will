@@ -19,6 +19,8 @@ const (
 	Int
 	// Float is a floating-point literal, including any type suffix.
 	Float
+	// Duration is a duration literal such as 250ms.
+	Duration
 	// Char is a character literal.
 	Char
 	// String is a text literal.
@@ -46,6 +48,8 @@ const (
 	KwImport
 	// KwDerive introduces a derive declaration.
 	KwDerive
+	// KwLane marks a type as belonging to a lane, and starts the lane.Here builtin.
+	KwLane
 	// KwReturn returns from the current function.
 	KwReturn
 	// KwIf introduces a conditional expression.
@@ -68,12 +72,8 @@ const (
 	KwDeadline
 	// KwSelect waits on several channel operations.
 	KwSelect
-	// KwPanic aborts the current task with a report.
-	KwPanic
 	// KwDefer schedules a call at the end of the nearest block.
 	KwDefer
-	// KwNew creates a heap or container value.
-	KwNew
 	// KwBreak exits the nearest loop.
 	KwBreak
 	// KwContinue starts the next iteration of the nearest loop.
@@ -127,6 +127,40 @@ const (
 	Bang
 	// Assign is =.
 	Assign
+	// AddAssign is +=.
+	AddAssign
+	// SubAssign is -=.
+	SubAssign
+	// MulAssign is *=.
+	MulAssign
+	// DivAssign is /=.
+	DivAssign
+	// ModAssign is %=.
+	ModAssign
+	// AndAssign is &=.
+	AndAssign
+	// OrAssign is |=.
+	OrAssign
+	// XorAssign is ^=.
+	XorAssign
+	// ShlAssign is <<=.
+	ShlAssign
+	// ShrAssign is >>=.
+	ShrAssign
+	// PlusWrapAssign is +%=.
+	PlusWrapAssign
+	// MinusWrapAssign is -%=.
+	MinusWrapAssign
+	// StarWrapAssign is *%=.
+	StarWrapAssign
+	// PlusSatAssign is +|=.
+	PlusSatAssign
+	// MinusSatAssign is -|=.
+	MinusSatAssign
+	// StarSatAssign is *|=.
+	StarSatAssign
+	// ShlWrapAssign is <<%=.
+	ShlWrapAssign
 	// Eq is ==.
 	Eq
 	// Ne is !=.
@@ -149,8 +183,6 @@ const (
 	Comma
 	// Colon separates a name from its type or a field from its value.
 	Colon
-	// Semicolon separates statements when written explicitly.
-	Semicolon
 	// Question is the error propagation suffix.
 	Question
 	// Arrow precedes a return type.
@@ -172,86 +204,102 @@ const (
 )
 
 var names = map[Kind]string{
-	Invalid:     "invalid",
-	EOF:         "end of file",
-	Newline:     "newline",
-	Ident:       "identifier",
-	Int:         "integer literal",
-	Float:       "float literal",
-	Char:        "character literal",
-	String:      "string literal",
-	Bytes:       "byte string literal",
-	FString:     "interpolated string literal",
-	DocComment:  "documentation comment",
-	KwFunc:      "func",
-	KwStruct:    "struct",
-	KwEnum:      "enum",
-	KwInterface: "interface",
-	KwConst:     "const",
-	KwVar:       "var",
-	KwImport:    "import",
-	KwDerive:    "derive",
-	KwReturn:    "return",
-	KwIf:        "if",
-	KwElse:      "else",
-	KwFor:       "for",
-	KwIn:        "in",
-	KwMatch:     "match",
-	KwSpawn:     "spawn",
-	KwRegion:    "region",
-	KwParallel:  "parallel",
-	KwDeadline:  "deadline",
-	KwSelect:    "select",
-	KwPanic:     "panic",
-	KwDefer:     "defer",
-	KwNew:       "new",
-	KwBreak:     "break",
-	KwContinue:  "continue",
-	KwTrue:      "true",
-	KwFalse:     "false",
-	Plus:        "+",
-	Minus:       "-",
-	Star:        "*",
-	Slash:       "/",
-	Percent:     "%",
-	PlusWrap:    "+%",
-	MinusWrap:   "-%",
-	StarWrap:    "*%",
-	PlusSat:     "+|",
-	MinusSat:    "-|",
-	StarSat:     "*|",
-	Shl:         "<<",
-	Shr:         ">>",
-	ShlWrap:     "<<%",
-	Amp:         "&",
-	Pipe:        "|",
-	Caret:       "^",
-	Tilde:       "~",
-	AndAnd:      "&&",
-	OrOr:        "||",
-	Bang:        "!",
-	Assign:      "=",
-	Eq:          "==",
-	Ne:          "!=",
-	Lt:          "<",
-	Le:          "<=",
-	Gt:          ">",
-	Ge:          ">=",
-	DotDot:      "..",
-	DotDotDot:   "...",
-	Dot:         ".",
-	Comma:       ",",
-	Colon:       ":",
-	Semicolon:   ";",
-	Question:    "?",
-	Arrow:       "->",
-	FatArrow:    "=>",
-	LParen:      "(",
-	RParen:      ")",
-	LBracket:    "[",
-	RBracket:    "]",
-	LBrace:      "{",
-	RBrace:      "}",
+	Invalid:         "invalid",
+	EOF:             "end of file",
+	Newline:         "newline",
+	Ident:           "identifier",
+	Int:             "integer literal",
+	Float:           "float literal",
+	Duration:        "duration literal",
+	Char:            "character literal",
+	String:          "string literal",
+	Bytes:           "byte string literal",
+	FString:         "interpolated string literal",
+	DocComment:      "documentation comment",
+	KwFunc:          "func",
+	KwStruct:        "struct",
+	KwEnum:          "enum",
+	KwInterface:     "interface",
+	KwConst:         "const",
+	KwVar:           "var",
+	KwImport:        "import",
+	KwDerive:        "derive",
+	KwLane:          "lane",
+	KwReturn:        "return",
+	KwIf:            "if",
+	KwElse:          "else",
+	KwFor:           "for",
+	KwIn:            "in",
+	KwMatch:         "match",
+	KwSpawn:         "spawn",
+	KwRegion:        "region",
+	KwParallel:      "parallel",
+	KwDeadline:      "deadline",
+	KwSelect:        "select",
+	KwDefer:         "defer",
+	KwBreak:         "break",
+	KwContinue:      "continue",
+	KwTrue:          "true",
+	KwFalse:         "false",
+	Plus:            "+",
+	Minus:           "-",
+	Star:            "*",
+	Slash:           "/",
+	Percent:         "%",
+	PlusWrap:        "+%",
+	MinusWrap:       "-%",
+	StarWrap:        "*%",
+	PlusSat:         "+|",
+	MinusSat:        "-|",
+	StarSat:         "*|",
+	Shl:             "<<",
+	Shr:             ">>",
+	ShlWrap:         "<<%",
+	Amp:             "&",
+	Pipe:            "|",
+	Caret:           "^",
+	Tilde:           "~",
+	AndAnd:          "&&",
+	OrOr:            "||",
+	Bang:            "!",
+	Assign:          "=",
+	AddAssign:       "+=",
+	SubAssign:       "-=",
+	MulAssign:       "*=",
+	DivAssign:       "/=",
+	ModAssign:       "%=",
+	AndAssign:       "&=",
+	OrAssign:        "|=",
+	XorAssign:       "^=",
+	ShlAssign:       "<<=",
+	ShrAssign:       ">>=",
+	PlusWrapAssign:  "+%=",
+	MinusWrapAssign: "-%=",
+	StarWrapAssign:  "*%=",
+	PlusSatAssign:   "+|=",
+	MinusSatAssign:  "-|=",
+	StarSatAssign:   "*|=",
+	ShlWrapAssign:   "<<%=",
+	Eq:              "==",
+	Ne:              "!=",
+	Lt:              "<",
+	Le:              "<=",
+	Gt:              ">",
+	Ge:              ">=",
+	DotDot:          "..",
+	DotDotDot:       "...",
+	Dot:             ".",
+	Comma:           ",",
+	Colon:           ":",
+	Question:        "?",
+	Arrow:           "->",
+	FatArrow:        "=>",
+	LParen:          "(",
+	RParen:          ")",
+	LBracket:        "[",
+	RBracket:        "]",
+	LBrace:          "{",
+	RBrace:          "}",
 }
 
 // String returns the spelling used in diagnostics.
@@ -272,6 +320,7 @@ var Keywords = map[string]Kind{
 	"var":       KwVar,
 	"import":    KwImport,
 	"derive":    KwDerive,
+	"lane":      KwLane,
 	"return":    KwReturn,
 	"if":        KwIf,
 	"else":      KwElse,
@@ -283,9 +332,7 @@ var Keywords = map[string]Kind{
 	"parallel":  KwParallel,
 	"deadline":  KwDeadline,
 	"select":    KwSelect,
-	"panic":     KwPanic,
 	"defer":     KwDefer,
-	"new":       KwNew,
 	"break":     KwBreak,
 	"continue":  KwContinue,
 	"true":      KwTrue,
@@ -308,7 +355,7 @@ func (t Token) Is(k Kind) bool {
 
 // Describe returns the token spelling for an unexpected-token message.
 func (t Token) Describe() string {
-	if t.Kind == Ident || t.Kind == Int || t.Kind == Float {
+	if t.Kind == Ident || t.Kind == Int || t.Kind == Float || t.Kind == Duration {
 		return t.Text
 	}
 	if t.Kind == EOF {

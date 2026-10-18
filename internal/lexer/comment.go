@@ -1,7 +1,9 @@
-// Package lexer turns will source bytes into tokens and lexical diagnostics.
 package lexer
 
-import "github.com/will-lang/will/internal/token"
+import (
+	"github.com/will-lang/will/internal/diag"
+	"github.com/will-lang/will/internal/token"
+)
 
 func (l *Lexer) scanLineComment() {
 	startOff := l.off
@@ -64,5 +66,5 @@ func (l *Lexer) scanBlockComment() {
 		}
 		l.advance()
 	}
-	l.errorAt(start, CodeUnterminatedComment, "unterminated block comment", "close the comment with */")
+	l.report(start, diag.UnterminatedBlockComment)
 }

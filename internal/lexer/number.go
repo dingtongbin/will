@@ -1,43 +1,49 @@
-// Package lexer turns will source bytes into tokens and lexical diagnostics.
 package lexer
 
-import "github.com/will-lang/will/internal/token"
+import (
+	"github.com/will-lang/will/internal/diag"
+	"github.com/will-lang/will/internal/source"
+	"github.com/will-lang/will/internal/token"
+)
+
+// digitScan records one run of digits and separators.
+type digitScan struct {
+	digits   int
+	ok       bool
+	firstSep source.Pos
+	hasSep   bool
+}
 
 func (l *Lexer) scanNumber() {
 	startOff := l.off
 	start := l.pos()
-	if l.peek(0) == '0' {
-		switch l.peek(1) {
-		case 'x', 'X':
+
+	if l.peek(0) == '0' && isBasePrefix(l.peek(1)) {
+		l.scanBasedNumber(start, startOff)
+		return
+	}
+
+	d := l.scanDecimalDigits()
+	valid := d.ok
+	isFloat := false
+	var firstSep source.Pos
+	hasSep := false
+	noteSep(&firstSep, &hasSep, d)
+
+	if l.peek(0) == '.' && l.peek(1) != '.' {
+		if isASCIIDigit(l.peek(1)) {
+			isFloat = true
 			l.advance()
+			d = l.scanDecimalDigits()
+			valid = valid && d.ok
+			noteSep(&firstSep, &hasSep, d)
+		} else {
+			valid = false
+			l.report(l.pos(), diag.InvalidNumber)
 			l.advance()
-			l.scanBaseDigits(16)
-			l.scanSuffix()
-			l.emit(token.Int, start, startOff)
-			return
-		case 'b', 'B':
-			l.advance()
-			l.advance()
-			l.scanBaseDigits(2)
-			l.scanSuffix()
-			l.emit(token.Int, start, startOff)
-			return
-		case 'o', 'O':
-			l.advance()
-			l.advance()
-			l.scanBaseDigits(8)
-			l.scanSuffix()
-			l.emit(token.Int, start, startOff)
-			return
 		}
 	}
-	l.scanDecimalDigits()
-	isFloat := false
-	if l.off < len(l.src) && l.src[l.off] == '.' && isASCIIDigit(l.peek(1)) {
-		isFloat = true
-		l.advance()
-		l.scanDecimalDigits()
-	}
+
 	if c := l.peek(0); c == 'e' || c == 'E' {
 		isFloat = true
 		expPos := l.pos()
@@ -46,82 +52,181 @@ func (l *Lexer) scanNumber() {
 			l.advance()
 		}
 		if !isASCIIDigit(l.peek(0)) {
-			l.errorAt(expPos, CodeBadNumber, "float exponent has no digits", "write at least one digit in the exponent")
+			valid = false
+			l.report(expPos, diag.InvalidNumber)
 		} else {
-			l.scanDecimalDigits()
+			d = l.scanDecimalDigits()
+			valid = valid && d.ok
+			noteSep(&firstSep, &hasSep, d)
 		}
 	}
-	l.scanSuffix()
+
+	if isFloat && hasSep {
+		l.report(firstSep, diag.InvalidNumber)
+		valid = false
+	}
+
+	suffixPos := l.pos()
+	suffix := l.scanSuffix()
+	kind := token.Int
 	if isFloat {
-		l.emit(token.Float, start, startOff)
-		return
+		kind = token.Float
 	}
-	l.emit(token.Int, start, startOff)
+	if suffix != "" {
+		suffixKind, ok := classifySuffix(suffix, isFloat)
+		if !ok {
+			l.report(suffixPos, diag.InvalidNumber)
+			valid = false
+		} else {
+			kind = suffixKind
+		}
+	}
+	if !valid {
+		kind = token.Invalid
+	}
+	l.emit(kind, start, startOff)
 }
 
-func (l *Lexer) scanBaseDigits(base int) {
-	digits := 0
+func (l *Lexer) scanBasedNumber(start source.Pos, startOff int) {
+	base := 0
+	switch l.peek(1) {
+	case 'x':
+		base = 16
+	case 'b':
+		base = 2
+	case 'o':
+		base = 8
+	}
+	l.advance()
+	l.advance()
+
+	d := l.scanBaseDigits(base)
+	valid := d.ok
+	if d.digits == 0 {
+		if d.ok {
+			l.report(l.pos(), diag.InvalidNumber)
+		}
+		valid = false
+	}
+
+	suffixPos := l.pos()
+	suffix := l.scanSuffix()
+	kind := token.Int
+	if suffix != "" {
+		suffixKind, ok := classifySuffix(suffix, false)
+		if !ok || suffixKind != token.Int && suffixKind != token.Duration {
+			l.report(suffixPos, diag.InvalidNumber)
+			valid = false
+		} else {
+			kind = suffixKind
+		}
+	}
+	if !valid {
+		kind = token.Invalid
+	}
+	l.emit(kind, start, startOff)
+}
+
+func (l *Lexer) scanDecimalDigits() digitScan {
+	d := digitScan{ok: true}
 	lastUnderscore := false
-	for l.off < len(l.src) {
-		c := l.src[l.off]
-		if c == '_' {
+	for {
+		c := l.peek(0)
+		switch {
+		case c == '_':
+			if d.digits == 0 || lastUnderscore || !isASCIIDigit(l.peek(1)) {
+				l.report(l.pos(), diag.InvalidNumber)
+				d.ok = false
+			} else if !d.hasSep {
+				d.firstSep = l.pos()
+				d.hasSep = true
+			}
+			lastUnderscore = true
+			l.advance()
+		case isASCIIDigit(c):
+			d.digits++
+			lastUnderscore = false
+			l.advance()
+		default:
+			return d
+		}
+	}
+}
+
+func (l *Lexer) scanBaseDigits(base int) digitScan {
+	d := digitScan{ok: true}
+	lastUnderscore := false
+	for {
+		c := l.peek(0)
+		switch {
+		case c == '_':
 			next := digitValue(l.peek(1))
-			if digits == 0 || lastUnderscore || next < 0 || next >= base {
-				l.errorAt(l.pos(), CodeBadNumber, "invalid digit separator in numeric literal", "write underscores only between digits")
+			if d.digits == 0 || lastUnderscore || next < 0 || next >= base {
+				l.report(l.pos(), diag.InvalidNumber)
+				d.ok = false
+			} else if !d.hasSep {
+				d.firstSep = l.pos()
+				d.hasSep = true
 			}
 			lastUnderscore = true
 			l.advance()
-			continue
-		}
-		if v := digitValue(c); v >= 0 && v < base {
-			digits++
+		case digitValue(c) >= 0 && digitValue(c) < base:
+			d.digits++
 			lastUnderscore = false
 			l.advance()
-			continue
-		}
-		if isASCIIDigit(c) {
-			l.errorAt(l.pos(), CodeBadNumber, "digit is not valid for this numeric base", "use only digits valid for this base")
+		case isASCIIDigit(c):
+			l.report(l.pos(), diag.InvalidNumber)
+			d.ok = false
+			lastUnderscore = false
 			l.advance()
-			continue
+		default:
+			return d
 		}
-		break
-	}
-	if digits == 0 {
-		l.errorAt(l.pos(), CodeBadNumber, "numeric literal has no digits after the base prefix", "write at least one digit after the base prefix")
-	}
-	if lastUnderscore {
-		l.errorAt(l.pos(), CodeBadNumber, "numeric literal ends with a digit separator", "remove the trailing underscore")
 	}
 }
 
-func (l *Lexer) scanDecimalDigits() {
-	digits := 0
-	lastUnderscore := false
-	for l.off < len(l.src) {
-		c := l.src[l.off]
-		if c == '_' {
-			if digits == 0 || lastUnderscore || !isASCIIDigit(l.peek(1)) {
-				l.errorAt(l.pos(), CodeBadNumber, "invalid digit separator in numeric literal", "write underscores only between digits")
-			}
-			lastUnderscore = true
-			l.advance()
-			continue
-		}
-		if isASCIIDigit(c) {
-			digits++
-			lastUnderscore = false
-			l.advance()
-			continue
-		}
-		break
-	}
-	if lastUnderscore {
-		l.errorAt(l.pos(), CodeBadNumber, "numeric literal ends with a digit separator", "remove the trailing underscore")
-	}
-}
-
-func (l *Lexer) scanSuffix() {
+func (l *Lexer) scanSuffix() string {
+	start := l.off
 	for l.off < len(l.src) && isIdentContinue(l.src[l.off]) {
 		l.advance()
 	}
+	return string(l.src[start:l.off])
+}
+
+func noteSep(first *source.Pos, has *bool, d digitScan) {
+	if d.hasSep && !*has {
+		*first = d.firstSep
+		*has = true
+	}
+}
+
+func isBasePrefix(b byte) bool {
+	return b == 'x' || b == 'b' || b == 'o'
+}
+
+// classifySuffix maps a literal suffix to its token kind. An empty suffix
+// keeps the kind implied by the number's shape.
+func classifySuffix(s string, isFloat bool) (token.Kind, bool) {
+	if s == "" {
+		if isFloat {
+			return token.Float, true
+		}
+		return token.Int, true
+	}
+	switch s {
+	case "i8", "i16", "i32", "i64", "isize",
+		"u8", "u16", "u32", "u64", "usize":
+		if isFloat {
+			return token.Invalid, false
+		}
+		return token.Int, true
+	case "f32", "f64":
+		return token.Float, true
+	case "ns", "us", "ms", "s", "m", "h":
+		if isFloat {
+			return token.Invalid, false
+		}
+		return token.Duration, true
+	}
+	return token.Invalid, false
 }
