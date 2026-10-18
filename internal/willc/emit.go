@@ -5,26 +5,31 @@ import (
 	"strings"
 
 	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/resolve"
 )
 
-// Emit renders one resolved file as a willc document.
+// Emit renders one resolved file as a willc document, followed by the
+// diagnostics of this run.
 //
 // The emitter assigns ids in the same preorder it writes, so a reference to a
 // node that has not been written yet is patched after the walk.
-func Emit(f *ast.File, res *resolve.Result, modulePath string) ([]byte, error) {
+func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diagnostic) ([]byte, error) {
 	e := &emitter{
 		ids:  map[ast.Node]int{},
 		refs: res.Refs,
 	}
 	root := e.add("module", f)
 	e.text(root, "path", modulePath)
+	e.push(root)
 	for _, imp := range f.Imports {
 		e.emitImport(imp)
 	}
 	for _, d := range f.Decls {
 		e.emitDecl(d)
 	}
+	e.emitDiagnostics(diags)
+	e.pop()
 	e.add("end", nil)
 	if err := e.patchRefs(); err != nil {
 		return nil, err
@@ -109,6 +114,34 @@ func (e *emitter) patchRefs() error {
 		e.doc.Records[p.rec-1].Fields[p.field].Value = Ref(id)
 	}
 	return nil
+}
+
+// emitDiagnostics writes one diagnostic node per message and the diagnostic
+// count, so a cache entry with only diagnostics still records what was found.
+func (e *emitter) emitDiagnostics(ds []diag.Diagnostic) {
+	for _, d := range ds {
+		rec := e.add("diagnostic", nil)
+		if d.Pos.IsValid() {
+			e.text(rec, "pos", d.Pos.String())
+		}
+		if d.End.IsValid() {
+			e.text(rec, "end", d.End.String())
+		}
+		e.text(rec, "code", d.Code)
+		e.word(rec, "severity", d.Severity.String())
+		e.text(rec, "message", d.Message)
+		if d.Help != "" {
+			e.text(rec, "help", d.Help)
+		}
+		for _, n := range d.Notes {
+			e.text(rec, "note", n.Pos.String()+": "+n.Message)
+		}
+	}
+	if len(ds) > 0 {
+		rec := e.add("count", nil)
+		e.text(rec, "name", "diagnostics")
+		e.number(rec, "n", len(ds))
+	}
 }
 
 func (e *emitter) emitImport(imp *ast.Import) {

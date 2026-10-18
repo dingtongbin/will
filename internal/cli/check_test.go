@@ -92,6 +92,41 @@ func TestCheckMissingFile(t *testing.T) {
 	}
 }
 
+func TestCheckModuleDirectory(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "app")
+	writeModuleFile(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
+	writeModuleFile(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n")
+	writeModuleFile(t, filepath.Join(root, "sub", "method.will"), "func (t: T) Move() {\n}\n")
+
+	code, out, _ := runCLI("check", root)
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !strings.Contains(out, "N0006 methods of T are declared in two packages") {
+		t.Fatalf("stdout = %q", out)
+	}
+}
+
+func TestCheckModuleDirectoryGood(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "app")
+	writeModuleFile(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
+	writeModuleFile(t, filepath.Join(root, "main.will"), "func Main() {\n}\n")
+	code, out, errOut := runCLI("check", root)
+	if code != 0 || out != "" || errOut != "" {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+}
+
+func writeModuleFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
+}
+
 func TestCheckWerror(t *testing.T) {
 	// A local name that shadows a predeclared name is a warning (N0003).
 	src := "func F() {\n    var i32: i32 = 0\n    _ = i32\n}\n"

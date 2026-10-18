@@ -10,6 +10,7 @@ import (
 
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
+	"github.com/will-lang/will/internal/pkg"
 	"github.com/will-lang/will/internal/resolve"
 	"github.com/will-lang/will/internal/types"
 )
@@ -58,13 +59,10 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var bag diag.Bag
-	for _, file := range files {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			fmt.Fprintf(stderr, "will: %v\n", err)
+	for _, path := range files {
+		if !checkPath(&bag, path, stderr) {
 			return 1
 		}
-		checkFile(&bag, file, data)
 	}
 
 	ds := bag.Diagnostics()
@@ -83,6 +81,33 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	return 0
+}
+
+// checkPath checks one file or, for a directory, the whole module. Directory
+// checking stops at the package layer because cross-package names need the
+// package resolver.
+func checkPath(bag *diag.Bag, path string, stderr io.Writer) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return false
+	}
+	if info.IsDir() {
+		b := pkg.Load(path)
+		if b.Err != nil {
+			fmt.Fprintf(stderr, "will: %v\n", b.Err)
+			return false
+		}
+		bag.AddAll(b.Diags)
+		return true
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return false
+	}
+	checkFile(bag, path, data)
+	return true
 }
 
 // checkFile runs the front end over one file and appends its diagnostics.

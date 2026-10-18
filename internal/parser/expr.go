@@ -158,7 +158,7 @@ func aggregateName(x ast.Expr) (string, source.Pos, bool) {
 func (p *Parser) parseFieldOrMethod(x ast.Expr) ast.Expr {
 	p.next()
 	p.skipNL()
-	name, _ := p.expectName("a field name")
+	name, nameTok := p.expectName("a field name")
 	var typeArgs []*ast.Type
 	if p.at(token.Lt) {
 		if end, ok := p.typeArgsEnd(p.pos); ok && end+1 < len(p.toks) && p.toks[end+1].Kind == token.LParen {
@@ -171,6 +171,7 @@ func (p *Parser) parseFieldOrMethod(x ast.Expr) ast.Expr {
 			Span:     ast.Span{Start: x.Pos(), End: p.prev().End},
 			Recv:     x,
 			Name:     name,
+			NamePos:  nameTok.Pos,
 			TypeArgs: typeArgs,
 			Args:     args,
 		}
@@ -179,9 +180,10 @@ func (p *Parser) parseFieldOrMethod(x ast.Expr) ast.Expr {
 		p.unexpected("(")
 	}
 	return &ast.FieldExpr{
-		Span: ast.Span{Start: x.Pos(), End: p.prev().End},
-		Recv: x,
-		Name: name,
+		Span:    ast.Span{Start: x.Pos(), End: p.prev().End},
+		Recv:    x,
+		Name:    name,
+		NamePos: nameTok.Pos,
 	}
 }
 

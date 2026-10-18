@@ -1,29 +1,29 @@
 #1 module pos="program.will:1:1" path="example.com/app"
-#2 import pos="program.will:1:1" path="std/net/http"
-#3 const pos="program.will:3:1" text="Limit" type="i32"
+#2 import parent=#1 pos="program.will:1:1" path="std/net/http"
+#3 const parent=#1 pos="program.will:3:1" text="Limit" type="i32"
 #4 type parent=#3 pos="program.will:3:14" text="i32" kind=scalar
 #5 lit parent=#3 pos="program.will:3:20" kind=int text="100"
-#6 struct pos="program.will:5:1" text="Point"
+#6 struct parent=#1 pos="program.will:5:1" text="Point"
 #7 field parent=#6 pos="program.will:6:5" text="x" type="i32"
 #8 type parent=#7 pos="program.will:6:8" text="i32" kind=scalar
 #9 field parent=#6 pos="program.will:7:5" text="y" type="i32" default=#11
 #10 type parent=#9 pos="program.will:7:8" text="i32" kind=scalar
 #11 lit parent=#9 pos="program.will:7:14" kind=int text="0"
-#12 enum pos="program.will:10:1" text="Shape"
+#12 enum parent=#1 pos="program.will:10:1" text="Shape"
 #13 variant parent=#12 pos="program.will:11:5" text="Circle" arg=#14
 #14 type parent=#13 pos="program.will:11:12" text="f64" kind=scalar
 #15 variant parent=#12 pos="program.will:12:5" text="Square"
-#16 interface pos="program.will:15:1" text="Showable"
+#16 interface parent=#1 pos="program.will:15:1" text="Showable"
 #17 method-sig parent=#16 pos="program.will:16:5" text="Show" type="str"
 #18 type parent=#17 pos="program.will:16:20" text="str" kind=scalar
-#19 func pos="program.will:19:1" text="Work" type="i32"
+#19 func parent=#1 pos="program.will:19:1" text="Work" type="i32"
 #20 param parent=#19 pos="program.will:19:11" text="n" type="i32"
 #21 type parent=#20 pos="program.will:19:14" text="i32" kind=scalar
 #22 type parent=#19 pos="program.will:19:22" text="i32" kind=scalar
 #23 block parent=#19 pos="program.will:19:26"
 #24 return parent=#23 pos="program.will:20:5" value=#25
 #25 name parent=#24 pos="program.will:20:12" text="n" to=#20
-#26 func pos="program.will:23:1" text="Move"
+#26 func parent=#1 pos="program.will:23:1" text="Move"
 #27 receiver parent=#26 pos="program.will:23:6" text="p" type="Point" mut=true
 #28 type parent=#27 pos="program.will:23:14" text="Point" kind=named
 #29 param parent=#26 pos="program.will:23:26" text="dx" type="i32"
@@ -39,7 +39,7 @@
 #39 field parent=#38 pos="program.will:25:5" text="y" recv=#40
 #40 name parent=#39 pos="program.will:25:5" text="p" to=#27
 #41 name parent=#38 pos="program.will:25:12" text="dy" to=#31
-#42 func pos="program.will:28:1" text="Max" type="T"
+#42 func parent=#1 pos="program.will:28:1" text="Max" type="T"
 #43 typeparam parent=#42 pos="program.will:28:10" text="T" constraint="Show"
 #44 type parent=#43 pos="program.will:28:13" text="Show" kind=named
 #45 param parent=#42 pos="program.will:28:19" text="a" type="T"
@@ -57,7 +57,7 @@
 #57 name parent=#56 pos="program.will:30:16" text="a" to=#45
 #58 return parent=#50 pos="program.will:32:5" value=#59
 #59 name parent=#58 pos="program.will:32:12" text="b" to=#47
-#60 func pos="program.will:35:1" text="Run" type="i32"
+#60 func parent=#1 pos="program.will:35:1" text="Run" type="i32"
 #61 param parent=#60 pos="program.will:35:10" text="n" type="i32"
 #62 type parent=#61 pos="program.will:35:13" text="i32" kind=scalar
 #63 type parent=#60 pos="program.will:35:21" text="i32" kind=scalar

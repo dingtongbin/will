@@ -5,12 +5,14 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
 	"github.com/will-lang/will/internal/resolve"
+	"github.com/will-lang/will/internal/source"
 )
 
 var update = flag.Bool("update", false, "rewrite the willc golden files")
@@ -25,7 +27,7 @@ func emitSource(t *testing.T, file, src, module string) []byte {
 	if len(rds) != 0 {
 		t.Fatalf("resolve diagnostics:\n%s", diag.FormatAll(rds))
 	}
-	data, err := Emit(f, res, module)
+	data, err := Emit(f, res, module, nil)
 	if err != nil {
 		t.Fatalf("emit: %v", err)
 	}
@@ -83,10 +85,37 @@ func TestEmitGolden(t *testing.T) {
 	}
 }
 
+func TestEmitDiagnostics(t *testing.T) {
+	f := &ast.File{}
+	res := &resolve.Result{Refs: map[ast.Node]*resolve.Symbol{}}
+	ds := []diag.Diagnostic{{
+		Pos:      source.Pos{File: "a.will", Line: 1, Col: 1},
+		End:      source.Pos{File: "a.will", Line: 1, Col: 2},
+		Severity: diag.Error,
+		Code:     "T0001",
+		Message:  "type mismatch",
+		Help:     "convert explicitly with T(x)",
+	}}
+	data, err := Emit(f, res, "x", ds)
+	if err != nil {
+		t.Fatalf("emit: %v", err)
+	}
+	if _, err := Read(data); err != nil {
+		t.Fatalf("read emitted: %v\n%s", err, data)
+	}
+	text := string(data)
+	if !strings.Contains(text, `#2 diagnostic parent=#1 pos="a.will:1:1" end="a.will:1:2" code="T0001" severity=error message="type mismatch"`) {
+		t.Errorf("diagnostic record is wrong:\n%s", text)
+	}
+	if !strings.Contains(text, `count parent=#1 name="diagnostics" n=1`) {
+		t.Errorf("count record is missing:\n%s", text)
+	}
+}
+
 func TestEmitEmptyFile(t *testing.T) {
 	f := &ast.File{}
 	res := &resolve.Result{Refs: map[ast.Node]*resolve.Symbol{}}
-	data, err := Emit(f, res, "x")
+	data, err := Emit(f, res, "x", nil)
 	if err != nil {
 		t.Fatalf("emit empty file: %v", err)
 	}

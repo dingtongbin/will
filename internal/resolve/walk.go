@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/diag"
+	"github.com/will-lang/will/internal/source"
 )
 
 func (r *resolver) walkBlock(b *ast.Block) {
@@ -204,10 +206,12 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 		r.walkArgs(x.Args)
 	case *ast.MethodCallExpr:
 		r.walkQualifier(x.Recv)
+		r.checkImportedMember(x.Recv, x.Name, x.NamePos)
 		r.walkTypes(x.TypeArgs)
 		r.walkArgs(x.Args)
 	case *ast.FieldExpr:
 		r.walkQualifier(x.Recv)
+		r.checkImportedMember(x.Recv, x.Name, x.NamePos)
 	case *ast.IndexExpr:
 		r.walkExpr(x.Recv, true)
 		r.walkExpr(x.Index, true)
@@ -305,6 +309,22 @@ func (r *resolver) qualifier(name string) (*Symbol, bool) {
 		return nil, false
 	}
 	return sym, true
+}
+
+// checkImportedMember reports N0002 when a package-qualified member starts
+// with a lowercase letter, so it is private to its own package.
+func (r *resolver) checkImportedMember(recv ast.Expr, name string, pos source.Pos) {
+	if name == "" || isExported(name) {
+		return
+	}
+	qual, ok := recv.(*ast.NameExpr)
+	if !ok {
+		return
+	}
+	if sym, found := r.current().lookup(qual.Name); found && sym.Kind == ImportKind {
+		r.bag.Error(pos, diag.CodePrivateName, "private name used outside its package",
+			"it starts with a lowercase letter, so it is private")
+	}
 }
 
 // walkQualifier handles the left side of a selector. A name that denotes an

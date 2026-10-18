@@ -1,6 +1,9 @@
 package ast
 
-import "github.com/will-lang/will/internal/token"
+import (
+	"github.com/will-lang/will/internal/source"
+	"github.com/will-lang/will/internal/token"
+)
 
 // NameExpr is an identifier.
 type NameExpr struct {
@@ -43,6 +46,7 @@ type MethodCallExpr struct {
 	Span
 	Recv     Expr
 	Name     string
+	NamePos  source.Pos
 	TypeArgs []*Type
 	Args     []*CallArg
 }
@@ -52,8 +56,9 @@ func (*MethodCallExpr) exprNode() {}
 // FieldExpr reads a field.
 type FieldExpr struct {
 	Span
-	Recv Expr
-	Name string
+	Recv    Expr
+	Name    string
+	NamePos source.Pos
 }
 
 func (*FieldExpr) exprNode() {}

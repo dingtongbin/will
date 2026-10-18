@@ -244,7 +244,7 @@ func (c *checker) checkValue(s *inferScope, e ast.Expr, want *Type) {
 	}
 	got := c.exprWithWant(s, e, want)
 	if !Equal(got, want) {
-		c.typeMismatch(e.Pos(), got, want)
+		c.mismatch(e.Pos(), got, want, false, "", 0)
 	}
 }
 
@@ -308,10 +308,51 @@ func (c *checker) checkArg(s *inferScope, e ast.Expr, want *Type, callee string,
 	}
 	got := c.exprWithWant(s, e, want)
 	if !Equal(got, want) {
-		c.bag.Error(e.Pos(), diag.CodeBadArgument,
+		c.mismatch(e.Pos(), got, want, true, callee, n)
+	}
+}
+
+// mismatch reports a value that does not fit a required type. A concrete type
+// assigned to an interface is checked for the interface methods first.
+func (c *checker) mismatch(pos source.Pos, got, want *Type, isArg bool, callee string, n int) {
+	if methods, ok := c.env.ifaces[want.Name()]; ok {
+		if missing := c.missingMethod(got, methods); missing != "" {
+			c.bag.Error(pos, diag.CodeInterfaceUnsatisfied,
+				"type "+got.String()+" does not satisfy "+want.String(),
+				"missing method "+missing)
+		}
+		return
+	}
+	if isArg {
+		c.bag.Error(pos, diag.CodeBadArgument,
 			"argument "+strconv.Itoa(n)+" has type "+got.String()+", want "+want.String(),
 			"see the declaration of "+callee)
+		return
 	}
+	c.typeMismatch(pos, got, want)
+}
+
+// missingMethod returns the first method of the interface that got lacks or
+// declares with a different signature.
+func (c *checker) missingMethod(got *Type, methods []*methodInfo) string {
+	if got == nil {
+		return ""
+	}
+	for _, m := range methods {
+		sig, ok := c.env.methods[got.Name()+"."+m.name]
+		if !ok {
+			return m.name
+		}
+		if len(sig.params) != len(m.sig.params) || !Equal(sig.result, m.sig.result) {
+			return m.name
+		}
+		for i := range sig.params {
+			if !Equal(sig.params[i], m.sig.params[i]) {
+				return m.name
+			}
+		}
+	}
+	return ""
 }
 
 func (c *checker) checkCallArgs(s *inferScope, sig *signature, args []*ast.CallArg) {
@@ -604,6 +645,16 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	if recv == nil || recv.Kind() != NamedKind {
 		return nil
 	}
+	if methods, ok := c.env.ifaces[recv.Name()]; ok {
+		for _, m := range methods {
+			if m.name == call.Name {
+				c.checkTypeArgsForMethod(call, m.sig)
+				c.checkPayload(s, m.sig.params, call.Args, call.Name)
+				return m.sig.result
+			}
+		}
+		return nil
+	}
 	if sig, ok := c.env.methods[recv.Name()+"."+call.Name]; ok {
 		c.checkTypeArgsForMethod(call, sig)
 		c.checkPayload(s, sig.params, call.Args, call.Name)
@@ -808,7 +859,7 @@ func (c *checker) unifyTypes(pos source.Pos, a, b *Type) *Type {
 	if b == nil || Equal(a, b) {
 		return a
 	}
-	c.typeMismatch(pos, b, a)
+	c.mismatch(pos, b, a, false, "", 0)
 	return a
 }
 

@@ -75,6 +75,35 @@ func F() {}
 	}
 }
 
+func TestPrivateNameOutsidePackage(t *testing.T) {
+	src := `import "std/net/http"
+func F() {
+    _ = http.get
+    _ = http.Get
+}
+`
+	ds := resolveSource(t, src)
+	d := find(t, ds, diag.CodePrivateName)
+	if d.Message != "private name used outside its package" {
+		t.Errorf("message = %q", d.Message)
+	}
+	if d.Help != "it starts with a lowercase letter, so it is private" {
+		t.Errorf("help = %q", d.Help)
+	}
+	if d.Pos.Line != 3 || d.Pos.Col != 14 {
+		t.Errorf("position = %d:%d, want 3:14", d.Pos.Line, d.Pos.Col)
+	}
+	count := 0
+	for _, x := range ds {
+		if x.Code == diag.CodePrivateName {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("N0002 count = %d, want 1:\n%s", count, diag.FormatAll(ds))
+	}
+}
+
 func TestUnusedCLink(t *testing.T) {
 	src := `import c "stdio.h" {
     fast puts

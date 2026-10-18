@@ -28,6 +28,12 @@ type variantInfo struct {
 	payload []*Type
 }
 
+// methodInfo is one interface method.
+type methodInfo struct {
+	name string
+	sig  *signature
+}
+
 // env is the declaration environment of one file.
 type env struct {
 	types    map[string]*Type
@@ -38,6 +44,7 @@ type env struct {
 	methods  map[string]*signature
 	inits    map[string]*signature
 	vars     map[string]*Type
+	ifaces   map[string][]*methodInfo
 }
 
 func newEnv() *env {
@@ -50,6 +57,7 @@ func newEnv() *env {
 		methods:  map[string]*signature{},
 		inits:    map[string]*signature{},
 		vars:     map[string]*Type{},
+		ifaces:   map[string][]*methodInfo{},
 	}
 }
 
@@ -91,8 +99,17 @@ func buildEnv(c *checker, f *ast.File) *env {
 				e.variants[v.Name] = &variantInfo{enum: t, payload: payload}
 			}
 		case *ast.InterfaceDecl:
+			tp := typeParamSet(decl.TypeParams)
 			e.types[decl.Name] = c.in.named(decl.Name, nil)
 			e.arity[decl.Name] = len(decl.TypeParams)
+			for _, m := range decl.Methods {
+				sig := &signature{name: m.Name}
+				for _, pm := range m.Params {
+					sig.params = append(sig.params, c.buildType(pm.Type, tp))
+				}
+				sig.result = c.buildType(m.Result, tp)
+				e.ifaces[decl.Name] = append(e.ifaces[decl.Name], &methodInfo{name: m.Name, sig: sig})
+			}
 		case *ast.FuncDecl:
 			sig := c.buildSig(decl)
 			switch {
