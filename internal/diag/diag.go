@@ -26,13 +26,22 @@ func (s Severity) String() string {
 	return "error"
 }
 
+// Note is one extra location attached to a diagnostic, used when a rule
+// needs two real positions.
+type Note struct {
+	Pos     source.Pos
+	Message string
+}
+
 // Diagnostic is one compiler message with a stable code and a help line.
 type Diagnostic struct {
 	Pos      source.Pos
+	End      source.Pos
 	Severity Severity
 	Code     string
 	Message  string
 	Help     string
+	Notes    []Note
 }
 
 // Bag accumulates diagnostics and returns them in a deterministic order.
@@ -45,14 +54,19 @@ func (b *Bag) Add(d Diagnostic) {
 	b.items = append(b.items, d)
 }
 
+// AddAll appends every diagnostic in ds.
+func (b *Bag) AddAll(ds []Diagnostic) {
+	b.items = append(b.items, ds...)
+}
+
 // Error records an error with a source position.
 func (b *Bag) Error(pos source.Pos, code, message, help string) {
-	b.Add(Diagnostic{Pos: pos, Severity: Error, Code: code, Message: message, Help: help})
+	b.Add(Diagnostic{Pos: pos, End: pos, Severity: Error, Code: code, Message: message, Help: help})
 }
 
 // Warning records a warning with a source position.
 func (b *Bag) Warning(pos source.Pos, code, message, help string) {
-	b.Add(Diagnostic{Pos: pos, Severity: Warning, Code: code, Message: message, Help: help})
+	b.Add(Diagnostic{Pos: pos, End: pos, Severity: Warning, Code: code, Message: message, Help: help})
 }
 
 // Diagnostics returns a sorted, de-duplicated copy of the recorded messages.
@@ -95,13 +109,28 @@ func dedupe(in []Diagnostic) []Diagnostic {
 	}
 	out := in[:1]
 	for _, d := range in[1:] {
-		last := out[len(out)-1]
-		if d == last {
+		if sameDiagnostic(d, out[len(out)-1]) {
 			continue
 		}
 		out = append(out, d)
 	}
 	return out
+}
+
+func sameDiagnostic(a, b Diagnostic) bool {
+	if a.Pos != b.Pos || a.End != b.End || a.Severity != b.Severity ||
+		a.Code != b.Code || a.Message != b.Message || a.Help != b.Help {
+		return false
+	}
+	if len(a.Notes) != len(b.Notes) {
+		return false
+	}
+	for i := range a.Notes {
+		if a.Notes[i] != b.Notes[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // Format renders one diagnostic in the canonical human format.
@@ -118,6 +147,15 @@ func Format(d Diagnostic) string {
 	if d.Help != "" {
 		b.WriteString("    help: ")
 		b.WriteString(d.Help)
+		b.WriteByte('\n')
+	}
+	for _, n := range d.Notes {
+		if n.Pos.IsValid() {
+			b.WriteString(n.Pos.String())
+			b.WriteString(": ")
+		}
+		b.WriteString("note: ")
+		b.WriteString(n.Message)
 		b.WriteByte('\n')
 	}
 	return b.String()

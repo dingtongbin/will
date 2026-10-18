@@ -58,6 +58,15 @@ const (
 	CodeChainedComparison = "T0006"
 	// CodeNewWithoutInit reports new on a type that has no init.
 	CodeNewWithoutInit = "T0007"
+
+	// CodePackageNameMismatch reports a package name that differs from its directory.
+	CodePackageNameMismatch = "B0001"
+	// CodeInvalidWillMod reports a will.mod syntax error.
+	CodeInvalidWillMod = "B0002"
+	// CodeChecksumMismatch reports a dependency checksum mismatch.
+	CodeChecksumMismatch = "B0003"
+	// CodeFeatureNotDeclared reports a feature used without a will.mod declaration.
+	CodeFeatureNotDeclared = "B0004"
 )
 
 // Message is one fixed diagnostic text from the code table.
