@@ -91,6 +91,39 @@ func TestMethodInDeclaringPackageIsFine(t *testing.T) {
 	}
 }
 
+func TestCrossPackageMemberResolution(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "app")
+	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
+	write(t, filepath.Join(root, "api.will"), "func Exported() -> i32 {\n    return 1\n}\n\nfunc hidden() {\n}\n")
+	write(t, filepath.Join(root, "sub", "use.will"), "import \"example.com/app\"\n\nfunc F() {\n    _ = app.Exported()\n}\n")
+	b := Load(root)
+	for _, d := range b.CheckAll() {
+		if d.Code == diag.CodeUndefinedName || d.Code == diag.CodeUnusedImport {
+			t.Fatalf("unexpected %s:\n%s", d.Code, diag.FormatAll(b.CheckAll()))
+		}
+	}
+}
+
+func TestCrossPackageMissingMember(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "app")
+	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
+	write(t, filepath.Join(root, "api.will"), "func Exported() {\n}\n")
+	write(t, filepath.Join(root, "sub", "use.will"), "import \"example.com/app\"\n\nfunc F() {\n    _ = app.Nope()\n}\n")
+	ds := Load(root).CheckAll()
+	d := findCode(t, ds, diag.CodeUndefinedName)
+	if d.Pos.Line != 4 {
+		t.Errorf("position = %d:%d, want line 4", d.Pos.Line, d.Pos.Col)
+	}
+}
+
+func TestCrossPackagePrivateMember(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "app")
+	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
+	write(t, filepath.Join(root, "api.will"), "func hidden() {\n}\n")
+	write(t, filepath.Join(root, "sub", "use.will"), "import \"example.com/app\"\n\nfunc F() {\n    _ = app.hidden()\n}\n")
+	findCode(t, Load(root).CheckAll(), diag.CodePrivateName)
+}
+
 func TestMissingWillMod(t *testing.T) {
 	b := Load(filepath.Join(t.TempDir(), "nope"))
 	if b.Err == nil {

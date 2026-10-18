@@ -8,13 +8,27 @@ import (
 	"github.com/will-lang/will/internal/source"
 )
 
+// Exported is one package's exported top-level names.
+type Exported map[string]*Symbol
+
+// Imports maps an import path to the exported names of that package.
+type Imports map[string]Exported
+
 // Resolve binds every name in f and returns the diagnostics it found.
 func Resolve(f *ast.File) (*Result, []diag.Diagnostic) {
+	return ResolveWith(f, nil)
+}
+
+// ResolveWith binds every name in f. Imports supplies the exported names of
+// the imported packages, so package-qualified members resolve for real.
+func ResolveWith(f *ast.File, imports Imports) (*Result, []diag.Diagnostic) {
 	r := &resolver{
-		file:    f,
-		pkg:     newScope(nil),
-		refs:    map[ast.Node]*Symbol{},
-		methods: map[string]*Symbol{},
+		file:     f,
+		pkg:      newScope(nil),
+		refs:     map[ast.Node]*Symbol{},
+		methods:  map[string]*Symbol{},
+		packages: imports,
+		tables:   map[string]Exported{},
 	}
 	r.addPredeclared()
 	r.addImports()
@@ -26,14 +40,16 @@ func Resolve(f *ast.File) (*Result, []diag.Diagnostic) {
 }
 
 type resolver struct {
-	file    *ast.File
-	pkg     *scope
-	stack   []*scope
-	bag     diag.Bag
-	refs    map[ast.Node]*Symbol
-	symbols []*Symbol
-	imports []*importRec
-	methods map[string]*Symbol
+	file     *ast.File
+	pkg      *scope
+	stack    []*scope
+	bag      diag.Bag
+	refs     map[ast.Node]*Symbol
+	symbols  []*Symbol
+	imports  []*importRec
+	methods  map[string]*Symbol
+	packages Imports
+	tables   map[string]Exported
 }
 
 type importRec struct {
@@ -95,6 +111,9 @@ func (r *resolver) addImports() {
 			sym := &Symbol{Name: name, Kind: ImportKind, Pos: imp.Span.Start, Node: imp}
 			r.defineTop(sym)
 			rec.sym = sym
+			if table, ok := r.packages[imp.Path]; ok {
+				r.tables[name] = table
+			}
 		}
 		r.imports = append(r.imports, rec)
 	}
@@ -329,8 +348,12 @@ func (r *resolver) reportUnusedImports() {
 }
 
 func (r *resolver) undefined(pos source.Pos, name string) {
+	r.undefinedIn(pos, name, r.visibleNames())
+}
+
+func (r *resolver) undefinedIn(pos source.Pos, name string, candidates []string) {
 	help := "declare it first"
-	if s := closestName(name, r.visibleNames()); s != "" {
+	if s := closestName(name, candidates); s != "" {
 		help = "did you mean " + s + "?"
 	}
 	r.bag.Error(pos, diag.CodeUndefinedName, "undefined name", help)

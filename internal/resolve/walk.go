@@ -314,17 +314,37 @@ func (r *resolver) qualifier(name string) (*Symbol, bool) {
 // checkImportedMember reports N0002 when a package-qualified member starts
 // with a lowercase letter, so it is private to its own package.
 func (r *resolver) checkImportedMember(recv ast.Expr, name string, pos source.Pos) {
-	if name == "" || isExported(name) {
+	if name == "" {
 		return
 	}
 	qual, ok := recv.(*ast.NameExpr)
 	if !ok {
 		return
 	}
-	if sym, found := r.current().lookup(qual.Name); found && sym.Kind == ImportKind {
+	sym, found := r.current().lookup(qual.Name)
+	if !found || sym.Kind != ImportKind {
+		return
+	}
+	if !isExported(name) {
 		r.bag.Error(pos, diag.CodePrivateName, "private name used outside its package",
 			"it starts with a lowercase letter, so it is private")
+		return
 	}
+	table, loaded := r.tables[qual.Name]
+	if !loaded {
+		return
+	}
+	if _, exists := table[name]; !exists {
+		r.undefinedIn(pos, name, exportNames(table))
+	}
+}
+
+func exportNames(table Exported) []string {
+	names := make([]string, 0, len(table))
+	for name := range table {
+		names = append(names, name)
+	}
+	return names
 }
 
 // walkQualifier handles the left side of a selector. A name that denotes an

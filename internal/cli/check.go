@@ -98,7 +98,7 @@ func checkPath(bag *diag.Bag, path string, stderr io.Writer) bool {
 			fmt.Fprintf(stderr, "will: %v\n", b.Err)
 			return false
 		}
-		bag.AddAll(b.Diags)
+		bag.AddAll(b.CheckAll())
 		return true
 	}
 	data, err := os.ReadFile(path)

@@ -14,7 +14,9 @@ import (
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/mod"
 	"github.com/will-lang/will/internal/parser"
+	"github.com/will-lang/will/internal/resolve"
 	"github.com/will-lang/will/internal/source"
+	"github.com/will-lang/will/internal/types"
 )
 
 // File is one parsed source file with its path relative to the module root.
@@ -25,10 +27,11 @@ type File struct {
 
 // Package is one directory.
 type Package struct {
-	Path  string
-	Dir   string
-	Name  string
-	Files []*File
+	Path    string
+	Dir     string
+	Name    string
+	Files   []*File
+	Exports resolve.Exported
 }
 
 // Build is the loaded module.
@@ -107,6 +110,7 @@ func Load(root string) *Build {
 			bag.AddAll(fds)
 			p.Files = append(p.Files, &File{Path: filepath.ToSlash(rel), AST: f})
 		}
+		p.Exports = buildExports(p)
 		pkgs = append(pkgs, p)
 	}
 	sort.Slice(pkgs, func(i, j int) bool { return pkgs[i].Path < pkgs[j].Path })
@@ -203,4 +207,73 @@ func receiverName(t *ast.Type) string {
 		return ""
 	}
 	return t.Name
+}
+
+// buildExports collects the exported top-level names of one package.
+func buildExports(p *Package) resolve.Exported {
+	out := resolve.Exported{}
+	for _, f := range p.Files {
+		if f.AST == nil {
+			continue
+		}
+		for _, d := range f.AST.Decls {
+			switch decl := d.(type) {
+			case *ast.ConstDecl:
+				addExport(out, decl.Name, resolve.ConstKind, decl.NamePos, decl)
+			case *ast.VarDecl:
+				addExport(out, decl.Name, resolve.VarKind, decl.NamePos, decl)
+			case *ast.FuncDecl:
+				if decl.Recv == nil {
+					addExport(out, decl.Name, resolve.FuncKind, decl.NamePos, decl)
+				}
+			case *ast.StructDecl:
+				addExport(out, decl.Name, resolve.StructKind, decl.NamePos, decl)
+			case *ast.EnumDecl:
+				addExport(out, decl.Name, resolve.EnumKind, decl.NamePos, decl)
+				for _, v := range decl.Variants {
+					addExport(out, v.Name, resolve.VariantKind, v.NamePos, v)
+				}
+			case *ast.InterfaceDecl:
+				addExport(out, decl.Name, resolve.InterfaceKind, decl.NamePos, decl)
+			case *ast.LaneDecl:
+				addExport(out, decl.Name, resolve.LaneKind, decl.NamePos, decl)
+			}
+		}
+	}
+	return out
+}
+
+func addExport(out resolve.Exported, name string, kind resolve.Kind, pos source.Pos, node ast.Node) {
+	if !isExported(name) {
+		return
+	}
+	out[name] = &resolve.Symbol{Name: name, Kind: kind, Pos: pos, Node: node, Exported: true}
+}
+
+func isExported(name string) bool {
+	return name != "" && name[0] >= 'A' && name[0] <= 'Z'
+}
+
+// CheckAll resolves every file with the exported names of every package and
+// runs the type checker, returning the merged diagnostics.
+func (b *Build) CheckAll() []diag.Diagnostic {
+	var bag diag.Bag
+	bag.AddAll(b.Diags)
+	imps := resolve.Imports{}
+	for _, p := range b.Packages {
+		imps[p.Path] = p.Exports
+	}
+	for _, p := range b.Packages {
+		for _, f := range p.Files {
+			if f.AST == nil {
+				continue
+			}
+			res, ds := resolve.ResolveWith(f.AST, imps)
+			bag.AddAll(ds)
+			if res != nil {
+				bag.AddAll(types.Check(f.AST, res))
+			}
+		}
+	}
+	return bag.Diagnostics()
 }
