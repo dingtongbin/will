@@ -353,6 +353,11 @@ func (t Token) Is(k Kind) bool {
 	return t.Kind == k
 }
 
+// IsKeyword reports whether k is a strict keyword.
+func (k Kind) IsKeyword() bool {
+	return k >= KwFunc && k <= KwFalse
+}
+
 // Describe returns the token spelling for an unexpected-token message.
 func (t Token) Describe() string {
 	if t.Kind == Ident || t.Kind == Int || t.Kind == Float || t.Kind == Duration {

@@ -19,6 +19,13 @@ const (
 	CodeBadSymbol = "L0006"
 	// CodeBadChar reports a character literal that is not exactly one scalar.
 	CodeBadChar = "L0007"
+
+	// CodeUnexpectedToken reports a token where a production was required.
+	CodeUnexpectedToken = "S0001"
+	// CodeKeywordName reports a strict keyword used as a name.
+	CodeKeywordName = "S0002"
+	// CodeTypeArgs reports a type argument list that cannot be parsed.
+	CodeTypeArgs = "S0003"
 )
 
 // Message is one fixed diagnostic text from the code table.
@@ -50,6 +57,10 @@ var (
 	BadSymbol = Message{CodeBadSymbol, "this symbol is not part of the language", "remove it"}
 	// BadChar reports a character literal that does not hold exactly one scalar.
 	BadChar = Message{CodeBadChar, "character literal must hold exactly one scalar", "write one character between the quotes"}
+	// KeywordName reports a strict keyword used as a name.
+	KeywordName = Message{CodeKeywordName, "a keyword cannot be used as a name", "rename it"}
+	// TypeArguments reports a type argument list that cannot be parsed.
+	TypeArguments = Message{CodeTypeArgs, "cannot parse type arguments here", "comparisons cannot be chained, so this reads as a comparison; write the type arguments where a type is expected"}
 )
 
 // Report records m as an error at pos.

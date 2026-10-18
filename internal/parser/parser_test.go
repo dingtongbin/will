@@ -1,0 +1,197 @@
+package parser
+
+import (
+	"testing"
+
+	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/diag"
+)
+
+func parse(t *testing.T, src string) *ast.File {
+	t.Helper()
+	f, ds := Parse("test.will", []byte(src))
+	if len(ds) != 0 {
+		t.Fatalf("unexpected diagnostics:\n%s", diag.FormatAll(ds))
+	}
+	if f == nil {
+		t.Fatal("file is nil")
+	}
+	return f
+}
+
+const program = `import "std/net/http"
+import _ "std/bytes"
+import c "stdio.h" {
+    fast puts
+    blocking read
+}
+
+const Limit: i32 = 1_000
+var counter: i64 = 0
+
+struct Point {
+    x: i32
+    y: i32 = 0
+}
+
+enum Shape {
+    Circle(f64)
+    Square
+}
+
+interface Showable {
+    func Show() -> str
+}
+
+derive Show for Point
+
+lane Ui struct Job {
+    id: u32
+}
+
+func (mut p: Point) Move(dx: i32, dy: i32) {
+    p.x += dx
+    p.y += dy
+}
+
+func Max<T: Ord>(a: T, b: T) -> T {
+    if a > b {
+        return a
+    }
+    return b
+}
+
+func Run(n: i32) -> Result<i32, Error> {
+    var total: i32 = 0
+    var p: Point = Point { x: 1, y: n }
+    var text: str = f"value {n} {{ok}}"
+    var ch: chan<i32> = new chan<i32>(8)
+    var box: Box<i64> = new Box<i64>(5)
+    var cb: func(i32) -> bool = func(x: i32) -> bool { return x > 0 }
+    for i, x in items {
+        total += x
+    }
+    if total == 0 {
+        return Err(NotFound)
+    } else if total > 10 {
+        total = 10
+    } else {
+        total = total * 2
+    }
+    match total {
+        0 => { total = 0 }
+        1..9 if total > 2 => { total = 3 }
+        _ => { total = 4 }
+    }
+    region {
+        var t: Task<i32> = spawn Fetch(n)
+        _ = t.Join()
+    }
+    select {
+        v = ch.Recv() => { total = v }
+        timeout 5ms => { total = -1 }
+        default => { total = 0 }
+    }
+    parallel {
+        total += 1
+    }
+    deadline 3ms {
+        Work()
+    }
+    defer Cleanup()
+    func() { Work() }()
+    return Ok(total)
+}
+`
+
+func firstFunc(t *testing.T, f *ast.File) *ast.FuncDecl {
+	t.Helper()
+	for _, d := range f.Decls {
+		if fn, ok := d.(*ast.FuncDecl); ok {
+			return fn
+		}
+	}
+	t.Fatal("no function declaration")
+	return nil
+}
+
+func varValue(t *testing.T, f *ast.File, name string) ast.Expr {
+	t.Helper()
+	for _, d := range f.Decls {
+		fn, ok := d.(*ast.FuncDecl)
+		if !ok {
+			continue
+		}
+		for _, s := range fn.Body.Stmts {
+			vs, ok := s.(*ast.VarStmt)
+			if !ok {
+				continue
+			}
+			vd, ok := vs.Decl.(*ast.VarDecl)
+			if ok && vd.Name == name {
+				return vd.Value
+			}
+		}
+	}
+	t.Fatalf("variable %q not found", name)
+	return nil
+}
+
+func TestParseProgram(t *testing.T) {
+	f := parse(t, program)
+	if len(f.Imports) != 3 {
+		t.Fatalf("imports = %d, want 3", len(f.Imports))
+	}
+	if f.Imports[0].Path != "std/net/http" || f.Imports[0].C || f.Imports[0].SideEffect {
+		t.Errorf("first import = %+v", f.Imports[0])
+	}
+	if !f.Imports[1].SideEffect || f.Imports[1].Path != "std/bytes" {
+		t.Errorf("second import = %+v", f.Imports[1])
+	}
+	if !f.Imports[2].C || f.Imports[2].Path != "stdio.h" || len(f.Imports[2].Links) != 2 {
+		t.Fatalf("third import = %+v", f.Imports[2])
+	}
+	if !f.Imports[2].Links[0].Fast || f.Imports[2].Links[0].Name != "puts" {
+		t.Errorf("first link = %+v", f.Imports[2].Links[0])
+	}
+	if !f.Imports[2].Links[1].Blocking || f.Imports[2].Links[1].Name != "read" {
+		t.Errorf("second link = %+v", f.Imports[2].Links[1])
+	}
+	if len(f.Decls) != 10 {
+		t.Fatalf("declarations = %d, want 10", len(f.Decls))
+	}
+	if _, ok := f.Decls[0].(*ast.ConstDecl); !ok {
+		t.Errorf("decl 0 = %T, want const", f.Decls[0])
+	}
+	if _, ok := f.Decls[1].(*ast.VarDecl); !ok {
+		t.Errorf("decl 1 = %T, want var", f.Decls[1])
+	}
+	point, ok := f.Decls[2].(*ast.StructDecl)
+	if !ok || point.Name != "Point" || len(point.Fields) != 2 || point.Fields[1].Default == nil {
+		t.Fatalf("decl 2 = %+v, want Point with a default", f.Decls[2])
+	}
+	shape, ok := f.Decls[3].(*ast.EnumDecl)
+	if !ok || len(shape.Variants) != 2 || len(shape.Variants[0].Args) != 1 {
+		t.Fatalf("decl 3 = %+v, want Shape", f.Decls[3])
+	}
+	iface, ok := f.Decls[4].(*ast.InterfaceDecl)
+	if !ok || len(iface.Methods) != 1 || iface.Methods[0].Name != "Show" {
+		t.Fatalf("decl 4 = %+v, want Showable", f.Decls[4])
+	}
+	derive, ok := f.Decls[5].(*ast.DeriveDecl)
+	if !ok || derive.Name != "Show" {
+		t.Fatalf("decl 5 = %+v, want derive Show", f.Decls[5])
+	}
+	lane, ok := f.Decls[6].(*ast.LaneDecl)
+	if !ok || lane.Name != "Ui" {
+		t.Fatalf("decl 6 = %+v, want lane Ui", f.Decls[6])
+	}
+	move, ok := f.Decls[7].(*ast.FuncDecl)
+	if !ok || move.Recv == nil || !move.Recv.Mut || move.Name != "Move" {
+		t.Fatalf("decl 7 = %+v, want method Move", f.Decls[7])
+	}
+	max, ok := f.Decls[8].(*ast.FuncDecl)
+	if !ok || len(max.TypeParams) != 1 || len(max.TypeParams[0].Constraints) != 1 {
+		t.Fatalf("decl 8 = %+v, want generic Max", f.Decls[8])
+	}
+}
