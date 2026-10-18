@@ -41,6 +41,19 @@ const (
 	CodeMethodsTwoPackages = "N0006"
 	// CodeDuplicateName reports a duplicate top-level name.
 	CodeDuplicateName = "N0007"
+
+	// CodeTypeMismatch reports a value of the wrong type.
+	CodeTypeMismatch = "T0001"
+	// CodeInterfaceUnsatisfied reports a type that does not satisfy an interface.
+	CodeInterfaceUnsatisfied = "T0002"
+	// CodeBadArgument reports an argument count or type error.
+	CodeBadArgument = "T0003"
+	// CodeTypeArgCount reports a wrong number of type arguments.
+	CodeTypeArgCount = "T0004"
+	// CodeConstantRange reports an integer constant outside its type range.
+	CodeConstantRange = "T0005"
+	// CodeChainedComparison reports a chained comparison.
+	CodeChainedComparison = "T0006"
 )
 
 // Message is one fixed diagnostic text from the code table.

@@ -1,0 +1,224 @@
+package types
+
+import (
+	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/diag"
+	"github.com/will-lang/will/internal/resolve"
+	"github.com/will-lang/will/internal/token"
+)
+
+// Check runs the type checks that do not need full inference yet: integer
+// literal ranges (T0005) and chained comparisons (T0006). The resolved file
+// is the input of the later inference pass.
+func Check(f *ast.File, res *resolve.Result) []diag.Diagnostic {
+	c := &checker{res: res}
+	c.walkFile(f)
+	return c.bag.Diagnostics()
+}
+
+type checker struct {
+	bag diag.Bag
+	res *resolve.Result
+}
+
+func (c *checker) walkFile(f *ast.File) {
+	for _, d := range f.Decls {
+		c.walkDecl(d)
+	}
+}
+
+func (c *checker) walkDecl(d ast.Decl) {
+	switch decl := d.(type) {
+	case *ast.ConstDecl:
+		c.walkExpr(decl.Value)
+	case *ast.VarDecl:
+		c.walkExpr(decl.Value)
+	case *ast.FuncDecl:
+		c.walkBlock(decl.Body)
+	case *ast.StructDecl:
+		for _, f := range decl.Fields {
+			c.walkExpr(f.Default)
+		}
+	case *ast.LaneDecl:
+		if decl.Decl != nil {
+			c.walkDecl(decl.Decl)
+		}
+	}
+}
+
+func (c *checker) walkBlock(b *ast.Block) {
+	if b == nil {
+		return
+	}
+	for _, s := range b.Stmts {
+		c.walkStmt(s)
+	}
+}
+
+func (c *checker) walkStmt(s ast.Stmt) {
+	switch st := s.(type) {
+	case *ast.Block:
+		c.walkBlock(st)
+	case *ast.VarStmt:
+		switch d := st.Decl.(type) {
+		case *ast.ConstDecl:
+			c.walkExpr(d.Value)
+		case *ast.VarDecl:
+			c.walkExpr(d.Value)
+		}
+	case *ast.AssignStmt:
+		c.walkExpr(st.Target)
+		c.walkExpr(st.Value)
+	case *ast.ExprStmt:
+		c.walkExpr(st.Expr)
+	case *ast.DeferStmt:
+		c.walkExpr(st.Call)
+	case *ast.ReturnStmt:
+		c.walkExpr(st.Value)
+	case *ast.ForStmt:
+		c.walkExpr(st.Iter)
+		c.walkBlock(st.Body)
+	case *ast.RegionStmt:
+		c.walkBlock(st.Body)
+	case *ast.ParallelStmt:
+		c.walkBlock(st.Body)
+	case *ast.SelectStmt:
+		for _, arm := range st.Arms {
+			c.walkExpr(arm.Chan)
+			c.walkExpr(arm.Timeout)
+			c.walkStmt(arm.Body)
+		}
+	case *ast.IfExpr:
+		c.walkIf(st)
+	case *ast.MatchExpr:
+		c.walkMatch(st)
+	case *ast.DeadlineExpr:
+		c.walkExpr(st.Duration)
+		c.walkBlock(st.Body)
+	}
+}
+
+func (c *checker) walkIf(ifx *ast.IfExpr) {
+	c.walkExpr(ifx.Cond)
+	c.walkBlock(ifx.Then)
+	if ifx.Else != nil {
+		c.walkStmt(ifx.Else)
+	}
+}
+
+func (c *checker) walkMatch(m *ast.MatchExpr) {
+	c.walkExpr(m.Subject)
+	for _, arm := range m.Arms {
+		c.walkExpr(arm.Guard)
+		c.walkStmt(arm.Body)
+	}
+}
+
+func (c *checker) walkExpr(e ast.Expr) {
+	switch x := e.(type) {
+	case nil:
+	case *ast.LiteralExpr:
+		c.checkLiteral(x)
+	case *ast.NameExpr, *ast.LaneHereExpr:
+	case *ast.CallExpr:
+		c.walkExpr(x.Callee)
+		c.walkArgs(x.Args)
+	case *ast.MethodCallExpr:
+		c.walkExpr(x.Recv)
+		c.walkArgs(x.Args)
+	case *ast.FieldExpr:
+		c.walkExpr(x.Recv)
+	case *ast.IndexExpr:
+		c.walkExpr(x.Recv)
+		c.walkExpr(x.Index)
+	case *ast.SliceExpr:
+		c.walkExpr(x.Recv)
+		c.walkExpr(x.Lo)
+		c.walkExpr(x.Hi)
+	case *ast.AggregateExpr:
+		for _, f := range x.Fields {
+			c.walkExpr(f.Value)
+		}
+	case *ast.NewExpr:
+		c.walkArgs(x.Args)
+	case *ast.UnaryExpr:
+		c.walkExpr(x.X)
+	case *ast.BinaryExpr:
+		c.checkComparison(x)
+		c.walkExpr(x.L)
+		c.walkExpr(x.R)
+	case *ast.RangeExpr:
+		c.walkExpr(x.Lo)
+		c.walkExpr(x.Hi)
+	case *ast.LambdaExpr:
+		c.walkBlock(x.Body)
+	case *ast.TryExpr:
+		c.walkExpr(x.X)
+	case *ast.UnwrapExpr:
+		c.walkExpr(x.X)
+	case *ast.SpawnExpr:
+		c.walkExpr(x.Call)
+	case *ast.DeadlineExpr:
+		c.walkExpr(x.Duration)
+		c.walkBlock(x.Body)
+	case *ast.IfExpr:
+		c.walkIf(x)
+	case *ast.MatchExpr:
+		c.walkMatch(x)
+	case *ast.InterpExpr:
+		for _, part := range x.Parts {
+			c.walkExpr(part.Expr)
+		}
+	}
+}
+
+func (c *checker) walkArgs(args []*ast.CallArg) {
+	for _, a := range args {
+		c.walkExpr(a.Expr)
+	}
+}
+
+func isComparison(k token.Kind) bool {
+	switch k {
+	case token.Eq, token.Ne, token.Lt, token.Le, token.Gt, token.Ge:
+		return true
+	}
+	return false
+}
+
+// checkComparison reports T0006 when a comparison has a comparison operand.
+func (c *checker) checkComparison(x *ast.BinaryExpr) {
+	if !isComparison(x.Op) {
+		return
+	}
+	if l, ok := x.L.(*ast.BinaryExpr); ok && isComparison(l.Op) {
+		c.chained(x)
+		return
+	}
+	if r, ok := x.R.(*ast.BinaryExpr); ok && isComparison(r.Op) {
+		c.chained(x)
+	}
+}
+
+func (c *checker) chained(x *ast.BinaryExpr) {
+	c.bag.Error(x.Pos(), diag.CodeChainedComparison, "comparisons cannot be chained",
+		"split it into two comparisons")
+}
+
+// checkLiteral reports T0005 for an integer literal whose own suffix cannot
+// hold the value. An untyped literal is checked when it gets an expected type.
+func (c *checker) checkLiteral(lit *ast.LiteralExpr) {
+	if lit.Kind != token.Int {
+		return
+	}
+	value, suffix, ok := parseIntLiteral(lit.Text)
+	if !ok || suffix == "" {
+		return
+	}
+	if !intTypeName(suffix) {
+		return
+	}
+	if !fitsInt(value, suffix) {
+		c.checkIntConstant(lit.Pos(), value, lit.Text, suffix)
+	}
+}
