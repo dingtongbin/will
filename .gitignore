@@ -1,0 +1,27 @@
+# 构建产物
+/build/
+*.exe
+*.o
+*.a
+*.so
+*.dll
+*.dylib
+*.wasm
+
+# 编译缓存
+/.will-cache/
+.will-cache/
+
+# 设计文档：唯一规范来源，不进 git
+/desc/
+
+# agent 配置：本机开发用，与 desc 同理，不进 git
+/.opencode/
+/AGENTS.md
+
+# 编辑器与系统杂物
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini

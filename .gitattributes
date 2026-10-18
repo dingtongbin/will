@@ -1,0 +1,10 @@
+# 源文件一律 LF：CRLF 会让规范检查与逐字节记录失效
+* text=auto eol=lf
+
+# 二进制
+*.exe binary
+*.o binary
+*.a binary
+*.dll binary
+*.lib binary
+*.wasm binary
