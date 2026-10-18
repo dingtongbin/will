@@ -32,6 +32,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runEmitWillc(args[1:], stdout, stderr)
 	case "fmt":
 		return runFmt(args[1:], stdout, stderr)
+	case "index":
+		return runIndex(args[1:], stdout, stderr)
 	case "version":
 		fmt.Fprintln(stdout, buildIdentity().Compiler)
 		return 0
