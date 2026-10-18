@@ -7,18 +7,22 @@ import (
 	"github.com/will-lang/will/internal/token"
 )
 
-// Check runs the type checks that do not need full inference yet: integer
-// literal ranges (T0005) and chained comparisons (T0006). The resolved file
-// is the input of the later inference pass.
+// Check checks one resolved file: declaration types, statement and
+// expression types, integer literal ranges (T0005), and chained comparisons
+// (T0006).
 func Check(f *ast.File, res *resolve.Result) []diag.Diagnostic {
-	c := &checker{res: res}
+	c := &checker{res: res, in: newInterner()}
+	c.env = buildEnv(c, f)
 	c.walkFile(f)
+	c.inferFile(f)
 	return c.bag.Diagnostics()
 }
 
 type checker struct {
 	bag diag.Bag
 	res *resolve.Result
+	in  *interner
+	env *env
 }
 
 func (c *checker) walkFile(f *ast.File) {

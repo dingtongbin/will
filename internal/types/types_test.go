@@ -1,10 +1,12 @@
 package types
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
+	"github.com/will-lang/will/internal/resolve"
 )
 
 func TestInterningMakesEqualityIdentity(t *testing.T) {
@@ -146,9 +148,93 @@ func TestIntegerConstantRange(t *testing.T) {
 	}
 }
 
-func TestUntypedConstantIsNotCheckedYet(t *testing.T) {
+func TestUntypedConstantFitsDefault(t *testing.T) {
 	ds := checkTypes(t, "func F() {\n    _ = 300\n}\n")
 	if len(ds) != 0 {
-		t.Fatalf("diagnostics = %d, want none before inference exists:\n%s", len(ds), diag.FormatAll(ds))
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
 	}
+}
+
+func checkWithResolve(t *testing.T, src string) []diag.Diagnostic {
+	t.Helper()
+	f, ds := parser.Parse("test.will", []byte(src))
+	if len(ds) != 0 {
+		t.Fatalf("parse diagnostics:\n%s", diag.FormatAll(ds))
+	}
+	// Resolve only provides the reference table here; its own diagnostics are
+	// checked by the resolve tests.
+	res, _ := resolve.Resolve(f)
+	return Check(f, res)
+}
+
+func TestTypeMismatch(t *testing.T) {
+	cases := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{"var initializer", "func F() {\n    var x: i32 = \"s\"\n}\n", "got str, want i32"},
+		{"return value", "func F() -> i32 {\n    return \"s\"\n}\n", "got str, want i32"},
+		{"condition", "func F() {\n    var b: i32 = 1\n    if b {\n    }\n}\n", "got i32, want bool"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ds := checkWithResolve(t, c.src)
+			found := false
+			for _, d := range ds {
+				if d.Code == diag.CodeTypeMismatch && strings.Contains(d.Message, c.want) {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("missing T0001 %q in:\n%s", c.want, diag.FormatAll(ds))
+			}
+		})
+	}
+}
+
+func TestBadArgument(t *testing.T) {
+	ds := checkWithResolve(t, "func G(a: i32) {\n}\nfunc F() {\n    G(\"s\")\n}\n")
+	d := findCode(t, ds, diag.CodeBadArgument)
+	if d.Message != "argument 1 has type str, want i32" {
+		t.Errorf("message = %q", d.Message)
+	}
+	if d.Help != "see the declaration of G" {
+		t.Errorf("help = %q", d.Help)
+	}
+}
+
+func TestWrongArgumentCount(t *testing.T) {
+	ds := checkWithResolve(t, "func G(a: i32) {\n}\nfunc F() {\n    G()\n}\n")
+	d := findCode(t, ds, diag.CodeBadArgument)
+	if d.Message != "wrong number of arguments" {
+		t.Errorf("message = %q", d.Message)
+	}
+}
+
+func TestWrongTypeArgumentCount(t *testing.T) {
+	ds := checkWithResolve(t, "func G<T>(a: T) {\n}\nfunc F() {\n    G<i32, i64>(1)\n}\n")
+	d := findCode(t, ds, diag.CodeTypeArgCount)
+	if d.Message != "wrong number of type arguments" || !strings.Contains(d.Help, "1") {
+		t.Errorf("diagnostic = %+v", d)
+	}
+}
+
+func TestUntypedConstantRangeUsesExpectedType(t *testing.T) {
+	ds := checkWithResolve(t, "func F() {\n    var x: u8 = 300\n}\n")
+	d := findCode(t, ds, diag.CodeConstantRange)
+	if d.Message != "constant 300 is out of range for u8" {
+		t.Errorf("message = %q", d.Message)
+	}
+}
+
+func findCode(t *testing.T, ds []diag.Diagnostic, code string) diag.Diagnostic {
+	t.Helper()
+	for _, d := range ds {
+		if d.Code == code {
+			return d
+		}
+	}
+	t.Fatalf("missing %s in:\n%s", code, diag.FormatAll(ds))
+	return diag.Diagnostic{}
 }

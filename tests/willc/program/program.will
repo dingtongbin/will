@@ -16,8 +16,8 @@ interface Showable {
     func Show() -> str
 }
 
-func Work(n: i32) {
-    _ = n
+func Work(n: i32) -> i32 {
+    return n
 }
 
 func (mut p: Point) Move(dx: i32, dy: i32) {
@@ -36,7 +36,7 @@ func Run(n: i32) -> i32 {
     var xs: Array<i32> = new Array<i32>(0)
     var total: i32 = 0
     for i, x in xs {
-        total += i + x
+        total += i32(i) + x
     }
     var p: Point = Point { x: 1, y: n }
     p.Move(n, 2)

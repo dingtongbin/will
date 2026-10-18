@@ -84,6 +84,9 @@ func (t *Type) Args() []*Type { return t.args }
 // Elem returns the element type of an array or view.
 func (t *Type) Elem() *Type { return t.elem }
 
+// Params returns the parameter types of a function type.
+func (t *Type) Params() []*Type { return t.params }
+
 // Result returns the result type of a function type.
 func (t *Type) Result() *Type { return t.result }
 
