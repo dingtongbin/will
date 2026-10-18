@@ -123,7 +123,7 @@ func (c *checker) walkExpr(e ast.Expr) {
 	case nil:
 	case *ast.LiteralExpr:
 		c.checkLiteral(x)
-	case *ast.NameExpr, *ast.LaneHereExpr:
+	case *ast.NameExpr, *ast.LaneHereExpr, *ast.UnitExpr:
 	case *ast.CallExpr:
 		c.walkExpr(x.Callee)
 		c.walkArgs(x.Args)

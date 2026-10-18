@@ -197,6 +197,13 @@ type MatchExpr struct {
 func (*MatchExpr) exprNode() {}
 func (*MatchExpr) stmtNode() {}
 
+// UnitExpr is the empty value ().
+type UnitExpr struct {
+	Span
+}
+
+func (*UnitExpr) exprNode() {}
+
 // InterpPart is one part of an interpolated string. Exactly one of Lit and
 // Expr is set.
 type InterpPart struct {

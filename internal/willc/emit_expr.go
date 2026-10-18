@@ -118,6 +118,11 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 		e.text(rec, "text", "lane.Here()")
 		e.boolean(rec, "builtin", true)
 		return rec
+	case *ast.UnitExpr:
+		rec := e.add("lit", v)
+		e.word(rec, "kind", "unit")
+		e.text(rec, "text", "()")
+		return rec
 	}
 	return 0
 }

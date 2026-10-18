@@ -246,6 +246,11 @@ func (p *Parser) parsePrimary(allowBrace bool) ast.Expr {
 	case token.KwFunc:
 		return p.parseLambda()
 	case token.LParen:
+		if p.peekRaw(1).Kind == token.RParen {
+			open := p.next()
+			close := p.next()
+			return &ast.UnitExpr{Span: ast.Span{Start: open.Pos, End: close.End}}
+		}
 		p.next()
 		p.enterGroup()
 		p.skipNL()

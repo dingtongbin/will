@@ -90,13 +90,44 @@ func (t *Type) Params() []*Type { return t.params }
 // Result returns the result type of a function type.
 func (t *Type) Result() *Type { return t.result }
 
-// Equal reports whether a and b are the same type. An unknown type matches
-// anything, so one bad type does not produce a second diagnostic.
+// Equal reports whether a and b are the same type. Interned types compare by
+// id; a partially known type (a nil argument, or one with no arguments
+// recorded) matches anything in that position, so one unknown type does not
+// produce a second diagnostic.
 func Equal(a, b *Type) bool {
 	if a == nil || b == nil || a.kind == InvalidKind || b.kind == InvalidKind {
 		return true
 	}
-	return a.id == b.id
+	if a == b {
+		return true
+	}
+	if a.kind != b.kind || a.name != b.name || a.length != b.length {
+		return false
+	}
+	if len(a.args) > 0 && len(b.args) > 0 {
+		if len(a.args) != len(b.args) {
+			return false
+		}
+		for i := range a.args {
+			if !Equal(a.args[i], b.args[i]) {
+				return false
+			}
+		}
+	}
+	if !Equal(a.elem, b.elem) {
+		return false
+	}
+	if len(a.params) > 0 && len(b.params) > 0 {
+		if len(a.params) != len(b.params) {
+			return false
+		}
+		for i := range a.params {
+			if !Equal(a.params[i], b.params[i]) {
+				return false
+			}
+		}
+	}
+	return Equal(a.result, b.result)
 }
 
 // IsInteger reports whether t is an integer scalar.

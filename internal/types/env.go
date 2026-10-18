@@ -55,6 +55,8 @@ func newEnv() *env {
 
 func buildEnv(c *checker, f *ast.File) *env {
 	e := newEnv()
+	// buildType reads the environment, so publish it before the walk.
+	c.env = e
 	for name, n := range builtinArity {
 		e.arity[name] = n
 	}

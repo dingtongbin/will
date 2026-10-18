@@ -81,12 +81,37 @@ func (c *checker) inferFunc(decl *ast.FuncDecl) {
 	c.inferBlock(s, decl.Body)
 }
 
-func (c *checker) inferBlock(s *inferScope, b *ast.Block) {
+// inferBlock checks a block and returns the type of its last statement when
+// that statement is an expression, which is the block's value.
+func (c *checker) inferBlock(s *inferScope, b *ast.Block) *Type {
+	if b == nil {
+		return nil
+	}
+	inner := newInferScope(s)
+	for i, st := range b.Stmts {
+		if i == len(b.Stmts)-1 {
+			if es, ok := st.(*ast.ExprStmt); ok {
+				return c.inferExpr(inner, es.Expr)
+			}
+		}
+		c.inferStmt(inner, st)
+	}
+	return nil
+}
+
+// blockWant checks a block whose value must have type want.
+func (c *checker) blockWant(s *inferScope, b *ast.Block, want *Type) {
 	if b == nil {
 		return
 	}
 	inner := newInferScope(s)
-	for _, st := range b.Stmts {
+	for i, st := range b.Stmts {
+		if i == len(b.Stmts)-1 {
+			if es, ok := st.(*ast.ExprStmt); ok {
+				c.checkValue(inner, es.Expr, want)
+				return
+			}
+		}
 		c.inferStmt(inner, st)
 	}
 }
@@ -223,12 +248,52 @@ func (c *checker) checkValue(s *inferScope, e ast.Expr, want *Type) {
 	}
 }
 
-// exprWithWant infers e, letting a numeric literal take want as its type.
+// exprWithWant infers e, letting a numeric literal and the branch blocks of an
+// if or match take want as their type.
 func (c *checker) exprWithWant(s *inferScope, e ast.Expr, want *Type) *Type {
-	if lit, ok := e.(*ast.LiteralExpr); ok {
-		return c.literalType(lit, want)
+	switch x := e.(type) {
+	case *ast.LiteralExpr:
+		return c.literalType(x, want)
+	case *ast.IfExpr:
+		return c.ifWant(s, x, want)
+	case *ast.MatchExpr:
+		return c.matchWant(s, x, want)
 	}
 	return c.inferExpr(s, e)
+}
+
+func (c *checker) ifWant(s *inferScope, ifx *ast.IfExpr, want *Type) *Type {
+	c.checkValue(s, ifx.Cond, c.in.scalar("bool"))
+	c.blockWant(s, ifx.Then, want)
+	if ifx.Else == nil {
+		return nil
+	}
+	switch e := ifx.Else.(type) {
+	case *ast.IfExpr:
+		c.ifWant(s, e, want)
+	case *ast.Block:
+		c.blockWant(s, e, want)
+	default:
+		c.inferStmt(s, ifx.Else)
+	}
+	return want
+}
+
+func (c *checker) matchWant(s *inferScope, m *ast.MatchExpr, want *Type) *Type {
+	c.inferExpr(s, m.Subject)
+	for _, arm := range m.Arms {
+		inner := newInferScope(s)
+		c.inferExpr(inner, arm.Guard)
+		switch body := arm.Body.(type) {
+		case *ast.Block:
+			c.blockWant(inner, body, want)
+		case *ast.ExprStmt:
+			c.checkValue(inner, body.Expr, want)
+		default:
+			c.inferStmt(inner, arm.Body)
+		}
+	}
+	return want
 }
 
 func (c *checker) typeMismatch(pos source.Pos, got, want *Type) {
@@ -306,7 +371,7 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 	case *ast.MethodCallExpr:
 		return c.methodType(s, x)
 	case *ast.FieldExpr:
-		return c.fieldType(c.inferExpr(s, x.Recv), x.Name)
+		return c.fieldType(c.inferExpr(s, x.Recv), x.Name, x.Pos())
 	case *ast.IndexExpr:
 		return elemOf(c.inferExpr(s, x.Recv))
 	case *ast.SliceExpr:
@@ -352,6 +417,8 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 		return c.in.scalar("str")
 	case *ast.LaneHereExpr:
 		return c.in.scalar("usize")
+	case *ast.UnitExpr:
+		return c.in.unit()
 	}
 	return nil
 }
@@ -552,26 +619,38 @@ func (c *checker) checkTypeArgsForMethod(call *ast.MethodCallExpr, sig *signatur
 	}
 }
 
-func (c *checker) fieldType(recv *Type, name string) *Type {
+func (c *checker) fieldType(recv *Type, name string, pos source.Pos) *Type {
 	if recv == nil || recv.Kind() != NamedKind {
 		return nil
 	}
-	for _, f := range c.env.fields[recv.Name()] {
+	fields, known := c.env.fields[recv.Name()]
+	if !known {
+		return nil
+	}
+	for _, f := range fields {
 		if f.name == name {
 			return f.typ
 		}
 	}
+	c.bag.Error(pos, diag.CodeNoField, "no field "+name+" on "+recv.Name(), "check the field name or the type")
 	return nil
 }
 
 func (c *checker) aggregateType(s *inferScope, agg *ast.AggregateExpr) *Type {
 	t := c.typeByName(agg.TypeName)
+	fields, known := c.env.fields[agg.TypeName]
 	for _, f := range agg.Fields {
 		var want *Type
-		for _, fi := range c.env.fields[agg.TypeName] {
+		found := false
+		for _, fi := range fields {
 			if fi.name == f.Name {
 				want = fi.typ
+				found = true
 			}
+		}
+		if known && !found {
+			c.bag.Error(f.Pos(), diag.CodeNoField, "no field "+f.Name+" on "+agg.TypeName,
+				"check the field name or the type")
 		}
 		c.checkValue(s, f.Value, want)
 	}
@@ -591,10 +670,34 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 		}
 		return t
 	}
+	if c.isUserType(name) {
+		c.bag.Error(n.Pos(), diag.CodeNewWithoutInit, "type "+name+" has no init; use a literal",
+			"write "+name+" { ... } or add an init method")
+		for _, a := range n.Args {
+			c.inferExpr(s, a.Expr)
+		}
+		return t
+	}
 	for _, a := range n.Args {
 		c.checkArg(s, a.Expr, c.in.scalar("i32"), name, 1)
 	}
 	return t
+}
+
+// isUserType reports whether name is a struct or enum declared in this file.
+func (c *checker) isUserType(name string) bool {
+	if name == "" {
+		return false
+	}
+	if _, ok := c.env.fields[name]; ok {
+		return true
+	}
+	for _, vi := range c.env.variants {
+		if vi.enum.Name() == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *checker) unaryType(s *inferScope, u *ast.UnaryExpr) *Type {
@@ -662,26 +765,51 @@ func (c *checker) binaryType(s *inferScope, b *ast.BinaryExpr) *Type {
 	return lt
 }
 
-// ifType and matchType check conditions and bodies. The value of a block (its
-// last expression) is not typed yet; expression values are added with the
-// block-value pass.
+// ifType and matchType check bodies and unify the branch value types.
 func (c *checker) ifType(s *inferScope, ifx *ast.IfExpr) *Type {
 	c.checkValue(s, ifx.Cond, c.in.scalar("bool"))
-	c.inferBlock(s, ifx.Then)
+	then := c.inferBlock(s, ifx.Then)
+	var els *Type
 	if ifx.Else != nil {
-		c.inferStmt(s, ifx.Else)
+		switch e := ifx.Else.(type) {
+		case *ast.IfExpr:
+			els = c.ifType(s, e)
+		case *ast.Block:
+			els = c.inferBlock(s, e)
+		default:
+			c.inferStmt(s, ifx.Else)
+		}
 	}
-	return nil
+	return c.unifyTypes(ifx.Pos(), then, els)
 }
 
 func (c *checker) matchType(s *inferScope, m *ast.MatchExpr) *Type {
 	c.inferExpr(s, m.Subject)
+	var out *Type
 	for _, arm := range m.Arms {
 		inner := newInferScope(s)
 		c.inferExpr(inner, arm.Guard)
-		c.inferStmt(inner, arm.Body)
+		switch body := arm.Body.(type) {
+		case *ast.Block:
+			out = c.unifyTypes(m.Pos(), out, c.inferBlock(inner, body))
+		case *ast.ExprStmt:
+			out = c.unifyTypes(m.Pos(), out, c.inferExpr(inner, body.Expr))
+		default:
+			c.inferStmt(inner, arm.Body)
+		}
 	}
-	return nil
+	return out
+}
+
+func (c *checker) unifyTypes(pos source.Pos, a, b *Type) *Type {
+	if a == nil {
+		return b
+	}
+	if b == nil || Equal(a, b) {
+		return a
+	}
+	c.typeMismatch(pos, b, a)
+	return a
 }
 
 func elemOf(t *Type) *Type {

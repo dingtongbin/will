@@ -1,0 +1,126 @@
+package types
+
+import (
+	"testing"
+
+	"github.com/will-lang/will/internal/diag"
+)
+
+func TestNoField(t *testing.T) {
+	cases := []struct {
+		name string
+		src  string
+	}{
+		{"read", "struct P {\n    x: i32\n}\nfunc F(p: P) {\n    _ = p.y\n}\n"},
+		{"aggregate", "struct P {\n    x: i32\n}\nfunc F() {\n    var p: P = P { y: 1 }\n    _ = p\n}\n"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ds := checkWithResolve(t, c.src)
+			d := findCode(t, ds, diag.CodeNoField)
+			if d.Message != "no field y on P" {
+				t.Errorf("message = %q", d.Message)
+			}
+			if d.Help != "check the field name or the type" {
+				t.Errorf("help = %q", d.Help)
+			}
+		})
+	}
+}
+
+func TestNewWithoutInit(t *testing.T) {
+	src := "struct P {\n    x: i32\n}\nfunc F() {\n    var p: P = new P(1)\n    _ = p\n}\n"
+	ds := checkWithResolve(t, src)
+	d := findCode(t, ds, diag.CodeNewWithoutInit)
+	if d.Message != "type P has no init; use a literal" {
+		t.Errorf("message = %q", d.Message)
+	}
+	if d.Help != "write P { ... } or add an init method" {
+		t.Errorf("help = %q", d.Help)
+	}
+}
+
+func TestNewWithInit(t *testing.T) {
+	src := `struct P {
+    x: i32
+}
+func (mut p: P) init(x: i32) -> Result<(), Error> {
+    p.x = x
+    return Ok(())
+}
+func F() {
+    var p: P = new P(1)!
+    _ = p
+}
+`
+	ds := checkWithResolve(t, src)
+	for _, d := range ds {
+		if d.Code == diag.CodeNewWithoutInit {
+			t.Fatalf("unexpected T0007:\n%s", diag.FormatAll(ds))
+		}
+	}
+}
+
+func TestBlockValueTakesExpectedType(t *testing.T) {
+	src := `func F(c: bool) {
+    var x: u8 = if c {
+        1
+    } else {
+        2
+    }
+    _ = x
+}
+`
+	ds := checkWithResolve(t, src)
+	if len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
+func TestBlockValueRange(t *testing.T) {
+	src := `func F(c: bool) {
+    var x: u8 = if c {
+        1
+    } else {
+        300
+    }
+    _ = x
+}
+`
+	ds := checkWithResolve(t, src)
+	d := findCode(t, ds, diag.CodeConstantRange)
+	if d.Message != "constant 300 is out of range for u8" {
+		t.Errorf("message = %q", d.Message)
+	}
+}
+
+func TestBlockValueMismatch(t *testing.T) {
+	src := `func F(c: bool) {
+    _ = if c {
+        1
+    } else {
+        "s"
+    }
+}
+`
+	ds := checkWithResolve(t, src)
+	d := findCode(t, ds, diag.CodeTypeMismatch)
+	if d.Message != "type mismatch: got str, want i32" {
+		t.Errorf("message = %q", d.Message)
+	}
+}
+
+func TestMatchValueTakesExpectedType(t *testing.T) {
+	src := `func F(n: i32) {
+    var x: i32 = match n {
+        0 => 1
+        _ => 2
+    }
+    _ = x
+}
+`
+	ds := checkWithResolve(t, src)
+	if len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}

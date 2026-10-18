@@ -41,6 +41,8 @@ const (
 	CodeMethodsTwoPackages = "N0006"
 	// CodeDuplicateName reports a duplicate top-level name.
 	CodeDuplicateName = "N0007"
+	// CodeNoField reports a field that the struct does not declare.
+	CodeNoField = "N0008"
 
 	// CodeTypeMismatch reports a value of the wrong type.
 	CodeTypeMismatch = "T0001"
@@ -54,6 +56,8 @@ const (
 	CodeConstantRange = "T0005"
 	// CodeChainedComparison reports a chained comparison.
 	CodeChainedComparison = "T0006"
+	// CodeNewWithoutInit reports new on a type that has no init.
+	CodeNewWithoutInit = "T0007"
 )
 
 // Message is one fixed diagnostic text from the code table.

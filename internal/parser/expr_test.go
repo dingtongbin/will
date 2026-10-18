@@ -28,6 +28,26 @@ const exprProgram = `func F(n: i32) {
 }
 `
 
+func TestUnitValue(t *testing.T) {
+	src := `func F() -> Result<(), Error> {
+    return Ok(())
+}
+`
+	f := parse(t, src)
+	fn := firstFunc(t, f)
+	ret, ok := fn.Body.Stmts[0].(*ast.ReturnStmt)
+	if !ok {
+		t.Fatalf("statement 0 = %T, want return", fn.Body.Stmts[0])
+	}
+	call, ok := ret.Value.(*ast.CallExpr)
+	if !ok || len(call.Args) != 1 {
+		t.Fatalf("return value = %T, want Ok(())", ret.Value)
+	}
+	if _, ok := call.Args[0].Expr.(*ast.UnitExpr); !ok {
+		t.Errorf("argument = %T, want unit value", call.Args[0].Expr)
+	}
+}
+
 func TestParseExpressions(t *testing.T) {
 	f := parse(t, exprProgram)
 

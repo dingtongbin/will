@@ -197,7 +197,7 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 		if markUsed {
 			sym.Used = true
 		}
-	case *ast.LiteralExpr, *ast.LaneHereExpr:
+	case *ast.LiteralExpr, *ast.LaneHereExpr, *ast.UnitExpr:
 	case *ast.CallExpr:
 		r.walkCallee(x.Callee)
 		r.walkTypes(x.TypeArgs)
