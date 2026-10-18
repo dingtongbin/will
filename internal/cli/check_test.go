@@ -92,6 +92,45 @@ func TestCheckMissingFile(t *testing.T) {
 	}
 }
 
+func TestCheckCacheHits(t *testing.T) {
+	dir := t.TempDir()
+	path := writeFile(t, dir, "bad.will", badSource)
+	cacheDir := filepath.Join(dir, "cache")
+	t.Setenv("WILL_CACHE", cacheDir)
+
+	code1, out1, _ := runCLI("check", path)
+	if code1 != 1 || out1 == "" {
+		t.Fatalf("first run: code = %d, stdout = %q", code1, out1)
+	}
+	if !strings.HasPrefix(out1, "T") && !strings.Contains(out1, "T0001") {
+		t.Fatalf("first run output = %q", out1)
+	}
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("cache entries = %v, err = %v", entries, err)
+	}
+
+	code2, out2, _ := runCLI("check", path)
+	if code2 != code1 || out2 != out1 {
+		t.Fatalf("second run differed: code = %d, stdout = %q", code2, out2)
+	}
+}
+
+func TestCheckCacheMissAfterChange(t *testing.T) {
+	dir := t.TempDir()
+	path := writeFile(t, dir, "bad.will", badSource)
+	t.Setenv("WILL_CACHE", filepath.Join(dir, "cache"))
+
+	if code, _, _ := runCLI("check", path); code != 1 {
+		t.Fatalf("first run code = %d", code)
+	}
+	writeFile(t, dir, "bad.will", goodSource)
+	code, out, _ := runCLI("check", path)
+	if code != 0 || out != "" {
+		t.Fatalf("changed file hit the old entry: code = %d, stdout = %q", code, out)
+	}
+}
+
 func TestCheckModuleDirectory(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	writeModuleFile(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")

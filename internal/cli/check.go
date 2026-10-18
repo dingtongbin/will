@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/will-lang/will/internal/cache"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
 	"github.com/will-lang/will/internal/pkg"
@@ -62,29 +63,102 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	// Only file arguments are cached; a directory run depends on the whole
+	// tree and its key would have to list every input.
+	store, key, contents := checkCache(files, jsonOut, werror)
+	if store != nil {
+		if data, ok := store.Get(key, cache.Diag); ok {
+			out, code := decodeDiag(data[cache.Diag])
+			stdout.Write(out)
+			return code
+		}
+	}
+
 	var bag diag.Bag
-	for _, path := range files {
-		if !checkPath(&bag, path, stderr) {
-			return 1
+	if contents == nil {
+		for _, path := range files {
+			if !checkPath(&bag, path, stderr) {
+				return 1
+			}
+		}
+	} else {
+		for _, f := range contents {
+			checkFile(&bag, f.path, f.data)
 		}
 	}
 
 	ds := bag.Diagnostics()
 	build := buildIdentity()
+	var out []byte
 	if jsonOut {
-		io.WriteString(stdout, diag.JSONAll(ds, build))
+		out = []byte(diag.JSONAll(ds, build))
 	} else {
-		io.WriteString(stdout, diag.FormatAll(ds))
+		out = []byte(diag.FormatAll(ds))
 	}
+	stdout.Write(out)
+
+	code := 0
 	for _, d := range ds {
 		if d.Severity == diag.Error {
-			return 1
+			code = 1
 		}
 		if werror && d.Severity == diag.Warning {
-			return 1
+			code = 1
 		}
 	}
-	return 0
+	if store != nil {
+		_ = store.Put(key, map[string][]byte{cache.Diag: encodeDiag(code, out)})
+		_ = store.Trim()
+	}
+	return code
+}
+
+// fileData is one file argument read for the cache key.
+type fileData struct {
+	path string
+	data []byte
+}
+
+// checkCache returns a store and a key when WILL_CACHE is set and every
+// argument is a file. contents carries the files it already read.
+func checkCache(files []string, jsonOut, werror bool) (*cache.Store, string, []fileData) {
+	root := os.Getenv("WILL_CACHE")
+	if root == "" {
+		return nil, "", nil
+	}
+	var contents []fileData
+	h := cache.NewHasher()
+	for _, path := range files {
+		info, err := os.Stat(path)
+		if err != nil || info.IsDir() {
+			return nil, "", nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, "", nil
+		}
+		contents = append(contents, fileData{path: path, data: data})
+		h.Add(path, data)
+	}
+	build := buildIdentity()
+	h.AddStrings("compiler", build.Compiler, build.Target, build.Opt)
+	h.AddStrings("flags", fmt.Sprintf("json=%v", jsonOut), fmt.Sprintf("werror=%v", werror))
+	return cache.New(root, 0), h.Key(), contents
+}
+
+func encodeDiag(code int, out []byte) []byte {
+	prefix := fmt.Sprintf("%d\n", code)
+	return append([]byte(prefix), out...)
+}
+
+func decodeDiag(data []byte) ([]byte, int) {
+	i := strings.IndexByte(string(data), '\n')
+	if i < 0 {
+		return data, 1
+	}
+	code := 0
+	fmt.Sscanf(string(data[:i]), "%d", &code)
+	return data[i+1:], code
 }
 
 // checkPath checks one file or, for a directory, the whole module. Directory
