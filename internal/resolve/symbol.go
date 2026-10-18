@@ -56,6 +56,9 @@ func (k Kind) isType() bool {
 	return false
 }
 
+// IsType reports whether the symbol denotes a type.
+func (s *Symbol) IsType() bool { return s.Kind.isType() }
+
 // Symbol is one declared name.
 type Symbol struct {
 	Name        string
