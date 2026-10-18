@@ -3,6 +3,7 @@ package parser
 import (
 	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
+	"github.com/will-lang/will/internal/source"
 	"github.com/will-lang/will/internal/token"
 )
 
@@ -84,11 +85,11 @@ func (p *Parser) parsePostfix(allowBrace bool) ast.Expr {
 	x := p.parsePrimary(allowBrace)
 	for !p.failed {
 		if allowBrace && p.at(token.LBrace) {
-			name, ok := x.(*ast.NameExpr)
+			name, pos, ok := aggregateName(x)
 			if !ok {
 				break
 			}
-			x = p.parseAggregate(name, nil)
+			x = p.parseAggregate(name, pos, nil)
 			continue
 		}
 		switch p.cur().Kind {
@@ -130,12 +131,28 @@ func (p *Parser) parseTypeArgsPostfix(x ast.Expr, allowBrace bool) (ast.Expr, bo
 	if p.at(token.LParen) {
 		return p.parseCall(x, typeArgs), true
 	}
-	name, ok := x.(*ast.NameExpr)
+	name, pos, ok := aggregateName(x)
 	if !ok {
 		p.unexpected("a type name")
 		return x, true
 	}
-	return p.parseAggregate(name, typeArgs), true
+	return p.parseAggregate(name, pos, typeArgs), true
+}
+
+// aggregateName accepts a bare name or a package-qualified name in front of an
+// aggregate literal.
+func aggregateName(x ast.Expr) (string, source.Pos, bool) {
+	switch v := x.(type) {
+	case *ast.NameExpr:
+		return v.Name, v.Pos(), true
+	case *ast.FieldExpr:
+		recv, ok := v.Recv.(*ast.NameExpr)
+		if !ok {
+			return "", source.Pos{}, false
+		}
+		return recv.Name + "." + v.Name, recv.Pos(), true
+	}
+	return "", source.Pos{}, false
 }
 
 func (p *Parser) parseFieldOrMethod(x ast.Expr) ast.Expr {
@@ -168,7 +185,7 @@ func (p *Parser) parseFieldOrMethod(x ast.Expr) ast.Expr {
 	}
 }
 
-func (p *Parser) parseAggregate(name *ast.NameExpr, typeArgs []*ast.Type) ast.Expr {
+func (p *Parser) parseAggregate(name string, pos source.Pos, typeArgs []*ast.Type) ast.Expr {
 	p.expect(token.LBrace, "{")
 	p.enterGroup()
 	p.skipNL()
@@ -191,8 +208,8 @@ func (p *Parser) parseAggregate(name *ast.NameExpr, typeArgs []*ast.Type) ast.Ex
 	p.expect(token.RBrace, "}")
 	p.leaveGroup()
 	return &ast.AggregateExpr{
-		Span:     ast.Span{Start: name.Pos(), End: p.prev().End},
-		TypeName: name.Name,
+		Span:     ast.Span{Start: pos, End: p.prev().End},
+		TypeName: name,
 		TypeArgs: typeArgs,
 		Fields:   fields,
 	}

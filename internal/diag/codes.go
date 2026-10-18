@@ -26,6 +26,21 @@ const (
 	CodeKeywordName = "S0002"
 	// CodeTypeArgs reports a type argument list that cannot be parsed.
 	CodeTypeArgs = "S0003"
+
+	// CodeUndefinedName reports a name with no declaration.
+	CodeUndefinedName = "N0001"
+	// CodePrivateName reports a private name used outside its package.
+	CodePrivateName = "N0002"
+	// CodeShadow reports a name that shadows an outer name.
+	CodeShadow = "N0003"
+	// CodeUnusedImport reports an import that is never used.
+	CodeUnusedImport = "N0004"
+	// CodeUnusedVar reports a variable that is never read.
+	CodeUnusedVar = "N0005"
+	// CodeMethodsTwoPackages reports a type with methods in two packages.
+	CodeMethodsTwoPackages = "N0006"
+	// CodeDuplicateName reports a duplicate top-level name.
+	CodeDuplicateName = "N0007"
 )
 
 // Message is one fixed diagnostic text from the code table.

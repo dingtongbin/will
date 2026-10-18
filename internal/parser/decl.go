@@ -112,7 +112,7 @@ func (p *Parser) parseDecl(doc string) ast.Decl {
 
 func (p *Parser) parseValueDecl(doc string) ast.Decl {
 	start := p.next()
-	name, _ := p.expectName("a name")
+	name, nameTok := p.expectName("a name")
 	p.expect(token.Colon, ":")
 	p.skipNL()
 	typ := p.parseType()
@@ -121,9 +121,9 @@ func (p *Parser) parseValueDecl(doc string) ast.Decl {
 	value := p.parseExpr(0, true)
 	span := p.spanFrom(start)
 	if start.Kind == token.KwConst {
-		return &ast.ConstDecl{Span: span, Doc: doc, Name: name, Type: typ, Value: value}
+		return &ast.ConstDecl{Span: span, Doc: doc, Name: name, NamePos: nameTok.Pos, Type: typ, Value: value}
 	}
-	return &ast.VarDecl{Span: span, Doc: doc, Name: name, Type: typ, Value: value}
+	return &ast.VarDecl{Span: span, Doc: doc, Name: name, NamePos: nameTok.Pos, Type: typ, Value: value}
 }
 
 func (p *Parser) parseFuncDecl(doc string) *ast.FuncDecl {
@@ -132,7 +132,9 @@ func (p *Parser) parseFuncDecl(doc string) *ast.FuncDecl {
 	if p.at(token.LParen) {
 		fn.Recv = p.parseReceiver()
 	}
-	fn.Name, _ = p.expectName("a function name")
+	name, nameTok := p.expectName("a function name")
+	fn.Name = name
+	fn.NamePos = nameTok.Pos
 	fn.TypeParams = p.parseTypeParams()
 	fn.Params = p.parseParams()
 	if p.at(token.Arrow) {
@@ -154,7 +156,9 @@ func (p *Parser) parseReceiver() *ast.Receiver {
 		recv.Mut = true
 		p.next()
 	}
-	recv.Name, _ = p.expectName("a receiver name")
+	name, nameTok := p.expectName("a receiver name")
+	recv.Name = name
+	recv.NamePos = nameTok.Pos
 	p.expect(token.Colon, ":")
 	recv.Type = p.parseType()
 	p.expect(token.RParen, ")")
@@ -193,7 +197,9 @@ func (p *Parser) parseParam() *ast.Param {
 		param.Mut = true
 		p.next()
 	}
-	param.Name, _ = p.expectName("a parameter name")
+	name, nameTok := p.expectName("a parameter name")
+	param.Name = name
+	param.NamePos = nameTok.Pos
 	p.expect(token.Colon, ":")
 	if p.at(token.DotDotDot) {
 		param.Variadic = true
@@ -217,8 +223,8 @@ func (p *Parser) parseTypeParams() []*ast.TypeParam {
 	var params []*ast.TypeParam
 	for {
 		start := p.cur()
-		name, _ := p.expectName("a type parameter name")
-		tp := &ast.TypeParam{Name: name}
+		name, nameTok := p.expectName("a type parameter name")
+		tp := &ast.TypeParam{Name: name, NamePos: nameTok.Pos}
 		if p.at(token.Colon) {
 			p.next()
 			p.skipNL()
@@ -249,7 +255,9 @@ func (p *Parser) parseTypeParams() []*ast.TypeParam {
 func (p *Parser) parseStructDecl(doc string) *ast.StructDecl {
 	start := p.expect(token.KwStruct, "struct")
 	s := &ast.StructDecl{Doc: doc}
-	s.Name, _ = p.expectName("a struct name")
+	name, nameTok := p.expectName("a struct name")
+	s.Name = name
+	s.NamePos = nameTok.Pos
 	s.TypeParams = p.parseTypeParams()
 	p.expect(token.LBrace, "{")
 	old := p.ignoreNL
@@ -258,7 +266,9 @@ func (p *Parser) parseStructDecl(doc string) *ast.StructDecl {
 	for !p.at(token.RBrace) && !p.at(token.EOF) && !p.failed {
 		fstart := p.cur()
 		field := &ast.Field{}
-		field.Name, _ = p.expectName("a field name")
+		name, nameTok := p.expectName("a field name")
+		field.Name = name
+		field.NamePos = nameTok.Pos
 		p.expect(token.Colon, ":")
 		field.Type = p.parseType()
 		if p.at(token.Assign) {
@@ -279,7 +289,9 @@ func (p *Parser) parseStructDecl(doc string) *ast.StructDecl {
 func (p *Parser) parseEnumDecl(doc string) *ast.EnumDecl {
 	start := p.expect(token.KwEnum, "enum")
 	e := &ast.EnumDecl{Doc: doc}
-	e.Name, _ = p.expectName("an enum name")
+	name, nameTok := p.expectName("an enum name")
+	e.Name = name
+	e.NamePos = nameTok.Pos
 	e.TypeParams = p.parseTypeParams()
 	p.expect(token.LBrace, "{")
 	old := p.ignoreNL
@@ -288,7 +300,9 @@ func (p *Parser) parseEnumDecl(doc string) *ast.EnumDecl {
 	for !p.at(token.RBrace) && !p.at(token.EOF) && !p.failed {
 		vstart := p.cur()
 		variant := &ast.Variant{}
-		variant.Name, _ = p.expectName("a variant name")
+		name, nameTok := p.expectName("a variant name")
+		variant.Name = name
+		variant.NamePos = nameTok.Pos
 		if p.at(token.LParen) {
 			variant.Args = p.parseTypeList()
 		}
@@ -328,7 +342,9 @@ func (p *Parser) parseTypeList() []*ast.Type {
 func (p *Parser) parseInterfaceDecl(doc string) *ast.InterfaceDecl {
 	start := p.expect(token.KwInterface, "interface")
 	iface := &ast.InterfaceDecl{Doc: doc}
-	iface.Name, _ = p.expectName("an interface name")
+	name, nameTok := p.expectName("an interface name")
+	iface.Name = name
+	iface.NamePos = nameTok.Pos
 	iface.TypeParams = p.parseTypeParams()
 	p.expect(token.LBrace, "{")
 	old := p.ignoreNL
@@ -347,7 +363,9 @@ func (p *Parser) parseInterfaceDecl(doc string) *ast.InterfaceDecl {
 func (p *Parser) parseMethodSig() *ast.MethodSig {
 	start := p.expect(token.KwFunc, "func")
 	sig := &ast.MethodSig{}
-	sig.Name, _ = p.expectName("a method name")
+	name, nameTok := p.expectName("a method name")
+	sig.Name = name
+	sig.NamePos = nameTok.Pos
 	sig.Params = p.parseParams()
 	if p.at(token.Arrow) {
 		p.next()
@@ -361,7 +379,9 @@ func (p *Parser) parseMethodSig() *ast.MethodSig {
 func (p *Parser) parseDeriveDecl(doc string) *ast.DeriveDecl {
 	start := p.expect(token.KwDerive, "derive")
 	d := &ast.DeriveDecl{Doc: doc}
-	d.Name, _ = p.expectName("a derived interface name")
+	name, nameTok := p.expectName("a derived interface name")
+	d.Name = name
+	d.NamePos = nameTok.Pos
 	p.expect(token.KwFor, "for")
 	d.Type = p.parseType()
 	d.Span = p.spanFrom(start)
@@ -371,7 +391,9 @@ func (p *Parser) parseDeriveDecl(doc string) *ast.DeriveDecl {
 func (p *Parser) parseLaneDecl() *ast.LaneDecl {
 	start := p.expect(token.KwLane, "lane")
 	l := &ast.LaneDecl{}
-	l.Name, _ = p.expectName("a lane name")
+	name, nameTok := p.expectName("a lane name")
+	l.Name = name
+	l.NamePos = nameTok.Pos
 	switch p.cur().Kind {
 	case token.KwStruct:
 		l.Decl = p.parseStructDecl("")

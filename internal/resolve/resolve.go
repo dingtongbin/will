@@ -1,0 +1,378 @@
+package resolve
+
+import (
+	"strings"
+
+	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/diag"
+	"github.com/will-lang/will/internal/source"
+)
+
+// Resolve binds every name in f and returns the diagnostics it found.
+func Resolve(f *ast.File) (*Result, []diag.Diagnostic) {
+	r := &resolver{
+		file:    f,
+		pkg:     newScope(nil),
+		refs:    map[ast.Node]*Symbol{},
+		methods: map[string]*Symbol{},
+	}
+	r.addPredeclared()
+	r.addImports()
+	r.addTopLevel()
+	r.walkFile()
+	r.reportUnusedImports()
+	res := &Result{File: f, Package: r.pkg, Refs: r.refs, Symbols: r.symbols}
+	return res, r.bag.Diagnostics()
+}
+
+type resolver struct {
+	file    *ast.File
+	pkg     *scope
+	stack   []*scope
+	bag     diag.Bag
+	refs    map[ast.Node]*Symbol
+	symbols []*Symbol
+	imports []*importRec
+	methods map[string]*Symbol
+}
+
+type importRec struct {
+	sym        *Symbol
+	pos        source.Pos
+	sideEffect bool
+	c          bool
+	links      []*Symbol
+}
+
+var predeclaredTypes = []string{
+	"bool", "str", "raw",
+	"i8", "i16", "i32", "i64", "isize",
+	"u8", "u16", "u32", "u64", "usize",
+	"f32", "f64",
+	"Array", "Map", "Set",
+	"chan", "rc", "weak", "Task",
+	"Option", "Result", "Value", "Duration",
+	"Show", "Error",
+}
+
+var predeclaredValues = []string{
+	"Some", "None", "Ok", "Err",
+	"print", "panic", "assert",
+	"Cancel", "Priority",
+}
+
+func (r *resolver) addPredeclared() {
+	for _, name := range predeclaredTypes {
+		r.pkg.define(&Symbol{Name: name, Kind: PredeclaredTypeKind, Exported: true, Predeclared: true})
+	}
+	for _, name := range predeclaredValues {
+		r.pkg.define(&Symbol{Name: name, Kind: PredeclaredValueKind, Exported: true, Predeclared: true})
+	}
+}
+
+func (r *resolver) addImports() {
+	for _, imp := range r.file.Imports {
+		rec := &importRec{pos: imp.Span.Start, sideEffect: imp.SideEffect, c: imp.C}
+		switch {
+		case imp.SideEffect:
+		case imp.C:
+			for _, link := range imp.Links {
+				sym := &Symbol{
+					Name:     link.Name,
+					Kind:     CLinkKind,
+					Pos:      link.Span.Start,
+					Node:     link,
+					Exported: isExported(link.Name),
+				}
+				r.defineTop(sym)
+				rec.links = append(rec.links, sym)
+			}
+		default:
+			name := packageName(imp.Path)
+			if name == "" {
+				break
+			}
+			sym := &Symbol{Name: name, Kind: ImportKind, Pos: imp.Span.Start, Node: imp}
+			r.defineTop(sym)
+			rec.sym = sym
+		}
+		r.imports = append(r.imports, rec)
+	}
+}
+
+func packageName(path string) string {
+	path = strings.TrimSuffix(path, "/")
+	if i := strings.LastIndexByte(path, '/'); i >= 0 {
+		return path[i+1:]
+	}
+	return path
+}
+
+func (r *resolver) addTopLevel() {
+	for _, d := range r.file.Decls {
+		switch decl := d.(type) {
+		case *ast.ConstDecl:
+			r.defineTop(&Symbol{Name: decl.Name, Kind: ConstKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
+		case *ast.VarDecl:
+			r.defineTop(&Symbol{Name: decl.Name, Kind: VarKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
+		case *ast.FuncDecl:
+			if decl.Recv != nil {
+				r.addMethod(decl)
+				continue
+			}
+			r.defineTop(&Symbol{Name: decl.Name, Kind: FuncKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
+		case *ast.StructDecl:
+			r.defineTop(&Symbol{Name: decl.Name, Kind: StructKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
+		case *ast.EnumDecl:
+			r.defineTop(&Symbol{Name: decl.Name, Kind: EnumKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
+			for _, v := range decl.Variants {
+				r.defineTop(&Symbol{Name: v.Name, Kind: VariantKind, Pos: v.NamePos, Node: v, Exported: isExported(v.Name)})
+			}
+		case *ast.InterfaceDecl:
+			r.defineTop(&Symbol{Name: decl.Name, Kind: InterfaceKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
+		case *ast.LaneDecl:
+			r.defineTop(&Symbol{Name: decl.Name, Kind: LaneKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
+		}
+	}
+}
+
+func (r *resolver) addMethod(fn *ast.FuncDecl) {
+	key := typeName(fn.Recv.Type) + "." + fn.Name
+	sym := &Symbol{Name: fn.Name, Kind: MethodKind, Pos: fn.NamePos, Node: fn, RecvType: typeName(fn.Recv.Type), Exported: isExported(fn.Name)}
+	if _, ok := r.methods[key]; ok {
+		r.duplicate(fn.NamePos, fn.Name)
+		return
+	}
+	r.methods[key] = sym
+	r.symbols = append(r.symbols, sym)
+}
+
+// defineTop adds one package-level symbol. Shadowing a predeclared name is a
+// warning; two declarations with the same name are an error.
+func (r *resolver) defineTop(sym *Symbol) {
+	if sym.Name == "" {
+		return
+	}
+	prev := r.pkg.define(sym)
+	if prev == nil {
+		r.symbols = append(r.symbols, sym)
+		return
+	}
+	if prev.Predeclared {
+		r.shadow(sym.Pos, sym.Name)
+		r.symbols = append(r.symbols, sym)
+		return
+	}
+	r.pkg.names[sym.Name] = prev
+	r.duplicate(sym.Pos, sym.Name)
+}
+
+func (r *resolver) walkFile() {
+	for _, d := range r.file.Decls {
+		r.walkDecl(d)
+	}
+}
+
+func (r *resolver) walkDecl(d ast.Decl) {
+	switch decl := d.(type) {
+	case *ast.ConstDecl:
+		r.walkType(decl.Type)
+		r.walkExpr(decl.Value, true)
+	case *ast.VarDecl:
+		r.walkType(decl.Type)
+		r.walkExpr(decl.Value, true)
+	case *ast.FuncDecl:
+		r.walkFunc(decl)
+	case *ast.StructDecl:
+		r.push()
+		r.declareTypeParams(decl.TypeParams)
+		for _, f := range decl.Fields {
+			r.walkType(f.Type)
+			if f.Default != nil {
+				r.walkExpr(f.Default, true)
+			}
+		}
+		r.pop()
+	case *ast.EnumDecl:
+		r.push()
+		r.declareTypeParams(decl.TypeParams)
+		for _, v := range decl.Variants {
+			for _, t := range v.Args {
+				r.walkType(t)
+			}
+		}
+		r.pop()
+	case *ast.InterfaceDecl:
+		r.push()
+		r.declareTypeParams(decl.TypeParams)
+		for _, m := range decl.Methods {
+			r.push()
+			for _, pm := range m.Params {
+				r.declareLocal(&Symbol{Name: pm.Name, Kind: ParamKind, Pos: pm.NamePos, Node: pm, Exported: isExported(pm.Name)})
+				r.walkType(pm.Type)
+			}
+			r.walkType(m.Result)
+			r.pop()
+		}
+		r.pop()
+	case *ast.DeriveDecl:
+		r.walkType(decl.Type)
+		if sym, ok := r.refs[decl.Type]; ok {
+			r.refs[decl] = sym
+		}
+	case *ast.LaneDecl:
+		if decl.Decl != nil {
+			r.refs[decl] = r.pkg.names[decl.Name]
+			r.walkDecl(decl.Decl)
+		}
+	}
+}
+
+func (r *resolver) walkFunc(decl *ast.FuncDecl) {
+	r.push()
+	if decl.Recv != nil {
+		r.walkType(decl.Recv.Type)
+		r.declareLocal(&Symbol{Name: decl.Recv.Name, Kind: ReceiverKind, Pos: decl.Recv.NamePos, Node: decl.Recv, Exported: isExported(decl.Recv.Name)})
+	}
+	r.declareTypeParams(decl.TypeParams)
+	for _, pm := range decl.Params {
+		r.declareLocal(&Symbol{Name: pm.Name, Kind: ParamKind, Pos: pm.NamePos, Node: pm, Exported: isExported(pm.Name)})
+		r.walkType(pm.Type)
+	}
+	r.walkType(decl.Result)
+	r.walkBlock(decl.Body)
+	r.pop()
+}
+
+func (r *resolver) declareTypeParams(params []*ast.TypeParam) {
+	for _, tp := range params {
+		r.declareLocal(&Symbol{Name: tp.Name, Kind: TypeParamKind, Pos: tp.NamePos, Node: tp, Exported: isExported(tp.Name)})
+		for _, c := range tp.Constraints {
+			r.walkType(c)
+		}
+	}
+}
+
+func (r *resolver) push() {
+	r.stack = append(r.stack, newScope(r.current()))
+}
+
+func (r *resolver) pop() {
+	top := r.current()
+	for _, sym := range top.order {
+		r.reportUnusedLocal(sym)
+	}
+	r.stack = r.stack[:len(r.stack)-1]
+}
+
+func (r *resolver) current() *scope {
+	if len(r.stack) == 0 {
+		return r.pkg
+	}
+	return r.stack[len(r.stack)-1]
+}
+
+// declareLocal adds a binding to the current scope and warns when it shadows
+// an outer name.
+func (r *resolver) declareLocal(sym *Symbol) {
+	if sym.Name == "" || sym.Name == "_" {
+		return
+	}
+	scope := r.current()
+	if _, ok := scope.lookup(sym.Name); ok {
+		r.shadow(sym.Pos, sym.Name)
+	}
+	prev := scope.define(sym)
+	if prev == nil {
+		r.symbols = append(r.symbols, sym)
+		return
+	}
+	if !prev.Predeclared {
+		scope.names[sym.Name] = prev
+		return
+	}
+	r.symbols = append(r.symbols, sym)
+}
+
+func (r *resolver) reportUnusedLocal(sym *Symbol) {
+	switch sym.Kind {
+	case ParamKind, ReceiverKind, TypeParamKind, PredeclaredTypeKind, PredeclaredValueKind:
+		return
+	}
+	if sym.Used || sym.Name == "_" || sym.Exported {
+		return
+	}
+	r.bag.Error(sym.Pos, diag.CodeUnusedVar, "variable "+sym.Name+" is never read", "delete it, read it, or discard it with _")
+}
+
+func (r *resolver) reportUnusedImports() {
+	for _, rec := range r.imports {
+		if rec.sideEffect {
+			continue
+		}
+		if rec.c {
+			used := false
+			for _, link := range rec.links {
+				if link.Used {
+					used = true
+				}
+			}
+			if !used {
+				r.bag.Error(rec.pos, diag.CodeUnusedImport, "unused import", "remove it, or write import _ for side effects only")
+			}
+			continue
+		}
+		if rec.sym != nil && !rec.sym.Used {
+			r.bag.Error(rec.pos, diag.CodeUnusedImport, "unused import", "remove it, or write import _ for side effects only")
+		}
+	}
+}
+
+func (r *resolver) undefined(pos source.Pos, name string) {
+	help := "declare it first"
+	if s := closestName(name, r.visibleNames()); s != "" {
+		help = "did you mean " + s + "?"
+	}
+	r.bag.Error(pos, diag.CodeUndefinedName, "undefined name", help)
+}
+
+func (r *resolver) visibleNames() []string {
+	var out []string
+	for i := len(r.stack) - 1; i >= 0; i-- {
+		for _, sym := range r.stack[i].order {
+			out = append(out, sym.Name)
+		}
+	}
+	for _, sym := range r.pkg.order {
+		out = append(out, sym.Name)
+	}
+	return out
+}
+
+func (r *resolver) shadow(pos source.Pos, name string) {
+	r.bag.Warning(pos, diag.CodeShadow, "this name shadows "+name, "rename one of them")
+}
+
+func (r *resolver) duplicate(pos source.Pos, name string) {
+	r.bag.Error(pos, diag.CodeDuplicateName, "duplicate top-level name "+name,
+		"names must be unique in a package: shadowing is a warning, two declarations with the same name are an error")
+}
+
+func isExported(name string) bool {
+	if name == "" {
+		return false
+	}
+	return name[0] >= 'A' && name[0] <= 'Z'
+}
+
+// typeName returns the simple name of a named type, or "" for any other shape.
+func typeName(t *ast.Type) string {
+	if t == nil {
+		return ""
+	}
+	switch t.Kind {
+	case ast.NamedType, ast.ScalarType:
+		return t.Name
+	}
+	return ""
+}

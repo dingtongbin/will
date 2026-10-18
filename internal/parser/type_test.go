@@ -48,6 +48,28 @@ func TestNestedTypeArguments(t *testing.T) {
 	}
 }
 
+func TestQualifiedNames(t *testing.T) {
+	src := `import "std/net/http"
+func F() -> http.Ctx {
+    var c: http.Ctx = http.Ctx { host: "x" }
+    return c
+}
+`
+	f := parse(t, src)
+	fn := firstFunc(t, f)
+	if fn.Result == nil || fn.Result.Name != "http.Ctx" {
+		t.Fatalf("result type = %+v, want http.Ctx", fn.Result)
+	}
+	c := varDecl(t, f, "c")
+	if c.Type.Name != "http.Ctx" {
+		t.Fatalf("c type = %+v, want http.Ctx", c.Type)
+	}
+	agg, ok := c.Value.(*ast.AggregateExpr)
+	if !ok || agg.TypeName != "http.Ctx" {
+		t.Fatalf("c value = %T, want aggregate http.Ctx", c.Value)
+	}
+}
+
 func varDecl(t *testing.T, f *ast.File, name string) *ast.VarDecl {
 	t.Helper()
 	for _, d := range f.Decls {

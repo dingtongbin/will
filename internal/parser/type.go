@@ -21,6 +21,11 @@ func (p *Parser) parseType() *ast.Type {
 		return &ast.Type{Span: ast.Span{Start: start.Pos, End: end.End}, Kind: ast.UnitType}
 	case p.at(token.Ident):
 		name := p.next().Text
+		if p.at(token.Dot) {
+			p.next()
+			member, _ := p.expectName("a type name")
+			name = name + "." + member
+		}
 		t := &ast.Type{Kind: ast.NamedType, Name: name}
 		if isScalarType(name) && !p.at(token.Lt) {
 			t.Kind = ast.ScalarType
