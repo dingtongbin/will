@@ -27,6 +27,10 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "check":
 		return runCheck(args[1:], stdout, stderr)
+	case "emit-willc":
+		return runEmitWillc(args[1:], stdout, stderr)
+	case "fmt":
+		return runFmt(args[1:], stdout, stderr)
 	case "version":
 		fmt.Fprintln(stdout, buildIdentity().Compiler)
 		return 0

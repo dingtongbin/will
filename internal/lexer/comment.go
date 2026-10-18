@@ -13,23 +13,22 @@ func (l *Lexer) scanLineComment() {
 	l.advance()
 	if doc {
 		l.advance()
-		contentOff := l.off
-		for l.off < len(l.src) && l.src[l.off] != '\n' {
-			l.advance()
-		}
-		t := token.Token{
-			Kind:  token.DocComment,
-			Text:  string(l.src[startOff:l.off]),
-			Value: string(l.src[contentOff:l.off]),
-			Pos:   start,
-			End:   l.pos(),
-		}
-		l.toks = append(l.toks, t)
-		return
 	}
+	contentOff := l.off
 	for l.off < len(l.src) && l.src[l.off] != '\n' {
 		l.advance()
 	}
+	kind := token.LineComment
+	if doc {
+		kind = token.DocComment
+	}
+	l.toks = append(l.toks, token.Token{
+		Kind:  kind,
+		Text:  string(l.src[startOff:l.off]),
+		Value: string(l.src[contentOff:l.off]),
+		Pos:   start,
+		End:   l.pos(),
+	})
 }
 
 func (l *Lexer) scanBlockComment() {
@@ -46,22 +45,19 @@ func (l *Lexer) scanBlockComment() {
 	for l.off < len(l.src) {
 		if l.src[l.off] == '*' && l.peek(1) == '/' {
 			endOff := l.off
+			kind := token.BlockComment
 			if doc {
-				t := token.Token{
-					Kind:  token.DocComment,
-					Text:  string(l.src[startOff : l.off+2]),
-					Value: string(l.src[contentOff:endOff]),
-					Pos:   start,
-					End:   l.pos(),
-				}
-				l.advance()
-				l.advance()
-				t.End = l.pos()
-				l.toks = append(l.toks, t)
-				return
+				kind = token.DocComment
 			}
 			l.advance()
 			l.advance()
+			l.toks = append(l.toks, token.Token{
+				Kind:  kind,
+				Text:  string(l.src[startOff:l.off]),
+				Value: string(l.src[contentOff:endOff]),
+				Pos:   start,
+				End:   l.pos(),
+			})
 			return
 		}
 		l.advance()

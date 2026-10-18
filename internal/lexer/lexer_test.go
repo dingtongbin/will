@@ -187,6 +187,32 @@ func TestContextualAndPredeclaredNamesAreIdentifiers(t *testing.T) {
 	checkTokens(t, src, expected)
 }
 
+func TestScanAllKeepsComments(t *testing.T) {
+	toks, ds := ScanAll("test.will", []byte("// line\n/* block */ x\n"))
+	if len(ds) != 0 {
+		t.Fatalf("unexpected diagnostics:\n%s", diag.FormatAll(ds))
+	}
+	kinds := []token.Kind{}
+	for _, tk := range toks {
+		kinds = append(kinds, tk.Kind)
+	}
+	want := []token.Kind{token.LineComment, token.Newline, token.BlockComment, token.Ident, token.Newline, token.EOF}
+	if len(kinds) != len(want) {
+		t.Fatalf("kinds = %v, want %v", kinds, want)
+	}
+	for i := range want {
+		if kinds[i] != want[i] {
+			t.Fatalf("token %d = %s, want %s", i, kinds[i], want[i])
+		}
+	}
+	if toks[0].Text != "// line" || toks[0].Value != " line" {
+		t.Errorf("line comment = %q %q", toks[0].Text, toks[0].Value)
+	}
+	if toks[2].Text != "/* block */" || toks[2].Value != " block " {
+		t.Errorf("block comment = %q %q", toks[2].Text, toks[2].Value)
+	}
+}
+
 func TestPositions(t *testing.T) {
 	src := "/*\n*/x\ny\n"
 	toks, ds := scan(t, src)

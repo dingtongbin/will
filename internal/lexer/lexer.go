@@ -9,12 +9,22 @@ import (
 	"github.com/will-lang/will/internal/token"
 )
 
-// Scan tokenizes src and returns the token stream followed by EOF.
+// Scan tokenizes src and returns the token stream followed by EOF. Plain
+// comments are dropped because the parser never needs them.
 //
 // Byte-level rules are checked for the whole file before scanning, so a
 // malformed byte inside a comment or literal is still reported with a
 // position.
 func Scan(file string, src []byte) ([]token.Token, []diag.Diagnostic) {
+	return scanWith(file, src, false)
+}
+
+// ScanAll tokenizes src and keeps every comment, which the formatter needs.
+func ScanAll(file string, src []byte) ([]token.Token, []diag.Diagnostic) {
+	return scanWith(file, src, true)
+}
+
+func scanWith(file string, src []byte, keepComments bool) ([]token.Token, []diag.Diagnostic) {
 	l := &Lexer{
 		file: file,
 		src:  src,
@@ -24,12 +34,26 @@ func Scan(file string, src []byte) ([]token.Token, []diag.Diagnostic) {
 	if l.checkFile() {
 		l.run()
 	}
+	if !keepComments {
+		l.toks = dropComments(l.toks)
+	}
 	l.toks = append(l.toks, token.Token{
 		Kind: token.EOF,
 		Pos:  l.pos(),
 		End:  l.pos(),
 	})
 	return l.toks, l.bag.Diagnostics()
+}
+
+func dropComments(toks []token.Token) []token.Token {
+	out := toks[:0]
+	for _, t := range toks {
+		if t.Kind == token.LineComment || t.Kind == token.BlockComment {
+			continue
+		}
+		out = append(out, t)
+	}
+	return out
 }
 
 // Lexer scans one file.

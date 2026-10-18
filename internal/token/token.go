@@ -31,6 +31,10 @@ const (
 	FString
 	// DocComment is a documentation comment without its delimiters.
 	DocComment
+	// LineComment is a // comment; only the formatter keeps it.
+	LineComment
+	// BlockComment is a /* */ comment; only the formatter keeps it.
+	BlockComment
 
 	// KwFunc introduces a function or method declaration.
 	KwFunc
@@ -216,6 +220,8 @@ var names = map[Kind]string{
 	Bytes:           "byte string literal",
 	FString:         "interpolated string literal",
 	DocComment:      "documentation comment",
+	LineComment:     "line comment",
+	BlockComment:    "block comment",
 	KwFunc:          "func",
 	KwStruct:        "struct",
 	KwEnum:          "enum",
@@ -356,6 +362,11 @@ func (t Token) Is(k Kind) bool {
 // IsKeyword reports whether k is a strict keyword.
 func (k Kind) IsKeyword() bool {
 	return k >= KwFunc && k <= KwFalse
+}
+
+// IsComment reports whether k is any comment kind.
+func (k Kind) IsComment() bool {
+	return k == LineComment || k == BlockComment || k == DocComment
 }
 
 // Describe returns the token spelling for an unexpected-token message.
