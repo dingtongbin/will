@@ -61,6 +61,7 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 	g.findEntry(entry, entryPkg)
 	g.collectSignatures()
 	g.collectGlobals()
+	g.planInstances()
 	for _, d := range g.docs {
 		g.use(d)
 		if err := g.emitDoc(); err != nil {
@@ -457,6 +458,9 @@ func (g *generator) emitDoc() error {
 	}
 	sortByID(funcs)
 	for _, fn := range funcs {
+		if g.hasTypeParams(fn) {
+			continue
+		}
 		if err := g.funcDecl(fn); err != nil {
 			return err
 		}
@@ -1888,6 +1892,9 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 			return "", "", err
 		}
 		return g.emitCall(r, symbol, false)
+	}
+	if name := g.genericCallName(r); name != "" {
+		return g.emitCall(r, name, false)
 	}
 	target := refField(r, "to")
 	name := g.cur.funcs[target]

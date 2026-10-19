@@ -514,6 +514,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 // callResultText returns the result type text of one call. A call names its
 // callee by a document reference or by the module-wide symbol.
 func (g *generator) callResultText(r willc.Record) (string, error) {
+	if text := g.genericCallResult(r); text != "" {
+		return text, nil
+	}
 	if qualified := textField(r, "to"); qualified != "" {
 		if t, ok := g.sigs[qualified]; ok {
 			return t, nil

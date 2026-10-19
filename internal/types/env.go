@@ -14,6 +14,7 @@ type signature struct {
 	variadic   bool
 	result     *Type
 	typeParams int
+	typeNames  []string
 }
 
 // fieldInfo is one struct field.
@@ -185,6 +186,9 @@ func typeParamSet(params []*ast.TypeParam) map[string]bool {
 func (c *checker) buildSig(decl *ast.FuncDecl) *signature {
 	tp := typeParamSet(decl.TypeParams)
 	sig := &signature{name: decl.Name, typeParams: len(decl.TypeParams)}
+	for _, p := range decl.TypeParams {
+		sig.typeNames = append(sig.typeNames, p.Name)
+	}
 	for i, pm := range decl.Params {
 		if pm.Variadic {
 			sig.variadic = true

@@ -6,6 +6,13 @@ import (
 	"github.com/will-lang/will/internal/diag"
 )
 
+func TestExplicitTypeArgumentsInstantiateSignature(t *testing.T) {
+	src := "func Id<T>(x: T) -> T {\n    return x\n}\n\nfunc Use() -> i32 {\n    return Id<i32>(3)\n}\n"
+	if ds := checkWithResolve(t, src); len(ds) != 0 {
+		t.Fatalf("explicit type arguments did not instantiate the signature:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestNoMethodOnUserType(t *testing.T) {
 	src := "struct P {\n    x: i32\n}\n\nfunc F(p: P) -> i32 {\n    return p.Missing()\n}\n"
 	ds := checkWithResolve(t, src)

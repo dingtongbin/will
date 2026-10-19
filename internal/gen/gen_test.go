@@ -191,6 +191,27 @@ func TestEmitStrLiteralIndexAndLoop(t *testing.T) {
 	}
 }
 
+func TestEmitGenericFunctionInstance(t *testing.T) {
+	src := "func Id<T>(x: T) -> T {\n    return x\n}\n\nfunc Use() -> i32 {\n    return Id<i32>(3)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`@"example.com/app.Id$i32"(i32 %x)`,
+		`call i32 @"example.com/app.Id$i32"(i32 3)`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "define i32 @\"example.com/app.Id\"(") {
+		t.Errorf("the generic declaration was emitted without an instance:\n%s", text)
+	}
+}
+
 func TestEmitStrEquality(t *testing.T) {
 	src := "func Eq(a: str, b: str) -> bool {\n    return a == b\n}\n\nfunc Ne(a: str, b: str) -> bool {\n    return a != b\n}\n"
 	doc := emitWillc(t, src)

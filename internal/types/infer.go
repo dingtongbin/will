@@ -654,8 +654,16 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 		sig := c.env.funcs[name.Name]
 		if sig != nil {
 			c.checkTypeArgs(call, sig)
-			c.checkCallArgs(s, sig, call.Args, call.Pos())
-			return sig.result
+			inst := sig
+			if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
+				subst := make(map[string]*Type, sig.typeParams)
+				for i, ta := range call.TypeArgs {
+					subst[sig.typeNames[i]] = c.buildType(ta, nil)
+				}
+				inst = c.instantiate(sig, subst)
+			}
+			c.checkCallArgs(s, inst, call.Args, call.Pos())
+			return inst.result
 		}
 	case sym != nil && sym.Kind == resolve.VariantKind:
 		vi := c.env.variants[name.Name]
@@ -744,6 +752,53 @@ func (c *checker) typeByName(name string) *Type {
 		return t
 	}
 	return c.in.named(name, nil)
+}
+
+// instantiate replaces the type parameters of one signature with the types the
+// call site wrote explicitly.
+func (c *checker) instantiate(sig *signature, subst map[string]*Type) *signature {
+	out := *sig
+	out.params = make([]*Type, len(sig.params))
+	for i, p := range sig.params {
+		out.params[i] = c.substitute(p, subst)
+	}
+	out.result = c.substitute(sig.result, subst)
+	return &out
+}
+
+// substitute rebuilds a type with every type parameter replaced. A parameter is
+// a named type with no arguments; arrays, views, function types, and named
+// types with arguments are rebuilt so nested parameters are substituted too.
+func (c *checker) substitute(t *Type, subst map[string]*Type) *Type {
+	if t == nil {
+		return nil
+	}
+	if t.Kind() == NamedKind && len(t.Args()) == 0 {
+		if repl := subst[t.Name()]; repl != nil {
+			return repl
+		}
+	}
+	switch t.Kind() {
+	case ArrayKind:
+		return c.in.array(t.length, c.substitute(t.Elem(), subst))
+	case ViewKind:
+		return c.in.view(c.substitute(t.Elem(), subst))
+	case FuncKind:
+		params := make([]*Type, len(t.Params()))
+		for i, p := range t.Params() {
+			params[i] = c.substitute(p, subst)
+		}
+		return c.in.funcT(params, c.substitute(t.Result(), subst))
+	case NamedKind:
+		if len(t.Args()) > 0 {
+			args := make([]*Type, len(t.Args()))
+			for i, a := range t.Args() {
+				args[i] = c.substitute(a, subst)
+			}
+			return c.in.named(t.Name(), args)
+		}
+	}
+	return t
 }
 
 func (c *checker) checkTypeArgs(call *ast.CallExpr, sig *signature) {
