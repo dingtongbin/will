@@ -99,6 +99,10 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 				info.types = append(info.types, qualifiedEnumName(t))
 				continue
 			}
+			if g.declKinds[t] == "interface" {
+				info.types = append(info.types, qualifiedIfaceName(t))
+				continue
+			}
 			if g.structTypes[t] {
 				info.types = append(info.types, qualifiedTypeName(t))
 				continue
@@ -108,6 +112,10 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 		}
 		if r, ok := g.recs[sub]; ok && r.Kind == "enum" {
 			info.types = append(info.types, g.enumLLVM(fieldText(r, "text")))
+			continue
+		}
+		if r, ok := g.recs[sub]; ok && r.Kind == "interface" {
+			info.types = append(info.types, g.ifaceLLVM(fieldText(r, "text")))
 			continue
 		}
 		inner, ok := g.ensureStruct(sub)
@@ -185,6 +193,12 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 			}
 			return "", g.errf(decl, "cannot translate node #%d: enum %s is not lowered yet", decl, fieldText(r, "text"))
 		}
+		if r, ok := g.recs[id]; ok && r.Kind == "interface" {
+			if info := g.ifaces[id]; info != nil {
+				return info.llvm, nil
+			}
+			return "", g.errf(decl, "cannot translate node #%d: interface %s is not lowered yet", decl, fieldText(r, "text"))
+		}
 		if info, ok := g.ensureStruct(id); ok {
 			return info.llvm, nil
 		}
@@ -195,6 +209,9 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 		// this document only needs the same name.
 		if g.enumTypes[q] {
 			return qualifiedEnumName(q), nil
+		}
+		if g.ifaceTypes[q] {
+			return qualifiedIfaceName(q), nil
 		}
 		return qualifiedTypeName(q), nil
 	}
@@ -312,6 +329,19 @@ func (g *generator) typeOf(id int) (string, error) {
 		}
 		return g.typeOf(refField(r, "expr"))
 	case "call", "mcall":
+		if r.Kind == "mcall" {
+			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+				if iface, ok := g.ifaceOfText(recvText); ok {
+					if idx, ok := iface.byName[fieldText(r, "text")]; ok {
+						result := iface.methods[idx].result
+						if result == "" {
+							return "", g.errf(id, "cannot translate node #%d: the call returns no value", id)
+						}
+						return g.resultLLVM(result), nil
+					}
+				}
+			}
+		}
 		if t := fieldText(r, "type"); t != "" {
 			if adt, ok := g.adtType(t); ok {
 				return adt.llvm, nil
@@ -416,6 +446,15 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		return g.willTypeText(refField(r, "expr"))
 	case "call", "mcall":
+		if r.Kind == "mcall" {
+			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+				if iface, ok := g.ifaceOfText(recvText); ok {
+					if idx, ok := iface.byName[fieldText(r, "text")]; ok {
+						return iface.methods[idx].result, nil
+					}
+				}
+			}
+		}
 		if t := fieldText(r, "type"); t != "" {
 			return t, nil
 		}

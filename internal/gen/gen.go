@@ -160,11 +160,13 @@ func (g *generator) collectSignatures() {
 	g.sigs = map[string]string{}
 	g.structTypes = map[string]bool{}
 	g.enumTypes = map[string]bool{}
+	g.ifaceTypes = map[string]bool{}
 	g.declKinds = map[string]string{}
 	g.methodsQualified = map[string]string{}
+	g.paramTypes = map[string][]string{}
 	for _, d := range g.docs {
 		for _, r := range d.recs {
-			if r.Kind == "struct" || r.Kind == "enum" {
+			if r.Kind == "struct" || r.Kind == "enum" || r.Kind == "interface" {
 				g.declKinds[qualify(d.path, fieldText(r, "text"))] = r.Kind
 			}
 		}
@@ -176,6 +178,12 @@ func (g *generator) collectSignatures() {
 			}
 			name := fieldText(r, "text")
 			sym := qualify(d.path, name)
+			var params []string
+			for _, c := range d.recs {
+				if c.Kind == "param" && refField(c, "parent") == r.ID {
+					params = append(params, fieldText(c, "type"))
+				}
+			}
 			for _, c := range d.recs {
 				if c.Kind == "receiver" && refField(c, "parent") == r.ID {
 					sym = qualify(d.path, receiverType(&c)+"."+name)
@@ -184,6 +192,7 @@ func (g *generator) collectSignatures() {
 					break
 				}
 			}
+			g.paramTypes[sym] = params
 			res := fieldText(r, "type")
 			kind := ""
 			for _, c := range d.recs {
@@ -194,7 +203,7 @@ func (g *generator) collectSignatures() {
 					res = q
 					kind = g.declKinds[q]
 				} else if id := refField(c, "to"); id != 0 {
-					if s, ok := d.recs[id]; ok && (s.Kind == "struct" || s.Kind == "enum") {
+					if s, ok := d.recs[id]; ok && (s.Kind == "struct" || s.Kind == "enum" || s.Kind == "interface") {
 						res = qualify(d.path, fieldText(s, "text"))
 						kind = s.Kind
 					}
@@ -206,6 +215,8 @@ func (g *generator) collectSignatures() {
 				g.structTypes[res] = true
 			case "enum":
 				g.enumTypes[res] = true
+			case "interface":
+				g.ifaceTypes[res] = true
 			}
 		}
 	}
@@ -240,6 +251,12 @@ func (g *generator) use(d *docState) {
 	g.adts = map[string]*adtInfo{}
 	g.adtSlots = map[int]string{}
 	g.trySlots = map[int]string{}
+	g.ifaces = map[int]*ifaceInfo{}
+	g.ifaceByLLVM = map[string]*ifaceInfo{}
+	g.ifaceByName = map[string]*ifaceInfo{}
+	g.ifaceSlots = map[string]string{}
+	g.ifaceRetSlots = map[int]string{}
+	g.vtables = map[string]string{}
 	g.callSlots = map[int]string{}
 	g.sliceSlots = map[int]string{}
 	g.loopBinds = map[int]map[string]string{}
@@ -302,6 +319,16 @@ type generator struct {
 	// trySlots maps a try expression to the slot its error branch returns.
 	fnResultText string
 	trySlots     map[int]string
+	// ifaces and ifaceByName hold the interfaces of the current document, and
+	// ifaceTypes the qualified names of every interface of the module.
+	ifaces       map[int]*ifaceInfo
+	ifaceByLLVM  map[string]*ifaceInfo
+	ifaceByName  map[string]*ifaceInfo
+	ifaceTypes   map[string]bool
+	ifaceSlots   map[string]string
+	ifaceRetSlots map[int]string
+	vtables      map[string]string
+	paramTypes   map[string][]string
 	// declKinds maps a qualified type name to "struct" or "enum".
 	declKinds map[string]string
 	// callSlots maps a call whose result is a struct to the temporary slot its
@@ -365,6 +392,7 @@ func (g *generator) emitDoc() error {
 	g.collect()
 	g.buildStructs()
 	g.buildEnums()
+	g.buildInterfaces()
 	g.emitGlobals(g.cur)
 	var funcs []willc.Record
 	for _, r := range g.recs {
@@ -555,6 +583,8 @@ func (g *generator) funcDecl(fn willc.Record) error {
 			resLLVM = qualifiedTypeName(q)
 		case g.enumTypes[q]:
 			resLLVM = qualifiedEnumName(q)
+		case g.ifaceTypes[q]:
+			resLLVM = qualifiedIfaceName(q)
 		default:
 			return g.errf(fn.ID, "cannot translate node #%d: result type %s is not lowered yet", fn.ID, result)
 		}
@@ -563,6 +593,12 @@ func (g *generator) funcDecl(fn willc.Record) error {
 			info := g.enums[id]
 			if info == nil {
 				return g.errf(fn.ID, "cannot translate node #%d: enum %s is not lowered yet", fn.ID, fieldText(r, "text"))
+			}
+			resLLVM = info.llvm
+		} else if r, ok := g.recs[id]; ok && r.Kind == "interface" {
+			info := g.ifaces[id]
+			if info == nil {
+				return g.errf(fn.ID, "cannot translate node #%d: interface %s is not lowered yet", fn.ID, fieldText(r, "text"))
 			}
 			resLLVM = info.llvm
 		} else {
@@ -715,6 +751,31 @@ func (g *generator) allocas(fn int) error {
 		}
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, typ)
 	}
+	// An argument converted to an interface is built in a slot of its own, so
+	// the callee receives a stable two-word value for the call.
+	for _, r := range calls {
+		params := g.callParamTypes(r)
+		for i, a := range g.callArgs(r) {
+			if i >= len(params) {
+				break
+			}
+			iface, ok := g.ifaceOfText(params[i])
+			if !ok {
+				continue
+			}
+			argText, err := g.willTypeText(a)
+			if err != nil {
+				continue
+			}
+			if _, same := g.ifaceOfText(argText); same {
+				continue
+			}
+			key := fmt.Sprintf("%d.%d", r.ID, i)
+			slot := "%v.iface." + strconv.Itoa(r.ID) + "." + strconv.Itoa(i)
+			g.ifaceSlots[key] = slot
+			fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, iface.llvm)
+		}
+	}
 	// A constructed enum is built in a slot of its own.
 	var enumCtors []willc.Record
 	for _, r := range g.recs {
@@ -748,6 +809,33 @@ func (g *generator) allocas(fn int) error {
 		name := "%v.adt." + strconv.Itoa(r.ID)
 		g.adtSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
+	}
+	// A return of a concrete value as an interface is built in a slot of its
+	// own, then loaded as the two-word result.
+	if iface, ok := g.ifaceOfText(g.fnResultText); ok {
+		var rets []willc.Record
+		for _, r := range g.recs {
+			if r.Kind == "return" && g.enclosingFunc(r.ID) == fn {
+				rets = append(rets, r)
+			}
+		}
+		sortByID(rets)
+		for _, r := range rets {
+			valueID := refField(r, "value")
+			if valueID == 0 {
+				continue
+			}
+			valueText, err := g.willTypeText(valueID)
+			if err != nil {
+				continue
+			}
+			if _, same := g.ifaceOfText(valueText); same {
+				continue
+			}
+			name := "%v.ifaceret." + strconv.Itoa(r.ID)
+			g.ifaceRetSlots[r.ID] = name
+			fmt.Fprintf(g.out, "  %s = alloca %s\n", name, iface.llvm)
+		}
 	}
 	// A try expression returns an error from the current function, so its
 	// error value is built in a slot of the function's result type.
@@ -971,6 +1059,18 @@ func (g *generator) assignStmt(r willc.Record) error {
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, tmp, ptr)
 		return nil
 	}
+	if iface, ok := g.ifaceOfType(typ); ok {
+		valueText, err := g.willTypeText(valueID)
+		if err != nil {
+			return err
+		}
+		if _, same := g.ifaceOfText(valueText); !same {
+			if _, err := g.ifaceValue(ptr, valueID, iface, valueText); err != nil {
+				return err
+			}
+			return nil
+		}
+	}
 	if isAggregateType(typ) {
 		src, srcType, err := g.place(valueID)
 		if err != nil {
@@ -1001,6 +1101,18 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 		valueID = c.ID
 	}
 	typ := g.slotTypes[r.ID]
+	if iface, ok := g.ifaceOfType(typ); ok {
+		valueText, err := g.willTypeText(valueID)
+		if err != nil {
+			return false, err
+		}
+		if _, same := g.ifaceOfText(valueText); !same {
+			if _, err := g.ifaceValue(slot, valueID, iface, valueText); err != nil {
+				return false, err
+			}
+			return false, nil
+		}
+	}
 	if isAggregateType(typ) {
 		src, srcType, err := g.place(valueID)
 		if err != nil {
@@ -1075,6 +1187,24 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 	valueID := refField(st, "value")
 	if g.resultType == "" {
 		return false, g.errf(st.ID, "cannot translate node #%d: the function returns no value", st.ID)
+	}
+	if iface, ok := g.ifaceOfText(g.fnResultText); ok {
+		valueText, err := g.willTypeText(valueID)
+		if err != nil {
+			return false, err
+		}
+		if _, same := g.ifaceOfText(valueText); !same {
+			slot := g.ifaceRetSlots[st.ID]
+			if slot == "" {
+				return false, g.errf(st.ID, "cannot translate node #%d: the interface result has no slot", st.ID)
+			}
+			if _, err := g.ifaceValue(slot, valueID, iface, valueText); err != nil {
+				return false, err
+			}
+			v := g.load(iface.llvm, slot)
+			fmt.Fprintf(g.out, "  ret %s %s\n", iface.llvm, v)
+			return true, nil
+		}
 	}
 	if isAggregateType(g.resultType) {
 		ptr, typ, err := g.place(valueID)
@@ -1405,6 +1535,19 @@ func (g *generator) value(id int) (string, error) {
 // return nothing here, because its result is not needed.
 func (g *generator) exprStmt(st willc.Record) error {
 	id := refField(st, "expr")
+	if r, ok := g.recs[id]; ok && r.Kind == "discard" {
+		inner := refField(r, "expr")
+		typ, err := g.typeOf(inner)
+		if err != nil {
+			return err
+		}
+		if isAggregateType(typ) {
+			_, _, err = g.place(inner)
+			return err
+		}
+		_, err = g.value(inner)
+		return err
+	}
 	if r, ok := g.recs[id]; ok && (r.Kind == "call" || r.Kind == "mcall") {
 		_, _, err := g.callExpr(r)
 		return err
@@ -1548,6 +1691,13 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		return g.emitCall(r, qualified, false)
 	}
 	if r.Kind == "mcall" {
+		recvText, err := g.willTypeText(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		if iface, ok := g.ifaceOfText(recvText); ok {
+			return g.interfaceCall(r, iface)
+		}
 		name := fieldText(r, "text")
 		recv := g.recs[refField(r, "recv")]
 		cimport := refField(recv, "to")
@@ -1602,33 +1752,16 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, st
 		}
 		parts = append(parts, "ptr "+ptr)
 	}
-	for _, a := range args {
-		typ, err := g.typeOf(a)
+	for i, a := range g.callArgs(r) {
+		paramType := ""
+		if !link && i < len(g.paramTypes[name]) {
+			paramType = g.paramTypes[name][i]
+		}
+		var err error
+		parts, err = g.callArgParts(parts, r, i, a, paramType, link)
 		if err != nil {
 			return "", "", err
 		}
-		if isAggregateType(typ) {
-			if link {
-				return "", "", g.errf(a, "cannot translate node #%d: a C link takes only scalar arguments yet", a)
-			}
-			ptr, ptrType, err := g.place(a)
-			if err != nil {
-				return "", "", err
-			}
-			if ptrType != typ {
-				return "", "", g.errf(a, "cannot translate node #%d: the argument needs %s", a, typ)
-			}
-			parts = append(parts, "ptr "+ptr)
-			continue
-		}
-		if typ == "" {
-			return "", "", g.errf(a, "cannot translate node #%d: the argument has no scalar type", a)
-		}
-		v, err := g.value(a)
-		if err != nil {
-			return "", "", err
-		}
-		parts = append(parts, typ+" "+v)
 	}
 	resultText, err := g.callResultText(r)
 	if err != nil {
@@ -1659,6 +1792,8 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, st
 				result = qualifiedTypeName(resultText)
 			case g.enumTypes[resultText]:
 				result = qualifiedEnumName(resultText)
+			case g.ifaceTypes[resultText]:
+				result = qualifiedIfaceName(resultText)
 			default:
 				return "", "", g.errf(r.ID, "cannot translate node #%d: result type %s is not lowered yet", r.ID, resultText)
 			}

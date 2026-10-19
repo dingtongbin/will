@@ -166,6 +166,32 @@ func TestEmitMatchWithGuardAndWildcard(t *testing.T) {
 	}
 }
 
+func TestEmitInterfaceValueAndCall(t *testing.T) {
+	src := "interface Counter {\n    func Get() -> i32\n}\n\n" +
+		"struct C {\n    n: i32\n}\n\n" +
+		"func (c: C) Get() -> i32 {\n    return c.n\n}\n\n" +
+		"func Use(x: Counter) -> i32 {\n    return x.Get()\n}\n\n" +
+		"func main() -> i32 {\n    var c: C = C { n: 3 }\n    return Use(c)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`%"interface.example.com/app.Counter" = type { ptr, ptr }`,
+		`define i32 @"example.com/app.Use"(ptr %x) {`,
+		"getelementptr inbounds [1 x ptr], ptr",
+		"call i32 %t",
+		"store ptr @",
+		"vtable.Counter.C",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitOptionAndResultConstructors(t *testing.T) {
 	src := "func Find(x: i32) -> Option<i32> {\n    if x > 0 {\n        return Some(x)\n    }\n    return None\n}\n\n" +
 		"func UseOpt(x: i32) -> i32 {\n    return match Find(x) {\n        Some(v) => v\n        None => 0\n    }\n}\n\n" +

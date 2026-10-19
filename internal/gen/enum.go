@@ -240,6 +240,8 @@ func (g *generator) argLLVM(t willc.Record) (string, bool) {
 				}
 			case "enum":
 				return g.enumLLVM(fieldText(r, "text")), true
+			case "interface":
+				return g.ifaceLLVM(fieldText(r, "text")), true
 			}
 		}
 	}
@@ -248,6 +250,9 @@ func (g *generator) argLLVM(t willc.Record) (string, bool) {
 	}
 	if g.enumTypes[text] || g.declKinds[text] == "enum" {
 		return qualifiedEnumName(text), true
+	}
+	if g.ifaceTypes[text] || g.declKinds[text] == "interface" {
+		return qualifiedIfaceName(text), true
 	}
 	return "", false
 }

@@ -65,11 +65,16 @@ func (g *generator) typeLLVMOf(text string) (string, bool) {
 	if info := g.enumByName[text]; info != nil {
 		return info.llvm, true
 	}
+	if info := g.ifaceByName[text]; info != nil {
+		return info.llvm, true
+	}
 	switch g.declKinds[text] {
 	case "struct":
 		return qualifiedTypeName(text), true
 	case "enum":
 		return qualifiedEnumName(text), true
+	case "interface":
+		return qualifiedIfaceName(text), true
 	}
 	return "", false
 }
