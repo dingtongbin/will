@@ -131,7 +131,7 @@ func otherTarget(t *testing.T) string {
 	return ""
 }
 
-// assertKeyChanged fails when a changed input kept the old key.
+// assertKeyChanged fails when a different input keeps the old key.
 func assertKeyChanged(t *testing.T, base, changed, label string) {
 	t.Helper()
 	if changed == base {
