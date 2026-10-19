@@ -1,5 +1,5 @@
 #1 module pos="program.will:1:1" path="example.com/app"
-#2 import parent=#1 pos="program.will:1:1" path="std/net/http"
+#2 import parent=#1 pos="program.will:1:1" path="example.com/app/http"
 #3 const parent=#1 pos="program.will:3:1" text="Limit" type="i32"
 #4 type parent=#3 pos="program.will:3:14" text="i32" kind=scalar
 #5 lit parent=#3 pos="program.will:3:20" kind=int text="100"
@@ -188,7 +188,7 @@
 #188 return parent=#64 pos="program.will:72:5" value=#189
 #189 bin parent=#188 pos="program.will:72:12" op="+" l=#190 r=#195
 #190 bin parent=#189 pos="program.will:72:12" op="+" l=#191 r=#194
-#191 mcall parent=#190 pos="program.will:72:12" text="Status" to="std/net/http.Status" recv=#192 arg=#193
+#191 mcall parent=#190 pos="program.will:72:12" text="Status" to="example.com/app/http.Status" recv=#192 arg=#193
 #192 name parent=#191 pos="program.will:72:12" text="http" to=#2
 #193 lit parent=#191 pos="program.will:72:24" kind=int text="200"
 #194 name parent=#190 pos="program.will:72:31" text="total" to=#70

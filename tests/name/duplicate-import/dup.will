@@ -1,5 +1,0 @@
-import _ "a/x"
-import _ "a/x"
-
-func F() {
-}

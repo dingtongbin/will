@@ -341,6 +341,11 @@ func (r *resolver) checkImportedMember(recv ast.Expr, name string, pos source.Po
 			return
 		}
 	}
+	if r.unknownQualifiers[qual.Name] {
+		// The import path matched no package, so its members cannot be
+		// judged; B0008 already reported the root cause.
+		return
+	}
 	if !isExported(name) {
 		r.bag.Error(pos, diag.CodePrivateName, "private name used outside its package",
 			"it starts with a lowercase letter, so it is private")

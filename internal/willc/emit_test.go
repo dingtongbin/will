@@ -19,11 +19,26 @@ var update = flag.Bool("update", false, "rewrite the willc golden files")
 
 func emitSource(t *testing.T, file, src, module string) []byte {
 	t.Helper()
+	return emitSourceIn(t, file, src, module, nil)
+}
+
+// emitSourceIn emits one file with the given packages available, so a source
+// that imports a package resolves as it would in a module run.
+func emitSourceIn(t *testing.T, file, src, module string, tables map[string][]string) []byte {
+	t.Helper()
 	f, pds := parser.Parse(file, []byte(src))
 	if len(pds) != 0 {
 		t.Fatalf("parse diagnostics:\n%s", diag.FormatAll(pds))
 	}
-	res, rds := resolve.Resolve(f)
+	imports := resolve.Imports{}
+	for path, members := range tables {
+		exp := resolve.Exported{}
+		for _, m := range members {
+			exp[m] = &resolve.Symbol{Name: m, Kind: resolve.FuncKind, Exported: true}
+		}
+		imports[path] = exp
+	}
+	res, rds := resolve.ResolveWith(f, imports)
 	if len(rds) != 0 {
 		t.Fatalf("resolve diagnostics:\n%s", diag.FormatAll(rds))
 	}
@@ -111,8 +126,9 @@ func TestEmitGolden(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read corpus: %v", err)
 	}
-	got := emitSource(t, "program.will", string(src), "example.com/app")
-	golden := filepath.Join(dir, "willc.txt")
+	got := emitSourceIn(t, "program.will", string(src), "example.com/app",
+		map[string][]string{"example.com/app/http": {"Status"}})
+	golden := filepath.Join(dir, "program.willc.txt")
 	if *update {
 		if err := os.WriteFile(golden, got, 0o644); err != nil {
 			t.Fatalf("write golden: %v", err)

@@ -1,0 +1,4 @@
+bad.will:1:1: B0008 unknown import path std/net/http
+    help: the path must be a module path plus directories; run will get if the dependency is not fetched yet
+bad.will:1:1: N0004 unused import
+    help: remove it, or write import _ for side effects only

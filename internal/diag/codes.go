@@ -87,6 +87,8 @@ const (
 	// CodeFreestanding reports a runtime capability or a package that
 	// --freestanding does not allow.
 	CodeFreestanding = "B0007"
+	// CodeUnknownImportPath reports an import path that matches no package.
+	CodeUnknownImportPath = "B0008"
 
 	// CodeCannotParseCHeader reports a C header the compiler cannot parse.
 	CodeCannotParseCHeader = "X0001"
@@ -157,7 +159,7 @@ var Codes = []string{
 	CodeResultDropped, CodeUnwrapType, CodePanicContained,
 	CodeBlockingNotAwaited, CodeWaitInSync, CodeWaitInAsync, CodeBlocksThreadInTask,
 	CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,
-	CodeUnsupportedTarget, CodeNoEntry, CodeFreestanding,
+	CodeUnsupportedTarget, CodeNoEntry, CodeFreestanding, CodeUnknownImportPath,
 	CodeCannotTranslate,
 	CodeCannotParseCHeader, CodeLinkFailed, CodeExternalToolMissing,
 }

@@ -10,11 +10,19 @@ import (
 
 func resolveSource(t *testing.T, src string) []diag.Diagnostic {
 	t.Helper()
+	return resolveSourceWith(t, src, nil)
+}
+
+// resolveSourceWith resolves src with the given packages available, as a
+// module run would. tables maps an import path to the member names the other
+// package exports.
+func resolveSourceWith(t *testing.T, src string, tables map[string][]string) []diag.Diagnostic {
+	t.Helper()
 	f, ds := parser.Parse("test.will", []byte(src))
 	if len(ds) != 0 {
 		t.Fatalf("parse diagnostics:\n%s", diag.FormatAll(ds))
 	}
-	_, rds := Resolve(f)
+	_, rds := ResolveWith(f, importTables(tables))
 	return rds
 }
 
@@ -62,7 +70,7 @@ func TestUnusedImport(t *testing.T) {
 import _ "std/bytes"
 func F() {}
 `
-	ds := resolveSource(t, src)
+	ds := resolveSourceWith(t, src, map[string][]string{"std/net/http": {}, "std/bytes": {}})
 	d := find(t, ds, diag.CodeUnusedImport)
 	if d.Message != "unused import" || d.Help != "remove it, or write import _ for side effects only" {
 		t.Errorf("diagnostic = %+v", d)
@@ -82,7 +90,7 @@ func F() {
     _ = http.Get
 }
 `
-	ds := resolveSource(t, src)
+	ds := resolveSourceWith(t, src, map[string][]string{"std/net/http": {}})
 	d := find(t, ds, diag.CodePrivateName)
 	if d.Message != "private name used outside its package" {
 		t.Errorf("message = %q", d.Message)
@@ -195,6 +203,49 @@ func TestDeriveBuiltinConstraintIsNotAGenerator(t *testing.T) {
 	d := find(t, ds, diag.CodeBadDeriveName)
 	if d.Message != "cannot derive Equal for P" || d.Help != "derive takes Json or Show" {
 		t.Errorf("diagnostic = %+v", d)
+	}
+}
+
+func TestUnknownImportPath(t *testing.T) {
+	src := "import \"std/net/http\"\n\nfunc F() {}\n"
+	ds := resolveSource(t, src)
+	d := find(t, ds, diag.CodeUnknownImportPath)
+	if d.Message != "unknown import path std/net/http" {
+		t.Errorf("message = %q", d.Message)
+	}
+	if d.Help != "the path must be a module path plus directories; run will get if the dependency is not fetched yet" {
+		t.Errorf("help = %q", d.Help)
+	}
+	if d.Pos.Line != 1 {
+		t.Errorf("position line = %d, want 1", d.Pos.Line)
+	}
+}
+
+func TestUnknownImportPathSuggestsTheClosest(t *testing.T) {
+	src := "import \"std/net/httpx\"\n\nfunc F() {}\n"
+	ds := resolveSourceWith(t, src, map[string][]string{"std/net/http": {}})
+	d := find(t, ds, diag.CodeUnknownImportPath)
+	if d.Help != "did you mean std/net/http?" {
+		t.Errorf("help = %q", d.Help)
+	}
+}
+
+// TestUnknownImportSuppressesItsMembers checks cascade suppression: the root
+// cause is reported and the member diagnostics inside that import are not.
+func TestUnknownImportSuppressesItsMembers(t *testing.T) {
+	src := "import \"std/net/http\"\n\nfunc F() {\n    _ = http.get\n    _ = http.Status\n}\n"
+	ds := resolveSource(t, src)
+	roots := 0
+	for _, d := range ds {
+		switch d.Code {
+		case diag.CodeUnknownImportPath:
+			roots++
+		case diag.CodeUndefinedName, diag.CodePrivateName:
+			t.Errorf("member diagnostic was not suppressed: %s", d.Code)
+		}
+	}
+	if roots != 1 {
+		t.Fatalf("unknown import reported %d times, want 1:\n%s", roots, diag.FormatAll(ds))
 	}
 }
 

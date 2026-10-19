@@ -10,17 +10,38 @@ import (
 
 func mustResolve(t *testing.T, src string) (*Result, []diag.Diagnostic) {
 	t.Helper()
+	return mustResolveWith(t, src, nil)
+}
+
+// mustResolveWith resolves src with the given packages available, as a module
+// run would; a path outside them is an unknown import path. tables maps an
+// import path to the member names other packages export from it.
+func mustResolveWith(t *testing.T, src string, tables map[string][]string) (*Result, []diag.Diagnostic) {
+	t.Helper()
 	f, ds := parser.Parse("test.will", []byte(src))
 	if len(ds) != 0 {
 		t.Fatalf("parse diagnostics:\n%s", diag.FormatAll(ds))
 	}
-	res, rds := Resolve(f)
+	res, rds := ResolveWith(f, importTables(tables))
 	for _, d := range rds {
 		if d.Severity == diag.Error {
 			t.Fatalf("resolve errors:\n%s", diag.FormatAll(rds))
 		}
 	}
 	return res, rds
+}
+
+// importTables builds the exported-name tables a run knows.
+func importTables(tables map[string][]string) Imports {
+	imports := Imports{}
+	for path, members := range tables {
+		exp := Exported{}
+		for _, m := range members {
+			exp[m] = &Symbol{Name: m, Kind: FuncKind, Exported: true}
+		}
+		imports[path] = exp
+	}
+	return imports
 }
 
 func TestResolveHappyPath(t *testing.T) {
@@ -51,7 +72,10 @@ func Run(n: i32) -> i32 {
     return http.Status(n) + total
 }
 `
-	res, ds := mustResolve(t, src)
+	res, ds := mustResolveWith(t, src, map[string][]string{
+		"std/net/http": {"Status"},
+		"std/bytes":    {},
+	})
 	if len(ds) != 0 {
 		t.Fatalf("diagnostics = %d, want 0:\n%s", len(ds), diag.FormatAll(ds))
 	}
@@ -113,7 +137,7 @@ func F() -> http.Ctx {
     return c
 }
 `
-	res, ds := mustResolve(t, src)
+	res, ds := mustResolveWith(t, src, map[string][]string{"std/net/http": {"Ctx"}})
 	if len(ds) != 0 {
 		t.Fatalf("diagnostics = %d, want 0:\n%s", len(ds), diag.FormatAll(ds))
 	}

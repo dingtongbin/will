@@ -30,13 +30,14 @@ func ResolveWith(f *ast.File, imports Imports) (*Result, []diag.Diagnostic) {
 // file is found, and a name declared twice in the package is a duplicate.
 func ResolveIn(f *ast.File, packageNames Exported, imports Imports) (*Result, []diag.Diagnostic) {
 	r := &resolver{
-		file:     f,
-		pkg:      newScope(nil),
-		refs:     map[ast.Node]*Symbol{},
-		methods:  map[string]*Symbol{},
-		packages: imports,
-		tables:   map[string]Exported{},
-		derives:  map[string]bool{},
+		file:              f,
+		pkg:               newScope(nil),
+		refs:              map[ast.Node]*Symbol{},
+		methods:           map[string]*Symbol{},
+		packages:          imports,
+		tables:            map[string]Exported{},
+		derives:           map[string]bool{},
+		unknownQualifiers: map[string]bool{},
 	}
 	r.addPredeclared()
 	r.addPackageNames(packageNames)
@@ -61,6 +62,9 @@ type resolver struct {
 	tables   map[string]Exported
 	derives  map[string]bool
 	cImport  *Symbol
+	// unknownQualifiers holds the package names whose import path matched no
+	// package, so their members are not checked.
+	unknownQualifiers map[string]bool
 }
 
 type importRec struct {
@@ -68,6 +72,7 @@ type importRec struct {
 	pos        source.Pos
 	sideEffect bool
 	c          bool
+	unknown    bool
 	links      []*Symbol
 }
 
@@ -133,6 +138,10 @@ func (r *resolver) addImports() {
 		rec := &importRec{pos: imp.Span.Start, sideEffect: imp.SideEffect, c: imp.C}
 		switch {
 		case imp.SideEffect:
+			if _, known := r.packages[imp.Path]; !known {
+				rec.unknown = true
+				r.unknownImport(imp)
+			}
 		case imp.C:
 			// C names are reached through the c qualifier, so the import
 			// block binds one name, c, whatever headers it names.
@@ -163,15 +172,42 @@ func (r *resolver) addImports() {
 			if name == "" {
 				break
 			}
+			table, known := r.packages[imp.Path]
 			sym := &Symbol{Name: name, Kind: ImportKind, Pos: imp.Span.Start, Node: imp}
 			r.defineTop(sym)
 			rec.sym = sym
-			if table, ok := r.packages[imp.Path]; ok {
+			if known {
 				r.tables[name] = table
+			} else {
+				// The path matches no package: report the root cause and
+				// suppress every member diagnostic inside this import, which
+				// cannot be judged without the package.
+				rec.unknown = true
+				r.unknownQualifiers[name] = true
+				r.unknownImport(imp)
 			}
 		}
 		r.imports = append(r.imports, rec)
 	}
+}
+
+// unknownImport reports B0008 for an import path that matches no package. The
+// help names the closest known path when there is one.
+func (r *resolver) unknownImport(imp *ast.Import) {
+	help := "the path must be a module path plus directories; run will get if the dependency is not fetched yet"
+	if closest := closestName(imp.Path, r.packagePaths()); closest != "" {
+		help = "did you mean " + closest + "?"
+	}
+	r.bag.Error(imp.Span.Start, diag.CodeUnknownImportPath, "unknown import path "+imp.Path, help)
+}
+
+// packagePaths lists the import paths this run knows, for the B0008 help.
+func (r *resolver) packagePaths() []string {
+	out := make([]string, 0, len(r.packages))
+	for path := range r.packages {
+		out = append(out, path)
+	}
+	return out
 }
 
 func packageName(path string) string {

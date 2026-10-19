@@ -1,4 +1,4 @@
-import "std/net/http"
+import "example.com/app/http"
 
 const Limit: i32 = 100
 
