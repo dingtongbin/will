@@ -1,0 +1,87 @@
+// Abs returns the absolute value of x. A negative zero comes out as a positive
+// zero, because the sign of a zero is not observable through comparisons.
+func Abs(x: f64) -> f64 {
+    if x < 0.0 {
+        return -x
+    }
+    if x == 0.0 {
+        return 0.0
+    }
+    return x
+}
+
+// Min returns the smaller of a and b. A nan operand is the result.
+func Min(a: f64, b: f64) -> f64 {
+    if a != a {
+        return a
+    }
+    if b != b {
+        return b
+    }
+    if a < b {
+        return a
+    }
+    return b
+}
+
+// Max returns the larger of a and b. A nan operand is the result.
+func Max(a: f64, b: f64) -> f64 {
+    if a != a {
+        return a
+    }
+    if b != b {
+        return b
+    }
+    if a > b {
+        return a
+    }
+    return b
+}
+
+// Clamp limits x to the closed range [lo, hi]. The caller must pass lo <= hi.
+func Clamp(x: f64, lo: f64, hi: f64) -> f64 {
+    if x < lo {
+        return lo
+    }
+    if x > hi {
+        return hi
+    }
+    return x
+}
+
+// Sign returns -1, 0, or 1 for a finite x, and x itself for a nan.
+func Sign(x: f64) -> f64 {
+    if x != x {
+        return x
+    }
+    if x > 0.0 {
+        return 1.0
+    }
+    if x < 0.0 {
+        return -1.0
+    }
+    return 0.0
+}
+
+// IsNaN reports whether x is a nan. Every comparison with a nan is false, so
+// x != x is true only for a nan.
+func IsNaN(x: f64) -> bool {
+    return x != x
+}
+
+// IsInf reports whether x is an infinity. Zero times an infinity is a nan and
+// zero times a finite value is zero, so the comparison separates the two; the
+// nan guard keeps a nan from being reported as an infinity.
+func IsInf(x: f64) -> bool {
+    if x != x {
+        return false
+    }
+    return x * 0.0 != 0.0
+}
+
+// IsFinite reports whether x is neither a nan nor an infinity. An infinity
+// minus itself is a nan and a nan stays a nan, so only a finite value compares
+// equal to zero.
+func IsFinite(x: f64) -> bool {
+    return x - x == 0.0
+}

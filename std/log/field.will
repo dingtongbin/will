@@ -1,0 +1,16 @@
+// FieldValue is one typed field value. The set of variants is closed, so a
+// sink can render every field without reflection.
+enum FieldValue {
+    Str(str)
+    Int(i64)
+    Uint(u64)
+    Float(f64)
+    Bool(bool)
+}
+
+// Field is one structured key and value. It is a plain value with no lifetime,
+// so it can be stored in an Array and handed to a sink.
+struct Field {
+    key: str
+    value: FieldValue
+}

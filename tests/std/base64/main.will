@@ -1,0 +1,43 @@
+import "std/encoding/base64"
+
+func Sum(b: Array<u8>) -> i32 {
+    var total: i32 = 0
+    var i: usize = 0
+    for v in b {
+        total += i32(v) * i32(i + 1)
+        i += 1
+    }
+    return total
+}
+
+func main() -> i32 {
+    var total: i32 = 0
+    var plain: Result<Array<u8>, Error> = base64.Decode("SGVsbG8=")
+    match plain {
+        Ok(v) => {
+            total += Sum(v)
+        }
+        Err(e) => {
+            total += e.Status()
+        }
+    }
+    var url: Result<Array<u8>, Error> = base64.DecodeUrl("_-8=")
+    match url {
+        Ok(v) => {
+            total += Sum(v)
+        }
+        Err(e) => {
+            total += e.Status()
+        }
+    }
+    var bad: Result<Array<u8>, Error> = base64.Decode("SGVsbG8")
+    match bad {
+        Ok(v) => {
+            total += Sum(v)
+        }
+        Err(e) => {
+            total += e.Status()
+        }
+    }
+    return total
+}

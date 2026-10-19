@@ -1,0 +1,50 @@
+import "std/errors"
+
+struct probeError {
+    status: i32
+}
+
+func (e: probeError) Message() -> str {
+    return "probe"
+}
+
+func (e: probeError) Status() -> i32 {
+    return e.status
+}
+
+func classOfStatus(status: i32) -> errors.ErrorClass {
+    var v: probeError = probeError { status: status }
+    var e: Error = v
+    return errors.ClassOf(e)
+}
+
+func main() -> i32 {
+    var total: i32 = 0
+    var c: errors.ErrorClass = classOfStatus(1)
+    match c {
+        NotFound => {
+            total += 1
+        }
+        Deadline => {
+            total += 2
+        }
+        Busy => {
+            total += 3
+        }
+        Upstream => {
+            total += 4
+        }
+        Bug => {
+            total += 5
+        }
+    }
+    var busy: errors.ErrorClass = classOfStatus(3)
+    total += match busy {
+        NotFound => 10
+        Deadline => 20
+        Busy => 30
+        Upstream => 40
+        Bug => 50
+    }
+    return total
+}

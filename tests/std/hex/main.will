@@ -1,0 +1,41 @@
+import "std/encoding/hex"
+
+func Sum(b: Array<u8>) -> i32 {
+    var total: i32 = 0
+    for v in b {
+        total += i32(v)
+    }
+    return total
+}
+
+func main() -> i32 {
+    var total: i32 = 0
+    var plain: Result<Array<u8>, Error> = hex.Decode("48656c6C6f")
+    match plain {
+        Ok(v) => {
+            total += Sum(v)
+        }
+        Err(e) => {
+            total += e.Status()
+        }
+    }
+    var odd: Result<Array<u8>, Error> = hex.Decode("abc")
+    match odd {
+        Ok(v) => {
+            total += Sum(v)
+        }
+        Err(e) => {
+            total += e.Status()
+        }
+    }
+    var bad: Result<Array<u8>, Error> = hex.Decode("zz")
+    match bad {
+        Ok(v) => {
+            total += Sum(v)
+        }
+        Err(e) => {
+            total += e.Status()
+        }
+    }
+    return total
+}

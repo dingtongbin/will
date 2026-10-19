@@ -35,16 +35,17 @@ func main() -> i32 {
     if math.IsFinite(1.0) {
         ok += 1
     }
-    if math.AbsI64(-3) == 3 {
+    var negative: i64 = -3i64
+    if math.AbsI64(negative) == 3i64 {
         ok += 1
     }
     if math.AbsI32(-4) == 4 {
         ok += 1
     }
-    if math.MinI64(1, 2) == 1 {
+    if math.MinI64(1i64, 2i64) == 1i64 {
         ok += 1
     }
-    if math.MaxI64(1, 2) == 2 {
+    if math.MaxI64(1i64, 2i64) == 2i64 {
         ok += 1
     }
     if math.MinU64(1u64, 2u64) == 1u64 {
@@ -53,13 +54,14 @@ func main() -> i32 {
     if math.MaxU64(1u64, 2u64) == 2u64 {
         ok += 1
     }
-    if math.ClampI64(5, 0, 3) == 3 {
+    if math.ClampI64(5i64, 0i64, 3i64) == 3i64 {
         ok += 1
     }
-    if math.SignI64(-9) == -1 {
+    var negativeSign: i64 = -9i64
+    if math.SignI64(negativeSign) == -1i64 {
         ok += 1
     }
-    if math.PopCount64(0xffu64) == 8u32 {
+    if math.PopCount64(255u64) == 8u32 {
         ok += 1
     }
     if math.TrailingZeros64(8u64) == 3u32 {
@@ -74,7 +76,7 @@ func main() -> i32 {
     if math.RotateRight64(2u64, 1u64) == 1u64 {
         ok += 1
     }
-    if math.I64Max > 0 {
+    if math.I64Max > 0i64 {
         ok += 1
     }
     if math.U64Max > 0u64 {

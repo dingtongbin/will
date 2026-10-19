@@ -1,0 +1,11 @@
+import "std/test"
+
+func main() -> i32 {
+    test.Assert(true, "true must hold")
+    test.AssertEqual<i32>(2, 2, "two equals two")
+    test.AssertEqual<str>("a", "a", "strings compare by bytes")
+    if !true {
+        test.Fatal("unreachable")
+    }
+    return 0
+}

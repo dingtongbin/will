@@ -1,0 +1,84 @@
+// digitValue maps an ASCII digit to its value. 64 marks a scalar that is not a
+// digit in any base, so it is above every accepted radix.
+func digitValue(c: u32) -> u32 {
+    if c >= asciiZero && c <= asciiNine {
+        return c - asciiZero
+    }
+    if c >= asciiLowerA && c <= asciiLowerZ {
+        return c - asciiLowerA + 10u32
+    }
+    if c >= asciiUpperA && c <= asciiUpperZ {
+        return c - asciiUpperA + 10u32
+    }
+    return 64u32
+}
+
+func ParseI64(s: str, base: i32) -> Result<i64, Error> {
+    if base < 2 || base > 36 {
+        return Err(fail("invalid base"))
+    }
+    var radix: u64 = u64(base)
+    var limit: u64 = 9223372036854775807
+    var acc: u64 = 0
+    var negative: bool = false
+    var seen: bool = false
+    var first: bool = true
+    for c in s {
+        if first {
+            first = false
+            if c == asciiPlus {
+                continue
+            }
+            if c == asciiMinus {
+                negative = true
+                limit = 9223372036854775808
+                continue
+            }
+        }
+        var d: u32 = digitValue(c)
+        if d >= 64u32 || u64(d) >= radix {
+            return Err(fail("invalid digit"))
+        }
+        var digit: u64 = u64(d)
+        if acc > (limit - digit) / radix {
+            return Err(fail("value out of range"))
+        }
+        acc = acc * radix + digit
+        seen = true
+    }
+    if !seen {
+        return Err(fail("no digits"))
+    }
+    if negative {
+        if acc == 9223372036854775808u64 {
+            return Ok(-9223372036854775807i64 - 1)
+        }
+        return Ok(-i64(acc))
+    }
+    return Ok(i64(acc))
+}
+
+func ParseU64(s: str, base: i32) -> Result<u64, Error> {
+    if base < 2 || base > 36 {
+        return Err(fail("invalid base"))
+    }
+    var radix: u64 = u64(base)
+    var acc: u64 = 0
+    var seen: bool = false
+    for c in s {
+        var d: u32 = digitValue(c)
+        if d >= 64u32 || u64(d) >= radix {
+            return Err(fail("invalid digit"))
+        }
+        var digit: u64 = u64(d)
+        if acc > (18446744073709551615u64 - digit) / radix {
+            return Err(fail("value out of range"))
+        }
+        acc = acc * radix + digit
+        seen = true
+    }
+    if !seen {
+        return Err(fail("no digits"))
+    }
+    return Ok(acc)
+}

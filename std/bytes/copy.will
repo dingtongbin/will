@@ -1,0 +1,14 @@
+// Copy writes bytes from src into the initialized prefix of dst and returns how
+// many it wrote: the shorter of the two lengths. It never grows dst, so a caller
+// that needs more room pushes the bytes itself.
+func Copy(dst: Array<u8>, src: []u8) -> usize {
+    var n: usize = 0
+    for b in src {
+        if n >= dst.Len() {
+            break
+        }
+        dst.Set(n, b)
+        n += 1
+    }
+    return n
+}

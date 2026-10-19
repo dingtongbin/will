@@ -1,0 +1,47 @@
+enum ErrorClass {
+    NotFound
+    Deadline
+    Busy
+    Upstream
+    Bug
+}
+
+interface Classified {
+    func Class() -> ErrorClass
+}
+
+// ClassOf maps the stable status code to a class. Only the statuses that name
+// a class of their own have one: 1 is NotFound, 3 is Busy, 5 is Upstream, and
+// 8 and 9 are both Deadline. Every other status, including 0, is a Bug, so a
+// caller that retries on Busy or Upstream never retries an unknown failure.
+// The Classified interface is the narrower shape a caller uses directly when
+// it holds a concrete type; ClassOf itself reads Status(), which every Error
+// provides.
+func ClassOf(e: Error) -> ErrorClass {
+    return classOfStatus(e.Status())
+}
+
+func classOfStatus(status: i32) -> ErrorClass {
+    var c: ErrorClass = ErrorClass.Bug()
+    match status {
+        1 => {
+            c = ErrorClass.NotFound()
+        }
+        3 => {
+            c = ErrorClass.Busy()
+        }
+        5 => {
+            c = ErrorClass.Upstream()
+        }
+        8 => {
+            c = ErrorClass.Deadline()
+        }
+        9 => {
+            c = ErrorClass.Deadline()
+        }
+        _ => {
+            c = ErrorClass.Bug()
+        }
+    }
+    return c
+}
