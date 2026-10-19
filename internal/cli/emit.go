@@ -21,8 +21,13 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 	modulePath := ""
 	var files []string
 	for i := 0; i < len(args); i++ {
-		switch args[i] {
+		name, inline, hasInline := splitFlag(args[i])
+		switch name {
 		case "--out":
+			if hasInline {
+				outPath = inline
+				break
+			}
 			if i+1 >= len(args) {
 				fmt.Fprint(stderr, "will: --out needs a path\n")
 				return 2
@@ -30,6 +35,10 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 			i++
 			outPath = args[i]
 		case "--module":
+			if hasInline {
+				modulePath = inline
+				break
+			}
 			if i+1 >= len(args) {
 				fmt.Fprint(stderr, "will: --module needs a path\n")
 				return 2
@@ -45,7 +54,7 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if len(files) != 1 {
-		fmt.Fprint(stderr, "usage: will emit-willc [--out <path>] [--module <path>] <file>\n")
+		fmt.Fprint(stderr, "usage: will emit-willc [--out=<path>] [--module <path>] <file>\n")
 		return 2
 	}
 

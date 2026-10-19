@@ -17,8 +17,8 @@ import (
 
 // runCachedBuild checks a loaded module, using the directory key when the
 // cache is on.
-func runCachedBuild(b *pkg.Build, jsonOut, werror bool, stdout io.Writer) int {
-	store, key, cacheable := dirCacheKey(b, jsonOut, werror)
+func runCachedBuild(b *pkg.Build, flags checkFlags, stdout io.Writer) int {
+	store, key, cacheable := dirCacheKey(b, flags)
 	if cacheable {
 		if data, hit := store.Get(key, cache.Diag); hit {
 			out, code := decodeDiag(data[cache.Diag])
@@ -27,15 +27,15 @@ func runCachedBuild(b *pkg.Build, jsonOut, werror bool, stdout io.Writer) int {
 		}
 	}
 	ds := b.CheckAll()
-	build := buildIdentity()
+	build := buildIdentityWith(flags.opt, flags.target)
 	var out []byte
-	if jsonOut {
+	if flags.json {
 		out = []byte(diag.JSONAll(ds, build))
 	} else {
 		out = []byte(diag.FormatAll(ds))
 	}
 	stdout.Write(out)
-	code := exitCode(ds, werror)
+	code := exitCode(ds, flags.werror)
 	if cacheable {
 		_ = store.Put(key, map[string][]byte{cache.Diag: encodeDiag(code, out)})
 		_ = store.Trim()
@@ -60,7 +60,7 @@ func exitCode(ds []diag.Diagnostic, werror bool) int {
 // everything the run reads: module files, the module and sum files, every
 // in-package C or H file, the exported names of every package, the compiler
 // identity, and the flags.
-func dirCacheKey(b *pkg.Build, jsonOut, werror bool) (*cache.Store, string, bool) {
+func dirCacheKey(b *pkg.Build, flags checkFlags) (*cache.Store, string, bool) {
 	root := os.Getenv("WILL_CACHE")
 	if root == "" || b.Mod == nil {
 		return nil, "", false
@@ -95,9 +95,10 @@ func dirCacheKey(b *pkg.Build, jsonOut, werror bool) (*cache.Store, string, bool
 			}
 		}
 	}
-	build := buildIdentity()
+	build := buildIdentityWith(flags.opt, flags.target)
 	h.AddStrings("compiler", build.Compiler, build.Target, build.Opt)
-	h.AddStrings("flags", fmt.Sprintf("json=%v", jsonOut), fmt.Sprintf("werror=%v", werror))
+	h.AddStrings("flags", fmt.Sprintf("json=%v", flags.json), fmt.Sprintf("werror=%v", flags.werror),
+		"features="+flags.features)
 	return cache.New(root, 0), h.Key(), true
 }
 

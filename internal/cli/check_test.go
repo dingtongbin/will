@@ -73,6 +73,17 @@ func TestCheckBadFileJSON(t *testing.T) {
 	}
 }
 
+func TestCheckTargetFlagReachesJSON(t *testing.T) {
+	path := writeFile(t, t.TempDir(), "bad.will", badSource)
+	code, out, _ := runCLI("check", "--json", "-O2", "--target", "aarch64-linux-gnu", path)
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !strings.Contains(out, `"target":"aarch64-linux-gnu"`) || !strings.Contains(out, `"opt":"-O2"`) {
+		t.Fatalf("build identity lacks the flags: %q", out)
+	}
+}
+
 func TestCheckUsageErrors(t *testing.T) {
 	if code, _, errOut := runCLI("check"); code != 2 || !strings.Contains(errOut, "usage:") {
 		t.Fatalf("code = %d, stderr = %q", code, errOut)

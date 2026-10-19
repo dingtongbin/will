@@ -16,7 +16,7 @@ import (
 	"github.com/will-lang/will/internal/types"
 )
 
-const usage = "usage: will check [--json] [-Werror] <file>...\n"
+const usage = "usage: will check [--json] [--long] [-Werror] [-O0..-O3] [--target <triple>] <file>...\n"
 
 // Run dispatches one command and returns the process exit code: 0 success,
 // 1 diagnostics, 2 usage.
@@ -30,6 +30,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runCheck(args[1:], stdout, stderr)
 	case "emit-willc":
 		return runEmitWillc(args[1:], stdout, stderr)
+	case "emit-llvm":
+		return runEmitLLVM(args[1:], stdout, stderr)
 	case "fmt":
 		return runFmt(args[1:], stdout, stderr)
 	case "index":
@@ -48,21 +50,52 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	return 2
 }
 
+// checkFlags are the switches shared by will check, will build, and the
+// directory cache.
+type checkFlags struct {
+	json     bool
+	long     bool
+	werror   bool
+	opt      string
+	target   string
+	features string
+}
+
 func runCheck(args []string, stdout, stderr io.Writer) int {
-	jsonOut := false
-	werror := false
+	flags := checkFlags{opt: "-O0", target: targetTriple()}
 	var files []string
-	for _, a := range args {
-		switch {
-		case a == "--json":
-			jsonOut = true
-		case a == "-Werror":
-			werror = true
-		case strings.HasPrefix(a, "-"):
-			fmt.Fprintf(stderr, "will: unknown flag %s\n", a)
-			return 2
+	for i := 0; i < len(args); i++ {
+		name, inline, hasInline := splitFlag(args[i])
+		switch name {
+		case "--json":
+			flags.json = true
+		case "--long":
+			flags.long = true
+		case "-Werror":
+			flags.werror = true
+		case "-O0", "-O1", "-O2", "-O3":
+			flags.opt = name
+		case "--target":
+			value, next, ok := flagValue(args, i, inline, hasInline, "--target", stderr)
+			if !ok {
+				return 2
+			}
+			i, flags.target = next, value
+		case "--features":
+			value, next, ok := flagValue(args, i, inline, hasInline, "--features", stderr)
+			if !ok {
+				return 2
+			}
+			i, flags.features = next, value
 		default:
-			files = append(files, a)
+			if strings.HasPrefix(args[i], "-W") {
+				break
+			}
+			if strings.HasPrefix(args[i], "-") {
+				fmt.Fprintf(stderr, "will: unknown flag %s\n", args[i])
+				return 2
+			}
+			files = append(files, args[i])
 		}
 	}
 	if len(files) == 0 {
@@ -72,7 +105,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 
 	// A single directory argument is cached with the key that lists the whole
 	// tree; anything else falls back to the file key.
-	store, key, contents := checkCache(files, jsonOut, werror)
+	store, key, contents := checkCache(files, flags)
 	if store == nil && len(files) == 1 {
 		if info, err := os.Stat(files[0]); err == nil && info.IsDir() {
 			b := pkg.Load(files[0])
@@ -80,7 +113,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 				fmt.Fprintf(stderr, "will: %v\n", b.Err)
 				return 1
 			}
-			return runCachedBuild(b, jsonOut, werror, stdout)
+			return runCachedBuild(b, flags, stdout)
 		}
 	}
 	if store != nil {
@@ -105,16 +138,16 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	}
 
 	ds := bag.Diagnostics()
-	build := buildIdentity()
+	build := buildIdentityWith(flags.opt, flags.target)
 	var out []byte
-	if jsonOut {
+	if flags.json {
 		out = []byte(diag.JSONAll(ds, build))
 	} else {
 		out = []byte(diag.FormatAll(ds))
 	}
 	stdout.Write(out)
 
-	code := exitCode(ds, werror)
+	code := exitCode(ds, flags.werror)
 	if store != nil {
 		_ = store.Put(key, map[string][]byte{cache.Diag: encodeDiag(code, out)})
 		_ = store.Trim()
@@ -130,7 +163,7 @@ type fileData struct {
 
 // checkCache returns a store and a key when WILL_CACHE is set and every
 // argument is a file. contents carries the files it already read.
-func checkCache(files []string, jsonOut, werror bool) (*cache.Store, string, []fileData) {
+func checkCache(files []string, flags checkFlags) (*cache.Store, string, []fileData) {
 	root := os.Getenv("WILL_CACHE")
 	if root == "" {
 		return nil, "", nil
@@ -149,9 +182,10 @@ func checkCache(files []string, jsonOut, werror bool) (*cache.Store, string, []f
 		contents = append(contents, fileData{path: path, data: data})
 		h.Add(path, data)
 	}
-	build := buildIdentity()
+	build := buildIdentityWith(flags.opt, flags.target)
 	h.AddStrings("compiler", build.Compiler, build.Target, build.Opt)
-	h.AddStrings("flags", fmt.Sprintf("json=%v", jsonOut), fmt.Sprintf("werror=%v", werror))
+	h.AddStrings("flags", fmt.Sprintf("json=%v", flags.json), fmt.Sprintf("werror=%v", flags.werror),
+		"features="+flags.features)
 	return cache.New(root, 0), h.Key(), contents
 }
 
@@ -210,9 +244,21 @@ func checkFile(bag *diag.Bag, file string, data []byte) {
 }
 
 // buildIdentity reports the build identity attached to machine-readable
-// diagnostics. It is deterministic for one binary and target.
+// diagnostics for the host target at -O0.
 func buildIdentity() diag.Build {
-	return diag.Build{Compiler: "will " + CompilerVersion, Target: targetTriple(), Opt: "-O0"}
+	return buildIdentityWith("-O0", targetTriple())
+}
+
+// buildIdentityWith reports the build identity for one optimization level and
+// target. It is deterministic for one binary, level, and target.
+func buildIdentityWith(opt, target string) diag.Build {
+	if opt == "" {
+		opt = "-O0"
+	}
+	if target == "" {
+		target = targetTriple()
+	}
+	return diag.Build{Compiler: "will " + CompilerVersion, Target: target, Opt: opt}
 }
 
 func targetTriple() string {

@@ -24,16 +24,8 @@ import (
 // an entry point yet, so this is provisional.
 const defaultEntry = "main"
 
-// buildOptions is one build invocation.
-type buildOptions struct {
-	path   string
-	entry  string
-	out    string
-	emitIR bool
-}
-
-func compileIR(path, entry string, stderr io.Writer) ([]byte, string, int) {
-	file, modulePath, code := entryFile(path, entry, stderr)
+func compileIR(opts buildOptions, stderr io.Writer) ([]byte, string, int) {
+	file, modulePath, code := entryFile(opts.path, opts.entry, stderr)
 	if code != 0 {
 		return nil, "", code
 	}
@@ -42,7 +34,7 @@ func compileIR(path, entry string, stderr io.Writer) ([]byte, string, int) {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return nil, "", 1
 	}
-	store, key := buildCacheKey(file, data, modulePath, entry)
+	store, key := buildCacheKey(file, data, modulePath, opts)
 	if store != nil {
 		if got, ok := store.Get(key, cache.ModuleLL); ok {
 			return got[cache.ModuleLL], modulePath, 0
@@ -55,8 +47,8 @@ func compileIR(path, entry string, stderr io.Writer) ([]byte, string, int) {
 		fmt.Fprint(stderr, diag.FormatAll(bag.Diagnostics()))
 		return nil, "", 1
 	}
-	if !fileDeclaresEntry(f, entry) {
-		fmt.Fprintf(stderr, "will: entry function %s not found\n", entry)
+	if !fileDeclaresEntry(f, opts.entry) {
+		fmt.Fprintf(stderr, "will: entry function %s not found\n", opts.entry)
 		return nil, "", 1
 	}
 	res, rds := resolve.Resolve(f)
@@ -91,16 +83,18 @@ func compileIR(path, entry string, stderr io.Writer) ([]byte, string, int) {
 
 // buildCacheKey keys one build on everything this run reads: the source, the
 // module path, the entry name, the compiler identity, and the flags.
-func buildCacheKey(file string, data []byte, modulePath, entry string) (*cache.Store, string) {
+func buildCacheKey(file string, data []byte, modulePath string, opts buildOptions) (*cache.Store, string) {
 	root := os.Getenv("WILL_CACHE")
 	if root == "" {
 		return nil, ""
 	}
 	h := cache.NewHasher()
 	h.Add(filepath.ToSlash(file), data)
-	h.AddStrings("module", modulePath, entry)
-	build := buildIdentity()
+	h.AddStrings("module", modulePath, opts.entry)
+	build := buildIdentityWith(opts.opt, opts.target)
 	h.AddStrings("compiler", build.Compiler, build.Target, build.Opt)
+	h.AddStrings("flags", fmt.Sprintf("lib=%v", opts.lib), fmt.Sprintf("debug=%v", opts.debug),
+		fmt.Sprintf("freestanding=%v", opts.freestanding), "features="+opts.features)
 	return cache.New(root, 0), h.Key()
 }
 
@@ -151,17 +145,13 @@ func fileDeclaresEntry(f *ast.File, entry string) bool {
 }
 
 func runBuild(args []string, stdout, stderr io.Writer) int {
-	opts, code := parseBuildArgs(args, stderr)
+	opts, _, code := parseBuildArgs("build", args, stderr)
 	if code != 0 {
 		return code
 	}
-	ir, _, code := compileIR(opts.path, opts.entry, stderr)
+	ir, modulePath, code := compileIR(opts, stderr)
 	if code != 0 {
 		return code
-	}
-	if opts.emitIR {
-		stdout.Write(ir)
-		return 0
 	}
 	clang, err := toolchain.FindClang()
 	if err != nil {
@@ -169,9 +159,9 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	}
 	out := opts.out
 	if out == "" {
-		out = defaultOutput(opts.path)
+		out = defaultOutput(modulePath, opts.target, opts.lib)
 	}
-	output, err := clang.BuildIR(ir, out)
+	output, err := clang.BuildIR(ir, out, clangArgs(opts)...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
 		fmt.Fprintf(stderr, "will: link failed\n")
@@ -180,12 +170,30 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// clangArgs turns the build flags into driver arguments.
+func clangArgs(opts buildOptions) []string {
+	var args []string
+	if opts.opt != "" {
+		args = append(args, opts.opt)
+	}
+	if opts.debug {
+		args = append(args, "-g")
+	}
+	if opts.target != "" {
+		args = append(args, "--target="+opts.target)
+	}
+	if opts.lib {
+		args = append(args, "-shared")
+	}
+	return args
+}
+
 func runRun(args []string, stdout, stderr io.Writer) int {
-	opts, code := parseBuildArgs(args, stderr)
+	opts, programArgs, code := parseBuildArgs("run", args, stderr)
 	if code != 0 {
 		return code
 	}
-	ir, _, code := compileIR(opts.path, opts.entry, stderr)
+	ir, _, code := compileIR(opts, stderr)
 	if code != 0 {
 		return code
 	}
@@ -206,13 +214,13 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 			out += ".exe"
 		}
 	}
-	output, err := clang.BuildIR(ir, out)
+	output, err := clang.BuildIR(ir, out, clangArgs(opts)...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
 		fmt.Fprintf(stderr, "will: link failed\n")
 		return 1
 	}
-	cmd := exec.Command(out)
+	cmd := exec.Command(out, programArgs...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	if err := cmd.Run(); err != nil {
@@ -225,41 +233,18 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func parseBuildArgs(args []string, stderr io.Writer) (buildOptions, int) {
-	opts := buildOptions{entry: defaultEntry}
-	var paths []string
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "-o":
-			if i+1 >= len(args) {
-				fmt.Fprint(stderr, "will: -o needs a path\n")
-				return opts, 2
-			}
-			i++
-			opts.out = args[i]
-		case "--entry":
-			if i+1 >= len(args) {
-				fmt.Fprint(stderr, "will: --entry needs a name\n")
-				return opts, 2
-			}
-			i++
-			opts.entry = args[i]
-		case "--emit-ir":
-			opts.emitIR = true
-		default:
-			if strings.HasPrefix(args[i], "-") {
-				fmt.Fprintf(stderr, "will: unknown flag %s\n", args[i])
-				return opts, 2
-			}
-			paths = append(paths, args[i])
-		}
+// runEmitLLVM writes the LLVM text of one build. It needs no external tool.
+func runEmitLLVM(args []string, stdout, stderr io.Writer) int {
+	opts, _, code := parseBuildArgs("emit-llvm", args, stderr)
+	if code != 0 {
+		return code
 	}
-	if len(paths) != 1 {
-		fmt.Fprint(stderr, "usage: will build [-o <path>] [--entry <name>] [--emit-ir] <dir or file>\n")
-		return opts, 2
+	ir, _, code := compileIR(opts, stderr)
+	if code != 0 {
+		return code
 	}
-	opts.path = paths[0]
-	return opts, 0
+	stdout.Write(ir)
+	return 0
 }
 
 // missingTool reports X0003 for a missing external tool.
@@ -268,15 +253,40 @@ func missingTool(stdout io.Writer, name string) int {
 	return 1
 }
 
-func defaultOutput(path string) string {
-	base := filepath.Base(filepath.Clean(path))
-	if info, err := os.Stat(path); err == nil && info.IsDir() {
-		base = filepath.Base(path)
+// defaultOutput returns build/<target>/<module name><suffix>, the placement
+// the build volume fixes for artifacts.
+func defaultOutput(modulePath, target string, lib bool) string {
+	if target == "" {
+		target = targetTriple()
 	}
-	if isWindows() {
-		return base + ".exe"
+	name := lastSegment(modulePath)
+	if name == "" {
+		name = "app"
 	}
-	return base
+	if lib {
+		switch {
+		case strings.Contains(target, "win"):
+			return filepath.Join("build", target, name+".dll")
+		case strings.Contains(target, "mac"), strings.Contains(target, "ios"):
+			return filepath.Join("build", target, "lib"+name+".dylib")
+		default:
+			return filepath.Join("build", target, "lib"+name+".so")
+		}
+	}
+	suffix := ""
+	if strings.Contains(target, "win") {
+		suffix = ".exe"
+	}
+	return filepath.Join("build", target, name+suffix)
+}
+
+// lastSegment returns the last path segment, accepting both separators.
+func lastSegment(path string) string {
+	path = strings.TrimSuffix(path, "/")
+	if i := strings.LastIndexAny(path, `/\`); i >= 0 {
+		return path[i+1:]
+	}
+	return path
 }
 
 func isWindows() bool {

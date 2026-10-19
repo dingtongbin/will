@@ -23,9 +23,9 @@ func hasClang() bool {
 	return err == nil
 }
 
-func TestBuildEmitIR(t *testing.T) {
+func TestEmitLLVM(t *testing.T) {
 	path := writeFile(t, t.TempDir(), "main.will", entrySource)
-	code, out, errOut := runCLI("build", "--emit-ir", path)
+	code, out, errOut := runCLI("emit-llvm", path)
 	if code != 0 {
 		t.Fatalf("code = %d, stderr = %q", code, errOut)
 	}
@@ -36,13 +36,35 @@ func TestBuildEmitIR(t *testing.T) {
 	}
 }
 
+func TestBuildFlagsAreAccepted(t *testing.T) {
+	if hasClang() {
+		t.Skip("clang is installed; the missing-tool path is not reachable")
+	}
+	path := writeFile(t, t.TempDir(), "main.will", entrySource)
+	code, out, _ := runCLI("build", "-O1", "-g", "--target", "x86_64-linux-gnu", "--lib", path)
+	if code != 1 || !strings.Contains(out, "X0003") {
+		t.Fatalf("code = %d, stdout = %q", code, out)
+	}
+}
+
+func TestRunProgramArgsAreNotFlags(t *testing.T) {
+	if hasClang() {
+		t.Skip("clang is installed; the missing-tool path is not reachable")
+	}
+	path := writeFile(t, t.TempDir(), "main.will", entrySource)
+	code, _, _ := runCLI("run", path, "--", "--verbose", "-O3")
+	if code != 1 {
+		t.Fatalf("code = %d, want 1 because clang is missing", code)
+	}
+}
+
 func TestBuildUsesCache(t *testing.T) {
 	dir := t.TempDir()
 	path := writeFile(t, dir, "main.will", entrySource)
 	cacheDir := filepath.Join(dir, "cache")
 	t.Setenv("WILL_CACHE", cacheDir)
 
-	code1, out1, _ := runCLI("build", "--emit-ir", path)
+	code1, out1, _ := runCLI("emit-llvm", path)
 	if code1 != 0 || out1 == "" {
 		t.Fatalf("first build: code = %d, stdout = %q", code1, out1)
 	}
@@ -50,13 +72,13 @@ func TestBuildUsesCache(t *testing.T) {
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("cache entries = %v, err = %v", entries, err)
 	}
-	code2, out2, _ := runCLI("build", "--emit-ir", path)
+	code2, out2, _ := runCLI("emit-llvm", path)
 	if code2 != code1 || out2 != out1 {
 		t.Fatalf("cached build differed: code = %d, stdout = %q", code2, out2)
 	}
 	// A changed source must miss.
 	writeFile(t, dir, "main.will", strings.Replace(entrySource, "65", "66", 1))
-	if _, out3, _ := runCLI("build", "--emit-ir", path); out3 == out1 {
+	if _, out3, _ := runCLI("emit-llvm", path); out3 == out1 {
 		t.Fatalf("changed source hit the old entry: %q", out3)
 	}
 }

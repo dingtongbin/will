@@ -16,8 +16,13 @@ func runIndex(args []string, stdout, stderr io.Writer) int {
 	outPath := ""
 	var inputs []string
 	for i := 0; i < len(args); i++ {
-		switch args[i] {
+		name, inline, hasInline := splitFlag(args[i])
+		switch name {
 		case "--out":
+			if hasInline {
+				outPath = inline
+				break
+			}
 			if i+1 >= len(args) {
 				fmt.Fprint(stderr, "will: --out needs a path\n")
 				return 2
@@ -33,7 +38,7 @@ func runIndex(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if len(inputs) != 1 {
-		fmt.Fprint(stderr, "usage: will index [--out <path>] <module dir>\n")
+		fmt.Fprint(stderr, "usage: will index [--out=<path>] <module dir>\n")
 		return 2
 	}
 	b := pkg.Load(inputs[0])

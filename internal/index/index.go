@@ -5,7 +5,6 @@ package index
 
 import (
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/will-lang/will/internal/ast"
@@ -82,8 +81,8 @@ func (x *builder) emitDispatch(methods, sigs map[string]map[string]string, deriv
 			}
 		}
 		sort.Strings(targets)
-		x.line("dispatch", quote("file", dp.File), "line="+strconv.Itoa(dp.Pos.Line), "col="+strconv.Itoa(dp.Pos.Col),
-			quote("interface", key), quote("targets", strings.Join(targets, ",")))
+		x.line("dispatch", quote("pos", dp.Pos.String()), quote("interface", key),
+			quote("targets", strings.Join(targets, ",")))
 	}
 }
 
@@ -121,7 +120,7 @@ func (x *builder) emitFile(p *pkg.Package, f *pkg.File) {
 }
 
 func (x *builder) decl(file string, pos source.Pos, kind, name string) {
-	x.line("decl", quote("file", file), "line="+strconv.Itoa(pos.Line), "col="+strconv.Itoa(pos.Col),
+	x.line("decl", quote("file", file), quote("pos", pos.String()),
 		quote("kind", kind), quote("name", name), quote("vis", visibility(name)))
 }
 
