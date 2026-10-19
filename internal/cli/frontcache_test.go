@@ -1,10 +1,21 @@
 package cli
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/will-lang/will/internal/cache"
 )
+
+func TestLoweringKeyCoversDecisions(t *testing.T) {
+	_, first := loweringCacheKey([]string{"willc"}, []byte("layout type=\"A\" size=4 align=4\n"), buildOptions{entry: "main"})
+	_, second := loweringCacheKey([]string{"willc"}, []byte("layout type=\"A\" size=8 align=8\n"), buildOptions{entry: "main"})
+	if first == second {
+		t.Fatal("a decision change did not change the lowering key")
+	}
+}
 
 func TestEncodeWillcRoundTrip(t *testing.T) {
 	paths := []string{"a.will", "lib/b.will"}
@@ -29,7 +40,8 @@ func TestEncodeWillcRoundTrip(t *testing.T) {
 
 func TestFrontEndCacheHitsOnTheSecondRun(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "front")
-	t.Setenv("WILL_CACHE", t.TempDir())
+	cacheRoot := t.TempDir()
+	t.Setenv("WILL_CACHE", cacheRoot)
 	writeTree(t, root, map[string]string{
 		"will.mod":     "module example.com/front\nwill 1\n",
 		"main.will":    "import \"example.com/front/lib\"\n\nfunc main() -> i32 {\n    return lib.Double(2)\n}\n",
@@ -43,6 +55,16 @@ func TestFrontEndCacheHitsOnTheSecondRun(t *testing.T) {
 	}
 	if frontEndStats.hits != 0 || frontEndStats.misses != 2 {
 		t.Fatalf("first run: hits = %d, misses = %d, want 0 and 2", frontEndStats.hits, frontEndStats.misses)
+	}
+	records := 0
+	_ = filepath.WalkDir(cacheRoot, func(path string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() && d.Name() == cache.Decisions {
+			records++
+		}
+		return nil
+	})
+	if records == 0 {
+		t.Fatal("the lowering entry did not store the decision record")
 	}
 
 	frontEndStats.hits, frontEndStats.misses = 0, 0

@@ -96,7 +96,7 @@ func dirCacheKeyForTest(t *testing.T, b *pkg.Build, flags checkFlags) string {
 // loweringCacheKeyForTest requires the lowering key to be available.
 func loweringCacheKeyForTest(t *testing.T, texts []string, opts buildOptions) string {
 	t.Helper()
-	store, key := loweringCacheKey(texts, opts)
+	store, key := loweringCacheKey(texts, nil, opts)
 	if store == nil || key == "" {
 		t.Fatalf("loweringCacheKey = (%v, %q), want a key", store, key)
 	}
@@ -448,7 +448,7 @@ func TestCacheKeysUseTheDefaultRootWithoutWILLCache(t *testing.T) {
 	if store, key, cacheable := dirCacheKey(fixture.build, flags); store == nil || key == "" || !cacheable {
 		t.Fatalf("dirCacheKey without WILL_CACHE = (%v, %q, %v)", store, key, cacheable)
 	}
-	if store, key := loweringCacheKey([]string{"willc"}, buildOptions{entry: "main"}); store == nil || key == "" {
+	if store, key := loweringCacheKey([]string{"willc"}, nil, buildOptions{entry: "main"}); store == nil || key == "" {
 		t.Fatalf("loweringCacheKey without WILL_CACHE = (%v, %q)", store, key)
 	}
 }

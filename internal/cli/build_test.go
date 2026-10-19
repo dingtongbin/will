@@ -88,6 +88,23 @@ func TestEmitDecisions(t *testing.T) {
 	}
 }
 
+func TestEmitDecisionsUsesPackageQualifiedTypes(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "dec")
+	writeTree(t, root, map[string]string{
+		"will.mod":  "module example.com/dec\nwill 1\n",
+		"main.will": "struct Point {\n    x: i32\n}\n\nfunc main() -> i32 {\n    return 0\n}\n",
+	})
+	code, out, errOut := runCLI("emit-decisions", root)
+	if code != 0 {
+		t.Fatalf("code = %d, stderr = %q", code, errOut)
+	}
+	want := "layout type=\"example.com/dec.Point\" size=4 align=4\n" +
+		"field type=\"example.com/dec.Point\" name=\"x\" offset=0 size=4\n"
+	if out != want {
+		t.Fatalf("stdout = %q, want %q", out, want)
+	}
+}
+
 func TestEmitDecisionsUsage(t *testing.T) {
 	if code, _, _ := runCLI("emit-decisions"); code != 2 {
 		t.Fatalf("code = %d, want 2", code)

@@ -11,6 +11,7 @@ import (
 	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/cache"
 	"github.com/will-lang/will/internal/check"
+	"github.com/will-lang/will/internal/decisions"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/gen"
 	"github.com/will-lang/will/internal/parser"
@@ -348,9 +349,14 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 		reportTranslate(stdout, err)
 		return nil, "", 1
 	}
-	store, key := loweringCacheKey(texts, opts)
+	record, err := moduleDecisionText(fe, opts.target)
+	if err != nil {
+		reportTranslate(stdout, &willc.Error{Message: err.Error()})
+		return nil, "", 1
+	}
+	store, key := loweringCacheKey(texts, record, opts)
 	if store != nil {
-		if got, ok := store.Get(key, cache.ModuleLL); ok {
+		if got, ok := store.Get(key, cache.ModuleLL, cache.Decisions); ok {
 			return got[cache.ModuleLL], fe.modulePath, 0
 		}
 	}
@@ -360,17 +366,44 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 		return nil, "", 1
 	}
 	if store != nil {
-		_ = store.Put(key, map[string][]byte{cache.ModuleLL: ir})
+		_ = store.Put(key, map[string][]byte{cache.ModuleLL: ir, cache.Decisions: record})
 		_ = store.Trim()
 	}
 	return ir, fe.modulePath, 0
+}
+
+// moduleDecisionText is the decision record of the batch a build lowers. The
+// lowering key takes it so a change in a layout decision cannot reuse an old
+// module, and the entry stores it next to the LLVM text.
+func moduleDecisionText(fe frontEnd, target string) ([]byte, error) {
+	var units []sourceUnit
+	if fe.build != nil {
+		for _, p := range fe.build.Packages {
+			for _, f := range p.Files {
+				if f.AST != nil {
+					units = append(units, sourceUnit{file: f.AST, prefix: p.Path})
+				}
+			}
+		}
+	} else if fe.ast != nil {
+		prefix := ""
+		if b, p := modulePackage(fe.file); b != nil {
+			prefix = p.Path
+		}
+		units = append(units, sourceUnit{file: fe.ast, prefix: prefix})
+	}
+	records, err := decisionRecords(units, target)
+	if err != nil {
+		return nil, err
+	}
+	return decisions.Write(records), nil
 }
 
 // loweringCacheKey keys the lowering stage on every willc text it reads, in
 // package and file order, plus the entry name, the compiler identity, and the
 // flags. Without the whole set, changing a called package would reuse an old
 // module.
-func loweringCacheKey(texts []string, opts buildOptions) (*cache.Store, string) {
+func loweringCacheKey(texts []string, record []byte, opts buildOptions) (*cache.Store, string) {
 	root, err := cache.Root()
 	if err != nil {
 		return nil, ""
@@ -380,6 +413,7 @@ func loweringCacheKey(texts []string, opts buildOptions) (*cache.Store, string) 
 	for _, text := range texts {
 		h.Add("willc", []byte(text))
 	}
+	h.Add("decisions", record)
 	h.AddStrings("entry", opts.entry)
 	build := buildIdentityWith(opts.opt, opts.target)
 	h.AddStrings("compiler", compilerIdentity(), build.Target, build.Opt)
