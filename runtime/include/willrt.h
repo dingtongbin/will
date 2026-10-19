@@ -110,4 +110,50 @@ willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg);
    next advance reclaims it; callers must not use the pointer after that. */
 void willrt_timer_cancel(willrt_timer* timer);
 
+/* willrt_panic writes "panic: <message>" and, when site is nonempty, one
+   "  at <site> <symbol>" line, then terminates the process with exit code 101.
+   Task containment is not implemented yet, so every panic ends the process.
+   site and symbol are static strings supplied by the compiler. */
+void willrt_panic(const char* message, const char* site, const char* symbol);
+
+/* willrt_report_write sends the NUL-terminated text to the current report
+   target. The text must not be NULL. The default target is standard error,
+   written without buffering. */
+void willrt_report_write(const char* text);
+
+/* willrt_report_set_sink replaces the report target. fn is called
+   synchronously with the text bytes and ctx. It must write or forward the
+   bytes without allocating, blocking, taking a lock, or buffering, because
+   reports may run on any thread or in a fault context and a panic cannot
+   flush a private buffer. A NULL fn restores standard error and clears ctx.
+   Call this once, after willrt_init and in the main task. */
+void willrt_report_set_sink(void (*fn)(const char*, size_t, void*), void* ctx);
+
+/* willrt_symbol describes one function in a module symbol table. address is
+   the first byte of the function, size is its byte length, and name is the
+   stable symbol name in static storage. */
+typedef struct willrt_symbol {
+    uintptr_t address;
+    size_t size;
+    const char* name;
+} willrt_symbol;
+
+/* willrt_symbol_table holds entries sorted by ascending address. The table and
+   its entries are static storage and must not change after registration. */
+typedef struct willrt_symbol_table {
+    const willrt_symbol* entries;
+    size_t count;
+} willrt_symbol_table;
+
+/* willrt_symbols_register adds one module table. Constructors call it once per
+   module before the main task starts; registering while other threads may
+   look up symbols is not supported. */
+void willrt_symbols_register(const willrt_symbol_table* table);
+
+/* willrt_symbol_name returns the name whose range contains addr. When ranges
+   overlap it picks the greatest address, and for equal addresses it picks the
+   earliest registered table. It returns the static string "<unknown>" when no
+   range contains addr. Lookup allocates nothing and takes no lock. */
+const char* willrt_symbol_name(uintptr_t addr);
+
 #endif
