@@ -52,7 +52,8 @@ func TestSlotTableContract(t *testing.T) {
 		exe += ".exe"
 	}
 
-	args := []string{"-std=c11", "-Wall", "-Wextra", "-Werror", "-O2"}
+	args := []string{"-std=c11", "-Wall", "-Wextra", "-Werror", "-O2",
+		"-DWILLRT_RC_TEST"}
 	if runtime.GOOS == "windows" {
 		// The UCRT64 toolchain lives outside PATH in the default setup, so a
 		// static link keeps the test executable runnable from any directory.

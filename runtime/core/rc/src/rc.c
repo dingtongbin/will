@@ -1,12 +1,14 @@
 /* Slot table for rc and weak handles.
  *
- * A handle packs a 32-bit slot index and a 32-bit generation. One 64-bit
- * atomic word per slot holds the generation and the strong count together, so
- * a generation check and a count change are a single compare-and-swap. A
- * released slot becomes a tombstone: the generation advances, the object
- * storage is returned, and the slot joins the free list. Old handles fail the
- * generation check and are safe to pass to deref, retain, release, and
- * upgrade.
+ * A handle packs a 32-bit slot index in the high half and a 32-bit generation
+ * in the low half. One 64-bit atomic word per slot holds the generation and
+ * the strong count together, so a generation check and a count change are a
+ * single compare-and-swap. A released slot becomes a tombstone: the generation
+ * advances, the object storage is returned, and the slot joins the free list.
+ * Old handles fail the generation check and are safe to pass to deref, retain,
+ * release, and upgrade. When the generation would wrap to zero the slot is
+ * retired for good, because a second life at generation zero could make an
+ * ancient handle name a new object.
  *
  * The table is one flat array and doubles under a spin lock. Retain, release,
  * deref, and upgrade never take that lock; they change the packed slot word
@@ -297,14 +299,15 @@ static void willrt_rc_slot_retire(uint32_t index, uint32_t generation) {
 
     object = atomic_exchange_explicit(&slot->value, NULL, memory_order_acq_rel);
     next_generation = generation + 1;
-    if (next_generation == 0) {
-        next_generation = 1;
-    }
     atomic_store_explicit(&slot->state,
                           willrt_rc_state_make(next_generation, 0),
                           memory_order_release);
-    slot->next_free = willrt_rc_free_head;
-    willrt_rc_free_head = index;
+    /* A wrapped generation leaves the slot out of the free list for the rest
+       of the process, so no later object can carry generation zero. */
+    if (next_generation != 0) {
+        slot->next_free = willrt_rc_free_head;
+        willrt_rc_free_head = index;
+    }
     willrt_free(object);
     willrt_rc_table_lock_release();
 }
@@ -527,3 +530,29 @@ size_t willrt_rc_slot_capacity(void) {
 
     return table != NULL ? table->count : 0;
 }
+
+#ifdef WILLRT_RC_TEST
+void willrt_rc_test_set_generation(uint32_t slot, uint32_t generation) {
+    struct willrt_rc_table* table;
+    struct willrt_rc_slot* entry;
+    uint64_t state;
+
+    willrt_rc_table_lock_acquire();
+    table = willrt_rc_table_current();
+    if (table == NULL || (size_t)slot >= table->count) {
+        willrt_rc_table_lock_release();
+        return;
+    }
+    entry = &table->slots[slot];
+    state = atomic_load_explicit(&entry->state, memory_order_acquire);
+    atomic_store_explicit(
+        &entry->state,
+        willrt_rc_state_make(generation, willrt_rc_state_count(state)),
+        memory_order_release);
+    willrt_rc_table_lock_release();
+}
+
+uint32_t willrt_rc_test_slot_of(uint64_t handle) {
+    return willrt_rc_handle_slot(handle);
+}
+#endif

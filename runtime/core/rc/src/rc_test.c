@@ -125,6 +125,16 @@ static void test_growth_preserves_slots(void) {
     }
 }
 
+/* Pins the public handle layout: slot in the high half, generation in the low
+   half. */
+static void test_handle_layout(void) {
+    assert(willrt_rc_handle_make(3, 5)
+           == ((UINT64_C(3) << 32) | UINT64_C(5)));
+    assert(willrt_rc_handle_slot(UINT64_C(0x0000000700000009)) == 7);
+    assert(willrt_rc_handle_generation(UINT64_C(0x0000000700000009)) == 9);
+    assert(willrt_rc_handle_make(0, 0) == 0);
+}
+
 static void test_new_deref(void) {
     int value = 42;
     uint64_t handle = willrt_rc_new(&value, sizeof(value));
@@ -203,6 +213,56 @@ static void test_slot_reuse(void) {
     assert(willrt_rc_deref(new_handle) == NULL);
 }
 
+/* A generation that would wrap to zero retires the slot for the rest of the
+   process. The seam sets the live slot to the last generation, then the test
+   releases it through a handle that carries that generation. */
+static void test_generation_wrap_retires_slot(void) {
+    int value = 11;
+    uint64_t handle = willrt_rc_new(&value, sizeof(value));
+    uint64_t weak;
+    uint64_t last;
+    uint64_t upgraded = 0;
+    uint32_t slot;
+    size_t capacity;
+    size_t count;
+    uint64_t* handles;
+    size_t i;
+
+    assert(handle != 0);
+    slot = willrt_rc_test_slot_of(handle);
+    weak = willrt_weak_new(handle);
+    assert(weak == handle);
+
+    willrt_rc_test_set_generation(slot, UINT32_MAX);
+    assert(willrt_rc_deref(handle) == NULL);
+
+    last = willrt_rc_handle_make(slot, UINT32_MAX);
+    assert(willrt_rc_deref(last) != NULL);
+    willrt_rc_release(last);
+    assert(willrt_rc_deref(last) == NULL);
+    assert(willrt_rc_deref(handle) == NULL);
+    assert(willrt_weak_upgrade(weak, &upgraded) == WILLRT_EMPTY);
+
+    /* One slot is now retired, so this many new objects must exhaust the free
+       list and force a growth. A slot wrongly returned to the free list would
+       be handed out first because it would sit at the head. */
+    capacity = willrt_rc_slot_capacity();
+    count = capacity + 64;
+    handles = (uint64_t*)willrt_alloc(count * sizeof(uint64_t));
+    assert(handles != NULL);
+    for (i = 0; i < count; i++) {
+        handles[i] = willrt_rc_new(&value, sizeof(value));
+        assert(handles[i] != 0);
+        assert(willrt_rc_handle_slot(handles[i]) != slot);
+    }
+    assert(willrt_rc_slot_capacity() > capacity);
+
+    for (i = 0; i < count; i++) {
+        willrt_rc_release(handles[i]);
+    }
+    willrt_free(handles);
+}
+
 static void test_weak(void) {
     int value = 9;
     int replacement = 10;
@@ -254,11 +314,13 @@ static void test_concurrent_retain_release(void) {
 
 int main(void) {
     test_growth_preserves_slots();
+    test_handle_layout();
     test_new_deref();
     test_retain_release();
     test_empty_and_foreign_handles();
     test_zero_size();
     test_slot_reuse();
+    test_generation_wrap_retires_slot();
     test_weak();
     test_concurrent_retain_release();
     return 0;

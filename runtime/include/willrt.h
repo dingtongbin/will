@@ -56,7 +56,7 @@ void willrt_plate_release(void* plate);
 
 /* willrt_rc_new copies size bytes from value into a new rc object and returns
    its handle, or 0 when the allocation fails. A handle carries the slot index
-   in the low 32 bits and the slot generation in the high 32 bits, and 0 is
+   in the high 32 bits and the slot generation in the low 32 bits, and 0 is
    never valid. value must point to size bytes when size is nonzero. */
 uint64_t willrt_rc_new(const void* value, size_t size);
 
@@ -77,9 +77,10 @@ void willrt_rc_release(uint64_t handle);
 void* willrt_rc_deref(uint64_t handle);
 
 /* willrt_weak_new returns a weak handle for a live rc handle, or 0 when the
-   handle is not live. A weak handle does not change the strong count, and it
-   is encoded exactly like a strong handle, so it must not be passed to
-   willrt_rc_retain or willrt_rc_release. */
+   handle is not live. A weak handle does not change the strong count and does
+   not keep the slot from being reused; it is encoded exactly like a strong
+   handle, so it must not be passed to willrt_rc_retain or
+   willrt_rc_release. */
 uint64_t willrt_weak_new(uint64_t handle);
 
 /* willrt_weak_upgrade writes the strong handle to *(uint64_t*)out and returns
