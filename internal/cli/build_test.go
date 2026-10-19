@@ -337,7 +337,7 @@ func TestUnsupportedTarget(t *testing.T) {
 func TestLoweringFailureIsG0001(t *testing.T) {
 	// A local whose type is not lowered yet is a translation failure, not a
 	// front-end error.
-	src := "func F(m: Map<str, i32>) -> i32 {\n    return 0\n}\n\nfunc main() -> i32 {\n    return 0\n}\n"
+	src := "func F(cb: func(i32) -> i32) -> i32 {\n    return 0\n}\n\nfunc main() -> i32 {\n    return 0\n}\n"
 	path := writeFile(t, t.TempDir(), "main.will", src)
 	code, out, _ := runCLI("emit-llvm", path)
 	if code != 1 {

@@ -15,6 +15,20 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	if elem, ok := arrayElemText(text); ok {
 		return g.constructArray(r, elem)
 	}
+	if k, v, ok := mapTypeText(text); ok {
+		entry, ok := g.mapEntryLLVM(k, v)
+		if !ok {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: the Map entry is not lowered yet", r.ID)
+		}
+		return g.constructMapSet(r, entry)
+	}
+	if elem, ok := setTypeText(text); ok {
+		entry, ok := g.containerValueType(elem)
+		if !ok {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: the Set element is not lowered yet", r.ID)
+		}
+		return g.constructMapSet(r, entry)
+	}
 	info := g.byName[text]
 	if info == nil {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: new needs a struct declared in this document", r.ID)

@@ -99,6 +99,9 @@ func (g *generator) emitAux() {
 	if g.needMemcmpDecl {
 		g.out.WriteString("declare i32 @memcmp(ptr, ptr, i64)\n")
 	}
+	if g.needMemmoveDecl {
+		g.out.WriteString("declare void @memmove(ptr, ptr, i64)\n")
+	}
 }
 
 // docState is the per-file part of the translation: record ids and the callable
@@ -376,6 +379,8 @@ type generator struct {
 	needAllocDecl bool
 	// needMemcmpDecl records that the lowering compares str or byte data.
 	needMemcmpDecl bool
+	// needMemmoveDecl records that a container removed an entry in place.
+	needMemmoveDecl bool
 	// declKinds maps a qualified type name to "struct" or "enum".
 	declKinds map[string]string
 	// callSlots maps a call whose result is a struct to the temporary slot its
@@ -1060,6 +1065,9 @@ func (g *generator) allocas(fn int) error {
 		if err != nil {
 			continue
 		}
+		if g.prepareContainerLoop(r, iterText) {
+			continue
+		}
 		if iterText == "str" {
 			names := bindNames(r)
 			if len(names) < 1 || len(names) > 2 {
@@ -1459,6 +1467,12 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 		}
 		if an, elem, ok := arrayTypeText(iterText); ok {
 			return g.forArray(r, an, elem, void, n)
+		}
+		if k, v, ok := mapTypeText(iterText); ok {
+			return g.forMap(r, k, v, void, n)
+		}
+		if elem, ok := setTypeText(iterText); ok {
+			return g.forSet(r, elem, void, n)
 		}
 		if elem, ok := containerElem(iterText); ok {
 			return g.forContainer(r, elem, void, n)
@@ -1887,6 +1901,13 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	if r.Kind == "mcall" {
 		if name := g.genericMethodName(r); name != "" {
 			return g.emitCall(r, name, false)
+		}
+		if _, _, known := g.containerCallResult(r); known {
+			recvText, err := g.willTypeText(refField(r, "recv"))
+			if err != nil {
+				return "", "", err
+			}
+			return g.containerMethod(r, recvText)
 		}
 		recvText, err := g.willTypeText(refField(r, "recv"))
 		if err != nil {

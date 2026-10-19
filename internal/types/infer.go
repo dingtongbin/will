@@ -856,6 +856,9 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	if recv == nil || recv.Kind() != NamedKind {
 		return nil
 	}
+	if t, ok := c.builtinContainerMethod(s, recv, call); ok {
+		return t
+	}
 	if methods, ok := c.env.ifaces[recv.Name()]; ok {
 		c.dispatch = append(c.dispatch, DispatchPoint{Pos: call.Pos(), Interface: recv.Name()})
 		for _, m := range methods {
@@ -880,6 +883,51 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			"check the method name and the receiver")
 	}
 	return nil
+}
+
+// builtinContainerMethod types the Map and Set methods the lowering provides.
+// The predeclared containers do not have declarations in the environment, so
+// their signatures are written here once.
+func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.MethodCallExpr) (*Type, bool) {
+	usize := c.in.scalar("usize")
+	boolean := c.in.scalar("bool")
+	switch recv.Name() {
+	case "Map":
+		k, v := argAt(recv, 0), argAt(recv, 1)
+		switch call.Name {
+		case "Len":
+			return usize, true
+		case "Get":
+			c.checkPayload(s, []*Type{k}, call.Args, call.Name, call.Pos())
+			return c.in.named("Option", []*Type{v}), true
+		case "Set":
+			c.checkPayload(s, []*Type{k, v}, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		case "Has", "Delete":
+			c.checkPayload(s, []*Type{k}, call.Args, call.Name, call.Pos())
+			return boolean, true
+		case "Clear":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		case "Keys":
+			return c.in.named("Array", []*Type{k}), true
+		case "Values":
+			return c.in.named("Array", []*Type{v}), true
+		}
+	case "Set":
+		elem := argAt(recv, 0)
+		switch call.Name {
+		case "Len":
+			return usize, true
+		case "Add", "Has", "Delete":
+			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
+			return boolean, true
+		case "Clear":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		}
+	}
+	return nil, false
 }
 
 func (c *checker) checkTypeArgsForMethod(call *ast.MethodCallExpr, sig *signature) {

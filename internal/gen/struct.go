@@ -383,6 +383,12 @@ func (g *generator) typeOf(id int) (string, error) {
 		return g.typeOf(refField(r, "expr"))
 	case "call", "mcall":
 		if r.Kind == "mcall" {
+			if llvm, _, known := g.containerCallResult(r); known {
+				if llvm == "" {
+					return "", g.errf(id, "cannot translate node #%d: the call returns no value", id)
+				}
+				return llvm, nil
+			}
 			if llvm, _, known := g.arrayCallResult(r); known {
 				if llvm == "" {
 					return "", g.errf(id, "cannot translate node #%d: the call returns no value", id)
@@ -554,6 +560,9 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 		return text, nil
 	}
 	if text := g.genericMethodResult(r); text != "" {
+		return text, nil
+	}
+	if _, text, known := g.containerCallResult(r); known {
 		return text, nil
 	}
 	if qualified := textField(r, "to"); qualified != "" {

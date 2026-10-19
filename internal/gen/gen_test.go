@@ -234,6 +234,59 @@ func TestEmitGenericMethodInstance(t *testing.T) {
 	}
 }
 
+func TestEmitMapContainer(t *testing.T) {
+	src := "func main() -> i32 {\n" +
+		"    var m: Map<i32, i32> = new Map<i32, i32>()\n" +
+		"    m.Set(1, 10)\n" +
+		"    var s: i32 = 0\n" +
+		"    for v in m {\n        s = s + v\n    }\n" +
+		"    if m.Has(1) {\n        s = s + 1\n    }\n" +
+		"    return s\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`alloca { ptr, i64, i64 }`,
+		`getelementptr inbounds { i32, i32 }`,
+		`call ptr @willrt_alloc(i64`,
+		`phi i64 [ %t`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitSetContainer(t *testing.T) {
+	src := "func main() -> i32 {\n" +
+		"    var s: Set<i32> = new Set<i32>()\n" +
+		"    s.Add(1)\n" +
+		"    var n: i32 = 0\n" +
+		"    for v in s {\n        n = n + v\n    }\n" +
+		"    if s.Delete(1) {\n        n = n + 1\n    }\n" +
+		"    return n\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`alloca { ptr, i64, i64 }`,
+		`call void @memmove(ptr`,
+		`declare void @memmove(ptr, ptr, i64)`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitGenericFunctionInstance(t *testing.T) {
 	src := "func Id<T>(x: T) -> T {\n    return x\n}\n\nfunc Use() -> i32 {\n    return Id<i32>(3)\n}\n"
 	doc := emitWillc(t, src)
@@ -954,7 +1007,7 @@ func TestEmitStructArgumentIsABorrow(t *testing.T) {
 }
 
 func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
-	src := "struct Text {\n    body: Map<str, i32>\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
+	src := "struct Text {\n    body: func(i32) -> i32\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -966,7 +1019,7 @@ func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
 }
 
 func TestEmitUnloweredFieldIsReported(t *testing.T) {
-	src := "struct Text {\n    body: Map<str, i32>\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
+	src := "struct Text {\n    body: func(i32) -> i32\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	if _, err := Emit(doc); err == nil {
 		t.Fatal("a parameter whose struct field is not lowered was translated")
