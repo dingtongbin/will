@@ -36,6 +36,10 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runIndex(args[1:], stdout, stderr)
 	case "new":
 		return runNew(args[1:], stdout, stderr)
+	case "build":
+		return runBuild(args[1:], stdout, stderr)
+	case "run":
+		return runRun(args[1:], stdout, stderr)
 	case "version":
 		return runVersion(stdout)
 	}

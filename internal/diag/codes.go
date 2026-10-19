@@ -67,6 +67,13 @@ const (
 	CodeChecksumMismatch = "B0003"
 	// CodeFeatureNotDeclared reports a feature used without a will.mod declaration.
 	CodeFeatureNotDeclared = "B0004"
+
+	// CodeCannotParseCHeader reports a C header the compiler cannot parse.
+	CodeCannotParseCHeader = "X0001"
+	// CodeLinkFailed reports an undefined symbol at link time.
+	CodeLinkFailed = "X0002"
+	// CodeExternalToolMissing reports a missing or too old external tool.
+	CodeExternalToolMissing = "X0003"
 )
 
 // Message is one fixed diagnostic text from the code table.
