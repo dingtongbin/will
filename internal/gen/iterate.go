@@ -175,8 +175,14 @@ func (g *generator) sliceValue(r willc.Record) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	badOrder := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ugt i64 %s, %s\n", badOrder, lo, hi)
+	g.panicCheck(badOrder, panicSlice, r)
 	var data string
-	if _, _, ok := arrayTypeText(text); ok {
+	if n, _, ok := arrayTypeText(text); ok {
+		badHi := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp ugt i64 %s, %d\n", badHi, hi, n)
+		g.panicCheck(badHi, panicSlice, r)
 		// The fixed array is already its element storage.
 		g.tmp++
 		ptr := "%t" + strconv.Itoa(g.tmp)
@@ -187,6 +193,13 @@ func (g *generator) sliceValue(r willc.Record) (string, error) {
 		field := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", field, baseType, base)
 		raw := g.load("ptr", field)
+		g.tmp++
+		lenField := "%t" + strconv.Itoa(g.tmp)
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", lenField, baseType, base)
+		length := g.load("i64", lenField)
+		badHi := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp ugt i64 %s, %s\n", badHi, hi, length)
+		g.panicCheck(badHi, panicSlice, r)
 		g.tmp++
 		ptr := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", ptr, elemType, raw, lo)

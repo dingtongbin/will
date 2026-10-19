@@ -9,21 +9,28 @@ define void @"example.com/methods.Counter.Add"(ptr %c, i32 %d) {
 entry:
   %t3 = getelementptr inbounds %"struct.example.com/methods.Counter", ptr %c, i32 0, i32 0
   %t4 = load i32, ptr %t3
-  %t5 = add i32 %t4, %d
-  store i32 %t5, ptr %t3
+  %t5 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t4, i32 %d)
+  %t6 = extractvalue {i32, i1} %t5, 0
+  %t7 = extractvalue {i32, i1} %t5, 1
+  br i1 %t7, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  store i32 %t6, ptr %t3
   ret void
 }
 define i32 @"example.com/methods.will$main"() {
 entry:
   %v.c = alloca %"struct.example.com/methods.Counter"
   %v.agg.28 = alloca %"struct.example.com/methods.Counter"
-  %t6 = getelementptr inbounds %"struct.example.com/methods.Counter", ptr %v.agg.28, i32 0, i32 0
-  store i32 7, ptr %t6
-  %t7 = load %"struct.example.com/methods.Counter", ptr %v.agg.28
-  store %"struct.example.com/methods.Counter" %t7, ptr %v.c
+  %t8 = getelementptr inbounds %"struct.example.com/methods.Counter", ptr %v.agg.28, i32 0, i32 0
+  store i32 7, ptr %t8
+  %t9 = load %"struct.example.com/methods.Counter", ptr %v.agg.28
+  store %"struct.example.com/methods.Counter" %t9, ptr %v.c
   call void @"example.com/methods.Counter.Add"(ptr %v.c, i32 3)
-  %t8 = call i32 @"example.com/methods.Counter.Get"(ptr %v.c)
-  ret i32 %t8
+  %t10 = call i32 @"example.com/methods.Counter.Get"(ptr %v.c)
+  ret i32 %t10
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -34,3 +41,7 @@ entry:
   call void @willrt_shutdown()
   ret i32 %r
 }
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [15 x i8] c"main.will:10:5\00", align 1
+@.str.2 = private unnamed_addr constant [32 x i8] c"example.com/methods.Counter.Add\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)

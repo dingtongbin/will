@@ -98,6 +98,7 @@ func (g *generator) emitInit(d *docState) error {
 	}
 	sym := qualify(d.path, "will$init")
 	g.inits = append(g.inits, sym)
+	g.fnSymbol = sym
 	g.labels = 0
 	g.slots = map[int]string{}
 	g.slotTypes = map[int]string{}

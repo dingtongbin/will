@@ -235,6 +235,30 @@ func (g *generator) typeOf(id int) (string, error) {
 			return "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, text)
 		}
 		return typ, nil
+	case "index":
+		text, err := g.willTypeText(refField(r, "recv"))
+		if err != nil {
+			return "", err
+		}
+		elem, ok := elementText(text)
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: only an array, a view, or an Array is indexed yet", id)
+		}
+		typ, ok := llvmTypeText(elem)
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: element type %s is not lowered yet", id, elem)
+		}
+		return typ, nil
+	case "cast":
+		to, ok := g.recs[refField(r, "to")]
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: the target type is missing", id)
+		}
+		typ, _, ok := llvmScalar(fieldText(to, "text"))
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: conversion to %s is not lowered yet", id, fieldText(to, "text"))
+		}
+		return typ, nil
 	case "bin":
 		switch fieldText(r, "op") {
 		case "&&", "||", "==", "!=", "<", "<=", ">", ">=":
@@ -330,6 +354,12 @@ func (g *generator) willTypeText(id int) (string, error) {
 		return g.willTypeText(refField(r, "expr"))
 	case "call", "mcall":
 		return g.callResultText(r)
+	case "cast":
+		to, ok := g.recs[refField(r, "to")]
+		if !ok {
+			return "", nil
+		}
+		return fieldText(to, "text"), nil
 	}
 	return "", nil
 }
@@ -519,6 +549,12 @@ func (g *generator) place(id int) (string, string, error) {
 			return "", "", err
 		}
 		return slot, "{ ptr, i64 }", nil
+	case "index":
+		ptr, typ, err := g.indexAddr(r)
+		if err != nil {
+			return "", "", err
+		}
+		return ptr, typ, nil
 	case "call", "mcall":
 		text, err := g.callResultText(r)
 		if err != nil {

@@ -45,11 +45,12 @@ func EmitModuleIn(docs []*willc.Doc, entry, entryPkg string) ([]byte, error) {
 // canonical symbol.
 func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string) ([]byte, error) {
 	g := &generator{
-		scope:    map[int]string{},
-		slots:    map[int]string{},
-		declared: map[string]bool{},
-		out:      &strings.Builder{},
-		aliases:  aliases,
+		scope:         map[int]string{},
+		slots:         map[int]string{},
+		declared:      map[string]bool{},
+		stringsByText: map[string]string{},
+		out:           &strings.Builder{},
+		aliases:       aliases,
 	}
 	for _, doc := range docs {
 		g.docs = append(g.docs, newDocState(doc))
@@ -70,7 +71,21 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 			return nil, err
 		}
 	}
+	g.emitAux()
 	return []byte(g.out.String()), nil
+}
+
+// emitAux writes the module-level values the functions produced while they
+// were lowered: the strings the runtime checks name and, when a check was
+// emitted, the panic declaration. Both may follow the functions because LLVM
+// resolves forward references to global values.
+func (g *generator) emitAux() {
+	for _, s := range g.strings {
+		g.out.WriteString(s)
+	}
+	if g.needPanicDecl {
+		g.out.WriteString("declare void @willrt_panic(ptr, ptr, ptr)\n")
+	}
 }
 
 // docState is the per-file part of the translation: record ids and the callable
@@ -280,6 +295,13 @@ type generator struct {
 	// aliases maps an import path that aliases a package to its canonical
 	// path, so a qualified member resolves to the symbol the package emits.
 	aliases map[string]string
+	// fnSymbol is the stable symbol of the function being lowered; a runtime
+	// check names it in the report. strings holds the module-level string
+	// constants the checks use, and stringsByText shares equal texts.
+	fnSymbol      string
+	strings       []string
+	stringsByText map[string]string
+	needPanicDecl bool
 }
 
 // emitDoc lowers every function of the current document, in source order.
@@ -415,6 +437,7 @@ func (g *generator) errf(id int, format string, args ...any) error {
 
 func (g *generator) funcDecl(fn willc.Record) error {
 	name := fieldText(fn, "text")
+	g.fnSymbol = g.cur.funcs[fn.ID]
 	recv := g.receiverOf(fn.ID)
 	result := ""
 	var params []willc.Record
@@ -505,6 +528,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 // voidFunc lowers a function that returns no value.
 func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
 	g.resultType = ""
+	g.fnSymbol = g.cur.funcs[fn.ID]
 	g.labels = 0
 	g.slots = map[int]string{}
 	g.slotNames = map[string]int{}
@@ -752,18 +776,27 @@ func (g *generator) assignStmt(r willc.Record) error {
 		if err != nil {
 			return err
 		}
-		instr := arithInstr(strings.TrimSuffix(op, "="), typ, !isUnsigned(text))
-		if instr == "" {
-			return g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, op)
-		}
+		base := strings.TrimSuffix(op, "=")
 		current := g.load(typ, ptr)
 		value, err := g.value(valueID)
 		if err != nil {
 			return err
 		}
-		g.tmp++
-		tmp := "%t" + strconv.Itoa(g.tmp)
-		fmt.Fprintf(g.out, "  %s = %s %s %s, %s\n", tmp, instr, typ, current, value)
+		signed := !isUnsigned(text)
+		var tmp string
+		if !isFloatType(typ) && isCheckedArith(base) {
+			tmp, err = g.checkedArith(base, typ, signed, current, value, valueID, r)
+			if err != nil {
+				return err
+			}
+		} else {
+			instr := arithInstr(base, typ, signed)
+			if instr == "" {
+				return g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, op)
+			}
+			tmp = g.newTmp()
+			fmt.Fprintf(g.out, "  %s = %s %s %s, %s\n", tmp, instr, typ, current, value)
+		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, tmp, ptr)
 		return nil
 	}
@@ -1151,6 +1184,17 @@ func (g *generator) value(id int) (string, error) {
 		return "", g.errf(id, "cannot translate node #%d: an aggregate is a place, not a scalar value", id)
 	case "slice":
 		return "", g.errf(id, "cannot translate node #%d: a view is a place, not a scalar value", id)
+	case "index":
+		ptr, typ, err := g.indexAddr(r)
+		if err != nil {
+			return "", err
+		}
+		if isAggregateType(typ) {
+			return "", g.errf(id, "cannot translate node #%d: the element is an aggregate, not a scalar", id)
+		}
+		return g.load(typ, ptr), nil
+	case "cast":
+		return g.castValue(r)
 	case "un":
 		return g.unary(r)
 	case "bin":
@@ -1191,6 +1235,23 @@ func (g *generator) unary(r willc.Record) (string, error) {
 			fmt.Fprintf(g.out, "  %s = fneg %s %s\n", name, typ, x)
 			break
 		}
+		text, err := g.willTypeText(refField(r, "expr"))
+		if err != nil {
+			return "", err
+		}
+		width := intWidth(typ)
+		if width < 8 {
+			return "", g.errf(r.ID, "cannot translate node #%d: %s cannot be negated", r.ID, typ)
+		}
+		bad := g.newTmp()
+		if !isUnsigned(text) {
+			fmt.Fprintf(g.out, "  %s = icmp eq %s %s, %s\n", bad, typ, x, signedMins[width])
+		} else {
+			// The negative of a nonzero unsigned value does not fit, so any
+			// nonzero operand overflows the type.
+			fmt.Fprintf(g.out, "  %s = icmp ne %s %s, 0\n", bad, typ, x)
+		}
+		g.panicCheck(bad, panicOverflow, r)
 		fmt.Fprintf(g.out, "  %s = sub %s 0, %s\n", name, typ, x)
 	case "~":
 		if isFloatType(typ) {
@@ -1236,25 +1297,29 @@ func (g *generator) binary(r willc.Record) (string, error) {
 		return "", err
 	}
 	signed := !isUnsigned(text)
-	g.tmp++
-	name := "%t" + strconv.Itoa(g.tmp)
 	switch op {
 	case "&&", "||":
 		instr := "and"
 		if op == "||" {
 			instr = "or"
 		}
+		name := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = %s i1 %s, %s\n", name, instr, l, right)
 		return name, nil
 	case "==", "!=", "<", "<=", ">", ">=":
 		instr, predicate := compareInstr(typ, signed, op)
+		name := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = %s %s %s %s, %s\n", name, instr, predicate, typ, l, right)
 		return name, nil
+	}
+	if !isFloatType(typ) && isCheckedArith(op) {
+		return g.checkedArith(op, typ, signed, l, right, rID, r)
 	}
 	instr := arithInstr(op, typ, signed)
 	if instr == "" {
 		return "", g.errf(r.ID, "cannot translate node #%d: operator %s is not lowered yet", r.ID, op)
 	}
+	name := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = %s %s %s, %s\n", name, instr, typ, l, right)
 	return name, nil
 }

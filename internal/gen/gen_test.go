@@ -37,8 +37,7 @@ func emitWillcAs(t *testing.T, src, module string) *willc.Doc {
 	return doc
 }
 
-func TestEmitIntegerFunction(t *testing.T) {
-	doc := emitWillc(t, "func Add(a: i32, b: i32) -> i32 {\n    return a + b\n}\n")
+func TestEmitIntegerFunction(t *testing.T) {	doc := emitWillc(t, "func Add(a: i32, b: i32) -> i32 {\n    return a + b\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -47,13 +46,137 @@ func TestEmitIntegerFunction(t *testing.T) {
 	for _, want := range []string{
 		`define i32 @"example.com/app.Add"(i32 %a, i32 %b) {`,
 		"entry:",
-		"add i32 %a, %b",
-		"ret i32 %t1",
+		"call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %a, i32 %b)",
+		"extractvalue {i32, i1}",
+		"call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)",
+		`@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00"`,
+		"ret i32 %t2",
 		"}",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
+	}
+}
+
+func TestEmitIndexChecksTheBound(t *testing.T) {
+	src := "func At(xs: []i32, i: usize) -> i32 {\n    return xs[i]\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"icmp uge i64 %i, %t",
+		`c"index out of bounds\00"`,
+		"getelementptr inbounds i32, ptr %t",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitSignedIndexChecksBelowZero(t *testing.T) {
+	src := "func At(xs: [2]i32, i: i32) -> i32 {\n    return xs[i]\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"icmp slt i32 %i, 0",
+		"sext i32 %i to i64",
+		"icmp uge i64 %t2, 2",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitSliceChecksBothBounds(t *testing.T) {
+	src := "func Mid(xs: []i32, lo: usize, hi: usize) -> i32 {\n    return xs[Range(lo, hi)][0]\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"icmp ugt i64 %lo, %hi",
+		"icmp ugt i64 %hi, %t",
+		`c"slice bounds out of range\00"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitCheckedCasts(t *testing.T) {
+	src := "func Widen(a: i32) -> i64 {\n    return i64(a)\n}\n\n" +
+		"func Narrow(a: i64) -> i32 {\n    return i32(a)\n}\n\n" +
+		"func FromFloat(f: f64) -> i32 {\n    return i32(f)\n}\n\n" +
+		"func ToFloat(a: i32) -> f64 {\n    return f64(a)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"sext i32 %a to i64",
+		"icmp slt i64 %a, -2147483648",
+		"icmp sgt i64 %a, 2147483647",
+		`c"conversion out of range\00"`,
+		"fcmp uno double %f, %f",
+		`c"cannot convert NaN to integer\00"`,
+		"fcmp oge double %f, 2147483648.0",
+		"fptosi double %f to i32",
+		"sitofp i32 %a to double",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitCheckedArithmeticUsesFixedMessages(t *testing.T) {
+	src := "func Mul(a: i32, b: i32) -> i32 {\n    return a * b\n}\n\n" +
+		"func Rem(a: i32, b: i32) -> i32 {\n    return a % b\n}\n\n" +
+		"func Shr(a: i32, n: i32) -> i32 {\n    return a >> n\n}\n\n" +
+		"func Neg(a: i32) -> i32 {\n    return -a\n}\n\n" +
+		"func ShiftConst(a: i32) -> i32 {\n    return a << 1\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"call {i32, i1} @llvm.smul.with.overflow.i32(i32 %a, i32 %b)",
+		`c"integer overflow\00"`,
+		`c"division by zero\00"`,
+		`c"shift amount out of range\00"`,
+		"icmp eq i32 %b, 0",
+		"icmp eq i32 %a, -2147483648",
+		"and i1",
+		"ashr i32 %a, %n",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	// A constant shift in range is checked by the front end, so the lowering
+	// does not emit the runtime check for it.
+	if strings.Contains(text, "icmp uge i32 1, 32") {
+		t.Errorf("a constant shift emitted a runtime check:\n%s", text)
+	}
+	if strings.Count(text, "shift amount out of range") != 1 {
+		t.Errorf("the shift message is not emitted once:\n%s", text)
 	}
 }
 
@@ -294,7 +417,7 @@ func TestEmitLogicalAndNegation(t *testing.T) {
 		"icmp slt i32 %a, %b",
 		"icmp ne i32 %a, 0",
 		"and i1",
-		"sub i32 0, %a",
+		"call {i32, i1} @llvm.ssub.with.overflow.i32(i32 0, i32 %a)",
 		"xor i32 %b, -1",
 	} {
 		if !strings.Contains(text, want) {
@@ -364,7 +487,7 @@ func TestEmitCompoundAssignment(t *testing.T) {
 		t.Fatalf("gen: %v", err)
 	}
 	text := string(ir)
-	for _, want := range []string{"add i32 %t", "store i32 %t"} {
+	for _, want := range []string{"call {i32, i1} @llvm.sadd.with.overflow.i32", "store i32 %t"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
@@ -459,7 +582,7 @@ func TestEmitStructFieldRead(t *testing.T) {
 		"define i32 @\"example.com/app.Sum\"(ptr %p) {",
 		"getelementptr inbounds %\"struct.example.com/app.Point\", ptr %p, i32 0, i32 0",
 		"getelementptr inbounds %\"struct.example.com/app.Point\", ptr %p, i32 0, i32 1",
-		"add i32",
+		"call {i32, i1} @llvm.sadd.with.overflow.i32",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -558,9 +681,8 @@ func TestEmitI64Function(t *testing.T) {
 	text := string(ir)
 	for _, want := range []string{
 		`define i64 @"example.com/app.Add"(i64 %a, i64 %b) {`,
-		"add i64 %a, %b",
-		"ret i64",
-	} {
+		"call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %a, i64 %b)",
+		"ret i64",	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
@@ -662,7 +784,7 @@ func TestEmitStructWithWideFields(t *testing.T) {
 		"store i32 2",
 		"store double 3.5",
 		"load i64, ptr",
-		"add i64",
+		"call {i64, i1} @llvm.sadd.with.overflow.i64",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -702,8 +824,8 @@ func TestEmitArrayIteration(t *testing.T) {
 		t.Errorf("the element binding was copied into a slot:\n%s", text)
 	}
 	// The array is borrowed for the loop, so its length cannot change and no
-	// bound check is emitted.
-	if strings.Contains(text, "willrt_panic") {
+	// bound check is emitted. The body's arithmetic is checked on its own.
+	if strings.Contains(text, `c"index out of bounds\00"`) {
 		t.Errorf("the loop emitted a bound check:\n%s", text)
 	}
 }
@@ -719,7 +841,7 @@ func TestEmitArrayIterationWithOneBinding(t *testing.T) {
 		t.Fatalf("gen: %v", err)
 	}
 	text := string(ir)
-	for _, want := range []string{"icmp ult i64", "[2 x i64]", "add i64"} {
+	for _, want := range []string{"icmp ult i64", "[2 x i64]", "call {i64, i1} @llvm.sadd.with.overflow.i64"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
@@ -767,8 +889,9 @@ func TestEmitViewAndArrayIteration(t *testing.T) {
 		}
 	}
 	// The length is loaded once before the header and the loop borrows the
-	// container, so no bound check is emitted.
-	if strings.Contains(text, "willrt_panic") {
+	// container, so no bound check is emitted. The body's arithmetic is checked
+	// on its own.
+	if strings.Contains(text, `c"index out of bounds\00"`) {
 		t.Errorf("the view loop emitted a bound check:\n%s", text)
 	}
 }
@@ -789,7 +912,7 @@ func TestEmitMethodCallPassesTheReceiver(t *testing.T) {
 		`define void @"example.com/app.Counter.Add"(ptr %c, i32 %d) {`,
 		`call void @"example.com/app.Counter.Add"(ptr %v.c, i32 3)`,
 		`call i32 @"example.com/app.Counter.Get"(ptr %v.c)`,
-		"add i32",
+		"call {i32, i1} @llvm.sadd.with.overflow.i32",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -810,7 +933,7 @@ func TestEmitTopLevelInitialization(t *testing.T) {
 		`@"example.com/app.counter" = internal global i32 zeroinitializer`,
 		`define void @"example.com/app.will$init"() {`,
 		`store i32 40, ptr @"example.com/app.counter"`,
-		"add i32",
+		"call {i32, i1} @llvm.sadd.with.overflow.i32",
 		`call void @"example.com/app.will$init"()`,
 		`call i32 @"example.com/app.will$main"()`,
 		"call void @willrt_shutdown()",
