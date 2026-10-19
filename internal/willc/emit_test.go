@@ -53,7 +53,7 @@ func TestEmitCharLiteralIsU32(t *testing.T) {
 	// A character is one Unicode scalar value, so its recorded type is u32 even
 	// though the source spelling is a quoted character.
 	data := emitSource(t, "a.will", "func F() -> u32 {\n    return 'a'\n}\n", "m")
-	if !strings.Contains(string(data), `kind=char text="a" type="u32"`) {
+	if !strings.Contains(string(data), `kind=char text="97" type="u32"`) {
 		t.Fatalf("the character literal type is not u32:\n%s", data)
 	}
 }

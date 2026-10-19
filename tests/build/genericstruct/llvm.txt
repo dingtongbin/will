@@ -41,3 +41,4 @@ entry:
 @.str.1 = private unnamed_addr constant [16 x i8] c"main.will:12:12\00", align 1
 @.str.2 = private unnamed_addr constant [36 x i8] c"example.com/genericstruct.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

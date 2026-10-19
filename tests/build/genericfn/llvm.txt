@@ -34,3 +34,4 @@ entry:
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:6:12\00", align 1
 @.str.2 = private unnamed_addr constant [28 x i8] c"example.com/genericfn.Twice\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

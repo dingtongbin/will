@@ -70,7 +70,7 @@ var kindSpecs = map[string]KindSpec{
 	"unwrap":  {Required: []string{"expr"}},
 	"discard": {Required: []string{"expr"}},
 	"panic":   {Required: []string{"arg"}},
-	"assert":  {Required: []string{"arg"}},
+	"assert":  {Repeatable: []string{"arg"}},
 	"interp":  {Repeatable: []string{"part"}},
 	"spawn":   {Required: []string{"call"}, Optional: []string{"lane"}},
 	"join":    {Required: []string{"task"}},

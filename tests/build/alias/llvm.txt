@@ -28,3 +28,4 @@ entry:
 @.str.1 = private unnamed_addr constant [17 x i8] c"shared.will:2:12\00", align 1
 @.str.2 = private unnamed_addr constant [26 x i8] c"example.com/shared.Double\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

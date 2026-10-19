@@ -185,6 +185,10 @@ func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 		entries = append(entries, "ptr @"+llvmSymbol(method))
 	}
 	g.vtables[key] = sym
+	if g.emittedVtables[sym] {
+		return sym, nil
+	}
+	g.emittedVtables[sym] = true
 	g.strings = append(g.strings, fmt.Sprintf("@%s = internal constant [%d x ptr] [%s], align 8\n",
 		llvmSymbol(sym), len(entries), strings.Join(entries, ", ")))
 	return sym, nil

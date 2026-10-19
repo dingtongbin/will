@@ -91,14 +91,8 @@ static void willrt_report_default_write(const char* text, size_t size) {
 #endif
 }
 
-void willrt_report_write(const char* text) {
-    size_t size;
-
-    if (text == NULL) {
-        return;
-    }
-    size = strlen(text);
-    if (size == 0) {
+void willrt_report_write_n(const char* text, size_t size) {
+    if (text == NULL || size == 0) {
         return;
     }
     if (willrt_report_sink_fn != NULL) {
@@ -108,17 +102,25 @@ void willrt_report_write(const char* text) {
     willrt_report_default_write(text, size);
 }
 
+void willrt_report_write(const char* text) {
+    if (text == NULL) {
+        return;
+    }
+    willrt_report_write_n(text, strlen(text));
+}
+
 void willrt_report_set_sink(void (*fn)(const char*, size_t, void*), void* ctx) {
     willrt_report_sink_fn = fn;
     willrt_report_sink_ctx = fn != NULL ? ctx : NULL;
 }
 
-void willrt_panic(const char* message, const char* site, const char* symbol) {
+void willrt_panic_n(const char* message, size_t size, const char* site, const char* symbol) {
     if (message == NULL) {
         message = "";
+        size = 0;
     }
     willrt_report_write("panic: ");
-    willrt_report_write(message);
+    willrt_report_write_n(message, size);
     willrt_report_write("\n");
     if (site != NULL && site[0] != '\0') {
         willrt_report_write("  at ");
@@ -128,6 +130,10 @@ void willrt_panic(const char* message, const char* site, const char* symbol) {
         willrt_report_write("\n");
     }
     _Exit(101);
+}
+
+void willrt_panic(const char* message, const char* site, const char* symbol) {
+    willrt_panic_n(message, message != NULL ? strlen(message) : 0, site, symbol);
 }
 
 /* Returns the first entry whose address is the greatest one not above

@@ -657,6 +657,7 @@ entry:
 @.str.7 = private unnamed_addr constant [16 x i8] c"main.will:28:13\00", align 1
 @.str.8 = private unnamed_addr constant [16 x i8] c"main.will:30:12\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
 declare void @memmove(ptr, ptr, i64)

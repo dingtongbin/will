@@ -1206,7 +1206,9 @@ func (c *checker) sliceOf(t *Type) *Type {
 		return t
 	case NamedKind:
 		if t.Name() == "Array" {
-			return t
+			// Slicing an Array yields the read-only view the methods return,
+			// not the Array itself.
+			return c.in.view(argAt(t, 0))
 		}
 	}
 	if t.Kind() == ScalarKind && t.Name() == "str" {

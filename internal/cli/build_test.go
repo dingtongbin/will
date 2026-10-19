@@ -339,13 +339,16 @@ func TestLoweringFailureIsG0001(t *testing.T) {
 	// front-end error.
 	src := "func F(cb: func(i32) -> i32) -> i32 {\n    return 0\n}\n\nfunc main() -> i32 {\n    return 0\n}\n"
 	path := writeFile(t, t.TempDir(), "main.will", src)
-	code, out, _ := runCLI("emit-llvm", path)
+	code, out, errOut := runCLI("emit-llvm", path)
 	if code != 1 {
 		t.Fatalf("code = %d, want 1", code)
 	}
-	if !strings.Contains(out, "G0001 cannot translate node #") ||
-		!strings.Contains(out, "    help: this is a compiler bug; report it with the willc file") {
-		t.Fatalf("stdout = %q", out)
+	if out != "" {
+		t.Fatalf("a failed emit-llvm wrote to stdout: %q", out)
+	}
+	if !strings.Contains(errOut, "G0001 cannot translate node #") ||
+		!strings.Contains(errOut, "    help: this is a compiler bug; report it with the willc file") {
+		t.Fatalf("stderr = %q", errOut)
 	}
 }
 

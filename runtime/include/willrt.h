@@ -122,6 +122,14 @@ void willrt_shutdown(void);
    site and symbol are static strings supplied by the compiler. */
 void willrt_panic(const char* message, const char* site, const char* symbol);
 
+/* willrt_panic_n is willrt_panic for a message that is bytes and a length, so
+   a will str does not have to be copied or terminated. Task containment is not
+   implemented yet, so it also ends the process. */
+void willrt_panic_n(const char* message, size_t size, const char* site, const char* symbol);
+
+/* willrt_report_write_n writes bytes that need not be NUL-terminated. */
+void willrt_report_write_n(const char* text, size_t size);
+
 /* willrt_report_write sends the NUL-terminated text to the current report
    target. The text must not be NULL. The default target is standard error,
    written without buffering. */

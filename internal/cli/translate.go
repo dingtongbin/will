@@ -15,7 +15,7 @@ func translateError(err error) string {
 	var we *willc.Error
 	if errors.As(err, &we) {
 		if we.ID > 0 {
-			return fmt.Sprintf("G0001 cannot translate node #%d\n%s", we.ID, help)
+			return fmt.Sprintf("G0001 cannot translate node #%d: %s\n%s", we.ID, we.Message, help)
 		}
 		return "G0001 " + we.Message + "\n" + help
 	}

@@ -49,3 +49,4 @@ entry:
 @.str.1 = private unnamed_addr constant [14 x i8] c"main.will:4:9\00", align 1
 @.str.2 = private unnamed_addr constant [22 x i8] c"example.com/loops.Sum\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

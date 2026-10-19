@@ -153,8 +153,10 @@ func (g *generator) constValueOf(id int) (string, bool) {
 		return "", false
 	}
 	switch fieldText(lit, "kind") {
-	case "int":
+	case "int", "char":
 		return literalIntText(fieldText(lit, "text")), true
+	case "float":
+		return literalFloatText(fieldText(lit, "text")), true
 	case "bool":
 		return fieldText(lit, "text"), true
 	}

@@ -60,3 +60,4 @@ entry:
 @.str.4 = private unnamed_addr constant [30 x i8] c"example.com/globals.will$main\00", align 1
 @.str.5 = private unnamed_addr constant [15 x i8] c"main.will:5:12\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

@@ -3,6 +3,7 @@ package willc
 import (
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/resolve"
@@ -203,7 +204,8 @@ func litKind(k token.Kind) string {
 func literalText(v *ast.LiteralExpr) string {
 	switch v.Kind {
 	case token.Char:
-		return strings.TrimSuffix(strings.TrimPrefix(v.Text, "'"), "'")
+		r, _ := utf8.DecodeRuneInString(v.Value)
+		return strconv.Itoa(int(r))
 	case token.String:
 		return strings.TrimSuffix(strings.TrimPrefix(v.Text, `"`), `"`)
 	case token.Bytes:

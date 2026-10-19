@@ -50,8 +50,9 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		declared:      map[string]bool{},
 		stringsByText: map[string]string{},
 		byteGlobals:   map[string]string{},
-		emittedTypes:  map[string]bool{},
-		out:           &strings.Builder{},
+		emittedTypes:   map[string]bool{},
+		emittedVtables: map[string]bool{},
+		out:            &strings.Builder{},
 		aliases:       aliases,
 	}
 	for _, doc := range docs {
@@ -88,6 +89,7 @@ func (g *generator) emitAux() {
 	}
 	if g.needPanicDecl {
 		g.out.WriteString("declare void @willrt_panic(ptr, ptr, ptr)\n")
+		g.out.WriteString("declare void @willrt_panic_n(ptr, i64, ptr, ptr)\n")
 	}
 	if g.needUTF8Decl {
 		g.out.WriteString("declare i32 @willrt_utf8_decode(ptr, i64, ptr)\n")
@@ -314,6 +316,7 @@ type generator struct {
 	structs      map[int]*structInfo
 	structInstances map[string]*structInfo
 	emittedTypes map[string]bool
+	emittedVtables map[string]bool
 	structDecl   map[string]int
 	enumDecl     map[string]int
 	ifaceDecl    map[string]int
@@ -1354,6 +1357,10 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 		// cover the free path; the lowering will emit it with the ownership
 		// pass.
 		return false, nil
+	case "panic":
+		return g.panicStmt(st)
+	case "assert":
+		return g.assertStmt(st)
 	}
 	return false, g.errf(st.ID, "cannot translate node #%d: statement %s is not lowered yet", st.ID, st.Kind)
 }
@@ -1617,6 +1624,8 @@ func (g *generator) value(id int) (string, error) {
 			return literalFloatText(fieldText(r, "text")), nil
 		case "bool":
 			return fieldText(r, "text"), nil
+		case "char":
+			return literalIntText(fieldText(r, "text")), nil
 		case "str", "bytes":
 			return "", g.errf(id, "cannot translate node #%d: a %s literal is a place, not a scalar", id, kind)
 		}
@@ -1631,6 +1640,12 @@ func (g *generator) value(id int) (string, error) {
 			return "", g.errf(id, "cannot translate node #%d: the constant %s is not a literal yet", id, name)
 		}
 		if info := g.globalRef(r); info != nil {
+			if info.isConst {
+				if info.value == "" {
+					return "", g.errf(id, "cannot translate node #%d: the constant %s is not a literal yet", id, name)
+				}
+				return info.value, nil
+			}
 			return g.load(info.typ, "@"+llvmSymbol(info.sym)), nil
 		}
 		if v, ok := g.patternVals[decl]; ok {
@@ -1753,6 +1768,10 @@ func (g *generator) exprStmt(st willc.Record) error {
 		_, _, err := g.callExpr(r)
 		return err
 	}
+	if r, ok := g.recs[id]; ok && (r.Kind == "panic" || r.Kind == "assert") {
+		_, err := g.stmt(r, false)
+		return err
+	}
 	_, err := g.value(id)
 	return err
 }
@@ -1859,6 +1878,18 @@ func (g *generator) binary(r willc.Record) (string, error) {
 		fmt.Fprintf(g.out, "  %s = %s %s %s %s, %s\n", name, instr, predicate, typ, l, right)
 		return name, nil
 	}
+	switch op {
+	case "+%", "-%", "*%", "<<%", ">>%":
+		// A wrapping operator is the machine operation: it never traps, so it
+		// needs no overflow check.
+		instr := arithInstr(op, typ, signed)
+		if instr == "" {
+			return "", g.errf(r.ID, "cannot translate node #%d: operator %s is not lowered yet", r.ID, op)
+		}
+		name := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = %s %s %s, %s\n", name, instr, typ, l, right)
+		return name, nil
+	}
 	if !isFloatType(typ) && isCheckedArith(op) {
 		return g.checkedArith(op, typ, signed, l, right, rID, r)
 	}
@@ -1895,11 +1926,17 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	if info, _ := g.enumVariantCall(r); info != nil {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: an enum value is a place, not a scalar", r.ID)
 	}
+	if name := g.genericCallName(r); name != "" {
+		return g.emitCall(r, name, false)
+	}
 	if qualified := textField(r, "to"); qualified != "" {
 		return g.emitCall(r, qualified, false)
 	}
 	if r.Kind == "mcall" {
 		if name := g.genericMethodName(r); name != "" {
+			return g.emitCall(r, name, false)
+		}
+		if name := g.genericCallName(r); name != "" {
 			return g.emitCall(r, name, false)
 		}
 		if _, _, known := g.containerCallResult(r); known {

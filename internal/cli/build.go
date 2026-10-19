@@ -70,7 +70,11 @@ func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		ds = append(ds, b.Freestanding()...)
 	}
 	ds = diag.FilterDisabled(ds, opts.disabled)
-	reportDiagnostics(ds, opts, stdout)
+	diagOut := stdout
+	if opts.textProduct {
+		diagOut = stderr
+	}
+	reportDiagnostics(ds, opts, diagOut)
 	if failed(ds, opts) {
 		return frontEnd{}, 1
 	}
@@ -95,7 +99,7 @@ func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 			}
 		}
 	}
-	reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
+	reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), diagOut)
 	return frontEnd{}, 1
 }
 
@@ -106,11 +110,15 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return frontEnd{}, 1
 	}
+	diagOut := stdout
+	if opts.textProduct {
+		diagOut = stderr
+	}
 	f, ds := parser.Parse(filepath.ToSlash(opts.path), data)
 	var bag diag.Bag
 	bag.AddAll(ds)
 	if f == nil {
-		reportDiagnostics(diag.FilterDisabled(bag.Diagnostics(), opts.disabled), opts, stdout)
+		reportDiagnostics(diag.FilterDisabled(bag.Diagnostics(), opts.disabled), opts, diagOut)
 		return frontEnd{}, 1
 	}
 	imports, modulePath, names, others, aliases := packageContext(opts.path)
@@ -125,12 +133,12 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		bag.AddAll(check.Freestanding(f))
 	}
 	all := diag.FilterDisabled(bag.Diagnostics(), opts.disabled)
-	reportDiagnostics(all, opts, stdout)
+	reportDiagnostics(all, opts, diagOut)
 	if failed(all, opts) {
 		return frontEnd{}, 1
 	}
 	if !fileDeclaresEntry(f, opts.entry) {
-		reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
+		reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), diagOut)
 		return frontEnd{}, 1
 	}
 	fe := frontEnd{file: opts.path, modulePath: modulePath, imports: imports, ast: f, litTypes: checked.LiteralTypes, callTypes: checked.CallTypes, nameTypes: checked.NameTypes, aliases: aliases}
@@ -352,14 +360,18 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 	if code != 0 {
 		return nil, "", code
 	}
+	diagOut := stdout
+	if opts.textProduct {
+		diagOut = stderr
+	}
 	docs, texts, err := fe.docs(opts)
 	if err != nil {
-		reportTranslate(stdout, err)
+		reportTranslate(diagOut, err)
 		return nil, "", 1
 	}
 	record, err := moduleDecisionText(fe, opts.target)
 	if err != nil {
-		reportTranslate(stdout, &willc.Error{Message: err.Error()})
+		reportTranslate(diagOut, &willc.Error{Message: err.Error()})
 		return nil, "", 1
 	}
 	store, key := loweringCacheKey(texts, record, opts)
@@ -370,7 +382,7 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 	}
 	ir, err := gen.EmitModuleWithAliases(docs, opts.entry, fe.modulePath, fe.aliases)
 	if err != nil {
-		reportTranslate(stdout, err)
+		reportTranslate(diagOut, err)
 		return nil, "", 1
 	}
 	if store != nil {
@@ -540,6 +552,7 @@ func runEmitLLVM(args []string, stdout, stderr io.Writer) int {
 	if code != 0 {
 		return code
 	}
+	opts.textProduct = true
 	ir, _, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
@@ -553,6 +566,7 @@ func runEmitAsm(args []string, stdout, stderr io.Writer) int {
 	if code != 0 {
 		return code
 	}
+	opts.textProduct = true
 	ir, _, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code

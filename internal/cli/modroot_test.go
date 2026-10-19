@@ -41,11 +41,14 @@ func TestFileModeAgreesWithBuildOnErrors(t *testing.T) {
 	})
 	file := filepath.Join(root, "src", "main.will")
 	checkCode, checkOut, _ := runCLI("check", file)
-	buildCode, buildOut, _ := runCLI("emit-llvm", file)
+	buildCode, buildOut, buildErr := runCLI("emit-llvm", file)
 	if checkCode != 1 || buildCode != 1 {
 		t.Fatalf("codes = %d and %d, want 1 and 1", checkCode, buildCode)
 	}
-	if checkOut != buildOut {
-		t.Fatalf("check said %q, build said %q", checkOut, buildOut)
+	if buildOut != "" {
+		t.Fatalf("emit-llvm wrote diagnostics to stdout: %q", buildOut)
+	}
+	if checkOut != buildErr {
+		t.Fatalf("check said %q, emit-llvm said %q", checkOut, buildErr)
 	}
 }

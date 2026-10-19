@@ -63,27 +63,35 @@ func (g *generator) planInstances() {
 	for i := 0; i < base; i++ {
 		d := g.docs[i]
 		for _, r := range d.recs {
-			if r.Kind != "call" || len(refsOf(r, "typearg")) == 0 {
+			if (r.Kind != "call" && r.Kind != "mcall") || len(refsOf(r, "typearg")) == 0 {
 				continue
 			}
-			target := refField(r, "to")
-			fn, ok := d.recs[target]
-			if !ok || fn.Kind != "func" {
+			calleeDoc := d
+			var fn willc.Record
+			if target := refField(r, "to"); target != 0 {
+				fn = d.recs[target]
+			} else if sym := textField(r, "to"); sym != "" {
+				foundDoc, found, ok := g.findGenericFunc(sym)
+				if !ok {
+					continue
+				}
+				calleeDoc, fn = foundDoc, found
+			} else {
 				continue
 			}
-			if !g.hasTypeParamsIn(d, fn) {
+			if fn.Kind != "func" || !g.hasTypeParamsIn(calleeDoc, fn) {
 				continue
 			}
 			args := typeArgTextsIn(d, r)
 			if len(args) == 0 {
 				continue
 			}
-			key := d.path + "|" + fieldText(fn, "text") + "|" + strings.Join(args, ",")
+			key := calleeDoc.path + "|" + fieldText(fn, "text") + "|" + strings.Join(args, ",")
 			if seen[key] {
 				continue
 			}
 			seen[key] = true
-			doc, ok := g.cloneInstance(d, fn, args)
+			doc, ok := g.cloneInstance(calleeDoc, fn, args)
 			if !ok {
 				continue
 			}
@@ -91,6 +99,21 @@ func (g *generator) planInstances() {
 		}
 	}
 	g.planMethodInstances(base, seen)
+}
+
+// findGenericFunc finds the free generic function one qualified symbol names.
+func (g *generator) findGenericFunc(sym string) (*docState, willc.Record, bool) {
+	for _, d := range g.docs {
+		for _, f := range d.recs {
+			if f.Kind != "func" || receiverOfIn(d, f.ID) != nil {
+				continue
+			}
+			if qualify(d.path, fieldText(f, "text")) == sym && g.hasTypeParamsIn(d, f) {
+				return d, f, true
+			}
+		}
+	}
+	return nil, willc.Record{}, false
 }
 
 func (g *generator) hasTypeParamsIn(d *docState, fn willc.Record) bool {
@@ -385,32 +408,79 @@ func (g *generator) planMethodInstances(base int, seen map[string]bool) {
 	}
 }
 
-// genericCallName returns the mangled symbol of a generic call in the current
-// document, or "" when the call is not generic.
-func (g *generator) genericCallName(r willc.Record) string {
-	target := refField(r, "to")
-	fn, ok := g.recs[target]
-	if !ok || fn.Kind != "func" || !g.hasTypeParams(fn) {
-		return ""
-	}
+// genericTarget resolves a generic function call to its declaration, whether
+// the callee is a node of the current document or a qualified symbol of
+// another one.
+func (g *generator) genericTarget(r willc.Record) (*docState, willc.Record, []string, bool) {
 	args := g.typeArgTexts(r)
 	if len(args) == 0 {
+		return nil, willc.Record{}, nil, false
+	}
+	if id := refField(r, "to"); id != 0 {
+		fn, ok := g.recs[id]
+		if ok && fn.Kind == "func" && g.hasTypeParams(fn) {
+			return g.cur, fn, args, true
+		}
+		return nil, willc.Record{}, nil, false
+	}
+	sym := textField(r, "to")
+	if sym == "" {
+		return nil, willc.Record{}, nil, false
+	}
+	for _, d := range g.docs {
+		for _, f := range d.recs {
+			if f.Kind != "func" || receiverOfIn(d, f.ID) != nil {
+				continue
+			}
+			if qualify(d.path, fieldText(f, "text")) == sym && g.hasTypeParamsIn(d, f) {
+				return d, f, args, true
+			}
+		}
+	}
+	return nil, willc.Record{}, nil, false
+}
+
+// genericCallName returns the mangled symbol of a generic call, or "" when the
+// call is not generic.
+func (g *generator) genericCallName(r willc.Record) string {
+	_, fn, args, ok := g.genericTarget(r)
+	if !ok {
 		return ""
 	}
-	return qualify(g.pkg, instanceName(fieldText(fn, "text"), args))
+	if id := refField(r, "to"); id != 0 {
+		return qualify(g.pkg, instanceName(fieldText(fn, "text"), args))
+	}
+	return instanceName(textField(r, "to"), args)
 }
 
 // genericCallResult returns the substituted result text of a generic call, or
 // "" when the call is not generic.
 func (g *generator) genericCallResult(r willc.Record) string {
-	target := refField(r, "to")
-	fn, ok := g.recs[target]
-	if !ok || fn.Kind != "func" || !g.hasTypeParams(fn) {
+	d, fn, args, ok := g.genericTarget(r)
+	if !ok {
 		return ""
 	}
-	args := g.typeArgTexts(r)
-	if len(args) == 0 {
-		return ""
+	return substituteText(fieldText(fn, "type"), typeParamNamesIn(d, fn), args)
+}
+
+// receiverOfIn returns the receiver record of a function in one document.
+func receiverOfIn(d *docState, fn int) *willc.Record {
+	for _, r := range d.recs {
+		if r.Kind == "receiver" && refField(r, "parent") == fn {
+			rec := r
+			return &rec
+		}
 	}
-	return substituteText(fieldText(fn, "type"), g.typeParamNames(fn), args)
+	return nil
+}
+
+// typeParamNamesIn returns the declared type parameter names of a function.
+func typeParamNamesIn(d *docState, fn willc.Record) []string {
+	var names []string
+	for _, r := range d.recs {
+		if r.Kind == "typeparam" && refField(r, "parent") == fn.ID {
+			names = append(names, fieldText(r, "text"))
+		}
+	}
+	return names
 }

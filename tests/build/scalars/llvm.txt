@@ -48,3 +48,4 @@ entry:
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:2:12\00", align 1
 @.str.2 = private unnamed_addr constant [24 x i8] c"example.com/scalars.Sum\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)
