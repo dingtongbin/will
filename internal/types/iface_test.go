@@ -70,6 +70,47 @@ func Use(x: Shape) -> i32 {
 	}
 }
 
+func TestInterfaceToInterface(t *testing.T) {
+	narrow := `interface A {
+    func F() -> i32
+}
+
+interface B {
+    func F() -> i32
+    func G() -> i32
+}
+
+func Use(b: B) {
+    var a: A = b
+    _ = a
+}
+`
+	for _, d := range checkWithResolve(t, narrow) {
+		if d.Code == diag.CodeInterfaceUnsatisfied {
+			t.Fatalf("B should satisfy A:\n%s", diag.FormatAll(checkWithResolve(t, narrow)))
+		}
+	}
+
+	wider := `interface A {
+    func F() -> i32
+}
+
+interface B {
+    func F() -> i32
+    func G() -> i32
+}
+
+func Use(a: A) {
+    var b: B = a
+    _ = b
+}
+`
+	d := findCode(t, checkWithResolve(t, wider), diag.CodeInterfaceUnsatisfied)
+	if d.Help != "missing method G" {
+		t.Errorf("help = %q, want missing method G", d.Help)
+	}
+}
+
 func TestDispatchPoints(t *testing.T) {
 	src := `interface Shape {
     func Area() -> i32

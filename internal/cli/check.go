@@ -34,9 +34,10 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runFmt(args[1:], stdout, stderr)
 	case "index":
 		return runIndex(args[1:], stdout, stderr)
+	case "new":
+		return runNew(args[1:], stdout, stderr)
 	case "version":
-		fmt.Fprintln(stdout, buildIdentity().Compiler)
-		return 0
+		return runVersion(stdout)
 	}
 	fmt.Fprintf(stderr, "will: unknown command %s\n", args[0])
 	fmt.Fprint(stderr, usage)
@@ -207,7 +208,7 @@ func checkFile(bag *diag.Bag, file string, data []byte) {
 // buildIdentity reports the build identity attached to machine-readable
 // diagnostics. It is deterministic for one binary and target.
 func buildIdentity() diag.Build {
-	return diag.Build{Compiler: "will dev", Target: targetTriple(), Opt: "-O0"}
+	return diag.Build{Compiler: "will " + CompilerVersion, Target: targetTriple(), Opt: "-O0"}
 }
 
 func targetTriple() string {

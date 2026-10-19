@@ -319,6 +319,14 @@ func (c *checker) mismatch(pos source.Pos, got, want *Type, isArg bool, callee s
 		if got != nil && c.env.derives[got.Name()][want.Name()] {
 			return
 		}
+		if have, isIface := c.env.ifaces[got.Name()]; isIface {
+			if missing := missingFromMethods(have, methods); missing != "" {
+				c.bag.Error(pos, diag.CodeInterfaceUnsatisfied,
+					"type "+got.String()+" does not satisfy "+want.String(),
+					"missing method "+missing)
+			}
+			return
+		}
 		if missing := c.missingMethod(got, methods); missing != "" {
 			c.bag.Error(pos, diag.CodeInterfaceUnsatisfied,
 				"type "+got.String()+" does not satisfy "+want.String(),
@@ -343,19 +351,44 @@ func (c *checker) missingMethod(got *Type, methods []*methodInfo) string {
 	}
 	for _, m := range methods {
 		sig, ok := c.env.methods[got.Name()+"."+m.name]
-		if !ok {
+		if !ok || !sameSignature(sig, m.sig) {
 			return m.name
-		}
-		if len(sig.params) != len(m.sig.params) || !Equal(sig.result, m.sig.result) {
-			return m.name
-		}
-		for i := range sig.params {
-			if !Equal(sig.params[i], m.sig.params[i]) {
-				return m.name
-			}
 		}
 	}
 	return ""
+}
+
+// missingFromMethods reports the first required method that the interface
+// have does not declare with the same signature.
+func missingFromMethods(have, want []*methodInfo) string {
+	for _, w := range want {
+		found := false
+		for _, h := range have {
+			if h.name == w.name && sameSignature(h.sig, w.sig) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return w.name
+		}
+	}
+	return ""
+}
+
+func sameSignature(a, b *signature) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	if len(a.params) != len(b.params) || a.variadic != b.variadic {
+		return false
+	}
+	for i := range a.params {
+		if !Equal(a.params[i], b.params[i]) {
+			return false
+		}
+	}
+	return Equal(a.result, b.result)
 }
 
 func (c *checker) checkCallArgs(s *inferScope, sig *signature, args []*ast.CallArg) {
