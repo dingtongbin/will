@@ -766,6 +766,30 @@ func TestEmitViewAndArrayIteration(t *testing.T) {
 	}
 }
 
+func TestEmitMethodCallPassesTheReceiver(t *testing.T) {
+	src := "struct Counter {\n    n: i32\n}\n\n" +
+		"func (c: Counter) Get() -> i32 {\n    return c.n\n}\n\n" +
+		"func (mut c: Counter) Add(d: i32) {\n    c.n += d\n}\n\n" +
+		"func main() -> i32 {\n    var c: Counter = Counter { n: 7 }\n    c.Add(3)\n    return c.Get()\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define i32 @"example.com/app.Counter.Get"(ptr %c) {`,
+		`define void @"example.com/app.Counter.Add"(ptr %c, i32 %d) {`,
+		`call void @"example.com/app.Counter.Add"(ptr %v.c, i32 3)`,
+		`call i32 @"example.com/app.Counter.Get"(ptr %v.c)`,
+		"add i32",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitSliceBuildsAView(t *testing.T) {
 	src := "func Sum(xs: []i32) -> i32 {\n" +
 		"    var total: i32 = 0\n" +

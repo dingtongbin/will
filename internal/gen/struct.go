@@ -304,10 +304,51 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 		}
 		return "", g.errf(r.ID, "cannot translate node #%d: %s is not a function of this module", r.ID, qualified)
 	}
+	if r.Kind == "mcall" && g.isCLink(r) {
+		return "", nil
+	}
+	if r.Kind == "mcall" {
+		symbol, err := g.methodSymbol(r)
+		if err != nil {
+			return "", err
+		}
+		if t, ok := g.sigs[symbol]; ok {
+			return t, nil
+		}
+		return "", g.errf(r.ID, "cannot translate node #%d: %s has no known result", r.ID, symbol)
+	}
 	if fn, ok := g.recs[refField(r, "to")]; ok && fn.Kind == "func" {
 		return fieldText(fn, "type"), nil
 	}
 	return "", nil
+}
+
+// isCLink reports whether a method call goes through the c qualifier.
+func (g *generator) isCLink(r willc.Record) bool {
+	if r.Kind != "mcall" {
+		return false
+	}
+	recv := g.recs[refField(r, "recv")]
+	if recv.Kind != "name" {
+		return false
+	}
+	cimport := refField(recv, "to")
+	return cimport != 0 && g.linkNamed(cimport, fieldText(r, "text")) != ""
+}
+
+// methodSymbol resolves a method call on the receiver's type to the symbol the
+// method is emitted under. Methods of the same package are lowered; a receiver
+// whose type is a borrow or a local both give their declared type text.
+func (g *generator) methodSymbol(r willc.Record) (string, error) {
+	typ, err := g.willTypeText(refField(r, "recv"))
+	if err != nil {
+		return "", err
+	}
+	name := fieldText(r, "text")
+	if sym, ok := g.cur.methods[typ+"."+name]; ok {
+		return sym, nil
+	}
+	return "", g.errf(r.ID, "cannot translate node #%d: method %s is not declared for %s", r.ID, name, typ)
 }
 
 // place emits the address of an expression and returns it with the LLVM type

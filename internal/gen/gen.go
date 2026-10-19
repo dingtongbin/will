@@ -63,13 +63,16 @@ type docState struct {
 	recs  map[int]willc.Record
 	funcs map[int]string
 	links map[int]string
+	// methods maps <type>.<method> to the symbol the method is emitted under.
+	methods map[string]string
 }
 
 func newDocState(doc *willc.Doc) *docState {
 	d := &docState{
-		recs:  map[int]willc.Record{},
-		funcs: map[int]string{},
-		links: map[int]string{},
+		recs:    map[int]willc.Record{},
+		funcs:   map[int]string{},
+		links:   map[int]string{},
+		methods: map[string]string{},
 	}
 	for _, r := range doc.Records {
 		d.recs[r.ID] = r
@@ -235,7 +238,9 @@ func (g *generator) collect() {
 		case "func":
 			name := fieldText(r, "text")
 			if recv := g.receiverOf(r.ID); recv != nil {
-				g.cur.funcs[r.ID] = qualify(g.pkg, receiverType(recv)+"."+name)
+				sym := qualify(g.pkg, receiverType(recv)+"."+name)
+				g.cur.funcs[r.ID] = sym
+				g.cur.methods[receiverType(recv)+"."+name] = sym
 				continue
 			}
 			g.cur.funcs[r.ID] = g.symbolName(name)
@@ -740,7 +745,7 @@ func (g *generator) body(b willc.Record, void bool) (bool, error) {
 		case "assign":
 			err = g.assignStmt(st)
 		case "exprstmt":
-			_, err = g.value(refField(st, "expr"))
+			err = g.exprStmt(st)
 		case "block":
 			terminated, err = g.body(st, void)
 		default:
@@ -1043,6 +1048,18 @@ func (g *generator) value(id int) (string, error) {
 	return "", g.errf(id, "cannot translate node #%d: node kind %s is not lowered yet", id, r.Kind)
 }
 
+// exprStmt lowers an expression used as a statement. A call is allowed to
+// return nothing here, because its result is not needed.
+func (g *generator) exprStmt(st willc.Record) error {
+	id := refField(st, "expr")
+	if r, ok := g.recs[id]; ok && (r.Kind == "call" || r.Kind == "mcall") {
+		_, _, err := g.callExpr(r)
+		return err
+	}
+	_, err := g.value(id)
+	return err
+}
+
 // unary lowers one prefix operator.
 func (g *generator) unary(r willc.Record) (string, error) {
 	x, err := g.value(refField(r, "expr"))
@@ -1162,7 +1179,11 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 				return g.emitCall(r, link, true)
 			}
 		}
-		return "", "", g.errf(r.ID, "cannot translate node #%d: method call %s is not lowered yet", r.ID, name)
+		symbol, err := g.methodSymbol(r)
+		if err != nil {
+			return "", "", err
+		}
+		return g.emitCall(r, symbol, false)
 	}
 	target := refField(r, "to")
 	name := g.cur.funcs[target]
@@ -1211,6 +1232,15 @@ func (g *generator) linkNamed(cimport int, name string) string {
 func (g *generator) emitCall(r willc.Record, name string, link bool) (string, string, error) {
 	args := g.callArgs(r)
 	parts := make([]string, 0, len(args))
+	// A method call passes its receiver first, as the borrow pointer the
+	// method's hidden first parameter takes.
+	if r.Kind == "mcall" && !link && textField(r, "to") == "" {
+		ptr, _, err := g.place(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		parts = append(parts, "ptr "+ptr)
+	}
 	for _, a := range args {
 		typ, err := g.typeOf(a)
 		if err != nil {
