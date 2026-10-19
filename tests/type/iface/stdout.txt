@@ -1,0 +1,2 @@
+iface.will:14:16: T0002 type Dot does not satisfy Shape
+    help: missing method Area
