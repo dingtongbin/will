@@ -228,6 +228,7 @@ func (g *generator) use(d *docState) {
 	g.aggSlots = map[int]string{}
 	g.enums = map[int]*enumInfo{}
 	g.enumByLLVM = map[string]*enumInfo{}
+	g.enumByName = map[string]*enumInfo{}
 	g.variantByID = map[int]*variantInfo{}
 	g.enumSlots = map[int]string{}
 	g.patternVals = map[int]string{}
@@ -236,6 +237,9 @@ func (g *generator) use(d *docState) {
 	g.patternTexts = map[int]string{}
 	g.matchSlots = map[int]string{}
 	g.matchSlotTypes = map[int]string{}
+	g.adts = map[string]*adtInfo{}
+	g.adtSlots = map[int]string{}
+	g.trySlots = map[int]string{}
 	g.callSlots = map[int]string{}
 	g.sliceSlots = map[int]string{}
 	g.loopBinds = map[int]map[string]string{}
@@ -276,6 +280,7 @@ type generator struct {
 	// hold the bindings of the arm being lowered.
 	enums        map[int]*enumInfo
 	enumByLLVM   map[string]*enumInfo
+	enumByName   map[string]*enumInfo
 	variantByID  map[int]*variantInfo
 	enumSlots    map[int]string
 	patternVals   map[int]string
@@ -289,6 +294,14 @@ type generator struct {
 	// enumTypes holds the qualified names whose result is an enum, so a caller
 	// whose document lacks the declaration still knows the type.
 	enumTypes map[string]bool
+	// adts caches the lowered Option<T> and Result<T,E> types by their text,
+	// and adtSlots maps a constructor to the slot it builds its value in.
+	adts     map[string]*adtInfo
+	adtSlots map[int]string
+	// fnResultText is the will result type of the function being lowered, and
+	// trySlots maps a try expression to the slot its error branch returns.
+	fnResultText string
+	trySlots     map[int]string
 	// declKinds maps a qualified type name to "struct" or "enum".
 	declKinds map[string]string
 	// callSlots maps a call whose result is a struct to the temporary slot its
@@ -484,6 +497,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	g.fnSymbol = g.cur.funcs[fn.ID]
 	recv := g.receiverOf(fn.ID)
 	result := ""
+	g.fnResultText = ""
 	var params []willc.Record
 	for _, r := range g.recs {
 		if refField(r, "parent") != fn.ID {
@@ -529,9 +543,12 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	if result == "" {
 		return g.voidFunc(fn, name, sig)
 	}
+	g.fnResultText = result
 	resLLVM := ""
 	if typ, _, ok := llvmScalar(result); ok {
 		resLLVM = typ
+	} else if adt, ok := g.adtType(result); ok {
+		resLLVM = adt.llvm
 	} else if q := g.typeQualified(fn.ID); q != "" {
 		switch {
 		case g.structTypes[q]:
@@ -587,6 +604,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 // voidFunc lowers a function that returns no value.
 func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
 	g.resultType = ""
+	g.fnResultText = ""
 	g.fnSymbol = g.cur.funcs[fn.ID]
 	g.labels = 0
 	g.slots = map[int]string{}
@@ -677,8 +695,16 @@ func (g *generator) allocas(fn int) error {
 		if info, _ := g.enumVariantCall(r); info != nil {
 			continue
 		}
+		if _, _, _, ok := g.adtConstructor(r); ok {
+			continue
+		}
 		text, err := g.callResultText(r)
 		if err != nil || text == "" || (!g.structTypes[text] && !g.enumTypes[text]) {
+			if adt, ok := g.adtType(text); ok && adt.llvm != "" {
+				name := "%v.ret." + strconv.Itoa(r.ID)
+				g.callSlots[r.ID] = name
+				fmt.Fprintf(g.out, "  %s = alloca %s\n", name, adt.llvm)
+			}
 			continue
 		}
 		name := "%v.ret." + strconv.Itoa(r.ID)
@@ -690,16 +716,55 @@ func (g *generator) allocas(fn int) error {
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, typ)
 	}
 	// A constructed enum is built in a slot of its own.
+	var enumCtors []willc.Record
 	for _, r := range g.recs {
-		if r.Kind != "mcall" || g.enclosingFunc(r.ID) != fn {
-			continue
+		if r.Kind == "mcall" && g.enclosingFunc(r.ID) == fn {
+			enumCtors = append(enumCtors, r)
 		}
+	}
+	sortByID(enumCtors)
+	for _, r := range enumCtors {
 		info, _ := g.enumVariantCall(r)
 		if info == nil {
 			continue
 		}
 		name := "%v.enum." + strconv.Itoa(r.ID)
 		g.enumSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
+	}
+	// A constructed Option or Result, including None, also needs a slot.
+	var adtCtors []willc.Record
+	for _, r := range g.recs {
+		if (r.Kind == "call" || r.Kind == "name") && g.enclosingFunc(r.ID) == fn {
+			adtCtors = append(adtCtors, r)
+		}
+	}
+	sortByID(adtCtors)
+	for _, r := range adtCtors {
+		info, _, _, ok := g.adtConstructor(r)
+		if !ok {
+			continue
+		}
+		name := "%v.adt." + strconv.Itoa(r.ID)
+		g.adtSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
+	}
+	// A try expression returns an error from the current function, so its
+	// error value is built in a slot of the function's result type.
+	var tries []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "try" && g.enclosingFunc(r.ID) == fn {
+			tries = append(tries, r)
+		}
+	}
+	sortByID(tries)
+	for _, r := range tries {
+		info, ok := g.adtType(g.fnResultText)
+		if !ok {
+			return g.errf(r.ID, "cannot translate node #%d: ? needs an Option or Result result", r.ID)
+		}
+		name := "%v.try." + strconv.Itoa(r.ID)
+		g.trySlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
 	}
 	// A match used as an expression stores each arm's value in a slot and
@@ -738,10 +803,14 @@ func (g *generator) allocas(fn int) error {
 		fmt.Fprintf(g.out, "  %s = alloca { ptr, i64 }\n", name)
 	}
 	// A range loop binds one counter, which also needs a slot.
+	var loopRecs []willc.Record
 	for _, r := range g.recs {
-		if r.Kind != "for" || g.enclosingFunc(r.ID) != fn {
-			continue
+		if r.Kind == "for" && g.enclosingFunc(r.ID) == fn {
+			loopRecs = append(loopRecs, r)
 		}
+	}
+	sortByID(loopRecs)
+	for _, r := range loopRecs {
 		if g.isRangeLoop(r) {
 			if len(bindNames(r)) != 1 {
 				continue
@@ -1246,6 +1315,9 @@ func (g *generator) value(id int) (string, error) {
 		if _, ok := g.patternPlaces[decl]; ok {
 			return "", g.errf(id, "cannot translate node #%d: %s is an aggregate binding, not a scalar", id, name)
 		}
+		if _, _, _, ok := g.adtConstructor(r); ok {
+			return "", g.errf(id, "cannot translate node #%d: an Option or Result value is a place, not a scalar", id)
+		}
 		if ptrs, ok := g.loopPtrs[decl]; ok {
 			if ptr, ok := ptrs[name]; ok {
 				text, ok := g.loopBindType(decl, name)
@@ -1311,11 +1383,16 @@ func (g *generator) value(id int) (string, error) {
 		return g.castValue(r)
 	case "match":
 		return g.matchValue(r)
+	case "try":
+		return g.tryValue(r)
 	case "un":
 		return g.unary(r)
 	case "bin":
 		return g.binary(r)
 	case "call", "mcall":
+		if _, _, _, ok := g.adtConstructor(r); ok {
+			return "", g.errf(id, "cannot translate node #%d: an Option or Result value is a place, not a scalar", id)
+		}
 		if info, _ := g.enumVariantCall(r); info != nil {
 			return "", g.errf(id, "cannot translate node #%d: an enum value is a place, not a scalar", id)
 		}
@@ -1574,13 +1651,17 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, st
 	}
 	result, _, scalar := llvmScalar(resultText)
 	if !scalar {
-		switch {
-		case g.structTypes[resultText]:
-			result = qualifiedTypeName(resultText)
-		case g.enumTypes[resultText]:
-			result = qualifiedEnumName(resultText)
-		default:
-			return "", "", g.errf(r.ID, "cannot translate node #%d: result type %s is not lowered yet", r.ID, resultText)
+		if adt, ok := g.adtType(resultText); ok {
+			result = adt.llvm
+		} else {
+			switch {
+			case g.structTypes[resultText]:
+				result = qualifiedTypeName(resultText)
+			case g.enumTypes[resultText]:
+				result = qualifiedEnumName(resultText)
+			default:
+				return "", "", g.errf(r.ID, "cannot translate node #%d: result type %s is not lowered yet", r.ID, resultText)
+			}
 		}
 	}
 	g.tmp++
@@ -1610,6 +1691,11 @@ func (g *generator) callArgs(r willc.Record) []int {
 	skip := 0
 	if r.Kind == "mcall" {
 		skip = refField(r, "recv")
+	}
+	if r.Kind == "call" {
+		// A predeclared callee is written as a child name record; it is not an
+		// argument.
+		skip = refField(r, "to")
 	}
 	var ids []int
 	for _, c := range g.recs {

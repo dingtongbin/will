@@ -131,6 +131,9 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 func (e *emitter) emitName(v *ast.NameExpr) int {
 	rec := e.add("name", v)
 	e.text(rec, "text", v.Name)
+	if t := e.nameTypes[v]; t != "" {
+		e.text(rec, "type", t)
+	}
 	sym := e.refs[v]
 	if sym != nil {
 		e.refSym(rec, "to", sym)
@@ -238,6 +241,9 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 		}
 		rec := e.add("call", c)
 		e.push(rec)
+		if t := e.callTypes[c]; t != "" {
+			e.text(rec, "type", t)
+		}
 		if sym != nil && sym.Node != nil {
 			e.refSym(rec, "to", sym)
 		} else {

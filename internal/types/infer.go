@@ -242,9 +242,38 @@ func (c *checker) checkValue(s *inferScope, e ast.Expr, want *Type) {
 		c.inferExpr(s, e)
 		return
 	}
+	c.recordWant(e, want)
 	got := c.exprWithWant(s, e, want)
 	if !Equal(got, want) {
 		c.mismatch(e.Pos(), got, want, false, "", 0)
+	}
+}
+
+// recordWant keeps the type a predeclared constructor or value takes from its
+// context. Some and Ok cannot infer the other side of an Option or Result, so
+// the expected type is the only complete answer.
+func (c *checker) recordWant(e ast.Expr, want *Type) {
+	switch x := e.(type) {
+	case *ast.CallExpr:
+		name, ok := x.Callee.(*ast.NameExpr)
+		if !ok {
+			return
+		}
+		switch name.Name {
+		case "Some", "Ok", "Err":
+			if c.callTypes == nil {
+				c.callTypes = map[*ast.CallExpr]string{}
+			}
+			c.callTypes[x] = want.String()
+		}
+	case *ast.NameExpr:
+		if x.Name != "None" {
+			return
+		}
+		if c.nameTypes == nil {
+			c.nameTypes = map[*ast.NameExpr]string{}
+		}
+		c.nameTypes[x] = want.String()
 	}
 }
 

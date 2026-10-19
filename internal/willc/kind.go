@@ -48,10 +48,10 @@ var kindSpecs = map[string]KindSpec{
 		Optional: []string{"bind", "chan", "timeout", "default"},
 	},
 
-	"name":     {Required: []string{"text"}, Optional: []string{"to", "builtin"}},
+	"name":     {Required: []string{"text"}, Optional: []string{"to", "builtin", "type"}},
 	"lanehere": {},
 	"lit":      {Required: []string{"kind", "text", "type"}},
-	"call":     {Required: []string{"to"}, Repeatable: []string{"arg", "typearg"}, Optional: []string{"tostr"}},
+	"call":     {Required: []string{"to"}, Repeatable: []string{"arg", "typearg"}, Optional: []string{"tostr", "type"}},
 	"mcall": {
 		Required:   []string{"recv", "text"},
 		Repeatable: []string{"arg", "typearg"},

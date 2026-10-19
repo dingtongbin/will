@@ -89,6 +89,10 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 			info.types = append(info.types, typ)
 			continue
 		}
+		if adt, ok := g.adtType(t); ok {
+			info.types = append(info.types, adt.llvm)
+			continue
+		}
 		sub := g.typeRef(f.ID)
 		if sub == 0 {
 			if g.declKinds[t] == "enum" {
@@ -171,6 +175,9 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 	if typ, ok := llvmTypeText(fieldText(r, "type")); ok {
 		return typ, nil
 	}
+	if adt, ok := g.adtType(fieldText(r, "type")); ok {
+		return adt.llvm, nil
+	}
 	if id := g.typeRef(decl); id != 0 {
 		if r, ok := g.recs[id]; ok && r.Kind == "enum" {
 			if info := g.enums[id]; info != nil {
@@ -214,6 +221,11 @@ func (g *generator) typeOf(id int) (string, error) {
 		name := fieldText(r, "text")
 		if info := g.globalRef(r); info != nil {
 			return info.typ, nil
+		}
+		if t := fieldText(r, "type"); t != "" {
+			if adt, ok := g.adtType(t); ok {
+				return adt.llvm, nil
+			}
 		}
 		if typ, ok := g.patternTypes[decl]; ok {
 			return typ, nil
@@ -285,6 +297,9 @@ func (g *generator) typeOf(id int) (string, error) {
 		return typ, nil
 	case "match":
 		return g.matchValueType(r)
+	case "try":
+		typ, _, err := g.trySuccessType(r)
+		return typ, err
 	case "bin":
 		switch fieldText(r, "op") {
 		case "&&", "||", "==", "!=", "<", "<=", ">", ">=":
@@ -297,6 +312,11 @@ func (g *generator) typeOf(id int) (string, error) {
 		}
 		return g.typeOf(refField(r, "expr"))
 	case "call", "mcall":
+		if t := fieldText(r, "type"); t != "" {
+			if adt, ok := g.adtType(t); ok {
+				return adt.llvm, nil
+			}
+		}
 		if r.Kind == "mcall" {
 			if info, _ := g.enumVariantCall(r); info != nil {
 				return info.llvm, nil
@@ -311,6 +331,9 @@ func (g *generator) typeOf(id int) (string, error) {
 		}
 		typ, _, ok := llvmScalar(text)
 		if !ok {
+			if adt, ok := g.adtType(text); ok {
+				return adt.llvm, nil
+			}
 			if g.structTypes[text] {
 				return qualifiedTypeName(text), nil
 			}
@@ -345,6 +368,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		if text, ok := g.patternTexts[decl.ID]; ok {
 			return text, nil
+		}
+		if t := fieldText(r, "type"); t != "" {
+			return t, nil
 		}
 		if info := g.globalRef(r); info != nil {
 			return info.text, nil
@@ -390,6 +416,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		return g.willTypeText(refField(r, "expr"))
 	case "call", "mcall":
+		if t := fieldText(r, "type"); t != "" {
+			return t, nil
+		}
 		if r.Kind == "mcall" {
 			if info, _ := g.enumVariantCall(r); info != nil {
 				return info.text, nil
@@ -402,6 +431,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 			return "", nil
 		}
 		return fieldText(to, "text"), nil
+	case "try":
+		_, text, err := g.trySuccessType(r)
+		return text, err
 	}
 	return "", nil
 }
@@ -521,6 +553,9 @@ func (g *generator) place(id int) (string, string, error) {
 			}
 			return "@" + llvmSymbol(info.sym), info.typ, nil
 		}
+		if adt, variant, arg, ok := g.adtConstructor(r); ok {
+			return g.adtConstruct(r, adt, variant, arg)
+		}
 		if ptr, ok := g.patternPlaces[decl]; ok {
 			return ptr, g.patternTypes[decl], nil
 		}
@@ -600,7 +635,12 @@ func (g *generator) place(id int) (string, string, error) {
 			return "", "", err
 		}
 		return ptr, typ, nil
+	case "try":
+		return g.tryPlace(r)
 	case "call", "mcall":
+		if adt, variant, arg, ok := g.adtConstructor(r); ok {
+			return g.adtConstruct(r, adt, variant, arg)
+		}
 		if info, v := g.enumVariantCall(r); info != nil {
 			return g.enumConstruct(r, info, v)
 		}
@@ -608,12 +648,16 @@ func (g *generator) place(id int) (string, string, error) {
 		if err != nil {
 			return "", "", err
 		}
-		if text == "" || (!g.structTypes[text] && !g.enumTypes[text]) {
-			return "", "", g.errf(id, "cannot translate node #%d: the call result is not an aggregate", id)
-		}
-		typ := qualifiedTypeName(text)
-		if g.enumTypes[text] {
+		typ := ""
+		if adt, ok := g.adtType(text); ok {
+			typ = adt.llvm
+		} else if text != "" && g.structTypes[text] {
+			typ = qualifiedTypeName(text)
+		} else if text != "" && g.enumTypes[text] {
 			typ = qualifiedEnumName(text)
+		}
+		if typ == "" {
+			return "", "", g.errf(id, "cannot translate node #%d: the call result is not an aggregate", id)
 		}
 		slot := g.callSlots[id]
 		if slot == "" {

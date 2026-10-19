@@ -42,7 +42,7 @@ func emitSourceIn(t *testing.T, file, src, module string, tables map[string][]st
 	if len(rds) != 0 {
 		t.Fatalf("resolve diagnostics:\n%s", diag.FormatAll(rds))
 	}
-	data, err := Emit(f, res, module, nil, nil, nil)
+	data, err := Emit(f, res, module, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("emit: %v", err)
 	}
@@ -238,7 +238,7 @@ func TestEmitDiagnostics(t *testing.T) {
 		Message:  "type mismatch",
 		Help:     "convert explicitly with T(x)",
 	}}
-	data, err := Emit(f, res, "x", ds, nil, nil)
+	data, err := Emit(f, res, "x", ds, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("emit: %v", err)
 	}
@@ -257,7 +257,7 @@ func TestEmitDiagnostics(t *testing.T) {
 func TestEmitEmptyFile(t *testing.T) {
 	f := &ast.File{}
 	res := &resolve.Result{Refs: map[ast.Node]*resolve.Symbol{}}
-	data, err := Emit(f, res, "x", nil, nil, nil)
+	data, err := Emit(f, res, "x", nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("emit empty file: %v", err)
 	}

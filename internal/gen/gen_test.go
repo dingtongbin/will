@@ -26,7 +26,7 @@ func emitWillcAs(t *testing.T, src, module string) *willc.Doc {
 	}
 	res, _ := resolve.Resolve(f)
 	checked, _ := types.CheckFull(f, res)
-	data, err := willc.Emit(f, res, module, nil, checked.LiteralTypes, nil)
+	data, err := willc.Emit(f, res, module, nil, checked.LiteralTypes, checked.CallTypes, checked.NameTypes, nil)
 	if err != nil {
 		t.Fatalf("emit willc: %v", err)
 	}
@@ -163,6 +163,35 @@ func TestEmitMatchWithGuardAndWildcard(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
+	}
+}
+
+func TestEmitOptionAndResultConstructors(t *testing.T) {
+	src := "func Find(x: i32) -> Option<i32> {\n    if x > 0 {\n        return Some(x)\n    }\n    return None\n}\n\n" +
+		"func UseOpt(x: i32) -> i32 {\n    return match Find(x) {\n        Some(v) => v\n        None => 0\n    }\n}\n\n" +
+		"func Divide(x: i32) -> Result<i32, i32> {\n    if x == 0 {\n        return Err(1)\n    }\n    return Ok(x / 2)\n}\n\n" +
+		"func UseRes(x: i32) -> Result<i32, i32> {\n    var v: i32 = Divide(x)?\n    return Ok(v + 1)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define { i32, i32 } @"example.com/app.Find"(i32 %x) {`,
+		"store i32 1, ptr", // Some
+		"store i32 0, ptr", // None and Ok
+		"match.arm.1.0:",
+		"try.err.1:",
+		"try.ok.1:",
+		"ret { i32, i32 }",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	if strings.Count(text, "alloca { i32, i32 }") < 4 {
+		t.Errorf("a constructor or try slot is missing:\n%s", text)
 	}
 }
 
@@ -345,7 +374,7 @@ func emitWillcIn(t *testing.T, file, src, module string, tables map[string][]str
 		imports[path] = exp
 	}
 	res, _ := resolve.ResolveWith(f, imports)
-	data, err := willc.Emit(f, res, module, nil, nil, nil)
+	data, err := willc.Emit(f, res, module, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("emit willc: %v", err)
 	}

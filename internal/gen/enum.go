@@ -66,6 +66,7 @@ func (g *generator) buildEnums() {
 		info.llvm = g.enumLLVM(info.name)
 		g.enums[r.ID] = info
 		g.enumByLLVM[info.llvm] = info
+		g.enumByName[info.name] = info
 		var variants []willc.Record
 		for _, c := range g.recs {
 			if c.Kind == "variant" && refField(c, "parent") == r.ID {

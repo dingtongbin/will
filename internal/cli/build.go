@@ -39,8 +39,11 @@ type frontEnd struct {
 	// ast is set when the input is one file outside any module.
 	ast *ast.File
 	// litTypes is the resolved type of every literal of that file, so willc can
-	// record it.
-	litTypes map[*ast.LiteralExpr]string
+	// record it. callTypes and nameTypes do the same for the predeclared
+	// constructors and values.
+	litTypes  map[*ast.LiteralExpr]string
+	callTypes map[*ast.CallExpr]string
+	nameTypes map[*ast.NameExpr]string
 	// aliases maps an import path that aliases a package to the package's
 	// canonical path, so a qualified name matches the declaring package.
 	aliases map[string]string
@@ -129,7 +132,7 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
 		return frontEnd{}, 1
 	}
-	fe := frontEnd{file: opts.path, modulePath: modulePath, imports: imports, ast: f, litTypes: checked.LiteralTypes, aliases: aliases}
+	fe := frontEnd{file: opts.path, modulePath: modulePath, imports: imports, ast: f, litTypes: checked.LiteralTypes, callTypes: checked.CallTypes, nameTypes: checked.NameTypes, aliases: aliases}
 	// Inside a module, lower the whole package the file belongs to, so a call
 	// to a sibling file resolves.
 	if b, p := modulePackage(opts.path); b != nil {
@@ -218,8 +221,8 @@ func modulePackage(file string) (*pkg.Build, *pkg.Package) {
 func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 	var docs []*willc.Doc
 	var texts []string
-	emit := func(f *ast.File, path, pkgPath string, res *resolve.Result, lits map[*ast.LiteralExpr]string) error {
-		text, err := willc.Emit(f, res, pkgPath, nil, lits, fe.aliases)
+	emit := func(f *ast.File, path, pkgPath string, res *resolve.Result, lits map[*ast.LiteralExpr]string, calls map[*ast.CallExpr]string, names map[*ast.NameExpr]string) error {
+		text, err := willc.Emit(f, res, pkgPath, nil, lits, calls, names, fe.aliases)
 		if err != nil {
 			return err
 		}
@@ -286,16 +289,20 @@ func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 				results = append(results, res)
 			}
 			lits := map[*ast.LiteralExpr]string{}
+			var calls map[*ast.CallExpr]string
+			var names map[*ast.NameExpr]string
 			if len(files) != 0 {
 				if checked, _ := types.CheckPackageFull(files, results); checked != nil {
 					if checked.LiteralTypes != nil {
 						lits = checked.LiteralTypes
 					}
+					calls = checked.CallTypes
+					names = checked.NameTypes
 				}
 			}
 			before := len(texts)
 			for i := range files {
-				if err := emit(files[i], paths[i], p.Path, results[i], lits); err != nil {
+				if err := emit(files[i], paths[i], p.Path, results[i], lits, calls, names); err != nil {
 					return nil, nil, err
 				}
 			}
@@ -316,7 +323,7 @@ func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 		return nil, nil, &willc.Error{Message: "no source to lower"}
 	}
 	res, _ := resolve.ResolveIn(fe.ast, nil, fe.imports)
-	if err := emit(fe.ast, fe.file, fe.modulePath, res, fe.litTypes); err != nil {
+	if err := emit(fe.ast, fe.file, fe.modulePath, res, fe.litTypes, fe.callTypes, fe.nameTypes); err != nil {
 		return nil, nil, err
 	}
 	return docs, texts, nil

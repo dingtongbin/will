@@ -19,7 +19,7 @@
 #19 type parent=#17 pos="nodes.will:14:27" text="Error" kind=named
 #20 block parent=#16 pos="nodes.will:14:34"
 #21 return parent=#20 pos="nodes.will:15:5" value=#22
-#22 call parent=#21 pos="nodes.will:15:12" to=#23 arg=#24
+#22 call parent=#21 pos="nodes.will:15:12" type="Result<(),Error>" to=#23 arg=#24
 #23 name parent=#22 pos="nodes.will:15:12" text="Ok"
 #24 lit parent=#22 pos="nodes.will:15:15" kind=unit text="()" type="()"
 #25 func parent=#1 pos="nodes.will:18:1" text="Use" type="i64"

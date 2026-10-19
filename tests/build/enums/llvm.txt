@@ -121,8 +121,8 @@ define i32 @"example.com/enums.will$main"() {
 entry:
   %v.h = alloca %"struct.example.com/enums.Holder"
   %v.agg.92 = alloca %"struct.example.com/enums.Holder"
-  %v.enum.101 = alloca %"enum.example.com/enums.Shape"
   %v.enum.93 = alloca %"enum.example.com/enums.Shape"
+  %v.enum.101 = alloca %"enum.example.com/enums.Shape"
   %t40 = getelementptr inbounds %"struct.example.com/enums.Holder", ptr %v.agg.92, i32 0, i32 0
   %t41 = getelementptr inbounds %"enum.example.com/enums.Shape", ptr %v.enum.93, i32 0, i32 0
   store i32 1, ptr %t41

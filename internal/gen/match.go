@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/will-lang/will/internal/willc"
 )
@@ -97,6 +98,25 @@ func mergeTypes(base, extra map[int]string) map[int]string {
 	return out
 }
 
+// adtVariantName returns the variant name a predeclared pattern writes. A
+// pattern with a payload is written Some(v); the name is the part before the
+// parenthesis.
+func adtVariantName(text string) string {
+	if i := strings.IndexByte(text, '('); i > 0 {
+		return text[:i]
+	}
+	return text
+}
+
+// adtPayloadIndex returns the position of a variant's payload in the ADT's
+// argument list.
+func adtPayloadIndex(kind, variant string) int {
+	if kind == "result" && variant == "Err" {
+		return 1
+	}
+	return 0
+}
+
 // collectPatternTypes records the type every bind in one pattern receives. A
 // top-level bind receives the subject type; a variant's child receives the
 // corresponding argument type.
@@ -104,6 +124,30 @@ func (g *generator) collectPatternTypes(patID int, llvmType, text string, outLLV
 	pat, ok := g.recs[patID]
 	if !ok {
 		return nil
+	}
+	if adt, ok := g.adtType(text); ok {
+		kind := fieldText(pat, "kind")
+		switch kind {
+		case "bind":
+			if fieldText(pat, "text") == "None" && adt.kind == "option" {
+				return nil
+			}
+			outLLVM[patID] = llvmType
+			outText[patID] = text
+			return nil
+		case "variant":
+			variant := adtVariantName(fieldText(pat, "text"))
+			kids := g.children(patID)
+			sortByID(kids)
+			if len(kids) == 0 || variant == "None" {
+				return nil
+			}
+			idx := adtPayloadIndex(adt.kind, variant)
+			if idx >= len(adt.argLLVM) {
+				return g.errf(patID, "cannot translate node #%d: the pattern binds more values than %s carries", patID, text)
+			}
+			return g.collectPatternTypes(kids[0].ID, adt.argLLVM[idx], adt.args[idx], outLLVM, outText)
+		}
 	}
 	switch fieldText(pat, "kind") {
 	case "bind":
@@ -241,6 +285,35 @@ func (g *generator) lowerMatch(r willc.Record, value bool, void bool) (bool, err
 
 // patternCond emits the test of one pattern against the subject.
 func (g *generator) patternCond(pat willc.Record, subjLLVM, subjText, subjPtr, subjVal string) (string, error) {
+	if adt, ok := g.adtType(subjText); ok {
+		if adt.llvm != subjLLVM || subjPtr == "" {
+			return "", g.errf(pat.ID, "cannot translate node #%d: the subject is not a lowered %s", pat.ID, subjText)
+		}
+		switch fieldText(pat, "kind") {
+		case "bind":
+			if fieldText(pat, "text") == "None" && adt.kind == "option" {
+				tagPtr := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, adt.llvm, subjPtr)
+				tag := g.load("i32", tagPtr)
+				cond := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, %d\n", cond, tag, adt.tags["None"])
+				return cond, nil
+			}
+			return "true", nil
+		case "variant":
+			variant := adtVariantName(fieldText(pat, "text"))
+			tagValue, ok := adt.tags[variant]
+			if !ok {
+				return "", g.errf(pat.ID, "cannot translate node #%d: %s is not a variant of %s", pat.ID, variant, subjText)
+			}
+			tagPtr := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, adt.llvm, subjPtr)
+			tag := g.load("i32", tagPtr)
+			cond := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, %d\n", cond, tag, tagValue)
+			return cond, nil
+		}
+	}
 	switch kind := fieldText(pat, "kind"); kind {
 	case "wild", "bind":
 		return "true", nil
@@ -281,6 +354,41 @@ func (g *generator) patternCond(pat willc.Record, subjLLVM, subjText, subjPtr, s
 
 // bindPattern records the value or place each name in a pattern receives.
 func (g *generator) bindPattern(pat willc.Record, subjLLVM, subjText, subjPtr, subjVal string) error {
+	if adt, ok := g.adtType(subjText); ok {
+		switch fieldText(pat, "kind") {
+		case "bind":
+			if fieldText(pat, "text") == "None" && adt.kind == "option" {
+				return nil
+			}
+			if isAggregateType(subjLLVM) {
+				g.patternPlaces[pat.ID] = subjPtr
+			} else {
+				g.patternVals[pat.ID] = subjVal
+			}
+			g.patternTypes[pat.ID] = subjLLVM
+			g.patternTexts[pat.ID] = subjText
+			return nil
+		case "variant":
+			variant := adtVariantName(fieldText(pat, "text"))
+			kids := g.children(pat.ID)
+			sortByID(kids)
+			if len(kids) == 0 || variant == "None" {
+				return nil
+			}
+			idx := adtPayloadIndex(adt.kind, variant)
+			if idx >= len(adt.argLLVM) || adt.payloadIndex == 0 {
+				return g.errf(pat.ID, "cannot translate node #%d: %s carries no payload", pat.ID, variant)
+			}
+			addr := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", addr, adt.llvm, subjPtr, adt.payloadIndex)
+			typ := adt.argLLVM[idx]
+			val := ""
+			if !isAggregateType(typ) {
+				val = g.load(typ, addr)
+			}
+			return g.bindPattern(kids[0], typ, adt.args[idx], addr, val)
+		}
+	}
 	switch fieldText(pat, "kind") {
 	case "wild", "literal":
 		return nil
