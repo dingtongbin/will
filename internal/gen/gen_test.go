@@ -166,6 +166,28 @@ func TestEmitMatchWithGuardAndWildcard(t *testing.T) {
 	}
 }
 
+func TestEmitNewRunsDefaultsAndInit(t *testing.T) {
+	src := "struct P {\n    x: i32 = 5\n    y: i32\n}\n\n" +
+		"func (mut p: P) init(y: i32) {\n    p.y = y\n}\n\n" +
+		"func Make() -> P {\n    return new P(7)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"alloca %\"struct.example.com/app.P\"",
+		"store %\"struct.example.com/app.P\" zeroinitializer",
+		"store i32 5, ptr",
+		"call void @\"example.com/app.P.init\"(ptr %v.new.",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitInterfaceValueAndCall(t *testing.T) {
 	src := "interface Counter {\n    func Get() -> i32\n}\n\n" +
 		"struct C {\n    n: i32\n}\n\n" +

@@ -250,6 +250,7 @@ func (g *generator) use(d *docState) {
 	g.matchSlotTypes = map[int]string{}
 	g.adts = map[string]*adtInfo{}
 	g.adtSlots = map[int]string{}
+	g.newSlots = map[int]string{}
 	g.trySlots = map[int]string{}
 	g.ifaces = map[int]*ifaceInfo{}
 	g.ifaceByLLVM = map[string]*ifaceInfo{}
@@ -315,6 +316,8 @@ type generator struct {
 	// and adtSlots maps a constructor to the slot it builds its value in.
 	adts     map[string]*adtInfo
 	adtSlots map[int]string
+	// newSlots maps a new expression to the slot its storage is built in.
+	newSlots map[int]string
 	// fnResultText is the will result type of the function being lowered, and
 	// trySlots maps a try expression to the slot its error branch returns.
 	fnResultText string
@@ -775,6 +778,24 @@ func (g *generator) allocas(fn int) error {
 			g.ifaceSlots[key] = slot
 			fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, iface.llvm)
 		}
+	}
+	// A new value is built in a slot: the field defaults and init write it
+	// in place before it is copied out.
+	var news []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "new" && g.enclosingFunc(r.ID) == fn {
+			news = append(news, r)
+		}
+	}
+	sortByID(news)
+	for _, r := range news {
+		typ, ok := g.typeLLVMOf(fieldText(r, "type"))
+		if !ok || !isAggregateType(typ) {
+			return g.errf(r.ID, "cannot translate node #%d: new type %s is not lowered yet", r.ID, fieldText(r, "type"))
+		}
+		name := "%v.new." + strconv.Itoa(r.ID)
+		g.newSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, typ)
 	}
 	// A constructed enum is built in a slot of its own.
 	var enumCtors []willc.Record
@@ -1515,6 +1536,8 @@ func (g *generator) value(id int) (string, error) {
 		return g.matchValue(r)
 	case "try":
 		return g.tryValue(r)
+	case "new":
+		return "", g.errf(id, "cannot translate node #%d: a new value is a place, not a scalar", id)
 	case "un":
 		return g.unary(r)
 	case "bin":

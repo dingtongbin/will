@@ -317,6 +317,12 @@ func (g *generator) typeOf(id int) (string, error) {
 	case "try":
 		typ, _, err := g.trySuccessType(r)
 		return typ, err
+	case "new":
+		typ, ok := g.typeLLVMOf(fieldText(r, "type"))
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, fieldText(r, "type"))
+		}
+		return typ, nil
 	case "bin":
 		switch fieldText(r, "op") {
 		case "&&", "||", "==", "!=", "<", "<=", ">", ">=":
@@ -473,6 +479,8 @@ func (g *generator) willTypeText(id int) (string, error) {
 	case "try":
 		_, text, err := g.trySuccessType(r)
 		return text, err
+	case "new":
+		return fieldText(r, "type"), nil
 	}
 	return "", nil
 }
@@ -676,6 +684,8 @@ func (g *generator) place(id int) (string, string, error) {
 		return ptr, typ, nil
 	case "try":
 		return g.tryPlace(r)
+	case "new":
+		return g.constructNew(r)
 	case "call", "mcall":
 		if adt, variant, arg, ok := g.adtConstructor(r); ok {
 			return g.adtConstruct(r, adt, variant, arg)
