@@ -65,7 +65,9 @@ func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 			}
 			for _, d := range f.AST.Decls {
 				if declaresEntry(d, opts.entry) {
-					return frontEnd{file: filepath.Join(p.Dir, f.Path), modulePath: p.Path, imports: imports}, 0
+					// File.Path is relative to the module root, not to the
+					// package directory.
+					return frontEnd{file: filepath.Join(b.Root, f.Path), modulePath: p.Path, imports: imports}, 0
 				}
 			}
 		}

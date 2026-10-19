@@ -79,9 +79,6 @@ func (g *generator) funcDecl(fn willc.Record) error {
 			result = fieldText(r, "text")
 		}
 	}
-	if result != "i32" {
-		return g.errf(fn.ID, "cannot translate node #%d: only i32 results are lowered yet", fn.ID)
-	}
 	sortByID(params)
 	var sig []string
 	for _, p := range params {
@@ -91,6 +88,12 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		pname := fieldText(p, "text")
 		g.scope[p.ID] = "%" + pname
 		sig = append(sig, "i32 %"+pname)
+	}
+	if result == "" {
+		return g.voidFunc(fn, name, sig)
+	}
+	if result != "i32" {
+		return g.errf(fn.ID, "cannot translate node #%d: only i32 results are lowered yet", fn.ID)
 	}
 	fmt.Fprintf(g.out, "define i32 @%s(%s) {\n", name, strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
@@ -103,6 +106,36 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	}
 	g.out.WriteString("}\n")
 	return nil
+}
+
+// voidFunc lowers a function that returns no value.
+func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
+	fmt.Fprintf(g.out, "define void @%s(%s) {\n", name, strings.Join(sig, ", "))
+	g.out.WriteString("entry:\n")
+	body, err := g.blockOf(fn.ID)
+	if err != nil {
+		return err
+	}
+	if err := g.voidBlock(body); err != nil {
+		return err
+	}
+	g.out.WriteString("}\n")
+	return nil
+}
+
+// voidBlock lowers a body with no value: an empty body, or one bare return.
+func (g *generator) voidBlock(b willc.Record) error {
+	stmts := g.children(b.ID)
+	sortByID(stmts)
+	if len(stmts) == 0 {
+		g.out.WriteString("  ret void\n")
+		return nil
+	}
+	if len(stmts) == 1 && stmts[0].Kind == "return" && refField(stmts[0], "value") == 0 {
+		g.out.WriteString("  ret void\n")
+		return nil
+	}
+	return g.errf(b.ID, "cannot translate node #%d: only an empty body or a bare return is lowered yet", b.ID)
 }
 
 func (g *generator) blockOf(owner int) (willc.Record, error) {

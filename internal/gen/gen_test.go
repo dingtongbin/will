@@ -73,6 +73,31 @@ func Write() -> i32 {
 	}
 }
 
+func TestEmitVoidFunction(t *testing.T) {
+	doc := emitWillc(t, "func main() {\n}\n")
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{"define void @main() {", "ret void"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitBareReturnIsVoid(t *testing.T) {
+	doc := emitWillc(t, "func F() {\n    return\n}\n")
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	if !strings.Contains(string(ir), "define void @F()") {
+		t.Fatalf("IR = %s", ir)
+	}
+}
+
 func TestEmitUnsupportedNodeIsReported(t *testing.T) {
 	doc := emitWillc(t, "func F(a: i32) -> i32 {\n    if a > 0 {\n        return a\n    }\n    return 0\n}\n")
 	_, err := Emit(doc)

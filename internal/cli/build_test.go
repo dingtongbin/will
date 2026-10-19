@@ -36,6 +36,20 @@ func main() {
 
 // TestBuildReportsTheSameDiagnostics checks the rule that will check and will
 // build report the same diagnostics.
+func TestNewModuleLowers(t *testing.T) {
+	t.Chdir(t.TempDir())
+	if code, _, errOut := runCLI("new", "example.com/app"); code != 0 {
+		t.Fatalf("will new: code = %d, stderr = %q", code, errOut)
+	}
+	code, out, errOut := runCLI("emit-llvm", filepath.FromSlash("example.com/app"))
+	if code != 0 {
+		t.Fatalf("emit-llvm: code = %d, stderr = %q", code, errOut)
+	}
+	if !strings.Contains(out, "define void @main()") {
+		t.Fatalf("the generated module does not lower:\n%s", out)
+	}
+}
+
 func TestEmitAsmNeedsClang(t *testing.T) {
 	if hasClang() {
 		t.Skip("clang is installed; the missing-tool path is not reachable")
