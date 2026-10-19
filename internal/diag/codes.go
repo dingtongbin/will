@@ -80,7 +80,71 @@ const (
 	CodeLinkFailed = "X0002"
 	// CodeExternalToolMissing reports a missing or too old external tool.
 	CodeExternalToolMissing = "X0003"
+
+	// Ownership and borrow codes.
+	CodeMoved             = "O0001"
+	CodeMissingClone      = "O0002"
+	CodeBorrowConflict    = "O0003"
+	CodeBorrowOutlives    = "O0004"
+	CodeBorrowStored      = "O0005"
+	CodeMoveWhileBorrowed = "O0006"
+	CodeContainerChanged  = "O0007"
+	CodeCopyNotBorrow     = "O0008"
+
+	// Memory and release codes.
+	CodeUnreleasableCycle = "M0001"
+	CodePossibleCycle     = "M0002"
+	CodeRcSlotUnguarded   = "M0003"
+	CodeExplicitLeak      = "M0004"
+	CodeSmallPlate        = "M0005"
+
+	// Concurrency codes.
+	CodeSuspendInParallel  = "K0001"
+	CodeGuardAcrossSuspend = "K0002"
+	CodeTaskEscapesRegion  = "K0003"
+	CodeWrongLane          = "K0004"
+	CodeSpawnNotCall       = "K0005"
+	CodeDeadlock           = "K0006"
+
+	// Error propagation codes.
+	CodeResultDropped  = "R0001"
+	CodeUnwrapType     = "R0002"
+	CodePanicContained = "R0003"
+
+	// Input, output, and blocking codes.
+	CodeBlockingNotAwaited = "I0001"
+	CodeWaitInSync         = "I0002"
+	CodeWaitInAsync        = "I0003"
+	CodeBlocksThreadInTask = "I0004"
+
+	// CodeCannotTranslate reports a willc node the mechanical translation
+	// cannot handle. It is a compiler bug, not a program error.
+	CodeCannotTranslate = "G0001"
 )
+
+// Codes lists every code of the code table, in table order. The table in the
+// diagnostics volume is the source of truth; this list exists so a test can
+// see that no code is missing or duplicated.
+var Codes = []string{
+	CodeNonASCII, CodeBadEncoding, CodeUnterminated, CodeBadEscape, CodeBadNumber,
+	CodeBadSymbol, CodeBadChar,
+	CodeUnexpectedToken, CodeKeywordName, CodeTypeArgs,
+	CodeUndefinedName, CodePrivateName, CodeShadow, CodeUnusedImport, CodeUnusedVar,
+	CodeMethodsTwoPackages, CodeDuplicateName, CodeDuplicateDerive, CodeDuplicateImport,
+	CodeTopLevelDiscard, CodeNoField,
+	CodeTypeMismatch, CodeInterfaceUnsatisfied, CodeBadArgument, CodeTypeArgCount,
+	CodeConstantRange, CodeChainedComparison, CodeNewWithoutInit,
+	CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
+	CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
+	CodeUnreleasableCycle, CodePossibleCycle, CodeRcSlotUnguarded, CodeExplicitLeak, CodeSmallPlate,
+	CodeSuspendInParallel, CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeWrongLane,
+	CodeSpawnNotCall, CodeDeadlock,
+	CodeResultDropped, CodeUnwrapType, CodePanicContained,
+	CodeBlockingNotAwaited, CodeWaitInSync, CodeWaitInAsync, CodeBlocksThreadInTask,
+	CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,
+	CodeCannotTranslate,
+	CodeCannotParseCHeader, CodeLinkFailed, CodeExternalToolMissing,
+}
 
 // Message is one fixed diagnostic text from the code table.
 type Message struct {

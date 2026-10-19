@@ -20,6 +20,7 @@ func Source(src []byte) []byte {
 	}
 	lines := splitLines(toks)
 	lines = mergeBraces(lines)
+	lines = mergeEmptyBlocks(lines)
 	return render(lines)
 }
 
@@ -58,6 +59,31 @@ func mergeBraces(lines [][]token.Token) [][]token.Token {
 				out[len(out)-1] = append(prev, line[0])
 				continue
 			}
+		}
+		out = append(out, line)
+	}
+	return out
+}
+
+// mergeEmptyBlocks writes an empty body as {} on its header line, which is
+// the rule the tools volume gives for an empty block.
+func mergeEmptyBlocks(lines [][]token.Token) [][]token.Token {
+	out := make([][]token.Token, 0, len(lines))
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		if len(line) == 0 || line[len(line)-1].Kind != token.LBrace {
+			out = append(out, line)
+			continue
+		}
+		j := i + 1
+		for j < len(lines) && len(lines[j]) == 0 {
+			j++
+		}
+		if j < len(lines) && len(lines[j]) == 1 && lines[j][0].Kind == token.RBrace {
+			merged := append(append([]token.Token{}, line...), lines[j][0])
+			out = append(out, merged)
+			i = j
+			continue
 		}
 		out = append(out, line)
 	}
