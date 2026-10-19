@@ -1,0 +1,11 @@
+func Sum(n: i32) -> i32 {
+    var total: i32 = 0
+    for i in Range(0, n) {
+        total += i
+    }
+    return total
+}
+
+func main() -> i32 {
+    return Sum(4)
+}

@@ -380,8 +380,54 @@ func TestEmitShadowedLocalsGetTheirOwnSlots(t *testing.T) {
 	}
 }
 
+func TestEmitRangeLoop(t *testing.T) {
+	src := "func Sum() -> i32 {\n" +
+		"    var total: i32 = 0\n" +
+		"    for i in Range(0, 3) {\n        total += i\n    }\n" +
+		"    return total\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"%v.i = alloca i32",
+		"store i32 0, ptr %v.i",
+		"for.cond.1:",
+		"icmp slt i32",
+		"for.body.1:",
+		"for.step.1:",
+		"add i32",
+		"for.end.1:",
+		"br label %for.cond.1",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitEndlessLoopWithBreak(t *testing.T) {
+	src := "func F(n: i32) -> i32 {\n" +
+		"    for {\n        if n > 0 {\n            break\n        }\n        return 1\n    }\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{"for.body.1:", "for.end.1:", "br label %for.end.1"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitUnsupportedNodeIsReported(t *testing.T) {
-	doc := emitWillc(t, "func F(a: i32) -> i32 {\n    for {\n        return a\n    }\n}\n")
+	// A loop that iterates a slice needs the iterator protocol, which is not
+	// lowered yet.
+	doc := emitWillc(t, "func F(xs: []i32) -> i32 {\n    var n: i32 = 0\n    for i, x in xs {\n        n += x\n    }\n    return n\n}\n")
 	_, err := Emit(doc)
 	if err == nil {
 		t.Fatal("an unsupported node was translated")

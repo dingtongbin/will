@@ -128,7 +128,10 @@ type generator struct {
 	// slots maps a local declaration node to its stack slot, and slotNames
 	// numbers the slots of the current function.
 	slots     map[int]string
-	slotNames int
+	slotNames map[string]int
+	// loops stacks the labels of the enclosing loops, so break and continue
+	// know where to jump.
+	loops []loopLabels
 
 	// pkg is the package path of the current document.
 	pkg string
@@ -204,6 +207,13 @@ func (g *generator) symbolName(name string) string {
 		}
 	}
 	return qualify(g.pkg, name)
+}
+
+// loopLabels names the two places a loop body can leave to: the step block
+// (continue) and the block after the loop (break).
+type loopLabels struct {
+	step string
+	end  string
 }
 
 // qualify puts a package path in front of a name. A document without a package
@@ -295,7 +305,8 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	}
 	g.labels = 0
 	g.slots = map[int]string{}
-	g.slotNames = 0
+	g.slotNames = map[string]int{}
+	g.loops = nil
 	fmt.Fprintf(g.out, "define i32 @%s(%s) {\n", llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
 	body, err := g.blockOf(fn.ID)
@@ -320,7 +331,8 @@ func (g *generator) funcDecl(fn willc.Record) error {
 func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
 	g.labels = 0
 	g.slots = map[int]string{}
-	g.slotNames = 0
+	g.slotNames = map[string]int{}
+	g.loops = nil
 	fmt.Fprintf(g.out, "define void @%s(%s) {\n", llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
 	body, err := g.blockOf(fn.ID)
@@ -368,15 +380,51 @@ func (g *generator) allocas(fn int) error {
 		if kind := fieldText(r, "type"); kind != "i32" {
 			return g.errf(r.ID, "cannot translate node #%d: only i32 locals are lowered yet", r.ID)
 		}
-		name := "%v." + fieldText(r, "text")
-		if g.slotNames > 0 {
-			name += "." + strconv.Itoa(g.slotNames)
+		name := g.newSlot(fieldText(r, "text"))
+		g.slots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca i32\n", name)
+	}
+	// A range loop binds one counter, which also needs a slot.
+	for _, r := range g.recs {
+		if r.Kind != "for" || g.enclosingFunc(r.ID) != fn {
+			continue
 		}
-		g.slotNames++
+		if len(bindNames(r)) != 1 || !g.isRangeLoop(r) {
+			continue
+		}
+		name := g.newSlot(bindNames(r)[0])
 		g.slots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca i32\n", name)
 	}
 	return nil
+}
+
+// newSlot names one stack slot. A name used more than once gets a number, so a
+// shadowed local has its own slot.
+func (g *generator) newSlot(base string) string {
+	seen := g.slotNames[base]
+	g.slotNames[base] = seen + 1
+	if seen == 0 {
+		return "%v." + base
+	}
+	return "%v." + base + "." + strconv.Itoa(seen)
+}
+
+// bindNames lists the binding names of a for record, in writing order.
+func bindNames(r willc.Record) []string {
+	var out []string
+	for _, f := range r.Fields {
+		if f.Name == "bind" {
+			out = append(out, f.Value.Text)
+		}
+	}
+	return out
+}
+
+// isRangeLoop reports whether a for record iterates a Range(lo, hi).
+func (g *generator) isRangeLoop(r willc.Record) bool {
+	iter, ok := g.recs[refField(r, "iter")]
+	return ok && iter.Kind == "range"
 }
 
 // enclosingFunc returns the function record that contains a node, or 0.
@@ -499,6 +547,12 @@ func (g *generator) body(b willc.Record, void bool) (bool, error) {
 			terminated, err = g.returnStmt(st, void)
 		case "if":
 			terminated, err = g.ifStmt(st, void)
+		case "for":
+			terminated, err = g.forStmt(st, void)
+		case "break":
+			terminated, err = g.jump(true)
+		case "continue":
+			terminated, err = g.jump(false)
 		case "var", "const":
 			terminated, err = g.declStmt(st)
 		case "assign":
@@ -532,6 +586,105 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 	}
 	fmt.Fprintf(g.out, "  ret i32 %s\n", value)
 	return true, nil
+}
+
+// jump leaves the innermost loop: break jumps past it, continue to its step
+// block.
+func (g *generator) jump(isBreak bool) (bool, error) {
+	if len(g.loops) == 0 {
+		return false, g.errf(0, "cannot translate a break or continue outside a loop")
+	}
+	top := g.loops[len(g.loops)-1]
+	target := top.step
+	if isBreak {
+		target = top.end
+	}
+	fmt.Fprintf(g.out, "  br label %%%s\n", target)
+	return true, nil
+}
+
+// forStmt lowers a loop. Two shapes are lowered: an endless loop, and a loop
+// that counts one binding from Range(lo, hi). The bounds are computed once,
+// before the loop, so a step expression cannot run twice.
+func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
+	g.labels++
+	n := g.labels
+	bodyLabel := fmt.Sprintf("for.body.%d", n)
+	stepLabel := fmt.Sprintf("for.step.%d", n)
+	endLabel := fmt.Sprintf("for.end.%d", n)
+
+	body, ok := g.recs[refField(r, "body")]
+	if !ok {
+		return false, g.errf(r.ID, "cannot translate node #%d: the loop body is missing", r.ID)
+	}
+	binds := bindNames(r)
+	iterID := refField(r, "iter")
+	if iterID == 0 {
+		if len(binds) != 0 {
+			return false, g.errf(r.ID, "cannot translate node #%d: a loop without an iterator binds nothing", r.ID)
+		}
+		fmt.Fprintf(g.out, "  br label %%%s\n", bodyLabel)
+		g.out.WriteString(bodyLabel + ":\n")
+		g.loops = append(g.loops, loopLabels{step: bodyLabel, end: endLabel})
+		done, err := g.body(body, void)
+		g.loops = g.loops[:len(g.loops)-1]
+		if err != nil {
+			return false, err
+		}
+		if !done {
+			fmt.Fprintf(g.out, "  br label %%%s\n", bodyLabel)
+		}
+		fmt.Fprintf(g.out, "%s:\n", endLabel)
+		return false, nil
+	}
+
+	if len(binds) != 1 {
+		return false, g.errf(r.ID, "cannot translate node #%d: only a loop over Range with one binding is lowered yet", r.ID)
+	}
+	iter, ok := g.recs[iterID]
+	if !ok || iter.Kind != "range" {
+		return false, g.errf(r.ID, "cannot translate node #%d: only a loop over Range is lowered yet", r.ID)
+	}
+	slot := g.slots[r.ID]
+	if slot == "" {
+		return false, g.errf(r.ID, "cannot translate node #%d: the loop counter has no slot", r.ID)
+	}
+	lo, err := g.value(refField(iter, "lo"))
+	if err != nil {
+		return false, err
+	}
+	hi, err := g.value(refField(iter, "hi"))
+	if err != nil {
+		return false, err
+	}
+	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", lo, slot)
+	condLabel := fmt.Sprintf("for.cond.%d", n)
+	fmt.Fprintf(g.out, "  br label %%%s\n", condLabel)
+	g.out.WriteString(condLabel + ":\n")
+	current := g.load(slot)
+	g.tmp++
+	cond := "%t" + strconv.Itoa(g.tmp)
+	fmt.Fprintf(g.out, "  %s = icmp slt i32 %s, %s\n", cond, current, hi)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, bodyLabel, endLabel)
+	g.out.WriteString(bodyLabel + ":\n")
+	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel})
+	done, err := g.body(body, void)
+	g.loops = g.loops[:len(g.loops)-1]
+	if err != nil {
+		return false, err
+	}
+	if !done {
+		fmt.Fprintf(g.out, "  br label %%%s\n", stepLabel)
+	}
+	g.out.WriteString(stepLabel + ":\n")
+	step := g.load(slot)
+	g.tmp++
+	next := "%t" + strconv.Itoa(g.tmp)
+	fmt.Fprintf(g.out, "  %s = add i32 %s, 1\n", next, step)
+	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", next, slot)
+	fmt.Fprintf(g.out, "  br label %%%s\n", condLabel)
+	g.out.WriteString(endLabel + ":\n")
+	return false, nil
 }
 
 // ifStmt lowers one if. The result says whether every path of the if ends in a
