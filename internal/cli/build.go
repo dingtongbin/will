@@ -244,7 +244,7 @@ func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 			cacheable := store != nil && fe.limit == ""
 			key := ""
 			if cacheable {
-				k, ok := frontKey(p, blobs, opts)
+				k, ok := frontKey(p, blobs, fe.aliases, opts)
 				if !ok {
 					cacheable = false
 				} else {

@@ -36,7 +36,7 @@ func frontStore() *cache.Store {
 // package can be cached. The key covers the compiler identity, the flags that
 // can change the text, the package's own files, and the product of every direct
 // import, so a change anywhere in the interface reaches the key.
-func frontKey(p *pkg.Package, imports map[string][]byte, opts buildOptions) (string, bool) {
+func frontKey(p *pkg.Package, imports map[string][]byte, aliases map[string]string, opts buildOptions) (string, bool) {
 	h := cache.NewHasher()
 	h.AddStrings("compiler", compilerIdentity(), opts.target, opts.features,
 		fmt.Sprintf("freestanding=%v", opts.freestanding))
@@ -66,7 +66,11 @@ func frontKey(p *pkg.Package, imports map[string][]byte, opts buildOptions) (str
 	}
 	sort.Strings(ordered)
 	for _, path := range ordered {
-		blob, ok := imports[path]
+		key := path
+		if canonical := aliases[path]; canonical != "" {
+			key = canonical
+		}
+		blob, ok := imports[key]
 		if !ok {
 			// An import outside this build (a C header or a package that is not
 			// part of the graph) leaves the package uncached rather than keyed

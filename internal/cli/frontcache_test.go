@@ -92,6 +92,41 @@ func TestFrontEndCacheInvalidatesTheDependent(t *testing.T) {
 	}
 }
 
+func TestFrontEndCacheCoversAnAliasImport(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "app")
+	shared := filepath.Join(parent, "shared")
+	t.Setenv("WILL_CACHE", t.TempDir())
+	writeTree(t, root, map[string]string{
+		"will.mod":  "module example.com/app\nwill 1\nrequire example.com/lib@v1.0.0\nreplace example.com/lib@v1.0.0 => ../shared\n",
+		"main.will": "import \"example.com/lib\"\n\nfunc main() -> i32 {\n    return lib.Double(2)\n}\n",
+	})
+	writeTree(t, shared, map[string]string{
+		"will.mod":    "module example.com/shared\nwill 1\n",
+		"shared.will": "func Double(n: i32) -> i32 {\n    return n + n\n}\n",
+	})
+
+	frontEndStats.hits, frontEndStats.misses = 0, 0
+	code, first, errOut := runCLI("emit-llvm", root)
+	if code != 0 {
+		t.Fatalf("first emit: code = %d, stdout = %q, stderr = %q", code, first, errOut)
+	}
+	if frontEndStats.misses != 2 {
+		t.Fatalf("first run: misses = %d, want 2", frontEndStats.misses)
+	}
+	frontEndStats.hits, frontEndStats.misses = 0, 0
+	code, second, errOut := runCLI("emit-llvm", root)
+	if code != 0 {
+		t.Fatalf("second emit: code = %d, stderr = %q", code, errOut)
+	}
+	if frontEndStats.hits != 2 || frontEndStats.misses != 0 {
+		t.Fatalf("second run: hits = %d, misses = %d, want 2 and 0", frontEndStats.hits, frontEndStats.misses)
+	}
+	if first != second {
+		t.Fatal("the cached products lowered to different text")
+	}
+}
+
 func TestCacheEnvUsageErrorsExitTwo(t *testing.T) {
 	t.Setenv("WILL_CACHE", "relative/cache")
 	code, _, errOut := runCLI("version")
