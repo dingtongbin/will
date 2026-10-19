@@ -73,6 +73,42 @@ func TestCheckBadFileJSON(t *testing.T) {
 	}
 }
 
+// warningSource declares a local name that shadows a predeclared type, which
+// is a warning and not an error.
+const warningSource = `func F() {
+    var i32: i32 = 0
+    _ = i32
+}
+`
+
+func TestWarningFamilyOff(t *testing.T) {
+	path := writeFile(t, t.TempDir(), "shadow.will", warningSource)
+	code, out, _ := runCLI("check", path)
+	if code != 0 || !strings.Contains(out, "N0003 this name shadows i32") {
+		t.Fatalf("code = %d, stdout = %q", code, out)
+	}
+	code, out, _ = runCLI("check", "-Wno-shadow", path)
+	if code != 0 || out != "" {
+		t.Fatalf("with -Wno-shadow: code = %d, stdout = %q", code, out)
+	}
+}
+
+func TestWarningBecomesError(t *testing.T) {
+	path := writeFile(t, t.TempDir(), "shadow.will", warningSource)
+	code, out, _ := runCLI("check", "-Werror", path)
+	if code != 1 || !strings.Contains(out, "N0003") {
+		t.Fatalf("code = %d, stdout = %q", code, out)
+	}
+}
+
+func TestUnknownWarningFamily(t *testing.T) {
+	path := writeFile(t, t.TempDir(), "shadow.will", warningSource)
+	code, _, errOut := runCLI("check", "-Wno-nosuch", path)
+	if code != 2 || !strings.Contains(errOut, "unknown warning family nosuch") {
+		t.Fatalf("code = %d, stderr = %q", code, errOut)
+	}
+}
+
 func TestCheckTargetFlagReachesJSON(t *testing.T) {
 	path := writeFile(t, t.TempDir(), "bad.will", badSource)
 	code, out, _ := runCLI("check", "--json", "-O2", "--target", "aarch64-linux-gnu", path)

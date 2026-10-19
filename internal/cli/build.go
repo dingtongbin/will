@@ -94,7 +94,8 @@ func buildCacheKey(file string, data []byte, modulePath string, opts buildOption
 	build := buildIdentityWith(opts.opt, opts.target)
 	h.AddStrings("compiler", build.Compiler, build.Target, build.Opt)
 	h.AddStrings("flags", fmt.Sprintf("lib=%v", opts.lib), fmt.Sprintf("debug=%v", opts.debug),
-		fmt.Sprintf("freestanding=%v", opts.freestanding), "features="+opts.features)
+		fmt.Sprintf("freestanding=%v", opts.freestanding), "features="+opts.features,
+		"disabled="+disabledList(opts.disabled))
 	return cache.New(root, 0), h.Key()
 }
 

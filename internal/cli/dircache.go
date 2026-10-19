@@ -26,7 +26,7 @@ func runCachedBuild(b *pkg.Build, flags checkFlags, stdout io.Writer) int {
 			return code
 		}
 	}
-	ds := b.CheckAll()
+	ds := diag.FilterDisabled(b.CheckAll(), flags.disabled)
 	build := buildIdentityWith(flags.opt, flags.target)
 	var out []byte
 	if flags.json {
@@ -98,7 +98,7 @@ func dirCacheKey(b *pkg.Build, flags checkFlags) (*cache.Store, string, bool) {
 	build := buildIdentityWith(flags.opt, flags.target)
 	h.AddStrings("compiler", build.Compiler, build.Target, build.Opt)
 	h.AddStrings("flags", fmt.Sprintf("json=%v", flags.json), fmt.Sprintf("werror=%v", flags.werror),
-		"features="+flags.features)
+		"features="+flags.features, "disabled="+disabledList(flags.disabled))
 	return cache.New(root, 0), h.Key(), true
 }
 

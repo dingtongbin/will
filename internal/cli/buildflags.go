@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/will-lang/will/internal/diag"
 )
 
 // buildOptions is one build or run invocation.
@@ -17,12 +19,14 @@ type buildOptions struct {
 	lib          bool
 	freestanding bool
 	features     string
+	disabled     map[string]bool
 }
 
 // parseBuildArgs reads the flags of will build and will run. The arguments
 // after "--" belong to the program that will run.
 func parseBuildArgs(command string, args []string, stderr io.Writer) (buildOptions, []string, int) {
-	opts := buildOptions{entry: defaultEntry, opt: defaultOpt(command), debug: command == "run"}
+	opts := buildOptions{entry: defaultEntry, opt: defaultOpt(command), debug: command == "run",
+		disabled: map[string]bool{}}
 	var paths, rest []string
 	for i := 0; i < len(args); i++ {
 		name, inline, hasInline := splitFlag(args[i])
@@ -66,14 +70,27 @@ func parseBuildArgs(command string, args []string, stderr io.Writer) (buildOptio
 			// Diagnostic switches are accepted here and read by the check
 			// path, which owns their meaning.
 		default:
-			if strings.HasPrefix(args[i], "-W") {
-				break
-			}
-			if strings.HasPrefix(args[i], "-") {
+			switch {
+			case strings.HasPrefix(args[i], "-Wno-"):
+				family := strings.TrimPrefix(args[i], "-Wno-")
+				if !diag.KnownFamily(family) {
+					fmt.Fprintf(stderr, "will: unknown warning family %s\n", family)
+					return opts, nil, 2
+				}
+				opts.disabled[family] = true
+			case strings.HasPrefix(args[i], "-W"):
+				family := strings.TrimPrefix(args[i], "-W")
+				if !diag.KnownFamily(family) {
+					fmt.Fprintf(stderr, "will: unknown warning family %s\n", family)
+					return opts, nil, 2
+				}
+				delete(opts.disabled, family)
+			case strings.HasPrefix(args[i], "-"):
 				fmt.Fprintf(stderr, "will: unknown flag %s\n", args[i])
 				return opts, nil, 2
+			default:
+				paths = append(paths, args[i])
 			}
-			paths = append(paths, args[i])
 		}
 	}
 	if len(paths) != 1 {

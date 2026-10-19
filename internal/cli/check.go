@@ -59,10 +59,12 @@ type checkFlags struct {
 	opt      string
 	target   string
 	features string
+	// disabled holds the warning families that -Wno-<family> switched off.
+	disabled map[string]bool
 }
 
 func runCheck(args []string, stdout, stderr io.Writer) int {
-	flags := checkFlags{opt: "-O0", target: targetTriple()}
+	flags := checkFlags{opt: "-O0", target: targetTriple(), disabled: map[string]bool{}}
 	var files []string
 	for i := 0; i < len(args); i++ {
 		name, inline, hasInline := splitFlag(args[i])
@@ -88,14 +90,27 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 			}
 			i, flags.features = next, value
 		default:
-			if strings.HasPrefix(args[i], "-W") {
-				break
-			}
-			if strings.HasPrefix(args[i], "-") {
+			switch {
+			case strings.HasPrefix(args[i], "-Wno-"):
+				family := strings.TrimPrefix(args[i], "-Wno-")
+				if !diag.KnownFamily(family) {
+					fmt.Fprintf(stderr, "will: unknown warning family %s\n", family)
+					return 2
+				}
+				flags.disabled[family] = true
+			case strings.HasPrefix(args[i], "-W"):
+				family := strings.TrimPrefix(args[i], "-W")
+				if !diag.KnownFamily(family) {
+					fmt.Fprintf(stderr, "will: unknown warning family %s\n", family)
+					return 2
+				}
+				delete(flags.disabled, family)
+			case strings.HasPrefix(args[i], "-"):
 				fmt.Fprintf(stderr, "will: unknown flag %s\n", args[i])
 				return 2
+			default:
+				files = append(files, args[i])
 			}
-			files = append(files, args[i])
 		}
 	}
 	if len(files) == 0 {
@@ -137,7 +152,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	ds := bag.Diagnostics()
+	ds := diag.FilterDisabled(bag.Diagnostics(), flags.disabled)
 	build := buildIdentityWith(flags.opt, flags.target)
 	var out []byte
 	if flags.json {
@@ -185,8 +200,20 @@ func checkCache(files []string, flags checkFlags) (*cache.Store, string, []fileD
 	build := buildIdentityWith(flags.opt, flags.target)
 	h.AddStrings("compiler", build.Compiler, build.Target, build.Opt)
 	h.AddStrings("flags", fmt.Sprintf("json=%v", flags.json), fmt.Sprintf("werror=%v", flags.werror),
-		"features="+flags.features)
+		"features="+flags.features, "disabled="+disabledList(flags.disabled))
 	return cache.New(root, 0), h.Key(), contents
+}
+
+// disabledList renders the switched-off warning families in a fixed order, so
+// the cache key does not depend on the order the flags were written.
+func disabledList(disabled map[string]bool) string {
+	var out []string
+	for _, family := range diag.WarningFamilies {
+		if disabled[family] {
+			out = append(out, family)
+		}
+	}
+	return strings.Join(out, ",")
 }
 
 func encodeDiag(code int, out []byte) []byte {
