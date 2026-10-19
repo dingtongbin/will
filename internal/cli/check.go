@@ -217,7 +217,7 @@ func checkCache(files []string, flags checkFlags) (*cache.Store, string, []fileD
 		h.Add(path, data)
 	}
 	build := buildIdentityWith(flags.opt, flags.target)
-	h.AddStrings("compiler", build.Compiler, build.Target, build.Opt)
+	h.AddStrings("compiler", compilerIdentity(), build.Target, build.Opt)
 	h.AddStrings("flags", fmt.Sprintf("json=%v", flags.json), fmt.Sprintf("werror=%v", flags.werror),
 		"features="+flags.features, fmt.Sprintf("freestanding=%v", flags.freestanding),
 		"disabled="+disabledList(flags.disabled))
