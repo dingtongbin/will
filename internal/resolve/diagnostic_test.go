@@ -177,12 +177,88 @@ func TestDuplicateVariant(t *testing.T) {
 	find(t, ds, diag.CodeDuplicateName)
 }
 
-func TestDeriveNameIsOneOfThree(t *testing.T) {
+func TestDeriveNameIsOneOfTwo(t *testing.T) {
 	src := "struct P {\n    x: i32\n}\n\nderive Foo for P\n"
 	ds := resolveSource(t, src)
 	d := find(t, ds, diag.CodeUndefinedName)
 	if d.Pos.Line != 5 {
 		t.Errorf("position line = %d, want 5", d.Pos.Line)
+	}
+	if d.Help != "derive takes Json or Show" {
+		t.Errorf("help = %q, want derive takes Json or Show", d.Help)
+	}
+}
+
+func TestDeriveBuiltinConstraintIsNotAGenerator(t *testing.T) {
+	src := "struct P {\n    x: i32\n}\n\nderive Equal for P\n"
+	ds := resolveSource(t, src)
+	d := find(t, ds, diag.CodeUndefinedName)
+	if d.Help != "derive takes Json or Show" {
+		t.Errorf("help = %q", d.Help)
+	}
+}
+
+func TestDuplicateDerive(t *testing.T) {
+	src := "struct P {\n    x: i32\n}\n\nderive Show for P\nderive Show for P\n"
+	ds := resolveSource(t, src)
+	d := find(t, ds, diag.CodeDuplicateDerive)
+	if d.Message != "duplicate derive for P" || d.Help != "remove the earlier one" {
+		t.Errorf("diagnostic = %+v", d)
+	}
+	if d.Pos.Line != 6 {
+		t.Errorf("position line = %d, want 6", d.Pos.Line)
+	}
+}
+
+func TestDuplicateImportLine(t *testing.T) {
+	src := "import \"std/net/http\"\nimport \"std/net/http\"\nfunc F() {}\n"
+	ds := resolveSource(t, src)
+	d := find(t, ds, diag.CodeDuplicateImport)
+	if d.Message != "duplicate import" || d.Help != "remove the earlier one" {
+		t.Errorf("diagnostic = %+v", d)
+	}
+	if d.Pos.Line != 2 {
+		t.Errorf("position line = %d, want 2", d.Pos.Line)
+	}
+}
+
+func TestTopLevelDiscardName(t *testing.T) {
+	ds := resolveSource(t, "var _: i32 = 0\n")
+	d := find(t, ds, diag.CodeTopLevelDiscard)
+	if d.Message != "\"_\" is not a name; it is the discard binding" || d.Help != "give the declaration a name" {
+		t.Errorf("diagnostic = %+v", d)
+	}
+	if d.Pos.Line != 1 {
+		t.Errorf("position line = %d, want 1", d.Pos.Line)
+	}
+}
+
+func TestCLinkNeedsTheQualifier(t *testing.T) {
+	src := `import c "stdio.h" {
+    fast puts
+}
+func F() {
+    puts("hi")
+}
+`
+	ds := resolveSource(t, src)
+	d := find(t, ds, diag.CodeUndefinedName)
+	if d.Pos.Line != 5 {
+		t.Errorf("position line = %d, want 5", d.Pos.Line)
+	}
+}
+
+func TestCLinkThroughQualifier(t *testing.T) {
+	src := `import c "stdio.h" {
+    fast puts
+}
+func F() {
+    c.puts("hi")
+}
+`
+	ds := resolveSource(t, src)
+	if len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
 	}
 }
 

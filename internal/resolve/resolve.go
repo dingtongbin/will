@@ -29,6 +29,7 @@ func ResolveWith(f *ast.File, imports Imports) (*Result, []diag.Diagnostic) {
 		methods:  map[string]*Symbol{},
 		packages: imports,
 		tables:   map[string]Exported{},
+		derives:  map[string]bool{},
 	}
 	r.addPredeclared()
 	r.addImports()
@@ -50,6 +51,8 @@ type resolver struct {
 	methods  map[string]*Symbol
 	packages Imports
 	tables   map[string]Exported
+	derives  map[string]bool
+	cImport  *Symbol
 }
 
 type importRec struct {
@@ -69,6 +72,10 @@ var predeclaredTypes = []string{
 	"chan", "rc", "weak", "Task",
 	"Option", "Result", "Value", "Duration",
 	"Show", "Error",
+	// Equal and Ord are built-in constraints: they name a property the
+	// compiler implements for each type, and they are only usable as type
+	// parameter constraints.
+	"Equal", "Ord",
 }
 
 var predeclaredValues = []string{
@@ -87,11 +94,27 @@ func (r *resolver) addPredeclared() {
 }
 
 func (r *resolver) addImports() {
+	seen := map[string]bool{}
 	for _, imp := range r.file.Imports {
+		if seen[imp.Path] {
+			r.bag.Error(imp.Span.Start, diag.CodeDuplicateImport, "duplicate import", "remove the earlier one")
+			continue
+		}
+		seen[imp.Path] = true
 		rec := &importRec{pos: imp.Span.Start, sideEffect: imp.SideEffect, c: imp.C}
 		switch {
 		case imp.SideEffect:
 		case imp.C:
+			// C names are reached through the c qualifier, so the import
+			// block binds one name, c, whatever headers it names.
+			if r.cImport == nil {
+				sym := &Symbol{Name: "c", Kind: ImportKind, Pos: imp.Span.Start, Node: imp}
+				r.defineTop(sym)
+				r.cImport = sym
+				r.tables["c"] = Exported{}
+				rec.sym = sym
+			}
+			table := r.tables["c"]
 			for _, link := range imp.Links {
 				sym := &Symbol{
 					Name:     link.Name,
@@ -100,7 +123,10 @@ func (r *resolver) addImports() {
 					Node:     link,
 					Exported: isExported(link.Name),
 				}
-				r.defineTop(sym)
+				r.symbols = append(r.symbols, sym)
+				if table != nil {
+					table[link.Name] = sym
+				}
 				rec.links = append(rec.links, sym)
 			}
 		default:
@@ -172,6 +198,11 @@ func (r *resolver) defineTop(sym *Symbol) {
 	if sym.Name == "" {
 		return
 	}
+	if sym.Name == "_" {
+		r.bag.Error(sym.Pos, diag.CodeTopLevelDiscard,
+			`"_" is not a name; it is the discard binding`, "give the declaration a name")
+		return
+	}
 	prev := r.pkg.define(sym)
 	if prev == nil {
 		r.symbols = append(r.symbols, sym)
@@ -236,9 +267,18 @@ func (r *resolver) walkDecl(d ast.Decl) {
 		r.pop()
 	case *ast.DeriveDecl:
 		switch decl.Name {
-		case "Json", "Show", "Equal":
+		case "Json", "Show":
+			key := decl.Name + " " + typeName(decl.Type)
+			if r.derives[key] {
+				r.bag.Error(decl.Span.Start, diag.CodeDuplicateDerive,
+					"duplicate derive for "+typeName(decl.Type), "remove the earlier one")
+			}
+			r.derives[key] = true
 		default:
-			r.undefinedIn(decl.NamePos, decl.Name, []string{"Json", "Show", "Equal"})
+			// The generate list is fixed at Json and Show; a built-in
+			// constraint such as Equal is a known name but not a generator,
+			// and the code table has no code for this case yet.
+			r.bag.Error(decl.NamePos, diag.CodeUndefinedName, "undefined name", "derive takes Json or Show")
 		}
 		r.walkType(decl.Type)
 		if sym, ok := r.refs[decl.Type]; ok {

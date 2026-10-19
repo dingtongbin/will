@@ -165,8 +165,34 @@ func (g *generator) value(id int) (string, error) {
 		return name, nil
 	case "call":
 		return g.call(r)
+	case "mcall":
+		return g.mcall(r)
 	}
 	return "", g.errf(id, "cannot translate node #%d: node kind %s is not lowered yet", id, r.Kind)
+}
+
+// mcall lowers a method call. Only a C link reached through the c qualifier
+// is lowered yet, as in c.putchar(x).
+func (g *generator) mcall(r willc.Record) (string, error) {
+	name := fieldText(r, "text")
+	recv := g.recs[refField(r, "recv")]
+	cimport := refField(recv, "to")
+	if recv.Kind == "name" && cimport != 0 {
+		if link := g.linkNamed(cimport, name); link != "" {
+			return g.emitCall(r, link, true)
+		}
+	}
+	return "", g.errf(r.ID, "cannot translate node #%d: method call %s is not lowered yet", r.ID, name)
+}
+
+// linkNamed returns the C symbol of name declared under one cimport record.
+func (g *generator) linkNamed(cimport int, name string) string {
+	for _, r := range g.recs {
+		if r.Kind == "link" && refField(r, "parent") == cimport && fieldText(r, "text") == name {
+			return name
+		}
+	}
+	return ""
 }
 
 // call lowers a call to a file function or to an import c link. Only i32
@@ -182,7 +208,12 @@ func (g *generator) call(r willc.Record) (string, error) {
 	if name == "" {
 		return "", g.errf(r.ID, "cannot translate node #%d: the callee is not a file function or a c link", r.ID)
 	}
-	args := g.valueChildren(r.ID)
+	return g.emitCall(r, name, link)
+}
+
+// emitCall writes one call with its integer arguments.
+func (g *generator) emitCall(r willc.Record, name string, link bool) (string, error) {
+	args := g.callArgs(r)
 	values := make([]string, 0, len(args))
 	for _, a := range args {
 		v, err := g.value(a)
@@ -219,13 +250,19 @@ func i32Types(n int) string {
 	return strings.Repeat("i32, ", n-1) + "i32"
 }
 
-// valueChildren lists the argument records of a call in id order.
-func (g *generator) valueChildren(parent int) []int {
+// callArgs lists the argument records of a call in id order. A method call
+// also has a receiver child, which is not an argument.
+func (g *generator) callArgs(r willc.Record) []int {
+	skip := 0
+	if r.Kind == "mcall" {
+		skip = refField(r, "recv")
+	}
 	var ids []int
-	for _, r := range g.recs {
-		if refField(r, "parent") == parent && r.Kind != "type" {
-			ids = append(ids, r.ID)
+	for _, c := range g.recs {
+		if refField(c, "parent") != r.ID || c.Kind == "type" || c.ID == skip {
+			continue
 		}
+		ids = append(ids, c.ID)
 	}
 	for i := 1; i < len(ids); i++ {
 		for j := i; j > 0 && ids[j] < ids[j-1]; j-- {

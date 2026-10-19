@@ -325,12 +325,18 @@ func (r *resolver) checkImportedMember(recv ast.Expr, name string, pos source.Po
 	if !found || sym.Kind != ImportKind {
 		return
 	}
+	table, loaded := r.tables[qual.Name]
+	if loaded {
+		if member, exists := table[name]; exists && member.Kind == CLinkKind {
+			member.Used = true
+			return
+		}
+	}
 	if !isExported(name) {
 		r.bag.Error(pos, diag.CodePrivateName, "private name used outside its package",
 			"it starts with a lowercase letter, so it is private")
 		return
 	}
-	table, loaded := r.tables[qual.Name]
 	if !loaded {
 		return
 	}

@@ -14,7 +14,7 @@ const entrySource = `import c "stdio.h" {
 }
 
 func main() -> i32 {
-    return putchar(65)
+    return c.putchar(65)
 }
 `
 

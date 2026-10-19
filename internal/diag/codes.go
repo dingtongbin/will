@@ -41,8 +41,14 @@ const (
 	CodeMethodsTwoPackages = "N0006"
 	// CodeDuplicateName reports a duplicate top-level name.
 	CodeDuplicateName = "N0007"
+	// CodeDuplicateDerive reports the same derive twice for one type.
+	CodeDuplicateDerive = "N0008"
+	// CodeDuplicateImport reports the same import written twice.
+	CodeDuplicateImport = "N0009"
+	// CodeTopLevelDiscard reports a top-level declaration named _.
+	CodeTopLevelDiscard = "N0010"
 	// CodeNoField reports a field that the struct does not declare.
-	CodeNoField = "N0008"
+	CodeNoField = "N0011"
 
 	// CodeTypeMismatch reports a value of the wrong type.
 	CodeTypeMismatch = "T0001"

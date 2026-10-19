@@ -53,7 +53,7 @@ func TestEmitCCall(t *testing.T) {
 }
 
 func Write() -> i32 {
-    return putchar(65)
+    return c.putchar(65)
 }
 `
 	doc := emitWillc(t, src)
