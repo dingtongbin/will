@@ -115,6 +115,43 @@ func TestEmitDecisionsNestedAndEnum(t *testing.T) {
 	}
 }
 
+func TestEmitDecisionsObligations(t *testing.T) {
+	// A container loop proves its index check; a Range loop is its own index
+	// sequence and records nothing. The nested loop inside the if must be
+	// found too.
+	src := "func F(xs: [2]i32) -> i32 {\n" +
+		"    var n: i32 = 0\n" +
+		"    for x in xs {\n        n += x\n    }\n" +
+		"    for i in Range(0, 3) {\n        n += i\n    }\n" +
+		"    if n > 0 {\n        for y in xs {\n            n += y\n        }\n    }\n" +
+		"    return n\n}\n"
+	path := writeFile(t, t.TempDir(), "a.will", src)
+	code, out, errOut := runCLI("emit-decisions", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stderr = %q", code, errOut)
+	}
+	if got := strings.Count(out, `check="index" verdict="proved" by="range"`); got != 2 {
+		t.Fatalf("obligations = %d, want 2:\n%s", got, out)
+	}
+	for _, want := range []string{"a.will:3:5\"", "a.will:10:9\""} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the record lacks a position ending in %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestEmitDecisionsRangeHasNoObligation(t *testing.T) {
+	src := "func F() -> i32 {\n    var n: i32 = 0\n    for i in Range(0, 3) {\n        n += i\n    }\n    return n\n}\n"
+	path := writeFile(t, t.TempDir(), "a.will", src)
+	code, out, errOut := runCLI("emit-decisions", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stderr = %q", code, errOut)
+	}
+	if strings.Contains(out, "obligation") {
+		t.Fatalf("a Range loop recorded an obligation:\n%s", out)
+	}
+}
+
 func TestEmitLLVMUsage(t *testing.T) {
 	if code, _, _ := runCLI("emit-llvm"); code != 2 {
 		t.Fatalf("code = %d, want 2", code)

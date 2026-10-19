@@ -89,6 +89,9 @@ func runEmitDecisions(args []string, stdout, stderr io.Writer) int {
 			records = append(records, decisions.FieldOffset(got.Name, f.Name, f.Offset, f.Size))
 		}
 	}
+	for _, f := range files {
+		collectObligations(f, &records)
+	}
 	return writeText(outPath, decisions.Write(records), stdout, stderr)
 }
 
