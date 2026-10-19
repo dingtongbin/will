@@ -191,6 +191,45 @@ func TestEmitStrLiteralIndexAndLoop(t *testing.T) {
 	}
 }
 
+func TestEmitStrEquality(t *testing.T) {
+	src := "func Eq(a: str, b: str) -> bool {\n    return a == b\n}\n\nfunc Ne(a: str, b: str) -> bool {\n    return a != b\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"call i32 @memcmp(ptr",
+		"icmp eq i64",
+		"and i1",
+		"declare i32 @memcmp(ptr, ptr, i64)",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitAggregateMatchReturn(t *testing.T) {
+	src := "func Pick(n: i32) -> str {\n    return match n {\n        0 => \"zero\"\n        _ => \"many\"\n    }\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"@.bytes.",
+		"match.end.1:",
+		"ret { ptr, i64 }",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitArrayNewPushAndLen(t *testing.T) {
 	src := "func Sum() -> i32 {\n    var a: Array<i32> = new Array<i32>(0)\n    a.Push(1)\n    a.Push(2)\n    a.Set(0, 7)\n    var s: i32 = 0\n    for v in a { s += v }\n    return s + a.Get(1) + i32(a.Len())\n}\n"
 	doc := emitWillc(t, src)

@@ -101,6 +101,39 @@ func (g *generator) stringPlace(r willc.Record) (string, string, error) {
 	return slot, "{ ptr, i64 }", nil
 }
 
+// strEqual compares two str values by length and bytes. memcmp runs on the
+// shorter length, and the lengths must also be equal, so a prefix of a longer
+// string never compares equal.
+func (g *generator) strEqual(lID, rID int, op string, r willc.Record) (string, error) {
+	aData, aLen, err := g.strParts(lID)
+	if err != nil {
+		return "", err
+	}
+	bData, bLen, err := g.strParts(rID)
+	if err != nil {
+		return "", err
+	}
+	shorter := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", shorter, aLen, bLen)
+	minLen := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = select i1 %s, i64 %s, i64 %s\n", minLen, shorter, aLen, bLen)
+	g.needMemcmpDecl = true
+	cmp := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call i32 @memcmp(ptr %s, ptr %s, i64 %s)\n", cmp, aData, bData, minLen)
+	same := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", same, cmp)
+	sameLen := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i64 %s, %s\n", sameLen, aLen, bLen)
+	equal := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = and i1 %s, %s\n", equal, same, sameLen)
+	if op == "!=" {
+		out := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = xor i1 %s, true\n", out, equal)
+		return out, nil
+	}
+	return equal, nil
+}
+
 // strParts loads the data pointer and the length of a str value.
 func (g *generator) strParts(id int) (string, string, error) {
 	base, typ, err := g.place(id)

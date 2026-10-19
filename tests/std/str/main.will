@@ -1,0 +1,67 @@
+import "std/str"
+
+func main() -> i32 {
+    var total: i32 = 0
+
+    var small: Result<i64, Error> = str.ParseI64("-123", 10)
+    match small {
+        Ok(v) => {
+            total += i32(v)
+        }
+        Err(e) => {
+            total += e.Status()
+        }
+    }
+
+    var lowest: Result<i64, Error> = str.ParseI64("-9223372036854775808", 10)
+    match lowest {
+        Ok(v) => {
+            total += i32(v % 100i64)
+        }
+        Err(e) => {
+            total += e.Status()
+        }
+    }
+
+    var hex: Result<u64, Error> = str.ParseU64("ff", 16)
+    match hex {
+        Ok(v) => {
+            total += i32(v % 100u64)
+        }
+        Err(e) => {
+            total += e.Status()
+        }
+    }
+
+    var highest: Result<u64, Error> = str.ParseU64("18446744073709551615", 10)
+    match highest {
+        Ok(v) => {
+            total += i32(v % 100u64)
+        }
+        Err(e) => {
+            total += e.Status()
+        }
+    }
+
+    var real: Result<f64, Error> = str.ParseF64("1.5e3")
+    match real {
+        Ok(v) => {
+            total += i32(v)
+        }
+        Err(e) => {
+            total += e.Status()
+        }
+    }
+
+    var bad: Result<i64, Error> = str.ParseI64("12x", 10)
+    match bad {
+        Ok(v) => {
+            total += i32(v)
+        }
+        Err(e) => {
+            total += e.Status()
+        }
+    }
+
+    return total
+}

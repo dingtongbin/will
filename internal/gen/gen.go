@@ -94,6 +94,9 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare ptr @willrt_alloc(i64)\n")
 		g.out.WriteString("declare void @willrt_free(ptr)\n")
 	}
+	if g.needMemcmpDecl {
+		g.out.WriteString("declare i32 @memcmp(ptr, ptr, i64)\n")
+	}
 }
 
 // docState is the per-file part of the translation: record ids and the callable
@@ -360,6 +363,8 @@ type generator struct {
 	usedError    bool
 	// needAllocDecl records that the lowering calls the allocator.
 	needAllocDecl bool
+	// needMemcmpDecl records that the lowering compares str or byte data.
+	needMemcmpDecl bool
 	// declKinds maps a qualified type name to "struct" or "enum".
 	declKinds map[string]string
 	// callSlots maps a call whose result is a struct to the temporary slot its
@@ -1772,6 +1777,13 @@ func (g *generator) binary(r willc.Record) (string, error) {
 	op := fieldText(r, "op")
 	lID := refField(r, "l")
 	rID := refField(r, "r")
+	if op == "==" || op == "!=" {
+		lt, lerr := g.willTypeText(lID)
+		rt, rerr := g.willTypeText(rID)
+		if lerr == nil && rerr == nil && lt == "str" && rt == "str" {
+			return g.strEqual(lID, rID, op, r)
+		}
+	}
 	l, err := g.value(lID)
 	if err != nil {
 		return "", err

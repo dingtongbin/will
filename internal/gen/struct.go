@@ -710,6 +710,20 @@ func (g *generator) place(id int) (string, string, error) {
 		return ptr, typ, nil
 	case "try":
 		return g.tryPlace(r)
+	case "match":
+		terminated, err := g.lowerMatch(r, true, false)
+		if err != nil {
+			return "", "", err
+		}
+		if terminated {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: every arm of the match returns", r.ID)
+		}
+		slot := g.matchSlots[r.ID]
+		typ := g.matchSlotTypes[r.ID]
+		if slot == "" || typ == "" {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: the match has no result slot", r.ID)
+		}
+		return slot, typ, nil
 	case "new":
 		return g.constructNew(r)
 	case "call", "mcall":
