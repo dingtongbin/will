@@ -140,7 +140,7 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 			return t, nil
 		}
 	}
-	if typ, _, ok := llvmScalar(fieldText(r, "type")); ok {
+	if typ, ok := llvmTypeText(fieldText(r, "type")); ok {
 		return typ, nil
 	}
 	if id := g.typeRef(decl); id != 0 {
@@ -168,7 +168,16 @@ func (g *generator) typeOf(id int) (string, error) {
 		}
 		return typ, nil
 	case "name":
-		return g.declLLVMType(refField(r, "to"))
+		decl := refField(r, "to")
+		name := fieldText(r, "text")
+		if text, ok := g.loopBindType(decl, name); ok {
+			typ, ok := llvmTypeText(text)
+			if !ok {
+				return "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, text)
+			}
+			return typ, nil
+		}
+		return g.declLLVMType(decl)
 	case "field":
 		base, err := g.typeOf(refField(r, "recv"))
 		if err != nil {
@@ -233,6 +242,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		if !ok {
 			return "", g.errf(id, "cannot translate node #%d: no such declaration", id)
 		}
+		if text, ok := g.loopBindType(decl.ID, fieldText(r, "text")); ok {
+			return text, nil
+		}
 		return fieldText(decl, "type"), nil
 	case "field":
 		base, err := g.willTypeText(refField(r, "recv"))
@@ -293,14 +305,13 @@ func (g *generator) place(id int) (string, string, error) {
 	}
 	switch r.Kind {
 	case "name":
-		decl := refField(r, "to")
-		if slot, ok := g.slots[decl]; ok {
-			typ, ok := g.slotTypes[decl]
-			if !ok {
+		if slot, typ, ok := g.nameSlot(r); ok {
+			if typ == "" {
 				return "", "", g.errf(id, "cannot translate node #%d: the local has no type", id)
 			}
 			return slot, typ, nil
 		}
+		decl := refField(r, "to")
 		if name, ok := g.scope[decl]; ok && g.borrows[decl] {
 			typ, err := g.declLLVMType(decl)
 			if err != nil {
@@ -380,7 +391,7 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 		g.tmp++
 		ptr := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", ptr, info.llvm, slot, i)
-		if isStructType(info.types[i]) {
+		if isAggregateType(info.types[i]) {
 			src, typ, err := g.place(valueID)
 			if err != nil {
 				return err

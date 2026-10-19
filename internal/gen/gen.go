@@ -143,6 +143,8 @@ func (g *generator) use(d *docState) {
 	g.byName = map[string]*structInfo{}
 	g.aggSlots = map[int]string{}
 	g.callSlots = map[int]string{}
+	g.loopBinds = map[int]map[string]string{}
+	g.loopTypes = map[int]map[string]string{}
 }
 
 type generator struct {
@@ -175,6 +177,11 @@ type generator struct {
 	// callSlots maps a call whose result is a struct to the temporary slot its
 	// value is stored in, so a field can be read from it.
 	callSlots map[int]string
+	// loopBinds maps a for record and a binding name to that binding's slot,
+	// and loopTypes to its will type text. Both bindings of a loop name the
+	// same for record, so the name tells them apart.
+	loopBinds map[int]map[string]string
+	loopTypes map[int]map[string]string
 	// loops stacks the labels of the enclosing loops, so break and continue
 	// know where to jump.
 	loops []loopLabels
@@ -339,7 +346,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		if err != nil {
 			return err
 		}
-		if !isStructType(typ) {
+		if !isAggregateType(typ) {
 			return g.errf(p.ID, "cannot translate node #%d: parameter type %s is not lowered yet", p.ID, ptype)
 		}
 		// Everything else is passed as a borrow.
@@ -489,15 +496,63 @@ func (g *generator) allocas(fn int) error {
 		if r.Kind != "for" || g.enclosingFunc(r.ID) != fn {
 			continue
 		}
-		if len(bindNames(r)) != 1 || !g.isRangeLoop(r) {
+		if g.isRangeLoop(r) {
+			if len(bindNames(r)) != 1 {
+				continue
+			}
+			name := g.newSlot(bindNames(r)[0])
+			g.slots[r.ID] = name
+			g.slotTypes[r.ID] = "i32"
+			g.bindLoopType(r.ID, bindNames(r)[0], "i32")
+			fmt.Fprintf(g.out, "  %s = alloca i32\n", name)
 			continue
 		}
-		name := g.newSlot(bindNames(r)[0])
-		g.slots[r.ID] = name
-		g.slotTypes[r.ID] = "i32"
-		fmt.Fprintf(g.out, "  %s = alloca i32\n", name)
+		// A fixed-array loop keeps its index in an i64 slot and copies the
+		// element into a slot of its own; both are reserved here.
+		iterText, err := g.willTypeText(refField(r, "iter"))
+		if err != nil {
+			continue
+		}
+		n, elem, ok := arrayTypeText(iterText)
+		if !ok || n < 0 {
+			continue
+		}
+		elemType, _, ok := llvmScalar(elem)
+		if !ok {
+			continue
+		}
+		names := bindNames(r)
+		if len(names) < 1 || len(names) > 2 {
+			continue
+		}
+		if g.loopBinds[r.ID] == nil {
+			g.loopBinds[r.ID] = map[string]string{}
+			g.loopTypes[r.ID] = map[string]string{}
+		}
+		idxName := hiddenIndex
+		if len(names) == 2 {
+			idxName = names[0]
+		}
+		idx := g.newSlot(idxName)
+		g.loopBinds[r.ID][hiddenIndex] = idx
+		g.bindLoopType(r.ID, idxName, "usize")
+		g.loopBinds[r.ID][idxName] = idx
+		fmt.Fprintf(g.out, "  %s = alloca i64\n", idx)
+		elemName := names[len(names)-1]
+		eslot := g.newSlot(elemName)
+		g.loopBinds[r.ID][elemName] = eslot
+		g.bindLoopType(r.ID, elemName, elem)
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", eslot, elemType)
 	}
 	return nil
+}
+
+// bindLoopType records the will type text of one loop binding.
+func (g *generator) bindLoopType(loop int, name, text string) {
+	if g.loopTypes[loop] == nil {
+		g.loopTypes[loop] = map[string]string{}
+	}
+	g.loopTypes[loop][name] = text
 }
 
 // newSlot names one stack slot. A name used more than once gets a number, so a
@@ -589,7 +644,7 @@ func (g *generator) assignStmt(r willc.Record) error {
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, tmp, ptr)
 		return nil
 	}
-	if isStructType(typ) {
+	if isAggregateType(typ) {
 		src, srcType, err := g.place(valueID)
 		if err != nil {
 			return err
@@ -688,7 +743,7 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 	if g.resultType == "" {
 		return false, g.errf(st.ID, "cannot translate node #%d: the function returns no value", st.ID)
 	}
-	if isStructType(g.resultType) {
+	if isAggregateType(g.resultType) {
 		ptr, typ, err := g.place(valueID)
 		if err != nil {
 			return false, err
@@ -760,8 +815,13 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 		return false, nil
 	}
 
+	if iterText, err := g.willTypeText(iterID); err == nil {
+		if an, elem, ok := arrayTypeText(iterText); ok {
+			return g.forArray(r, an, elem, void, n)
+		}
+	}
 	if len(binds) != 1 {
-		return false, g.errf(r.ID, "cannot translate node #%d: only a loop over Range with one binding is lowered yet", r.ID)
+		return false, g.errf(r.ID, "cannot translate node #%d: only a loop over Range with one binding, or a fixed array, is lowered yet", r.ID)
 	}
 	iter, ok := g.recs[iterID]
 	if !ok || iter.Kind != "range" {
@@ -902,14 +962,13 @@ func (g *generator) value(id int) (string, error) {
 		}
 		return "", g.errf(id, "cannot translate node #%d: literal kind %s is not lowered yet", id, fieldText(r, "kind"))
 	case "name":
-		decl := refField(r, "to")
-		if slot, ok := g.slots[decl]; ok {
-			typ := g.slotTypes[decl]
-			if isStructType(typ) {
-				return "", g.errf(id, "cannot translate node #%d: %s is a struct value, not a scalar", id, fieldText(r, "text"))
+		if slot, typ, ok := g.nameSlot(r); ok {
+			if isAggregateType(typ) {
+				return "", g.errf(id, "cannot translate node #%d: %s is an aggregate, not a scalar", id, fieldText(r, "text"))
 			}
 			return g.load(typ, slot), nil
 		}
+		decl := refField(r, "to")
 		if name, ok := g.scope[decl]; ok {
 			if g.borrows[decl] {
 				return "", g.errf(id, "cannot translate node #%d: %s is a borrow, not a scalar value", id, fieldText(r, "text"))
@@ -922,7 +981,7 @@ func (g *generator) value(id int) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if isStructType(typ) {
+		if isAggregateType(typ) {
 			return "", g.errf(id, "cannot translate node #%d: %s is a struct field, not a scalar", id, fieldText(r, "text"))
 		}
 		return g.load(typ, ptr), nil
@@ -1111,7 +1170,7 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, st
 		if err != nil {
 			return "", "", err
 		}
-		if isStructType(typ) {
+		if isAggregateType(typ) {
 			if link {
 				return "", "", g.errf(a, "cannot translate node #%d: a C link takes only scalar arguments yet", a)
 			}

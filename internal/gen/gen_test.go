@@ -664,6 +664,69 @@ func TestEmitStructWithWideFields(t *testing.T) {
 	}
 }
 
+func TestEmitArrayIteration(t *testing.T) {
+	src := "func Sum(xs: [3]i32) -> i32 {\n" +
+		"    var total: i32 = 0\n" +
+		"    for i, x in xs {\n" +
+		"        total += x\n" +
+		"        if i > 2 {\n            break\n        }\n" +
+		"    }\n    return total\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define i32 @"example.com/app.Sum"(ptr %xs) {`,
+		"%v.i = alloca i64",
+		"%v.x = alloca i32",
+		"icmp ult i64 %t",
+		"getelementptr inbounds [3 x i32], ptr %xs, i64 0, i64 %t",
+		"load i32, ptr %t",
+		"store i32 %t",
+		"icmp ugt i64",
+		"for.step.",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	// The array is borrowed for the loop, so its length cannot change and no
+	// bound check is emitted.
+	if strings.Contains(text, "willrt_panic") {
+		t.Errorf("the loop emitted a bound check:\n%s", text)
+	}
+}
+
+func TestEmitArrayIterationWithOneBinding(t *testing.T) {
+	src := "func Sum(xs: [2]i64) -> i64 {\n" +
+		"    var total: i64 = 0\n" +
+		"    for x in xs {\n        total += x\n    }\n" +
+		"    return total\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{"%v.x = alloca i64", "icmp ult i64", "[2 x i64]", "add i64"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitArrayIterationRejectsUnsupportedElements(t *testing.T) {
+	// An array of str is not lowered yet; the loop must say so instead of
+	// emitting a load of an unsupported type.
+	src := "func Count(xs: [2]str) -> i32 {\n    return 0\n}\n"
+	doc := emitWillc(t, src)
+	if _, err := Emit(doc); err == nil {
+		t.Fatal("an array of str was lowered")
+	}
+}
+
 func TestEmitLiteralCarriesItsContextType(t *testing.T) {
 	// 42 in an i64 position must be recorded as an i64 literal, and the
 	// backend must use that type instead of assuming i32.

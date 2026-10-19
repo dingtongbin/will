@@ -1,0 +1,22 @@
+func Sum(xs: [3]i32) -> i32 {
+    var total: i32 = 0
+    for i, x in xs {
+        total += x
+        if i > 2 {
+            break
+        }
+    }
+    return total
+}
+
+func Wide(xs: [2]i64) -> i64 {
+    var total: i64 = 0
+    for x in xs {
+        total += x
+    }
+    return total
+}
+
+func main() -> i32 {
+    return 0
+}
