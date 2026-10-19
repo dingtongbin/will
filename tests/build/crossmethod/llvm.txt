@@ -1,0 +1,35 @@
+%"struct.example.com/crossmethod/lib.Counter" = type { i32 }
+define i32 @"example.com/crossmethod/lib.Counter.Get"(ptr %c) {
+entry:
+  %t1 = getelementptr inbounds %"struct.example.com/crossmethod/lib.Counter", ptr %c, i32 0, i32 0
+  %t2 = load i32, ptr %t1
+  ret i32 %t2
+}
+define %"struct.example.com/crossmethod/lib.Counter" @"example.com/crossmethod/lib.New"(i32 %n) {
+entry:
+  %v.agg.19 = alloca %"struct.example.com/crossmethod/lib.Counter"
+  %t3 = getelementptr inbounds %"struct.example.com/crossmethod/lib.Counter", ptr %v.agg.19, i32 0, i32 0
+  store i32 %n, ptr %t3
+  %t4 = load %"struct.example.com/crossmethod/lib.Counter", ptr %v.agg.19
+  ret %"struct.example.com/crossmethod/lib.Counter" %t4
+}
+define i32 @"example.com/crossmethod.will$main"() {
+entry:
+  %v.c = alloca %"struct.example.com/crossmethod/lib.Counter"
+  %v.ret.8 = alloca %"struct.example.com/crossmethod/lib.Counter"
+  %t1 = call %"struct.example.com/crossmethod/lib.Counter" @"example.com/crossmethod/lib.New"(i32 7)
+  store %"struct.example.com/crossmethod/lib.Counter" %t1, ptr %v.ret.8
+  %t2 = load %"struct.example.com/crossmethod/lib.Counter", ptr %v.ret.8
+  store %"struct.example.com/crossmethod/lib.Counter" %t2, ptr %v.c
+  %t3 = call i32 @"example.com/crossmethod/lib.Counter.Get"(ptr %v.c)
+  ret i32 %t3
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/crossmethod.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}

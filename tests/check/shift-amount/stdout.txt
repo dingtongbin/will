@@ -1,0 +1,2 @@
+bad.will:2:17: T0009 shift amount 32 is not less than the width of i32
+    help: shift by less than 32, or write <<% to truncate

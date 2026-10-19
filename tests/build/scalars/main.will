@@ -1,0 +1,22 @@
+func Sum(a: i64, b: i64) -> i64 {
+    return a + b
+}
+
+func Below(a: usize, b: usize) -> bool {
+    return a < b
+}
+
+func Half(n: u64) -> u64 {
+    return n >> 1
+}
+
+func Mid(a: f64, b: f64) -> f64 {
+    return (a + b) / 2.0
+}
+
+func main() -> i32 {
+    if Below(1, 2) {
+        return 0
+    }
+    return 1
+}

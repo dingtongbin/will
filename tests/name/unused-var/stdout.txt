@@ -1,0 +1,2 @@
+unused.will:2:9: N0005 variable x is never read
+    help: delete it, read it, or discard it with _

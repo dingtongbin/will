@@ -1,0 +1,40 @@
+define i32 @"example.com/loops.Sum"(i32 %n) {
+entry:
+  %v.total = alloca i32
+  %v.i = alloca i32
+  store i32 0, ptr %v.total
+  store i32 0, ptr %v.i
+  br label %for.cond.1
+for.cond.1:
+  %t1 = load i32, ptr %v.i
+  %t2 = icmp slt i32 %t1, %n
+  br i1 %t2, label %for.body.1, label %for.end.1
+for.body.1:
+  %t3 = load i32, ptr %v.total
+  %t4 = load i32, ptr %v.i
+  %t5 = add i32 %t3, %t4
+  store i32 %t5, ptr %v.total
+  br label %for.step.1
+for.step.1:
+  %t6 = load i32, ptr %v.i
+  %t7 = add i32 %t6, 1
+  store i32 %t7, ptr %v.i
+  br label %for.cond.1
+for.end.1:
+  %t8 = load i32, ptr %v.total
+  ret i32 %t8
+}
+define i32 @"example.com/loops.will$main"() {
+entry:
+  %t9 = call i32 @"example.com/loops.Sum"(i32 4)
+  ret i32 %t9
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/loops.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}

@@ -1,0 +1,2 @@
+b.will:1:1: B0009 package example.com/b is the same as example.com/a
+    help: import one of them; fix replace or the module layout

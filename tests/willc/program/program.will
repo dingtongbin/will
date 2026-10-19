@@ -1,0 +1,73 @@
+import "example.com/app/http"
+
+const Limit: i32 = 100
+
+struct Point {
+    x: i32
+    y: i32 = 0
+}
+
+enum Shape {
+    Circle(f64)
+    Square
+}
+
+interface Showable {
+    func Show() -> str
+}
+
+func Work(n: i32) -> i32 {
+    return n
+}
+
+func (mut p: Point) Move(dx: i32, dy: i32) {
+    p.x += dx
+    p.y += dy
+}
+
+func Max<T: Show>(a: T, b: T) -> T {
+    if a > b {
+        return a
+    }
+    return b
+}
+
+func Run(n: i32) -> i32 {
+    var xs: Array<i32> = new Array<i32>(0)
+    var total: i32 = 0
+    for i, x in xs {
+        total += i32(i) + x
+    }
+    var p: Point = Point { x: 1, y: n }
+    p.Move(n, 2)
+    var shape: Shape = Circle(1.5)
+    _ = shape
+    match total {
+        0 => { total = 1 }
+        9 if total > 2 => { total = 3 }
+        _ => { total = 4 }
+    }
+    var text: str = f"value {n} {{ok}}"
+    _ = text
+    var ch: chan<i32> = new chan<i32>(8)
+    var t: Task<i32> = spawn Work(n)
+    _ = t.Join()
+    select {
+        v = ch.Recv() => { total = v }
+        timeout 5ms => { total = -1 }
+        default => { total = 0 }
+    }
+    deadline 3ms {
+        total += 1
+    }
+    region {
+        Work(n)
+    }
+    parallel {
+        total += 1
+    }
+    if total == 0 {
+        return 0
+    }
+    return http.Status(200) + total + Limit
+}

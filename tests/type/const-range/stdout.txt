@@ -1,0 +1,2 @@
+range.will:2:17: T0005 constant 300 is out of range for i8
+    help: write a suffix, or a smaller value

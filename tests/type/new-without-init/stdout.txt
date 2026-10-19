@@ -1,0 +1,2 @@
+newp.will:6:12: T0007 type P has no init; use a literal
+    help: write P { ... } or add an init method

@@ -1,0 +1,73 @@
+define i32 @"example.com/iterate.Sum"(ptr %xs) {
+entry:
+  %v.total = alloca i32
+  %v.i = alloca i64
+  store i32 0, ptr %v.total
+  store i64 0, ptr %v.i
+  br label %for.cond.1
+for.cond.1:
+  %t1 = load i64, ptr %v.i
+  %t2 = icmp ult i64 %t1, 3
+  br i1 %t2, label %for.body.1, label %for.end.1
+for.body.1:
+  %t3 = getelementptr inbounds [3 x i32], ptr %xs, i64 0, i64 %t1
+  %t4 = load i32, ptr %v.total
+  %t5 = load i32, ptr %t3
+  %t6 = add i32 %t4, %t5
+  store i32 %t6, ptr %v.total
+  %t7 = load i64, ptr %v.i
+  %t8 = icmp ugt i64 %t7, 2
+  br i1 %t8, label %if.then.2, label %if.end.2
+if.then.2:
+  br label %for.end.1
+if.end.2:
+  br label %for.step.1
+for.step.1:
+  %t9 = load i64, ptr %v.i
+  %t10 = add i64 %t9, 1
+  store i64 %t10, ptr %v.i
+  br label %for.cond.1
+for.end.1:
+  %t11 = load i32, ptr %v.total
+  ret i32 %t11
+}
+define i64 @"example.com/iterate.Wide"(ptr %xs) {
+entry:
+  %v.total = alloca i64
+  %v.$idx = alloca i64
+  store i64 0, ptr %v.total
+  store i64 0, ptr %v.$idx
+  br label %for.cond.1
+for.cond.1:
+  %t12 = load i64, ptr %v.$idx
+  %t13 = icmp ult i64 %t12, 2
+  br i1 %t13, label %for.body.1, label %for.end.1
+for.body.1:
+  %t14 = getelementptr inbounds [2 x i64], ptr %xs, i64 0, i64 %t12
+  %t15 = load i64, ptr %v.total
+  %t16 = load i64, ptr %t14
+  %t17 = add i64 %t15, %t16
+  store i64 %t17, ptr %v.total
+  br label %for.step.1
+for.step.1:
+  %t18 = load i64, ptr %v.$idx
+  %t19 = add i64 %t18, 1
+  store i64 %t19, ptr %v.$idx
+  br label %for.cond.1
+for.end.1:
+  %t20 = load i64, ptr %v.total
+  ret i64 %t20
+}
+define i32 @"example.com/iterate.will$main"() {
+entry:
+  ret i32 0
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/iterate.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}

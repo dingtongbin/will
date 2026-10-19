@@ -1,0 +1,2 @@
+value.will:1:11: T0008 Equal is a builtin constraint, not an interface
+    help: use it only as a type-parameter constraint

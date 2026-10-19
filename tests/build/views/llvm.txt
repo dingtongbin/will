@@ -1,0 +1,110 @@
+define i32 @"example.com/views.Sum"(ptr %xs) {
+entry:
+  %v.total = alloca i32
+  %v.i = alloca i64
+  store i32 0, ptr %v.total
+  %t1 = getelementptr inbounds { ptr, i64 }, ptr %xs, i32 0, i32 0
+  %t2 = load ptr, ptr %t1
+  %t3 = getelementptr inbounds { ptr, i64 }, ptr %xs, i32 0, i32 1
+  %t4 = load i64, ptr %t3
+  store i64 0, ptr %v.i
+  br label %for.cond.1
+for.cond.1:
+  %t5 = load i64, ptr %v.i
+  %t6 = icmp ult i64 %t5, %t4
+  br i1 %t6, label %for.body.1, label %for.end.1
+for.body.1:
+  %t7 = getelementptr inbounds i32, ptr %t2, i64 %t5
+  %t8 = load i32, ptr %v.total
+  %t9 = load i32, ptr %t7
+  %t10 = add i32 %t8, %t9
+  store i32 %t10, ptr %v.total
+  %t11 = load i64, ptr %v.i
+  %t12 = icmp ugt i64 %t11, 100
+  br i1 %t12, label %if.then.2, label %if.end.2
+if.then.2:
+  br label %for.end.1
+if.end.2:
+  br label %for.step.1
+for.step.1:
+  %t13 = load i64, ptr %v.i
+  %t14 = add i64 %t13, 1
+  store i64 %t14, ptr %v.i
+  br label %for.cond.1
+for.end.1:
+  %t15 = load i32, ptr %v.total
+  ret i32 %t15
+}
+define i64 @"example.com/views.Count"(ptr %xs) {
+entry:
+  %v.n = alloca i64
+  %v.$idx = alloca i64
+  store i64 0, ptr %v.n
+  %t16 = getelementptr inbounds { ptr, i64, i64 }, ptr %xs, i32 0, i32 0
+  %t17 = load ptr, ptr %t16
+  %t18 = getelementptr inbounds { ptr, i64, i64 }, ptr %xs, i32 0, i32 1
+  %t19 = load i64, ptr %t18
+  store i64 0, ptr %v.$idx
+  br label %for.cond.1
+for.cond.1:
+  %t20 = load i64, ptr %v.$idx
+  %t21 = icmp ult i64 %t20, %t19
+  br i1 %t21, label %for.body.1, label %for.end.1
+for.body.1:
+  %t22 = getelementptr inbounds i32, ptr %t17, i64 %t20
+  %t23 = load i32, ptr %t22
+  %t24 = icmp sgt i32 %t23, 0
+  br i1 %t24, label %if.then.2, label %if.end.2
+if.then.2:
+  %t25 = load i64, ptr %v.n
+  %t26 = add i64 %t25, 1
+  store i64 %t26, ptr %v.n
+  br label %if.end.2
+if.end.2:
+  br label %for.step.1
+for.step.1:
+  %t27 = load i64, ptr %v.$idx
+  %t28 = add i64 %t27, 1
+  store i64 %t28, ptr %v.$idx
+  br label %for.cond.1
+for.end.1:
+  %t29 = load i64, ptr %v.n
+  ret i64 %t29
+}
+define i32 @"example.com/views.Mid"(ptr %xs) {
+entry:
+  %v.v = alloca { ptr, i64 }
+  %v.slice.56 = alloca { ptr, i64 }
+  %v.slice.65 = alloca { ptr, i64 }
+  %t30 = getelementptr inbounds [4 x i32], ptr %xs, i64 0, i64 1
+  %t31 = sub i64 3, 1
+  %t32 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.56, i32 0, i32 0
+  store ptr %t30, ptr %t32
+  %t33 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.56, i32 0, i32 1
+  store i64 %t31, ptr %t33
+  %t34 = load { ptr, i64 }, ptr %v.slice.56
+  store { ptr, i64 } %t34, ptr %v.v
+  %t35 = call i32 @"example.com/views.Sum"(ptr %v.v)
+  %t36 = getelementptr inbounds [4 x i32], ptr %xs, i64 0, i64 0
+  %t37 = sub i64 2, 0
+  %t38 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.65, i32 0, i32 0
+  store ptr %t36, ptr %t38
+  %t39 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.65, i32 0, i32 1
+  store i64 %t37, ptr %t39
+  %t40 = call i32 @"example.com/views.Sum"(ptr %v.slice.65)
+  %t41 = add i32 %t35, %t40
+  ret i32 %t41
+}
+define i32 @"example.com/views.will$main"() {
+entry:
+  ret i32 0
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/views.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}

@@ -1,0 +1,7 @@
+import "example.com/init/lib"
+
+var start: i32 = 10
+
+func main() -> i32 {
+    return start + lib.Next()
+}

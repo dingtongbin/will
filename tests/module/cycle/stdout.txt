@@ -1,0 +1,2 @@
+dep.will:1:1: B0010 import cycle: example.com/cycle -> example.com/dep -> example.com/cycle
+    help: break the cycle; move the shared part into a lower package

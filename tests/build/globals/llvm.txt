@@ -1,0 +1,34 @@
+@"example.com/globals/lib.Seed" = internal global i32 zeroinitializer
+define i32 @"example.com/globals/lib.Next"() {
+entry:
+  %t1 = load i32, ptr @"example.com/globals/lib.Seed"
+  %t2 = add i32 %t1, 1
+  store i32 %t2, ptr @"example.com/globals/lib.Seed"
+  %t3 = load i32, ptr @"example.com/globals/lib.Seed"
+  ret i32 %t3
+}
+define void @"example.com/globals/lib.will$init"() {
+entry:
+  store i32 5, ptr @"example.com/globals/lib.Seed"
+  ret void
+}
+define i32 @"example.com/globals.will$main"() {
+entry:
+  %t1 = load i32, ptr @"example.com/globals/lib.Seed"
+  %t2 = add i32 %t1, 2
+  store i32 %t2, ptr @"example.com/globals/lib.Seed"
+  %t3 = load i32, ptr @"example.com/globals/lib.Seed"
+  %t4 = call i32 @"example.com/globals/lib.Next"()
+  %t5 = add i32 %t3, %t4
+  ret i32 %t5
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  call void @"example.com/globals/lib.will$init"()
+  %r = call i32 @"example.com/globals.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}

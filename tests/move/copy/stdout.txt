@@ -1,0 +1,2 @@
+src.will:3:18: O0002 a copy is required here and cannot be proven
+    help: call Clone()

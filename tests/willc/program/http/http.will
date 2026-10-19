@@ -1,0 +1,3 @@
+func Status(code: i32) -> i32 {
+    return code
+}

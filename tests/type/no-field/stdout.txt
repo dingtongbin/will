@@ -1,0 +1,2 @@
+nofield.will:6:12: N0011 no field y on P
+    help: check the field name or the type

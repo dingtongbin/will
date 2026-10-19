@@ -1,0 +1,3 @@
+func F() -> i32 {
+    return missing
+}

@@ -1,0 +1,39 @@
+define i64 @"example.com/scalars.Sum"(i64 %a, i64 %b) {
+entry:
+  %t1 = add i64 %a, %b
+  ret i64 %t1
+}
+define i1 @"example.com/scalars.Below"(i64 %a, i64 %b) {
+entry:
+  %t2 = icmp ult i64 %a, %b
+  ret i1 %t2
+}
+define i64 @"example.com/scalars.Half"(i64 %n) {
+entry:
+  %t3 = lshr i64 %n, 1
+  ret i64 %t3
+}
+define double @"example.com/scalars.Mid"(double %a, double %b) {
+entry:
+  %t4 = fadd double %a, %b
+  %t5 = fdiv double %t4, 2.0
+  ret double %t5
+}
+define i32 @"example.com/scalars.will$main"() {
+entry:
+  %t6 = call i1 @"example.com/scalars.Below"(i64 1, i64 2)
+  br i1 %t6, label %if.then.1, label %if.end.1
+if.then.1:
+  ret i32 0
+if.end.1:
+  ret i32 1
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/scalars.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}

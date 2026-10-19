@@ -1,0 +1,2 @@
+bad.will:2:18: T0001 type mismatch: got str, want i32
+    help: convert explicitly with T(x)

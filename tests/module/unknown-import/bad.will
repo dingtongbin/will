@@ -1,0 +1,4 @@
+import "std/net/http"
+
+func F() {
+}

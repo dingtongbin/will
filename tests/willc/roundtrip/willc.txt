@@ -1,0 +1,54 @@
+#1 module path="example.com/app"
+#2 import path="std/net/http"
+#3 cimport path="stdio.h"
+#4 link text="puts" fast=true
+#5 const text="Limit" type="i32"
+#6 type text="i32" kind="scalar"
+#7 name text="1000"
+#8 func text="Move"
+#9 receiver text="p" type="Point" mut=true
+#10 param text="dx" type="i32"
+#11 type text="i32" kind="scalar"
+#12 block
+#13 exprstmt expr=#14
+#14 call to=#15 arg=#16
+#15 name text="Step"
+#16 bin op="+" l=#17 r=#18
+#17 name text="p"
+#18 lit kind="int" text="1" type="i32"
+#19 struct text="Point"
+#20 field text="x" type="i32"
+#21 type text="i32" kind="scalar"
+#22 enum text="Shape"
+#23 variant text="Circle" arg=#24
+#24 type text="f64" kind="scalar"
+#25 interface text="Showable"
+#26 method-sig text="Show" type="str"
+#27 type text="str" kind="scalar"
+#28 derive text="Show" to=#19
+#29 lane text="Ui" to=#19
+#30 func text="Run"
+#31 block
+#32 if cond=#33 then=#34 else=#35
+#33 bin op=">" l=#36 r=#37
+#34 block
+#35 block
+#36 name text="n"
+#37 lit kind="int" text="0" type="i32"
+#38 match subject=#36
+#39 arm pattern=#40 body=#41 guard=#42
+#40 pattern text="0" kind="literal"
+#41 exprstmt expr=#43
+#42 name text="ok"
+#43 name text="Zero"
+#44 for body=#45 bind="i" iter=#46
+#45 block
+#46 name text="xs"
+#47 select
+#48 selarm body=#45 chan=#49
+#49 mcall recv=#50 text="Recv"
+#50 name text="ch"
+#51 release owner=#50 kind="value"
+#52 diagnostic code="L0001" severity="error" message="this character is not ASCII" pos="a.will:1:1"
+#53 count name="diagnostics" n=1
+#54 end

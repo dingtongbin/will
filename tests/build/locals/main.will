@@ -1,0 +1,11 @@
+func Max(a: i32, b: i32) -> i32 {
+    var m: i32 = a
+    if b > m {
+        m = b
+    }
+    return m
+}
+
+func main() -> i32 {
+    return Max(3, 7)
+}
