@@ -10,9 +10,9 @@ for.cond.1:
   %t2 = icmp slt i32 %t1, %n
   br i1 %t2, label %for.body.1, label %for.end.1
 for.body.1:
-  %t3 = load i32, ptr %v.i
-  %t4 = load i32, ptr %v.total
-  %t5 = add i32 %t4, %t3
+  %t3 = load i32, ptr %v.total
+  %t4 = load i32, ptr %v.i
+  %t5 = add i32 %t3, %t4
   store i32 %t5, ptr %v.total
   br label %for.step.1
 for.step.1:

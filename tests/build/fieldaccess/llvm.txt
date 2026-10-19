@@ -1,0 +1,31 @@
+%"struct.example.com/fieldaccess.Point" = type { i32, i32 }
+define i32 @"example.com/fieldaccess.Sum"(ptr %p) {
+entry:
+  %t1 = getelementptr inbounds %"struct.example.com/fieldaccess.Point", ptr %p, i32 0, i32 0
+  %t2 = load i32, ptr %t1
+  %t3 = getelementptr inbounds %"struct.example.com/fieldaccess.Point", ptr %p, i32 0, i32 1
+  %t4 = load i32, ptr %t3
+  %t5 = add i32 %t2, %t4
+  ret i32 %t5
+}
+define i32 @main() {
+entry:
+  %v.q = alloca %"struct.example.com/fieldaccess.Point"
+  %v.agg.23 = alloca %"struct.example.com/fieldaccess.Point"
+  %t6 = getelementptr inbounds %"struct.example.com/fieldaccess.Point", ptr %v.agg.23, i32 0, i32 0
+  store i32 3, ptr %t6
+  %t7 = getelementptr inbounds %"struct.example.com/fieldaccess.Point", ptr %v.agg.23, i32 0, i32 1
+  store i32 4, ptr %t7
+  %t8 = load %"struct.example.com/fieldaccess.Point", ptr %v.agg.23
+  store %"struct.example.com/fieldaccess.Point" %t8, ptr %v.q
+  %t9 = getelementptr inbounds %"struct.example.com/fieldaccess.Point", ptr %v.q, i32 0, i32 0
+  %t10 = getelementptr inbounds %"struct.example.com/fieldaccess.Point", ptr %v.q, i32 0, i32 0
+  %t11 = load i32, ptr %t10
+  %t12 = add i32 %t11, 1
+  store i32 %t12, ptr %t9
+  %t13 = call i32 @"example.com/fieldaccess.Sum"(ptr %v.q)
+  %t14 = getelementptr inbounds %"struct.example.com/fieldaccess.Point", ptr %v.q, i32 0, i32 1
+  %t15 = load i32, ptr %t14
+  %t16 = add i32 %t13, %t15
+  ret i32 %t16
+}

@@ -111,6 +111,12 @@ func (g *generator) use(d *docState) {
 	g.recs = d.recs
 	g.scope = map[int]string{}
 	g.tmp = 0
+	g.slots = nil
+	g.slotTypes = map[int]string{}
+	g.borrows = map[int]bool{}
+	g.structs = map[int]*structInfo{}
+	g.byType = map[string]*structInfo{}
+	g.aggSlots = map[int]string{}
 }
 
 type generator struct {
@@ -128,7 +134,17 @@ type generator struct {
 	// slots maps a local declaration node to its stack slot, and slotNames
 	// numbers the slots of the current function.
 	slots     map[int]string
+	slotTypes map[int]string
 	slotNames map[string]int
+	// borrows marks the parameters and receivers passed as a pointer, so a
+	// name can be used as a place.
+	borrows map[int]bool
+	// structs holds the lowered structs of the current document by record id,
+	// and byType looks one up by its LLVM type name. aggSlots maps an aggregate
+	// literal to the temporary slot reserved for it in the entry block.
+	structs  map[int]*structInfo
+	byType   map[string]*structInfo
+	aggSlots map[int]string
 	// loops stacks the labels of the enclosing loops, so break and continue
 	// know where to jump.
 	loops []loopLabels
@@ -145,6 +161,7 @@ type generator struct {
 // emitDoc lowers every function of the current document, in source order.
 func (g *generator) emitDoc() error {
 	g.collect()
+	g.buildStructs()
 	var funcs []willc.Record
 	for _, r := range g.recs {
 		if r.Kind == "func" {
@@ -278,6 +295,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		// borrow, so it is a pointer.
 		recvName := fieldText(*recv, "text")
 		g.scope[recv.ID] = "%" + recvName
+		g.borrows[recv.ID] = true
 		sig = append(sig, "ptr %"+recvName)
 	}
 	for _, p := range params {
@@ -292,8 +310,16 @@ func (g *generator) funcDecl(fn willc.Record) error {
 				// A small scalar is passed by value, but only i32 is lowered.
 				return g.errf(p.ID, "cannot translate node #%d: only i32 parameters are lowered yet", p.ID)
 			}
+			typ, err := g.declLLVMType(p.ID)
+			if err != nil {
+				return err
+			}
+			if !isStructType(typ) {
+				return g.errf(p.ID, "cannot translate node #%d: parameter type %s is not lowered yet", p.ID, ptype)
+			}
 			// Everything else is passed as a borrow.
 			g.scope[p.ID] = "%" + pname
+			g.borrows[p.ID] = true
 			sig = append(sig, "ptr %"+pname)
 		}
 	}
@@ -377,12 +403,32 @@ func (g *generator) allocas(fn int) error {
 	}
 	sortByID(locals)
 	for _, r := range locals {
-		if kind := fieldText(r, "type"); kind != "i32" {
-			return g.errf(r.ID, "cannot translate node #%d: only i32 locals are lowered yet", r.ID)
+		typ, err := g.declLLVMType(r.ID)
+		if err != nil {
+			return err
 		}
 		name := g.newSlot(fieldText(r, "text"))
 		g.slots[r.ID] = name
-		fmt.Fprintf(g.out, "  %s = alloca i32\n", name)
+		g.slotTypes[r.ID] = typ
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, typ)
+	}
+	// An aggregate literal is stored in a temporary slot reserved here, so a
+	// loop that evaluates it does not grow the stack.
+	var aggregates []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "agg" && g.enclosingFunc(r.ID) == fn {
+			aggregates = append(aggregates, r)
+		}
+	}
+	sortByID(aggregates)
+	for _, r := range aggregates {
+		info, ok := g.ensureStruct(refField(r, "to"))
+		if !ok {
+			return g.errf(r.ID, "cannot translate node #%d: the aggregate type is not lowered yet", r.ID)
+		}
+		name := "%v.agg." + strconv.Itoa(r.ID)
+		g.aggSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
 	}
 	// A range loop binds one counter, which also needs a slot.
 	for _, r := range g.recs {
@@ -394,6 +440,7 @@ func (g *generator) allocas(fn int) error {
 		}
 		name := g.newSlot(bindNames(r)[0])
 		g.slots[r.ID] = name
+		g.slotTypes[r.ID] = "i32"
 		fmt.Fprintf(g.out, "  %s = alloca i32\n", name)
 	}
 	return nil
@@ -450,42 +497,59 @@ func (g *generator) enclosingFunc(id int) int {
 	return 0
 }
 
-// load reads one local slot into a temporary.
-func (g *generator) load(slot string) string {
+// load reads one place of a scalar type into a temporary.
+func (g *generator) load(typ, slot string) string {
 	g.tmp++
 	name := "%t" + strconv.Itoa(g.tmp)
-	fmt.Fprintf(g.out, "  %s = load i32, ptr %s\n", name, slot)
+	fmt.Fprintf(g.out, "  %s = load %s, ptr %s\n", name, typ, slot)
 	return name
 }
 
-// assignStmt stores a value into a local, applying the compound operator when
+// assignStmt stores a value into a place, applying the compound operator when
 // the assignment names one.
 func (g *generator) assignStmt(r willc.Record) error {
-	target, ok := g.recs[refField(r, "target")]
-	if !ok || target.Kind != "name" {
-		return g.errf(r.ID, "cannot translate node #%d: the assignment target is not a local", r.ID)
-	}
-	slot := g.slots[refField(target, "to")]
-	if slot == "" {
-		return g.errf(r.ID, "cannot translate node #%d: the assignment target is not a local", r.ID)
-	}
-	value, err := g.value(refField(r, "value"))
+	target := refField(r, "target")
+	ptr, typ, err := g.place(target)
 	if err != nil {
 		return err
 	}
+	valueID := refField(r, "value")
 	op := fieldText(r, "op")
 	if op != "=" {
+		if typ != "i32" {
+			return g.errf(r.ID, "cannot translate node #%d: only i32 assignment is lowered yet", r.ID)
+		}
 		instr := assignOp(op)
 		if instr == "" {
 			return g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, op)
 		}
-		current := g.load(slot)
+		current := g.load(typ, ptr)
+		value, err := g.value(valueID)
+		if err != nil {
+			return err
+		}
 		g.tmp++
 		tmp := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = %s i32 %s, %s\n", tmp, instr, current, value)
-		value = tmp
+		fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", tmp, ptr)
+		return nil
 	}
-	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", value, slot)
+	if isStructType(typ) {
+		src, srcType, err := g.place(valueID)
+		if err != nil {
+			return err
+		}
+		if srcType != typ {
+			return g.errf(r.ID, "cannot translate node #%d: the assignment needs %s", r.ID, typ)
+		}
+		g.copyValue(src, ptr, typ)
+		return nil
+	}
+	value, err := g.value(valueID)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
 	return nil
 }
 
@@ -526,11 +590,23 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 	for _, c := range g.children(r.ID) {
 		valueID = c.ID
 	}
+	typ := g.slotTypes[r.ID]
+	if isStructType(typ) {
+		src, srcType, err := g.place(valueID)
+		if err != nil {
+			return false, err
+		}
+		if srcType != typ {
+			return false, g.errf(r.ID, "cannot translate node #%d: %s needs a %s value", r.ID, fieldText(r, "text"), typ)
+		}
+		g.copyValue(src, slot, typ)
+		return false, nil
+	}
 	value, err := g.value(valueID)
 	if err != nil {
 		return false, err
 	}
-	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", value, slot)
+	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, slot)
 	return false, nil
 }
 func (g *generator) body(b willc.Record, void bool) (bool, error) {
@@ -661,7 +737,7 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 	condLabel := fmt.Sprintf("for.cond.%d", n)
 	fmt.Fprintf(g.out, "  br label %%%s\n", condLabel)
 	g.out.WriteString(condLabel + ":\n")
-	current := g.load(slot)
+	current := g.load("i32", slot)
 	g.tmp++
 	cond := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = icmp slt i32 %s, %s\n", cond, current, hi)
@@ -677,7 +753,7 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 		fmt.Fprintf(g.out, "  br label %%%s\n", stepLabel)
 	}
 	g.out.WriteString(stepLabel + ":\n")
-	step := g.load(slot)
+	step := g.load("i32", slot)
 	g.tmp++
 	next := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = add i32 %s, 1\n", next, step)
@@ -771,13 +847,32 @@ func (g *generator) value(id int) (string, error) {
 		}
 		return "", g.errf(id, "cannot translate node #%d: literal kind %s is not lowered yet", id, fieldText(r, "kind"))
 	case "name":
-		if slot, ok := g.slots[refField(r, "to")]; ok {
-			return g.load(slot), nil
+		decl := refField(r, "to")
+		if slot, ok := g.slots[decl]; ok {
+			typ := g.slotTypes[decl]
+			if isStructType(typ) {
+				return "", g.errf(id, "cannot translate node #%d: %s is a struct value, not a scalar", id, fieldText(r, "text"))
+			}
+			return g.load(typ, slot), nil
 		}
-		if name, ok := g.scope[refField(r, "to")]; ok {
+		if name, ok := g.scope[decl]; ok {
+			if g.borrows[decl] {
+				return "", g.errf(id, "cannot translate node #%d: %s is a borrow, not a scalar value", id, fieldText(r, "text"))
+			}
 			return name, nil
 		}
 		return "", g.errf(id, "cannot translate node #%d: the name is not a parameter or a local", id)
+	case "field":
+		ptr, typ, err := g.place(id)
+		if err != nil {
+			return "", err
+		}
+		if isStructType(typ) {
+			return "", g.errf(id, "cannot translate node #%d: %s is a struct field, not a scalar", id, fieldText(r, "text"))
+		}
+		return g.load(typ, ptr), nil
+	case "agg":
+		return "", g.errf(id, "cannot translate node #%d: an aggregate is a place, not a scalar value", id)
 	case "un":
 		return g.unary(r)
 	case "bin":
@@ -923,23 +1018,42 @@ func (g *generator) call(r willc.Record) (string, error) {
 	return g.emitCall(r, name, link)
 }
 
-// emitCall writes one call with its integer arguments.
+// emitCall writes one call. A scalar argument is passed by value; an
+// aggregate argument is passed as the borrow the callee's pointer parameter
+// takes.
 func (g *generator) emitCall(r willc.Record, name string, link bool) (string, error) {
 	args := g.callArgs(r)
-	values := make([]string, 0, len(args))
+	parts := make([]string, 0, len(args))
 	for _, a := range args {
+		typ, err := g.typeOf(a)
+		if err != nil {
+			return "", err
+		}
+		if isStructType(typ) {
+			if link {
+				return "", g.errf(a, "cannot translate node #%d: a C link takes only i32 arguments yet", a)
+			}
+			ptr, ptrType, err := g.place(a)
+			if err != nil {
+				return "", err
+			}
+			if ptrType != typ {
+				return "", g.errf(a, "cannot translate node #%d: the argument needs %s", a, typ)
+			}
+			parts = append(parts, "ptr "+ptr)
+			continue
+		}
+		if typ != "i32" {
+			return "", g.errf(a, "cannot translate node #%d: argument type %s is not lowered yet", a, typ)
+		}
 		v, err := g.value(a)
 		if err != nil {
 			return "", err
 		}
-		values = append(values, v)
+		parts = append(parts, "i32 "+v)
 	}
 	if link {
-		g.declare(name, len(values))
-	}
-	parts := make([]string, len(values))
-	for i, v := range values {
-		parts[i] = "i32 " + v
+		g.declare(name, len(parts))
 	}
 	g.tmp++
 	tmp := "%t" + strconv.Itoa(g.tmp)

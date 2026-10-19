@@ -215,7 +215,7 @@ func TestEmitMethodSignature(t *testing.T) {
 }
 
 func TestEmitAggregateParameterIsABorrow(t *testing.T) {
-	doc := emitWillc(t, "struct Box {\n    v: i64\n}\n\nfunc Take(b: Box) {\n}\n")
+	doc := emitWillc(t, "struct Box {\n    v: i32\n}\n\nfunc Take(b: Box) {\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -434,5 +434,109 @@ func TestEmitUnsupportedNodeIsReported(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "cannot translate node #") {
 		t.Fatalf("error = %v, want a G0001 message", err)
+	}
+}
+
+func TestEmitStructFieldRead(t *testing.T) {
+	src := "struct Point {\n    x: i32\n    y: i32\n}\n\n" +
+		"func Sum(p: Point) -> i32 {\n    return p.x + p.y\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"%\"struct.example.com/app.Point\" = type { i32, i32 }",
+		"define i32 @\"example.com/app.Sum\"(ptr %p) {",
+		"getelementptr inbounds %\"struct.example.com/app.Point\", ptr %p, i32 0, i32 0",
+		"getelementptr inbounds %\"struct.example.com/app.Point\", ptr %p, i32 0, i32 1",
+		"add i32",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitAggregateAndFieldWrite(t *testing.T) {
+	src := "struct Point {\n    x: i32\n    y: i32\n}\n\n" +
+		"func F() -> i32 {\n" +
+		"    var p: Point = Point { x: 3, y: 4 }\n" +
+		"    p.x = p.x + 1\n" +
+		"    return p.x\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"%v.p = alloca %\"struct.example.com/app.Point\"",
+		"%v.agg.",
+		"store i32 3",
+		"store i32 4",
+		"load %\"struct.example.com/app.Point\"",
+		"store %\"struct.example.com/app.Point\"",
+		"store i32 %t",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitNestedField(t *testing.T) {
+	src := "struct Inner {\n    v: i32\n}\n\nstruct Outer {\n    inner: Inner\n}\n\n" +
+		"func Get(o: Outer) -> i32 {\n    return o.inner.v\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"%\"struct.example.com/app.Inner\" = type { i32 }",
+		"%\"struct.example.com/app.Outer\" = type { %\"struct.example.com/app.Inner\" }",
+		"getelementptr inbounds %\"struct.example.com/app.Outer\", ptr %o, i32 0, i32 0",
+		"getelementptr inbounds %\"struct.example.com/app.Inner\", ptr %t1, i32 0, i32 0",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitStructArgumentIsABorrow(t *testing.T) {
+	src := "struct Point {\n    x: i32\n}\n\n" +
+		"func Take(p: Point) -> i32 {\n    return p.x\n}\n\n" +
+		"func F() -> i32 {\n    var q: Point = Point { x: 1 }\n    return Take(q)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	if !strings.Contains(string(ir), "call i32 @\"example.com/app.Take\"(ptr %v.q)") {
+		t.Fatalf("the struct argument is not passed as a borrow:\n%s", ir)
+	}
+}
+
+func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
+	src := "struct Text {\n    body: str\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	if strings.Contains(string(ir), "%\"struct.example.com/app.Text\"") {
+		t.Fatalf("a struct whose field is not lowered was emitted:\n%s", ir)
+	}
+}
+
+func TestEmitUnloweredFieldIsReported(t *testing.T) {
+	src := "struct Text {\n    body: str\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
+	doc := emitWillc(t, src)
+	if _, err := Emit(doc); err == nil {
+		t.Fatal("a parameter whose struct field is not lowered was translated")
 	}
 }
