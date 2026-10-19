@@ -35,7 +35,7 @@ func TestEmitIntegerFunction(t *testing.T) {
 	}
 	text := string(ir)
 	for _, want := range []string{
-		"define i32 @Add(i32 %a, i32 %b) {",
+		`define i32 @"example.com/app.Add"(i32 %a, i32 %b) {`,
 		"entry:",
 		"add i32 %a, %b",
 		"ret i32 %t1",
@@ -80,7 +80,7 @@ func TestEmitVoidFunction(t *testing.T) {
 		t.Fatalf("gen: %v", err)
 	}
 	text := string(ir)
-	for _, want := range []string{"define void @main() {", "ret void"} {
+	for _, want := range []string{`define void @"example.com/app.main"() {`, "ret void"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
@@ -97,10 +97,10 @@ func TestEmitVoidEntryIsWrapped(t *testing.T) {
 	}
 	text := string(ir)
 	for _, want := range []string{
-		"define void @Other() {",
-		"define void @will$main() {",
+		`define void @"example.com/app.Other"() {`,
+		`define void @"example.com/app.will$main"() {`,
 		"define i32 @main() {",
-		"call void @will$main()",
+		`call void @"example.com/app.will$main"()`,
 		"ret i32 0",
 	} {
 		if !strings.Contains(text, want) {
@@ -140,8 +140,57 @@ func TestEmitBareReturnIsVoid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	if !strings.Contains(string(ir), "define void @F()") {
+	if !strings.Contains(string(ir), `define void @"example.com/app.F"()`) {
 		t.Fatalf("IR = %s", ir)
+	}
+}
+
+// emitWillcIn emits one file with the given packages available, so a source
+// that imports a package resolves as it would in a module run.
+func emitWillcIn(t *testing.T, file, src, module string, tables map[string][]string) *willc.Doc {
+	t.Helper()
+	f, ds := parser.Parse(file, []byte(src))
+	if len(ds) != 0 {
+		t.Fatalf("parse: %d diagnostics", len(ds))
+	}
+	imports := resolve.Imports{}
+	for path, members := range tables {
+		exp := resolve.Exported{}
+		for _, m := range members {
+			exp[m] = &resolve.Symbol{Name: m, Kind: resolve.FuncKind, Exported: true}
+		}
+		imports[path] = exp
+	}
+	res, _ := resolve.ResolveWith(f, imports)
+	data, err := willc.Emit(f, res, module, nil)
+	if err != nil {
+		t.Fatalf("emit willc: %v", err)
+	}
+	doc, err := willc.Read(data)
+	if err != nil {
+		t.Fatalf("read willc: %v", err)
+	}
+	return doc
+}
+
+func TestEmitModuleResolvesQualifiedCalls(t *testing.T) {
+	app := emitWillcIn(t, "main.will",
+		"import \"example.com/app/lib\"\n\nfunc main() -> i32 {\n    return lib.Util()\n}\n",
+		"example.com/app", map[string][]string{"example.com/app/lib": {"Util"}})
+	lib := emitWillcIn(t, "lib.will", "func Util() -> i32 {\n    return 7\n}\n", "example.com/app/lib", nil)
+	ir, err := EmitModule([]*willc.Doc{app, lib}, "main")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"define i32 @main() {",
+		`call i32 @"example.com/app/lib.Util"()`,
+		`define i32 @"example.com/app/lib.Util"() {`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
 	}
 }
 

@@ -176,6 +176,22 @@ func runCase(c corpusCase, update bool) error {
 			return mismatch(c.name, name, want, got)
 		}
 	}
+	if _, ok := recorded(c.dir, "llvm.txt"); ok {
+		_, got, _, err := inDir(c.dir, "emit-llvm", target)
+		if err != nil {
+			return fmt.Errorf("%s: %v", c.name, err)
+		}
+		if update {
+			if err := writeRecording(c.dir, "llvm.txt", got); err != nil {
+				return err
+			}
+		} else {
+			want, _ := recorded(c.dir, "llvm.txt")
+			if !bytes.Equal(got, want) {
+				return mismatch(c.name, "llvm.txt", want, got)
+			}
+		}
+	}
 	if _, ok := recorded(c.dir, "index.txt"); ok {
 		_, got, _, err := inDir(c.dir, "index", ".")
 		if err != nil {

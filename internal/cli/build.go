@@ -25,13 +25,19 @@ import (
 // an entry point yet, so this is provisional.
 const defaultEntry = "main"
 
-// frontEnd is what the lowering step needs from the front end: the file that
-// declares the entry function, the import path of its package, and the
-// exported names of every package in the module.
+// frontEnd is what the lowering step needs from the front end: the loaded
+// module (or, without a module, the one file), the import path of the entry's
+// package, and the packages' exported names.
 type frontEnd struct {
 	file       string
 	modulePath string
 	imports    resolve.Imports
+	// build is set when the input is a directory or a file inside a module;
+	// only limits which package is lowered in the file case.
+	build *pkg.Build
+	limit string
+	// ast is set when the input is one file outside any module.
+	ast *ast.File
 }
 
 // runFrontEnd runs the same front end will check runs and prints the same
@@ -72,7 +78,8 @@ func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 				if declaresEntry(d, opts.entry) {
 					// File.Path is relative to the module root, not to the
 					// package directory.
-					return frontEnd{file: filepath.Join(b.Root, f.Path), modulePath: p.Path, imports: imports}, 0
+					return frontEnd{file: filepath.Join(b.Root, f.Path), modulePath: p.Path,
+						imports: imports, build: b}, 0
 				}
 			}
 		}
@@ -114,7 +121,14 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
 		return frontEnd{}, 1
 	}
-	return frontEnd{file: opts.path, modulePath: modulePath, imports: imports}, 0
+	fe := frontEnd{file: opts.path, modulePath: modulePath, imports: imports, ast: f}
+	// Inside a module, lower the whole package the file belongs to, so a call
+	// to a sibling file resolves.
+	if b, p := modulePackage(opts.path); b != nil {
+		fe.build = b
+		fe.limit = p.Path
+	}
+	return fe, 0
 }
 
 // reportDiagnostics prints diagnostics the way will check prints them.
@@ -164,6 +178,71 @@ func failed(ds []diag.Diagnostic, opts buildOptions) bool {
 	return false
 }
 
+// modulePackage loads the module that contains file and returns its load plus
+// the package the file belongs to.
+func modulePackage(file string) (*pkg.Build, *pkg.Package) {
+	abs, err := filepath.Abs(file)
+	if err != nil {
+		abs = file
+	}
+	b := pkg.Load(filepath.Dir(abs))
+	if b.Err != nil || b.Mod == nil {
+		return nil, nil
+	}
+	for _, p := range b.Packages {
+		if filepath.Clean(p.Dir) == filepath.Clean(filepath.Dir(abs)) {
+			return b, p
+		}
+	}
+	return nil, nil
+}
+
+// docs emits willc for every file that takes part in lowering: every package
+// of a module, in package path order, or the entry file's package in file mode.
+// The texts come out in the same order, because the lowering cache is keyed on
+// them.
+func (fe frontEnd) docs() ([]*willc.Doc, []string, error) {
+	var docs []*willc.Doc
+	var texts []string
+	emit := func(f *ast.File, path, pkgPath string, names resolve.Exported, imports resolve.Imports) error {
+		res, _ := resolve.ResolveIn(f, names, imports)
+		text, err := willc.Emit(f, res, pkgPath, nil)
+		if err != nil {
+			return err
+		}
+		doc, err := willc.Read(text)
+		if err != nil {
+			return err
+		}
+		docs = append(docs, doc)
+		texts = append(texts, string(text))
+		return nil
+	}
+	if fe.build != nil {
+		for _, p := range fe.build.Packages {
+			if fe.limit != "" && p.Path != fe.limit {
+				continue
+			}
+			for _, f := range p.Files {
+				if f.AST == nil {
+					continue
+				}
+				if err := emit(f.AST, f.Path, p.Path, p.Names, fe.imports); err != nil {
+					return nil, nil, err
+				}
+			}
+		}
+		return docs, texts, nil
+	}
+	if fe.ast == nil {
+		return nil, nil, &willc.Error{Message: "no source to lower"}
+	}
+	if err := emit(fe.ast, fe.file, fe.modulePath, nil, fe.imports); err != nil {
+		return nil, nil, err
+	}
+	return docs, texts, nil
+}
+
 func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int) {
 	if d, bad := targetDiagnostic(opts.target, opts.targetSet); bad {
 		reportNoPos(d, opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
@@ -173,55 +252,43 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 	if code != 0 {
 		return nil, "", code
 	}
-	data, err := os.ReadFile(fe.file)
+	docs, texts, err := fe.docs()
 	if err != nil {
-		fmt.Fprintf(stderr, "will: %v\n", err)
+		reportTranslate(stdout, err)
 		return nil, "", 1
 	}
-	store, key := buildCacheKey(fe.file, data, fe.modulePath, opts)
+	store, key := loweringCacheKey(texts, opts)
 	if store != nil {
 		if got, ok := store.Get(key, cache.ModuleLL); ok {
 			return got[cache.ModuleLL], fe.modulePath, 0
 		}
 	}
-	f, _ := parser.Parse(filepath.ToSlash(fe.file), data)
-	if f == nil {
-		fmt.Fprintf(stderr, "will: %s no longer parses\n", fe.file)
-		return nil, "", 1
-	}
-	res, _ := resolve.ResolveWith(f, fe.imports)
-	text, err := willc.Emit(f, res, fe.modulePath, nil)
-	if err != nil {
-		reportTranslate(stdout, err)
-		return nil, "", 1
-	}
-	doc, err := willc.Read(text)
-	if err != nil {
-		reportTranslate(stdout, err)
-		return nil, "", 1
-	}
-	ir, err := gen.EmitWithEntry(doc, opts.entry)
+	ir, err := gen.EmitModule(docs, opts.entry)
 	if err != nil {
 		reportTranslate(stdout, err)
 		return nil, "", 1
 	}
 	if store != nil {
-		_ = store.Put(key, map[string][]byte{cache.Willc: text, cache.ModuleLL: ir})
+		_ = store.Put(key, map[string][]byte{cache.ModuleLL: ir})
 		_ = store.Trim()
 	}
 	return ir, fe.modulePath, 0
 }
 
-// buildCacheKey keys one build on everything this run reads: the source, the
-// module path, the entry name, the compiler identity, and the flags.
-func buildCacheKey(file string, data []byte, modulePath string, opts buildOptions) (*cache.Store, string) {
+// loweringCacheKey keys the lowering stage on every willc text it reads, in
+// package and file order, plus the entry name, the compiler identity, and the
+// flags. Without the whole set, changing a called package would reuse an old
+// module.
+func loweringCacheKey(texts []string, opts buildOptions) (*cache.Store, string) {
 	root := os.Getenv("WILL_CACHE")
 	if root == "" {
 		return nil, ""
 	}
 	h := cache.NewHasher()
-	h.Add(filepath.ToSlash(file), data)
-	h.AddStrings("module", modulePath, opts.entry)
+	for _, text := range texts {
+		h.Add("willc", []byte(text))
+	}
+	h.AddStrings("entry", opts.entry)
 	build := buildIdentityWith(opts.opt, opts.target)
 	h.AddStrings("compiler", compilerIdentity(), build.Target, build.Opt)
 	h.AddStrings("flags", fmt.Sprintf("lib=%v", opts.lib), fmt.Sprintf("debug=%v", opts.debug),

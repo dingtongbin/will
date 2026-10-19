@@ -1,0 +1,9 @@
+define i32 @main() {
+entry:
+  %t1 = call i32 @"example.com/crosspkg/lib.Util"()
+  ret i32 %t1
+}
+define i32 @"example.com/crosspkg/lib.Util"() {
+entry:
+  ret i32 7
+}

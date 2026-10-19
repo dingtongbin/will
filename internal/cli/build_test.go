@@ -45,8 +45,38 @@ func TestNewModuleLowers(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("emit-llvm: code = %d, stderr = %q", code, errOut)
 	}
-	if !strings.Contains(out, "define void @will$main()") || !strings.Contains(out, "define i32 @main()") {
+	if !strings.Contains(out, `define void @"example.com/app/src.will$main"()`) || !strings.Contains(out, "define i32 @main()") {
 		t.Fatalf("the generated module does not lower:\n%s", out)
+	}
+}
+
+func TestEmitLLVMCrossPackage(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "crosspkg")
+	if err := os.MkdirAll(filepath.Join(root, "lib"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeFile(t, root, "will.mod", "module example.com/crosspkg\nwill 1\n")
+	writeFile(t, root, "main.will", "import \"example.com/crosspkg/lib\"\n\nfunc main() -> i32 {\n    return lib.Util()\n}\n")
+	writeFile(t, filepath.Join(root, "lib"), "lib.will", "func Util() -> i32 {\n    return 7\n}\n")
+
+	code, out, errOut := runCLI("emit-llvm", root)
+	if code != 0 {
+		t.Fatalf("code = %d, stderr = %q", code, errOut)
+	}
+	for _, want := range []string{
+		"define i32 @main() {",
+		`call i32 @"example.com/crosspkg/lib.Util"()`,
+		`define i32 @"example.com/crosspkg/lib.Util"() {`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("IR lacks %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestEmitLLVMUsage(t *testing.T) {
+	if code, _, _ := runCLI("emit-llvm"); code != 2 {
+		t.Fatalf("code = %d, want 2", code)
 	}
 }
 
