@@ -40,3 +40,17 @@ func filePathFromURI(uri string) (string, bool) {
 func isDriveLetter(b byte) bool {
 	return b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
 }
+
+// pathURI renders a local path as a file: document URI. Notes can point into
+// another file, so their location needs a URI that may not be open.
+func pathURI(path string) string {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		abs = path
+	}
+	p := filepath.ToSlash(abs)
+	if runtime.GOOS == "windows" && len(p) >= 2 && isDriveLetter(p[0]) && p[1] == ':' {
+		p = "/" + p
+	}
+	return "file://" + (&url.URL{Path: p}).EscapedPath()
+}

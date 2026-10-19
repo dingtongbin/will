@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/will-lang/will/internal/diag"
+	"github.com/will-lang/will/internal/source"
 )
 
 // position is one LSP position: a zero-based line and a zero-based UTF-16
@@ -25,11 +26,24 @@ type lspRange struct {
 
 // lspDiagnostic is the LSP form of one compiler diagnostic.
 type lspDiagnostic struct {
-	Range    lspRange `json:"range"`
-	Severity int      `json:"severity"`
-	Code     string   `json:"code"`
-	Source   string   `json:"source"`
-	Message  string   `json:"message"`
+	Range    lspRange     `json:"range"`
+	Severity int          `json:"severity"`
+	Code     string       `json:"code"`
+	Source   string       `json:"source"`
+	Message  string       `json:"message"`
+	Related  []lspRelated `json:"relatedInformation,omitempty"`
+}
+
+// lspRelated carries one note that has a position.
+type lspRelated struct {
+	Location lspLocation `json:"location"`
+	Message  string      `json:"message"`
+}
+
+// lspLocation is a URI and a range inside it.
+type lspLocation struct {
+	URI   string   `json:"uri"`
+	Range lspRange `json:"range"`
 }
 
 // publishDiagnosticsParams is the payload of textDocument/publishDiagnostics.
@@ -294,15 +308,28 @@ func (s *server) publishDiagnostics(uri string) error {
 func (s *server) writeDiagnostics(uri string, version int, ds []diag.Diagnostic) error {
 	items := make([]lspDiagnostic, 0, len(ds))
 	for _, d := range ds {
-		if !d.Pos.IsValid() {
-			continue
+		message := d.Message
+		if d.Help != "" {
+			message += "\nhelp: " + d.Help
+		}
+		var related []lspRelated
+		for _, note := range d.Notes {
+			if note.Pos.IsValid() {
+				related = append(related, lspRelated{
+					Location: lspLocation{URI: pathURI(note.Pos.File), Range: pointRange(note.Pos)},
+					Message:  note.Message,
+				})
+				continue
+			}
+			message += "\n" + note.Message
 		}
 		items = append(items, lspDiagnostic{
 			Range:    rangeOf(d),
 			Severity: severityOf(d.Severity),
 			Code:     d.Code,
 			Source:   "will",
-			Message:  d.Message,
+			Message:  message,
+			Related:  related,
 		})
 	}
 	params, err := json.Marshal(publishDiagnosticsParams{URI: uri, Version: version, Diagnostics: items})
@@ -318,9 +345,13 @@ func (s *server) writeDiagnostics(uri string, version int, ds []diag.Diagnostic)
 
 // rangeOf maps a compiler position to an LSP range. Compiler columns are
 // one-based bytes; LSP lines and columns are zero-based, and ASCII source
-// makes the byte and UTF-16 columns identical. A diagnostic without an end
-// covers one character so editors can draw it.
+// makes the byte and UTF-16 columns identical. A diagnostic without a position
+// gets the zero range, because the protocol requires a range. A diagnostic
+// without an end covers one character so editors can draw it.
 func rangeOf(d diag.Diagnostic) lspRange {
+	if !d.Pos.IsValid() {
+		return lspRange{}
+	}
 	start := position{Line: d.Pos.Line - 1, Character: d.Pos.Col - 1}
 	end := start
 	if d.End.IsValid() && d.End.File == d.Pos.File &&
@@ -330,6 +361,13 @@ func rangeOf(d diag.Diagnostic) lspRange {
 		end.Character++
 	}
 	return lspRange{Start: start, End: end}
+}
+
+// pointRange is the one-character range of a note, which carries a position
+// but no end.
+func pointRange(p source.Pos) lspRange {
+	start := position{Line: p.Line - 1, Character: p.Col - 1}
+	return lspRange{Start: start, End: position{Line: start.Line, Character: start.Character + 1}}
 }
 
 // severityOf maps a compiler severity to the LSP numbering: Error is 1 and

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/will-lang/will/internal/diag"
 )
 
 const badSource = `func F() {
@@ -180,6 +182,13 @@ func TestInitializeDeclaresOnlyFullSync(t *testing.T) {
 	}
 }
 
+func TestRangeOfAPositionlessDiagnostic(t *testing.T) {
+	got := rangeOf(diag.Diagnostic{Code: "B0002", Message: "bad module"})
+	if got != (lspRange{}) {
+		t.Fatalf("range = %+v, want the zero range", got)
+	}
+}
+
 func TestDidOpenPublishesTypeError(t *testing.T) {
 	c := startServer(t)
 	path := filepath.Join(t.TempDir(), "bad.will")
@@ -211,7 +220,7 @@ func TestDidOpenPublishesTypeError(t *testing.T) {
 	if d.Source != "will" {
 		t.Errorf("source = %q, want will", d.Source)
 	}
-	if d.Message != "type mismatch: got str, want i32" {
+	if d.Message != "type mismatch: got str, want i32\nhelp: convert explicitly with T(x)" {
 		t.Errorf("message = %q", d.Message)
 	}
 	wantRange := lspRange{
