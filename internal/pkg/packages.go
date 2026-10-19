@@ -148,7 +148,7 @@ func walkModule(n *moduleNode) ([]*Package, []diag.Diagnostic) {
 			continue
 		}
 		sort.Strings(files)
-		p := &Package{Dir: dir, Name: name, Path: importPath(n.Path, n.Dir, dir)}
+		p := &Package{Dir: dir, Root: n.Dir, Name: name, Path: importPath(n.Path, n.Dir, dir)}
 		for _, path := range files {
 			rel, err := filepath.Rel(n.Dir, path)
 			if err != nil {

@@ -28,8 +28,12 @@ type File struct {
 
 // Package is one directory.
 type Package struct {
-	Path  string
-	Dir   string
+	Path string
+	Dir  string
+	// Root is the directory of the module this package belongs to. A file's
+	// Path is relative to that root, not to Dir, because a package may sit in
+	// a subdirectory of its module and a dependency lives in another tree.
+	Root  string
 	Name  string
 	Files []*File
 	// Names is every top-level name of the package, private names included,

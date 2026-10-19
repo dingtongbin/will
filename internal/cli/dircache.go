@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/will-lang/will/internal/cache"
@@ -73,20 +72,42 @@ func dirCacheKey(b *pkg.Build, flags checkFlags) (*cache.Store, string, bool) {
 		return nil, "", false
 	}
 	h := cache.NewHasher()
-	h.AddStrings("module", b.Mod.Path, strconv.Itoa(b.Mod.Will))
-	if data, err := os.ReadFile(filepath.Join(b.Root, "will.mod")); err == nil {
-		h.Add("will.mod", data)
-	}
-	if data, err := os.ReadFile(filepath.Join(b.Root, "will.sum")); err == nil {
-		h.Add("will.sum", data)
-	}
-	for _, path := range headerFiles(b.Root) {
-		rel, err := filepath.Rel(b.Root, path)
-		if err != nil {
+	// Every module of the graph contributes its manifest, its sum file, and its
+	// C and H files. The paths are relative to each module root and prefixed by
+	// the module path, so moving the checkout does not change the key.
+	roots := map[string]string{}
+	for _, p := range b.Packages {
+		if p.Root == "" {
 			continue
 		}
-		if data, err := os.ReadFile(path); err == nil {
-			h.Add(filepath.ToSlash(rel), data)
+		if cur, ok := roots[p.Root]; !ok || p.Path < cur {
+			roots[p.Root] = p.Path
+		}
+	}
+	prefixes := make([]string, 0, len(roots))
+	byPrefix := map[string]string{}
+	for root, prefix := range roots {
+		prefixes = append(prefixes, prefix)
+		byPrefix[prefix] = root
+	}
+	sort.Strings(prefixes)
+	for _, prefix := range prefixes {
+		root := byPrefix[prefix]
+		h.AddStrings("module", prefix)
+		if data, err := os.ReadFile(filepath.Join(root, "will.mod")); err == nil {
+			h.Add(prefix+"/will.mod", data)
+		}
+		if data, err := os.ReadFile(filepath.Join(root, "will.sum")); err == nil {
+			h.Add(prefix+"/will.sum", data)
+		}
+		for _, path := range headerFiles(root) {
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				continue
+			}
+			if data, err := os.ReadFile(path); err == nil {
+				h.Add(prefix+"/"+filepath.ToSlash(rel), data)
+			}
 		}
 	}
 	for _, p := range b.Packages {
@@ -97,7 +118,7 @@ func dirCacheKey(b *pkg.Build, flags checkFlags) (*cache.Store, string, bool) {
 		sort.Strings(names)
 		h.AddStrings("exports", append([]string{p.Path}, names...)...)
 		for _, f := range p.Files {
-			if data, err := os.ReadFile(filepath.Join(p.Dir, f.Path)); err == nil {
+			if data, err := os.ReadFile(filepath.Join(p.Root, f.Path)); err == nil {
 				h.Add(p.Path+"/"+f.Path, data)
 			}
 		}
