@@ -32,6 +32,10 @@ void* willrt_os_alloc_pages(size_t size);
    the value passed to that call. NULL is accepted. */
 void willrt_os_free_pages(void* ptr, size_t size);
 
+/* willrt_os_now_ns returns the platform's monotonic clock in nanoseconds. It
+   never goes backwards. Zero is returned when the platform call fails. */
+int64_t willrt_os_now_ns(void);
+
 /* willrt_alloc returns a block aligned for any type, or NULL on failure. A
    zero-size request still returns a unique block, so an empty buffer is never
    mistaken for an allocation failure. */
@@ -88,5 +92,22 @@ uint64_t willrt_weak_new(uint64_t handle);
    WILLRT_EMPTY when the object was released or out is NULL. On success the
    strong count is incremented, so the caller owns the returned reference. */
 int32_t willrt_weak_upgrade(uint64_t weak, void* out);
+
+/* willrt_now_ns returns the monotonic clock in nanoseconds. It never goes
+   backwards and is the time base for timer deadlines. */
+int64_t willrt_now_ns(void);
+
+/* willrt_timer is a one-shot timer. The node is owned by the runtime. */
+typedef struct willrt_timer willrt_timer;
+
+/* willrt_timer_new inserts a timer for the absolute monotonic deadline
+   deadline_ns. fn is a void (*)(void*) that runs with arg after the deadline
+   passes. Insertion is O(1) and returns NULL when node allocation fails. */
+willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg);
+
+/* willrt_timer_cancel removes an armed timer in O(1). NULL and a timer that
+   already fired are harmless. A cancelled or fired node stays valid until the
+   next advance reclaims it; callers must not use the pointer after that. */
+void willrt_timer_cancel(willrt_timer* timer);
 
 #endif
