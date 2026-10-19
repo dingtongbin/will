@@ -110,6 +110,12 @@ willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg);
    next advance reclaims it; callers must not use the pointer after that. */
 void willrt_timer_cancel(willrt_timer* timer);
 
+/* The compiler's entry wrapper calls willrt_init once, before the program
+   entry, and willrt_shutdown once after it returns. Both are safe to call more
+   than once, so a host embedding the runtime may start and stop it repeatedly. */
+void willrt_init(void);
+void willrt_shutdown(void);
+
 /* willrt_panic writes "panic: <message>" and, when site is nonempty, one
    "  at <site> <symbol>" line, then terminates the process with exit code 101.
    Task containment is not implemented yet, so every panic ends the process.
