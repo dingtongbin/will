@@ -339,6 +339,21 @@ func (g *generator) place(id int) (string, string, error) {
 			return "", "", err
 		}
 		return slot, info.llvm, nil
+	case "call", "mcall":
+		info, err := g.callResultStruct(r)
+		if err != nil {
+			return "", "", err
+		}
+		slot := g.callSlots[id]
+		if slot == "" {
+			return "", "", g.errf(id, "cannot translate node #%d: the call result has no slot", id)
+		}
+		value, _, err := g.callExpr(r)
+		if err != nil {
+			return "", "", err
+		}
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.llvm, value, slot)
+		return slot, info.llvm, nil
 	}
 	return "", "", g.errf(id, "cannot translate node #%d: %s is not a place", id, r.Kind)
 }

@@ -1,0 +1,35 @@
+%"struct.example.com/returns.Pair" = type { i32, i32 }
+define %"struct.example.com/returns.Pair" @"example.com/returns.Make"(i32 %n) {
+entry:
+  %v.agg.13 = alloca %"struct.example.com/returns.Pair"
+  %t1 = getelementptr inbounds %"struct.example.com/returns.Pair", ptr %v.agg.13, i32 0, i32 0
+  store i32 %n, ptr %t1
+  %t2 = getelementptr inbounds %"struct.example.com/returns.Pair", ptr %v.agg.13, i32 0, i32 1
+  %t3 = add i32 %n, 1
+  store i32 %t3, ptr %t2
+  %t4 = load %"struct.example.com/returns.Pair", ptr %v.agg.13
+  ret %"struct.example.com/returns.Pair" %t4
+}
+define i32 @"example.com/returns.First"() {
+entry:
+  %v.ret.23 = alloca %"struct.example.com/returns.Pair"
+  %t5 = call %"struct.example.com/returns.Pair" @"example.com/returns.Make"(i32 7)
+  store %"struct.example.com/returns.Pair" %t5, ptr %v.ret.23
+  %t6 = getelementptr inbounds %"struct.example.com/returns.Pair", ptr %v.ret.23, i32 0, i32 0
+  %t7 = load i32, ptr %t6
+  ret i32 %t7
+}
+define i32 @main() {
+entry:
+  %v.p = alloca %"struct.example.com/returns.Pair"
+  %v.ret.30 = alloca %"struct.example.com/returns.Pair"
+  %t8 = call %"struct.example.com/returns.Pair" @"example.com/returns.Make"(i32 3)
+  store %"struct.example.com/returns.Pair" %t8, ptr %v.ret.30
+  %t9 = load %"struct.example.com/returns.Pair", ptr %v.ret.30
+  store %"struct.example.com/returns.Pair" %t9, ptr %v.p
+  %t10 = call i32 @"example.com/returns.First"()
+  %t11 = getelementptr inbounds %"struct.example.com/returns.Pair", ptr %v.p, i32 0, i32 1
+  %t12 = load i32, ptr %t11
+  %t13 = add i32 %t10, %t12
+  ret i32 %t13
+}

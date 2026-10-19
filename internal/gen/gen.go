@@ -142,6 +142,7 @@ func (g *generator) use(d *docState) {
 	g.byType = map[string]*structInfo{}
 	g.byName = map[string]*structInfo{}
 	g.aggSlots = map[int]string{}
+	g.callSlots = map[int]string{}
 }
 
 type generator struct {
@@ -171,6 +172,9 @@ type generator struct {
 	byType   map[string]*structInfo
 	byName   map[string]*structInfo
 	aggSlots map[int]string
+	// callSlots maps a call whose result is a struct to the temporary slot its
+	// value is stored in, so a field can be read from it.
+	callSlots map[int]string
 	// loops stacks the labels of the enclosing loops, so break and continue
 	// know where to jump.
 	loops []loopLabels
@@ -346,11 +350,16 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	if result == "" {
 		return g.voidFunc(fn, name, sig)
 	}
-	resLLVM, _, ok := llvmScalar(result)
-	if !ok {
-		if g.typeRef(fn.ID) != 0 {
-			return g.errf(fn.ID, "cannot translate node #%d: a struct result is not lowered yet", fn.ID)
+	resLLVM := ""
+	if typ, _, ok := llvmScalar(result); ok {
+		resLLVM = typ
+	} else if id := g.typeRef(fn.ID); id != 0 {
+		info, ok := g.ensureStruct(id)
+		if !ok {
+			return g.errf(fn.ID, "cannot translate node #%d: the result type is not lowered yet", fn.ID)
 		}
+		resLLVM = info.llvm
+	} else {
 		return g.errf(fn.ID, "cannot translate node #%d: result type %s is not lowered yet", fn.ID, result)
 	}
 	g.resultType = resLLVM
@@ -455,6 +464,24 @@ func (g *generator) allocas(fn int) error {
 		}
 		name := "%v.agg." + strconv.Itoa(r.ID)
 		g.aggSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
+	}
+	// A call whose result is a struct also needs a slot: its value has to be
+	// stored before a field can be read from it.
+	var calls []willc.Record
+	for _, r := range g.recs {
+		if (r.Kind == "call" || r.Kind == "mcall") && g.enclosingFunc(r.ID) == fn {
+			calls = append(calls, r)
+		}
+	}
+	sortByID(calls)
+	for _, r := range calls {
+		info, err := g.callResultStruct(r)
+		if err != nil {
+			continue
+		}
+		name := "%v.ret." + strconv.Itoa(r.ID)
+		g.callSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
 	}
 	// A range loop binds one counter, which also needs a slot.
@@ -657,12 +684,27 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		g.out.WriteString("  ret void\n")
 		return true, nil
 	}
-	value, err := g.value(refField(st, "value"))
-	if err != nil {
-		return false, err
-	}
+	valueID := refField(st, "value")
 	if g.resultType == "" {
 		return false, g.errf(st.ID, "cannot translate node #%d: the function returns no value", st.ID)
+	}
+	if isStructType(g.resultType) {
+		ptr, typ, err := g.place(valueID)
+		if err != nil {
+			return false, err
+		}
+		if typ != g.resultType {
+			return false, g.errf(st.ID, "cannot translate node #%d: the return needs %s", st.ID, g.resultType)
+		}
+		g.tmp++
+		tmp := "%t" + strconv.Itoa(g.tmp)
+		fmt.Fprintf(g.out, "  %s = load %s, ptr %s\n", tmp, typ, ptr)
+		fmt.Fprintf(g.out, "  ret %s %s\n", typ, tmp)
+		return true, nil
+	}
+	value, err := g.value(valueID)
+	if err != nil {
+		return false, err
 	}
 	fmt.Fprintf(g.out, "  ret %s %s\n", g.resultType, value)
 	return true, nil
@@ -890,10 +932,8 @@ func (g *generator) value(id int) (string, error) {
 		return g.unary(r)
 	case "bin":
 		return g.binary(r)
-	case "call":
-		return g.call(r)
-	case "mcall":
-		return g.mcall(r)
+	case "call", "mcall":
+		return g.callScalar(r)
 	}
 	return "", g.errf(id, "cannot translate node #%d: node kind %s is not lowered yet", id, r.Kind)
 }
@@ -984,22 +1024,70 @@ func (g *generator) binary(r willc.Record) (string, error) {
 	return name, nil
 }
 
-// mcall lowers a method call. A call to a function of another package is
-// written as mcall with the qualified name in to; a C link reached through the
-// c qualifier is lowered too. A real method call is not lowered yet.
-func (g *generator) mcall(r willc.Record) (string, error) {
+// mcall and call lower a call or a method call. A call to a function of
+// another package is written as mcall with the qualified name in to; a C link
+// reached through the c qualifier is lowered too. A real method call is not
+// lowered yet.
+func (g *generator) callScalar(r willc.Record) (string, error) {
+	name, text, err := g.callExpr(r)
+	if err != nil {
+		return "", err
+	}
+	if text == "" {
+		return "", g.errf(r.ID, "cannot translate node #%d: the call returns no value", r.ID)
+	}
+	if _, _, ok := llvmScalar(text); !ok {
+		return "", g.errf(r.ID, "cannot translate node #%d: a struct result is a place, not a scalar value", r.ID)
+	}
+	return name, nil
+}
+
+// callExpr lowers one call or method call and returns the value and its result
+// type text. A void call returns an empty name and an empty text.
+func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	if qualified := textField(r, "to"); qualified != "" {
 		return g.emitCall(r, qualified, false)
 	}
-	name := fieldText(r, "text")
-	recv := g.recs[refField(r, "recv")]
-	cimport := refField(recv, "to")
-	if recv.Kind == "name" && cimport != 0 {
-		if link := g.linkNamed(cimport, name); link != "" {
-			return g.emitCall(r, link, true)
+	if r.Kind == "mcall" {
+		name := fieldText(r, "text")
+		recv := g.recs[refField(r, "recv")]
+		cimport := refField(recv, "to")
+		if recv.Kind == "name" && cimport != 0 {
+			if link := g.linkNamed(cimport, name); link != "" {
+				return g.emitCall(r, link, true)
+			}
 		}
+		return "", "", g.errf(r.ID, "cannot translate node #%d: method call %s is not lowered yet", r.ID, name)
 	}
-	return "", g.errf(r.ID, "cannot translate node #%d: method call %s is not lowered yet", r.ID, name)
+	target := refField(r, "to")
+	name := g.cur.funcs[target]
+	link := false
+	if name == "" {
+		name = g.cur.links[target]
+		link = true
+	}
+	if name == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: the callee is not a file function or a c link", r.ID)
+	}
+	return g.emitCall(r, name, link)
+}
+
+// callResultStruct returns the lowered struct type a call returns. A struct
+// result from another package needs that package's field layout, which this
+// document does not carry.
+func (g *generator) callResultStruct(r willc.Record) (*structInfo, error) {
+	if textField(r, "to") != "" {
+		return nil, g.errf(r.ID, "cannot translate node #%d: a struct result from another package is not lowered yet", r.ID)
+	}
+	fn, ok := g.recs[refField(r, "to")]
+	if !ok || fn.Kind != "func" {
+		return nil, g.errf(r.ID, "cannot translate node #%d: the callee is not a file function", r.ID)
+	}
+	info, ok := g.ensureStruct(g.typeRef(fn.ID))
+	if !ok {
+		return nil, g.errf(r.ID, "cannot translate node #%d: the result type is not lowered yet", r.ID)
+	}
+	return info, nil
 }
 
 // linkNamed returns the C symbol of name declared under one cimport record.
@@ -1012,63 +1100,43 @@ func (g *generator) linkNamed(cimport int, name string) string {
 	return ""
 }
 
-// call lowers a call to a file function, to a function of another package
-// (named by to), or to an import c link. Only i32 arguments and an i32 result
-// are lowered yet.
-func (g *generator) call(r willc.Record) (string, error) {
-	if qualified := textField(r, "to"); qualified != "" {
-		return g.emitCall(r, qualified, false)
-	}
-	target := refField(r, "to")
-	name := g.cur.funcs[target]
-	link := false
-	if name == "" {
-		name = g.cur.links[target]
-		link = true
-	}
-	if name == "" {
-		return "", g.errf(r.ID, "cannot translate node #%d: the callee is not a file function or a c link", r.ID)
-	}
-	return g.emitCall(r, name, link)
-}
-
-// emitCall writes one call. A scalar argument is passed by value with its own
-// type; an aggregate argument is passed as the borrow the callee's pointer
-// parameter takes.
-func (g *generator) emitCall(r willc.Record, name string, link bool) (string, error) {
+// emitCall writes one call and returns its value with its result type text. A
+// scalar argument is passed by value with its own type; an aggregate argument
+// is passed as the borrow the callee's pointer parameter takes.
+func (g *generator) emitCall(r willc.Record, name string, link bool) (string, string, error) {
 	args := g.callArgs(r)
 	parts := make([]string, 0, len(args))
 	for _, a := range args {
 		typ, err := g.typeOf(a)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		if isStructType(typ) {
 			if link {
-				return "", g.errf(a, "cannot translate node #%d: a C link takes only scalar arguments yet", a)
+				return "", "", g.errf(a, "cannot translate node #%d: a C link takes only scalar arguments yet", a)
 			}
 			ptr, ptrType, err := g.place(a)
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 			if ptrType != typ {
-				return "", g.errf(a, "cannot translate node #%d: the argument needs %s", a, typ)
+				return "", "", g.errf(a, "cannot translate node #%d: the argument needs %s", a, typ)
 			}
 			parts = append(parts, "ptr "+ptr)
 			continue
 		}
 		if typ == "" {
-			return "", g.errf(a, "cannot translate node #%d: the argument has no scalar type", a)
+			return "", "", g.errf(a, "cannot translate node #%d: the argument has no scalar type", a)
 		}
 		v, err := g.value(a)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 		parts = append(parts, typ+" "+v)
 	}
 	resultText, err := g.callResultText(r)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if link {
 		if resultText == "" {
@@ -1077,22 +1145,26 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, er
 			resultText = "i32"
 		}
 		if resultText != "i32" {
-			return "", g.errf(r.ID, "cannot translate node #%d: a C link results in %s, which is not lowered yet", r.ID, resultText)
+			return "", "", g.errf(r.ID, "cannot translate node #%d: a C link results in %s, which is not lowered yet", r.ID, resultText)
 		}
 		g.declare(name, len(parts))
 	}
 	if resultText == "" {
 		fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(name), strings.Join(parts, ", "))
-		return "", nil
+		return "", "", nil
 	}
-	result, _, ok := llvmScalar(resultText)
-	if !ok {
-		return "", g.errf(r.ID, "cannot translate node #%d: result type %s is not lowered yet", r.ID, resultText)
+	result, _, scalar := llvmScalar(resultText)
+	if !scalar {
+		info, err := g.callResultStruct(r)
+		if err != nil {
+			return "", "", err
+		}
+		result = info.llvm
 	}
 	g.tmp++
 	tmp := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = call %s @%s(%s)\n", tmp, result, llvmSymbol(name), strings.Join(parts, ", "))
-	return tmp, nil
+	return tmp, resultText, nil
 }
 
 func (g *generator) declare(name string, args int) {

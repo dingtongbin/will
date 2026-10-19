@@ -614,6 +614,29 @@ func TestEmitFloatArithmetic(t *testing.T) {
 	}
 }
 
+func TestEmitStructResultByValue(t *testing.T) {
+	src := "struct Point {\n    x: i32\n    y: i32\n}\n\n" +
+		"func Make() -> Point {\n    return Point { x: 1, y: 2 }\n}\n\n" +
+		"func Use() -> i32 {\n    return Make().x\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define %"struct.example.com/app.Point" @"example.com/app.Make"() {`,
+		`ret %"struct.example.com/app.Point" %t`,
+		`%v.ret.`,
+		`= call %"struct.example.com/app.Point" @"example.com/app.Make"()`,
+		`getelementptr inbounds %"struct.example.com/app.Point", ptr %v.ret.`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitLiteralCarriesItsContextType(t *testing.T) {
 	// 42 in an i64 position must be recorded as an i64 literal, and the
 	// backend must use that type instead of assuming i32.
