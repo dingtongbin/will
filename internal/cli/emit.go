@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
 	"github.com/will-lang/will/internal/pkg"
@@ -72,13 +73,13 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 	var bag diag.Bag
 	bag.AddAll(ds)
 
-	imps, defModule := packageImports(file)
+	imps, defModule, names, others := packageContext(file)
 	if modulePath == "" {
 		modulePath = defModule
 	}
-	res, rds := resolve.ResolveWith(f, imps)
+	res, rds := resolve.ResolveIn(f, names, imps)
 	bag.AddAll(rds)
-	bag.AddAll(types.Check(f, res))
+	bag.AddAll(types.CheckWith(f, res, others))
 
 	all := bag.Diagnostics()
 	if hasError(all) {
@@ -93,25 +94,40 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 	return writeText(outPath, text, stdout, stderr)
 }
 
-// packageImports loads the module that contains file, when there is one, and
-// returns the import tables plus the module path of the file's package.
-func packageImports(file string) (resolve.Imports, string) {
-	dir := filepath.Dir(file)
+// packageContext loads the module that contains file and returns the import
+// tables, the package path of the file's own package, that package's
+// top-level names, and the other files of the package.
+func packageContext(file string) (resolve.Imports, string, resolve.Exported, []*ast.File) {
+	absFile, err := filepath.Abs(file)
+	if err != nil {
+		absFile = file
+	}
+	dir := filepath.Dir(absFile)
 	b := pkg.Load(dir)
 	if b.Err != nil || b.Mod == nil {
-		return nil, filepath.Base(dir)
+		return nil, filepath.Base(dir), nil, nil
 	}
 	imps := resolve.Imports{}
 	for _, p := range b.Packages {
 		imps[p.Path] = p.Exports
 	}
 	def := b.Mod.Path
+	var names resolve.Exported
+	var others []*ast.File
 	for _, p := range b.Packages {
-		if filepath.Clean(p.Dir) == filepath.Clean(dir) {
-			def = p.Path
+		if filepath.Clean(p.Dir) != filepath.Clean(dir) {
+			continue
+		}
+		def = p.Path
+		names = p.Names
+		for _, f := range p.Files {
+			if f.AST == nil || filepath.Clean(filepath.Join(p.Dir, f.Path)) == filepath.Clean(absFile) {
+				continue
+			}
+			others = append(others, f.AST)
 		}
 	}
-	return imps, def
+	return imps, def, names, others
 }
 
 func hasError(ds []diag.Diagnostic) bool {

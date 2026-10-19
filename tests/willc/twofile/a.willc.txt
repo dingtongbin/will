@@ -1,0 +1,13 @@
+#1 module pos="a.will:1:1" path="example.com/twofile"
+#2 struct parent=#1 pos="a.will:1:1" text="Box"
+#3 field parent=#2 pos="a.will:2:5" text="v" type="i64"
+#4 type parent=#3 pos="a.will:2:8" text="i64" kind=scalar
+#5 func parent=#1 pos="a.will:5:1" text="Value" type="i64"
+#6 param parent=#5 pos="a.will:5:12" text="b" type="Box"
+#7 type parent=#6 pos="a.will:5:15" text="Box" kind=named to=#2
+#8 type parent=#5 pos="a.will:5:23" text="i64" kind=scalar
+#9 block parent=#5 pos="a.will:5:27"
+#10 return parent=#9 pos="a.will:6:5" value=#11
+#11 field parent=#10 pos="a.will:6:12" text="v" recv=#12
+#12 name parent=#11 pos="a.will:6:12" text="b" to=#6
+#13 end

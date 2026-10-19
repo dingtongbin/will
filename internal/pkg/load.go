@@ -27,11 +27,18 @@ type File struct {
 
 // Package is one directory.
 type Package struct {
-	Path    string
-	Dir     string
-	Name    string
-	Files   []*File
+	Path  string
+	Dir   string
+	Name  string
+	Files []*File
+	// Names is every top-level name of the package, private names included,
+	// so a file of the package can resolve a declaration made in a sibling
+	// file. Exports is the subset other packages may use.
+	Names   resolve.Exported
 	Exports resolve.Exported
+	// Diags holds the diagnostics of the package itself, such as a name
+	// declared in two files.
+	Diags []diag.Diagnostic
 }
 
 // Build is the loaded module.
@@ -115,7 +122,9 @@ func Load(root string) *Build {
 			bag.AddAll(fds)
 			p.Files = append(p.Files, &File{Path: filepath.ToSlash(rel), AST: f})
 		}
+		p.Names, p.Diags = buildNames(p)
 		p.Exports = buildExports(p)
+		bag.AddAll(p.Diags)
 		pkgs = append(pkgs, p)
 	}
 	sort.Slice(pkgs, func(i, j int) bool { return pkgs[i].Path < pkgs[j].Path })
@@ -217,42 +226,75 @@ func receiverName(t *ast.Type) string {
 // buildExports collects the exported top-level names of one package.
 func buildExports(p *Package) resolve.Exported {
 	out := resolve.Exported{}
-	for _, f := range p.Files {
-		if f.AST == nil {
-			continue
-		}
-		for _, d := range f.AST.Decls {
-			switch decl := d.(type) {
-			case *ast.ConstDecl:
-				addExport(out, decl.Name, resolve.ConstKind, decl.NamePos, decl)
-			case *ast.VarDecl:
-				addExport(out, decl.Name, resolve.VarKind, decl.NamePos, decl)
-			case *ast.FuncDecl:
-				if decl.Recv == nil {
-					addExport(out, decl.Name, resolve.FuncKind, decl.NamePos, decl)
-				}
-			case *ast.StructDecl:
-				addExport(out, decl.Name, resolve.StructKind, decl.NamePos, decl)
-			case *ast.EnumDecl:
-				addExport(out, decl.Name, resolve.EnumKind, decl.NamePos, decl)
-				for _, v := range decl.Variants {
-					addExport(out, v.Name, resolve.VariantKind, v.NamePos, v)
-				}
-			case *ast.InterfaceDecl:
-				addExport(out, decl.Name, resolve.InterfaceKind, decl.NamePos, decl)
-			case *ast.LaneDecl:
-				addExport(out, decl.Name, resolve.LaneKind, decl.NamePos, decl)
-			}
+	for name, sym := range p.Names {
+		if isExported(name) {
+			out[name] = sym
 		}
 	}
 	return out
 }
 
-func addExport(out resolve.Exported, name string, kind resolve.Kind, pos source.Pos, node ast.Node) {
-	if !isExported(name) {
-		return
+// buildNames collects every top-level name of one package, private names
+// included, and reports a name declared in more than one file: within a
+// package, two declarations with the same name are an error even when they
+// are written in different files.
+func buildNames(p *Package) (resolve.Exported, []diag.Diagnostic) {
+	out := resolve.Exported{}
+	var bag diag.Bag
+	seen := map[string]ast.Node{}
+	for _, f := range p.Files {
+		if f.AST == nil {
+			continue
+		}
+		for _, d := range f.AST.Decls {
+			add := func(name string, kind resolve.Kind, pos source.Pos, node ast.Node) {
+				if name == "" {
+					return
+				}
+				if prev, ok := seen[name]; ok {
+					_ = prev
+					bag.Error(pos, diag.CodeDuplicateName, "duplicate top-level name "+name,
+						"names must be unique in a package: shadowing is a warning, two declarations with the same name are an error")
+					return
+				}
+				seen[name] = node
+				out[name] = &resolve.Symbol{Name: name, Kind: kind, Pos: pos, Node: node, Exported: isExported(name)}
+			}
+			switch decl := d.(type) {
+			case *ast.ConstDecl:
+				add(decl.Name, resolve.ConstKind, decl.NamePos, decl)
+			case *ast.VarDecl:
+				add(decl.Name, resolve.VarKind, decl.NamePos, decl)
+			case *ast.FuncDecl:
+				if decl.Recv == nil {
+					add(decl.Name, resolve.FuncKind, decl.NamePos, decl)
+				}
+			case *ast.StructDecl:
+				add(decl.Name, resolve.StructKind, decl.NamePos, decl)
+			case *ast.EnumDecl:
+				add(decl.Name, resolve.EnumKind, decl.NamePos, decl)
+				for _, v := range decl.Variants {
+					add(v.Name, resolve.VariantKind, v.NamePos, v)
+				}
+			case *ast.InterfaceDecl:
+				add(decl.Name, resolve.InterfaceKind, decl.NamePos, decl)
+			case *ast.LaneDecl:
+				add(decl.Name, resolve.LaneKind, decl.NamePos, decl)
+			}
+		}
 	}
-	out[name] = &resolve.Symbol{Name: name, Kind: kind, Pos: pos, Node: node, Exported: true}
+	return out, bag.Diagnostics()
+}
+
+// buildExportsOld is kept only while the package-wide name table is wired in.
+func buildExportsOld(p *Package) resolve.Exported {
+	out := resolve.Exported{}
+	for name, sym := range p.Names {
+		if isExported(name) {
+			out[name] = sym
+		}
+	}
+	return out
 }
 
 func isExported(name string) bool {
@@ -279,7 +321,7 @@ func (b *Build) DispatchPoints() []Dispatch {
 			if f.AST == nil {
 				continue
 			}
-			res, _ := resolve.ResolveWith(f.AST, imps)
+			res, _ := resolve.ResolveIn(f.AST, p.Names, imps)
 			tr, _ := types.CheckFull(f.AST, res)
 			for _, dp := range tr.Dispatch {
 				out = append(out, Dispatch{File: f.Path, Pos: dp.Pos, Interface: dp.Interface})
@@ -298,8 +340,9 @@ func (b *Build) DispatchPoints() []Dispatch {
 	return out
 }
 
-// CheckAll resolves every file with the exported names of every package and
-// runs the type checker, returning the merged diagnostics.
+// CheckAll resolves and checks every package as a unit: the files of one
+// package see each other's declarations, and one declaration environment
+// covers the whole package.
 func (b *Build) CheckAll() []diag.Diagnostic {
 	var bag diag.Bag
 	bag.AddAll(b.Diags)
@@ -308,15 +351,19 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 		imps[p.Path] = p.Exports
 	}
 	for _, p := range b.Packages {
+		var files []*ast.File
+		var results []*resolve.Result
 		for _, f := range p.Files {
 			if f.AST == nil {
 				continue
 			}
-			res, ds := resolve.ResolveWith(f.AST, imps)
+			res, ds := resolve.ResolveIn(f.AST, p.Names, imps)
 			bag.AddAll(ds)
-			if res != nil {
-				bag.AddAll(types.Check(f.AST, res))
-			}
+			files = append(files, f.AST)
+			results = append(results, res)
+		}
+		if len(files) > 0 {
+			bag.AddAll(types.CheckPackage(files, results))
 		}
 	}
 	return bag.Diagnostics()

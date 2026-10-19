@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/resolve"
 	"github.com/will-lang/will/internal/token"
 )
 
@@ -129,10 +130,9 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 func (e *emitter) emitName(v *ast.NameExpr) int {
 	rec := e.add("name", v)
 	e.text(rec, "text", v.Name)
-	if sym := e.refs[v]; sym != nil {
-		if sym.Node != nil {
-			e.ref(rec, "to", sym.Node)
-		}
+	sym := e.refs[v]
+	if sym != nil {
+		e.refSym(rec, "to", sym)
 		if sym.Predeclared {
 			e.boolean(rec, "builtin", true)
 		}
@@ -210,7 +210,7 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 		rec := e.add("call", c)
 		e.push(rec)
 		if sym != nil && sym.Node != nil {
-			e.ref(rec, "to", sym.Node)
+			e.refSym(rec, "to", sym)
 		} else {
 			to := e.emitNameChild(rec, name)
 			e.field(rec, "to", Ref(to))
@@ -273,6 +273,13 @@ func (e *emitter) emitMethodCall(v *ast.MethodCallExpr) int {
 	if sym := e.refs[v]; sym != nil && sym.Predeclared {
 		e.boolean(rec, "builtin", true)
 	}
+	// A method reached through a package qualifier is named by its package,
+	// because its declaration is not a node of this file.
+	if recv, ok := v.Recv.(*ast.NameExpr); ok {
+		if qualified := e.qualifiedImport(e.refs[recv], v.Name); qualified != "" {
+			e.text(rec, "to", qualified)
+		}
+	}
 	e.push(rec)
 	rid := e.emitExpr(v.Recv)
 	e.field(rec, "recv", Ref(rid))
@@ -305,8 +312,16 @@ func specialCall(name string, args int) (string, bool) {
 
 func (e *emitter) emitAggregate(v *ast.AggregateExpr) int {
 	rec := e.add("agg", v)
-	if target := e.symNode(v); target != nil {
-		e.ref(rec, "to", target)
+	if sym := e.refs[v]; sym != nil && sym.Kind == resolve.ImportKind {
+		if qualified := e.qualifiedImport(sym, memberName(v.TypeName)); qualified != "" {
+			e.text(rec, "to", qualified)
+		}
+	} else if target := e.symNode(v); target != nil {
+		if id, ok := e.ids[target]; ok {
+			e.field(rec, "to", Ref(id))
+		} else if qualified := e.qualified(e.refs[v]); qualified != "" {
+			e.text(rec, "to", qualified)
+		}
 	}
 	e.push(rec)
 	for _, f := range v.Fields {

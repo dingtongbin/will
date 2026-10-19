@@ -68,7 +68,9 @@ func newEnv() *env {
 	}
 }
 
-func buildEnv(c *checker, f *ast.File) *env {
+// buildEnvAll builds the declaration environment of one package from every
+// file of it, so one package is checked as a unit.
+func buildEnvAll(c *checker, files []*ast.File) *env {
 	e := newEnv()
 	// buildType reads the environment, so publish it before the walk.
 	c.env = e
@@ -86,69 +88,87 @@ func buildEnv(c *checker, f *ast.File) *env {
 		{name: "Message", sig: &signature{name: "Message", result: c.in.scalar("str")}},
 		{name: "Status", sig: &signature{name: "Status", result: c.in.scalar("i32")}},
 	}
-	for _, d := range f.Decls {
-		switch decl := d.(type) {
-		case *ast.StructDecl:
-			tp := typeParamSet(decl.TypeParams)
-			t := c.in.named(decl.Name, nil)
-			e.types[decl.Name] = t
-			e.arity[decl.Name] = len(decl.TypeParams)
-			e.userTypes[decl.Name] = true
-			var fields []*fieldInfo
-			for _, fd := range decl.Fields {
-				fields = append(fields, &fieldInfo{name: fd.Name, typ: c.buildType(fd.Type, tp)})
-			}
-			e.fields[decl.Name] = fields
-		case *ast.EnumDecl:
-			tp := typeParamSet(decl.TypeParams)
-			t := c.in.named(decl.Name, nil)
-			e.types[decl.Name] = t
-			e.arity[decl.Name] = len(decl.TypeParams)
-			e.userTypes[decl.Name] = true
-			for _, v := range decl.Variants {
-				payload := make([]*Type, len(v.Args))
-				for i, at := range v.Args {
-					payload[i] = c.buildType(at, tp)
-				}
-				e.variants[v.Name] = &variantInfo{enum: t, payload: payload}
-			}
-		case *ast.InterfaceDecl:
-			tp := typeParamSet(decl.TypeParams)
-			e.types[decl.Name] = c.in.named(decl.Name, nil)
-			e.arity[decl.Name] = len(decl.TypeParams)
-			for _, m := range decl.Methods {
-				sig := &signature{name: m.Name}
-				for _, pm := range m.Params {
-					sig.params = append(sig.params, c.buildType(pm.Type, tp))
-				}
-				sig.result = c.buildType(m.Result, tp)
-				e.ifaces[decl.Name] = append(e.ifaces[decl.Name], &methodInfo{name: m.Name, sig: sig})
-			}
-		case *ast.FuncDecl:
-			sig := c.buildSig(decl)
-			switch {
-			case decl.Recv == nil:
-				e.funcs[decl.Name] = sig
-			case decl.Name == "init":
-				e.inits[receiverName(decl.Recv.Type)] = sig
-			default:
-				e.methods[receiverName(decl.Recv.Type)+"."+decl.Name] = sig
-			}
-		case *ast.ConstDecl:
-			e.vars[decl.Name] = c.buildType(decl.Type, nil)
-		case *ast.VarDecl:
-			e.vars[decl.Name] = c.buildType(decl.Type, nil)
-		case *ast.DeriveDecl:
-			if decl.Name == "Show" {
-				name := receiverName(decl.Type)
-				if e.derives[name] == nil {
-					e.derives[name] = map[string]bool{}
-				}
-				e.derives[name]["Show"] = true
-			}
+	for _, f := range files {
+		if f == nil {
+			continue
+		}
+		for _, d := range f.Decls {
+			b := &envBuilder{c: c, e: e}
+			b.decl(d)
 		}
 	}
 	return e
+}
+
+// envBuilder adds one declaration to the environment. It exists so the
+// declaration switch reads the same for every file of the package.
+type envBuilder struct {
+	c *checker
+	e *env
+}
+
+func (b *envBuilder) decl(d ast.Decl) {
+	c, e := b.c, b.e
+	switch decl := d.(type) {
+	case *ast.StructDecl:
+		tp := typeParamSet(decl.TypeParams)
+		t := c.in.named(decl.Name, nil)
+		e.types[decl.Name] = t
+		e.arity[decl.Name] = len(decl.TypeParams)
+		e.userTypes[decl.Name] = true
+		var fields []*fieldInfo
+		for _, fd := range decl.Fields {
+			fields = append(fields, &fieldInfo{name: fd.Name, typ: c.buildType(fd.Type, tp)})
+		}
+		e.fields[decl.Name] = fields
+	case *ast.EnumDecl:
+		tp := typeParamSet(decl.TypeParams)
+		t := c.in.named(decl.Name, nil)
+		e.types[decl.Name] = t
+		e.arity[decl.Name] = len(decl.TypeParams)
+		e.userTypes[decl.Name] = true
+		for _, v := range decl.Variants {
+			payload := make([]*Type, len(v.Args))
+			for i, at := range v.Args {
+				payload[i] = c.buildType(at, tp)
+			}
+			e.variants[v.Name] = &variantInfo{enum: t, payload: payload}
+		}
+	case *ast.InterfaceDecl:
+		tp := typeParamSet(decl.TypeParams)
+		e.types[decl.Name] = c.in.named(decl.Name, nil)
+		e.arity[decl.Name] = len(decl.TypeParams)
+		for _, m := range decl.Methods {
+			sig := &signature{name: m.Name}
+			for _, pm := range m.Params {
+				sig.params = append(sig.params, c.buildType(pm.Type, tp))
+			}
+			sig.result = c.buildType(m.Result, tp)
+			e.ifaces[decl.Name] = append(e.ifaces[decl.Name], &methodInfo{name: m.Name, sig: sig})
+		}
+	case *ast.FuncDecl:
+		sig := c.buildSig(decl)
+		switch {
+		case decl.Recv == nil:
+			e.funcs[decl.Name] = sig
+		case decl.Name == "init":
+			e.inits[receiverName(decl.Recv.Type)] = sig
+		default:
+			e.methods[receiverName(decl.Recv.Type)+"."+decl.Name] = sig
+		}
+	case *ast.ConstDecl:
+		e.vars[decl.Name] = c.buildType(decl.Type, nil)
+	case *ast.VarDecl:
+		e.vars[decl.Name] = c.buildType(decl.Type, nil)
+	case *ast.DeriveDecl:
+		if decl.Name == "Show" {
+			name := receiverName(decl.Type)
+			if e.derives[name] == nil {
+				e.derives[name] = map[string]bool{}
+			}
+			e.derives[name]["Show"] = true
+		}
+	}
 }
 
 func typeParamSet(params []*ast.TypeParam) map[string]bool {

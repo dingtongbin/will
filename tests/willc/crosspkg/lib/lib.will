@@ -1,0 +1,3 @@
+func Util() -> i64 {
+    return 1
+}

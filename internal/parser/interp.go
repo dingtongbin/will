@@ -73,9 +73,8 @@ func (p *Parser) parseInterpExpr(raw string, pos source.Pos) ast.Expr {
 		p.failed = true
 		return &ast.NameExpr{Span: ast.Span{Start: pos, End: pos}}
 	}
-	toks, ds := lexer.Scan(p.file, []byte(raw+"\n"))
+	toks, ds := lexer.ScanAt(p.file, []byte(raw+"\n"), pos)
 	for _, d := range ds {
-		d.Pos = shiftInterpPos(d.Pos, pos)
 		p.bag.Add(d)
 	}
 	if len(ds) > 0 {
@@ -88,22 +87,12 @@ func (p *Parser) parseInterpExpr(raw string, pos source.Pos) ast.Expr {
 		sub.unexpected("end of interpolation")
 	}
 	for _, d := range sub.bag.Diagnostics() {
-		d.Pos = shiftInterpPos(d.Pos, pos)
 		p.bag.Add(d)
 	}
 	if sub.failed {
 		p.failed = true
 	}
 	return x
-}
-
-func shiftInterpPos(pos source.Pos, base source.Pos) source.Pos {
-	return source.Pos{
-		File:   base.File,
-		Offset: base.Offset + pos.Offset,
-		Line:   base.Line + pos.Line - 1,
-		Col:    base.Col + pos.Col - 1,
-	}
 }
 
 // matchInterpBrace finds the } that closes the { at open. Quoted literals and

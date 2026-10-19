@@ -69,6 +69,8 @@ type Symbol struct {
 	Used        bool
 	Exported    bool
 	Predeclared bool
+	// FromSibling marks a name seeded from another file of the same package.
+	FromSibling bool
 }
 
 // Scope is one lexical scope. A nil parent is the package scope.

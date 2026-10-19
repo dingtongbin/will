@@ -19,6 +19,29 @@ func Scan(file string, src []byte) ([]token.Token, []diag.Diagnostic) {
 	return scanWith(file, src, false)
 }
 
+// ScanAt tokenizes src as a fragment that starts at start, so a fragment
+// parsed in place (an interpolation expression) carries the positions of the
+// file it came from. The fragment's own offsets are counted from start.
+func ScanAt(file string, src []byte, start source.Pos) ([]token.Token, []diag.Diagnostic) {
+	l := &Lexer{
+		file:    file,
+		src:     src,
+		line:    start.Line,
+		col:     start.Col,
+		offBase: start.Offset,
+	}
+	if l.checkFragment() {
+		l.run()
+	}
+	l.toks = dropComments(l.toks)
+	l.toks = append(l.toks, token.Token{
+		Kind: token.EOF,
+		Pos:  l.pos(),
+		End:  l.pos(),
+	})
+	return l.toks, l.bag.Diagnostics()
+}
+
 // ScanAll tokenizes src and keeps every comment, which the formatter needs.
 func ScanAll(file string, src []byte) ([]token.Token, []diag.Diagnostic) {
 	return scanWith(file, src, true)
@@ -58,13 +81,14 @@ func dropComments(toks []token.Token) []token.Token {
 
 // Lexer scans one file.
 type Lexer struct {
-	file string
-	src  []byte
-	off  int
-	line int
-	col  int
-	toks []token.Token
-	bag  diag.Bag
+	file    string
+	src     []byte
+	off     int
+	line    int
+	col     int
+	offBase int
+	toks    []token.Token
+	bag     diag.Bag
 }
 
 func (l *Lexer) run() {
@@ -100,7 +124,7 @@ func (l *Lexer) run() {
 }
 
 func (l *Lexer) pos() source.Pos {
-	return source.Pos{File: l.file, Offset: l.off, Line: l.line, Col: l.col}
+	return source.Pos{File: l.file, Offset: l.offBase + l.off, Line: l.line, Col: l.col}
 }
 
 func (l *Lexer) peek(n int) byte {

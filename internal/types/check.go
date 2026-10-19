@@ -22,14 +22,44 @@ type Result struct {
 
 // Check checks one resolved file and returns its diagnostics.
 func Check(f *ast.File, res *resolve.Result) []diag.Diagnostic {
-	_, ds := CheckFull(f, res)
+	return CheckWith(f, res, nil)
+}
+
+// CheckWith checks one file with the rest of its package visible. The other
+// files supply declarations only; their own bodies are not checked here.
+func CheckWith(f *ast.File, res *resolve.Result, others []*ast.File) []diag.Diagnostic {
+	_, ds := checkWithResult(f, res, others)
 	return ds
 }
 
 // CheckFull checks one resolved file and also returns the dispatch points.
 func CheckFull(f *ast.File, res *resolve.Result) (*Result, []diag.Diagnostic) {
+	return checkWithResult(f, res, nil)
+}
+
+// CheckPackage checks every file of one package. The declaration environment is
+// built from all of them, so a type, a method, or an interface declared in one
+// file is visible in the others.
+func CheckPackage(files []*ast.File, results []*resolve.Result) []diag.Diagnostic {
+	c := &checker{in: newInterner()}
+	c.env = buildEnvAll(c, files)
+	for i, f := range files {
+		if f == nil || i >= len(results) || results[i] == nil {
+			continue
+		}
+		c.res = results[i]
+		c.walkFile(f)
+		c.inferFile(f)
+	}
+	return c.bag.Diagnostics()
+}
+
+func checkWithResult(f *ast.File, res *resolve.Result, others []*ast.File) (*Result, []diag.Diagnostic) {
 	c := &checker{res: res, in: newInterner()}
-	c.env = buildEnv(c, f)
+	files := make([]*ast.File, 0, len(others)+1)
+	files = append(files, others...)
+	files = append(files, f)
+	c.env = buildEnvAll(c, files)
 	c.walkFile(f)
 	c.inferFile(f)
 	return &Result{Dispatch: c.dispatch}, c.bag.Diagnostics()

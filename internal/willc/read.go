@@ -4,9 +4,10 @@ import (
 	"strings"
 )
 
-// universalFields are allowed on every record: the tree shape and the source
-// position (intermediate format, section 1).
-var universalFields = []string{"parent", "pos", "end"}
+// universalFields are allowed on every record: the tree shape, the source
+// position (intermediate format, section 1), and the reference to a name or
+// type, including one declared outside this file.
+var universalFields = []string{"parent", "pos", "end", "to"}
 
 // Read parses a willc document and validates the line grammar, the field
 // sets, the node ids, and every reference.
@@ -186,6 +187,25 @@ func validate(doc *Doc) error {
 		for _, f := range rec.Fields {
 			if f.Value.Kind == RefValue && (f.Value.Ref < 1 || f.Value.Ref > maxID) {
 				return &Error{rec.ID, "dangling node reference"}
+			}
+		}
+		for _, f := range rec.Fields {
+			if f.Name != "to" {
+				continue
+			}
+			switch f.Value.Kind {
+			case RefValue:
+				if f.Value.Ref < 1 || f.Value.Ref > maxID {
+					return &Error{rec.ID, "dangling node reference"}
+				}
+			case TextValue:
+				// A reference to a declaration outside this file is written
+				// as its package-qualified name.
+				if f.Value.Text == "" || strings.HasPrefix(f.Value.Text, "#") {
+					return &Error{rec.ID, "to is either #<id> or a quoted symbol name"}
+				}
+			default:
+				return &Error{rec.ID, "to is either #<id> or a quoted symbol name"}
 			}
 		}
 	}

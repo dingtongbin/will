@@ -14,6 +14,7 @@ import (
 
 func main() {
 	full := flag.Bool("full", false, "run the full tier")
+	update := flag.Bool("update", false, "rewrite the recorded corpus outputs")
 	flag.Parse()
 	root := "."
 	if flag.NArg() > 0 {
@@ -30,7 +31,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "gate: no-assembly: %v\n", err)
 			fail = true
 		}
-		if err := runCorpus(root); err != nil {
+		if err := runCorpus(root, *update); err != nil {
 			fmt.Fprintf(os.Stderr, "gate: corpus: %v\n", err)
 			fail = true
 		}

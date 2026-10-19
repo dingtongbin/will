@@ -95,10 +95,10 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		reportDiagnostics(diag.FilterDisabled(bag.Diagnostics(), opts.disabled), opts, stdout)
 		return frontEnd{}, 1
 	}
-	imports, modulePath := packageImports(opts.path)
-	res, rds := resolve.ResolveWith(f, imports)
+	imports, modulePath, names, others := packageContext(opts.path)
+	res, rds := resolve.ResolveIn(f, names, imports)
 	bag.AddAll(rds)
-	bag.AddAll(types.Check(f, res))
+	bag.AddAll(types.CheckWith(f, res, others))
 	if opts.freestanding {
 		bag.AddAll(check.Freestanding(f))
 	}

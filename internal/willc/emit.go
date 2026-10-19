@@ -16,8 +16,9 @@ import (
 // node that has not been written yet is patched after the walk.
 func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diagnostic) ([]byte, error) {
 	e := &emitter{
-		ids:  map[ast.Node]int{},
-		refs: res.Refs,
+		ids:        map[ast.Node]int{},
+		refs:       res.Refs,
+		modulePath: modulePath,
 	}
 	root := e.add("module", f)
 	e.text(root, "path", modulePath)
@@ -38,11 +39,12 @@ func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diag
 }
 
 type emitter struct {
-	doc     Doc
-	ids     map[ast.Node]int
-	refs    map[ast.Node]*resolve.Symbol
-	parents []int
-	pending []pendingRef
+	doc        Doc
+	ids        map[ast.Node]int
+	refs       map[ast.Node]*resolve.Symbol
+	parents    []int
+	pending    []pendingRef
+	modulePath string
 }
 
 type pendingRef struct {
@@ -103,6 +105,67 @@ func (e *emitter) symNode(node ast.Node) ast.Node {
 		return sym.Node
 	}
 	return nil
+}
+
+// refSym points a field at a node of this file. A declaration that lives
+// elsewhere, in another file of the same package, is written as its
+// package-qualified name instead, because a node id only means something
+// inside one file.
+func (e *emitter) refSym(rec int, name string, sym *resolve.Symbol) {
+	if sym == nil {
+		return
+	}
+	if sym.Node != nil {
+		if id, ok := e.ids[sym.Node]; ok {
+			e.field(rec, name, Ref(id))
+			return
+		}
+		if qualified := e.qualified(sym); qualified != "" {
+			e.field(rec, name, Text(qualified))
+			return
+		}
+		e.ref(rec, name, sym.Node)
+	}
+}
+
+// qualified returns the package-qualified name of a symbol declared outside
+// this file, or "" when the symbol has no such name.
+func (e *emitter) qualified(sym *resolve.Symbol) string {
+	if sym == nil || e.modulePath == "" {
+		return ""
+	}
+	switch sym.Kind {
+	case resolve.MethodKind:
+		if sym.RecvType != "" {
+			return e.modulePath + "." + sym.RecvType + "." + sym.Name
+		}
+		return e.modulePath + "." + sym.Name
+	case resolve.ImportKind, resolve.PredeclaredTypeKind, resolve.PredeclaredValueKind:
+		return ""
+	}
+	return e.modulePath + "." + sym.Name
+}
+
+// qualifiedImport returns the package-qualified name of a member reached
+// through an import qualifier, or "" when sym is not a package import. A C
+// import binds no package member, so it has no such name.
+func (e *emitter) qualifiedImport(sym *resolve.Symbol, member string) string {
+	if sym == nil || sym.Kind != resolve.ImportKind {
+		return ""
+	}
+	imp, ok := sym.Node.(*ast.Import)
+	if !ok || imp.C || member == "" {
+		return ""
+	}
+	return imp.Path + "." + member
+}
+
+// memberName returns the part of a qualified name after its last dot.
+func memberName(name string) string {
+	if i := strings.LastIndexByte(name, '.'); i >= 0 {
+		return name[i+1:]
+	}
+	return name
 }
 
 func (e *emitter) patchRefs() error {
@@ -333,6 +396,7 @@ func (e *emitter) emitType(t *ast.Type) int {
 	rec := e.add("type", t)
 	e.text(rec, "text", typeText(t))
 	e.word(rec, "kind", typeKind(t))
+	e.typeRef(rec, t)
 	e.push(rec)
 	switch t.Kind {
 	case ast.NamedType:
@@ -355,6 +419,26 @@ func (e *emitter) emitType(t *ast.Type) int {
 	}
 	e.pop()
 	return rec
+}
+
+// typeRef writes the to field of a type record. A type declared in this file
+// is a node reference; one declared in another file of the package, or in an
+// imported package, is written as its package-qualified name.
+func (e *emitter) typeRef(rec int, t *ast.Type) {
+	sym := e.refs[t]
+	if sym == nil {
+		return
+	}
+	if sym.Kind == resolve.ImportKind {
+		if qualified := e.qualifiedImport(sym, memberName(t.Name)); qualified != "" {
+			e.text(rec, "to", qualified)
+		}
+		return
+	}
+	if sym.Kind == resolve.PredeclaredTypeKind {
+		return
+	}
+	e.refSym(rec, "to", sym)
 }
 
 func typeText(t *ast.Type) string {

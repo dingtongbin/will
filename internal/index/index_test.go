@@ -19,7 +19,7 @@ func write(t *testing.T, path, content string) {
 	}
 }
 
-const moduleSource = `import "lib"
+const moduleSource = `import "example.com/app/lib"
 
 import c "stdio.h" {
     fast puts
@@ -65,7 +65,7 @@ func TestIndexLines(t *testing.T) {
 		`package path="example.com/app"`,
 		`package path="example.com/app/lib"`,
 		`file path="api.will" package="example.com/app"`,
-		`import from="example.com/app" to="lib"`,
+		`import from="example.com/app" to="example.com/app/lib"`,
 		`cfunc header="stdio.h" name="puts" linkage="fast"`,
 		`decl file="api.will" line=7 col=1 kind="interface" name="Shape" vis="public"`,
 		`decl file="api.will" line=11 col=1 kind="struct" name="Square" vis="public"`,

@@ -22,6 +22,13 @@ func Resolve(f *ast.File) (*Result, []diag.Diagnostic) {
 // ResolveWith binds every name in f. Imports supplies the exported names of
 // the imported packages, so package-qualified members resolve for real.
 func ResolveWith(f *ast.File, imports Imports) (*Result, []diag.Diagnostic) {
+	return ResolveIn(f, nil, imports)
+}
+
+// ResolveIn also sees the top-level names of the other files of f's own
+// package, so one package resolves as a unit: a name declared in a sibling
+// file is found, and a name declared twice in the package is a duplicate.
+func ResolveIn(f *ast.File, packageNames Exported, imports Imports) (*Result, []diag.Diagnostic) {
 	r := &resolver{
 		file:     f,
 		pkg:      newScope(nil),
@@ -32,6 +39,7 @@ func ResolveWith(f *ast.File, imports Imports) (*Result, []diag.Diagnostic) {
 		derives:  map[string]bool{},
 	}
 	r.addPredeclared()
+	r.addPackageNames(packageNames)
 	r.addImports()
 	r.addTopLevel()
 	r.walkFile()
@@ -90,6 +98,27 @@ func (r *resolver) addPredeclared() {
 	}
 	for _, name := range predeclaredValues {
 		r.pkg.define(&Symbol{Name: name, Kind: PredeclaredValueKind, Exported: true, Predeclared: true})
+	}
+}
+
+// addPackageNames seeds the package scope with the top-level names declared in
+// the other files of this package. A collision with one of them is a duplicate
+// name, reported once by the package layer, so this file's declaration quietly
+// replaces the seeded one.
+func (r *resolver) addPackageNames(names Exported) {
+	for _, sym := range names {
+		if sym == nil || sym.Name == "" {
+			continue
+		}
+		r.pkg.define(&Symbol{
+			Name:        sym.Name,
+			Kind:        sym.Kind,
+			Pos:         sym.Pos,
+			Node:        sym.Node,
+			RecvType:    sym.RecvType,
+			Exported:    sym.Exported,
+			FromSibling: true,
+		})
 	}
 }
 
@@ -205,6 +234,12 @@ func (r *resolver) defineTop(sym *Symbol) {
 	}
 	prev := r.pkg.define(sym)
 	if prev == nil {
+		r.symbols = append(r.symbols, sym)
+		return
+	}
+	if prev.FromSibling {
+		// A name declared in this file and in a sibling file is a duplicate;
+		// the package layer reports it once.
 		r.symbols = append(r.symbols, sym)
 		return
 	}

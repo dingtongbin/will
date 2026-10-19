@@ -4,7 +4,7 @@
 #4 type parent=#3 pos="nodes.will:2:8" text="i64" kind=scalar
 #5 func parent=#1 pos="nodes.will:5:1" text="Value" type="i64"
 #6 receiver parent=#5 pos="nodes.will:5:6" text="b" type="Box"
-#7 type parent=#6 pos="nodes.will:5:10" text="Box" kind=named
+#7 type parent=#6 pos="nodes.will:5:10" text="Box" kind=named to=#2
 #8 type parent=#5 pos="nodes.will:5:26" text="i64" kind=scalar
 #9 block parent=#5 pos="nodes.will:5:30"
 #10 return parent=#9 pos="nodes.will:6:5" value=#11
@@ -24,9 +24,9 @@
 #24 lit parent=#22 pos="nodes.will:15:15" kind=unit text="()"
 #25 func parent=#1 pos="nodes.will:18:1" text="Use" type="i64"
 #26 param parent=#25 pos="nodes.will:18:10" text="b" type="Box"
-#27 type parent=#26 pos="nodes.will:18:13" text="Box" kind=named
+#27 type parent=#26 pos="nodes.will:18:13" text="Box" kind=named to=#2
 #28 param parent=#25 pos="nodes.will:18:18" text="s" type="Shape"
-#29 type parent=#28 pos="nodes.will:18:21" text="Shape" kind=named
+#29 type parent=#28 pos="nodes.will:18:21" text="Shape" kind=named to=#13
 #30 type parent=#25 pos="nodes.will:18:31" text="i64" kind=scalar
 #31 block parent=#25 pos="nodes.will:18:35"
 #32 var parent=#31 pos="nodes.will:19:5" text="here" type="usize"
@@ -35,10 +35,10 @@
 #35 var parent=#31 pos="nodes.will:20:5" text="text" type="str"
 #36 type parent=#35 pos="nodes.will:20:15" text="str" kind=scalar
 #37 interp parent=#35 pos="nodes.will:20:21" part="v=" part=#38 part=" end"
-#38 field parent=#37 pos="nodes.will:1:1" text="v" recv=#39
-#39 name parent=#38 pos="nodes.will:1:1" text="b" to=#26
+#38 field parent=#37 pos="nodes.will:20:26" text="v" recv=#39
+#39 name parent=#38 pos="nodes.will:20:26" text="b" to=#26
 #40 var parent=#31 pos="nodes.will:21:5" text="p" type="Box"
-#41 type parent=#40 pos="nodes.will:21:12" text="Box" kind=named
+#41 type parent=#40 pos="nodes.will:21:12" text="Box" kind=named to=#2
 #42 name parent=#40 pos="nodes.will:21:18" text="b" to=#26
 #43 var parent=#31 pos="nodes.will:22:5" text="n" type="i64"
 #44 type parent=#43 pos="nodes.will:22:12" text="i64" kind=scalar

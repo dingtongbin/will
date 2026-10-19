@@ -59,6 +59,13 @@ func (l *Lexer) checkFile() bool {
 	return true
 }
 
+// checkFragment reporting: a fragment comes from a file whose byte-level rules
+// were already checked, and it is not a file of its own, so no whole-file rule
+// applies.
+func (l *Lexer) checkFragment() bool {
+	return true
+}
+
 func (l *Lexer) reportAt(off, line, col int, m diag.Message) {
 	l.bag.Report(source.Pos{File: l.file, Offset: off, Line: line, Col: col}, m)
 }

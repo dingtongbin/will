@@ -1,4 +1,4 @@
-import "lib"
+import "example.com/private/lib"
 
 func F() -> i32 {
     return lib.hidden()

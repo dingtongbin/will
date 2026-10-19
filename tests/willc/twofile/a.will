@@ -1,0 +1,7 @@
+struct Box {
+    v: i64
+}
+
+func Value(b: Box) -> i64 {
+    return b.v
+}
