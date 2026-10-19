@@ -111,6 +111,47 @@ func checkTypes(t *testing.T, src string) []diag.Diagnostic {
 	return Check(f, nil)
 }
 
+func TestConstantShiftAmount(t *testing.T) {
+	src := `func F(n: i32, m: i64, b: u8) {
+    _ = n << 32
+    _ = m >> 64
+    _ = b << 9
+}
+`
+	ds := checkTypes(t, src)
+	if len(ds) != 3 {
+		t.Fatalf("diagnostics = %d, want 3:\n%s", len(ds), diag.FormatAll(ds))
+	}
+	want := []struct {
+		msg  string
+		help string
+	}{
+		{"shift amount 32 is not less than the width of i32",
+			"shift by less than 32, or write <<% to truncate"},
+		{"shift amount 64 is not less than the width of i64",
+			"shift by less than 64, or write <<% to truncate"},
+		{"shift amount 9 is not less than the width of u8",
+			"shift by less than 8, or write <<% to truncate"},
+	}
+	for i, d := range ds {
+		if d.Code != diag.CodeShiftAmount || d.Message != want[i].msg || d.Help != want[i].help {
+			t.Errorf("diagnostic %d = %+v", i, d)
+		}
+	}
+}
+
+func TestShiftAmountBelowWidthAndTruncatingShift(t *testing.T) {
+	src := `func F(n: i32) {
+    _ = n << 31
+    _ = n >> 0
+    _ = n <<% 64
+}
+`
+	if ds := checkTypes(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want 0:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
 func TestChainedComparison(t *testing.T) {
 	src := `func F(a: i32, b: i32, c: i32) {
     _ = a < b < c

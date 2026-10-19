@@ -71,6 +71,9 @@ const (
 	// CodeBuiltinConstraintAsInterface reports a built-in constraint used
 	// where an interface value is needed.
 	CodeBuiltinConstraintAsInterface = "T0008"
+	// CodeShiftAmount reports a constant shift amount that is not less than
+	// the width of the shifted type.
+	CodeShiftAmount = "T0009"
 
 	// CodePackageNameMismatch reports a package name that differs from its directory.
 	CodePackageNameMismatch = "B0001"
@@ -151,6 +154,7 @@ var Codes = []string{
 	CodeTypeMismatch, CodeInterfaceUnsatisfied, CodeBadArgument, CodeTypeArgCount,
 	CodeConstantRange, CodeChainedComparison, CodeNewWithoutInit,
 	CodeBuiltinConstraintAsInterface,
+	CodeShiftAmount,
 	CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
 	CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
 	CodeUnreleasableCycle, CodePossibleCycle, CodeRcSlotUnguarded, CodeExplicitLeak, CodeSmallPlate,

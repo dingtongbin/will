@@ -860,6 +860,9 @@ func (c *checker) binaryType(s *inferScope, b *ast.BinaryExpr) *Type {
 		if lt != nil && !lt.IsInteger() {
 			c.typeMismatch(b.Pos(), lt, nil)
 		}
+		if b.Op != token.ShlWrap {
+			c.checkShiftAmount(b.R, lt)
+		}
 		return lt
 	}
 	if !Equal(lt, rt) {
@@ -870,6 +873,28 @@ func (c *checker) binaryType(s *inferScope, b *ast.BinaryExpr) *Type {
 		c.typeMismatch(b.Pos(), lt, nil)
 	}
 	return lt
+}
+
+// checkShiftAmount reports a constant shift amount that is not less than the
+// width of the shifted type. A shift by a variable amount is a runtime panic
+// when it is out of range, so only a literal is checked here. The explicit
+// truncating shift is the way out and is not checked.
+func (c *checker) checkShiftAmount(e ast.Expr, lt *Type) {
+	lit, ok := e.(*ast.LiteralExpr)
+	if !ok || lit.Kind != token.Int || lt == nil {
+		return
+	}
+	value, _, ok := parseIntLiteral(lit.Text)
+	if !ok || value.overflow {
+		return
+	}
+	width, _, known := intWidth(lt.Name())
+	if !known || value.mag < uint64(width) {
+		return
+	}
+	c.bag.Error(lit.Pos(), diag.CodeShiftAmount,
+		"shift amount "+strconv.FormatUint(value.mag, 10)+" is not less than the width of "+lt.Name(),
+		"shift by less than "+strconv.FormatUint(uint64(width), 10)+", or write <<% to truncate")
 }
 
 // ifType and matchType check bodies and unify the branch value types.

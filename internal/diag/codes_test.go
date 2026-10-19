@@ -41,6 +41,7 @@ func TestCodesMatchConstants(t *testing.T) {
 		CodeTypeMismatch, CodeInterfaceUnsatisfied, CodeBadArgument, CodeTypeArgCount,
 		CodeConstantRange, CodeChainedComparison, CodeNewWithoutInit,
 		CodeBuiltinConstraintAsInterface,
+		CodeShiftAmount,
 		CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
 		CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
 		CodeUnreleasableCycle, CodePossibleCycle, CodeRcSlotUnguarded, CodeExplicitLeak, CodeSmallPlate,
