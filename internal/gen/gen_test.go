@@ -314,8 +314,74 @@ func TestEmitIsDeterministic(t *testing.T) {
 	}
 }
 
+func TestEmitLocalsAndAssignment(t *testing.T) {
+	src := "func Max(a: i32, b: i32) -> i32 {\n" +
+		"    var m: i32 = a\n" +
+		"    if b > m {\n        m = b\n    }\n" +
+		"    return m\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"%v.m = alloca i32",
+		"store i32 %a, ptr %v.m",
+		"icmp sgt i32 %b, ",
+		"load i32, ptr %v.m",
+		"store i32 %b, ptr %v.m",
+		"ret i32 %t",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	// The slot is created before the first instruction, so a branch cannot
+	// allocate it.
+	if strings.Index(text, "%v.m = alloca i32") > strings.Index(text, "store i32 %a, ptr %v.m") {
+		t.Errorf("the slot is created after its first use:\n%s", text)
+	}
+}
+
+func TestEmitCompoundAssignment(t *testing.T) {
+	src := "func Sum(n: i32) -> i32 {\n" +
+		"    var total: i32 = 0\n" +
+		"    total += n\n" +
+		"    return total\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{"add i32 %t", "store i32 %t"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitShadowedLocalsGetTheirOwnSlots(t *testing.T) {
+	src := "func F(a: i32) -> i32 {\n" +
+		"    var x: i32 = a\n" +
+		"    if a > 0 {\n        var x: i32 = 1\n        x += 1\n    }\n" +
+		"    return x\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{"%v.x = alloca i32", "%v.x.1 = alloca i32", "ret i32 %t"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitUnsupportedNodeIsReported(t *testing.T) {
-	doc := emitWillc(t, "func F(a: i32) -> i32 {\n    var x: i32 = a\n    return x\n}\n")
+	doc := emitWillc(t, "func F(a: i32) -> i32 {\n    for {\n        return a\n    }\n}\n")
 	_, err := Emit(doc)
 	if err == nil {
 		t.Fatal("an unsupported node was translated")

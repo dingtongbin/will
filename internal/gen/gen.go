@@ -32,6 +32,7 @@ func EmitWithEntry(doc *willc.Doc, entry string) ([]byte, error) {
 func EmitModule(docs []*willc.Doc, entry string) ([]byte, error) {
 	g := &generator{
 		scope:    map[int]string{},
+		slots:    map[int]string{},
 		declared: map[string]bool{},
 		out:      &strings.Builder{},
 	}
@@ -124,6 +125,10 @@ type generator struct {
 	tmp      int
 	// labels numbers the basic blocks of the current function.
 	labels int
+	// slots maps a local declaration node to its stack slot, and slotNames
+	// numbers the slots of the current function.
+	slots     map[int]string
+	slotNames int
 
 	// pkg is the package path of the current document.
 	pkg string
@@ -289,10 +294,15 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		return g.errf(fn.ID, "cannot translate node #%d: only i32 results are lowered yet", fn.ID)
 	}
 	g.labels = 0
+	g.slots = map[int]string{}
+	g.slotNames = 0
 	fmt.Fprintf(g.out, "define i32 @%s(%s) {\n", llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
 	body, err := g.blockOf(fn.ID)
 	if err != nil {
+		return err
+	}
+	if err := g.allocas(fn.ID); err != nil {
 		return err
 	}
 	terminated, err := g.body(body, false)
@@ -309,10 +319,15 @@ func (g *generator) funcDecl(fn willc.Record) error {
 // voidFunc lowers a function that returns no value.
 func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
 	g.labels = 0
+	g.slots = map[int]string{}
+	g.slotNames = 0
 	fmt.Fprintf(g.out, "define void @%s(%s) {\n", llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
 	body, err := g.blockOf(fn.ID)
 	if err != nil {
+		return err
+	}
+	if err := g.allocas(fn.ID); err != nil {
 		return err
 	}
 	terminated, err := g.body(body, true)
@@ -335,9 +350,141 @@ func (g *generator) blockOf(owner int) (willc.Record, error) {
 	return willc.Record{}, g.errf(owner, "cannot translate node #%d: no body", owner)
 }
 
-// body lowers the statements of one block. terminated reports whether the block
-// already ended with a terminator, so the caller knows whether it has to close
-// the path; statements after a terminator are dead and are not emitted.
+// allocas reserves a stack slot in the entry block for every local of one
+// function. Creating them at the entry keeps a loop from growing the stack.
+func (g *generator) allocas(fn int) error {
+	var locals []willc.Record
+	for _, r := range g.recs {
+		if r.Kind != "var" && r.Kind != "const" {
+			continue
+		}
+		if g.enclosingFunc(r.ID) != fn {
+			continue
+		}
+		locals = append(locals, r)
+	}
+	sortByID(locals)
+	for _, r := range locals {
+		if kind := fieldText(r, "type"); kind != "i32" {
+			return g.errf(r.ID, "cannot translate node #%d: only i32 locals are lowered yet", r.ID)
+		}
+		name := "%v." + fieldText(r, "text")
+		if g.slotNames > 0 {
+			name += "." + strconv.Itoa(g.slotNames)
+		}
+		g.slotNames++
+		g.slots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca i32\n", name)
+	}
+	return nil
+}
+
+// enclosingFunc returns the function record that contains a node, or 0.
+func (g *generator) enclosingFunc(id int) int {
+	for i := 0; i < 64; i++ {
+		r, ok := g.recs[id]
+		if !ok {
+			return 0
+		}
+		parent := refField(r, "parent")
+		if parent == 0 {
+			return 0
+		}
+		p, ok := g.recs[parent]
+		if !ok {
+			return 0
+		}
+		if p.Kind == "func" {
+			return p.ID
+		}
+		id = parent
+	}
+	return 0
+}
+
+// load reads one local slot into a temporary.
+func (g *generator) load(slot string) string {
+	g.tmp++
+	name := "%t" + strconv.Itoa(g.tmp)
+	fmt.Fprintf(g.out, "  %s = load i32, ptr %s\n", name, slot)
+	return name
+}
+
+// assignStmt stores a value into a local, applying the compound operator when
+// the assignment names one.
+func (g *generator) assignStmt(r willc.Record) error {
+	target, ok := g.recs[refField(r, "target")]
+	if !ok || target.Kind != "name" {
+		return g.errf(r.ID, "cannot translate node #%d: the assignment target is not a local", r.ID)
+	}
+	slot := g.slots[refField(target, "to")]
+	if slot == "" {
+		return g.errf(r.ID, "cannot translate node #%d: the assignment target is not a local", r.ID)
+	}
+	value, err := g.value(refField(r, "value"))
+	if err != nil {
+		return err
+	}
+	op := fieldText(r, "op")
+	if op != "=" {
+		instr := assignOp(op)
+		if instr == "" {
+			return g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, op)
+		}
+		current := g.load(slot)
+		g.tmp++
+		tmp := "%t" + strconv.Itoa(g.tmp)
+		fmt.Fprintf(g.out, "  %s = %s i32 %s, %s\n", tmp, instr, current, value)
+		value = tmp
+	}
+	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", value, slot)
+	return nil
+}
+
+// assignOp maps a compound assignment to its instruction.
+func assignOp(op string) string {
+	switch op {
+	case "+=":
+		return "add"
+	case "-=":
+		return "sub"
+	case "*=":
+		return "mul"
+	case "/=":
+		return "sdiv"
+	case "%=":
+		return "srem"
+	case "&=":
+		return "and"
+	case "|=":
+		return "or"
+	case "^=":
+		return "xor"
+	case "<<=":
+		return "shl"
+	case ">>=":
+		return "ashr"
+	}
+	return ""
+}
+
+// declStmt stores the initial value of a local into its slot.
+func (g *generator) declStmt(r willc.Record) (bool, error) {
+	slot, ok := g.slots[r.ID]
+	if !ok {
+		return false, g.errf(r.ID, "cannot translate node #%d: no slot for %s", r.ID, fieldText(r, "text"))
+	}
+	valueID := 0
+	for _, c := range g.children(r.ID) {
+		valueID = c.ID
+	}
+	value, err := g.value(valueID)
+	if err != nil {
+		return false, err
+	}
+	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", value, slot)
+	return false, nil
+}
 func (g *generator) body(b willc.Record, void bool) (bool, error) {
 	stmts := g.children(b.ID)
 	sortByID(stmts)
@@ -352,6 +499,10 @@ func (g *generator) body(b willc.Record, void bool) (bool, error) {
 			terminated, err = g.returnStmt(st, void)
 		case "if":
 			terminated, err = g.ifStmt(st, void)
+		case "var", "const":
+			terminated, err = g.declStmt(st)
+		case "assign":
+			err = g.assignStmt(st)
 		case "exprstmt":
 			_, err = g.value(refField(st, "expr"))
 		case "block":
@@ -467,10 +618,13 @@ func (g *generator) value(id int) (string, error) {
 		}
 		return "", g.errf(id, "cannot translate node #%d: literal kind %s is not lowered yet", id, fieldText(r, "kind"))
 	case "name":
+		if slot, ok := g.slots[refField(r, "to")]; ok {
+			return g.load(slot), nil
+		}
 		if name, ok := g.scope[refField(r, "to")]; ok {
 			return name, nil
 		}
-		return "", g.errf(id, "cannot translate node #%d: name is not a parameter", id)
+		return "", g.errf(id, "cannot translate node #%d: the name is not a parameter or a local", id)
 	case "un":
 		return g.unary(r)
 	case "bin":

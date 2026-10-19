@@ -1,0 +1,19 @@
+define i32 @"example.com/locals.Max"(i32 %a, i32 %b) {
+entry:
+  %v.m = alloca i32
+  store i32 %a, ptr %v.m
+  %t1 = load i32, ptr %v.m
+  %t2 = icmp sgt i32 %b, %t1
+  br i1 %t2, label %if.then.1, label %if.end.1
+if.then.1:
+  store i32 %b, ptr %v.m
+  br label %if.end.1
+if.end.1:
+  %t3 = load i32, ptr %v.m
+  ret i32 %t3
+}
+define i32 @main() {
+entry:
+  %t4 = call i32 @"example.com/locals.Max"(i32 3, i32 7)
+  ret i32 %t4
+}
