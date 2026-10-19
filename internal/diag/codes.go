@@ -47,8 +47,12 @@ const (
 	CodeDuplicateImport = "N0009"
 	// CodeTopLevelDiscard reports a top-level declaration named _.
 	CodeTopLevelDiscard = "N0010"
-	// CodeNoField reports a field that the struct does not declare.
+	// CodeNoField reports a field that the struct or enum does not declare.
 	CodeNoField = "N0011"
+	// CodeNoMethod reports a method the receiver type does not declare.
+	CodeNoMethod = "N0012"
+	// CodeBadDeriveName reports a derive name outside the generator list.
+	CodeBadDeriveName = "N0013"
 
 	// CodeTypeMismatch reports a value of the wrong type.
 	CodeTypeMismatch = "T0001"
@@ -64,6 +68,9 @@ const (
 	CodeChainedComparison = "T0006"
 	// CodeNewWithoutInit reports new on a type that has no init.
 	CodeNewWithoutInit = "T0007"
+	// CodeBuiltinConstraintAsInterface reports a built-in constraint used
+	// where an interface value is needed.
+	CodeBuiltinConstraintAsInterface = "T0008"
 
 	// CodePackageNameMismatch reports a package name that differs from its directory.
 	CodePackageNameMismatch = "B0001"
@@ -73,6 +80,10 @@ const (
 	CodeChecksumMismatch = "B0003"
 	// CodeFeatureNotDeclared reports a feature used without a will.mod declaration.
 	CodeFeatureNotDeclared = "B0004"
+	// CodeUnsupportedTarget reports a target triple outside the allowed list.
+	CodeUnsupportedTarget = "B0005"
+	// CodeNoEntry reports a missing entry function.
+	CodeNoEntry = "B0006"
 
 	// CodeCannotParseCHeader reports a C header the compiler cannot parse.
 	CodeCannotParseCHeader = "X0001"
@@ -131,9 +142,10 @@ var Codes = []string{
 	CodeUnexpectedToken, CodeKeywordName, CodeTypeArgs,
 	CodeUndefinedName, CodePrivateName, CodeShadow, CodeUnusedImport, CodeUnusedVar,
 	CodeMethodsTwoPackages, CodeDuplicateName, CodeDuplicateDerive, CodeDuplicateImport,
-	CodeTopLevelDiscard, CodeNoField,
+	CodeTopLevelDiscard, CodeNoField, CodeNoMethod, CodeBadDeriveName,
 	CodeTypeMismatch, CodeInterfaceUnsatisfied, CodeBadArgument, CodeTypeArgCount,
 	CodeConstantRange, CodeChainedComparison, CodeNewWithoutInit,
+	CodeBuiltinConstraintAsInterface,
 	CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
 	CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
 	CodeUnreleasableCycle, CodePossibleCycle, CodeRcSlotUnguarded, CodeExplicitLeak, CodeSmallPlate,
@@ -142,6 +154,7 @@ var Codes = []string{
 	CodeResultDropped, CodeUnwrapType, CodePanicContained,
 	CodeBlockingNotAwaited, CodeWaitInSync, CodeWaitInAsync, CodeBlocksThreadInTask,
 	CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,
+	CodeUnsupportedTarget, CodeNoEntry,
 	CodeCannotTranslate,
 	CodeCannotParseCHeader, CodeLinkFailed, CodeExternalToolMissing,
 }

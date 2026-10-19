@@ -40,6 +40,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runIndex(args[1:], stdout, stderr)
 	case "new":
 		return runNew(args[1:], stdout, stderr)
+	case "mod":
+		return runMod(args[1:], stdout, stderr)
 	case "build":
 		return runBuild(args[1:], stdout, stderr)
 	case "run":
@@ -61,6 +63,9 @@ type checkFlags struct {
 	opt      string
 	target   string
 	features string
+	// targetSet records that --target was written, so only an explicit
+	// target is validated.
+	targetSet bool
 	// disabled holds the warning families that -Wno-<family> switched off.
 	disabled map[string]bool
 }
@@ -84,7 +89,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 			if !ok {
 				return 2
 			}
-			i, flags.target = next, value
+			i, flags.target, flags.targetSet = next, value, true
 		case "--features":
 			value, next, ok := flagValue(args, i, inline, hasInline, "--features", stderr)
 			if !ok {
@@ -118,6 +123,10 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	if len(files) == 0 {
 		fmt.Fprint(stderr, usage)
 		return 2
+	}
+	if d, bad := targetDiagnostic(flags.target, flags.targetSet); bad {
+		reportNoPos(d, flags.json, buildIdentityWith(flags.opt, flags.target), stdout)
+		return 1
 	}
 
 	// A single directory argument is cached with the key that lists the whole

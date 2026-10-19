@@ -6,6 +6,37 @@ import (
 	"github.com/will-lang/will/internal/diag"
 )
 
+func TestNoMethodOnUserType(t *testing.T) {
+	src := "struct P {\n    x: i32\n}\n\nfunc F(p: P) -> i32 {\n    return p.Missing()\n}\n"
+	ds := checkWithResolve(t, src)
+	d := findCode(t, ds, diag.CodeNoMethod)
+	if d.Message != "no method Missing on P" {
+		t.Errorf("message = %q", d.Message)
+	}
+	if d.Help != "check the method name and the receiver" {
+		t.Errorf("help = %q", d.Help)
+	}
+}
+
+func TestBuiltinConstraintIsNotAValueType(t *testing.T) {
+	src := "func F(e: Equal) {\n}\n"
+	ds := checkWithResolve(t, src)
+	d := findCode(t, ds, diag.CodeBuiltinConstraintAsInterface)
+	if d.Message != "Equal is a builtin constraint, not an interface" {
+		t.Errorf("message = %q", d.Message)
+	}
+	if d.Help != "use it only as a type-parameter constraint" {
+		t.Errorf("help = %q", d.Help)
+	}
+}
+
+func TestBuiltinConstraintInAConstraintPosition(t *testing.T) {
+	src := "func Max<T: Ord>(a: T, b: T) -> T {\n    return a\n}\n"
+	if ds := checkWithResolve(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
 func TestNoField(t *testing.T) {
 	cases := []struct {
 		name string

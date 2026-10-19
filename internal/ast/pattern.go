@@ -10,8 +10,6 @@ const (
 	BindPattern
 	// LiteralPattern matches one literal.
 	LiteralPattern
-	// RangePattern matches a half-open literal range.
-	RangePattern
 	// VariantPattern matches an enum variant and its payload.
 	VariantPattern
 	// OrPattern matches any of its alternatives.
@@ -24,8 +22,6 @@ type Pattern struct {
 	Kind    PatternKind
 	Name    string
 	Literal *LiteralExpr
-	Lo      *LiteralExpr
-	Hi      *LiteralExpr
 	Args    []*Pattern
 	Alts    []*Pattern
 }

@@ -114,10 +114,9 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 	case *ast.InterpExpr:
 		return e.emitInterp(v)
 	case *ast.LaneHereExpr:
-		rec := e.add("name", v)
-		e.text(rec, "text", "lane.Here()")
-		e.boolean(rec, "builtin", true)
-		return rec
+		// lane.Here() is a built-in expression with no fields; it is not a
+		// name, so it can never be confused with a user name.
+		return e.add("lanehere", v)
 	case *ast.UnitExpr:
 		rec := e.add("lit", v)
 		e.word(rec, "kind", "unit")

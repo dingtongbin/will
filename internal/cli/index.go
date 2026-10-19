@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/will-lang/will/internal/diag"
@@ -52,13 +51,5 @@ func runIndex(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	text := index.Build(b)
-	if outPath == "" {
-		stdout.Write(text)
-		return 0
-	}
-	if err := os.WriteFile(outPath, text, 0o644); err != nil {
-		fmt.Fprintf(stderr, "will: %v\n", err)
-		return 1
-	}
-	return 0
+	return writeText(outPath, text, stdout, stderr)
 }

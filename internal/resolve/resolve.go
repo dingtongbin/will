@@ -275,10 +275,11 @@ func (r *resolver) walkDecl(d ast.Decl) {
 			}
 			r.derives[key] = true
 		default:
-			// The generate list is fixed at Json and Show; a built-in
-			// constraint such as Equal is a known name but not a generator,
-			// and the code table has no code for this case yet.
-			r.bag.Error(decl.NamePos, diag.CodeUndefinedName, "undefined name", "derive takes Json or Show")
+			// The generator list is fixed at Json and Show. Equal and Ord are
+			// predeclared constraints, so saying "undefined name" would be
+			// wrong.
+			r.bag.Error(decl.NamePos, diag.CodeBadDeriveName,
+				"cannot derive "+decl.Name+" for "+typeName(decl.Type), "derive takes Json or Show")
 		}
 		r.walkType(decl.Type)
 		if sym, ok := r.refs[decl.Type]; ok {

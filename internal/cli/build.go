@@ -72,7 +72,7 @@ func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 			}
 		}
 	}
-	fmt.Fprintf(stderr, "will: entry function %s not found\n", opts.entry)
+	reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
 	return frontEnd{}, 1
 }
 
@@ -100,7 +100,7 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		return frontEnd{}, 1
 	}
 	if !fileDeclaresEntry(f, opts.entry) {
-		fmt.Fprintf(stderr, "will: entry function %s not found\n", opts.entry)
+		reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
 		return frontEnd{}, 1
 	}
 	return frontEnd{file: opts.path, modulePath: modulePath, imports: imports}, 0
@@ -154,6 +154,10 @@ func failed(ds []diag.Diagnostic, opts buildOptions) bool {
 }
 
 func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int) {
+	if d, bad := targetDiagnostic(opts.target, opts.targetSet); bad {
+		reportNoPos(d, opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
+		return nil, "", 1
+	}
 	fe, code := runFrontEnd(opts, stdout, stderr)
 	if code != 0 {
 		return nil, "", code
@@ -177,17 +181,17 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 	res, _ := resolve.ResolveWith(f, fe.imports)
 	text, err := willc.Emit(f, res, fe.modulePath, nil)
 	if err != nil {
-		fmt.Fprintf(stderr, "will: %v\n", err)
+		reportTranslate(stdout, err)
 		return nil, "", 1
 	}
 	doc, err := willc.Read(text)
 	if err != nil {
-		fmt.Fprintf(stderr, "will: %v\n", err)
+		reportTranslate(stdout, err)
 		return nil, "", 1
 	}
 	ir, err := gen.Emit(doc)
 	if err != nil {
-		fmt.Fprintf(stderr, "will: %v\n", err)
+		reportTranslate(stdout, err)
 		return nil, "", 1
 	}
 	if store != nil {
@@ -328,8 +332,7 @@ func runEmitLLVM(args []string, stdout, stderr io.Writer) int {
 	if code != 0 {
 		return code
 	}
-	stdout.Write(ir)
-	return 0
+	return writeText(opts.out, ir, stdout, stderr)
 }
 
 // runEmitAsm writes the assembly text of one build, which clang produces.
@@ -351,7 +354,20 @@ func runEmitAsm(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
 	}
-	io.WriteString(stdout, asm)
+	return writeText(opts.out, []byte(asm), stdout, stderr)
+}
+
+// writeText writes one text product to a file or to standard output. Every
+// command that produces text takes --out.
+func writeText(out string, data []byte, stdout, stderr io.Writer) int {
+	if out == "" {
+		stdout.Write(data)
+		return 0
+	}
+	if err := os.WriteFile(out, data, 0o644); err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
 	return 0
 }
 

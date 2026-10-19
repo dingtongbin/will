@@ -258,8 +258,6 @@ func patternKind(p *ast.Pattern) string {
 		return "bind"
 	case ast.LiteralPattern:
 		return "literal"
-	case ast.RangePattern:
-		return "range"
 	case ast.VariantPattern:
 		return "variant"
 	case ast.OrPattern:
@@ -278,8 +276,6 @@ func patternText(p *ast.Pattern) string {
 		if p.Literal != nil {
 			return literalText(p.Literal)
 		}
-	case ast.RangePattern:
-		return literalText(p.Lo) + ".." + literalText(p.Hi)
 	case ast.VariantPattern:
 		if len(p.Args) == 0 {
 			return p.Name

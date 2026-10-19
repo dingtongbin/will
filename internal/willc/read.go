@@ -144,6 +144,20 @@ func parseValue(line string, i, id int) (Value, int, error) {
 	return Value{}, i, &Error{id, "unknown field value"}
 }
 
+// wordVocab lists the allowed spellings of the fields whose value comes from a
+// fixed vocabulary. A value outside its list is a shape error: for example a
+// pattern kind of range cannot be produced by the grammar, whose two-dot range
+// is not part of the language.
+var wordVocab = map[string]map[string][]string{
+	"pattern": {"kind": {"wild", "bind", "literal", "variant", "or"}},
+	"type": {"kind": {"scalar", "named", "array", "view", "func", "unit",
+		"result", "option", "rc", "weak", "chan", "task"}},
+	"lit":        {"kind": {"int", "float", "char", "str", "bytes", "bool", "duration", "unit"}},
+	"release":    {"kind": {"value", "rc", "guard", "frame"}},
+	"count":      {"name": {"values", "releases", "merges", "refs", "diagnostics"}},
+	"diagnostic": {"severity": {"error", "warning"}},
+}
+
 func validate(doc *Doc) error {
 	if len(doc.Records) == 0 {
 		return &Error{0, "the willc file is empty"}
@@ -166,10 +180,39 @@ func validate(doc *Doc) error {
 		if err := validateFields(rec); err != nil {
 			return err
 		}
+		if err := validateWords(rec); err != nil {
+			return err
+		}
 		for _, f := range rec.Fields {
 			if f.Value.Kind == RefValue && (f.Value.Ref < 1 || f.Value.Ref > maxID) {
 				return &Error{rec.ID, "dangling node reference"}
 			}
+		}
+	}
+	return nil
+}
+
+// validateWords checks every field whose value must come from a fixed list.
+func validateWords(rec Record) error {
+	fields, ok := wordVocab[rec.Kind]
+	if !ok {
+		return nil
+	}
+	for _, f := range rec.Fields {
+		allowed, ok := fields[f.Name]
+		if !ok || (f.Value.Kind != WordValue && f.Value.Kind != TextValue) {
+			continue
+		}
+		found := false
+		for _, word := range allowed {
+			if word == f.Value.Text {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return &Error{rec.ID, "field " + f.Name + " has the value " + f.Value.Text +
+				", which is not one of the spellings of " + rec.Kind}
 		}
 	}
 	return nil

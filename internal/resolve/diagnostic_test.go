@@ -180,21 +180,21 @@ func TestDuplicateVariant(t *testing.T) {
 func TestDeriveNameIsOneOfTwo(t *testing.T) {
 	src := "struct P {\n    x: i32\n}\n\nderive Foo for P\n"
 	ds := resolveSource(t, src)
-	d := find(t, ds, diag.CodeUndefinedName)
+	d := find(t, ds, diag.CodeBadDeriveName)
 	if d.Pos.Line != 5 {
 		t.Errorf("position line = %d, want 5", d.Pos.Line)
 	}
-	if d.Help != "derive takes Json or Show" {
-		t.Errorf("help = %q, want derive takes Json or Show", d.Help)
+	if d.Message != "cannot derive Foo for P" || d.Help != "derive takes Json or Show" {
+		t.Errorf("diagnostic = %+v", d)
 	}
 }
 
 func TestDeriveBuiltinConstraintIsNotAGenerator(t *testing.T) {
 	src := "struct P {\n    x: i32\n}\n\nderive Equal for P\n"
 	ds := resolveSource(t, src)
-	d := find(t, ds, diag.CodeUndefinedName)
-	if d.Help != "derive takes Json or Show" {
-		t.Errorf("help = %q", d.Help)
+	d := find(t, ds, diag.CodeBadDeriveName)
+	if d.Message != "cannot derive Equal for P" || d.Help != "derive takes Json or Show" {
+		t.Errorf("diagnostic = %+v", d)
 	}
 }
 

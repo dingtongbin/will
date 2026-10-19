@@ -134,7 +134,11 @@ func (e *emitter) emitDiagnostics(ds []diag.Diagnostic) {
 			e.text(rec, "help", d.Help)
 		}
 		for _, n := range d.Notes {
-			e.text(rec, "note", n.Pos.String()+": "+n.Message)
+			if n.Pos.IsValid() {
+				e.text(rec, "note", n.Pos.String()+": "+n.Message)
+			} else {
+				e.text(rec, "note", n.Message)
+			}
 		}
 	}
 	if len(ds) > 0 {

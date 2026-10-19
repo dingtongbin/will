@@ -177,12 +177,42 @@ func TestBuildMissingClang(t *testing.T) {
 
 func TestBuildEntryNotFound(t *testing.T) {
 	path := writeFile(t, t.TempDir(), "main.will", "func other() {\n}\n")
-	code, _, errOut := runCLI("build", "--entry", "main", path)
+	code, out, _ := runCLI("build", "--entry", "main", path)
 	if code != 1 {
 		t.Fatalf("code = %d, want 1", code)
 	}
-	if !strings.Contains(errOut, "entry function main not found") {
-		t.Fatalf("stderr = %q", errOut)
+	if !strings.Contains(out, "B0006 no entry function main") ||
+		!strings.Contains(out, "    help: declare it, or pass --entry <name>") {
+		t.Fatalf("stdout = %q", out)
+	}
+}
+
+func TestUnsupportedTarget(t *testing.T) {
+	path := writeFile(t, t.TempDir(), "main.will", entrySource)
+	code, out, _ := runCLI("check", "--target", "sparc-linux-gnu", path)
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !strings.Contains(out, "B0005 unsupported target sparc-linux-gnu") ||
+		!strings.Contains(out, "    help: use one of the supported platforms: linux, mac, win, android, ios") {
+		t.Fatalf("stdout = %q", out)
+	}
+	// A supported target goes through.
+	if code, _, _ := runCLI("check", "--target", "aarch64-linux-gnu", path); code != 0 {
+		t.Fatalf("a supported target was rejected: code = %d", code)
+	}
+}
+
+func TestLoweringFailureIsG0001(t *testing.T) {
+	src := "func main() {\n    var x: i32 = 1\n    if x > 0 {\n        return\n    }\n}\n"
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, _ := runCLI("emit-llvm", path)
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !strings.Contains(out, "G0001 cannot translate node #") ||
+		!strings.Contains(out, "    help: this is a compiler bug; report it with the willc file") {
+		t.Fatalf("stdout = %q", out)
 	}
 }
 

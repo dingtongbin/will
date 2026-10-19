@@ -16,6 +16,7 @@ type buildOptions struct {
 	opt          string
 	debug        bool
 	target       string
+	targetSet    bool
 	lib          bool
 	freestanding bool
 	features     string
@@ -58,7 +59,7 @@ func parseBuildArgs(command string, args []string, stderr io.Writer) (buildOptio
 			if !ok {
 				return opts, nil, 2
 			}
-			i, opts.target = next, value
+			i, opts.target, opts.targetSet = next, value, true
 		case "--lib":
 			opts.lib = true
 		case "--freestanding":

@@ -697,6 +697,10 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		c.checkPayload(s, sig.params, call.Args, call.Name)
 		return sig.result
 	}
+	if c.env.userTypes[recv.Name()] {
+		c.bag.Error(call.NamePos, diag.CodeNoMethod, "no method "+call.Name+" on "+recv.Name(),
+			"check the method name and the receiver")
+	}
 	return nil
 }
 

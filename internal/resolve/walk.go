@@ -109,7 +109,7 @@ func (r *resolver) walkPattern(p *ast.Pattern) {
 		return
 	}
 	switch p.Kind {
-	case ast.WildPattern, ast.LiteralPattern, ast.RangePattern:
+	case ast.WildPattern, ast.LiteralPattern:
 	case ast.BindPattern:
 		r.declareLocal(&Symbol{Name: p.Name, Kind: LocalKind, Pos: p.Pos(), Node: p, Exported: isExported(p.Name)})
 	case ast.VariantPattern:

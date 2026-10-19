@@ -46,20 +46,25 @@ type env struct {
 	vars     map[string]*Type
 	ifaces   map[string][]*methodInfo
 	derives  map[string]map[string]bool
+	// userTypes holds the types declared in this file. A method on one of
+	// them that no declaration provides is an error; built-in types have
+	// methods the checker does not model, so they are not in this set.
+	userTypes map[string]bool
 }
 
 func newEnv() *env {
 	return &env{
-		types:    map[string]*Type{},
-		arity:    map[string]int{},
-		fields:   map[string][]*fieldInfo{},
-		variants: map[string]*variantInfo{},
-		funcs:    map[string]*signature{},
-		methods:  map[string]*signature{},
-		inits:    map[string]*signature{},
-		vars:     map[string]*Type{},
-		ifaces:   map[string][]*methodInfo{},
-		derives:  map[string]map[string]bool{},
+		types:     map[string]*Type{},
+		arity:     map[string]int{},
+		fields:    map[string][]*fieldInfo{},
+		variants:  map[string]*variantInfo{},
+		funcs:     map[string]*signature{},
+		methods:   map[string]*signature{},
+		inits:     map[string]*signature{},
+		vars:      map[string]*Type{},
+		ifaces:    map[string][]*methodInfo{},
+		derives:   map[string]map[string]bool{},
+		userTypes: map[string]bool{},
 	}
 }
 
@@ -88,6 +93,7 @@ func buildEnv(c *checker, f *ast.File) *env {
 			t := c.in.named(decl.Name, nil)
 			e.types[decl.Name] = t
 			e.arity[decl.Name] = len(decl.TypeParams)
+			e.userTypes[decl.Name] = true
 			var fields []*fieldInfo
 			for _, fd := range decl.Fields {
 				fields = append(fields, &fieldInfo{name: fd.Name, typ: c.buildType(fd.Type, tp)})
@@ -98,6 +104,7 @@ func buildEnv(c *checker, f *ast.File) *env {
 			t := c.in.named(decl.Name, nil)
 			e.types[decl.Name] = t
 			e.arity[decl.Name] = len(decl.TypeParams)
+			e.userTypes[decl.Name] = true
 			for _, v := range decl.Variants {
 				payload := make([]*Type, len(v.Args))
 				for i, at := range v.Args {
@@ -185,6 +192,14 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 		return c.in.builtin(t.Name)
 	case ast.NamedType:
 		if tp[t.Name] {
+			return c.in.named(t.Name, nil)
+		}
+		if t.Name == "Equal" || t.Name == "Ord" {
+			// Both are predeclared constraints: they constrain a type
+			// parameter and are not interfaces, so this use is an error.
+			c.bag.Error(t.Pos(), diag.CodeBuiltinConstraintAsInterface,
+				t.Name+" is a builtin constraint, not an interface",
+				"use it only as a type-parameter constraint")
 			return c.in.named(t.Name, nil)
 		}
 		args := make([]*Type, len(t.Args))

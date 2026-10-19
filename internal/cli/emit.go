@@ -87,18 +87,10 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 	}
 	text, err := willc.Emit(f, res, modulePath, all)
 	if err != nil {
-		fmt.Fprintf(stderr, "will: %v\n", err)
+		reportTranslate(stdout, err)
 		return 1
 	}
-	if outPath == "" {
-		stdout.Write(text)
-		return 0
-	}
-	if err := os.WriteFile(outPath, text, 0o644); err != nil {
-		fmt.Fprintf(stderr, "will: %v\n", err)
-		return 1
-	}
-	return 0
+	return writeText(outPath, text, stdout, stderr)
 }
 
 // packageImports loads the module that contains file, when there is one, and
