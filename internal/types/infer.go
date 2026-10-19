@@ -448,7 +448,10 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 	case *ast.IndexExpr:
 		return elemOf(c.inferExpr(s, x.Recv))
 	case *ast.SliceExpr:
-		return c.sliceOf(c.inferExpr(s, x.Recv))
+		recv := c.inferExpr(s, x.Recv)
+		c.checkValue(s, x.Lo, c.in.scalar("usize"))
+		c.checkValue(s, x.Hi, c.in.scalar("usize"))
+		return c.sliceOf(recv)
 	case *ast.AggregateExpr:
 		return c.aggregateType(s, x)
 	case *ast.NewExpr:

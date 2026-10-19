@@ -766,6 +766,35 @@ func TestEmitViewAndArrayIteration(t *testing.T) {
 	}
 }
 
+func TestEmitSliceBuildsAView(t *testing.T) {
+	src := "func Sum(xs: []i32) -> i32 {\n" +
+		"    var total: i32 = 0\n" +
+		"    for x in xs {\n        total += x\n    }\n" +
+		"    return total\n}\n\n" +
+		"func Mid(xs: [4]i32) -> i32 {\n" +
+		"    var v: []i32 = xs[Range(1, 3)]\n" +
+		"    return Sum(v) + Sum(xs[Range(0, 2)])\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"%v.v = alloca { ptr, i64 }",
+		"%v.slice.",
+		"getelementptr inbounds [4 x i32], ptr %xs, i64 0, i64",
+		"sub i64",
+		"store i64",
+		`call i32 @"example.com/app.Sum"(ptr %v.v)`,
+		`call i32 @"example.com/app.Sum"(ptr %v.slice.`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitLiteralCarriesItsContextType(t *testing.T) {
 	// 42 in an i64 position must be recorded as an i64 literal, and the
 	// backend must use that type instead of assuming i32.

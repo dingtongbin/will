@@ -71,6 +71,30 @@ for.end.1:
   %t29 = load i64, ptr %v.n
   ret i64 %t29
 }
+define i32 @"example.com/views.Mid"(ptr %xs) {
+entry:
+  %v.v = alloca { ptr, i64 }
+  %v.slice.56 = alloca { ptr, i64 }
+  %v.slice.65 = alloca { ptr, i64 }
+  %t30 = getelementptr inbounds [4 x i32], ptr %xs, i64 0, i64 1
+  %t31 = sub i64 3, 1
+  %t32 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.56, i32 0, i32 0
+  store ptr %t30, ptr %t32
+  %t33 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.56, i32 0, i32 1
+  store i64 %t31, ptr %t33
+  %t34 = load { ptr, i64 }, ptr %v.slice.56
+  store { ptr, i64 } %t34, ptr %v.v
+  %t35 = call i32 @"example.com/views.Sum"(ptr %v.v)
+  %t36 = getelementptr inbounds [4 x i32], ptr %xs, i64 0, i64 0
+  %t37 = sub i64 2, 0
+  %t38 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.65, i32 0, i32 0
+  store ptr %t36, ptr %t38
+  %t39 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.65, i32 0, i32 1
+  store i64 %t37, ptr %t39
+  %t40 = call i32 @"example.com/views.Sum"(ptr %v.slice.65)
+  %t41 = add i32 %t35, %t40
+  ret i32 %t41
+}
 define i32 @main() {
 entry:
   ret i32 0

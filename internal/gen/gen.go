@@ -143,6 +143,7 @@ func (g *generator) use(d *docState) {
 	g.byName = map[string]*structInfo{}
 	g.aggSlots = map[int]string{}
 	g.callSlots = map[int]string{}
+	g.sliceSlots = map[int]string{}
 	g.loopBinds = map[int]map[string]string{}
 	g.loopTypes = map[int]map[string]string{}
 	g.loopPtrs = map[int]map[string]string{}
@@ -178,6 +179,9 @@ type generator struct {
 	// callSlots maps a call whose result is a struct to the temporary slot its
 	// value is stored in, so a field can be read from it.
 	callSlots map[int]string
+	// sliceSlots maps a slice expression to the temporary slot holding the view
+	// it builds.
+	sliceSlots map[int]string
 	// loopBinds maps a for record and a binding name to that binding's slot,
 	// and loopTypes to its will type text. Both bindings of a loop name the
 	// same for record, so the name tells them apart. loopPtrs holds the element
@@ -494,6 +498,19 @@ func (g *generator) allocas(fn int) error {
 		g.callSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
 	}
+	// A slice expression builds a two-word view, which also needs a slot.
+	var slices []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "slice" && g.enclosingFunc(r.ID) == fn {
+			slices = append(slices, r)
+		}
+	}
+	sortByID(slices)
+	for _, r := range slices {
+		name := "%v.slice." + strconv.Itoa(r.ID)
+		g.sliceSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca { ptr, i64 }\n", name)
+	}
 	// A range loop binds one counter, which also needs a slot.
 	for _, r := range g.recs {
 		if r.Kind != "for" || g.enclosingFunc(r.ID) != fn {
@@ -680,7 +697,7 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 		valueID = c.ID
 	}
 	typ := g.slotTypes[r.ID]
-	if isStructType(typ) {
+	if isAggregateType(typ) {
 		src, srcType, err := g.place(valueID)
 		if err != nil {
 			return false, err
@@ -1014,6 +1031,8 @@ func (g *generator) value(id int) (string, error) {
 		return g.load(typ, ptr), nil
 	case "agg":
 		return "", g.errf(id, "cannot translate node #%d: an aggregate is a place, not a scalar value", id)
+	case "slice":
+		return "", g.errf(id, "cannot translate node #%d: a view is a place, not a scalar value", id)
 	case "un":
 		return g.unary(r)
 	case "bin":

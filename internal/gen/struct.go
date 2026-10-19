@@ -198,6 +198,16 @@ func (g *generator) typeOf(id int) (string, error) {
 			return "", g.errf(id, "cannot translate node #%d: the aggregate type is not lowered yet", id)
 		}
 		return info.llvm, nil
+	case "slice":
+		text, err := g.willTypeText(id)
+		if err != nil {
+			return "", err
+		}
+		typ, ok := llvmTypeText(text)
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, text)
+		}
+		return typ, nil
 	case "bin":
 		switch fieldText(r, "op") {
 		case "&&", "||", "==", "!=", "<", "<=", ">", ">=":
@@ -262,6 +272,12 @@ func (g *generator) willTypeText(id int) (string, error) {
 		return info.texts[i], nil
 	case "agg":
 		return "", nil
+	case "slice":
+		elem, err := g.sliceElem(r)
+		if err != nil {
+			return "", err
+		}
+		return "[]" + elem, nil
 	case "bin":
 		switch fieldText(r, "op") {
 		case "&&", "||", "==", "!=", "<", "<=", ">", ">=":
@@ -365,6 +381,12 @@ func (g *generator) place(id int) (string, string, error) {
 			return "", "", err
 		}
 		return slot, info.llvm, nil
+	case "slice":
+		slot, err := g.sliceValue(r)
+		if err != nil {
+			return "", "", err
+		}
+		return slot, "{ ptr, i64 }", nil
 	case "call", "mcall":
 		info, err := g.callResultStruct(r)
 		if err != nil {

@@ -123,6 +123,93 @@ func (g *generator) nameSlot(r willc.Record) (string, string, bool) {
 	return slot, g.slotTypes[decl], true
 }
 
+// sliceElem returns the element text of the value a slice expression takes.
+func (g *generator) sliceElem(r willc.Record) (string, error) {
+	text, err := g.willTypeText(refField(r, "recv"))
+	if err != nil {
+		return "", err
+	}
+	if _, elem, ok := arrayTypeText(text); ok {
+		return elem, nil
+	}
+	if elem, ok := containerElem(text); ok {
+		return elem, nil
+	}
+	return "", g.errf(r.ID, "cannot translate node #%d: only a slice of a lowered array or view is lowered yet", r.ID)
+}
+
+// sliceValue lowers a slice expression into its two-word view: the element
+// pointer moved to the low bound and the length between the bounds. The source
+// bounds are the usize values the index expression yields; a bound check needs
+// the runtime panic and is not emitted yet.
+func (g *generator) sliceValue(r willc.Record) (string, error) {
+	elem, err := g.sliceElem(r)
+	if err != nil {
+		return "", err
+	}
+	elemType, _, ok := llvmScalar(elem)
+	if !ok {
+		return "", g.errf(r.ID, "cannot translate node #%d: only a view of a lowered scalar is built yet", r.ID)
+	}
+	loID, hiID := refField(r, "lo"), refField(r, "hi")
+	for _, id := range []int{loID, hiID} {
+		if t, err := g.typeOf(id); err != nil {
+			return "", err
+		} else if t != "i64" {
+			return "", g.errf(r.ID, "cannot translate node #%d: a slice bound must be a usize", r.ID)
+		}
+	}
+	lo, err := g.value(loID)
+	if err != nil {
+		return "", err
+	}
+	hi, err := g.value(hiID)
+	if err != nil {
+		return "", err
+	}
+	base, baseType, err := g.place(refField(r, "recv"))
+	if err != nil {
+		return "", err
+	}
+	text, err := g.willTypeText(refField(r, "recv"))
+	if err != nil {
+		return "", err
+	}
+	var data string
+	if _, _, ok := arrayTypeText(text); ok {
+		// The fixed array is already its element storage.
+		g.tmp++
+		ptr := "%t" + strconv.Itoa(g.tmp)
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 0, i64 %s\n", ptr, baseType, base, lo)
+		data = ptr
+	} else {
+		g.tmp++
+		field := "%t" + strconv.Itoa(g.tmp)
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", field, baseType, base)
+		raw := g.load("ptr", field)
+		g.tmp++
+		ptr := "%t" + strconv.Itoa(g.tmp)
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", ptr, elemType, raw, lo)
+		data = ptr
+	}
+	g.tmp++
+	length := "%t" + strconv.Itoa(g.tmp)
+	fmt.Fprintf(g.out, "  %s = sub i64 %s, %s\n", length, hi, lo)
+	slot := g.sliceSlots[r.ID]
+	if slot == "" {
+		return "", g.errf(r.ID, "cannot translate node #%d: the slice has no slot", r.ID)
+	}
+	g.tmp++
+	dataField := "%t" + strconv.Itoa(g.tmp)
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", dataField, slot)
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", data, dataField)
+	g.tmp++
+	lenField := "%t" + strconv.Itoa(g.tmp)
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n", lenField, slot)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, lenField)
+	return slot, nil
+}
+
 // forContainer lowers a loop over a view or an Array. The two-word view and the
 // three-word Array start with the data pointer and the length, so the loop
 // loads both once, before the header: the container is borrowed for the whole
