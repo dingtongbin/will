@@ -45,6 +45,11 @@ type Build struct {
 
 // Load reads the module root, will.mod, and every .will file under it.
 func Load(root string) *Build {
+	// The package-name rule compares directory names, so the root is resolved
+	// first; a relative root such as "." would otherwise compare as ".".
+	if abs, err := filepath.Abs(root); err == nil {
+		root = abs
+	}
 	b := &Build{Root: root}
 	data, err := os.ReadFile(filepath.Join(root, "will.mod"))
 	if err != nil {
