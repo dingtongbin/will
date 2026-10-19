@@ -28,6 +28,19 @@ type ifaceInfo struct {
 // its two-word type. The method order is the declaration order, so a method
 // table entry is fixed.
 func (g *generator) buildInterfaces() {
+	if g.errorIface == nil {
+		g.errorIface = &ifaceInfo{
+			name: "Error",
+			llvm: "%interface.Error",
+			methods: []ifaceMethod{
+				{name: "Message", result: "str"},
+				{name: "Status", result: "i32"},
+			},
+			byName: map[string]int{"Message": 0, "Status": 1},
+		}
+	}
+	g.ifaceByName["Error"] = g.errorIface
+	g.ifaceByLLVM["%interface.Error"] = g.errorIface
 	var ifaces []willc.Record
 	for _, r := range g.recs {
 		if r.Kind == "interface" {
@@ -97,6 +110,9 @@ func isIfaceType(typ string) bool {
 // its declaration.
 func (g *generator) ifaceOfText(text string) (*ifaceInfo, bool) {
 	if info := g.ifaceByName[text]; info != nil {
+		if info == g.errorIface {
+			g.usedError = true
+		}
 		return info, true
 	}
 	return nil, false
@@ -306,6 +322,10 @@ func (g *generator) callParamTypes(r willc.Record) []string {
 func (g *generator) resultLLVM(text string) string {
 	if typ, ok := llvmTypeText(text); ok {
 		return typ
+	}
+	if text == "Error" {
+		g.usedError = true
+		return "%interface.Error"
 	}
 	if adt, ok := g.adtType(text); ok {
 		return adt.llvm

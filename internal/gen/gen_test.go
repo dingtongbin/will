@@ -191,6 +191,52 @@ func TestEmitStrLiteralIndexAndLoop(t *testing.T) {
 	}
 }
 
+func TestEmitArrayNewPushAndLen(t *testing.T) {
+	src := "func Sum() -> i32 {\n    var a: Array<i32> = new Array<i32>(0)\n    a.Push(1)\n    a.Push(2)\n    a.Set(0, 7)\n    var s: i32 = 0\n    for v in a { s += v }\n    return s + a.Get(1) + i32(a.Len())\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"alloca { ptr, i64, i64 }",
+		"call ptr @willrt_alloc(i64",
+		"arr.full.",
+		"call void @willrt_free(ptr",
+		"declare ptr @willrt_alloc(i64)",
+		"declare void @willrt_free(ptr)",
+		"icmp uge i64",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitBuiltinError(t *testing.T) {
+	src := "struct E {\n    msg: str\n}\n\n" +
+		"func (e: E) Message() -> str {\n    return e.msg\n}\n\n" +
+		"func (e: E) Status() -> i32 {\n    return 7\n}\n\n" +
+		"func Use() -> i32 {\n    var e: E = E { msg: \"bad\" }\n    var r: Result<i32, Error> = Err(e)\n    return match r {\n        Ok(v) => v\n        Err(x) => x.Status()\n    }\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`%interface.Error = type { ptr, ptr }`,
+		"vtable.Error.E",
+		"[2 x ptr]",
+		"call i32 %t",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitNewRunsDefaultsAndInit(t *testing.T) {
 	src := "struct P {\n    x: i32 = 5\n    y: i32\n}\n\n" +
 		"func (mut p: P) init(y: i32) {\n    p.y = y\n}\n\n" +

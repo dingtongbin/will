@@ -219,6 +219,10 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 		}
 		return qualifiedTypeName(q), nil
 	}
+	if fieldText(r, "type") == "Error" {
+		g.usedError = true
+		return "%interface.Error", nil
+	}
 	return "", g.errf(decl, "cannot translate node #%d: type %s is not lowered yet", decl, fieldText(r, "type"))
 }
 
@@ -340,6 +344,12 @@ func (g *generator) typeOf(id int) (string, error) {
 		return g.typeOf(refField(r, "expr"))
 	case "call", "mcall":
 		if r.Kind == "mcall" {
+			if llvm, _, known := g.arrayCallResult(r); known {
+				if llvm == "" {
+					return "", g.errf(id, "cannot translate node #%d: the call returns no value", id)
+				}
+				return llvm, nil
+			}
 			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
 				if iface, ok := g.ifaceOfText(recvText); ok {
 					if idx, ok := iface.byName[fieldText(r, "text")]; ok {
@@ -460,6 +470,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		return g.willTypeText(refField(r, "expr"))
 	case "call", "mcall":
 		if r.Kind == "mcall" {
+			if _, text, known := g.arrayCallResult(r); known {
+				return text, nil
+			}
 			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
 				if iface, ok := g.ifaceOfText(recvText); ok {
 					if idx, ok := iface.byName[fieldText(r, "text")]; ok {

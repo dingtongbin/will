@@ -56,6 +56,10 @@ func (g *generator) typeLLVMOf(text string) (string, bool) {
 	if text == "()" {
 		return "", true
 	}
+	if text == "Error" {
+		g.usedError = true
+		return "%interface.Error", true
+	}
 	if info, ok := g.adtType(text); ok {
 		return info.llvm, true
 	}
@@ -223,6 +227,26 @@ func (g *generator) adtConstruct(r willc.Record, info *adtInfo, variant string, 
 	}
 	payload := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
+	argIndex := 0
+	if info.kind == "result" && variant == "Err" {
+		argIndex = 1
+	}
+	if argIndex < len(info.argLLVM) {
+		want := info.argLLVM[argIndex]
+		if want == "" {
+			return slot, info.llvm, nil
+		}
+		if iface, ok := g.ifaceOfType(want); ok && argType != want {
+			argText, err := g.willTypeText(argID)
+			if err != nil {
+				return "", "", err
+			}
+			if _, err := g.ifaceValue(payload, argID, iface, argText); err != nil {
+				return "", "", err
+			}
+			return slot, info.llvm, nil
+		}
+	}
 	if isAggregateType(argType) {
 		src, srcType, err := g.place(argID)
 		if err != nil {

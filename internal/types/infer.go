@@ -243,10 +243,56 @@ func (c *checker) checkValue(s *inferScope, e ast.Expr, want *Type) {
 		return
 	}
 	c.recordWant(e, want)
+	if c.checkPredeclaredInto(s, e, want) {
+		return
+	}
 	got := c.exprWithWant(s, e, want)
 	if !Equal(got, want) {
 		c.mismatch(e.Pos(), got, want, false, "", 0)
 	}
+}
+
+// checkPredeclaredInto checks Some, None, Ok, and Err against the complete
+// Option or Result the context expects. The constructor alone knows one side
+// and cannot infer the other, so the expected type supplies it.
+func (c *checker) checkPredeclaredInto(s *inferScope, e ast.Expr, want *Type) bool {
+	call, ok := e.(*ast.CallExpr)
+	if !ok || want.Kind() != NamedKind {
+		return false
+	}
+	name, ok := call.Callee.(*ast.NameExpr)
+	if !ok {
+		return false
+	}
+	switch name.Name {
+	case "Some":
+		if want.Name() != "Option" || len(call.Args) != 1 {
+			return false
+		}
+		if t := argAt(want, 0); t != nil {
+			c.checkValue(s, call.Args[0].Expr, t)
+		}
+		return true
+	case "None":
+		return want.Name() == "Option"
+	case "Ok":
+		if want.Name() != "Result" || len(call.Args) != 1 {
+			return false
+		}
+		if t := argAt(want, 0); t != nil {
+			c.checkValue(s, call.Args[0].Expr, t)
+		}
+		return true
+	case "Err":
+		if want.Name() != "Result" || len(call.Args) != 1 {
+			return false
+		}
+		if t := argAt(want, 1); t != nil {
+			c.checkValue(s, call.Args[0].Expr, t)
+		}
+		return true
+	}
+	return false
 }
 
 // recordWant keeps the type a predeclared constructor or value takes from its

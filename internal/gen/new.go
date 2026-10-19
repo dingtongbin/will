@@ -12,6 +12,9 @@ import (
 // is the storage itself, which the caller copies or returns.
 func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	text := fieldText(r, "type")
+	if elem, ok := arrayElemText(text); ok {
+		return g.constructArray(r, elem)
+	}
 	info := g.byName[text]
 	if info == nil {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: new needs a struct declared in this document", r.ID)

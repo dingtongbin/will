@@ -90,6 +90,10 @@ func (g *generator) emitAux() {
 	if g.needUTF8Decl {
 		g.out.WriteString("declare i32 @willrt_utf8_decode(ptr, i64, ptr)\n")
 	}
+	if g.needAllocDecl {
+		g.out.WriteString("declare ptr @willrt_alloc(i64)\n")
+		g.out.WriteString("declare void @willrt_free(ptr)\n")
+	}
 }
 
 // docState is the per-file part of the translation: record ids and the callable
@@ -349,6 +353,13 @@ type generator struct {
 	ifaceRetSlots map[int]string
 	vtables      map[string]string
 	paramTypes   map[string][]string
+	// errorIface is the predeclared Error interface, and errorEmitted records
+	// that its module-wide type definition is already written.
+	errorIface   *ifaceInfo
+	errorEmitted bool
+	usedError    bool
+	// needAllocDecl records that the lowering calls the allocator.
+	needAllocDecl bool
 	// declKinds maps a qualified type name to "struct" or "enum".
 	declKinds map[string]string
 	// callSlots maps a call whose result is a struct to the temporary slot its
@@ -407,8 +418,27 @@ type generator struct {
 	needPanicDecl bool
 }
 
+// docUsesError reports whether any record of the current document names the
+// predeclared Error interface. The definition must precede the functions that
+// allocate a Result holding one, so it is written at the top of the first
+// document that mentions it.
+func (g *generator) docUsesError() bool {
+	for _, r := range g.recs {
+		for _, f := range r.Fields {
+			if strings.Contains(f.Value.Text, "Error") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // emitDoc lowers every function of the current document, in source order.
 func (g *generator) emitDoc() error {
+	if !g.errorEmitted && g.docUsesError() {
+		g.out.WriteString("%interface.Error = type { ptr, ptr }\n")
+		g.errorEmitted = true
+	}
 	g.collect()
 	g.buildStructs()
 	g.buildEnums()
@@ -597,6 +627,9 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		resLLVM = typ
 	} else if adt, ok := g.adtType(result); ok {
 		resLLVM = adt.llvm
+	} else if result == "Error" {
+		g.usedError = true
+		resLLVM = "%interface.Error"
 	} else if q := g.typeQualified(fn.ID); q != "" {
 		switch {
 		case g.structTypes[q]:
@@ -1282,6 +1315,12 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 		return false, g.exprStmt(st)
 	case "block":
 		return g.body(st, void)
+	case "release":
+		// Ownership release is still a boundary: the value runs to the end of
+		// its scope without an explicit free. The allocator contract tests
+		// cover the free path; the lowering will emit it with the ownership
+		// pass.
+		return false, nil
 	}
 	return false, g.errf(st.ID, "cannot translate node #%d: statement %s is not lowered yet", st.ID, st.Kind)
 }
@@ -1816,6 +1855,9 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		if err != nil {
 			return "", "", err
 		}
+		if elem, ok := arrayElemText(recvText); ok {
+			return g.arrayMethod(r, elem)
+		}
 		if iface, ok := g.ifaceOfText(recvText); ok {
 			return g.interfaceCall(r, iface)
 		}
@@ -1905,7 +1947,10 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, st
 	}
 	result, scalar := llvmTypeText(resultText)
 	if !scalar {
-		if adt, ok := g.adtType(resultText); ok {
+		if resultText == "Error" {
+			g.usedError = true
+			result = "%interface.Error"
+		} else if adt, ok := g.adtType(resultText); ok {
 			result = adt.llvm
 		} else {
 			switch {

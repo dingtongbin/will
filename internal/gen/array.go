@@ -1,0 +1,311 @@
+package gen
+
+import (
+	"fmt"
+
+	"github.com/will-lang/will/internal/willc"
+)
+
+// arrayElemText returns the element type of an Array<T> whose element is
+// lowered as a scalar. Aggregate elements wait for the generic container work.
+func arrayElemText(text string) (string, bool) {
+	elem, ok := containerElem(text)
+	if !ok {
+		return "", false
+	}
+	return elem, true
+}
+
+// constructArray builds `new Array<T>(cap)`: one heap block of cap elements and
+// the three-word value (data, length, capacity). The length starts at zero.
+func (g *generator) constructArray(r willc.Record, elem string) (string, string, error) {
+	slot := g.newSlots[r.ID]
+	if slot == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: the array value has no slot", r.ID)
+	}
+	elemLLVM, _, ok := llvmScalar(elem)
+	if !ok {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s is not lowered yet", r.ID, elem)
+	}
+	size, align, ok := g.sizeAlign(elemLLVM)
+	if !ok {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s has no layout", r.ID, elem)
+	}
+	capValue := "0"
+	args := g.callArgs(r)
+	if len(args) != 0 {
+		v, err := g.indexValue(args[0], r)
+		if err != nil {
+			return "", "", err
+		}
+		capValue = v
+	}
+	ptr := "null"
+	if lit := intLitValue(args, g); lit >= 0 {
+		if lit == 0 {
+			ptr = "null"
+		} else {
+			ptr = g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %d)\n", ptr, lit*size)
+			g.needAllocDecl = true
+		}
+	} else {
+		// The size is only known at run time; a zero capacity still allocates
+		// nothing, so the call is guarded by the capacity itself.
+		g.labels++
+		n := g.labels
+		zero := fmt.Sprintf("arr.zero.%d", n)
+		alloc := fmt.Sprintf("arr.alloc.%d", n)
+		done := fmt.Sprintf("arr.ptr.%d", n)
+		cond := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp eq i64 %s, 0\n", cond, capValue)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, zero, alloc)
+		g.out.WriteString(zero + ":\n")
+		fmt.Fprintf(g.out, "  br label %%%s\n", done)
+		g.out.WriteString(alloc + ":\n")
+		bytes := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, capValue, size)
+		allocated := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", allocated, bytes)
+		g.needAllocDecl = true
+		fmt.Fprintf(g.out, "  br label %%%s\n", done)
+		g.out.WriteString(done + ":\n")
+		ptr = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = phi ptr [ null, %%%s ], [ %s, %%%s ]\n", ptr, zero, allocated, alloc)
+	}
+	_ = align
+	dataField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataField, slot)
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", ptr, dataField)
+	lenField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenField, slot)
+	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", lenField)
+	capField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 2\n", capField, slot)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", capValue, capField)
+	return slot, "{ ptr, i64, i64 }", nil
+}
+
+// intLitValue returns the value of the first argument when it is an integer
+// literal, or -1 otherwise.
+func intLitValue(args []int, g *generator) int {
+	if len(args) == 0 {
+		return -1
+	}
+	r, ok := g.recs[args[0]]
+	if !ok || r.Kind != "lit" || fieldText(r, "kind") != "int" {
+		return -1
+	}
+	text := literalIntText(fieldText(r, "text"))
+	n := 0
+	for i := 0; i < len(text); i++ {
+		if text[i] < '0' || text[i] > '9' {
+			return -1
+		}
+		n = n*10 + int(text[i]-'0')
+		if n > 1<<30 {
+			return -1
+		}
+	}
+	return n
+}
+
+// arrayMethod lowers a method call on Array<T>.
+func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, error) {
+	base, typ, err := g.place(refField(r, "recv"))
+	if err != nil {
+		return "", "", err
+	}
+	if typ != "{ ptr, i64, i64 }" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: the receiver is not an Array", r.ID)
+	}
+	elemLLVM, _, ok := llvmScalar(elem)
+	if !ok {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s is not lowered yet", r.ID, elem)
+	}
+	field := func(i int) string {
+		p := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 %d\n", p, base, i)
+		return p
+	}
+	switch fieldText(r, "text") {
+	case "Len":
+		return g.load("i64", field(1)), "usize", nil
+	case "Cap":
+		return g.load("i64", field(2)), "usize", nil
+	case "Get", "Set":
+		args := g.callArgs(r)
+		if len(args) == 0 {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: %s needs an index", r.ID, fieldText(r, "text"))
+		}
+		ptr, err := g.arrayElemAddr(r, base, elemLLVM, args[0])
+		if err != nil {
+			return "", "", err
+		}
+		if fieldText(r, "text") == "Get" {
+			return g.load(elemLLVM, ptr), elem, nil
+		}
+		if len(args) < 2 {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: Set needs a value", r.ID)
+		}
+		v, err := g.value(args[1])
+		if err != nil {
+			return "", "", err
+		}
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, v, ptr)
+		return "", "", nil
+	case "Push":
+		args := g.callArgs(r)
+		if len(args) != 1 {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: Push takes one value", r.ID)
+		}
+		elemSize, _, ok := g.sizeAlign(elemLLVM)
+		if !ok {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s has no layout", r.ID, elem)
+		}
+		if err := g.arrayPush(r, base, elemLLVM, elemSize, args[0]); err != nil {
+			return "", "", err
+		}
+		return "", "", nil
+	}
+	return "", "", g.errf(r.ID, "cannot translate node #%d: Array.%s is not lowered yet", r.ID, fieldText(r, "text"))
+}
+
+// arrayCallResult returns the LLVM and will result types of an Array method.
+// known is true for a method the lowering handles; llvm is empty for a method
+// that returns no value.
+func (g *generator) arrayCallResult(r willc.Record) (llvm, text string, known bool) {
+	recvText, err := g.willTypeText(refField(r, "recv"))
+	if err != nil {
+		return "", "", false
+	}
+	elem, ok := arrayElemText(recvText)
+	if !ok {
+		return "", "", false
+	}
+	elemLLVM, _, ok := llvmScalar(elem)
+	if !ok {
+		return "", "", false
+	}
+	switch fieldText(r, "text") {
+	case "Len", "Cap":
+		return "i64", "usize", true
+	case "Get":
+		return elemLLVM, elem, true
+	case "Push", "Set":
+		return "", "", true
+	}
+	return "", "", false
+}
+
+// arrayElemAddr checks one index and returns the address of that element.
+func (g *generator) arrayElemAddr(r willc.Record, base, elemLLVM string, indexID int) (string, error) {
+	idx, err := g.indexValue(indexID, r)
+	if err != nil {
+		return "", err
+	}
+	dataPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
+	data := g.load("ptr", dataPtr)
+	lenPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, base)
+	length := g.load("i64", lenPtr)
+	bad := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp uge i64 %s, %s\n", bad, idx, length)
+	g.panicCheck(bad, panicIndex, r)
+	ptr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", ptr, elemLLVM, data, idx)
+	return ptr, nil
+}
+
+// arrayPush stores one value at the length and grows the block when it is full.
+func (g *generator) arrayPush(r willc.Record, base, elemLLVM string, elemSize int, valueID int) error {
+	dataPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
+	data := g.load("ptr", dataPtr)
+	lenPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, base)
+	length := g.load("i64", lenPtr)
+	capPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 2\n", capPtr, base)
+	capacity := g.load("i64", capPtr)
+
+	g.labels++
+	n := g.labels
+	full := fmt.Sprintf("arr.full.%d", n)
+	ready := fmt.Sprintf("arr.ready.%d", n)
+	cond := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i64 %s, %s\n", cond, length, capacity)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, full, ready)
+	g.out.WriteString(full + ":\n")
+
+	// Grow to twice the capacity, or four elements when the array is empty.
+	doubled := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = mul i64 %s, 2\n", doubled, capacity)
+	isZero := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i64 %s, 0\n", isZero, capacity)
+	newCap := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = select i1 %s, i64 4, i64 %s\n", newCap, isZero, doubled)
+	bytes := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, newCap, elemSize)
+	newData := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", newData, bytes)
+	g.needAllocDecl = true
+
+	// Copy the live elements with a small loop.
+	copyCond := fmt.Sprintf("arr.copy.cond.%d", n)
+	copyBody := fmt.Sprintf("arr.copy.body.%d", n)
+	copyEnd := fmt.Sprintf("arr.copy.end.%d", n)
+	copySlot := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca i64\n", copySlot)
+	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", copySlot)
+	fmt.Fprintf(g.out, "  br label %%%s\n", copyCond)
+	g.out.WriteString(copyCond + ":\n")
+	at := g.load("i64", copySlot)
+	more := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", more, at, length)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", more, copyBody, copyEnd)
+	g.out.WriteString(copyBody + ":\n")
+	src := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", src, elemLLVM, data, at)
+	v := g.load(elemLLVM, src)
+	dst := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", dst, elemLLVM, newData, at)
+	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, v, dst)
+	next := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", next, at)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", next, copySlot)
+	fmt.Fprintf(g.out, "  br label %%%s\n", copyCond)
+	g.out.WriteString(copyEnd + ":\n")
+	isNull := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq ptr %s, null\n", isNull, data)
+	noFree := fmt.Sprintf("arr.nofree.%d", n)
+	doFree := fmt.Sprintf("arr.free.%d", n)
+	freed := fmt.Sprintf("arr.freed.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", isNull, noFree, doFree)
+	g.out.WriteString(doFree + ":\n")
+	fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
+	g.needAllocDecl = true
+	fmt.Fprintf(g.out, "  br label %%%s\n", freed)
+	g.out.WriteString(noFree + ":\n")
+	fmt.Fprintf(g.out, "  br label %%%s\n", freed)
+	g.out.WriteString(freed + ":\n")
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", newData, dataPtr)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", newCap, capPtr)
+	fmt.Fprintf(g.out, "  br label %%%s\n", ready)
+	g.out.WriteString(ready + ":\n")
+
+	data = g.load("ptr", dataPtr)
+	length = g.load("i64", lenPtr)
+	slot := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", slot, elemLLVM, data, length)
+	value, err := g.value(valueID)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, slot)
+	nextLen := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", nextLen, length)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", nextLen, lenPtr)
+	return nil
+}

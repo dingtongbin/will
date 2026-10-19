@@ -404,6 +404,9 @@ func (g *generator) sizeAlign(typ string) (int, int, bool) {
 		}
 		return info.size, info.align, true
 	}
+	if isIfaceType(typ) {
+		return 16, 8, true
+	}
 	return 0, 0, false
 }
 
