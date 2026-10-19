@@ -6,6 +6,7 @@
 #define WILLRT_WILLRT_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 /* Status values for willrt_ functions that report int32_t. Negative values
    mean the operation did not complete, except WILLRT_SUSPEND, which means the
@@ -52,5 +53,39 @@ void* willrt_plate_new(size_t count, size_t elem);
    plate magic, is rejected with one line on standard error, and its memory is
    left alone. */
 void willrt_plate_release(void* plate);
+
+/* willrt_rc_new copies size bytes from value into a new rc object and returns
+   its handle, or 0 when the allocation fails. A handle carries the slot index
+   in the low 32 bits and the slot generation in the high 32 bits, and 0 is
+   never valid. value must point to size bytes when size is nonzero. */
+uint64_t willrt_rc_new(const void* value, size_t size);
+
+/* willrt_rc_retain adds one reference to the object named by handle. A zero,
+   out-of-range, or released handle is ignored, so a stale handle never
+   faults. */
+void willrt_rc_retain(uint64_t handle);
+
+/* willrt_rc_release removes one reference from the object named by handle and
+   releases its storage when the count reaches zero. A zero, out-of-range, or
+   released handle is ignored. */
+void willrt_rc_release(uint64_t handle);
+
+/* willrt_rc_deref returns the object named by handle after checking the slot
+   generation, or NULL when the handle is zero, out of range, or released. The
+   lookup is O(1). The caller must own a reference for as long as the result is
+   used. */
+void* willrt_rc_deref(uint64_t handle);
+
+/* willrt_weak_new returns a weak handle for a live rc handle, or 0 when the
+   handle is not live. A weak handle does not change the strong count, and it
+   is encoded exactly like a strong handle, so it must not be passed to
+   willrt_rc_retain or willrt_rc_release. */
+uint64_t willrt_weak_new(uint64_t handle);
+
+/* willrt_weak_upgrade writes the strong handle to *(uint64_t*)out and returns
+   WILLRT_OK when the weak handle still names a live object. It returns
+   WILLRT_EMPTY when the object was released or out is NULL. On success the
+   strong count is incremented, so the caller owns the returned reference. */
+int32_t willrt_weak_upgrade(uint64_t weak, void* out);
 
 #endif
