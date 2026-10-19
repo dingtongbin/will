@@ -235,6 +235,11 @@ func (r *resolver) walkDecl(d ast.Decl) {
 		}
 		r.pop()
 	case *ast.DeriveDecl:
+		switch decl.Name {
+		case "Json", "Show", "Equal":
+		default:
+			r.undefinedIn(decl.NamePos, decl.Name, []string{"Json", "Show", "Equal"})
+		}
 		r.walkType(decl.Type)
 		if sym, ok := r.refs[decl.Type]; ok {
 			r.refs[decl] = sym

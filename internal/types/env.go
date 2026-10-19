@@ -45,6 +45,7 @@ type env struct {
 	inits    map[string]*signature
 	vars     map[string]*Type
 	ifaces   map[string][]*methodInfo
+	derives  map[string]map[string]bool
 }
 
 func newEnv() *env {
@@ -58,6 +59,7 @@ func newEnv() *env {
 		inits:    map[string]*signature{},
 		vars:     map[string]*Type{},
 		ifaces:   map[string][]*methodInfo{},
+		derives:  map[string]map[string]bool{},
 	}
 }
 
@@ -73,6 +75,11 @@ func buildEnv(c *checker, f *ast.File) *env {
 	}
 	for _, name := range []string{"Value", "Duration", "Show", "Error"} {
 		e.types[name] = c.in.named(name, nil)
+	}
+	e.ifaces["Show"] = []*methodInfo{{name: "Show", sig: &signature{name: "Show", result: c.in.scalar("str")}}}
+	e.ifaces["Error"] = []*methodInfo{
+		{name: "Message", sig: &signature{name: "Message", result: c.in.scalar("str")}},
+		{name: "Status", sig: &signature{name: "Status", result: c.in.scalar("i32")}},
 	}
 	for _, d := range f.Decls {
 		switch decl := d.(type) {
@@ -124,6 +131,14 @@ func buildEnv(c *checker, f *ast.File) *env {
 			e.vars[decl.Name] = c.buildType(decl.Type, nil)
 		case *ast.VarDecl:
 			e.vars[decl.Name] = c.buildType(decl.Type, nil)
+		case *ast.DeriveDecl:
+			if decl.Name == "Show" {
+				name := receiverName(decl.Type)
+				if e.derives[name] == nil {
+					e.derives[name] = map[string]bool{}
+				}
+				e.derives[name]["Show"] = true
+			}
 		}
 	}
 	return e

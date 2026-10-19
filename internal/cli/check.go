@@ -65,9 +65,19 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	// Only file arguments are cached; a directory run depends on the whole
-	// tree and its key would have to list every input.
+	// A single directory argument is cached with the key that lists the whole
+	// tree; anything else falls back to the file key.
 	store, key, contents := checkCache(files, jsonOut, werror)
+	if store == nil && len(files) == 1 {
+		if info, err := os.Stat(files[0]); err == nil && info.IsDir() {
+			b := pkg.Load(files[0])
+			if b.Err != nil {
+				fmt.Fprintf(stderr, "will: %v\n", b.Err)
+				return 1
+			}
+			return runCachedBuild(b, jsonOut, werror, stdout)
+		}
+	}
 	if store != nil {
 		if data, ok := store.Get(key, cache.Diag); ok {
 			out, code := decodeDiag(data[cache.Diag])
@@ -99,15 +109,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	}
 	stdout.Write(out)
 
-	code := 0
-	for _, d := range ds {
-		if d.Severity == diag.Error {
-			code = 1
-		}
-		if werror && d.Severity == diag.Warning {
-			code = 1
-		}
-	}
+	code := exitCode(ds, werror)
 	if store != nil {
 		_ = store.Put(key, map[string][]byte{cache.Diag: encodeDiag(code, out)})
 		_ = store.Trim()

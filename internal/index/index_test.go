@@ -84,6 +84,38 @@ func TestIndexLines(t *testing.T) {
 	}
 }
 
+func TestIndexDerivedShow(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "app")
+	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
+	write(t, filepath.Join(root, "api.will"), "struct P {\n    x: i32\n}\n\nderive Show for P\n")
+	text := string(Build(pkg.Load(root)))
+	if !strings.Contains(text, `satisfies type="example.com/app.P" interface="Show"`) {
+		t.Fatalf("index lacks the derived Show satisfaction:\n%s", text)
+	}
+}
+
+func TestIndexBuiltinError(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "app")
+	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
+	src := `struct E {
+    code: i32
+}
+
+func (e: E) Message() -> str {
+    return "failed"
+}
+
+func (e: E) Status() -> i32 {
+    return e.code
+}
+`
+	write(t, filepath.Join(root, "api.will"), src)
+	text := string(Build(pkg.Load(root)))
+	if !strings.Contains(text, `satisfies type="example.com/app.E" interface="Error"`) {
+		t.Fatalf("index lacks the Error satisfaction:\n%s", text)
+	}
+}
+
 func TestIndexIsDeterministic(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")

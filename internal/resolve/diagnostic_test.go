@@ -177,6 +177,15 @@ func TestDuplicateVariant(t *testing.T) {
 	find(t, ds, diag.CodeDuplicateName)
 }
 
+func TestDeriveNameIsOneOfThree(t *testing.T) {
+	src := "struct P {\n    x: i32\n}\n\nderive Foo for P\n"
+	ds := resolveSource(t, src)
+	d := find(t, ds, diag.CodeUndefinedName)
+	if d.Pos.Line != 5 {
+		t.Errorf("position line = %d, want 5", d.Pos.Line)
+	}
+}
+
 func TestTopLevelShadowsPredeclared(t *testing.T) {
 	ds := resolveSource(t, "const Result: i32 = 0\n")
 	d := find(t, ds, diag.CodeShadow)

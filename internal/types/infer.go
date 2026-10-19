@@ -316,6 +316,9 @@ func (c *checker) checkArg(s *inferScope, e ast.Expr, want *Type, callee string,
 // assigned to an interface is checked for the interface methods first.
 func (c *checker) mismatch(pos source.Pos, got, want *Type, isArg bool, callee string, n int) {
 	if methods, ok := c.env.ifaces[want.Name()]; ok {
+		if got != nil && c.env.derives[got.Name()][want.Name()] {
+			return
+		}
 		if missing := c.missingMethod(got, methods); missing != "" {
 			c.bag.Error(pos, diag.CodeInterfaceUnsatisfied,
 				"type "+got.String()+" does not satisfy "+want.String(),

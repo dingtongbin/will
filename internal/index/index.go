@@ -35,9 +35,13 @@ func (x *builder) run() {
 	sort.Slice(pkgs, func(i, j int) bool { return pkgs[i].Path < pkgs[j].Path })
 
 	methods := map[string]map[string]string{}
-	sigs := map[string]map[string]string{}
+	sigs := map[string]map[string]string{
+		"Show":  {"Show": "func()->str"},
+		"Error": {"Message": "func()->str", "Status": "func()->i32"},
+	}
+	ifaces := []string{"Show", "Error"}
+	derived := map[string]bool{}
 	var types []string
-	var ifaces []string
 
 	for _, p := range pkgs {
 		x.line("package", quote("path", p.Path))
@@ -47,10 +51,10 @@ func (x *builder) run() {
 				continue
 			}
 			x.emitFile(p, f)
-			x.collect(p, f, methods, sigs, &types, &ifaces)
+			x.collect(p, f, methods, sigs, derived, &types, &ifaces)
 		}
 	}
-	x.emitSatisfies(pkgs, methods, sigs, types, ifaces)
+	x.emitSatisfies(methods, sigs, derived, types, ifaces)
 }
 
 func (x *builder) emitFile(p *pkg.Package, f *pkg.File) {
@@ -92,7 +96,7 @@ func (x *builder) decl(file string, pos source.Pos, kind, name string) {
 }
 
 // collect gathers method sets and interface requirements for satisfies.
-func (x *builder) collect(p *pkg.Package, f *pkg.File, methods, sigs map[string]map[string]string, types, ifaces *[]string) {
+func (x *builder) collect(p *pkg.Package, f *pkg.File, methods, sigs map[string]map[string]string, derived map[string]bool, types, ifaces *[]string) {
 	for _, d := range f.AST.Decls {
 		switch decl := d.(type) {
 		case *ast.StructDecl:
@@ -116,6 +120,10 @@ func (x *builder) collect(p *pkg.Package, f *pkg.File, methods, sigs map[string]
 				methods[name] = map[string]string{}
 			}
 			methods[name][decl.Name] = signature(decl)
+		case *ast.DeriveDecl:
+			if decl.Name == "Show" {
+				derived[qualified(p.Path, receiver(decl.Type))] = true
+			}
 		case *ast.InterfaceDecl:
 			name := qualified(p.Path, decl.Name)
 			*ifaces = append(*ifaces, name)
@@ -129,12 +137,12 @@ func (x *builder) collect(p *pkg.Package, f *pkg.File, methods, sigs map[string]
 	}
 }
 
-func (x *builder) emitSatisfies(pkgs []*pkg.Package, methods, sigs map[string]map[string]string, types, ifaces []string) {
+func (x *builder) emitSatisfies(methods, sigs map[string]map[string]string, derived map[string]bool, types, ifaces []string) {
 	sort.Strings(types)
 	sort.Strings(ifaces)
 	for _, t := range types {
 		for _, i := range ifaces {
-			if satisfies(methods[t], sigs[i]) {
+			if satisfies(methods[t], sigs[i]) || derived[t] && i == "Show" {
 				x.line("satisfies", quote("type", t), quote("interface", i))
 			}
 		}
