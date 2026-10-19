@@ -152,6 +152,17 @@ func TestShiftAmountBelowWidthAndTruncatingShift(t *testing.T) {
 	}
 }
 
+func TestSlicingAFixedArrayYieldsAView(t *testing.T) {
+	src := `func F(xs: [4]i32) -> i32 {
+    var v: []i32 = xs[Range(0, 4)]
+    return v[0]
+}
+`
+	if ds := checkTypes(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want 0:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
 func TestChainedComparison(t *testing.T) {
 	src := `func F(a: i32, b: i32, c: i32) {
     _ = a < b < c

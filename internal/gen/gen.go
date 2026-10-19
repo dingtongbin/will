@@ -517,6 +517,13 @@ func (g *generator) allocas(fn int) error {
 			continue
 		}
 		n, elem, ok := arrayTypeText(iterText)
+		if !ok {
+			e, cok := containerElem(iterText)
+			if !cok {
+				continue
+			}
+			n, elem, ok = 0, e, true
+		}
 		if !ok || n < 0 {
 			continue
 		}
@@ -817,6 +824,9 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 	if iterText, err := g.willTypeText(iterID); err == nil {
 		if an, elem, ok := arrayTypeText(iterText); ok {
 			return g.forArray(r, an, elem, void, n)
+		}
+		if elem, ok := containerElem(iterText); ok {
+			return g.forContainer(r, elem, void, n)
 		}
 	}
 	if len(binds) != 1 {

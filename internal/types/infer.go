@@ -448,7 +448,7 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 	case *ast.IndexExpr:
 		return elemOf(c.inferExpr(s, x.Recv))
 	case *ast.SliceExpr:
-		return sliceOf(c.inferExpr(s, x.Recv))
+		return c.sliceOf(c.inferExpr(s, x.Recv))
 	case *ast.AggregateExpr:
 		return c.aggregateType(s, x)
 	case *ast.NewExpr:
@@ -965,12 +965,17 @@ func elemOf(t *Type) *Type {
 	return nil
 }
 
-func sliceOf(t *Type) *Type {
+// sliceOf returns the type of a slice. Slicing a fixed array yields a view of
+// its element type, which is the two-word value the layout volume defines;
+// slicing a view, an Array, or a str keeps that type.
+func (c *checker) sliceOf(t *Type) *Type {
 	if t == nil {
 		return nil
 	}
 	switch t.Kind() {
-	case ArrayKind, ViewKind:
+	case ArrayKind:
+		return c.in.view(t.Elem())
+	case ViewKind:
 		return t
 	case NamedKind:
 		if t.Name() == "Array" {

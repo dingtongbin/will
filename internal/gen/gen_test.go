@@ -427,9 +427,8 @@ func TestEmitEndlessLoopWithBreak(t *testing.T) {
 }
 
 func TestEmitUnsupportedNodeIsReported(t *testing.T) {
-	// A loop that iterates a slice needs the iterator protocol, which is not
-	// lowered yet.
-	doc := emitWillc(t, "func F(xs: []i32) -> i32 {\n    var n: i32 = 0\n    for i, x in xs {\n        n += x\n    }\n    return n\n}\n")
+	// A string iteration needs the UTF-8 decoder, which is not lowered yet.
+	doc := emitWillc(t, "func F(s: str) -> i32 {\n    var n: i32 = 0\n    for x in s {\n        n += 1\n    }\n    return n\n}\n")
 	_, err := Emit(doc)
 	if err == nil {
 		t.Fatal("an unsupported node was translated")
@@ -730,6 +729,40 @@ func TestEmitArrayIterationRejectsUnsupportedElements(t *testing.T) {
 	doc := emitWillc(t, src)
 	if _, err := Emit(doc); err == nil {
 		t.Fatal("an array of str was lowered")
+	}
+}
+
+func TestEmitViewAndArrayIteration(t *testing.T) {
+	src := "func Sum(xs: []i32) -> i32 {\n" +
+		"    var total: i32 = 0\n" +
+		"    for i, x in xs {\n        total += x\n        if i > 100 {\n            break\n        }\n    }\n" +
+		"    return total\n}\n\n" +
+		"func Count(xs: Array<i32>) -> i64 {\n" +
+		"    var n: i64 = 0\n" +
+		"    for x in xs {\n        if x > 0 {\n            n += 1\n        }\n    }\n" +
+		"    return n\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define i32 @"example.com/app.Sum"(ptr %xs) {`,
+		"getelementptr inbounds { ptr, i64 }, ptr %xs, i32 0, i32 0",
+		"getelementptr inbounds { ptr, i64 }, ptr %xs, i32 0, i32 1",
+		"icmp ult i64 %t",
+		"getelementptr inbounds i32, ptr %t",
+		"getelementptr inbounds { ptr, i64, i64 }, ptr %xs, i32 0, i32 1",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	// The length is loaded once before the header and the loop borrows the
+	// container, so no bound check is emitted.
+	if strings.Contains(text, "willrt_panic") {
+		t.Errorf("the view loop emitted a bound check:\n%s", text)
 	}
 }
 
