@@ -208,7 +208,11 @@ func (g *graph) target(path string, req requirement) (string, bool, bool) {
 			break
 		}
 		if !rep.IsVersioned {
-			return filepath.Join(owner.Dir, filepath.FromSlash(rep.Target)), false, true
+			target := filepath.FromSlash(rep.Target)
+			if !filepath.IsAbs(target) {
+				target = filepath.Join(owner.Dir, target)
+			}
+			return target, false, true
 		}
 		curPath, curVersion = rep.Target, rep.TargetVer
 	}

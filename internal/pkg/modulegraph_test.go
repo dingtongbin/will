@@ -78,6 +78,32 @@ func TestTwoModulesWithOnePathAreReported(t *testing.T) {
 	}
 }
 
+// TestAbsoluteReplaceTarget checks that a local replace may name an absolute
+// directory, which the language server's mirror needs because it lives
+// elsewhere.
+func TestAbsoluteReplaceTarget(t *testing.T) {
+	parent := t.TempDir()
+	app := filepath.Join(parent, "app")
+	lib := filepath.Join(parent, "lib")
+	writeModule(t, lib, "example.com/lib", map[string]string{
+		"lib.will": "func Double(x: i32) -> i32 {\n    return x * 2\n}\n",
+	})
+	writeModule(t, app, "example.com/app", nil)
+	write(t, filepath.Join(app, "will.mod"),
+		"module example.com/app\nwill 1\n"+
+			"require example.com/lib@v1.0.0\n"+
+			"replace example.com/lib@v1.0.0 => "+filepath.ToSlash(lib)+"\n")
+	write(t, filepath.Join(app, "main.will"),
+		"import \"example.com/lib\"\n\nfunc F() -> i32 {\n    return lib.Double(2)\n}\n")
+	b := Load(app)
+	if b.Err != nil {
+		t.Fatalf("load: %v", b.Err)
+	}
+	if ds := b.CheckAll(); len(ds) != 0 {
+		t.Fatalf("check diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
 // TestLocalReplaceLoadsDependency checks the smallest module graph: the root
 // requires one dependency, replaces it with a sibling directory, imports it,
 // and the call into it type-checks.

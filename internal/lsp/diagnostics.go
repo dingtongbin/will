@@ -85,6 +85,9 @@ func analyzeInModule(root, path, text string) ([]diag.Diagnostic, error) {
 	if err := copyModule(root, mirror); err != nil {
 		return nil, err
 	}
+	if err := rewriteReplaceTargets(root, mirror); err != nil {
+		return nil, err
+	}
 	target := filepath.Join(mirror, filepath.FromSlash(rel))
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return nil, err
@@ -121,7 +124,7 @@ func copyModule(root, mirror string) error {
 			}
 			return os.MkdirAll(filepath.Join(mirror, rel), 0o755)
 		}
-		if d.Name() != "will.mod" && filepath.Ext(path) != ".will" {
+		if d.Name() != "will.mod" && d.Name() != "will.sum" && filepath.Ext(path) != ".will" {
 			return nil
 		}
 		data, err := os.ReadFile(path)
@@ -131,6 +134,47 @@ func copyModule(root, mirror string) error {
 		return os.WriteFile(filepath.Join(mirror, rel), data, 0o644)
 	})
 }
+
+// rewriteReplaceTargets points every local replace of the mirror at the real
+// directory the original will.mod names. The copy lives elsewhere, so a
+// relative target such as ../dep would otherwise name a directory that does not
+// exist beside the mirror, and every import of that dependency would be
+// reported as unknown.
+func rewriteReplaceTargets(root, mirror string) error {
+	data, err := os.ReadFile(filepath.Join(root, "will.mod"))
+	if err != nil {
+		return nil
+	}
+	lines := strings.Split(string(data), "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "replace ") {
+			continue
+		}
+		arrow := strings.Index(trimmed, "=>")
+		if arrow < 0 {
+			continue
+		}
+		target := strings.TrimSpace(trimmed[arrow+2:])
+		if target == "" || strings.Contains(target, "@") {
+			continue
+		}
+		real := target
+		if !filepath.IsAbs(real) {
+			real = filepath.Join(root, filepath.FromSlash(real))
+		}
+		real, err := filepath.Abs(real)
+		if err != nil {
+			continue
+		}
+		head := line[:strings.Index(line, "=>")+2]
+		lines[i] = head + " " + filepath.ToSlash(real)
+	}
+	return os.WriteFile(filepath.Join(mirror, "will.mod"), []byte(strings.Join(lines, "\n")), 0o644)
+}
+
+// isLocalTarget is not needed: a replace target without a version names a
+// directory, and one with a version names a module.
 
 // onlyFile keeps the diagnostics that belong to one file of the analyzed tree.
 // Module checking covers every package, but a document only owns its own
