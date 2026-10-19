@@ -85,8 +85,8 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 		info.names = append(info.names, fieldText(f, "text"))
 		info.texts = append(info.texts, fieldText(f, "type"))
 		t := fieldText(f, "type")
-		if t == "i32" {
-			info.types = append(info.types, "i32")
+		if typ, _, ok := llvmScalar(t); ok {
+			info.types = append(info.types, typ)
 			continue
 		}
 		sub := g.typeRef(f.ID)

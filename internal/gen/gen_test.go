@@ -637,6 +637,33 @@ func TestEmitStructResultByValue(t *testing.T) {
 	}
 }
 
+func TestEmitStructWithWideFields(t *testing.T) {
+	src := "struct Wide {\n    a: i64\n    b: u32\n    c: f64\n}\n\n" +
+		"func Get(w: Wide) -> i64 {\n    return w.a\n}\n\n" +
+		"func Make() -> i32 {\n" +
+		"    var w: Wide = Wide { a: 1, b: 2, c: 3.5 }\n" +
+		"    w.a = w.a + 1\n" +
+		"    return 0\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`= type { i64, i32, double }`,
+		"store i64 1",
+		"store i32 2",
+		"store double 3.5",
+		"load i64, ptr",
+		"add i64",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitLiteralCarriesItsContextType(t *testing.T) {
 	// 42 in an i64 position must be recorded as an i64 literal, and the
 	// backend must use that type instead of assuming i32.

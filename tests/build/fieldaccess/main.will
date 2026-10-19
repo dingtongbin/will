@@ -1,6 +1,7 @@
 struct Point {
     x: i32
     y: i32
+    tag: i64
 }
 
 func Sum(p: Point) -> i32 {
@@ -8,7 +9,8 @@ func Sum(p: Point) -> i32 {
 }
 
 func main() -> i32 {
-    var q: Point = Point { x: 3, y: 4 }
+    var q: Point = Point { x: 3, y: 4, tag: 5 }
     q.x = q.x + 1
+    q.tag = q.tag + 1
     return Sum(q) + q.y
 }
