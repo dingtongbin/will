@@ -360,7 +360,7 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 			return got[cache.ModuleLL], fe.modulePath, 0
 		}
 	}
-	ir, err := gen.EmitModuleIn(docs, opts.entry, fe.modulePath)
+	ir, err := gen.EmitModuleWithAliases(docs, opts.entry, fe.modulePath, fe.aliases)
 	if err != nil {
 		reportTranslate(stdout, err)
 		return nil, "", 1

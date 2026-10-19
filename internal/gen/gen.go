@@ -37,11 +37,19 @@ func EmitModule(docs []*willc.Doc, entry string) ([]byte, error) {
 // dependency can declare a function with the entry's name, and only the entry
 // package's one is the program entry.
 func EmitModuleIn(docs []*willc.Doc, entry, entryPkg string) ([]byte, error) {
+	return EmitModuleWithAliases(docs, entry, entryPkg, nil)
+}
+
+// EmitModuleWithAliases is EmitModuleIn with the import aliases of the batch,
+// so a qualified member that uses a replace key resolves to the package's
+// canonical symbol.
+func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string) ([]byte, error) {
 	g := &generator{
 		scope:    map[int]string{},
 		slots:    map[int]string{},
 		declared: map[string]bool{},
 		out:      &strings.Builder{},
+		aliases:  aliases,
 	}
 	for _, doc := range docs {
 		g.docs = append(g.docs, newDocState(doc))
@@ -269,6 +277,9 @@ type generator struct {
 	// qualified symbol, and inits lists the package init functions in order.
 	globalSymbols map[string]*globalInfo
 	inits         []string
+	// aliases maps an import path that aliases a package to its canonical
+	// path, so a qualified member resolves to the symbol the package emits.
+	aliases map[string]string
 }
 
 // emitDoc lowers every function of the current document, in source order.
@@ -1119,6 +1130,15 @@ func (g *generator) value(id int) (string, error) {
 		}
 		return "", g.errf(id, "cannot translate node #%d: the name is not a parameter or a local", id)
 	case "field":
+		if info, ok := g.importMember(r); ok {
+			if info.isConst {
+				if info.value == "" {
+					return "", g.errf(id, "cannot translate node #%d: the imported constant is not a literal yet", id)
+				}
+				return info.value, nil
+			}
+			return g.load(info.typ, "@"+llvmSymbol(info.sym)), nil
+		}
 		ptr, typ, err := g.place(id)
 		if err != nil {
 			return "", err

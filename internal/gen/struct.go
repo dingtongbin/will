@@ -203,6 +203,9 @@ func (g *generator) typeOf(id int) (string, error) {
 		}
 		return g.declLLVMType(decl)
 	case "field":
+		if info, ok := g.importMember(r); ok {
+			return info.typ, nil
+		}
 		base, err := g.typeOf(refField(r, "recv"))
 		if err != nil {
 			return "", err
@@ -290,6 +293,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		return fieldText(decl, "type"), nil
 	case "field":
+		if info, ok := g.importMember(r); ok {
+			return info.text, nil
+		}
 		base, err := g.willTypeText(refField(r, "recv"))
 		if err != nil {
 			return "", err
@@ -472,6 +478,12 @@ func (g *generator) place(id int) (string, string, error) {
 		}
 		return "", "", g.errf(id, "cannot translate node #%d: %s is not a place", id, fieldText(r, "text"))
 	case "field":
+		if info, ok := g.importMember(r); ok {
+			if info.isConst {
+				return "", "", g.errf(id, "cannot translate node #%d: a constant is not a place", id)
+			}
+			return "@" + llvmSymbol(info.sym), info.typ, nil
+		}
 		base, typ, err := g.place(refField(r, "recv"))
 		if err != nil {
 			return "", "", err

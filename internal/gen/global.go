@@ -6,11 +6,15 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// globalInfo is one top-level variable as the lowering sees it.
+// globalInfo is one top-level variable or constant as the lowering sees it.
 type globalInfo struct {
 	sym  string
 	typ  string
 	text string
+	// isConst marks a constant, which has no storage; value is its literal
+	// spelling when the initializer is a literal.
+	isConst bool
+	value   string
 }
 
 // collectGlobals registers every top-level variable of the module before any
@@ -33,6 +37,19 @@ func (g *generator) collectGlobals() {
 				d.globals = map[int]*globalInfo{}
 			}
 			d.globals[r.ID] = info
+			g.globalSymbols[info.sym] = info
+		}
+		for _, r := range d.recs {
+			if r.Kind != "const" || refField(r, "parent") != d.moduleID {
+				continue
+			}
+			info := &globalInfo{sym: qualify(d.path, fieldText(r, "text")), text: fieldText(r, "type"), isConst: true}
+			if typ, err := g.declLLVMType(r.ID); err == nil {
+				info.typ = typ
+			}
+			if value, ok := g.constValueOf(r.ID); ok {
+				info.value = value
+			}
 			g.globalSymbols[info.sym] = info
 		}
 	}
@@ -152,4 +169,24 @@ func (g *generator) globalRef(r willc.Record) *globalInfo {
 		return g.globalByName(name)
 	}
 	return nil
+}
+
+// importMember returns the top-level variable or constant a package-qualified
+// field names, such as lib.Seed. The receiver must be an import qualifier, so
+// an ordinary struct field never takes this path.
+func (g *generator) importMember(r willc.Record) (*globalInfo, bool) {
+	recv, ok := g.recs[refField(r, "recv")]
+	if !ok || recv.Kind != "name" {
+		return nil, false
+	}
+	imp, ok := g.recs[refField(recv, "to")]
+	if !ok || imp.Kind != "import" {
+		return nil, false
+	}
+	path := fieldText(imp, "path")
+	if canonical := g.aliases[path]; canonical != "" {
+		path = canonical
+	}
+	info := g.globalSymbols[path+"."+fieldText(r, "text")]
+	return info, info != nil
 }
