@@ -122,6 +122,8 @@ type generator struct {
 	declared map[string]bool
 	out      *strings.Builder
 	tmp      int
+	// labels numbers the basic blocks of the current function.
+	labels int
 
 	// pkg is the package path of the current document.
 	pkg string
@@ -132,14 +134,19 @@ type generator struct {
 	wrappedEntry string
 }
 
-// emitDoc lowers every function of the current document.
+// emitDoc lowers every function of the current document, in source order.
 func (g *generator) emitDoc() error {
 	g.collect()
+	var funcs []willc.Record
 	for _, r := range g.recs {
 		if r.Kind == "func" {
-			if err := g.funcDecl(r); err != nil {
-				return err
-			}
+			funcs = append(funcs, r)
+		}
+	}
+	sortByID(funcs)
+	for _, fn := range funcs {
+		if err := g.funcDecl(fn); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -180,14 +187,16 @@ func receiverType(r *willc.Record) string {
 }
 
 // symbolName returns the IR symbol of one function of the current document.
-// The entry keeps the C symbol when it returns a value (only main is callable
-// there), and uses its mangled symbol when the generated main wraps it.
+// A void entry uses its mangled symbol because the generated main calls it; a
+// value-returning main keeps the C symbol, since the runtime calls it.
 func (g *generator) symbolName(name string) string {
 	if g.entryName != "" && g.entryPkg == g.pkg && g.entryName == name {
 		if g.wrappedEntry != "" {
 			return g.wrappedEntry
 		}
-		return name
+		if name == "main" {
+			return name
+		}
 	}
 	return qualify(g.pkg, name)
 }
@@ -279,14 +288,19 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	if result != "i32" {
 		return g.errf(fn.ID, "cannot translate node #%d: only i32 results are lowered yet", fn.ID)
 	}
+	g.labels = 0
 	fmt.Fprintf(g.out, "define i32 @%s(%s) {\n", llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
 	body, err := g.blockOf(fn.ID)
 	if err != nil {
 		return err
 	}
-	if err := g.block(body); err != nil {
+	terminated, err := g.body(body, false)
+	if err != nil {
 		return err
+	}
+	if !terminated {
+		g.out.WriteString("  unreachable\n")
 	}
 	g.out.WriteString("}\n")
 	return nil
@@ -294,32 +308,22 @@ func (g *generator) funcDecl(fn willc.Record) error {
 
 // voidFunc lowers a function that returns no value.
 func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
+	g.labels = 0
 	fmt.Fprintf(g.out, "define void @%s(%s) {\n", llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
 	body, err := g.blockOf(fn.ID)
 	if err != nil {
 		return err
 	}
-	if err := g.voidBlock(body); err != nil {
+	terminated, err := g.body(body, true)
+	if err != nil {
 		return err
+	}
+	if !terminated {
+		g.out.WriteString("  ret void\n")
 	}
 	g.out.WriteString("}\n")
 	return nil
-}
-
-// voidBlock lowers a body with no value: an empty body, or one bare return.
-func (g *generator) voidBlock(b willc.Record) error {
-	stmts := g.children(b.ID)
-	sortByID(stmts)
-	if len(stmts) == 0 {
-		g.out.WriteString("  ret void\n")
-		return nil
-	}
-	if len(stmts) == 1 && stmts[0].Kind == "return" && refField(stmts[0], "value") == 0 {
-		g.out.WriteString("  ret void\n")
-		return nil
-	}
-	return g.errf(b.ID, "cannot translate node #%d: only an empty body or a bare return is lowered yet", b.ID)
 }
 
 func (g *generator) blockOf(owner int) (willc.Record, error) {
@@ -331,19 +335,120 @@ func (g *generator) blockOf(owner int) (willc.Record, error) {
 	return willc.Record{}, g.errf(owner, "cannot translate node #%d: no body", owner)
 }
 
-func (g *generator) block(b willc.Record) error {
+// body lowers the statements of one block. terminated reports whether the block
+// already ended with a terminator, so the caller knows whether it has to close
+// the path; statements after a terminator are dead and are not emitted.
+func (g *generator) body(b willc.Record, void bool) (bool, error) {
 	stmts := g.children(b.ID)
 	sortByID(stmts)
-	if len(stmts) != 1 || stmts[0].Kind != "return" {
-		return g.errf(b.ID, "cannot translate node #%d: only a single return is lowered yet", b.ID)
+	terminated := false
+	for _, st := range stmts {
+		if terminated {
+			break
+		}
+		var err error
+		switch st.Kind {
+		case "return":
+			terminated, err = g.returnStmt(st, void)
+		case "if":
+			terminated, err = g.ifStmt(st, void)
+		case "exprstmt":
+			_, err = g.value(refField(st, "expr"))
+		case "block":
+			terminated, err = g.body(st, void)
+		default:
+			err = g.errf(st.ID, "cannot translate node #%d: statement %s is not lowered yet", st.ID, st.Kind)
+		}
+		if err != nil {
+			return false, err
+		}
 	}
-	ret := stmts[0]
-	value, err := g.value(refField(ret, "value"))
+	return terminated, nil
+}
+
+// returnStmt lowers one return.
+func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
+	if void {
+		if refField(st, "value") != 0 {
+			return false, g.errf(st.ID, "cannot translate node #%d: a void function returns no value", st.ID)
+		}
+		g.out.WriteString("  ret void\n")
+		return true, nil
+	}
+	value, err := g.value(refField(st, "value"))
 	if err != nil {
-		return err
+		return false, err
 	}
 	fmt.Fprintf(g.out, "  ret i32 %s\n", value)
-	return nil
+	return true, nil
+}
+
+// ifStmt lowers one if. The result says whether every path of the if ends in a
+// terminator; when one path falls through, it is branched to the merge label.
+func (g *generator) ifStmt(r willc.Record, void bool) (bool, error) {
+	g.labels++
+	n := g.labels
+	thenLabel := fmt.Sprintf("if.then.%d", n)
+	endLabel := fmt.Sprintf("if.end.%d", n)
+	cond, err := g.value(refField(r, "cond"))
+	if err != nil {
+		return false, err
+	}
+	thenBlock, ok := g.recs[refField(r, "then")]
+	if !ok {
+		return false, g.errf(r.ID, "cannot translate node #%d: the then branch is missing", r.ID)
+	}
+	elseID := refField(r, "else")
+	if elseID == 0 {
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, thenLabel, endLabel)
+		g.out.WriteString(thenLabel + ":\n")
+		thenDone, err := g.body(thenBlock, void)
+		if err != nil {
+			return false, err
+		}
+		if !thenDone {
+			fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
+		}
+		g.out.WriteString(endLabel + ":\n")
+		return false, nil
+	}
+
+	elseLabel := fmt.Sprintf("if.else.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, thenLabel, elseLabel)
+	g.out.WriteString(thenLabel + ":\n")
+	thenDone, err := g.body(thenBlock, void)
+	if err != nil {
+		return false, err
+	}
+	if !thenDone {
+		fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
+	}
+	g.out.WriteString(elseLabel + ":\n")
+	elseDone, err := g.branch(elseID, void)
+	if err != nil {
+		return false, err
+	}
+	if !elseDone {
+		fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
+	}
+	if thenDone && elseDone {
+		// Both branches returned, so nothing reaches the merge label.
+		return true, nil
+	}
+	g.out.WriteString(endLabel + ":\n")
+	return false, nil
+}
+
+// branch lowers an if's else part, which is either a block or another if.
+func (g *generator) branch(id int, void bool) (bool, error) {
+	r, ok := g.recs[id]
+	if !ok {
+		return false, g.errf(id, "cannot translate node #%d: no such node", id)
+	}
+	if r.Kind == "if" {
+		return g.ifStmt(r, void)
+	}
+	return g.body(r, void)
 }
 
 // value emits the instructions for one expression and returns its SSA name.
@@ -354,38 +459,113 @@ func (g *generator) value(id int) (string, error) {
 	}
 	switch r.Kind {
 	case "lit":
-		if fieldText(r, "kind") != "int" {
-			return "", g.errf(id, "cannot translate node #%d: only integer literals are lowered yet", id)
+		switch fieldText(r, "kind") {
+		case "int":
+			return fieldText(r, "text"), nil
+		case "bool":
+			return fieldText(r, "text"), nil
 		}
-		return fieldText(r, "text"), nil
+		return "", g.errf(id, "cannot translate node #%d: literal kind %s is not lowered yet", id, fieldText(r, "kind"))
 	case "name":
 		if name, ok := g.scope[refField(r, "to")]; ok {
 			return name, nil
 		}
 		return "", g.errf(id, "cannot translate node #%d: name is not a parameter", id)
+	case "un":
+		return g.unary(r)
 	case "bin":
-		l, err := g.value(refField(r, "l"))
-		if err != nil {
-			return "", err
-		}
-		right, err := g.value(refField(r, "r"))
-		if err != nil {
-			return "", err
-		}
-		op, err := llvmOp(fieldText(r, "op"))
-		if err != nil {
-			return "", g.errf(id, "cannot translate node #%d: %v", id, err)
-		}
-		g.tmp++
-		name := "%t" + strconv.Itoa(g.tmp)
-		fmt.Fprintf(g.out, "  %s = %s i32 %s, %s\n", name, op, l, right)
-		return name, nil
+		return g.binary(r)
 	case "call":
 		return g.call(r)
 	case "mcall":
 		return g.mcall(r)
 	}
 	return "", g.errf(id, "cannot translate node #%d: node kind %s is not lowered yet", id, r.Kind)
+}
+
+// unary lowers one prefix operator.
+func (g *generator) unary(r willc.Record) (string, error) {
+	x, err := g.value(refField(r, "expr"))
+	if err != nil {
+		return "", err
+	}
+	g.tmp++
+	name := "%t" + strconv.Itoa(g.tmp)
+	switch op := fieldText(r, "op"); op {
+	case "-":
+		fmt.Fprintf(g.out, "  %s = sub i32 0, %s\n", name, x)
+	case "~":
+		fmt.Fprintf(g.out, "  %s = xor i32 %s, -1\n", name, x)
+	case "!":
+		fmt.Fprintf(g.out, "  %s = xor i1 %s, true\n", name, x)
+	default:
+		return "", g.errf(r.ID, "cannot translate node #%d: operator %s is not lowered yet", r.ID, op)
+	}
+	return name, nil
+}
+
+// binary lowers one binary operator. Comparisons give i1 and are signed, which
+// is the meaning of < on the integer types will lowers today.
+func (g *generator) binary(r willc.Record) (string, error) {
+	op := fieldText(r, "op")
+	l, err := g.value(refField(r, "l"))
+	if err != nil {
+		return "", err
+	}
+	right, err := g.value(refField(r, "r"))
+	if err != nil {
+		return "", err
+	}
+	var instr, typ, suffix string
+	switch op {
+	case "+", "-", "*":
+		instr, typ = llvmArith(op), "i32"
+	case "&&", "||":
+		instr, typ = "and", "i1"
+		if op == "||" {
+			instr = "or"
+		}
+	case "==", "!=", "<", "<=", ">", ">=":
+		instr, typ, suffix = "icmp", "i1", cmpPredicate(op)
+	default:
+		return "", g.errf(r.ID, "cannot translate node #%d: operator %s is not lowered yet", r.ID, op)
+	}
+	g.tmp++
+	name := "%t" + strconv.Itoa(g.tmp)
+	if suffix != "" {
+		fmt.Fprintf(g.out, "  %s = %s %s i32 %s, %s\n", name, instr, suffix, l, right)
+	} else {
+		fmt.Fprintf(g.out, "  %s = %s %s %s, %s\n", name, instr, typ, l, right)
+	}
+	return name, nil
+}
+
+// llvmArith maps the checked arithmetic operators.
+func llvmArith(op string) string {
+	switch op {
+	case "+":
+		return "add"
+	case "-":
+		return "sub"
+	}
+	return "mul"
+}
+
+// cmpPredicate maps a comparison to its signed integer predicate.
+func cmpPredicate(op string) string {
+	switch op {
+	case "==":
+		return "eq"
+	case "!=":
+		return "ne"
+	case "<":
+		return "slt"
+	case "<=":
+		return "sle"
+	case ">":
+		return "sgt"
+	}
+	return "sge"
 }
 
 // mcall lowers a method call. A call to a function of another package is
@@ -495,18 +675,6 @@ func (g *generator) callArgs(r willc.Record) []int {
 		}
 	}
 	return ids
-}
-
-func llvmOp(op string) (string, error) {
-	switch op {
-	case "+":
-		return "add", nil
-	case "-":
-		return "sub", nil
-	case "*":
-		return "mul", nil
-	}
-	return "", fmt.Errorf("operator %s is not lowered yet", op)
 }
 
 func (g *generator) children(parent int) []willc.Record {
