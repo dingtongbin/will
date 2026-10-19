@@ -120,6 +120,80 @@ func TestEmitVariantPatternsWithoutPayload(t *testing.T) {
 	}
 }
 
+func TestEmitReleaseGroups(t *testing.T) {
+	src := "func F(n: i32) -> i32 {\n" +
+		"    var a: str = \"a\"\n" +
+		"    var b: str = \"b\"\n" +
+		"    if n > 0 {\n" +
+		"        return n\n" +
+		"    }\n" +
+		"    _ = a?\n" +
+		"    _ = b\n" +
+		"    return 0\n" +
+		"}\n"
+	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
+	names := map[int]string{}
+	for _, r := range doc.Records {
+		if r.Kind == "var" {
+			names[r.ID] = testFieldText(r, "text")
+		}
+	}
+	type group struct{ owner, pos string }
+	var got []group
+	for _, r := range doc.Records {
+		if r.Kind != "release" {
+			continue
+		}
+		got = append(got, group{owner: names[testRef(r, "owner")], pos: testFieldText(r, "pos")})
+	}
+	want := []group{
+		// The return inside the if releases every owner in scope, newest first.
+		{"b", "test.will:5:9"}, {"a", "test.will:5:9"},
+		// A statement with ? may leave, so it gets its own group.
+		{"b", "test.will:7:5"}, {"a", "test.will:7:5"},
+		// The final return does the same; the block end adds nothing.
+		{"b", "test.will:9:5"}, {"a", "test.will:9:5"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("release groups = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("release %d = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+}
+
+// mustRead reads an emitted document.
+func mustRead(t *testing.T, data []byte) *Doc {
+	t.Helper()
+	doc, err := Read(data)
+	if err != nil {
+		t.Fatalf("read emitted: %v\n%s", err, data)
+	}
+	return doc
+}
+
+// testFieldText reads a text field of a record.
+func testFieldText(r Record, name string) string {
+	for _, f := range r.Fields {
+		if f.Name == name && (f.Value.Kind == TextValue || f.Value.Kind == WordValue) {
+			return f.Value.Text
+		}
+	}
+	return ""
+}
+
+// testRef reads a node reference field of a record.
+func testRef(r Record, name string) int {
+	for _, f := range r.Fields {
+		if f.Name == name && f.Value.Kind == RefValue {
+			return f.Value.Ref
+		}
+	}
+	return 0
+}
+
 func TestEmitGolden(t *testing.T) {
 	dir := filepath.Join("..", "..", "tests", "willc", "program")
 	src, err := os.ReadFile(filepath.Join(dir, "program.will"))

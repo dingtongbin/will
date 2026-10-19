@@ -7,32 +7,99 @@ import (
 	"github.com/will-lang/will/internal/resolve"
 )
 
-// emitBlock writes one block. A heap-owning local is released at the end of
-// the block it is declared in, in reverse declaration order: the release is a
-// child of the block, at the same level as its statements, so the lowering side
-// emits one release per record without reasoning about scopes.
+// emitBlock writes one block. A heap-owning local is released at the end of the
+// block it is declared in, and every early exit releases the owners live at
+// that point first: the release is a child of the block, at the same level as
+// its statements, so the lowering side emits one release per record without
+// reasoning about scopes. Within a group the order is reverse declaration
+// order, and the position is the block (the end group) or the exit statement
+// (the other groups).
 func (e *emitter) emitBlock(b *ast.Block) int {
 	if b == nil {
 		return 0
 	}
 	rec := e.add("block", b)
 	e.push(rec)
-	var owned []*ast.VarDecl
+	e.scopes = append(e.scopes, nil)
+	scope := len(e.scopes) - 1
+	var last ast.Stmt
 	for _, s := range b.Stmts {
+		switch {
+		case isEarlyExit(s):
+			e.emitReleases(e.liveOwned(exitFloor(e, s)), s)
+		case containsTry(s):
+			e.emitReleases(e.liveOwned(0), s)
+		}
 		e.emitStmt(s)
 		if vs, ok := s.(*ast.VarStmt); ok {
 			if vd, ok := vs.Decl.(*ast.VarDecl); ok && ast.OwnsHeap(vd.Type) && vd.Name != "_" {
-				owned = append(owned, vd)
+				e.scopes[scope] = append(e.scopes[scope], vd)
 			}
 		}
+		last = s
 	}
+	if !unconditionalExit(last) {
+		e.emitReleases(e.scopes[scope], b)
+	}
+	e.scopes = e.scopes[:scope]
+	e.pop()
+	return rec
+}
+
+// exitFloor returns the first scope a break or continue leaves; everything
+// from there outward stays alive. A return leaves every scope.
+func exitFloor(e *emitter, s ast.Stmt) int {
+	switch s.(type) {
+	case *ast.BreakStmt, *ast.ContinueStmt:
+		if n := len(e.loops); n > 0 {
+			return e.loops[n-1]
+		}
+	}
+	return 0
+}
+
+// emitReleases writes one release group: reverse declaration order, the given
+// position, the block as parent.
+func (e *emitter) emitReleases(owned []ast.Node, pos ast.Node) {
 	for i := len(owned) - 1; i >= 0; i-- {
-		release := e.addPos("release", b)
+		release := e.addPos("release", pos)
 		e.ref(release, "owner", owned[i])
 		e.text(release, "kind", "value")
 	}
-	e.pop()
-	return rec
+}
+
+// liveOwned lists the owners in scope from one scope depth outward, in
+// declaration order.
+func (e *emitter) liveOwned(from int) []ast.Node {
+	var out []ast.Node
+	for i := from; i < len(e.scopes); i++ {
+		out = append(out, e.scopes[i]...)
+	}
+	return out
+}
+
+// unconditionalExit reports whether a statement always leaves the block.
+func unconditionalExit(s ast.Stmt) bool {
+	switch s.(type) {
+	case *ast.ReturnStmt, *ast.BreakStmt, *ast.ContinueStmt:
+		return true
+	}
+	return false
+}
+
+// isEarlyExit reports whether a statement returns, breaks, or continues.
+func isEarlyExit(s ast.Stmt) bool { return unconditionalExit(s) }
+
+// containsTry reports whether a statement holds a ? expression, which may
+// leave the function before the statement finishes.
+func containsTry(s ast.Stmt) bool {
+	found := false
+	walkStmtExprs(s, func(x ast.Expr) {
+		if _, ok := x.(*ast.TryExpr); ok {
+			found = true
+		}
+	})
+	return found
 }
 
 func (e *emitter) emitStmt(s ast.Stmt) int {
@@ -111,7 +178,9 @@ func (e *emitter) emitStmt(s ast.Stmt) int {
 			e.emitExpr(st.Iter)
 		}
 		e.ref(rec, "body", st.Body)
+		e.loops = append(e.loops, len(e.scopes))
 		e.emitBlock(st.Body)
+		e.loops = e.loops[:len(e.loops)-1]
 		e.pop()
 		return rec
 	case *ast.RegionStmt:

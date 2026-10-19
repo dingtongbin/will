@@ -45,6 +45,10 @@ type emitter struct {
 	parents    []int
 	pending    []pendingRef
 	modulePath string
+	// scopes stacks the heap-owning locals declared so far in each open block;
+	// loops records the scope depth of every enclosing loop body.
+	scopes [][]ast.Node
+	loops  []int
 }
 
 type pendingRef struct {
