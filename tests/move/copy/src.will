@@ -1,0 +1,6 @@
+func F() {
+    var s: str = "a"
+    var t: str = s
+    _ = s
+    _ = t
+}

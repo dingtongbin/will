@@ -99,6 +99,9 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 	res, rds := resolve.ResolveIn(f, names, imports)
 	bag.AddAll(rds)
 	bag.AddAll(types.CheckWith(f, res, others))
+	if !bag.HasErrors() {
+		bag.AddAll(check.Moves(f))
+	}
 	if opts.freestanding {
 		bag.AddAll(check.Freestanding(f))
 	}

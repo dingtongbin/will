@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/check"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/mod"
 	"github.com/will-lang/will/internal/parser"
@@ -342,7 +343,8 @@ func (b *Build) DispatchPoints() []Dispatch {
 
 // CheckAll resolves and checks every package as a unit: the files of one
 // package see each other's declarations, and one declaration environment
-// covers the whole package.
+// covers the whole package. The move analysis runs only when the front end
+// found no errors, so it never piles onto a broken program.
 func (b *Build) CheckAll() []diag.Diagnostic {
 	var bag diag.Bag
 	bag.AddAll(b.Diags)
@@ -364,6 +366,15 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 		}
 		if len(files) > 0 {
 			bag.AddAll(types.CheckPackage(files, results))
+		}
+	}
+	if !bag.HasErrors() {
+		for _, p := range b.Packages {
+			for _, f := range p.Files {
+				if f.AST != nil {
+					bag.AddAll(check.Moves(f.AST))
+				}
+			}
 		}
 	}
 	return bag.Diagnostics()

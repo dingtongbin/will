@@ -281,19 +281,26 @@ func checkPath(bag *diag.Bag, path string, freestanding bool, stderr io.Writer) 
 	return true
 }
 
-// checkFile runs the front end over one file and appends its diagnostics.
+// checkFile runs the front end over one file and appends its diagnostics. The
+// checks that build on a resolved program run only when this file has no
+// errors.
 func checkFile(bag *diag.Bag, file string, data []byte, freestanding bool) {
 	f, ds := parser.Parse(file, data)
 	bag.AddAll(ds)
 	if f == nil {
 		return
 	}
+	var own diag.Bag
 	if freestanding {
-		bag.AddAll(check.Freestanding(f))
+		own.AddAll(check.Freestanding(f))
 	}
 	res, rds := resolve.Resolve(f)
-	bag.AddAll(rds)
-	bag.AddAll(types.Check(f, res))
+	own.AddAll(rds)
+	own.AddAll(types.Check(f, res))
+	if !own.HasErrors() {
+		own.AddAll(check.Moves(f))
+	}
+	bag.AddAll(own.Diagnostics())
 }
 
 // buildIdentity reports the build identity attached to machine-readable

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/check"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
 	"github.com/will-lang/will/internal/pkg"
@@ -80,6 +81,9 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 	res, rds := resolve.ResolveIn(f, names, imps)
 	bag.AddAll(rds)
 	bag.AddAll(types.CheckWith(f, res, others))
+	if !bag.HasErrors() {
+		bag.AddAll(check.Moves(f))
+	}
 
 	all := bag.Diagnostics()
 	if hasError(all) {
