@@ -99,6 +99,23 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 	return writeText(outPath, text, stdout, stderr)
 }
 
+// findModuleRoot walks up from dir to the nearest directory with a will.mod.
+// A file may sit in a subdirectory of its module (src/main.will), so looking
+// only at the file's own directory would lose the module and every import.
+func findModuleRoot(dir string) (string, bool) {
+	for {
+		info, err := os.Stat(filepath.Join(dir, "will.mod"))
+		if err == nil && !info.IsDir() {
+			return dir, true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", false
+		}
+		dir = parent
+	}
+}
+
 // packageContext loads the module that contains file and returns the import
 // tables, the package path of the file's own package, that package's top-level
 // names, the other files of the package, and the alias map of the module.
@@ -108,7 +125,11 @@ func packageContext(file string) (resolve.Imports, string, resolve.Exported, []*
 		absFile = file
 	}
 	dir := filepath.Dir(absFile)
-	b := pkg.Load(dir)
+	root, inside := findModuleRoot(dir)
+	if !inside {
+		return nil, filepath.Base(dir), nil, nil, nil
+	}
+	b := pkg.Load(root)
 	if b.Err != nil || b.Mod == nil {
 		return nil, filepath.Base(dir), nil, nil, nil
 	}

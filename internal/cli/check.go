@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -238,8 +239,8 @@ func checkCache(files []string, flags checkFlags) (*cache.Store, string, []fileD
 		if err != nil {
 			return nil, "", nil
 		}
-		contents = append(contents, fileData{path: path, data: data})
-		h.Add(path, data)
+		contents = append(contents, fileData{path: filepath.ToSlash(path), data: data})
+		h.Add(filepath.ToSlash(path), data)
 	}
 	build := buildIdentityWith(flags.opt, flags.target)
 	h.AddStrings("compiler", compilerIdentity(), build.Target, build.Opt)
@@ -302,26 +303,28 @@ func checkPath(bag *diag.Bag, path string, freestanding bool, stderr io.Writer) 
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return false, 1
 	}
-	checkFile(bag, path, data, freestanding)
+	checkFile(bag, filepath.ToSlash(path), data, freestanding)
 	return true, 0
 }
 
-// checkFile runs the front end over one file and appends its diagnostics. The
-// checks that build on a resolved program run only when this file has no
-// errors.
+// checkFile runs the same front end as the build over one file, so the two
+// commands never disagree. Inside a module the file sees its package's sibling
+// declarations and the module's import table.
 func checkFile(bag *diag.Bag, file string, data []byte, freestanding bool) {
 	f, ds := parser.Parse(file, data)
 	bag.AddAll(ds)
 	if f == nil {
 		return
 	}
+	imps, _, names, others, _ := packageContext(file)
 	var own diag.Bag
 	if freestanding {
 		own.AddAll(check.Freestanding(f))
 	}
-	res, rds := resolve.Resolve(f)
+	res, rds := resolve.ResolveIn(f, names, imps)
 	own.AddAll(rds)
-	own.AddAll(types.Check(f, res))
+	_, tds := types.CheckWithFull(f, res, others)
+	own.AddAll(tds)
 	if !own.HasErrors() {
 		own.AddAll(check.Moves(f))
 	}

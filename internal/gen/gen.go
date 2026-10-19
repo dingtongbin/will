@@ -30,6 +30,13 @@ func EmitWithEntry(doc *willc.Doc, entry string) ([]byte, error) {
 // every function symbol is <package path>.<name>, so a call written as
 // to="<package path>.<name>" names the same symbol as the definition.
 func EmitModule(docs []*willc.Doc, entry string) ([]byte, error) {
+	return EmitModuleIn(docs, entry, "")
+}
+
+// EmitModuleIn is EmitModule with the package that may declare the entry. A
+// dependency can declare a function with the entry's name, and only the entry
+// package's one is the program entry.
+func EmitModuleIn(docs []*willc.Doc, entry, entryPkg string) ([]byte, error) {
 	g := &generator{
 		scope:    map[int]string{},
 		slots:    map[int]string{},
@@ -41,7 +48,7 @@ func EmitModule(docs []*willc.Doc, entry string) ([]byte, error) {
 	}
 	// A void entry cannot be the C main itself, so it keeps a mangled symbol
 	// and the generated wrapper calls it.
-	g.findEntry(entry)
+	g.findEntry(entry, entryPkg)
 	g.collectSignatures()
 	g.collectGlobals()
 	for _, d := range g.docs {
@@ -92,11 +99,14 @@ func newDocState(doc *willc.Doc) *docState {
 
 // findEntry records the package and name of the entry function. A void entry
 // also gets a mangled symbol, because the generated i32 main calls it.
-func (g *generator) findEntry(entry string) {
+func (g *generator) findEntry(entry, entryPkg string) {
 	if entry == "" {
 		return
 	}
 	for _, d := range g.docs {
+		if entryPkg != "" && d.path != entryPkg {
+			continue
+		}
 		for _, r := range d.recs {
 			if r.Kind != "func" || fieldText(r, "text") != entry {
 				continue

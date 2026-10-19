@@ -33,9 +33,8 @@ type frontEnd struct {
 	modulePath string
 	imports    resolve.Imports
 	// build is set when the input is a directory or a file inside a module;
-	// only limits which package is lowered in the file case.
+	// the module is lowered as a whole, and modulePath names the entry package.
 	build *pkg.Build
-	limit string
 	// ast is set when the input is one file outside any module.
 	ast *ast.File
 	// litTypes is the resolved type of every literal of that file, so willc can
@@ -134,7 +133,7 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 	// to a sibling file resolves.
 	if b, p := modulePackage(opts.path); b != nil {
 		fe.build = b
-		fe.limit = p.Path
+		_ = p
 	}
 	return fe, 0
 }
@@ -193,12 +192,17 @@ func modulePackage(file string) (*pkg.Build, *pkg.Package) {
 	if err != nil {
 		abs = file
 	}
-	b := pkg.Load(filepath.Dir(abs))
+	dir := filepath.Dir(abs)
+	root, inside := findModuleRoot(dir)
+	if !inside {
+		return nil, nil
+	}
+	b := pkg.Load(root)
 	if b.Err != nil || b.Mod == nil {
 		return nil, nil
 	}
 	for _, p := range b.Packages {
-		if filepath.Clean(p.Dir) == filepath.Clean(filepath.Dir(abs)) {
+		if filepath.Clean(p.Dir) == filepath.Clean(dir) {
 			return b, p
 		}
 	}
@@ -206,9 +210,10 @@ func modulePackage(file string) (*pkg.Build, *pkg.Package) {
 }
 
 // docs emits willc for every file that takes part in lowering: every package
-// of a module, in package path order, or the entry file's package in file mode.
-// The texts come out in the same order, because the lowering cache is keyed on
-// them.
+// of a module, in package path order. The texts come out in the same order,
+// because the lowering cache is keyed on them. A file-mode build lowers the
+// whole module too, because a call into another package needs that package's
+// document to know the callee's signature.
 func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 	var docs []*willc.Doc
 	var texts []string
@@ -229,9 +234,6 @@ func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 		store := frontStore()
 		blobs := map[string][]byte{}
 		for _, p := range fe.build.Packages {
-			if fe.limit != "" && p.Path != fe.limit {
-				continue
-			}
 			var files []*ast.File
 			var paths []string
 			for _, f := range p.Files {
@@ -241,7 +243,7 @@ func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 				files = append(files, f.AST)
 				paths = append(paths, f.Path)
 			}
-			cacheable := store != nil && fe.limit == ""
+			cacheable := store != nil
 			key := ""
 			if cacheable {
 				k, ok := frontKey(p, blobs, fe.aliases, opts)
@@ -352,7 +354,7 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 			return got[cache.ModuleLL], fe.modulePath, 0
 		}
 	}
-	ir, err := gen.EmitModule(docs, opts.entry)
+	ir, err := gen.EmitModuleIn(docs, opts.entry, fe.modulePath)
 	if err != nil {
 		reportTranslate(stdout, err)
 		return nil, "", 1
