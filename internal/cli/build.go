@@ -10,6 +10,7 @@ import (
 
 	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/cache"
+	"github.com/will-lang/will/internal/check"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/gen"
 	"github.com/will-lang/will/internal/parser"
@@ -49,7 +50,11 @@ func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		fmt.Fprintf(stderr, "will: %v\n", b.Err)
 		return frontEnd{}, 1
 	}
-	ds := diag.FilterDisabled(b.CheckAll(), opts.disabled)
+	ds := b.CheckAll()
+	if opts.freestanding {
+		ds = append(ds, b.Freestanding()...)
+	}
+	ds = diag.FilterDisabled(ds, opts.disabled)
 	reportDiagnostics(ds, opts, stdout)
 	if failed(ds, opts) {
 		return frontEnd{}, 1
@@ -94,6 +99,9 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 	res, rds := resolve.ResolveWith(f, imports)
 	bag.AddAll(rds)
 	bag.AddAll(types.Check(f, res))
+	if opts.freestanding {
+		bag.AddAll(check.Freestanding(f))
+	}
 	all := diag.FilterDisabled(bag.Diagnostics(), opts.disabled)
 	reportDiagnostics(all, opts, stdout)
 	if failed(all, opts) {

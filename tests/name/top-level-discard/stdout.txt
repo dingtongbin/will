@@ -1,0 +1,2 @@
+discard.will:1:5: N0010 "_" is not a name; it is the discard binding
+    help: give the declaration a name

@@ -391,12 +391,12 @@ func sameSignature(a, b *signature) bool {
 	return Equal(a.result, b.result)
 }
 
-func (c *checker) checkCallArgs(s *inferScope, sig *signature, args []*ast.CallArg) {
+func (c *checker) checkCallArgs(s *inferScope, sig *signature, args []*ast.CallArg, pos source.Pos) {
 	name := sig.name
 	if sig.variadic {
 		fixed := len(sig.params) - 1
 		if len(args) < fixed {
-			c.badArity(args, name)
+			c.badArity(pos, name)
 			return
 		}
 		for i := 0; i < fixed; i++ {
@@ -410,7 +410,7 @@ func (c *checker) checkCallArgs(s *inferScope, sig *signature, args []*ast.CallA
 		return
 	}
 	if len(args) != len(sig.params) {
-		c.badArity(args, name)
+		c.badArity(pos, name)
 		return
 	}
 	for i, a := range args {
@@ -418,11 +418,7 @@ func (c *checker) checkCallArgs(s *inferScope, sig *signature, args []*ast.CallA
 	}
 }
 
-func (c *checker) badArity(args []*ast.CallArg, callee string) {
-	var pos source.Pos
-	if len(args) > 0 {
-		pos = args[0].Pos()
-	}
+func (c *checker) badArity(pos source.Pos, callee string) {
 	c.bag.Error(pos, diag.CodeBadArgument, "wrong number of arguments", "see the declaration of "+callee)
 }
 
@@ -547,7 +543,7 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 	if !ok {
 		t := c.inferExpr(s, call.Callee)
 		if t != nil && t.Kind() == FuncKind {
-			c.checkPayload(s, t.Params(), call.Args, "")
+			c.checkPayload(s, t.Params(), call.Args, "", call.Pos())
 			return t.Result()
 		}
 		for _, a := range call.Args {
@@ -561,13 +557,13 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 		sig := c.env.funcs[name.Name]
 		if sig != nil {
 			c.checkTypeArgs(call, sig)
-			c.checkCallArgs(s, sig, call.Args)
+			c.checkCallArgs(s, sig, call.Args, call.Pos())
 			return sig.result
 		}
 	case sym != nil && sym.Kind == resolve.VariantKind:
 		vi := c.env.variants[name.Name]
 		if vi != nil {
-			c.checkPayload(s, vi.payload, call.Args, name.Name)
+			c.checkPayload(s, vi.payload, call.Args, name.Name, call.Pos())
 			return vi.enum
 		}
 	case sym != nil && sym.Predeclared:
@@ -596,10 +592,10 @@ func (c *checker) symbolOf(name *ast.NameExpr) *resolve.Symbol {
 func (c *checker) predeclaredCall(s *inferScope, name string, call *ast.CallExpr) *Type {
 	switch name {
 	case "panic":
-		c.checkPayload(s, []*Type{c.in.scalar("str")}, call.Args, name)
+		c.checkPayload(s, []*Type{c.in.scalar("str")}, call.Args, name, call.Pos())
 		return nil
 	case "assert":
-		c.checkPayload(s, []*Type{c.in.scalar("bool"), c.in.scalar("str")}, call.Args, name)
+		c.checkPayload(s, []*Type{c.in.scalar("bool"), c.in.scalar("str")}, call.Args, name, call.Pos())
 		return nil
 	case "print":
 		for _, a := range call.Args {
@@ -623,20 +619,20 @@ func (c *checker) predeclaredCall(s *inferScope, name string, call *ast.CallExpr
 
 func (c *checker) oneArg(s *inferScope, call *ast.CallExpr) *Type {
 	if len(call.Args) != 1 {
-		c.badArity(call.Args, "")
+		c.badArity(call.Pos(), "")
 		return nil
 	}
 	return c.inferExpr(s, call.Args[0].Expr)
 }
 
-func (c *checker) checkPayload(s *inferScope, params []*Type, args []*ast.CallArg, callee string) {
+func (c *checker) checkPayload(s *inferScope, params []*Type, args []*ast.CallArg, callee string, pos source.Pos) {
 	sig := &signature{name: callee, params: params}
-	c.checkCallArgs(s, sig, args)
+	c.checkCallArgs(s, sig, args, pos)
 }
 
 func (c *checker) castType(s *inferScope, name *ast.NameExpr, call *ast.CallExpr) *Type {
 	if len(call.Args) != 1 {
-		c.badArity(call.Args, name.Name)
+		c.badArity(call.Pos(), name.Name)
 		return nil
 	}
 	c.inferExpr(s, call.Args[0].Expr)
@@ -686,7 +682,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		for _, m := range methods {
 			if m.name == call.Name {
 				c.checkTypeArgsForMethod(call, m.sig)
-				c.checkPayload(s, m.sig.params, call.Args, call.Name)
+				c.checkPayload(s, m.sig.params, call.Args, call.Name, call.Pos())
 				return m.sig.result
 			}
 		}
@@ -694,7 +690,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	}
 	if sig, ok := c.env.methods[recv.Name()+"."+call.Name]; ok {
 		c.checkTypeArgsForMethod(call, sig)
-		c.checkPayload(s, sig.params, call.Args, call.Name)
+		c.checkPayload(s, sig.params, call.Args, call.Name, call.Pos())
 		return sig.result
 	}
 	if c.env.userTypes[recv.Name()] {
@@ -756,7 +752,7 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 		name = t.Name()
 	}
 	if sig, ok := c.env.inits[name]; ok {
-		c.checkCallArgs(s, sig, n.Args)
+		c.checkCallArgs(s, sig, n.Args, n.Pos())
 		if sig.result != nil {
 			return sig.result
 		}

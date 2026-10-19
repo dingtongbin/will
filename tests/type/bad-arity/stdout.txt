@@ -1,0 +1,2 @@
+arity.will:5:5: T0003 wrong number of arguments
+    help: see the declaration of G

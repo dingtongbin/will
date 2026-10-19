@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/will-lang/will/internal/cache"
+	"github.com/will-lang/will/internal/check"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
 	"github.com/will-lang/will/internal/pkg"
@@ -66,6 +67,8 @@ type checkFlags struct {
 	// targetSet records that --target was written, so only an explicit
 	// target is validated.
 	targetSet bool
+	// freestanding turns on the --freestanding rule of the build volume.
+	freestanding bool
 	// disabled holds the warning families that -Wno-<family> switched off.
 	disabled map[string]bool
 }
@@ -84,6 +87,8 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 			flags.werror = true
 		case "-O0", "-O1", "-O2", "-O3":
 			flags.opt = name
+		case "--freestanding":
+			flags.freestanding = true
 		case "--target":
 			value, next, ok := flagValue(args, i, inline, hasInline, "--target", stderr)
 			if !ok {
@@ -153,13 +158,13 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	var bag diag.Bag
 	if contents == nil {
 		for _, path := range files {
-			if !checkPath(&bag, path, stderr) {
+			if !checkPath(&bag, path, flags.freestanding, stderr) {
 				return 1
 			}
 		}
 	} else {
 		for _, f := range contents {
-			checkFile(&bag, f.path, f.data)
+			checkFile(&bag, f.path, f.data, flags.freestanding)
 		}
 	}
 
@@ -214,7 +219,8 @@ func checkCache(files []string, flags checkFlags) (*cache.Store, string, []fileD
 	build := buildIdentityWith(flags.opt, flags.target)
 	h.AddStrings("compiler", build.Compiler, build.Target, build.Opt)
 	h.AddStrings("flags", fmt.Sprintf("json=%v", flags.json), fmt.Sprintf("werror=%v", flags.werror),
-		"features="+flags.features, "disabled="+disabledList(flags.disabled))
+		"features="+flags.features, fmt.Sprintf("freestanding=%v", flags.freestanding),
+		"disabled="+disabledList(flags.disabled))
 	return cache.New(root, 0), h.Key(), contents
 }
 
@@ -248,7 +254,7 @@ func decodeDiag(data []byte) ([]byte, int) {
 // checkPath checks one file or, for a directory, the whole module. Directory
 // checking stops at the package layer because cross-package names need the
 // package resolver.
-func checkPath(bag *diag.Bag, path string, stderr io.Writer) bool {
+func checkPath(bag *diag.Bag, path string, freestanding bool, stderr io.Writer) bool {
 	info, err := os.Stat(path)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
@@ -261,6 +267,9 @@ func checkPath(bag *diag.Bag, path string, stderr io.Writer) bool {
 			return false
 		}
 		bag.AddAll(b.CheckAll())
+		if freestanding {
+			bag.AddAll(b.Freestanding())
+		}
 		return true
 	}
 	data, err := os.ReadFile(path)
@@ -268,16 +277,19 @@ func checkPath(bag *diag.Bag, path string, stderr io.Writer) bool {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return false
 	}
-	checkFile(bag, path, data)
+	checkFile(bag, path, data, freestanding)
 	return true
 }
 
 // checkFile runs the front end over one file and appends its diagnostics.
-func checkFile(bag *diag.Bag, file string, data []byte) {
+func checkFile(bag *diag.Bag, file string, data []byte, freestanding bool) {
 	f, ds := parser.Parse(file, data)
 	bag.AddAll(ds)
 	if f == nil {
 		return
+	}
+	if freestanding {
+		bag.AddAll(check.Freestanding(f))
 	}
 	res, rds := resolve.Resolve(f)
 	bag.AddAll(rds)

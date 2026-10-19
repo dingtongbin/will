@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/resolve"
 )
 
 func (e *emitter) emitBlock(b *ast.Block) int {
@@ -233,8 +234,8 @@ func (e *emitter) emitPattern(p *ast.Pattern) int {
 	}
 	rec := e.add("pattern", p)
 	e.text(rec, "text", patternText(p))
-	e.word(rec, "kind", patternKind(p))
-	if p.Kind == ast.VariantPattern {
+	e.word(rec, "kind", e.patternKind(p))
+	if e.patternKind(p) == "variant" {
 		if target := e.symNode(p); target != nil {
 			e.ref(rec, "to", target)
 		}
@@ -250,11 +251,17 @@ func (e *emitter) emitPattern(p *ast.Pattern) int {
 	return rec
 }
 
-func patternKind(p *ast.Pattern) string {
+// patternKind returns the record spelling of one pattern. A bare name that
+// resolved to a variant is a variant pattern, not a binding: the grammar
+// writes a payloadless variant as just its name.
+func (e *emitter) patternKind(p *ast.Pattern) string {
 	switch p.Kind {
 	case ast.WildPattern:
 		return "wild"
 	case ast.BindPattern:
+		if sym := e.refs[p]; sym != nil && sym.Kind == resolve.VariantKind {
+			return "variant"
+		}
 		return "bind"
 	case ast.LiteralPattern:
 		return "literal"

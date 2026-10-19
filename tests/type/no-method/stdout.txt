@@ -1,0 +1,2 @@
+nomethod.will:6:14: N0012 no method Missing on P
+    help: check the method name and the receiver

@@ -107,7 +107,10 @@ func (x *builder) emitFile(p *pkg.Package, f *pkg.File) {
 		case *ast.FuncDecl:
 			x.decl(f.Path, decl.Pos(), "func", decl.Name)
 			if decl.Recv != nil {
-				x.line("method", quote("type", receiver(decl.Recv.Type)), quote("name", decl.Name), quote("recv", recvKind(decl.Recv.Mut)))
+				pos := decl.Pos()
+				x.line("method", quote("file", f.Path), "line="+strconv.Itoa(pos.Line),
+					"col="+strconv.Itoa(pos.Col), quote("type", receiver(decl.Recv.Type)),
+					quote("name", decl.Name), quote("recv", recvKind(decl.Recv.Mut)))
 			}
 		case *ast.StructDecl:
 			x.decl(f.Path, decl.Pos(), "struct", decl.Name)

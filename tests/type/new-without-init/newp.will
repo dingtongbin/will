@@ -1,0 +1,7 @@
+struct P {
+    x: i32
+}
+
+func F() -> P {
+    return new P()
+}

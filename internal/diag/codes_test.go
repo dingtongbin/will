@@ -49,7 +49,7 @@ func TestCodesMatchConstants(t *testing.T) {
 		CodeResultDropped, CodeUnwrapType, CodePanicContained,
 		CodeBlockingNotAwaited, CodeWaitInSync, CodeWaitInAsync, CodeBlocksThreadInTask,
 		CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,
-		CodeUnsupportedTarget, CodeNoEntry,
+		CodeUnsupportedTarget, CodeNoEntry, CodeFreestanding,
 		CodeCannotTranslate,
 		CodeCannotParseCHeader, CodeLinkFailed, CodeExternalToolMissing,
 	}

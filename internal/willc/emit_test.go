@@ -62,6 +62,49 @@ func TestEmitIsDeterministic(t *testing.T) {
 	}
 }
 
+func TestEmitMethodTypeArgs(t *testing.T) {
+	// A generic method call carries its type arguments on mcall, the same way
+	// a call does. The corpus cannot show this yet because instantiation of
+	// generic methods is not modelled by the checker.
+	src := "struct Box {\n    v: i64\n}\n\n" +
+		"func (b: Box) Get<T>(x: T) -> T {\n    return x\n}\n\n" +
+		"func Use(b: Box) -> i64 {\n    return b.Get<i64>(1)\n}\n"
+	data := emitSource(t, "test.will", src, "example.com/app")
+	if _, err := Read(data); err != nil {
+		t.Fatalf("read emitted: %v\n%s", err, data)
+	}
+	found := false
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.Contains(line, " mcall ") && strings.Contains(line, "typearg=#") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("no mcall with a type argument:\n%s", data)
+	}
+}
+
+func TestEmitChannelPriorityIsText(t *testing.T) {
+	src := "func F() {\n    var ch: chan<i64> = new chan<i64>(4, Priority.High)\n    _ = ch\n}\n"
+	data := emitSource(t, "test.will", src, "example.com/app")
+	if !strings.Contains(string(data), `prio="High"`) {
+		t.Fatalf("channel priority is not text:\n%s", data)
+	}
+}
+
+func TestEmitVariantPatternsWithoutPayload(t *testing.T) {
+	src := "enum Shape {\n    Dot\n    Line\n}\n\n" +
+		"func F(s: Shape) -> i64 {\n    return match s {\n        Dot | Line => 1\n    }\n}\n"
+	data := emitSource(t, "test.will", src, "example.com/app")
+	text := string(data)
+	if strings.Count(text, "kind=variant") != 2 {
+		t.Fatalf("payloadless variants are not variant patterns:\n%s", text)
+	}
+	if strings.Contains(text, `text="Dot" kind=bind`) {
+		t.Fatalf("a variant name was written as a binding:\n%s", text)
+	}
+}
+
 func TestEmitGolden(t *testing.T) {
 	dir := filepath.Join("..", "..", "tests", "willc", "program")
 	src, err := os.ReadFile(filepath.Join(dir, "program.will"))

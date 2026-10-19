@@ -1,0 +1,2 @@
+chain.will:2:12: T0006 comparisons cannot be chained
+    help: split it into two comparisons

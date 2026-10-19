@@ -327,8 +327,13 @@ func (e *emitter) emitNew(v *ast.NewExpr) int {
 			e.field(rec, "cap", Ref(aid))
 		}
 		if len(v.Args) > 1 {
-			pid := e.emitExpr(v.Args[1].Expr)
-			e.field(rec, "prio", Ref(pid))
+			if name, ok := priorityArg(v.Args[1].Expr); ok {
+				// The channel priority is written as its name.
+				e.text(rec, "prio", name)
+			} else {
+				pid := e.emitExpr(v.Args[1].Expr)
+				e.field(rec, "prio", Ref(pid))
+			}
 		}
 		e.pop()
 		return rec
@@ -342,6 +347,20 @@ func (e *emitter) emitNew(v *ast.NewExpr) int {
 	}
 	e.pop()
 	return rec
+}
+
+// priorityArg returns the name of a Priority.X argument, which the willc
+// channel record writes as text.
+func priorityArg(x ast.Expr) (string, bool) {
+	f, ok := x.(*ast.FieldExpr)
+	if !ok {
+		return "", false
+	}
+	recv, ok := f.Recv.(*ast.NameExpr)
+	if !ok || recv.Name != "Priority" {
+		return "", false
+	}
+	return f.Name, true
 }
 
 func (e *emitter) emitLambda(v *ast.LambdaExpr) int {

@@ -111,6 +111,15 @@ func (r *resolver) walkPattern(p *ast.Pattern) {
 	switch p.Kind {
 	case ast.WildPattern, ast.LiteralPattern:
 	case ast.BindPattern:
+		// A bare name that denotes a variant (or one of the predefined
+		// constructors such as None) is a variant pattern, not a binding:
+		// the pattern grammar writes a payloadless variant as just its name.
+		if sym, ok := r.current().lookup(p.Name); ok &&
+			(sym.Kind == VariantKind || sym.Kind == PredeclaredValueKind) {
+			r.refs[p] = sym
+			sym.Used = true
+			return
+		}
 		r.declareLocal(&Symbol{Name: p.Name, Kind: LocalKind, Pos: p.Pos(), Node: p, Exported: isExported(p.Name)})
 	case ast.VariantPattern:
 		if sym, ok := r.current().lookup(p.Name); ok && (sym.Kind == VariantKind || sym.Kind == PredeclaredValueKind) {

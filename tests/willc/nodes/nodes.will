@@ -1,0 +1,31 @@
+struct Box {
+    v: i64
+}
+
+func (b: Box) Value() -> i64 {
+    return b.v
+}
+
+enum Shape {
+    Dot
+    Line
+}
+
+func Unit() -> Result<(), Error> {
+    return Ok(())
+}
+
+func Use(b: Box, s: Shape) -> i64 {
+    var here: usize = lane.Here()
+    var text: str = f"v={b.v} end"
+    var p: Box = b
+    var n: i64 = p.Value()
+    var ch: chan<i64> = new chan<i64>(4, Priority.High)
+    var kind: i64 = match s {
+        Dot | Line => n
+    }
+    _ = here
+    _ = text
+    _ = ch
+    return kind
+}
