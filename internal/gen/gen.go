@@ -145,6 +145,7 @@ func (g *generator) use(d *docState) {
 	g.callSlots = map[int]string{}
 	g.loopBinds = map[int]map[string]string{}
 	g.loopTypes = map[int]map[string]string{}
+	g.loopPtrs = map[int]map[string]string{}
 }
 
 type generator struct {
@@ -179,9 +180,11 @@ type generator struct {
 	callSlots map[int]string
 	// loopBinds maps a for record and a binding name to that binding's slot,
 	// and loopTypes to its will type text. Both bindings of a loop name the
-	// same for record, so the name tells them apart.
+	// same for record, so the name tells them apart. loopPtrs holds the element
+	// pointer of a binding that borrows an element instead of copying it.
 	loopBinds map[int]map[string]string
 	loopTypes map[int]map[string]string
+	loopPtrs  map[int]map[string]string
 	// loops stacks the labels of the enclosing loops, so break and continue
 	// know where to jump.
 	loops []loopLabels
@@ -507,8 +510,8 @@ func (g *generator) allocas(fn int) error {
 			fmt.Fprintf(g.out, "  %s = alloca i32\n", name)
 			continue
 		}
-		// A fixed-array loop keeps its index in an i64 slot and copies the
-		// element into a slot of its own; both are reserved here.
+		// A fixed-array loop keeps its index in an i64 slot; the element
+		// binding borrows the element, so it needs no slot of its own.
 		iterText, err := g.willTypeText(refField(r, "iter"))
 		if err != nil {
 			continue
@@ -517,8 +520,7 @@ func (g *generator) allocas(fn int) error {
 		if !ok || n < 0 {
 			continue
 		}
-		elemType, _, ok := llvmScalar(elem)
-		if !ok {
+		if _, _, ok := llvmScalar(elem); !ok {
 			continue
 		}
 		names := bindNames(r)
@@ -539,10 +541,7 @@ func (g *generator) allocas(fn int) error {
 		g.loopBinds[r.ID][idxName] = idx
 		fmt.Fprintf(g.out, "  %s = alloca i64\n", idx)
 		elemName := names[len(names)-1]
-		eslot := g.newSlot(elemName)
-		g.loopBinds[r.ID][elemName] = eslot
-		g.bindLoopType(r.ID, elemName, elem)
-		fmt.Fprintf(g.out, "  %s = alloca %s\n", eslot, elemType)
+		g.loopTypes[r.ID][elemName] = elem
 	}
 	return nil
 }
@@ -962,13 +961,31 @@ func (g *generator) value(id int) (string, error) {
 		}
 		return "", g.errf(id, "cannot translate node #%d: literal kind %s is not lowered yet", id, fieldText(r, "kind"))
 	case "name":
+		decl := refField(r, "to")
+		name := fieldText(r, "text")
+		if ptrs, ok := g.loopPtrs[decl]; ok {
+			if ptr, ok := ptrs[name]; ok {
+				text, ok := g.loopBindType(decl, name)
+				if !ok {
+					return "", g.errf(id, "cannot translate node #%d: the binding has no type", id)
+				}
+				typ, ok := llvmTypeText(text)
+				if !ok {
+					return "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, text)
+				}
+				if isAggregateType(typ) {
+					return "", g.errf(id, "cannot translate node #%d: %s is a borrowed aggregate, not a scalar", id, name)
+				}
+				return g.load(typ, ptr), nil
+			}
+		}
 		if slot, typ, ok := g.nameSlot(r); ok {
 			if isAggregateType(typ) {
 				return "", g.errf(id, "cannot translate node #%d: %s is an aggregate, not a scalar", id, fieldText(r, "text"))
 			}
 			return g.load(typ, slot), nil
 		}
-		decl := refField(r, "to")
+		decl = refField(r, "to")
 		if name, ok := g.scope[decl]; ok {
 			if g.borrows[decl] {
 				return "", g.errf(id, "cannot translate node #%d: %s is a borrow, not a scalar value", id, fieldText(r, "text"))

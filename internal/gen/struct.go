@@ -305,13 +305,28 @@ func (g *generator) place(id int) (string, string, error) {
 	}
 	switch r.Kind {
 	case "name":
+		decl := refField(r, "to")
+		name := fieldText(r, "text")
+		if ptrs, ok := g.loopPtrs[decl]; ok {
+			if ptr, ok := ptrs[name]; ok {
+				text, ok := g.loopBindType(decl, name)
+				if !ok {
+					return "", "", g.errf(id, "cannot translate node #%d: the binding has no type", id)
+				}
+				typ, ok := llvmTypeText(text)
+				if !ok {
+					return "", "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, text)
+				}
+				return ptr, typ, nil
+			}
+		}
 		if slot, typ, ok := g.nameSlot(r); ok {
 			if typ == "" {
 				return "", "", g.errf(id, "cannot translate node #%d: the local has no type", id)
 			}
 			return slot, typ, nil
 		}
-		decl := refField(r, "to")
+		decl = refField(r, "to")
 		if name, ok := g.scope[decl]; ok && g.borrows[decl] {
 			typ, err := g.declLLVMType(decl)
 			if err != nil {

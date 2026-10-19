@@ -680,17 +680,20 @@ func TestEmitArrayIteration(t *testing.T) {
 	for _, want := range []string{
 		`define i32 @"example.com/app.Sum"(ptr %xs) {`,
 		"%v.i = alloca i64",
-		"%v.x = alloca i32",
 		"icmp ult i64 %t",
 		"getelementptr inbounds [3 x i32], ptr %xs, i64 0, i64 %t",
 		"load i32, ptr %t",
-		"store i32 %t",
 		"icmp ugt i64",
 		"for.step.",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
+	}
+	// The element binding is a read-only borrow, so no element slot is made
+	// and the element is loaded through the pointer the loop computed.
+	if strings.Contains(text, "= alloca i32\n") && strings.Contains(text, "%v.x") {
+		t.Errorf("the element binding was copied into a slot:\n%s", text)
 	}
 	// The array is borrowed for the loop, so its length cannot change and no
 	// bound check is emitted.
@@ -710,10 +713,13 @@ func TestEmitArrayIterationWithOneBinding(t *testing.T) {
 		t.Fatalf("gen: %v", err)
 	}
 	text := string(ir)
-	for _, want := range []string{"%v.x = alloca i64", "icmp ult i64", "[2 x i64]", "add i64"} {
+	for _, want := range []string{"icmp ult i64", "[2 x i64]", "add i64"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
+	}
+	if strings.Contains(text, "%v.x") {
+		t.Errorf("the element binding was copied into a slot:\n%s", text)
 	}
 }
 

@@ -124,13 +124,7 @@ func (g *generator) forArray(r willc.Record, n int, elem string, void bool, labe
 	if idx == "" {
 		return false, g.errf(r.ID, "cannot translate node #%d: the loop counter has no slot", r.ID)
 	}
-	elemSlot := ""
-	if binds != nil {
-		elemSlot = binds[names[len(names)-1]]
-	}
-	if elemSlot == "" {
-		return false, g.errf(r.ID, "cannot translate node #%d: the element binding has no slot", r.ID)
-	}
+	elemName := names[len(names)-1]
 
 	condLabel := fmt.Sprintf("for.cond.%d", label)
 	bodyLabel := fmt.Sprintf("for.body.%d", label)
@@ -149,8 +143,10 @@ func (g *generator) forArray(r willc.Record, n int, elem string, void bool, labe
 	g.tmp++
 	ptr := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 0, i64 %s\n", ptr, baseType, base, current)
-	value := g.load(elemType, ptr)
-	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemType, value, elemSlot)
+	if g.loopPtrs[r.ID] == nil {
+		g.loopPtrs[r.ID] = map[string]string{}
+	}
+	g.loopPtrs[r.ID][elemName] = ptr
 	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel})
 	done, err := g.body(body, void)
 	g.loops = g.loops[:len(g.loops)-1]
