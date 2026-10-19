@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/cache"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/gen"
 	"github.com/will-lang/will/internal/parser"
@@ -40,6 +41,12 @@ func compileIR(path, entry string, stderr io.Writer) ([]byte, string, int) {
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return nil, "", 1
+	}
+	store, key := buildCacheKey(file, data, modulePath, entry)
+	if store != nil {
+		if got, ok := store.Get(key, cache.ModuleLL); ok {
+			return got[cache.ModuleLL], modulePath, 0
+		}
 	}
 	f, ds := parser.Parse(filepath.ToSlash(file), data)
 	var bag diag.Bag
@@ -75,7 +82,26 @@ func compileIR(path, entry string, stderr io.Writer) ([]byte, string, int) {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return nil, "", 1
 	}
+	if store != nil {
+		_ = store.Put(key, map[string][]byte{cache.Willc: text, cache.ModuleLL: ir})
+		_ = store.Trim()
+	}
 	return ir, modulePath, 0
+}
+
+// buildCacheKey keys one build on everything this run reads: the source, the
+// module path, the entry name, the compiler identity, and the flags.
+func buildCacheKey(file string, data []byte, modulePath, entry string) (*cache.Store, string) {
+	root := os.Getenv("WILL_CACHE")
+	if root == "" {
+		return nil, ""
+	}
+	h := cache.NewHasher()
+	h.Add(filepath.ToSlash(file), data)
+	h.AddStrings("module", modulePath, entry)
+	build := buildIdentity()
+	h.AddStrings("compiler", build.Compiler, build.Target, build.Opt)
+	return cache.New(root, 0), h.Key()
 }
 
 // entryFile finds the source file that declares the entry function and its

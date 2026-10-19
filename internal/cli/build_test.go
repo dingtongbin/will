@@ -2,7 +2,9 @@ package cli
 
 import (
 	"errors"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -31,6 +33,31 @@ func TestBuildEmitIR(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("IR lacks %q:\n%s", want, out)
 		}
+	}
+}
+
+func TestBuildUsesCache(t *testing.T) {
+	dir := t.TempDir()
+	path := writeFile(t, dir, "main.will", entrySource)
+	cacheDir := filepath.Join(dir, "cache")
+	t.Setenv("WILL_CACHE", cacheDir)
+
+	code1, out1, _ := runCLI("build", "--emit-ir", path)
+	if code1 != 0 || out1 == "" {
+		t.Fatalf("first build: code = %d, stdout = %q", code1, out1)
+	}
+	entries, err := os.ReadDir(cacheDir)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("cache entries = %v, err = %v", entries, err)
+	}
+	code2, out2, _ := runCLI("build", "--emit-ir", path)
+	if code2 != code1 || out2 != out1 {
+		t.Fatalf("cached build differed: code = %d, stdout = %q", code2, out2)
+	}
+	// A changed source must miss.
+	writeFile(t, dir, "main.will", strings.Replace(entrySource, "65", "66", 1))
+	if _, out3, _ := runCLI("build", "--emit-ir", path); out3 == out1 {
+		t.Fatalf("changed source hit the old entry: %q", out3)
 	}
 }
 
