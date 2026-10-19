@@ -7,6 +7,7 @@ import (
 
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/mod"
+	"github.com/will-lang/will/internal/source"
 )
 
 // moduleNode is one module tree in the build: the root module, a local replace
@@ -36,7 +37,10 @@ type graph struct {
 	// selected in the first round of the next attempt.
 	known map[string]requirement
 	diags []diag.Diagnostic
-	std   *moduleNode
+	// moduleDirs maps a module path to the directory that declared it, so two
+	// trees claiming one path are reported instead of silently picking one.
+	moduleDirs map[string]string
+	std        *moduleNode
 	// stdErr is set when the bundled standard library is needed and its root
 	// is not on disk.
 	stdErr error
@@ -69,10 +73,11 @@ func resolveModules(root *moduleNode) *graph {
 	var g *graph
 	for attempt := 0; attempt < moduleLoadAttempts; attempt++ {
 		g = &graph{
-			root:  root,
-			nodes: map[string]*moduleNode{},
-			dirs:  map[string]string{},
-			known: known,
+			root:       root,
+			nodes:      map[string]*moduleNode{},
+			dirs:       map[string]string{},
+			known:      known,
+			moduleDirs: map[string]string{},
 		}
 		g.addNode(root)
 		if g.resolve() {
@@ -86,6 +91,19 @@ func (g *graph) addNode(n *moduleNode) {
 	key := canonicalDir(n.Dir)
 	g.nodes[key] = n
 	g.order = append(g.order, key)
+	if n.Mod != nil {
+		declared := n.Mod.Path
+		if prev, seen := g.moduleDirs[declared]; seen && prev != key {
+			g.diags = append(g.diags, diag.Diagnostic{
+				Severity: diag.Error,
+				Code:     diag.CodeInvalidWillMod,
+				Pos:      source.Pos{File: filepath.Join(n.Dir, "will.mod"), Line: 1, Col: 1},
+				Message:  "module " + declared + " is declared by " + prev + " and " + n.Dir,
+			})
+		} else if !seen {
+			g.moduleDirs[declared] = key
+		}
+	}
 	sort.Strings(n.Keys)
 	mergeRequires(g.known, n.Mod)
 }
@@ -239,8 +257,10 @@ func (g *graph) sortedNodes() []*moduleNode {
 	return append(out, rest...)
 }
 
-// readLocalModule reads one local replace target. A target without will.mod is
-// not a module and returns nil with no diagnostics.
+// readLocalModule reads one local replace target. The module keeps the path its
+// own will.mod declares; the replace key is an alias that the import table
+// resolves to the same packages. A target without will.mod is not a module and
+// returns nil with no diagnostics.
 func readLocalModule(dir, key string) (*moduleNode, []diag.Diagnostic) {
 	data, err := os.ReadFile(filepath.Join(dir, "will.mod"))
 	if err != nil {

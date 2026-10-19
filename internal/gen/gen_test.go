@@ -19,7 +19,7 @@ func emitWillc(t *testing.T, src string) *willc.Doc {
 	}
 	res, _ := resolve.Resolve(f)
 	checked, _ := types.CheckFull(f, res)
-	data, err := willc.Emit(f, res, "example.com/app", nil, checked.LiteralTypes)
+	data, err := willc.Emit(f, res, "example.com/app", nil, checked.LiteralTypes, nil)
 	if err != nil {
 		t.Fatalf("emit willc: %v", err)
 	}
@@ -165,7 +165,7 @@ func emitWillcIn(t *testing.T, file, src, module string, tables map[string][]str
 		imports[path] = exp
 	}
 	res, _ := resolve.ResolveWith(f, imports)
-	data, err := willc.Emit(f, res, module, nil, nil)
+	data, err := willc.Emit(f, res, module, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("emit willc: %v", err)
 	}

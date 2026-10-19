@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/will-lang/will/internal/cache"
 	"github.com/will-lang/will/internal/pkg"
 )
 
@@ -421,21 +422,33 @@ func setCompilerHash(t *testing.T, hash string) {
 	t.Cleanup(func() { binaryHashSum = previous })
 }
 
-// TestCacheKeysRequireWILLCache pins that no key is produced without a cache
-// root, so a run without WILL_CACHE never touches a cache directory.
-func TestCacheKeysRequireWILLCache(t *testing.T) {
+// TestCacheKeysUseTheDefaultRootWithoutWILLCache pins that an unset WILL_CACHE
+// falls back to the user cache directory instead of disabling the cache, and
+// that the default limit is the 4 GiB the volume fixes.
+func TestCacheKeysUseTheDefaultRootWithoutWILLCache(t *testing.T) {
 	t.Setenv("WILL_CACHE", "")
+	user, err := os.UserCacheDir()
+	if err != nil {
+		t.Skip("no user cache directory on this machine")
+	}
 	fixture := newModuleFixture(t, nil)
 	flags := baseCheckFlags()
 	files := []string{filepath.Join(fixture.root, "main.will")}
 
-	if store, key, contents := checkCache(files, flags); store != nil || key != "" || contents != nil {
+	store, key, contents := checkCache(files, flags)
+	if store == nil || key == "" || contents == nil {
 		t.Fatalf("checkCache without WILL_CACHE = (%v, %q, %v)", store, key, contents)
 	}
-	if store, key, cacheable := dirCacheKey(fixture.build, flags); store != nil || key != "" || cacheable {
+	if want := filepath.Join(user, "will"); store.Root != want {
+		t.Errorf("checkCache root = %q, want %q", store.Root, want)
+	}
+	if store.Max != cache.DefaultLimit {
+		t.Errorf("checkCache max = %d, want %d", store.Max, cache.DefaultLimit)
+	}
+	if store, key, cacheable := dirCacheKey(fixture.build, flags); store == nil || key == "" || !cacheable {
 		t.Fatalf("dirCacheKey without WILL_CACHE = (%v, %q, %v)", store, key, cacheable)
 	}
-	if store, key := loweringCacheKey([]string{"willc"}, buildOptions{entry: "main"}); store != nil || key != "" {
+	if store, key := loweringCacheKey([]string{"willc"}, buildOptions{entry: "main"}); store == nil || key == "" {
 		t.Fatalf("loweringCacheKey without WILL_CACHE = (%v, %q)", store, key)
 	}
 }

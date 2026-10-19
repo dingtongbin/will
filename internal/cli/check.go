@@ -26,6 +26,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
+	if code := checkCacheEnv(stderr); code != 0 {
+		return code
+	}
 	switch args[0] {
 	case "check":
 		return runCheck(args[1:], stdout, stderr)
@@ -57,6 +60,23 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stderr, "will: unknown command %s\n", args[0])
 	fmt.Fprint(stderr, usage)
 	return 2
+}
+
+// checkCacheEnv reports a bad cache environment before any command runs. The
+// volume makes a relative cache path a usage error, so it must not be silently
+// replaced by the default.
+func checkCacheEnv(stderr io.Writer) int {
+	for _, check := range []func() (string, error){cache.Root, cache.ModRoot} {
+		if _, err := check(); err != nil {
+			fmt.Fprintf(stderr, "will: %v\n", err)
+			return 2
+		}
+	}
+	if _, err := cache.Limit(); err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 2
+	}
+	return 0
 }
 
 // checkFlags are the switches shared by will check, will build, and the
@@ -202,10 +222,11 @@ type fileData struct {
 // checkCache returns a store and a key when WILL_CACHE is set and every
 // argument is a file. contents carries the files it already read.
 func checkCache(files []string, flags checkFlags) (*cache.Store, string, []fileData) {
-	root := os.Getenv("WILL_CACHE")
-	if root == "" {
+	root, err := cache.Root()
+	if err != nil {
 		return nil, "", nil
 	}
+	limit, _ := cache.Limit()
 	var contents []fileData
 	h := cache.NewHasher()
 	for _, path := range files {
@@ -225,7 +246,7 @@ func checkCache(files []string, flags checkFlags) (*cache.Store, string, []fileD
 	h.AddStrings("flags", fmt.Sprintf("json=%v", flags.json), fmt.Sprintf("werror=%v", flags.werror),
 		"features="+flags.features, fmt.Sprintf("freestanding=%v", flags.freestanding),
 		"disabled="+disabledList(flags.disabled))
-	return cache.New(root, 0), h.Key(), contents
+	return cache.New(root, limit), h.Key(), contents
 }
 
 // disabledList renders the switched-off warning families in a fixed order, so

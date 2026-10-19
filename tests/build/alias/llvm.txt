@@ -1,0 +1,10 @@
+define i32 @"example.com/shared.Double"(i32 %n) {
+entry:
+  %t1 = add i32 %n, %n
+  ret i32 %t1
+}
+define i32 @main() {
+entry:
+  %t1 = call i32 @"example.com/shared.Double"(i32 2)
+  ret i32 %t1
+}

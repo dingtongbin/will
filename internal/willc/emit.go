@@ -14,12 +14,13 @@ import (
 //
 // The emitter assigns ids in the same preorder it writes, so a reference to a
 // node that has not been written yet is patched after the walk.
-func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diagnostic, litTypes map[*ast.LiteralExpr]string) ([]byte, error) {
+func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diagnostic, litTypes map[*ast.LiteralExpr]string, aliases map[string]string) ([]byte, error) {
 	e := &emitter{
 		ids:        map[ast.Node]int{},
 		refs:       res.Refs,
 		modulePath: modulePath,
 		litTypes:   litTypes,
+		aliases:    aliases,
 	}
 	root := e.add("module", f)
 	e.text(root, "path", modulePath)
@@ -49,6 +50,9 @@ type emitter struct {
 	// litTypes is the resolved type text of every literal, by node. A literal
 	// whose type the checker did not record takes the default of its kind.
 	litTypes map[*ast.LiteralExpr]string
+	// aliases maps an import path that aliases a package to the package's
+	// canonical path, so a qualified name matches the declaring package.
+	aliases map[string]string
 	// scopes stacks the heap-owning locals declared so far in each open block;
 	// loops records the scope depth of every enclosing loop body.
 	scopes [][]ast.Node
@@ -181,7 +185,11 @@ func (e *emitter) qualifiedImport(sym *resolve.Symbol, member string) string {
 	if !ok || imp.C || member == "" {
 		return ""
 	}
-	return imp.Path + "." + member
+	path := imp.Path
+	if canonical := e.aliases[path]; canonical != "" {
+		path = canonical
+	}
+	return path + "." + member
 }
 
 // memberName returns the part of a qualified name after its last dot.

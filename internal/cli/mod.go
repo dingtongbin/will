@@ -9,6 +9,7 @@ import (
 
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/mod"
+	"github.com/will-lang/will/internal/pkg"
 	"github.com/will-lang/will/internal/source"
 )
 
@@ -43,57 +44,49 @@ func modRoot(args []string, stderr io.Writer) (string, int) {
 	return ".", 0
 }
 
-// loadModule reads will.mod of one directory.
-func loadModule(root string, stderr io.Writer) (*mod.Module, int) {
-	data, err := os.ReadFile(filepath.Join(root, "will.mod"))
-	if err != nil {
-		fmt.Fprintf(stderr, "will: %v\n", err)
-		return nil, 1
-	}
-	m, ds := mod.Parse("will.mod", data)
-	if len(ds) > 0 {
-		io.WriteString(stderr, diag.FormatAll(ds))
-		return nil, 1
-	}
-	return m, 0
-}
+// The root argument is resolved by pkg.Load, so no separate reader is needed.
 
-// runModVerify checks every checksum it can compute. A dependency that is not
-// a local directory cannot be hashed here, so it is left alone until it is
-// fetched by will get.
+// runModVerify checks every checksum of the modules a local replace selected.
+// A dependency that was fetched into the module cache is left to will get,
+// which will add its own comparison.
 func runModVerify(args []string, stdout, stderr io.Writer) int {
 	root, code := modRoot(args, stderr)
 	if code != 0 {
 		return code
 	}
-	m, code := loadModule(root, stderr)
-	if code != 0 {
-		return code
+	b := pkg.LoadWithoutSums(root)
+	if b.Err != nil {
+		return loadFailure(b.Err, stderr)
 	}
-	sum, err := os.ReadFile(filepath.Join(root, "will.sum"))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 0
-		}
+	data, err := os.ReadFile(filepath.Join(b.Root, "will.sum"))
+	if err != nil && !os.IsNotExist(err) {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
 	}
-	lines, ds := mod.ParseSum("will.sum", sum)
+	lines, ds := mod.ParseSum("will.sum", data)
 	var bag diag.Bag
 	bag.AddAll(ds)
+	byPath := map[string]mod.SumLine{}
 	for _, line := range lines {
-		dir, local := mod.LocalDir(root, m, line.Path)
-		if !local {
+		if _, seen := byPath[line.Path]; !seen {
+			byPath[line.Path] = line
+		}
+	}
+	for _, lm := range b.LocalModules {
+		line, ok := byPath[lm.Path]
+		if !ok {
+			bag.Error(source.Pos{File: "will.sum", Line: 1, Col: 1},
+				diag.CodeChecksumMismatch, "no checksum for "+lm.Path, "run will mod tidy")
 			continue
 		}
-		got, err := mod.SourceFaceHash(dir)
+		got, err := mod.SourceFaceHash(lm.Dir)
 		if err != nil {
 			fmt.Fprintf(stderr, "will: %v\n", err)
 			return 1
 		}
 		if want := "sha256:" + got; want != line.Sum {
 			bag.Error(source.Pos{File: "will.sum", Line: line.Line, Col: 1},
-				diag.CodeChecksumMismatch, "checksum mismatch for "+line.Path, "run will mod tidy")
+				diag.CodeChecksumMismatch, "checksum mismatch for "+lm.Path, "run will mod tidy")
 		}
 	}
 	all := bag.Diagnostics()
@@ -104,59 +97,49 @@ func runModVerify(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// runModTidy rewrites will.sum: the checksums it can compute are refreshed,
-// and a line whose dependency is not local is kept as it was.
+// runModTidy rewrites will.sum for the whole module graph: every module a local
+// replace selected gets a fresh checksum, and a line whose dependency is not
+// local is kept as it was.
 func runModTidy(args []string, stdout, stderr io.Writer) int {
 	root, code := modRoot(args, stderr)
 	if code != 0 {
 		return code
 	}
-	m, code := loadModule(root, stderr)
-	if code != 0 {
-		return code
+	b := pkg.LoadWithoutSums(root)
+	if b.Err != nil {
+		return loadFailure(b.Err, stderr)
 	}
-	var kept []mod.SumLine
-	if data, err := os.ReadFile(filepath.Join(root, "will.sum")); err == nil {
-		lines, ds := mod.ParseSum("will.sum", data)
+	local := map[string]bool{}
+	for _, lm := range b.LocalModules {
+		local[lm.Path] = true
+	}
+	var lines []mod.SumLine
+	if data, err := os.ReadFile(filepath.Join(b.Root, "will.sum")); err == nil {
+		kept, ds := mod.ParseSum("will.sum", data)
 		if len(ds) > 0 {
 			io.WriteString(stdout, diag.FormatAll(ds))
 			return 1
 		}
-		kept = lines
-	}
-	lines := make([]mod.SumLine, 0, len(kept))
-	for _, l := range kept {
-		if _, local := mod.LocalDir(root, m, l.Path); local {
-			continue
+		for _, line := range kept {
+			if !local[line.Path] {
+				lines = append(lines, line)
+			}
 		}
-		lines = append(lines, l)
 	}
-	seen := map[string]bool{}
-	for _, dep := range requiredPaths(m) {
-		dir, local := mod.LocalDir(root, m, dep)
-		if !local || seen[dep] {
-			continue
-		}
-		seen[dep] = true
-		hash, err := mod.SourceFaceHash(dir)
+	for _, lm := range b.LocalModules {
+		hash, err := mod.SourceFaceHash(lm.Dir)
 		if err != nil {
 			fmt.Fprintf(stderr, "will: %v\n", err)
 			return 1
 		}
-		lines = append(lines, mod.SumLine{Path: dep, Sum: "sha256:" + hash})
+		lines = append(lines, mod.SumLine{Path: lm.Path, Sum: "sha256:" + hash})
 	}
-	if err := os.WriteFile(filepath.Join(root, "will.sum"), mod.FormatSum(lines), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(b.Root, "will.sum"), mod.FormatSum(lines), 0o644); err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
 	}
 	return 0
 }
 
-// requiredPaths lists the import paths of every require, in writing order.
-func requiredPaths(m *mod.Module) []string {
-	var out []string
-	for _, r := range m.Requires {
-		out = append(out, r.Path)
-	}
-	return out
-}
+// The module graph lists the local modules, so no separate require scan is
+// needed.

@@ -74,7 +74,7 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 	var bag diag.Bag
 	bag.AddAll(ds)
 
-	imps, defModule, names, others := packageContext(file)
+	imps, defModule, names, others, aliases := packageContext(file)
 	if modulePath == "" {
 		modulePath = defModule
 	}
@@ -91,7 +91,7 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 		io.WriteString(stdout, diag.FormatAll(all))
 		return 1
 	}
-	text, err := willc.Emit(f, res, modulePath, all, checked.LiteralTypes)
+	text, err := willc.Emit(f, res, modulePath, all, checked.LiteralTypes, aliases)
 	if err != nil {
 		reportTranslate(stdout, err)
 		return 1
@@ -100,9 +100,9 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 }
 
 // packageContext loads the module that contains file and returns the import
-// tables, the package path of the file's own package, that package's
-// top-level names, and the other files of the package.
-func packageContext(file string) (resolve.Imports, string, resolve.Exported, []*ast.File) {
+// tables, the package path of the file's own package, that package's top-level
+// names, the other files of the package, and the alias map of the module.
+func packageContext(file string) (resolve.Imports, string, resolve.Exported, []*ast.File, map[string]string) {
 	absFile, err := filepath.Abs(file)
 	if err != nil {
 		absFile = file
@@ -110,9 +110,10 @@ func packageContext(file string) (resolve.Imports, string, resolve.Exported, []*
 	dir := filepath.Dir(absFile)
 	b := pkg.Load(dir)
 	if b.Err != nil || b.Mod == nil {
-		return nil, filepath.Base(dir), nil, nil
+		return nil, filepath.Base(dir), nil, nil, nil
 	}
 	imps := b.Imports()
+	aliases := b.ImportAliases()
 	def := b.Mod.Path
 	var names resolve.Exported
 	var others []*ast.File
@@ -129,7 +130,7 @@ func packageContext(file string) (resolve.Imports, string, resolve.Exported, []*
 			others = append(others, f.AST)
 		}
 	}
-	return imps, def, names, others
+	return imps, def, names, others, aliases
 }
 
 func hasError(ds []diag.Diagnostic) bool {

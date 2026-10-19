@@ -67,10 +67,11 @@ func exitCode(ds []diag.Diagnostic, werror bool) int {
 // in-package C or H file, the exported names of every package, the compiler
 // identity, and the flags.
 func dirCacheKey(b *pkg.Build, flags checkFlags) (*cache.Store, string, bool) {
-	root := os.Getenv("WILL_CACHE")
-	if root == "" || b.Mod == nil {
+	root, err := cache.Root()
+	if err != nil || b.Mod == nil {
 		return nil, "", false
 	}
+	limit, _ := cache.Limit()
 	h := cache.NewHasher()
 	// Every module of the graph contributes its manifest, its sum file, and its
 	// C and H files. The paths are relative to each module root and prefixed by
@@ -128,7 +129,7 @@ func dirCacheKey(b *pkg.Build, flags checkFlags) (*cache.Store, string, bool) {
 	h.AddStrings("flags", fmt.Sprintf("json=%v", flags.json), fmt.Sprintf("werror=%v", flags.werror),
 		"features="+flags.features, fmt.Sprintf("freestanding=%v", flags.freestanding),
 		"disabled="+disabledList(flags.disabled))
-	return cache.New(root, 0), h.Key(), true
+	return cache.New(root, limit), h.Key(), true
 }
 
 // headerFiles lists the in-package C and H files that enter the cache key.

@@ -41,6 +41,9 @@ type frontEnd struct {
 	// litTypes is the resolved type of every literal of that file, so willc can
 	// record it.
 	litTypes map[*ast.LiteralExpr]string
+	// aliases maps an import path that aliases a package to the package's
+	// canonical path, so a qualified name matches the declaring package.
+	aliases map[string]string
 }
 
 // runFrontEnd runs the same front end will check runs and prints the same
@@ -83,7 +86,7 @@ func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 					// File.Path is relative to the module root, not to the
 					// package directory.
 					return frontEnd{file: filepath.Join(b.Root, f.Path), modulePath: p.Path,
-						imports: imports, build: b}, 0
+						imports: imports, build: b, aliases: b.ImportAliases()}, 0
 				}
 			}
 		}
@@ -106,7 +109,7 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		reportDiagnostics(diag.FilterDisabled(bag.Diagnostics(), opts.disabled), opts, stdout)
 		return frontEnd{}, 1
 	}
-	imports, modulePath, names, others := packageContext(opts.path)
+	imports, modulePath, names, others, aliases := packageContext(opts.path)
 	res, rds := resolve.ResolveIn(f, names, imports)
 	bag.AddAll(rds)
 	checked, tds := types.CheckWithFull(f, res, others)
@@ -126,7 +129,7 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
 		return frontEnd{}, 1
 	}
-	fe := frontEnd{file: opts.path, modulePath: modulePath, imports: imports, ast: f, litTypes: checked.LiteralTypes}
+	fe := frontEnd{file: opts.path, modulePath: modulePath, imports: imports, ast: f, litTypes: checked.LiteralTypes, aliases: aliases}
 	// Inside a module, lower the whole package the file belongs to, so a call
 	// to a sibling file resolves.
 	if b, p := modulePackage(opts.path); b != nil {
@@ -206,11 +209,11 @@ func modulePackage(file string) (*pkg.Build, *pkg.Package) {
 // of a module, in package path order, or the entry file's package in file mode.
 // The texts come out in the same order, because the lowering cache is keyed on
 // them.
-func (fe frontEnd) docs() ([]*willc.Doc, []string, error) {
+func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 	var docs []*willc.Doc
 	var texts []string
 	emit := func(f *ast.File, path, pkgPath string, res *resolve.Result, lits map[*ast.LiteralExpr]string) error {
-		text, err := willc.Emit(f, res, pkgPath, nil, lits)
+		text, err := willc.Emit(f, res, pkgPath, nil, lits, fe.aliases)
 		if err != nil {
 			return err
 		}
@@ -223,23 +226,61 @@ func (fe frontEnd) docs() ([]*willc.Doc, []string, error) {
 		return nil
 	}
 	if fe.build != nil {
+		store := frontStore()
+		blobs := map[string][]byte{}
 		for _, p := range fe.build.Packages {
 			if fe.limit != "" && p.Path != fe.limit {
 				continue
 			}
-			// The literal types come from one check of the whole package, so a
-			// literal inherits the type its context gives it.
 			var files []*ast.File
-			var results []*resolve.Result
 			var paths []string
 			for _, f := range p.Files {
 				if f.AST == nil {
 					continue
 				}
-				res, _ := resolve.ResolveIn(f.AST, p.Names, fe.imports)
 				files = append(files, f.AST)
-				results = append(results, res)
 				paths = append(paths, f.Path)
+			}
+			cacheable := store != nil && fe.limit == ""
+			key := ""
+			if cacheable {
+				k, ok := frontKey(p, blobs, opts)
+				if !ok {
+					cacheable = false
+				} else {
+					key = k
+				}
+			}
+			if cacheable {
+				if data, hit := store.Get(key, cache.Willc); hit {
+					cachedPaths, cachedTexts, ok := decodeWillc(data[cache.Willc])
+					if ok && samePaths(cachedPaths, paths) {
+						docsBefore, textsBefore := len(docs), len(texts)
+						good := true
+						for _, text := range cachedTexts {
+							doc, err := willc.Read([]byte(text))
+							if err != nil {
+								good = false
+								break
+							}
+							docs = append(docs, doc)
+							texts = append(texts, text)
+						}
+						if good {
+							blobs[p.Path] = data[cache.Willc]
+							frontEndStats.hits++
+							continue
+						}
+						docs, texts = docs[:docsBefore], texts[:textsBefore]
+					}
+				}
+			}
+			// The literal types come from one check of the whole package, so a
+			// literal inherits the type its context gives it.
+			var results []*resolve.Result
+			for _, f := range files {
+				res, _ := resolve.ResolveIn(f, p.Names, fe.imports)
+				results = append(results, res)
 			}
 			lits := map[*ast.LiteralExpr]string{}
 			if len(files) != 0 {
@@ -249,11 +290,22 @@ func (fe frontEnd) docs() ([]*willc.Doc, []string, error) {
 					}
 				}
 			}
+			before := len(texts)
 			for i := range files {
 				if err := emit(files[i], paths[i], p.Path, results[i], lits); err != nil {
 					return nil, nil, err
 				}
 			}
+			if cacheable {
+				blob := encodeWillc(paths, texts[before:])
+				if err := store.Put(key, map[string][]byte{cache.Willc: blob}); err == nil {
+					blobs[p.Path] = blob
+				}
+				frontEndStats.misses++
+			}
+		}
+		if store != nil {
+			_ = store.Trim()
 		}
 		return docs, texts, nil
 	}
@@ -267,6 +319,19 @@ func (fe frontEnd) docs() ([]*willc.Doc, []string, error) {
 	return docs, texts, nil
 }
 
+// samePaths reports whether the cached file names match the current files.
+func samePaths(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int) {
 	if d, bad := targetDiagnostic(opts.target, opts.targetSet); bad {
 		reportNoPos(d, opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
@@ -276,7 +341,7 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 	if code != 0 {
 		return nil, "", code
 	}
-	docs, texts, err := fe.docs()
+	docs, texts, err := fe.docs(opts)
 	if err != nil {
 		reportTranslate(stdout, err)
 		return nil, "", 1
@@ -304,10 +369,11 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 // flags. Without the whole set, changing a called package would reuse an old
 // module.
 func loweringCacheKey(texts []string, opts buildOptions) (*cache.Store, string) {
-	root := os.Getenv("WILL_CACHE")
-	if root == "" {
+	root, err := cache.Root()
+	if err != nil {
 		return nil, ""
 	}
+	limit, _ := cache.Limit()
 	h := cache.NewHasher()
 	for _, text := range texts {
 		h.Add("willc", []byte(text))
@@ -318,7 +384,7 @@ func loweringCacheKey(texts []string, opts buildOptions) (*cache.Store, string) 
 	h.AddStrings("flags", fmt.Sprintf("lib=%v", opts.lib), fmt.Sprintf("debug=%v", opts.debug),
 		fmt.Sprintf("freestanding=%v", opts.freestanding), "features="+opts.features,
 		"disabled="+disabledList(opts.disabled))
-	return cache.New(root, 0), h.Key()
+	return cache.New(root, limit), h.Key()
 }
 
 func declaresEntry(d ast.Decl, entry string) bool {

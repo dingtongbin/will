@@ -44,6 +44,40 @@ func modulePathOf(t *testing.T, dir string) string {
 	return m.Path
 }
 
+// TestTwoModulesWithOnePathAreReported checks that two trees claiming the same
+// module path are an error instead of a silent pick.
+func TestTwoModulesWithOnePathAreReported(t *testing.T) {
+	parent := t.TempDir()
+	app := filepath.Join(parent, "app")
+	one := filepath.Join(parent, "one")
+	two := filepath.Join(parent, "two")
+	writeModule(t, one, "example.com/same", map[string]string{
+		"one.will": "func One() -> i32 {\n    return 1\n}\n",
+	})
+	writeModule(t, two, "example.com/same", map[string]string{
+		"two.will": "func Two() -> i32 {\n    return 2\n}\n",
+	})
+	writeModule(t, app, "example.com/app", nil)
+	write(t, filepath.Join(app, "will.mod"),
+		"module example.com/app\nwill 1\n"+
+			"require example.com/one@v1.0.0\n"+
+			"replace example.com/one@v1.0.0 => ../one\n"+
+			"require example.com/two@v1.0.0\n"+
+			"replace example.com/two@v1.0.0 => ../two\n")
+	write(t, filepath.Join(app, "main.will"), "func F() {\n}\n")
+
+	b := Load(app)
+	found := false
+	for _, d := range b.Diags {
+		if d.Code == diag.CodeInvalidWillMod && strings.Contains(d.Message, "example.com/same is declared by") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("the duplicate module path was not reported:\n%s", diag.FormatAll(b.Diags))
+	}
+}
+
 // TestLocalReplaceLoadsDependency checks the smallest module graph: the root
 // requires one dependency, replaces it with a sibling directory, imports it,
 // and the call into it type-checks.

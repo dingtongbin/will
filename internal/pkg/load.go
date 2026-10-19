@@ -57,11 +57,30 @@ type Build struct {
 	// A local replace key that differs from the module path is another name
 	// for the same package, so the table has more entries than Packages.
 	byPath map[string]*Package
+	// LocalModules lists every module loaded through a local replace, in path
+	// order. The root module and the bundled standard library are not included.
+	LocalModules []LocalModule
+}
+
+// LocalModule is one module a local replace selected.
+type LocalModule struct {
+	Path string
+	Dir  string
 }
 
 // Load reads the module root, will.mod, every local replace target, and the
 // modules those dependencies require.
 func Load(root string) *Build {
+	return load(root, false)
+}
+
+// LoadWithoutSums reads the same graph as Load but leaves the checksum
+// comparison out, because will mod tidy repairs the file that comparison reads.
+func LoadWithoutSums(root string) *Build {
+	return load(root, true)
+}
+
+func load(root string, skipSums bool) *Build {
 	// The package-name rule compares directory names, so the root is resolved
 	// first; a relative root such as "." would otherwise compare as ".".
 	if abs, err := filepath.Abs(root); err == nil {
@@ -93,8 +112,33 @@ func Load(root string) *Build {
 	}
 	pkgs, table, pds := g.packages()
 	bag.AddAll(pds)
-	bag.AddAll(g.checkSums())
+	if !skipSums {
+		bag.AddAll(g.checkSums())
+	}
 	b.byPath = table
+	for _, key := range g.order {
+		n := g.nodes[key]
+		if n == nil || n == g.root || n.Std || !n.Local {
+			continue
+		}
+		for _, k := range n.Keys {
+			b.LocalModules = append(b.LocalModules, LocalModule{Path: k, Dir: n.Dir})
+		}
+	}
+	sort.Slice(b.LocalModules, func(i, j int) bool {
+		if b.LocalModules[i].Path != b.LocalModules[j].Path {
+			return b.LocalModules[i].Path < b.LocalModules[j].Path
+		}
+		return b.LocalModules[i].Dir < b.LocalModules[j].Dir
+	})
+	deduped := b.LocalModules[:0]
+	for _, lm := range b.LocalModules {
+		if len(deduped) != 0 && deduped[len(deduped)-1].Path == lm.Path {
+			continue
+		}
+		deduped = append(deduped, lm)
+	}
+	b.LocalModules = deduped
 
 	edges := importEdges(pkgs, table)
 	bag.AddAll(checkTwoPaths(pkgs, table))
@@ -118,6 +162,23 @@ func (b *Build) Imports() resolve.Imports {
 	}
 	for _, p := range b.Packages {
 		out[p.Path] = p.Exports
+	}
+	return out
+}
+
+// ImportAliases maps an import path that only aliases a package to that
+// package's canonical import path. A symbol reached through the alias is
+// emitted under the canonical name, which is the name the declaring package
+// emits, so a call and its definition always agree.
+func (b *Build) ImportAliases() map[string]string {
+	out := map[string]string{}
+	if b.byPath == nil {
+		return out
+	}
+	for path, p := range b.byPath {
+		if path != p.Path {
+			out[path] = p.Path
+		}
 	}
 	return out
 }
