@@ -1,0 +1,11 @@
+struct Counter {
+    n: i32
+}
+
+func (c: Counter) Get() -> i32 {
+    return c.n
+}
+
+func New(n: i32) -> Counter {
+    return Counter { n: n }
+}

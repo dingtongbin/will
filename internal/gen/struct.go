@@ -129,6 +129,22 @@ func (g *generator) typeRef(parent int) int {
 	return 0
 }
 
+// typeQualified returns the package-qualified name a type record carries when
+// it names a type from another document, or "" when the type is local.
+func (g *generator) typeQualified(parent int) string {
+	for _, r := range g.recs {
+		if r.Kind == "type" && refField(r, "parent") == parent {
+			return textField(r, "to")
+		}
+	}
+	return ""
+}
+
+// qualifiedTypeName renders a qualified type name as its LLVM struct type.
+func qualifiedTypeName(name string) string {
+	return "%" + llvmSymbol("struct."+name)
+}
+
 // declLLVMType returns the LLVM type of a local, parameter, or receiver.
 func (g *generator) declLLVMType(decl int) (string, error) {
 	r, ok := g.recs[decl]
@@ -148,6 +164,11 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 			return info.llvm, nil
 		}
 		return "", g.errf(decl, "cannot translate node #%d: struct %s has a field type that is not lowered yet", decl, fieldText(r, "type"))
+	}
+	if q := g.typeQualified(decl); q != "" {
+		// The declaring package emits the type definition; a reference from
+		// this document only needs the same name.
+		return qualifiedTypeName(q), nil
 	}
 	return "", g.errf(decl, "cannot translate node #%d: type %s is not lowered yet", decl, fieldText(r, "type"))
 }
@@ -229,6 +250,9 @@ func (g *generator) typeOf(id int) (string, error) {
 		}
 		typ, _, ok := llvmScalar(text)
 		if !ok {
+			if g.structTypes[text] {
+				return qualifiedTypeName(text), nil
+			}
 			return "", g.errf(id, "cannot translate node #%d: result type %s is not lowered yet", id, text)
 		}
 		return typ, nil
@@ -318,6 +342,11 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 		return "", g.errf(r.ID, "cannot translate node #%d: %s has no known result", r.ID, symbol)
 	}
 	if fn, ok := g.recs[refField(r, "to")]; ok && fn.Kind == "func" {
+		if sym := g.cur.funcs[fn.ID]; sym != "" {
+			if t, ok := g.sigs[sym]; ok {
+				return t, nil
+			}
+		}
 		return fieldText(fn, "type"), nil
 	}
 	return "", nil
@@ -337,18 +366,53 @@ func (g *generator) isCLink(r willc.Record) bool {
 }
 
 // methodSymbol resolves a method call on the receiver's type to the symbol the
-// method is emitted under. Methods of the same package are lowered; a receiver
-// whose type is a borrow or a local both give their declared type text.
+// method is emitted under. A receiver whose type is declared in another
+// document resolves through the module-wide qualified type index.
 func (g *generator) methodSymbol(r willc.Record) (string, error) {
-	typ, err := g.willTypeText(refField(r, "recv"))
+	typ, err := g.receiverTypeName(refField(r, "recv"))
 	if err != nil {
 		return "", err
 	}
 	name := fieldText(r, "text")
+	if sym, ok := g.methodsQualified[typ+"."+name]; ok {
+		return sym, nil
+	}
 	if sym, ok := g.cur.methods[typ+"."+name]; ok {
 		return sym, nil
 	}
 	return "", g.errf(r.ID, "cannot translate node #%d: method %s is not declared for %s", r.ID, name, typ)
+}
+
+// receiverTypeName returns the qualified type name of a receiver. A local type
+// carries the package path of this document; a type from another document
+// carries its qualified name in the type record.
+func (g *generator) receiverTypeName(recvID int) (string, error) {
+	r, ok := g.recs[recvID]
+	if !ok {
+		return "", g.errf(recvID, "cannot translate node #%d: no such receiver", recvID)
+	}
+	if r.Kind == "name" {
+		decl, ok := g.recs[refField(r, "to")]
+		if ok {
+			if q := g.typeQualified(decl.ID); q != "" {
+				return q, nil
+			}
+			for _, c := range g.recs {
+				if c.Kind == "type" && refField(c, "parent") == decl.ID {
+					if id := refField(c, "to"); id != 0 {
+						if s, ok := g.recs[id]; ok && s.Kind == "struct" {
+							return qualify(g.pkg, fieldText(s, "text")), nil
+						}
+					}
+				}
+			}
+		}
+	}
+	text, err := g.willTypeText(recvID)
+	if err != nil {
+		return "", err
+	}
+	return qualify(g.pkg, text), nil
 }
 
 // place emits the address of an expression and returns it with the LLVM type
@@ -429,10 +493,14 @@ func (g *generator) place(id int) (string, string, error) {
 		}
 		return slot, "{ ptr, i64 }", nil
 	case "call", "mcall":
-		info, err := g.callResultStruct(r)
+		text, err := g.callResultText(r)
 		if err != nil {
 			return "", "", err
 		}
+		if text == "" || !g.structTypes[text] {
+			return "", "", g.errf(id, "cannot translate node #%d: the call result is not a struct", id)
+		}
+		typ := qualifiedTypeName(text)
 		slot := g.callSlots[id]
 		if slot == "" {
 			return "", "", g.errf(id, "cannot translate node #%d: the call result has no slot", id)
@@ -441,8 +509,8 @@ func (g *generator) place(id int) (string, string, error) {
 		if err != nil {
 			return "", "", err
 		}
-		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.llvm, value, slot)
-		return slot, info.llvm, nil
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, slot)
+		return slot, typ, nil
 	}
 	return "", "", g.errf(id, "cannot translate node #%d: %s is not a place", id, r.Kind)
 }

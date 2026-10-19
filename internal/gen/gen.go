@@ -112,6 +112,8 @@ func (g *generator) findEntry(entry string) {
 // it gets back.
 func (g *generator) collectSignatures() {
 	g.sigs = map[string]string{}
+	g.structTypes = map[string]bool{}
+	g.methodsQualified = map[string]string{}
 	for _, d := range g.docs {
 		for _, r := range d.recs {
 			if r.Kind != "func" {
@@ -122,10 +124,31 @@ func (g *generator) collectSignatures() {
 			for _, c := range d.recs {
 				if c.Kind == "receiver" && refField(c, "parent") == r.ID {
 					sym = qualify(d.path, receiverType(&c)+"."+name)
+					g.methodsQualified[receiverType(&c)+"."+name] = sym
+					g.methodsQualified[qualify(d.path, receiverType(&c)+"."+name)] = sym
 					break
 				}
 			}
-			g.sigs[sym] = fieldText(r, "type")
+			res := fieldText(r, "type")
+			isStruct := false
+			for _, c := range d.recs {
+				if c.Kind != "type" || refField(c, "parent") != r.ID {
+					continue
+				}
+				if q := textField(c, "to"); q != "" {
+					res = q
+					isStruct = true
+				} else if id := refField(c, "to"); id != 0 {
+					if s, ok := d.recs[id]; ok && s.Kind == "struct" {
+						res = qualify(d.path, fieldText(s, "text"))
+						isStruct = true
+					}
+				}
+			}
+			g.sigs[sym] = res
+			if isStruct {
+				g.structTypes[res] = true
+			}
 		}
 	}
 }
@@ -201,6 +224,12 @@ type generator struct {
 	// sigs holds the result type text of every function of the module, by
 	// symbol, so a call to another package knows what it gets back.
 	sigs map[string]string
+	// structTypes holds the qualified names whose result is a struct, so a
+	// caller whose document lacks the record still knows the name is a struct.
+	structTypes map[string]bool
+	// methodsQualified maps <qualified type>.<method> to the method's symbol,
+	// for receivers whose type is declared in another document.
+	methodsQualified map[string]string
 
 	// pkg is the package path of the current document.
 	pkg string
@@ -372,6 +401,8 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	resLLVM := ""
 	if typ, _, ok := llvmScalar(result); ok {
 		resLLVM = typ
+	} else if q := g.typeQualified(fn.ID); q != "" && g.structTypes[q] {
+		resLLVM = qualifiedTypeName(q)
 	} else if id := g.typeRef(fn.ID); id != 0 {
 		info, ok := g.ensureStruct(id)
 		if !ok {
@@ -495,13 +526,13 @@ func (g *generator) allocas(fn int) error {
 	}
 	sortByID(calls)
 	for _, r := range calls {
-		info, err := g.callResultStruct(r)
-		if err != nil {
+		text, err := g.callResultText(r)
+		if err != nil || text == "" || !g.structTypes[text] {
 			continue
 		}
 		name := "%v.ret." + strconv.Itoa(r.ID)
 		g.callSlots[r.ID] = name
-		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, qualifiedTypeName(text))
 	}
 	// A slice expression builds a two-word view, which also needs a slot.
 	var slices []willc.Record
@@ -1198,23 +1229,7 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	return g.emitCall(r, name, link)
 }
 
-// callResultStruct returns the lowered struct type a call returns. A struct
-// result from another package needs that package's field layout, which this
-// document does not carry.
-func (g *generator) callResultStruct(r willc.Record) (*structInfo, error) {
-	if textField(r, "to") != "" {
-		return nil, g.errf(r.ID, "cannot translate node #%d: a struct result from another package is not lowered yet", r.ID)
-	}
-	fn, ok := g.recs[refField(r, "to")]
-	if !ok || fn.Kind != "func" {
-		return nil, g.errf(r.ID, "cannot translate node #%d: the callee is not a file function", r.ID)
-	}
-	info, ok := g.ensureStruct(g.typeRef(fn.ID))
-	if !ok {
-		return nil, g.errf(r.ID, "cannot translate node #%d: the result type is not lowered yet", r.ID)
-	}
-	return info, nil
-}
+// callResultStruct is not used; a struct result is named by its qualified type.
 
 // linkNamed returns the C symbol of name declared under one cimport record.
 func (g *generator) linkNamed(cimport int, name string) string {
@@ -1290,11 +1305,10 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, st
 	}
 	result, _, scalar := llvmScalar(resultText)
 	if !scalar {
-		info, err := g.callResultStruct(r)
-		if err != nil {
-			return "", "", err
+		if !g.structTypes[resultText] {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: result type %s is not lowered yet", r.ID, resultText)
 		}
-		result = info.llvm
+		result = qualifiedTypeName(resultText)
 	}
 	g.tmp++
 	tmp := "%t" + strconv.Itoa(g.tmp)
