@@ -24,8 +24,17 @@ for.end.1:
   %t8 = load i32, ptr %v.total
   ret i32 %t8
 }
-define i32 @main() {
+define i32 @"example.com/loops.will$main"() {
 entry:
   %t9 = call i32 @"example.com/loops.Sum"(i32 4)
   ret i32 %t9
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/loops.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
 }

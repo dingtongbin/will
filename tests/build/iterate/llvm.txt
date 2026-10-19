@@ -58,7 +58,16 @@ for.end.1:
   %t20 = load i64, ptr %v.total
   ret i64 %t20
 }
-define i32 @main() {
+define i32 @"example.com/iterate.will$main"() {
 entry:
   ret i32 0
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/iterate.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
 }

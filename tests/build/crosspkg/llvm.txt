@@ -2,8 +2,17 @@ define i32 @"example.com/crosspkg/lib.Util"() {
 entry:
   ret i32 7
 }
-define i32 @main() {
+define i32 @"example.com/crosspkg.will$main"() {
 entry:
   %t1 = call i32 @"example.com/crosspkg/lib.Util"()
   ret i32 %t1
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/crosspkg.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
 }

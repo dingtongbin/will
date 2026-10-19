@@ -1,0 +1,6 @@
+var seed: i32 = 5
+
+func Next() -> i32 {
+    seed += 1
+    return seed
+}

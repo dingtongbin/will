@@ -1,0 +1,155 @@
+package gen
+
+import (
+	"fmt"
+
+	"github.com/will-lang/will/internal/willc"
+)
+
+// globalInfo is one top-level variable as the lowering sees it.
+type globalInfo struct {
+	sym  string
+	typ  string
+	text string
+}
+
+// collectGlobals registers every top-level variable of the module before any
+// function is emitted, so a function may name a global of another document.
+func (g *generator) collectGlobals() {
+	g.globalSymbols = map[string]*globalInfo{}
+	g.inits = nil
+	for _, d := range g.docs {
+		g.use(d)
+		for _, r := range g.topLevelVars(d) {
+			info := &globalInfo{sym: qualify(d.path, fieldText(r, "text")), text: fieldText(r, "type")}
+			typ, err := g.declLLVMType(r.ID)
+			if err != nil {
+				// An unsupported global type is reported when the variable is
+				// used; leaving it out keeps the error at the use site.
+				continue
+			}
+			info.typ = typ
+			if d.globals == nil {
+				d.globals = map[int]*globalInfo{}
+			}
+			d.globals[r.ID] = info
+			g.globalSymbols[info.sym] = info
+		}
+	}
+}
+
+// topLevelVars lists the var records of one document in source order. A var is
+// top-level when its parent is the module record.
+func (g *generator) topLevelVars(d *docState) []willc.Record {
+	var out []willc.Record
+	for _, r := range d.recs {
+		if r.Kind != "var" || refField(r, "parent") != d.moduleID {
+			continue
+		}
+		out = append(out, r)
+	}
+	sortByID(out)
+	return out
+}
+
+// emitGlobals writes the storage of one document's top-level variables.
+func (g *generator) emitGlobals(d *docState) {
+	for _, r := range g.topLevelVars(d) {
+		info := d.globals[r.ID]
+		if info == nil {
+			continue
+		}
+		fmt.Fprintf(g.out, "@%s = internal global %s zeroinitializer\n", llvmSymbol(info.sym), info.typ)
+	}
+}
+
+// emitInit writes one package's initialization function. It stores each
+// initialized variable in declaration order; a variable without an initializer
+// keeps the zero value the global already holds.
+func (g *generator) emitInit(d *docState) error {
+	var vars []willc.Record
+	for _, r := range g.topLevelVars(d) {
+		if d.globals[r.ID] == nil {
+			continue
+		}
+		if len(g.children(r.ID)) != 0 {
+			vars = append(vars, r)
+		}
+	}
+	if len(vars) == 0 {
+		return nil
+	}
+	sym := qualify(d.path, "will$init")
+	g.inits = append(g.inits, sym)
+	g.labels = 0
+	g.slots = map[int]string{}
+	g.slotTypes = map[int]string{}
+	g.slotNames = map[string]int{}
+	g.loops = nil
+	g.scope = map[int]string{}
+	fmt.Fprintf(g.out, "define void @%s() {\nentry:\n", llvmSymbol(sym))
+	for _, r := range vars {
+		info := d.globals[r.ID]
+		child := g.children(r.ID)[0].ID
+		ptr := "@" + llvmSymbol(info.sym)
+		if isAggregateType(info.typ) {
+			src, srcType, err := g.place(child)
+			if err != nil {
+				return err
+			}
+			if srcType != info.typ {
+				return g.errf(r.ID, "cannot translate node #%d: the initializer needs %s", r.ID, info.typ)
+			}
+			g.copyValue(src, ptr, info.typ)
+			continue
+		}
+		value, err := g.value(child)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.typ, value, ptr)
+	}
+	g.out.WriteString("  ret void\n}\n")
+	return nil
+}
+
+// globalByName returns the top-level variable a qualified name selects.
+func (g *generator) globalByName(name string) *globalInfo {
+	return g.globalSymbols[name]
+}
+
+// constValueOf returns the scalar text of a constant declared in the current
+// document, so a use of it can be substituted.
+func (g *generator) constValueOf(id int) (string, bool) {
+	r, ok := g.recs[id]
+	if !ok || r.Kind != "const" {
+		return "", false
+	}
+	kids := g.children(id)
+	if len(kids) != 1 {
+		return "", false
+	}
+	lit, ok := g.recs[kids[0].ID]
+	if !ok || lit.Kind != "lit" {
+		return "", false
+	}
+	switch fieldText(lit, "kind") {
+	case "int":
+		return literalIntText(fieldText(lit, "text")), true
+	case "bool":
+		return fieldText(lit, "text"), true
+	}
+	return "", false
+}
+
+// globalRef returns the info of a global name, checking the document-local
+// reference first and then the qualified name written in the record.
+func (g *generator) globalRef(r willc.Record) *globalInfo {
+	if info := g.cur.globals[refField(r, "to")]; info != nil {
+		return info
+	}
+	if name := textField(r, "to"); name != "" {
+		return g.globalByName(name)
+	}
+	return nil
+}

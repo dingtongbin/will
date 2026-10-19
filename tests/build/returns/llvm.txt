@@ -19,7 +19,7 @@ entry:
   %t7 = load i32, ptr %t6
   ret i32 %t7
 }
-define i32 @main() {
+define i32 @"example.com/returns.will$main"() {
 entry:
   %v.p = alloca %"struct.example.com/returns.Pair"
   %v.ret.30 = alloca %"struct.example.com/returns.Pair"
@@ -32,4 +32,13 @@ entry:
   %t12 = load i32, ptr %t11
   %t13 = add i32 %t10, %t12
   ret i32 %t13
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/returns.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
 }

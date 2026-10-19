@@ -8,7 +8,7 @@ entry:
   %t5 = add i32 %t2, %t4
   ret i32 %t5
 }
-define i32 @main() {
+define i32 @"example.com/fieldaccess.will$main"() {
 entry:
   %v.q = alloca %"struct.example.com/fieldaccess.Point"
   %v.agg.25 = alloca %"struct.example.com/fieldaccess.Point"
@@ -35,4 +35,13 @@ entry:
   %t20 = load i32, ptr %t19
   %t21 = add i32 %t18, %t20
   ret i32 %t21
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/fieldaccess.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
 }

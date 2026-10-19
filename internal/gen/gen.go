@@ -43,15 +43,17 @@ func EmitModule(docs []*willc.Doc, entry string) ([]byte, error) {
 	// and the generated wrapper calls it.
 	g.findEntry(entry)
 	g.collectSignatures()
+	g.collectGlobals()
 	for _, d := range g.docs {
 		g.use(d)
 		if err := g.emitDoc(); err != nil {
 			return nil, err
 		}
 	}
-	if g.wrappedEntry != "" {
-		fmt.Fprintf(g.out, "define i32 @main() {\nentry:\n  call void @%s()\n  ret i32 0\n}\n",
-			llvmSymbol(g.wrappedEntry))
+	if g.entryFound {
+		if err := g.emitWrapper(); err != nil {
+			return nil, err
+		}
 	}
 	return []byte(g.out.String()), nil
 }
@@ -65,6 +67,10 @@ type docState struct {
 	links map[int]string
 	// methods maps <type>.<method> to the symbol the method is emitted under.
 	methods map[string]string
+	// moduleID is the module record of this document, and globals maps each
+	// top-level variable to its symbol and lowered type.
+	moduleID int
+	globals  map[int]*globalInfo
 }
 
 func newDocState(doc *willc.Doc) *docState {
@@ -78,6 +84,7 @@ func newDocState(doc *willc.Doc) *docState {
 		d.recs[r.ID] = r
 		if r.Kind == "module" {
 			d.path = fieldText(r, "path")
+			d.moduleID = r.ID
 		}
 	}
 	return d
@@ -99,8 +106,14 @@ func (g *generator) findEntry(entry string) {
 			}
 			g.entryName = entry
 			g.entryPkg = d.path
-			if fieldText(r, "type") == "" {
-				g.wrappedEntry = qualify(d.path, "will$"+entry)
+			g.entrySymbol = qualify(d.path, "will$"+entry)
+			g.entryResult = fieldText(r, "type")
+			g.entryID = r.ID
+			g.entryFound = true
+			for _, c := range d.recs {
+				if c.Kind == "param" && refField(c, "parent") == r.ID {
+					g.entryHasParam = true
+				}
 			}
 			return
 		}
@@ -233,17 +246,26 @@ type generator struct {
 
 	// pkg is the package path of the current document.
 	pkg string
-	// entryName, entryPkg, and wrappedEntry describe a void entry: it keeps a
-	// mangled symbol because the generated main calls it.
-	entryName    string
-	entryPkg     string
-	wrappedEntry string
+	// entrySymbol is the mangled symbol of the program entry; entryResult is
+	// its result type text, and entryFound reports that it was located.
+	entryName     string
+	entryPkg      string
+	entrySymbol   string
+	entryResult   string
+	entryFound    bool
+	entryID       int
+	entryHasParam bool
+	// globalSymbols indexes every top-level variable of the module by its
+	// qualified symbol, and inits lists the package init functions in order.
+	globalSymbols map[string]*globalInfo
+	inits         []string
 }
 
 // emitDoc lowers every function of the current document, in source order.
 func (g *generator) emitDoc() error {
 	g.collect()
 	g.buildStructs()
+	g.emitGlobals(g.cur)
 	var funcs []willc.Record
 	for _, r := range g.recs {
 		if r.Kind == "func" {
@@ -256,6 +278,32 @@ func (g *generator) emitDoc() error {
 			return err
 		}
 	}
+	return g.emitInit(g.cur)
+}
+
+// emitWrapper writes the C entry the runtime calls: it starts the runtime,
+// runs every package initializer in dependency order, calls the program entry,
+// and shuts the runtime down.
+func (g *generator) emitWrapper() error {
+	if g.entryHasParam {
+		return g.errf(g.entryID, "cannot translate node #%d: the entry takes no parameters", g.entryID)
+	}
+	if g.entryResult != "" && g.entryResult != "i32" {
+		return g.errf(g.entryID, "cannot translate node #%d: the entry result %s is not lowered yet", g.entryID, g.entryResult)
+	}
+	g.out.WriteString("declare void @willrt_init()\n")
+	g.out.WriteString("declare void @willrt_shutdown()\n")
+	g.out.WriteString("define i32 @main() {\nentry:\n  call void @willrt_init()\n")
+	for _, init := range g.inits {
+		fmt.Fprintf(g.out, "  call void @%s()\n", llvmSymbol(init))
+	}
+	if g.entryResult == "" {
+		fmt.Fprintf(g.out, "  call void @%s()\n", llvmSymbol(g.entrySymbol))
+		g.out.WriteString("  call void @willrt_shutdown()\n  ret i32 0\n}\n")
+		return nil
+	}
+	fmt.Fprintf(g.out, "  %%r = call i32 @%s()\n", llvmSymbol(g.entrySymbol))
+	g.out.WriteString("  call void @willrt_shutdown()\n  ret i32 %r\n}\n")
 	return nil
 }
 
@@ -299,13 +347,8 @@ func receiverType(r *willc.Record) string {
 // A void entry uses its mangled symbol because the generated main calls it; a
 // value-returning main keeps the C symbol, since the runtime calls it.
 func (g *generator) symbolName(name string) string {
-	if g.entryName != "" && g.entryPkg == g.pkg && g.entryName == name {
-		if g.wrappedEntry != "" {
-			return g.wrappedEntry
-		}
-		if name == "main" {
-			return name
-		}
+	if g.entryFound && g.entryPkg == g.pkg && g.entryName == name {
+		return g.entrySymbol
 	}
 	return qualify(g.pkg, name)
 }
@@ -1026,6 +1069,15 @@ func (g *generator) value(id int) (string, error) {
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
+		if c, ok := g.recs[decl]; ok && c.Kind == "const" {
+			if v, ok := g.constValueOf(decl); ok {
+				return v, nil
+			}
+			return "", g.errf(id, "cannot translate node #%d: the constant %s is not a literal yet", id, name)
+		}
+		if info := g.globalRef(r); info != nil {
+			return g.load(info.typ, "@"+llvmSymbol(info.sym)), nil
+		}
 		if ptrs, ok := g.loopPtrs[decl]; ok {
 			if ptr, ok := ptrs[name]; ok {
 				text, ok := g.loopBindType(decl, name)

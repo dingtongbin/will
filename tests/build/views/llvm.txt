@@ -95,7 +95,16 @@ entry:
   %t41 = add i32 %t35, %t40
   ret i32 %t41
 }
-define i32 @main() {
+define i32 @"example.com/views.will$main"() {
 entry:
   ret i32 0
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/views.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
 }

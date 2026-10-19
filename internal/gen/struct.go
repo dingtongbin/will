@@ -191,6 +191,9 @@ func (g *generator) typeOf(id int) (string, error) {
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
+		if info := g.globalRef(r); info != nil {
+			return info.typ, nil
+		}
 		if text, ok := g.loopBindType(decl, name); ok {
 			typ, ok := llvmTypeText(text)
 			if !ok {
@@ -274,7 +277,13 @@ func (g *generator) willTypeText(id int) (string, error) {
 	case "name":
 		decl, ok := g.recs[refField(r, "to")]
 		if !ok {
+			if info := g.globalRef(r); info != nil {
+				return info.text, nil
+			}
 			return "", g.errf(id, "cannot translate node #%d: no such declaration", id)
+		}
+		if info := g.globalRef(r); info != nil {
+			return info.text, nil
 		}
 		if text, ok := g.loopBindType(decl.ID, fieldText(r, "text")); ok {
 			return text, nil
@@ -428,6 +437,12 @@ func (g *generator) place(id int) (string, string, error) {
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
+		if info := g.globalRef(r); info != nil {
+			if c, ok := g.recs[decl]; ok && c.Kind == "const" {
+				return "", "", g.errf(id, "cannot translate node #%d: a constant is not a place", id)
+			}
+			return "@" + llvmSymbol(info.sym), info.typ, nil
+		}
 		if ptrs, ok := g.loopPtrs[decl]; ok {
 			if ptr, ok := ptrs[name]; ok {
 				text, ok := g.loopBindType(decl, name)

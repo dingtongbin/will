@@ -13,13 +13,20 @@ import (
 
 func emitWillc(t *testing.T, src string) *willc.Doc {
 	t.Helper()
+	return emitWillcAs(t, src, "example.com/app")
+}
+
+// emitWillcAs emits one source file under a chosen module path, so a test can
+// build a module of more than one document.
+func emitWillcAs(t *testing.T, src, module string) *willc.Doc {
+	t.Helper()
 	f, ds := parser.Parse("test.will", []byte(src))
 	if len(ds) != 0 {
 		t.Fatalf("parse: %d diagnostics", len(ds))
 	}
 	res, _ := resolve.Resolve(f)
 	checked, _ := types.CheckFull(f, res)
-	data, err := willc.Emit(f, res, "example.com/app", nil, checked.LiteralTypes, nil)
+	data, err := willc.Emit(f, res, module, nil, checked.LiteralTypes, nil)
 	if err != nil {
 		t.Fatalf("emit willc: %v", err)
 	}
@@ -787,6 +794,55 @@ func TestEmitMethodCallPassesTheReceiver(t *testing.T) {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
+	}
+}
+
+func TestEmitTopLevelInitialization(t *testing.T) {
+	doc := emitWillc(t, "var counter: i32 = 40\n\nconst step: i32 = 2\n\n"+
+		"func Bump() -> i32 {\n    counter += step\n    return counter\n}\n\n"+
+		"func main() -> i32 {\n    return Bump()\n}\n")
+	ir, err := EmitWithEntry(doc, "main")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`@"example.com/app.counter" = internal global i32 zeroinitializer`,
+		`define void @"example.com/app.will$init"() {`,
+		`store i32 40, ptr @"example.com/app.counter"`,
+		"add i32",
+		`call void @"example.com/app.will$init"()`,
+		`call i32 @"example.com/app.will$main"()`,
+		"call void @willrt_shutdown()",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "app.step") {
+		t.Errorf("a constant got storage:\n%s", text)
+	}
+	if strings.Contains(text, "define i32 @example.com/app.will$main") {
+		t.Errorf("the entry was not mangled:\n%s", text)
+	}
+}
+
+func TestEmitPackageInitOrder(t *testing.T) {
+	lib := emitWillcAs(t, "var seed: i32 = 5\n\nfunc Unused() -> i32 {\n    return seed\n}\n", "example.com/lib")
+	app := emitWillcAs(t, "var start: i32 = 10\n\nfunc main() -> i32 {\n    return start\n}\n", "example.com/app")
+	ir, err := EmitModule([]*willc.Doc{lib, app}, "main")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	libInit := strings.Index(text, `call void @"example.com/lib.will$init"()`)
+	appInit := strings.Index(text, `call void @"example.com/app.will$init"()`)
+	entry := strings.Index(text, `call i32 @"example.com/app.will$main"()`)
+	if libInit < 0 || appInit < 0 || entry < 0 {
+		t.Fatalf("an init or the entry is missing:\n%s", text)
+	}
+	if !(libInit < appInit && appInit < entry) {
+		t.Fatalf("init order is %d, %d, entry %d:\n%s", libInit, appInit, entry, text)
 	}
 }
 

@@ -12,8 +12,17 @@ if.end.1:
   %t3 = load i32, ptr %v.m
   ret i32 %t3
 }
-define i32 @main() {
+define i32 @"example.com/locals.will$main"() {
 entry:
   %t4 = call i32 @"example.com/locals.Max"(i32 3, i32 7)
   ret i32 %t4
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/locals.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
 }

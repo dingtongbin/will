@@ -15,8 +15,17 @@ if.end.2:
 if.end.1:
   ret i32 0
 }
-define i32 @main() {
+define i32 @"example.com/control.will$main"() {
 entry:
   %t4 = call i32 @"example.com/control.Sign"(i32 7)
   ret i32 %t4
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/control.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
 }
