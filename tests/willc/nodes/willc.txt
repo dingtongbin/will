@@ -21,7 +21,7 @@
 #21 return parent=#20 pos="nodes.will:15:5" value=#22
 #22 call parent=#21 pos="nodes.will:15:12" to=#23 arg=#24
 #23 name parent=#22 pos="nodes.will:15:12" text="Ok"
-#24 lit parent=#22 pos="nodes.will:15:15" kind=unit text="()"
+#24 lit parent=#22 pos="nodes.will:15:15" kind=unit text="()" type="()"
 #25 func parent=#1 pos="nodes.will:18:1" text="Use" type="i64"
 #26 param parent=#25 pos="nodes.will:18:10" text="b" type="Box"
 #27 type parent=#26 pos="nodes.will:18:13" text="Box" kind=named to=#2
@@ -48,7 +48,7 @@
 #48 type parent=#47 pos="nodes.will:23:13" text="chan<i64>" kind=chan arg=#49
 #49 type parent=#48 pos="nodes.will:23:18" text="i64" kind=scalar
 #50 channew parent=#47 pos="nodes.will:23:25" type="chan<i64>" cap=#51 prio="High"
-#51 lit parent=#50 pos="nodes.will:23:39" kind=int text="4"
+#51 lit parent=#50 pos="nodes.will:23:39" kind=int text="4" type="i32"
 #52 var parent=#31 pos="nodes.will:24:5" text="kind" type="i64"
 #53 type parent=#52 pos="nodes.will:24:15" text="i64" kind=scalar
 #54 match parent=#52 pos="nodes.will:24:21" subject=#55

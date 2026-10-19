@@ -80,7 +80,8 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 	}
 	res, rds := resolve.ResolveIn(f, names, imps)
 	bag.AddAll(rds)
-	bag.AddAll(types.CheckWith(f, res, others))
+	checked, tds := types.CheckWithFull(f, res, others)
+	bag.AddAll(tds)
 	if !bag.HasErrors() {
 		bag.AddAll(check.Moves(f))
 	}
@@ -90,7 +91,7 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 		io.WriteString(stdout, diag.FormatAll(all))
 		return 1
 	}
-	text, err := willc.Emit(f, res, modulePath, all)
+	text, err := willc.Emit(f, res, modulePath, all, checked.LiteralTypes)
 	if err != nil {
 		reportTranslate(stdout, err)
 		return 1

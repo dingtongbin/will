@@ -497,6 +497,7 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 }
 
 func (c *checker) literalType(lit *ast.LiteralExpr, want *Type) *Type {
+	var t *Type
 	switch lit.Kind {
 	case token.Int:
 		value, suffix, ok := parseIntLiteral(lit.Text)
@@ -504,38 +505,56 @@ func (c *checker) literalType(lit *ast.LiteralExpr, want *Type) *Type {
 			if ok {
 				c.checkIntConstant(lit.Pos(), value, lit.Text, suffix)
 			}
-			return c.in.scalar(suffix)
+			t = c.in.scalar(suffix)
+			break
 		}
 		if want != nil && want.IsInteger() {
 			if ok {
 				c.checkIntConstant(lit.Pos(), value, lit.Text, want.Name())
 			}
-			return want
+			t = want
+			break
 		}
 		if ok {
 			c.checkIntConstant(lit.Pos(), value, lit.Text, "i32")
 		}
-		return c.in.scalar("i32")
+		t = c.in.scalar("i32")
 	case token.Float:
 		if len(lit.Text) >= 3 && lit.Text[len(lit.Text)-3:] == "f32" {
-			return c.in.scalar("f32")
+			t = c.in.scalar("f32")
+			break
 		}
 		if want != nil && (want.Name() == "f32" || want.Name() == "f64") {
-			return want
+			t = want
+			break
 		}
-		return c.in.scalar("f64")
+		t = c.in.scalar("f64")
 	case token.Duration:
-		return c.env.types["Duration"]
+		t = c.env.types["Duration"]
 	case token.Char:
-		return c.in.scalar("u32")
+		t = c.in.scalar("u32")
 	case token.String:
-		return c.in.scalar("str")
+		t = c.in.scalar("str")
 	case token.Bytes:
-		return c.in.view(c.in.scalar("u8"))
+		t = c.in.view(c.in.scalar("u8"))
 	case token.KwTrue, token.KwFalse:
-		return c.in.scalar("bool")
+		t = c.in.scalar("bool")
 	}
-	return nil
+	c.recordLiteral(lit, t)
+	return t
+}
+
+// recordLiteral remembers the type a literal resolved to. The intermediate
+// format records it as the literal's type, and the backend reads it from
+// there instead of inferring a width.
+func (c *checker) recordLiteral(lit *ast.LiteralExpr, t *Type) {
+	if t == nil {
+		return
+	}
+	if c.litTypes == nil {
+		c.litTypes = map[*ast.LiteralExpr]string{}
+	}
+	c.litTypes[lit] = t.String()
 }
 
 func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/will-lang/will/internal/parser"
 	"github.com/will-lang/will/internal/resolve"
+	"github.com/will-lang/will/internal/types"
 	"github.com/will-lang/will/internal/willc"
 )
 
@@ -17,7 +18,8 @@ func emitWillc(t *testing.T, src string) *willc.Doc {
 		t.Fatalf("parse: %d diagnostics", len(ds))
 	}
 	res, _ := resolve.Resolve(f)
-	data, err := willc.Emit(f, res, "example.com/app", nil)
+	checked, _ := types.CheckFull(f, res)
+	data, err := willc.Emit(f, res, "example.com/app", nil, checked.LiteralTypes)
 	if err != nil {
 		t.Fatalf("emit willc: %v", err)
 	}
@@ -163,7 +165,7 @@ func emitWillcIn(t *testing.T, file, src, module string, tables map[string][]str
 		imports[path] = exp
 	}
 	res, _ := resolve.ResolveWith(f, imports)
-	data, err := willc.Emit(f, res, module, nil)
+	data, err := willc.Emit(f, res, module, nil, nil)
 	if err != nil {
 		t.Fatalf("emit willc: %v", err)
 	}
@@ -539,4 +541,97 @@ func TestEmitUnloweredFieldIsReported(t *testing.T) {
 	if _, err := Emit(doc); err == nil {
 		t.Fatal("a parameter whose struct field is not lowered was translated")
 	}
+}
+
+func TestEmitI64Function(t *testing.T) {
+	doc := emitWillc(t, "func Add(a: i64, b: i64) -> i64 {\n    return a + b\n}\n")
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define i64 @"example.com/app.Add"(i64 %a, i64 %b) {`,
+		"add i64 %a, %b",
+		"ret i64",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitUnsignedUsesUnsignedPredicates(t *testing.T) {
+	doc := emitWillc(t, "func Below(a: usize, b: usize) -> bool {\n    return a < b\n}\n")
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	if !strings.Contains(string(ir), "icmp ult i64 %a, %b") {
+		t.Fatalf("a usize comparison is not unsigned:\n%s", ir)
+	}
+}
+
+func TestEmitSignedUsesSignedPredicates(t *testing.T) {
+	doc := emitWillc(t, "func Below(a: isize, b: isize) -> bool {\n    return a < b\n}\n")
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	if !strings.Contains(string(ir), "icmp slt i64 %a, %b") {
+		t.Fatalf("an isize comparison is not signed:\n%s", ir)
+	}
+}
+
+func TestEmitShiftFollowsSign(t *testing.T) {
+	src := "func Half(n: u64) -> u64 {\n    return n >> 1\n}\n\n" +
+		"func HalfSigned(n: i64) -> i64 {\n    return n >> 1\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	if !strings.Contains(text, "lshr i64 %n, 1") {
+		t.Errorf("an unsigned shift is not logical:\n%s", text)
+	}
+	if !strings.Contains(text, "ashr i64 %n, 1") {
+		t.Errorf("a signed shift is not arithmetic:\n%s", text)
+	}
+}
+
+func TestEmitFloatArithmetic(t *testing.T) {
+	doc := emitWillc(t, "func Mid(a: f64, b: f64) -> f64 {\n    return (a + b) / 2.0\n}\n")
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{"fadd double %a, %b", "fdiv double", "ret double"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitLiteralCarriesItsContextType(t *testing.T) {
+	// 42 in an i64 position must be recorded as an i64 literal, and the
+	// backend must use that type instead of assuming i32.
+	doc := emitWillc(t, "func Wide() -> i64 {\n    var n: i64 = 42\n    return n\n}\n")
+	if !strings.Contains(willcText(t, doc), `kind=int text="42" type="i64"`) {
+		t.Fatalf("the literal type is not recorded:\n%s", willcText(t, doc))
+	}
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	if !strings.Contains(string(ir), "store i64 42") {
+		t.Fatalf("the literal was not stored as i64:\n%s", ir)
+	}
+}
+
+// willcText renders a document for a test message.
+func willcText(t *testing.T, doc *willc.Doc) string {
+	t.Helper()
+	return string(willc.Write(doc))
 }

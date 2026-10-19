@@ -15,7 +15,7 @@
 #15 name text="Step"
 #16 bin op="+" l=#17 r=#18
 #17 name text="p"
-#18 lit kind="int" text="1"
+#18 lit kind="int" text="1" type="i32"
 #19 struct text="Point"
 #20 field text="x" type="i32"
 #21 type text="i32" kind="scalar"
@@ -34,7 +34,7 @@
 #34 block
 #35 block
 #36 name text="n"
-#37 lit kind="int" text="0"
+#37 lit kind="int" text="0" type="i32"
 #38 match subject=#36
 #39 arm pattern=#40 body=#41 guard=#42
 #40 pattern text="0" kind="literal"

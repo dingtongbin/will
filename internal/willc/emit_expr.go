@@ -122,6 +122,7 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 		rec := e.add("lit", v)
 		e.word(rec, "kind", "unit")
 		e.text(rec, "text", "()")
+		e.text(rec, "type", "()")
 		return rec
 	}
 	return 0
@@ -144,7 +145,36 @@ func (e *emitter) emitLiteral(v *ast.LiteralExpr) int {
 	rec := e.add("lit", v)
 	e.word(rec, "kind", litKind(v.Kind))
 	e.text(rec, "text", literalText(v))
+	e.text(rec, "type", e.literalTypeText(v))
 	return rec
+}
+
+// literalTypeText is the resolved type of a literal. The checker records it
+// once the context is known, so the backend never infers a width; without a
+// recorded type the default of the kind applies. A character literal is a
+// byte in the record even though the checker sees a u32 scalar.
+func (e *emitter) literalTypeText(v *ast.LiteralExpr) string {
+	if v.Kind == token.Char {
+		return "u8"
+	}
+	if t := e.litTypes[v]; t != "" {
+		return t
+	}
+	switch v.Kind {
+	case token.Int:
+		return "i32"
+	case token.Float:
+		return "f64"
+	case token.String:
+		return "str"
+	case token.Bytes:
+		return "[]u8"
+	case token.Duration:
+		return "Duration"
+	case token.KwTrue, token.KwFalse:
+		return "bool"
+	}
+	return ""
 }
 
 func litKind(k token.Kind) string {

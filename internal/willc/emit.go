@@ -14,11 +14,12 @@ import (
 //
 // The emitter assigns ids in the same preorder it writes, so a reference to a
 // node that has not been written yet is patched after the walk.
-func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diagnostic) ([]byte, error) {
+func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diagnostic, litTypes map[*ast.LiteralExpr]string) ([]byte, error) {
 	e := &emitter{
 		ids:        map[ast.Node]int{},
 		refs:       res.Refs,
 		modulePath: modulePath,
+		litTypes:   litTypes,
 	}
 	root := e.add("module", f)
 	e.text(root, "path", modulePath)
@@ -45,6 +46,9 @@ type emitter struct {
 	parents    []int
 	pending    []pendingRef
 	modulePath string
+	// litTypes is the resolved type text of every literal, by node. A literal
+	// whose type the checker did not record takes the default of its kind.
+	litTypes map[*ast.LiteralExpr]string
 	// scopes stacks the heap-owning locals declared so far in each open block;
 	// loops records the scope depth of every enclosing loop body.
 	scopes [][]ast.Node

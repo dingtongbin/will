@@ -42,6 +42,7 @@ func EmitModule(docs []*willc.Doc, entry string) ([]byte, error) {
 	// A void entry cannot be the C main itself, so it keeps a mangled symbol
 	// and the generated wrapper calls it.
 	g.findEntry(entry)
+	g.collectSignatures()
 	for _, d := range g.docs {
 		g.use(d)
 		if err := g.emitDoc(); err != nil {
@@ -103,6 +104,29 @@ func (g *generator) findEntry(entry string) {
 	}
 }
 
+// collectSignatures records the result type text of every function of the
+// module, by symbol, so a call that names its callee by symbol knows the type
+// it gets back.
+func (g *generator) collectSignatures() {
+	g.sigs = map[string]string{}
+	for _, d := range g.docs {
+		for _, r := range d.recs {
+			if r.Kind != "func" {
+				continue
+			}
+			name := fieldText(r, "text")
+			sym := qualify(d.path, name)
+			for _, c := range d.recs {
+				if c.Kind == "receiver" && refField(c, "parent") == r.ID {
+					sym = qualify(d.path, receiverType(&c)+"."+name)
+					break
+				}
+			}
+			g.sigs[sym] = fieldText(r, "type")
+		}
+	}
+}
+
 // use makes one document current. The record ids, callable names, temporaries,
 // and parameter scopes are per document; declarations are module-wide.
 func (g *generator) use(d *docState) {
@@ -116,6 +140,7 @@ func (g *generator) use(d *docState) {
 	g.borrows = map[int]bool{}
 	g.structs = map[int]*structInfo{}
 	g.byType = map[string]*structInfo{}
+	g.byName = map[string]*structInfo{}
 	g.aggSlots = map[int]string{}
 }
 
@@ -144,10 +169,17 @@ type generator struct {
 	// literal to the temporary slot reserved for it in the entry block.
 	structs  map[int]*structInfo
 	byType   map[string]*structInfo
+	byName   map[string]*structInfo
 	aggSlots map[int]string
 	// loops stacks the labels of the enclosing loops, so break and continue
 	// know where to jump.
 	loops []loopLabels
+	// resultType is the LLVM type the current function returns, or "" for a
+	// void function.
+	resultType string
+	// sigs holds the result type text of every function of the module, by
+	// symbol, so a call to another package knows what it gets back.
+	sigs map[string]string
 
 	// pkg is the package path of the current document.
 	pkg string
@@ -255,17 +287,10 @@ func llvmSymbol(name string) string {
 	return name
 }
 
-// isScalarName reports whether a type text names a scalar. A scalar parameter
-// is passed by value; everything else is passed as a borrow.
+// isScalarName reports whether a type text names a lowered scalar.
 func isScalarName(name string) bool {
-	switch name {
-	case "bool", "str", "raw",
-		"i8", "i16", "i32", "i64", "isize",
-		"u8", "u16", "u32", "u64", "usize",
-		"f32", "f64":
-		return true
-	}
-	return false
+	_, _, ok := llvmScalar(name)
+	return ok
 }
 
 func (g *generator) errf(id int, format string, args ...any) error {
@@ -301,39 +326,40 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	for _, p := range params {
 		pname := fieldText(p, "text")
 		ptype := fieldText(p, "type")
-		switch ptype {
-		case "i32":
+		if typ, _, ok := llvmScalar(ptype); ok {
 			g.scope[p.ID] = "%" + pname
-			sig = append(sig, "i32 %"+pname)
-		default:
-			if isScalarName(ptype) {
-				// A small scalar is passed by value, but only i32 is lowered.
-				return g.errf(p.ID, "cannot translate node #%d: only i32 parameters are lowered yet", p.ID)
-			}
-			typ, err := g.declLLVMType(p.ID)
-			if err != nil {
-				return err
-			}
-			if !isStructType(typ) {
-				return g.errf(p.ID, "cannot translate node #%d: parameter type %s is not lowered yet", p.ID, ptype)
-			}
-			// Everything else is passed as a borrow.
-			g.scope[p.ID] = "%" + pname
-			g.borrows[p.ID] = true
-			sig = append(sig, "ptr %"+pname)
+			sig = append(sig, typ+" %"+pname)
+			continue
 		}
+		typ, err := g.declLLVMType(p.ID)
+		if err != nil {
+			return err
+		}
+		if !isStructType(typ) {
+			return g.errf(p.ID, "cannot translate node #%d: parameter type %s is not lowered yet", p.ID, ptype)
+		}
+		// Everything else is passed as a borrow.
+		g.scope[p.ID] = "%" + pname
+		g.borrows[p.ID] = true
+		sig = append(sig, "ptr %"+pname)
 	}
 	if result == "" {
 		return g.voidFunc(fn, name, sig)
 	}
-	if result != "i32" {
-		return g.errf(fn.ID, "cannot translate node #%d: only i32 results are lowered yet", fn.ID)
+	resLLVM, _, ok := llvmScalar(result)
+	if !ok {
+		if g.typeRef(fn.ID) != 0 {
+			return g.errf(fn.ID, "cannot translate node #%d: a struct result is not lowered yet", fn.ID)
+		}
+		return g.errf(fn.ID, "cannot translate node #%d: result type %s is not lowered yet", fn.ID, result)
 	}
+	g.resultType = resLLVM
 	g.labels = 0
 	g.slots = map[int]string{}
+	g.slotTypes = map[int]string{}
 	g.slotNames = map[string]int{}
 	g.loops = nil
-	fmt.Fprintf(g.out, "define i32 @%s(%s) {\n", llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
+	fmt.Fprintf(g.out, "define %s @%s(%s) {\n", resLLVM, llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
 	body, err := g.blockOf(fn.ID)
 	if err != nil {
@@ -355,6 +381,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 
 // voidFunc lowers a function that returns no value.
 func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
+	g.resultType = ""
 	g.labels = 0
 	g.slots = map[int]string{}
 	g.slotNames = map[string]int{}
@@ -516,10 +543,11 @@ func (g *generator) assignStmt(r willc.Record) error {
 	valueID := refField(r, "value")
 	op := fieldText(r, "op")
 	if op != "=" {
-		if typ != "i32" {
-			return g.errf(r.ID, "cannot translate node #%d: only i32 assignment is lowered yet", r.ID)
+		text, err := g.willTypeText(target)
+		if err != nil {
+			return err
 		}
-		instr := assignOp(op)
+		instr := arithInstr(strings.TrimSuffix(op, "="), typ, !isUnsigned(text))
 		if instr == "" {
 			return g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, op)
 		}
@@ -530,8 +558,8 @@ func (g *generator) assignStmt(r willc.Record) error {
 		}
 		g.tmp++
 		tmp := "%t" + strconv.Itoa(g.tmp)
-		fmt.Fprintf(g.out, "  %s = %s i32 %s, %s\n", tmp, instr, current, value)
-		fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", tmp, ptr)
+		fmt.Fprintf(g.out, "  %s = %s %s %s, %s\n", tmp, instr, typ, current, value)
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, tmp, ptr)
 		return nil
 	}
 	if isStructType(typ) {
@@ -551,33 +579,6 @@ func (g *generator) assignStmt(r willc.Record) error {
 	}
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
 	return nil
-}
-
-// assignOp maps a compound assignment to its instruction.
-func assignOp(op string) string {
-	switch op {
-	case "+=":
-		return "add"
-	case "-=":
-		return "sub"
-	case "*=":
-		return "mul"
-	case "/=":
-		return "sdiv"
-	case "%=":
-		return "srem"
-	case "&=":
-		return "and"
-	case "|=":
-		return "or"
-	case "^=":
-		return "xor"
-	case "<<=":
-		return "shl"
-	case ">>=":
-		return "ashr"
-	}
-	return ""
 }
 
 // declStmt stores the initial value of a local into its slot.
@@ -660,7 +661,10 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	fmt.Fprintf(g.out, "  ret i32 %s\n", value)
+	if g.resultType == "" {
+		return false, g.errf(st.ID, "cannot translate node #%d: the function returns no value", st.ID)
+	}
+	fmt.Fprintf(g.out, "  ret %s %s\n", g.resultType, value)
 	return true, nil
 }
 
@@ -732,6 +736,13 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 	hi, err := g.value(refField(iter, "hi"))
 	if err != nil {
 		return false, err
+	}
+	for _, id := range []int{refField(iter, "lo"), refField(iter, "hi")} {
+		if t, err := g.typeOf(id); err != nil {
+			return false, err
+		} else if t != "i32" {
+			return false, g.errf(r.ID, "cannot translate node #%d: only an i32 range is lowered yet", r.ID)
+		}
 	}
 	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", lo, slot)
 	condLabel := fmt.Sprintf("for.cond.%d", n)
@@ -839,9 +850,11 @@ func (g *generator) value(id int) (string, error) {
 	}
 	switch r.Kind {
 	case "lit":
-		switch fieldText(r, "kind") {
+		switch kind := fieldText(r, "kind"); kind {
 		case "int":
-			return fieldText(r, "text"), nil
+			return literalIntText(fieldText(r, "text")), nil
+		case "float":
+			return literalFloatText(fieldText(r, "text")), nil
 		case "bool":
 			return fieldText(r, "text"), nil
 		}
@@ -891,13 +904,24 @@ func (g *generator) unary(r willc.Record) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	typ, err := g.typeOf(refField(r, "expr"))
+	if err != nil {
+		return "", err
+	}
 	g.tmp++
 	name := "%t" + strconv.Itoa(g.tmp)
 	switch op := fieldText(r, "op"); op {
 	case "-":
-		fmt.Fprintf(g.out, "  %s = sub i32 0, %s\n", name, x)
+		if isFloatType(typ) {
+			fmt.Fprintf(g.out, "  %s = fneg %s %s\n", name, typ, x)
+			break
+		}
+		fmt.Fprintf(g.out, "  %s = sub %s 0, %s\n", name, typ, x)
 	case "~":
-		fmt.Fprintf(g.out, "  %s = xor i32 %s, -1\n", name, x)
+		if isFloatType(typ) {
+			return "", g.errf(r.ID, "cannot translate node #%d: ~ needs an integer", r.ID)
+		}
+		fmt.Fprintf(g.out, "  %s = xor %s %s, -1\n", name, typ, x)
 	case "!":
 		fmt.Fprintf(g.out, "  %s = xor i1 %s, true\n", name, x)
 	default:
@@ -906,68 +930,58 @@ func (g *generator) unary(r willc.Record) (string, error) {
 	return name, nil
 }
 
-// binary lowers one binary operator. Comparisons give i1 and are signed, which
-// is the meaning of < on the integer types will lowers today.
+// binary lowers one binary operator. The instruction and, for comparisons, the
+// predicate follow the type of the operands: an unsigned type uses the unsigned
+// form even though LLVM stores both in one integer type.
 func (g *generator) binary(r willc.Record) (string, error) {
 	op := fieldText(r, "op")
-	l, err := g.value(refField(r, "l"))
+	lID := refField(r, "l")
+	rID := refField(r, "r")
+	l, err := g.value(lID)
 	if err != nil {
 		return "", err
 	}
-	right, err := g.value(refField(r, "r"))
+	right, err := g.value(rID)
 	if err != nil {
 		return "", err
 	}
-	var instr, typ, suffix string
+	typ, err := g.typeOf(lID)
+	if err != nil {
+		return "", err
+	}
+	other, err := g.typeOf(rID)
+	if err != nil {
+		return "", err
+	}
+	if typ != other {
+		return "", g.errf(r.ID, "cannot translate node #%d: operands of %s have types %s and %s", r.ID, op, typ, other)
+	}
+	text, err := g.willTypeText(lID)
+	if err != nil {
+		return "", err
+	}
+	signed := !isUnsigned(text)
+	g.tmp++
+	name := "%t" + strconv.Itoa(g.tmp)
 	switch op {
-	case "+", "-", "*":
-		instr, typ = llvmArith(op), "i32"
 	case "&&", "||":
-		instr, typ = "and", "i1"
+		instr := "and"
 		if op == "||" {
 			instr = "or"
 		}
+		fmt.Fprintf(g.out, "  %s = %s i1 %s, %s\n", name, instr, l, right)
+		return name, nil
 	case "==", "!=", "<", "<=", ">", ">=":
-		instr, typ, suffix = "icmp", "i1", cmpPredicate(op)
-	default:
+		instr, predicate := compareInstr(typ, signed, op)
+		fmt.Fprintf(g.out, "  %s = %s %s %s %s, %s\n", name, instr, predicate, typ, l, right)
+		return name, nil
+	}
+	instr := arithInstr(op, typ, signed)
+	if instr == "" {
 		return "", g.errf(r.ID, "cannot translate node #%d: operator %s is not lowered yet", r.ID, op)
 	}
-	g.tmp++
-	name := "%t" + strconv.Itoa(g.tmp)
-	if suffix != "" {
-		fmt.Fprintf(g.out, "  %s = %s %s i32 %s, %s\n", name, instr, suffix, l, right)
-	} else {
-		fmt.Fprintf(g.out, "  %s = %s %s %s, %s\n", name, instr, typ, l, right)
-	}
+	fmt.Fprintf(g.out, "  %s = %s %s %s, %s\n", name, instr, typ, l, right)
 	return name, nil
-}
-
-// llvmArith maps the checked arithmetic operators.
-func llvmArith(op string) string {
-	switch op {
-	case "+":
-		return "add"
-	case "-":
-		return "sub"
-	}
-	return "mul"
-}
-
-// cmpPredicate maps a comparison to its signed integer predicate.
-func cmpPredicate(op string) string {
-	switch op {
-	case "==":
-		return "eq"
-	case "!=":
-		return "ne"
-	case "<":
-		return "slt"
-	case "<=":
-		return "sle"
-	case ">":
-		return "sgt"
-	}
-	return "sge"
 }
 
 // mcall lowers a method call. A call to a function of another package is
@@ -1018,9 +1032,9 @@ func (g *generator) call(r willc.Record) (string, error) {
 	return g.emitCall(r, name, link)
 }
 
-// emitCall writes one call. A scalar argument is passed by value; an
-// aggregate argument is passed as the borrow the callee's pointer parameter
-// takes.
+// emitCall writes one call. A scalar argument is passed by value with its own
+// type; an aggregate argument is passed as the borrow the callee's pointer
+// parameter takes.
 func (g *generator) emitCall(r willc.Record, name string, link bool) (string, error) {
 	args := g.callArgs(r)
 	parts := make([]string, 0, len(args))
@@ -1031,7 +1045,7 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, er
 		}
 		if isStructType(typ) {
 			if link {
-				return "", g.errf(a, "cannot translate node #%d: a C link takes only i32 arguments yet", a)
+				return "", g.errf(a, "cannot translate node #%d: a C link takes only scalar arguments yet", a)
 			}
 			ptr, ptrType, err := g.place(a)
 			if err != nil {
@@ -1043,21 +1057,41 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, er
 			parts = append(parts, "ptr "+ptr)
 			continue
 		}
-		if typ != "i32" {
-			return "", g.errf(a, "cannot translate node #%d: argument type %s is not lowered yet", a, typ)
+		if typ == "" {
+			return "", g.errf(a, "cannot translate node #%d: the argument has no scalar type", a)
 		}
 		v, err := g.value(a)
 		if err != nil {
 			return "", err
 		}
-		parts = append(parts, "i32 "+v)
+		parts = append(parts, typ+" "+v)
+	}
+	resultText, err := g.callResultText(r)
+	if err != nil {
+		return "", err
 	}
 	if link {
+		if resultText == "" {
+			// A C link's result type comes from its header, which is not read
+			// yet; these links have always been declared as i32.
+			resultText = "i32"
+		}
+		if resultText != "i32" {
+			return "", g.errf(r.ID, "cannot translate node #%d: a C link results in %s, which is not lowered yet", r.ID, resultText)
+		}
 		g.declare(name, len(parts))
+	}
+	if resultText == "" {
+		fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(name), strings.Join(parts, ", "))
+		return "", nil
+	}
+	result, _, ok := llvmScalar(resultText)
+	if !ok {
+		return "", g.errf(r.ID, "cannot translate node #%d: result type %s is not lowered yet", r.ID, resultText)
 	}
 	g.tmp++
 	tmp := "%t" + strconv.Itoa(g.tmp)
-	fmt.Fprintf(g.out, "  %s = call i32 @%s(%s)\n", tmp, llvmSymbol(name), strings.Join(parts, ", "))
+	fmt.Fprintf(g.out, "  %s = call %s @%s(%s)\n", tmp, result, llvmSymbol(name), strings.Join(parts, ", "))
 	return tmp, nil
 }
 

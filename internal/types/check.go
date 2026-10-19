@@ -18,6 +18,9 @@ type DispatchPoint struct {
 // Result carries what the checker learned beyond diagnostics.
 type Result struct {
 	Dispatch []DispatchPoint
+	// LiteralTypes is the resolved type text of every literal, by node. The
+	// intermediate format records it, so the backend never infers a width.
+	LiteralTypes map[*ast.LiteralExpr]string
 }
 
 // Check checks one resolved file and returns its diagnostics.
@@ -37,10 +40,23 @@ func CheckFull(f *ast.File, res *resolve.Result) (*Result, []diag.Diagnostic) {
 	return checkWithResult(f, res, nil)
 }
 
+// CheckWithFull checks one file with the rest of its package visible and also
+// returns what the checker recorded.
+func CheckWithFull(f *ast.File, res *resolve.Result, others []*ast.File) (*Result, []diag.Diagnostic) {
+	return checkWithResult(f, res, others)
+}
+
 // CheckPackage checks every file of one package. The declaration environment is
 // built from all of them, so a type, a method, or an interface declared in one
 // file is visible in the others.
 func CheckPackage(files []*ast.File, results []*resolve.Result) []diag.Diagnostic {
+	_, ds := CheckPackageFull(files, results)
+	return ds
+}
+
+// CheckPackageFull checks every file of one package and also returns the
+// checker's result: dispatch points and resolved literal types.
+func CheckPackageFull(files []*ast.File, results []*resolve.Result) (*Result, []diag.Diagnostic) {
 	c := &checker{in: newInterner()}
 	c.env = buildEnvAll(c, files)
 	for i, f := range files {
@@ -51,7 +67,12 @@ func CheckPackage(files []*ast.File, results []*resolve.Result) []diag.Diagnosti
 		c.walkFile(f)
 		c.inferFile(f)
 	}
-	return c.bag.Diagnostics()
+	return c.result(), c.bag.Diagnostics()
+}
+
+// result packages what the checker recorded.
+func (c *checker) result() *Result {
+	return &Result{Dispatch: c.dispatch, LiteralTypes: c.litTypes}
 }
 
 func checkWithResult(f *ast.File, res *resolve.Result, others []*ast.File) (*Result, []diag.Diagnostic) {
@@ -62,7 +83,7 @@ func checkWithResult(f *ast.File, res *resolve.Result, others []*ast.File) (*Res
 	c.env = buildEnvAll(c, files)
 	c.walkFile(f)
 	c.inferFile(f)
-	return &Result{Dispatch: c.dispatch}, c.bag.Diagnostics()
+	return c.result(), c.bag.Diagnostics()
 }
 
 type checker struct {
@@ -71,6 +92,8 @@ type checker struct {
 	in       *interner
 	env      *env
 	dispatch []DispatchPoint
+	// litTypes is the resolved type text of every literal, by node.
+	litTypes map[*ast.LiteralExpr]string
 }
 
 func (c *checker) walkFile(f *ast.File) {

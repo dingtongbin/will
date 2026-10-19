@@ -38,6 +38,9 @@ type frontEnd struct {
 	limit string
 	// ast is set when the input is one file outside any module.
 	ast *ast.File
+	// litTypes is the resolved type of every literal of that file, so willc can
+	// record it.
+	litTypes map[*ast.LiteralExpr]string
 }
 
 // runFrontEnd runs the same front end will check runs and prints the same
@@ -105,7 +108,8 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 	imports, modulePath, names, others := packageContext(opts.path)
 	res, rds := resolve.ResolveIn(f, names, imports)
 	bag.AddAll(rds)
-	bag.AddAll(types.CheckWith(f, res, others))
+	checked, tds := types.CheckWithFull(f, res, others)
+	bag.AddAll(tds)
 	if !bag.HasErrors() {
 		bag.AddAll(check.Moves(f))
 	}
@@ -121,7 +125,7 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
 		return frontEnd{}, 1
 	}
-	fe := frontEnd{file: opts.path, modulePath: modulePath, imports: imports, ast: f}
+	fe := frontEnd{file: opts.path, modulePath: modulePath, imports: imports, ast: f, litTypes: checked.LiteralTypes}
 	// Inside a module, lower the whole package the file belongs to, so a call
 	// to a sibling file resolves.
 	if b, p := modulePackage(opts.path); b != nil {
@@ -204,9 +208,8 @@ func modulePackage(file string) (*pkg.Build, *pkg.Package) {
 func (fe frontEnd) docs() ([]*willc.Doc, []string, error) {
 	var docs []*willc.Doc
 	var texts []string
-	emit := func(f *ast.File, path, pkgPath string, names resolve.Exported, imports resolve.Imports) error {
-		res, _ := resolve.ResolveIn(f, names, imports)
-		text, err := willc.Emit(f, res, pkgPath, nil)
+	emit := func(f *ast.File, path, pkgPath string, res *resolve.Result, lits map[*ast.LiteralExpr]string) error {
+		text, err := willc.Emit(f, res, pkgPath, nil, lits)
 		if err != nil {
 			return err
 		}
@@ -223,11 +226,30 @@ func (fe frontEnd) docs() ([]*willc.Doc, []string, error) {
 			if fe.limit != "" && p.Path != fe.limit {
 				continue
 			}
+			// The literal types come from one check of the whole package, so a
+			// literal inherits the type its context gives it.
+			var files []*ast.File
+			var results []*resolve.Result
+			var paths []string
 			for _, f := range p.Files {
 				if f.AST == nil {
 					continue
 				}
-				if err := emit(f.AST, f.Path, p.Path, p.Names, fe.imports); err != nil {
+				res, _ := resolve.ResolveIn(f.AST, p.Names, fe.imports)
+				files = append(files, f.AST)
+				results = append(results, res)
+				paths = append(paths, f.Path)
+			}
+			lits := map[*ast.LiteralExpr]string{}
+			if len(files) != 0 {
+				if checked, _ := types.CheckPackageFull(files, results); checked != nil {
+					if checked.LiteralTypes != nil {
+						lits = checked.LiteralTypes
+					}
+				}
+			}
+			for i := range files {
+				if err := emit(files[i], paths[i], p.Path, results[i], lits); err != nil {
 					return nil, nil, err
 				}
 			}
@@ -237,7 +259,8 @@ func (fe frontEnd) docs() ([]*willc.Doc, []string, error) {
 	if fe.ast == nil {
 		return nil, nil, &willc.Error{Message: "no source to lower"}
 	}
-	if err := emit(fe.ast, fe.file, fe.modulePath, nil, fe.imports); err != nil {
+	res, _ := resolve.ResolveIn(fe.ast, nil, fe.imports)
+	if err := emit(fe.ast, fe.file, fe.modulePath, res, fe.litTypes); err != nil {
 		return nil, nil, err
 	}
 	return docs, texts, nil

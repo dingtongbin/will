@@ -14,6 +14,7 @@ type structInfo struct {
 	name  string
 	llvm  string
 	names []string
+	texts []string
 	types []string
 	index map[string]int
 	ok    bool
@@ -69,6 +70,7 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 	info := &structInfo{id: id, name: name, llvm: g.structLLVM(name), index: map[string]int{}}
 	g.structs[id] = info
 	g.byType[info.llvm] = info
+	g.byName[info.name] = info
 
 	var fields []willc.Record
 	for _, c := range g.recs {
@@ -81,6 +83,7 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 	for i, f := range fields {
 		info.index[fieldText(f, "text")] = i
 		info.names = append(info.names, fieldText(f, "text"))
+		info.texts = append(info.texts, fieldText(f, "type"))
 		t := fieldText(f, "type")
 		if t == "i32" {
 			info.types = append(info.types, "i32")
@@ -132,18 +135,13 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 	if !ok {
 		return "", g.errf(decl, "cannot translate node #%d: no such declaration", decl)
 	}
-	switch r.Kind {
-	case "var", "const":
+	if r.Kind == "var" || r.Kind == "const" {
 		if t, ok := g.slotTypes[decl]; ok {
 			return t, nil
 		}
-	case "param", "receiver":
-		if t := fieldText(r, "type"); t == "i32" {
-			return "i32", nil
-		}
 	}
-	if t := fieldText(r, "type"); t == "i32" {
-		return "i32", nil
+	if typ, _, ok := llvmScalar(fieldText(r, "type")); ok {
+		return typ, nil
 	}
 	if id := g.typeRef(decl); id != 0 {
 		if info, ok := g.ensureStruct(id); ok {
@@ -164,13 +162,11 @@ func (g *generator) typeOf(id int) (string, error) {
 	}
 	switch r.Kind {
 	case "lit":
-		switch fieldText(r, "kind") {
-		case "int":
-			return "i32", nil
-		case "bool":
-			return "i1", nil
+		typ, _, ok := llvmScalar(fieldText(r, "type"))
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: literal type %s is not lowered yet", id, fieldText(r, "type"))
 		}
-		return "", g.errf(id, "cannot translate node #%d: literal kind %s is not lowered yet", id, fieldText(r, "kind"))
+		return typ, nil
 	case "name":
 		return g.declLLVMType(refField(r, "to"))
 	case "field":
@@ -205,9 +201,85 @@ func (g *generator) typeOf(id int) (string, error) {
 		}
 		return g.typeOf(refField(r, "expr"))
 	case "call", "mcall":
-		return "i32", nil
+		text, err := g.callResultText(r)
+		if err != nil {
+			return "", err
+		}
+		if text == "" {
+			return "", g.errf(id, "cannot translate node #%d: the call returns no value", id)
+		}
+		typ, _, ok := llvmScalar(text)
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: result type %s is not lowered yet", id, text)
+		}
+		return typ, nil
 	}
 	return "", g.errf(id, "cannot translate node #%d: node kind %s is not lowered yet", id, r.Kind)
+}
+
+// willTypeText returns the will type text of a scalar expression, which is what
+// picks the signed or unsigned instruction. A struct expression has no scalar
+// text.
+func (g *generator) willTypeText(id int) (string, error) {
+	r, ok := g.recs[id]
+	if !ok {
+		return "", g.errf(id, "cannot translate node #%d: no such node", id)
+	}
+	switch r.Kind {
+	case "lit":
+		return fieldText(r, "type"), nil
+	case "name":
+		decl, ok := g.recs[refField(r, "to")]
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: no such declaration", id)
+		}
+		return fieldText(decl, "type"), nil
+	case "field":
+		base, err := g.willTypeText(refField(r, "recv"))
+		if err != nil {
+			return "", err
+		}
+		info := g.byName[base]
+		if info == nil {
+			return "", g.errf(id, "cannot translate node #%d: %s has no fields", id, base)
+		}
+		i, ok := info.index[fieldText(r, "text")]
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: struct %s has no field %s", id, info.name, fieldText(r, "text"))
+		}
+		return info.texts[i], nil
+	case "agg":
+		return "", nil
+	case "bin":
+		switch fieldText(r, "op") {
+		case "&&", "||", "==", "!=", "<", "<=", ">", ">=":
+			return "bool", nil
+		}
+		return g.willTypeText(refField(r, "l"))
+	case "un":
+		if fieldText(r, "op") == "!" {
+			return "bool", nil
+		}
+		return g.willTypeText(refField(r, "expr"))
+	case "call", "mcall":
+		return g.callResultText(r)
+	}
+	return "", nil
+}
+
+// callResultText returns the result type text of one call. A call names its
+// callee by a document reference or by the module-wide symbol.
+func (g *generator) callResultText(r willc.Record) (string, error) {
+	if qualified := textField(r, "to"); qualified != "" {
+		if t, ok := g.sigs[qualified]; ok {
+			return t, nil
+		}
+		return "", g.errf(r.ID, "cannot translate node #%d: %s is not a function of this module", r.ID, qualified)
+	}
+	if fn, ok := g.recs[refField(r, "to")]; ok && fn.Kind == "func" {
+		return fieldText(fn, "type"), nil
+	}
+	return "", nil
 }
 
 // place emits the address of an expression and returns it with the LLVM type

@@ -18,7 +18,7 @@ func TestReadRejectsRangePattern(t *testing.T) {
 
 func TestReadRejectsUnknownLitKind(t *testing.T) {
 	doc := "#1 module path=\"m\"\n" +
-		"#2 lit parent=#1 pos=\"a.will:1:1\" kind=tuple text=\"()\"\n" +
+		"#2 lit parent=#1 pos=\"a.will:1:1\" kind=tuple text=\"()\" type=\"()\"\n" +
 		"#3 end\n"
 	if _, err := Read([]byte(doc)); err == nil {
 		t.Fatal("an unknown literal kind was accepted")
@@ -40,7 +40,7 @@ func TestReadAcceptsLaneHere(t *testing.T) {
 
 func TestReadAcceptsUnitLiteral(t *testing.T) {
 	data := []byte("#1 module path=\"m\"\n" +
-		"#2 lit parent=#1 pos=\"a.will:1:1\" kind=unit text=\"()\"\n" +
+		"#2 lit parent=#1 pos=\"a.will:1:1\" kind=unit text=\"()\" type=\"()\"\n" +
 		"#3 end\n")
 	if _, err := Read(data); err != nil {
 		t.Fatalf("read: %v", err)
