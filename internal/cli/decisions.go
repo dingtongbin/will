@@ -188,8 +188,7 @@ func sourceFiles(path string, stdout, stderr io.Writer) ([]*ast.File, int) {
 	if info.IsDir() {
 		b := pkg.Load(path)
 		if b.Err != nil {
-			fmt.Fprintf(stderr, "will: %v\n", b.Err)
-			return nil, 1
+			return nil, loadFailure(b.Err, stderr)
 		}
 		if hasError(b.Diags) {
 			io.WriteString(stdout, diag.FormatAll(b.Diags))

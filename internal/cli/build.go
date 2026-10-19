@@ -56,8 +56,7 @@ func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 	}
 	b := pkg.Load(opts.path)
 	if b.Err != nil {
-		fmt.Fprintf(stderr, "will: %v\n", b.Err)
-		return frontEnd{}, 1
+		return frontEnd{}, loadFailure(b.Err, stderr)
 	}
 	ds := b.CheckAll()
 	if opts.freestanding {
@@ -68,11 +67,13 @@ func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 	if failed(ds, opts) {
 		return frontEnd{}, 1
 	}
-	imports := resolve.Imports{}
+	imports := b.Imports()
 	for _, p := range b.Packages {
-		imports[p.Path] = p.Exports
-	}
-	for _, p := range b.Packages {
+		// Only the module being built can name the entry. A dependency that
+		// happens to declare the same name is not this program's entry.
+		if !withinRoot(b.Root, p.Dir) {
+			continue
+		}
 		for _, f := range p.Files {
 			if f.AST == nil {
 				continue
@@ -516,4 +517,14 @@ func lastSegment(path string) string {
 
 func isWindows() bool {
 	return os.PathSeparator == '\\'
+}
+
+// withinRoot reports whether dir is root or below it. The module root and its
+// packages pass; a local replace target beside the root does not.
+func withinRoot(root, dir string) bool {
+	rel, err := filepath.Rel(root, dir)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
 }

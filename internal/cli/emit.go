@@ -112,10 +112,7 @@ func packageContext(file string) (resolve.Imports, string, resolve.Exported, []*
 	if b.Err != nil || b.Mod == nil {
 		return nil, filepath.Base(dir), nil, nil
 	}
-	imps := resolve.Imports{}
-	for _, p := range b.Packages {
-		imps[p.Path] = p.Exports
-	}
+	imps := b.Imports()
 	def := b.Mod.Path
 	var names resolve.Exported
 	var others []*ast.File

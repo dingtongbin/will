@@ -42,8 +42,7 @@ func runIndex(args []string, stdout, stderr io.Writer) int {
 	}
 	b := pkg.Load(inputs[0])
 	if b.Err != nil {
-		fmt.Fprintf(stderr, "will: %v\n", b.Err)
-		return 1
+		return loadFailure(b.Err, stderr)
 	}
 	all := b.CheckAll()
 	if hasError(all) {

@@ -1,0 +1,5 @@
+import "example.com/dep"
+
+func F() {
+    dep.G()
+}

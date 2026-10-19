@@ -1,0 +1,5 @@
+import "example.com/cycle"
+
+func G() {
+    cycle.F()
+}

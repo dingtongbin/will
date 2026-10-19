@@ -145,8 +145,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		if info, err := os.Stat(files[0]); err == nil && info.IsDir() {
 			b := pkg.Load(files[0])
 			if b.Err != nil {
-				fmt.Fprintf(stderr, "will: %v\n", b.Err)
-				return 1
+				return loadFailure(b.Err, stderr)
 			}
 			return runCachedBuild(b, flags, stdout)
 		}
@@ -162,8 +161,9 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	var bag diag.Bag
 	if contents == nil {
 		for _, path := range files {
-			if !checkPath(&bag, path, flags.freestanding, stderr) {
-				return 1
+			ok, code := checkPath(&bag, path, flags.freestanding, stderr)
+			if !ok {
+				return code
 			}
 		}
 	} else {
@@ -257,32 +257,32 @@ func decodeDiag(data []byte) ([]byte, int) {
 
 // checkPath checks one file or, for a directory, the whole module. Directory
 // checking stops at the package layer because cross-package names need the
-// package resolver.
-func checkPath(bag *diag.Bag, path string, freestanding bool, stderr io.Writer) bool {
+// package resolver. It returns false and the exit code when the check cannot
+// start.
+func checkPath(bag *diag.Bag, path string, freestanding bool, stderr io.Writer) (bool, int) {
 	info, err := os.Stat(path)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
-		return false
+		return false, 1
 	}
 	if info.IsDir() {
 		b := pkg.Load(path)
 		if b.Err != nil {
-			fmt.Fprintf(stderr, "will: %v\n", b.Err)
-			return false
+			return false, loadFailure(b.Err, stderr)
 		}
 		bag.AddAll(b.CheckAll())
 		if freestanding {
 			bag.AddAll(b.Freestanding())
 		}
-		return true
+		return true, 0
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
-		return false
+		return false, 1
 	}
 	checkFile(bag, path, data, freestanding)
-	return true
+	return true, 0
 }
 
 // checkFile runs the front end over one file and appends its diagnostics. The

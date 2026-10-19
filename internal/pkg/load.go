@@ -1,10 +1,11 @@
-// Package pkg loads one module directory: it groups source files by package,
-// checks the package names, and reports methods that leave their type's
-// package.
+// Package pkg loads one module graph: the root module, every module a local
+// replace points at, and the bundled standard library when it is used. It
+// groups source files by package, checks the package names, and reports
+// methods that leave their type's package, one package reached through two
+// import paths, and import cycles.
 package pkg
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -14,13 +15,12 @@ import (
 	"github.com/will-lang/will/internal/check"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/mod"
-	"github.com/will-lang/will/internal/parser"
 	"github.com/will-lang/will/internal/resolve"
 	"github.com/will-lang/will/internal/source"
 	"github.com/will-lang/will/internal/types"
 )
 
-// File is one parsed source file with its path relative to the module root.
+// File is one parsed source file with its path relative to its module root.
 type File struct {
 	Path string
 	AST  *ast.File
@@ -42,22 +42,28 @@ type Package struct {
 	Diags []diag.Diagnostic
 }
 
-// Build is the loaded module.
+// Build is the loaded module graph.
 type Build struct {
 	Root     string
 	Mod      *mod.Module
 	Packages []*Package
 	Diags    []diag.Diagnostic
 	Err      error
+	// byPath maps every import path a source file may write to its package.
+	// A local replace key that differs from the module path is another name
+	// for the same package, so the table has more entries than Packages.
+	byPath map[string]*Package
 }
 
-// Load reads the module root, will.mod, and every .will file under it.
+// Load reads the module root, will.mod, every local replace target, and the
+// modules those dependencies require.
 func Load(root string) *Build {
 	// The package-name rule compares directory names, so the root is resolved
 	// first; a relative root such as "." would otherwise compare as ".".
 	if abs, err := filepath.Abs(root); err == nil {
 		root = abs
 	}
+	root = filepath.Clean(root)
 	b := &Build{Root: root}
 	data, err := os.ReadFile(filepath.Join(root, "will.mod"))
 	if err != nil {
@@ -73,67 +79,43 @@ func Load(root string) *Build {
 	}
 	b.Mod = m
 
-	if rootName := filepath.Base(root); rootName != lastSegment(m.Path) {
-		bag.Error(source.Pos{File: rootName, Line: 1, Col: 1}, diag.CodePackageNameMismatch,
-			"package name does not match the directory name", "rename one of them")
+	g := resolveModules(&moduleNode{Dir: root, Path: m.Path, Mod: m})
+	bag.AddAll(g.diags)
+	if g.stdErr != nil {
+		// A missing bundled standard library is a broken toolchain. The
+		// command line reports it as a startup error, not as a source error.
+		b.Err = g.stdErr
+		return b
 	}
+	pkgs, table, pds := g.packages()
+	bag.AddAll(pds)
+	bag.AddAll(g.checkSums())
+	b.byPath = table
 
-	dirs := map[string][]string{}
-	filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		if d.IsDir() {
-			name := d.Name()
-			if name != "." && (strings.HasPrefix(name, ".") || name == "build" || name == "desc") {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		if filepath.Ext(path) == ".will" {
-			dir := filepath.Dir(path)
-			dirs[dir] = append(dirs[dir], path)
-		}
-		return nil
-	})
-	if _, ok := dirs[root]; !ok {
-		dirs[root] = nil
-	}
-
-	var pkgs []*Package
-	for dir, files := range dirs {
-		name := filepath.Base(dir)
-		if !validPackageName(name) {
-			bag.Error(source.Pos{File: name, Line: 1, Col: 1}, diag.CodePackageNameMismatch,
-				"package name does not match the directory name", "rename one of them")
-			continue
-		}
-		sort.Strings(files)
-		p := &Package{Dir: dir, Name: name, Path: importPath(m.Path, root, dir)}
-		for _, path := range files {
-			rel, err := filepath.Rel(root, path)
-			if err != nil {
-				continue
-			}
-			src, err := os.ReadFile(path)
-			if err != nil {
-				continue
-			}
-			f, fds := parser.Parse(filepath.ToSlash(rel), src)
-			bag.AddAll(fds)
-			p.Files = append(p.Files, &File{Path: filepath.ToSlash(rel), AST: f})
-		}
-		p.Names, p.Diags = buildNames(p)
-		p.Exports = buildExports(p)
-		bag.AddAll(p.Diags)
-		pkgs = append(pkgs, p)
-	}
-	sort.Slice(pkgs, func(i, j int) bool { return pkgs[i].Path < pkgs[j].Path })
-	b.Packages = pkgs
-
+	edges := importEdges(pkgs, table)
+	bag.AddAll(checkTwoPaths(pkgs, table))
+	bag.AddAll(checkImportCycles(pkgs, edges))
 	bag.AddAll(checkMethodPackages(pkgs))
+	b.Packages = orderPackages(pkgs, edges)
 	b.Diags = bag.Diagnostics()
 	return b
+}
+
+// Imports returns the exported names of every package, keyed by import path.
+// The replace keys that name a local package under a different path are
+// included, so source files can import the module the way will.mod names it.
+func (b *Build) Imports() resolve.Imports {
+	out := resolve.Imports{}
+	if b.byPath != nil {
+		for path, p := range b.byPath {
+			out[path] = p.Exports
+		}
+		return out
+	}
+	for _, p := range b.Packages {
+		out[p.Path] = p.Exports
+	}
+	return out
 }
 
 func importPath(modulePath, root, dir string) string {
@@ -176,7 +158,7 @@ type methodDecl struct {
 // checkMethodPackages reports N0006 for a method declared outside the package
 // that declares its receiver type.
 func checkMethodPackages(pkgs []*Package) []diag.Diagnostic {
-	declared := map[string]string{}
+	declared := map[string]map[string]bool{}
 	var methods []methodDecl
 	for _, p := range pkgs {
 		for _, f := range p.Files {
@@ -186,11 +168,11 @@ func checkMethodPackages(pkgs []*Package) []diag.Diagnostic {
 			for _, d := range f.AST.Decls {
 				switch decl := d.(type) {
 				case *ast.StructDecl:
-					declared[decl.Name] = p.Path
+					markDeclared(declared, decl.Name, p.Path)
 				case *ast.EnumDecl:
-					declared[decl.Name] = p.Path
+					markDeclared(declared, decl.Name, p.Path)
 				case *ast.InterfaceDecl:
-					declared[decl.Name] = p.Path
+					markDeclared(declared, decl.Name, p.Path)
 				case *ast.FuncDecl:
 					if decl.Recv != nil {
 						methods = append(methods, methodDecl{
@@ -206,8 +188,8 @@ func checkMethodPackages(pkgs []*Package) []diag.Diagnostic {
 	}
 	var bag diag.Bag
 	for _, m := range methods {
-		owner, ok := declared[m.typ]
-		if !ok || owner == m.pkgPath {
+		owners := declared[m.typ]
+		if len(owners) == 0 || owners[m.pkgPath] {
 			continue
 		}
 		bag.Error(m.pos, diag.CodeMethodsTwoPackages,
@@ -215,6 +197,20 @@ func checkMethodPackages(pkgs []*Package) []diag.Diagnostic {
 			"a method can only be declared where its type is declared")
 	}
 	return bag.Diagnostics()
+}
+
+// markDeclared records that pkgPath declares the type name. Types of two
+// packages may share a name, so the owner is a set and not one package.
+func markDeclared(declared map[string]map[string]bool, name, pkgPath string) {
+	if name == "" {
+		return
+	}
+	owners := declared[name]
+	if owners == nil {
+		owners = map[string]bool{}
+		declared[name] = owners
+	}
+	owners[pkgPath] = true
 }
 
 func receiverName(t *ast.Type) string {
@@ -287,17 +283,6 @@ func buildNames(p *Package) (resolve.Exported, []diag.Diagnostic) {
 	return out, bag.Diagnostics()
 }
 
-// buildExportsOld is kept only while the package-wide name table is wired in.
-func buildExportsOld(p *Package) resolve.Exported {
-	out := resolve.Exported{}
-	for name, sym := range p.Names {
-		if isExported(name) {
-			out[name] = sym
-		}
-	}
-	return out
-}
-
 func isExported(name string) bool {
 	return name != "" && name[0] >= 'A' && name[0] <= 'Z'
 }
@@ -312,10 +297,7 @@ type Dispatch struct {
 // DispatchPoints runs the type checker over every file and collects the
 // interface call sites, sorted by file and position.
 func (b *Build) DispatchPoints() []Dispatch {
-	imps := resolve.Imports{}
-	for _, p := range b.Packages {
-		imps[p.Path] = p.Exports
-	}
+	imps := b.Imports()
 	var out []Dispatch
 	for _, p := range b.Packages {
 		for _, f := range p.Files {
@@ -348,10 +330,7 @@ func (b *Build) DispatchPoints() []Dispatch {
 func (b *Build) CheckAll() []diag.Diagnostic {
 	var bag diag.Bag
 	bag.AddAll(b.Diags)
-	imps := resolve.Imports{}
-	for _, p := range b.Packages {
-		imps[p.Path] = p.Exports
-	}
+	imps := b.Imports()
 	for _, p := range b.Packages {
 		var files []*ast.File
 		var results []*resolve.Result
