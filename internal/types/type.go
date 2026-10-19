@@ -27,7 +27,7 @@ const (
 	FuncKind
 	// UnitKind is the empty type.
 	UnitKind
-	// RangeKind is the type of a .. expression.
+	// RangeKind is the type of a Range(lo, hi) expression.
 	RangeKind
 )
 

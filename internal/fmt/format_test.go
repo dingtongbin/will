@@ -26,7 +26,7 @@ func TestCanonicalSpacing(t *testing.T) {
 		{"colon and assign", "func F() {\n    var x : i32=1\n}\n", "func F() {\n    var x: i32 = 1\n}\n"},
 		{"brace joins header", "func F()\n{\n    G()\n}\n", "func F() {\n    G()\n}\n"},
 		{"type arguments keep adjacency", "func F(x: Array<i64>) {\n}\n", "func F(x: Array<i64>) {\n}\n"},
-		{"range keeps adjacency", "func F() {\n    var s: []i32 = xs[1..3]\n}\n", "func F() {\n    var s: []i32 = xs[1..3]\n}\n"},
+		{"slice index keeps call spacing", "func F() {\n    var s: []i32 = xs[Range(1, 3)]\n}\n", "func F() {\n    var s: []i32 = xs[Range(1, 3)]\n}\n"},
 		{"unary has no space", "func F() {\n    var x: i32 = - a * b\n}\n", "func F() {\n    var x: i32 = -a * b\n}\n"},
 	}
 	for _, c := range cases {

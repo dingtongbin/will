@@ -106,14 +106,14 @@
 #106 name parent=#105 pos="program.will:46:16" text="total" to=#70
 #107 lit parent=#105 pos="program.will:46:24" kind=int text="1"
 #108 arm parent=#100 pos="program.will:47:9" pattern=#109 guard=#110 body=#113
-#109 pattern parent=#108 pos="program.will:47:9" text="1..9" kind=range
-#110 bin parent=#108 pos="program.will:47:17" op=">" l=#111 r=#112
-#111 name parent=#110 pos="program.will:47:17" text="total" to=#70
-#112 lit parent=#110 pos="program.will:47:25" kind=int text="2"
-#113 block parent=#108 pos="program.will:47:30"
-#114 assign parent=#113 pos="program.will:47:32" op="=" target=#115 value=#116
-#115 name parent=#114 pos="program.will:47:32" text="total" to=#70
-#116 lit parent=#114 pos="program.will:47:40" kind=int text="3"
+#109 pattern parent=#108 pos="program.will:47:9" text="9" kind=literal
+#110 bin parent=#108 pos="program.will:47:14" op=">" l=#111 r=#112
+#111 name parent=#110 pos="program.will:47:14" text="total" to=#70
+#112 lit parent=#110 pos="program.will:47:22" kind=int text="2"
+#113 block parent=#108 pos="program.will:47:27"
+#114 assign parent=#113 pos="program.will:47:29" op="=" target=#115 value=#116
+#115 name parent=#114 pos="program.will:47:29" text="total" to=#70
+#116 lit parent=#114 pos="program.will:47:37" kind=int text="3"
 #117 arm parent=#100 pos="program.will:48:9" pattern=#118 body=#119
 #118 pattern parent=#117 pos="program.will:48:9" text="_" kind=wild
 #119 block parent=#117 pos="program.will:48:14"

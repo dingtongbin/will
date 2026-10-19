@@ -80,7 +80,7 @@ func Run(n: i32) -> Result<i32, Error> {
     }
     match total {
         0 => { total = 0 }
-        1..9 if total > 2 => { total = 3 }
+        9 if total > 2 => { total = 3 }
         _ => { total = 4 }
     }
     region {

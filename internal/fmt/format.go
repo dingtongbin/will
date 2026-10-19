@@ -67,7 +67,7 @@ func mergeBraces(lines [][]token.Token) [][]token.Token {
 func endsOpen(k token.Kind) bool {
 	switch k {
 	case token.LParen, token.LBracket, token.Comma, token.Colon, token.Assign,
-		token.Arrow, token.FatArrow, token.Dot, token.DotDot:
+		token.Arrow, token.FatArrow, token.Dot:
 		return true
 	}
 	return isBinary(k)
@@ -150,7 +150,7 @@ func writeLine(out *strings.Builder, line []token.Token) {
 func ambiguous(k token.Kind) bool {
 	switch k {
 	case token.Lt, token.Gt, token.Shl, token.Shr, token.ShlWrap,
-		token.Dot, token.DotDot, token.DotDotDot, token.Question, token.Bang:
+		token.Dot, token.DotDotDot, token.Question, token.Bang:
 		return true
 	}
 	return false
@@ -187,8 +187,7 @@ func isBinary(k token.Kind) bool {
 		token.Shl, token.Shr, token.ShlWrap,
 		token.Amp, token.Pipe, token.Caret,
 		token.AndAnd, token.OrOr,
-		token.Eq, token.Ne, token.Lt, token.Le, token.Gt, token.Ge,
-		token.DotDot:
+		token.Eq, token.Ne, token.Lt, token.Le, token.Gt, token.Ge:
 		return true
 	}
 	return false
@@ -229,8 +228,6 @@ func separate(prev, cur token.Token, prevUnary, curUnary, origGap bool) bool {
 	switch prev.Kind {
 	case token.Dot, token.DotDotDot, token.LParen, token.LBracket:
 		return false
-	case token.DotDot:
-		return false
 	case token.RBracket:
 		if cur.Kind == token.Ident || cur.Kind == token.LBracket {
 			return false
@@ -242,7 +239,7 @@ func separate(prev, cur token.Token, prevUnary, curUnary, origGap bool) bool {
 	switch cur.Kind {
 	case token.Comma, token.Colon, token.RParen, token.RBracket, token.RBrace:
 		return false
-	case token.Dot, token.DotDot, token.DotDotDot, token.Question:
+	case token.Dot, token.DotDotDot, token.Question:
 		return false
 	case token.LParen:
 		switch prev.Kind {

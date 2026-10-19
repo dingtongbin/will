@@ -177,8 +177,6 @@ const (
 	Gt
 	// Ge is >=.
 	Ge
-	// DotDot is the range operator ...
-	DotDot
 	// DotDotDot is the variadic expansion operator ...
 	DotDotDot
 	// Dot is the selector operator.
@@ -292,7 +290,6 @@ var names = map[Kind]string{
 	Le:              "<=",
 	Gt:              ">",
 	Ge:              ">=",
-	DotDot:          "..",
 	DotDotDot:       "...",
 	Dot:             ".",
 	Comma:           ",",

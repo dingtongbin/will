@@ -74,16 +74,6 @@ func TestOperatorsAndIdentifiers(t *testing.T) {
 			},
 		},
 		{
-			name: "range is not a float",
-			src:  "1..2",
-			want: []wantToken{
-				want(token.Int, "1", ""),
-				want(token.DotDot, "..", ""),
-				want(token.Int, "2", ""),
-				want(token.EOF, "", ""),
-			},
-		},
-		{
 			name: "variadic expansion",
 			src:  "xs...",
 			want: []wantToken{
@@ -247,6 +237,7 @@ func TestForbiddenSymbols(t *testing.T) {
 		{"`", 1},
 		{"#", 1},
 		{"a::b", 2},
+		{"a..b", 2},
 		{"\\", 1},
 	}
 	for _, c := range cases {

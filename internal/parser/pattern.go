@@ -46,17 +46,6 @@ func (p *Parser) parsePatternPrimary() *ast.Pattern {
 	case token.Int, token.Float, token.Duration, token.Char, token.String, token.Bytes,
 		token.KwTrue, token.KwFalse:
 		lit := p.parsePatternLiteral()
-		if p.at(token.DotDot) {
-			p.next()
-			p.skipNL()
-			hi := p.parsePatternLiteral()
-			return &ast.Pattern{
-				Span: ast.Span{Start: lit.Pos(), End: hi.EndPos()},
-				Kind: ast.RangePattern,
-				Lo:   lit,
-				Hi:   hi,
-			}
-		}
 		return &ast.Pattern{
 			Span:    ast.Span{Start: lit.Pos(), End: lit.EndPos()},
 			Kind:    ast.LiteralPattern,

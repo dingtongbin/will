@@ -5,8 +5,20 @@ import (
 	"github.com/will-lang/will/internal/token"
 )
 
+// parseCall parses a call. Range(lo, hi) is the constructor of the predefined
+// half-open range type, so it becomes a range expression; any other spelling
+// stays a call.
 func (p *Parser) parseCall(callee ast.Expr, typeArgs []*ast.Type) ast.Expr {
 	args := p.parseCallArgs()
+	if len(typeArgs) == 0 && len(args) == 2 && !args[0].Spread && !args[1].Spread {
+		if name, ok := callee.(*ast.NameExpr); ok && name.Name == "Range" {
+			return &ast.RangeExpr{
+				Span: ast.Span{Start: callee.Pos(), End: p.prev().End},
+				Lo:   args[0].Expr,
+				Hi:   args[1].Expr,
+			}
+		}
+	}
 	return &ast.CallExpr{
 		Span:     ast.Span{Start: callee.Pos(), End: p.prev().End},
 		Callee:   callee,
@@ -46,29 +58,18 @@ func (p *Parser) parseCallArgs() []*ast.CallArg {
 	return args
 }
 
+// parseIndex parses xs[i] and, when the index is a range, the slice
+// xs[Range(lo, hi)].
 func (p *Parser) parseIndex(x ast.Expr) ast.Expr {
 	p.expect(token.LBracket, "[")
 	p.enterGroup()
 	p.skipNL()
-	lo := p.parseExpr(precRange+1, true)
-	if p.at(token.DotDot) {
-		p.next()
-		p.skipNL()
-		hi := p.parseExpr(precRange+1, true)
-		p.expect(token.RBracket, "]")
-		p.leaveGroup()
-		return &ast.SliceExpr{
-			Span: ast.Span{Start: x.Pos(), End: p.prev().End},
-			Recv: x,
-			Lo:   lo,
-			Hi:   hi,
-		}
-	}
+	index := p.parseExpr(0, true)
 	p.expect(token.RBracket, "]")
 	p.leaveGroup()
-	return &ast.IndexExpr{
-		Span:  ast.Span{Start: x.Pos(), End: p.prev().End},
-		Recv:  x,
-		Index: lo,
+	span := ast.Span{Start: x.Pos(), End: p.prev().End}
+	if r, ok := index.(*ast.RangeExpr); ok {
+		return &ast.SliceExpr{Span: span, Recv: x, Lo: r.Lo, Hi: r.Hi}
 	}
+	return &ast.IndexExpr{Span: span, Recv: x, Index: index}
 }

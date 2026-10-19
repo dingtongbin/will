@@ -8,22 +8,19 @@ import (
 )
 
 const (
-	precRange = 1
-	precOr    = 2
-	precAnd   = 3
-	precCmp   = 4
-	precBOr   = 5
-	precBXor  = 6
-	precBAnd  = 7
-	precShift = 8
-	precAdd   = 9
-	precMul   = 10
+	precOr    = 1
+	precAnd   = 2
+	precCmp   = 3
+	precBOr   = 4
+	precBXor  = 5
+	precBAnd  = 6
+	precShift = 7
+	precAdd   = 8
+	precMul   = 9
 )
 
 func binaryPrec(k token.Kind) int {
 	switch k {
-	case token.DotDot:
-		return precRange
 	case token.OrOr:
 		return precOr
 	case token.AndAnd:
@@ -57,11 +54,7 @@ func (p *Parser) parseExpr(minPrec int, allowBrace bool) ast.Expr {
 		p.skipNL()
 		right := p.parseExpr(prec+1, allowBrace)
 		span := ast.Span{Start: left.Pos(), End: right.EndPos()}
-		if op.Kind == token.DotDot {
-			left = &ast.RangeExpr{Span: span, Lo: left, Hi: right}
-		} else {
-			left = &ast.BinaryExpr{Span: span, Op: op.Kind, L: left, R: right}
-		}
+		left = &ast.BinaryExpr{Span: span, Op: op.Kind, L: left, R: right}
 	}
 	return left
 }

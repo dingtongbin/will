@@ -168,9 +168,11 @@ func (l *Lexer) scanOperator() {
 			l.emit(token.DotDotDot, start, startOff)
 			return
 		case l.peek(1) == '.':
+			// A range is written Range(lo, hi); two dots are not a symbol.
+			l.report(start, diag.BadSymbol)
 			l.advance()
 			l.advance()
-			l.emit(token.DotDot, start, startOff)
+			l.emit(token.Invalid, start, startOff)
 			return
 		case isASCIIDigit(l.peek(1)):
 			l.report(start, diag.InvalidNumber)

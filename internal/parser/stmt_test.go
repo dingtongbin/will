@@ -43,8 +43,8 @@ func TestParseStatements(t *testing.T) {
 	if match.Arms[0].Pattern.Kind != ast.LiteralPattern {
 		t.Errorf("arm 0 pattern = %v, want literal", match.Arms[0].Pattern.Kind)
 	}
-	if match.Arms[1].Pattern.Kind != ast.RangePattern || match.Arms[1].Guard == nil {
-		t.Errorf("arm 1 = %+v, want range with guard", match.Arms[1])
+	if match.Arms[1].Pattern.Kind != ast.LiteralPattern || match.Arms[1].Guard == nil {
+		t.Errorf("arm 1 = %+v, want literal with guard", match.Arms[1])
 	}
 	if match.Arms[2].Pattern.Kind != ast.WildPattern {
 		t.Errorf("arm 2 pattern = %v, want wild", match.Arms[2].Pattern.Kind)
