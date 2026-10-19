@@ -19,6 +19,9 @@
 /.opencode/
 /AGENTS.md
 
+# 测试误落的模块骨架（will new 的产物只应出现在临时目录）
+/internal/cli/app/
+
 # 编辑器与系统杂物
 .vscode/
 .idea/
