@@ -104,6 +104,26 @@ func TestAbsoluteReplaceTarget(t *testing.T) {
 	}
 }
 
+// TestReplaceChainCycleIsReported checks that a versioned replace loop is an
+// error instead of a silent stop after the chain limit.
+func TestReplaceChainCycleIsReported(t *testing.T) {
+	app := filepath.Join(t.TempDir(), "app")
+	writeModule(t, app, "example.com/app", nil)
+	write(t, filepath.Join(app, "will.mod"),
+		"module example.com/app\nwill 1\n"+
+			"require example.com/a@v1.0.0\n"+
+			"replace example.com/a@v1.0.0 => example.com/b@v1.0.0\n"+
+			"replace example.com/b@v1.0.0 => example.com/a@v1.0.0\n")
+	write(t, filepath.Join(app, "app.will"), "func F() {\n}\n")
+	b := Load(app)
+	for _, d := range b.Diags {
+		if d.Code == diag.CodeInvalidWillMod && strings.Contains(d.Message, "replace chain for example.com/a") {
+			return
+		}
+	}
+	t.Fatalf("the chain cycle was not reported:\n%s", diag.FormatAll(b.Diags))
+}
+
 // TestLocalReplaceLoadsDependency checks the smallest module graph: the root
 // requires one dependency, replaces it with a sibling directory, imports it,
 // and the call into it type-checks.

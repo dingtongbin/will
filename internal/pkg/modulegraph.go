@@ -40,7 +40,10 @@ type graph struct {
 	// moduleDirs maps a module path to the directory that declared it, so two
 	// trees claiming one path are reported instead of silently picking one.
 	moduleDirs map[string]string
-	std        *moduleNode
+	// replaceReported remembers the paths whose replace chain was already
+	// reported, so a retry does not repeat the diagnostic.
+	replaceReported map[string]bool
+	std             *moduleNode
 	// stdErr is set when the bundled standard library is needed and its root
 	// is not on disk.
 	stdErr error
@@ -73,11 +76,12 @@ func resolveModules(root *moduleNode) *graph {
 	var g *graph
 	for attempt := 0; attempt < moduleLoadAttempts; attempt++ {
 		g = &graph{
-			root:       root,
-			nodes:      map[string]*moduleNode{},
-			dirs:       map[string]string{},
-			known:      known,
-			moduleDirs: map[string]string{},
+			root:            root,
+			nodes:           map[string]*moduleNode{},
+			dirs:            map[string]string{},
+			known:           known,
+			moduleDirs:      map[string]string{},
+			replaceReported: map[string]bool{},
 		}
 		g.addNode(root)
 		if g.resolve() {
@@ -202,9 +206,11 @@ func selectionPaths(selected map[string]requirement) []string {
 // the toolchain's standard library root.
 func (g *graph) target(path string, req requirement) (string, bool, bool) {
 	curPath, curVersion := path, req.version
+	exhausted := false
 	for i := 0; i < replaceChainLimit; i++ {
 		rep, owner, ok := g.findReplace(curPath, curVersion)
 		if !ok {
+			exhausted = false
 			break
 		}
 		if !rep.IsVersioned {
@@ -215,6 +221,17 @@ func (g *graph) target(path string, req requirement) (string, bool, bool) {
 			return target, false, true
 		}
 		curPath, curVersion = rep.Target, rep.TargetVer
+		exhausted = true
+	}
+	if exhausted && !g.replaceReported[path] {
+		g.replaceReported[path] = true
+		g.diags = append(g.diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Code:     diag.CodeInvalidWillMod,
+			Pos:      source.Pos{File: "will.mod", Line: 1, Col: 1},
+			Message:  "replace chain for " + path + " is too long or cycles",
+			Help:     "shorten the chain or remove the cycle",
+		})
 	}
 	if req.bundled && curPath == "std" {
 		dir, ok := bundledStdRoot()

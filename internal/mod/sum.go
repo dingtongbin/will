@@ -44,6 +44,12 @@ func sourceFace(root string) ([]string, error) {
 		}
 		if d.IsDir() {
 			if path != root {
+				rel, relErr := filepath.Rel(root, path)
+				if relErr == nil && filepath.ToSlash(rel) == "tests" {
+					// Tests are outside the source face even when they hold
+					// will files, so a test-only change does not move a sum.
+					return fs.SkipDir
+				}
 				switch d.Name() {
 				case ".git", ".hg", ".svn", "build", ".will-cache":
 					return fs.SkipDir
@@ -97,7 +103,7 @@ func ParseSum(file string, data []byte) ([]SumLine, []diag.Diagnostic) {
 			continue
 		}
 		algo, hex, ok := strings.Cut(fields[1], ":")
-		if !ok || algo != "sha256" || hex == "" {
+		if !ok || algo != "sha256" || !isSHA256Hex(hex) {
 			bag.Error(pos, diag.CodeChecksumMismatch, "checksum mismatch for "+fields[0],
 				"run will mod tidy")
 			continue
@@ -105,6 +111,23 @@ func ParseSum(file string, data []byte) ([]SumLine, []diag.Diagnostic) {
 		out = append(out, SumLine{Path: fields[0], Sum: fields[1], Line: i + 1})
 	}
 	return out, bag.Diagnostics()
+}
+
+// isSHA256Hex reports whether text is exactly 64 lowercase hexadecimal digits,
+// which is what a sha256 digest is. A short or upper-case value is malformed,
+// not a mismatch.
+func isSHA256Hex(text string) bool {
+	if len(text) != 64 {
+		return false
+	}
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+		if c >= '0' && c <= '9' || c >= 'a' && c <= 'f' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // FormatSum writes the sum lines in the one order the file uses: by import

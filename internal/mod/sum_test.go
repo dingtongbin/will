@@ -54,7 +54,7 @@ func TestSourceFaceHashFollowsTheFace(t *testing.T) {
 		{"module", "will.mod", "module example.com/app\nwill 2\n"},
 		{"sum", "will.sum", "example.com/lib sha256:00\n"},
 		{"readme", "README", "notes\n"},
-		{"corpus", "tests/case/stdout.txt", "out\n"},
+		{"corpus", "tests/case/helper.will", "func Helper() {\n}\n"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -76,14 +76,25 @@ func TestSourceFaceHashFollowsTheFace(t *testing.T) {
 
 func TestParseSumRejectsBadLines(t *testing.T) {
 	lines, ds := ParseSum("will.sum", []byte("example.com/lib sha256:abc\nbad line here\n"))
-	if len(lines) != 1 {
-		t.Fatalf("lines = %d, want 1", len(lines))
+	if len(lines) != 0 {
+		t.Fatalf("lines = %d, want 0", len(lines))
 	}
-	if len(ds) != 1 || ds[0].Code != "B0003" {
+	if len(ds) != 2 || ds[0].Code != "B0003" || ds[1].Code != "B0003" {
 		t.Fatalf("diagnostics = %+v", ds)
 	}
-	if ds[0].Message != "checksum mismatch for bad" {
+	if ds[0].Message != "checksum mismatch for example.com/lib" {
 		t.Errorf("message = %q", ds[0].Message)
+	}
+}
+
+func TestParseSumAcceptsAFullSHA256(t *testing.T) {
+	const digest = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	lines, ds := ParseSum("will.sum", []byte("example.com/lib sha256:"+digest+"\n"))
+	if len(ds) != 0 {
+		t.Fatalf("diagnostics = %+v", ds)
+	}
+	if len(lines) != 1 || lines[0].Sum != "sha256:"+digest {
+		t.Fatalf("lines = %+v", lines)
 	}
 }
 
