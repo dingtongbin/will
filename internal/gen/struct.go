@@ -91,7 +91,19 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 		}
 		sub := g.typeRef(f.ID)
 		if sub == 0 {
+			if g.declKinds[t] == "enum" {
+				info.types = append(info.types, qualifiedEnumName(t))
+				continue
+			}
+			if g.structTypes[t] {
+				info.types = append(info.types, qualifiedTypeName(t))
+				continue
+			}
 			info.ok = false
+			continue
+		}
+		if r, ok := g.recs[sub]; ok && r.Kind == "enum" {
+			info.types = append(info.types, g.enumLLVM(fieldText(r, "text")))
 			continue
 		}
 		inner, ok := g.ensureStruct(sub)
@@ -160,6 +172,12 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 		return typ, nil
 	}
 	if id := g.typeRef(decl); id != 0 {
+		if r, ok := g.recs[id]; ok && r.Kind == "enum" {
+			if info := g.enums[id]; info != nil {
+				return info.llvm, nil
+			}
+			return "", g.errf(decl, "cannot translate node #%d: enum %s is not lowered yet", decl, fieldText(r, "text"))
+		}
 		if info, ok := g.ensureStruct(id); ok {
 			return info.llvm, nil
 		}
@@ -168,6 +186,9 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 	if q := g.typeQualified(decl); q != "" {
 		// The declaring package emits the type definition; a reference from
 		// this document only needs the same name.
+		if g.enumTypes[q] {
+			return qualifiedEnumName(q), nil
+		}
 		return qualifiedTypeName(q), nil
 	}
 	return "", g.errf(decl, "cannot translate node #%d: type %s is not lowered yet", decl, fieldText(r, "type"))
@@ -193,6 +214,9 @@ func (g *generator) typeOf(id int) (string, error) {
 		name := fieldText(r, "text")
 		if info := g.globalRef(r); info != nil {
 			return info.typ, nil
+		}
+		if typ, ok := g.patternTypes[decl]; ok {
+			return typ, nil
 		}
 		if text, ok := g.loopBindType(decl, name); ok {
 			typ, ok := llvmTypeText(text)
@@ -259,6 +283,8 @@ func (g *generator) typeOf(id int) (string, error) {
 			return "", g.errf(id, "cannot translate node #%d: conversion to %s is not lowered yet", id, fieldText(to, "text"))
 		}
 		return typ, nil
+	case "match":
+		return g.matchValueType(r)
 	case "bin":
 		switch fieldText(r, "op") {
 		case "&&", "||", "==", "!=", "<", "<=", ">", ">=":
@@ -271,6 +297,11 @@ func (g *generator) typeOf(id int) (string, error) {
 		}
 		return g.typeOf(refField(r, "expr"))
 	case "call", "mcall":
+		if r.Kind == "mcall" {
+			if info, _ := g.enumVariantCall(r); info != nil {
+				return info.llvm, nil
+			}
+		}
 		text, err := g.callResultText(r)
 		if err != nil {
 			return "", err
@@ -282,6 +313,9 @@ func (g *generator) typeOf(id int) (string, error) {
 		if !ok {
 			if g.structTypes[text] {
 				return qualifiedTypeName(text), nil
+			}
+			if g.enumTypes[text] {
+				return qualifiedEnumName(text), nil
 			}
 			return "", g.errf(id, "cannot translate node #%d: result type %s is not lowered yet", id, text)
 		}
@@ -308,6 +342,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 				return info.text, nil
 			}
 			return "", g.errf(id, "cannot translate node #%d: no such declaration", id)
+		}
+		if text, ok := g.patternTexts[decl.ID]; ok {
+			return text, nil
 		}
 		if info := g.globalRef(r); info != nil {
 			return info.text, nil
@@ -353,6 +390,11 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		return g.willTypeText(refField(r, "expr"))
 	case "call", "mcall":
+		if r.Kind == "mcall" {
+			if info, _ := g.enumVariantCall(r); info != nil {
+				return info.text, nil
+			}
+		}
 		return g.callResultText(r)
 	case "cast":
 		to, ok := g.recs[refField(r, "to")]
@@ -479,6 +521,9 @@ func (g *generator) place(id int) (string, string, error) {
 			}
 			return "@" + llvmSymbol(info.sym), info.typ, nil
 		}
+		if ptr, ok := g.patternPlaces[decl]; ok {
+			return ptr, g.patternTypes[decl], nil
+		}
 		if ptrs, ok := g.loopPtrs[decl]; ok {
 			if ptr, ok := ptrs[name]; ok {
 				text, ok := g.loopBindType(decl, name)
@@ -556,14 +601,20 @@ func (g *generator) place(id int) (string, string, error) {
 		}
 		return ptr, typ, nil
 	case "call", "mcall":
+		if info, v := g.enumVariantCall(r); info != nil {
+			return g.enumConstruct(r, info, v)
+		}
 		text, err := g.callResultText(r)
 		if err != nil {
 			return "", "", err
 		}
-		if text == "" || !g.structTypes[text] {
-			return "", "", g.errf(id, "cannot translate node #%d: the call result is not a struct", id)
+		if text == "" || (!g.structTypes[text] && !g.enumTypes[text]) {
+			return "", "", g.errf(id, "cannot translate node #%d: the call result is not an aggregate", id)
 		}
 		typ := qualifiedTypeName(text)
+		if g.enumTypes[text] {
+			typ = qualifiedEnumName(text)
+		}
 		slot := g.callSlots[id]
 		if slot == "" {
 			return "", "", g.errf(id, "cannot translate node #%d: the call result has no slot", id)

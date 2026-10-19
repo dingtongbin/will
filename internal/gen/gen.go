@@ -159,7 +159,16 @@ func (g *generator) findEntry(entry, entryPkg string) {
 func (g *generator) collectSignatures() {
 	g.sigs = map[string]string{}
 	g.structTypes = map[string]bool{}
+	g.enumTypes = map[string]bool{}
+	g.declKinds = map[string]string{}
 	g.methodsQualified = map[string]string{}
+	for _, d := range g.docs {
+		for _, r := range d.recs {
+			if r.Kind == "struct" || r.Kind == "enum" {
+				g.declKinds[qualify(d.path, fieldText(r, "text"))] = r.Kind
+			}
+		}
+	}
 	for _, d := range g.docs {
 		for _, r := range d.recs {
 			if r.Kind != "func" {
@@ -176,24 +185,27 @@ func (g *generator) collectSignatures() {
 				}
 			}
 			res := fieldText(r, "type")
-			isStruct := false
+			kind := ""
 			for _, c := range d.recs {
 				if c.Kind != "type" || refField(c, "parent") != r.ID {
 					continue
 				}
 				if q := textField(c, "to"); q != "" {
 					res = q
-					isStruct = true
+					kind = g.declKinds[q]
 				} else if id := refField(c, "to"); id != 0 {
-					if s, ok := d.recs[id]; ok && s.Kind == "struct" {
+					if s, ok := d.recs[id]; ok && (s.Kind == "struct" || s.Kind == "enum") {
 						res = qualify(d.path, fieldText(s, "text"))
-						isStruct = true
+						kind = s.Kind
 					}
 				}
 			}
 			g.sigs[sym] = res
-			if isStruct {
+			switch kind {
+			case "struct":
 				g.structTypes[res] = true
+			case "enum":
+				g.enumTypes[res] = true
 			}
 		}
 	}
@@ -214,6 +226,16 @@ func (g *generator) use(d *docState) {
 	g.byType = map[string]*structInfo{}
 	g.byName = map[string]*structInfo{}
 	g.aggSlots = map[int]string{}
+	g.enums = map[int]*enumInfo{}
+	g.enumByLLVM = map[string]*enumInfo{}
+	g.variantByID = map[int]*variantInfo{}
+	g.enumSlots = map[int]string{}
+	g.patternVals = map[int]string{}
+	g.patternPlaces = map[int]string{}
+	g.patternTypes = map[int]string{}
+	g.patternTexts = map[int]string{}
+	g.matchSlots = map[int]string{}
+	g.matchSlotTypes = map[int]string{}
 	g.callSlots = map[int]string{}
 	g.sliceSlots = map[int]string{}
 	g.loopBinds = map[int]map[string]string{}
@@ -248,6 +270,27 @@ type generator struct {
 	byType   map[string]*structInfo
 	byName   map[string]*structInfo
 	aggSlots map[int]string
+	// enums holds the lowered enums of the current document by record id;
+	// enumByLLVM looks one up by its LLVM type name. enumSlots maps a
+	// construction to its temporary slot, and patternVals and patternPlaces
+	// hold the bindings of the arm being lowered.
+	enums        map[int]*enumInfo
+	enumByLLVM   map[string]*enumInfo
+	variantByID  map[int]*variantInfo
+	enumSlots    map[int]string
+	patternVals   map[int]string
+	patternPlaces map[int]string
+	patternTypes  map[int]string
+	patternTexts  map[int]string
+	// matchSlots maps a match used as an expression to its result slot, and
+	// matchSlotTypes to the LLVM type stored there.
+	matchSlots     map[int]string
+	matchSlotTypes map[int]string
+	// enumTypes holds the qualified names whose result is an enum, so a caller
+	// whose document lacks the declaration still knows the type.
+	enumTypes map[string]bool
+	// declKinds maps a qualified type name to "struct" or "enum".
+	declKinds map[string]string
 	// callSlots maps a call whose result is a struct to the temporary slot its
 	// value is stored in, so a field can be read from it.
 	callSlots map[int]string
@@ -308,6 +351,7 @@ type generator struct {
 func (g *generator) emitDoc() error {
 	g.collect()
 	g.buildStructs()
+	g.buildEnums()
 	g.emitGlobals(g.cur)
 	var funcs []willc.Record
 	for _, r := range g.recs {
@@ -488,14 +532,29 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	resLLVM := ""
 	if typ, _, ok := llvmScalar(result); ok {
 		resLLVM = typ
-	} else if q := g.typeQualified(fn.ID); q != "" && g.structTypes[q] {
-		resLLVM = qualifiedTypeName(q)
-	} else if id := g.typeRef(fn.ID); id != 0 {
-		info, ok := g.ensureStruct(id)
-		if !ok {
-			return g.errf(fn.ID, "cannot translate node #%d: the result type is not lowered yet", fn.ID)
+	} else if q := g.typeQualified(fn.ID); q != "" {
+		switch {
+		case g.structTypes[q]:
+			resLLVM = qualifiedTypeName(q)
+		case g.enumTypes[q]:
+			resLLVM = qualifiedEnumName(q)
+		default:
+			return g.errf(fn.ID, "cannot translate node #%d: result type %s is not lowered yet", fn.ID, result)
 		}
-		resLLVM = info.llvm
+	} else if id := g.typeRef(fn.ID); id != 0 {
+		if r, ok := g.recs[id]; ok && r.Kind == "enum" {
+			info := g.enums[id]
+			if info == nil {
+				return g.errf(fn.ID, "cannot translate node #%d: enum %s is not lowered yet", fn.ID, fieldText(r, "text"))
+			}
+			resLLVM = info.llvm
+		} else {
+			info, ok := g.ensureStruct(id)
+			if !ok {
+				return g.errf(fn.ID, "cannot translate node #%d: the result type is not lowered yet", fn.ID)
+			}
+			resLLVM = info.llvm
+		}
 	} else {
 		return g.errf(fn.ID, "cannot translate node #%d: result type %s is not lowered yet", fn.ID, result)
 	}
@@ -604,8 +663,9 @@ func (g *generator) allocas(fn int) error {
 		g.aggSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
 	}
-	// A call whose result is a struct also needs a slot: its value has to be
-	// stored before a field can be read from it.
+	// A call whose result is a struct or an enum also needs a slot: its value
+	// has to be stored before a field can be read from it or before it is
+	// matched.
 	var calls []willc.Record
 	for _, r := range g.recs {
 		if (r.Kind == "call" || r.Kind == "mcall") && g.enclosingFunc(r.ID) == fn {
@@ -614,13 +674,55 @@ func (g *generator) allocas(fn int) error {
 	}
 	sortByID(calls)
 	for _, r := range calls {
+		if info, _ := g.enumVariantCall(r); info != nil {
+			continue
+		}
 		text, err := g.callResultText(r)
-		if err != nil || text == "" || !g.structTypes[text] {
+		if err != nil || text == "" || (!g.structTypes[text] && !g.enumTypes[text]) {
 			continue
 		}
 		name := "%v.ret." + strconv.Itoa(r.ID)
 		g.callSlots[r.ID] = name
-		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, qualifiedTypeName(text))
+		typ := qualifiedTypeName(text)
+		if g.enumTypes[text] {
+			typ = qualifiedEnumName(text)
+		}
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, typ)
+	}
+	// A constructed enum is built in a slot of its own.
+	for _, r := range g.recs {
+		if r.Kind != "mcall" || g.enclosingFunc(r.ID) != fn {
+			continue
+		}
+		info, _ := g.enumVariantCall(r)
+		if info == nil {
+			continue
+		}
+		name := "%v.enum." + strconv.Itoa(r.ID)
+		g.enumSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
+	}
+	// A match used as an expression stores each arm's value in a slot and
+	// loads it after the merge, so no phi needs a predecessor label.
+	var matches []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "match" && g.enclosingFunc(r.ID) == fn {
+			matches = append(matches, r)
+		}
+	}
+	sortByID(matches)
+	for _, r := range matches {
+		typ, err := g.matchValueType(r)
+		if err != nil {
+			return err
+		}
+		if typ == "" {
+			continue
+		}
+		name := "%v.match." + strconv.Itoa(r.ID)
+		g.matchSlots[r.ID] = name
+		g.matchSlotTypes[r.ID] = typ
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, typ)
 	}
 	// A slice expression builds a two-word view, which also needs a slot.
 	var slices []willc.Record
@@ -856,34 +958,40 @@ func (g *generator) body(b willc.Record, void bool) (bool, error) {
 		if terminated {
 			break
 		}
-		var err error
-		switch st.Kind {
-		case "return":
-			terminated, err = g.returnStmt(st, void)
-		case "if":
-			terminated, err = g.ifStmt(st, void)
-		case "for":
-			terminated, err = g.forStmt(st, void)
-		case "break":
-			terminated, err = g.jump(true)
-		case "continue":
-			terminated, err = g.jump(false)
-		case "var", "const":
-			terminated, err = g.declStmt(st)
-		case "assign":
-			err = g.assignStmt(st)
-		case "exprstmt":
-			err = g.exprStmt(st)
-		case "block":
-			terminated, err = g.body(st, void)
-		default:
-			err = g.errf(st.ID, "cannot translate node #%d: statement %s is not lowered yet", st.ID, st.Kind)
-		}
+		done, err := g.stmt(st, void)
 		if err != nil {
 			return false, err
 		}
+		terminated = done
 	}
 	return terminated, nil
+}
+
+// stmt lowers one statement and reports whether it ends the current block.
+func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
+	switch st.Kind {
+	case "return":
+		return g.returnStmt(st, void)
+	case "if":
+		return g.ifStmt(st, void)
+	case "for":
+		return g.forStmt(st, void)
+	case "match":
+		return g.matchStmt(st, void)
+	case "break":
+		return g.jump(true)
+	case "continue":
+		return g.jump(false)
+	case "var", "const":
+		return g.declStmt(st)
+	case "assign":
+		return false, g.assignStmt(st)
+	case "exprstmt":
+		return false, g.exprStmt(st)
+	case "block":
+		return g.body(st, void)
+	}
+	return false, g.errf(st.ID, "cannot translate node #%d: statement %s is not lowered yet", st.ID, st.Kind)
 }
 
 // returnStmt lowers one return.
@@ -1132,6 +1240,12 @@ func (g *generator) value(id int) (string, error) {
 		if info := g.globalRef(r); info != nil {
 			return g.load(info.typ, "@"+llvmSymbol(info.sym)), nil
 		}
+		if v, ok := g.patternVals[decl]; ok {
+			return v, nil
+		}
+		if _, ok := g.patternPlaces[decl]; ok {
+			return "", g.errf(id, "cannot translate node #%d: %s is an aggregate binding, not a scalar", id, name)
+		}
 		if ptrs, ok := g.loopPtrs[decl]; ok {
 			if ptr, ok := ptrs[name]; ok {
 				text, ok := g.loopBindType(decl, name)
@@ -1195,11 +1309,16 @@ func (g *generator) value(id int) (string, error) {
 		return g.load(typ, ptr), nil
 	case "cast":
 		return g.castValue(r)
+	case "match":
+		return g.matchValue(r)
 	case "un":
 		return g.unary(r)
 	case "bin":
 		return g.binary(r)
 	case "call", "mcall":
+		if info, _ := g.enumVariantCall(r); info != nil {
+			return "", g.errf(id, "cannot translate node #%d: an enum value is a place, not a scalar", id)
+		}
 		return g.callScalar(r)
 	}
 	return "", g.errf(id, "cannot translate node #%d: node kind %s is not lowered yet", id, r.Kind)
@@ -1337,7 +1456,7 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 		return "", g.errf(r.ID, "cannot translate node #%d: the call returns no value", r.ID)
 	}
 	if _, _, ok := llvmScalar(text); !ok {
-		return "", g.errf(r.ID, "cannot translate node #%d: a struct result is a place, not a scalar value", r.ID)
+		return "", g.errf(r.ID, "cannot translate node #%d: an aggregate result is a place, not a scalar value", r.ID)
 	}
 	return name, nil
 }
@@ -1345,6 +1464,9 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 // callExpr lowers one call or method call and returns the value and its result
 // type text. A void call returns an empty name and an empty text.
 func (g *generator) callExpr(r willc.Record) (string, string, error) {
+	if info, _ := g.enumVariantCall(r); info != nil {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: an enum value is a place, not a scalar", r.ID)
+	}
 	if qualified := textField(r, "to"); qualified != "" {
 		return g.emitCall(r, qualified, false)
 	}
@@ -1452,10 +1574,14 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, st
 	}
 	result, _, scalar := llvmScalar(resultText)
 	if !scalar {
-		if !g.structTypes[resultText] {
+		switch {
+		case g.structTypes[resultText]:
+			result = qualifiedTypeName(resultText)
+		case g.enumTypes[resultText]:
+			result = qualifiedEnumName(resultText)
+		default:
 			return "", "", g.errf(r.ID, "cannot translate node #%d: result type %s is not lowered yet", r.ID, resultText)
 		}
-		result = qualifiedTypeName(resultText)
 	}
 	g.tmp++
 	tmp := "%t" + strconv.Itoa(g.tmp)

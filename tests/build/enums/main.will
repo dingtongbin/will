@@ -1,0 +1,42 @@
+enum Shape {
+    Empty
+    Circle(i32)
+    Box(i32, i32)
+}
+
+struct Holder {
+    shape: Shape
+    n: i32
+}
+
+func Area(s: Shape) -> i32 {
+    return match s {
+        Circle(r) => r * r
+        Box(a, b) => a * b
+        Empty => 0
+    }
+}
+
+func Count(h: Holder) -> i32 {
+    match h.shape {
+        Circle(r) => {
+            return r + h.n
+        }
+        _ => {
+            return 0
+        }
+    }
+}
+
+func Pick(n: i32) -> i32 {
+    return match n {
+        0 => 10
+        x if x > 0 => x
+        _ => -1
+    }
+}
+
+func main() -> i32 {
+    var h: Holder = Holder { shape: Shape.Circle(3), n: 2 }
+    return Area(Shape.Circle(3)) + Count(h) + Pick(4)
+}

@@ -116,6 +116,56 @@ func TestEmitSliceChecksBothBounds(t *testing.T) {
 	}
 }
 
+func TestEmitEnumConstructionAndMatch(t *testing.T) {
+	src := "enum E {\n    A\n    B(i32)\n}\n\n" +
+		"func F(e: E) -> i32 {\n    return match e {\n        A => 0\n        B(v) => v\n    }\n}\n\n" +
+		"func Make() -> E {\n    return E.B(7)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`%"enum.example.com/app.E" = type { i32, i32 }`,
+		"define i32 @\"example.com/app.F\"(ptr %e) {",
+		"alloca i32",
+		"getelementptr inbounds %\"enum.example.com/app.E\", ptr %e, i32 0, i32 0",
+		"icmp eq i32 %t2, 0",
+		"icmp eq i32 %t5, 1",
+		"getelementptr inbounds %\"enum.example.com/app.E\", ptr %e, i32 0, i32 1",
+		"define %\"enum.example.com/app.E\" @\"example.com/app.Make\"() {",
+		"store i32 1, ptr",
+		"store i32 7, ptr",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitMatchWithGuardAndWildcard(t *testing.T) {
+	src := "func Pick(n: i32) -> i32 {\n    return match n {\n        0 => 10\n        x if x > 0 => x\n        _ => -1\n    }\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"icmp eq i32 %n, 0",
+		"icmp sgt i32 %n, 0",
+		"match.guard.",
+		"store i32 10, ptr %v.match.",
+		"store i32 %n, ptr %v.match.",
+		"br i1 true, label %match.arm.",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitCheckedCasts(t *testing.T) {
 	src := "func Widen(a: i32) -> i64 {\n    return i64(a)\n}\n\n" +
 		"func Narrow(a: i64) -> i32 {\n    return i32(a)\n}\n\n" +

@@ -83,7 +83,7 @@ func llvmTypeText(text string) (string, bool) {
 // isAggregateType reports whether an LLVM type is one the lowering passes as a
 // borrow and copies as a whole value.
 func isAggregateType(typ string) bool {
-	return isStructType(typ) || strings.HasPrefix(typ, "[") || strings.HasPrefix(typ, "{")
+	return isStructType(typ) || isEnumType(typ) || strings.HasPrefix(typ, "[") || strings.HasPrefix(typ, "{")
 }
 
 // loopBindType returns the will type text of one binding of a for record.
