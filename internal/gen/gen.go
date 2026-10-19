@@ -19,7 +19,15 @@ func Emit(doc *willc.Doc) ([]byte, error) {
 	for _, r := range doc.Records {
 		m[r.ID] = r
 	}
-	g := &generator{recs: m, scope: map[int]string{}, out: &strings.Builder{}}
+	g := &generator{
+		recs:     m,
+		scope:    map[int]string{},
+		funcs:    map[int]string{},
+		links:    map[int]string{},
+		declared: map[string]bool{},
+		out:      &strings.Builder{},
+	}
+	g.collect()
 	for _, r := range doc.Records {
 		if r.Kind == "func" {
 			if err := g.funcDecl(r); err != nil {
@@ -31,10 +39,25 @@ func Emit(doc *willc.Doc) ([]byte, error) {
 }
 
 type generator struct {
-	recs  map[int]willc.Record
-	scope map[int]string
-	out   *strings.Builder
-	tmp   int
+	recs     map[int]willc.Record
+	scope    map[int]string
+	funcs    map[int]string
+	links    map[int]string
+	declared map[string]bool
+	out      *strings.Builder
+	tmp      int
+}
+
+// collect records the callable names: file functions and import c links.
+func (g *generator) collect() {
+	for _, r := range g.recs {
+		switch r.Kind {
+		case "func":
+			g.funcs[r.ID] = fieldText(r, "text")
+		case "link":
+			g.links[r.ID] = fieldText(r, "text")
+		}
+	}
 }
 
 func (g *generator) errf(id int, format string, args ...any) error {
@@ -140,8 +163,76 @@ func (g *generator) value(id int) (string, error) {
 		name := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = %s i32 %s, %s\n", name, op, l, right)
 		return name, nil
+	case "call":
+		return g.call(r)
 	}
 	return "", g.errf(id, "cannot translate node #%d: node kind %s is not lowered yet", id, r.Kind)
+}
+
+// call lowers a call to a file function or to an import c link. Only i32
+// arguments and an i32 result are lowered yet.
+func (g *generator) call(r willc.Record) (string, error) {
+	target := refField(r, "to")
+	name := g.funcs[target]
+	link := false
+	if name == "" {
+		name = g.links[target]
+		link = true
+	}
+	if name == "" {
+		return "", g.errf(r.ID, "cannot translate node #%d: the callee is not a file function or a c link", r.ID)
+	}
+	args := g.valueChildren(r.ID)
+	values := make([]string, 0, len(args))
+	for _, a := range args {
+		v, err := g.value(a)
+		if err != nil {
+			return "", err
+		}
+		values = append(values, v)
+	}
+	if link {
+		g.declare(name, len(values))
+	}
+	parts := make([]string, len(values))
+	for i, v := range values {
+		parts[i] = "i32 " + v
+	}
+	g.tmp++
+	tmp := "%t" + strconv.Itoa(g.tmp)
+	fmt.Fprintf(g.out, "  %s = call i32 @%s(%s)\n", tmp, name, strings.Join(parts, ", "))
+	return tmp, nil
+}
+
+func (g *generator) declare(name string, args int) {
+	if g.declared[name] {
+		return
+	}
+	g.declared[name] = true
+	fmt.Fprintf(g.out, "declare i32 @%s(%s)\n", name, i32Types(args))
+}
+
+func i32Types(n int) string {
+	if n == 0 {
+		return ""
+	}
+	return strings.Repeat("i32, ", n-1) + "i32"
+}
+
+// valueChildren lists the argument records of a call in id order.
+func (g *generator) valueChildren(parent int) []int {
+	var ids []int
+	for _, r := range g.recs {
+		if refField(r, "parent") == parent && r.Kind != "type" {
+			ids = append(ids, r.ID)
+		}
+	}
+	for i := 1; i < len(ids); i++ {
+		for j := i; j > 0 && ids[j] < ids[j-1]; j-- {
+			ids[j], ids[j-1] = ids[j-1], ids[j]
+		}
+	}
+	return ids
 }
 
 func llvmOp(op string) (string, error) {
@@ -175,9 +266,15 @@ func refField(r willc.Record, name string) int {
 	return 0
 }
 
+// fieldText reads a text field; unquoted words such as lit kind=int are text
+// too.
 func fieldText(r willc.Record, name string) string {
 	for _, f := range r.Fields {
-		if f.Name == name && f.Value.Kind == willc.TextValue {
+		if f.Name != name {
+			continue
+		}
+		switch f.Value.Kind {
+		case willc.TextValue, willc.WordValue:
 			return f.Value.Text
 		}
 	}

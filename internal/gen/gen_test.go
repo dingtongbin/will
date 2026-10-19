@@ -47,6 +47,32 @@ func TestEmitIntegerFunction(t *testing.T) {
 	}
 }
 
+func TestEmitCCall(t *testing.T) {
+	src := `import c "stdio.h" {
+    fast putchar
+}
+
+func Write() -> i32 {
+    return putchar(65)
+}
+`
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"declare i32 @putchar(i32)",
+		"call i32 @putchar(i32 65)",
+		"ret i32 %t1",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitUnsupportedNodeIsReported(t *testing.T) {
 	doc := emitWillc(t, "func F(a: i32) -> i32 {\n    if a > 0 {\n        return a\n    }\n    return 0\n}\n")
 	_, err := Emit(doc)
