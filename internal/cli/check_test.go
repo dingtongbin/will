@@ -120,6 +120,25 @@ func TestCheckTargetFlagReachesJSON(t *testing.T) {
 	}
 }
 
+func TestCheckLongEchoesTheSource(t *testing.T) {
+	path := writeFile(t, t.TempDir(), "bad.will", badSource)
+	code, out, _ := runCLI("check", "--long", path)
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !strings.Contains(out, "\n        var x: i32 = \"s\"\n") {
+		t.Fatalf("stdout lacks the source line: %q", out)
+	}
+	if !strings.Contains(out, "^\n") {
+		t.Fatalf("stdout lacks the caret: %q", out)
+	}
+	// The canonical form stays free of the echo.
+	_, plain, _ := runCLI("check", path)
+	if strings.Contains(plain, "var n: i32") {
+		t.Fatalf("the canonical form echoes source: %q", plain)
+	}
+}
+
 func TestCheckUsageErrors(t *testing.T) {
 	if code, _, errOut := runCLI("check"); code != 2 || !strings.Contains(errOut, "usage:") {
 		t.Fatalf("code = %d, stderr = %q", code, errOut)

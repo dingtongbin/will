@@ -32,6 +32,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runEmitWillc(args[1:], stdout, stderr)
 	case "emit-llvm":
 		return runEmitLLVM(args[1:], stdout, stderr)
+	case "emit-asm":
+		return runEmitAsm(args[1:], stdout, stderr)
 	case "fmt":
 		return runFmt(args[1:], stdout, stderr)
 	case "index":
@@ -155,9 +157,12 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	ds := diag.FilterDisabled(bag.Diagnostics(), flags.disabled)
 	build := buildIdentityWith(flags.opt, flags.target)
 	var out []byte
-	if flags.json {
+	switch {
+	case flags.json:
 		out = []byte(diag.JSONAll(ds, build))
-	} else {
+	case flags.long:
+		out = []byte(diag.FormatAllLong(ds, sourceReader()))
+	default:
 		out = []byte(diag.FormatAll(ds))
 	}
 	stdout.Write(out)

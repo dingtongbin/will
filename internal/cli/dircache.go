@@ -29,9 +29,12 @@ func runCachedBuild(b *pkg.Build, flags checkFlags, stdout io.Writer) int {
 	ds := diag.FilterDisabled(b.CheckAll(), flags.disabled)
 	build := buildIdentityWith(flags.opt, flags.target)
 	var out []byte
-	if flags.json {
+	switch {
+	case flags.json:
 		out = []byte(diag.JSONAll(ds, build))
-	} else {
+	case flags.long:
+		out = []byte(diag.FormatAllLong(ds, sourceReader()))
+	default:
 		out = []byte(diag.FormatAll(ds))
 	}
 	stdout.Write(out)

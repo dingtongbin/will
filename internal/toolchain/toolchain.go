@@ -3,6 +3,7 @@
 package toolchain
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -47,6 +48,22 @@ func (c *Clang) BuildIR(ir []byte, out string, args ...string) (string, error) {
 	cmd := exec.Command(c.Path, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	return string(output), err
+}
+
+// AssembleIR compiles LLVM text to assembly text. The input goes through
+// standard input, so no temporary file is needed.
+func (c *Clang) AssembleIR(ir []byte, args ...string) (string, error) {
+	cmdArgs := []string{"-x", "ir", "-S", "-o", "-", "-"}
+	cmdArgs = append(cmdArgs, args...)
+	cmd := exec.Command(c.Path, cmdArgs...)
+	cmd.Stdin = bytes.NewReader(ir)
+	var out, errBuf bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("%v: %s", err, errBuf.String())
+	}
+	return out.String(), nil
 }
 
 // Link links one output with extra inputs.

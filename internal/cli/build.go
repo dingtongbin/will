@@ -114,7 +114,27 @@ func reportDiagnostics(ds []diag.Diagnostic, opts buildOptions, stdout io.Writer
 		io.WriteString(stdout, diag.JSONAll(ds, build))
 		return
 	}
+	if opts.long {
+		io.WriteString(stdout, diag.FormatAllLong(ds, sourceReader()))
+		return
+	}
 	io.WriteString(stdout, diag.FormatAll(ds))
+}
+
+// sourceReader returns a reader that reads each file's bytes once.
+func sourceReader() func(string) []byte {
+	cache := map[string][]byte{}
+	return func(file string) []byte {
+		if data, ok := cache[file]; ok {
+			return data
+		}
+		data, err := os.ReadFile(file)
+		if err != nil {
+			data = nil
+		}
+		cache[file] = data
+		return data
+	}
 }
 
 // failed reports whether the run must stop: an error, or a warning under
@@ -307,6 +327,29 @@ func runEmitLLVM(args []string, stdout, stderr io.Writer) int {
 		return code
 	}
 	stdout.Write(ir)
+	return 0
+}
+
+// runEmitAsm writes the assembly text of one build, which clang produces.
+func runEmitAsm(args []string, stdout, stderr io.Writer) int {
+	opts, _, code := parseBuildArgs("emit-asm", args, stderr)
+	if code != 0 {
+		return code
+	}
+	ir, _, code := compileIR(opts, stdout, stderr)
+	if code != 0 {
+		return code
+	}
+	clang, err := toolchain.FindClang()
+	if err != nil {
+		return missingTool(stdout, "clang")
+	}
+	asm, err := clang.AssembleIR(ir, clangArgs(opts)...)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	io.WriteString(stdout, asm)
 	return 0
 }
 

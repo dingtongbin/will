@@ -36,6 +36,31 @@ func main() {
 
 // TestBuildReportsTheSameDiagnostics checks the rule that will check and will
 // build report the same diagnostics.
+func TestEmitAsmNeedsClang(t *testing.T) {
+	if hasClang() {
+		t.Skip("clang is installed; the missing-tool path is not reachable")
+	}
+	path := writeFile(t, t.TempDir(), "main.will", entrySource)
+	code, out, _ := runCLI("emit-asm", path)
+	if code != 1 || !strings.Contains(out, "X0003 external tool clang is missing or too old") {
+		t.Fatalf("code = %d, stdout = %q", code, out)
+	}
+}
+
+func TestEmitAsmWithClang(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	path := writeFile(t, t.TempDir(), "main.will", entrySource)
+	code, out, errOut := runCLI("emit-asm", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stderr = %q", code, errOut)
+	}
+	if !strings.Contains(out, "putchar") {
+		t.Fatalf("assembly does not mention putchar:\n%s", out)
+	}
+}
+
 func TestBuildReportsTheSameDiagnostics(t *testing.T) {
 	if hasClang() {
 		t.Skip("clang is installed; the build would go further than diagnostics")
