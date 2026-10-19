@@ -325,6 +325,9 @@ func (g *generator) typeOf(id int) (string, error) {
 	case "try":
 		typ, _, err := g.trySuccessType(r)
 		return typ, err
+	case "unwrap":
+		typ, _, err := g.unwrapType(r)
+		return typ, err
 	case "new":
 		typ, ok := g.typeLLVMOf(fieldText(r, "type"))
 		if !ok {
@@ -498,6 +501,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		return fieldText(to, "text"), nil
 	case "try":
 		_, text, err := g.trySuccessType(r)
+		return text, err
+	case "unwrap":
+		_, text, err := g.unwrapType(r)
 		return text, err
 	case "new":
 		return fieldText(r, "type"), nil
@@ -710,6 +716,8 @@ func (g *generator) place(id int) (string, string, error) {
 		return ptr, typ, nil
 	case "try":
 		return g.tryPlace(r)
+	case "unwrap":
+		return g.unwrapPlace(r)
 	case "match":
 		terminated, err := g.lowerMatch(r, true, false)
 		if err != nil {

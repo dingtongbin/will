@@ -1678,6 +1678,8 @@ func (g *generator) value(id int) (string, error) {
 		return g.matchValue(r)
 	case "try":
 		return g.tryValue(r)
+	case "unwrap":
+		return g.unwrapValue(r)
 	case "new":
 		return "", g.errf(id, "cannot translate node #%d: a new value is a place, not a scalar", id)
 	case "un":
