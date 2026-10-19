@@ -1,6 +1,6 @@
-// Package index writes the text index of a loaded module: packages, files,
-// imports, declarations, methods, interface satisfaction, and C imports. The
-// index comes only from the compiler, is complete, and is deterministic.
+// Package index writes and reads the text index of a loaded module: packages,
+// files, imports, declarations, methods, interface satisfaction, and C imports.
+// The index comes only from the compiler, is complete, and is deterministic.
 package index
 
 import (
