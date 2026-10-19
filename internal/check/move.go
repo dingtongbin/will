@@ -231,71 +231,62 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) events {
 	return ev
 }
 
-// exprEvents collects the name occurrences of one expression. A bare name that
-// is an argument of a call is a transfer; every other occurrence is a use.
+// exprEvents collects the name occurrences of one expression.
 func (m *mover) exprEvents(e ast.Expr, live map[string]bool, ev *events) {
+	m.exprEventsIn(e, live, ev, false)
+}
+
+// exprEventsIn collects one expression. transferArgs says that the arguments
+// of the calls inside it move their value (a spawn capture), which is the one
+// place where passing a value is not a borrow.
+func (m *mover) exprEventsIn(e ast.Expr, live map[string]bool, ev *events, transferArgs bool) {
 	switch x := e.(type) {
 	case nil, *ast.LiteralExpr, *ast.UnitExpr, *ast.LaneHereExpr:
 	case *ast.NameExpr:
 		if x.Name != "_" {
 			ev.uses = append(ev.uses, nameUse{name: x.Name, pos: x.Pos()})
 		}
-	case *ast.CallExpr, *ast.MethodCallExpr:
-		var args []*ast.CallArg
-		switch c := x.(type) {
-		case *ast.CallExpr:
-			m.exprEvents(c.Callee, live, ev)
-			args = c.Args
-		case *ast.MethodCallExpr:
-			m.exprEvents(c.Recv, live, ev)
-			args = c.Args
-		}
-		for _, a := range args {
-			if b, ok := a.Expr.(*ast.NameExpr); ok && live[b.Name] {
-				if ev.hasTransfer(b.Name) {
-					// The same value cannot be moved twice in one call; the
-					// second occurrence is a use of the moved value.
-					ev.uses = append(ev.uses, nameUse{name: b.Name, pos: b.Pos()})
-					continue
-				}
-				ev.transfers = append(ev.transfers, nameUse{name: b.Name, pos: b.Pos()})
-				continue
-			}
-			m.exprEvents(a.Expr, live, ev)
-		}
+	case *ast.CallExpr:
+		m.exprEventsIn(x.Callee, live, ev, false)
+		m.args(x.Args, live, ev, transferArgs)
+	case *ast.MethodCallExpr:
+		m.exprEventsIn(x.Recv, live, ev, false)
+		// Send hands the value to the channel; every other method borrows it.
+		m.args(x.Args, live, ev, transferArgs || x.Name == "Send")
 	case *ast.FieldExpr:
-		m.exprEvents(x.Recv, live, ev)
+		m.exprEventsIn(x.Recv, live, ev, false)
 	case *ast.IndexExpr:
-		m.exprEvents(x.Recv, live, ev)
-		m.exprEvents(x.Index, live, ev)
+		m.exprEventsIn(x.Recv, live, ev, false)
+		m.exprEventsIn(x.Index, live, ev, false)
 	case *ast.SliceExpr:
-		m.exprEvents(x.Recv, live, ev)
-		m.exprEvents(x.Lo, live, ev)
-		m.exprEvents(x.Hi, live, ev)
+		m.exprEventsIn(x.Recv, live, ev, false)
+		m.exprEventsIn(x.Lo, live, ev, false)
+		m.exprEventsIn(x.Hi, live, ev, false)
 	case *ast.AggregateExpr:
 		for _, f := range x.Fields {
-			m.exprEvents(f.Value, live, ev)
+			// A field takes the value into the aggregate.
+			m.args([]*ast.CallArg{{Expr: f.Value}}, live, ev, true)
 		}
 	case *ast.NewExpr:
 		for _, a := range x.Args {
-			m.exprEvents(a.Expr, live, ev)
+			m.exprEventsIn(a.Expr, live, ev, false)
 		}
 	case *ast.UnaryExpr:
-		m.exprEvents(x.X, live, ev)
+		m.exprEventsIn(x.X, live, ev, false)
 	case *ast.BinaryExpr:
-		m.exprEvents(x.L, live, ev)
-		m.exprEvents(x.R, live, ev)
+		m.exprEventsIn(x.L, live, ev, false)
+		m.exprEventsIn(x.R, live, ev, false)
 	case *ast.RangeExpr:
-		m.exprEvents(x.Lo, live, ev)
-		m.exprEvents(x.Hi, live, ev)
+		m.exprEventsIn(x.Lo, live, ev, false)
+		m.exprEventsIn(x.Hi, live, ev, false)
 	case *ast.LambdaExpr:
 		m.block(x.Body, false, live)
 	case *ast.TryExpr:
-		m.exprEvents(x.X, live, ev)
+		m.exprEventsIn(x.X, live, ev, false)
 	case *ast.UnwrapExpr:
-		m.exprEvents(x.X, live, ev)
+		m.exprEventsIn(x.X, live, ev, false)
 	case *ast.SpawnExpr:
-		m.exprEvents(x.Call, live, ev)
+		m.exprEventsIn(x.Call, live, ev, true)
 	case *ast.DeadlineExpr:
 		m.stmt(x, live)
 	case *ast.IfExpr:
@@ -304,8 +295,27 @@ func (m *mover) exprEvents(e ast.Expr, live map[string]bool, ev *events) {
 		m.stmt(x, live)
 	case *ast.InterpExpr:
 		for _, part := range x.Parts {
-			m.exprEvents(part.Expr, live, ev)
+			m.exprEventsIn(part.Expr, live, ev, false)
 		}
+	}
+}
+
+// args records the argument occurrences of one call. A bare name that is passed
+// on (transfer) moves the value; otherwise the argument is a borrow and counts
+// as a use.
+func (m *mover) args(args []*ast.CallArg, live map[string]bool, ev *events, transfer bool) {
+	for _, a := range args {
+		if b, ok := a.Expr.(*ast.NameExpr); ok && live[b.Name] && transfer {
+			if ev.hasTransfer(b.Name) {
+				// The same value cannot be moved twice in one place; the
+				// second occurrence is a use of the moved value.
+				ev.uses = append(ev.uses, nameUse{name: b.Name, pos: b.Pos()})
+				continue
+			}
+			ev.transfers = append(ev.transfers, nameUse{name: b.Name, pos: b.Pos()})
+			continue
+		}
+		m.exprEventsIn(a.Expr, live, ev, false)
 	}
 }
 

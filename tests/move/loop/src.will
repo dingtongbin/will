@@ -6,6 +6,7 @@ func F(xs: []i32) {
     for i in xs {
         _ = i
         _ = s
-        G(s)
+        var t: str = s
+        _ = t
     }
 }

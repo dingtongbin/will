@@ -52,12 +52,10 @@ func TestMoveRequiresACopyWhenTheSourceIsStillLive(t *testing.T) {
 }
 
 func TestMoveLastUseIsAccepted(t *testing.T) {
-	src := `func G(s: str) {
-}
-
-func F() {
+	src := `func F() {
     var s: str = "a"
-    G(s)
+    var t: str = s
+    _ = t
 }
 `
 	if ds := moves(t, src); len(ds) != 0 {
@@ -72,8 +70,10 @@ func TestMoveLoopCarriedUse(t *testing.T) {
 func F(xs: []i32) {
     var s: str = "a"
     for i in xs {
+        _ = i
         _ = s
-        G(s)
+        var t: str = s
+        _ = t
     }
 }
 `
@@ -88,14 +88,14 @@ func F(xs: []i32) {
 	if d.Help != "call Clone() to keep a copy, or take a borrow" {
 		t.Errorf("help = %q", d.Help)
 	}
-	if d.Pos.Line != 7 || d.Pos.Col != 13 {
-		t.Errorf("position = %d:%d, want the use at 7:13", d.Pos.Line, d.Pos.Col)
+	if d.Pos.Line != 8 || d.Pos.Col != 13 {
+		t.Errorf("position = %d:%d, want the use at 8:13", d.Pos.Line, d.Pos.Col)
 	}
 	if len(d.Notes) != 1 || d.Notes[0].Message != "this value moved here" {
 		t.Fatalf("notes = %+v, want one moved-here note", d.Notes)
 	}
-	if d.Notes[0].Pos.Line != 8 || d.Notes[0].Pos.Col != 11 {
-		t.Errorf("note = %d:%d, want the transfer at 8:11", d.Notes[0].Pos.Line, d.Notes[0].Pos.Col)
+	if d.Notes[0].Pos.Line != 9 || d.Notes[0].Pos.Col != 22 {
+		t.Errorf("note = %d:%d, want the transfer at 9:22", d.Notes[0].Pos.Line, d.Notes[0].Pos.Col)
 	}
 }
 
@@ -112,13 +112,16 @@ func TestMoveIgnoresCopiedValues(t *testing.T) {
 	}
 }
 
-func TestMoveTwoUsesInOneCall(t *testing.T) {
-	src := `func G(a: str, b: str) {
+func TestMoveTwoUsesInOneAggregate(t *testing.T) {
+	src := `struct Pair {
+    a: str
+    b: str
 }
 
 func F() {
     var s: str = "a"
-    G(s, s)
+    var p: Pair = Pair { a: s, b: s }
+    _ = p
 }
 `
 	ds := moves(t, src)
@@ -126,11 +129,28 @@ func F() {
 		t.Fatalf("diagnostics = %d, want one:\n%s", len(ds), diag.FormatAll(ds))
 	}
 	d := ds[0]
-	if d.Code != diag.CodeMoved || d.Pos.Line != 6 || d.Pos.Col != 10 {
-		t.Errorf("diagnostic = %+v, want the second argument", d)
+	if d.Code != diag.CodeMoved || d.Pos.Line != 8 || d.Pos.Col != 35 {
+		t.Errorf("diagnostic = %+v, want the second field", d)
 	}
-	if len(d.Notes) != 1 || d.Notes[0].Pos.Line != 6 || d.Notes[0].Pos.Col != 7 {
-		t.Errorf("notes = %+v, want the first argument", d.Notes)
+	if len(d.Notes) != 1 || d.Notes[0].Pos.Line != 8 || d.Notes[0].Pos.Col != 29 {
+		t.Errorf("notes = %+v, want the first field", d.Notes)
+	}
+}
+
+// TestMovePassingIsABorrow checks the settled convention: a parameter borrows
+// its value, so passing it on is not a move and cannot require a copy.
+func TestMovePassingIsABorrow(t *testing.T) {
+	src := `func G(s: str) {
+}
+
+func F() {
+    var s: str = "a"
+    G(s)
+    G(s)
+}
+`
+	if ds := moves(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
 	}
 }
 
