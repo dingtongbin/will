@@ -24,42 +24,136 @@ import (
 // an entry point yet, so this is provisional.
 const defaultEntry = "main"
 
-func compileIR(opts buildOptions, stderr io.Writer) ([]byte, string, int) {
-	file, modulePath, code := entryFile(opts.path, opts.entry, stderr)
+// frontEnd is what the lowering step needs from the front end: the file that
+// declares the entry function, the import path of its package, and the
+// exported names of every package in the module.
+type frontEnd struct {
+	file       string
+	modulePath string
+	imports    resolve.Imports
+}
+
+// runFrontEnd runs the same front end will check runs and prints the same
+// diagnostics, so the two commands never disagree. It returns the entry file.
+func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
+	info, err := os.Stat(opts.path)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return frontEnd{}, 1
+	}
+	if !info.IsDir() {
+		return fileFrontEnd(opts, stdout, stderr)
+	}
+	b := pkg.Load(opts.path)
+	if b.Err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", b.Err)
+		return frontEnd{}, 1
+	}
+	ds := diag.FilterDisabled(b.CheckAll(), opts.disabled)
+	reportDiagnostics(ds, opts, stdout)
+	if failed(ds, opts) {
+		return frontEnd{}, 1
+	}
+	imports := resolve.Imports{}
+	for _, p := range b.Packages {
+		imports[p.Path] = p.Exports
+	}
+	for _, p := range b.Packages {
+		for _, f := range p.Files {
+			if f.AST == nil {
+				continue
+			}
+			for _, d := range f.AST.Decls {
+				if declaresEntry(d, opts.entry) {
+					return frontEnd{file: filepath.Join(p.Dir, f.Path), modulePath: p.Path, imports: imports}, 0
+				}
+			}
+		}
+	}
+	fmt.Fprintf(stderr, "will: entry function %s not found\n", opts.entry)
+	return frontEnd{}, 1
+}
+
+// fileFrontEnd runs the front end over one file.
+func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
+	data, err := os.ReadFile(opts.path)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return frontEnd{}, 1
+	}
+	f, ds := parser.Parse(filepath.ToSlash(opts.path), data)
+	var bag diag.Bag
+	bag.AddAll(ds)
+	if f == nil {
+		reportDiagnostics(diag.FilterDisabled(bag.Diagnostics(), opts.disabled), opts, stdout)
+		return frontEnd{}, 1
+	}
+	imports, modulePath := packageImports(opts.path)
+	res, rds := resolve.ResolveWith(f, imports)
+	bag.AddAll(rds)
+	bag.AddAll(types.Check(f, res))
+	all := diag.FilterDisabled(bag.Diagnostics(), opts.disabled)
+	reportDiagnostics(all, opts, stdout)
+	if failed(all, opts) {
+		return frontEnd{}, 1
+	}
+	if !fileDeclaresEntry(f, opts.entry) {
+		fmt.Fprintf(stderr, "will: entry function %s not found\n", opts.entry)
+		return frontEnd{}, 1
+	}
+	return frontEnd{file: opts.path, modulePath: modulePath, imports: imports}, 0
+}
+
+// reportDiagnostics prints diagnostics the way will check prints them.
+func reportDiagnostics(ds []diag.Diagnostic, opts buildOptions, stdout io.Writer) {
+	if len(ds) == 0 {
+		return
+	}
+	build := buildIdentityWith(opts.opt, opts.target)
+	if opts.json {
+		io.WriteString(stdout, diag.JSONAll(ds, build))
+		return
+	}
+	io.WriteString(stdout, diag.FormatAll(ds))
+}
+
+// failed reports whether the run must stop: an error, or a warning under
+// -Werror.
+func failed(ds []diag.Diagnostic, opts buildOptions) bool {
+	for _, d := range ds {
+		if d.Severity == diag.Error {
+			return true
+		}
+		if opts.werror && d.Severity == diag.Warning {
+			return true
+		}
+	}
+	return false
+}
+
+func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int) {
+	fe, code := runFrontEnd(opts, stdout, stderr)
 	if code != 0 {
 		return nil, "", code
 	}
-	data, err := os.ReadFile(file)
+	data, err := os.ReadFile(fe.file)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return nil, "", 1
 	}
-	store, key := buildCacheKey(file, data, modulePath, opts)
+	store, key := buildCacheKey(fe.file, data, fe.modulePath, opts)
 	if store != nil {
 		if got, ok := store.Get(key, cache.ModuleLL); ok {
-			return got[cache.ModuleLL], modulePath, 0
+			return got[cache.ModuleLL], fe.modulePath, 0
 		}
 	}
-	f, ds := parser.Parse(filepath.ToSlash(file), data)
-	var bag diag.Bag
-	bag.AddAll(ds)
+	f, _ := parser.Parse(filepath.ToSlash(fe.file), data)
 	if f == nil {
-		fmt.Fprint(stderr, diag.FormatAll(bag.Diagnostics()))
+		fmt.Fprintf(stderr, "will: %s no longer parses\n", fe.file)
 		return nil, "", 1
 	}
-	if !fileDeclaresEntry(f, opts.entry) {
-		fmt.Fprintf(stderr, "will: entry function %s not found\n", opts.entry)
-		return nil, "", 1
-	}
-	res, rds := resolve.Resolve(f)
-	bag.AddAll(rds)
-	bag.AddAll(types.Check(f, res))
-	all := bag.Diagnostics()
-	if hasError(all) {
-		fmt.Fprint(stderr, diag.FormatAll(all))
-		return nil, "", 1
-	}
-	text, err := willc.Emit(f, res, modulePath, all)
+	res, _ := resolve.ResolveWith(f, fe.imports)
+	text, err := willc.Emit(f, res, fe.modulePath, nil)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return nil, "", 1
@@ -78,7 +172,7 @@ func compileIR(opts buildOptions, stderr io.Writer) ([]byte, string, int) {
 		_ = store.Put(key, map[string][]byte{cache.Willc: text, cache.ModuleLL: ir})
 		_ = store.Trim()
 	}
-	return ir, modulePath, 0
+	return ir, fe.modulePath, 0
 }
 
 // buildCacheKey keys one build on everything this run reads: the source, the
@@ -97,38 +191,6 @@ func buildCacheKey(file string, data []byte, modulePath string, opts buildOption
 		fmt.Sprintf("freestanding=%v", opts.freestanding), "features="+opts.features,
 		"disabled="+disabledList(opts.disabled))
 	return cache.New(root, 0), h.Key()
-}
-
-// entryFile finds the source file that declares the entry function and its
-// module path.
-func entryFile(path, entry string, stderr io.Writer) (string, string, int) {
-	info, err := os.Stat(path)
-	if err != nil {
-		fmt.Fprintf(stderr, "will: %v\n", err)
-		return "", "", 1
-	}
-	if !info.IsDir() {
-		return path, filepath.Base(filepath.Dir(path)), 0
-	}
-	b := pkg.Load(path)
-	if b.Err != nil {
-		fmt.Fprintf(stderr, "will: %v\n", b.Err)
-		return "", "", 1
-	}
-	for _, p := range b.Packages {
-		for _, f := range p.Files {
-			if f.AST == nil {
-				continue
-			}
-			for _, d := range f.AST.Decls {
-				if declaresEntry(d, entry) {
-					return filepath.Join(p.Dir, f.Path), p.Path, 0
-				}
-			}
-		}
-	}
-	fmt.Fprintf(stderr, "will: entry function %s not found\n", entry)
-	return "", "", 1
 }
 
 func declaresEntry(d ast.Decl, entry string) bool {
@@ -150,7 +212,7 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	if code != 0 {
 		return code
 	}
-	ir, modulePath, code := compileIR(opts, stderr)
+	ir, modulePath, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
 	}
@@ -194,7 +256,7 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 	if code != 0 {
 		return code
 	}
-	ir, _, code := compileIR(opts, stderr)
+	ir, _, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
 	}
@@ -240,7 +302,7 @@ func runEmitLLVM(args []string, stdout, stderr io.Writer) int {
 	if code != 0 {
 		return code
 	}
-	ir, _, code := compileIR(opts, stderr)
+	ir, _, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
 	}

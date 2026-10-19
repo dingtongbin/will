@@ -20,6 +20,9 @@ type buildOptions struct {
 	freestanding bool
 	features     string
 	disabled     map[string]bool
+	json         bool
+	long         bool
+	werror       bool
 }
 
 // parseBuildArgs reads the flags of will build and will run. The arguments
@@ -66,9 +69,12 @@ func parseBuildArgs(command string, args []string, stderr io.Writer) (buildOptio
 				return opts, nil, 2
 			}
 			i, opts.features = next, value
-		case "--json", "--long", "-Werror":
-			// Diagnostic switches are accepted here and read by the check
-			// path, which owns their meaning.
+		case "--json":
+			opts.json = true
+		case "--long":
+			opts.long = true
+		case "-Werror":
+			opts.werror = true
 		default:
 			switch {
 			case strings.HasPrefix(args[i], "-Wno-"):

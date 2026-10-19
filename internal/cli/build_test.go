@@ -23,6 +23,45 @@ func hasClang() bool {
 	return err == nil
 }
 
+// buildWarningSource has one warning and an entry function, so it can be both
+// checked and built.
+const buildWarningSource = `func F() {
+    var i32: i32 = 0
+    _ = i32
+}
+
+func main() {
+}
+`
+
+// TestBuildReportsTheSameDiagnostics checks the rule that will check and will
+// build report the same diagnostics.
+func TestBuildReportsTheSameDiagnostics(t *testing.T) {
+	if hasClang() {
+		t.Skip("clang is installed; the build would go further than diagnostics")
+	}
+	root := filepath.Join(t.TempDir(), "app")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeFile(t, root, "will.mod", "module example.com/app\nwill 1\n")
+	writeFile(t, root, "app.will", buildWarningSource)
+
+	_, checked, _ := runCLI("check", root)
+	_, built, _ := runCLI("build", root)
+	if !strings.Contains(checked, "N0003 this name shadows i32") {
+		t.Fatalf("check did not report the warning: %q", checked)
+	}
+	if !strings.Contains(built, "N0003 this name shadows i32") {
+		t.Fatalf("build did not report the same warning: %q", built)
+	}
+
+	_, quiet, _ := runCLI("build", "-Wno-shadow", root)
+	if strings.Contains(quiet, "N0003") {
+		t.Fatalf("build kept a switched-off warning: %q", quiet)
+	}
+}
+
 func TestEmitLLVM(t *testing.T) {
 	path := writeFile(t, t.TempDir(), "main.will", entrySource)
 	code, out, errOut := runCLI("emit-llvm", path)
