@@ -59,7 +59,7 @@ var kindSpecs = map[string]KindSpec{
 	},
 	"index":   {Required: []string{"recv", "i"}},
 	"slice":   {Required: []string{"recv", "lo", "hi"}},
-	"agg":     {Required: []string{"to"}, Repeatable: []string{"field"}},
+	"agg":     {Required: []string{"to"}, Repeatable: []string{"field", "typearg"}},
 	"new":     {Required: []string{"type"}, Repeatable: []string{"arg"}},
 	"cast":    {Required: []string{"to", "expr"}},
 	"un":      {Required: []string{"op", "expr"}},

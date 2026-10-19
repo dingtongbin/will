@@ -50,6 +50,7 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		declared:      map[string]bool{},
 		stringsByText: map[string]string{},
 		byteGlobals:   map[string]string{},
+		emittedTypes:  map[string]bool{},
 		out:           &strings.Builder{},
 		aliases:       aliases,
 	}
@@ -246,6 +247,10 @@ func (g *generator) use(d *docState) {
 	g.slotTypes = map[int]string{}
 	g.borrows = map[int]bool{}
 	g.structs = map[int]*structInfo{}
+	g.structInstances = map[string]*structInfo{}
+	g.structDecl = map[string]int{}
+	g.enumDecl = map[string]int{}
+	g.ifaceDecl = map[string]int{}
 	g.byType = map[string]*structInfo{}
 	g.byName = map[string]*structInfo{}
 	g.aggSlots = map[int]string{}
@@ -303,7 +308,12 @@ type generator struct {
 	// structs holds the lowered structs of the current document by record id,
 	// and byType looks one up by its LLVM type name. aggSlots maps an aggregate
 	// literal to the temporary slot reserved for it in the entry block.
-	structs  map[int]*structInfo
+	structs      map[int]*structInfo
+	structInstances map[string]*structInfo
+	emittedTypes map[string]bool
+	structDecl   map[string]int
+	enumDecl     map[string]int
+	ifaceDecl    map[string]int
 	byType   map[string]*structInfo
 	byName   map[string]*structInfo
 	aggSlots map[int]string
@@ -458,7 +468,7 @@ func (g *generator) emitDoc() error {
 	}
 	sortByID(funcs)
 	for _, fn := range funcs {
-		if g.hasTypeParams(fn) {
+		if g.hasTypeParams(fn) || g.genericMethodDecl(fn) {
 			continue
 		}
 		if err := g.funcDecl(fn); err != nil {
@@ -510,6 +520,12 @@ func (g *generator) collect() {
 			g.cur.funcs[r.ID] = g.symbolName(name)
 		case "link":
 			g.cur.links[r.ID] = fieldText(r, "text")
+		case "struct":
+			g.structDecl[fieldText(r, "text")] = r.ID
+		case "enum":
+			g.enumDecl[fieldText(r, "text")] = r.ID
+		case "interface":
+			g.ifaceDecl[fieldText(r, "text")] = r.ID
 		}
 	}
 }
@@ -771,7 +787,7 @@ func (g *generator) allocas(fn int) error {
 	}
 	sortByID(aggregates)
 	for _, r := range aggregates {
-		info, ok := g.ensureStruct(refField(r, "to"))
+		info, ok := g.aggStructInfo(r)
 		if !ok {
 			return g.errf(r.ID, "cannot translate node #%d: the aggregate type is not lowered yet", r.ID)
 		}
@@ -1869,6 +1885,9 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		return g.emitCall(r, qualified, false)
 	}
 	if r.Kind == "mcall" {
+		if name := g.genericMethodName(r); name != "" {
+			return g.emitCall(r, name, false)
+		}
 		recvText, err := g.willTypeText(refField(r, "recv"))
 		if err != nil {
 			return "", "", err

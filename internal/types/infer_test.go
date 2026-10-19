@@ -13,6 +13,15 @@ func TestExplicitTypeArgumentsInstantiateSignature(t *testing.T) {
 	}
 }
 
+func TestGenericStructFieldsAndMethods(t *testing.T) {
+	src := "struct Box<T> {\n    value: T\n}\n\n" +
+		"func (b: Box<T>) Get() -> T {\n    return b.value\n}\n\n" +
+		"func main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return b.Get()\n}\n"
+	if ds := checkWithResolve(t, src); len(ds) != 0 {
+		t.Fatalf("a generic struct field and method were not instantiated:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestNoMethodOnUserType(t *testing.T) {
 	src := "struct P {\n    x: i32\n}\n\nfunc F(p: P) -> i32 {\n    return p.Missing()\n}\n"
 	ds := checkWithResolve(t, src)

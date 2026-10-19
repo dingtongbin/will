@@ -367,6 +367,7 @@ func (r *resolver) walkDecl(d ast.Decl) {
 func (r *resolver) walkFunc(decl *ast.FuncDecl) {
 	r.push()
 	if decl.Recv != nil {
+		r.declareReceiverTypeParams(decl.Recv.Type)
 		r.walkType(decl.Recv.Type)
 		r.declareLocal(&Symbol{Name: decl.Recv.Name, Kind: ReceiverKind, Pos: decl.Recv.NamePos, Node: decl.Recv, Exported: isExported(decl.Recv.Name)})
 	}
@@ -378,6 +379,21 @@ func (r *resolver) walkFunc(decl *ast.FuncDecl) {
 	r.walkType(decl.Result)
 	r.walkBlock(decl.Body)
 	r.pop()
+}
+
+// declareReceiverTypeParams brings the type parameters written in a generic
+// receiver into scope, so a method on Box<T> may name T in its signature and
+// body without redeclaring it.
+func (r *resolver) declareReceiverTypeParams(t *ast.Type) {
+	if t == nil {
+		return
+	}
+	for _, a := range t.Args {
+		if a == nil || a.Kind != ast.NamedType || len(a.Args) != 0 {
+			continue
+		}
+		r.declareLocal(&Symbol{Name: a.Name, Kind: TypeParamKind, Pos: a.Pos(), Node: a, Exported: isExported(a.Name)})
+	}
 }
 
 func (r *resolver) declareTypeParams(params []*ast.TypeParam) {

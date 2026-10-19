@@ -191,6 +191,49 @@ func TestEmitStrLiteralIndexAndLoop(t *testing.T) {
 	}
 }
 
+func TestEmitGenericStructInstance(t *testing.T) {
+	src := "struct Box<T> {\n    value: T\n}\n\n" +
+		"func Read(b: Box<i32>) -> i32 {\n    return b.value\n}\n\n" +
+		"func main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return Read(b)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`%"struct.example.com/app.Box$i32" = type { i32 }`,
+		`getelementptr inbounds %"struct.example.com/app.Box$i32"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitGenericMethodInstance(t *testing.T) {
+	src := "struct Box<T> {\n    value: T\n}\n\n" +
+		"func (b: Box<T>) Get() -> T {\n    return b.value\n}\n\n" +
+		"func main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return b.Get()\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define i32 @"example.com/app.Box<i32>.Get"(ptr %b)`,
+		`call i32 @"example.com/app.Box<i32>.Get"(`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	if strings.Count(text, `%"struct.example.com/app.Box$i32" = type`) != 1 {
+		t.Errorf("the generic struct type was emitted more than once:\n%s", text)
+	}
+}
+
 func TestEmitGenericFunctionInstance(t *testing.T) {
 	src := "func Id<T>(x: T) -> T {\n    return x\n}\n\nfunc Use() -> i32 {\n    return Id<i32>(3)\n}\n"
 	doc := emitWillc(t, src)

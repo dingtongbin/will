@@ -127,6 +127,11 @@ func registerTypes(res *layout.Resolver, u sourceUnit) error {
 	for _, d := range f.Decls {
 		switch decl := d.(type) {
 		case *ast.StructDecl:
+			// A generic struct has one layout per instantiation, so it has no
+			// single decision record.
+			if len(decl.TypeParams) > 0 {
+				continue
+			}
 			fields := make([]layout.Field, len(decl.Fields))
 			for i, fd := range decl.Fields {
 				spec, err := layoutSpec(fd.Type, u.prefix)
@@ -139,6 +144,9 @@ func registerTypes(res *layout.Resolver, u sourceUnit) error {
 				return err
 			}
 		case *ast.EnumDecl:
+			if len(decl.TypeParams) > 0 {
+				continue
+			}
 			variants := make([]layout.Variant, len(decl.Variants))
 			for i, v := range decl.Variants {
 				args := make([]*layout.Spec, len(v.Args))

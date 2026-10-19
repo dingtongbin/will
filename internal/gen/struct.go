@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -36,17 +37,49 @@ func (g *generator) buildStructs() {
 	for _, r := range g.recs {
 		if r.Kind == "struct" {
 			structs = append(structs, r)
+			g.structDecl[fieldText(r, "text")] = r.ID
 		}
 	}
 	sortByID(structs)
 	for _, r := range structs {
+		if g.structIsGeneric(r.ID) {
+			continue
+		}
 		g.ensureStruct(r.ID)
 	}
+	g.planStructInstances()
 	for _, r := range structs {
+		if g.structIsGeneric(r.ID) {
+			continue
+		}
 		info := g.structs[r.ID]
 		if info == nil || !info.ok {
 			continue
 		}
+		if g.emittedTypes[info.llvm] {
+			continue
+		}
+		g.emittedTypes[info.llvm] = true
+		if len(info.types) == 0 {
+			fmt.Fprintf(g.out, "%s = type {}\n", info.llvm)
+			continue
+		}
+		fmt.Fprintf(g.out, "%s = type { %s }\n", info.llvm, strings.Join(info.types, ", "))
+	}
+	var keys []string
+	for key := range g.structInstances {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		info := g.structInstances[key]
+		if info == nil || !info.ok {
+			continue
+		}
+		if g.emittedTypes[info.llvm] {
+			continue
+		}
+		g.emittedTypes[info.llvm] = true
 		if len(info.types) == 0 {
 			fmt.Fprintf(g.out, "%s = type {}\n", info.llvm)
 			continue
@@ -187,6 +220,9 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 	if typ, ok := llvmTypeText(fieldText(r, "type")); ok {
 		return typ, nil
 	}
+	if typ, ok := g.structInstanceFromText(fieldText(r, "type")); ok {
+		return typ, nil
+	}
 	if adt, ok := g.adtType(fieldText(r, "type")); ok {
 		return adt.llvm, nil
 	}
@@ -281,7 +317,7 @@ func (g *generator) typeOf(id int) (string, error) {
 		}
 		return info.types[i], nil
 	case "agg":
-		info, ok := g.ensureStruct(refField(r, "to"))
+		info, ok := g.aggStructInfo(r)
 		if !ok {
 			return "", g.errf(id, "cannot translate node #%d: the aggregate type is not lowered yet", id)
 		}
@@ -517,6 +553,9 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 	if text := g.genericCallResult(r); text != "" {
 		return text, nil
 	}
+	if text := g.genericMethodResult(r); text != "" {
+		return text, nil
+	}
 	if qualified := textField(r, "to"); qualified != "" {
 		if t, ok := g.sigs[qualified]; ok {
 			return t, nil
@@ -693,7 +732,7 @@ func (g *generator) place(id int) (string, string, error) {
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", ptr, typ, base, i)
 		return ptr, info.types[i], nil
 	case "agg":
-		info, ok := g.ensureStruct(refField(r, "to"))
+		info, ok := g.aggStructInfo(r)
 		if !ok {
 			return "", "", g.errf(id, "cannot translate node #%d: the aggregate type is not lowered yet", id)
 		}

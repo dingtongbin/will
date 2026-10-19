@@ -1,0 +1,13 @@
+struct Box<T> {
+    value: T
+    tag: i32
+}
+
+func (b: Box<T>) Get() -> T {
+    return b.value
+}
+
+func main() -> i32 {
+    var a: Box<i32> = Box<i32> { value: 3, tag: 4 }
+    return a.Get() + a.tag
+}

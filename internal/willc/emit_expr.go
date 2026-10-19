@@ -359,6 +359,7 @@ func (e *emitter) emitAggregate(v *ast.AggregateExpr) int {
 		}
 	}
 	e.push(rec)
+	e.emitTypeArgsField(rec, v.TypeArgs)
 	for _, f := range v.Fields {
 		vid := e.emitExpr(f.Value)
 		e.field(rec, "field", Text(f.Name+"=#"+strconv.Itoa(vid)))

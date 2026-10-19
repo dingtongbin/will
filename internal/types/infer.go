@@ -754,6 +754,33 @@ func (c *checker) typeByName(name string) *Type {
 	return c.in.named(name, nil)
 }
 
+// substFor pairs the declared type parameters of a named type with the type
+// arguments of one use. It returns nil when the use is not generic.
+func (c *checker) substFor(name string, args []*Type) map[string]*Type {
+	params := c.env.params[name]
+	if len(params) == 0 || len(params) != len(args) {
+		return nil
+	}
+	subst := make(map[string]*Type, len(params))
+	for i, p := range params {
+		subst[p] = args[i]
+	}
+	return subst
+}
+
+// instantiateReceiver specializes the signature of a method or init on a
+// generic receiver for one receiver type.
+func (c *checker) instantiateReceiver(sig *signature, recv *Type) *signature {
+	if sig == nil || len(sig.recvParams) == 0 {
+		return nil
+	}
+	subst := c.substFor(recv.Name(), recv.Args())
+	if subst == nil {
+		return nil
+	}
+	return c.instantiate(sig, subst)
+}
+
 // instantiate replaces the type parameters of one signature with the types the
 // call site wrote explicitly.
 func (c *checker) instantiate(sig *signature, subst map[string]*Type) *signature {
@@ -842,6 +869,9 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	}
 	if sig, ok := c.env.methods[recv.Name()+"."+call.Name]; ok {
 		c.checkTypeArgsForMethod(call, sig)
+		if inst := c.instantiateReceiver(sig, recv); inst != nil {
+			sig = inst
+		}
 		c.checkPayload(s, sig.params, call.Args, call.Name, call.Pos())
 		return sig.result
 	}
@@ -867,8 +897,12 @@ func (c *checker) fieldType(recv *Type, name string, pos source.Pos) *Type {
 	if !known {
 		return nil
 	}
+	subst := c.substFor(recv.Name(), recv.Args())
 	for _, f := range fields {
 		if f.name == name {
+			if subst != nil {
+				return c.substitute(f.typ, subst)
+			}
 			return f.typ
 		}
 	}
@@ -877,7 +911,11 @@ func (c *checker) fieldType(recv *Type, name string, pos source.Pos) *Type {
 }
 
 func (c *checker) aggregateType(s *inferScope, agg *ast.AggregateExpr) *Type {
-	t := c.typeByName(agg.TypeName)
+	t := c.buildType(&ast.Type{Span: agg.Span, Kind: ast.NamedType, Name: agg.TypeName, Args: agg.TypeArgs}, nil)
+	var subst map[string]*Type
+	if t != nil {
+		subst = c.substFor(agg.TypeName, t.Args())
+	}
 	fields, known := c.env.fields[agg.TypeName]
 	for _, f := range agg.Fields {
 		var want *Type
@@ -885,6 +923,9 @@ func (c *checker) aggregateType(s *inferScope, agg *ast.AggregateExpr) *Type {
 		for _, fi := range fields {
 			if fi.name == f.Name {
 				want = fi.typ
+				if subst != nil {
+					want = c.substitute(want, subst)
+				}
 				found = true
 			}
 		}
@@ -904,6 +945,11 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 		name = t.Name()
 	}
 	if sig, ok := c.env.inits[name]; ok {
+		if t != nil {
+			if inst := c.instantiateReceiver(sig, t); inst != nil {
+				sig = inst
+			}
+		}
 		c.checkCallArgs(s, sig, n.Args, n.Pos())
 		if sig.result != nil {
 			return sig.result
