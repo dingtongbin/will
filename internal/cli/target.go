@@ -19,6 +19,13 @@ var supportedTargets = []string{
 	"aarch64-ios",
 }
 
+// wordOf returns the width of a word in bytes for a target triple. Every
+// supported triple is 64 bit, so the answer does not depend on the triple yet;
+// a 32-bit target would add its case here.
+func wordOf(triple string) int {
+	return 8
+}
+
 // SupportedTarget reports whether triple is one of the allowed targets.
 func SupportedTarget(triple string) bool {
 	for _, t := range supportedTargets {

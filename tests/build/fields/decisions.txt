@@ -5,3 +5,11 @@ layout type="Mixed" size=16 align=8
 field type="Mixed" name="tag" offset=0 size=1
 field type="Mixed" name="value" offset=4 size=4
 field type="Mixed" name="wide" offset=8 size=8
+layout type="Line" size=24 align=8
+field type="Line" name="head" offset=0 size=16
+field type="Line" name="marks" offset=16 size=2
+layout type="Shape" size=24 align=8
+field type="Shape" name="tag" offset=0 size=4
+field type="Shape" name="Empty" offset=8 size=0
+field type="Shape" name="Circle" offset=8 size=16
+field type="Shape" name="Box" offset=8 size=8

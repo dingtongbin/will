@@ -9,6 +9,17 @@ struct Mixed {
     wide: u64
 }
 
+struct Line {
+    head: Point
+    marks: [2]i8
+}
+
+enum Shape {
+    Empty
+    Circle(Point)
+    Box(i32, i8)
+}
+
 func main() -> i32 {
     return 0
 }
