@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/will-lang/will/internal/willc"
 )
@@ -14,6 +15,82 @@ func arrayElemText(text string) (string, bool) {
 		return "", false
 	}
 	return elem, true
+}
+
+// viewElemText returns the element text of a read-only view []T.
+func viewElemText(text string) (string, bool) {
+	if !strings.HasPrefix(text, "[]") {
+		return "", false
+	}
+	elem := text[2:]
+	if _, _, ok := llvmScalar(elem); !ok {
+		return "", false
+	}
+	return elem, true
+}
+
+// viewCallResult returns the LLVM and will result types of a view method.
+func (g *generator) viewCallResult(r willc.Record) (llvm, text string, known bool) {
+	if r.Kind != "mcall" {
+		return "", "", false
+	}
+	recvText, err := g.willTypeText(refField(r, "recv"))
+	if err != nil {
+		return "", "", false
+	}
+	elem, ok := viewElemText(recvText)
+	if !ok {
+		return "", "", false
+	}
+	switch fieldText(r, "text") {
+	case "Len":
+		return "i64", "usize", true
+	case "Get":
+		elemLLVM, _, ok := llvmScalar(elem)
+		if !ok {
+			return "", "", false
+		}
+		return elemLLVM, elem, true
+	}
+	return "", "", false
+}
+
+// viewMethod lowers a method call on a read-only view []T.
+func (g *generator) viewMethod(r willc.Record, elem string) (string, string, error) {
+	base, baseType, err := g.place(refField(r, "recv"))
+	if err != nil {
+		return "", "", err
+	}
+	if baseType != "{ ptr, i64 }" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: the receiver is not a view", r.ID)
+	}
+	elemLLVM, _, ok := llvmScalar(elem)
+	if !ok {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: view element %s is not lowered yet", r.ID, elem)
+	}
+	lenField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n", lenField, base)
+	if fieldText(r, "text") == "Len" {
+		return g.load("i64", lenField), "usize", nil
+	}
+	args := g.callArgs(r)
+	if len(args) == 0 {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: Get needs an index", r.ID)
+	}
+	idx, err := g.indexValue(args[0], r)
+	if err != nil {
+		return "", "", err
+	}
+	length := g.load("i64", lenField)
+	bad := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp uge i64 %s, %s\n", bad, idx, length)
+	g.panicCheck(bad, panicIndex, r)
+	dataField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", dataField, base)
+	data := g.load("ptr", dataField)
+	ptr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", ptr, elemLLVM, data, idx)
+	return g.load(elemLLVM, ptr), elem, nil
 }
 
 // constructArray builds `new Array<T>(cap)`: one heap block of cap elements and

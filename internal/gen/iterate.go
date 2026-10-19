@@ -141,6 +141,10 @@ func (g *generator) sliceElem(r willc.Record) (string, error) {
 	if _, elem, ok := arrayTypeText(text); ok {
 		return elem, nil
 	}
+	if text == "str" {
+		// A str slice is a byte view, as the text volume fixes.
+		return "u8", nil
+	}
 	if elem, ok := containerElem(text); ok {
 		return elem, nil
 	}

@@ -104,6 +104,9 @@ func (g *generator) emitAux() {
 	if g.needMemmoveDecl {
 		g.out.WriteString("declare void @memmove(ptr, ptr, i64)\n")
 	}
+	if g.needMemcpyDecl {
+		g.out.WriteString("declare void @memcpy(ptr, ptr, i64)\n")
+	}
 }
 
 // docState is the per-file part of the translation: record ids and the callable
@@ -285,6 +288,7 @@ func (g *generator) use(d *docState) {
 	g.vtables = map[string]string{}
 	g.callSlots = map[int]string{}
 	g.sliceSlots = map[int]string{}
+	g.strCatSlots = map[int]string{}
 	g.loopBinds = map[int]map[string]string{}
 	g.loopTypes = map[int]map[string]string{}
 	g.loopPtrs = map[int]map[string]string{}
@@ -384,6 +388,8 @@ type generator struct {
 	needMemcmpDecl bool
 	// needMemmoveDecl records that a container removed an entry in place.
 	needMemmoveDecl bool
+	// needMemcpyDecl records that a str concatenation copied bytes.
+	needMemcpyDecl bool
 	// declKinds maps a qualified type name to "struct" or "enum".
 	declKinds map[string]string
 	// callSlots maps a call whose result is a struct to the temporary slot its
@@ -392,6 +398,8 @@ type generator struct {
 	// sliceSlots maps a slice expression to the temporary slot holding the view
 	// it builds.
 	sliceSlots map[int]string
+	// strCatSlots maps a str concatenation to the two-word slot it builds.
+	strCatSlots map[int]string
 	// loopBinds maps a for record and a binding name to that binding's slot,
 	// and loopTypes to its will type text. Both bindings of a loop name the
 	// same for record, so the name tells them apart. loopPtrs holds the element
@@ -1040,6 +1048,19 @@ func (g *generator) allocas(fn int) error {
 	for _, r := range slices {
 		name := "%v.slice." + strconv.Itoa(r.ID)
 		g.sliceSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca { ptr, i64 }\n", name)
+	}
+	// A str concatenation builds a two-word value, which also needs a slot.
+	var cats []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "bin" && g.enclosingFunc(r.ID) == fn && g.isStrConcat(r) {
+			cats = append(cats, r)
+		}
+	}
+	sortByID(cats)
+	for _, r := range cats {
+		name := "%v.cat." + strconv.Itoa(r.ID)
+		g.strCatSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca { ptr, i64 }\n", name)
 	}
 	// A range loop binds one counter, which also needs a slot.
@@ -1939,6 +1960,9 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		if name := g.genericCallName(r); name != "" {
 			return g.emitCall(r, name, false)
 		}
+		if _, _, known := g.strCallResult(r); known {
+			return g.strMethod(r)
+		}
 		if _, _, known := g.containerCallResult(r); known {
 			recvText, err := g.willTypeText(refField(r, "recv"))
 			if err != nil {
@@ -1949,6 +1973,9 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		recvText, err := g.willTypeText(refField(r, "recv"))
 		if err != nil {
 			return "", "", err
+		}
+		if elem, ok := viewElemText(recvText); ok {
+			return g.viewMethod(r, elem)
 		}
 		if elem, ok := arrayElemText(recvText); ok {
 			return g.arrayMethod(r, elem)

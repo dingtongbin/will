@@ -853,11 +853,14 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	case "Join":
 		return nil
 	}
-	if recv == nil || recv.Kind() != NamedKind {
+	if recv == nil {
 		return nil
 	}
 	if t, ok := c.builtinContainerMethod(s, recv, call); ok {
 		return t
+	}
+	if recv.Kind() != NamedKind {
+		return nil
 	}
 	if methods, ok := c.env.ifaces[recv.Name()]; ok {
 		c.dispatch = append(c.dispatch, DispatchPoint{Pos: call.Pos(), Interface: recv.Name()})
@@ -891,6 +894,41 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.MethodCallExpr) (*Type, bool) {
 	usize := c.in.scalar("usize")
 	boolean := c.in.scalar("bool")
+	if recv.Kind() == ScalarKind && recv.Name() == "str" {
+		if call.Name == "Len" {
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return usize, true
+		}
+		return nil, false
+	}
+	if recv.Kind() == ViewKind {
+		if call.Name == "Len" {
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return usize, true
+		}
+		return nil, false
+	}
+	if recv.Kind() == NamedKind && recv.Name() == "Array" {
+		elem := argAt(recv, 0)
+		switch call.Name {
+		case "Len", "Cap":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return usize, true
+		case "Get":
+			c.checkPayload(s, []*Type{usize}, call.Args, call.Name, call.Pos())
+			return elem, true
+		case "Set":
+			c.checkPayload(s, []*Type{usize, elem}, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		case "Push":
+			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		}
+		return nil, false
+	}
+	if recv.Kind() != NamedKind {
+		return nil, false
+	}
 	switch recv.Name() {
 	case "Map":
 		k, v := argAt(recv, 0), argAt(recv, 1)
@@ -1082,6 +1120,12 @@ func (c *checker) binaryType(s *inferScope, b *ast.BinaryExpr) *Type {
 	}
 	lt := c.inferExpr(s, b.L)
 	rt := c.exprWithWant(s, b.R, lt)
+	if b.Op == token.Plus && lt != nil && lt.Kind() == ScalarKind && lt.Name() == "str" {
+		if !Equal(lt, rt) {
+			c.typeMismatch(b.Pos(), rt, lt)
+		}
+		return lt
+	}
 	switch b.Op {
 	case token.Shl, token.Shr, token.ShlWrap:
 		if lt != nil && !lt.IsInteger() {
@@ -1212,7 +1256,8 @@ func (c *checker) sliceOf(t *Type) *Type {
 		}
 	}
 	if t.Kind() == ScalarKind && t.Name() == "str" {
-		return t
+		// A str slice is a byte view, not a str.
+		return c.in.view(c.in.scalar("u8"))
 	}
 	return nil
 }

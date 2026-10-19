@@ -383,10 +383,19 @@ func (g *generator) typeOf(id int) (string, error) {
 		return g.typeOf(refField(r, "expr"))
 	case "call", "mcall":
 		if r.Kind == "mcall" {
+			if llvm, _, known := g.strCallResult(r); known {
+				if llvm == "" {
+					return "", g.errf(id, "cannot translate node #%d: the call returns no value", id)
+				}
+				return llvm, nil
+			}
 			if llvm, _, known := g.containerCallResult(r); known {
 				if llvm == "" {
 					return "", g.errf(id, "cannot translate node #%d: the call returns no value", id)
 				}
+				return llvm, nil
+			}
+			if llvm, _, known := g.viewCallResult(r); known {
 				return llvm, nil
 			}
 			if llvm, _, known := g.arrayCallResult(r); known {
@@ -562,7 +571,13 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 	if text := g.genericMethodResult(r); text != "" {
 		return text, nil
 	}
+	if _, text, known := g.strCallResult(r); known {
+		return text, nil
+	}
 	if _, text, known := g.containerCallResult(r); known {
+		return text, nil
+	}
+	if _, text, known := g.viewCallResult(r); known {
 		return text, nil
 	}
 	if qualified := textField(r, "to"); qualified != "" {
@@ -765,6 +780,11 @@ func (g *generator) place(id int) (string, string, error) {
 			return "", "", err
 		}
 		return ptr, typ, nil
+	case "bin":
+		if g.isStrConcat(r) {
+			return g.strConcat(r)
+		}
+		return "", "", g.errf(id, "cannot translate node #%d: a binary expression is not a place", id)
 	case "try":
 		return g.tryPlace(r)
 	case "unwrap":

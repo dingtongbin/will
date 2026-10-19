@@ -234,6 +234,31 @@ func TestEmitGenericMethodInstance(t *testing.T) {
 	}
 }
 
+func TestEmitStrConcatAndSlice(t *testing.T) {
+	src := "func main() -> i32 {\n" +
+		"    var a: str = \"foo\"\n" +
+		"    var b: str = \"bar\"\n" +
+		"    var c: str = a + b\n" +
+		"    var d: []u8 = c[Range(0, 3)]\n" +
+		"    return i32(c.Len()) + i32(d.Len())\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`call ptr @willrt_alloc(i64 %t`,
+		`call void @memcpy(ptr`,
+		`declare void @memcpy(ptr, ptr, i64)`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitMapContainer(t *testing.T) {
 	src := "func main() -> i32 {\n" +
 		"    var m: Map<i32, i32> = new Map<i32, i32>()\n" +
