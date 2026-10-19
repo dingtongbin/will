@@ -162,4 +162,10 @@ void willrt_symbols_register(const willrt_symbol_table* table);
    range contains addr. Lookup allocates nothing and takes no lock. */
 const char* willrt_symbol_name(uintptr_t addr);
 
+/* willrt_utf8_decode reads one UTF-8 scalar from data[0..len). It returns the
+   number of bytes the scalar occupies (1 to 4) and stores the scalar in *out.
+   It returns 0 for an empty buffer, a truncated sequence, an overlong
+   encoding, a surrogate, or a value above U+10FFFF. */
+int32_t willrt_utf8_decode(const uint8_t* data, size_t len, uint32_t* out);
+
 #endif

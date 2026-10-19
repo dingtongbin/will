@@ -166,6 +166,31 @@ func TestEmitMatchWithGuardAndWildcard(t *testing.T) {
 	}
 }
 
+func TestEmitStrLiteralIndexAndLoop(t *testing.T) {
+	src := "func At(s: str, i: i32) -> u32 {\n    return s[i]\n}\n\n" +
+		"func One() -> u32 {\n    return At(\"hi\", 0)\n}\n\n" +
+		"func Count(s: str) -> i32 {\n    var n: i32 = 0\n    for i, c in s {\n        if c == 65u32 { n += 1 }\n        _ = i\n    }\n    return n\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`@.bytes.1 = private unnamed_addr constant`,
+		"call i32 @willrt_utf8_decode(ptr",
+		`c"invalid UTF-8\00"`,
+		"for.cond.1:",
+		"icmp ult i64",
+		"sext i32",
+		"declare i32 @willrt_utf8_decode(ptr, i64, ptr)",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitNewRunsDefaultsAndInit(t *testing.T) {
 	src := "struct P {\n    x: i32 = 5\n    y: i32\n}\n\n" +
 		"func (mut p: P) init(y: i32) {\n    p.y = y\n}\n\n" +
@@ -684,8 +709,8 @@ func TestEmitEndlessLoopWithBreak(t *testing.T) {
 }
 
 func TestEmitUnsupportedNodeIsReported(t *testing.T) {
-	// A string iteration needs the UTF-8 decoder, which is not lowered yet.
-	doc := emitWillc(t, "func F(s: str) -> i32 {\n    var n: i32 = 0\n    for x in s {\n        n += 1\n    }\n    return n\n}\n")
+	// A spawned task needs the task runtime, which is not lowered yet.
+	doc := emitWillc(t, "func G() {\n}\n\nfunc F() {\n    spawn G()\n}\n")
 	_, err := Emit(doc)
 	if err == nil {
 		t.Fatal("an unsupported node was translated")
@@ -780,7 +805,7 @@ func TestEmitStructArgumentIsABorrow(t *testing.T) {
 }
 
 func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
-	src := "struct Text {\n    body: str\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
+	src := "struct Text {\n    body: Map<str, i32>\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -792,7 +817,7 @@ func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
 }
 
 func TestEmitUnloweredFieldIsReported(t *testing.T) {
-	src := "struct Text {\n    body: str\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
+	src := "struct Text {\n    body: Map<str, i32>\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	if _, err := Emit(doc); err == nil {
 		t.Fatal("a parameter whose struct field is not lowered was translated")

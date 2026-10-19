@@ -17,6 +17,7 @@ const (
 	panicSlice       = "slice bounds out of range"
 	panicConversion  = "conversion out of range"
 	panicNaN         = "cannot convert NaN to integer"
+	panicUTF8        = "invalid UTF-8"
 )
 
 // signedMins holds the smallest value of each signed width as LLVM text. The

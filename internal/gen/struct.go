@@ -89,6 +89,10 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 			info.types = append(info.types, typ)
 			continue
 		}
+		if typ, ok := llvmTypeText(t); ok {
+			info.types = append(info.types, typ)
+			continue
+		}
 		if adt, ok := g.adtType(t); ok {
 			info.types = append(info.types, adt.llvm)
 			continue
@@ -228,7 +232,7 @@ func (g *generator) typeOf(id int) (string, error) {
 	}
 	switch r.Kind {
 	case "lit":
-		typ, _, ok := llvmScalar(fieldText(r, "type"))
+		typ, ok := llvmTypeText(fieldText(r, "type"))
 		if !ok {
 			return "", g.errf(id, "cannot translate node #%d: literal type %s is not lowered yet", id, fieldText(r, "type"))
 		}
@@ -365,7 +369,7 @@ func (g *generator) typeOf(id int) (string, error) {
 		if text == "" {
 			return "", g.errf(id, "cannot translate node #%d: the call returns no value", id)
 		}
-		typ, _, ok := llvmScalar(text)
+		typ, ok := llvmTypeText(text)
 		if !ok {
 			if adt, ok := g.adtType(text); ok {
 				return adt.llvm, nil
@@ -375,6 +379,9 @@ func (g *generator) typeOf(id int) (string, error) {
 			}
 			if g.enumTypes[text] {
 				return qualifiedEnumName(text), nil
+			}
+			if g.ifaceTypes[text] {
+				return qualifiedIfaceName(text), nil
 			}
 			return "", g.errf(id, "cannot translate node #%d: result type %s is not lowered yet", id, text)
 		}
@@ -591,6 +598,12 @@ func (g *generator) place(id int) (string, string, error) {
 		return "", "", g.errf(id, "cannot translate node #%d: no such node", id)
 	}
 	switch r.Kind {
+	case "lit":
+		kind := fieldText(r, "kind")
+		if kind == "str" || kind == "bytes" {
+			return g.stringPlace(r)
+		}
+		return "", "", g.errf(id, "cannot translate node #%d: a %s literal is a value, not a place", id, kind)
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
@@ -698,7 +711,9 @@ func (g *generator) place(id int) (string, string, error) {
 			return "", "", err
 		}
 		typ := ""
-		if adt, ok := g.adtType(text); ok {
+		if t, ok := llvmTypeText(text); ok && isAggregateType(t) {
+			typ = t
+		} else if adt, ok := g.adtType(text); ok {
 			typ = adt.llvm
 		} else if text != "" && g.structTypes[text] {
 			typ = qualifiedTypeName(text)

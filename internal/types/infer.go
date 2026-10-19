@@ -163,7 +163,7 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 		for _, arm := range x.Arms {
 			inner := newInferScope(s)
 			if t := c.inferExpr(s, arm.Chan); arm.Bind != "" {
-				inner.vars[arm.Bind] = elemOf(t)
+				inner.vars[arm.Bind] = elemOf(c.in, t)
 			}
 			c.inferExpr(s, arm.Timeout)
 			c.inferStmt(inner, arm.Body)
@@ -201,7 +201,7 @@ func (c *checker) inferFor(s *inferScope, st *ast.ForStmt) {
 				nameTypes[0] = argAt(t, 1)
 			}
 		default:
-			elem := elemOf(t)
+			elem := elemOf(c.in, t)
 			if names >= 2 {
 				nameTypes[0] = c.in.scalar("usize")
 				nameTypes[1] = elem
@@ -475,7 +475,7 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 	case *ast.FieldExpr:
 		return c.fieldType(c.inferExpr(s, x.Recv), x.Name, x.Pos())
 	case *ast.IndexExpr:
-		return elemOf(c.inferExpr(s, x.Recv))
+		return elemOf(c.in, c.inferExpr(s, x.Recv))
 	case *ast.SliceExpr:
 		recv := c.inferExpr(s, x.Recv)
 		c.checkValue(s, x.Lo, c.in.scalar("usize"))
@@ -721,7 +721,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	}
 	switch call.Name {
 	case "Recv":
-		return elemOf(recv)
+		return elemOf(c.in, recv)
 	case "Join":
 		return nil
 	}
@@ -976,7 +976,7 @@ func (c *checker) unifyTypes(pos source.Pos, a, b *Type) *Type {
 	return a
 }
 
-func elemOf(t *Type) *Type {
+func elemOf(in *interner, t *Type) *Type {
 	if t == nil {
 		return nil
 	}
@@ -992,7 +992,7 @@ func elemOf(t *Type) *Type {
 		}
 	}
 	if t.Kind() == ScalarKind && t.Name() == "str" {
-		return t
+		return in.scalar("u32")
 	}
 	return nil
 }

@@ -304,7 +304,7 @@ func (g *generator) callParamTypes(r willc.Record) []string {
 // resultLLVM maps a result type text to its LLVM type, or "" when it is not
 // lowered. It is the same order the function declaration uses.
 func (g *generator) resultLLVM(text string) string {
-	if typ, _, ok := llvmScalar(text); ok {
+	if typ, ok := llvmTypeText(text); ok {
 		return typ
 	}
 	if adt, ok := g.adtType(text); ok {

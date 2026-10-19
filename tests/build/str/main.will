@@ -1,0 +1,18 @@
+func At(s: str, i: i32) -> u32 {
+    return s[i]
+}
+
+func Count(s: str) -> i32 {
+    var n: i32 = 0
+    for i, c in s {
+        if c == 65u32 {
+            n += 1
+        }
+        _ = i
+    }
+    return n
+}
+
+func main() -> i32 {
+    return Count("Ahoj") + i32(At("Ahoj", 0))
+}

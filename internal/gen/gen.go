@@ -49,6 +49,7 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		slots:         map[int]string{},
 		declared:      map[string]bool{},
 		stringsByText: map[string]string{},
+		byteGlobals:   map[string]string{},
 		out:           &strings.Builder{},
 		aliases:       aliases,
 	}
@@ -85,6 +86,9 @@ func (g *generator) emitAux() {
 	}
 	if g.needPanicDecl {
 		g.out.WriteString("declare void @willrt_panic(ptr, ptr, ptr)\n")
+	}
+	if g.needUTF8Decl {
+		g.out.WriteString("declare i32 @willrt_utf8_decode(ptr, i64, ptr)\n")
 	}
 }
 
@@ -251,6 +255,9 @@ func (g *generator) use(d *docState) {
 	g.adts = map[string]*adtInfo{}
 	g.adtSlots = map[int]string{}
 	g.newSlots = map[int]string{}
+	g.strSlots = map[int]string{}
+	g.utf8Slots = map[int]string{}
+	g.utf8nSlots = map[int]string{}
 	g.trySlots = map[int]string{}
 	g.ifaces = map[int]*ifaceInfo{}
 	g.ifaceByLLVM = map[string]*ifaceInfo{}
@@ -318,6 +325,16 @@ type generator struct {
 	adtSlots map[int]string
 	// newSlots maps a new expression to the slot its storage is built in.
 	newSlots map[int]string
+	// strSlots maps a str or bytes literal to the two-word value built for it,
+	// and byteGlobals shares identical literal data.
+	strSlots    map[int]string
+	byteGlobals map[string]string
+	byteCount   int
+	// utf8Slots holds the u32 output of a UTF-8 decode for a str index or a
+	// str loop, and needUTF8Decl records that the runtime call is used.
+	utf8Slots     map[int]string
+	utf8nSlots    map[int]string
+	needUTF8Decl  bool
 	// fnResultText is the will result type of the function being lowered, and
 	// trySlots maps a try expression to the slot its error branch returns.
 	fnResultText string
@@ -576,7 +593,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	}
 	g.fnResultText = result
 	resLLVM := ""
-	if typ, _, ok := llvmScalar(result); ok {
+	if typ, ok := llvmTypeText(result); ok {
 		resLLVM = typ
 	} else if adt, ok := g.adtType(result); ok {
 		resLLVM = adt.llvm
@@ -739,7 +756,11 @@ func (g *generator) allocas(fn int) error {
 		}
 		text, err := g.callResultText(r)
 		if err != nil || text == "" || (!g.structTypes[text] && !g.enumTypes[text]) {
-			if adt, ok := g.adtType(text); ok && adt.llvm != "" {
+			if t, ok := llvmTypeText(text); ok && isAggregateType(t) {
+				name := "%v.ret." + strconv.Itoa(r.ID)
+				g.callSlots[r.ID] = name
+				fmt.Fprintf(g.out, "  %s = alloca %s\n", name, t)
+			} else if adt, ok := g.adtType(text); ok && adt.llvm != "" {
 				name := "%v.ret." + strconv.Itoa(r.ID)
 				g.callSlots[r.ID] = name
 				fmt.Fprintf(g.out, "  %s = alloca %s\n", name, adt.llvm)
@@ -796,6 +817,50 @@ func (g *generator) allocas(fn int) error {
 		name := "%v.new." + strconv.Itoa(r.ID)
 		g.newSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, typ)
+	}
+	// A str or bytes literal is a two-word value, built in a slot.
+	var strs []willc.Record
+	for _, r := range g.recs {
+		if r.Kind != "lit" || g.enclosingFunc(r.ID) != fn {
+			continue
+		}
+		if kind := fieldText(r, "kind"); kind == "str" || kind == "bytes" {
+			strs = append(strs, r)
+		}
+	}
+	sortByID(strs)
+	for _, r := range strs {
+		name := "%v.str." + strconv.Itoa(r.ID)
+		g.strSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca { ptr, i64 }\n", name)
+	}
+	// A str index and a str loop both decode one scalar into a u32 slot.
+	var decodes []willc.Record
+	for _, r := range g.recs {
+		if g.enclosingFunc(r.ID) != fn {
+			continue
+		}
+		switch r.Kind {
+		case "index":
+			if text, err := g.willTypeText(refField(r, "recv")); err == nil && text == "str" {
+				decodes = append(decodes, r)
+			}
+		case "for":
+			if text, err := g.willTypeText(refField(r, "iter")); err == nil && text == "str" {
+				decodes = append(decodes, r)
+			}
+		}
+	}
+	sortByID(decodes)
+	for _, r := range decodes {
+		name := "%v.utf8." + strconv.Itoa(r.ID)
+		g.utf8Slots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca i32\n", name)
+		if r.Kind == "for" {
+			advance := "%v.utf8n." + strconv.Itoa(r.ID)
+			g.utf8nSlots[r.ID] = advance
+			fmt.Fprintf(g.out, "  %s = alloca i64\n", advance)
+		}
 	}
 	// A constructed enum is built in a slot of its own.
 	var enumCtors []willc.Record
@@ -935,6 +1000,31 @@ func (g *generator) allocas(fn int) error {
 		// binding borrows the element, so it needs no slot of its own.
 		iterText, err := g.willTypeText(refField(r, "iter"))
 		if err != nil {
+			continue
+		}
+		if iterText == "str" {
+			names := bindNames(r)
+			if len(names) < 1 || len(names) > 2 {
+				continue
+			}
+			if g.loopBinds[r.ID] == nil {
+				g.loopBinds[r.ID] = map[string]string{}
+				g.loopTypes[r.ID] = map[string]string{}
+			}
+			idxName := hiddenIndex
+			if len(names) == 2 {
+				idxName = names[0]
+			}
+			idx := g.newSlot(idxName)
+			g.loopBinds[r.ID][hiddenIndex] = idx
+			g.bindLoopType(r.ID, idxName, "usize")
+			g.loopBinds[r.ID][idxName] = idx
+			fmt.Fprintf(g.out, "  %s = alloca i64\n", idx)
+			elemName := names[len(names)-1]
+			elemSlot := g.newSlot(elemName)
+			g.loopBinds[r.ID][elemName] = elemSlot
+			g.bindLoopType(r.ID, elemName, "u32")
+			fmt.Fprintf(g.out, "  %s = alloca i32\n", elemSlot)
 			continue
 		}
 		n, elem, ok := arrayTypeText(iterText)
@@ -1300,6 +1390,9 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 	}
 
 	if iterText, err := g.willTypeText(iterID); err == nil {
+		if iterText == "str" {
+			return g.forStr(r, void, n)
+		}
 		if an, elem, ok := arrayTypeText(iterText); ok {
 			return g.forArray(r, an, elem, void, n)
 		}
@@ -1446,6 +1539,8 @@ func (g *generator) value(id int) (string, error) {
 			return literalFloatText(fieldText(r, "text")), nil
 		case "bool":
 			return fieldText(r, "text"), nil
+		case "str", "bytes":
+			return "", g.errf(id, "cannot translate node #%d: a %s literal is a place, not a scalar", id, kind)
 		}
 		return "", g.errf(id, "cannot translate node #%d: literal kind %s is not lowered yet", id, fieldText(r, "kind"))
 	case "name":
@@ -1522,6 +1617,9 @@ func (g *generator) value(id int) (string, error) {
 	case "slice":
 		return "", g.errf(id, "cannot translate node #%d: a view is a place, not a scalar value", id)
 	case "index":
+		if text, err := g.willTypeText(refField(r, "recv")); err == nil && text == "str" {
+			return g.strIndex(r)
+		}
 		ptr, typ, err := g.indexAddr(r)
 		if err != nil {
 			return "", err
@@ -1805,7 +1903,7 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, st
 		fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(name), strings.Join(parts, ", "))
 		return "", "", nil
 	}
-	result, _, scalar := llvmScalar(resultText)
+	result, scalar := llvmTypeText(resultText)
 	if !scalar {
 		if adt, ok := g.adtType(resultText); ok {
 			result = adt.llvm

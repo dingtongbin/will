@@ -69,6 +69,9 @@ func llvmTypeText(text string) (string, bool) {
 	if typ, _, ok := llvmScalar(text); ok {
 		return typ, true
 	}
+	if text == "str" {
+		return "{ ptr, i64 }", true
+	}
 	if typ, ok := containerLLVM(text); ok {
 		return typ, true
 	}
