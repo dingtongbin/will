@@ -158,6 +158,12 @@ func TestEmitLLVMUsage(t *testing.T) {
 	}
 }
 
+func TestLSPUsage(t *testing.T) {
+	if code, _, _ := runCLI("lsp", "extra"); code != 2 {
+		t.Fatalf("code = %d, want 2", code)
+	}
+}
+
 func TestEmitAsmNeedsClang(t *testing.T) {
 	if hasClang() {
 		t.Skip("clang is installed; the missing-tool path is not reachable")

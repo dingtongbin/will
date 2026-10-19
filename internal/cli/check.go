@@ -49,6 +49,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runBuild(args[1:], stdout, stderr)
 	case "run":
 		return runRun(args[1:], stdout, stderr)
+	case "lsp":
+		return runLSP(args[1:], stdout, stderr)
 	case "version":
 		return runVersion(stdout)
 	}
