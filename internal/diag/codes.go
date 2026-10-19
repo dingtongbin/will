@@ -92,6 +92,10 @@ const (
 	CodeFreestanding = "B0007"
 	// CodeUnknownImportPath reports an import path that matches no package.
 	CodeUnknownImportPath = "B0008"
+	// CodePackageTwoPaths reports one package reached through two import paths.
+	CodePackageTwoPaths = "B0009"
+	// CodeImportCycle reports an import cycle.
+	CodeImportCycle = "B0010"
 
 	// CodeCannotParseCHeader reports a C header the compiler cannot parse.
 	CodeCannotParseCHeader = "X0001"
@@ -164,6 +168,7 @@ var Codes = []string{
 	CodeBlockingNotAwaited, CodeWaitInSync, CodeWaitInAsync, CodeBlocksThreadInTask,
 	CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,
 	CodeUnsupportedTarget, CodeNoEntry, CodeFreestanding, CodeUnknownImportPath,
+	CodePackageTwoPaths, CodeImportCycle,
 	CodeCannotTranslate,
 	CodeCannotParseCHeader, CodeLinkFailed, CodeExternalToolMissing,
 }
