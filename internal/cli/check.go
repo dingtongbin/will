@@ -154,6 +154,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stderr, usage)
 		return 2
 	}
+	pkg.SetEnabledFeatures(flags.features)
 	if d, bad := targetDiagnostic(flags.target, flags.targetSet); bad {
 		reportNoPos(d, flags.json, buildIdentityWith(flags.opt, flags.target), stdout)
 		return 1

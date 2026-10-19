@@ -1,0 +1,22 @@
+define i32 @"example.com/features.F"() {
+entry:
+  br i1 false, label %if.then.1, label %if.end.1
+if.then.1:
+  br label %if.end.1
+if.end.1:
+  ret i32 0
+}
+define i32 @"example.com/features.will$main"() {
+entry:
+  %t1 = call i32 @"example.com/features.F"()
+  ret i32 %t1
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/features.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}

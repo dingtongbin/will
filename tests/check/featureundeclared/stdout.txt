@@ -1,0 +1,2 @@
+main.will:4:8: B0004 feature nope is not declared in will.mod
+    help: add feature nope, or remove the condition

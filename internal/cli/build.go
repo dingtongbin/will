@@ -52,6 +52,7 @@ type frontEnd struct {
 // runFrontEnd runs the same front end will check runs and prints the same
 // diagnostics, so the two commands never disagree. It returns the entry file.
 func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
+	pkg.SetEnabledFeatures(opts.features)
 	info, err := os.Stat(opts.path)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)

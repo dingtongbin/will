@@ -222,6 +222,18 @@ func TestDirectoryCacheKeyInvariants(t *testing.T) {
 			t.Fatalf("identical trees under different roots gave %s and %s", base, got)
 		}
 	})
+	t.Run("module directory name", func(t *testing.T) {
+		fixture := newModuleFixture(t, nil)
+		renamed := filepath.Join(filepath.Dir(fixture.root), "renamed")
+		if err := os.Rename(fixture.root, renamed); err != nil {
+			t.Fatalf("rename module: %v", err)
+		}
+		b := pkg.Load(renamed)
+		if b.Err != nil {
+			t.Fatalf("load renamed module: %v", b.Err)
+		}
+		assertKeyChanged(t, base, dirCacheKeyForTest(t, b, flags), "the module directory name")
+	})
 	t.Run("source bytes", func(t *testing.T) {
 		changed := newModuleFixture(t, func(root string) {
 			writeCacheFixture(t, filepath.Join(root, "main.will"), "func main() -> i32 {\n    return 0\n}\n")

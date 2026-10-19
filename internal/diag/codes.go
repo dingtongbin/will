@@ -74,6 +74,8 @@ const (
 	// CodeShiftAmount reports a constant shift amount that is not less than
 	// the width of the shifted type.
 	CodeShiftAmount = "T0009"
+	// CodeFeatureOutsideIf reports meta.Feature outside an if condition.
+	CodeFeatureOutsideIf = "T0010"
 
 	// CodePackageNameMismatch reports a package name that differs from its directory.
 	CodePackageNameMismatch = "B0001"
@@ -159,6 +161,7 @@ var Codes = []string{
 	CodeConstantRange, CodeChainedComparison, CodeNewWithoutInit,
 	CodeBuiltinConstraintAsInterface,
 	CodeShiftAmount,
+	CodeFeatureOutsideIf,
 	CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
 	CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
 	CodeUnreleasableCycle, CodePossibleCycle, CodeRcSlotUnguarded, CodeExplicitLeak, CodeSmallPlate,

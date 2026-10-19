@@ -42,6 +42,7 @@ func TestCodesMatchConstants(t *testing.T) {
 		CodeConstantRange, CodeChainedComparison, CodeNewWithoutInit,
 		CodeBuiltinConstraintAsInterface,
 		CodeShiftAmount,
+		CodeFeatureOutsideIf,
 		CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
 		CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
 		CodeUnreleasableCycle, CodePossibleCycle, CodeRcSlotUnguarded, CodeExplicitLeak, CodeSmallPlate,

@@ -421,5 +421,28 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 			}
 		}
 	}
-	return bag.Diagnostics()
+	return suppressFeatureCascade(bag.Diagnostics())
+}
+
+// suppressFeatureCascade drops the name error that follows a Feature call left
+// outside an if: T0010 is the root cause, and the removed std/meta import would
+// otherwise also report meta as undefined at the same position.
+func suppressFeatureCascade(ds []diag.Diagnostic) []diag.Diagnostic {
+	root := map[source.Pos]bool{}
+	for _, d := range ds {
+		if d.Code == diag.CodeFeatureOutsideIf {
+			root[d.Pos] = true
+		}
+	}
+	if len(root) == 0 {
+		return ds
+	}
+	out := ds[:0]
+	for _, d := range ds {
+		if d.Code == diag.CodeUndefinedName && root[d.Pos] {
+			continue
+		}
+		out = append(out, d)
+	}
+	return out
 }
