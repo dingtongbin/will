@@ -461,40 +461,10 @@ func (e *emitter) typeRef(rec int, t *ast.Type) {
 	e.refSym(rec, "to", sym)
 }
 
+// typeText renders a type for a willc field; the spelling comes from the
+// intermediate format's one renderer.
 func typeText(t *ast.Type) string {
-	if t == nil {
-		return ""
-	}
-	switch t.Kind {
-	case ast.ScalarType:
-		return t.Name
-	case ast.NamedType:
-		if len(t.Args) == 0 {
-			return t.Name
-		}
-		parts := make([]string, len(t.Args))
-		for i, a := range t.Args {
-			parts[i] = typeText(a)
-		}
-		return t.Name + "<" + strings.Join(parts, ",") + ">"
-	case ast.ArrayType:
-		return "[" + t.Len + "]" + typeText(t.Elem)
-	case ast.ViewType:
-		return "[]" + typeText(t.Elem)
-	case ast.FuncType:
-		parts := make([]string, len(t.Params))
-		for i, p := range t.Params {
-			parts[i] = typeText(p)
-		}
-		s := "func(" + strings.Join(parts, ",") + ")"
-		if t.Result != nil {
-			s += "->" + typeText(t.Result)
-		}
-		return s
-	case ast.UnitType:
-		return "()"
-	}
-	return ""
+	return ast.TypeText(t)
 }
 
 func typeKind(t *ast.Type) string {

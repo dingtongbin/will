@@ -209,7 +209,20 @@ func runCase(c corpusCase, update bool) error {
 		}
 	}
 	if _, ok := recorded(c.dir, "decisions.txt"); ok {
-		return fmt.Errorf("%s: decisions.txt has no emitter yet", c.name)
+		_, got, _, err := inDir(c.dir, "emit-decisions", target)
+		if err != nil {
+			return fmt.Errorf("%s: %v", c.name, err)
+		}
+		if update {
+			if err := writeRecording(c.dir, "decisions.txt", got); err != nil {
+				return err
+			}
+		} else {
+			want, _ := recorded(c.dir, "decisions.txt")
+			if !bytes.Equal(got, want) {
+				return mismatch(c.name, "decisions.txt", want, got)
+			}
+		}
 	}
 	return nil
 }

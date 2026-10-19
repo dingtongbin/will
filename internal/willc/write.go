@@ -18,14 +18,16 @@ func Write(doc *Doc) []byte {
 			b.WriteByte(' ')
 			b.WriteString(f.Name)
 			b.WriteByte('=')
-			b.WriteString(formatValue(f.Value))
+			b.WriteString(FormatValue(f.Value))
 		}
 		b.WriteByte('\n')
 	}
 	return []byte(b.String())
 }
 
-func formatValue(v Value) string {
+// FormatValue renders one field value in the canonical spelling. The decision
+// record uses the same value grammar, so it shares this function.
+func FormatValue(v Value) string {
 	switch v.Kind {
 	case TextValue:
 		return Quote(v.Text)

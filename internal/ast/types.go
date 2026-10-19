@@ -1,5 +1,7 @@
 package ast
 
+import "strings"
+
 // TypeKind classifies a type expression.
 type TypeKind uint8
 
@@ -28,6 +30,44 @@ type Type struct {
 	Len    string
 	Params []*Type
 	Result *Type
+}
+
+// TypeText renders a type in the canonical spelling the intermediate format
+// uses: no space after a comma.
+func TypeText(t *Type) string {
+	if t == nil {
+		return ""
+	}
+	switch t.Kind {
+	case ScalarType:
+		return t.Name
+	case NamedType:
+		if len(t.Args) == 0 {
+			return t.Name
+		}
+		parts := make([]string, len(t.Args))
+		for i, a := range t.Args {
+			parts[i] = TypeText(a)
+		}
+		return t.Name + "<" + strings.Join(parts, ",") + ">"
+	case ArrayType:
+		return "[" + t.Len + "]" + TypeText(t.Elem)
+	case ViewType:
+		return "[]" + TypeText(t.Elem)
+	case FuncType:
+		parts := make([]string, len(t.Params))
+		for i, p := range t.Params {
+			parts[i] = TypeText(p)
+		}
+		out := "func(" + strings.Join(parts, ",") + ")"
+		if t.Result != nil {
+			out += "->" + TypeText(t.Result)
+		}
+		return out
+	case UnitType:
+		return "()"
+	}
+	return ""
 }
 
 // OwnsHeap reports whether a declared type carries a heap buffer that its owner

@@ -33,6 +33,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runEmitWillc(args[1:], stdout, stderr)
 	case "emit-llvm":
 		return runEmitLLVM(args[1:], stdout, stderr)
+	case "emit-decisions":
+		return runEmitDecisions(args[1:], stdout, stderr)
 	case "emit-asm":
 		return runEmitAsm(args[1:], stdout, stderr)
 	case "fmt":

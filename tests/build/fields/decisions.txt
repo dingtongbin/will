@@ -1,0 +1,7 @@
+layout type="Point" size=16 align=8
+field type="Point" name="x" offset=0 size=8
+field type="Point" name="y" offset=8 size=8
+layout type="Mixed" size=16 align=8
+field type="Mixed" name="tag" offset=0 size=1
+field type="Mixed" name="value" offset=4 size=4
+field type="Mixed" name="wide" offset=8 size=8

@@ -74,6 +74,39 @@ func TestEmitLLVMCrossPackage(t *testing.T) {
 	}
 }
 
+func TestEmitDecisions(t *testing.T) {
+	path := writeFile(t, t.TempDir(), "a.will", "struct Point {\n    x: i64\n    y: i64\n}\n")
+	code, out, errOut := runCLI("emit-decisions", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stderr = %q", code, errOut)
+	}
+	want := "layout type=\"Point\" size=16 align=8\n" +
+		"field type=\"Point\" name=\"x\" offset=0 size=8\n" +
+		"field type=\"Point\" name=\"y\" offset=8 size=8\n"
+	if out != want {
+		t.Fatalf("stdout = %q, want %q", out, want)
+	}
+}
+
+func TestEmitDecisionsUsage(t *testing.T) {
+	if code, _, _ := runCLI("emit-decisions"); code != 2 {
+		t.Fatalf("code = %d, want 2", code)
+	}
+}
+
+func TestEmitDecisionsRejectsAStructField(t *testing.T) {
+	// The layout of a struct that holds another struct is not computed yet.
+	src := "struct Inner {\n    v: i32\n}\n\nstruct Outer {\n    inner: Inner\n}\n"
+	path := writeFile(t, t.TempDir(), "a.will", src)
+	code, out, _ := runCLI("emit-decisions", path)
+	if code != 1 {
+		t.Fatalf("code = %d, want 1", code)
+	}
+	if !strings.Contains(out, "G0001 ") || !strings.Contains(out, "is not a scalar") {
+		t.Fatalf("stdout = %q", out)
+	}
+}
+
 func TestEmitLLVMUsage(t *testing.T) {
 	if code, _, _ := runCLI("emit-llvm"); code != 2 {
 		t.Fatalf("code = %d, want 2", code)
