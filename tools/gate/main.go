@@ -6,6 +6,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,7 +15,7 @@ import (
 
 func main() {
 	full := flag.Bool("full", false, "run the full tier")
-	update := flag.Bool("update", false, "rewrite the recorded corpus outputs")
+	update := flag.Bool("update", false, "rewrite recorded corpus outputs and fail if any changed")
 	flag.Parse()
 	root := "."
 	if flag.NArg() > 0 {
@@ -22,6 +23,7 @@ func main() {
 	}
 
 	fail := false
+	var rewritten []string
 	if *full {
 		if err := runCheckcode(root); err != nil {
 			fmt.Fprintf(os.Stderr, "gate: checkcode: %v\n", err)
@@ -31,7 +33,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "gate: no-assembly: %v\n", err)
 			fail = true
 		}
-		if err := runCorpus(root, *update); err != nil {
+		changed, err := runCorpus(root, *update)
+		rewritten = append(rewritten, changed...)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "gate: corpus: %v\n", err)
 			fail = true
 		}
@@ -40,10 +44,29 @@ func main() {
 		fmt.Fprintf(os.Stderr, "gate: tests: %v\n", err)
 		fail = true
 	}
+	// An update is never green: the operator must review the new recordings
+	// and run the gate again without -update.
+	if reportRewrites(os.Stdout, rewritten) != 0 {
+		fail = true
+	}
 	if fail {
 		os.Exit(1)
 	}
 	fmt.Println("gate: ok")
+}
+
+// reportRewrites prints one line per recording an update run rewrote, followed
+// by the next step. It returns the exit code for that run: 1 when any
+// recording changed.
+func reportRewrites(out io.Writer, rewritten []string) int {
+	for _, name := range rewritten {
+		fmt.Fprintf(out, "gate: rewrote %s\n", name)
+	}
+	if len(rewritten) == 0 {
+		return 0
+	}
+	fmt.Fprintln(out, "gate: recordings changed; run again without -update to confirm")
+	return 1
 }
 
 func runCheckcode(root string) error {

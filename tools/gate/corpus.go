@@ -23,22 +23,26 @@ type corpusCase struct {
 // tests/<topic>/<case>. A case may record stdout.txt, stderr.txt, willc.txt,
 // and index.txt; each recorded file must match byte for byte. With update, the
 // recorded files are rewritten instead, which is how a golden moves with the
-// change that alters it.
-func runCorpus(root string, update bool) error {
+// change that alters it. The returned names are the recordings that update
+// actually rewrote, relative to tests/, in case order.
+func runCorpus(root string, update bool) ([]string, error) {
 	cases, err := findCases(filepath.Join(root, "tests"))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var failures []string
+	var rewritten []string
 	for _, c := range cases {
-		if err := runCase(c, update); err != nil {
+		changed, err := runCase(c, update)
+		rewritten = append(rewritten, changed...)
+		if err != nil {
 			failures = append(failures, err.Error())
 		}
 	}
 	if len(failures) > 0 {
-		return fmt.Errorf("%d failing cases:\n%s", len(failures), strings.Join(failures, "\n"))
+		return rewritten, fmt.Errorf("%d failing cases:\n%s", len(failures), strings.Join(failures, "\n"))
 	}
-	return nil
+	return rewritten, nil
 }
 
 // findCases lists the corpus cases in tests/, sorted by name.
@@ -95,7 +99,9 @@ func caseInputs(dir string) ([]string, error) {
 
 // runCase compares every recorded output of one case. Every command runs from
 // inside the case directory, so recorded positions are relative to the case.
-func runCase(c corpusCase, update bool) error {
+// In update mode it returns the recordings it rewrote.
+func runCase(c corpusCase, update bool) ([]string, error) {
+	var rewritten []string
 	target := "."
 	if _, err := os.Stat(filepath.Join(c.dir, "will.mod")); err != nil && len(c.files) == 1 {
 		target = filepath.Base(c.files[0])
@@ -104,54 +110,66 @@ func runCase(c corpusCase, update bool) error {
 	if _, ok := recorded(c.dir, "stdout.txt"); ok {
 		code, got, _, err := inDir(c.dir, "check", target)
 		if err != nil {
-			return fmt.Errorf("%s: %v", c.name, err)
+			return rewritten, fmt.Errorf("%s: %v", c.name, err)
 		}
 		if update {
-			if err := writeRecording(c.dir, "stdout.txt", got); err != nil {
-				return err
+			changed, err := updateRecording(c.dir, "stdout.txt", got)
+			if err != nil {
+				return rewritten, err
+			}
+			if changed {
+				rewritten = append(rewritten, c.name+"/stdout.txt")
 			}
 		} else {
 			want, _ := recorded(c.dir, "stdout.txt")
 			if !bytes.Equal(got, want) {
-				return mismatch(c.name, "stdout.txt", want, got)
+				return rewritten, mismatch(c.name, "stdout.txt", want, got)
 			}
 			if wantCode := expectedCode(want); code != wantCode {
-				return fmt.Errorf("%s: exit code = %d, want %d", c.name, code, wantCode)
+				return rewritten, fmt.Errorf("%s: exit code = %d, want %d", c.name, code, wantCode)
 			}
 		}
 	}
 	if _, ok := recorded(c.dir, "stderr.txt"); ok {
 		_, _, got, err := inDir(c.dir, "check", target)
 		if err != nil {
-			return fmt.Errorf("%s: %v", c.name, err)
+			return rewritten, fmt.Errorf("%s: %v", c.name, err)
 		}
 		if update {
-			if err := writeRecording(c.dir, "stderr.txt", got); err != nil {
-				return err
+			changed, err := updateRecording(c.dir, "stderr.txt", got)
+			if err != nil {
+				return rewritten, err
+			}
+			if changed {
+				rewritten = append(rewritten, c.name+"/stderr.txt")
 			}
 		} else {
 			want, _ := recorded(c.dir, "stderr.txt")
 			if !bytes.Equal(got, want) {
-				return mismatch(c.name, "stderr.txt", want, got)
+				return rewritten, mismatch(c.name, "stderr.txt", want, got)
 			}
 		}
 	}
 	if _, ok := recorded(c.dir, "willc.txt"); ok {
 		if len(c.files) != 1 {
-			return fmt.Errorf("%s: willc.txt needs exactly one .will input", c.name)
+			return rewritten, fmt.Errorf("%s: willc.txt needs exactly one .will input", c.name)
 		}
 		_, got, _, err := inDir(c.dir, "emit-willc", filepath.Base(c.files[0]))
 		if err != nil {
-			return fmt.Errorf("%s: %v", c.name, err)
+			return rewritten, fmt.Errorf("%s: %v", c.name, err)
 		}
 		if update {
-			if err := writeRecording(c.dir, "willc.txt", got); err != nil {
-				return err
+			changed, err := updateRecording(c.dir, "willc.txt", got)
+			if err != nil {
+				return rewritten, err
+			}
+			if changed {
+				rewritten = append(rewritten, c.name+"/willc.txt")
 			}
 		} else {
 			want, _ := recorded(c.dir, "willc.txt")
 			if !bytes.Equal(got, want) {
-				return mismatch(c.name, "willc.txt", want, got)
+				return rewritten, mismatch(c.name, "willc.txt", want, got)
 			}
 		}
 	}
@@ -163,68 +181,97 @@ func runCase(c corpusCase, update bool) error {
 		}
 		_, got, _, err := inDir(c.dir, "emit-willc", filepath.Base(f))
 		if err != nil {
-			return fmt.Errorf("%s: %v", c.name, err)
+			return rewritten, fmt.Errorf("%s: %v", c.name, err)
 		}
 		if update {
-			if err := writeRecording(c.dir, name, got); err != nil {
-				return err
+			changed, err := updateRecording(c.dir, name, got)
+			if err != nil {
+				return rewritten, err
+			}
+			if changed {
+				rewritten = append(rewritten, c.name+"/"+name)
 			}
 			continue
 		}
 		want, _ := recorded(c.dir, name)
 		if !bytes.Equal(got, want) {
-			return mismatch(c.name, name, want, got)
+			return rewritten, mismatch(c.name, name, want, got)
 		}
 	}
 	if _, ok := recorded(c.dir, "llvm.txt"); ok {
 		_, got, _, err := inDir(c.dir, "emit-llvm", target)
 		if err != nil {
-			return fmt.Errorf("%s: %v", c.name, err)
+			return rewritten, fmt.Errorf("%s: %v", c.name, err)
 		}
 		if update {
-			if err := writeRecording(c.dir, "llvm.txt", got); err != nil {
-				return err
+			changed, err := updateRecording(c.dir, "llvm.txt", got)
+			if err != nil {
+				return rewritten, err
+			}
+			if changed {
+				rewritten = append(rewritten, c.name+"/llvm.txt")
 			}
 		} else {
 			want, _ := recorded(c.dir, "llvm.txt")
 			if !bytes.Equal(got, want) {
-				return mismatch(c.name, "llvm.txt", want, got)
+				return rewritten, mismatch(c.name, "llvm.txt", want, got)
 			}
 		}
 	}
 	if _, ok := recorded(c.dir, "index.txt"); ok {
 		_, got, _, err := inDir(c.dir, "index", ".")
 		if err != nil {
-			return fmt.Errorf("%s: %v", c.name, err)
+			return rewritten, fmt.Errorf("%s: %v", c.name, err)
 		}
 		if update {
-			if err := writeRecording(c.dir, "index.txt", got); err != nil {
-				return err
+			changed, err := updateRecording(c.dir, "index.txt", got)
+			if err != nil {
+				return rewritten, err
+			}
+			if changed {
+				rewritten = append(rewritten, c.name+"/index.txt")
 			}
 		} else {
 			want, _ := recorded(c.dir, "index.txt")
 			if !bytes.Equal(got, want) {
-				return mismatch(c.name, "index.txt", want, got)
+				return rewritten, mismatch(c.name, "index.txt", want, got)
 			}
 		}
 	}
 	if _, ok := recorded(c.dir, "decisions.txt"); ok {
 		_, got, _, err := inDir(c.dir, "emit-decisions", target)
 		if err != nil {
-			return fmt.Errorf("%s: %v", c.name, err)
+			return rewritten, fmt.Errorf("%s: %v", c.name, err)
 		}
 		if update {
-			if err := writeRecording(c.dir, "decisions.txt", got); err != nil {
-				return err
+			changed, err := updateRecording(c.dir, "decisions.txt", got)
+			if err != nil {
+				return rewritten, err
+			}
+			if changed {
+				rewritten = append(rewritten, c.name+"/decisions.txt")
 			}
 		} else {
 			want, _ := recorded(c.dir, "decisions.txt")
 			if !bytes.Equal(got, want) {
-				return mismatch(c.name, "decisions.txt", want, got)
+				return rewritten, mismatch(c.name, "decisions.txt", want, got)
 			}
 		}
 	}
-	return nil
+	return rewritten, nil
+}
+
+// updateRecording rewrites one recording only when its bytes changed, and
+// reports whether it did.
+func updateRecording(dir, name string, got []byte) (bool, error) {
+	want, _ := recorded(dir, name)
+	if bytes.Equal(got, want) {
+		return false, nil
+	}
+	if err := writeRecording(dir, name, got); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // writeRecording replaces one recorded output.
