@@ -193,4 +193,6 @@
 #193 lit parent=#191 pos="program.will:72:24" kind=int text="200"
 #194 name parent=#190 pos="program.will:72:31" text="total" to=#70
 #195 name parent=#189 pos="program.will:72:39" text="Limit" to=#3
-#196 end
+#196 release parent=#64 pos="program.will:35:25" owner=#123 kind="value"
+#197 release parent=#64 pos="program.will:35:25" owner=#65 kind="value"
+#198 end

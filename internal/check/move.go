@@ -50,19 +50,7 @@ type mover struct {
 // owned reports whether a declared type carries a heap buffer, which is what
 // makes a transfer a move rather than a copy.
 func owned(t *ast.Type) bool {
-	if t == nil {
-		return false
-	}
-	switch t.Kind {
-	case ast.ScalarType:
-		return t.Name == "str"
-	case ast.NamedType:
-		switch t.Name {
-		case "Array", "Map", "Set":
-			return true
-		}
-	}
-	return false
+	return ast.OwnsHeap(t)
 }
 
 func (m *mover) funcDecl(fn *ast.FuncDecl) {

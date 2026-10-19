@@ -70,6 +70,22 @@ func (e *emitter) add(kind string, node ast.Node) int {
 func (e *emitter) push(id int) { e.parents = append(e.parents, id) }
 func (e *emitter) pop()        { e.parents = e.parents[:len(e.parents)-1] }
 
+// addPos writes a record whose position comes from node but whose id does not
+// replace the node's own id, which a release record needs: it points at the
+// block it belongs to while its owner is another node.
+func (e *emitter) addPos(kind string, node ast.Node) int {
+	id := len(e.doc.Records) + 1
+	rec := Record{ID: id, Kind: kind}
+	if len(e.parents) > 0 {
+		rec.Fields = append(rec.Fields, Field{Name: "parent", Value: Ref(e.parents[len(e.parents)-1])})
+	}
+	if node != nil {
+		rec.Fields = append(rec.Fields, Field{Name: "pos", Value: Text(node.Pos().String())})
+	}
+	e.doc.Records = append(e.doc.Records, rec)
+	return id
+}
+
 func (e *emitter) last() int { return len(e.doc.Records) - 1 }
 
 func (e *emitter) field(rec int, name string, v Value) {

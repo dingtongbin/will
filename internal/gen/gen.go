@@ -146,16 +146,37 @@ func (g *generator) emitDoc() error {
 }
 
 // collect records the callable names of the current document: file functions
-// and import c links.
+// and import c links. A method is named <package path>.<type name>.<method>.
 func (g *generator) collect() {
 	for _, r := range g.recs {
 		switch r.Kind {
 		case "func":
-			g.cur.funcs[r.ID] = g.symbolName(fieldText(r, "text"))
+			name := fieldText(r, "text")
+			if recv := g.receiverOf(r.ID); recv != nil {
+				g.cur.funcs[r.ID] = qualify(g.pkg, receiverType(recv)+"."+name)
+				continue
+			}
+			g.cur.funcs[r.ID] = g.symbolName(name)
 		case "link":
 			g.cur.links[r.ID] = fieldText(r, "text")
 		}
 	}
+}
+
+// receiverOf returns the receiver record of a function, or nil.
+func (g *generator) receiverOf(fn int) *willc.Record {
+	for _, r := range g.recs {
+		if r.Kind == "receiver" && refField(r, "parent") == fn {
+			rec := r
+			return &rec
+		}
+	}
+	return nil
+}
+
+// receiverType returns the type text of a receiver record.
+func receiverType(r *willc.Record) string {
+	return fieldText(*r, "type")
 }
 
 // symbolName returns the IR symbol of one function of the current document.
@@ -193,15 +214,26 @@ func llvmSymbol(name string) string {
 	return name
 }
 
+// isScalarName reports whether a type text names a scalar. A scalar parameter
+// is passed by value; everything else is passed as a borrow.
+func isScalarName(name string) bool {
+	switch name {
+	case "bool", "str", "raw",
+		"i8", "i16", "i32", "i64", "isize",
+		"u8", "u16", "u32", "u64", "usize",
+		"f32", "f64":
+		return true
+	}
+	return false
+}
+
 func (g *generator) errf(id int, format string, args ...any) error {
 	return &willc.Error{ID: id, Message: fmt.Sprintf(format, args...)}
 }
 
 func (g *generator) funcDecl(fn willc.Record) error {
 	name := fieldText(fn, "text")
-	if hasChild(g.recs, fn.ID, "receiver") {
-		return g.errf(fn.ID, "cannot translate node #%d: methods are not lowered yet", fn.ID)
-	}
+	recv := g.receiverOf(fn.ID)
 	result := ""
 	var params []willc.Record
 	for _, r := range g.recs {
@@ -217,13 +249,29 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	}
 	sortByID(params)
 	var sig []string
+	if recv != nil {
+		// The receiver is the hidden first parameter and is passed as a
+		// borrow, so it is a pointer.
+		recvName := fieldText(*recv, "text")
+		g.scope[recv.ID] = "%" + recvName
+		sig = append(sig, "ptr %"+recvName)
+	}
 	for _, p := range params {
-		if fieldText(p, "type") != "i32" {
-			return g.errf(p.ID, "cannot translate node #%d: only i32 parameters are lowered yet", p.ID)
-		}
 		pname := fieldText(p, "text")
-		g.scope[p.ID] = "%" + pname
-		sig = append(sig, "i32 %"+pname)
+		ptype := fieldText(p, "type")
+		switch ptype {
+		case "i32":
+			g.scope[p.ID] = "%" + pname
+			sig = append(sig, "i32 %"+pname)
+		default:
+			if isScalarName(ptype) {
+				// A small scalar is passed by value, but only i32 is lowered.
+				return g.errf(p.ID, "cannot translate node #%d: only i32 parameters are lowered yet", p.ID)
+			}
+			// Everything else is passed as a borrow.
+			g.scope[p.ID] = "%" + pname
+			sig = append(sig, "ptr %"+pname)
+		}
 	}
 	if result == "" {
 		return g.voidFunc(fn, name, sig)
@@ -231,7 +279,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	if result != "i32" {
 		return g.errf(fn.ID, "cannot translate node #%d: only i32 results are lowered yet", fn.ID)
 	}
-	fmt.Fprintf(g.out, "define i32 @%s(%s) {\n", llvmSymbol(g.symbolName(name)), strings.Join(sig, ", "))
+	fmt.Fprintf(g.out, "define i32 @%s(%s) {\n", llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
 	body, err := g.blockOf(fn.ID)
 	if err != nil {
@@ -246,7 +294,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 
 // voidFunc lowers a function that returns no value.
 func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
-	fmt.Fprintf(g.out, "define void @%s(%s) {\n", llvmSymbol(g.symbolName(name)), strings.Join(sig, ", "))
+	fmt.Fprintf(g.out, "define void @%s(%s) {\n", llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
 	body, err := g.blockOf(fn.ID)
 	if err != nil {

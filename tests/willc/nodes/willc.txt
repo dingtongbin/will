@@ -70,4 +70,5 @@
 #70 name parent=#69 pos="nodes.will:29:9" text="ch" to=#47
 #71 return parent=#31 pos="nodes.will:30:5" value=#72
 #72 name parent=#71 pos="nodes.will:30:12" text="kind" to=#52
-#73 end
+#73 release parent=#31 pos="nodes.will:18:35" owner=#35 kind="value"
+#74 end

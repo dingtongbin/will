@@ -194,6 +194,36 @@ func TestEmitModuleResolvesQualifiedCalls(t *testing.T) {
 	}
 }
 
+func TestEmitMethodSignature(t *testing.T) {
+	src := "struct Box {\n    v: i64\n}\n\nfunc (b: Box) Ping() {\n}\n\n" +
+		"func (b: Box) Answer(n: i32) -> i32 {\n    return n\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define void @"example.com/app.Box.Ping"(ptr %b) {`,
+		`define i32 @"example.com/app.Box.Answer"(ptr %b, i32 %n) {`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitAggregateParameterIsABorrow(t *testing.T) {
+	doc := emitWillc(t, "struct Box {\n    v: i64\n}\n\nfunc Take(b: Box) {\n}\n")
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	if !strings.Contains(string(ir), `define void @"example.com/app.Take"(ptr %b)`) {
+		t.Fatalf("IR = %s", ir)
+	}
+}
+
 func TestEmitUnsupportedNodeIsReported(t *testing.T) {
 	doc := emitWillc(t, "func F(a: i32) -> i32 {\n    if a > 0 {\n        return a\n    }\n    return 0\n}\n")
 	_, err := Emit(doc)

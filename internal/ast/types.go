@@ -29,3 +29,22 @@ type Type struct {
 	Params []*Type
 	Result *Type
 }
+
+// OwnsHeap reports whether a declared type carries a heap buffer that its owner
+// must release: str, Array, Map, and Set. A struct or enum type is not included
+// yet; that needs the field layout.
+func OwnsHeap(t *Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ScalarType:
+		return t.Name == "str"
+	case NamedType:
+		switch t.Name {
+		case "Array", "Map", "Set":
+			return true
+		}
+	}
+	return false
+}

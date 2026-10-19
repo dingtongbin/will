@@ -7,14 +7,29 @@ import (
 	"github.com/will-lang/will/internal/resolve"
 )
 
+// emitBlock writes one block. A heap-owning local is released at the end of
+// the block it is declared in, in reverse declaration order: the release is a
+// child of the block, at the same level as its statements, so the lowering side
+// emits one release per record without reasoning about scopes.
 func (e *emitter) emitBlock(b *ast.Block) int {
 	if b == nil {
 		return 0
 	}
 	rec := e.add("block", b)
 	e.push(rec)
+	var owned []*ast.VarDecl
 	for _, s := range b.Stmts {
 		e.emitStmt(s)
+		if vs, ok := s.(*ast.VarStmt); ok {
+			if vd, ok := vs.Decl.(*ast.VarDecl); ok && ast.OwnsHeap(vd.Type) && vd.Name != "_" {
+				owned = append(owned, vd)
+			}
+		}
+	}
+	for i := len(owned) - 1; i >= 0; i-- {
+		release := e.addPos("release", b)
+		e.ref(release, "owner", owned[i])
+		e.text(release, "kind", "value")
 	}
 	e.pop()
 	return rec
