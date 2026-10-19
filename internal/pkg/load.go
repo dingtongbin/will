@@ -254,6 +254,45 @@ func isExported(name string) bool {
 	return name != "" && name[0] >= 'A' && name[0] <= 'Z'
 }
 
+// Dispatch is one interface call site.
+type Dispatch struct {
+	File      string
+	Pos       source.Pos
+	Interface string
+}
+
+// DispatchPoints runs the type checker over every file and collects the
+// interface call sites, sorted by file and position.
+func (b *Build) DispatchPoints() []Dispatch {
+	imps := resolve.Imports{}
+	for _, p := range b.Packages {
+		imps[p.Path] = p.Exports
+	}
+	var out []Dispatch
+	for _, p := range b.Packages {
+		for _, f := range p.Files {
+			if f.AST == nil {
+				continue
+			}
+			res, _ := resolve.ResolveWith(f.AST, imps)
+			tr, _ := types.CheckFull(f.AST, res)
+			for _, dp := range tr.Dispatch {
+				out = append(out, Dispatch{File: f.Path, Pos: dp.Pos, Interface: dp.Interface})
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].File != out[j].File {
+			return out[i].File < out[j].File
+		}
+		if out[i].Pos.Line != out[j].Pos.Line {
+			return out[i].Pos.Line < out[j].Pos.Line
+		}
+		return out[i].Pos.Col < out[j].Pos.Col
+	})
+	return out
+}
+
 // CheckAll resolves every file with the exported names of every package and
 // runs the type checker, returning the merged diagnostics.
 func (b *Build) CheckAll() []diag.Diagnostic {

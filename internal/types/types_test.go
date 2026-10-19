@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
 	"github.com/will-lang/will/internal/resolve"
@@ -153,6 +154,16 @@ func TestUntypedConstantFitsDefault(t *testing.T) {
 	if len(ds) != 0 {
 		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
 	}
+}
+
+func parseResolve(t *testing.T, src string) (*ast.File, *resolve.Result) {
+	t.Helper()
+	f, ds := parser.Parse("test.will", []byte(src))
+	if len(ds) != 0 {
+		t.Fatalf("parse diagnostics:\n%s", diag.FormatAll(ds))
+	}
+	res, _ := resolve.Resolve(f)
+	return f, res
 }
 
 func checkWithResolve(t *testing.T, src string) []diag.Diagnostic {

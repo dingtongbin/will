@@ -649,6 +649,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		return nil
 	}
 	if methods, ok := c.env.ifaces[recv.Name()]; ok {
+		c.dispatch = append(c.dispatch, DispatchPoint{Pos: call.Pos(), Interface: recv.Name()})
 		for _, m := range methods {
 			if m.name == call.Name {
 				c.checkTypeArgsForMethod(call, m.sig)

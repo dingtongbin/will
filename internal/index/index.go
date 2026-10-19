@@ -16,14 +16,15 @@ import (
 
 // Build renders the index of one loaded module.
 func Build(b *pkg.Build) []byte {
-	idx := &builder{b: b}
+	idx := &builder{b: b, ifaceKey: map[string]string{}}
 	idx.run()
 	return []byte(strings.Join(idx.lines, "\n") + "\n")
 }
 
 type builder struct {
-	b     *pkg.Build
-	lines []string
+	b        *pkg.Build
+	lines    []string
+	ifaceKey map[string]string
 }
 
 func (x *builder) line(parts ...string) {
@@ -55,6 +56,35 @@ func (x *builder) run() {
 		}
 	}
 	x.emitSatisfies(methods, sigs, derived, types, ifaces)
+	x.emitDispatch(methods, sigs, derived, types)
+}
+
+// emitDispatch lists every type that can be the target of an interface call.
+func (x *builder) emitDispatch(methods, sigs map[string]map[string]string, derived map[string]bool, types []string) {
+	for _, dp := range x.b.DispatchPoints() {
+		key := dp.Interface
+		required, known := sigs[key]
+		if !known {
+			if q, ok := x.ifaceKey[key]; ok {
+				key = q
+				required, known = sigs[key]
+			}
+		}
+		if !known {
+			// The interface is outside this load; listing its targets would
+			// be a guess, so the line is left out.
+			continue
+		}
+		var targets []string
+		for _, t := range types {
+			if satisfies(methods[t], required) || derived[t] && key == "Show" {
+				targets = append(targets, t)
+			}
+		}
+		sort.Strings(targets)
+		x.line("dispatch", quote("file", dp.File), "line="+strconv.Itoa(dp.Pos.Line), "col="+strconv.Itoa(dp.Pos.Col),
+			quote("interface", key), quote("targets", strings.Join(targets, ",")))
+	}
 }
 
 func (x *builder) emitFile(p *pkg.Package, f *pkg.File) {
@@ -127,6 +157,7 @@ func (x *builder) collect(p *pkg.Package, f *pkg.File, methods, sigs map[string]
 		case *ast.InterfaceDecl:
 			name := qualified(p.Path, decl.Name)
 			*ifaces = append(*ifaces, name)
+			x.ifaceKey[decl.Name] = name
 			if sigs[name] == nil {
 				sigs[name] = map[string]string{}
 			}

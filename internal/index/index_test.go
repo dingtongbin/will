@@ -73,6 +73,7 @@ func TestIndexLines(t *testing.T) {
 		`decl file="api.will" line=23 col=1 kind="func" name="Use" vis="public"`,
 		`method type="Square" name="Area" recv="value"`,
 		`satisfies type="example.com/app.Square" interface="example.com/app.Shape"`,
+		`dispatch file="api.will" line=24 col=12 interface="example.com/app.Shape" targets="example.com/app.Square"`,
 	}
 	for _, w := range want {
 		if !strings.Contains(text, w+"\n") {

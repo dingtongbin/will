@@ -70,6 +70,25 @@ func Use(x: Shape) -> i32 {
 	}
 }
 
+func TestDispatchPoints(t *testing.T) {
+	src := `interface Shape {
+    func Area() -> i32
+}
+
+func Use(x: Shape) -> i32 {
+    return x.Area()
+}
+`
+	f, res := parseResolve(t, src)
+	tr, _ := CheckFull(f, res)
+	if len(tr.Dispatch) != 1 {
+		t.Fatalf("dispatch points = %d, want 1", len(tr.Dispatch))
+	}
+	if tr.Dispatch[0].Interface != "Shape" {
+		t.Errorf("interface = %q, want Shape", tr.Dispatch[0].Interface)
+	}
+}
+
 func TestDerivedShowSatisfiesShow(t *testing.T) {
 	src := `struct P {
     x: i32

@@ -4,25 +4,43 @@ import (
 	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/resolve"
+	"github.com/will-lang/will/internal/source"
 	"github.com/will-lang/will/internal/token"
 )
 
-// Check checks one resolved file: declaration types, statement and
-// expression types, integer literal ranges (T0005), and chained comparisons
-// (T0006).
+// DispatchPoint records one call through an interface value. The index lists
+// every type that can be the target.
+type DispatchPoint struct {
+	Pos       source.Pos
+	Interface string
+}
+
+// Result carries what the checker learned beyond diagnostics.
+type Result struct {
+	Dispatch []DispatchPoint
+}
+
+// Check checks one resolved file and returns its diagnostics.
 func Check(f *ast.File, res *resolve.Result) []diag.Diagnostic {
+	_, ds := CheckFull(f, res)
+	return ds
+}
+
+// CheckFull checks one resolved file and also returns the dispatch points.
+func CheckFull(f *ast.File, res *resolve.Result) (*Result, []diag.Diagnostic) {
 	c := &checker{res: res, in: newInterner()}
 	c.env = buildEnv(c, f)
 	c.walkFile(f)
 	c.inferFile(f)
-	return c.bag.Diagnostics()
+	return &Result{Dispatch: c.dispatch}, c.bag.Diagnostics()
 }
 
 type checker struct {
-	bag diag.Bag
-	res *resolve.Result
-	in  *interner
-	env *env
+	bag      diag.Bag
+	res      *resolve.Result
+	in       *interner
+	env      *env
+	dispatch []DispatchPoint
 }
 
 func (c *checker) walkFile(f *ast.File) {
