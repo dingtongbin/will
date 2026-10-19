@@ -87,6 +87,53 @@ func TestEmitVoidFunction(t *testing.T) {
 	}
 }
 
+// TestEmitVoidEntryIsWrapped checks the entry rule: a void entry is not the C
+// main, so the generator mangles it and writes an i32 main that returns 0.
+func TestEmitVoidEntryIsWrapped(t *testing.T) {
+	doc := emitWillc(t, "func Other() {\n}\n\nfunc main() {\n}\n")
+	ir, err := EmitWithEntry(doc, "main")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"define void @Other() {",
+		"define void @will$main() {",
+		"define i32 @main() {",
+		"call void @will$main()",
+		"ret i32 0",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "define void @main()") {
+		t.Errorf("the void entry kept the C main symbol:\n%s", text)
+	}
+}
+
+func TestEmitEntryWithoutWrapperWhenNoEntryGiven(t *testing.T) {
+	doc := emitWillc(t, "func main() {\n}\n")
+	ir, err := EmitWithEntry(doc, "")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	if strings.Contains(string(ir), "will$main") {
+		t.Fatalf("an entry was wrapped without being named:\n%s", ir)
+	}
+}
+
+func TestEmitKeepsI32Entry(t *testing.T) {
+	doc := emitWillc(t, "func main() -> i32 {\n    return 7\n}\n")
+	ir, err := EmitWithEntry(doc, "main")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	if !strings.Contains(string(ir), "define i32 @main() {") {
+		t.Fatalf("IR = %s", ir)
+	}
+}
+
 func TestEmitBareReturnIsVoid(t *testing.T) {
 	doc := emitWillc(t, "func F() {\n    return\n}\n")
 	ir, err := Emit(doc)

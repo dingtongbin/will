@@ -15,6 +15,13 @@ import (
 // needed by the first lowering experiment is implemented: integer functions
 // with parameters, return, integer literals, names, and + - *.
 func Emit(doc *willc.Doc) ([]byte, error) {
+	return EmitWithEntry(doc, "")
+}
+
+// EmitWithEntry translates one willc document and, when entry names a function
+// that returns no value, wraps it in the i32-returning main the C runtime
+// calls, so a program whose entry returns nothing exits with 0.
+func EmitWithEntry(doc *willc.Doc, entry string) ([]byte, error) {
 	m := map[int]willc.Record{}
 	for _, r := range doc.Records {
 		m[r.ID] = r
@@ -27,6 +34,16 @@ func Emit(doc *willc.Doc) ([]byte, error) {
 		declared: map[string]bool{},
 		out:      &strings.Builder{},
 	}
+	// A void entry cannot be the C main itself, so it is mangled and called
+	// by a generated wrapper.
+	if entry != "" {
+		for _, r := range doc.Records {
+			if r.Kind == "func" && fieldText(r, "text") == entry && fieldText(r, "type") == "" {
+				g.wrappedEntry = "will$" + entry
+				break
+			}
+		}
+	}
 	g.collect()
 	for _, r := range doc.Records {
 		if r.Kind == "func" {
@@ -34,6 +51,11 @@ func Emit(doc *willc.Doc) ([]byte, error) {
 				return nil, err
 			}
 		}
+	}
+	if g.wrappedEntry != "" {
+		// The wrapper is the C entry point; the user's entry keeps its name
+		// under a mangled symbol.
+		fmt.Fprintf(g.out, "define i32 @main() {\nentry:\n  call void @%s()\n  ret i32 0\n}\n", g.wrappedEntry)
 	}
 	return []byte(g.out.String()), nil
 }
@@ -46,6 +68,8 @@ type generator struct {
 	declared map[string]bool
 	out      *strings.Builder
 	tmp      int
+	// wrappedEntry holds the mangled name of a void entry once it is known.
+	wrappedEntry string
 }
 
 // collect records the callable names: file functions and import c links.
@@ -53,11 +77,20 @@ func (g *generator) collect() {
 	for _, r := range g.recs {
 		switch r.Kind {
 		case "func":
-			g.funcs[r.ID] = fieldText(r, "text")
+			g.funcs[r.ID] = g.symbolName(fieldText(r, "text"))
 		case "link":
 			g.links[r.ID] = fieldText(r, "text")
 		}
 	}
+}
+
+// symbolName returns the IR symbol of one file function. A void entry is
+// mangled, because the generated main calls it under that name.
+func (g *generator) symbolName(name string) string {
+	if g.wrappedEntry != "" && g.wrappedEntry == "will$"+name {
+		return g.wrappedEntry
+	}
+	return name
 }
 
 func (g *generator) errf(id int, format string, args ...any) error {
@@ -110,7 +143,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 
 // voidFunc lowers a function that returns no value.
 func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
-	fmt.Fprintf(g.out, "define void @%s(%s) {\n", name, strings.Join(sig, ", "))
+	fmt.Fprintf(g.out, "define void @%s(%s) {\n", g.symbolName(name), strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
 	body, err := g.blockOf(fn.ID)
 	if err != nil {

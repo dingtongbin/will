@@ -45,7 +45,7 @@ func TestNewModuleLowers(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("emit-llvm: code = %d, stderr = %q", code, errOut)
 	}
-	if !strings.Contains(out, "define void @main()") {
+	if !strings.Contains(out, "define void @will$main()") || !strings.Contains(out, "define i32 @main()") {
 		t.Fatalf("the generated module does not lower:\n%s", out)
 	}
 }

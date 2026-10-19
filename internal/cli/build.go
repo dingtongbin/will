@@ -189,7 +189,7 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 		reportTranslate(stdout, err)
 		return nil, "", 1
 	}
-	ir, err := gen.Emit(doc)
+	ir, err := gen.EmitWithEntry(doc, opts.entry)
 	if err != nil {
 		reportTranslate(stdout, err)
 		return nil, "", 1
