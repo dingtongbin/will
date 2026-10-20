@@ -44,6 +44,8 @@ struct willrt_rc_slot {
     /* High 32 bits: generation. Low 32 bits: strong count. */
     _Atomic(uint64_t) state;
     _Atomic(void*) value;
+    /* drop runs on the final release, before the object storage is freed. */
+    void (*drop)(void*);
     /* Only the table lock and its owner touch this field. */
     uint32_t next_free;
 };
@@ -223,6 +225,7 @@ static int willrt_rc_table_grow_locked(void) {
                               memory_order_relaxed);
         atomic_store_explicit(&table->slots[index].value, value,
                               memory_order_relaxed);
+        table->slots[index].drop = old->slots[index].drop;
         table->slots[index].next_free = old->slots[index].next_free;
     }
     for (index = old_count; index < new_count; index++) {
@@ -231,6 +234,7 @@ static int willrt_rc_table_grow_locked(void) {
                               memory_order_relaxed);
         atomic_store_explicit(&table->slots[index].value, NULL,
                               memory_order_relaxed);
+        table->slots[index].drop = NULL;
         table->slots[index].next_free =
             index + 1 < new_count ? (uint32_t)(index + 1) : WILLRT_RC_NO_SLOT;
     }
@@ -282,6 +286,7 @@ static void willrt_rc_slot_retire(uint32_t index, uint32_t generation) {
     uint64_t state;
     uint32_t next_generation;
     void* object;
+    void (*drop)(void*);
 
     willrt_rc_table_lock_acquire();
     table = willrt_rc_table_current();
@@ -298,6 +303,11 @@ static void willrt_rc_slot_retire(uint32_t index, uint32_t generation) {
     }
 
     object = atomic_exchange_explicit(&slot->value, NULL, memory_order_acq_rel);
+    drop = slot->drop;
+    slot->drop = NULL;
+    if (drop != NULL && object != NULL) {
+        drop(object);
+    }
     next_generation = generation + 1;
     atomic_store_explicit(&slot->state,
                           willrt_rc_state_make(next_generation, 0),
@@ -312,7 +322,8 @@ static void willrt_rc_slot_retire(uint32_t index, uint32_t generation) {
     willrt_rc_table_lock_release();
 }
 
-uint64_t willrt_rc_new(const void* value, size_t size) {
+uint64_t willrt_rc_new_drop(const void* value, size_t size,
+                            void (*drop)(void*)) {
     struct willrt_rc_table* table;
     struct willrt_rc_slot* slot;
     void* object;
@@ -351,11 +362,16 @@ uint64_t willrt_rc_new(const void* value, size_t size) {
     generation = willrt_rc_state_generation(
         atomic_load_explicit(&slot->state, memory_order_relaxed));
     atomic_store_explicit(&slot->value, object, memory_order_relaxed);
+    slot->drop = drop;
     atomic_store_explicit(&slot->state, willrt_rc_state_make(generation, 1),
                           memory_order_release);
     willrt_rc_table_lock_release();
 
     return willrt_rc_handle_make(index, generation);
+}
+
+uint64_t willrt_rc_new(const void* value, size_t size) {
+    return willrt_rc_new_drop(value, size, NULL);
 }
 
 void willrt_rc_retain(uint64_t handle) {

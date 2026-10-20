@@ -115,6 +115,11 @@ void willrt_plate_release(void* plate);
    never valid. value must point to size bytes when size is nonzero. */
 uint64_t willrt_rc_new(const void* value, size_t size);
 
+/* willrt_rc_new_drop is willrt_rc_new with drop glue: drop(object) runs on the
+   last release, before the object storage is returned. */
+uint64_t willrt_rc_new_drop(const void* value, size_t size,
+                            void (*drop)(void*));
+
 /* willrt_rc_retain adds one reference to the object named by handle. A zero,
    out-of-range, or released handle is ignored, so a stale handle never
    faults. */

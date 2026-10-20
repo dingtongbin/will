@@ -54,6 +54,7 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		emittedVtables: map[string]bool{},
 		thunkEmitted:   map[string]bool{},
 		spawnEmitted:   map[string]bool{},
+		dropEmitted:    map[string]bool{},
 		out:            &strings.Builder{},
 		aliases:       aliases,
 	}
@@ -144,6 +145,7 @@ func (g *generator) emitAux() {
 	}
 	if g.needRcDecl {
 		g.out.WriteString("declare i64 @willrt_rc_new(ptr, i64)\n")
+		g.out.WriteString("declare i64 @willrt_rc_new_drop(ptr, i64, ptr)\n")
 		g.out.WriteString("declare void @willrt_rc_retain(i64)\n")
 		g.out.WriteString("declare void @willrt_rc_release(i64)\n")
 		g.out.WriteString("declare ptr @willrt_rc_deref(i64)\n")
@@ -455,6 +457,8 @@ func (g *generator) use(d *docState) {
 	g.recvOptSlots = map[int]string{}
 	g.sendValueSlots = map[int]string{}
 	g.weakOutSlots = map[int]string{}
+	g.dropNames = map[string]string{}
+	g.pendingDrops = nil
 	g.selectSlots = map[int]string{}
 	g.selectOutSlots = map[int]string{}
 	g.selectBindSlots = map[int]string{}
@@ -667,6 +671,12 @@ type generator struct {
 	// loops stacks the labels of the enclosing loops, so break and continue
 	// know where to jump.
 	loops []loopLabels
+	// dropNames and dropSeq name the per-type drop functions, and
+	// pendingDrops holds the ones this document still has to write.
+	dropNames    map[string]string
+	dropSeq      int
+	pendingDrops []dropRequest
+	dropEmitted  map[string]bool
 	// pendingReleases are the release records that precede a return in the
 	// same block. They run after the return value is evaluated, so a returned
 	// borrow is still alive while it is read.
@@ -759,6 +769,9 @@ func (g *generator) emitDoc() error {
 		return err
 	}
 	if err := g.emitSpawns(); err != nil {
+		return err
+	}
+	if err := g.emitDrops(); err != nil {
 		return err
 	}
 	return g.emitInit(g.cur)

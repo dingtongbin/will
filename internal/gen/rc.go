@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/will-lang/will/internal/willc"
@@ -58,9 +59,116 @@ func (g *generator) constructRc(r willc.Record, elem string) (string, string, er
 	}
 	size := g.sizeOf(elemLLVM)
 	g.needRcDecl = true
+	fn := "willrt_rc_new"
+	callArgs := fmt.Sprintf("ptr %s, i64 %s", source, size)
+	if needsReleaseText(g, elem) {
+		drop := g.dropFor(elem)
+		fn = "willrt_rc_new_drop"
+		callArgs += ", ptr @" + llvmSymbol(drop)
+	}
 	handle := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call i64 @willrt_rc_new(ptr %s, i64 %s)\n", handle, source, size)
+	fmt.Fprintf(g.out, "  %s = call i64 @%s(%s)\n", handle, fn, callArgs)
 	return handle, "rc<" + elem + ">", nil
+}
+
+// dropRequest is one generated function that releases the rc references held
+// inside an object before the handle table frees its storage.
+type dropRequest struct {
+	name string
+	text string
+}
+
+// dropFor returns the drop function of one value type, queuing it once.
+func (g *generator) dropFor(text string) string {
+	text = g.qualifyTypeText(g.pkg, text)
+	if name := g.dropNames[text]; name != "" {
+		return name
+	}
+	g.dropSeq++
+	name := qualify(g.pkg, "drop."+strconv.Itoa(g.dropSeq))
+	g.dropNames[text] = name
+	g.pendingDrops = append(g.pendingDrops, dropRequest{name: name, text: text})
+	return name
+}
+
+// emitDrops writes the drop functions queued by this document.
+func (g *generator) emitDrops() error {
+	for _, req := range g.pendingDrops {
+		if g.dropEmitted[req.name] {
+			continue
+		}
+		g.dropEmitted[req.name] = true
+		fmt.Fprintf(g.out, "define void @%s(ptr %%value) {\nentry:\n", llvmSymbol(req.name))
+		if err := g.dropValue("%value", req.text, 0); err != nil {
+			return err
+		}
+		g.out.WriteString("  ret void\n}\n")
+	}
+	g.pendingDrops = nil
+	return nil
+}
+
+// dropValue releases the rc references inside one value at ptr.
+func (g *generator) dropValue(ptr, text string, depth int) error {
+	if depth > 32 {
+		return nil
+	}
+	text = g.qualifyTypeText(g.pkg, text)
+	if isWeakText(text) {
+		return nil
+	}
+	if isRcText(text) {
+		g.needRcDecl = true
+		handle := g.load("i64", ptr)
+		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", handle)
+		return nil
+	}
+	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
+		info, ok := g.adtType(text)
+		if !ok {
+			return nil
+		}
+		tag := g.load("i32", ptr)
+		g.labels++
+		n := g.labels
+		keep := fmt.Sprintf("drop.keep.%d", n)
+		done := fmt.Sprintf("drop.done.%d", n)
+		cond := g.newTmp()
+		if kind == "option" {
+			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 1\n", cond, tag)
+		} else {
+			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", cond, tag)
+		}
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, keep, done)
+		g.out.WriteString(keep + ":\n")
+		payload := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, ptr, info.payloadIndex)
+		if err := g.dropValue(payload, args[0], depth+1); err != nil {
+			return err
+		}
+		fmt.Fprintf(g.out, "  br label %%%s\n", done)
+		g.out.WriteString(done + ":\n")
+		return nil
+	}
+	typ, ok := g.typeLLVMOf(text)
+	if !ok || !isStructType(typ) {
+		return nil
+	}
+	info := g.structInfoByLLVM(typ)
+	if info == nil || !info.ok {
+		return nil
+	}
+	for i, ft := range info.texts {
+		if !needsReleaseText(g, ft) {
+			continue
+		}
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.llvm, ptr, i)
+		if err := g.dropValue(field, ft, depth+1); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // rcMethodCall lowers Weak, Clone, and every method reached through the handle.
