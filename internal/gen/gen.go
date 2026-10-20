@@ -346,11 +346,7 @@ func (g *generator) collectSignatures() {
 			var params []string
 			variadic := false
 			for _, c := range paramRecs {
-				text := fieldText(c, "type")
-				if q := qualify(d.path, text); g.declKinds[q] != "" {
-					text = q
-				}
-				params = append(params, text)
+				params = append(params, g.qualifyTypeText(d.path, fieldText(c, "type")))
 				if fieldText(c, "variadic") == "true" {
 					variadic = true
 				}
@@ -383,9 +379,7 @@ func (g *generator) collectSignatures() {
 					}
 				}
 			}
-			if q := qualify(d.path, res); g.declKinds[q] != "" {
-				res = q
-			}
+			res = g.qualifyTypeText(d.path, res)
 			g.sigs[sym] = res
 			switch kind {
 			case "struct":
@@ -887,6 +881,43 @@ func qualify(pkg, name string) string {
 		return name
 	}
 	return pkg + "." + name
+}
+
+// qualifyTypeText qualifies every named type inside one type text with the
+// package path, including the arguments of a predeclared generic. A type from
+// another document then carries one canonical name in signatures and layouts.
+func (g *generator) qualifyTypeText(pkg, text string) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return text
+	}
+	if strings.HasPrefix(text, "[]") {
+		return "[]" + g.qualifyTypeText(pkg, text[2:])
+	}
+	generics := []string{"Array<", "Option<", "Result<", "Map<", "Set<", "chan<", "Task<", "rc<", "weak<"}
+	for _, prefix := range generics {
+		if strings.HasPrefix(text, prefix) && strings.HasSuffix(text, ">") {
+			args := splitTypeList(text[len(prefix) : len(text)-1])
+			for i := range args {
+				args[i] = g.qualifyTypeText(pkg, args[i])
+			}
+			return prefix + strings.Join(args, ",") + ">"
+		}
+	}
+	if strings.HasPrefix(text, "func(") || text == "Error" || text == "()" || strings.Contains(text, ".") {
+		return text
+	}
+	if _, _, ok := llvmScalar(text); ok {
+		return text
+	}
+	switch text {
+	case "str", "Duration", "Value", "Show":
+		return text
+	}
+	if q := qualify(pkg, text); g.declKinds[q] != "" {
+		return q
+	}
+	return text
 }
 
 // llvmSymbol quotes a symbol whose text is not a plain LLVM identifier.

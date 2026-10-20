@@ -96,7 +96,15 @@ func willIntDecimal(text string) (string, bool) {
 func literalFloatText(text string) string {
 	text = strings.TrimSuffix(text, "f32")
 	text = strings.TrimSuffix(text, "f64")
-	return strings.ReplaceAll(text, "_", "")
+	text = strings.ReplaceAll(text, "_", "")
+	if strings.Contains(text, ".") {
+		return text
+	}
+	if i := strings.IndexAny(text, "eE"); i >= 0 {
+		// LLVM wants a decimal point in the mantissa of every float constant.
+		return text[:i] + ".0" + text[i:]
+	}
+	return text + ".0"
 }
 
 // isUnsigned reports whether a will integer type is unsigned. The sign is not

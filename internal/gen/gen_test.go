@@ -420,6 +420,20 @@ func TestEmitSelect(t *testing.T) {
 	}
 }
 
+func TestFloatLiteralKeepsADecimalPoint(t *testing.T) {
+	cases := map[string]string{
+		"1e-6": "1.0e-6",
+		"1E9":  "1.0E9",
+		"1.5":  "1.5",
+		"2f64": "2.0",
+	}
+	for text, want := range cases {
+		if got := literalFloatText(text); got != want {
+			t.Errorf("literalFloatText(%q) = %q, want %q", text, got, want)
+		}
+	}
+}
+
 func TestDurationLiteral(t *testing.T) {
 	cases := map[string]string{
 		"5ms": "5000000",

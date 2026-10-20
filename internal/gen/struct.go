@@ -58,11 +58,10 @@ func (g *generator) structInfoByLLVM(typ string) *structInfo {
 		info.index[decl.names[i]] = i
 		info.names = append(info.names, decl.names[i])
 		info.texts = append(info.texts, text)
-		field, ok := g.typeLLVMOf(text)
-		if !ok {
-			if qualified := qualify(packageOfQualified(q), text); g.declKinds[qualified] != "" {
-				field, ok = g.typeLLVMOf(qualified)
-			}
+		qualified := g.qualifyTypeText(packageOfQualified(q), text)
+		field, ok := g.typeLLVMOf(qualified)
+		if !ok && qualified != text {
+			field, ok = g.typeLLVMOf(text)
 		}
 		if !ok {
 			info.ok = false
@@ -859,6 +858,9 @@ func (g *generator) receiverTypeName(recvID int) (string, error) {
 	text, err := g.willTypeText(recvID)
 	if err != nil {
 		return "", err
+	}
+	if strings.Contains(text, ".") {
+		return g.canonicalTypeText(text), nil
 	}
 	return qualify(g.pkg, text), nil
 }

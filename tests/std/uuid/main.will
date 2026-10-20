@@ -1,0 +1,15 @@
+import "std/uuid"
+
+func main() -> i32 {
+    var r: Result<uuid.Uuid, Error> = uuid.Parse("00000000-0000-0000-0000-000000000000")
+    match r {
+        Ok(u) => {
+            var s: str = u.String()
+            print(s, "\n")
+        }
+        Err(e) => {
+            _ = e
+        }
+    }
+    return 0
+}
