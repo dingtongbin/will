@@ -1292,10 +1292,14 @@ func (g *generator) allocas(fn int) error {
 	}
 	// A str method that returns a str, a view of str, or an Option keeps its
 	// result, and a trim its two bounds, in the entry block.
+	var stringCalls []willc.Record
 	for _, r := range g.recs {
-		if r.Kind != "mcall" || g.enclosingFunc(r.ID) != fn {
-			continue
+		if r.Kind == "mcall" && g.enclosingFunc(r.ID) == fn {
+			stringCalls = append(stringCalls, r)
 		}
+	}
+	sortByID(stringCalls)
+	for _, r := range stringCalls {
 		recvText, err := g.willTypeText(refField(r, "recv"))
 		if err != nil || recvText != "str" {
 			continue
