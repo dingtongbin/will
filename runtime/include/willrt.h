@@ -36,6 +36,14 @@ void willrt_os_free_pages(void* ptr, size_t size);
    never goes backwards. Zero is returned when the platform call fails. */
 int64_t willrt_os_now_ns(void);
 
+/* willrt_os_random_bytes fills out with size bytes from the platform's
+   cryptographically secure source. It returns 0 on success and -1 when the
+   source is unavailable; a partial fill is never reported as success. */
+int32_t willrt_os_random_bytes(void* out, size_t size);
+
+/* willrt_random_bytes is the core-facing form of the platform random source. */
+int32_t willrt_random_bytes(void* out, size_t size);
+
 /* Platform threads, locks, and waits. The storage is opaque to the scheduler;
    the platform implementation casts it to its own handle. A timeout below zero
    waits without a limit, and a timeout of zero does not wait. */

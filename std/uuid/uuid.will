@@ -1,5 +1,10 @@
 // Uuid is a 128-bit identifier. The two halves keep the byte order of the
 // canonical text, so the first sixteen hexadecimal digits are the high half.
+import "std/math/rand"
+import c "entropy.h" {
+    fast willrt_random_bytes
+}
+
 struct Uuid {
     high: u64
     low: u64
@@ -28,15 +33,15 @@ const dashByte: u8 = 45
 
 // hexValue returns the value of one hexadecimal digit, or -1 when the scalar
 // is not a digit. Both cases of a letter are accepted, as RFC 4122 does.
-func hexValue(c: u32) -> i32 {
-    if c >= 48u32 && c <= 57u32 {
-        return i32(c - 48u32)
+func hexValue(ch: u32) -> i32 {
+    if ch >= 48u32 && ch <= 57u32 {
+        return i32(ch - 48u32)
     }
-    if c >= 97u32 && c <= 102u32 {
-        return i32(c - 97u32) + 10
+    if ch >= 97u32 && ch <= 102u32 {
+        return i32(ch - 97u32) + 10
     }
-    if c >= 65u32 && c <= 70u32 {
-        return i32(c - 65u32) + 10
+    if ch >= 65u32 && ch <= 70u32 {
+        return i32(ch - 65u32) + 10
     }
     return -1
 }
@@ -67,6 +72,37 @@ func appendDash(mut out: Array<u8>) {
     out.Push(dashByte)
 }
 
+// versioned sets the RFC 4122 version 4 and variant 10 bits in the two halves
+// of the identifier.
+func versioned(high: u64, low: u64) -> Uuid {
+    return Uuid {
+        high: (high & 0xffffffffffff0fffu64) | 0x0000000000004000u64,
+        low: (low & 0x3fffffffffffffffu64) | 0x8000000000000000u64,
+    }
+}
+
+// New builds one v4 identifier from the caller's random stream. The caller
+// owns the seed, so a test can reproduce the result.
+func New(mut r: rand.Rand) -> Uuid {
+    var high: u64 = r.NextU64()
+    var low: u64 = r.NextU64()
+    return versioned(high, low)
+}
+
+// NewRandom builds one v4 identifier from the system entropy source. A
+// platform without a usable source returns Err instead of a predictable id.
+func NewRandom() -> Result<Uuid, Error> {
+    var high: u64 = 0
+    var low: u64 = 0
+    if c.willrt_random_bytes(raw(high), 8usize) != 0 {
+        return Err(fail("uuid: the system entropy source is not available"))
+    }
+    if c.willrt_random_bytes(raw(low), 8usize) != 0 {
+        return Err(fail("uuid: the system entropy source is not available"))
+    }
+    return Ok(versioned(high, low))
+}
+
 // Parse reads the canonical 8-4-4-4-12 hexadecimal text of a UUID. The
 // hyphens are mandatory and the digits may be either case; any other text is a
 // parse failure.
@@ -77,14 +113,14 @@ func Parse(s: str) -> Result<Uuid, Error> {
     var high: u64 = 0
     var low: u64 = 0
     var digits: i32 = 0
-    for i, c in s {
+    for i, ch in s {
         if i == 8usize || i == 13usize || i == 18usize || i == 23usize {
-            if c != u32(dashByte) {
+            if ch != u32(dashByte) {
                 return Err(fail("uuid: a separator is in the wrong place"))
             }
             continue
         }
-        var d: i32 = hexValue(c)
+        var d: i32 = hexValue(ch)
         if d < 0 {
             return Err(fail("uuid: text has a non-hexadecimal digit"))
         }

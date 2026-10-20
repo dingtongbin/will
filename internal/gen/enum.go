@@ -102,6 +102,9 @@ func (g *generator) collectExternalEnums() {
 					}
 					typ, ok := llvmTypeText(fieldText(arg, "text"))
 					if !ok {
+						typ, ok = g.typeLLVMOf(fieldText(arg, "text"))
+					}
+					if !ok {
 						known = false
 						continue
 					}

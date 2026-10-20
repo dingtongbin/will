@@ -76,6 +76,11 @@ const (
 	CodeShiftAmount = "T0009"
 	// CodeFeatureOutsideIf reports meta.Feature outside an if condition.
 	CodeFeatureOutsideIf = "T0010"
+	// CodeNoZero reports a local variable whose type has no zero value.
+	CodeNoZero = "T0011"
+	// CodeVariadicWiden reports a C variadic argument that needs an explicit
+	// widening cast.
+	CodeVariadicWiden = "T0012"
 
 	// CodePackageNameMismatch reports a package name that differs from its directory.
 	CodePackageNameMismatch = "B0001"
@@ -162,6 +167,8 @@ var Codes = []string{
 	CodeBuiltinConstraintAsInterface,
 	CodeShiftAmount,
 	CodeFeatureOutsideIf,
+	CodeNoZero,
+	CodeVariadicWiden,
 	CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
 	CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
 	CodeUnreleasableCycle, CodePossibleCycle, CodeRcSlotUnguarded, CodeExplicitLeak, CodeSmallPlate,

@@ -8,6 +8,20 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
+// isPlaceExpr reports whether an expression names storage whose address can be
+// taken. A literal or call result is a value, not a place.
+func (g *generator) isPlaceExpr(id int) bool {
+	r, ok := g.recs[id]
+	if !ok {
+		return false
+	}
+	switch r.Kind {
+	case "name", "field", "index", "slice":
+		return true
+	}
+	return false
+}
+
 // maxSigned holds the largest value of each signed width. The smallest value
 // is in signedMins.
 var maxSigned = map[int]string{
@@ -42,14 +56,21 @@ func (g *generator) castValue(r willc.Record) (string, error) {
 	if toText == "str" || toText == "[]u8" {
 		return "", g.errf(r.ID, "cannot translate node #%d: a conversion to %s is a place", r.ID, toText)
 	}
-	if toText == "raw" && fromText != "usize" && fromText != "u64" {
-		// raw(x) takes the address of a place. A scalar raw(n) conversion
-		// names an integer value instead and is handled below.
+	if toText == "raw" && g.isPlaceExpr(exprID) {
+		// A place always means "take its address". The integer form is only
+		// for a value that is not a place, such as raw(0usize).
 		ptr, _, err := g.place(exprID)
 		if err != nil {
 			return "", g.errf(r.ID, "cannot translate node #%d: raw() takes a place or a usize", r.ID)
 		}
 		return ptr, nil
+	}
+	if toText == "raw" && fromText != "usize" {
+		if lit, ok := g.recs[exprID]; ok && lit.Kind == "lit" &&
+			fieldText(lit, "kind") == "int" && fieldText(lit, "text") == "0" {
+			return "null", nil
+		}
+		return "", g.errf(r.ID, "cannot translate node #%d: raw() takes a place or a usize", r.ID)
 	}
 	v, err := g.value(exprID)
 	if err != nil {
@@ -64,7 +85,7 @@ func (g *generator) castValue(r willc.Record) (string, error) {
 		return out, nil
 	}
 	if toText == "raw" {
-		if fromText != "usize" && fromText != "u64" {
+		if fromText != "usize" {
 			return "", g.errf(r.ID, "cannot translate node #%d: only a usize converts to raw", r.ID)
 		}
 		out := g.newTmp()

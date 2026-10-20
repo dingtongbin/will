@@ -1,4 +1,28 @@
 
+#include <errno.h>
+#include <sys/random.h>
+#include <sys/types.h>
+
+int32_t willrt_os_random_bytes(void* out, size_t size) {
+    unsigned char* cursor = (unsigned char*)out;
+    size_t left = size;
+
+    if (out == NULL && size != 0) {
+        return -1;
+    }
+    while (left != 0) {
+        ssize_t got = getrandom(cursor, left, 0);
+        if (got < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return -1;
+        }
+        cursor += (size_t)got;
+        left -= (size_t)got;
+    }
+    return 0;
+}
 
 typedef struct willrt_posix_thread {
     pthread_t handle;

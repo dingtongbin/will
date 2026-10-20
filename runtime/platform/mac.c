@@ -1,4 +1,15 @@
 
+#include <stdlib.h>
+
+int32_t willrt_os_random_bytes(void* out, size_t size) {
+    if (out == NULL && size != 0) {
+        return -1;
+    }
+    if (size != 0) {
+        arc4random_buf(out, size);
+    }
+    return 0;
+}
 
 typedef struct willrt_posix_thread {
     pthread_t handle;

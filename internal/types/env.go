@@ -42,6 +42,7 @@ type env struct {
 	arity    map[string]int
 	params   map[string][]string
 	fields   map[string][]*fieldInfo
+	enums    map[string]bool
 	variants map[string]*variantInfo
 	funcs    map[string]*signature
 	methods  map[string]*signature
@@ -61,6 +62,7 @@ func newEnv() *env {
 		arity:     map[string]int{},
 		params:    map[string][]string{},
 		fields:    map[string][]*fieldInfo{},
+		enums:     map[string]bool{},
 		variants:  map[string]*variantInfo{},
 		funcs:     map[string]*signature{},
 		methods:   map[string]*signature{},
@@ -133,6 +135,7 @@ func (b *envBuilder) decl(d ast.Decl) {
 		e.arity[decl.Name] = len(decl.TypeParams)
 		e.params[decl.Name] = typeParamNames(decl.TypeParams)
 		e.userTypes[decl.Name] = true
+		e.enums[decl.Name] = true
 		for _, v := range decl.Variants {
 			payload := make([]*Type, len(v.Args))
 			for i, at := range v.Args {

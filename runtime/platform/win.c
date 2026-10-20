@@ -13,8 +13,11 @@
    caller's opaque storage, so starting a thread allocates nothing. */
 
 #define _WIN32_WINNT 0x0602
+#define _CRT_RAND_S
 
 #include <windows.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "../include/willrt.h"
 
@@ -44,6 +47,26 @@ int64_t willrt_os_now_ns(void) {
        fractional product fits in 64 bits. */
     return (int64_t)(seconds * UINT64_C(1000000000)
                      + (rest * UINT64_C(1000000000)) / freq);
+}
+
+int32_t willrt_os_random_bytes(void* out, size_t size) {
+    unsigned char* cursor = (unsigned char*)out;
+
+    if (out == NULL && size != 0) {
+        return -1;
+    }
+    while (size != 0) {
+        unsigned int value;
+        size_t take = size < sizeof(value) ? size : sizeof(value);
+
+        if (rand_s(&value) != 0) {
+            return -1;
+        }
+        memcpy(cursor, &value, take);
+        cursor += take;
+        size -= take;
+    }
+    return 0;
 }
 
 void* willrt_os_alloc_pages(size_t size) {

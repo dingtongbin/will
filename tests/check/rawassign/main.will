@@ -1,0 +1,6 @@
+func main() -> i32 {
+    var v: i32 = 1
+    var p: raw = raw(v)
+    _ = p
+    return 0
+}

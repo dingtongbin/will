@@ -6,6 +6,7 @@ enum FieldValue {
     Uint(u64)
     Float(f64)
     Bool(bool)
+    Err(Error)
 }
 
 // Field is one structured key and value. It is a plain value with no lifetime,
@@ -35,4 +36,10 @@ func Float(key: str, value: f64) -> Field {
 
 func Bool(key: str, value: bool) -> Field {
     return Field { key: key, value: FieldValue.Bool(value) }
+}
+
+// Err stores the error's message as the field value; a sink never gets a live
+// error handle.
+func Err(key: str, value: Error) -> Field {
+    return Field { key: key, value: FieldValue.Err(value) }
 }

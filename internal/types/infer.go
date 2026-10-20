@@ -129,20 +129,32 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 			s.vars[d.Name] = want
 		case *ast.VarDecl:
 			want := c.buildType(d.Type, s.tp)
-			c.checkValue(s, d.Value, want)
+			c.rejectRawAddress(d.Value)
+			if d.Value == nil {
+				if !c.hasZero(want) {
+					c.bag.Error(d.Pos(), diag.CodeNoZero,
+						"type "+want.String()+" has no zero value",
+						"initialize it: var "+d.Name+": "+want.String()+" = ...")
+				}
+			} else {
+				c.checkValue(s, d.Value, want)
+			}
 			s.vars[d.Name] = want
 		}
 	case *ast.AssignStmt:
+		c.rejectRawAddress(x.Value)
 		want := c.inferPlace(s, x.Target)
 		if x.Op != "=" && want != nil && !want.IsNumeric() {
 			c.typeMismatch(x.Target.Pos(), want, nil)
 		}
 		c.checkValue(s, x.Value, want)
 	case *ast.ExprStmt:
+		c.rejectRawAddress(x.Expr)
 		c.inferExpr(s, x.Expr)
 	case *ast.DeferStmt:
 		c.inferExpr(s, x.Call)
 	case *ast.ReturnStmt:
+		c.rejectRawAddress(x.Value)
 		if s.result == nil {
 			if x.Value != nil {
 				c.typeMismatch(x.Pos(), c.inferExpr(s, x.Value), c.in.unit())

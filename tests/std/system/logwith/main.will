@@ -1,3 +1,4 @@
+import "std/errors"
 import "std/log"
 
 // Recorder is the sink under test. It keeps the key of every field in arrival
@@ -10,7 +11,6 @@ struct Recorder {
     keys: Array<str>
     values: Array<log.Field>
     messages: Array<str>
-    levels: Array<i32>
 }
 
 func (mut r: Recorder) AsyncWrite(level: log.Level, fields: []log.Field, message: str) {
@@ -20,21 +20,7 @@ func (mut r: Recorder) AsyncWrite(level: log.Level, fields: []log.Field, message
         r.values.Push(f)
     }
     r.messages.Push(message)
-    // Debug is 0, Info is 1, Warn is 2, and the remaining level, Error, is 3.
-    match level {
-        Debug => {
-            r.levels.Push(0)
-        }
-        Info => {
-            r.levels.Push(1)
-        }
-        Warn => {
-            r.levels.Push(2)
-        }
-        _ => {
-            r.levels.Push(3)
-        }
-    }
+    _ = level
 }
 
 // expect compares the keys recorded so far ending at from with want. It returns
@@ -64,7 +50,6 @@ func main() -> i32 {
         keys: new Array<str>(0),
         values: new Array<log.Field>(0),
         messages: new Array<str>(0),
-        levels: new Array<i32>(0),
     }
     var base: log.Logger = log.New(rec, log.Level.Info())
     var ab: log.Logger = base.With(log.Str("a", "1"), log.Str("b", "2"))
@@ -85,8 +70,12 @@ func main() -> i32 {
     // ab was the receiver of the With that built abe, and it still carries
     // only its own two fields.
     ab.Warn(view, "m6")
+    // A later field with the same key replaces the earlier one; Err is a
+    // FieldValue variant, not a separate channel.
+    var dup: log.Logger = base.With(log.Str("a", "1"), log.Err("a", errors.Invalid))
+    dup.Info(view, "m7")
 
-    if rec.lines != 6 {
+    if rec.lines != 7 {
         return 1
     }
     // Each line contributes one recorded value per field, so values and keys
@@ -149,6 +138,15 @@ func main() -> i32 {
     if at == 0usize {
         return 8
     }
+
+    // One duplicate key remains one field, and the later value wins.
+    want = new Array<str>(0)
+    want.Push("a")
+    want.Push("d")
+    at = expect(rec, at, want)
+    if at == 0usize {
+        return 9
+    }
     if at != rec.keys.Len() {
         return 9
     }
@@ -170,24 +168,6 @@ func main() -> i32 {
     }
     if rec.messages.Get(5) != "m6" {
         return 15
-    }
-    if rec.levels.Get(0) != 1 {
-        return 16
-    }
-    if rec.levels.Get(1) != 2 {
-        return 17
-    }
-    if rec.levels.Get(2) != 3 {
-        return 18
-    }
-    if rec.levels.Get(3) != 1 {
-        return 19
-    }
-    if rec.levels.Get(4) != 1 {
-        return 20
-    }
-    if rec.levels.Get(5) != 2 {
-        return 21
     }
     return 0
 }

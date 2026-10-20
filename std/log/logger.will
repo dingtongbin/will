@@ -24,14 +24,36 @@ func New(sink: Sink, level: Level) -> Logger {
 // kv, in that order. The receiver keeps its own list, so a later With on the
 // same logger sees only the fields that logger had.
 func (l: Logger) With(kv: ...Field) -> Logger {
-    var fields: Array<Field> = new Array<Field>(0)
-    for f in l.fields {
-        fields.Push(f)
+    return Logger { sink: l.sink, level: l.level, fields: mergeFields(l.fields[Range(0, l.fields.Len())], kv)}
+}
+
+// mergeFields keeps the first list's order and replaces a repeated key with
+// the later value. The call's fields therefore win over With's fields.
+func mergeFields(base: []Field, extra: []Field) -> Array<Field> {
+    var out: Array<Field> = new Array<Field>(0)
+    for f in base {
+        out.Push(f)
     }
-    for f in kv {
-        fields.Push(f)
+    for f in extra {
+        var found: bool = false
+        var i: usize = 0
+        for {
+            if i >= out.Len() {
+                break
+            }
+            var old: Field = out.Get(i)
+            if old.key == f.key {
+                out.Set(i, f)
+                found = true
+                break
+            }
+            i += 1
+        }
+        if !found {
+            out.Push(f)
+        }
     }
-    return Logger { sink: l.sink, level: l.level, fields: fields}
+    return out
 }
 
 // Info writes one line at the info level.
@@ -53,13 +75,7 @@ func (l: Logger) Error(fields: []Field, message: str) {
 // first, then the fields of the call. The view lives for the sink call only,
 // which matches the sink contract of one finished line.
 func (l: Logger) emit(level: Level, fields: []Field, message: str) {
-    var all: Array<Field> = new Array<Field>(0)
-    for f in l.fields {
-        all.Push(f)
-    }
-    for f in fields {
-        all.Push(f)
-    }
+    var all: Array<Field> = mergeFields(l.fields[Range(0, l.fields.Len())], fields)
     var view: []Field = all[Range(0, all.Len())]
     l.sink.AsyncWrite(level, view, message)
 }
