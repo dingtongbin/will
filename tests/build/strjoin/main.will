@@ -1,8 +1,0 @@
-import "std/str"
-
-func main() -> i32 {
-    var parts: []str = "a,b,c".Split(",")
-    var s: str = str.Join(parts, "-")
-    print(s, "\n")
-    return i32(s.Len())
-}
