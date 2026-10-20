@@ -108,6 +108,23 @@ func (g *generator) emitAux() {
 	if g.needMemcpyDecl {
 		g.out.WriteString("declare void @memcpy(ptr, ptr, i64)\n")
 	}
+	if g.needPrintDecl {
+		g.out.WriteString("declare void @willrt_write_stdout(ptr, i64)\n")
+		g.out.WriteString("declare void @willrt_print_i64(i64)\n")
+		g.out.WriteString("declare void @willrt_print_u64(i64)\n")
+		g.out.WriteString("declare void @willrt_print_f64(double)\n")
+		g.out.WriteString("declare void @willrt_print_bool(i32)\n")
+	}
+	if g.needInterpDecl {
+		g.out.WriteString("declare i64 @willrt_fmt_i64_len(i64)\n")
+		g.out.WriteString("declare i64 @willrt_fmt_u64_len(i64)\n")
+		g.out.WriteString("declare i64 @willrt_fmt_f64_len(double)\n")
+		g.out.WriteString("declare i64 @willrt_fmt_bool_len(i32)\n")
+		g.out.WriteString("declare i64 @willrt_fmt_i64_into(ptr, i64, i64)\n")
+		g.out.WriteString("declare i64 @willrt_fmt_u64_into(ptr, i64, i64)\n")
+		g.out.WriteString("declare i64 @willrt_fmt_f64_into(ptr, i64, double)\n")
+		g.out.WriteString("declare i64 @willrt_fmt_bool_into(ptr, i64, i32)\n")
+	}
 }
 
 // docState is the per-file part of the translation: record ids and the callable
@@ -290,6 +307,7 @@ func (g *generator) use(d *docState) {
 	g.callSlots = map[int]string{}
 	g.sliceSlots = map[int]string{}
 	g.strCatSlots = map[int]string{}
+	g.interpSlots = map[int]string{}
 	g.loopBinds = map[int]map[string]string{}
 	g.loopTypes = map[int]map[string]string{}
 	g.loopPtrs = map[int]map[string]string{}
@@ -394,6 +412,10 @@ type generator struct {
 	needMemmoveDecl bool
 	// needMemcpyDecl records that a str concatenation copied bytes.
 	needMemcpyDecl bool
+	// needPrintDecl records that the lowering writes to standard output, and
+	// needInterpDecl that it formats a scalar into a str.
+	needPrintDecl bool
+	needInterpDecl bool
 	// declKinds maps a qualified type name to "struct" or "enum".
 	declKinds map[string]string
 	// callSlots maps a call whose result is a struct to the temporary slot its
@@ -402,8 +424,10 @@ type generator struct {
 	// sliceSlots maps a slice expression to the temporary slot holding the view
 	// it builds.
 	sliceSlots map[int]string
-	// strCatSlots maps a str concatenation to the two-word slot it builds.
+	// strCatSlots maps a str concatenation to the two-word slot it builds,
+	// and interpSlots does the same for an interpolation.
 	strCatSlots map[int]string
+	interpSlots map[int]string
 	// loopBinds maps a for record and a binding name to that binding's slot,
 	// and loopTypes to its will type text. Both bindings of a loop name the
 	// same for record, so the name tells them apart. loopPtrs holds the element
@@ -1065,6 +1089,18 @@ func (g *generator) allocas(fn int) error {
 	for _, r := range cats {
 		name := "%v.cat." + strconv.Itoa(r.ID)
 		g.strCatSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca { ptr, i64 }\n", name)
+	}
+	var interps []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "interp" && g.enclosingFunc(r.ID) == fn {
+			interps = append(interps, r)
+		}
+	}
+	sortByID(interps)
+	for _, r := range interps {
+		name := "%v.interp." + strconv.Itoa(r.ID)
+		g.interpSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca { ptr, i64 }\n", name)
 	}
 	// A range loop binds one counter, which also needs a slot.
@@ -1964,6 +2000,9 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	if info, _ := g.enumVariantCall(r); info != nil {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: an enum value is a place, not a scalar", r.ID)
+	}
+	if g.isPrintCall(r) {
+		return g.printCall(r)
 	}
 	if name := g.genericCallName(r); name != "" {
 		return g.emitCall(r, name, false)

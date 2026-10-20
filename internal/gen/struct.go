@@ -330,6 +330,8 @@ func (g *generator) typeOf(id int) (string, error) {
 			return "", g.errf(id, "cannot translate node #%d: the aggregate type is not lowered yet", id)
 		}
 		return info.llvm, nil
+	case "interp":
+		return "{ ptr, i64 }", nil
 	case "slice":
 		text, err := g.willTypeText(id)
 		if err != nil {
@@ -513,6 +515,8 @@ func (g *generator) willTypeText(id int) (string, error) {
 		return info.texts[i], nil
 	case "agg":
 		return "", nil
+	case "interp":
+		return "str", nil
 	case "slice":
 		elem, err := g.sliceElem(r)
 		if err != nil {
@@ -790,6 +794,8 @@ func (g *generator) place(id int) (string, string, error) {
 			return g.strConcat(r)
 		}
 		return "", "", g.errf(id, "cannot translate node #%d: a binary expression is not a place", id)
+	case "interp":
+		return g.interpValue(r)
 	case "try":
 		return g.tryPlace(r)
 	case "unwrap":

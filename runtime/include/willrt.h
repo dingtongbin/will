@@ -130,6 +130,28 @@ void willrt_panic_n(const char* message, size_t size, const char* site, const ch
 /* willrt_report_write_n writes bytes that need not be NUL-terminated. */
 void willrt_report_write_n(const char* text, size_t size);
 
+/* print writes its parts to standard output without buffering. A str part is
+   bytes and a length; the scalar parts are formatted by the runtime. */
+void willrt_write_stdout(const char* data, size_t size);
+void willrt_print_i64(int64_t value);
+void willrt_print_u64(uint64_t value);
+void willrt_print_f64(double value);
+void willrt_print_bool(int32_t value);
+void willrt_print_char(uint32_t value);
+
+/* The interpolation helpers measure a formatted scalar and then write it into
+   a buffer the caller allocates, so one interpolation allocates once. */
+size_t willrt_fmt_i64_len(int64_t value);
+size_t willrt_fmt_u64_len(uint64_t value);
+size_t willrt_fmt_f64_len(double value);
+size_t willrt_fmt_bool_len(int32_t value);
+size_t willrt_fmt_char_len(uint32_t value);
+size_t willrt_fmt_i64_into(char* buffer, size_t capacity, int64_t value);
+size_t willrt_fmt_u64_into(char* buffer, size_t capacity, uint64_t value);
+size_t willrt_fmt_f64_into(char* buffer, size_t capacity, double value);
+size_t willrt_fmt_bool_into(char* buffer, size_t capacity, int32_t value);
+size_t willrt_fmt_char_into(char* buffer, size_t capacity, uint32_t value);
+
 /* willrt_report_write sends the NUL-terminated text to the current report
    target. The text must not be NULL. The default target is standard error,
    written without buffering. */

@@ -1,0 +1,9 @@
+func main() -> i32 {
+    var n: i32 = 3
+    var ok: bool = true
+    var x: f64 = 1.5
+    var u: u32 = 7
+    print("n = ", n, "\n")
+    print(f"ok={ok} x={x} u={u}\n")
+    return 0
+}

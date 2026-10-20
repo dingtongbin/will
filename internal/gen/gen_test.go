@@ -234,6 +234,35 @@ func TestEmitGenericMethodInstance(t *testing.T) {
 	}
 }
 
+func TestEmitPrintAndInterpolation(t *testing.T) {
+	src := "func main() -> i32 {\n" +
+		"    var n: i32 = 3\n" +
+		"    var ok: bool = true\n" +
+		"    var x: f64 = 1.5\n" +
+		"    var s: str = f\"n={n} ok={ok} x={x}\"\n" +
+		"    print(s, \"\\n\")\n" +
+		"    return 0\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`call i64 @willrt_fmt_i64_len(i64`,
+		`call i64 @willrt_fmt_bool_len(i32`,
+		`call i64 @willrt_fmt_f64_len(double`,
+		`call i64 @willrt_fmt_i64_into(ptr`,
+		`call void @willrt_write_stdout(ptr`,
+		`call ptr @willrt_alloc(i64`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitStrConcatAndSlice(t *testing.T) {
 	src := "func main() -> i32 {\n" +
 		"    var a: str = \"foo\"\n" +
