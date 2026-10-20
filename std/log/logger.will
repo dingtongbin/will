@@ -6,25 +6,60 @@ interface Sink {
     func AsyncWrite(level: Level, fields: []Field, message: str)
 }
 
-// Logger carries one sink and the level a line is written at. It holds no
-// registry and no shared state, so a logger is a plain value.
+// Logger carries one sink, the level its lines are written at, and the fields
+// every line repeats. It holds no registry and no shared state, so a logger is
+// a plain value.
 struct Logger {
     sink: Sink
     level: Level
+    fields: Array<Field>
 }
 
+// New returns a logger with no repeated fields.
 func New(sink: Sink, level: Level) -> Logger {
-    return Logger { sink: sink, level: level }
+    return Logger { sink: sink, level: level, fields: new Array<Field>(0)}
 }
 
+// With returns a new logger whose lines start with the fields of l and then
+// kv, in that order. The receiver keeps its own list, so a later With on the
+// same logger sees only the fields that logger had.
+func (l: Logger) With(kv: ...Field) -> Logger {
+    var fields: Array<Field> = new Array<Field>(0)
+    for f in l.fields {
+        fields.Push(f)
+    }
+    for f in kv {
+        fields.Push(f)
+    }
+    return Logger { sink: l.sink, level: l.level, fields: fields}
+}
+
+// Info writes one line at the info level.
 func (l: Logger) Info(fields: []Field, message: str) {
-    l.sink.AsyncWrite(Level.Info(), fields, message)
+    l.emit(Level.Info(), fields, message)
 }
 
+// Warn writes one line at the warn level.
 func (l: Logger) Warn(fields: []Field, message: str) {
-    l.sink.AsyncWrite(Level.Warn(), fields, message)
+    l.emit(Level.Warn(), fields, message)
 }
 
+// Error writes one line at the error level.
 func (l: Logger) Error(fields: []Field, message: str) {
-    l.sink.AsyncWrite(Level.Error(), fields, message)
+    l.emit(Level.Error(), fields, message)
+}
+
+// emit builds the one field list a sink receives: the logger's own fields
+// first, then the fields of the call. The view lives for the sink call only,
+// which matches the sink contract of one finished line.
+func (l: Logger) emit(level: Level, fields: []Field, message: str) {
+    var all: Array<Field> = new Array<Field>(0)
+    for f in l.fields {
+        all.Push(f)
+    }
+    for f in fields {
+        all.Push(f)
+    }
+    var view: []Field = all[Range(0, all.Len())]
+    l.sink.AsyncWrite(level, view, message)
 }

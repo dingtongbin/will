@@ -1,0 +1,193 @@
+import "std/log"
+
+// Recorder is the sink under test. It keeps the key of every field in arrival
+// order and the whole Field values, so one line contributes one key per field
+// and one recorded value per field. The values cannot be compared payload by
+// payload from this package yet: a foreign enum field is not readable as a
+// value, so the checks below use the keys, the levels, and the line count.
+struct Recorder {
+    lines: i32
+    keys: Array<str>
+    values: Array<log.Field>
+    messages: Array<str>
+    levels: Array<i32>
+}
+
+func (mut r: Recorder) AsyncWrite(level: log.Level, fields: []log.Field, message: str) {
+    r.lines += 1
+    for f in fields {
+        r.keys.Push(f.key)
+        r.values.Push(f)
+    }
+    r.messages.Push(message)
+    // Debug is 0, Info is 1, Warn is 2, and the remaining level, Error, is 3.
+    match level {
+        Debug => {
+            r.levels.Push(0)
+        }
+        Info => {
+            r.levels.Push(1)
+        }
+        Warn => {
+            r.levels.Push(2)
+        }
+        _ => {
+            r.levels.Push(3)
+        }
+    }
+}
+
+// expect compares the keys recorded so far ending at from with want. It returns
+// the next unchecked position, or 0 after a mismatch.
+func expect(rec: Recorder, from: usize, want: Array<str>) -> usize {
+    var i: usize = from
+    var j: usize = 0
+    for {
+        if j >= want.Len() {
+            return i
+        }
+        if i >= rec.keys.Len() {
+            return 0usize
+        }
+        if rec.keys.Get(i) != want.Get(j) {
+            return 0usize
+        }
+        i += 1
+        j += 1
+    }
+    return i
+}
+
+func main() -> i32 {
+    var rec: Recorder = Recorder {
+        lines: 0,
+        keys: new Array<str>(0),
+        values: new Array<log.Field>(0),
+        messages: new Array<str>(0),
+        levels: new Array<i32>(0),
+    }
+    var base: log.Logger = log.New(rec, log.Level.Info())
+    var ab: log.Logger = base.With(log.Str("a", "1"), log.Str("b", "2"))
+    var c: log.Logger = base.With(log.Str("c", "3"))
+
+    // The call fields are the same list in every line.
+    var call: Array<log.Field> = new Array<log.Field>(0)
+    call.Push(log.Str("d", "4"))
+    var view: []log.Field = call[Range(0, call.Len())]
+
+    ab.Info(view, "m1")
+    c.Warn(view, "m2")
+    base.Error(view, "m3")
+    var abe: log.Logger = ab.With(log.Str("e", "5"))
+    abe.Info(view, "m4")
+    var empty: log.Logger = base.With()
+    empty.Info(view, "m5")
+    // ab was the receiver of the With that built abe, and it still carries
+    // only its own two fields.
+    ab.Warn(view, "m6")
+
+    if rec.lines != 6 {
+        return 1
+    }
+    // Each line contributes one recorded value per field, so values and keys
+    // have the same length.
+    if rec.values.Len() != rec.keys.Len() {
+        return 2
+    }
+
+    var want: Array<str> = new Array<str>(0)
+    want.Push("a")
+    want.Push("b")
+    want.Push("d")
+    var at: usize = expect(rec, 0usize, want)
+    if at == 0usize {
+        return 3
+    }
+
+    // c was built from base, not from ab, so it carries only c. base itself
+    // stays empty across every With.
+    want = new Array<str>(0)
+    want.Push("c")
+    want.Push("d")
+    at = expect(rec, at, want)
+    if at == 0usize {
+        return 4
+    }
+
+    want = new Array<str>(0)
+    want.Push("d")
+    at = expect(rec, at, want)
+    if at == 0usize {
+        return 5
+    }
+
+    // A With on ab keeps ab's fields and appends e.
+    want = new Array<str>(0)
+    want.Push("a")
+    want.Push("b")
+    want.Push("e")
+    want.Push("d")
+    at = expect(rec, at, want)
+    if at == 0usize {
+        return 6
+    }
+
+    // An empty With adds nothing.
+    want = new Array<str>(0)
+    want.Push("d")
+    at = expect(rec, at, want)
+    if at == 0usize {
+        return 7
+    }
+
+    // With on ab did not change ab.
+    want = new Array<str>(0)
+    want.Push("a")
+    want.Push("b")
+    want.Push("d")
+    at = expect(rec, at, want)
+    if at == 0usize {
+        return 8
+    }
+    if at != rec.keys.Len() {
+        return 9
+    }
+
+    if rec.messages.Get(0) != "m1" {
+        return 10
+    }
+    if rec.messages.Get(1) != "m2" {
+        return 11
+    }
+    if rec.messages.Get(2) != "m3" {
+        return 12
+    }
+    if rec.messages.Get(3) != "m4" {
+        return 13
+    }
+    if rec.messages.Get(4) != "m5" {
+        return 14
+    }
+    if rec.messages.Get(5) != "m6" {
+        return 15
+    }
+    if rec.levels.Get(0) != 1 {
+        return 16
+    }
+    if rec.levels.Get(1) != 2 {
+        return 17
+    }
+    if rec.levels.Get(2) != 3 {
+        return 18
+    }
+    if rec.levels.Get(3) != 1 {
+        return 19
+    }
+    if rec.levels.Get(4) != 1 {
+        return 20
+    }
+    if rec.levels.Get(5) != 2 {
+        return 21
+    }
+    return 0
+}
