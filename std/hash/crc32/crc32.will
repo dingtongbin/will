@@ -1,6 +1,12 @@
-// Sum returns the CRC-32 of b. The polynomial is the IEEE 802.3 one in its
-// reflected form, 0xEDB88320, which is the variant the name crc32 means
-// without a qualifier.
+// allOnes is the register value before the first byte and the xor applied at
+// the end.
+const allOnes: u32 = 4294967295
+
+// polynomial is the IEEE 802.3 polynomial in its reflected form.
+const polynomial: u32 = 3988292384
+
+// Sum returns the CRC-32 of b. It is the reflected IEEE 802.3 variant, the one
+// whose published check value for "123456789" is 0xCBF43926.
 func Sum(b: []u8) -> u32 {
     return Update(0u32, b)
 }
@@ -8,17 +14,17 @@ func Sum(b: []u8) -> u32 {
 // Update continues a CRC-32 from a previous result, so a caller can hash
 // several buffers in sequence. Update(0, b) is Sum(b).
 func Update(crc: u32, b: []u8) -> u32 {
-    var c: u32 = crc ^ 4294967295u32
+    var c: u32 = crc ^ allOnes
     for v in b {
         c = c ^ u32(v)
         for k in Range(0, 8) {
             if (c & 1u32) != 0u32 {
-                c = (c >> 1) ^ 3988292384u32
+                c = (c >> 1) ^ polynomial
             } else {
                 c = c >> 1
             }
             _ = k
         }
     }
-    return c ^ 4294967295u32
+    return c ^ allOnes
 }

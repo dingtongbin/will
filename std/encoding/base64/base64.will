@@ -46,8 +46,8 @@ func decode(s: str, url: bool) -> Result<Array<u8>, Error> {
             return Err(fail("invalid padding"))
         }
         if c == padScalar {
-            // Padding needs two data characters before it; three would be
-            // more than one group can carry.
+            // Padding needs two data characters before it, and a group
+            // carries at most two padding characters.
             if inGroup < 2 {
                 return Err(fail("invalid padding"))
             }

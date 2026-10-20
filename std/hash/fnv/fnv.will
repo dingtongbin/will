@@ -1,10 +1,13 @@
-// 2166136261 and 16777619 are the 32-bit FNV-1a offset basis and prime.
+// offset32 is the FNV-1a offset basis for 32-bit hashes.
 const offset32: u32 = 2166136261
+
+// prime32 is the FNV-1a prime for 32-bit hashes.
 const prime32: u32 = 16777619
 
-// 14695981039346656037 and 1099511628211 are the 64-bit FNV-1a offset basis
-// and prime.
+// offset64 is the FNV-1a offset basis for 64-bit hashes.
 const offset64: u64 = 14695981039346656037
+
+// prime64 is the FNV-1a prime for 64-bit hashes.
 const prime64: u64 = 1099511628211
 
 // Sum32 returns the 32-bit FNV-1a hash of b. The multiply wraps because the

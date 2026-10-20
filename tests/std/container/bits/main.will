@@ -1,0 +1,125 @@
+import "std/bits"
+
+// Set, Clear, Flip, and Has must cross word boundaries, Count must count the
+// set bits, Clone must be independent, and the four bitwise operations must
+// combine two sets of one width.
+func main() -> i32 {
+    var b: bits.Bits = new bits.Bits(130usize)
+    if b.Len() != usize(130) {
+        return 1
+    }
+    if b.Count() != usize(0) {
+        return 2
+    }
+    b.Set(0usize)
+    b.Set(63usize)
+    b.Set(64usize)
+    b.Set(129usize)
+    if !b.Has(0usize) {
+        return 3
+    }
+    if !b.Has(63usize) {
+        return 4
+    }
+    if !b.Has(64usize) {
+        return 5
+    }
+    if !b.Has(129usize) {
+        return 6
+    }
+    if b.Has(65usize) {
+        return 7
+    }
+    if b.Count() != usize(4) {
+        return 8
+    }
+    b.Clear(63usize)
+    if b.Has(63usize) {
+        return 9
+    }
+    if b.Count() != usize(3) {
+        return 10
+    }
+    b.Flip(65usize)
+    if !b.Has(65usize) {
+        return 11
+    }
+    b.Flip(65usize)
+    if b.Has(65usize) {
+        return 12
+    }
+    if b.Count() != usize(3) {
+        return 13
+    }
+    var copy: bits.Bits = b.Clone()
+    copy.Set(1usize)
+    if copy.Count() != usize(4) {
+        return 14
+    }
+    if b.Count() != usize(3) {
+        return 15
+    }
+    if b.Has(1usize) {
+        return 16
+    }
+    var left: bits.Bits = new bits.Bits(8usize)
+    left.Set(0usize)
+    left.Set(1usize)
+    left.Set(2usize)
+    left.Set(3usize)
+    var right: bits.Bits = new bits.Bits(8usize)
+    right.Set(2usize)
+    right.Set(3usize)
+    right.Set(4usize)
+    right.Set(5usize)
+    var both: bits.Bits = left.Clone()
+    both.And(right)
+    if both.Count() != usize(2) {
+        return 17
+    }
+    if !both.Has(2usize) {
+        return 18
+    }
+    var either: bits.Bits = left.Clone()
+    either.Or(right)
+    if either.Count() != usize(6) {
+        return 19
+    }
+    if !either.Has(5usize) {
+        return 20
+    }
+    var differing: bits.Bits = left.Clone()
+    differing.Xor(right)
+    if differing.Count() != usize(4) {
+        return 21
+    }
+    if differing.Has(2usize) {
+        return 22
+    }
+    if !differing.Has(0usize) {
+        return 23
+    }
+    var only: bits.Bits = left.Clone()
+    only.AndNot(right)
+    if only.Count() != usize(2) {
+        return 24
+    }
+    if !only.Has(1usize) {
+        return 25
+    }
+    if only.Has(3usize) {
+        return 26
+    }
+    var none: bits.Bits = new bits.Bits(0usize)
+    if none.Len() != usize(0) {
+        return 27
+    }
+    if none.Count() != usize(0) {
+        return 28
+    }
+    var emptyCopy: bits.Bits = none.Clone()
+    if emptyCopy.Len() != usize(0) {
+        return 29
+    }
+    return 0
+}

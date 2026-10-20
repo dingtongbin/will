@@ -1,0 +1,103 @@
+import "std/encoding/base64"
+
+// Decode must finish a padded group: one '=' leaves two bytes, two '=' leave
+// one, and a group that is still short is rejected. The vectors are the
+// standard ones for "Hello", "a", "ab", and the bytes 251 255.
+func main() -> i32 {
+    var hello: Result<Array<u8>, Error> = base64.Decode("SGVsbG8=")
+    match hello {
+        Ok(v) => {
+            if v.Len() != usize(5) {
+                return 1
+            }
+            if v.Get(0) != u8(72) {
+                return 2
+            }
+            if v.Get(4) != u8(111) {
+                return 3
+            }
+        }
+        Err(e) => {
+            return e.Status()
+        }
+    }
+    var single: Result<Array<u8>, Error> = base64.Decode("YQ==")
+    match single {
+        Ok(v) => {
+            if v.Len() != usize(1) {
+                return 4
+            }
+            if v.Get(0) != u8(97) {
+                return 5
+            }
+        }
+        Err(e) => {
+            return e.Status()
+        }
+    }
+    var pair: Result<Array<u8>, Error> = base64.Decode("YWI=")
+    match pair {
+        Ok(v) => {
+            if v.Len() != usize(2) {
+                return 6
+            }
+            if v.Get(1) != u8(98) {
+                return 7
+            }
+        }
+        Err(e) => {
+            return e.Status()
+        }
+    }
+    var high: Result<Array<u8>, Error> = base64.Decode("+/8=")
+    match high {
+        Ok(v) => {
+            if v.Len() != usize(2) {
+                return 8
+            }
+            if v.Get(0) != u8(251) {
+                return 9
+            }
+            if v.Get(1) != u8(255) {
+                return 10
+            }
+        }
+        Err(e) => {
+            return e.Status()
+        }
+    }
+    var url: Result<Array<u8>, Error> = base64.DecodeUrl("-_8=")
+    match url {
+        Ok(v) => {
+            if v.Get(1) != u8(255) {
+                return 11
+            }
+        }
+        Err(e) => {
+            return e.Status()
+        }
+    }
+    var short: Result<Array<u8>, Error> = base64.Decode("ab=")
+    match short {
+        Ok(v) => {
+            return 12 + i32(v.Len())
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 13
+            }
+        }
+    }
+    var trailing: Result<Array<u8>, Error> = base64.Decode("ab==cd")
+    match trailing {
+        Ok(v) => {
+            return 14 + i32(v.Len())
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 15
+            }
+        }
+    }
+    return 0
+}
