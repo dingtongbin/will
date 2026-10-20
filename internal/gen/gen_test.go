@@ -740,6 +740,32 @@ func emitWillcIn(t *testing.T, file, src, module string, tables map[string][]str
 	return doc
 }
 
+func TestEmitCrossPackageNewAndInterface(t *testing.T) {
+	app := emitWillcIn(t, "main.will",
+		"import \"example.com/app/lib\"\n\nfunc Use() -> i32 {\n    var f: lib.Fault = new lib.Fault(\"bad\", 2)\n    var e: Error = f\n    return e.Status()\n}\n\nfunc main() -> i32 {\n    return Use()\n}\n",
+		"example.com/app", map[string][]string{"example.com/app/lib": {"Fault"}})
+	lib := emitWillcIn(t, "lib.will",
+		"struct Fault {\n    message: str\n    status: i32\n}\n\n"+
+			"func (f: Fault) init(message: str, status: i32) {\n    f.message = message\n    f.status = status\n}\n\n"+
+			"func (f: Fault) Message() -> str {\n    return f.message\n}\n\n"+
+			"func (f: Fault) Status() -> i32 {\n    return f.status\n}\n",
+		"example.com/app/lib", nil)
+	ir, err := EmitModule([]*willc.Doc{app, lib}, "main")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`call void @"example.com/app/lib.Fault.init"(`,
+		`@"example.com/app.vtable.Error.example.com/app/lib.Fault"`,
+		`ptr @"example.com/app/lib.Fault.Status"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitCrossPackageEnumVariant(t *testing.T) {
 	app := emitWillcIn(t, "main.will",
 		"import \"example.com/app/lib\"\n\nfunc Use() -> i32 {\n    var x: lib.Level = lib.Level.Warn()\n    _ = x\n    return 0\n}\n\nfunc main() -> i32 {\n    return Use()\n}\n",

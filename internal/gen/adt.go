@@ -47,6 +47,7 @@ func parseADT(text string) (string, []string, bool) {
 // typeLLVMOf maps a type text used as an Option or Result argument to its LLVM
 // type. The unit type has no value and returns "".
 func (g *generator) typeLLVMOf(text string) (string, bool) {
+	text = g.canonicalTypeText(text)
 	if typ, _, ok := llvmScalar(text); ok {
 		return typ, true
 	}

@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/will-lang/will/internal/willc"
 )
@@ -130,6 +131,18 @@ func (g *generator) emitInit(d *docState) error {
 	}
 	g.out.WriteString("  ret void\n}\n")
 	return nil
+}
+
+// canonicalTypeText replaces the package name a document writes with the
+// import path the module uses, so a type of another package has one key in the
+// module-wide indexes.
+func (g *generator) canonicalTypeText(text string) string {
+	if dot := strings.IndexByte(text, '.'); dot > 0 {
+		if path := g.pkgNames[text[:dot]]; path != "" {
+			return path + text[dot:]
+		}
+	}
+	return text
 }
 
 // globalByName returns the top-level variable a qualified name selects.

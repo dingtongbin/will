@@ -31,6 +31,13 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	}
 	info := g.byName[text]
 	if info == nil {
+		q := g.canonicalTypeText(text)
+		if !strings.Contains(q, ".") {
+			q = qualify(g.pkg, text)
+		}
+		if g.declKinds[q] == "struct" {
+			return g.constructImportedNew(r, q)
+		}
 		return "", "", g.errf(r.ID, "cannot translate node #%d: new needs a struct declared in this document", r.ID)
 	}
 	slot := g.allocSlot(g.newSlots, "new", r.ID, info.llvm)
@@ -63,6 +70,39 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	}
 	fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(initSym), strings.Join(parts, ", "))
 	return slot, info.llvm, nil
+}
+
+// constructImportedNew builds a value whose struct is declared in another
+// document. The layout is the named type the other document defines, and init
+// is the method symbol the module index carries. The field defaults of a
+// foreign struct are not visible here; init is expected to set the fields it
+// owns.
+func (g *generator) constructImportedNew(r willc.Record, q string) (string, string, error) {
+	typ := qualifiedTypeName(q)
+	slot := g.allocSlot(g.newSlots, "new", r.ID, typ)
+	fmt.Fprintf(g.out, "  store %s zeroinitializer, ptr %s\n", typ, slot)
+	initSym := g.methodsQualified[q+".init"]
+	if initSym == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: %s has no init", r.ID, q)
+	}
+	if g.sigs[initSym] != "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: an init that returns a value is not lowered yet", r.ID)
+	}
+	args := g.callArgs(r)
+	params := g.paramTypes[initSym]
+	if len(args) != len(params) {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: %s.init takes %d arguments", r.ID, q, len(params))
+	}
+	parts := []string{"ptr " + slot}
+	for i, a := range args {
+		var err error
+		parts, err = g.callArgParts(parts, r, i, a, params[i], false)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(initSym), strings.Join(parts, ", "))
+	return slot, typ, nil
 }
 
 // fieldDefaults stores the declared default of every field that has one, in

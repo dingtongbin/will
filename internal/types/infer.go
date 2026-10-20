@@ -2,6 +2,7 @@ package types
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
@@ -427,6 +428,12 @@ func (c *checker) checkArg(s *inferScope, e ast.Expr, want *Type, callee string,
 // assigned to an interface is checked for the interface methods first.
 func (c *checker) mismatch(pos source.Pos, got, want *Type, isArg bool, callee string, n int) {
 	if methods, ok := c.env.ifaces[want.Name()]; ok {
+		if got != nil && got.Kind() == NamedKind && strings.Contains(got.Name(), ".") {
+			// The concrete type belongs to another package, whose declarations
+			// this environment does not hold. The vtable built during lowering
+			// checks that every method exists.
+			return
+		}
 		if got != nil && c.env.derives[got.Name()][want.Name()] {
 			return
 		}
@@ -1075,6 +1082,15 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 	name := ""
 	if t != nil {
 		name = t.Name()
+	}
+	if strings.Contains(name, ".") {
+		// A type from another package has no declaration in this environment.
+		// Its init signature is checked and lowered in the defining package, so
+		// the arguments are inferred here and the call is checked in lowering.
+		for _, a := range n.Args {
+			c.inferExpr(s, a.Expr)
+		}
+		return t
 	}
 	if sig, ok := c.env.inits[name]; ok {
 		if t != nil {

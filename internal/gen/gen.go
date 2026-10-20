@@ -309,6 +309,17 @@ func (g *generator) use(d *docState) {
 	g.strCatSlots = map[int]string{}
 	g.interpSlots = map[int]string{}
 	g.lambdaNames = map[int]string{}
+	g.pkgNames = map[string]string{}
+	for _, r := range d.recs {
+		if r.Kind == "import" {
+			path := fieldText(r, "path")
+			name := path
+			if slash := strings.LastIndexByte(path, '/'); slash >= 0 {
+				name = path[slash+1:]
+			}
+			g.pkgNames[name] = path
+		}
+	}
 	g.loopBinds = map[int]map[string]string{}
 	g.loopTypes = map[int]map[string]string{}
 	g.loopPtrs = map[int]map[string]string{}
@@ -433,6 +444,8 @@ type generator struct {
 	// numbers those symbols across the module.
 	lambdaNames map[int]string
 	lambdaSeq   int
+	// pkgNames maps the package name a document writes to the import path.
+	pkgNames map[string]string
 	// loopBinds maps a for record and a binding name to that binding's slot,
 	// and loopTypes to its will type text. Both bindings of a loop name the
 	// same for record, so the name tells them apart. loopPtrs holds the element

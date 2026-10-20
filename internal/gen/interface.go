@@ -127,6 +127,7 @@ func (g *generator) ifaceOfType(typ string) (*ifaceInfo, bool) {
 // ifaceValue writes one interface value into slot: the data pointer of the
 // concrete value and the method table for that type.
 func (g *generator) ifaceValue(slot string, valueID int, iface *ifaceInfo, concrete string) (string, error) {
+	concrete = g.canonicalTypeText(concrete)
 	data, typ, err := g.place(valueID)
 	if err != nil {
 		return "", err
