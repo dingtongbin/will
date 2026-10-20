@@ -17,22 +17,22 @@ struct Field {
 
 // The constructors name the variant they build, so a caller writes
 // log.Str("path") instead of log.FieldValue.Str("path").
-func Str(value: str) -> FieldValue {
-    return FieldValue.Str(value)
+func Str(key: str, value: str) -> Field {
+    return Field { key: key, value: FieldValue.Str(value) }
 }
 
-func Int(value: i64) -> FieldValue {
-    return FieldValue.Int(value)
+func Int(key: str, value: i64) -> Field {
+    return Field { key: key, value: FieldValue.Int(value) }
 }
 
-func Uint(value: u64) -> FieldValue {
-    return FieldValue.Uint(value)
+func Uint(key: str, value: u64) -> Field {
+    return Field { key: key, value: FieldValue.Uint(value) }
 }
 
-func Float(value: f64) -> FieldValue {
-    return FieldValue.Float(value)
+func Float(key: str, value: f64) -> Field {
+    return Field { key: key, value: FieldValue.Float(value) }
 }
 
-func Bool(value: bool) -> FieldValue {
-    return FieldValue.Bool(value)
+func Bool(key: str, value: bool) -> Field {
+    return Field { key: key, value: FieldValue.Bool(value) }
 }

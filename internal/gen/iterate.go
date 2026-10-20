@@ -72,9 +72,19 @@ func llvmTypeText(text string) (string, bool) {
 	if text == "str" {
 		return "{ ptr, i64 }", true
 	}
+	if text == "Duration" {
+		// A duration is a signed count of nanoseconds.
+		return "i64", true
+	}
 	if strings.HasPrefix(text, "Task<") || strings.HasPrefix(text, "chan<") {
 		// A task handle and a channel handle are opaque pointers.
 		return "ptr", true
+	}
+	if strings.HasPrefix(text, "[]") && len(text) > 2 {
+		return "{ ptr, i64 }", true
+	}
+	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
+		return "{ ptr, i64, i64 }", true
 	}
 	if strings.HasPrefix(text, "func(") {
 		// A function value is a code pointer and the environment it reads.

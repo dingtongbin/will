@@ -1192,7 +1192,7 @@ func TestEmitStructArgumentIsABorrow(t *testing.T) {
 }
 
 func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
-	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: []P\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
+	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: [2]P\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1204,7 +1204,7 @@ func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
 }
 
 func TestEmitUnloweredFieldIsReported(t *testing.T) {
-	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: []P\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
+	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: [2]P\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	if _, err := Emit(doc); err == nil {
 		t.Fatal("a parameter whose struct field is not lowered was translated")

@@ -183,8 +183,28 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 			info.types = append(info.types, adt.llvm)
 			continue
 		}
+		if t == "Error" {
+			g.usedError = true
+			info.types = append(info.types, "%interface.Error")
+			continue
+		}
 		sub := g.typeRef(f.ID)
 		if sub == 0 {
+			qualified := t
+			if !strings.Contains(qualified, ".") {
+				qualified = qualify(g.pkg, qualified)
+			}
+			switch g.declKinds[qualified] {
+			case "enum":
+				info.types = append(info.types, qualifiedEnumName(qualified))
+				continue
+			case "interface":
+				info.types = append(info.types, qualifiedIfaceName(qualified))
+				continue
+			case "struct":
+				info.types = append(info.types, qualifiedTypeName(qualified))
+				continue
+			}
 			if g.declKinds[t] == "enum" {
 				info.types = append(info.types, qualifiedEnumName(t))
 				continue
@@ -264,6 +284,9 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 	r, ok := g.recs[decl]
 	if !ok {
 		return "", g.errf(decl, "cannot translate node #%d: no such declaration", decl)
+	}
+	if r.Kind == "param" && fieldText(r, "variadic") == "true" {
+		return "{ ptr, i64 }", nil
 	}
 	if r.Kind == "var" || r.Kind == "const" {
 		if t, ok := g.slotTypes[decl]; ok {
@@ -577,6 +600,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		if text, ok := g.selectBindTypes[decl.ID]; ok {
 			return text, nil
+		}
+		if fieldText(decl, "variadic") == "true" {
+			return "[]" + fieldText(decl, "type"), nil
 		}
 		if t := fieldText(r, "type"); t != "" {
 			return t, nil

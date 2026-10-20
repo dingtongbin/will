@@ -148,6 +148,9 @@ func (g *generator) emitAux() {
 	if g.needBytesDecl {
 		g.out.WriteString("declare i64 @willrt_bytes_index(ptr, i64, ptr, i64)\n")
 	}
+	if g.needPlateDecl {
+		g.out.WriteString("declare ptr @willrt_plate_new(i64, i64)\n")
+	}
 	if g.needInterpDecl {
 		g.out.WriteString("declare i64 @willrt_fmt_i64_len(i64)\n")
 		g.out.WriteString("declare i64 @willrt_fmt_u64_len(i64)\n")
@@ -236,6 +239,7 @@ func (g *generator) collectSignatures() {
 	g.declKinds = map[string]string{}
 	g.methodsQualified = map[string]string{}
 	g.paramTypes = map[string][]string{}
+	g.varargs = map[string]bool{}
 	g.structDecls = map[string]structDeclInfo{}
 	g.structByLLVM = map[string]string{}
 	g.laneIndex = map[string]int32{}
@@ -285,9 +289,13 @@ func (g *generator) collectSignatures() {
 			name := fieldText(r, "text")
 			sym := qualify(d.path, name)
 			var params []string
+			variadic := false
 			for _, c := range d.recs {
 				if c.Kind == "param" && refField(c, "parent") == r.ID {
 					params = append(params, fieldText(c, "type"))
+					if fieldText(c, "variadic") == "true" {
+						variadic = true
+					}
 				}
 			}
 			for _, c := range d.recs {
@@ -299,6 +307,9 @@ func (g *generator) collectSignatures() {
 				}
 			}
 			g.paramTypes[sym] = params
+			if variadic {
+				g.varargs[sym] = true
+			}
 			res := fieldText(r, "type")
 			kind := ""
 			for _, c := range d.recs {
@@ -394,6 +405,7 @@ func (g *generator) use(d *docState) {
 	g.selectBindSlots = map[int]string{}
 	g.selectBindTypes = map[int]string{}
 	g.castSlots = map[int]string{}
+	g.variadicSlots = map[int]string{}
 	g.pkgNames = map[string]string{}
 	for _, r := range d.recs {
 		if r.Kind == "import" {
@@ -496,6 +508,7 @@ type generator struct {
 	ifaceRetSlots map[int]string
 	vtables      map[string]string
 	paramTypes   map[string][]string
+	varargs      map[string]bool
 	// errorIface is the predeclared Error interface, and errorEmitted records
 	// that its module-wide type definition is already written.
 	errorIface   *ifaceInfo
@@ -516,10 +529,11 @@ type generator struct {
 	// needTaskDecl records that the lowering calls the task or channel engine.
 	needTaskDecl bool
 	// needUtf8Decl records a call to the UTF-8 validator or encoder,
-	// needBytesDecl one to the byte search, and castSlots holds the two-word
-	// result of a str cast.
+	// needBytesDecl one to the byte search, needPlateDecl one to the plate
+	// allocator, and castSlots holds the two-word result of a str cast.
 	needUtf8Decl  bool
 	needBytesDecl bool
+	needPlateDecl bool
 	castSlots     map[int]string
 	// declKinds maps a qualified type name to "struct" or "enum".
 	declKinds map[string]string
@@ -569,6 +583,7 @@ type generator struct {
 	recvOutSlots   map[int]string
 	recvOptSlots   map[int]string
 	sendValueSlots map[int]string
+	variadicSlots  map[int]string
 	selectSlots     map[int]string
 	selectOutSlots  map[int]string
 	selectBindSlots map[int]string
@@ -860,6 +875,13 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	for _, p := range params {
 		pname := fieldText(p, "text")
 		ptype := fieldText(p, "type")
+		if fieldText(p, "variadic") == "true" {
+			// The call packs the tail arguments into one view.
+			g.scope[p.ID] = "%" + pname
+			g.borrows[p.ID] = true
+			sig = append(sig, "ptr %"+pname)
+			continue
+		}
 		if typ, _, ok := llvmScalar(ptype); ok {
 			g.scope[p.ID] = "%" + pname
 			sig = append(sig, typ+" %"+pname)
@@ -1985,6 +2007,12 @@ func (g *generator) value(id int) (string, error) {
 			return fieldText(r, "text"), nil
 		case "char":
 			return literalIntText(fieldText(r, "text")), nil
+		case "duration":
+			value, ok := durationNanos(fieldText(r, "text"))
+			if !ok {
+				return "", g.errf(id, "cannot translate node #%d: duration %s is not a number and a unit", id, fieldText(r, "text"))
+			}
+			return value, nil
 		case "str", "bytes":
 			return "", g.errf(id, "cannot translate node #%d: a %s literal is a place, not a scalar", id, kind)
 		}
@@ -2445,7 +2473,18 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, st
 		}
 		parts = append(parts, "ptr "+ptr)
 	}
-	for i, a := range g.callArgs(r) {
+	fixed := len(args)
+	if !link && g.varargs[name] {
+		fixed = len(g.paramTypes[name]) - 1
+		if fixed < 0 {
+			fixed = 0
+		}
+		if len(args) < fixed {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: %s needs %d arguments", r.ID, name, fixed)
+		}
+	}
+	for i := 0; i < fixed; i++ {
+		a := args[i]
 		paramType := ""
 		if !link && i < len(g.paramTypes[name]) {
 			paramType = g.paramTypes[name][i]
@@ -2455,6 +2494,13 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, st
 		if err != nil {
 			return "", "", err
 		}
+	}
+	if !link && g.varargs[name] {
+		slot, err := g.packVariadic(r, name, args[fixed:])
+		if err != nil {
+			return "", "", err
+		}
+		parts = append(parts, "ptr "+slot)
 	}
 	resultText, err := g.callResultText(r)
 	if err != nil {

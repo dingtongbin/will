@@ -162,6 +162,13 @@ func registerTypes(res *layout.Resolver, u sourceUnit) error {
 			if err := res.AddEnum(qualifiedName(u.prefix, decl.Name), variants); err != nil {
 				return err
 			}
+		case *ast.InterfaceDecl:
+			if len(decl.TypeParams) > 0 {
+				continue
+			}
+			if err := res.AddInterface(qualifiedName(u.prefix, decl.Name)); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -181,7 +188,7 @@ func layoutSpec(t *ast.Type, prefix string) (*layout.Spec, error) {
 		return &layout.Spec{Kind: layout.ScalarKind, Name: t.Name}, nil
 	case ast.NamedType:
 		name := t.Name
-		if !strings.Contains(name, ".") {
+		if !strings.Contains(name, ".") && name != "Error" {
 			name = qualifiedName(prefix, name)
 		}
 		if len(t.Args) == 0 {
