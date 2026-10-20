@@ -178,6 +178,9 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	if idx, ok := g.firstJoinParam(refField(call, "to")); ok && len(args) > idx {
 		return g.emitJoinResumeStep(req, call, frameType, frameTypes, idx, result)
 	}
+	if idx, ok := g.singleJoinParam(refField(call, "to")); ok && len(args) > idx {
+		return g.emitJoinResumeStep(req, call, frameType, frameTypes, idx, result)
+	}
 	params := g.paramTypes[sym]
 	if len(params) != len(args) {
 		// A local function has its parameter list in the document; use it
@@ -351,6 +354,148 @@ func (g *generator) firstJoinParam(fnID int) (int, bool) {
 		return 0, false
 	}
 	return 0, false
+}
+
+// singleJoinParam accepts one Join whose task is a parameter when every
+// statement before it is a pure local declaration. The step can wait on the
+// parameter directly and then call the target, which recomputes those pure
+// declarations and reaches the already-finished join.
+func (g *generator) singleJoinParam(fnID int) (int, bool) {
+	if fnID == 0 {
+		return 0, false
+	}
+	fn, ok := g.recs[fnID]
+	if !ok || fn.Kind != "func" {
+		return 0, false
+	}
+	blockID := 0
+	for _, r := range g.recs {
+		if r.Kind == "block" && refField(r, "parent") == fnID {
+			blockID = r.ID
+			break
+		}
+	}
+	if blockID == 0 {
+		return 0, false
+	}
+	var children []willc.Record
+	for _, r := range g.recs {
+		if refField(r, "parent") == blockID {
+			children = append(children, r)
+		}
+	}
+	sortByID(children)
+	byParent := map[int][]willc.Record{}
+	for _, r := range g.recs {
+		byParent[refField(r, "parent")] = append(byParent[refField(r, "parent")], r)
+	}
+	var join willc.Record
+	joinChild := -1
+	for i, child := range children {
+		found, count := findJoinRecord(byParent, child.ID)
+		if count > 1 {
+			return 0, false
+		}
+		if count == 1 {
+			if joinChild != -1 {
+				return 0, false
+			}
+			join = found
+			joinChild = i
+		}
+	}
+	if joinChild < 0 {
+		return 0, false
+	}
+	for i := 0; i < joinChild; i++ {
+		if !pureVar(byParent, children[i]) {
+			return 0, false
+		}
+	}
+	name, ok := g.recs[refField(join, "task")]
+	if !ok || name.Kind != "name" {
+		return 0, false
+	}
+	paramID := refField(name, "to")
+	var params []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "param" && refField(r, "parent") == fnID {
+			params = append(params, r)
+		}
+	}
+	sortByID(params)
+	for i, p := range params {
+		if p.ID != paramID {
+			continue
+		}
+		if typ, ok := taskElemText(fieldText(p, "type")); ok && typ != "" {
+			return i, true
+		}
+		return 0, false
+	}
+	return 0, false
+}
+
+func findJoinRecord(byParent map[int][]willc.Record, id int) (willc.Record, int) {
+	var found willc.Record
+	count := 0
+	var visit func(int)
+	visit = func(parent int) {
+		for _, child := range byParent[parent] {
+			if child.Kind == "join" {
+				found = child
+				count++
+			}
+			visit(child.ID)
+		}
+	}
+	visit(id)
+	return found, count
+}
+
+// pureVar accepts a declaration whose value is a literal, a name, a cast, or
+// an arithmetic expression over those. Recomputing it after the wait cannot be
+// observed.
+func pureVar(byParent map[int][]willc.Record, child willc.Record) bool {
+	if child.Kind != "var" && child.Kind != "const" {
+		return false
+	}
+	var value willc.Record
+	for _, r := range byParent[child.ID] {
+		if r.Kind != "type" {
+			value = r
+			break
+		}
+	}
+	return pureValueByRecord(byParent, value)
+}
+
+func pureValueByRecord(byParent map[int][]willc.Record, r willc.Record) bool {
+	switch r.Kind {
+	case "lit", "name":
+		return true
+	case "un":
+		return pureValueByRecord(byParent, refRecord(byParent, r, "expr"))
+	case "cast":
+		return pureValueByRecord(byParent, refRecord(byParent, r, "expr"))
+	case "bin":
+		return pureValueByRecord(byParent, refRecord(byParent, r, "l")) &&
+			pureValueByRecord(byParent, refRecord(byParent, r, "r"))
+	}
+	return false
+}
+
+func refRecord(byParent map[int][]willc.Record, r willc.Record, name string) willc.Record {
+	for _, f := range r.Fields {
+		if f.Name == name && f.Value.Kind == willc.RefValue {
+			for _, child := range byParent[r.ID] {
+				if child.ID == f.Value.Ref {
+					return child
+				}
+			}
+		}
+	}
+	return willc.Record{}
 }
 
 // emitJoinResumeStep waits on the first task argument and then calls the target

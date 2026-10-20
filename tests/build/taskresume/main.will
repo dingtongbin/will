@@ -11,6 +11,13 @@ func WorkLocal(t: Task<i32>) -> i32 {
     return x + 1
 }
 
+func WorkPure(t: Task<i32>) -> i32 {
+    var a: i32 = 1 + 2
+    var b: i32 = a + 3
+    var x: i32 = t.Join()!
+    return a + b + x
+}
+
 func main() -> i32 {
     var inner: Task<i32> = spawn Inner()
     var work: Task<i32> = spawn Work(inner)
@@ -22,6 +29,11 @@ func main() -> i32 {
     var gotLocal: i32 = local.Join()!
     if gotLocal != 8 {
         return 2
+    }
+    var pure: Task<i32> = spawn WorkPure(inner)
+    var gotPure: i32 = pure.Join()!
+    if gotPure != 16 {
+        return 3
     }
     return 0
 }
