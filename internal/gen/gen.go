@@ -1075,6 +1075,21 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	} else if result == "Error" {
 		g.usedError = true
 		resLLVM = "%interface.Error"
+	} else if typ, ok := g.typeLLVMOf(result); ok {
+		resLLVM = typ
+	} else if id := g.typeRef(fn.ID); id != 0 && g.structIsGeneric(id) {
+		var args []string
+		for _, r := range g.recs {
+			if r.Kind == "type" && refField(r, "parent") == fn.ID {
+				args = g.typeRecordArgs(r)
+				break
+			}
+		}
+		info, ok := g.ensureStructInstance(id, args)
+		if !ok {
+			return g.errf(fn.ID, "cannot translate node #%d: result type %s is not lowered yet", fn.ID, result)
+		}
+		resLLVM = info.llvm
 	} else if q := g.typeQualified(fn.ID); q != "" {
 		switch {
 		case g.structTypes[q]:
@@ -2965,6 +2980,8 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 			result = "%interface.Error"
 		} else if adt, ok := g.adtType(resultText); ok {
 			result = adt.llvm
+		} else if typ, ok := g.typeLLVMOf(resultText); ok && typ != "" {
+			result = typ
 		} else {
 			switch {
 			case g.structTypes[resultText]:

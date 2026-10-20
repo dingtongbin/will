@@ -771,6 +771,16 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 	if text := g.genericMethodResult(r); text != "" {
 		return text, nil
 	}
+	if r.Kind == "mcall" {
+		if sym := g.genericMethodName(r); sym != "" {
+			if text, ok := g.sigs[sym]; ok {
+				return text, nil
+			}
+			// A generic method with no result is void; its instance is
+			// planned even though it has no signature entry.
+			return "", nil
+		}
+	}
 	if _, text, known := g.strCallResult(r); known {
 		return text, nil
 	}
@@ -863,6 +873,9 @@ func (g *generator) receiverTypeName(recvID int) (string, error) {
 			}
 			for _, c := range g.recs {
 				if c.Kind == "type" && refField(c, "parent") == decl.ID {
+					if text := fieldText(c, "text"); strings.Contains(text, "<") {
+						return qualify(g.pkg, text), nil
+					}
 					if id := refField(c, "to"); id != 0 {
 						if s, ok := g.recs[id]; ok && s.Kind == "struct" {
 							return qualify(g.pkg, fieldText(s, "text")), nil

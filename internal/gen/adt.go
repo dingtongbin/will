@@ -61,6 +61,9 @@ func (g *generator) typeLLVMOf(text string) (string, bool) {
 		g.usedError = true
 		return "%interface.Error", true
 	}
+	if typ, ok := g.structInstanceFromText(text); ok {
+		return typ, true
+	}
 	if info, ok := g.adtType(text); ok {
 		return info.llvm, true
 	}
