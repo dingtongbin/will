@@ -137,6 +137,7 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_chan_close(ptr)\n")
 		g.out.WriteString("declare i32 @willrt_select(ptr, i64)\n")
 		g.out.WriteString("declare i32 @willrt_select_status()\n")
+		g.out.WriteString("declare i64 @willrt_now_ns()\n")
 		g.out.WriteString("declare void @willrt_region_enter()\n")
 		g.out.WriteString("declare i32 @willrt_region_exit()\n")
 		g.out.WriteString("declare i32 @willrt_lane_here()\n")

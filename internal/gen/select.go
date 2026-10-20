@@ -108,6 +108,19 @@ func (g *generator) selectStmt(r willc.Record, void bool) (bool, error) {
 			fmt.Fprintf(g.out, "  store i32 3, ptr %s\n", kindField)
 			continue
 		}
+		if timeoutID := refField(arm, "timeout"); timeoutID != 0 {
+			duration, err := g.value(timeoutID)
+			if err != nil {
+				return false, err
+			}
+			now := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call i64 @willrt_now_ns()\n", now)
+			deadline := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = add i64 %s, %s\n", deadline, now, duration)
+			fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", deadline, nsField)
+			fmt.Fprintf(g.out, "  store i32 2, ptr %s\n", kindField)
+			continue
+		}
 		chanNode, ok := g.recs[refField(arm, "chan")]
 		if !ok {
 			return false, g.errf(arm.ID, "cannot translate node #%d: the arm has no channel operation", arm.ID)

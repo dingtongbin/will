@@ -22,10 +22,10 @@ entry:
   %v.str.58 = alloca { ptr, i64 }
   %v.strm.28 = alloca { ptr, i64 }
   %v.strm.43 = alloca { ptr, i64 }
+  %v.strm.48 = alloca { ptr, i64 }
   %v.strm.10 = alloca { ptr, i64 }
   %v.trim.start.10 = alloca i64
   %v.trim.len.10 = alloca i64
-  %v.strm.48 = alloca { ptr, i64 }
   %v.$idx = alloca i64
   %t1 = getelementptr inbounds { ptr, i64 }, ptr %v.str.7, i32 0, i32 0
   store ptr @.bytes.1, ptr %t1

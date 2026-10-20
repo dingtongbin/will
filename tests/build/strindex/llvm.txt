@@ -11,8 +11,8 @@ entry:
   %v.str.13 = alloca { ptr, i64 }
   %v.str.31 = alloca { ptr, i64 }
   %v.str.33 = alloca { ptr, i64 }
-  %v.strm.11 = alloca { i32, [4 x i8], i64 }
   %v.strm.21 = alloca { ptr, i64 }
+  %v.strm.11 = alloca { i32, [4 x i8], i64 }
   %t1 = getelementptr inbounds { ptr, i64 }, ptr %v.str.7, i32 0, i32 0
   store ptr @.bytes.1, ptr %t1
   %t2 = getelementptr inbounds { ptr, i64 }, ptr %v.str.7, i32 0, i32 1
