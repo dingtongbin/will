@@ -1,0 +1,20 @@
+import "std/log"
+
+// The level values and the enabled filter are the parts of std/log this corpus
+// can exercise. A logger needs a sink implementation, and the backend does not
+// lower the field list such a method takes yet.
+func main() -> i32 {
+    if !log.Enabled(log.Level.Warn(), log.Level.Info()) {
+        return 1
+    }
+    if log.Enabled(log.Level.Debug(), log.Level.Info()) {
+        return 2
+    }
+    if !log.Enabled(log.Level.Error(), log.Level.Error()) {
+        return 3
+    }
+    if !log.Enabled(log.Level.Info(), log.Level.Debug()) {
+        return 4
+    }
+    return 0
+}

@@ -1,0 +1,75 @@
+import "std/encoding/base64"
+
+// Decode must give back the exact bytes of a UTF-8 text, treat empty text as an
+// empty result, read the URL alphabet, and reject a group that is short.
+func main() -> i32 {
+    var plain: Result<Array<u8>, Error> = base64.Decode("5L2g5aW9")
+    match plain {
+        Ok(v) => {
+            if v.Len() != usize(6) {
+                return 1
+            }
+            if v.Get(0) != u8(228) {
+                return 2
+            }
+            if v.Get(1) != u8(189) {
+                return 3
+            }
+            if v.Get(2) != u8(160) {
+                return 4
+            }
+            if v.Get(3) != u8(229) {
+                return 5
+            }
+            if v.Get(4) != u8(165) {
+                return 6
+            }
+            if v.Get(5) != u8(189) {
+                return 7
+            }
+        }
+        Err(e) => {
+            return e.Status()
+        }
+    }
+    var empty: Result<Array<u8>, Error> = base64.Decode("")
+    match empty {
+        Ok(v) => {
+            if v.Len() != usize(0) {
+                return 8
+            }
+        }
+        Err(e) => {
+            return e.Status()
+        }
+    }
+    var url: Result<Array<u8>, Error> = base64.DecodeUrl("-_8=")
+    match url {
+        Ok(v) => {
+            if v.Len() != usize(2) {
+                return 9
+            }
+            if v.Get(0) != u8(251) {
+                return 10
+            }
+            if v.Get(1) != u8(255) {
+                return 11
+            }
+        }
+        Err(e) => {
+            return e.Status()
+        }
+    }
+    var bad: Result<Array<u8>, Error> = base64.Decode("SGVsbG8")
+    match bad {
+        Ok(v) => {
+            return 12 + i32(v.Len())
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 13
+            }
+        }
+    }
+    return 0
+}

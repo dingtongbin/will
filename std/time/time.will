@@ -1,0 +1,500 @@
+// Timezone is an offset from UTC in seconds. It carries no daylight saving
+// rule, so a fixed offset stays valid for every instant.
+struct Timezone {
+    offsetSec: i32
+}
+
+// Instant is one moment on the UTC timeline together with the zone it should
+// be read in. The zone never shifts the moment, only its presentation.
+struct Instant {
+    secs: i64
+    zone: Timezone
+}
+
+// Utc returns the zero offset.
+func Utc() -> Timezone {
+    return Timezone { offsetSec: 0}
+}
+
+// Fixed returns a zone with the given offset from UTC in seconds. The caller
+// must pass an offset a zone can have, at most one day either way.
+func Fixed(offsetSec: i32) -> Timezone {
+    return Timezone { offsetSec: offsetSec}
+}
+
+// FromUnix returns the moment sec seconds after 1970-01-01T00:00:00Z, read in
+// UTC.
+func FromUnix(sec: i64) -> Instant {
+    return Instant { secs: sec, zone: Utc()}
+}
+
+// Unix returns the number of whole seconds between 1970-01-01T00:00:00Z and t.
+func Unix(t: Instant) -> i64 {
+    return t.secs
+}
+
+// In returns the same moment read in tz.
+func In(t: Instant, tz: Timezone) -> Instant {
+    return Instant { secs: t.secs, zone: tz}
+}
+
+// civilDate is a calendar date in the proleptic Gregorian calendar. An instant
+// is stored as whole seconds, so a formatter derives the date from it first.
+struct civilDate {
+    year: i32
+    month: i32
+    day: i32
+}
+
+// clockTime is a clock reading within one calendar day.
+struct clockTime {
+    hour: i32
+    minute: i32
+    second: i32
+}
+
+// secondsPerDay is the length of a calendar day. The time model counts no leap
+// seconds, so every day is exactly this long.
+const secondsPerDay: i64 = 86400
+
+// floorDiv divides rounding toward negative infinity. Calendar days before the
+// epoch are negative, and a truncating division would put them in the next day.
+func floorDiv(a: i64, b: i64) -> i64 {
+    var q: i64 = a / b
+    var aNegative: bool = a < 0
+    var bNegative: bool = b < 0
+    if a % b != 0 && aNegative != bNegative {
+        q -= 1
+    }
+    return q
+}
+
+// floorMod returns the remainder that belongs to the quotient of floorDiv, so
+// it is never negative when b is positive.
+func floorMod(a: i64, b: i64) -> i64 {
+    return a - floorDiv(a, b) * b
+}
+
+// daysFromCivil returns the number of days from 1970-01-01 to the given date.
+// The algorithm is Howard Hinnant's days_from_civil and is valid for every date
+// the proleptic Gregorian calendar defines.
+func daysFromCivil(year: i32, month: i32, day: i32) -> i64 {
+    var y: i64 = i64(year)
+    if month <= 2 {
+        y -= 1
+    }
+    var era: i64 = floorDiv(y, 400i64)
+    var yoe: i64 = y - era * 400i64
+    var mp: i64 = i64(month)
+    if month > 2 {
+        mp -= 3i64
+    } else {
+        mp += 9i64
+    }
+    var doy: i64 = (153i64 * mp + 2i64) / 5i64 + i64(day) - 1i64
+    var doe: i64 = yoe * 365i64 + yoe / 4i64 - yoe / 100i64 + doy
+    return era * 146097i64 + doe - 719468i64
+}
+
+// civilFromDays is the inverse of daysFromCivil.
+func civilFromDays(days: i64) -> civilDate {
+    var z: i64 = days + 719468i64
+    var era: i64 = floorDiv(z, 146097i64)
+    var doe: i64 = z - era * 146097i64
+    var yoe: i64 = (doe - doe / 1460i64 + doe / 36524i64 - doe / 146096i64) / 365i64
+    var y: i64 = yoe + era * 400i64
+    var doy: i64 = doe - (365i64 * yoe + yoe / 4i64 - yoe / 100i64)
+    var mp: i64 = (5i64 * doy + 2i64) / 153i64
+    var day: i64 = doy - (153i64 * mp + 2i64) / 5i64 + 1i64
+    var month: i64 = mp + 3i64
+    if mp >= 10i64 {
+        month = mp - 9i64
+    }
+    if month <= 2i64 {
+        y += 1i64
+    }
+    return civilDate { year: i32(y), month: i32(month), day: i32(day)}
+}
+
+// daysOf returns the calendar day that contains secs. The division floors, so a
+// second before the epoch still belongs to 1969-12-31.
+func daysOf(secs: i64) -> i64 {
+    return floorDiv(secs, secondsPerDay)
+}
+
+// timeOfDay returns the position of secs within its calendar day.
+func timeOfDay(secs: i64) -> clockTime {
+    var rem: i64 = floorMod(secs, secondsPerDay)
+    var hour: i64 = rem / 3600i64
+    var minute: i64 = (rem % 3600i64) / 60i64
+    var second: i64 = rem % 60i64
+    return clockTime { hour: i32(hour), minute: i32(minute), second: i32(second)}
+}
+
+// localSeconds returns the moment as the wall clock of its zone shows it. Only
+// the presentation uses this value; Unix stays the UTC second.
+func localSeconds(t: Instant) -> i64 {
+    return t.secs + i64(t.zone.offsetSec)
+}
+
+// weekdayOf returns 0 for Sunday through 6 for Saturday. 1970-01-01 was a
+// Thursday, which is 4 in this numbering.
+func weekdayOf(days: i64) -> i64 {
+    return floorMod(days + 4i64, 7i64)
+}
+
+func isLeapYear(year: i32) -> bool {
+    if year % 4 != 0 {
+        return false
+    }
+    if year % 100 != 0 {
+        return true
+    }
+    return year % 400 == 0
+}
+
+// daysInMonth returns the length of one month. The caller must pass a month in
+// 1..12.
+func daysInMonth(year: i32, month: i32) -> i32 {
+    if month == 2 {
+        if isLeapYear(year) {
+            return 29
+        }
+        return 28
+    }
+    if month == 4 || month == 6 || month == 9 || month == 11 {
+        return 30
+    }
+    return 31
+}
+
+// pad2 writes a two-digit field. The caller passes a value in 0..99, so two
+// digits are enough.
+func pad2(v: i64) -> str {
+    if v >= 0 && v < 10 {
+        return f"0{v}"
+    }
+    return f"{v}"
+}
+
+// padYear writes the four-digit year the named formats use. An instant accepts
+// any i64 second, so a year outside 0000..9999 is written as its decimal value
+// rather than clipped to the four digits RFC 3339 defines.
+func padYear(year: i32) -> str {
+    if year >= 0 && year < 10 {
+        return f"000{year}"
+    }
+    if year >= 10 && year < 100 {
+        return f"00{year}"
+    }
+    if year >= 100 && year < 1000 {
+        return f"0{year}"
+    }
+    return f"{year}"
+}
+
+// offsetSuffix writes the zone of t as RFC 3339 does: Z for zero, otherwise the
+// signed hour and minute offset. RFC 3339 has no seconds in an offset, so a
+// sub-minute part of a fixed offset is not written.
+func offsetSuffix(t: Instant) -> str {
+    var total: i64 = i64(t.zone.offsetSec)
+    if total == 0 {
+        return "Z"
+    }
+    var sign: str = "+"
+    if total < 0 {
+        sign = "-"
+        total = -total
+    }
+    var hours: i64 = total / 3600i64
+    var minutes: i64 = (total % 3600i64) / 60i64
+    return sign + pad2(hours) + ":" + pad2(minutes)
+}
+
+func weekdayName(weekday: i64) -> str {
+    if weekday == 0 {
+        return "Sun"
+    }
+    if weekday == 1 {
+        return "Mon"
+    }
+    if weekday == 2 {
+        return "Tue"
+    }
+    if weekday == 3 {
+        return "Wed"
+    }
+    if weekday == 4 {
+        return "Thu"
+    }
+    if weekday == 5 {
+        return "Fri"
+    }
+    return "Sat"
+}
+
+func monthName(month: i32) -> str {
+    if month == 1 {
+        return "Jan"
+    }
+    if month == 2 {
+        return "Feb"
+    }
+    if month == 3 {
+        return "Mar"
+    }
+    if month == 4 {
+        return "Apr"
+    }
+    if month == 5 {
+        return "May"
+    }
+    if month == 6 {
+        return "Jun"
+    }
+    if month == 7 {
+        return "Jul"
+    }
+    if month == 8 {
+        return "Aug"
+    }
+    if month == 9 {
+        return "Sep"
+    }
+    if month == 10 {
+        return "Oct"
+    }
+    if month == 11 {
+        return "Nov"
+    }
+    return "Dec"
+}
+
+// Rfc3339 formats t as 2006-01-02T15:04:05Z07:00 in the zone t carries.
+func Rfc3339(t: Instant) -> str {
+    var local: i64 = localSeconds(t)
+    var date: civilDate = civilFromDays(daysOf(local))
+    var tod: clockTime = timeOfDay(local)
+    var left: str = padYear(date.year) + "-" + pad2(i64(date.month)) + "-" + pad2(i64(date.day))
+    var right: str = pad2(i64(tod.hour)) + ":" + pad2(i64(tod.minute)) + ":" + pad2(i64(tod.second))
+    return left + "T" + right + offsetSuffix(t)
+}
+
+// Rfc3339Nano formats t like Rfc3339. Instant holds whole seconds, so there is
+// never a fractional part to trim.
+func Rfc3339Nano(t: Instant) -> str {
+    return Rfc3339(t)
+}
+
+// Rfc1123 formats t as an HTTP date in GMT: Sun, 06 Nov 1994 08:49:37 GMT.
+// The header format is always UTC, so the zone of t does not show.
+func Rfc1123(t: Instant) -> str {
+    var utc: Instant = In(t, Utc())
+    var date: civilDate = civilFromDays(daysOf(utc.secs))
+    var tod: clockTime = timeOfDay(utc.secs)
+    var left: str = weekdayName(weekdayOf(daysOf(utc.secs))) + ", " + pad2(i64(date.day))
+    var middle: str = monthName(date.month) + " " + padYear(date.year)
+    var right: str = pad2(i64(tod.hour)) + ":" + pad2(i64(tod.minute)) + ":" + pad2(i64(tod.second))
+    return left + " " + middle + " " + right + " GMT"
+}
+
+// Date formats the calendar date of t in its zone as 2006-01-02.
+func Date(t: Instant) -> str {
+    var date: civilDate = civilFromDays(daysOf(localSeconds(t)))
+    return padYear(date.year) + "-" + pad2(i64(date.month)) + "-" + pad2(i64(date.day))
+}
+
+// Clock formats the time of day of t in its zone as 15:04:05.
+func Clock(t: Instant) -> str {
+    var tod: clockTime = timeOfDay(localSeconds(t))
+    return pad2(i64(tod.hour)) + ":" + pad2(i64(tod.minute)) + ":" + pad2(i64(tod.second))
+}
+
+// timeError is the error value of rejected time text. 2 is the stable status of
+// Invalid, so a caller classifies a parse failure without knowing this type.
+struct timeError {
+    message: str
+}
+
+func (e: timeError) Message() -> str {
+    return e.message
+}
+
+func (e: timeError) Status() -> i32 {
+    return 2
+}
+
+func fail(message: str) -> timeError {
+    return timeError { message: message}
+}
+
+// The ASCII scalars the parsers compare against. A character literal is not
+// lowered yet, so the code points are named here.
+const charPlus: u32 = 43
+const charDash: u32 = 45
+const charDot: u32 = 46
+const charZero: u32 = 48
+const charNine: u32 = 57
+const charColon: u32 = 58
+const charUpperT: u32 = 84
+const charUpperZ: u32 = 90
+const charLowerT: u32 = 116
+const charLowerZ: u32 = 122
+
+// charsOf copies the scalars of s. The parsers look at fixed positions, and a
+// byte offset inside a multi-byte scalar would not be a valid index into s.
+func charsOf(s: str) -> Array<u32> {
+    var out: Array<u32> = new Array<u32>(0)
+    for c in s {
+        out.Push(c)
+    }
+    return out
+}
+
+func digitValue(c: u32) -> i32 {
+    if c >= charZero && c <= charNine {
+        return i32(c - charZero)
+    }
+    return -1
+}
+
+func hasAt(cs: []u32, at: i32, want: u32) -> bool {
+    if at < 0 || at >= i32(cs.Len()) {
+        return false
+    }
+    return cs[at] == want
+}
+
+// readDigits reads count decimal digits at at, or returns -1 when any of them
+// is missing or not a digit.
+func readDigits(cs: []u32, at: i32, count: i32) -> i32 {
+    if at < 0 || count <= 0 || at + count > i32(cs.Len()) {
+        return -1
+    }
+    var value: i32 = 0
+    var k: i32 = 0
+    for {
+        if k >= count {
+            break
+        }
+        var d: i32 = digitValue(cs[at + k])
+        if d < 0 {
+            return -1
+        }
+        value = value * 10 + d
+        k += 1
+    }
+    return value
+}
+
+// ParseRfc3339 reads the RFC 3339 timestamp format and keeps the offset the
+// text names as the zone of the result. An instant holds whole seconds, so a
+// fractional part is accepted and dropped.
+func ParseRfc3339(s: str) -> Result<Instant, Error> {
+    var cs: Array<u32> = charsOf(s)
+    var c: []u32 = cs[Range(0, cs.Len())]
+    var n: i32 = i32(c.Len())
+    if n < 20 {
+        return Err(fail("rfc3339: text is shorter than a timestamp"))
+    }
+    var year: i32 = readDigits(c, 0, 4)
+    var month: i32 = readDigits(c, 5, 2)
+    var day: i32 = readDigits(c, 8, 2)
+    var hour: i32 = readDigits(c, 11, 2)
+    var minute: i32 = readDigits(c, 14, 2)
+    var second: i32 = readDigits(c, 17, 2)
+    if year < 0 || month < 0 || day < 0 || hour < 0 || minute < 0 || second < 0 {
+        return Err(fail("rfc3339: a numeric field is not a digit"))
+    }
+    if !hasAt(c, 4, charDash) || !hasAt(c, 7, charDash) {
+        return Err(fail("rfc3339: the date separators are wrong"))
+    }
+    if !hasAt(c, 10, charUpperT) && !hasAt(c, 10, charLowerT) {
+        return Err(fail("rfc3339: the date and time separator is missing"))
+    }
+    if !hasAt(c, 13, charColon) || !hasAt(c, 16, charColon) {
+        return Err(fail("rfc3339: the time separators are wrong"))
+    }
+    if month < 1 || month > 12 {
+        return Err(fail("rfc3339: the month is out of range"))
+    }
+    if day < 1 || day > daysInMonth(year, month) {
+        return Err(fail("rfc3339: the day is out of range"))
+    }
+    if hour > 23 || minute > 59 || second > 59 {
+        return Err(fail("rfc3339: the time of day is out of range"))
+    }
+    var at: i32 = 19
+    if hasAt(c, at, charDot) {
+        at += 1
+        var start: i32 = at
+        for {
+            if at >= n {
+                break
+            }
+            if digitValue(c[at]) < 0 {
+                break
+            }
+            at += 1
+        }
+        if at == start {
+            return Err(fail("rfc3339: the fractional part has no digits"))
+        }
+    }
+    var offset: i32 = 0
+    if at >= n {
+        return Err(fail("rfc3339: the offset is missing"))
+    }
+    if hasAt(c, at, charUpperZ) || hasAt(c, at, charLowerZ) {
+        at += 1
+    } else if hasAt(c, at, charPlus) || hasAt(c, at, charDash) {
+        var offsetHour: i32 = readDigits(c, at + 1, 2)
+        var offsetMinute: i32 = readDigits(c, at + 4, 2)
+        if offsetHour < 0 || offsetMinute < 0 || !hasAt(c, at + 3, charColon) {
+            return Err(fail("rfc3339: the offset is not +HH:MM"))
+        }
+        if offsetHour > 23 || offsetMinute > 59 {
+            return Err(fail("rfc3339: the offset is out of range"))
+        }
+        offset = offsetHour * 3600 + offsetMinute * 60
+        if hasAt(c, at, charDash) {
+            offset = -offset
+        }
+        at += 6
+    } else {
+        return Err(fail("rfc3339: the offset is not Z or +HH:MM"))
+    }
+    if at != n {
+        return Err(fail("rfc3339: text follows the timestamp"))
+    }
+    var local: i64 = daysFromCivil(year, month, day) * secondsPerDay
+    local += i64(hour * 3600 + minute * 60 + second)
+    return Ok(Instant { secs: local - i64(offset), zone: Fixed(offset)})
+}
+
+// ParseDate reads a calendar date as midnight in tz.
+func ParseDate(s: str, tz: Timezone) -> Result<Instant, Error> {
+    var cs: Array<u32> = charsOf(s)
+    var c: []u32 = cs[Range(0, cs.Len())]
+    var n: i32 = i32(c.Len())
+    if n != 10 {
+        return Err(fail("date: text is not a calendar date"))
+    }
+    var year: i32 = readDigits(c, 0, 4)
+    var month: i32 = readDigits(c, 5, 2)
+    var day: i32 = readDigits(c, 8, 2)
+    if year < 0 || month < 0 || day < 0 {
+        return Err(fail("date: a numeric field is not a digit"))
+    }
+    if !hasAt(c, 4, charDash) || !hasAt(c, 7, charDash) {
+        return Err(fail("date: the separators are wrong"))
+    }
+    if month < 1 || month > 12 {
+        return Err(fail("date: the month is out of range"))
+    }
+    if day < 1 || day > daysInMonth(year, month) {
+        return Err(fail("date: the day is out of range"))
+    }
+    var local: i64 = daysFromCivil(year, month, day) * secondsPerDay
+    return Ok(Instant { secs: local - i64(tz.offsetSec), zone: tz})
+}

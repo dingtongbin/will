@@ -1,0 +1,13 @@
+// User is one account from the system user database.
+struct User {
+    name: str
+    uid: u32
+    gid: u32
+    home: str
+}
+
+// Group is one group from the system group database.
+struct Group {
+    name: str
+    gid: u32
+}
