@@ -26,12 +26,12 @@ type variantInfo struct {
 // u32 tag; the payload area is sized and aligned like a C union over the
 // variants.
 type enumInfo struct {
-	id      int
-	name    string
-	llvm    string
-	text    string
+	id       int
+	name     string
+	llvm     string
+	text     string
 	variants []variantInfo
-	byName  map[string]int
+	byName   map[string]int
 	// payloadType is the LLVM field that holds the payload, and payloadIndex
 	// is its field number in the enum type. A payload of size zero has no
 	// field and payloadIndex is zero.
@@ -57,6 +57,9 @@ type externalEnum struct {
 	llvm    string
 	tags    map[string]uint32
 	payload map[string]bool
+	size    int
+	align   int
+	laid    bool
 }
 
 // collectExternalEnums records every enum of the module before any document is
@@ -82,13 +85,45 @@ func (g *generator) collectExternalEnums() {
 				}
 			}
 			sortByID(variants)
+			maxSize, maxAlign := 0, 1
+			known := true
 			for i, v := range variants {
 				name := fieldText(v, "text")
 				ext.tags[name] = uint32(i)
-				if len(refsOf(v, "arg")) != 0 {
+				args := refsOf(v, "arg")
+				if len(args) != 0 {
 					ext.payload[name] = true
 				}
+				for _, id := range args {
+					arg, ok := d.recs[id]
+					if !ok {
+						known = false
+						continue
+					}
+					typ, ok := llvmTypeText(fieldText(arg, "text"))
+					if !ok {
+						known = false
+						continue
+					}
+					size, align, ok := g.sizeAlign(typ)
+					if !ok {
+						known = false
+						continue
+					}
+					if size > maxSize {
+						maxSize = size
+					}
+					if align > maxAlign {
+						maxAlign = align
+					}
+				}
 			}
+			ext.align = maxAlign
+			if ext.align < 4 {
+				ext.align = 4
+			}
+			ext.size = alignUp(4, ext.align) + maxSize
+			ext.laid = known
 			g.externalEnums[q] = ext
 		}
 	}
@@ -503,6 +538,11 @@ func (g *generator) sizeAlign(typ string) (int, int, bool) {
 			return 0, 0, false
 		}
 		return info.size, info.align, true
+	}
+	for _, ext := range g.externalEnums {
+		if ext.llvm == typ && ext.laid {
+			return ext.size, ext.align, true
+		}
 	}
 	if isIfaceType(typ) {
 		return 16, 8, true

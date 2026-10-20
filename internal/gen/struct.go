@@ -46,6 +46,20 @@ func (g *generator) structInfoByLLVM(typ string) *structInfo {
 	}
 	q := g.structByLLVM[typ]
 	if q == "" {
+		// The table key and the type spelling can differ in quoting. The
+		// qualified struct name itself is unambiguous, so reconstruct it.
+		raw := typ
+		if strings.HasPrefix(raw, `%"`) && strings.HasSuffix(raw, `"`) {
+			raw = raw[2 : len(raw)-1]
+		} else if strings.HasPrefix(raw, "%") {
+			raw = raw[1:]
+		}
+		raw = strings.TrimPrefix(raw, "struct.")
+		if _, ok := g.structDecls[raw]; ok {
+			q = raw
+		}
+	}
+	if q == "" {
 		return nil
 	}
 	decl, ok := g.structDecls[q]
