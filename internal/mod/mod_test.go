@@ -15,6 +15,16 @@ replace  example.com/lib@v1.4.2 => ../lib
 feature  tls
 `
 
+func TestParseLink(t *testing.T) {
+	m, ds := Parse("will.mod", []byte("module m\nwill 1\nlink m\nlink ../lib/libfoo.a\n"))
+	if len(ds) != 0 {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+	if len(m.Links) != 2 || m.Links[0] != "m" || m.Links[1] != "../lib/libfoo.a" {
+		t.Fatalf("links = %v", m.Links)
+	}
+}
+
 func TestParseExample(t *testing.T) {
 	m, ds := Parse("will.mod", []byte(example))
 	if len(ds) != 0 {

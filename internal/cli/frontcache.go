@@ -76,6 +76,13 @@ func frontKey(p *pkg.Package, imports map[string][]byte, aliases map[string]stri
 			// part of the graph) leaves the package uncached rather than keyed
 			// on a guess.
 			if isCHeaderImport(p, path) {
+				blob, ok := pkg.ReadCHeader(path, p.Dir, p.Root)
+				if !ok {
+					return "", false
+				}
+				h.AddStrings("cinclude", os.Getenv("WILL_C_INCLUDE"),
+					os.Getenv("CPATH"), os.Getenv("C_INCLUDE_PATH"))
+				h.Add("cheader:"+path, blob)
 				continue
 			}
 			return "", false

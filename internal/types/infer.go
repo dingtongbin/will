@@ -1071,7 +1071,15 @@ func (c *checker) cLinkType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			c.badArity(call.Pos(), link.Name)
 			break
 		}
-		c.inferExpr(s, a.Expr)
+		extra := c.inferExpr(s, a.Expr)
+		if extra != nil {
+			switch extra.Name() {
+			case "i8", "u8", "i16", "u16", "f32":
+				c.bag.Error(a.Expr.Pos(), diag.CodeVariadicWiden,
+					"variadic C arguments must be widened",
+					"write i32(x) or f64(x)")
+			}
+		}
 	}
 	if !link.Variadic && len(call.Args) < len(params) {
 		c.badArity(call.Pos(), link.Name)

@@ -60,6 +60,9 @@ type Build struct {
 	// LocalModules lists every module loaded through a local replace, in path
 	// order. The root module and the bundled standard library are not included.
 	LocalModules []LocalModule
+	// Links are the external libraries the root module asks the linker to
+	// include, in declaration order.
+	Links []string
 }
 
 // LocalModule is one module a local replace selected.
@@ -101,6 +104,7 @@ func load(root string, skipSums bool) *Build {
 		return b
 	}
 	b.Mod = m
+	b.Links = append(b.Links, m.Links...)
 
 	g := resolveModules(&moduleNode{Dir: root, Path: m.Path, Mod: m})
 	bag.AddAll(g.diags)

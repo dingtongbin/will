@@ -9,6 +9,7 @@ import (
 	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/cimport"
 	"github.com/will-lang/will/internal/diag"
+	"github.com/will-lang/will/internal/toolchain"
 )
 
 // applyCHeaders fills the prototype of every import c link from its header.
@@ -22,7 +23,7 @@ func applyCHeaders(f *ast.File, dir, root string) []diag.Diagnostic {
 		if !imp.C {
 			continue
 		}
-		src, ok := readCHeader(imp.Path, dir, root)
+		path, ok := findCHeaderPath(imp.Path, dir, root)
 		if !ok {
 			if len(imp.Links) == 0 {
 				bag.Error(imp.Span.Start, diag.CodeCannotParseCHeader,
@@ -31,7 +32,19 @@ func applyCHeaders(f *ast.File, dir, root string) []diag.Diagnostic {
 			}
 			continue
 		}
-		funcs, err := cimport.Parse(imp.Path, src)
+		var funcs []cimport.Func
+		var err error
+		if clang, findErr := toolchain.FindClang(); findErr == nil {
+			funcs, err = cimport.ParseClang(clang.Path, path, CIncludeDirs(dir, root), "")
+		} else {
+			// A machine without clang can still check an explicitly listed
+			// link; the small fallback reads the local declaration subset.
+			var src []byte
+			src, err = os.ReadFile(path)
+			if err == nil {
+				funcs, err = cimport.Parse(imp.Path, src)
+			}
+		}
 		if err != nil {
 			bag.Error(imp.Span.Start, diag.CodeCannotParseCHeader,
 				"cannot parse "+imp.Path, err.Error())
@@ -74,18 +87,22 @@ func applyCHeaders(f *ast.File, dir, root string) []diag.Diagnostic {
 	return bag.Diagnostics()
 }
 
-// readCHeader tries the package directory, the module root, the explicit
-// include path, and the host's usual include directories, in that order.
-func readCHeader(name, dir, root string) ([]byte, bool) {
-	if name == "" {
-		return nil, false
-	}
-	if filepath.IsAbs(name) {
-		data, err := os.ReadFile(name)
-		return data, err == nil
-	}
+// ReadCHeader is the cache-facing form of the header search. It returns the
+// bytes the compiler will parse, or false when no search directory has it.
+func ReadCHeader(name, dir, root string) ([]byte, bool) {
+	return readCHeader(name, dir, root)
+}
+
+// FindCHeader returns the resolved path of one header, using the same search
+// order as ReadCHeader.
+func FindCHeader(name, dir, root string) (string, bool) {
+	return findCHeaderPath(name, dir, root)
+}
+
+// CIncludeDirs returns the header search directories in lookup order.
+func CIncludeDirs(dir, root string) []string {
 	var dirs []string
-	dirs = append(dirs, dir, root)
+	dirs = append(dirs, dir, root, filepath.Join(root, "include"))
 	for _, env := range []string{"WILL_C_INCLUDE", "CPATH", "C_INCLUDE_PATH"} {
 		for _, part := range filepath.SplitList(os.Getenv(env)) {
 			if part != "" {
@@ -94,13 +111,37 @@ func readCHeader(name, dir, root string) ([]byte, bool) {
 		}
 	}
 	dirs = append(dirs, "/usr/local/include", "/usr/include")
-	for _, base := range dirs {
-		data, err := os.ReadFile(filepath.Join(base, filepath.FromSlash(name)))
-		if err == nil {
-			return data, true
+	return dirs
+}
+
+// readCHeader tries the package directory, the module root, the explicit
+// include path, and the host's usual include directories, in that order.
+func readCHeader(name, dir, root string) ([]byte, bool) {
+	path, ok := findCHeaderPath(name, dir, root)
+	if !ok {
+		return nil, false
+	}
+	data, err := os.ReadFile(path)
+	return data, err == nil
+}
+
+func findCHeaderPath(name, dir, root string) (string, bool) {
+	if name == "" {
+		return "", false
+	}
+	if filepath.IsAbs(name) {
+		if _, err := os.Stat(name); err == nil {
+			return name, true
+		}
+		return "", false
+	}
+	for _, base := range CIncludeDirs(dir, root) {
+		path := filepath.Join(base, filepath.FromSlash(name))
+		if _, err := os.Stat(path); err == nil {
+			return path, true
 		}
 	}
-	return nil, false
+	return "", false
 }
 
 // cHeaderPath is a small helper for tests: it joins a slash-separated header

@@ -495,6 +495,12 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
 	}
+	inputs, err := packageInputs(opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	clangArgsList = append(clangArgsList, inputs...)
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
@@ -524,6 +530,11 @@ func clangArgs(opts buildOptions) ([]string, error) {
 	root, err := runtimeRoot()
 	if err != nil {
 		return nil, err
+	}
+	for _, dir := range filepath.SplitList(os.Getenv("WILL_LIBPATH")) {
+		if dir != "" {
+			args = append(args, "-L", dir)
+		}
 	}
 	args = append(args, "-x", "none", "-I", filepath.Join(root, "include"))
 	args = append(args, runtimeSources(root, targetName(opts.target))...)
@@ -609,6 +620,49 @@ func compileArgs(opts buildOptions) []string {
 	return args
 }
 
+// packageInputs collects the C sources of the built module graph and the
+// external libraries its will.mod names. Package C sources come before the
+// named libraries, so a library can satisfy a symbol the sources call.
+func packageInputs(opts buildOptions) ([]string, error) {
+	if info, err := os.Stat(opts.path); err != nil || !info.IsDir() {
+		return nil, nil
+	}
+	b := pkg.Load(opts.path)
+	if b.Err != nil {
+		return nil, b.Err
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, p := range b.Packages {
+		err := filepath.Walk(p.Dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() || filepath.Ext(path) != ".c" {
+				return nil
+			}
+			if !seen[path] {
+				seen[path] = true
+				out = append(out, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	for _, link := range b.Links {
+		if strings.ContainsAny(link, `/\`) || filepath.IsAbs(link) ||
+			strings.HasSuffix(link, ".a") || strings.HasSuffix(link, ".so") ||
+			strings.HasSuffix(link, ".dylib") || strings.HasSuffix(link, ".lib") {
+			out = append(out, link)
+			continue
+		}
+		out = append(out, "-l"+link)
+	}
+	return out, nil
+}
+
 func targetName(target string) string {
 	if target != "" {
 		return target
@@ -647,6 +701,12 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
 	}
+	inputs, err := packageInputs(opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	clangArgsList = append(clangArgsList, inputs...)
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
