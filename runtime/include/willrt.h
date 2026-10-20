@@ -36,6 +36,60 @@ void willrt_os_free_pages(void* ptr, size_t size);
    never goes backwards. Zero is returned when the platform call fails. */
 int64_t willrt_os_now_ns(void);
 
+/* willrt_os_random_bytes fills out with size bytes from the platform's
+   cryptographically secure source. It returns 0 on success and -1 when the
+   source is unavailable; a partial fill is never reported as success. */
+int32_t willrt_os_random_bytes(void* out, size_t size);
+
+/* willrt_random_bytes is the core-facing form of the platform random source. */
+int32_t willrt_random_bytes(void* out, size_t size);
+
+/* Platform threads, locks, and waits. The storage is opaque to the scheduler;
+   the platform implementation casts it to its own handle. A timeout below zero
+   waits without a limit, and a timeout of zero does not wait. */
+typedef struct willrt_os_thread {
+    _Alignas(16) unsigned char bytes[128];
+} willrt_os_thread;
+
+typedef struct willrt_os_mutex {
+    _Alignas(16) unsigned char bytes[128];
+} willrt_os_mutex;
+
+typedef struct willrt_os_cond {
+    _Alignas(16) unsigned char bytes[128];
+} willrt_os_cond;
+
+/* willrt_os_thread_start runs fn(arg) on a new thread. It returns 0 on success
+   and -1 when the platform refuses to start it. */
+int32_t willrt_os_thread_start(willrt_os_thread* thread, void (*fn)(void*),
+                               void* arg);
+void willrt_os_thread_join(willrt_os_thread* thread);
+void willrt_os_thread_yield(void);
+void willrt_os_sleep_ns(int64_t ns);
+
+void willrt_os_mutex_init(willrt_os_mutex* mutex);
+void willrt_os_mutex_destroy(willrt_os_mutex* mutex);
+void willrt_os_mutex_lock(willrt_os_mutex* mutex);
+void willrt_os_mutex_unlock(willrt_os_mutex* mutex);
+
+void willrt_os_cond_init(willrt_os_cond* cond);
+void willrt_os_cond_destroy(willrt_os_cond* cond);
+void willrt_os_cond_wait(willrt_os_cond* cond, willrt_os_mutex* mutex);
+/* willrt_os_cond_timedwait returns 0 when it was signalled and 1 on timeout. */
+int32_t willrt_os_cond_timedwait(willrt_os_cond* cond, willrt_os_mutex* mutex,
+                                 int64_t timeout_ns);
+void willrt_os_cond_signal(willrt_os_cond* cond);
+void willrt_os_cond_broadcast(willrt_os_cond* cond);
+
+/* Address waits park until *addr differs from expected or the timeout passes.
+   The result is 0 when the value changed and 1 on timeout. A platform without
+   a native primitive may poll; the comment in that platform file says so. */
+int32_t willrt_os_wait_on_address(void* addr, uint32_t expected, int64_t timeout_ns);
+void willrt_os_wake_address(void* addr, int32_t count);
+/* willrt_os_thread_exit ends the calling thread without returning. The task
+   engine uses it to contain a panic at the task boundary. */
+void willrt_os_thread_exit(void);
+
 /* willrt_alloc returns a block aligned for any type, or NULL on failure. A
    zero-size request still returns a unique block, so an empty buffer is never
    mistaken for an allocation failure. */
@@ -45,6 +99,11 @@ void* willrt_alloc(size_t size);
    that willrt_alloc did not return is rejected with one line on standard
    error, and its memory is left alone. */
 void willrt_free(void* ptr);
+
+/* willrt_mem_set_lane tells the allocator which lane the calling thread runs
+   on. A thread that never calls it uses lane 0. The value is clamped into the
+   allocator's lane table. */
+void willrt_mem_set_lane(int32_t lane);
 
 /* willrt_plate_new returns one block holding count elements of elem bytes, or
    NULL when the request overflows or memory is exhausted. The payload starts
@@ -63,6 +122,11 @@ void willrt_plate_release(void* plate);
    in the high 32 bits and the slot generation in the low 32 bits, and 0 is
    never valid. value must point to size bytes when size is nonzero. */
 uint64_t willrt_rc_new(const void* value, size_t size);
+
+/* willrt_rc_new_drop is willrt_rc_new with drop glue: drop(object) runs on the
+   last release, before the object storage is returned. */
+uint64_t willrt_rc_new_drop(const void* value, size_t size,
+                            void (*drop)(void*));
 
 /* willrt_rc_retain adds one reference to the object named by handle. A zero,
    out-of-range, or released handle is ignored, so a stale handle never
@@ -97,6 +161,116 @@ int32_t willrt_weak_upgrade(uint64_t weak, void* out);
    backwards and is the time base for timer deadlines. */
 int64_t willrt_now_ns(void);
 
+/* -------------------------------------------------------------------------
+   Poller and blocking pool.
+
+   A poller registration names one descriptor, the events it waits for, and one
+   callback. The poller calls the callback with the ready subset; the callback
+   may add or delete registrations. Windows accepts sockets only, because
+   WSAPoll has no file-handle form; POSIX accepts any pollable descriptor.
+   ------------------------------------------------------------------------- */
+
+enum {
+    WILLRT_POLL_IN = 1,
+    WILLRT_POLL_OUT = 2,
+    WILLRT_POLL_ERR = 4
+};
+
+/* willrt_poll_fn is called on the poller thread. It must not block for long;
+   a task wake or a short handoff belongs here, a request handler does not. */
+typedef void (*willrt_poll_fn)(int64_t fd, uint32_t events, void* arg);
+
+/* willrt_poll_init starts the poller once. willrt_poll_add calls it lazily;
+   willrt_shutdown calls willrt_poll_shutdown after all tasks have joined. */
+void willrt_poll_init(void);
+void willrt_poll_shutdown(void);
+int32_t willrt_poll_add(int64_t fd, uint32_t events, void* cb, void* arg);
+int32_t willrt_poll_del(int64_t fd);
+
+/* willrt_blocking_fn is one job for the blocking pool. It may block; the pool
+   owns the thread, and the caller waits for the job's result. out is the same
+   pointer the caller passed to willrt_blocking_call. */
+typedef int32_t (*willrt_blocking_fn)(void* arg, void* out);
+
+/* willrt_blocking_call runs one function on a pool thread and waits for it.
+   The pool starts lazily and has WILL_BLOCKING_MAX threads (default 128). */
+int32_t willrt_blocking_call(void* fn, void* arg, void* out);
+void willrt_blocking_shutdown(void);
+
+/* -------------------------------------------------------------------------
+   Tasks, regions, and the task environment.
+
+   A task owns one frame of size bytes. The step function advances the frame
+   once: it returns WILLRT_DONE when the frame is finished or WILLRT_SUSPEND
+   when it wants to run again later. This engine runs a step on its own thread
+   and treats a suspend as a finished step; the compiler's lowering currently
+   never returns WILLRT_SUSPEND.
+   ------------------------------------------------------------------------- */
+
+typedef struct willrt_task willrt_task;
+
+typedef int32_t (*willrt_step)(void* frame);
+
+/* willrt_error is the failure a joined task reports. message is a byte string
+   of size bytes (it need not be NUL-terminated); site and symbol are static
+   strings from the compiler. */
+typedef struct willrt_error {
+    const char* message;
+    size_t size;
+    const char* site;
+    const char* symbol;
+} willrt_error;
+
+willrt_task* willrt_task_new(void* step, void* frame, size_t size,
+                             int32_t lane, int32_t prio);
+void willrt_task_run(willrt_task* task);
+int32_t willrt_join(willrt_task* task, void* out, willrt_error* err);
+
+/* The current task stores its result once, before its step returns. A task
+   whose value is void does not call this. */
+willrt_task* willrt_task_current(void);
+int32_t willrt_task_store_result(const void* value, size_t size);
+
+void willrt_region_enter(void);
+int32_t willrt_region_exit(void);
+int32_t willrt_lane_here(void);
+void willrt_yield(void);
+int32_t willrt_task_canceled(void);
+int64_t willrt_task_deadline(void);
+void willrt_activity(int32_t delta);
+
+/* -------------------------------------------------------------------------
+   Channels. A value is copied into the ring on send and copied out on receive;
+   the compiler has already enforced the move rule at the source. Capacity is
+   the backpressure bound and must be greater than zero.
+   ------------------------------------------------------------------------- */
+
+typedef struct willrt_chan willrt_chan;
+
+willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio);
+int32_t willrt_chan_send(willrt_chan* chan, const void* value);
+int32_t willrt_chan_try_send(willrt_chan* chan, const void* value);
+int32_t willrt_chan_recv(willrt_chan* chan, void* out);
+int32_t willrt_chan_try_recv(willrt_chan* chan, void* out);
+void willrt_chan_close(willrt_chan* chan);
+
+/* One select arm. kind 0 receives into out, 1 sends value, 2 waits until ns,
+   and 3 is the default arm. A timeout or default arm has a null channel. */
+typedef struct willrt_arm {
+    willrt_chan* chan;
+    void* out;
+    const void* value;
+    int32_t kind;
+    int64_t ns;
+} willrt_arm;
+
+int32_t willrt_select(willrt_arm* arms, size_t n);
+
+/* willrt_select_status reports the runtime status of the arm the last select on
+   this thread chose. It is WILLRT_OK for a successful receive or send and
+   WILLRT_CLOSED when a receive selected a closed channel. */
+int32_t willrt_select_status(void);
+
 /* willrt_timer is a one-shot timer. The node is owned by the runtime. */
 typedef struct willrt_timer willrt_timer;
 
@@ -121,6 +295,36 @@ void willrt_shutdown(void);
    Task containment is not implemented yet, so every panic ends the process.
    site and symbol are static strings supplied by the compiler. */
 void willrt_panic(const char* message, const char* site, const char* symbol);
+
+/* willrt_panic_n is willrt_panic for a message that is bytes and a length, so
+   a will str does not have to be copied or terminated. Task containment is not
+   implemented yet, so it also ends the process. */
+void willrt_panic_n(const char* message, size_t size, const char* site, const char* symbol);
+
+/* willrt_report_write_n writes bytes that need not be NUL-terminated. */
+void willrt_report_write_n(const char* text, size_t size);
+
+/* print writes its parts to standard output without buffering. A str part is
+   bytes and a length; the scalar parts are formatted by the runtime. */
+void willrt_write_stdout(const char* data, size_t size);
+void willrt_print_i64(int64_t value);
+void willrt_print_u64(uint64_t value);
+void willrt_print_f64(double value);
+void willrt_print_bool(int32_t value);
+void willrt_print_char(uint32_t value);
+
+/* The interpolation helpers measure a formatted scalar and then write it into
+   a buffer the caller allocates, so one interpolation allocates once. */
+size_t willrt_fmt_i64_len(int64_t value);
+size_t willrt_fmt_u64_len(uint64_t value);
+size_t willrt_fmt_f64_len(double value);
+size_t willrt_fmt_bool_len(int32_t value);
+size_t willrt_fmt_char_len(uint32_t value);
+size_t willrt_fmt_i64_into(char* buffer, size_t capacity, int64_t value);
+size_t willrt_fmt_u64_into(char* buffer, size_t capacity, uint64_t value);
+size_t willrt_fmt_f64_into(char* buffer, size_t capacity, double value);
+size_t willrt_fmt_bool_into(char* buffer, size_t capacity, int32_t value);
+size_t willrt_fmt_char_into(char* buffer, size_t capacity, uint32_t value);
 
 /* willrt_report_write sends the NUL-terminated text to the current report
    target. The text must not be NULL. The default target is standard error,
@@ -161,5 +365,40 @@ void willrt_symbols_register(const willrt_symbol_table* table);
    earliest registered table. It returns the static string "<unknown>" when no
    range contains addr. Lookup allocates nothing and takes no lock. */
 const char* willrt_symbol_name(uintptr_t addr);
+
+/* willrt_utf8_decode reads one UTF-8 scalar from data[0..len). It returns the
+   number of bytes the scalar occupies (1 to 4) and stores the scalar in *out.
+   It returns 0 for an empty buffer, a truncated sequence, an overlong
+   encoding, a surrogate, or a value above U+10FFFF. */
+int32_t willrt_utf8_decode(const uint8_t* data, size_t len, uint32_t* out);
+
+/* willrt_utf8_valid reports whether every byte in the range starts a complete,
+   shortest-form scalar. An empty range is valid. */
+int32_t willrt_utf8_valid(const uint8_t* data, size_t len);
+
+/* willrt_utf8_encode writes one scalar in shortest form and returns its byte
+   length, or 0 for a surrogate or a value above U+10FFFF. */
+int32_t willrt_utf8_encode(uint32_t value, uint8_t* out);
+
+/* willrt_bytes_index returns the first offset where needle occurs in hay, or
+   -1 when it does not. An empty needle is found at offset zero. */
+int64_t willrt_bytes_index(const uint8_t* hay, size_t hay_len,
+                           const uint8_t* needle, size_t needle_len);
+int64_t willrt_bytes_count(const uint8_t* hay, size_t hay_len,
+                           const uint8_t* needle, size_t needle_len);
+int64_t willrt_bytes_trim(const uint8_t* data, size_t len, int32_t left,
+                          int32_t right, int64_t* start, int64_t* out_len);
+void willrt_bytes_repeat(uint8_t* dst, const uint8_t* src, size_t len,
+                         size_t count);
+int64_t willrt_bytes_replace_into(uint8_t* dst, size_t cap, const uint8_t* data,
+                                  size_t len, const uint8_t* old,
+                                  size_t old_len, const uint8_t* new_text,
+                                  size_t new_len);
+/* willrt_bytes_split writes each part as a pointer word and a length word and
+   returns the part count; a null out only counts. */
+int64_t willrt_bytes_split(const uint8_t* data, size_t len, const uint8_t* sep,
+                           size_t sep_len, uint64_t* out, size_t cap);
+int64_t willrt_bytes_fields(const uint8_t* data, size_t len, uint64_t* out,
+                            size_t cap);
 
 #endif

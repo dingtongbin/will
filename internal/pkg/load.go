@@ -60,6 +60,9 @@ type Build struct {
 	// LocalModules lists every module loaded through a local replace, in path
 	// order. The root module and the bundled standard library are not included.
 	LocalModules []LocalModule
+	// Links are the external libraries the root module asks the linker to
+	// include, in declaration order.
+	Links []string
 }
 
 // LocalModule is one module a local replace selected.
@@ -101,6 +104,7 @@ func load(root string, skipSums bool) *Build {
 		return b
 	}
 	b.Mod = m
+	b.Links = append(b.Links, m.Links...)
 
 	g := resolveModules(&moduleNode{Dir: root, Path: m.Path, Mod: m})
 	bag.AddAll(g.diags)
@@ -289,7 +293,7 @@ func receiverName(t *ast.Type) string {
 func buildExports(p *Package) resolve.Exported {
 	out := resolve.Exported{}
 	for name, sym := range p.Names {
-		if isExported(name) {
+		if isExported(name) && sym.Kind != resolve.VariantKind {
 			out[name] = sym
 		}
 	}
@@ -304,6 +308,10 @@ func buildNames(p *Package) (resolve.Exported, []diag.Diagnostic) {
 	out := resolve.Exported{}
 	var bag diag.Bag
 	seen := map[string]ast.Node{}
+	// A variant is not a package-level value, so it does not collide with a
+	// function or constant of the same name. Two variants with one bare name
+	// still collide, because a pattern names a variant without its enum.
+	variants := map[string]ast.Node{}
 	for _, f := range p.Files {
 		if f.AST == nil {
 			continue
@@ -322,6 +330,18 @@ func buildNames(p *Package) (resolve.Exported, []diag.Diagnostic) {
 				seen[name] = node
 				out[name] = &resolve.Symbol{Name: name, Kind: kind, Pos: pos, Node: node, Exported: isExported(name)}
 			}
+			addVariant := func(name string, pos source.Pos, node ast.Node) {
+				if name == "" {
+					return
+				}
+				if _, ok := variants[name]; ok {
+					bag.Error(pos, diag.CodeDuplicateName, "duplicate top-level name "+name,
+						"names must be unique in a package: shadowing is a warning, two declarations with the same name are an error")
+					return
+				}
+				variants[name] = node
+				out[name] = &resolve.Symbol{Name: name, Kind: resolve.VariantKind, Pos: pos, Node: node, Exported: isExported(name)}
+			}
 			switch decl := d.(type) {
 			case *ast.ConstDecl:
 				add(decl.Name, resolve.ConstKind, decl.NamePos, decl)
@@ -336,7 +356,7 @@ func buildNames(p *Package) (resolve.Exported, []diag.Diagnostic) {
 			case *ast.EnumDecl:
 				add(decl.Name, resolve.EnumKind, decl.NamePos, decl)
 				for _, v := range decl.Variants {
-					add(v.Name, resolve.VariantKind, v.NamePos, v)
+					addVariant(v.Name, v.NamePos, v)
 				}
 			case *ast.InterfaceDecl:
 				add(decl.Name, resolve.InterfaceKind, decl.NamePos, decl)
@@ -421,5 +441,28 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 			}
 		}
 	}
-	return bag.Diagnostics()
+	return suppressFeatureCascade(bag.Diagnostics())
+}
+
+// suppressFeatureCascade drops the name error that follows a Feature call left
+// outside an if: T0010 is the root cause, and the removed std/meta import would
+// otherwise also report meta as undefined at the same position.
+func suppressFeatureCascade(ds []diag.Diagnostic) []diag.Diagnostic {
+	root := map[source.Pos]bool{}
+	for _, d := range ds {
+		if d.Code == diag.CodeFeatureOutsideIf {
+			root[d.Pos] = true
+		}
+	}
+	if len(root) == 0 {
+		return ds
+	}
+	out := ds[:0]
+	for _, d := range ds {
+		if d.Code == diag.CodeUndefinedName && root[d.Pos] {
+			continue
+		}
+		out = append(out, d)
+	}
+	return out
 }

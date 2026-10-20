@@ -1,0 +1,25 @@
+import "std/hash/fnv"
+
+// The vectors are the published FNV-1a ones: the empty text gives the offset
+// basis, "a" and "foobar" exercise both the xor and the wrapping multiply.
+func main() -> i32 {
+    if fnv.Sum32(""[Range(0, 0)]) != 0x811c9dc5u32 {
+        return 1
+    }
+    if fnv.Sum32("a"[Range(0, 1)]) != 0xe40c292cu32 {
+        return 2
+    }
+    if fnv.Sum32("foobar"[Range(0, 6)]) != 0xbf9cf968u32 {
+        return 3
+    }
+    if fnv.Sum64(""[Range(0, 0)]) != 0xcbf29ce484222325u64 {
+        return 4
+    }
+    if fnv.Sum64("a"[Range(0, 1)]) != 0xaf63dc4c8601ec8cu64 {
+        return 5
+    }
+    if fnv.Sum64("foobar"[Range(0, 6)]) != 0x85944171f73967e8u64 {
+        return 6
+    }
+    return 0
+}

@@ -1,0 +1,86 @@
+import "std/math"
+
+func main() -> i32 {
+    var ok: i32 = 0
+    if math.Abs(-2.5) == 2.5 {
+        ok += 1
+    }
+    if math.Abs(3.5) == 3.5 {
+        ok += 1
+    }
+    if math.Min(1.0, 2.0) == 1.0 {
+        ok += 1
+    }
+    if math.Max(1.0, 2.0) == 2.0 {
+        ok += 1
+    }
+    if math.Clamp(5.0, 0.0, 3.0) == 3.0 {
+        ok += 1
+    }
+    if math.Clamp(-5.0, 0.0, 3.0) == 0.0 {
+        ok += 1
+    }
+    if math.Sign(-2.0) == -1.0 {
+        ok += 1
+    }
+    if math.Sign(0.0) == 0.0 {
+        ok += 1
+    }
+    if !math.IsNaN(1.0) {
+        ok += 1
+    }
+    if !math.IsInf(1.0) {
+        ok += 1
+    }
+    if math.IsFinite(1.0) {
+        ok += 1
+    }
+    var negative: i64 = -3i64
+    if math.AbsI64(negative) == 3i64 {
+        ok += 1
+    }
+    if math.AbsI32(-4) == 4 {
+        ok += 1
+    }
+    if math.MinI64(1i64, 2i64) == 1i64 {
+        ok += 1
+    }
+    if math.MaxI64(1i64, 2i64) == 2i64 {
+        ok += 1
+    }
+    if math.MinU64(1u64, 2u64) == 1u64 {
+        ok += 1
+    }
+    if math.MaxU64(1u64, 2u64) == 2u64 {
+        ok += 1
+    }
+    if math.ClampI64(5i64, 0i64, 3i64) == 3i64 {
+        ok += 1
+    }
+    var negativeSign: i64 = -9i64
+    if math.SignI64(negativeSign) == -1i64 {
+        ok += 1
+    }
+    if math.PopCount64(255u64) == 8u32 {
+        ok += 1
+    }
+    if math.TrailingZeros64(8u64) == 3u32 {
+        ok += 1
+    }
+    if math.LeadingZeros64(1u64) == 63u32 {
+        ok += 1
+    }
+    if math.RotateLeft64(1u64, 1u64) == 2u64 {
+        ok += 1
+    }
+    if math.RotateRight64(2u64, 1u64) == 1u64 {
+        ok += 1
+    }
+    if math.I64Max > 0i64 {
+        ok += 1
+    }
+    if math.U64Max > 0u64 {
+        ok += 1
+    }
+    return ok
+}

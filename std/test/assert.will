@@ -1,0 +1,19 @@
+// Assertion helpers for the test package. Each one reports a failure by
+// panicking with the caller's message, so the report carries the source
+// position of the assertion.
+
+func Assert(cond: bool, message: str) {
+    if !cond {
+        panic(message)
+    }
+}
+
+func AssertEqual<T>(got: T, want: T, message: str) {
+    if !(got == want) {
+        panic(message)
+    }
+}
+
+func Fatal(message: str) {
+    panic(message)
+}

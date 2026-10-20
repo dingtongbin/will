@@ -26,6 +26,11 @@ func (g *graph) packages() ([]*Package, map[string]*Package, []diag.Diagnostic) 
 		groups = append(groups, moduleGroup{node: n, pkgs: ps})
 		pkgs = append(pkgs, ps...)
 	}
+	// Features are compile-time: prune their conditions before the import
+	// check, because the std/meta import is dropped once it is used.
+	declared := g.declaredFeatures()
+	bag.AddAll(enabledUndeclared(declared))
+	bag.AddAll(prunePackages(pkgs, declared))
 	// A module that imports std without requiring it still needs the
 	// bundled root, because the root's absence is a toolchain fault and not
 	// an unknown import path.
@@ -160,6 +165,9 @@ func walkModule(n *moduleNode) ([]*Package, []diag.Diagnostic) {
 			}
 			f, fds := parser.Parse(filepath.ToSlash(rel), src)
 			bag.AddAll(fds)
+			if f != nil {
+				bag.AddAll(applyCHeaders(f, dir, n.Dir))
+			}
 			p.Files = append(p.Files, &File{Path: filepath.ToSlash(rel), AST: f})
 		}
 		p.Names, p.Diags = buildNames(p)

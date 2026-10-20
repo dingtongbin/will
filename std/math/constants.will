@@ -1,0 +1,11 @@
+// F64Max is the largest finite f64.
+const F64Max: f64 = 1.7976931348623157e308
+
+// I64Max is the largest i64.
+const I64Max: i64 = 9223372036854775807
+
+// U64Max is the largest u64.
+const U64Max: u64 = 18446744073709551615
+
+const Pi: f64 = 3.14159265358979323846
+const E: f64 = 2.71828182845904523536

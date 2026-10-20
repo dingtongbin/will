@@ -14,12 +14,14 @@ import (
 //
 // The emitter assigns ids in the same preorder it writes, so a reference to a
 // node that has not been written yet is patched after the walk.
-func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diagnostic, litTypes map[*ast.LiteralExpr]string, aliases map[string]string) ([]byte, error) {
+func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diagnostic, litTypes map[*ast.LiteralExpr]string, callTypes map[*ast.CallExpr]string, nameTypes map[*ast.NameExpr]string, aliases map[string]string) ([]byte, error) {
 	e := &emitter{
 		ids:        map[ast.Node]int{},
 		refs:       res.Refs,
 		modulePath: modulePath,
 		litTypes:   litTypes,
+		callTypes:  callTypes,
+		nameTypes:  nameTypes,
 		aliases:    aliases,
 	}
 	root := e.add("module", f)
@@ -50,6 +52,10 @@ type emitter struct {
 	// litTypes is the resolved type text of every literal, by node. A literal
 	// whose type the checker did not record takes the default of its kind.
 	litTypes map[*ast.LiteralExpr]string
+	// callTypes and nameTypes are the resolved type texts of the predeclared
+	// constructors and values, by node.
+	callTypes map[*ast.CallExpr]string
+	nameTypes map[*ast.NameExpr]string
 	// aliases maps an import path that aliases a package to the package's
 	// canonical path, so a qualified name matches the declaring package.
 	aliases map[string]string
@@ -265,6 +271,16 @@ func (e *emitter) emitImport(imp *ast.Import) {
 		}
 		if link.Blocking {
 			e.boolean(id, "blocking", true)
+		}
+		if link.Typed {
+			e.boolean(id, "typed", true)
+			e.text(id, "type", ast.TypeText(link.Result))
+			for _, p := range link.Params {
+				e.text(id, "param", ast.TypeText(p))
+			}
+			if link.Variadic {
+				e.boolean(id, "variadic", true)
+			}
 		}
 	}
 	e.pop()

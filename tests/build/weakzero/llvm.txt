@@ -1,0 +1,101 @@
+%"struct.example.com/weakzero.Node" = type { i32, i64 }
+define i32 @"example.com/weakzero.will$main"() {
+entry:
+  %v.w = alloca i64
+  %v.a = alloca i64
+  %v.b = alloca i64
+  %v.v = alloca i32
+  %v.agg.18 = alloca %"struct.example.com/weakzero.Node"
+  %v.agg.25 = alloca %"struct.example.com/weakzero.Node"
+  %v.ret.38 = alloca { i32, [4 x i8], i64 }
+  %v.weakout.38 = alloca i64
+  store i64 0, ptr %v.w
+  %t1 = getelementptr inbounds %"struct.example.com/weakzero.Node", ptr %v.agg.18, i32 0, i32 0
+  store i32 1, ptr %t1
+  %t2 = getelementptr inbounds %"struct.example.com/weakzero.Node", ptr %v.agg.18, i32 0, i32 1
+  %t3 = load i64, ptr %v.w
+  store i64 %t3, ptr %t2
+  %t4 = getelementptr %"struct.example.com/weakzero.Node", ptr null, i32 1
+  %t5 = ptrtoint ptr %t4 to i64
+  %t6 = call i64 @willrt_rc_new(ptr %v.agg.18, i64 %t5)
+  store i64 %t6, ptr %v.a
+  %t7 = getelementptr inbounds %"struct.example.com/weakzero.Node", ptr %v.agg.25, i32 0, i32 0
+  store i32 2, ptr %t7
+  %t8 = getelementptr inbounds %"struct.example.com/weakzero.Node", ptr %v.agg.25, i32 0, i32 1
+  %t9 = load i64, ptr %v.a
+  %t10 = call i64 @willrt_weak_new(i64 %t9)
+  store i64 %t10, ptr %t8
+  %t11 = getelementptr %"struct.example.com/weakzero.Node", ptr null, i32 1
+  %t12 = ptrtoint ptr %t11 to i64
+  %t13 = call i64 @willrt_rc_new(ptr %v.agg.25, i64 %t12)
+  store i64 %t13, ptr %v.b
+  %t14 = load i64, ptr %v.a
+  %t15 = call ptr @willrt_rc_deref(i64 %t14)
+  %t16 = getelementptr inbounds %"struct.example.com/weakzero.Node", ptr %t15, i32 0, i32 1
+  %t17 = load i64, ptr %v.b
+  %t18 = call i64 @willrt_weak_new(i64 %t17)
+  store i64 %t18, ptr %t16
+  store i32 0, ptr %v.v
+  %t19 = load i64, ptr %v.a
+  %t20 = call ptr @willrt_rc_deref(i64 %t19)
+  %t21 = getelementptr inbounds %"struct.example.com/weakzero.Node", ptr %t20, i32 0, i32 1
+  %t22 = load i64, ptr %t21
+  %t23 = call i32 @willrt_weak_upgrade(i64 %t22, ptr %v.weakout.38)
+  %t24 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.ret.38, i32 0, i32 0
+  store i32 0, ptr %t24
+  %t25 = icmp eq i32 %t23, 0
+  br i1 %t25, label %upgrade.some.1, label %upgrade.end.1
+upgrade.some.1:
+  store i32 1, ptr %t24
+  %t26 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.ret.38, i32 0, i32 2
+  %t27 = load i64, ptr %v.weakout.38
+  store i64 %t27, ptr %t26
+  br label %upgrade.end.1
+upgrade.end.1:
+  %t28 = load { i32, [4 x i8], i64 }, ptr %v.ret.38
+  store { i32, [4 x i8], i64 } %t28, ptr %v.ret.38
+  %t29 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.ret.38, i32 0, i32 0
+  %t30 = load i32, ptr %t29
+  %t31 = icmp eq i32 %t30, 1
+  br i1 %t31, label %match.arm.2.0, label %match.next.2.0
+match.arm.2.0:
+  %t32 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.ret.38, i32 0, i32 2
+  %t33 = load i64, ptr %t32
+  %t34 = call ptr @willrt_rc_deref(i64 %t33)
+  %t35 = getelementptr inbounds %"struct.example.com/weakzero.Node", ptr %t34, i32 0, i32 0
+  %t36 = load i32, ptr %t35
+  store i32 %t36, ptr %v.v
+  br label %match.end.2
+match.next.2.0:
+  %t37 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.ret.38, i32 0, i32 0
+  %t38 = load i32, ptr %t37
+  %t39 = icmp eq i32 %t38, 0
+  br i1 %t39, label %match.arm.2.1, label %match.next.2.1
+match.arm.2.1:
+  br label %match.end.2
+match.next.2.1:
+  unreachable
+match.end.2:
+  %t40 = load i32, ptr %v.v
+  %t41 = load i64, ptr %v.b
+  call void @willrt_rc_release(i64 %t41)
+  %t42 = load i64, ptr %v.a
+  call void @willrt_rc_release(i64 %t42)
+  ret i32 %t40
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/weakzero.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+declare i64 @willrt_rc_new(ptr, i64)
+declare i64 @willrt_rc_new_drop(ptr, i64, ptr)
+declare void @willrt_rc_retain(i64)
+declare void @willrt_rc_release(i64)
+declare ptr @willrt_rc_deref(i64)
+declare i64 @willrt_weak_new(i64)
+declare i32 @willrt_weak_upgrade(i64, ptr)

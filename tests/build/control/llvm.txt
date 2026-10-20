@@ -3,22 +3,29 @@ entry:
   %t1 = icmp slt i32 %n, 0
   br i1 %t1, label %if.then.1, label %if.else.1
 if.then.1:
-  %t2 = sub i32 0, 1
-  ret i32 %t2
+  %t2 = call {i32, i1} @llvm.ssub.with.overflow.i32(i32 0, i32 1)
+  %t3 = extractvalue {i32, i1} %t2, 0
+  %t4 = extractvalue {i32, i1} %t2, 1
+  br i1 %t4, label %panic.2, label %panic.ok.2
+panic.2:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.2:
+  ret i32 %t3
 if.else.1:
-  %t3 = icmp sgt i32 %n, 0
-  br i1 %t3, label %if.then.2, label %if.end.2
-if.then.2:
+  %t5 = icmp sgt i32 %n, 0
+  br i1 %t5, label %if.then.3, label %if.end.3
+if.then.3:
   ret i32 1
-if.end.2:
+if.end.3:
   br label %if.end.1
 if.end.1:
   ret i32 0
 }
 define i32 @"example.com/control.will$main"() {
 entry:
-  %t4 = call i32 @"example.com/control.Sign"(i32 7)
-  ret i32 %t4
+  %t6 = call i32 @"example.com/control.Sign"(i32 7)
+  ret i32 %t6
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -29,3 +36,8 @@ entry:
   call void @willrt_shutdown()
   ret i32 %r
 }
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [15 x i8] c"main.will:3:16\00", align 1
+@.str.2 = private unnamed_addr constant [25 x i8] c"example.com/control.Sign\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

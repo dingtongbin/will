@@ -3,6 +3,7 @@ package willc
 import (
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/resolve"
@@ -131,6 +132,9 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 func (e *emitter) emitName(v *ast.NameExpr) int {
 	rec := e.add("name", v)
 	e.text(rec, "text", v.Name)
+	if t := e.nameTypes[v]; t != "" {
+		e.text(rec, "type", t)
+	}
 	sym := e.refs[v]
 	if sym != nil {
 		e.refSym(rec, "to", sym)
@@ -200,7 +204,8 @@ func litKind(k token.Kind) string {
 func literalText(v *ast.LiteralExpr) string {
 	switch v.Kind {
 	case token.Char:
-		return strings.TrimSuffix(strings.TrimPrefix(v.Text, "'"), "'")
+		r, _ := utf8.DecodeRuneInString(v.Value)
+		return strconv.Itoa(int(r))
 	case token.String:
 		return strings.TrimSuffix(strings.TrimPrefix(v.Text, `"`), `"`)
 	case token.Bytes:
@@ -238,6 +243,9 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 		}
 		rec := e.add("call", c)
 		e.push(rec)
+		if t := e.callTypes[c]; t != "" {
+			e.text(rec, "type", t)
+		}
 		if sym != nil && sym.Node != nil {
 			e.refSym(rec, "to", sym)
 		} else {
@@ -353,6 +361,7 @@ func (e *emitter) emitAggregate(v *ast.AggregateExpr) int {
 		}
 	}
 	e.push(rec)
+	e.emitTypeArgsField(rec, v.TypeArgs)
 	for _, f := range v.Fields {
 		vid := e.emitExpr(f.Value)
 		e.field(rec, "field", Text(f.Name+"=#"+strconv.Itoa(vid)))

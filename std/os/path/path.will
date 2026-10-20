@@ -1,0 +1,23 @@
+// Package std/os/path works on slash-separated paths on every target: '/' is
+// the portable separator that Join, Clean, Dir, Base, Ext, IsAbs, and Match
+// read and produce, whatever the platform spells natively. The functions are
+// pure: they read no file system, working directory, or environment.
+//
+// Separator and Abs are not implemented: the language has no platform constant
+// for the native separator and no working-directory call.
+
+// slashScalar is the ASCII code of the portable separator '/'.
+const slashScalar: u32 = 47
+
+// dotScalar is the ASCII code of '.'.
+const dotScalar: u32 = 46
+
+// isSlash reports whether c is the portable separator.
+func isSlash(c: u32) -> bool {
+    return c == slashScalar
+}
+
+// isDot reports whether c is the character that names a dot element.
+func isDot(c: u32) -> bool {
+    return c == dotScalar
+}

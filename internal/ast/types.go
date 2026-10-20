@@ -73,6 +73,25 @@ func TypeText(t *Type) string {
 // OwnsHeap reports whether a declared type carries a heap buffer that its owner
 // must release: str, Array, Map, and Set. A struct or enum type is not included
 // yet; that needs the field layout.
+// NeedsRelease reports whether a declared type owns something the compiler must
+// release at the end of its scope. An rc handle owns one reference; a weak
+// handle owns nothing.
+func NeedsRelease(t *Type) bool {
+	if OwnsHeap(t) {
+		return true
+	}
+	if t == nil || t.Kind != NamedType {
+		return false
+	}
+	switch t.Name {
+	case "weak", "Duration", "Value", "Show", "Task", "chan":
+		return false
+	}
+	// A named struct, enum, Option, Result, or rc may hold an rc field; the
+	// release lowering walks the value and ignores the ones that hold none.
+	return true
+}
+
 func OwnsHeap(t *Type) bool {
 	if t == nil {
 		return false

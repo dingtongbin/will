@@ -73,6 +73,11 @@ func dirCacheKey(b *pkg.Build, flags checkFlags) (*cache.Store, string, bool) {
 	}
 	limit, _ := cache.Limit()
 	h := cache.NewHasher()
+	// A module whose directory name is invalid still reports B0001 before any
+	// package exists, so the root's own name and path must be in the key even
+	// when the package list is empty.
+	h.AddStrings("root-dir", filepath.Base(b.Root))
+	h.AddStrings("root-module", b.Mod.Path)
 	// Every module of the graph contributes its manifest, its sum file, and its
 	// C and H files. The paths are relative to each module root and prefixed by
 	// the module path, so moving the checkout does not change the key.
@@ -95,6 +100,10 @@ func dirCacheKey(b *pkg.Build, flags checkFlags) (*cache.Store, string, bool) {
 	for _, prefix := range prefixes {
 		root := byPrefix[prefix]
 		h.AddStrings("module", prefix)
+		// The directory's base name is part of B0001, and two checkouts of the
+		// same module may sit in different directories. Keep the name, not the
+		// absolute path, so a moved checkout still hits.
+		h.AddStrings("module-dir", filepath.Base(root))
 		if data, err := os.ReadFile(filepath.Join(root, "will.mod")); err == nil {
 			h.Add(prefix+"/will.mod", data)
 		}

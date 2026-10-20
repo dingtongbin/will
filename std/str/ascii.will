@@ -1,0 +1,14 @@
+// The ASCII scalars the text parsers compare against. They are named here
+// because a character literal is not lowered yet; the values are the code
+// points the language fixes for these characters.
+const asciiPlus: u32 = 43
+const asciiMinus: u32 = 45
+const asciiDot: u32 = 46
+const asciiZero: u32 = 48
+const asciiNine: u32 = 57
+const asciiUpperA: u32 = 65
+const asciiUpperE: u32 = 69
+const asciiUpperZ: u32 = 90
+const asciiLowerA: u32 = 97
+const asciiLowerE: u32 = 101
+const asciiLowerZ: u32 = 122

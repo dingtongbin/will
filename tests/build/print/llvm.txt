@@ -1,0 +1,123 @@
+define i32 @"example.com/print.will$main"() {
+entry:
+  %v.n = alloca i32
+  %v.ok = alloca i1
+  %v.x = alloca double
+  %v.u = alloca i32
+  %v.str.20 = alloca { ptr, i64 }
+  %v.str.22 = alloca { ptr, i64 }
+  %v.interp.26 = alloca { ptr, i64 }
+  store i32 3, ptr %v.n
+  store i1 true, ptr %v.ok
+  store double 1.5, ptr %v.x
+  store i32 7, ptr %v.u
+  %t1 = getelementptr inbounds { ptr, i64 }, ptr %v.str.20, i32 0, i32 0
+  store ptr @.bytes.1, ptr %t1
+  %t2 = getelementptr inbounds { ptr, i64 }, ptr %v.str.20, i32 0, i32 1
+  store i64 4, ptr %t2
+  %t3 = getelementptr inbounds { ptr, i64 }, ptr %v.str.20, i32 0, i32 0
+  %t4 = load ptr, ptr %t3
+  %t5 = getelementptr inbounds { ptr, i64 }, ptr %v.str.20, i32 0, i32 1
+  %t6 = load i64, ptr %t5
+  call void @willrt_write_stdout(ptr %t4, i64 %t6)
+  %t7 = load i32, ptr %v.n
+  %t8 = sext i32 %t7 to i64
+  call void @willrt_print_i64(i64 %t8)
+  %t9 = getelementptr inbounds { ptr, i64 }, ptr %v.str.22, i32 0, i32 0
+  store ptr @.bytes.2, ptr %t9
+  %t10 = getelementptr inbounds { ptr, i64 }, ptr %v.str.22, i32 0, i32 1
+  store i64 1, ptr %t10
+  %t11 = getelementptr inbounds { ptr, i64 }, ptr %v.str.22, i32 0, i32 0
+  %t12 = load ptr, ptr %t11
+  %t13 = getelementptr inbounds { ptr, i64 }, ptr %v.str.22, i32 0, i32 1
+  %t14 = load i64, ptr %t13
+  call void @willrt_write_stdout(ptr %t12, i64 %t14)
+  %t15 = add i64 0, 3
+  %t16 = load i1, ptr %v.ok
+  %t17 = zext i1 %t16 to i32
+  %t18 = call i64 @willrt_fmt_bool_len(i32 %t17)
+  %t19 = add i64 %t15, %t18
+  %t20 = add i64 %t19, 3
+  %t21 = load double, ptr %v.x
+  %t22 = call i64 @willrt_fmt_f64_len(double %t21)
+  %t23 = add i64 %t20, %t22
+  %t24 = add i64 %t23, 3
+  %t25 = load i32, ptr %v.u
+  %t26 = zext i32 %t25 to i64
+  %t27 = call i64 @willrt_fmt_u64_len(i64 %t26)
+  %t28 = add i64 %t24, %t27
+  %t29 = add i64 %t28, 1
+  %t30 = icmp eq i64 %t29, 0
+  br i1 %t30, label %interp.zero.1, label %interp.alloc.1
+interp.alloc.1:
+  %t31 = call ptr @willrt_alloc(i64 %t29)
+  br label %interp.ready.1
+interp.zero.1:
+  br label %interp.ready.1
+interp.ready.1:
+  %t32 = phi ptr [ null, %interp.zero.1 ], [ %t31, %interp.alloc.1 ]
+  %t33 = getelementptr inbounds i8, ptr %t32, i64 0
+  call void @memcpy(ptr %t33, ptr @.bytes.3, i64 3)
+  %t34 = add i64 0, 3
+  %t35 = getelementptr inbounds i8, ptr %t32, i64 %t34
+  %t36 = sub i64 %t29, %t34
+  call i64 @willrt_fmt_bool_into(ptr %t35, i64 %t36, i32 %t17)
+  %t37 = add i64 %t34, %t18
+  %t38 = getelementptr inbounds i8, ptr %t32, i64 %t37
+  call void @memcpy(ptr %t38, ptr @.bytes.4, i64 3)
+  %t39 = add i64 %t37, 3
+  %t40 = getelementptr inbounds i8, ptr %t32, i64 %t39
+  %t41 = sub i64 %t29, %t39
+  call i64 @willrt_fmt_f64_into(ptr %t40, i64 %t41, double %t21)
+  %t42 = add i64 %t39, %t22
+  %t43 = getelementptr inbounds i8, ptr %t32, i64 %t42
+  call void @memcpy(ptr %t43, ptr @.bytes.5, i64 3)
+  %t44 = add i64 %t42, 3
+  %t45 = getelementptr inbounds i8, ptr %t32, i64 %t44
+  %t46 = sub i64 %t29, %t44
+  call i64 @willrt_fmt_u64_into(ptr %t45, i64 %t46, i64 %t26)
+  %t47 = add i64 %t44, %t27
+  %t48 = getelementptr inbounds i8, ptr %t32, i64 %t47
+  call void @memcpy(ptr %t48, ptr @.bytes.2, i64 1)
+  %t49 = add i64 %t47, 1
+  %t50 = getelementptr inbounds { ptr, i64 }, ptr %v.interp.26, i32 0, i32 0
+  store ptr %t32, ptr %t50
+  %t51 = getelementptr inbounds { ptr, i64 }, ptr %v.interp.26, i32 0, i32 1
+  store i64 %t29, ptr %t51
+  %t52 = getelementptr inbounds { ptr, i64 }, ptr %v.interp.26, i32 0, i32 0
+  %t53 = load ptr, ptr %t52
+  %t54 = getelementptr inbounds { ptr, i64 }, ptr %v.interp.26, i32 0, i32 1
+  %t55 = load i64, ptr %t54
+  call void @willrt_write_stdout(ptr %t53, i64 %t55)
+  ret i32 0
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/print.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+@.bytes.1 = private unnamed_addr constant [4 x i8] c"n = ", align 1
+@.bytes.2 = private unnamed_addr constant [1 x i8] c"\0A", align 1
+@.bytes.3 = private unnamed_addr constant [3 x i8] c"ok=", align 1
+@.bytes.4 = private unnamed_addr constant [3 x i8] c" x=", align 1
+@.bytes.5 = private unnamed_addr constant [3 x i8] c" u=", align 1
+declare ptr @willrt_alloc(i64)
+declare void @willrt_free(ptr)
+declare void @memcpy(ptr, ptr, i64)
+declare void @willrt_write_stdout(ptr, i64)
+declare void @willrt_print_i64(i64)
+declare void @willrt_print_u64(i64)
+declare void @willrt_print_f64(double)
+declare void @willrt_print_bool(i32)
+declare i64 @willrt_fmt_i64_len(i64)
+declare i64 @willrt_fmt_u64_len(i64)
+declare i64 @willrt_fmt_f64_len(double)
+declare i64 @willrt_fmt_bool_len(i32)
+declare i64 @willrt_fmt_i64_into(ptr, i64, i64)
+declare i64 @willrt_fmt_u64_into(ptr, i64, i64)
+declare i64 @willrt_fmt_f64_into(ptr, i64, double)
+declare i64 @willrt_fmt_bool_into(ptr, i64, i32)

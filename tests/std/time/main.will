@@ -1,0 +1,27 @@
+import "std/time"
+
+func main() -> i32 {
+    var sec: i64 = 1000
+    var negative: i64 = -5i64
+    var zero: i64 = 0
+    var t: time.Instant = time.FromUnix(sec)
+    var shifted: time.Instant = time.In(t, time.Fixed(3600))
+    var plain: time.Instant = time.In(t, time.Utc())
+    var ok: i32 = 0
+    if time.Unix(t) == 1000i64 {
+        ok += 1
+    }
+    if time.Unix(shifted) == 1000i64 {
+        ok += 1
+    }
+    if time.Unix(plain) == 1000i64 {
+        ok += 1
+    }
+    if time.Unix(time.FromUnix(negative)) == -5i64 {
+        ok += 1
+    }
+    if time.Unix(time.FromUnix(zero)) == 0i64 {
+        ok += 1
+    }
+    return ok
+}

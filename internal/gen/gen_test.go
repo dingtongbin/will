@@ -26,7 +26,7 @@ func emitWillcAs(t *testing.T, src, module string) *willc.Doc {
 	}
 	res, _ := resolve.Resolve(f)
 	checked, _ := types.CheckFull(f, res)
-	data, err := willc.Emit(f, res, module, nil, checked.LiteralTypes, nil)
+	data, err := willc.Emit(f, res, module, nil, checked.LiteralTypes, checked.CallTypes, checked.NameTypes, nil)
 	if err != nil {
 		t.Fatalf("emit willc: %v", err)
 	}
@@ -37,8 +37,7 @@ func emitWillcAs(t *testing.T, src, module string) *willc.Doc {
 	return doc
 }
 
-func TestEmitIntegerFunction(t *testing.T) {
-	doc := emitWillc(t, "func Add(a: i32, b: i32) -> i32 {\n    return a + b\n}\n")
+func TestEmitIntegerFunction(t *testing.T) {	doc := emitWillc(t, "func Add(a: i32, b: i32) -> i32 {\n    return a + b\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -47,13 +46,763 @@ func TestEmitIntegerFunction(t *testing.T) {
 	for _, want := range []string{
 		`define i32 @"example.com/app.Add"(i32 %a, i32 %b) {`,
 		"entry:",
-		"add i32 %a, %b",
-		"ret i32 %t1",
+		"call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %a, i32 %b)",
+		"extractvalue {i32, i1}",
+		"call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)",
+		`@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00"`,
+		"ret i32 %t2",
 		"}",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
+	}
+}
+
+func TestEmitIndexChecksTheBound(t *testing.T) {
+	src := "func At(xs: []i32, i: usize) -> i32 {\n    return xs[i]\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"icmp uge i64 %i, %t",
+		`c"index out of bounds\00"`,
+		"getelementptr inbounds i32, ptr %t",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitSignedIndexChecksBelowZero(t *testing.T) {
+	src := "func At(xs: [2]i32, i: i32) -> i32 {\n    return xs[i]\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"icmp slt i32 %i, 0",
+		"sext i32 %i to i64",
+		"icmp uge i64 %t2, 2",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitSliceChecksBothBounds(t *testing.T) {
+	src := "func Mid(xs: []i32, lo: usize, hi: usize) -> i32 {\n    return xs[Range(lo, hi)][0]\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"icmp ugt i64 %lo, %hi",
+		"icmp ugt i64 %hi, %t",
+		`c"slice bounds out of range\00"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitEnumConstructionAndMatch(t *testing.T) {
+	src := "enum E {\n    A\n    B(i32)\n}\n\n" +
+		"func F(e: E) -> i32 {\n    return match e {\n        A => 0\n        B(v) => v\n    }\n}\n\n" +
+		"func Make() -> E {\n    return E.B(7)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`%"enum.example.com/app.E" = type { i32, i32 }`,
+		"define i32 @\"example.com/app.F\"(ptr %e) {",
+		"alloca i32",
+		"getelementptr inbounds %\"enum.example.com/app.E\", ptr %e, i32 0, i32 0",
+		"icmp eq i32 %t2, 0",
+		"icmp eq i32 %t5, 1",
+		"getelementptr inbounds %\"enum.example.com/app.E\", ptr %e, i32 0, i32 1",
+		"define %\"enum.example.com/app.E\" @\"example.com/app.Make\"() {",
+		"store i32 1, ptr",
+		"store i32 7, ptr",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitMatchWithGuardAndWildcard(t *testing.T) {
+	src := "func Pick(n: i32) -> i32 {\n    return match n {\n        0 => 10\n        x if x > 0 => x\n        _ => -1\n    }\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"icmp eq i32 %n, 0",
+		"icmp sgt i32 %n, 0",
+		"match.guard.",
+		"store i32 10, ptr %v.match.",
+		"store i32 %n, ptr %v.match.",
+		"br i1 true, label %match.arm.",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitStrLiteralIndexAndLoop(t *testing.T) {
+	src := "func At(s: str, i: i32) -> u32 {\n    return s[i]\n}\n\n" +
+		"func One() -> u32 {\n    return At(\"hi\", 0)\n}\n\n" +
+		"func Count(s: str) -> i32 {\n    var n: i32 = 0\n    for i, c in s {\n        if c == 65u32 { n += 1 }\n        _ = i\n    }\n    return n\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`@.bytes.1 = private unnamed_addr constant`,
+		"call i32 @willrt_utf8_decode(ptr",
+		`c"invalid UTF-8\00"`,
+		"for.cond.1:",
+		"icmp ult i64",
+		"sext i32",
+		"declare i32 @willrt_utf8_decode(ptr, i64, ptr)",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitGenericStructInstance(t *testing.T) {
+	src := "struct Box<T> {\n    value: T\n}\n\n" +
+		"func Read(b: Box<i32>) -> i32 {\n    return b.value\n}\n\n" +
+		"func main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return Read(b)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`%"struct.example.com/app.Box$i32" = type { i32 }`,
+		`getelementptr inbounds %"struct.example.com/app.Box$i32"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitGenericMethodInstance(t *testing.T) {
+	src := "struct Box<T> {\n    value: T\n}\n\n" +
+		"func (b: Box<T>) Get() -> T {\n    return b.value\n}\n\n" +
+		"func main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return b.Get()\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define i32 @"example.com/app.Box<i32>.Get"(ptr %b)`,
+		`call i32 @"example.com/app.Box<i32>.Get"(`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	if strings.Count(text, `%"struct.example.com/app.Box$i32" = type`) != 1 {
+		t.Errorf("the generic struct type was emitted more than once:\n%s", text)
+	}
+}
+
+func TestEmitFunctionValue(t *testing.T) {
+	src := "func Apply(f: func(i32) -> i32, x: i32) -> i32 {\n" +
+		"    return f(x)\n" +
+		"}\n\n" +
+		"func main() -> i32 {\n" +
+		"    var inc: func(i32) -> i32 = func(x: i32) -> i32 { return x + 1 }\n" +
+		"    return Apply(inc, 1)\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define i32 @"example.com/app.lambda.1"(ptr %closure.env, i32 %x)`,
+		`define i32 @"example.com/app.Apply"(ptr %f, i32 %x)`,
+		`call i32 %t3(ptr %t4, i32 %x)`,
+		`store ptr @"example.com/app.lambda.1"`,
+		`store ptr null`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitCapturingClosure(t *testing.T) {
+	src := "func Counter() -> func() -> i32 {\n" +
+		"    var n: i32 = 0\n" +
+		"    return func() -> i32 {\n" +
+		"        n += 1\n" +
+		"        return n\n" +
+		"    }\n" +
+		"}\n\n" +
+		"func main() -> i32 {\n" +
+		"    var c: func() -> i32 = Counter()\n" +
+		"    var a: i32 = c()\n" +
+		"    return a\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`getelementptr { i32 }, ptr null, i32 1`,
+		`call ptr @willrt_alloc(i64`,
+		`define i32 @"example.com/app.lambda.1"(ptr %closure.env)`,
+		`getelementptr inbounds { i32 }, ptr %closure.env, i32 0, i32 0`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitNamedFunctionValue(t *testing.T) {
+	src := "func Inc(x: i32) -> i32 {\n" +
+		"    return x + 1\n" +
+		"}\n\n" +
+		"func Apply(f: func(i32) -> i32, x: i32) -> i32 {\n" +
+		"    return f(x)\n" +
+		"}\n\n" +
+		"func main() -> i32 {\n" +
+		"    return Apply(Inc, 4)\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define i32 @"example.com/app.thunk.Inc"(ptr %closure.env, i32 %x)`,
+		`call i32 @"example.com/app.Inc"(i32 %x)`,
+		`store ptr @"example.com/app.thunk.Inc"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitRcHandles(t *testing.T) {
+	src := "struct Counter {\n" +
+		"    n: i32\n" +
+		"}\n\n" +
+		"func (mut c: Counter) Add(d: i32) {\n" +
+		"    c.n += d\n" +
+		"}\n\n" +
+		"func Identity(c: rc<Counter>) -> rc<Counter> {\n" +
+		"    return c\n" +
+		"}\n\n" +
+		"func main() -> i32 {\n" +
+		"    var c: rc<Counter> = new rc<Counter>(Counter { n: 1 })\n" +
+		"    c.Add(1)\n" +
+		"    var d: rc<Counter> = c\n" +
+		"    var w: weak<Counter> = c.Weak()\n" +
+		"    var u: Option<rc<Counter>> = w.Upgrade()\n" +
+		"    var e: rc<Counter> = Identity(d)\n" +
+		"    _ = e\n" +
+		"    _ = u\n" +
+		"    return c.n\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`call i64 @willrt_rc_new(ptr`,
+		`call void @willrt_rc_retain(i64`,
+		`call void @willrt_rc_release(i64`,
+		`call i64 @willrt_weak_new(i64`,
+		`call i32 @willrt_weak_upgrade(i64`,
+		`call ptr @willrt_rc_deref(i64`,
+		`define void @"example.com/app.Counter.Add"(ptr %c, i32 %d)`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitVariadicCall(t *testing.T) {
+	src := "func Sum(xs: ...i32) -> i32 {\n" +
+		"    var total: i32 = 0\n" +
+		"    for x in xs {\n" +
+		"        total += x\n" +
+		"    }\n" +
+		"    return total\n" +
+		"}\n\n" +
+		"func main() -> i32 {\n" +
+		"    return Sum(1, 2, 3)\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define i32 @"example.com/app.Sum"(ptr %xs)`,
+		`call ptr @willrt_plate_new(i64 3, i64`,
+		`store i32 1, ptr`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitSelect(t *testing.T) {
+	src := "func main() -> i32 {\n" +
+		"    var a: chan<i32> = new chan<i32>(1)\n" +
+		"    var v: i32 = 0\n" +
+		"    select {\n" +
+		"        x = a.Recv() => {\n" +
+		"            v = 1\n" +
+		"        }\n" +
+		"        default => {\n" +
+		"            v = 2\n" +
+		"        }\n" +
+		"    }\n" +
+		"    return v\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`%willrt_arm = type { ptr, ptr, ptr, i32, i64 }`,
+		`call i32 @willrt_select(ptr`,
+		`call i32 @willrt_select_status()`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestFloatLiteralKeepsADecimalPoint(t *testing.T) {
+	cases := map[string]string{
+		"1e-6": "1.0e-6",
+		"1E9":  "1.0E9",
+		"1.5":  "1.5",
+		"2f64": "2.0",
+	}
+	for text, want := range cases {
+		if got := literalFloatText(text); got != want {
+			t.Errorf("literalFloatText(%q) = %q, want %q", text, got, want)
+		}
+	}
+}
+
+func TestDurationLiteral(t *testing.T) {
+	cases := map[string]string{
+		"5ms": "5000000",
+		"2s":  "2000000000",
+		"1us": "1000",
+		"3m":  "180000000000",
+	}
+	for text, want := range cases {
+		got, ok := durationNanos(text)
+		if !ok || got != want {
+			t.Errorf("durationNanos(%q) = %q, %v; want %q", text, got, ok, want)
+		}
+	}
+	if _, ok := durationNanos("5x"); ok {
+		t.Error("durationNanos accepted an unknown unit")
+	}
+}
+
+func TestEmitPrintAndInterpolation(t *testing.T) {
+	src := "func main() -> i32 {\n" +
+		"    var n: i32 = 3\n" +
+		"    var ok: bool = true\n" +
+		"    var x: f64 = 1.5\n" +
+		"    var s: str = f\"n={n} ok={ok} x={x}\"\n" +
+		"    print(s, \"\\n\")\n" +
+		"    return 0\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`call i64 @willrt_fmt_i64_len(i64`,
+		`call i64 @willrt_fmt_bool_len(i32`,
+		`call i64 @willrt_fmt_f64_len(double`,
+		`call i64 @willrt_fmt_i64_into(ptr`,
+		`call void @willrt_write_stdout(ptr`,
+		`call ptr @willrt_alloc(i64`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitStrConcatAndSlice(t *testing.T) {
+	src := "func main() -> i32 {\n" +
+		"    var a: str = \"foo\"\n" +
+		"    var b: str = \"bar\"\n" +
+		"    var c: str = a + b\n" +
+		"    var d: []u8 = c[Range(0, 3)]\n" +
+		"    return i32(c.Len()) + i32(d.Len())\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`call ptr @willrt_alloc(i64 %t`,
+		`call void @memcpy(ptr`,
+		`declare void @memcpy(ptr, ptr, i64)`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitMapContainer(t *testing.T) {
+	src := "func main() -> i32 {\n" +
+		"    var m: Map<i32, i32> = new Map<i32, i32>()\n" +
+		"    m.Set(1, 10)\n" +
+		"    var s: i32 = 0\n" +
+		"    for v in m {\n        s = s + v\n    }\n" +
+		"    if m.Has(1) {\n        s = s + 1\n    }\n" +
+		"    return s\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`alloca { ptr, i64, i64 }`,
+		`getelementptr inbounds { i32, i32 }`,
+		`call ptr @willrt_alloc(i64`,
+		`phi i64 [ %t`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitSetContainer(t *testing.T) {
+	src := "func main() -> i32 {\n" +
+		"    var s: Set<i32> = new Set<i32>()\n" +
+		"    s.Add(1)\n" +
+		"    var n: i32 = 0\n" +
+		"    for v in s {\n        n = n + v\n    }\n" +
+		"    if s.Delete(1) {\n        n = n + 1\n    }\n" +
+		"    return n\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`alloca { ptr, i64, i64 }`,
+		`call void @memmove(ptr`,
+		`declare void @memmove(ptr, ptr, i64)`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitGenericFunctionInstance(t *testing.T) {
+	src := "func Id<T>(x: T) -> T {\n    return x\n}\n\nfunc Use() -> i32 {\n    return Id<i32>(3)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`@"example.com/app.Id$i32"(i32 %x)`,
+		`call i32 @"example.com/app.Id$i32"(i32 3)`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, "define i32 @\"example.com/app.Id\"(") {
+		t.Errorf("the generic declaration was emitted without an instance:\n%s", text)
+	}
+}
+
+func TestEmitStrEquality(t *testing.T) {
+	src := "func Eq(a: str, b: str) -> bool {\n    return a == b\n}\n\nfunc Ne(a: str, b: str) -> bool {\n    return a != b\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"call i32 @memcmp(ptr",
+		"icmp eq i64",
+		"and i1",
+		"declare i32 @memcmp(ptr, ptr, i64)",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitAggregateMatchReturn(t *testing.T) {
+	src := "func Pick(n: i32) -> str {\n    return match n {\n        0 => \"zero\"\n        _ => \"many\"\n    }\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"@.bytes.",
+		"match.end.1:",
+		"ret { ptr, i64 }",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitArrayNewPushAndLen(t *testing.T) {
+	src := "func Sum() -> i32 {\n    var a: Array<i32> = new Array<i32>(0)\n    a.Push(1)\n    a.Push(2)\n    a.Set(0, 7)\n    var s: i32 = 0\n    for v in a { s += v }\n    return s + a.Get(1) + i32(a.Len())\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"alloca { ptr, i64, i64 }",
+		"call ptr @willrt_alloc(i64",
+		"arr.full.",
+		"call void @willrt_free(ptr",
+		"declare ptr @willrt_alloc(i64)",
+		"declare void @willrt_free(ptr)",
+		"icmp uge i64",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitBuiltinError(t *testing.T) {
+	src := "struct E {\n    msg: str\n}\n\n" +
+		"func (e: E) Message() -> str {\n    return e.msg\n}\n\n" +
+		"func (e: E) Status() -> i32 {\n    return 7\n}\n\n" +
+		"func Use() -> i32 {\n    var e: E = E { msg: \"bad\" }\n    var r: Result<i32, Error> = Err(e)\n    return match r {\n        Ok(v) => v\n        Err(x) => x.Status()\n    }\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`%interface.Error = type { ptr, ptr }`,
+		"vtable.Error.E",
+		"[2 x ptr]",
+		"call i32 %t",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitNewRunsDefaultsAndInit(t *testing.T) {
+	src := "struct P {\n    x: i32 = 5\n    y: i32\n}\n\n" +
+		"func (mut p: P) init(y: i32) {\n    p.y = y\n}\n\n" +
+		"func Make() -> P {\n    return new P(7)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"alloca %\"struct.example.com/app.P\"",
+		"store %\"struct.example.com/app.P\" zeroinitializer",
+		"store i32 5, ptr",
+		"call void @\"example.com/app.P.init\"(ptr %v.new.",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitInterfaceValueAndCall(t *testing.T) {
+	src := "interface Counter {\n    func Get() -> i32\n}\n\n" +
+		"struct C {\n    n: i32\n}\n\n" +
+		"func (c: C) Get() -> i32 {\n    return c.n\n}\n\n" +
+		"func Use(x: Counter) -> i32 {\n    return x.Get()\n}\n\n" +
+		"func main() -> i32 {\n    var c: C = C { n: 3 }\n    return Use(c)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`%"interface.example.com/app.Counter" = type { ptr, ptr }`,
+		`define i32 @"example.com/app.Use"(ptr %x) {`,
+		"getelementptr inbounds [1 x ptr], ptr",
+		"call i32 %t",
+		"store ptr @",
+		"vtable.example.com/app.Counter.C",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitOptionAndResultConstructors(t *testing.T) {
+	src := "func Find(x: i32) -> Option<i32> {\n    if x > 0 {\n        return Some(x)\n    }\n    return None\n}\n\n" +
+		"func UseOpt(x: i32) -> i32 {\n    return match Find(x) {\n        Some(v) => v\n        None => 0\n    }\n}\n\n" +
+		"func Divide(x: i32) -> Result<i32, i32> {\n    if x == 0 {\n        return Err(1)\n    }\n    return Ok(x / 2)\n}\n\n" +
+		"func UseRes(x: i32) -> Result<i32, i32> {\n    var v: i32 = Divide(x)?\n    return Ok(v + 1)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define { i32, i32 } @"example.com/app.Find"(i32 %x) {`,
+		"store i32 1, ptr", // Some
+		"store i32 0, ptr", // None and Ok
+		"match.arm.1.0:",
+		"try.err.1:",
+		"try.ok.1:",
+		"ret { i32, i32 }",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	if strings.Count(text, "alloca { i32, i32 }") < 4 {
+		t.Errorf("a constructor or try slot is missing:\n%s", text)
+	}
+}
+
+func TestEmitCheckedCasts(t *testing.T) {
+	src := "func Widen(a: i32) -> i64 {\n    return i64(a)\n}\n\n" +
+		"func Narrow(a: i64) -> i32 {\n    return i32(a)\n}\n\n" +
+		"func FromFloat(f: f64) -> i32 {\n    return i32(f)\n}\n\n" +
+		"func ToFloat(a: i32) -> f64 {\n    return f64(a)\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"sext i32 %a to i64",
+		"icmp slt i64 %a, -2147483648",
+		"icmp sgt i64 %a, 2147483647",
+		`c"conversion out of range\00"`,
+		"fcmp uno double %f, %f",
+		`c"cannot convert NaN to integer\00"`,
+		"fcmp oge double %f, 2147483648.0",
+		"fptosi double %f to i32",
+		"sitofp i32 %a to double",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitCheckedArithmeticUsesFixedMessages(t *testing.T) {
+	src := "func Mul(a: i32, b: i32) -> i32 {\n    return a * b\n}\n\n" +
+		"func Rem(a: i32, b: i32) -> i32 {\n    return a % b\n}\n\n" +
+		"func Shr(a: i32, n: i32) -> i32 {\n    return a >> n\n}\n\n" +
+		"func Neg(a: i32) -> i32 {\n    return -a\n}\n\n" +
+		"func ShiftConst(a: i32) -> i32 {\n    return a << 1\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		"call {i32, i1} @llvm.smul.with.overflow.i32(i32 %a, i32 %b)",
+		`c"integer overflow\00"`,
+		`c"division by zero\00"`,
+		`c"shift amount out of range\00"`,
+		"icmp eq i32 %b, 0",
+		"icmp eq i32 %a, -2147483648",
+		"and i1",
+		"ashr i32 %a, %n",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	// A constant shift in range is checked by the front end, so the lowering
+	// does not emit the runtime check for it.
+	if strings.Contains(text, "icmp uge i32 1, 32") {
+		t.Errorf("a constant shift emitted a runtime check:\n%s", text)
+	}
+	if strings.Count(text, "shift amount out of range") != 1 {
+		t.Errorf("the shift message is not emitted once:\n%s", text)
 	}
 }
 
@@ -172,7 +921,7 @@ func emitWillcIn(t *testing.T, file, src, module string, tables map[string][]str
 		imports[path] = exp
 	}
 	res, _ := resolve.ResolveWith(f, imports)
-	data, err := willc.Emit(f, res, module, nil, nil, nil)
+	data, err := willc.Emit(f, res, module, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("emit willc: %v", err)
 	}
@@ -181,6 +930,52 @@ func emitWillcIn(t *testing.T, file, src, module string, tables map[string][]str
 		t.Fatalf("read willc: %v", err)
 	}
 	return doc
+}
+
+func TestEmitCrossPackageNewAndInterface(t *testing.T) {
+	app := emitWillcIn(t, "main.will",
+		"import \"example.com/app/lib\"\n\nfunc Use() -> i32 {\n    var f: lib.Fault = new lib.Fault(\"bad\", 2)\n    var e: Error = f\n    return e.Status()\n}\n\nfunc main() -> i32 {\n    return Use()\n}\n",
+		"example.com/app", map[string][]string{"example.com/app/lib": {"Fault"}})
+	lib := emitWillcIn(t, "lib.will",
+		"struct Fault {\n    message: str\n    status: i32\n}\n\n"+
+			"func (f: Fault) init(message: str, status: i32) {\n    f.message = message\n    f.status = status\n}\n\n"+
+			"func (f: Fault) Message() -> str {\n    return f.message\n}\n\n"+
+			"func (f: Fault) Status() -> i32 {\n    return f.status\n}\n",
+		"example.com/app/lib", nil)
+	ir, err := EmitModule([]*willc.Doc{app, lib}, "main")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`call void @"example.com/app/lib.Fault.init"(`,
+		`@"example.com/app.vtable.Error.example.com/app/lib.Fault"`,
+		`ptr @"example.com/app/lib.Fault.Status"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitCrossPackageEnumVariant(t *testing.T) {
+	app := emitWillcIn(t, "main.will",
+		"import \"example.com/app/lib\"\n\nfunc Use() -> i32 {\n    var x: lib.Level = lib.Level.Warn()\n    _ = x\n    return 0\n}\n\nfunc main() -> i32 {\n    return Use()\n}\n",
+		"example.com/app", map[string][]string{"example.com/app/lib": {"Level"}})
+	lib := emitWillcIn(t, "lib.will", "enum Level {\n    Debug\n    Info\n    Warn\n}\n", "example.com/app/lib", nil)
+	ir, err := EmitModule([]*willc.Doc{app, lib}, "main")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`%"enum.example.com/app/lib.Level" = type { i32 }`,
+		`store i32 2`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
 }
 
 func TestEmitModuleResolvesQualifiedCalls(t *testing.T) {
@@ -294,7 +1089,7 @@ func TestEmitLogicalAndNegation(t *testing.T) {
 		"icmp slt i32 %a, %b",
 		"icmp ne i32 %a, 0",
 		"and i1",
-		"sub i32 0, %a",
+		"call {i32, i1} @llvm.ssub.with.overflow.i32(i32 0, i32 %a)",
 		"xor i32 %b, -1",
 	} {
 		if !strings.Contains(text, want) {
@@ -364,7 +1159,7 @@ func TestEmitCompoundAssignment(t *testing.T) {
 		t.Fatalf("gen: %v", err)
 	}
 	text := string(ir)
-	for _, want := range []string{"add i32 %t", "store i32 %t"} {
+	for _, want := range []string{"call {i32, i1} @llvm.sadd.with.overflow.i32", "store i32 %t"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
@@ -434,8 +1229,8 @@ func TestEmitEndlessLoopWithBreak(t *testing.T) {
 }
 
 func TestEmitUnsupportedNodeIsReported(t *testing.T) {
-	// A string iteration needs the UTF-8 decoder, which is not lowered yet.
-	doc := emitWillc(t, "func F(s: str) -> i32 {\n    var n: i32 = 0\n    for x in s {\n        n += 1\n    }\n    return n\n}\n")
+	// A deadline needs the scoped timer path, which is not lowered yet.
+	doc := emitWillc(t, "func F() {\n    deadline 1ms {\n    }\n}\n")
 	_, err := Emit(doc)
 	if err == nil {
 		t.Fatal("an unsupported node was translated")
@@ -459,7 +1254,7 @@ func TestEmitStructFieldRead(t *testing.T) {
 		"define i32 @\"example.com/app.Sum\"(ptr %p) {",
 		"getelementptr inbounds %\"struct.example.com/app.Point\", ptr %p, i32 0, i32 0",
 		"getelementptr inbounds %\"struct.example.com/app.Point\", ptr %p, i32 0, i32 1",
-		"add i32",
+		"call {i32, i1} @llvm.sadd.with.overflow.i32",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -530,7 +1325,7 @@ func TestEmitStructArgumentIsABorrow(t *testing.T) {
 }
 
 func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
-	src := "struct Text {\n    body: str\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
+	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: [2]P\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -542,7 +1337,7 @@ func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
 }
 
 func TestEmitUnloweredFieldIsReported(t *testing.T) {
-	src := "struct Text {\n    body: str\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
+	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: [2]P\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	if _, err := Emit(doc); err == nil {
 		t.Fatal("a parameter whose struct field is not lowered was translated")
@@ -558,9 +1353,8 @@ func TestEmitI64Function(t *testing.T) {
 	text := string(ir)
 	for _, want := range []string{
 		`define i64 @"example.com/app.Add"(i64 %a, i64 %b) {`,
-		"add i64 %a, %b",
-		"ret i64",
-	} {
+		"call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %a, i64 %b)",
+		"ret i64",	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
@@ -662,7 +1456,7 @@ func TestEmitStructWithWideFields(t *testing.T) {
 		"store i32 2",
 		"store double 3.5",
 		"load i64, ptr",
-		"add i64",
+		"call {i64, i1} @llvm.sadd.with.overflow.i64",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -702,8 +1496,8 @@ func TestEmitArrayIteration(t *testing.T) {
 		t.Errorf("the element binding was copied into a slot:\n%s", text)
 	}
 	// The array is borrowed for the loop, so its length cannot change and no
-	// bound check is emitted.
-	if strings.Contains(text, "willrt_panic") {
+	// bound check is emitted. The body's arithmetic is checked on its own.
+	if strings.Contains(text, `c"index out of bounds\00"`) {
 		t.Errorf("the loop emitted a bound check:\n%s", text)
 	}
 }
@@ -719,7 +1513,7 @@ func TestEmitArrayIterationWithOneBinding(t *testing.T) {
 		t.Fatalf("gen: %v", err)
 	}
 	text := string(ir)
-	for _, want := range []string{"icmp ult i64", "[2 x i64]", "add i64"} {
+	for _, want := range []string{"icmp ult i64", "[2 x i64]", "call {i64, i1} @llvm.sadd.with.overflow.i64"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
@@ -767,8 +1561,9 @@ func TestEmitViewAndArrayIteration(t *testing.T) {
 		}
 	}
 	// The length is loaded once before the header and the loop borrows the
-	// container, so no bound check is emitted.
-	if strings.Contains(text, "willrt_panic") {
+	// container, so no bound check is emitted. The body's arithmetic is checked
+	// on its own.
+	if strings.Contains(text, `c"index out of bounds\00"`) {
 		t.Errorf("the view loop emitted a bound check:\n%s", text)
 	}
 }
@@ -789,7 +1584,7 @@ func TestEmitMethodCallPassesTheReceiver(t *testing.T) {
 		`define void @"example.com/app.Counter.Add"(ptr %c, i32 %d) {`,
 		`call void @"example.com/app.Counter.Add"(ptr %v.c, i32 3)`,
 		`call i32 @"example.com/app.Counter.Get"(ptr %v.c)`,
-		"add i32",
+		"call {i32, i1} @llvm.sadd.with.overflow.i32",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -810,7 +1605,7 @@ func TestEmitTopLevelInitialization(t *testing.T) {
 		`@"example.com/app.counter" = internal global i32 zeroinitializer`,
 		`define void @"example.com/app.will$init"() {`,
 		`store i32 40, ptr @"example.com/app.counter"`,
-		"add i32",
+		"call {i32, i1} @llvm.sadd.with.overflow.i32",
 		`call void @"example.com/app.will$init"()`,
 		`call i32 @"example.com/app.will$main"()`,
 		"call void @willrt_shutdown()",

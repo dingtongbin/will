@@ -2,6 +2,7 @@ package types
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
@@ -128,20 +129,32 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 			s.vars[d.Name] = want
 		case *ast.VarDecl:
 			want := c.buildType(d.Type, s.tp)
-			c.checkValue(s, d.Value, want)
+			c.rejectRawAddress(d.Value)
+			if d.Value == nil {
+				if !c.hasZero(want) {
+					c.bag.Error(d.Pos(), diag.CodeNoZero,
+						"type "+want.String()+" has no zero value",
+						"initialize it: var "+d.Name+": "+want.String()+" = ...")
+				}
+			} else {
+				c.checkValue(s, d.Value, want)
+			}
 			s.vars[d.Name] = want
 		}
 	case *ast.AssignStmt:
+		c.rejectRawAddress(x.Value)
 		want := c.inferPlace(s, x.Target)
 		if x.Op != "=" && want != nil && !want.IsNumeric() {
 			c.typeMismatch(x.Target.Pos(), want, nil)
 		}
 		c.checkValue(s, x.Value, want)
 	case *ast.ExprStmt:
+		c.rejectRawAddress(x.Expr)
 		c.inferExpr(s, x.Expr)
 	case *ast.DeferStmt:
 		c.inferExpr(s, x.Call)
 	case *ast.ReturnStmt:
+		c.rejectRawAddress(x.Value)
 		if s.result == nil {
 			if x.Value != nil {
 				c.typeMismatch(x.Pos(), c.inferExpr(s, x.Value), c.in.unit())
@@ -163,7 +176,7 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 		for _, arm := range x.Arms {
 			inner := newInferScope(s)
 			if t := c.inferExpr(s, arm.Chan); arm.Bind != "" {
-				inner.vars[arm.Bind] = elemOf(t)
+				inner.vars[arm.Bind] = elemOf(c.in, t)
 			}
 			c.inferExpr(s, arm.Timeout)
 			c.inferStmt(inner, arm.Body)
@@ -201,7 +214,7 @@ func (c *checker) inferFor(s *inferScope, st *ast.ForStmt) {
 				nameTypes[0] = argAt(t, 1)
 			}
 		default:
-			elem := elemOf(t)
+			elem := elemOf(c.in, t)
 			if names >= 2 {
 				nameTypes[0] = c.in.scalar("usize")
 				nameTypes[1] = elem
@@ -242,9 +255,120 @@ func (c *checker) checkValue(s *inferScope, e ast.Expr, want *Type) {
 		c.inferExpr(s, e)
 		return
 	}
+	c.recordWant(e, want)
+	if c.checkNegativeLiteral(e, want) {
+		return
+	}
+	if c.checkPredeclaredInto(s, e, want) {
+		return
+	}
 	got := c.exprWithWant(s, e, want)
 	if !Equal(got, want) {
 		c.mismatch(e.Pos(), got, want, false, "", 0)
+	}
+}
+
+// checkNegativeLiteral checks a negated integer literal against a signed
+// expected type. The literal itself is written without a sign, so the smallest
+// value of the type has a magnitude one above the largest positive one; the
+// check therefore allows that one extra step only when the unary minus is
+// present.
+func (c *checker) checkNegativeLiteral(e ast.Expr, want *Type) bool {
+	u, ok := e.(*ast.UnaryExpr)
+	if !ok || u.Op != token.Minus || want == nil {
+		return false
+	}
+	lit, ok := u.X.(*ast.LiteralExpr)
+	if !ok || lit.Kind != token.Int {
+		return false
+	}
+	bits, signed, known := intWidth(want.Name())
+	if !known || !signed {
+		return false
+	}
+	value, _, ok := parseIntLiteral(lit.Text)
+	if !ok {
+		return false
+	}
+	limit := uint64(1) << (bits - 1)
+	if value.overflow || value.mag > limit {
+		c.bag.Error(lit.Pos(), diag.CodeConstantRange,
+			"constant "+lit.Text+" is out of range for "+want.Name(),
+			"write a suffix, or a smaller value")
+		return true
+	}
+	c.recordLiteral(lit, want)
+	return true
+}
+
+// checkPredeclaredInto checks Some, None, Ok, and Err against the complete
+// Option or Result the context expects. The constructor alone knows one side
+// and cannot infer the other, so the expected type supplies it.
+func (c *checker) checkPredeclaredInto(s *inferScope, e ast.Expr, want *Type) bool {
+	call, ok := e.(*ast.CallExpr)
+	if !ok || want.Kind() != NamedKind {
+		return false
+	}
+	name, ok := call.Callee.(*ast.NameExpr)
+	if !ok {
+		return false
+	}
+	switch name.Name {
+	case "Some":
+		if want.Name() != "Option" || len(call.Args) != 1 {
+			return false
+		}
+		if t := argAt(want, 0); t != nil {
+			c.checkValue(s, call.Args[0].Expr, t)
+		}
+		return true
+	case "None":
+		return want.Name() == "Option"
+	case "Ok":
+		if want.Name() != "Result" || len(call.Args) != 1 {
+			return false
+		}
+		if t := argAt(want, 0); t != nil {
+			c.checkValue(s, call.Args[0].Expr, t)
+		}
+		return true
+	case "Err":
+		if want.Name() != "Result" || len(call.Args) != 1 {
+			return false
+		}
+		if t := argAt(want, 1); t != nil {
+			c.checkValue(s, call.Args[0].Expr, t)
+		}
+		return true
+	}
+	return false
+}
+
+// recordWant keeps the type a predeclared constructor or value takes from its
+// context. Some and Ok cannot infer the other side of an Option or Result, so
+// the expected type is the only complete answer.
+func (c *checker) recordWant(e ast.Expr, want *Type) {
+	switch x := e.(type) {
+	case *ast.CallExpr:
+		name, ok := x.Callee.(*ast.NameExpr)
+		if !ok {
+			return
+		}
+		switch name.Name {
+		case "Some", "Ok", "Err":
+			if c.callTypes == nil {
+				c.callTypes = map[*ast.CallExpr]string{}
+			}
+			c.callTypes[x] = want.String()
+		}
+	case *ast.NameExpr:
+		if x.Name != "None" {
+			return
+		}
+		if c.nameTypes == nil {
+			c.nameTypes = map[*ast.NameExpr]string{}
+		}
+		c.nameTypes[x] = want.String()
 	}
 }
 
@@ -315,7 +439,21 @@ func (c *checker) checkArg(s *inferScope, e ast.Expr, want *Type, callee string,
 // mismatch reports a value that does not fit a required type. A concrete type
 // assigned to an interface is checked for the interface methods first.
 func (c *checker) mismatch(pos source.Pos, got, want *Type, isArg bool, callee string, n int) {
+	if want.Kind() == NamedKind && c.env.types[want.Name()] == nil && !c.env.userTypes[want.Name()] {
+		// The name comes from another package, whose declarations this
+		// environment does not build. The lowering checks the layout and the
+		// vtable, so a local concrete value is accepted here.
+		if got != nil && got.Kind() == NamedKind {
+			return
+		}
+	}
 	if methods, ok := c.env.ifaces[want.Name()]; ok {
+		if got != nil && got.Kind() == NamedKind && strings.Contains(got.Name(), ".") {
+			// The concrete type belongs to another package, whose declarations
+			// this environment does not hold. The vtable built during lowering
+			// checks that every method exists.
+			return
+		}
 		if got != nil && c.env.derives[got.Name()][want.Name()] {
 			return
 		}
@@ -446,7 +584,7 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 	case *ast.FieldExpr:
 		return c.fieldType(c.inferExpr(s, x.Recv), x.Name, x.Pos())
 	case *ast.IndexExpr:
-		return elemOf(c.inferExpr(s, x.Recv))
+		return elemOf(c.in, c.inferExpr(s, x.Recv))
 	case *ast.SliceExpr:
 		recv := c.inferExpr(s, x.Recv)
 		c.checkValue(s, x.Lo, c.in.scalar("usize"))
@@ -469,7 +607,17 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 		for i, pm := range x.Params {
 			params[i] = c.buildType(pm.Type, s.tp)
 		}
-		return c.in.funcT(params, c.buildType(x.Result, s.tp))
+		result := c.buildType(x.Result, s.tp)
+		inner := newInferScope(s)
+		inner.result = result
+		for i, pm := range x.Params {
+			inner.vars[pm.Name] = params[i]
+		}
+		got := c.inferBlock(inner, x.Body)
+		if result != nil && got != nil {
+			c.unifyTypes(x.Body.Pos(), got, result)
+		}
+		return c.in.funcT(params, result)
 	case *ast.TryExpr:
 		c.inferExpr(s, x.X)
 		return nil
@@ -579,8 +727,16 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 		sig := c.env.funcs[name.Name]
 		if sig != nil {
 			c.checkTypeArgs(call, sig)
-			c.checkCallArgs(s, sig, call.Args, call.Pos())
-			return sig.result
+			inst := sig
+			if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
+				subst := make(map[string]*Type, sig.typeParams)
+				for i, ta := range call.TypeArgs {
+					subst[sig.typeNames[i]] = c.buildType(ta, nil)
+				}
+				inst = c.instantiate(sig, subst)
+			}
+			c.checkCallArgs(s, inst, call.Args, call.Pos())
+			return inst.result
 		}
 	case sym != nil && sym.Kind == resolve.VariantKind:
 		vi := c.env.variants[name.Name]
@@ -657,7 +813,15 @@ func (c *checker) castType(s *inferScope, name *ast.NameExpr, call *ast.CallExpr
 		c.badArity(call.Pos(), name.Name)
 		return nil
 	}
-	c.inferExpr(s, call.Args[0].Expr)
+	arg := call.Args[0].Expr
+	got := c.inferExpr(s, arg)
+	if name.Name == "raw" && got != nil && !got.IsInteger() {
+		switch arg.(type) {
+		case *ast.NameExpr, *ast.FieldExpr, *ast.IndexExpr, *ast.SliceExpr:
+		default:
+			c.typeMismatch(arg.Pos(), got, c.in.scalar("usize"))
+		}
+	}
 	return c.typeByName(name.Name)
 }
 
@@ -669,6 +833,80 @@ func (c *checker) typeByName(name string) *Type {
 		return t
 	}
 	return c.in.named(name, nil)
+}
+
+// substFor pairs the declared type parameters of a named type with the type
+// arguments of one use. It returns nil when the use is not generic.
+func (c *checker) substFor(name string, args []*Type) map[string]*Type {
+	params := c.env.params[name]
+	if len(params) == 0 || len(params) != len(args) {
+		return nil
+	}
+	subst := make(map[string]*Type, len(params))
+	for i, p := range params {
+		subst[p] = args[i]
+	}
+	return subst
+}
+
+// instantiateReceiver specializes the signature of a method or init on a
+// generic receiver for one receiver type.
+func (c *checker) instantiateReceiver(sig *signature, recv *Type) *signature {
+	if sig == nil || len(sig.recvParams) == 0 {
+		return nil
+	}
+	subst := c.substFor(recv.Name(), recv.Args())
+	if subst == nil {
+		return nil
+	}
+	return c.instantiate(sig, subst)
+}
+
+// instantiate replaces the type parameters of one signature with the types the
+// call site wrote explicitly.
+func (c *checker) instantiate(sig *signature, subst map[string]*Type) *signature {
+	out := *sig
+	out.params = make([]*Type, len(sig.params))
+	for i, p := range sig.params {
+		out.params[i] = c.substitute(p, subst)
+	}
+	out.result = c.substitute(sig.result, subst)
+	return &out
+}
+
+// substitute rebuilds a type with every type parameter replaced. A parameter is
+// a named type with no arguments; arrays, views, function types, and named
+// types with arguments are rebuilt so nested parameters are substituted too.
+func (c *checker) substitute(t *Type, subst map[string]*Type) *Type {
+	if t == nil {
+		return nil
+	}
+	if t.Kind() == NamedKind && len(t.Args()) == 0 {
+		if repl := subst[t.Name()]; repl != nil {
+			return repl
+		}
+	}
+	switch t.Kind() {
+	case ArrayKind:
+		return c.in.array(t.length, c.substitute(t.Elem(), subst))
+	case ViewKind:
+		return c.in.view(c.substitute(t.Elem(), subst))
+	case FuncKind:
+		params := make([]*Type, len(t.Params()))
+		for i, p := range t.Params() {
+			params[i] = c.substitute(p, subst)
+		}
+		return c.in.funcT(params, c.substitute(t.Result(), subst))
+	case NamedKind:
+		if len(t.Args()) > 0 {
+			args := make([]*Type, len(t.Args()))
+			for i, a := range t.Args() {
+				args[i] = c.substitute(a, subst)
+			}
+			return c.in.named(t.Name(), args)
+		}
+	}
+	return t
 }
 
 func (c *checker) checkTypeArgs(call *ast.CallExpr, sig *signature) {
@@ -686,17 +924,47 @@ func (c *checker) checkTypeArgs(call *ast.CallExpr, sig *signature) {
 }
 
 func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
+	if call.Link != nil {
+		return c.cLinkType(s, call)
+	}
 	recv := c.inferExpr(s, call.Recv)
 	for _, a := range call.Args {
 		c.inferExpr(s, a.Expr)
 	}
+	if recv != nil && recv.Kind() == NamedKind && recv.Name() == "rc" && len(recv.Args()) == 1 {
+		switch call.Name {
+		case "Weak":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.named("weak", []*Type{recv.Args()[0]})
+		case "Clone":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return recv
+		}
+		recv = recv.Args()[0]
+	}
+	if recv != nil && recv.Kind() == NamedKind && recv.Name() == "weak" && len(recv.Args()) == 1 {
+		if call.Name == "Upgrade" {
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.named("Option", []*Type{c.in.named("rc", []*Type{recv.Args()[0]})})
+		}
+		return nil
+	}
 	switch call.Name {
 	case "Recv":
-		return elemOf(recv)
+		return elemOf(c.in, recv)
 	case "Join":
 		return nil
 	}
-	if recv == nil || recv.Kind() != NamedKind {
+	if recv == nil {
+		return nil
+	}
+	if recv.Kind() == ScalarKind && recv.Name() == "raw" {
+		return c.rawMethod(s, call)
+	}
+	if t, ok := c.builtinContainerMethod(s, recv, call); ok {
+		return t
+	}
+	if recv.Kind() != NamedKind {
 		return nil
 	}
 	if methods, ok := c.env.ifaces[recv.Name()]; ok {
@@ -712,7 +980,14 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	}
 	if sig, ok := c.env.methods[recv.Name()+"."+call.Name]; ok {
 		c.checkTypeArgsForMethod(call, sig)
-		c.checkPayload(s, sig.params, call.Args, call.Name, call.Pos())
+		if inst := c.instantiateReceiver(sig, recv); inst != nil {
+			sig = inst
+		}
+		if sig.variadic {
+			c.checkCallArgs(s, sig, call.Args, call.Pos())
+		} else {
+			c.checkPayload(s, sig.params, call.Args, call.Name, call.Pos())
+		}
 		return sig.result
 	}
 	if c.env.userTypes[recv.Name()] {
@@ -720,6 +995,212 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			"check the method name and the receiver")
 	}
 	return nil
+}
+
+// rawMethod types the fixed method set of raw pointers. Every load names the
+// width it reads; a store takes the same width; the atomic and volatile forms
+// are the u32 subset the language exposes.
+func (c *checker) rawMethod(s *inferScope, call *ast.MethodCallExpr) *Type {
+	usize := c.in.scalar("usize")
+	boolean := c.in.scalar("bool")
+	raw := c.in.scalar("raw")
+	width := map[string]string{
+		"LoadU8": "u8", "LoadU16": "u16", "LoadU32": "u32", "LoadU64": "u64",
+		"LoadI8": "i8", "LoadI16": "i16", "LoadI32": "i32", "LoadI64": "i64",
+		"LoadF32": "f32", "LoadF64": "f64",
+	}
+	if name, ok := width[call.Name]; ok {
+		c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+		return c.in.scalar(name)
+	}
+	if call.Name == "LoadRaw" {
+		c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+		return raw
+	}
+	storeWidth := map[string]string{
+		"StoreU8": "u8", "StoreU16": "u16", "StoreU32": "u32", "StoreU64": "u64",
+		"StoreI8": "i8", "StoreI16": "i16", "StoreI32": "i32", "StoreI64": "i64",
+		"StoreF32": "f32", "StoreF64": "f64",
+	}
+	if name, ok := storeWidth[call.Name]; ok {
+		c.checkPayload(s, []*Type{c.in.scalar(name)}, call.Args, call.Name, call.Pos())
+		return c.in.unit()
+	}
+	switch call.Name {
+	case "StoreRaw":
+		c.checkPayload(s, []*Type{raw}, call.Args, call.Name, call.Pos())
+		return c.in.unit()
+	case "VolatileLoadU32", "AtomicLoadU32":
+		c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+		return c.in.scalar("u32")
+	case "VolatileStoreU32", "AtomicStoreU32":
+		c.checkPayload(s, []*Type{c.in.scalar("u32")}, call.Args, call.Name, call.Pos())
+		return c.in.unit()
+	case "AtomicAddU32":
+		c.checkPayload(s, []*Type{c.in.scalar("u32")}, call.Args, call.Name, call.Pos())
+		return c.in.scalar("u32")
+	case "AtomicCasU32":
+		c.checkPayload(s, []*Type{c.in.scalar("u32"), c.in.scalar("u32")}, call.Args, call.Name, call.Pos())
+		return boolean
+	}
+	_ = usize
+	return nil
+}
+
+// cLinkType types one call through the c qualifier from its header prototype.
+// An untyped link keeps the old permissive behavior; the generator then uses
+// the i32 fallback.
+func (c *checker) cLinkType(s *inferScope, call *ast.MethodCallExpr) *Type {
+	link := call.Link
+	if !link.Typed {
+		for _, a := range call.Args {
+			c.inferExpr(s, a.Expr)
+		}
+		return nil
+	}
+	params := make([]*Type, len(link.Params))
+	for i, p := range link.Params {
+		params[i] = c.buildType(p, nil)
+	}
+	for i, a := range call.Args {
+		if i < len(params) {
+			c.checkValue(s, a.Expr, params[i])
+			continue
+		}
+		if !link.Variadic {
+			c.badArity(call.Pos(), link.Name)
+			break
+		}
+		extra := c.inferExpr(s, a.Expr)
+		if extra != nil {
+			switch extra.Name() {
+			case "i8", "u8", "i16", "u16", "f32":
+				c.bag.Error(a.Expr.Pos(), diag.CodeVariadicWiden,
+					"variadic C arguments must be widened",
+					"write i32(x) or f64(x)")
+			}
+		}
+	}
+	if !link.Variadic && len(call.Args) < len(params) {
+		c.badArity(call.Pos(), link.Name)
+	}
+	result := c.in.unit()
+	if link.Result != nil {
+		result = c.buildType(link.Result, nil)
+	}
+	if link.Blocking {
+		return c.in.named("Task", []*Type{result})
+	}
+	return result
+}
+
+// builtinContainerMethod types the Map and Set methods the lowering provides.
+// The predeclared containers do not have declarations in the environment, so
+// their signatures are written here once.
+func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.MethodCallExpr) (*Type, bool) {
+	usize := c.in.scalar("usize")
+	boolean := c.in.scalar("bool")
+	if recv.Kind() == ScalarKind && recv.Name() == "str" {
+		strT := c.in.scalar("str")
+		switch call.Name {
+		case "Len":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return usize, true
+		case "Contains", "HasPrefix", "HasSuffix":
+			c.checkPayload(s, []*Type{strT}, call.Args, call.Name, call.Pos())
+			return boolean, true
+		case "Index":
+			c.checkPayload(s, []*Type{strT}, call.Args, call.Name, call.Pos())
+			return c.in.named("Option", []*Type{usize}), true
+		case "Trim", "TrimLeft", "TrimRight", "Upper", "Lower", "Clone":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return strT, true
+		case "Repeat":
+			c.checkPayload(s, []*Type{usize}, call.Args, call.Name, call.Pos())
+			return strT, true
+		case "Replace":
+			c.checkPayload(s, []*Type{strT, strT}, call.Args, call.Name, call.Pos())
+			return strT, true
+		case "Split":
+			c.checkPayload(s, []*Type{strT}, call.Args, call.Name, call.Pos())
+			return c.in.view(strT), true
+		case "SplitN":
+			c.checkPayload(s, []*Type{strT, c.in.scalar("i32")}, call.Args, call.Name, call.Pos())
+			return c.in.view(strT), true
+		case "Fields":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.view(strT), true
+		case "Chars":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.named("Array", []*Type{c.in.scalar("u32")}), true
+		}
+		return nil, false
+	}
+	if recv.Kind() == ViewKind {
+		if call.Name == "Len" {
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return usize, true
+		}
+		return nil, false
+	}
+	if recv.Kind() == NamedKind && recv.Name() == "Array" {
+		elem := argAt(recv, 0)
+		switch call.Name {
+		case "Len", "Cap":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return usize, true
+		case "Get":
+			c.checkPayload(s, []*Type{usize}, call.Args, call.Name, call.Pos())
+			return elem, true
+		case "Set":
+			c.checkPayload(s, []*Type{usize, elem}, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		case "Push":
+			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		}
+		return nil, false
+	}
+	if recv.Kind() != NamedKind {
+		return nil, false
+	}
+	switch recv.Name() {
+	case "Map":
+		k, v := argAt(recv, 0), argAt(recv, 1)
+		switch call.Name {
+		case "Len":
+			return usize, true
+		case "Get":
+			c.checkPayload(s, []*Type{k}, call.Args, call.Name, call.Pos())
+			return c.in.named("Option", []*Type{v}), true
+		case "Set":
+			c.checkPayload(s, []*Type{k, v}, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		case "Has", "Delete":
+			c.checkPayload(s, []*Type{k}, call.Args, call.Name, call.Pos())
+			return boolean, true
+		case "Clear":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		case "Keys":
+			return c.in.named("Array", []*Type{k}), true
+		case "Values":
+			return c.in.named("Array", []*Type{v}), true
+		}
+	case "Set":
+		elem := argAt(recv, 0)
+		switch call.Name {
+		case "Len":
+			return usize, true
+		case "Add", "Has", "Delete":
+			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
+			return boolean, true
+		case "Clear":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		}
+	}
+	return nil, false
 }
 
 func (c *checker) checkTypeArgsForMethod(call *ast.MethodCallExpr, sig *signature) {
@@ -733,12 +1214,22 @@ func (c *checker) fieldType(recv *Type, name string, pos source.Pos) *Type {
 	if recv == nil || recv.Kind() != NamedKind {
 		return nil
 	}
+	if recv.Name() == "rc" && len(recv.Args()) == 1 {
+		recv = recv.Args()[0]
+		if recv == nil || recv.Kind() != NamedKind {
+			return nil
+		}
+	}
 	fields, known := c.env.fields[recv.Name()]
 	if !known {
 		return nil
 	}
+	subst := c.substFor(recv.Name(), recv.Args())
 	for _, f := range fields {
 		if f.name == name {
+			if subst != nil {
+				return c.substitute(f.typ, subst)
+			}
 			return f.typ
 		}
 	}
@@ -747,7 +1238,11 @@ func (c *checker) fieldType(recv *Type, name string, pos source.Pos) *Type {
 }
 
 func (c *checker) aggregateType(s *inferScope, agg *ast.AggregateExpr) *Type {
-	t := c.typeByName(agg.TypeName)
+	t := c.buildType(&ast.Type{Span: agg.Span, Kind: ast.NamedType, Name: agg.TypeName, Args: agg.TypeArgs}, nil)
+	var subst map[string]*Type
+	if t != nil {
+		subst = c.substFor(agg.TypeName, t.Args())
+	}
 	fields, known := c.env.fields[agg.TypeName]
 	for _, f := range agg.Fields {
 		var want *Type
@@ -755,6 +1250,9 @@ func (c *checker) aggregateType(s *inferScope, agg *ast.AggregateExpr) *Type {
 		for _, fi := range fields {
 			if fi.name == f.Name {
 				want = fi.typ
+				if subst != nil {
+					want = c.substitute(want, subst)
+				}
 				found = true
 			}
 		}
@@ -773,7 +1271,40 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 	if t != nil {
 		name = t.Name()
 	}
+	if name == "rc" && t != nil && len(t.Args()) == 1 {
+		elem := t.Args()[0]
+		if sig, ok := c.env.inits[elem.Name()]; ok {
+			if inst := c.instantiateReceiver(sig, elem); inst != nil {
+				sig = inst
+			}
+			c.checkCallArgs(s, sig, n.Args, n.Pos())
+			return t
+		}
+		if len(n.Args) != 1 {
+			c.badArity(n.Pos(), name)
+			for _, a := range n.Args {
+				c.inferExpr(s, a.Expr)
+			}
+			return t
+		}
+		c.checkValue(s, n.Args[0].Expr, elem)
+		return t
+	}
+	if strings.Contains(name, ".") {
+		// A type from another package has no declaration in this environment.
+		// Its init signature is checked and lowered in the defining package, so
+		// the arguments are inferred here and the call is checked in lowering.
+		for _, a := range n.Args {
+			c.inferExpr(s, a.Expr)
+		}
+		return t
+	}
 	if sig, ok := c.env.inits[name]; ok {
+		if t != nil {
+			if inst := c.instantiateReceiver(sig, t); inst != nil {
+				sig = inst
+			}
+		}
 		c.checkCallArgs(s, sig, n.Args, n.Pos())
 		if sig.result != nil {
 			return sig.result
@@ -857,7 +1388,29 @@ func (c *checker) binaryType(s *inferScope, b *ast.BinaryExpr) *Type {
 		return c.in.scalar("bool")
 	}
 	lt := c.inferExpr(s, b.L)
+	if b.Op == token.Plus && lt != nil && lt.Kind() == ScalarKind && lt.Name() == "raw" {
+		c.checkValue(s, b.R, c.in.scalar("usize"))
+		return lt
+	}
 	rt := c.exprWithWant(s, b.R, lt)
+	if b.Op == token.Plus && lt != nil && lt.Kind() == ScalarKind && lt.Name() == "str" {
+		if !Equal(lt, rt) {
+			c.typeMismatch(b.Pos(), rt, lt)
+		}
+		return lt
+	}
+	if lt != nil && lt.Kind() == NamedKind && lt.Name() == "Duration" {
+		if Equal(lt, rt) && (b.Op == token.Plus || b.Op == token.Minus) {
+			return lt
+		}
+		if rt != nil && rt.IsInteger() && (b.Op == token.Star || b.Op == token.Slash) {
+			return lt
+		}
+	}
+	if rt != nil && rt.Kind() == NamedKind && rt.Name() == "Duration" &&
+		lt != nil && lt.IsInteger() && b.Op == token.Star {
+		return rt
+	}
 	switch b.Op {
 	case token.Shl, token.Shr, token.ShlWrap:
 		if lt != nil && !lt.IsInteger() {
@@ -947,7 +1500,7 @@ func (c *checker) unifyTypes(pos source.Pos, a, b *Type) *Type {
 	return a
 }
 
-func elemOf(t *Type) *Type {
+func elemOf(in *interner, t *Type) *Type {
 	if t == nil {
 		return nil
 	}
@@ -963,7 +1516,7 @@ func elemOf(t *Type) *Type {
 		}
 	}
 	if t.Kind() == ScalarKind && t.Name() == "str" {
-		return t
+		return in.scalar("u32")
 	}
 	return nil
 }
@@ -982,11 +1535,14 @@ func (c *checker) sliceOf(t *Type) *Type {
 		return t
 	case NamedKind:
 		if t.Name() == "Array" {
-			return t
+			// Slicing an Array yields the read-only view the methods return,
+			// not the Array itself.
+			return c.in.view(argAt(t, 0))
 		}
 	}
 	if t.Kind() == ScalarKind && t.Name() == "str" {
-		return t
+		// A str slice is a byte view, not a str.
+		return c.in.view(c.in.scalar("u8"))
 	}
 	return nil
 }

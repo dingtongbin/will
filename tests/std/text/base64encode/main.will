@@ -1,0 +1,49 @@
+import "std/encoding/base64"
+
+// Encode must pad whole groups, read every byte value, and feed Decode back the
+// same bytes. 251 and 255 are the two values whose URL characters differ.
+func main() -> i32 {
+    var hello: str = "Hello"
+    if base64.Encode(hello[Range(0, 5)]) != "SGVsbG8=" {
+        return 1
+    }
+    var short: str = "hi"
+    if base64.Encode(short[Range(0, 2)]) != "aGk=" {
+        return 2
+    }
+    var empty: str = ""
+    if base64.Encode(empty[Range(0, 0)]) != "" {
+        return 3
+    }
+    var utf8: str = "\xe4\xbd\xa0\xe5\xa5\xbd"
+    if base64.Encode(utf8[Range(0, 6)]) != "5L2g5aW9" {
+        return 4
+    }
+    var bytesIn: Array<u8> = new Array<u8>(2)
+    bytesIn.Push(u8(251))
+    bytesIn.Push(u8(255))
+    if base64.Encode(bytesIn[Range(0, 2)]) != "+/8=" {
+        return 5
+    }
+    if base64.EncodeUrl(bytesIn[Range(0, 2)]) != "-_8=" {
+        return 6
+    }
+    var back: Result<Array<u8>, Error> = base64.Decode(base64.Encode(utf8[Range(0, 6)]))
+    match back {
+        Ok(v) => {
+            if v.Len() != usize(6) {
+                return 7
+            }
+            if v.Get(0) != u8(228) {
+                return 8
+            }
+            if v.Get(5) != u8(189) {
+                return 9
+            }
+        }
+        Err(e) => {
+            return e.Status()
+        }
+    }
+    return 0
+}

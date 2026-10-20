@@ -1,0 +1,44 @@
+// scalarWidth returns the number of bytes a valid UTF-8 scalar occupies. A str
+// holds only valid UTF-8, so these four ranges cover every scalar.
+func scalarWidth(c: u32) -> usize {
+    if c <= 127u32 {
+        return 1usize
+    }
+    if c <= 2047u32 {
+        return 2usize
+    }
+    if c <= 65535u32 {
+        return 3usize
+    }
+    return 4usize
+}
+
+// Base returns the last element of the path after trailing separators are
+// dropped. An empty path has base ".", and a path of only separators has base
+// "/", because the root has no element to name.
+func Base(p: str) -> str {
+    if p.Len() == 0usize {
+        return "."
+    }
+    var start: usize = 0
+    var end: usize = 0
+    var seen: bool = false
+    var fresh: bool = true
+    for i, c in p {
+        if isSlash(c) {
+            fresh = true
+        } else {
+            if fresh {
+                start = i
+                fresh = false
+            }
+            end = i + scalarWidth(c)
+            seen = true
+        }
+    }
+    if !seen {
+        return "/"
+    }
+    var tail: str = str(p[Range(start, end)])
+    return tail
+}

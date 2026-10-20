@@ -1,0 +1,52 @@
+%"struct.example.com/crossfile.Point" = type { i32, i32 }
+define i32 @"example.com/crossfile.Sum"(ptr %p) {
+entry:
+  %t1 = getelementptr inbounds %"struct.example.com/crossfile.Point", ptr %p, i32 0, i32 0
+  %t2 = load i32, ptr %t1
+  %t3 = getelementptr inbounds %"struct.example.com/crossfile.Point", ptr %p, i32 0, i32 1
+  %t4 = load i32, ptr %t3
+  %t5 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t2, i32 %t4)
+  %t6 = extractvalue {i32, i1} %t5, 0
+  %t7 = extractvalue {i32, i1} %t5, 1
+  br i1 %t7, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  ret i32 %t6
+}
+define %"struct.example.com/crossfile.Point" @"example.com/crossfile.Make"(i32 %x) {
+entry:
+  %v.agg.19 = alloca %"struct.example.com/crossfile.Point"
+  %t8 = getelementptr inbounds %"struct.example.com/crossfile.Point", ptr %v.agg.19, i32 0, i32 0
+  store i32 %x, ptr %t8
+  %t9 = getelementptr inbounds %"struct.example.com/crossfile.Point", ptr %v.agg.19, i32 0, i32 1
+  store i32 2, ptr %t9
+  %t10 = load %"struct.example.com/crossfile.Point", ptr %v.agg.19
+  ret %"struct.example.com/crossfile.Point" %t10
+}
+define i32 @"example.com/crossfile.will$main"() {
+entry:
+  %v.p = alloca %"struct.example.com/crossfile.Point"
+  %v.ret.27 = alloca %"struct.example.com/crossfile.Point"
+  %t11 = call %"struct.example.com/crossfile.Point" @"example.com/crossfile.Make"(i32 3)
+  store %"struct.example.com/crossfile.Point" %t11, ptr %v.ret.27
+  %t12 = load %"struct.example.com/crossfile.Point", ptr %v.ret.27
+  store %"struct.example.com/crossfile.Point" %t12, ptr %v.p
+  %t13 = call i32 @"example.com/crossfile.Sum"(ptr %v.p)
+  ret i32 %t13
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/crossfile.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [12 x i8] c"b.will:2:12\00", align 1
+@.str.2 = private unnamed_addr constant [26 x i8] c"example.com/crossfile.Sum\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

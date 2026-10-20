@@ -1,0 +1,15 @@
+import "std/log"
+
+func main() -> i32 {
+    var a: log.Field = log.Str("path", "a")
+    var b: log.Field = log.Int("n", 7)
+    var c: log.Field = log.Uint("u", 8)
+    var d: log.Field = log.Float("x", 1.5)
+    var e: log.Field = log.Bool("ok", true)
+    _ = a
+    _ = b
+    _ = c
+    _ = d
+    _ = e
+    return 0
+}

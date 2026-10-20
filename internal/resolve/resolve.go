@@ -91,6 +91,17 @@ var predeclaredTypes = []string{
 	"Equal", "Ord",
 }
 
+// isPredeclaredType reports whether a name is one of the type names every
+// package starts with.
+func isPredeclaredType(name string) bool {
+	for _, known := range predeclaredTypes {
+		if known == name {
+			return true
+		}
+	}
+	return false
+}
+
 var predeclaredValues = []string{
 	"Some", "None", "Ok", "Err",
 	"print", "panic", "assert",
@@ -115,7 +126,7 @@ func (r *resolver) addPackageNames(names Exported) {
 		if sym == nil || sym.Name == "" {
 			continue
 		}
-		r.pkg.define(&Symbol{
+		seeded := &Symbol{
 			Name:        sym.Name,
 			Kind:        sym.Kind,
 			Pos:         sym.Pos,
@@ -123,7 +134,12 @@ func (r *resolver) addPackageNames(names Exported) {
 			RecvType:    sym.RecvType,
 			Exported:    sym.Exported,
 			FromSibling: true,
-		})
+		}
+		if seeded.Kind == VariantKind {
+			r.pkg.defineVariant(seeded)
+			continue
+		}
+		r.pkg.define(seeded)
 	}
 }
 
@@ -174,7 +190,14 @@ func (r *resolver) addImports() {
 			}
 			table, known := r.packages[imp.Path]
 			sym := &Symbol{Name: name, Kind: ImportKind, Pos: imp.Span.Start, Node: imp}
-			r.defineTop(sym)
+			if prev := r.pkg.names[name]; prev != nil && prev.Predeclared {
+				// An import is a namespace; it does not make a predeclared
+				// name unusable, and there is no alias syntax to avoid the
+				// collision. Install it without the shadow warning.
+				r.pkg.define(sym)
+			} else {
+				r.defineTop(sym)
+			}
 			rec.sym = sym
 			if known {
 				r.tables[name] = table
@@ -236,7 +259,21 @@ func (r *resolver) addTopLevel() {
 		case *ast.EnumDecl:
 			r.defineTop(&Symbol{Name: decl.Name, Kind: EnumKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
 			for _, v := range decl.Variants {
-				r.defineTop(&Symbol{Name: v.Name, Kind: VariantKind, Pos: v.NamePos, Node: v, Exported: isExported(v.Name)})
+				// A variant is selected through its enum type, so it lives in
+				// the variant table rather than in the package name table.
+				sym := &Symbol{Name: v.Name, Kind: VariantKind, Pos: v.NamePos, Node: v, Exported: isExported(v.Name)}
+				if prev, ok := r.pkg.variants[v.Name]; ok {
+					if prev.FromSibling {
+						// The package layer already reported a duplicate
+						// between files; this file's declaration is the one
+						// its own patterns should see.
+						r.pkg.variants[v.Name] = sym
+						continue
+					}
+					r.duplicate(v.NamePos, prev.Name)
+					continue
+				}
+				r.pkg.defineVariant(sym)
 			}
 		case *ast.InterfaceDecl:
 			r.defineTop(&Symbol{Name: decl.Name, Kind: InterfaceKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
@@ -367,6 +404,7 @@ func (r *resolver) walkDecl(d ast.Decl) {
 func (r *resolver) walkFunc(decl *ast.FuncDecl) {
 	r.push()
 	if decl.Recv != nil {
+		r.declareReceiverTypeParams(decl.Recv.Type)
 		r.walkType(decl.Recv.Type)
 		r.declareLocal(&Symbol{Name: decl.Recv.Name, Kind: ReceiverKind, Pos: decl.Recv.NamePos, Node: decl.Recv, Exported: isExported(decl.Recv.Name)})
 	}
@@ -378,6 +416,21 @@ func (r *resolver) walkFunc(decl *ast.FuncDecl) {
 	r.walkType(decl.Result)
 	r.walkBlock(decl.Body)
 	r.pop()
+}
+
+// declareReceiverTypeParams brings the type parameters written in a generic
+// receiver into scope, so a method on Box<T> may name T in its signature and
+// body without redeclaring it.
+func (r *resolver) declareReceiverTypeParams(t *ast.Type) {
+	if t == nil {
+		return
+	}
+	for _, a := range t.Args {
+		if a == nil || a.Kind != ast.NamedType || len(a.Args) != 0 {
+			continue
+		}
+		r.declareLocal(&Symbol{Name: a.Name, Kind: TypeParamKind, Pos: a.Pos(), Node: a, Exported: isExported(a.Name)})
+	}
 }
 
 func (r *resolver) declareTypeParams(params []*ast.TypeParam) {

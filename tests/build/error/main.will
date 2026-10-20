@@ -1,0 +1,24 @@
+struct E {
+    msg: str
+}
+
+func (e: E) Message() -> str {
+    return e.msg
+}
+
+func (e: E) Status() -> i32 {
+    return 7
+}
+
+func Use() -> i32 {
+    var e: E = E { msg: "bad" }
+    var r: Result<i32, Error> = Err(e)
+    return match r {
+        Ok(v) => v
+        Err(x) => x.Status()
+    }
+}
+
+func main() -> i32 {
+    return Use()
+}

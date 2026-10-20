@@ -20,6 +20,9 @@ type buildOptions struct {
 	lib          bool
 	freestanding bool
 	features     string
+	// textProduct marks a command whose stdout is machine text, so
+	// diagnostics go to stderr and cannot corrupt it.
+	textProduct  bool
 	disabled     map[string]bool
 	json         bool
 	long         bool

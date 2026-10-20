@@ -1,0 +1,50 @@
+%"struct.example.com/genericvoid.Box$T" = type { i32 }
+%"struct.example.com/genericvoid.Box$i64" = type { i32 }
+define i32 @"example.com/genericvoid.will$main"() {
+entry:
+  %v.a = alloca %"struct.example.com/genericvoid.Box$i64"
+  %v.new.30 = alloca %"struct.example.com/genericvoid.Box$i64"
+  store %"struct.example.com/genericvoid.Box$i64" zeroinitializer, ptr %v.new.30
+  call void @"example.com/genericvoid.Box<i64>.init"(ptr %v.new.30)
+  %t1 = load %"struct.example.com/genericvoid.Box$i64", ptr %v.new.30
+  store %"struct.example.com/genericvoid.Box$i64" %t1, ptr %v.a
+  call void @"example.com/genericvoid.Box<i64>.Bump"(ptr %v.a)
+  %t2 = getelementptr inbounds %"struct.example.com/genericvoid.Box$i64", ptr %v.a, i32 0, i32 0
+  %t3 = load i32, ptr %t2
+  ret i32 %t3
+}
+define void @"example.com/genericvoid.Box<i64>.Bump"(ptr %b) {
+entry:
+  %t1 = getelementptr inbounds %"struct.example.com/genericvoid.Box$i64", ptr %b, i32 0, i32 0
+  %t2 = load i32, ptr %t1
+  %t3 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t2, i32 1)
+  %t4 = extractvalue {i32, i1} %t3, 0
+  %t5 = extractvalue {i32, i1} %t3, 1
+  br i1 %t5, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  store i32 %t4, ptr %t1
+  ret void
+}
+define void @"example.com/genericvoid.Box<i64>.init"(ptr %b) {
+entry:
+  %t1 = getelementptr inbounds %"struct.example.com/genericvoid.Box$i64", ptr %b, i32 0, i32 0
+  store i32 0, ptr %t1
+  ret void
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/genericvoid.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [15 x i8] c"main.will:10:5\00", align 1
+@.str.2 = private unnamed_addr constant [38 x i8] c"example.com/genericvoid.Box<i64>.Bump\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

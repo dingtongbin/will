@@ -5,8 +5,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/will-lang/will/internal/toolchain"
 )
 
 const entrySource = `import c "stdio.h" {
@@ -206,6 +209,33 @@ func TestEmitAsmWithClang(t *testing.T) {
 	}
 }
 
+func TestBuildSharedLibraryWithClang(t *testing.T) {
+	clang, err := toolchain.FindClang()
+	if err != nil {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_CLANG", clang.Path)
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeFile(t, root, "will.mod", "module example.com/lib\nwill 1\n")
+	writeFile(t, root, "lib.will", "func Add(a: i32, b: i32) -> i32 {\n    return a + b\n}\n")
+	suffix := ".so"
+	if runtime.GOOS == "windows" {
+		suffix = ".dll"
+	}
+	out := filepath.Join(t.TempDir(), "libout"+suffix)
+	code, stdout, stderr := runCLI("build", "--lib", "-o", out, root)
+	if code != 0 {
+		t.Fatalf("build --lib: code = %d, stdout = %q, stderr = %q", code, stdout, stderr)
+	}
+	info, err := os.Stat(out)
+	if err != nil || info.Size() == 0 {
+		t.Fatalf("shared library was not written: %v", err)
+	}
+}
+
 func TestBuildReportsTheSameDiagnostics(t *testing.T) {
 	if hasClang() {
 		t.Skip("clang is installed; the build would go further than diagnostics")
@@ -337,15 +367,18 @@ func TestUnsupportedTarget(t *testing.T) {
 func TestLoweringFailureIsG0001(t *testing.T) {
 	// A local whose type is not lowered yet is a translation failure, not a
 	// front-end error.
-	src := "func main() -> i32 {\n    var s: str = \"x\"\n    _ = s\n    return 0\n}\n"
+	src := "struct P {\n    n: i32\n}\n\nfunc F(xs: [2]P) -> i32 {\n    return 0\n}\n\nfunc main() -> i32 {\n    return 0\n}\n"
 	path := writeFile(t, t.TempDir(), "main.will", src)
-	code, out, _ := runCLI("emit-llvm", path)
+	code, out, errOut := runCLI("emit-llvm", path)
 	if code != 1 {
 		t.Fatalf("code = %d, want 1", code)
 	}
-	if !strings.Contains(out, "G0001 cannot translate node #") ||
-		!strings.Contains(out, "    help: this is a compiler bug; report it with the willc file") {
-		t.Fatalf("stdout = %q", out)
+	if out != "" {
+		t.Fatalf("a failed emit-llvm wrote to stdout: %q", out)
+	}
+	if !strings.Contains(errOut, "G0001 cannot translate node #") ||
+		!strings.Contains(errOut, "    help: this is a compiler bug; report it with the willc file") {
+		t.Fatalf("stderr = %q", errOut)
 	}
 }
 

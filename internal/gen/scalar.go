@@ -57,15 +57,38 @@ func literalIntText(text string) string {
 		if !strings.HasSuffix(text, suffix) || len(text) == len(suffix) {
 			continue
 		}
-		digits := strings.TrimSuffix(text, suffix)
-		if _, err := strconv.ParseUint(strings.ReplaceAll(digits, "_", ""), 0, 64); err == nil {
-			return strings.ReplaceAll(digits, "_", "")
-		}
-		if _, err := strconv.ParseInt(strings.ReplaceAll(digits, "_", ""), 0, 64); err == nil {
-			return strings.ReplaceAll(digits, "_", "")
+		if value, ok := willIntDecimal(strings.TrimSuffix(text, suffix)); ok {
+			return value
 		}
 	}
+	if value, ok := willIntDecimal(text); ok {
+		return value
+	}
 	return strings.ReplaceAll(text, "_", "")
+}
+
+// willIntDecimal renders an integer literal in the decimal spelling LLVM
+// accepts. LLVM has no hexadecimal, binary, or octal integer constants.
+func willIntDecimal(text string) (string, bool) {
+	digits := strings.ReplaceAll(text, "_", "")
+	base := 10
+	body := digits
+	switch {
+	case strings.HasPrefix(digits, "0x") || strings.HasPrefix(digits, "0X"):
+		base, body = 16, digits[2:]
+	case strings.HasPrefix(digits, "0b") || strings.HasPrefix(digits, "0B"):
+		base, body = 2, digits[2:]
+	case strings.HasPrefix(digits, "0o") || strings.HasPrefix(digits, "0O"):
+		base, body = 8, digits[2:]
+	}
+	if body == "" {
+		return "", false
+	}
+	value, err := strconv.ParseUint(body, base, 64)
+	if err != nil {
+		return "", false
+	}
+	return strconv.FormatUint(value, 10), true
 }
 
 // literalFloatText returns a floating-point literal in a spelling LLVM
@@ -73,7 +96,15 @@ func literalIntText(text string) string {
 func literalFloatText(text string) string {
 	text = strings.TrimSuffix(text, "f32")
 	text = strings.TrimSuffix(text, "f64")
-	return strings.ReplaceAll(text, "_", "")
+	text = strings.ReplaceAll(text, "_", "")
+	if strings.Contains(text, ".") {
+		return text
+	}
+	if i := strings.IndexAny(text, "eE"); i >= 0 {
+		// LLVM wants a decimal point in the mantissa of every float constant.
+		return text[:i] + ".0" + text[i:]
+	}
+	return text + ".0"
 }
 
 // isUnsigned reports whether a will integer type is unsigned. The sign is not
@@ -175,11 +206,26 @@ func arithInstr(op, typ string, signed bool) string {
 		return "xor"
 	case "<<", "<<%":
 		return "shl"
-	case ">>":
+	case ">>", ">>%":
 		if signed {
 			return "ashr"
 		}
 		return "lshr"
+	case "+%":
+		if float {
+			return "fadd"
+		}
+		return "add"
+	case "-%":
+		if float {
+			return "fsub"
+		}
+		return "sub"
+	case "*%":
+		if float {
+			return "fmul"
+		}
+		return "mul"
 	}
 	return ""
 }

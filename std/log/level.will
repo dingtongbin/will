@@ -1,0 +1,21 @@
+// Level is the severity of a log line, from least to most severe.
+enum Level {
+    Debug
+    Info
+    Warn
+    Error
+}
+
+// Enabled reports whether a line at level passes a filter set to min.
+func Enabled(level: Level, min: Level) -> bool {
+    return levelRank(level) >= levelRank(min)
+}
+
+func levelRank(level: Level) -> i32 {
+    return match level {
+        Debug => 0
+        Info => 1
+        Warn => 2
+        Error => 3
+    }
+}

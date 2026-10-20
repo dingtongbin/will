@@ -1,0 +1,87 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+define i32 @"example.com/cblock.will$main"() {
+entry:
+  %v.t = alloca ptr
+  %v.join.out.16 = alloca i32
+  %v.join.err.16 = alloca %willrt_error
+  %t1 = getelementptr { i32, i32, i32 }, ptr null, i32 1
+  %t2 = ptrtoint ptr %t1 to i64
+  %t3 = call ptr @willrt_alloc(i64 %t2)
+  %t4 = getelementptr { i32, i32, i32 }, ptr %t3, i32 0, i32 0
+  store i32 2, ptr %t4
+  %t5 = getelementptr { i32, i32, i32 }, ptr %t3, i32 0, i32 1
+  store i32 3, ptr %t5
+  %t6 = call i32 @willrt_lane_here()
+  %t7 = call ptr @willrt_task_new(ptr @"example.com/cblock.cblock.1", ptr %t3, i64 %t2, i32 %t6, i32 0)
+  call void @willrt_task_run(ptr %t7)
+  store ptr %t7, ptr %v.t
+  %t8 = load ptr, ptr %v.t
+  %t9 = call i32 @willrt_join(ptr %t8, ptr %v.join.out.16, ptr %v.join.err.16)
+  %t10 = icmp eq i32 %t9, 0
+  br i1 %t10, label %task.ok.1, label %task.fail.1
+task.fail.1:
+  %t11 = getelementptr inbounds %willrt_error, ptr %v.join.err.16, i32 0, i32 0
+  %t12 = load ptr, ptr %t11
+  %t13 = getelementptr inbounds %willrt_error, ptr %v.join.err.16, i32 0, i32 1
+  %t14 = load i64, ptr %t13
+  %t15 = getelementptr inbounds %willrt_error, ptr %v.join.err.16, i32 0, i32 2
+  %t16 = load ptr, ptr %t15
+  %t17 = getelementptr inbounds %willrt_error, ptr %v.join.err.16, i32 0, i32 3
+  %t18 = load ptr, ptr %t17
+  call void @willrt_panic_n(ptr %t12, i64 %t14, ptr %t16, ptr %t18)
+  unreachable
+task.ok.1:
+  %t19 = load i32, ptr %v.join.out.16
+  ret i32 %t19
+}
+define i32 @"example.com/cblock.cblock.1.call"(ptr %args, ptr %out) {
+entry:
+  %t20 = getelementptr { i32, i32, i32 }, ptr %args, i32 0, i32 0
+  %t21 = load i32, ptr %t20
+  %t22 = getelementptr { i32, i32, i32 }, ptr %args, i32 0, i32 1
+  %t23 = load i32, ptr %t22
+  %t24 = call i32 @add(i32 %t21, i32 %t23)
+  store i32 %t24, ptr %out
+  ret i32 0
+}
+define i32 @"example.com/cblock.cblock.1"(ptr %frame) {
+entry:
+  %t25 = getelementptr { i32, i32, i32 }, ptr %frame, i32 0, i32 2
+  call i32 @willrt_blocking_call(ptr @"example.com/cblock.cblock.1.call", ptr %frame, ptr %t25)
+  %t26 = getelementptr i32, ptr null, i32 1
+  %t27 = ptrtoint ptr %t26 to i64
+  call i32 @willrt_task_store_result(ptr %t25, i64 %t27)
+  ret i32 1
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/cblock.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+declare i32 @add(i32, i32)
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)
+declare ptr @willrt_alloc(i64)
+declare void @willrt_free(ptr)
+declare i32 @willrt_blocking_call(ptr, ptr, ptr)
+declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)
+declare void @willrt_task_run(ptr)
+declare i32 @willrt_join(ptr, ptr, ptr)
+declare ptr @willrt_task_current()
+declare i32 @willrt_task_store_result(ptr, i64)
+declare ptr @willrt_chan_new(i64, i64, i32)
+declare i32 @willrt_chan_send(ptr, ptr)
+declare i32 @willrt_chan_try_send(ptr, ptr)
+declare i32 @willrt_chan_recv(ptr, ptr)
+declare i32 @willrt_chan_try_recv(ptr, ptr)
+declare void @willrt_chan_close(ptr)
+declare i32 @willrt_select(ptr, i64)
+declare i32 @willrt_select_status()
+declare i64 @willrt_now_ns()
+declare void @willrt_region_enter()
+declare i32 @willrt_region_exit()
+declare i32 @willrt_lane_here()

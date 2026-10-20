@@ -2,10 +2,17 @@
 define i32 @"example.com/globals/lib.Next"() {
 entry:
   %t1 = load i32, ptr @"example.com/globals/lib.Seed"
-  %t2 = add i32 %t1, 1
-  store i32 %t2, ptr @"example.com/globals/lib.Seed"
-  %t3 = load i32, ptr @"example.com/globals/lib.Seed"
-  ret i32 %t3
+  %t2 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t1, i32 1)
+  %t3 = extractvalue {i32, i1} %t2, 0
+  %t4 = extractvalue {i32, i1} %t2, 1
+  br i1 %t4, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  store i32 %t3, ptr @"example.com/globals/lib.Seed"
+  %t5 = load i32, ptr @"example.com/globals/lib.Seed"
+  ret i32 %t5
 }
 define void @"example.com/globals/lib.will$init"() {
 entry:
@@ -15,12 +22,26 @@ entry:
 define i32 @"example.com/globals.will$main"() {
 entry:
   %t1 = load i32, ptr @"example.com/globals/lib.Seed"
-  %t2 = add i32 %t1, 2
-  store i32 %t2, ptr @"example.com/globals/lib.Seed"
-  %t3 = load i32, ptr @"example.com/globals/lib.Seed"
-  %t4 = call i32 @"example.com/globals/lib.Next"()
-  %t5 = add i32 %t3, %t4
-  ret i32 %t5
+  %t2 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t1, i32 2)
+  %t3 = extractvalue {i32, i1} %t2, 0
+  %t4 = extractvalue {i32, i1} %t2, 1
+  br i1 %t4, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.3, ptr @.str.4)
+  unreachable
+panic.ok.1:
+  store i32 %t3, ptr @"example.com/globals/lib.Seed"
+  %t5 = load i32, ptr @"example.com/globals/lib.Seed"
+  %t6 = call i32 @"example.com/globals/lib.Next"()
+  %t7 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t5, i32 %t6)
+  %t8 = extractvalue {i32, i1} %t7, 0
+  %t9 = extractvalue {i32, i1} %t7, 1
+  br i1 %t9, label %panic.2, label %panic.ok.2
+panic.2:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.5, ptr @.str.4)
+  unreachable
+panic.ok.2:
+  ret i32 %t8
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -32,3 +53,11 @@ entry:
   call void @willrt_shutdown()
   ret i32 %r
 }
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [17 x i8] c"lib/lib.will:4:5\00", align 1
+@.str.2 = private unnamed_addr constant [29 x i8] c"example.com/globals/lib.Next\00", align 1
+@.str.3 = private unnamed_addr constant [14 x i8] c"main.will:4:5\00", align 1
+@.str.4 = private unnamed_addr constant [30 x i8] c"example.com/globals.will$main\00", align 1
+@.str.5 = private unnamed_addr constant [15 x i8] c"main.will:5:12\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

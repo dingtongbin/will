@@ -1,0 +1,237 @@
+import "std/os/path"
+
+// Clean must drop empty and dot elements, resolve dot-dot where it can, keep a
+// leading dot-dot on a relative path, and name the empty result "." or "/".
+func main() -> i32 {
+    if path.Clean("") != "." {
+        return 1
+    }
+    if path.Clean(".") != "." {
+        return 2
+    }
+    if path.Clean("..") != ".." {
+        return 3
+    }
+    if path.Clean("a/./b") != "a/b" {
+        return 4
+    }
+    if path.Clean("a//b") != "a/b" {
+        return 5
+    }
+    if path.Clean("a/../b") != "b" {
+        return 6
+    }
+    if path.Clean("a/..") != "." {
+        return 7
+    }
+    if path.Clean("../a") != "../a" {
+        return 8
+    }
+    if path.Clean("/") != "/" {
+        return 9
+    }
+    if path.Clean("//") != "/" {
+        return 10
+    }
+    if path.Clean("/..") != "/" {
+        return 11
+    }
+    if path.Clean("/../a") != "/a" {
+        return 12
+    }
+    if path.Clean("a/") != "a" {
+        return 13
+    }
+    if path.Clean("/a/b/../c/") != "/a/c" {
+        return 14
+    }
+    if path.Clean("/h\xc3\xa9llo/") != "/h\xc3\xa9llo" {
+        return 15
+    }
+    // A zero-part Join would be path.Join(), but the compiler reads a Join call
+    // with no arguments as the task join, so an all-empty call is written as
+    // Join("", ""), which also returns "".
+    if path.Join("", "") != "" {
+        return 16
+    }
+    if path.Join("a") != "a" {
+        return 17
+    }
+    if path.Join("a", "b") != "a/b" {
+        return 18
+    }
+    if path.Join("a/", "/b") != "a/b" {
+        return 19
+    }
+    if path.Join("a", "..") != "." {
+        return 20
+    }
+    if path.Join("/", "a") != "/a" {
+        return 21
+    }
+    if path.Join("", "a", "") != "a" {
+        return 22
+    }
+    // Dir keeps everything before the last separator and cleans it.
+    if path.Dir("") != "." {
+        return 23
+    }
+    if path.Dir("/") != "/" {
+        return 24
+    }
+    if path.Dir("/a") != "/" {
+        return 25
+    }
+    if path.Dir("a") != "." {
+        return 26
+    }
+    if path.Dir("a/b") != "a" {
+        return 27
+    }
+    if path.Dir("a/b/") != "a/b" {
+        return 28
+    }
+    if path.Dir("//a") != "/" {
+        return 29
+    }
+    if path.Dir("/h\xc3\xa9llo/x") != "/h\xc3\xa9llo" {
+        return 30
+    }
+    // Base is the last element after trailing separators are dropped.
+    if path.Base("") != "." {
+        return 31
+    }
+    if path.Base("/") != "/" {
+        return 32
+    }
+    if path.Base("//") != "/" {
+        return 33
+    }
+    if path.Base("a/") != "a" {
+        return 34
+    }
+    if path.Base("/a") != "a" {
+        return 35
+    }
+    if path.Base("a/b/") != "b" {
+        return 36
+    }
+    if path.Base("/h\xc3\xa9llo") != "h\xc3\xa9llo" {
+        return 37
+    }
+    // Ext starts at the final dot of the last element; a dotfile has one.
+    if path.Ext("") != "" {
+        return 38
+    }
+    if path.Ext("a") != "" {
+        return 39
+    }
+    if path.Ext("a.") != "." {
+        return 40
+    }
+    if path.Ext(".txt") != ".txt" {
+        return 41
+    }
+    if path.Ext("a.txt") != ".txt" {
+        return 42
+    }
+    if path.Ext("a.b/c") != "" {
+        return 43
+    }
+    if path.Ext("a/b.c") != ".c" {
+        return 44
+    }
+    if path.Ext("/h\xc3\xa9llo/x.txt") != ".txt" {
+        return 45
+    }
+    if path.IsAbs("") {
+        return 46
+    }
+    if !path.IsAbs("/") {
+        return 47
+    }
+    if !path.IsAbs("/a") {
+        return 48
+    }
+    if path.IsAbs("a") {
+        return 49
+    }
+    if path.IsAbs("./a") {
+        return 50
+    }
+    // Match is anchored, and neither wildcard crosses the separator.
+    if !path.Match("*.txt", "a.txt") {
+        return 51
+    }
+    if path.Match("*.txt", "a.txt.bak") {
+        return 52
+    }
+    if !path.Match("a?c", "abc") {
+        return 53
+    }
+    if path.Match("a?c", "ac") {
+        return 54
+    }
+    if !path.Match("*", "abc") {
+        return 55
+    }
+    if !path.Match("*", "") {
+        return 56
+    }
+    if path.Match("*", "a/b") {
+        return 57
+    }
+    if !path.Match("a/*", "a/b") {
+        return 58
+    }
+    if path.Match("a/*", "a/b/c") {
+        return 59
+    }
+    if !path.Match("", "") {
+        return 60
+    }
+    if path.Match("", "a") {
+        return 61
+    }
+    if !path.Match("a*b*c", "aXbYc") {
+        return 62
+    }
+    if path.Match("a*b*c", "aXbY") {
+        return 63
+    }
+    if path.Match("a?b", "a/b") {
+        return 64
+    }
+    if !path.Match("/a/*", "/a/b") {
+        return 65
+    }
+    if !path.Match("src-?-main.will", "src-a-main.will") {
+        return 66
+    }
+    if path.Ext("a.tar.gz") != ".gz" {
+        return 67
+    }
+    if path.Clean("./..") != ".." {
+        return 68
+    }
+    if path.Base("...") != "..." {
+        return 69
+    }
+    if !path.Match("*", ".") {
+        return 70
+    }
+    if !path.IsAbs("//a") {
+        return 71
+    }
+    if path.Clean("a/./") != "a" {
+        return 72
+    }
+    // A long name exercises the star loop without recursion.
+    if !path.Match("*", "a".Repeat(1000usize)) {
+        return 73
+    }
+    if path.Match("*", "a".Repeat(1000usize) + "/b") {
+        return 74
+    }
+    return 0
+}

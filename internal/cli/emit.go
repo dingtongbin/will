@@ -91,7 +91,7 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 		io.WriteString(stdout, diag.FormatAll(all))
 		return 1
 	}
-	text, err := willc.Emit(f, res, modulePath, all, checked.LiteralTypes, aliases)
+	text, err := willc.Emit(f, res, modulePath, all, checked.LiteralTypes, checked.CallTypes, checked.NameTypes, aliases)
 	if err != nil {
 		reportTranslate(stdout, err)
 		return 1

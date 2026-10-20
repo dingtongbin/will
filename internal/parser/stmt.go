@@ -39,7 +39,7 @@ func (p *Parser) skipDocComments() {
 func (p *Parser) parseStmt() ast.Stmt {
 	switch p.cur().Kind {
 	case token.KwVar, token.KwConst:
-		d := p.parseValueDecl("")
+		d := p.parseValueDecl("", true)
 		return &ast.VarStmt{Span: ast.Span{Start: d.Pos(), End: d.EndPos()}, Decl: d}
 	case token.KwIf:
 		return p.parseIf()

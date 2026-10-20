@@ -1,7 +1,14 @@
 define i32 @"example.com/shared.Double"(i32 %n) {
 entry:
-  %t1 = add i32 %n, %n
-  ret i32 %t1
+  %t1 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %n, i32 %n)
+  %t2 = extractvalue {i32, i1} %t1, 0
+  %t3 = extractvalue {i32, i1} %t1, 1
+  br i1 %t3, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  ret i32 %t2
 }
 define i32 @"example.com/alias.will$main"() {
 entry:
@@ -17,3 +24,8 @@ entry:
   call void @willrt_shutdown()
   ret i32 %r
 }
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [17 x i8] c"shared.will:2:12\00", align 1
+@.str.2 = private unnamed_addr constant [26 x i8] c"example.com/shared.Double\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

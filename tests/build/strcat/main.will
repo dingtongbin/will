@@ -1,0 +1,14 @@
+func main() -> i32 {
+    var a: str = "foo"
+    var b: str = "bar"
+    var c: str = a + b
+    var n: i32 = 0
+    if c.Len() == 6 {
+        n = 1
+    }
+    var d: []u8 = c[Range(0, 3)]
+    if d.Len() == 3 {
+        n = n + 2
+    }
+    return n
+}

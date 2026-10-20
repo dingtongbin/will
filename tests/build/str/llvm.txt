@@ -1,0 +1,147 @@
+define i32 @"example.com/str.At"(ptr %s, i32 %i) {
+entry:
+  %v.utf8.10 = alloca i32
+  %t1 = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0
+  %t2 = load ptr, ptr %t1
+  %t3 = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1
+  %t4 = load i64, ptr %t3
+  %t5 = icmp slt i32 %i, 0
+  br i1 %t5, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  %t6 = sext i32 %i to i64
+  %t7 = icmp uge i64 %t6, %t4
+  br i1 %t7, label %panic.2, label %panic.ok.2
+panic.2:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.2:
+  %t8 = getelementptr inbounds i8, ptr %t2, i64 %t6
+  %t9 = sub i64 %t4, %t6
+  %t10 = call i32 @willrt_utf8_decode(ptr %t8, i64 %t9, ptr %v.utf8.10)
+  %t11 = icmp sle i32 %t10, 0
+  br i1 %t11, label %panic.3, label %panic.ok.3
+panic.3:
+  call void @willrt_panic(ptr @.str.3, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.3:
+  %t12 = load i32, ptr %v.utf8.10
+  ret i32 %t12
+}
+define i32 @"example.com/str.Count"(ptr %s) {
+entry:
+  %v.n = alloca i32
+  %v.utf8.21 = alloca i32
+  %v.utf8n.21 = alloca i64
+  %v.i = alloca i64
+  %v.c = alloca i32
+  store i32 0, ptr %v.n
+  %t13 = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0
+  %t14 = load ptr, ptr %t13
+  %t15 = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1
+  %t16 = load i64, ptr %t15
+  store i64 0, ptr %v.i
+  br label %for.cond.1
+for.cond.1:
+  %t17 = load i64, ptr %v.i
+  %t18 = icmp ult i64 %t17, %t16
+  br i1 %t18, label %for.body.1, label %for.end.1
+for.body.1:
+  %t19 = getelementptr inbounds i8, ptr %t14, i64 %t17
+  %t20 = sub i64 %t16, %t17
+  %t21 = call i32 @willrt_utf8_decode(ptr %t19, i64 %t20, ptr %v.utf8.21)
+  %t22 = icmp sle i32 %t21, 0
+  br i1 %t22, label %panic.2, label %panic.ok.2
+panic.2:
+  call void @willrt_panic(ptr @.str.3, ptr @.str.4, ptr @.str.5)
+  unreachable
+panic.ok.2:
+  %t23 = sext i32 %t21 to i64
+  store i64 %t23, ptr %v.utf8n.21
+  %t24 = load i32, ptr %v.utf8.21
+  store i32 %t24, ptr %v.c
+  %t25 = load i32, ptr %v.c
+  %t26 = icmp eq i32 %t25, 65
+  br i1 %t26, label %if.then.3, label %if.end.3
+if.then.3:
+  %t27 = load i32, ptr %v.n
+  %t28 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t27, i32 1)
+  %t29 = extractvalue {i32, i1} %t28, 0
+  %t30 = extractvalue {i32, i1} %t28, 1
+  br i1 %t30, label %panic.4, label %panic.ok.4
+panic.4:
+  call void @willrt_panic(ptr @.str.6, ptr @.str.7, ptr @.str.5)
+  unreachable
+panic.ok.4:
+  store i32 %t29, ptr %v.n
+  br label %if.end.3
+if.end.3:
+  %t31 = load i64, ptr %v.i
+  br label %for.step.1
+for.step.1:
+  %t32 = load i64, ptr %v.i
+  %t33 = load i64, ptr %v.utf8n.21
+  %t34 = add i64 %t32, %t33
+  store i64 %t34, ptr %v.i
+  br label %for.cond.1
+for.end.1:
+  %t35 = load i32, ptr %v.n
+  ret i32 %t35
+}
+define i32 @"example.com/str.will$main"() {
+entry:
+  %v.str.43 = alloca { ptr, i64 }
+  %v.str.47 = alloca { ptr, i64 }
+  %t36 = getelementptr inbounds { ptr, i64 }, ptr %v.str.43, i32 0, i32 0
+  store ptr @.bytes.1, ptr %t36
+  %t37 = getelementptr inbounds { ptr, i64 }, ptr %v.str.43, i32 0, i32 1
+  store i64 4, ptr %t37
+  %t38 = call i32 @"example.com/str.Count"(ptr %v.str.43)
+  %t39 = getelementptr inbounds { ptr, i64 }, ptr %v.str.47, i32 0, i32 0
+  store ptr @.bytes.1, ptr %t39
+  %t40 = getelementptr inbounds { ptr, i64 }, ptr %v.str.47, i32 0, i32 1
+  store i64 4, ptr %t40
+  %t41 = call i32 @"example.com/str.At"(ptr %v.str.47, i32 0)
+  %t42 = icmp ugt i32 %t41, 2147483647
+  br i1 %t42, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.9, ptr @.str.10, ptr @.str.11)
+  unreachable
+panic.ok.1:
+  %t43 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t38, i32 %t41)
+  %t44 = extractvalue {i32, i1} %t43, 0
+  %t45 = extractvalue {i32, i1} %t43, 1
+  br i1 %t45, label %panic.2, label %panic.ok.2
+panic.2:
+  call void @willrt_panic(ptr @.str.6, ptr @.str.12, ptr @.str.11)
+  unreachable
+panic.ok.2:
+  ret i32 %t44
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/str.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+@.str.0 = private unnamed_addr constant [20 x i8] c"index out of bounds\00", align 1
+@.str.1 = private unnamed_addr constant [15 x i8] c"main.will:2:12\00", align 1
+@.str.2 = private unnamed_addr constant [19 x i8] c"example.com/str.At\00", align 1
+@.str.3 = private unnamed_addr constant [14 x i8] c"invalid UTF-8\00", align 1
+@.str.4 = private unnamed_addr constant [14 x i8] c"main.will:7:5\00", align 1
+@.str.5 = private unnamed_addr constant [22 x i8] c"example.com/str.Count\00", align 1
+@.str.6 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.7 = private unnamed_addr constant [15 x i8] c"main.will:9:13\00", align 1
+@.bytes.1 = private unnamed_addr constant [4 x i8] c"Ahoj", align 1
+@.str.9 = private unnamed_addr constant [24 x i8] c"conversion out of range\00", align 1
+@.str.10 = private unnamed_addr constant [16 x i8] c"main.will:17:28\00", align 1
+@.str.11 = private unnamed_addr constant [26 x i8] c"example.com/str.will$main\00", align 1
+@.str.12 = private unnamed_addr constant [16 x i8] c"main.will:17:12\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)
+declare i32 @willrt_utf8_decode(ptr, i64, ptr)

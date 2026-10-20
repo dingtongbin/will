@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/will-lang/will/internal/willc"
 )
@@ -25,7 +26,13 @@ func (g *generator) collectGlobals() {
 	for _, d := range g.docs {
 		g.use(d)
 		for _, r := range g.topLevelVars(d) {
-			info := &globalInfo{sym: qualify(d.path, fieldText(r, "text")), text: fieldText(r, "type")}
+			text := fieldText(r, "type")
+			// A named type declared in the same package needs its package path
+			// in the text another document reads, or the type cannot be found.
+			if q := qualify(d.path, text); g.declKinds[q] != "" {
+				text = q
+			}
+			info := &globalInfo{sym: qualify(d.path, fieldText(r, "text")), text: text}
 			typ, err := g.declLLVMType(r.ID)
 			if err != nil {
 				// An unsupported global type is reported when the variable is
@@ -98,6 +105,8 @@ func (g *generator) emitInit(d *docState) error {
 	}
 	sym := qualify(d.path, "will$init")
 	g.inits = append(g.inits, sym)
+	g.fnSymbol = sym
+	g.fnResultText = ""
 	g.labels = 0
 	g.slots = map[int]string{}
 	g.slotTypes = map[int]string{}
@@ -130,6 +139,18 @@ func (g *generator) emitInit(d *docState) error {
 	return nil
 }
 
+// canonicalTypeText replaces the package name a document writes with the
+// import path the module uses, so a type of another package has one key in the
+// module-wide indexes.
+func (g *generator) canonicalTypeText(text string) string {
+	if dot := strings.IndexByte(text, '.'); dot > 0 {
+		if path := g.pkgNames[text[:dot]]; path != "" {
+			return path + text[dot:]
+		}
+	}
+	return text
+}
+
 // globalByName returns the top-level variable a qualified name selects.
 func (g *generator) globalByName(name string) *globalInfo {
 	return g.globalSymbols[name]
@@ -147,12 +168,30 @@ func (g *generator) constValueOf(id int) (string, bool) {
 		return "", false
 	}
 	lit, ok := g.recs[kids[0].ID]
-	if !ok || lit.Kind != "lit" {
+	if !ok {
+		return "", false
+	}
+	if lit.Kind == "un" && fieldText(lit, "op") == "-" {
+		inner, ok := g.recs[refField(lit, "expr")]
+		if !ok || inner.Kind != "lit" {
+			return "", false
+		}
+		switch fieldText(inner, "kind") {
+		case "int", "char":
+			return "-" + literalIntText(fieldText(inner, "text")), true
+		case "float":
+			return "-" + literalFloatText(fieldText(inner, "text")), true
+		}
+		return "", false
+	}
+	if lit.Kind != "lit" {
 		return "", false
 	}
 	switch fieldText(lit, "kind") {
-	case "int":
+	case "int", "char":
 		return literalIntText(fieldText(lit, "text")), true
+	case "float":
+		return literalFloatText(fieldText(lit, "text")), true
 	case "bool":
 		return fieldText(lit, "text"), true
 	}

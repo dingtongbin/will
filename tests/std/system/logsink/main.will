@@ -1,0 +1,15 @@
+import "std/log"
+
+struct MySink {
+    last: i32
+}
+
+func (s: MySink) AsyncWrite(level: log.Level, fields: []log.Field, message: str) {
+}
+
+func main() -> i32 {
+    var s: MySink = MySink { last: 0 }
+    var l: log.Logger = log.New(s, log.Level.Info())
+    _ = l
+    return 0
+}

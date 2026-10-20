@@ -1,0 +1,11 @@
+func Id<T>(x: T) -> T {
+    return x
+}
+
+func Twice(x: i32) -> i32 {
+    return Id<i32>(x) + Id<i32>(x)
+}
+
+func main() -> i32 {
+    return Twice(2)
+}

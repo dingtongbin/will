@@ -1,0 +1,53 @@
+%"struct.example.com/new.P" = type { i32, i32 }
+define void @"example.com/new.P.init"(ptr %p, i32 %y) {
+entry:
+  %t1 = getelementptr inbounds %"struct.example.com/new.P", ptr %p, i32 0, i32 1
+  store i32 %y, ptr %t1
+  ret void
+}
+define %"struct.example.com/new.P" @"example.com/new.Make"() {
+entry:
+  %v.new.22 = alloca %"struct.example.com/new.P"
+  store %"struct.example.com/new.P" zeroinitializer, ptr %v.new.22
+  %t2 = getelementptr inbounds %"struct.example.com/new.P", ptr %v.new.22, i32 0, i32 0
+  store i32 5, ptr %t2
+  call void @"example.com/new.P.init"(ptr %v.new.22, i32 7)
+  %t3 = load %"struct.example.com/new.P", ptr %v.new.22
+  ret %"struct.example.com/new.P" %t3
+}
+define i32 @"example.com/new.will$main"() {
+entry:
+  %v.p = alloca %"struct.example.com/new.P"
+  %v.ret.29 = alloca %"struct.example.com/new.P"
+  %t4 = call %"struct.example.com/new.P" @"example.com/new.Make"()
+  store %"struct.example.com/new.P" %t4, ptr %v.ret.29
+  %t5 = load %"struct.example.com/new.P", ptr %v.ret.29
+  store %"struct.example.com/new.P" %t5, ptr %v.p
+  %t6 = getelementptr inbounds %"struct.example.com/new.P", ptr %v.p, i32 0, i32 0
+  %t7 = load i32, ptr %t6
+  %t8 = getelementptr inbounds %"struct.example.com/new.P", ptr %v.p, i32 0, i32 1
+  %t9 = load i32, ptr %t8
+  %t10 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t7, i32 %t9)
+  %t11 = extractvalue {i32, i1} %t10, 0
+  %t12 = extractvalue {i32, i1} %t10, 1
+  br i1 %t12, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  ret i32 %t11
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/new.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:16:12\00", align 1
+@.str.2 = private unnamed_addr constant [26 x i8] c"example.com/new.will$main\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

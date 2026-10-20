@@ -39,8 +39,11 @@ type frontEnd struct {
 	// ast is set when the input is one file outside any module.
 	ast *ast.File
 	// litTypes is the resolved type of every literal of that file, so willc can
-	// record it.
-	litTypes map[*ast.LiteralExpr]string
+	// record it. callTypes and nameTypes do the same for the predeclared
+	// constructors and values.
+	litTypes  map[*ast.LiteralExpr]string
+	callTypes map[*ast.CallExpr]string
+	nameTypes map[*ast.NameExpr]string
 	// aliases maps an import path that aliases a package to the package's
 	// canonical path, so a qualified name matches the declaring package.
 	aliases map[string]string
@@ -49,6 +52,7 @@ type frontEnd struct {
 // runFrontEnd runs the same front end will check runs and prints the same
 // diagnostics, so the two commands never disagree. It returns the entry file.
 func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
+	pkg.SetEnabledFeatures(opts.features)
 	info, err := os.Stat(opts.path)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
@@ -66,11 +70,25 @@ func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		ds = append(ds, b.Freestanding()...)
 	}
 	ds = diag.FilterDisabled(ds, opts.disabled)
-	reportDiagnostics(ds, opts, stdout)
+	diagOut := stdout
+	if opts.textProduct {
+		diagOut = stderr
+	}
+	reportDiagnostics(ds, opts, diagOut)
 	if failed(ds, opts) {
 		return frontEnd{}, 1
 	}
 	imports := b.Imports()
+	if opts.lib {
+		for _, p := range b.Packages {
+			if withinRoot(b.Root, p.Dir) {
+				return frontEnd{modulePath: p.Path, imports: imports, build: b,
+					aliases: b.ImportAliases()}, 0
+			}
+		}
+		reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), diagOut)
+		return frontEnd{}, 1
+	}
 	for _, p := range b.Packages {
 		// Only the module being built can name the entry. A dependency that
 		// happens to declare the same name is not this program's entry.
@@ -91,7 +109,7 @@ func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 			}
 		}
 	}
-	reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
+	reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), diagOut)
 	return frontEnd{}, 1
 }
 
@@ -102,11 +120,15 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return frontEnd{}, 1
 	}
+	diagOut := stdout
+	if opts.textProduct {
+		diagOut = stderr
+	}
 	f, ds := parser.Parse(filepath.ToSlash(opts.path), data)
 	var bag diag.Bag
 	bag.AddAll(ds)
 	if f == nil {
-		reportDiagnostics(diag.FilterDisabled(bag.Diagnostics(), opts.disabled), opts, stdout)
+		reportDiagnostics(diag.FilterDisabled(bag.Diagnostics(), opts.disabled), opts, diagOut)
 		return frontEnd{}, 1
 	}
 	imports, modulePath, names, others, aliases := packageContext(opts.path)
@@ -121,15 +143,15 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		bag.AddAll(check.Freestanding(f))
 	}
 	all := diag.FilterDisabled(bag.Diagnostics(), opts.disabled)
-	reportDiagnostics(all, opts, stdout)
+	reportDiagnostics(all, opts, diagOut)
 	if failed(all, opts) {
 		return frontEnd{}, 1
 	}
-	if !fileDeclaresEntry(f, opts.entry) {
-		reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
+	if !opts.lib && !fileDeclaresEntry(f, opts.entry) {
+		reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), diagOut)
 		return frontEnd{}, 1
 	}
-	fe := frontEnd{file: opts.path, modulePath: modulePath, imports: imports, ast: f, litTypes: checked.LiteralTypes, aliases: aliases}
+	fe := frontEnd{file: opts.path, modulePath: modulePath, imports: imports, ast: f, litTypes: checked.LiteralTypes, callTypes: checked.CallTypes, nameTypes: checked.NameTypes, aliases: aliases}
 	// Inside a module, lower the whole package the file belongs to, so a call
 	// to a sibling file resolves.
 	if b, p := modulePackage(opts.path); b != nil {
@@ -218,8 +240,8 @@ func modulePackage(file string) (*pkg.Build, *pkg.Package) {
 func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 	var docs []*willc.Doc
 	var texts []string
-	emit := func(f *ast.File, path, pkgPath string, res *resolve.Result, lits map[*ast.LiteralExpr]string) error {
-		text, err := willc.Emit(f, res, pkgPath, nil, lits, fe.aliases)
+	emit := func(f *ast.File, path, pkgPath string, res *resolve.Result, lits map[*ast.LiteralExpr]string, calls map[*ast.CallExpr]string, names map[*ast.NameExpr]string) error {
+		text, err := willc.Emit(f, res, pkgPath, nil, lits, calls, names, fe.aliases)
 		if err != nil {
 			return err
 		}
@@ -286,16 +308,20 @@ func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 				results = append(results, res)
 			}
 			lits := map[*ast.LiteralExpr]string{}
+			var calls map[*ast.CallExpr]string
+			var names map[*ast.NameExpr]string
 			if len(files) != 0 {
 				if checked, _ := types.CheckPackageFull(files, results); checked != nil {
 					if checked.LiteralTypes != nil {
 						lits = checked.LiteralTypes
 					}
+					calls = checked.CallTypes
+					names = checked.NameTypes
 				}
 			}
 			before := len(texts)
 			for i := range files {
-				if err := emit(files[i], paths[i], p.Path, results[i], lits); err != nil {
+				if err := emit(files[i], paths[i], p.Path, results[i], lits, calls, names); err != nil {
 					return nil, nil, err
 				}
 			}
@@ -316,7 +342,7 @@ func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 		return nil, nil, &willc.Error{Message: "no source to lower"}
 	}
 	res, _ := resolve.ResolveIn(fe.ast, nil, fe.imports)
-	if err := emit(fe.ast, fe.file, fe.modulePath, res, fe.litTypes); err != nil {
+	if err := emit(fe.ast, fe.file, fe.modulePath, res, fe.litTypes, fe.callTypes, fe.nameTypes); err != nil {
 		return nil, nil, err
 	}
 	return docs, texts, nil
@@ -344,14 +370,18 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 	if code != 0 {
 		return nil, "", code
 	}
+	diagOut := stdout
+	if opts.textProduct {
+		diagOut = stderr
+	}
 	docs, texts, err := fe.docs(opts)
 	if err != nil {
-		reportTranslate(stdout, err)
+		reportTranslate(diagOut, err)
 		return nil, "", 1
 	}
 	record, err := moduleDecisionText(fe, opts.target)
 	if err != nil {
-		reportTranslate(stdout, &willc.Error{Message: err.Error()})
+		reportTranslate(diagOut, &willc.Error{Message: err.Error()})
 		return nil, "", 1
 	}
 	store, key := loweringCacheKey(texts, record, opts)
@@ -360,9 +390,9 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 			return got[cache.ModuleLL], fe.modulePath, 0
 		}
 	}
-	ir, err := gen.EmitModuleWithAliases(docs, opts.entry, fe.modulePath, fe.aliases)
+	ir, err := gen.EmitModuleWithOptions(docs, opts.entry, fe.modulePath, fe.aliases, opts.lib)
 	if err != nil {
-		reportTranslate(stdout, err)
+		reportTranslate(diagOut, err)
 		return nil, "", 1
 	}
 	if store != nil {
@@ -454,7 +484,24 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	if out == "" {
 		out = defaultOutput(modulePath, opts.target, opts.lib)
 	}
-	output, err := clang.BuildIR(ir, out, clangArgs(opts)...)
+	if dir := filepath.Dir(out); dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			fmt.Fprintf(stderr, "will: %v\n", err)
+			return 1
+		}
+	}
+	clangArgsList, err := clangArgs(opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	inputs, err := packageInputs(opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	clangArgsList = append(clangArgsList, inputs...)
+	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
 		fmt.Fprintf(stderr, "will: link failed\n")
@@ -463,8 +510,10 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// clangArgs turns the build flags into driver arguments.
-func clangArgs(opts buildOptions) []string {
+// clangArgs turns the build flags into driver arguments and appends the
+// runtime sources. The IR input is already selected with -x ir; -x none lets
+// the C sources return to suffix-based language selection.
+func clangArgs(opts buildOptions) ([]string, error) {
 	var args []string
 	if opts.opt != "" {
 		args = append(args, opts.opt)
@@ -478,7 +527,147 @@ func clangArgs(opts buildOptions) []string {
 	if opts.lib {
 		args = append(args, "-shared")
 	}
+	root, err := runtimeRoot()
+	if err != nil {
+		return nil, err
+	}
+	for _, dir := range filepath.SplitList(os.Getenv("WILL_LIBPATH")) {
+		if dir != "" {
+			args = append(args, "-L", dir)
+		}
+	}
+	args = append(args, "-x", "none", "-I", filepath.Join(root, "include"))
+	args = append(args, runtimeSources(root, targetName(opts.target))...)
+	if isWindows() {
+		args = append(args, "-lws2_32")
+	}
+	return args, nil
+}
+
+// runtimeRoot finds the runtime tree without relying on the compiler binary's
+// location, because go run places that binary in a temporary directory.
+func runtimeRoot() (string, error) {
+	if root := os.Getenv("WILL_RUNTIME"); root != "" {
+		return root, nil
+	}
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	for {
+		candidate := filepath.Join(dir, "runtime")
+		if _, err := os.Stat(filepath.Join(candidate, "include", "willrt.h")); err == nil {
+			return candidate, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", fmt.Errorf("runtime directory not found; set WILL_RUNTIME")
+}
+
+// runtimeSources lists the C modules every executable needs. The platform file
+// is chosen from the target triple, with the host as the default.
+func runtimeSources(root, target string) []string {
+	platform := "win.c"
+	switch {
+	case strings.Contains(target, "linux"):
+		platform = "linux.c"
+	case strings.Contains(target, "darwin"), strings.Contains(target, "mac"):
+		platform = "mac.c"
+	case strings.Contains(target, "android"):
+		platform = "android.c"
+	case strings.Contains(target, "ios"):
+		platform = "ios.c"
+	}
+	core := []string{
+		filepath.Join("core", "task", "src", "task.c"),
+		filepath.Join("core", "chan", "src", "chan.c"),
+		filepath.Join("core", "blocking", "src", "blocking.c"),
+		filepath.Join("core", "poll", "src", "poll.c"),
+		filepath.Join("core", "mem", "src", "alloc.c"),
+		filepath.Join("core", "rc", "src", "rc.c"),
+		filepath.Join("core", "random", "src", "random.c"),
+		filepath.Join("core", "report", "src", "report.c"),
+		filepath.Join("core", "startup", "src", "startup.c"),
+		filepath.Join("core", "timer", "src", "timer.c"),
+		filepath.Join("core", "utf8", "src", "utf8.c"),
+		filepath.Join("core", "bytes", "src", "bytes.c"),
+	}
+	out := make([]string, 0, len(core)+1)
+	for _, src := range core {
+		out = append(out, filepath.Join(root, src))
+	}
+	out = append(out, filepath.Join(root, "platform", platform))
+	return out
+}
+
+// compileArgs are the flags for IR-only work such as emit-asm; they must not
+// include runtime C sources.
+func compileArgs(opts buildOptions) []string {
+	var args []string
+	if opts.opt != "" {
+		args = append(args, opts.opt)
+	}
+	if opts.debug {
+		args = append(args, "-g")
+	}
+	if opts.target != "" {
+		args = append(args, "--target="+opts.target)
+	}
 	return args
+}
+
+// packageInputs collects the C sources of the built module graph and the
+// external libraries its will.mod names. Package C sources come before the
+// named libraries, so a library can satisfy a symbol the sources call.
+func packageInputs(opts buildOptions) ([]string, error) {
+	if info, err := os.Stat(opts.path); err != nil || !info.IsDir() {
+		return nil, nil
+	}
+	b := pkg.Load(opts.path)
+	if b.Err != nil {
+		return nil, b.Err
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, p := range b.Packages {
+		err := filepath.Walk(p.Dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() || filepath.Ext(path) != ".c" {
+				return nil
+			}
+			if !seen[path] {
+				seen[path] = true
+				out = append(out, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	for _, link := range b.Links {
+		if strings.ContainsAny(link, `/\`) || filepath.IsAbs(link) ||
+			strings.HasSuffix(link, ".a") || strings.HasSuffix(link, ".so") ||
+			strings.HasSuffix(link, ".dylib") || strings.HasSuffix(link, ".lib") {
+			out = append(out, link)
+			continue
+		}
+		out = append(out, "-l"+link)
+	}
+	return out, nil
+}
+
+func targetName(target string) string {
+	if target != "" {
+		return target
+	}
+	return targetTriple()
 }
 
 func runRun(args []string, stdout, stderr io.Writer) int {
@@ -507,7 +696,18 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 			out += ".exe"
 		}
 	}
-	output, err := clang.BuildIR(ir, out, clangArgs(opts)...)
+	clangArgsList, err := clangArgs(opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	inputs, err := packageInputs(opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	clangArgsList = append(clangArgsList, inputs...)
+	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
 		fmt.Fprintf(stderr, "will: link failed\n")
@@ -532,6 +732,7 @@ func runEmitLLVM(args []string, stdout, stderr io.Writer) int {
 	if code != 0 {
 		return code
 	}
+	opts.textProduct = true
 	ir, _, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
@@ -545,6 +746,7 @@ func runEmitAsm(args []string, stdout, stderr io.Writer) int {
 	if code != 0 {
 		return code
 	}
+	opts.textProduct = true
 	ir, _, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
@@ -553,7 +755,7 @@ func runEmitAsm(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return missingTool(stdout, "clang")
 	}
-	asm, err := clang.AssembleIR(ir, clangArgs(opts)...)
+	asm, err := clang.AssembleIR(ir, compileArgs(opts)...)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1

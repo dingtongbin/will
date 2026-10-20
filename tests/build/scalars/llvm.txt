@@ -1,28 +1,35 @@
 define i64 @"example.com/scalars.Sum"(i64 %a, i64 %b) {
 entry:
-  %t1 = add i64 %a, %b
-  ret i64 %t1
+  %t1 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %a, i64 %b)
+  %t2 = extractvalue {i64, i1} %t1, 0
+  %t3 = extractvalue {i64, i1} %t1, 1
+  br i1 %t3, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  ret i64 %t2
 }
 define i1 @"example.com/scalars.Below"(i64 %a, i64 %b) {
 entry:
-  %t2 = icmp ult i64 %a, %b
-  ret i1 %t2
+  %t4 = icmp ult i64 %a, %b
+  ret i1 %t4
 }
 define i64 @"example.com/scalars.Half"(i64 %n) {
 entry:
-  %t3 = lshr i64 %n, 1
-  ret i64 %t3
+  %t5 = lshr i64 %n, 1
+  ret i64 %t5
 }
 define double @"example.com/scalars.Mid"(double %a, double %b) {
 entry:
-  %t4 = fadd double %a, %b
-  %t5 = fdiv double %t4, 2.0
-  ret double %t5
+  %t6 = fadd double %a, %b
+  %t7 = fdiv double %t6, 2.0
+  ret double %t7
 }
 define i32 @"example.com/scalars.will$main"() {
 entry:
-  %t6 = call i1 @"example.com/scalars.Below"(i64 1, i64 2)
-  br i1 %t6, label %if.then.1, label %if.end.1
+  %t8 = call i1 @"example.com/scalars.Below"(i64 1, i64 2)
+  br i1 %t8, label %if.then.1, label %if.end.1
 if.then.1:
   ret i32 0
 if.end.1:
@@ -37,3 +44,8 @@ entry:
   call void @willrt_shutdown()
   ret i32 %r
 }
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [15 x i8] c"main.will:2:12\00", align 1
+@.str.2 = private unnamed_addr constant [24 x i8] c"example.com/scalars.Sum\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

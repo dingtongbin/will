@@ -127,6 +127,11 @@ func registerTypes(res *layout.Resolver, u sourceUnit) error {
 	for _, d := range f.Decls {
 		switch decl := d.(type) {
 		case *ast.StructDecl:
+			// A generic struct has one layout per instantiation, so it has no
+			// single decision record.
+			if len(decl.TypeParams) > 0 {
+				continue
+			}
 			fields := make([]layout.Field, len(decl.Fields))
 			for i, fd := range decl.Fields {
 				spec, err := layoutSpec(fd.Type, u.prefix)
@@ -139,6 +144,9 @@ func registerTypes(res *layout.Resolver, u sourceUnit) error {
 				return err
 			}
 		case *ast.EnumDecl:
+			if len(decl.TypeParams) > 0 {
+				continue
+			}
 			variants := make([]layout.Variant, len(decl.Variants))
 			for i, v := range decl.Variants {
 				args := make([]*layout.Spec, len(v.Args))
@@ -154,6 +162,13 @@ func registerTypes(res *layout.Resolver, u sourceUnit) error {
 			if err := res.AddEnum(qualifiedName(u.prefix, decl.Name), variants); err != nil {
 				return err
 			}
+		case *ast.InterfaceDecl:
+			if len(decl.TypeParams) > 0 {
+				continue
+			}
+			if err := res.AddInterface(qualifiedName(u.prefix, decl.Name)); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -164,6 +179,16 @@ func registerTypes(res *layout.Resolver, u sourceUnit) error {
 // layout is fixed at compile time. A bare named type belongs to the current
 // package, so it is qualified with that package path; a name that already
 // carries a dot is an imported type and is left for a later pass.
+// predeclaredLayoutType reports a generic type name the layout resolver knows
+// without a declaration in the package.
+func predeclaredLayoutType(name string) bool {
+	switch name {
+	case "Array", "Map", "Set", "chan", "Task", "rc", "weak", "Option", "Result", "Range":
+		return true
+	}
+	return false
+}
+
 func layoutSpec(t *ast.Type, prefix string) (*layout.Spec, error) {
 	if t == nil {
 		return nil, fmt.Errorf("the type is missing")
@@ -173,7 +198,7 @@ func layoutSpec(t *ast.Type, prefix string) (*layout.Spec, error) {
 		return &layout.Spec{Kind: layout.ScalarKind, Name: t.Name}, nil
 	case ast.NamedType:
 		name := t.Name
-		if !strings.Contains(name, ".") {
+		if !strings.Contains(name, ".") && name != "Error" && !predeclaredLayoutType(name) {
 			name = qualifiedName(prefix, name)
 		}
 		if len(t.Args) == 0 {
@@ -204,6 +229,8 @@ func layoutSpec(t *ast.Type, prefix string) (*layout.Spec, error) {
 			return nil, err
 		}
 		return &layout.Spec{Kind: layout.SliceKind, Elem: elem}, nil
+	case ast.FuncType:
+		return &layout.Spec{Kind: layout.FuncKind}, nil
 	case ast.UnitType:
 		return &layout.Spec{Kind: layout.UnitKind}, nil
 	}

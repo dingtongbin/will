@@ -12,22 +12,29 @@ for.cond.1:
 for.body.1:
   %t3 = load i32, ptr %v.total
   %t4 = load i32, ptr %v.i
-  %t5 = add i32 %t3, %t4
-  store i32 %t5, ptr %v.total
+  %t5 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t3, i32 %t4)
+  %t6 = extractvalue {i32, i1} %t5, 0
+  %t7 = extractvalue {i32, i1} %t5, 1
+  br i1 %t7, label %panic.2, label %panic.ok.2
+panic.2:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.2:
+  store i32 %t6, ptr %v.total
   br label %for.step.1
 for.step.1:
-  %t6 = load i32, ptr %v.i
-  %t7 = add i32 %t6, 1
-  store i32 %t7, ptr %v.i
+  %t8 = load i32, ptr %v.i
+  %t9 = add i32 %t8, 1
+  store i32 %t9, ptr %v.i
   br label %for.cond.1
 for.end.1:
-  %t8 = load i32, ptr %v.total
-  ret i32 %t8
+  %t10 = load i32, ptr %v.total
+  ret i32 %t10
 }
 define i32 @"example.com/loops.will$main"() {
 entry:
-  %t9 = call i32 @"example.com/loops.Sum"(i32 4)
-  ret i32 %t9
+  %t11 = call i32 @"example.com/loops.Sum"(i32 4)
+  ret i32 %t11
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -38,3 +45,8 @@ entry:
   call void @willrt_shutdown()
   ret i32 %r
 }
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [14 x i8] c"main.will:4:9\00", align 1
+@.str.2 = private unnamed_addr constant [22 x i8] c"example.com/loops.Sum\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

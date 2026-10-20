@@ -1,0 +1,29 @@
+import "std/math/rand"
+import "std/uuid"
+
+func main() -> i32 {
+    var rnd: rand.Rand = rand.New(1)
+    var made: uuid.Uuid = uuid.New(rnd)
+    var madeText: str = made.String()
+    print(madeText, "\n")
+    match uuid.NewRandom() {
+        Ok(random) => {
+            var randomText: str = random.String()
+            print(randomText, "\n")
+        }
+        Err(e) => {
+            _ = e
+        }
+    }
+    var r: Result<uuid.Uuid, Error> = uuid.Parse("00000000-0000-0000-0000-000000000000")
+    match r {
+        Ok(u) => {
+            var s: str = u.String()
+            print(s, "\n")
+        }
+        Err(e) => {
+            _ = e
+        }
+    }
+    return 0
+}

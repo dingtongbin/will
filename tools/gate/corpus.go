@@ -68,6 +68,44 @@ func findCases(dir string) ([]corpusCase, error) {
 				continue
 			}
 			path := filepath.Join(dir, topic.Name(), caseDir.Name())
+			// A case is a module directory. A topic folder may instead group
+			// cases one level down; those modules are cases of their own.
+			if _, err := os.Stat(filepath.Join(path, "will.mod")); err == nil {
+				files, err := caseInputs(path)
+				if err != nil {
+					return nil, err
+				}
+				if len(files) != 0 {
+					out = append(out, corpusCase{name: topic.Name() + "/" + caseDir.Name(), dir: path, files: files})
+				}
+				continue
+			}
+			grouped := false
+			subs, err := os.ReadDir(path)
+			if err != nil {
+				return nil, err
+			}
+			for _, sub := range subs {
+				if !sub.IsDir() {
+					continue
+				}
+				subPath := filepath.Join(path, sub.Name())
+				if _, err := os.Stat(filepath.Join(subPath, "will.mod")); err != nil {
+					continue
+				}
+				files, err := caseInputs(subPath)
+				if err != nil {
+					return nil, err
+				}
+				if len(files) == 0 {
+					continue
+				}
+				grouped = true
+				out = append(out, corpusCase{name: topic.Name() + "/" + caseDir.Name() + "/" + sub.Name(), dir: subPath, files: files})
+			}
+			if grouped {
+				continue
+			}
 			files, err := caseInputs(path)
 			if err != nil {
 				return nil, err
@@ -154,9 +192,9 @@ func runCase(c corpusCase, update bool) ([]string, error) {
 		if len(c.files) != 1 {
 			return rewritten, fmt.Errorf("%s: willc.txt needs exactly one .will input", c.name)
 		}
-		_, got, _, err := inDir(c.dir, "emit-willc", filepath.Base(c.files[0]))
-		if err != nil {
-			return rewritten, fmt.Errorf("%s: %v", c.name, err)
+		code, got, _, err := inDir(c.dir, "emit-willc", filepath.Base(c.files[0]))
+		if err := commandOK(c.name, "emit-willc", code, err); err != nil {
+			return rewritten, err
 		}
 		if update {
 			changed, err := updateRecording(c.dir, "willc.txt", got)
@@ -179,9 +217,9 @@ func runCase(c corpusCase, update bool) ([]string, error) {
 		if _, ok := recorded(c.dir, name); !ok {
 			continue
 		}
-		_, got, _, err := inDir(c.dir, "emit-willc", filepath.Base(f))
-		if err != nil {
-			return rewritten, fmt.Errorf("%s: %v", c.name, err)
+		code, got, _, err := inDir(c.dir, "emit-willc", filepath.Base(f))
+		if err := commandOK(c.name, "emit-willc", code, err); err != nil {
+			return rewritten, err
 		}
 		if update {
 			changed, err := updateRecording(c.dir, name, got)
@@ -199,9 +237,9 @@ func runCase(c corpusCase, update bool) ([]string, error) {
 		}
 	}
 	if _, ok := recorded(c.dir, "llvm.txt"); ok {
-		_, got, _, err := inDir(c.dir, "emit-llvm", target)
-		if err != nil {
-			return rewritten, fmt.Errorf("%s: %v", c.name, err)
+		code, got, _, err := inDir(c.dir, "emit-llvm", target)
+		if err := commandOK(c.name, "emit-llvm", code, err); err != nil {
+			return rewritten, err
 		}
 		if update {
 			changed, err := updateRecording(c.dir, "llvm.txt", got)
@@ -219,9 +257,9 @@ func runCase(c corpusCase, update bool) ([]string, error) {
 		}
 	}
 	if _, ok := recorded(c.dir, "index.txt"); ok {
-		_, got, _, err := inDir(c.dir, "index", ".")
-		if err != nil {
-			return rewritten, fmt.Errorf("%s: %v", c.name, err)
+		code, got, _, err := inDir(c.dir, "index", ".")
+		if err := commandOK(c.name, "index", code, err); err != nil {
+			return rewritten, err
 		}
 		if update {
 			changed, err := updateRecording(c.dir, "index.txt", got)
@@ -311,6 +349,18 @@ func expectedCode(want []byte) int {
 		return 0
 	}
 	return 1
+}
+
+// commandOK reports a corpus command that failed to run or exited nonzero. A
+// recording must never capture a diagnostic in place of the promised output.
+func commandOK(caseName, command string, code int, err error) error {
+	if err != nil {
+		return fmt.Errorf("%s: %v", caseName, err)
+	}
+	if code != 0 {
+		return fmt.Errorf("%s: %s exited with %d", caseName, command, code)
+	}
+	return nil
 }
 
 func mismatch(name, file string, want, got []byte) error {

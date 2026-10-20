@@ -21,6 +21,12 @@ type Result struct {
 	// LiteralTypes is the resolved type text of every literal, by node. The
 	// intermediate format records it, so the backend never infers a width.
 	LiteralTypes map[*ast.LiteralExpr]string
+	// CallTypes is the resolved type text of a predeclared constructor call
+	// (Some, Ok, Err), by node. The expected type supplies the side the call
+	// itself cannot infer, such as the error type of Ok.
+	CallTypes map[*ast.CallExpr]string
+	// NameTypes is the resolved type text of a predeclared value such as None.
+	NameTypes map[*ast.NameExpr]string
 }
 
 // Check checks one resolved file and returns its diagnostics.
@@ -72,7 +78,7 @@ func CheckPackageFull(files []*ast.File, results []*resolve.Result) (*Result, []
 
 // result packages what the checker recorded.
 func (c *checker) result() *Result {
-	return &Result{Dispatch: c.dispatch, LiteralTypes: c.litTypes}
+	return &Result{Dispatch: c.dispatch, LiteralTypes: c.litTypes, CallTypes: c.callTypes, NameTypes: c.nameTypes}
 }
 
 func checkWithResult(f *ast.File, res *resolve.Result, others []*ast.File) (*Result, []diag.Diagnostic) {
@@ -94,6 +100,10 @@ type checker struct {
 	dispatch []DispatchPoint
 	// litTypes is the resolved type text of every literal, by node.
 	litTypes map[*ast.LiteralExpr]string
+	// callTypes and nameTypes are the resolved type texts of the predeclared
+	// constructors and values, by node.
+	callTypes map[*ast.CallExpr]string
+	nameTypes map[*ast.NameExpr]string
 }
 
 func (c *checker) walkFile(f *ast.File) {

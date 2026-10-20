@@ -45,7 +45,7 @@ func containerElem(text string) (string, bool) {
 	default:
 		return "", false
 	}
-	if _, _, ok := llvmScalar(elem); !ok {
+	if elem == "" {
 		return "", false
 	}
 	return elem, true
@@ -69,6 +69,38 @@ func llvmTypeText(text string) (string, bool) {
 	if typ, _, ok := llvmScalar(text); ok {
 		return typ, true
 	}
+	if text == "str" {
+		return "{ ptr, i64 }", true
+	}
+	if text == "Duration" {
+		// A duration is a signed count of nanoseconds.
+		return "i64", true
+	}
+	if strings.HasPrefix(text, "rc<") || strings.HasPrefix(text, "weak<") {
+		// A handle packs the slot and the generation in one u64.
+		return "i64", true
+	}
+	if strings.HasPrefix(text, "Task<") || strings.HasPrefix(text, "chan<") {
+		// A task handle and a channel handle are opaque pointers.
+		return "ptr", true
+	}
+	if strings.HasPrefix(text, "[]") && len(text) > 2 {
+		return "{ ptr, i64 }", true
+	}
+	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
+		return "{ ptr, i64, i64 }", true
+	}
+	if strings.HasPrefix(text, "func(") {
+		// A function value is a code pointer and the environment it reads.
+		// A closure without captures carries a null environment.
+		return "{ ptr, ptr }", true
+	}
+	if _, _, ok := mapTypeText(text); ok {
+		return "{ ptr, i64, i64 }", true
+	}
+	if _, ok := setTypeText(text); ok {
+		return "{ ptr, i64, i64 }", true
+	}
 	if typ, ok := containerLLVM(text); ok {
 		return typ, true
 	}
@@ -83,7 +115,7 @@ func llvmTypeText(text string) (string, bool) {
 // isAggregateType reports whether an LLVM type is one the lowering passes as a
 // borrow and copies as a whole value.
 func isAggregateType(typ string) bool {
-	return isStructType(typ) || strings.HasPrefix(typ, "[") || strings.HasPrefix(typ, "{")
+	return isStructType(typ) || isEnumType(typ) || isIfaceType(typ) || strings.HasPrefix(typ, "[") || strings.HasPrefix(typ, "{")
 }
 
 // loopBindType returns the will type text of one binding of a for record.
@@ -101,6 +133,17 @@ func (g *generator) loopBindType(decl int, name string) (string, bool) {
 func (g *generator) nameSlot(r willc.Record) (string, string, bool) {
 	decl := refField(r, "to")
 	name := fieldText(r, "text")
+	if ptr := g.captureFields[decl]; ptr != "" {
+		return ptr, g.captureTypeOf(decl), true
+	}
+	if slot, ok := g.selectBindSlots[decl]; ok {
+		text := g.selectBindTypes[decl]
+		info, ok := g.adtType(text)
+		if !ok {
+			return "", "", false
+		}
+		return slot, info.llvm, true
+	}
 	if binds, ok := g.loopBinds[decl]; ok {
 		slot, ok := binds[name]
 		if !ok {
@@ -132,6 +175,10 @@ func (g *generator) sliceElem(r willc.Record) (string, error) {
 	if _, elem, ok := arrayTypeText(text); ok {
 		return elem, nil
 	}
+	if text == "str" {
+		// A str slice is a byte view, as the text volume fixes.
+		return "u8", nil
+	}
 	if elem, ok := containerElem(text); ok {
 		return elem, nil
 	}
@@ -147,9 +194,9 @@ func (g *generator) sliceValue(r willc.Record) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	elemType, _, ok := llvmScalar(elem)
-	if !ok {
-		return "", g.errf(r.ID, "cannot translate node #%d: only a view of a lowered scalar is built yet", r.ID)
+	elemType, ok := g.typeLLVMOf(elem)
+	if !ok || elemType == "" {
+		return "", g.errf(r.ID, "cannot translate node #%d: view element %s is not lowered yet", r.ID, elem)
 	}
 	loID, hiID := refField(r, "lo"), refField(r, "hi")
 	for _, id := range []int{loID, hiID} {
@@ -175,8 +222,14 @@ func (g *generator) sliceValue(r willc.Record) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	badOrder := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ugt i64 %s, %s\n", badOrder, lo, hi)
+	g.panicCheck(badOrder, panicSlice, r)
 	var data string
-	if _, _, ok := arrayTypeText(text); ok {
+	if n, _, ok := arrayTypeText(text); ok {
+		badHi := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp ugt i64 %s, %d\n", badHi, hi, n)
+		g.panicCheck(badHi, panicSlice, r)
 		// The fixed array is already its element storage.
 		g.tmp++
 		ptr := "%t" + strconv.Itoa(g.tmp)
@@ -188,6 +241,13 @@ func (g *generator) sliceValue(r willc.Record) (string, error) {
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", field, baseType, base)
 		raw := g.load("ptr", field)
 		g.tmp++
+		lenField := "%t" + strconv.Itoa(g.tmp)
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", lenField, baseType, base)
+		length := g.load("i64", lenField)
+		badHi := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp ugt i64 %s, %s\n", badHi, hi, length)
+		g.panicCheck(badHi, panicSlice, r)
+		g.tmp++
 		ptr := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", ptr, elemType, raw, lo)
 		data = ptr
@@ -195,10 +255,7 @@ func (g *generator) sliceValue(r willc.Record) (string, error) {
 	g.tmp++
 	length := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = sub i64 %s, %s\n", length, hi, lo)
-	slot := g.sliceSlots[r.ID]
-	if slot == "" {
-		return "", g.errf(r.ID, "cannot translate node #%d: the slice has no slot", r.ID)
-	}
+	slot := g.allocSlot(g.sliceSlots, "slice", r.ID, "{ ptr, i64 }")
 	g.tmp++
 	dataField := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", dataField, slot)
@@ -224,9 +281,9 @@ func (g *generator) forContainer(r willc.Record, elem string, void bool, label i
 	if len(names) < 1 || len(names) > 2 {
 		return false, g.errf(r.ID, "cannot translate node #%d: a loop over a view binds one element or an index and an element", r.ID)
 	}
-	elemType, _, ok := llvmScalar(elem)
-	if !ok {
-		return false, g.errf(r.ID, "cannot translate node #%d: only a view of a lowered scalar is iterated yet", r.ID)
+	elemType, ok := g.typeLLVMOf(elem)
+	if !ok || elemType == "" {
+		return false, g.errf(r.ID, "cannot translate node #%d: view element %s is not lowered yet", r.ID, elem)
 	}
 	base, baseType, err := g.place(refField(r, "iter"))
 	if err != nil {
@@ -273,7 +330,7 @@ func (g *generator) forContainer(r willc.Record, elem string, void bool, label i
 		g.loopPtrs[r.ID] = map[string]string{}
 	}
 	g.loopPtrs[r.ID][elemName] = ptr
-	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel})
+	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel, deferDepth: len(g.defers)})
 	done, err := g.body(body, void)
 	g.loops = g.loops[:len(g.loops)-1]
 	if err != nil {
@@ -350,7 +407,7 @@ func (g *generator) forArray(r willc.Record, n int, elem string, void bool, labe
 		g.loopPtrs[r.ID] = map[string]string{}
 	}
 	g.loopPtrs[r.ID][elemName] = ptr
-	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel})
+	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel, deferDepth: len(g.defers)})
 	done, err := g.body(body, void)
 	g.loops = g.loops[:len(g.loops)-1]
 	if err != nil {

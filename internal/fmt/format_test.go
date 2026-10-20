@@ -109,7 +109,7 @@ func emit(t *testing.T, src string) []byte {
 		t.Fatalf("parse: %d diagnostics", len(ds))
 	}
 	res, _ := resolve.Resolve(f)
-	data, err := willc.Emit(f, res, "example.com/app", nil, nil, nil)
+	data, err := willc.Emit(f, res, "example.com/app", nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("emit: %v", err)
 	}

@@ -1,0 +1,93 @@
+// ParseF64 accepts an optional sign, a decimal mantissa with at least one
+// digit, and an optional decimal exponent: [+-]digits[.digits][e[+-]digits].
+// The mantissa is accumulated in binary floating point, so a value with more
+// digits than f64 can hold is rounded rather than rejected.
+func ParseF64(s: str) -> Result<f64, Error> {
+    var value: f64 = 0.0
+    var fraction: f64 = 1.0
+    var exponent: i32 = 0
+    var negative: bool = false
+    var exponentNegative: bool = false
+    var exponentSign: bool = false
+    var seen: bool = false
+    var exponentSeen: bool = false
+    var first: bool = true
+    var inFraction: bool = false
+    var inExponent: bool = false
+    for c in s {
+        if first {
+            first = false
+            if c == asciiPlus {
+                continue
+            }
+            if c == asciiMinus {
+                negative = true
+                continue
+            }
+        }
+        if c >= asciiZero && c <= asciiNine {
+            seen = true
+            if inExponent {
+                exponentSeen = true
+                // A larger exponent already saturates to an infinity or a
+                // zero, so the clamp keeps the scaling loop bounded.
+                if exponent < 400 {
+                    exponent = exponent * 10 + i32(c - asciiZero)
+                    if exponent > 400 {
+                        exponent = 400
+                    }
+                }
+            } else if inFraction {
+                fraction = fraction * 0.1
+                value = value + f64(c - asciiZero) * fraction
+            } else {
+                value = value * 10.0 + f64(c - asciiZero)
+            }
+            continue
+        }
+        if c == asciiDot {
+            if inFraction || inExponent {
+                return Err(fail("invalid float"))
+            }
+            inFraction = true
+            continue
+        }
+        if c == asciiLowerE || c == asciiUpperE {
+            if inExponent || !seen {
+                return Err(fail("invalid float"))
+            }
+            inExponent = true
+            continue
+        }
+        if c == asciiPlus || c == asciiMinus {
+            if !inExponent || exponentSeen || exponentSign {
+                return Err(fail("invalid float"))
+            }
+            exponentSign = true
+            exponentNegative = c == asciiMinus
+            continue
+        }
+        return Err(fail("invalid float"))
+    }
+    if !seen {
+        return Err(fail("no digits"))
+    }
+    if inExponent && !exponentSeen {
+        return Err(fail("invalid float"))
+    }
+    // Scaling one factor at a time keeps subnormal results reachable; a scale
+    // accumulated first would overflow to an infinity near 10^309 and turn a
+    // small result into zero.
+    for i in Range(0, exponent) {
+        if exponentNegative {
+            value = value / 10.0
+        } else {
+            value = value * 10.0
+        }
+        _ = i
+    }
+    if negative {
+        value = -value
+    }
+    return Ok(value)
+}

@@ -1,0 +1,25 @@
+import "std/math/rand"
+
+func main() -> i32 {
+    var r: rand.Rand = rand.New(42u64)
+    var a: u64 = r.NextU64()
+    var b: u64 = r.NextU64()
+    var f: f64 = r.NextF64()
+    var ok: i32 = 0
+    if a == 13679457532755275413u64 {
+        ok += 1
+    }
+    if b == 2949826092126892291u64 {
+        ok += 1
+    }
+    if a != b {
+        ok += 1
+    }
+    if f >= 0.0 {
+        ok += 1
+    }
+    if f < 1.0 {
+        ok += 1
+    }
+    return ok
+}

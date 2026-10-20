@@ -49,6 +49,9 @@ type MethodCallExpr struct {
 	NamePos  source.Pos
 	TypeArgs []*Type
 	Args     []*CallArg
+	// Link is the import c declaration this call names, when the receiver is
+	// the c qualifier. The checker uses its prototype.
+	Link *Link
 }
 
 func (*MethodCallExpr) exprNode() {}

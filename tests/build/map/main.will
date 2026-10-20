@@ -1,0 +1,31 @@
+func Lookup(m: Map<i32, i32>, k: i32) -> i32 {
+    return match m.Get(k) {
+        Some(v) => v
+        None => 0 - 1
+    }
+}
+
+func main() -> i32 {
+    var m: Map<i32, i32> = new Map<i32, i32>(2)
+    m.Set(1, 10)
+    m.Set(2, 20)
+    m.Set(1, 11)
+    var s: i32 = Lookup(m, 2)
+    var t: i32 = Lookup(m, 3)
+    var keys: Array<i32> = m.Keys()
+    var values: Array<i32> = m.Values()
+    var n: i32 = 0
+    for x in keys {
+        n = n + x
+    }
+    for x in values {
+        n = n + x
+    }
+    if m.Has(2) {
+        s = s + 100
+    }
+    if m.Delete(2) {
+        s = s + 1000
+    }
+    return s + t + n
+}

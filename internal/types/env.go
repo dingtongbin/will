@@ -14,6 +14,8 @@ type signature struct {
 	variadic   bool
 	result     *Type
 	typeParams int
+	typeNames  []string
+	recvParams []string
 }
 
 // fieldInfo is one struct field.
@@ -38,7 +40,9 @@ type methodInfo struct {
 type env struct {
 	types    map[string]*Type
 	arity    map[string]int
+	params   map[string][]string
 	fields   map[string][]*fieldInfo
+	enums    map[string]bool
 	variants map[string]*variantInfo
 	funcs    map[string]*signature
 	methods  map[string]*signature
@@ -56,7 +60,9 @@ func newEnv() *env {
 	return &env{
 		types:     map[string]*Type{},
 		arity:     map[string]int{},
+		params:    map[string][]string{},
 		fields:    map[string][]*fieldInfo{},
+		enums:     map[string]bool{},
 		variants:  map[string]*variantInfo{},
 		funcs:     map[string]*signature{},
 		methods:   map[string]*signature{},
@@ -115,6 +121,7 @@ func (b *envBuilder) decl(d ast.Decl) {
 		t := c.in.named(decl.Name, nil)
 		e.types[decl.Name] = t
 		e.arity[decl.Name] = len(decl.TypeParams)
+		e.params[decl.Name] = typeParamNames(decl.TypeParams)
 		e.userTypes[decl.Name] = true
 		var fields []*fieldInfo
 		for _, fd := range decl.Fields {
@@ -126,7 +133,9 @@ func (b *envBuilder) decl(d ast.Decl) {
 		t := c.in.named(decl.Name, nil)
 		e.types[decl.Name] = t
 		e.arity[decl.Name] = len(decl.TypeParams)
+		e.params[decl.Name] = typeParamNames(decl.TypeParams)
 		e.userTypes[decl.Name] = true
+		e.enums[decl.Name] = true
 		for _, v := range decl.Variants {
 			payload := make([]*Type, len(v.Args))
 			for i, at := range v.Args {
@@ -138,6 +147,7 @@ func (b *envBuilder) decl(d ast.Decl) {
 		tp := typeParamSet(decl.TypeParams)
 		e.types[decl.Name] = c.in.named(decl.Name, nil)
 		e.arity[decl.Name] = len(decl.TypeParams)
+		e.params[decl.Name] = typeParamNames(decl.TypeParams)
 		for _, m := range decl.Methods {
 			sig := &signature{name: m.Name}
 			for _, pm := range m.Params {
@@ -171,6 +181,17 @@ func (b *envBuilder) decl(d ast.Decl) {
 	}
 }
 
+func typeParamNames(params []*ast.TypeParam) []string {
+	if len(params) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(params))
+	for _, p := range params {
+		names = append(names, p.Name)
+	}
+	return names
+}
+
 func typeParamSet(params []*ast.TypeParam) map[string]bool {
 	if len(params) == 0 {
 		return nil
@@ -185,6 +206,14 @@ func typeParamSet(params []*ast.TypeParam) map[string]bool {
 func (c *checker) buildSig(decl *ast.FuncDecl) *signature {
 	tp := typeParamSet(decl.TypeParams)
 	sig := &signature{name: decl.Name, typeParams: len(decl.TypeParams)}
+	for _, p := range decl.TypeParams {
+		sig.typeNames = append(sig.typeNames, p.Name)
+	}
+	if decl.Recv != nil {
+		for _, a := range decl.Recv.Type.Args {
+			sig.recvParams = append(sig.recvParams, a.Name)
+		}
+	}
 	for i, pm := range decl.Params {
 		if pm.Variadic {
 			sig.variadic = true

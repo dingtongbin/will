@@ -6,6 +6,37 @@ import (
 	"github.com/will-lang/will/internal/diag"
 )
 
+func TestExplicitTypeArgumentsInstantiateSignature(t *testing.T) {
+	src := "func Id<T>(x: T) -> T {\n    return x\n}\n\nfunc Use() -> i32 {\n    return Id<i32>(3)\n}\n"
+	if ds := checkWithResolve(t, src); len(ds) != 0 {
+		t.Fatalf("explicit type arguments did not instantiate the signature:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestLambdaBodyIsChecked(t *testing.T) {
+	src := "func F() {\n    var f: func(i32) -> i32 = func(x: i32) -> i32 { return \"s\" }\n    _ = f\n}\n"
+	d := findCode(t, checkWithResolve(t, src), diag.CodeTypeMismatch)
+	if d.Message == "" {
+		t.Fatal("the lambda body was not checked")
+	}
+}
+
+func TestNegativeLiteralMayBeTheTypeMinimum(t *testing.T) {
+	src := "func F() -> i64 {\n    var x: i64 = -9223372036854775808\n    return x\n}\n"
+	if ds := checkWithResolve(t, src); len(ds) != 0 {
+		t.Fatalf("the smallest i64 was rejected:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestGenericStructFieldsAndMethods(t *testing.T) {
+	src := "struct Box<T> {\n    value: T\n}\n\n" +
+		"func (b: Box<T>) Get() -> T {\n    return b.value\n}\n\n" +
+		"func main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return b.Get()\n}\n"
+	if ds := checkWithResolve(t, src); len(ds) != 0 {
+		t.Fatalf("a generic struct field and method were not instantiated:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestNoMethodOnUserType(t *testing.T) {
 	src := "struct P {\n    x: i32\n}\n\nfunc F(p: P) -> i32 {\n    return p.Missing()\n}\n"
 	ds := checkWithResolve(t, src)

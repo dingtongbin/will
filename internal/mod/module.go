@@ -32,6 +32,8 @@ type Module struct {
 	Requires []Require
 	Replaces []Replace
 	Features []string
+	// Links are external libraries to pass to the linker, in source order.
+	Links []string
 }
 
 const (
@@ -146,6 +148,12 @@ func (p *parser) parseLine(line string) {
 			}
 		}
 		p.module.Replaces = append(p.module.Replaces, rep)
+	case "link":
+		if len(fields) != 2 || fields[1] == "" {
+			p.bad(p.line, "link <library name or path>", "link takes one library name or path")
+			return
+		}
+		p.module.Links = append(p.module.Links, fields[1])
 	case "feature":
 		if len(fields) != 2 || fields[1] == "" {
 			p.bad(p.line, helpFeature, "feature takes one name")
@@ -153,7 +161,7 @@ func (p *parser) parseLine(line string) {
 		}
 		p.module.Features = append(p.module.Features, fields[1])
 	default:
-		p.bad(p.line, "module, will, require, replace, or feature", "unknown field "+fields[0])
+		p.bad(p.line, "module, will, require, replace, feature, or link", "unknown field "+fields[0])
 	}
 }
 

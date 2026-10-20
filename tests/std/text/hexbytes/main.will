@@ -1,0 +1,75 @@
+import "std/encoding/hex"
+
+// Decode must give back the exact bytes of a UTF-8 text in either case, treat
+// empty text as an empty result, and reject an odd digit count or a foreign
+// character instead of returning a partial result.
+func main() -> i32 {
+    var plain: Result<Array<u8>, Error> = hex.Decode("e4bda0e5a5bd")
+    match plain {
+        Ok(v) => {
+            if v.Len() != usize(6) {
+                return 1
+            }
+            if v.Get(0) != u8(228) {
+                return 2
+            }
+            if v.Get(2) != u8(160) {
+                return 3
+            }
+            if v.Get(5) != u8(189) {
+                return 4
+            }
+        }
+        Err(e) => {
+            return e.Status()
+        }
+    }
+    var upper: Result<Array<u8>, Error> = hex.Decode("E4BDA0")
+    match upper {
+        Ok(v) => {
+            if v.Len() != usize(3) {
+                return 5
+            }
+            if v.Get(1) != u8(189) {
+                return 6
+            }
+        }
+        Err(e) => {
+            return e.Status()
+        }
+    }
+    var empty: Result<Array<u8>, Error> = hex.Decode("")
+    match empty {
+        Ok(v) => {
+            if v.Len() != usize(0) {
+                return 7
+            }
+        }
+        Err(e) => {
+            return e.Status()
+        }
+    }
+    var odd: Result<Array<u8>, Error> = hex.Decode("abc")
+    match odd {
+        Ok(v) => {
+            return 8 + i32(v.Len())
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 9
+            }
+        }
+    }
+    var foreign: Result<Array<u8>, Error> = hex.Decode("zz")
+    match foreign {
+        Ok(v) => {
+            return 10 + i32(v.Len())
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 11
+            }
+        }
+    }
+    return 0
+}

@@ -1,0 +1,14 @@
+import "std/os"
+
+func main() -> i32 {
+    if os.SIGINT != 2 {
+        return 1
+    }
+    if os.SIGTERM != 15 {
+        return 2
+    }
+    if os.SIGHUP != 1 {
+        return 3
+    }
+    return 0
+}

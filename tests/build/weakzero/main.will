@@ -1,0 +1,20 @@
+struct Node {
+    value: i32
+    next: weak<Node>
+}
+
+func main() -> i32 {
+    var w: weak<Node>
+    var a: rc<Node> = new rc<Node>(Node { value: 1, next: w })
+    var b: rc<Node> = new rc<Node>(Node { value: 2, next: a.Weak() })
+    a.next = b.Weak()
+    var v: i32 = 0
+    match a.next.Upgrade() {
+        Some(x) => {
+            v = x.value
+        }
+        None => {
+        }
+    }
+    return v
+}

@@ -1,0 +1,2 @@
+main.will:3:18: T0001 raw(x) is only allowed as a C argument or inside usize(...)
+    help: take the address at the call site, or convert it with usize(raw(x))
