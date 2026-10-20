@@ -1064,10 +1064,14 @@ func (c *checker) cLinkType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	if !link.Variadic && len(call.Args) < len(params) {
 		c.badArity(call.Pos(), link.Name)
 	}
-	if link.Result == nil {
-		return c.in.unit()
+	result := c.in.unit()
+	if link.Result != nil {
+		result = c.buildType(link.Result, nil)
 	}
-	return c.buildType(link.Result, nil)
+	if link.Blocking {
+		return c.in.named("Task", []*Type{result})
+	}
+	return result
 }
 
 // builtinContainerMethod types the Map and Set methods the lowering provides.

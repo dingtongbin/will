@@ -128,6 +128,9 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_print_f64(double)\n")
 		g.out.WriteString("declare void @willrt_print_bool(i32)\n")
 	}
+	if g.needBlockDecl {
+		g.out.WriteString("declare i32 @willrt_blocking_call(ptr, ptr, ptr)\n")
+	}
 	if g.needTaskDecl {
 		g.out.WriteString("declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)\n")
 		g.out.WriteString("declare void @willrt_task_run(ptr)\n")
@@ -417,6 +420,11 @@ func (g *generator) use(d *docState) {
 	g.ifaceDecl = map[string]int{}
 	g.linkSigs = map[string]cLinkSig{}
 	g.linkBlock = map[string]bool{}
+	g.blockingNames = map[int]string{}
+	g.pendingBlock = nil
+	if g.blockingDone == nil {
+		g.blockingDone = map[string]bool{}
+	}
 	g.byType = map[string]*structInfo{}
 	g.byName = map[string]*structInfo{}
 	g.aggSlots = map[int]string{}
@@ -698,9 +706,14 @@ type generator struct {
 	linkSigs map[string]cLinkSig
 	// decls holds module-level C declarations; they cannot be written inside a
 	// function body, so the call site queues them and emitAux writes them.
-	decls     []string
-	declSet   map[string]bool
-	linkBlock map[string]bool
+	decls         []string
+	declSet       map[string]bool
+	linkBlock     map[string]bool
+	blockingNames map[int]string
+	pendingBlock  []blockingRequest
+	blockingDone  map[string]bool
+	blockingSeq   int
+	needBlockDecl bool
 	// resultType is the LLVM type the current function returns, or "" for a
 	// void function.
 	resultType string
@@ -789,6 +802,9 @@ func (g *generator) emitDoc() error {
 		return err
 	}
 	if err := g.emitSpawns(); err != nil {
+		return err
+	}
+	if err := g.emitBlockingSteps(); err != nil {
 		return err
 	}
 	if err := g.emitDrops(); err != nil {
@@ -2835,7 +2851,9 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 	if text == "" {
 		return "", g.errf(r.ID, "cannot translate node #%d: the call returns no value", r.ID)
 	}
-	if _, _, ok := llvmScalar(text); !ok && !isRcText(text) && !isWeakText(text) {
+	_, taskScalar := taskElemText(text)
+	_, chanScalar := chanElemText(text)
+	if _, _, ok := llvmScalar(text); !ok && !isRcText(text) && !isWeakText(text) && !taskScalar && !chanScalar {
 		return "", g.errf(r.ID, "cannot translate node #%d: an aggregate result is a place, not a scalar value", r.ID)
 	}
 	return name, nil
@@ -2849,6 +2867,12 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	}
 	if g.isPrintCall(r) {
 		return g.printCall(r)
+	}
+	if r.Kind == "mcall" && g.isCLink(r) {
+		name := fieldText(r, "text")
+		if g.linkBlock[name] {
+			return g.lowerBlockingCLink(r, name)
+		}
 	}
 	if r.Kind == "mcall" {
 		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {

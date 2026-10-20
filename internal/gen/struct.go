@@ -806,6 +806,17 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 		return "", g.errf(r.ID, "cannot translate node #%d: %s is not a function of this module", r.ID, qualified)
 	}
 	if r.Kind == "mcall" && g.isCLink(r) {
+		name := fieldText(r, "text")
+		if g.linkBlock[name] {
+			if sig, ok := g.linkSigs[name]; ok && sig.typed {
+				result := sig.result
+				if result == "" {
+					result = "()"
+				}
+				return "Task<" + result + ">", nil
+			}
+			return "Task<i32>", nil
+		}
 		if sig, ok := g.linkSigs[fieldText(r, "text")]; ok && sig.typed {
 			if sig.result == "" || sig.result == "()" {
 				return "", nil
