@@ -1,0 +1,21 @@
+// Join returns the parts separated by sep. Each part and the separator is
+// copied as bytes, so a valid text is not decoded and encoded again; Push
+// doubles the buffer when it is full, so the whole join is linear in the total
+// length. A leading or trailing empty part keeps its place, so Join of Split
+// reproduces the original empty segment.
+func Join(parts: []str, sep: str) -> str {
+    var out: Array<u8> = new Array<u8>(0)
+    var first: bool = true
+    for p in parts {
+        if !first {
+            for b in sep[Range(0, sep.Len())] {
+                out.Push(b)
+            }
+        }
+        for b in p[Range(0, p.Len())] {
+            out.Push(b)
+        }
+        first = false
+    }
+    return str(out)
+}

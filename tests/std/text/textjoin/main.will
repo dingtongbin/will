@@ -1,0 +1,29 @@
+import "std/str"
+
+// Join must put sep only between parts, keep an empty part in place, accept an
+// empty separator, and keep the bytes of a UTF-8 part. Split is how a caller
+// gets a []str without naming the shadowed str type.
+func main() -> i32 {
+    if str.Join("a,b,c".Split(","), "-") != "a-b-c" {
+        return 1
+    }
+    if str.Join("abc".Split(","), "-") != "abc" {
+        return 2
+    }
+    if str.Join("".Split(","), "-") != "" {
+        return 3
+    }
+    if str.Join("a,,b".Split(","), "-") != "a--b" {
+        return 4
+    }
+    if str.Join("a,b".Split(","), "") != "ab" {
+        return 5
+    }
+    if str.Join("x".Split(","), "-") != "x" {
+        return 6
+    }
+    if str.Join("\xe4\xbd\xa0,\xe5\xa5\xbd".Split(","), "\xe4\xbd\xa0") != "\xe4\xbd\xa0\xe4\xbd\xa0\xe5\xa5\xbd" {
+        return 7
+    }
+    return 0
+}

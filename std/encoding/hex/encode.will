@@ -1,0 +1,20 @@
+// Encode returns the lowercase hexadecimal text of b: two characters per byte.
+// Lowercase keeps the output stable for comparisons and matches Decode, which
+// accepts either case. Push doubles the array when it is full, so the whole
+// encode stays linear in the input length.
+func Encode(b: []u8) -> str {
+    var out: Array<u8> = new Array<u8>(0)
+    for v in b {
+        out.Push(nibbleChar(v >> 4))
+        out.Push(nibbleChar(v & 15u8))
+    }
+    return str(out)
+}
+
+// nibbleChar maps one four-bit value to its lowercase hexadecimal digit.
+func nibbleChar(v: u8) -> u8 {
+    if v < 10u8 {
+        return 48u8 + v
+    }
+    return 87u8 + v
+}

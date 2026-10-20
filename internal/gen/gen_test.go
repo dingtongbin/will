@@ -319,6 +319,83 @@ func TestEmitNamedFunctionValue(t *testing.T) {
 	}
 }
 
+func TestEmitVariadicCall(t *testing.T) {
+	src := "func Sum(xs: ...i32) -> i32 {\n" +
+		"    var total: i32 = 0\n" +
+		"    for x in xs {\n" +
+		"        total += x\n" +
+		"    }\n" +
+		"    return total\n" +
+		"}\n\n" +
+		"func main() -> i32 {\n" +
+		"    return Sum(1, 2, 3)\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define i32 @"example.com/app.Sum"(ptr %xs)`,
+		`call ptr @willrt_plate_new(i64 3, i64`,
+		`store i32 1, ptr`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitSelect(t *testing.T) {
+	src := "func main() -> i32 {\n" +
+		"    var a: chan<i32> = new chan<i32>(1)\n" +
+		"    var v: i32 = 0\n" +
+		"    select {\n" +
+		"        x = a.Recv() => {\n" +
+		"            v = 1\n" +
+		"        }\n" +
+		"        default => {\n" +
+		"            v = 2\n" +
+		"        }\n" +
+		"    }\n" +
+		"    return v\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`%willrt_arm = type { ptr, ptr, ptr, i32, i64 }`,
+		`call i32 @willrt_select(ptr`,
+		`call i32 @willrt_select_status()`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestDurationLiteral(t *testing.T) {
+	cases := map[string]string{
+		"5ms": "5000000",
+		"2s":  "2000000000",
+		"1us": "1000",
+		"3m":  "180000000000",
+	}
+	for text, want := range cases {
+		got, ok := durationNanos(text)
+		if !ok || got != want {
+			t.Errorf("durationNanos(%q) = %q, %v; want %q", text, got, ok, want)
+		}
+	}
+	if _, ok := durationNanos("5x"); ok {
+		t.Error("durationNanos accepted an unknown unit")
+	}
+}
+
 func TestEmitPrintAndInterpolation(t *testing.T) {
 	src := "func main() -> i32 {\n" +
 		"    var n: i32 = 3\n" +
