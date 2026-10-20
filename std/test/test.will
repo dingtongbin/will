@@ -1,9 +1,13 @@
 // T is the handle a test function receives. It records failures and log lines
 // and owns no global state, so one case cannot affect another.
-struct T {
-    name: str
+struct TestState {
     failed: bool
     logs: Array<str>
+}
+
+struct T {
+    name: str
+    state: rc<TestState>
 }
 
 // B is the handle a benchmark function receives. The runner owns the timing
@@ -23,7 +27,7 @@ struct Capture {
 
 // NewT returns a case handle with no failures and no log lines.
 func NewT(name: str) -> T {
-    return T { name: name, failed: false, logs: new Array<str>(0)}
+    return T { name: name, state: new rc<TestState>(TestState { failed: false, logs: new Array<str>(0)})}
 }
 
 // NewB returns a benchmark handle with one iteration by default.
@@ -38,23 +42,23 @@ func (t: T) Name() -> str {
 
 // Log records one message. It is shown only when the case fails.
 func (mut t: T) Log(msg: str) {
-    t.logs.Push(msg)
+    t.state.logs.Push(msg)
 }
 
 // Fail marks the case as failed without stopping it.
 func (mut t: T) Fail() {
-    t.failed = true
+    t.state.failed = true
 }
 
 // FailNow marks the case and ends it through the shared fatal path.
 func (mut t: T) FailNow() {
-    t.failed = true
+    t.state.failed = true
     Fatal("test failed: " + t.name)
 }
 
 // Failed reports whether the case failed.
 func (t: T) Failed() -> bool {
-    return t.failed
+    return t.state.failed
 }
 
 // Parallel is accepted for source compatibility; this runner is serial.
@@ -65,8 +69,8 @@ func (mut t: T) Parallel() {
 func (mut t: T) Run(name: str, f: func(T)) {
     var child: T = NewT(t.name + "/" + name)
     f(child)
-    if child.failed {
-        t.failed = true
+    if child.Failed() {
+        t.Fail()
     }
 }
 
