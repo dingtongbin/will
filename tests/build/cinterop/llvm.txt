@@ -2,13 +2,19 @@ define i32 @"example.com/cinterop.will$main"() {
 entry:
   %v.p = alloca ptr
   %v.loaded = alloca i32
+  %v.at1 = alloca ptr
+  %v.at2 = alloca ptr
+  %v.at4 = alloca ptr
+  %v.at8 = alloca ptr
+  %v.at16 = alloca ptr
   %v.old = alloca i32
   %v.swapped = alloca i1
+  %v.same = alloca ptr
   %v.tail = alloca ptr
   %v.v = alloca i32
-  %v.pv = alloca ptr
+  %v.av = alloca i32
   %v.at = alloca i64
-  %t1 = call ptr @malloc(i64 8)
+  %t1 = call ptr @malloc(i64 32)
   store ptr %t1, ptr %v.p
   %t2 = load ptr, ptr %v.p
   store i32 41, ptr %t2
@@ -16,33 +22,88 @@ entry:
   %t4 = load i32, ptr %t3
   store i32 %t4, ptr %v.loaded
   %t5 = load ptr, ptr %v.p
-  store atomic i32 1, ptr %t5 seq_cst, align 4
-  %t6 = load ptr, ptr %v.p
-  %t7 = atomicrmw add ptr %t6, i32 1 seq_cst
-  store i32 %t7, ptr %v.old
-  %t8 = load ptr, ptr %v.p
-  %t9 = load i32, ptr %v.old
-  %t10 = cmpxchg ptr %t8, i32 %t9, i32 3 seq_cst seq_cst
-  %t11 = extractvalue { i32, i1 } %t10, 1
-  store i1 %t11, ptr %v.swapped
-  %t12 = load ptr, ptr %v.p
-  %t13 = getelementptr inbounds i8, ptr %t12, i64 4
-  store ptr %t13, ptr %v.tail
+  %t6 = getelementptr inbounds i8, ptr %t5, i64 1
+  store ptr %t6, ptr %v.at1
+  %t7 = load ptr, ptr %v.at1
+  store i8 1, ptr %t7
+  %t8 = load ptr, ptr %v.at1
+  %t9 = load i8, ptr %t8
+  %t10 = load ptr, ptr %v.p
+  %t11 = getelementptr inbounds i8, ptr %t10, i64 2
+  store ptr %t11, ptr %v.at2
+  %t12 = load ptr, ptr %v.at2
+  store i16 2, ptr %t12
+  %t13 = load ptr, ptr %v.at2
+  %t14 = load i16, ptr %t13
+  %t15 = load ptr, ptr %v.p
+  %t16 = getelementptr inbounds i8, ptr %t15, i64 4
+  store ptr %t16, ptr %v.at4
+  %t17 = load ptr, ptr %v.at4
+  store i32 3, ptr %t17
+  %t18 = load ptr, ptr %v.at4
+  %t19 = load i32, ptr %t18
+  %t20 = load ptr, ptr %v.p
+  %t21 = getelementptr inbounds i8, ptr %t20, i64 8
+  store ptr %t21, ptr %v.at8
+  %t22 = load ptr, ptr %v.at8
+  store i64 4, ptr %t22
+  %t23 = load ptr, ptr %v.at8
+  %t24 = load i64, ptr %t23
+  %t25 = load ptr, ptr %v.p
+  %t26 = getelementptr inbounds i8, ptr %t25, i64 16
+  store ptr %t26, ptr %v.at16
+  %t27 = load ptr, ptr %v.at16
+  store double 1.5, ptr %t27
+  %t28 = load ptr, ptr %v.at16
+  %t29 = load double, ptr %t28
+  %t30 = load ptr, ptr %v.p
+  store volatile i32 9, ptr %t30
+  %t31 = load ptr, ptr %v.p
+  %t32 = load volatile i32, ptr %t31
+  %t33 = load ptr, ptr %v.p
+  store atomic i32 1, ptr %t33 seq_cst, align 4
+  %t34 = load ptr, ptr %v.p
+  %t35 = atomicrmw add ptr %t34, i32 1 seq_cst
+  store i32 %t35, ptr %v.old
+  %t36 = load ptr, ptr %v.p
+  %t37 = load i32, ptr %v.old
+  %t38 = cmpxchg ptr %t36, i32 %t37, i32 3 seq_cst seq_cst
+  %t39 = extractvalue { i32, i1 } %t38, 1
+  store i1 %t39, ptr %v.swapped
+  %t40 = load ptr, ptr %v.p
+  %t41 = load ptr, ptr %v.p
+  store ptr %t41, ptr %t40
+  %t42 = load ptr, ptr %v.p
+  %t43 = load ptr, ptr %t42
+  store ptr %t43, ptr %v.same
+  %t44 = load ptr, ptr %v.p
+  %t45 = getelementptr inbounds i8, ptr %t44, i64 4
+  store ptr %t45, ptr %v.tail
   store i32 7, ptr %v.v
-  store ptr %v.v, ptr %v.pv
-  %t14 = load ptr, ptr %v.tail
-  %t15 = ptrtoint ptr %t14 to i64
-  store i64 %t15, ptr %v.at
-  %t16 = load i64, ptr %v.at
-  %t17 = load i1, ptr %v.swapped
-  %t18 = load ptr, ptr %v.pv
-  %t19 = load ptr, ptr %v.p
-  call void @free(ptr %t19)
-  %t20 = call i32 @putchar(i32 65)
-  %t21 = call i32 @add(i32 1, i32 2)
-  %t22 = call double @scale(double 1.5, i32 2)
-  %t23 = load i32, ptr %v.loaded
-  ret i32 %t23
+  %t46 = call i32 @read_int(ptr %v.v)
+  store i32 %t46, ptr %v.av
+  %t47 = load ptr, ptr %v.tail
+  %t48 = ptrtoint ptr %t47 to i64
+  store i64 %t48, ptr %v.at
+  %t49 = load i64, ptr %v.at
+  %t50 = load i1, ptr %v.swapped
+  %t51 = load ptr, ptr %v.same
+  %t52 = load ptr, ptr %v.p
+  call void @free(ptr %t52)
+  %t53 = call i32 @putchar(i32 65)
+  %t54 = call i32 @add(i32 1, i32 2)
+  %t55 = call double @scale(double 1.5, i32 2)
+  %t56 = load i32, ptr %v.loaded
+  %t57 = load i32, ptr %v.av
+  %t58 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t56, i32 %t57)
+  %t59 = extractvalue {i32, i1} %t58, 0
+  %t60 = extractvalue {i32, i1} %t58, 1
+  br i1 %t60, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  ret i32 %t59
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -54,7 +115,13 @@ entry:
   ret i32 %r
 }
 declare ptr @malloc(i64)
+declare i32 @read_int(ptr)
 declare void @free(ptr)
 declare i32 @putchar(i32)
 declare i32 @add(i32, i32)
 declare double @scale(double, i32)
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:40:12\00", align 1
+@.str.2 = private unnamed_addr constant [31 x i8] c"example.com/cinterop.will$main\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

@@ -1,22 +1,41 @@
 import c "api.h"
 
 func main() -> i32 {
-    var p: raw = c.malloc(8usize)
+    var p: raw = c.malloc(32usize)
     p.StoreI32(41)
     var loaded: i32 = p.LoadI32()
+    var at1: raw = p + 1usize
+    at1.StoreU8(1u8)
+    _ = at1.LoadU8()
+    var at2: raw = p + 2usize
+    at2.StoreU16(2u16)
+    _ = at2.LoadU16()
+    var at4: raw = p + 4usize
+    at4.StoreU32(3u32)
+    _ = at4.LoadU32()
+    var at8: raw = p + 8usize
+    at8.StoreU64(4u64)
+    _ = at8.LoadU64()
+    var at16: raw = p + 16usize
+    at16.StoreF64(1.5)
+    _ = at16.LoadF64()
+    p.VolatileStoreU32(9u32)
+    _ = p.VolatileLoadU32()
     p.AtomicStoreU32(1u32)
     var old: u32 = p.AtomicAddU32(1u32)
     var swapped: bool = p.AtomicCasU32(old, 3u32)
+    p.StoreRaw(p)
+    var same: raw = p.LoadRaw()
     var tail: raw = p + 4usize
     var v: i32 = 7
-    var pv: raw = raw(v)
+    var av: i32 = c.read_int(raw(v))
     var at: usize = usize(tail)
     _ = at
     _ = swapped
-    _ = pv
+    _ = same
     c.free(p)
     _ = c.putchar(65)
     _ = c.add(1, 2)
     _ = c.scale(1.5, 2)
-    return loaded
+    return loaded + av
 }

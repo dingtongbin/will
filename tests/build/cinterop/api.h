@@ -8,5 +8,6 @@ void* malloc(size_t n);
 void free(void* p);
 int add(int a, int b);
 double scale(double x, int n);
+int read_int(int* p);
 
 #endif

@@ -416,6 +416,7 @@ func (g *generator) use(d *docState) {
 	g.enumDecl = map[string]int{}
 	g.ifaceDecl = map[string]int{}
 	g.linkSigs = map[string]cLinkSig{}
+	g.linkBlock = map[string]bool{}
 	g.byType = map[string]*structInfo{}
 	g.byName = map[string]*structInfo{}
 	g.aggSlots = map[int]string{}
@@ -697,8 +698,9 @@ type generator struct {
 	linkSigs map[string]cLinkSig
 	// decls holds module-level C declarations; they cannot be written inside a
 	// function body, so the call site queues them and emitAux writes them.
-	decls   []string
-	declSet map[string]bool
+	decls     []string
+	declSet   map[string]bool
+	linkBlock map[string]bool
 	// resultType is the LLVM type the current function returns, or "" for a
 	// void function.
 	resultType string
@@ -862,6 +864,9 @@ func (g *generator) collect() {
 			g.cur.funcs[r.ID] = g.symbolName(name)
 		case "link":
 			g.cur.links[r.ID] = fieldText(r, "text")
+			if fieldText(r, "blocking") == "true" {
+				g.linkBlock[fieldText(r, "text")] = true
+			}
 			if fieldText(r, "typed") == "true" {
 				sig := cLinkSig{
 					result:   fieldText(r, "type"),
@@ -2954,6 +2959,9 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, st
 // when an rc method call has dereferenced its handle.
 func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv string) (string, string, error) {
 	if link {
+		if g.linkBlock[name] {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: a blocking C call is not lowered yet", r.ID)
+		}
 		if sig, ok := g.linkSigs[name]; ok && sig.typed {
 			return g.emitTypedCLink(r, name, sig)
 		}
