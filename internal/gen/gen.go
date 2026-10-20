@@ -142,6 +142,14 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare i32 @willrt_region_exit()\n")
 		g.out.WriteString("declare i32 @willrt_lane_here()\n")
 	}
+	if g.needRcDecl {
+		g.out.WriteString("declare i64 @willrt_rc_new(ptr, i64)\n")
+		g.out.WriteString("declare void @willrt_rc_retain(i64)\n")
+		g.out.WriteString("declare void @willrt_rc_release(i64)\n")
+		g.out.WriteString("declare ptr @willrt_rc_deref(i64)\n")
+		g.out.WriteString("declare i64 @willrt_weak_new(i64)\n")
+		g.out.WriteString("declare i32 @willrt_weak_upgrade(i64, ptr)\n")
+	}
 	if g.needUtf8Decl {
 		g.out.WriteString("declare i32 @willrt_utf8_valid(ptr, i64)\n")
 		g.out.WriteString("declare i32 @willrt_utf8_encode(i32, ptr)\n")
@@ -452,6 +460,7 @@ func (g *generator) use(d *docState) {
 	g.recvOutSlots = map[int]string{}
 	g.recvOptSlots = map[int]string{}
 	g.sendValueSlots = map[int]string{}
+	g.weakOutSlots = map[int]string{}
 	g.selectSlots = map[int]string{}
 	g.selectOutSlots = map[int]string{}
 	g.selectBindSlots = map[int]string{}
@@ -583,6 +592,8 @@ type generator struct {
 	needInterpDecl bool
 	// needTaskDecl records that the lowering calls the task or channel engine.
 	needTaskDecl bool
+	// needRcDecl records that the lowering calls the handle table.
+	needRcDecl bool
 	// needUtf8Decl records a call to the UTF-8 validator or encoder,
 	// needBytesDecl one to the byte search, needPlateDecl one to the plate
 	// allocator, and castSlots holds the two-word result of a str cast.
@@ -638,6 +649,7 @@ type generator struct {
 	recvOutSlots   map[int]string
 	recvOptSlots   map[int]string
 	sendValueSlots map[int]string
+	weakOutSlots   map[int]string
 	variadicSlots  map[int]string
 	strMethodSlots map[int]string
 	trimStartSlots map[int]string
@@ -661,6 +673,10 @@ type generator struct {
 	// loops stacks the labels of the enclosing loops, so break and continue
 	// know where to jump.
 	loops []loopLabels
+	// pendingReleases are the release records that precede a return in the
+	// same block. They run after the return value is evaluated, so a returned
+	// borrow is still alive while it is read.
+	pendingReleases []willc.Record
 	// resultType is the LLVM type the current function returns, or "" for a
 	// void function.
 	resultType string
@@ -943,6 +959,11 @@ func (g *generator) funcDecl(fn willc.Record) error {
 			sig = append(sig, "ptr %"+pname)
 			continue
 		}
+		if isRcText(ptype) || isWeakText(ptype) {
+			g.scope[p.ID] = "%" + pname
+			sig = append(sig, "i64 %"+pname)
+			continue
+		}
 		if typ, _, ok := llvmScalar(ptype); ok {
 			g.scope[p.ID] = "%" + pname
 			sig = append(sig, typ+" %"+pname)
@@ -1204,6 +1225,10 @@ func (g *generator) allocas(fn int) error {
 	}
 	sortByID(news)
 	for _, r := range news {
+		if isRcText(fieldText(r, "type")) {
+			// An rc is one handle built by the table; it needs no slot here.
+			continue
+		}
 		typ, ok := g.typeLLVMOf(fieldText(r, "type"))
 		if !ok || !isAggregateType(typ) {
 			return g.errf(r.ID, "cannot translate node #%d: new type %s is not lowered yet", r.ID, fieldText(r, "type"))
@@ -1387,6 +1412,22 @@ func (g *generator) allocas(fn int) error {
 			if err := g.prepareSelect(r); err != nil {
 				return err
 			}
+		}
+	}
+	// A cast to str and an Upgrade keep their result storage in the entry
+	// block as well.
+	var aux []willc.Record
+	for _, r := range g.recs {
+		if g.enclosingFunc(r.ID) != fn {
+			continue
+		}
+		if r.Kind == "cast" || r.Kind == "mcall" {
+			aux = append(aux, r)
+		}
+	}
+	sortByID(aux)
+	for _, r := range aux {
+		switch r.Kind {
 		case "cast":
 			if to, ok := g.recs[refField(r, "to")]; ok {
 				switch fieldText(to, "text") {
@@ -1395,6 +1436,13 @@ func (g *generator) allocas(fn int) error {
 					g.castSlots[r.ID] = name
 					fmt.Fprintf(g.out, "  %s = alloca { ptr, i64 }\n", name)
 				}
+			}
+		case "mcall":
+			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil &&
+				isWeakText(recvText) && fieldText(r, "text") == "Upgrade" {
+				name := "%v.weakout." + strconv.Itoa(r.ID)
+				g.weakOutSlots[r.ID] = name
+				fmt.Fprintf(g.out, "  %s = alloca i64\n", name)
 			}
 		}
 	}
@@ -1700,6 +1748,21 @@ func (g *generator) assignStmt(r willc.Record) error {
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, tmp, ptr)
 		return nil
 	}
+	targetText, textErr := g.willTypeText(target)
+	if textErr == nil && isRcText(targetText) {
+		value, err := g.value(valueID)
+		if err != nil {
+			return err
+		}
+		g.needRcDecl = true
+		if g.rcCopySource(valueID) {
+			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
+		}
+		old := g.load("i64", ptr)
+		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", old)
+		fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", value, ptr)
+		return nil
+	}
 	if iface, ok := g.ifaceOfType(typ); ok {
 		valueText, err := g.willTypeText(valueID)
 		if err != nil {
@@ -1742,6 +1805,18 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 		valueID = c.ID
 	}
 	typ := g.slotTypes[r.ID]
+	if isRcText(fieldText(r, "type")) {
+		value, err := g.value(valueID)
+		if err != nil {
+			return false, err
+		}
+		if g.rcCopySource(valueID) {
+			g.needRcDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
+		}
+		fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", value, slot)
+		return false, nil
+	}
 	if iface, ok := g.ifaceOfType(typ); ok {
 		valueText, err := g.willTypeText(valueID)
 		if err != nil {
@@ -1776,17 +1851,75 @@ func (g *generator) body(b willc.Record, void bool) (bool, error) {
 	stmts := g.children(b.ID)
 	sortByID(stmts)
 	terminated := false
+	var pending []willc.Record
 	for _, st := range stmts {
 		if terminated {
 			break
 		}
+		if st.Kind == "release" {
+			pending = append(pending, st)
+			continue
+		}
+		if st.Kind == "return" {
+			g.pendingReleases = append(g.pendingReleases, pending...)
+			pending = nil
+			done, err := g.stmt(st, void)
+			if err != nil {
+				return false, err
+			}
+			terminated = done
+			continue
+		}
+		for _, rel := range pending {
+			if err := g.releaseRecord(rel); err != nil {
+				return false, err
+			}
+		}
+		pending = nil
 		done, err := g.stmt(st, void)
 		if err != nil {
 			return false, err
 		}
 		terminated = done
 	}
+	if !terminated {
+		for _, rel := range pending {
+			if err := g.releaseRecord(rel); err != nil {
+				return false, err
+			}
+		}
+	}
 	return terminated, nil
+}
+
+// releaseRecord lowers one release record for the owner still in its slot.
+func (g *generator) releaseRecord(rel willc.Record) error {
+	owner := refField(rel, "owner")
+	slot := g.slots[owner]
+	if slot == "" {
+		return nil
+	}
+	rec, ok := g.recs[owner]
+	if !ok {
+		return nil
+	}
+	text := fieldText(rec, "type")
+	if !needsReleaseText(g, text) {
+		return nil
+	}
+	return g.releaseSlot(slot, text)
+}
+
+// flushReleases runs the releases of a return after its value is ready.
+func (g *generator) flushReleases() error {
+	pending := g.pendingReleases
+	g.pendingReleases = nil
+	for _, rel := range pending {
+		if err := g.releaseRecord(rel); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // stmt lowers one statement and reports whether it ends the current block.
@@ -1813,10 +1946,12 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 	case "block":
 		return g.body(st, void)
 	case "release":
-		// Ownership release is still a boundary: the value runs to the end of
-		// its scope without an explicit free. The allocator contract tests
-		// cover the free path; the lowering will emit it with the ownership
-		// pass.
+		owner := refField(st, "owner")
+		if slot := g.slots[owner]; slot != "" {
+			if err := g.releaseSlot(slot, fieldText(g.recs[owner], "type")); err != nil {
+				return false, err
+			}
+		}
 		return false, nil
 	case "panic":
 		return g.panicStmt(st)
@@ -1846,12 +1981,31 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		if refField(st, "value") != 0 {
 			return false, g.errf(st.ID, "cannot translate node #%d: a void function returns no value", st.ID)
 		}
+		if err := g.flushReleases(); err != nil {
+			return false, err
+		}
 		g.out.WriteString("  ret void\n")
 		return true, nil
 	}
 	valueID := refField(st, "value")
 	if g.resultType == "" {
 		return false, g.errf(st.ID, "cannot translate node #%d: the function returns no value", st.ID)
+	}
+	if isRcText(g.fnResultText) && g.rcCopySource(valueID) {
+		movedLocal := false
+		if name, ok := g.recs[valueID]; ok && name.Kind == "name" {
+			if _, ok := g.slots[refField(name, "to")]; ok {
+				movedLocal = true
+			}
+		}
+		if !movedLocal {
+			value, err := g.value(valueID)
+			if err != nil {
+				return false, err
+			}
+			g.needRcDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
+		}
 	}
 	if iface, ok := g.ifaceOfText(g.fnResultText); ok {
 		valueText, err := g.willTypeText(valueID)
@@ -1867,6 +2021,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 				return false, err
 			}
 			v := g.load(iface.llvm, slot)
+			if err := g.flushReleases(); err != nil {
+				return false, err
+			}
 			fmt.Fprintf(g.out, "  ret %s %s\n", iface.llvm, v)
 			return true, nil
 		}
@@ -1882,11 +2039,17 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		g.tmp++
 		tmp := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = load %s, ptr %s\n", tmp, typ, ptr)
+		if err := g.flushReleases(); err != nil {
+			return false, err
+		}
 		fmt.Fprintf(g.out, "  ret %s %s\n", typ, tmp)
 		return true, nil
 	}
 	value, err := g.value(valueID)
 	if err != nil {
+		return false, err
+	}
+	if err := g.flushReleases(); err != nil {
 		return false, err
 	}
 	fmt.Fprintf(g.out, "  ret %s %s\n", g.resultType, value)
@@ -2240,6 +2403,11 @@ func (g *generator) value(id int) (string, error) {
 	case "unwrap":
 		return g.unwrapValue(r)
 	case "new":
+		if text := fieldText(r, "type"); isRcText(text) {
+			elem, _ := rcElemText(text)
+			handle, _, err := g.constructRc(r, elem)
+			return handle, err
+		}
 		return "", g.errf(id, "cannot translate node #%d: a new value is a place, not a scalar", id)
 	case "un":
 		return g.unary(r)
@@ -2454,7 +2622,7 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 	if text == "" {
 		return "", g.errf(r.ID, "cannot translate node #%d: the call returns no value", r.ID)
 	}
-	if _, _, ok := llvmScalar(text); !ok {
+	if _, _, ok := llvmScalar(text); !ok && !isRcText(text) && !isWeakText(text) {
 		return "", g.errf(r.ID, "cannot translate node #%d: an aggregate result is a place, not a scalar value", r.ID)
 	}
 	return name, nil
@@ -2468,6 +2636,16 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	}
 	if g.isPrintCall(r) {
 		return g.printCall(r)
+	}
+	if r.Kind == "mcall" {
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if isWeakText(recvText) && fieldText(r, "text") == "Upgrade" {
+				return g.upgradeCall(r, recvText)
+			}
+			if isRcText(recvText) {
+				return g.rcMethodCall(r, recvText)
+			}
+		}
 	}
 	if target := refField(r, "to"); target != 0 {
 		if decl, ok := g.recs[target]; ok && g.isFuncValue(decl) {
@@ -2556,16 +2734,26 @@ func (g *generator) linkNamed(cimport int, name string) string {
 // scalar argument is passed by value with its own type; an aggregate argument
 // is passed as the borrow the callee's pointer parameter takes.
 func (g *generator) emitCall(r willc.Record, name string, link bool) (string, string, error) {
+	return g.emitCallFrom(r, name, link, "")
+}
+
+// emitCallFrom writes a call whose receiver pointer may already be known, as
+// when an rc method call has dereferenced its handle.
+func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv string) (string, string, error) {
 	args := g.callArgs(r)
 	parts := make([]string, 0, len(args))
 	// A method call passes its receiver first, as the borrow pointer the
 	// method's hidden first parameter takes.
 	if r.Kind == "mcall" && !link && textField(r, "to") == "" {
-		ptr, _, err := g.place(refField(r, "recv"))
-		if err != nil {
-			return "", "", err
+		if recv != "" {
+			parts = append(parts, "ptr "+recv)
+		} else {
+			ptr, _, err := g.place(refField(r, "recv"))
+			if err != nil {
+				return "", "", err
+			}
+			parts = append(parts, "ptr "+ptr)
 		}
-		parts = append(parts, "ptr "+ptr)
 	}
 	fixed := len(args)
 	if !link && g.varargs[name] {

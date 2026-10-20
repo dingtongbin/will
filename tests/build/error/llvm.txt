@@ -17,7 +17,7 @@ entry:
   %v.agg.25 = alloca %"struct.example.com/error.E"
   %v.str.26 = alloca { ptr, i64 }
   %v.adt.31 = alloca { i32, [4 x i8], %interface.Error }
-  %v.match.35 = alloca i32
+  %v.match.37 = alloca i32
   %t3 = getelementptr inbounds %"struct.example.com/error.E", ptr %v.agg.25, i32 0, i32 0
   %t4 = getelementptr inbounds { ptr, i64 }, ptr %v.str.26, i32 0, i32 0
   store ptr @.bytes.1, ptr %t4
@@ -43,7 +43,7 @@ entry:
 match.arm.1.0:
   %t16 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 2
   %t17 = load i32, ptr %t16
-  store i32 %t17, ptr %v.match.35
+  store i32 %t17, ptr %v.match.37
   br label %match.end.1
 match.next.1.0:
   %t18 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 0
@@ -59,12 +59,12 @@ match.arm.1.1:
   %t26 = getelementptr inbounds [2 x ptr], ptr %t25, i64 0, i64 1
   %t27 = load ptr, ptr %t26
   %t28 = call i32 %t27(ptr %t23)
-  store i32 %t28, ptr %v.match.35
+  store i32 %t28, ptr %v.match.37
   br label %match.end.1
 match.next.1.1:
   unreachable
 match.end.1:
-  %t29 = load i32, ptr %v.match.35
+  %t29 = load i32, ptr %v.match.37
   ret i32 %t29
 }
 define i32 @"example.com/error.will$main"() {

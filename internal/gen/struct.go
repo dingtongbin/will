@@ -401,8 +401,15 @@ func (g *generator) typeOf(id int) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		info := g.byType[base]
-		if info == nil {
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if elem, ok := rcElemText(recvText); ok && isRcText(recvText) {
+				if t, ok := g.typeLLVMOf(elem); ok {
+					base = t
+				}
+			}
+		}
+		info := g.structInfoByLLVM(base)
+		if info == nil || !info.ok {
 			return "", g.errf(id, "cannot translate node #%d: %s has no fields", id, base)
 		}
 		i, ok := info.index[fieldText(r, "text")]
@@ -622,13 +629,14 @@ func (g *generator) willTypeText(id int) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if elem, ok := rcElemText(base); ok && isRcText(base) {
+			base = elem
+		}
 		info := g.byName[base]
 		if info == nil {
-			typ, err := g.typeOf(refField(r, "recv"))
-			if err != nil {
-				return "", err
+			if t, ok := g.typeLLVMOf(base); ok {
+				info = g.structInfoByLLVM(t)
 			}
-			info = g.structInfoByLLVM(typ)
 		}
 		if info == nil || !info.ok {
 			return "", g.errf(id, "cannot translate node #%d: %s has no fields", id, base)
@@ -741,6 +749,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 // callResultText returns the result type text of one call. A call names its
 // callee by a document reference or by the module-wide symbol.
 func (g *generator) callResultText(r willc.Record) (string, error) {
+	if text, known := g.rcCallResult(r); known {
+		return text, nil
+	}
 	if text := g.genericCallResult(r); text != "" {
 		return text, nil
 	}
@@ -921,9 +932,31 @@ func (g *generator) place(id int) (string, string, error) {
 			}
 			return "@" + llvmSymbol(info.sym), info.typ, nil
 		}
-		base, typ, err := g.place(refField(r, "recv"))
-		if err != nil {
-			return "", "", err
+		var base, typ string
+		recvID := refField(r, "recv")
+		recvText, rcErr := g.willTypeText(recvID)
+		if rcErr == nil {
+			if elem, ok := rcElemText(recvText); ok && isRcText(recvText) {
+				handle, err := g.value(recvID)
+				if err != nil {
+					return "", "", err
+				}
+				g.needRcDecl = true
+				object := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = call ptr @willrt_rc_deref(i64 %s)\n", object, handle)
+				typ, ok = g.typeLLVMOf(elem)
+				if !ok {
+					return "", "", g.errf(id, "cannot translate node #%d: rc value %s is not lowered yet", id, elem)
+				}
+				base = object
+			}
+		}
+		if base == "" {
+			var err error
+			base, typ, err = g.place(recvID)
+			if err != nil {
+				return "", "", err
+			}
 		}
 		info := g.structInfoByLLVM(typ)
 		if info == nil || !info.ok {
@@ -1040,6 +1073,10 @@ func (g *generator) place(id int) (string, string, error) {
 			typ = qualifiedTypeName(text)
 		} else if text != "" && g.enumTypes[text] {
 			typ = qualifiedEnumName(text)
+		} else if text != "" {
+			if t, ok := g.typeLLVMOf(text); ok && isAggregateType(t) {
+				typ = t
+			}
 		}
 		if typ == "" {
 			return "", "", g.errf(id, "cannot translate node #%d: the call result is not an aggregate", id)
@@ -1091,6 +1128,10 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 		v, err := g.value(valueID)
 		if err != nil {
 			return err
+		}
+		if isRcText(info.texts[i]) && g.rcCopySource(valueID) {
+			g.needRcDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", v)
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.types[i], v, ptr)
 	}

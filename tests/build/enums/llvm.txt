@@ -122,7 +122,7 @@ entry:
   %v.h = alloca %"struct.example.com/enums.Holder"
   %v.agg.92 = alloca %"struct.example.com/enums.Holder"
   %v.enum.93 = alloca %"enum.example.com/enums.Shape"
-  %v.enum.101 = alloca %"enum.example.com/enums.Shape"
+  %v.enum.102 = alloca %"enum.example.com/enums.Shape"
   %t40 = getelementptr inbounds %"struct.example.com/enums.Holder", ptr %v.agg.92, i32 0, i32 0
   %t41 = getelementptr inbounds %"enum.example.com/enums.Shape", ptr %v.enum.93, i32 0, i32 0
   store i32 1, ptr %t41
@@ -134,11 +134,11 @@ entry:
   store i32 2, ptr %t44
   %t45 = load %"struct.example.com/enums.Holder", ptr %v.agg.92
   store %"struct.example.com/enums.Holder" %t45, ptr %v.h
-  %t46 = getelementptr inbounds %"enum.example.com/enums.Shape", ptr %v.enum.101, i32 0, i32 0
+  %t46 = getelementptr inbounds %"enum.example.com/enums.Shape", ptr %v.enum.102, i32 0, i32 0
   store i32 1, ptr %t46
-  %t47 = getelementptr inbounds %"enum.example.com/enums.Shape", ptr %v.enum.101, i32 0, i32 1
+  %t47 = getelementptr inbounds %"enum.example.com/enums.Shape", ptr %v.enum.102, i32 0, i32 1
   store i32 3, ptr %t47
-  %t48 = call i32 @"example.com/enums.Area"(ptr %v.enum.101)
+  %t48 = call i32 @"example.com/enums.Area"(ptr %v.enum.102)
   %t49 = call i32 @"example.com/enums.Count"(ptr %v.h)
   %t50 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t48, i32 %t49)
   %t51 = extractvalue {i32, i1} %t50, 0

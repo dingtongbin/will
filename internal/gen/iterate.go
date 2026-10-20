@@ -76,6 +76,10 @@ func llvmTypeText(text string) (string, bool) {
 		// A duration is a signed count of nanoseconds.
 		return "i64", true
 	}
+	if strings.HasPrefix(text, "rc<") || strings.HasPrefix(text, "weak<") {
+		// A handle packs the slot and the generation in one u64.
+		return "i64", true
+	}
 	if strings.HasPrefix(text, "Task<") || strings.HasPrefix(text, "chan<") {
 		// A task handle and a channel handle are opaque pointers.
 		return "ptr", true

@@ -26,13 +26,17 @@ func (e *emitter) emitBlock(b *ast.Block) int {
 	for _, s := range b.Stmts {
 		switch {
 		case isEarlyExit(s):
-			e.emitReleases(e.liveOwned(exitFloor(e, s)), s)
+			owned := e.liveOwned(exitFloor(e, s))
+			if ret, ok := s.(*ast.ReturnStmt); ok {
+				owned = withoutReturnedName(owned, ret.Value)
+			}
+			e.emitReleases(owned, s)
 		case containsTry(s):
 			e.emitReleases(e.liveOwned(0), s)
 		}
 		e.emitStmt(s)
 		if vs, ok := s.(*ast.VarStmt); ok {
-			if vd, ok := vs.Decl.(*ast.VarDecl); ok && ast.OwnsHeap(vd.Type) && vd.Name != "_" {
+			if vd, ok := vs.Decl.(*ast.VarDecl); ok && ast.NeedsRelease(vd.Type) && vd.Name != "_" {
 				e.scopes[scope] = append(e.scopes[scope], vd)
 			}
 		}
@@ -56,6 +60,23 @@ func exitFloor(e *emitter, s ast.Stmt) int {
 		}
 	}
 	return 0
+}
+
+// withoutReturnedName drops the owner a return moves out, so its reference is
+// handed to the caller instead of being released in this frame.
+func withoutReturnedName(owned []ast.Node, value ast.Expr) []ast.Node {
+	name, ok := value.(*ast.NameExpr)
+	if !ok {
+		return owned
+	}
+	out := owned[:0]
+	for _, node := range owned {
+		if vd, ok := node.(*ast.VarDecl); ok && vd.Name == name.Name {
+			continue
+		}
+		out = append(out, node)
+	}
+	return out
 }
 
 // emitReleases writes one release group: reverse declaration order, the given

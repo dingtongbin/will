@@ -73,7 +73,14 @@ func (g *generator) typeLLVMOf(text string) (string, bool) {
 	if info := g.ifaceByName[text]; info != nil {
 		return info.llvm, true
 	}
-	switch g.declKinds[text] {
+	kind := g.declKinds[text]
+	if kind == "" && !strings.Contains(text, ".") {
+		kind = g.declKinds[qualify(g.pkg, text)]
+		if kind != "" {
+			text = qualify(g.pkg, text)
+		}
+	}
+	switch kind {
 	case "struct":
 		return qualifiedTypeName(text), true
 	case "enum":

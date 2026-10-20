@@ -179,6 +179,16 @@ func registerTypes(res *layout.Resolver, u sourceUnit) error {
 // layout is fixed at compile time. A bare named type belongs to the current
 // package, so it is qualified with that package path; a name that already
 // carries a dot is an imported type and is left for a later pass.
+// predeclaredLayoutType reports a generic type name the layout resolver knows
+// without a declaration in the package.
+func predeclaredLayoutType(name string) bool {
+	switch name {
+	case "Array", "Map", "Set", "chan", "Task", "rc", "weak", "Option", "Result", "Range":
+		return true
+	}
+	return false
+}
+
 func layoutSpec(t *ast.Type, prefix string) (*layout.Spec, error) {
 	if t == nil {
 		return nil, fmt.Errorf("the type is missing")
@@ -188,7 +198,7 @@ func layoutSpec(t *ast.Type, prefix string) (*layout.Spec, error) {
 		return &layout.Spec{Kind: layout.ScalarKind, Name: t.Name}, nil
 	case ast.NamedType:
 		name := t.Name
-		if !strings.Contains(name, ".") && name != "Error" {
+		if !strings.Contains(name, ".") && name != "Error" && !predeclaredLayoutType(name) {
 			name = qualifiedName(prefix, name)
 		}
 		if len(t.Args) == 0 {

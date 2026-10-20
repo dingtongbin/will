@@ -1,0 +1,149 @@
+import "std/str"
+
+// ParseI64 and ParseU64 must accept a sign where the type has one, every base
+// from 2 to 36, and the exact bounds of the type; a rejected text reports the
+// stable Invalid status, 2.
+func main() -> i32 {
+    if str.ParseI64("0", 10)! != 0i64 {
+        return 1
+    }
+    if str.ParseI64("+7", 10)! != 7i64 {
+        return 2
+    }
+    if str.ParseI64("-0", 10)! != 0i64 {
+        return 3
+    }
+    if str.ParseI64("9223372036854775807", 10)! != 9223372036854775807i64 {
+        return 4
+    }
+    if str.ParseI64("-9223372036854775808", 10)! != -9223372036854775807i64 - 1 {
+        return 5
+    }
+    if str.ParseI64("ff", 16)! != 255i64 {
+        return 6
+    }
+    if str.ParseI64("z", 36)! != 35i64 {
+        return 7
+    }
+    var digit: Result<i64, Error> = str.ParseI64("12x", 10)
+    match digit {
+        Ok(v) => {
+            return 8 + i32(v)
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 9
+            }
+        }
+    }
+    var empty: Result<i64, Error> = str.ParseI64("", 10)
+    match empty {
+        Ok(v) => {
+            return 10 + i32(v)
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 11
+            }
+        }
+    }
+    var wide: Result<i64, Error> = str.ParseI64("9223372036854775808", 10)
+    match wide {
+        Ok(v) => {
+            return 12 + i32(v)
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 13
+            }
+        }
+    }
+    var base: Result<i64, Error> = str.ParseI64("1", 1)
+    match base {
+        Ok(v) => {
+            return 14 + i32(v)
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 15
+            }
+        }
+    }
+    if str.ParseU64("0", 10)! != 0u64 {
+        return 16
+    }
+    if str.ParseU64("18446744073709551615", 10)! != 18446744073709551615u64 {
+        return 17
+    }
+    if str.ParseU64("ff", 16)! != 255u64 {
+        return 18
+    }
+    var negative: Result<u64, Error> = str.ParseU64("-1", 10)
+    match negative {
+        Ok(v) => {
+            return 19 + i32(v)
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 20
+            }
+        }
+    }
+    // ParseF64 accepts a sign, a missing whole or fractional part, and a
+    // decimal exponent; the vectors stay exactly representable.
+    if str.ParseF64("2")! != 2.0 {
+        return 21
+    }
+    if str.ParseF64("+3.5")! != 3.5 {
+        return 22
+    }
+    if str.ParseF64("-0.25")! != -0.25 {
+        return 23
+    }
+    if str.ParseF64("1.")! != 1.0 {
+        return 24
+    }
+    if str.ParseF64(".5")! != 0.5 {
+        return 25
+    }
+    if str.ParseF64("1.5e3")! != 1500.0 {
+        return 26
+    }
+    if str.ParseF64("1e3")! != 1000.0 {
+        return 27
+    }
+    var noDigits: Result<f64, Error> = str.ParseF64("")
+    match noDigits {
+        Ok(v) => {
+            return 28 + i32(v)
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 29
+            }
+        }
+    }
+    var noExponent: Result<f64, Error> = str.ParseF64("1e")
+    match noExponent {
+        Ok(v) => {
+            return 30 + i32(v)
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 31
+            }
+        }
+    }
+    var foreign: Result<f64, Error> = str.ParseF64("abc")
+    match foreign {
+        Ok(v) => {
+            return 32 + i32(v)
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 33
+            }
+        }
+    }
+    return 0
+}

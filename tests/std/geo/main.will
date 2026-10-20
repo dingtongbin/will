@@ -1,0 +1,74 @@
+import "std/geo"
+import "std/math"
+
+// close compares a measured value with the value the great-circle formula
+// gives for the same points. The tolerance is in the unit of the measurement.
+func close(actual: f64, want: f64, tolerance: f64) -> bool {
+    return math.Abs(actual - want) <= tolerance
+}
+
+func main() -> i32 {
+    var origin: geo.Point = geo.Point { lat: 0.0, lon: 0.0}
+    var east: geo.Point = geo.Point { lat: 0.0, lon: 90.0}
+    var west: geo.Point = geo.Point { lat: 0.0, lon: -90.0}
+    var pole: geo.Point = geo.Point { lat: 90.0, lon: 0.0}
+    var london: geo.Point = geo.Point { lat: 51.5072, lon: -0.1276}
+    var paris: geo.Point = geo.Point { lat: 48.8566, lon: 2.3522}
+
+    // A quarter turn along the equator is a quarter of the circumference.
+    if !close(origin.Distance(east), 10007557.221018, 0.001) {
+        return 1
+    }
+    if !close(origin.Distance(west), 10007557.221018, 0.001) {
+        return 2
+    }
+    if !close(origin.Bearing(east), 90.0, 1.0e-6) {
+        return 3
+    }
+    if !close(origin.Bearing(west), 270.0, 1.0e-6) {
+        return 4
+    }
+    // From the north pole every direction along the meridian is south.
+    if !close(pole.Distance(origin), 10007557.221018, 0.001) {
+        return 5
+    }
+    if !close(pole.Bearing(origin), 180.0, 1.0e-6) {
+        return 6
+    }
+    // London to Paris, computed with the same mean radius the package uses.
+    if !close(london.Distance(paris), 343530.339999, 0.01) {
+        return 7
+    }
+    if !close(london.Bearing(paris), 148.115774509, 1.0e-6) {
+        return 8
+    }
+    // The same point is zero meters away and has no initial bearing.
+    if origin.Distance(origin) != 0.0 {
+        return 9
+    }
+    if origin.Bearing(origin) != 0.0 {
+        return 10
+    }
+    // The longer way around the globe is a half circumference.
+    var opposite: geo.Point = geo.Point { lat: 0.0, lon: 180.0}
+    if !close(origin.Distance(opposite), 20015114.442036, 0.01) {
+        return 11
+    }
+    // Two degrees across the date line are two degrees, not 358.
+    var nearEast: geo.Point = geo.Point { lat: 0.0, lon: 179.0}
+    var nearWest: geo.Point = geo.Point { lat: 0.0, lon: -179.0}
+    if !close(nearEast.Distance(nearWest), 222390.160467, 0.01) {
+        return 12
+    }
+    if !close(nearEast.Bearing(nearWest), 90.0, 1.0e-6) {
+        return 13
+    }
+    var sydney: geo.Point = geo.Point { lat: -33.8688, lon: 151.2093}
+    if !close(sydney.Distance(london), 16993955.738855, 0.01) {
+        return 14
+    }
+    if !close(sydney.Bearing(london), 319.170911705, 1.0e-6) {
+        return 15
+    }
+    return 0
+}

@@ -319,6 +319,48 @@ func TestEmitNamedFunctionValue(t *testing.T) {
 	}
 }
 
+func TestEmitRcHandles(t *testing.T) {
+	src := "struct Counter {\n" +
+		"    n: i32\n" +
+		"}\n\n" +
+		"func (mut c: Counter) Add(d: i32) {\n" +
+		"    c.n += d\n" +
+		"}\n\n" +
+		"func Identity(c: rc<Counter>) -> rc<Counter> {\n" +
+		"    return c\n" +
+		"}\n\n" +
+		"func main() -> i32 {\n" +
+		"    var c: rc<Counter> = new rc<Counter>(Counter { n: 1 })\n" +
+		"    c.Add(1)\n" +
+		"    var d: rc<Counter> = c\n" +
+		"    var w: weak<Counter> = c.Weak()\n" +
+		"    var u: Option<rc<Counter>> = w.Upgrade()\n" +
+		"    var e: rc<Counter> = Identity(d)\n" +
+		"    _ = e\n" +
+		"    _ = u\n" +
+		"    return c.n\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`call i64 @willrt_rc_new(ptr`,
+		`call void @willrt_rc_retain(i64`,
+		`call void @willrt_rc_release(i64`,
+		`call i64 @willrt_weak_new(i64`,
+		`call i32 @willrt_weak_upgrade(i64`,
+		`call ptr @willrt_rc_deref(i64`,
+		`define void @"example.com/app.Counter.Add"(ptr %c, i32 %d)`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitVariadicCall(t *testing.T) {
 	src := "func Sum(xs: ...i32) -> i32 {\n" +
 		"    var total: i32 = 0\n" +

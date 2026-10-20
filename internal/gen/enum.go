@@ -477,7 +477,11 @@ func (g *generator) sizeAlign(typ string) (int, int, bool) {
 		}
 		return alignUp(size, align), align, true
 	}
-	if info := g.byType[typ]; info != nil {
+	info := g.byType[typ]
+	if info == nil && isStructType(typ) {
+		info = g.structInfoByLLVM(typ)
+	}
+	if info != nil {
 		size, align := 0, 1
 		for _, f := range info.types {
 			fs, fa, ok := g.sizeAlign(f)

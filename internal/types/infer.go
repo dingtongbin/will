@@ -908,6 +908,24 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	for _, a := range call.Args {
 		c.inferExpr(s, a.Expr)
 	}
+	if recv != nil && recv.Kind() == NamedKind && recv.Name() == "rc" && len(recv.Args()) == 1 {
+		switch call.Name {
+		case "Weak":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.named("weak", []*Type{recv.Args()[0]})
+		case "Clone":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return recv
+		}
+		recv = recv.Args()[0]
+	}
+	if recv != nil && recv.Kind() == NamedKind && recv.Name() == "weak" && len(recv.Args()) == 1 {
+		if call.Name == "Upgrade" {
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.named("Option", []*Type{c.in.named("rc", []*Type{recv.Args()[0]})})
+		}
+		return nil
+	}
 	switch call.Name {
 	case "Recv":
 		return elemOf(c.in, recv)
@@ -1069,6 +1087,12 @@ func (c *checker) fieldType(recv *Type, name string, pos source.Pos) *Type {
 	if recv == nil || recv.Kind() != NamedKind {
 		return nil
 	}
+	if recv.Name() == "rc" && len(recv.Args()) == 1 {
+		recv = recv.Args()[0]
+		if recv == nil || recv.Kind() != NamedKind {
+			return nil
+		}
+	}
 	fields, known := c.env.fields[recv.Name()]
 	if !known {
 		return nil
@@ -1119,6 +1143,17 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 	name := ""
 	if t != nil {
 		name = t.Name()
+	}
+	if name == "rc" && t != nil && len(t.Args()) == 1 {
+		if len(n.Args) != 1 {
+			c.badArity(n.Pos(), name)
+			for _, a := range n.Args {
+				c.inferExpr(s, a.Expr)
+			}
+			return t
+		}
+		c.checkValue(s, n.Args[0].Expr, t.Args()[0])
+		return t
 	}
 	if strings.Contains(name, ".") {
 		// A type from another package has no declaration in this environment.

@@ -4,6 +4,7 @@ entry:
   %v.text = alloca { ptr, i64 }
   %v.new.8 = alloca { ptr, i64, i64 }
   %v.str.29 = alloca { ptr, i64 }
+  %v.cast.22 = alloca { ptr, i64 }
   %t1 = sext i32 2 to i64
   %t2 = call ptr @willrt_alloc(i64 2)
   %t3 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 0
@@ -53,7 +54,6 @@ utf8.bad.3:
 utf8.ok.3:
   %t27 = call ptr @willrt_alloc(i64 %t24)
   call void @memcpy(ptr %t27, ptr %t22, i64 %t24)
-  %v.cast.22 = alloca { ptr, i64 }
   %t28 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.22, i32 0, i32 0
   store ptr %t27, ptr %t28
   %t29 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.22, i32 0, i32 1

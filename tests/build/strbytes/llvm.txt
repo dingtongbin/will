@@ -15,6 +15,8 @@ entry:
   %v.ret.51 = alloca { ptr, i64, i64 }
   %v.str.7 = alloca { ptr, i64 }
   %v.str.91 = alloca { ptr, i64 }
+  %v.cast.55 = alloca { ptr, i64 }
+  %v.cast.63 = alloca { ptr, i64 }
   %v.slice.11 = alloca { ptr, i64 }
   %v.slice.18 = alloca { ptr, i64 }
   %v.slice.57 = alloca { ptr, i64 }
@@ -211,7 +213,6 @@ utf8.bad.8:
 utf8.ok.8:
   %t128 = call ptr @willrt_alloc(i64 %t125)
   call void @memcpy(ptr %t128, ptr %t123, i64 %t125)
-  %v.cast.55 = alloca { ptr, i64 }
   %t129 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.55, i32 0, i32 0
   store ptr %t128, ptr %t129
   %t130 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.55, i32 0, i32 1
@@ -227,7 +228,6 @@ utf8.bad.9:
   unreachable
 utf8.ok.9:
   %t135 = sext i32 %t133 to i64
-  %v.cast.63 = alloca { ptr, i64 }
   %t136 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.63, i32 0, i32 0
   store ptr %t132, ptr %t136
   %t137 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.63, i32 0, i32 1

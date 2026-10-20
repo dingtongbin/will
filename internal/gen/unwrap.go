@@ -110,7 +110,14 @@ func (g *generator) unwrapValue(r willc.Record) (string, error) {
 	if isAggregateType(typ) {
 		return "", g.errf(r.ID, "cannot translate node #%d: the payload is an aggregate place", r.ID)
 	}
-	return g.load(typ, addr), nil
+	value := g.load(typ, addr)
+	if _, text, err := g.unwrapType(r); err == nil && isRcText(text) {
+		// The Option still owns its reference, so the copy this ! yields owns
+		// one of its own.
+		g.needRcDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
+	}
+	return value, nil
 }
 
 // unwrapPlace lowers `expr!` in a place position.

@@ -10,11 +10,7 @@ import (
 // arrayElemText returns the element type of an Array<T> whose element is
 // lowered as a scalar. Aggregate elements wait for the generic container work.
 func arrayElemText(text string) (string, bool) {
-	elem, ok := containerElem(text)
-	if !ok {
-		return "", false
-	}
-	return elem, true
+	return containerElem(text)
 }
 
 // viewElemText returns the element text of a read-only view []T.
@@ -160,8 +156,8 @@ func (g *generator) viewGetPlace(r willc.Record, elem string) (string, string, e
 // the three-word value (data, length, capacity). The length starts at zero.
 func (g *generator) constructArray(r willc.Record, elem string) (string, string, error) {
 	slot := g.allocSlot(g.newSlots, "new", r.ID, "{ ptr, i64, i64 }")
-	elemLLVM, _, ok := llvmScalar(elem)
-	if !ok {
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s is not lowered yet", r.ID, elem)
 	}
 	size, align, ok := g.sizeAlign(elemLLVM)
@@ -256,8 +252,8 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 	if typ != "{ ptr, i64, i64 }" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the receiver is not an Array", r.ID)
 	}
-	elemLLVM, _, ok := llvmScalar(elem)
-	if !ok {
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s is not lowered yet", r.ID, elem)
 	}
 	field := func(i int) string {
@@ -284,6 +280,17 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 		}
 		if len(args) < 2 {
 			return "", "", g.errf(r.ID, "cannot translate node #%d: Set needs a value", r.ID)
+		}
+		if isAggregateType(elemLLVM) {
+			src, srcType, err := g.place(args[1])
+			if err != nil {
+				return "", "", err
+			}
+			if srcType != elemLLVM {
+				return "", "", g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
+			}
+			g.copyValue(src, ptr, elemLLVM)
+			return "", "", nil
 		}
 		v, err := g.value(args[1])
 		if err != nil {
@@ -320,8 +327,8 @@ func (g *generator) arrayCallResult(r willc.Record) (llvm, text string, known bo
 	if !ok {
 		return "", "", false
 	}
-	elemLLVM, _, ok := llvmScalar(elem)
-	if !ok {
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
 		return "", "", false
 	}
 	switch fieldText(r, "text") {
@@ -436,11 +443,22 @@ func (g *generator) arrayPush(r willc.Record, base, elemLLVM string, elemSize in
 	length = g.load("i64", lenPtr)
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", slot, elemLLVM, data, length)
-	value, err := g.value(valueID)
-	if err != nil {
-		return err
+	if isAggregateType(elemLLVM) {
+		src, srcType, err := g.place(valueID)
+		if err != nil {
+			return err
+		}
+		if srcType != elemLLVM {
+			return g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
+		}
+		g.copyValue(src, slot, elemLLVM)
+	} else {
+		value, err := g.value(valueID)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, slot)
 	}
-	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, slot)
 	nextLen := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", nextLen, length)
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", nextLen, lenPtr)

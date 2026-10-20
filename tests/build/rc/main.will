@@ -1,0 +1,37 @@
+struct Counter {
+    n: i32
+}
+
+struct Holder {
+    c: rc<Counter>
+    back: weak<Counter>
+}
+
+func (mut c: Counter) Add(d: i32) {
+    c.n += d
+}
+
+func Identity(c: rc<Counter>) -> rc<Counter> {
+    return c
+}
+
+func main() -> i32 {
+    var c: rc<Counter> = new rc<Counter>(Counter { n: 1 })
+    c.Add(4)
+    c.n += 1
+    var d: rc<Counter> = c
+    var w: weak<Counter> = c.Weak()
+    var u: Option<rc<Counter>> = w.Upgrade()
+    var e: rc<Counter> = Identity(d)
+    var h: Holder = Holder { c: e, back: w }
+    var v: i32 = 0
+    match u {
+        Some(x) => {
+            v = x.n
+        }
+        None => {
+        }
+    }
+    _ = d
+    return v + h.c.n
+}
