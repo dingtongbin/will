@@ -1,0 +1,9 @@
+// IsAbs reports whether the path starts with the portable separator. A path
+// that starts with "." or a name is relative.
+func IsAbs(p: str) -> bool {
+    if p.Len() == 0usize {
+        return false
+    }
+    var first: u32 = p[0]
+    return isSlash(first)
+}

@@ -1,0 +1,21 @@
+// Ext returns the suffix of the last element that starts at its final dot, or
+// "" when the element has no dot. A leading dot names a dotfile, so Ext(".txt")
+// is ".txt"; a dot before the last separator does not count, so Ext("a.b/c")
+// is "".
+func Ext(p: str) -> str {
+    var at: usize = 0
+    var found: bool = false
+    for i, c in p {
+        if isSlash(c) {
+            found = false
+        } else if isDot(c) {
+            at = i
+            found = true
+        }
+    }
+    if !found {
+        return ""
+    }
+    var suffix: str = str(p[Range(at, p.Len())])
+    return suffix
+}
