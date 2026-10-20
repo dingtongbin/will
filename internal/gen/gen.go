@@ -147,6 +147,12 @@ func (g *generator) emitAux() {
 	}
 	if g.needBytesDecl {
 		g.out.WriteString("declare i64 @willrt_bytes_index(ptr, i64, ptr, i64)\n")
+		g.out.WriteString("declare i64 @willrt_bytes_count(ptr, i64, ptr, i64)\n")
+		g.out.WriteString("declare i64 @willrt_bytes_trim(ptr, i64, i32, i32, ptr, ptr)\n")
+		g.out.WriteString("declare void @willrt_bytes_repeat(ptr, ptr, i64, i64)\n")
+		g.out.WriteString("declare i64 @willrt_bytes_replace_into(ptr, i64, ptr, i64, ptr, i64, ptr, i64)\n")
+		g.out.WriteString("declare i64 @willrt_bytes_split(ptr, i64, ptr, i64, ptr, i64)\n")
+		g.out.WriteString("declare i64 @willrt_bytes_fields(ptr, i64, ptr, i64)\n")
 	}
 	if g.needPlateDecl {
 		g.out.WriteString("declare ptr @willrt_plate_new(i64, i64)\n")
@@ -406,6 +412,9 @@ func (g *generator) use(d *docState) {
 	g.selectBindTypes = map[int]string{}
 	g.castSlots = map[int]string{}
 	g.variadicSlots = map[int]string{}
+	g.strMethodSlots = map[int]string{}
+	g.trimStartSlots = map[int]string{}
+	g.trimLenSlots = map[int]string{}
 	g.pkgNames = map[string]string{}
 	for _, r := range d.recs {
 		if r.Kind == "import" {
@@ -584,6 +593,9 @@ type generator struct {
 	recvOptSlots   map[int]string
 	sendValueSlots map[int]string
 	variadicSlots  map[int]string
+	strMethodSlots map[int]string
+	trimStartSlots map[int]string
+	trimLenSlots   map[int]string
 	selectSlots     map[int]string
 	selectOutSlots  map[int]string
 	selectBindSlots map[int]string
@@ -1229,6 +1241,35 @@ func (g *generator) allocas(fn int) error {
 		g.adtSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
 	}
+	// A str method that returns a str, a view of str, or an Option keeps its
+	// result, and a trim its two bounds, in the entry block.
+	for _, r := range g.recs {
+		if r.Kind != "mcall" || g.enclosingFunc(r.ID) != fn {
+			continue
+		}
+		recvText, err := g.willTypeText(refField(r, "recv"))
+		if err != nil || recvText != "str" {
+			continue
+		}
+		llvm, text, known := g.strCallResult(r)
+		if !known {
+			continue
+		}
+		if text == "str" || text == "[]str" || text == "Option<usize>" {
+			name := "%v.strm." + strconv.Itoa(r.ID)
+			g.strMethodSlots[r.ID] = name
+			fmt.Fprintf(g.out, "  %s = alloca %s\n", name, llvm)
+		}
+		switch fieldText(r, "text") {
+		case "Trim", "TrimLeft", "TrimRight":
+			start := "%v.trim.start." + strconv.Itoa(r.ID)
+			g.trimStartSlots[r.ID] = start
+			fmt.Fprintf(g.out, "  %s = alloca i64\n", start)
+			length := "%v.trim.len." + strconv.Itoa(r.ID)
+			g.trimLenSlots[r.ID] = length
+			fmt.Fprintf(g.out, "  %s = alloca i64\n", length)
+		}
+	}
 	// A join, receive, and send keep their temporaries in the entry block, so
 	// a loop that waits repeatedly does not grow the stack.
 	var waits []willc.Record
@@ -1474,7 +1515,7 @@ func (g *generator) allocas(fn int) error {
 		if !ok || n < 0 {
 			continue
 		}
-		if _, _, ok := llvmScalar(elem); !ok {
+		if _, ok := g.typeLLVMOf(elem); !ok {
 			continue
 		}
 		names := bindNames(r)

@@ -1005,6 +1005,15 @@ func (g *generator) place(id int) (string, string, error) {
 	case "new":
 		return g.constructNew(r)
 	case "call", "mcall":
+		if r.Kind == "mcall" && fieldText(r, "text") == "Get" {
+			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+				if elem, ok := viewElemText(recvText); ok {
+					if typ, ok := g.typeLLVMOf(elem); ok && isAggregateType(typ) {
+						return g.viewGetPlace(r, elem)
+					}
+				}
+			}
+		}
 		if r.Kind == "mcall" && fieldText(r, "text") == "Index" {
 			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
 				if elem, ok := viewElemText(recvText); ok && elem == "u8" {

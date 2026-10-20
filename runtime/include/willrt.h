@@ -335,5 +335,21 @@ int32_t willrt_utf8_encode(uint32_t value, uint8_t* out);
    -1 when it does not. An empty needle is found at offset zero. */
 int64_t willrt_bytes_index(const uint8_t* hay, size_t hay_len,
                            const uint8_t* needle, size_t needle_len);
+int64_t willrt_bytes_count(const uint8_t* hay, size_t hay_len,
+                           const uint8_t* needle, size_t needle_len);
+int64_t willrt_bytes_trim(const uint8_t* data, size_t len, int32_t left,
+                          int32_t right, int64_t* start, int64_t* out_len);
+void willrt_bytes_repeat(uint8_t* dst, const uint8_t* src, size_t len,
+                         size_t count);
+int64_t willrt_bytes_replace_into(uint8_t* dst, size_t cap, const uint8_t* data,
+                                  size_t len, const uint8_t* old,
+                                  size_t old_len, const uint8_t* new_text,
+                                  size_t new_len);
+/* willrt_bytes_split writes each part as a pointer word and a length word and
+   returns the part count; a null out only counts. */
+int64_t willrt_bytes_split(const uint8_t* data, size_t len, const uint8_t* sep,
+                           size_t sep_len, uint64_t* out, size_t cap);
+int64_t willrt_bytes_fields(const uint8_t* data, size_t len, uint64_t* out,
+                            size_t cap);
 
 #endif

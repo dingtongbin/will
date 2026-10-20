@@ -1,0 +1,16 @@
+func main() -> i32 {
+    var s: str = "  hello,world  "
+    var t: str = s.Trim()
+    if t.Contains("world") && t.HasPrefix("hello") && t.HasSuffix("world") {
+        var parts: []str = t.Split(",")
+        var total: usize = 0
+        for p in parts {
+            total += p.Len()
+        }
+        var r: str = "a".Repeat(3)
+        var x: str = t.Replace("world", "will")
+        print(x, " ", r, "\n")
+        return i32(total)
+    }
+    return 0
+}

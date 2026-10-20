@@ -45,7 +45,7 @@ func containerElem(text string) (string, bool) {
 	default:
 		return "", false
 	}
-	if _, _, ok := llvmScalar(elem); !ok {
+	if elem == "" {
 		return "", false
 	}
 	return elem, true
@@ -190,9 +190,9 @@ func (g *generator) sliceValue(r willc.Record) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	elemType, _, ok := llvmScalar(elem)
-	if !ok {
-		return "", g.errf(r.ID, "cannot translate node #%d: only a view of a lowered scalar is built yet", r.ID)
+	elemType, ok := g.typeLLVMOf(elem)
+	if !ok || elemType == "" {
+		return "", g.errf(r.ID, "cannot translate node #%d: view element %s is not lowered yet", r.ID, elem)
 	}
 	loID, hiID := refField(r, "lo"), refField(r, "hi")
 	for _, id := range []int{loID, hiID} {
@@ -277,9 +277,9 @@ func (g *generator) forContainer(r willc.Record, elem string, void bool, label i
 	if len(names) < 1 || len(names) > 2 {
 		return false, g.errf(r.ID, "cannot translate node #%d: a loop over a view binds one element or an index and an element", r.ID)
 	}
-	elemType, _, ok := llvmScalar(elem)
-	if !ok {
-		return false, g.errf(r.ID, "cannot translate node #%d: only a view of a lowered scalar is iterated yet", r.ID)
+	elemType, ok := g.typeLLVMOf(elem)
+	if !ok || elemType == "" {
+		return false, g.errf(r.ID, "cannot translate node #%d: view element %s is not lowered yet", r.ID, elem)
 	}
 	base, baseType, err := g.place(refField(r, "iter"))
 	if err != nil {

@@ -25,8 +25,19 @@ func (g *generator) strCallResult(r willc.Record) (llvm, text string, known bool
 	if err != nil || recvText != "str" {
 		return "", "", false
 	}
-	if fieldText(r, "text") == "Len" {
+	switch fieldText(r, "text") {
+	case "Len":
 		return "i64", "usize", true
+	case "Contains", "HasPrefix", "HasSuffix":
+		return "i1", "bool", true
+	case "Index":
+		if info, ok := g.adtType("Option<usize>"); ok {
+			return info.llvm, "Option<usize>", true
+		}
+	case "Trim", "TrimLeft", "TrimRight", "Repeat", "Replace", "Clone":
+		return "{ ptr, i64 }", "str", true
+	case "Split", "SplitN", "Fields":
+		return "{ ptr, i64 }", "[]str", true
 	}
 	return "", "", false
 }
@@ -40,13 +51,12 @@ func (g *generator) strMethod(r willc.Record) (string, string, error) {
 	if baseType != "{ ptr, i64 }" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the receiver is not a str", r.ID)
 	}
-	switch fieldText(r, "text") {
-	case "Len":
+	if fieldText(r, "text") == "Len" {
 		lenField := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n", lenField, base)
 		return g.load("i64", lenField), "usize", nil
 	}
-	return "", "", g.errf(r.ID, "cannot translate node #%d: str.%s is not lowered yet", r.ID, fieldText(r, "text"))
+	return g.strMethodValue(r)
 }
 
 // strConcat builds a + b: one block of len(a)+len(b) bytes, with both operands

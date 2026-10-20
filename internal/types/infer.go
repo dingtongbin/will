@@ -948,9 +948,38 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 	usize := c.in.scalar("usize")
 	boolean := c.in.scalar("bool")
 	if recv.Kind() == ScalarKind && recv.Name() == "str" {
-		if call.Name == "Len" {
+		strT := c.in.scalar("str")
+		switch call.Name {
+		case "Len":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return usize, true
+		case "Contains", "HasPrefix", "HasSuffix":
+			c.checkPayload(s, []*Type{strT}, call.Args, call.Name, call.Pos())
+			return boolean, true
+		case "Index":
+			c.checkPayload(s, []*Type{strT}, call.Args, call.Name, call.Pos())
+			return c.in.named("Option", []*Type{usize}), true
+		case "Trim", "TrimLeft", "TrimRight", "Upper", "Lower", "Clone":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return strT, true
+		case "Repeat":
+			c.checkPayload(s, []*Type{usize}, call.Args, call.Name, call.Pos())
+			return strT, true
+		case "Replace":
+			c.checkPayload(s, []*Type{strT, strT}, call.Args, call.Name, call.Pos())
+			return strT, true
+		case "Split":
+			c.checkPayload(s, []*Type{strT}, call.Args, call.Name, call.Pos())
+			return c.in.view(strT), true
+		case "SplitN":
+			c.checkPayload(s, []*Type{strT, c.in.scalar("i32")}, call.Args, call.Name, call.Pos())
+			return c.in.view(strT), true
+		case "Fields":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.view(strT), true
+		case "Chars":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.named("Array", []*Type{c.in.scalar("u32")}), true
 		}
 		return nil, false
 	}

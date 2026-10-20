@@ -23,7 +23,7 @@ func viewElemText(text string) (string, bool) {
 		return "", false
 	}
 	elem := text[2:]
-	if _, _, ok := llvmScalar(elem); !ok {
+	if elem == "" {
 		return "", false
 	}
 	return elem, true
@@ -46,8 +46,8 @@ func (g *generator) viewCallResult(r willc.Record) (llvm, text string, known boo
 	case "Len":
 		return "i64", "usize", true
 	case "Get":
-		elemLLVM, _, ok := llvmScalar(elem)
-		if !ok {
+		elemLLVM, ok := g.typeLLVMOf(elem)
+		if !ok || elemLLVM == "" {
 			return "", "", false
 		}
 		return elemLLVM, elem, true
@@ -84,8 +84,8 @@ func (g *generator) viewMethod(r willc.Record, elem string) (string, string, err
 	if baseType != "{ ptr, i64 }" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the receiver is not a view", r.ID)
 	}
-	elemLLVM, _, ok := llvmScalar(elem)
-	if !ok {
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: view element %s is not lowered yet", r.ID, elem)
 	}
 	lenField := g.newTmp()
@@ -118,6 +118,42 @@ func (g *generator) viewMethod(r willc.Record, elem string) (string, string, err
 	ptr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", ptr, elemLLVM, data, idx)
 	return g.load(elemLLVM, ptr), elem, nil
+}
+
+// viewGetPlace returns the address of one element of a view whose element is an
+// aggregate, so a field or a str method can read it in place.
+func (g *generator) viewGetPlace(r willc.Record, elem string) (string, string, error) {
+	base, baseType, err := g.place(refField(r, "recv"))
+	if err != nil {
+		return "", "", err
+	}
+	if baseType != "{ ptr, i64 }" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: Get needs a view", r.ID)
+	}
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: view element %s is not lowered yet", r.ID, elem)
+	}
+	lenField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n", lenField, base)
+	dataField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", dataField, base)
+	data := g.load("ptr", dataField)
+	length := g.load("i64", lenField)
+	args := g.callArgs(r)
+	if len(args) != 1 {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: Get takes one index", r.ID)
+	}
+	idx, err := g.indexValue(args[0], r)
+	if err != nil {
+		return "", "", err
+	}
+	bad := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp uge i64 %s, %s\n", bad, idx, length)
+	g.panicCheck(bad, panicIndex, r)
+	ptr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", ptr, elemLLVM, data, idx)
+	return ptr, elemLLVM, nil
 }
 
 // constructArray builds `new Array<T>(cap)`: one heap block of cap elements and
