@@ -30,6 +30,8 @@ func DecodeUrl(s: str) -> Result<Array<u8>, Error> {
 // decode reads one padded base64 text. Every group is four characters, the
 // last two of which may be padding; text that is not a whole number of groups,
 // has data after padding, or uses a character outside the alphabet is rejected.
+// A padded group is emitted when the padding completes it, so the pad count
+// decides how many bytes of that group are real.
 func decode(s: str, url: bool) -> Result<Array<u8>, Error> {
     var out: Array<u8> = new Array<u8>(0)
     var q0: u32 = 0
@@ -44,6 +46,8 @@ func decode(s: str, url: bool) -> Result<Array<u8>, Error> {
             return Err(fail("invalid padding"))
         }
         if c == padScalar {
+            // Padding needs two data characters before it; three would be
+            // more than one group can carry.
             if inGroup < 2 {
                 return Err(fail("invalid padding"))
             }
@@ -51,24 +55,23 @@ func decode(s: str, url: bool) -> Result<Array<u8>, Error> {
             if pad > 2 {
                 return Err(fail("invalid padding"))
             }
-            inGroup += 1
-            continue
-        }
-        if pad > 0 {
-            return Err(fail("invalid padding"))
-        }
-        var v: u32 = alphabetValue(c, url)
-        if v >= 64u32 {
-            return Err(fail("invalid character"))
-        }
-        if inGroup == 0 {
-            q0 = v
-        } else if inGroup == 1 {
-            q1 = v
-        } else if inGroup == 2 {
-            q2 = v
         } else {
-            q3 = v
+            if pad > 0 {
+                return Err(fail("invalid padding"))
+            }
+            var v: u32 = alphabetValue(c, url)
+            if v >= 64u32 {
+                return Err(fail("invalid character"))
+            }
+            if inGroup == 0 {
+                q0 = v
+            } else if inGroup == 1 {
+                q1 = v
+            } else if inGroup == 2 {
+                q2 = v
+            } else {
+                q3 = v
+            }
         }
         inGroup += 1
         if inGroup == 4 {

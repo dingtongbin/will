@@ -1,0 +1,117 @@
+// Uuid is a 128-bit identifier. The two halves keep the byte order of the
+// canonical text, so the first sixteen hexadecimal digits are the high half.
+struct Uuid {
+    high: u64
+    low: u64
+}
+
+// uuidError is the error value of rejected text. 2 is the stable status of
+// Invalid, so a caller classifies it without knowing this type.
+struct uuidError {
+    message: str
+}
+
+func (e: uuidError) Message() -> str {
+    return e.message
+}
+
+func (e: uuidError) Status() -> i32 {
+    return 2
+}
+
+func fail(message: str) -> uuidError {
+    return uuidError { message: message}
+}
+
+// dashByte is the separator in the canonical 8-4-4-4-12 text.
+const dashByte: u8 = 45
+
+// hexValue returns the value of one hexadecimal digit, or -1 when the scalar
+// is not a digit. Both cases of a letter are accepted, as RFC 4122 does.
+func hexValue(c: u32) -> i32 {
+    if c >= 48u32 && c <= 57u32 {
+        return i32(c - 48u32)
+    }
+    if c >= 97u32 && c <= 102u32 {
+        return i32(c - 97u32) + 10
+    }
+    if c >= 65u32 && c <= 70u32 {
+        return i32(c - 65u32) + 10
+    }
+    return -1
+}
+
+// hexChar returns the lowercase hexadecimal digit of a value in 0..15.
+func hexChar(v: u32) -> u8 {
+    if v < 10u32 {
+        return u8(48u32 + v)
+    }
+    return u8(87u32 + v)
+}
+
+// appendGroup appends four hexadecimal digits of value starting at shift.
+func appendGroup(mut out: Array<u8>, value: u64, shift: i32) {
+    var i: i32 = 0
+    for {
+        if i >= 4 {
+            break
+        }
+        var digit: u64 = (value >> u64(shift - 4 * i)) & 15u64
+        out.Push(hexChar(u32(digit)))
+        i += 1
+    }
+}
+
+// appendDash appends the separator between two groups.
+func appendDash(mut out: Array<u8>) {
+    out.Push(dashByte)
+}
+
+// Parse reads the canonical 8-4-4-4-12 hexadecimal text of a UUID. The
+// hyphens are mandatory and the digits may be either case; any other text is a
+// parse failure.
+func Parse(s: str) -> Result<Uuid, Error> {
+    if s.Len() != 36usize {
+        return Err(fail("uuid: text is not 36 bytes"))
+    }
+    var high: u64 = 0
+    var low: u64 = 0
+    var digits: i32 = 0
+    for i, c in s {
+        if i == 8usize || i == 13usize || i == 18usize || i == 23usize {
+            if c != u32(dashByte) {
+                return Err(fail("uuid: a separator is in the wrong place"))
+            }
+            continue
+        }
+        var d: i32 = hexValue(c)
+        if d < 0 {
+            return Err(fail("uuid: text has a non-hexadecimal digit"))
+        }
+        if digits < 16 {
+            high = high * 16u64 + u64(d)
+        } else {
+            low = low * 16u64 + u64(d)
+        }
+        digits += 1
+    }
+    return Ok(Uuid { high: high, low: low})
+}
+
+// String returns the canonical lowercase 8-4-4-4-12 text of u.
+func (u: Uuid) String() -> str {
+    var out: Array<u8> = new Array<u8>(0)
+    appendGroup(out, u.high, 60)
+    appendGroup(out, u.high, 44)
+    appendDash(out)
+    appendGroup(out, u.high, 28)
+    appendDash(out)
+    appendGroup(out, u.high, 12)
+    appendDash(out)
+    appendGroup(out, u.low, 60)
+    appendDash(out)
+    appendGroup(out, u.low, 44)
+    appendGroup(out, u.low, 28)
+    appendGroup(out, u.low, 12)
+    return str(out)
+}

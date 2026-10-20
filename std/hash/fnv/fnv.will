@@ -1,0 +1,30 @@
+// 2166136261 and 16777619 are the 32-bit FNV-1a offset basis and prime.
+const offset32: u32 = 2166136261
+const prime32: u32 = 16777619
+
+// 14695981039346656037 and 1099511628211 are the 64-bit FNV-1a offset basis
+// and prime.
+const offset64: u64 = 14695981039346656037
+const prime64: u64 = 1099511628211
+
+// Sum32 returns the 32-bit FNV-1a hash of b. The multiply wraps because the
+// hash is defined modulo 2^32, so it uses the wrapping operator.
+func Sum32(b: []u8) -> u32 {
+    var h: u32 = offset32
+    for v in b {
+        h = h ^ u32(v)
+        h = h *% prime32
+    }
+    return h
+}
+
+// Sum64 returns the 64-bit FNV-1a hash of b. The multiply wraps because the
+// hash is defined modulo 2^64, so it uses the wrapping operator.
+func Sum64(b: []u8) -> u64 {
+    var h: u64 = offset64
+    for v in b {
+        h = h ^ u64(v)
+        h = h *% prime64
+    }
+    return h
+}
