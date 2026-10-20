@@ -40,6 +40,8 @@ const (
 	SliceKind
 	// GenericKind is a predeclared generic type with arguments.
 	GenericKind
+	// FuncKind is a function value: a code pointer and an environment.
+	FuncKind
 )
 
 // Spec is one type to lay out.
@@ -207,6 +209,8 @@ func (r *Resolver) Size(s *Spec) (Type, error) {
 		return Type{Size: 2 * r.word, Align: r.word}, nil
 	case GenericKind:
 		return r.generic(s)
+	case FuncKind:
+		return Type{Size: 2 * r.word, Align: r.word}, nil
 	}
 	return Type{}, fmt.Errorf("the layout of this type is not known")
 }

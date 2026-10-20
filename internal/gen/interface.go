@@ -240,11 +240,12 @@ func (g *generator) interfaceCall(r willc.Record, iface *ifaceInfo) (string, str
 			return "", "", g.errf(r.ID, "cannot translate node #%d: result type %s is not lowered yet", r.ID, result)
 		}
 	}
-	out := g.newTmp()
 	if resultLLVM == "" {
-		fmt.Fprintf(g.out, "  %s = call void %s(%s)\n", out, fn, strings.Join(parts, ", "))
+		// A void call has no result, so it cannot carry a temporary name.
+		fmt.Fprintf(g.out, "  call void %s(%s)\n", fn, strings.Join(parts, ", "))
 		return "", "", nil
 	}
+	out := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call %s %s(%s)\n", out, resultLLVM, fn, strings.Join(parts, ", "))
 	return out, result, nil
 }

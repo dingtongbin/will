@@ -1,0 +1,30 @@
+// Sink receives one finished log line. A sink is passed explicitly, so the
+// package keeps no registry and no package-level state. It lives beside Logger
+// because an interface call currently resolves only interfaces declared in the
+// same file as the call.
+interface Sink {
+    func AsyncWrite(level: Level, fields: []Field, message: str)
+}
+
+// Logger carries one sink and the level a line is written at. It holds no
+// registry and no shared state, so a logger is a plain value.
+struct Logger {
+    sink: Sink
+    level: Level
+}
+
+func New(sink: Sink, level: Level) -> Logger {
+    return Logger { sink: sink, level: level }
+}
+
+func (l: Logger) Info(fields: []Field, message: str) {
+    l.sink.AsyncWrite(Level.Info(), fields, message)
+}
+
+func (l: Logger) Warn(fields: []Field, message: str) {
+    l.sink.AsyncWrite(Level.Warn(), fields, message)
+}
+
+func (l: Logger) Error(fields: []Field, message: str) {
+    l.sink.AsyncWrite(Level.Error(), fields, message)
+}

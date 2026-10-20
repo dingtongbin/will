@@ -314,13 +314,24 @@ func (g *generator) enumVariantCall(r willc.Record) (*enumInfo, *variantInfo) {
 		return nil, nil
 	}
 	if recv.Kind == "field" {
-		return g.externalVariantCall(r, recv)
+		if info, v := g.externalVariantCall(r, recv); info != nil {
+			return info, v
+		}
+		// The same package may declare the enum in another file.
+		if ext := g.externalEnums[qualify(g.pkg, fieldText(recv, "text"))]; ext != nil {
+			return g.syntheticVariant(ext, fieldText(r, "text"))
+		}
+		return nil, nil
 	}
 	if recv.Kind != "name" {
 		return nil, nil
 	}
 	decl := refField(recv, "to")
 	if decl == 0 {
+		// A type that lives in another file of this package.
+		if ext := g.externalEnums[qualify(g.pkg, fieldText(recv, "text"))]; ext != nil {
+			return g.syntheticVariant(ext, fieldText(r, "text"))
+		}
 		return nil, nil
 	}
 	info := g.enums[decl]
@@ -352,12 +363,14 @@ func (g *generator) externalVariantCall(r willc.Record, field willc.Record) (*en
 		path = canonical
 	}
 	q := path + "." + fieldText(field, "text")
-	ext := g.externalEnums[q]
-	if ext == nil {
-		return nil, nil
-	}
-	name := fieldText(r, "text")
-	if ext.payload[name] {
+	return g.syntheticVariant(g.externalEnums[q], fieldText(r, "text"))
+}
+
+// syntheticVariant builds the enum shape of a variant whose declaration is in
+// another document. A payload variant is refused because its layout belongs to
+// the defining document.
+func (g *generator) syntheticVariant(ext *externalEnum, name string) (*enumInfo, *variantInfo) {
+	if ext == nil || ext.payload[name] {
 		return nil, nil
 	}
 	tag, ok := ext.tags[name]

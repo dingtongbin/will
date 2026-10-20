@@ -1,4 +1,5 @@
 // Encode returns the lowercase hexadecimal text of b: two characters per byte.
+// Any byte value is accepted and the result is ASCII, so the call cannot fail.
 // Lowercase keeps the output stable for comparisons and matches Decode, which
 // accepts either case. Push doubles the array when it is full, so the whole
 // encode stays linear in the input length.

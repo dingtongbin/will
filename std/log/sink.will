@@ -1,5 +1,0 @@
-// Sink receives one finished log line. A sink is passed explicitly, so the
-// package keeps no registry and no package-level state.
-interface Sink {
-    func AsyncWrite(level: Level, fields: []Field, message: str)
-}

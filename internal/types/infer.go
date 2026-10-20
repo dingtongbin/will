@@ -1217,6 +1217,18 @@ func (c *checker) binaryType(s *inferScope, b *ast.BinaryExpr) *Type {
 		}
 		return lt
 	}
+	if lt != nil && lt.Kind() == NamedKind && lt.Name() == "Duration" {
+		if Equal(lt, rt) && (b.Op == token.Plus || b.Op == token.Minus) {
+			return lt
+		}
+		if rt != nil && rt.IsInteger() && (b.Op == token.Star || b.Op == token.Slash) {
+			return lt
+		}
+	}
+	if rt != nil && rt.Kind() == NamedKind && rt.Name() == "Duration" &&
+		lt != nil && lt.IsInteger() && b.Op == token.Star {
+		return rt
+	}
 	switch b.Op {
 	case token.Shl, token.Shr, token.ShlWrap:
 		if lt != nil && !lt.IsInteger() {

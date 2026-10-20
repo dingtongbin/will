@@ -219,6 +219,8 @@ func layoutSpec(t *ast.Type, prefix string) (*layout.Spec, error) {
 			return nil, err
 		}
 		return &layout.Spec{Kind: layout.SliceKind, Elem: elem}, nil
+	case ast.FuncType:
+		return &layout.Spec{Kind: layout.FuncKind}, nil
 	case ast.UnitType:
 		return &layout.Spec{Kind: layout.UnitKind}, nil
 	}

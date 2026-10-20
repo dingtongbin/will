@@ -91,6 +91,17 @@ var predeclaredTypes = []string{
 	"Equal", "Ord",
 }
 
+// isPredeclaredType reports whether a name is one of the type names every
+// package starts with.
+func isPredeclaredType(name string) bool {
+	for _, known := range predeclaredTypes {
+		if known == name {
+			return true
+		}
+	}
+	return false
+}
+
 var predeclaredValues = []string{
 	"Some", "None", "Ok", "Err",
 	"print", "panic", "assert",
@@ -179,7 +190,14 @@ func (r *resolver) addImports() {
 			}
 			table, known := r.packages[imp.Path]
 			sym := &Symbol{Name: name, Kind: ImportKind, Pos: imp.Span.Start, Node: imp}
-			r.defineTop(sym)
+			if prev := r.pkg.names[name]; prev != nil && prev.Predeclared {
+				// An import is a namespace; it does not make a predeclared
+				// name unusable, and there is no alias syntax to avoid the
+				// collision. Install it without the shadow warning.
+				r.pkg.define(sym)
+			} else {
+				r.defineTop(sym)
+			}
 			rec.sym = sym
 			if known {
 				r.tables[name] = table

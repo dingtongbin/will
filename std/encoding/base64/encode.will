@@ -1,7 +1,8 @@
-// 61 is the ASCII code of the padding character '='.
+// padByte is the ASCII code of the padding character '='.
 const padByte: u8 = 61
 
-// Encode returns the standard base64 text of b, padded to a whole group.
+// Encode returns the standard base64 text of b, padded to a whole group. Any
+// byte value is accepted and the result is ASCII, so the call cannot fail.
 func Encode(b: []u8) -> str {
     var out: Array<u8> = encodeBytes(b, false)
     return str(out)

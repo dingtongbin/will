@@ -187,6 +187,12 @@ func (r *resolver) walkType(t *ast.Type) {
 		} else if sym, ok := r.current().lookup(t.Name); ok && sym.Kind.isType() {
 			r.refs[t] = sym
 			sym.Used = true
+		} else if isPredeclaredType(t.Name) {
+			// An import namespace named str does not take the type name away;
+			// the grammar has no import alias, and std/str needs both.
+			sym := &Symbol{Name: t.Name, Kind: PredeclaredTypeKind, Predeclared: true}
+			r.refs[t] = sym
+			sym.Used = true
 		} else {
 			r.undefined(t.Pos(), t.Name)
 		}
