@@ -156,6 +156,11 @@ func (g *generator) viewGetPlace(r willc.Record, elem string) (string, string, e
 // the three-word value (data, length, capacity). The length starts at zero.
 func (g *generator) constructArray(r willc.Record, elem string) (string, string, error) {
 	slot := g.allocSlot(g.newSlots, "new", r.ID, "{ ptr, i64, i64 }")
+	if isRcText(elem) {
+		// An Array of rc needs element-wise retain on every read and release
+		// on removal; that ownership path is not lowered yet.
+		return "", "", g.errf(r.ID, "cannot translate node #%d: an Array of rc is not lowered yet", r.ID)
+	}
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok || elemLLVM == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s is not lowered yet", r.ID, elem)
@@ -289,12 +294,30 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 			if srcType != elemLLVM {
 				return "", "", g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
 			}
+			if g.needsReleaseText(elem) {
+				if err := g.releaseSlot(ptr, elem); err != nil {
+					return "", "", err
+				}
+				if g.isCopySource(args[1]) {
+					if err := g.retainValue(src, elem); err != nil {
+						return "", "", err
+					}
+				}
+			}
 			g.copyValue(src, ptr, elemLLVM)
 			return "", "", nil
 		}
 		v, err := g.value(args[1])
 		if err != nil {
 			return "", "", err
+		}
+		if isRcText(elem) {
+			old := g.load("i64", ptr)
+			g.needRcDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", old)
+			if g.isCopySource(args[1]) {
+				fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", v)
+			}
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, v, ptr)
 		return "", "", nil
@@ -307,7 +330,7 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 		if !ok {
 			return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s has no layout", r.ID, elem)
 		}
-		if err := g.arrayPush(r, base, elemLLVM, elemSize, args[0]); err != nil {
+		if err := g.arrayPush(r, base, elem, elemLLVM, elemSize, args[0]); err != nil {
 			return "", "", err
 		}
 		return "", "", nil
@@ -363,7 +386,7 @@ func (g *generator) arrayElemAddr(r willc.Record, base, elemLLVM string, indexID
 }
 
 // arrayPush stores one value at the length and grows the block when it is full.
-func (g *generator) arrayPush(r willc.Record, base, elemLLVM string, elemSize int, valueID int) error {
+func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemSize int, valueID int) error {
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
 	data := g.load("ptr", dataPtr)
@@ -451,11 +474,20 @@ func (g *generator) arrayPush(r willc.Record, base, elemLLVM string, elemSize in
 		if srcType != elemLLVM {
 			return g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
 		}
+		if g.needsReleaseText(elem) && g.isCopySource(valueID) {
+			if err := g.retainValue(src, elem); err != nil {
+				return err
+			}
+		}
 		g.copyValue(src, slot, elemLLVM)
 	} else {
 		value, err := g.value(valueID)
 		if err != nil {
 			return err
+		}
+		if isRcText(elem) && g.isCopySource(valueID) {
+			g.needRcDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, slot)
 	}

@@ -330,6 +330,13 @@ func (g *generator) retainValueDepth(ptr, text string, depth int) error {
 		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", handle)
 		return nil
 	}
+	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
+		elem := strings.TrimSpace(text[len("Array<") : len(text)-1])
+		if !needsReleaseText(g, elem) {
+			return nil
+		}
+		return g.eachElement(ptr, elem, true, 0)
+	}
 	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
 		info, ok := g.adtType(text)
 		if !ok {
@@ -378,6 +385,53 @@ func (g *generator) retainValueDepth(ptr, text string, depth int) error {
 	return nil
 }
 
+// eachElement walks the live elements of an Array and retains or releases each
+// one. ptr points at the three-word Array value.
+func (g *generator) eachElement(ptr, elem string, retain bool, depth int) error {
+	dataPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, ptr)
+	data := g.load("ptr", dataPtr)
+	lenPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, ptr)
+	length := g.load("i64", lenPtr)
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
+		return nil
+	}
+	g.labels++
+	n := g.labels
+	cond := fmt.Sprintf("elem.cond.%d", n)
+	body := fmt.Sprintf("elem.body.%d", n)
+	done := fmt.Sprintf("elem.done.%d", n)
+	index := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca i64\n", index)
+	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", index)
+	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
+	g.out.WriteString(cond + ":\n")
+	at := g.load("i64", index)
+	more := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", more, at, length)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", more, body, done)
+	g.out.WriteString(body + ":\n")
+	element := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", element, elemLLVM, data, at)
+	var err error
+	if retain {
+		err = g.retainValueDepth(element, elem, depth+1)
+	} else {
+		err = g.releaseValue(element, elem, depth+1)
+	}
+	if err != nil {
+		return err
+	}
+	next := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", next, at)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", next, index)
+	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
+	g.out.WriteString(done + ":\n")
+	return nil
+}
+
 // releaseSlot releases the rc references a value holds. A weak handle and a
 // value without rc fields release nothing.
 func (g *generator) releaseSlot(slot, text string) error {
@@ -393,11 +447,34 @@ func (g *generator) releaseValue(slot, text string, depth int) error {
 		return nil
 	}
 	if isRcText(text) {
-		// The object's own fields are not walked here: the handle table owns
-		// the object storage, and a T with strong fields needs drop glue.
+		// The object's own fields are released by its drop glue, not here.
 		g.needRcDecl = true
 		handle := g.load("i64", slot)
 		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", handle)
+		return nil
+	}
+	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
+		elem := strings.TrimSpace(text[len("Array<") : len(text)-1])
+		if needsReleaseText(g, elem) {
+			if err := g.eachElement(slot, elem, false, 0); err != nil {
+				return err
+			}
+		}
+		dataPtr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, slot)
+		data := g.load("ptr", dataPtr)
+		notNull := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp ne ptr %s, null\n", notNull, data)
+		g.labels++
+		n := g.labels
+		freeLabel := fmt.Sprintf("array.free.%d", n)
+		doneLabel := fmt.Sprintf("array.freed.%d", n)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", notNull, freeLabel, doneLabel)
+		g.out.WriteString(freeLabel + ":\n")
+		g.needAllocDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
+		fmt.Fprintf(g.out, "  br label %%%s\n", doneLabel)
+		g.out.WriteString(doneLabel + ":\n")
 		return nil
 	}
 	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
@@ -461,11 +538,15 @@ func (g *generator) needsReleaseText(text string) bool {
 
 // needsReleaseText reports whether a field type may hold an rc reference.
 func needsReleaseText(g *generator, text string) bool {
+	text = g.qualifyTypeText(g.pkg, text)
 	if isRcText(text) {
 		return true
 	}
 	if isWeakText(text) {
 		return false
+	}
+	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
+		return needsReleaseText(g, strings.TrimSpace(text[len("Array<") : len(text)-1]))
 	}
 	if _, args, ok := parseADT(text); ok {
 		return len(args) != 0 && needsReleaseText(g, args[0])
