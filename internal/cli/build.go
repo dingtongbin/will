@@ -138,6 +138,7 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 	bag.AddAll(tds)
 	if !bag.HasErrors() {
 		bag.AddAll(check.Moves(f))
+		bag.AddAll(check.Borrows(f))
 	}
 	if opts.freestanding {
 		bag.AddAll(check.Freestanding(f))
