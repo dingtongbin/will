@@ -169,6 +169,8 @@ func TestPredeclaredLayout(t *testing.T) {
 		{"str", scalar("str"), 16, 8},
 		{"view", &Spec{Kind: SliceKind, Elem: scalar("i32")}, 16, 8},
 		{"array", &Spec{Kind: GenericKind, Name: "Array", Args: []*Spec{scalar("i32")}}, 24, 8},
+		{"map", &Spec{Kind: GenericKind, Name: "Map", Args: []*Spec{scalar("str"), scalar("i32")}}, 24, 8},
+		{"set", &Spec{Kind: GenericKind, Name: "Set", Args: []*Spec{scalar("str")}}, 24, 8},
 		{"rc", &Spec{Kind: GenericKind, Name: "rc", Args: []*Spec{scalar("i64")}}, 8, 8},
 		{"chan", &Spec{Kind: GenericKind, Name: "chan", Args: []*Spec{scalar("i32")}}, 8, 8},
 		{"option", &Spec{Kind: GenericKind, Name: "Option", Args: []*Spec{scalar("i64")}}, 16, 8},
@@ -194,7 +196,7 @@ func TestUnknownTypesAreReported(t *testing.T) {
 	res := New(Target{Word: 8})
 	cases := []*Spec{
 		named("Missing"),
-		&Spec{Kind: GenericKind, Name: "Map", Args: []*Spec{scalar("i32"), scalar("i32")}},
+		&Spec{Kind: GenericKind, Name: "Unknown", Args: []*Spec{scalar("i32")}},
 		scalar("nonsense"),
 	}
 	for _, c := range cases {

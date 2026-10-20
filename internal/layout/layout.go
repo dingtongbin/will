@@ -340,9 +340,14 @@ func (r *Resolver) scalar(name string) (Type, error) {
 // generic returns the layout of one predeclared generic type.
 func (r *Resolver) generic(s *Spec) (Type, error) {
 	switch s.Name {
-	case "Array":
+	case "Array", "Set":
 		if len(s.Args) != 1 {
-			return Type{}, fmt.Errorf("Array needs one type argument")
+			return Type{}, fmt.Errorf("%s needs one type argument", s.Name)
+		}
+		return Type{Size: 3 * r.word, Align: r.word}, nil
+	case "Map":
+		if len(s.Args) != 2 {
+			return Type{}, fmt.Errorf("Map needs two type arguments")
 		}
 		return Type{Size: 3 * r.word, Align: r.word}, nil
 	case "rc", "weak":
