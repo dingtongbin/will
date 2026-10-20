@@ -106,6 +106,7 @@ var predeclaredValues = []string{
 	"Some", "None", "Ok", "Err",
 	"print", "panic", "assert",
 	"take_c", "take_c_rc",
+	"SizeOf", "AlignOf", "OffsetOf",
 	"Cancel", "Priority",
 }
 

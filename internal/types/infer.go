@@ -790,6 +790,8 @@ func (c *checker) predeclaredCall(s *inferScope, name string, call *ast.CallExpr
 		return c.in.named("Result", []*Type{nil, c.oneArg(s, call)})
 	case "take_c", "take_c_rc":
 		return c.takeCType(s, call, name)
+	case "SizeOf", "AlignOf", "OffsetOf":
+		return c.layoutCall(s, call, name)
 	}
 	for _, a := range call.Args {
 		c.inferExpr(s, a.Expr)
@@ -819,6 +821,21 @@ func (c *checker) takeCType(s *inferScope, call *ast.CallExpr, name string) *Typ
 		return nil
 	}
 	return c.in.named("rc", []*Type{elem})
+}
+
+// layoutCall checks the three compile-time layout queries. Each takes one type
+// argument; OffsetOf additionally takes the field path as a str.
+func (c *checker) layoutCall(s *inferScope, call *ast.CallExpr, name string) *Type {
+	if len(call.TypeArgs) != 1 {
+		c.bag.Error(call.Pos(), diag.CodeTypeArgCount,
+			"wrong number of type arguments", "the declaration takes 1")
+	}
+	if name == "OffsetOf" {
+		c.checkPayload(s, []*Type{c.in.scalar("str")}, call.Args, name, call.Pos())
+	} else if len(call.Args) != 0 {
+		c.checkPayload(s, nil, call.Args, name, call.Pos())
+	}
+	return c.in.scalar("usize")
 }
 
 func (c *checker) oneArg(s *inferScope, call *ast.CallExpr) *Type {

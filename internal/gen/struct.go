@@ -765,6 +765,16 @@ func (g *generator) willTypeText(id int) (string, error) {
 // callResultText returns the result type text of one call. A call names its
 // callee by a document reference or by the module-wide symbol.
 func (g *generator) callResultText(r willc.Record) (string, error) {
+	if name, ok := g.predeclaredCallName(r); ok {
+		switch name {
+		case "take_c", "take_c_rc":
+			if args := g.typeArgTexts(r); len(args) == 1 {
+				return "rc<" + args[0] + ">", nil
+			}
+		case "SizeOf", "AlignOf", "OffsetOf":
+			return "usize", nil
+		}
+	}
 	if text, known := g.rcCallResult(r); known {
 		return text, nil
 	}

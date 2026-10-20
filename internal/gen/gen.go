@@ -2914,6 +2914,14 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	if g.isPrintCall(r) {
 		return g.printCall(r)
 	}
+	if name, ok := g.predeclaredCallName(r); ok &&
+		(name == "SizeOf" || name == "AlignOf" || name == "OffsetOf") {
+		value, err := g.lowerLayout(r, name)
+		if err != nil {
+			return "", "", err
+		}
+		return value, "usize", nil
+	}
 	if name, ok := g.predeclaredCallName(r); ok && (name == "take_c" || name == "take_c_rc") {
 		value, err := g.lowerTakeC(r, name)
 		if err != nil {
