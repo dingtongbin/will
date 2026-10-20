@@ -6,8 +6,29 @@ func Twice(f: func(i32) -> i32, x: i32) -> i32 {
     return f(f(x))
 }
 
+func Inc(x: i32) -> i32 {
+    return x + 1
+}
+
+func MakeAdder(n: i32) -> func(i32) -> i32 {
+    return func(x: i32) -> i32 {
+        return x + n
+    }
+}
+
+func Counter() -> func() -> i32 {
+    var n: i32 = 0
+    return func() -> i32 {
+        n += 1
+        return n
+    }
+}
+
 func main() -> i32 {
     var inc: func(i32) -> i32 = func(x: i32) -> i32 { return x + 1 }
     var dbl: func(i32) -> i32 = func(x: i32) -> i32 { return x * 2 }
-    return Apply(inc, 1) + Twice(dbl, 2)
+    var add: func(i32) -> i32 = MakeAdder(3)
+    var c: func() -> i32 = Counter()
+    var a: i32 = c()
+    return Apply(inc, 1) + Twice(dbl, 2) + add(4) + a + Apply(Inc, 1)
 }

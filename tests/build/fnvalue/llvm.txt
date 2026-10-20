@@ -1,57 +1,217 @@
 define i32 @"example.com/fnvalue.Apply"(ptr %f, i32 %x) {
 entry:
-  %t1 = call i32 %f(i32 %x)
-  ret i32 %t1
+  %t1 = getelementptr inbounds { ptr, ptr }, ptr %f, i32 0, i32 0
+  %t2 = getelementptr inbounds { ptr, ptr }, ptr %f, i32 0, i32 1
+  %t3 = load ptr, ptr %t1
+  %t4 = load ptr, ptr %t2
+  %t5 = call i32 %t3(ptr %t4, i32 %x)
+  ret i32 %t5
 }
 define i32 @"example.com/fnvalue.Twice"(ptr %f, i32 %x) {
 entry:
-  %t2 = call i32 %f(i32 %x)
-  %t3 = call i32 %f(i32 %t2)
-  ret i32 %t3
+  %t6 = getelementptr inbounds { ptr, ptr }, ptr %f, i32 0, i32 0
+  %t7 = getelementptr inbounds { ptr, ptr }, ptr %f, i32 0, i32 1
+  %t8 = load ptr, ptr %t6
+  %t9 = load ptr, ptr %t7
+  %t10 = getelementptr inbounds { ptr, ptr }, ptr %f, i32 0, i32 0
+  %t11 = getelementptr inbounds { ptr, ptr }, ptr %f, i32 0, i32 1
+  %t12 = load ptr, ptr %t10
+  %t13 = load ptr, ptr %t11
+  %t14 = call i32 %t12(ptr %t13, i32 %x)
+  %t15 = call i32 %t8(ptr %t9, i32 %t14)
+  ret i32 %t15
 }
-define i32 @"example.com/fnvalue.will$main"() {
+define i32 @"example.com/fnvalue.Inc"(i32 %x) {
 entry:
-  %v.inc = alloca ptr
-  %v.dbl = alloca ptr
-  store ptr @"example.com/fnvalue.lambda.1", ptr %v.inc
-  store ptr @"example.com/fnvalue.lambda.2", ptr %v.dbl
-  %t4 = load ptr, ptr %v.inc
-  %t5 = call i32 @"example.com/fnvalue.Apply"(ptr %t4, i32 1)
-  %t6 = load ptr, ptr %v.dbl
-  %t7 = call i32 @"example.com/fnvalue.Twice"(ptr %t6, i32 2)
-  %t8 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t5, i32 %t7)
-  %t9 = extractvalue {i32, i1} %t8, 0
-  %t10 = extractvalue {i32, i1} %t8, 1
-  br i1 %t10, label %panic.1, label %panic.ok.1
+  %t16 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %x, i32 1)
+  %t17 = extractvalue {i32, i1} %t16, 0
+  %t18 = extractvalue {i32, i1} %t16, 1
+  br i1 %t18, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
   unreachable
 panic.ok.1:
-  ret i32 %t9
+  ret i32 %t17
 }
-define i32 @"example.com/fnvalue.lambda.1"(i32 %x) {
+define { ptr, ptr } @"example.com/fnvalue.MakeAdder"(i32 %n) {
 entry:
-  %t11 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %x, i32 1)
-  %t12 = extractvalue {i32, i1} %t11, 0
-  %t13 = extractvalue {i32, i1} %t11, 1
-  br i1 %t13, label %panic.1, label %panic.ok.1
+  %v.closure.44 = alloca { ptr, ptr }
+  %t19 = getelementptr { i32 }, ptr null, i32 1
+  %t20 = ptrtoint ptr %t19 to i64
+  %t21 = call ptr @willrt_alloc(i64 %t20)
+  %t22 = getelementptr inbounds { i32 }, ptr %t21, i32 0, i32 0
+  %v.capture.37 = alloca i32
+  store i32 %n, ptr %v.capture.37
+  %t23 = load i32, ptr %v.capture.37
+  store i32 %t23, ptr %t22
+  %t24 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.44, i32 0, i32 0
+  store ptr @"example.com/fnvalue.lambda.1", ptr %t24
+  %t25 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.44, i32 0, i32 1
+  store ptr %t21, ptr %t25
+  %t26 = load { ptr, ptr }, ptr %v.closure.44
+  ret { ptr, ptr } %t26
+}
+define i32 @"example.com/fnvalue.lambda.1"(ptr %closure.env, i32 %x) {
+entry:
+  %t27 = getelementptr inbounds { i32 }, ptr %closure.env, i32 0, i32 0
+  %t28 = load i32, ptr %t27
+  %t29 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %x, i32 %t28)
+  %t30 = extractvalue {i32, i1} %t29, 0
+  %t31 = extractvalue {i32, i1} %t29, 1
+  br i1 %t31, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.0, ptr @.str.3, ptr @.str.4)
   unreachable
 panic.ok.1:
-  ret i32 %t12
+  ret i32 %t30
 }
-define i32 @"example.com/fnvalue.lambda.2"(i32 %x) {
+define { ptr, ptr } @"example.com/fnvalue.Counter"() {
 entry:
-  %t14 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %x, i32 2)
-  %t15 = extractvalue {i32, i1} %t14, 0
-  %t16 = extractvalue {i32, i1} %t14, 1
-  br i1 %t16, label %panic.1, label %panic.ok.1
+  %v.closure.61 = alloca { ptr, ptr }
+  %v.n = alloca i32
+  store i32 0, ptr %v.n
+  %t32 = getelementptr { i32 }, ptr null, i32 1
+  %t33 = ptrtoint ptr %t32 to i64
+  %t34 = call ptr @willrt_alloc(i64 %t33)
+  %t35 = getelementptr inbounds { i32 }, ptr %t34, i32 0, i32 0
+  %t36 = load i32, ptr %v.n
+  store i32 %t36, ptr %t35
+  %t37 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.61, i32 0, i32 0
+  store ptr @"example.com/fnvalue.lambda.2", ptr %t37
+  %t38 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.61, i32 0, i32 1
+  store ptr %t34, ptr %t38
+  %t39 = load { ptr, ptr }, ptr %v.closure.61
+  ret { ptr, ptr } %t39
+}
+define i32 @"example.com/fnvalue.lambda.2"(ptr %closure.env) {
+entry:
+  %t40 = getelementptr inbounds { i32 }, ptr %closure.env, i32 0, i32 0
+  %t41 = load i32, ptr %t40
+  %t42 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t41, i32 1)
+  %t43 = extractvalue {i32, i1} %t42, 0
+  %t44 = extractvalue {i32, i1} %t42, 1
+  br i1 %t44, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.0, ptr @.str.5, ptr @.str.6)
   unreachable
 panic.ok.1:
-  ret i32 %t15
+  store i32 %t43, ptr %t40
+  %t45 = load i32, ptr %t40
+  ret i32 %t45
+}
+define i32 @"example.com/fnvalue.will$main"() {
+entry:
+  %v.closure.126 = alloca { ptr, ptr }
+  %v.closure.89 = alloca { ptr, ptr }
+  %v.closure.76 = alloca { ptr, ptr }
+  %v.inc = alloca { ptr, ptr }
+  %v.dbl = alloca { ptr, ptr }
+  %v.add = alloca { ptr, ptr }
+  %v.c = alloca { ptr, ptr }
+  %v.a = alloca i32
+  %v.ret.102 = alloca { ptr, ptr }
+  %v.ret.107 = alloca { ptr, ptr }
+  %t46 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.76, i32 0, i32 0
+  store ptr @"example.com/fnvalue.lambda.3", ptr %t46
+  %t47 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.76, i32 0, i32 1
+  store ptr null, ptr %t47
+  %t48 = load { ptr, ptr }, ptr %v.closure.76
+  store { ptr, ptr } %t48, ptr %v.inc
+  %t49 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.89, i32 0, i32 0
+  store ptr @"example.com/fnvalue.lambda.4", ptr %t49
+  %t50 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.89, i32 0, i32 1
+  store ptr null, ptr %t50
+  %t51 = load { ptr, ptr }, ptr %v.closure.89
+  store { ptr, ptr } %t51, ptr %v.dbl
+  %t52 = call { ptr, ptr } @"example.com/fnvalue.MakeAdder"(i32 3)
+  store { ptr, ptr } %t52, ptr %v.ret.102
+  %t53 = load { ptr, ptr }, ptr %v.ret.102
+  store { ptr, ptr } %t53, ptr %v.add
+  %t54 = call { ptr, ptr } @"example.com/fnvalue.Counter"()
+  store { ptr, ptr } %t54, ptr %v.ret.107
+  %t55 = load { ptr, ptr }, ptr %v.ret.107
+  store { ptr, ptr } %t55, ptr %v.c
+  %t56 = getelementptr inbounds { ptr, ptr }, ptr %v.c, i32 0, i32 0
+  %t57 = getelementptr inbounds { ptr, ptr }, ptr %v.c, i32 0, i32 1
+  %t58 = load ptr, ptr %t56
+  %t59 = load ptr, ptr %t57
+  %t60 = call i32 %t58(ptr %t59)
+  store i32 %t60, ptr %v.a
+  %t61 = call i32 @"example.com/fnvalue.Apply"(ptr %v.inc, i32 1)
+  %t62 = call i32 @"example.com/fnvalue.Twice"(ptr %v.dbl, i32 2)
+  %t63 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t61, i32 %t62)
+  %t64 = extractvalue {i32, i1} %t63, 0
+  %t65 = extractvalue {i32, i1} %t63, 1
+  br i1 %t65, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.7, ptr @.str.8)
+  unreachable
+panic.ok.1:
+  %t66 = getelementptr inbounds { ptr, ptr }, ptr %v.add, i32 0, i32 0
+  %t67 = getelementptr inbounds { ptr, ptr }, ptr %v.add, i32 0, i32 1
+  %t68 = load ptr, ptr %t66
+  %t69 = load ptr, ptr %t67
+  %t70 = call i32 %t68(ptr %t69, i32 4)
+  %t71 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t64, i32 %t70)
+  %t72 = extractvalue {i32, i1} %t71, 0
+  %t73 = extractvalue {i32, i1} %t71, 1
+  br i1 %t73, label %panic.2, label %panic.ok.2
+panic.2:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.7, ptr @.str.8)
+  unreachable
+panic.ok.2:
+  %t74 = load i32, ptr %v.a
+  %t75 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t72, i32 %t74)
+  %t76 = extractvalue {i32, i1} %t75, 0
+  %t77 = extractvalue {i32, i1} %t75, 1
+  br i1 %t77, label %panic.3, label %panic.ok.3
+panic.3:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.7, ptr @.str.8)
+  unreachable
+panic.ok.3:
+  %t78 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.126, i32 0, i32 0
+  store ptr @"example.com/fnvalue.thunk.Inc", ptr %t78
+  %t79 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.126, i32 0, i32 1
+  store ptr null, ptr %t79
+  %t80 = call i32 @"example.com/fnvalue.Apply"(ptr %v.closure.126, i32 1)
+  %t81 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t76, i32 %t80)
+  %t82 = extractvalue {i32, i1} %t81, 0
+  %t83 = extractvalue {i32, i1} %t81, 1
+  br i1 %t83, label %panic.4, label %panic.ok.4
+panic.4:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.7, ptr @.str.8)
+  unreachable
+panic.ok.4:
+  ret i32 %t82
+}
+define i32 @"example.com/fnvalue.lambda.3"(ptr %closure.env, i32 %x) {
+entry:
+  %t84 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %x, i32 1)
+  %t85 = extractvalue {i32, i1} %t84, 0
+  %t86 = extractvalue {i32, i1} %t84, 1
+  br i1 %t86, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.9, ptr @.str.10)
+  unreachable
+panic.ok.1:
+  ret i32 %t85
+}
+define i32 @"example.com/fnvalue.lambda.4"(ptr %closure.env, i32 %x) {
+entry:
+  %t87 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %x, i32 2)
+  %t88 = extractvalue {i32, i1} %t87, 0
+  %t89 = extractvalue {i32, i1} %t87, 1
+  br i1 %t89, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.11, ptr @.str.12)
+  unreachable
+panic.ok.1:
+  ret i32 %t88
+}
+define i32 @"example.com/fnvalue.thunk.Inc"(ptr %closure.env, i32 %x) {
+entry:
+  %r = call i32 @"example.com/fnvalue.Inc"(i32 %x)
+  ret i32 %r
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -63,11 +223,19 @@ entry:
   ret i32 %r
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
-@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:12:12\00", align 1
-@.str.2 = private unnamed_addr constant [30 x i8] c"example.com/fnvalue.will$main\00", align 1
-@.str.3 = private unnamed_addr constant [16 x i8] c"main.will:10:62\00", align 1
+@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:10:12\00", align 1
+@.str.2 = private unnamed_addr constant [24 x i8] c"example.com/fnvalue.Inc\00", align 1
+@.str.3 = private unnamed_addr constant [16 x i8] c"main.will:15:16\00", align 1
 @.str.4 = private unnamed_addr constant [29 x i8] c"example.com/fnvalue.lambda.1\00", align 1
-@.str.5 = private unnamed_addr constant [16 x i8] c"main.will:11:62\00", align 1
+@.str.5 = private unnamed_addr constant [15 x i8] c"main.will:22:9\00", align 1
 @.str.6 = private unnamed_addr constant [29 x i8] c"example.com/fnvalue.lambda.2\00", align 1
+@.str.7 = private unnamed_addr constant [16 x i8] c"main.will:33:12\00", align 1
+@.str.8 = private unnamed_addr constant [30 x i8] c"example.com/fnvalue.will$main\00", align 1
+@.str.9 = private unnamed_addr constant [16 x i8] c"main.will:28:62\00", align 1
+@.str.10 = private unnamed_addr constant [29 x i8] c"example.com/fnvalue.lambda.3\00", align 1
+@.str.11 = private unnamed_addr constant [16 x i8] c"main.will:29:62\00", align 1
+@.str.12 = private unnamed_addr constant [29 x i8] c"example.com/fnvalue.lambda.4\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
+declare ptr @willrt_alloc(i64)
+declare void @willrt_free(ptr)

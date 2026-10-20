@@ -249,13 +249,72 @@ func TestEmitFunctionValue(t *testing.T) {
 	}
 	text := string(ir)
 	for _, want := range []string{
-		`define i32 @"example.com/app.lambda.1"(i32 %x)`,
+		`define i32 @"example.com/app.lambda.1"(ptr %closure.env, i32 %x)`,
 		`define i32 @"example.com/app.Apply"(ptr %f, i32 %x)`,
-		`call i32 %f(i32 %x)`,
+		`call i32 %t3(ptr %t4, i32 %x)`,
 		`store ptr @"example.com/app.lambda.1"`,
+		`store ptr null`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitCapturingClosure(t *testing.T) {
+	src := "func Counter() -> func() -> i32 {\n" +
+		"    var n: i32 = 0\n" +
+		"    return func() -> i32 {\n" +
+		"        n += 1\n" +
+		"        return n\n" +
+		"    }\n" +
+		"}\n\n" +
+		"func main() -> i32 {\n" +
+		"    var c: func() -> i32 = Counter()\n" +
+		"    var a: i32 = c()\n" +
+		"    return a\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`getelementptr { i32 }, ptr null, i32 1`,
+		`call ptr @willrt_alloc(i64`,
+		`define i32 @"example.com/app.lambda.1"(ptr %closure.env)`,
+		`getelementptr inbounds { i32 }, ptr %closure.env, i32 0, i32 0`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitNamedFunctionValue(t *testing.T) {
+	src := "func Inc(x: i32) -> i32 {\n" +
+		"    return x + 1\n" +
+		"}\n\n" +
+		"func Apply(f: func(i32) -> i32, x: i32) -> i32 {\n" +
+		"    return f(x)\n" +
+		"}\n\n" +
+		"func main() -> i32 {\n" +
+		"    return Apply(Inc, 4)\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define i32 @"example.com/app.thunk.Inc"(ptr %closure.env, i32 %x)`,
+		`call i32 @"example.com/app.Inc"(i32 %x)`,
+		`store ptr @"example.com/app.thunk.Inc"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\\n%s", want, text)
 		}
 	}
 }

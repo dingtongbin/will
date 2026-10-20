@@ -73,8 +73,9 @@ func llvmTypeText(text string) (string, bool) {
 		return "{ ptr, i64 }", true
 	}
 	if strings.HasPrefix(text, "func(") {
-		// A function value is one code pointer.
-		return "ptr", true
+		// A function value is a code pointer and the environment it reads.
+		// A closure without captures carries a null environment.
+		return "{ ptr, ptr }", true
 	}
 	if _, _, ok := mapTypeText(text); ok {
 		return "{ ptr, i64, i64 }", true
@@ -114,6 +115,9 @@ func (g *generator) loopBindType(decl int, name string) (string, bool) {
 func (g *generator) nameSlot(r willc.Record) (string, string, bool) {
 	decl := refField(r, "to")
 	name := fieldText(r, "text")
+	if ptr := g.captureFields[decl]; ptr != "" {
+		return ptr, g.captureTypeOf(decl), true
+	}
 	if binds, ok := g.loopBinds[decl]; ok {
 		slot, ok := binds[name]
 		if !ok {

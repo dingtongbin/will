@@ -52,6 +52,7 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		byteGlobals:   map[string]string{},
 		emittedTypes:   map[string]bool{},
 		emittedVtables: map[string]bool{},
+		thunkEmitted:   map[string]bool{},
 		out:            &strings.Builder{},
 		aliases:       aliases,
 	}
@@ -309,6 +310,12 @@ func (g *generator) use(d *docState) {
 	g.strCatSlots = map[int]string{}
 	g.interpSlots = map[int]string{}
 	g.lambdaNames = map[int]string{}
+	g.lambdas = map[int]*lambdaInfo{}
+	g.closureSlots = map[int]string{}
+	g.captureFields = map[int]string{}
+	g.captureSpills = map[int]string{}
+	g.currentLambda = 0
+	g.pendingThunks = nil
 	g.pkgNames = map[string]string{}
 	for _, r := range d.recs {
 		if r.Kind == "import" {
@@ -444,6 +451,18 @@ type generator struct {
 	// numbers those symbols across the module.
 	lambdaNames map[int]string
 	lambdaSeq   int
+	// lambdas holds what each lambda captures, and closureSlots the two-word
+	// slot a closure value is built in. captureFields maps a captured
+	// declaration to its field inside the current lambda's environment.
+	lambdas        map[int]*lambdaInfo
+	closureSlots   map[int]string
+	captureFields  map[int]string
+	captureSpills  map[int]string
+	currentLambda  int
+	// pendingThunks are the wrappers that adapt a named function to the
+	// closure calling convention, and thunkEmitted dedupes them by symbol.
+	pendingThunks []thunkRequest
+	thunkEmitted  map[string]bool
 	// pkgNames maps the package name a document writes to the import path.
 	pkgNames map[string]string
 	// loopBinds maps a for record and a binding name to that binding's slot,
@@ -539,6 +558,9 @@ func (g *generator) emitDoc() error {
 		if err := g.funcDecl(fn); err != nil {
 			return err
 		}
+	}
+	if err := g.emitThunks(); err != nil {
+		return err
 	}
 	return g.emitInit(g.cur)
 }
@@ -680,6 +702,15 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	}
 	sortByID(params)
 	var sig []string
+	g.currentLambda = 0
+	g.captureFields = map[int]string{}
+	g.captureSpills = map[int]string{}
+	if _, ok := g.lambdas[fn.ID]; ok {
+		// Every lambda takes its environment first, even when it captures
+		// nothing, so an indirect call has one calling convention.
+		g.currentLambda = fn.ID
+		sig = append(sig, "ptr %closure.env")
+	}
 	if recv != nil {
 		// The receiver is the hidden first parameter and is passed as a
 		// borrow, so it is a pointer.
@@ -699,12 +730,6 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		typ, err := g.declLLVMType(p.ID)
 		if err != nil {
 			return err
-		}
-		if typ == "ptr" {
-			// A function value is one code pointer, passed by value.
-			g.scope[p.ID] = "%" + pname
-			sig = append(sig, "ptr %"+pname)
-			continue
 		}
 		if !isAggregateType(typ) {
 			return g.errf(p.ID, "cannot translate node #%d: parameter type %s is not lowered yet", p.ID, ptype)
@@ -768,6 +793,9 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	g.loops = nil
 	fmt.Fprintf(g.out, "define %s @%s(%s) {\n", resLLVM, llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
+	if err := g.setupCaptures(fn.ID); err != nil {
+		return err
+	}
 	body, err := g.blockOf(fn.ID)
 	if err != nil {
 		return err
@@ -795,8 +823,12 @@ func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
 	g.slots = map[int]string{}
 	g.slotNames = map[string]int{}
 	g.loops = nil
+	g.captureSpills = map[int]string{}
 	fmt.Fprintf(g.out, "define void @%s(%s) {\n", llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
 	g.out.WriteString("entry:\n")
+	if err := g.setupCaptures(fn.ID); err != nil {
+		return err
+	}
 	body, err := g.blockOf(fn.ID)
 	if err != nil {
 		return err
@@ -827,6 +859,14 @@ func (g *generator) blockOf(owner int) (willc.Record, error) {
 // allocas reserves a stack slot in the entry block for every local of one
 // function. Creating them at the entry keeps a loop from growing the stack.
 func (g *generator) allocas(fn int) error {
+	for _, r := range g.recs {
+		if !g.isClosureRecord(r, fn) {
+			continue
+		}
+		name := "%v.closure." + strconv.Itoa(r.ID)
+		g.closureSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca { ptr, ptr }\n", name)
+	}
 	var locals []willc.Record
 	for _, r := range g.recs {
 		if r.Kind != "var" && r.Kind != "const" {
@@ -1720,16 +1760,14 @@ func (g *generator) value(id int) (string, error) {
 		return "", g.errf(id, "cannot translate node #%d: literal kind %s is not lowered yet", id, fieldText(r, "kind"))
 	case "func":
 		if _, ok := g.lambdaNames[r.ID]; ok {
-			return "@" + llvmSymbol(g.cur.funcs[r.ID]), nil
+			return "", g.errf(id, "cannot translate node #%d: a closure is a place, not a scalar", id)
 		}
 		return "", g.errf(id, "cannot translate node #%d: a function declaration is not a value", id)
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
 		if c, ok := g.recs[decl]; ok && c.Kind == "func" {
-			if sym := g.cur.funcs[decl]; sym != "" {
-				return "@" + llvmSymbol(sym), nil
-			}
+			return "", g.errf(id, "cannot translate node #%d: a function value is a place, not a scalar", id)
 		}
 		if c, ok := g.recs[decl]; ok && c.Kind == "const" {
 			if v, ok := g.constValueOf(decl); ok {

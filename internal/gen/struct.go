@@ -288,6 +288,9 @@ func (g *generator) typeOf(id int) (string, error) {
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
+		if c, ok := g.recs[decl]; ok && c.Kind == "func" {
+			return "{ ptr, ptr }", nil
+		}
 		if info := g.globalRef(r); info != nil {
 			return info.typ, nil
 		}
@@ -334,7 +337,7 @@ func (g *generator) typeOf(id int) (string, error) {
 		return "{ ptr, i64 }", nil
 	case "func":
 		if _, ok := g.lambdaNames[r.ID]; ok {
-			return "ptr", nil
+			return "{ ptr, ptr }", nil
 		}
 		return "", g.errf(id, "cannot translate node #%d: a function declaration is not a value", id)
 	case "slice":
@@ -712,6 +715,9 @@ func (g *generator) place(id int) (string, string, error) {
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
+		if c, ok := g.recs[decl]; ok && c.Kind == "func" {
+			return g.placeNamedFunction(r, c)
+		}
 		if info := g.globalRef(r); info != nil {
 			if c, ok := g.recs[decl]; ok && c.Kind == "const" {
 				return "", "", g.errf(id, "cannot translate node #%d: a constant is not a place", id)
@@ -775,6 +781,11 @@ func (g *generator) place(id int) (string, string, error) {
 		ptr := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", ptr, typ, base, i)
 		return ptr, info.types[i], nil
+	case "func":
+		if _, ok := g.lambdaNames[r.ID]; ok {
+			return g.closurePlace(r)
+		}
+		return "", "", g.errf(id, "cannot translate node #%d: a function declaration is not a place", id)
 	case "agg":
 		info, ok := g.aggStructInfo(r)
 		if !ok {
