@@ -195,6 +195,82 @@ static void test_plate_foreign(void) {
     willrt_plate_release(stack_block + 32);
 }
 
+typedef struct willrt_alloc_worker {
+    int32_t lane;
+    int32_t rounds;
+} willrt_alloc_worker;
+
+static void willrt_alloc_worker_body(void* raw) {
+    willrt_alloc_worker* worker = (willrt_alloc_worker*)raw;
+    int32_t i;
+
+    willrt_mem_set_lane(worker->lane);
+    for (i = 0; i < worker->rounds; i++) {
+        size_t size = (size_t)(32 + (i % 8) * 97);
+        unsigned char* block = (unsigned char*)willrt_alloc(size);
+        size_t j;
+
+        assert(block != NULL);
+        for (j = 0; j < size; j++) {
+            block[j] = (unsigned char)(i + j);
+        }
+        willrt_free(block);
+    }
+    willrt_mem_set_lane(0);
+}
+
+/* Every lane allocates and frees on its own thread; the arena must not lose a
+   block and the chunk count must settle once the threads are joined. */
+static void test_alloc_lanes(void) {
+    enum { kThreads = 4 };
+    willrt_os_thread threads[kThreads];
+    willrt_alloc_worker workers[kThreads];
+    size_t chunks_before = willrt_mem_chunk_count();
+    int32_t i;
+
+    for (i = 0; i < kThreads; i++) {
+        workers[i].lane = i;
+        workers[i].rounds = 2000;
+        assert(willrt_os_thread_start(&threads[i], willrt_alloc_worker_body,
+                                      &workers[i]) == 0);
+    }
+    for (i = 0; i < kThreads; i++) {
+        willrt_os_thread_join(&threads[i]);
+    }
+    assert(willrt_mem_chunk_count() >= chunks_before);
+    {
+        unsigned char* block = (unsigned char*)willrt_alloc(100000);
+
+        assert(block != NULL);
+        willrt_free(block);
+    }
+}
+
+/* A block allocated on one lane is freed on another; the owner's free list
+   must take it back under its lock. */
+typedef struct willrt_alloc_handoff {
+    void* block;
+} willrt_alloc_handoff;
+
+static void willrt_alloc_handoff_body(void* raw) {
+    willrt_alloc_handoff* handoff = (willrt_alloc_handoff*)raw;
+
+    willrt_mem_set_lane(1);
+    willrt_free(handoff->block);
+    willrt_mem_set_lane(0);
+}
+
+static void test_alloc_cross_lane(void) {
+    willrt_os_thread thread;
+    willrt_alloc_handoff handoff;
+
+    handoff.block = willrt_alloc(300);
+    assert(handoff.block != NULL);
+    assert(willrt_os_thread_start(&thread, willrt_alloc_handoff_body, &handoff)
+           == 0);
+    willrt_os_thread_join(&thread);
+}
+
 int main(void) {
     test_alloc_round_trip();
     test_alloc_alignment();
@@ -208,5 +284,7 @@ int main(void) {
     test_plate_reuse();
     test_plate_misuse();
     test_plate_foreign();
+    test_alloc_lanes();
+    test_alloc_cross_lane();
     return 0;
 }
