@@ -42,6 +42,15 @@ func (g *generator) castValue(r willc.Record) (string, error) {
 	if toText == "str" || toText == "[]u8" {
 		return "", g.errf(r.ID, "cannot translate node #%d: a conversion to %s is a place", r.ID, toText)
 	}
+	if toText == "raw" && fromText != "usize" && fromText != "u64" {
+		// raw(x) takes the address of a place. A scalar raw(n) conversion
+		// names an integer value instead and is handled below.
+		ptr, _, err := g.place(exprID)
+		if err != nil {
+			return "", g.errf(r.ID, "cannot translate node #%d: raw() takes a place or a usize", r.ID)
+		}
+		return ptr, nil
+	}
 	v, err := g.value(exprID)
 	if err != nil {
 		return "", err

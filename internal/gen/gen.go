@@ -57,6 +57,7 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		dropEmitted:    map[string]bool{},
 		out:            &strings.Builder{},
 		aliases:        aliases,
+		declSet:        map[string]bool{},
 	}
 	for _, doc := range docs {
 		g.docs = append(g.docs, newDocState(doc))
@@ -94,6 +95,9 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 // emitted, the panic declaration. Both may follow the functions because LLVM
 // resolves forward references to global values.
 func (g *generator) emitAux() {
+	for _, decl := range g.decls {
+		g.out.WriteString(decl + "\n")
+	}
 	for _, s := range g.strings {
 		g.out.WriteString(s)
 	}
@@ -411,6 +415,7 @@ func (g *generator) use(d *docState) {
 	g.structDecl = map[string]int{}
 	g.enumDecl = map[string]int{}
 	g.ifaceDecl = map[string]int{}
+	g.linkSigs = map[string]cLinkSig{}
 	g.byType = map[string]*structInfo{}
 	g.byName = map[string]*structInfo{}
 	g.aggSlots = map[int]string{}
@@ -687,6 +692,13 @@ type generator struct {
 	// defers holds one frame per open block, innermost last. Each entry is the
 	// call record of one defer in that block, in source order.
 	defers [][]int
+	// linkSigs holds the header prototype of each C link of the current
+	// document. An untyped link keeps the i32 fallback.
+	linkSigs map[string]cLinkSig
+	// decls holds module-level C declarations; they cannot be written inside a
+	// function body, so the call site queues them and emitAux writes them.
+	decls   []string
+	declSet map[string]bool
 	// resultType is the LLVM type the current function returns, or "" for a
 	// void function.
 	resultType string
@@ -850,6 +862,19 @@ func (g *generator) collect() {
 			g.cur.funcs[r.ID] = g.symbolName(name)
 		case "link":
 			g.cur.links[r.ID] = fieldText(r, "text")
+			if fieldText(r, "typed") == "true" {
+				sig := cLinkSig{
+					result:   fieldText(r, "type"),
+					variadic: fieldText(r, "variadic") == "true",
+					typed:    true,
+				}
+				for _, f := range r.Fields {
+					if f.Name == "param" && f.Value.Kind == willc.TextValue {
+						sig.params = append(sig.params, f.Value.Text)
+					}
+				}
+				g.linkSigs[fieldText(r, "text")] = sig
+			}
 		case "struct":
 			g.structDecl[fieldText(r, "text")] = r.ID
 		case "enum":
@@ -2715,6 +2740,21 @@ func (g *generator) binary(r willc.Record) (string, error) {
 			return g.strEqual(lID, rID, op, r)
 		}
 	}
+	if op == "+" {
+		if lt, err := g.willTypeText(lID); err == nil && lt == "raw" {
+			base, err := g.value(lID)
+			if err != nil {
+				return "", err
+			}
+			offset, err := g.value(rID)
+			if err != nil {
+				return "", err
+			}
+			out := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = getelementptr inbounds i8, ptr %s, i64 %s\n", out, base, offset)
+			return out, nil
+		}
+	}
 	l, err := g.value(lID)
 	if err != nil {
 		return "", err
@@ -2849,6 +2889,9 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 			return "", "", err
 		}
 		recvText = stripPredeclaredPackage(recvText)
+		if recvText == "raw" {
+			return g.rawMethod(r)
+		}
 		if elem, ok := viewElemText(recvText); ok {
 			return g.viewMethod(r, elem)
 		}
@@ -2910,6 +2953,11 @@ func (g *generator) emitCall(r willc.Record, name string, link bool) (string, st
 // emitCallFrom writes a call whose receiver pointer may already be known, as
 // when an rc method call has dereferenced its handle.
 func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv string) (string, string, error) {
+	if link {
+		if sig, ok := g.linkSigs[name]; ok && sig.typed {
+			return g.emitTypedCLink(r, name, sig)
+		}
+	}
 	args := g.callArgs(r)
 	parts := make([]string, 0, len(args))
 	// A method call passes its receiver first, as the borrow pointer the
@@ -2960,8 +3008,8 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 	}
 	if link {
 		if resultText == "" {
-			// A C link's result type comes from its header, which is not read
-			// yet; these links have always been declared as i32.
+			// An explicit link without a header keeps the historical i32
+			// fallback; a typed header always takes the branch above.
 			resultText = "i32"
 		}
 		if resultText != "i32" {
@@ -3002,11 +3050,12 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 }
 
 func (g *generator) declare(name string, args int) {
-	if g.declared[name] {
+	decl := "declare i32 @" + llvmSymbol(name) + "(" + i32Types(args) + ")"
+	if g.declSet[decl] {
 		return
 	}
-	g.declared[name] = true
-	fmt.Fprintf(g.out, "declare i32 @%s(%s)\n", llvmSymbol(name), i32Types(args))
+	g.declSet[decl] = true
+	g.decls = append(g.decls, decl)
 }
 
 func i32Types(n int) string {

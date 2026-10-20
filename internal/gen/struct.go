@@ -793,6 +793,9 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 	if _, text, known := g.arrayCallResult(r); known {
 		return text, nil
 	}
+	if _, text, known := g.rawCallResult(r); known {
+		return text, nil
+	}
 	if text, known := g.functionValueResult(r); known {
 		return text, nil
 	}
@@ -803,6 +806,12 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 		return "", g.errf(r.ID, "cannot translate node #%d: %s is not a function of this module", r.ID, qualified)
 	}
 	if r.Kind == "mcall" && g.isCLink(r) {
+		if sig, ok := g.linkSigs[fieldText(r, "text")]; ok && sig.typed {
+			if sig.result == "" || sig.result == "()" {
+				return "", nil
+			}
+			return sig.result, nil
+		}
 		return "", nil
 	}
 	if r.Kind == "mcall" {

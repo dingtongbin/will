@@ -5,7 +5,7 @@ var kindSpecs = map[string]KindSpec{
 	"module":   {Required: []string{"path"}},
 	"import":   {Required: []string{"path"}, Optional: []string{"unused"}},
 	"cimport":  {Required: []string{"path"}},
-	"link":     {Required: []string{"text"}, Optional: []string{"fast", "blocking"}},
+	"link":     {Required: []string{"text"}, Optional: []string{"fast", "blocking", "typed", "type", "param", "variadic"}, Repeatable: []string{"param"}},
 	"const":    {Required: []string{"text", "type"}},
 	"var":      {Required: []string{"text", "type"}},
 	"func":     {Required: []string{"text"}, Optional: []string{"type"}},

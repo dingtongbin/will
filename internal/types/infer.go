@@ -801,7 +801,15 @@ func (c *checker) castType(s *inferScope, name *ast.NameExpr, call *ast.CallExpr
 		c.badArity(call.Pos(), name.Name)
 		return nil
 	}
-	c.inferExpr(s, call.Args[0].Expr)
+	arg := call.Args[0].Expr
+	got := c.inferExpr(s, arg)
+	if name.Name == "raw" && got != nil && !got.IsInteger() {
+		switch arg.(type) {
+		case *ast.NameExpr, *ast.FieldExpr, *ast.IndexExpr, *ast.SliceExpr:
+		default:
+			c.typeMismatch(arg.Pos(), got, c.in.scalar("usize"))
+		}
+	}
 	return c.typeByName(name.Name)
 }
 
@@ -904,6 +912,9 @@ func (c *checker) checkTypeArgs(call *ast.CallExpr, sig *signature) {
 }
 
 func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
+	if call.Link != nil {
+		return c.cLinkType(s, call)
+	}
 	recv := c.inferExpr(s, call.Recv)
 	for _, a := range call.Args {
 		c.inferExpr(s, a.Expr)
@@ -934,6 +945,9 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	}
 	if recv == nil {
 		return nil
+	}
+	if recv.Kind() == ScalarKind && recv.Name() == "raw" {
+		return c.rawMethod(s, call)
 	}
 	if t, ok := c.builtinContainerMethod(s, recv, call); ok {
 		return t
@@ -969,6 +983,91 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			"check the method name and the receiver")
 	}
 	return nil
+}
+
+// rawMethod types the fixed method set of raw pointers. Every load names the
+// width it reads; a store takes the same width; the atomic and volatile forms
+// are the u32 subset the language exposes.
+func (c *checker) rawMethod(s *inferScope, call *ast.MethodCallExpr) *Type {
+	usize := c.in.scalar("usize")
+	boolean := c.in.scalar("bool")
+	raw := c.in.scalar("raw")
+	width := map[string]string{
+		"LoadU8": "u8", "LoadU16": "u16", "LoadU32": "u32", "LoadU64": "u64",
+		"LoadI8": "i8", "LoadI16": "i16", "LoadI32": "i32", "LoadI64": "i64",
+		"LoadF32": "f32", "LoadF64": "f64",
+	}
+	if name, ok := width[call.Name]; ok {
+		c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+		return c.in.scalar(name)
+	}
+	if call.Name == "LoadRaw" {
+		c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+		return raw
+	}
+	storeWidth := map[string]string{
+		"StoreU8": "u8", "StoreU16": "u16", "StoreU32": "u32", "StoreU64": "u64",
+		"StoreI8": "i8", "StoreI16": "i16", "StoreI32": "i32", "StoreI64": "i64",
+		"StoreF32": "f32", "StoreF64": "f64",
+	}
+	if name, ok := storeWidth[call.Name]; ok {
+		c.checkPayload(s, []*Type{c.in.scalar(name)}, call.Args, call.Name, call.Pos())
+		return c.in.unit()
+	}
+	switch call.Name {
+	case "StoreRaw":
+		c.checkPayload(s, []*Type{raw}, call.Args, call.Name, call.Pos())
+		return c.in.unit()
+	case "VolatileLoadU32", "AtomicLoadU32":
+		c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+		return c.in.scalar("u32")
+	case "VolatileStoreU32", "AtomicStoreU32":
+		c.checkPayload(s, []*Type{c.in.scalar("u32")}, call.Args, call.Name, call.Pos())
+		return c.in.unit()
+	case "AtomicAddU32":
+		c.checkPayload(s, []*Type{c.in.scalar("u32")}, call.Args, call.Name, call.Pos())
+		return c.in.scalar("u32")
+	case "AtomicCasU32":
+		c.checkPayload(s, []*Type{c.in.scalar("u32"), c.in.scalar("u32")}, call.Args, call.Name, call.Pos())
+		return boolean
+	}
+	_ = usize
+	return nil
+}
+
+// cLinkType types one call through the c qualifier from its header prototype.
+// An untyped link keeps the old permissive behavior; the generator then uses
+// the i32 fallback.
+func (c *checker) cLinkType(s *inferScope, call *ast.MethodCallExpr) *Type {
+	link := call.Link
+	if !link.Typed {
+		for _, a := range call.Args {
+			c.inferExpr(s, a.Expr)
+		}
+		return nil
+	}
+	params := make([]*Type, len(link.Params))
+	for i, p := range link.Params {
+		params[i] = c.buildType(p, nil)
+	}
+	for i, a := range call.Args {
+		if i < len(params) {
+			c.checkValue(s, a.Expr, params[i])
+			continue
+		}
+		if !link.Variadic {
+			c.badArity(call.Pos(), link.Name)
+			break
+		}
+		c.inferExpr(s, a.Expr)
+	}
+	if !link.Variadic && len(call.Args) < len(params) {
+		c.badArity(call.Pos(), link.Name)
+	}
+	if link.Result == nil {
+		return c.in.unit()
+	}
+	return c.buildType(link.Result, nil)
 }
 
 // builtinContainerMethod types the Map and Set methods the lowering provides.
@@ -1265,6 +1364,10 @@ func (c *checker) binaryType(s *inferScope, b *ast.BinaryExpr) *Type {
 		return c.in.scalar("bool")
 	}
 	lt := c.inferExpr(s, b.L)
+	if b.Op == token.Plus && lt != nil && lt.Kind() == ScalarKind && lt.Name() == "raw" {
+		c.checkValue(s, b.R, c.in.scalar("usize"))
+		return lt
+	}
 	rt := c.exprWithWant(s, b.R, lt)
 	if b.Op == token.Plus && lt != nil && lt.Kind() == ScalarKind && lt.Name() == "str" {
 		if !Equal(lt, rt) {

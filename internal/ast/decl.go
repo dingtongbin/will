@@ -18,6 +18,13 @@ type Link struct {
 	Name     string
 	Fast     bool
 	Blocking bool
+	// Typed is set when a C header supplied the prototype. Params and Result
+	// are then the will types the ABI takes and returns; Variadic marks a
+	// trailing C ellipsis.
+	Typed    bool
+	Params   []*Type
+	Result   *Type
+	Variadic bool
 }
 
 // ConstDecl declares a constant.

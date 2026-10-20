@@ -241,6 +241,7 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 		r.walkArgs(x.Args)
 	case *ast.MethodCallExpr:
 		r.walkQualifier(x.Recv)
+		x.Link = r.cLink(x.Recv, x.Name)
 		r.checkImportedMember(x.Recv, x.Name, x.NamePos)
 		r.walkTypes(x.TypeArgs)
 		r.walkArgs(x.Args)
@@ -344,6 +345,26 @@ func (r *resolver) qualifier(name string) (*Symbol, bool) {
 		return nil, false
 	}
 	return sym, true
+}
+
+// cLink returns the import c declaration a member of the c qualifier names.
+func (r *resolver) cLink(recv ast.Expr, name string) *ast.Link {
+	qual, ok := recv.(*ast.NameExpr)
+	if !ok || qual.Name != "c" {
+		return nil
+	}
+	table, ok := r.tables["c"]
+	if !ok {
+		return nil
+	}
+	member, ok := table[name]
+	if !ok || member.Kind != CLinkKind {
+		return nil
+	}
+	if link, ok := member.Node.(*ast.Link); ok {
+		return link
+	}
+	return nil
 }
 
 // checkImportedMember reports N0002 when a package-qualified member starts

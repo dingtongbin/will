@@ -272,6 +272,16 @@ func (e *emitter) emitImport(imp *ast.Import) {
 		if link.Blocking {
 			e.boolean(id, "blocking", true)
 		}
+		if link.Typed {
+			e.boolean(id, "typed", true)
+			e.text(id, "type", ast.TypeText(link.Result))
+			for _, p := range link.Params {
+				e.text(id, "param", ast.TypeText(p))
+			}
+			if link.Variadic {
+				e.boolean(id, "variadic", true)
+			}
+		}
 	}
 	e.pop()
 }
