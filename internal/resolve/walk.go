@@ -104,6 +104,19 @@ func (r *resolver) walkSelect(sel *ast.SelectStmt) {
 	}
 }
 
+// lookupVariant finds a variant in the lexical scopes or, failing that, in the
+// package variant table.
+func (r *resolver) lookupVariant(name string) (*Symbol, bool) {
+	if sym, ok := r.current().lookup(name); ok &&
+		(sym.Kind == VariantKind || sym.Kind == PredeclaredValueKind) {
+		return sym, true
+	}
+	if sym, ok := r.pkg.variants[name]; ok {
+		return sym, true
+	}
+	return nil, false
+}
+
 func (r *resolver) walkPattern(p *ast.Pattern) {
 	if p == nil {
 		return
@@ -114,15 +127,14 @@ func (r *resolver) walkPattern(p *ast.Pattern) {
 		// A bare name that denotes a variant (or one of the predefined
 		// constructors such as None) is a variant pattern, not a binding:
 		// the pattern grammar writes a payloadless variant as just its name.
-		if sym, ok := r.current().lookup(p.Name); ok &&
-			(sym.Kind == VariantKind || sym.Kind == PredeclaredValueKind) {
+		if sym, ok := r.lookupVariant(p.Name); ok {
 			r.refs[p] = sym
 			sym.Used = true
 			return
 		}
 		r.declareLocal(&Symbol{Name: p.Name, Kind: LocalKind, Pos: p.Pos(), Node: p, Exported: isExported(p.Name)})
 	case ast.VariantPattern:
-		if sym, ok := r.current().lookup(p.Name); ok && (sym.Kind == VariantKind || sym.Kind == PredeclaredValueKind) {
+		if sym, ok := r.lookupVariant(p.Name); ok {
 			r.refs[p] = sym
 			sym.Used = true
 		} else {
@@ -201,6 +213,14 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 		}
 		sym, ok := r.current().lookup(x.Name)
 		if !ok {
+			// A bare variant call such as Circle(1.5) is still accepted, but
+			// only when no value of that name exists. The qualified form
+			// Shape.Circle(1.5) is the spelling the grammar documents.
+			if variant, found := r.pkg.variants[x.Name]; found {
+				r.refs[x] = variant
+				variant.Used = true
+				return
+			}
 			r.undefined(x.Pos(), x.Name)
 			return
 		}

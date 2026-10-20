@@ -14,3 +14,25 @@ struct Field {
     key: str
     value: FieldValue
 }
+
+// The constructors name the variant they build, so a caller writes
+// log.Str("path") instead of log.FieldValue.Str("path").
+func Str(value: str) -> FieldValue {
+    return FieldValue.Str(value)
+}
+
+func Int(value: i64) -> FieldValue {
+    return FieldValue.Int(value)
+}
+
+func Uint(value: u64) -> FieldValue {
+    return FieldValue.Uint(value)
+}
+
+func Float(value: f64) -> FieldValue {
+    return FieldValue.Float(value)
+}
+
+func Bool(value: bool) -> FieldValue {
+    return FieldValue.Bool(value)
+}

@@ -26,7 +26,13 @@ func (g *generator) collectGlobals() {
 	for _, d := range g.docs {
 		g.use(d)
 		for _, r := range g.topLevelVars(d) {
-			info := &globalInfo{sym: qualify(d.path, fieldText(r, "text")), text: fieldText(r, "type")}
+			text := fieldText(r, "type")
+			// A named type declared in the same package needs its package path
+			// in the text another document reads, or the type cannot be found.
+			if q := qualify(d.path, text); g.declKinds[q] != "" {
+				text = q
+			}
+			info := &globalInfo{sym: qualify(d.path, fieldText(r, "text")), text: text}
 			typ, err := g.declLLVMType(r.ID)
 			if err != nil {
 				// An unsupported global type is reported when the variable is

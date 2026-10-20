@@ -232,6 +232,14 @@ func (g *generator) planStructInstances() {
 // instantiating a generic declaration when the literal carries arguments.
 func (g *generator) aggStructInfo(r willc.Record) (*structInfo, bool) {
 	id := refField(r, "to")
+	if id == 0 {
+		// A type declared in another file is written by qualified name.
+		if q := textField(r, "to"); q != "" {
+			info := g.structInfoByLLVM(qualifiedTypeName(q))
+			return info, info != nil && info.ok
+		}
+		return nil, false
+	}
 	if args := g.typeArgTexts(r); len(args) > 0 && g.structIsGeneric(id) {
 		return g.ensureStructInstance(id, args)
 	}

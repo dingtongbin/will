@@ -115,7 +115,7 @@ func (r *resolver) addPackageNames(names Exported) {
 		if sym == nil || sym.Name == "" {
 			continue
 		}
-		r.pkg.define(&Symbol{
+		seeded := &Symbol{
 			Name:        sym.Name,
 			Kind:        sym.Kind,
 			Pos:         sym.Pos,
@@ -123,7 +123,12 @@ func (r *resolver) addPackageNames(names Exported) {
 			RecvType:    sym.RecvType,
 			Exported:    sym.Exported,
 			FromSibling: true,
-		})
+		}
+		if seeded.Kind == VariantKind {
+			r.pkg.defineVariant(seeded)
+			continue
+		}
+		r.pkg.define(seeded)
 	}
 }
 
@@ -236,7 +241,21 @@ func (r *resolver) addTopLevel() {
 		case *ast.EnumDecl:
 			r.defineTop(&Symbol{Name: decl.Name, Kind: EnumKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
 			for _, v := range decl.Variants {
-				r.defineTop(&Symbol{Name: v.Name, Kind: VariantKind, Pos: v.NamePos, Node: v, Exported: isExported(v.Name)})
+				// A variant is selected through its enum type, so it lives in
+				// the variant table rather than in the package name table.
+				sym := &Symbol{Name: v.Name, Kind: VariantKind, Pos: v.NamePos, Node: v, Exported: isExported(v.Name)}
+				if prev, ok := r.pkg.variants[v.Name]; ok {
+					if prev.FromSibling {
+						// The package layer already reported a duplicate
+						// between files; this file's declaration is the one
+						// its own patterns should see.
+						r.pkg.variants[v.Name] = sym
+						continue
+					}
+					r.duplicate(v.NamePos, prev.Name)
+					continue
+				}
+				r.pkg.defineVariant(sym)
 			}
 		case *ast.InterfaceDecl:
 			r.defineTop(&Symbol{Name: decl.Name, Kind: InterfaceKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})

@@ -78,10 +78,25 @@ type scope struct {
 	parent *scope
 	names  map[string]*Symbol
 	order  []*Symbol
+	// variants holds enum variants by their bare name for pattern matching.
+	// A variant is not a package-level value, so it does not collide with a
+	// function or constant of the same name; only a pattern names it alone.
+	variants map[string]*Symbol
 }
 
 func newScope(parent *scope) *scope {
-	return &scope{parent: parent, names: map[string]*Symbol{}}
+	return &scope{parent: parent, names: map[string]*Symbol{}, variants: map[string]*Symbol{}}
+}
+
+// defineVariant records one variant for pattern lookup without adding it to the
+// package name table.
+func (s *scope) defineVariant(sym *Symbol) {
+	if s.variants == nil {
+		s.variants = map[string]*Symbol{}
+	}
+	if _, ok := s.variants[sym.Name]; !ok {
+		s.variants[sym.Name] = sym
+	}
 }
 
 func (s *scope) lookup(name string) (*Symbol, bool) {

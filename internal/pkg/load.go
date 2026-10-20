@@ -289,7 +289,7 @@ func receiverName(t *ast.Type) string {
 func buildExports(p *Package) resolve.Exported {
 	out := resolve.Exported{}
 	for name, sym := range p.Names {
-		if isExported(name) {
+		if isExported(name) && sym.Kind != resolve.VariantKind {
 			out[name] = sym
 		}
 	}
@@ -304,6 +304,10 @@ func buildNames(p *Package) (resolve.Exported, []diag.Diagnostic) {
 	out := resolve.Exported{}
 	var bag diag.Bag
 	seen := map[string]ast.Node{}
+	// A variant is not a package-level value, so it does not collide with a
+	// function or constant of the same name. Two variants with one bare name
+	// still collide, because a pattern names a variant without its enum.
+	variants := map[string]ast.Node{}
 	for _, f := range p.Files {
 		if f.AST == nil {
 			continue
@@ -322,6 +326,18 @@ func buildNames(p *Package) (resolve.Exported, []diag.Diagnostic) {
 				seen[name] = node
 				out[name] = &resolve.Symbol{Name: name, Kind: kind, Pos: pos, Node: node, Exported: isExported(name)}
 			}
+			addVariant := func(name string, pos source.Pos, node ast.Node) {
+				if name == "" {
+					return
+				}
+				if _, ok := variants[name]; ok {
+					bag.Error(pos, diag.CodeDuplicateName, "duplicate top-level name "+name,
+						"names must be unique in a package: shadowing is a warning, two declarations with the same name are an error")
+					return
+				}
+				variants[name] = node
+				out[name] = &resolve.Symbol{Name: name, Kind: resolve.VariantKind, Pos: pos, Node: node, Exported: isExported(name)}
+			}
 			switch decl := d.(type) {
 			case *ast.ConstDecl:
 				add(decl.Name, resolve.ConstKind, decl.NamePos, decl)
@@ -336,7 +352,7 @@ func buildNames(p *Package) (resolve.Exported, []diag.Diagnostic) {
 			case *ast.EnumDecl:
 				add(decl.Name, resolve.EnumKind, decl.NamePos, decl)
 				for _, v := range decl.Variants {
-					add(v.Name, resolve.VariantKind, v.NamePos, v)
+					addVariant(v.Name, v.NamePos, v)
 				}
 			case *ast.InterfaceDecl:
 				add(decl.Name, resolve.InterfaceKind, decl.NamePos, decl)

@@ -224,11 +224,31 @@ func (g *generator) collectSignatures() {
 	g.declKinds = map[string]string{}
 	g.methodsQualified = map[string]string{}
 	g.paramTypes = map[string][]string{}
+	g.structDecls = map[string]structDeclInfo{}
+	g.structByLLVM = map[string]string{}
 	for _, d := range g.docs {
 		for _, r := range d.recs {
 			if r.Kind == "struct" || r.Kind == "enum" || r.Kind == "interface" {
 				g.declKinds[qualify(d.path, fieldText(r, "text"))] = r.Kind
 			}
+			if r.Kind != "struct" {
+				continue
+			}
+			q := qualify(d.path, fieldText(r, "text"))
+			decl := structDeclInfo{name: fieldText(r, "text")}
+			var fields []willc.Record
+			for _, f := range d.recs {
+				if f.Kind == "field" && refField(f, "parent") == r.ID {
+					fields = append(fields, f)
+				}
+			}
+			sortByID(fields)
+			for _, f := range fields {
+				decl.names = append(decl.names, fieldText(f, "text"))
+				decl.texts = append(decl.texts, fieldText(f, "type"))
+			}
+			g.structDecls[q] = decl
+			g.structByLLVM[qualifiedTypeName(q)] = q
 		}
 	}
 	for _, d := range g.docs {
@@ -492,6 +512,12 @@ type generator struct {
 	// closure calling convention, and thunkEmitted dedupes them by symbol.
 	pendingThunks []thunkRequest
 	thunkEmitted  map[string]bool
+	// structDecls indexes every struct field list of the module by its
+	// qualified name, so a field of a type declared in another file or
+	// package still has a layout here. structByLLVM maps the lowered type name
+	// back to that qualified name.
+	structDecls  map[string]structDeclInfo
+	structByLLVM map[string]string
 	// spawnNames names the step function of every spawn expression, and
 	// pendingSpawns holds the steps this document still has to write.
 	spawnNames    map[int]string

@@ -21,6 +21,59 @@ type structInfo struct {
 	ok    bool
 }
 
+// structDeclInfo is the field list of one struct declaration as the module
+// index records it, before any LLVM type is attached.
+type structDeclInfo struct {
+	name  string
+	names []string
+	texts []string
+}
+
+// packageOfQualified strips the declaration name from a qualified type name.
+func packageOfQualified(q string) string {
+	if i := strings.LastIndexByte(q, '.'); i >= 0 {
+		return q[:i]
+	}
+	return ""
+}
+
+// structInfoByLLVM returns the field layout of a struct type, including one
+// declared in another file or package. The field types are lowered on demand,
+// so a foreign struct does not need a declaration in the current document.
+func (g *generator) structInfoByLLVM(typ string) *structInfo {
+	if info := g.byType[typ]; info != nil {
+		return info
+	}
+	q := g.structByLLVM[typ]
+	if q == "" {
+		return nil
+	}
+	decl, ok := g.structDecls[q]
+	if !ok {
+		return nil
+	}
+	info := &structInfo{name: decl.name, llvm: typ, index: map[string]int{}}
+	g.byType[typ] = info
+	for i, text := range decl.texts {
+		info.index[decl.names[i]] = i
+		info.names = append(info.names, decl.names[i])
+		info.texts = append(info.texts, text)
+		field, ok := g.typeLLVMOf(text)
+		if !ok {
+			if qualified := qualify(packageOfQualified(q), text); g.declKinds[qualified] != "" {
+				field, ok = g.typeLLVMOf(qualified)
+			}
+		}
+		if !ok {
+			info.ok = false
+			return info
+		}
+		info.types = append(info.types, field)
+	}
+	info.ok = true
+	return info
+}
+
 // isStructType reports whether an LLVM type is a struct this lowering made. A
 // struct type whose name holds a package path is quoted.
 func isStructType(typ string) bool {
@@ -532,6 +585,13 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		info := g.byName[base]
 		if info == nil {
+			typ, err := g.typeOf(refField(r, "recv"))
+			if err != nil {
+				return "", err
+			}
+			info = g.structInfoByLLVM(typ)
+		}
+		if info == nil || !info.ok {
 			return "", g.errf(id, "cannot translate node #%d: %s has no fields", id, base)
 		}
 		i, ok := info.index[fieldText(r, "text")]
@@ -540,6 +600,11 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		return info.texts[i], nil
 	case "agg":
+		if to := refField(r, "to"); to != 0 {
+			if c, ok := g.recs[to]; ok {
+				return fieldText(c, "text"), nil
+			}
+		}
 		return "", nil
 	case "interp":
 		return "str", nil
@@ -821,8 +886,8 @@ func (g *generator) place(id int) (string, string, error) {
 		if err != nil {
 			return "", "", err
 		}
-		info := g.byType[typ]
-		if info == nil {
+		info := g.structInfoByLLVM(typ)
+		if info == nil || !info.ok {
 			return "", "", g.errf(id, "cannot translate node #%d: %s has no fields", id, typ)
 		}
 		i, ok := info.index[fieldText(r, "text")]
