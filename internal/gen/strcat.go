@@ -52,10 +52,7 @@ func (g *generator) strMethod(r willc.Record) (string, string, error) {
 // strConcat builds a + b: one block of len(a)+len(b) bytes, with both operands
 // copied in. The result is a str value in the slot the prepass reserved.
 func (g *generator) strConcat(r willc.Record) (string, string, error) {
-	slot := g.strCatSlots[r.ID]
-	if slot == "" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: the concatenation has no slot", r.ID)
-	}
+	slot := g.allocSlot(g.strCatSlots, "cat", r.ID, "{ ptr, i64 }")
 	aData, aLen, err := g.strParts(refField(r, "l"))
 	if err != nil {
 		return "", "", err

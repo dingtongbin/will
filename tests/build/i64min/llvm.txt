@@ -1,0 +1,38 @@
+define i64 @"example.com/i64min.Get"() {
+entry:
+  ret i64 -9223372036854775808
+}
+define i32 @"example.com/i64min.will$main"() {
+entry:
+  %v.x = alloca i64
+  %t2 = icmp eq i64 9223372036854775808, -9223372036854775808
+  br i1 %t2, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  %t1 = sub i64 0, 9223372036854775808
+  store i64 %t1, ptr %v.x
+  %t3 = load i64, ptr %v.x
+  %t4 = call i64 @"example.com/i64min.Get"()
+  %t5 = icmp eq i64 %t3, %t4
+  br i1 %t5, label %if.then.2, label %if.end.2
+if.then.2:
+  ret i32 1
+if.end.2:
+  ret i32 0
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/i64min.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [15 x i8] c"main.will:8:18\00", align 1
+@.str.2 = private unnamed_addr constant [29 x i8] c"example.com/i64min.will$main\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

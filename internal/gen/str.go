@@ -86,10 +86,7 @@ func unescape(text string) []byte {
 // stringPlace builds the two-word value of a str or bytes literal in the slot
 // reserved for it.
 func (g *generator) stringPlace(r willc.Record) (string, string, error) {
-	slot := g.strSlots[r.ID]
-	if slot == "" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: the string literal has no slot", r.ID)
-	}
+	slot := g.allocSlot(g.strSlots, "str", r.ID, "{ ptr, i64 }")
 	data := unescape(fieldText(r, "text"))
 	sym := g.bytesGlobal(data)
 	dataField := g.newTmp()

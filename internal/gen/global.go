@@ -149,7 +149,23 @@ func (g *generator) constValueOf(id int) (string, bool) {
 		return "", false
 	}
 	lit, ok := g.recs[kids[0].ID]
-	if !ok || lit.Kind != "lit" {
+	if !ok {
+		return "", false
+	}
+	if lit.Kind == "un" && fieldText(lit, "op") == "-" {
+		inner, ok := g.recs[refField(lit, "expr")]
+		if !ok || inner.Kind != "lit" {
+			return "", false
+		}
+		switch fieldText(inner, "kind") {
+		case "int", "char":
+			return "-" + literalIntText(fieldText(inner, "text")), true
+		case "float":
+			return "-" + literalFloatText(fieldText(inner, "text")), true
+		}
+		return "", false
+	}
+	if lit.Kind != "lit" {
 		return "", false
 	}
 	switch fieldText(lit, "kind") {

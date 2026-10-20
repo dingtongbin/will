@@ -207,10 +207,7 @@ func (g *generator) adtConstructor(r willc.Record) (*adtInfo, string, int, bool)
 
 // adtConstruct stores one Option or Result variant in the slot reserved for it.
 func (g *generator) adtConstruct(r willc.Record, info *adtInfo, variant string, argID int) (string, string, error) {
-	slot := g.adtSlots[r.ID]
-	if slot == "" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: the %s value has no slot", r.ID, info.text)
-	}
+	slot := g.allocSlot(g.adtSlots, "adt", r.ID, info.llvm)
 	tag, ok := info.tags[variant]
 	if !ok {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: %s is not a variant of %s", r.ID, variant, info.text)

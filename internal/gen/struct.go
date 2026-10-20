@@ -247,6 +247,14 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 	if q := g.typeQualified(decl); q != "" {
 		// The declaring package emits the type definition; a reference from
 		// this document only needs the same name.
+		switch g.declKinds[q] {
+		case "enum":
+			return qualifiedEnumName(q), nil
+		case "interface":
+			return qualifiedIfaceName(q), nil
+		case "struct":
+			return qualifiedTypeName(q), nil
+		}
 		if g.enumTypes[q] {
 			return qualifiedEnumName(q), nil
 		}
@@ -760,10 +768,7 @@ func (g *generator) place(id int) (string, string, error) {
 		if !ok {
 			return "", "", g.errf(id, "cannot translate node #%d: the aggregate type is not lowered yet", id)
 		}
-		slot := g.aggSlots[id]
-		if slot == "" {
-			return "", "", g.errf(id, "cannot translate node #%d: the aggregate has no slot", id)
-		}
+		slot := g.allocSlot(g.aggSlots, "agg", id, info.llvm)
 		if err := g.storeAggregate(r, info, slot); err != nil {
 			return "", "", err
 		}
@@ -829,10 +834,7 @@ func (g *generator) place(id int) (string, string, error) {
 		if typ == "" {
 			return "", "", g.errf(id, "cannot translate node #%d: the call result is not an aggregate", id)
 		}
-		slot := g.callSlots[id]
-		if slot == "" {
-			return "", "", g.errf(id, "cannot translate node #%d: the call result has no slot", id)
-		}
+		slot := g.allocSlot(g.callSlots, "ret", id, typ)
 		value, _, err := g.callExpr(r)
 		if err != nil {
 			return "", "", err

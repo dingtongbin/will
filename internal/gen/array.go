@@ -96,10 +96,7 @@ func (g *generator) viewMethod(r willc.Record, elem string) (string, string, err
 // constructArray builds `new Array<T>(cap)`: one heap block of cap elements and
 // the three-word value (data, length, capacity). The length starts at zero.
 func (g *generator) constructArray(r willc.Record, elem string) (string, string, error) {
-	slot := g.newSlots[r.ID]
-	if slot == "" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: the array value has no slot", r.ID)
-	}
+	slot := g.allocSlot(g.newSlots, "new", r.ID, "{ ptr, i64, i64 }")
 	elemLLVM, _, ok := llvmScalar(elem)
 	if !ok {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s is not lowered yet", r.ID, elem)

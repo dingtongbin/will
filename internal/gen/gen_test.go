@@ -685,6 +685,26 @@ func emitWillcIn(t *testing.T, file, src, module string, tables map[string][]str
 	return doc
 }
 
+func TestEmitCrossPackageEnumVariant(t *testing.T) {
+	app := emitWillcIn(t, "main.will",
+		"import \"example.com/app/lib\"\n\nfunc Use() -> i32 {\n    var x: lib.Level = lib.Level.Warn()\n    _ = x\n    return 0\n}\n\nfunc main() -> i32 {\n    return Use()\n}\n",
+		"example.com/app", map[string][]string{"example.com/app/lib": {"Level"}})
+	lib := emitWillcIn(t, "lib.will", "enum Level {\n    Debug\n    Info\n    Warn\n}\n", "example.com/app/lib", nil)
+	ir, err := EmitModule([]*willc.Doc{app, lib}, "main")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`%"enum.example.com/app/lib.Level" = type { i32 }`,
+		`store i32 2`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitModuleResolvesQualifiedCalls(t *testing.T) {
 	app := emitWillcIn(t, "main.will",
 		"import \"example.com/app/lib\"\n\nfunc main() -> i32 {\n    return lib.Util()\n}\n",

@@ -1,0 +1,60 @@
+%"struct.example.com/globalagg.P" = type { i32 }
+@"example.com/globalagg.Origin" = internal global %"struct.example.com/globalagg.P" zeroinitializer
+@"example.com/globalagg.Greeting" = internal global { ptr, i64 } zeroinitializer
+define i32 @"example.com/globalagg.will$main"() {
+entry:
+  %t1 = getelementptr inbounds %"struct.example.com/globalagg.P", ptr @"example.com/globalagg.Origin", i32 0, i32 0
+  %t2 = load i32, ptr %t1
+  %t3 = getelementptr inbounds { ptr, i64 }, ptr @"example.com/globalagg.Greeting", i32 0, i32 1
+  %t4 = load i64, ptr %t3
+  %t5 = icmp ugt i64 %t4, 2147483647
+  br i1 %t5, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  %t6 = trunc i64 %t4 to i32
+  %t7 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t2, i32 %t6)
+  %t8 = extractvalue {i32, i1} %t7, 0
+  %t9 = extractvalue {i32, i1} %t7, 1
+  br i1 %t9, label %panic.2, label %panic.ok.2
+panic.2:
+  call void @willrt_panic(ptr @.str.3, ptr @.str.4, ptr @.str.2)
+  unreachable
+panic.ok.2:
+  ret i32 %t8
+}
+define void @"example.com/globalagg.will$init"() {
+entry:
+  %v.agg.7 = alloca %"struct.example.com/globalagg.P"
+  %t10 = getelementptr inbounds %"struct.example.com/globalagg.P", ptr %v.agg.7, i32 0, i32 0
+  store i32 1, ptr %t10
+  %t11 = load %"struct.example.com/globalagg.P", ptr %v.agg.7
+  store %"struct.example.com/globalagg.P" %t11, ptr @"example.com/globalagg.Origin"
+  %v.str.11 = alloca { ptr, i64 }
+  %t12 = getelementptr inbounds { ptr, i64 }, ptr %v.str.11, i32 0, i32 0
+  store ptr @.bytes.1, ptr %t12
+  %t13 = getelementptr inbounds { ptr, i64 }, ptr %v.str.11, i32 0, i32 1
+  store i64 2, ptr %t13
+  %t14 = load { ptr, i64 }, ptr %v.str.11
+  store { ptr, i64 } %t14, ptr @"example.com/globalagg.Greeting"
+  ret void
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  call void @"example.com/globalagg.will$init"()
+  %r = call i32 @"example.com/globalagg.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+@.str.0 = private unnamed_addr constant [24 x i8] c"conversion out of range\00", align 1
+@.str.1 = private unnamed_addr constant [15 x i8] c"main.will:9:23\00", align 1
+@.str.2 = private unnamed_addr constant [32 x i8] c"example.com/globalagg.will$main\00", align 1
+@.str.3 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.4 = private unnamed_addr constant [15 x i8] c"main.will:9:12\00", align 1
+@.bytes.1 = private unnamed_addr constant [2 x i8] c"hi", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

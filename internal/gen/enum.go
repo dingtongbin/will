@@ -48,6 +48,52 @@ type enumInfo struct {
 	finishing bool
 }
 
+// externalEnum is the module-wide shape of one enum: its qualified will name,
+// its LLVM type, and the tag of every variant. A variant that carries a
+// payload is marked so a cross-document construction of it is refused instead
+// of laid out without its payload.
+type externalEnum struct {
+	name    string
+	llvm    string
+	tags    map[string]uint32
+	payload map[string]bool
+}
+
+// collectExternalEnums records every enum of the module before any document is
+// lowered, so a variant declared in another document still has a tag and a
+// type.
+func (g *generator) collectExternalEnums() {
+	g.externalEnums = map[string]*externalEnum{}
+	for _, d := range g.docs {
+		var enums []willc.Record
+		for _, r := range d.recs {
+			if r.Kind == "enum" {
+				enums = append(enums, r)
+			}
+		}
+		sortByID(enums)
+		for _, r := range enums {
+			q := qualify(d.path, fieldText(r, "text"))
+			ext := &externalEnum{name: q, llvm: qualifiedEnumName(q), tags: map[string]uint32{}, payload: map[string]bool{}}
+			var variants []willc.Record
+			for _, c := range d.recs {
+				if c.Kind == "variant" && refField(c, "parent") == r.ID {
+					variants = append(variants, c)
+				}
+			}
+			sortByID(variants)
+			for i, v := range variants {
+				name := fieldText(v, "text")
+				ext.tags[name] = uint32(i)
+				if len(refsOf(v, "arg")) != 0 {
+					ext.payload[name] = true
+				}
+			}
+			g.externalEnums[q] = ext
+		}
+	}
+}
+
 // buildEnums records every enum of the current document. The payload type of a
 // variant is its single argument's type, or a struct of the argument types in
 // declaration order. The union field is the payload type with the greatest
@@ -264,7 +310,13 @@ func (g *generator) enumVariantCall(r willc.Record) (*enumInfo, *variantInfo) {
 		return nil, nil
 	}
 	recv, ok := g.recs[refField(r, "recv")]
-	if !ok || recv.Kind != "name" {
+	if !ok {
+		return nil, nil
+	}
+	if recv.Kind == "field" {
+		return g.externalVariantCall(r, recv)
+	}
+	if recv.Kind != "name" {
 		return nil, nil
 	}
 	decl := refField(recv, "to")
@@ -282,13 +334,44 @@ func (g *generator) enumVariantCall(r willc.Record) (*enumInfo, *variantInfo) {
 	return info, &info.variants[i]
 }
 
+// externalVariantCall resolves `pkg.Enum.Variant()`: the receiver is the
+// qualified enum name, and the module table supplies its tag. A payload
+// variant is not constructed across documents yet, because its layout belongs
+// to the defining document.
+func (g *generator) externalVariantCall(r willc.Record, field willc.Record) (*enumInfo, *variantInfo) {
+	recvName, ok := g.recs[refField(field, "recv")]
+	if !ok || recvName.Kind != "name" {
+		return nil, nil
+	}
+	imp, ok := g.recs[refField(recvName, "to")]
+	if !ok || imp.Kind != "import" {
+		return nil, nil
+	}
+	path := fieldText(imp, "path")
+	if canonical := g.aliases[path]; canonical != "" {
+		path = canonical
+	}
+	q := path + "." + fieldText(field, "text")
+	ext := g.externalEnums[q]
+	if ext == nil {
+		return nil, nil
+	}
+	name := fieldText(r, "text")
+	if ext.payload[name] {
+		return nil, nil
+	}
+	tag, ok := ext.tags[name]
+	if !ok {
+		return nil, nil
+	}
+	info := &enumInfo{name: ext.name, text: ext.name, llvm: ext.llvm, byName: map[string]int{name: 0}}
+	return info, &variantInfo{name: name, tag: tag}
+}
+
 // enumConstruct stores one constructed variant in the slot reserved for it and
 // returns the slot with the enum type.
 func (g *generator) enumConstruct(r willc.Record, info *enumInfo, v *variantInfo) (string, string, error) {
-	slot := g.enumSlots[r.ID]
-	if slot == "" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: the enum value has no slot", r.ID)
-	}
+	slot := g.allocSlot(g.enumSlots, "enum", r.ID, info.llvm)
 	tagPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
 	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", v.tag, tagPtr)

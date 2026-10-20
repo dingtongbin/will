@@ -221,10 +221,7 @@ func (g *generator) sliceValue(r willc.Record) (string, error) {
 	g.tmp++
 	length := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = sub i64 %s, %s\n", length, hi, lo)
-	slot := g.sliceSlots[r.ID]
-	if slot == "" {
-		return "", g.errf(r.ID, "cannot translate node #%d: the slice has no slot", r.ID)
-	}
+	slot := g.allocSlot(g.sliceSlots, "slice", r.ID, "{ ptr, i64 }")
 	g.tmp++
 	dataField := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", dataField, slot)

@@ -52,10 +52,7 @@ func (g *generator) containerValueType(text string) (string, bool) {
 // constructMapSet builds `new Map<K,V>(cap)` or `new Set<T>(cap)`: the
 // three-word value (data, length, capacity), with room for cap entries.
 func (g *generator) constructMapSet(r willc.Record, entryLLVM string) (string, string, error) {
-	slot := g.newSlots[r.ID]
-	if slot == "" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: the container value has no slot", r.ID)
-	}
+	slot := g.allocSlot(g.newSlots, "new", r.ID, "{ ptr, i64, i64 }")
 	size, _, ok := g.sizeAlign(entryLLVM)
 	if !ok {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the entry has no layout", r.ID)

@@ -243,6 +243,9 @@ func (c *checker) checkValue(s *inferScope, e ast.Expr, want *Type) {
 		return
 	}
 	c.recordWant(e, want)
+	if c.checkNegativeLiteral(e, want) {
+		return
+	}
 	if c.checkPredeclaredInto(s, e, want) {
 		return
 	}
@@ -250,6 +253,39 @@ func (c *checker) checkValue(s *inferScope, e ast.Expr, want *Type) {
 	if !Equal(got, want) {
 		c.mismatch(e.Pos(), got, want, false, "", 0)
 	}
+}
+
+// checkNegativeLiteral checks a negated integer literal against a signed
+// expected type. The literal itself is written without a sign, so the smallest
+// value of the type has a magnitude one above the largest positive one; the
+// check therefore allows that one extra step only when the unary minus is
+// present.
+func (c *checker) checkNegativeLiteral(e ast.Expr, want *Type) bool {
+	u, ok := e.(*ast.UnaryExpr)
+	if !ok || u.Op != token.Minus || want == nil {
+		return false
+	}
+	lit, ok := u.X.(*ast.LiteralExpr)
+	if !ok || lit.Kind != token.Int {
+		return false
+	}
+	bits, signed, known := intWidth(want.Name())
+	if !known || !signed {
+		return false
+	}
+	value, _, ok := parseIntLiteral(lit.Text)
+	if !ok {
+		return false
+	}
+	limit := uint64(1) << (bits - 1)
+	if value.overflow || value.mag > limit {
+		c.bag.Error(lit.Pos(), diag.CodeConstantRange,
+			"constant "+lit.Text+" is out of range for "+want.Name(),
+			"write a suffix, or a smaller value")
+		return true
+	}
+	c.recordLiteral(lit, want)
+	return true
 }
 
 // checkPredeclaredInto checks Some, None, Ok, and Err against the complete

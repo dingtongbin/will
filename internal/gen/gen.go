@@ -62,6 +62,7 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 	// and the generated wrapper calls it.
 	g.findEntry(entry, entryPkg)
 	g.collectSignatures()
+	g.collectExternalEnums()
 	g.collectGlobals()
 	g.planInstances()
 	for _, d := range g.docs {
@@ -347,6 +348,9 @@ type generator struct {
 	// enumTypes holds the qualified names whose result is an enum, so a caller
 	// whose document lacks the declaration still knows the type.
 	enumTypes map[string]bool
+	// externalEnums holds every enum of the module by its package-qualified
+	// name, so a document can construct a variant declared in another one.
+	externalEnums map[string]*externalEnum
 	// adts caches the lowered Option<T> and Result<T,E> types by their text,
 	// and adtSlots maps a constructor to the slot it builds its value in.
 	adts     map[string]*adtInfo
@@ -1766,6 +1770,20 @@ func (g *generator) value(id int) (string, error) {
 		return g.callScalar(r)
 	}
 	return "", g.errf(id, "cannot translate node #%d: node kind %s is not lowered yet", id, r.Kind)
+}
+
+// allocSlot returns the slot of one record, allocating it in the current block
+// when the function prepass did not run for it. The prepass covers the records
+// inside a function; a top-level initializer is lowered outside one, so its
+// slots are made at the point of use.
+func (g *generator) allocSlot(slots map[int]string, prefix string, id int, llvm string) string {
+	if slot := slots[id]; slot != "" {
+		return slot
+	}
+	slot := "%v." + prefix + "." + strconv.Itoa(id)
+	slots[id] = slot
+	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, llvm)
+	return slot
 }
 
 // exprStmt lowers an expression used as a statement. A call is allowed to

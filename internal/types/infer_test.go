@@ -13,6 +13,13 @@ func TestExplicitTypeArgumentsInstantiateSignature(t *testing.T) {
 	}
 }
 
+func TestNegativeLiteralMayBeTheTypeMinimum(t *testing.T) {
+	src := "func F() -> i64 {\n    var x: i64 = -9223372036854775808\n    return x\n}\n"
+	if ds := checkWithResolve(t, src); len(ds) != 0 {
+		t.Fatalf("the smallest i64 was rejected:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestGenericStructFieldsAndMethods(t *testing.T) {
 	src := "struct Box<T> {\n    value: T\n}\n\n" +
 		"func (b: Box<T>) Get() -> T {\n    return b.value\n}\n\n" +

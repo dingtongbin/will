@@ -33,10 +33,7 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	if info == nil {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: new needs a struct declared in this document", r.ID)
 	}
-	slot := g.newSlots[r.ID]
-	if slot == "" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: the new value has no slot", r.ID)
-	}
+	slot := g.allocSlot(g.newSlots, "new", r.ID, info.llvm)
 	fmt.Fprintf(g.out, "  store %s zeroinitializer, ptr %s\n", info.llvm, slot)
 	if err := g.fieldDefaults(info, slot); err != nil {
 		return "", "", err

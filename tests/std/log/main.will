@@ -1,0 +1,10 @@
+import "std/log"
+
+func main() -> i32 {
+    var a: log.Level = log.Level.Info()
+    var b: log.Level = log.Level.Debug()
+    if log.Enabled(a, b) {
+        return 1
+    }
+    return 0
+}
