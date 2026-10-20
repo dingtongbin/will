@@ -11,6 +11,9 @@ import (
 // error-message path.
 func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 	exprID := refField(r, "expr")
+	if inner, ok := g.recs[exprID]; ok && inner.Kind == "join" {
+		return g.joinUnwrap(inner)
+	}
 	text, err := g.willTypeText(exprID)
 	if err != nil {
 		return "", "", "", err
@@ -69,7 +72,23 @@ func (g *generator) unwrapPlace(r willc.Record) (string, string, error) {
 
 // unwrapType returns the payload type of `expr!` without emitting code.
 func (g *generator) unwrapType(r willc.Record) (string, string, error) {
-	text, err := g.willTypeText(refField(r, "expr"))
+	exprID := refField(r, "expr")
+	if inner, ok := g.recs[exprID]; ok && inner.Kind == "join" {
+		taskText, err := g.willTypeText(refField(inner, "task"))
+		if err != nil {
+			return "", "", err
+		}
+		elem, ok := taskElemText(taskText)
+		if !ok {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: Join needs a Task", r.ID)
+		}
+		typ, ok := g.typeLLVMOf(elem)
+		if !ok {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: task value %s is not lowered yet", r.ID, elem)
+		}
+		return typ, elem, nil
+	}
+	text, err := g.willTypeText(exprID)
 	if err != nil {
 		return "", "", err
 	}

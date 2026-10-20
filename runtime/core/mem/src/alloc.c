@@ -1,52 +1,62 @@
-/* Arena allocator for willrt_alloc and plates.
+/* Lane-sharded arena allocator for willrt_alloc and plates.
  *
- * The arena asks the platform layer for page chunks through
- * willrt_os_alloc_pages and never touches malloc or aligned_alloc. Small
- * requests are carved from 64 KiB chunks into power-of-two size classes; a
- * freed small block goes on that class's free list and is handed out again.
- * A request larger than the largest class gets a dedicated chunk, which is
- * returned to the system as a whole when the block is freed.
+ * Every lane owns its partial chunks and free lists. A chunk is a whole number
+ * of 64 KiB units and starts on a 64 KiB boundary, so a payload address masks
+ * to its chunk header without walking a list. A registry of chunk bases proves
+ * that a pointer really came from this arena before any header is read; a
+ * foreign or interior pointer is rejected with the same line as before.
  *
- * Every chunk is linked into one list, so willrt_free can tell a block of this
- * arena from a foreign pointer by comparing addresses. It never dereferences a
- * pointer before that check, so a stack address or an interior pointer is
- * rejected with one line on standard error instead of a fault.
+ * A block freed on another lane goes back to the free list of the chunk's owner
+ * under that lane's lock. A dedicated chunk for a large block also belongs to
+ * the lane that allocated it and is returned to the system under that lock.
  *
- * The arena is single-threaded on purpose. Lane sharding waits for the lane
- * model; willrt_alloc and willrt_plate_new keep their signatures, so the split
- * happens inside this file when lanes arrive. No lock is added here, because a
- * global lock is exactly the structure the lane split has to remove.
+ * The arena asks the platform for pages through willrt_os_alloc_pages and never
+ * touches malloc or aligned_alloc. The scheduler tells the allocator which lane
+ * a thread runs on with willrt_mem_set_lane; a thread that never calls it uses
+ * lane 0, which keeps the single-threaded tests and the entry wrapper working.
  */
 
 #include "alloc.h"
 
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 
 /* Small classes are powers of two from 32 bytes through 16 KiB. A 64 KiB
    chunk is a multiple of the page size on every target platform, and it holds
    at least one block of the largest class. Large requests are rounded to
-   16 KiB, also a multiple of the page size on every target. */
+   64 KiB, which keeps the chunk base mask valid. */
 enum {
     WILLRT_MEM_CLASS_COUNT = 10,
     WILLRT_MEM_CLASS_MIN = 32,
     WILLRT_MEM_CHUNK_BYTES = 64 * 1024,
-    WILLRT_MEM_LARGE_ALIGN = 16 * 1024
+    WILLRT_MEM_LANES = 64,
+    WILLRT_MEM_REGISTRY_BUCKETS = 4096
 };
 
 static const uint64_t willrt_mem_block_live = UINT64_C(0x4C495645424C4F43);
 static const uint64_t willrt_mem_block_dead = UINT64_C(0x44454144424C4F43);
 static const uint64_t willrt_plate_magic = UINT64_C(0x504C4154454D454D);
+static const uint64_t willrt_mem_chunk_magic = UINT64_C(0x4348554E4B4D454D);
 
 static const size_t willrt_mem_class_size[WILLRT_MEM_CLASS_COUNT] = {
     32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384
 };
 
+/* A spin lock is enough for the short critical sections here: a free list pop
+   or push, a bump of one chunk, and a registry update. */
+typedef struct willrt_mem_lock {
+    atomic_int held;
+} willrt_mem_lock;
+
 struct willrt_mem_chunk {
-    struct willrt_mem_chunk* next;
-    struct willrt_mem_chunk* prev;
+    uint64_t magic;
+    void* os_base;
+    size_t os_bytes;
     size_t bytes;
     size_t bump;
+    int32_t owner;
+    int32_t class_index;
 };
 
 struct willrt_mem_block {
@@ -54,6 +64,12 @@ struct willrt_mem_block {
     size_t capacity;
     struct willrt_mem_chunk* chunk;
     int32_t class_index;
+};
+
+struct willrt_mem_lane {
+    willrt_mem_lock lock;
+    struct willrt_mem_chunk* partial[WILLRT_MEM_CLASS_COUNT];
+    void* free_list[WILLRT_MEM_CLASS_COUNT];
 };
 
 /* A block header must end on a boundary of max_align_t so every payload is
@@ -66,11 +82,41 @@ static const size_t willrt_mem_chunk_start =
     (sizeof(struct willrt_mem_chunk) + _Alignof(max_align_t) - 1)
     / _Alignof(max_align_t) * _Alignof(max_align_t);
 
-static struct willrt_mem_chunk* willrt_mem_chunks;
-static struct willrt_mem_chunk* willrt_mem_partial[WILLRT_MEM_CLASS_COUNT];
-static void* willrt_mem_free_list[WILLRT_MEM_CLASS_COUNT];
-static size_t willrt_mem_chunks_held;
-static size_t willrt_mem_page_calls_issued;
+static struct willrt_mem_lane willrt_mem_lanes[WILLRT_MEM_LANES];
+
+/* The registry has one entry per live chunk. An entry with base 0 is free and
+   an entry with base 1 is a tombstone left by a removed chunk. */
+struct willrt_mem_registry_entry {
+    uintptr_t base;
+    struct willrt_mem_chunk* chunk;
+};
+
+static struct willrt_mem_registry_entry
+    willrt_mem_registry[WILLRT_MEM_REGISTRY_BUCKETS];
+static willrt_mem_lock willrt_mem_registry_lock;
+static atomic_size_t willrt_mem_chunks_held;
+static atomic_size_t willrt_mem_page_calls_issued;
+
+/* A thread that never runs under the scheduler stays on lane 0. */
+static _Thread_local int32_t willrt_mem_lane_index;
+
+static void willrt_mem_lock_acquire(willrt_mem_lock* lock) {
+    while (atomic_exchange_explicit(&lock->held, 1, memory_order_acquire)) {
+        while (atomic_load_explicit(&lock->held, memory_order_relaxed)) {
+        }
+    }
+}
+
+static void willrt_mem_lock_release(willrt_mem_lock* lock) {
+    atomic_store_explicit(&lock->held, 0, memory_order_release);
+}
+
+void willrt_mem_set_lane(int32_t lane) {
+    if (lane < 0) {
+        lane = 0;
+    }
+    willrt_mem_lane_index = lane % WILLRT_MEM_LANES;
+}
 
 /* Returns value rounded up to align, or zero when the round-up overflows.
    align must be a power of two. */
@@ -118,87 +164,166 @@ static int willrt_mem_class_for(size_t size) {
     return -1;
 }
 
-static struct willrt_mem_chunk* willrt_mem_chunk_containing(const void* ptr) {
-    uintptr_t address = (uintptr_t)ptr;
-    struct willrt_mem_chunk* chunk;
+static size_t willrt_mem_registry_hash(uintptr_t base) {
+    uint64_t key = (uint64_t)(base >> 16);
 
-    for (chunk = willrt_mem_chunks; chunk != NULL; chunk = chunk->next) {
-        uintptr_t base = (uintptr_t)chunk;
+    key *= UINT64_C(11400714819323198485);
+    return (size_t)(key >> 52) & (WILLRT_MEM_REGISTRY_BUCKETS - 1);
+}
 
-        if (address >= base && address - base < chunk->bytes) {
+static void willrt_mem_registry_insert(uintptr_t base,
+                                       struct willrt_mem_chunk* chunk) {
+    size_t index;
+    size_t first_tombstone = SIZE_MAX;
+    size_t probes;
+
+    willrt_mem_lock_acquire(&willrt_mem_registry_lock);
+    index = willrt_mem_registry_hash(base);
+    for (probes = 0; probes < WILLRT_MEM_REGISTRY_BUCKETS; probes++) {
+        struct willrt_mem_registry_entry* entry = &willrt_mem_registry[index];
+
+        if (entry->base == 0) {
+            if (first_tombstone != SIZE_MAX) {
+                entry = &willrt_mem_registry[first_tombstone];
+            }
+            entry->base = base;
+            entry->chunk = chunk;
+            willrt_mem_lock_release(&willrt_mem_registry_lock);
+            return;
+        }
+        if (entry->base == 1 && first_tombstone == SIZE_MAX) {
+            first_tombstone = index;
+        }
+        index = (index + 1) & (WILLRT_MEM_REGISTRY_BUCKETS - 1);
+    }
+    /* The registry is sized far above the chunk count of a real program. If it
+       ever fills, the chunk stays unreachable and the allocation fails clean. */
+    willrt_mem_lock_release(&willrt_mem_registry_lock);
+}
+
+static struct willrt_mem_chunk* willrt_mem_registry_find(uintptr_t base) {
+    size_t index;
+    size_t probes;
+
+    willrt_mem_lock_acquire(&willrt_mem_registry_lock);
+    index = willrt_mem_registry_hash(base);
+    for (probes = 0; probes < WILLRT_MEM_REGISTRY_BUCKETS; probes++) {
+        struct willrt_mem_registry_entry* entry = &willrt_mem_registry[index];
+
+        if (entry->base == 0) {
+            break;
+        }
+        if (entry->base == base) {
+            struct willrt_mem_chunk* chunk = entry->chunk;
+
+            willrt_mem_lock_release(&willrt_mem_registry_lock);
             return chunk;
         }
+        index = (index + 1) & (WILLRT_MEM_REGISTRY_BUCKETS - 1);
     }
+    willrt_mem_lock_release(&willrt_mem_registry_lock);
     return NULL;
+}
+
+static void willrt_mem_registry_remove(uintptr_t base) {
+    size_t index;
+    size_t probes;
+
+    willrt_mem_lock_acquire(&willrt_mem_registry_lock);
+    index = willrt_mem_registry_hash(base);
+    for (probes = 0; probes < WILLRT_MEM_REGISTRY_BUCKETS; probes++) {
+        struct willrt_mem_registry_entry* entry = &willrt_mem_registry[index];
+
+        if (entry->base == 0) {
+            break;
+        }
+        if (entry->base == base) {
+            entry->base = 1;
+            entry->chunk = NULL;
+            break;
+        }
+        index = (index + 1) & (WILLRT_MEM_REGISTRY_BUCKETS - 1);
+    }
+    willrt_mem_lock_release(&willrt_mem_registry_lock);
+}
+
+static struct willrt_mem_chunk* willrt_mem_chunk_containing(const void* ptr) {
+    uintptr_t base = (uintptr_t)ptr & ~(uintptr_t)(WILLRT_MEM_CHUNK_BYTES - 1);
+
+    if (base == 0) {
+        return NULL;
+    }
+    return willrt_mem_registry_find(base);
 }
 
 /* Reports whether the whole range lies in one chunk. The check uses only
    address arithmetic, so it is safe for a pointer the arena does not own. */
 static int willrt_mem_range_contained(const void* ptr, size_t size) {
     uintptr_t start = (uintptr_t)ptr;
-    struct willrt_mem_chunk* chunk;
+    struct willrt_mem_chunk* chunk = willrt_mem_chunk_containing(ptr);
 
-    if (size > UINTPTR_MAX - start) {
+    if (chunk == NULL || start > UINTPTR_MAX - size) {
         return 0;
     }
-    for (chunk = willrt_mem_chunks; chunk != NULL; chunk = chunk->next) {
-        uintptr_t base = (uintptr_t)chunk;
-
-        if (start >= base && start - base <= chunk->bytes
-            && size <= chunk->bytes - (start - base)) {
-            return 1;
-        }
+    if (start < (uintptr_t)chunk || start - (uintptr_t)chunk > chunk->bytes) {
+        return 0;
     }
-    return 0;
+    return size <= chunk->bytes - (start - (uintptr_t)chunk);
 }
 
-static struct willrt_mem_chunk* willrt_mem_chunk_new(size_t bytes) {
+/* Creates a chunk of bytes usable bytes on one lane. The caller holds that
+   lane's lock for a small chunk; a large chunk is created without it. */
+static struct willrt_mem_chunk* willrt_mem_chunk_new(int32_t lane, size_t bytes,
+                                                     int32_t class_index) {
     struct willrt_mem_chunk* chunk;
+    void* os_base;
+    uintptr_t base;
 
     if (bytes < willrt_mem_chunk_start + willrt_mem_block_offset
                     + WILLRT_MEM_CLASS_MIN) {
         return NULL;
     }
-    willrt_mem_page_calls_issued++;
-    chunk = (struct willrt_mem_chunk*)willrt_os_alloc_pages(bytes);
-    if (chunk == NULL) {
+    if (bytes > SIZE_MAX - WILLRT_MEM_CHUNK_BYTES) {
         return NULL;
     }
+    atomic_fetch_add_explicit(&willrt_mem_page_calls_issued, 1,
+                              memory_order_relaxed);
+    os_base = willrt_os_alloc_pages(bytes + WILLRT_MEM_CHUNK_BYTES);
+    if (os_base == NULL) {
+        return NULL;
+    }
+    base = ((uintptr_t)os_base + WILLRT_MEM_CHUNK_BYTES - 1)
+           & ~(uintptr_t)(WILLRT_MEM_CHUNK_BYTES - 1);
+    chunk = (struct willrt_mem_chunk*)base;
+    chunk->magic = willrt_mem_chunk_magic;
+    chunk->os_base = os_base;
+    chunk->os_bytes = bytes + WILLRT_MEM_CHUNK_BYTES;
     chunk->bytes = bytes;
     chunk->bump = willrt_mem_chunk_start;
-    chunk->prev = NULL;
-    chunk->next = willrt_mem_chunks;
-    if (willrt_mem_chunks != NULL) {
-        willrt_mem_chunks->prev = chunk;
+    chunk->owner = lane;
+    chunk->class_index = class_index;
+    willrt_mem_registry_insert(base, chunk);
+    if (willrt_mem_registry_find(base) != chunk) {
+        willrt_os_free_pages(os_base, chunk->os_bytes);
+        return NULL;
     }
-    willrt_mem_chunks = chunk;
-    willrt_mem_chunks_held++;
+    atomic_fetch_add_explicit(&willrt_mem_chunks_held, 1, memory_order_relaxed);
     return chunk;
 }
 
-static void willrt_mem_chunk_unlink(struct willrt_mem_chunk* chunk) {
-    if (chunk->prev != NULL) {
-        chunk->prev->next = chunk->next;
-    } else {
-        willrt_mem_chunks = chunk->next;
-    }
-    if (chunk->next != NULL) {
-        chunk->next->prev = chunk->prev;
-    }
-    willrt_mem_chunks_held--;
-}
-
-static void* willrt_mem_small_alloc(int class_index) {
+static void* willrt_mem_small_alloc(struct willrt_mem_lane* lane,
+                                    int class_index) {
+    int32_t lane_index = (int32_t)(lane - willrt_mem_lanes);
     size_t capacity = willrt_mem_class_size[class_index];
     size_t stride = willrt_mem_align_up(willrt_mem_block_offset + capacity,
                                         _Alignof(max_align_t));
-    struct willrt_mem_chunk* chunk = willrt_mem_partial[class_index];
+    struct willrt_mem_chunk* chunk = lane->partial[class_index];
     struct willrt_mem_block* block;
     unsigned char* cursor;
-    void* payload = willrt_mem_free_list[class_index];
+    void* payload = lane->free_list[class_index];
 
     if (payload != NULL) {
-        willrt_mem_free_list[class_index] = *(void**)payload;
+        lane->free_list[class_index] = *(void**)payload;
         block = (struct willrt_mem_block*)((unsigned char*)payload
                                            - willrt_mem_block_offset);
         block->magic = willrt_mem_block_live;
@@ -206,11 +331,12 @@ static void* willrt_mem_small_alloc(int class_index) {
         return payload;
     }
     if (chunk == NULL || stride > chunk->bytes - chunk->bump) {
-        chunk = willrt_mem_chunk_new(WILLRT_MEM_CHUNK_BYTES);
+        chunk = willrt_mem_chunk_new(lane_index, WILLRT_MEM_CHUNK_BYTES,
+                                     class_index);
         if (chunk == NULL) {
             return NULL;
         }
-        willrt_mem_partial[class_index] = chunk;
+        lane->partial[class_index] = chunk;
     }
     cursor = (unsigned char*)chunk + chunk->bump;
     chunk->bump += stride;
@@ -222,7 +348,7 @@ static void* willrt_mem_small_alloc(int class_index) {
     return cursor + willrt_mem_block_offset;
 }
 
-static void* willrt_mem_large_alloc(size_t size) {
+static void* willrt_mem_large_alloc(int32_t lane, size_t size) {
     struct willrt_mem_chunk* chunk;
     struct willrt_mem_block* block;
     size_t need;
@@ -232,11 +358,11 @@ static void* willrt_mem_large_alloc(size_t size) {
         return NULL;
     }
     need = willrt_mem_chunk_start + willrt_mem_block_offset + size;
-    bytes = willrt_mem_align_up(need, WILLRT_MEM_LARGE_ALIGN);
+    bytes = willrt_mem_align_up(need, WILLRT_MEM_CHUNK_BYTES);
     if (bytes == 0) {
         return NULL;
     }
-    chunk = willrt_mem_chunk_new(bytes);
+    chunk = willrt_mem_chunk_new(lane, bytes, -1);
     if (chunk == NULL) {
         return NULL;
     }
@@ -250,21 +376,28 @@ static void* willrt_mem_large_alloc(size_t size) {
 }
 
 void* willrt_alloc(size_t size) {
+    struct willrt_mem_lane* lane;
     int class_index;
+    void* result;
 
     if (size == 0) {
         size = 1;
     }
+    lane = &willrt_mem_lanes[willrt_mem_lane_index];
     class_index = willrt_mem_class_for(size);
-    if (class_index >= 0) {
-        return willrt_mem_small_alloc(class_index);
+    if (class_index < 0) {
+        return willrt_mem_large_alloc(willrt_mem_lane_index, size);
     }
-    return willrt_mem_large_alloc(size);
+    willrt_mem_lock_acquire(&lane->lock);
+    result = willrt_mem_small_alloc(lane, class_index);
+    willrt_mem_lock_release(&lane->lock);
+    return result;
 }
 
 void willrt_free(void* ptr) {
     unsigned char* payload = (unsigned char*)ptr;
     struct willrt_mem_chunk* chunk;
+    struct willrt_mem_lane* lane;
     struct willrt_mem_block* block;
 
     if (ptr == NULL) {
@@ -285,16 +418,23 @@ void willrt_free(void* ptr) {
         fputs("willrt: free rejected: block is not live\n", stderr);
         return;
     }
+    lane = &willrt_mem_lanes[chunk->owner % WILLRT_MEM_LANES];
+    willrt_mem_lock_acquire(&lane->lock);
     if (block->class_index < 0) {
-        size_t bytes = chunk->bytes;
+        void* os_base = chunk->os_base;
+        size_t os_bytes = chunk->os_bytes;
 
-        willrt_mem_chunk_unlink(chunk);
-        willrt_os_free_pages(chunk, bytes);
-        return;
+        block->magic = willrt_mem_block_dead;
+        willrt_mem_registry_remove((uintptr_t)chunk);
+        atomic_fetch_sub_explicit(&willrt_mem_chunks_held, 1,
+                                  memory_order_relaxed);
+        willrt_os_free_pages(os_base, os_bytes);
+    } else {
+        block->magic = willrt_mem_block_dead;
+        *(void**)payload = lane->free_list[block->class_index];
+        lane->free_list[block->class_index] = payload;
     }
-    block->magic = willrt_mem_block_dead;
-    *(void**)payload = willrt_mem_free_list[block->class_index];
-    willrt_mem_free_list[block->class_index] = payload;
+    willrt_mem_lock_release(&lane->lock);
 }
 
 void* willrt_plate_new(size_t count, size_t elem) {
@@ -359,9 +499,10 @@ void willrt_plate_release(void* plate) {
 }
 
 size_t willrt_mem_chunk_count(void) {
-    return willrt_mem_chunks_held;
+    return atomic_load_explicit(&willrt_mem_chunks_held, memory_order_relaxed);
 }
 
 size_t willrt_mem_page_calls(void) {
-    return willrt_mem_page_calls_issued;
+    return atomic_load_explicit(&willrt_mem_page_calls_issued,
+                                memory_order_relaxed);
 }

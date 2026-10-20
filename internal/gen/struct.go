@@ -335,6 +335,24 @@ func (g *generator) typeOf(id int) (string, error) {
 		return info.llvm, nil
 	case "interp":
 		return "{ ptr, i64 }", nil
+	case "spawn", "channew":
+		return "ptr", nil
+	case "lanehere":
+		return "i32", nil
+	case "send", "close":
+		return "", nil
+	case "recv", "tryrecv", "join":
+		text, err := g.willTypeText(id)
+		if err != nil {
+			return "", err
+		}
+		info, ok := g.adtType(text)
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: %s is not lowered yet", id, text)
+		}
+		return info.llvm, nil
+	case "trysend":
+		return "i1", nil
 	case "func":
 		if _, ok := g.lambdaNames[r.ID]; ok {
 			return "{ ptr, ptr }", nil
@@ -525,6 +543,40 @@ func (g *generator) willTypeText(id int) (string, error) {
 		return "", nil
 	case "interp":
 		return "str", nil
+	case "spawn":
+		text, err := g.willTypeText(refField(r, "call"))
+		if err != nil {
+			return "", err
+		}
+		return "Task<" + text + ">", nil
+	case "channew":
+		return fieldText(r, "type"), nil
+	case "lanehere":
+		return "i32", nil
+	case "recv", "tryrecv":
+		chanText, err := g.willTypeText(refField(r, "chan"))
+		if err != nil {
+			return "", err
+		}
+		elem, ok := chanElemText(chanText)
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: Recv needs a channel", id)
+		}
+		return "Option<" + elem + ">", nil
+	case "trysend":
+		return "bool", nil
+	case "join":
+		taskText, err := g.willTypeText(refField(r, "task"))
+		if err != nil {
+			return "", err
+		}
+		elem, ok := taskElemText(taskText)
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: Join needs a Task", id)
+		}
+		return "Result<" + elem + ",Error>", nil
+	case "send", "close":
+		return "", nil
 	case "slice":
 		elem, err := g.sliceElem(r)
 		if err != nil {
@@ -815,6 +867,12 @@ func (g *generator) place(id int) (string, string, error) {
 		return "", "", g.errf(id, "cannot translate node #%d: a binary expression is not a place", id)
 	case "interp":
 		return g.interpValue(r)
+	case "recv":
+		return g.lowerRecvPlace(r)
+	case "tryrecv":
+		return g.lowerTryRecv(r)
+	case "join":
+		return "", "", g.errf(id, "cannot translate node #%d: a Join result is only lowered as Join()!", id)
 	case "try":
 		return g.tryPlace(r)
 	case "unwrap":

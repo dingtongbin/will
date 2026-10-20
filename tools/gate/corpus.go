@@ -68,6 +68,44 @@ func findCases(dir string) ([]corpusCase, error) {
 				continue
 			}
 			path := filepath.Join(dir, topic.Name(), caseDir.Name())
+			// A case is a module directory. A topic folder may instead group
+			// cases one level down; those modules are cases of their own.
+			if _, err := os.Stat(filepath.Join(path, "will.mod")); err == nil {
+				files, err := caseInputs(path)
+				if err != nil {
+					return nil, err
+				}
+				if len(files) != 0 {
+					out = append(out, corpusCase{name: topic.Name() + "/" + caseDir.Name(), dir: path, files: files})
+				}
+				continue
+			}
+			grouped := false
+			subs, err := os.ReadDir(path)
+			if err != nil {
+				return nil, err
+			}
+			for _, sub := range subs {
+				if !sub.IsDir() {
+					continue
+				}
+				subPath := filepath.Join(path, sub.Name())
+				if _, err := os.Stat(filepath.Join(subPath, "will.mod")); err != nil {
+					continue
+				}
+				files, err := caseInputs(subPath)
+				if err != nil {
+					return nil, err
+				}
+				if len(files) == 0 {
+					continue
+				}
+				grouped = true
+				out = append(out, corpusCase{name: topic.Name() + "/" + caseDir.Name() + "/" + sub.Name(), dir: subPath, files: files})
+			}
+			if grouped {
+				continue
+			}
 			files, err := caseInputs(path)
 			if err != nil {
 				return nil, err

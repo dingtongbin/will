@@ -72,6 +72,10 @@ func llvmTypeText(text string) (string, bool) {
 	if text == "str" {
 		return "{ ptr, i64 }", true
 	}
+	if strings.HasPrefix(text, "Task<") || strings.HasPrefix(text, "chan<") {
+		// A task handle and a channel handle are opaque pointers.
+		return "ptr", true
+	}
 	if strings.HasPrefix(text, "func(") {
 		// A function value is a code pointer and the environment it reads.
 		// A closure without captures carries a null environment.

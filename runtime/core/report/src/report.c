@@ -16,8 +16,8 @@
  * over them is cheaper than a merged index that registration would have to
  * rebuild.
  *
- * willrt_panic writes the report and exits with 101. Task containment belongs
- * to the task engine; until that exists, a panic always ends the process.
+ * willrt_panic writes the report and then ends the current task when the task
+ * engine is linked in; outside a task, it exits the process with 101.
  */
 
 #include "report.h"
@@ -34,6 +34,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#if defined(__GNUC__) || defined(__clang__)
+/* Defined by the task engine. It records the failure on the current task and
+   ends that thread, so it never returns. */
+extern int32_t willrt_task_fail(const char* message, size_t size,
+                                const char* site, const char* symbol)
+    __attribute__((weak));
+#endif
 
 enum {
     WILLRT_REPORT_INLINE_TABLES = 16
@@ -355,6 +363,12 @@ void willrt_panic_n(const char* message, size_t size, const char* site, const ch
         willrt_report_write(" ");
         willrt_report_write(symbol != NULL ? symbol : willrt_report_unknown);
         willrt_report_write("\n");
+    }
+    /* A panic inside a task stops at that task's boundary. The task engine is
+       linked into a program that uses tasks; a program that does not is free of
+       it, so the symbol is weak and the process exit remains the fallback. */
+    if (willrt_task_fail != NULL) {
+        willrt_task_fail(message, size, site, symbol);
     }
     _Exit(101);
 }

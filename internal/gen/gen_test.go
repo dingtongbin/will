@@ -1096,8 +1096,8 @@ func TestEmitEndlessLoopWithBreak(t *testing.T) {
 }
 
 func TestEmitUnsupportedNodeIsReported(t *testing.T) {
-	// A spawned task needs the task runtime, which is not lowered yet.
-	doc := emitWillc(t, "func G() {\n}\n\nfunc F() {\n    spawn G()\n}\n")
+	// A deadline needs the scoped timer path, which is not lowered yet.
+	doc := emitWillc(t, "func F() {\n    deadline 1ms {\n    }\n}\n")
 	_, err := Emit(doc)
 	if err == nil {
 		t.Fatal("an unsupported node was translated")

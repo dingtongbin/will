@@ -53,6 +53,7 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		emittedTypes:   map[string]bool{},
 		emittedVtables: map[string]bool{},
 		thunkEmitted:   map[string]bool{},
+		spawnEmitted:   map[string]bool{},
 		out:            &strings.Builder{},
 		aliases:       aliases,
 	}
@@ -66,6 +67,9 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 	g.collectExternalEnums()
 	g.collectGlobals()
 	g.planInstances()
+	if g.usesTaskRuntime() {
+		g.out.WriteString("%willrt_error = type { ptr, i64, ptr, ptr }\n")
+	}
 	for _, d := range g.docs {
 		g.use(d)
 		if err := g.emitDoc(); err != nil {
@@ -115,6 +119,22 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_print_u64(i64)\n")
 		g.out.WriteString("declare void @willrt_print_f64(double)\n")
 		g.out.WriteString("declare void @willrt_print_bool(i32)\n")
+	}
+	if g.needTaskDecl {
+		g.out.WriteString("declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)\n")
+		g.out.WriteString("declare void @willrt_task_run(ptr)\n")
+		g.out.WriteString("declare i32 @willrt_join(ptr, ptr, ptr)\n")
+		g.out.WriteString("declare ptr @willrt_task_current()\n")
+		g.out.WriteString("declare i32 @willrt_task_store_result(ptr, i64)\n")
+		g.out.WriteString("declare ptr @willrt_chan_new(i64, i64, i32)\n")
+		g.out.WriteString("declare i32 @willrt_chan_send(ptr, ptr)\n")
+		g.out.WriteString("declare i32 @willrt_chan_try_send(ptr, ptr)\n")
+		g.out.WriteString("declare i32 @willrt_chan_recv(ptr, ptr)\n")
+		g.out.WriteString("declare i32 @willrt_chan_try_recv(ptr, ptr)\n")
+		g.out.WriteString("declare void @willrt_chan_close(ptr)\n")
+		g.out.WriteString("declare void @willrt_region_enter()\n")
+		g.out.WriteString("declare i32 @willrt_region_exit()\n")
+		g.out.WriteString("declare i32 @willrt_lane_here()\n")
 	}
 	if g.needInterpDecl {
 		g.out.WriteString("declare i64 @willrt_fmt_i64_len(i64)\n")
@@ -316,6 +336,13 @@ func (g *generator) use(d *docState) {
 	g.captureSpills = map[int]string{}
 	g.currentLambda = 0
 	g.pendingThunks = nil
+	g.spawnNames = map[int]string{}
+	g.pendingSpawns = nil
+	g.joinOutSlots = map[int]string{}
+	g.joinErrSlots = map[int]string{}
+	g.recvOutSlots = map[int]string{}
+	g.recvOptSlots = map[int]string{}
+	g.sendValueSlots = map[int]string{}
 	g.pkgNames = map[string]string{}
 	for _, r := range d.recs {
 		if r.Kind == "import" {
@@ -433,8 +460,10 @@ type generator struct {
 	needMemcpyDecl bool
 	// needPrintDecl records that the lowering writes to standard output, and
 	// needInterpDecl that it formats a scalar into a str.
-	needPrintDecl bool
+	needPrintDecl  bool
 	needInterpDecl bool
+	// needTaskDecl records that the lowering calls the task or channel engine.
+	needTaskDecl bool
 	// declKinds maps a qualified type name to "struct" or "enum".
 	declKinds map[string]string
 	// callSlots maps a call whose result is a struct to the temporary slot its
@@ -463,6 +492,19 @@ type generator struct {
 	// closure calling convention, and thunkEmitted dedupes them by symbol.
 	pendingThunks []thunkRequest
 	thunkEmitted  map[string]bool
+	// spawnNames names the step function of every spawn expression, and
+	// pendingSpawns holds the steps this document still has to write.
+	spawnNames    map[int]string
+	spawnSeq      int
+	pendingSpawns []spawnRequest
+	spawnEmitted  map[string]bool
+	// The slots below keep a loop from growing the stack on every evaluation
+	// of a join, receive, or send.
+	joinOutSlots   map[int]string
+	joinErrSlots   map[int]string
+	recvOutSlots   map[int]string
+	recvOptSlots   map[int]string
+	sendValueSlots map[int]string
 	// pkgNames maps the package name a document writes to the import path.
 	pkgNames map[string]string
 	// loopBinds maps a for record and a binding name to that binding's slot,
@@ -562,7 +604,23 @@ func (g *generator) emitDoc() error {
 	if err := g.emitThunks(); err != nil {
 		return err
 	}
+	if err := g.emitSpawns(); err != nil {
+		return err
+	}
 	return g.emitInit(g.cur)
+}
+
+// usesTaskRuntime reports whether any document names a task or channel node.
+func (g *generator) usesTaskRuntime() bool {
+	for _, d := range g.docs {
+		for _, r := range d.recs {
+			switch r.Kind {
+			case "spawn", "join", "recv", "tryrecv", "send", "trysend", "close", "channew":
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // emitWrapper writes the C entry the runtime calls: it starts the runtime,
@@ -1065,6 +1123,61 @@ func (g *generator) allocas(fn int) error {
 		g.adtSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
 	}
+	// A join, receive, and send keep their temporaries in the entry block, so
+	// a loop that waits repeatedly does not grow the stack.
+	for _, r := range g.recs {
+		if g.enclosingFunc(r.ID) != fn {
+			continue
+		}
+		switch r.Kind {
+		case "join":
+			taskText, err := g.willTypeText(refField(r, "task"))
+			if err != nil {
+				return err
+			}
+			if elem, ok := taskElemText(taskText); ok && elem != "" && elem != "()" {
+				if elemLLVM, ok := g.typeLLVMOf(elem); ok && elemLLVM != "" {
+					name := "%v.join.out." + strconv.Itoa(r.ID)
+					g.joinOutSlots[r.ID] = name
+					fmt.Fprintf(g.out, "  %s = alloca %s\n", name, elemLLVM)
+				}
+			}
+			name := "%v.join.err." + strconv.Itoa(r.ID)
+			g.joinErrSlots[r.ID] = name
+			fmt.Fprintf(g.out, "  %s = alloca %%willrt_error\n", name)
+		case "recv", "tryrecv":
+			chanText, err := g.willTypeText(refField(r, "chan"))
+			if err != nil {
+				return err
+			}
+			elem, ok := chanElemText(chanText)
+			if !ok {
+				continue
+			}
+			elemLLVM, ok := g.typeLLVMOf(elem)
+			if !ok || elemLLVM == "" {
+				continue
+			}
+			out := "%v.recv.out." + strconv.Itoa(r.ID)
+			g.recvOutSlots[r.ID] = out
+			fmt.Fprintf(g.out, "  %s = alloca %s\n", out, elemLLVM)
+			if info, ok := g.adtType("Option<" + elem + ">"); ok {
+				name := "%v.recv." + strconv.Itoa(r.ID)
+				g.recvOptSlots[r.ID] = name
+				fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
+			}
+		case "send", "trysend":
+			typ, err := g.typeOf(refField(r, "value"))
+			if err != nil {
+				return err
+			}
+			if typ != "" && !isAggregateType(typ) {
+				name := "%v.send." + strconv.Itoa(r.ID)
+				g.sendValueSlots[r.ID] = name
+				fmt.Fprintf(g.out, "  %s = alloca %s\n", name, typ)
+			}
+		}
+	}
 	// A return of a concrete value as an interface is built in a slot of its
 	// own, then loaded as the two-word result.
 	if iface, ok := g.ifaceOfText(g.fnResultText); ok {
@@ -1489,6 +1602,18 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 		return g.panicStmt(st)
 	case "assert":
 		return g.assertStmt(st)
+	case "region", "parallel":
+		g.needTaskDecl = true
+		g.out.WriteString("  call void @willrt_region_enter()\n")
+		body, ok := g.recs[refField(st, "body")]
+		if !ok {
+			return false, g.errf(st.ID, "cannot translate node #%d: the block is missing", st.ID)
+		}
+		if _, err := g.body(body, void); err != nil {
+			return false, err
+		}
+		g.out.WriteString("  call i32 @willrt_region_exit()\n")
+		return false, nil
 	}
 	return false, g.errf(st.ID, "cannot translate node #%d: statement %s is not lowered yet", st.ID, st.Kind)
 }
@@ -1758,6 +1883,25 @@ func (g *generator) value(id int) (string, error) {
 			return "", g.errf(id, "cannot translate node #%d: a %s literal is a place, not a scalar", id, kind)
 		}
 		return "", g.errf(id, "cannot translate node #%d: literal kind %s is not lowered yet", id, fieldText(r, "kind"))
+	case "spawn":
+		return g.lowerSpawn(r)
+	case "channew":
+		return g.lowerChanNew(r)
+	case "lanehere":
+		g.needTaskDecl = true
+		name := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_here()\n", name)
+		return name, nil
+	case "trysend":
+		return g.lowerTrySend(r)
+	case "send":
+		return "", g.errf(id, "cannot translate node #%d: Send is a statement", id)
+	case "close":
+		return "", g.errf(id, "cannot translate node #%d: Close is a statement", id)
+	case "recv":
+		return "", g.errf(id, "cannot translate node #%d: Recv is a place", id)
+	case "join":
+		return "", g.errf(id, "cannot translate node #%d: Join is only lowered as Join()!", id)
 	case "func":
 		if _, ok := g.lambdaNames[r.ID]; ok {
 			return "", g.errf(id, "cannot translate node #%d: a closure is a place, not a scalar", id)
@@ -1921,6 +2065,22 @@ func (g *generator) exprStmt(st willc.Record) error {
 	if r, ok := g.recs[id]; ok && (r.Kind == "panic" || r.Kind == "assert") {
 		_, err := g.stmt(r, false)
 		return err
+	}
+	if r, ok := g.recs[id]; ok {
+		switch r.Kind {
+		case "send":
+			return g.lowerSend(r)
+		case "close":
+			return g.lowerClose(r)
+		case "recv":
+			chanPtr, err := g.value(refField(r, "chan"))
+			if err != nil {
+				return err
+			}
+			g.needTaskDecl = true
+			fmt.Fprintf(g.out, "  call i32 @willrt_chan_recv(ptr %s, ptr null)\n", chanPtr)
+			return nil
+		}
 	}
 	_, err := g.value(id)
 	return err

@@ -36,6 +36,52 @@ void willrt_os_free_pages(void* ptr, size_t size);
    never goes backwards. Zero is returned when the platform call fails. */
 int64_t willrt_os_now_ns(void);
 
+/* Platform threads, locks, and waits. The storage is opaque to the scheduler;
+   the platform implementation casts it to its own handle. A timeout below zero
+   waits without a limit, and a timeout of zero does not wait. */
+typedef struct willrt_os_thread {
+    _Alignas(16) unsigned char bytes[128];
+} willrt_os_thread;
+
+typedef struct willrt_os_mutex {
+    _Alignas(16) unsigned char bytes[128];
+} willrt_os_mutex;
+
+typedef struct willrt_os_cond {
+    _Alignas(16) unsigned char bytes[128];
+} willrt_os_cond;
+
+/* willrt_os_thread_start runs fn(arg) on a new thread. It returns 0 on success
+   and -1 when the platform refuses to start it. */
+int32_t willrt_os_thread_start(willrt_os_thread* thread, void (*fn)(void*),
+                               void* arg);
+void willrt_os_thread_join(willrt_os_thread* thread);
+void willrt_os_thread_yield(void);
+void willrt_os_sleep_ns(int64_t ns);
+
+void willrt_os_mutex_init(willrt_os_mutex* mutex);
+void willrt_os_mutex_destroy(willrt_os_mutex* mutex);
+void willrt_os_mutex_lock(willrt_os_mutex* mutex);
+void willrt_os_mutex_unlock(willrt_os_mutex* mutex);
+
+void willrt_os_cond_init(willrt_os_cond* cond);
+void willrt_os_cond_destroy(willrt_os_cond* cond);
+void willrt_os_cond_wait(willrt_os_cond* cond, willrt_os_mutex* mutex);
+/* willrt_os_cond_timedwait returns 0 when it was signalled and 1 on timeout. */
+int32_t willrt_os_cond_timedwait(willrt_os_cond* cond, willrt_os_mutex* mutex,
+                                 int64_t timeout_ns);
+void willrt_os_cond_signal(willrt_os_cond* cond);
+void willrt_os_cond_broadcast(willrt_os_cond* cond);
+
+/* Address waits park until *addr differs from expected or the timeout passes.
+   The result is 0 when the value changed and 1 on timeout. A platform without
+   a native primitive may poll; the comment in that platform file says so. */
+int32_t willrt_os_wait_on_address(void* addr, uint32_t expected, int64_t timeout_ns);
+void willrt_os_wake_address(void* addr, int32_t count);
+/* willrt_os_thread_exit ends the calling thread without returning. The task
+   engine uses it to contain a panic at the task boundary. */
+void willrt_os_thread_exit(void);
+
 /* willrt_alloc returns a block aligned for any type, or NULL on failure. A
    zero-size request still returns a unique block, so an empty buffer is never
    mistaken for an allocation failure. */
@@ -45,6 +91,11 @@ void* willrt_alloc(size_t size);
    that willrt_alloc did not return is rejected with one line on standard
    error, and its memory is left alone. */
 void willrt_free(void* ptr);
+
+/* willrt_mem_set_lane tells the allocator which lane the calling thread runs
+   on. A thread that never calls it uses lane 0. The value is clamped into the
+   allocator's lane table. */
+void willrt_mem_set_lane(int32_t lane);
 
 /* willrt_plate_new returns one block holding count elements of elem bytes, or
    NULL when the request overflows or memory is exhausted. The payload starts
@@ -96,6 +147,75 @@ int32_t willrt_weak_upgrade(uint64_t weak, void* out);
 /* willrt_now_ns returns the monotonic clock in nanoseconds. It never goes
    backwards and is the time base for timer deadlines. */
 int64_t willrt_now_ns(void);
+
+/* -------------------------------------------------------------------------
+   Tasks, regions, and the task environment.
+
+   A task owns one frame of size bytes. The step function advances the frame
+   once: it returns WILLRT_DONE when the frame is finished or WILLRT_SUSPEND
+   when it wants to run again later. This engine runs a step on its own thread
+   and treats a suspend as a finished step; the compiler's lowering currently
+   never returns WILLRT_SUSPEND.
+   ------------------------------------------------------------------------- */
+
+typedef struct willrt_task willrt_task;
+
+typedef int32_t (*willrt_step)(void* frame);
+
+/* willrt_error is the failure a joined task reports. message is a byte string
+   of size bytes (it need not be NUL-terminated); site and symbol are static
+   strings from the compiler. */
+typedef struct willrt_error {
+    const char* message;
+    size_t size;
+    const char* site;
+    const char* symbol;
+} willrt_error;
+
+willrt_task* willrt_task_new(void* step, void* frame, size_t size,
+                             int32_t lane, int32_t prio);
+void willrt_task_run(willrt_task* task);
+int32_t willrt_join(willrt_task* task, void* out, willrt_error* err);
+
+/* The current task stores its result once, before its step returns. A task
+   whose value is void does not call this. */
+willrt_task* willrt_task_current(void);
+int32_t willrt_task_store_result(const void* value, size_t size);
+
+void willrt_region_enter(void);
+int32_t willrt_region_exit(void);
+int32_t willrt_lane_here(void);
+void willrt_yield(void);
+int32_t willrt_task_canceled(void);
+int64_t willrt_task_deadline(void);
+void willrt_activity(int32_t delta);
+
+/* -------------------------------------------------------------------------
+   Channels. A value is copied into the ring on send and copied out on receive;
+   the compiler has already enforced the move rule at the source. Capacity is
+   the backpressure bound and must be greater than zero.
+   ------------------------------------------------------------------------- */
+
+typedef struct willrt_chan willrt_chan;
+
+willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio);
+int32_t willrt_chan_send(willrt_chan* chan, const void* value);
+int32_t willrt_chan_try_send(willrt_chan* chan, const void* value);
+int32_t willrt_chan_recv(willrt_chan* chan, void* out);
+int32_t willrt_chan_try_recv(willrt_chan* chan, void* out);
+void willrt_chan_close(willrt_chan* chan);
+
+/* One select arm. kind 0 receives into out, 1 sends value, 2 waits until ns,
+   and 3 is the default arm. A timeout or default arm has a null channel. */
+typedef struct willrt_arm {
+    willrt_chan* chan;
+    void* out;
+    const void* value;
+    int32_t kind;
+    int64_t ns;
+} willrt_arm;
+
+int32_t willrt_select(willrt_arm* arms, size_t n);
 
 /* willrt_timer is a one-shot timer. The node is owned by the runtime. */
 typedef struct willrt_timer willrt_timer;

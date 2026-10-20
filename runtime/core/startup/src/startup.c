@@ -12,6 +12,12 @@
 
 #include <stdatomic.h>
 
+#if defined(__GNUC__) || defined(__clang__)
+/* Defined by the task engine. A program that never starts a task does not link
+   it, so the wait is optional. */
+extern void willrt_tasks_wait_all(void) __attribute__((weak));
+#endif
+
 static atomic_int willrt_started;
 
 void willrt_init(void) {
@@ -20,5 +26,8 @@ void willrt_init(void) {
 }
 
 void willrt_shutdown(void) {
+    if (willrt_tasks_wait_all != NULL) {
+        willrt_tasks_wait_all();
+    }
     atomic_store(&willrt_started, 0);
 }
