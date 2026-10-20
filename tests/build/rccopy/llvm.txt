@@ -1,0 +1,57 @@
+%"struct.example.com/rccopy.Inner" = type { i32 }
+%"struct.example.com/rccopy.Holder" = type { i64 }
+define i32 @"example.com/rccopy.will$main"() {
+entry:
+  %v.a = alloca %"struct.example.com/rccopy.Holder"
+  %v.b = alloca %"struct.example.com/rccopy.Holder"
+  %v.c = alloca i64
+  %v.agg.14 = alloca %"struct.example.com/rccopy.Holder"
+  %v.agg.16 = alloca %"struct.example.com/rccopy.Inner"
+  %t1 = getelementptr inbounds %"struct.example.com/rccopy.Holder", ptr %v.agg.14, i32 0, i32 0
+  %t2 = getelementptr inbounds %"struct.example.com/rccopy.Inner", ptr %v.agg.16, i32 0, i32 0
+  store i32 3, ptr %t2
+  %t3 = getelementptr %"struct.example.com/rccopy.Inner", ptr null, i32 1
+  %t4 = ptrtoint ptr %t3 to i64
+  %t5 = call i64 @willrt_rc_new(ptr %v.agg.16, i64 %t4)
+  store i64 %t5, ptr %t1
+  %t6 = load %"struct.example.com/rccopy.Holder", ptr %v.agg.14
+  store %"struct.example.com/rccopy.Holder" %t6, ptr %v.a
+  %t7 = getelementptr inbounds %"struct.example.com/rccopy.Holder", ptr %v.a, i32 0, i32 0
+  %t8 = load i64, ptr %t7
+  call void @willrt_rc_retain(i64 %t8)
+  %t9 = load %"struct.example.com/rccopy.Holder", ptr %v.a
+  store %"struct.example.com/rccopy.Holder" %t9, ptr %v.b
+  %t10 = getelementptr inbounds %"struct.example.com/rccopy.Holder", ptr %v.b, i32 0, i32 0
+  %t11 = load i64, ptr %t10
+  call void @willrt_rc_retain(i64 %t11)
+  store i64 %t11, ptr %v.c
+  %t12 = load i64, ptr %v.c
+  %t13 = call ptr @willrt_rc_deref(i64 %t12)
+  %t14 = getelementptr inbounds %"struct.example.com/rccopy.Inner", ptr %t13, i32 0, i32 0
+  %t15 = load i32, ptr %t14
+  %t16 = load i64, ptr %v.c
+  call void @willrt_rc_release(i64 %t16)
+  %t17 = getelementptr inbounds %"struct.example.com/rccopy.Holder", ptr %v.b, i32 0, i32 0
+  %t18 = load i64, ptr %t17
+  call void @willrt_rc_release(i64 %t18)
+  %t19 = getelementptr inbounds %"struct.example.com/rccopy.Holder", ptr %v.a, i32 0, i32 0
+  %t20 = load i64, ptr %t19
+  call void @willrt_rc_release(i64 %t20)
+  ret i32 %t15
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/rccopy.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+declare i64 @willrt_rc_new(ptr, i64)
+declare i64 @willrt_rc_new_drop(ptr, i64, ptr)
+declare void @willrt_rc_retain(i64)
+declare void @willrt_rc_release(i64)
+declare ptr @willrt_rc_deref(i64)
+declare i64 @willrt_weak_new(i64)
+declare i32 @willrt_weak_upgrade(i64, ptr)

@@ -1,0 +1,15 @@
+struct Inner {
+    n: i32
+}
+
+struct Holder {
+    inner: rc<Inner>
+}
+
+func main() -> i32 {
+    var a: Holder = Holder { inner: new rc<Inner>(Inner { n: 3 }) }
+    var b: Holder = a
+    var c: rc<Inner> = b.inner
+    _ = a
+    return c.n
+}

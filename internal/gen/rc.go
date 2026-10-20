@@ -294,10 +294,10 @@ func (g *generator) rcCallResult(r willc.Record) (string, bool) {
 	return g.sigs[sym], true
 }
 
-// rcCopySource reports whether a value is an already owned handle, so assigning
-// it must add a reference. A freshly returned handle or a new object transfers
-// its reference instead.
-func (g *generator) rcCopySource(id int) bool {
+// isCopySource reports whether a value is an already owned place, so copying it
+// must add references for the rc handles it holds. A fresh object, call result,
+// or unwrap transfers its references instead.
+func (g *generator) isCopySource(id int) bool {
 	r, ok := g.recs[id]
 	if !ok {
 		return false
@@ -305,9 +305,77 @@ func (g *generator) rcCopySource(id int) bool {
 	switch r.Kind {
 	case "name", "field", "index":
 		text, err := g.willTypeText(id)
-		return err == nil && isRcText(text)
+		return err == nil && g.needsReleaseText(text)
 	}
 	return false
+}
+
+// retainValue adds one reference for every rc handle reachable in a value. It
+// is the copy half of the deep-copy rule for structs and Options.
+func (g *generator) retainValue(ptr, text string) error {
+	return g.retainValueDepth(ptr, text, 0)
+}
+
+func (g *generator) retainValueDepth(ptr, text string, depth int) error {
+	if depth > 32 {
+		return nil
+	}
+	text = g.qualifyTypeText(g.pkg, text)
+	if isWeakText(text) {
+		return nil
+	}
+	if isRcText(text) {
+		g.needRcDecl = true
+		handle := g.load("i64", ptr)
+		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", handle)
+		return nil
+	}
+	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
+		info, ok := g.adtType(text)
+		if !ok {
+			return nil
+		}
+		tag := g.load("i32", ptr)
+		g.labels++
+		n := g.labels
+		keep := fmt.Sprintf("retain.keep.%d", n)
+		done := fmt.Sprintf("retain.done.%d", n)
+		cond := g.newTmp()
+		if kind == "option" {
+			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 1\n", cond, tag)
+		} else {
+			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", cond, tag)
+		}
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, keep, done)
+		g.out.WriteString(keep + ":\n")
+		payload := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, ptr, info.payloadIndex)
+		if err := g.retainValueDepth(payload, args[0], depth+1); err != nil {
+			return err
+		}
+		fmt.Fprintf(g.out, "  br label %%%s\n", done)
+		g.out.WriteString(done + ":\n")
+		return nil
+	}
+	typ, ok := g.typeLLVMOf(text)
+	if !ok || !isStructType(typ) {
+		return nil
+	}
+	info := g.structInfoByLLVM(typ)
+	if info == nil || !info.ok {
+		return nil
+	}
+	for i, ft := range info.texts {
+		if !needsReleaseText(g, ft) {
+			continue
+		}
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.llvm, ptr, i)
+		if err := g.retainValueDepth(field, ft, depth+1); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // releaseSlot releases the rc references a value holds. A weak handle and a
@@ -384,6 +452,11 @@ func (g *generator) releaseValue(slot, text string, depth int) error {
 		}
 	}
 	return nil
+}
+
+// needsReleaseText is the method form used by the call sites.
+func (g *generator) needsReleaseText(text string) bool {
+	return needsReleaseText(g, text)
 }
 
 // needsReleaseText reports whether a field type may hold an rc reference.

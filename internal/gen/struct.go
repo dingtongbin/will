@@ -1124,6 +1124,11 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 			if typ != info.types[i] {
 				return g.errf(valueID, "cannot translate node #%d: field %s needs %s", valueID, name, info.types[i])
 			}
+			if g.needsReleaseText(info.texts[i]) && g.isCopySource(valueID) {
+				if err := g.retainValue(src, info.texts[i]); err != nil {
+					return err
+				}
+			}
 			g.copyValue(src, ptr, typ)
 			continue
 		}
@@ -1131,7 +1136,7 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 		if err != nil {
 			return err
 		}
-		if isRcText(info.texts[i]) && g.rcCopySource(valueID) {
+		if isRcText(info.texts[i]) && g.isCopySource(valueID) {
 			g.needRcDecl = true
 			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", v)
 		}

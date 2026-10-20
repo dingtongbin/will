@@ -1799,7 +1799,7 @@ func (g *generator) assignStmt(r willc.Record) error {
 			return err
 		}
 		g.needRcDecl = true
-		if g.rcCopySource(valueID) {
+		if g.isCopySource(valueID) {
 			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
 		}
 		old := g.load("i64", ptr)
@@ -1826,6 +1826,16 @@ func (g *generator) assignStmt(r willc.Record) error {
 		}
 		if srcType != typ {
 			return g.errf(r.ID, "cannot translate node #%d: the assignment needs %s", r.ID, typ)
+		}
+		if g.needsReleaseText(targetText) {
+			if err := g.releaseSlot(ptr, targetText); err != nil {
+				return err
+			}
+			if g.isCopySource(valueID) {
+				if err := g.retainValue(src, targetText); err != nil {
+					return err
+				}
+			}
 		}
 		g.copyValue(src, ptr, typ)
 		return nil
@@ -1854,7 +1864,7 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		if g.rcCopySource(valueID) {
+		if g.isCopySource(valueID) {
 			g.needRcDecl = true
 			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
 		}
@@ -1880,6 +1890,12 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 		}
 		if srcType != typ {
 			return false, g.errf(r.ID, "cannot translate node #%d: %s needs a %s value", r.ID, fieldText(r, "text"), typ)
+		}
+		text := fieldText(r, "type")
+		if g.needsReleaseText(text) && g.isCopySource(valueID) {
+			if err := g.retainValue(src, text); err != nil {
+				return false, err
+			}
 		}
 		g.copyValue(src, slot, typ)
 		return false, nil
@@ -2035,7 +2051,7 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 	if g.resultType == "" {
 		return false, g.errf(st.ID, "cannot translate node #%d: the function returns no value", st.ID)
 	}
-	if isRcText(g.fnResultText) && g.rcCopySource(valueID) {
+	if g.needsReleaseText(g.fnResultText) && g.isCopySource(valueID) {
 		movedLocal := false
 		if name, ok := g.recs[valueID]; ok && name.Kind == "name" {
 			if _, ok := g.slots[refField(name, "to")]; ok {
@@ -2043,12 +2059,22 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 			}
 		}
 		if !movedLocal {
-			value, err := g.value(valueID)
-			if err != nil {
-				return false, err
+			if isRcText(g.fnResultText) {
+				handle, err := g.value(valueID)
+				if err != nil {
+					return false, err
+				}
+				g.needRcDecl = true
+				fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", handle)
+			} else {
+				src, _, err := g.place(valueID)
+				if err != nil {
+					return false, err
+				}
+				if err := g.retainValue(src, g.fnResultText); err != nil {
+					return false, err
+				}
 			}
-			g.needRcDecl = true
-			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
 		}
 	}
 	if iface, ok := g.ifaceOfText(g.fnResultText); ok {
