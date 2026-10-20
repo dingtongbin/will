@@ -146,6 +146,7 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)\n")
 		g.out.WriteString("declare void @willrt_task_run(ptr)\n")
 		g.out.WriteString("declare i32 @willrt_join(ptr, ptr, ptr)\n")
+		g.out.WriteString("declare i32 @willrt_task_try_join(ptr, ptr, ptr)\n")
 		g.out.WriteString("declare ptr @willrt_task_current()\n")
 		g.out.WriteString("declare i32 @willrt_task_store_result(ptr, i64)\n")
 		g.out.WriteString("declare ptr @willrt_chan_new(i64, i64, i32)\n")
@@ -1113,6 +1114,11 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		if isRcText(ptype) || isWeakText(ptype) {
 			g.scope[p.ID] = "%" + pname
 			sig = append(sig, "i64 %"+pname)
+			continue
+		}
+		if _, ok := taskElemText(ptype); ok {
+			g.scope[p.ID] = "%" + pname
+			sig = append(sig, "ptr %"+pname)
 			continue
 		}
 		if typ, _, ok := llvmScalar(ptype); ok {

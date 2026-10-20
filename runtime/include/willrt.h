@@ -203,8 +203,7 @@ void willrt_blocking_shutdown(void);
    A task owns one frame of size bytes. The step function advances the frame
    once: it returns WILLRT_DONE when the frame is finished or WILLRT_SUSPEND
    when it wants to run again later. This engine runs a step on its own thread
-   and treats a suspend as a finished step; the compiler's lowering currently
-   never returns WILLRT_SUSPEND.
+   and calls a suspended step again after a yield.
    ------------------------------------------------------------------------- */
 
 typedef struct willrt_task willrt_task;
@@ -225,6 +224,9 @@ willrt_task* willrt_task_new(void* step, void* frame, size_t size,
                              int32_t lane, int32_t prio);
 void willrt_task_run(willrt_task* task);
 int32_t willrt_join(willrt_task* task, void* out, willrt_error* err);
+/* willrt_task_try_join is the step-facing form of a join: it returns
+   WILLRT_SUSPEND instead of waiting when the dependency is not finished. */
+int32_t willrt_task_try_join(willrt_task* task, void* out, willrt_error* err);
 
 /* The current task stores its result once, before its step returns. A task
    whose value is void does not call this. */

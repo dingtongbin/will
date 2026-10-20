@@ -15,6 +15,24 @@ static int32_t step_double(void* frame) {
     return WILLRT_DONE;
 }
 
+typedef struct suspend_frame {
+    int32_t calls;
+    int32_t value;
+} suspend_frame;
+
+static int32_t step_suspend(void* raw) {
+    suspend_frame* frame = (suspend_frame*)raw;
+    int32_t result;
+
+    frame->calls += 1;
+    if (frame->calls < 3) {
+        return WILLRT_SUSPEND;
+    }
+    result = frame->value;
+    assert(willrt_task_store_result(&result, sizeof(result)) == WILLRT_OK);
+    return WILLRT_DONE;
+}
+
 static int32_t step_panic(void* frame) {
     (void)frame;
     willrt_panic("task failed on purpose", "task_test.c:20:5", "will.test.task");
@@ -39,6 +57,19 @@ static void test_task_result(void) {
     willrt_task_run(task);
     assert(willrt_join(task, &output, NULL) == WILLRT_OK);
     assert(output == 42);
+}
+
+static void test_task_suspend_resume(void) {
+    suspend_frame frame = {0, 9};
+    int32_t output = 0;
+    willrt_task* task = willrt_task_new((void*)step_suspend, &frame,
+                                        sizeof(frame), 0, 0);
+
+    assert(task != NULL);
+    willrt_task_run(task);
+    assert(willrt_join(task, &output, NULL) == WILLRT_OK);
+    assert(output == 9);
+    assert(frame.calls == 3);
 }
 
 static void test_region_counts(void) {
@@ -138,6 +169,7 @@ static void test_select_order(void) {
 int main(void) {
     willrt_init();
     test_task_result();
+    test_task_suspend_resume();
     test_region_counts();
     test_region_failure();
     test_channel_order();
