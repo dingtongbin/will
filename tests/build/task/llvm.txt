@@ -51,12 +51,12 @@ entry:
   %v.ret.57 = alloca { ptr, i64 }
   %v.str.50 = alloca { ptr, i64 }
   %v.str.68 = alloca { ptr, i64 }
+  %v.join.out.43 = alloca i32
+  %v.join.err.43 = alloca %willrt_error
   %v.join.out.46 = alloca i32
   %v.join.err.46 = alloca %willrt_error
   %v.join.out.62 = alloca { ptr, i64 }
   %v.join.err.62 = alloca %willrt_error
-  %v.join.out.43 = alloca i32
-  %v.join.err.43 = alloca %willrt_error
   store i32 0, ptr %v.sum
   call void @willrt_region_enter()
   %t19 = getelementptr { i32 }, ptr null, i32 1

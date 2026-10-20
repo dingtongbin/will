@@ -917,10 +917,14 @@ func (g *generator) blockOf(owner int) (willc.Record, error) {
 // allocas reserves a stack slot in the entry block for every local of one
 // function. Creating them at the entry keeps a loop from growing the stack.
 func (g *generator) allocas(fn int) error {
+	var closures []willc.Record
 	for _, r := range g.recs {
-		if !g.isClosureRecord(r, fn) {
-			continue
+		if g.isClosureRecord(r, fn) {
+			closures = append(closures, r)
 		}
+	}
+	sortByID(closures)
+	for _, r := range closures {
 		name := "%v.closure." + strconv.Itoa(r.ID)
 		g.closureSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca { ptr, ptr }\n", name)
@@ -1125,10 +1129,17 @@ func (g *generator) allocas(fn int) error {
 	}
 	// A join, receive, and send keep their temporaries in the entry block, so
 	// a loop that waits repeatedly does not grow the stack.
+	var waits []willc.Record
 	for _, r := range g.recs {
-		if g.enclosingFunc(r.ID) != fn {
-			continue
+		if g.enclosingFunc(r.ID) == fn {
+			switch r.Kind {
+			case "join", "recv", "tryrecv", "send", "trysend":
+				waits = append(waits, r)
+			}
 		}
+	}
+	sortByID(waits)
+	for _, r := range waits {
 		switch r.Kind {
 		case "join":
 			taskText, err := g.willTypeText(refField(r, "task"))

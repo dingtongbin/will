@@ -101,9 +101,9 @@ panic.ok.1:
 }
 define i32 @"example.com/fnvalue.will$main"() {
 entry:
-  %v.closure.126 = alloca { ptr, ptr }
-  %v.closure.89 = alloca { ptr, ptr }
   %v.closure.76 = alloca { ptr, ptr }
+  %v.closure.89 = alloca { ptr, ptr }
+  %v.closure.126 = alloca { ptr, ptr }
   %v.inc = alloca { ptr, ptr }
   %v.dbl = alloca { ptr, ptr }
   %v.add = alloca { ptr, ptr }
