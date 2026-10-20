@@ -681,6 +681,12 @@ type generator struct {
 	// same block. They run after the return value is evaluated, so a returned
 	// borrow is still alive while it is read.
 	pendingReleases []willc.Record
+	// pendingTryReleases are the release records before a statement that
+	// contains ?. They run only on the error path of the first failing ?.
+	pendingTryReleases []willc.Record
+	// defers holds one frame per open block, innermost last. Each entry is the
+	// call record of one defer in that block, in source order.
+	defers [][]int
 	// resultType is the LLVM type the current function returns, or "" for a
 	// void function.
 	resultType string
@@ -885,6 +891,9 @@ func (g *generator) symbolName(name string) string {
 type loopLabels struct {
 	step string
 	end  string
+	// deferDepth is the number of defer frames outside the loop body. A break
+	// or continue runs every frame from the innermost down to this depth.
+	deferDepth int
 }
 
 // qualify puts a package path in front of a name. A document without a package
@@ -1910,6 +1919,8 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 func (g *generator) body(b willc.Record, void bool) (bool, error) {
 	stmts := g.children(b.ID)
 	sortByID(stmts)
+	entry := len(g.defers)
+	g.defers = append(g.defers, nil)
 	terminated := false
 	var pending []willc.Record
 	for _, st := range stmts {
@@ -1920,7 +1931,7 @@ func (g *generator) body(b willc.Record, void bool) (bool, error) {
 			pending = append(pending, st)
 			continue
 		}
-		if st.Kind == "return" {
+		if st.Kind == "return" || st.Kind == "break" || st.Kind == "continue" {
 			g.pendingReleases = append(g.pendingReleases, pending...)
 			pending = nil
 			done, err := g.stmt(st, void)
@@ -1930,24 +1941,36 @@ func (g *generator) body(b willc.Record, void bool) (bool, error) {
 			terminated = done
 			continue
 		}
-		for _, rel := range pending {
-			if err := g.releaseRecord(rel); err != nil {
-				return false, err
+		if len(pending) != 0 && g.containsTry(st.ID) {
+			g.pendingTryReleases = append(g.pendingTryReleases, pending...)
+			pending = nil
+		} else {
+			for _, rel := range pending {
+				if err := g.releaseRecord(rel); err != nil {
+					return false, err
+				}
 			}
+			pending = nil
 		}
-		pending = nil
 		done, err := g.stmt(st, void)
 		if err != nil {
 			return false, err
 		}
+		g.pendingTryReleases = nil
 		terminated = done
 	}
 	if !terminated {
+		if err := g.runDefers(entry); err != nil {
+			return false, err
+		}
 		for _, rel := range pending {
 			if err := g.releaseRecord(rel); err != nil {
 				return false, err
 			}
 		}
+	}
+	if len(g.defers) > entry {
+		g.defers = g.defers[:entry]
 	}
 	return terminated, nil
 }
@@ -1985,6 +2008,8 @@ func (g *generator) flushReleases() error {
 // stmt lowers one statement and reports whether it ends the current block.
 func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 	switch st.Kind {
+	case "defer":
+		return false, g.deferStmt(st)
 	case "return":
 		return g.returnStmt(st, void)
 	case "if":
@@ -2041,6 +2066,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		if refField(st, "value") != 0 {
 			return false, g.errf(st.ID, "cannot translate node #%d: a void function returns no value", st.ID)
 		}
+		if err := g.runDefers(0); err != nil {
+			return false, err
+		}
 		if err := g.flushReleases(); err != nil {
 			return false, err
 		}
@@ -2091,6 +2119,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 				return false, err
 			}
 			v := g.load(iface.llvm, slot)
+			if err := g.runDefers(0); err != nil {
+				return false, err
+			}
 			if err := g.flushReleases(); err != nil {
 				return false, err
 			}
@@ -2109,6 +2140,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		g.tmp++
 		tmp := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = load %s, ptr %s\n", tmp, typ, ptr)
+		if err := g.runDefers(0); err != nil {
+			return false, err
+		}
 		if err := g.flushReleases(); err != nil {
 			return false, err
 		}
@@ -2117,6 +2151,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 	}
 	value, err := g.value(valueID)
 	if err != nil {
+		return false, err
+	}
+	if err := g.runDefers(0); err != nil {
 		return false, err
 	}
 	if err := g.flushReleases(); err != nil {
@@ -2136,6 +2173,12 @@ func (g *generator) jump(isBreak bool) (bool, error) {
 	target := top.step
 	if isBreak {
 		target = top.end
+	}
+	if err := g.runDefers(top.deferDepth); err != nil {
+		return false, err
+	}
+	if err := g.flushReleases(); err != nil {
+		return false, err
 	}
 	fmt.Fprintf(g.out, "  br label %%%s\n", target)
 	return true, nil
@@ -2163,7 +2206,7 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 		}
 		fmt.Fprintf(g.out, "  br label %%%s\n", bodyLabel)
 		g.out.WriteString(bodyLabel + ":\n")
-		g.loops = append(g.loops, loopLabels{step: bodyLabel, end: endLabel})
+		g.loops = append(g.loops, loopLabels{step: bodyLabel, end: endLabel, deferDepth: len(g.defers)})
 		done, err := g.body(body, void)
 		g.loops = g.loops[:len(g.loops)-1]
 		if err != nil {
@@ -2229,7 +2272,7 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 	fmt.Fprintf(g.out, "  %s = icmp slt i32 %s, %s\n", cond, current, hi)
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, bodyLabel, endLabel)
 	g.out.WriteString(bodyLabel + ":\n")
-	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel})
+	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel, deferDepth: len(g.defers)})
 	done, err := g.body(body, void)
 	g.loops = g.loops[:len(g.loops)-1]
 	if err != nil {

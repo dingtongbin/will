@@ -242,7 +242,7 @@ func (g *generator) forStr(r willc.Record, void bool, label int) (bool, error) {
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", n64, advance)
 	scalar := g.load("i32", out)
 	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", scalar, elemSlot)
-	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel})
+	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel, deferDepth: len(g.defers)})
 	done, err := g.body(body, void)
 	g.loops = g.loops[:len(g.loops)-1]
 	if err != nil {

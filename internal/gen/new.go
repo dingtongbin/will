@@ -52,6 +52,15 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	if initSym == "" {
 		initSym = g.methodsQualified[text+".init"]
 	}
+	params := g.paramTypes[initSym]
+	if initSym == "" {
+		// A generic init has no entry in the signature maps because its
+		// instance document is created after the maps are collected.
+		if sym, ps, ok := g.initForNew(g.cur, r); ok {
+			initSym = sym
+			params = ps
+		}
+	}
 	if initSym == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: %s has no init", r.ID, text)
 	}
@@ -59,7 +68,6 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: an init returning %s is not lowered yet", r.ID, result)
 	}
 	parts := []string{"ptr " + slot}
-	params := g.paramTypes[initSym]
 	for i, a := range g.callArgs(r) {
 		paramType := ""
 		if i < len(params) {

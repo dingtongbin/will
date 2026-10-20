@@ -134,7 +134,7 @@ func (g *generator) forMap(r willc.Record, k, v string, void bool, label int) (b
 			return false, err
 		}
 	}
-	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel})
+	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel, deferDepth: len(g.defers)})
 	done, err := g.body(body, void)
 	g.loops = g.loops[:len(g.loops)-1]
 	if err != nil {
@@ -197,7 +197,7 @@ func (g *generator) forSet(r willc.Record, elem string, void bool, label int) (b
 	if err := g.copySlot(elemPtr, binds[elemName], elem); err != nil {
 		return false, err
 	}
-	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel})
+	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel, deferDepth: len(g.defers)})
 	done, err := g.body(body, void)
 	g.loops = g.loops[:len(g.loops)-1]
 	if err != nil {

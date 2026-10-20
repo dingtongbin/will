@@ -330,7 +330,7 @@ func (g *generator) forContainer(r willc.Record, elem string, void bool, label i
 		g.loopPtrs[r.ID] = map[string]string{}
 	}
 	g.loopPtrs[r.ID][elemName] = ptr
-	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel})
+	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel, deferDepth: len(g.defers)})
 	done, err := g.body(body, void)
 	g.loops = g.loops[:len(g.loops)-1]
 	if err != nil {
@@ -407,7 +407,7 @@ func (g *generator) forArray(r willc.Record, n int, elem string, void bool, labe
 		g.loopPtrs[r.ID] = map[string]string{}
 	}
 	g.loopPtrs[r.ID][elemName] = ptr
-	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel})
+	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel, deferDepth: len(g.defers)})
 	done, err := g.body(body, void)
 	g.loops = g.loops[:len(g.loops)-1]
 	if err != nil {

@@ -99,6 +99,121 @@ func (g *generator) planInstances() {
 		}
 	}
 	g.planMethodInstances(base, seen)
+	g.planInitInstances(base, seen)
+}
+
+// planInitInstances creates the init method of a generic struct for every
+// concrete type that a new expression constructs. A generic init is not a
+// method call, so the method-call scan cannot find it.
+func (g *generator) planInitInstances(base int, seen map[string]bool) {
+	for i := 0; i < base; i++ {
+		d := g.docs[i]
+		for _, r := range d.recs {
+			if r.Kind != "new" {
+				continue
+			}
+			g.use(d)
+			for _, decl := range d.recs {
+				switch decl.Kind {
+				case "struct":
+					g.structDecl[fieldText(decl, "text")] = decl.ID
+				case "enum":
+					g.enumDecl[fieldText(decl, "text")] = decl.ID
+				case "interface":
+					g.ifaceDecl[fieldText(decl, "text")] = decl.ID
+				}
+			}
+			fn, names, args, ok := g.initInstance(d, r)
+			if !ok {
+				continue
+			}
+			key := d.path + "|" + fieldText(fn, "text") + "|" + strings.Join(args, ",")
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			doc, ok := g.cloneFuncInstance(d, fn, names, args, "")
+			if !ok {
+				continue
+			}
+			g.docs = append(g.docs, newDocState(doc))
+		}
+	}
+}
+
+// initInstance finds the generic init declaration a new expression needs.
+func (g *generator) initInstance(d *docState, r willc.Record) (willc.Record, []string, []string, bool) {
+	name, args, ok := splitGenericType(fieldText(r, "type"))
+	if !ok {
+		return willc.Record{}, nil, nil, false
+	}
+	var params []string
+	for _, decl := range d.recs {
+		if decl.Kind == "struct" && fieldText(decl, "text") == name {
+			params = g.typeParamNamesIn(d, decl)
+			break
+		}
+	}
+	if len(params) != len(args) {
+		return willc.Record{}, nil, nil, false
+	}
+	for _, f := range d.recs {
+		if f.Kind != "func" || fieldText(f, "text") != "init" {
+			continue
+		}
+		recv := receiverOfIn(d, f.ID)
+		if recv == nil {
+			continue
+		}
+		declName, declArgs, ok := splitGenericType(fieldText(*recv, "type"))
+		if !ok || declName != name || len(declArgs) != len(params) {
+			continue
+		}
+		generic := false
+		for _, a := range declArgs {
+			if contains(params, a) {
+				generic = true
+			}
+		}
+		if !generic {
+			continue
+		}
+		return f, declArgs, args, true
+	}
+	return willc.Record{}, nil, nil, false
+}
+
+// initForNew predicts the symbol and substituted parameter types of the init
+// instance a new expression calls. The instance document itself is planned
+// separately, before lowering.
+func (g *generator) initForNew(d *docState, r willc.Record) (string, []string, bool) {
+	fn, names, args, ok := g.initInstance(d, r)
+	if !ok {
+		return "", nil, false
+	}
+	name, _, _ := splitGenericType(fieldText(r, "type"))
+	subst := make(map[string]string, len(names))
+	for i, n := range names {
+		subst[n] = args[i]
+	}
+	var params []string
+	for _, p := range d.recs {
+		if p.Kind == "param" && refField(p, "parent") == fn.ID {
+			params = append(params, substituteTypeText(fieldText(p, "type"), subst))
+		}
+	}
+	return qualify(d.path, structInstanceKey(name, args)+".init"), params, true
+}
+
+// typeParamNamesIn returns the type parameter names declared by one struct.
+func (g *generator) typeParamNamesIn(d *docState, decl willc.Record) []string {
+	var names []string
+	for _, r := range d.recs {
+		if r.Kind == "typeparam" && refField(r, "parent") == decl.ID {
+			names = append(names, fieldText(r, "text"))
+		}
+	}
+	return names
 }
 
 // findGenericFunc finds the free generic function one qualified symbol names.
