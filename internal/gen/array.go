@@ -7,10 +7,17 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// arrayElemText returns the element type of an Array<T> whose element is
-// lowered as a scalar. Aggregate elements wait for the generic container work.
+// arrayElemText returns the element type of an Array<T>. A view []T has its
+// own two-word lowering and is handled by viewElemText.
 func arrayElemText(text string) (string, bool) {
-	return containerElem(text)
+	if !strings.HasPrefix(text, "Array<") || !strings.HasSuffix(text, ">") {
+		return "", false
+	}
+	elem := strings.TrimSpace(text[len("Array<") : len(text)-1])
+	if elem == "" {
+		return "", false
+	}
+	return elem, true
 }
 
 // viewElemText returns the element text of a read-only view []T.
@@ -34,7 +41,7 @@ func (g *generator) viewCallResult(r willc.Record) (llvm, text string, known boo
 	if err != nil {
 		return "", "", false
 	}
-	elem, ok := viewElemText(recvText)
+	elem, ok := viewElemText(stripPredeclaredPackage(recvText))
 	if !ok {
 		return "", "", false
 	}
@@ -156,11 +163,6 @@ func (g *generator) viewGetPlace(r willc.Record, elem string) (string, string, e
 // the three-word value (data, length, capacity). The length starts at zero.
 func (g *generator) constructArray(r willc.Record, elem string) (string, string, error) {
 	slot := g.allocSlot(g.newSlots, "new", r.ID, "{ ptr, i64, i64 }")
-	if isRcText(elem) {
-		// An Array of rc needs element-wise retain on every read and release
-		// on removal; that ownership path is not lowered yet.
-		return "", "", g.errf(r.ID, "cannot translate node #%d: an Array of rc is not lowered yet", r.ID)
-	}
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok || elemLLVM == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s is not lowered yet", r.ID, elem)
@@ -346,7 +348,7 @@ func (g *generator) arrayCallResult(r willc.Record) (llvm, text string, known bo
 	if err != nil {
 		return "", "", false
 	}
-	elem, ok := arrayElemText(recvText)
+	elem, ok := arrayElemText(stripPredeclaredPackage(recvText))
 	if !ok {
 		return "", "", false
 	}

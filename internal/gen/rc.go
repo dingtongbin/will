@@ -344,6 +344,22 @@ func (g *generator) isCopySource(id int) bool {
 	case "name", "field", "index":
 		text, err := g.willTypeText(id)
 		return err == nil && g.needsReleaseText(text)
+	case "mcall":
+		// Array.Get and view Get return a borrow of the element. The array
+		// still owns its reference, so storing the result adds one.
+		if fieldText(r, "text") != "Get" {
+			return false
+		}
+		recvText, err := g.willTypeText(refField(r, "recv"))
+		if err != nil {
+			return false
+		}
+		recvText = stripPredeclaredPackage(recvText)
+		elem, ok := arrayElemText(recvText)
+		if !ok {
+			elem, ok = viewElemText(recvText)
+		}
+		return ok && g.needsReleaseText(elem)
 	}
 	return false
 }
@@ -584,7 +600,7 @@ func needsReleaseText(g *generator, text string) bool {
 		return false
 	}
 	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
-		return needsReleaseText(g, strings.TrimSpace(text[len("Array<") : len(text)-1]))
+		return needsReleaseText(g, strings.TrimSpace(text[len("Array<"):len(text)-1]))
 	}
 	if _, args, ok := parseADT(text); ok {
 		return len(args) != 0 && needsReleaseText(g, args[0])

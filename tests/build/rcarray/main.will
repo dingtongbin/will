@@ -1,0 +1,19 @@
+struct C {
+    n: i32
+}
+
+func pick(xs: Array<rc<C>>) -> rc<C> {
+    return xs.Get(0)
+}
+
+func main() -> i32 {
+    var xs: Array<rc<C>> = new Array<rc<C>>(0)
+    var a: rc<C> = new rc<C>(C { n: 1 })
+    xs.Push(a)
+    var b: rc<C> = xs.Get(0)
+    xs.Set(0, a)
+    var c: rc<C> = pick(xs)
+    var total: i32 = b.n + c.n + xs.Get(0).n
+    _ = a
+    return total
+}

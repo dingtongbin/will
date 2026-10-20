@@ -122,6 +122,7 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 	if err != nil {
 		return "", "", false
 	}
+	recvText = stripPredeclaredPackage(recvText)
 	name := fieldText(r, "text")
 	if k, v, ok := mapTypeText(recvText); ok {
 		switch name {
@@ -772,4 +773,3 @@ func (g *generator) emitFieldCopy(entry, elem, src, dst, length string, field in
 	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
 	g.out.WriteString(done + ":\n")
 }
-

@@ -127,7 +127,8 @@ func (g *generator) planInitInstances(base int, seen map[string]bool) {
 			if !ok {
 				continue
 			}
-			key := d.path + "|" + fieldText(fn, "text") + "|" + strings.Join(args, ",")
+			name, _, _ := splitGenericType(fieldText(r, "type"))
+			key := d.path + "|" + name + "|" + fieldText(fn, "text") + "|" + strings.Join(args, ",")
 			if seen[key] {
 				continue
 			}

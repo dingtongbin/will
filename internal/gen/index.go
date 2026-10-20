@@ -86,8 +86,8 @@ func (g *generator) indexAddr(r willc.Record) (string, string, error) {
 	if !ok {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: only an array, a view, or an Array is indexed yet", r.ID)
 	}
-	elemType, ok := llvmTypeText(elem)
-	if !ok {
+	elemType, ok := g.typeLLVMOf(elem)
+	if !ok || elemType == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: element type %s is not lowered yet", r.ID, elem)
 	}
 	idx, err := g.indexValue(refField(r, "i"), r)

@@ -267,7 +267,7 @@ func (g *generator) typeRef(parent int) int {
 func (g *generator) typeQualified(parent int) string {
 	for _, r := range g.recs {
 		if r.Kind == "type" && refField(r, "parent") == parent {
-			return textField(r, "to")
+			return stripPredeclaredPackage(textField(r, "to"))
 		}
 	}
 	return ""
@@ -466,8 +466,8 @@ func (g *generator) typeOf(id int) (string, error) {
 		if !ok {
 			return "", g.errf(id, "cannot translate node #%d: only an array, a view, or an Array is indexed yet", id)
 		}
-		typ, ok := llvmTypeText(elem)
-		if !ok {
+		typ, ok := g.typeLLVMOf(elem)
+		if !ok || typ == "" {
 			return "", g.errf(id, "cannot translate node #%d: element type %s is not lowered yet", id, elem)
 		}
 		return typ, nil
@@ -766,6 +766,9 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 	if _, text, known := g.viewCallResult(r); known {
 		return text, nil
 	}
+	if _, text, known := g.arrayCallResult(r); known {
+		return text, nil
+	}
 	if text, known := g.functionValueResult(r); known {
 		return text, nil
 	}
@@ -905,8 +908,8 @@ func (g *generator) place(id int) (string, string, error) {
 				if !ok {
 					return "", "", g.errf(id, "cannot translate node #%d: the binding has no type", id)
 				}
-				typ, ok := llvmTypeText(text)
-				if !ok {
+				typ, ok := g.typeLLVMOf(text)
+				if !ok || typ == "" {
 					return "", "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, text)
 				}
 				return ptr, typ, nil

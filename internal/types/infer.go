@@ -957,7 +957,11 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		if inst := c.instantiateReceiver(sig, recv); inst != nil {
 			sig = inst
 		}
-		c.checkPayload(s, sig.params, call.Args, call.Name, call.Pos())
+		if sig.variadic {
+			c.checkCallArgs(s, sig, call.Args, call.Pos())
+		} else {
+			c.checkPayload(s, sig.params, call.Args, call.Name, call.Pos())
+		}
 		return sig.result
 	}
 	if c.env.userTypes[recv.Name()] {

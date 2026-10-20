@@ -92,7 +92,7 @@ func (p *Parser) parseLinks() []*ast.Link {
 func (p *Parser) parseDecl(doc string) ast.Decl {
 	switch p.cur().Kind {
 	case token.KwConst, token.KwVar:
-		return p.parseValueDecl(doc)
+		return p.parseValueDecl(doc, false)
 	case token.KwFunc:
 		return p.parseFuncDecl(doc)
 	case token.KwStruct:
@@ -110,15 +110,26 @@ func (p *Parser) parseDecl(doc string) ast.Decl {
 	return &ast.VarDecl{Span: p.emptySpan(p.cur())}
 }
 
-func (p *Parser) parseValueDecl(doc string) ast.Decl {
+func (p *Parser) parseValueDecl(doc string, allowZero bool) ast.Decl {
 	start := p.next()
 	name, nameTok := p.expectName("a name")
 	p.expect(token.Colon, ":")
 	p.skipNL()
 	typ := p.parseType()
-	p.expect(token.Assign, "=")
-	p.skipNL()
-	value := p.parseExpr(0, true)
+	var value ast.Expr
+	if start.Kind == token.KwConst {
+		p.expect(token.Assign, "=")
+		p.skipNL()
+		value = p.parseExpr(0, true)
+	} else if allowZero && p.at(token.Assign) {
+		p.next()
+		p.skipNL()
+		value = p.parseExpr(0, true)
+	} else if !allowZero {
+		p.expect(token.Assign, "=")
+		p.skipNL()
+		value = p.parseExpr(0, true)
+	}
 	span := p.spanFrom(start)
 	if start.Kind == token.KwConst {
 		return &ast.ConstDecl{Span: span, Doc: doc, Name: name, NamePos: nameTok.Pos, Type: typ, Value: value}

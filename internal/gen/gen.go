@@ -45,18 +45,18 @@ func EmitModuleIn(docs []*willc.Doc, entry, entryPkg string) ([]byte, error) {
 // canonical symbol.
 func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string) ([]byte, error) {
 	g := &generator{
-		scope:         map[int]string{},
-		slots:         map[int]string{},
-		declared:      map[string]bool{},
-		stringsByText: map[string]string{},
-		byteGlobals:   map[string]string{},
+		scope:          map[int]string{},
+		slots:          map[int]string{},
+		declared:       map[string]bool{},
+		stringsByText:  map[string]string{},
+		byteGlobals:    map[string]string{},
 		emittedTypes:   map[string]bool{},
 		emittedVtables: map[string]bool{},
 		thunkEmitted:   map[string]bool{},
 		spawnEmitted:   map[string]bool{},
 		dropEmitted:    map[string]bool{},
 		out:            &strings.Builder{},
-		aliases:       aliases,
+		aliases:        aliases,
 	}
 	for _, doc := range docs {
 		g.docs = append(g.docs, newDocState(doc))
@@ -507,25 +507,25 @@ type generator struct {
 	// structs holds the lowered structs of the current document by record id,
 	// and byType looks one up by its LLVM type name. aggSlots maps an aggregate
 	// literal to the temporary slot reserved for it in the entry block.
-	structs      map[int]*structInfo
+	structs         map[int]*structInfo
 	structInstances map[string]*structInfo
-	emittedTypes map[string]bool
-	emittedVtables map[string]bool
-	structDecl   map[string]int
-	enumDecl     map[string]int
-	ifaceDecl    map[string]int
-	byType   map[string]*structInfo
-	byName   map[string]*structInfo
-	aggSlots map[int]string
+	emittedTypes    map[string]bool
+	emittedVtables  map[string]bool
+	structDecl      map[string]int
+	enumDecl        map[string]int
+	ifaceDecl       map[string]int
+	byType          map[string]*structInfo
+	byName          map[string]*structInfo
+	aggSlots        map[int]string
 	// enums holds the lowered enums of the current document by record id;
 	// enumByLLVM looks one up by its LLVM type name. enumSlots maps a
 	// construction to its temporary slot, and patternVals and patternPlaces
 	// hold the bindings of the arm being lowered.
-	enums        map[int]*enumInfo
-	enumByLLVM   map[string]*enumInfo
-	enumByName   map[string]*enumInfo
-	variantByID  map[int]*variantInfo
-	enumSlots    map[int]string
+	enums         map[int]*enumInfo
+	enumByLLVM    map[string]*enumInfo
+	enumByName    map[string]*enumInfo
+	variantByID   map[int]*variantInfo
+	enumSlots     map[int]string
 	patternVals   map[int]string
 	patternPlaces map[int]string
 	patternTypes  map[int]string
@@ -553,24 +553,24 @@ type generator struct {
 	byteCount   int
 	// utf8Slots holds the u32 output of a UTF-8 decode for a str index or a
 	// str loop, and needUTF8Decl records that the runtime call is used.
-	utf8Slots     map[int]string
-	utf8nSlots    map[int]string
-	needUTF8Decl  bool
+	utf8Slots    map[int]string
+	utf8nSlots   map[int]string
+	needUTF8Decl bool
 	// fnResultText is the will result type of the function being lowered, and
 	// trySlots maps a try expression to the slot its error branch returns.
 	fnResultText string
 	trySlots     map[int]string
 	// ifaces and ifaceByName hold the interfaces of the current document, and
 	// ifaceTypes the qualified names of every interface of the module.
-	ifaces       map[int]*ifaceInfo
-	ifaceByLLVM  map[string]*ifaceInfo
-	ifaceByName  map[string]*ifaceInfo
-	ifaceTypes   map[string]bool
-	ifaceSlots   map[string]string
+	ifaces        map[int]*ifaceInfo
+	ifaceByLLVM   map[string]*ifaceInfo
+	ifaceByName   map[string]*ifaceInfo
+	ifaceTypes    map[string]bool
+	ifaceSlots    map[string]string
 	ifaceRetSlots map[int]string
-	vtables      map[string]string
-	paramTypes   map[string][]string
-	varargs      map[string]bool
+	vtables       map[string]string
+	paramTypes    map[string][]string
+	varargs       map[string]bool
 	// errorIface is the predeclared Error interface, and errorEmitted records
 	// that its module-wide type definition is already written.
 	errorIface   *ifaceInfo
@@ -618,11 +618,11 @@ type generator struct {
 	// lambdas holds what each lambda captures, and closureSlots the two-word
 	// slot a closure value is built in. captureFields maps a captured
 	// declaration to its field inside the current lambda's environment.
-	lambdas        map[int]*lambdaInfo
-	closureSlots   map[int]string
-	captureFields  map[int]string
-	captureSpills  map[int]string
-	currentLambda  int
+	lambdas       map[int]*lambdaInfo
+	closureSlots  map[int]string
+	captureFields map[int]string
+	captureSpills map[int]string
+	currentLambda int
 	// pendingThunks are the wrappers that adapt a named function to the
 	// closure calling convention, and thunkEmitted dedupes them by symbol.
 	pendingThunks []thunkRequest
@@ -642,16 +642,16 @@ type generator struct {
 	spawnEmitted  map[string]bool
 	// The slots below keep a loop from growing the stack on every evaluation
 	// of a join, receive, or send.
-	joinOutSlots   map[int]string
-	joinErrSlots   map[int]string
-	recvOutSlots   map[int]string
-	recvOptSlots   map[int]string
-	sendValueSlots map[int]string
-	weakOutSlots   map[int]string
-	variadicSlots  map[int]string
-	strMethodSlots map[int]string
-	trimStartSlots map[int]string
-	trimLenSlots   map[int]string
+	joinOutSlots    map[int]string
+	joinErrSlots    map[int]string
+	recvOutSlots    map[int]string
+	recvOptSlots    map[int]string
+	sendValueSlots  map[int]string
+	weakOutSlots    map[int]string
+	variadicSlots   map[int]string
+	strMethodSlots  map[int]string
+	trimStartSlots  map[int]string
+	trimLenSlots    map[int]string
 	selectSlots     map[int]string
 	selectOutSlots  map[int]string
 	selectBindSlots map[int]string
@@ -903,6 +903,35 @@ func qualify(pkg, name string) string {
 		return name
 	}
 	return pkg + "." + name
+}
+
+// stripPredeclaredPackage removes the package prefix that qualification adds
+// to a predeclared generic. Array<F> stays Array<F> in every document, while a
+// user type keeps its qualified name.
+func stripPredeclaredPackage(text string) string {
+	for _, name := range []string{"Array<", "Map<", "Set<", "Option<", "Result<",
+		"rc<", "weak<", "chan<", "Task<"} {
+		if i := strings.Index(text, name); i > 0 && text[i-1] == '.' {
+			return text[i:]
+		}
+	}
+	return text
+}
+
+// zeroValueText is the LLVM constant for an uninitialized local. A named tag
+// and every aggregate use zeroinitializer; floats need a decimal point.
+func zeroValueText(typ string) string {
+	switch typ {
+	case "double", "float":
+		return "0.0"
+	case "ptr":
+		return "null"
+	}
+	if strings.HasPrefix(typ, "{") || strings.HasPrefix(typ, "[") ||
+		strings.HasPrefix(typ, "%") || strings.HasPrefix(typ, "<") {
+		return "zeroinitializer"
+	}
+	return "0"
 }
 
 // qualifyTypeText qualifies every named type inside one type text with the
@@ -1865,9 +1894,20 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 	}
 	valueID := 0
 	for _, c := range g.children(r.ID) {
-		valueID = c.ID
+		if c.Kind != "type" {
+			valueID = c.ID
+		}
 	}
 	typ := g.slotTypes[r.ID]
+	if valueID == 0 {
+		// A var without an initializer keeps the zero value of its type.
+		if isRcText(fieldText(r, "type")) || typ == "i64" {
+			fmt.Fprintf(g.out, "  store %s 0, ptr %s\n", typ, slot)
+		} else {
+			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, zeroValueText(typ), slot)
+		}
+		return false, nil
+	}
 	if isRcText(fieldText(r, "type")) {
 		value, err := g.value(valueID)
 		if err != nil {
@@ -2752,6 +2792,7 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	}
 	if r.Kind == "mcall" {
 		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			recvText = stripPredeclaredPackage(recvText)
 			if isWeakText(recvText) && fieldText(r, "text") == "Upgrade" {
 				return g.upgradeCall(r, recvText)
 			}
@@ -2786,12 +2827,13 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 			if err != nil {
 				return "", "", err
 			}
-			return g.containerMethod(r, recvText)
+			return g.containerMethod(r, stripPredeclaredPackage(recvText))
 		}
 		recvText, err := g.willTypeText(refField(r, "recv"))
 		if err != nil {
 			return "", "", err
 		}
+		recvText = stripPredeclaredPackage(recvText)
 		if elem, ok := viewElemText(recvText); ok {
 			return g.viewMethod(r, elem)
 		}
