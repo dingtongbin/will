@@ -427,6 +427,14 @@ func (c *checker) checkArg(s *inferScope, e ast.Expr, want *Type, callee string,
 // mismatch reports a value that does not fit a required type. A concrete type
 // assigned to an interface is checked for the interface methods first.
 func (c *checker) mismatch(pos source.Pos, got, want *Type, isArg bool, callee string, n int) {
+	if want.Kind() == NamedKind && c.env.types[want.Name()] == nil && !c.env.userTypes[want.Name()] {
+		// The name comes from another package, whose declarations this
+		// environment does not build. The lowering checks the layout and the
+		// vtable, so a local concrete value is accepted here.
+		if got != nil && got.Kind() == NamedKind {
+			return
+		}
+	}
 	if methods, ok := c.env.ifaces[want.Name()]; ok {
 		if got != nil && got.Kind() == NamedKind && strings.Contains(got.Name(), ".") {
 			// The concrete type belongs to another package, whose declarations

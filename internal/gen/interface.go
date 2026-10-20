@@ -115,6 +115,15 @@ func (g *generator) ifaceOfText(text string) (*ifaceInfo, bool) {
 		}
 		return info, true
 	}
+	q := g.canonicalTypeText(text)
+	if info := g.ifaceDecls[q]; info != nil {
+		return info, true
+	}
+	if !strings.Contains(q, ".") {
+		if info := g.ifaceDecls[qualify(g.pkg, q)]; info != nil {
+			return info, true
+		}
+	}
 	return nil, false
 }
 
@@ -298,6 +307,9 @@ func (g *generator) callArgParts(parts []string, r willc.Record, index int, argI
 // arguments are passed. It is used to find the arguments that convert to an
 // interface before the body is lowered.
 func (g *generator) callParamTypes(r willc.Record) []string {
+	if qualified := textField(r, "to"); qualified != "" {
+		return g.paramTypes[qualified]
+	}
 	if r.Kind == "mcall" {
 		if text, err := g.willTypeText(refField(r, "recv")); err == nil {
 			iface, ok := g.ifaceOfText(text)

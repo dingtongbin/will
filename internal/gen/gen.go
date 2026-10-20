@@ -247,6 +247,7 @@ func (g *generator) collectSignatures() {
 	g.methodsQualified = map[string]string{}
 	g.paramTypes = map[string][]string{}
 	g.varargs = map[string]bool{}
+	g.ifaceDecls = map[string]*ifaceInfo{}
 	g.structDecls = map[string]structDeclInfo{}
 	g.structByLLVM = map[string]string{}
 	g.laneIndex = map[string]int32{}
@@ -290,19 +291,60 @@ func (g *generator) collectSignatures() {
 	}
 	for _, d := range g.docs {
 		for _, r := range d.recs {
+			if r.Kind != "interface" {
+				continue
+			}
+			q := qualify(d.path, fieldText(r, "text"))
+			info := &ifaceInfo{name: q, llvm: qualifiedIfaceName(q), byName: map[string]int{}}
+			var sigs []willc.Record
+			for _, c := range d.recs {
+				if c.Kind == "method-sig" && refField(c, "parent") == r.ID {
+					sigs = append(sigs, c)
+				}
+			}
+			sortByID(sigs)
+			for _, s := range sigs {
+				m := ifaceMethod{name: fieldText(s, "text"), result: fieldText(s, "type")}
+				var ps []willc.Record
+				for _, c := range d.recs {
+					if c.Kind == "param" && refField(c, "parent") == s.ID {
+						ps = append(ps, c)
+					}
+				}
+				sortByID(ps)
+				for _, p := range ps {
+					m.params = append(m.params, fieldText(p, "type"))
+				}
+				info.byName[m.name] = len(info.methods)
+				info.methods = append(info.methods, m)
+			}
+			g.ifaceDecls[q] = info
+		}
+	}
+	for _, d := range g.docs {
+		for _, r := range d.recs {
 			if r.Kind != "func" {
 				continue
 			}
 			name := fieldText(r, "text")
 			sym := qualify(d.path, name)
-			var params []string
-			variadic := false
+			var paramRecs []willc.Record
 			for _, c := range d.recs {
 				if c.Kind == "param" && refField(c, "parent") == r.ID {
-					params = append(params, fieldText(c, "type"))
-					if fieldText(c, "variadic") == "true" {
-						variadic = true
-					}
+					paramRecs = append(paramRecs, c)
+				}
+			}
+			sortByID(paramRecs)
+			var params []string
+			variadic := false
+			for _, c := range paramRecs {
+				text := fieldText(c, "type")
+				if q := qualify(d.path, text); g.declKinds[q] != "" {
+					text = q
+				}
+				params = append(params, text)
+				if fieldText(c, "variadic") == "true" {
+					variadic = true
 				}
 			}
 			for _, c := range d.recs {
@@ -332,6 +374,9 @@ func (g *generator) collectSignatures() {
 						kind = s.Kind
 					}
 				}
+			}
+			if q := qualify(d.path, res); g.declKinds[q] != "" {
+				res = q
 			}
 			g.sigs[sym] = res
 			switch kind {
@@ -601,6 +646,9 @@ type generator struct {
 	selectOutSlots  map[int]string
 	selectBindSlots map[int]string
 	selectBindTypes map[int]string
+	// ifaceDecls holds every interface of the module by qualified name, so a
+	// call into another package can build the vtable for its interface.
+	ifaceDecls map[string]*ifaceInfo
 	// pkgNames maps the package name a document writes to the import path.
 	pkgNames map[string]string
 	// loopBinds maps a for record and a binding name to that binding's slot,

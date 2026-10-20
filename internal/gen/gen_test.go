@@ -649,7 +649,7 @@ func TestEmitInterfaceValueAndCall(t *testing.T) {
 		"getelementptr inbounds [1 x ptr], ptr",
 		"call i32 %t",
 		"store ptr @",
-		"vtable.Counter.C",
+		"vtable.example.com/app.Counter.C",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
