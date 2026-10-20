@@ -44,7 +44,15 @@ func EmitModuleIn(docs []*willc.Doc, entry, entryPkg string) ([]byte, error) {
 // so a qualified member that uses a replace key resolves to the package's
 // canonical symbol.
 func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string) ([]byte, error) {
+	return EmitModuleWithOptions(docs, entry, entryPkg, aliases, false)
+}
+
+// EmitModuleWithOptions is EmitModuleWithAliases plus the shared-library mode.
+// In lib mode an exported top-level function keeps its plain C name and no
+// program entry wrapper is emitted.
+func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string, lib bool) ([]byte, error) {
 	g := &generator{
+		lib:            lib,
 		scope:          map[int]string{},
 		slots:          map[int]string{},
 		declared:       map[string]bool{},
@@ -63,8 +71,11 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		g.docs = append(g.docs, newDocState(doc))
 	}
 	// A void entry cannot be the C main itself, so it keeps a mangled symbol
-	// and the generated wrapper calls it.
-	g.findEntry(entry, entryPkg)
+	// and the generated wrapper calls it. A shared library has no program
+	// entry.
+	if !lib {
+		g.findEntry(entry, entryPkg)
+	}
 	g.collectSignatures()
 	g.collectExternalEnums()
 	g.collectGlobals()
@@ -81,7 +92,7 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 			return nil, err
 		}
 	}
-	if g.entryFound {
+	if g.entryFound && !g.lib {
 		if err := g.emitWrapper(); err != nil {
 			return nil, err
 		}
@@ -499,6 +510,9 @@ func (g *generator) use(d *docState) {
 }
 
 type generator struct {
+	// lib selects the shared-library surface: exported functions keep their
+	// plain C names and there is no program entry wrapper.
+	lib bool
 	// docs is every document of the module, and cur is the one being lowered.
 	docs []*docState
 	cur  *docState
@@ -926,10 +940,19 @@ func receiverType(r *willc.Record) string {
 // A void entry uses its mangled symbol because the generated main calls it; a
 // value-returning main keeps the C symbol, since the runtime calls it.
 func (g *generator) symbolName(name string) string {
+	if g.lib && cExported(name) {
+		return name
+	}
 	if g.entryFound && g.entryPkg == g.pkg && g.entryName == name {
 		return g.entrySymbol
 	}
 	return qualify(g.pkg, name)
+}
+
+// cExported reports whether a top-level name is in the C surface: a leading
+// ASCII capital, as the language's export rule already requires.
+func cExported(name string) bool {
+	return name != "" && name[0] >= 'A' && name[0] <= 'Z'
 }
 
 // loopLabels names the two places a loop body can leave to: the step block

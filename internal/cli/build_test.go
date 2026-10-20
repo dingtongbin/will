@@ -5,8 +5,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/will-lang/will/internal/toolchain"
 )
 
 const entrySource = `import c "stdio.h" {
@@ -203,6 +206,33 @@ func TestEmitAsmWithClang(t *testing.T) {
 	}
 	if !strings.Contains(out, "putchar") {
 		t.Fatalf("assembly does not mention putchar:\n%s", out)
+	}
+}
+
+func TestBuildSharedLibraryWithClang(t *testing.T) {
+	clang, err := toolchain.FindClang()
+	if err != nil {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_CLANG", clang.Path)
+	root := filepath.Join(t.TempDir(), "lib")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeFile(t, root, "will.mod", "module example.com/lib\nwill 1\n")
+	writeFile(t, root, "lib.will", "func Add(a: i32, b: i32) -> i32 {\n    return a + b\n}\n")
+	suffix := ".so"
+	if runtime.GOOS == "windows" {
+		suffix = ".dll"
+	}
+	out := filepath.Join(t.TempDir(), "libout"+suffix)
+	code, stdout, stderr := runCLI("build", "--lib", "-o", out, root)
+	if code != 0 {
+		t.Fatalf("build --lib: code = %d, stdout = %q, stderr = %q", code, stdout, stderr)
+	}
+	info, err := os.Stat(out)
+	if err != nil || info.Size() == 0 {
+		t.Fatalf("shared library was not written: %v", err)
 	}
 }
 

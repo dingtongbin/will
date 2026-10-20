@@ -79,6 +79,16 @@ func runFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		return frontEnd{}, 1
 	}
 	imports := b.Imports()
+	if opts.lib {
+		for _, p := range b.Packages {
+			if withinRoot(b.Root, p.Dir) {
+				return frontEnd{modulePath: p.Path, imports: imports, build: b,
+					aliases: b.ImportAliases()}, 0
+			}
+		}
+		reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), diagOut)
+		return frontEnd{}, 1
+	}
 	for _, p := range b.Packages {
 		// Only the module being built can name the entry. A dependency that
 		// happens to declare the same name is not this program's entry.
@@ -137,7 +147,7 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 	if failed(all, opts) {
 		return frontEnd{}, 1
 	}
-	if !fileDeclaresEntry(f, opts.entry) {
+	if !opts.lib && !fileDeclaresEntry(f, opts.entry) {
 		reportNoPos(entryDiagnostic(opts.entry), opts.json, buildIdentityWith(opts.opt, opts.target), diagOut)
 		return frontEnd{}, 1
 	}
@@ -380,7 +390,7 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 			return got[cache.ModuleLL], fe.modulePath, 0
 		}
 	}
-	ir, err := gen.EmitModuleWithAliases(docs, opts.entry, fe.modulePath, fe.aliases)
+	ir, err := gen.EmitModuleWithOptions(docs, opts.entry, fe.modulePath, fe.aliases, opts.lib)
 	if err != nil {
 		reportTranslate(diagOut, err)
 		return nil, "", 1
@@ -474,7 +484,18 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	if out == "" {
 		out = defaultOutput(modulePath, opts.target, opts.lib)
 	}
-	output, err := clang.BuildIR(ir, out, clangArgs(opts)...)
+	if dir := filepath.Dir(out); dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			fmt.Fprintf(stderr, "will: %v\n", err)
+			return 1
+		}
+	}
+	clangArgsList, err := clangArgs(opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
 		fmt.Fprintf(stderr, "will: link failed\n")
@@ -483,8 +504,10 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// clangArgs turns the build flags into driver arguments.
-func clangArgs(opts buildOptions) []string {
+// clangArgs turns the build flags into driver arguments and appends the
+// runtime sources. The IR input is already selected with -x ir; -x none lets
+// the C sources return to suffix-based language selection.
+func clangArgs(opts buildOptions) ([]string, error) {
 	var args []string
 	if opts.opt != "" {
 		args = append(args, opts.opt)
@@ -498,7 +521,98 @@ func clangArgs(opts buildOptions) []string {
 	if opts.lib {
 		args = append(args, "-shared")
 	}
+	root, err := runtimeRoot()
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, "-x", "none", "-I", filepath.Join(root, "include"))
+	args = append(args, runtimeSources(root, targetName(opts.target))...)
+	if isWindows() {
+		args = append(args, "-lws2_32")
+	}
+	return args, nil
+}
+
+// runtimeRoot finds the runtime tree without relying on the compiler binary's
+// location, because go run places that binary in a temporary directory.
+func runtimeRoot() (string, error) {
+	if root := os.Getenv("WILL_RUNTIME"); root != "" {
+		return root, nil
+	}
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	for {
+		candidate := filepath.Join(dir, "runtime")
+		if _, err := os.Stat(filepath.Join(candidate, "include", "willrt.h")); err == nil {
+			return candidate, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", fmt.Errorf("runtime directory not found; set WILL_RUNTIME")
+}
+
+// runtimeSources lists the C modules every executable needs. The platform file
+// is chosen from the target triple, with the host as the default.
+func runtimeSources(root, target string) []string {
+	platform := "win.c"
+	switch {
+	case strings.Contains(target, "linux"):
+		platform = "linux.c"
+	case strings.Contains(target, "darwin"), strings.Contains(target, "mac"):
+		platform = "mac.c"
+	case strings.Contains(target, "android"):
+		platform = "android.c"
+	case strings.Contains(target, "ios"):
+		platform = "ios.c"
+	}
+	core := []string{
+		filepath.Join("core", "task", "src", "task.c"),
+		filepath.Join("core", "chan", "src", "chan.c"),
+		filepath.Join("core", "blocking", "src", "blocking.c"),
+		filepath.Join("core", "poll", "src", "poll.c"),
+		filepath.Join("core", "mem", "src", "alloc.c"),
+		filepath.Join("core", "rc", "src", "rc.c"),
+		filepath.Join("core", "report", "src", "report.c"),
+		filepath.Join("core", "startup", "src", "startup.c"),
+		filepath.Join("core", "timer", "src", "timer.c"),
+		filepath.Join("core", "utf8", "src", "utf8.c"),
+		filepath.Join("core", "bytes", "src", "bytes.c"),
+	}
+	out := make([]string, 0, len(core)+1)
+	for _, src := range core {
+		out = append(out, filepath.Join(root, src))
+	}
+	out = append(out, filepath.Join(root, "platform", platform))
+	return out
+}
+
+// compileArgs are the flags for IR-only work such as emit-asm; they must not
+// include runtime C sources.
+func compileArgs(opts buildOptions) []string {
+	var args []string
+	if opts.opt != "" {
+		args = append(args, opts.opt)
+	}
+	if opts.debug {
+		args = append(args, "-g")
+	}
+	if opts.target != "" {
+		args = append(args, "--target="+opts.target)
+	}
 	return args
+}
+
+func targetName(target string) string {
+	if target != "" {
+		return target
+	}
+	return targetTriple()
 }
 
 func runRun(args []string, stdout, stderr io.Writer) int {
@@ -527,7 +641,12 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 			out += ".exe"
 		}
 	}
-	output, err := clang.BuildIR(ir, out, clangArgs(opts)...)
+	clangArgsList, err := clangArgs(opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
 		fmt.Fprintf(stderr, "will: link failed\n")
@@ -575,7 +694,7 @@ func runEmitAsm(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return missingTool(stdout, "clang")
 	}
-	asm, err := clang.AssembleIR(ir, clangArgs(opts)...)
+	asm, err := clang.AssembleIR(ir, compileArgs(opts)...)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
