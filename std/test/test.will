@@ -1,0 +1,105 @@
+// T is the handle a test function receives. It records failures and log lines
+// and owns no global state, so one case cannot affect another.
+struct T {
+    name: str
+    failed: bool
+    logs: Array<str>
+}
+
+// B is the handle a benchmark function receives. The runner owns the timing
+// loop; B only carries the iteration count and the byte count.
+struct B {
+    name: str
+    n: u64
+    bytes: u64
+    logs: Array<str>
+}
+
+// Capture is a reserved hook for redirecting stdout. The runtime does not
+// expose per-case capture yet, so the type stays separate from T.
+struct Capture {
+    owned: bool
+}
+
+// NewT returns a case handle with no failures and no log lines.
+func NewT(name: str) -> T {
+    return T { name: name, failed: false, logs: new Array<str>(0)}
+}
+
+// NewB returns a benchmark handle with one iteration by default.
+func NewB(name: str) -> B {
+    return B { name: name, n: 1u64, bytes: 0u64, logs: new Array<str>(0)}
+}
+
+// Name returns the test name.
+func (t: T) Name() -> str {
+    return t.name
+}
+
+// Log records one message. It is shown only when the case fails.
+func (mut t: T) Log(msg: str) {
+    t.logs.Push(msg)
+}
+
+// Fail marks the case as failed without stopping it.
+func (mut t: T) Fail() {
+    t.failed = true
+}
+
+// FailNow marks the case and ends it through the shared fatal path.
+func (mut t: T) FailNow() {
+    t.failed = true
+    Fatal("test failed: " + t.name)
+}
+
+// Failed reports whether the case failed.
+func (t: T) Failed() -> bool {
+    return t.failed
+}
+
+// Parallel is accepted for source compatibility; this runner is serial.
+func (mut t: T) Parallel() {
+}
+
+// Run runs one nested case. A failure in the child marks the parent.
+func (mut t: T) Run(name: str, f: func(T)) {
+    var child: T = NewT(t.name + "/" + name)
+    f(child)
+    if child.failed {
+        t.failed = true
+    }
+}
+
+// Bench runs one benchmark body once. The timing loop belongs to the runner.
+func (mut t: T) Bench(name: str, f: func(B)) {
+    var b: B = NewB(t.name + "/" + name)
+    f(b)
+}
+
+// Name returns the benchmark name.
+func (b: B) Name() -> str {
+    return b.name
+}
+
+// N returns the iteration count the runner asked for.
+func (b: B) N() -> u64 {
+    return b.n
+}
+
+// SetBytes records the payload size for a throughput report.
+func (mut b: B) SetBytes(n: u64) {
+    b.bytes = n
+}
+
+// NsPerOp returns the last measured time. The portable runner does not time
+// yet, so the value is zero rather than invented.
+func (b: B) NsPerOp() -> f64 {
+    return 0.0
+}
+
+// Log records one benchmark message.
+func (mut b: B) Log(msg: str) {
+    b.logs.Push(msg)
+}
+
+

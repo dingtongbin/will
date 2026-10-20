@@ -309,6 +309,9 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 	if typ, ok := llvmTypeText(fieldText(r, "type")); ok {
 		return typ, nil
 	}
+	if strings.HasPrefix(fieldText(r, "type"), "func(") {
+		return "{ ptr, ptr }", nil
+	}
 	if typ, ok := g.structInstanceFromText(fieldText(r, "type")); ok {
 		return typ, nil
 	}

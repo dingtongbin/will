@@ -8,7 +8,7 @@ func Assert(cond: bool, message: str) {
     }
 }
 
-func AssertEqual<T>(got: T, want: T, message: str) {
+func AssertEqual<V>(got: V, want: V, message: str) {
     if !(got == want) {
         panic(message)
     }
