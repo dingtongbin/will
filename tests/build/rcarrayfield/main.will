@@ -1,0 +1,13 @@
+struct Inner {
+    n: i32
+}
+
+struct Outer {
+    xs: Array<rc<Inner>>
+}
+
+func main() -> i32 {
+    var o: rc<Outer> = new rc<Outer>(Outer { xs: new Array<rc<Inner>>(0) })
+    o.xs.Push(new rc<Inner>(Inner { n: 4 }))
+    return o.xs.Get(0).n
+}

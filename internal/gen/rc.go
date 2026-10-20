@@ -146,67 +146,10 @@ func (g *generator) emitDrops() error {
 	return nil
 }
 
-// dropValue releases the rc references inside one value at ptr.
+// dropValue releases everything one value owns at ptr. It is the same walk as
+// an rc release, including Array elements and the block itself.
 func (g *generator) dropValue(ptr, text string, depth int) error {
-	if depth > 32 {
-		return nil
-	}
-	text = g.qualifyTypeText(g.pkg, text)
-	if isWeakText(text) {
-		return nil
-	}
-	if isRcText(text) {
-		g.needRcDecl = true
-		handle := g.load("i64", ptr)
-		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", handle)
-		return nil
-	}
-	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
-		info, ok := g.adtType(text)
-		if !ok {
-			return nil
-		}
-		tag := g.load("i32", ptr)
-		g.labels++
-		n := g.labels
-		keep := fmt.Sprintf("drop.keep.%d", n)
-		done := fmt.Sprintf("drop.done.%d", n)
-		cond := g.newTmp()
-		if kind == "option" {
-			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 1\n", cond, tag)
-		} else {
-			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", cond, tag)
-		}
-		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, keep, done)
-		g.out.WriteString(keep + ":\n")
-		payload := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, ptr, info.payloadIndex)
-		if err := g.dropValue(payload, args[0], depth+1); err != nil {
-			return err
-		}
-		fmt.Fprintf(g.out, "  br label %%%s\n", done)
-		g.out.WriteString(done + ":\n")
-		return nil
-	}
-	typ, ok := g.typeLLVMOf(text)
-	if !ok || !isStructType(typ) {
-		return nil
-	}
-	info := g.structInfoByLLVM(typ)
-	if info == nil || !info.ok {
-		return nil
-	}
-	for i, ft := range info.texts {
-		if !needsReleaseText(g, ft) {
-			continue
-		}
-		field := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.llvm, ptr, i)
-		if err := g.dropValue(field, ft, depth+1); err != nil {
-			return err
-		}
-	}
-	return nil
+	return g.releaseValue(ptr, text, depth)
 }
 
 // rcMethodCall lowers Weak, Clone, and every method reached through the handle.

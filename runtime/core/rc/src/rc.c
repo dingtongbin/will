@@ -305,9 +305,6 @@ static void willrt_rc_slot_retire(uint32_t index, uint32_t generation) {
     object = atomic_exchange_explicit(&slot->value, NULL, memory_order_acq_rel);
     drop = slot->drop;
     slot->drop = NULL;
-    if (drop != NULL && object != NULL) {
-        drop(object);
-    }
     next_generation = generation + 1;
     atomic_store_explicit(&slot->state,
                           willrt_rc_state_make(next_generation, 0),
@@ -318,6 +315,15 @@ static void willrt_rc_slot_retire(uint32_t index, uint32_t generation) {
         slot->next_free = willrt_rc_free_head;
         willrt_rc_free_head = index;
     }
+    willrt_rc_table_lock_release();
+
+    /* Drop glue may release nested handles, and a nested final release also
+       needs the table lock. Run it with the lock released, after the slot is
+       already a tombstone so a second release cannot retire it again. */
+    if (drop != NULL && object != NULL) {
+        drop(object);
+    }
+    willrt_rc_table_lock_acquire();
     willrt_free(object);
     willrt_rc_table_lock_release();
 }

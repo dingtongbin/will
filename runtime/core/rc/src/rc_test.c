@@ -319,6 +319,24 @@ static void count_drop(void* object) {
     drop_calls++;
 }
 
+static uint64_t nested_handle;
+
+static void release_nested(void* object) {
+    (void)object;
+    willrt_rc_release(nested_handle);
+}
+
+static void test_nested_drop(void) {
+    int value = 9;
+
+    nested_handle = willrt_rc_new(&value, sizeof(value));
+    assert(nested_handle != 0);
+    uint64_t outer = willrt_rc_new_drop(&value, sizeof(value), release_nested);
+    assert(outer != 0);
+    willrt_rc_release(outer);
+    assert(willrt_rc_deref(nested_handle) == NULL);
+}
+
 static void test_drop_glue(void) {
     int value = 7;
     uint64_t handle = willrt_rc_new_drop(&value, sizeof(value), count_drop);
@@ -337,6 +355,7 @@ int main(void) {
     test_new_deref();
     test_retain_release();
     test_drop_glue();
+    test_nested_drop();
     test_empty_and_foreign_handles();
     test_zero_size();
     test_slot_reuse();
