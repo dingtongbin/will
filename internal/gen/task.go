@@ -254,7 +254,39 @@ func (g *generator) joinUnwrap(r willc.Record) (string, string, string, error) {
 		return "", "", "", g.errf(r.ID, "cannot translate node #%d: Join needs a Task", r.ID)
 	}
 	if elem == "" || elem == "()" {
-		return "", "", "", g.errf(r.ID, "cannot translate node #%d: Join of a void task has no value", r.ID)
+		task, err := g.value(taskID)
+		if err != nil {
+			return "", "", "", err
+		}
+		g.needTaskDecl = true
+		errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt_error")
+		g.needPanicDecl = true
+		status := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr null, ptr %s)\n", status, task, errSlot)
+		isOK := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", isOK, status)
+		g.labels++
+		n := g.labels
+		okLabel := fmt.Sprintf("task.ok.%d", n)
+		failLabel := fmt.Sprintf("task.fail.%d", n)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", isOK, okLabel, failLabel)
+		g.out.WriteString(failLabel + ":\n")
+		message := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt_error, ptr %s, i32 0, i32 0\n", message, errSlot)
+		msg := g.load("ptr", message)
+		sizePtr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt_error, ptr %s, i32 0, i32 1\n", sizePtr, errSlot)
+		size := g.load("i64", sizePtr)
+		sitePtr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt_error, ptr %s, i32 0, i32 2\n", sitePtr, errSlot)
+		site := g.load("ptr", sitePtr)
+		symbolPtr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt_error, ptr %s, i32 0, i32 3\n", symbolPtr, errSlot)
+		symbol := g.load("ptr", symbolPtr)
+		fmt.Fprintf(g.out, "  call void @willrt_panic_n(ptr %s, i64 %s, ptr %s, ptr %s)\n", msg, size, site, symbol)
+		g.out.WriteString("  unreachable\n")
+		fmt.Fprintf(g.out, "%s:\n", okLabel)
+		return "", "", "()", nil
 	}
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok {

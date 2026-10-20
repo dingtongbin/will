@@ -2682,6 +2682,17 @@ func (g *generator) exprStmt(st willc.Record) error {
 	id := refField(st, "expr")
 	if r, ok := g.recs[id]; ok && r.Kind == "discard" {
 		inner := refField(r, "expr")
+		if u, ok := g.recs[inner]; ok && u.Kind == "unwrap" {
+			if join, ok := g.recs[refField(u, "expr")]; ok && join.Kind == "join" {
+				taskText, typeErr := g.willTypeText(refField(join, "task"))
+				if typeErr == nil {
+					if elem, ok := taskElemText(taskText); ok && (elem == "" || elem == "()") {
+						_, _, _, err := g.unwrapAddr(u)
+						return err
+					}
+				}
+			}
+		}
 		typ, err := g.typeOf(inner)
 		if err != nil {
 			return err
