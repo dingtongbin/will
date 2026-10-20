@@ -217,6 +217,11 @@ typedef struct willrt_arm {
 
 int32_t willrt_select(willrt_arm* arms, size_t n);
 
+/* willrt_select_status reports the runtime status of the arm the last select on
+   this thread chose. It is WILLRT_OK for a successful receive or send and
+   WILLRT_CLOSED when a receive selected a closed channel. */
+int32_t willrt_select_status(void);
+
 /* willrt_timer is a one-shot timer. The node is owned by the runtime. */
 typedef struct willrt_timer willrt_timer;
 
@@ -317,5 +322,18 @@ const char* willrt_symbol_name(uintptr_t addr);
    It returns 0 for an empty buffer, a truncated sequence, an overlong
    encoding, a surrogate, or a value above U+10FFFF. */
 int32_t willrt_utf8_decode(const uint8_t* data, size_t len, uint32_t* out);
+
+/* willrt_utf8_valid reports whether every byte in the range starts a complete,
+   shortest-form scalar. An empty range is valid. */
+int32_t willrt_utf8_valid(const uint8_t* data, size_t len);
+
+/* willrt_utf8_encode writes one scalar in shortest form and returns its byte
+   length, or 0 for a surrogate or a value above U+10FFFF. */
+int32_t willrt_utf8_encode(uint32_t value, uint8_t* out);
+
+/* willrt_bytes_index returns the first offset where needle occurs in hay, or
+   -1 when it does not. An empty needle is found at offset zero. */
+int64_t willrt_bytes_index(const uint8_t* hay, size_t hay_len,
+                           const uint8_t* needle, size_t needle_len);
 
 #endif

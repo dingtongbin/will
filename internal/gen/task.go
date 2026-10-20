@@ -47,8 +47,13 @@ func (g *generator) spawnStepSymbol(node int) string {
 // frame, and starts one task. The args are captured by value, matching the move
 // rule the source checker enforces for spawn.
 func (g *generator) lowerSpawn(r willc.Record) (string, error) {
+	laneValue := ""
 	if lane := fieldText(r, "lane"); lane != "" {
-		return "", g.errf(r.ID, "cannot translate node #%d: spawn on lane %s is not lowered yet", r.ID, lane)
+		index, ok := g.laneIndex[qualify(g.pkg, lane)]
+		if !ok {
+			return "", g.errf(r.ID, "cannot translate node #%d: lane %s is not declared", r.ID, lane)
+		}
+		laneValue = strconv.Itoa(int(index))
 	}
 	callID := refField(r, "call")
 	call, ok := g.recs[callID]
@@ -105,8 +110,12 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		g.spawnEmitted[step] = true
 		g.pendingSpawns = append(g.pendingSpawns, spawnRequest{node: r.ID, call: callID, sym: step})
 	}
-	lane := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_here()\n", lane)
+	lane := laneValue
+	if lane == "" {
+		here := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_here()\n", here)
+		lane = here
+	}
 	task := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
 		task, llvmSymbol(step), frame, size, lane)

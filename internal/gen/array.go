@@ -51,6 +51,26 @@ func (g *generator) viewCallResult(r willc.Record) (llvm, text string, known boo
 			return "", "", false
 		}
 		return elemLLVM, elem, true
+	case "Equal", "HasPrefix", "HasSuffix":
+		if elem == "u8" {
+			return "i1", "bool", true
+		}
+	case "Compare":
+		if elem == "u8" {
+			return "i32", "i32", true
+		}
+	case "Index":
+		if elem == "u8" {
+			if info, ok := g.adtType("Option<usize>"); ok {
+				return info.llvm, "Option<usize>", true
+			}
+		}
+	case "Clone":
+		if elem == "u8" {
+			if typ, ok := llvmTypeText("Array<u8>"); ok {
+				return typ, "Array<u8>", true
+			}
+		}
 	}
 	return "", "", false
 }
@@ -70,8 +90,15 @@ func (g *generator) viewMethod(r willc.Record, elem string) (string, string, err
 	}
 	lenField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n", lenField, base)
-	if fieldText(r, "text") == "Len" {
+	name := fieldText(r, "text")
+	if name == "Len" {
 		return g.load("i64", lenField), "usize", nil
+	}
+	if elem == "u8" {
+		switch name {
+		case "Equal", "Compare", "HasPrefix", "HasSuffix", "Clone":
+			return g.byteViewMethod(r, base, lenField, name)
+		}
 	}
 	args := g.callArgs(r)
 	if len(args) == 0 {

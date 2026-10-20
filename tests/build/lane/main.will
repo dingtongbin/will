@@ -1,0 +1,12 @@
+lane Ui struct Marker {
+    id: i32
+}
+
+func Work() -> usize {
+    return lane.Here()
+}
+
+func main() -> i32 {
+    var t: Task<usize> = spawn on Ui Work()
+    return i32(t.Join()!)
+}

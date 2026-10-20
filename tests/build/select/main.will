@@ -1,0 +1,30 @@
+func main() -> i32 {
+    var a: chan<i32> = new chan<i32>(1)
+    var b: chan<i32> = new chan<i32>(1)
+    a.Send(5)
+    var v: i32 = 0
+    select {
+        x = a.Recv() => {
+            match x {
+                Some(y) => {
+                    v = y
+                }
+                None => {
+                }
+            }
+        }
+        y = b.Recv() => {
+            match y {
+                Some(z) => {
+                    v = z
+                }
+                None => {
+                }
+            }
+        }
+        default => {
+            v = 0
+        }
+    }
+    return v
+}

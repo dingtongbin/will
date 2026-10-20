@@ -355,6 +355,13 @@ func (g *generator) typeOf(id int) (string, error) {
 		if typ, ok := g.patternTypes[decl]; ok {
 			return typ, nil
 		}
+		if text, ok := g.selectBindTypes[decl]; ok {
+			info, ok := g.adtType(text)
+			if !ok {
+				return "", g.errf(id, "cannot translate node #%d: %s is not lowered yet", id, text)
+			}
+			return info.llvm, nil
+		}
 		if text, ok := g.loopBindType(decl, name); ok {
 			typ, ok := llvmTypeText(text)
 			if !ok {
@@ -391,7 +398,7 @@ func (g *generator) typeOf(id int) (string, error) {
 	case "spawn", "channew":
 		return "ptr", nil
 	case "lanehere":
-		return "i32", nil
+		return "i64", nil
 	case "send", "close":
 		return "", nil
 	case "recv", "tryrecv", "join":
@@ -439,6 +446,9 @@ func (g *generator) typeOf(id int) (string, error) {
 		to, ok := g.recs[refField(r, "to")]
 		if !ok {
 			return "", g.errf(id, "cannot translate node #%d: the target type is missing", id)
+		}
+		if text := fieldText(to, "text"); text == "str" || text == "[]u8" {
+			return "{ ptr, i64 }", nil
 		}
 		typ, _, ok := llvmScalar(fieldText(to, "text"))
 		if !ok {
@@ -565,6 +575,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		if text, ok := g.patternTexts[decl.ID]; ok {
 			return text, nil
 		}
+		if text, ok := g.selectBindTypes[decl.ID]; ok {
+			return text, nil
+		}
 		if t := fieldText(r, "type"); t != "" {
 			return t, nil
 		}
@@ -617,7 +630,7 @@ func (g *generator) willTypeText(id int) (string, error) {
 	case "channew":
 		return fieldText(r, "type"), nil
 	case "lanehere":
-		return "i32", nil
+		return "usize", nil
 	case "recv", "tryrecv":
 		chanText, err := g.willTypeText(refField(r, "chan"))
 		if err != nil {
@@ -932,6 +945,13 @@ func (g *generator) place(id int) (string, string, error) {
 		return "", "", g.errf(id, "cannot translate node #%d: a binary expression is not a place", id)
 	case "interp":
 		return g.interpValue(r)
+	case "cast":
+		if to, ok := g.recs[refField(r, "to")]; ok {
+			if text := fieldText(to, "text"); text == "str" || text == "[]u8" {
+				return g.castPlace(r)
+			}
+		}
+		return "", "", g.errf(id, "cannot translate node #%d: a scalar cast is not a place", id)
 	case "recv":
 		return g.lowerRecvPlace(r)
 	case "tryrecv":
@@ -959,6 +979,13 @@ func (g *generator) place(id int) (string, string, error) {
 	case "new":
 		return g.constructNew(r)
 	case "call", "mcall":
+		if r.Kind == "mcall" && fieldText(r, "text") == "Index" {
+			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+				if elem, ok := viewElemText(recvText); ok && elem == "u8" {
+					return g.viewIndexPlace(r)
+				}
+			}
+		}
 		if adt, variant, arg, ok := g.adtConstructor(r); ok {
 			return g.adtConstruct(r, adt, variant, arg)
 		}

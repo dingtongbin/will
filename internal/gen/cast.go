@@ -39,6 +39,9 @@ func (g *generator) castValue(r willc.Record) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if toText == "str" || toText == "[]u8" {
+		return "", g.errf(r.ID, "cannot translate node #%d: a conversion to %s is a place", r.ID, toText)
+	}
 	v, err := g.value(exprID)
 	if err != nil {
 		return "", err

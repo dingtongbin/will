@@ -53,3 +53,50 @@ int32_t willrt_utf8_decode(const uint8_t* data, size_t len, uint32_t* out) {
     *out = cp;
     return n;
 }
+
+int32_t willrt_utf8_valid(const uint8_t* data, size_t len) {
+    size_t offset = 0;
+
+    while (offset < len) {
+        uint32_t scalar = 0;
+        int32_t n = willrt_utf8_decode(data + offset, len - offset, &scalar);
+
+        if (n <= 0) {
+            return 0;
+        }
+        offset += (size_t)n;
+    }
+    return 1;
+}
+
+int32_t willrt_utf8_encode(uint32_t value, uint8_t* out) {
+    if (out == NULL) {
+        return 0;
+    }
+    if (value <= 0x7f) {
+        out[0] = (uint8_t)value;
+        return 1;
+    }
+    if (value <= 0x7ff) {
+        out[0] = (uint8_t)(0xc0 | (value >> 6));
+        out[1] = (uint8_t)(0x80 | (value & 0x3f));
+        return 2;
+    }
+    if (value >= 0xd800 && value <= 0xdfff) {
+        return 0;
+    }
+    if (value <= 0xffff) {
+        out[0] = (uint8_t)(0xe0 | (value >> 12));
+        out[1] = (uint8_t)(0x80 | ((value >> 6) & 0x3f));
+        out[2] = (uint8_t)(0x80 | (value & 0x3f));
+        return 3;
+    }
+    if (value <= 0x10ffff) {
+        out[0] = (uint8_t)(0xf0 | (value >> 18));
+        out[1] = (uint8_t)(0x80 | ((value >> 12) & 0x3f));
+        out[2] = (uint8_t)(0x80 | ((value >> 6) & 0x3f));
+        out[3] = (uint8_t)(0x80 | (value & 0x3f));
+        return 4;
+    }
+    return 0;
+}

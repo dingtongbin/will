@@ -196,6 +196,12 @@ void willrt_chan_close(willrt_chan* chan) {
    arm without waiting, then a timeout or default arm, then waits one short slice
    and tries again. A ready receive on a closed channel counts as ready so the
    arm can observe the None it produces. */
+static _Thread_local int32_t willrt_select_last = WILLRT_OK;
+
+int32_t willrt_select_status(void) {
+    return willrt_select_last;
+}
+
 int32_t willrt_select(willrt_arm* arms, size_t n) {
     size_t i;
 
@@ -210,12 +216,14 @@ int32_t willrt_select(willrt_arm* arms, size_t n) {
                 int32_t result = willrt_chan_try_recv(arm->chan, arm->out);
 
                 if (result == WILLRT_OK || result == WILLRT_CLOSED) {
+                    willrt_select_last = result;
                     return (int32_t)i;
                 }
             } else if (arm->kind == 1) {
                 int32_t result = willrt_chan_try_send(arm->chan, arm->value);
 
                 if (result == WILLRT_OK || result == WILLRT_CLOSED) {
+                    willrt_select_last = result;
                     return (int32_t)i;
                 }
             } else if (arm->kind == 2) {
@@ -225,15 +233,19 @@ int32_t willrt_select(willrt_arm* arms, size_t n) {
             }
         }
         if (default_index >= 0) {
+            willrt_select_last = WILLRT_OK;
             return default_index;
         }
         if (timeout_index >= 0 && willrt_now_ns() >= arms[timeout_index].ns) {
+            willrt_select_last = WILLRT_TIMEDOUT;
             return timeout_index;
         }
         if (willrt_chan_canceled()) {
+            willrt_select_last = WILLRT_CANCELED;
             return WILLRT_CANCELED;
         }
         if (willrt_chan_deadline_passed()) {
+            willrt_select_last = WILLRT_TIMEDOUT;
             return WILLRT_TIMEDOUT;
         }
         willrt_os_sleep_ns(willrt_chan_step());

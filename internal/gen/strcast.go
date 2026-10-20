@@ -1,0 +1,157 @@
+package gen
+
+import (
+	"fmt"
+
+	"github.com/will-lang/will/internal/willc"
+)
+
+// castPlace lowers a conversion whose target is a str or a byte view. A byte
+// view becomes a str only when every byte is valid UTF-8, and the bytes are
+// copied so a later write through the view cannot change the str. A scalar
+// becomes the shortest UTF-8 form of itself.
+func (g *generator) castPlace(r willc.Record) (string, string, error) {
+	toRec, ok := g.recs[refField(r, "to")]
+	if !ok {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: the target type is missing", r.ID)
+	}
+	toText := fieldText(toRec, "text")
+	exprID := refField(r, "expr")
+	fromText, err := g.willTypeText(exprID)
+	if err != nil {
+		return "", "", err
+	}
+	switch toText {
+	case "[]u8":
+		if fromText == "str" || fromText == "[]u8" {
+			return g.place(exprID)
+		}
+	case "str":
+		switch fromText {
+		case "str":
+			return g.place(exprID)
+		case "[]u8":
+			return g.bytesToStr(r, exprID)
+		case "Array<u8>":
+			return g.arrayToStr(r, exprID)
+		case "u32", "u8":
+			return g.scalarToStr(r, exprID)
+		}
+	}
+	return "", "", g.errf(r.ID, "cannot translate node #%d: conversion from %s to %s is not lowered yet", r.ID, fromText, toText)
+}
+
+// bytesToStr validates the byte view and copies it into a str.
+func (g *generator) bytesToStr(r willc.Record, exprID int) (string, string, error) {
+	src, typ, err := g.place(exprID)
+	if err != nil {
+		return "", "", err
+	}
+	if typ != "{ ptr, i64 }" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: the source needs { ptr, i64 }", r.ID)
+	}
+	dataPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, src)
+	data := g.load("ptr", dataPtr)
+	lenPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, src)
+	length := g.load("i64", lenPtr)
+	return g.copyBytesToStr(r, data, length)
+}
+
+// arrayToStr validates an owned byte array and copies it into a str.
+func (g *generator) arrayToStr(r willc.Record, exprID int) (string, string, error) {
+	src, typ, err := g.place(exprID)
+	if err != nil {
+		return "", "", err
+	}
+	if typ != "{ ptr, i64, i64 }" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: the source needs Array<u8>", r.ID)
+	}
+	dataPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, src)
+	data := g.load("ptr", dataPtr)
+	lenPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, src)
+	length := g.load("i64", lenPtr)
+	return g.copyBytesToStr(r, data, length)
+}
+
+// copyBytesToStr checks that the bytes are valid UTF-8 and makes an owned copy.
+func (g *generator) copyBytesToStr(r willc.Record, data, length string) (string, string, error) {
+	g.needUtf8Decl = true
+	valid := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call i32 @willrt_utf8_valid(ptr %s, i64 %s)\n", valid, data, length)
+	bad := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", bad, valid)
+	g.labels++
+	n := g.labels
+	badLabel := fmt.Sprintf("utf8.bad.%d", n)
+	okLabel := fmt.Sprintf("utf8.ok.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", bad, badLabel, okLabel)
+	g.out.WriteString(badLabel + ":\n")
+	g.needPanicDecl = true
+	message := g.globalString("invalid UTF-8")
+	fmt.Fprintf(g.out, "  call void @willrt_panic_n(ptr %s, i64 13, ptr %s, ptr %s)\n",
+		message, g.globalString(fieldText(r, "pos")), g.globalString(g.fnSymbol))
+	g.out.WriteString("  unreachable\n")
+	g.out.WriteString(okLabel + ":\n")
+	g.needAllocDecl = true
+	dst := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", dst, length)
+	g.needMemcpyDecl = true
+	fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %s)\n", dst, data, length)
+	return g.storeStr(r, dst, length)
+}
+
+// scalarToStr encodes one Unicode scalar into a fresh str.
+func (g *generator) scalarToStr(r willc.Record, exprID int) (string, string, error) {
+	value, err := g.value(exprID)
+	if err != nil {
+		return "", "", err
+	}
+	typ, err := g.typeOf(exprID)
+	if err != nil {
+		return "", "", err
+	}
+	wide := value
+	if typ != "i32" {
+		wide = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = zext %s %s to i32\n", wide, typ, value)
+	}
+	g.needAllocDecl = true
+	buffer := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 4)\n", buffer)
+	g.needUtf8Decl = true
+	size := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call i32 @willrt_utf8_encode(i32 %s, ptr %s)\n", size, wide, buffer)
+	bad := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", bad, size)
+	g.labels++
+	n := g.labels
+	badLabel := fmt.Sprintf("utf8.bad.%d", n)
+	okLabel := fmt.Sprintf("utf8.ok.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", bad, badLabel, okLabel)
+	g.out.WriteString(badLabel + ":\n")
+	g.needPanicDecl = true
+	message := g.globalString("invalid UTF-8")
+	fmt.Fprintf(g.out, "  call void @willrt_panic_n(ptr %s, i64 13, ptr %s, ptr %s)\n",
+		message, g.globalString(fieldText(r, "pos")), g.globalString(g.fnSymbol))
+	g.out.WriteString("  unreachable\n")
+	g.out.WriteString(okLabel + ":\n")
+	length := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = sext i32 %s to i64\n", length, size)
+	return g.storeStr(r, buffer, length)
+}
+
+// storeStr writes a data pointer and a length into the cast's result slot.
+func (g *generator) storeStr(r willc.Record, data, length string) (string, string, error) {
+	slot := g.allocSlot(g.castSlots, "cast", r.ID, "{ ptr, i64 }")
+	dataField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", dataField, slot)
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", data, dataField)
+	lenField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n", lenField, slot)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, lenField)
+	return slot, "{ ptr, i64 }", nil
+}

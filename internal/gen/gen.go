@@ -70,6 +70,9 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 	if g.usesTaskRuntime() {
 		g.out.WriteString("%willrt_error = type { ptr, i64, ptr, ptr }\n")
 	}
+	if g.usesSelect() {
+		g.out.WriteString("%willrt_arm = type { ptr, ptr, ptr, i32, i64 }\n")
+	}
 	for _, d := range g.docs {
 		g.use(d)
 		if err := g.emitDoc(); err != nil {
@@ -132,9 +135,18 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare i32 @willrt_chan_recv(ptr, ptr)\n")
 		g.out.WriteString("declare i32 @willrt_chan_try_recv(ptr, ptr)\n")
 		g.out.WriteString("declare void @willrt_chan_close(ptr)\n")
+		g.out.WriteString("declare i32 @willrt_select(ptr, i64)\n")
+		g.out.WriteString("declare i32 @willrt_select_status()\n")
 		g.out.WriteString("declare void @willrt_region_enter()\n")
 		g.out.WriteString("declare i32 @willrt_region_exit()\n")
 		g.out.WriteString("declare i32 @willrt_lane_here()\n")
+	}
+	if g.needUtf8Decl {
+		g.out.WriteString("declare i32 @willrt_utf8_valid(ptr, i64)\n")
+		g.out.WriteString("declare i32 @willrt_utf8_encode(i32, ptr)\n")
+	}
+	if g.needBytesDecl {
+		g.out.WriteString("declare i64 @willrt_bytes_index(ptr, i64, ptr, i64)\n")
 	}
 	if g.needInterpDecl {
 		g.out.WriteString("declare i64 @willrt_fmt_i64_len(i64)\n")
@@ -226,6 +238,20 @@ func (g *generator) collectSignatures() {
 	g.paramTypes = map[string][]string{}
 	g.structDecls = map[string]structDeclInfo{}
 	g.structByLLVM = map[string]string{}
+	g.laneIndex = map[string]int32{}
+	var laneSeq int32
+	for _, d := range g.docs {
+		for _, r := range d.recs {
+			if r.Kind != "lane" {
+				continue
+			}
+			q := qualify(d.path, fieldText(r, "text"))
+			if _, ok := g.laneIndex[q]; !ok {
+				g.laneIndex[q] = laneSeq
+				laneSeq++
+			}
+		}
+	}
 	for _, d := range g.docs {
 		for _, r := range d.recs {
 			if r.Kind == "struct" || r.Kind == "enum" || r.Kind == "interface" {
@@ -363,6 +389,11 @@ func (g *generator) use(d *docState) {
 	g.recvOutSlots = map[int]string{}
 	g.recvOptSlots = map[int]string{}
 	g.sendValueSlots = map[int]string{}
+	g.selectSlots = map[int]string{}
+	g.selectOutSlots = map[int]string{}
+	g.selectBindSlots = map[int]string{}
+	g.selectBindTypes = map[int]string{}
+	g.castSlots = map[int]string{}
 	g.pkgNames = map[string]string{}
 	for _, r := range d.recs {
 		if r.Kind == "import" {
@@ -484,6 +515,12 @@ type generator struct {
 	needInterpDecl bool
 	// needTaskDecl records that the lowering calls the task or channel engine.
 	needTaskDecl bool
+	// needUtf8Decl records a call to the UTF-8 validator or encoder,
+	// needBytesDecl one to the byte search, and castSlots holds the two-word
+	// result of a str cast.
+	needUtf8Decl  bool
+	needBytesDecl bool
+	castSlots     map[int]string
 	// declKinds maps a qualified type name to "struct" or "enum".
 	declKinds map[string]string
 	// callSlots maps a call whose result is a struct to the temporary slot its
@@ -518,6 +555,7 @@ type generator struct {
 	// back to that qualified name.
 	structDecls  map[string]structDeclInfo
 	structByLLVM map[string]string
+	laneIndex    map[string]int32
 	// spawnNames names the step function of every spawn expression, and
 	// pendingSpawns holds the steps this document still has to write.
 	spawnNames    map[int]string
@@ -531,6 +569,10 @@ type generator struct {
 	recvOutSlots   map[int]string
 	recvOptSlots   map[int]string
 	sendValueSlots map[int]string
+	selectSlots     map[int]string
+	selectOutSlots  map[int]string
+	selectBindSlots map[int]string
+	selectBindTypes map[int]string
 	// pkgNames maps the package name a document writes to the import path.
 	pkgNames map[string]string
 	// loopBinds maps a for record and a binding name to that binding's slot,
@@ -637,6 +679,18 @@ func (g *generator) emitDoc() error {
 }
 
 // usesTaskRuntime reports whether any document names a task or channel node.
+// usesSelect reports whether any document waits in a select statement.
+func (g *generator) usesSelect() bool {
+	for _, d := range g.docs {
+		for _, r := range d.recs {
+			if r.Kind == "select" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (g *generator) usesTaskRuntime() bool {
 	for _, d := range g.docs {
 		for _, r := range d.recs {
@@ -1159,7 +1213,7 @@ func (g *generator) allocas(fn int) error {
 	for _, r := range g.recs {
 		if g.enclosingFunc(r.ID) == fn {
 			switch r.Kind {
-			case "join", "recv", "tryrecv", "send", "trysend":
+			case "join", "recv", "tryrecv", "send", "trysend", "select":
 				waits = append(waits, r)
 			}
 		}
@@ -1212,6 +1266,19 @@ func (g *generator) allocas(fn int) error {
 				name := "%v.send." + strconv.Itoa(r.ID)
 				g.sendValueSlots[r.ID] = name
 				fmt.Fprintf(g.out, "  %s = alloca %s\n", name, typ)
+			}
+		case "select":
+			if err := g.prepareSelect(r); err != nil {
+				return err
+			}
+		case "cast":
+			if to, ok := g.recs[refField(r, "to")]; ok {
+				switch fieldText(to, "text") {
+				case "str", "[]u8":
+					name := "%v.cast." + strconv.Itoa(r.ID)
+					g.castSlots[r.ID] = name
+					fmt.Fprintf(g.out, "  %s = alloca { ptr, i64 }\n", name)
+				}
 			}
 		}
 	}
@@ -1639,6 +1706,8 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 		return g.panicStmt(st)
 	case "assert":
 		return g.assertStmt(st)
+	case "select":
+		return g.selectStmt(st, void)
 	case "region", "parallel":
 		g.needTaskDecl = true
 		g.out.WriteString("  call void @willrt_region_enter()\n")
@@ -1928,7 +1997,9 @@ func (g *generator) value(id int) (string, error) {
 		g.needTaskDecl = true
 		name := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_here()\n", name)
-		return name, nil
+		wide := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = sext i32 %s to i64\n", wide, name)
+		return wide, nil
 	case "trysend":
 		return g.lowerTrySend(r)
 	case "send":
@@ -2522,6 +2593,11 @@ func fieldText(r willc.Record, name string) string {
 		switch f.Value.Kind {
 		case willc.TextValue, willc.WordValue:
 			return f.Value.Text
+		case willc.BoolValue:
+			if f.Value.Bool {
+				return "true"
+			}
+			return "false"
 		}
 	}
 	return ""

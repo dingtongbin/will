@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "utf8.h"
 
@@ -41,6 +42,26 @@ int main(void) {
     if (willrt_utf8_decode(ascii, sizeof(ascii), NULL) != 0) {
         fprintf(stderr, "null-out: accepted a NULL output\n");
         failures++;
+    }
+    if (!willrt_utf8_valid(three, sizeof(three))
+        || !willrt_utf8_valid(four, sizeof(four))
+        || willrt_utf8_valid(bad_continuation, sizeof(bad_continuation))
+        || willrt_utf8_valid(truncated, sizeof(truncated))) {
+        fprintf(stderr, "valid: wrong verdict\n");
+        failures++;
+    }
+    {
+        uint8_t buffer[4];
+        int32_t size = willrt_utf8_encode(0x20ACu, buffer);
+
+        if (size != 3 || memcmp(buffer, three, 3) != 0) {
+            fprintf(stderr, "encode: euro sign is not E2 82 AC\n");
+            failures++;
+        }
+        if (willrt_utf8_encode(0xD800u, buffer) != 0) {
+            fprintf(stderr, "encode: accepted a surrogate\n");
+            failures++;
+        }
     }
 
     return failures == 0 ? 0 : 1;

@@ -122,6 +122,14 @@ func (g *generator) nameSlot(r willc.Record) (string, string, bool) {
 	if ptr := g.captureFields[decl]; ptr != "" {
 		return ptr, g.captureTypeOf(decl), true
 	}
+	if slot, ok := g.selectBindSlots[decl]; ok {
+		text := g.selectBindTypes[decl]
+		info, ok := g.adtType(text)
+		if !ok {
+			return "", "", false
+		}
+		return slot, info.llvm, true
+	}
 	if binds, ok := g.loopBinds[decl]; ok {
 		slot, ok := binds[name]
 		if !ok {
