@@ -308,6 +308,7 @@ func (g *generator) use(d *docState) {
 	g.sliceSlots = map[int]string{}
 	g.strCatSlots = map[int]string{}
 	g.interpSlots = map[int]string{}
+	g.lambdaNames = map[int]string{}
 	g.loopBinds = map[int]map[string]string{}
 	g.loopTypes = map[int]map[string]string{}
 	g.loopPtrs = map[int]map[string]string{}
@@ -428,6 +429,10 @@ type generator struct {
 	// and interpSlots does the same for an interpolation.
 	strCatSlots map[int]string
 	interpSlots map[int]string
+	// lambdaNames maps a lambda record to its function symbol, and lambdaSeq
+	// numbers those symbols across the module.
+	lambdaNames map[int]string
+	lambdaSeq   int
 	// loopBinds maps a for record and a binding name to that binding's slot,
 	// and loopTypes to its will type text. Both bindings of a loop name the
 	// same for record, so the name tells them apart. loopPtrs holds the element
@@ -498,6 +503,9 @@ func (g *generator) emitDoc() error {
 	if !g.errorEmitted && g.docUsesError() {
 		g.out.WriteString("%interface.Error = type { ptr, ptr }\n")
 		g.errorEmitted = true
+	}
+	if err := g.planLambdas(); err != nil {
+		return err
 	}
 	g.collect()
 	g.buildStructs()
@@ -678,6 +686,12 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		typ, err := g.declLLVMType(p.ID)
 		if err != nil {
 			return err
+		}
+		if typ == "ptr" {
+			// A function value is one code pointer, passed by value.
+			g.scope[p.ID] = "%" + pname
+			sig = append(sig, "ptr %"+pname)
+			continue
 		}
 		if !isAggregateType(typ) {
 			return g.errf(p.ID, "cannot translate node #%d: parameter type %s is not lowered yet", p.ID, ptype)
@@ -1691,9 +1705,19 @@ func (g *generator) value(id int) (string, error) {
 			return "", g.errf(id, "cannot translate node #%d: a %s literal is a place, not a scalar", id, kind)
 		}
 		return "", g.errf(id, "cannot translate node #%d: literal kind %s is not lowered yet", id, fieldText(r, "kind"))
+	case "func":
+		if _, ok := g.lambdaNames[r.ID]; ok {
+			return "@" + llvmSymbol(g.cur.funcs[r.ID]), nil
+		}
+		return "", g.errf(id, "cannot translate node #%d: a function declaration is not a value", id)
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
+		if c, ok := g.recs[decl]; ok && c.Kind == "func" {
+			if sym := g.cur.funcs[decl]; sym != "" {
+				return "@" + llvmSymbol(sym), nil
+			}
+		}
 		if c, ok := g.recs[decl]; ok && c.Kind == "const" {
 			if v, ok := g.constValueOf(decl); ok {
 				return v, nil
@@ -2003,6 +2027,11 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	}
 	if g.isPrintCall(r) {
 		return g.printCall(r)
+	}
+	if target := refField(r, "to"); target != 0 {
+		if decl, ok := g.recs[target]; ok && g.isFuncValue(decl) {
+			return g.indirectCall(r, decl)
+		}
 	}
 	if name := g.genericCallName(r); name != "" {
 		return g.emitCall(r, name, false)

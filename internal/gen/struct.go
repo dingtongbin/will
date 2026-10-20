@@ -332,6 +332,11 @@ func (g *generator) typeOf(id int) (string, error) {
 		return info.llvm, nil
 	case "interp":
 		return "{ ptr, i64 }", nil
+	case "func":
+		if _, ok := g.lambdaNames[r.ID]; ok {
+			return "ptr", nil
+		}
+		return "", g.errf(id, "cannot translate node #%d: a function declaration is not a value", id)
 	case "slice":
 		text, err := g.willTypeText(id)
 		if err != nil {
@@ -590,6 +595,9 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 		return text, nil
 	}
 	if _, text, known := g.viewCallResult(r); known {
+		return text, nil
+	}
+	if text, known := g.functionValueResult(r); known {
 		return text, nil
 	}
 	if qualified := textField(r, "to"); qualified != "" {

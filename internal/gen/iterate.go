@@ -72,6 +72,10 @@ func llvmTypeText(text string) (string, bool) {
 	if text == "str" {
 		return "{ ptr, i64 }", true
 	}
+	if strings.HasPrefix(text, "func(") {
+		// A function value is one code pointer.
+		return "ptr", true
+	}
 	if _, _, ok := mapTypeText(text); ok {
 		return "{ ptr, i64, i64 }", true
 	}

@@ -1,0 +1,73 @@
+define i32 @"example.com/fnvalue.Apply"(ptr %f, i32 %x) {
+entry:
+  %t1 = call i32 %f(i32 %x)
+  ret i32 %t1
+}
+define i32 @"example.com/fnvalue.Twice"(ptr %f, i32 %x) {
+entry:
+  %t2 = call i32 %f(i32 %x)
+  %t3 = call i32 %f(i32 %t2)
+  ret i32 %t3
+}
+define i32 @"example.com/fnvalue.will$main"() {
+entry:
+  %v.inc = alloca ptr
+  %v.dbl = alloca ptr
+  store ptr @"example.com/fnvalue.lambda.1", ptr %v.inc
+  store ptr @"example.com/fnvalue.lambda.2", ptr %v.dbl
+  %t4 = load ptr, ptr %v.inc
+  %t5 = call i32 @"example.com/fnvalue.Apply"(ptr %t4, i32 1)
+  %t6 = load ptr, ptr %v.dbl
+  %t7 = call i32 @"example.com/fnvalue.Twice"(ptr %t6, i32 2)
+  %t8 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t5, i32 %t7)
+  %t9 = extractvalue {i32, i1} %t8, 0
+  %t10 = extractvalue {i32, i1} %t8, 1
+  br i1 %t10, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  ret i32 %t9
+}
+define i32 @"example.com/fnvalue.lambda.1"(i32 %x) {
+entry:
+  %t11 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %x, i32 1)
+  %t12 = extractvalue {i32, i1} %t11, 0
+  %t13 = extractvalue {i32, i1} %t11, 1
+  br i1 %t13, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.3, ptr @.str.4)
+  unreachable
+panic.ok.1:
+  ret i32 %t12
+}
+define i32 @"example.com/fnvalue.lambda.2"(i32 %x) {
+entry:
+  %t14 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %x, i32 2)
+  %t15 = extractvalue {i32, i1} %t14, 0
+  %t16 = extractvalue {i32, i1} %t14, 1
+  br i1 %t16, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.5, ptr @.str.6)
+  unreachable
+panic.ok.1:
+  ret i32 %t15
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/fnvalue.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:12:12\00", align 1
+@.str.2 = private unnamed_addr constant [30 x i8] c"example.com/fnvalue.will$main\00", align 1
+@.str.3 = private unnamed_addr constant [16 x i8] c"main.will:10:62\00", align 1
+@.str.4 = private unnamed_addr constant [29 x i8] c"example.com/fnvalue.lambda.1\00", align 1
+@.str.5 = private unnamed_addr constant [16 x i8] c"main.will:11:62\00", align 1
+@.str.6 = private unnamed_addr constant [29 x i8] c"example.com/fnvalue.lambda.2\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

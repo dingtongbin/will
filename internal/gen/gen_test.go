@@ -234,6 +234,32 @@ func TestEmitGenericMethodInstance(t *testing.T) {
 	}
 }
 
+func TestEmitFunctionValue(t *testing.T) {
+	src := "func Apply(f: func(i32) -> i32, x: i32) -> i32 {\n" +
+		"    return f(x)\n" +
+		"}\n\n" +
+		"func main() -> i32 {\n" +
+		"    var inc: func(i32) -> i32 = func(x: i32) -> i32 { return x + 1 }\n" +
+		"    return Apply(inc, 1)\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define i32 @"example.com/app.lambda.1"(i32 %x)`,
+		`define i32 @"example.com/app.Apply"(ptr %f, i32 %x)`,
+		`call i32 %f(i32 %x)`,
+		`store ptr @"example.com/app.lambda.1"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitPrintAndInterpolation(t *testing.T) {
 	src := "func main() -> i32 {\n" +
 		"    var n: i32 = 3\n" +
@@ -1081,7 +1107,7 @@ func TestEmitStructArgumentIsABorrow(t *testing.T) {
 }
 
 func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
-	src := "struct Text {\n    body: func(i32) -> i32\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
+	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: []P\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1093,7 +1119,7 @@ func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
 }
 
 func TestEmitUnloweredFieldIsReported(t *testing.T) {
-	src := "struct Text {\n    body: func(i32) -> i32\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
+	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: []P\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	if _, err := Emit(doc); err == nil {
 		t.Fatal("a parameter whose struct field is not lowered was translated")

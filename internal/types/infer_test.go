@@ -13,6 +13,14 @@ func TestExplicitTypeArgumentsInstantiateSignature(t *testing.T) {
 	}
 }
 
+func TestLambdaBodyIsChecked(t *testing.T) {
+	src := "func F() {\n    var f: func(i32) -> i32 = func(x: i32) -> i32 { return \"s\" }\n    _ = f\n}\n"
+	d := findCode(t, checkWithResolve(t, src), diag.CodeTypeMismatch)
+	if d.Message == "" {
+		t.Fatal("the lambda body was not checked")
+	}
+}
+
 func TestNegativeLiteralMayBeTheTypeMinimum(t *testing.T) {
 	src := "func F() -> i64 {\n    var x: i64 = -9223372036854775808\n    return x\n}\n"
 	if ds := checkWithResolve(t, src); len(ds) != 0 {

@@ -580,7 +580,17 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 		for i, pm := range x.Params {
 			params[i] = c.buildType(pm.Type, s.tp)
 		}
-		return c.in.funcT(params, c.buildType(x.Result, s.tp))
+		result := c.buildType(x.Result, s.tp)
+		inner := newInferScope(s)
+		inner.result = result
+		for i, pm := range x.Params {
+			inner.vars[pm.Name] = params[i]
+		}
+		got := c.inferBlock(inner, x.Body)
+		if result != nil && got != nil {
+			c.unifyTypes(x.Body.Pos(), got, result)
+		}
+		return c.in.funcT(params, result)
 	case *ast.TryExpr:
 		c.inferExpr(s, x.X)
 		return nil

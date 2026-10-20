@@ -1,0 +1,13 @@
+func Apply(f: func(i32) -> i32, x: i32) -> i32 {
+    return f(x)
+}
+
+func Twice(f: func(i32) -> i32, x: i32) -> i32 {
+    return f(f(x))
+}
+
+func main() -> i32 {
+    var inc: func(i32) -> i32 = func(x: i32) -> i32 { return x + 1 }
+    var dbl: func(i32) -> i32 = func(x: i32) -> i32 { return x * 2 }
+    return Apply(inc, 1) + Twice(dbl, 2)
+}
