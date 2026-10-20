@@ -145,8 +145,10 @@ uint64_t willrt_take_c(void* ptr, void* retain_code, void* retain_env,
     if (ptr == NULL || release_code == NULL) {
         return 0;
     }
+    willrt_rc_foreign_lock_acquire();
     entry = (willrt_rc_foreign*)willrt_alloc(sizeof(*entry));
     if (entry == NULL) {
+        willrt_rc_foreign_lock_release();
         return 0;
     }
     entry->ptr = ptr;
@@ -155,7 +157,6 @@ uint64_t willrt_take_c(void* ptr, void* retain_code, void* retain_env,
     entry->release_code = release_code;
     entry->release_env = release_env;
     entry->count = 1;
-    willrt_rc_foreign_lock_acquire();
     entry->next = willrt_rc_foreign_head;
     willrt_rc_foreign_head = entry;
     willrt_rc_foreign_lock_release();
@@ -535,7 +536,9 @@ void willrt_rc_release(uint64_t handle) {
             ((void (*)(void*, void*))entry->release_code)(entry->release_env,
                                                          entry->ptr);
         }
+        willrt_rc_foreign_lock_acquire();
         willrt_free(entry);
+        willrt_rc_foreign_lock_release();
         return;
     }
     index = willrt_rc_handle_slot(handle);
