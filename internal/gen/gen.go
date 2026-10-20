@@ -142,6 +142,9 @@ func (g *generator) emitAux() {
 	if g.needBlockDecl {
 		g.out.WriteString("declare i32 @willrt_blocking_call(ptr, ptr, ptr)\n")
 	}
+	if g.needTakeCDecl {
+		g.out.WriteString("declare i64 @willrt_take_c(ptr, ptr, ptr, ptr, ptr)\n")
+	}
 	if g.needTaskDecl {
 		g.out.WriteString("declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)\n")
 		g.out.WriteString("declare void @willrt_task_run(ptr)\n")
@@ -619,6 +622,8 @@ type generator struct {
 	needInterpDecl bool
 	// needTaskDecl records that the lowering calls the task or channel engine.
 	needTaskDecl bool
+	// needTakeCDecl records that the lowering adopts a foreign C pointer.
+	needTakeCDecl bool
 	// needRcDecl records that the lowering calls the handle table.
 	needRcDecl bool
 	// needUtf8Decl records a call to the UTF-8 validator or encoder,
@@ -2889,7 +2894,8 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 		return "", err
 	}
 	if text == "" {
-		return "", g.errf(r.ID, "cannot translate node #%d: the call returns no value", r.ID)
+		name, _ := g.predeclaredCallName(r)
+		return "", g.errf(r.ID, "cannot translate node #%d: the call returns no value (callee=%s)", r.ID, name)
 	}
 	_, taskScalar := taskElemText(text)
 	_, chanScalar := chanElemText(text)
@@ -2907,6 +2913,23 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	}
 	if g.isPrintCall(r) {
 		return g.printCall(r)
+	}
+	if name, ok := g.predeclaredCallName(r); ok && (name == "take_c" || name == "take_c_rc") {
+		value, err := g.lowerTakeC(r, name)
+		if err != nil {
+			return "", "", err
+		}
+		result := ""
+		if args := g.typeArgTexts(r); len(args) == 1 {
+			result = "rc<" + args[0] + ">"
+		}
+		if result == "" {
+			result, err = g.willTypeText(r.ID)
+			if err != nil {
+				return "", "", err
+			}
+		}
+		return value, result, nil
 	}
 	if r.Kind == "mcall" && g.isCLink(r) {
 		name := fieldText(r, "text")

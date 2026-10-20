@@ -117,6 +117,13 @@ void* willrt_plate_new(size_t count, size_t elem);
    left alone. */
 void willrt_plate_release(void* plate);
 
+/* willrt_take_c adopts an object owned by C. ptr is returned unchanged by
+   willrt_rc_deref; the handle carries a foreign marker instead of a slot.
+   retain_code and release_code use the closure ABI: (environment, ptr).
+   retain_code may be NULL for the TakeC form; release_code is required. */
+uint64_t willrt_take_c(void* ptr, void* retain_code, void* retain_env,
+                       void* release_code, void* release_env);
+
 /* willrt_rc_new copies size bytes from value into a new rc object and returns
    its handle, or 0 when the allocation fails. A handle carries the slot index
    in the high 32 bits and the slot generation in the low 32 bits, and 0 is

@@ -788,11 +788,37 @@ func (c *checker) predeclaredCall(s *inferScope, name string, call *ast.CallExpr
 		return c.in.named("Result", []*Type{c.oneArg(s, call), nil})
 	case "Err":
 		return c.in.named("Result", []*Type{nil, c.oneArg(s, call)})
+	case "take_c", "take_c_rc":
+		return c.takeCType(s, call, name)
 	}
 	for _, a := range call.Args {
 		c.inferExpr(s, a.Expr)
 	}
 	return nil
+}
+
+// takeCType checks the explicit element type and the C callback pair. The
+// call returns rc<T>; the pointer itself stays a raw address for the runtime.
+func (c *checker) takeCType(s *inferScope, call *ast.CallExpr, name string) *Type {
+	if len(call.TypeArgs) != 1 {
+		c.bag.Error(call.Pos(), diag.CodeTypeArgCount,
+			"wrong number of type arguments", "the declaration takes 1")
+	}
+	var elem *Type
+	if len(call.TypeArgs) == 1 {
+		elem = c.buildType(call.TypeArgs[0], nil)
+	}
+	raw := c.in.scalar("raw")
+	release := c.in.funcT([]*Type{raw}, nil)
+	params := []*Type{raw, release}
+	if name == "take_c_rc" {
+		params = []*Type{raw, release, release}
+	}
+	c.checkPayload(s, params, call.Args, name, call.Pos())
+	if elem == nil {
+		return nil
+	}
+	return c.in.named("rc", []*Type{elem})
 }
 
 func (c *checker) oneArg(s *inferScope, call *ast.CallExpr) *Type {
