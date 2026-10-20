@@ -9,5 +9,6 @@ void free(void* p);
 int add(int a, int b);
 double scale(double x, int n);
 int read_int(int* p);
+int sum(int n, ...);
 
 #endif

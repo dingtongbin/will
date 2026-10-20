@@ -29,6 +29,7 @@ func main() -> i32 {
     var tail: raw = p + 4usize
     var v: i32 = 7
     var av: i32 = c.read_int(raw(v))
+    var total: i32 = c.sum(2, 3, 4)
     var at: usize = usize(tail)
     _ = at
     _ = swapped
@@ -37,5 +38,5 @@ func main() -> i32 {
     _ = c.putchar(65)
     _ = c.add(1, 2)
     _ = c.scale(1.5, 2)
-    return loaded + av
+    return loaded + av + total
 }

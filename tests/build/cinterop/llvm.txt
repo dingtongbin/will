@@ -13,6 +13,7 @@ entry:
   %v.tail = alloca ptr
   %v.v = alloca i32
   %v.av = alloca i32
+  %v.total = alloca i32
   %v.at = alloca i64
   %t1 = call ptr @malloc(i64 32)
   store ptr %t1, ptr %v.p
@@ -82,28 +83,39 @@ entry:
   store i32 7, ptr %v.v
   %t46 = call i32 @read_int(ptr %v.v)
   store i32 %t46, ptr %v.av
-  %t47 = load ptr, ptr %v.tail
-  %t48 = ptrtoint ptr %t47 to i64
-  store i64 %t48, ptr %v.at
-  %t49 = load i64, ptr %v.at
-  %t50 = load i1, ptr %v.swapped
-  %t51 = load ptr, ptr %v.same
-  %t52 = load ptr, ptr %v.p
-  call void @free(ptr %t52)
-  %t53 = call i32 @putchar(i32 65)
-  %t54 = call i32 @add(i32 1, i32 2)
-  %t55 = call double @scale(double 1.5, i32 2)
-  %t56 = load i32, ptr %v.loaded
-  %t57 = load i32, ptr %v.av
-  %t58 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t56, i32 %t57)
-  %t59 = extractvalue {i32, i1} %t58, 0
-  %t60 = extractvalue {i32, i1} %t58, 1
-  br i1 %t60, label %panic.1, label %panic.ok.1
+  %t47 = call i32 @sum(i32 2, i32 3, i32 4)
+  store i32 %t47, ptr %v.total
+  %t48 = load ptr, ptr %v.tail
+  %t49 = ptrtoint ptr %t48 to i64
+  store i64 %t49, ptr %v.at
+  %t50 = load i64, ptr %v.at
+  %t51 = load i1, ptr %v.swapped
+  %t52 = load ptr, ptr %v.same
+  %t53 = load ptr, ptr %v.p
+  call void @free(ptr %t53)
+  %t54 = call i32 @putchar(i32 65)
+  %t55 = call i32 @add(i32 1, i32 2)
+  %t56 = call double @scale(double 1.5, i32 2)
+  %t57 = load i32, ptr %v.loaded
+  %t58 = load i32, ptr %v.av
+  %t59 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t57, i32 %t58)
+  %t60 = extractvalue {i32, i1} %t59, 0
+  %t61 = extractvalue {i32, i1} %t59, 1
+  br i1 %t61, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
   unreachable
 panic.ok.1:
-  ret i32 %t59
+  %t62 = load i32, ptr %v.total
+  %t63 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t60, i32 %t62)
+  %t64 = extractvalue {i32, i1} %t63, 0
+  %t65 = extractvalue {i32, i1} %t63, 1
+  br i1 %t65, label %panic.2, label %panic.ok.2
+panic.2:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.2:
+  ret i32 %t64
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -116,12 +128,13 @@ entry:
 }
 declare ptr @malloc(i64)
 declare i32 @read_int(ptr)
+declare i32 @sum(i32, i32, i32, ...)
 declare void @free(ptr)
 declare i32 @putchar(i32)
 declare i32 @add(i32, i32)
 declare double @scale(double, i32)
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
-@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:40:12\00", align 1
+@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:41:12\00", align 1
 @.str.2 = private unnamed_addr constant [31 x i8] c"example.com/cinterop.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
