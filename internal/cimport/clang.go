@@ -13,9 +13,9 @@ import (
 
 // clangNode is the subset of clang's JSON AST the C surface needs.
 type clangNode struct {
-	Kind  string `json:"kind"`
-	Name  string `json:"name"`
-	Type  struct {
+	Kind string `json:"kind"`
+	Name string `json:"name"`
+	Type struct {
 		QualType string `json:"qualType"`
 	} `json:"type"`
 	Inner []clangNode `json:"inner"`
@@ -100,6 +100,15 @@ func clangFunc(n clangNode, target string) (Func, bool) {
 
 // clangType is the C-to-will table from the C interop volume. A pointer of any
 // kind is raw; a by-value struct or union waits for the external type layer.
+// targetIsWindows follows the target when one is given; the host is only a
+// fallback for a header parsed without a target.
+func targetIsWindows(target string) bool {
+	if target != "" {
+		return strings.Contains(strings.ToLower(target), "win")
+	}
+	return runtime.GOOS == "windows"
+}
+
 func clangType(text, target string) (*ast.Type, bool) {
 	text = strings.TrimSpace(text)
 	for _, q := range []string{"const ", "volatile ", "restrict ", "__restrict ", "_Nonnull ", "_Nullable "} {
@@ -136,12 +145,12 @@ func clangType(text, target string) (*ast.Type, bool) {
 	case "unsigned", "unsigned int":
 		return scalar("u32"), true
 	case "long", "long int", "signed long", "signed long int":
-		if runtime.GOOS == "windows" || strings.Contains(strings.ToLower(target), "win") {
+		if targetIsWindows(target) {
 			return scalar("i32"), true
 		}
 		return scalar("i64"), true
 	case "unsigned long", "unsigned long int":
-		if runtime.GOOS == "windows" || strings.Contains(strings.ToLower(target), "win") {
+		if targetIsWindows(target) {
 			return scalar("u32"), true
 		}
 		return scalar("u64"), true
