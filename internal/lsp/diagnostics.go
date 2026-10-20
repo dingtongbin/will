@@ -56,6 +56,7 @@ func analyzeStandalone(path, text string) []diag.Diagnostic {
 		if !bag.HasErrors() {
 			bag.AddAll(check.Moves(f))
 			bag.AddAll(check.Borrows(f))
+			bag.AddAll(check.Cycles(f))
 		}
 	}
 	return onlyFile(bag.Diagnostics(), name)

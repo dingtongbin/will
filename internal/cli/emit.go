@@ -85,6 +85,7 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 	if !bag.HasErrors() {
 		bag.AddAll(check.Moves(f))
 		bag.AddAll(check.Borrows(f))
+		bag.AddAll(check.Cycles(f))
 	}
 
 	all := bag.Diagnostics()
