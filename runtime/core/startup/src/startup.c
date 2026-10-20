@@ -13,9 +13,11 @@
 #include <stdatomic.h>
 
 #if defined(__GNUC__) || defined(__clang__)
-/* Defined by the task engine. A program that never starts a task does not link
-   it, so the wait is optional. */
+/* Defined by the optional modules. A program that never starts a task or waits
+   on IO does not link them, so every hook is weak. */
 extern void willrt_tasks_wait_all(void) __attribute__((weak));
+extern void willrt_poll_shutdown(void) __attribute__((weak));
+extern void willrt_blocking_shutdown(void) __attribute__((weak));
 #endif
 
 static atomic_int willrt_started;
@@ -28,6 +30,12 @@ void willrt_init(void) {
 void willrt_shutdown(void) {
     if (willrt_tasks_wait_all != NULL) {
         willrt_tasks_wait_all();
+    }
+    if (willrt_blocking_shutdown != NULL) {
+        willrt_blocking_shutdown();
+    }
+    if (willrt_poll_shutdown != NULL) {
+        willrt_poll_shutdown();
     }
     atomic_store(&willrt_started, 0);
 }

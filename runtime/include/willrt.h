@@ -154,6 +154,42 @@ int32_t willrt_weak_upgrade(uint64_t weak, void* out);
 int64_t willrt_now_ns(void);
 
 /* -------------------------------------------------------------------------
+   Poller and blocking pool.
+
+   A poller registration names one descriptor, the events it waits for, and one
+   callback. The poller calls the callback with the ready subset; the callback
+   may add or delete registrations. Windows accepts sockets only, because
+   WSAPoll has no file-handle form; POSIX accepts any pollable descriptor.
+   ------------------------------------------------------------------------- */
+
+enum {
+    WILLRT_POLL_IN = 1,
+    WILLRT_POLL_OUT = 2,
+    WILLRT_POLL_ERR = 4
+};
+
+/* willrt_poll_fn is called on the poller thread. It must not block for long;
+   a task wake or a short handoff belongs here, a request handler does not. */
+typedef void (*willrt_poll_fn)(int64_t fd, uint32_t events, void* arg);
+
+/* willrt_poll_init starts the poller once. willrt_poll_add calls it lazily;
+   willrt_shutdown calls willrt_poll_shutdown after all tasks have joined. */
+void willrt_poll_init(void);
+void willrt_poll_shutdown(void);
+int32_t willrt_poll_add(int64_t fd, uint32_t events, void* cb, void* arg);
+int32_t willrt_poll_del(int64_t fd);
+
+/* willrt_blocking_fn is one job for the blocking pool. It may block; the pool
+   owns the thread, and the caller waits for the job's result. out is the same
+   pointer the caller passed to willrt_blocking_call. */
+typedef int32_t (*willrt_blocking_fn)(void* arg, void* out);
+
+/* willrt_blocking_call runs one function on a pool thread and waits for it.
+   The pool starts lazily and has WILL_BLOCKING_MAX threads (default 128). */
+int32_t willrt_blocking_call(void* fn, void* arg, void* out);
+void willrt_blocking_shutdown(void);
+
+/* -------------------------------------------------------------------------
    Tasks, regions, and the task environment.
 
    A task owns one frame of size bytes. The step function advances the frame
