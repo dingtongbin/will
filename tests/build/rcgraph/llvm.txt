@@ -1,0 +1,104 @@
+%"struct.example.com/rcgraph.Node" = type { i32, i64 }
+define void @"example.com/rcgraph.Node.init"(ptr %n, i32 %value) {
+entry:
+  %t1 = getelementptr inbounds %"struct.example.com/rcgraph.Node", ptr %n, i32 0, i32 0
+  store i32 %value, ptr %t1
+  ret void
+}
+define i32 @"example.com/rcgraph.will$main"() {
+entry:
+  %v.a = alloca i64
+  %v.b = alloca i64
+  %v.v = alloca i32
+  %v.ret.45 = alloca { i32, [4 x i8], i64 }
+  %v.weakout.45 = alloca i64
+  %v.new.24 = alloca %"struct.example.com/rcgraph.Node"
+  store %"struct.example.com/rcgraph.Node" zeroinitializer, ptr %v.new.24
+  call void @"example.com/rcgraph.Node.init"(ptr %v.new.24, i32 1)
+  %t2 = getelementptr %"struct.example.com/rcgraph.Node", ptr null, i32 1
+  %t3 = ptrtoint ptr %t2 to i64
+  %t4 = call i64 @willrt_rc_new(ptr %v.new.24, i64 %t3)
+  store i64 %t4, ptr %v.a
+  %v.new.29 = alloca %"struct.example.com/rcgraph.Node"
+  store %"struct.example.com/rcgraph.Node" zeroinitializer, ptr %v.new.29
+  call void @"example.com/rcgraph.Node.init"(ptr %v.new.29, i32 2)
+  %t5 = getelementptr %"struct.example.com/rcgraph.Node", ptr null, i32 1
+  %t6 = ptrtoint ptr %t5 to i64
+  %t7 = call i64 @willrt_rc_new(ptr %v.new.29, i64 %t6)
+  store i64 %t7, ptr %v.b
+  %t8 = load i64, ptr %v.a
+  %t9 = call ptr @willrt_rc_deref(i64 %t8)
+  %t10 = getelementptr inbounds %"struct.example.com/rcgraph.Node", ptr %t9, i32 0, i32 1
+  %t11 = load i64, ptr %v.b
+  %t12 = call i64 @willrt_weak_new(i64 %t11)
+  store i64 %t12, ptr %t10
+  %t13 = load i64, ptr %v.b
+  %t14 = call ptr @willrt_rc_deref(i64 %t13)
+  %t15 = getelementptr inbounds %"struct.example.com/rcgraph.Node", ptr %t14, i32 0, i32 1
+  %t16 = load i64, ptr %v.a
+  %t17 = call i64 @willrt_weak_new(i64 %t16)
+  store i64 %t17, ptr %t15
+  store i32 0, ptr %v.v
+  %t18 = load i64, ptr %v.a
+  %t19 = call ptr @willrt_rc_deref(i64 %t18)
+  %t20 = getelementptr inbounds %"struct.example.com/rcgraph.Node", ptr %t19, i32 0, i32 1
+  %t21 = load i64, ptr %t20
+  %t22 = call i32 @willrt_weak_upgrade(i64 %t21, ptr %v.weakout.45)
+  %t23 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.ret.45, i32 0, i32 0
+  store i32 0, ptr %t23
+  %t24 = icmp eq i32 %t22, 0
+  br i1 %t24, label %upgrade.some.1, label %upgrade.end.1
+upgrade.some.1:
+  store i32 1, ptr %t23
+  %t25 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.ret.45, i32 0, i32 2
+  %t26 = load i64, ptr %v.weakout.45
+  store i64 %t26, ptr %t25
+  br label %upgrade.end.1
+upgrade.end.1:
+  %t27 = load { i32, [4 x i8], i64 }, ptr %v.ret.45
+  store { i32, [4 x i8], i64 } %t27, ptr %v.ret.45
+  %t28 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.ret.45, i32 0, i32 0
+  %t29 = load i32, ptr %t28
+  %t30 = icmp eq i32 %t29, 1
+  br i1 %t30, label %match.arm.2.0, label %match.next.2.0
+match.arm.2.0:
+  %t31 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.ret.45, i32 0, i32 2
+  %t32 = load i64, ptr %t31
+  %t33 = call ptr @willrt_rc_deref(i64 %t32)
+  %t34 = getelementptr inbounds %"struct.example.com/rcgraph.Node", ptr %t33, i32 0, i32 0
+  %t35 = load i32, ptr %t34
+  store i32 %t35, ptr %v.v
+  br label %match.end.2
+match.next.2.0:
+  %t36 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.ret.45, i32 0, i32 0
+  %t37 = load i32, ptr %t36
+  %t38 = icmp eq i32 %t37, 0
+  br i1 %t38, label %match.arm.2.1, label %match.next.2.1
+match.arm.2.1:
+  br label %match.end.2
+match.next.2.1:
+  unreachable
+match.end.2:
+  %t39 = load i32, ptr %v.v
+  %t40 = load i64, ptr %v.b
+  call void @willrt_rc_release(i64 %t40)
+  %t41 = load i64, ptr %v.a
+  call void @willrt_rc_release(i64 %t41)
+  ret i32 %t39
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/rcgraph.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+declare i64 @willrt_rc_new(ptr, i64)
+declare i64 @willrt_rc_new_drop(ptr, i64, ptr)
+declare void @willrt_rc_retain(i64)
+declare void @willrt_rc_release(i64)
+declare ptr @willrt_rc_deref(i64)
+declare i64 @willrt_weak_new(i64)
+declare i32 @willrt_weak_upgrade(i64, ptr)

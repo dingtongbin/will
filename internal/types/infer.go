@@ -1145,6 +1145,14 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 		name = t.Name()
 	}
 	if name == "rc" && t != nil && len(t.Args()) == 1 {
+		elem := t.Args()[0]
+		if sig, ok := c.env.inits[elem.Name()]; ok {
+			if inst := c.instantiateReceiver(sig, elem); inst != nil {
+				sig = inst
+			}
+			c.checkCallArgs(s, sig, n.Args, n.Pos())
+			return t
+		}
 		if len(n.Args) != 1 {
 			c.badArity(n.Pos(), name)
 			for _, a := range n.Args {
@@ -1152,7 +1160,7 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 			}
 			return t
 		}
-		c.checkValue(s, n.Args[0].Expr, t.Args()[0])
+		c.checkValue(s, n.Args[0].Expr, elem)
 		return t
 	}
 	if strings.Contains(name, ".") {

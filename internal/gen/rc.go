@@ -31,31 +31,54 @@ func isWeakText(text string) bool {
 // constructRc builds new rc<T>(value): the value is copied into the handle
 // table's object storage and the u64 handle is returned.
 func (g *generator) constructRc(r willc.Record, elem string) (string, string, error) {
-	args := g.callArgs(r)
-	if len(args) != 1 {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: rc takes one value", r.ID)
-	}
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok || elemLLVM == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: rc value %s is not lowered yet", r.ID, elem)
 	}
 	var source string
-	if isAggregateType(elemLLVM) {
-		ptr, typ, err := g.place(args[0])
+	if g.hasInit(elem) {
+		// new rc<T>(args) constructs T first, exactly as new T(args).
+		inner := r
+		found := false
+		for i := range inner.Fields {
+			if inner.Fields[i].Name == "type" {
+				inner.Fields[i].Value = willc.Text(elem)
+				found = true
+			}
+		}
+		if !found {
+			inner.Fields = append(inner.Fields, willc.Field{Name: "type", Value: willc.Text(elem)})
+		}
+		slot, typ, err := g.constructNew(inner)
 		if err != nil {
 			return "", "", err
 		}
 		if typ != elemLLVM {
 			return "", "", g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
 		}
-		source = ptr
+		source = slot
 	} else {
-		value, err := g.value(args[0])
-		if err != nil {
-			return "", "", err
+		args := g.callArgs(r)
+		if len(args) != 1 {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: rc takes one value", r.ID)
 		}
-		source = g.allocSlot(g.callSlots, "rc", r.ID, elemLLVM)
-		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, source)
+		if isAggregateType(elemLLVM) {
+			ptr, typ, err := g.place(args[0])
+			if err != nil {
+				return "", "", err
+			}
+			if typ != elemLLVM {
+				return "", "", g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
+			}
+			source = ptr
+		} else {
+			value, err := g.value(args[0])
+			if err != nil {
+				return "", "", err
+			}
+			source = g.allocSlot(g.callSlots, "rc", r.ID, elemLLVM)
+			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, source)
+		}
 	}
 	size := g.sizeOf(elemLLVM)
 	g.needRcDecl = true
@@ -69,6 +92,21 @@ func (g *generator) constructRc(r willc.Record, elem string) (string, string, er
 	handle := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call i64 @%s(%s)\n", handle, fn, callArgs)
 	return handle, "rc<" + elem + ">", nil
+}
+
+// hasInit reports whether T has an init method in this or another document.
+func (g *generator) hasInit(elem string) bool {
+	if g.cur.methods[elem+".init"] != "" {
+		return true
+	}
+	if g.methodsQualified[elem+".init"] != "" {
+		return true
+	}
+	canonical := g.canonicalTypeText(elem)
+	if g.methodsQualified[canonical+".init"] != "" {
+		return true
+	}
+	return g.methodsQualified[qualify(g.pkg, elem)+".init"] != ""
 }
 
 // dropRequest is one generated function that releases the rc references held
