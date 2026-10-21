@@ -338,6 +338,59 @@ int32_t willrt_select_status(void) {
 int32_t willrt_select(willrt_arm* arms, size_t n) {
     size_t i;
 
+    /* The single-thread form touches the ring directly, so a select whose first
+       arm is ready costs no locks and no nested channel calls. */
+    if (!willrt_runtime_threaded()) {
+        int32_t default_index = -1;
+        int32_t timeout_index = -1;
+
+        for (i = 0; i < n; i++) {
+            willrt_arm* arm = &arms[i];
+            if (arm->kind == 0) {
+                willrt_chan* chan = arm->chan;
+                if (chan != NULL && chan->count != 0) {
+                    if (arm->out != NULL) {
+                        memcpy(arm->out, chan->data + chan->head * chan->elem,
+                               chan->elem);
+                    }
+                    chan->head = (chan->head + 1) % chan->cap;
+                    chan->count--;
+                    willrt_select_last = WILLRT_OK;
+                    return (int32_t)i;
+                }
+                if (chan != NULL && chan->closed) {
+                    willrt_select_last = WILLRT_CLOSED;
+                    return (int32_t)i;
+                }
+            } else if (arm->kind == 1) {
+                willrt_chan* chan = arm->chan;
+                if (chan != NULL && chan->closed) {
+                    willrt_select_last = WILLRT_CLOSED;
+                    return (int32_t)i;
+                }
+                if (chan != NULL && chan->count < chan->cap) {
+                    size_t at = (chan->head + chan->count) % chan->cap;
+                    memcpy(chan->data + at * chan->elem, arm->value, chan->elem);
+                    chan->count++;
+                    willrt_select_last = WILLRT_OK;
+                    return (int32_t)i;
+                }
+            } else if (arm->kind == 2) {
+                timeout_index = (int32_t)i;
+            } else if (arm->kind == 3) {
+                default_index = (int32_t)i;
+            }
+        }
+        if (default_index >= 0) {
+            willrt_select_last = WILLRT_OK;
+            return default_index;
+        }
+        if (timeout_index >= 0 && willrt_now_ns() >= arms[timeout_index].ns) {
+            willrt_select_last = WILLRT_TIMEDOUT;
+            return timeout_index;
+        }
+    }
+
     for (;;) {
         int32_t default_index = -1;
         int32_t timeout_index = -1;
