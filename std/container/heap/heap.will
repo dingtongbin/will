@@ -1,0 +1,89 @@
+// Heap is a binary min-heap. The comparison function decides the order, so the
+// same structure serves integer, text, and user-defined priorities.
+struct Heap<T> {
+    items: Array<T>
+    less: func(T, T) -> bool
+}
+
+// init stores the comparison function and starts with no items.
+func (mut h: Heap<T>) init(less: func(T, T) -> bool) {
+    h.items = new Array<T>(0)
+    h.less = less
+}
+
+// Push adds one value and restores the heap order.
+func (mut h: Heap<T>) Push(v: T) {
+    h.items.Push(v)
+    var cmp: func(T, T) -> bool = h.less
+    var i: usize = h.items.Len() - 1usize
+    for {
+        if i == 0usize {
+            break
+        }
+        var parent: usize = (i - 1usize) / 2usize
+        var childValue: T = h.items.Get(i)
+        var parentValue: T = h.items.Get(parent)
+        if !cmp(childValue, parentValue) {
+            break
+        }
+        h.items.Set(i, parentValue)
+        h.items.Set(parent, childValue)
+        i = parent
+    }
+}
+
+// Pop removes and returns the smallest value, or None when the heap is empty.
+func (mut h: Heap<T>) Pop() -> Option<T> {
+    if h.items.Len() == 0usize {
+        return None
+    }
+    var cmp: func(T, T) -> bool = h.less
+    var top: T = h.items.Get(0usize)
+    match h.items.Pop() {
+        Some(last) => {
+            if h.items.Len() > 0usize {
+                h.items.Set(0usize, last)
+                var i: usize = 0usize
+                for {
+                    var left: usize = i * 2usize + 1usize
+                    if left >= h.items.Len() {
+                        break
+                    }
+                    var smallest: usize = left
+                    var right: usize = left + 1usize
+                    if right < h.items.Len() {
+                        var leftValue: T = h.items.Get(left)
+                        var rightValue: T = h.items.Get(right)
+                        if cmp(rightValue, leftValue) {
+                            smallest = right
+                        }
+                    }
+                    var smallValue: T = h.items.Get(smallest)
+                    var current: T = h.items.Get(i)
+                    if !cmp(smallValue, current) {
+                        break
+                    }
+                    h.items.Set(i, smallValue)
+                    h.items.Set(smallest, current)
+                    i = smallest
+                }
+            }
+        }
+        None => {
+        }
+    }
+    return Some(top)
+}
+
+// Peek returns a copy of the smallest value without removing it.
+func (h: Heap<T>) Peek() -> Option<T> {
+    if h.items.Len() == 0usize {
+        return None
+    }
+    return Some(h.items.Get(0usize))
+}
+
+// Len reports the number of stored values.
+func (h: Heap<T>) Len() -> usize {
+    return h.items.Len()
+}

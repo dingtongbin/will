@@ -1,0 +1,26 @@
+// Set keeps insertion order, Add reports whether the value was new, and Delete
+// removes it.
+func main() -> i32 {
+    var s: Set<i32> = new Set<i32>(0usize)
+    if !s.Add(3) || !s.Add(1) || s.Add(3) {
+        return 1
+    }
+    if s.Len() != 2usize {
+        return 2
+    }
+    if !s.Has(1) || s.Has(2) {
+        return 3
+    }
+    if !s.Delete(3) || s.Len() != 1usize {
+        return 4
+    }
+    if s.Delete(3) {
+        return 5
+    }
+    s.Add(7)
+    s.Clear()
+    if s.Len() != 0usize || s.Has(7) {
+        return 6
+    }
+    return 0
+}

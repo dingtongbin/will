@@ -1,0 +1,64 @@
+import "std/container/heap"
+
+func Less(a: i32, b: i32) -> bool {
+    return a < b
+}
+
+// Heap must keep the root smallest through every Push and Pop, including the
+// sift-down path with two children.
+func main() -> i32 {
+    var h: heap.Heap<i32> = new heap.Heap<i32>(Less)
+    if h.Len() != 0usize {
+        return 1
+    }
+    h.Push(7)
+    h.Push(3)
+    h.Push(9)
+    h.Push(1)
+    h.Push(5)
+    if h.Len() != 5usize {
+        return 2
+    }
+    match h.Peek() {
+        Some(v) => {
+            if v != 1 {
+                return 3
+            }
+        }
+        None => {
+            return 4
+        }
+    }
+    var expected: Array<i32> = new Array<i32>(0)
+    expected.Push(1)
+    expected.Push(3)
+    expected.Push(5)
+    expected.Push(7)
+    expected.Push(9)
+    var i: usize = 0usize
+    for {
+        if i >= 5usize {
+            break
+        }
+        match h.Pop() {
+            Some(v) => {
+                if v != expected.Get(i) {
+                    return 5
+                }
+            }
+            None => {
+                return 6
+            }
+        }
+        i += 1usize
+    }
+    match h.Pop() {
+        Some(v) => {
+            _ = v
+            return 7
+        }
+        None => {
+        }
+    }
+    return 0
+}

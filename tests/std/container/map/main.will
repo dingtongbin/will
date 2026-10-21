@@ -1,0 +1,55 @@
+// Map is insertion ordered in this implementation. Set replaces a value,
+// Delete removes one entry, and Keys/Values copy the live entries.
+func main() -> i32 {
+    var m: Map<str, i32> = new Map<str, i32>(0usize)
+    if m.Len() != 0usize {
+        return 1
+    }
+    m.Set("a", 1)
+    m.Set("b", 2)
+    m.Set("a", 3)
+    if m.Len() != 2usize {
+        return 2
+    }
+    if !m.Has("a") || m.Has("c") {
+        return 3
+    }
+    match m.Get("a") {
+        Some(v) => {
+            if v != 3 {
+                return 4
+            }
+        }
+        None => {
+            return 5
+        }
+    }
+    match m.Get("c") {
+        Some(v) => {
+            _ = v
+            return 6
+        }
+        None => {
+        }
+    }
+    var keys: Array<str> = m.Keys()
+    if keys.Len() != 2usize || keys.Get(0usize) != "a" || keys.Get(1usize) != "b" {
+        return 7
+    }
+    var values: Array<i32> = m.Values()
+    if values.Len() != 2usize || values.Get(0usize) != 3 || values.Get(1usize) != 2 {
+        return 8
+    }
+    if !m.Delete("a") || m.Len() != 1usize {
+        return 9
+    }
+    if m.Delete("a") {
+        return 10
+    }
+    m.Set("c", 4)
+    m.Clear()
+    if m.Len() != 0usize || m.Has("c") {
+        return 11
+    }
+    return 0
+}

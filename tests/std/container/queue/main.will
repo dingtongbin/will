@@ -1,0 +1,84 @@
+import "std/container/queue"
+
+// Push must fill the back stack, Pop must drain it in FIFO order, and a new
+// Push after a partial drain must still go behind the older values.
+func main() -> i32 {
+    var q: queue.Queue<i32> = new queue.Queue<i32>()
+    if q.Len() != 0usize {
+        return 1
+    }
+    q.Push(1)
+    q.Push(2)
+    q.Push(3)
+    if q.Len() != 3usize {
+        return 2
+    }
+    match q.Peek() {
+        Some(v) => {
+            if v != 1 {
+                return 3
+            }
+        }
+        None => {
+            return 4
+        }
+    }
+    match q.Pop() {
+        Some(v) => {
+            if v != 1 {
+                return 5
+            }
+        }
+        None => {
+            return 6
+        }
+    }
+    q.Push(4)
+    match q.Pop() {
+        Some(v) => {
+            if v != 2 {
+                return 7
+            }
+        }
+        None => {
+            return 8
+        }
+    }
+    match q.Pop() {
+        Some(v) => {
+            if v != 3 {
+                return 9
+            }
+        }
+        None => {
+            return 10
+        }
+    }
+    match q.Pop() {
+        Some(v) => {
+            if v != 4 {
+                return 11
+            }
+        }
+        None => {
+            return 12
+        }
+    }
+    match q.Pop() {
+        Some(v) => {
+            _ = v
+            return 13
+        }
+        None => {
+        }
+    }
+    if q.Len() != 0usize {
+        return 14
+    }
+    q.Push(5)
+    q.Clear()
+    if q.Len() != 0usize {
+        return 15
+    }
+    return 0
+}
