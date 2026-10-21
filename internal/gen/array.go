@@ -336,6 +336,14 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 			return "", "", err
 		}
 		return "", "", nil
+	case "Clear":
+		if g.needsReleaseText(elem) {
+			if err := g.eachElement(base, elem, false, 0); err != nil {
+				return "", "", err
+			}
+		}
+		fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", field(1))
+		return "", "", nil
 	}
 	return "", "", g.errf(r.ID, "cannot translate node #%d: Array.%s is not lowered yet", r.ID, fieldText(r, "text"))
 }
@@ -361,7 +369,7 @@ func (g *generator) arrayCallResult(r willc.Record) (llvm, text string, known bo
 		return "i64", "usize", true
 	case "Get":
 		return elemLLVM, elem, true
-	case "Push", "Append", "Set":
+	case "Push", "Append", "Set", "Clear":
 		return "", "", true
 	}
 	return "", "", false
