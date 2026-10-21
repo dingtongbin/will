@@ -265,6 +265,43 @@ int32_t willrt_fs_file_close(const void* file_raw) {
     return 0;
 }
 
+int32_t willrt_fs_file_stat(const void* file_raw, void* out_raw) {
+    const fs_file* file = (const fs_file*)file_raw;
+    fs_stat* out = (fs_stat*)out_raw;
+    int fd;
+
+    if (file == NULL || file->handle == NULL || out == NULL) {
+        return 1;
+    }
+    fd = _fileno((FILE*)file->handle);
+#if defined(_WIN32)
+    {
+        struct _stat64 st;
+        if (_fstat64(fd, &st) == 0) {
+            out->size = (int64_t)st.st_size;
+            out->mode = (uint32_t)st.st_mode;
+            out->mtime = (int64_t)st.st_mtime;
+            out->isDir = (_S_IFDIR & st.st_mode) != 0;
+            out->isSymlink = 0;
+            return 0;
+        }
+    }
+#else
+    {
+        struct stat st;
+        if (fstat(fd, &st) == 0) {
+            out->size = (int64_t)st.st_size;
+            out->mode = (uint32_t)st.st_mode;
+            out->mtime = (int64_t)st.st_mtime;
+            out->isDir = S_ISDIR(st.st_mode) ? 1 : 0;
+            out->isSymlink = S_ISLNK(st.st_mode) ? 1 : 0;
+            return 0;
+        }
+    }
+#endif
+    return 1;
+}
+
 int32_t willrt_fs_stat(const void* path_raw, void* out_raw) {
     const fs_str* path = (const fs_str*)path_raw;
     fs_stat* out = (fs_stat*)out_raw;

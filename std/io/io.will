@@ -13,3 +13,50 @@ interface Writer {
 interface Seeker {
     func AsyncSeek(offset: i64, whence: i32) -> Result<i64, Error>
 }
+
+// AsyncReadAll appends every byte from r until end of stream. It returns the
+// number of bytes appended.
+func AsyncReadAll(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
+    var before: usize = buf.Len()
+    var chunk: Array<u8> = new Array<u8>(32768)
+    for {
+        chunk.Clear()
+        var n: usize = r.AsyncRead(chunk)?
+        if n == 0usize {
+            break
+        }
+        var i: usize = 0
+        for i < n {
+            buf.Push(chunk.Get(i))
+            i += 1
+        }
+    }
+    return Ok(buf.Len() - before)
+}
+
+// AsyncCopy copies r to dst until end of stream and flushes dst.
+func AsyncCopy(dst: Writer, src: Reader) -> Result<u64, Error> {
+    var total: u64 = 0
+    var chunk: Array<u8> = new Array<u8>(32768)
+    for {
+        chunk.Clear()
+        var n: usize = src.AsyncRead(chunk)?
+        if n == 0usize {
+            break
+        }
+        dst.AsyncWrite(chunk[Range(0, n)])?
+        total += u64(n)
+    }
+    dst.AsyncFlush()?
+    return Ok(total)
+}
+
+// ReadAll is the blocking spelling of AsyncReadAll.
+func ReadAll(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
+    return AsyncReadAll(r, buf)
+}
+
+// Copy is the blocking spelling of AsyncCopy.
+func Copy(dst: Writer, src: Reader) -> Result<u64, Error> {
+    return AsyncCopy(dst, src)
+}

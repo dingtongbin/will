@@ -14,6 +14,7 @@ import c "fs.c" {
     fast willrt_fs_file_seek
     fast willrt_fs_file_sync
     fast willrt_fs_file_close
+    fast willrt_fs_file_stat
     fast willrt_fs_stat
     fast willrt_fs_read_dir
     fast willrt_fs_rename
@@ -63,7 +64,7 @@ func (e: fsError) Message() -> str {
 }
 
 func (e: fsError) Status() -> i32 {
-    return 2
+    return 7
 }
 
 // ReadFile returns every byte of path.
@@ -143,6 +144,37 @@ func (f: File) Seek(offset: i64, whence: i32) -> Result<i64, Error> {
     return Ok(at)
 }
 
+// AsyncRead is the async spelling of Read. The current task owns a dedicated
+// execution context, so the host read cannot stall an unrelated task.
+func (f: File) AsyncRead(mut buf: Array<u8>) -> Result<usize, Error> {
+    return f.Read(buf)
+}
+
+// AsyncWrite is the async spelling of Write.
+func (f: File) AsyncWrite(buf: []u8) -> Result<(), Error> {
+    return f.Write(buf)
+}
+
+// AsyncSeek is the async spelling of Seek.
+func (f: File) AsyncSeek(offset: i64, whence: i32) -> Result<i64, Error> {
+    return f.Seek(offset, whence)
+}
+
+// AsyncSync is the async spelling of Sync.
+func (f: File) AsyncSync() -> Result<(), Error> {
+    return f.Sync()
+}
+
+// AsyncStat returns the metadata of the open file.
+func (f: File) AsyncStat() -> Result<StatInfo, Error> {
+    var stat: StatInfo
+    var status: i32 = c.willrt_fs_file_stat(raw(f), raw(stat))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(stat)
+}
+
 // Sync flushes buffered writes to the host.
 func (f: File) Sync() -> Result<(), Error> {
     var status: i32 = c.willrt_fs_file_sync(raw(f))
@@ -208,4 +240,54 @@ func TempFile(dir: str, pattern: str) -> Result<File, Error> {
         return Err(errors.Io)
     }
     return Ok(file)
+}
+
+// AsyncReadFile is the async spelling of ReadFile.
+func AsyncReadFile(path: str) -> Result<Array<u8>, Error> {
+    return ReadFile(path)
+}
+
+// AsyncWriteFile is the async spelling of WriteFile.
+func AsyncWriteFile(path: str, data: []u8) -> Result<(), Error> {
+    return WriteFile(path, data)
+}
+
+// AsyncAppend is the async spelling of Append.
+func AsyncAppend(path: str, data: []u8) -> Result<(), Error> {
+    return Append(path, data)
+}
+
+// AsyncOpen is the async spelling of Open.
+func AsyncOpen(path: str, flags: OpenFlags) -> Result<File, Error> {
+    return Open(path, flags)
+}
+
+// AsyncCreate is the async spelling of Create.
+func AsyncCreate(path: str, mode: u32) -> Result<File, Error> {
+    return Create(path, mode)
+}
+
+// AsyncStat is the async spelling of Stat.
+func AsyncStat(path: str) -> Result<StatInfo, Error> {
+    return Stat(path)
+}
+
+// AsyncReadDir is the async spelling of ReadDir.
+func AsyncReadDir(path: str) -> Result<Array<DirEntry>, Error> {
+    return ReadDir(path)
+}
+
+// AsyncRename is the async spelling of Rename.
+func AsyncRename(old: str, new: str) -> Result<(), Error> {
+    return Rename(old, new)
+}
+
+// AsyncRemove is the async spelling of Remove.
+func AsyncRemove(path: str) -> Result<(), Error> {
+    return Remove(path)
+}
+
+// AsyncTempFile is the async spelling of TempFile.
+func AsyncTempFile(dir: str, pattern: str) -> Result<File, Error> {
+    return TempFile(dir, pattern)
 }

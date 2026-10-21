@@ -1,0 +1,34 @@
+import "std/task"
+
+func main() -> i32 {
+    var values: Array<i32> = new Array<i32>(4)
+    values.Push(1)
+    values.Push(2)
+    values.Push(3)
+    values.Push(4)
+
+    var view: []i32 = values[Range(0, values.Len())]
+    var doubled: Array<i32> = task.ParallelMap<i32, i32>(view, func(x: i32) -> i32 {
+        return x * 2
+    })
+    if doubled.Len() != 4usize {
+        return 1
+    }
+    if doubled.Get(0) != 2 || doubled.Get(3) != 8 {
+        return 2
+    }
+
+    task.ParallelFor(4usize, func(i: usize) {
+        _ = i
+    })
+
+    var cancel: task.Cancel = new task.Cancel()
+    if cancel.Canceled() {
+        return 4
+    }
+    cancel.Cancel()
+    if !cancel.Canceled() {
+        return 5
+    }
+    return 0
+}

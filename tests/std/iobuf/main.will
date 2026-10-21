@@ -1,0 +1,26 @@
+import "std/io/buf"
+
+func main() -> i32 {
+    var b: buf.Buffer = buf.NewBuffer()
+    b.data.Push(65u8)
+    b.data.Push(66u8)
+    if b.Len() != 2usize {
+        return 1
+    }
+    var view: []u8 = b.Bytes()
+    if view.Get(0) != 65u8 || view.Get(1) != 66u8 {
+        return 2
+    }
+    b.Clear()
+    if b.Len() != 0usize {
+        return 3
+    }
+
+    var p: buf.PooledBuffer = buf.Pooled(8usize)
+    p.data.Push(67u8)
+    if p.Len() != 1usize || p.Array().Get(0) != 67u8 {
+        return 4
+    }
+    p.Release()
+    return 0
+}

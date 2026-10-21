@@ -1,0 +1,33 @@
+import "std/os/exec"
+
+func main() -> i32 {
+    var command: exec.Cmd = exec.Command("cmd", "/C", "echo hi")
+    var out: Result<exec.Output, Error> = command.AsyncOutput()
+    match out {
+        Ok(value) => {
+            if value.status.code != 0 {
+                return 1
+            }
+            if value.stdout.Len() == 0usize {
+                return 2
+            }
+        }
+        Err(_) => {
+            return 3
+        }
+    }
+
+    var failing: exec.Cmd = exec.Command("cmd", "/C", "exit 3")
+    var status: Result<exec.ExitStatus, Error> = failing.AsyncRun()
+    match status {
+        Ok(value) => {
+            if value.code != 3 {
+                return 4
+            }
+        }
+        Err(_) => {
+            return 5
+        }
+    }
+    return 0
+}
