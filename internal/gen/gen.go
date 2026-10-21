@@ -160,7 +160,9 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_chan_close(ptr)\n")
 		g.out.WriteString("declare i32 @willrt_select(ptr, i64)\n")
 		g.out.WriteString("declare i32 @willrt_select_status()\n")
-		g.out.WriteString("declare i64 @willrt_now_ns()\n")
+		if !g.declSet["declare i64 @willrt_now_ns()"] {
+			g.out.WriteString("declare i64 @willrt_now_ns()\n")
+		}
 		g.out.WriteString("declare void @willrt_region_enter()\n")
 		g.out.WriteString("declare i32 @willrt_region_exit()\n")
 		g.out.WriteString("declare i32 @willrt_lane_here()\n")
@@ -834,20 +836,34 @@ func (g *generator) emitDoc() error {
 			return err
 		}
 	}
-	if err := g.emitThunks(); err != nil {
-		return err
+	// A defer thunk can call a blocking C link or release an owning value,
+	// and a blocking step or spawn can contain another defer. Keep draining
+	// every queue until none of them gained work while the others ran.
+	for pass := 0; pass < 64; pass++ {
+		pending := len(g.pendingThunks) + len(g.pendingSpawns) +
+			len(g.pendingBlock) + len(g.pendingDrops) + len(g.pendingDefers)
+		if pending == 0 {
+			break
+		}
+		if err := g.emitThunks(); err != nil {
+			return err
+		}
+		if err := g.emitSpawns(); err != nil {
+			return err
+		}
+		if err := g.emitBlockingSteps(); err != nil {
+			return err
+		}
+		if err := g.emitDrops(); err != nil {
+			return err
+		}
+		if err := g.emitDeferThunks(); err != nil {
+			return err
+		}
 	}
-	if err := g.emitSpawns(); err != nil {
-		return err
-	}
-	if err := g.emitBlockingSteps(); err != nil {
-		return err
-	}
-	if err := g.emitDrops(); err != nil {
-		return err
-	}
-	if err := g.emitDeferThunks(); err != nil {
-		return err
+	if pending := len(g.pendingThunks) + len(g.pendingSpawns) +
+		len(g.pendingBlock) + len(g.pendingDrops) + len(g.pendingDefers); pending != 0 {
+		return fmt.Errorf("pending lowering work did not drain")
 	}
 	return g.emitInit(g.cur)
 }
@@ -1095,6 +1111,14 @@ func (g *generator) qualifyTypeText(pkg, text string) string {
 				args[i] = g.qualifyTypeText(pkg, args[i])
 			}
 			return prefix + strings.Join(args, ",") + ">"
+		}
+	}
+	if name, args, ok := splitGenericType(text); ok {
+		for i := range args {
+			args[i] = g.qualifyTypeText(pkg, args[i])
+		}
+		if q := qualify(pkg, name); g.declKinds[q] != "" {
+			return q + "<" + strings.Join(args, ",") + ">"
 		}
 	}
 	if strings.HasPrefix(text, "func(") || text == "Error" || text == "()" || strings.Contains(text, ".") {

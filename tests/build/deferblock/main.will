@@ -1,0 +1,12 @@
+import c "api.h" {
+    blocking add
+}
+
+// A blocking C link captured by defer must take the arguments from the defer
+// statement, not read them again at block exit.
+func main() -> i32 {
+    var a: i32 = 2
+    defer c.add(a, 3)
+    a = 100
+    return 0
+}

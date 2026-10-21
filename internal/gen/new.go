@@ -46,11 +46,16 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	slot := g.allocSlot(g.newSlots, "new", r.ID, info.llvm)
 	fmt.Fprintf(g.out, "  store %s zeroinitializer, ptr %s\n", info.llvm, slot)
 	if info.foreign {
-		// The defining document owns the fields and init. A foreign generic
-		// instance starts zeroed; an init with arguments has no instance doc
-		// to call yet, so reject it instead of silently skipping it.
+		// The defining document owns the fields and init. A generic instance
+		// resolves its init in that document, including one with arguments.
+		if sym, params, ok := g.initForNew(g.cur, r); ok {
+			if err := g.callNewInit(r, slot, sym, params); err != nil {
+				return "", "", err
+			}
+			return slot, info.llvm, nil
+		}
 		if args := g.callArgs(r); len(args) != 0 {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: a foreign generic init with arguments is not lowered yet", r.ID)
+			return "", "", g.errf(r.ID, "cannot translate node #%d: %s has no init", r.ID, text)
 		}
 		return slot, info.llvm, nil
 	}
@@ -73,8 +78,18 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	if initSym == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: %s has no init", r.ID, text)
 	}
+	if err := g.callNewInit(r, slot, initSym, params); err != nil {
+		return "", "", err
+	}
+	return slot, info.llvm, nil
+}
+
+// callNewInit passes the storage and the evaluated constructor arguments to one
+// init method. The instance document has already been planned, so its symbol
+// and parameter types are final.
+func (g *generator) callNewInit(r willc.Record, slot, initSym string, params []string) error {
 	if result := g.sigs[initSym]; result != "" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: an init returning %s is not lowered yet", r.ID, result)
+		return g.errf(r.ID, "cannot translate node #%d: an init returning %s is not lowered yet", r.ID, result)
 	}
 	parts := []string{"ptr " + slot}
 	for i, a := range g.callArgs(r) {
@@ -85,11 +100,11 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 		var err error
 		parts, err = g.callArgParts(parts, r, i, a, paramType, false)
 		if err != nil {
-			return "", "", err
+			return err
 		}
 	}
 	fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(initSym), strings.Join(parts, ", "))
-	return slot, info.llvm, nil
+	return nil
 }
 
 // constructImportedNew builds a value whose struct is declared in another

@@ -66,7 +66,7 @@
 #66 type parent=#65 pos="program.will:36:13" text="Array<i32>" kind=named arg=#67
 #67 type parent=#66 pos="program.will:36:19" text="i32" kind=scalar
 #68 new parent=#65 pos="program.will:36:26" type="Array<i32>" arg=#69
-#69 lit parent=#68 pos="program.will:36:41" kind=int text="0" type="i32"
+#69 lit parent=#68 pos="program.will:36:41" kind=int text="0" type="usize"
 #70 var parent=#64 pos="program.will:37:5" text="total" type="i32"
 #71 type parent=#70 pos="program.will:37:16" text="i32" kind=scalar
 #72 lit parent=#70 pos="program.will:37:22" kind=int text="0" type="i32"

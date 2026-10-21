@@ -2,6 +2,7 @@ package gen
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/will-lang/will/internal/willc"
@@ -55,11 +56,25 @@ func substituteText(text string, names, args []string) string {
 }
 
 // planInstances creates one specialized document for every distinct generic
-// call. The instance is emitted after the ordinary documents; calls may forward
-// reference it.
+// call. A method instance may itself call another generic method or build a
+// container with a parameterized init, so planning repeats until no document
+// adds a new instance.
 func (g *generator) planInstances() {
 	seen := map[string]bool{}
-	base := len(g.docs)
+	for {
+		base := len(g.docs)
+		g.planCallInstances(base, seen)
+		g.planMethodInstances(base, seen)
+		g.planInitInstances(base, seen)
+		if len(g.docs) == base {
+			return
+		}
+	}
+}
+
+// planCallInstances creates the free generic function instances named by the
+// current documents.
+func (g *generator) planCallInstances(base int, seen map[string]bool) {
 	for i := 0; i < base; i++ {
 		d := g.docs[i]
 		for _, r := range d.recs {
@@ -98,13 +113,12 @@ func (g *generator) planInstances() {
 			g.docs = append(g.docs, newDocState(doc))
 		}
 	}
-	g.planMethodInstances(base, seen)
-	g.planInitInstances(base, seen)
 }
 
 // planInitInstances creates the init method of a generic struct for every
 // concrete type that a new expression constructs. A generic init is not a
-// method call, so the method-call scan cannot find it.
+// method call, so the method-call scan cannot find it. The declaration may live
+// in the imported package, so the helper resolves both sides of the type text.
 func (g *generator) planInitInstances(base int, seen map[string]bool) {
 	for i := 0; i < base; i++ {
 		d := g.docs[i]
@@ -123,17 +137,16 @@ func (g *generator) planInitInstances(base int, seen map[string]bool) {
 					g.ifaceDecl[fieldText(decl, "text")] = decl.ID
 				}
 			}
-			fn, names, args, ok := g.initInstance(d, r)
+			def, fn, local, names, args, ok := g.initDeclForNew(d, r)
 			if !ok {
 				continue
 			}
-			name, _, _ := splitGenericType(fieldText(r, "type"))
-			key := d.path + "|" + name + "|" + fieldText(fn, "text") + "|" + strings.Join(args, ",")
+			key := def.path + "|" + local + "|init|" + strings.Join(args, ",")
 			if seen[key] {
 				continue
 			}
 			seen[key] = true
-			doc, ok := g.cloneFuncInstance(d, fn, names, args, "")
+			doc, ok := g.cloneFuncInstance(def, fn, names, args, "")
 			if !ok {
 				continue
 			}
@@ -142,68 +155,26 @@ func (g *generator) planInitInstances(base int, seen map[string]bool) {
 	}
 }
 
-// initInstance finds the generic init declaration a new expression needs.
-func (g *generator) initInstance(d *docState, r willc.Record) (willc.Record, []string, []string, bool) {
-	name, args, ok := splitGenericType(fieldText(r, "type"))
-	if !ok {
-		return willc.Record{}, nil, nil, false
-	}
-	var params []string
-	for _, decl := range d.recs {
-		if decl.Kind == "struct" && fieldText(decl, "text") == name {
-			params = g.typeParamNamesIn(d, decl)
-			break
-		}
-	}
-	if len(params) != len(args) {
-		return willc.Record{}, nil, nil, false
-	}
-	for _, f := range d.recs {
-		if f.Kind != "func" || fieldText(f, "text") != "init" {
-			continue
-		}
-		recv := receiverOfIn(d, f.ID)
-		if recv == nil {
-			continue
-		}
-		declName, declArgs, ok := splitGenericType(fieldText(*recv, "type"))
-		if !ok || declName != name || len(declArgs) != len(params) {
-			continue
-		}
-		generic := false
-		for _, a := range declArgs {
-			if contains(params, a) {
-				generic = true
-			}
-		}
-		if !generic {
-			continue
-		}
-		return f, declArgs, args, true
-	}
-	return willc.Record{}, nil, nil, false
-}
-
 // initForNew predicts the symbol and substituted parameter types of the init
 // instance a new expression calls. The instance document itself is planned
-// separately, before lowering.
+// separately, before lowering. The declaration may be in another package.
 func (g *generator) initForNew(d *docState, r willc.Record) (string, []string, bool) {
-	fn, names, args, ok := g.initInstance(d, r)
+	def, fn, local, names, args, ok := g.initDeclForNew(d, r)
 	if !ok {
 		return "", nil, false
 	}
-	name, _, _ := splitGenericType(fieldText(r, "type"))
 	subst := make(map[string]string, len(names))
 	for i, n := range names {
 		subst[n] = args[i]
 	}
 	var params []string
-	for _, p := range d.recs {
+	for _, p := range def.recs {
 		if p.Kind == "param" && refField(p, "parent") == fn.ID {
-			params = append(params, substituteTypeText(fieldText(p, "type"), subst))
+			text := substituteTypeText(fieldText(p, "type"), subst)
+			params = append(params, g.qualifyImportedType(def.path, text))
 		}
 	}
-	return qualify(d.path, structInstanceKey(name, args)+".init"), params, true
+	return qualify(def.path, structInstanceKey(local, args)+".init"), params, true
 }
 
 // typeParamNamesIn returns the type parameter names declared by one struct.
@@ -349,6 +320,17 @@ func (g *generator) cloneFuncInstance(d *docState, fn willc.Record, names, args 
 			if isTypeText && (v.Kind == willc.TextValue || v.Kind == willc.WordValue) {
 				v.Text = substituteTypeText(v.Text, subst)
 			}
+			if f.Name == "field" && v.Kind == willc.TextValue {
+				// Aggregate literals keep their field value as name=#id inside
+				// one text field. The id must follow the cloned records.
+				if fieldName, id, ok := splitAggregateField(v.Text); ok {
+					next, found := remap[id]
+					if !found {
+						return nil, false
+					}
+					v.Text = fieldName + "=#" + strconv.Itoa(next)
+				}
+			}
 			rec.Fields = append(rec.Fields, willc.Field{Name: f.Name, Value: v})
 		}
 		if src.ID == fn.ID && mangled != "" {
@@ -416,7 +398,11 @@ func (g *generator) methodInstance(r willc.Record) (genericMethodCall, bool) {
 			call.doc = g.cur
 			return call, true
 		}
-		return genericMethodCall{}, false
+	}
+	// The receiver may be written without a package prefix inside a cloned
+	// instance document. Qualify it before looking for the declaration.
+	if !strings.Contains(recvName, ".") {
+		recvName = qualify(g.pkg, recvName)
 	}
 	doc, local, ok := g.genericStructDoc(recvName)
 	if !ok {

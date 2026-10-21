@@ -198,6 +198,9 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 		case "Len":
 			return length, "usize", nil
 		case "Clear":
+			if err := g.releaseContainerEntries(data, length, entry, []string{k, v}); err != nil {
+				return "", "", err
+			}
 			fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", lenPtr)
 			return "", "", nil
 		case "Has":
@@ -213,12 +216,12 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 			if len(args) != 1 {
 				return "", "", g.errf(r.ID, "cannot translate node #%d: Get takes one key", r.ID)
 			}
-			return g.mapGet(r, "Option<"+v+">", entry, kt, vt, data, length, args[0])
+			return g.mapGet(r, "Option<"+v+">", v, entry, kt, vt, data, length, args[0])
 		case "Set":
 			if len(args) != 2 {
 				return "", "", g.errf(r.ID, "cannot translate node #%d: Set takes a key and a value", r.ID)
 			}
-			if err := g.mapSet(r, entry, entrySize, kt, dataPtr, lenPtr, capPtr, args[0], args[1]); err != nil {
+			if err := g.mapSet(r, entry, entrySize, kt, v, dataPtr, lenPtr, capPtr, args[0], args[1]); err != nil {
 				return "", "", err
 			}
 			return "", "", nil
@@ -226,7 +229,7 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 			if len(args) != 1 {
 				return "", "", g.errf(r.ID, "cannot translate node #%d: Delete takes one key", r.ID)
 			}
-			return g.mapDelete(r, entry, entrySize, kt, dataPtr, lenPtr, args[0])
+			return g.mapDelete(r, entry, entrySize, kt, k, v, dataPtr, lenPtr, args[0])
 		case "Keys", "Values":
 			field := 0
 			elemText := k
@@ -249,6 +252,9 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 		case "Len":
 			return length, "usize", nil
 		case "Clear":
+			if err := g.releaseContainerEntries(data, length, et, []string{elem}); err != nil {
+				return "", "", err
+			}
 			fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", lenPtr)
 			return "", "", nil
 		case "Has":
@@ -269,7 +275,7 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 			if len(args) != 1 {
 				return "", "", g.errf(r.ID, "cannot translate node #%d: Delete takes one value", r.ID)
 			}
-			return g.setDelete(r, et, entrySize, dataPtr, lenPtr, args[0])
+			return g.setDelete(r, et, elem, entrySize, dataPtr, lenPtr, args[0])
 		}
 		return "", "", g.errf(r.ID, "cannot translate node #%d: Set.%s is not lowered yet", r.ID, name)
 	}
@@ -405,12 +411,19 @@ func (g *generator) storeValueAt(dst string, id int) error {
 		if srcType != typ {
 			return g.errf(id, "cannot translate node #%d: the value needs %s", id, typ)
 		}
-		g.copyValue(src, dst, typ)
-		return nil
+		text, err := g.willTypeText(id)
+		if err != nil {
+			return err
+		}
+		return g.cloneOwnedValue(src, dst, text)
 	}
 	value, err := g.value(id)
 	if err != nil {
 		return err
+	}
+	if text, err := g.willTypeText(id); err == nil && isRcText(text) && !isWeakText(text) {
+		g.needRcDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
 	}
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, dst)
 	return nil
@@ -498,7 +511,7 @@ func (g *generator) emitEntryCopy(entry, src, dst, length string) {
 }
 
 // mapSet stores a value under a key, replacing an existing entry.
-func (g *generator) mapSet(r willc.Record, entry string, entrySize int, keyLLVM, dataPtr, lenPtr, capPtr string, keyID, valueID int) error {
+func (g *generator) mapSet(r willc.Record, entry string, entrySize int, keyLLVM, valueText, dataPtr, lenPtr, capPtr string, keyID, valueID int) error {
 	data := g.load("ptr", dataPtr)
 	length := g.load("i64", lenPtr)
 	found, idx, err := g.findMapKey(entry, keyLLVM, data, length, keyID)
@@ -516,6 +529,9 @@ func (g *generator) mapSet(r willc.Record, entry string, entrySize int, keyLLVM,
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", entryPtr, entry, data, idx)
 	vPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", vPtr, entry, entryPtr)
+	if err := g.releaseOwnedValue(vPtr, valueText); err != nil {
+		return err
+	}
 	if err := g.storeValueAt(vPtr, valueID); err != nil {
 		return err
 	}
@@ -546,14 +562,19 @@ func (g *generator) mapSet(r willc.Record, entry string, entrySize int, keyLLVM,
 }
 
 // mapDelete removes one entry and reports whether it existed.
-func (g *generator) mapDelete(r willc.Record, entry string, entrySize int, keyLLVM, dataPtr, lenPtr string, keyID int) (string, string, error) {
+func (g *generator) mapDelete(r willc.Record, entry string, entrySize int, keyLLVM, keyText, valueText, dataPtr, lenPtr string, keyID int) (string, string, error) {
 	data := g.load("ptr", dataPtr)
 	length := g.load("i64", lenPtr)
 	found, idx, err := g.findMapKey(entry, keyLLVM, data, length, keyID)
 	if err != nil {
 		return "", "", err
 	}
-	return g.deleteEntry(entry, entrySize, found, idx, dataPtr, lenPtr, data, length)
+	return g.deleteEntry(entry, entrySize, found, idx, dataPtr, lenPtr, data, length, func(entryPtr string) error {
+		if err := g.releaseOwnedValue(g.entryField(entry, entryPtr, 0), keyText); err != nil {
+			return err
+		}
+		return g.releaseOwnedValue(g.entryField(entry, entryPtr, 1), valueText)
+	})
 }
 
 // setAdd adds one value and reports whether it was new.
@@ -596,19 +617,22 @@ func (g *generator) setAdd(r willc.Record, elem string, entrySize int, dataPtr, 
 }
 
 // setDelete removes one value and reports whether it existed.
-func (g *generator) setDelete(r willc.Record, elem string, entrySize int, dataPtr, lenPtr string, valueID int) (string, string, error) {
+func (g *generator) setDelete(r willc.Record, elem, elemText string, entrySize int, dataPtr, lenPtr string, valueID int) (string, string, error) {
 	data := g.load("ptr", dataPtr)
 	length := g.load("i64", lenPtr)
 	found, idx, err := g.findSetValue(elem, data, length, valueID)
 	if err != nil {
 		return "", "", err
 	}
-	return g.deleteEntry(elem, entrySize, found, idx, dataPtr, lenPtr, data, length)
+	return g.deleteEntry(elem, entrySize, found, idx, dataPtr, lenPtr, data, length, func(entryPtr string) error {
+		return g.releaseOwnedValue(entryPtr, elemText)
+	})
 }
 
 // deleteEntry shifts the entries after idx down by one and returns the found
-// flag.
-func (g *generator) deleteEntry(entry string, entrySize int, found, idx, dataPtr, lenPtr, data, length string) (string, string, error) {
+// flag. Release runs before the shift, while the removed entry is still in
+// place.
+func (g *generator) deleteEntry(entry string, entrySize int, found, idx, dataPtr, lenPtr, data, length string, release func(string) error) (string, string, error) {
 	g.labels++
 	n := g.labels
 	del := fmt.Sprintf("del.yes.%d", n)
@@ -616,6 +640,11 @@ func (g *generator) deleteEntry(entry string, entrySize int, found, idx, dataPtr
 	done := fmt.Sprintf("del.done.%d", n)
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", found, del, miss)
 	g.out.WriteString(del + ":\n")
+	entryPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", entryPtr, entry, data, idx)
+	if err := release(entryPtr); err != nil {
+		return "", "", err
+	}
 	tail := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", tail, idx)
 	remaining := g.newTmp()
@@ -641,7 +670,7 @@ func (g *generator) deleteEntry(entry string, entrySize int, found, idx, dataPtr
 }
 
 // mapGet writes the found value or None into the Option slot of the call.
-func (g *generator) mapGet(r willc.Record, text, entry, keyLLVM, valueLLVM, data, length string, keyID int) (string, string, error) {
+func (g *generator) mapGet(r willc.Record, text, valueText, entry, keyLLVM, valueLLVM, data, length string, keyID int) (string, string, error) {
 	adt, ok := g.adtType(text)
 	if !ok || adt.llvm == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, text)
@@ -670,11 +699,8 @@ func (g *generator) mapGet(r willc.Record, text, entry, keyLLVM, valueLLVM, data
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", valuePtr, entry, entryPtr)
 	payloadPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payloadPtr, adt.llvm, slot, adt.payloadIndex)
-	if isAggregateType(valueLLVM) {
-		g.copyValue(valuePtr, payloadPtr, valueLLVM)
-	} else {
-		v := g.load(valueLLVM, valuePtr)
-		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", valueLLVM, v, payloadPtr)
+	if err := g.cloneOwnedValue(valuePtr, payloadPtr, valueText); err != nil {
+		return "", "", err
 	}
 	fmt.Fprintf(g.out, "  br label %%%s\n", done)
 	g.out.WriteString(miss + ":\n")
@@ -721,7 +747,9 @@ func (g *generator) mapArray(r willc.Record, entry string, entrySize int, data, 
 	g.out.WriteString(ready + ":\n")
 	newData = g.newTmp()
 	fmt.Fprintf(g.out, "  %s = phi ptr [ null, %%%s ], [ %s, %%%s ]\n", newData, zero, allocated, alloc)
-	g.emitFieldCopy(entry, elemLLVM, data, newData, length, field)
+	if err := g.emitFieldCopy(entry, elemLLVM, elemText, data, newData, length, field); err != nil {
+		return "", "", err
+	}
 	dataField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataField, slot)
 	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", newData, dataField)
@@ -735,8 +763,10 @@ func (g *generator) mapArray(r willc.Record, entry string, entrySize int, data, 
 	return g.load("{ ptr, i64, i64 }", slot), "Array<" + elemText + ">", nil
 }
 
-// emitFieldCopy copies one field of every entry into a flat array.
-func (g *generator) emitFieldCopy(entry, elem, src, dst, length string, field int) {
+// emitFieldCopy copies one field of every entry into a flat array. The copy is
+// owned by the new array, so an rc field gains a reference and a str or nested
+// container gets its own buffer.
+func (g *generator) emitFieldCopy(entry, elem, elemText, src, dst, length string, field int) error {
 	g.labels++
 	n := g.labels
 	pre := fmt.Sprintf("fld.pre.%d", n)
@@ -761,15 +791,13 @@ func (g *generator) emitFieldCopy(entry, elem, src, dst, length string, field in
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", fieldPtr, entry, entryPtr, field)
 	dstPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", dstPtr, elem, dst, i)
-	if isAggregateType(elem) {
-		g.copyValue(fieldPtr, dstPtr, elem)
-	} else {
-		v := g.load(elem, fieldPtr)
-		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elem, v, dstPtr)
+	if err := g.cloneOwnedValue(fieldPtr, dstPtr, elemText); err != nil {
+		return err
 	}
 	fmt.Fprintf(g.out, "  br label %%%s\n", next)
 	g.out.WriteString(next + ":\n")
 	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", nextValue, i)
 	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
 	g.out.WriteString(done + ":\n")
+	return nil
 }

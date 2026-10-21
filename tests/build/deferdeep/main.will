@@ -1,0 +1,41 @@
+struct Packet {
+    name: str
+    values: Array<i32>
+}
+
+func ShowPacket(p: Packet) {
+    print(p.name, " ", p.values.Len(), " ", p.values.Get(0usize), "\n")
+}
+
+func ShowMap(m: Map<str, i32>) {
+    print(m.Len(), "\n")
+}
+
+func ShowNested(xs: Array<Array<i32>>) {
+    print(xs.Len(), " ", xs.Get(0usize).Len(), "\n")
+}
+
+func main() -> i32 {
+    var p: Packet = Packet {
+        name: "old" + "!",
+        values: new Array<i32>(1usize),
+    }
+    p.values.Push(1)
+    defer ShowPacket(p)
+    p.name = "new" + "?"
+    p.values.Push(2)
+
+    var m: Map<str, i32> = new Map<str, i32>(0usize)
+    m.Set("first", 1)
+    defer ShowMap(m)
+    m.Set("second", 2)
+
+    var inner: Array<i32> = new Array<i32>(0usize)
+    inner.Push(7)
+    var xs: Array<Array<i32>> = new Array<Array<i32>>(0usize)
+    xs.Push(inner)
+    defer ShowNested(xs)
+    inner.Push(8)
+
+    return 0
+}

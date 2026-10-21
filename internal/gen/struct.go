@@ -117,6 +117,20 @@ func (g *generator) buildStructs() {
 		g.ensureStruct(r.ID)
 	}
 	g.planStructInstances()
+	// A nested type text, such as the Pair inside Option<Pair<K,V>>, may not
+	// have its own type record in a cloned document. Lower every recorded type
+	// text and every call result now so its instance is emitted before the
+	// functions that use it.
+	for _, r := range g.recs {
+		switch r.Kind {
+		case "type":
+			_, _ = g.typeLLVMOf(fieldText(r, "type"))
+		case "call", "mcall":
+			if text, err := g.callResultText(r); err == nil {
+				_, _ = g.typeLLVMOf(text)
+			}
+		}
+	}
 	for _, r := range structs {
 		if g.structIsGeneric(r.ID) {
 			continue

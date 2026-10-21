@@ -23,12 +23,14 @@ type deferCapture struct {
 	id      int
 	index   int
 	llvm    string
+	text    string
 	closure bool
-	release bool
+	release string
 }
 
-// deferCall is one deferred call from the current block. A call with a frame
-// runs its thunk at block exit; a call without a thunk is the old direct path.
+// deferCall is one deferred call from the current block. The frame holds the
+// values captured at the defer statement, and the thunk runs the call at block
+// exit.
 type deferCall struct {
 	call      int
 	frame     string
@@ -57,15 +59,6 @@ func (g *generator) deferStmt(st willc.Record) error {
 	}
 	if len(g.defers) == 0 {
 		return g.errf(st.ID, "cannot translate node #%d: defer has no block", st.ID)
-	}
-	// A blocking C link queues a task step while it is lowered. That step has
-	// to be emitted before the document ends, so keep this rare shape on the
-	// direct path instead of moving it into a thunk written afterwards.
-	if call.Kind == "mcall" && g.isCLink(call) &&
-		g.linkBlock[fieldText(call, "text")] {
-		last := len(g.defers) - 1
-		g.defers[last] = append(g.defers[last], deferCall{call: callID})
-		return nil
 	}
 	deferred, request, err := g.captureDefer(st, call)
 	if err != nil {
@@ -162,7 +155,22 @@ func (g *generator) captureDefer(st willc.Record, call willc.Record) (deferCall,
 			if srcType != typ {
 				return deferCall{}, deferRequest{}, g.errf(id, "cannot translate node #%d: the defer argument needs %s", id, typ)
 			}
-			g.copyValue(src, field, typ)
+			text, _ := g.willTypeText(id)
+			capture.text = text
+			literalStr := false
+			if r, ok := g.recs[id]; ok && r.Kind == "lit" && fieldText(r, "kind") == "str" {
+				literalStr = true
+			}
+			if literalStr {
+				// Literal bytes live for the whole program, so the header copy
+				// is already a stable snapshot and needs no release.
+				g.copyValue(src, field, typ)
+			} else {
+				if err := g.cloneOwnedValue(src, field, text); err != nil {
+					return deferCall{}, deferRequest{}, err
+				}
+				capture.release = "deep"
+			}
 		} else {
 			value, err := g.value(id)
 			if err != nil {
@@ -174,7 +182,8 @@ func (g *generator) captureDefer(st willc.Record, call willc.Record) (deferCall,
 				// exits, so the frame owns one reference of its own.
 				g.needRcDecl = true
 				fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-				capture.release = true
+				capture.text = text
+				capture.release = "rc"
 			}
 		}
 		fields = append(fields, capture)
@@ -316,40 +325,33 @@ func (g *generator) runDefers(lowest int) error {
 // lowerDeferredCall runs one captured call and releases the frame's owned
 // references. A direct call record without a thunk is the old fallback.
 func (g *generator) lowerDeferredCall(call deferCall) error {
-	if call.thunk == "" {
-		return g.lowerDirectDeferredCall(call.call)
-	}
 	fmt.Fprintf(g.out, "  call void @%s(ptr %s)\n", llvmSymbol(call.thunk), call.frame)
 	for _, field := range call.fields {
-		if !field.release {
+		if field.release == "" {
 			continue
 		}
-		g.needRcDecl = true
 		ptr := g.deferFieldPtr(deferSnapshot{
 			frame:     call.frame,
 			frameType: call.frameType,
 			index:     field.index,
 			llvm:      field.llvm,
 		})
-		value := g.load("i64", ptr)
-		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", value)
+		switch field.release {
+		case "rc":
+			g.needRcDecl = true
+			value := g.load("i64", ptr)
+			fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", value)
+		case "deep":
+			if err := g.releaseOwnedValue(ptr, field.text); err != nil {
+				return err
+			}
+		}
 	}
 	if call.frame != "null" {
 		g.needAllocDecl = true
 		fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", call.frame)
 	}
 	return nil
-}
-
-// lowerDirectDeferredCall is the pre-snapshot path. It remains for a call
-// shape whose values could not be captured.
-func (g *generator) lowerDirectDeferredCall(id int) error {
-	r, ok := g.recs[id]
-	if !ok {
-		return g.errf(id, "cannot translate node #%d: the deferred call is missing", id)
-	}
-	_, _, err := g.callExpr(r)
-	return err
 }
 
 // containsTry reports whether a statement subtree holds a ? expression. The

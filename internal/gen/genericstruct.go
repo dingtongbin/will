@@ -112,6 +112,9 @@ func (g *generator) structInstanceFromText(text string) (string, bool) {
 		return info.llvm, true
 	}
 	doc, local, ok := g.genericStructDoc(name)
+	if !ok && !strings.Contains(name, ".") {
+		doc, local, ok = g.genericStructDoc(qualify(g.pkg, name))
+	}
 	if !ok {
 		return "", false
 	}
