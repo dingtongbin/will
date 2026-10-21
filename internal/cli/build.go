@@ -497,10 +497,14 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
 	}
-	inputs, err := packageInputs(opts)
+	inputs, cleanup, err := packageInputs(opts)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
+	}
+	defer cleanup()
+	if hasBitcode(inputs) {
+		clangArgsList = append(clangArgsList, "-flto")
 	}
 	clangArgsList = append(clangArgsList, inputs...)
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
@@ -625,15 +629,16 @@ func compileArgs(opts buildOptions) []string {
 // packageInputs collects the C sources of the built module graph and the
 // external libraries its will.mod names. Package C sources come before the
 // named libraries, so a library can satisfy a symbol the sources call.
-func packageInputs(opts buildOptions) ([]string, error) {
+func packageInputs(opts buildOptions) ([]string, func(), error) {
+	noop := func() {}
 	if info, err := os.Stat(opts.path); err != nil || !info.IsDir() {
-		return nil, nil
+		return nil, noop, nil
 	}
 	b := pkg.Load(opts.path)
 	if b.Err != nil {
-		return nil, b.Err
+		return nil, noop, b.Err
 	}
-	var out []string
+	var sources []string
 	seen := map[string]bool{}
 	for _, p := range b.Packages {
 		err := filepath.Walk(p.Dir, func(path string, info os.FileInfo, err error) error {
@@ -645,12 +650,58 @@ func packageInputs(opts buildOptions) ([]string, error) {
 			}
 			if !seen[path] {
 				seen[path] = true
-				out = append(out, path)
+				sources = append(sources, path)
 			}
 			return nil
 		})
 		if err != nil {
-			return nil, err
+			return nil, noop, err
+		}
+	}
+	var out []string
+	cleanup := noop
+	if len(sources) != 0 {
+		clang, err := toolchain.FindClang()
+		if err != nil {
+			return nil, noop, err
+		}
+		dir, err := os.MkdirTemp("", "will-c-bc")
+		if err != nil {
+			return nil, noop, err
+		}
+		cleanup = func() { os.RemoveAll(dir) }
+		root, rootErr := runtimeRoot()
+		for i, source := range sources {
+			bc := filepath.Join(dir, fmt.Sprintf("c%d.bc", i))
+			args := []string{"-emit-llvm", "-c", source, "-o", bc}
+			args = append(args, "-I", filepath.Dir(source))
+			if rootErr == nil {
+				args = append(args, "-I", filepath.Join(root, "include"))
+			}
+			for _, include := range filepath.SplitList(os.Getenv("WILL_C_INCLUDE")) {
+				if include != "" {
+					args = append(args, "-I", include)
+				}
+			}
+			if opts.opt != "" {
+				args = append(args, opts.opt)
+			}
+			if opts.debug {
+				args = append(args, "-g")
+			}
+			if opts.lib {
+				args = append(args, "-fPIC")
+			}
+			if opts.target != "" {
+				args = append(args, "--target="+opts.target)
+			}
+			cmd := exec.Command(clang.Path, args...)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				cleanup()
+				return nil, noop, fmt.Errorf("%s: %v\n%s", source, err, output)
+			}
+			out = append(out, bc)
 		}
 	}
 	for _, link := range b.Links {
@@ -662,7 +713,18 @@ func packageInputs(opts buildOptions) ([]string, error) {
 		}
 		out = append(out, "-l"+link)
 	}
-	return out, nil
+	return out, cleanup, nil
+}
+
+// hasBitcode reports whether the package inputs contain LLVM bitcode, which
+// is what asks the driver to run the LTO backend.
+func hasBitcode(inputs []string) bool {
+	for _, input := range inputs {
+		if strings.HasSuffix(input, ".bc") {
+			return true
+		}
+	}
+	return false
 }
 
 func targetName(target string) string {
@@ -703,10 +765,14 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
 	}
-	inputs, err := packageInputs(opts)
+	inputs, cleanup, err := packageInputs(opts)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
+	}
+	defer cleanup()
+	if hasBitcode(inputs) {
+		clangArgsList = append(clangArgsList, "-flto")
 	}
 	clangArgsList = append(clangArgsList, inputs...)
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
