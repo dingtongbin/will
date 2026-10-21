@@ -1,0 +1,15 @@
+func Work(x: i32) -> i32 {
+    return x * 2
+}
+
+func main() -> i32 {
+    var a: i32 = 0
+    var b: i32 = 0
+    parallel {
+        var first: Task<i32> = spawn Work(1)
+        var second: Task<i32> = spawn Work(2)
+        a = first.Join()!
+        b = second.Join()!
+    }
+    return a + b - 6
+}

@@ -48,6 +48,12 @@ func parseADT(text string) (string, []string, bool) {
 // type. The unit type has no value and returns "".
 func (g *generator) typeLLVMOf(text string) (string, bool) {
 	text = g.canonicalTypeText(text)
+	if _, ok := chanElemText(text); ok {
+		return "ptr", true
+	}
+	if _, ok := taskElemText(text); ok {
+		return "ptr", true
+	}
 	if typ, _, ok := llvmScalar(text); ok {
 		return typ, true
 	}

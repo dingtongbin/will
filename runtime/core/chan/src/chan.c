@@ -12,8 +12,18 @@
 
 #include "../../../include/willrt.h"
 
+#include <stdatomic.h>
 #include <stdint.h>
 #include <string.h>
+
+/* A select waits on one process-wide condition. Every channel state change
+   bumps the epoch before it broadcasts, so a select cannot miss a wake between
+   its arm scan and its wait. */
+static atomic_int willrt_chan_select_state;
+static atomic_uint willrt_chan_select_epoch;
+static atomic_int willrt_chan_select_waiters;
+static willrt_os_mutex willrt_chan_select_lock;
+static willrt_os_cond willrt_chan_select_cond;
 
 struct willrt_chan {
     willrt_os_mutex lock;
@@ -30,6 +40,57 @@ struct willrt_chan {
 
 static int64_t willrt_chan_step(void) {
     return INT64_C(10) * INT64_C(1000000);
+}
+
+static void willrt_chan_select_init(void) {
+    int expected = 0;
+
+    if (atomic_compare_exchange_strong(&willrt_chan_select_state, &expected, 1)) {
+        willrt_os_mutex_init(&willrt_chan_select_lock);
+        willrt_os_cond_init(&willrt_chan_select_cond);
+        atomic_store(&willrt_chan_select_state, 2);
+        return;
+    }
+    while (atomic_load(&willrt_chan_select_state) != 2) {
+        willrt_os_thread_yield();
+    }
+}
+
+static void willrt_chan_wake_select(void) {
+    if (atomic_load(&willrt_chan_select_state) != 2) {
+        return;
+    }
+    atomic_fetch_add(&willrt_chan_select_epoch, 1);
+    if (atomic_load(&willrt_chan_select_waiters) == 0) {
+        return;
+    }
+    willrt_os_mutex_lock(&willrt_chan_select_lock);
+    willrt_os_cond_broadcast(&willrt_chan_select_cond);
+    willrt_os_mutex_unlock(&willrt_chan_select_lock);
+}
+
+static uint32_t willrt_chan_select_epoch_now(void) {
+    willrt_chan_select_init();
+    return atomic_load(&willrt_chan_select_epoch);
+}
+
+/* willrt_chan_wait_ns returns the slice a channel wait may sleep. The slice is
+   short enough to observe cancellation and the task deadline, but the wait is
+   a condition wait, so an idle channel does not consume a processor. */
+static int64_t willrt_chan_wait_ns(void) {
+    int64_t slice = willrt_chan_step();
+    int64_t deadline = willrt_task_deadline();
+
+    if (deadline != 0) {
+        int64_t left = deadline - willrt_now_ns();
+        if (left <= 0) {
+            return 0;
+        }
+        if (left < slice) {
+            slice = left;
+        }
+    }
+    return slice;
 }
 
 static int32_t willrt_chan_canceled(void) {
@@ -69,6 +130,7 @@ willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio) {
     chan->elem = elem;
     chan->cap = cap;
     chan->prio = prio;
+    willrt_chan_select_init();
     willrt_os_mutex_init(&chan->lock);
     willrt_os_cond_init(&chan->not_empty);
     willrt_os_cond_init(&chan->not_full);
@@ -94,6 +156,9 @@ int32_t willrt_chan_try_send(willrt_chan* chan, const void* value) {
         willrt_os_cond_signal(&chan->not_empty);
     }
     willrt_os_mutex_unlock(&chan->lock);
+    if (result == WILLRT_OK) {
+        willrt_chan_wake_select();
+    }
     return result;
 }
 
@@ -114,16 +179,20 @@ int32_t willrt_chan_send(willrt_chan* chan, const void* value) {
             chan->count++;
             willrt_os_cond_signal(&chan->not_empty);
             willrt_os_mutex_unlock(&chan->lock);
+            willrt_chan_wake_select();
             return WILLRT_OK;
         }
-        willrt_os_mutex_unlock(&chan->lock);
         if (willrt_chan_canceled()) {
+            willrt_os_mutex_unlock(&chan->lock);
             return WILLRT_CANCELED;
         }
         if (willrt_chan_deadline_passed()) {
+            willrt_os_mutex_unlock(&chan->lock);
             return WILLRT_TIMEDOUT;
         }
-        willrt_os_sleep_ns(willrt_chan_step());
+        willrt_os_cond_timedwait(&chan->not_full, &chan->lock,
+                                 willrt_chan_wait_ns());
+        willrt_os_mutex_unlock(&chan->lock);
     }
 }
 
@@ -147,6 +216,9 @@ int32_t willrt_chan_try_recv(willrt_chan* chan, void* out) {
         result = WILLRT_EMPTY;
     }
     willrt_os_mutex_unlock(&chan->lock);
+    if (result == WILLRT_OK) {
+        willrt_chan_wake_select();
+    }
     return result;
 }
 
@@ -164,20 +236,24 @@ int32_t willrt_chan_recv(willrt_chan* chan, void* out) {
             chan->count--;
             willrt_os_cond_signal(&chan->not_full);
             willrt_os_mutex_unlock(&chan->lock);
+            willrt_chan_wake_select();
             return WILLRT_OK;
         }
         if (chan->closed) {
             willrt_os_mutex_unlock(&chan->lock);
             return WILLRT_CLOSED;
         }
-        willrt_os_mutex_unlock(&chan->lock);
         if (willrt_chan_canceled()) {
+            willrt_os_mutex_unlock(&chan->lock);
             return WILLRT_CANCELED;
         }
         if (willrt_chan_deadline_passed()) {
+            willrt_os_mutex_unlock(&chan->lock);
             return WILLRT_TIMEDOUT;
         }
-        willrt_os_sleep_ns(willrt_chan_step());
+        willrt_os_cond_timedwait(&chan->not_empty, &chan->lock,
+                                 willrt_chan_wait_ns());
+        willrt_os_mutex_unlock(&chan->lock);
     }
 }
 
@@ -190,6 +266,7 @@ void willrt_chan_close(willrt_chan* chan) {
     willrt_os_cond_broadcast(&chan->not_empty);
     willrt_os_cond_broadcast(&chan->not_full);
     willrt_os_mutex_unlock(&chan->lock);
+    willrt_chan_wake_select();
 }
 
 /* Select checks the arms in array order, never at random. It first tries every
@@ -208,6 +285,7 @@ int32_t willrt_select(willrt_arm* arms, size_t n) {
     for (;;) {
         int32_t default_index = -1;
         int32_t timeout_index = -1;
+        uint32_t epoch = willrt_chan_select_epoch_now();
 
         for (i = 0; i < n; i++) {
             willrt_arm* arm = &arms[i];
@@ -248,6 +326,36 @@ int32_t willrt_select(willrt_arm* arms, size_t n) {
             willrt_select_last = WILLRT_TIMEDOUT;
             return WILLRT_TIMEDOUT;
         }
-        willrt_os_sleep_ns(willrt_chan_step());
+        {
+            int64_t wait = willrt_chan_step();
+            int64_t now = willrt_now_ns();
+
+            if (timeout_index >= 0) {
+                int64_t left = arms[timeout_index].ns - now;
+                if (left <= 0) {
+                    continue;
+                }
+                if (left < wait) {
+                    wait = left;
+                }
+            }
+            if (willrt_task_deadline() != 0) {
+                int64_t left = willrt_task_deadline() - now;
+                if (left <= 0) {
+                    continue;
+                }
+                if (left < wait) {
+                    wait = left;
+                }
+            }
+            willrt_os_mutex_lock(&willrt_chan_select_lock);
+            if (atomic_load(&willrt_chan_select_epoch) == epoch) {
+                atomic_fetch_add(&willrt_chan_select_waiters, 1);
+                willrt_os_cond_timedwait(&willrt_chan_select_cond,
+                                         &willrt_chan_select_lock, wait);
+                atomic_fetch_sub(&willrt_chan_select_waiters, 1);
+            }
+            willrt_os_mutex_unlock(&willrt_chan_select_lock);
+        }
     }
 }

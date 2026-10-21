@@ -59,6 +59,7 @@ enum { WILLRT_REGION_DEPTH = 64 };
 static _Thread_local struct willrt_task* willrt_task_self;
 static _Thread_local struct willrt_region willrt_regions[WILLRT_REGION_DEPTH];
 static _Thread_local int willrt_region_depth;
+static _Thread_local int64_t willrt_main_deadline;
 
 static atomic_int willrt_task_globals_state;
 static atomic_int willrt_tasks_live;
@@ -385,7 +386,30 @@ int32_t willrt_task_canceled(void) {
 int64_t willrt_task_deadline(void) {
     struct willrt_task* task = willrt_task_self;
 
-    return task == NULL ? 0 : task->deadline;
+    return task == NULL ? willrt_main_deadline : task->deadline;
+}
+
+int64_t willrt_task_enter_deadline(int64_t duration_ns) {
+    struct willrt_task* task = willrt_task_self;
+    int64_t previous = task == NULL ? willrt_main_deadline : task->deadline;
+    int64_t next = duration_ns <= 0 ? 0 : willrt_now_ns() + duration_ns;
+
+    if (task == NULL) {
+        willrt_main_deadline = next;
+    } else {
+        task->deadline = next;
+    }
+    return previous;
+}
+
+void willrt_task_exit_deadline(int64_t previous) {
+    struct willrt_task* task = willrt_task_self;
+
+    if (task == NULL) {
+        willrt_main_deadline = previous;
+    } else {
+        task->deadline = previous;
+    }
 }
 
 void willrt_activity(int32_t delta) {

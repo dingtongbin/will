@@ -148,6 +148,7 @@ func (g *generator) emitAux() {
 	}
 	if g.needTaskDecl {
 		g.out.WriteString("declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)\n")
+		g.out.WriteString("declare ptr @willrt_job_new(ptr, ptr, i64, i32)\n")
 		g.out.WriteString("declare void @willrt_task_run(ptr)\n")
 		g.out.WriteString("declare i32 @willrt_join(ptr, ptr, ptr)\n")
 		g.out.WriteString("declare i32 @willrt_task_try_join(ptr, ptr, ptr)\n")
@@ -167,6 +168,8 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_region_enter()\n")
 		g.out.WriteString("declare i32 @willrt_region_exit()\n")
 		g.out.WriteString("declare i32 @willrt_lane_here()\n")
+		g.out.WriteString("declare i64 @willrt_task_enter_deadline(i64)\n")
+		g.out.WriteString("declare void @willrt_task_exit_deadline(i64)\n")
 	}
 	if g.needRcDecl {
 		g.out.WriteString("declare i64 @willrt_rc_new(ptr, i64)\n")
@@ -635,6 +638,10 @@ type generator struct {
 	needInterpDecl bool
 	// needTaskDecl records that the lowering calls the task or channel engine.
 	needTaskDecl bool
+	// parallelDepth is nonzero while lowering a parallel block. A spawn inside
+	// that block is a job, so it goes to the global job queue instead of
+	// starting a task thread.
+	parallelDepth int
 	// needTakeCDecl records that the lowering adopts a foreign C pointer.
 	needTakeCDecl bool
 	// needRcDecl records that the lowering calls the handle table.
@@ -1247,6 +1254,11 @@ func (g *generator) funcDecl(fn willc.Record) error {
 			continue
 		}
 		if _, ok := taskElemText(ptype); ok {
+			g.scope[p.ID] = "%" + pname
+			sig = append(sig, "ptr %"+pname)
+			continue
+		}
+		if _, ok := chanElemText(ptype); ok {
 			g.scope[p.ID] = "%" + pname
 			sig = append(sig, "ptr %"+pname)
 			continue
@@ -2298,6 +2310,23 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 		return false, g.deferStmt(st)
 	case "return":
 		return g.returnStmt(st, void)
+	case "deadline":
+		duration, err := g.value(refField(st, "d"))
+		if err != nil {
+			return false, err
+		}
+		g.needTaskDecl = true
+		previous := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i64 @willrt_task_enter_deadline(i64 %s)\n", previous, duration)
+		body, ok := g.recs[refField(st, "body")]
+		if !ok {
+			return false, g.errf(st.ID, "cannot translate node #%d: the deadline block is missing", st.ID)
+		}
+		if _, err := g.body(body, void); err != nil {
+			return false, err
+		}
+		fmt.Fprintf(g.out, "  call void @willrt_task_exit_deadline(i64 %s)\n", previous)
+		return false, nil
 	case "if":
 		return g.ifStmt(st, void)
 	case "for":
@@ -2337,7 +2366,14 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 		if !ok {
 			return false, g.errf(st.ID, "cannot translate node #%d: the block is missing", st.ID)
 		}
-		if _, err := g.body(body, void); err != nil {
+		if st.Kind == "parallel" {
+			g.parallelDepth++
+		}
+		_, err := g.body(body, void)
+		if st.Kind == "parallel" {
+			g.parallelDepth--
+		}
+		if err != nil {
 			return false, err
 		}
 		g.out.WriteString("  call i32 @willrt_region_exit()\n")

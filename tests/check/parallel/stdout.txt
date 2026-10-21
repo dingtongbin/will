@@ -1,0 +1,2 @@
+main.will:4:33: K0001 a parallel block cannot suspend
+    help: use spawn and Join for CPU work, or move the wait outside the block

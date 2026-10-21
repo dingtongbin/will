@@ -1,0 +1,11 @@
+func main() -> i32 {
+    var ch: chan<i32> = new chan<i32>(1)
+    parallel {
+        var item: Option<i32> = ch.Recv()
+        match item {
+            Some(_) => {}
+            None => {}
+        }
+    }
+    return 0
+}

@@ -37,6 +37,13 @@ func (g *generator) spawnStepSymbol(node int) string {
 	if name := g.spawnNames[node]; name != "" {
 		return name
 	}
+	if fn := g.outerFunc(node); fn != 0 {
+		if sym := g.cur.funcs[fn]; sym != "" {
+			name := sym + ".spawn." + strconv.Itoa(node)
+			g.spawnNames[node] = name
+			return name
+		}
+	}
 	g.spawnSeq++
 	name := qualify(g.pkg, "spawn."+strconv.Itoa(g.spawnSeq))
 	g.spawnNames[node] = name
@@ -63,14 +70,22 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	if call.Kind != "call" {
 		return "", g.errf(r.ID, "cannot translate node #%d: spawn takes a direct call", r.ID)
 	}
-	sym := g.callTargetSymbol(call)
-	if sym == "" {
-		return "", g.errf(r.ID, "cannot translate node #%d: the spawned call has no function", r.ID)
+	target, hasTarget := g.recs[refField(call, "to")]
+	indirect := hasTarget && g.isFuncValue(target)
+	sym := ""
+	if !indirect {
+		sym = g.callTargetSymbol(call)
+		if sym == "" {
+			return "", g.errf(r.ID, "cannot translate node #%d: the spawned call has no function", r.ID)
+		}
 	}
 	args := g.callArgs(call)
 	var frameTypes []string
 	var argTypes []string
 	var argTexts []string
+	if indirect {
+		frameTypes = append(frameTypes, "{ ptr, ptr }")
+	}
 	for _, a := range args {
 		typ, err := g.typeOf(a)
 		if err != nil {
@@ -93,9 +108,27 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	g.needTaskDecl = true
 	frame := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", frame, size)
+	if indirect {
+		code, env, err := g.closureCode(target)
+		if err != nil {
+			return "", err
+		}
+		closure := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 0\n", closure, frameType, frame)
+		codeField := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 0\n", codeField, closure)
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", code, codeField)
+		envField := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envField, closure)
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", env, envField)
+	}
 	for i, a := range args {
 		field := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 %d\n", field, frameType, frame, i)
+		fieldIndex := i
+		if indirect {
+			fieldIndex++
+		}
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 %d\n", field, frameType, frame, fieldIndex)
 		if isAggregateType(argTypes[i]) {
 			src, _, err := g.place(a)
 			if err != nil {
@@ -129,9 +162,14 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		lane = here
 	}
 	task := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
-		task, llvmSymbol(step), frame, size, lane)
-	fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
+	if g.parallelDepth > 0 {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new(ptr @%s, ptr %s, i64 %s, i32 0)\n",
+			task, llvmSymbol(step), frame, size)
+	} else {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
+			task, llvmSymbol(step), frame, size, lane)
+		fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
+	}
 	return task, nil
 }
 
@@ -162,6 +200,10 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	call, ok := g.recs[req.call]
 	if !ok {
 		return g.errf(req.node, "cannot translate node #%d: the spawned call is missing", req.node)
+	}
+	target, hasTarget := g.recs[refField(call, "to")]
+	if hasTarget && g.isFuncValue(target) {
+		return g.emitIndirectSpawnStep(req, call, target)
 	}
 	sym := g.callTargetSymbol(call)
 	if sym == "" {
@@ -225,6 +267,75 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	}
 	value := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call %s @%s(%s)\n", value, retLLVM, llvmSymbol(sym), strings.Join(callArgs, ", "))
+	slot := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
+	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)
+	if err := g.shareValue(slot, result); err != nil {
+		return err
+	}
+	size := g.sizeOf(retLLVM)
+	g.needTaskDecl = true
+	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, size)
+	g.out.WriteString("  ret i32 1\n}\n")
+	return nil
+}
+
+// emitIndirectSpawnStep writes a job step for a call through a function value.
+// The frame starts with the closure, so the step loads the code and environment
+// pointers before forwarding the captured arguments.
+func (g *generator) emitIndirectSpawnStep(req spawnRequest, call willc.Record, target willc.Record) error {
+	params, result, ok := funcTypeParts(g.functionValueType(target))
+	if !ok {
+		return g.errf(req.node, "cannot translate node #%d: the spawned target is not a function value", req.node)
+	}
+	args := g.callArgs(call)
+	if len(args) != len(params) {
+		return g.errf(req.node, "cannot translate node #%d: the spawned function takes %d arguments", req.node, len(params))
+	}
+	frameTypes := []string{"{ ptr, ptr }"}
+	var argTypes []string
+	for _, a := range args {
+		typ, err := g.typeOf(a)
+		if err != nil {
+			return err
+		}
+		argTypes = append(argTypes, typ)
+		frameTypes = append(frameTypes, typ)
+	}
+	frameType := "{ " + strings.Join(frameTypes, ", ") + " }"
+	fmt.Fprintf(g.out, "define i32 @%s(ptr %%frame) {\nentry:\n", llvmSymbol(req.sym))
+	closure := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 0\n", closure, frameType)
+	codePtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 0\n", codePtr, closure)
+	code := g.load("ptr", codePtr)
+	envPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envPtr, closure)
+	env := g.load("ptr", envPtr)
+	callArgs := []string{"ptr " + env}
+	for i := range args {
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n", field, frameType, i+1)
+		if isAggregateType(argTypes[i]) {
+			callArgs = append(callArgs, "ptr "+field)
+			continue
+		}
+		callArgs = append(callArgs, argTypes[i]+" "+g.load(argTypes[i], field))
+	}
+	retLLVM := ""
+	if result != "" {
+		retLLVM = g.resultLLVM(result)
+		if retLLVM == "" {
+			return g.errf(req.node, "cannot translate node #%d: result type %s is not lowered yet", req.node, result)
+		}
+	}
+	if retLLVM == "" {
+		fmt.Fprintf(g.out, "  call void %s(%s)\n", code, strings.Join(callArgs, ", "))
+		g.out.WriteString("  ret i32 1\n}\n")
+		return nil
+	}
+	value := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call %s %s(%s)\n", value, retLLVM, code, strings.Join(callArgs, ", "))
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)

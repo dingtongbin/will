@@ -1,0 +1,28 @@
+func Worker(ch: chan<i32>) -> i32 {
+    var sum: i32 = 0
+    for {
+        var item: Option<i32> = ch.Recv()
+        match item {
+            Some(value) => {
+                sum += value
+            }
+            None => {
+                break
+            }
+        }
+    }
+    return sum
+}
+
+func main() -> i32 {
+    var ch: chan<i32> = new chan<i32>(4)
+    var result: i32 = 0
+    region {
+        var worker: Task<i32> = spawn Worker(ch)
+        ch.Send(3)
+        ch.Send(4)
+        ch.Close()
+        result = worker.Join()!
+    }
+    return result - 7
+}

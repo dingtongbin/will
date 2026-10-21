@@ -280,6 +280,11 @@ int32_t willrt_lane_here(void);
 void willrt_yield(void);
 int32_t willrt_task_canceled(void);
 int64_t willrt_task_deadline(void);
+/* willrt_task_enter_deadline starts one scoped deadline and returns the
+   previous absolute deadline. willrt_task_exit_deadline restores it. A zero
+   duration means the block has no deadline. */
+int64_t willrt_task_enter_deadline(int64_t duration_ns);
+void willrt_task_exit_deadline(int64_t previous);
 void willrt_activity(int32_t delta);
 
 /* -------------------------------------------------------------------------

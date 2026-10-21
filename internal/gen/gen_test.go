@@ -1240,15 +1240,20 @@ func TestEmitEndlessLoopWithBreak(t *testing.T) {
 	}
 }
 
-func TestEmitUnsupportedNodeIsReported(t *testing.T) {
-	// A deadline needs the scoped timer path, which is not lowered yet.
+func TestEmitDeadlineScope(t *testing.T) {
 	doc := emitWillc(t, "func F() {\n    deadline 1ms {\n    }\n}\n")
-	_, err := Emit(doc)
-	if err == nil {
-		t.Fatal("an unsupported node was translated")
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
 	}
-	if !strings.Contains(err.Error(), "cannot translate node #") {
-		t.Fatalf("error = %v, want a G0001 message", err)
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		"call i64 @willrt_task_enter_deadline",
+		"call void @willrt_task_exit_deadline",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
 	}
 }
 

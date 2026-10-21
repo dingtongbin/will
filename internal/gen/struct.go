@@ -44,7 +44,7 @@ func packageOfQualified(q string) string {
 // declared in another file or package. The field types are lowered on demand,
 // so a foreign struct does not need a declaration in the current document.
 func (g *generator) structInfoByLLVM(typ string) *structInfo {
-	if info := g.byType[typ]; info != nil {
+	if info := g.byType[typ]; info != nil && info.ok {
 		return info
 	}
 	q := g.structByLLVM[typ]
@@ -60,9 +60,30 @@ func (g *generator) structInfoByLLVM(typ string) *structInfo {
 		raw = strings.TrimPrefix(raw, "struct.")
 		if _, ok := g.structDecls[raw]; ok {
 			q = raw
+		} else if raw != "" && !strings.Contains(raw, ".") {
+			// A field type recorded without its package prefix still names one
+			// struct in the module. Accept it only when the suffix is unique.
+			for key := range g.structDecls {
+				if strings.HasSuffix(key, "."+raw) {
+					if q != "" {
+						q = ""
+						break
+					}
+					q = key
+				}
+			}
 		}
 	}
-	if q == "" {
+	if q != "" {
+		if _, exists := g.structDecls[q]; !exists && !strings.Contains(q, ".") {
+			for key := range g.structDecls {
+				if strings.HasSuffix(key, "."+q) {
+					q = key
+				}
+			}
+		}
+	}
+	if _, exists := g.structDecls[q]; !exists {
 		return nil
 	}
 	decl, ok := g.structDecls[q]
@@ -79,6 +100,15 @@ func (g *generator) structInfoByLLVM(typ string) *structInfo {
 		field, ok := g.typeLLVMOf(qualified)
 		if !ok && qualified != text {
 			field, ok = g.typeLLVMOf(text)
+		}
+		if !ok {
+			if _, isStruct := g.structDecls[qualified]; isStruct {
+				nested := g.structInfoByLLVM(qualifiedTypeName(qualified))
+				if nested != nil && nested.ok {
+					field = nested.llvm
+					ok = true
+				}
+			}
 		}
 		if !ok {
 			info.ok = false
@@ -680,6 +710,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 			if t, ok := g.typeLLVMOf(base); ok {
 				info = g.structInfoByLLVM(t)
 			}
+		}
+		if info == nil {
+			info = g.structInfoByLLVM(base)
 		}
 		if info == nil || !info.ok {
 			return "", g.errf(id, "cannot translate node #%d: %s has no fields", id, base)
