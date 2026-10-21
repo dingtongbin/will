@@ -1,3 +1,16 @@
+// ringError is the concrete Error returned by a zero-capacity constructor.
+struct ringError {
+    message: str
+}
+
+func (e: ringError) Message() -> str {
+    return e.message
+}
+
+func (e: ringError) Status() -> i32 {
+    return 2
+}
+
 // Ring is a fixed-capacity FIFO. A full ring rejects the value instead of
 // overwriting the oldest one, so the caller decides which policy to use.
 struct Ring<T> {
@@ -6,12 +19,15 @@ struct Ring<T> {
     cap: usize
 }
 
-// init reserves the two stacks used by the ring. A capacity of zero makes every
-// Push fail, which keeps the constructor total until the Result form lands.
-func (mut r: Ring<T>) init(cap: usize) {
+// init reserves the two stacks used by the ring. A zero capacity is invalid.
+func (mut r: Ring<T>) init(cap: usize) -> Result<(), Error> {
+    if cap == 0usize {
+        return Err(ringError { message: "ring capacity must be positive" })
+    }
     r.front = new Array<T>(0)
     r.back = new Array<T>(0)
     r.cap = cap
+    return Ok(())
 }
 
 // Push adds one value at the back. It returns false when the ring is full.

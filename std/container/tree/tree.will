@@ -284,9 +284,11 @@ func (mut t: Tree<K, V>) newNode(k: K, v: V) -> i32 {
     return i32(t.nodes.Len() - 1usize)
 }
 
-// freeNode marks one node index as reusable. The node value stays in the array
-// until the next allocation overwrites it.
+// freeNode clears the removed node and marks its index as reusable. Clearing
+// releases the fields the node owned instead of holding them until reuse.
 func (mut t: Tree<K, V>) freeNode(at: i32) {
+    var empty: treeNode<K, V>
+    t.nodes.Set(usize(at), empty)
     t.free.Push(at)
 }
 

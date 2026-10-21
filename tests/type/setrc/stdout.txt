@@ -1,0 +1,4 @@
+main.will:2:17: T0001 Set element type does not support Equal
+    help: use a type with a stable equality, such as an integer, str, struct, or enum
+main.will:2:36: T0001 Set element type does not support Equal
+    help: use a type with a stable equality, such as an integer, str, struct, or enum

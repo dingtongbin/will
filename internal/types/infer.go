@@ -1343,6 +1343,31 @@ func (c *checker) aggregateType(s *inferScope, agg *ast.AggregateExpr) *Type {
 	return t
 }
 
+// foreignInitSig builds the instantiated init signature of a qualified type.
+// The receiver type arguments of the declaration are replaced by the concrete
+// arguments the new expression writes.
+func (c *checker) foreignInitSig(name string, recv *Type) *signature {
+	if recv == nil {
+		return nil
+	}
+	dot := strings.LastIndexByte(name, '.')
+	if dot <= 0 {
+		return nil
+	}
+	decl := c.foreignInits[name[:dot]][name[dot+1:]]
+	if decl == nil || decl.Recv == nil || len(decl.Recv.Type.Args) != len(recv.Args()) {
+		return nil
+	}
+	sig := c.buildSig(decl)
+	subst := make(map[string]*Type, len(recv.Args()))
+	for i, a := range decl.Recv.Type.Args {
+		if a.Kind == ast.NamedType && len(a.Args) == 0 {
+			subst[a.Name] = recv.Args()[i]
+		}
+	}
+	return c.instantiate(sig, subst)
+}
+
 func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 	t := c.buildType(n.Type, nil)
 	name := ""
@@ -1369,9 +1394,15 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 		return t
 	}
 	if strings.Contains(name, ".") {
-		// A type from another package has no declaration in this environment.
-		// Its init signature is checked and lowered in the defining package, so
-		// the arguments are inferred here and the call is checked in lowering.
+		// The defining package owns the init declaration. Use it when it is
+		// available: new returns the init's Result when init has one.
+		if sig := c.foreignInitSig(name, t); sig != nil {
+			c.checkCallArgs(s, sig, n.Args, n.Pos())
+			if sig.result != nil {
+				return sig.result
+			}
+			return t
+		}
 		for _, a := range n.Args {
 			c.inferExpr(s, a.Expr)
 		}

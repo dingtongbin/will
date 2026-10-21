@@ -527,9 +527,10 @@ func (g *generator) typeOf(id int) (string, error) {
 		typ, _, err := g.unwrapType(r)
 		return typ, err
 	case "new":
-		typ, ok := g.typeLLVMOf(fieldText(r, "type"))
+		text := g.newResultText(r)
+		typ, ok := g.typeLLVMOf(text)
 		if !ok {
-			return "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, fieldText(r, "type"))
+			return "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, text)
 		}
 		return typ, nil
 	case "bin":
@@ -790,7 +791,7 @@ func (g *generator) willTypeText(id int) (string, error) {
 		_, text, err := g.unwrapType(r)
 		return text, err
 	case "new":
-		return fieldText(r, "type"), nil
+		return g.newResultText(r), nil
 	}
 	return "", nil
 }

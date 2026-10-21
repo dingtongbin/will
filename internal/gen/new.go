@@ -43,14 +43,25 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 		}
 		return "", "", g.errf(r.ID, "cannot translate node #%d: new needs a struct declared in this document", r.ID)
 	}
-	slot := g.allocSlot(g.newSlots, "new", r.ID, info.llvm)
-	fmt.Fprintf(g.out, "  store %s zeroinitializer, ptr %s\n", info.llvm, slot)
+	storeSlot := g.newStoreSlots[r.ID]
+	if storeSlot == "" {
+		storeSlot = g.allocSlot(g.newSlots, "new", r.ID, info.llvm)
+	}
+	slot := g.newSlots[r.ID]
+	if slot == "" {
+		slot = storeSlot
+	}
+	fmt.Fprintf(g.out, "  store %s zeroinitializer, ptr %s\n", info.llvm, storeSlot)
 	if info.foreign {
 		// The defining document owns the fields and init. A generic instance
 		// resolves its init in that document, including one with arguments.
-		if sym, params, ok := g.initForNew(g.cur, r); ok {
-			if err := g.callNewInit(r, slot, sym, params); err != nil {
+		if sym, params, result, ok := g.initForNew(g.cur, r); ok {
+			value, initText, err := g.callNewInit(r, storeSlot, sym, params, result)
+			if err != nil {
 				return "", "", err
+			}
+			if initText != "" {
+				return g.constructInitResult(r, storeSlot, text, value, initText)
 			}
 			return slot, info.llvm, nil
 		}
@@ -59,7 +70,7 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 		}
 		return slot, info.llvm, nil
 	}
-	if err := g.fieldDefaults(info, slot); err != nil {
+	if err := g.fieldDefaults(info, storeSlot); err != nil {
 		return "", "", err
 	}
 	initSym := g.cur.methods[text+".init"]
@@ -67,30 +78,33 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 		initSym = g.methodsQualified[text+".init"]
 	}
 	params := g.paramTypes[initSym]
+	initResult := g.sigs[initSym]
 	if initSym == "" {
 		// A generic init has no entry in the signature maps because its
 		// instance document is created after the maps are collected.
-		if sym, ps, ok := g.initForNew(g.cur, r); ok {
+		if sym, ps, res, ok := g.initForNew(g.cur, r); ok {
 			initSym = sym
 			params = ps
+			initResult = res
 		}
 	}
 	if initSym == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: %s has no init", r.ID, text)
 	}
-	if err := g.callNewInit(r, slot, initSym, params); err != nil {
+	value, initText, err := g.callNewInit(r, storeSlot, initSym, params, initResult)
+	if err != nil {
 		return "", "", err
+	}
+	if initText != "" {
+		return g.constructInitResult(r, storeSlot, text, value, initText)
 	}
 	return slot, info.llvm, nil
 }
 
 // callNewInit passes the storage and the evaluated constructor arguments to one
-// init method. The instance document has already been planned, so its symbol
-// and parameter types are final.
-func (g *generator) callNewInit(r willc.Record, slot, initSym string, params []string) error {
-	if result := g.sigs[initSym]; result != "" {
-		return g.errf(r.ID, "cannot translate node #%d: an init returning %s is not lowered yet", r.ID, result)
-	}
+// init method. A non-empty result text means the call returns a Result value
+// that the caller must turn into the new expression's value.
+func (g *generator) callNewInit(r willc.Record, slot, initSym string, params []string, initResult string) (string, string, error) {
 	parts := []string{"ptr " + slot}
 	for i, a := range g.callArgs(r) {
 		paramType := ""
@@ -100,11 +114,96 @@ func (g *generator) callNewInit(r willc.Record, slot, initSym string, params []s
 		var err error
 		parts, err = g.callArgParts(parts, r, i, a, paramType, false)
 		if err != nil {
-			return err
+			return "", "", err
 		}
 	}
-	fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(initSym), strings.Join(parts, ", "))
-	return nil
+	if initResult == "" || initResult == "()" {
+		fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(initSym), strings.Join(parts, ", "))
+		return "", "", nil
+	}
+	llvm, ok := g.typeLLVMOf(initResult)
+	if !ok || llvm == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: init result %s is not lowered yet", r.ID, initResult)
+	}
+	value := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call %s @%s(%s)\n", value, llvm, llvmSymbol(initSym), strings.Join(parts, ", "))
+	return value, initResult, nil
+}
+
+// newResultText is the type of the value a new expression produces. A generic
+// init returning Result<(),E> makes new return Result<T,E>.
+func (g *generator) newResultText(r willc.Record) string {
+	text := fieldText(r, "type")
+	_, _, result, ok := g.initForNew(g.cur, r)
+	if !ok || result == "" {
+		return text
+	}
+	kind, args, ok := parseADT(result)
+	if !ok || kind != "result" || len(args) != 2 || args[0] != "()" {
+		return text
+	}
+	return "Result<" + text + "," + args[1] + ">"
+}
+
+// constructInitResult turns the Result<(),E> an init returns into Result<T,E>
+// and releases the half-built object on the error path.
+func (g *generator) constructInitResult(r willc.Record, storeSlot, baseText, value, initText string) (string, string, error) {
+	resultText := g.newResultText(r)
+	resultADT, ok := g.adtType(resultText)
+	if !ok || resultADT.llvm == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, resultText)
+	}
+	initADT, ok := g.adtType(initText)
+	if !ok || initADT.llvm == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, initText)
+	}
+	slot := g.newSlots[r.ID]
+	if slot == "" {
+		slot = g.allocSlot(g.newSlots, "new", r.ID, resultADT.llvm)
+	}
+	initSlot := g.callSlots[r.ID]
+	if initSlot == "" {
+		initSlot = g.allocSlot(g.callSlots, "newinit", r.ID, initADT.llvm)
+	}
+	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", initADT.llvm, value, initSlot)
+	tag := g.load("i32", initSlot)
+	tagPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, resultADT.llvm, slot)
+	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", tag, tagPtr)
+	g.labels++
+	n := g.labels
+	okLabel := fmt.Sprintf("new.ok.%d", n)
+	errLabel := fmt.Sprintf("new.err.%d", n)
+	done := fmt.Sprintf("new.done.%d", n)
+	okCond := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", okCond, tag)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", okCond, okLabel, errLabel)
+	g.out.WriteString(okLabel + ":\n")
+	baseLLVM, ok := g.typeLLVMOf(baseText)
+	if !ok || baseLLVM == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, baseText)
+	}
+	okPayload := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", okPayload, resultADT.llvm, slot, resultADT.payloadIndex)
+	g.copyValue(storeSlot, okPayload, baseLLVM)
+	fmt.Fprintf(g.out, "  br label %%%s\n", done)
+	g.out.WriteString(errLabel + ":\n")
+	if err := g.releaseOwnedValue(storeSlot, baseText); err != nil {
+		return "", "", err
+	}
+	errText := resultADT.args[1]
+	errLLVM, ok := g.typeLLVMOf(errText)
+	if !ok || errLLVM == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, errText)
+	}
+	from := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", from, initADT.llvm, initSlot, initADT.payloadIndex)
+	to := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", to, resultADT.llvm, slot, resultADT.payloadIndex)
+	g.copyValue(from, to, errLLVM)
+	fmt.Fprintf(g.out, "  br label %%%s\n", done)
+	g.out.WriteString(done + ":\n")
+	return slot, resultADT.llvm, nil
 }
 
 // constructImportedNew builds a value whose struct is declared in another

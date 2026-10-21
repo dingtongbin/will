@@ -51,5 +51,21 @@ func main() -> i32 {
     if m.Len() != 0usize || m.Has("c") {
         return 11
     }
+    var nested: Map<str, Array<i32>> = new Map<str, Array<i32>>(0usize)
+    var nestedValues: Array<i32> = new Array<i32>(0usize)
+    nestedValues.Push(1)
+    nested.Set("a", nestedValues)
+    nestedValues.Push(2)
+    match nested.Get("a") {
+        Some(copy) => {
+            if copy.Len() != 1usize || copy.Get(0usize) != 1 {
+                return 12
+            }
+        }
+        None => {
+            return 13
+        }
+    }
+    nested.Clear()
     return 0
 }

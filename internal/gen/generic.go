@@ -158,10 +158,10 @@ func (g *generator) planInitInstances(base int, seen map[string]bool) {
 // initForNew predicts the symbol and substituted parameter types of the init
 // instance a new expression calls. The instance document itself is planned
 // separately, before lowering. The declaration may be in another package.
-func (g *generator) initForNew(d *docState, r willc.Record) (string, []string, bool) {
+func (g *generator) initForNew(d *docState, r willc.Record) (string, []string, string, bool) {
 	def, fn, local, names, args, ok := g.initDeclForNew(d, r)
 	if !ok {
-		return "", nil, false
+		return "", nil, "", false
 	}
 	subst := make(map[string]string, len(names))
 	for i, n := range names {
@@ -174,7 +174,14 @@ func (g *generator) initForNew(d *docState, r willc.Record) (string, []string, b
 			params = append(params, g.qualifyImportedType(def.path, text))
 		}
 	}
-	return qualify(def.path, structInstanceKey(local, args)+".init"), params, true
+	result := substituteTypeText(fieldText(fn, "type"), subst)
+	if result == "()" {
+		result = ""
+	}
+	if result != "" {
+		result = g.qualifyImportedType(def.path, result)
+	}
+	return qualify(def.path, structInstanceKey(local, args)+".init"), params, result, true
 }
 
 // typeParamNamesIn returns the type parameter names declared by one struct.
@@ -249,8 +256,9 @@ func (g *generator) cloneFuncInstance(d *docState, fn willc.Record, names, args 
 		for _, r := range d.recs {
 			if included[r.ID] {
 				// A type the signature names comes along with its declaration,
-				// so the instance can lay out a generic receiver or field.
-				if r.Kind == "type" {
+				// so the instance can lay out a generic receiver or field. An
+				// aggregate literal likewise needs the struct it builds.
+				if r.Kind == "type" || r.Kind == "agg" {
 					to := refField(r, "to")
 					if to != 0 && !included[to] {
 						included[to] = true

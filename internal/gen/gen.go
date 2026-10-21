@@ -460,6 +460,7 @@ func (g *generator) use(d *docState) {
 	g.adts = map[string]*adtInfo{}
 	g.adtSlots = map[int]string{}
 	g.newSlots = map[int]string{}
+	g.newStoreSlots = map[int]string{}
 	g.strSlots = map[int]string{}
 	g.utf8Slots = map[int]string{}
 	g.utf8nSlots = map[int]string{}
@@ -582,8 +583,10 @@ type generator struct {
 	// and adtSlots maps a constructor to the slot it builds its value in.
 	adts     map[string]*adtInfo
 	adtSlots map[int]string
-	// newSlots maps a new expression to the slot its storage is built in.
-	newSlots map[int]string
+	// newSlots maps a new expression to the slot of the value it returns, and
+	// newStoreSlots holds the object storage when init returns a Result.
+	newSlots      map[int]string
+	newStoreSlots map[int]string
 	// strSlots maps a str or bytes literal to the two-word value built for it,
 	// and byteGlobals shares identical literal data.
 	strSlots    map[int]string
@@ -1506,13 +1509,24 @@ func (g *generator) allocas(fn int) error {
 			// An rc is one handle built by the table; it needs no slot here.
 			continue
 		}
-		typ, ok := g.typeLLVMOf(fieldText(r, "type"))
+		baseText := fieldText(r, "type")
+		resultText := g.newResultText(r)
+		typ, ok := g.typeLLVMOf(resultText)
 		if !ok || !isAggregateType(typ) {
-			return g.errf(r.ID, "cannot translate node #%d: new type %s is not lowered yet", r.ID, fieldText(r, "type"))
+			return g.errf(r.ID, "cannot translate node #%d: new type %s is not lowered yet", r.ID, resultText)
 		}
 		name := "%v.new." + strconv.Itoa(r.ID)
 		g.newSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, typ)
+		if resultText != baseText {
+			baseType, ok := g.typeLLVMOf(baseText)
+			if !ok || !isAggregateType(baseType) {
+				return g.errf(r.ID, "cannot translate node #%d: new type %s is not lowered yet", r.ID, baseText)
+			}
+			store := "%v.newstore." + strconv.Itoa(r.ID)
+			g.newStoreSlots[r.ID] = store
+			fmt.Fprintf(g.out, "  %s = alloca %s\n", store, baseType)
+		}
 	}
 	// A str or bytes literal is a two-word value, built in a slot.
 	var strs []willc.Record
