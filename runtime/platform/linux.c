@@ -2,6 +2,15 @@
 #include <errno.h>
 #include <sys/random.h>
 #include <sys/types.h>
+#include <unistd.h>
+
+#include "../include/willrt.h"
+
+int32_t willrt_os_cpu_count(void) {
+    long count = sysconf(_SC_NPROCESSORS_ONLN);
+
+    return count < 1 ? 1 : (int32_t)count;
+}
 
 int32_t willrt_os_random_bytes(void* out, size_t size) {
     unsigned char* cursor = (unsigned char*)out;
