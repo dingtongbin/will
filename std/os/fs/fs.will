@@ -1,10 +1,57 @@
 // The synchronous file operations are the blocking half of std/os/fs. The
 // asynchronous half needs the scheduler's file suspension and is not exposed
 // until that path exists.
-import c "file.h" {
+import "std/errors"
+
+import c "fs.c" {
     fast willrt_fs_read_file
     fast willrt_fs_write_file
     fast willrt_fs_append_file
+    fast willrt_fs_open
+    fast willrt_fs_create
+    fast willrt_fs_file_read
+    fast willrt_fs_file_write
+    fast willrt_fs_file_seek
+    fast willrt_fs_file_sync
+    fast willrt_fs_file_close
+    fast willrt_fs_stat
+    fast willrt_fs_read_dir
+    fast willrt_fs_rename
+    fast willrt_fs_remove
+    fast willrt_fs_temp_file
+}
+
+// OpenFlags selects the access mode for Open.
+struct OpenFlags {
+    read: bool
+    write: bool
+    create: bool
+    append: bool
+    truncate: bool
+    exclusive: bool
+}
+
+// File is one open file handle. Close releases it.
+struct File {
+    handle: raw
+}
+
+// StatInfo is the metadata of one path. mtime is seconds since the Unix epoch.
+// The type and the Stat function need distinct names in will's package
+// namespace.
+struct StatInfo {
+    size: i64
+    mode: u32
+    mtime: i64
+    isDir: bool
+    isSymlink: bool
+}
+
+// DirEntry is one name returned by ReadDir.
+struct DirEntry {
+    name: str
+    isDir: bool
+    size: i64
 }
 
 struct fsError {
@@ -45,4 +92,120 @@ func Append(path: str, data: []u8) -> Result<(), Error> {
         return Err(fsError { message: "fs: cannot append file"})
     }
     return Ok(())
+}
+
+// Open opens path with flags.
+func Open(path: str, flags: OpenFlags) -> Result<File, Error> {
+    var file: File
+    var status: i32 = c.willrt_fs_open(raw(path), raw(flags), raw(file))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(file)
+}
+
+// Create truncates or creates path and opens it for reading and writing.
+func Create(path: str, mode: u32) -> Result<File, Error> {
+    var file: File
+    var status: i32 = c.willrt_fs_create(raw(path), mode, raw(file))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(file)
+}
+
+// Read appends bytes into buf. It returns the number read; zero means EOF.
+func (f: File) Read(mut buf: Array<u8>) -> Result<usize, Error> {
+    var count: usize = 0
+    var status: i32 = c.willrt_fs_file_read(raw(f), raw(count), raw(buf))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(count)
+}
+
+// Write writes every byte of buf.
+func (f: File) Write(buf: []u8) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_file_write(raw(f), raw(buf))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+// Seek moves the file position and returns the new offset.
+func (f: File) Seek(offset: i64, whence: i32) -> Result<i64, Error> {
+    var at: i64 = 0
+    var status: i32 = c.willrt_fs_file_seek(raw(f), offset, whence, raw(at))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(at)
+}
+
+// Sync flushes buffered writes to the host.
+func (f: File) Sync() -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_file_sync(raw(f))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+// Close releases the file handle. A closed handle is safe to close again.
+func (mut f: File) Close() -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_file_close(raw(f))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+// Stat returns the metadata of path.
+func Stat(path: str) -> Result<StatInfo, Error> {
+    var stat: StatInfo
+    var status: i32 = c.willrt_fs_stat(raw(path), raw(stat))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(stat)
+}
+
+// ReadDir returns the directory entries sorted by name.
+func ReadDir(path: str) -> Result<Array<DirEntry>, Error> {
+    var entries: Array<DirEntry>
+    var status: i32 = c.willrt_fs_read_dir(raw(path), raw(entries))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(entries)
+}
+
+// Rename moves old to new.
+func Rename(old: str, new: str) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_rename(raw(old), raw(new))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+// Remove deletes one file or empty directory.
+func Remove(path: str) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_remove(raw(path))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+// TempFile creates a temporary file under dir. The handle is open for reading
+// and writing.
+func TempFile(dir: str, pattern: str) -> Result<File, Error> {
+    var file: File
+    var status: i32 = c.willrt_fs_temp_file(raw(dir), raw(pattern), raw(file))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(file)
 }
