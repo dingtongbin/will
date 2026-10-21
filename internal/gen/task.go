@@ -856,7 +856,11 @@ func (g *generator) lowerSend(r willc.Record) error {
 
 // lowerClose closes one channel.
 func (g *generator) lowerClose(r willc.Record) error {
-	chanPtr, err := g.value(refField(r, "chan"))
+	channel := refField(r, "chan")
+	if channel == 0 {
+		channel = refField(r, "recv")
+	}
+	chanPtr, err := g.value(channel)
 	if err != nil {
 		return err
 	}

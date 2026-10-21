@@ -3080,6 +3080,9 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		if elem, ok := arrayElemText(recvText); ok {
 			return g.arrayMethod(r, elem)
 		}
+		if _, ok := chanElemText(recvText); ok && fieldText(r, "text") == "Close" {
+			return "", "", g.lowerClose(r)
+		}
 		if iface, ok := g.ifaceOfText(recvText); ok {
 			return g.interfaceCall(r, iface)
 		}

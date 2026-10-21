@@ -997,6 +997,11 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		return elemOf(c.in, recv)
 	case "Join":
 		return nil
+	case "Close":
+		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "chan" {
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.unit()
+		}
 	}
 	if recv == nil {
 		return nil
