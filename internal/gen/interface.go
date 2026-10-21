@@ -119,6 +119,11 @@ func (g *generator) ifaceOfText(text string) (*ifaceInfo, bool) {
 	if info := g.ifaceDecls[q]; info != nil {
 		return info, true
 	}
+	if i := strings.LastIndexByte(q, '.'); i > 0 {
+		if info := g.ifaceByName[q[i+1:]]; info != nil {
+			return info, true
+		}
+	}
 	if !strings.Contains(q, ".") {
 		if info := g.ifaceDecls[qualify(g.pkg, q)]; info != nil {
 			return info, true
@@ -351,17 +356,20 @@ func (g *generator) resultLLVM(text string) string {
 	if adt, ok := g.adtType(text); ok {
 		return adt.llvm
 	}
+	if g.structTypes[text] {
+		return qualifiedTypeName(text)
+	}
+	if g.enumTypes[text] {
+		return qualifiedEnumName(text)
+	}
 	if info := g.ifaceByName[text]; info != nil {
 		return info.llvm
 	}
 	if g.ifaceTypes[text] {
 		return qualifiedIfaceName(text)
 	}
-	if g.structTypes[text] {
-		return qualifiedTypeName(text)
-	}
-	if g.enumTypes[text] {
-		return qualifiedEnumName(text)
+	if typ, ok := g.typeLLVMOf(text); ok && isAggregateType(typ) {
+		return typ
 	}
 	return ""
 }

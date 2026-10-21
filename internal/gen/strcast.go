@@ -36,9 +36,35 @@ func (g *generator) castPlace(r willc.Record) (string, string, error) {
 			return g.arrayToStr(r, exprID)
 		case "u32", "u8":
 			return g.scalarToStr(r, exprID)
+		case "bool", "f32", "f64", "i8", "i16", "i32", "i64", "isize", "u16", "u64", "usize":
+			return g.displayToStr(r, exprID, fromText)
 		}
 	}
-	return "", "", g.errf(r.ID, "cannot translate node #%d: conversion from %s to %s is not lowered yet", r.ID, fromText, toText)
+	return "", "", g.errf(r.ID, "cannot translate node %d: conversion from %s to %s is not lowered yet", r.ID, fromText, toText)
+}
+
+// displayToStr turns a scalar into its decimal, boolean, or floating text.
+func (g *generator) displayToStr(r willc.Record, exprID int, fromText string) (string, string, error) {
+	typ, signed, ok := llvmScalar(fromText)
+	if !ok || typ == "ptr" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: %s has no text form", r.ID, fromText)
+	}
+	value, err := g.value(exprID)
+	if err != nil {
+		return "", "", err
+	}
+	kind, llvm, wide, err := g.formatKind(exprID, typ, signed, value)
+	if err != nil {
+		return "", "", err
+	}
+	g.needInterpDecl = true
+	length := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call i64 @willrt_fmt_%s_len(%s %s)\n", length, kind, llvm, wide)
+	g.needAllocDecl = true
+	buffer := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buffer, length)
+	fmt.Fprintf(g.out, "  call i64 @willrt_fmt_%s_into(ptr %s, i64 %s, %s %s)\n", kind, buffer, length, llvm, wide)
+	return g.storeStr(r, buffer, length)
 }
 
 // bytesToStr validates the byte view and copies it into a str.

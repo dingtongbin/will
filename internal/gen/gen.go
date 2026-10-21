@@ -1280,6 +1280,12 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		default:
 			return g.errf(fn.ID, "cannot translate node #%d: result type %s is not lowered yet", fn.ID, result)
 		}
+	} else if id := g.structDecl[result]; id != 0 {
+		info, ok := g.ensureStruct(id)
+		if !ok {
+			return g.errf(fn.ID, "cannot translate node #%d: result type %s is not lowered yet", fn.ID, result)
+		}
+		resLLVM = info.llvm
 	} else if id := g.typeRef(fn.ID); id != 0 {
 		if r, ok := g.recs[id]; ok && r.Kind == "enum" {
 			info := g.enums[id]
@@ -3074,6 +3080,12 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 			if isRcText(recvText) {
 				return g.rcMethodCall(r, recvText)
 			}
+			if kind, args, ok := parseADT(recvText); ok {
+				switch fieldText(r, "text") {
+				case "IsSome", "IsNone", "IsOk", "IsErr", "Or":
+					return g.adtMethod(r, kind, args)
+				}
+			}
 		}
 	}
 	if target := refField(r, "to"); target != 0 {
@@ -3123,6 +3135,11 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		}
 		if iface, ok := g.ifaceOfText(recvText); ok {
 			return g.interfaceCall(r, iface)
+		}
+		if typ, err := g.typeOf(refField(r, "recv")); err == nil {
+			if iface, ok := g.ifaceOfType(typ); ok {
+				return g.interfaceCall(r, iface)
+			}
 		}
 		if info, index, fnText, ok := g.functionField(r); ok {
 			return g.fieldCall(r, info, index, fnText)

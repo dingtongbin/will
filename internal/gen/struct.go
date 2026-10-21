@@ -610,6 +610,15 @@ func (g *generator) typeOf(id int) (string, error) {
 			if g.ifaceTypes[text] {
 				return qualifiedIfaceName(text), nil
 			}
+			if typ, ok := g.typeLLVMOf(text); ok && typ != "" {
+				return typ, nil
+			}
+			if id := g.structDecl[text]; id != 0 {
+				info, ok := g.ensureStruct(id)
+				if ok {
+					return info.llvm, nil
+				}
+			}
 			return "", g.errf(id, "cannot translate node #%d: result type %s is not lowered yet", id, text)
 		}
 		return typ, nil
@@ -873,6 +882,27 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 		return "", nil
 	}
 	if r.Kind == "mcall" {
+		if typ, err := g.typeOf(refField(r, "recv")); err == nil {
+			if iface, ok := g.ifaceOfType(typ); ok {
+				if idx, ok := iface.byName[fieldText(r, "text")]; ok {
+					return iface.methods[idx].result, nil
+				}
+			}
+		}
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			recvText = stripPredeclaredPackage(recvText)
+			if kind, args, ok := parseADT(recvText); ok {
+				switch fieldText(r, "text") {
+				case "IsSome", "IsNone", "IsOk", "IsErr":
+					return "bool", nil
+				case "Or":
+					if len(args) != 0 {
+						return args[0], nil
+					}
+				}
+				_ = kind
+			}
+		}
 		symbol, err := g.methodSymbol(r)
 		if err != nil {
 			return "", err
@@ -1217,6 +1247,18 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 		ptr := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", ptr, info.llvm, slot, i)
 		if isAggregateType(info.types[i]) {
+			if iface, ok := g.ifaceOfText(info.texts[i]); ok {
+				valueText, err := g.willTypeText(valueID)
+				if err != nil {
+					return err
+				}
+				if _, same := g.ifaceOfText(valueText); !same {
+					if _, err := g.ifaceValue(ptr, valueID, iface, valueText); err != nil {
+						return err
+					}
+					continue
+				}
+			}
 			src, typ, err := g.place(valueID)
 			if err != nil {
 				return err

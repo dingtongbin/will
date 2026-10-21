@@ -289,6 +289,18 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 			return "", "", g.errf(r.ID, "cannot translate node #%d: Set needs a value", r.ID)
 		}
 		if isAggregateType(elemLLVM) {
+			if iface, ok := g.ifaceOfText(elem); ok {
+				valueText, err := g.willTypeText(args[1])
+				if err != nil {
+					return "", "", err
+				}
+				if _, same := g.ifaceOfText(valueText); !same {
+					if _, err := g.ifaceValue(ptr, args[1], iface, valueText); err != nil {
+						return "", "", err
+					}
+					return "", "", nil
+				}
+			}
 			src, srcType, err := g.place(args[1])
 			if err != nil {
 				return "", "", err
@@ -524,19 +536,34 @@ func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemS
 		return err
 	}
 	if isAggregateType(elemLLVM) {
-		src, srcType, err := g.place(valueID)
-		if err != nil {
-			return err
-		}
-		if srcType != elemLLVM {
-			return g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
-		}
-		if g.needsReleaseText(elem) && g.isCopySource(valueID) {
-			if err := g.retainValue(src, elem); err != nil {
+		converted := false
+		if iface, ok := g.ifaceOfText(elem); ok {
+			valueText, err := g.willTypeText(valueID)
+			if err != nil {
 				return err
 			}
+			if _, same := g.ifaceOfText(valueText); !same {
+				if _, err := g.ifaceValue(slot, valueID, iface, valueText); err != nil {
+					return err
+				}
+				converted = true
+			}
 		}
-		g.copyValue(src, slot, elemLLVM)
+		if !converted {
+			src, srcType, err := g.place(valueID)
+			if err != nil {
+				return err
+			}
+			if srcType != elemLLVM {
+				return g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
+			}
+			if g.needsReleaseText(elem) && g.isCopySource(valueID) {
+				if err := g.retainValue(src, elem); err != nil {
+					return err
+				}
+			}
+			g.copyValue(src, slot, elemLLVM)
+		}
 	} else {
 		value, err := g.value(valueID)
 		if err != nil {

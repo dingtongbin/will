@@ -78,6 +78,8 @@ func (g *generator) strMethodValue(r willc.Record) (string, string, error) {
 		return g.strSplit(r, data, length, args, name == "Fields")
 	case "Clone":
 		return g.strClone(r, data, length)
+	case "Chars":
+		return g.strChars(r, data, length)
 	}
 	return "", "", g.errf(r.ID, "cannot translate node #%d: str.%s is not lowered yet", r.ID, name)
 }
@@ -203,6 +205,75 @@ func (g *generator) strReplace(r willc.Record, data, length, oldData, oldLen, ne
 	fmt.Fprintf(g.out, "  call i64 @willrt_bytes_replace_into(ptr %s, i64 %s, ptr %s, i64 %s, ptr %s, i64 %s, ptr %s, i64 %s)\n",
 		buf, total, data, length, oldData, oldLen, newData, newLen)
 	return g.storeStrValue(r, buf, total)
+}
+
+// strChars decodes one str into an Array<u32> of Unicode scalars. Invalid UTF-8
+// raises the same panic as str iteration.
+func (g *generator) strChars(r willc.Record, data, length string) (string, string, error) {
+	g.needAllocDecl = true
+	g.needUTF8Decl = true
+	bytes := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = mul i64 %s, 4\n", bytes, length)
+	buffer := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buffer, bytes)
+	offset := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca i64\n", offset)
+	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", offset)
+	count := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca i64\n", count)
+	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", count)
+	scalar := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca i32\n", scalar)
+	g.labels++
+	n := g.labels
+	cond := fmt.Sprintf("chars.cond.%d", n)
+	body := fmt.Sprintf("chars.body.%d", n)
+	done := fmt.Sprintf("chars.done.%d", n)
+	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
+	g.out.WriteString(cond + ":\n")
+	at := g.load("i64", offset)
+	more := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", more, at, length)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", more, body, done)
+	g.out.WriteString(body + ":\n")
+	tail := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds i8, ptr %s, i64 %s\n", tail, data, at)
+	remaining := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = sub i64 %s, %s\n", remaining, length, at)
+	step := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call i32 @willrt_utf8_decode(ptr %s, i64 %s, ptr %s)\n", step, tail, remaining, scalar)
+	bad := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp sle i32 %s, 0\n", bad, step)
+	g.panicCheck(bad, panicUTF8, r)
+	index := g.load("i64", count)
+	dst := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds i32, ptr %s, i64 %s\n", dst, buffer, index)
+	value := g.load("i32", scalar)
+	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", value, dst)
+	nextCount := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", nextCount, index)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", nextCount, count)
+	wideStep := g.zextTo(step, "i32", "i64")
+	nextOffset := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = add i64 %s, %s\n", nextOffset, at, wideStep)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", nextOffset, offset)
+	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
+	g.out.WriteString(done + ":\n")
+	slot := g.callSlots[r.ID]
+	if slot == "" {
+		slot = g.allocSlot(g.callSlots, "chars", r.ID, "{ ptr, i64, i64 }")
+	}
+	dataField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataField, slot)
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", buffer, dataField)
+	lenField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenField, slot)
+	finalCount := g.load("i64", count)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", finalCount, lenField)
+	capField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 2\n", capField, slot)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, capField)
+	return g.load("{ ptr, i64, i64 }", slot), "Array<u32>", nil
 }
 
 // strSplit builds a []str view over a plate of two-word parts.
