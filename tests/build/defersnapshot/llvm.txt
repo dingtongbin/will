@@ -1,0 +1,51 @@
+define i32 @"example.com/defersnapshot.will$main"() {
+entry:
+  %v.i = alloca i32
+  store i32 0, ptr %v.i
+  br label %for.cond.1
+for.cond.1:
+  %t1 = load i32, ptr %v.i
+  %t2 = icmp slt i32 %t1, 3
+  br i1 %t2, label %for.body.1, label %for.end.1
+for.body.1:
+  %t3 = getelementptr { i32 }, ptr null, i32 1
+  %t4 = ptrtoint ptr %t3 to i64
+  %t5 = call ptr @willrt_alloc(i64 %t4)
+  %t6 = getelementptr { i32 }, ptr %t5, i32 0, i32 0
+  %t7 = load i32, ptr %v.i
+  store i32 %t7, ptr %t6
+  call void @"example.com/defersnapshot.defer.0"(ptr %t5)
+  call void @willrt_free(ptr %t5)
+  br label %for.step.1
+for.step.1:
+  %t8 = load i32, ptr %v.i
+  %t9 = add i32 %t8, 1
+  store i32 %t9, ptr %v.i
+  br label %for.cond.1
+for.end.1:
+  ret i32 0
+}
+define void @"example.com/defersnapshot.defer.0"(ptr %frame) {
+entry:
+  %t1 = getelementptr { i32 }, ptr %frame, i32 0, i32 0
+  %t2 = load i32, ptr %t1
+  %t3 = sext i32 %t2 to i64
+  call void @willrt_print_i64(i64 %t3)
+  ret void
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/defersnapshot.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+declare ptr @willrt_alloc(i64)
+declare void @willrt_free(ptr)
+declare void @willrt_write_stdout(ptr, i64)
+declare void @willrt_print_i64(i64)
+declare void @willrt_print_u64(i64)
+declare void @willrt_print_f64(double)
+declare void @willrt_print_bool(i32)

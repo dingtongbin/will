@@ -118,29 +118,34 @@ func (g *generator) functionValueType(decl willc.Record) string {
 // closureCode returns the code and environment pointers a closure value holds.
 func (g *generator) closureCode(decl willc.Record) (string, string, error) {
 	var slot, typ string
-	switch {
-	case decl.Kind == "func":
-		var err error
-		slot, typ, err = g.closurePlace(decl)
-		if err != nil {
-			return "", "", err
+	if snap, ok := g.deferSnapshots[decl.ID]; ok {
+		slot = g.deferFieldPtr(snap)
+		typ = snap.llvm
+	} else {
+		switch {
+		case decl.Kind == "func":
+			var err error
+			slot, typ, err = g.closurePlace(decl)
+			if err != nil {
+				return "", "", err
+			}
+		case g.slots[decl.ID] != "":
+			slot, typ = g.slots[decl.ID], g.slotTypes[decl.ID]
+		case g.captureFields[decl.ID] != "":
+			slot, typ = g.captureFields[decl.ID], g.captureTypeOf(decl.ID)
+		case g.scope[decl.ID] != "" && g.borrows[decl.ID]:
+			slot = g.scope[decl.ID]
+			var err error
+			typ, err = g.declLLVMType(decl.ID)
+			if err != nil {
+				return "", "", err
+			}
+		case g.cur.globals[decl.ID] != nil:
+			info := g.cur.globals[decl.ID]
+			slot, typ = "@"+llvmSymbol(info.sym), info.typ
+		default:
+			return "", "", g.errf(decl.ID, "cannot translate node #%d: the closure value is not in a slot", decl.ID)
 		}
-	case g.slots[decl.ID] != "":
-		slot, typ = g.slots[decl.ID], g.slotTypes[decl.ID]
-	case g.captureFields[decl.ID] != "":
-		slot, typ = g.captureFields[decl.ID], g.captureTypeOf(decl.ID)
-	case g.scope[decl.ID] != "" && g.borrows[decl.ID]:
-		slot = g.scope[decl.ID]
-		var err error
-		typ, err = g.declLLVMType(decl.ID)
-		if err != nil {
-			return "", "", err
-		}
-	case g.cur.globals[decl.ID] != nil:
-		info := g.cur.globals[decl.ID]
-		slot, typ = "@"+llvmSymbol(info.sym), info.typ
-	default:
-		return "", "", g.errf(decl.ID, "cannot translate node #%d: the closure value is not in a slot", decl.ID)
 	}
 	if typ != "{ ptr, ptr }" {
 		return "", "", g.errf(decl.ID, "cannot translate node #%d: the closure value has type %s", decl.ID, typ)

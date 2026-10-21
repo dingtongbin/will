@@ -1698,6 +1698,41 @@ func TestEmitLiteralCarriesItsContextType(t *testing.T) {
 	}
 }
 
+func TestDeferCapturesArgumentsBeforeBlockExit(t *testing.T) {
+	src := "func main() -> i32 {\n" +
+		"    for i in Range(0, 3) {\n" +
+		"        defer print(i)\n" +
+		"    }\n" +
+		"    return 0\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		`define void @"example.com/app.defer.0"(ptr %frame) {`,
+		"= call ptr @willrt_alloc(i64",
+		`call void @"example.com/app.defer.0"(ptr %t`,
+		"getelementptr { i32 }, ptr %frame, i32 0, i32 0",
+		"call void @willrt_free(ptr",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+	// The print must happen in the thunk, not on the loop body path. If the
+	// direct call survived, the loop variable would be read after the loop.
+	body := text
+	if at := strings.Index(body, `define void @"example.com/app.defer.0"`); at >= 0 {
+		body = body[:at]
+	}
+	if strings.Contains(body, "call void @willrt_print_i64") {
+		t.Errorf("the deferred print still runs before the thunk:\n%s", text)
+	}
+}
+
 // willcText renders a document for a test message.
 func willcText(t *testing.T, doc *willc.Doc) string {
 	t.Helper()

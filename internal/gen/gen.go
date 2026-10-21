@@ -480,6 +480,9 @@ func (g *generator) use(d *docState) {
 	g.pendingThunks = nil
 	g.spawnNames = map[int]string{}
 	g.pendingSpawns = nil
+	g.pendingDefers = nil
+	g.deferSeq = 0
+	g.deferSnapshots = map[int]deferSnapshot{}
 	g.joinOutSlots = map[int]string{}
 	g.joinErrSlots = map[int]string{}
 	g.recvOutSlots = map[int]string{}
@@ -719,8 +722,20 @@ type generator struct {
 	// contains ?. They run only on the error path of the first failing ?.
 	pendingTryReleases []willc.Record
 	// defers holds one frame per open block, innermost last. Each entry is the
-	// call record of one defer in that block, in source order.
-	defers [][]int
+	// deferred call site with the storage its arguments were captured in, in
+	// source order.
+	defers [][]deferCall
+	// pendingDefers holds the thunk bodies this document still has to write.
+	// deferSeq numbers those thunks across the module.
+	pendingDefers []deferRequest
+	deferSeq      int
+	// deferSnapshots maps an argument, receiver, or callee expression to the
+	// field that captured its value at the defer statement. It is non-empty
+	// only while a defer thunk is being lowered.
+	deferSnapshots map[int]deferSnapshot
+	// deferThunk reports that a defer body is being lowered, so a conversion
+	// slot belongs to the thunk rather than the original function.
+	deferThunk bool
 	// linkSigs holds the header prototype of each C link of the current
 	// document. An untyped link keeps the i32 fallback.
 	linkSigs map[string]cLinkSig
@@ -828,6 +843,9 @@ func (g *generator) emitDoc() error {
 		return err
 	}
 	if err := g.emitDrops(); err != nil {
+		return err
+	}
+	if err := g.emitDeferThunks(); err != nil {
 		return err
 	}
 	return g.emitInit(g.cur)
@@ -2552,6 +2570,12 @@ func (g *generator) value(id int) (string, error) {
 	r, ok := g.recs[id]
 	if !ok {
 		return "", g.errf(id, "cannot translate node #%d: no such node", id)
+	}
+	if snap, ok := g.deferSnapshots[id]; ok {
+		if isAggregateType(snap.llvm) {
+			return "", g.errf(id, "cannot translate node #%d: a deferred aggregate is a place", id)
+		}
+		return g.load(snap.llvm, g.deferFieldPtr(snap)), nil
 	}
 	switch r.Kind {
 	case "lit":

@@ -937,6 +937,9 @@ func (g *generator) place(id int) (string, string, error) {
 	if !ok {
 		return "", "", g.errf(id, "cannot translate node #%d: no such node", id)
 	}
+	if snap, ok := g.deferSnapshots[id]; ok {
+		return g.deferFieldPtr(snap), snap.llvm, nil
+	}
 	switch r.Kind {
 	case "lit":
 		kind := fieldText(r, "kind")

@@ -166,7 +166,10 @@ func (g *generator) ifaceValue(slot string, valueID int, iface *ifaceInfo, concr
 func (g *generator) ifaceConversion(r willc.Record, argIndex int, valueID int, iface *ifaceInfo, concrete string) (string, string, error) {
 	key := fmt.Sprintf("%d.%d", r.ID, argIndex)
 	slot := g.ifaceSlots[key]
-	if slot == "" {
+	if g.deferThunk {
+		slot = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, iface.llvm)
+	} else if slot == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the interface value has no slot", r.ID)
 	}
 	if _, err := g.ifaceValue(slot, valueID, iface, concrete); err != nil {
