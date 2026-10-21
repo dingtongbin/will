@@ -19,10 +19,13 @@ const (
 	ModuleO = "module.o"
 	// Diag holds diagnostics when no product was produced.
 	Diag = "diag"
+	// Artifact is the final linked executable or library.
+	Artifact = "artifact"
 )
 
 var entryNames = map[string]bool{
 	Willc: true, Decisions: true, ModuleLL: true, ModuleO: true, Diag: true,
+	Artifact: true,
 }
 
 // Store is a cache rooted at one directory.

@@ -507,12 +507,17 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	if hasBitcode(clangArgsList) {
 		clangArgsList = append(clangArgsList, "-flto=thin")
 	}
+	store, key := linkCacheKey(ir, clang, clangArgsList)
+	if cachedLink(store, key, out) {
+		return 0
+	}
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
 		fmt.Fprintf(stderr, "will: link failed\n")
 		return 1
 	}
+	rememberLink(store, key, out)
 	return 0
 }
 
@@ -738,77 +743,9 @@ func packageInputs(opts buildOptions) ([]string, func(), error) {
 	if b.Err != nil {
 		return nil, noop, b.Err
 	}
-	var sources []string
-	seen := map[string]bool{}
-	for _, p := range b.Packages {
-		err := filepath.Walk(p.Dir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if info.IsDir() || filepath.Ext(path) != ".c" {
-				return nil
-			}
-			if !seen[path] {
-				seen[path] = true
-				sources = append(sources, path)
-			}
-			return nil
-		})
-		if err != nil {
-			return nil, noop, err
-		}
-	}
-	var out []string
-	cleanup := noop
-	if len(sources) != 0 {
-		clang, err := toolchain.FindClang()
-		if err != nil {
-			return nil, noop, err
-		}
-		dir, err := os.MkdirTemp("", "will-c-bc")
-		if err != nil {
-			return nil, noop, err
-		}
-		cleanup = func() { os.RemoveAll(dir) }
-		root, rootErr := runtimeRoot()
-		for i, source := range sources {
-			ext := ".o"
-			emit := []string{"-c"}
-			if opts.lto {
-				ext = ".bc"
-				emit = []string{"-emit-llvm", "-c"}
-			}
-			bc := filepath.Join(dir, fmt.Sprintf("c%d%s", i, ext))
-			args := append(emit, source, "-o", bc)
-			args = append(args, "-I", filepath.Dir(source))
-			if rootErr == nil {
-				args = append(args, "-I", filepath.Join(root, "include"))
-			}
-			for _, include := range filepath.SplitList(os.Getenv("WILL_C_INCLUDE")) {
-				if include != "" {
-					args = append(args, "-I", include)
-				}
-			}
-			if opts.opt != "" {
-				args = append(args, opts.opt)
-			}
-			if opts.debug {
-				args = append(args, "-g")
-			}
-			if opts.lib {
-				args = append(args, "-fPIC")
-			}
-			if opts.target != "" {
-				args = append(args, "--target="+opts.target)
-			}
-			cmd := exec.Command(clang.Path, args...)
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				cleanup()
-				return nil, noop, fmt.Errorf("%s: %v\n%s", source, err, output)
-			}
-			out = append(out, bc)
-		}
+	out, cleanup, err := packageCObjects(opts, b)
+	if err != nil {
+		return nil, noop, err
 	}
 	for _, link := range b.Links {
 		if strings.ContainsAny(link, `/\`) || filepath.IsAbs(link) ||
@@ -881,11 +818,15 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 	if hasBitcode(clangArgsList) {
 		clangArgsList = append(clangArgsList, "-flto=thin")
 	}
-	output, err := clang.BuildIR(ir, out, clangArgsList...)
-	if err != nil {
-		fmt.Fprintf(stdout, "%s", output)
-		fmt.Fprintf(stderr, "will: link failed\n")
-		return 1
+	store, key := linkCacheKey(ir, clang, clangArgsList)
+	if !cachedLink(store, key, out) {
+		output, err := clang.BuildIR(ir, out, clangArgsList...)
+		if err != nil {
+			fmt.Fprintf(stdout, "%s", output)
+			fmt.Fprintf(stderr, "will: link failed\n")
+			return 1
+		}
+		rememberLink(store, key, out)
 	}
 	cmd := exec.Command(out, programArgs...)
 	cmd.Stdout = stdout
