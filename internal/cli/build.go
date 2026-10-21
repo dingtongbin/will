@@ -313,7 +313,7 @@ func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 			var calls map[*ast.CallExpr]string
 			var names map[*ast.NameExpr]string
 			if len(files) != 0 {
-				if checked, _ := types.CheckPackageFull(files, results); checked != nil {
+				if checked, _ := types.CheckPackageFullWithImported(files, results, fe.build.ForeignInits(), fe.build.ForeignFuncs()); checked != nil {
 					if checked.LiteralTypes != nil {
 						lits = checked.LiteralTypes
 					}

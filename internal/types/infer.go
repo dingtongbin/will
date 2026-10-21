@@ -430,6 +430,9 @@ func (c *checker) checkArg(s *inferScope, e ast.Expr, want *Type, callee string,
 		c.inferExpr(s, e)
 		return
 	}
+	if c.checkNegativeLiteral(e, want) {
+		return
+	}
 	got := c.exprWithWant(s, e, want)
 	if !Equal(got, want) {
 		c.mismatch(e.Pos(), got, want, true, callee, n)
@@ -709,6 +712,24 @@ func (c *checker) recordLiteral(lit *ast.LiteralExpr, t *Type) {
 }
 
 func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
+	if field, ok := call.Callee.(*ast.FieldExpr); ok {
+		if recv, ok := field.Recv.(*ast.NameExpr); ok {
+			if decl := c.foreignFuncs[recv.Name][field.Name]; decl != nil {
+				sig := c.buildSig(decl)
+				c.checkTypeArgs(call, sig)
+				inst := sig
+				if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
+					subst := make(map[string]*Type, sig.typeParams)
+					for i, ta := range call.TypeArgs {
+						subst[sig.typeNames[i]] = c.buildType(ta, nil)
+					}
+					inst = c.instantiate(sig, subst)
+				}
+				c.checkCallArgs(s, inst, call.Args, call.Pos())
+				return inst.result
+			}
+		}
+	}
 	name, ok := call.Callee.(*ast.NameExpr)
 	if !ok {
 		t := c.inferExpr(s, call.Callee)
@@ -969,6 +990,20 @@ func (c *checker) checkTypeArgs(call *ast.CallExpr, sig *signature) {
 func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	if call.Link != nil {
 		return c.cLinkType(s, call)
+	}
+	if recv, ok := call.Recv.(*ast.NameExpr); ok {
+		if decl := c.foreignFuncs[recv.Name][call.Name]; decl != nil {
+			sig := c.buildSig(decl)
+			if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
+				subst := make(map[string]*Type, sig.typeParams)
+				for i, ta := range call.TypeArgs {
+					subst[sig.typeNames[i]] = c.buildType(ta, nil)
+				}
+				sig = c.instantiate(sig, subst)
+			}
+			c.checkCallArgs(s, sig, call.Args, call.Pos())
+			return sig.result
+		}
 	}
 	recv := c.inferExpr(s, call.Recv)
 	for _, a := range call.Args {

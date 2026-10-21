@@ -416,6 +416,7 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 	var bag diag.Bag
 	bag.AddAll(b.Diags)
 	foreign := b.foreignInits()
+	foreignFuncs := b.foreignFuncs()
 	imps := b.Imports()
 	for _, p := range b.Packages {
 		var files []*ast.File
@@ -430,7 +431,7 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 			results = append(results, res)
 		}
 		if len(files) > 0 {
-			bag.AddAll(types.CheckPackageWithForeign(files, results, foreign))
+			bag.AddAll(types.CheckPackageWithImported(files, results, foreign, foreignFuncs))
 		}
 	}
 	if !bag.HasErrors() {
@@ -445,6 +446,18 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 		}
 	}
 	return suppressFeatureCascade(bag.Diagnostics())
+}
+
+// ForeignInits exposes the imported init declarations used by the type
+// checker, so the build front end can type new across package boundaries.
+func (b *Build) ForeignInits() map[string]map[string]*ast.FuncDecl {
+	return b.foreignInits()
+}
+
+// ForeignFuncs exposes imported free functions for the same cross-package
+// argument check the package checker performs.
+func (b *Build) ForeignFuncs() map[string]map[string]*ast.FuncDecl {
+	return b.foreignFuncs()
 }
 
 // foreignInits collects every init declaration by package name and type name.
@@ -465,6 +478,30 @@ func (b *Build) foreignInits() map[string]map[string]*ast.FuncDecl {
 					out[p.Name] = map[string]*ast.FuncDecl{}
 				}
 				out[p.Name][fn.Recv.Type.Name] = fn
+			}
+		}
+	}
+	return out
+}
+
+// foreignFuncs collects exported free functions by package name and function
+// name. A cross-package call needs the declaring signature for its arguments.
+func (b *Build) foreignFuncs() map[string]map[string]*ast.FuncDecl {
+	out := map[string]map[string]*ast.FuncDecl{}
+	for _, p := range b.Packages {
+		for _, f := range p.Files {
+			if f.AST == nil {
+				continue
+			}
+			for _, d := range f.AST.Decls {
+				fn, ok := d.(*ast.FuncDecl)
+				if !ok || fn.Recv != nil {
+					continue
+				}
+				if out[p.Name] == nil {
+					out[p.Name] = map[string]*ast.FuncDecl{}
+				}
+				out[p.Name][fn.Name] = fn
 			}
 		}
 	}
