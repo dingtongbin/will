@@ -19,6 +19,9 @@ type structInfo struct {
 	types []string
 	index map[string]int
 	ok    bool
+	// foreign marks an instance whose declaration lives in another document.
+	// Its fields are known, but its init is not called by this document.
+	foreign bool
 }
 
 // structDeclInfo is the field list of one struct declaration as the module

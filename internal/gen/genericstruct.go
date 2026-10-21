@@ -95,19 +95,117 @@ func (g *generator) typeRecordArgs(r willc.Record) []string {
 // It returns false when the text does not name a generic struct of this
 // document.
 func (g *generator) structInstanceFromText(text string) (string, bool) {
+	original := text
+	text = g.canonicalTypeText(text)
 	name, args, ok := splitGenericType(text)
 	if !ok {
 		return "", false
 	}
-	id, ok := g.structDecl[name]
+	if id, ok := g.structDecl[name]; ok {
+		info, ok := g.ensureStructInstance(id, args)
+		if !ok {
+			return "", false
+		}
+		if original != text {
+			g.byName[original] = info
+		}
+		return info.llvm, true
+	}
+	doc, local, ok := g.genericStructDoc(name)
 	if !ok {
 		return "", false
 	}
-	info, ok := g.ensureStructInstance(id, args)
+	info, ok := g.ensureImportedStructInstance(doc, local, args)
 	if !ok {
 		return "", false
 	}
+	g.byName[original] = info
+	g.byName[text] = info
 	return info.llvm, true
+}
+
+// genericStructDoc finds the document and unqualified name of a generic
+// struct named by a canonical qualified type name.
+func (g *generator) genericStructDoc(name string) (*docState, string, bool) {
+	dot := strings.LastIndexByte(name, '.')
+	if dot <= 0 {
+		return nil, "", false
+	}
+	path, local := name[:dot], name[dot+1:]
+	for _, d := range g.docs {
+		if d.path != path {
+			continue
+		}
+		for _, r := range d.recs {
+			if r.Kind == "struct" && fieldText(r, "text") == local {
+				return d, local, true
+			}
+		}
+	}
+	return nil, "", false
+}
+
+// ensureImportedStructInstance lowers the field layout of a generic struct
+// declared in another document. Field types are substituted from that
+// document's declaration; the instance keeps the defining package in its LLVM
+// name so method instances and the caller agree on one type.
+func (g *generator) ensureImportedStructInstance(d *docState, local string, args []string) (*structInfo, bool) {
+	var decl willc.Record
+	for _, r := range d.recs {
+		if r.Kind == "struct" && fieldText(r, "text") == local {
+			decl = r
+			break
+		}
+	}
+	if decl.ID == 0 {
+		return nil, false
+	}
+	key := qualify(d.path, structInstanceKey(local, args))
+	if info, ok := g.byName[key]; ok {
+		return info, info.ok
+	}
+	info := &structInfo{
+		name:    key,
+		llvm:    qualifiedTypeName(qualify(d.path, instanceName(local, args))),
+		index:   map[string]int{},
+		foreign: true,
+	}
+	g.byName[key] = info
+	g.byType[info.llvm] = info
+	g.structByLLVM[info.llvm] = key
+	g.structInstances[key] = info
+	params := g.typeParamNamesIn(d, decl)
+	if len(params) != len(args) {
+		return info, false
+	}
+	subst := make(map[string]string, len(params))
+	for i, p := range params {
+		subst[p] = args[i]
+	}
+	var fields []willc.Record
+	for _, r := range d.recs {
+		if r.Kind == "field" && refField(r, "parent") == decl.ID {
+			fields = append(fields, r)
+		}
+	}
+	sortByID(fields)
+	info.ok = true
+	for i, f := range fields {
+		text := substituteTypeText(fieldText(f, "type"), subst)
+		typ, ok := g.fieldLLVMType(text)
+		if !ok {
+			info.ok = false
+			break
+		}
+		info.index[fieldText(f, "text")] = i
+		info.names = append(info.names, fieldText(f, "text"))
+		info.texts = append(info.texts, text)
+		info.types = append(info.types, typ)
+	}
+	if !info.ok {
+		info.types = nil
+	}
+	return info, info.ok
 }
 
 // ensureStructInstance lowers one instantiation of a generic struct. The

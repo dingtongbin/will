@@ -45,6 +45,15 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	}
 	slot := g.allocSlot(g.newSlots, "new", r.ID, info.llvm)
 	fmt.Fprintf(g.out, "  store %s zeroinitializer, ptr %s\n", info.llvm, slot)
+	if info.foreign {
+		// The defining document owns the fields and init. A foreign generic
+		// instance starts zeroed; an init with arguments has no instance doc
+		// to call yet, so reject it instead of silently skipping it.
+		if args := g.callArgs(r); len(args) != 0 {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: a foreign generic init with arguments is not lowered yet", r.ID)
+		}
+		return slot, info.llvm, nil
+	}
 	if err := g.fieldDefaults(info, slot); err != nil {
 		return "", "", err
 	}

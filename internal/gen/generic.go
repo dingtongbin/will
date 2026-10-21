@@ -386,6 +386,7 @@ func contains(names []string, name string) bool {
 // receiver arguments.
 type genericMethodCall struct {
 	fn       willc.Record
+	doc      *docState
 	recvName string
 	names    []string
 	args     []string
@@ -401,24 +402,56 @@ func (g *generator) methodInstance(r willc.Record) (genericMethodCall, bool) {
 	if err != nil {
 		return genericMethodCall{}, false
 	}
+	recvText = g.canonicalTypeText(recvText)
 	recvName, recvArgs, ok := splitGenericType(recvText)
 	if !ok {
 		return genericMethodCall{}, false
 	}
-	id, ok := g.structDecl[recvName]
+	if id, ok := g.structDecl[recvName]; ok {
+		params := g.typeParamNames(g.recs[id])
+		if len(params) != len(recvArgs) {
+			return genericMethodCall{}, false
+		}
+		if call, ok := g.genericMethodIn(g.cur, g.recs, recvName, params, recvArgs, fieldText(r, "text")); ok {
+			call.doc = g.cur
+			return call, true
+		}
+		return genericMethodCall{}, false
+	}
+	doc, local, ok := g.genericStructDoc(recvName)
 	if !ok {
 		return genericMethodCall{}, false
 	}
-	params := g.typeParamNames(g.recs[id])
+	var decl willc.Record
+	for _, rec := range doc.recs {
+		if rec.Kind == "struct" && fieldText(rec, "text") == local {
+			decl = rec
+			break
+		}
+	}
+	if decl.ID == 0 {
+		return genericMethodCall{}, false
+	}
+	params := g.typeParamNamesIn(doc, decl)
 	if len(params) != len(recvArgs) {
 		return genericMethodCall{}, false
 	}
-	name := fieldText(r, "text")
-	for _, f := range g.recs {
+	call, ok := g.genericMethodIn(doc, doc.recs, local, params, recvArgs, fieldText(r, "text"))
+	if !ok {
+		return genericMethodCall{}, false
+	}
+	call.doc = doc
+	return call, true
+}
+
+// genericMethodIn finds one method declaration with a generic receiver in a
+// document's records.
+func (g *generator) genericMethodIn(d *docState, recs map[int]willc.Record, recvName string, params, recvArgs []string, name string) (genericMethodCall, bool) {
+	for _, f := range recs {
 		if f.Kind != "func" || fieldText(f, "text") != name {
 			continue
 		}
-		recv := g.receiverOf(f.ID)
+		recv := receiverOfIn(d, f.ID)
 		if recv == nil {
 			continue
 		}
@@ -432,10 +465,9 @@ func (g *generator) methodInstance(r willc.Record) (genericMethodCall, bool) {
 				generic = true
 			}
 		}
-		if !generic {
-			continue
+		if generic {
+			return genericMethodCall{fn: f, recvName: recvName, names: declArgs, args: recvArgs}, true
 		}
-		return genericMethodCall{fn: f, recvName: recvName, names: declArgs, args: recvArgs}, true
 	}
 	return genericMethodCall{}, false
 }
@@ -446,7 +478,11 @@ func (g *generator) genericMethodName(r willc.Record) string {
 	if !ok {
 		return ""
 	}
-	return qualify(g.pkg, structInstanceKey(call.recvName, call.args)+"."+fieldText(r, "text"))
+	pkg := g.pkg
+	if call.doc != nil {
+		pkg = call.doc.path
+	}
+	return qualify(pkg, structInstanceKey(call.recvName, call.args)+"."+fieldText(r, "text"))
 }
 
 // genericMethodResult returns the substituted result text of a generic method
@@ -460,7 +496,23 @@ func (g *generator) genericMethodResult(r willc.Record) string {
 	for i, name := range call.names {
 		subst[name] = call.args[i]
 	}
-	return substituteTypeText(fieldText(call.fn, "type"), subst)
+	text := substituteTypeText(fieldText(call.fn, "type"), subst)
+	if call.doc != nil && call.doc != g.cur {
+		text = g.qualifyImportedType(call.doc.path, text)
+	}
+	return text
+}
+
+// qualifyImportedType puts the defining package on a type text returned by a
+// method of another document. A plain named type and a user generic both need
+// the prefix; the predeclared generics keep their unqualified spelling.
+func (g *generator) qualifyImportedType(pkg, text string) string {
+	if name, args, ok := splitGenericType(text); ok {
+		if q := qualify(pkg, name); g.declKinds[q] != "" {
+			return q + "<" + strings.Join(args, ",") + ">"
+		}
+	}
+	return g.qualifyTypeText(pkg, text)
 }
 
 // genericMethodDecl reports whether a method declaration has a generic
@@ -510,12 +562,16 @@ func (g *generator) planMethodInstances(base int, seen map[string]bool) {
 			if !ok {
 				continue
 			}
-			key := d.path + "|" + call.recvName + "|" + fieldText(call.fn, "text") + "|" + strings.Join(call.args, ",")
+			source := d
+			if call.doc != nil {
+				source = call.doc
+			}
+			key := source.path + "|" + call.recvName + "|" + fieldText(call.fn, "text") + "|" + strings.Join(call.args, ",")
 			if seen[key] {
 				continue
 			}
 			seen[key] = true
-			doc, ok := g.cloneFuncInstance(d, call.fn, call.names, call.args, "")
+			doc, ok := g.cloneFuncInstance(source, call.fn, call.names, call.args, "")
 			if !ok {
 				continue
 			}
