@@ -405,7 +405,7 @@ func (g *generator) typeOf(id int) (string, error) {
 			return info.llvm, nil
 		}
 		if text, ok := g.loopBindType(decl, name); ok {
-			typ, ok := llvmTypeText(text)
+			typ, ok := g.typeLLVMOf(text)
 			if !ok {
 				return "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, text)
 			}
@@ -737,6 +737,12 @@ func (g *generator) willTypeText(id int) (string, error) {
 		return g.willTypeText(refField(r, "expr"))
 	case "call", "mcall":
 		if r.Kind == "mcall" {
+			if _, _, fnText, ok := g.functionField(r); ok {
+				_, result, ok := funcTypeParts(fnText)
+				if ok {
+					return result, nil
+				}
+			}
 			if _, text, known := g.arrayCallResult(r); known {
 				return text, nil
 			}

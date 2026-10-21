@@ -7,5 +7,9 @@ func main() -> i32 {
     if !true {
         test.Fatal("unreachable")
     }
+    test.Table(
+        test.Case { name: "first", run: func(t: test.T) { print("R") } },
+        test.Case { name: "second", run: func(t: test.T) { print("R") } },
+    )
     return 0
 }

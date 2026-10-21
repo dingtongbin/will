@@ -1021,6 +1021,15 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		}
 		return nil
 	}
+	if fields, ok := c.env.fields[recv.Name()]; ok {
+		for _, f := range fields {
+			if f.name != call.Name || f.typ == nil || f.typ.Kind() != FuncKind {
+				continue
+			}
+			c.checkPayload(s, f.typ.Params(), call.Args, call.Name, call.Pos())
+			return f.typ.Result()
+		}
+	}
 	if sig, ok := c.env.methods[recv.Name()+"."+call.Name]; ok {
 		c.checkTypeArgsForMethod(call, sig)
 		if inst := c.instantiateReceiver(sig, recv); inst != nil {

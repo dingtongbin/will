@@ -3077,6 +3077,9 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		if iface, ok := g.ifaceOfText(recvText); ok {
 			return g.interfaceCall(r, iface)
 		}
+		if info, index, fnText, ok := g.functionField(r); ok {
+			return g.fieldCall(r, info, index, fnText)
+		}
 		name := fieldText(r, "text")
 		recv := g.recs[refField(r, "recv")]
 		cimport := refField(recv, "to")

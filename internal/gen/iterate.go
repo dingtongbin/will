@@ -153,7 +153,7 @@ func (g *generator) nameSlot(r willc.Record) (string, string, bool) {
 		if !ok {
 			return "", "", false
 		}
-		typ, ok := llvmTypeText(t)
+		typ, ok := g.typeLLVMOf(t)
 		if !ok {
 			return "", "", false
 		}
