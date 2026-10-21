@@ -56,6 +56,8 @@ func TestPollerContract(t *testing.T) {
 	args = append(args, "-o", exe,
 		filepath.Join(dir, "src", "poll.c"),
 		filepath.Join(dir, "src", "poll_test.c"),
+		filepath.Join(dir, "..", "mem", "src", "alloc.c"),
+		filepath.Join(dir, "..", "rc", "src", "rc.c"),
 		filepath.Join(root, "platform", platform))
 	if runtime.GOOS == "windows" {
 		args = append(args, "-lws2_32")

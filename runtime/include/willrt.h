@@ -100,6 +100,12 @@ void* willrt_alloc(size_t size);
    error, and its memory is left alone. */
 void willrt_free(void* ptr);
 
+/* willrt_mem_set_shared tells the allocator that a second thread may now
+   allocate or free. Until this is called the lane locks are skipped, which is
+   the fast path for a single-threaded program. A runtime that starts a worker
+   calls it before that worker can touch memory. */
+void willrt_mem_set_shared(void);
+
 /* willrt_mem_set_lane tells the allocator which lane the calling thread runs
    on. A thread that never calls it uses lane 0. The value is clamped into the
    allocator's lane table. */
@@ -134,6 +140,11 @@ uint64_t willrt_rc_new(const void* value, size_t size);
    last release, before the object storage is returned. */
 uint64_t willrt_rc_new_drop(const void* value, size_t size,
                             void (*drop)(void*));
+
+/* willrt_rc_set_shared switches reference counts from the single-thread fast
+   path to atomic compare-and-swap. A worker must be marked before it can touch
+   an rc handle. */
+void willrt_rc_set_shared(void);
 
 /* willrt_rc_retain adds one reference to the object named by handle. A zero,
    out-of-range, or released handle is ignored, so a stale handle never

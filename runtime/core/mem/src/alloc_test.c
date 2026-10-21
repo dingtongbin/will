@@ -228,6 +228,7 @@ static void test_alloc_lanes(void) {
     size_t chunks_before = willrt_mem_chunk_count();
     int32_t i;
 
+    willrt_mem_set_shared();
     for (i = 0; i < kThreads; i++) {
         workers[i].lane = i;
         workers[i].rounds = 2000;
@@ -266,6 +267,7 @@ static void test_alloc_cross_lane(void) {
 
     handoff.block = willrt_alloc(300);
     assert(handoff.block != NULL);
+    willrt_mem_set_shared();
     assert(willrt_os_thread_start(&thread, willrt_alloc_handoff_body, &handoff)
            == 0);
     willrt_os_thread_join(&thread);

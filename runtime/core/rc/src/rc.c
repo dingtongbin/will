@@ -74,6 +74,15 @@ static uint32_t willrt_rc_free_head = WILLRT_RC_NO_SLOT;
    growth wait or the writer sees the odd epoch and backs out. */
 static _Atomic(uint64_t) willrt_rc_epoch;
 static _Atomic(uint64_t) willrt_rc_active_writers;
+static _Atomic int willrt_rc_shared;
+
+void willrt_rc_set_shared(void) {
+    atomic_store_explicit(&willrt_rc_shared, 1, memory_order_release);
+}
+
+static int willrt_rc_single_thread(void) {
+    return !atomic_load_explicit(&willrt_rc_shared, memory_order_acquire);
+}
 
 /* A foreign handle keeps the high bit set and the C pointer in the low bits.
    The slot table never allocates an index that large. Metadata lives in a
@@ -188,6 +197,9 @@ static struct willrt_rc_table* willrt_rc_table_current(void) {
 
 /* willrt_rc_table_lock_acquire waits until this thread owns the table lock. */
 static void willrt_rc_table_lock_acquire(void) {
+    if (willrt_rc_single_thread()) {
+        return;
+    }
     while (atomic_flag_test_and_set_explicit(&willrt_rc_table_lock,
                                              memory_order_acquire)) {
         /* The owning section is bounded by a copy of the slot array or one
@@ -197,6 +209,9 @@ static void willrt_rc_table_lock_acquire(void) {
 
 /* willrt_rc_table_lock_release hands the table lock to another thread. */
 static void willrt_rc_table_lock_release(void) {
+    if (willrt_rc_single_thread()) {
+        return;
+    }
     atomic_flag_clear_explicit(&willrt_rc_table_lock, memory_order_release);
 }
 
@@ -347,6 +362,18 @@ static int willrt_rc_slot_retain(struct willrt_rc_slot* slot,
                                  uint32_t generation) {
     uint64_t state = atomic_load_explicit(&slot->state, memory_order_acquire);
 
+    if (willrt_rc_single_thread()) {
+        uint32_t count = willrt_rc_state_count(state);
+
+        if (willrt_rc_state_generation(state) != generation
+            || count == 0 || count == UINT32_MAX) {
+            return 0;
+        }
+        atomic_store_explicit(&slot->state,
+                              willrt_rc_state_make(generation, count + 1),
+                              memory_order_relaxed);
+        return 1;
+    }
     for (;;) {
         uint32_t count;
 
@@ -505,6 +532,32 @@ void willrt_rc_retain(uint64_t handle) {
     willrt_rc_writer_end();
 }
 
+/* willrt_rc_release_fast decrements one slot without a compare-and-swap. It is
+   only used while the process is single-threaded. */
+static int willrt_rc_release_fast(uint32_t index, uint32_t generation) {
+    struct willrt_rc_table* table = willrt_rc_table_current();
+    struct willrt_rc_slot* slot;
+    uint64_t state;
+    uint32_t count;
+
+    if (table == NULL || (size_t)index >= table->count) {
+        return -1;
+    }
+    slot = &table->slots[index];
+    state = atomic_load_explicit(&slot->state, memory_order_relaxed);
+    if (willrt_rc_state_generation(state) != generation) {
+        return -1;
+    }
+    count = willrt_rc_state_count(state);
+    if (count == 0) {
+        return -1;
+    }
+    atomic_store_explicit(&slot->state,
+                          willrt_rc_state_make(generation, count - 1),
+                          memory_order_relaxed);
+    return count == 1 ? 1 : 0;
+}
+
 void willrt_rc_release(uint64_t handle) {
     struct willrt_rc_table* table;
     struct willrt_rc_slot* slot;
@@ -543,6 +596,16 @@ void willrt_rc_release(uint64_t handle) {
     }
     index = willrt_rc_handle_slot(handle);
     generation = willrt_rc_handle_generation(handle);
+    if (willrt_rc_single_thread()) {
+        final = willrt_rc_release_fast(index, generation);
+        if (final < 0) {
+            return;
+        }
+        if (final != 0) {
+            willrt_rc_slot_retire(index, generation);
+        }
+        return;
+    }
 
     willrt_rc_writer_begin();
     table = willrt_rc_table_current();
@@ -593,6 +656,22 @@ void* willrt_rc_deref(uint64_t handle) {
     }
     index = willrt_rc_handle_slot(handle);
     generation = willrt_rc_handle_generation(handle);
+    if (willrt_rc_single_thread()) {
+        struct willrt_rc_table* table = willrt_rc_table_current();
+        struct willrt_rc_slot* slot;
+        uint64_t state;
+
+        if (table == NULL || (size_t)index >= table->count) {
+            return NULL;
+        }
+        slot = &table->slots[index];
+        state = atomic_load_explicit(&slot->state, memory_order_relaxed);
+        if (willrt_rc_state_generation(state) != generation
+            || willrt_rc_state_count(state) == 0) {
+            return NULL;
+        }
+        return atomic_load_explicit(&slot->value, memory_order_relaxed);
+    }
 
     for (;;) {
         struct willrt_rc_table* table = willrt_rc_table_current();

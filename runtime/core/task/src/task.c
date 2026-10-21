@@ -145,6 +145,8 @@ void willrt_task_run(willrt_task* task) {
         return;
     }
     task->started = 1;
+    willrt_rc_set_shared();
+    willrt_mem_set_shared();
     if (willrt_os_thread_start(&task->thread, willrt_task_entry, task) != 0) {
         task->failed = 1;
         willrt_task_finish(task);
