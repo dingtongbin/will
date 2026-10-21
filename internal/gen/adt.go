@@ -235,21 +235,22 @@ func (g *generator) adtConstruct(r willc.Record, info *adtInfo, variant string, 
 	if argID == 0 || info.payloadIndex == 0 {
 		return slot, info.llvm, nil
 	}
-	argType, err := g.typeOf(argID)
-	if err != nil {
-		return "", "", err
-	}
 	payload := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
 	argIndex := 0
 	if info.kind == "result" && variant == "Err" {
 		argIndex = 1
 	}
+	if argIndex < len(info.argLLVM) && info.argLLVM[argIndex] == "" {
+		// A unit payload has no LLVM value; the tag is the whole value.
+		return slot, info.llvm, nil
+	}
+	argType, err := g.typeOf(argID)
+	if err != nil {
+		return "", "", err
+	}
 	if argIndex < len(info.argLLVM) {
 		want := info.argLLVM[argIndex]
-		if want == "" {
-			return slot, info.llvm, nil
-		}
 		if iface, ok := g.ifaceOfType(want); ok && argType != want {
 			argText, err := g.willTypeText(argID)
 			if err != nil {

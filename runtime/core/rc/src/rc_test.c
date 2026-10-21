@@ -46,7 +46,10 @@ static void willrt_test_run_threads(struct willrt_test_work* work, size_t count)
     HANDLE threads[WILLRT_TEST_THREADS];
     size_t i;
 
-    willrt_rc_set_shared();
+    willrt_rc_set_threaded();
+    if (count != 0) {
+        willrt_rc_share(work[0].handle);
+    }
     for (i = 0; i < count; i++) {
         threads[i] = CreateThread(NULL, 0, willrt_test_worker, &work[i], 0,
                                   NULL);
@@ -67,7 +70,10 @@ static void willrt_test_run_threads(struct willrt_test_work* work, size_t count)
     pthread_t threads[WILLRT_TEST_THREADS];
     size_t i;
 
-    willrt_rc_set_shared();
+    willrt_rc_set_threaded();
+    if (count != 0) {
+        willrt_rc_share(work[0].handle);
+    }
     for (i = 0; i < count; i++) {
         assert(pthread_create(&threads[i], NULL, willrt_test_worker,
                               &work[i]) == 0);

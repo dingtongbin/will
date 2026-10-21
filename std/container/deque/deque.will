@@ -1,0 +1,222 @@
+// Deque is a double-ended queue backed by two stacks. Both ends push in
+// constant time; a pop that finds one stack empty moves half of the other
+// stack, so every element moves amortized constant time.
+struct Deque<T> {
+    front: Array<T>
+    back: Array<T>
+}
+
+// init starts both stacks empty.
+func (mut d: Deque<T>) init() {
+    d.front = new Array<T>(0)
+    d.back = new Array<T>(0)
+}
+
+// PushFront adds one value at the front.
+func (mut d: Deque<T>) PushFront(v: T) {
+    d.front.Push(v)
+}
+
+// PushBack adds one value at the back.
+func (mut d: Deque<T>) PushBack(v: T) {
+    d.back.Push(v)
+}
+
+// PopFront removes and returns the front value, or None when the deque is
+// empty.
+func (mut d: Deque<T>) PopFront() -> Option<T> {
+    if d.front.Len() > 0 {
+        return d.front.Pop()
+    }
+    if d.back.Len() == 0 {
+        return None
+    }
+    var tmp: Array<T> = new Array<T>(0)
+    for {
+        if d.back.Len() == 0 {
+            break
+        }
+        match d.back.Pop() {
+            Some(v) => {
+                tmp.Push(v)
+            }
+            None => {
+                break
+            }
+        }
+    }
+    var half: usize = tmp.Len() / 2usize
+    if half == 0usize {
+        half = 1usize
+    }
+    var rev: Array<T> = new Array<T>(0)
+    var i: usize = 0usize
+    for {
+        if i >= half {
+            break
+        }
+        match tmp.Pop() {
+            Some(v) => {
+                rev.Push(v)
+            }
+            None => {
+                break
+            }
+        }
+        i += 1usize
+    }
+    for {
+        if rev.Len() == 0 {
+            break
+        }
+        match rev.Pop() {
+            Some(v) => {
+                d.front.Push(v)
+            }
+            None => {
+                break
+            }
+        }
+    }
+    for {
+        if tmp.Len() == 0 {
+            break
+        }
+        match tmp.Pop() {
+            Some(v) => {
+                d.back.Push(v)
+            }
+            None => {
+                break
+            }
+        }
+    }
+    return d.front.Pop()
+}
+
+// PopBack removes and returns the back value, or None when the deque is empty.
+func (mut d: Deque<T>) PopBack() -> Option<T> {
+    if d.back.Len() > 0 {
+        return d.back.Pop()
+    }
+    if d.front.Len() == 0 {
+        return None
+    }
+    var tmp: Array<T> = new Array<T>(0)
+    for {
+        if d.front.Len() == 0 {
+            break
+        }
+        match d.front.Pop() {
+            Some(v) => {
+                tmp.Push(v)
+            }
+            None => {
+                break
+            }
+        }
+    }
+    var half: usize = tmp.Len() / 2usize
+    if half == 0usize {
+        half = 1usize
+    }
+    var rev: Array<T> = new Array<T>(0)
+    var i: usize = 0usize
+    for {
+        if i >= half {
+            break
+        }
+        match tmp.Pop() {
+            Some(v) => {
+                rev.Push(v)
+            }
+            None => {
+                break
+            }
+        }
+        i += 1usize
+    }
+    for {
+        if tmp.Len() == 0 {
+            break
+        }
+        match tmp.Pop() {
+            Some(v) => {
+                d.front.Push(v)
+            }
+            None => {
+                break
+            }
+        }
+    }
+    var rev2: Array<T> = new Array<T>(0)
+    for {
+        if rev.Len() == 0 {
+            break
+        }
+        match rev.Pop() {
+            Some(v) => {
+                rev2.Push(v)
+            }
+            None => {
+                break
+            }
+        }
+    }
+    for {
+        if rev2.Len() == 0 {
+            break
+        }
+        match rev2.Pop() {
+            Some(v) => {
+                d.back.Push(v)
+            }
+            None => {
+                break
+            }
+        }
+    }
+    return d.back.Pop()
+}
+
+// PeekFront returns a copy of the front value without removing it.
+func (d: Deque<T>) PeekFront() -> Option<T> {
+    if d.front.Len() > 0 {
+        return Some(d.front.Get(d.front.Len() - 1usize))
+    }
+    if d.back.Len() == 0 {
+        return None
+    }
+    return Some(d.back.Get(0usize))
+}
+
+// PeekBack returns a copy of the back value without removing it.
+func (d: Deque<T>) PeekBack() -> Option<T> {
+    if d.back.Len() > 0 {
+        return Some(d.back.Get(d.back.Len() - 1usize))
+    }
+    if d.front.Len() == 0 {
+        return None
+    }
+    return Some(d.front.Get(0usize))
+}
+
+// Len reports the number of stored values.
+func (d: Deque<T>) Len() -> usize {
+    return d.front.Len() + d.back.Len()
+}
+
+// Clear releases every value.
+func (mut d: Deque<T>) Clear() {
+    d.front.Clear()
+    d.back.Clear()
+}
+
+// Clone copies both stacks. Array.Clone gives each stored value its own
+// reference according to the container rule.
+func (d: Deque<T>) Clone() -> Deque<T> {
+    var out: Deque<T>
+    out.front = d.front.Clone()
+    out.back = d.back.Clone()
+    return out
+}

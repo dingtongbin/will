@@ -13,6 +13,7 @@ import (
 	"github.com/will-lang/will/internal/parser"
 	"github.com/will-lang/will/internal/resolve"
 	"github.com/will-lang/will/internal/source"
+	"github.com/will-lang/will/internal/types"
 )
 
 var update = flag.Bool("update", false, "rewrite the willc golden files")
@@ -43,6 +44,38 @@ func emitSourceIn(t *testing.T, file, src, module string, tables map[string][]st
 		t.Fatalf("resolve diagnostics:\n%s", diag.FormatAll(rds))
 	}
 	data, err := Emit(f, res, module, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("emit: %v", err)
+	}
+	return data
+}
+
+// emitCheckedSourceIn runs the type checker before emitting, as the CLI does,
+// so literal types such as the usize capacity of a container come from the
+// checker instead of the emitter's default.
+func emitCheckedSourceIn(t *testing.T, file, src, module string, tables map[string][]string) []byte {
+	t.Helper()
+	f, pds := parser.Parse(file, []byte(src))
+	if len(pds) != 0 {
+		t.Fatalf("parse diagnostics:\n%s", diag.FormatAll(pds))
+	}
+	imports := resolve.Imports{}
+	for path, members := range tables {
+		exp := resolve.Exported{}
+		for _, m := range members {
+			exp[m] = &resolve.Symbol{Name: m, Kind: resolve.FuncKind, Exported: true}
+		}
+		imports[path] = exp
+	}
+	res, rds := resolve.ResolveWith(f, imports)
+	if len(rds) != 0 {
+		t.Fatalf("resolve diagnostics:\n%s", diag.FormatAll(rds))
+	}
+	checked, tds := types.CheckWithFull(f, res, nil)
+	if len(tds) != 0 {
+		t.Fatalf("type diagnostics:\n%s", diag.FormatAll(tds))
+	}
+	data, err := Emit(f, res, module, nil, checked.LiteralTypes, checked.CallTypes, checked.NameTypes, nil)
 	if err != nil {
 		t.Fatalf("emit: %v", err)
 	}
@@ -209,7 +242,7 @@ func TestEmitGolden(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read corpus: %v", err)
 	}
-	got := emitSourceIn(t, "program.will", string(src), "example.com/app",
+	got := emitCheckedSourceIn(t, "program.will", string(src), "example.com/app",
 		map[string][]string{"example.com/app/http": {"Status"}})
 	golden := filepath.Join(dir, "program.willc.txt")
 	if *update {

@@ -4,246 +4,245 @@ entry:
   %v.s = alloca i32
   %v.new.8 = alloca { ptr, i64, i64 }
   %v.$idx = alloca i64
-  %t1 = sext i32 0 to i64
-  %t2 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 0
-  store ptr null, ptr %t2
-  %t3 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 1
+  %t1 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 0
+  store ptr null, ptr %t1
+  %t2 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 1
+  store i64 0, ptr %t2
+  %t3 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 2
   store i64 0, ptr %t3
-  %t4 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 2
-  store i64 %t1, ptr %t4
-  %t5 = load { ptr, i64, i64 }, ptr %v.new.8
-  store { ptr, i64, i64 } %t5, ptr %v.a
-  %t6 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
-  %t7 = load ptr, ptr %t6
-  %t8 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
-  %t9 = load i64, ptr %t8
-  %t10 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 2
-  %t11 = load i64, ptr %t10
-  %t12 = icmp eq i64 %t9, %t11
-  br i1 %t12, label %arr.full.1, label %arr.ready.1
+  %t4 = load { ptr, i64, i64 }, ptr %v.new.8
+  store { ptr, i64, i64 } %t4, ptr %v.a
+  %t5 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
+  %t6 = load ptr, ptr %t5
+  %t7 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
+  %t8 = load i64, ptr %t7
+  %t9 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 2
+  %t10 = load i64, ptr %t9
+  %t11 = icmp eq i64 %t8, %t10
+  br i1 %t11, label %arr.full.1, label %arr.ready.1
 arr.full.1:
-  %t13 = mul i64 %t11, 2
-  %t14 = icmp eq i64 %t11, 0
-  %t15 = select i1 %t14, i64 4, i64 %t13
-  %t16 = mul i64 %t15, 4
-  %t17 = call ptr @willrt_alloc(i64 %t16)
-  %t18 = alloca i64
-  store i64 0, ptr %t18
+  %t12 = mul i64 %t10, 2
+  %t13 = icmp eq i64 %t10, 0
+  %t14 = select i1 %t13, i64 4, i64 %t12
+  %t15 = mul i64 %t14, 4
+  %t16 = call ptr @willrt_alloc(i64 %t15)
+  %t17 = alloca i64
+  store i64 0, ptr %t17
   br label %arr.copy.cond.1
 arr.copy.cond.1:
-  %t19 = load i64, ptr %t18
-  %t20 = icmp ult i64 %t19, %t9
-  br i1 %t20, label %arr.copy.body.1, label %arr.copy.end.1
+  %t18 = load i64, ptr %t17
+  %t19 = icmp ult i64 %t18, %t8
+  br i1 %t19, label %arr.copy.body.1, label %arr.copy.end.1
 arr.copy.body.1:
-  %t21 = getelementptr inbounds i32, ptr %t7, i64 %t19
-  %t22 = load i32, ptr %t21
-  %t23 = getelementptr inbounds i32, ptr %t17, i64 %t19
-  store i32 %t22, ptr %t23
-  %t24 = add i64 %t19, 1
-  store i64 %t24, ptr %t18
+  %t20 = getelementptr inbounds i32, ptr %t6, i64 %t18
+  %t21 = load i32, ptr %t20
+  %t22 = getelementptr inbounds i32, ptr %t16, i64 %t18
+  store i32 %t21, ptr %t22
+  %t23 = add i64 %t18, 1
+  store i64 %t23, ptr %t17
   br label %arr.copy.cond.1
 arr.copy.end.1:
-  %t25 = icmp eq ptr %t7, null
-  br i1 %t25, label %arr.nofree.1, label %arr.free.1
+  %t24 = icmp eq ptr %t6, null
+  br i1 %t24, label %arr.nofree.1, label %arr.free.1
 arr.free.1:
-  call void @willrt_free(ptr %t7)
+  call void @willrt_free(ptr %t6)
   br label %arr.freed.1
 arr.nofree.1:
   br label %arr.freed.1
 arr.freed.1:
-  store ptr %t17, ptr %t6
-  store i64 %t15, ptr %t10
+  store ptr %t16, ptr %t5
+  store i64 %t14, ptr %t9
   br label %arr.ready.1
 arr.ready.1:
-  %t26 = load ptr, ptr %t6
-  %t27 = load i64, ptr %t8
-  %t28 = getelementptr inbounds i32, ptr %t26, i64 %t27
-  store i32 1, ptr %t28
-  %t29 = add i64 %t27, 1
-  store i64 %t29, ptr %t8
-  %t30 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
-  %t31 = load ptr, ptr %t30
-  %t32 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
-  %t33 = load i64, ptr %t32
-  %t34 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 2
-  %t35 = load i64, ptr %t34
-  %t36 = icmp eq i64 %t33, %t35
-  br i1 %t36, label %arr.full.2, label %arr.ready.2
+  %t25 = load ptr, ptr %t5
+  %t26 = load i64, ptr %t7
+  %t27 = getelementptr inbounds i32, ptr %t25, i64 %t26
+  store i32 1, ptr %t27
+  %t28 = add i64 %t26, 1
+  store i64 %t28, ptr %t7
+  %t29 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
+  %t30 = load ptr, ptr %t29
+  %t31 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
+  %t32 = load i64, ptr %t31
+  %t33 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 2
+  %t34 = load i64, ptr %t33
+  %t35 = icmp eq i64 %t32, %t34
+  br i1 %t35, label %arr.full.2, label %arr.ready.2
 arr.full.2:
-  %t37 = mul i64 %t35, 2
-  %t38 = icmp eq i64 %t35, 0
-  %t39 = select i1 %t38, i64 4, i64 %t37
-  %t40 = mul i64 %t39, 4
-  %t41 = call ptr @willrt_alloc(i64 %t40)
-  %t42 = alloca i64
-  store i64 0, ptr %t42
+  %t36 = mul i64 %t34, 2
+  %t37 = icmp eq i64 %t34, 0
+  %t38 = select i1 %t37, i64 4, i64 %t36
+  %t39 = mul i64 %t38, 4
+  %t40 = call ptr @willrt_alloc(i64 %t39)
+  %t41 = alloca i64
+  store i64 0, ptr %t41
   br label %arr.copy.cond.2
 arr.copy.cond.2:
-  %t43 = load i64, ptr %t42
-  %t44 = icmp ult i64 %t43, %t33
-  br i1 %t44, label %arr.copy.body.2, label %arr.copy.end.2
+  %t42 = load i64, ptr %t41
+  %t43 = icmp ult i64 %t42, %t32
+  br i1 %t43, label %arr.copy.body.2, label %arr.copy.end.2
 arr.copy.body.2:
-  %t45 = getelementptr inbounds i32, ptr %t31, i64 %t43
-  %t46 = load i32, ptr %t45
-  %t47 = getelementptr inbounds i32, ptr %t41, i64 %t43
-  store i32 %t46, ptr %t47
-  %t48 = add i64 %t43, 1
-  store i64 %t48, ptr %t42
+  %t44 = getelementptr inbounds i32, ptr %t30, i64 %t42
+  %t45 = load i32, ptr %t44
+  %t46 = getelementptr inbounds i32, ptr %t40, i64 %t42
+  store i32 %t45, ptr %t46
+  %t47 = add i64 %t42, 1
+  store i64 %t47, ptr %t41
   br label %arr.copy.cond.2
 arr.copy.end.2:
-  %t49 = icmp eq ptr %t31, null
-  br i1 %t49, label %arr.nofree.2, label %arr.free.2
+  %t48 = icmp eq ptr %t30, null
+  br i1 %t48, label %arr.nofree.2, label %arr.free.2
 arr.free.2:
-  call void @willrt_free(ptr %t31)
+  call void @willrt_free(ptr %t30)
   br label %arr.freed.2
 arr.nofree.2:
   br label %arr.freed.2
 arr.freed.2:
-  store ptr %t41, ptr %t30
-  store i64 %t39, ptr %t34
+  store ptr %t40, ptr %t29
+  store i64 %t38, ptr %t33
   br label %arr.ready.2
 arr.ready.2:
-  %t50 = load ptr, ptr %t30
-  %t51 = load i64, ptr %t32
-  %t52 = getelementptr inbounds i32, ptr %t50, i64 %t51
-  store i32 2, ptr %t52
-  %t53 = add i64 %t51, 1
-  store i64 %t53, ptr %t32
-  %t54 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
-  %t55 = load ptr, ptr %t54
-  %t56 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
-  %t57 = load i64, ptr %t56
-  %t58 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 2
-  %t59 = load i64, ptr %t58
-  %t60 = icmp eq i64 %t57, %t59
-  br i1 %t60, label %arr.full.3, label %arr.ready.3
+  %t49 = load ptr, ptr %t29
+  %t50 = load i64, ptr %t31
+  %t51 = getelementptr inbounds i32, ptr %t49, i64 %t50
+  store i32 2, ptr %t51
+  %t52 = add i64 %t50, 1
+  store i64 %t52, ptr %t31
+  %t53 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
+  %t54 = load ptr, ptr %t53
+  %t55 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
+  %t56 = load i64, ptr %t55
+  %t57 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 2
+  %t58 = load i64, ptr %t57
+  %t59 = icmp eq i64 %t56, %t58
+  br i1 %t59, label %arr.full.3, label %arr.ready.3
 arr.full.3:
-  %t61 = mul i64 %t59, 2
-  %t62 = icmp eq i64 %t59, 0
-  %t63 = select i1 %t62, i64 4, i64 %t61
-  %t64 = mul i64 %t63, 4
-  %t65 = call ptr @willrt_alloc(i64 %t64)
-  %t66 = alloca i64
-  store i64 0, ptr %t66
+  %t60 = mul i64 %t58, 2
+  %t61 = icmp eq i64 %t58, 0
+  %t62 = select i1 %t61, i64 4, i64 %t60
+  %t63 = mul i64 %t62, 4
+  %t64 = call ptr @willrt_alloc(i64 %t63)
+  %t65 = alloca i64
+  store i64 0, ptr %t65
   br label %arr.copy.cond.3
 arr.copy.cond.3:
-  %t67 = load i64, ptr %t66
-  %t68 = icmp ult i64 %t67, %t57
-  br i1 %t68, label %arr.copy.body.3, label %arr.copy.end.3
+  %t66 = load i64, ptr %t65
+  %t67 = icmp ult i64 %t66, %t56
+  br i1 %t67, label %arr.copy.body.3, label %arr.copy.end.3
 arr.copy.body.3:
-  %t69 = getelementptr inbounds i32, ptr %t55, i64 %t67
-  %t70 = load i32, ptr %t69
-  %t71 = getelementptr inbounds i32, ptr %t65, i64 %t67
-  store i32 %t70, ptr %t71
-  %t72 = add i64 %t67, 1
-  store i64 %t72, ptr %t66
+  %t68 = getelementptr inbounds i32, ptr %t54, i64 %t66
+  %t69 = load i32, ptr %t68
+  %t70 = getelementptr inbounds i32, ptr %t64, i64 %t66
+  store i32 %t69, ptr %t70
+  %t71 = add i64 %t66, 1
+  store i64 %t71, ptr %t65
   br label %arr.copy.cond.3
 arr.copy.end.3:
-  %t73 = icmp eq ptr %t55, null
-  br i1 %t73, label %arr.nofree.3, label %arr.free.3
+  %t72 = icmp eq ptr %t54, null
+  br i1 %t72, label %arr.nofree.3, label %arr.free.3
 arr.free.3:
-  call void @willrt_free(ptr %t55)
+  call void @willrt_free(ptr %t54)
   br label %arr.freed.3
 arr.nofree.3:
   br label %arr.freed.3
 arr.freed.3:
-  store ptr %t65, ptr %t54
-  store i64 %t63, ptr %t58
+  store ptr %t64, ptr %t53
+  store i64 %t62, ptr %t57
   br label %arr.ready.3
 arr.ready.3:
-  %t74 = load ptr, ptr %t54
-  %t75 = load i64, ptr %t56
-  %t76 = getelementptr inbounds i32, ptr %t74, i64 %t75
-  store i32 3, ptr %t76
-  %t77 = add i64 %t75, 1
-  store i64 %t77, ptr %t56
-  %t78 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
-  %t79 = load ptr, ptr %t78
-  %t80 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
-  %t81 = load i64, ptr %t80
-  %t82 = icmp uge i64 1, %t81
-  br i1 %t82, label %panic.4, label %panic.ok.4
+  %t73 = load ptr, ptr %t53
+  %t74 = load i64, ptr %t55
+  %t75 = getelementptr inbounds i32, ptr %t73, i64 %t74
+  store i32 3, ptr %t75
+  %t76 = add i64 %t74, 1
+  store i64 %t76, ptr %t55
+  %t77 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
+  %t78 = load ptr, ptr %t77
+  %t79 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
+  %t80 = load i64, ptr %t79
+  %t81 = icmp uge i64 1, %t80
+  br i1 %t81, label %panic.4, label %panic.ok.4
 panic.4:
   call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
   unreachable
 panic.ok.4:
-  %t83 = getelementptr inbounds i32, ptr %t79, i64 1
-  store i32 7, ptr %t83
+  %t82 = getelementptr inbounds i32, ptr %t78, i64 1
+  store i32 7, ptr %t82
   store i32 0, ptr %v.s
-  %t84 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
-  %t85 = load ptr, ptr %t84
-  %t86 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
-  %t87 = load i64, ptr %t86
+  %t83 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
+  %t84 = load ptr, ptr %t83
+  %t85 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
+  %t86 = load i64, ptr %t85
   store i64 0, ptr %v.$idx
   br label %for.cond.5
 for.cond.5:
-  %t88 = load i64, ptr %v.$idx
-  %t89 = icmp ult i64 %t88, %t87
-  br i1 %t89, label %for.body.5, label %for.end.5
+  %t87 = load i64, ptr %v.$idx
+  %t88 = icmp ult i64 %t87, %t86
+  br i1 %t88, label %for.body.5, label %for.end.5
 for.body.5:
-  %t90 = getelementptr inbounds i32, ptr %t85, i64 %t88
-  %t91 = load i32, ptr %v.s
-  %t92 = load i32, ptr %t90
-  %t93 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t91, i32 %t92)
-  %t94 = extractvalue {i32, i1} %t93, 0
-  %t95 = extractvalue {i32, i1} %t93, 1
-  br i1 %t95, label %panic.6, label %panic.ok.6
+  %t89 = getelementptr inbounds i32, ptr %t84, i64 %t87
+  %t90 = load i32, ptr %v.s
+  %t91 = load i32, ptr %t89
+  %t92 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t90, i32 %t91)
+  %t93 = extractvalue {i32, i1} %t92, 0
+  %t94 = extractvalue {i32, i1} %t92, 1
+  br i1 %t94, label %panic.6, label %panic.ok.6
 panic.6:
   call void @willrt_panic(ptr @.str.3, ptr @.str.4, ptr @.str.2)
   unreachable
 panic.ok.6:
-  store i32 %t94, ptr %v.s
+  store i32 %t93, ptr %v.s
   br label %for.step.5
 for.step.5:
-  %t96 = load i64, ptr %v.$idx
-  %t97 = add i64 %t96, 1
-  store i64 %t97, ptr %v.$idx
+  %t95 = load i64, ptr %v.$idx
+  %t96 = add i64 %t95, 1
+  store i64 %t96, ptr %v.$idx
   br label %for.cond.5
 for.end.5:
-  %t98 = load i32, ptr %v.s
-  %t99 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
-  %t100 = load ptr, ptr %t99
-  %t101 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
-  %t102 = load i64, ptr %t101
-  %t103 = icmp uge i64 0, %t102
-  br i1 %t103, label %panic.7, label %panic.ok.7
+  %t97 = load i32, ptr %v.s
+  %t98 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
+  %t99 = load ptr, ptr %t98
+  %t100 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
+  %t101 = load i64, ptr %t100
+  %t102 = icmp uge i64 0, %t101
+  br i1 %t102, label %panic.7, label %panic.ok.7
 panic.7:
   call void @willrt_panic(ptr @.str.0, ptr @.str.5, ptr @.str.2)
   unreachable
 panic.ok.7:
-  %t104 = getelementptr inbounds i32, ptr %t100, i64 0
-  %t105 = load i32, ptr %t104
-  %t106 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t98, i32 %t105)
-  %t107 = extractvalue {i32, i1} %t106, 0
-  %t108 = extractvalue {i32, i1} %t106, 1
-  br i1 %t108, label %panic.8, label %panic.ok.8
+  %t103 = getelementptr inbounds i32, ptr %t99, i64 0
+  %t104 = load i32, ptr %t103
+  %t105 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t97, i32 %t104)
+  %t106 = extractvalue {i32, i1} %t105, 0
+  %t107 = extractvalue {i32, i1} %t105, 1
+  br i1 %t107, label %panic.8, label %panic.ok.8
 panic.8:
   call void @willrt_panic(ptr @.str.3, ptr @.str.6, ptr @.str.2)
   unreachable
 panic.ok.8:
-  %t109 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
-  %t110 = load i64, ptr %t109
-  %t111 = icmp ugt i64 %t110, 2147483647
-  br i1 %t111, label %panic.9, label %panic.ok.9
+  %t108 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
+  %t109 = load i64, ptr %t108
+  %t110 = icmp ugt i64 %t109, 2147483647
+  br i1 %t110, label %panic.9, label %panic.ok.9
 panic.9:
   call void @willrt_panic(ptr @.str.7, ptr @.str.8, ptr @.str.2)
   unreachable
 panic.ok.9:
-  %t112 = trunc i64 %t110 to i32
-  %t113 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t107, i32 %t112)
-  %t114 = extractvalue {i32, i1} %t113, 0
-  %t115 = extractvalue {i32, i1} %t113, 1
-  br i1 %t115, label %panic.10, label %panic.ok.10
+  %t111 = trunc i64 %t109 to i32
+  %t112 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t106, i32 %t111)
+  %t113 = extractvalue {i32, i1} %t112, 0
+  %t114 = extractvalue {i32, i1} %t112, 1
+  br i1 %t114, label %panic.10, label %panic.ok.10
 panic.10:
   call void @willrt_panic(ptr @.str.3, ptr @.str.6, ptr @.str.2)
   unreachable
 panic.ok.10:
-  ret i32 %t114
+  ret i32 %t113
 }
 define i32 @"example.com/array.will$main"() {
 entry:
-  %t116 = call i32 @"example.com/array.Sum"()
-  ret i32 %t116
+  %t115 = call i32 @"example.com/array.Sum"()
+  ret i32 %t115
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()

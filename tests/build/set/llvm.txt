@@ -379,35 +379,36 @@ find.done.24:
   %t152 = phi i1 [ true, %find.hit.24 ], [ false, %find.miss.24 ]
   br i1 %t152, label %del.yes.25, label %del.no.25
 del.yes.25:
-  %t153 = add i64 %t151, 1
-  %t154 = sub i64 %t145, %t153
-  %t155 = mul i64 %t154, 4
-  %t156 = getelementptr inbounds i32, ptr %t144, i64 %t151
-  %t157 = getelementptr inbounds i32, ptr %t144, i64 %t153
-  call void @memmove(ptr %t156, ptr %t157, i64 %t155)
-  %t158 = sub i64 %t145, 1
-  store i64 %t158, ptr %t140
+  %t153 = getelementptr inbounds i32, ptr %t144, i64 %t151
+  %t154 = add i64 %t151, 1
+  %t155 = sub i64 %t145, %t154
+  %t156 = mul i64 %t155, 4
+  %t157 = getelementptr inbounds i32, ptr %t144, i64 %t151
+  %t158 = getelementptr inbounds i32, ptr %t144, i64 %t154
+  call void @memmove(ptr %t157, ptr %t158, i64 %t156)
+  %t159 = sub i64 %t145, 1
+  store i64 %t159, ptr %t140
   br label %del.done.25
 del.no.25:
   br label %del.done.25
 del.done.25:
-  %t159 = phi i1 [ true, %del.yes.25 ], [ false, %del.no.25 ]
-  br i1 %t159, label %if.then.23, label %if.end.23
+  %t160 = phi i1 [ true, %del.yes.25 ], [ false, %del.no.25 ]
+  br i1 %t160, label %if.then.23, label %if.end.23
 if.then.23:
-  %t160 = load i32, ptr %v.sum
-  %t161 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t160, i32 10)
-  %t162 = extractvalue {i32, i1} %t161, 0
-  %t163 = extractvalue {i32, i1} %t161, 1
-  br i1 %t163, label %panic.26, label %panic.ok.26
+  %t161 = load i32, ptr %v.sum
+  %t162 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t161, i32 10)
+  %t163 = extractvalue {i32, i1} %t162, 0
+  %t164 = extractvalue {i32, i1} %t162, 1
+  br i1 %t164, label %panic.26, label %panic.ok.26
 panic.26:
   call void @willrt_panic(ptr @.str.0, ptr @.str.3, ptr @.str.2)
   unreachable
 panic.ok.26:
-  store i32 %t162, ptr %v.sum
+  store i32 %t163, ptr %v.sum
   br label %if.end.23
 if.end.23:
-  %t164 = load i32, ptr %v.sum
-  ret i32 %t164
+  %t165 = load i32, ptr %v.sum
+  ret i32 %t165
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()

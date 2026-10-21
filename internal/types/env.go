@@ -203,6 +203,38 @@ func typeParamSet(params []*ast.TypeParam) map[string]bool {
 	return set
 }
 
+// keyType reports whether a type can be a Map key or Set element. The language
+// gives Equal only to values with stable equality, so handles, raw addresses,
+// floats, and structs holding one of them are rejected here.
+func (c *checker) keyType(t *Type) bool {
+	if t == nil {
+		return true
+	}
+	switch t.Kind() {
+	case ScalarKind:
+		name := t.Name()
+		return name != "raw" && name != "f32" && name != "f64"
+	case NamedKind:
+		switch t.Name() {
+		case "raw", "rc", "weak", "chan", "Task", "f32", "f64":
+			return false
+		}
+		if fields, ok := c.env.fields[t.Name()]; ok {
+			for _, field := range fields {
+				if !c.keyType(field.typ) {
+					return false
+				}
+			}
+		}
+		return true
+	case ArrayKind, ViewKind:
+		return c.keyType(t.Elem())
+	case FuncKind:
+		return false
+	}
+	return true
+}
+
 func (c *checker) buildSig(decl *ast.FuncDecl) *signature {
 	tp := typeParamSet(decl.TypeParams)
 	sig := &signature{name: decl.Name, typeParams: len(decl.TypeParams)}
@@ -254,6 +286,14 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 		args := make([]*Type, len(t.Args))
 		for i, a := range t.Args {
 			args[i] = c.buildType(a, tp)
+		}
+		if t.Name == "Set" && len(args) == 1 && !c.keyType(args[0]) {
+			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "Set element type does not support Equal",
+				"use a type with a stable equality, such as an integer, str, struct, or enum")
+		}
+		if t.Name == "Map" && len(args) == 2 && !c.keyType(args[0]) {
+			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "Map key type does not support Equal",
+				"use a type with a stable equality, such as an integer, str, struct, or enum")
 		}
 		if want, ok := c.env.arity[t.Name]; ok {
 			if len(args) != want {

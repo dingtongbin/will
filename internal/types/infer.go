@@ -430,6 +430,9 @@ func (c *checker) checkArg(s *inferScope, e ast.Expr, want *Type, callee string,
 		c.inferExpr(s, e)
 		return
 	}
+	if c.checkNegativeLiteral(e, want) {
+		return
+	}
 	got := c.exprWithWant(s, e, want)
 	if !Equal(got, want) {
 		c.mismatch(e.Pos(), got, want, true, callee, n)
@@ -709,6 +712,24 @@ func (c *checker) recordLiteral(lit *ast.LiteralExpr, t *Type) {
 }
 
 func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
+	if field, ok := call.Callee.(*ast.FieldExpr); ok {
+		if recv, ok := field.Recv.(*ast.NameExpr); ok {
+			if decl := c.foreignFuncs[recv.Name][field.Name]; decl != nil {
+				sig := c.buildSig(decl)
+				c.checkTypeArgs(call, sig)
+				inst := sig
+				if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
+					subst := make(map[string]*Type, sig.typeParams)
+					for i, ta := range call.TypeArgs {
+						subst[sig.typeNames[i]] = c.buildType(ta, nil)
+					}
+					inst = c.instantiate(sig, subst)
+				}
+				c.checkCallArgs(s, inst, call.Args, call.Pos())
+				return inst.result
+			}
+		}
+	}
 	name, ok := call.Callee.(*ast.NameExpr)
 	if !ok {
 		t := c.inferExpr(s, call.Callee)
@@ -970,6 +991,20 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	if call.Link != nil {
 		return c.cLinkType(s, call)
 	}
+	if recv, ok := call.Recv.(*ast.NameExpr); ok {
+		if decl := c.foreignFuncs[recv.Name][call.Name]; decl != nil {
+			sig := c.buildSig(decl)
+			if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
+				subst := make(map[string]*Type, sig.typeParams)
+				for i, ta := range call.TypeArgs {
+					subst[sig.typeNames[i]] = c.buildType(ta, nil)
+				}
+				sig = c.instantiate(sig, subst)
+			}
+			c.checkCallArgs(s, sig, call.Args, call.Pos())
+			return sig.result
+		}
+	}
 	recv := c.inferExpr(s, call.Recv)
 	for _, a := range call.Args {
 		c.inferExpr(s, a.Expr)
@@ -997,6 +1032,11 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		return elemOf(c.in, recv)
 	case "Join":
 		return nil
+	case "Close":
+		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "chan" {
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.unit()
+		}
 	}
 	if recv == nil {
 		return nil
@@ -1020,6 +1060,15 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			}
 		}
 		return nil
+	}
+	if fields, ok := c.env.fields[recv.Name()]; ok {
+		for _, f := range fields {
+			if f.name != call.Name || f.typ == nil || f.typ.Kind() != FuncKind {
+				continue
+			}
+			c.checkPayload(s, f.typ.Params(), call.Args, call.Name, call.Pos())
+			return f.typ.Result()
+		}
 	}
 	if sig, ok := c.env.methods[recv.Name()+"."+call.Name]; ok {
 		c.checkTypeArgsForMethod(call, sig)
@@ -1198,12 +1247,30 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 		case "Set":
 			c.checkPayload(s, []*Type{usize, elem}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Push", "Append":
+		case "Push":
 			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Clear":
+		case "Append":
+			c.checkPayload(s, []*Type{c.in.view(elem)}, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		case "Pop":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.named("Option", []*Type{elem}), true
+		case "Insert":
+			c.checkPayload(s, []*Type{usize, elem}, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		case "Remove":
+			c.checkPayload(s, []*Type{usize}, call.Args, call.Name, call.Pos())
+			return elem, true
+		case "Clear", "ShrinkToFit":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
+		case "Slice":
+			c.checkPayload(s, []*Type{usize, usize}, call.Args, call.Name, call.Pos())
+			return c.in.view(elem), true
+		case "Clone":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.named("Array", []*Type{elem}), true
 		}
 		return nil, false
 	}
@@ -1311,6 +1378,31 @@ func (c *checker) aggregateType(s *inferScope, agg *ast.AggregateExpr) *Type {
 	return t
 }
 
+// foreignInitSig builds the instantiated init signature of a qualified type.
+// The receiver type arguments of the declaration are replaced by the concrete
+// arguments the new expression writes.
+func (c *checker) foreignInitSig(name string, recv *Type) *signature {
+	if recv == nil {
+		return nil
+	}
+	dot := strings.LastIndexByte(name, '.')
+	if dot <= 0 {
+		return nil
+	}
+	decl := c.foreignInits[name[:dot]][name[dot+1:]]
+	if decl == nil || decl.Recv == nil || len(decl.Recv.Type.Args) != len(recv.Args()) {
+		return nil
+	}
+	sig := c.buildSig(decl)
+	subst := make(map[string]*Type, len(recv.Args()))
+	for i, a := range decl.Recv.Type.Args {
+		if a.Kind == ast.NamedType && len(a.Args) == 0 {
+			subst[a.Name] = recv.Args()[i]
+		}
+	}
+	return c.instantiate(sig, subst)
+}
+
 func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 	t := c.buildType(n.Type, nil)
 	name := ""
@@ -1337,9 +1429,15 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 		return t
 	}
 	if strings.Contains(name, ".") {
-		// A type from another package has no declaration in this environment.
-		// Its init signature is checked and lowered in the defining package, so
-		// the arguments are inferred here and the call is checked in lowering.
+		// The defining package owns the init declaration. Use it when it is
+		// available: new returns the init's Result when init has one.
+		if sig := c.foreignInitSig(name, t); sig != nil {
+			c.checkCallArgs(s, sig, n.Args, n.Pos())
+			if sig.result != nil {
+				return sig.result
+			}
+			return t
+		}
 		for _, a := range n.Args {
 			c.inferExpr(s, a.Expr)
 		}
@@ -1362,6 +1460,17 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 			"write "+name+" { ... } or add an init method")
 		for _, a := range n.Args {
 			c.inferExpr(s, a.Expr)
+		}
+		return t
+	}
+	// The predeclared containers take their capacity as usize. The generic
+	// fallback below is for a target whose constructor has no visible
+	// declaration, and its i32 assumption must not leak into Array, Map, or
+	// Set.
+	if name == "Array" || name == "Map" || name == "Set" {
+		capacity := c.in.scalar("usize")
+		for i, a := range n.Args {
+			c.checkArg(s, a.Expr, capacity, name, i+1)
 		}
 		return t
 	}

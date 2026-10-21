@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+// trimInterval bounds how often a build scans the cache for LRU eviction.
+const trimInterval = 10 * time.Minute
+
 // Entry names fixed by the build volume.
 const (
 	// Willc is the front-end product.
@@ -19,10 +22,13 @@ const (
 	ModuleO = "module.o"
 	// Diag holds diagnostics when no product was produced.
 	Diag = "diag"
+	// Artifact is the final linked executable or library.
+	Artifact = "artifact"
 )
 
 var entryNames = map[string]bool{
 	Willc: true, Decisions: true, ModuleLL: true, ModuleO: true, Diag: true,
+	Artifact: true,
 }
 
 // Store is a cache rooted at one directory.
@@ -77,6 +83,23 @@ func (s *Store) Get(key string, names ...string) (map[string][]byte, bool) {
 func (s *Store) Has(key string) bool {
 	info, err := os.Stat(filepath.Join(s.Root, key))
 	return err == nil && info.IsDir()
+}
+
+// TrimIfNeeded trims at most once per trimInterval. A build writes several
+// stores, and scanning a large cache on every store write made a warm build
+// spend seconds in bookkeeping. The marker is a file, so Trim ignores it.
+func (s *Store) TrimIfNeeded() error {
+	if s.Max <= 0 {
+		return nil
+	}
+	marker := filepath.Join(filepath.Dir(s.Root), ".trim-"+filepath.Base(s.Root))
+	if info, err := os.Stat(marker); err == nil && time.Since(info.ModTime()) < trimInterval {
+		return nil
+	}
+	if err := s.Trim(); err != nil {
+		return err
+	}
+	return os.WriteFile(marker, []byte("trimmed\n"), 0o644)
 }
 
 // Trim removes least-recently-used entries until the cache fits its limit.

@@ -111,6 +111,11 @@ void willrt_mem_set_shared(void);
    allocator's lane table. */
 void willrt_mem_set_lane(int32_t lane);
 
+/* willrt_mem_thread_flush returns the calling thread's cached small blocks to
+   its lane. A runtime worker calls it before exiting; a raw C thread that uses
+   the allocator should do the same so another thread can reuse the blocks. */
+void willrt_mem_thread_flush(void);
+
 /* willrt_plate_new returns one block holding count elements of elem bytes, or
    NULL when the request overflows or memory is exhausted. The payload starts
    on a boundary of max(elem, alignof(max_align_t)), rounded up to a power of
@@ -145,6 +150,15 @@ uint64_t willrt_rc_new_drop(const void* value, size_t size,
    path to atomic compare-and-swap. A worker must be marked before it can touch
    an rc handle. */
 void willrt_rc_set_shared(void);
+
+/* willrt_rc_set_threaded tells the table that a second thread exists. It does
+   not make every count atomic; willrt_rc_share does that per object. */
+void willrt_rc_set_threaded(void);
+
+/* willrt_rc_share marks one object as reachable from more than one thread. The
+   compiler calls it before a handle enters a task frame or a channel. Until
+   then this object keeps the plain count path even when other workers exist. */
+void willrt_rc_share(uint64_t handle);
 
 /* willrt_rc_retain adds one reference to the object named by handle. A zero,
    out-of-range, or released handle is ignored, so a stale handle never

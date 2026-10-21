@@ -1,0 +1,48 @@
+// The synchronous file operations are the blocking half of std/os/fs. The
+// asynchronous half needs the scheduler's file suspension and is not exposed
+// until that path exists.
+import c "file.h" {
+    fast willrt_fs_read_file
+    fast willrt_fs_write_file
+    fast willrt_fs_append_file
+}
+
+struct fsError {
+    message: str
+}
+
+func (e: fsError) Message() -> str {
+    return e.message
+}
+
+func (e: fsError) Status() -> i32 {
+    return 2
+}
+
+// ReadFile returns every byte of path.
+func ReadFile(path: str) -> Result<Array<u8>, Error> {
+    var out: Array<u8> = new Array<u8>(0)
+    var status: i32 = c.willrt_fs_read_file(raw(path), raw(out))
+    if status != 0 {
+        return Err(fsError { message: "fs: cannot read file"})
+    }
+    return Ok(out)
+}
+
+// WriteFile replaces path with data.
+func WriteFile(path: str, data: []u8) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_write_file(raw(path), raw(data))
+    if status != 0 {
+        return Err(fsError { message: "fs: cannot write file"})
+    }
+    return Ok(())
+}
+
+// Append writes data at the end of path.
+func Append(path: str, data: []u8) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_append_file(raw(path), raw(data))
+    if status != 0 {
+        return Err(fsError { message: "fs: cannot append file"})
+    }
+    return Ok(())
+}

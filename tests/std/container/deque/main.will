@@ -1,0 +1,121 @@
+import "std/container/deque"
+
+// The deque must preserve logical order across both rebalancing directions,
+// including alternation between the front and the back.
+func main() -> i32 {
+    var d: deque.Deque<i32> = new deque.Deque<i32>()
+    if d.Len() != 0usize {
+        return 1
+    }
+    d.PushBack(3)
+    d.PushBack(4)
+    d.PushFront(2)
+    d.PushFront(1)
+    if d.Len() != 4usize {
+        return 2
+    }
+    match d.PeekFront() {
+        Some(v) => {
+            if v != 1 {
+                return 3
+            }
+        }
+        None => {
+            return 4
+        }
+    }
+    match d.PeekBack() {
+        Some(v) => {
+            if v != 4 {
+                return 5
+            }
+        }
+        None => {
+            return 6
+        }
+    }
+    match d.PopBack() {
+        Some(v) => {
+            if v != 4 {
+                return 7
+            }
+        }
+        None => {
+            return 8
+        }
+    }
+    match d.PopFront() {
+        Some(v) => {
+            if v != 1 {
+                return 9
+            }
+        }
+        None => {
+            return 10
+        }
+    }
+    d.PushBack(5)
+    d.PushFront(0)
+    if d.Len() != 4usize {
+        return 11
+    }
+    match d.PopFront() {
+        Some(v) => {
+            if v != 0 {
+                return 12
+            }
+        }
+        None => {
+            return 13
+        }
+    }
+    match d.PopFront() {
+        Some(v) => {
+            if v != 2 {
+                return 14
+            }
+        }
+        None => {
+            return 15
+        }
+    }
+    match d.PopFront() {
+        Some(v) => {
+            if v != 3 {
+                return 16
+            }
+        }
+        None => {
+            return 17
+        }
+    }
+    match d.PopFront() {
+        Some(v) => {
+            if v != 5 {
+                return 18
+            }
+        }
+        None => {
+            return 19
+        }
+    }
+    match d.PopFront() {
+        Some(v) => {
+            _ = v
+            return 14
+        }
+        None => {
+        }
+    }
+    d.PushFront(9)
+    var copy: deque.Deque<i32> = d.Clone()
+    d.PushBack(10)
+    if copy.Len() != 1usize || d.Len() != 2usize {
+        return 15
+    }
+    copy.Clear()
+    if copy.Len() != 0usize {
+        return 16
+    }
+    return 0
+}

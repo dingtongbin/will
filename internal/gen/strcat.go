@@ -38,6 +38,8 @@ func (g *generator) strCallResult(r willc.Record) (llvm, text string, known bool
 		return "{ ptr, i64 }", "str", true
 	case "Split", "SplitN", "Fields":
 		return "{ ptr, i64 }", "[]str", true
+	case "Chars":
+		return "{ ptr, i64, i64 }", "Array<u32>", true
 	}
 	return "", "", false
 }

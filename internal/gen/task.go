@@ -70,12 +70,18 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	args := g.callArgs(call)
 	var frameTypes []string
 	var argTypes []string
+	var argTexts []string
 	for _, a := range args {
 		typ, err := g.typeOf(a)
 		if err != nil {
 			return "", err
 		}
+		text, err := g.willTypeText(a)
+		if err != nil {
+			return "", err
+		}
 		argTypes = append(argTypes, typ)
+		argTexts = append(argTexts, text)
 		frameTypes = append(frameTypes, typ)
 	}
 	frameType := "{ " + strings.Join(frameTypes, ", ") + " }"
@@ -97,6 +103,9 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			}
 			value := g.load(argTypes[i], src)
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argTypes[i], value, field)
+			if err := g.shareValue(field, argTexts[i]); err != nil {
+				return "", err
+			}
 			continue
 		}
 		value, err := g.value(a)
@@ -104,6 +113,9 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			return "", err
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argTypes[i], value, field)
+		if err := g.shareValue(field, argTexts[i]); err != nil {
+			return "", err
+		}
 	}
 	step := g.spawnStepSymbol(r.ID)
 	if !g.spawnEmitted[step] {
@@ -216,6 +228,9 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)
+	if err := g.shareValue(slot, result); err != nil {
+		return err
+	}
 	size := g.sizeOf(retLLVM)
 	g.needTaskDecl = true
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, size)
@@ -573,6 +588,9 @@ func (g *generator) emitJoinResumeStep(req spawnRequest, call willc.Record, fram
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)
+	if err := g.shareValue(slot, result); err != nil {
+		return err
+	}
 	sizeResult := g.sizeOf(retLLVM)
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, sizeResult)
 	g.out.WriteString("  ret i32 1\n}\n")
@@ -650,6 +668,9 @@ func (g *generator) emitJoinStep(req spawnRequest, frameType string, frameTypes 
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, resultLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", resultLLVM, value, slot)
+	if err := g.shareValue(slot, result); err != nil {
+		return err
+	}
 	sizeResult := g.sizeOf(resultLLVM)
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, sizeResult)
 	g.out.WriteString("  ret i32 1\n}\n")
@@ -807,6 +828,10 @@ func (g *generator) lowerSend(r willc.Record) error {
 	if err != nil {
 		return err
 	}
+	valueText, err := g.willTypeText(valueID)
+	if err != nil {
+		return err
+	}
 	ptr := ""
 	if isAggregateType(typ) {
 		ptr, _, err = g.place(valueID)
@@ -821,6 +846,9 @@ func (g *generator) lowerSend(r willc.Record) error {
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
 	}
+	if err := g.shareValue(ptr, valueText); err != nil {
+		return err
+	}
 	g.needTaskDecl = true
 	fmt.Fprintf(g.out, "  call i32 @willrt_chan_send(ptr %s, ptr %s)\n", chanPtr, ptr)
 	return nil
@@ -828,7 +856,11 @@ func (g *generator) lowerSend(r willc.Record) error {
 
 // lowerClose closes one channel.
 func (g *generator) lowerClose(r willc.Record) error {
-	chanPtr, err := g.value(refField(r, "chan"))
+	channel := refField(r, "chan")
+	if channel == 0 {
+		channel = refField(r, "recv")
+	}
+	chanPtr, err := g.value(channel)
 	if err != nil {
 		return err
 	}
@@ -849,6 +881,10 @@ func (g *generator) lowerTrySend(r willc.Record) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	valueText, err := g.willTypeText(valueID)
+	if err != nil {
+		return "", err
+	}
 	ptr := ""
 	if isAggregateType(typ) {
 		ptr, _, err = g.place(valueID)
@@ -862,6 +898,9 @@ func (g *generator) lowerTrySend(r willc.Record) (string, error) {
 			return "", err
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
+	}
+	if err := g.shareValue(ptr, valueText); err != nil {
+		return "", err
 	}
 	g.needTaskDecl = true
 	status := g.newTmp()

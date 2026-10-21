@@ -82,5 +82,18 @@ func main() -> i32 {
     if math.U64Max > 0u64 {
         ok += 1
     }
+    if math.F64Bits(1.0) == 0x3ff0000000000000u64 {
+        ok += 1
+    }
+    if math.F64FromBits(0x3ff0000000000000u64) == 1.0 {
+        ok += 1
+    }
+    var one32: f32 = 1.0
+    if math.F32Bits(one32) == 0x3f800000u32 {
+        ok += 1
+    }
+    if math.F32FromBits(0x3f800000u32) == one32 {
+        ok += 1
+    }
     return ok
 }

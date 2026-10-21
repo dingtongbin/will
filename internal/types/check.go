@@ -63,8 +63,44 @@ func CheckPackage(files []*ast.File, results []*resolve.Result) []diag.Diagnosti
 // CheckPackageFull checks every file of one package and also returns the
 // checker's result: dispatch points and resolved literal types.
 func CheckPackageFull(files []*ast.File, results []*resolve.Result) (*Result, []diag.Diagnostic) {
-	c := &checker{in: newInterner()}
+	return CheckPackageFullWithForeign(files, results, nil)
+}
+
+// CheckPackageWithForeign checks one package with the init declarations of
+// imported packages available, so new on an imported generic type sees the
+// Result its init returns.
+func CheckPackageWithForeign(files []*ast.File, results []*resolve.Result, foreign map[string]map[string]*ast.FuncDecl) []diag.Diagnostic {
+	_, ds := CheckPackageFullWithForeign(files, results, foreign)
+	return ds
+}
+
+// CheckPackageWithImported also checks calls to imported free functions, so a
+// literal passed across a package boundary gets the declared parameter type.
+func CheckPackageWithImported(files []*ast.File, results []*resolve.Result, inits, funcs map[string]map[string]*ast.FuncDecl) []diag.Diagnostic {
+	_, ds := CheckPackageFullWithImported(files, results, inits, funcs)
+	return ds
+}
+
+// CheckPackageFullWithImported returns the checker result as well, so the
+// front end can emit the literal types it resolved across packages.
+func CheckPackageFullWithImported(files []*ast.File, results []*resolve.Result, inits, funcs map[string]map[string]*ast.FuncDecl) (*Result, []diag.Diagnostic) {
+	c := &checker{in: newInterner(), foreignInits: inits, foreignFuncs: funcs}
 	c.env = buildEnvAll(c, files)
+	c.checkPackage(files, results)
+	return c.result(), c.bag.Diagnostics()
+}
+
+// CheckPackageFullWithForeign is CheckPackageFull plus imported init
+// declarations keyed by package name and type name.
+func CheckPackageFullWithForeign(files []*ast.File, results []*resolve.Result, foreign map[string]map[string]*ast.FuncDecl) (*Result, []diag.Diagnostic) {
+	c := &checker{in: newInterner(), foreignInits: foreign}
+	c.env = buildEnvAll(c, files)
+	c.checkPackage(files, results)
+	return c.result(), c.bag.Diagnostics()
+}
+
+// checkPackage walks every file after the environment is built.
+func (c *checker) checkPackage(files []*ast.File, results []*resolve.Result) {
 	for i, f := range files {
 		if f == nil || i >= len(results) || results[i] == nil {
 			continue
@@ -73,7 +109,6 @@ func CheckPackageFull(files []*ast.File, results []*resolve.Result) (*Result, []
 		c.walkFile(f)
 		c.inferFile(f)
 	}
-	return c.result(), c.bag.Diagnostics()
 }
 
 // result packages what the checker recorded.
@@ -104,6 +139,13 @@ type checker struct {
 	// constructors and values, by node.
 	callTypes map[*ast.CallExpr]string
 	nameTypes map[*ast.NameExpr]string
+	// foreignInits holds init declarations of imported packages, keyed by
+	// package name and type name. A qualified new needs the result type the
+	// defining package gave that init.
+	foreignInits map[string]map[string]*ast.FuncDecl
+	// foreignFuncs holds imported free functions by package name and function
+	// name, so a call checks its arguments against the declaring signature.
+	foreignFuncs map[string]map[string]*ast.FuncDecl
 }
 
 func (c *checker) walkFile(f *ast.File) {

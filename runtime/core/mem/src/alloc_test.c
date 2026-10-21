@@ -83,6 +83,24 @@ static void test_alloc_reuse(void) {
     assert(willrt_mem_chunk_count() == chunks_before);
 }
 
+/* A flushed thread cache returns its blocks to the lane, so the next
+   allocation on that lane reuses the same payload without a page call. */
+static void test_alloc_cache_flush(void) {
+    const size_t size = 300;
+    void* first = willrt_alloc(size);
+    size_t calls_before;
+
+    assert(first != NULL);
+    willrt_free(first);
+    willrt_mem_thread_flush();
+    calls_before = willrt_mem_page_calls();
+    first = willrt_alloc(size);
+    assert(first != NULL);
+    assert(willrt_mem_page_calls() == calls_before);
+    willrt_free(first);
+    willrt_mem_thread_flush();
+}
+
 static void test_alloc_foreign(void) {
     unsigned char stack_block[64];
     unsigned char* block;
@@ -216,6 +234,7 @@ static void willrt_alloc_worker_body(void* raw) {
         }
         willrt_free(block);
     }
+    willrt_mem_thread_flush();
     willrt_mem_set_lane(0);
 }
 
@@ -258,6 +277,7 @@ static void willrt_alloc_handoff_body(void* raw) {
 
     willrt_mem_set_lane(1);
     willrt_free(handoff->block);
+    willrt_mem_thread_flush();
     willrt_mem_set_lane(0);
 }
 
@@ -273,11 +293,51 @@ static void test_alloc_cross_lane(void) {
     willrt_os_thread_join(&thread);
 }
 
+/* A raw C thread that never registers with the scheduler must not keep a
+   private cache. Its frees go to the lane list, so repeated short-lived threads
+   cannot strand blocks. */
+static void willrt_alloc_raw_thread(void* ignored) {
+    int i;
+
+    (void)ignored;
+    for (i = 0; i < 200; i++) {
+        void* block = willrt_alloc(300);
+        assert(block != NULL);
+        willrt_free(block);
+    }
+}
+
+static void test_alloc_raw_thread(void) {
+    enum { kThreads = 4 };
+    willrt_os_thread threads[kThreads];
+    size_t calls_before;
+    size_t i;
+
+    willrt_mem_set_shared();
+    {
+        void* warm = willrt_alloc(300);
+        assert(warm != NULL);
+        willrt_free(warm);
+        willrt_mem_thread_flush();
+    }
+    calls_before = willrt_mem_page_calls();
+    for (i = 0; i < kThreads; i++) {
+        assert(willrt_os_thread_start(&threads[i], willrt_alloc_raw_thread,
+                                      NULL) == 0);
+    }
+    for (i = 0; i < kThreads; i++) {
+        willrt_os_thread_join(&threads[i]);
+    }
+    assert(willrt_mem_page_calls() == calls_before);
+}
+
 int main(void) {
+    test_alloc_raw_thread();
     test_alloc_round_trip();
     test_alloc_alignment();
     test_alloc_page_backed();
     test_alloc_reuse();
+    test_alloc_cache_flush();
     test_alloc_foreign();
     test_plate_write();
     test_plate_stride();

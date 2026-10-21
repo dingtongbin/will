@@ -106,6 +106,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 // emitted, the panic declaration. Both may follow the functions because LLVM
 // resolves forward references to global values.
 func (g *generator) emitAux() {
+	g.emitExternalDecls()
 	for _, decl := range g.decls {
 		g.out.WriteString(decl + "\n")
 	}
@@ -160,7 +161,9 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_chan_close(ptr)\n")
 		g.out.WriteString("declare i32 @willrt_select(ptr, i64)\n")
 		g.out.WriteString("declare i32 @willrt_select_status()\n")
-		g.out.WriteString("declare i64 @willrt_now_ns()\n")
+		if !g.declSet["declare i64 @willrt_now_ns()"] {
+			g.out.WriteString("declare i64 @willrt_now_ns()\n")
+		}
 		g.out.WriteString("declare void @willrt_region_enter()\n")
 		g.out.WriteString("declare i32 @willrt_region_exit()\n")
 		g.out.WriteString("declare i32 @willrt_lane_here()\n")
@@ -169,6 +172,7 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare i64 @willrt_rc_new(ptr, i64)\n")
 		g.out.WriteString("declare i64 @willrt_rc_new_drop(ptr, i64, ptr)\n")
 		g.out.WriteString("declare void @willrt_rc_retain(i64)\n")
+		g.out.WriteString("declare void @willrt_rc_share(i64)\n")
 		g.out.WriteString("declare void @willrt_rc_release(i64)\n")
 		g.out.WriteString("declare ptr @willrt_rc_deref(i64)\n")
 		g.out.WriteString("declare i64 @willrt_weak_new(i64)\n")
@@ -206,6 +210,7 @@ func (g *generator) emitAux() {
 // names mean something only inside one document.
 type docState struct {
 	path  string
+	clone bool
 	recs  map[int]willc.Record
 	funcs map[int]string
 	links map[int]string
@@ -457,6 +462,7 @@ func (g *generator) use(d *docState) {
 	g.adts = map[string]*adtInfo{}
 	g.adtSlots = map[int]string{}
 	g.newSlots = map[int]string{}
+	g.newStoreSlots = map[int]string{}
 	g.strSlots = map[int]string{}
 	g.utf8Slots = map[int]string{}
 	g.utf8nSlots = map[int]string{}
@@ -471,8 +477,10 @@ func (g *generator) use(d *docState) {
 	g.sliceSlots = map[int]string{}
 	g.strCatSlots = map[int]string{}
 	g.interpSlots = map[int]string{}
-	g.lambdaNames = map[int]string{}
-	g.lambdas = map[int]*lambdaInfo{}
+	if !g.packageMode {
+		g.lambdaNames = map[int]string{}
+		g.lambdas = map[int]*lambdaInfo{}
+	}
 	g.closureSlots = map[int]string{}
 	g.captureFields = map[int]string{}
 	g.captureSpills = map[int]string{}
@@ -480,6 +488,9 @@ func (g *generator) use(d *docState) {
 	g.pendingThunks = nil
 	g.spawnNames = map[int]string{}
 	g.pendingSpawns = nil
+	g.pendingDefers = nil
+	g.deferSeq = 0
+	g.deferSnapshots = map[int]deferSnapshot{}
 	g.joinOutSlots = map[int]string{}
 	g.joinErrSlots = map[int]string{}
 	g.recvOutSlots = map[int]string{}
@@ -576,8 +587,10 @@ type generator struct {
 	// and adtSlots maps a constructor to the slot it builds its value in.
 	adts     map[string]*adtInfo
 	adtSlots map[int]string
-	// newSlots maps a new expression to the slot its storage is built in.
-	newSlots map[int]string
+	// newSlots maps a new expression to the slot of the value it returns, and
+	// newStoreSlots holds the object storage when init returns a Result.
+	newSlots      map[int]string
+	newStoreSlots map[int]string
 	// strSlots maps a str or bytes literal to the two-word value built for it,
 	// and byteGlobals shares identical literal data.
 	strSlots    map[int]string
@@ -719,8 +732,20 @@ type generator struct {
 	// contains ?. They run only on the error path of the first failing ?.
 	pendingTryReleases []willc.Record
 	// defers holds one frame per open block, innermost last. Each entry is the
-	// call record of one defer in that block, in source order.
-	defers [][]int
+	// deferred call site with the storage its arguments were captured in, in
+	// source order.
+	defers [][]deferCall
+	// pendingDefers holds the thunk bodies this document still has to write.
+	// deferSeq numbers those thunks across the module.
+	pendingDefers []deferRequest
+	deferSeq      int
+	// deferSnapshots maps an argument, receiver, or callee expression to the
+	// field that captured its value at the defer statement. It is non-empty
+	// only while a defer thunk is being lowered.
+	deferSnapshots map[int]deferSnapshot
+	// deferThunk reports that a defer body is being lowered, so a conversion
+	// slot belongs to the thunk rather than the original function.
+	deferThunk bool
 	// linkSigs holds the header prototype of each C link of the current
 	// document. An untyped link keeps the i32 fallback.
 	linkSigs map[string]cLinkSig
@@ -749,6 +774,16 @@ type generator struct {
 
 	// pkg is the package path of the current document.
 	pkg string
+	// packageMode emits one package into its own LLVM module. Cross-package
+	// calls then need external declarations, and all non-entry definitions use
+	// hidden linkage so separate objects can resolve them.
+	packageMode     bool
+	externalFuncs   map[string]bool
+	externalSigs    map[string]externalSignature
+	externalGlobals map[string]bool
+	emittedFuncs    map[string]bool
+	libFuncs        map[string]string
+	initOrder       []string
 	// entrySymbol is the mangled symbol of the program entry; entryResult is
 	// its result type text, and entryFound reports that it was located.
 	entryName     string
@@ -818,17 +853,34 @@ func (g *generator) emitDoc() error {
 			return err
 		}
 	}
-	if err := g.emitThunks(); err != nil {
-		return err
+	// A defer thunk can call a blocking C link or release an owning value,
+	// and a blocking step or spawn can contain another defer. Keep draining
+	// every queue until none of them gained work while the others ran.
+	for pass := 0; pass < 64; pass++ {
+		pending := len(g.pendingThunks) + len(g.pendingSpawns) +
+			len(g.pendingBlock) + len(g.pendingDrops) + len(g.pendingDefers)
+		if pending == 0 {
+			break
+		}
+		if err := g.emitThunks(); err != nil {
+			return err
+		}
+		if err := g.emitSpawns(); err != nil {
+			return err
+		}
+		if err := g.emitBlockingSteps(); err != nil {
+			return err
+		}
+		if err := g.emitDrops(); err != nil {
+			return err
+		}
+		if err := g.emitDeferThunks(); err != nil {
+			return err
+		}
 	}
-	if err := g.emitSpawns(); err != nil {
-		return err
-	}
-	if err := g.emitBlockingSteps(); err != nil {
-		return err
-	}
-	if err := g.emitDrops(); err != nil {
-		return err
+	if pending := len(g.pendingThunks) + len(g.pendingSpawns) +
+		len(g.pendingBlock) + len(g.pendingDrops) + len(g.pendingDefers); pending != 0 {
+		return fmt.Errorf("pending lowering work did not drain")
 	}
 	return g.emitInit(g.cur)
 }
@@ -871,7 +923,11 @@ func (g *generator) emitWrapper() error {
 	g.out.WriteString("declare void @willrt_init()\n")
 	g.out.WriteString("declare void @willrt_shutdown()\n")
 	g.out.WriteString("define i32 @main() {\nentry:\n  call void @willrt_init()\n")
-	for _, init := range g.inits {
+	inits := g.inits
+	if g.packageMode {
+		inits = g.initOrder
+	}
+	for _, init := range inits {
 		fmt.Fprintf(g.out, "  call void @%s()\n", llvmSymbol(init))
 	}
 	if g.entryResult == "" {
@@ -897,7 +953,14 @@ func (g *generator) collect() {
 				g.cur.methods[receiverType(recv)+"."+name] = sym
 				continue
 			}
-			g.cur.funcs[r.ID] = g.symbolName(name)
+			sym := g.symbolName(name)
+			g.cur.funcs[r.ID] = sym
+			if g.lib && cExported(name) {
+				if g.libFuncs == nil {
+					g.libFuncs = map[string]string{}
+				}
+				g.libFuncs[qualify(g.pkg, name)] = sym
+			}
 		case "link":
 			g.cur.links[r.ID] = fieldText(r, "text")
 			if fieldText(r, "blocking") == "true" {
@@ -953,6 +1016,12 @@ func (g *generator) functionPrefix(fn willc.Record, name string) string {
 	sym := g.cur.funcs[fn.ID]
 	if g.entryFound && g.entryPkg == g.pkg && g.entryName == name {
 		return ""
+	}
+	if g.packageMode {
+		if g.lib && cExported(name) && !strings.Contains(sym, "$") {
+			return ""
+		}
+		return "hidden "
 	}
 	instance := strings.Contains(sym, "$")
 	if g.lib && cExported(name) && !instance {
@@ -1078,6 +1147,14 @@ func (g *generator) qualifyTypeText(pkg, text string) string {
 			return prefix + strings.Join(args, ",") + ">"
 		}
 	}
+	if name, args, ok := splitGenericType(text); ok {
+		for i := range args {
+			args[i] = g.qualifyTypeText(pkg, args[i])
+		}
+		if q := qualify(pkg, name); g.declKinds[q] != "" {
+			return q + "<" + strings.Join(args, ",") + ">"
+		}
+	}
 	if strings.HasPrefix(text, "func(") || text == "Error" || text == "()" || strings.Contains(text, ".") {
 		return text
 	}
@@ -1179,6 +1256,11 @@ func (g *generator) funcDecl(fn willc.Record) error {
 			sig = append(sig, typ+" %"+pname)
 			continue
 		}
+		if ptype == "Duration" {
+			g.scope[p.ID] = "%" + pname
+			sig = append(sig, "i64 %"+pname)
+			continue
+		}
 		typ, err := g.declLLVMType(p.ID)
 		if err != nil {
 			return err
@@ -1229,6 +1311,12 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		default:
 			return g.errf(fn.ID, "cannot translate node #%d: result type %s is not lowered yet", fn.ID, result)
 		}
+	} else if id := g.structDecl[result]; id != 0 {
+		info, ok := g.ensureStruct(id)
+		if !ok {
+			return g.errf(fn.ID, "cannot translate node #%d: result type %s is not lowered yet", fn.ID, result)
+		}
+		resLLVM = info.llvm
 	} else if id := g.typeRef(fn.ID); id != 0 {
 		if r, ok := g.recs[id]; ok && r.Kind == "enum" {
 			info := g.enums[id]
@@ -1458,13 +1546,24 @@ func (g *generator) allocas(fn int) error {
 			// An rc is one handle built by the table; it needs no slot here.
 			continue
 		}
-		typ, ok := g.typeLLVMOf(fieldText(r, "type"))
+		baseText := fieldText(r, "type")
+		resultText := g.newResultText(r)
+		typ, ok := g.typeLLVMOf(resultText)
 		if !ok || !isAggregateType(typ) {
-			return g.errf(r.ID, "cannot translate node #%d: new type %s is not lowered yet", r.ID, fieldText(r, "type"))
+			return g.errf(r.ID, "cannot translate node #%d: new type %s is not lowered yet", r.ID, resultText)
 		}
 		name := "%v.new." + strconv.Itoa(r.ID)
 		g.newSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, typ)
+		if resultText != baseText {
+			baseType, ok := g.typeLLVMOf(baseText)
+			if !ok || !isAggregateType(baseType) {
+				return g.errf(r.ID, "cannot translate node #%d: new type %s is not lowered yet", r.ID, baseText)
+			}
+			store := "%v.newstore." + strconv.Itoa(r.ID)
+			g.newStoreSlots[r.ID] = store
+			fmt.Fprintf(g.out, "  %s = alloca %s\n", store, baseType)
+		}
 	}
 	// A str or bytes literal is a two-word value, built in a slot.
 	var strs []willc.Record
@@ -2553,6 +2652,12 @@ func (g *generator) value(id int) (string, error) {
 	if !ok {
 		return "", g.errf(id, "cannot translate node #%d: no such node", id)
 	}
+	if snap, ok := g.deferSnapshots[id]; ok {
+		if isAggregateType(snap.llvm) {
+			return "", g.errf(id, "cannot translate node #%d: a deferred aggregate is a place", id)
+		}
+		return g.load(snap.llvm, g.deferFieldPtr(snap)), nil
+	}
 	switch r.Kind {
 	case "lit":
 		switch kind := fieldText(r, "kind"); kind {
@@ -2951,7 +3056,7 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 	}
 	_, taskScalar := taskElemText(text)
 	_, chanScalar := chanElemText(text)
-	if _, _, ok := llvmScalar(text); !ok && !isRcText(text) && !isWeakText(text) && !taskScalar && !chanScalar {
+	if _, _, ok := llvmScalar(text); !ok && text != "Duration" && !isRcText(text) && !isWeakText(text) && !taskScalar && !chanScalar {
 		return "", g.errf(r.ID, "cannot translate node #%d: an aggregate result is a place, not a scalar value", r.ID)
 	}
 	return name, nil
@@ -3006,6 +3111,12 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 			if isRcText(recvText) {
 				return g.rcMethodCall(r, recvText)
 			}
+			if kind, args, ok := parseADT(recvText); ok {
+				switch fieldText(r, "text") {
+				case "IsSome", "IsNone", "IsOk", "IsErr", "Or":
+					return g.adtMethod(r, kind, args)
+				}
+			}
 		}
 	}
 	if target := refField(r, "to"); target != 0 {
@@ -3050,8 +3161,19 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		if elem, ok := arrayElemText(recvText); ok {
 			return g.arrayMethod(r, elem)
 		}
+		if _, ok := chanElemText(recvText); ok && fieldText(r, "text") == "Close" {
+			return "", "", g.lowerClose(r)
+		}
 		if iface, ok := g.ifaceOfText(recvText); ok {
 			return g.interfaceCall(r, iface)
+		}
+		if typ, err := g.typeOf(refField(r, "recv")); err == nil {
+			if iface, ok := g.ifaceOfType(typ); ok {
+				return g.interfaceCall(r, iface)
+			}
+		}
+		if info, index, fnText, ok := g.functionField(r); ok {
+			return g.fieldCall(r, info, index, fnText)
 		}
 		name := fieldText(r, "text")
 		recv := g.recs[refField(r, "recv")]
@@ -3113,6 +3235,12 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 			return g.emitTypedCLink(r, name, sig)
 		}
 	}
+	if !link {
+		if alias := g.libFuncs[name]; alias != "" {
+			name = alias
+		}
+		g.noteExternalFunc(name)
+	}
 	args := g.callArgs(r)
 	parts := make([]string, 0, len(args))
 	// A method call passes its receiver first, as the borrow pointer the
@@ -3160,6 +3288,25 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 	resultText, err := g.callResultText(r)
 	if err != nil {
 		return "", "", err
+	}
+	if !link && g.packageMode && name != "" && !strings.HasPrefix(name, g.pkg+".") {
+		params := g.paramTypes[name]
+		if params == nil {
+			params = g.callParamTypes(r)
+		}
+		argTypes := make([]string, 0, len(parts))
+		for _, part := range parts {
+			if i := strings.LastIndexByte(part, ' '); i > 0 {
+				argTypes = append(argTypes, part[:i])
+			}
+		}
+		g.externalFuncs[name] = true
+		g.externalSigs[name] = externalSignature{
+			result:   resultText,
+			params:   append([]string(nil), params...),
+			argTypes: argTypes,
+			recv:     r.Kind == "mcall" && textField(r, "to") == "",
+		}
 	}
 	if link {
 		if resultText == "" {
@@ -3313,4 +3460,16 @@ func sortByID(rs []willc.Record) {
 			rs[j], rs[j-1] = rs[j-1], rs[j]
 		}
 	}
+}
+
+// sortedRecords returns one document's records in source order. Lowering that
+// creates new documents must not use map order, or the symbol order would
+// change between identical builds.
+func sortedRecords(recs map[int]willc.Record) []willc.Record {
+	out := make([]willc.Record, 0, len(recs))
+	for _, r := range recs {
+		out = append(out, r)
+	}
+	sortByID(out)
+	return out
 }

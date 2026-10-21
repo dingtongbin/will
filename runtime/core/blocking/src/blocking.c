@@ -87,6 +87,7 @@ static void willrt_blocking_init(void) {
 
 static void willrt_blocking_worker(void* ignored) {
     (void)ignored;
+    willrt_mem_set_lane(0);
     for (;;) {
         struct willrt_blocking_job* job;
 
@@ -114,6 +115,7 @@ static void willrt_blocking_worker(void* ignored) {
         willrt_os_cond_broadcast(&willrt_blocking_work);
         willrt_os_mutex_unlock(&willrt_blocking_lock);
     }
+    willrt_mem_thread_flush();
 }
 
 int32_t willrt_blocking_call(void* fn, void* arg, void* out) {
@@ -149,7 +151,7 @@ int32_t willrt_blocking_call(void* fn, void* arg, void* out) {
         && willrt_blocking_idle == 0) {
         size_t index = willrt_blocking_created;
 
-        willrt_rc_set_shared();
+        willrt_rc_set_threaded();
         willrt_mem_set_shared();
         if (willrt_os_thread_start(&willrt_blocking_threads[index],
                                    willrt_blocking_worker, NULL)

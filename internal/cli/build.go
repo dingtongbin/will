@@ -313,7 +313,7 @@ func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 			var calls map[*ast.CallExpr]string
 			var names map[*ast.NameExpr]string
 			if len(files) != 0 {
-				if checked, _ := types.CheckPackageFull(files, results); checked != nil {
+				if checked, _ := types.CheckPackageFullWithImported(files, results, fe.build.ForeignInits(), fe.build.ForeignFuncs()); checked != nil {
 					if checked.LiteralTypes != nil {
 						lits = checked.LiteralTypes
 					}
@@ -336,7 +336,7 @@ func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 			}
 		}
 		if store != nil {
-			_ = store.Trim()
+			_ = store.TrimIfNeeded()
 		}
 		return docs, texts, nil
 	}
@@ -399,7 +399,7 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 	}
 	if store != nil {
 		_ = store.Put(key, map[string][]byte{cache.ModuleLL: ir, cache.Decisions: record})
-		_ = store.Trim()
+		_ = store.TrimIfNeeded()
 	}
 	return ir, fe.modulePath, 0
 }
@@ -474,6 +474,15 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	if code != 0 {
 		return code
 	}
+	if objects, modulePath, code := compilePackages(opts, stdout, stderr); objects != nil {
+		out := opts.out
+		if out == "" {
+			out = defaultOutput(modulePath, opts.target, opts.lib)
+		}
+		return linkPackageOutput(opts, objects, out, stdout, stderr)
+	} else if code != 0 {
+		return code
+	}
 	ir, modulePath, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
@@ -507,12 +516,60 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	if hasBitcode(clangArgsList) {
 		clangArgsList = append(clangArgsList, "-flto=thin")
 	}
+	store, key := linkCacheKey(ir, clang, clangArgsList)
+	if cachedLink(store, key, out) {
+		return 0
+	}
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
 		fmt.Fprintf(stderr, "will: link failed\n")
 		return 1
 	}
+	rememberLink(store, key, out)
+	return 0
+}
+
+// linkPackageOutput links one object per package with the runtime and package C
+// inputs, reusing the final artifact when every input is unchanged.
+func linkPackageOutput(opts buildOptions, objects []string, out string, stdout, stderr io.Writer) int {
+	clang, err := toolchain.FindClang()
+	if err != nil {
+		return missingTool(stdout, "clang")
+	}
+	if dir := filepath.Dir(out); dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			fmt.Fprintf(stderr, "will: %v\n", err)
+			return 1
+		}
+	}
+	args, err := clangArgs(opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	inputs, cleanup, err := packageInputs(opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	defer cleanup()
+	args = append(args, objects...)
+	args = append(args, inputs...)
+	if hasBitcode(args) {
+		args = append(args, "-flto=thin")
+	}
+	store, key := linkCacheKey(nil, clang, args)
+	if cachedLink(store, key, out) {
+		return 0
+	}
+	output, err := clang.Link(out, args...)
+	if err != nil {
+		fmt.Fprintf(stdout, "%s", output)
+		fmt.Fprintf(stderr, "will: link failed\n")
+		return 1
+	}
+	rememberLink(store, key, out)
 	return 0
 }
 
@@ -738,77 +795,9 @@ func packageInputs(opts buildOptions) ([]string, func(), error) {
 	if b.Err != nil {
 		return nil, noop, b.Err
 	}
-	var sources []string
-	seen := map[string]bool{}
-	for _, p := range b.Packages {
-		err := filepath.Walk(p.Dir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if info.IsDir() || filepath.Ext(path) != ".c" {
-				return nil
-			}
-			if !seen[path] {
-				seen[path] = true
-				sources = append(sources, path)
-			}
-			return nil
-		})
-		if err != nil {
-			return nil, noop, err
-		}
-	}
-	var out []string
-	cleanup := noop
-	if len(sources) != 0 {
-		clang, err := toolchain.FindClang()
-		if err != nil {
-			return nil, noop, err
-		}
-		dir, err := os.MkdirTemp("", "will-c-bc")
-		if err != nil {
-			return nil, noop, err
-		}
-		cleanup = func() { os.RemoveAll(dir) }
-		root, rootErr := runtimeRoot()
-		for i, source := range sources {
-			ext := ".o"
-			emit := []string{"-c"}
-			if opts.lto {
-				ext = ".bc"
-				emit = []string{"-emit-llvm", "-c"}
-			}
-			bc := filepath.Join(dir, fmt.Sprintf("c%d%s", i, ext))
-			args := append(emit, source, "-o", bc)
-			args = append(args, "-I", filepath.Dir(source))
-			if rootErr == nil {
-				args = append(args, "-I", filepath.Join(root, "include"))
-			}
-			for _, include := range filepath.SplitList(os.Getenv("WILL_C_INCLUDE")) {
-				if include != "" {
-					args = append(args, "-I", include)
-				}
-			}
-			if opts.opt != "" {
-				args = append(args, opts.opt)
-			}
-			if opts.debug {
-				args = append(args, "-g")
-			}
-			if opts.lib {
-				args = append(args, "-fPIC")
-			}
-			if opts.target != "" {
-				args = append(args, "--target="+opts.target)
-			}
-			cmd := exec.Command(clang.Path, args...)
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				cleanup()
-				return nil, noop, fmt.Errorf("%s: %v\n%s", source, err, output)
-			}
-			out = append(out, bc)
-		}
+	out, cleanup, err := packageCObjects(opts, b)
+	if err != nil {
+		return nil, noop, err
 	}
 	for _, link := range b.Links {
 		if strings.ContainsAny(link, `/\`) || filepath.IsAbs(link) ||
@@ -843,6 +832,19 @@ func targetName(target string) string {
 func runRun(args []string, stdout, stderr io.Writer) int {
 	opts, programArgs, code := parseBuildArgs("run", args, stderr)
 	if code != 0 {
+		return code
+	}
+	if objects, _, code := compilePackages(opts, stdout, stderr); objects != nil {
+		out, cleanup, code := runOutput(opts, stderr)
+		if code != 0 {
+			return code
+		}
+		defer cleanup()
+		if code := linkPackageOutput(opts, objects, out, stdout, stderr); code != 0 {
+			return code
+		}
+		return execProgram(out, programArgs, stdout, stderr)
+	} else if code != 0 {
 		return code
 	}
 	ir, _, code := compileIR(opts, stdout, stderr)
@@ -881,13 +883,42 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 	if hasBitcode(clangArgsList) {
 		clangArgsList = append(clangArgsList, "-flto=thin")
 	}
-	output, err := clang.BuildIR(ir, out, clangArgsList...)
-	if err != nil {
-		fmt.Fprintf(stdout, "%s", output)
-		fmt.Fprintf(stderr, "will: link failed\n")
-		return 1
+	store, key := linkCacheKey(ir, clang, clangArgsList)
+	if !cachedLink(store, key, out) {
+		output, err := clang.BuildIR(ir, out, clangArgsList...)
+		if err != nil {
+			fmt.Fprintf(stdout, "%s", output)
+			fmt.Fprintf(stderr, "will: link failed\n")
+			return 1
+		}
+		rememberLink(store, key, out)
 	}
-	cmd := exec.Command(out, programArgs...)
+	return execProgram(out, programArgs, stdout, stderr)
+}
+
+// runOutput returns the path for a temporary run executable, or the explicit
+// output when the command gave one.
+func runOutput(opts buildOptions, stderr io.Writer) (string, func(), int) {
+	noop := func() {}
+	if opts.out != "" {
+		return opts.out, noop, 0
+	}
+	dir, err := os.MkdirTemp("", "will-run")
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return "", noop, 1
+	}
+	cleanup := func() { os.RemoveAll(dir) }
+	out := filepath.Join(dir, "program")
+	if isWindows() {
+		out += ".exe"
+	}
+	return out, cleanup, 0
+}
+
+// execProgram runs a linked program and forwards its exit code.
+func execProgram(out string, args []string, stdout, stderr io.Writer) int {
+	cmd := exec.Command(out, args...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	if err := cmd.Run(); err != nil {

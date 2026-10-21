@@ -195,9 +195,10 @@ func (g *generator) buildEnums() {
 	}
 	for _, r := range enums {
 		info := g.enums[r.ID]
-		if info == nil || info.llvmType == "" {
+		if info == nil || info.llvmType == "" || g.emittedTypes[info.llvm] {
 			continue
 		}
+		g.emittedTypes[info.llvm] = true
 		fmt.Fprintf(g.out, "%s = type %s\n", info.llvm, info.llvmType)
 	}
 }

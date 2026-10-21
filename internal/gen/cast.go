@@ -92,6 +92,18 @@ func (g *generator) castValue(r willc.Record) (string, error) {
 		fmt.Fprintf(g.out, "  %s = inttoptr i64 %s to ptr\n", out, v)
 		return out, nil
 	}
+	if toText == "Duration" {
+		if fromText != "i64" && fromText != "Duration" {
+			return "", g.errf(r.ID, "cannot translate node #%d: Duration converts only to and from i64", r.ID)
+		}
+		return v, nil
+	}
+	if fromText == "Duration" {
+		if toText != "i64" && toText != "Duration" {
+			return "", g.errf(r.ID, "cannot translate node #%d: Duration converts only to and from i64", r.ID)
+		}
+		return v, nil
+	}
 	fromLLVM, fromSigned, ok := llvmScalar(fromText)
 	if !ok {
 		return "", g.errf(r.ID, "cannot translate node #%d: conversion from %s is not lowered yet", r.ID, fromText)

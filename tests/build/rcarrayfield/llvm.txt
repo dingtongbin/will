@@ -7,125 +7,124 @@ entry:
   %v.agg.25 = alloca %"struct.example.com/rcarrayfield.Inner"
   %v.new.18 = alloca { ptr, i64, i64 }
   %t1 = getelementptr inbounds %"struct.example.com/rcarrayfield.Outer", ptr %v.agg.17, i32 0, i32 0
-  %t2 = sext i32 0 to i64
-  %t3 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.18, i32 0, i32 0
-  store ptr null, ptr %t3
-  %t4 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.18, i32 0, i32 1
+  %t2 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.18, i32 0, i32 0
+  store ptr null, ptr %t2
+  %t3 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.18, i32 0, i32 1
+  store i64 0, ptr %t3
+  %t4 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.18, i32 0, i32 2
   store i64 0, ptr %t4
-  %t5 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.18, i32 0, i32 2
-  store i64 %t2, ptr %t5
-  %t6 = load { ptr, i64, i64 }, ptr %v.new.18
-  store { ptr, i64, i64 } %t6, ptr %t1
-  %t7 = getelementptr %"struct.example.com/rcarrayfield.Outer", ptr null, i32 1
-  %t8 = ptrtoint ptr %t7 to i64
-  %t9 = call i64 @willrt_rc_new_drop(ptr %v.agg.17, i64 %t8, ptr @"example.com/rcarrayfield.drop.1")
-  store i64 %t9, ptr %v.o
-  %t10 = load i64, ptr %v.o
-  %t11 = call ptr @willrt_rc_deref(i64 %t10)
-  %t12 = getelementptr inbounds %"struct.example.com/rcarrayfield.Outer", ptr %t11, i32 0, i32 0
-  %t13 = getelementptr inbounds { ptr, i64, i64 }, ptr %t12, i32 0, i32 0
-  %t14 = load ptr, ptr %t13
-  %t15 = getelementptr inbounds { ptr, i64, i64 }, ptr %t12, i32 0, i32 1
-  %t16 = load i64, ptr %t15
-  %t17 = getelementptr inbounds { ptr, i64, i64 }, ptr %t12, i32 0, i32 2
-  %t18 = load i64, ptr %t17
-  %t19 = icmp eq i64 %t16, %t18
-  br i1 %t19, label %arr.full.1, label %arr.ready.1
+  %t5 = load { ptr, i64, i64 }, ptr %v.new.18
+  store { ptr, i64, i64 } %t5, ptr %t1
+  %t6 = getelementptr %"struct.example.com/rcarrayfield.Outer", ptr null, i32 1
+  %t7 = ptrtoint ptr %t6 to i64
+  %t8 = call i64 @willrt_rc_new_drop(ptr %v.agg.17, i64 %t7, ptr @"example.com/rcarrayfield.drop.1")
+  store i64 %t8, ptr %v.o
+  %t9 = load i64, ptr %v.o
+  %t10 = call ptr @willrt_rc_deref(i64 %t9)
+  %t11 = getelementptr inbounds %"struct.example.com/rcarrayfield.Outer", ptr %t10, i32 0, i32 0
+  %t12 = getelementptr inbounds { ptr, i64, i64 }, ptr %t11, i32 0, i32 0
+  %t13 = load ptr, ptr %t12
+  %t14 = getelementptr inbounds { ptr, i64, i64 }, ptr %t11, i32 0, i32 1
+  %t15 = load i64, ptr %t14
+  %t16 = getelementptr inbounds { ptr, i64, i64 }, ptr %t11, i32 0, i32 2
+  %t17 = load i64, ptr %t16
+  %t18 = icmp eq i64 %t15, %t17
+  br i1 %t18, label %arr.full.1, label %arr.ready.1
 arr.full.1:
-  %t20 = mul i64 %t18, 2
-  %t21 = icmp eq i64 %t18, 0
-  %t22 = select i1 %t21, i64 4, i64 %t20
-  %t23 = mul i64 %t22, 8
-  %t24 = call ptr @willrt_alloc(i64 %t23)
-  %t25 = alloca i64
-  store i64 0, ptr %t25
+  %t19 = mul i64 %t17, 2
+  %t20 = icmp eq i64 %t17, 0
+  %t21 = select i1 %t20, i64 4, i64 %t19
+  %t22 = mul i64 %t21, 8
+  %t23 = call ptr @willrt_alloc(i64 %t22)
+  %t24 = alloca i64
+  store i64 0, ptr %t24
   br label %arr.copy.cond.1
 arr.copy.cond.1:
-  %t26 = load i64, ptr %t25
-  %t27 = icmp ult i64 %t26, %t16
-  br i1 %t27, label %arr.copy.body.1, label %arr.copy.end.1
+  %t25 = load i64, ptr %t24
+  %t26 = icmp ult i64 %t25, %t15
+  br i1 %t26, label %arr.copy.body.1, label %arr.copy.end.1
 arr.copy.body.1:
-  %t28 = getelementptr inbounds i64, ptr %t14, i64 %t26
-  %t29 = load i64, ptr %t28
-  %t30 = getelementptr inbounds i64, ptr %t24, i64 %t26
-  store i64 %t29, ptr %t30
-  %t31 = add i64 %t26, 1
-  store i64 %t31, ptr %t25
+  %t27 = getelementptr inbounds i64, ptr %t13, i64 %t25
+  %t28 = load i64, ptr %t27
+  %t29 = getelementptr inbounds i64, ptr %t23, i64 %t25
+  store i64 %t28, ptr %t29
+  %t30 = add i64 %t25, 1
+  store i64 %t30, ptr %t24
   br label %arr.copy.cond.1
 arr.copy.end.1:
-  %t32 = icmp eq ptr %t14, null
-  br i1 %t32, label %arr.nofree.1, label %arr.free.1
+  %t31 = icmp eq ptr %t13, null
+  br i1 %t31, label %arr.nofree.1, label %arr.free.1
 arr.free.1:
-  call void @willrt_free(ptr %t14)
+  call void @willrt_free(ptr %t13)
   br label %arr.freed.1
 arr.nofree.1:
   br label %arr.freed.1
 arr.freed.1:
-  store ptr %t24, ptr %t13
-  store i64 %t22, ptr %t17
+  store ptr %t23, ptr %t12
+  store i64 %t21, ptr %t16
   br label %arr.ready.1
 arr.ready.1:
-  %t33 = load ptr, ptr %t13
-  %t34 = load i64, ptr %t15
-  %t35 = getelementptr inbounds i64, ptr %t33, i64 %t34
-  %t36 = getelementptr inbounds %"struct.example.com/rcarrayfield.Inner", ptr %v.agg.25, i32 0, i32 0
-  store i32 4, ptr %t36
-  %t37 = getelementptr %"struct.example.com/rcarrayfield.Inner", ptr null, i32 1
-  %t38 = ptrtoint ptr %t37 to i64
-  %t39 = call i64 @willrt_rc_new(ptr %v.agg.25, i64 %t38)
-  store i64 %t39, ptr %t35
-  %t40 = add i64 %t34, 1
-  store i64 %t40, ptr %t15
-  %t41 = load i64, ptr %v.o
-  %t42 = call ptr @willrt_rc_deref(i64 %t41)
-  %t43 = getelementptr inbounds %"struct.example.com/rcarrayfield.Outer", ptr %t42, i32 0, i32 0
-  %t44 = getelementptr inbounds { ptr, i64, i64 }, ptr %t43, i32 0, i32 0
-  %t45 = load ptr, ptr %t44
-  %t46 = getelementptr inbounds { ptr, i64, i64 }, ptr %t43, i32 0, i32 1
-  %t47 = load i64, ptr %t46
-  %t48 = icmp uge i64 0, %t47
-  br i1 %t48, label %panic.2, label %panic.ok.2
+  %t32 = load ptr, ptr %t12
+  %t33 = load i64, ptr %t14
+  %t34 = getelementptr inbounds i64, ptr %t32, i64 %t33
+  %t35 = getelementptr inbounds %"struct.example.com/rcarrayfield.Inner", ptr %v.agg.25, i32 0, i32 0
+  store i32 4, ptr %t35
+  %t36 = getelementptr %"struct.example.com/rcarrayfield.Inner", ptr null, i32 1
+  %t37 = ptrtoint ptr %t36 to i64
+  %t38 = call i64 @willrt_rc_new(ptr %v.agg.25, i64 %t37)
+  store i64 %t38, ptr %t34
+  %t39 = add i64 %t33, 1
+  store i64 %t39, ptr %t14
+  %t40 = load i64, ptr %v.o
+  %t41 = call ptr @willrt_rc_deref(i64 %t40)
+  %t42 = getelementptr inbounds %"struct.example.com/rcarrayfield.Outer", ptr %t41, i32 0, i32 0
+  %t43 = getelementptr inbounds { ptr, i64, i64 }, ptr %t42, i32 0, i32 0
+  %t44 = load ptr, ptr %t43
+  %t45 = getelementptr inbounds { ptr, i64, i64 }, ptr %t42, i32 0, i32 1
+  %t46 = load i64, ptr %t45
+  %t47 = icmp uge i64 0, %t46
+  br i1 %t47, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
   unreachable
 panic.ok.2:
-  %t49 = getelementptr inbounds i64, ptr %t45, i64 0
-  %t50 = load i64, ptr %t49
-  %t51 = call ptr @willrt_rc_deref(i64 %t50)
-  %t52 = getelementptr inbounds %"struct.example.com/rcarrayfield.Inner", ptr %t51, i32 0, i32 0
-  %t53 = load i32, ptr %t52
-  %t54 = load i64, ptr %v.o
-  call void @willrt_rc_release(i64 %t54)
-  ret i32 %t53
+  %t48 = getelementptr inbounds i64, ptr %t44, i64 0
+  %t49 = load i64, ptr %t48
+  %t50 = call ptr @willrt_rc_deref(i64 %t49)
+  %t51 = getelementptr inbounds %"struct.example.com/rcarrayfield.Inner", ptr %t50, i32 0, i32 0
+  %t52 = load i32, ptr %t51
+  %t53 = load i64, ptr %v.o
+  call void @willrt_rc_release(i64 %t53)
+  ret i32 %t52
 }
 define void @"example.com/rcarrayfield.drop.1"(ptr %value) {
 entry:
-  %t55 = getelementptr inbounds %"struct.example.com/rcarrayfield.Outer", ptr %value, i32 0, i32 0
-  %t56 = getelementptr inbounds { ptr, i64, i64 }, ptr %t55, i32 0, i32 0
-  %t57 = load ptr, ptr %t56
-  %t58 = getelementptr inbounds { ptr, i64, i64 }, ptr %t55, i32 0, i32 1
-  %t59 = load i64, ptr %t58
-  %t60 = alloca i64
-  store i64 0, ptr %t60
+  %t54 = getelementptr inbounds %"struct.example.com/rcarrayfield.Outer", ptr %value, i32 0, i32 0
+  %t55 = getelementptr inbounds { ptr, i64, i64 }, ptr %t54, i32 0, i32 0
+  %t56 = load ptr, ptr %t55
+  %t57 = getelementptr inbounds { ptr, i64, i64 }, ptr %t54, i32 0, i32 1
+  %t58 = load i64, ptr %t57
+  %t59 = alloca i64
+  store i64 0, ptr %t59
   br label %elem.cond.3
 elem.cond.3:
-  %t61 = load i64, ptr %t60
-  %t62 = icmp ult i64 %t61, %t59
-  br i1 %t62, label %elem.body.3, label %elem.done.3
+  %t60 = load i64, ptr %t59
+  %t61 = icmp ult i64 %t60, %t58
+  br i1 %t61, label %elem.body.3, label %elem.done.3
 elem.body.3:
-  %t63 = getelementptr inbounds i64, ptr %t57, i64 %t61
-  %t64 = load i64, ptr %t63
-  call void @willrt_rc_release(i64 %t64)
-  %t65 = add i64 %t61, 1
-  store i64 %t65, ptr %t60
+  %t62 = getelementptr inbounds i64, ptr %t56, i64 %t60
+  %t63 = load i64, ptr %t62
+  call void @willrt_rc_release(i64 %t63)
+  %t64 = add i64 %t60, 1
+  store i64 %t64, ptr %t59
   br label %elem.cond.3
 elem.done.3:
-  %t66 = getelementptr inbounds { ptr, i64, i64 }, ptr %t55, i32 0, i32 0
-  %t67 = load ptr, ptr %t66
-  %t68 = icmp ne ptr %t67, null
-  br i1 %t68, label %array.free.4, label %array.freed.4
+  %t65 = getelementptr inbounds { ptr, i64, i64 }, ptr %t54, i32 0, i32 0
+  %t66 = load ptr, ptr %t65
+  %t67 = icmp ne ptr %t66, null
+  br i1 %t67, label %array.free.4, label %array.freed.4
 array.free.4:
-  call void @willrt_free(ptr %t67)
+  call void @willrt_free(ptr %t66)
   br label %array.freed.4
 array.freed.4:
   ret void
@@ -149,6 +148,7 @@ declare void @willrt_free(ptr)
 declare i64 @willrt_rc_new(ptr, i64)
 declare i64 @willrt_rc_new_drop(ptr, i64, ptr)
 declare void @willrt_rc_retain(i64)
+declare void @willrt_rc_share(i64)
 declare void @willrt_rc_release(i64)
 declare ptr @willrt_rc_deref(i64)
 declare i64 @willrt_weak_new(i64)

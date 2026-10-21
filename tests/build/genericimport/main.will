@@ -1,0 +1,7 @@
+import "example.com/genericimport/lib"
+
+func main() -> i32 {
+    var b: lib.Box<i32> = new lib.Box<i32>()
+    b.Set(7)
+    return b.Get() - 7
+}

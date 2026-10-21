@@ -1,0 +1,33 @@
+struct C {
+    n: i32
+}
+
+// A Map value is an owned copy: storing gains one reference, Get returns
+// another, and Clear releases only the map's own reference.
+func main() -> i32 {
+    var r: rc<C> = new rc<C>(C { n: 7 })
+    var m: Map<str, rc<C>> = new Map<str, rc<C>>(0usize)
+    m.Set("x", r)
+    if m.Len() != 1usize {
+        return 1
+    }
+    match m.Get("x") {
+        Some(v) => {
+            if v.n != 7 {
+                return 2
+            }
+        }
+        None => {
+            return 3
+        }
+    }
+    m.Clear()
+    if m.Len() != 0usize || r.n != 7 {
+        return 4
+    }
+    m.Set("y", r)
+    if !m.Delete("y") || r.n != 7 {
+        return 5
+    }
+    return 0
+}

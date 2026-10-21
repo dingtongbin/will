@@ -1,0 +1,23 @@
+import "std/os/fs"
+
+func main() -> i32 {
+    var path: str = "will-fs-contract.bin"
+    var data: Array<u8> = new Array<u8>(0)
+    data.Push(65u8)
+    data.Push(66u8)
+    var wrote: Result<(), Error> = fs.WriteFile(path, data[Range(0, data.Len())])
+    _ = wrote
+    var read: Result<Array<u8>, Error> = fs.ReadFile(path)
+    var got: Array<u8> = new Array<u8>(0)
+    match read {
+        Ok(v) => { got = v }
+        Err(e) => { _ = e }
+    }
+    if got.Len() != 2usize {
+        return 1
+    }
+    if got.Get(0) != 65u8 || got.Get(1) != 66u8 {
+        return 2
+    }
+    return 0
+}

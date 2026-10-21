@@ -1,0 +1,99 @@
+import "std/container/ring"
+
+// A ring must stop at its capacity, preserve FIFO order, and free a slot when
+// Pop removes a value so a later Push can use it again.
+func main() -> i32 {
+    var r: ring.Ring<i32> = new ring.Ring<i32>(3usize)!
+    if r.Len() != 0usize || r.Full() {
+        return 1
+    }
+    if !r.Push(1) || !r.Push(2) || !r.Push(3) {
+        return 2
+    }
+    if !r.Full() || r.Len() != 3usize {
+        return 3
+    }
+    if r.Push(4) {
+        return 4
+    }
+    match r.Pop() {
+        Some(v) => {
+            if v != 1 {
+                return 5
+            }
+        }
+        None => {
+            return 6
+        }
+    }
+    if !r.Push(4) || r.Len() != 3usize {
+        return 7
+    }
+    match r.Peek() {
+        Some(v) => {
+            if v != 2 {
+                return 8
+            }
+        }
+        None => {
+            return 9
+        }
+    }
+    match r.Pop() {
+        Some(v) => {
+            if v != 2 {
+                return 10
+            }
+        }
+        None => {
+            return 11
+        }
+    }
+    match r.Pop() {
+        Some(v) => {
+            if v != 3 {
+                return 12
+            }
+        }
+        None => {
+            return 13
+        }
+    }
+    match r.Pop() {
+        Some(v) => {
+            if v != 4 {
+                return 14
+            }
+        }
+        None => {
+            return 15
+        }
+    }
+    match r.Pop() {
+        Some(v) => {
+            _ = v
+            return 16
+        }
+        None => {
+        }
+    }
+    if !r.Push(5) || !r.Push(6) {
+        return 17
+    }
+    r.Clear()
+    if r.Len() != 0usize || r.Full() {
+        return 18
+    }
+    match new ring.Ring<i32>(0usize) {
+        Ok(bad) => {
+            _ = bad
+            return 19
+        }
+        Err(e) => {
+            if e.Status() != 2 {
+                return 20
+            }
+        }
+    }
+    return 0
+}

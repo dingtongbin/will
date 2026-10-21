@@ -1,0 +1,43 @@
+import c "clock.h" {
+    fast willrt_now_ns
+    fast willrt_os_sleep_ns
+}
+
+// Stopwatch measures elapsed monotonic time, so a wall-clock adjustment does
+// not change its result.
+struct clockError {
+    message: str
+}
+
+func (e: clockError) Message() -> str {
+    return e.message
+}
+
+func (e: clockError) Status() -> i32 {
+    return 2
+}
+
+struct Stopwatch {
+    start: i64
+}
+
+// init records the monotonic clock at construction.
+func (mut s: Stopwatch) init() {
+    s.start = c.willrt_now_ns()
+}
+
+// Elapsed returns the time since construction.
+func (s: Stopwatch) Elapsed() -> Duration {
+    return Duration(c.willrt_now_ns() - s.start)
+}
+
+// Sleep suspends the current task for d. The portable implementation sleeps
+// the calling thread; a scheduler may make it a suspension point later.
+func Sleep(d: Duration) -> Result<(), Error> {
+    var ns: i64 = i64(d)
+    if ns < 0 {
+        return Err(clockError { message: "time: negative sleep"})
+    }
+    c.willrt_os_sleep_ns(ns)
+    return Ok(())
+}

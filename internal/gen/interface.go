@@ -79,9 +79,10 @@ func (g *generator) buildInterfaces() {
 	}
 	for _, r := range ifaces {
 		info := g.ifaces[r.ID]
-		if info == nil {
+		if info == nil || g.emittedTypes[info.llvm] {
 			continue
 		}
+		g.emittedTypes[info.llvm] = true
 		fmt.Fprintf(g.out, "%s = type { ptr, ptr }\n", info.llvm)
 	}
 }
@@ -118,6 +119,11 @@ func (g *generator) ifaceOfText(text string) (*ifaceInfo, bool) {
 	q := g.canonicalTypeText(text)
 	if info := g.ifaceDecls[q]; info != nil {
 		return info, true
+	}
+	if i := strings.LastIndexByte(q, '.'); i > 0 {
+		if info := g.ifaceByName[q[i+1:]]; info != nil {
+			return info, true
+		}
 	}
 	if !strings.Contains(q, ".") {
 		if info := g.ifaceDecls[qualify(g.pkg, q)]; info != nil {
@@ -166,7 +172,10 @@ func (g *generator) ifaceValue(slot string, valueID int, iface *ifaceInfo, concr
 func (g *generator) ifaceConversion(r willc.Record, argIndex int, valueID int, iface *ifaceInfo, concrete string) (string, string, error) {
 	key := fmt.Sprintf("%d.%d", r.ID, argIndex)
 	slot := g.ifaceSlots[key]
-	if slot == "" {
+	if g.deferThunk {
+		slot = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, iface.llvm)
+	} else if slot == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the interface value has no slot", r.ID)
 	}
 	if _, err := g.ifaceValue(slot, valueID, iface, concrete); err != nil {
@@ -193,6 +202,14 @@ func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 			return "", g.errf(iface.id, "cannot translate node #%d: %s has no method %s", iface.id, concrete, m.name)
 		}
 		entries = append(entries, "ptr @"+llvmSymbol(method))
+		if g.packageMode && !g.emittedFuncs[method] {
+			g.externalFuncs[method] = true
+			g.externalSigs[method] = externalSignature{
+				result: g.sigs[method],
+				params: append([]string(nil), g.paramTypes[method]...),
+				recv:   true,
+			}
+		}
 	}
 	g.vtables[key] = sym
 	if g.emittedVtables[sym] {
@@ -348,17 +365,20 @@ func (g *generator) resultLLVM(text string) string {
 	if adt, ok := g.adtType(text); ok {
 		return adt.llvm
 	}
+	if g.structTypes[text] {
+		return qualifiedTypeName(text)
+	}
+	if g.enumTypes[text] {
+		return qualifiedEnumName(text)
+	}
 	if info := g.ifaceByName[text]; info != nil {
 		return info.llvm
 	}
 	if g.ifaceTypes[text] {
 		return qualifiedIfaceName(text)
 	}
-	if g.structTypes[text] {
-		return qualifiedTypeName(text)
-	}
-	if g.enumTypes[text] {
-		return qualifiedEnumName(text)
+	if typ, ok := g.typeLLVMOf(text); ok && isAggregateType(typ) {
+		return typ
 	}
 	return ""
 }

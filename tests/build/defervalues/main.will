@@ -1,0 +1,22 @@
+// A deferred str and a deferred Array must keep the value they had at the
+// defer statement even when the local is reassigned or grows afterwards.
+func Show(s: str) {
+    print(s, "\n")
+}
+
+func ShowArray(a: Array<i32>) {
+    print(a.Len(), " ", a.Get(0usize), "\n")
+}
+
+func main() -> i32 {
+    var s: str = "old" + "!"
+    defer Show(s)
+    s = "new" + "?"
+
+    var a: Array<i32> = new Array<i32>(1usize)
+    a.Push(7)
+    defer ShowArray(a)
+    a.Push(8)
+    a.Push(9)
+    return 0
+}

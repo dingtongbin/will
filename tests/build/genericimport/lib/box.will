@@ -1,0 +1,11 @@
+struct Box<T> {
+    value: T
+}
+
+func (b: Box<T>) Get() -> T {
+    return b.value
+}
+
+func (mut b: Box<T>) Set(v: T) {
+    b.value = v
+}

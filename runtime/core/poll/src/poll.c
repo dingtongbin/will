@@ -203,6 +203,7 @@ static void willrt_poll_main(void* ignored) {
     uint32_t masks[WILLRT_POLL_MAX];
 
     (void)ignored;
+    willrt_mem_set_lane(0);
     while (atomic_load(&willrt_poll_stop) == 0) {
         size_t count = 0;
         size_t live = 0;
@@ -253,6 +254,7 @@ static void willrt_poll_main(void* ignored) {
                            snapshot[i].arg);
         }
     }
+    willrt_mem_thread_flush();
 }
 
 void willrt_poll_init(void) {
@@ -278,7 +280,7 @@ void willrt_poll_init(void) {
         memset(willrt_poll_entries, 0, sizeof(willrt_poll_entries));
         willrt_os_mutex_init(&willrt_poll_lock);
         atomic_store(&willrt_poll_stop, 0);
-        willrt_rc_set_shared();
+        willrt_rc_set_threaded();
         willrt_mem_set_shared();
         if (willrt_os_thread_start(&willrt_poll_thread, willrt_poll_main, NULL)
             != 0) {

@@ -341,8 +341,6 @@ func specialCall(name string, args int) (string, bool) {
 		return "recv", true
 	case name == "TryRecv" && args == 0:
 		return "tryrecv", true
-	case name == "Close" && args == 0:
-		return "close", true
 	}
 	return "", false
 }

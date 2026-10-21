@@ -19,6 +19,9 @@ type structInfo struct {
 	types []string
 	index map[string]int
 	ok    bool
+	// foreign marks an instance whose declaration lives in another document.
+	// Its fields are known, but its init is not called by this document.
+	foreign bool
 }
 
 // structDeclInfo is the field list of one struct declaration as the module
@@ -114,6 +117,20 @@ func (g *generator) buildStructs() {
 		g.ensureStruct(r.ID)
 	}
 	g.planStructInstances()
+	// A nested type text, such as the Pair inside Option<Pair<K,V>>, may not
+	// have its own type record in a cloned document. Lower every recorded type
+	// text and every call result now so its instance is emitted before the
+	// functions that use it.
+	for _, r := range g.recs {
+		switch r.Kind {
+		case "type":
+			_, _ = g.typeLLVMOf(fieldText(r, "type"))
+		case "call", "mcall":
+			if text, err := g.callResultText(r); err == nil {
+				_, _ = g.typeLLVMOf(text)
+			}
+		}
+	}
 	for _, r := range structs {
 		if g.structIsGeneric(r.ID) {
 			continue
@@ -402,7 +419,7 @@ func (g *generator) typeOf(id int) (string, error) {
 			return info.llvm, nil
 		}
 		if text, ok := g.loopBindType(decl, name); ok {
-			typ, ok := llvmTypeText(text)
+			typ, ok := g.typeLLVMOf(text)
 			if !ok {
 				return "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, text)
 			}
@@ -510,9 +527,10 @@ func (g *generator) typeOf(id int) (string, error) {
 		typ, _, err := g.unwrapType(r)
 		return typ, err
 	case "new":
-		typ, ok := g.typeLLVMOf(fieldText(r, "type"))
+		text := g.newResultText(r)
+		typ, ok := g.typeLLVMOf(text)
 		if !ok {
-			return "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, fieldText(r, "type"))
+			return "", g.errf(id, "cannot translate node #%d: type %s is not lowered yet", id, text)
 		}
 		return typ, nil
 	case "bin":
@@ -591,6 +609,15 @@ func (g *generator) typeOf(id int) (string, error) {
 			}
 			if g.ifaceTypes[text] {
 				return qualifiedIfaceName(text), nil
+			}
+			if typ, ok := g.typeLLVMOf(text); ok && typ != "" {
+				return typ, nil
+			}
+			if id := g.structDecl[text]; id != 0 {
+				info, ok := g.ensureStruct(id)
+				if ok {
+					return info.llvm, nil
+				}
 			}
 			return "", g.errf(id, "cannot translate node #%d: result type %s is not lowered yet", id, text)
 		}
@@ -711,6 +738,16 @@ func (g *generator) willTypeText(id int) (string, error) {
 			return "", err
 		}
 		return "[]" + elem, nil
+	case "index":
+		text, err := g.willTypeText(refField(r, "recv"))
+		if err != nil {
+			return "", err
+		}
+		elem, ok := elementText(text)
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: only an array, a view, or an Array is indexed yet", id)
+		}
+		return elem, nil
 	case "bin":
 		switch fieldText(r, "op") {
 		case "&&", "||", "==", "!=", "<", "<=", ">", ">=":
@@ -724,6 +761,12 @@ func (g *generator) willTypeText(id int) (string, error) {
 		return g.willTypeText(refField(r, "expr"))
 	case "call", "mcall":
 		if r.Kind == "mcall" {
+			if _, _, fnText, ok := g.functionField(r); ok {
+				_, result, ok := funcTypeParts(fnText)
+				if ok {
+					return result, nil
+				}
+			}
 			if _, text, known := g.arrayCallResult(r); known {
 				return text, nil
 			}
@@ -757,7 +800,7 @@ func (g *generator) willTypeText(id int) (string, error) {
 		_, text, err := g.unwrapType(r)
 		return text, err
 	case "new":
-		return fieldText(r, "type"), nil
+		return g.newResultText(r), nil
 	}
 	return "", nil
 }
@@ -839,6 +882,27 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 		return "", nil
 	}
 	if r.Kind == "mcall" {
+		if typ, err := g.typeOf(refField(r, "recv")); err == nil {
+			if iface, ok := g.ifaceOfType(typ); ok {
+				if idx, ok := iface.byName[fieldText(r, "text")]; ok {
+					return iface.methods[idx].result, nil
+				}
+			}
+		}
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			recvText = stripPredeclaredPackage(recvText)
+			if kind, args, ok := parseADT(recvText); ok {
+				switch fieldText(r, "text") {
+				case "IsSome", "IsNone", "IsOk", "IsErr":
+					return "bool", nil
+				case "Or":
+					if len(args) != 0 {
+						return args[0], nil
+					}
+				}
+				_ = kind
+			}
+		}
 		symbol, err := g.methodSymbol(r)
 		if err != nil {
 			return "", err
@@ -936,6 +1000,9 @@ func (g *generator) place(id int) (string, string, error) {
 	r, ok := g.recs[id]
 	if !ok {
 		return "", "", g.errf(id, "cannot translate node #%d: no such node", id)
+	}
+	if snap, ok := g.deferSnapshots[id]; ok {
+		return g.deferFieldPtr(snap), snap.llvm, nil
 	}
 	switch r.Kind {
 	case "lit":
@@ -1180,6 +1247,18 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 		ptr := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", ptr, info.llvm, slot, i)
 		if isAggregateType(info.types[i]) {
+			if iface, ok := g.ifaceOfText(info.texts[i]); ok {
+				valueText, err := g.willTypeText(valueID)
+				if err != nil {
+					return err
+				}
+				if _, same := g.ifaceOfText(valueText); !same {
+					if _, err := g.ifaceValue(ptr, valueID, iface, valueText); err != nil {
+						return err
+					}
+					continue
+				}
+			}
 			src, typ, err := g.place(valueID)
 			if err != nil {
 				return err
