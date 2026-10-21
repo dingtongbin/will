@@ -114,11 +114,17 @@ struct willrt_mem_cache {
 
 static _Thread_local struct willrt_mem_cache willrt_mem_cache;
 
+/* Cache use is opt-in for runtime workers and for the single-threaded main
+   thread. A raw C thread that never enters the runtime keeps its frees on the
+   lane list, so it cannot strand a cache when it exits without a flush. */
+static _Thread_local int willrt_mem_cache_enabled;
+
 /* The last small chunk this thread touched. Small chunks never return to the
    system, so the pointer stays valid and a hot free avoids the registry lock. */
 static _Thread_local struct willrt_mem_chunk* willrt_mem_last_small;
 
 void willrt_mem_set_shared(void) {
+    willrt_mem_cache_enabled = 1;
     atomic_store_explicit(&willrt_mem_shared, 1, memory_order_release);
 }
 
@@ -150,6 +156,7 @@ void willrt_mem_set_lane(int32_t lane) {
     if (lane < 0) {
         lane = 0;
     }
+    willrt_mem_cache_enabled = 1;
     willrt_mem_lane_index = lane % WILLRT_MEM_LANES;
 }
 
@@ -194,6 +201,9 @@ static void willrt_mem_cache_flush_class(int class_index) {
 void willrt_mem_thread_flush(void) {
     int class_index;
 
+    if (!willrt_mem_cache_enabled) {
+        return;
+    }
     for (class_index = 0; class_index < WILLRT_MEM_CLASS_COUNT; class_index++) {
         willrt_mem_cache_flush_class(class_index);
     }
@@ -475,10 +485,19 @@ void* willrt_alloc(size_t size) {
     if (size == 0) {
         size = 1;
     }
+    if (willrt_mem_single_thread()) {
+        willrt_mem_cache_enabled = 1;
+    }
     lane = &willrt_mem_lanes[willrt_mem_lane_index];
     class_index = willrt_mem_class_for(size);
     if (class_index < 0) {
         return willrt_mem_large_alloc(willrt_mem_lane_index, size);
+    }
+    if (!willrt_mem_cache_enabled) {
+        willrt_mem_lock_acquire(&lane->lock);
+        result = willrt_mem_small_alloc(lane, class_index);
+        willrt_mem_lock_release(&lane->lock);
+        return result;
     }
     result = willrt_mem_cache_pop(class_index);
     if (result != NULL) {
@@ -560,8 +579,18 @@ void willrt_free(void* ptr) {
 
     /* A small block belongs to the freeing thread's cache first, even when its
        chunk belongs to another lane. That keeps the common free path lock-free;
-       the cache is flushed to a lane when it is full or the thread exits. */
+       the cache is flushed to a lane when it is full or the thread exits. A
+       raw C thread with no runtime registration takes the lane list instead,
+       so it cannot strand a cache on exit. */
     block->magic = willrt_mem_block_dead;
+    if (!willrt_mem_cache_enabled) {
+        lane = &willrt_mem_lanes[chunk->owner % WILLRT_MEM_LANES];
+        willrt_mem_lock_acquire(&lane->lock);
+        *(void**)payload = lane->free_list[block->class_index];
+        lane->free_list[block->class_index] = payload;
+        willrt_mem_lock_release(&lane->lock);
+        return;
+    }
     willrt_mem_cache_push(block->class_index, payload);
     if (willrt_mem_cache.count[block->class_index] > WILLRT_MEM_CACHE_LIMIT) {
         willrt_mem_cache_flush_class(block->class_index);

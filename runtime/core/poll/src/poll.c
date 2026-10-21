@@ -203,6 +203,7 @@ static void willrt_poll_main(void* ignored) {
     uint32_t masks[WILLRT_POLL_MAX];
 
     (void)ignored;
+    willrt_mem_set_lane(0);
     while (atomic_load(&willrt_poll_stop) == 0) {
         size_t count = 0;
         size_t live = 0;

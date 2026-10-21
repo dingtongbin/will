@@ -293,7 +293,46 @@ static void test_alloc_cross_lane(void) {
     willrt_os_thread_join(&thread);
 }
 
+/* A raw C thread that never registers with the scheduler must not keep a
+   private cache. Its frees go to the lane list, so repeated short-lived threads
+   cannot strand blocks. */
+static void willrt_alloc_raw_thread(void* ignored) {
+    int i;
+
+    (void)ignored;
+    for (i = 0; i < 200; i++) {
+        void* block = willrt_alloc(300);
+        assert(block != NULL);
+        willrt_free(block);
+    }
+}
+
+static void test_alloc_raw_thread(void) {
+    enum { kThreads = 4 };
+    willrt_os_thread threads[kThreads];
+    size_t calls_before;
+    size_t i;
+
+    willrt_mem_set_shared();
+    {
+        void* warm = willrt_alloc(300);
+        assert(warm != NULL);
+        willrt_free(warm);
+        willrt_mem_thread_flush();
+    }
+    calls_before = willrt_mem_page_calls();
+    for (i = 0; i < kThreads; i++) {
+        assert(willrt_os_thread_start(&threads[i], willrt_alloc_raw_thread,
+                                      NULL) == 0);
+    }
+    for (i = 0; i < kThreads; i++) {
+        willrt_os_thread_join(&threads[i]);
+    }
+    assert(willrt_mem_page_calls() == calls_before);
+}
+
 int main(void) {
+    test_alloc_raw_thread();
     test_alloc_round_trip();
     test_alloc_alignment();
     test_alloc_page_backed();

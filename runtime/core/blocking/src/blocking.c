@@ -87,6 +87,7 @@ static void willrt_blocking_init(void) {
 
 static void willrt_blocking_worker(void* ignored) {
     (void)ignored;
+    willrt_mem_set_lane(0);
     for (;;) {
         struct willrt_blocking_job* job;
 
