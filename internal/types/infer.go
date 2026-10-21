@@ -1198,12 +1198,30 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 		case "Set":
 			c.checkPayload(s, []*Type{usize, elem}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Push", "Append":
+		case "Push":
 			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Clear":
+		case "Append":
+			c.checkPayload(s, []*Type{c.in.view(elem)}, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		case "Pop":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.named("Option", []*Type{elem}), true
+		case "Insert":
+			c.checkPayload(s, []*Type{usize, elem}, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		case "Remove":
+			c.checkPayload(s, []*Type{usize}, call.Args, call.Name, call.Pos())
+			return elem, true
+		case "Clear", "ShrinkToFit":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
+		case "Slice":
+			c.checkPayload(s, []*Type{usize, usize}, call.Args, call.Name, call.Pos())
+			return c.in.view(elem), true
+		case "Clone":
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.named("Array", []*Type{elem}), true
 		}
 		return nil, false
 	}
@@ -1362,6 +1380,17 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 			"write "+name+" { ... } or add an init method")
 		for _, a := range n.Args {
 			c.inferExpr(s, a.Expr)
+		}
+		return t
+	}
+	// The predeclared containers take their capacity as usize. The generic
+	// fallback below is for a target whose constructor has no visible
+	// declaration, and its i32 assumption must not leak into Array, Map, or
+	// Set.
+	if name == "Array" || name == "Map" || name == "Set" {
+		capacity := c.in.scalar("usize")
+		for i, a := range n.Args {
+			c.checkArg(s, a.Expr, capacity, name, i+1)
 		}
 		return t
 	}

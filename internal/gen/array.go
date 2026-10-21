@@ -323,10 +323,10 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, v, ptr)
 		return "", "", nil
-	case "Push", "Append":
+	case "Push":
 		args := g.callArgs(r)
 		if len(args) != 1 {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: %s takes one value", r.ID, fieldText(r, "text"))
+			return "", "", g.errf(r.ID, "cannot translate node #%d: Push takes one value", r.ID)
 		}
 		elemSize, _, ok := g.sizeAlign(elemLLVM)
 		if !ok {
@@ -336,6 +336,31 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 			return "", "", err
 		}
 		return "", "", nil
+	case "Append":
+		args := g.callArgs(r)
+		if len(args) != 1 {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: Append takes one view", r.ID)
+		}
+		elemSize, _, ok := g.sizeAlign(elemLLVM)
+		if !ok {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s has no layout", r.ID, elem)
+		}
+		if err := g.arrayAppend(r, base, elem, elemLLVM, elemSize, args[0]); err != nil {
+			return "", "", err
+		}
+		return "", "", nil
+	case "Pop":
+		return g.arrayPop(r, base, elem, elemLLVM)
+	case "Insert":
+		return g.arrayInsert(r, base, elem, elemLLVM)
+	case "Remove":
+		return g.arrayRemove(r, base, elem, elemLLVM)
+	case "Slice":
+		return g.arraySlice(r, base, elem, elemLLVM)
+	case "ShrinkToFit":
+		return g.arrayShrink(r, base, elemLLVM)
+	case "Clone":
+		return g.arrayClone(r, base, elem, elemLLVM)
 	case "Clear":
 		if g.needsReleaseText(elem) {
 			if err := g.eachElement(base, elem, false, 0); err != nil {
@@ -367,10 +392,22 @@ func (g *generator) arrayCallResult(r willc.Record) (llvm, text string, known bo
 	switch fieldText(r, "text") {
 	case "Len", "Cap":
 		return "i64", "usize", true
-	case "Get":
+	case "Get", "Remove":
 		return elemLLVM, elem, true
-	case "Push", "Append", "Set", "Clear":
+	case "Pop":
+		if info, ok := g.adtType("Option<" + elem + ">"); ok {
+			return info.llvm, info.text, true
+		}
+		return "", "", false
+	case "Push", "Append", "Set", "Insert", "Clear", "ShrinkToFit":
 		return "", "", true
+	case "Slice":
+		return "{ ptr, i64 }", "[]" + elem, true
+	case "Clone":
+		if llvm, ok := llvmTypeText("Array<" + elem + ">"); ok {
+			return llvm, "Array<" + elem + ">", true
+		}
+		return "", "", false
 	}
 	return "", "", false
 }
@@ -395,14 +432,15 @@ func (g *generator) arrayElemAddr(r willc.Record, base, elemLLVM string, indexID
 	return ptr, nil
 }
 
-// arrayPush stores one value at the length and grows the block when it is full.
-func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemSize int, valueID int) error {
-	dataPtr := g.newTmp()
+// arrayGrow makes room for one more element and returns the new element's
+// address together with the header fields. The length is not changed here.
+func (g *generator) arrayGrow(r willc.Record, base, elemLLVM string, elemSize int) (dataPtr, lenPtr, length, slot string, err error) {
+	dataPtr = g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
 	data := g.load("ptr", dataPtr)
-	lenPtr := g.newTmp()
+	lenPtr = g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, base)
-	length := g.load("i64", lenPtr)
+	length = g.load("i64", lenPtr)
 	capPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 2\n", capPtr, base)
 	capacity := g.load("i64", capPtr)
@@ -474,8 +512,17 @@ func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemS
 
 	data = g.load("ptr", dataPtr)
 	length = g.load("i64", lenPtr)
-	slot := g.newTmp()
+	slot = g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", slot, elemLLVM, data, length)
+	return dataPtr, lenPtr, length, slot, nil
+}
+
+// arrayPush stores one value at the length and grows the block when it is full.
+func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemSize int, valueID int) error {
+	_, lenPtr, length, slot, err := g.arrayGrow(r, base, elemLLVM, elemSize)
+	if err != nil {
+		return err
+	}
 	if isAggregateType(elemLLVM) {
 		src, srcType, err := g.place(valueID)
 		if err != nil {
@@ -506,3 +553,8 @@ func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemS
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", nextLen, lenPtr)
 	return nil
 }
+
+// arrayAppend copies every element of a view into the array. The elements are
+// first copied to an owned temporary block; that keeps the source valid when
+// it aliases the destination and gives each borrowed rc element one reference
+// before it enters the array.

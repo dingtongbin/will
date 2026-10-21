@@ -1733,6 +1733,42 @@ func TestDeferCapturesArgumentsBeforeBlockExit(t *testing.T) {
 	}
 }
 
+func TestArrayMethodsLower(t *testing.T) {
+	src := "func F(src: []i32) -> i32 {\n" +
+		"    var xs: Array<i32> = new Array<i32>(0)\n" +
+		"    xs.Append(src)\n" +
+		"    xs.Insert(0, 1)\n" +
+		"    var removed: i32 = xs.Remove(0)\n" +
+		"    var cp: Array<i32> = xs.Clone()\n" +
+		"    cp.ShrinkToFit()\n" +
+		"    var view: []i32 = cp.Slice(0, cp.Len())\n" +
+		"    match cp.Pop() {\n" +
+		"        Some(v) => { removed += v }\n" +
+		"        None => {}\n" +
+		"    }\n" +
+		"    return removed + i32(view.Len())\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		"append.copy.cond.",
+		"insert.cond.",
+		"remove.cond.",
+		"shrink.alloc.",
+		"clone.cond.",
+		"call ptr @willrt_alloc(i64",
+		"call void @willrt_free(ptr",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 // willcText renders a document for a test message.
 func willcText(t *testing.T, doc *willc.Doc) string {
 	t.Helper()
