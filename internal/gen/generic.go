@@ -77,28 +77,13 @@ func (g *generator) planInstances() {
 func (g *generator) planCallInstances(base int, seen map[string]bool) {
 	for i := 0; i < base; i++ {
 		d := g.docs[i]
+		g.use(d)
 		for _, r := range sortedRecords(d.recs) {
-			if (r.Kind != "call" && r.Kind != "mcall") || len(refsOf(r, "typearg")) == 0 {
+			if r.Kind != "call" && r.Kind != "mcall" {
 				continue
 			}
-			calleeDoc := d
-			var fn willc.Record
-			if target := refField(r, "to"); target != 0 {
-				fn = d.recs[target]
-			} else if sym := textField(r, "to"); sym != "" {
-				foundDoc, found, ok := g.findGenericFunc(sym)
-				if !ok {
-					continue
-				}
-				calleeDoc, fn = foundDoc, found
-			} else {
-				continue
-			}
-			if fn.Kind != "func" || !g.hasTypeParamsIn(calleeDoc, fn) {
-				continue
-			}
-			args := typeArgTextsIn(d, r)
-			if len(args) == 0 {
+			calleeDoc, fn, args, ok := g.genericTarget(r)
+			if !ok {
 				continue
 			}
 			key := calleeDoc.path + "|" + fieldText(fn, "text") + "|" + strings.Join(args, ",")
@@ -585,12 +570,15 @@ func (g *generator) planMethodInstances(base int, seen map[string]bool) {
 // another one.
 func (g *generator) genericTarget(r willc.Record) (*docState, willc.Record, []string, bool) {
 	args := g.typeArgTexts(r)
-	if len(args) == 0 {
-		return nil, willc.Record{}, nil, false
-	}
 	if id := refField(r, "to"); id != 0 {
 		fn, ok := g.recs[id]
 		if ok && fn.Kind == "func" && g.hasTypeParams(fn) {
+			if len(args) == 0 {
+				args = g.inferGenericArgs(g.cur, fn, r)
+			}
+			if len(args) == 0 {
+				return nil, willc.Record{}, nil, false
+			}
 			return g.cur, fn, args, true
 		}
 		return nil, willc.Record{}, nil, false
@@ -605,11 +593,118 @@ func (g *generator) genericTarget(r willc.Record) (*docState, willc.Record, []st
 				continue
 			}
 			if qualify(d.path, fieldText(f, "text")) == sym && g.hasTypeParamsIn(d, f) {
+				if len(args) == 0 {
+					args = g.inferGenericArgs(d, f, r)
+				}
+				if len(args) == 0 {
+					return nil, willc.Record{}, nil, false
+				}
 				return d, f, args, true
 			}
 		}
 	}
 	return nil, willc.Record{}, nil, false
+}
+
+// inferGenericArgs derives the type arguments of a call from the argument
+// types. It only accepts direct, syntactic matches; an ambiguous call keeps
+// the explicit type arguments requirement and is reported by the checker.
+func (g *generator) inferGenericArgs(d *docState, fn willc.Record, call willc.Record) []string {
+	names := typeParamNamesIn(d, fn)
+	if len(names) == 0 {
+		return nil
+	}
+	var params []willc.Record
+	for _, r := range d.recs {
+		if r.Kind == "param" && refField(r, "parent") == fn.ID {
+			params = append(params, r)
+		}
+	}
+	sortByID(params)
+	args := g.callArgs(call)
+	if len(args) > len(params) {
+		return nil
+	}
+	subst := map[string]string{}
+	for i, arg := range args {
+		actual := ""
+		if r, ok := g.recs[arg]; ok && (r.Kind == "func" || r.Kind == "lambda") {
+			actual = g.lambdaTypeText(r)
+		}
+		if actual == "" {
+			actual, _ = g.willTypeText(arg)
+		}
+		if actual == "" {
+			return nil
+		}
+		if !unifyTypeText(fieldText(params[i], "type"), actual, names, subst) {
+			return nil
+		}
+	}
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		value := subst[name]
+		if value == "" {
+			return nil
+		}
+		out = append(out, value)
+	}
+	return out
+}
+
+// unifyTypeText binds generic type parameter names in want from one argument
+// type text. It is deliberately small: it understands the container and
+// function shapes the language spells in a signature and nothing else.
+func unifyTypeText(want, actual string, names []string, subst map[string]string) bool {
+	want = strings.TrimSpace(want)
+	actual = strings.TrimSpace(actual)
+	if want == "" || actual == "" {
+		return true
+	}
+	for _, name := range names {
+		if want == name {
+			if prev, ok := subst[name]; ok {
+				return prev == actual
+			}
+			subst[name] = actual
+			return true
+		}
+	}
+	if strings.HasPrefix(want, "[]") {
+		if !strings.HasPrefix(actual, "[]") {
+			return false
+		}
+		return unifyTypeText(want[2:], actual[2:], names, subst)
+	}
+	if strings.HasPrefix(want, "func(") {
+		wp, wr, ok := funcTypeParts(want)
+		if !ok {
+			return false
+		}
+		ap, ar, ok := funcTypeParts(actual)
+		if !ok || len(wp) != len(ap) {
+			return false
+		}
+		for i := range wp {
+			if !unifyTypeText(wp[i], ap[i], names, subst) {
+				return false
+			}
+		}
+		return unifyTypeText(wr, ar, names, subst)
+	}
+	if name, wargs, ok := splitGenericType(want); ok {
+		aname, aargs, ok := splitGenericType(actual)
+		if !ok || name != aname || len(wargs) != len(aargs) {
+			return false
+		}
+		for i := range wargs {
+			if !unifyTypeText(wargs[i], aargs[i], names, subst) {
+				return false
+			}
+		}
+		return true
+	}
+	return true
 }
 
 // genericCallName returns the mangled symbol of a generic call, or "" when the

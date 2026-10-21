@@ -716,6 +716,7 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 		if recv, ok := field.Recv.(*ast.NameExpr); ok {
 			if decl := c.foreignFuncs[recv.Name][field.Name]; decl != nil {
 				sig := c.buildSig(decl)
+				sig = c.inferCallTypeArgs(s, call.Args, call.TypeArgs, sig)
 				c.checkTypeArgs(call, sig)
 				inst := sig
 				if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
@@ -747,6 +748,7 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 	case sym != nil && sym.Kind == resolve.FuncKind:
 		sig := c.env.funcs[name.Name]
 		if sig != nil {
+			sig = c.inferCallTypeArgs(s, call.Args, call.TypeArgs, sig)
 			c.checkTypeArgs(call, sig)
 			inst := sig
 			if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
@@ -994,6 +996,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	if recv, ok := call.Recv.(*ast.NameExpr); ok {
 		if decl := c.foreignFuncs[recv.Name][call.Name]; decl != nil {
 			sig := c.buildSig(decl)
+			sig = c.inferCallTypeArgs(s, call.Args, call.TypeArgs, sig)
 			if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
 				subst := make(map[string]*Type, sig.typeParams)
 				for i, ta := range call.TypeArgs {

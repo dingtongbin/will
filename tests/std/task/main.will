@@ -8,7 +8,7 @@ func main() -> i32 {
     values.Push(4)
 
     var view: []i32 = values[Range(0, values.Len())]
-    var doubled: Array<i32> = task.ParallelMap<i32, i32>(view, func(x: i32) -> i32 {
+    var doubled: Array<i32> = task.ParallelMap(view, func(x: i32) -> i32 {
         return x * 2
     })
     if doubled.Len() != 4usize {
