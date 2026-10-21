@@ -111,6 +111,11 @@ void willrt_mem_set_shared(void);
    allocator's lane table. */
 void willrt_mem_set_lane(int32_t lane);
 
+/* willrt_mem_thread_flush returns the calling thread's cached small blocks to
+   its lane. A runtime worker calls it before exiting; a raw C thread that uses
+   the allocator should do the same so another thread can reuse the blocks. */
+void willrt_mem_thread_flush(void);
+
 /* willrt_plate_new returns one block holding count elements of elem bytes, or
    NULL when the request overflows or memory is exhausted. The payload starts
    on a boundary of max(elem, alignof(max_align_t)), rounded up to a power of

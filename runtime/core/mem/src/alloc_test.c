@@ -83,6 +83,24 @@ static void test_alloc_reuse(void) {
     assert(willrt_mem_chunk_count() == chunks_before);
 }
 
+/* A flushed thread cache returns its blocks to the lane, so the next
+   allocation on that lane reuses the same payload without a page call. */
+static void test_alloc_cache_flush(void) {
+    const size_t size = 300;
+    void* first = willrt_alloc(size);
+    size_t calls_before;
+
+    assert(first != NULL);
+    willrt_free(first);
+    willrt_mem_thread_flush();
+    calls_before = willrt_mem_page_calls();
+    first = willrt_alloc(size);
+    assert(first != NULL);
+    assert(willrt_mem_page_calls() == calls_before);
+    willrt_free(first);
+    willrt_mem_thread_flush();
+}
+
 static void test_alloc_foreign(void) {
     unsigned char stack_block[64];
     unsigned char* block;
@@ -216,6 +234,7 @@ static void willrt_alloc_worker_body(void* raw) {
         }
         willrt_free(block);
     }
+    willrt_mem_thread_flush();
     willrt_mem_set_lane(0);
 }
 
@@ -258,6 +277,7 @@ static void willrt_alloc_handoff_body(void* raw) {
 
     willrt_mem_set_lane(1);
     willrt_free(handoff->block);
+    willrt_mem_thread_flush();
     willrt_mem_set_lane(0);
 }
 
@@ -278,6 +298,7 @@ int main(void) {
     test_alloc_alignment();
     test_alloc_page_backed();
     test_alloc_reuse();
+    test_alloc_cache_flush();
     test_alloc_foreign();
     test_plate_write();
     test_plate_stride();

@@ -253,6 +253,7 @@ static void willrt_poll_main(void* ignored) {
                            snapshot[i].arg);
         }
     }
+    willrt_mem_thread_flush();
 }
 
 void willrt_poll_init(void) {

@@ -114,6 +114,7 @@ static void willrt_blocking_worker(void* ignored) {
         willrt_os_cond_broadcast(&willrt_blocking_work);
         willrt_os_mutex_unlock(&willrt_blocking_lock);
     }
+    willrt_mem_thread_flush();
 }
 
 int32_t willrt_blocking_call(void* fn, void* arg, void* out) {

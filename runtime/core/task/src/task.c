@@ -105,6 +105,7 @@ static void willrt_task_entry(void* raw) {
         }
     } while (status == WILLRT_SUSPEND);
     willrt_task_finish(task);
+    willrt_mem_thread_flush();
 }
 
 willrt_task* willrt_task_new(void* step, void* frame, size_t size, int32_t lane,

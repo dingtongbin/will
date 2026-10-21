@@ -31,7 +31,11 @@ enum {
     WILLRT_MEM_CLASS_MIN = 32,
     WILLRT_MEM_CHUNK_BYTES = 64 * 1024,
     WILLRT_MEM_LANES = 64,
-    WILLRT_MEM_REGISTRY_BUCKETS = 4096
+    WILLRT_MEM_REGISTRY_BUCKETS = 4096,
+    /* A thread keeps this many freed small blocks per class. The refill
+       batch amortizes one lane lock over several allocations. */
+    WILLRT_MEM_CACHE_LIMIT = 64,
+    WILLRT_MEM_CACHE_REFILL = 16
 };
 
 static const uint64_t willrt_mem_block_live = UINT64_C(0x4C495645424C4F43);
@@ -101,6 +105,19 @@ static _Atomic int willrt_mem_shared;
 /* A thread that never runs under the scheduler stays on lane 0. */
 static _Thread_local int32_t willrt_mem_lane_index;
 
+/* Small blocks freed by this thread wait here before they return to a lane.
+   The payload's first word is the next link, exactly as on a lane free list. */
+struct willrt_mem_cache {
+    void* free_list[WILLRT_MEM_CLASS_COUNT];
+    unsigned count[WILLRT_MEM_CLASS_COUNT];
+};
+
+static _Thread_local struct willrt_mem_cache willrt_mem_cache;
+
+/* The last small chunk this thread touched. Small chunks never return to the
+   system, so the pointer stays valid and a hot free avoids the registry lock. */
+static _Thread_local struct willrt_mem_chunk* willrt_mem_last_small;
+
 void willrt_mem_set_shared(void) {
     atomic_store_explicit(&willrt_mem_shared, 1, memory_order_release);
 }
@@ -134,6 +151,53 @@ void willrt_mem_set_lane(int32_t lane) {
         lane = 0;
     }
     willrt_mem_lane_index = lane % WILLRT_MEM_LANES;
+}
+
+/* The three helpers below move small payloads between the thread cache and
+   the current lane. The first word of a cached payload is the intrusive link;
+   a cached block is dead and is marked live by the allocation that pops it. */
+static void* willrt_mem_cache_pop(int class_index) {
+    void* payload = willrt_mem_cache.free_list[class_index];
+
+    if (payload == NULL) {
+        return NULL;
+    }
+    willrt_mem_cache.free_list[class_index] = *(void**)payload;
+    willrt_mem_cache.count[class_index]--;
+    return payload;
+}
+
+static void willrt_mem_cache_push(int class_index, void* payload) {
+    *(void**)payload = willrt_mem_cache.free_list[class_index];
+    willrt_mem_cache.free_list[class_index] = payload;
+    willrt_mem_cache.count[class_index]++;
+}
+
+static void willrt_mem_cache_flush_class(int class_index) {
+    struct willrt_mem_lane* lane = &willrt_mem_lanes[willrt_mem_lane_index];
+    void* payload;
+
+    if (willrt_mem_cache.count[class_index] == 0) {
+        return;
+    }
+    willrt_mem_lock_acquire(&lane->lock);
+    while ((payload = willrt_mem_cache_pop(class_index)) != NULL) {
+        *(void**)payload = lane->free_list[class_index];
+        lane->free_list[class_index] = payload;
+    }
+    willrt_mem_lock_release(&lane->lock);
+}
+
+/* willrt_mem_thread_flush returns this thread's cached blocks to its lane.
+   Every runtime worker calls it before the thread exits; a raw C thread that
+   uses the allocator and never calls it leaves only its own cache behind. */
+void willrt_mem_thread_flush(void) {
+    int class_index;
+
+    for (class_index = 0; class_index < WILLRT_MEM_CLASS_COUNT; class_index++) {
+        willrt_mem_cache_flush_class(class_index);
+    }
+    willrt_mem_last_small = NULL;
 }
 
 /* Returns value rounded up to align, or zero when the round-up overflows.
@@ -267,11 +331,20 @@ static void willrt_mem_registry_remove(uintptr_t base) {
 
 static struct willrt_mem_chunk* willrt_mem_chunk_containing(const void* ptr) {
     uintptr_t base = (uintptr_t)ptr & ~(uintptr_t)(WILLRT_MEM_CHUNK_BYTES - 1);
+    struct willrt_mem_chunk* chunk;
 
     if (base == 0) {
         return NULL;
     }
-    return willrt_mem_registry_find(base);
+    if (willrt_mem_last_small != NULL
+        && (uintptr_t)willrt_mem_last_small == base) {
+        return willrt_mem_last_small;
+    }
+    chunk = willrt_mem_registry_find(base);
+    if (chunk != NULL && chunk->class_index >= 0) {
+        willrt_mem_last_small = chunk;
+    }
+    return chunk;
 }
 
 /* Reports whether the whole range lies in one chunk. The check uses only
@@ -397,6 +470,7 @@ void* willrt_alloc(size_t size) {
     struct willrt_mem_lane* lane;
     int class_index;
     void* result;
+    int refill;
 
     if (size == 0) {
         size = 1;
@@ -406,8 +480,41 @@ void* willrt_alloc(size_t size) {
     if (class_index < 0) {
         return willrt_mem_large_alloc(willrt_mem_lane_index, size);
     }
+    result = willrt_mem_cache_pop(class_index);
+    if (result != NULL) {
+        struct willrt_mem_block* block =
+            (struct willrt_mem_block*)((unsigned char*)result
+                                       - willrt_mem_block_offset);
+
+        block->magic = willrt_mem_block_live;
+        block->capacity = willrt_mem_class_size[class_index];
+        return result;
+    }
+
+    /* One lock covers a refill batch rather than one allocation. */
     willrt_mem_lock_acquire(&lane->lock);
-    result = willrt_mem_small_alloc(lane, class_index);
+    for (refill = 0; refill < WILLRT_MEM_CACHE_REFILL; refill++) {
+        void* payload = lane->free_list[class_index];
+
+        if (payload == NULL) {
+            break;
+        }
+        lane->free_list[class_index] = *(void**)payload;
+        willrt_mem_cache_push(class_index, payload);
+    }
+    if (willrt_mem_cache.count[class_index] == 0) {
+        result = willrt_mem_small_alloc(lane, class_index);
+    } else {
+        result = willrt_mem_cache_pop(class_index);
+        {
+            struct willrt_mem_block* block =
+                (struct willrt_mem_block*)((unsigned char*)result
+                                           - willrt_mem_block_offset);
+
+            block->magic = willrt_mem_block_live;
+            block->capacity = willrt_mem_class_size[class_index];
+        }
+    }
     willrt_mem_lock_release(&lane->lock);
     return result;
 }
@@ -436,23 +543,29 @@ void willrt_free(void* ptr) {
         fputs("willrt: free rejected: block is not live\n", stderr);
         return;
     }
-    lane = &willrt_mem_lanes[chunk->owner % WILLRT_MEM_LANES];
-    willrt_mem_lock_acquire(&lane->lock);
     if (block->class_index < 0) {
         void* os_base = chunk->os_base;
         size_t os_bytes = chunk->os_bytes;
 
+        lane = &willrt_mem_lanes[chunk->owner % WILLRT_MEM_LANES];
+        willrt_mem_lock_acquire(&lane->lock);
         block->magic = willrt_mem_block_dead;
         willrt_mem_registry_remove((uintptr_t)chunk);
         atomic_fetch_sub_explicit(&willrt_mem_chunks_held, 1,
                                   memory_order_relaxed);
         willrt_os_free_pages(os_base, os_bytes);
-    } else {
-        block->magic = willrt_mem_block_dead;
-        *(void**)payload = lane->free_list[block->class_index];
-        lane->free_list[block->class_index] = payload;
+        willrt_mem_lock_release(&lane->lock);
+        return;
     }
-    willrt_mem_lock_release(&lane->lock);
+
+    /* A small block belongs to the freeing thread's cache first, even when its
+       chunk belongs to another lane. That keeps the common free path lock-free;
+       the cache is flushed to a lane when it is full or the thread exits. */
+    block->magic = willrt_mem_block_dead;
+    willrt_mem_cache_push(block->class_index, payload);
+    if (willrt_mem_cache.count[block->class_index] > WILLRT_MEM_CACHE_LIMIT) {
+        willrt_mem_cache_flush_class(block->class_index);
+    }
 }
 
 void* willrt_plate_new(size_t count, size_t elem) {
