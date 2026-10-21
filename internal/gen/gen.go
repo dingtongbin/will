@@ -640,6 +640,12 @@ type generator struct {
 	// needInterpDecl that it formats a scalar into a str.
 	needPrintDecl  bool
 	needInterpDecl bool
+	// lateAllocas holds stack slots requested after the entry block was written.
+	// The marker is replaced once the function body is complete, so a fallback
+	// alloca still dominates the loop that uses it instead of growing the stack
+	// on every iteration.
+	lateAllocas []string
+	lateAllowed bool
 	// needTaskDecl records that the lowering calls the task or channel engine.
 	needTaskDecl bool
 	// needJobDecl records that a parallel block submitted a job.
@@ -1370,6 +1376,8 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		g.functionPrefix(fn, name), resLLVM, llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "),
 		g.inlineAttr(fn, name))
 	g.out.WriteString("entry:\n")
+	g.lateAllocas = nil
+	g.lateAllowed = true
 	if err := g.setupCaptures(fn.ID); err != nil {
 		return err
 	}
@@ -1387,6 +1395,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	if !terminated {
 		g.out.WriteString("  unreachable\n")
 	}
+	g.flushLateAllocas()
 	g.out.WriteString("}\n")
 	return nil
 }
@@ -1405,6 +1414,8 @@ func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
 		g.functionPrefix(fn, name), llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "),
 		g.inlineAttr(fn, name))
 	g.out.WriteString("entry:\n")
+	g.lateAllocas = nil
+	g.lateAllowed = true
 	if err := g.setupCaptures(fn.ID); err != nil {
 		return err
 	}
@@ -1422,6 +1433,7 @@ func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
 	if !terminated {
 		g.out.WriteString("  ret void\n")
 	}
+	g.flushLateAllocas()
 	g.out.WriteString("}\n")
 	return nil
 }
@@ -1987,6 +1999,7 @@ func (g *generator) allocas(fn int) error {
 		elemName := names[len(names)-1]
 		g.loopTypes[r.ID][elemName] = elem
 	}
+	g.out.WriteString(entryAllocaMarker + "\n")
 	return nil
 }
 
@@ -2875,18 +2888,53 @@ func (g *generator) value(id int) (string, error) {
 	return "", g.errf(id, "cannot translate node #%d: node kind %s is not lowered yet", id, r.Kind)
 }
 
+const entryAllocaMarker = ";__will_entry_allocas__"
+
 // allocSlot returns the slot of one record, allocating it in the current block
 // when the function prepass did not run for it. The prepass covers the records
 // inside a function; a top-level initializer is lowered outside one, so its
-// slots are made at the point of use.
+// slots are made at the point of use. Inside a function the late line is held
+// for the entry marker, so a loop never executes an alloca.
 func (g *generator) allocSlot(slots map[int]string, prefix string, id int, llvm string) string {
 	if slot := slots[id]; slot != "" {
 		return slot
 	}
 	slot := "%v." + prefix + "." + strconv.Itoa(id)
 	slots[id] = slot
-	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, llvm)
+	line := fmt.Sprintf("  %s = alloca %s", slot, llvm)
+	if g.lateAllowed && prefix == "ret" {
+		g.lateAllocas = append(g.lateAllocas, line)
+	} else {
+		g.out.WriteString(line + "\n")
+	}
 	return slot
+}
+
+// flushLateAllocas replaces the entry marker with the slots requested while
+// lowering the body. The marker is always present in a function.
+func (g *generator) flushLateAllocas() {
+	if !g.lateAllowed {
+		return
+	}
+	text := g.out.String()
+	index := strings.Index(text, entryAllocaMarker)
+	if index < 0 {
+		g.lateAllowed = false
+		return
+	}
+	end := index + len(entryAllocaMarker)
+	if end < len(text) && text[end] == '\n' {
+		end++
+	}
+	replacement := strings.Join(g.lateAllocas, "\n")
+	if replacement != "" {
+		replacement += "\n"
+	}
+	text = text[:index] + replacement + text[end:]
+	g.out.Reset()
+	g.out.WriteString(text)
+	g.lateAllowed = false
+	g.lateAllocas = nil
 }
 
 // exprStmt lowers an expression used as a statement. A call is allowed to
