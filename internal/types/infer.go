@@ -1198,7 +1198,7 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 		case "Set":
 			c.checkPayload(s, []*Type{usize, elem}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Push":
+		case "Push", "Append":
 			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
 		}

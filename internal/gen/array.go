@@ -323,10 +323,10 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, v, ptr)
 		return "", "", nil
-	case "Push":
+	case "Push", "Append":
 		args := g.callArgs(r)
 		if len(args) != 1 {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: Push takes one value", r.ID)
+			return "", "", g.errf(r.ID, "cannot translate node #%d: %s takes one value", r.ID, fieldText(r, "text"))
 		}
 		elemSize, _, ok := g.sizeAlign(elemLLVM)
 		if !ok {
@@ -361,7 +361,7 @@ func (g *generator) arrayCallResult(r willc.Record) (llvm, text string, known bo
 		return "i64", "usize", true
 	case "Get":
 		return elemLLVM, elem, true
-	case "Push", "Set":
+	case "Push", "Append", "Set":
 		return "", "", true
 	}
 	return "", "", false
