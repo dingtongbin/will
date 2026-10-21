@@ -764,8 +764,14 @@ func packageInputs(opts buildOptions) ([]string, func(), error) {
 		cleanup = func() { os.RemoveAll(dir) }
 		root, rootErr := runtimeRoot()
 		for i, source := range sources {
-			bc := filepath.Join(dir, fmt.Sprintf("c%d.bc", i))
-			args := []string{"-emit-llvm", "-c", source, "-o", bc}
+			ext := ".o"
+			emit := []string{"-c"}
+			if opts.lto {
+				ext = ".bc"
+				emit = []string{"-emit-llvm", "-c"}
+			}
+			bc := filepath.Join(dir, fmt.Sprintf("c%d%s", i, ext))
+			args := append(emit, source, "-o", bc)
 			args = append(args, "-I", filepath.Dir(source))
 			if rootErr == nil {
 				args = append(args, "-I", filepath.Join(root, "include"))

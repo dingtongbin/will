@@ -15,6 +15,7 @@ type buildOptions struct {
 	out          string
 	opt          string
 	debug        bool
+	lto          bool
 	target       string
 	targetSet    bool
 	lib          bool
@@ -22,18 +23,18 @@ type buildOptions struct {
 	features     string
 	// textProduct marks a command whose stdout is machine text, so
 	// diagnostics go to stderr and cannot corrupt it.
-	textProduct  bool
-	disabled     map[string]bool
-	json         bool
-	long         bool
-	werror       bool
+	textProduct bool
+	disabled    map[string]bool
+	json        bool
+	long        bool
+	werror      bool
 }
 
 // parseBuildArgs reads the flags of will build and will run. The arguments
 // after "--" belong to the program that will run.
 func parseBuildArgs(command string, args []string, stderr io.Writer) (buildOptions, []string, int) {
 	opts := buildOptions{entry: defaultEntry, opt: defaultOpt(command), debug: command == "run",
-		disabled: map[string]bool{}}
+		lto: command == "build", disabled: map[string]bool{}}
 	var paths, rest []string
 	for i := 0; i < len(args); i++ {
 		name, inline, hasInline := splitFlag(args[i])
