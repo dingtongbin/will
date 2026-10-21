@@ -63,6 +63,7 @@ static _Thread_local int64_t willrt_main_deadline;
 
 static atomic_int willrt_task_globals_state;
 static atomic_int willrt_tasks_live;
+static atomic_int willrt_threads_live;
 static atomic_int willrt_activity_count;
 static willrt_os_mutex willrt_tasks_lock;
 static willrt_os_cond willrt_tasks_cond;
@@ -151,6 +152,7 @@ void willrt_task_run(willrt_task* task) {
         return;
     }
     task->started = 1;
+    atomic_store(&willrt_threads_live, 1);
     willrt_rc_set_threaded();
     willrt_mem_set_shared();
     if (willrt_os_thread_start(&task->thread, willrt_task_entry, task) != 0) {
@@ -166,6 +168,7 @@ void willrt_task_run_job(willrt_task* task) {
     if (task == NULL) {
         return;
     }
+    atomic_store(&willrt_threads_live, 1);
     willrt_task_entry(task);
 }
 
@@ -371,6 +374,10 @@ int32_t willrt_lane_here(void) {
     struct willrt_task* task = willrt_task_self;
 
     return task == NULL ? 0 : task->lane;
+}
+
+int32_t willrt_runtime_threaded(void) {
+    return atomic_load(&willrt_threads_live) != 0;
 }
 
 void willrt_yield(void) {

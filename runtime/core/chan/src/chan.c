@@ -144,6 +144,18 @@ int32_t willrt_chan_try_send(willrt_chan* chan, const void* value) {
     if (chan == NULL || value == NULL) {
         return WILLRT_FAILED;
     }
+    if (!willrt_runtime_threaded()) {
+        if (chan->closed) {
+            return WILLRT_CLOSED;
+        }
+        if (chan->count == chan->cap) {
+            return WILLRT_FULL;
+        }
+        index = (chan->head + chan->count) % chan->cap;
+        memcpy(chan->data + index * chan->elem, value, chan->elem);
+        chan->count++;
+        return WILLRT_OK;
+    }
     willrt_os_mutex_lock(&chan->lock);
     if (chan->closed) {
         result = WILLRT_CLOSED;
@@ -165,6 +177,19 @@ int32_t willrt_chan_try_send(willrt_chan* chan, const void* value) {
 int32_t willrt_chan_send(willrt_chan* chan, const void* value) {
     if (chan == NULL || value == NULL) {
         return WILLRT_FAILED;
+    }
+    if (!willrt_runtime_threaded()) {
+        size_t index;
+        if (chan->closed) {
+            return WILLRT_CLOSED;
+        }
+        if (chan->count == chan->cap) {
+            return WILLRT_FULL;
+        }
+        index = (chan->head + chan->count) % chan->cap;
+        memcpy(chan->data + index * chan->elem, value, chan->elem);
+        chan->count++;
+        return WILLRT_OK;
     }
     for (;;) {
         willrt_os_mutex_lock(&chan->lock);
@@ -202,6 +227,17 @@ int32_t willrt_chan_try_recv(willrt_chan* chan, void* out) {
     if (chan == NULL) {
         return WILLRT_FAILED;
     }
+    if (!willrt_runtime_threaded()) {
+        if (chan->count != 0) {
+            if (out != NULL) {
+                memcpy(out, chan->data + chan->head * chan->elem, chan->elem);
+            }
+            chan->head = (chan->head + 1) % chan->cap;
+            chan->count--;
+            return WILLRT_OK;
+        }
+        return chan->closed ? WILLRT_CLOSED : WILLRT_EMPTY;
+    }
     willrt_os_mutex_lock(&chan->lock);
     if (chan->count != 0) {
         if (out != NULL) {
@@ -225,6 +261,17 @@ int32_t willrt_chan_try_recv(willrt_chan* chan, void* out) {
 int32_t willrt_chan_recv(willrt_chan* chan, void* out) {
     if (chan == NULL) {
         return WILLRT_FAILED;
+    }
+    if (!willrt_runtime_threaded()) {
+        if (chan->count != 0) {
+            if (out != NULL) {
+                memcpy(out, chan->data + chan->head * chan->elem, chan->elem);
+            }
+            chan->head = (chan->head + 1) % chan->cap;
+            chan->count--;
+            return WILLRT_OK;
+        }
+        return chan->closed ? WILLRT_CLOSED : WILLRT_EMPTY;
     }
     for (;;) {
         willrt_os_mutex_lock(&chan->lock);
@@ -285,7 +332,6 @@ int32_t willrt_select(willrt_arm* arms, size_t n) {
     for (;;) {
         int32_t default_index = -1;
         int32_t timeout_index = -1;
-        uint32_t epoch = willrt_chan_select_epoch_now();
 
         for (i = 0; i < n; i++) {
             willrt_arm* arm = &arms[i];
@@ -327,6 +373,7 @@ int32_t willrt_select(willrt_arm* arms, size_t n) {
             return WILLRT_TIMEDOUT;
         }
         {
+            uint32_t epoch = willrt_chan_select_epoch_now();
             int64_t wait = willrt_chan_step();
             int64_t now = willrt_now_ns();
 

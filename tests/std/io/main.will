@@ -1,6 +1,34 @@
 import "std/io"
+import "std/os/fs"
+
+func CheckReadAll() -> i32 {
+    var path: str = "will-io-probe.tmp"
+    var made: Result<fs.File, Error> = fs.Create(path, 420u32)
+    match made {
+        Ok(file) => {
+            var text: str = "abc"
+            _ = file.Write(text[Range(0, 3)])
+            _ = file.Seek(0i64, 0)
+            var buf: Array<u8> = new Array<u8>(0)
+            var count: usize = io.ReadAll(file, buf)!
+            _ = file.Close()
+            _ = fs.Remove(path)
+            if count != 3usize || buf.Len() != 3usize {
+                return 5
+            }
+        }
+        Err(_) => {
+            return 6
+        }
+    }
+    return 0
+}
 
 func main() -> i32 {
+    var readCode: i32 = CheckReadAll()
+    if readCode != 0 {
+        return readCode
+    }
     var poller: io.Poller = io.NewPoller()
     var out: Array<usize> = new Array<usize>(0)
     var next: Result<usize, Error> = poller.Next(0ns, out)

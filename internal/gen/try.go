@@ -89,8 +89,8 @@ func (g *generator) tryCore(r willc.Record) (string, string, string, error) {
 	g.out.WriteString("  unreachable\n")
 	g.out.WriteString(okLabel + ":\n")
 
-	if src.payloadIndex == 0 {
-		return "", "", "", g.errf(r.ID, "cannot translate node #%d: the success value has no payload", r.ID)
+	if src.payloadIndex == 0 || len(src.argLLVM) == 0 || src.argLLVM[0] == "" {
+		return "", "", "", nil
 	}
 	addr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", addr, src.llvm, srcSlot, src.payloadIndex)
@@ -104,7 +104,7 @@ func (g *generator) tryValue(r willc.Record) (string, error) {
 		return "", err
 	}
 	if typ == "" {
-		return "", g.errf(r.ID, "cannot translate node #%d: ? on a unit value is not supported yet", r.ID)
+		return "", nil
 	}
 	if isAggregateType(typ) {
 		return "", g.errf(r.ID, "cannot translate node #%d: the success value is an aggregate place", r.ID)

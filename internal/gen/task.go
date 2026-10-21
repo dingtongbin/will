@@ -38,7 +38,8 @@ func (g *generator) spawnStepSymbol(node int) string {
 		return name
 	}
 	if fn := g.outerFunc(node); fn != 0 {
-		if sym := g.cur.funcs[fn]; sym != "" {
+		if sym := g.cur.funcs[fn]; sym != "" && strings.Contains(sym, "$") &&
+			!strings.Contains(sym, ".will$") {
 			name := sym + ".spawn." + strconv.Itoa(node)
 			g.spawnNames[node] = name
 			return name
@@ -163,6 +164,7 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	}
 	task := g.newTmp()
 	if g.parallelDepth > 0 {
+		g.needJobDecl = true
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new(ptr @%s, ptr %s, i64 %s, i32 0)\n",
 			task, llvmSymbol(step), frame, size)
 	} else {

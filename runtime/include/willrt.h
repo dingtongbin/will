@@ -277,6 +277,10 @@ int32_t willrt_task_store_result(const void* value, size_t size);
 void willrt_region_enter(void);
 int32_t willrt_region_exit(void);
 int32_t willrt_lane_here(void);
+/* willrt_runtime_threaded reports whether any task thread or job worker has
+   started. A channel on a single-threaded program can take its uncontended
+   path without a lock. */
+int32_t willrt_runtime_threaded(void);
 void willrt_yield(void);
 int32_t willrt_task_canceled(void);
 int64_t willrt_task_deadline(void);

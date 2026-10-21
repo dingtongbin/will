@@ -29,8 +29,10 @@ func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 	if typ != info.llvm {
 		return "", "", "", g.errf(r.ID, "cannot translate node #%d: the operand needs %s", r.ID, info.llvm)
 	}
-	if info.payloadIndex == 0 || len(info.argLLVM) == 0 {
-		return "", "", "", g.errf(r.ID, "cannot translate node #%d: the value has no payload", r.ID)
+	unit := info.payloadIndex == 0 || len(info.argLLVM) == 0 || info.argLLVM[0] == ""
+	if unit {
+		// The unit payload still needs the tag check above; after it there is
+		// no address to return.
 	}
 	tagPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
@@ -72,6 +74,9 @@ func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 		g.out.WriteString("  unreachable\n")
 		g.out.WriteString(okLabel + ":\n")
 	}
+	if unit {
+		return "", "", "", nil
+	}
 	addr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", addr, info.llvm, slot, info.payloadIndex)
 	return addr, info.argLLVM[0], info.args[0], nil
@@ -105,7 +110,7 @@ func (g *generator) unwrapValue(r willc.Record) (string, error) {
 		return "", err
 	}
 	if typ == "" {
-		return "", g.errf(r.ID, "cannot translate node #%d: unwrapping a unit payload is not supported yet", r.ID)
+		return "", nil
 	}
 	if isAggregateType(typ) {
 		return "", g.errf(r.ID, "cannot translate node #%d: the payload is an aggregate place", r.ID)

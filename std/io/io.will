@@ -26,7 +26,10 @@ func AsyncReadAll(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
             break
         }
         var i: usize = 0
-        for i < n {
+        for {
+            if i >= n {
+                break
+            }
             buf.Push(chunk.Get(i))
             i += 1
         }
@@ -44,10 +47,10 @@ func AsyncCopy(dst: Writer, src: Reader) -> Result<u64, Error> {
         if n == 0usize {
             break
         }
-        dst.AsyncWrite(chunk[Range(0, n)])?
+        _ = dst.AsyncWrite(chunk[Range(0, n)])?
         total += u64(n)
     }
-    dst.AsyncFlush()?
+    _ = dst.AsyncFlush()?
     return Ok(total)
 }
 

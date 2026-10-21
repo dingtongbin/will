@@ -148,7 +148,6 @@ func (g *generator) emitAux() {
 	}
 	if g.needTaskDecl {
 		g.out.WriteString("declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)\n")
-		g.out.WriteString("declare ptr @willrt_job_new(ptr, ptr, i64, i32)\n")
 		g.out.WriteString("declare void @willrt_task_run(ptr)\n")
 		g.out.WriteString("declare i32 @willrt_join(ptr, ptr, ptr)\n")
 		g.out.WriteString("declare i32 @willrt_task_try_join(ptr, ptr, ptr)\n")
@@ -168,6 +167,11 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_region_enter()\n")
 		g.out.WriteString("declare i32 @willrt_region_exit()\n")
 		g.out.WriteString("declare i32 @willrt_lane_here()\n")
+	}
+	if g.needJobDecl {
+		g.out.WriteString("declare ptr @willrt_job_new(ptr, ptr, i64, i32)\n")
+	}
+	if g.needDeadlineDecl {
 		g.out.WriteString("declare i64 @willrt_task_enter_deadline(i64)\n")
 		g.out.WriteString("declare void @willrt_task_exit_deadline(i64)\n")
 	}
@@ -638,6 +642,10 @@ type generator struct {
 	needInterpDecl bool
 	// needTaskDecl records that the lowering calls the task or channel engine.
 	needTaskDecl bool
+	// needJobDecl records that a parallel block submitted a job.
+	needJobDecl bool
+	// needDeadlineDecl records that the lowering scopes a deadline.
+	needDeadlineDecl bool
 	// parallelDepth is nonzero while lowering a parallel block. A spawn inside
 	// that block is a job, so it goes to the global job queue instead of
 	// starting a task thread.
@@ -2316,6 +2324,7 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 			return false, err
 		}
 		g.needTaskDecl = true
+		g.needDeadlineDecl = true
 		previous := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = call i64 @willrt_task_enter_deadline(i64 %s)\n", previous, duration)
 		body, ok := g.recs[refField(st, "body")]
