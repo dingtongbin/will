@@ -94,6 +94,7 @@ static int32_t willrt_lane_count;
 static int32_t willrt_lane_started;
 static int32_t willrt_lane_state;
 static int32_t willrt_lane_stopping;
+static atomic_int willrt_lane_ready;
 
 extern void willrt_jobs_shutdown(void) __attribute__((weak));
 
@@ -173,6 +174,9 @@ void willrt_sched_wake_io(void) {
     struct willrt_task* task;
 
     atomic_fetch_add(&willrt_io_epoch, 1);
+    if (!atomic_load(&willrt_lane_ready)) {
+        return;
+    }
     willrt_os_mutex_lock(&willrt_lane_lock);
     task = willrt_io_head;
     willrt_io_head = NULL;
@@ -387,6 +391,7 @@ static void willrt_lane_init(void) {
     }
     willrt_lane_count = willrt_lane_started;
     willrt_lane_state = 2;
+    atomic_store(&willrt_lane_ready, 1);
 }
 
 static void willrt_lane_shutdown(void) {

@@ -16,6 +16,10 @@
 void* willrt_alloc(size_t size);
 void willrt_free(void* ptr);
 
+typedef struct willrt_blocking_op willrt_blocking_op;
+willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out);
+int32_t willrt_blocking_wait(willrt_blocking_op* op);
+
 typedef struct exec_str {
     const unsigned char* data;
     int64_t len;
@@ -315,6 +319,70 @@ static int32_t exec_status_code(int status, exec_status* out) {
     out->code = status;
     out->signaled = 0;
     return 0;
+}
+
+typedef struct exec_async_run {
+    const void* path;
+    const void* args;
+    const void* env;
+    const void* dir;
+    void* status;
+} exec_async_run;
+
+typedef struct exec_async_output {
+    const void* path;
+    const void* args;
+    const void* env;
+    const void* dir;
+    void* out;
+    void* err;
+    void* status;
+} exec_async_output;
+
+int32_t willrt_exec_run(const void* path_raw, const void* args_raw,
+                        const void* env_raw, const void* dir_raw,
+                        void* status_raw);
+
+int32_t willrt_exec_output(const void* path_raw, const void* args_raw,
+                           const void* env_raw, const void* dir_raw,
+                           void* out_raw, void* err_raw, void* status_raw);
+
+static int32_t exec_async_run_worker(void* raw, void* ignored) {
+    exec_async_run* arg = (exec_async_run*)raw;
+    (void)ignored;
+    return willrt_exec_run(arg->path, arg->args, arg->env, arg->dir,
+                           arg->status);
+}
+
+static int32_t exec_async_output_worker(void* raw, void* ignored) {
+    exec_async_output* arg = (exec_async_output*)raw;
+    (void)ignored;
+    return willrt_exec_output(arg->path, arg->args, arg->env, arg->dir,
+                              arg->out, arg->err, arg->status);
+}
+
+static int32_t exec_async_wait(void* fn, void* arg) {
+    willrt_blocking_op* op = willrt_blocking_submit(fn, arg, NULL);
+    if (op == NULL) {
+        return 1;
+    }
+    return willrt_blocking_wait(op);
+}
+
+int32_t willrt_exec_run_async(const void* path_raw, const void* args_raw,
+                              const void* env_raw, const void* dir_raw,
+                              void* status_raw) {
+    exec_async_run arg = {path_raw, args_raw, env_raw, dir_raw, status_raw};
+    return exec_async_wait(exec_async_run_worker, &arg);
+}
+
+int32_t willrt_exec_output_async(const void* path_raw, const void* args_raw,
+                                 const void* env_raw, const void* dir_raw,
+                                 void* out_raw, void* err_raw,
+                                 void* status_raw) {
+    exec_async_output arg = {path_raw, args_raw, env_raw, dir_raw, out_raw,
+                             err_raw, status_raw};
+    return exec_async_wait(exec_async_output_worker, &arg);
 }
 
 int32_t willrt_exec_run(const void* path_raw, const void* args_raw,

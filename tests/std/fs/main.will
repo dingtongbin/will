@@ -178,10 +178,41 @@ func CheckDir() -> i32 {
     return 0
 }
 
+func CheckAsync() -> i32 {
+    var path: str = "will-fs-async.tmp"
+    var text: str = "async"
+    var data: []u8 = text[Range(0, 5)]
+    var written: Result<(), Error> = fs.AsyncWriteFile(path, data)
+    match written {
+        Err(_) => {
+            return 30
+        }
+        _ => {}
+    }
+    var loaded: Result<Array<u8>, Error> = fs.AsyncReadFile(path)
+    match loaded {
+        Ok(bytes) => {
+            if bytes.Len() != 5usize || bytes.Get(0) != 97u8 {
+                _ = fs.Remove(path)
+                return 31
+            }
+            _ = fs.Remove(path)
+        }
+        Err(_) => {
+            return 32
+        }
+    }
+    return 0
+}
+
 func main() -> i32 {
     var code: i32 = CheckFile()
     if code != 0 {
         return code
     }
-    return CheckDir()
+    code = CheckDir()
+    if code != 0 {
+        return code
+    }
+    return CheckAsync()
 }

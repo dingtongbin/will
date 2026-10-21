@@ -242,6 +242,12 @@ typedef int32_t (*willrt_blocking_fn)(void* arg, void* out);
 /* willrt_blocking_call runs one function on a pool thread and waits for it.
    The pool starts lazily and has WILL_BLOCKING_MAX threads (default 128). */
 int32_t willrt_blocking_call(void* fn, void* arg, void* out);
+/* willrt_blocking_submit queues one job and returns a handle. Waiting on the
+   handle parks the current task (or the main thread) until the worker finishes;
+   the handle is released by willrt_blocking_wait. */
+typedef struct willrt_blocking_op willrt_blocking_op;
+willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out);
+int32_t willrt_blocking_wait(willrt_blocking_op* op);
 void willrt_blocking_shutdown(void);
 
 /* -------------------------------------------------------------------------

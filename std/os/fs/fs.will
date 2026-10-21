@@ -20,6 +20,21 @@ import c "fs.c" {
     fast willrt_fs_rename
     fast willrt_fs_remove
     fast willrt_fs_temp_file
+    fast willrt_fs_async_read_file
+    fast willrt_fs_async_write_file
+    fast willrt_fs_async_append
+    fast willrt_fs_async_open
+    fast willrt_fs_async_create
+    fast willrt_fs_async_file_read
+    fast willrt_fs_async_file_write
+    fast willrt_fs_async_file_seek
+    fast willrt_fs_async_file_sync
+    fast willrt_fs_async_file_stat
+    fast willrt_fs_async_stat
+    fast willrt_fs_async_read_dir
+    fast willrt_fs_async_rename
+    fast willrt_fs_async_remove
+    fast willrt_fs_async_temp_file
 }
 
 // OpenFlags selects the access mode for Open.
@@ -147,28 +162,46 @@ func (f: File) Seek(offset: i64, whence: i32) -> Result<i64, Error> {
 // AsyncRead is the async spelling of Read. The current task owns a dedicated
 // execution context, so the host read cannot stall an unrelated task.
 func (f: File) AsyncRead(mut buf: Array<u8>) -> Result<usize, Error> {
-    return f.Read(buf)
+    var count: usize = 0
+    var status: i32 = c.willrt_fs_async_file_read(raw(f), raw(count), raw(buf))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(count)
 }
 
 // AsyncWrite is the async spelling of Write.
 func (f: File) AsyncWrite(buf: []u8) -> Result<(), Error> {
-    return f.Write(buf)
+    var status: i32 = c.willrt_fs_async_file_write(raw(f), raw(buf))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
 }
 
 // AsyncSeek is the async spelling of Seek.
 func (f: File) AsyncSeek(offset: i64, whence: i32) -> Result<i64, Error> {
-    return f.Seek(offset, whence)
+    var at: i64 = 0
+    var status: i32 = c.willrt_fs_async_file_seek(raw(f), offset, whence, raw(at))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(at)
 }
 
 // AsyncSync is the async spelling of Sync.
 func (f: File) AsyncSync() -> Result<(), Error> {
-    return f.Sync()
+    var status: i32 = c.willrt_fs_async_file_sync(raw(f))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
 }
 
 // AsyncStat returns the metadata of the open file.
 func (f: File) AsyncStat() -> Result<StatInfo, Error> {
     var stat: StatInfo
-    var status: i32 = c.willrt_fs_file_stat(raw(f), raw(stat))
+    var status: i32 = c.willrt_fs_async_file_stat(raw(f), raw(stat))
     if status != 0 {
         return Err(errors.Io)
     }
@@ -244,50 +277,96 @@ func TempFile(dir: str, pattern: str) -> Result<File, Error> {
 
 // AsyncReadFile is the async spelling of ReadFile.
 func AsyncReadFile(path: str) -> Result<Array<u8>, Error> {
-    return ReadFile(path)
+    var out: Array<u8>
+    var status: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(out)
 }
 
 // AsyncWriteFile is the async spelling of WriteFile.
 func AsyncWriteFile(path: str, data: []u8) -> Result<(), Error> {
-    return WriteFile(path, data)
+    var status: i32 = c.willrt_fs_async_write_file(raw(path), raw(data))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
 }
 
 // AsyncAppend is the async spelling of Append.
 func AsyncAppend(path: str, data: []u8) -> Result<(), Error> {
-    return Append(path, data)
+    var status: i32 = c.willrt_fs_async_append(raw(path), raw(data))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
 }
 
 // AsyncOpen is the async spelling of Open.
 func AsyncOpen(path: str, flags: OpenFlags) -> Result<File, Error> {
-    return Open(path, flags)
+    var file: File
+    var status: i32 = c.willrt_fs_async_open(raw(path), raw(flags), raw(file))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(file)
 }
 
 // AsyncCreate is the async spelling of Create.
 func AsyncCreate(path: str, mode: u32) -> Result<File, Error> {
-    return Create(path, mode)
+    var file: File
+    var status: i32 = c.willrt_fs_async_create(raw(path), mode, raw(file))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(file)
 }
 
 // AsyncStat is the async spelling of Stat.
 func AsyncStat(path: str) -> Result<StatInfo, Error> {
-    return Stat(path)
+    var stat: StatInfo
+    var status: i32 = c.willrt_fs_async_stat(raw(path), raw(stat))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(stat)
 }
 
 // AsyncReadDir is the async spelling of ReadDir.
 func AsyncReadDir(path: str) -> Result<Array<DirEntry>, Error> {
-    return ReadDir(path)
+    var entries: Array<DirEntry>
+    var status: i32 = c.willrt_fs_async_read_dir(raw(path), raw(entries))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(entries)
 }
 
 // AsyncRename is the async spelling of Rename.
 func AsyncRename(old: str, new: str) -> Result<(), Error> {
-    return Rename(old, new)
+    var status: i32 = c.willrt_fs_async_rename(raw(old), raw(new))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
 }
 
 // AsyncRemove is the async spelling of Remove.
 func AsyncRemove(path: str) -> Result<(), Error> {
-    return Remove(path)
+    var status: i32 = c.willrt_fs_async_remove(raw(path))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
 }
 
 // AsyncTempFile is the async spelling of TempFile.
 func AsyncTempFile(dir: str, pattern: str) -> Result<File, Error> {
-    return TempFile(dir, pattern)
+    var file: File
+    var status: i32 = c.willrt_fs_async_temp_file(raw(dir), raw(pattern), raw(file))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(file)
 }

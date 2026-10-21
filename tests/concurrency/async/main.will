@@ -1,0 +1,28 @@
+import "std/os/fs"
+
+func ReadFile(path: str) -> Result<usize, Error> {
+    var bytes: Array<u8> = fs.AsyncReadFile(path)?
+    return Ok(bytes.Len())
+}
+
+func main() -> i32 {
+    var path: str = "will-concurrency-async.tmp"
+    var text: str = "worker"
+    var written: Result<(), Error> = fs.WriteFile(path, text[Range(0, 6)])
+    match written {
+        Err(_) => {
+            return 1
+        }
+        _ => {}
+    }
+    var size: usize = 0
+    region {
+        var task: Task<Result<usize, Error>> = spawn ReadFile(path)
+        size = task.Join()!!
+    }
+    _ = fs.Remove(path)
+    if size != 6usize {
+        return 2
+    }
+    return 0
+}

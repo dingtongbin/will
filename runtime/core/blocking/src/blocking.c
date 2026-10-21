@@ -20,12 +20,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* The blocking pool can be linked without the task engine. The scheduler hooks
+   are weak so the standalone pool keeps working; an executable links task.c and
+   the hooks become available. */
+extern willrt_task* willrt_task_current(void) __attribute__((weak));
+extern int64_t willrt_task_deadline(void) __attribute__((weak));
+extern void willrt_task_wait_io(uint32_t epoch, int64_t deadline)
+    __attribute__((weak));
+extern uint32_t willrt_sched_io_epoch(void) __attribute__((weak));
+extern void willrt_sched_wake_io(void) __attribute__((weak));
+
 enum {
     WILLRT_BLOCKING_LIMIT = 128,
     WILLRT_BLOCKING_QUEUE = 1024
 };
 
-struct willrt_blocking_job {
+struct willrt_blocking_op {
     willrt_blocking_fn fn;
     void* arg;
     void* out;
@@ -33,7 +43,7 @@ struct willrt_blocking_job {
     int32_t done;
 };
 
-static struct willrt_blocking_job* willrt_blocking_queue[WILLRT_BLOCKING_QUEUE];
+static struct willrt_blocking_op* willrt_blocking_queue[WILLRT_BLOCKING_QUEUE];
 static willrt_os_thread willrt_blocking_threads[WILLRT_BLOCKING_LIMIT];
 static willrt_os_mutex willrt_blocking_lock;
 static willrt_os_cond willrt_blocking_work;
@@ -89,7 +99,7 @@ static void willrt_blocking_worker(void* ignored) {
     (void)ignored;
     willrt_mem_set_lane(0);
     for (;;) {
-        struct willrt_blocking_job* job;
+        struct willrt_blocking_op* job;
 
         willrt_os_mutex_lock(&willrt_blocking_lock);
         while (willrt_blocking_count == 0 && !willrt_blocking_stop) {
@@ -114,12 +124,15 @@ static void willrt_blocking_worker(void* ignored) {
         job->done = 1;
         willrt_os_cond_broadcast(&willrt_blocking_work);
         willrt_os_mutex_unlock(&willrt_blocking_lock);
+        if (willrt_sched_wake_io != NULL) {
+            willrt_sched_wake_io();
+        }
     }
     willrt_mem_thread_flush();
 }
 
 int32_t willrt_blocking_call(void* fn, void* arg, void* out) {
-    struct willrt_blocking_job job;
+    struct willrt_blocking_op job;
     int32_t started = 0;
     int32_t status;
 
@@ -175,6 +188,100 @@ int32_t willrt_blocking_call(void* fn, void* arg, void* out) {
     }
     status = job.status;
     willrt_os_mutex_unlock(&willrt_blocking_lock);
+    return status;
+}
+
+willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out) {
+    struct willrt_blocking_op* job;
+    int32_t started = 0;
+
+    if (fn == NULL) {
+        return NULL;
+    }
+    willrt_blocking_init();
+    if (atomic_load(&willrt_blocking_state) != 2) {
+        return NULL;
+    }
+    job = (struct willrt_blocking_op*)willrt_alloc(sizeof(*job));
+    if (job == NULL) {
+        return NULL;
+    }
+    memset(job, 0, sizeof(*job));
+    job->fn = (willrt_blocking_fn)fn;
+    job->arg = arg;
+    job->out = out;
+
+    willrt_os_mutex_lock(&willrt_blocking_lock);
+    if (willrt_blocking_stop) {
+        willrt_os_mutex_unlock(&willrt_blocking_lock);
+        willrt_free(job);
+        return NULL;
+    }
+    while (willrt_blocking_count == WILLRT_BLOCKING_QUEUE) {
+        willrt_os_cond_wait(&willrt_blocking_space, &willrt_blocking_lock);
+    }
+    willrt_blocking_queue[willrt_blocking_tail] = job;
+    willrt_blocking_tail = (willrt_blocking_tail + 1) % WILLRT_BLOCKING_QUEUE;
+    willrt_blocking_count++;
+    if (willrt_blocking_created < willrt_blocking_max &&
+        willrt_blocking_idle == 0) {
+        size_t index = willrt_blocking_created;
+
+        willrt_rc_set_threaded();
+        willrt_mem_set_shared();
+        if (willrt_os_thread_start(&willrt_blocking_threads[index],
+                                   willrt_blocking_worker, NULL) == 0) {
+            willrt_blocking_created++;
+            started = 1;
+        }
+    }
+    willrt_os_cond_signal(&willrt_blocking_work);
+    if (!started && willrt_blocking_created == 0) {
+        willrt_blocking_count--;
+        willrt_blocking_tail = (willrt_blocking_tail + WILLRT_BLOCKING_QUEUE - 1)
+                               % WILLRT_BLOCKING_QUEUE;
+        willrt_os_cond_signal(&willrt_blocking_space);
+        willrt_os_mutex_unlock(&willrt_blocking_lock);
+        willrt_free(job);
+        return NULL;
+    }
+    willrt_os_mutex_unlock(&willrt_blocking_lock);
+    return (willrt_blocking_op*)job;
+}
+
+int32_t willrt_blocking_wait(willrt_blocking_op* op_raw) {
+    struct willrt_blocking_op* op = (struct willrt_blocking_op*)op_raw;
+    int32_t status;
+
+    if (op == NULL) {
+        return WILLRT_FAILED;
+    }
+    if (willrt_task_current != NULL && willrt_task_current() != NULL &&
+        willrt_task_wait_io != NULL && willrt_sched_io_epoch != NULL) {
+        for (;;) {
+            uint32_t epoch = willrt_sched_io_epoch();
+            int32_t done;
+            willrt_os_mutex_lock(&willrt_blocking_lock);
+            done = op->done;
+            willrt_os_mutex_unlock(&willrt_blocking_lock);
+            if (done) {
+                break;
+            }
+            willrt_task_wait_io(epoch, willrt_task_deadline != NULL
+                                           ? willrt_task_deadline()
+                                           : 0);
+        }
+    } else {
+        willrt_os_mutex_lock(&willrt_blocking_lock);
+        while (!op->done) {
+            willrt_os_cond_wait(&willrt_blocking_work, &willrt_blocking_lock);
+        }
+        willrt_os_mutex_unlock(&willrt_blocking_lock);
+    }
+    willrt_os_mutex_lock(&willrt_blocking_lock);
+    status = op->status;
+    willrt_os_mutex_unlock(&willrt_blocking_lock);
+    willrt_free(op);
     return status;
 }
 
