@@ -1,0 +1,15 @@
+// The IO capability interfaces. They name the asynchronous form only; a
+// synchronous caller uses wait(...) once the scheduler exposes that bridge.
+
+interface Reader {
+    func AsyncRead(mut buf: Array<u8>) -> Result<usize, Error>
+}
+
+interface Writer {
+    func AsyncWrite(buf: []u8) -> Result<(), Error>
+    func AsyncFlush() -> Result<(), Error>
+}
+
+interface Seeker {
+    func AsyncSeek(offset: i64, whence: i32) -> Result<i64, Error>
+}
