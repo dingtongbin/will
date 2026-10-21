@@ -36,6 +36,10 @@ void willrt_os_free_pages(void* ptr, size_t size);
    never goes backwards. Zero is returned when the platform call fails. */
 int64_t willrt_os_now_ns(void);
 
+/* willrt_os_cpu_count returns the number of processors available to the
+   process, or 1 when the platform cannot report a positive count. */
+int32_t willrt_os_cpu_count(void);
+
 /* willrt_os_random_bytes fills out with size bytes from the platform's
    cryptographically secure source. It returns 0 on success and -1 when the
    source is unavailable; a partial fill is never reported as success. */
@@ -254,6 +258,11 @@ typedef struct willrt_error {
 
 willrt_task* willrt_task_new(void* step, void* frame, size_t size,
                              int32_t lane, int32_t prio);
+/* willrt_job_new queues a task on the global job queue. The caller only uses
+   it from a parallel block; the block body must not suspend. The returned
+   handle is joined like a task handle. */
+willrt_task* willrt_job_new(void* step, void* frame, size_t size,
+                            int32_t prio);
 void willrt_task_run(willrt_task* task);
 int32_t willrt_join(willrt_task* task, void* out, willrt_error* err);
 /* willrt_task_try_join is the step-facing form of a join: it returns

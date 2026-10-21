@@ -21,6 +21,12 @@
 
 #include "../include/willrt.h"
 
+int32_t willrt_os_cpu_count(void) {
+    DWORD count = GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+
+    return count == 0 ? 1 : (int32_t)count;
+}
+
 int64_t willrt_os_now_ns(void) {
     LARGE_INTEGER counter;
     LARGE_INTEGER frequency;

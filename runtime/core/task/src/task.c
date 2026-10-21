@@ -66,6 +66,10 @@ static atomic_int willrt_activity_count;
 static willrt_os_mutex willrt_tasks_lock;
 static willrt_os_cond willrt_tasks_cond;
 
+/* The job module is optional. A program that never creates a job does not
+   link job.c, so the shutdown hook is weak like the other optional modules. */
+extern void willrt_jobs_shutdown(void) __attribute__((weak));
+
 static void willrt_task_globals(void) {
     int expected = 0;
 
@@ -152,6 +156,16 @@ void willrt_task_run(willrt_task* task) {
         task->failed = 1;
         willrt_task_finish(task);
     }
+}
+
+/* willrt_task_run_job advances one task on the caller thread. The job pool
+   owns the thread that calls this hook, so the job object keeps the task
+   object and step contract while avoiding a second task thread. */
+void willrt_task_run_job(willrt_task* task) {
+    if (task == NULL) {
+        return;
+    }
+    willrt_task_entry(task);
 }
 
 willrt_task* willrt_task_current(void) {
@@ -385,4 +399,7 @@ void willrt_tasks_wait_all(void) {
         willrt_os_cond_wait(&willrt_tasks_cond, &willrt_tasks_lock);
     }
     willrt_os_mutex_unlock(&willrt_tasks_lock);
+    if (willrt_jobs_shutdown != NULL) {
+        willrt_jobs_shutdown();
+    }
 }
