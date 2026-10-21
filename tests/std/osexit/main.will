@@ -1,0 +1,6 @@
+import "std/os"
+
+func main() -> i32 {
+    os.Exit(7)
+    return 0
+}
