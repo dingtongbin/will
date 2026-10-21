@@ -505,7 +505,7 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	defer cleanup()
 	clangArgsList = append(clangArgsList, inputs...)
 	if hasBitcode(clangArgsList) {
-		clangArgsList = append(clangArgsList, "-flto")
+		clangArgsList = append(clangArgsList, "-flto=thin")
 	}
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
@@ -879,7 +879,7 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 	defer cleanup()
 	clangArgsList = append(clangArgsList, inputs...)
 	if hasBitcode(clangArgsList) {
-		clangArgsList = append(clangArgsList, "-flto")
+		clangArgsList = append(clangArgsList, "-flto=thin")
 	}
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
