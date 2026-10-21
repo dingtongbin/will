@@ -71,6 +71,6 @@ func rememberLink(store *cache.Store, key, out string) {
 		return
 	}
 	if err := store.Put(key, map[string][]byte{cache.Artifact: data}); err == nil {
-		_ = store.Trim()
+		_ = store.TrimIfNeeded()
 	}
 }

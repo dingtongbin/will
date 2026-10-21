@@ -105,6 +105,7 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 // init method. A non-empty result text means the call returns a Result value
 // that the caller must turn into the new expression's value.
 func (g *generator) callNewInit(r willc.Record, slot, initSym string, params []string, initResult string) (string, string, error) {
+	g.noteExternalFunc(initSym)
 	parts := []string{"ptr " + slot}
 	for i, a := range g.callArgs(r) {
 		paramType := ""
@@ -115,6 +116,20 @@ func (g *generator) callNewInit(r willc.Record, slot, initSym string, params []s
 		parts, err = g.callArgParts(parts, r, i, a, paramType, false)
 		if err != nil {
 			return "", "", err
+		}
+	}
+	if g.packageMode && !g.emittedFuncs[initSym] && !strings.HasPrefix(initSym, g.pkg+".") {
+		argTypes := make([]string, 0, len(parts))
+		for _, part := range parts {
+			if i := strings.LastIndexByte(part, ' '); i > 0 {
+				argTypes = append(argTypes, part[:i])
+			}
+		}
+		g.externalFuncs[initSym] = true
+		g.externalSigs[initSym] = externalSignature{
+			result:   initResult,
+			params:   append([]string(nil), params...),
+			argTypes: argTypes,
 		}
 	}
 	if initResult == "" || initResult == "()" {
@@ -219,6 +234,7 @@ func (g *generator) constructImportedNew(r willc.Record, q string) (string, stri
 	if initSym == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: %s has no init", r.ID, q)
 	}
+	g.noteExternalFunc(initSym)
 	if g.sigs[initSym] != "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: an init that returns a value is not lowered yet", r.ID)
 	}
@@ -234,6 +250,16 @@ func (g *generator) constructImportedNew(r willc.Record, q string) (string, stri
 		if err != nil {
 			return "", "", err
 		}
+	}
+	if g.packageMode && !g.emittedFuncs[initSym] && !strings.HasPrefix(initSym, g.pkg+".") {
+		argTypes := make([]string, 0, len(parts))
+		for _, part := range parts {
+			if i := strings.LastIndexByte(part, ' '); i > 0 {
+				argTypes = append(argTypes, part[:i])
+			}
+		}
+		g.externalFuncs[initSym] = true
+		g.externalSigs[initSym] = externalSignature{argTypes: argTypes}
 	}
 	fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(initSym), strings.Join(parts, ", "))
 	return slot, typ, nil

@@ -106,6 +106,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 // emitted, the panic declaration. Both may follow the functions because LLVM
 // resolves forward references to global values.
 func (g *generator) emitAux() {
+	g.emitExternalDecls()
 	for _, decl := range g.decls {
 		g.out.WriteString(decl + "\n")
 	}
@@ -209,6 +210,7 @@ func (g *generator) emitAux() {
 // names mean something only inside one document.
 type docState struct {
 	path  string
+	clone bool
 	recs  map[int]willc.Record
 	funcs map[int]string
 	links map[int]string
@@ -475,8 +477,10 @@ func (g *generator) use(d *docState) {
 	g.sliceSlots = map[int]string{}
 	g.strCatSlots = map[int]string{}
 	g.interpSlots = map[int]string{}
-	g.lambdaNames = map[int]string{}
-	g.lambdas = map[int]*lambdaInfo{}
+	if !g.packageMode {
+		g.lambdaNames = map[int]string{}
+		g.lambdas = map[int]*lambdaInfo{}
+	}
 	g.closureSlots = map[int]string{}
 	g.captureFields = map[int]string{}
 	g.captureSpills = map[int]string{}
@@ -770,6 +774,16 @@ type generator struct {
 
 	// pkg is the package path of the current document.
 	pkg string
+	// packageMode emits one package into its own LLVM module. Cross-package
+	// calls then need external declarations, and all non-entry definitions use
+	// hidden linkage so separate objects can resolve them.
+	packageMode     bool
+	externalFuncs   map[string]bool
+	externalSigs    map[string]externalSignature
+	externalGlobals map[string]bool
+	emittedFuncs    map[string]bool
+	libFuncs        map[string]string
+	initOrder       []string
 	// entrySymbol is the mangled symbol of the program entry; entryResult is
 	// its result type text, and entryFound reports that it was located.
 	entryName     string
@@ -909,7 +923,11 @@ func (g *generator) emitWrapper() error {
 	g.out.WriteString("declare void @willrt_init()\n")
 	g.out.WriteString("declare void @willrt_shutdown()\n")
 	g.out.WriteString("define i32 @main() {\nentry:\n  call void @willrt_init()\n")
-	for _, init := range g.inits {
+	inits := g.inits
+	if g.packageMode {
+		inits = g.initOrder
+	}
+	for _, init := range inits {
 		fmt.Fprintf(g.out, "  call void @%s()\n", llvmSymbol(init))
 	}
 	if g.entryResult == "" {
@@ -935,7 +953,14 @@ func (g *generator) collect() {
 				g.cur.methods[receiverType(recv)+"."+name] = sym
 				continue
 			}
-			g.cur.funcs[r.ID] = g.symbolName(name)
+			sym := g.symbolName(name)
+			g.cur.funcs[r.ID] = sym
+			if g.lib && cExported(name) {
+				if g.libFuncs == nil {
+					g.libFuncs = map[string]string{}
+				}
+				g.libFuncs[qualify(g.pkg, name)] = sym
+			}
 		case "link":
 			g.cur.links[r.ID] = fieldText(r, "text")
 			if fieldText(r, "blocking") == "true" {
@@ -991,6 +1016,12 @@ func (g *generator) functionPrefix(fn willc.Record, name string) string {
 	sym := g.cur.funcs[fn.ID]
 	if g.entryFound && g.entryPkg == g.pkg && g.entryName == name {
 		return ""
+	}
+	if g.packageMode {
+		if g.lib && cExported(name) && !strings.Contains(sym, "$") {
+			return ""
+		}
+		return "hidden "
 	}
 	instance := strings.Contains(sym, "$")
 	if g.lib && cExported(name) && !instance {
@@ -3204,6 +3235,12 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 			return g.emitTypedCLink(r, name, sig)
 		}
 	}
+	if !link {
+		if alias := g.libFuncs[name]; alias != "" {
+			name = alias
+		}
+		g.noteExternalFunc(name)
+	}
 	args := g.callArgs(r)
 	parts := make([]string, 0, len(args))
 	// A method call passes its receiver first, as the borrow pointer the
@@ -3251,6 +3288,25 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 	resultText, err := g.callResultText(r)
 	if err != nil {
 		return "", "", err
+	}
+	if !link && g.packageMode && name != "" && !strings.HasPrefix(name, g.pkg+".") {
+		params := g.paramTypes[name]
+		if params == nil {
+			params = g.callParamTypes(r)
+		}
+		argTypes := make([]string, 0, len(parts))
+		for _, part := range parts {
+			if i := strings.LastIndexByte(part, ' '); i > 0 {
+				argTypes = append(argTypes, part[:i])
+			}
+		}
+		g.externalFuncs[name] = true
+		g.externalSigs[name] = externalSignature{
+			result:   resultText,
+			params:   append([]string(nil), params...),
+			argTypes: argTypes,
+			recv:     r.Kind == "mcall" && textField(r, "to") == "",
+		}
 	}
 	if link {
 		if resultText == "" {
@@ -3404,4 +3460,16 @@ func sortByID(rs []willc.Record) {
 			rs[j], rs[j-1] = rs[j-1], rs[j]
 		}
 	}
+}
+
+// sortedRecords returns one document's records in source order. Lowering that
+// creates new documents must not use map order, or the symbol order would
+// change between identical builds.
+func sortedRecords(recs map[int]willc.Record) []willc.Record {
+	out := make([]willc.Record, 0, len(recs))
+	for _, r := range recs {
+		out = append(out, r)
+	}
+	sortByID(out)
+	return out
 }

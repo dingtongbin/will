@@ -148,7 +148,7 @@ func packageCObjects(opts buildOptions, b *pkg.Build) ([]string, func(), error) 
 		}
 	}
 	store := cache.New(filepath.Join(root, "pkgc"), limit)
-	_ = store.Trim()
+	_ = store.TrimIfNeeded()
 	return objects, noop, nil
 }
 

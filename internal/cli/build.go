@@ -336,7 +336,7 @@ func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 			}
 		}
 		if store != nil {
-			_ = store.Trim()
+			_ = store.TrimIfNeeded()
 		}
 		return docs, texts, nil
 	}
@@ -399,7 +399,7 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 	}
 	if store != nil {
 		_ = store.Put(key, map[string][]byte{cache.ModuleLL: ir, cache.Decisions: record})
-		_ = store.Trim()
+		_ = store.TrimIfNeeded()
 	}
 	return ir, fe.modulePath, 0
 }
@@ -474,6 +474,15 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	if code != 0 {
 		return code
 	}
+	if objects, modulePath, code := compilePackages(opts, stdout, stderr); objects != nil {
+		out := opts.out
+		if out == "" {
+			out = defaultOutput(modulePath, opts.target, opts.lib)
+		}
+		return linkPackageOutput(opts, objects, out, stdout, stderr)
+	} else if code != 0 {
+		return code
+	}
 	ir, modulePath, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
@@ -512,6 +521,49 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
+	if err != nil {
+		fmt.Fprintf(stdout, "%s", output)
+		fmt.Fprintf(stderr, "will: link failed\n")
+		return 1
+	}
+	rememberLink(store, key, out)
+	return 0
+}
+
+// linkPackageOutput links one object per package with the runtime and package C
+// inputs, reusing the final artifact when every input is unchanged.
+func linkPackageOutput(opts buildOptions, objects []string, out string, stdout, stderr io.Writer) int {
+	clang, err := toolchain.FindClang()
+	if err != nil {
+		return missingTool(stdout, "clang")
+	}
+	if dir := filepath.Dir(out); dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			fmt.Fprintf(stderr, "will: %v\n", err)
+			return 1
+		}
+	}
+	args, err := clangArgs(opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	inputs, cleanup, err := packageInputs(opts)
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return 1
+	}
+	defer cleanup()
+	args = append(args, objects...)
+	args = append(args, inputs...)
+	if hasBitcode(args) {
+		args = append(args, "-flto=thin")
+	}
+	store, key := linkCacheKey(nil, clang, args)
+	if cachedLink(store, key, out) {
+		return 0
+	}
+	output, err := clang.Link(out, args...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
 		fmt.Fprintf(stderr, "will: link failed\n")
@@ -782,6 +834,19 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 	if code != 0 {
 		return code
 	}
+	if objects, _, code := compilePackages(opts, stdout, stderr); objects != nil {
+		out, cleanup, code := runOutput(opts, stderr)
+		if code != 0 {
+			return code
+		}
+		defer cleanup()
+		if code := linkPackageOutput(opts, objects, out, stdout, stderr); code != 0 {
+			return code
+		}
+		return execProgram(out, programArgs, stdout, stderr)
+	} else if code != 0 {
+		return code
+	}
 	ir, _, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
@@ -828,7 +893,32 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 		}
 		rememberLink(store, key, out)
 	}
-	cmd := exec.Command(out, programArgs...)
+	return execProgram(out, programArgs, stdout, stderr)
+}
+
+// runOutput returns the path for a temporary run executable, or the explicit
+// output when the command gave one.
+func runOutput(opts buildOptions, stderr io.Writer) (string, func(), int) {
+	noop := func() {}
+	if opts.out != "" {
+		return opts.out, noop, 0
+	}
+	dir, err := os.MkdirTemp("", "will-run")
+	if err != nil {
+		fmt.Fprintf(stderr, "will: %v\n", err)
+		return "", noop, 1
+	}
+	cleanup := func() { os.RemoveAll(dir) }
+	out := filepath.Join(dir, "program")
+	if isWindows() {
+		out += ".exe"
+	}
+	return out, cleanup, 0
+}
+
+// execProgram runs a linked program and forwards its exit code.
+func execProgram(out string, args []string, stdout, stderr io.Writer) int {
+	cmd := exec.Command(out, args...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	if err := cmd.Run(); err != nil {

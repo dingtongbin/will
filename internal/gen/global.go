@@ -83,7 +83,11 @@ func (g *generator) emitGlobals(d *docState) {
 		if info == nil {
 			continue
 		}
-		fmt.Fprintf(g.out, "@%s = internal global %s zeroinitializer\n", llvmSymbol(info.sym), info.typ)
+		prefix := "internal"
+		if g.packageMode {
+			prefix = "hidden"
+		}
+		fmt.Fprintf(g.out, "@%s = %s global %s zeroinitializer\n", llvmSymbol(info.sym), prefix, info.typ)
 	}
 }
 
@@ -202,10 +206,13 @@ func (g *generator) constValueOf(id int) (string, bool) {
 // reference first and then the qualified name written in the record.
 func (g *generator) globalRef(r willc.Record) *globalInfo {
 	if info := g.cur.globals[refField(r, "to")]; info != nil {
+		g.noteExternalGlobal(info)
 		return info
 	}
 	if name := textField(r, "to"); name != "" {
-		return g.globalByName(name)
+		info := g.globalByName(name)
+		g.noteExternalGlobal(info)
+		return info
 	}
 	return nil
 }
@@ -227,5 +234,6 @@ func (g *generator) importMember(r willc.Record) (*globalInfo, bool) {
 		path = canonical
 	}
 	info := g.globalSymbols[path+"."+fieldText(r, "text")]
+	g.noteExternalGlobal(info)
 	return info, info != nil
 }

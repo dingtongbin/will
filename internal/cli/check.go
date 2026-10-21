@@ -212,7 +212,7 @@ func runCheck(args []string, stdout, stderr io.Writer) int {
 	code := exitCode(ds, flags.werror)
 	if store != nil {
 		_ = store.Put(key, map[string][]byte{cache.Diag: encodeDiag(code, out)})
-		_ = store.Trim()
+		_ = store.TrimIfNeeded()
 	}
 	return code
 }

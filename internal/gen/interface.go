@@ -79,9 +79,10 @@ func (g *generator) buildInterfaces() {
 	}
 	for _, r := range ifaces {
 		info := g.ifaces[r.ID]
-		if info == nil {
+		if info == nil || g.emittedTypes[info.llvm] {
 			continue
 		}
+		g.emittedTypes[info.llvm] = true
 		fmt.Fprintf(g.out, "%s = type { ptr, ptr }\n", info.llvm)
 	}
 }
@@ -201,6 +202,14 @@ func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 			return "", g.errf(iface.id, "cannot translate node #%d: %s has no method %s", iface.id, concrete, m.name)
 		}
 		entries = append(entries, "ptr @"+llvmSymbol(method))
+		if g.packageMode && !g.emittedFuncs[method] {
+			g.externalFuncs[method] = true
+			g.externalSigs[method] = externalSignature{
+				result: g.sigs[method],
+				params: append([]string(nil), g.paramTypes[method]...),
+				recv:   true,
+			}
+		}
 	}
 	g.vtables[key] = sym
 	if g.emittedVtables[sym] {

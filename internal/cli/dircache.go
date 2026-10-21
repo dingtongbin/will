@@ -44,7 +44,7 @@ func runCachedBuild(b *pkg.Build, flags checkFlags, stdout io.Writer) int {
 	code := exitCode(ds, flags.werror)
 	if cacheable {
 		_ = store.Put(key, map[string][]byte{cache.Diag: encodeDiag(code, out)})
-		_ = store.Trim()
+		_ = store.TrimIfNeeded()
 	}
 	return code
 }

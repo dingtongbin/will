@@ -86,6 +86,28 @@ func TestDiagOnlyEntryHits(t *testing.T) {
 	}
 }
 
+func TestTrimIfNeededSkipsRecentScans(t *testing.T) {
+	root := t.TempDir()
+	s := New(root, 8)
+	for _, key := range []string{"old", "new"} {
+		if err := s.Put(key, map[string][]byte{Willc: []byte("12345678")}); err != nil {
+			t.Fatalf("put %s: %v", key, err)
+		}
+	}
+	if err := s.TrimIfNeeded(); err != nil {
+		t.Fatalf("first trim: %v", err)
+	}
+	if err := s.Put("later", map[string][]byte{Willc: []byte("12345678")}); err != nil {
+		t.Fatalf("put later: %v", err)
+	}
+	if err := s.TrimIfNeeded(); err != nil {
+		t.Fatalf("second trim: %v", err)
+	}
+	if !s.Has("later") {
+		t.Fatal("TrimIfNeeded scanned again immediately and removed the new entry")
+	}
+}
+
 func TestTrimDropsLeastRecentlyUsed(t *testing.T) {
 	root := t.TempDir()
 	s := New(root, 8)

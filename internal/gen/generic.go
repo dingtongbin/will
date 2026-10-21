@@ -77,7 +77,7 @@ func (g *generator) planInstances() {
 func (g *generator) planCallInstances(base int, seen map[string]bool) {
 	for i := 0; i < base; i++ {
 		d := g.docs[i]
-		for _, r := range d.recs {
+		for _, r := range sortedRecords(d.recs) {
 			if (r.Kind != "call" && r.Kind != "mcall") || len(refsOf(r, "typearg")) == 0 {
 				continue
 			}
@@ -110,7 +110,9 @@ func (g *generator) planCallInstances(base int, seen map[string]bool) {
 			if !ok {
 				continue
 			}
-			g.docs = append(g.docs, newDocState(doc))
+			state := newDocState(doc)
+			state.clone = true
+			g.docs = append(g.docs, state)
 		}
 	}
 }
@@ -122,7 +124,7 @@ func (g *generator) planCallInstances(base int, seen map[string]bool) {
 func (g *generator) planInitInstances(base int, seen map[string]bool) {
 	for i := 0; i < base; i++ {
 		d := g.docs[i]
-		for _, r := range d.recs {
+		for _, r := range sortedRecords(d.recs) {
 			if r.Kind != "new" {
 				continue
 			}
@@ -150,7 +152,9 @@ func (g *generator) planInitInstances(base int, seen map[string]bool) {
 			if !ok {
 				continue
 			}
-			g.docs = append(g.docs, newDocState(doc))
+			state := newDocState(doc)
+			state.clone = true
+			g.docs = append(g.docs, state)
 		}
 	}
 }
@@ -537,7 +541,7 @@ func (g *generator) genericMethodDecl(fn willc.Record) bool {
 func (g *generator) planMethodInstances(base int, seen map[string]bool) {
 	for i := 0; i < base; i++ {
 		d := g.docs[i]
-		for _, r := range d.recs {
+		for _, r := range sortedRecords(d.recs) {
 			if r.Kind != "mcall" {
 				continue
 			}
@@ -569,7 +573,9 @@ func (g *generator) planMethodInstances(base int, seen map[string]bool) {
 			if !ok {
 				continue
 			}
-			g.docs = append(g.docs, newDocState(doc))
+			state := newDocState(doc)
+			state.clone = true
+			g.docs = append(g.docs, state)
 		}
 	}
 }
