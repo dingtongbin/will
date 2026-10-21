@@ -543,7 +543,11 @@ func clangArgs(opts buildOptions) ([]string, error) {
 		}
 	}
 	args = append(args, "-x", "none", "-I", filepath.Join(root, "include"))
-	args = append(args, runtimeSources(root, targetName(opts.target))...)
+	objects, err := runtimeObjects(root, opts)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, objects...)
 	if isWindows() {
 		args = append(args, "-lws2_32")
 	}
@@ -572,6 +576,94 @@ func runtimeRoot() (string, error) {
 		dir = parent
 	}
 	return "", fmt.Errorf("runtime directory not found; set WILL_RUNTIME")
+}
+
+// runtimeObjects returns the cached objects of every runtime C module. The key
+// covers the clang identity, target, optimization, debug/PIC choice, and the
+// bytes of each source, so a runtime edit cannot reuse an old object.
+func runtimeObjects(root string, opts buildOptions) ([]string, error) {
+	sources := runtimeSources(root, targetName(opts.target))
+	clang, err := toolchain.FindClang()
+	if err != nil {
+		return nil, err
+	}
+	h := cache.NewHasher()
+	version, _ := exec.Command(clang.Path, "--version").Output()
+	h.AddStrings("runtime", compilerIdentity(), clang.Path, string(version),
+		targetName(opts.target), opts.opt, fmt.Sprintf("debug=%v", opts.debug),
+		fmt.Sprintf("lib=%v", opts.lib))
+	for _, source := range sources {
+		data, err := os.ReadFile(source)
+		if err != nil {
+			return nil, err
+		}
+		rel, err := filepath.Rel(root, source)
+		if err != nil {
+			rel = source
+		}
+		h.Add(filepath.ToSlash(rel), data)
+	}
+	cacheRoot, err := cache.Root()
+	if err != nil {
+		return nil, err
+	}
+	dir := filepath.Join(cacheRoot, "runtime", h.Key())
+	objects := make([]string, len(sources))
+	for i, source := range sources {
+		objects[i] = filepath.Join(dir,
+			fmt.Sprintf("%02d-%s.o", i, strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))))
+	}
+	if info, err := os.Stat(dir); err == nil && info.IsDir() {
+		all := true
+		for _, object := range objects {
+			if _, err := os.Stat(object); err != nil {
+				all = false
+				break
+			}
+		}
+		if all {
+			return objects, nil
+		}
+	}
+	base := filepath.Dir(dir)
+	if err := os.MkdirAll(base, 0o755); err != nil {
+		return nil, err
+	}
+	temporary, err := os.MkdirTemp(base, filepath.Base(dir)+"-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(temporary)
+	for i, source := range sources {
+		args := []string{"-std=c11", "-c", source,
+			"-o", filepath.Join(temporary, filepath.Base(objects[i]))}
+		args = append(args, "-I", filepath.Join(root, "include"))
+		if opts.opt != "" {
+			args = append(args, opts.opt)
+		}
+		if opts.debug {
+			args = append(args, "-g")
+		}
+		if opts.lib {
+			args = append(args, "-fPIC")
+		}
+		if opts.target != "" {
+			args = append(args, "--target="+opts.target)
+		}
+		cmd := exec.Command(clang.Path, args...)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("%s: %v\n%s", source, err, output)
+		}
+	}
+	if err := os.Rename(temporary, dir); err != nil {
+		// Another build may have published the same content-addressed
+		// directory while this one was compiling.
+		if _, statErr := os.Stat(dir); statErr != nil {
+			return nil, err
+		}
+	}
+	return objects, nil
 }
 
 // runtimeSources lists the C modules every executable needs. The platform file
