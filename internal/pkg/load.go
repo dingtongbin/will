@@ -115,6 +115,11 @@ func load(root string, skipSums bool) *Build {
 		return b
 	}
 	pkgs, table, pds := g.packages()
+	stdDir := ""
+	if g.std != nil {
+		stdDir = g.std.Dir
+	}
+	pkgs, pds = keepLoadedPackages(pkgs, table, b.Root, stdDir, pds)
 	bag.AddAll(pds)
 	if !skipSums {
 		bag.AddAll(g.checkSums())
@@ -511,6 +516,89 @@ func (b *Build) foreignFuncs() map[string]map[string]*ast.FuncDecl {
 // suppressFeatureCascade drops the name error that follows a Feature call left
 // outside an if: T0010 is the root cause, and the removed std/meta import would
 // otherwise also report meta as undefined at the same position.
+// keepLoadedPackages drops standard-library packages that the root module
+// cannot reach. The bundled tree is scanned before this point so a package
+// path still resolves; parsing and checking an unused std package must not
+// make a build fail. Diagnostics whose source belongs to a dropped package are
+// dropped with it.
+func keepLoadedPackages(pkgs []*Package, table map[string]*Package, root, stdDir string, ds []diag.Diagnostic) ([]*Package, []diag.Diagnostic) {
+	if stdDir == "" {
+		return pkgs, ds
+	}
+	reachable := map[*Package]bool{}
+	var queue []*Package
+	for _, p := range pkgs {
+		if p.Root == root {
+			reachable[p] = true
+			queue = append(queue, p)
+		}
+	}
+	for len(queue) != 0 {
+		p := queue[0]
+		queue = queue[1:]
+		for _, f := range p.Files {
+			if f.AST == nil {
+				continue
+			}
+			for _, imp := range f.AST.Imports {
+				if imp.C {
+					continue
+				}
+				next := table[imp.Path]
+				if next != nil && !reachable[next] {
+					reachable[next] = true
+					queue = append(queue, next)
+				}
+			}
+		}
+	}
+	var kept []*Package
+	var dropped []*Package
+	for _, p := range pkgs {
+		if p.Root == stdDir && !reachable[p] {
+			dropped = append(dropped, p)
+			continue
+		}
+		kept = append(kept, p)
+	}
+	if len(dropped) == 0 {
+		return kept, ds
+	}
+	out := ds[:0]
+	rootName := filepath.ToSlash(filepath.Base(stdDir))
+	for _, d := range ds {
+		if filepath.ToSlash(d.Pos.File) == rootName || droppedDiagnostic(d, dropped) {
+			continue
+		}
+		out = append(out, d)
+	}
+	return kept, out
+}
+
+// droppedDiagnostic reports whether a diagnostic belongs to one of the dropped
+// standard-library packages. A root package's package-name diagnostic names
+// the directory itself, while a file diagnostic names a relative file path.
+func droppedDiagnostic(d diag.Diagnostic, dropped []*Package) bool {
+	file := filepath.ToSlash(d.Pos.File)
+	for _, p := range dropped {
+		rel, err := filepath.Rel(p.Root, p.Dir)
+		if err != nil {
+			continue
+		}
+		rel = filepath.ToSlash(rel)
+		if rel == "." {
+			if file == filepath.Base(p.Dir) {
+				return true
+			}
+			continue
+		}
+		if file == rel || strings.HasPrefix(file, rel+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 func suppressFeatureCascade(ds []diag.Diagnostic) []diag.Diagnostic {
 	root := map[source.Pos]bool{}
 	for _, d := range ds {
