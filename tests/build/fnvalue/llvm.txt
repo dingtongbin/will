@@ -1,4 +1,4 @@
-define i32 @"example.com/fnvalue.Apply"(ptr %f, i32 %x) {
+define hidden i32 @"example.com/fnvalue.Apply"(ptr %f, i32 %x) inlinehint {
 entry:
   %t1 = getelementptr inbounds { ptr, ptr }, ptr %f, i32 0, i32 0
   %t2 = getelementptr inbounds { ptr, ptr }, ptr %f, i32 0, i32 1
@@ -7,7 +7,7 @@ entry:
   %t5 = call i32 %t3(ptr %t4, i32 %x)
   ret i32 %t5
 }
-define i32 @"example.com/fnvalue.Twice"(ptr %f, i32 %x) {
+define hidden i32 @"example.com/fnvalue.Twice"(ptr %f, i32 %x) inlinehint {
 entry:
   %t6 = getelementptr inbounds { ptr, ptr }, ptr %f, i32 0, i32 0
   %t7 = getelementptr inbounds { ptr, ptr }, ptr %f, i32 0, i32 1
@@ -21,7 +21,7 @@ entry:
   %t15 = call i32 %t8(ptr %t9, i32 %t14)
   ret i32 %t15
 }
-define i32 @"example.com/fnvalue.Inc"(i32 %x) {
+define hidden i32 @"example.com/fnvalue.Inc"(i32 %x) alwaysinline {
 entry:
   %t16 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %x, i32 1)
   %t17 = extractvalue {i32, i1} %t16, 0
@@ -33,7 +33,7 @@ panic.1:
 panic.ok.1:
   ret i32 %t17
 }
-define { ptr, ptr } @"example.com/fnvalue.MakeAdder"(i32 %n) {
+define hidden { ptr, ptr } @"example.com/fnvalue.MakeAdder"(i32 %n) alwaysinline {
 entry:
   %v.closure.44 = alloca { ptr, ptr }
   %t19 = getelementptr { i32 }, ptr null, i32 1
@@ -51,7 +51,7 @@ entry:
   %t26 = load { ptr, ptr }, ptr %v.closure.44
   ret { ptr, ptr } %t26
 }
-define i32 @"example.com/fnvalue.lambda.1"(ptr %closure.env, i32 %x) {
+define internal i32 @"example.com/fnvalue.lambda.1"(ptr %closure.env, i32 %x) alwaysinline {
 entry:
   %t27 = getelementptr inbounds { i32 }, ptr %closure.env, i32 0, i32 0
   %t28 = load i32, ptr %t27
@@ -65,7 +65,7 @@ panic.1:
 panic.ok.1:
   ret i32 %t30
 }
-define { ptr, ptr } @"example.com/fnvalue.Counter"() {
+define hidden { ptr, ptr } @"example.com/fnvalue.Counter"() alwaysinline {
 entry:
   %v.closure.61 = alloca { ptr, ptr }
   %v.n = alloca i32
@@ -83,7 +83,7 @@ entry:
   %t39 = load { ptr, ptr }, ptr %v.closure.61
   ret { ptr, ptr } %t39
 }
-define i32 @"example.com/fnvalue.lambda.2"(ptr %closure.env) {
+define internal i32 @"example.com/fnvalue.lambda.2"(ptr %closure.env) alwaysinline {
 entry:
   %t40 = getelementptr inbounds { i32 }, ptr %closure.env, i32 0, i32 0
   %t41 = load i32, ptr %t40
@@ -184,7 +184,7 @@ panic.4:
 panic.ok.4:
   ret i32 %t82
 }
-define i32 @"example.com/fnvalue.lambda.3"(ptr %closure.env, i32 %x) {
+define internal i32 @"example.com/fnvalue.lambda.3"(ptr %closure.env, i32 %x) alwaysinline {
 entry:
   %t84 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %x, i32 1)
   %t85 = extractvalue {i32, i1} %t84, 0
@@ -196,7 +196,7 @@ panic.1:
 panic.ok.1:
   ret i32 %t85
 }
-define i32 @"example.com/fnvalue.lambda.4"(ptr %closure.env, i32 %x) {
+define internal i32 @"example.com/fnvalue.lambda.4"(ptr %closure.env, i32 %x) alwaysinline {
 entry:
   %t87 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %x, i32 2)
   %t88 = extractvalue {i32, i1} %t87, 0

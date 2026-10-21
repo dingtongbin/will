@@ -1,4 +1,4 @@
-define i32 @"example.com/iterate.Sum"(ptr %xs) {
+define hidden i32 @"example.com/iterate.Sum"(ptr %xs) inlinehint {
 entry:
   %v.total = alloca i32
   %v.i = alloca i64
@@ -38,7 +38,7 @@ for.end.1:
   %t13 = load i32, ptr %v.total
   ret i32 %t13
 }
-define i64 @"example.com/iterate.Wide"(ptr %xs) {
+define hidden i64 @"example.com/iterate.Wide"(ptr %xs) inlinehint {
 entry:
   %v.total = alloca i64
   %v.$idx = alloca i64

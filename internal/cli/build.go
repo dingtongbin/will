@@ -503,10 +503,10 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	defer cleanup()
-	if hasBitcode(inputs) {
+	clangArgsList = append(clangArgsList, inputs...)
+	if hasBitcode(clangArgsList) {
 		clangArgsList = append(clangArgsList, "-flto")
 	}
-	clangArgsList = append(clangArgsList, inputs...)
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
@@ -591,7 +591,7 @@ func runtimeObjects(root string, opts buildOptions) ([]string, error) {
 	version, _ := exec.Command(clang.Path, "--version").Output()
 	h.AddStrings("runtime", compilerIdentity(), clang.Path, string(version),
 		targetName(opts.target), opts.opt, fmt.Sprintf("debug=%v", opts.debug),
-		fmt.Sprintf("lib=%v", opts.lib))
+		fmt.Sprintf("lib=%v", opts.lib), fmt.Sprintf("lto=%v", opts.lto))
 	for _, source := range sources {
 		data, err := os.ReadFile(source)
 		if err != nil {
@@ -609,9 +609,13 @@ func runtimeObjects(root string, opts buildOptions) ([]string, error) {
 	}
 	dir := filepath.Join(cacheRoot, "runtime", h.Key())
 	objects := make([]string, len(sources))
+	ext := ".o"
+	if opts.lto {
+		ext = ".bc"
+	}
 	for i, source := range sources {
 		objects[i] = filepath.Join(dir,
-			fmt.Sprintf("%02d-%s.o", i, strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))))
+			fmt.Sprintf("%02d-%s%s", i, strings.TrimSuffix(filepath.Base(source), filepath.Ext(source)), ext))
 	}
 	if info, err := os.Stat(dir); err == nil && info.IsDir() {
 		all := true
@@ -635,8 +639,12 @@ func runtimeObjects(root string, opts buildOptions) ([]string, error) {
 	}
 	defer os.RemoveAll(temporary)
 	for i, source := range sources {
-		args := []string{"-std=c11", "-c", source,
-			"-o", filepath.Join(temporary, filepath.Base(objects[i]))}
+		emit := []string{"-c"}
+		if opts.lto {
+			emit = []string{"-emit-llvm", "-c"}
+		}
+		args := append([]string{"-std=c11"}, emit...)
+		args = append(args, source, "-o", filepath.Join(temporary, filepath.Base(objects[i])))
 		args = append(args, "-I", filepath.Join(root, "include"))
 		if opts.opt != "" {
 			args = append(args, opts.opt)
@@ -869,10 +877,10 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	defer cleanup()
-	if hasBitcode(inputs) {
+	clangArgsList = append(clangArgsList, inputs...)
+	if hasBitcode(clangArgsList) {
 		clangArgsList = append(clangArgsList, "-flto")
 	}
-	clangArgsList = append(clangArgsList, inputs...)
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)

@@ -1,4 +1,4 @@
-define i32 @"example.com/control.Sign"(i32 %n) {
+define hidden i32 @"example.com/control.Sign"(i32 %n) alwaysinline {
 entry:
   %t1 = icmp slt i32 %n, 0
   br i1 %t1, label %if.then.1, label %if.else.1

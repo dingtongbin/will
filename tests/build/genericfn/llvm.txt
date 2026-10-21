@@ -1,4 +1,4 @@
-define i32 @"example.com/genericfn.Twice"(i32 %x) {
+define hidden i32 @"example.com/genericfn.Twice"(i32 %x) inlinehint {
 entry:
   %t1 = call i32 @"example.com/genericfn.Id$i32"(i32 %x)
   %t2 = call i32 @"example.com/genericfn.Id$i32"(i32 %x)
@@ -17,7 +17,7 @@ entry:
   %t6 = call i32 @"example.com/genericfn.Twice"(i32 2)
   ret i32 %t6
 }
-define i32 @"example.com/genericfn.Id$i32"(i32 %x) {
+define internal i32 @"example.com/genericfn.Id$i32"(i32 %x) alwaysinline {
 entry:
   ret i32 %x
 }

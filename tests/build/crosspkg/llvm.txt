@@ -1,4 +1,4 @@
-define i32 @"example.com/crosspkg/lib.Util"() {
+define hidden i32 @"example.com/crosspkg/lib.Util"() alwaysinline {
 entry:
   ret i32 7
 }

@@ -945,6 +945,54 @@ func receiverType(r *willc.Record) string {
 // symbolName returns the IR symbol of one function of the current document.
 // A void entry uses its mangled symbol because the generated main calls it; a
 // value-returning main keeps the C symbol, since the runtime calls it.
+// functionPrefix gives a will function the narrowest linkage that still keeps
+// the C surface working. The executable can hide every non-entry definition;
+// a shared library keeps its capitalised C exports. Generic instances and
+// private functions are internal, so LLVM may inline and remove them.
+func (g *generator) functionPrefix(fn willc.Record, name string) string {
+	sym := g.cur.funcs[fn.ID]
+	if g.entryFound && g.entryPkg == g.pkg && g.entryName == name {
+		return ""
+	}
+	instance := strings.Contains(sym, "$")
+	if g.lib && cExported(name) && !instance {
+		return ""
+	}
+	if cExported(name) && !instance {
+		return "hidden "
+	}
+	return "internal "
+}
+
+// inlineAttr forces a small leaf function into its callers. A loop, a call,
+// or a defer keeps the ordinary inline hint, because forcing those would grow
+// code and can break recursive functions.
+func (g *generator) inlineAttr(fn willc.Record, name string) string {
+	if g.entryFound && g.entryPkg == g.pkg && g.entryName == name {
+		return ""
+	}
+	simple := true
+	var visit func(int)
+	visit = func(parent int) {
+		for _, child := range g.children(parent) {
+			switch child.Kind {
+			case "for", "call", "mcall", "spawn", "join", "defer", "try", "select":
+				simple = false
+				return
+			}
+			visit(child.ID)
+			if !simple {
+				return
+			}
+		}
+	}
+	visit(fn.ID)
+	if simple {
+		return " alwaysinline"
+	}
+	return " inlinehint"
+}
+
 func (g *generator) symbolName(name string) string {
 	if g.lib && cExported(name) {
 		return name
@@ -1210,7 +1258,9 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	g.slotTypes = map[int]string{}
 	g.slotNames = map[string]int{}
 	g.loops = nil
-	fmt.Fprintf(g.out, "define %s @%s(%s) {\n", resLLVM, llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
+	fmt.Fprintf(g.out, "define %s%s @%s(%s)%s {\n",
+		g.functionPrefix(fn, name), resLLVM, llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "),
+		g.inlineAttr(fn, name))
 	g.out.WriteString("entry:\n")
 	if err := g.setupCaptures(fn.ID); err != nil {
 		return err
@@ -1243,7 +1293,9 @@ func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
 	g.slotNames = map[string]int{}
 	g.loops = nil
 	g.captureSpills = map[int]string{}
-	fmt.Fprintf(g.out, "define void @%s(%s) {\n", llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
+	fmt.Fprintf(g.out, "define %svoid @%s(%s)%s {\n",
+		g.functionPrefix(fn, name), llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "),
+		g.inlineAttr(fn, name))
 	g.out.WriteString("entry:\n")
 	if err := g.setupCaptures(fn.ID); err != nil {
 		return err

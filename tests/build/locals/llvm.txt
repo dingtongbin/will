@@ -1,4 +1,4 @@
-define i32 @"example.com/locals.Max"(i32 %a, i32 %b) {
+define hidden i32 @"example.com/locals.Max"(i32 %a, i32 %b) alwaysinline {
 entry:
   %v.m = alloca i32
   store i32 %a, ptr %v.m

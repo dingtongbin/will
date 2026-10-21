@@ -1,9 +1,9 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
-define i32 @"example.com/taskresume.Inner"() {
+define hidden i32 @"example.com/taskresume.Inner"() alwaysinline {
 entry:
   ret i32 7
 }
-define i32 @"example.com/taskresume.Work"(ptr %t) {
+define hidden i32 @"example.com/taskresume.Work"(ptr %t) inlinehint {
 entry:
   %v.join.out.15 = alloca i32
   %v.join.err.15 = alloca %willrt_error
@@ -25,7 +25,7 @@ task.ok.1:
   %t11 = load i32, ptr %v.join.out.15
   ret i32 %t11
 }
-define i32 @"example.com/taskresume.WorkLocal"(ptr %t) {
+define hidden i32 @"example.com/taskresume.WorkLocal"(ptr %t) inlinehint {
 entry:
   %v.x = alloca i32
   %v.join.out.26 = alloca i32
@@ -58,7 +58,7 @@ panic.2:
 panic.ok.2:
   ret i32 %t25
 }
-define i32 @"example.com/taskresume.WorkPure"(ptr %t) {
+define hidden i32 @"example.com/taskresume.WorkPure"(ptr %t) inlinehint {
 entry:
   %v.a = alloca i32
   %v.b = alloca i32

@@ -1,5 +1,5 @@
 %"struct.example.com/rcarray.C" = type { i32 }
-define i64 @"example.com/rcarray.pick"(ptr %xs) {
+define internal i64 @"example.com/rcarray.pick"(ptr %xs) inlinehint {
 entry:
   %t1 = getelementptr inbounds { ptr, i64, i64 }, ptr %xs, i32 0, i32 0
   %t2 = load ptr, ptr %t1

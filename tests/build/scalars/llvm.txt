@@ -1,4 +1,4 @@
-define i64 @"example.com/scalars.Sum"(i64 %a, i64 %b) {
+define hidden i64 @"example.com/scalars.Sum"(i64 %a, i64 %b) alwaysinline {
 entry:
   %t1 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %a, i64 %b)
   %t2 = extractvalue {i64, i1} %t1, 0
@@ -10,17 +10,17 @@ panic.1:
 panic.ok.1:
   ret i64 %t2
 }
-define i1 @"example.com/scalars.Below"(i64 %a, i64 %b) {
+define hidden i1 @"example.com/scalars.Below"(i64 %a, i64 %b) alwaysinline {
 entry:
   %t4 = icmp ult i64 %a, %b
   ret i1 %t4
 }
-define i64 @"example.com/scalars.Half"(i64 %n) {
+define hidden i64 @"example.com/scalars.Half"(i64 %n) alwaysinline {
 entry:
   %t5 = lshr i64 %n, 1
   ret i64 %t5
 }
-define double @"example.com/scalars.Mid"(double %a, double %b) {
+define hidden double @"example.com/scalars.Mid"(double %a, double %b) alwaysinline {
 entry:
   %t6 = fadd double %a, %b
   %t7 = fdiv double %t6, 2.0

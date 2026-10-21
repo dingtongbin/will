@@ -1,12 +1,12 @@
 %"struct.example.com/iface.C" = type { i32 }
 %"interface.example.com/iface.Counter" = type { ptr, ptr }
-define i32 @"example.com/iface.C.Get"(ptr %c) {
+define hidden i32 @"example.com/iface.C.Get"(ptr %c) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/iface.C", ptr %c, i32 0, i32 0
   %t2 = load i32, ptr %t1
   ret i32 %t2
 }
-define i32 @"example.com/iface.C.Add"(ptr %c, i32 %n) {
+define hidden i32 @"example.com/iface.C.Add"(ptr %c, i32 %n) alwaysinline {
 entry:
   %t3 = getelementptr inbounds %"struct.example.com/iface.C", ptr %c, i32 0, i32 0
   %t4 = load i32, ptr %t3
@@ -23,7 +23,7 @@ panic.ok.1:
   %t9 = load i32, ptr %t8
   ret i32 %t9
 }
-define i32 @"example.com/iface.Use"(ptr %x) {
+define hidden i32 @"example.com/iface.Use"(ptr %x) inlinehint {
 entry:
   %t10 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %x, i32 0, i32 0
   %t11 = load ptr, ptr %t10

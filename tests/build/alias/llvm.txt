@@ -1,4 +1,4 @@
-define i32 @"example.com/shared.Double"(i32 %n) {
+define hidden i32 @"example.com/shared.Double"(i32 %n) alwaysinline {
 entry:
   %t1 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %n, i32 %n)
   %t2 = extractvalue {i32, i1} %t1, 0

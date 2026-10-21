@@ -1,5 +1,5 @@
 %"struct.example.com/fnfield.Handler" = type { { ptr, ptr } }
-define i32 @"example.com/fnfield.Inc"(i32 %x) {
+define hidden i32 @"example.com/fnfield.Inc"(i32 %x) alwaysinline {
 entry:
   %t1 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %x, i32 1)
   %t2 = extractvalue {i32, i1} %t1, 0

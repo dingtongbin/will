@@ -1,5 +1,5 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
-define i32 @"example.com/task.Compute"(i32 %x) {
+define hidden i32 @"example.com/task.Compute"(i32 %x) alwaysinline {
 entry:
   %t1 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %x, i32 1)
   %t2 = extractvalue {i32, i1} %t1, 0
@@ -11,7 +11,7 @@ panic.1:
 panic.ok.1:
   ret i32 %t2
 }
-define { ptr, i64 } @"example.com/task.MakeText"(i32 %n) {
+define hidden { ptr, i64 } @"example.com/task.MakeText"(i32 %n) alwaysinline {
 entry:
   %v.interp.17 = alloca { ptr, i64 }
   %t4 = add i64 0, 6

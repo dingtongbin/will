@@ -22,7 +22,7 @@ panic.1:
 panic.ok.1:
   ret i32 %t8
 }
-define i32 @"example.com/genericstruct.Box<i32>.Get"(ptr %b) {
+define hidden i32 @"example.com/genericstruct.Box<i32>.Get"(ptr %b) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/genericstruct.Box$i32", ptr %b, i32 0, i32 0
   %t2 = load i32, ptr %t1

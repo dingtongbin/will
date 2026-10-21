@@ -1,6 +1,6 @@
 %"struct.example.com/rc.Counter" = type { i32 }
 %"struct.example.com/rc.Holder" = type { i64, i64 }
-define void @"example.com/rc.Counter.Add"(ptr %c, i32 %d) {
+define hidden void @"example.com/rc.Counter.Add"(ptr %c, i32 %d) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/rc.Counter", ptr %c, i32 0, i32 0
   %t2 = load i32, ptr %t1
@@ -15,7 +15,7 @@ panic.ok.1:
   store i32 %t4, ptr %t1
   ret void
 }
-define i64 @"example.com/rc.Identity"(i64 %c) {
+define hidden i64 @"example.com/rc.Identity"(i64 %c) alwaysinline {
 entry:
   call void @willrt_rc_retain(i64 %c)
   ret i64 %c

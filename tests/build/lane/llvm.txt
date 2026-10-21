@@ -1,6 +1,6 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %"struct.example.com/lane.Marker" = type { i32 }
-define i64 @"example.com/lane.Work"() {
+define hidden i64 @"example.com/lane.Work"() alwaysinline {
 entry:
   %t1 = call i32 @willrt_lane_here()
   %t2 = sext i32 %t1 to i64

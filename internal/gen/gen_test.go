@@ -11,6 +11,17 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
+// normalizeIR hides linkage and inline attributes from tests that assert the
+// function signatures. Those properties are covered by the IR verifier and by
+// the linkage tests, not by every shape test.
+func normalizeIR(text string) string {
+	text = strings.ReplaceAll(text, "define hidden ", "define ")
+	text = strings.ReplaceAll(text, "define internal ", "define ")
+	text = strings.ReplaceAll(text, " alwaysinline", "")
+	text = strings.ReplaceAll(text, " inlinehint", "")
+	return text
+}
+
 func emitWillc(t *testing.T, src string) *willc.Doc {
 	t.Helper()
 	return emitWillcAs(t, src, "example.com/app")
@@ -37,12 +48,13 @@ func emitWillcAs(t *testing.T, src, module string) *willc.Doc {
 	return doc
 }
 
-func TestEmitIntegerFunction(t *testing.T) {	doc := emitWillc(t, "func Add(a: i32, b: i32) -> i32 {\n    return a + b\n}\n")
+func TestEmitIntegerFunction(t *testing.T) {
+	doc := emitWillc(t, "func Add(a: i32, b: i32) -> i32 {\n    return a + b\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define i32 @"example.com/app.Add"(i32 %a, i32 %b) {`,
 		"entry:",
@@ -66,7 +78,7 @@ func TestEmitIndexChecksTheBound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"icmp uge i64 %i, %t",
 		`c"index out of bounds\00"`,
@@ -85,7 +97,7 @@ func TestEmitSignedIndexChecksBelowZero(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"icmp slt i32 %i, 0",
 		"sext i32 %i to i64",
@@ -104,7 +116,7 @@ func TestEmitSliceChecksBothBounds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"icmp ugt i64 %lo, %hi",
 		"icmp ugt i64 %hi, %t",
@@ -125,7 +137,7 @@ func TestEmitEnumConstructionAndMatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`%"enum.example.com/app.E" = type { i32, i32 }`,
 		"define i32 @\"example.com/app.F\"(ptr %e) {",
@@ -151,7 +163,7 @@ func TestEmitMatchWithGuardAndWildcard(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"icmp eq i32 %n, 0",
 		"icmp sgt i32 %n, 0",
@@ -175,7 +187,7 @@ func TestEmitStrLiteralIndexAndLoop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`@.bytes.1 = private unnamed_addr constant`,
 		"call i32 @willrt_utf8_decode(ptr",
@@ -200,7 +212,7 @@ func TestEmitGenericStructInstance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`%"struct.example.com/app.Box$i32" = type { i32 }`,
 		`getelementptr inbounds %"struct.example.com/app.Box$i32"`,
@@ -220,7 +232,7 @@ func TestEmitGenericMethodInstance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define i32 @"example.com/app.Box<i32>.Get"(ptr %b)`,
 		`call i32 @"example.com/app.Box<i32>.Get"(`,
@@ -247,7 +259,7 @@ func TestEmitFunctionValue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define i32 @"example.com/app.lambda.1"(ptr %closure.env, i32 %x)`,
 		`define i32 @"example.com/app.Apply"(ptr %f, i32 %x)`,
@@ -279,7 +291,7 @@ func TestEmitCapturingClosure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`getelementptr { i32 }, ptr null, i32 1`,
 		`call ptr @willrt_alloc(i64`,
@@ -307,7 +319,7 @@ func TestEmitNamedFunctionValue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define i32 @"example.com/app.thunk.Inc"(ptr %closure.env, i32 %x)`,
 		`call i32 @"example.com/app.Inc"(i32 %x)`,
@@ -345,7 +357,7 @@ func TestEmitRcHandles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`call i64 @willrt_rc_new(ptr`,
 		`call void @willrt_rc_retain(i64`,
@@ -377,7 +389,7 @@ func TestEmitVariadicCall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define i32 @"example.com/app.Sum"(ptr %xs)`,
 		`call ptr @willrt_plate_new(i64 3, i64`,
@@ -408,7 +420,7 @@ func TestEmitSelect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`%willrt_arm = type { ptr, ptr, ptr, i32, i64 }`,
 		`call i32 @willrt_select(ptr`,
@@ -466,7 +478,7 @@ func TestEmitPrintAndInterpolation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`call i64 @willrt_fmt_i64_len(i64`,
 		`call i64 @willrt_fmt_bool_len(i32`,
@@ -494,7 +506,7 @@ func TestEmitStrConcatAndSlice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`call ptr @willrt_alloc(i64 %t`,
 		`call void @memcpy(ptr`,
@@ -520,7 +532,7 @@ func TestEmitMapContainer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`alloca { ptr, i64, i64 }`,
 		`getelementptr inbounds { i32, i32 }`,
@@ -547,7 +559,7 @@ func TestEmitSetContainer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`alloca { ptr, i64, i64 }`,
 		`call void @memmove(ptr`,
@@ -566,7 +578,7 @@ func TestEmitGenericFunctionInstance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`@"example.com/app.Id$i32"(i32 %x)`,
 		`call i32 @"example.com/app.Id$i32"(i32 3)`,
@@ -587,7 +599,7 @@ func TestEmitStrEquality(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"call i32 @memcmp(ptr",
 		"icmp eq i64",
@@ -607,7 +619,7 @@ func TestEmitAggregateMatchReturn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"@.bytes.",
 		"match.end.1:",
@@ -626,7 +638,7 @@ func TestEmitArrayNewPushAndLen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"alloca { ptr, i64, i64 }",
 		"call ptr @willrt_alloc(i64",
@@ -652,7 +664,7 @@ func TestEmitBuiltinError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`%interface.Error = type { ptr, ptr }`,
 		"vtable.Error.E",
@@ -674,7 +686,7 @@ func TestEmitNewRunsDefaultsAndInit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"alloca %\"struct.example.com/app.P\"",
 		"store %\"struct.example.com/app.P\" zeroinitializer",
@@ -698,7 +710,7 @@ func TestEmitInterfaceValueAndCall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`%"interface.example.com/app.Counter" = type { ptr, ptr }`,
 		`define i32 @"example.com/app.Use"(ptr %x) {`,
@@ -723,7 +735,7 @@ func TestEmitOptionAndResultConstructors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define { i32, i32 } @"example.com/app.Find"(i32 %x) {`,
 		"store i32 1, ptr", // Some
@@ -752,7 +764,7 @@ func TestEmitCheckedCasts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"sext i32 %a to i64",
 		"icmp slt i64 %a, -2147483648",
@@ -781,7 +793,7 @@ func TestEmitCheckedArithmeticUsesFixedMessages(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"call {i32, i1} @llvm.smul.with.overflow.i32(i32 %a, i32 %b)",
 		`c"integer overflow\00"`,
@@ -820,7 +832,7 @@ func Write() -> i32 {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"declare i32 @putchar(i32)",
 		"call i32 @putchar(i32 65)",
@@ -838,7 +850,7 @@ func TestEmitVoidFunction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{`define void @"example.com/app.main"() {`, "ret void"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -854,7 +866,7 @@ func TestEmitVoidEntryIsWrapped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define void @"example.com/app.Other"() {`,
 		`define void @"example.com/app.will$main"() {`,
@@ -877,7 +889,7 @@ func TestEmitEntryWithoutWrapperWhenNoEntryGiven(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	if strings.Contains(string(ir), "will$main") {
+	if strings.Contains(normalizeIR(string(ir)), "will$main") {
 		t.Fatalf("an entry was wrapped without being named:\n%s", ir)
 	}
 }
@@ -888,7 +900,7 @@ func TestEmitKeepsI32Entry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	if !strings.Contains(string(ir), "define i32 @main() {") {
+	if !strings.Contains(normalizeIR(string(ir)), "define i32 @main() {") {
 		t.Fatalf("IR = %s", ir)
 	}
 }
@@ -899,7 +911,7 @@ func TestEmitBareReturnIsVoid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	if !strings.Contains(string(ir), `define void @"example.com/app.F"()`) {
+	if !strings.Contains(normalizeIR(string(ir)), `define void @"example.com/app.F"()`) {
 		t.Fatalf("IR = %s", ir)
 	}
 }
@@ -946,7 +958,7 @@ func TestEmitCrossPackageNewAndInterface(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`call void @"example.com/app/lib.Fault.init"(`,
 		`@"example.com/app.vtable.Error.example.com/app/lib.Fault"`,
@@ -967,7 +979,7 @@ func TestEmitCrossPackageEnumVariant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`%"enum.example.com/app/lib.Level" = type { i32 }`,
 		`store i32 2`,
@@ -987,7 +999,7 @@ func TestEmitModuleResolvesQualifiedCalls(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"define i32 @main() {",
 		`call i32 @"example.com/app/lib.Util"()`,
@@ -1007,7 +1019,7 @@ func TestEmitMethodSignature(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define void @"example.com/app.Box.Ping"(ptr %b) {`,
 		`define i32 @"example.com/app.Box.Answer"(ptr %b, i32 %n) {`,
@@ -1024,7 +1036,7 @@ func TestEmitAggregateParameterIsABorrow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	if !strings.Contains(string(ir), `define void @"example.com/app.Take"(ptr %b)`) {
+	if !strings.Contains(normalizeIR(string(ir)), `define void @"example.com/app.Take"(ptr %b)`) {
 		t.Fatalf("IR = %s", ir)
 	}
 }
@@ -1038,7 +1050,7 @@ func TestEmitIfStatement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"icmp slt i32 %n, 0",
 		"br i1 %t",
@@ -1062,7 +1074,7 @@ func TestEmitIfBothBranchesReturn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{"icmp eq i32 %n, 0", "ret i32 1", "ret i32 2"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -1084,7 +1096,7 @@ func TestEmitLogicalAndNegation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"icmp slt i32 %a, %b",
 		"icmp ne i32 %a, 0",
@@ -1128,7 +1140,7 @@ func TestEmitLocalsAndAssignment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"%v.m = alloca i32",
 		"store i32 %a, ptr %v.m",
@@ -1158,7 +1170,7 @@ func TestEmitCompoundAssignment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{"call {i32, i1} @llvm.sadd.with.overflow.i32", "store i32 %t"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -1176,7 +1188,7 @@ func TestEmitShadowedLocalsGetTheirOwnSlots(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{"%v.x = alloca i32", "%v.x.1 = alloca i32", "ret i32 %t"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -1194,7 +1206,7 @@ func TestEmitRangeLoop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"%v.i = alloca i32",
 		"store i32 0, ptr %v.i",
@@ -1220,7 +1232,7 @@ func TestEmitEndlessLoopWithBreak(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{"for.body.1:", "for.end.1:", "br label %for.end.1"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -1248,7 +1260,7 @@ func TestEmitStructFieldRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"%\"struct.example.com/app.Point\" = type { i32, i32 }",
 		"define i32 @\"example.com/app.Sum\"(ptr %p) {",
@@ -1273,7 +1285,7 @@ func TestEmitAggregateAndFieldWrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"%v.p = alloca %\"struct.example.com/app.Point\"",
 		"%v.agg.",
@@ -1297,7 +1309,7 @@ func TestEmitNestedField(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"%\"struct.example.com/app.Inner\" = type { i32 }",
 		"%\"struct.example.com/app.Outer\" = type { %\"struct.example.com/app.Inner\" }",
@@ -1319,7 +1331,7 @@ func TestEmitStructArgumentIsABorrow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	if !strings.Contains(string(ir), "call i32 @\"example.com/app.Take\"(ptr %v.q)") {
+	if !strings.Contains(normalizeIR(string(ir)), "call i32 @\"example.com/app.Take\"(ptr %v.q)") {
 		t.Fatalf("the struct argument is not passed as a borrow:\n%s", ir)
 	}
 }
@@ -1331,7 +1343,7 @@ func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	if strings.Contains(string(ir), "%\"struct.example.com/app.Text\"") {
+	if strings.Contains(normalizeIR(string(ir)), "%\"struct.example.com/app.Text\"") {
 		t.Fatalf("a struct whose field is not lowered was emitted:\n%s", ir)
 	}
 }
@@ -1350,11 +1362,11 @@ func TestEmitI64Function(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define i64 @"example.com/app.Add"(i64 %a, i64 %b) {`,
 		"call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %a, i64 %b)",
-		"ret i64",	} {
+		"ret i64"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
@@ -1367,7 +1379,7 @@ func TestEmitUnsignedUsesUnsignedPredicates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	if !strings.Contains(string(ir), "icmp ult i64 %a, %b") {
+	if !strings.Contains(normalizeIR(string(ir)), "icmp ult i64 %a, %b") {
 		t.Fatalf("a usize comparison is not unsigned:\n%s", ir)
 	}
 }
@@ -1378,7 +1390,7 @@ func TestEmitSignedUsesSignedPredicates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	if !strings.Contains(string(ir), "icmp slt i64 %a, %b") {
+	if !strings.Contains(normalizeIR(string(ir)), "icmp slt i64 %a, %b") {
 		t.Fatalf("an isize comparison is not signed:\n%s", ir)
 	}
 }
@@ -1391,7 +1403,7 @@ func TestEmitShiftFollowsSign(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	if !strings.Contains(text, "lshr i64 %n, 1") {
 		t.Errorf("an unsigned shift is not logical:\n%s", text)
 	}
@@ -1406,7 +1418,7 @@ func TestEmitFloatArithmetic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{"fadd double %a, %b", "fdiv double", "ret double"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -1423,7 +1435,7 @@ func TestEmitStructResultByValue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define %"struct.example.com/app.Point" @"example.com/app.Make"() {`,
 		`ret %"struct.example.com/app.Point" %t`,
@@ -1449,7 +1461,7 @@ func TestEmitStructWithWideFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`= type { i64, i32, double }`,
 		"store i64 1",
@@ -1476,7 +1488,7 @@ func TestEmitArrayIteration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define i32 @"example.com/app.Sum"(ptr %xs) {`,
 		"%v.i = alloca i64",
@@ -1512,7 +1524,7 @@ func TestEmitArrayIterationWithOneBinding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{"icmp ult i64", "[2 x i64]", "call {i64, i1} @llvm.sadd.with.overflow.i64"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -1547,7 +1559,7 @@ func TestEmitViewAndArrayIteration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define i32 @"example.com/app.Sum"(ptr %xs) {`,
 		"getelementptr inbounds { ptr, i64 }, ptr %xs, i32 0, i32 0",
@@ -1578,7 +1590,7 @@ func TestEmitMethodCallPassesTheReceiver(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define i32 @"example.com/app.Counter.Get"(ptr %c) {`,
 		`define void @"example.com/app.Counter.Add"(ptr %c, i32 %d) {`,
@@ -1600,7 +1612,7 @@ func TestEmitTopLevelInitialization(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`@"example.com/app.counter" = internal global i32 zeroinitializer`,
 		`define void @"example.com/app.will$init"() {`,
@@ -1629,7 +1641,7 @@ func TestEmitPackageInitOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	libInit := strings.Index(text, `call void @"example.com/lib.will$init"()`)
 	appInit := strings.Index(text, `call void @"example.com/app.will$init"()`)
 	entry := strings.Index(text, `call i32 @"example.com/app.will$main"()`)
@@ -1654,7 +1666,7 @@ func TestEmitSliceBuildsAView(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	text := string(ir)
+	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"%v.v = alloca { ptr, i64 }",
 		"%v.slice.",
@@ -1681,7 +1693,7 @@ func TestEmitLiteralCarriesItsContextType(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	if !strings.Contains(string(ir), "store i64 42") {
+	if !strings.Contains(normalizeIR(string(ir)), "store i64 42") {
 		t.Fatalf("the literal was not stored as i64:\n%s", ir)
 	}
 }

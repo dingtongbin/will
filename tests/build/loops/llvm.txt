@@ -1,4 +1,4 @@
-define i32 @"example.com/loops.Sum"(i32 %n) {
+define hidden i32 @"example.com/loops.Sum"(i32 %n) inlinehint {
 entry:
   %v.total = alloca i32
   %v.i = alloca i32

@@ -1,5 +1,5 @@
 %"struct.example.com/takec.Box" = type { i32 }
-define void @"example.com/takec.Release"(ptr %p) {
+define hidden void @"example.com/takec.Release"(ptr %p) inlinehint {
 entry:
   call void @drop_box(ptr %p)
   ret void
