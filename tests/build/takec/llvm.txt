@@ -1,0 +1,66 @@
+%"struct.example.com/takec.Box" = type { i32 }
+define hidden void @"example.com/takec.Release"(ptr %p) inlinehint {
+entry:
+  call void @drop_box(ptr %p)
+  ret void
+}
+define i32 @"example.com/takec.will$main"() {
+entry:
+  %v.closure.28 = alloca { ptr, ptr }
+  %v.box = alloca i64
+  %t1 = call ptr @make_box(i32 9)
+  %t2 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.28, i32 0, i32 0
+  store ptr @"example.com/takec.thunk.Release", ptr %t2
+  %t3 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.28, i32 0, i32 1
+  store ptr null, ptr %t3
+  %t4 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.28, i32 0, i32 0
+  %t5 = load ptr, ptr %t4
+  %t6 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.28, i32 0, i32 1
+  %t7 = load ptr, ptr %t6
+  %t8 = call i64 @willrt_take_c(ptr %t1, ptr null, ptr null, ptr %t5, ptr %t7)
+  store i64 %t8, ptr %v.box
+  %t9 = load i64, ptr %v.box
+  %t10 = call ptr @willrt_rc_deref(i64 %t9)
+  %t11 = getelementptr inbounds %"struct.example.com/takec.Box", ptr %t10, i32 0, i32 0
+  %t12 = load i32, ptr %t11
+  %t13 = call {i32, i1} @llvm.ssub.with.overflow.i32(i32 %t12, i32 9)
+  %t14 = extractvalue {i32, i1} %t13, 0
+  %t15 = extractvalue {i32, i1} %t13, 1
+  br i1 %t15, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  %t16 = load i64, ptr %v.box
+  call void @willrt_rc_release(i64 %t16)
+  ret i32 %t14
+}
+define void @"example.com/takec.thunk.Release"(ptr %closure.env, ptr %p) {
+entry:
+  call void @"example.com/takec.Release"(ptr %p)
+  ret void
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/takec.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+declare void @drop_box(ptr)
+declare ptr @make_box(i32)
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:13:12\00", align 1
+@.str.2 = private unnamed_addr constant [28 x i8] c"example.com/takec.will$main\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)
+declare i64 @willrt_take_c(ptr, ptr, ptr, ptr, ptr)
+declare i64 @willrt_rc_new(ptr, i64)
+declare i64 @willrt_rc_new_drop(ptr, i64, ptr)
+declare void @willrt_rc_retain(i64)
+declare void @willrt_rc_release(i64)
+declare ptr @willrt_rc_deref(i64)
+declare i64 @willrt_weak_new(i64)
+declare i32 @willrt_weak_upgrade(i64, ptr)

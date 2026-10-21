@@ -1,5 +1,5 @@
 %"struct.example.com/fieldaccess.Point" = type { i32, i32, i64 }
-define i32 @"example.com/fieldaccess.Sum"(ptr %p) {
+define hidden i32 @"example.com/fieldaccess.Sum"(ptr %p) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/fieldaccess.Point", ptr %p, i32 0, i32 0
   %t2 = load i32, ptr %t1

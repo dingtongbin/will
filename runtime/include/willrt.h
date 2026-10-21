@@ -100,6 +100,12 @@ void* willrt_alloc(size_t size);
    error, and its memory is left alone. */
 void willrt_free(void* ptr);
 
+/* willrt_mem_set_shared tells the allocator that a second thread may now
+   allocate or free. Until this is called the lane locks are skipped, which is
+   the fast path for a single-threaded program. A runtime that starts a worker
+   calls it before that worker can touch memory. */
+void willrt_mem_set_shared(void);
+
 /* willrt_mem_set_lane tells the allocator which lane the calling thread runs
    on. A thread that never calls it uses lane 0. The value is clamped into the
    allocator's lane table. */
@@ -117,6 +123,13 @@ void* willrt_plate_new(size_t count, size_t elem);
    left alone. */
 void willrt_plate_release(void* plate);
 
+/* willrt_take_c adopts an object owned by C. ptr is returned unchanged by
+   willrt_rc_deref; the handle carries a foreign marker instead of a slot.
+   retain_code and release_code use the closure ABI: (environment, ptr).
+   retain_code may be NULL for the TakeC form; release_code is required. */
+uint64_t willrt_take_c(void* ptr, void* retain_code, void* retain_env,
+                       void* release_code, void* release_env);
+
 /* willrt_rc_new copies size bytes from value into a new rc object and returns
    its handle, or 0 when the allocation fails. A handle carries the slot index
    in the high 32 bits and the slot generation in the low 32 bits, and 0 is
@@ -127,6 +140,11 @@ uint64_t willrt_rc_new(const void* value, size_t size);
    last release, before the object storage is returned. */
 uint64_t willrt_rc_new_drop(const void* value, size_t size,
                             void (*drop)(void*));
+
+/* willrt_rc_set_shared switches reference counts from the single-thread fast
+   path to atomic compare-and-swap. A worker must be marked before it can touch
+   an rc handle. */
+void willrt_rc_set_shared(void);
 
 /* willrt_rc_retain adds one reference to the object named by handle. A zero,
    out-of-range, or released handle is ignored, so a stale handle never
@@ -203,8 +221,7 @@ void willrt_blocking_shutdown(void);
    A task owns one frame of size bytes. The step function advances the frame
    once: it returns WILLRT_DONE when the frame is finished or WILLRT_SUSPEND
    when it wants to run again later. This engine runs a step on its own thread
-   and treats a suspend as a finished step; the compiler's lowering currently
-   never returns WILLRT_SUSPEND.
+   and calls a suspended step again after a yield.
    ------------------------------------------------------------------------- */
 
 typedef struct willrt_task willrt_task;
@@ -225,6 +242,9 @@ willrt_task* willrt_task_new(void* step, void* frame, size_t size,
                              int32_t lane, int32_t prio);
 void willrt_task_run(willrt_task* task);
 int32_t willrt_join(willrt_task* task, void* out, willrt_error* err);
+/* willrt_task_try_join is the step-facing form of a join: it returns
+   WILLRT_SUSPEND instead of waiting when the dependency is not finished. */
+int32_t willrt_task_try_join(willrt_task* task, void* out, willrt_error* err);
 
 /* The current task stores its result once, before its step returns. A task
    whose value is void does not call this. */

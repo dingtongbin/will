@@ -53,6 +53,8 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runBuild(args[1:], stdout, stderr)
 	case "run":
 		return runRun(args[1:], stdout, stderr)
+	case "test":
+		return runTest(args[1:], stdout, stderr)
 	case "lsp":
 		return runLSP(args[1:], stdout, stderr)
 	case "version":
@@ -328,6 +330,8 @@ func checkFile(bag *diag.Bag, file string, data []byte, freestanding bool) {
 	own.AddAll(tds)
 	if !own.HasErrors() {
 		own.AddAll(check.Moves(f))
+		own.AddAll(check.Borrows(f))
+		own.AddAll(check.Cycles(f))
 	}
 	bag.AddAll(own.Diagnostics())
 }

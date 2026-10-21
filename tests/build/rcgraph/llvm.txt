@@ -1,5 +1,5 @@
 %"struct.example.com/rcgraph.Node" = type { i32, i64 }
-define void @"example.com/rcgraph.Node.init"(ptr %n, i32 %value) {
+define internal void @"example.com/rcgraph.Node.init"(ptr %n, i32 %value) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/rcgraph.Node", ptr %n, i32 0, i32 0
   store i32 %value, ptr %t1

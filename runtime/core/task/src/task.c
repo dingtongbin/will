@@ -7,12 +7,12 @@
  * that task.
  *
  * The state-machine contract is kept at the API edge: willrt_task_new takes a
- * step and a frame, and a step that returns WILLRT_DONE finishes the task. The
- * compiler currently lowers await points as blocking runtime calls inside the
- * step, so a step never returns WILLRT_SUSPEND. The lane pool, work stealing,
- * and the global job queue described in the concurrency volume therefore do not
- * exist yet; this file is the portable fallback that keeps the visible
- * semantics exact until the state-machine lowering lands.
+ * step and a frame, and a step that returns WILLRT_DONE finishes the task. A
+ * step that returns WILLRT_SUSPEND is called again on this thread after a
+ * yield; the first compiler lowering uses that for a single Join. The lane
+ * pool, work stealing, and the global job queue described in the concurrency
+ * volume do not exist yet; this file is the portable fallback that keeps the
+ * visible semantics exact until that scheduler lands.
  *
  * A panic inside a task writes its report at the task boundary, records the
  * failure on the task, and ends only that thread. willrt_join reports the
@@ -94,10 +94,16 @@ static void willrt_task_finish(struct willrt_task* task) {
 
 static void willrt_task_entry(void* raw) {
     struct willrt_task* task = (struct willrt_task*)raw;
+    int32_t status;
 
     willrt_task_self = task;
     willrt_mem_set_lane(task->lane);
-    (void)task->step(task->frame);
+    do {
+        status = task->step(task->frame);
+        if (status == WILLRT_SUSPEND) {
+            willrt_os_thread_yield();
+        }
+    } while (status == WILLRT_SUSPEND);
     willrt_task_finish(task);
 }
 
@@ -139,6 +145,8 @@ void willrt_task_run(willrt_task* task) {
         return;
     }
     task->started = 1;
+    willrt_rc_set_shared();
+    willrt_mem_set_shared();
     if (willrt_os_thread_start(&task->thread, willrt_task_entry, task) != 0) {
         task->failed = 1;
         willrt_task_finish(task);
@@ -165,6 +173,50 @@ int32_t willrt_task_store_result(const void* value, size_t size) {
     if (task->result == NULL) {
         task->result = copy;
         task->result_size = size;
+    }
+    willrt_os_mutex_unlock(&task->lock);
+    return WILLRT_OK;
+}
+
+/* willrt_task_try_join performs one nonblocking join attempt. A suspended step
+   calls it again after the dependency has made progress. */
+int32_t willrt_task_try_join(willrt_task* task, void* out, willrt_error* err) {
+    struct willrt_task* current = willrt_task_self;
+
+    if (task == NULL) {
+        return WILLRT_FAILED;
+    }
+    willrt_os_mutex_lock(&task->lock);
+    if (!task->finished) {
+        if (current != NULL) {
+            if (current->canceled) {
+                willrt_os_mutex_unlock(&task->lock);
+                return WILLRT_CANCELED;
+            }
+            if (current->deadline != 0 && willrt_now_ns() >= current->deadline) {
+                willrt_os_mutex_unlock(&task->lock);
+                return WILLRT_TIMEDOUT;
+            }
+        }
+        willrt_os_mutex_unlock(&task->lock);
+        return WILLRT_SUSPEND;
+    }
+    if (err != NULL) {
+        err->message = task->message;
+        err->size = task->message_size;
+        err->site = task->site;
+        err->symbol = task->symbol;
+    }
+    if (task->failed) {
+        willrt_os_mutex_unlock(&task->lock);
+        return WILLRT_FAILED;
+    }
+    if (task->canceled) {
+        willrt_os_mutex_unlock(&task->lock);
+        return WILLRT_CANCELED;
+    }
+    if (out != NULL && task->result != NULL && task->result_size != 0) {
+        memcpy(out, task->result, task->result_size);
     }
     willrt_os_mutex_unlock(&task->lock);
     return WILLRT_OK;

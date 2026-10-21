@@ -1,16 +1,16 @@
 %"struct.example.com/defer.C" = type { i32 }
 %"struct.example.com/defer.E" = type { { ptr, i64 } }
-define { ptr, i64 } @"example.com/defer.E.Message"(ptr %e) {
+define hidden { ptr, i64 } @"example.com/defer.E.Message"(ptr %e) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/defer.E", ptr %e, i32 0, i32 0
   %t2 = load { ptr, i64 }, ptr %t1
   ret { ptr, i64 } %t2
 }
-define i32 @"example.com/defer.E.Status"(ptr %e) {
+define hidden i32 @"example.com/defer.E.Status"(ptr %e) alwaysinline {
 entry:
   ret i32 1
 }
-define { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.maybe"(i1 %ok) {
+define internal { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.maybe"(i1 %ok) inlinehint {
 entry:
   %v.agg.40 = alloca %"struct.example.com/defer.E"
   %v.str.41 = alloca { ptr, i64 }
@@ -40,7 +40,7 @@ if.end.1:
   %t13 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.38
   ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t13
 }
-define i32 @"example.com/defer.order"() {
+define internal i32 @"example.com/defer.order"() inlinehint {
 entry:
   %v.str.48 = alloca { ptr, i64 }
   %v.str.52 = alloca { ptr, i64 }
@@ -74,7 +74,7 @@ entry:
   call void @willrt_write_stdout(ptr %t29, i64 %t31)
   ret i32 5
 }
-define i32 @"example.com/defer.early"(i1 %c) {
+define internal i32 @"example.com/defer.early"(i1 %c) inlinehint {
 entry:
   %v.str.67 = alloca { ptr, i64 }
   br i1 %c, label %if.then.1, label %if.end.1
@@ -101,7 +101,7 @@ if.end.1:
   call void @willrt_write_stdout(ptr %t41, i64 %t43)
   ret i32 2
 }
-define i32 @"example.com/defer.loop"() {
+define internal i32 @"example.com/defer.loop"() inlinehint {
 entry:
   %v.str.86 = alloca { ptr, i64 }
   %v.str.102 = alloca { ptr, i64 }
@@ -170,7 +170,7 @@ for.step.1:
 for.end.1:
   ret i32 0
 }
-define { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 %c) {
+define internal { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 %c) inlinehint {
 entry:
   %v.x = alloca i64
   %v.v = alloca i32
@@ -247,7 +247,7 @@ panic.ok.2:
   call void @willrt_rc_release(i64 %t115)
   ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t108
 }
-define { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.tail"(i1 %c) {
+define internal { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.tail"(i1 %c) inlinehint {
 entry:
   %v.x = alloca i64
   %v.agg.147 = alloca %"struct.example.com/defer.C"

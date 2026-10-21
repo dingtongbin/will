@@ -172,6 +172,15 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	if err != nil {
 		return err
 	}
+	if idx, ok := g.singleJoinReturn(refField(call, "to")); ok && len(args) > idx {
+		return g.emitJoinStep(req, frameType, frameTypes, idx, result)
+	}
+	if idx, ok := g.firstJoinParam(refField(call, "to")); ok && len(args) > idx {
+		return g.emitJoinResumeStep(req, call, frameType, frameTypes, idx, result)
+	}
+	if idx, ok := g.singleJoinParam(refField(call, "to")); ok && len(args) > idx {
+		return g.emitJoinResumeStep(req, call, frameType, frameTypes, idx, result)
+	}
 	params := g.paramTypes[sym]
 	if len(params) != len(args) {
 		// A local function has its parameter list in the document; use it
@@ -210,6 +219,439 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	size := g.sizeOf(retLLVM)
 	g.needTaskDecl = true
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, size)
+	g.out.WriteString("  ret i32 1\n}\n")
+	return nil
+}
+
+// singleJoinReturn recognizes the first state-machine shape: a function whose
+// body is one `return task.Join()!`. The task is one parameter, so the step can
+// keep the frame unchanged and retry from the join until the dependency ends.
+func (g *generator) singleJoinReturn(fnID int) (int, bool) {
+	if fnID == 0 {
+		return 0, false
+	}
+	fn, ok := g.recs[fnID]
+	if !ok || fn.Kind != "func" {
+		return 0, false
+	}
+	blockID := 0
+	for _, r := range g.recs {
+		if r.Kind == "block" && refField(r, "parent") == fnID {
+			blockID = r.ID
+			break
+		}
+	}
+	if blockID == 0 {
+		return 0, false
+	}
+	var children []willc.Record
+	for _, r := range g.recs {
+		if refField(r, "parent") == blockID {
+			children = append(children, r)
+		}
+	}
+	if len(children) != 1 || children[0].Kind != "return" {
+		return 0, false
+	}
+	value := refField(children[0], "value")
+	unwrap, ok := g.recs[value]
+	if !ok || unwrap.Kind != "unwrap" {
+		return 0, false
+	}
+	join, ok := g.recs[refField(unwrap, "expr")]
+	if !ok || join.Kind != "join" {
+		return 0, false
+	}
+	name, ok := g.recs[refField(join, "task")]
+	if !ok || name.Kind != "name" {
+		return 0, false
+	}
+	paramID := refField(name, "to")
+	var params []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "param" && refField(r, "parent") == fnID {
+			params = append(params, r)
+		}
+	}
+	sortByID(params)
+	for i, p := range params {
+		if p.ID != paramID {
+			continue
+		}
+		if typ, ok := taskElemText(fieldText(p, "type")); ok && typ != "" {
+			return i, true
+		}
+		return 0, false
+	}
+	return 0, false
+}
+
+// firstJoinParam recognizes a function whose first statement is
+// `var x = task.Join()!` and whose remaining body runs after that join. The
+// step can wait on the task and then call the function normally; the function
+// re-enters its join only after the dependency is done.
+func (g *generator) firstJoinParam(fnID int) (int, bool) {
+	if fnID == 0 {
+		return 0, false
+	}
+	fn, ok := g.recs[fnID]
+	if !ok || fn.Kind != "func" {
+		return 0, false
+	}
+	blockID := 0
+	for _, r := range g.recs {
+		if r.Kind == "block" && refField(r, "parent") == fnID {
+			blockID = r.ID
+			break
+		}
+	}
+	if blockID == 0 {
+		return 0, false
+	}
+	var children []willc.Record
+	for _, r := range g.recs {
+		if refField(r, "parent") == blockID {
+			children = append(children, r)
+		}
+	}
+	sortByID(children)
+	if len(children) < 2 || children[0].Kind != "var" {
+		return 0, false
+	}
+	var unwrap willc.Record
+	for _, r := range g.recs {
+		if refField(r, "parent") == children[0].ID && r.Kind == "unwrap" {
+			unwrap = r
+			break
+		}
+	}
+	if unwrap.ID == 0 {
+		return 0, false
+	}
+	join, ok := g.recs[refField(unwrap, "expr")]
+	if !ok || join.Kind != "join" {
+		return 0, false
+	}
+	name, ok := g.recs[refField(join, "task")]
+	if !ok || name.Kind != "name" {
+		return 0, false
+	}
+	paramID := refField(name, "to")
+	var params []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "param" && refField(r, "parent") == fnID {
+			params = append(params, r)
+		}
+	}
+	sortByID(params)
+	for i, p := range params {
+		if p.ID != paramID {
+			continue
+		}
+		if typ, ok := taskElemText(fieldText(p, "type")); ok && typ != "" {
+			return i, true
+		}
+		return 0, false
+	}
+	return 0, false
+}
+
+// singleJoinParam accepts one Join whose task is a parameter when every
+// statement before it is a pure local declaration. The step can wait on the
+// parameter directly and then call the target, which recomputes those pure
+// declarations and reaches the already-finished join.
+func (g *generator) singleJoinParam(fnID int) (int, bool) {
+	if fnID == 0 {
+		return 0, false
+	}
+	fn, ok := g.recs[fnID]
+	if !ok || fn.Kind != "func" {
+		return 0, false
+	}
+	blockID := 0
+	for _, r := range g.recs {
+		if r.Kind == "block" && refField(r, "parent") == fnID {
+			blockID = r.ID
+			break
+		}
+	}
+	if blockID == 0 {
+		return 0, false
+	}
+	var children []willc.Record
+	for _, r := range g.recs {
+		if refField(r, "parent") == blockID {
+			children = append(children, r)
+		}
+	}
+	sortByID(children)
+	byParent := map[int][]willc.Record{}
+	for _, r := range g.recs {
+		byParent[refField(r, "parent")] = append(byParent[refField(r, "parent")], r)
+	}
+	var join willc.Record
+	joinChild := -1
+	for i, child := range children {
+		found, count := findJoinRecord(byParent, child.ID)
+		if count > 1 {
+			return 0, false
+		}
+		if count == 1 {
+			if joinChild != -1 {
+				return 0, false
+			}
+			join = found
+			joinChild = i
+		}
+	}
+	if joinChild < 0 {
+		return 0, false
+	}
+	for i := 0; i < joinChild; i++ {
+		if !pureVar(byParent, children[i]) {
+			return 0, false
+		}
+	}
+	name, ok := g.recs[refField(join, "task")]
+	if !ok || name.Kind != "name" {
+		return 0, false
+	}
+	paramID := refField(name, "to")
+	var params []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "param" && refField(r, "parent") == fnID {
+			params = append(params, r)
+		}
+	}
+	sortByID(params)
+	for i, p := range params {
+		if p.ID != paramID {
+			continue
+		}
+		if typ, ok := taskElemText(fieldText(p, "type")); ok && typ != "" {
+			return i, true
+		}
+		return 0, false
+	}
+	return 0, false
+}
+
+func findJoinRecord(byParent map[int][]willc.Record, id int) (willc.Record, int) {
+	var found willc.Record
+	count := 0
+	var visit func(int)
+	visit = func(parent int) {
+		for _, child := range byParent[parent] {
+			if child.Kind == "join" {
+				found = child
+				count++
+			}
+			visit(child.ID)
+		}
+	}
+	visit(id)
+	return found, count
+}
+
+// pureVar accepts a declaration whose value is a literal, a name, a cast, or
+// an arithmetic expression over those. Recomputing it after the wait cannot be
+// observed.
+func pureVar(byParent map[int][]willc.Record, child willc.Record) bool {
+	if child.Kind != "var" && child.Kind != "const" {
+		return false
+	}
+	var value willc.Record
+	for _, r := range byParent[child.ID] {
+		if r.Kind != "type" {
+			value = r
+			break
+		}
+	}
+	return pureValueByRecord(byParent, value)
+}
+
+func pureValueByRecord(byParent map[int][]willc.Record, r willc.Record) bool {
+	switch r.Kind {
+	case "lit", "name":
+		return true
+	case "un":
+		return pureValueByRecord(byParent, refRecord(byParent, r, "expr"))
+	case "cast":
+		return pureValueByRecord(byParent, refRecord(byParent, r, "expr"))
+	case "bin":
+		return pureValueByRecord(byParent, refRecord(byParent, r, "l")) &&
+			pureValueByRecord(byParent, refRecord(byParent, r, "r"))
+	}
+	return false
+}
+
+func refRecord(byParent map[int][]willc.Record, r willc.Record, name string) willc.Record {
+	for _, f := range r.Fields {
+		if f.Name == name && f.Value.Kind == willc.RefValue {
+			for _, child := range byParent[r.ID] {
+				if child.ID == f.Value.Ref {
+					return child
+				}
+			}
+		}
+	}
+	return willc.Record{}
+}
+
+// emitJoinResumeStep waits on the first task argument and then calls the target
+// function. Everything before the first join is empty by construction, so the
+// target can safely run from its entry once the dependency is done.
+func (g *generator) emitJoinResumeStep(req spawnRequest, call willc.Record, frameType string, frameTypes []string, idx int, result string) error {
+	if idx < 0 || idx >= len(frameTypes) {
+		return g.errf(req.node, "cannot translate node #%d: the joined task argument is missing", req.node)
+	}
+	args := g.callArgs(call)
+	sym := g.callTargetSymbol(call)
+	if sym == "" {
+		return g.errf(req.node, "cannot translate node #%d: the spawned call has no function", req.node)
+	}
+	g.needTaskDecl = true
+	g.needPanicDecl = true
+	fmt.Fprintf(g.out, "define i32 @%s(ptr %%frame) {\nentry:\n", llvmSymbol(req.sym))
+	field := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n", field, frameType, idx)
+	task := g.load(frameTypes[idx], field)
+	errSlot := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca %%willrt_error\n", errSlot)
+	status := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call i32 @willrt_task_try_join(ptr %s, ptr null, ptr %s)\n", status, task, errSlot)
+	g.labels++
+	n := g.labels
+	suspendLabel := fmt.Sprintf("resume.suspend.%d", n)
+	okLabel := fmt.Sprintf("resume.ok.%d", n)
+	failLabel := fmt.Sprintf("resume.fail.%d", n)
+	suspend := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, -1\n", suspend, status)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", suspend, suspendLabel, failLabel)
+	fmt.Fprintf(g.out, "%s:\n  ret i32 -1\n", suspendLabel)
+	fmt.Fprintf(g.out, "%s:\n", failLabel)
+	ok := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", ok, status)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s.panic\n", ok, okLabel, failLabel)
+	fmt.Fprintf(g.out, "%s.panic:\n", failLabel)
+	message := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt_error, ptr %s, i32 0, i32 0\n", message, errSlot)
+	msg := g.load("ptr", message)
+	sizePtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt_error, ptr %s, i32 0, i32 1\n", sizePtr, errSlot)
+	size := g.load("i64", sizePtr)
+	sitePtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt_error, ptr %s, i32 0, i32 2\n", sitePtr, errSlot)
+	site := g.load("ptr", sitePtr)
+	symbolPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt_error, ptr %s, i32 0, i32 3\n", symbolPtr, errSlot)
+	symbol := g.load("ptr", symbolPtr)
+	fmt.Fprintf(g.out, "  call void @willrt_panic_n(ptr %s, i64 %s, ptr %s, ptr %s)\n", msg, size, site, symbol)
+	g.out.WriteString("  unreachable\n")
+	fmt.Fprintf(g.out, "%s:\n", okLabel)
+	var callArgs []string
+	for i := range args {
+		argField := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n", argField, frameType, i)
+		if isAggregateType(frameTypes[i]) {
+			callArgs = append(callArgs, "ptr "+argField)
+			continue
+		}
+		callArgs = append(callArgs, frameTypes[i]+" "+g.load(frameTypes[i], argField))
+	}
+	if result == "" || result == "()" {
+		fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(sym), strings.Join(callArgs, ", "))
+		g.out.WriteString("  ret i32 1\n}\n")
+		return nil
+	}
+	retLLVM := g.resultLLVM(result)
+	if retLLVM == "" {
+		return g.errf(req.node, "cannot translate node #%d: result type %s is not lowered yet", req.node, result)
+	}
+	value := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call %s @%s(%s)\n", value, retLLVM, llvmSymbol(sym), strings.Join(callArgs, ", "))
+	slot := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
+	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)
+	sizeResult := g.sizeOf(retLLVM)
+	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, sizeResult)
+	g.out.WriteString("  ret i32 1\n}\n")
+	return nil
+}
+
+// emitJoinStep writes a step that retries a single Join()! until the joined
+// task finishes. The function has no state before the join, so every resume
+// starts at the same point; the dependency itself carries the progress.
+func (g *generator) emitJoinStep(req spawnRequest, frameType string, frameTypes []string, idx int, result string) error {
+	if idx < 0 || idx >= len(frameTypes) {
+		return g.errf(req.node, "cannot translate node #%d: the joined task argument is missing", req.node)
+	}
+	taskLLVM := frameTypes[idx]
+	if taskLLVM == "" {
+		return g.errf(req.node, "cannot translate node #%d: the task argument has no layout", req.node)
+	}
+	resultLLVM := ""
+	if result != "" && result != "()" {
+		resultLLVM = g.resultLLVM(result)
+		if resultLLVM == "" {
+			return g.errf(req.node, "cannot translate node #%d: result type %s is not lowered yet", req.node, result)
+		}
+	}
+	g.needTaskDecl = true
+	g.needPanicDecl = true
+	fmt.Fprintf(g.out, "define i32 @%s(ptr %%frame) {\nentry:\n", llvmSymbol(req.sym))
+	field := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n", field, frameType, idx)
+	task := g.load(taskLLVM, field)
+	errSlot := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca %%willrt_error\n", errSlot)
+	out := "null"
+	if resultLLVM != "" {
+		out = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", out, resultLLVM)
+	}
+	status := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call i32 @willrt_task_try_join(ptr %s, ptr %s, ptr %s)\n",
+		status, task, out, errSlot)
+	g.labels++
+	n := g.labels
+	suspendLabel := fmt.Sprintf("step.suspend.%d", n)
+	okLabel := fmt.Sprintf("step.ok.%d", n)
+	failLabel := fmt.Sprintf("step.fail.%d", n)
+	suspend := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, -1\n", suspend, status)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", suspend, suspendLabel, failLabel)
+	fmt.Fprintf(g.out, "%s:\n  ret i32 -1\n", suspendLabel)
+	fmt.Fprintf(g.out, "%s:\n", failLabel)
+	ok := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", ok, status)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", ok, okLabel, failLabel+".panic")
+	fmt.Fprintf(g.out, "%s.panic:\n", failLabel)
+	message := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt_error, ptr %s, i32 0, i32 0\n", message, errSlot)
+	msg := g.load("ptr", message)
+	sizePtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt_error, ptr %s, i32 0, i32 1\n", sizePtr, errSlot)
+	size := g.load("i64", sizePtr)
+	sitePtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt_error, ptr %s, i32 0, i32 2\n", sitePtr, errSlot)
+	site := g.load("ptr", sitePtr)
+	symbolPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt_error, ptr %s, i32 0, i32 3\n", symbolPtr, errSlot)
+	symbol := g.load("ptr", symbolPtr)
+	fmt.Fprintf(g.out, "  call void @willrt_panic_n(ptr %s, i64 %s, ptr %s, ptr %s)\n", msg, size, site, symbol)
+	g.out.WriteString("  unreachable\n")
+	fmt.Fprintf(g.out, "%s:\n", okLabel)
+	if resultLLVM == "" {
+		g.out.WriteString("  ret i32 1\n}\n")
+		return nil
+	}
+	value := g.load(resultLLVM, out)
+	slot := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, resultLLVM)
+	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", resultLLVM, value, slot)
+	sizeResult := g.sizeOf(resultLLVM)
+	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, sizeResult)
 	g.out.WriteString("  ret i32 1\n}\n")
 	return nil
 }

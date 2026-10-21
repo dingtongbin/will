@@ -1,0 +1,67 @@
+%"struct.example.com/fnfield.Handler" = type { { ptr, ptr } }
+define hidden i32 @"example.com/fnfield.Inc"(i32 %x) alwaysinline {
+entry:
+  %t1 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %x, i32 1)
+  %t2 = extractvalue {i32, i1} %t1, 0
+  %t3 = extractvalue {i32, i1} %t1, 1
+  br i1 %t3, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  ret i32 %t2
+}
+define i32 @"example.com/fnfield.will$main"() {
+entry:
+  %v.closure.22 = alloca { ptr, ptr }
+  %v.h = alloca %"struct.example.com/fnfield.Handler"
+  %v.f = alloca { ptr, ptr }
+  %v.agg.21 = alloca %"struct.example.com/fnfield.Handler"
+  %t4 = getelementptr inbounds %"struct.example.com/fnfield.Handler", ptr %v.agg.21, i32 0, i32 0
+  %t5 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.22, i32 0, i32 0
+  store ptr @"example.com/fnfield.thunk.Inc", ptr %t5
+  %t6 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.22, i32 0, i32 1
+  store ptr null, ptr %t6
+  %t7 = load { ptr, ptr }, ptr %v.closure.22
+  store { ptr, ptr } %t7, ptr %t4
+  %t8 = load %"struct.example.com/fnfield.Handler", ptr %v.agg.21
+  store %"struct.example.com/fnfield.Handler" %t8, ptr %v.h
+  %t9 = getelementptr inbounds %"struct.example.com/fnfield.Handler", ptr %v.h, i32 0, i32 0
+  %t10 = load { ptr, ptr }, ptr %t9
+  store { ptr, ptr } %t10, ptr %v.f
+  %t11 = getelementptr inbounds { ptr, ptr }, ptr %v.f, i32 0, i32 0
+  %t12 = getelementptr inbounds { ptr, ptr }, ptr %v.f, i32 0, i32 1
+  %t13 = load ptr, ptr %t11
+  %t14 = load ptr, ptr %t12
+  %t15 = call i32 %t13(ptr %t14, i32 1)
+  %t16 = call {i32, i1} @llvm.ssub.with.overflow.i32(i32 %t15, i32 2)
+  %t17 = extractvalue {i32, i1} %t16, 0
+  %t18 = extractvalue {i32, i1} %t16, 1
+  br i1 %t18, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.3, ptr @.str.4)
+  unreachable
+panic.ok.1:
+  ret i32 %t17
+}
+define i32 @"example.com/fnfield.thunk.Inc"(ptr %closure.env, i32 %x) {
+entry:
+  %r = call i32 @"example.com/fnfield.Inc"(i32 %x)
+  ret i32 %r
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/fnfield.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [15 x i8] c"main.will:6:12\00", align 1
+@.str.2 = private unnamed_addr constant [24 x i8] c"example.com/fnfield.Inc\00", align 1
+@.str.3 = private unnamed_addr constant [16 x i8] c"main.will:12:12\00", align 1
+@.str.4 = private unnamed_addr constant [30 x i8] c"example.com/fnfield.will$main\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

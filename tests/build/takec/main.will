@@ -1,0 +1,14 @@
+import c "api.h"
+
+struct Box {
+    v: i32
+}
+
+func Release(p: raw) {
+    c.drop_box(p)
+}
+
+func main() -> i32 {
+    var box: rc<Box> = take_c<Box>(c.make_box(9), Release)
+    return box.v - 9
+}

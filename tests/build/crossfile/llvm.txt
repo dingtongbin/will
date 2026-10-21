@@ -1,5 +1,5 @@
 %"struct.example.com/crossfile.Point" = type { i32, i32 }
-define i32 @"example.com/crossfile.Sum"(ptr %p) {
+define hidden i32 @"example.com/crossfile.Sum"(ptr %p) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/crossfile.Point", ptr %p, i32 0, i32 0
   %t2 = load i32, ptr %t1
@@ -15,7 +15,7 @@ panic.1:
 panic.ok.1:
   ret i32 %t6
 }
-define %"struct.example.com/crossfile.Point" @"example.com/crossfile.Make"(i32 %x) {
+define hidden %"struct.example.com/crossfile.Point" @"example.com/crossfile.Make"(i32 %x) alwaysinline {
 entry:
   %v.agg.19 = alloca %"struct.example.com/crossfile.Point"
   %t8 = getelementptr inbounds %"struct.example.com/crossfile.Point", ptr %v.agg.19, i32 0, i32 0

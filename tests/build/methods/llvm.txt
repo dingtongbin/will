@@ -1,11 +1,11 @@
 %"struct.example.com/methods.Counter" = type { i32 }
-define i32 @"example.com/methods.Counter.Get"(ptr %c) {
+define hidden i32 @"example.com/methods.Counter.Get"(ptr %c) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/methods.Counter", ptr %c, i32 0, i32 0
   %t2 = load i32, ptr %t1
   ret i32 %t2
 }
-define void @"example.com/methods.Counter.Add"(ptr %c, i32 %d) {
+define hidden void @"example.com/methods.Counter.Add"(ptr %c, i32 %d) alwaysinline {
 entry:
   %t3 = getelementptr inbounds %"struct.example.com/methods.Counter", ptr %c, i32 0, i32 0
   %t4 = load i32, ptr %t3

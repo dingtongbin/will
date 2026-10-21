@@ -96,11 +96,26 @@ static struct willrt_mem_registry_entry
 static willrt_mem_lock willrt_mem_registry_lock;
 static atomic_size_t willrt_mem_chunks_held;
 static atomic_size_t willrt_mem_page_calls_issued;
+static _Atomic int willrt_mem_shared;
 
 /* A thread that never runs under the scheduler stays on lane 0. */
 static _Thread_local int32_t willrt_mem_lane_index;
 
+void willrt_mem_set_shared(void) {
+    atomic_store_explicit(&willrt_mem_shared, 1, memory_order_release);
+}
+
+static int willrt_mem_single_thread(void) {
+    return !atomic_load_explicit(&willrt_mem_shared, memory_order_acquire);
+}
+
 static void willrt_mem_lock_acquire(willrt_mem_lock* lock) {
+    /* Before the first worker exists there is no second owner. The flag is
+       published before a worker starts, so this branch can only be taken while
+       one thread owns the arena. */
+    if (willrt_mem_single_thread()) {
+        return;
+    }
     while (atomic_exchange_explicit(&lock->held, 1, memory_order_acquire)) {
         while (atomic_load_explicit(&lock->held, memory_order_relaxed)) {
         }
@@ -108,6 +123,9 @@ static void willrt_mem_lock_acquire(willrt_mem_lock* lock) {
 }
 
 static void willrt_mem_lock_release(willrt_mem_lock* lock) {
+    if (willrt_mem_single_thread()) {
+        return;
+    }
     atomic_store_explicit(&lock->held, 0, memory_order_release);
 }
 

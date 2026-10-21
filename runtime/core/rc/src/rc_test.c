@@ -46,6 +46,7 @@ static void willrt_test_run_threads(struct willrt_test_work* work, size_t count)
     HANDLE threads[WILLRT_TEST_THREADS];
     size_t i;
 
+    willrt_rc_set_shared();
     for (i = 0; i < count; i++) {
         threads[i] = CreateThread(NULL, 0, willrt_test_worker, &work[i], 0,
                                   NULL);
@@ -66,6 +67,7 @@ static void willrt_test_run_threads(struct willrt_test_work* work, size_t count)
     pthread_t threads[WILLRT_TEST_THREADS];
     size_t i;
 
+    willrt_rc_set_shared();
     for (i = 0; i < count; i++) {
         assert(pthread_create(&threads[i], NULL, willrt_test_worker,
                               &work[i]) == 0);
@@ -175,6 +177,45 @@ static void test_empty_and_foreign_handles(void) {
     willrt_rc_release(UINT64_MAX);
     assert(willrt_rc_deref(UINT64_MAX) == NULL);
     assert(willrt_weak_new(0) == 0);
+}
+
+static int willrt_test_foreign_retains;
+static int willrt_test_foreign_releases;
+static void* willrt_test_foreign_last;
+
+static void willrt_test_foreign_retain(void* env, void* ptr) {
+    assert(env == &willrt_test_foreign_retains);
+    willrt_test_foreign_retains += 1;
+    willrt_test_foreign_last = ptr;
+}
+
+static void willrt_test_foreign_release(void* env, void* ptr) {
+    assert(env == &willrt_test_foreign_releases);
+    willrt_test_foreign_releases += 1;
+    willrt_test_foreign_last = ptr;
+}
+
+static void test_take_c(void) {
+    int object = 7;
+    uint64_t handle;
+    uint64_t upgraded = 0;
+
+    handle = willrt_take_c(&object, (void*)willrt_test_foreign_retain,
+                           &willrt_test_foreign_retains,
+                           (void*)willrt_test_foreign_release,
+                           &willrt_test_foreign_releases);
+    assert(handle != 0);
+    assert(willrt_rc_deref(handle) == &object);
+    assert(willrt_weak_new(handle) == 0);
+    assert(willrt_weak_upgrade(handle, &upgraded) == WILLRT_EMPTY);
+    willrt_rc_retain(handle);
+    assert(willrt_test_foreign_retains == 1);
+    willrt_rc_release(handle);
+    assert(willrt_test_foreign_releases == 0);
+    willrt_rc_release(handle);
+    assert(willrt_test_foreign_releases == 1);
+    assert(willrt_test_foreign_last == &object);
+    assert(willrt_take_c(&object, NULL, NULL, NULL, NULL) == 0);
 }
 
 static void test_zero_size(void) {
@@ -357,6 +398,7 @@ int main(void) {
     test_drop_glue();
     test_nested_drop();
     test_empty_and_foreign_handles();
+    test_take_c();
     test_zero_size();
     test_slot_reuse();
     test_generation_wrap_retires_slot();

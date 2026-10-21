@@ -61,6 +61,9 @@ func (g *generator) typeLLVMOf(text string) (string, bool) {
 		g.usedError = true
 		return "%interface.Error", true
 	}
+	if strings.HasPrefix(text, "func(") {
+		return "{ ptr, ptr }", true
+	}
 	if typ, ok := g.structInstanceFromText(text); ok {
 		return typ, true
 	}

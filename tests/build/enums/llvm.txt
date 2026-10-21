@@ -1,6 +1,6 @@
 %"struct.example.com/enums.Holder" = type { %"enum.example.com/enums.Shape", i32 }
 %"enum.example.com/enums.Shape" = type { i32, { i32, i32 } }
-define i32 @"example.com/enums.Area"(ptr %s) {
+define hidden i32 @"example.com/enums.Area"(ptr %s) alwaysinline {
 entry:
   %v.match.20 = alloca i32
   %t1 = getelementptr inbounds %"enum.example.com/enums.Shape", ptr %s, i32 0, i32 0
@@ -55,7 +55,7 @@ match.end.1:
   %t23 = load i32, ptr %v.match.20
   ret i32 %t23
 }
-define i32 @"example.com/enums.Count"(ptr %h) {
+define hidden i32 @"example.com/enums.Count"(ptr %h) alwaysinline {
 entry:
   %t24 = getelementptr inbounds %"struct.example.com/enums.Holder", ptr %h, i32 0, i32 0
   %t25 = getelementptr inbounds %"enum.example.com/enums.Shape", ptr %t24, i32 0, i32 0
@@ -83,7 +83,7 @@ match.arm.1.1:
 match.next.1.1:
   unreachable
 }
-define i32 @"example.com/enums.Pick"(i32 %n) {
+define hidden i32 @"example.com/enums.Pick"(i32 %n) alwaysinline {
 entry:
   %v.match.69 = alloca i32
   %t35 = icmp eq i32 %n, 0

@@ -1,4 +1,4 @@
-define i32 @"example.com/features.F"() {
+define hidden i32 @"example.com/features.F"() alwaysinline {
 entry:
   br i1 false, label %if.then.1, label %if.end.1
 if.then.1:

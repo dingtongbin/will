@@ -1,0 +1,17 @@
+struct P {
+    a: i32
+    b: i64
+}
+
+func main() -> i32 {
+    if SizeOf<P>() != 16usize {
+        return 1
+    }
+    if AlignOf<P>() != 8usize {
+        return 2
+    }
+    if OffsetOf<P>("b") != 8usize {
+        return 3
+    }
+    return 0
+}

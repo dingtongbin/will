@@ -69,7 +69,7 @@ func TestEmitLLVMCrossPackage(t *testing.T) {
 	for _, want := range []string{
 		"define i32 @main() {",
 		`call i32 @"example.com/crosspkg/lib.Util"()`,
-		`define i32 @"example.com/crosspkg/lib.Util"() {`,
+		`define hidden i32 @"example.com/crosspkg/lib.Util"() alwaysinline {`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("IR lacks %q:\n%s", want, out)

@@ -1,6 +1,6 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %"struct.example.com/lane.Marker" = type { i32 }
-define i64 @"example.com/lane.Work"() {
+define hidden i64 @"example.com/lane.Work"() alwaysinline {
 entry:
   %t1 = call i32 @willrt_lane_here()
   %t2 = sext i32 %t1 to i64
@@ -72,6 +72,7 @@ declare void @willrt_free(ptr)
 declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)
 declare void @willrt_task_run(ptr)
 declare i32 @willrt_join(ptr, ptr, ptr)
+declare i32 @willrt_task_try_join(ptr, ptr, ptr)
 declare ptr @willrt_task_current()
 declare i32 @willrt_task_store_result(ptr, i64)
 declare ptr @willrt_chan_new(i64, i64, i32)

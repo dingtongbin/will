@@ -142,10 +142,14 @@ func (g *generator) emitAux() {
 	if g.needBlockDecl {
 		g.out.WriteString("declare i32 @willrt_blocking_call(ptr, ptr, ptr)\n")
 	}
+	if g.needTakeCDecl {
+		g.out.WriteString("declare i64 @willrt_take_c(ptr, ptr, ptr, ptr, ptr)\n")
+	}
 	if g.needTaskDecl {
 		g.out.WriteString("declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)\n")
 		g.out.WriteString("declare void @willrt_task_run(ptr)\n")
 		g.out.WriteString("declare i32 @willrt_join(ptr, ptr, ptr)\n")
+		g.out.WriteString("declare i32 @willrt_task_try_join(ptr, ptr, ptr)\n")
 		g.out.WriteString("declare ptr @willrt_task_current()\n")
 		g.out.WriteString("declare i32 @willrt_task_store_result(ptr, i64)\n")
 		g.out.WriteString("declare ptr @willrt_chan_new(i64, i64, i32)\n")
@@ -618,6 +622,8 @@ type generator struct {
 	needInterpDecl bool
 	// needTaskDecl records that the lowering calls the task or channel engine.
 	needTaskDecl bool
+	// needTakeCDecl records that the lowering adopts a foreign C pointer.
+	needTakeCDecl bool
 	// needRcDecl records that the lowering calls the handle table.
 	needRcDecl bool
 	// needUtf8Decl records a call to the UTF-8 validator or encoder,
@@ -939,6 +945,54 @@ func receiverType(r *willc.Record) string {
 // symbolName returns the IR symbol of one function of the current document.
 // A void entry uses its mangled symbol because the generated main calls it; a
 // value-returning main keeps the C symbol, since the runtime calls it.
+// functionPrefix gives a will function the narrowest linkage that still keeps
+// the C surface working. The executable can hide every non-entry definition;
+// a shared library keeps its capitalised C exports. Generic instances and
+// private functions are internal, so LLVM may inline and remove them.
+func (g *generator) functionPrefix(fn willc.Record, name string) string {
+	sym := g.cur.funcs[fn.ID]
+	if g.entryFound && g.entryPkg == g.pkg && g.entryName == name {
+		return ""
+	}
+	instance := strings.Contains(sym, "$")
+	if g.lib && cExported(name) && !instance {
+		return ""
+	}
+	if cExported(name) && !instance {
+		return "hidden "
+	}
+	return "internal "
+}
+
+// inlineAttr forces a small leaf function into its callers. A loop, a call,
+// or a defer keeps the ordinary inline hint, because forcing those would grow
+// code and can break recursive functions.
+func (g *generator) inlineAttr(fn willc.Record, name string) string {
+	if g.entryFound && g.entryPkg == g.pkg && g.entryName == name {
+		return ""
+	}
+	simple := true
+	var visit func(int)
+	visit = func(parent int) {
+		for _, child := range g.children(parent) {
+			switch child.Kind {
+			case "for", "call", "mcall", "spawn", "join", "defer", "try", "select":
+				simple = false
+				return
+			}
+			visit(child.ID)
+			if !simple {
+				return
+			}
+		}
+	}
+	visit(fn.ID)
+	if simple {
+		return " alwaysinline"
+	}
+	return " inlinehint"
+}
+
 func (g *generator) symbolName(name string) string {
 	if g.lib && cExported(name) {
 		return name
@@ -1115,6 +1169,11 @@ func (g *generator) funcDecl(fn willc.Record) error {
 			sig = append(sig, "i64 %"+pname)
 			continue
 		}
+		if _, ok := taskElemText(ptype); ok {
+			g.scope[p.ID] = "%" + pname
+			sig = append(sig, "ptr %"+pname)
+			continue
+		}
 		if typ, _, ok := llvmScalar(ptype); ok {
 			g.scope[p.ID] = "%" + pname
 			sig = append(sig, typ+" %"+pname)
@@ -1199,7 +1258,9 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	g.slotTypes = map[int]string{}
 	g.slotNames = map[string]int{}
 	g.loops = nil
-	fmt.Fprintf(g.out, "define %s @%s(%s) {\n", resLLVM, llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
+	fmt.Fprintf(g.out, "define %s%s @%s(%s)%s {\n",
+		g.functionPrefix(fn, name), resLLVM, llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "),
+		g.inlineAttr(fn, name))
 	g.out.WriteString("entry:\n")
 	if err := g.setupCaptures(fn.ID); err != nil {
 		return err
@@ -1232,7 +1293,9 @@ func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
 	g.slotNames = map[string]int{}
 	g.loops = nil
 	g.captureSpills = map[int]string{}
-	fmt.Fprintf(g.out, "define void @%s(%s) {\n", llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "))
+	fmt.Fprintf(g.out, "define %svoid @%s(%s)%s {\n",
+		g.functionPrefix(fn, name), llvmSymbol(g.cur.funcs[fn.ID]), strings.Join(sig, ", "),
+		g.inlineAttr(fn, name))
 	g.out.WriteString("entry:\n")
 	if err := g.setupCaptures(fn.ID); err != nil {
 		return err
@@ -2883,7 +2946,8 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 		return "", err
 	}
 	if text == "" {
-		return "", g.errf(r.ID, "cannot translate node #%d: the call returns no value", r.ID)
+		name, _ := g.predeclaredCallName(r)
+		return "", g.errf(r.ID, "cannot translate node #%d: the call returns no value (callee=%s)", r.ID, name)
 	}
 	_, taskScalar := taskElemText(text)
 	_, chanScalar := chanElemText(text)
@@ -2901,6 +2965,31 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	}
 	if g.isPrintCall(r) {
 		return g.printCall(r)
+	}
+	if name, ok := g.predeclaredCallName(r); ok &&
+		(name == "SizeOf" || name == "AlignOf" || name == "OffsetOf") {
+		value, err := g.lowerLayout(r, name)
+		if err != nil {
+			return "", "", err
+		}
+		return value, "usize", nil
+	}
+	if name, ok := g.predeclaredCallName(r); ok && (name == "take_c" || name == "take_c_rc") {
+		value, err := g.lowerTakeC(r, name)
+		if err != nil {
+			return "", "", err
+		}
+		result := ""
+		if args := g.typeArgTexts(r); len(args) == 1 {
+			result = "rc<" + args[0] + ">"
+		}
+		if result == "" {
+			result, err = g.willTypeText(r.ID)
+			if err != nil {
+				return "", "", err
+			}
+		}
+		return value, result, nil
 	}
 	if r.Kind == "mcall" && g.isCLink(r) {
 		name := fieldText(r, "text")

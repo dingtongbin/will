@@ -1,4 +1,4 @@
-define i32 @"example.com/views.Sum"(ptr %xs) {
+define hidden i32 @"example.com/views.Sum"(ptr %xs) inlinehint {
 entry:
   %v.total = alloca i32
   %v.i = alloca i64
@@ -42,7 +42,7 @@ for.end.1:
   %t17 = load i32, ptr %v.total
   ret i32 %t17
 }
-define i64 @"example.com/views.Count"(ptr %xs) {
+define hidden i64 @"example.com/views.Count"(ptr %xs) inlinehint {
 entry:
   %v.n = alloca i64
   %v.$idx = alloca i64
@@ -85,7 +85,7 @@ for.end.1:
   %t33 = load i64, ptr %v.n
   ret i64 %t33
 }
-define i32 @"example.com/views.Mid"(ptr %xs) {
+define hidden i32 @"example.com/views.Mid"(ptr %xs) inlinehint {
 entry:
   %v.v = alloca { ptr, i64 }
   %v.slice.56 = alloca { ptr, i64 }

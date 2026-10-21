@@ -1,4 +1,4 @@
-define i32 @"example.com/array.Sum"() {
+define hidden i32 @"example.com/array.Sum"() inlinehint {
 entry:
   %v.a = alloca { ptr, i64, i64 }
   %v.s = alloca i32

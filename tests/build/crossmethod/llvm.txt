@@ -1,11 +1,11 @@
 %"struct.example.com/crossmethod/lib.Counter" = type { i32 }
-define i32 @"example.com/crossmethod/lib.Counter.Get"(ptr %c) {
+define hidden i32 @"example.com/crossmethod/lib.Counter.Get"(ptr %c) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/crossmethod/lib.Counter", ptr %c, i32 0, i32 0
   %t2 = load i32, ptr %t1
   ret i32 %t2
 }
-define %"struct.example.com/crossmethod/lib.Counter" @"example.com/crossmethod/lib.New"(i32 %n) {
+define hidden %"struct.example.com/crossmethod/lib.Counter" @"example.com/crossmethod/lib.New"(i32 %n) alwaysinline {
 entry:
   %v.agg.19 = alloca %"struct.example.com/crossmethod/lib.Counter"
   %t3 = getelementptr inbounds %"struct.example.com/crossmethod/lib.Counter", ptr %v.agg.19, i32 0, i32 0

@@ -1,4 +1,4 @@
-define i32 @"example.com/map.Lookup"(ptr %m, i32 %k) {
+define hidden i32 @"example.com/map.Lookup"(ptr %m, i32 %k) inlinehint {
 entry:
   %v.ret.13 = alloca { i32, i32 }
   %v.match.12 = alloca i32

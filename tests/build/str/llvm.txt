@@ -1,4 +1,4 @@
-define i32 @"example.com/str.At"(ptr %s, i32 %i) {
+define hidden i32 @"example.com/str.At"(ptr %s, i32 %i) alwaysinline {
 entry:
   %v.utf8.10 = alloca i32
   %t1 = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0
@@ -30,7 +30,7 @@ panic.ok.3:
   %t12 = load i32, ptr %v.utf8.10
   ret i32 %t12
 }
-define i32 @"example.com/str.Count"(ptr %s) {
+define hidden i32 @"example.com/str.Count"(ptr %s) inlinehint {
 entry:
   %v.n = alloca i32
   %v.utf8.21 = alloca i32

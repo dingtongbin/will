@@ -1,16 +1,16 @@
 %interface.Error = type { ptr, ptr }
 %"struct.example.com/error.E" = type { { ptr, i64 } }
-define { ptr, i64 } @"example.com/error.E.Message"(ptr %e) {
+define hidden { ptr, i64 } @"example.com/error.E.Message"(ptr %e) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/error.E", ptr %e, i32 0, i32 0
   %t2 = load { ptr, i64 }, ptr %t1
   ret { ptr, i64 } %t2
 }
-define i32 @"example.com/error.E.Status"(ptr %e) {
+define hidden i32 @"example.com/error.E.Status"(ptr %e) alwaysinline {
 entry:
   ret i32 7
 }
-define i32 @"example.com/error.Use"() {
+define hidden i32 @"example.com/error.Use"() inlinehint {
 entry:
   %v.e = alloca %"struct.example.com/error.E"
   %v.r = alloca { i32, [4 x i8], %interface.Error }

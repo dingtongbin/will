@@ -1,5 +1,5 @@
 @"example.com/globals/lib.Seed" = internal global i32 zeroinitializer
-define i32 @"example.com/globals/lib.Next"() {
+define hidden i32 @"example.com/globals/lib.Next"() alwaysinline {
 entry:
   %t1 = load i32, ptr @"example.com/globals/lib.Seed"
   %t2 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t1, i32 1)

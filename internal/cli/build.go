@@ -138,6 +138,8 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 	bag.AddAll(tds)
 	if !bag.HasErrors() {
 		bag.AddAll(check.Moves(f))
+		bag.AddAll(check.Borrows(f))
+		bag.AddAll(check.Cycles(f))
 	}
 	if opts.freestanding {
 		bag.AddAll(check.Freestanding(f))
@@ -495,12 +497,16 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
 	}
-	inputs, err := packageInputs(opts)
+	inputs, cleanup, err := packageInputs(opts)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
 	}
+	defer cleanup()
 	clangArgsList = append(clangArgsList, inputs...)
+	if hasBitcode(clangArgsList) {
+		clangArgsList = append(clangArgsList, "-flto=thin")
+	}
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)
@@ -537,7 +543,11 @@ func clangArgs(opts buildOptions) ([]string, error) {
 		}
 	}
 	args = append(args, "-x", "none", "-I", filepath.Join(root, "include"))
-	args = append(args, runtimeSources(root, targetName(opts.target))...)
+	objects, err := runtimeObjects(root, opts)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, objects...)
 	if isWindows() {
 		args = append(args, "-lws2_32")
 	}
@@ -566,6 +576,102 @@ func runtimeRoot() (string, error) {
 		dir = parent
 	}
 	return "", fmt.Errorf("runtime directory not found; set WILL_RUNTIME")
+}
+
+// runtimeObjects returns the cached objects of every runtime C module. The key
+// covers the clang identity, target, optimization, debug/PIC choice, and the
+// bytes of each source, so a runtime edit cannot reuse an old object.
+func runtimeObjects(root string, opts buildOptions) ([]string, error) {
+	sources := runtimeSources(root, targetName(opts.target))
+	clang, err := toolchain.FindClang()
+	if err != nil {
+		return nil, err
+	}
+	h := cache.NewHasher()
+	version, _ := exec.Command(clang.Path, "--version").Output()
+	h.AddStrings("runtime", compilerIdentity(), clang.Path, string(version),
+		targetName(opts.target), opts.opt, fmt.Sprintf("debug=%v", opts.debug),
+		fmt.Sprintf("lib=%v", opts.lib), fmt.Sprintf("lto=%v", opts.lto))
+	for _, source := range sources {
+		data, err := os.ReadFile(source)
+		if err != nil {
+			return nil, err
+		}
+		rel, err := filepath.Rel(root, source)
+		if err != nil {
+			rel = source
+		}
+		h.Add(filepath.ToSlash(rel), data)
+	}
+	cacheRoot, err := cache.Root()
+	if err != nil {
+		return nil, err
+	}
+	dir := filepath.Join(cacheRoot, "runtime", h.Key())
+	objects := make([]string, len(sources))
+	ext := ".o"
+	if opts.lto {
+		ext = ".bc"
+	}
+	for i, source := range sources {
+		objects[i] = filepath.Join(dir,
+			fmt.Sprintf("%02d-%s%s", i, strings.TrimSuffix(filepath.Base(source), filepath.Ext(source)), ext))
+	}
+	if info, err := os.Stat(dir); err == nil && info.IsDir() {
+		all := true
+		for _, object := range objects {
+			if _, err := os.Stat(object); err != nil {
+				all = false
+				break
+			}
+		}
+		if all {
+			return objects, nil
+		}
+	}
+	base := filepath.Dir(dir)
+	if err := os.MkdirAll(base, 0o755); err != nil {
+		return nil, err
+	}
+	temporary, err := os.MkdirTemp(base, filepath.Base(dir)+"-")
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(temporary)
+	for i, source := range sources {
+		emit := []string{"-c"}
+		if opts.lto {
+			emit = []string{"-emit-llvm", "-c"}
+		}
+		args := append([]string{"-std=c11"}, emit...)
+		args = append(args, source, "-o", filepath.Join(temporary, filepath.Base(objects[i])))
+		args = append(args, "-I", filepath.Join(root, "include"))
+		if opts.opt != "" {
+			args = append(args, opts.opt)
+		}
+		if opts.debug {
+			args = append(args, "-g")
+		}
+		if opts.lib {
+			args = append(args, "-fPIC")
+		}
+		if opts.target != "" {
+			args = append(args, "--target="+opts.target)
+		}
+		cmd := exec.Command(clang.Path, args...)
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("%s: %v\n%s", source, err, output)
+		}
+	}
+	if err := os.Rename(temporary, dir); err != nil {
+		// Another build may have published the same content-addressed
+		// directory while this one was compiling.
+		if _, statErr := os.Stat(dir); statErr != nil {
+			return nil, err
+		}
+	}
+	return objects, nil
 }
 
 // runtimeSources lists the C modules every executable needs. The platform file
@@ -623,15 +729,16 @@ func compileArgs(opts buildOptions) []string {
 // packageInputs collects the C sources of the built module graph and the
 // external libraries its will.mod names. Package C sources come before the
 // named libraries, so a library can satisfy a symbol the sources call.
-func packageInputs(opts buildOptions) ([]string, error) {
+func packageInputs(opts buildOptions) ([]string, func(), error) {
+	noop := func() {}
 	if info, err := os.Stat(opts.path); err != nil || !info.IsDir() {
-		return nil, nil
+		return nil, noop, nil
 	}
 	b := pkg.Load(opts.path)
 	if b.Err != nil {
-		return nil, b.Err
+		return nil, noop, b.Err
 	}
-	var out []string
+	var sources []string
 	seen := map[string]bool{}
 	for _, p := range b.Packages {
 		err := filepath.Walk(p.Dir, func(path string, info os.FileInfo, err error) error {
@@ -643,12 +750,64 @@ func packageInputs(opts buildOptions) ([]string, error) {
 			}
 			if !seen[path] {
 				seen[path] = true
-				out = append(out, path)
+				sources = append(sources, path)
 			}
 			return nil
 		})
 		if err != nil {
-			return nil, err
+			return nil, noop, err
+		}
+	}
+	var out []string
+	cleanup := noop
+	if len(sources) != 0 {
+		clang, err := toolchain.FindClang()
+		if err != nil {
+			return nil, noop, err
+		}
+		dir, err := os.MkdirTemp("", "will-c-bc")
+		if err != nil {
+			return nil, noop, err
+		}
+		cleanup = func() { os.RemoveAll(dir) }
+		root, rootErr := runtimeRoot()
+		for i, source := range sources {
+			ext := ".o"
+			emit := []string{"-c"}
+			if opts.lto {
+				ext = ".bc"
+				emit = []string{"-emit-llvm", "-c"}
+			}
+			bc := filepath.Join(dir, fmt.Sprintf("c%d%s", i, ext))
+			args := append(emit, source, "-o", bc)
+			args = append(args, "-I", filepath.Dir(source))
+			if rootErr == nil {
+				args = append(args, "-I", filepath.Join(root, "include"))
+			}
+			for _, include := range filepath.SplitList(os.Getenv("WILL_C_INCLUDE")) {
+				if include != "" {
+					args = append(args, "-I", include)
+				}
+			}
+			if opts.opt != "" {
+				args = append(args, opts.opt)
+			}
+			if opts.debug {
+				args = append(args, "-g")
+			}
+			if opts.lib {
+				args = append(args, "-fPIC")
+			}
+			if opts.target != "" {
+				args = append(args, "--target="+opts.target)
+			}
+			cmd := exec.Command(clang.Path, args...)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				cleanup()
+				return nil, noop, fmt.Errorf("%s: %v\n%s", source, err, output)
+			}
+			out = append(out, bc)
 		}
 	}
 	for _, link := range b.Links {
@@ -660,7 +819,18 @@ func packageInputs(opts buildOptions) ([]string, error) {
 		}
 		out = append(out, "-l"+link)
 	}
-	return out, nil
+	return out, cleanup, nil
+}
+
+// hasBitcode reports whether the package inputs contain LLVM bitcode, which
+// is what asks the driver to run the LTO backend.
+func hasBitcode(inputs []string) bool {
+	for _, input := range inputs {
+		if strings.HasSuffix(input, ".bc") {
+			return true
+		}
+	}
+	return false
 }
 
 func targetName(target string) string {
@@ -701,12 +871,16 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
 	}
-	inputs, err := packageInputs(opts)
+	inputs, cleanup, err := packageInputs(opts)
 	if err != nil {
 		fmt.Fprintf(stderr, "will: %v\n", err)
 		return 1
 	}
+	defer cleanup()
 	clangArgsList = append(clangArgsList, inputs...)
+	if hasBitcode(clangArgsList) {
+		clangArgsList = append(clangArgsList, "-flto=thin")
+	}
 	output, err := clang.BuildIR(ir, out, clangArgsList...)
 	if err != nil {
 		fmt.Fprintf(stdout, "%s", output)

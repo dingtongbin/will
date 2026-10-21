@@ -1,5 +1,5 @@
 %"struct.example.com/returns.Pair" = type { i32, i32 }
-define %"struct.example.com/returns.Pair" @"example.com/returns.Make"(i32 %n) {
+define hidden %"struct.example.com/returns.Pair" @"example.com/returns.Make"(i32 %n) alwaysinline {
 entry:
   %v.agg.13 = alloca %"struct.example.com/returns.Pair"
   %t1 = getelementptr inbounds %"struct.example.com/returns.Pair", ptr %v.agg.13, i32 0, i32 0
@@ -17,7 +17,7 @@ panic.ok.1:
   %t6 = load %"struct.example.com/returns.Pair", ptr %v.agg.13
   ret %"struct.example.com/returns.Pair" %t6
 }
-define i32 @"example.com/returns.First"() {
+define hidden i32 @"example.com/returns.First"() inlinehint {
 entry:
   %v.ret.23 = alloca %"struct.example.com/returns.Pair"
   %t7 = call %"struct.example.com/returns.Pair" @"example.com/returns.Make"(i32 7)

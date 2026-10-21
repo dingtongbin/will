@@ -437,6 +437,8 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 			for _, f := range p.Files {
 				if f.AST != nil {
 					bag.AddAll(check.Moves(f.AST))
+					bag.AddAll(check.Borrows(f.AST))
+					bag.AddAll(check.Cycles(f.AST))
 				}
 			}
 		}
