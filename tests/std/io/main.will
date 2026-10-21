@@ -1,0 +1,30 @@
+import "std/io"
+
+func main() -> i32 {
+    var poller: io.Poller = io.NewPoller()
+    var out: Array<usize> = new Array<usize>(0)
+    var next: Result<usize, Error> = poller.Next(0ns, out)
+    match next {
+        Ok(count) => {
+            if count != 0usize {
+                return 1
+            }
+        }
+        Err(_) => {
+            return 2
+        }
+    }
+
+    var bad: Result<(), Error> = poller.Add(-1i64, 1usize)
+    match bad {
+        Err(e) => {
+            if e.Status() != 2 {
+                return 3
+            }
+        }
+        _ => {
+            return 4
+        }
+    }
+    return 0
+}

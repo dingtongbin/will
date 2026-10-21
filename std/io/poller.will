@@ -1,0 +1,69 @@
+// Poller is the readiness source for std/io. The runtime poller already owns
+// the registration thread; this type keeps a small synchronous view for code
+// that needs to wait for a set of descriptors.
+import "std/errors"
+
+import c "../../runtime/core/poll/src/poll.c" {
+    fast willrt_poll_wait
+}
+
+// Poller holds one registration per descriptor. Add and Remove are constant
+// time for the small tables this API targets.
+struct Poller {
+    fds: Array<i64>
+    events: Array<u32>
+    users: Array<usize>
+}
+
+// NewPoller returns an empty poller.
+func NewPoller() -> Poller {
+    return Poller {
+        fds: new Array<i64>(0),
+        events: new Array<u32>(0),
+        users: new Array<usize>(0)
+    }
+}
+
+// Add waits for input readiness on fd and reports user when it is ready.
+func (mut p: Poller) Add(fd: i64, user: usize) -> Result<(), Error> {
+    if fd < 0 {
+        return Err(errors.Invalid)
+    }
+    p.fds.Push(fd)
+    p.events.Push(1u32)
+    p.users.Push(user)
+    return Ok(())
+}
+
+// Remove drops the registration for fd. Removing an absent descriptor is a
+// no-op.
+func (mut p: Poller) Remove(fd: i64) -> Result<(), Error> {
+    for i in Range(0, i32(p.fds.Len())) {
+        if p.fds.Get(usize(i)) == fd {
+            _ = p.fds.Remove(usize(i))
+            _ = p.events.Remove(usize(i))
+            _ = p.users.Remove(usize(i))
+            return Ok(())
+        }
+    }
+    return Ok(())
+}
+
+// Next waits up to timeout for ready descriptors and appends their user tags to
+// out in registration order. Zero means the timeout expired.
+func (p: Poller) Next(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
+    var before: usize = out.Len()
+    var status: i32 = c.willrt_poll_wait(raw(p.fds), raw(p.events), raw(p.users),
+                                          i64(p.fds.Len()), i64(timeout), raw(out))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(out.Len() - before)
+}
+
+// AsyncNext is the interim suspension point. Until task-directed poller
+// delivery exists, it waits through the same synchronous path and is marked
+// interim so the scheduler work can replace this one function later.
+func (p: Poller) AsyncNext(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
+    return p.Next(timeout, out)
+}

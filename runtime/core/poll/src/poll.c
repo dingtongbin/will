@@ -300,6 +300,97 @@ void willrt_poll_init(void) {
     }
 }
 
+typedef struct willrt_poll_wait_array {
+    void* data;
+    int64_t len;
+    int64_t cap;
+} willrt_poll_wait_array;
+
+static int32_t willrt_poll_wait_append(willrt_poll_wait_array* out,
+                                       int64_t value) {
+    if (out->len >= out->cap) {
+        int64_t next = out->cap == 0 ? 4 : out->cap * 2;
+        int64_t* data = (int64_t*)willrt_alloc(sizeof(int64_t) * (size_t)next);
+        if (data == NULL) {
+            return 1;
+        }
+        if (out->data != NULL && out->len != 0) {
+            memcpy(data, out->data, sizeof(int64_t) * (size_t)out->len);
+            willrt_free(out->data);
+        }
+        out->data = data;
+        out->cap = next;
+    }
+    ((int64_t*)out->data)[out->len++] = value;
+    return 0;
+}
+
+/* willrt_poll_wait performs one blocking readiness check over parallel arrays
+   of descriptors, event masks, and user tags. It is the synchronous form used
+   by std/io.Poller.Next; the async form waits for direct task delivery and is
+   outside this runtime generation. Ready tags are appended in input order. */
+int32_t willrt_poll_wait(const void* fds_raw, const void* events_raw,
+                         const void* users_raw, int64_t count,
+                         int64_t timeout_ns, void* out_raw) {
+    const int64_t* fds = (const int64_t*)fds_raw;
+    const uint32_t* events = (const uint32_t*)events_raw;
+    const int64_t* users = (const int64_t*)users_raw;
+    willrt_poll_wait_array* out = (willrt_poll_wait_array*)out_raw;
+    willrt_poll_fdstruct* native;
+    int32_t timeout_ms;
+    int ready;
+    int64_t i;
+
+    if (out == NULL || count < 0 || (count != 0 && (fds == NULL || events == NULL || users == NULL))) {
+        return WILLRT_FAILED;
+    }
+    if (timeout_ns < 0) {
+        timeout_ms = -1;
+    } else if (timeout_ns == 0) {
+        timeout_ms = 0;
+    } else {
+        timeout_ms = (int32_t)((timeout_ns + 999999) / 1000000);
+    }
+    if (count == 0) {
+        if (timeout_ns > 0) {
+            willrt_os_sleep_ns(timeout_ns);
+        }
+        return WILLRT_OK;
+    }
+    native = (willrt_poll_fdstruct*)willrt_alloc(
+        sizeof(*native) * (size_t)count);
+    if (native == NULL) {
+        return WILLRT_FAILED;
+    }
+    for (i = 0; i < count; i++) {
+        native[i].fd = (willrt_poll_fd)fds[i];
+        native[i].events = willrt_poll_native_events(events[i]);
+        native[i].revents = 0;
+    }
+#ifdef _WIN32
+    ready = WSAPoll(native, (ULONG)count, timeout_ms);
+#else
+    ready = poll(native, (nfds_t)count, timeout_ms);
+#endif
+    if (ready < 0) {
+        willrt_free(native);
+        return WILLRT_FAILED;
+    }
+    if (ready > 0) {
+        for (i = 0; i < count; i++) {
+            if (native[i].revents == 0) {
+                continue;
+            }
+            if (willrt_poll_wait_append(out, users[i]) != 0) {
+                willrt_free(native);
+                return WILLRT_FAILED;
+            }
+        }
+    }
+    willrt_free(native);
+    return WILLRT_OK;
+}
+
 void willrt_poll_shutdown(void) {
     if (atomic_load(&willrt_poll_state) != 2) {
         return;
