@@ -748,6 +748,18 @@ int64_t willrt_task_deadline(void) {
     return task == NULL ? willrt_main_deadline : task->deadline;
 }
 
+void willrt_task_sleep_ns(int64_t ns) {
+    struct willrt_task* task = willrt_task_self;
+    int64_t deadline;
+
+    if (task == NULL || task->lane_fiber == NULL || ns <= 0) {
+        willrt_os_sleep_ns(ns);
+        return;
+    }
+    deadline = willrt_now_ns() + ns;
+    willrt_task_wait_io(willrt_sched_io_epoch(), deadline);
+}
+
 int64_t willrt_task_enter_deadline(int64_t duration_ns) {
     struct willrt_task* task = willrt_task_self;
     int64_t previous = task == NULL ? willrt_main_deadline : task->deadline;

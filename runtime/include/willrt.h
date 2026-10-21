@@ -301,6 +301,9 @@ int32_t willrt_runtime_threaded(void);
 void willrt_yield(void);
 int32_t willrt_task_canceled(void);
 int64_t willrt_task_deadline(void);
+/* willrt_task_sleep_ns parks the current task until the duration passes. The
+   main thread sleeps directly because it has no scheduler fiber. */
+void willrt_task_sleep_ns(int64_t ns);
 /* Channel/select waits park the current fiber until a channel changes. The
    caller captures the epoch before checking readiness; a change between that
    check and the park returns immediately. */

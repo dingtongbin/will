@@ -1,6 +1,7 @@
 import c "clock.h" {
     fast willrt_now_ns
     fast willrt_os_sleep_ns
+    fast willrt_task_sleep_ns
 }
 
 // Stopwatch measures elapsed monotonic time, so a wall-clock adjustment does
@@ -38,6 +39,6 @@ func Sleep(d: Duration) -> Result<(), Error> {
     if ns < 0 {
         return Err(clockError { message: "time: negative sleep"})
     }
-    c.willrt_os_sleep_ns(ns)
+    c.willrt_task_sleep_ns(ns)
     return Ok(())
 }
