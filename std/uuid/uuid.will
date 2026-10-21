@@ -134,6 +134,34 @@ func Parse(s: str) -> Result<Uuid, Error> {
     return Ok(Uuid { high: high, low: low})
 }
 
+// byteAt returns one byte of a 64-bit half after shifting it down.
+func byteAt(value: u64, shift: u64) -> u8 {
+    return u8((value >> shift) & 255u64)
+}
+
+// Bytes returns the sixteen bytes in network order: the high half first, then
+// the low half, each most significant byte first.
+func (u: Uuid) Bytes() -> [16]u8 {
+    var out: [16]u8
+    out[0] = byteAt(u.high, 56u64)
+    out[1] = byteAt(u.high, 48u64)
+    out[2] = byteAt(u.high, 40u64)
+    out[3] = byteAt(u.high, 32u64)
+    out[4] = byteAt(u.high, 24u64)
+    out[5] = byteAt(u.high, 16u64)
+    out[6] = byteAt(u.high, 8u64)
+    out[7] = byteAt(u.high, 0u64)
+    out[8] = byteAt(u.low, 56u64)
+    out[9] = byteAt(u.low, 48u64)
+    out[10] = byteAt(u.low, 40u64)
+    out[11] = byteAt(u.low, 32u64)
+    out[12] = byteAt(u.low, 24u64)
+    out[13] = byteAt(u.low, 16u64)
+    out[14] = byteAt(u.low, 8u64)
+    out[15] = byteAt(u.low, 0u64)
+    return out
+}
+
 // String returns the canonical lowercase 8-4-4-4-12 text of u.
 func (u: Uuid) String() -> str {
     var out: Array<u8> = new Array<u8>(0)

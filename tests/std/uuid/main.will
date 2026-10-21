@@ -20,6 +20,22 @@ func main() -> i32 {
         Ok(u) => {
             var s: str = u.String()
             print(s, "\n")
+            var octets: [16]u8 = u.Bytes()
+            if octets[0] != 0u8 || octets[15] != 0u8 {
+                return 3
+            }
+        }
+        Err(e) => {
+            _ = e
+        }
+    }
+    var network: Result<uuid.Uuid, Error> = uuid.Parse("01020304-0506-0708-1112-131415161718")
+    match network {
+        Ok(u) => {
+            var octets: [16]u8 = u.Bytes()
+            if octets[0] != 1u8 || octets[1] != 2u8 || octets[8] != 17u8 || octets[15] != 24u8 {
+                return 4
+            }
         }
         Err(e) => {
             _ = e

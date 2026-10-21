@@ -711,6 +711,16 @@ func (g *generator) willTypeText(id int) (string, error) {
 			return "", err
 		}
 		return "[]" + elem, nil
+	case "index":
+		text, err := g.willTypeText(refField(r, "recv"))
+		if err != nil {
+			return "", err
+		}
+		elem, ok := elementText(text)
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: only an array, a view, or an Array is indexed yet", id)
+		}
+		return elem, nil
 	case "bin":
 		switch fieldText(r, "op") {
 		case "&&", "||", "==", "!=", "<", "<=", ">", ">=":

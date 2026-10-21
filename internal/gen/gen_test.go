@@ -1733,6 +1733,27 @@ func TestDeferCapturesArgumentsBeforeBlockExit(t *testing.T) {
 	}
 }
 
+func TestFixedArrayIndexHasTheElementType(t *testing.T) {
+	src := "func First(xs: [16]u8) -> u8 {\n" +
+		"    return xs[0]\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		"getelementptr inbounds [16 x i8], ptr %xs, i64 0, i64",
+		"load i8, ptr",
+		"ret i8",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestArrayMethodsLower(t *testing.T) {
 	src := "func F(src: []i32) -> i32 {\n" +
 		"    var xs: Array<i32> = new Array<i32>(0)\n" +
