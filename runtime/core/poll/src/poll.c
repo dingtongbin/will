@@ -279,7 +279,7 @@ void willrt_poll_init(void) {
         memset(willrt_poll_entries, 0, sizeof(willrt_poll_entries));
         willrt_os_mutex_init(&willrt_poll_lock);
         atomic_store(&willrt_poll_stop, 0);
-        willrt_rc_set_shared();
+        willrt_rc_set_threaded();
         willrt_mem_set_shared();
         if (willrt_os_thread_start(&willrt_poll_thread, willrt_poll_main, NULL)
             != 0) {

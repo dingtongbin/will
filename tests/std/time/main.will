@@ -23,5 +23,11 @@ func main() -> i32 {
     if time.Unix(time.FromUnix(zero)) == 0i64 {
         ok += 1
     }
+    var sw: time.Stopwatch = new time.Stopwatch()
+    var slept: Result<(), Error> = time.Sleep(1ms)
+    _ = slept
+    if sw.Elapsed() > 0ns {
+        ok += 1
+    }
     return ok
 }

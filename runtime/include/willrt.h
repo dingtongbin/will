@@ -151,6 +151,15 @@ uint64_t willrt_rc_new_drop(const void* value, size_t size,
    an rc handle. */
 void willrt_rc_set_shared(void);
 
+/* willrt_rc_set_threaded tells the table that a second thread exists. It does
+   not make every count atomic; willrt_rc_share does that per object. */
+void willrt_rc_set_threaded(void);
+
+/* willrt_rc_share marks one object as reachable from more than one thread. The
+   compiler calls it before a handle enters a task frame or a channel. Until
+   then this object keeps the plain count path even when other workers exist. */
+void willrt_rc_share(uint64_t handle);
+
 /* willrt_rc_retain adds one reference to the object named by handle. A zero,
    out-of-range, or released handle is ignored, so a stale handle never
    faults. */

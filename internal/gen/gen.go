@@ -169,6 +169,7 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare i64 @willrt_rc_new(ptr, i64)\n")
 		g.out.WriteString("declare i64 @willrt_rc_new_drop(ptr, i64, ptr)\n")
 		g.out.WriteString("declare void @willrt_rc_retain(i64)\n")
+		g.out.WriteString("declare void @willrt_rc_share(i64)\n")
 		g.out.WriteString("declare void @willrt_rc_release(i64)\n")
 		g.out.WriteString("declare ptr @willrt_rc_deref(i64)\n")
 		g.out.WriteString("declare i64 @willrt_weak_new(i64)\n")
@@ -1195,6 +1196,11 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		if typ, _, ok := llvmScalar(ptype); ok {
 			g.scope[p.ID] = "%" + pname
 			sig = append(sig, typ+" %"+pname)
+			continue
+		}
+		if ptype == "Duration" {
+			g.scope[p.ID] = "%" + pname
+			sig = append(sig, "i64 %"+pname)
 			continue
 		}
 		typ, err := g.declLLVMType(p.ID)
@@ -2975,7 +2981,7 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 	}
 	_, taskScalar := taskElemText(text)
 	_, chanScalar := chanElemText(text)
-	if _, _, ok := llvmScalar(text); !ok && !isRcText(text) && !isWeakText(text) && !taskScalar && !chanScalar {
+	if _, _, ok := llvmScalar(text); !ok && text != "Duration" && !isRcText(text) && !isWeakText(text) && !taskScalar && !chanScalar {
 		return "", g.errf(r.ID, "cannot translate node #%d: an aggregate result is a place, not a scalar value", r.ID)
 	}
 	return name, nil

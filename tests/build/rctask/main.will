@@ -1,0 +1,13 @@
+struct C {
+    n: i32
+}
+
+func Make() -> rc<C> {
+    return new rc<C>(C { n: 9 })
+}
+
+func main() -> i32 {
+    var t: Task<rc<C>> = spawn Make()
+    var got: rc<C> = t.Join()!
+    return got.n - 9
+}

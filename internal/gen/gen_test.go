@@ -1733,6 +1733,30 @@ func TestDeferCapturesArgumentsBeforeBlockExit(t *testing.T) {
 	}
 }
 
+func TestSpawnSharesRCHandles(t *testing.T) {
+	src := "struct C {\n    n: i32\n}\n\n" +
+		"func Read(c: rc<C>) -> i32 {\n    return c.n\n}\n\n" +
+		"func main() -> i32 {\n" +
+		"    var r: rc<C> = new rc<C>(C { n: 7 })\n" +
+		"    var t: Task<i32> = spawn Read(r)\n" +
+		"    return t.Join()! - 7\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := EmitWithEntry(doc, "main")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		"call void @willrt_rc_share(i64",
+		"declare void @willrt_rc_share(i64)",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestFixedArrayIndexHasTheElementType(t *testing.T) {
 	src := "func First(xs: [16]u8) -> u8 {\n" +
 		"    return xs[0]\n" +
