@@ -57,21 +57,14 @@ static void willrt_chan_select_init(void) {
 }
 
 static void willrt_chan_wake_select(void) {
-    if (atomic_load(&willrt_chan_select_state) != 2) {
-        return;
-    }
     atomic_fetch_add(&willrt_chan_select_epoch, 1);
-    if (atomic_load(&willrt_chan_select_waiters) == 0) {
-        return;
+    willrt_sched_wake_io();
+    if (atomic_load(&willrt_chan_select_state) == 2 &&
+        atomic_load(&willrt_chan_select_waiters) != 0) {
+        willrt_os_mutex_lock(&willrt_chan_select_lock);
+        willrt_os_cond_broadcast(&willrt_chan_select_cond);
+        willrt_os_mutex_unlock(&willrt_chan_select_lock);
     }
-    willrt_os_mutex_lock(&willrt_chan_select_lock);
-    willrt_os_cond_broadcast(&willrt_chan_select_cond);
-    willrt_os_mutex_unlock(&willrt_chan_select_lock);
-}
-
-static uint32_t willrt_chan_select_epoch_now(void) {
-    willrt_chan_select_init();
-    return atomic_load(&willrt_chan_select_epoch);
 }
 
 /* willrt_chan_wait_ns returns the slice a channel wait may sleep. The slice is
@@ -192,6 +185,8 @@ int32_t willrt_chan_send(willrt_chan* chan, const void* value) {
         return WILLRT_OK;
     }
     for (;;) {
+        uint32_t epoch = willrt_sched_io_epoch();
+        struct willrt_task* current = willrt_task_current();
         willrt_os_mutex_lock(&chan->lock);
         if (chan->closed) {
             willrt_os_mutex_unlock(&chan->lock);
@@ -215,9 +210,15 @@ int32_t willrt_chan_send(willrt_chan* chan, const void* value) {
             willrt_os_mutex_unlock(&chan->lock);
             return WILLRT_TIMEDOUT;
         }
-        willrt_os_cond_timedwait(&chan->not_full, &chan->lock,
-                                 willrt_chan_wait_ns());
         willrt_os_mutex_unlock(&chan->lock);
+        if (current != NULL) {
+            willrt_task_wait_io(epoch, willrt_task_deadline());
+        } else {
+            willrt_os_mutex_lock(&chan->lock);
+            willrt_os_cond_timedwait(&chan->not_full, &chan->lock,
+                                     willrt_chan_wait_ns());
+            willrt_os_mutex_unlock(&chan->lock);
+        }
     }
 }
 
@@ -274,6 +275,8 @@ int32_t willrt_chan_recv(willrt_chan* chan, void* out) {
         return chan->closed ? WILLRT_CLOSED : WILLRT_EMPTY;
     }
     for (;;) {
+        uint32_t epoch = willrt_sched_io_epoch();
+        struct willrt_task* current = willrt_task_current();
         willrt_os_mutex_lock(&chan->lock);
         if (chan->count != 0) {
             if (out != NULL) {
@@ -298,9 +301,15 @@ int32_t willrt_chan_recv(willrt_chan* chan, void* out) {
             willrt_os_mutex_unlock(&chan->lock);
             return WILLRT_TIMEDOUT;
         }
-        willrt_os_cond_timedwait(&chan->not_empty, &chan->lock,
-                                 willrt_chan_wait_ns());
         willrt_os_mutex_unlock(&chan->lock);
+        if (current != NULL) {
+            willrt_task_wait_io(epoch, willrt_task_deadline());
+        } else {
+            willrt_os_mutex_lock(&chan->lock);
+            willrt_os_cond_timedwait(&chan->not_empty, &chan->lock,
+                                     willrt_chan_wait_ns());
+            willrt_os_mutex_unlock(&chan->lock);
+        }
     }
 }
 
@@ -332,6 +341,8 @@ int32_t willrt_select(willrt_arm* arms, size_t n) {
     for (;;) {
         int32_t default_index = -1;
         int32_t timeout_index = -1;
+        uint32_t epoch = willrt_sched_io_epoch();
+        struct willrt_task* current = willrt_task_current();
 
         for (i = 0; i < n; i++) {
             willrt_arm* arm = &arms[i];
@@ -372,8 +383,16 @@ int32_t willrt_select(willrt_arm* arms, size_t n) {
             willrt_select_last = WILLRT_TIMEDOUT;
             return WILLRT_TIMEDOUT;
         }
+        if (current != NULL) {
+            int64_t deadline = willrt_task_deadline();
+            if (timeout_index >= 0 &&
+                (deadline == 0 || arms[timeout_index].ns < deadline)) {
+                deadline = arms[timeout_index].ns;
+            }
+            willrt_task_wait_io(epoch, deadline);
+            continue;
+        }
         {
-            uint32_t epoch = willrt_chan_select_epoch_now();
             int64_t wait = willrt_chan_step();
             int64_t now = willrt_now_ns();
 

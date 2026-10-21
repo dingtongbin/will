@@ -71,6 +71,17 @@ void willrt_os_thread_join(willrt_os_thread* thread);
 void willrt_os_thread_yield(void);
 void willrt_os_sleep_ns(int64_t ns);
 
+/* Fibers let a task suspend without holding a lane thread. The scheduler
+   converts each lane thread once, switches into a task fiber, and switches
+   back when the task parks or finishes. from may be NULL on a platform whose
+   switch does not need the caller context. */
+typedef struct willrt_os_fiber willrt_os_fiber;
+willrt_os_fiber* willrt_os_fiber_new(void (*fn)(void*), void* arg,
+                                     size_t stack_size);
+willrt_os_fiber* willrt_os_fiber_thread(void);
+void willrt_os_fiber_switch(willrt_os_fiber* from, willrt_os_fiber* to);
+void willrt_os_fiber_destroy(willrt_os_fiber* fiber);
+
 void willrt_os_mutex_init(willrt_os_mutex* mutex);
 void willrt_os_mutex_destroy(willrt_os_mutex* mutex);
 void willrt_os_mutex_lock(willrt_os_mutex* mutex);
@@ -284,6 +295,12 @@ int32_t willrt_runtime_threaded(void);
 void willrt_yield(void);
 int32_t willrt_task_canceled(void);
 int64_t willrt_task_deadline(void);
+/* Channel/select waits park the current fiber until a channel changes. The
+   caller captures the epoch before checking readiness; a change between that
+   check and the park returns immediately. */
+void willrt_sched_wake_io(void);
+uint32_t willrt_sched_io_epoch(void);
+void willrt_task_wait_io(uint32_t epoch, int64_t deadline);
 /* willrt_task_enter_deadline starts one scoped deadline and returns the
    previous absolute deadline. willrt_task_exit_deadline restores it. A zero
    duration means the block has no deadline. */
