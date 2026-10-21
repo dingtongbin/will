@@ -22,12 +22,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
-/* Small classes are powers of two from 32 bytes through 16 KiB. A 64 KiB
-   chunk is a multiple of the page size on every target platform, and it holds
-   at least one block of the largest class. Large requests are rounded to
+/* Small classes are 16-byte aligned and roughly double through 16 KiB. The
+   intermediate 1.5x classes keep a 300-byte request on a 384-byte block
+   instead of wasting half of a 512-byte one. A 64 KiB chunk is a multiple of
+   the page size on every target platform. Large requests are rounded to
    64 KiB, which keeps the chunk base mask valid. */
 enum {
-    WILLRT_MEM_CLASS_COUNT = 10,
+    WILLRT_MEM_CLASS_COUNT = 19,
     WILLRT_MEM_CLASS_MIN = 32,
     WILLRT_MEM_CHUNK_BYTES = 64 * 1024,
     WILLRT_MEM_LANES = 64,
@@ -44,7 +45,8 @@ static const uint64_t willrt_plate_magic = UINT64_C(0x504C4154454D454D);
 static const uint64_t willrt_mem_chunk_magic = UINT64_C(0x4348554E4B4D454D);
 
 static const size_t willrt_mem_class_size[WILLRT_MEM_CLASS_COUNT] = {
-    32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384
+    32, 48, 64, 96, 128, 192, 256, 384, 512, 768,
+    1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384
 };
 
 /* A spin lock is enough for the short critical sections here: a free list pop
