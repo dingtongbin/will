@@ -218,9 +218,9 @@ uint32_t willrt_sched_io_epoch(void) {
     return atomic_load(&willrt_io_epoch);
 }
 
-// willrt_task_wait_io is the compatibility entry for the blocking pool and
-// time.Sleep. A state-machine step does not call it: it returns WILLRT_SUSPEND
-// and the lane parks the frame. The main thread keeps the direct sleep.
+// willrt_task_wait_io is a compatibility no-op. A generated step parks its
+// frame with WILLRT_SUSPEND and is woken by the IO epoch or a timer; a caller
+// that still has a thread waits on its own condition instead of spinning here.
 void willrt_task_wait_io(uint32_t epoch, int64_t deadline) {
     (void)epoch;
     (void)deadline;

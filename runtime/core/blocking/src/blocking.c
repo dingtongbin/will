@@ -20,14 +20,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* The blocking pool can be linked without the task engine. The scheduler hooks
-   are weak so the standalone pool keeps working; an executable links task.c and
-   the hooks become available. */
-extern willrt_task* willrt_task_current(void) __attribute__((weak));
-extern int64_t willrt_task_deadline(void) __attribute__((weak));
-extern void willrt_task_wait_io(uint32_t epoch, int64_t deadline)
-    __attribute__((weak));
-extern uint32_t willrt_sched_io_epoch(void) __attribute__((weak));
+/* The pool can be linked without the task engine. The wake hook is weak so a
+   standalone pool still works; an executable links task.c and it wakes parked
+   frames when a worker finishes. */
 extern void willrt_sched_wake_io(void) __attribute__((weak));
 
 enum {
@@ -349,29 +344,13 @@ int32_t willrt_blocking_wait(willrt_blocking_op* op_raw) {
     if (op == NULL) {
         return WILLRT_FAILED;
     }
-    if (willrt_task_current != NULL && willrt_task_current() != NULL &&
-        willrt_task_wait_io != NULL && willrt_sched_io_epoch != NULL) {
-        for (;;) {
-            uint32_t epoch = willrt_sched_io_epoch();
-            int32_t done;
-            willrt_os_mutex_lock(&willrt_blocking_lock);
-            done = op->done;
-            willrt_os_mutex_unlock(&willrt_blocking_lock);
-            if (done) {
-                break;
-            }
-            willrt_task_wait_io(epoch, willrt_task_deadline != NULL
-                                           ? willrt_task_deadline()
-                                           : 0);
-        }
-    } else {
-        willrt_os_mutex_lock(&willrt_blocking_lock);
-        while (!op->done) {
-            willrt_os_cond_wait(&willrt_blocking_work, &willrt_blocking_lock);
-        }
-        willrt_os_mutex_unlock(&willrt_blocking_lock);
-    }
+    /* This is the synchronous bridge for code that still has a thread to
+       block. It waits on the pool condition rather than spinning. A generated
+       state machine never calls it; it parks the frame and later polls. */
     willrt_os_mutex_lock(&willrt_blocking_lock);
+    while (!op->done) {
+        willrt_os_cond_wait(&willrt_blocking_work, &willrt_blocking_lock);
+    }
     status = op->status;
     willrt_os_mutex_unlock(&willrt_blocking_lock);
     willrt_free(op);
