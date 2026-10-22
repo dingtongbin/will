@@ -37,6 +37,9 @@ type asyncMachineInfo struct {
 	postlude    []willc.Record
 	call        willc.Record
 	startName   string
+	pollName    string
+	finishName  string
+	waitUntil   bool
 	resultText  string
 	resultLLVM  string
 	callText    string
@@ -179,6 +182,16 @@ func (g *generator) asyncMachine(fnID int) (*asyncMachineInfo, bool) {
 	if !ok {
 		return nil, false
 	}
+	callName := fieldText(call, "text")
+	startName := asyncStartName(callName)
+	pollName := "willrt_blocking_poll"
+	finishName := "willrt_blocking_finish"
+	waitUntil := false
+	if callName == "willrt_task_sleep_async" {
+		pollName = "willrt_task_sleep_poll"
+		finishName = "willrt_task_sleep_finish"
+		waitUntil = true
+	}
 	return &asyncMachineInfo{
 		fn:          fn,
 		symbol:      qualify(g.pkg, fieldText(fn, "text")+".sm"),
@@ -192,7 +205,10 @@ func (g *generator) asyncMachine(fnID int) (*asyncMachineInfo, bool) {
 		prelude:     prelude,
 		postlude:    postlude,
 		call:        call,
-		startName:   asyncStartName(fieldText(call, "text")),
+		startName:   startName,
+		pollName:    pollName,
+		finishName:  finishName,
+		waitUntil:   waitUntil,
 		resultText:  resultText,
 		resultLLVM:  resultLLVM,
 	}, true
@@ -333,6 +349,8 @@ func (g *generator) asyncCallMachine(fnID int) (*asyncMachineInfo, bool) {
 		resultIndex: resultIndex,
 		kind:        "task",
 		targetSym:   callTargetSymbolFor(g.cur, call),
+		pollName:    "willrt_blocking_poll",
+		finishName:  "willrt_blocking_finish",
 		prelude:     prelude,
 		postlude:    postlude,
 		call:        call,

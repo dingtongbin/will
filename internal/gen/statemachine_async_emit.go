@@ -88,8 +88,12 @@ func (g *generator) emitAsyncStep(info *asyncMachineInfo) error {
 	g.spawnEmitted[info.symbol] = true
 	g.needTaskDecl = true
 	g.needWaitDecl = true
-	g.queueCDecl("willrt_blocking_poll", "i32", []string{"ptr"})
-	g.queueCDecl("willrt_blocking_finish", "i32", []string{"ptr"})
+	g.queueCDecl(info.pollName, "i32", []string{"ptr"})
+	g.queueCDecl(info.finishName, "i32", []string{"ptr"})
+	if info.waitUntil {
+		g.queueCDecl("willrt_task_sleep_deadline", "i64", []string{"ptr"})
+		g.queueCDecl("willrt_task_wait_until", "void", []string{"i64"})
+	}
 	g.smMode = false
 	g.labels = 0
 	g.slots = map[int]string{}
@@ -205,6 +209,7 @@ func (g *generator) emitAsyncStep(info *asyncMachineInfo) error {
 		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", child, op)
 	}
 	fmt.Fprintf(g.out, "  store i32 1, ptr %s\n", state)
+	g.emitSleepDeadline(info, op)
 	g.out.WriteString("  call void @willrt_task_mark_wait()\n  ret i32 -1\n")
 	g.out.WriteString("sm.wait:\n")
 	g.labels++
@@ -212,16 +217,17 @@ func (g *generator) emitAsyncStep(info *asyncMachineInfo) error {
 	afterWait := fmt.Sprintf("sm.after.wait.%d", g.labels)
 	if info.kind == "c" {
 		poll := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = call i32 @willrt_blocking_poll(ptr %s)\n", poll, g.load("ptr", op))
+		fmt.Fprintf(g.out, "  %s = call i32 @%s(ptr %s)\n", poll, llvmSymbol(info.pollName), g.load("ptr", op))
 		pending := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", pending, poll)
 		finish := fmt.Sprintf("sm.finish.%d", g.labels)
 		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", pending, park, finish)
 		fmt.Fprintf(g.out, "%s:\n", park)
+		g.emitSleepDeadline(info, op)
 		g.out.WriteString("  call void @willrt_task_mark_wait()\n  ret i32 -1\n")
 		fmt.Fprintf(g.out, "%s:\n", finish)
 		status := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = call i32 @willrt_blocking_finish(ptr %s)\n", status, g.load("ptr", op))
+		fmt.Fprintf(g.out, "  %s = call i32 @%s(ptr %s)\n", status, llvmSymbol(info.finishName), g.load("ptr", op))
 		fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", status, statusField)
 		fmt.Fprintf(g.out, "  br label %%%s\n", afterWait)
 	} else {
@@ -346,6 +352,19 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string) (st
 	fmt.Fprintf(g.out, "  %s = call ptr @%s(%s)\n",
 		task, llvmSymbol(targetSym+".task"), strings.Join(parts, ", "))
 	return task, nil
+}
+
+// emitSleepDeadline names the next park deadline for an async sleep. The lane
+// arms its timer from that field; an ordinary IO wait has no explicit deadline
+// and uses the task's cancellation/deadline state instead.
+func (g *generator) emitSleepDeadline(info *asyncMachineInfo, op string) {
+	if !info.waitUntil {
+		return
+	}
+	deadline := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call i64 @willrt_task_sleep_deadline(ptr %s)\n",
+		deadline, g.load("ptr", op))
+	fmt.Fprintf(g.out, "  call void @willrt_task_wait_until(i64 %s)\n", deadline)
 }
 
 // asyncStartArgs evaluates the arguments of the blocking form and returns the

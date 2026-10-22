@@ -40,6 +40,32 @@ func TestAsyncCallerWaitsOnAChildTask(t *testing.T) {
 	}
 }
 
+func TestAsyncSleepUsesTheTimerDeadline(t *testing.T) {
+	src := "import c \"clock.h\" {\n" +
+		"    fast willrt_task_sleep_async\n" +
+		"}\n" +
+		"func Nap(ns: i64) -> i32 {\n" +
+		"    var status: i32 = c.willrt_task_sleep_async(ns)\n" +
+		"    return status\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		`call ptr @willrt_task_sleep_async_start(i64 %`,
+		`call i64 @willrt_task_sleep_deadline(ptr %`,
+		`call void @willrt_task_wait_until(i64 %`,
+		`call i32 @willrt_task_sleep_poll(ptr %`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestAsyncFileCallBecomesStateMachine(t *testing.T) {
 	src := "import c \"fs.h\" {\n" +
 		"    fast willrt_fs_async_read_file\n" +

@@ -305,9 +305,20 @@ void willrt_task_bind_cancel(willrt_task* task, void* flag);
    WILLRT_SUSPEND. A bare suspend without this mark is retried immediately. */
 void willrt_task_mark_wait(void);
 int64_t willrt_task_deadline(void);
-/* willrt_task_sleep_ns parks the current task until the duration passes. The
-   main thread sleeps directly. */
+/* willrt_task_sleep_ns sleeps the calling thread. A generated step uses the
+   async spelling and parks its frame instead. */
 void willrt_task_sleep_ns(int64_t ns);
+/* The async sleep handle records one deadline. poll never waits; finish frees
+   the handle and returns zero for a valid sleep. */
+typedef struct willrt_sleep_op willrt_sleep_op;
+int32_t willrt_task_sleep_async(int64_t ns);
+willrt_sleep_op* willrt_task_sleep_async_start(int64_t ns);
+int32_t willrt_task_sleep_poll(willrt_sleep_op* op);
+int32_t willrt_task_sleep_finish(willrt_sleep_op* op);
+int64_t willrt_task_sleep_deadline(willrt_sleep_op* op);
+/* willrt_task_wait_until names the deadline of the next park. The scheduler
+   arms its timer and clears the field after the park. */
+void willrt_task_wait_until(int64_t deadline);
 /* A state-machine step that is not ready marks a wait and returns
    WILLRT_SUSPEND. The scheduler parks the frame until an IO epoch changes or
    its target task finishes. */

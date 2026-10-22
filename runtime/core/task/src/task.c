@@ -46,6 +46,7 @@ struct willrt_task {
     int32_t wait_requested;
     void* cancel_flag;
     int64_t deadline;
+    int64_t wait_deadline;
     unsigned char* result;
     size_t result_size;
     char* message;
@@ -227,10 +228,15 @@ void willrt_task_wait_io(uint32_t epoch, int64_t deadline) {
 
 static void willrt_task_park(struct willrt_task* task) {
     willrt_timer* timer = NULL;
+    int64_t wake = task->wait_deadline;
 
-    if (task->deadline > 0 && willrt_now_ns() < task->deadline) {
-        timer = willrt_timer_new(task->deadline, willrt_io_timer, NULL);
+    if (task->deadline > 0 && (wake == 0 || task->deadline < wake)) {
+        wake = task->deadline;
     }
+    if (wake > 0 && willrt_now_ns() < wake) {
+        timer = willrt_timer_new(wake, willrt_io_timer, NULL);
+    }
+    task->wait_deadline = 0;
     willrt_os_mutex_lock(&willrt_lane_lock);
     task->state = WILLRT_TASK_WAITING;
     task->io_next = NULL;
@@ -700,6 +706,57 @@ void willrt_task_sleep_ns(int64_t ns) {
     deadline = willrt_now_ns() + ns;
     (void)deadline;
     willrt_os_sleep_ns(ns);
+}
+
+struct willrt_sleep_op {
+    int64_t deadline;
+    int32_t status;
+};
+
+int32_t willrt_task_sleep_async(int64_t ns) {
+    if (ns < 0) {
+        return 1;
+    }
+    willrt_os_sleep_ns(ns);
+    return 0;
+}
+
+willrt_sleep_op* willrt_task_sleep_async_start(int64_t ns) {
+    willrt_sleep_op* op = (willrt_sleep_op*)willrt_alloc(sizeof(*op));
+
+    if (op == NULL) {
+        return NULL;
+    }
+    op->status = ns < 0 ? 1 : 0;
+    op->deadline = ns < 0 ? willrt_now_ns() : willrt_now_ns() + ns;
+    return op;
+}
+
+int32_t willrt_task_sleep_poll(willrt_sleep_op* op) {
+    return op == NULL || willrt_now_ns() >= op->deadline;
+}
+
+int32_t willrt_task_sleep_finish(willrt_sleep_op* op) {
+    int32_t status;
+
+    if (op == NULL) {
+        return 1;
+    }
+    status = op->status;
+    willrt_free(op);
+    return status;
+}
+
+int64_t willrt_task_sleep_deadline(willrt_sleep_op* op) {
+    return op == NULL ? 0 : op->deadline;
+}
+
+void willrt_task_wait_until(int64_t deadline) {
+    struct willrt_task* task = willrt_task_self;
+
+    if (task != NULL) {
+        task->wait_deadline = deadline;
+    }
 }
 
 int64_t willrt_task_enter_deadline(int64_t duration_ns) {

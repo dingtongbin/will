@@ -2,6 +2,7 @@ import c "clock.h" {
     fast willrt_now_ns
     fast willrt_os_sleep_ns
     fast willrt_task_sleep_ns
+    fast willrt_task_sleep_async
 }
 
 // Stopwatch measures elapsed monotonic time, so a wall-clock adjustment does
@@ -32,13 +33,13 @@ func (s: Stopwatch) Elapsed() -> Duration {
     return Duration(c.willrt_now_ns() - s.start)
 }
 
-// Sleep suspends the current task for d. The portable implementation sleeps
-// the calling thread; a scheduler may make it a suspension point later.
+// Sleep suspends the current task for d. A spawned caller runs the async
+// spelling as a state machine; a synchronous caller keeps the thread sleep.
 func Sleep(d: Duration) -> Result<(), Error> {
     var ns: i64 = i64(d)
-    if ns < 0 {
+    var status: i32 = c.willrt_task_sleep_async(ns)
+    if status != 0 {
         return Err(clockError { message: "time: negative sleep"})
     }
-    c.willrt_task_sleep_ns(ns)
     return Ok(())
 }
