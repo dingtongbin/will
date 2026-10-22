@@ -236,6 +236,17 @@ int32_t willrt_blocking_call(void* fn, void* arg, void* out);
    the handle is released by willrt_blocking_wait. */
 typedef struct willrt_blocking_op willrt_blocking_op;
 willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out);
+/* willrt_blocking_submit_copy copies size bytes of arg into the handle, so a
+   state machine can return to its caller while the worker still reads the
+   arguments. The handle owns the copy. */
+willrt_blocking_op* willrt_blocking_submit_copy(void* fn, const void* arg,
+                                                size_t size, void* out);
+/* willrt_blocking_poll reports 1 when the worker finished and 0 otherwise. It
+   never waits. */
+int32_t willrt_blocking_poll(willrt_blocking_op* op);
+/* willrt_blocking_finish returns the worker status and releases the handle.
+   The caller must have observed a finished poll. */
+int32_t willrt_blocking_finish(willrt_blocking_op* op);
 int32_t willrt_blocking_wait(willrt_blocking_op* op);
 void willrt_blocking_shutdown(void);
 

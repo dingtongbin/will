@@ -18,6 +18,8 @@ void willrt_free(void* ptr);
 
 typedef struct willrt_blocking_op willrt_blocking_op;
 willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out);
+willrt_blocking_op* willrt_blocking_submit_copy(void* fn, const void* arg,
+                                                size_t size, void* out);
 int32_t willrt_blocking_wait(willrt_blocking_op* op);
 
 typedef struct exec_str {
@@ -383,6 +385,23 @@ int32_t willrt_exec_output_async(const void* path_raw, const void* args_raw,
     exec_async_output arg = {path_raw, args_raw, env_raw, dir_raw, out_raw,
                              err_raw, status_raw};
     return exec_async_wait(exec_async_output_worker, &arg);
+}
+
+willrt_blocking_op* willrt_exec_run_async_start(
+    const void* path_raw, const void* args_raw, const void* env_raw,
+    const void* dir_raw, void* status_raw) {
+    exec_async_run arg = {path_raw, args_raw, env_raw, dir_raw, status_raw};
+    return willrt_blocking_submit_copy(exec_async_run_worker, &arg, sizeof(arg),
+                                       NULL);
+}
+
+willrt_blocking_op* willrt_exec_output_async_start(
+    const void* path_raw, const void* args_raw, const void* env_raw,
+    const void* dir_raw, void* out_raw, void* err_raw, void* status_raw) {
+    exec_async_output arg = {path_raw, args_raw, env_raw, dir_raw, out_raw,
+                             err_raw, status_raw};
+    return willrt_blocking_submit_copy(exec_async_output_worker, &arg,
+                                       sizeof(arg), NULL);
 }
 
 int32_t willrt_exec_run(const void* path_raw, const void* args_raw,

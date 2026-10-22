@@ -89,6 +89,9 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		if sym == "" {
 			return "", g.errf(r.ID, "cannot translate node #%d: the spawned call has no function", r.ID)
 		}
+		if g.suspendable[sym] {
+			return g.emitConstructorCall(call, sym)
+		}
 	}
 	args := g.callArgs(call)
 	var frameTypes []string
@@ -226,8 +229,14 @@ func (g *generator) emitSpawns() error {
 			return err
 		}
 	}
+	for _, info := range g.pendingAsync {
+		if err := g.emitAsyncStep(info); err != nil {
+			return err
+		}
+	}
 	g.pendingSpawns = nil
 	g.pendingSM = nil
+	g.pendingAsync = nil
 	return nil
 }
 

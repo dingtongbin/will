@@ -66,6 +66,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		out:            &strings.Builder{},
 		aliases:        aliases,
 		declSet:        map[string]bool{},
+		suspendable:    map[string]bool{},
 	}
 	for _, doc := range docs {
 		g.docs = append(g.docs, newDocState(doc))
@@ -77,6 +78,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		g.findEntry(entry, entryPkg)
 	}
 	g.collectSignatures()
+	g.collectSuspendable()
 	g.collectExternalEnums()
 	g.collectGlobals()
 	g.planInstances()
@@ -222,11 +224,12 @@ func (g *generator) emitAux() {
 // docState is the per-file part of the translation: record ids and the callable
 // names mean something only inside one document.
 type docState struct {
-	path  string
-	clone bool
-	recs  map[int]willc.Record
-	funcs map[int]string
-	links map[int]string
+	path    string
+	clone   bool
+	recs    map[int]willc.Record
+	funcs   map[int]string
+	symbols map[int]string
+	links   map[int]string
 	// methods maps <type>.<method> to the symbol the method is emitted under.
 	methods map[string]string
 	// moduleID is the module record of this document, and globals maps each
@@ -239,6 +242,7 @@ func newDocState(doc *willc.Doc) *docState {
 	d := &docState{
 		recs:    map[int]willc.Record{},
 		funcs:   map[int]string{},
+		symbols: map[int]string{},
 		links:   map[int]string{},
 		methods: map[string]string{},
 	}
@@ -401,6 +405,7 @@ func (g *generator) collectSignatures() {
 					break
 				}
 			}
+			d.symbols[r.ID] = sym
 			g.paramTypes[sym] = params
 			if variadic {
 				g.varargs[sym] = true
@@ -501,7 +506,10 @@ func (g *generator) use(d *docState) {
 	g.pendingThunks = nil
 	g.spawnNames = map[int]string{}
 	g.pendingSpawns = nil
+	g.pendingSM = nil
+	g.pendingAsync = nil
 	g.pendingDefers = nil
+	g.smPlaces = map[int]smPlace{}
 	g.deferSeq = 0
 	g.deferSnapshots = map[int]deferSnapshot{}
 	g.joinOutSlots = map[int]string{}
@@ -718,6 +726,7 @@ type generator struct {
 	spawnSeq      int
 	pendingSpawns []spawnRequest
 	pendingSM     []*stateMachineInfo
+	pendingAsync  []*asyncMachineInfo
 	spawnEmitted  map[string]bool
 	// The slots below keep a loop from growing the stack on every evaluation
 	// of a join, receive, or send.
@@ -839,6 +848,24 @@ type generator struct {
 	strings       []string
 	stringsByText map[string]string
 	needPanicDecl bool
+	// suspendable names the functions that a spawned caller must run as a
+	// state-machine task instead of calling on the lane.
+	suspendable map[string]bool
+	// smMode makes a return store its value on the current task and return
+	// WILLRT_DONE. A state-machine step has i32 ABI even when the source
+	// function returns an aggregate, so it cannot emit the ordinary ret.
+	smMode bool
+	// smPlaces overrides a call expression with the slot where its child task
+	// stored the result. The postlude then unwraps or binds that result without
+	// calling the child again.
+	smPlaces map[int]smPlace
+}
+
+// smPlace is a pre-built place for one expression inside a state-machine
+// postlude.
+type smPlace struct {
+	ptr string
+	typ string
 }
 
 // docUsesError reports whether any record of the current document names the
@@ -890,8 +917,8 @@ func (g *generator) emitDoc() error {
 	// every queue until none of them gained work while the others ran.
 	for pass := 0; pass < 64; pass++ {
 		pending := len(g.pendingThunks) + len(g.pendingSpawns) +
-			len(g.pendingSM) + len(g.pendingBlock) + len(g.pendingDrops) +
-			len(g.pendingDefers)
+			len(g.pendingSM) + len(g.pendingAsync) + len(g.pendingBlock) +
+			len(g.pendingDrops) + len(g.pendingDefers)
 		if pending == 0 {
 			break
 		}
@@ -912,8 +939,8 @@ func (g *generator) emitDoc() error {
 		}
 	}
 	if pending := len(g.pendingThunks) + len(g.pendingSpawns) +
-		len(g.pendingSM) + len(g.pendingBlock) + len(g.pendingDrops) +
-		len(g.pendingDefers); pending != 0 {
+		len(g.pendingSM) + len(g.pendingAsync) + len(g.pendingBlock) +
+		len(g.pendingDrops) + len(g.pendingDefers); pending != 0 {
 		return fmt.Errorf("pending lowering work did not drain")
 	}
 	return g.emitInit(g.cur)
@@ -1229,6 +1256,17 @@ func (g *generator) errf(id int, format string, args ...any) error {
 }
 
 func (g *generator) funcDecl(fn willc.Record) error {
+	hasAsync := false
+	if info, ok := g.asyncMachine(fn.ID); ok {
+		g.pendingAsync = append(g.pendingAsync, info)
+		hasAsync = true
+	} else if info, ok := g.asyncCallMachine(fn.ID); ok {
+		g.pendingAsync = append(g.pendingAsync, info)
+		hasAsync = true
+	}
+	if g.suspendable[g.cur.funcs[fn.ID]] && !hasAsync {
+		return g.errf(fn.ID, "cannot translate node #%d: suspendable function %s has no supported state-machine shape", fn.ID, fieldText(fn, "text"))
+	}
 	if _, ok := g.stateMachine(fn.ID); ok {
 		// The state machine is emitted as the spawn step; a direct call to a
 		// suspendable function has no synchronous body by design.
@@ -2256,6 +2294,13 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 func (g *generator) body(b willc.Record, void bool) (bool, error) {
 	stmts := g.children(b.ID)
 	sortByID(stmts)
+	return g.bodyStmts(stmts, void)
+}
+
+// bodyStmts lowers one ordered statement list. A state-machine step uses it
+// for the statements before and after one suspension point, so the ordinary
+// body lowering and the split path share release and defer handling.
+func (g *generator) bodyStmts(stmts []willc.Record, void bool) (bool, error) {
 	entry := len(g.defers)
 	g.defers = append(g.defers, nil)
 	terminated := false
@@ -2434,7 +2479,11 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		if err := g.flushReleases(); err != nil {
 			return false, err
 		}
-		g.out.WriteString("  ret void\n")
+		if g.smMode {
+			g.out.WriteString("  ret i32 1\n")
+		} else {
+			g.out.WriteString("  ret void\n")
+		}
 		return true, nil
 	}
 	valueID := refField(st, "value")
@@ -2487,7 +2536,11 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 			if err := g.flushReleases(); err != nil {
 				return false, err
 			}
-			fmt.Fprintf(g.out, "  ret %s %s\n", iface.llvm, v)
+			if g.smMode {
+				g.storeTaskResult(iface.llvm, v)
+			} else {
+				fmt.Fprintf(g.out, "  ret %s %s\n", iface.llvm, v)
+			}
 			return true, nil
 		}
 	}
@@ -2508,7 +2561,11 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		if err := g.flushReleases(); err != nil {
 			return false, err
 		}
-		fmt.Fprintf(g.out, "  ret %s %s\n", typ, tmp)
+		if g.smMode {
+			g.storeTaskResult(typ, tmp)
+		} else {
+			fmt.Fprintf(g.out, "  ret %s %s\n", typ, tmp)
+		}
 		return true, nil
 	}
 	value, err := g.value(valueID)
@@ -2521,8 +2578,24 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 	if err := g.flushReleases(); err != nil {
 		return false, err
 	}
-	fmt.Fprintf(g.out, "  ret %s %s\n", g.resultType, value)
+	if g.smMode {
+		g.storeTaskResult(g.resultType, value)
+	} else {
+		fmt.Fprintf(g.out, "  ret %s %s\n", g.resultType, value)
+	}
 	return true, nil
+}
+
+// storeTaskResult copies one completed return value into the task result and
+// ends the step. The temporary is safe: a step returns exactly once.
+func (g *generator) storeTaskResult(typ, value string) {
+	g.needTaskDecl = true
+	slot := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, typ)
+	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, slot)
+	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n",
+		slot, g.sizeOf(typ))
+	g.out.WriteString("  ret i32 1\n")
 }
 
 // jump leaves the innermost loop: break jumps past it, continue to its step
@@ -2733,6 +2806,12 @@ func (g *generator) value(id int) (string, error) {
 			return "", g.errf(id, "cannot translate node #%d: a deferred aggregate is a place", id)
 		}
 		return g.load(snap.llvm, g.deferFieldPtr(snap)), nil
+	}
+	if p, ok := g.smPlaces[id]; ok {
+		if isAggregateType(p.typ) {
+			return "", g.errf(id, "cannot translate node #%d: a state-machine result is a place", id)
+		}
+		return g.load(p.typ, p.ptr), nil
 	}
 	switch r.Kind {
 	case "lit":

@@ -85,7 +85,11 @@ func (g *generator) tryCore(r willc.Record) (string, string, string, error) {
 	if err := g.flushReleases(); err != nil {
 		return "", "", "", err
 	}
-	fmt.Fprintf(g.out, "  ret %s %s\n", dst.llvm, returned)
+	if g.smMode {
+		g.storeTaskResult(dst.llvm, returned)
+	} else {
+		fmt.Fprintf(g.out, "  ret %s %s\n", dst.llvm, returned)
+	}
 	g.out.WriteString("  unreachable\n")
 	g.out.WriteString(okLabel + ":\n")
 

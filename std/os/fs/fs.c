@@ -21,6 +21,8 @@ void willrt_free(void* ptr);
 
 typedef struct willrt_blocking_op willrt_blocking_op;
 willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out);
+willrt_blocking_op* willrt_blocking_submit_copy(void* fn, const void* arg,
+                                                size_t size, void* out);
 int32_t willrt_blocking_wait(willrt_blocking_op* op);
 
 typedef struct fs_str {
@@ -525,6 +527,115 @@ int32_t willrt_fs_async_temp_file(const void* dir, const void* pattern,
     fs_async_temp arg = {(const fs_str*)dir, (const fs_str*)pattern,
                          (fs_file*)out};
     return fs_async_wait(fs_async_temp_worker, &arg);
+}
+
+willrt_blocking_op* willrt_fs_async_read_file_start(const void* path,
+                                                    void* out) {
+    fs_async_read_file arg = {(const fs_str*)path, (fs_array*)out};
+    return willrt_blocking_submit_copy(fs_async_read_file_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_write_file_start(const void* path,
+                                                     const void* data) {
+    fs_async_write_file arg = {(const fs_str*)path, (const fs_view*)data};
+    return willrt_blocking_submit_copy(fs_async_write_file_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_append_start(const void* path,
+                                                 const void* data) {
+    fs_async_write_file arg = {(const fs_str*)path, (const fs_view*)data};
+    return willrt_blocking_submit_copy(fs_async_append_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_open_start(const void* path,
+                                               const void* flags, void* out) {
+    fs_async_open arg = {(const fs_str*)path, (const fs_flags*)flags,
+                         (fs_file*)out};
+    return willrt_blocking_submit_copy(fs_async_open_worker, &arg, sizeof(arg),
+                                       NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_create_start(const void* path,
+                                                 uint32_t mode, void* out) {
+    fs_async_open arg = {(const fs_str*)path, NULL, (fs_file*)out};
+    (void)mode;
+    return willrt_blocking_submit_copy(fs_async_create_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_file_read_start(const void* file,
+                                                    void* count, void* array) {
+    fs_async_file_io arg = {(const fs_file*)file, (fs_array*)array,
+                            (int64_t*)count};
+    return willrt_blocking_submit_copy(fs_async_file_read_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_file_write_start(const void* file,
+                                                     const void* data) {
+    fs_async_file_write arg = {(const fs_file*)file, (const fs_view*)data};
+    return willrt_blocking_submit_copy(fs_async_file_write_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_file_seek_start(const void* file,
+                                                    int64_t offset,
+                                                    int32_t whence, void* out) {
+    fs_async_file_seek arg = {(const fs_file*)file, offset, whence,
+                              (int64_t*)out};
+    return willrt_blocking_submit_copy(fs_async_file_seek_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_file_sync_start(const void* file) {
+    fs_async_file_io arg = {(const fs_file*)file, NULL, NULL};
+    return willrt_blocking_submit_copy(fs_async_file_sync_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_file_stat_start(const void* file,
+                                                    void* out) {
+    fs_async_file_stat arg = {(const fs_file*)file, (fs_stat*)out};
+    return willrt_blocking_submit_copy(fs_async_file_stat_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_stat_start(const void* path, void* out) {
+    fs_async_stat arg = {(const fs_str*)path, (fs_stat*)out};
+    return willrt_blocking_submit_copy(fs_async_stat_worker, &arg, sizeof(arg),
+                                       NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_read_dir_start(const void* path,
+                                                   void* out) {
+    fs_async_read_dir arg = {(const fs_str*)path, (fs_array*)out};
+    return willrt_blocking_submit_copy(fs_async_read_dir_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_rename_start(const void* old_path,
+                                                 const void* new_path) {
+    fs_async_pair arg = {(const fs_str*)old_path, (const fs_str*)new_path};
+    return willrt_blocking_submit_copy(fs_async_rename_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_remove_start(const void* path) {
+    fs_async_pair arg = {(const fs_str*)path, NULL};
+    return willrt_blocking_submit_copy(fs_async_remove_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_temp_file_start(const void* dir,
+                                                    const void* pattern,
+                                                    void* out) {
+    fs_async_temp arg = {(const fs_str*)dir, (const fs_str*)pattern,
+                         (fs_file*)out};
+    return willrt_blocking_submit_copy(fs_async_temp_worker, &arg, sizeof(arg),
+                                       NULL);
 }
 
 int32_t willrt_fs_mkdir(const void* path_raw, uint32_t mode) {

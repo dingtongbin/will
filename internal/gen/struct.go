@@ -1037,6 +1037,9 @@ func (g *generator) place(id int) (string, string, error) {
 	if snap, ok := g.deferSnapshots[id]; ok {
 		return g.deferFieldPtr(snap), snap.llvm, nil
 	}
+	if p, ok := g.smPlaces[id]; ok {
+		return p.ptr, p.typ, nil
+	}
 	switch r.Kind {
 	case "lit":
 		kind := fieldText(r, "kind")

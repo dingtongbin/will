@@ -249,6 +249,99 @@ willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out) {
     return (willrt_blocking_op*)job;
 }
 
+willrt_blocking_op* willrt_blocking_submit_copy(void* fn, const void* arg,
+                                                size_t size, void* out) {
+    struct willrt_blocking_op* job;
+    int32_t started = 0;
+
+    if (fn == NULL) {
+        return NULL;
+    }
+    willrt_blocking_init();
+    if (atomic_load(&willrt_blocking_state) != 2) {
+        return NULL;
+    }
+    job = (struct willrt_blocking_op*)willrt_alloc(sizeof(*job) + size);
+    if (job == NULL) {
+        return NULL;
+    }
+    memset(job, 0, sizeof(*job));
+    job->fn = (willrt_blocking_fn)fn;
+    job->arg = size == 0 ? NULL : (void*)(job + 1);
+    job->out = out;
+    if (size != 0) {
+        memcpy(job->arg, arg, size);
+    }
+
+    willrt_os_mutex_lock(&willrt_blocking_lock);
+    if (willrt_blocking_stop) {
+        willrt_os_mutex_unlock(&willrt_blocking_lock);
+        willrt_free(job);
+        return NULL;
+    }
+    while (willrt_blocking_count == WILLRT_BLOCKING_QUEUE) {
+        willrt_os_cond_wait(&willrt_blocking_space, &willrt_blocking_lock);
+    }
+    willrt_blocking_queue[willrt_blocking_tail] = job;
+    willrt_blocking_tail = (willrt_blocking_tail + 1) % WILLRT_BLOCKING_QUEUE;
+    willrt_blocking_count++;
+    if (willrt_blocking_created < willrt_blocking_max &&
+        willrt_blocking_idle == 0) {
+        size_t index = willrt_blocking_created;
+
+        willrt_rc_set_threaded();
+        willrt_mem_set_shared();
+        if (willrt_os_thread_start(&willrt_blocking_threads[index],
+                                   willrt_blocking_worker, NULL) == 0) {
+            willrt_blocking_created++;
+            started = 1;
+        }
+    }
+    willrt_os_cond_signal(&willrt_blocking_work);
+    if (!started && willrt_blocking_created == 0) {
+        willrt_blocking_count--;
+        willrt_blocking_tail = (willrt_blocking_tail + WILLRT_BLOCKING_QUEUE - 1)
+                               % WILLRT_BLOCKING_QUEUE;
+        willrt_os_cond_signal(&willrt_blocking_space);
+        willrt_os_mutex_unlock(&willrt_blocking_lock);
+        willrt_free(job);
+        return NULL;
+    }
+    willrt_os_mutex_unlock(&willrt_blocking_lock);
+    return (willrt_blocking_op*)job;
+}
+
+int32_t willrt_blocking_poll(willrt_blocking_op* op_raw) {
+    struct willrt_blocking_op* op = (struct willrt_blocking_op*)op_raw;
+    int32_t done;
+
+    if (op == NULL) {
+        return 0;
+    }
+    willrt_os_mutex_lock(&willrt_blocking_lock);
+    done = op->done;
+    willrt_os_mutex_unlock(&willrt_blocking_lock);
+    return done;
+}
+
+int32_t willrt_blocking_finish(willrt_blocking_op* op_raw) {
+    struct willrt_blocking_op* op = (struct willrt_blocking_op*)op_raw;
+    int32_t status;
+
+    if (op == NULL) {
+        return WILLRT_FAILED;
+    }
+    willrt_os_mutex_lock(&willrt_blocking_lock);
+    if (!op->done) {
+        willrt_os_mutex_unlock(&willrt_blocking_lock);
+        return WILLRT_SUSPEND;
+    }
+    status = op->status;
+    willrt_os_mutex_unlock(&willrt_blocking_lock);
+    willrt_free(op);
+    return status;
+}
+
 int32_t willrt_blocking_wait(willrt_blocking_op* op_raw) {
     struct willrt_blocking_op* op = (struct willrt_blocking_op*)op_raw;
     int32_t status;
