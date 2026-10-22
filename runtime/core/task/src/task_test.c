@@ -113,6 +113,39 @@ static void test_region_failure(void) {
     assert(willrt_region_exit() == 1);
 }
 
+static void test_panic_keeps_lanes(void) {
+    int32_t lanes = willrt_os_cpu_count();
+    int32_t input = 21;
+    int32_t output = 0;
+    willrt_task* task;
+
+    if (lanes < 1) {
+        lanes = 1;
+    }
+    /* Panic on every lane first. Before the setjmp boundary this killed each
+       lane thread, so the ordinary task below never ran. */
+    for (int32_t lane = 0; lane < lanes; lane++) {
+        task = willrt_task_new((void*)step_panic, NULL, 0, lane, 0);
+        assert(task != NULL);
+        willrt_task_run(task);
+        assert(willrt_join(task, NULL, NULL) == WILLRT_FAILED);
+    }
+    task = willrt_task_new((void*)step_double, &input, sizeof(input), 0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    for (int32_t attempt = 0; attempt < 1000; attempt++) {
+        int32_t status = willrt_task_try_join(task, &output, NULL);
+
+        if (status != WILLRT_SUSPEND) {
+            assert(status == WILLRT_OK);
+            assert(output == 42);
+            return;
+        }
+        willrt_os_sleep_ns(INT64_C(1000000));
+    }
+    assert(0 && "a task after panics did not run");
+}
+
 static void test_channel_order(void) {
     willrt_chan* chan = willrt_chan_new(sizeof(int32_t), 4, 0);
     int32_t value = 0;
@@ -216,6 +249,7 @@ int main(void) {
     test_task_suspend_resume();
     test_region_counts();
     test_region_failure();
+    test_panic_keeps_lanes();
     test_channel_order();
     test_channel_crosses_threads();
     test_channel_hands_off_to_waiting_task();

@@ -6,13 +6,16 @@
  * lane parks it until the IO epoch or a target dependency wakes it, then calls
  * the same step again. Jobs use the same step contract through the job pool.
  *
- * A panic inside a task writes its report, records the failure, and switches
- * back to the lane instead of ending the process. A panic on the main thread
- * keeps the old process-exit path.
+ * A panic inside a task writes its report, records the failure, and jumps back
+ * to the lane loop instead of ending the lane thread. The jump skips defer and
+ * static release, as the panic contract requires; the task frame is reclaimed
+ * by the task boundary. A panic outside a running step keeps the process-exit
+ * path.
  */
 
 #include "../../../include/willrt.h"
 
+#include <setjmp.h>
 #include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>
@@ -79,6 +82,8 @@ typedef struct lane_worker {
 } lane_worker;
 
 static _Thread_local struct willrt_task* willrt_task_self;
+static _Thread_local jmp_buf willrt_panic_jump;
+static _Thread_local int32_t willrt_panic_jump_active;
 static _Thread_local int32_t willrt_lane_self = -1;
 static _Thread_local struct willrt_region willrt_regions[WILLRT_REGION_DEPTH];
 static _Thread_local int willrt_region_depth;
@@ -138,8 +143,8 @@ static lane_worker* willrt_lane_of(const struct willrt_task* task) {
     if (atomic_load(&willrt_lane_workers[index].alive)) {
         return &willrt_lane_workers[index];
     }
-    /* A panic unwinds its task by ending the calling lane thread. Keep the
-       remaining lanes usable by handing that work to a live lane. */
+    /* A lane can still be stopped while the runtime shuts down. Hand its work
+       to a live lane so a queued task is not stranded. */
     {
         int32_t i;
         for (i = 0; i < willrt_lane_count; i++) {
@@ -341,7 +346,18 @@ static void willrt_task_run_step(struct willrt_task* task) {
     task->wait_requested = 0;
     willrt_task_self = task;
     willrt_mem_set_lane(task->lane);
+    /* A panic is a defect, not an exception: it discards the task and jumps
+       back here. The lane stack is reused; no task owns a C stack. */
+    willrt_panic_jump_active = 1;
+    if (setjmp(willrt_panic_jump) != 0) {
+        willrt_panic_jump_active = 0;
+        willrt_task_self = NULL;
+        willrt_task_finish(task);
+        task->state = WILLRT_TASK_DONE;
+        return;
+    }
     status = task->step(task->frame);
+    willrt_panic_jump_active = 0;
     willrt_task_self = NULL;
     if (status == WILLRT_SUSPEND) {
         if (task->wait_requested) {
@@ -686,12 +702,10 @@ int32_t willrt_task_fail(const char* message, size_t size, const char* site,
     task->site = site;
     task->symbol = symbol;
     willrt_os_mutex_unlock(&task->lock);
-    if (willrt_lane_self >= 0 && willrt_lane_self < willrt_lane_started) {
-        atomic_store(&willrt_lane_workers[willrt_lane_self].alive, 0);
+    if (willrt_panic_jump_active) {
+        longjmp(willrt_panic_jump, 1);
     }
-    willrt_task_finish(task);
-    willrt_os_thread_exit();
-    return 1;
+    return 0;
 }
 
 void willrt_region_enter(void) {

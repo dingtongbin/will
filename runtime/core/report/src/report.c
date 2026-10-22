@@ -16,7 +16,7 @@
  * over them is cheaper than a merged index that registration would have to
  * rebuild.
  *
- * willrt_panic writes the report and then ends the current task when the task
+ * willrt_panic writes the report and then fails the current task when the task
  * engine is linked in; outside a task, it exits the process with 101.
  */
 
@@ -37,7 +37,7 @@
 
 #if defined(__GNUC__) || defined(__clang__)
 /* Defined by the task engine. It records the failure on the current task and
-   ends that thread, so it never returns. */
+   transfers control out of the failed step, so it never returns on that path. */
 extern int32_t willrt_task_fail(const char* message, size_t size,
                                 const char* site, const char* symbol)
     __attribute__((weak));

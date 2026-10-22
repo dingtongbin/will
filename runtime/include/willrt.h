@@ -90,8 +90,8 @@ void willrt_os_cond_broadcast(willrt_os_cond* cond);
    a native primitive may poll; the comment in that platform file says so. */
 int32_t willrt_os_wait_on_address(void* addr, uint32_t expected, int64_t timeout_ns);
 void willrt_os_wake_address(void* addr, int32_t count);
-/* willrt_os_thread_exit ends the calling thread without returning. The task
-   engine uses it to contain a panic at the task boundary. */
+/* willrt_os_thread_exit ends the calling thread without returning. It is a
+   platform primitive; the task engine does not use it to contain a panic. */
 void willrt_os_thread_exit(void);
 
 /* willrt_alloc returns a block aligned for any type, or NULL on failure. A
