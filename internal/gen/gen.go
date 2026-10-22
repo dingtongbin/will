@@ -2449,6 +2449,11 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 	case "assign":
 		return false, g.assignStmt(st)
 	case "exprstmt":
+		if id := refField(st, "expr"); id != 0 {
+			if r, ok := g.recs[id]; ok && r.Kind == "panic" {
+				return g.panicStmt(r)
+			}
+		}
 		return false, g.exprStmt(st)
 	case "block":
 		return g.body(st, void)

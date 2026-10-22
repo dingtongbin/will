@@ -383,7 +383,7 @@ func (g *generator) bindPattern(pat willc.Record, subjLLVM, subjText, subjPtr, s
 			fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", addr, adt.llvm, subjPtr, adt.payloadIndex)
 			typ := adt.argLLVM[idx]
 			val := ""
-			if !isAggregateType(typ) {
+			if typ != "" && !isAggregateType(typ) {
 				val = g.load(typ, addr)
 			}
 			return g.bindPattern(kids[0], typ, adt.args[idx], addr, val)
@@ -432,7 +432,7 @@ func (g *generator) bindPattern(pat willc.Record, subjLLVM, subjText, subjPtr, s
 			}
 			typ := v.argLLVM[i]
 			val := ""
-			if !isAggregateType(typ) {
+			if typ != "" && !isAggregateType(typ) {
 				val = g.load(typ, addr)
 			}
 			if err := g.bindPattern(kid, typ, v.args[i], addr, val); err != nil {
