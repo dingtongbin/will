@@ -230,7 +230,7 @@ func (g *generator) emitSpawns() error {
 		}
 	}
 	for _, info := range g.pendingAsync {
-		if err := g.emitAsyncStep(info); err != nil {
+		if err := g.emitAsyncSequenceStep(info); err != nil {
 			return err
 		}
 	}

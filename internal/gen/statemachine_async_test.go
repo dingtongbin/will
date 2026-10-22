@@ -66,6 +66,34 @@ func TestAsyncSleepUsesTheTimerDeadline(t *testing.T) {
 	}
 }
 
+func TestTwoDirectAsyncCallsGetTwoWaitStates(t *testing.T) {
+	src := "import c \"fs.h\" {\n" +
+		"    fast willrt_fs_async_read_file\n" +
+		"}\n" +
+		"func Two(path: str) -> i32 {\n" +
+		"    var out: Array<u8>\n" +
+		"    var first: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
+		"    var second: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
+		"    return first + second\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		`switch i32 %`,
+		`i32 1, label %sm.wait.0`,
+		`i32 2, label %sm.wait.1`,
+		`sm.wait.1:`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestAsyncFileCallBecomesStateMachine(t *testing.T) {
 	src := "import c \"fs.h\" {\n" +
 		"    fast willrt_fs_async_read_file\n" +

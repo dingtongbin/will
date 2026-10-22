@@ -1262,10 +1262,7 @@ func (g *generator) errf(id int, format string, args ...any) error {
 
 func (g *generator) funcDecl(fn willc.Record) error {
 	hasAsync := false
-	if info, ok := g.asyncMachine(fn.ID); ok {
-		g.pendingAsync = append(g.pendingAsync, info)
-		hasAsync = true
-	} else if info, ok := g.asyncCallMachine(fn.ID); ok {
+	if info, ok := g.asyncSequenceMachine(fn.ID); ok {
 		g.pendingAsync = append(g.pendingAsync, info)
 		hasAsync = true
 	}

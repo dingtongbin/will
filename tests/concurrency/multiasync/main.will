@@ -1,0 +1,36 @@
+import "std/os/fs"
+import "std/time"
+
+func Fill(path: str) -> Result<(), Error> {
+    var one: str = "a"
+    _ = fs.AsyncWriteFile(path, one[Range(0, 1)])?
+    _ = time.Sleep(1ms)!
+    _ = fs.AsyncAppend(path, one[Range(0, 1)])?
+    return Ok(())
+}
+
+func main() -> i32 {
+    var path: str = "will-concurrency-multiasync.tmp"
+    var result: Result<(), Error> = Ok(())
+    region {
+        var task: Task<Result<(), Error>> = spawn Fill(path)
+        result = task.Join()!
+    }
+    if result.IsErr() {
+        _ = fs.Remove(path)
+        return 1
+    }
+    var loaded: Result<Array<u8>, Error> = fs.ReadFile(path)
+    _ = fs.Remove(path)
+    match loaded {
+        Ok(bytes) => {
+            if bytes.Len() != 2usize {
+                return 2
+            }
+        }
+        Err(_) => {
+            return 3
+        }
+    }
+    return 0
+}

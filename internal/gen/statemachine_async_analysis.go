@@ -59,7 +59,7 @@ func simpleAsyncBody(d *docState, fn int, marked map[string]bool) bool {
 		return false
 	}
 	stmts := childrenOf(recs, body)
-	callID := 0
+	seen := map[int]bool{}
 	count := 0
 	for _, r := range recs {
 		if !recordUnder(recs, r.ID, body) {
@@ -71,46 +71,25 @@ func simpleAsyncBody(d *docState, fn int, marked map[string]bool) bool {
 		if r.Kind != "mcall" && r.Kind != "call" {
 			continue
 		}
-		if isAsyncCRecord(r) || callTargetsMarked(d, r, marked) {
-			count++
-			callID = r.ID
+		if !isAsyncCRecord(r) && !callTargetsMarked(d, r, marked) {
+			continue
 		}
-	}
-	if count != 1 {
-		return false
-	}
-	call, ok := recs[callID]
-	if !ok {
-		return false
-	}
-	if isAsyncCRecord(call) {
-		parent := recs[refField(call, "parent")]
-		if (parent.Kind != "var" && parent.Kind != "const") ||
-			fieldText(parent, "type") != "i32" {
+		count++
+		call := r
+		if isAsyncCRecord(call) {
+			parent := recs[refField(call, "parent")]
+			if (parent.Kind != "var" && parent.Kind != "const") ||
+				fieldText(parent, "type") != "i32" {
+				return false
+			}
+		}
+		index := asyncTopStatement(recs, stmts, call.ID)
+		if index < 0 || seen[index] || !asyncCallPathAllowed(recs, call.ID, stmts[index].ID) {
 			return false
 		}
+		seen[index] = true
 	}
-	index := -1
-	for i, st := range stmts {
-		if recordUnder(recs, callID, st.ID) {
-			index = i
-			break
-		}
-	}
-	if index < 0 {
-		return false
-	}
-	for _, st := range stmts[:index] {
-		if !preludeRecordSafe(recs, st) {
-			return false
-		}
-	}
-	for _, st := range stmts[index+1:] {
-		if !supportedAsyncPostlude(st) {
-			return false
-		}
-	}
-	return true
+	return count != 0
 }
 
 func childrenOf(recs map[int]willc.Record, parent int) []willc.Record {

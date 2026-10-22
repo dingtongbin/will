@@ -22,6 +22,24 @@ type asyncField struct {
 // call. The frame is state, operation handle, parameters, and locals. The
 // constructor starts a task; the step starts the operation once and polls it
 // after each wakeup.
+// asyncSegment is one suspension in a sequence. before runs immediately before
+// the operation starts; after a child call the call's own statement still runs
+// so its ?/binding sees the stored result.
+type asyncSegment struct {
+	call        willc.Record
+	kind        string
+	startName   string
+	pollName    string
+	finishName  string
+	targetSym   string
+	waitUntil   bool
+	statusID    int
+	statusIndex int
+	resultIndex int
+	before      []willc.Record
+	stmt        willc.Record
+}
+
 type asyncMachineInfo struct {
 	fn          willc.Record
 	symbol      string
@@ -44,6 +62,8 @@ type asyncMachineInfo struct {
 	resultLLVM  string
 	callText    string
 	callLLVM    string
+	segments    []asyncSegment
+	tail        []willc.Record
 }
 
 // asyncStartName is the C entry that submits one asynchronous operation. The
