@@ -5,6 +5,7 @@ import "std/errors"
 
 import c "../../runtime/core/poll/src/poll.c" {
     fast willrt_poll_wait
+    fast willrt_poll_wait_async
 }
 
 // Poller holds one registration per descriptor. Add and Remove are constant
@@ -65,5 +66,12 @@ func (p: Poller) Next(timeout: Duration, mut out: Array<usize>) -> Result<usize,
 // delivery exists, it waits through the same synchronous path and is marked
 // interim so the scheduler work can replace this one function later.
 func (p: Poller) AsyncNext(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
-    return p.Next(timeout, out)
+    var before: usize = out.Len()
+    var status: i32 = c.willrt_poll_wait_async(raw(p.fds), raw(p.events),
+                                                 raw(p.users), i64(p.fds.Len()),
+                                                 i64(timeout), raw(out))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(out.Len() - before)
 }

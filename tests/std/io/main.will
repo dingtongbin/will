@@ -43,6 +43,18 @@ func main() -> i32 {
         }
     }
 
+    var asyncNext: Result<usize, Error> = poller.AsyncNext(0ns, out)
+    match asyncNext {
+        Ok(count) => {
+            if count != 0usize {
+                return 7
+            }
+        }
+        Err(_) => {
+            return 8
+        }
+    }
+
     var bad: Result<(), Error> = poller.Add(-1i64, 1usize)
     match bad {
         Err(e) => {

@@ -391,6 +391,43 @@ int32_t willrt_poll_wait(const void* fds_raw, const void* events_raw,
     return WILLRT_OK;
 }
 
+typedef struct willrt_poll_async_arg {
+    const void* fds;
+    const void* events;
+    const void* users;
+    int64_t count;
+    int64_t timeout_ns;
+    void* out;
+} willrt_poll_async_arg;
+
+typedef struct willrt_blocking_op willrt_blocking_op;
+extern willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out)
+    __attribute__((weak));
+extern int32_t willrt_blocking_wait(willrt_blocking_op* op)
+    __attribute__((weak));
+
+static int32_t willrt_poll_wait_worker(void* raw, void* ignored) {
+    willrt_poll_async_arg* arg = (willrt_poll_async_arg*)raw;
+    (void)ignored;
+    return willrt_poll_wait(arg->fds, arg->events, arg->users, arg->count,
+                            arg->timeout_ns, arg->out);
+}
+
+int32_t willrt_poll_wait_async(const void* fds, const void* events,
+                               const void* users, int64_t count,
+                               int64_t timeout_ns, void* out) {
+    willrt_poll_async_arg arg = {fds, events, users, count, timeout_ns, out};
+    willrt_blocking_op* op;
+    if (willrt_blocking_submit == NULL || willrt_blocking_wait == NULL) {
+        return willrt_poll_wait(fds, events, users, count, timeout_ns, out);
+    }
+    op = willrt_blocking_submit(willrt_poll_wait_worker, &arg, NULL);
+    if (op == NULL) {
+        return WILLRT_FAILED;
+    }
+    return willrt_blocking_wait(op);
+}
+
 void willrt_poll_shutdown(void) {
     if (atomic_load(&willrt_poll_state) != 2) {
         return;
