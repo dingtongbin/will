@@ -20,6 +20,11 @@ import c "fs.c" {
     fast willrt_fs_rename
     fast willrt_fs_remove
     fast willrt_fs_temp_file
+    fast willrt_fs_mkdir
+    fast willrt_fs_mkdir_all
+    fast willrt_fs_remove_all
+    fast willrt_fs_symlink
+    fast willrt_fs_temp_dir
     fast willrt_fs_async_read_file
     fast willrt_fs_async_write_file
     fast willrt_fs_async_append
@@ -273,6 +278,77 @@ func TempFile(dir: str, pattern: str) -> Result<File, Error> {
         return Err(errors.Io)
     }
     return Ok(file)
+}
+
+// Mkdir creates one directory.
+func Mkdir(path: str, mode: u32) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_mkdir(raw(path), mode)
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+// MkdirAll creates path and every missing parent.
+func MkdirAll(path: str, mode: u32) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_mkdir_all(raw(path), mode)
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+// RemoveAll removes path and everything below it.
+func RemoveAll(path: str) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_remove_all(raw(path))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+// Symlink creates a symbolic link at link that names target.
+func Symlink(target: str, link: str) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_symlink(raw(target), raw(link))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+// TempDir creates a directory under dir and returns its path.
+func TempDir(dir: str, pattern: str) -> Result<str, Error> {
+    var out: str = ""
+    var status: i32 = c.willrt_fs_temp_dir(raw(dir), raw(pattern), raw(out))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(out)
+}
+
+// AsyncMkdir is the async spelling of Mkdir.
+func AsyncMkdir(path: str, mode: u32) -> Result<(), Error> {
+    return Mkdir(path, mode)
+}
+
+// AsyncMkdirAll is the async spelling of MkdirAll.
+func AsyncMkdirAll(path: str, mode: u32) -> Result<(), Error> {
+    return MkdirAll(path, mode)
+}
+
+// AsyncRemoveAll is the async spelling of RemoveAll.
+func AsyncRemoveAll(path: str) -> Result<(), Error> {
+    return RemoveAll(path)
+}
+
+// AsyncSymlink is the async spelling of Symlink.
+func AsyncSymlink(target: str, link: str) -> Result<(), Error> {
+    return Symlink(target, link)
+}
+
+// AsyncTempDir is the async spelling of TempDir.
+func AsyncTempDir(dir: str, pattern: str) -> Result<str, Error> {
+    return TempDir(dir, pattern)
 }
 
 // AsyncReadFile is the async spelling of ReadFile.

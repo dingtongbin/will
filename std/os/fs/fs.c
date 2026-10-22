@@ -8,6 +8,7 @@
 
 #include "file.h"
 
+#include <errno.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -524,6 +525,234 @@ int32_t willrt_fs_async_temp_file(const void* dir, const void* pattern,
     fs_async_temp arg = {(const fs_str*)dir, (const fs_str*)pattern,
                          (fs_file*)out};
     return fs_async_wait(fs_async_temp_worker, &arg);
+}
+
+int32_t willrt_fs_mkdir(const void* path_raw, uint32_t mode) {
+    char* path = fs_copy((const fs_str*)path_raw);
+    int32_t status;
+    (void)mode;
+    if (path == NULL) {
+        return 1;
+    }
+#if defined(_WIN32)
+    status = _mkdir(path) == 0 ? 0 : 1;
+#else
+    status = mkdir(path, (mode_t)(mode == 0 ? 0777 : mode)) == 0 ? 0 : 1;
+#endif
+    willrt_free(path);
+    return status;
+}
+
+int32_t willrt_fs_mkdir_all(const void* path_raw, uint32_t mode) {
+    char* path = fs_copy((const fs_str*)path_raw);
+    char* cursor;
+    int32_t status = 0;
+
+    if (path == NULL) {
+        return 1;
+    }
+    for (cursor = path + 1; *cursor != '\0'; cursor++) {
+        if (*cursor != '/' && *cursor != '\\') {
+            continue;
+        }
+        *cursor = '\0';
+#if defined(_WIN32)
+        if (_mkdir(path) != 0 && errno != EEXIST) {
+            status = 1;
+        }
+#else
+        if (mkdir(path, (mode_t)(mode == 0 ? 0777 : mode)) != 0 &&
+            errno != EEXIST) {
+            status = 1;
+        }
+#endif
+        *cursor = '/';
+        if (status != 0) {
+            break;
+        }
+    }
+    if (status == 0) {
+#if defined(_WIN32)
+        if (_mkdir(path) != 0 && errno != EEXIST) {
+            status = 1;
+        }
+#else
+        if (mkdir(path, (mode_t)(mode == 0 ? 0777 : mode)) != 0 &&
+            errno != EEXIST) {
+            status = 1;
+        }
+#endif
+    }
+    willrt_free(path);
+    return status;
+}
+
+static int32_t fs_remove_all_path(char* path) {
+#if defined(_WIN32)
+    WIN32_FIND_DATAA data;
+    HANDLE handle;
+    char* pattern = fs_join(path, "*");
+    if (pattern == NULL) {
+        return 1;
+    }
+    handle = FindFirstFileA(pattern, &data);
+    willrt_free(pattern);
+    if (handle != INVALID_HANDLE_VALUE) {
+        do {
+            char* child;
+            if (strcmp(data.cFileName, ".") == 0 ||
+                strcmp(data.cFileName, "..") == 0) {
+                continue;
+            }
+            child = fs_join(path, data.cFileName);
+            if (child == NULL) {
+                FindClose(handle);
+                return 1;
+            }
+            if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
+                if (fs_remove_all_path(child) != 0) {
+                    willrt_free(child);
+                    FindClose(handle);
+                    return 1;
+                }
+            } else if (remove(child) != 0) {
+                willrt_free(child);
+                FindClose(handle);
+                return 1;
+            }
+            willrt_free(child);
+        } while (FindNextFileA(handle, &data));
+        FindClose(handle);
+    }
+    return _rmdir(path) == 0 ? 0 : 1;
+#else
+    DIR* dir = opendir(path);
+    struct dirent* entry;
+    if (dir == NULL) {
+        return remove(path) == 0 ? 0 : 1;
+    }
+    while ((entry = readdir(dir)) != NULL) {
+        char* child;
+        struct stat st;
+        if (strcmp(entry->d_name, ".") == 0 ||
+            strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        child = fs_join(path, entry->d_name);
+        if (child == NULL) {
+            closedir(dir);
+            return 1;
+        }
+        if (lstat(child, &st) == 0 && S_ISDIR(st.st_mode)) {
+            if (fs_remove_all_path(child) != 0) {
+                willrt_free(child);
+                closedir(dir);
+                return 1;
+            }
+        } else if (remove(child) != 0) {
+            willrt_free(child);
+            closedir(dir);
+            return 1;
+        }
+        willrt_free(child);
+    }
+    closedir(dir);
+    return rmdir(path) == 0 ? 0 : 1;
+#endif
+}
+
+int32_t willrt_fs_remove_all(const void* path_raw) {
+    char* path = fs_copy((const fs_str*)path_raw);
+    int32_t status;
+    if (path == NULL) {
+        return 1;
+    }
+    status = fs_remove_all_path(path);
+    willrt_free(path);
+    return status;
+}
+
+int32_t willrt_fs_symlink(const void* target_raw, const void* link_raw) {
+#if defined(_WIN32)
+    (void)target_raw;
+    (void)link_raw;
+    return 1;
+#else
+    char* target = fs_copy((const fs_str*)target_raw);
+    char* link = fs_copy((const fs_str*)link_raw);
+    int32_t status;
+    if (target == NULL || link == NULL) {
+        willrt_free(target);
+        willrt_free(link);
+        return 1;
+    }
+    status = symlink(target, link) == 0 ? 0 : 1;
+    willrt_free(target);
+    willrt_free(link);
+    return status;
+#endif
+}
+
+int32_t willrt_fs_temp_dir(const void* dir_raw, const void* pattern_raw,
+                           void* out_raw) {
+    char* dir = fs_copy((const fs_str*)dir_raw);
+    char* pattern = fs_copy((const fs_str*)pattern_raw);
+    fs_str* out = (fs_str*)out_raw;
+    char* path;
+    size_t len;
+    if (dir == NULL || pattern == NULL || out == NULL) {
+        willrt_free(dir);
+        willrt_free(pattern);
+        return 1;
+    }
+#if defined(_WIN32)
+    path = (char*)willrt_alloc(MAX_PATH);
+    if (path == NULL) {
+        willrt_free(dir);
+        willrt_free(pattern);
+        return 1;
+    }
+    if (GetTempFileNameA(dir, pattern, 0, path) == 0) {
+        willrt_free(path);
+        willrt_free(dir);
+        willrt_free(pattern);
+        return 1;
+    }
+    remove(path);
+    if (_mkdir(path) != 0) {
+        willrt_free(path);
+        willrt_free(dir);
+        willrt_free(pattern);
+        return 1;
+    }
+#else
+    len = strlen(dir);
+    path = (char*)willrt_alloc(len + strlen(pattern) + 12);
+    if (path == NULL) {
+        willrt_free(dir);
+        willrt_free(pattern);
+        return 1;
+    }
+    memcpy(path, dir, len);
+    if (len != 0 && dir[len - 1] != '/') {
+        path[len++] = '/';
+    }
+    memcpy(path + len, pattern, strlen(pattern));
+    len += strlen(pattern);
+    memcpy(path + len, "XXXXXX", 6);
+    path[len + 6] = '\0';
+    if (mkdtemp(path) == NULL) {
+        willrt_free(path);
+        willrt_free(dir);
+        willrt_free(pattern);
+        return 1;
+    }
+#endif
+    out->data = (const unsigned char*)path;
+    out->len = (int64_t)strlen(path);
+    willrt_free(dir);
+    willrt_free(pattern);
+    return 0;
 }
 
 int32_t willrt_fs_file_stat(const void* file_raw, void* out_raw) {
