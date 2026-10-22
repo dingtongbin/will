@@ -144,105 +144,108 @@ entry:
   %t58 = call ptr @willrt_task_new(ptr @"example.com/taskresume.spawn.1", ptr %t56, i64 %t55, i32 %t57, i32 0)
   call void @willrt_task_run(ptr %t58)
   store ptr %t58, ptr %v.inner
-  %t59 = getelementptr { ptr }, ptr null, i32 1
-  %t60 = ptrtoint ptr %t59 to i64
-  %t61 = call ptr @willrt_alloc(i64 %t60)
-  %t62 = getelementptr { ptr }, ptr %t61, i32 0, i32 0
-  %t63 = load ptr, ptr %v.inner
-  store ptr %t63, ptr %t62
-  %t64 = call i32 @willrt_lane_here()
-  %t65 = call ptr @willrt_task_new(ptr @"example.com/taskresume.spawn.2", ptr %t61, i64 %t60, i32 %t64, i32 0)
-  call void @willrt_task_run(ptr %t65)
-  store ptr %t65, ptr %v.work
-  %t66 = load ptr, ptr %v.work
-  %t67 = call i32 @willrt_join(ptr %t66, ptr %v.join.out.76, ptr %v.join.err.76)
-  %t68 = icmp eq i32 %t67, 0
-  br i1 %t68, label %task.ok.1, label %task.fail.1
+  %t59 = load ptr, ptr %v.inner
+  %t60 = getelementptr { i32, ptr, i32 }, ptr null, i32 1
+  %t61 = ptrtoint ptr %t60 to i64
+  %t62 = call ptr @willrt_alloc(i64 %t61)
+  %t63 = getelementptr { i32, ptr, i32 }, ptr %t62, i32 0, i32 0
+  store i32 0, ptr %t63
+  %t64 = getelementptr { i32, ptr, i32 }, ptr %t62, i32 0, i32 1
+  store ptr %t59, ptr %t64
+  %t65 = getelementptr { i32, ptr, i32 }, ptr %t62, i32 0, i32 2
+  store i32 0, ptr %t65
+  %t66 = call ptr @willrt_task_new(ptr @"example.com/taskresume.Work.sm", ptr %t62, i64 %t61, i32 0, i32 0)
+  call void @willrt_task_run(ptr %t66)
+  store ptr %t66, ptr %v.work
+  %t67 = load ptr, ptr %v.work
+  %t68 = call i32 @willrt_join(ptr %t67, ptr %v.join.out.76, ptr %v.join.err.76)
+  %t69 = icmp eq i32 %t68, 0
+  br i1 %t69, label %task.ok.1, label %task.fail.1
 task.fail.1:
-  %t69 = getelementptr inbounds %willrt_error, ptr %v.join.err.76, i32 0, i32 0
-  %t70 = load ptr, ptr %t69
-  %t71 = getelementptr inbounds %willrt_error, ptr %v.join.err.76, i32 0, i32 1
-  %t72 = load i64, ptr %t71
-  %t73 = getelementptr inbounds %willrt_error, ptr %v.join.err.76, i32 0, i32 2
-  %t74 = load ptr, ptr %t73
-  %t75 = getelementptr inbounds %willrt_error, ptr %v.join.err.76, i32 0, i32 3
-  %t76 = load ptr, ptr %t75
-  call void @willrt_panic_n(ptr %t70, i64 %t72, ptr %t74, ptr %t76)
+  %t70 = getelementptr inbounds %willrt_error, ptr %v.join.err.76, i32 0, i32 0
+  %t71 = load ptr, ptr %t70
+  %t72 = getelementptr inbounds %willrt_error, ptr %v.join.err.76, i32 0, i32 1
+  %t73 = load i64, ptr %t72
+  %t74 = getelementptr inbounds %willrt_error, ptr %v.join.err.76, i32 0, i32 2
+  %t75 = load ptr, ptr %t74
+  %t76 = getelementptr inbounds %willrt_error, ptr %v.join.err.76, i32 0, i32 3
+  %t77 = load ptr, ptr %t76
+  call void @willrt_panic_n(ptr %t71, i64 %t73, ptr %t75, ptr %t77)
   unreachable
 task.ok.1:
-  %t77 = load i32, ptr %v.join.out.76
-  store i32 %t77, ptr %v.got
-  %t78 = load i32, ptr %v.got
-  %t79 = icmp ne i32 %t78, 7
-  br i1 %t79, label %if.then.2, label %if.end.2
+  %t78 = load i32, ptr %v.join.out.76
+  store i32 %t78, ptr %v.got
+  %t79 = load i32, ptr %v.got
+  %t80 = icmp ne i32 %t79, 7
+  br i1 %t80, label %if.then.2, label %if.end.2
 if.then.2:
   ret i32 1
 if.end.2:
-  %t80 = getelementptr { ptr }, ptr null, i32 1
-  %t81 = ptrtoint ptr %t80 to i64
-  %t82 = call ptr @willrt_alloc(i64 %t81)
-  %t83 = getelementptr { ptr }, ptr %t82, i32 0, i32 0
-  %t84 = load ptr, ptr %v.inner
-  store ptr %t84, ptr %t83
-  %t85 = call i32 @willrt_lane_here()
-  %t86 = call ptr @willrt_task_new(ptr @"example.com/taskresume.spawn.3", ptr %t82, i64 %t81, i32 %t85, i32 0)
-  call void @willrt_task_run(ptr %t86)
-  store ptr %t86, ptr %v.local
-  %t87 = load ptr, ptr %v.local
-  %t88 = call i32 @willrt_join(ptr %t87, ptr %v.join.out.94, ptr %v.join.err.94)
-  %t89 = icmp eq i32 %t88, 0
-  br i1 %t89, label %task.ok.3, label %task.fail.3
+  %t81 = getelementptr { ptr }, ptr null, i32 1
+  %t82 = ptrtoint ptr %t81 to i64
+  %t83 = call ptr @willrt_alloc(i64 %t82)
+  %t84 = getelementptr { ptr }, ptr %t83, i32 0, i32 0
+  %t85 = load ptr, ptr %v.inner
+  store ptr %t85, ptr %t84
+  %t86 = call i32 @willrt_lane_here()
+  %t87 = call ptr @willrt_task_new(ptr @"example.com/taskresume.spawn.2", ptr %t83, i64 %t82, i32 %t86, i32 0)
+  call void @willrt_task_run(ptr %t87)
+  store ptr %t87, ptr %v.local
+  %t88 = load ptr, ptr %v.local
+  %t89 = call i32 @willrt_join(ptr %t88, ptr %v.join.out.94, ptr %v.join.err.94)
+  %t90 = icmp eq i32 %t89, 0
+  br i1 %t90, label %task.ok.3, label %task.fail.3
 task.fail.3:
-  %t90 = getelementptr inbounds %willrt_error, ptr %v.join.err.94, i32 0, i32 0
-  %t91 = load ptr, ptr %t90
-  %t92 = getelementptr inbounds %willrt_error, ptr %v.join.err.94, i32 0, i32 1
-  %t93 = load i64, ptr %t92
-  %t94 = getelementptr inbounds %willrt_error, ptr %v.join.err.94, i32 0, i32 2
-  %t95 = load ptr, ptr %t94
-  %t96 = getelementptr inbounds %willrt_error, ptr %v.join.err.94, i32 0, i32 3
-  %t97 = load ptr, ptr %t96
-  call void @willrt_panic_n(ptr %t91, i64 %t93, ptr %t95, ptr %t97)
+  %t91 = getelementptr inbounds %willrt_error, ptr %v.join.err.94, i32 0, i32 0
+  %t92 = load ptr, ptr %t91
+  %t93 = getelementptr inbounds %willrt_error, ptr %v.join.err.94, i32 0, i32 1
+  %t94 = load i64, ptr %t93
+  %t95 = getelementptr inbounds %willrt_error, ptr %v.join.err.94, i32 0, i32 2
+  %t96 = load ptr, ptr %t95
+  %t97 = getelementptr inbounds %willrt_error, ptr %v.join.err.94, i32 0, i32 3
+  %t98 = load ptr, ptr %t97
+  call void @willrt_panic_n(ptr %t92, i64 %t94, ptr %t96, ptr %t98)
   unreachable
 task.ok.3:
-  %t98 = load i32, ptr %v.join.out.94
-  store i32 %t98, ptr %v.gotLocal
-  %t99 = load i32, ptr %v.gotLocal
-  %t100 = icmp ne i32 %t99, 8
-  br i1 %t100, label %if.then.4, label %if.end.4
+  %t99 = load i32, ptr %v.join.out.94
+  store i32 %t99, ptr %v.gotLocal
+  %t100 = load i32, ptr %v.gotLocal
+  %t101 = icmp ne i32 %t100, 8
+  br i1 %t101, label %if.then.4, label %if.end.4
 if.then.4:
   ret i32 2
 if.end.4:
-  %t101 = getelementptr { ptr }, ptr null, i32 1
-  %t102 = ptrtoint ptr %t101 to i64
-  %t103 = call ptr @willrt_alloc(i64 %t102)
-  %t104 = getelementptr { ptr }, ptr %t103, i32 0, i32 0
-  %t105 = load ptr, ptr %v.inner
-  store ptr %t105, ptr %t104
-  %t106 = call i32 @willrt_lane_here()
-  %t107 = call ptr @willrt_task_new(ptr @"example.com/taskresume.spawn.4", ptr %t103, i64 %t102, i32 %t106, i32 0)
-  call void @willrt_task_run(ptr %t107)
-  store ptr %t107, ptr %v.pure
-  %t108 = load ptr, ptr %v.pure
-  %t109 = call i32 @willrt_join(ptr %t108, ptr %v.join.out.112, ptr %v.join.err.112)
-  %t110 = icmp eq i32 %t109, 0
-  br i1 %t110, label %task.ok.5, label %task.fail.5
+  %t102 = getelementptr { ptr }, ptr null, i32 1
+  %t103 = ptrtoint ptr %t102 to i64
+  %t104 = call ptr @willrt_alloc(i64 %t103)
+  %t105 = getelementptr { ptr }, ptr %t104, i32 0, i32 0
+  %t106 = load ptr, ptr %v.inner
+  store ptr %t106, ptr %t105
+  %t107 = call i32 @willrt_lane_here()
+  %t108 = call ptr @willrt_task_new(ptr @"example.com/taskresume.spawn.3", ptr %t104, i64 %t103, i32 %t107, i32 0)
+  call void @willrt_task_run(ptr %t108)
+  store ptr %t108, ptr %v.pure
+  %t109 = load ptr, ptr %v.pure
+  %t110 = call i32 @willrt_join(ptr %t109, ptr %v.join.out.112, ptr %v.join.err.112)
+  %t111 = icmp eq i32 %t110, 0
+  br i1 %t111, label %task.ok.5, label %task.fail.5
 task.fail.5:
-  %t111 = getelementptr inbounds %willrt_error, ptr %v.join.err.112, i32 0, i32 0
-  %t112 = load ptr, ptr %t111
-  %t113 = getelementptr inbounds %willrt_error, ptr %v.join.err.112, i32 0, i32 1
-  %t114 = load i64, ptr %t113
-  %t115 = getelementptr inbounds %willrt_error, ptr %v.join.err.112, i32 0, i32 2
-  %t116 = load ptr, ptr %t115
-  %t117 = getelementptr inbounds %willrt_error, ptr %v.join.err.112, i32 0, i32 3
-  %t118 = load ptr, ptr %t117
-  call void @willrt_panic_n(ptr %t112, i64 %t114, ptr %t116, ptr %t118)
+  %t112 = getelementptr inbounds %willrt_error, ptr %v.join.err.112, i32 0, i32 0
+  %t113 = load ptr, ptr %t112
+  %t114 = getelementptr inbounds %willrt_error, ptr %v.join.err.112, i32 0, i32 1
+  %t115 = load i64, ptr %t114
+  %t116 = getelementptr inbounds %willrt_error, ptr %v.join.err.112, i32 0, i32 2
+  %t117 = load ptr, ptr %t116
+  %t118 = getelementptr inbounds %willrt_error, ptr %v.join.err.112, i32 0, i32 3
+  %t119 = load ptr, ptr %t118
+  call void @willrt_panic_n(ptr %t113, i64 %t115, ptr %t117, ptr %t119)
   unreachable
 task.ok.5:
-  %t119 = load i32, ptr %v.join.out.112
-  store i32 %t119, ptr %v.gotPure
-  %t120 = load i32, ptr %v.gotPure
-  %t121 = icmp ne i32 %t120, 16
-  br i1 %t121, label %if.then.6, label %if.end.6
+  %t120 = load i32, ptr %v.join.out.112
+  store i32 %t120, ptr %v.gotPure
+  %t121 = load i32, ptr %v.gotPure
+  %t122 = icmp ne i32 %t121, 16
+  br i1 %t122, label %if.then.6, label %if.end.6
 if.then.6:
   ret i32 3
 if.end.6:
@@ -250,116 +253,107 @@ if.end.6:
 }
 define i32 @"example.com/taskresume.spawn.1"(ptr %frame) {
 entry:
-  %t122 = call i32 @"example.com/taskresume.Inner"()
-  %t123 = alloca i32
-  store i32 %t122, ptr %t123
-  %t124 = getelementptr i32, ptr null, i32 1
-  %t125 = ptrtoint ptr %t124 to i64
-  call i32 @willrt_task_store_result(ptr %t123, i64 %t125)
+  %t123 = call i32 @"example.com/taskresume.Inner"()
+  %t124 = alloca i32
+  store i32 %t123, ptr %t124
+  %t125 = getelementptr i32, ptr null, i32 1
+  %t126 = ptrtoint ptr %t125 to i64
+  call i32 @willrt_task_store_result(ptr %t124, i64 %t126)
   ret i32 1
 }
 define i32 @"example.com/taskresume.spawn.2"(ptr %frame) {
 entry:
-  %t126 = getelementptr { ptr }, ptr %frame, i32 0, i32 0
-  %t127 = load ptr, ptr %t126
-  %t128 = alloca %willrt_error
-  %t129 = alloca i32
-  %t130 = call i32 @willrt_task_try_join(ptr %t127, ptr %t129, ptr %t128)
+  %t127 = getelementptr { ptr }, ptr %frame, i32 0, i32 0
+  %t128 = load ptr, ptr %t127
+  %t129 = alloca %willrt_error
+  %t130 = call i32 @willrt_task_try_join(ptr %t128, ptr null, ptr %t129)
   %t131 = icmp eq i32 %t130, -1
-  br i1 %t131, label %step.suspend.7, label %step.fail.7
-step.suspend.7:
+  br i1 %t131, label %resume.suspend.7, label %resume.fail.7
+resume.suspend.7:
   ret i32 -1
-step.fail.7:
+resume.fail.7:
   %t132 = icmp eq i32 %t130, 0
-  br i1 %t132, label %step.ok.7, label %step.fail.7.panic
-step.fail.7.panic:
-  %t133 = getelementptr inbounds %willrt_error, ptr %t128, i32 0, i32 0
+  br i1 %t132, label %resume.ok.7, label %resume.fail.7.panic
+resume.fail.7.panic:
+  %t133 = getelementptr inbounds %willrt_error, ptr %t129, i32 0, i32 0
   %t134 = load ptr, ptr %t133
-  %t135 = getelementptr inbounds %willrt_error, ptr %t128, i32 0, i32 1
+  %t135 = getelementptr inbounds %willrt_error, ptr %t129, i32 0, i32 1
   %t136 = load i64, ptr %t135
-  %t137 = getelementptr inbounds %willrt_error, ptr %t128, i32 0, i32 2
+  %t137 = getelementptr inbounds %willrt_error, ptr %t129, i32 0, i32 2
   %t138 = load ptr, ptr %t137
-  %t139 = getelementptr inbounds %willrt_error, ptr %t128, i32 0, i32 3
+  %t139 = getelementptr inbounds %willrt_error, ptr %t129, i32 0, i32 3
   %t140 = load ptr, ptr %t139
   call void @willrt_panic_n(ptr %t134, i64 %t136, ptr %t138, ptr %t140)
   unreachable
-step.ok.7:
-  %t141 = load i32, ptr %t129
-  %t142 = alloca i32
-  store i32 %t141, ptr %t142
-  %t143 = getelementptr i32, ptr null, i32 1
-  %t144 = ptrtoint ptr %t143 to i64
-  call i32 @willrt_task_store_result(ptr %t142, i64 %t144)
+resume.ok.7:
+  %t141 = getelementptr { ptr }, ptr %frame, i32 0, i32 0
+  %t142 = load ptr, ptr %t141
+  %t143 = call i32 @"example.com/taskresume.WorkLocal"(ptr %t142)
+  %t144 = alloca i32
+  store i32 %t143, ptr %t144
+  %t145 = getelementptr i32, ptr null, i32 1
+  %t146 = ptrtoint ptr %t145 to i64
+  call i32 @willrt_task_store_result(ptr %t144, i64 %t146)
   ret i32 1
 }
 define i32 @"example.com/taskresume.spawn.3"(ptr %frame) {
 entry:
-  %t145 = getelementptr { ptr }, ptr %frame, i32 0, i32 0
-  %t146 = load ptr, ptr %t145
-  %t147 = alloca %willrt_error
-  %t148 = call i32 @willrt_task_try_join(ptr %t146, ptr null, ptr %t147)
-  %t149 = icmp eq i32 %t148, -1
-  br i1 %t149, label %resume.suspend.8, label %resume.fail.8
+  %t147 = getelementptr { ptr }, ptr %frame, i32 0, i32 0
+  %t148 = load ptr, ptr %t147
+  %t149 = alloca %willrt_error
+  %t150 = call i32 @willrt_task_try_join(ptr %t148, ptr null, ptr %t149)
+  %t151 = icmp eq i32 %t150, -1
+  br i1 %t151, label %resume.suspend.8, label %resume.fail.8
 resume.suspend.8:
   ret i32 -1
 resume.fail.8:
-  %t150 = icmp eq i32 %t148, 0
-  br i1 %t150, label %resume.ok.8, label %resume.fail.8.panic
+  %t152 = icmp eq i32 %t150, 0
+  br i1 %t152, label %resume.ok.8, label %resume.fail.8.panic
 resume.fail.8.panic:
-  %t151 = getelementptr inbounds %willrt_error, ptr %t147, i32 0, i32 0
-  %t152 = load ptr, ptr %t151
-  %t153 = getelementptr inbounds %willrt_error, ptr %t147, i32 0, i32 1
-  %t154 = load i64, ptr %t153
-  %t155 = getelementptr inbounds %willrt_error, ptr %t147, i32 0, i32 2
-  %t156 = load ptr, ptr %t155
-  %t157 = getelementptr inbounds %willrt_error, ptr %t147, i32 0, i32 3
+  %t153 = getelementptr inbounds %willrt_error, ptr %t149, i32 0, i32 0
+  %t154 = load ptr, ptr %t153
+  %t155 = getelementptr inbounds %willrt_error, ptr %t149, i32 0, i32 1
+  %t156 = load i64, ptr %t155
+  %t157 = getelementptr inbounds %willrt_error, ptr %t149, i32 0, i32 2
   %t158 = load ptr, ptr %t157
-  call void @willrt_panic_n(ptr %t152, i64 %t154, ptr %t156, ptr %t158)
+  %t159 = getelementptr inbounds %willrt_error, ptr %t149, i32 0, i32 3
+  %t160 = load ptr, ptr %t159
+  call void @willrt_panic_n(ptr %t154, i64 %t156, ptr %t158, ptr %t160)
   unreachable
 resume.ok.8:
-  %t159 = getelementptr { ptr }, ptr %frame, i32 0, i32 0
-  %t160 = load ptr, ptr %t159
-  %t161 = call i32 @"example.com/taskresume.WorkLocal"(ptr %t160)
-  %t162 = alloca i32
-  store i32 %t161, ptr %t162
-  %t163 = getelementptr i32, ptr null, i32 1
-  %t164 = ptrtoint ptr %t163 to i64
-  call i32 @willrt_task_store_result(ptr %t162, i64 %t164)
+  %t161 = getelementptr { ptr }, ptr %frame, i32 0, i32 0
+  %t162 = load ptr, ptr %t161
+  %t163 = call i32 @"example.com/taskresume.WorkPure"(ptr %t162)
+  %t164 = alloca i32
+  store i32 %t163, ptr %t164
+  %t165 = getelementptr i32, ptr null, i32 1
+  %t166 = ptrtoint ptr %t165 to i64
+  call i32 @willrt_task_store_result(ptr %t164, i64 %t166)
   ret i32 1
 }
-define i32 @"example.com/taskresume.spawn.4"(ptr %frame) {
+define i32 @"example.com/taskresume.Work.sm"(ptr %frame) {
 entry:
-  %t165 = getelementptr { ptr }, ptr %frame, i32 0, i32 0
-  %t166 = load ptr, ptr %t165
-  %t167 = alloca %willrt_error
-  %t168 = call i32 @willrt_task_try_join(ptr %t166, ptr null, ptr %t167)
-  %t169 = icmp eq i32 %t168, -1
-  br i1 %t169, label %resume.suspend.9, label %resume.fail.9
-resume.suspend.9:
+  %t167 = getelementptr { i32, ptr, i32 }, ptr %frame, i32 0, i32 0
+  %t168 = load i32, ptr %t167
+  %t169 = getelementptr { i32, ptr, i32 }, ptr %frame, i32 0, i32 1
+  %t170 = getelementptr { i32, ptr, i32 }, ptr %frame, i32 0, i32 2
+  switch i32 %t168, label %join.init [ i32 1, label %join.wait ]
+join.init:
+  store i32 1, ptr %t167
+  br label %join.wait
+join.wait:
+  %t171 = alloca %willrt_error
+  %t173 = load ptr, ptr %t169
+  %t172 = call i32 @willrt_task_try_join(ptr %t173, ptr %t170, ptr %t171)
+  %t174 = icmp eq i32 %t172, -1
+  br i1 %t174, label %join.park.9, label %join.done.9
+join.park.9:
+  call void @willrt_task_mark_wait()
   ret i32 -1
-resume.fail.9:
-  %t170 = icmp eq i32 %t168, 0
-  br i1 %t170, label %resume.ok.9, label %resume.fail.9.panic
-resume.fail.9.panic:
-  %t171 = getelementptr inbounds %willrt_error, ptr %t167, i32 0, i32 0
-  %t172 = load ptr, ptr %t171
-  %t173 = getelementptr inbounds %willrt_error, ptr %t167, i32 0, i32 1
-  %t174 = load i64, ptr %t173
-  %t175 = getelementptr inbounds %willrt_error, ptr %t167, i32 0, i32 2
-  %t176 = load ptr, ptr %t175
-  %t177 = getelementptr inbounds %willrt_error, ptr %t167, i32 0, i32 3
-  %t178 = load ptr, ptr %t177
-  call void @willrt_panic_n(ptr %t172, i64 %t174, ptr %t176, ptr %t178)
-  unreachable
-resume.ok.9:
-  %t179 = getelementptr { ptr }, ptr %frame, i32 0, i32 0
-  %t180 = load ptr, ptr %t179
-  %t181 = call i32 @"example.com/taskresume.WorkPure"(ptr %t180)
-  %t182 = alloca i32
-  store i32 %t181, ptr %t182
-  %t183 = getelementptr i32, ptr null, i32 1
-  %t184 = ptrtoint ptr %t183 to i64
-  call i32 @willrt_task_store_result(ptr %t182, i64 %t184)
+join.done.9:
+  %t175 = getelementptr i32, ptr null, i32 1
+  %t176 = ptrtoint ptr %t175 to i64
+  call i32 @willrt_task_store_result(ptr %t170, i64 %t176)
   ret i32 1
 }
 declare void @willrt_init()
@@ -400,3 +394,4 @@ declare i64 @willrt_now_ns()
 declare void @willrt_region_enter()
 declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
+declare void @willrt_task_mark_wait()

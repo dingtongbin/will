@@ -16,6 +16,7 @@ type stateMachineInfo struct {
 	frameType  string
 	resultText string
 	resultLLVM string
+	join       bool
 	chanID     int
 	sumID      int
 	sumType    string
@@ -135,6 +136,138 @@ func (g *generator) stateMachine(fnID int) (*stateMachineInfo, bool) {
 		elemType:   elem,
 		elemLLVM:   elemLLVM,
 	}, true
+}
+
+// joinStateMachine recognizes `return task.Join()!` with a task parameter. Its
+// frame is state, task, result. The step uses the nonblocking try-join and
+// parks when the dependency is still running.
+func (g *generator) joinStateMachine(fnID int) (*stateMachineInfo, bool) {
+	fn, ok := g.recs[fnID]
+	if !ok || fn.Kind != "func" || receiverOfIn(g.cur, fnID) != nil {
+		return nil, false
+	}
+	bodyID := 0
+	for _, r := range g.recs {
+		if r.Kind == "block" && refField(r, "parent") == fnID {
+			bodyID = r.ID
+			break
+		}
+	}
+	if bodyID == 0 {
+		return nil, false
+	}
+	var returns []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "return" && refField(r, "parent") == bodyID {
+			returns = append(returns, r)
+		}
+	}
+	if len(returns) != 1 {
+		return nil, false
+	}
+	value := refField(returns[0], "value")
+	unwrap, ok := g.recs[value]
+	if !ok || unwrap.Kind != "unwrap" {
+		return nil, false
+	}
+	join, ok := g.recs[refField(unwrap, "expr")]
+	if !ok || join.Kind != "join" {
+		return nil, false
+	}
+	name, ok := g.recs[refField(join, "task")]
+	if !ok || name.Kind != "name" {
+		return nil, false
+	}
+	taskType, err := g.willTypeText(name.ID)
+	if err != nil {
+		return nil, false
+	}
+	elem, ok := taskElemText(taskType)
+	if !ok {
+		return nil, false
+	}
+	resultLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || resultLLVM == "" || isAggregateType(resultLLVM) {
+		return nil, false
+	}
+	return &stateMachineInfo{
+		fn:         fn,
+		symbol:     qualify(g.pkg, fieldText(fn, "text")+".sm"),
+		frameType:  fmt.Sprintf("{ i32, ptr, %s }", resultLLVM),
+		resultText: elem,
+		resultLLVM: resultLLVM,
+		join:       true,
+	}, true
+}
+
+func (g *generator) lowerJoinStateMachineSpawn(r willc.Record, info *stateMachineInfo, call willc.Record) (string, error) {
+	args := g.callArgs(call)
+	if len(args) != 1 {
+		return "", g.errf(r.ID, "cannot translate node #%d: the join state machine takes one task", r.ID)
+	}
+	taskArg, err := g.value(args[0])
+	if err != nil {
+		return "", err
+	}
+	size := g.sizeOf(info.frameType)
+	g.needAllocDecl = true
+	g.needTaskDecl = true
+	frame := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", frame, size)
+	state := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 0\n", state, info.frameType, frame)
+	fmt.Fprintf(g.out, "  store i32 0, ptr %s\n", state)
+	taskField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 1\n", taskField, info.frameType, frame)
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", taskArg, taskField)
+	resultField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 2\n", resultField, info.frameType, frame)
+	fmt.Fprintf(g.out, "  store %s 0, ptr %s\n", info.resultLLVM, resultField)
+	task := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 0, i32 0)\n",
+		task, llvmSymbol(info.symbol), frame, size)
+	fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
+	return task, nil
+}
+
+func (g *generator) emitJoinStateMachineStep(info *stateMachineInfo) error {
+	if g.spawnEmitted[info.symbol] {
+		return nil
+	}
+	g.spawnEmitted[info.symbol] = true
+	g.needWaitDecl = true
+	fmt.Fprintf(g.out, "define i32 @%s(ptr %%frame) {\nentry:\n", llvmSymbol(info.symbol))
+	state := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 0\n", state, info.frameType)
+	current := g.load("i32", state)
+	taskField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 1\n", taskField, info.frameType)
+	resultField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 2\n", resultField, info.frameType)
+	fmt.Fprintf(g.out, "  switch i32 %s, label %%join.init [ i32 1, label %%join.wait ]\n", current)
+	g.out.WriteString("join.init:\n")
+	fmt.Fprintf(g.out, "  store i32 1, ptr %s\n", state)
+	g.out.WriteString("  br label %join.wait\n")
+	g.out.WriteString("join.wait:\n")
+	errSlot := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca %%willrt_error\n", errSlot)
+	status := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call i32 @willrt_task_try_join(ptr %s, ptr %s, ptr %s)\n",
+		status, g.load("ptr", taskField), resultField, errSlot)
+	park := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, -1\n", park, status)
+	g.labels++
+	n := g.labels
+	parkLabel := fmt.Sprintf("join.park.%d", n)
+	doneLabel := fmt.Sprintf("join.done.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", park, parkLabel, doneLabel)
+	g.out.WriteString(parkLabel + ":\n")
+	g.out.WriteString("  call void @willrt_task_mark_wait()\n  ret i32 -1\n")
+	g.out.WriteString(doneLabel + ":\n")
+	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n",
+		resultField, g.sizeOf(info.resultLLVM))
+	g.out.WriteString("  ret i32 1\n}\n")
+	return nil
 }
 
 func (g *generator) insideBlock(id, block int) bool {
