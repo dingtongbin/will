@@ -34,15 +34,6 @@ func (g *generator) collectSuspendable() {
 	}
 }
 
-func hasReceiver(recs map[int]willc.Record, fn int) bool {
-	for _, r := range recs {
-		if r.Kind == "receiver" && refField(r, "parent") == fn {
-			return true
-		}
-	}
-	return false
-}
-
 // simpleAsyncBody reports whether a function has one supported suspension site
 // and can be split into a prelude and a postlude. The check is deliberately
 // structural; the lowering repeats it with the exact types in hand.

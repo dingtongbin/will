@@ -11,7 +11,6 @@ type asyncCallSite struct {
 	call   willc.Record
 	index  int
 	kind   string
-	status int
 	result int
 }
 
@@ -117,7 +116,6 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 			if !ok {
 				return nil, false
 			}
-			sites[i].status = parent
 			sites[i].result = statusIndex
 			continue
 		}
@@ -155,10 +153,6 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 		constructor: qualify(g.pkg, fieldText(fn, "text")+".task"),
 		frameType:   frameType,
 		fields:      fields,
-		statusID:    0,
-		statusIndex: -1,
-		resultIndex: -1,
-		kind:        sites[0].kind,
 		resultText:  resultText,
 		resultLLVM:  resultLLVM,
 	}
@@ -168,7 +162,6 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 		seg := asyncSegment{
 			call:        site.call,
 			kind:        site.kind,
-			statusID:    site.status,
 			statusIndex: site.result,
 			resultIndex: site.result,
 			before:      append([]willc.Record(nil), stmts[prev:site.index]...),
@@ -194,16 +187,6 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 		prev = site.index + 1
 	}
 	info.tail = append([]willc.Record(nil), stmts[prev:]...)
-	if len(info.segments) != 0 {
-		info.prelude = info.segments[0].before
-		info.postlude = info.tail
-		info.call = info.segments[0].call
-		info.startName = info.segments[0].startName
-		info.pollName = info.segments[0].pollName
-		info.finishName = info.segments[0].finishName
-		info.waitUntil = info.segments[0].waitUntil
-		info.targetSym = info.segments[0].targetSym
-	}
 	return info, true
 }
 
