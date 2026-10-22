@@ -170,6 +170,46 @@ func TestMoreStatements(t *testing.T) {
 	}
 }
 
+func TestCallTryAndUnwrapAsStatements(t *testing.T) {
+	src := `func F() -> Result<(), Error> {
+    Check()?
+    Check()!
+    return Ok(())
+}
+`
+	f := parse(t, src)
+	fn := firstFunc(t, f)
+	if len(fn.Body.Stmts) != 3 {
+		t.Fatalf("statements = %d, want 3", len(fn.Body.Stmts))
+	}
+	first, ok := fn.Body.Stmts[0].(*ast.ExprStmt)
+	if !ok {
+		t.Fatalf("statement 0 = %T, want expression statement", fn.Body.Stmts[0])
+	}
+	if _, ok := first.Expr.(*ast.TryExpr); !ok {
+		t.Errorf("statement 0 expression = %T, want try", first.Expr)
+	}
+	second, ok := fn.Body.Stmts[1].(*ast.ExprStmt)
+	if !ok {
+		t.Fatalf("statement 1 = %T, want expression statement", fn.Body.Stmts[1])
+	}
+	if _, ok := second.Expr.(*ast.UnwrapExpr); !ok {
+		t.Errorf("statement 1 expression = %T, want unwrap", second.Expr)
+	}
+}
+
+func TestSuffixDoesNotExtendDeferOrSpawn(t *testing.T) {
+	for _, src := range []string{
+		"func F() {\n    defer G()?\n}\n",
+		"func F() {\n    spawn G()?\n}\n",
+	} {
+		_, ds := Parse("test.will", []byte(src))
+		if len(ds) != 1 || ds[0].Help != "expected a call" {
+			t.Fatalf("%q diagnostics = %+v, want one expected-call error", src, ds)
+		}
+	}
+}
+
 func TestNewlineBeforeDotEndsStatement(t *testing.T) {
 	src := `func F() {
     p

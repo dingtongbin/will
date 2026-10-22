@@ -127,8 +127,22 @@ func (p *Parser) checkWritable(x ast.Expr, op string) {
 }
 
 func isCallLike(x ast.Expr) bool {
-	switch x.(type) {
+	switch x := x.(type) {
 	case *ast.CallExpr, *ast.MethodCallExpr, *ast.SpawnExpr:
+		return true
+	case *ast.TryExpr:
+		return isCallLike(x.X)
+	case *ast.UnwrapExpr:
+		return isCallLike(x.X)
+	}
+	return false
+}
+
+// isCall reports whether x is a plain call. defer and spawn take a call, not a
+// call with a suffix; only expression statements may add ? or !.
+func isCall(x ast.Expr) bool {
+	switch x.(type) {
+	case *ast.CallExpr, *ast.MethodCallExpr:
 		return true
 	}
 	return false
@@ -215,7 +229,7 @@ func (p *Parser) parseDefer() *ast.DeferStmt {
 	start := p.next()
 	p.skipNL()
 	call := p.parseExpr(0, true)
-	if !isCallLike(call) {
+	if !isCall(call) {
 		p.bag.Error(call.Pos(), diag.CodeUnexpectedToken, "unexpected token", "expected a call")
 		p.failed = true
 	}

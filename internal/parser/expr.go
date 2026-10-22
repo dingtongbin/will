@@ -355,7 +355,7 @@ func (p *Parser) parseSpawn() ast.Expr {
 		lane, _ = p.expectName("a lane name")
 	}
 	call := p.parsePostfix(true)
-	if !isCallLike(call) {
+	if !isCall(call) {
 		p.bag.Error(call.Pos(), diag.CodeUnexpectedToken, "unexpected token", "expected a call")
 		p.failed = true
 	}
