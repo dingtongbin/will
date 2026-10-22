@@ -176,6 +176,9 @@ func (g *generator) emitAux() {
 	if g.needWaitDecl {
 		g.out.WriteString("declare void @willrt_task_mark_wait()\n")
 	}
+	if g.needChanWaitDecl {
+		g.out.WriteString("declare i32 @willrt_chan_recv_wait(ptr, ptr)\n")
+	}
 	if g.needCancelBind {
 		g.out.WriteString("declare void @willrt_task_bind_cancel(ptr, ptr)\n")
 	}
@@ -668,6 +671,9 @@ type generator struct {
 	needJobDecl bool
 	// needWaitDecl records that a generated state machine marks a wait.
 	needWaitDecl bool
+	// needChanWaitDecl records the direct channel receive used by a state
+	// machine. Programs without that shape keep the old declaration set.
+	needChanWaitDecl bool
 	// needCancelBind records a spawn that passed a cancellation credential.
 	needCancelBind bool
 	// needDeadlineDecl records that the lowering scopes a deadline.

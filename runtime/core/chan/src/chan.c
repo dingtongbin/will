@@ -22,21 +22,6 @@
    use the same shape from its frame once the compiler reserves it. The node is
    linked on the channel's receive or send chain, so a matching operation hands
    the value to this node instead of touching the ring or broadcasting. */
-typedef struct willrt_select_state willrt_select_state;
-
-typedef struct willrt_chan_wait {
-    struct willrt_chan_wait* next;
-    willrt_os_cond cond;
-    willrt_select_state* select;
-    size_t arm;
-    int32_t linked;
-    int32_t ready;
-    int32_t status;
-    int32_t kind;
-    void* out;
-    const void* value;
-} willrt_chan_wait;
-
 struct willrt_select_state {
     willrt_os_mutex lock;
     willrt_os_cond cond;
@@ -131,7 +116,11 @@ static void willrt_select_signal(willrt_chan_wait* wait) {
     willrt_select_state* state = wait->select;
 
     if (state == NULL) {
-        willrt_os_cond_signal(&wait->cond);
+        if (wait->task != NULL) {
+            willrt_task_wake_chan(wait->task);
+        } else {
+            willrt_os_cond_signal(&wait->cond);
+        }
         return;
     }
     willrt_os_mutex_lock(&state->lock);
@@ -176,7 +165,11 @@ static void willrt_chan_wait_complete(willrt_chan_wait* wait, int32_t status) {
     }
     wait->status = status;
     wait->ready = 1;
-    willrt_os_cond_signal(&wait->cond);
+    if (wait->task != NULL) {
+        willrt_task_wake_chan(wait->task);
+    } else {
+        willrt_os_cond_signal(&wait->cond);
+    }
 }
 
 static void willrt_chan_wait_push(willrt_chan_wait** head,
@@ -541,6 +534,57 @@ int32_t willrt_chan_recv(willrt_chan* chan, void* out) {
     }
     return result;
 }
+int32_t willrt_chan_recv_wait(willrt_chan* chan, void* out) {
+    willrt_task* task;
+    willrt_chan_wait* wait;
+
+    if (chan == NULL) {
+        return WILLRT_FAILED;
+    }
+    willrt_os_mutex_lock(&chan->lock);
+    if (chan->count != 0) {
+        if (out != NULL) {
+            willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
+        }
+        chan->head = willrt_chan_next(chan->head, chan->cap);
+        chan->count--;
+        willrt_os_mutex_unlock(&chan->lock);
+        willrt_chan_wake_select(chan);
+        return WILLRT_OK;
+    }
+    if (chan->closed) {
+        willrt_os_mutex_unlock(&chan->lock);
+        return WILLRT_CLOSED;
+    }
+    task = willrt_task_current();
+    if (task == NULL) {
+        willrt_os_mutex_unlock(&chan->lock);
+        return willrt_chan_recv(chan, out);
+    }
+    wait = willrt_task_chan_wait_node();
+    if (wait == NULL) {
+        willrt_os_mutex_unlock(&chan->lock);
+        return willrt_chan_recv(chan, out);
+    }
+    if (wait->ready) {
+        int32_t status = wait->status;
+        wait->ready = 0;
+        willrt_os_mutex_unlock(&chan->lock);
+        return status;
+    }
+    if (wait->linked) {
+        willrt_os_mutex_unlock(&chan->lock);
+        return WILLRT_SUSPEND;
+    }
+    memset(wait, 0, sizeof(*wait));
+    wait->task = task;
+    wait->out = out;
+    willrt_chan_wait_push(&chan->recv_head, &chan->recv_tail, wait, 0);
+    atomic_fetch_add(&chan->recv_waiters, 1);
+    willrt_os_mutex_unlock(&chan->lock);
+    return WILLRT_SUSPEND;
+}
+
 void willrt_chan_close(willrt_chan* chan) {
     if (chan == NULL) {
         return;

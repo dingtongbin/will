@@ -342,12 +342,35 @@ void willrt_activity(int32_t delta);
    ------------------------------------------------------------------------- */
 
 typedef struct willrt_chan willrt_chan;
+typedef struct willrt_select_state willrt_select_state;
+
+/* One linked wait. A blocking caller owns a stack node; a task owns its node in
+   the task object. A select points select at its state and keeps one node per
+   arm. value points at storage that stays alive until the node completes. */
+typedef struct willrt_chan_wait {
+    struct willrt_chan_wait* next;
+    willrt_os_cond cond;
+    willrt_select_state* select;
+    willrt_task* task;
+    size_t arm;
+    int32_t linked;
+    int32_t ready;
+    int32_t status;
+    int32_t kind;
+    void* out;
+    const void* value;
+} willrt_chan_wait;
 
 willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio);
 int32_t willrt_chan_send(willrt_chan* chan, const void* value);
 int32_t willrt_chan_try_send(willrt_chan* chan, const void* value);
 int32_t willrt_chan_recv(willrt_chan* chan, void* out);
 int32_t willrt_chan_try_recv(willrt_chan* chan, void* out);
+/* willrt_chan_recv_wait registers the current task on recvq and returns
+   WILLRT_SUSPEND; a matching send writes the task's out slot directly. */
+int32_t willrt_chan_recv_wait(willrt_chan* chan, void* out);
+willrt_chan_wait* willrt_task_chan_wait_node(void);
+void willrt_task_wake_chan(willrt_task* task);
 void willrt_chan_close(willrt_chan* chan);
 
 /* One select arm. kind 0 receives into out, 1 sends value, 2 waits until ns,

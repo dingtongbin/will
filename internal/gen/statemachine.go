@@ -327,6 +327,7 @@ func (g *generator) emitStateMachineStep(info *stateMachineInfo) error {
 	}
 	g.spawnEmitted[info.symbol] = true
 	g.needWaitDecl = true
+	g.needChanWaitDecl = true
 	recvLabel := "sm.recv"
 	fmt.Fprintf(g.out, "define i32 @%s(ptr %%frame) {\nentry:\n", llvmSymbol(info.symbol))
 	state := g.newTmp()
@@ -346,7 +347,7 @@ func (g *generator) emitStateMachineStep(info *stateMachineInfo) error {
 	g.out.WriteString(recvLabel + ":\n")
 	ch := g.load("ptr", channel)
 	status := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call i32 @willrt_chan_try_recv(ptr %s, ptr %s)\n", status, ch, payload)
+	fmt.Fprintf(g.out, "  %s = call i32 @willrt_chan_recv_wait(ptr %s, ptr %s)\n", status, ch, payload)
 	ok := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", ok, status)
 	g.labels++
@@ -363,9 +364,9 @@ func (g *generator) emitStateMachineStep(info *stateMachineInfo) error {
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.sumLLVM, added, sum)
 	fmt.Fprintf(g.out, "  br label %%%s\n", recvLabel)
 	g.out.WriteString(done + ":\n")
-	empty := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, -2\n", empty, status)
-	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", empty, park, "sm.finish")
+	suspended := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, -1\n", suspended, status)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", suspended, park, "sm.finish")
 	g.out.WriteString(park + ":\n")
 	g.out.WriteString("  call void @willrt_task_mark_wait()\n")
 	g.out.WriteString("  ret i32 -1\n")

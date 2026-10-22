@@ -57,6 +57,7 @@ struct willrt_task {
     struct willrt_task* wait_next;
     struct willrt_task* io_next;
     struct willrt_task* all_next;
+    willrt_chan_wait chan_wait;
 };
 
 struct willrt_region {
@@ -277,6 +278,18 @@ static void willrt_task_park(struct willrt_task* task) {
     willrt_timer* timer = NULL;
     int64_t wake = task->wait_deadline;
 
+    if (task->wake_pending) {
+        lane_worker* worker;
+        task->wake_pending = 0;
+        worker = willrt_lane_of(task);
+        if (worker != NULL) {
+            willrt_os_mutex_lock(&worker->lock);
+            willrt_lane_enqueue_locked(worker, task);
+            willrt_os_cond_signal(&worker->cond);
+            willrt_os_mutex_unlock(&worker->lock);
+        }
+        return;
+    }
     if (task->deadline > 0 && (wake == 0 || task->deadline < wake)) {
         wake = task->deadline;
     }
@@ -517,6 +530,14 @@ void willrt_task_run_job(willrt_task* task) {
 
 willrt_task* willrt_task_current(void) {
     return willrt_task_self;
+}
+
+void willrt_task_wake_chan(willrt_task* task) {
+    willrt_task_wake(task);
+}
+
+willrt_chan_wait* willrt_task_chan_wait_node(void) {
+    return willrt_task_self == NULL ? NULL : &willrt_task_self->chan_wait;
 }
 
 int32_t willrt_task_store_result(const void* value, size_t size) {
