@@ -15,7 +15,7 @@ func (g *generator) collectSuspendable() {
 		changed := false
 		for _, d := range g.docs {
 			for id, sym := range d.symbols {
-				if sym == "" || g.suspendable[sym] || hasReceiver(d.recs, id) {
+				if sym == "" || g.suspendable[sym] {
 					continue
 				}
 				fn, ok := d.recs[id]
@@ -101,7 +101,7 @@ func simpleAsyncBody(d *docState, fn int, marked map[string]bool) bool {
 		return false
 	}
 	for _, st := range stmts[:index] {
-		if !simpleAsyncPrelude(st) {
+		if !preludeRecordSafe(recs, st) {
 			return false
 		}
 	}
@@ -155,6 +155,23 @@ func callTargetsMarked(d *docState, r willc.Record, marked map[string]bool) bool
 		return false
 	}
 	return marked[d.symbols[target]]
+}
+
+// asyncCallRecs lists the hidden receiver first, then the declared parameters
+// in source order. The constructor and the step share this order.
+func (g *generator) asyncCallRecs(fnID int) []willc.Record {
+	var out []willc.Record
+	if recv := receiverOfIn(g.cur, fnID); recv != nil {
+		out = append(out, *recv)
+	}
+	var params []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "param" && refField(r, "parent") == fnID {
+			params = append(params, r)
+		}
+	}
+	sortByID(params)
+	return append(out, params...)
 }
 
 func (g *generator) asyncParamABI(p willc.Record) (string, bool, error) {

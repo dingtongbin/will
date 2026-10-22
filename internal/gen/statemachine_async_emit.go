@@ -11,22 +11,19 @@ import (
 // the task. A caller never needs the frame layout.
 func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	var parts []string
-	var paramRecs []willc.Record
-	for _, r := range g.recs {
-		if r.Kind == "param" && refField(r, "parent") == info.fn.ID {
-			paramRecs = append(paramRecs, r)
-		}
-	}
-	sortByID(paramRecs)
+	paramRecs := g.asyncCallRecs(info.fn.ID)
 	pab := make([]struct {
 		typ   string
 		byPtr bool
 		text  string
 	}, 0, len(paramRecs))
-	for _, p := range paramRecs {
+	for i, p := range paramRecs {
 		typ, byPtr, err := g.asyncParamABI(p)
 		if err != nil {
 			return err
+		}
+		if i == 0 && receiverOfIn(g.cur, info.fn.ID) != nil {
+			byPtr = true
 		}
 		pab = append(pab, struct {
 			typ   string
@@ -136,13 +133,8 @@ func (g *generator) emitAsyncStep(info *asyncMachineInfo) error {
 	}
 	// Parameters are loaded from the frame; locals use their frame fields as
 	// their slots, so every value survives a park and resume.
-	paramRecs := make([]willc.Record, 0, len(info.fields))
-	for _, r := range g.recs {
-		if r.Kind == "param" && refField(r, "parent") == info.fn.ID {
-			paramRecs = append(paramRecs, r)
-		}
-	}
-	sortByID(paramRecs)
+	paramRecs := g.asyncCallRecs(info.fn.ID)
+	recv := receiverOfIn(g.cur, info.fn.ID)
 	for i, p := range paramRecs {
 		field := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n",
@@ -150,6 +142,11 @@ func (g *generator) emitAsyncStep(info *asyncMachineInfo) error {
 		typ, byPtr, err := g.asyncParamABI(p)
 		if err != nil {
 			return err
+		}
+		if recv != nil && i == 0 {
+			g.scope[p.ID] = field
+			g.borrows[p.ID] = true
+			continue
 		}
 		if byPtr {
 			g.scope[p.ID] = field
@@ -308,12 +305,20 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string) (st
 		return "", g.errf(call.ID, "cannot translate node #%d: the suspendable call has no target", call.ID)
 	}
 	args := g.callArgs(call)
-	parts := make([]string, 0, len(args))
+	parts := make([]string, 0, len(args)+1)
 	paramTypes := append([]string(nil), g.paramTypes[targetSym]...)
 	if len(paramTypes) != len(args) {
 		return "", g.errf(call.ID, "cannot translate node #%d: %s needs %d arguments", call.ID, targetSym, len(paramTypes))
 	}
-	declParams := make([]string, 0, len(args))
+	declParams := make([]string, 0, len(args)+1)
+	if g.methodSymbols[targetSym] {
+		recv, _, err := g.place(refField(call, "recv"))
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, "ptr "+recv)
+		declParams = append(declParams, "ptr")
+	}
 	for _, a := range args {
 		typ, err := g.typeOf(a)
 		if err != nil {

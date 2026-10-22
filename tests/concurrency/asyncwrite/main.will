@@ -1,0 +1,32 @@
+import "std/os/fs"
+
+func Write(path: str) -> Result<(), Error> {
+    var text: str = "worker"
+    return fs.AsyncWriteFile(path, text[Range(0, 6)])
+}
+
+func main() -> i32 {
+    var path: str = "will-concurrency-asyncwrite.tmp"
+    var result: Result<(), Error> = Ok(())
+    region {
+        var task: Task<Result<(), Error>> = spawn Write(path)
+        result = task.Join()!
+    }
+    if result.IsErr() {
+        _ = fs.Remove(path)
+        return 1
+    }
+    var loaded: Result<Array<u8>, Error> = fs.ReadFile(path)
+    _ = fs.Remove(path)
+    match loaded {
+        Ok(bytes) => {
+            if bytes.Len() != 6usize {
+                return 2
+            }
+        }
+        Err(_) => {
+            return 3
+        }
+    }
+    return 0
+}

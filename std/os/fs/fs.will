@@ -1,6 +1,5 @@
-// The synchronous file operations are the blocking half of std/os/fs. The
-// asynchronous half needs the scheduler's file suspension and is not exposed
-// until that path exists.
+// File paths and handles for std/os/fs. The plain names are the blocking
+// spellings; the Async names are suspension points lowered to task frames.
 import "std/errors"
 
 import c "fs.c" {
@@ -164,8 +163,8 @@ func (f: File) Seek(offset: i64, whence: i32) -> Result<i64, Error> {
     return Ok(at)
 }
 
-// AsyncRead is the async spelling of Read. The current task owns a dedicated
-// execution context, so the host read cannot stall an unrelated task.
+// AsyncRead is the async spelling of Read. A call parks its task frame until
+// the blocking pool finishes the host read.
 func (f: File) AsyncRead(mut buf: Array<u8>) -> Result<usize, Error> {
     var count: usize = 0
     var status: i32 = c.willrt_fs_async_file_read(raw(f), raw(count), raw(buf))

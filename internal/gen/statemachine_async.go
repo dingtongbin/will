@@ -55,7 +55,7 @@ func asyncStartName(name string) string {
 // finished. A function outside this shape keeps its ordinary lowering.
 func (g *generator) asyncMachine(fnID int) (*asyncMachineInfo, bool) {
 	fn, ok := g.recs[fnID]
-	if !ok || fn.Kind != "func" || receiverOfIn(g.cur, fnID) != nil {
+	if !ok || fn.Kind != "func" {
 		return nil, false
 	}
 	body, err := g.blockOf(fnID)
@@ -102,7 +102,7 @@ func (g *generator) asyncMachine(fnID int) (*asyncMachineInfo, bool) {
 	}
 	prelude := stmts[:suspendIndex]
 	for _, st := range prelude {
-		if !simpleAsyncPrelude(st) {
+		if !preludeRecordSafe(g.recs, st) {
 			return nil, false
 		}
 	}
@@ -132,8 +132,16 @@ func (g *generator) asyncMachine(fnID int) (*asyncMachineInfo, bool) {
 	}
 	sortByID(params)
 	sortByID(locals)
-	fields := make([]asyncField, 0, len(params)+len(locals))
+	fields := make([]asyncField, 0, len(params)+len(locals)+1)
 	indexes := map[int]int{}
+	if recv := receiverOfIn(g.cur, fnID); recv != nil {
+		f, ok := g.asyncFieldOf(*recv, true)
+		if !ok {
+			return nil, false
+		}
+		indexes[recv.ID] = len(fields)
+		fields = append(fields, f)
+	}
 	for _, p := range params {
 		f, ok := g.asyncFieldOf(p, true)
 		if !ok {
@@ -195,7 +203,7 @@ func (g *generator) asyncMachine(fnID int) (*asyncMachineInfo, bool) {
 // child result, and the parent step parks on try-join.
 func (g *generator) asyncCallMachine(fnID int) (*asyncMachineInfo, bool) {
 	fn, ok := g.recs[fnID]
-	if !ok || fn.Kind != "func" || receiverOfIn(g.cur, fnID) != nil {
+	if !ok || fn.Kind != "func" {
 		return nil, false
 	}
 	body, err := g.blockOf(fnID)
@@ -237,7 +245,7 @@ func (g *generator) asyncCallMachine(fnID int) (*asyncMachineInfo, bool) {
 	}
 	prelude := stmts[:suspendIndex]
 	for _, st := range prelude {
-		if !simpleAsyncPrelude(st) {
+		if !preludeRecordSafe(g.recs, st) {
 			return nil, false
 		}
 	}
@@ -272,7 +280,14 @@ func (g *generator) asyncCallMachine(fnID int) (*asyncMachineInfo, bool) {
 	}
 	sortByID(params)
 	sortByID(locals)
-	fields := make([]asyncField, 0, len(params)+len(locals)+1)
+	fields := make([]asyncField, 0, len(params)+len(locals)+2)
+	if recv := receiverOfIn(g.cur, fnID); recv != nil {
+		f, ok := g.asyncFieldOf(*recv, true)
+		if !ok {
+			return nil, false
+		}
+		fields = append(fields, f)
+	}
 	for _, p := range params {
 		f, ok := g.asyncFieldOf(p, true)
 		if !ok {
@@ -341,6 +356,30 @@ func simpleAsyncPrelude(st willc.Record) bool {
 		return true
 	}
 	return false
+}
+
+// preludeRecordSafe accepts control flow that finishes before the suspension.
+// It rejects a return or defer because either would need a frame transition
+// that this one-wait lowering does not emit.
+func preludeRecordSafe(recs map[int]willc.Record, st willc.Record) bool {
+	switch st.Kind {
+	case "return", "defer", "deadline", "select":
+		return false
+	case "var", "const", "assign", "exprstmt", "release", "if", "match",
+		"block", "for":
+	default:
+		return false
+	}
+	for _, r := range recs {
+		if r.ID == st.ID || !recordUnder(recs, r.ID, st.ID) {
+			continue
+		}
+		if r.Kind == "return" || r.Kind == "defer" || r.Kind == "deadline" ||
+			r.Kind == "select" {
+			return false
+		}
+	}
+	return true
 }
 
 func supportedAsyncPostlude(st willc.Record) bool {

@@ -403,6 +403,10 @@ typedef struct willrt_poll_async_arg {
 typedef struct willrt_blocking_op willrt_blocking_op;
 extern willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out)
     __attribute__((weak));
+extern willrt_blocking_op* willrt_blocking_submit_copy(void* fn,
+                                                       const void* arg,
+                                                       size_t size, void* out)
+    __attribute__((weak));
 extern int32_t willrt_blocking_wait(willrt_blocking_op* op)
     __attribute__((weak));
 
@@ -426,6 +430,18 @@ int32_t willrt_poll_wait_async(const void* fds, const void* events,
         return WILLRT_FAILED;
     }
     return willrt_blocking_wait(op);
+}
+
+willrt_blocking_op* willrt_poll_wait_async_start(
+    const void* fds, const void* events, const void* users, int64_t count,
+    int64_t timeout_ns, void* out) {
+    willrt_poll_async_arg arg = {fds, events, users, count, timeout_ns, out};
+
+    if (willrt_blocking_submit_copy == NULL) {
+        return NULL;
+    }
+    return willrt_blocking_submit_copy(willrt_poll_wait_worker, &arg,
+                                       sizeof(arg), NULL);
 }
 
 void willrt_poll_shutdown(void) {

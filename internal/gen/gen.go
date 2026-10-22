@@ -299,6 +299,7 @@ func (g *generator) collectSignatures() {
 	g.ifaceTypes = map[string]bool{}
 	g.declKinds = map[string]string{}
 	g.methodsQualified = map[string]string{}
+	g.methodSymbols = map[string]bool{}
 	g.paramTypes = map[string][]string{}
 	g.varargs = map[string]bool{}
 	g.ifaceDecls = map[string]*ifaceInfo{}
@@ -402,6 +403,7 @@ func (g *generator) collectSignatures() {
 					sym = qualify(d.path, receiverType(&c)+"."+name)
 					g.methodsQualified[receiverType(&c)+"."+name] = sym
 					g.methodsQualified[qualify(d.path, receiverType(&c)+"."+name)] = sym
+					g.methodSymbols[sym] = true
 					break
 				}
 			}
@@ -812,6 +814,9 @@ type generator struct {
 	// methodsQualified maps <qualified type>.<method> to the method's symbol,
 	// for receivers whose type is declared in another document.
 	methodsQualified map[string]string
+	// methodSymbols names the functions whose first ABI argument is a receiver
+	// pointer. A state-machine constructor must carry that pointer too.
+	methodSymbols map[string]bool
 
 	// pkg is the package path of the current document.
 	pkg string
