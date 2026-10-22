@@ -16,9 +16,14 @@ void* willrt_cancel_new(void) {
     return flag;
 }
 
+extern void willrt_sched_wake_io(void) __attribute__((weak));
+
 void willrt_cancel_trigger(int32_t* flag) {
     if (flag != NULL) {
         __atomic_store_n(flag, 1, __ATOMIC_RELEASE);
+        if (willrt_sched_wake_io != NULL) {
+            willrt_sched_wake_io();
+        }
     }
 }
 

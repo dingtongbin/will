@@ -300,6 +300,7 @@ int32_t willrt_lane_here(void);
 int32_t willrt_runtime_threaded(void);
 void willrt_yield(void);
 int32_t willrt_task_canceled(void);
+void willrt_task_bind_cancel(willrt_task* task, void* flag);
 int64_t willrt_task_deadline(void);
 /* willrt_task_sleep_ns parks the current task until the duration passes. The
    main thread sleeps directly because it has no scheduler fiber. */
@@ -361,6 +362,9 @@ willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg);
    already fired are harmless. A cancelled or fired node stays valid until the
    next advance reclaims it; callers must not use the pointer after that. */
 void willrt_timer_cancel(willrt_timer* timer);
+/* willrt_timer_shutdown stops the timer run loop after all task deadlines have
+   been observed. */
+void willrt_timer_shutdown(void);
 
 /* The compiler's entry wrapper calls willrt_init once, before the program
    entry, and willrt_shutdown once after it returns. Both are safe to call more

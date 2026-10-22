@@ -1,0 +1,32 @@
+import "std/task"
+
+func Worker(ch: chan<i32>, cancel: task.Cancel) -> i32 {
+    var item: Option<i32> = ch.Recv()
+    match item {
+        Some(_) => {
+            return 1
+        }
+        None => {
+            if cancel.Canceled() {
+                return 7
+            }
+            return 2
+        }
+    }
+    return 3
+}
+
+func main() -> i32 {
+    var ch: chan<i32> = new chan<i32>(1)
+    var cancel: task.Cancel = new task.Cancel()
+    cancel.Cancel()
+    var value: i32 = 0
+    region {
+        var worker: Task<i32> = spawn Worker(ch, cancel)
+        value = worker.Join()!
+    }
+    if value != 7 {
+        return 1
+    }
+    return 0
+}

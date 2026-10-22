@@ -172,6 +172,21 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			task, llvmSymbol(step), frame, size, lane)
 		fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
 	}
+	for i, text := range argTexts {
+		if text != "task.Cancel" && !strings.HasSuffix(text, ".Cancel") {
+			continue
+		}
+		index := i
+		if indirect {
+			index++
+		}
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 %d\n",
+			field, frameType, frame, index)
+		g.needCancelBind = true
+		fmt.Fprintf(g.out, "  call void @willrt_task_bind_cancel(ptr %s, ptr %s)\n",
+			task, field)
+	}
 	return task, nil
 }
 

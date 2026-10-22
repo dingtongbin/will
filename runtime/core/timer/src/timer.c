@@ -70,6 +70,9 @@ static uint64_t willrt_timer_next_seq;
 static uint64_t willrt_timer_last_tick;
 static int willrt_timer_started;
 static atomic_flag willrt_timer_lock = ATOMIC_FLAG_INIT;
+static willrt_os_thread willrt_timer_thread;
+static atomic_int willrt_timer_loop_state;
+static atomic_int willrt_timer_loop_stop;
 
 static void willrt_timer_lock_acquire(void) {
     while (atomic_flag_test_and_set_explicit(&willrt_timer_lock,
@@ -186,6 +189,34 @@ int64_t willrt_now_ns(void) {
     return willrt_os_now_ns();
 }
 
+#ifndef WILLRT_TIMER_TEST
+static void willrt_timer_run(void* ignored) {
+    (void)ignored;
+    while (!atomic_load(&willrt_timer_loop_stop)) {
+        willrt_timer_advance(willrt_now_ns());
+        willrt_os_sleep_ns(INT64_C(1000000));
+    }
+}
+#endif
+
+static void willrt_timer_loop_start(void) {
+#ifdef WILLRT_TIMER_TEST
+    return;
+#else
+    int expected = 0;
+
+    if (atomic_compare_exchange_strong(&willrt_timer_loop_state, &expected, 1)) {
+        atomic_store(&willrt_timer_loop_stop, 0);
+        if (willrt_os_thread_start(&willrt_timer_thread, willrt_timer_run,
+                                   NULL) != 0) {
+            atomic_store(&willrt_timer_loop_state, 0);
+            return;
+        }
+        atomic_store(&willrt_timer_loop_state, 2);
+    }
+#endif
+}
+
 willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg) {
     struct willrt_timer* timer;
     struct willrt_timer_bucket* bucket;
@@ -223,6 +254,7 @@ willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg) {
         willrt_timer_link(&bucket->head, &bucket->tail, timer);
     }
     willrt_timer_lock_release();
+    willrt_timer_loop_start();
     return timer;
 }
 
@@ -364,6 +396,15 @@ size_t willrt_timer_advance(int64_t now_ns) {
     }
     willrt_timer_lock_release();
     return fired;
+}
+
+void willrt_timer_shutdown(void) {
+    if (atomic_load(&willrt_timer_loop_state) != 2) {
+        return;
+    }
+    atomic_store(&willrt_timer_loop_stop, 1);
+    willrt_os_thread_join(&willrt_timer_thread);
+    atomic_store(&willrt_timer_loop_state, 0);
 }
 
 #ifdef WILLRT_TIMER_TEST

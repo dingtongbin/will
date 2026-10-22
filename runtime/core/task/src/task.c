@@ -46,6 +46,7 @@ struct willrt_task {
     int32_t state;
     int32_t queued;
     int32_t wake_pending;
+    void* cancel_flag;
     int64_t deadline;
     unsigned char* result;
     size_t result_size;
@@ -582,7 +583,7 @@ int32_t willrt_join(willrt_task* task, void* out, willrt_error* err) {
         willrt_os_mutex_lock(&task->lock);
         if (!task->finished) {
             if (current != NULL && current->fiber != NULL) {
-                if (current->canceled) {
+                if (willrt_task_canceled()) {
                     willrt_os_mutex_unlock(&task->lock);
                     return WILLRT_CANCELED;
                 }
@@ -739,7 +740,22 @@ void willrt_yield(void) {
 int32_t willrt_task_canceled(void) {
     struct willrt_task* task = willrt_task_self;
 
-    return task == NULL ? 0 : task->canceled;
+    if (task == NULL) {
+        return 0;
+    }
+    if (task->canceled) {
+        return 1;
+    }
+    if (task->cancel_flag != NULL) {
+        return __atomic_load_n((int32_t*)task->cancel_flag, __ATOMIC_ACQUIRE) != 0;
+    }
+    return 0;
+}
+
+void willrt_task_bind_cancel(willrt_task* task, void* value) {
+    if (task != NULL) {
+        task->cancel_flag = value == NULL ? NULL : *(void**)value;
+    }
 }
 
 int64_t willrt_task_deadline(void) {

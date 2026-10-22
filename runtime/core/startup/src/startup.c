@@ -18,6 +18,7 @@
 extern void willrt_tasks_wait_all(void) __attribute__((weak));
 extern void willrt_poll_shutdown(void) __attribute__((weak));
 extern void willrt_blocking_shutdown(void) __attribute__((weak));
+extern void willrt_timer_shutdown(void) __attribute__((weak));
 extern void willrt_mem_thread_flush(void) __attribute__((weak));
 #endif
 
@@ -37,6 +38,9 @@ void willrt_shutdown(void) {
     }
     if (willrt_poll_shutdown != NULL) {
         willrt_poll_shutdown();
+    }
+    if (willrt_timer_shutdown != NULL) {
+        willrt_timer_shutdown();
     }
     if (willrt_mem_thread_flush != NULL) {
         willrt_mem_thread_flush();

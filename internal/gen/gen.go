@@ -171,6 +171,9 @@ func (g *generator) emitAux() {
 	if g.needJobDecl {
 		g.out.WriteString("declare ptr @willrt_job_new(ptr, ptr, i64, i32)\n")
 	}
+	if g.needCancelBind {
+		g.out.WriteString("declare void @willrt_task_bind_cancel(ptr, ptr)\n")
+	}
 	if g.needDeadlineDecl {
 		g.out.WriteString("declare i64 @willrt_task_enter_deadline(i64)\n")
 		g.out.WriteString("declare void @willrt_task_exit_deadline(i64)\n")
@@ -650,6 +653,8 @@ type generator struct {
 	needTaskDecl bool
 	// needJobDecl records that a parallel block submitted a job.
 	needJobDecl bool
+	// needCancelBind records a spawn that passed a cancellation credential.
+	needCancelBind bool
 	// needDeadlineDecl records that the lowering scopes a deadline.
 	needDeadlineDecl bool
 	// parallelDepth is nonzero while lowering a parallel block. A spawn inside

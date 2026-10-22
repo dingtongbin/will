@@ -1,0 +1,28 @@
+func Wait() -> i32 {
+    var ch: chan<i32> = new chan<i32>(1)
+    var result: i32 = 0
+    deadline 1ms {
+        var item: Option<i32> = ch.Recv()
+        match item {
+            Some(_) => {
+                result = 1
+            }
+            None => {
+                result = 7
+            }
+        }
+    }
+    return result
+}
+
+func main() -> i32 {
+    var value: i32 = 0
+    region {
+        var task: Task<i32> = spawn Wait()
+        value = task.Join()!
+    }
+    if value != 7 {
+        return 1
+    }
+    return 0
+}
