@@ -47,6 +47,15 @@ static int32_t step_send(void* frame) {
     return WILLRT_DONE;
 }
 
+static int32_t step_recv(void* frame) {
+    willrt_chan* chan = (willrt_chan*)frame;
+    int32_t value = 0;
+
+    assert(willrt_chan_recv(chan, &value) == WILLRT_OK);
+    assert(willrt_task_store_result(&value, sizeof(value)) == WILLRT_OK);
+    return WILLRT_DONE;
+}
+
 static void test_task_result(void) {
     int32_t input = 21;
     int32_t output = 0;
@@ -138,6 +147,41 @@ static void test_channel_crosses_threads(void) {
     assert(willrt_join(task, NULL, NULL) == WILLRT_OK);
 }
 
+static void test_channel_hands_off_to_waiting_task(void) {
+    willrt_chan* chan = willrt_chan_new(sizeof(int32_t), 1, 0);
+    willrt_task* task;
+    int32_t value = 17;
+    int32_t output = 0;
+
+    assert(chan != NULL);
+    task = willrt_task_new((void*)step_recv, chan, 0, 0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    willrt_os_sleep_ns(INT64_C(1000000));
+    assert(willrt_chan_send(chan, &value) == WILLRT_OK);
+    assert(willrt_join(task, &output, NULL) == WILLRT_OK);
+    assert(output == 17);
+}
+
+static void test_select_hands_off_from_task(void) {
+    willrt_chan* chan = willrt_chan_new(sizeof(int32_t), 1, 0);
+    willrt_task* task;
+    willrt_arm arm;
+    int32_t out = 0;
+
+    assert(chan != NULL);
+    task = willrt_task_new((void*)step_send, chan, 0, 0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    memset(&arm, 0, sizeof(arm));
+    arm.chan = chan;
+    arm.out = &out;
+    arm.kind = 0;
+    assert(willrt_select(&arm, 1) == 0);
+    assert(out == 41);
+    assert(willrt_join(task, NULL, NULL) == WILLRT_OK);
+}
+
 static void test_select_order(void) {
     willrt_chan* first = willrt_chan_new(sizeof(int32_t), 1, 0);
     willrt_chan* second = willrt_chan_new(sizeof(int32_t), 1, 0);
@@ -174,6 +218,8 @@ int main(void) {
     test_region_failure();
     test_channel_order();
     test_channel_crosses_threads();
+    test_channel_hands_off_to_waiting_task();
+    test_select_hands_off_from_task();
     test_select_order();
     willrt_shutdown();
     return 0;
