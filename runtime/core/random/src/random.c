@@ -1,5 +1,5 @@
 /* The random-byte entry point. The platform layer owns the system source; the
-   core only forwards the request so std/uuid does not depend on a C library
+   core only forwards the request so will code does not depend on a C library
    name that differs by platform. */
 
 #include "../../../include/willrt.h"
