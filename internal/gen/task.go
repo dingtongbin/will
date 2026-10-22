@@ -82,6 +82,10 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			g.pendingSM = append(g.pendingSM, info)
 			return g.lowerJoinStateMachineSpawn(r, info, call)
 		}
+		if info, ok := g.selectMachine(target.ID); ok {
+			g.pendingSelect = append(g.pendingSelect, info)
+			return g.emitConstructorCall(call, g.cur.funcs[target.ID])
+		}
 	}
 	sym := ""
 	if !indirect {
@@ -234,9 +238,15 @@ func (g *generator) emitSpawns() error {
 			return err
 		}
 	}
+	for _, info := range g.pendingSelect {
+		if err := g.emitSelectMachineStep(info); err != nil {
+			return err
+		}
+	}
 	g.pendingSpawns = nil
 	g.pendingSM = nil
 	g.pendingAsync = nil
+	g.pendingSelect = nil
 	return nil
 }
 

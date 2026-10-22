@@ -100,6 +100,20 @@ func (g *generator) emitPanicFromError(errSlot string) {
 	g.out.WriteString("  unreachable\n")
 }
 
+func (g *generator) localSymbol(sym string) bool {
+	for _, name := range g.cur.funcs {
+		if name == sym {
+			return true
+		}
+	}
+	for _, name := range g.cur.methods {
+		if name == sym {
+			return true
+		}
+	}
+	return false
+}
+
 // emitConstructorCall builds the child frame by calling the target's task
 // constructor. The constructor owns the frame layout, so this document does not
 // need the target's local fields.
@@ -143,7 +157,9 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string) (st
 		parts = append(parts, typ+" "+value)
 		declParams = append(declParams, typ)
 	}
-	g.queueCDecl(targetSym+".task", "ptr", declParams)
+	if !g.localSymbol(targetSym) {
+		g.queueCDecl(targetSym+".task", "ptr", declParams)
+	}
 	g.needTaskDecl = true
 	task := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call ptr @%s(%s)\n",

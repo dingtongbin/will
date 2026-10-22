@@ -516,6 +516,7 @@ func (g *generator) use(d *docState) {
 	g.pendingSpawns = nil
 	g.pendingSM = nil
 	g.pendingAsync = nil
+	g.pendingSelect = nil
 	g.pendingDefers = nil
 	g.smPlaces = map[int]smPlace{}
 	g.deferSeq = 0
@@ -741,6 +742,7 @@ type generator struct {
 	pendingSpawns []spawnRequest
 	pendingSM     []*stateMachineInfo
 	pendingAsync  []*asyncMachineInfo
+	pendingSelect []*selectMachineInfo
 	spawnEmitted  map[string]bool
 	// The slots below keep a loop from growing the stack on every evaluation
 	// of a join, receive, or send.
@@ -935,8 +937,8 @@ func (g *generator) emitDoc() error {
 	// every queue until none of them gained work while the others ran.
 	for pass := 0; pass < 64; pass++ {
 		pending := len(g.pendingThunks) + len(g.pendingSpawns) +
-			len(g.pendingSM) + len(g.pendingAsync) + len(g.pendingBlock) +
-			len(g.pendingDrops) + len(g.pendingDefers)
+			len(g.pendingSM) + len(g.pendingAsync) + len(g.pendingSelect) +
+			len(g.pendingBlock) + len(g.pendingDrops) + len(g.pendingDefers)
 		if pending == 0 {
 			break
 		}
@@ -957,8 +959,8 @@ func (g *generator) emitDoc() error {
 		}
 	}
 	if pending := len(g.pendingThunks) + len(g.pendingSpawns) +
-		len(g.pendingSM) + len(g.pendingAsync) + len(g.pendingBlock) +
-		len(g.pendingDrops) + len(g.pendingDefers); pending != 0 {
+		len(g.pendingSM) + len(g.pendingAsync) + len(g.pendingSelect) +
+		len(g.pendingBlock) + len(g.pendingDrops) + len(g.pendingDefers); pending != 0 {
 		return fmt.Errorf("pending lowering work did not drain")
 	}
 	return g.emitInit(g.cur)
@@ -1279,7 +1281,12 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		g.pendingAsync = append(g.pendingAsync, info)
 		hasAsync = true
 	}
-	if g.suspendable[g.cur.funcs[fn.ID]] && !hasAsync {
+	hasSelect := false
+	if info, ok := g.selectMachine(fn.ID); ok {
+		g.pendingSelect = append(g.pendingSelect, info)
+		hasSelect = true
+	}
+	if g.suspendable[g.cur.funcs[fn.ID]] && !hasAsync && !hasSelect {
 		return g.errf(fn.ID, "cannot translate node #%d: suspendable function %s has no supported state-machine shape", fn.ID, fieldText(fn, "text"))
 	}
 	if _, ok := g.stateMachine(fn.ID); ok {

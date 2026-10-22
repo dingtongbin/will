@@ -385,6 +385,14 @@ typedef struct willrt_arm {
 
 int32_t willrt_select(willrt_arm* arms, size_t n);
 
+/* A compiler-generated select step builds the arms in its frame, starts one
+   context, and polls it after each wake. poll returns the arm index or
+   WILLRT_SUSPEND; finish unlinks the remaining waits and releases the context. */
+typedef struct willrt_select_ctx willrt_select_ctx;
+willrt_select_ctx* willrt_select_start(willrt_arm* arms, size_t n);
+int32_t willrt_select_poll(willrt_select_ctx* ctx);
+void willrt_select_finish(willrt_select_ctx* ctx);
+
 /* willrt_select_status reports the runtime status of the arm the last select on
    this thread chose. It is WILLRT_OK for a successful receive or send and
    WILLRT_CLOSED when a receive selected a closed channel. */

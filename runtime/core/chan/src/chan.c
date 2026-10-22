@@ -22,6 +22,9 @@
 #define WILLRT_CHAN_SLOW
 #endif
 
+int32_t willrt_select(willrt_arm* arms, size_t n);
+static _Thread_local int32_t willrt_select_last = WILLRT_OK;
+
 
 
 /* One blocked operation. A blocking caller owns a stack node; a task wait will
@@ -31,10 +34,20 @@
 struct willrt_select_state {
     willrt_os_mutex lock;
     willrt_os_cond cond;
+    willrt_task* task;
+    int64_t timeout_ns;
+    int32_t timeout_index;
     int32_t ready;
     int32_t index;
     int32_t status;
 };
+
+typedef struct willrt_select_ctx {
+    willrt_arm* arms;
+    size_t n;
+    willrt_chan_wait* waits;
+    willrt_select_state state;
+} willrt_select_ctx;
 
 struct willrt_chan {
     willrt_os_mutex lock;
@@ -130,7 +143,11 @@ static void willrt_select_signal(willrt_chan_wait* wait) {
         return;
     }
     willrt_os_mutex_lock(&state->lock);
-    willrt_os_cond_signal(&state->cond);
+    if (state->task != NULL) {
+        willrt_task_wake_chan(state->task);
+    } else {
+        willrt_os_cond_signal(&state->cond);
+    }
     willrt_os_mutex_unlock(&state->lock);
 }
 
@@ -677,6 +694,177 @@ int32_t willrt_chan_recv_wait(willrt_chan* chan, void* out) {
     return WILLRT_SUSPEND;
 }
 
+static willrt_select_ctx* willrt_select_ctx_new(willrt_arm* arms, size_t n) {
+    willrt_select_ctx* ctx = (willrt_select_ctx*)willrt_alloc(sizeof(*ctx));
+
+    if (ctx == NULL) {
+        return NULL;
+    }
+    memset(ctx, 0, sizeof(*ctx));
+    ctx->arms = arms;
+    ctx->n = n;
+    ctx->state.index = WILLRT_SUSPEND;
+    ctx->state.timeout_index = -1;
+    if (n != 0) {
+        ctx->waits = (willrt_chan_wait*)willrt_alloc(sizeof(*ctx->waits) * n);
+        if (ctx->waits == NULL) {
+            willrt_free(ctx);
+            return NULL;
+        }
+        memset(ctx->waits, 0, sizeof(*ctx->waits) * n);
+    }
+    willrt_os_mutex_init(&ctx->state.lock);
+    willrt_os_cond_init(&ctx->state.cond);
+    ctx->state.task = willrt_task_current();
+    return ctx;
+}
+
+willrt_select_ctx* willrt_select_start(willrt_arm* arms, size_t n) {
+    willrt_select_ctx* ctx;
+    size_t i;
+    int32_t default_index = -1;
+
+    ctx = willrt_select_ctx_new(arms, n);
+    if (ctx == NULL) {
+        return NULL;
+    }
+    if (ctx->state.task == NULL) {
+        int32_t index = willrt_select(arms, n);
+        ctx->state.ready = 1;
+        ctx->state.index = index;
+        ctx->state.status = willrt_select_last;
+        return ctx;
+    }
+    for (i = 0; i < n; i++) {
+        willrt_arm* arm = &arms[i];
+        int32_t result;
+
+        if (arm->kind == 0) {
+            result = willrt_chan_try_recv(arm->chan, arm->out);
+            if (result == WILLRT_OK || result == WILLRT_CLOSED) {
+                ctx->state.ready = 1;
+                ctx->state.index = (int32_t)i;
+                ctx->state.status = result;
+                return ctx;
+            }
+        } else if (arm->kind == 1) {
+            result = willrt_chan_try_send(arm->chan, arm->value);
+            if (result == WILLRT_OK || result == WILLRT_CLOSED) {
+                ctx->state.ready = 1;
+                ctx->state.index = (int32_t)i;
+                ctx->state.status = result;
+                return ctx;
+            }
+        } else if (arm->kind == 2) {
+            ctx->state.timeout_index = (int32_t)i;
+            ctx->state.timeout_ns = arm->ns;
+        } else if (arm->kind == 3) {
+            default_index = (int32_t)i;
+        }
+    }
+    if (default_index >= 0) {
+        ctx->state.ready = 1;
+        ctx->state.index = default_index;
+        ctx->state.status = WILLRT_OK;
+        return ctx;
+    }
+    if (ctx->state.timeout_index >= 0 &&
+        willrt_now_ns() >= ctx->state.timeout_ns) {
+        ctx->state.ready = 1;
+        ctx->state.index = ctx->state.timeout_index;
+        ctx->state.status = WILLRT_TIMEDOUT;
+        return ctx;
+    }
+    for (i = 0; i < n; i++) {
+        willrt_arm* arm = &arms[i];
+        willrt_chan_wait* wait = &ctx->waits[i];
+
+        if (arm->kind != 0 && arm->kind != 1) {
+            continue;
+        }
+        wait->select = &ctx->state;
+        wait->arm = i;
+        wait->kind = arm->kind;
+        wait->out = arm->out;
+        wait->value = arm->value;
+        willrt_os_mutex_lock(&arm->chan->lock);
+        if (arm->chan->closed) {
+            willrt_os_mutex_unlock(&arm->chan->lock);
+            if (willrt_select_claim(wait, WILLRT_CLOSED)) {
+                willrt_select_signal(wait);
+            }
+            break;
+        }
+        if (arm->kind == 0) {
+            willrt_chan_wait_push(&arm->chan->recv_head,
+                                  &arm->chan->recv_tail, wait, 0);
+            atomic_fetch_add(&arm->chan->recv_waiters, 1);
+        } else {
+            willrt_chan_wait_push(&arm->chan->send_head,
+                                  &arm->chan->send_tail, wait, 1);
+            atomic_fetch_add(&arm->chan->send_waiters, 1);
+        }
+        willrt_os_mutex_unlock(&arm->chan->lock);
+    }
+    if (ctx->state.timeout_index >= 0) {
+        willrt_task_wait_until(ctx->state.timeout_ns);
+    }
+    return ctx;
+}
+
+int32_t willrt_select_poll(willrt_select_ctx* ctx) {
+    int32_t index;
+
+    if (ctx == NULL) {
+        return WILLRT_FAILED;
+    }
+    willrt_os_mutex_lock(&ctx->state.lock);
+    if (!ctx->state.ready && ctx->state.timeout_index >= 0 &&
+        willrt_now_ns() >= ctx->state.timeout_ns) {
+        ctx->state.ready = 1;
+        ctx->state.index = ctx->state.timeout_index;
+        ctx->state.status = WILLRT_TIMEDOUT;
+    }
+    index = ctx->state.ready ? ctx->state.index : WILLRT_SUSPEND;
+    willrt_os_mutex_unlock(&ctx->state.lock);
+    return index;
+}
+
+void willrt_select_finish(willrt_select_ctx* ctx) {
+    size_t i;
+
+    if (ctx == NULL) {
+        return;
+    }
+    for (i = 0; i < ctx->n; i++) {
+        willrt_chan_wait* wait = &ctx->waits[i];
+        willrt_chan* chan = ctx->arms[i].chan;
+
+        if (wait->select == NULL || chan == NULL) {
+            continue;
+        }
+        willrt_os_mutex_lock(&chan->lock);
+        if (wait->linked) {
+            if (wait->kind == 0) {
+                willrt_chan_wait_unlink(&chan->recv_head, &chan->recv_tail,
+                                        wait);
+                atomic_fetch_sub(&chan->recv_waiters, 1);
+            } else {
+                willrt_chan_wait_unlink(&chan->send_head, &chan->send_tail,
+                                        wait);
+                atomic_fetch_sub(&chan->send_waiters, 1);
+            }
+            wait->linked = 0;
+        }
+        willrt_os_mutex_unlock(&chan->lock);
+    }
+    willrt_select_last = ctx->state.status;
+    willrt_os_mutex_destroy(&ctx->state.lock);
+    willrt_os_cond_destroy(&ctx->state.cond);
+    willrt_free(ctx->waits);
+    willrt_free(ctx);
+}
+
 void willrt_chan_close(willrt_chan* chan) {
     if (chan == NULL) {
         return;
@@ -703,8 +891,6 @@ void willrt_chan_close(willrt_chan* chan) {
    arm without waiting, then a timeout or default arm, then waits one short slice
    and tries again. A ready receive on a closed channel counts as ready so the
    arm can observe the None it produces. */
-static _Thread_local int32_t willrt_select_last = WILLRT_OK;
-
 int32_t willrt_select_status(void) {
     return willrt_select_last;
 }
