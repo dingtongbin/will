@@ -90,6 +90,18 @@ func TestNoField(t *testing.T) {
 	}
 }
 
+func TestSendResultMustBeHandled(t *testing.T) {
+	src := `func F(ch: chan<i32>) {
+    ch.Send(1)
+}
+`
+	ds := checkWithResolve(t, src)
+	d := findCode(t, ds, diag.CodeResultDropped)
+	if d.Message != "this Result is not handled" {
+		t.Errorf("message = %q", d.Message)
+	}
+}
+
 func TestNewWithoutInit(t *testing.T) {
 	src := "struct P {\n    x: i32\n}\nfunc F() {\n    var p: P = new P(1)\n    _ = p\n}\n"
 	ds := checkWithResolve(t, src)

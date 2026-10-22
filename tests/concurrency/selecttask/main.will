@@ -23,7 +23,7 @@ func main() -> i32 {
     region {
         var task: Task<i32> = spawn Wait(ch)
         _ = time.Sleep(1ms)!
-        ch.Send(7)
+        _ = ch.Send(7)
         result = task.Join()!
     }
     if result != 7 {

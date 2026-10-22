@@ -1,5 +1,5 @@
 func Producer(ch: chan<i32>) {
-    ch.Send(7)
+    _ = ch.Send(7)
     ch.Close()
 }
 

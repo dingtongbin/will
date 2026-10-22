@@ -79,7 +79,14 @@ func (c *checker) inferFunc(decl *ast.FuncDecl) {
 		}
 		s.vars[pm.Name] = t
 	}
-	c.inferBlock(s, decl.Body)
+	body := c.inferBlock(s, decl.Body)
+	if s.result == nil && body != nil && body.Kind() == NamedKind && body.Name() == "Result" {
+		if n := len(decl.Body.Stmts); n != 0 {
+			c.bag.Error(decl.Body.Stmts[n-1].Pos(), diag.CodeResultDropped,
+				"this Result is not handled",
+				"use ?, !, match, or discard it with _ =")
+		}
+	}
 }
 
 // inferBlock checks a block and returns the type of its last statement when
@@ -150,7 +157,11 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 		c.checkValue(s, x.Value, want)
 	case *ast.ExprStmt:
 		c.rejectRawAddress(x.Expr)
-		c.inferExpr(s, x.Expr)
+		if t := c.inferExpr(s, x.Expr); t != nil && t.Kind() == NamedKind && t.Name() == "Result" {
+			c.bag.Error(x.Expr.Pos(), diag.CodeResultDropped,
+				"this Result is not handled",
+				"use ?, !, match, or discard it with _ =")
+		}
 	case *ast.DeferStmt:
 		c.inferExpr(s, x.Call)
 	case *ast.ReturnStmt:

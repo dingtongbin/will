@@ -3135,6 +3135,9 @@ func (g *generator) exprStmt(st willc.Record) error {
 	id := refField(st, "expr")
 	if r, ok := g.recs[id]; ok && r.Kind == "discard" {
 		inner := refField(r, "expr")
+		if send, ok := g.recs[inner]; ok && send.Kind == "send" {
+			return g.lowerSend(send)
+		}
 		if u, ok := g.recs[inner]; ok && u.Kind == "unwrap" {
 			if join, ok := g.recs[refField(u, "expr")]; ok && join.Kind == "join" {
 				taskText, typeErr := g.willTypeText(refField(join, "task"))

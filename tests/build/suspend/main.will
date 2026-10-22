@@ -19,8 +19,8 @@ func main() -> i32 {
     var result: i32 = 0
     region {
         var worker: Task<i32> = spawn Worker(ch)
-        ch.Send(3)
-        ch.Send(4)
+        _ = ch.Send(3)
+        _ = ch.Send(4)
         ch.Close()
         result = worker.Join()!
     }
