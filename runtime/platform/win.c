@@ -55,26 +55,6 @@ int64_t willrt_os_now_ns(void) {
                      + (rest * UINT64_C(1000000000)) / freq);
 }
 
-int32_t willrt_os_random_bytes(void* out, size_t size) {
-    unsigned char* cursor = (unsigned char*)out;
-
-    if (out == NULL && size != 0) {
-        return -1;
-    }
-    while (size != 0) {
-        unsigned int value;
-        size_t take = size < sizeof(value) ? size : sizeof(value);
-
-        if (rand_s(&value) != 0) {
-            return -1;
-        }
-        memcpy(cursor, &value, take);
-        cursor += take;
-        size -= take;
-    }
-    return 0;
-}
-
 void* willrt_os_alloc_pages(size_t size) {
     if (size == 0) {
         size = 1;

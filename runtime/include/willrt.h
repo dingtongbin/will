@@ -40,14 +40,6 @@ int64_t willrt_os_now_ns(void);
    process, or 1 when the platform cannot report a positive count. */
 int32_t willrt_os_cpu_count(void);
 
-/* willrt_os_random_bytes fills out with size bytes from the platform's
-   cryptographically secure source. It returns 0 on success and -1 when the
-   source is unavailable; a partial fill is never reported as success. */
-int32_t willrt_os_random_bytes(void* out, size_t size);
-
-/* willrt_random_bytes is the core-facing form of the platform random source. */
-int32_t willrt_random_bytes(void* out, size_t size);
-
 /* Platform threads, locks, and waits. The storage is opaque to the scheduler;
    the platform implementation casts it to its own handle. A timeout below zero
    waits without a limit, and a timeout of zero does not wait. */
@@ -424,14 +416,13 @@ void willrt_init(void);
 void willrt_shutdown(void);
 
 /* willrt_panic writes "panic: <message>" and, when site is nonempty, one
-   "  at <site> <symbol>" line, then terminates the process with exit code 101.
-   Task containment is not implemented yet, so every panic ends the process.
+   "  at <site> <symbol>" line. Inside a task it fails that task and returns to
+   the lane's step boundary; outside a task it exits the process with 101.
    site and symbol are static strings supplied by the compiler. */
 void willrt_panic(const char* message, const char* site, const char* symbol);
 
 /* willrt_panic_n is willrt_panic for a message that is bytes and a length, so
-   a will str does not have to be copied or terminated. Task containment is not
-   implemented yet, so it also ends the process. */
+   a will str does not have to be copied or terminated. */
 void willrt_panic_n(const char* message, size_t size, const char* site, const char* symbol);
 
 /* willrt_report_write_n writes bytes that need not be NUL-terminated. */
