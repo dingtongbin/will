@@ -67,10 +67,18 @@ struct willrt_region {
 
 typedef struct lane_worker {
     willrt_os_thread thread;
+    willrt_os_mutex lock;
+    willrt_os_cond cond;
+    struct willrt_task* head;
+    struct willrt_task* tail;
+    struct willrt_task* runnext;
     int32_t id;
+    int32_t stopping;
+    _Atomic(int32_t) alive;
 } lane_worker;
 
 static _Thread_local struct willrt_task* willrt_task_self;
+static _Thread_local int32_t willrt_lane_self = -1;
 static _Thread_local struct willrt_region willrt_regions[WILLRT_REGION_DEPTH];
 static _Thread_local int willrt_region_depth;
 static _Thread_local int64_t willrt_main_deadline;
@@ -84,17 +92,13 @@ static willrt_os_mutex willrt_tasks_lock;
 static willrt_os_cond willrt_tasks_cond;
 
 static willrt_os_mutex willrt_lane_lock;
-static willrt_os_cond willrt_lane_cond;
 static struct willrt_task* willrt_all_tasks;
-static struct willrt_task* willrt_lane_head;
-static struct willrt_task* willrt_lane_tail;
 static struct willrt_task* willrt_io_head;
 static struct willrt_task* willrt_io_tail;
 static lane_worker* willrt_lane_workers;
 static int32_t willrt_lane_count;
 static int32_t willrt_lane_started;
 static int32_t willrt_lane_state;
-static int32_t willrt_lane_stopping;
 static atomic_int willrt_lane_ready;
 
 extern void willrt_jobs_shutdown(void) __attribute__((weak));
@@ -120,7 +124,40 @@ static void willrt_task_globals(void) {
     }
 }
 
-static void willrt_lane_enqueue_locked(struct willrt_task* task) {
+static lane_worker* willrt_lane_of(const struct willrt_task* task) {
+    int32_t index = task->lane;
+
+    if (willrt_lane_count <= 0 || willrt_lane_workers == NULL) {
+        return NULL;
+    }
+    if (index < 0) {
+        index = 0;
+    }
+    index %= willrt_lane_count;
+    if (atomic_load(&willrt_lane_workers[index].alive)) {
+        return &willrt_lane_workers[index];
+    }
+    /* A panic unwinds its task by ending the calling lane thread. Keep the
+       remaining lanes usable by handing that work to a live lane. */
+    {
+        int32_t i;
+        for (i = 0; i < willrt_lane_count; i++) {
+            int32_t candidate = (index + i) % willrt_lane_count;
+            if (atomic_load(&willrt_lane_workers[candidate].alive)) {
+                return &willrt_lane_workers[candidate];
+            }
+        }
+    }
+    return &willrt_lane_workers[index];
+}
+
+/* A wake goes to the target lane's runnext slot. If that slot is occupied, the
+   old head moves to the local queue and the new task takes runnext. The global
+   lane list is not touched. */
+static void willrt_lane_enqueue_locked(lane_worker* worker,
+                                       struct willrt_task* task) {
+    struct willrt_task* previous;
+
     if (task->queued) {
         return;
     }
@@ -128,23 +165,33 @@ static void willrt_lane_enqueue_locked(struct willrt_task* task) {
     task->state = WILLRT_TASK_READY;
     task->io_next = NULL;
     task->wait_next = NULL;
-    if (willrt_lane_tail == NULL) {
-        willrt_lane_head = task;
-    } else {
-        willrt_lane_tail->wait_next = task;
+    if (worker->runnext == NULL) {
+        worker->runnext = task;
+        return;
     }
-    willrt_lane_tail = task;
+    previous = worker->runnext;
+    worker->runnext = task;
+    previous->wait_next = worker->head;
+    worker->head = previous;
+    if (worker->tail == NULL) {
+        worker->tail = previous;
+    }
 }
 
-static struct willrt_task* willrt_lane_pop_locked(void) {
-    struct willrt_task* task = willrt_lane_head;
+static struct willrt_task* willrt_lane_pop_locked(lane_worker* worker) {
+    struct willrt_task* task = worker->runnext;
 
-    if (task == NULL) {
-        return NULL;
-    }
-    willrt_lane_head = task->wait_next;
-    if (willrt_lane_head == NULL) {
-        willrt_lane_tail = NULL;
+    if (task != NULL) {
+        worker->runnext = NULL;
+    } else {
+        task = worker->head;
+        if (task == NULL) {
+            return NULL;
+        }
+        worker->head = task->wait_next;
+        if (worker->head == NULL) {
+            worker->tail = NULL;
+        }
     }
     task->wait_next = NULL;
     task->queued = 0;
@@ -155,18 +202,24 @@ static struct willrt_task* willrt_lane_pop_locked(void) {
 // still switching out is marked pending; the lane makes it ready after the
 // switch has actually happened.
 static void willrt_task_wake(struct willrt_task* task) {
+    lane_worker* worker;
+
     if (task == NULL) {
         return;
     }
-    willrt_os_mutex_lock(&willrt_lane_lock);
+    worker = willrt_lane_of(task);
+    if (worker == NULL) {
+        return;
+    }
+    willrt_os_mutex_lock(&worker->lock);
     if (task->state == WILLRT_TASK_WAITING) {
-        willrt_lane_enqueue_locked(task);
-        willrt_os_cond_broadcast(&willrt_lane_cond);
+        willrt_lane_enqueue_locked(worker, task);
+        willrt_os_cond_signal(&worker->cond);
     } else if (task->state == WILLRT_TASK_PARKING ||
                task->state == WILLRT_TASK_RUNNING) {
         task->wake_pending = 1;
     }
-    willrt_os_mutex_unlock(&willrt_lane_lock);
+    willrt_os_mutex_unlock(&worker->lock);
 }
 
 // willrt_sched_wake_io wakes every task parked on a channel or select. The
@@ -199,19 +252,13 @@ void willrt_sched_wake_io(void) {
     task = willrt_io_head;
     willrt_io_head = NULL;
     willrt_io_tail = NULL;
+    willrt_os_mutex_unlock(&willrt_lane_lock);
     while (task != NULL) {
         struct willrt_task* next = task->io_next;
         task->io_next = NULL;
-        if (task->state == WILLRT_TASK_WAITING) {
-            willrt_lane_enqueue_locked(task);
-        } else if (task->state == WILLRT_TASK_PARKING ||
-                   task->state == WILLRT_TASK_RUNNING) {
-            task->wake_pending = 1;
-        }
+        willrt_task_wake(task);
         task = next;
     }
-    willrt_os_cond_broadcast(&willrt_lane_cond);
-    willrt_os_mutex_unlock(&willrt_lane_lock);
 }
 
 uint32_t willrt_sched_io_epoch(void) {
@@ -287,10 +334,13 @@ static void willrt_task_run_step(struct willrt_task* task) {
         if (task->wait_requested) {
             willrt_task_park(task);
         } else {
-            willrt_os_mutex_lock(&willrt_lane_lock);
-            willrt_lane_enqueue_locked(task);
-            willrt_os_cond_broadcast(&willrt_lane_cond);
-            willrt_os_mutex_unlock(&willrt_lane_lock);
+            lane_worker* worker = willrt_lane_of(task);
+            if (worker != NULL) {
+                willrt_os_mutex_lock(&worker->lock);
+                willrt_lane_enqueue_locked(worker, task);
+                willrt_os_cond_signal(&worker->cond);
+                willrt_os_mutex_unlock(&worker->lock);
+            }
         }
         return;
     }
@@ -308,16 +358,20 @@ static void willrt_lane_worker(void* raw) {
     lane_worker* worker = (lane_worker*)raw;
 
     willrt_mem_set_lane(worker->id);
+    willrt_lane_self = worker->id;
     for (;;) {
         struct willrt_task* task;
+        int32_t stopping;
 
-        willrt_os_mutex_lock(&willrt_lane_lock);
-        while (willrt_lane_head == NULL && !willrt_lane_stopping) {
-            willrt_os_cond_wait(&willrt_lane_cond, &willrt_lane_lock);
+        willrt_os_mutex_lock(&worker->lock);
+        while (worker->runnext == NULL && worker->head == NULL &&
+               !worker->stopping) {
+            willrt_os_cond_wait(&worker->cond, &worker->lock);
         }
-        task = willrt_lane_pop_locked();
-        willrt_os_mutex_unlock(&willrt_lane_lock);
-        if (task == NULL && willrt_lane_stopping) {
+        stopping = worker->stopping;
+        task = willrt_lane_pop_locked(worker);
+        willrt_os_mutex_unlock(&worker->lock);
+        if (task == NULL && stopping) {
             break;
         }
         if (task == NULL) {
@@ -343,7 +397,6 @@ static void willrt_lane_init(void) {
     }
     willrt_lane_state = 1;
     willrt_os_mutex_init(&willrt_lane_lock);
-    willrt_os_cond_init(&willrt_lane_cond);
     count = willrt_os_cpu_count();
     if (count < 1) {
         count = 1;
@@ -355,7 +408,11 @@ static void willrt_lane_init(void) {
         willrt_mem_set_shared();
         willrt_rc_set_threaded();
         for (i = 0; i < count; i++) {
+            memset(&willrt_lane_workers[i], 0, sizeof(willrt_lane_workers[i]));
             willrt_lane_workers[i].id = i;
+            atomic_store(&willrt_lane_workers[i].alive, 1);
+            willrt_os_mutex_init(&willrt_lane_workers[i].lock);
+            willrt_os_cond_init(&willrt_lane_workers[i].cond);
             if (willrt_os_thread_start(&willrt_lane_workers[i].thread,
                                        willrt_lane_worker,
                                        &willrt_lane_workers[i]) != 0) {
@@ -375,10 +432,12 @@ static void willrt_lane_shutdown(void) {
     if (willrt_lane_state != 2) {
         return;
     }
-    willrt_os_mutex_lock(&willrt_lane_lock);
-    willrt_lane_stopping = 1;
-    willrt_os_cond_broadcast(&willrt_lane_cond);
-    willrt_os_mutex_unlock(&willrt_lane_lock);
+    for (i = 0; i < willrt_lane_started; i++) {
+        willrt_os_mutex_lock(&willrt_lane_workers[i].lock);
+        willrt_lane_workers[i].stopping = 1;
+        willrt_os_cond_signal(&willrt_lane_workers[i].cond);
+        willrt_os_mutex_unlock(&willrt_lane_workers[i].lock);
+    }
     for (i = 0; i < willrt_lane_started; i++) {
         willrt_os_thread_join(&willrt_lane_workers[i].thread);
     }
@@ -425,18 +484,24 @@ void willrt_task_run(willrt_task* task) {
         return;
     }
     task->started = 1;
-    atomic_store(&willrt_threads_live, 1);
-    willrt_rc_set_threaded();
-    willrt_mem_set_shared();
     willrt_lane_init();
     if (willrt_lane_started == 0) {
+        atomic_store(&willrt_threads_live, 1);
+        willrt_rc_set_threaded();
+        willrt_mem_set_shared();
         willrt_task_run_step(task);
         return;
     }
-    willrt_os_mutex_lock(&willrt_lane_lock);
-    willrt_lane_enqueue_locked(task);
-    willrt_os_cond_broadcast(&willrt_lane_cond);
-    willrt_os_mutex_unlock(&willrt_lane_lock);
+    {
+        lane_worker* worker = willrt_lane_of(task);
+        if (worker == NULL) {
+            return;
+        }
+        willrt_os_mutex_lock(&worker->lock);
+        willrt_lane_enqueue_locked(worker, task);
+        willrt_os_cond_signal(&worker->cond);
+        willrt_os_mutex_unlock(&worker->lock);
+    }
 }
 
 /* willrt_task_run_job advances one task on the caller thread. Jobs contain no
@@ -600,6 +665,9 @@ int32_t willrt_task_fail(const char* message, size_t size, const char* site,
     task->site = site;
     task->symbol = symbol;
     willrt_os_mutex_unlock(&task->lock);
+    if (willrt_lane_self >= 0 && willrt_lane_self < willrt_lane_started) {
+        atomic_store(&willrt_lane_workers[willrt_lane_self].alive, 0);
+    }
     willrt_task_finish(task);
     willrt_os_thread_exit();
     return 1;
