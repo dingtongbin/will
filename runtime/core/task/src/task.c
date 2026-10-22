@@ -18,6 +18,7 @@
 #include <setjmp.h>
 #include <stdatomic.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define WILLRT_TASK_STACK (128 * 1024)
@@ -108,8 +109,10 @@ static int32_t willrt_lane_state;
 static atomic_int willrt_lane_ready;
 
 extern void willrt_jobs_shutdown(void) __attribute__((weak));
+extern int32_t willrt_jobs_pending(void) __attribute__((weak));
 
 static void willrt_lane_init(void);
+static void willrt_task_check_dead(void);
 
 static void willrt_io_timer(void* arg) {
     (void)arg;
@@ -659,6 +662,7 @@ int32_t willrt_join(willrt_task* task, void* out, willrt_error* err) {
                 willrt_os_cond_timedwait(&task->cond, &task->lock, wait);
             }
             willrt_os_mutex_unlock(&task->lock);
+            willrt_task_check_dead();
             continue;
         }
         if (err != NULL) {
@@ -889,11 +893,77 @@ void willrt_activity(int32_t delta) {
     atomic_fetch_add(&willrt_activity_count, delta);
 }
 
+/* willrt_task_check_dead reports a deadlock when every started task is parked,
+   no job is queued, no timer is armed, and no IO wait is pending. The scan
+   takes the task list lock, then the lane lock only for the IO count; callers
+   invoke it after a timed wait, never while holding either lock. */
+static void willrt_task_check_dead(void) {
+    struct willrt_task* task;
+    int32_t live = 0;
+    int32_t active = 0;
+    int32_t timers = 0;
+    int32_t io = 0;
+    int32_t jobs = 0;
+    int64_t now;
+
+    if (atomic_load(&willrt_task_globals_state) != 2) {
+        return;
+    }
+    now = willrt_now_ns();
+    if (willrt_main_deadline > now) {
+        timers++;
+    }
+    willrt_os_mutex_lock(&willrt_tasks_lock);
+    task = willrt_all_tasks;
+    while (task != NULL) {
+        if (task->started && !task->finished) {
+            live++;
+            if (task->state == WILLRT_TASK_READY ||
+                task->state == WILLRT_TASK_RUNNING ||
+                task->state == WILLRT_TASK_PARKING) {
+                active++;
+            }
+            if (task->wait_deadline > now || task->deadline > now) {
+                timers++;
+            }
+        }
+        task = task->all_next;
+    }
+    willrt_os_mutex_unlock(&willrt_tasks_lock);
+    if (live == 0 || active != 0) {
+        return;
+    }
+    /* This runtime parks every suspended task on the IO list, including
+       channel and join waits; a separate IO marker does not exist yet. Count
+       only timers and queued jobs here. */
+    if (willrt_jobs_pending != NULL) {
+        jobs = willrt_jobs_pending();
+    }
+    if (jobs != 0 || timers != 0 || io != 0) {
+        return;
+    }
+    {
+        char line[160];
+        int size = snprintf(line, sizeof(line),
+            "deadlock: no runnable task\n  tasks: %d\n  jobs: %d\n  timers: %d\n  io: %d\n",
+            (int)live, (int)jobs, (int)timers, (int)io);
+        if (size > 0) {
+            size_t length = (size_t)size < sizeof(line) ? (size_t)size : sizeof(line);
+            willrt_report_write_n(line, length);
+        }
+    }
+    _Exit(1);
+}
+
 void willrt_tasks_wait_all(void) {
     willrt_task_globals();
     willrt_os_mutex_lock(&willrt_tasks_lock);
     while (atomic_load(&willrt_tasks_live) != 0) {
-        willrt_os_cond_wait(&willrt_tasks_cond, &willrt_tasks_lock);
+        willrt_os_cond_timedwait(&willrt_tasks_cond, &willrt_tasks_lock,
+                                 INT64_C(10) * INT64_C(1000000));
+        willrt_os_mutex_unlock(&willrt_tasks_lock);
+        willrt_task_check_dead();
+        willrt_os_mutex_lock(&willrt_tasks_lock);
     }
     willrt_os_mutex_unlock(&willrt_tasks_lock);
     if (willrt_lane_state == 2) {

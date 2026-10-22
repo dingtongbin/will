@@ -427,6 +427,9 @@ func (g *generator) typeOf(id int) (string, error) {
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
+		if name == "Canceled" || name == "Deadline" {
+			return "%interface.Error", nil
+		}
 		if c, ok := g.recs[decl]; ok && c.Kind == "func" {
 			return "{ ptr, ptr }", nil
 		}
@@ -492,7 +495,13 @@ func (g *generator) typeOf(id int) (string, error) {
 		return "ptr", nil
 	case "lanehere":
 		return "i64", nil
-	case "send", "close":
+	case "send":
+		info, ok := g.adtType("Result<(), Error>")
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: Result<(), Error> is not lowered", id)
+		}
+		return info.llvm, nil
+	case "close":
 		return "", nil
 	case "recv", "tryrecv", "join":
 		text, err := g.willTypeText(id)
@@ -668,6 +677,10 @@ func (g *generator) willTypeText(id int) (string, error) {
 	case "lit":
 		return fieldText(r, "type"), nil
 	case "name":
+		name := fieldText(r, "text")
+		if name == "Canceled" || name == "Deadline" {
+			return "Error", nil
+		}
 		decl, ok := g.recs[refField(r, "to")]
 		if !ok {
 			if info := g.globalRef(r); info != nil {
@@ -763,7 +776,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 			return "", g.errf(id, "cannot translate node #%d: Join needs a Task", id)
 		}
 		return "Result<" + elem + ",Error>", nil
-	case "send", "close":
+	case "send":
+		return "Result<(),Error>", nil
+	case "close":
 		return "", nil
 	case "slice":
 		elem, err := g.sliceElem(r)
@@ -1047,9 +1062,22 @@ func (g *generator) place(id int) (string, string, error) {
 			return g.stringPlace(r)
 		}
 		return "", "", g.errf(id, "cannot translate node #%d: a %s literal is a value, not a place", id, kind)
+	case "send":
+		slot, err := g.lowerSendResult(r)
+		if err != nil {
+			return "", "", err
+		}
+		info, ok := g.adtType("Result<(), Error>")
+		if !ok {
+			return "", "", g.errf(id, "cannot translate node #%d: Result<(), Error> is not lowered", id)
+		}
+		return slot, info.llvm, nil
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
+		if name == "Canceled" || name == "Deadline" {
+			return g.builtinErrorPlace(r, name)
+		}
 		if c, ok := g.recs[decl]; ok && c.Kind == "func" {
 			return g.placeNamedFunction(r, c)
 		}

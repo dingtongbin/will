@@ -175,6 +175,21 @@ willrt_task* willrt_job_new(void* step, void* frame, size_t size,
     return task;
 }
 
+/* willrt_jobs_pending reports whether the global queue still holds a job.
+   Deadlock detection treats a queued job as runnable work even when no task is
+   currently executing. */
+int32_t willrt_jobs_pending(void) {
+    int32_t pending;
+
+    if (atomic_load(&job_state) != JOB_STATE_READY) {
+        return 0;
+    }
+    willrt_os_mutex_lock(&job_lock);
+    pending = job_head != NULL;
+    willrt_os_mutex_unlock(&job_lock);
+    return pending;
+}
+
 /* willrt_jobs_shutdown stops the pool after the live task count reaches zero.
    Workers drain any entry that is already queued before they observe the stop
    flag. Repeated shutdown calls are harmless. */

@@ -428,6 +428,7 @@ void willrt_panic_n(const char* message, size_t size, const char* site, const ch
 /* willrt_report_write_n writes bytes that need not be NUL-terminated. */
 void willrt_report_write_n(const char* text, size_t size);
 
+
 /* print writes its parts to standard output without buffering. A str part is
    bytes and a length; the scalar parts are formatted by the runtime. */
 void willrt_write_stdout(const char* data, size_t size);

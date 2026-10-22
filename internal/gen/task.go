@@ -1021,6 +1021,72 @@ func (g *generator) lowerSend(r willc.Record) error {
 	return nil
 }
 
+// lowerSendResult builds Result<(), Error> around one send. A closed channel
+// stores the built-in Closed fault in the error payload.
+func (g *generator) lowerSendResult(r willc.Record) (string, error) {
+	chanPtr, err := g.value(refField(r, "chan"))
+	if err != nil {
+		return "", err
+	}
+	valueID := refField(r, "value")
+	typ, err := g.typeOf(valueID)
+	if err != nil {
+		return "", err
+	}
+	valueText, err := g.willTypeText(valueID)
+	if err != nil {
+		return "", err
+	}
+	ptr := ""
+	if isAggregateType(typ) {
+		ptr, _, err = g.place(valueID)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		ptr = g.allocSlot(g.sendValueSlots, "send", r.ID, typ)
+		value, err := g.value(valueID)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
+	}
+	if err := g.shareValue(ptr, valueText); err != nil {
+		return "", err
+	}
+	info, ok := g.adtType("Result<(), Error>")
+	if !ok {
+		return "", g.errf(r.ID, "cannot translate node #%d: Result<(), Error> is not lowered", r.ID)
+	}
+	g.needTaskDecl = true
+	slot := g.allocSlot(g.adtSlots, "send.result", r.ID, info.llvm)
+	status := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call i32 @willrt_chan_send(ptr %s, ptr %s)\n", status, chanPtr, ptr)
+	okStatus := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", okStatus, status)
+	g.labels++
+	n := g.labels
+	okLabel := fmt.Sprintf("send.ok.%d", n)
+	errLabel := fmt.Sprintf("send.err.%d", n)
+	endLabel := fmt.Sprintf("send.end.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", okStatus, okLabel, errLabel)
+	g.out.WriteString(okLabel + ":\n")
+	tagPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
+	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", info.tags["Ok"], tagPtr)
+	fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
+	g.out.WriteString(errLabel + ":\n")
+	tagPtr = g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
+	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", info.tags["Err"], tagPtr)
+	payload := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
+	g.builtinErrorInto(payload, 4)
+	fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
+	g.out.WriteString(endLabel + ":\n")
+	return slot, nil
+}
+
 // lowerClose closes one channel.
 func (g *generator) lowerClose(r willc.Record) error {
 	channel := refField(r, "chan")

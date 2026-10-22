@@ -362,7 +362,7 @@ func (c *checker) recordWant(e ast.Expr, want *Type) {
 			c.callTypes[x] = want.String()
 		}
 	case *ast.NameExpr:
-		if x.Name != "None" {
+		if x.Name != "None" && x.Name != "Canceled" && x.Name != "Deadline" {
 			return
 		}
 		if c.nameTypes == nil {
@@ -572,6 +572,9 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 	case *ast.NameExpr:
 		if x.Name == "_" {
 			return nil
+		}
+		if x.Name == "Canceled" || x.Name == "Deadline" {
+			return c.in.named("Error", nil)
 		}
 		if t, ok := s.lookup(x.Name); ok {
 			return t
@@ -1033,6 +1036,15 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	switch call.Name {
 	case "Recv":
 		return elemOf(c.in, recv)
+	case "Send":
+		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "chan" {
+			var elem *Type
+			if len(recv.Args()) == 1 {
+				elem = recv.Args()[0]
+			}
+			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
+			return c.in.named("Result", []*Type{c.in.unit(), c.in.named("Error", nil)})
+		}
 	case "Join":
 		return nil
 	case "Close":

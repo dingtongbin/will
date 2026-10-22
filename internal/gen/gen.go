@@ -67,6 +67,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		aliases:        aliases,
 		declSet:        map[string]bool{},
 		suspendable:    map[string]bool{},
+		builtinErrors:  map[int]bool{},
 	}
 	for _, doc := range docs {
 		g.docs = append(g.docs, newDocState(doc))
@@ -108,6 +109,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 // emitted, the panic declaration. Both may follow the functions because LLVM
 // resolves forward references to global values.
 func (g *generator) emitAux() {
+	g.emitBuiltinErrors()
 	g.emitExternalDecls()
 	for _, decl := range g.decls {
 		g.out.WriteString(decl + "\n")
@@ -184,6 +186,9 @@ func (g *generator) emitAux() {
 	}
 	if g.needCancelBind {
 		g.out.WriteString("declare void @willrt_task_bind_cancel(ptr, ptr)\n")
+	}
+	if g.needReportDecl {
+		g.out.WriteString("declare void @willrt_report_write_n(ptr, i64)\n")
 	}
 	if g.needDeadlineDecl {
 		g.out.WriteString("declare i64 @willrt_task_enter_deadline(i64)\n")
@@ -651,7 +656,9 @@ type generator struct {
 	// that its module-wide type definition is already written.
 	errorIface   *ifaceInfo
 	errorEmitted bool
-	usedError    bool
+	// builtinErrors records which predeclared faults this module emits.
+	builtinErrors map[int]bool
+	usedError     bool
 	// needAllocDecl records that the lowering calls the allocator.
 	needAllocDecl bool
 	// needMemcmpDecl records that the lowering compares str or byte data.
@@ -683,6 +690,8 @@ type generator struct {
 	needSelectSetDecl bool
 	// needCancelBind records a spawn that passed a cancellation credential.
 	needCancelBind bool
+	// needReportDecl records that the entry wrapper reports a main Result.
+	needReportDecl bool
 	// needDeadlineDecl records that the lowering scopes a deadline.
 	needDeadlineDecl bool
 	// parallelDepth is nonzero while lowering a parallel block. A spawn inside
@@ -998,7 +1007,8 @@ func (g *generator) emitWrapper() error {
 	if g.entryHasParam {
 		return g.errf(g.entryID, "cannot translate node #%d: the entry takes no parameters", g.entryID)
 	}
-	if g.entryResult != "" && g.entryResult != "i32" {
+	if g.entryResult != "" && g.entryResult != "i32" && g.entryResult != "Result<(), Error>" &&
+		g.entryResult != "Result<(),Error>" {
 		return g.errf(g.entryID, "cannot translate node #%d: the entry result %s is not lowered yet", g.entryID, g.entryResult)
 	}
 	g.out.WriteString("declare void @willrt_init()\n")
@@ -1016,8 +1026,66 @@ func (g *generator) emitWrapper() error {
 		g.out.WriteString("  call void @willrt_shutdown()\n  ret i32 0\n}\n")
 		return nil
 	}
+	if g.entryResult == "Result<(), Error>" || g.entryResult == "Result<(),Error>" {
+		return g.emitResultWrapper()
+	}
 	fmt.Fprintf(g.out, "  %%r = call i32 @%s()\n", llvmSymbol(g.entrySymbol))
 	g.out.WriteString("  call void @willrt_shutdown()\n  ret i32 %r\n}\n")
+	return nil
+}
+
+// emitResultWrapper lowers the only non-integer entry shape the language
+// allows: Result<(), Error>. Ok exits 0; Err writes one stable line through the
+// report target and exits 1.
+func (g *generator) emitResultWrapper() error {
+	info, ok := g.adtType("Result<(), Error>")
+	if !ok {
+		return g.errf(g.entryID, "cannot translate node #%d: Result<(), Error> is not lowered", g.entryID)
+	}
+	iface, ok := g.ifaceOfText("Error")
+	if !ok {
+		return g.errf(g.entryID, "cannot translate node #%d: the Error interface is not lowered", g.entryID)
+	}
+	messageIndex, ok := iface.byName["Message"]
+	if !ok {
+		return g.errf(g.entryID, "cannot translate node #%d: Error has no Message method", g.entryID)
+	}
+	if !g.errorEmitted {
+		g.out.WriteString("%interface.Error = type { ptr, ptr }\n")
+		g.errorEmitted = true
+	}
+	g.needReportDecl = true
+	result := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call %s @%s()\n", result, info.llvm, llvmSymbol(g.entrySymbol))
+	slot := g.allocSlot(g.adtSlots, "main.result", g.entryID, info.llvm)
+	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.llvm, result, slot)
+	tagPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
+	tag := g.load("i32", tagPtr)
+	okTag := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, %d\n", okTag, tag, info.tags["Ok"])
+	g.labels++
+	n := g.labels
+	okLabel := fmt.Sprintf("main.ok.%d", n)
+	errLabel := fmt.Sprintf("main.err.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", okTag, okLabel, errLabel)
+	g.out.WriteString(okLabel + ":\n")
+	g.out.WriteString("  call void @willrt_shutdown()\n  ret i32 0\n")
+	g.out.WriteString(errLabel + ":\n")
+	data, table := g.ifaceSlotValue(info, slot)
+	method := g.ifaceMethod(table, messageIndex)
+	message := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call { ptr, i64 } %s(ptr %s)\n", message, method, data)
+	text := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = extractvalue { ptr, i64 } %s, 0\n", text, message)
+	size := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = extractvalue { ptr, i64 } %s, 1\n", size, message)
+	prefix := g.globalString("error: ")
+	newline := g.globalString("\n")
+	fmt.Fprintf(g.out, "  call void @willrt_report_write_n(ptr %s, i64 7)\n", prefix)
+	fmt.Fprintf(g.out, "  call void @willrt_report_write_n(ptr %s, i64 %s)\n", text, size)
+	fmt.Fprintf(g.out, "  call void @willrt_report_write_n(ptr %s, i64 1)\n", newline)
+	g.out.WriteString("  call void @willrt_shutdown()\n  ret i32 1\n}\n")
 	return nil
 }
 
@@ -2875,7 +2943,7 @@ func (g *generator) value(id int) (string, error) {
 	case "trysend":
 		return g.lowerTrySend(r)
 	case "send":
-		return "", g.errf(id, "cannot translate node #%d: Send is a statement", id)
+		return g.lowerSendResult(r)
 	case "close":
 		return "", g.errf(id, "cannot translate node #%d: Close is a statement", id)
 	case "recv":
