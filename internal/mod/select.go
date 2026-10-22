@@ -6,7 +6,6 @@ import "sort"
 type Dep struct {
 	Path       string
 	Version    Version
-	Bundled    bool
 	Local      string
 	TargetPath string
 }
@@ -40,27 +39,16 @@ func (m *Module) Select() []Dep {
 func selectOne(path string, reqs []Require) Dep {
 	dep := Dep{Path: path}
 	best := false
-	hasBundled := false
 	for _, r := range reqs {
-		if r.Bundled {
-			hasBundled = true
-			continue
-		}
 		if !best || r.Version.Compare(dep.Version) > 0 {
 			dep.Version = r.Version
 			best = true
 		}
 	}
-	if !best {
-		dep.Bundled = hasBundled
-	}
 	return dep
 }
 
 func applyReplace(dep Dep, idx map[string]Replace) Dep {
-	if dep.Bundled {
-		return dep
-	}
 	for i := 0; i <= 16; i++ {
 		rep, ok := idx[dep.Path+"@"+dep.Version.String()]
 		if !ok {

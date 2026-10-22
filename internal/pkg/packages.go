@@ -31,21 +31,6 @@ func (g *graph) packages() ([]*Package, map[string]*Package, []diag.Diagnostic) 
 	declared := g.declaredFeatures()
 	bag.AddAll(enabledUndeclared(declared))
 	bag.AddAll(prunePackages(pkgs, declared))
-	// A module that imports std without requiring it still needs the
-	// bundled root, because the root's absence is a toolchain fault and not
-	// an unknown import path.
-	if g.std == nil && importsStd(pkgs) {
-		dir, ok := bundledStdRoot()
-		if !ok {
-			g.stdErr = &MissingBundledStd{Path: dir}
-			return nil, nil, bag.Diagnostics()
-		}
-		g.addStd(dir)
-		ps, ds := walkModule(g.std)
-		bag.AddAll(ds)
-		groups = append(groups, moduleGroup{node: g.std, pkgs: ps})
-		pkgs = append(pkgs, ps...)
-	}
 	return pkgs, buildImportTable(groups), bag.Diagnostics()
 }
 
@@ -82,36 +67,13 @@ func buildImportTable(groups []moduleGroup) map[string]*Package {
 	return table
 }
 
-// importsStd reports whether any loaded package imports the bundled standard
-// library.
-func importsStd(pkgs []*Package) bool {
-	for _, p := range pkgs {
-		for _, f := range p.Files {
-			if f.AST == nil {
-				continue
-			}
-			for _, imp := range f.AST.Imports {
-				if imp.C {
-					continue
-				}
-				if imp.Path == "std" || strings.HasPrefix(imp.Path, "std/") {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
 // walkModule reads every .will file under one module root and groups them by
 // directory.
 func walkModule(n *moduleNode) ([]*Package, []diag.Diagnostic) {
 	var bag diag.Bag
-	if !n.Std {
-		if base := filepath.Base(n.Dir); base != lastSegment(n.Path) {
-			bag.Error(source.Pos{File: base, Line: 1, Col: 1}, diag.CodePackageNameMismatch,
-				"package name does not match the directory name", "rename one of them")
-		}
+	if base := filepath.Base(n.Dir); base != lastSegment(n.Path) {
+		bag.Error(source.Pos{File: base, Line: 1, Col: 1}, diag.CodePackageNameMismatch,
+			"package name does not match the directory name", "rename one of them")
 	}
 
 	dirs := map[string][]string{}

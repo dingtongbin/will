@@ -1,6 +1,6 @@
-// Package pkg loads one module graph: the root module, every module a local
-// replace points at, and the bundled standard library when it is used. It
-// groups source files by package, checks the package names, and reports
+// Package pkg loads one module graph: the root module and every module a local
+// replace points at. It groups source files by package, checks the package
+// names, and reports
 // methods that leave their type's package, one package reached through two
 // import paths, and import cycles.
 package pkg
@@ -58,7 +58,7 @@ type Build struct {
 	// for the same package, so the table has more entries than Packages.
 	byPath map[string]*Package
 	// LocalModules lists every module loaded through a local replace, in path
-	// order. The root module and the bundled standard library are not included.
+	// order. The root module and the standard library module are not included.
 	LocalModules []LocalModule
 	// Links are the external libraries the root module asks the linker to
 	// include, in declaration order.
@@ -108,16 +108,13 @@ func load(root string, skipSums bool) *Build {
 
 	g := resolveModules(&moduleNode{Dir: root, Path: m.Path, Mod: m})
 	bag.AddAll(g.diags)
-	if g.stdErr != nil {
-		// A missing bundled standard library is a broken toolchain. The
-		// command line reports it as a startup error, not as a source error.
-		b.Err = g.stdErr
-		return b
-	}
 	pkgs, table, pds := g.packages()
 	stdDir := ""
-	if g.std != nil {
-		stdDir = g.std.Dir
+	for _, key := range g.order {
+		if n := g.nodes[key]; n != nil && n.Path == "std" {
+			stdDir = n.Dir
+			break
+		}
 	}
 	pkgs, pds = keepLoadedPackages(pkgs, table, b.Root, stdDir, pds)
 	bag.AddAll(pds)
@@ -127,7 +124,7 @@ func load(root string, skipSums bool) *Build {
 	b.byPath = table
 	for _, key := range g.order {
 		n := g.nodes[key]
-		if n == nil || n == g.root || n.Std || !n.Local {
+		if n == nil || n == g.root || n.Path == "std" || !n.Local {
 			continue
 		}
 		for _, k := range n.Keys {
@@ -518,10 +515,10 @@ func (b *Build) foreignFuncs() map[string]map[string]*ast.FuncDecl {
 // outside an if: T0010 is the root cause, and the removed std/meta import would
 // otherwise also report meta as undefined at the same position.
 // keepLoadedPackages drops standard-library packages that the root module
-// cannot reach. The bundled tree is scanned before this point so a package
-// path still resolves; parsing and checking an unused std package must not
-// make a build fail. Diagnostics whose source belongs to a dropped package are
-// dropped with it.
+// cannot reach. The std tree is scanned before this point so a package path
+// still resolves; parsing and checking an unused std package must not make a
+// build fail. Diagnostics whose source belongs to a dropped package are dropped
+// with it.
 func keepLoadedPackages(pkgs []*Package, table map[string]*Package, root, stdDir string, ds []diag.Diagnostic) ([]*Package, []diag.Diagnostic) {
 	if stdDir == "" {
 		return pkgs, ds

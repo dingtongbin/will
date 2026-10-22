@@ -10,8 +10,8 @@ import (
 	"github.com/will-lang/will/internal/source"
 )
 
-// moduleNode is one module tree in the build: the root module, a local replace
-// target, or the bundled standard library.
+// moduleNode is one module tree in the build: the root module or a local
+// replace target.
 type moduleNode struct {
 	Dir  string
 	Path string
@@ -22,7 +22,6 @@ type moduleNode struct {
 	// paths.
 	Keys  []string
 	Local bool
-	Std   bool
 }
 
 // graph is the module set of one build and the requirement path that selected
@@ -43,10 +42,6 @@ type graph struct {
 	// replaceReported remembers the paths whose replace chain was already
 	// reported, so a retry does not repeat the diagnostic.
 	replaceReported map[string]bool
-	std             *moduleNode
-	// stdErr is set when the bundled standard library is needed and its root
-	// is not on disk.
-	stdErr error
 }
 
 const (
@@ -60,12 +55,9 @@ const (
 )
 
 // requirement is the selected version of one module path. The highest
-// required version wins; a bundled requirement only stands while no versioned
-// requirement exists.
+// required version wins.
 type requirement struct {
-	version   mod.Version
-	versioned bool
-	bundled   bool
+	version mod.Version
 }
 
 // resolveModules loads the root and every module reachable through requires
@@ -121,7 +113,7 @@ func (g *graph) resolve() bool {
 		selected := g.known
 		changed := false
 		for _, path := range selectionPaths(selected) {
-			dir, std, ok := g.target(path, selected[path])
+			dir, ok := g.target(path, selected[path])
 			if !ok {
 				continue
 			}
@@ -134,10 +126,6 @@ func (g *graph) resolve() bool {
 				}
 			}
 			g.dirs[path] = key
-			if std {
-				changed = g.addStd(dir) || changed
-				continue
-			}
 			if n, seen := g.nodes[key]; seen {
 				if addKey(n, path) {
 					changed = true
@@ -162,32 +150,16 @@ func (g *graph) resolve() bool {
 }
 
 // mergeRequires folds one module's requires into the selected set, keeping the
-// highest version per path and letting a versioned requirement replace a
-// bundled one.
+// highest version per path.
 func mergeRequires(out map[string]requirement, m *mod.Module) {
 	if m == nil {
 		return
 	}
 	for _, r := range m.Requires {
 		cur, seen := out[r.Path]
-		if !seen {
-			cur = requirement{bundled: r.Bundled}
-			if !r.Bundled {
-				cur.version = r.Version
-				cur.versioned = true
-			}
-			out[r.Path] = cur
-			continue
+		if !seen || r.Version.Compare(cur.version) > 0 {
+			out[r.Path] = requirement{version: r.Version}
 		}
-		switch {
-		case r.Bundled && !cur.versioned:
-			cur.bundled = true
-		case !r.Bundled && (!cur.versioned || r.Version.Compare(cur.version) > 0):
-			cur.version = r.Version
-			cur.versioned = true
-			cur.bundled = false
-		}
-		out[r.Path] = cur
 	}
 }
 
@@ -202,9 +174,8 @@ func selectionPaths(selected map[string]requirement) []string {
 
 // target resolves one selected module path to a directory. A replace wins
 // over everything: a local target names the directory, a versioned target
-// continues the chain at the other version. A bundled std requirement lands on
-// the toolchain's standard library root.
-func (g *graph) target(path string, req requirement) (string, bool, bool) {
+// continues the chain at the other version.
+func (g *graph) target(path string, req requirement) (string, bool) {
 	curPath, curVersion := path, req.version
 	exhausted := false
 	for i := 0; i < replaceChainLimit; i++ {
@@ -218,7 +189,7 @@ func (g *graph) target(path string, req requirement) (string, bool, bool) {
 			if !filepath.IsAbs(target) {
 				target = filepath.Join(owner.Dir, target)
 			}
-			return target, false, true
+			return target, true
 		}
 		curPath, curVersion = rep.Target, rep.TargetVer
 		exhausted = true
@@ -233,15 +204,7 @@ func (g *graph) target(path string, req requirement) (string, bool, bool) {
 			Help:     "shorten the chain or remove the cycle",
 		})
 	}
-	if req.bundled && curPath == "std" {
-		dir, ok := bundledStdRoot()
-		if !ok {
-			g.stdErr = &MissingBundledStd{Path: dir}
-			return "", false, false
-		}
-		return dir, true, true
-	}
-	return "", false, false
+	return "", false
 }
 
 // findReplace looks a replacement up in the root module first and then in the
@@ -298,36 +261,6 @@ func readLocalModule(dir, key string) (*moduleNode, []diag.Diagnostic) {
 		Keys:  []string{key},
 		Local: true,
 	}, ds
-}
-
-// addStd loads the bundled standard library root. It reports whether the root
-// became a new node of this graph.
-func (g *graph) addStd(dir string) bool {
-	key := canonicalDir(dir)
-	if n, ok := g.nodes[key]; ok {
-		g.std = n
-		return false
-	}
-	path := "std"
-	var m *mod.Module
-	var ds []diag.Diagnostic
-	if data, err := os.ReadFile(filepath.Join(dir, "will.mod")); err == nil {
-		m, ds = mod.Parse("will.mod", data)
-		if m != nil && m.Path != "" {
-			path = m.Path
-		}
-	}
-	g.diags = append(g.diags, ds...)
-	n := &moduleNode{
-		Dir:  filepath.Clean(dir),
-		Path: path,
-		Mod:  m,
-		Keys: []string{"std"},
-		Std:  true,
-	}
-	g.addNode(n)
-	g.std = n
-	return true
 }
 
 func addKey(n *moduleNode, key string) bool {

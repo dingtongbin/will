@@ -12,7 +12,6 @@ import (
 type Require struct {
 	Path    string
 	Version Version
-	Bundled bool
 }
 
 // Replace redirects one required version to a local directory or to another
@@ -39,7 +38,7 @@ type Module struct {
 const (
 	helpModule  = "module <import path>"
 	helpWill    = "will <integer>"
-	helpRequire = "require <path>@<version> or require <path>@bundled"
+	helpRequire = "require <path>@v<major>.<minor>.<patch>"
 	helpReplace = "replace <path>@<version> => <local dir or path@version>"
 	helpFeature = "feature <name>"
 )
@@ -116,18 +115,12 @@ func (p *parser) parseLine(line string) {
 			p.bad(p.line, helpRequire, "require takes one path@version")
 			return
 		}
-		req := Require{Path: path}
-		if version == "bundled" {
-			req.Bundled = true
-		} else {
-			v, ok := ParseVersion(version)
-			if !ok {
-				p.bad(p.line, helpRequire, "the version is v<major>.<minor>.<patch> or bundled")
-				return
-			}
-			req.Version = v
+		v, ok := ParseVersion(version)
+		if !ok {
+			p.bad(p.line, helpRequire, "the version is v<major>.<minor>.<patch>")
+			return
 		}
-		p.module.Requires = append(p.module.Requires, req)
+		p.module.Requires = append(p.module.Requires, Require{Path: path, Version: v})
 	case "replace":
 		if len(fields) != 4 || fields[2] != "=>" {
 			p.bad(p.line, helpReplace, "replace is path@version => target")
