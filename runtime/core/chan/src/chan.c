@@ -16,6 +16,12 @@
 #include <stdint.h>
 #include <string.h>
 
+#if defined(__clang__) || defined(__GNUC__)
+#define WILLRT_CHAN_SLOW __attribute__((noinline))
+#else
+#define WILLRT_CHAN_SLOW
+#endif
+
 
 
 /* One blocked operation. A blocking caller owns a stack node; a task wait will
@@ -298,7 +304,30 @@ willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio) {
     return chan;
 }
 
+static int32_t willrt_chan_try_send_slow(willrt_chan* chan, const void* value);
+
 int32_t willrt_chan_try_send(willrt_chan* chan, const void* value) {
+    size_t index;
+
+    if (chan == NULL || value == NULL) {
+        return WILLRT_FAILED;
+    }
+    if (!willrt_runtime_threaded()) {
+        if (chan->closed) {
+            return WILLRT_CLOSED;
+        }
+        if (chan->count == chan->cap) {
+            return WILLRT_FULL;
+        }
+        index = willrt_chan_at(chan, chan->count);
+        willrt_chan_copy(chan->data + index * chan->elem, value, chan->elem);
+        chan->count++;
+        return WILLRT_OK;
+    }
+    return willrt_chan_try_send_slow(chan, value);
+}
+
+WILLRT_CHAN_SLOW static int32_t willrt_chan_try_send_slow(willrt_chan* chan, const void* value) {
     willrt_chan_wait* wait;
     size_t index;
     int32_t result = WILLRT_OK;
@@ -339,7 +368,30 @@ int32_t willrt_chan_try_send(willrt_chan* chan, const void* value) {
     return result;
 }
 
+static int32_t willrt_chan_send_slow(willrt_chan* chan, const void* value);
+
 int32_t willrt_chan_send(willrt_chan* chan, const void* value) {
+    size_t index;
+
+    if (chan == NULL || value == NULL) {
+        return WILLRT_FAILED;
+    }
+    if (!willrt_runtime_threaded()) {
+        if (chan->closed) {
+            return WILLRT_CLOSED;
+        }
+        if (chan->count == chan->cap) {
+            return WILLRT_FULL;
+        }
+        index = willrt_chan_at(chan, chan->count);
+        willrt_chan_copy(chan->data + index * chan->elem, value, chan->elem);
+        chan->count++;
+        return WILLRT_OK;
+    }
+    return willrt_chan_send_slow(chan, value);
+}
+
+WILLRT_CHAN_SLOW static int32_t willrt_chan_send_slow(willrt_chan* chan, const void* value) {
     willrt_chan_wait wait;
     willrt_chan_wait* ready;
     int32_t result = WILLRT_OK;
@@ -417,7 +469,27 @@ int32_t willrt_chan_send(willrt_chan* chan, const void* value) {
     return result;
 }
 
+static int32_t willrt_chan_try_recv_slow(willrt_chan* chan, void* out);
+
 int32_t willrt_chan_try_recv(willrt_chan* chan, void* out) {
+    if (chan == NULL) {
+        return WILLRT_FAILED;
+    }
+    if (!willrt_runtime_threaded()) {
+        if (chan->count != 0) {
+            if (out != NULL) {
+                willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
+            }
+            chan->head = willrt_chan_next(chan->head, chan->cap);
+            chan->count--;
+            return WILLRT_OK;
+        }
+        return chan->closed ? WILLRT_CLOSED : WILLRT_EMPTY;
+    }
+    return willrt_chan_try_recv_slow(chan, out);
+}
+
+WILLRT_CHAN_SLOW static int32_t willrt_chan_try_recv_slow(willrt_chan* chan, void* out) {
     willrt_chan_wait* wait;
     int32_t result = WILLRT_OK;
 
@@ -457,7 +529,27 @@ int32_t willrt_chan_try_recv(willrt_chan* chan, void* out) {
     return result;
 }
 
+static int32_t willrt_chan_recv_slow(willrt_chan* chan, void* out);
+
 int32_t willrt_chan_recv(willrt_chan* chan, void* out) {
+    if (chan == NULL) {
+        return WILLRT_FAILED;
+    }
+    if (!willrt_runtime_threaded()) {
+        if (chan->count != 0) {
+            if (out != NULL) {
+                willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
+            }
+            chan->head = willrt_chan_next(chan->head, chan->cap);
+            chan->count--;
+            return WILLRT_OK;
+        }
+        return chan->closed ? WILLRT_CLOSED : WILLRT_EMPTY;
+    }
+    return willrt_chan_recv_slow(chan, out);
+}
+
+WILLRT_CHAN_SLOW static int32_t willrt_chan_recv_slow(willrt_chan* chan, void* out) {
     willrt_chan_wait wait;
     willrt_chan_wait* ready;
     int32_t result = WILLRT_OK;
@@ -615,6 +707,10 @@ static _Thread_local int32_t willrt_select_last = WILLRT_OK;
 
 int32_t willrt_select_status(void) {
     return willrt_select_last;
+}
+
+void willrt_select_set_status(int32_t status) {
+    willrt_select_last = status;
 }
 
 int32_t willrt_select(willrt_arm* arms, size_t n) {

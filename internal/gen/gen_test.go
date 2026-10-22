@@ -423,12 +423,16 @@ func TestEmitSelect(t *testing.T) {
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`%willrt_arm = type { ptr, ptr, ptr, i32, i64 }`,
-		`call i32 @willrt_select(ptr`,
+		`call i32 @willrt_chan_try_recv(ptr`,
+		`call void @willrt_select_set_status(i32`,
 		`call i32 @willrt_select_status()`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
+	}
+	if strings.Contains(text, `call i32 @willrt_select(ptr`) {
+		t.Errorf("a default select still enters the blocking runtime:\n%s", text)
 	}
 }
 

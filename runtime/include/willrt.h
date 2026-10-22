@@ -389,6 +389,9 @@ int32_t willrt_select(willrt_arm* arms, size_t n);
    this thread chose. It is WILLRT_OK for a successful receive or send and
    WILLRT_CLOSED when a receive selected a closed channel. */
 int32_t willrt_select_status(void);
+/* The compiler's no-wait default path records the chosen arm status before it
+   dispatches the body. */
+void willrt_select_set_status(int32_t status);
 
 /* willrt_timer is a one-shot timer. The node is owned by the runtime. */
 typedef struct willrt_timer willrt_timer;

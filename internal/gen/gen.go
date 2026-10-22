@@ -166,6 +166,9 @@ func (g *generator) emitAux() {
 		if !g.declSet["declare i64 @willrt_now_ns()"] {
 			g.out.WriteString("declare i64 @willrt_now_ns()\n")
 		}
+		if g.needSelectSetDecl {
+			g.out.WriteString("declare void @willrt_select_set_status(i32)\n")
+		}
 		g.out.WriteString("declare void @willrt_region_enter()\n")
 		g.out.WriteString("declare i32 @willrt_region_exit()\n")
 		g.out.WriteString("declare i32 @willrt_lane_here()\n")
@@ -526,6 +529,7 @@ func (g *generator) use(d *docState) {
 	g.dropNames = map[string]string{}
 	g.pendingDrops = nil
 	g.selectSlots = map[int]string{}
+	g.selectFastSlots = map[int]string{}
 	g.selectOutSlots = map[int]string{}
 	g.selectBindSlots = map[int]string{}
 	g.selectBindTypes = map[int]string{}
@@ -674,6 +678,8 @@ type generator struct {
 	// needChanWaitDecl records the direct channel receive used by a state
 	// machine. Programs without that shape keep the old declaration set.
 	needChanWaitDecl bool
+	// needSelectSetDecl records the status setter used by a no-wait select.
+	needSelectSetDecl bool
 	// needCancelBind records a spawn that passed a cancellation credential.
 	needCancelBind bool
 	// needDeadlineDecl records that the lowering scopes a deadline.
@@ -749,6 +755,7 @@ type generator struct {
 	trimStartSlots  map[int]string
 	trimLenSlots    map[int]string
 	selectSlots     map[int]string
+	selectFastSlots map[int]string
 	selectOutSlots  map[int]string
 	selectBindSlots map[int]string
 	selectBindTypes map[int]string
