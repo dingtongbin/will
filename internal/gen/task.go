@@ -73,6 +73,12 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	}
 	target, hasTarget := g.recs[refField(call, "to")]
 	indirect := hasTarget && g.isFuncValue(target)
+	if hasTarget && !indirect {
+		if info, ok := g.stateMachine(target.ID); ok {
+			g.pendingSM = append(g.pendingSM, info)
+			return g.lowerStateMachineSpawn(r, info, call)
+		}
+	}
 	sym := ""
 	if !indirect {
 		sym = g.callTargetSymbol(call)
@@ -207,7 +213,13 @@ func (g *generator) emitSpawns() error {
 			return err
 		}
 	}
+	for _, info := range g.pendingSM {
+		if err := g.emitStateMachineStep(info); err != nil {
+			return err
+		}
+	}
 	g.pendingSpawns = nil
+	g.pendingSM = nil
 	return nil
 }
 

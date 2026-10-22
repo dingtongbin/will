@@ -1,11 +1,10 @@
 /* Tasks, regions, and the task environment.
  *
- * A task is a fiber with its own C stack, not a platform thread. A fixed lane
- * pool runs ready tasks; a blocking Join, channel wait, or select parks only
- * the task and switches back to its lane scheduler. The task resumes at the
- * same instruction when its dependency wakes it. Jobs use the same fiber
- * object but enter through the job pool, so a parallel block does not create
- * one thread per spawned call.
+ * A task is a step over a compiler-built frame, not a platform thread and not
+ * a C stack. A fixed lane pool calls the step while the task is ready. A step
+ * that returns WILLRT_SUSPEND has already stored its state in the frame; the
+ * lane parks it until the IO epoch or a target dependency wakes it, then calls
+ * the same step again. Jobs use the same step contract through the job pool.
  *
  * A panic inside a task writes its report, records the failure, and switches
  * back to the lane instead of ending the process. A panic on the main thread
@@ -35,8 +34,6 @@ struct willrt_task {
     willrt_step step;
     void* frame;
     size_t frame_size;
-    willrt_os_fiber* fiber;
-    willrt_os_fiber* lane_fiber;
     int32_t lane;
     int32_t prio;
     int32_t started;
@@ -46,6 +43,7 @@ struct willrt_task {
     int32_t state;
     int32_t queued;
     int32_t wake_pending;
+    int32_t wait_requested;
     void* cancel_flag;
     int64_t deadline;
     unsigned char* result;
@@ -74,7 +72,6 @@ static _Thread_local struct willrt_task* willrt_task_self;
 static _Thread_local struct willrt_region willrt_regions[WILLRT_REGION_DEPTH];
 static _Thread_local int willrt_region_depth;
 static _Thread_local int64_t willrt_main_deadline;
-static _Thread_local willrt_os_fiber* willrt_local_fiber;
 
 static atomic_int willrt_task_globals_state;
 static atomic_int willrt_tasks_live;
@@ -201,33 +198,22 @@ uint32_t willrt_sched_io_epoch(void) {
     return atomic_load(&willrt_io_epoch);
 }
 
-// willrt_task_wait_io parks the current task until a channel changes. The
-// caller captures epoch before its readiness check; a change between that check
-// and the park makes the wait return immediately so the caller rechecks.
+// willrt_task_wait_io is the compatibility entry for the blocking pool and
+// time.Sleep. A state-machine step does not call it: it returns WILLRT_SUSPEND
+// and the lane parks the frame. The main thread keeps the direct sleep.
 void willrt_task_wait_io(uint32_t epoch, int64_t deadline) {
-    struct willrt_task* task = willrt_task_self;
+    (void)epoch;
+    (void)deadline;
+}
+
+static void willrt_task_park(struct willrt_task* task) {
     willrt_timer* timer = NULL;
 
-    if (task == NULL || task->lane_fiber == NULL) {
-        willrt_os_sleep_ns(0);
-        return;
-    }
-    if (deadline > 0) {
-        int64_t now = willrt_now_ns();
-        if (now >= deadline) {
-            return;
-        }
-        timer = willrt_timer_new(deadline, willrt_io_timer, NULL);
+    if (task->deadline > 0 && willrt_now_ns() < task->deadline) {
+        timer = willrt_timer_new(task->deadline, willrt_io_timer, NULL);
     }
     willrt_os_mutex_lock(&willrt_lane_lock);
-    if (atomic_load(&willrt_io_epoch) != epoch) {
-        willrt_os_mutex_unlock(&willrt_lane_lock);
-        if (timer != NULL) {
-            willrt_timer_cancel(timer);
-        }
-        return;
-    }
-    task->state = WILLRT_TASK_PARKING;
+    task->state = WILLRT_TASK_WAITING;
     task->io_next = NULL;
     if (willrt_io_tail == NULL) {
         willrt_io_head = task;
@@ -236,24 +222,7 @@ void willrt_task_wait_io(uint32_t epoch, int64_t deadline) {
     }
     willrt_io_tail = task;
     willrt_os_mutex_unlock(&willrt_lane_lock);
-    willrt_os_fiber_switch(task->fiber, task->lane_fiber);
-    if (timer != NULL) {
-        willrt_timer_cancel(timer);
-    }
-}
-
-// willrt_task_suspend parks the current task until its dependency wakes it.
-static void willrt_task_suspend(void) {
-    struct willrt_task* task = willrt_task_self;
-
-    if (task == NULL || task->lane_fiber == NULL) {
-        willrt_os_thread_yield();
-        return;
-    }
-    willrt_os_mutex_lock(&willrt_lane_lock);
-    task->state = WILLRT_TASK_PARKING;
-    willrt_os_mutex_unlock(&willrt_lane_lock);
-    willrt_os_fiber_switch(task->fiber, task->lane_fiber);
+    (void)timer;
 }
 
 static void willrt_task_finish(struct willrt_task* task) {
@@ -277,42 +246,45 @@ static void willrt_task_finish(struct willrt_task* task) {
     atomic_fetch_sub(&willrt_tasks_live, 1);
     willrt_os_cond_broadcast(&willrt_tasks_cond);
     willrt_os_mutex_unlock(&willrt_tasks_lock);
+    willrt_sched_wake_io();
 }
 
-static void willrt_task_entry(void* raw) {
-    struct willrt_task* task = (struct willrt_task*)raw;
+static void willrt_task_run_step(struct willrt_task* task) {
     int32_t status;
 
+    task->state = WILLRT_TASK_RUNNING;
+    task->wait_requested = 0;
     willrt_task_self = task;
     willrt_mem_set_lane(task->lane);
-    do {
-        status = task->step(task->frame);
-        if (status == WILLRT_SUSPEND) {
-            // Generated spawn steps can still ask for a retry. The normal
-            // Join/Recv path parks inside the call and does not return here.
-            willrt_os_thread_yield();
+    status = task->step(task->frame);
+    willrt_task_self = NULL;
+    if (status == WILLRT_SUSPEND) {
+        if (task->wait_requested) {
+            willrt_task_park(task);
+        } else {
+            willrt_os_mutex_lock(&willrt_lane_lock);
+            willrt_lane_enqueue_locked(task);
+            willrt_os_cond_broadcast(&willrt_lane_cond);
+            willrt_os_mutex_unlock(&willrt_lane_lock);
         }
-    } while (status == WILLRT_SUSPEND);
-
+        return;
+    }
     willrt_task_finish(task);
-    willrt_os_fiber_switch(task->fiber, task->lane_fiber);
-    for (;;) {
+    task->state = WILLRT_TASK_DONE;
+}
+
+void willrt_task_mark_wait(void) {
+    if (willrt_task_self != NULL) {
+        willrt_task_self->wait_requested = 1;
     }
 }
 
 static void willrt_lane_worker(void* raw) {
     lane_worker* worker = (lane_worker*)raw;
-    willrt_os_fiber* scheduler;
 
     willrt_mem_set_lane(worker->id);
-    scheduler = willrt_os_fiber_thread();
-    willrt_local_fiber = scheduler;
-    if (scheduler == NULL) {
-        return;
-    }
     for (;;) {
         struct willrt_task* task;
-        int32_t finished;
 
         willrt_os_mutex_lock(&willrt_lane_lock);
         while (willrt_lane_head == NULL && !willrt_lane_stopping) {
@@ -326,31 +298,8 @@ static void willrt_lane_worker(void* raw) {
         if (task == NULL) {
             continue;
         }
-        task->lane_fiber = scheduler;
-        task->state = WILLRT_TASK_RUNNING;
-        task->wake_pending = 0;
-        willrt_task_self = task;
-        willrt_os_fiber_switch(scheduler, task->fiber);
-        willrt_task_self = NULL;
-
-        willrt_os_mutex_lock(&willrt_lane_lock);
-        finished = task->finished;
-        if (!finished) {
-            if (task->wake_pending) {
-                task->wake_pending = 0;
-                willrt_lane_enqueue_locked(task);
-            } else {
-                task->state = WILLRT_TASK_WAITING;
-            }
-        }
-        willrt_os_mutex_unlock(&willrt_lane_lock);
-        if (finished) {
-            task->state = WILLRT_TASK_DONE;
-            willrt_os_fiber_destroy(task->fiber);
-            task->fiber = NULL;
-        }
+        willrt_task_run_step(task);
     }
-    willrt_os_fiber_destroy(scheduler);
     willrt_mem_thread_flush();
 }
 
@@ -427,12 +376,6 @@ willrt_task* willrt_task_new(void* step, void* frame, size_t size, int32_t lane,
     task->frame_size = size;
     task->lane = lane < 0 ? 0 : lane;
     task->prio = prio;
-    task->fiber = willrt_os_fiber_new(willrt_task_entry, task,
-                                      WILLRT_TASK_STACK);
-    if (task->fiber == NULL) {
-        willrt_free(task);
-        return NULL;
-    }
     willrt_os_mutex_init(&task->lock);
     willrt_os_cond_init(&task->cond);
 
@@ -460,21 +403,7 @@ void willrt_task_run(willrt_task* task) {
     willrt_mem_set_shared();
     willrt_lane_init();
     if (willrt_lane_started == 0) {
-        // A lane could not start. Running the task on the caller keeps the
-        // handle usable and makes the failure visible as a normal task.
-        willrt_task_self = task;
-        task->lane_fiber = willrt_os_fiber_thread();
-        task->state = WILLRT_TASK_RUNNING;
-        if (task->lane_fiber != NULL) {
-            willrt_os_fiber_switch(task->lane_fiber, task->fiber);
-            willrt_os_fiber_destroy(task->lane_fiber);
-        }
-        task->lane_fiber = NULL;
-        willrt_task_self = NULL;
-        if (task->fiber != NULL) {
-            willrt_os_fiber_destroy(task->fiber);
-            task->fiber = NULL;
-        }
+        willrt_task_run_step(task);
         return;
     }
     willrt_os_mutex_lock(&willrt_lane_lock);
@@ -483,34 +412,15 @@ void willrt_task_run(willrt_task* task) {
     willrt_os_mutex_unlock(&willrt_lane_lock);
 }
 
-/* willrt_task_run_job advances one task on the caller thread. The job pool
-   owns the thread that calls this hook; the fiber switch keeps the task object
-   and step contract while avoiding a second task thread. */
+/* willrt_task_run_job advances one task on the caller thread. Jobs contain no
+   suspension point, so a returned suspend is a failed job rather than a park. */
 void willrt_task_run_job(willrt_task* task) {
-    willrt_os_fiber* scheduler;
-
     if (task == NULL) {
         return;
     }
     atomic_store(&willrt_threads_live, 1);
-    scheduler = willrt_local_fiber;
-    if (scheduler == NULL) {
-        scheduler = willrt_os_fiber_thread();
-        willrt_local_fiber = scheduler;
-    }
-    if (scheduler == NULL) {
-        return;
-    }
     task->started = 1;
-    task->lane_fiber = scheduler;
-    task->state = WILLRT_TASK_RUNNING;
-    willrt_task_self = task;
-    willrt_os_fiber_switch(scheduler, task->fiber);
-    willrt_task_self = NULL;
-    if (task->finished && task->fiber != NULL) {
-        willrt_os_fiber_destroy(task->fiber);
-        task->fiber = NULL;
-    }
+    willrt_task_run_step(task);
 }
 
 willrt_task* willrt_task_current(void) {
@@ -544,8 +454,25 @@ int32_t willrt_task_try_join(willrt_task* task, void* out, willrt_error* err) {
     if (task == NULL) {
         return WILLRT_FAILED;
     }
-    if (current != NULL && current->fiber != NULL) {
-        return willrt_join(task, out, err);
+    if (current != NULL) {
+        willrt_os_mutex_lock(&task->lock);
+        if (task->finished) {
+            int32_t status = task->failed ? WILLRT_FAILED : WILLRT_OK;
+            if (out != NULL && task->result != NULL && task->result_size != 0) {
+                memcpy(out, task->result, task->result_size);
+            }
+            if (err != NULL) {
+                err->message = task->message;
+                err->size = task->message_size;
+                err->site = task->site;
+                err->symbol = task->symbol;
+            }
+            willrt_os_mutex_unlock(&task->lock);
+            return status;
+        }
+        willrt_os_mutex_unlock(&task->lock);
+        willrt_task_mark_wait();
+        return WILLRT_SUSPEND;
     }
     willrt_os_mutex_lock(&task->lock);
     if (!task->finished) {
@@ -582,25 +509,6 @@ int32_t willrt_join(willrt_task* task, void* out, willrt_error* err) {
     for (;;) {
         willrt_os_mutex_lock(&task->lock);
         if (!task->finished) {
-            if (current != NULL && current->fiber != NULL) {
-                if (willrt_task_canceled()) {
-                    willrt_os_mutex_unlock(&task->lock);
-                    return WILLRT_CANCELED;
-                }
-                if (current->deadline != 0 && willrt_now_ns() >= current->deadline) {
-                    willrt_os_mutex_unlock(&task->lock);
-                    return WILLRT_TIMEDOUT;
-                }
-                current->wait_next = task->wait_next;
-                task->wait_next = current;
-                willrt_os_mutex_unlock(&task->lock);
-                willrt_task_suspend();
-                continue;
-            }
-            if (current == NULL && task->deadline != 0) {
-                // The main thread has no fiber; it keeps the timed condition
-                // wait path and observes its own deadline below.
-            }
             {
                 int64_t wait = INT64_C(10) * INT64_C(1000000);
                 if (current != NULL && current->deadline != 0) {
@@ -660,11 +568,6 @@ int32_t willrt_task_fail(const char* message, size_t size, const char* site,
     task->symbol = symbol;
     willrt_os_mutex_unlock(&task->lock);
     willrt_task_finish(task);
-    if (task->lane_fiber != NULL) {
-        willrt_os_fiber_switch(task->fiber, task->lane_fiber);
-        for (;;) {
-        }
-    }
     willrt_os_thread_exit();
     return 1;
 }
@@ -729,11 +632,6 @@ int32_t willrt_runtime_threaded(void) {
 }
 
 void willrt_yield(void) {
-    if (willrt_task_self != NULL) {
-        willrt_task_suspend();
-        willrt_task_wake(willrt_task_self);
-        return;
-    }
     willrt_os_thread_yield();
 }
 
@@ -768,12 +666,13 @@ void willrt_task_sleep_ns(int64_t ns) {
     struct willrt_task* task = willrt_task_self;
     int64_t deadline;
 
-    if (task == NULL || task->lane_fiber == NULL || ns <= 0) {
+    if (task == NULL || ns <= 0) {
         willrt_os_sleep_ns(ns);
         return;
     }
     deadline = willrt_now_ns() + ns;
-    willrt_task_wait_io(willrt_sched_io_epoch(), deadline);
+    (void)deadline;
+    willrt_os_sleep_ns(ns);
 }
 
 int64_t willrt_task_enter_deadline(int64_t duration_ns) {

@@ -71,17 +71,6 @@ void willrt_os_thread_join(willrt_os_thread* thread);
 void willrt_os_thread_yield(void);
 void willrt_os_sleep_ns(int64_t ns);
 
-/* Fibers let a task suspend without holding a lane thread. The scheduler
-   converts each lane thread once, switches into a task fiber, and switches
-   back when the task parks or finishes. from may be NULL on a platform whose
-   switch does not need the caller context. */
-typedef struct willrt_os_fiber willrt_os_fiber;
-willrt_os_fiber* willrt_os_fiber_new(void (*fn)(void*), void* arg,
-                                     size_t stack_size);
-willrt_os_fiber* willrt_os_fiber_thread(void);
-void willrt_os_fiber_switch(willrt_os_fiber* from, willrt_os_fiber* to);
-void willrt_os_fiber_destroy(willrt_os_fiber* fiber);
-
 void willrt_os_mutex_init(willrt_os_mutex* mutex);
 void willrt_os_mutex_destroy(willrt_os_mutex* mutex);
 void willrt_os_mutex_lock(willrt_os_mutex* mutex);
@@ -301,13 +290,16 @@ int32_t willrt_runtime_threaded(void);
 void willrt_yield(void);
 int32_t willrt_task_canceled(void);
 void willrt_task_bind_cancel(willrt_task* task, void* flag);
+/* A step that is not ready marks the current task as waiting before returning
+   WILLRT_SUSPEND. A bare suspend without this mark is retried immediately. */
+void willrt_task_mark_wait(void);
 int64_t willrt_task_deadline(void);
 /* willrt_task_sleep_ns parks the current task until the duration passes. The
-   main thread sleeps directly because it has no scheduler fiber. */
+   main thread sleeps directly. */
 void willrt_task_sleep_ns(int64_t ns);
-/* Channel/select waits park the current fiber until a channel changes. The
-   caller captures the epoch before checking readiness; a change between that
-   check and the park returns immediately. */
+/* A state-machine step that is not ready marks a wait and returns
+   WILLRT_SUSPEND. The scheduler parks the frame until an IO epoch changes or
+   its target task finishes. */
 void willrt_sched_wake_io(void);
 uint32_t willrt_sched_io_epoch(void);
 void willrt_task_wait_io(uint32_t epoch, int64_t deadline);

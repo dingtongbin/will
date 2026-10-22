@@ -171,6 +171,9 @@ func (g *generator) emitAux() {
 	if g.needJobDecl {
 		g.out.WriteString("declare ptr @willrt_job_new(ptr, ptr, i64, i32)\n")
 	}
+	if g.needWaitDecl {
+		g.out.WriteString("declare void @willrt_task_mark_wait()\n")
+	}
 	if g.needCancelBind {
 		g.out.WriteString("declare void @willrt_task_bind_cancel(ptr, ptr)\n")
 	}
@@ -653,6 +656,8 @@ type generator struct {
 	needTaskDecl bool
 	// needJobDecl records that a parallel block submitted a job.
 	needJobDecl bool
+	// needWaitDecl records that a generated state machine marks a wait.
+	needWaitDecl bool
 	// needCancelBind records a spawn that passed a cancellation credential.
 	needCancelBind bool
 	// needDeadlineDecl records that the lowering scopes a deadline.
@@ -712,6 +717,7 @@ type generator struct {
 	spawnNames    map[int]string
 	spawnSeq      int
 	pendingSpawns []spawnRequest
+	pendingSM     []*stateMachineInfo
 	spawnEmitted  map[string]bool
 	// The slots below keep a loop from growing the stack on every evaluation
 	// of a join, receive, or send.
@@ -884,7 +890,8 @@ func (g *generator) emitDoc() error {
 	// every queue until none of them gained work while the others ran.
 	for pass := 0; pass < 64; pass++ {
 		pending := len(g.pendingThunks) + len(g.pendingSpawns) +
-			len(g.pendingBlock) + len(g.pendingDrops) + len(g.pendingDefers)
+			len(g.pendingSM) + len(g.pendingBlock) + len(g.pendingDrops) +
+			len(g.pendingDefers)
 		if pending == 0 {
 			break
 		}
@@ -905,7 +912,8 @@ func (g *generator) emitDoc() error {
 		}
 	}
 	if pending := len(g.pendingThunks) + len(g.pendingSpawns) +
-		len(g.pendingBlock) + len(g.pendingDrops) + len(g.pendingDefers); pending != 0 {
+		len(g.pendingSM) + len(g.pendingBlock) + len(g.pendingDrops) +
+		len(g.pendingDefers); pending != 0 {
 		return fmt.Errorf("pending lowering work did not drain")
 	}
 	return g.emitInit(g.cur)
@@ -1221,6 +1229,11 @@ func (g *generator) errf(id int, format string, args ...any) error {
 }
 
 func (g *generator) funcDecl(fn willc.Record) error {
+	if _, ok := g.stateMachine(fn.ID); ok {
+		// The state machine is emitted as the spawn step; a direct call to a
+		// suspendable function has no synchronous body by design.
+		return nil
+	}
 	name := fieldText(fn, "text")
 	g.fnSymbol = g.cur.funcs[fn.ID]
 	recv := g.receiverOf(fn.ID)

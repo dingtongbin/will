@@ -47,7 +47,6 @@ func compileDriver(t *testing.T, gcc, dir, root, platform, name string, sources 
 		args = append(args, filepath.Join(dir, "src", source))
 	}
 	args = append(args,
-		filepath.Join(dir, "src", "fiber.c"),
 		filepath.Join(dir, "..", "chan", "src", "chan.c"),
 		filepath.Join(dir, "..", "mem", "src", "alloc.c"),
 		filepath.Join(dir, "..", "rc", "src", "rc.c"),

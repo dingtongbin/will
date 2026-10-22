@@ -63,6 +63,25 @@ func FieldOffset(typ, name string, offset, size int) Record {
 	return r
 }
 
+// Frame records the heap frame of one state-machine function. The state word is
+// the first field; the remaining fields are written by FrameField.
+func Frame(function string, size int) Record {
+	r := Record{Category: "frame"}
+	r.text("func", function)
+	r.number("size", size)
+	return r
+}
+
+// FrameField records one field of a state-machine frame.
+func FrameField(function, name string, offset int, typ string) Record {
+	r := Record{Category: "framefield"}
+	r.text("func", function)
+	r.text("name", name)
+	r.number("offset", offset)
+	r.text("type", typ)
+	return r
+}
+
 // Obligation records the verdict of one proof obligation.
 func Obligation(pos, check, verdict, by string) Record {
 	r := Record{Category: "obligation"}

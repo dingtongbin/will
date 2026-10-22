@@ -100,6 +100,7 @@ func decisionRecords(units []sourceUnit, target string) ([]decisions.Record, err
 	}
 	for _, u := range units {
 		collectObligations(u.file, &records)
+		collectFrames(u, &records)
 	}
 	return records, nil
 }
