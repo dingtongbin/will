@@ -55,6 +55,7 @@ struct willrt_task {
     struct willrt_task* next_region;
     struct willrt_task* wait_next;
     struct willrt_task* io_next;
+    struct willrt_task* all_next;
 };
 
 struct willrt_region {
@@ -83,6 +84,7 @@ static willrt_os_cond willrt_tasks_cond;
 
 static willrt_os_mutex willrt_lane_lock;
 static willrt_os_cond willrt_lane_cond;
+static struct willrt_task* willrt_all_tasks;
 static struct willrt_task* willrt_lane_head;
 static struct willrt_task* willrt_lane_tail;
 static struct willrt_task* willrt_io_head;
@@ -168,6 +170,23 @@ static void willrt_task_wake(struct willrt_task* task) {
 
 // willrt_sched_wake_io wakes every task parked on a channel or select. The
 // epoch closes the check-then-park race in those loops.
+void willrt_sched_wake_all(void) {
+    struct willrt_task* task;
+
+    if (atomic_load(&willrt_task_globals_state) != 2 ||
+        !atomic_load(&willrt_lane_ready)) {
+        return;
+    }
+    willrt_os_mutex_lock(&willrt_tasks_lock);
+    task = willrt_all_tasks;
+    willrt_os_mutex_unlock(&willrt_tasks_lock);
+    while (task != NULL) {
+        willrt_task_wake(task);
+        task = task->all_next;
+    }
+    willrt_sched_wake_io();
+}
+
 void willrt_sched_wake_io(void) {
     struct willrt_task* task;
 
@@ -381,6 +400,8 @@ willrt_task* willrt_task_new(void* step, void* frame, size_t size, int32_t lane,
 
     willrt_os_mutex_lock(&willrt_tasks_lock);
     atomic_fetch_add(&willrt_tasks_live, 1);
+    task->all_next = willrt_all_tasks;
+    willrt_all_tasks = task;
     willrt_os_mutex_unlock(&willrt_tasks_lock);
 
     if (willrt_region_depth > 0) {
@@ -471,6 +492,12 @@ int32_t willrt_task_try_join(willrt_task* task, void* out, willrt_error* err) {
             return status;
         }
         willrt_os_mutex_unlock(&task->lock);
+        if (willrt_task_canceled()) {
+            return WILLRT_CANCELED;
+        }
+        if (current->deadline != 0 && willrt_now_ns() >= current->deadline) {
+            return WILLRT_TIMEDOUT;
+        }
         willrt_task_mark_wait();
         return WILLRT_SUSPEND;
     }

@@ -301,6 +301,9 @@ void willrt_task_sleep_ns(int64_t ns);
    WILLRT_SUSPEND. The scheduler parks the frame until an IO epoch changes or
    its target task finishes. */
 void willrt_sched_wake_io(void);
+/* Wake every task that is parked on a join, channel, or timer. Cancellation
+   uses this because a credential can be observed by any waiter. */
+void willrt_sched_wake_all(void);
 uint32_t willrt_sched_io_epoch(void);
 void willrt_task_wait_io(uint32_t epoch, int64_t deadline);
 /* willrt_task_enter_deadline starts one scoped deadline and returns the
