@@ -1,0 +1,44 @@
+import "std/fmt"
+
+// eq reports whether got equals want. A mismatch prints both values once, so a
+// failing case names itself without a table of expected text.
+func eq(got: str, want: str) -> i32 {
+    if got == want {
+        return 1
+    }
+    print("got [", got, "] want [", want, "]\n")
+    return 0
+}
+
+func main() -> i32 {
+    var passed: i32 = 0
+    passed += eq(fmt.Int(0i64, 10, 0, 48u8).Show(), "0")
+    passed += eq(fmt.Int(-5i64, 10, 4, 48u8).Show(), "-005")
+    passed += eq(fmt.Int(42i64, 10, 5, 32u8).Show(), "   42")
+    passed += eq(fmt.Int(-3i64, 10, 2, 32u8).Show(), "-3")
+    passed += eq(fmt.Int(7i64, 10, -3, 48u8).Show(), "7")
+    passed += eq(fmt.Int(9223372036854775807i64, 10, 0, 48u8).Show(), "9223372036854775807")
+    passed += eq(fmt.Int(-9223372036854775807i64 - 1i64, 10, 0, 48u8).Show(), "-9223372036854775808")
+    passed += eq(fmt.Int(255i64, 2, 10, 48u8).Show(), "0011111111")
+    passed += eq(fmt.Int(-255i64, 16, 0, 48u8).Show(), "-ff")
+    passed += eq(fmt.Uint(255u64, 16, 4, 48u8).Show(), "00ff")
+    passed += eq(fmt.Uint(5u64, 2, 8, 48u8).Show(), "00000101")
+    passed += eq(fmt.Uint(35u64, 36, 0, 48u8).Show(), "z")
+    passed += eq(fmt.Uint(0u64, 10, 3, 32u8).Show(), "  0")
+    passed += eq(fmt.Uint(18446744073709551615u64, 10, 0, 48u8).Show(), "18446744073709551615")
+    passed += eq(fmt.Hex(255u64).Show(), "ff")
+    passed += eq(fmt.Hex(0u64).Show(), "0")
+    passed += eq(fmt.Pad("ab", 4, 46u8, false).Show(), "ab..")
+    passed += eq(fmt.Pad("ab", 4, 46u8, true).Show(), "..ab")
+    passed += eq(fmt.Pad("abcd", 2, 46u8, false).Show(), "abcd")
+    passed += eq(fmt.Pad("", 3, 120u8, false).Show(), "xxx")
+    passed += eq(fmt.Int(255i64, 16, 6, 48u8).Show(), "0000ff")
+    passed += eq(fmt.Int(-1i64, 2, 0, 48u8).Show(), "-1")
+    passed += eq(fmt.Uint(8u64, 8, 0, 48u8).Show(), "10")
+    passed += eq(fmt.Hex(3735928559u64).Show(), "deadbeef")
+    if passed != 24 {
+        print("passed=", passed, "\n")
+        return 1
+    }
+    return 0
+}

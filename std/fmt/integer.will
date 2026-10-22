@@ -1,0 +1,97 @@
+// Int formats a signed value in the given base. The digits are lowercase and
+// the magnitude is the value without its sign, so the i64 minimum formats too.
+// A width larger than the result fills the gap with pad bytes between the sign
+// and the digits; a width at or below the result adds nothing.
+func Int(v: i64, base: i32, width: i32, pad: u8) -> Format {
+    checkBase(base)
+    var magnitude: u64 = 0u64
+    var negative: bool = false
+    if v < 0 {
+        negative = true
+        // Negating the i64 minimum overflows, so take one step first and add
+        // it back in u64, where 2^63 is representable.
+        magnitude = u64(-(v + 1i64)) + 1u64
+    } else {
+        magnitude = u64(v)
+    }
+    return Format {
+        kind: formatNumber,
+        value: magnitude,
+        negative: negative,
+        base: u32(base),
+        width: width,
+        pad: pad,
+        left: false,
+        text: ""
+    }
+}
+
+// Uint formats an unsigned value in the given base. Digits and width behave as
+// in Int; there is no sign to place.
+func Uint(v: u64, base: i32, width: i32, pad: u8) -> Format {
+    checkBase(base)
+    return Format {
+        kind: formatNumber,
+        value: v,
+        negative: false,
+        base: u32(base),
+        width: width,
+        pad: pad,
+        left: false,
+        text: ""
+    }
+}
+
+// checkBase rejects a base outside 2 through 36. The digit table covers exactly
+// that range, and Format has no error channel, so misuse is a panic.
+func checkBase(base: i32) {
+    if base < 2 || base > 36 {
+        panic("fmt: base must be between 2 and 36")
+    }
+}
+
+// numberText renders an integer field with its sign and fill bytes.
+func numberText(f: Format) -> str {
+    var digits: str = digitsOf(f.value, f.base)
+    var sign: str = ""
+    if f.negative {
+        sign = "-"
+    }
+    var used: i32 = i32(sign.Len() + digits.Len())
+    if f.width <= used {
+        return sign + digits
+    }
+    var fill: str = filled(usize(f.width - used), f.pad)
+    return sign + fill + digits
+}
+
+// digitsOf writes v in base, most significant digit first. Zero is one digit.
+func digitsOf(v: u64, base: u32) -> str {
+    if v == 0u64 {
+        return "0"
+    }
+    var reversed: Array<u8> = new Array<u8>(0)
+    var rest: u64 = v
+    for {
+        if rest == 0u64 {
+            break
+        }
+        var digit: u32 = u32(rest % u64(base))
+        if digit < 10u32 {
+            reversed.Push(u8(48u32 + digit))
+        } else {
+            reversed.Push(u8(87u32 + digit))
+        }
+        rest = rest / u64(base)
+    }
+    var out: Array<u8> = new Array<u8>(reversed.Len())
+    var i: usize = reversed.Len()
+    for {
+        if i == 0usize {
+            break
+        }
+        i -= 1usize
+        out.Push(reversed.Get(i))
+    }
+    return str(out)
+}

@@ -1,0 +1,5 @@
+// Hex formats v in base 16 with no prefix and no padding. Lowercase matches
+// std/encoding/hex, so the two spell the same byte range the same way.
+func Hex(v: u64) -> Format {
+    return Uint(v, 16, 0, 48u8)
+}

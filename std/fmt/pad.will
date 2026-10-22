@@ -1,0 +1,42 @@
+// Pad formats s in a field of width characters. A left field puts the fill
+// bytes before s; otherwise they follow it. A width at or below the length of s
+// adds nothing.
+func Pad(s: str, width: i32, pad: u8, left: bool) -> Format {
+    return Format {
+        kind: formatText,
+        value: 0u64,
+        negative: false,
+        base: 10u32,
+        width: width,
+        pad: pad,
+        left: left,
+        text: s
+    }
+}
+
+// padText returns s surrounded by fill bytes on the requested side.
+func padText(s: str, width: i32, pad: u8, left: bool) -> str {
+    if width <= 0 || i32(s.Len()) >= width {
+        return s
+    }
+    var fill: str = filled(usize(width) - s.Len(), pad)
+    if left {
+        return fill + s
+    }
+    return s + fill
+}
+
+// filled returns n copies of byte as text. The loop appends one byte at a time,
+// so the result is linear in n and no intermediate text is built.
+func filled(n: usize, byte: u8) -> str {
+    var out: Array<u8> = new Array<u8>(n)
+    var i: usize = 0usize
+    for {
+        if i >= n {
+            break
+        }
+        out.Push(byte)
+        i += 1usize
+    }
+    return str(out)
+}
