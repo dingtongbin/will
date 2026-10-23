@@ -14,8 +14,8 @@ func TestClangTypeMapping(t *testing.T) {
 	}{
 		{"int", "", "i32"},
 		{"unsigned int", "", "u32"},
-		{"long", "x86_64-win-msvc", "i32"},
-		{"unsigned long", "x86_64-win-msvc", "u32"},
+		{"long", "x86_64-win-gnu", "i32"},
+		{"unsigned long", "x86_64-win-gnu", "u32"},
 		{"long", "x86_64-linux-gnu", "i64"},
 		{"unsigned long", "x86_64-linux-gnu", "u64"},
 		{"long long", "", "i64"},

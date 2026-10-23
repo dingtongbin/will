@@ -365,7 +365,7 @@ func targetTriple() string {
 	case "darwin/arm64":
 		return "aarch64-mac-darwin"
 	case "windows/amd64":
-		return "x86_64-win-msvc"
+		return "x86_64-win-gnu"
 	case "android/arm64":
 		return "aarch64-android"
 	case "ios/arm64":
