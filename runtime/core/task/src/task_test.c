@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static int32_t step_double(void* frame) {
@@ -374,6 +375,11 @@ static void test_wake_during_park_is_not_lost(void) {
 
     park_finished = 0;
     assert(willrt_os_thread_start(&thread, park_waker, NULL) == 0);
+    /* The waker must be observed running before the first task spins, or a
+       slow start starves the spin budget and the step asserts. */
+    while (park_wake_calls == 0) {
+        willrt_os_thread_yield();
+    }
     for (index = 0; index < 32; index++) {
         park_frame frame = {0};
         willrt_task* task = willrt_task_new((void*)step_park_once, &frame,
@@ -526,31 +532,113 @@ static void test_timer_wakes_only_its_task(void) {
     assert(late.entries == 2);
 }
 
+/* Suspension must not allocate once warm: a park deadline reuses the task's
+   embedded timer and a select reuses the pooled context, so the counted
+   allocations across the measured window are zero. */
+typedef struct alloc_frame {
+    int32_t entries;
+    int64_t before;
+    int64_t after;
+    willrt_chan* chan;
+    int32_t value;
+} alloc_frame;
+
+static int32_t step_park_count_allocs(void* raw) {
+    alloc_frame* frame = (alloc_frame*)raw;
+
+    frame->entries += 1;
+    if (frame->entries == 1) {
+        frame->before = willrt_alloc_count();
+    }
+    if (frame->entries <= 40) {
+        willrt_task_wait_until(willrt_now_ns() + INT64_C(1000000));
+        willrt_task_mark_wait();
+        return WILLRT_SUSPEND;
+    }
+    frame->after = willrt_alloc_count();
+    return WILLRT_DONE;
+}
+
+static void test_timed_park_allocates_nothing(void) {
+    alloc_frame frame;
+    willrt_task* task;
+
+    memset(&frame, 0, sizeof(frame));
+    task = willrt_task_new((void*)step_park_count_allocs, &frame,
+                           sizeof(frame), 0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    assert(willrt_join(task, NULL, NULL) == WILLRT_OK);
+    assert(frame.after == frame.before);
+}
+
+static int32_t step_select_count_allocs(void* raw) {
+    alloc_frame* frame = (alloc_frame*)raw;
+    willrt_arm arm;
+    int32_t value = 5;
+
+    memset(&arm, 0, sizeof(arm));
+    arm.chan = frame->chan;
+    arm.out = &frame->value;
+    arm.kind = 0;
+    for (int32_t round = 0; round < 2; round++) {
+        if (round == 1) {
+            frame->before = willrt_alloc_count();
+        }
+        for (int32_t i = 0; i < 40; i++) {
+            willrt_select_ctx* ctx;
+            int32_t index;
+
+            assert(willrt_chan_send(frame->chan, &value) == WILLRT_OK);
+            ctx = willrt_select_start(&arm, 1);
+            assert(ctx != NULL);
+            index = willrt_select_poll(ctx);
+            assert(index == 0);
+            willrt_select_finish(ctx);
+        }
+    }
+    frame->after = willrt_alloc_count();
+    return WILLRT_DONE;
+}
+
+static void test_select_reuse_allocates_nothing(void) {
+    willrt_chan* chan = willrt_chan_new(sizeof(int32_t), 64, 0);
+    alloc_frame frame;
+    willrt_task* task;
+
+    assert(chan != NULL);
+    memset(&frame, 0, sizeof(frame));
+    frame.chan = chan;
+    task = willrt_task_new((void*)step_select_count_allocs, &frame,
+                           sizeof(frame), 0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    assert(willrt_join(task, NULL, NULL) == WILLRT_OK);
+    assert(frame.after == frame.before);
+    willrt_chan_close(chan);
+}
+
 int main(void) {
     willrt_init();
     test_task_result();
     test_task_suspend_resume();
     test_region_counts();
     test_region_failure();
-    fprintf(stderr, "mark: panic_lanes\n");
     test_panic_keeps_lanes();
     test_channel_order();
     test_channel_crosses_threads();
     test_channel_hands_off_to_waiting_task();
     test_channel_send_wait();
-    fprintf(stderr, "mark: wait_deadline\n");
     test_channel_wait_deadline();
     test_channel_wait_cancel();
-    fprintf(stderr, "mark: io_wait\n");
     test_io_wait_is_not_deadlock();
     test_select_hands_off_from_task();
     test_select_order();
-    fprintf(stderr, "mark: park_lost\n");
     test_wake_during_park_is_not_lost();
-    fprintf(stderr, "mark: unrelated\n");
     test_unrelated_send_wakes_no_parked_task();
-    fprintf(stderr, "mark: timer_only\n");
     test_timer_wakes_only_its_task();
+    test_timed_park_allocates_nothing();
+    test_select_reuse_allocates_nothing();
     willrt_shutdown();
     return 0;
 }

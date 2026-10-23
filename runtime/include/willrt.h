@@ -96,6 +96,11 @@ void* willrt_alloc(size_t size);
    error, and its memory is left alone. */
 void willrt_free(void* ptr);
 
+/* willrt_alloc_count reports how many allocations were counted. Counting is
+   off unless WILLRT_COUNT_ALLOC=1 was set before the first allocation; the
+   zero-allocation acceptance runs use it. */
+int64_t willrt_alloc_count(void);
+
 /* willrt_mem_set_shared tells the allocator that a second thread may now
    allocate or free. Until this is called the lane locks are skipped, which is
    the fast path for a single-threaded program. A runtime that starts a worker
@@ -400,13 +405,43 @@ int32_t willrt_select_status(void);
    dispatches the body. */
 void willrt_select_set_status(int32_t status);
 
-/* willrt_timer is a one-shot timer. The node is owned by the runtime. */
-typedef struct willrt_timer willrt_timer;
+/* willrt_timer is a one-shot timer node. The wheel owns heap nodes from
+   willrt_timer_new; willrt_timer_arm_try reuses caller storage instead, so a
+   task parks through a small ring of slots and never allocates. A slot
+   returns to WILLRT_TIMER_IDLE once the wheel has fully released it. */
+typedef struct willrt_timer {
+    int64_t deadline;
+    uint64_t seq;
+    void* fn;
+    void* arg;
+    struct willrt_timer* prev;
+    struct willrt_timer* next;
+    struct willrt_timer* retire_next;
+    _Atomic(uint32_t) state;
+    int slot;
+    int owned;
+} willrt_timer;
 
-/* willrt_timer_new inserts a timer for the absolute monotonic deadline
-   deadline_ns. fn is a void (*)(void*) that runs with arg after the deadline
-   passes. Insertion is O(1) and returns NULL when node allocation fails. */
+enum {
+    WILLRT_TIMER_IDLE = 0,
+    WILLRT_TIMER_ARMED = 1,
+    WILLRT_TIMER_DUE = 2,
+    WILLRT_TIMER_FIRED = 3,
+    WILLRT_TIMER_CANCELLED = 4
+};
+
+/* willrt_timer_new inserts one heap-owned timer for the absolute monotonic
+   deadline deadline_ns. fn is a void (*)(void*) that runs with arg after the
+   deadline passes. Insertion is O(1) and returns NULL when node allocation
+   fails. */
 willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg);
+
+/* willrt_timer_arm_try arms caller storage (zero-initialized willrt_timer
+   state). It returns 0 when the storage is armed and -1 when the wheel still
+   owns it from an earlier fire; the caller tries another storage. A task
+   parks through a small ring of these and never allocates. */
+int32_t willrt_timer_arm_try(willrt_timer* storage, int64_t deadline_ns,
+                             void* fn, void* arg);
 
 /* willrt_timer_cancel removes an armed timer in O(1). NULL and a timer that
    already fired are harmless. A cancelled or fired node stays valid until the

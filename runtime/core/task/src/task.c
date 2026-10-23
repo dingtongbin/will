@@ -69,6 +69,12 @@ struct willrt_task {
     struct willrt_task* join_next;
     struct willrt_task* join_target;
     willrt_chan_wait chan_wait;
+    /* The park timers are a ring of caller-owned wheel slots. A fire leaves a
+       slot on the wheel due or retired lists until the advance pass that took
+       it finishes, so a rapid re-park needs the next slot; two can be in
+       flight at once and the third covers the boundary. */
+    willrt_timer park_timers[3];
+    willrt_timer* park_timer_armed;
 };
 
 struct willrt_region {
@@ -277,6 +283,37 @@ void willrt_sched_wake_io(void) {
     }
 }
 
+/* willrt_task_disarm_timer drops the park timer of one task. An early wake
+   leaves the timer armed; disarming keeps the wheel count truthful for
+   deadlock detection. A heap fallback node is reclaimed by the wheel. */
+/* willrt_task_disarm_timer drops the park timer of one task. An early wake
+   leaves the timer armed; disarming keeps the wheel count truthful for
+   deadlock detection. A fired slot still on the wheel's lists is marked
+   cancelled and the advance pass that owns it returns the slot to idle. */
+static void willrt_task_disarm_timer(struct willrt_task* task) {
+    if (task->park_timer_armed != NULL) {
+        willrt_timer_cancel(task->park_timer_armed);
+        task->park_timer_armed = NULL;
+    }
+}
+
+/* willrt_task_arm_park_timer arms one of the task's own wheel slots. The
+   three-slot ring covers the window where an advance pass still owns a fired
+   slot; if every slot is busy the runtime is broken, and the defect is
+   reported instead of silently allocating. */
+static int32_t willrt_task_arm_park_timer(struct willrt_task* task,
+                                          int64_t wake) {
+    for (int32_t i = 0; i < 3; i++) {
+        if (willrt_timer_arm_try(&task->park_timers[i], wake,
+                                 willrt_task_timer_wake, task) == 0) {
+            task->park_timer_armed = &task->park_timers[i];
+            return 0;
+        }
+    }
+    task->park_timer_armed = NULL;
+    return -1;
+}
+
 static void willrt_task_park(struct willrt_task* task) {
     int64_t wake = task->wait_deadline;
     lane_worker* worker = willrt_lane_of(task);
@@ -307,15 +344,20 @@ static void willrt_task_park(struct willrt_task* task) {
            passes right now fires into a still-running task and turns into the
            wake-pending flag on the next park, while deadlock detection must
            never observe a waiting task with no armed timer. */
-        if (wake > 0) {
-            (void)willrt_timer_new(wake, willrt_task_timer_wake, task);
+        if (wake > 0 && willrt_task_arm_park_timer(task, wake) != 0) {
+            willrt_os_mutex_unlock(&worker->lock);
+            willrt_panic("park timer slots exhausted", "task.c",
+                         "willrt.task.park");
+            return;
         }
         task->wait_deadline = 0;
         task->state = WILLRT_TASK_WAITING;
         willrt_os_mutex_unlock(&worker->lock);
     } else {
-        if (wake > 0) {
-            (void)willrt_timer_new(wake, willrt_task_timer_wake, task);
+        if (wake > 0 && willrt_task_arm_park_timer(task, wake) != 0) {
+            willrt_panic("park timer slots exhausted", "task.c",
+                         "willrt.task.park");
+            return;
         }
         task->wait_deadline = 0;
         task->state = WILLRT_TASK_WAITING;
@@ -359,6 +401,7 @@ static void willrt_task_run_step(struct willrt_task* task) {
     task->state = WILLRT_TASK_RUNNING;
     task->wait_requested = 0;
     task->io_wait = 0;
+    willrt_task_disarm_timer(task);
     willrt_task_self = task;
     willrt_mem_set_lane(task->lane);
     /* A panic is a defect, not an exception: it discards the task and jumps
@@ -1036,6 +1079,45 @@ static void willrt_task_check_dead(void) {
     /* A parked task with a wake deadline keeps one timer armed, so the
        wheel's armed count is the truthful timer condition; a task parked on
        an external operation carries the IO marker. */
+    if (willrt_timer_pending != NULL) {
+        timers += willrt_timer_pending();
+    }
+    if (willrt_jobs_pending != NULL) {
+        jobs = willrt_jobs_pending();
+    }
+    if (jobs != 0 || timers != 0 || io != 0) {
+        return;
+    }
+    /* One snapshot can skew: a timer fire, a channel handoff, or a pool job
+       completion may sit between the counters this scan read. Deadlock is
+       declared only when a second scan, taken after a pause long enough for
+       any pending wake to land, sees the same empty world. */
+    willrt_os_sleep_ns(INT64_C(2000000));
+    live = 0;
+    active = 0;
+    io = 0;
+    jobs = 0;
+    timers = willrt_main_deadline > willrt_now_ns() ? 1 : 0;
+    willrt_os_mutex_lock(&willrt_tasks_lock);
+    task = willrt_all_tasks;
+    while (task != NULL) {
+        if (task->started && !task->finished) {
+            live++;
+            if (task->state == WILLRT_TASK_READY ||
+                task->state == WILLRT_TASK_RUNNING ||
+                task->state == WILLRT_TASK_PARKING) {
+                active++;
+            }
+            if (task->io_wait) {
+                io++;
+            }
+        }
+        task = task->all_next;
+    }
+    willrt_os_mutex_unlock(&willrt_tasks_lock);
+    if (live == 0 || active != 0) {
+        return;
+    }
     if (willrt_timer_pending != NULL) {
         timers += willrt_timer_pending();
     }

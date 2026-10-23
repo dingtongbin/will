@@ -31,30 +31,12 @@
 #include "timer.h"
 
 #include <stdatomic.h>
+#include <stdio.h>
 
 enum {
     WILLRT_TIMER_SLOTS = 1024,
     WILLRT_TIMER_TICK_NS = 1000000,
     WILLRT_TIMER_IMMEDIATE = -1
-};
-
-enum {
-    WILLRT_TIMER_ARMED = 0,
-    WILLRT_TIMER_DUE = 1,
-    WILLRT_TIMER_FIRED = 2,
-    WILLRT_TIMER_CANCELLED = 3
-};
-
-struct willrt_timer {
-    int64_t deadline;
-    uint64_t seq;
-    void* fn;
-    void* arg;
-    struct willrt_timer* prev;
-    struct willrt_timer* next;
-    struct willrt_timer* retire_next;
-    _Atomic(uint32_t) state;
-    int slot;
 };
 
 struct willrt_timer_bucket {
@@ -178,7 +160,6 @@ static void willrt_timer_take_due(struct willrt_timer_bucket* bucket,
 
         if (timer->deadline <= now_ns) {
             willrt_timer_unlink(&bucket->head, &bucket->tail, timer);
-            atomic_fetch_sub(&willrt_timer_armed, 1);
             atomic_store_explicit(&timer->state, WILLRT_TIMER_DUE,
                                   memory_order_release);
             willrt_timer_link(due_head, due_tail, timer);
@@ -219,19 +200,36 @@ static void willrt_timer_loop_start(void) {
 #endif
 }
 
-willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg) {
-    struct willrt_timer* timer;
+/* willrt_timer_insert_locked links one node for its deadline and counts it as
+   armed. The caller holds the wheel lock and has filled every field except
+   the links and the slot. */
+static void willrt_timer_insert_locked(struct willrt_timer* timer) {
     struct willrt_timer_bucket* bucket;
-    int64_t now_ns;
     uint64_t tick;
-    int slot;
+    int64_t now_ns = willrt_now_ns();
 
-    willrt_timer_lock_acquire();
-    timer = (struct willrt_timer*)willrt_alloc(sizeof(*timer));
-    if (timer == NULL) {
-        willrt_timer_lock_release();
-        return NULL;
+    atomic_store_explicit(&timer->state, WILLRT_TIMER_ARMED,
+                          memory_order_release);
+    if (timer->deadline <= now_ns) {
+        timer->slot = WILLRT_TIMER_IMMEDIATE;
+        willrt_timer_link(&willrt_timer_immediate_head,
+                          &willrt_timer_immediate_tail, timer);
+    } else {
+        tick = (uint64_t)timer->deadline / WILLRT_TIMER_TICK_NS;
+        if (willrt_timer_started && tick < willrt_timer_last_tick) {
+            tick = willrt_timer_last_tick;
+        }
+        timer->slot = (int)(tick & (WILLRT_TIMER_SLOTS - 1));
+        bucket = &willrt_timer_buckets[timer->slot];
+        willrt_timer_link(&bucket->head, &bucket->tail, timer);
     }
+    atomic_fetch_add(&willrt_timer_armed, 1);
+}
+
+/* willrt_timer_prepare fills a node for insertion; the caller holds the lock
+   for caller storage or owns a fresh allocation. */
+static void willrt_timer_prepare(struct willrt_timer* timer,
+                                 int64_t deadline_ns, void* fn, void* arg) {
     timer->deadline = deadline_ns;
     timer->seq = willrt_timer_next_seq++;
     timer->fn = fn;
@@ -239,26 +237,48 @@ willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg) {
     timer->prev = NULL;
     timer->next = NULL;
     timer->retire_next = NULL;
-    atomic_init(&timer->state, WILLRT_TIMER_ARMED);
-    now_ns = willrt_now_ns();
-    if (deadline_ns <= now_ns) {
-        timer->slot = WILLRT_TIMER_IMMEDIATE;
-        willrt_timer_link(&willrt_timer_immediate_head,
-                          &willrt_timer_immediate_tail, timer);
-    } else {
-        tick = (uint64_t)deadline_ns / WILLRT_TIMER_TICK_NS;
-        if (willrt_timer_started && tick < willrt_timer_last_tick) {
-            tick = willrt_timer_last_tick;
-        }
-        slot = (int)(tick & (WILLRT_TIMER_SLOTS - 1));
-        timer->slot = slot;
-        bucket = &willrt_timer_buckets[slot];
-        willrt_timer_link(&bucket->head, &bucket->tail, timer);
+    atomic_init(&timer->state, WILLRT_TIMER_IDLE);
+}
+
+willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg) {
+    struct willrt_timer* timer;
+
+    willrt_timer_lock_acquire();
+    timer = (struct willrt_timer*)willrt_alloc(sizeof(*timer));
+    if (timer == NULL) {
+        willrt_timer_lock_release();
+        return NULL;
     }
-    atomic_fetch_add(&willrt_timer_armed, 1);
+    willrt_timer_prepare(timer, deadline_ns, fn, arg);
+    timer->owned = 1;
+    willrt_timer_insert_locked(timer);
     willrt_timer_lock_release();
     willrt_timer_loop_start();
     return timer;
+}
+
+int32_t willrt_timer_arm_try(willrt_timer* storage, int64_t deadline_ns,
+                             void* fn, void* arg) {
+    uint32_t state;
+
+    if (storage == NULL) {
+        return -1;
+    }
+    willrt_timer_lock_acquire();
+    state = atomic_load_explicit(&storage->state, memory_order_acquire);
+    if (state != WILLRT_TIMER_IDLE) {
+        /* The wheel still owns this storage: it is on a due or retired list
+           of an advance pass that has not finished. The caller tries its
+           next slot; the wheel returns the storage to idle at retire. */
+        willrt_timer_lock_release();
+        return -1;
+    }
+    willrt_timer_prepare(storage, deadline_ns, fn, arg);
+    storage->owned = 0;
+    willrt_timer_insert_locked(storage);
+    willrt_timer_lock_release();
+    willrt_timer_loop_start();
+    return 0;
 }
 
 /* willrt_timer_pending reports how many timers are still armed. Deadlock
@@ -288,11 +308,19 @@ void willrt_timer_cancel(willrt_timer* timer) {
         }
         atomic_store_explicit(&timer->state, WILLRT_TIMER_CANCELLED,
                               memory_order_release);
-        timer->retire_next = willrt_timer_retired_head;
-        willrt_timer_retired_head = timer;
+        if (timer->owned) {
+            timer->retire_next = willrt_timer_retired_head;
+            willrt_timer_retired_head = timer;
+        } else {
+            /* Caller storage is off every wheel list now, so it is safe to
+               arm again. */
+            atomic_store_explicit(&timer->state, WILLRT_TIMER_IDLE,
+                                  memory_order_release);
+        }
     } else if (state == WILLRT_TIMER_DUE) {
         /* The advance call that detached the node owns it. Marking it here
-           makes that call skip the callback and reclaim the node itself. */
+           makes that call skip the callback; it releases the storage itself
+           when it retires the node. */
         atomic_store_explicit(&timer->state, WILLRT_TIMER_CANCELLED,
                               memory_order_release);
     }
@@ -338,7 +366,6 @@ size_t willrt_timer_advance(int64_t now_ns) {
         timer = willrt_timer_immediate_head;
         willrt_timer_unlink(&willrt_timer_immediate_head,
                             &willrt_timer_immediate_tail, timer);
-        atomic_fetch_sub(&willrt_timer_armed, 1);
         atomic_store_explicit(&timer->state, WILLRT_TIMER_DUE,
                               memory_order_release);
         willrt_timer_link(&due_head, &due_tail, timer);
@@ -403,8 +430,19 @@ size_t willrt_timer_advance(int64_t now_ns) {
     while (processed != NULL) {
         timer = processed;
         processed = timer->retire_next;
-        timer->retire_next = willrt_timer_retired_head;
-        willrt_timer_retired_head = timer;
+        /* The node leaves the in-flight count only here, after its callback
+           ran: between the detach and this pass a waiter is unresolved, so
+           the count must not promise an idle wheel. */
+        atomic_fetch_sub(&willrt_timer_armed, 1);
+        if (timer->owned) {
+            timer->retire_next = willrt_timer_retired_head;
+            willrt_timer_retired_head = timer;
+        } else {
+            /* Caller storage leaves the wheel here; arming it again is safe
+               from this point on. */
+            atomic_store_explicit(&timer->state, WILLRT_TIMER_IDLE,
+                                  memory_order_release);
+        }
     }
     willrt_timer_lock_release();
     return fired;

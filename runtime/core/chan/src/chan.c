@@ -13,6 +13,7 @@
 #include "../../../include/willrt.h"
 
 #include <stdatomic.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -785,29 +786,67 @@ int32_t willrt_chan_send_wait(willrt_chan* chan, const void* value) {
     return WILLRT_SUSPEND;
 }
 
-static willrt_select_ctx* willrt_select_ctx_new(willrt_arm* arms, size_t n) {
-    willrt_select_ctx* ctx = (willrt_select_ctx*)willrt_alloc(sizeof(*ctx));
+/* A select context block is allocated once and reused. The free list is
+   thread-local: a task runs start, poll, and finish on its own lane, so the
+   reuse never crosses a lock. The block carries its wait capacity; a larger
+   select takes or grows another block. */
+typedef struct willrt_select_block {
+    struct willrt_select_block* next;
+    size_t cap;
+    willrt_select_ctx ctx;
+} willrt_select_block;
 
-    if (ctx == NULL) {
-        return NULL;
+static _Thread_local willrt_select_block* willrt_select_pool;
+
+static willrt_select_ctx* willrt_select_ctx_take(willrt_arm* arms, size_t n) {
+    willrt_select_block* previous = NULL;
+    willrt_select_block* node = willrt_select_pool;
+
+    while (node != NULL && node->cap < n) {
+        previous = node;
+        node = node->next;
     }
-    memset(ctx, 0, sizeof(*ctx));
-    ctx->arms = arms;
-    ctx->n = n;
-    ctx->state.index = WILLRT_SUSPEND;
-    ctx->state.timeout_index = -1;
-    if (n != 0) {
-        ctx->waits = (willrt_chan_wait*)willrt_alloc(sizeof(*ctx->waits) * n);
-        if (ctx->waits == NULL) {
-            willrt_free(ctx);
+    if (node != NULL) {
+        if (previous == NULL) {
+            willrt_select_pool = node->next;
+        } else {
+            previous->next = node->next;
+        }
+        node->next = NULL;
+    } else {
+        size_t cap = n < 4 ? 4 : n;
+
+        node = (willrt_select_block*)willrt_alloc(
+            sizeof(*node) + cap * sizeof(willrt_chan_wait));
+        if (node == NULL) {
             return NULL;
         }
-        memset(ctx->waits, 0, sizeof(*ctx->waits) * n);
+        node->cap = cap;
+        willrt_os_mutex_init(&node->ctx.state.lock);
+        willrt_os_cond_init(&node->ctx.state.cond);
     }
-    willrt_os_mutex_init(&ctx->state.lock);
-    willrt_os_cond_init(&ctx->state.cond);
-    ctx->state.task = willrt_task_current();
-    return ctx;
+    node->ctx.arms = arms;
+    node->ctx.n = n;
+    node->ctx.waits = n != 0 ? (willrt_chan_wait*)(node + 1) : NULL;
+    if (n != 0) {
+        memset(node->ctx.waits, 0, n * sizeof(willrt_chan_wait));
+    }
+    node->ctx.state.task = willrt_task_current();
+    node->ctx.state.timeout_ns = 0;
+    node->ctx.state.timeout_index = -1;
+    node->ctx.state.ready = 0;
+    node->ctx.state.index = WILLRT_SUSPEND;
+    node->ctx.state.status = WILLRT_OK;
+    return &node->ctx;
+}
+
+static void willrt_select_ctx_give(willrt_select_ctx* ctx) {
+    willrt_select_block* node =
+        (willrt_select_block*)((unsigned char*)ctx -
+                               offsetof(willrt_select_block, ctx));
+
+    node->next = willrt_select_pool;
+    willrt_select_pool = node;
 }
 
 willrt_select_ctx* willrt_select_start(willrt_arm* arms, size_t n) {
@@ -815,7 +854,7 @@ willrt_select_ctx* willrt_select_start(willrt_arm* arms, size_t n) {
     size_t i;
     int32_t default_index = -1;
 
-    ctx = willrt_select_ctx_new(arms, n);
+    ctx = willrt_select_ctx_take(arms, n);
     if (ctx == NULL) {
         return NULL;
     }
@@ -950,10 +989,7 @@ void willrt_select_finish(willrt_select_ctx* ctx) {
         willrt_os_mutex_unlock(&chan->lock);
     }
     willrt_select_last = ctx->state.status;
-    willrt_os_mutex_destroy(&ctx->state.lock);
-    willrt_os_cond_destroy(&ctx->state.cond);
-    willrt_free(ctx->waits);
-    willrt_free(ctx);
+    willrt_select_ctx_give(ctx);
 }
 
 void willrt_chan_close(willrt_chan* chan) {
