@@ -82,6 +82,10 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			g.pendingSM = append(g.pendingSM, info)
 			return g.lowerJoinStateMachineSpawn(r, info, call)
 		}
+		if info, ok := g.sendMachine(target.ID); ok {
+			g.pendingSend = append(g.pendingSend, info)
+			return g.lowerSendMachineSpawn(r, info, call)
+		}
 		if info, ok := g.selectMachine(target.ID); ok {
 			g.pendingSelect = append(g.pendingSelect, info)
 			return g.emitConstructorCall(call, g.cur.funcs[target.ID])
@@ -233,6 +237,11 @@ func (g *generator) emitSpawns() error {
 			return err
 		}
 	}
+	for _, info := range g.pendingSend {
+		if err := g.emitSendMachineStep(info); err != nil {
+			return err
+		}
+	}
 	for _, info := range g.pendingAsync {
 		if err := g.emitAsyncSequenceStep(info); err != nil {
 			return err
@@ -245,6 +254,7 @@ func (g *generator) emitSpawns() error {
 	}
 	g.pendingSpawns = nil
 	g.pendingSM = nil
+	g.pendingSend = nil
 	g.pendingAsync = nil
 	g.pendingSelect = nil
 	return nil

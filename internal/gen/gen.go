@@ -185,6 +185,7 @@ func (g *generator) emitAux() {
 	}
 	if g.needChanWaitDecl {
 		g.out.WriteString("declare i32 @willrt_chan_recv_wait(ptr, ptr)\n")
+		g.out.WriteString("declare i32 @willrt_chan_send_wait(ptr, ptr)\n")
 	}
 	if g.needCancelBind {
 		g.out.WriteString("declare void @willrt_task_bind_cancel(ptr, ptr)\n")
@@ -522,6 +523,7 @@ func (g *generator) use(d *docState) {
 	g.spawnNames = map[int]string{}
 	g.pendingSpawns = nil
 	g.pendingSM = nil
+	g.pendingSend = nil
 	g.pendingAsync = nil
 	g.pendingSelect = nil
 	g.pendingDefers = nil
@@ -757,6 +759,7 @@ type generator struct {
 	spawnSeq      int
 	pendingSpawns []spawnRequest
 	pendingSM     []*stateMachineInfo
+	pendingSend   []*sendMachineInfo
 	pendingAsync  []*asyncMachineInfo
 	pendingSelect []*selectMachineInfo
 	spawnEmitted  map[string]bool
@@ -953,8 +956,9 @@ func (g *generator) emitDoc() error {
 	// every queue until none of them gained work while the others ran.
 	for pass := 0; pass < 64; pass++ {
 		pending := len(g.pendingThunks) + len(g.pendingSpawns) +
-			len(g.pendingSM) + len(g.pendingAsync) + len(g.pendingSelect) +
-			len(g.pendingBlock) + len(g.pendingDrops) + len(g.pendingDefers)
+			len(g.pendingSM) + len(g.pendingSend) + len(g.pendingAsync) +
+			len(g.pendingSelect) + len(g.pendingBlock) + len(g.pendingDrops) +
+			len(g.pendingDefers)
 		if pending == 0 {
 			break
 		}
@@ -975,8 +979,9 @@ func (g *generator) emitDoc() error {
 		}
 	}
 	if pending := len(g.pendingThunks) + len(g.pendingSpawns) +
-		len(g.pendingSM) + len(g.pendingAsync) + len(g.pendingSelect) +
-		len(g.pendingBlock) + len(g.pendingDrops) + len(g.pendingDefers); pending != 0 {
+		len(g.pendingSM) + len(g.pendingSend) + len(g.pendingAsync) +
+		len(g.pendingSelect) + len(g.pendingBlock) + len(g.pendingDrops) +
+		len(g.pendingDefers); pending != 0 {
 		return fmt.Errorf("pending lowering work did not drain")
 	}
 	return g.emitInit(g.cur)
@@ -1368,6 +1373,10 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	if _, ok := g.stateMachine(fn.ID); ok {
 		// The state machine is emitted as the spawn step; a direct call to a
 		// suspendable function has no synchronous body by design.
+		return nil
+	}
+	if _, ok := g.sendMachine(fn.ID); ok {
+		// The send loop is emitted only as its spawn step.
 		return nil
 	}
 	name := fieldText(fn, "text")
