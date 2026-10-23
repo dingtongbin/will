@@ -147,10 +147,17 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 			return nil, false
 		}
 	}
+	// A method's symbol carries its receiver type, so the step and the
+	// constructor hang off that symbol; a free function's symbol is the
+	// qualified name already.
+	sym := g.cur.funcs[fn.ID]
+	if sym == "" {
+		sym = qualify(g.pkg, fieldText(fn, "text"))
+	}
 	info := &asyncMachineInfo{
 		fn:          fn,
-		symbol:      qualify(g.pkg, fieldText(fn, "text")+".sm"),
-		constructor: qualify(g.pkg, fieldText(fn, "text")+".task"),
+		symbol:      sym + ".sm",
+		constructor: sym + ".task",
 		frameType:   frameType,
 		fields:      fields,
 		resultText:  resultText,
