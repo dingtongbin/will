@@ -2,6 +2,8 @@
 // pooled form has the same surface as the ordinary form, so a caller can move
 // to a lane-local pool without changing call sites.
 
+import "std/io"
+
 struct Buffer {
     data: Array<u8>
 }
@@ -59,4 +61,60 @@ func (mut p: PooledBuffer) Clear() {
 // Release marks the buffer available for reuse. The current implementation
 // keeps the storage owned by the value; the call is safe to repeat.
 func (mut p: PooledBuffer) Release() {
+}
+
+// WriterBuf collects writes and hands them to the wrapped Writer when the
+// buffer fills or the caller flushes. A write at least as large as the buffer
+// bypasses it. The receiver is mutable because the buffered length changes.
+struct WriterBuf {
+    dst: io.Writer
+    data: Array<u8>
+    limit: usize
+}
+
+// NewWriter wraps w in a buffer of size bytes. A size of zero passes every
+// write straight through.
+func NewWriter(w: io.Writer, size: usize) -> WriterBuf {
+    return WriterBuf {
+        dst: w,
+        data: new Array<u8>(size),
+        limit: size
+    }
+}
+
+// AsyncWrite appends bytes, flushing first when they would not fit.
+func (mut b: WriterBuf) AsyncWrite(bytes: []u8) -> Result<(), Error> {
+    if b.limit == 0usize {
+        return b.dst.AsyncWrite(bytes)
+    }
+    if b.data.Len() == 0usize && bytes.Len() >= b.limit {
+        return b.dst.AsyncWrite(bytes)
+    }
+    if b.data.Len() + bytes.Len() > b.limit {
+        _ = b.AsyncFlush()?
+    }
+    var i: usize = 0
+    for {
+        if i >= bytes.Len() {
+            break
+        }
+        b.data.Push(bytes[i])
+        i += 1
+    }
+    if b.data.Len() >= b.limit {
+        _ = b.AsyncFlush()?
+    }
+    return Ok(())
+}
+
+// AsyncFlush writes the buffered bytes and flushes the wrapped Writer. The
+// buffer is copied first so the write does not alias the array it clears.
+func (mut b: WriterBuf) AsyncFlush() -> Result<(), Error> {
+    if b.data.Len() != 0usize {
+        var out: Array<u8> = b.data.Clone()
+        var n: usize = out.Len()
+        b.data.Clear()
+        _ = b.dst.AsyncWrite(out[Range(0, n)])?
+    }
+    return b.dst.AsyncFlush()
 }

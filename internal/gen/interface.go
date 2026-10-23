@@ -150,6 +150,9 @@ func (g *generator) ifaceOfText(text string) (*ifaceInfo, bool) {
 		if info := g.ifaceByName[q[i+1:]]; info != nil {
 			return info, true
 		}
+		if info, ok := g.ifaceOfShortName(q[i+1:]); ok {
+			return info, true
+		}
 	}
 	if !strings.Contains(q, ".") {
 		if info := g.ifaceDecls[qualify(g.pkg, q)]; info != nil {
@@ -157,6 +160,31 @@ func (g *generator) ifaceOfText(text string) (*ifaceInfo, bool) {
 		}
 	}
 	return nil, false
+}
+
+// ifaceOfShortName finds an interface by the bare name another package writes
+// in a signature. A document that calls such a function does not import the
+// package that declares the interface, so only the bare name reaches it. Two
+// packages declaring the same bare name leave the choice open, and an open
+// choice is reported as no match.
+func (g *generator) ifaceOfShortName(name string) (*ifaceInfo, bool) {
+	var found *ifaceInfo
+	for _, d := range g.docs {
+		for _, r := range d.recs {
+			if r.Kind != "interface" || fieldText(r, "text") != name {
+				continue
+			}
+			info := g.ifaceDecls[qualify(d.path, name)]
+			if info == nil {
+				continue
+			}
+			if found != nil && found != info {
+				return nil, false
+			}
+			found = info
+		}
+	}
+	return found, found != nil
 }
 
 // ifaceOfType returns the interface an LLVM type names.

@@ -1,0 +1,112 @@
+import "std/io/buf"
+
+// Sink counts the writes it is handed so the checks can tell a buffered write
+// from a passed-through one.
+var writes: i32 = 0
+var total: usize = 0
+var last: usize = 0
+
+struct Sink {
+    pad: usize
+}
+
+func (s: Sink) AsyncWrite(bytes: []u8) -> Result<(), Error> {
+    writes += 1
+    total += bytes.Len()
+    last = bytes.Len()
+    return Ok(())
+}
+
+func (s: Sink) AsyncFlush() -> Result<(), Error> {
+    return Ok(())
+}
+
+func main() -> i32 {
+    var text: str = "hello"
+    var writer: buf.WriterBuf = buf.NewWriter(Sink{pad: 0usize}, 8usize)
+
+    // A write shorter than the buffer stays in memory.
+    match writer.AsyncWrite(text[Range(0, 5)]) {
+        Err(_) => {
+            return 1
+        }
+        _ => {}
+    }
+    if writes != 0 {
+        return 2
+    }
+
+    // Flushing hands the buffered bytes over in one write.
+    match writer.AsyncFlush() {
+        Err(_) => {
+            return 3
+        }
+        _ => {}
+    }
+    if writes != 1 || total != 5usize || last != 5usize {
+        return 4
+    }
+
+    // A second small write buffers again instead of passing through.
+    match writer.AsyncWrite(text[Range(0, 5)]) {
+        Err(_) => {
+            return 5
+        }
+        _ => {}
+    }
+    if writes != 1 {
+        return 6
+    }
+
+    // Filling the buffer exactly flushes it.
+    match writer.AsyncWrite(text[Range(0, 3)]) {
+        Err(_) => {
+            return 7
+        }
+        _ => {}
+    }
+    if writes != 2 || total != 13usize || last != 8usize {
+        return 8
+    }
+
+    // A write that does not fit flushes first, then waits in the buffer.
+    match writer.AsyncWrite(text[Range(0, 5)]) {
+        Err(_) => {
+            return 9
+        }
+        _ => {}
+    }
+    if writes != 2 {
+        return 10
+    }
+    match writer.AsyncWrite(text[Range(0, 1)]) {
+        Err(_) => {
+            return 11
+        }
+        _ => {}
+    }
+    if writes != 2 {
+        return 12
+    }
+    match writer.AsyncWrite(text[Range(0, 5)]) {
+        Err(_) => {
+            return 13
+        }
+        _ => {}
+    }
+    if writes != 3 || last != 6usize {
+        return 14
+    }
+
+    // The final flush writes what is left.
+    match writer.AsyncFlush() {
+        Err(_) => {
+            return 15
+        }
+        _ => {}
+    }
+    if writes != 4 || last != 5usize || total != 24usize {
+        return 16
+    }
+    return 0
+}
