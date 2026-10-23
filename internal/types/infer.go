@@ -625,7 +625,14 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 	case *ast.FieldExpr:
 		return c.fieldType(c.inferExpr(s, x.Recv), x.Name, x.Pos())
 	case *ast.IndexExpr:
-		return elemOf(c.in, c.inferExpr(s, x.Recv))
+		recv := c.inferExpr(s, x.Recv)
+		// A container index is a usize, and saying so is what gives a literal
+		// its width; the backend refuses a mismatched pair instead of
+		// guessing. A str index is a byte offset and keeps its own type.
+		if !isStrType(recv) {
+			c.checkValue(s, x.Index, c.in.scalar("usize"))
+		}
+		return elemOf(c.in, recv)
 	case *ast.SliceExpr:
 		recv := c.inferExpr(s, x.Recv)
 		c.checkValue(s, x.Lo, c.in.scalar("usize"))
@@ -1727,6 +1734,11 @@ func elemOf(in *interner, t *Type) *Type {
 		return in.scalar("u32")
 	}
 	return nil
+}
+
+// isStrType reports whether t is the predeclared str type.
+func isStrType(t *Type) bool {
+	return t != nil && t.Kind() == ScalarKind && t.Name() == "str"
 }
 
 // sliceOf returns the type of a slice. Slicing a fixed array yields a view of

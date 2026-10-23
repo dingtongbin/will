@@ -198,3 +198,40 @@ func TestMatchValueTakesExpectedType(t *testing.T) {
 		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
 	}
 }
+
+// TestIndexGivesItsLiteralAWidth checks that an index expression is checked
+// against usize. Without that, a literal inside an index keeps no type and the
+// backend sees a pair of different widths for an arithmetic index.
+func TestIndexGivesItsLiteralAWidth(t *testing.T) {
+	src := `func Last(buf: []u8) -> u8 {
+    return buf[buf.Len() - 1usize]
+}
+`
+	f, res := parseResolve(t, src)
+	tr, ds := CheckFull(f, res)
+	if len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+	if len(tr.LiteralTypes) != 1 {
+		t.Fatalf("literal types = %d, want 1", len(tr.LiteralTypes))
+	}
+	for _, typ := range tr.LiteralTypes {
+		if typ != "usize" {
+			t.Errorf("literal type = %q, want usize", typ)
+		}
+	}
+}
+
+// TestIndexRejectsAWrongWidth checks that an index of the wrong type is
+// reported at the index, not left to the backend.
+func TestIndexRejectsAWrongWidth(t *testing.T) {
+	src := `func Last(buf: []u8) -> u8 {
+    var i: i32 = 0
+    return buf[i]
+}
+`
+	d := findCode(t, checkWithResolve(t, src), diag.CodeTypeMismatch)
+	if d.Message != "type mismatch: got i32, want usize" {
+		t.Errorf("message = %q", d.Message)
+	}
+}
