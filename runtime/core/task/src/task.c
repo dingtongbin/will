@@ -208,6 +208,34 @@ static struct willrt_task* willrt_lane_pop_locked(lane_worker* worker) {
     return task;
 }
 
+// willrt_io_unlink removes one task from the IO list. A task that leaves the
+// list by waking must not stay linked, or the next drain walks a broken list
+// and skips the tasks behind it.
+static void willrt_io_unlink(struct willrt_task* task) {
+    struct willrt_task* current;
+    struct willrt_task* previous = NULL;
+
+    willrt_os_mutex_lock(&willrt_lane_lock);
+    current = willrt_io_head;
+    while (current != NULL) {
+        if (current == task) {
+            if (previous == NULL) {
+                willrt_io_head = current->io_next;
+            } else {
+                previous->io_next = current->io_next;
+            }
+            if (willrt_io_tail == current) {
+                willrt_io_tail = previous;
+            }
+            current->io_next = NULL;
+            break;
+        }
+        previous = current;
+        current = current->io_next;
+    }
+    willrt_os_mutex_unlock(&willrt_lane_lock);
+}
+
 // willrt_task_wake moves one parked task to the ready queue. A task that is
 // still switching out is marked pending; the lane makes it ready after the
 // switch has actually happened.
@@ -223,6 +251,7 @@ static void willrt_task_wake(struct willrt_task* task) {
     }
     willrt_os_mutex_lock(&worker->lock);
     if (task->state == WILLRT_TASK_WAITING) {
+        willrt_io_unlink(task);
         willrt_lane_enqueue_locked(worker, task);
         willrt_os_cond_signal(&worker->cond);
     } else if (task->state == WILLRT_TASK_PARKING ||
@@ -286,43 +315,55 @@ void willrt_task_wait_io(uint32_t epoch, int64_t deadline) {
 static void willrt_task_park(struct willrt_task* task) {
     willrt_timer* timer = NULL;
     int64_t wake = task->wait_deadline;
+    lane_worker* worker = willrt_lane_of(task);
 
-    if (task->wake_pending) {
-        lane_worker* worker;
-        task->wake_pending = 0;
-        worker = willrt_lane_of(task);
-        if (worker != NULL) {
-            willrt_os_mutex_lock(&worker->lock);
+    /* The wake path takes the same lock, so a wake that arrives while the
+       task switches to the waiting state is either seen here or finds the
+       task waiting and queues it. Checking the flag outside the lock would
+       lose a wake that lands between the check and the switch. */
+    if (worker != NULL) {
+        willrt_os_mutex_lock(&worker->lock);
+        if (task->wake_pending) {
+            task->wake_pending = 0;
             willrt_lane_enqueue_locked(worker, task);
             willrt_os_cond_signal(&worker->cond);
             willrt_os_mutex_unlock(&worker->lock);
+            return;
         }
-        return;
-    }
-    if (task->deadline > 0 && (wake == 0 || task->deadline < wake)) {
-        wake = task->deadline;
-    }
-    if (wake > 0 && willrt_now_ns() >= wake) {
-        lane_worker* worker = willrt_lane_of(task);
-        if (worker != NULL) {
-            willrt_os_mutex_lock(&worker->lock);
+        if (task->deadline > 0 && (wake == 0 || task->deadline < wake)) {
+            wake = task->deadline;
+        }
+        if (wake > 0 && willrt_now_ns() >= wake) {
             willrt_lane_enqueue_locked(worker, task);
             willrt_os_cond_signal(&worker->cond);
             willrt_os_mutex_unlock(&worker->lock);
+            return;
         }
-        return;
-    }
-    task->wait_deadline = 0;
-    willrt_os_mutex_lock(&willrt_lane_lock);
-    task->state = WILLRT_TASK_WAITING;
-    task->io_next = NULL;
-    if (willrt_io_tail == NULL) {
-        willrt_io_head = task;
+        task->wait_deadline = 0;
+        task->state = WILLRT_TASK_WAITING;
+        willrt_os_mutex_lock(&willrt_lane_lock);
+        task->io_next = NULL;
+        if (willrt_io_tail == NULL) {
+            willrt_io_head = task;
+        } else {
+            willrt_io_tail->io_next = task;
+        }
+        willrt_io_tail = task;
+        willrt_os_mutex_unlock(&willrt_lane_lock);
+        willrt_os_mutex_unlock(&worker->lock);
     } else {
-        willrt_io_tail->io_next = task;
+        task->wait_deadline = 0;
+        willrt_os_mutex_lock(&willrt_lane_lock);
+        task->state = WILLRT_TASK_WAITING;
+        task->io_next = NULL;
+        if (willrt_io_tail == NULL) {
+            willrt_io_head = task;
+        } else {
+            willrt_io_tail->io_next = task;
+        }
+        willrt_io_tail = task;
+        willrt_os_mutex_unlock(&willrt_lane_lock);
     }
-    willrt_io_tail = task;
-    willrt_os_mutex_unlock(&willrt_lane_lock);
     /* Arm the timer after the task is visible on the IO list. A one
        millisecond deadline can fire while timer_new is still returning; if
        the timer ran before this insertion its wake would find an empty list

@@ -333,6 +333,59 @@ static void test_io_wait_is_not_deadlock(void) {
     assert(calls == 2);
 }
 
+/* A wake that lands while a task switches to the waiting state must not be
+   lost. The task parks once and another thread keeps the runtime awake, so
+   every task has to finish. */
+typedef struct park_frame {
+    int32_t calls;
+} park_frame;
+
+static volatile int32_t park_finished;
+static volatile int32_t park_wake_calls;
+
+static int32_t step_park_once(void* raw) {
+    park_frame* frame = (park_frame*)raw;
+    int32_t spin = 0;
+
+    frame->calls += 1;
+    if (frame->calls == 1) {
+        while (park_wake_calls == 0 && spin < 1000000) {
+            spin += 1;
+        }
+        assert(park_wake_calls > 0);
+        willrt_task_mark_wait();
+        return WILLRT_SUSPEND;
+    }
+    return WILLRT_DONE;
+}
+
+static void park_waker(void* arg) {
+    (void)arg;
+    while (!park_finished) {
+        park_wake_calls += 1;
+        willrt_sched_wake_all();
+    }
+}
+
+static void test_wake_during_park_is_not_lost(void) {
+    willrt_os_thread thread;
+    int32_t index;
+
+    park_finished = 0;
+    assert(willrt_os_thread_start(&thread, park_waker, NULL) == 0);
+    for (index = 0; index < 32; index++) {
+        park_frame frame = {0};
+        willrt_task* task = willrt_task_new((void*)step_park_once, &frame,
+                                            sizeof(frame), 0, 0);
+        assert(task != NULL);
+        willrt_task_run(task);
+        assert(willrt_join(task, NULL, NULL) == WILLRT_OK);
+        assert(frame.calls == 2);
+    }
+    park_finished = 1;
+    willrt_os_thread_join(&thread);
+}
+
 static void test_select_hands_off_from_task(void) {
     willrt_chan* chan = willrt_chan_new(sizeof(int32_t), 1, 0);
     willrt_task* task;
@@ -396,6 +449,7 @@ int main(void) {
     test_io_wait_is_not_deadlock();
     test_select_hands_off_from_task();
     test_select_order();
+    test_wake_during_park_is_not_lost();
     willrt_shutdown();
     return 0;
 }
