@@ -10,15 +10,15 @@ import (
 // Messages for the checks the language inserts. The report's at line carries
 // the position, so none of these interpolates a value.
 const (
-	panicOverflow    = "integer overflow"
+	panicOverflow     = "integer overflow"
 	panicDivideByZero = "division by zero"
-	panicShiftRange  = "shift amount out of range"
-	panicIndex       = "index out of bounds"
-	panicSlice       = "slice bounds out of range"
-	panicConversion  = "conversion out of range"
-	panicNaN         = "cannot convert NaN to integer"
-	panicUTF8        = "invalid UTF-8"
-	panicNone        = "unexpected None"
+	panicShiftRange   = "shift amount out of range"
+	panicIndex        = "index out of bounds"
+	panicSlice        = "slice bounds out of range"
+	panicConversion   = "conversion out of range"
+	panicNaN          = "cannot convert NaN to integer"
+	panicUTF8         = "invalid UTF-8"
+	panicNone         = "unexpected None"
 )
 
 // signedMins holds the smallest value of each signed width as LLVM text. The
