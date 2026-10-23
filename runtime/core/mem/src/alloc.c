@@ -117,9 +117,12 @@ static _Atomic int willrt_mem_shared;
 
 /* Allocation counting for the zero-allocation acceptance runs. The mode
    resolves once from WILLRT_COUNT_ALLOC; when it stays off the fast path
-   pays one relaxed load per allocation. */
+   pays one relaxed load per allocation. The live counter tracks outstanding
+   blocks under the same mode, so a recycling path can prove it reaches a
+   steady state. */
 static _Atomic int willrt_mem_count_mode;
 static _Atomic int64_t willrt_mem_count;
+static _Atomic int64_t willrt_mem_live;
 
 static void willrt_mem_count_resolve(void) {
     const char* text;
@@ -136,6 +139,10 @@ static void willrt_mem_count_resolve(void) {
 
 int64_t willrt_alloc_count(void) {
     return atomic_load_explicit(&willrt_mem_count, memory_order_relaxed);
+}
+
+int64_t willrt_alloc_live(void) {
+    return atomic_load_explicit(&willrt_mem_live, memory_order_relaxed);
 }
 
 /* A thread that never runs under the scheduler stays on lane 0. */
@@ -628,6 +635,7 @@ void* willrt_alloc(size_t size) {
     }
     if (mode == 2) {
         atomic_fetch_add_explicit(&willrt_mem_count, 1, memory_order_relaxed);
+        atomic_fetch_add_explicit(&willrt_mem_live, 1, memory_order_relaxed);
     }
     if (willrt_mem_single_thread()) {
         willrt_mem_cache_enabled = 1;
@@ -705,6 +713,7 @@ void willrt_free(void* ptr) {
         fputs("willrt: free rejected: block is not live\n", stderr);
         return;
     }
+    atomic_fetch_sub_explicit(&willrt_mem_live, 1, memory_order_relaxed);
     if (block->class_index < 0) {
         void* os_base = chunk->os_base;
         size_t os_bytes = chunk->os_bytes;

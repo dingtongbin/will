@@ -184,9 +184,13 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		g.needJobDecl = true
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new(ptr @%s, ptr %s, i64 %s, i32 0)\n",
 			task, llvmSymbol(step), frame, size)
+		g.needOwnFrameDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
 			task, llvmSymbol(step), frame, size, lane)
+		g.needOwnFrameDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
 		fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
 	}
 	for i, text := range argTexts {
@@ -892,7 +896,7 @@ func (g *generator) joinUnwrap(r willc.Record) (string, string, string, error) {
 			return "", "", "", err
 		}
 		g.needTaskDecl = true
-		errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt_error")
+		errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt.task_error")
 		g.needPanicDecl = true
 		status := ""
 		if g.smGeneral {
@@ -901,6 +905,9 @@ func (g *generator) joinUnwrap(r willc.Record) (string, string, string, error) {
 			status = g.newTmp()
 			fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr null, ptr %s)\n", status, task, errSlot)
 		}
+		statusCopy := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt.task_error, ptr %s, i32 0, i32 1\n", statusCopy, errSlot)
+		fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", status, statusCopy)
 		isOK := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", isOK, status)
 		g.labels++
@@ -936,7 +943,7 @@ func (g *generator) joinUnwrap(r willc.Record) (string, string, string, error) {
 	}
 	g.needTaskDecl = true
 	out := g.allocSlot(g.joinOutSlots, "join.out", r.ID, elemLLVM)
-	errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt_error")
+	errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt.task_error")
 	g.needPanicDecl = true
 	status := ""
 	if g.smGeneral {
@@ -945,6 +952,9 @@ func (g *generator) joinUnwrap(r willc.Record) (string, string, string, error) {
 		status = g.newTmp()
 		fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr %s, ptr %s)\n", status, task, out, errSlot)
 	}
+	statusCopy := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt.task_error, ptr %s, i32 0, i32 1\n", statusCopy, errSlot)
+	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", status, statusCopy)
 	isOK := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", isOK, status)
 	g.labels++
@@ -1149,7 +1159,7 @@ func (g *generator) lowerJoinResult(r willc.Record) (string, error) {
 	if elemLLVM != "" {
 		out = g.allocSlot(g.joinOutSlots, "join.out", r.ID, elemLLVM)
 	}
-	errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt_error")
+	errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt.task_error")
 	status := ""
 	if g.smGeneral {
 		status = g.smTryJoin(task, out, errSlot)
@@ -1161,6 +1171,9 @@ func (g *generator) lowerJoinResult(r willc.Record) (string, error) {
 			fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr %s, ptr %s)\n", status, task, out, errSlot)
 		}
 	}
+	statusCopy := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt.task_error, ptr %s, i32 0, i32 1\n", statusCopy, errSlot)
+	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", status, statusCopy)
 	slot := g.allocSlot(g.adtSlots, "join.result", r.ID, info.llvm)
 	okStatus := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", okStatus, status)
@@ -1186,7 +1199,7 @@ func (g *generator) lowerJoinResult(r willc.Record) (string, error) {
 	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", info.tags["Err"], tagPtr)
 	payload := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
-	g.taskErrorInto(payload, task)
+	g.taskErrorInto(payload, errSlot)
 	fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
 	g.out.WriteString(endLabel + ":\n")
 	return slot, nil

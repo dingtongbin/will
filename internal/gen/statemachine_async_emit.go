@@ -78,6 +78,8 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	task := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
 		task, llvmSymbol(info.symbol), frame, size, lane)
+	g.needOwnFrameDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
 	fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
 	fmt.Fprintf(g.out, "  ret ptr %s\n}\n", task)
 	return nil

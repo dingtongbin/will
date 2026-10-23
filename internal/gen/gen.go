@@ -89,6 +89,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 	g.planInstances()
 	if g.usesTaskRuntime() {
 		g.out.WriteString("%willrt_error = type { ptr, i64, ptr, ptr }\n")
+		g.out.WriteString("%willrt.task_error = type { %willrt_error, i32 }\n")
 	}
 	if g.usesSelect() {
 		g.out.WriteString("%willrt_arm = type { ptr, ptr, ptr, i32, i64 }\n")
@@ -196,6 +197,9 @@ func (g *generator) emitAux() {
 	}
 	if g.needCancelBind {
 		g.out.WriteString("declare void @willrt_task_bind_cancel(ptr, ptr)\n")
+	}
+	if g.needOwnFrameDecl {
+		g.out.WriteString("declare void @willrt_task_own_frame(ptr)\n")
 	}
 	if g.needReportDecl {
 		g.out.WriteString("declare void @willrt_report_write_n(ptr, i64)\n")
@@ -725,6 +729,8 @@ type generator struct {
 	needSelectSetDecl bool
 	// needCancelBind records a spawn that passed a cancellation credential.
 	needCancelBind bool
+	// needOwnFrameDecl records a task whose frame the region barrier frees.
+	needOwnFrameDecl bool
 	// needReportDecl records that the entry wrapper reports a main Result.
 	needReportDecl bool
 	// needTaskErrorDecl records that Join built a TaskError interface.

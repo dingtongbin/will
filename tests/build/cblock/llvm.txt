@@ -1,4 +1,5 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 define i32 @"example.com/cblock.will$main"() {
 entry:
   %v.t = alloca ptr
@@ -13,44 +14,47 @@ entry:
   store i32 3, ptr %t5
   %t6 = call i32 @willrt_lane_here()
   %t7 = call ptr @willrt_task_new(ptr @"example.com/cblock.cblock.1", ptr %t3, i64 %t2, i32 %t6, i32 0)
+  call void @willrt_task_own_frame(ptr %t7)
   call void @willrt_task_run(ptr %t7)
   store ptr %t7, ptr %v.t
   %t8 = load ptr, ptr %v.t
   %t9 = call i32 @willrt_join(ptr %t8, ptr %v.join.out.16, ptr %v.join.err.16)
-  %t10 = icmp eq i32 %t9, 0
-  br i1 %t10, label %task.ok.1, label %task.fail.1
+  %t10 = getelementptr inbounds %willrt.task_error, ptr %v.join.err.16, i32 0, i32 1
+  store i32 %t9, ptr %t10
+  %t11 = icmp eq i32 %t9, 0
+  br i1 %t11, label %task.ok.1, label %task.fail.1
 task.fail.1:
-  %t11 = getelementptr inbounds %willrt_error, ptr %v.join.err.16, i32 0, i32 0
-  %t12 = load ptr, ptr %t11
-  %t13 = getelementptr inbounds %willrt_error, ptr %v.join.err.16, i32 0, i32 1
-  %t14 = load i64, ptr %t13
-  %t15 = getelementptr inbounds %willrt_error, ptr %v.join.err.16, i32 0, i32 2
-  %t16 = load ptr, ptr %t15
-  %t17 = getelementptr inbounds %willrt_error, ptr %v.join.err.16, i32 0, i32 3
-  %t18 = load ptr, ptr %t17
-  call void @willrt_panic_n(ptr %t12, i64 %t14, ptr %t16, ptr %t18)
+  %t12 = getelementptr inbounds %willrt_error, ptr %v.join.err.16, i32 0, i32 0
+  %t13 = load ptr, ptr %t12
+  %t14 = getelementptr inbounds %willrt_error, ptr %v.join.err.16, i32 0, i32 1
+  %t15 = load i64, ptr %t14
+  %t16 = getelementptr inbounds %willrt_error, ptr %v.join.err.16, i32 0, i32 2
+  %t17 = load ptr, ptr %t16
+  %t18 = getelementptr inbounds %willrt_error, ptr %v.join.err.16, i32 0, i32 3
+  %t19 = load ptr, ptr %t18
+  call void @willrt_panic_n(ptr %t13, i64 %t15, ptr %t17, ptr %t19)
   unreachable
 task.ok.1:
-  %t19 = load i32, ptr %v.join.out.16
-  ret i32 %t19
+  %t20 = load i32, ptr %v.join.out.16
+  ret i32 %t20
 }
 define i32 @"example.com/cblock.cblock.1.call"(ptr %args, ptr %out) {
 entry:
-  %t20 = getelementptr { i32, i32, i32 }, ptr %args, i32 0, i32 0
-  %t21 = load i32, ptr %t20
-  %t22 = getelementptr { i32, i32, i32 }, ptr %args, i32 0, i32 1
-  %t23 = load i32, ptr %t22
-  %t24 = call i32 @add(i32 %t21, i32 %t23)
-  store i32 %t24, ptr %out
+  %t21 = getelementptr { i32, i32, i32 }, ptr %args, i32 0, i32 0
+  %t22 = load i32, ptr %t21
+  %t23 = getelementptr { i32, i32, i32 }, ptr %args, i32 0, i32 1
+  %t24 = load i32, ptr %t23
+  %t25 = call i32 @add(i32 %t22, i32 %t24)
+  store i32 %t25, ptr %out
   ret i32 0
 }
 define i32 @"example.com/cblock.cblock.1"(ptr %frame) {
 entry:
-  %t25 = getelementptr { i32, i32, i32 }, ptr %frame, i32 0, i32 2
-  call i32 @willrt_blocking_call(ptr @"example.com/cblock.cblock.1.call", ptr %frame, ptr %t25)
-  %t26 = getelementptr i32, ptr null, i32 1
-  %t27 = ptrtoint ptr %t26 to i64
-  call i32 @willrt_task_store_result(ptr %t25, i64 %t27)
+  %t26 = getelementptr { i32, i32, i32 }, ptr %frame, i32 0, i32 2
+  call i32 @willrt_blocking_call(ptr @"example.com/cblock.cblock.1.call", ptr %frame, ptr %t26)
+  %t27 = getelementptr i32, ptr null, i32 1
+  %t28 = ptrtoint ptr %t27 to i64
+  call i32 @willrt_task_store_result(ptr %t26, i64 %t28)
   ret i32 1
 }
 declare void @willrt_init()
@@ -86,3 +90,4 @@ declare i64 @willrt_now_ns()
 declare void @willrt_region_enter()
 declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
+declare void @willrt_task_own_frame(ptr)

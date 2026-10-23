@@ -1,4 +1,5 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 %willrt_arm = type { ptr, ptr, ptr, i32, i64 }
 define i32 @"example.com/selecttimeout.will$main"() {
 entry:

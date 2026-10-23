@@ -984,6 +984,87 @@ static void test_async_poll_survives_reuse(void) {
     test_sock_close(quiet_client);
 }
 
+static void test_task_error_copy_accessors(void) {
+    willrt_task_error copy;
+    const char* text = "task failed on purpose";
+    const char* out = NULL;
+    size_t size = 0;
+
+    memset(&copy, 0, sizeof(copy));
+    copy.error.message = text;
+    copy.error.size = sizeof("task failed on purpose") - 1;
+    copy.error.site = "task_test.c";
+    copy.error.symbol = "will.test.task";
+    copy.status = WILLRT_CANCELED;
+    willrt_task_error_message(&copy, &out, &size);
+    assert(size == sizeof("task failed on purpose") - 1);
+    assert(memcmp(out, text, size) == 0);
+    assert(willrt_task_error_status(&copy) == 8);
+    copy.status = WILLRT_FAILED;
+    assert(willrt_task_error_status(&copy) == 0);
+}
+
+typedef struct recycle_frame {
+    int32_t round;
+} recycle_frame;
+
+static int32_t step_recycle(void* raw) {
+    recycle_frame* f = (recycle_frame*)raw;
+
+    f->round += 1;
+    if (f->round < 3) {
+        willrt_task_wait_until(willrt_now_ns() + INT64_C(1000000));
+        willrt_task_mark_wait();
+        return WILLRT_SUSPEND;
+    }
+    return WILLRT_DONE;
+}
+
+static void test_region_recycles_tasks(void) {
+    willrt_task* tasks[8];
+    int64_t warm;
+    int64_t settled;
+    int32_t i;
+    int32_t round;
+
+    /* Every member frame is heap memory the region owns, exactly as the
+       generated constructors hand them over. */
+    willrt_region_enter();
+    for (i = 0; i < 8; i++) {
+        recycle_frame* frame = (recycle_frame*)willrt_alloc(sizeof(*frame));
+
+        assert(frame != NULL);
+        frame->round = 0;
+        tasks[i] = willrt_task_new((void*)step_recycle, frame, sizeof(*frame),
+                                   0, 0);
+        assert(tasks[i] != NULL);
+        willrt_task_own_frame(tasks[i]);
+        willrt_task_run(tasks[i]);
+    }
+    assert(willrt_region_exit() == 0);
+    warm = willrt_alloc_live();
+    for (round = 0; round < 50; round++) {
+        willrt_region_enter();
+        for (i = 0; i < 8; i++) {
+            recycle_frame* frame =
+                (recycle_frame*)willrt_alloc(sizeof(*frame));
+
+            assert(frame != NULL);
+            frame->round = 0;
+            tasks[i] = willrt_task_new((void*)step_recycle, frame,
+                                       sizeof(*frame), 0, 0);
+            assert(tasks[i] != NULL);
+            willrt_task_own_frame(tasks[i]);
+            willrt_task_run(tasks[i]);
+        }
+        assert(willrt_region_exit() == 0);
+    }
+    settled = willrt_alloc_live();
+    /* Without the release pass the fifty regions leak eight tasks and eight
+       frames each, so the live count never comes back. */
+    assert(settled == warm);
+}
+
 int main(void) {
 #ifdef _WIN32
     WSADATA data;
@@ -1015,6 +1096,8 @@ int main(void) {
     test_async_poll_honors_block_deadline();
     test_async_sleep_honors_block_deadline();
     test_async_poll_survives_reuse();
+    test_task_error_copy_accessors();
+    test_region_recycles_tasks();
     willrt_shutdown();
 #ifdef _WIN32
     (void)WSACleanup();

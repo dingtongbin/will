@@ -1,4 +1,5 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 %interface.Error = type { ptr, ptr }
 %"enum.std/errors.ErrorClass" = type { i32 }
 %"interface.std/errors.Classified" = type { ptr, ptr }
@@ -1039,6 +1040,7 @@ entry:
   store i32 0, ptr %t250
   %t251 = call i32 @willrt_lane_here()
   %t252 = call ptr @willrt_task_new(ptr @"std/io.Poller.AsyncNext.sm", ptr %t241, i64 %t240, i32 %t251, i32 0)
+  call void @willrt_task_own_frame(ptr %t252)
   call void @willrt_task_run(ptr %t252)
   ret ptr %t252
 }
@@ -2396,6 +2398,7 @@ entry:
   store i32 0, ptr %t494
   %t495 = call i32 @willrt_lane_here()
   %t496 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncRead.sm", ptr %t486, i64 %t485, i32 %t495, i32 0)
+  call void @willrt_task_own_frame(ptr %t496)
   call void @willrt_task_run(ptr %t496)
   ret ptr %t496
 }
@@ -2501,6 +2504,7 @@ entry:
   store i32 0, ptr %t541
   %t542 = call i32 @willrt_lane_here()
   %t543 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncWrite.sm", ptr %t534, i64 %t533, i32 %t542, i32 0)
+  call void @willrt_task_own_frame(ptr %t543)
   call void @willrt_task_run(ptr %t543)
   ret ptr %t543
 }
@@ -2604,6 +2608,7 @@ entry:
   store i32 0, ptr %t587
   %t588 = call i32 @willrt_lane_here()
   %t589 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSeek.sm", ptr %t579, i64 %t578, i32 %t588, i32 0)
+  call void @willrt_task_own_frame(ptr %t589)
   call void @willrt_task_run(ptr %t589)
   ret ptr %t589
 }
@@ -2709,6 +2714,7 @@ entry:
   store i32 0, ptr %t635
   %t636 = call i32 @willrt_lane_here()
   %t637 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSync.sm", ptr %t630, i64 %t629, i32 %t636, i32 0)
+  call void @willrt_task_own_frame(ptr %t637)
   call void @willrt_task_run(ptr %t637)
   ret ptr %t637
 }
@@ -2807,6 +2813,7 @@ entry:
   store i32 0, ptr %t678
   %t679 = call i32 @willrt_lane_here()
   %t680 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncStat.sm", ptr %t672, i64 %t671, i32 %t679, i32 0)
+  call void @willrt_task_own_frame(ptr %t680)
   call void @willrt_task_run(ptr %t680)
   ret ptr %t680
 }
@@ -2910,6 +2917,7 @@ entry:
   store i32 0, ptr %t723
   %t724 = call i32 @willrt_lane_here()
   %t725 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncMkdir.sm", ptr %t717, i64 %t716, i32 %t724, i32 0)
+  call void @willrt_task_own_frame(ptr %t725)
   call void @willrt_task_run(ptr %t725)
   ret ptr %t725
 }
@@ -3010,6 +3018,7 @@ entry:
   store i32 0, ptr %t768
   %t769 = call i32 @willrt_lane_here()
   %t770 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncMkdirAll.sm", ptr %t762, i64 %t761, i32 %t769, i32 0)
+  call void @willrt_task_own_frame(ptr %t770)
   call void @willrt_task_run(ptr %t770)
   ret ptr %t770
 }
@@ -3108,6 +3117,7 @@ entry:
   store i32 0, ptr %t812
   %t813 = call i32 @willrt_lane_here()
   %t814 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncRemoveAll.sm", ptr %t807, i64 %t806, i32 %t813, i32 0)
+  call void @willrt_task_own_frame(ptr %t814)
   call void @willrt_task_run(ptr %t814)
   ret ptr %t814
 }
@@ -3207,6 +3217,7 @@ entry:
   store i32 0, ptr %t856
   %t857 = call i32 @willrt_lane_here()
   %t858 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncSymlink.sm", ptr %t849, i64 %t848, i32 %t857, i32 0)
+  call void @willrt_task_own_frame(ptr %t858)
   call void @willrt_task_run(ptr %t858)
   ret ptr %t858
 }
@@ -3309,6 +3320,7 @@ entry:
   store i32 0, ptr %t902
   %t903 = call i32 @willrt_lane_here()
   %t904 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncTempDir.sm", ptr %t894, i64 %t893, i32 %t903, i32 0)
+  call void @willrt_task_own_frame(ptr %t904)
   call void @willrt_task_run(ptr %t904)
   ret ptr %t904
 }
@@ -3419,6 +3431,7 @@ entry:
   store i32 0, ptr %t951
   %t952 = call i32 @willrt_lane_here()
   %t953 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncReadFile.sm", ptr %t945, i64 %t944, i32 %t952, i32 0)
+  call void @willrt_task_own_frame(ptr %t953)
   call void @willrt_task_run(ptr %t953)
   ret ptr %t953
 }
@@ -3523,6 +3536,7 @@ entry:
   store i32 0, ptr %t997
   %t998 = call i32 @willrt_lane_here()
   %t999 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncWriteFile.sm", ptr %t990, i64 %t989, i32 %t998, i32 0)
+  call void @willrt_task_own_frame(ptr %t999)
   call void @willrt_task_run(ptr %t999)
   ret ptr %t999
 }
@@ -3623,6 +3637,7 @@ entry:
   store i32 0, ptr %t1042
   %t1043 = call i32 @willrt_lane_here()
   %t1044 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncAppend.sm", ptr %t1035, i64 %t1034, i32 %t1043, i32 0)
+  call void @willrt_task_own_frame(ptr %t1044)
   call void @willrt_task_run(ptr %t1044)
   ret ptr %t1044
 }
@@ -3725,6 +3740,7 @@ entry:
   store i32 0, ptr %t1088
   %t1089 = call i32 @willrt_lane_here()
   %t1090 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncOpen.sm", ptr %t1080, i64 %t1079, i32 %t1089, i32 0)
+  call void @willrt_task_own_frame(ptr %t1090)
   call void @willrt_task_run(ptr %t1090)
   ret ptr %t1090
 }
@@ -3831,6 +3847,7 @@ entry:
   store i32 0, ptr %t1135
   %t1136 = call i32 @willrt_lane_here()
   %t1137 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncCreate.sm", ptr %t1128, i64 %t1127, i32 %t1136, i32 0)
+  call void @willrt_task_own_frame(ptr %t1137)
   call void @willrt_task_run(ptr %t1137)
   ret ptr %t1137
 }
@@ -3936,6 +3953,7 @@ entry:
   store i32 0, ptr %t1182
   %t1183 = call i32 @willrt_lane_here()
   %t1184 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncStat.sm", ptr %t1176, i64 %t1175, i32 %t1183, i32 0)
+  call void @willrt_task_own_frame(ptr %t1184)
   call void @willrt_task_run(ptr %t1184)
   ret ptr %t1184
 }
@@ -4039,6 +4057,7 @@ entry:
   store i32 0, ptr %t1227
   %t1228 = call i32 @willrt_lane_here()
   %t1229 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncReadDir.sm", ptr %t1221, i64 %t1220, i32 %t1228, i32 0)
+  call void @willrt_task_own_frame(ptr %t1229)
   call void @willrt_task_run(ptr %t1229)
   ret ptr %t1229
 }
@@ -4143,6 +4162,7 @@ entry:
   store i32 0, ptr %t1273
   %t1274 = call i32 @willrt_lane_here()
   %t1275 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncRename.sm", ptr %t1266, i64 %t1265, i32 %t1274, i32 0)
+  call void @willrt_task_own_frame(ptr %t1275)
   call void @willrt_task_run(ptr %t1275)
   ret ptr %t1275
 }
@@ -4240,6 +4260,7 @@ entry:
   store i32 0, ptr %t1316
   %t1317 = call i32 @willrt_lane_here()
   %t1318 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncRemove.sm", ptr %t1311, i64 %t1310, i32 %t1317, i32 0)
+  call void @willrt_task_own_frame(ptr %t1318)
   call void @willrt_task_run(ptr %t1318)
   ret ptr %t1318
 }
@@ -4341,6 +4362,7 @@ entry:
   store i32 0, ptr %t1361
   %t1362 = call i32 @willrt_lane_here()
   %t1363 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncTempFile.sm", ptr %t1353, i64 %t1352, i32 %t1362, i32 0)
+  call void @willrt_task_own_frame(ptr %t1363)
   call void @willrt_task_run(ptr %t1363)
   ret ptr %t1363
 }
@@ -4849,3 +4871,4 @@ declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
 declare void @willrt_task_mark_wait()
 declare void @willrt_task_mark_io()
+declare void @willrt_task_own_frame(ptr)

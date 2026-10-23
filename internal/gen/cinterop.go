@@ -121,6 +121,8 @@ func (g *generator) lowerBlockingCLink(r willc.Record, name string) (string, str
 	task := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
 		task, llvmSymbol(step), frame, size, lane)
+	g.needOwnFrameDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
 	fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
 	text := "Task<i32>"
 	if typed {

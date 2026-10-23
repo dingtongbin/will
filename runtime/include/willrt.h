@@ -100,6 +100,9 @@ void willrt_free(void* ptr);
    off unless WILLRT_COUNT_ALLOC=1 was set before the first allocation; the
    zero-allocation acceptance runs use it. */
 int64_t willrt_alloc_count(void);
+/* willrt_alloc_live reports how many counted blocks are outstanding. It moves
+   only while counting is on, and a recycling path reaches a steady value. */
+int64_t willrt_alloc_live(void);
 
 /* willrt_mem_set_shared tells the allocator that a second thread may now
    allocate or free. Until this is called the lane locks are skipped, which is
@@ -335,8 +338,21 @@ typedef struct willrt_error {
     const char* symbol;
 } willrt_error;
 
+/* willrt_task_error is the copy a joining task keeps in its own frame: the
+   joined task's error with the status that join returned. The message bytes
+   stay owned by the joined task; the region barrier that recycles the joined
+   task joins the joiner first, so no copy is read after the barrier. */
+typedef struct willrt_task_error {
+    willrt_error error;
+    int32_t status;
+} willrt_task_error;
+
 willrt_task* willrt_task_new(void* step, void* frame, size_t size,
                              int32_t lane, int32_t prio);
+/* willrt_task_own_frame marks the frame as allocated on the heap, so the
+   region barrier frees it with the task. A frame that lives anywhere else
+   must not be marked. */
+void willrt_task_own_frame(willrt_task* task);
 /* willrt_job_new queues a task on the global job queue. The caller only uses
    it from a parallel block; the block body must not suspend. The returned
    handle is joined like a task handle. */
@@ -545,10 +561,10 @@ void willrt_panic_n(const char* message, size_t size, const char* site, const ch
 /* willrt_report_write_n writes bytes that need not be NUL-terminated. */
 void willrt_report_write_n(const char* text, size_t size);
 
-/* TaskError reads the failure text and status from one finished task. The
-   task object stays alive after Join, so the interface may point at it. */
-void willrt_task_error_message(void* task, const char** data, size_t* size);
-int32_t willrt_task_error_status(void* task);
+/* TaskError reads the failure text and status from the willrt_task_error copy
+   the joining task keeps in its own frame. */
+void willrt_task_error_message(void* copy, const char** data, size_t* size);
+int32_t willrt_task_error_status(void* copy);
 
 
 /* print writes its parts to standard output without buffering. A str part is

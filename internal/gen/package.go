@@ -58,6 +58,7 @@ func EmitPackageModule(docs []*willc.Doc, pkg, entry, entryPkg string, aliases m
 	}
 	if g.usesTaskRuntime() {
 		g.out.WriteString("%willrt_error = type { ptr, i64, ptr, ptr }\n")
+		g.out.WriteString("%willrt.task_error = type { %willrt_error, i32 }\n")
 	}
 	if g.usesSelect() {
 		g.out.WriteString("%willrt_arm = type { ptr, ptr, ptr, i32, i64 }\n")

@@ -2,9 +2,12 @@ package gen
 
 import "fmt"
 
-// taskErrorInto fills an Error interface slot with the task object as its data
-// pointer and the shared TaskError method table. The task object outlives Join.
-func (g *generator) taskErrorInto(ptr, task string) {
+// taskErrorInto fills an Error interface slot with the join error copy the
+// calling task keeps in its own frame and the shared TaskError method table.
+// The copy is a %willrt.task_error slot: the join wrote the error into its
+// first member and the status after it, so no accessor depends on the joined
+// task outliving the join.
+func (g *generator) taskErrorInto(ptr, slot string) {
 	if !g.errorEmitted {
 		g.out.WriteString("%interface.Error = type { ptr, ptr }\n")
 		g.errorEmitted = true
@@ -12,14 +15,14 @@ func (g *generator) taskErrorInto(ptr, task string) {
 	g.needTaskErrorDecl = true
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%interface.Error, ptr %s, i32 0, i32 0\n", dataPtr, ptr)
-	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", task, dataPtr)
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", slot, dataPtr)
 	tablePtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%interface.Error, ptr %s, i32 0, i32 1\n", tablePtr, ptr)
 	fmt.Fprintf(g.out, "  store ptr @will.task.error.table, ptr %s\n", tablePtr)
 }
 
 // emitTaskError writes the Message and Status accessors and their table. The
-// C side owns the task layout; these wrappers only adapt its output to the
+// C side owns the copy layout; these wrappers only adapt its output to the
 // interface method ABI.
 func (g *generator) emitTaskError() {
 	if !g.needTaskErrorDecl {

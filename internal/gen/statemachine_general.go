@@ -292,6 +292,8 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	task := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0)\n",
 		task, llvmSymbol(sym+".sm"), size, lane)
+	g.needOwnFrameDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
 	for _, ptr := range cancelPtrs {
 		g.needCancelBind = true
 		fmt.Fprintf(g.out, "  call void @willrt_task_bind_cancel(ptr %s, ptr %s)\n", task, ptr)

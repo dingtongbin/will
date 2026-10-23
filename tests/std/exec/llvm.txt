@@ -1,4 +1,5 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 %"struct.std/os/exec.Cmd" = type { { ptr, i64 }, { ptr, i64 }, { ptr, i64, i64 }, { ptr, i64 } }
 define hidden %"struct.std/os/exec.Cmd" @"std/os/exec.Command"(ptr %path, ptr %args) alwaysinline {
 entry:
@@ -891,6 +892,7 @@ entry:
   store i32 0, ptr %t192
   %t193 = call i32 @willrt_lane_here()
   %t194 = call ptr @willrt_task_new(ptr @"std/os/exec.Cmd.AsyncRun.sm", ptr %t185, i64 %t184, i32 %t193, i32 0)
+  call void @willrt_task_own_frame(ptr %t194)
   call void @willrt_task_run(ptr %t194)
   ret ptr %t194
 }
@@ -1150,6 +1152,7 @@ entry:
   store i32 0, ptr %t316
   %t317 = call i32 @willrt_lane_here()
   %t318 = call ptr @willrt_task_new(ptr @"std/os/exec.Cmd.AsyncOutput.sm", ptr %t307, i64 %t306, i32 %t317, i32 0)
+  call void @willrt_task_own_frame(ptr %t318)
   call void @willrt_task_run(ptr %t318)
   ret ptr %t318
 }
@@ -1640,4 +1643,5 @@ declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
 declare void @willrt_task_mark_wait()
 declare void @willrt_task_mark_io()
+declare void @willrt_task_own_frame(ptr)
 declare ptr @willrt_plate_new(i64, i64)

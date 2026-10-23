@@ -1,4 +1,5 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/rctask.C" = type { i32 }
 define hidden i64 @"example.com/rctask.Make"() alwaysinline {
 entry:
@@ -21,53 +22,56 @@ entry:
   %t7 = call ptr @willrt_alloc(i64 %t6)
   %t8 = call i32 @willrt_lane_here()
   %t9 = call ptr @willrt_task_new(ptr @"example.com/rctask.spawn.1", ptr %t7, i64 %t6, i32 %t8, i32 0)
+  call void @willrt_task_own_frame(ptr %t9)
   call void @willrt_task_run(ptr %t9)
   store ptr %t9, ptr %v.t
   %t10 = load ptr, ptr %v.t
   %t11 = call i32 @willrt_join(ptr %t10, ptr %v.join.out.26, ptr %v.join.err.26)
-  %t12 = icmp eq i32 %t11, 0
-  br i1 %t12, label %task.ok.1, label %task.fail.1
+  %t12 = getelementptr inbounds %willrt.task_error, ptr %v.join.err.26, i32 0, i32 1
+  store i32 %t11, ptr %t12
+  %t13 = icmp eq i32 %t11, 0
+  br i1 %t13, label %task.ok.1, label %task.fail.1
 task.fail.1:
-  %t13 = getelementptr inbounds %willrt_error, ptr %v.join.err.26, i32 0, i32 0
-  %t14 = load ptr, ptr %t13
-  %t15 = getelementptr inbounds %willrt_error, ptr %v.join.err.26, i32 0, i32 1
-  %t16 = load i64, ptr %t15
-  %t17 = getelementptr inbounds %willrt_error, ptr %v.join.err.26, i32 0, i32 2
-  %t18 = load ptr, ptr %t17
-  %t19 = getelementptr inbounds %willrt_error, ptr %v.join.err.26, i32 0, i32 3
-  %t20 = load ptr, ptr %t19
-  call void @willrt_panic_n(ptr %t14, i64 %t16, ptr %t18, ptr %t20)
+  %t14 = getelementptr inbounds %willrt_error, ptr %v.join.err.26, i32 0, i32 0
+  %t15 = load ptr, ptr %t14
+  %t16 = getelementptr inbounds %willrt_error, ptr %v.join.err.26, i32 0, i32 1
+  %t17 = load i64, ptr %t16
+  %t18 = getelementptr inbounds %willrt_error, ptr %v.join.err.26, i32 0, i32 2
+  %t19 = load ptr, ptr %t18
+  %t20 = getelementptr inbounds %willrt_error, ptr %v.join.err.26, i32 0, i32 3
+  %t21 = load ptr, ptr %t20
+  call void @willrt_panic_n(ptr %t15, i64 %t17, ptr %t19, ptr %t21)
   unreachable
 task.ok.1:
-  %t21 = load i64, ptr %v.join.out.26
-  call void @willrt_rc_retain(i64 %t21)
-  store i64 %t21, ptr %v.got
-  %t22 = load i64, ptr %v.got
-  %t23 = call ptr @willrt_rc_deref(i64 %t22)
-  %t24 = getelementptr inbounds %"struct.example.com/rctask.C", ptr %t23, i32 0, i32 0
-  %t25 = load i32, ptr %t24
-  %t26 = call {i32, i1} @llvm.ssub.with.overflow.i32(i32 %t25, i32 9)
-  %t27 = extractvalue {i32, i1} %t26, 0
-  %t28 = extractvalue {i32, i1} %t26, 1
-  br i1 %t28, label %panic.2, label %panic.ok.2
+  %t22 = load i64, ptr %v.join.out.26
+  call void @willrt_rc_retain(i64 %t22)
+  store i64 %t22, ptr %v.got
+  %t23 = load i64, ptr %v.got
+  %t24 = call ptr @willrt_rc_deref(i64 %t23)
+  %t25 = getelementptr inbounds %"struct.example.com/rctask.C", ptr %t24, i32 0, i32 0
+  %t26 = load i32, ptr %t25
+  %t27 = call {i32, i1} @llvm.ssub.with.overflow.i32(i32 %t26, i32 9)
+  %t28 = extractvalue {i32, i1} %t27, 0
+  %t29 = extractvalue {i32, i1} %t27, 1
+  br i1 %t29, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
   unreachable
 panic.ok.2:
-  %t29 = load i64, ptr %v.got
-  call void @willrt_rc_release(i64 %t29)
-  ret i32 %t27
+  %t30 = load i64, ptr %v.got
+  call void @willrt_rc_release(i64 %t30)
+  ret i32 %t28
 }
 define i32 @"example.com/rctask.spawn.1"(ptr %frame) {
 entry:
-  %t30 = call i64 @"example.com/rctask.Make"()
-  %t31 = alloca i64
-  store i64 %t30, ptr %t31
-  %t32 = load i64, ptr %t31
-  call void @willrt_rc_share(i64 %t32)
-  %t33 = getelementptr i64, ptr null, i32 1
-  %t34 = ptrtoint ptr %t33 to i64
-  call i32 @willrt_task_store_result(ptr %t31, i64 %t34)
+  %t31 = call i64 @"example.com/rctask.Make"()
+  %t32 = alloca i64
+  store i64 %t31, ptr %t32
+  %t33 = load i64, ptr %t32
+  call void @willrt_rc_share(i64 %t33)
+  %t34 = getelementptr i64, ptr null, i32 1
+  %t35 = ptrtoint ptr %t34 to i64
+  call i32 @willrt_task_store_result(ptr %t32, i64 %t35)
   ret i32 1
 }
 declare void @willrt_init()
@@ -104,6 +108,7 @@ declare i64 @willrt_now_ns()
 declare void @willrt_region_enter()
 declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
+declare void @willrt_task_own_frame(ptr)
 declare i64 @willrt_rc_new(ptr, i64)
 declare i64 @willrt_rc_new_drop(ptr, i64, ptr)
 declare void @willrt_rc_retain(i64)

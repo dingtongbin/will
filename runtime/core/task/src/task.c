@@ -48,6 +48,7 @@ struct willrt_task {
     willrt_step step;
     void* frame;
     size_t frame_size;
+    int32_t frame_owned;
     int32_t lane;
     int32_t prio;
     int32_t started;
@@ -691,25 +692,28 @@ willrt_chan_wait* willrt_task_chan_wait_node(void) {
     return willrt_task_self == NULL ? NULL : &willrt_task_self->chan_wait;
 }
 
+/* The TaskError accessors read the copy the joining task keeps in its own
+   frame, so no accessor depends on the joined task outliving the join. The
+   message bytes stay owned by the joined task until the region barrier. */
 void willrt_task_error_message(void* raw, const char** data, size_t* size) {
-    struct willrt_task* task = (struct willrt_task*)raw;
+    const willrt_task_error* copy = (const willrt_task_error*)raw;
 
-    if (task == NULL) {
+    if (copy == NULL) {
         *data = "";
         *size = 0;
         return;
     }
-    *data = task->message != NULL ? task->message : "";
-    *size = task->message_size;
+    *data = copy->error.message != NULL ? copy->error.message : "";
+    *size = copy->error.size;
 }
 
 int32_t willrt_task_error_status(void* raw) {
-    struct willrt_task* task = (struct willrt_task*)raw;
+    const willrt_task_error* copy = (const willrt_task_error*)raw;
 
-    if (task == NULL) {
+    if (copy == NULL) {
         return 0;
     }
-    return task->canceled ? 8 : 0;
+    return copy->status == WILLRT_CANCELED ? 8 : 0;
 }
 
 int32_t willrt_task_store_result(const void* value, size_t size) {
@@ -943,8 +947,42 @@ void willrt_region_enter(void) {
     willrt_region_depth++;
 }
 
+void willrt_task_own_frame(willrt_task* task) {
+    if (task != NULL) {
+        task->frame_owned = 1;
+    }
+}
+
+/* willrt_task_release returns one finished region member to the allocator.
+   The region barrier joins every member first, so no joiner can still read
+   this task's frame or result, and no will-level handle can have left the
+   region. The failure text stays allocated: a TaskError copy names it, and
+   a failed task is the defect path, so the block is bounded. */
+static void willrt_task_release(struct willrt_task* task) {
+    struct willrt_task** link;
+
+    willrt_os_mutex_lock(&willrt_tasks_lock);
+    link = &willrt_all_tasks;
+    while (*link != NULL && *link != task) {
+        link = &(*link)->all_next;
+    }
+    if (*link == task) {
+        *link = task->all_next;
+    }
+    willrt_os_mutex_unlock(&willrt_tasks_lock);
+
+    willrt_free(task->result);
+    if (task->frame_owned) {
+        willrt_free(task->frame);
+    }
+    willrt_os_mutex_destroy(&task->lock);
+    willrt_os_cond_destroy(&task->cond);
+    willrt_free(task);
+}
+
 int32_t willrt_region_exit(void) {
     struct willrt_region* region;
+    struct willrt_task* members;
     struct willrt_task* task;
     int32_t failed = 0;
     char line[64];
@@ -956,9 +994,10 @@ int32_t willrt_region_exit(void) {
     willrt_region_depth--;
     region = &willrt_regions[willrt_region_depth];
     willrt_os_mutex_lock(&region->lock);
-    task = region->head;
+    members = region->head;
     region->head = NULL;
     willrt_os_mutex_unlock(&region->lock);
+    task = members;
     while (task != NULL) {
         struct willrt_task* next = task->next_region;
 
@@ -972,8 +1011,18 @@ int32_t willrt_region_exit(void) {
         if (size > 0) {
             willrt_report_write_n(line,
                                   (size_t)size < sizeof(line) ? (size_t)size
-                                                             : sizeof(line));
+                                                              : sizeof(line));
         }
+    }
+    /* The join pass above is the barrier: every member has finished, so the
+       frames and results are dead and go back to the allocator, whose
+       per-lane size classes make the next region's tasks reuse them. */
+    task = members;
+    while (task != NULL) {
+        struct willrt_task* next = task->next_region;
+
+        willrt_task_release(task);
+        task = next;
     }
     willrt_os_mutex_destroy(&region->lock);
     return failed;
