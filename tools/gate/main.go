@@ -77,7 +77,9 @@ func runCheckcode(root string) error {
 }
 
 func runTests() error {
-	cmd := exec.Command("go", "test", "./...")
+	// The runtime tests compile and run C drivers; package-parallel execution
+	// can starve the lane tests and turn a bounded wait into a flaky timeout.
+	cmd := exec.Command("go", "test", "-p=1", "./...")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
