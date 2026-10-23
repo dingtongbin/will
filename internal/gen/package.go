@@ -139,6 +139,7 @@ func newGenerator(lib bool, aliases map[string]string) *generator {
 		aliases:        aliases,
 		declSet:        map[string]bool{},
 		builtinErrors:  map[int]bool{},
+		liveValues:     map[int]string{},
 	}
 }
 

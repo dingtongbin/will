@@ -68,6 +68,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		declSet:        map[string]bool{},
 		suspendable:    map[string]bool{},
 		builtinErrors:  map[int]bool{},
+		liveValues:     map[int]string{},
 	}
 	for _, doc := range docs {
 		g.docs = append(g.docs, newDocState(doc))
@@ -659,7 +660,10 @@ type generator struct {
 	errorEmitted bool
 	// builtinErrors records which predeclared faults this module emits.
 	builtinErrors map[int]bool
-	usedError     bool
+	// liveValues holds the variables whose slots still need a static release
+	// on the panic path, keyed by declaration id.
+	liveValues map[int]string
+	usedError  bool
 	// needAllocDecl records that the lowering calls the allocator.
 	needAllocDecl bool
 	// needMemcmpDecl records that the lowering compares str or byte data.
@@ -1347,6 +1351,7 @@ func (g *generator) errf(id int, format string, args ...any) error {
 }
 
 func (g *generator) funcDecl(fn willc.Record) error {
+	g.liveValues = map[int]string{}
 	hasAsync := false
 	if info, ok := g.asyncSequenceMachine(fn.ID); ok {
 		g.pendingAsync = append(g.pendingAsync, info)
@@ -2327,6 +2332,9 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 		}
 	}
 	typ := g.slotTypes[r.ID]
+	if g.needsReleaseText(fieldText(r, "type")) {
+		g.liveValues[r.ID] = fieldText(r, "type")
+	}
 	if valueID == 0 {
 		// A var without an initializer keeps the zero value of its type.
 		if isRcText(fieldText(r, "type")) || typ == "i64" {
@@ -2395,6 +2403,10 @@ func (g *generator) body(b willc.Record, void bool) (bool, error) {
 // body lowering and the split path share release and defer handling.
 func (g *generator) bodyStmts(stmts []willc.Record, void bool) (bool, error) {
 	entry := len(g.defers)
+	savedLive := make(map[int]string, len(g.liveValues))
+	for id, text := range g.liveValues {
+		savedLive[id] = text
+	}
 	g.defers = append(g.defers, nil)
 	terminated := false
 	var pending []willc.Record
@@ -2447,6 +2459,7 @@ func (g *generator) bodyStmts(stmts []willc.Record, void bool) (bool, error) {
 	if len(g.defers) > entry {
 		g.defers = g.defers[:entry]
 	}
+	g.liveValues = savedLive
 	return terminated, nil
 }
 
@@ -2465,6 +2478,7 @@ func (g *generator) releaseRecord(rel willc.Record) error {
 	if !needsReleaseText(g, text) {
 		return nil
 	}
+	delete(g.liveValues, owner)
 	return g.releaseSlot(slot, text)
 }
 
