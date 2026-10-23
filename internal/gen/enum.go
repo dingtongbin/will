@@ -478,6 +478,15 @@ func (g *generator) sizeAlign(typ string) (int, int, bool) {
 	if typ == "double" {
 		return 8, 8, true
 	}
+	if typ == "%willrt_error" {
+		return 32, 8, true
+	}
+	if typ == "%willrt_arm" {
+		return 40, 8, true
+	}
+	if strings.HasPrefix(typ, "%interface.") || strings.HasPrefix(typ, `%"interface.`) {
+		return 16, 8, true
+	}
 	if strings.HasPrefix(typ, "i") {
 		w := intWidth(typ)
 		if w < 1 {

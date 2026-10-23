@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// TestSendLoopBecomesStateMachine checks the producer shape used by the MPMC
-// corpus: a ranged loop whose only wait is a channel send must lower to a step
-// that parks on willrt_chan_send_wait instead of blocking the lane.
+// TestSendLoopBecomesStateMachine checks the general state-machine path: a
+// ranged loop whose only wait is a channel send parks on the task wait node
+// instead of blocking the lane.
 func TestSendLoopBecomesStateMachine(t *testing.T) {
 	src := `func Produce(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
@@ -31,9 +31,9 @@ func main() -> i32 {
 	}
 	text := string(ir)
 	for _, want := range []string{
-		`define i32 @"example.com/app.Produce.sm"(ptr %frame)`,
+		`define internal i32 @"example.com/app.Produce.sm"(ptr %frame)`,
 		`call i32 @willrt_chan_send_wait(ptr %`,
-		`store i32 2, ptr %`,
+		`sm.op.call.1:`,
 		`icmp slt i32 %`,
 		`call void @willrt_task_mark_wait()`,
 	} {

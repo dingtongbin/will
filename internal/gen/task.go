@@ -74,17 +74,13 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	target, hasTarget := g.recs[refField(call, "to")]
 	indirect := hasTarget && g.isFuncValue(target)
 	if hasTarget && !indirect {
-		if info, ok := g.stateMachine(target.ID); ok {
-			g.pendingSM = append(g.pendingSM, info)
-			return g.lowerStateMachineSpawn(r, info, call)
-		}
-		if info, ok := g.joinStateMachine(target.ID); ok {
-			g.pendingSM = append(g.pendingSM, info)
-			return g.lowerJoinStateMachineSpawn(r, info, call)
-		}
-		if info, ok := g.sendMachine(target.ID); ok {
-			g.pendingSend = append(g.pendingSend, info)
-			return g.lowerSendMachineSpawn(r, info, call)
+		if g.generalMachine(target.ID) {
+			sym := g.cur.funcs[target.ID]
+			if sym == "" {
+				return "", g.errf(r.ID, "cannot translate node #%d: the spawned function has no symbol", r.ID)
+			}
+			g.enqueueGeneral(target.ID)
+			return g.emitConstructorCall(call, sym)
 		}
 		if info, ok := g.selectMachine(target.ID); ok {
 			g.pendingSelect = append(g.pendingSelect, info)
@@ -228,17 +224,8 @@ func (g *generator) emitSpawns() error {
 			return err
 		}
 	}
-	for _, info := range g.pendingSM {
-		if info.join {
-			if err := g.emitJoinStateMachineStep(info); err != nil {
-				return err
-			}
-		} else if err := g.emitStateMachineStep(info); err != nil {
-			return err
-		}
-	}
-	for _, info := range g.pendingSend {
-		if err := g.emitSendMachineStep(info); err != nil {
+	for _, fn := range g.pendingGeneral {
+		if err := g.emitGeneralStep(fn); err != nil {
 			return err
 		}
 	}
@@ -253,8 +240,7 @@ func (g *generator) emitSpawns() error {
 		}
 	}
 	g.pendingSpawns = nil
-	g.pendingSM = nil
-	g.pendingSend = nil
+	g.pendingGeneral = nil
 	g.pendingAsync = nil
 	g.pendingSelect = nil
 	return nil
@@ -908,8 +894,13 @@ func (g *generator) joinUnwrap(r willc.Record) (string, string, string, error) {
 		g.needTaskDecl = true
 		errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt_error")
 		g.needPanicDecl = true
-		status := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr null, ptr %s)\n", status, task, errSlot)
+		status := ""
+		if g.smGeneral {
+			status = g.smTryJoin(task, "", errSlot)
+		} else {
+			status = g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr null, ptr %s)\n", status, task, errSlot)
+		}
 		isOK := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", isOK, status)
 		g.labels++
@@ -947,8 +938,13 @@ func (g *generator) joinUnwrap(r willc.Record) (string, string, string, error) {
 	out := g.allocSlot(g.joinOutSlots, "join.out", r.ID, elemLLVM)
 	errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt_error")
 	g.needPanicDecl = true
-	status := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr %s, ptr %s)\n", status, task, out, errSlot)
+	status := ""
+	if g.smGeneral {
+		status = g.smTryJoin(task, out, errSlot)
+	} else {
+		status = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr %s, ptr %s)\n", status, task, out, errSlot)
+	}
 	isOK := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", isOK, status)
 	g.labels++
@@ -1003,6 +999,10 @@ func (g *generator) lowerChanNew(r willc.Record) (string, error) {
 // lowerSend copies one value into a channel. A scalar value needs a slot to
 // pass its address; an aggregate already has one.
 func (g *generator) lowerSend(r willc.Record) error {
+	if g.smGeneral {
+		_, err := g.lowerSendResult(r)
+		return err
+	}
 	chanPtr, err := g.value(refField(r, "chan"))
 	if err != nil {
 		return err
@@ -1077,8 +1077,23 @@ func (g *generator) lowerSendResult(r willc.Record) (string, error) {
 	}
 	g.needTaskDecl = true
 	slot := g.allocSlot(g.adtSlots, "send.result", r.ID, info.llvm)
-	status := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call i32 @willrt_chan_send(ptr %s, ptr %s)\n", status, chanPtr, ptr)
+	status := ""
+	if g.smGeneral {
+		chanSlot := g.smAlloca("ptr", "send.chan")
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", chanPtr, chanSlot)
+		valueSlot := g.smAlloca("ptr", "send.value")
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", ptr, valueSlot)
+		id := g.smReserve()
+		g.smStoreState(id)
+		status = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_chan_send_wait(ptr %s, ptr %s)\n",
+			status, g.load("ptr", chanSlot), g.load("ptr", valueSlot))
+		g.needChanWaitDecl = true
+		g.smCheckPark(status, id)
+	} else {
+		status = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_chan_send(ptr %s, ptr %s)\n", status, chanPtr, ptr)
+	}
 	okStatus := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", okStatus, status)
 	g.labels++
@@ -1135,11 +1150,16 @@ func (g *generator) lowerJoinResult(r willc.Record) (string, error) {
 		out = g.allocSlot(g.joinOutSlots, "join.out", r.ID, elemLLVM)
 	}
 	errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt_error")
-	status := g.newTmp()
-	if out == "" {
-		fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr null, ptr %s)\n", status, task, errSlot)
+	status := ""
+	if g.smGeneral {
+		status = g.smTryJoin(task, out, errSlot)
 	} else {
-		fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr %s, ptr %s)\n", status, task, out, errSlot)
+		status = g.newTmp()
+		if out == "" {
+			fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr null, ptr %s)\n", status, task, errSlot)
+		} else {
+			fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr %s, ptr %s)\n", status, task, out, errSlot)
+		}
 	}
 	slot := g.allocSlot(g.adtSlots, "join.result", r.ID, info.llvm)
 	okStatus := g.newTmp()
@@ -1265,8 +1285,21 @@ func (g *generator) lowerRecv(r willc.Record, try bool) (string, string, error) 
 	if try {
 		fn = "willrt_chan_try_recv"
 	}
-	status := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call i32 @%s(ptr %s, ptr %s)\n", status, fn, chanPtr, out)
+	status := ""
+	if g.smGeneral && !try {
+		chanSlot := g.smAlloca("ptr", "recv.chan")
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", chanPtr, chanSlot)
+		id := g.smReserve()
+		g.smStoreState(id)
+		status = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_chan_recv_wait(ptr %s, ptr %s)\n",
+			status, g.load("ptr", chanSlot), out)
+		g.needChanWaitDecl = true
+		g.smCheckPark(status, id)
+	} else {
+		status = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @%s(ptr %s, ptr %s)\n", status, fn, chanPtr, out)
+	}
 	slot := g.allocSlot(g.recvOptSlots, "recv", r.ID, info.llvm)
 	tagPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)

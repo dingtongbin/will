@@ -1,0 +1,25 @@
+func Fill(ch: chan<i32>) -> Result<(), Error> {
+    for i in Range(0, 4) {
+        ch.Send(i)?
+    }
+    return Ok(())
+}
+
+func main() -> i32 {
+    var ch: chan<i32> = new chan<i32>(4)
+    ch.Close()
+    region {
+        var task: Task<Result<(), Error>> = spawn Fill(ch)
+        match task.Join()! {
+            Ok(_) => {
+                return 1
+            }
+            Err(e) => {
+                if e.Status() != 4 {
+                    return 2
+                }
+            }
+        }
+    }
+    return 0
+}

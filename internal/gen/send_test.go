@@ -20,7 +20,7 @@ func TestSendResultCarriesClosedFault(t *testing.T) {
 	}
 	text := string(ir)
 	for _, want := range []string{
-		"call i32 @willrt_chan_send",
+		"call i32 @willrt_chan_send_wait",
 		"send.ok.1:",
 		"send.err.1:",
 		"@will.error.data.4",

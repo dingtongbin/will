@@ -24,7 +24,7 @@ func Run(task: Task<i32>) -> Result<i32, TaskError> {
 	}
 	text := string(ir)
 	for _, want := range []string{
-		"call i32 @willrt_join",
+		"call i32 @willrt_task_try_join",
 		"join.result",
 		"will.task.error.table",
 		"@will.task.error.message",

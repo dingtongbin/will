@@ -522,8 +522,7 @@ func (g *generator) use(d *docState) {
 	g.pendingThunks = nil
 	g.spawnNames = map[int]string{}
 	g.pendingSpawns = nil
-	g.pendingSM = nil
-	g.pendingSend = nil
+	g.pendingGeneral = nil
 	g.pendingAsync = nil
 	g.pendingSelect = nil
 	g.pendingDefers = nil
@@ -666,6 +665,13 @@ type generator struct {
 	// on the panic path, keyed by declaration id.
 	liveValues map[int]string
 	usedError  bool
+	// General state-machine lowering keeps every alloca in the task frame and
+	// splits each channel or join wait into a resume label.
+	smGeneral   bool
+	smStateSlot string
+	smStateSeq  int
+	smStates    []string
+	smParamSlot map[int]string
 	// needAllocDecl records that the lowering calls the allocator.
 	needAllocDecl bool
 	// needMemcmpDecl records that the lowering compares str or byte data.
@@ -755,14 +761,13 @@ type generator struct {
 	laneIndex    map[string]int32
 	// spawnNames names the step function of every spawn expression, and
 	// pendingSpawns holds the steps this document still has to write.
-	spawnNames    map[int]string
-	spawnSeq      int
-	pendingSpawns []spawnRequest
-	pendingSM     []*stateMachineInfo
-	pendingSend   []*sendMachineInfo
-	pendingAsync  []*asyncMachineInfo
-	pendingSelect []*selectMachineInfo
-	spawnEmitted  map[string]bool
+	spawnNames     map[int]string
+	spawnSeq       int
+	pendingSpawns  []spawnRequest
+	pendingGeneral []int
+	pendingAsync   []*asyncMachineInfo
+	pendingSelect  []*selectMachineInfo
+	spawnEmitted   map[string]bool
 	// The slots below keep a loop from growing the stack on every evaluation
 	// of a join, receive, or send.
 	joinOutSlots    map[int]string
@@ -956,7 +961,7 @@ func (g *generator) emitDoc() error {
 	// every queue until none of them gained work while the others ran.
 	for pass := 0; pass < 64; pass++ {
 		pending := len(g.pendingThunks) + len(g.pendingSpawns) +
-			len(g.pendingSM) + len(g.pendingSend) + len(g.pendingAsync) +
+			len(g.pendingGeneral) + len(g.pendingAsync) +
 			len(g.pendingSelect) + len(g.pendingBlock) + len(g.pendingDrops) +
 			len(g.pendingDefers)
 		if pending == 0 {
@@ -979,7 +984,7 @@ func (g *generator) emitDoc() error {
 		}
 	}
 	if pending := len(g.pendingThunks) + len(g.pendingSpawns) +
-		len(g.pendingSM) + len(g.pendingSend) + len(g.pendingAsync) +
+		len(g.pendingGeneral) + len(g.pendingAsync) +
 		len(g.pendingSelect) + len(g.pendingBlock) + len(g.pendingDrops) +
 		len(g.pendingDefers); pending != 0 {
 		return fmt.Errorf("pending lowering work did not drain")
@@ -1370,13 +1375,9 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	if g.suspendable[g.cur.funcs[fn.ID]] && !hasAsync && !hasSelect {
 		return g.errf(fn.ID, "cannot translate node #%d: suspendable function %s has no supported state-machine shape", fn.ID, fieldText(fn, "text"))
 	}
-	if _, ok := g.stateMachine(fn.ID); ok {
-		// The state machine is emitted as the spawn step; a direct call to a
-		// suspendable function has no synchronous body by design.
-		return nil
-	}
-	if _, ok := g.sendMachine(fn.ID); ok {
-		// The send loop is emitted only as its spawn step.
+	if g.generalMachine(fn.ID) {
+		g.suspendable[g.cur.funcs[fn.ID]] = true
+		g.enqueueGeneral(fn.ID)
 		return nil
 	}
 	name := fieldText(fn, "text")
@@ -1871,6 +1872,22 @@ func (g *generator) allocas(fn int) error {
 			fmt.Fprintf(g.out, "  %s = alloca i64\n", length)
 		}
 	}
+	// Range counters are needed by the wait scan below (a send value can name
+	// the loop binding), so reserve them before that pass.
+	for _, r := range g.recs {
+		if r.Kind != "for" || g.enclosingFunc(r.ID) != fn || !g.isRangeLoop(r) {
+			continue
+		}
+		names := bindNames(r)
+		if len(names) != 1 || g.slots[r.ID] != "" {
+			continue
+		}
+		name := g.newSlot(names[0])
+		g.slots[r.ID] = name
+		g.slotTypes[r.ID] = "i32"
+		g.bindLoopType(r.ID, names[0], "i32")
+		fmt.Fprintf(g.out, "  %s = alloca i32\n", name)
+	}
 	// A join, receive, and send keep their temporaries in the entry block, so
 	// a loop that waits repeatedly does not grow the stack.
 	var waits []willc.Record
@@ -1924,7 +1941,9 @@ func (g *generator) allocas(fn int) error {
 		case "send", "trysend":
 			typ, err := g.typeOf(refField(r, "value"))
 			if err != nil {
-				return err
+				// A pattern binding gets its type while the match arm is
+				// lowered; the lazy slot in lowerSend fills it then.
+				continue
 			}
 			if typ != "" && !isAggregateType(typ) {
 				name := "%v.send." + strconv.Itoa(r.ID)
@@ -2085,6 +2104,9 @@ func (g *generator) allocas(fn int) error {
 	for _, r := range loopRecs {
 		if g.isRangeLoop(r) {
 			if len(bindNames(r)) != 1 {
+				continue
+			}
+			if g.slots[r.ID] != "" {
 				continue
 			}
 			name := g.newSlot(bindNames(r)[0])
@@ -2519,12 +2541,20 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 		g.needDeadlineDecl = true
 		previous := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = call i64 @willrt_task_enter_deadline(i64 %s)\n", previous, duration)
+		previousSlot := ""
+		if g.smGeneral {
+			previousSlot = g.smAlloca("i64", "deadline.previous")
+			fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", previous, previousSlot)
+		}
 		body, ok := g.recs[refField(st, "body")]
 		if !ok {
 			return false, g.errf(st.ID, "cannot translate node #%d: the deadline block is missing", st.ID)
 		}
 		if _, err := g.body(body, void); err != nil {
 			return false, err
+		}
+		if previousSlot != "" {
+			previous = g.load("i64", previousSlot)
 		}
 		fmt.Fprintf(g.out, "  call void @willrt_task_exit_deadline(i64 %s)\n", previous)
 		return false, nil
