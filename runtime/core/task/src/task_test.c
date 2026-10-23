@@ -301,6 +301,38 @@ static void test_channel_wait_cancel(void) {
     willrt_chan_close(chan);
 }
 
+static void io_wake(void* arg) {
+    (void)arg;
+    willrt_os_sleep_ns(INT64_C(50000000));
+    willrt_sched_wake_io();
+}
+
+static int32_t step_io_wait(void* raw) {
+    int32_t* calls = (int32_t*)raw;
+
+    *calls += 1;
+    if (*calls == 1) {
+        willrt_task_mark_io();
+        willrt_task_mark_wait();
+        return WILLRT_SUSPEND;
+    }
+    return WILLRT_DONE;
+}
+
+static void test_io_wait_is_not_deadlock(void) {
+    willrt_os_thread thread;
+    willrt_task* task;
+    int32_t calls = 0;
+
+    task = willrt_task_new((void*)step_io_wait, &calls, sizeof(calls), 0, 0);
+    assert(task != NULL);
+    assert(willrt_os_thread_start(&thread, io_wake, NULL) == 0);
+    willrt_task_run(task);
+    assert(willrt_join(task, NULL, NULL) == WILLRT_OK);
+    willrt_os_thread_join(&thread);
+    assert(calls == 2);
+}
+
 static void test_select_hands_off_from_task(void) {
     willrt_chan* chan = willrt_chan_new(sizeof(int32_t), 1, 0);
     willrt_task* task;
@@ -361,6 +393,7 @@ int main(void) {
     test_channel_send_wait();
     test_channel_wait_deadline();
     test_channel_wait_cancel();
+    test_io_wait_is_not_deadlock();
     test_select_hands_off_from_task();
     test_select_order();
     willrt_shutdown();

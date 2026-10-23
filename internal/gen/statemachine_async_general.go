@@ -61,6 +61,8 @@ func (g *generator) generalAsyncC(r willc.Record) (string, error) {
 		fmt.Fprintf(g.out, "  %s = call i64 @willrt_task_sleep_deadline(ptr %s)\n", deadline, loaded)
 		fmt.Fprintf(g.out, "  call void @willrt_task_wait_until(i64 %s)\n", deadline)
 	}
+	g.needIOMarkDecl = true
+	g.out.WriteString("  call void @willrt_task_mark_io()\n")
 	g.out.WriteString("  call void @willrt_task_mark_wait()\n")
 	g.out.WriteString("  ret i32 -1\n")
 	fmt.Fprintf(g.out, "sm.async.done.%d:\n", id)

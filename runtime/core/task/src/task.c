@@ -48,6 +48,7 @@ struct willrt_task {
     int32_t queued;
     int32_t wake_pending;
     int32_t wait_requested;
+    int32_t io_wait;
     void* cancel_flag;
     int64_t deadline;
     int64_t wait_deadline;
@@ -361,6 +362,7 @@ static void willrt_task_run_step(struct willrt_task* task) {
 
     task->state = WILLRT_TASK_RUNNING;
     task->wait_requested = 0;
+    task->io_wait = 0;
     willrt_task_self = task;
     willrt_mem_set_lane(task->lane);
     /* A panic is a defect, not an exception: it discards the task and jumps
@@ -397,6 +399,12 @@ static void willrt_task_run_step(struct willrt_task* task) {
 void willrt_task_mark_wait(void) {
     if (willrt_task_self != NULL) {
         willrt_task_self->wait_requested = 1;
+    }
+}
+
+void willrt_task_mark_io(void) {
+    if (willrt_task_self != NULL) {
+        willrt_task_self->io_wait = 1;
     }
 }
 
@@ -961,6 +969,9 @@ static void willrt_task_check_dead(void) {
             }
             if (task->wait_deadline != 0 || task->deadline != 0) {
                 timers++;
+            }
+            if (task->io_wait) {
+                io++;
             }
         }
         task = task->all_next;

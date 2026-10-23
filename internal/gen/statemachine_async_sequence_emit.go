@@ -141,6 +141,8 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 			fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", pending, park, finish)
 			fmt.Fprintf(g.out, "%s:\n", park)
 			g.emitSequenceSleepDeadline(op, seg.waitUntil)
+			g.needIOMarkDecl = true
+			g.out.WriteString("  call void @willrt_task_mark_io()\n")
 			g.out.WriteString("  call void @willrt_task_mark_wait()\n  ret i32 -1\n")
 			fmt.Fprintf(g.out, "%s:\n", finish)
 			status := g.newTmp()
@@ -251,6 +253,8 @@ func (g *generator) emitAsyncStart(info *asyncMachineInfo, seg *asyncSegment, in
 	if seg.kind == "c" {
 		g.emitSequenceSleepDeadline(op, seg.waitUntil)
 	}
+	g.needIOMarkDecl = true
+	g.out.WriteString("  call void @willrt_task_mark_io()\n")
 	g.out.WriteString("  call void @willrt_task_mark_wait()\n  ret i32 -1\n")
 	return nil
 }

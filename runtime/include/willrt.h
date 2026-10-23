@@ -296,6 +296,9 @@ void willrt_task_bind_cancel(willrt_task* task, void* flag);
 /* A step that is not ready marks the current task as waiting before returning
    WILLRT_SUSPEND. A bare suspend without this mark is retried immediately. */
 void willrt_task_mark_wait(void);
+/* A step that parked on an external operation sets the IO marker; checkdead
+   counts it as pending work instead of reporting a deadlock. */
+void willrt_task_mark_io(void);
 int64_t willrt_task_deadline(void);
 /* willrt_task_sleep_ns sleeps the calling thread. A generated step uses the
    async spelling and parks its frame instead. */
