@@ -500,18 +500,25 @@ func (g *generator) firstJoinParam(fnID int) (int, bool) {
 	if len(children) < 2 || children[0].Kind != "var" {
 		return 0, false
 	}
-	var unwrap willc.Record
+	var join willc.Record
 	for _, r := range g.recs {
-		if refField(r, "parent") == children[0].ID && r.Kind == "unwrap" {
-			unwrap = r
-			break
+		if refField(r, "parent") != children[0].ID {
+			continue
+		}
+		switch r.Kind {
+		case "join":
+			join = r
+		case "unwrap":
+			if inner, ok := g.recs[refField(r, "expr")]; ok && inner.Kind == "join" {
+				join = inner
+			}
+		case "try":
+			if inner, ok := g.recs[refField(r, "expr")]; ok && inner.Kind == "join" {
+				join = inner
+			}
 		}
 	}
-	if unwrap.ID == 0 {
-		return 0, false
-	}
-	join, ok := g.recs[refField(unwrap, "expr")]
-	if !ok || join.Kind != "join" {
+	if join.ID == 0 {
 		return 0, false
 	}
 	name, ok := g.recs[refField(join, "task")]
