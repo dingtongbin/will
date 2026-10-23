@@ -147,4 +147,4 @@ tools/          门禁、检查器与索引工具
 
 ## 许可
 
-MIT License。见 [LICENSE](LICENSE)。
+Apache License 2.0。见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
