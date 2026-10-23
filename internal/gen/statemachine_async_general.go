@@ -78,7 +78,7 @@ func (g *generator) generalAsyncC(r willc.Record) (string, error) {
 // state-machine step. The child result stays in the frame; the caller sees
 // either a scalar value or the result slot.
 func (g *generator) generalCallWait(r willc.Record) (string, error) {
-	sym := g.callTargetSymbol(r)
+	sym := g.awaitTargetSymbol(r)
 	if sym == "" {
 		return "", g.errf(r.ID, "cannot translate node #%d: the called function has no symbol", r.ID)
 	}
@@ -122,7 +122,7 @@ func (g *generator) generalCallWait(r willc.Record) (string, error) {
 // generalCallWaitPlace is the aggregate form: the child result slot is the
 // place, so no copy is needed.
 func (g *generator) generalCallWaitPlace(r willc.Record) (string, string, error) {
-	sym := g.callTargetSymbol(r)
+	sym := g.awaitTargetSymbol(r)
 	if sym == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the called function has no symbol", r.ID)
 	}

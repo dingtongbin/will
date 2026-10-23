@@ -10,32 +10,18 @@ import (
 )
 
 // generalMachine reports whether a function must be lowered as a general CFG
-// state machine. Send, receive, and join waits can appear in any statement,
-// loop, or match arm; select and direct async C calls keep their own machines
-// until they join this lowering.
+// state machine. A function that waits on a channel, a task, or a select
+// waits, and so does a function that calls a waiting function: the caller
+// runs the callee as a child task and waits for it.
 func (g *generator) generalMachine(fnID int) bool {
 	if fnID == 0 || fnID == g.entryID {
 		return false
 	}
 	fn, ok := g.recs[fnID]
-	if !ok || fn.Kind != "func" || receiverOfIn(g.cur, fnID) != nil {
+	if !ok || fn.Kind != "func" {
 		return false
 	}
-	found := false
-	for _, r := range g.recs {
-		if g.enclosingFunc(r.ID) != fnID {
-			continue
-		}
-		switch r.Kind {
-		case "send", "recv", "join", "select":
-			found = true
-		case "parallel":
-			// A parallel block runs jobs on the current lane and joins them
-			// synchronously; it is not a task state machine.
-			return false
-		}
-	}
-	return found
+	return g.channelWaitBody(fnID) || g.markedBody(fnID)
 }
 
 // enqueueGeneral schedules one function for general state-machine emission.

@@ -536,6 +536,8 @@ func (g *generator) use(d *docState) {
 	g.deferSnapshots = map[int]deferSnapshot{}
 	g.joinOutSlots = map[int]string{}
 	g.joinErrSlots = map[int]string{}
+	g.awaitOutSlots = map[int]string{}
+	g.awaitErrSlots = map[int]string{}
 	g.recvOutSlots = map[int]string{}
 	g.recvOptSlots = map[int]string{}
 	g.sendValueSlots = map[int]string{}
@@ -777,8 +779,12 @@ type generator struct {
 	spawnEmitted   map[string]bool
 	// The slots below keep a loop from growing the stack on every evaluation
 	// of a join, receive, or send.
-	joinOutSlots    map[int]string
-	joinErrSlots    map[int]string
+	joinOutSlots map[int]string
+	joinErrSlots map[int]string
+	// awaitOutSlots and awaitErrSlots hold the result and the error of a
+	// call to a waiting function.
+	awaitOutSlots   map[int]string
+	awaitErrSlots   map[int]string
 	recvOutSlots    map[int]string
 	recvOptSlots    map[int]string
 	sendValueSlots  map[int]string
@@ -1906,6 +1912,16 @@ func (g *generator) allocas(fn int) error {
 			switch r.Kind {
 			case "join", "recv", "tryrecv", "send", "trysend", "select":
 				waits = append(waits, r)
+			case "call", "mcall":
+				// A general step keeps the await slots in its frame, so only
+				// the ordinary path needs entry-block slots here. A spawned
+				// call starts a task and never waits at this point.
+				if g.smGeneral || g.spawnedCall(r) {
+					continue
+				}
+				if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendable[sym] {
+					waits = append(waits, r)
+				}
 			}
 		}
 	}
@@ -1926,6 +1942,19 @@ func (g *generator) allocas(fn int) error {
 			}
 			name := "%v.join.err." + strconv.Itoa(r.ID)
 			g.joinErrSlots[r.ID] = name
+			fmt.Fprintf(g.out, "  %s = alloca %%willrt_error\n", name)
+		case "call", "mcall":
+			text, err := g.callResultText(r)
+			if err != nil {
+				return err
+			}
+			if llvm := g.resultLLVM(text); llvm != "" {
+				name := "%v.await.out." + strconv.Itoa(r.ID)
+				g.awaitOutSlots[r.ID] = name
+				fmt.Fprintf(g.out, "  %s = alloca %s\n", name, llvm)
+			}
+			name := "%v.await.err." + strconv.Itoa(r.ID)
+			g.awaitErrSlots[r.ID] = name
 			fmt.Fprintf(g.out, "  %s = alloca %%willrt_error\n", name)
 		case "recv", "tryrecv":
 			chanText, err := g.willTypeText(refField(r, "chan"))
@@ -2281,10 +2310,20 @@ func (g *generator) assignStmt(r willc.Record) error {
 			return err
 		}
 		base := strings.TrimSuffix(op, "=")
-		current := g.load(typ, ptr)
+		// A value that waits splits the block, so its target is loaded in
+		// the continuation; a load from the old block would not dominate the
+		// store.
+		deferLoad := g.smGeneral && g.containsWait(valueID)
+		current := ""
+		if !deferLoad {
+			current = g.load(typ, ptr)
+		}
 		value, err := g.value(valueID)
 		if err != nil {
 			return err
+		}
+		if deferLoad {
+			current = g.load(typ, ptr)
 		}
 		signed := !isUnsigned(text)
 		var tmp string
@@ -3423,7 +3462,7 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 // type text. A void call returns an empty name and an empty text.
 func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	if g.smGeneral && !isAsyncCRecord(r) {
-		if sym := g.callTargetSymbol(r); sym != "" && g.suspendable[sym] {
+		if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendable[sym] {
 			value, err := g.generalCallWait(r)
 			if err != nil {
 				return "", "", err
@@ -3499,6 +3538,11 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	if target := refField(r, "to"); target != 0 {
 		if decl, ok := g.recs[target]; ok && g.isFuncValue(decl) {
 			return g.indirectCall(r, decl)
+		}
+	}
+	if !g.smGeneral {
+		if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendable[sym] {
+			return g.awaitCallValue(r)
 		}
 	}
 	if name := g.genericCallName(r); name != "" {

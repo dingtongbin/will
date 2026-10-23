@@ -1247,9 +1247,11 @@ func (g *generator) place(id int) (string, string, error) {
 		return g.constructNew(r)
 	case "call", "mcall":
 		if g.smGeneral {
-			if sym := g.callTargetSymbol(r); sym != "" && g.suspendable[sym] {
+			if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendable[sym] {
 				return g.generalCallWaitPlace(r)
 			}
+		} else if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendable[sym] {
+			return g.awaitCallPlace(r)
 		}
 		if r.Kind == "mcall" && fieldText(r, "text") == "Get" {
 			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
