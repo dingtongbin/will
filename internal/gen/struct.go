@@ -250,6 +250,9 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 		}
 		sub := g.typeRef(f.ID)
 		if sub == 0 {
+			// A field names its type through an import alias; the declaration
+			// index is keyed by the canonical package path.
+			t = g.canonicalTypeText(t)
 			qualified := t
 			if !strings.Contains(qualified, ".") {
 				qualified = qualify(g.pkg, qualified)
@@ -934,6 +937,13 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 		return "", nil
 	}
 	if r.Kind == "mcall" {
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if iface, ok := g.ifaceOfText(recvText); ok {
+				if idx, ok := iface.byName[fieldText(r, "text")]; ok {
+					return iface.methods[idx].result, nil
+				}
+			}
+		}
 		if typ, err := g.typeOf(refField(r, "recv")); err == nil {
 			if iface, ok := g.ifaceOfType(typ); ok {
 				if idx, ok := iface.byName[fieldText(r, "text")]; ok {

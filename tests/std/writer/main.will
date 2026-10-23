@@ -1,0 +1,51 @@
+import "std/io"
+
+// NullWriter counts the bytes it is asked to write and discards them.
+struct NullWriter {
+    n: usize
+}
+
+func (w: NullWriter) AsyncWrite(buf: []u8) -> Result<(), Error> {
+    return Ok(())
+}
+
+func (w: NullWriter) AsyncFlush() -> Result<(), Error> {
+    return Ok(())
+}
+
+// Wrap holds a Writer as a field and forwards both methods, so the method set
+// of the field type is reached from another package.
+struct Wrap {
+    inner: io.Writer
+}
+
+func (w: Wrap) AsyncWrite(buf: []u8) -> Result<(), Error> {
+    return w.inner.AsyncWrite(buf)
+}
+
+func (w: Wrap) AsyncFlush() -> Result<(), Error> {
+    return w.inner.AsyncFlush()
+}
+
+// sink takes the interface and calls a method whose result is an enum.
+func sink(w: io.Writer) -> Result<(), Error> {
+    var storage: Array<u8> = new Array<u8>(0)
+    var bytes: []u8 = storage[Range(0, storage.Len())]
+    _ = w.AsyncWrite(bytes)?
+    _ = w.AsyncFlush()?
+    return Ok(())
+}
+
+func main() -> i32 {
+    var null: NullWriter = NullWriter{n: 0}
+    var wrapped: Wrap = Wrap{inner: null}
+    match sink(wrapped) {
+        Ok(_) => {
+            return 0
+        }
+        Err(_) => {
+            return 1
+        }
+    }
+    return 2
+}

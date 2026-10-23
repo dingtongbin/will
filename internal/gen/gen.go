@@ -1040,6 +1040,15 @@ func (g *generator) usesTaskRuntime() bool {
 			switch r.Kind {
 			case "spawn", "join", "recv", "tryrecv", "send", "trysend", "close", "channew":
 				return true
+			case "call", "mcall":
+				// A call to a waiting function joins a child task, so the
+				// module needs the willrt_error layout even when the source
+				// has no task or channel of its own. A method call resolves
+				// its target through the receiver, which needs this document.
+				g.use(d)
+				if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendable[sym] {
+					return true
+				}
 			}
 		}
 	}
