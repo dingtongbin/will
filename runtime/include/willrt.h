@@ -314,15 +314,13 @@ int64_t willrt_task_sleep_deadline(willrt_sleep_op* op);
 /* willrt_task_wait_until names the deadline of the next park. The scheduler
    arms its timer and clears the field after the park. */
 void willrt_task_wait_until(int64_t deadline);
-/* A state-machine step that is not ready marks a wait and returns
-   WILLRT_SUSPEND. The scheduler parks the frame until an IO epoch changes or
-   its target task finishes. */
+/* willrt_sched_wake_io wakes the parked tasks that marked themselves as
+   waiting on an external operation. It exists for a completer that holds no
+   task handle; a dependency that knows its waiter wakes it directly. */
 void willrt_sched_wake_io(void);
-/* Wake every task that is parked on a join, channel, or timer. Cancellation
-   uses this because a credential can be observed by any waiter. */
+/* Wake every parked task. Cancellation uses this because a credential can be
+   observed by a waiter parked on anything. */
 void willrt_sched_wake_all(void);
-uint32_t willrt_sched_io_epoch(void);
-void willrt_task_wait_io(uint32_t epoch, int64_t deadline);
 /* willrt_task_enter_deadline starts one scoped deadline and returns the
    previous absolute deadline. willrt_task_exit_deadline restores it. A zero
    duration means the block has no deadline. */
@@ -414,6 +412,9 @@ willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg);
    already fired are harmless. A cancelled or fired node stays valid until the
    next advance reclaims it; callers must not use the pointer after that. */
 void willrt_timer_cancel(willrt_timer* timer);
+/* willrt_timer_pending reports how many timers are armed right now. Deadlock
+   detection reads it: a wait that a timer will end is not a deadlock. */
+int32_t willrt_timer_pending(void);
 /* willrt_timer_shutdown stops the timer run loop after all task deadlines have
    been observed. */
 void willrt_timer_shutdown(void);

@@ -5,6 +5,7 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 static int32_t step_double(void* frame) {
@@ -433,23 +434,123 @@ static void test_select_order(void) {
     assert(willrt_select(arms, 3) == 2);
 }
 
+/* A parked task is woken only by its own dependency. Traffic on an unrelated
+   channel must not re-enter the parked step; a wake that re-runs the step
+   would unlink and requeue the wait node for no reason. */
+typedef struct quiet_frame {
+    willrt_chan* chan;
+    int32_t value;
+    int32_t status;
+    int32_t entries;
+    int64_t wake_ns;
+} quiet_frame;
+
+static int32_t step_recv_wait_counted(void* raw) {
+    quiet_frame* frame = (quiet_frame*)raw;
+    int32_t status = willrt_chan_recv_wait(frame->chan, &frame->value);
+
+    frame->entries += 1;
+    if (status == WILLRT_SUSPEND) {
+        willrt_task_mark_wait();
+        return WILLRT_SUSPEND;
+    }
+    frame->status = status;
+    return WILLRT_DONE;
+}
+
+static void test_unrelated_send_wakes_no_parked_task(void) {
+    willrt_chan* watched = willrt_chan_new(sizeof(int32_t), 1, 0);
+    willrt_chan* other = willrt_chan_new(sizeof(int32_t), 64, 0);
+    quiet_frame frame;
+    willrt_task* task;
+    int32_t value;
+
+    assert(watched != NULL && other != NULL);
+    memset(&frame, 0, sizeof(frame));
+    frame.chan = watched;
+    task = willrt_task_new((void*)step_recv_wait_counted, &frame,
+                           sizeof(frame), 0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    willrt_os_sleep_ns(INT64_C(20000000));
+    value = 0;
+    for (int32_t i = 0; i < 32; i++) {
+        assert(willrt_chan_send(other, &value) == WILLRT_OK);
+    }
+    willrt_os_sleep_ns(INT64_C(50000000));
+    assert(frame.entries == 1);
+    value = 7;
+    assert(willrt_chan_send(watched, &value) == WILLRT_OK);
+    assert(willrt_join(task, NULL, NULL) == WILLRT_OK);
+    assert(frame.status == WILLRT_OK);
+    assert(frame.value == 7);
+    willrt_chan_close(other);
+}
+
+/* The park timer wakes exactly the task whose deadline passed. Another parked
+   task must not run its step again before its own timer fires. */
+static int32_t step_timed_park_counted(void* raw) {
+    quiet_frame* frame = (quiet_frame*)raw;
+
+    frame->entries += 1;
+    if (frame->entries == 1) {
+        willrt_task_wait_until(willrt_now_ns() + frame->wake_ns);
+        willrt_task_mark_wait();
+        return WILLRT_SUSPEND;
+    }
+    return WILLRT_DONE;
+}
+
+static void test_timer_wakes_only_its_task(void) {
+    quiet_frame early;
+    quiet_frame late;
+    willrt_task* early_task;
+    willrt_task* late_task;
+
+    memset(&early, 0, sizeof(early));
+    memset(&late, 0, sizeof(late));
+    early.wake_ns = INT64_C(20000000);
+    late.wake_ns = INT64_C(400000000);
+    early_task = willrt_task_new((void*)step_timed_park_counted, &early,
+                                 sizeof(early), 0, 0);
+    late_task = willrt_task_new((void*)step_timed_park_counted, &late,
+                                sizeof(late), 0, 0);
+    assert(early_task != NULL && late_task != NULL);
+    willrt_task_run(early_task);
+    willrt_task_run(late_task);
+    willrt_os_sleep_ns(INT64_C(120000000));
+    assert(willrt_join(early_task, NULL, NULL) == WILLRT_OK);
+    assert(early.entries == 2);
+    assert(late.entries == 1);
+    assert(willrt_join(late_task, NULL, NULL) == WILLRT_OK);
+    assert(late.entries == 2);
+}
+
 int main(void) {
     willrt_init();
     test_task_result();
     test_task_suspend_resume();
     test_region_counts();
     test_region_failure();
+    fprintf(stderr, "mark: panic_lanes\n");
     test_panic_keeps_lanes();
     test_channel_order();
     test_channel_crosses_threads();
     test_channel_hands_off_to_waiting_task();
     test_channel_send_wait();
+    fprintf(stderr, "mark: wait_deadline\n");
     test_channel_wait_deadline();
     test_channel_wait_cancel();
+    fprintf(stderr, "mark: io_wait\n");
     test_io_wait_is_not_deadlock();
     test_select_hands_off_from_task();
     test_select_order();
+    fprintf(stderr, "mark: park_lost\n");
     test_wake_during_park_is_not_lost();
+    fprintf(stderr, "mark: unrelated\n");
+    test_unrelated_send_wakes_no_parked_task();
+    fprintf(stderr, "mark: timer_only\n");
+    test_timer_wakes_only_its_task();
     willrt_shutdown();
     return 0;
 }

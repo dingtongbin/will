@@ -3,8 +3,11 @@
  * A task is a step over a compiler-built frame, not a platform thread and not
  * a C stack. A fixed lane pool calls the step while the task is ready. A step
  * that returns WILLRT_SUSPEND has already stored its state in the frame; the
- * lane parks it until the IO epoch or a target dependency wakes it, then calls
- * the same step again. Jobs use the same step contract through the job pool.
+ * lane parks it, and the dependency it named wakes exactly that task: a
+ * channel handoff through the wait node, a join through the target's waiter
+ * chain, a park deadline through the timer wheel, an external operation
+ * through the poller or the blocking pool. Jobs use the same step contract
+ * through the job pool.
  *
  * A panic inside a task writes its report, records the failure, and jumps back
  * to the lane loop instead of ending the lane thread. The jump skips defer and
@@ -49,6 +52,7 @@ struct willrt_task {
     int32_t wake_pending;
     int32_t wait_requested;
     int32_t io_wait;
+    int32_t join_linked;
     void* cancel_flag;
     int64_t deadline;
     int64_t wait_deadline;
@@ -60,8 +64,10 @@ struct willrt_task {
     const char* symbol;
     struct willrt_task* next_region;
     struct willrt_task* wait_next;
-    struct willrt_task* io_next;
     struct willrt_task* all_next;
+    struct willrt_task* join_head;
+    struct willrt_task* join_next;
+    struct willrt_task* join_target;
     willrt_chan_wait chan_wait;
 };
 
@@ -95,14 +101,10 @@ static atomic_int willrt_task_globals_state;
 static atomic_int willrt_tasks_live;
 static atomic_int willrt_threads_live;
 static atomic_int willrt_activity_count;
-static atomic_uint willrt_io_epoch;
 static willrt_os_mutex willrt_tasks_lock;
 static willrt_os_cond willrt_tasks_cond;
 
-static willrt_os_mutex willrt_lane_lock;
 static struct willrt_task* willrt_all_tasks;
-static struct willrt_task* willrt_io_head;
-static struct willrt_task* willrt_io_tail;
 static lane_worker* willrt_lane_workers;
 static int32_t willrt_lane_count;
 static int32_t willrt_lane_started;
@@ -111,13 +113,15 @@ static atomic_int willrt_lane_ready;
 
 extern void willrt_jobs_shutdown(void) __attribute__((weak));
 extern int32_t willrt_jobs_pending(void) __attribute__((weak));
+extern int32_t willrt_timer_pending(void) __attribute__((weak));
 
 static void willrt_lane_init(void);
 static void willrt_task_check_dead(void);
 
-static void willrt_io_timer(void* arg) {
-    (void)arg;
-    willrt_sched_wake_io();
+/* The park timer runs on the timer thread and wakes exactly the task that
+   parked with this deadline. */
+static void willrt_task_timer_wake(void* arg) {
+    willrt_task_wake_chan((willrt_task*)arg);
 }
 
 static void willrt_task_globals(void) {
@@ -173,7 +177,6 @@ static void willrt_lane_enqueue_locked(lane_worker* worker,
     }
     task->queued = 1;
     task->state = WILLRT_TASK_READY;
-    task->io_next = NULL;
     task->wait_next = NULL;
     if (worker->runnext == NULL) {
         worker->runnext = task;
@@ -208,37 +211,9 @@ static struct willrt_task* willrt_lane_pop_locked(lane_worker* worker) {
     return task;
 }
 
-// willrt_io_unlink removes one task from the IO list. A task that leaves the
-// list by waking must not stay linked, or the next drain walks a broken list
-// and skips the tasks behind it.
-static void willrt_io_unlink(struct willrt_task* task) {
-    struct willrt_task* current;
-    struct willrt_task* previous = NULL;
-
-    willrt_os_mutex_lock(&willrt_lane_lock);
-    current = willrt_io_head;
-    while (current != NULL) {
-        if (current == task) {
-            if (previous == NULL) {
-                willrt_io_head = current->io_next;
-            } else {
-                previous->io_next = current->io_next;
-            }
-            if (willrt_io_tail == current) {
-                willrt_io_tail = previous;
-            }
-            current->io_next = NULL;
-            break;
-        }
-        previous = current;
-        current = current->io_next;
-    }
-    willrt_os_mutex_unlock(&willrt_lane_lock);
-}
-
-// willrt_task_wake moves one parked task to the ready queue. A task that is
-// still switching out is marked pending; the lane makes it ready after the
-// switch has actually happened.
+// willrt_task_wake moves one parked task to the ready queue of its own lane.
+// A task that is still switching out is marked pending; the lane makes it
+// ready after the switch has actually happened.
 static void willrt_task_wake(struct willrt_task* task) {
     lane_worker* worker;
 
@@ -251,7 +226,6 @@ static void willrt_task_wake(struct willrt_task* task) {
     }
     willrt_os_mutex_lock(&worker->lock);
     if (task->state == WILLRT_TASK_WAITING) {
-        willrt_io_unlink(task);
         willrt_lane_enqueue_locked(worker, task);
         willrt_os_cond_signal(&worker->cond);
     } else if (task->state == WILLRT_TASK_PARKING ||
@@ -261,59 +235,49 @@ static void willrt_task_wake(struct willrt_task* task) {
     willrt_os_mutex_unlock(&worker->lock);
 }
 
-// willrt_sched_wake_io wakes every task parked on a channel or select. The
-// epoch closes the check-then-park race in those loops.
-void willrt_sched_wake_all(void) {
+/* willrt_task_snapshot parks the head of the all-task list. The list only
+   grows while the runtime runs, so a walk from the snapshot stays on nodes
+   that were visible when the walk began. */
+static struct willrt_task* willrt_task_all_snapshot(void) {
     struct willrt_task* task;
 
     if (atomic_load(&willrt_task_globals_state) != 2 ||
         !atomic_load(&willrt_lane_ready)) {
-        return;
+        return NULL;
     }
     willrt_os_mutex_lock(&willrt_tasks_lock);
     task = willrt_all_tasks;
     willrt_os_mutex_unlock(&willrt_tasks_lock);
+    return task;
+}
+
+// willrt_sched_wake_all wakes every parked task. Cancellation uses this
+// because a credential can be observed by a waiter parked on anything.
+void willrt_sched_wake_all(void) {
+    struct willrt_task* task = willrt_task_all_snapshot();
+
     while (task != NULL) {
         willrt_task_wake(task);
         task = task->all_next;
     }
-    willrt_sched_wake_io();
 }
 
+// willrt_sched_wake_io wakes the parked tasks that marked themselves as
+// waiting on an external operation. It is the bridge for a completer that
+// holds no task handle; every dependency that knows its waiter wakes it
+// directly instead of calling this.
 void willrt_sched_wake_io(void) {
-    struct willrt_task* task;
+    struct willrt_task* task = willrt_task_all_snapshot();
 
-    atomic_fetch_add(&willrt_io_epoch, 1);
-    if (!atomic_load(&willrt_lane_ready)) {
-        return;
-    }
-    willrt_os_mutex_lock(&willrt_lane_lock);
-    task = willrt_io_head;
-    willrt_io_head = NULL;
-    willrt_io_tail = NULL;
-    willrt_os_mutex_unlock(&willrt_lane_lock);
     while (task != NULL) {
-        struct willrt_task* next = task->io_next;
-        task->io_next = NULL;
-        willrt_task_wake(task);
-        task = next;
+        if (task->io_wait) {
+            willrt_task_wake(task);
+        }
+        task = task->all_next;
     }
-}
-
-uint32_t willrt_sched_io_epoch(void) {
-    return atomic_load(&willrt_io_epoch);
-}
-
-// willrt_task_wait_io is a compatibility no-op. A generated step parks its
-// frame with WILLRT_SUSPEND and is woken by the IO epoch or a timer; a caller
-// that still has a thread waits on its own condition instead of spinning here.
-void willrt_task_wait_io(uint32_t epoch, int64_t deadline) {
-    (void)epoch;
-    (void)deadline;
 }
 
 static void willrt_task_park(struct willrt_task* task) {
-    willrt_timer* timer = NULL;
     int64_t wake = task->wait_deadline;
     lane_worker* worker = willrt_lane_of(task);
 
@@ -339,54 +303,46 @@ static void willrt_task_park(struct willrt_task* task) {
             willrt_os_mutex_unlock(&worker->lock);
             return;
         }
+        /* Arm before the waiting state becomes visible. A deadline that
+           passes right now fires into a still-running task and turns into the
+           wake-pending flag on the next park, while deadlock detection must
+           never observe a waiting task with no armed timer. */
+        if (wake > 0) {
+            (void)willrt_timer_new(wake, willrt_task_timer_wake, task);
+        }
         task->wait_deadline = 0;
         task->state = WILLRT_TASK_WAITING;
-        willrt_os_mutex_lock(&willrt_lane_lock);
-        task->io_next = NULL;
-        if (willrt_io_tail == NULL) {
-            willrt_io_head = task;
-        } else {
-            willrt_io_tail->io_next = task;
-        }
-        willrt_io_tail = task;
-        willrt_os_mutex_unlock(&willrt_lane_lock);
         willrt_os_mutex_unlock(&worker->lock);
     } else {
-        task->wait_deadline = 0;
-        willrt_os_mutex_lock(&willrt_lane_lock);
-        task->state = WILLRT_TASK_WAITING;
-        task->io_next = NULL;
-        if (willrt_io_tail == NULL) {
-            willrt_io_head = task;
-        } else {
-            willrt_io_tail->io_next = task;
+        if (wake > 0) {
+            (void)willrt_timer_new(wake, willrt_task_timer_wake, task);
         }
-        willrt_io_tail = task;
-        willrt_os_mutex_unlock(&willrt_lane_lock);
-    }
-    /* Arm the timer after the task is visible on the IO list. A one
-       millisecond deadline can fire while timer_new is still returning; if
-       the timer ran before this insertion its wake would find an empty list
-       and the task would sleep with no next event. */
-    if (wake > 0) {
-        timer = willrt_timer_new(wake, willrt_io_timer, NULL);
-        (void)timer;
+        task->wait_deadline = 0;
+        task->state = WILLRT_TASK_WAITING;
     }
 }
 
 static void willrt_task_finish(struct willrt_task* task) {
     struct willrt_task* waiter;
+    struct willrt_task* walk;
 
     willrt_os_mutex_lock(&task->lock);
     task->finished = 1;
-    waiter = task->wait_next;
-    task->wait_next = NULL;
+    walk = task->join_head;
+    while (walk != NULL) {
+        /* Clear the flag under the lock so a waiter re-entering try_join on
+           this target cannot double-unlink a node this finish detached. */
+        walk->join_linked = 0;
+        walk = walk->join_next;
+    }
+    waiter = task->join_head;
+    task->join_head = NULL;
     willrt_os_cond_broadcast(&task->cond);
     willrt_os_mutex_unlock(&task->lock);
 
     while (waiter != NULL) {
-        struct willrt_task* next = waiter->wait_next;
-        waiter->wait_next = NULL;
+        struct willrt_task* next = waiter->join_next;
+        waiter->join_next = NULL;
         willrt_task_wake(waiter);
         waiter = next;
     }
@@ -395,7 +351,6 @@ static void willrt_task_finish(struct willrt_task* task) {
     atomic_fetch_sub(&willrt_tasks_live, 1);
     willrt_os_cond_broadcast(&willrt_tasks_cond);
     willrt_os_mutex_unlock(&willrt_tasks_lock);
-    willrt_sched_wake_io();
 }
 
 static void willrt_task_run_step(struct willrt_task* task) {
@@ -491,7 +446,6 @@ static void willrt_lane_init(void) {
         return;
     }
     willrt_lane_state = 1;
-    willrt_os_mutex_init(&willrt_lane_lock);
     count = willrt_os_cpu_count();
     if (count < 1) {
         count = 1;
@@ -664,6 +618,29 @@ int32_t willrt_task_store_result(const void* value, size_t size) {
     return WILLRT_OK;
 }
 
+/* willrt_task_join_unlink removes the current task from target's waiter
+   chain. The caller holds target's lock. */
+static void willrt_task_join_unlink(struct willrt_task* target,
+                                    struct willrt_task* waiter) {
+    struct willrt_task* cursor = target->join_head;
+    struct willrt_task* previous = NULL;
+
+    while (cursor != NULL && cursor != waiter) {
+        previous = cursor;
+        cursor = cursor->join_next;
+    }
+    if (cursor == NULL) {
+        return;
+    }
+    if (previous == NULL) {
+        target->join_head = cursor->join_next;
+    } else {
+        previous->join_next = cursor->join_next;
+    }
+    waiter->join_next = NULL;
+    waiter->join_linked = 0;
+}
+
 int32_t willrt_task_try_join(willrt_task* task, void* out, willrt_error* err) {
     struct willrt_task* current = willrt_task_self;
 
@@ -686,13 +663,54 @@ int32_t willrt_task_try_join(willrt_task* task, void* out, willrt_error* err) {
             willrt_os_mutex_unlock(&task->lock);
             return status;
         }
-        willrt_os_mutex_unlock(&task->lock);
+        if (current->join_target == task && current->join_linked) {
+            /* A previous run of this step already registered here. A wake
+               that was not this task's finish leaves the registration in
+               place; the finished check above ran under the same lock, so no
+               completion can slip between the check and this branch. */
+            willrt_os_mutex_unlock(&task->lock);
+            if (willrt_task_canceled()) {
+                willrt_os_mutex_lock(&task->lock);
+                willrt_task_join_unlink(task, current);
+                willrt_os_mutex_unlock(&task->lock);
+                return WILLRT_CANCELED;
+            }
+            if (current->deadline != 0 && willrt_now_ns() >= current->deadline) {
+                willrt_os_mutex_lock(&task->lock);
+                willrt_task_join_unlink(task, current);
+                willrt_os_mutex_unlock(&task->lock);
+                return WILLRT_TIMEDOUT;
+            }
+            willrt_task_mark_wait();
+            return WILLRT_SUSPEND;
+        }
+        if (current->join_linked && current->join_target != task) {
+            /* The waiter moved to a different target between runs. The stale
+               registration hangs on the old target's chain, under its lock. */
+            struct willrt_task* stale = current->join_target;
+
+            willrt_os_mutex_unlock(&task->lock);
+            willrt_os_mutex_lock(&stale->lock);
+            if (current->join_linked) {
+                willrt_task_join_unlink(stale, current);
+            }
+            willrt_os_mutex_unlock(&stale->lock);
+            current->join_target = NULL;
+            willrt_os_mutex_lock(&task->lock);
+        }
         if (willrt_task_canceled()) {
+            willrt_os_mutex_unlock(&task->lock);
             return WILLRT_CANCELED;
         }
         if (current->deadline != 0 && willrt_now_ns() >= current->deadline) {
+            willrt_os_mutex_unlock(&task->lock);
             return WILLRT_TIMEDOUT;
         }
+        current->join_target = task;
+        current->join_linked = 1;
+        current->join_next = task->join_head;
+        task->join_head = current;
+        willrt_os_mutex_unlock(&task->lock);
         willrt_task_mark_wait();
         return WILLRT_SUSPEND;
     }
@@ -979,25 +997,22 @@ void willrt_activity(int32_t delta) {
 }
 
 /* willrt_task_check_dead reports a deadlock when every started task is parked,
-   no job is queued, no timer is armed, and no IO wait is pending. The scan
-   takes the task list lock, then the lane lock only for the IO count; callers
-   invoke it after a timed wait, never while holding either lock. */
+   no job is queued, no timer is armed, and no IO wait is pending. Callers
+   invoke it after a timed wait, never while holding the task list lock. */
 static void willrt_task_check_dead(void) {
     struct willrt_task* task;
     int32_t live = 0;
     int32_t active = 0;
-    int32_t timers = 0;
     int32_t io = 0;
     int32_t jobs = 0;
+    int32_t timers;
     int64_t now;
 
     if (atomic_load(&willrt_task_globals_state) != 2) {
         return;
     }
     now = willrt_now_ns();
-    if (willrt_main_deadline > now) {
-        timers++;
-    }
+    timers = willrt_main_deadline > now ? 1 : 0;
     willrt_os_mutex_lock(&willrt_tasks_lock);
     task = willrt_all_tasks;
     while (task != NULL) {
@@ -1007,9 +1022,6 @@ static void willrt_task_check_dead(void) {
                 task->state == WILLRT_TASK_RUNNING ||
                 task->state == WILLRT_TASK_PARKING) {
                 active++;
-            }
-            if (task->wait_deadline != 0 || task->deadline != 0) {
-                timers++;
             }
             if (task->io_wait) {
                 io++;
@@ -1021,9 +1033,12 @@ static void willrt_task_check_dead(void) {
     if (live == 0 || active != 0) {
         return;
     }
-    /* This runtime parks every suspended task on the IO list, including
-       channel and join waits; a separate IO marker does not exist yet. Count
-       only timers and queued jobs here. */
+    /* A parked task with a wake deadline keeps one timer armed, so the
+       wheel's armed count is the truthful timer condition; a task parked on
+       an external operation carries the IO marker. */
+    if (willrt_timer_pending != NULL) {
+        timers += willrt_timer_pending();
+    }
     if (willrt_jobs_pending != NULL) {
         jobs = willrt_jobs_pending();
     }

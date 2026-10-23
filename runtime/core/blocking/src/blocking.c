@@ -20,10 +20,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* The pool can be linked without the task engine. The wake hook is weak so a
-   standalone pool still works; an executable links task.c and it wakes parked
-   frames when a worker finishes. */
-extern void willrt_sched_wake_io(void) __attribute__((weak));
+/* The pool can be linked without the task engine. The task hooks are weak so
+   a standalone pool still works; an executable links task.c and a finishing
+   worker wakes exactly the task that submitted the job. */
+extern willrt_task* willrt_task_current(void) __attribute__((weak));
+extern void willrt_task_wake_chan(willrt_task* task) __attribute__((weak));
 
 enum {
     WILLRT_BLOCKING_LIMIT = 128,
@@ -34,6 +35,7 @@ struct willrt_blocking_op {
     willrt_blocking_fn fn;
     void* arg;
     void* out;
+    willrt_task* owner;
     int32_t status;
     int32_t done;
 };
@@ -119,8 +121,8 @@ static void willrt_blocking_worker(void* ignored) {
         job->done = 1;
         willrt_os_cond_broadcast(&willrt_blocking_work);
         willrt_os_mutex_unlock(&willrt_blocking_lock);
-        if (willrt_sched_wake_io != NULL) {
-            willrt_sched_wake_io();
+        if (job->owner != NULL && willrt_task_wake_chan != NULL) {
+            willrt_task_wake_chan(job->owner);
         }
     }
     willrt_mem_thread_flush();
@@ -205,6 +207,7 @@ willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out) {
     job->fn = (willrt_blocking_fn)fn;
     job->arg = arg;
     job->out = out;
+    job->owner = willrt_task_current != NULL ? willrt_task_current() : NULL;
 
     willrt_os_mutex_lock(&willrt_blocking_lock);
     if (willrt_blocking_stop) {
@@ -264,6 +267,7 @@ willrt_blocking_op* willrt_blocking_submit_copy(void* fn, const void* arg,
     job->fn = (willrt_blocking_fn)fn;
     job->arg = size == 0 ? NULL : (void*)(job + 1);
     job->out = out;
+    job->owner = willrt_task_current != NULL ? willrt_task_current() : NULL;
     if (size != 0) {
         memcpy(job->arg, arg, size);
     }

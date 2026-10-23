@@ -73,6 +73,7 @@ static atomic_flag willrt_timer_lock = ATOMIC_FLAG_INIT;
 static willrt_os_thread willrt_timer_thread;
 static atomic_int willrt_timer_loop_state;
 static atomic_int willrt_timer_loop_stop;
+static atomic_int willrt_timer_armed;
 
 static void willrt_timer_lock_acquire(void) {
     while (atomic_flag_test_and_set_explicit(&willrt_timer_lock,
@@ -177,6 +178,7 @@ static void willrt_timer_take_due(struct willrt_timer_bucket* bucket,
 
         if (timer->deadline <= now_ns) {
             willrt_timer_unlink(&bucket->head, &bucket->tail, timer);
+            atomic_fetch_sub(&willrt_timer_armed, 1);
             atomic_store_explicit(&timer->state, WILLRT_TIMER_DUE,
                                   memory_order_release);
             willrt_timer_link(due_head, due_tail, timer);
@@ -253,9 +255,17 @@ willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg) {
         bucket = &willrt_timer_buckets[slot];
         willrt_timer_link(&bucket->head, &bucket->tail, timer);
     }
+    atomic_fetch_add(&willrt_timer_armed, 1);
     willrt_timer_lock_release();
     willrt_timer_loop_start();
     return timer;
+}
+
+/* willrt_timer_pending reports how many timers are still armed. Deadlock
+   detection reads it: a parked task with a wake deadline keeps one armed, so
+   a wait that a timer will end is not a deadlock. */
+int32_t willrt_timer_pending(void) {
+    return atomic_load(&willrt_timer_armed);
 }
 
 void willrt_timer_cancel(willrt_timer* timer) {
@@ -268,6 +278,7 @@ void willrt_timer_cancel(willrt_timer* timer) {
     willrt_timer_lock_acquire();
     state = atomic_load_explicit(&timer->state, memory_order_acquire);
     if (state == WILLRT_TIMER_ARMED) {
+        atomic_fetch_sub(&willrt_timer_armed, 1);
         if (timer->slot == WILLRT_TIMER_IMMEDIATE) {
             willrt_timer_unlink(&willrt_timer_immediate_head,
                                 &willrt_timer_immediate_tail, timer);
@@ -327,6 +338,7 @@ size_t willrt_timer_advance(int64_t now_ns) {
         timer = willrt_timer_immediate_head;
         willrt_timer_unlink(&willrt_timer_immediate_head,
                             &willrt_timer_immediate_tail, timer);
+        atomic_fetch_sub(&willrt_timer_armed, 1);
         atomic_store_explicit(&timer->state, WILLRT_TIMER_DUE,
                               memory_order_release);
         willrt_timer_link(&due_head, &due_tail, timer);
