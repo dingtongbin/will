@@ -67,6 +67,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		aliases:        aliases,
 		declSet:        map[string]bool{},
 		suspendable:    map[string]bool{},
+		taskCtors:      map[string]bool{},
 		builtinErrors:  map[int]bool{},
 		liveValues:     map[int]string{},
 	}
@@ -81,6 +82,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 	}
 	g.collectSignatures()
 	g.collectSuspendable()
+	g.collectTaskCtors(nil)
 	g.collectExternalEnums()
 	g.collectGlobals()
 	g.planInstances()
@@ -900,6 +902,9 @@ type generator struct {
 	// suspendable names the functions that a spawned caller must run as a
 	// state-machine task instead of calling on the lane.
 	suspendable map[string]bool
+	// taskCtors names the task constructors this module defines. A caller in
+	// another object declares the constructor it needs.
+	taskCtors map[string]bool
 	// smMode makes a return store its value on the current task and return
 	// WILLRT_DONE. A state-machine step has i32 ABI even when the source
 	// function returns an aggregate, so it cannot emit the ordinary ret.

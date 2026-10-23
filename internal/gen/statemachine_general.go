@@ -272,7 +272,10 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	}
 	g.needAllocDecl = true
 	g.needTaskDecl = true
-	fmt.Fprintf(g.out, "define internal ptr @%s(%s) {\nentry:\n", llvmSymbol(sym+".task"), strings.Join(parts, ", "))
+	// The constructor is hidden, not internal: a function of another package
+	// waits on this task, so the object that owns the function must export
+	// the entry that starts it.
+	fmt.Fprintf(g.out, "define hidden ptr @%s(%s) {\nentry:\n", llvmSymbol(sym+".task"), strings.Join(parts, ", "))
 	fmt.Fprintf(g.out, "  %%v.sm.frame = call ptr @willrt_alloc(i64 %d)\n", size)
 	stateOffset := offsets[g.smStateSlot]
 	statePtr := g.newTmp()

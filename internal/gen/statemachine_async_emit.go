@@ -38,7 +38,10 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	}
 	g.needAllocDecl = true
 	g.needTaskDecl = true
-	fmt.Fprintf(g.out, "define internal ptr @%s(%s) {\nentry:\n",
+	// The constructor is hidden, not internal: a function of another package
+	// waits on this task, so the object that owns the function must export
+	// the entry that starts it.
+	fmt.Fprintf(g.out, "define hidden ptr @%s(%s) {\nentry:\n",
 		llvmSymbol(info.constructor), strings.Join(parts, ", "))
 	size := g.sizeOf(info.frameType)
 	frame := g.newTmp()
@@ -157,7 +160,7 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string) (st
 		parts = append(parts, typ+" "+value)
 		declParams = append(declParams, typ)
 	}
-	if !g.localSymbol(targetSym) {
+	if !g.taskCtorDefined(targetSym) {
 		g.queueCDecl(targetSym+".task", "ptr", declParams)
 	}
 	g.needTaskDecl = true

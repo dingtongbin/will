@@ -165,7 +165,7 @@ task.ok.1:
   ret i32 1
 
 }
-define internal ptr @"example.com/taskresume.Work.task"(ptr %arg0) {
+define hidden ptr @"example.com/taskresume.Work.task"(ptr %arg0) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 80)
   %t76 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -235,7 +235,7 @@ panic.ok.2:
   ret i32 1
 
 }
-define internal ptr @"example.com/taskresume.WorkLocal.task"(ptr %arg0) {
+define hidden ptr @"example.com/taskresume.WorkLocal.task"(ptr %arg0) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 80)
   %t102 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -336,7 +336,7 @@ panic.ok.5:
   ret i32 1
 
 }
-define internal ptr @"example.com/taskresume.WorkPure.task"(ptr %arg0) {
+define hidden ptr @"example.com/taskresume.WorkPure.task"(ptr %arg0) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 80)
   %t140 = getelementptr i8, ptr %v.sm.frame, i64 0

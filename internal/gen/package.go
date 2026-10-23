@@ -40,6 +40,7 @@ func EmitPackageModule(docs []*willc.Doc, pkg, entry, entryPkg string, aliases m
 	}
 	ownsInstances := pkg == instanceOwner
 	g.collectSignatures()
+	g.collectSuspendable()
 	g.collectExternalEnums()
 	g.collectGlobals()
 	if ownsInstances {
@@ -71,6 +72,10 @@ func EmitPackageModule(docs []*willc.Doc, pkg, entry, entryPkg string, aliases m
 		}
 		return d.path == pkg || (d.clone && pkg == instanceOwner)
 	}
+	// The constructors of the functions this object defines are known here, so
+	// a call to a function of another package declares the constructor it
+	// needs instead of defining it twice.
+	g.collectTaskCtors(emits)
 	// Collect declarations of every document so imported names resolve, but
 	// emit concrete type layouts only for documents this object lowers. A
 	// package that does not own a generic instance must not pay for every
@@ -139,6 +144,7 @@ func newGenerator(lib bool, aliases map[string]string) *generator {
 		aliases:        aliases,
 		declSet:        map[string]bool{},
 		suspendable:    map[string]bool{},
+		taskCtors:      map[string]bool{},
 		builtinErrors:  map[int]bool{},
 		liveValues:     map[int]string{},
 	}

@@ -6,34 +6,6 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// collectSuspendable marks the functions that cannot run as a normal call on a
-// lane. A direct async C call marks its function; a call to a marked function
-// marks the caller. The fixed point is needed because a wrapper can call
-// another wrapper before it reaches the C shim.
-func (g *generator) collectSuspendable() {
-	for pass := 0; pass < 32; pass++ {
-		changed := false
-		for _, d := range g.docs {
-			for id, sym := range d.symbols {
-				if sym == "" || g.suspendable[sym] {
-					continue
-				}
-				fn, ok := d.recs[id]
-				if !ok || fn.Kind != "func" {
-					continue
-				}
-				if simpleAsyncBody(d, id, g.suspendable) {
-					g.suspendable[sym] = true
-					changed = true
-				}
-			}
-		}
-		if !changed {
-			return
-		}
-	}
-}
-
 // simpleAsyncBody reports whether a function has one supported suspension site
 // and can be split into a prelude and a postlude. The check is deliberately
 // structural; the lowering repeats it with the exact types in hand.
