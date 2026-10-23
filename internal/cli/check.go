@@ -332,6 +332,7 @@ func checkFile(bag *diag.Bag, file string, data []byte, freestanding bool) {
 		own.AddAll(check.Moves(f))
 		own.AddAll(check.Borrows(f))
 		own.AddAll(check.Cycles(f))
+		own.AddAll(check.Concurrency(f))
 	}
 	bag.AddAll(own.Diagnostics())
 }

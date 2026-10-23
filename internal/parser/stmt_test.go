@@ -199,14 +199,15 @@ func TestCallTryAndUnwrapAsStatements(t *testing.T) {
 }
 
 func TestSuffixDoesNotExtendDeferOrSpawn(t *testing.T) {
-	for _, src := range []string{
-		"func F() {\n    defer G()?\n}\n",
-		"func F() {\n    spawn G()?\n}\n",
-	} {
-		_, ds := Parse("test.will", []byte(src))
-		if len(ds) != 1 || ds[0].Help != "expected a call" {
-			t.Fatalf("%q diagnostics = %+v, want one expected-call error", src, ds)
-		}
+	// A defer still reports the generic shape; a spawn operand rule has its
+	// own code (K0005) because the concurrency volume fixes it.
+	_, ds := Parse("test.will", []byte("func F() {\n    defer G()?\n}\n"))
+	if len(ds) != 1 || ds[0].Help != "expected a call" {
+		t.Fatalf("defer diagnostics = %+v, want one expected-call error", ds)
+	}
+	_, ds = Parse("test.will", []byte("func F() {\n    spawn G()?\n}\n"))
+	if len(ds) != 1 || ds[0].Code != diag.CodeSpawnNotCall {
+		t.Fatalf("spawn diagnostics = %+v, want one K0005", ds)
 	}
 }
 

@@ -356,7 +356,12 @@ func (p *Parser) parseSpawn() ast.Expr {
 	}
 	call := p.parsePostfix(true)
 	if !isCall(call) {
-		p.bag.Error(call.Pos(), diag.CodeUnexpectedToken, "unexpected token", "expected a call")
+		/* The concurrency volume fixes this shape as K0005: the operand of a
+		   spawn is one call, and anything else is reported here, at the
+		   spawn, not as a generic syntax error. */
+		p.bag.Error(call.Pos(), diag.CodeSpawnNotCall,
+			"spawn takes a single call",
+			"write spawn F(x), or spawn (func() { ... })()")
 		p.failed = true
 	}
 	return &ast.SpawnExpr{
