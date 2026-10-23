@@ -1,0 +1,59 @@
+func Produce(ch: chan<i32>, n: i32) {
+    for i in Range(0, n) {
+        _ = ch.Send(i)
+    }
+}
+
+func Stage(inp: chan<i32>, out: chan<i32>) {
+    for {
+        select {
+            item = inp.Recv() => {
+                match item {
+                    Some(value) => {
+                        _ = out.Send(value + 1)
+                    }
+                    None => {
+                        out.Close()
+                        return
+                    }
+                }
+            }
+            timeout 100ms => {
+                out.Close()
+                return
+            }
+        }
+    }
+}
+
+func Consume(ch: chan<i32>) -> i32 {
+    var sum: i32 = 0
+    for {
+        var item: Option<i32> = ch.Recv()
+        match item {
+            Some(value) => {
+                sum += value
+            }
+            None => {
+                break
+            }
+        }
+    }
+    return sum
+}
+
+func main() -> i32 {
+    var first: chan<i32> = new chan<i32>(64)
+    var second: chan<i32> = new chan<i32>(64)
+    var total: i32 = 0
+    region {
+        var producer: Task<()> = spawn Produce(first, 100)
+        var stage: Task<()> = spawn Stage(first, second)
+        var sink: Task<i32> = spawn Consume(second)
+        _ = producer.Join()!
+        first.Close()
+        _ = stage.Join()!
+        total = sink.Join()!
+    }
+    return total - 5050
+}

@@ -1362,6 +1362,11 @@ func (g *generator) errf(id int, format string, args ...any) error {
 
 func (g *generator) funcDecl(fn willc.Record) error {
 	g.liveValues = map[int]string{}
+	if g.generalMachine(fn.ID) {
+		g.suspendable[g.cur.funcs[fn.ID]] = true
+		g.enqueueGeneral(fn.ID)
+		return nil
+	}
 	hasAsync := false
 	if info, ok := g.asyncSequenceMachine(fn.ID); ok {
 		g.pendingAsync = append(g.pendingAsync, info)
@@ -1374,11 +1379,6 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	}
 	if g.suspendable[g.cur.funcs[fn.ID]] && !hasAsync && !hasSelect {
 		return g.errf(fn.ID, "cannot translate node #%d: suspendable function %s has no supported state-machine shape", fn.ID, fieldText(fn, "text"))
-	}
-	if g.generalMachine(fn.ID) {
-		g.suspendable[g.cur.funcs[fn.ID]] = true
-		g.enqueueGeneral(fn.ID)
-		return nil
 	}
 	name := fieldText(fn, "text")
 	g.fnSymbol = g.cur.funcs[fn.ID]
@@ -2594,6 +2594,9 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 	case "assert":
 		return g.assertStmt(st)
 	case "select":
+		if g.smGeneral {
+			return g.generalSelectStmt(st, void)
+		}
 		return g.selectStmt(st, void)
 	case "region", "parallel":
 		g.needTaskDecl = true
@@ -3409,6 +3412,26 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 // callExpr lowers one call or method call and returns the value and its result
 // type text. A void call returns an empty name and an empty text.
 func (g *generator) callExpr(r willc.Record) (string, string, error) {
+	if g.smGeneral && !isAsyncCRecord(r) {
+		if sym := g.callTargetSymbol(r); sym != "" && g.suspendable[sym] {
+			value, err := g.generalCallWait(r)
+			if err != nil {
+				return "", "", err
+			}
+			text, err := g.callResultText(r)
+			if err != nil {
+				return "", "", err
+			}
+			return value, text, nil
+		}
+	}
+	if g.smGeneral && isAsyncCRecord(r) {
+		value, err := g.generalAsyncC(r)
+		if err != nil {
+			return "", "", err
+		}
+		return value, "i32", nil
+	}
 	if info, _ := g.enumVariantCall(r); info != nil {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: an enum value is a place, not a scalar", r.ID)
 	}

@@ -423,8 +423,9 @@ func TestEmitSelect(t *testing.T) {
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`%willrt_arm = type { ptr, ptr, ptr, i32, i64 }`,
-		`call i32 @willrt_chan_try_recv(ptr`,
-		`call void @willrt_select_set_status(i32`,
+		`call ptr @willrt_select_start(ptr`,
+		`call i32 @willrt_select_poll(ptr`,
+		`call void @willrt_select_finish(ptr`,
 		`call i32 @willrt_select_status()`,
 	} {
 		if !strings.Contains(text, want) {

@@ -27,18 +27,12 @@ func (g *generator) generalMachine(fnID int) bool {
 			continue
 		}
 		switch r.Kind {
-		case "send", "recv", "join":
+		case "send", "recv", "join", "select":
 			found = true
-		case "select":
-			return false
 		case "parallel":
 			// A parallel block runs jobs on the current lane and joins them
 			// synchronously; it is not a task state machine.
 			return false
-		case "mcall":
-			if isAsyncCRecord(r) {
-				return false
-			}
 		}
 	}
 	return found
