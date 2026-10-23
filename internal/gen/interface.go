@@ -42,6 +42,28 @@ func (g *generator) buildInterfaces() {
 	g.ifaceByName["Error"] = g.errorIface
 	g.ifaceByName["TaskError"] = g.errorIface
 	g.ifaceByLLVM["%interface.Error"] = g.errorIface
+	if g.showIface == nil {
+		g.showIface = &ifaceInfo{
+			name:    "Show",
+			llvm:    "%interface.Show",
+			methods: []ifaceMethod{{name: "Show", result: "str"}},
+			byName:  map[string]int{"Show": 0},
+		}
+	}
+	g.ifaceByName["Show"] = g.showIface
+	g.ifaceByLLVM["%interface.Show"] = g.showIface
+	if !g.showUsed {
+		for _, r := range g.recs {
+			if fieldText(r, "text") == "Show" || fieldText(r, "type") == "Show" {
+				g.showUsed = true
+				break
+			}
+		}
+	}
+	if g.showUsed && !g.emittedTypes["%interface.Show"] {
+		g.emittedTypes["%interface.Show"] = true
+		fmt.Fprintf(g.out, "%%interface.Show = type { ptr, ptr }\n")
+	}
 	var ifaces []willc.Record
 	for _, r := range g.recs {
 		if r.Kind == "interface" {
@@ -147,16 +169,46 @@ func (g *generator) ifaceOfType(typ string) (*ifaceInfo, bool) {
 // concrete value and the method table for that type.
 func (g *generator) ifaceValue(slot string, valueID int, iface *ifaceInfo, concrete string) (string, error) {
 	concrete = g.canonicalTypeText(concrete)
-	data, typ, err := g.place(valueID)
-	if err != nil {
-		return "", err
-	}
 	expected, ok := g.typeLLVMOf(concrete)
 	if !ok {
 		return "", g.errf(valueID, "cannot translate node #%d: %s is not lowered yet", valueID, concrete)
 	}
-	if typ != expected {
-		return "", g.errf(valueID, "cannot translate node #%d: the value needs %s", valueID, expected)
+	data := ""
+	if showScalar(concrete) {
+		// A scalar has no address of its own, so the interface keeps one in a
+		// slot and the value is stored there.
+		data = g.ifaceDataSlots[valueID]
+		if data == "" {
+			data = g.newTmp()
+			fmt.Fprintf(g.out, "  %s = alloca %s\n", data, expected)
+			g.ifaceDataSlots[valueID] = data
+		}
+		if concrete == "str" {
+			// A str is a two-word place, not a scalar value.
+			ptr, typ, err := g.place(valueID)
+			if err != nil {
+				return "", err
+			}
+			if typ != expected {
+				return "", g.errf(valueID, "cannot translate node #%d: the value needs %s", valueID, expected)
+			}
+			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", expected, g.load(typ, ptr), data)
+		} else {
+			value, err := g.value(valueID)
+			if err != nil {
+				return "", err
+			}
+			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", expected, value, data)
+		}
+	} else {
+		placed, typ, err := g.place(valueID)
+		if err != nil {
+			return "", err
+		}
+		if typ != expected {
+			return "", g.errf(valueID, "cannot translate node #%d: the value needs %s", valueID, expected)
+		}
+		data = placed
 	}
 	table, err := g.vtable(iface, concrete)
 	if err != nil {
@@ -202,11 +254,20 @@ func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 		if method == "" {
 			method = g.cur.methods[concrete+"."+m.name]
 		}
+		localThunk := false
+		if method == "" && iface == g.showIface {
+			// A predeclared scalar shows itself: the module defines the
+			// method once and the table points at it.
+			if thunk, ok := g.showThunkName(concrete); ok {
+				method = thunk
+				localThunk = true
+			}
+		}
 		if method == "" {
 			return "", g.errf(iface.id, "cannot translate node #%d: %s has no method %s", iface.id, concrete, m.name)
 		}
 		entries = append(entries, "ptr @"+llvmSymbol(method))
-		if g.packageMode && !g.emittedFuncs[method] {
+		if g.packageMode && !localThunk && !g.emittedFuncs[method] {
 			g.externalFuncs[method] = true
 			g.externalSigs[method] = externalSignature{
 				result: g.sigs[method],

@@ -68,6 +68,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		declSet:        map[string]bool{},
 		suspendable:    map[string]bool{},
 		taskCtors:      map[string]bool{},
+		showEmitted:    map[string]bool{},
 		builtinErrors:  map[int]bool{},
 		liveValues:     map[int]string{},
 	}
@@ -112,6 +113,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 // emitted, the panic declaration. Both may follow the functions because LLVM
 // resolves forward references to global values.
 func (g *generator) emitAux() {
+	g.emitShowThunks()
 	g.emitBuiltinErrors()
 	g.emitTaskError()
 	g.emitExternalDecls()
@@ -511,6 +513,7 @@ func (g *generator) use(d *docState) {
 	g.ifaceByName = map[string]*ifaceInfo{}
 	g.ifaceSlots = map[string]string{}
 	g.ifaceRetSlots = map[int]string{}
+	g.ifaceDataSlots = map[int]string{}
 	g.vtables = map[string]string{}
 	g.callSlots = map[int]string{}
 	g.sliceSlots = map[int]string{}
@@ -659,13 +662,23 @@ type generator struct {
 	ifaceTypes    map[string]bool
 	ifaceSlots    map[string]string
 	ifaceRetSlots map[int]string
-	vtables       map[string]string
-	paramTypes    map[string][]string
-	varargs       map[string]bool
+	// ifaceDataSlots holds the data word of an interface value built from a
+	// predeclared scalar, keyed by the value record.
+	ifaceDataSlots map[int]string
+	vtables        map[string]string
+	paramTypes     map[string][]string
+	varargs        map[string]bool
 	// errorIface is the predeclared Error interface, and errorEmitted records
 	// that its module-wide type definition is already written.
 	errorIface   *ifaceInfo
 	errorEmitted bool
+	// showIface is the predeclared Show interface. A predeclared scalar shows
+	// itself through a thunk this module defines, so showEmitted and
+	// pendingShows track those thunks and showUsed the type definition.
+	showIface    *ifaceInfo
+	showUsed     bool
+	showEmitted  map[string]bool
+	pendingShows []string
 	// builtinErrors records which predeclared faults this module emits.
 	builtinErrors map[int]bool
 	// liveValues holds the variables whose slots still need a static release
@@ -1742,6 +1755,36 @@ func (g *generator) allocas(fn int) error {
 			slot := "%v.iface." + strconv.Itoa(r.ID) + "." + strconv.Itoa(i)
 			g.ifaceSlots[key] = slot
 			fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, iface.llvm)
+			if showScalar(argText) {
+				data := "%v.ifacedata." + strconv.Itoa(a)
+				g.ifaceDataSlots[a] = data
+				if typ, ok := g.typeLLVMOf(argText); ok && typ != "" {
+					fmt.Fprintf(g.out, "  %s = alloca %s\n", data, typ)
+				}
+			}
+		}
+	}
+	// print of a Show value builds the interface in a slot of its own, so a
+	// print inside a loop does not grow the stack.
+	for _, r := range calls {
+		if !g.isPrintCall(r) {
+			continue
+		}
+		for i, a := range g.callArgs(r) {
+			text, err := g.willTypeText(a)
+			if err != nil || text == "" || text == "str" {
+				continue
+			}
+			if _, _, scalar := llvmScalar(text); scalar {
+				continue
+			}
+			if _, isIface := g.ifaceOfText(text); isIface {
+				continue
+			}
+			key := fmt.Sprintf("print.%d.%d", r.ID, i)
+			slot := "%v.printshow." + strconv.Itoa(r.ID) + "." + strconv.Itoa(i)
+			g.ifaceSlots[key] = slot
+			fmt.Fprintf(g.out, "  %s = alloca %%interface.Show\n", slot)
 		}
 	}
 	// A new value is built in a slot: the field defaults and init write it

@@ -452,6 +452,21 @@ void willrt_print_f64(double value);
 void willrt_print_bool(int32_t value);
 void willrt_print_char(uint32_t value);
 
+/* willrt_str is the two-word will str: the bytes and their length. */
+typedef struct willrt_str {
+    const char* data;
+    int64_t size;
+} willrt_str;
+
+/* The Show thunks format one predeclared value into an owning str. The
+   compiler emits one small thunk per scalar type; these functions do the
+   formatting and write the result through out. */
+void willrt_show_i64(int64_t value, willrt_str* out);
+void willrt_show_u64(uint64_t value, willrt_str* out);
+void willrt_show_f64(double value, willrt_str* out);
+void willrt_show_bool(int32_t value, willrt_str* out);
+void willrt_show_str(const char* data, int64_t size, willrt_str* out);
+
 /* The interpolation helpers measure a formatted scalar and then write it into
    a buffer the caller allocates, so one interpolation allocates once. */
 size_t willrt_fmt_i64_len(int64_t value);

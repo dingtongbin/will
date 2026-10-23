@@ -145,6 +145,10 @@ func newGenerator(lib bool, aliases map[string]string) *generator {
 		declSet:        map[string]bool{},
 		suspendable:    map[string]bool{},
 		taskCtors:      map[string]bool{},
+		showEmitted:    map[string]bool{},
+		ifaceSlots:     map[string]string{},
+		ifaceRetSlots:  map[int]string{},
+		ifaceDataSlots: map[int]string{},
 		builtinErrors:  map[int]bool{},
 		liveValues:     map[int]string{},
 	}

@@ -406,6 +406,10 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 		g.usedError = true
 		return "%interface.Error", nil
 	}
+	if fieldText(r, "type") == "Show" {
+		g.showUsed = true
+		return "%interface.Show", nil
+	}
 	return "", g.errf(decl, "cannot translate node #%d: type %s is not lowered yet", decl, fieldText(r, "type"))
 }
 

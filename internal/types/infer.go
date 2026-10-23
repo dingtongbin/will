@@ -468,6 +468,16 @@ func (c *checker) mismatch(pos source.Pos, got, want *Type, isArg bool, callee s
 			// checks that every method exists.
 			return
 		}
+		if want.Name() == "Show" && showsItself(got) {
+			return
+		}
+		if got != nil && got.Kind() == NamedKind && c.env.types[got.Name()] == nil &&
+			!c.env.userTypes[got.Name()] {
+			// A named type this environment does not declare comes from
+			// another package. The vtable built during lowering resolves the
+			// method set there.
+			return
+		}
 		if got != nil && c.env.derives[got.Name()][want.Name()] {
 			return
 		}
@@ -508,6 +518,20 @@ func (c *checker) missingMethod(got *Type, methods []*methodInfo) string {
 		}
 	}
 	return ""
+}
+
+// showsItself reports whether a value shows itself without a declared method.
+// Every predeclared scalar does; Show is the one interface that accepts them.
+func showsItself(t *Type) bool {
+	if t == nil || t.Kind() != ScalarKind {
+		return false
+	}
+	switch t.Name() {
+	case "bool", "str", "i8", "i16", "i32", "i64", "isize",
+		"u8", "u16", "u32", "u64", "usize", "f32", "f64":
+		return true
+	}
+	return false
 }
 
 // missingFromMethods reports the first required method that the interface

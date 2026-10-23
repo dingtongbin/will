@@ -1,0 +1,10 @@
+// Str joins the shown text of its parts. It builds the result in memory and
+// never writes to standard output; Println is the writer.
+func Str(parts: ...Show) -> str {
+    var out: str = ""
+    var n: i32 = i32(parts.Len())
+    for i in Range(0, n) {
+        out = out + parts[i].Show()
+    }
+    return out
+}
