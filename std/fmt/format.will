@@ -1,6 +1,6 @@
-// Format holds one value together with the base, width, and fill byte its
-// constructor was given. The fields are private so a value can only come from
-// Int, Uint, Hex, or Pad; Show is the only reader.
+// Format holds one value together with the precision, base, width, and fill
+// byte its constructor was given. The fields are private so a value can only
+// come from Int, Uint, Float, Hex, or Pad; Show is the only reader.
 struct Format {
     kind: i32
     value: u64
@@ -16,12 +16,16 @@ struct Format {
 // Format renders an empty text instead of touching an unset base.
 const formatText: i32 = 0
 const formatNumber: i32 = 1
+const formatFloat: i32 = 2
 
-// Show renders the field. An integer is right aligned: the sign, then the fill
+// Show renders the field. A number is right aligned: the sign, then the fill
 // bytes, then the digits. Text follows the side Pad was given.
 func (f: Format) Show() -> str {
     if f.kind == formatText {
         return padText(f.text, f.width, f.pad, f.left)
+    }
+    if f.kind == formatFloat {
+        return signedText(f.negative, f.text, f.width, f.pad)
     }
     return numberText(f)
 }

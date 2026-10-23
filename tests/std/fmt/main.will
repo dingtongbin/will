@@ -1,5 +1,7 @@
 import "std/fmt"
 
+import "std/math"
+
 // eq reports whether got equals want. A mismatch prints both values once, so a
 // failing case names itself without a table of expected text.
 func eq(got: str, want: str) -> i32 {
@@ -36,7 +38,36 @@ func main() -> i32 {
     passed += eq(fmt.Int(-1i64, 2, 0, 48u8).Show(), "-1")
     passed += eq(fmt.Uint(8u64, 8, 0, 48u8).Show(), "10")
     passed += eq(fmt.Hex(3735928559u64).Show(), "deadbeef")
-    if passed != 24 {
+    passed += eq(fmt.Float(3.14159, 2, 0, 48u8).Show(), "3.14")
+    passed += eq(fmt.Float(-3.14159, 2, 0, 48u8).Show(), "-3.14")
+    passed += eq(fmt.Float(0.0, 2, 0, 48u8).Show(), "0.00")
+    passed += eq(fmt.Float(-0.0, 2, 0, 48u8).Show(), "-0.00")
+    passed += eq(fmt.Float(2.675, 2, 0, 48u8).Show(), "2.67")
+    passed += eq(fmt.Float(1.005, 2, 0, 48u8).Show(), "1.00")
+    passed += eq(fmt.Float(2.5, 0, 0, 48u8).Show(), "2")
+    passed += eq(fmt.Float(3.5, 0, 0, 48u8).Show(), "4")
+    passed += eq(fmt.Float(0.5, 0, 0, 48u8).Show(), "0")
+    passed += eq(fmt.Float(1.5, 0, 0, 48u8).Show(), "2")
+    passed += eq(fmt.Float(-2.5, 0, 0, 48u8).Show(), "-2")
+    passed += eq(fmt.Float(9.99, 1, 0, 48u8).Show(), "10.0")
+    passed += eq(fmt.Float(0.005, 2, 0, 48u8).Show(), "0.01")
+    passed += eq(fmt.Float(0.004, 2, 0, 48u8).Show(), "0.00")
+    passed += eq(fmt.Float(1.0 / 3.0, 3, 0, 48u8).Show(), "0.333")
+    passed += eq(fmt.Float(1e20, 0, 0, 48u8).Show(), "100000000000000000000")
+    passed += eq(fmt.Float(1e-7, 9, 0, 48u8).Show(), "0.000000100")
+    passed += eq(fmt.Float(1152921504606846976.0, 0, 0, 48u8).Show(), "1152921504606846976")
+    passed += eq(fmt.Float(42.0, 0, 0, 48u8).Show(), "42")
+    passed += eq(fmt.Float(-3.5, 1, 7, 48u8).Show(), "-0003.5")
+    passed += eq(fmt.Float(3.5, 1, 6, 32u8).Show(), "   3.5")
+    passed += eq(fmt.Float(math.F64FromBits(0x7ff0000000000000u64), 2, 0, 48u8).Show(), "inf")
+    passed += eq(fmt.Float(math.F64FromBits(0xfff0000000000000u64), 2, 0, 48u8).Show(), "-inf")
+    passed += eq(fmt.Float(math.F64FromBits(0x7ff8000000000000u64), 2, 0, 48u8).Show(), "nan")
+    passed += eq(fmt.Float(math.F64FromBits(0xfff8000000000000u64), 2, 0, 48u8).Show(), "nan")
+    passed += eq(fmt.Float(0.125, 2, 0, 48u8).Show(), "0.12")
+    passed += eq(fmt.Float(-0.5, 0, 0, 48u8).Show(), "-0")
+    passed += eq(fmt.Float(1.25, 5, 0, 48u8).Show(), "1.25000")
+    passed += eq(fmt.Float(1.0, 3, 2, 48u8).Show(), "1.000")
+    if passed != 53 {
         print("passed=", passed, "\n")
         return 1
     }
