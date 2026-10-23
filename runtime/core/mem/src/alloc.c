@@ -312,8 +312,7 @@ static struct willrt_mem_chunk* willrt_mem_registry_find(uintptr_t base) {
         unsigned before = atomic_load_explicit(&willrt_mem_registry_seq,
                                                memory_order_acquire);
         struct willrt_mem_registry_table* table =
-            atomic_load_explicit(&willrt_mem_registry_root,
-                                 memory_order_relaxed);
+            __atomic_load_n(&willrt_mem_registry_root, __ATOMIC_RELAXED);
         struct willrt_mem_chunk* found = NULL;
         unsigned after;
 
@@ -398,8 +397,7 @@ static void willrt_mem_registry_insert(uintptr_t base,
     willrt_mem_lock_acquire(&willrt_mem_registry_lock);
     atomic_fetch_add_explicit(&willrt_mem_registry_seq, 1,
                               memory_order_release);
-    table = atomic_load_explicit(&willrt_mem_registry_root,
-                                 memory_order_relaxed);
+    table = __atomic_load_n(&willrt_mem_registry_root, __ATOMIC_RELAXED);
     if (table == NULL || table->used + table->tombs + 1 > table->cap / 2) {
         struct willrt_mem_registry_table* grown =
             willrt_mem_registry_grow(table);
@@ -449,8 +447,7 @@ static void willrt_mem_registry_remove(uintptr_t base) {
                               memory_order_release);
     {
         struct willrt_mem_registry_table* table =
-            atomic_load_explicit(&willrt_mem_registry_root,
-                                 memory_order_relaxed);
+            __atomic_load_n(&willrt_mem_registry_root, __ATOMIC_RELAXED);
 
         if (table != NULL) {
             size_t mask = table->cap - 1;

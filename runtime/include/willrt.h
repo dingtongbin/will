@@ -251,6 +251,12 @@ struct willrt_poll_request {
     void* waiter;
 };
 
+/* willrt_poll_wait_async is the machine-declined fallback: one synchronous
+   readiness scan that blocks the calling thread. Generated state machines use
+   the start/poll/finish trio below instead. */
+int32_t willrt_poll_wait_async(const void* fds, const void* events,
+                               const void* users, int64_t count,
+                               int64_t timeout_ns, void* out);
 /* willrt_poll_wait_async_start registers one readiness scan on the current
    task and returns its embedded request. A caller outside a task runs the
    scan synchronously on a detached request; a zero timeout does the same. */

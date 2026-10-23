@@ -229,6 +229,7 @@ func (g *generator) emitAsyncStart(info *asyncMachineInfo, seg *asyncSegment, in
 			return err
 		}
 		g.queueCDecl(seg.startName, "ptr", argTypes)
+		g.queueCDecl(seg.pollName, "i32", []string{"ptr"})
 		value := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = call ptr @%s(%s)\n",
 			value, llvmSymbol(seg.startName), strings.Join(parts, ", "))
@@ -242,6 +243,17 @@ func (g *generator) emitAsyncStart(info *asyncMachineInfo, seg *asyncSegment, in
 		fmt.Fprintf(g.out, "  store i32 1, ptr %s\n", statusField)
 		fmt.Fprintf(g.out, "  br label %%sm.after.%d\n", index)
 		fmt.Fprintf(g.out, "%s:\n", ok)
+		// An operation that completed before the first park has no completer
+		// to wake the task, so the machine polls before it parks. Only a
+		// pending poll reaches the wait below.
+		polled := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @%s(ptr %s)\n", polled,
+			llvmSymbol(seg.pollName), g.load("ptr", op))
+		done := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp ne i32 %s, 0\n", done, polled)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%sm.finish.%d, label %%sm.start.wait.%d\n",
+			done, index, index)
+		fmt.Fprintf(g.out, "sm.start.wait.%d:\n", index)
 	} else {
 		child, err := g.emitConstructorCall(seg.call, seg.targetSym)
 		if err != nil {

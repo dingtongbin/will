@@ -230,8 +230,24 @@ static void** willrt_poll_batch_waiters;
 static int64_t willrt_poll_batch_cap;
 static int64_t willrt_poll_batch_seg_cap;
 static int64_t willrt_poll_batch_waiter_cap;
+static atomic_int willrt_poll_lock_state;
 
 static void willrt_poll_request_unlink(willrt_poll_request* req);
+
+/* willrt_poll_lock_init readies the poller lock on its own, so a request that
+   completes without the poller thread never pays for the thread. */
+static void willrt_poll_lock_init(void) {
+    int expected = 0;
+
+    if (atomic_compare_exchange_strong(&willrt_poll_lock_state, &expected, 1)) {
+        willrt_os_mutex_init(&willrt_poll_lock);
+        atomic_store(&willrt_poll_lock_state, 2);
+        return;
+    }
+    while (atomic_load(&willrt_poll_lock_state) == 1) {
+        willrt_os_thread_yield();
+    }
+}
 
 /* The out array mirrors the will Array<usize> layout: buffer, length,
    capacity. Delivery appends ready tags straight into the waiting task's
@@ -476,7 +492,7 @@ void willrt_poll_init(void) {
             return;
         }
         memset(willrt_poll_entries, 0, sizeof(willrt_poll_entries));
-        willrt_os_mutex_init(&willrt_poll_lock);
+        willrt_poll_lock_init();
         atomic_store(&willrt_poll_stop, 0);
         willrt_rc_set_threaded();
         willrt_mem_set_shared();
@@ -484,6 +500,7 @@ void willrt_poll_init(void) {
             != 0) {
             willrt_poll_wake_close();
             willrt_os_mutex_destroy(&willrt_poll_lock);
+            atomic_store(&willrt_poll_lock_state, 0);
 #ifdef _WIN32
             (void)WSACleanup();
 #endif
@@ -562,6 +579,15 @@ int32_t willrt_poll_wait(const void* fds_raw, const void* events_raw,
     }
     willrt_free(native);
     return WILLRT_OK;
+}
+
+/* willrt_poll_wait_async is the machine-declined fallback: a call the async
+   lowering does not cover yet lowers to it and blocks the calling thread for
+   the scan, the same contract the synchronous form keeps. */
+int32_t willrt_poll_wait_async(const void* fds, const void* events,
+                               const void* users, int64_t count,
+                               int64_t timeout_ns, void* out) {
+    return willrt_poll_wait(fds, events, users, count, timeout_ns, out);
 }
 
 /* The async request waits through the poller thread instead of a worker: the
@@ -658,6 +684,9 @@ int32_t willrt_poll_wait_async_poll(willrt_poll_request* req) {
     if (req == NULL) {
         return 1;
     }
+    /* A zero-timeout request completes at start without ever starting the
+       poller, but poll and finish still take the poller lock. */
+    willrt_poll_lock_init();
     willrt_os_mutex_lock(&willrt_poll_lock);
     if (req->state == WILLRT_POLL_REQUEST_DONE) {
         willrt_os_mutex_unlock(&willrt_poll_lock);
@@ -703,6 +732,7 @@ int32_t willrt_poll_wait_async_finish(willrt_poll_request* req) {
     if (req == NULL) {
         return WILLRT_FAILED;
     }
+    willrt_poll_lock_init();
     willrt_os_mutex_lock(&willrt_poll_lock);
     if (req->state != WILLRT_POLL_REQUEST_DONE) {
         willrt_os_mutex_unlock(&willrt_poll_lock);
@@ -751,6 +781,7 @@ void willrt_poll_shutdown(void) {
     willrt_os_thread_join(&willrt_poll_thread);
     willrt_poll_wake_close();
     willrt_os_mutex_destroy(&willrt_poll_lock);
+    atomic_store(&willrt_poll_lock_state, 0);
     memset(willrt_poll_entries, 0, sizeof(willrt_poll_entries));
     willrt_poll_requests = NULL;
 #ifdef _WIN32
