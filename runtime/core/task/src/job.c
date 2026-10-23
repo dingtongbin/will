@@ -64,7 +64,9 @@ static job_entry* job_pop(void) {
 static void job_worker_main(void* raw) {
     job_worker* worker = (job_worker*)raw;
 
-    willrt_mem_set_lane(worker->id);
+    /* Job workers share no lane index with async tasks: the upper half of
+       the lane table keeps a job churn from taking the lock a task needs. */
+    willrt_mem_set_lane(worker->id + 32);
     for (;;) {
         job_entry* entry = NULL;
         int spin;
