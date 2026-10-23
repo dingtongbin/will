@@ -363,6 +363,10 @@ static int32_t exec_async_output_worker(void* raw, void* ignored) {
                               arg->out, arg->err, arg->status);
 }
 
+/* exec_async_wait is the machine-declined fallback: a call the async lowering
+   does not cover yet blocks the calling thread. The _start forms are what
+   generated state machines call; they park the task and the pool wakes its
+   owner directly. */
 static int32_t exec_async_wait(void* fn, void* arg) {
     willrt_blocking_op* op = willrt_blocking_submit(fn, arg, NULL);
     if (op == NULL) {

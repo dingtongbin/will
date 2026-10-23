@@ -288,6 +288,12 @@ int32_t willrt_fs_rename(const void* old_raw, const void* new_raw);
 int32_t willrt_fs_remove(const void* path_raw);
 int32_t willrt_fs_temp_file(const void* dir_raw, const void* pattern_raw,
                             void* out_raw);
+int32_t willrt_fs_mkdir(const void* path_raw, uint32_t mode);
+int32_t willrt_fs_mkdir_all(const void* path_raw, uint32_t mode);
+int32_t willrt_fs_remove_all(const void* path_raw);
+int32_t willrt_fs_symlink(const void* target_raw, const void* link_raw);
+int32_t willrt_fs_temp_dir(const void* dir_raw, const void* pattern_raw,
+                           void* out_raw);
 
 typedef struct fs_async_read_file {
     const fs_str* path;
@@ -348,6 +354,17 @@ typedef struct fs_async_temp {
     const fs_str* pattern;
     fs_file* out;
 } fs_async_temp;
+
+typedef struct fs_async_mkdir {
+    const fs_str* path;
+    uint32_t mode;
+} fs_async_mkdir;
+
+typedef struct fs_async_temp_dir {
+    const fs_str* dir;
+    const fs_str* pattern;
+    void* out;
+} fs_async_temp_dir;
 
 static int32_t fs_async_read_file_worker(void* raw, void* ignored) {
     fs_async_read_file* arg = (fs_async_read_file*)raw;
@@ -439,6 +456,40 @@ static int32_t fs_async_temp_worker(void* raw, void* ignored) {
     return willrt_fs_temp_file(arg->dir, arg->pattern, arg->out);
 }
 
+static int32_t fs_async_mkdir_worker(void* raw, void* ignored) {
+    fs_async_mkdir* arg = (fs_async_mkdir*)raw;
+    (void)ignored;
+    return willrt_fs_mkdir(arg->path, arg->mode);
+}
+
+static int32_t fs_async_mkdir_all_worker(void* raw, void* ignored) {
+    fs_async_mkdir* arg = (fs_async_mkdir*)raw;
+    (void)ignored;
+    return willrt_fs_mkdir_all(arg->path, arg->mode);
+}
+
+static int32_t fs_async_remove_all_worker(void* raw, void* ignored) {
+    fs_async_pair* arg = (fs_async_pair*)raw;
+    (void)ignored;
+    return willrt_fs_remove_all(arg->first);
+}
+
+static int32_t fs_async_symlink_worker(void* raw, void* ignored) {
+    fs_async_pair* arg = (fs_async_pair*)raw;
+    (void)ignored;
+    return willrt_fs_symlink(arg->first, arg->second);
+}
+
+static int32_t fs_async_temp_dir_worker(void* raw, void* ignored) {
+    fs_async_temp_dir* arg = (fs_async_temp_dir*)raw;
+    (void)ignored;
+    return willrt_fs_temp_dir(arg->dir, arg->pattern, arg->out);
+}
+
+/* The plain form is the machine-declined fallback: a call the async lowering
+   does not cover yet (a loop, a branch) lowers to it and blocks the calling
+   thread. The _start forms are what generated state machines call; they park
+   the task and the pool wakes its owner directly. */
 static int32_t fs_async_wait(void* fn, void* arg) {
     willrt_blocking_op* op = willrt_blocking_submit(fn, arg, NULL);
     if (op == NULL) {
@@ -527,6 +578,32 @@ int32_t willrt_fs_async_temp_file(const void* dir, const void* pattern,
     fs_async_temp arg = {(const fs_str*)dir, (const fs_str*)pattern,
                          (fs_file*)out};
     return fs_async_wait(fs_async_temp_worker, &arg);
+}
+
+int32_t willrt_fs_async_mkdir(const void* path, uint32_t mode) {
+    fs_async_mkdir arg = {(const fs_str*)path, mode};
+    return fs_async_wait(fs_async_mkdir_worker, &arg);
+}
+
+int32_t willrt_fs_async_mkdir_all(const void* path, uint32_t mode) {
+    fs_async_mkdir arg = {(const fs_str*)path, mode};
+    return fs_async_wait(fs_async_mkdir_all_worker, &arg);
+}
+
+int32_t willrt_fs_async_remove_all(const void* path) {
+    fs_async_pair arg = {(const fs_str*)path, NULL};
+    return fs_async_wait(fs_async_remove_all_worker, &arg);
+}
+
+int32_t willrt_fs_async_symlink(const void* target, const void* link) {
+    fs_async_pair arg = {(const fs_str*)target, (const fs_str*)link};
+    return fs_async_wait(fs_async_symlink_worker, &arg);
+}
+
+int32_t willrt_fs_async_temp_dir(const void* dir, const void* pattern,
+                                 void* out) {
+    fs_async_temp_dir arg = {(const fs_str*)dir, (const fs_str*)pattern, out};
+    return fs_async_wait(fs_async_temp_dir_worker, &arg);
 }
 
 willrt_blocking_op* willrt_fs_async_read_file_start(const void* path,
@@ -636,6 +713,41 @@ willrt_blocking_op* willrt_fs_async_temp_file_start(const void* dir,
                          (fs_file*)out};
     return willrt_blocking_submit_copy(fs_async_temp_worker, &arg, sizeof(arg),
                                        NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_mkdir_start(const void* path,
+                                                uint32_t mode) {
+    fs_async_mkdir arg = {(const fs_str*)path, mode};
+    return willrt_blocking_submit_copy(fs_async_mkdir_worker, &arg, sizeof(arg),
+                                       NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_mkdir_all_start(const void* path,
+                                                    uint32_t mode) {
+    fs_async_mkdir arg = {(const fs_str*)path, mode};
+    return willrt_blocking_submit_copy(fs_async_mkdir_all_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_remove_all_start(const void* path) {
+    fs_async_pair arg = {(const fs_str*)path, NULL};
+    return willrt_blocking_submit_copy(fs_async_remove_all_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_symlink_start(const void* target,
+                                                  const void* link) {
+    fs_async_pair arg = {(const fs_str*)target, (const fs_str*)link};
+    return willrt_blocking_submit_copy(fs_async_symlink_worker, &arg,
+                                       sizeof(arg), NULL);
+}
+
+willrt_blocking_op* willrt_fs_async_temp_dir_start(const void* dir,
+                                                   const void* pattern,
+                                                   void* out) {
+    fs_async_temp_dir arg = {(const fs_str*)dir, (const fs_str*)pattern, out};
+    return willrt_blocking_submit_copy(fs_async_temp_dir_worker, &arg,
+                                       sizeof(arg), NULL);
 }
 
 int32_t willrt_fs_mkdir(const void* path_raw, uint32_t mode) {

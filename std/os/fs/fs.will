@@ -39,6 +39,11 @@ import c "fs.c" {
     fast willrt_fs_async_rename
     fast willrt_fs_async_remove
     fast willrt_fs_async_temp_file
+    fast willrt_fs_async_mkdir
+    fast willrt_fs_async_mkdir_all
+    fast willrt_fs_async_remove_all
+    fast willrt_fs_async_symlink
+    fast willrt_fs_async_temp_dir
 }
 
 // OpenFlags selects the access mode for Open.
@@ -327,27 +332,48 @@ func TempDir(dir: str, pattern: str) -> Result<str, Error> {
 
 // AsyncMkdir is the async spelling of Mkdir.
 func AsyncMkdir(path: str, mode: u32) -> Result<(), Error> {
-    return Mkdir(path, mode)
+    var status: i32 = c.willrt_fs_async_mkdir(raw(path), mode)
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
 }
 
 // AsyncMkdirAll is the async spelling of MkdirAll.
 func AsyncMkdirAll(path: str, mode: u32) -> Result<(), Error> {
-    return MkdirAll(path, mode)
+    var status: i32 = c.willrt_fs_async_mkdir_all(raw(path), mode)
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
 }
 
 // AsyncRemoveAll is the async spelling of RemoveAll.
 func AsyncRemoveAll(path: str) -> Result<(), Error> {
-    return RemoveAll(path)
+    var status: i32 = c.willrt_fs_async_remove_all(raw(path))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
 }
 
 // AsyncSymlink is the async spelling of Symlink.
 func AsyncSymlink(target: str, link: str) -> Result<(), Error> {
-    return Symlink(target, link)
+    var status: i32 = c.willrt_fs_async_symlink(raw(target), raw(link))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
 }
 
 // AsyncTempDir is the async spelling of TempDir.
 func AsyncTempDir(dir: str, pattern: str) -> Result<str, Error> {
-    return TempDir(dir, pattern)
+    var out: str = ""
+    var status: i32 = c.willrt_fs_async_temp_dir(raw(dir), raw(pattern), raw(out))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(out)
 }
 
 // AsyncReadFile is the async spelling of ReadFile.

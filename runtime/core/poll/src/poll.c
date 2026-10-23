@@ -21,6 +21,14 @@
  * handles are not registered on Windows, because WSAPoll does not accept them.
  * POSIX polls descriptors with poll() and uses a pipe as the wake channel.
  *
+ * Platform downgrade, per the concurrency spec's completion-form rule: the
+ * poller serves pollable descriptors only. Regular files, directory handles,
+ * and child processes are not pollable with the primitives this platform
+ * layer carries (no IOCP, no io_uring, no pidfd), so the async forms of
+ * std/os/fs and std/os/exec run their OS call on the blocking pool as an
+ * uncancelable C call, park the task, and wake the owner directly. When the
+ * platform layer gains a completion interface, those moves onto the poller.
+ *
  * The registration table is fixed at WILLRT_POLL_MAX. A full table returns
  * WILLRT_FULL; the caller decides whether to wait or fail. The table is not a
  * general file descriptor registry: each descriptor appears once, and a second
