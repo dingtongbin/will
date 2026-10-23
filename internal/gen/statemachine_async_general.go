@@ -8,7 +8,8 @@ import (
 
 // generalAsyncC starts one async C operation, parks on its poll, and returns
 // its finish status. The operation handle lives in the task frame, so the
-// generated continuation can poll after any other wait.
+// generated continuation can poll after any other wait. A runtime-service
+// operation (sleep, poller readiness) also arms its deadline on the next park.
 func (g *generator) generalAsyncC(r willc.Record) (string, error) {
 	name := fieldText(r, "text")
 	parts, argTypes, err := g.asyncStartArgs(r)
@@ -18,19 +19,19 @@ func (g *generator) generalAsyncC(r willc.Record) (string, error) {
 	startName := asyncStartName(name)
 	pollName := "willrt_blocking_poll"
 	finishName := "willrt_blocking_finish"
-	waitUntil := false
-	if name == "willrt_task_sleep_async" {
-		pollName = "willrt_task_sleep_poll"
-		finishName = "willrt_task_sleep_finish"
-		waitUntil = true
+	deadlineName := ""
+	if op, ok := asyncOps[name]; ok {
+		pollName = op[0]
+		finishName = op[1]
+		deadlineName = op[2]
 	}
 	opSlot := g.smAlloca("ptr", "async.op")
 	statusSlot := g.smAlloca("i32", "async.status")
 	g.queueCDecl(startName, "ptr", argTypes)
 	g.queueCDecl(pollName, "i32", []string{"ptr"})
 	g.queueCDecl(finishName, "i32", []string{"ptr"})
-	if waitUntil {
-		g.queueCDecl("willrt_task_sleep_deadline", "i64", []string{"ptr"})
+	if deadlineName != "" {
+		g.queueCDecl(deadlineName, "i64", []string{"ptr"})
 		g.queueCDecl("willrt_task_wait_until", "void", []string{"i64"})
 	}
 	id := g.smReserve()
@@ -56,9 +57,10 @@ func (g *generator) generalAsyncC(r willc.Record) (string, error) {
 	fmt.Fprintf(g.out, "  br i1 %s, label %%sm.async.park.%d, label %%sm.async.done.%d\n",
 		pending, id, id)
 	fmt.Fprintf(g.out, "sm.async.park.%d:\n", id)
-	if waitUntil {
+	if deadlineName != "" {
 		deadline := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = call i64 @willrt_task_sleep_deadline(ptr %s)\n", deadline, loaded)
+		fmt.Fprintf(g.out, "  %s = call i64 @%s(ptr %s)\n", deadline,
+			llvmSymbol(deadlineName), loaded)
 		fmt.Fprintf(g.out, "  call void @willrt_task_wait_until(i64 %s)\n", deadline)
 	}
 	g.needIOMarkDecl = true

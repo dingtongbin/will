@@ -22,8 +22,8 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 		if seg.kind == "c" {
 			g.queueCDecl(seg.pollName, "i32", []string{"ptr"})
 			g.queueCDecl(seg.finishName, "i32", []string{"ptr"})
-			if seg.waitUntil {
-				g.queueCDecl("willrt_task_sleep_deadline", "i64", []string{"ptr"})
+			if seg.deadline != "" {
+				g.queueCDecl(seg.deadline, "i64", []string{"ptr"})
 				g.queueCDecl("willrt_task_wait_until", "void", []string{"i64"})
 			}
 		}
@@ -140,7 +140,7 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 			finish := fmt.Sprintf("sm.finish.%d", i)
 			fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", pending, park, finish)
 			fmt.Fprintf(g.out, "%s:\n", park)
-			g.emitSequenceSleepDeadline(op, seg.waitUntil)
+			g.emitSequenceWaitDeadline(op, seg.deadline)
 			g.needIOMarkDecl = true
 			g.out.WriteString("  call void @willrt_task_mark_io()\n")
 			g.out.WriteString("  call void @willrt_task_mark_wait()\n  ret i32 -1\n")
@@ -251,7 +251,7 @@ func (g *generator) emitAsyncStart(info *asyncMachineInfo, seg *asyncSegment, in
 	}
 	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", index+1, state)
 	if seg.kind == "c" {
-		g.emitSequenceSleepDeadline(op, seg.waitUntil)
+		g.emitSequenceWaitDeadline(op, seg.deadline)
 	}
 	g.needIOMarkDecl = true
 	g.out.WriteString("  call void @willrt_task_mark_io()\n")
@@ -259,15 +259,15 @@ func (g *generator) emitAsyncStart(info *asyncMachineInfo, seg *asyncSegment, in
 	return nil
 }
 
-// emitSequenceSleepDeadline names the next park deadline for an async sleep. The
-// deadline flag belongs to the segment, not the machine, because a sequence can
-// mix sleep and IO waits.
-func (g *generator) emitSequenceSleepDeadline(op string, sleep bool) {
-	if !sleep {
+// emitSequenceWaitDeadline names the next park deadline for one segment. The
+// deadline entry belongs to the segment, not the machine, because a sequence
+// can mix sleeps and poller waits.
+func (g *generator) emitSequenceWaitDeadline(op string, deadlineName string) {
+	if deadlineName == "" {
 		return
 	}
 	deadline := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call i64 @willrt_task_sleep_deadline(ptr %s)\n",
-		deadline, g.load("ptr", op))
+	fmt.Fprintf(g.out, "  %s = call i64 @%s(ptr %s)\n",
+		deadline, llvmSymbol(deadlineName), g.load("ptr", op))
 	fmt.Fprintf(g.out, "  call void @willrt_task_wait_until(i64 %s)\n", deadline)
 }

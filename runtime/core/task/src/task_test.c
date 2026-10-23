@@ -618,7 +618,378 @@ static void test_select_reuse_allocates_nothing(void) {
     willrt_chan_close(chan);
 }
 
+/* The async poll contract runs through the same start/poll/finish trio the
+   generator emits, so these tests drive hand-written two-state steps. The
+   sockets exist because the Windows poller accepts sockets only. */
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+typedef SOCKET test_sock;
+#define TEST_SOCK_INVALID INVALID_SOCKET
+#else
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+typedef int test_sock;
+#define TEST_SOCK_INVALID (-1)
+#endif
+
+typedef struct test_poll_out {
+    void* data;
+    int64_t len;
+    int64_t cap;
+} test_poll_out;
+
+static test_sock test_sock_open(void) {
+#ifdef _WIN32
+    return socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#else
+    return socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#endif
+}
+
+static void test_sock_close(test_sock sock) {
+#ifdef _WIN32
+    closesocket(sock);
+#else
+    close(sock);
+#endif
+}
+
+static test_sock test_listener_open(struct sockaddr_in* addr) {
+    test_sock listener = test_sock_open();
+    int length = (int)sizeof(*addr);
+
+    if (listener == TEST_SOCK_INVALID) {
+        return TEST_SOCK_INVALID;
+    }
+    memset(addr, 0, sizeof(*addr));
+    addr->sin_family = AF_INET;
+    addr->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr->sin_port = 0;
+    if (bind(listener, (const struct sockaddr*)addr, sizeof(*addr)) != 0
+        || listen(listener, 1) != 0
+        || getsockname(listener, (struct sockaddr*)addr, &length) != 0) {
+        test_sock_close(listener);
+        return TEST_SOCK_INVALID;
+    }
+    return listener;
+}
+
+static test_sock test_dial(const struct sockaddr_in* addr) {
+    test_sock sock = test_sock_open();
+
+    if (sock == TEST_SOCK_INVALID) {
+        return TEST_SOCK_INVALID;
+    }
+    if (connect(sock, (const struct sockaddr*)addr, sizeof(*addr)) != 0) {
+        test_sock_close(sock);
+        return TEST_SOCK_INVALID;
+    }
+    return sock;
+}
+
+static void test_sock_write(test_sock sock, const char* bytes, int size) {
+    assert(send(sock, bytes, size, 0) == size);
+}
+
+typedef struct poll_frame {
+    int64_t fds[1];
+    uint32_t events[1];
+    int64_t users[1];
+    test_poll_out out;
+    int64_t timeout_ns;
+    int64_t scope_ns;
+    int64_t scope_previous;
+    int64_t alloc_before;
+    int64_t alloc_after;
+    willrt_poll_request* req;
+    int32_t started;
+    int32_t status;
+} poll_frame;
+
+static int32_t step_async_poll(void* raw) {
+    poll_frame* f = (poll_frame*)raw;
+
+    if (f->started == 0) {
+        f->started = 1;
+        f->alloc_before = willrt_alloc_count();
+        if (f->scope_ns > 0) {
+            f->scope_previous = willrt_task_enter_deadline(f->scope_ns);
+        }
+        f->req = willrt_poll_wait_async_start(f->fds, f->events, f->users, 1,
+                                              f->timeout_ns, &f->out);
+        assert(f->req != NULL);
+    }
+    if (willrt_poll_wait_async_poll(f->req) == 0) {
+        willrt_task_wait_until(willrt_poll_wait_async_deadline(f->req));
+        willrt_task_mark_io();
+        willrt_task_mark_wait();
+        return WILLRT_SUSPEND;
+    }
+    f->status = willrt_poll_wait_async_finish(f->req);
+    if (f->scope_ns > 0) {
+        willrt_task_exit_deadline(f->scope_previous);
+    }
+    f->alloc_after = willrt_alloc_count();
+    assert(willrt_task_store_result(&f->status, sizeof(f->status))
+           == WILLRT_OK);
+    return WILLRT_DONE;
+}
+
+static test_sock test_poll_pair(struct sockaddr_in* addr, test_sock* client) {
+    test_sock listener = test_listener_open(addr);
+    test_sock server;
+
+    if (listener == TEST_SOCK_INVALID) {
+        return TEST_SOCK_INVALID;
+    }
+    *client = test_dial(addr);
+    if (*client == TEST_SOCK_INVALID) {
+        test_sock_close(listener);
+        return TEST_SOCK_INVALID;
+    }
+    server = accept(listener, NULL, NULL);
+    if (server == TEST_SOCK_INVALID) {
+        test_sock_close(*client);
+        test_sock_close(listener);
+        return TEST_SOCK_INVALID;
+    }
+    return server;
+}
+
+static void test_async_poll_delivers_readiness(void) {
+    struct sockaddr_in addr;
+    test_sock client;
+    test_sock server = test_poll_pair(&addr, &client);
+    int64_t tags[4];
+    int64_t submitted_before;
+    poll_frame frame;
+    willrt_task* task;
+    int32_t result = 0;
+
+    assert(server != TEST_SOCK_INVALID);
+    test_sock_write(client, "x", 1);
+    memset(&frame, 0, sizeof(frame));
+    frame.fds[0] = (int64_t)server;
+    frame.events[0] = WILLRT_POLL_IN;
+    frame.users[0] = 77;
+    frame.out.data = tags;
+    frame.out.cap = 4;
+    frame.timeout_ns = INT64_C(2000000000);
+    submitted_before = willrt_blocking_submitted();
+    task = willrt_task_new((void*)step_async_poll, &frame, sizeof(frame), 0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    assert(willrt_join(task, &result, NULL) == WILLRT_OK);
+    assert(frame.status == WILLRT_OK);
+    assert(frame.out.len == 1);
+    assert(tags[0] == 77);
+    assert(willrt_blocking_submitted() == submitted_before);
+    /* The first async poll pays the poller's one-time batch buffers, so the
+       allocation-free contract belongs to the warmed timeout test. */
+    test_sock_close(server);
+    test_sock_close(client);
+}
+
+static void test_async_poll_times_out_allocating_nothing(void) {
+    struct sockaddr_in addr;
+    test_sock client;
+    test_sock server = test_poll_pair(&addr, &client);
+    int64_t tags[4];
+    int64_t submitted_before;
+    poll_frame frame;
+    willrt_task* task;
+    int32_t result = 0;
+
+    assert(server != TEST_SOCK_INVALID);
+    memset(&frame, 0, sizeof(frame));
+    frame.fds[0] = (int64_t)server;
+    frame.events[0] = WILLRT_POLL_IN;
+    frame.users[0] = 41;
+    frame.out.data = tags;
+    frame.out.cap = 4;
+    frame.timeout_ns = INT64_C(60000000);
+    submitted_before = willrt_blocking_submitted();
+    task = willrt_task_new((void*)step_async_poll, &frame, sizeof(frame), 0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    assert(willrt_join(task, &result, NULL) == WILLRT_OK);
+    assert(frame.status == WILLRT_OK);
+    assert(frame.out.len == 0);
+    assert(willrt_blocking_submitted() == submitted_before);
+    assert(frame.alloc_after == frame.alloc_before);
+    test_sock_close(server);
+    test_sock_close(client);
+}
+
+static void test_async_poll_honors_block_deadline(void) {
+    struct sockaddr_in addr;
+    test_sock client;
+    test_sock server = test_poll_pair(&addr, &client);
+    int64_t tags[4];
+    poll_frame frame;
+    willrt_task* task;
+    int32_t result = 0;
+
+    assert(server != TEST_SOCK_INVALID);
+    memset(&frame, 0, sizeof(frame));
+    frame.fds[0] = (int64_t)server;
+    frame.events[0] = WILLRT_POLL_IN;
+    frame.users[0] = 41;
+    frame.out.data = tags;
+    frame.out.cap = 4;
+    frame.timeout_ns = INT64_C(1500000000);
+    frame.scope_ns = INT64_C(50000000);
+    task = willrt_task_new((void*)step_async_poll, &frame, sizeof(frame), 0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    assert(willrt_join(task, &result, NULL) == WILLRT_OK);
+    assert(frame.status == WILLRT_TIMEDOUT);
+    assert(frame.out.len == 0);
+    test_sock_close(server);
+    test_sock_close(client);
+}
+
+typedef struct sleep_frame {
+    int64_t ns;
+    int64_t scope_ns;
+    int64_t scope_previous;
+    willrt_sleep_op* op;
+    int32_t started;
+    int32_t status;
+} sleep_frame;
+
+static int32_t step_async_sleep(void* raw) {
+    sleep_frame* f = (sleep_frame*)raw;
+
+    if (f->started == 0) {
+        f->started = 1;
+        if (f->scope_ns > 0) {
+            f->scope_previous = willrt_task_enter_deadline(f->scope_ns);
+        }
+        f->op = willrt_task_sleep_async_start(f->ns);
+        assert(f->op != NULL);
+    }
+    if (willrt_task_sleep_poll(f->op) == 0) {
+        willrt_task_wait_until(willrt_task_sleep_deadline(f->op));
+        willrt_task_mark_io();
+        willrt_task_mark_wait();
+        return WILLRT_SUSPEND;
+    }
+    f->status = willrt_task_sleep_finish(f->op);
+    if (f->scope_ns > 0) {
+        willrt_task_exit_deadline(f->scope_previous);
+    }
+    assert(willrt_task_store_result(&f->status, sizeof(f->status))
+           == WILLRT_OK);
+    return WILLRT_DONE;
+}
+
+static void test_async_sleep_honors_block_deadline(void) {
+    sleep_frame frame;
+    willrt_task* task;
+    int32_t result = 0;
+
+    memset(&frame, 0, sizeof(frame));
+    frame.ns = INT64_C(1500000000);
+    frame.scope_ns = INT64_C(50000000);
+    task = willrt_task_new((void*)step_async_sleep, &frame, sizeof(frame), 0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    assert(willrt_join(task, &result, NULL) == WILLRT_OK);
+    assert(frame.status == WILLRT_TIMEDOUT);
+}
+
+typedef struct poll_reuse_frame {
+    int64_t fds[2];
+    uint32_t events[1];
+    int64_t users[1];
+    test_poll_out out;
+    int64_t timeout_ns;
+    willrt_poll_request* req;
+    int32_t started;
+    int32_t round;
+    int32_t status[2];
+} poll_reuse_frame;
+
+static int32_t step_async_poll_reuse(void* raw) {
+    poll_reuse_frame* f = (poll_reuse_frame*)raw;
+
+    if (f->started == 0) {
+        f->started = 1;
+        f->req = willrt_poll_wait_async_start(f->fds + f->round, f->events,
+                                              f->users, 1, f->timeout_ns,
+                                              &f->out);
+        assert(f->req != NULL);
+    }
+    if (willrt_poll_wait_async_poll(f->req) == 0) {
+        willrt_task_wait_until(willrt_poll_wait_async_deadline(f->req));
+        willrt_task_mark_io();
+        willrt_task_mark_wait();
+        return WILLRT_SUSPEND;
+    }
+    f->status[f->round] = willrt_poll_wait_async_finish(f->req);
+    f->round += 1;
+    if (f->round == 1) {
+        f->started = 0;
+        f->timeout_ns = INT64_C(500000000);
+        f->out.len = 0;
+        return WILLRT_SUSPEND;
+    }
+    assert(willrt_task_store_result(&f->status[1], sizeof(f->status[1]))
+           == WILLRT_OK);
+    return WILLRT_DONE;
+}
+
+static void test_async_poll_survives_reuse(void) {
+    struct sockaddr_in addr;
+    struct sockaddr_in quiet_addr;
+    test_sock client;
+    test_sock quiet_client;
+    test_sock ready = test_poll_pair(&addr, &client);
+    test_sock quiet = test_poll_pair(&quiet_addr, &quiet_client);
+    int64_t tags[4];
+    int64_t submitted_before;
+    poll_reuse_frame frame;
+    willrt_task* task;
+    int32_t result = 0;
+
+    assert(ready != TEST_SOCK_INVALID);
+    assert(quiet != TEST_SOCK_INVALID);
+    test_sock_write(client, "x", 1);
+    memset(&frame, 0, sizeof(frame));
+    frame.fds[0] = (int64_t)ready;
+    frame.fds[1] = (int64_t)quiet;
+    frame.events[0] = WILLRT_POLL_IN;
+    frame.users[0] = 5;
+    frame.out.data = tags;
+    frame.out.cap = 4;
+    frame.timeout_ns = INT64_C(1000000);
+    submitted_before = willrt_blocking_submitted();
+    task = willrt_task_new((void*)step_async_poll_reuse, &frame,
+                           sizeof(frame), 0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    assert(willrt_join(task, &result, NULL) == WILLRT_OK);
+    assert(frame.status[0] == WILLRT_OK);
+    assert(frame.status[1] == WILLRT_OK);
+    assert(frame.out.len == 0);
+    assert(willrt_blocking_submitted() == submitted_before);
+    test_sock_close(ready);
+    test_sock_close(client);
+    test_sock_close(quiet);
+    test_sock_close(quiet_client);
+}
+
 int main(void) {
+#ifdef _WIN32
+    WSADATA data;
+
+    assert(WSAStartup(MAKEWORD(2, 2), &data) == 0);
+#endif
     willrt_init();
     test_task_result();
     test_task_suspend_resume();
@@ -639,6 +1010,14 @@ int main(void) {
     test_timer_wakes_only_its_task();
     test_timed_park_allocates_nothing();
     test_select_reuse_allocates_nothing();
+    test_async_poll_delivers_readiness();
+    test_async_poll_times_out_allocating_nothing();
+    test_async_poll_honors_block_deadline();
+    test_async_sleep_honors_block_deadline();
+    test_async_poll_survives_reuse();
     willrt_shutdown();
+#ifdef _WIN32
+    (void)WSACleanup();
+#endif
     return 0;
 }

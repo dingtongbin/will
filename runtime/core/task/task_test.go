@@ -53,7 +53,12 @@ func buildDriver(t *testing.T, gcc, dir, root, platform, name string, sources ..
 		filepath.Join(dir, "..", "report", "src", "report.c"),
 		filepath.Join(dir, "..", "startup", "src", "startup.c"),
 		filepath.Join(dir, "..", "timer", "src", "timer.c"),
+		filepath.Join(dir, "..", "blocking", "src", "blocking.c"),
+		filepath.Join(dir, "..", "poll", "src", "poll.c"),
 		filepath.Join(root, "platform", platform))
+	if runtime.GOOS == "windows" {
+		args = append(args, "-lws2_32")
+	}
 
 	build := exec.Command(gcc, args...)
 	build.Dir = dir
@@ -112,6 +117,7 @@ func TestDeadlockContract(t *testing.T) {
 }
 
 func TestTaskContract(t *testing.T) {
+	os.Setenv("WILLRT_COUNT_ALLOC", "1")
 	gcc, err := exec.LookPath("gcc")
 	if err != nil {
 		t.Skip("gcc is not on PATH")

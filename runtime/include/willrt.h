@@ -220,6 +220,62 @@ void willrt_poll_shutdown(void);
 int32_t willrt_poll_add(int64_t fd, uint32_t events, void* cb, void* arg);
 int32_t willrt_poll_del(int64_t fd);
 
+/* willrt_poll_request is the task-embedded wait for one readiness scan. The
+   task parks with the request linked into the poller's pending list; the
+   poller copies the descriptor set into its own buffer, waits once for the
+   whole batch, and appends ready tags straight into the waiting task's out
+   array. state moves under the poller lock: PENDING is delivered as DONE by
+   the poller or retired as DONE by this task when the deadline passed. gen
+   guards a reused node against a snapshot taken before the reuse. The struct
+   is complete here because the task owns one by value. */
+enum {
+    WILLRT_POLL_REQUEST_IDLE = 0,
+    WILLRT_POLL_REQUEST_PENDING = 1,
+    WILLRT_POLL_REQUEST_DONE = 2
+};
+
+typedef struct willrt_poll_request willrt_poll_request;
+
+struct willrt_poll_request {
+    int32_t state;
+    int32_t linked;
+    int32_t status;
+    int64_t deadline;
+    uint64_t gen;
+    const void* fds;
+    const void* events;
+    const void* users;
+    int64_t count;
+    void* out;
+    struct willrt_poll_request* next;
+    void* waiter;
+};
+
+/* willrt_poll_wait_async_start registers one readiness scan on the current
+   task and returns its embedded request. A caller outside a task runs the
+   scan synchronously on a detached request; a zero timeout does the same. */
+willrt_poll_request* willrt_poll_wait_async_start(const void* fds,
+                                                  const void* events,
+                                                  const void* users,
+                                                  int64_t count,
+                                                  int64_t timeout_ns,
+                                                  void* out);
+/* willrt_poll_wait_async_poll reports 1 when the scan is done and 0 while the
+   task should keep waiting. It retires the request when the request deadline
+   or the enclosing block deadline has passed; the block deadline reports
+   WILLRT_TIMEDOUT through finish. */
+int32_t willrt_poll_wait_async_poll(willrt_poll_request* req);
+/* willrt_poll_wait_async_finish returns the scan status and resets the
+   request to idle. The caller must have observed a finished poll. */
+int32_t willrt_poll_wait_async_finish(willrt_poll_request* req);
+/* willrt_poll_wait_async_deadline returns the absolute deadline the next park
+   should arm, or zero for an unbounded wait. */
+int64_t willrt_poll_wait_async_deadline(willrt_poll_request* req);
+/* willrt_poll_request_abandon retires a still-pending request without
+   delivering. A task that leaves its frame while parked must call it, so the
+   poller stops carrying the descriptors. */
+void willrt_poll_request_abandon(willrt_poll_request* req);
+
 /* willrt_blocking_fn is one job for the blocking pool. It may block; the pool
    owns the thread, and the caller waits for the job's result. out is the same
    pointer the caller passed to willrt_blocking_call. */
@@ -245,6 +301,9 @@ int32_t willrt_blocking_poll(willrt_blocking_op* op);
    The caller must have observed a finished poll. */
 int32_t willrt_blocking_finish(willrt_blocking_op* op);
 int32_t willrt_blocking_wait(willrt_blocking_op* op);
+/* willrt_blocking_submitted counts the jobs the pool has accepted. It is the
+   test and diagnostics view of who still leans on the pool. */
+int64_t willrt_blocking_submitted(void);
 void willrt_blocking_shutdown(void);
 
 /* -------------------------------------------------------------------------
@@ -374,7 +433,14 @@ int32_t willrt_chan_recv_wait(willrt_chan* chan, void* out);
    registers the current task on sendq. */
 int32_t willrt_chan_send_wait(willrt_chan* chan, const void* value);
 willrt_chan_wait* willrt_task_chan_wait_node(void);
+/* willrt_task_poll_node returns the current task's embedded poll request, or
+   NULL outside a task. The poller API stores the waiter in it. */
+willrt_poll_request* willrt_task_poll_node(void);
 void willrt_task_wake_chan(willrt_task* task);
+/* willrt_task_wake_batch moves parked tasks to their lanes' ready queues,
+   locking each lane once for the whole batch. The poller delivers one pass of
+   ready tasks through it. */
+void willrt_task_wake_batch(void* const* tasks, int64_t count);
 void willrt_chan_close(willrt_chan* chan);
 
 /* One select arm. kind 0 receives into out, 1 sends value, 2 waits until ns,

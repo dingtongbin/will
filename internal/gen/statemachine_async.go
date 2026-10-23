@@ -27,8 +27,8 @@ type asyncSegment struct {
 	startName   string
 	pollName    string
 	finishName  string
+	deadline    string
 	targetSym   string
-	waitUntil   bool
 	statusIndex int
 	resultIndex int
 	before      []willc.Record
@@ -51,6 +51,16 @@ type asyncMachineInfo struct {
 // blocking form stays available for callers outside a state machine.
 func asyncStartName(name string) string {
 	return name + "_start"
+}
+
+// asyncOps names the poll, finish, and deadline entries of operations whose
+// wait is a runtime service rather than a blocking-pool job. Sleep waits
+// through the task's park timer; the poller delivers readiness to the parked
+// task through its embedded request. Both carry an absolute deadline that the
+// next park arms.
+var asyncOps = map[string][3]string{
+	"willrt_task_sleep_async": {"willrt_task_sleep_poll", "willrt_task_sleep_finish", "willrt_task_sleep_deadline"},
+	"willrt_poll_wait_async":  {"willrt_poll_wait_async_poll", "willrt_poll_wait_async_finish", "willrt_poll_wait_async_deadline"},
 }
 
 func callTargetSymbolFor(d *docState, call willc.Record) string {

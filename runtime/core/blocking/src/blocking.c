@@ -46,6 +46,7 @@ static willrt_os_mutex willrt_blocking_lock;
 static willrt_os_cond willrt_blocking_work;
 static willrt_os_cond willrt_blocking_space;
 static atomic_int willrt_blocking_state;
+static atomic_llong willrt_blocking_submits;
 static int willrt_blocking_stop;
 static size_t willrt_blocking_head;
 static size_t willrt_blocking_tail;
@@ -243,6 +244,7 @@ willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out) {
         willrt_free(job);
         return NULL;
     }
+    atomic_fetch_add(&willrt_blocking_submits, 1);
     willrt_os_mutex_unlock(&willrt_blocking_lock);
     return (willrt_blocking_op*)job;
 }
@@ -306,8 +308,13 @@ willrt_blocking_op* willrt_blocking_submit_copy(void* fn, const void* arg,
         willrt_free(job);
         return NULL;
     }
+    atomic_fetch_add(&willrt_blocking_submits, 1);
     willrt_os_mutex_unlock(&willrt_blocking_lock);
     return (willrt_blocking_op*)job;
+}
+
+int64_t willrt_blocking_submitted(void) {
+    return atomic_load(&willrt_blocking_submits);
 }
 
 int32_t willrt_blocking_poll(willrt_blocking_op* op_raw) {

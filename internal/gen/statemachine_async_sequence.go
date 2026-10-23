@@ -179,10 +179,10 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 			seg.startName = asyncStartName(name)
 			seg.pollName = "willrt_blocking_poll"
 			seg.finishName = "willrt_blocking_finish"
-			if name == "willrt_task_sleep_async" {
-				seg.pollName = "willrt_task_sleep_poll"
-				seg.finishName = "willrt_task_sleep_finish"
-				seg.waitUntil = true
+			if op, ok := asyncOps[name]; ok {
+				seg.pollName = op[0]
+				seg.finishName = op[1]
+				seg.deadline = op[2]
 			}
 		} else {
 			seg.targetSym = callTargetSymbolFor(g.cur, site.call)

@@ -5,8 +5,8 @@
  * that returns WILLRT_SUSPEND has already stored its state in the frame; the
  * lane parks it, and the dependency it named wakes exactly that task: a
  * channel handoff through the wait node, a join through the target's waiter
- * chain, a park deadline through the timer wheel, an external operation
- * through the poller or the blocking pool. Jobs use the same step contract
+ * chain, a park deadline through the timer wheel, a poller readiness scan
+ * through the task's embedded request. Jobs use the same step contract
  * through the job pool.
  *
  * A panic inside a task writes its report, records the failure, and jumps back
@@ -33,6 +33,13 @@ enum {
     WILLRT_TASK_PARKING = 2,
     WILLRT_TASK_WAITING = 3,
     WILLRT_TASK_DONE = 4
+};
+
+/* The sleep handle is complete here because the task owns one by value. */
+struct willrt_sleep_op {
+    int64_t deadline;
+    int32_t status;
+    int32_t active;
 };
 
 struct willrt_task {
@@ -75,6 +82,11 @@ struct willrt_task {
        flight at once and the third covers the boundary. */
     willrt_timer park_timers[3];
     willrt_timer* park_timer_armed;
+    /* Async operation handles live in the task, so a park never allocates:
+       the poller readiness request and the sleep deadline are one per task
+       and the generated step finishes one before starting the next. */
+    willrt_poll_request poll_node;
+    willrt_sleep_op sleep_node;
 };
 
 struct willrt_region {
@@ -120,6 +132,8 @@ static atomic_int willrt_lane_ready;
 extern void willrt_jobs_shutdown(void) __attribute__((weak));
 extern int32_t willrt_jobs_pending(void) __attribute__((weak));
 extern int32_t willrt_timer_pending(void) __attribute__((weak));
+extern void willrt_poll_request_abandon(willrt_poll_request* req)
+    __attribute__((weak));
 
 static void willrt_lane_init(void);
 static void willrt_task_check_dead(void);
@@ -368,6 +382,12 @@ static void willrt_task_finish(struct willrt_task* task) {
     struct willrt_task* waiter;
     struct willrt_task* walk;
 
+    /* A task that leaves its frame while parked would otherwise leave its
+       poller request pending forever, so the poller would carry the
+       descriptors of a finished task. */
+    if (willrt_poll_request_abandon != NULL) {
+        willrt_poll_request_abandon(&task->poll_node);
+    }
     willrt_os_mutex_lock(&task->lock);
     task->finished = 1;
     walk = task->join_head;
@@ -613,6 +633,58 @@ willrt_task* willrt_task_current(void) {
 
 void willrt_task_wake_chan(willrt_task* task) {
     willrt_task_wake(task);
+}
+
+willrt_poll_request* willrt_task_poll_node(void) {
+    return willrt_task_self == NULL ? NULL : &willrt_task_self->poll_node;
+}
+
+/* willrt_task_wake_batch is the poller's delivery path: one pass of ready
+   tasks takes each lane lock once, whatever the tasks share. The table holds
+   the lanes locked so far; a pass with more lanes than the table flushes and
+   keeps going. */
+void willrt_task_wake_batch(void* const* tasks, int64_t count) {
+    lane_worker* locked[64];
+    int32_t locked_count = 0;
+    int64_t i;
+    int32_t j;
+
+    for (i = 0; i < count; i++) {
+        willrt_task* task = (willrt_task*)tasks[i];
+        lane_worker* worker;
+
+        if (task == NULL) {
+            continue;
+        }
+        worker = willrt_lane_of(task);
+        if (worker == NULL) {
+            continue;
+        }
+        for (j = 0; j < locked_count && locked[j] != worker; j++) {
+        }
+        if (j == locked_count) {
+            if (locked_count == (int32_t)(sizeof(locked) / sizeof(locked[0]))) {
+                while (locked_count > 0) {
+                    locked_count--;
+                    willrt_os_cond_signal(&locked[locked_count]->cond);
+                    willrt_os_mutex_unlock(&locked[locked_count]->lock);
+                }
+            }
+            willrt_os_mutex_lock(&worker->lock);
+            locked[locked_count++] = worker;
+        }
+        if (task->state == WILLRT_TASK_WAITING) {
+            willrt_lane_enqueue_locked(worker, task);
+        } else if (task->state == WILLRT_TASK_PARKING
+                   || task->state == WILLRT_TASK_RUNNING) {
+            task->wake_pending = 1;
+        }
+    }
+    while (locked_count > 0) {
+        locked_count--;
+        willrt_os_cond_signal(&locked[locked_count]->cond);
+        willrt_os_mutex_unlock(&locked[locked_count]->lock);
+    }
 }
 
 willrt_chan_wait* willrt_task_chan_wait_node(void) {
@@ -961,11 +1033,6 @@ void willrt_task_sleep_ns(int64_t ns) {
     willrt_os_sleep_ns(ns);
 }
 
-struct willrt_sleep_op {
-    int64_t deadline;
-    int32_t status;
-};
-
 int32_t willrt_task_sleep_async(int64_t ns) {
     if (ns < 0) {
         return 1;
@@ -974,19 +1041,42 @@ int32_t willrt_task_sleep_async(int64_t ns) {
     return 0;
 }
 
-willrt_sleep_op* willrt_task_sleep_async_start(int64_t ns) {
-    willrt_sleep_op* op = (willrt_sleep_op*)willrt_alloc(sizeof(*op));
+/* The sleep handle is the task's own node, so a park never allocates. A
+   caller outside a task uses the detached node; only the main thread can be
+   there, and generated async code never runs without a task. */
+static willrt_sleep_op willrt_sleep_detached;
 
-    if (op == NULL) {
+willrt_sleep_op* willrt_task_sleep_async_start(int64_t ns) {
+    willrt_task* task = willrt_task_current();
+    willrt_sleep_op* op = task == NULL ? &willrt_sleep_detached
+                                       : &task->sleep_node;
+
+    if (op->active) {
+        willrt_panic("sleep operation already active", "task.c",
+                     "will.task.sleep");
         return NULL;
     }
+    op->active = 1;
     op->status = ns < 0 ? 1 : 0;
     op->deadline = ns < 0 ? willrt_now_ns() : willrt_now_ns() + ns;
     return op;
 }
 
 int32_t willrt_task_sleep_poll(willrt_sleep_op* op) {
-    return op == NULL || willrt_now_ns() >= op->deadline;
+    willrt_task* task;
+
+    if (op == NULL || willrt_now_ns() >= op->deadline) {
+        return 1;
+    }
+    /* The scoped deadline ends the wait before the sleep deadline does;
+       otherwise the park would requeue against a past deadline forever. */
+    task = willrt_task_current();
+    if (task != NULL && task->deadline != 0
+        && willrt_now_ns() >= task->deadline) {
+        op->status = WILLRT_TIMEDOUT;
+        return 1;
+    }
+    return 0;
 }
 
 int32_t willrt_task_sleep_finish(willrt_sleep_op* op) {
@@ -996,7 +1086,8 @@ int32_t willrt_task_sleep_finish(willrt_sleep_op* op) {
         return 1;
     }
     status = op->status;
-    willrt_free(op);
+    op->active = 0;
+    op->deadline = 0;
     return status;
 }
 

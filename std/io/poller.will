@@ -62,8 +62,9 @@ func (p: Poller) Next(timeout: Duration, mut out: Array<usize>) -> Result<usize,
     return Ok(out.Len() - before)
 }
 
-// AsyncNext parks the calling task frame while the blocking pool runs the
-// readiness check. Task-directed poller delivery can replace this worker later.
+// AsyncNext parks the calling task while the runtime poller scans the
+// descriptors; the poller delivers ready tags into out and wakes the task's
+// lane directly.
 func (p: Poller) AsyncNext(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
     var before: usize = out.Len()
     var status: i32 = c.willrt_poll_wait_async(raw(p.fds), raw(p.events),
