@@ -359,8 +359,14 @@ int32_t willrt_chan_try_send(willrt_chan* chan, const void* value);
 int32_t willrt_chan_recv(willrt_chan* chan, void* out);
 int32_t willrt_chan_try_recv(willrt_chan* chan, void* out);
 /* willrt_chan_recv_wait registers the current task on recvq and returns
-   WILLRT_SUSPEND; a matching send writes the task's out slot directly. */
+   WILLRT_SUSPEND; a matching send writes the task's out slot directly. On a
+   resume it returns the completed status, or CANCELED/TIMEDOUT after it
+   unlinks the node. */
 int32_t willrt_chan_recv_wait(willrt_chan* chan, void* out);
+/* willrt_chan_send_wait is the send-side counterpart. It completes directly
+   into a waiting receiver or into the ring when there is room, and otherwise
+   registers the current task on sendq. */
+int32_t willrt_chan_send_wait(willrt_chan* chan, const void* value);
 willrt_chan_wait* willrt_task_chan_wait_node(void);
 void willrt_task_wake_chan(willrt_task* task);
 void willrt_chan_close(willrt_chan* chan);

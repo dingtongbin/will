@@ -301,8 +301,15 @@ static void willrt_task_park(struct willrt_task* task) {
     if (task->deadline > 0 && (wake == 0 || task->deadline < wake)) {
         wake = task->deadline;
     }
-    if (wake > 0 && willrt_now_ns() < wake) {
-        timer = willrt_timer_new(wake, willrt_io_timer, NULL);
+    if (wake > 0 && willrt_now_ns() >= wake) {
+        lane_worker* worker = willrt_lane_of(task);
+        if (worker != NULL) {
+            willrt_os_mutex_lock(&worker->lock);
+            willrt_lane_enqueue_locked(worker, task);
+            willrt_os_cond_signal(&worker->cond);
+            willrt_os_mutex_unlock(&worker->lock);
+        }
+        return;
     }
     task->wait_deadline = 0;
     willrt_os_mutex_lock(&willrt_lane_lock);
@@ -315,7 +322,14 @@ static void willrt_task_park(struct willrt_task* task) {
     }
     willrt_io_tail = task;
     willrt_os_mutex_unlock(&willrt_lane_lock);
-    (void)timer;
+    /* Arm the timer after the task is visible on the IO list. A one
+       millisecond deadline can fire while timer_new is still returning; if
+       the timer ran before this insertion its wake would find an empty list
+       and the task would sleep with no next event. */
+    if (wake > 0) {
+        timer = willrt_timer_new(wake, willrt_io_timer, NULL);
+        (void)timer;
+    }
 }
 
 static void willrt_task_finish(struct willrt_task* task) {
@@ -666,45 +680,46 @@ int32_t willrt_join(willrt_task* task, void* out, willrt_error* err) {
         return WILLRT_FAILED;
     }
     for (;;) {
+        int32_t finished;
         willrt_os_mutex_lock(&task->lock);
         if (!task->finished) {
-            {
-                int64_t wait = INT64_C(10) * INT64_C(1000000);
-                if (current != NULL && current->deadline != 0) {
-                    int64_t left = current->deadline - willrt_now_ns();
-                    if (left <= 0) {
-                        willrt_os_mutex_unlock(&task->lock);
-                        return WILLRT_TIMEDOUT;
-                    }
-                    if (left < wait) {
-                        wait = left;
-                    }
+            int64_t wait = INT64_C(10) * INT64_C(1000000);
+            if (current != NULL && current->deadline != 0) {
+                int64_t left = current->deadline - willrt_now_ns();
+                if (left <= 0) {
+                    willrt_os_mutex_unlock(&task->lock);
+                    return WILLRT_TIMEDOUT;
                 }
-                willrt_os_cond_timedwait(&task->cond, &task->lock, wait);
+                if (left < wait) {
+                    wait = left;
+                }
+            }
+            willrt_os_cond_timedwait(&task->cond, &task->lock, wait);
+        }
+        finished = task->finished;
+        if (finished) {
+            if (err != NULL) {
+                err->message = task->message;
+                err->size = task->message_size;
+                err->site = task->site;
+                err->symbol = task->symbol;
+            }
+            if (task->failed) {
+                willrt_os_mutex_unlock(&task->lock);
+                return WILLRT_FAILED;
+            }
+            if (task->canceled) {
+                willrt_os_mutex_unlock(&task->lock);
+                return WILLRT_CANCELED;
+            }
+            if (out != NULL && task->result != NULL && task->result_size != 0) {
+                memcpy(out, task->result, task->result_size);
             }
             willrt_os_mutex_unlock(&task->lock);
-            willrt_task_check_dead();
-            continue;
-        }
-        if (err != NULL) {
-            err->message = task->message;
-            err->size = task->message_size;
-            err->site = task->site;
-            err->symbol = task->symbol;
-        }
-        if (task->failed) {
-            willrt_os_mutex_unlock(&task->lock);
-            return WILLRT_FAILED;
-        }
-        if (task->canceled) {
-            willrt_os_mutex_unlock(&task->lock);
-            return WILLRT_CANCELED;
-        }
-        if (out != NULL && task->result != NULL && task->result_size != 0) {
-            memcpy(out, task->result, task->result_size);
+            return WILLRT_OK;
         }
         willrt_os_mutex_unlock(&task->lock);
-        return WILLRT_OK;
+        willrt_task_check_dead();
     }
 }
 
@@ -944,7 +959,7 @@ static void willrt_task_check_dead(void) {
                 task->state == WILLRT_TASK_PARKING) {
                 active++;
             }
-            if (task->wait_deadline > now || task->deadline > now) {
+            if (task->wait_deadline != 0 || task->deadline != 0) {
                 timers++;
             }
         }

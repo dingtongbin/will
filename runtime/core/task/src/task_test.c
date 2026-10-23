@@ -196,6 +196,111 @@ static void test_channel_hands_off_to_waiting_task(void) {
     assert(output == 17);
 }
 
+typedef struct wait_frame {
+    willrt_chan* chan;
+    int32_t value;
+    int32_t status;
+    int32_t armed;
+} wait_frame;
+
+static int32_t step_send_wait(void* raw) {
+    wait_frame* frame = (wait_frame*)raw;
+    int32_t status = willrt_chan_send_wait(frame->chan, &frame->value);
+
+    if (status == WILLRT_SUSPEND) {
+        willrt_task_mark_wait();
+        return WILLRT_SUSPEND;
+    }
+    frame->status = status;
+    return WILLRT_DONE;
+}
+
+static int32_t step_recv_wait(void* raw) {
+    wait_frame* frame = (wait_frame*)raw;
+    int32_t status = willrt_chan_recv_wait(frame->chan, &frame->value);
+
+    if (status == WILLRT_SUSPEND) {
+        willrt_task_mark_wait();
+        return WILLRT_SUSPEND;
+    }
+    frame->status = status;
+    return WILLRT_DONE;
+}
+
+static int32_t step_recv_deadline(void* raw) {
+    wait_frame* frame = (wait_frame*)raw;
+
+    if (!frame->armed) {
+        frame->armed = 1;
+        (void)willrt_task_enter_deadline(INT64_C(1000000));
+    }
+    return step_recv_wait(raw);
+}
+
+static void test_channel_send_wait(void) {
+    willrt_chan* chan = willrt_chan_new(sizeof(int32_t), 1, 0);
+    willrt_task* task;
+    wait_frame frame;
+    int32_t first = 1;
+    int32_t one = 0;
+    int32_t two = 0;
+
+    assert(chan != NULL);
+    assert(willrt_chan_send(chan, &first) == WILLRT_OK);
+    memset(&frame, 0, sizeof(frame));
+    frame.chan = chan;
+    frame.value = 7;
+    task = willrt_task_new((void*)step_send_wait, &frame, sizeof(frame), 0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    willrt_os_sleep_ns(INT64_C(1000000));
+    assert(willrt_chan_recv(chan, &one) == WILLRT_OK);
+    assert(willrt_chan_recv(chan, &two) == WILLRT_OK);
+    assert(one + two == 8);
+    assert(willrt_join(task, NULL, NULL) == WILLRT_OK);
+    assert(frame.status == WILLRT_OK);
+    willrt_chan_close(chan);
+}
+
+static void test_channel_wait_deadline(void) {
+    willrt_chan* chan = willrt_chan_new(sizeof(int32_t), 1, 0);
+    willrt_task* task;
+    wait_frame frame;
+
+    assert(chan != NULL);
+    memset(&frame, 0, sizeof(frame));
+    frame.chan = chan;
+    task = willrt_task_new((void*)step_recv_deadline, &frame, sizeof(frame),
+                           0, 0);
+    assert(task != NULL);
+    willrt_task_run(task);
+    assert(willrt_join(task, NULL, NULL) == WILLRT_OK);
+    assert(frame.status == WILLRT_TIMEDOUT);
+    willrt_chan_close(chan);
+}
+
+static void test_channel_wait_cancel(void) {
+    willrt_chan* chan = willrt_chan_new(sizeof(int32_t), 1, 0);
+    willrt_task* task;
+    wait_frame frame;
+    int32_t flag = 0;
+    void* flag_ptr = &flag;
+
+    assert(chan != NULL);
+    memset(&frame, 0, sizeof(frame));
+    frame.chan = chan;
+    task = willrt_task_new((void*)step_recv_wait, &frame, sizeof(frame), 0, 0);
+    assert(task != NULL);
+    willrt_task_bind_cancel(task, &flag_ptr);
+    willrt_task_run(task);
+    willrt_os_sleep_ns(INT64_C(1000000));
+    flag = 1;
+    willrt_sched_wake_all();
+    assert(willrt_join(task, NULL, NULL) == WILLRT_OK);
+    assert(frame.status == WILLRT_CANCELED);
+    willrt_chan_close(chan);
+}
+
 static void test_select_hands_off_from_task(void) {
     willrt_chan* chan = willrt_chan_new(sizeof(int32_t), 1, 0);
     willrt_task* task;
@@ -253,6 +358,9 @@ int main(void) {
     test_channel_order();
     test_channel_crosses_threads();
     test_channel_hands_off_to_waiting_task();
+    test_channel_send_wait();
+    test_channel_wait_deadline();
+    test_channel_wait_cancel();
     test_select_hands_off_from_task();
     test_select_order();
     willrt_shutdown();

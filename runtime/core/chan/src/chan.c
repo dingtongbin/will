@@ -646,11 +646,51 @@ WILLRT_CHAN_SLOW static int32_t willrt_chan_recv_slow(willrt_chan* chan, void* o
 int32_t willrt_chan_recv_wait(willrt_chan* chan, void* out) {
     willrt_task* task;
     willrt_chan_wait* wait;
+    willrt_chan_wait* sender;
 
     if (chan == NULL) {
         return WILLRT_FAILED;
     }
     willrt_os_mutex_lock(&chan->lock);
+    task = willrt_task_current();
+    wait = task == NULL ? NULL : willrt_task_chan_wait_node();
+    if (wait != NULL) {
+        if (wait->ready) {
+            int32_t status = wait->status;
+            wait->ready = 0;
+            willrt_os_mutex_unlock(&chan->lock);
+            return status;
+        }
+        if (wait->linked) {
+            if (willrt_chan_canceled()) {
+                willrt_chan_wait_unlink(&chan->recv_head, &chan->recv_tail, wait);
+                atomic_fetch_sub(&chan->recv_waiters, 1);
+                wait->linked = 0;
+                willrt_os_mutex_unlock(&chan->lock);
+                return WILLRT_CANCELED;
+            }
+            if (willrt_chan_deadline_passed()) {
+                willrt_chan_wait_unlink(&chan->recv_head, &chan->recv_tail, wait);
+                atomic_fetch_sub(&chan->recv_waiters, 1);
+                wait->linked = 0;
+                willrt_os_mutex_unlock(&chan->lock);
+                return WILLRT_TIMEDOUT;
+            }
+            /* A wake on the IO epoch can be unrelated to this channel. Remove
+               the old node and retry the fast paths before parking again. */
+            willrt_chan_wait_unlink(&chan->recv_head, &chan->recv_tail, wait);
+            atomic_fetch_sub(&chan->recv_waiters, 1);
+            wait->linked = 0;
+        }
+    }
+    sender = willrt_chan_wait_pop(&chan->send_head, &chan->send_tail);
+    if (sender != NULL) {
+        atomic_fetch_sub(&chan->send_waiters, 1);
+        (void)willrt_chan_handoff_send(sender, out, chan->elem);
+        willrt_os_mutex_unlock(&chan->lock);
+        willrt_chan_wake_select(chan);
+        return WILLRT_OK;
+    }
     if (chan->count != 0) {
         if (out != NULL) {
             willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
@@ -665,31 +705,106 @@ int32_t willrt_chan_recv_wait(willrt_chan* chan, void* out) {
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_CLOSED;
     }
-    task = willrt_task_current();
-    if (task == NULL) {
+    if (task == NULL || wait == NULL) {
         willrt_os_mutex_unlock(&chan->lock);
         return willrt_chan_recv(chan, out);
     }
-    wait = willrt_task_chan_wait_node();
-    if (wait == NULL) {
+    if (willrt_chan_canceled()) {
         willrt_os_mutex_unlock(&chan->lock);
-        return willrt_chan_recv(chan, out);
+        return WILLRT_CANCELED;
     }
-    if (wait->ready) {
-        int32_t status = wait->status;
-        wait->ready = 0;
+    if (willrt_chan_deadline_passed()) {
         willrt_os_mutex_unlock(&chan->lock);
-        return status;
-    }
-    if (wait->linked) {
-        willrt_os_mutex_unlock(&chan->lock);
-        return WILLRT_SUSPEND;
+        return WILLRT_TIMEDOUT;
     }
     memset(wait, 0, sizeof(*wait));
     wait->task = task;
     wait->out = out;
     willrt_chan_wait_push(&chan->recv_head, &chan->recv_tail, wait, 0);
     atomic_fetch_add(&chan->recv_waiters, 1);
+    willrt_os_mutex_unlock(&chan->lock);
+    return WILLRT_SUSPEND;
+}
+int32_t willrt_chan_send_wait(willrt_chan* chan, const void* value) {
+    willrt_task* task;
+    willrt_chan_wait* wait;
+    willrt_chan_wait* ready;
+    size_t index;
+
+    if (chan == NULL || value == NULL) {
+        return WILLRT_FAILED;
+    }
+    task = willrt_task_current();
+    if (task == NULL) {
+        return willrt_chan_send(chan, value);
+    }
+    willrt_os_mutex_lock(&chan->lock);
+    wait = willrt_task_chan_wait_node();
+    if (wait != NULL && wait->ready) {
+        int32_t status = wait->status;
+        wait->ready = 0;
+        willrt_os_mutex_unlock(&chan->lock);
+        return status;
+    }
+    if (wait != NULL && wait->linked) {
+        if (willrt_chan_canceled()) {
+            willrt_chan_wait_unlink(&chan->send_head, &chan->send_tail, wait);
+            atomic_fetch_sub(&chan->send_waiters, 1);
+            wait->linked = 0;
+            willrt_os_mutex_unlock(&chan->lock);
+            return WILLRT_CANCELED;
+        }
+        if (willrt_chan_deadline_passed()) {
+            willrt_chan_wait_unlink(&chan->send_head, &chan->send_tail, wait);
+            atomic_fetch_sub(&chan->send_waiters, 1);
+            wait->linked = 0;
+            willrt_os_mutex_unlock(&chan->lock);
+            return WILLRT_TIMEDOUT;
+        }
+        /* A wake may have come from an unrelated IO epoch. Drop the old node
+           and retry the direct handoff and ring paths before parking. */
+        willrt_chan_wait_unlink(&chan->send_head, &chan->send_tail, wait);
+        atomic_fetch_sub(&chan->send_waiters, 1);
+        wait->linked = 0;
+    }
+    if (chan->closed) {
+        willrt_os_mutex_unlock(&chan->lock);
+        return WILLRT_CLOSED;
+    }
+    ready = willrt_chan_wait_pop(&chan->recv_head, &chan->recv_tail);
+    if (ready != NULL) {
+        atomic_fetch_sub(&chan->recv_waiters, 1);
+        (void)willrt_chan_handoff_recv(ready, value, chan->elem);
+        willrt_os_mutex_unlock(&chan->lock);
+        willrt_chan_wake_select(chan);
+        return WILLRT_OK;
+    }
+    if (chan->count < chan->cap) {
+        index = willrt_chan_at(chan, chan->count);
+        willrt_chan_copy(chan->data + index * chan->elem, value, chan->elem);
+        chan->count++;
+        willrt_os_mutex_unlock(&chan->lock);
+        willrt_chan_wake_select(chan);
+        return WILLRT_OK;
+    }
+    if (willrt_chan_canceled()) {
+        willrt_os_mutex_unlock(&chan->lock);
+        return WILLRT_CANCELED;
+    }
+    if (willrt_chan_deadline_passed()) {
+        willrt_os_mutex_unlock(&chan->lock);
+        return WILLRT_TIMEDOUT;
+    }
+    if (wait == NULL) {
+        willrt_os_mutex_unlock(&chan->lock);
+        return willrt_chan_send(chan, value);
+    }
+    memset(wait, 0, sizeof(*wait));
+    wait->task = task;
+    wait->value = value;
+    wait->kind = 1;
+    willrt_chan_wait_push(&chan->send_head, &chan->send_tail, wait, 1);
+    atomic_fetch_add(&chan->send_waiters, 1);
     willrt_os_mutex_unlock(&chan->lock);
     return WILLRT_SUSPEND;
 }
@@ -876,7 +991,16 @@ void willrt_chan_close(willrt_chan* chan) {
     while ((wait = willrt_chan_wait_pop(&chan->recv_head,
                                         &chan->recv_tail)) != NULL) {
         atomic_fetch_sub(&chan->recv_waiters, 1);
-        willrt_chan_wait_complete(wait, WILLRT_CLOSED);
+        if (chan->count != 0) {
+            const void* value = chan->data + chan->head * chan->elem;
+
+            if (willrt_chan_handoff_recv(wait, value, chan->elem)) {
+                chan->head = willrt_chan_next(chan->head, chan->cap);
+                chan->count--;
+            }
+        } else {
+            willrt_chan_wait_complete(wait, WILLRT_CLOSED);
+        }
     }
     while ((wait = willrt_chan_wait_pop(&chan->send_head,
                                         &chan->send_tail)) != NULL) {
