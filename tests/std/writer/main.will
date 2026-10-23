@@ -1,3 +1,4 @@
+import "std/fmt"
 import "std/io"
 
 // NullWriter counts the bytes it is asked to write and discards them.
@@ -36,16 +37,68 @@ func sink(w: io.Writer) -> Result<(), Error> {
     return Ok(())
 }
 
+// Recorder notes the first and last byte it was handed and how many there
+// were, so a formatted write can be checked without keeping the bytes.
+var written: usize = 0
+var first: u8 = 0u8
+var last: u8 = 0u8
+
+struct Recorder {
+    pad: usize
+}
+
+func (w: Recorder) AsyncWrite(buf: []u8) -> Result<(), Error> {
+    var i: usize = 0
+    for {
+        if i >= buf.Len() {
+            break
+        }
+        if written == 0usize && i == 0usize {
+            first = buf[i]
+        }
+        last = buf[i]
+        i += 1
+    }
+    written += buf.Len()
+    return Ok(())
+}
+
+func (w: Recorder) AsyncFlush() -> Result<(), Error> {
+    return Ok(())
+}
+
+func CheckPrintf() -> i32 {
+    written = 0usize
+    first = 0u8
+    last = 0u8
+    match fmt.AsyncPrintf(Recorder{pad: 0usize}, "ab", 42i32) {
+        Ok(_) => {}
+        Err(_) => {
+            return 3
+        }
+    }
+    if written != 4usize {
+        return 4
+    }
+    if first != 97u8 || last != 50u8 {
+        return 5
+    }
+    return 0
+}
+
 func main() -> i32 {
+    fmt.AsyncPrintln("writer", 1i32)
     var null: NullWriter = NullWriter{n: 0}
     var wrapped: Wrap = Wrap{inner: null}
     match sink(wrapped) {
-        Ok(_) => {
-            return 0
-        }
+        Ok(_) => {}
         Err(_) => {
             return 1
         }
     }
-    return 2
+    var code: i32 = CheckPrintf()
+    if code != 0 {
+        return code
+    }
+    return 0
 }
