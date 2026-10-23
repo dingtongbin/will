@@ -9,10 +9,18 @@ import (
 	"testing"
 )
 
+// answerIR is a complete program: an executable needs an entry point, and the
+// helper proves that a function the entry calls is linked in.
 const answerIR = `; answer() returns 42
 define i32 @answer() {
 entry:
   ret i32 42
+}
+
+define i32 @main() {
+entry:
+  %r = call i32 @answer()
+  ret i32 %r
 }
 `
 

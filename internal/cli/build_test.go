@@ -3,7 +3,6 @@ package cli
 import (
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -21,9 +20,18 @@ func main() -> i32 {
 }
 `
 
+// hasClang reports whether a clang the build will accept is reachable. The
+// lookup goes through the build's own resolution so WILL_CLANG points the
+// tests at the same driver the build uses.
 func hasClang() bool {
-	_, err := exec.LookPath("clang")
-	return err == nil
+	clang, err := toolchain.FindClang()
+	if err != nil {
+		return false
+	}
+	if _, err := os.Stat(clang.Path); err != nil {
+		return false
+	}
+	return true
 }
 
 // buildWarningSource has one warning and an entry function, so it can be both

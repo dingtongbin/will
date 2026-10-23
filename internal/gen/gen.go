@@ -1376,7 +1376,13 @@ func (g *generator) qualifyTypeText(pkg, text string) string {
 }
 
 // llvmSymbol quotes a symbol whose text is not a plain LLVM identifier.
+// llvmSymbol quotes a name the way LLVM reads it. Besides the characters LLVM
+// rejects outright, a leading digit is invalid in an unquoted identifier, so a
+// package named after a directory that starts with one is quoted too.
 func llvmSymbol(name string) string {
+	if name != "" && name[0] >= '0' && name[0] <= '9' {
+		return `"` + name + `"`
+	}
 	for i := 0; i < len(name); i++ {
 		c := name[i]
 		if c == '_' || c == '.' || c == '-' || c == '$' ||

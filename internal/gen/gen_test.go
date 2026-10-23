@@ -1824,6 +1824,22 @@ func TestArrayMethodsLower(t *testing.T) {
 	}
 }
 
+// TestSymbolQuotesALeadingDigit checks the escape used for a package named
+// after a directory. LLVM reads an unquoted identifier by its first character,
+// so a leading digit has to be quoted even when every character is allowed.
+func TestSymbolQuotesALeadingDigit(t *testing.T) {
+	for _, tc := range []struct{ name, want string }{
+		{"001.will$main", `"001.will$main"`},
+		{"example.com/app.will$main", `"example.com/app.will$main"`},
+		{"app.will$main", "app.will$main"},
+		{"_x1", "_x1"},
+	} {
+		if got := llvmSymbol(tc.name); got != tc.want {
+			t.Errorf("llvmSymbol(%q) = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
 // willcText renders a document for a test message.
 func willcText(t *testing.T, doc *willc.Doc) string {
 	t.Helper()
