@@ -110,6 +110,7 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 // resolves forward references to global values.
 func (g *generator) emitAux() {
 	g.emitBuiltinErrors()
+	g.emitTaskError()
 	g.emitExternalDecls()
 	for _, decl := range g.decls {
 		g.out.WriteString(decl + "\n")
@@ -692,6 +693,8 @@ type generator struct {
 	needCancelBind bool
 	// needReportDecl records that the entry wrapper reports a main Result.
 	needReportDecl bool
+	// needTaskErrorDecl records that Join built a TaskError interface.
+	needTaskErrorDecl bool
 	// needDeadlineDecl records that the lowering scopes a deadline.
 	needDeadlineDecl bool
 	// parallelDepth is nonzero while lowering a parallel block. A spawn inside
@@ -2949,7 +2952,7 @@ func (g *generator) value(id int) (string, error) {
 	case "recv":
 		return "", g.errf(id, "cannot translate node #%d: Recv is a place", id)
 	case "join":
-		return "", g.errf(id, "cannot translate node #%d: Join is only lowered as Join()!", id)
+		return g.lowerJoinResult(r)
 	case "func":
 		if _, ok := g.lambdaNames[r.ID]; ok {
 			return "", g.errf(id, "cannot translate node #%d: a closure is a place, not a scalar", id)

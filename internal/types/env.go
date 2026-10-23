@@ -86,7 +86,7 @@ func buildEnvAll(c *checker, files []*ast.File) *env {
 	for _, name := range scalarNames {
 		e.types[name] = c.in.scalar(name)
 	}
-	for _, name := range []string{"Value", "Duration", "Show", "Error"} {
+	for _, name := range []string{"Value", "Duration", "Show", "Error", "TaskError"} {
 		e.types[name] = c.in.named(name, nil)
 	}
 	e.ifaces["Show"] = []*methodInfo{{name: "Show", sig: &signature{name: "Show", result: c.in.scalar("str")}}}
@@ -94,6 +94,7 @@ func buildEnvAll(c *checker, files []*ast.File) *env {
 		{name: "Message", sig: &signature{name: "Message", result: c.in.scalar("str")}},
 		{name: "Status", sig: &signature{name: "Status", result: c.in.scalar("i32")}},
 	}
+	e.ifaces["TaskError"] = e.ifaces["Error"]
 	for _, f := range files {
 		if f == nil {
 			continue

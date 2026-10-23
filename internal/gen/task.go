@@ -1087,6 +1087,74 @@ func (g *generator) lowerSendResult(r willc.Record) (string, error) {
 	return slot, nil
 }
 
+// lowerJoinResult builds Result<T, TaskError> from a blocking join. Join()!
+// keeps its own panic path; this form is used when the caller wants the error
+// as a value.
+func (g *generator) lowerJoinResult(r willc.Record) (string, error) {
+	taskID := refField(r, "task")
+	taskText, err := g.willTypeText(taskID)
+	if err != nil {
+		return "", err
+	}
+	elem, ok := taskElemText(taskText)
+	if !ok {
+		return "", g.errf(r.ID, "cannot translate node #%d: Join needs a Task", r.ID)
+	}
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok {
+		return "", g.errf(r.ID, "cannot translate node #%d: task value %s is not lowered yet", r.ID, elem)
+	}
+	info, ok := g.adtType("Result<" + elem + ",TaskError>")
+	if !ok {
+		return "", g.errf(r.ID, "cannot translate node #%d: Result<%s, TaskError> is not lowered", r.ID, elem)
+	}
+	task, err := g.value(taskID)
+	if err != nil {
+		return "", err
+	}
+	g.needTaskDecl = true
+	out := ""
+	if elemLLVM != "" {
+		out = g.allocSlot(g.joinOutSlots, "join.out", r.ID, elemLLVM)
+	}
+	errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt_error")
+	status := g.newTmp()
+	if out == "" {
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr null, ptr %s)\n", status, task, errSlot)
+	} else {
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr %s, ptr %s)\n", status, task, out, errSlot)
+	}
+	slot := g.allocSlot(g.adtSlots, "join.result", r.ID, info.llvm)
+	okStatus := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", okStatus, status)
+	g.labels++
+	n := g.labels
+	okLabel := fmt.Sprintf("join.ok.%d", n)
+	errLabel := fmt.Sprintf("join.err.%d", n)
+	endLabel := fmt.Sprintf("join.end.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", okStatus, okLabel, errLabel)
+	g.out.WriteString(okLabel + ":\n")
+	tagPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
+	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", info.tags["Ok"], tagPtr)
+	if out != "" {
+		payload := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
+		g.copyValue(out, payload, elemLLVM)
+	}
+	fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
+	g.out.WriteString(errLabel + ":\n")
+	tagPtr = g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
+	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", info.tags["Err"], tagPtr)
+	payload := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
+	g.taskErrorInto(payload, task)
+	fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
+	g.out.WriteString(endLabel + ":\n")
+	return slot, nil
+}
+
 // lowerClose closes one channel.
 func (g *generator) lowerClose(r willc.Record) error {
 	channel := refField(r, "chan")

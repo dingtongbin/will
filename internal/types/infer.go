@@ -1057,6 +1057,9 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			return c.in.named("Result", []*Type{c.in.unit(), c.in.named("Error", nil)})
 		}
 	case "Join":
+		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "Task" && len(recv.Args()) == 1 {
+			return c.in.named("Result", []*Type{recv.Args()[0], c.in.named("TaskError", nil)})
+		}
 		return nil
 	case "Close":
 		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "chan" {

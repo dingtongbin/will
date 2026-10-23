@@ -84,7 +84,7 @@ var predeclaredTypes = []string{
 	"Array", "Map", "Set",
 	"chan", "rc", "weak", "Task",
 	"Option", "Result", "Value", "Duration",
-	"Show", "Error",
+	"Show", "Error", "TaskError",
 	// Equal and Ord are built-in constraints: they name a property the
 	// compiler implements for each type, and they are only usable as type
 	// parameter constraints.

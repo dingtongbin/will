@@ -242,7 +242,7 @@ func (in *interner) builtin(name string) *Type {
 		return in.scalar(name)
 	}
 	switch name {
-	case "Value", "Duration", "Show", "Error":
+	case "Value", "Duration", "Show", "Error", "TaskError":
 		return in.named(name, nil)
 	}
 	return nil

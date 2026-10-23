@@ -775,7 +775,7 @@ func (g *generator) willTypeText(id int) (string, error) {
 		if !ok {
 			return "", g.errf(id, "cannot translate node #%d: Join needs a Task", id)
 		}
-		return "Result<" + elem + ",Error>", nil
+		return "Result<" + elem + ",TaskError>", nil
 	case "send":
 		return "Result<(),Error>", nil
 	case "close":
@@ -1072,6 +1072,20 @@ func (g *generator) place(id int) (string, string, error) {
 			return "", "", g.errf(id, "cannot translate node #%d: Result<(), Error> is not lowered", id)
 		}
 		return slot, info.llvm, nil
+	case "join":
+		slot, err := g.lowerJoinResult(r)
+		if err != nil {
+			return "", "", err
+		}
+		text, err := g.willTypeText(id)
+		if err != nil {
+			return "", "", err
+		}
+		info, ok := g.adtType(text)
+		if !ok {
+			return "", "", g.errf(id, "cannot translate node #%d: %s is not lowered", id, text)
+		}
+		return slot, info.llvm, nil
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
@@ -1211,8 +1225,6 @@ func (g *generator) place(id int) (string, string, error) {
 		return g.lowerRecvPlace(r)
 	case "tryrecv":
 		return g.lowerTryRecv(r)
-	case "join":
-		return "", "", g.errf(id, "cannot translate node #%d: a Join result is only lowered as Join()!", id)
 	case "try":
 		return g.tryPlace(r)
 	case "unwrap":

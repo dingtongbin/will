@@ -559,6 +559,27 @@ willrt_chan_wait* willrt_task_chan_wait_node(void) {
     return willrt_task_self == NULL ? NULL : &willrt_task_self->chan_wait;
 }
 
+void willrt_task_error_message(void* raw, const char** data, size_t* size) {
+    struct willrt_task* task = (struct willrt_task*)raw;
+
+    if (task == NULL) {
+        *data = "";
+        *size = 0;
+        return;
+    }
+    *data = task->message != NULL ? task->message : "";
+    *size = task->message_size;
+}
+
+int32_t willrt_task_error_status(void* raw) {
+    struct willrt_task* task = (struct willrt_task*)raw;
+
+    if (task == NULL) {
+        return 0;
+    }
+    return task->canceled ? 8 : 0;
+}
+
 int32_t willrt_task_store_result(const void* value, size_t size) {
     struct willrt_task* task = willrt_task_self;
     unsigned char* copy;

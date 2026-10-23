@@ -63,7 +63,7 @@ func (g *generator) typeLLVMOf(text string) (string, bool) {
 	if text == "()" {
 		return "", true
 	}
-	if text == "Error" {
+	if text == "Error" || text == "TaskError" {
 		g.usedError = true
 		return "%interface.Error", true
 	}

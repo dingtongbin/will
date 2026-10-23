@@ -428,6 +428,11 @@ void willrt_panic_n(const char* message, size_t size, const char* site, const ch
 /* willrt_report_write_n writes bytes that need not be NUL-terminated. */
 void willrt_report_write_n(const char* text, size_t size);
 
+/* TaskError reads the failure text and status from one finished task. The
+   task object stays alive after Join, so the interface may point at it. */
+void willrt_task_error_message(void* task, const char** data, size_t* size);
+int32_t willrt_task_error_status(void* task);
+
 
 /* print writes its parts to standard output without buffering. A str part is
    bytes and a length; the scalar parts are formatted by the runtime. */

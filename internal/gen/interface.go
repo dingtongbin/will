@@ -40,6 +40,7 @@ func (g *generator) buildInterfaces() {
 		}
 	}
 	g.ifaceByName["Error"] = g.errorIface
+	g.ifaceByName["TaskError"] = g.errorIface
 	g.ifaceByLLVM["%interface.Error"] = g.errorIface
 	var ifaces []willc.Record
 	for _, r := range g.recs {
@@ -110,6 +111,9 @@ func isIfaceType(typ string) bool {
 // ifaceOfText returns the interface a type text names, when this document has
 // its declaration.
 func (g *generator) ifaceOfText(text string) (*ifaceInfo, bool) {
+	if text == "TaskError" {
+		text = "Error"
+	}
 	if info := g.ifaceByName[text]; info != nil {
 		if info == g.errorIface {
 			g.usedError = true
