@@ -1,6 +1,6 @@
-// Poller is the readiness source for std/io. The runtime poller already owns
-// the registration thread; this type keeps a small synchronous view for code
-// that needs to wait for a set of descriptors.
+// Poller is the readiness source for std/io. Each instance owns its descriptor
+// set and passes it to the runtime for one scan at a time; there is no registry
+// to fill up, and the cost of a scan is one pass over this instance's entries.
 import "std/errors"
 
 import c "../../runtime/core/poll/src/poll.c" {
@@ -8,8 +8,9 @@ import c "../../runtime/core/poll/src/poll.c" {
     fast willrt_poll_wait_async
 }
 
-// Poller holds one registration per descriptor. Add and Remove are constant
-// time for the small tables this API targets.
+// Poller holds one registration per descriptor, so the wait can rebuild the
+// runtime's parallel arrays from it. Remove is a linear scan because the
+// descriptors are kept in registration order for a stable report.
 struct Poller {
     fds: Array<i64>
     events: Array<u32>

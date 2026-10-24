@@ -1,14 +1,12 @@
 /* One poller thread for ready-event delivery.
  *
- * The thread serves two clients. A persistent registration is one descriptor,
- * one event mask, and one callback; the callback runs outside the lock and may
- * add, delete, or replace registrations for the next pass. A poll request is
- * the task-embedded wait of std/io.Poller.AsyncNext: the task parks with its
- * request linked into a pending list, the poller copies the descriptor set
- * into its own buffer, waits once for the whole batch, and appends ready tags
- * straight into the waiting task's out array before waking the task's lane.
- * One pass therefore costs one kernel wait for every waiter, and a delivery
- * takes each lane lock once for all the tasks it completes.
+ * The thread serves one client: a poll request, which is the task-embedded wait
+ * of std/io.Poller.AsyncNext. The task parks with its request linked into a
+ * pending list, the poller copies the descriptor set into its own buffer, waits
+ * once for the whole batch, and appends ready tags straight into the waiting
+ * task's out array before waking the task's lane. One pass therefore costs one
+ * kernel wait for every waiter, and a delivery takes each lane lock once for
+ * all the tasks it completes.
  *
  * A request is one-shot. The deadline lives on the request and the task arms
  * its own park timer for it, so either side can finish the wait: the poller
@@ -29,10 +27,8 @@
  * uncancelable C call, park the task, and wake the owner directly. When the
  * platform layer gains a completion interface, those moves onto the poller.
  *
- * The registration table grows on demand, so the number of registered
- * descriptors is limited by memory rather than by a constant. The table is not
- * a general file descriptor registry: each descriptor appears once, and a
- * second add for the same descriptor replaces the first.
+ * The descriptor set belongs to the caller for the length of one call, so the
+ * poller holds no registry and has no capacity of its own.
  */
 
 #include "../../../include/willrt.h"
@@ -61,23 +57,6 @@ typedef struct pollfd willrt_poll_fdstruct;
 #define WILLRT_POLL_ERROR (POLLERR | POLLHUP | POLLNVAL)
 #endif
 
-enum { WILLRT_POLL_FIRST = 256 };
-
-struct willrt_poll_entry {
-    int32_t used;
-    int64_t fd;
-    uint32_t events;
-    willrt_poll_fn cb;
-    void* arg;
-};
-
-/* The table grows on demand, so the number of registered descriptors is
-   limited by memory, not by a constant. It lives under willrt_poll_lock. The
-   poller thread keeps its own snapshot of the table, because callbacks run
-   outside the lock and a growth in between must not free what the pass is
-   still reading. */
-static struct willrt_poll_entry* willrt_poll_entries;
-static size_t willrt_poll_capacity;
 static willrt_os_mutex willrt_poll_lock;
 static willrt_os_thread willrt_poll_thread;
 static atomic_int willrt_poll_state;
@@ -190,21 +169,6 @@ static void willrt_poll_wake_close(void) {
         willrt_poll_wake_send = -1;
     }
 #endif
-}
-
-static uint32_t willrt_poll_events(short revents) {
-    uint32_t events = 0;
-
-    if ((revents & WILLRT_POLL_INPUT) != 0) {
-        events |= WILLRT_POLL_IN;
-    }
-    if ((revents & WILLRT_POLL_OUTPUT) != 0) {
-        events |= WILLRT_POLL_OUT;
-    }
-    if ((revents & WILLRT_POLL_ERROR) != 0) {
-        events |= WILLRT_POLL_ERR;
-    }
-    return events;
 }
 
 static short willrt_poll_native_events(uint32_t events) {
@@ -332,105 +296,25 @@ static int32_t willrt_poll_batch_grow(int64_t fds, int64_t segs,
     return 0;
 }
 
-/* willrt_poll_reserve makes room for need registrations. It runs under
-   willrt_poll_lock; the poller thread reads the table under the same lock, so
-   it never sees a partially grown one. */
-static int willrt_poll_reserve(size_t need) {
-    size_t next = willrt_poll_capacity == 0 ? WILLRT_POLL_FIRST
-                                            : willrt_poll_capacity;
-    struct willrt_poll_entry* entries;
-
-    while (next < need) {
-        if (next > SIZE_MAX / 2) {
-            return 0;
-        }
-        next *= 2;
-    }
-    if (next == willrt_poll_capacity) {
-        return 1;
-    }
-    entries = (struct willrt_poll_entry*)willrt_alloc(
-        next * sizeof(*entries));
-    if (entries == NULL) {
-        return 0;
-    }
-    memset(entries, 0, next * sizeof(*entries));
-    if (willrt_poll_capacity != 0) {
-        memcpy(entries, willrt_poll_entries,
-               willrt_poll_capacity * sizeof(*entries));
-        willrt_free(willrt_poll_entries);
-    }
-    willrt_poll_entries = entries;
-    willrt_poll_capacity = next;
-    return 1;
-}
-
-/* willrt_poll_snapshot_grow keeps the poller thread's copy at least as large
-   as the table. It runs on that thread only, so the old block is dead. */
-static int willrt_poll_snapshot_grow(struct willrt_poll_entry** snapshot,
-                                     uint32_t** masks, size_t* cap,
-                                     size_t need) {
-    size_t next = *cap == 0 ? WILLRT_POLL_FIRST : *cap;
-    struct willrt_poll_entry* next_entries;
-    uint32_t* next_masks;
-
-    while (next < need) {
-        if (next > SIZE_MAX / 2) {
-            return 0;
-        }
-        next *= 2;
-    }
-    next_entries = (struct willrt_poll_entry*)willrt_alloc(
-        next * sizeof(*next_entries));
-    next_masks = (uint32_t*)willrt_alloc(next * sizeof(*next_masks));
-    if (next_entries == NULL || next_masks == NULL) {
-        willrt_free(next_entries);
-        willrt_free(next_masks);
-        return 0;
-    }
-    willrt_free(*snapshot);
-    willrt_free(*masks);
-    *snapshot = next_entries;
-    *masks = next_masks;
-    *cap = next;
-    return 1;
-}
-
+/* The poller thread serves parked requests and nothing else: it builds one
+   native batch from every pending request, waits at most 100 ms, appends the
+   ready user tags into each request's own out array, and wakes the owners in
+   one batch. Its wake pipe ends the wait early, so a new request is picked up
+   at once. */
 static void willrt_poll_main(void* ignored) {
-    struct willrt_poll_entry* snapshot = NULL;
-    uint32_t* masks = NULL;
-    size_t snapshot_cap = 0;
-
     (void)ignored;
     willrt_mem_set_lane(0);
     (void)willrt_poll_batch_grow(64, 8, 8);
     while (atomic_load(&willrt_poll_stop) == 0) {
         size_t count = 0;
-        size_t live = 0;
         int64_t seg_count = 0;
         int64_t delivered = 0;
-        int64_t i;
         int64_t s;
         int ready;
 
         willrt_os_mutex_lock(&willrt_poll_lock);
-        if (willrt_poll_capacity > snapshot_cap
-            && !willrt_poll_snapshot_grow(&snapshot, &masks, &snapshot_cap,
-                                          willrt_poll_capacity)) {
-            willrt_os_mutex_unlock(&willrt_poll_lock);
-            willrt_os_sleep_ns(1000000);
-            continue;
-        }
-        for (i = 0; i < (int64_t)willrt_poll_capacity; i++) {
-            if (!willrt_poll_entries[i].used) {
-                continue;
-            }
-            snapshot[live] = willrt_poll_entries[i];
-            masks[live] = willrt_poll_entries[i].events;
-            live++;
-        }
         {
-            int64_t needed = (int64_t)live + 1;
+            int64_t needed = 1;
 
             for (willrt_poll_request* req = willrt_poll_requests; req != NULL;
                  req = req->next) {
@@ -444,13 +328,6 @@ static void willrt_poll_main(void* ignored) {
                 willrt_os_mutex_unlock(&willrt_poll_lock);
                 willrt_os_sleep_ns(1000000);
                 continue;
-            }
-            for (i = 0; i < (int64_t)live; i++) {
-                willrt_poll_batch[count].fd = (willrt_poll_fd)snapshot[i].fd;
-                willrt_poll_batch[count].events =
-                    willrt_poll_native_events(masks[i]);
-                willrt_poll_batch[count].revents = 0;
-                count++;
             }
             s = 0;
             for (willrt_poll_request* req = willrt_poll_requests; req != NULL;
@@ -530,24 +407,12 @@ static void willrt_poll_main(void* ignored) {
             if (delivered > 0) {
                 willrt_task_wake_batch(willrt_poll_batch_waiters, delivered);
             }
-            for (i = 0; i < (int64_t)live; i++) {
-                uint32_t events = willrt_poll_events(willrt_poll_batch[i].revents);
-
-                if (events == 0 || snapshot[i].cb == NULL) {
-                    continue;
-                }
-                snapshot[i].cb(snapshot[i].fd,
-                               events & (masks[i] | WILLRT_POLL_ERR),
-                               snapshot[i].arg);
-            }
             if ((willrt_poll_batch[count - 1].revents & WILLRT_POLL_INPUT)
                 != 0) {
                 willrt_poll_drain();
             }
         }
     }
-    willrt_free(snapshot);
-    willrt_free(masks);
     willrt_mem_thread_flush();
 }
 
@@ -572,16 +437,6 @@ void willrt_poll_init(void) {
             return;
         }
         willrt_poll_lock_init();
-        if (!willrt_poll_reserve(WILLRT_POLL_FIRST)) {
-            willrt_poll_wake_close();
-            willrt_os_mutex_destroy(&willrt_poll_lock);
-            atomic_store(&willrt_poll_lock_state, 0);
-#ifdef _WIN32
-            (void)WSACleanup();
-#endif
-            atomic_store(&willrt_poll_state, 0);
-            return;
-        }
         atomic_store(&willrt_poll_stop, 0);
         willrt_rc_set_threaded();
         willrt_mem_set_shared();
@@ -871,9 +726,6 @@ void willrt_poll_shutdown(void) {
     willrt_poll_wake_close();
     willrt_os_mutex_destroy(&willrt_poll_lock);
     atomic_store(&willrt_poll_lock_state, 0);
-    willrt_free(willrt_poll_entries);
-    willrt_poll_entries = NULL;
-    willrt_poll_capacity = 0;
     willrt_poll_requests = NULL;
 #ifdef _WIN32
     (void)WSACleanup();
@@ -881,70 +733,3 @@ void willrt_poll_shutdown(void) {
     atomic_store(&willrt_poll_state, 0);
 }
 
-int32_t willrt_poll_add(int64_t fd, uint32_t events, void* cb, void* arg) {
-    int32_t result = WILLRT_FULL;
-    int32_t free_slot = -1;
-    int32_t i;
-
-    willrt_poll_init();
-    if (atomic_load(&willrt_poll_state) != 2) {
-        return WILLRT_FAILED;
-    }
-    if (cb == NULL || events == 0 || fd < 0) {
-        return WILLRT_FAILED;
-    }
-    willrt_os_mutex_lock(&willrt_poll_lock);
-    for (i = 0; i < (int32_t)willrt_poll_capacity; i++) {
-        if (willrt_poll_entries[i].used
-            && willrt_poll_entries[i].fd == fd) {
-            willrt_poll_entries[i].events = events;
-            willrt_poll_entries[i].cb = (willrt_poll_fn)cb;
-            willrt_poll_entries[i].arg = arg;
-            result = WILLRT_OK;
-            break;
-        }
-        if (!willrt_poll_entries[i].used && free_slot < 0) {
-            free_slot = i;
-        }
-    }
-    if (result != WILLRT_OK && free_slot < 0) {
-        /* The table is full: grow it and take the first new slot. */
-        size_t grown = willrt_poll_capacity;
-
-        if (willrt_poll_reserve(grown + 1)) {
-            free_slot = (int32_t)grown;
-        }
-    }
-    if (result != WILLRT_OK && free_slot >= 0) {
-        willrt_poll_entries[free_slot].used = 1;
-        willrt_poll_entries[free_slot].fd = fd;
-        willrt_poll_entries[free_slot].events = events;
-        willrt_poll_entries[free_slot].cb = (willrt_poll_fn)cb;
-        willrt_poll_entries[free_slot].arg = arg;
-        result = WILLRT_OK;
-    }
-    willrt_os_mutex_unlock(&willrt_poll_lock);
-    willrt_poll_wake();
-    return result;
-}
-
-int32_t willrt_poll_del(int64_t fd) {
-    int32_t found = WILLRT_EMPTY;
-    int32_t i;
-
-    if (atomic_load(&willrt_poll_state) != 2) {
-        return WILLRT_EMPTY;
-    }
-    willrt_os_mutex_lock(&willrt_poll_lock);
-    for (i = 0; i < (int32_t)willrt_poll_capacity; i++) {
-        if (willrt_poll_entries[i].used && willrt_poll_entries[i].fd == fd) {
-            willrt_poll_entries[i].used = 0;
-            willrt_poll_entries[i].cb = NULL;
-            found = WILLRT_OK;
-            break;
-        }
-    }
-    willrt_os_mutex_unlock(&willrt_poll_lock);
-    willrt_poll_wake();
-    return found;
-}

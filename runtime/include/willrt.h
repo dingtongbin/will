@@ -200,10 +200,11 @@ int64_t willrt_now_ns(void);
 /* -------------------------------------------------------------------------
    Poller and blocking pool.
 
-   A poller registration names one descriptor, the events it waits for, and one
-   callback. The poller calls the callback with the ready subset; the callback
-   may add or delete registrations. Windows accepts sockets only, because
-   WSAPoll has no file-handle form; POSIX accepts any pollable descriptor.
+   A poll request carries the descriptor array, the event masks, and the caller's
+   user tags for one readiness scan. The task parks with the request; the poller
+   waits for the whole batch and appends the ready tags into the caller's out
+   array before waking the task. Windows accepts sockets only, because WSAPoll
+   has no file-handle form; POSIX accepts any pollable descriptor.
    ------------------------------------------------------------------------- */
 
 enum {
@@ -212,16 +213,10 @@ enum {
     WILLRT_POLL_ERR = 4
 };
 
-/* willrt_poll_fn is called on the poller thread. It must not block for long;
-   a task wake or a short handoff belongs here, a request handler does not. */
-typedef void (*willrt_poll_fn)(int64_t fd, uint32_t events, void* arg);
-
-/* willrt_poll_init starts the poller once. willrt_poll_add calls it lazily;
-   willrt_shutdown calls willrt_poll_shutdown after all tasks have joined. */
+/* willrt_poll_init starts the poller once; willrt_shutdown calls
+   willrt_poll_shutdown after all tasks have joined. */
 void willrt_poll_init(void);
 void willrt_poll_shutdown(void);
-int32_t willrt_poll_add(int64_t fd, uint32_t events, void* cb, void* arg);
-int32_t willrt_poll_del(int64_t fd);
 
 /* willrt_poll_request is the task-embedded wait for one readiness scan. The
    task parks with the request linked into the poller's pending list; the
@@ -253,6 +248,13 @@ struct willrt_poll_request {
     struct willrt_poll_request* next;
     void* waiter;
 };
+
+/* willrt_poll_wait performs one blocking readiness scan over parallel arrays of
+   descriptors, event masks, and user tags, and appends the ready tags into out
+   in input order. It is the synchronous spelling of a scan; the descriptor set
+   belongs to the caller, so the cost is one pass over it per call. */
+int32_t willrt_poll_wait(const void* fds, const void* events, const void* users,
+                         int64_t count, int64_t timeout_ns, void* out);
 
 /* willrt_poll_wait_async is the machine-declined fallback: one synchronous
    readiness scan that blocks the calling thread. Generated state machines use
