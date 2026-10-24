@@ -380,7 +380,7 @@ int32_t willrt_chan_try_send(willrt_chan* chan, const void* value) {
     return willrt_chan_try_send_slow(chan, value);
 }
 
-WILLRT_CHAN_SLOW static int32_t willrt_chan_try_send_slow(willrt_chan* chan, const void* value) {
+static int32_t willrt_chan_try_send_slow(willrt_chan* chan, const void* value) {
     willrt_chan_wait* wait;
     size_t index;
     int32_t result = WILLRT_OK;
@@ -549,7 +549,7 @@ int32_t willrt_chan_try_recv(willrt_chan* chan, void* out) {
     return willrt_chan_try_recv_slow(chan, out);
 }
 
-WILLRT_CHAN_SLOW static int32_t willrt_chan_try_recv_slow(willrt_chan* chan, void* out) {
+static int32_t willrt_chan_try_recv_slow(willrt_chan* chan, void* out) {
     willrt_chan_wait* wait;
     int32_t result = WILLRT_OK;
 
