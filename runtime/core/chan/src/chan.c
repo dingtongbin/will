@@ -53,20 +53,10 @@ typedef struct willrt_select_ctx {
 struct willrt_chan {
     willrt_os_mutex lock;
     unsigned char* data;
-    _Atomic(size_t)* seq;
     size_t elem;
     size_t cap;
-    /* The ring is MPMC: a producer claims the next enqueue position, writes
-       the slot, then publishes the slot sequence; a consumer does the mirror
-       image. The per-slot sequence makes a failed CAS harmless. */
-    _Atomic(size_t) enqueue_pos;
-    _Atomic(size_t) dequeue_pos;
-    /* A one-slot channel uses a filled flag: the per-slot sequence alone
-       cannot distinguish the next wrap from a free slot at capacity one. */
-    _Atomic(int32_t) one_full;
-    /* active counts ring operations that do not hold the waiter lock, so close
-       can wait for them before it drains the ring. */
-    _Atomic(size_t) active;
+    size_t head;
+    size_t count;
     willrt_chan_wait* recv_head;
     willrt_chan_wait* recv_tail;
     willrt_chan_wait* send_head;
@@ -75,12 +65,27 @@ struct willrt_chan {
        the select wake path. */
     _Atomic(size_t) recv_waiters;
     _Atomic(size_t) send_waiters;
-    _Atomic(int32_t) closed;
+    int32_t closed;
     int32_t prio;
 };
 
 static int64_t willrt_chan_step(void) {
     return INT64_C(10) * INT64_C(1000000);
+}
+
+/* A ring index is head + offset modulo cap. Both terms are below cap, so one
+   subtraction replaces the division the source form would emit. */
+static size_t willrt_chan_at(const willrt_chan* chan, size_t offset) {
+    size_t at = chan->head + offset;
+    if (at >= chan->cap) {
+        at -= chan->cap;
+    }
+    return at;
+}
+
+static size_t willrt_chan_next(size_t at, size_t cap) {
+    at++;
+    return at == cap ? 0 : at;
 }
 
 /* Elements are usually 1, 2, 4, or 8 bytes, and the allocator gives the ring
@@ -103,96 +108,6 @@ static void willrt_chan_copy(void* dst, const void* src, size_t elem) {
         return;
     }
     memcpy(dst, src, elem);
-}
-
-/* chan_ring_send appends one value without the waiter lock. It returns
-   WILLRT_OK, WILLRT_FULL, or WILLRT_CLOSED. The closed read is advisory; the
-   caller rechecks it under the waiter lock when it matters. */
-static int32_t chan_ring_send(willrt_chan* chan, const void* value) {
-    size_t pos;
-    int32_t expected;
-
-    if (chan->cap == 1) {
-        expected = 0;
-        if (!atomic_compare_exchange_strong_explicit(
-                &chan->one_full, &expected, 1, memory_order_acq_rel,
-                memory_order_relaxed)) {
-            return WILLRT_FULL;
-        }
-        willrt_chan_copy(chan->data, value, chan->elem);
-        return WILLRT_OK;
-    }
-    pos = atomic_load_explicit(&chan->enqueue_pos, memory_order_relaxed);
-    for (;;) {
-        size_t index = pos % chan->cap;
-        size_t seq = atomic_load_explicit(&chan->seq[index],
-                                          memory_order_acquire);
-        intptr_t diff = (intptr_t)seq - (intptr_t)pos;
-
-        if (diff == 0) {
-            if (atomic_compare_exchange_weak_explicit(
-                    &chan->enqueue_pos, &pos, pos + 1, memory_order_relaxed,
-                    memory_order_relaxed)) {
-                willrt_chan_copy(chan->data + index * chan->elem, value,
-                                 chan->elem);
-                atomic_store_explicit(&chan->seq[index], pos + 1,
-                                      memory_order_release);
-                return WILLRT_OK;
-            }
-        } else if (diff < 0) {
-            return WILLRT_FULL;
-        } else {
-            pos = atomic_load_explicit(&chan->enqueue_pos,
-                                       memory_order_relaxed);
-        }
-    }
-}
-
-/* chan_ring_recv removes the oldest value without the waiter lock. It returns
-   WILLRT_OK or WILLRT_EMPTY. The caller decides what an empty closed ring
-   means. */
-static int32_t chan_ring_recv(willrt_chan* chan, void* out) {
-    size_t pos;
-    int32_t expected;
-
-    if (chan->cap == 1) {
-        expected = 1;
-        if (!atomic_compare_exchange_strong_explicit(
-                &chan->one_full, &expected, 0, memory_order_acq_rel,
-                memory_order_relaxed)) {
-            return WILLRT_EMPTY;
-        }
-        if (out != NULL) {
-            willrt_chan_copy(out, chan->data, chan->elem);
-        }
-        return WILLRT_OK;
-    }
-    pos = atomic_load_explicit(&chan->dequeue_pos, memory_order_relaxed);
-    for (;;) {
-        size_t index = pos % chan->cap;
-        size_t seq = atomic_load_explicit(&chan->seq[index],
-                                          memory_order_acquire);
-        intptr_t diff = (intptr_t)seq - (intptr_t)(pos + 1);
-
-        if (diff == 0) {
-            if (atomic_compare_exchange_weak_explicit(
-                    &chan->dequeue_pos, &pos, pos + 1, memory_order_relaxed,
-                    memory_order_relaxed)) {
-                if (out != NULL) {
-                    willrt_chan_copy(out, chan->data + index * chan->elem,
-                                     chan->elem);
-                }
-                atomic_store_explicit(&chan->seq[index], pos + chan->cap,
-                                      memory_order_release);
-                return WILLRT_OK;
-            }
-        } else if (diff < 0) {
-            return WILLRT_EMPTY;
-        } else {
-            pos = atomic_load_explicit(&chan->dequeue_pos,
-                                       memory_order_relaxed);
-        }
-    }
 }
 
 /* Claims the select before copying a value. The first channel that claims wins;
@@ -388,23 +303,9 @@ willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio) {
         willrt_free(chan);
         return NULL;
     }
-    chan->seq = (_Atomic(size_t)*)willrt_alloc(sizeof(_Atomic(size_t)) * cap);
-    if (chan->seq == NULL) {
-        willrt_free(chan->data);
-        willrt_free(chan);
-        return NULL;
-    }
-    for (size_t i = 0; i < cap; i++) {
-        atomic_init(&chan->seq[i], i);
-    }
     chan->elem = elem;
     chan->cap = cap;
     chan->prio = prio;
-    atomic_init(&chan->enqueue_pos, 0);
-    atomic_init(&chan->dequeue_pos, 0);
-    atomic_init(&chan->one_full, 0);
-    atomic_init(&chan->active, 0);
-    atomic_init(&chan->closed, 0);
     willrt_os_mutex_init(&chan->lock);
     return chan;
 }
@@ -412,50 +313,85 @@ willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio) {
 static int32_t willrt_chan_try_send_slow(willrt_chan* chan, const void* value);
 
 int32_t willrt_chan_try_send(willrt_chan* chan, const void* value) {
+    size_t index;
+
     if (chan == NULL || value == NULL) {
         return WILLRT_FAILED;
     }
     if (!willrt_runtime_threaded()) {
-        if (atomic_load_explicit(&chan->closed, memory_order_acquire)) {
+        if (chan->closed) {
             return WILLRT_CLOSED;
         }
-        return chan_ring_send(chan, value);
+        if (chan->count == chan->cap) {
+            return WILLRT_FULL;
+        }
+        index = willrt_chan_at(chan, chan->count);
+        willrt_chan_copy(chan->data + index * chan->elem, value, chan->elem);
+        chan->count++;
+        return WILLRT_OK;
     }
     return willrt_chan_try_send_slow(chan, value);
 }
 
 WILLRT_CHAN_SLOW static int32_t willrt_chan_try_send_slow(willrt_chan* chan, const void* value) {
     willrt_chan_wait* wait;
+    size_t index;
     int32_t result = WILLRT_OK;
 
     if (chan == NULL || value == NULL) {
         return WILLRT_FAILED;
     }
+    if (!willrt_runtime_threaded()) {
+        if (chan->closed) {
+            return WILLRT_CLOSED;
+        }
+        if (chan->count == chan->cap) {
+            return WILLRT_FULL;
+        }
+        index = willrt_chan_at(chan, chan->count);
+        willrt_chan_copy(chan->data + index * chan->elem, value, chan->elem);
+        chan->count++;
+        return WILLRT_OK;
+    }
     willrt_os_mutex_lock(&chan->lock);
-    if (atomic_load_explicit(&chan->closed, memory_order_acquire)) {
+    if (chan->closed) {
         result = WILLRT_CLOSED;
     } else if ((wait = willrt_chan_wait_pop(&chan->recv_head,
                                             &chan->recv_tail)) != NULL) {
         atomic_fetch_sub(&chan->recv_waiters, 1);
         (void)willrt_chan_handoff_recv(wait, value, chan->elem);
+    } else if (chan->count == chan->cap) {
+        result = WILLRT_FULL;
     } else {
-        result = chan_ring_send(chan, value);
+        index = willrt_chan_at(chan, chan->count);
+        willrt_chan_copy(chan->data + index * chan->elem, value, chan->elem);
+        chan->count++;
     }
     willrt_os_mutex_unlock(&chan->lock);
+    if (result == WILLRT_OK) {
+    }
     return result;
 }
 
 static int32_t willrt_chan_send_slow(willrt_chan* chan, const void* value);
 
 int32_t willrt_chan_send(willrt_chan* chan, const void* value) {
+    size_t index;
+
     if (chan == NULL || value == NULL) {
         return WILLRT_FAILED;
     }
     if (!willrt_runtime_threaded()) {
-        if (atomic_load_explicit(&chan->closed, memory_order_acquire)) {
+        if (chan->closed) {
             return WILLRT_CLOSED;
         }
-        return chan_ring_send(chan, value);
+        if (chan->count == chan->cap) {
+            return WILLRT_FULL;
+        }
+        index = willrt_chan_at(chan, chan->count);
+        willrt_chan_copy(chan->data + index * chan->elem, value, chan->elem);
+        chan->count++;
+        return WILLRT_OK;
     }
     return willrt_chan_send_slow(chan, value);
 }
@@ -468,9 +404,22 @@ WILLRT_CHAN_SLOW static int32_t willrt_chan_send_slow(willrt_chan* chan, const v
     if (chan == NULL || value == NULL) {
         return WILLRT_FAILED;
     }
+    if (!willrt_runtime_threaded()) {
+        size_t index;
+        if (chan->closed) {
+            return WILLRT_CLOSED;
+        }
+        if (chan->count == chan->cap) {
+            return WILLRT_FULL;
+        }
+        index = willrt_chan_at(chan, chan->count);
+        willrt_chan_copy(chan->data + index * chan->elem, value, chan->elem);
+        chan->count++;
+        return WILLRT_OK;
+    }
     memset(&wait, 0, sizeof(wait));
     willrt_os_mutex_lock(&chan->lock);
-    if (atomic_load_explicit(&chan->closed, memory_order_acquire)) {
+    if (chan->closed) {
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_CLOSED;
     }
@@ -481,8 +430,11 @@ WILLRT_CHAN_SLOW static int32_t willrt_chan_send_slow(willrt_chan* chan, const v
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_OK;
     }
-    result = chan_ring_send(chan, value);
-    if (result == WILLRT_OK) {
+    if (chan->count < chan->cap) {
+        size_t index = willrt_chan_at(chan, chan->count);
+
+        willrt_chan_copy(chan->data + index * chan->elem, value, chan->elem);
+        chan->count++;
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_OK;
     }
@@ -526,14 +478,15 @@ int32_t willrt_chan_try_recv(willrt_chan* chan, void* out) {
         return WILLRT_FAILED;
     }
     if (!willrt_runtime_threaded()) {
-        int32_t result = chan_ring_recv(chan, out);
-
-        if (result == WILLRT_OK) {
+        if (chan->count != 0) {
+            if (out != NULL) {
+                willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
+            }
+            chan->head = willrt_chan_next(chan->head, chan->cap);
+            chan->count--;
             return WILLRT_OK;
         }
-        return atomic_load_explicit(&chan->closed, memory_order_acquire)
-                   ? WILLRT_CLOSED
-                   : WILLRT_EMPTY;
+        return chan->closed ? WILLRT_CLOSED : WILLRT_EMPTY;
     }
     return willrt_chan_try_recv_slow(chan, out);
 }
@@ -545,19 +498,35 @@ WILLRT_CHAN_SLOW static int32_t willrt_chan_try_recv_slow(willrt_chan* chan, voi
     if (chan == NULL) {
         return WILLRT_FAILED;
     }
+    if (!willrt_runtime_threaded()) {
+        if (chan->count != 0) {
+            if (out != NULL) {
+                willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
+            }
+            chan->head = willrt_chan_next(chan->head, chan->cap);
+            chan->count--;
+            return WILLRT_OK;
+        }
+        return chan->closed ? WILLRT_CLOSED : WILLRT_EMPTY;
+    }
     willrt_os_mutex_lock(&chan->lock);
     if ((wait = willrt_chan_wait_pop(&chan->send_head, &chan->send_tail)) != NULL) {
         atomic_fetch_sub(&chan->send_waiters, 1);
         (void)willrt_chan_handoff_send(wait, out, chan->elem);
-    } else {
-        result = chan_ring_recv(chan, out);
-        if (result == WILLRT_EMPTY) {
-            result = atomic_load_explicit(&chan->closed, memory_order_acquire)
-                         ? WILLRT_CLOSED
-                         : WILLRT_EMPTY;
+    } else if (chan->count != 0) {
+        if (out != NULL) {
+            willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
         }
+        chan->head = willrt_chan_next(chan->head, chan->cap);
+        chan->count--;
+    } else if (chan->closed) {
+        result = WILLRT_CLOSED;
+    } else {
+        result = WILLRT_EMPTY;
     }
     willrt_os_mutex_unlock(&chan->lock);
+    if (result == WILLRT_OK) {
+    }
     return result;
 }
 
@@ -568,14 +537,15 @@ int32_t willrt_chan_recv(willrt_chan* chan, void* out) {
         return WILLRT_FAILED;
     }
     if (!willrt_runtime_threaded()) {
-        int32_t result = chan_ring_recv(chan, out);
-
-        if (result == WILLRT_OK) {
+        if (chan->count != 0) {
+            if (out != NULL) {
+                willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
+            }
+            chan->head = willrt_chan_next(chan->head, chan->cap);
+            chan->count--;
             return WILLRT_OK;
         }
-        return atomic_load_explicit(&chan->closed, memory_order_acquire)
-                   ? WILLRT_CLOSED
-                   : WILLRT_EMPTY;
+        return chan->closed ? WILLRT_CLOSED : WILLRT_EMPTY;
     }
     return willrt_chan_recv_slow(chan, out);
 }
@@ -583,10 +553,21 @@ int32_t willrt_chan_recv(willrt_chan* chan, void* out) {
 WILLRT_CHAN_SLOW static int32_t willrt_chan_recv_slow(willrt_chan* chan, void* out) {
     willrt_chan_wait wait;
     willrt_chan_wait* ready;
-    int32_t result;
+    int32_t result = WILLRT_OK;
 
     if (chan == NULL) {
         return WILLRT_FAILED;
+    }
+    if (!willrt_runtime_threaded()) {
+        if (chan->count != 0) {
+            if (out != NULL) {
+                willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
+            }
+            chan->head = willrt_chan_next(chan->head, chan->cap);
+            chan->count--;
+            return WILLRT_OK;
+        }
+        return chan->closed ? WILLRT_CLOSED : WILLRT_EMPTY;
     }
     memset(&wait, 0, sizeof(wait));
     wait.out = out;
@@ -598,12 +579,16 @@ WILLRT_CHAN_SLOW static int32_t willrt_chan_recv_slow(willrt_chan* chan, void* o
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_OK;
     }
-    result = chan_ring_recv(chan, out);
-    if (result == WILLRT_OK) {
+    if (chan->count != 0) {
+        if (out != NULL) {
+            willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
+        }
+        chan->head = willrt_chan_next(chan->head, chan->cap);
+        chan->count--;
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_OK;
     }
-    if (atomic_load_explicit(&chan->closed, memory_order_acquire)) {
+    if (chan->closed) {
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_CLOSED;
     }
@@ -686,11 +671,16 @@ int32_t willrt_chan_recv_wait(willrt_chan* chan, void* out) {
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_OK;
     }
-    if (chan_ring_recv(chan, out) == WILLRT_OK) {
+    if (chan->count != 0) {
+        if (out != NULL) {
+            willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
+        }
+        chan->head = willrt_chan_next(chan->head, chan->cap);
+        chan->count--;
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_OK;
     }
-    if (atomic_load_explicit(&chan->closed, memory_order_acquire)) {
+    if (chan->closed) {
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_CLOSED;
     }
@@ -718,7 +708,7 @@ int32_t willrt_chan_send_wait(willrt_chan* chan, const void* value) {
     willrt_task* task;
     willrt_chan_wait* wait;
     willrt_chan_wait* ready;
-    int32_t result;
+    size_t index;
 
     if (chan == NULL || value == NULL) {
         return WILLRT_FAILED;
@@ -756,7 +746,7 @@ int32_t willrt_chan_send_wait(willrt_chan* chan, const void* value) {
         atomic_fetch_sub(&chan->send_waiters, 1);
         wait->linked = 0;
     }
-    if (atomic_load_explicit(&chan->closed, memory_order_acquire)) {
+    if (chan->closed) {
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_CLOSED;
     }
@@ -767,8 +757,10 @@ int32_t willrt_chan_send_wait(willrt_chan* chan, const void* value) {
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_OK;
     }
-    result = chan_ring_send(chan, value);
-    if (result == WILLRT_OK) {
+    if (chan->count < chan->cap) {
+        index = willrt_chan_at(chan, chan->count);
+        willrt_chan_copy(chan->data + index * chan->elem, value, chan->elem);
+        chan->count++;
         willrt_os_mutex_unlock(&chan->lock);
         return WILLRT_OK;
     }
@@ -926,7 +918,7 @@ willrt_select_ctx* willrt_select_start(willrt_arm* arms, size_t n) {
         wait->out = arm->out;
         wait->value = arm->value;
         willrt_os_mutex_lock(&arm->chan->lock);
-        if (atomic_load_explicit(&arm->chan->closed, memory_order_acquire)) {
+        if (arm->chan->closed) {
             willrt_os_mutex_unlock(&arm->chan->lock);
             if (willrt_select_claim(wait, WILLRT_CLOSED)) {
                 willrt_select_signal(wait);
@@ -1006,18 +998,20 @@ void willrt_chan_close(willrt_chan* chan) {
     }
     willrt_chan_wait* wait;
 
-    atomic_store_explicit(&chan->closed, 1, memory_order_release);
     willrt_os_mutex_lock(&chan->lock);
+    chan->closed = 1;
     while ((wait = willrt_chan_wait_pop(&chan->recv_head,
                                         &chan->recv_tail)) != NULL) {
         atomic_fetch_sub(&chan->recv_waiters, 1);
-        if (willrt_select_claim(wait, WILLRT_OK)) {
-            if (chan_ring_recv(chan, wait->out) == WILLRT_OK) {
-                willrt_select_signal(wait);
-            } else {
-                wait->status = WILLRT_CLOSED;
-                willrt_select_signal(wait);
+        if (chan->count != 0) {
+            const void* value = chan->data + chan->head * chan->elem;
+
+            if (willrt_chan_handoff_recv(wait, value, chan->elem)) {
+                chan->head = willrt_chan_next(chan->head, chan->cap);
+                chan->count--;
             }
+        } else {
+            willrt_chan_wait_complete(wait, WILLRT_CLOSED);
         }
     }
     while ((wait = willrt_chan_wait_pop(&chan->send_head,
@@ -1053,23 +1047,31 @@ int32_t willrt_select(willrt_arm* arms, size_t n) {
             willrt_arm* arm = &arms[i];
             if (arm->kind == 0) {
                 willrt_chan* chan = arm->chan;
-                if (chan != NULL && chan_ring_recv(chan, arm->out) == WILLRT_OK) {
+                if (chan != NULL && chan->count != 0) {
+                    if (arm->out != NULL) {
+                        willrt_chan_copy(arm->out,
+                                          chan->data + chan->head * chan->elem,
+                                          chan->elem);
+                    }
+                    chan->head = willrt_chan_next(chan->head, chan->cap);
+                    chan->count--;
                     willrt_select_last = WILLRT_OK;
                     return (int32_t)i;
                 }
-                if (chan != NULL &&
-                    atomic_load_explicit(&chan->closed, memory_order_acquire)) {
+                if (chan != NULL && chan->closed) {
                     willrt_select_last = WILLRT_CLOSED;
                     return (int32_t)i;
                 }
             } else if (arm->kind == 1) {
                 willrt_chan* chan = arm->chan;
-                if (chan != NULL &&
-                    atomic_load_explicit(&chan->closed, memory_order_acquire)) {
+                if (chan != NULL && chan->closed) {
                     willrt_select_last = WILLRT_CLOSED;
                     return (int32_t)i;
                 }
-                if (chan != NULL && chan_ring_send(chan, arm->value) == WILLRT_OK) {
+                if (chan != NULL && chan->count < chan->cap) {
+                    size_t at = willrt_chan_at(chan, chan->count);
+                    willrt_chan_copy(chan->data + at * chan->elem, arm->value, chan->elem);
+                    chan->count++;
                     willrt_select_last = WILLRT_OK;
                     return (int32_t)i;
                 }
@@ -1162,7 +1164,7 @@ int32_t willrt_select(willrt_arm* arms, size_t n) {
             wait->out = arm->out;
             wait->value = arm->value;
             willrt_os_mutex_lock(&arm->chan->lock);
-            if (atomic_load_explicit(&arm->chan->closed, memory_order_acquire)) {
+            if (arm->chan->closed) {
                 willrt_os_mutex_unlock(&arm->chan->lock);
                 willrt_select_claim(wait, WILLRT_CLOSED);
                 break;
