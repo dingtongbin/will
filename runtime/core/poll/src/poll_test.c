@@ -86,6 +86,25 @@ int main(void) {
     assert(willrt_poll_del((int64_t)listener) == WILLRT_OK);
     assert(willrt_poll_del((int64_t)listener) == WILLRT_EMPTY);
 
+    /* The table grows: the 300th registration must be accepted where a fixed
+       table of 256 would report WILLRT_FULL. */
+    {
+        test_socket many[300];
+        int index;
+
+        for (index = 0; index < 300; index++) {
+            many[index] = test_socket_new();
+            assert(many[index] != TEST_INVALID);
+            assert(willrt_poll_add((int64_t)many[index], WILLRT_POLL_IN,
+                                   (void*)ready, NULL)
+                   == WILLRT_OK);
+        }
+        for (index = 0; index < 300; index++) {
+            assert(willrt_poll_del((int64_t)many[index]) == WILLRT_OK);
+            test_socket_close(many[index]);
+        }
+    }
+
     willrt_poll_shutdown();
     test_socket_close(client);
     test_socket_close(listener);
