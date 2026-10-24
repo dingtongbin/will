@@ -433,11 +433,31 @@ willrt_task* willrt_task_new(void* step, void* frame, size_t size,
    region barrier frees it with the task. A frame that lives anywhere else
    must not be marked. */
 void willrt_task_own_frame(willrt_task* task);
-/* willrt_job_new queues a task on the global job queue. The caller only uses
-   it from a parallel block; the block body must not suspend. The returned
-   handle is joined like a task handle. */
+/* willrt_job_new queues a task on the current or least-loaded non-reserved
+   lane. The caller only uses it from a parallel block; the block body must not
+   suspend. The returned handle is joined like a task handle. */
 willrt_task* willrt_job_new(void* step, void* frame, size_t size,
                             int32_t prio);
+/* willrt_job_pop removes the oldest job from one lane's local queue. The lane
+   worker calls it while it holds that lane's lock, so a concurrent enqueue
+   cannot lose the wake. */
+willrt_task* willrt_job_pop(int32_t lane);
+/* willrt_job_steal removes the oldest job from another non-reserved lane. */
+willrt_task* willrt_job_steal(int32_t lane);
+/* willrt_jobs_pending reports whether any lane still holds a queued job. */
+int32_t willrt_jobs_pending(void);
+/* willrt_jobs_shutdown is the shutdown hook for the job queues. */
+void willrt_jobs_shutdown(void);
+/* willrt_task_mark_job marks a task as a CPU job: it may not suspend and it may
+   move to the lane that runs it. */
+void willrt_task_mark_job(willrt_task* task);
+/* willrt_task_run_job runs one job on the caller thread when no lane could be
+   started. */
+void willrt_task_run_job(willrt_task* task);
+/* willrt_task_job_next and willrt_task_set_job_next expose the intrusive job
+   queue link. Only a job task uses this field. */
+willrt_task* willrt_task_job_next(willrt_task* task);
+void willrt_task_set_job_next(willrt_task* task, willrt_task* next);
 void willrt_task_run(willrt_task* task);
 int32_t willrt_join(willrt_task* task, void* out, willrt_error* err);
 /* willrt_task_try_join is the step-facing form of a join: it returns
@@ -452,9 +472,14 @@ int32_t willrt_task_store_result(const void* value, size_t size);
 void willrt_region_enter(void);
 int32_t willrt_region_exit(void);
 int32_t willrt_lane_here(void);
-/* willrt_runtime_threaded reports whether any task thread or job worker has
-   started. A channel on a single-threaded program can take its uncontended
-   path without a lock. */
+/* willrt_lane_ensure starts the lane pool if needed and returns its size. */
+int32_t willrt_lane_ensure(void);
+/* willrt_lane_is_reserved reports whether a lane is kept for async tasks. */
+int32_t willrt_lane_is_reserved(int32_t lane);
+/* willrt_lane_wake_jobs wakes every non-reserved lane after a job enqueue. */
+void willrt_lane_wake_jobs(void);
+/* willrt_runtime_threaded reports whether any task lane has started. A channel
+   on a single-threaded program can take its uncontended path without a lock. */
 int32_t willrt_runtime_threaded(void);
 void willrt_yield(void);
 int32_t willrt_task_canceled(void);

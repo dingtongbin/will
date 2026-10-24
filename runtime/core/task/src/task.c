@@ -56,6 +56,7 @@ struct willrt_task {
     int32_t canceled;
     int32_t state;
     int32_t queued;
+    int32_t is_job;
     int32_t wake_pending;
     int32_t wait_requested;
     int32_t io_wait;
@@ -71,6 +72,7 @@ struct willrt_task {
     const char* symbol;
     struct willrt_task* next_region;
     struct willrt_task* wait_next;
+    struct willrt_task* job_next;
     struct willrt_task* all_next;
     struct willrt_task* join_head;
     struct willrt_task* join_next;
@@ -138,11 +140,14 @@ static struct willrt_task* willrt_all_tasks;
 static lane_worker* willrt_lane_workers;
 static int32_t willrt_lane_count;
 static int32_t willrt_lane_started;
+static int32_t willrt_lane_reserved;
 static int32_t willrt_lane_state;
 static atomic_int willrt_lane_ready;
 
 extern void willrt_jobs_shutdown(void) __attribute__((weak));
 extern int32_t willrt_jobs_pending(void) __attribute__((weak));
+extern willrt_task* willrt_job_pop(int32_t lane) __attribute__((weak));
+extern willrt_task* willrt_job_steal(int32_t lane) __attribute__((weak));
 extern int32_t willrt_timer_pending(void) __attribute__((weak));
 extern void willrt_poll_request_abandon(willrt_poll_request* req)
     __attribute__((weak));
@@ -461,6 +466,10 @@ static void willrt_task_run_step(struct willrt_task* task) {
     willrt_panic_jump_active = 0;
     willrt_task_self = NULL;
     if (status == WILLRT_SUSPEND) {
+        if (task->is_job) {
+            willrt_panic("job cannot suspend", "task.c", "willrt.task.job");
+            return;
+        }
         if (task->wait_requested) {
             willrt_task_park(task);
         } else {
@@ -500,22 +509,98 @@ static void willrt_lane_worker(void* raw) {
         int32_t stopping;
 
         willrt_os_mutex_lock(&worker->lock);
-        while (worker->runnext == NULL && worker->head == NULL &&
-               !worker->stopping) {
+        for (;;) {
+            task = willrt_lane_pop_locked(worker);
+            if (task == NULL && !willrt_lane_is_reserved(worker->id) &&
+                willrt_job_pop != NULL) {
+                /* The lane lock stays held across the local job probe. A job
+                   enqueue takes the job lock and then this lane lock to signal,
+                   so a job cannot land after the probe and miss the wake. */
+                task = willrt_job_pop(worker->id);
+            }
+            if (task != NULL || worker->stopping) {
+                break;
+            }
             willrt_os_cond_wait(&worker->cond, &worker->lock);
         }
         stopping = worker->stopping;
-        task = willrt_lane_pop_locked(worker);
-        willrt_os_mutex_unlock(&worker->lock);
-        if (task == NULL && stopping) {
-            break;
+        if (task != NULL && task->is_job) {
+            task->started = 1;
+            task->lane = worker->id;
         }
+        willrt_os_mutex_unlock(&worker->lock);
         if (task == NULL) {
-            continue;
+            if (stopping) {
+                break;
+            }
+            if (!willrt_lane_is_reserved(worker->id) &&
+                willrt_job_steal != NULL) {
+                task = willrt_job_steal(worker->id);
+            }
+            if (task == NULL) {
+                continue;
+            }
+            if (task->is_job) {
+                task->started = 1;
+                task->lane = worker->id;
+            }
         }
         willrt_task_run_step(task);
     }
     willrt_mem_thread_flush();
+}
+
+int32_t willrt_lane_is_reserved(int32_t lane) {
+    return lane >= 0 && lane < willrt_lane_reserved;
+}
+
+int32_t willrt_lane_ensure(void) {
+    willrt_lane_init();
+    return willrt_lane_count;
+}
+
+void willrt_lane_wake_jobs(void) {
+    int32_t i;
+
+    if (willrt_lane_workers == NULL || atomic_load(&willrt_lane_ready) == 0) {
+        return;
+    }
+    for (i = willrt_lane_reserved; i < willrt_lane_count; i++) {
+        lane_worker* worker = &willrt_lane_workers[i];
+
+        if (!atomic_load(&worker->alive)) {
+            continue;
+        }
+        willrt_os_mutex_lock(&worker->lock);
+        willrt_os_cond_signal(&worker->cond);
+        willrt_os_mutex_unlock(&worker->lock);
+    }
+}
+
+static int32_t willrt_lane_reserved_policy(int32_t count) {
+    int32_t reserved;
+    const char* env;
+    char* end;
+    long value;
+
+    if (count <= 1) {
+        return 0;
+    }
+    reserved = count == 2 ? 0 : count <= 4 ? 1 : count <= 16 ? 2 : 3;
+    env = getenv("WILL_RESERVED_LANES");
+    if (env != NULL && *env != '\0') {
+        value = strtol(env, &end, 10);
+        if (end != env && *end == '\0' && value >= 0) {
+            reserved = (int32_t)value;
+        }
+    }
+    if (reserved < 0) {
+        reserved = 0;
+    }
+    if (reserved >= count) {
+        reserved = count - 1;
+    }
+    return reserved;
 }
 
 static void willrt_lane_init(void) {
@@ -557,6 +642,7 @@ static void willrt_lane_init(void) {
         }
     }
     willrt_lane_count = willrt_lane_started;
+    willrt_lane_reserved = willrt_lane_reserved_policy(willrt_lane_count);
     willrt_lane_state = 2;
     atomic_store(&willrt_lane_ready, 1);
 }
@@ -639,6 +725,22 @@ void willrt_task_run(willrt_task* task) {
     }
 }
 
+void willrt_task_mark_job(willrt_task* task) {
+    if (task != NULL) {
+        task->is_job = 1;
+    }
+}
+
+willrt_task* willrt_task_job_next(willrt_task* task) {
+    return task == NULL ? NULL : task->job_next;
+}
+
+void willrt_task_set_job_next(willrt_task* task, willrt_task* next) {
+    if (task != NULL) {
+        task->job_next = next;
+    }
+}
+
 /* willrt_task_run_job advances one task on the caller thread. Jobs contain no
    suspension point, so a returned suspend is a failed job rather than a park. */
 void willrt_task_run_job(willrt_task* task) {
@@ -647,6 +749,8 @@ void willrt_task_run_job(willrt_task* task) {
     }
     atomic_store(&willrt_threads_live, 1);
     task->started = 1;
+    task->lane = 0;
+    willrt_mem_set_lane(0);
     willrt_task_run_step(task);
 }
 

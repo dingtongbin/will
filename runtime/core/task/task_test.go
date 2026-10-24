@@ -81,7 +81,8 @@ func compileDriver(t *testing.T, gcc, dir, root, platform, name string, sources 
 // TestTaskContract builds the task and channel engines together with their C
 // driver and runs it. It proves a joined result, region accounting, panic
 // containment, channel order, and select order. The job driver runs after it
-// and proves that one fixed worker pool drains every queued job.
+// and proves that lane-local job queues drain every queued job on multiple
+// lanes.
 // TestDeadlockContract builds a driver whose only task parks forever. The
 // shutdown wait must report the four counts and exit instead of hanging.
 func TestDeadlockContract(t *testing.T) {

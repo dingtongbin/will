@@ -1,7 +1,8 @@
-/* Contract test for the global job queue and its fixed worker pool. The test
-   enqueues more jobs than one worker could finish before shutdown, joins every
-   handle, and then shuts the runtime down twice to prove that an empty queue
-   and a repeated shutdown do not hang or leave queued work behind. */
+/* Contract test for jobs on lane-local deques. The test enqueues more jobs
+   than one lane could finish before shutdown, joins every handle, and proves
+   that jobs run on lane threads instead of a separate fixed pool. It then
+   shuts the runtime down twice to prove that an empty queue and a repeated
+   shutdown do not hang or leave queued work behind. */
 
 #include "../../../include/willrt.h"
 
@@ -16,13 +17,44 @@ typedef struct job_frame {
 } job_frame;
 
 static atomic_int completed;
+static atomic_int started;
+static atomic_uint lane_bits;
 
 static int32_t job_step(void* raw) {
     job_frame* frame = (job_frame*)raw;
+    int32_t lane = willrt_lane_here();
+    int32_t ticket;
+    int32_t spin;
 
     assert(frame != NULL);
+    assert(lane >= 0);
+    atomic_fetch_or(&lane_bits, 1u << (uint32_t)(lane & 31));
+    ticket = atomic_fetch_add(&started, 1);
+    if (ticket == 0) {
+        /* The first job keeps its lane busy until a second job runs on another
+           lane. A single job lane can only make progress after the timeout. */
+        for (spin = 0; spin < 200000; spin++) {
+            if (atomic_load(&started) >= 2) {
+                break;
+            }
+            willrt_os_thread_yield();
+        }
+    }
     atomic_fetch_add(&completed, 1);
     return WILLRT_DONE;
+}
+
+static int32_t lane_count_seen(void) {
+    uint32_t bits = atomic_load(&lane_bits);
+    int32_t count = 0;
+    int32_t i;
+
+    for (i = 0; i < 32; i++) {
+        if ((bits & (1u << (uint32_t)i)) != 0) {
+            count++;
+        }
+    }
+    return count;
 }
 
 int main(void) {
@@ -46,6 +78,11 @@ int main(void) {
         assert(willrt_join(tasks[i], NULL, NULL) == WILLRT_OK);
     }
     assert(atomic_load(&completed) == JOB_COUNT);
+    assert(willrt_jobs_pending() == 0);
+    if (willrt_os_cpu_count() >= 4) {
+        assert(lane_count_seen() >= 2);
+    }
+    assert(atomic_load(&started) == JOB_COUNT);
 
     willrt_shutdown();
     willrt_shutdown();
