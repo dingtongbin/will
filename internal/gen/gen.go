@@ -2036,7 +2036,7 @@ func (g *generator) allocas(fn int) error {
 			}
 			name := "%v.join.err." + strconv.Itoa(r.ID)
 			g.joinErrSlots[r.ID] = name
-			fmt.Fprintf(g.out, "  %s = alloca %%willrt_error\n", name)
+			fmt.Fprintf(g.out, "  %s = alloca %%willrt.task_error\n", name)
 		case "call", "mcall":
 			text, err := g.callResultText(r)
 			if err != nil {
@@ -2049,7 +2049,7 @@ func (g *generator) allocas(fn int) error {
 			}
 			name := "%v.await.err." + strconv.Itoa(r.ID)
 			g.awaitErrSlots[r.ID] = name
-			fmt.Fprintf(g.out, "  %s = alloca %%willrt_error\n", name)
+			fmt.Fprintf(g.out, "  %s = alloca %%willrt.task_error\n", name)
 		case "recv", "tryrecv":
 			chanText, err := g.willTypeText(refField(r, "chan"))
 			if err != nil {

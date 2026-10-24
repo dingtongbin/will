@@ -481,6 +481,10 @@ func (g *generator) sizeAlign(typ string) (int, int, bool) {
 	if typ == "%willrt_error" {
 		return 32, 8, true
 	}
+	// The join keeps the error copy and the status word after it.
+	if typ == "%willrt.task_error" {
+		return 40, 8, true
+	}
 	if typ == "%willrt_arm" {
 		return 40, 8, true
 	}

@@ -3,7 +3,51 @@ package gen
 import (
 	"strings"
 	"testing"
+
+	"github.com/will-lang/will/internal/willc"
 )
+
+// TestJoinErrorSlotHoldsTheStatus checks that the entry-block slot for a join
+// reserves room for the status word. The compiler writes that word after the
+// error, so an undersized slot lets the store run past it and corrupt whatever
+// sits next to the slot.
+func TestJoinErrorSlotHoldsTheStatus(t *testing.T) {
+	src := `func Work() -> i64 {
+    return 1234567890123i64
+}
+
+func Run(task: Task<i64>) -> i64 {
+    return task.Join()!
+}
+
+func main() -> i32 {
+    region {
+        var t: Task<i64> = spawn Work()
+        var v: i64 = t.Join()!
+        print("v=", v, "\n")
+    }
+    return 0
+}
+`
+	doc := emitWillc(t, src)
+	ir, err := EmitPackageModule([]*willc.Doc{doc}, "example.com/app", "main", "example.com/app", nil, false)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := string(ir)
+	found := false
+	for _, line := range strings.Split(text, "\n") {
+		if strings.Contains(line, "join.err.") && strings.Contains(line, "= alloca") {
+			found = true
+			if !strings.HasSuffix(strings.TrimSpace(line), "alloca %willrt.task_error") {
+				t.Errorf("join error slot is too small: %q", line)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("IR has no join error slot:\n%s", text)
+	}
+}
 
 // TestJoinResultCarriesTaskError checks that Join in value position builds a
 // Result with the task error table, not just the unwrap panic path.
