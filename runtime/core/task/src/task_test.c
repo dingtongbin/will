@@ -58,6 +58,26 @@ static int32_t step_recv(void* frame) {
     return WILLRT_DONE;
 }
 
+static void test_lane_choose(void) {
+    int32_t cpus = willrt_os_cpu_count();
+    uint32_t bits = 0;
+    int32_t lanes = 0;
+    int32_t i;
+
+    if (cpus < 4) {
+        return;
+    }
+    for (i = 0; i < 64; i++) {
+        bits |= 1u << (uint32_t)(willrt_lane_choose() & 31);
+    }
+    for (i = 0; i < 32; i++) {
+        if ((bits & (1u << (uint32_t)i)) != 0) {
+            lanes++;
+        }
+    }
+    assert(lanes >= 2);
+}
+
 static void test_task_result(void) {
     int32_t input = 21;
     int32_t output = 0;
@@ -1122,6 +1142,7 @@ int main(void) {
     assert(WSAStartup(MAKEWORD(2, 2), &data) == 0);
 #endif
     willrt_init();
+    test_lane_choose();
     test_task_result();
     test_task_suspend_resume();
     test_region_counts();

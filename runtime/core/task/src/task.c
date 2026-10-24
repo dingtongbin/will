@@ -57,6 +57,7 @@ struct willrt_task {
     int32_t state;
     int32_t queued;
     int32_t is_job;
+    int32_t counted;
     int32_t wake_pending;
     int32_t wait_requested;
     int32_t io_wait;
@@ -112,6 +113,11 @@ typedef struct lane_worker {
     int32_t id;
     int32_t stopping;
     _Atomic(int32_t) alive;
+    /* load counts live async tasks assigned to this lane. job_running is set
+       while the lane executes a CPU job; choose prefers a lane that is not
+       busy with a job. */
+    _Atomic(int32_t) load;
+    _Atomic(int32_t) job_running;
 } lane_worker;
 
 static _Thread_local struct willrt_task* willrt_task_self;
@@ -218,6 +224,10 @@ static void willrt_lane_enqueue_locked(lane_worker* worker,
     task->queued = 1;
     task->state = WILLRT_TASK_READY;
     task->wait_next = NULL;
+    if (!task->counted && !task->is_job) {
+        task->counted = 1;
+        atomic_fetch_add(&worker->load, 1);
+    }
     if (worker->runnext == NULL) {
         worker->runnext = task;
         return;
@@ -416,6 +426,14 @@ static void willrt_task_finish(struct willrt_task* task) {
         willrt_io_abandon(task->io_node);
         task->io_node = NULL;
     }
+    if (task->counted) {
+        lane_worker* worker = willrt_lane_of(task);
+
+        if (worker != NULL) {
+            atomic_fetch_sub(&worker->load, 1);
+        }
+        task->counted = 0;
+    }
     willrt_os_mutex_lock(&task->lock);
     task->finished = 1;
     walk = task->join_head;
@@ -507,6 +525,7 @@ static void willrt_lane_worker(void* raw) {
     for (;;) {
         struct willrt_task* task;
         int32_t stopping;
+        int32_t ran_job = 0;
 
         willrt_os_mutex_lock(&worker->lock);
         for (;;) {
@@ -527,6 +546,8 @@ static void willrt_lane_worker(void* raw) {
         if (task != NULL && task->is_job) {
             task->started = 1;
             task->lane = worker->id;
+            ran_job = 1;
+            atomic_store(&worker->job_running, 1);
         }
         willrt_os_mutex_unlock(&worker->lock);
         if (task == NULL) {
@@ -543,9 +564,14 @@ static void willrt_lane_worker(void* raw) {
             if (task->is_job) {
                 task->started = 1;
                 task->lane = worker->id;
+                ran_job = 1;
+                atomic_store(&worker->job_running, 1);
             }
         }
         willrt_task_run_step(task);
+        if (ran_job) {
+            atomic_store(&worker->job_running, 0);
+        }
     }
     willrt_mem_thread_flush();
 }
@@ -1213,6 +1239,38 @@ int32_t willrt_lane_here(void) {
     struct willrt_task* task = willrt_task_self;
 
     return task == NULL ? 0 : task->lane;
+}
+
+int32_t willrt_lane_choose(void) {
+    static atomic_int cursor;
+    int32_t start;
+    int32_t best = -1;
+    int32_t best_score = INT32_MAX;
+    int32_t i;
+
+    willrt_lane_init();
+    if (willrt_lane_count <= 0 || willrt_lane_workers == NULL) {
+        return 0;
+    }
+    start = atomic_fetch_add(&cursor, 1);
+    for (i = 0; i < willrt_lane_count; i++) {
+        int32_t lane = (start + i) % willrt_lane_count;
+        lane_worker* worker = &willrt_lane_workers[lane];
+        int32_t score;
+
+        if (!atomic_load(&worker->alive)) {
+            continue;
+        }
+        score = atomic_load(&worker->load);
+        if (atomic_load(&worker->job_running) != 0) {
+            score += 1024;
+        }
+        if (score < best_score) {
+            best_score = score;
+            best = lane;
+        }
+    }
+    return best < 0 ? 0 : best;
 }
 
 int32_t willrt_runtime_threaded(void) {

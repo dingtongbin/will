@@ -472,6 +472,9 @@ int32_t willrt_task_store_result(const void* value, size_t size);
 void willrt_region_enter(void);
 int32_t willrt_region_exit(void);
 int32_t willrt_lane_here(void);
+/* willrt_lane_choose returns the least-loaded live lane for spawn auto. The
+   score counts live tasks; a lane running a CPU job is penalized. */
+int32_t willrt_lane_choose(void);
 /* willrt_lane_ensure starts the lane pool if needed and returns its size. */
 int32_t willrt_lane_ensure(void);
 /* willrt_lane_is_reserved reports whether a lane is kept for async tasks. */
