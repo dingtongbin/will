@@ -6,17 +6,19 @@ func MakeText(n: i32) -> str {
     return f"value={n}"
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var sum: i32 = 0
     region {
         var a: Task<i32> = spawn Compute(20)
         var b: Task<i32> = spawn Compute(21)
-        sum = a.Join()! + b.Join()!
+        var first: i32 = await a.Join()!
+        var second: i32 = await b.Join()!
+        sum = first + second
     }
     var text: str = ""
     region {
         var t: Task<str> = spawn MakeText(sum)
-        text = t.Join()!
+        text = await t.Join()!
     }
     print(text, "\n")
     return sum + i32(text.Len())

@@ -5,11 +5,11 @@ async func Nap() -> i32 {
     return 7
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var value: i32 = 0
     region {
         var task: Task<i32> = spawn Nap()
-        value = task.Join()!
+        value = await task.Join()!
     }
     if value != 7 {
         return 1

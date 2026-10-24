@@ -2,8 +2,8 @@ struct Box {
     ch: chan<i32>
 }
 
-func (b: Box) Take() -> i32 {
-    var item: Option<i32> = b.ch.Recv()
+async func (b: Box) Take() -> i32 {
+    var item: Option<i32> = await b.ch.Recv()
     match item {
         Some(value) => {
             return value
@@ -14,8 +14,8 @@ func (b: Box) Take() -> i32 {
     }
 }
 
-func Worker(ch: chan<i32>) -> i32 {
-    var item: Option<i32> = ch.Recv()
+async func Worker(ch: chan<i32>) -> i32 {
+    var item: Option<i32> = await ch.Recv()
     match item {
         Some(value) => {
             return value
@@ -27,18 +27,18 @@ func Worker(ch: chan<i32>) -> i32 {
 }
 
 // Driver calls a waiting function, so it waits as well.
-func Driver(ch: chan<i32>) -> i32 {
-    return Worker(ch)
+async func Driver(ch: chan<i32>) -> i32 {
+    return await Worker(ch)
 }
 
 // Fetch returns an aggregate, so the caller reads it from a place.
-func Fetch(ch: chan<i32>) -> Option<i32> {
-    return ch.Recv()
+async func Fetch(ch: chan<i32>) -> Option<i32> {
+    return await ch.Recv()
 }
 
 // UseFetch awaits a waiting function whose result is an aggregate.
-func UseFetch(ch: chan<i32>) -> i32 {
-    var item: Option<i32> = Fetch(ch)
+async func UseFetch(ch: chan<i32>) -> i32 {
+    var item: Option<i32> = await Fetch(ch)
     match item {
         Some(value) => {
             return value
@@ -50,21 +50,21 @@ func UseFetch(ch: chan<i32>) -> i32 {
 }
 
 // UseBox calls a waiting method, so it waits as well.
-func UseBox(b: Box) -> i32 {
-    return b.Take()
+async func UseBox(b: Box) -> i32 {
+    return await b.Take()
 }
 
 // Drain calls a waiting function on every loop iteration. The await slots
 // stay in the entry block, so a long loop does not grow the stack.
-func Drain(ch: chan<i32>, n: i32) -> i32 {
+async func Drain(ch: chan<i32>, n: i32) -> i32 {
     var sum: i32 = 0
     for _ in Range(0, n) {
-        sum += Worker(ch)
+        sum += await Worker(ch)
     }
     return sum
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
     var other: chan<i32> = new chan<i32>(1)
     var third: chan<i32> = new chan<i32>(1)
@@ -75,38 +75,38 @@ func main() -> i32 {
         var second: Task<()> = spawn Produce(other, 7)
         var thirdProducer: Task<()> = spawn Produce(third, 9)
         var fourthProducer: Task<()> = spawn Fill(fourth, 4)
-        var value: i32 = Driver(ch)
+        var value: i32 = await Driver(ch)
         if value != 42 {
             return 1
         }
-        var boxed: i32 = UseBox(box)
+        var boxed: i32 = await UseBox(box)
         if boxed != 7 {
             return 2
         }
-        var fetched: i32 = UseFetch(third)
+        var fetched: i32 = await UseFetch(third)
         if fetched != 9 {
             return 3
         }
-        var drained: i32 = Drain(fourth, 4)
+        var drained: i32 = await Drain(fourth, 4)
         if drained != 6 {
             return 4
         }
-        _ = producer.Join()!
-        _ = second.Join()!
-        _ = thirdProducer.Join()!
-        _ = fourthProducer.Join()!
+        _ = await producer.Join()!
+        _ = await second.Join()!
+        _ = await thirdProducer.Join()!
+        _ = await fourthProducer.Join()!
     }
     return 0
 }
 
 // Produce is declared after its use, so the call names it by symbol.
-func Produce(ch: chan<i32>, value: i32) {
-    _ = ch.Send(value)
+async func Produce(ch: chan<i32>, value: i32) {
+    _ = await ch.Send(value)
 }
 
 // Fill sends 0..n-1 into the channel.
-func Fill(ch: chan<i32>, n: i32) {
+async func Fill(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
-        _ = ch.Send(i)
+        _ = await ch.Send(i)
     }
 }

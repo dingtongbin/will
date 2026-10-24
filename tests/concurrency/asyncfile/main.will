@@ -18,7 +18,7 @@ async func AppendTail(path: str) -> Result<(), Error> {
     return await fs.AsyncAppend(path, text[Range(0, 3)])
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var path: str = "will-concurrency-asyncfile.tmp"
     var n: usize = 262144
     var data: Array<u8> = new Array<u8>(n)
@@ -41,8 +41,8 @@ func main() -> i32 {
     region {
         var t1: Task<Result<i64, Error>> = spawn Checksum(path)
         var t2: Task<Result<i64, Error>> = spawn Checksum(path)
-        var r1: Result<i64, Error> = t1.Join()!
-        var r2: Result<i64, Error> = t2.Join()!
+        var r1: Result<i64, Error> = await t1.Join()!
+        var r2: Result<i64, Error> = await t2.Join()!
         match r1 {
             Ok(v) => {
                 first = v
@@ -69,7 +69,7 @@ func main() -> i32 {
     var extended: Result<(), Error> = Ok(())
     region {
         var t: Task<Result<(), Error>> = spawn AppendTail(path)
-        extended = t.Join()!
+        extended = await t.Join()!
     }
     match extended {
         Err(_) => {

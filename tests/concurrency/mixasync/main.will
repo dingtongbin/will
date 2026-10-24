@@ -3,11 +3,11 @@ import "std/os/fs"
 async func Mix(ch: chan<i32>, path: str) -> Result<(), Error> {
     var one: str = "m"
     _ = await fs.AsyncAppend(path, one[Range(0, 1)])?
-    _ = ch.Send(7)
+    _ = await ch.Send(7)
     return Ok(())
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var path: str = "will-concurrency-mixasync.tmp"
     _ = fs.Remove(path)
     var ch: chan<i32> = new chan<i32>(1)
@@ -15,7 +15,7 @@ func main() -> i32 {
     var value: i32 = 0
     region {
         var task: Task<Result<(), Error>> = spawn Mix(ch, path)
-        var item: Option<i32> = ch.Recv()
+        var item: Option<i32> = await ch.Recv()
         match item {
             Some(v) => {
                 value = v
@@ -24,7 +24,7 @@ func main() -> i32 {
                 return 1
             }
         }
-        result = task.Join()!
+        result = await task.Join()!
     }
     _ = fs.Remove(path)
     if value != 7 {

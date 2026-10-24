@@ -237,44 +237,116 @@ panic.1:
 panic.ok.1:
   ret i64 %t9
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/time.Sleep"(i64 %d) inlinehint {
+define internal i32 @"std/time.Sleep.sm"(ptr %frame) {
 entry:
-  %v.ns = alloca i64
-  %v.status = alloca i32
-  %v.agg.76 = alloca %"struct.std/time.clockError"
-  %v.str.77 = alloca { ptr, i64 }
-  %v.adt.74 = alloca { i32, [4 x i8], %interface.Error }
-  %v.adt.79 = alloca { i32, [4 x i8], %interface.Error }
-  store i64 %d, ptr %v.ns
-  %t11 = load i64, ptr %v.ns
-  %t12 = call i32 @willrt_task_sleep_async(i64 %t11)
-  store i32 %t12, ptr %v.status
-  %t13 = load i32, ptr %v.status
-  %t14 = icmp ne i32 %t13, 0
-  br i1 %t14, label %if.then.1, label %if.end.1
+  %v.sm.state = getelementptr i8, ptr %frame, i64 0
+  %v.sm.param.51.11 = getelementptr i8, ptr %frame, i64 8
+  %v.ns = getelementptr i8, ptr %frame, i64 16
+  %v.status = getelementptr i8, ptr %frame, i64 24
+  %v.agg.76 = getelementptr i8, ptr %frame, i64 32
+  %v.str.77 = getelementptr i8, ptr %frame, i64 48
+  %v.adt.74 = getelementptr i8, ptr %frame, i64 64
+  %v.adt.79 = getelementptr i8, ptr %frame, i64 88
+  %v.sm.async.op.13 = getelementptr i8, ptr %frame, i64 112
+  %v.sm.async.status.14 = getelementptr i8, ptr %frame, i64 120
+  %t34 = getelementptr i8, ptr %frame, i64 128
+  %t43 = getelementptr i8, ptr %frame, i64 152
+  %v.sm.pval.51 = load i64, ptr %v.sm.param.51.11
+  %v.sm.statev = load i32, ptr %v.sm.state
+  switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
+sm.init:
+  store i64 %v.sm.pval.51, ptr %v.ns
+  %t12 = load i64, ptr %v.ns
+  %t15 = call ptr @willrt_task_sleep_async_start(i64 %t12)
+  store ptr %t15, ptr %v.sm.async.op.13
+  %t16 = icmp ne ptr %t15, null
+  br i1 %t16, label %sm.async.have.1, label %sm.async.fail.1
+sm.async.fail.1:
+  store i32 1, ptr %v.sm.async.status.14
+  br label %sm.async.cont.1
+sm.async.have.1:
+  store i32 1, ptr %v.sm.state
+  br label %sm.op.call.1
+sm.op.call.1:
+  %t17 = load ptr, ptr %v.sm.async.op.13
+  %t18 = call i32 @willrt_task_sleep_poll(ptr %t17)
+  %t19 = icmp eq i32 %t18, 0
+  br i1 %t19, label %sm.async.park.1, label %sm.async.done.1
+sm.async.park.1:
+  %t20 = call i64 @willrt_task_sleep_deadline(ptr %t17)
+  call void @willrt_task_wait_until(i64 %t20)
+  call void @willrt_task_mark_io()
+  call void @willrt_task_mark_wait()
+  ret i32 -1
+sm.async.done.1:
+  %t21 = call i32 @willrt_task_sleep_finish(ptr %t17)
+  store i32 %t21, ptr %v.sm.async.status.14
+  br label %sm.async.cont.1
+sm.async.cont.1:
+  %t22 = load i32, ptr %v.sm.async.status.14
+  store i32 %t22, ptr %v.status
+  %t23 = load i32, ptr %v.status
+  %t24 = icmp ne i32 %t23, 0
+  br i1 %t24, label %if.then.1, label %if.end.1
 if.then.1:
-  %t15 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.74, i32 0, i32 0
-  store i32 1, ptr %t15
-  %t16 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.74, i32 0, i32 2
-  %t17 = getelementptr inbounds %"struct.std/time.clockError", ptr %v.agg.76, i32 0, i32 0
-  %t18 = getelementptr inbounds { ptr, i64 }, ptr %v.str.77, i32 0, i32 0
-  store ptr @.bytes.8, ptr %t18
-  %t19 = getelementptr inbounds { ptr, i64 }, ptr %v.str.77, i32 0, i32 1
-  store i64 20, ptr %t19
-  %t20 = load { ptr, i64 }, ptr %v.str.77
-  store { ptr, i64 } %t20, ptr %t17
-  %t21 = getelementptr inbounds %interface.Error, ptr %t16, i32 0, i32 0
-  store ptr %v.agg.76, ptr %t21
-  %t22 = getelementptr inbounds %interface.Error, ptr %t16, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.clockError", ptr %t22
-  %t23 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.74
-  ret { i32, [4 x i8], %interface.Error } %t23
+  %t25 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.74, i32 0, i32 0
+  store i32 1, ptr %t25
+  %t26 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.74, i32 0, i32 2
+  %t27 = getelementptr inbounds %"struct.std/time.clockError", ptr %v.agg.76, i32 0, i32 0
+  %t28 = getelementptr inbounds { ptr, i64 }, ptr %v.str.77, i32 0, i32 0
+  store ptr @.bytes.8, ptr %t28
+  %t29 = getelementptr inbounds { ptr, i64 }, ptr %v.str.77, i32 0, i32 1
+  store i64 20, ptr %t29
+  %t30 = load { ptr, i64 }, ptr %v.str.77
+  store { ptr, i64 } %t30, ptr %t27
+  %t31 = getelementptr inbounds %interface.Error, ptr %t26, i32 0, i32 0
+  store ptr %v.agg.76, ptr %t31
+  %t32 = getelementptr inbounds %interface.Error, ptr %t26, i32 0, i32 1
+  store ptr @"std/time.vtable.Error.clockError", ptr %t32
+  %t33 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.74
+  store { i32, [4 x i8], %interface.Error } %t33, ptr %t34
+  %t35 = load i32, ptr %t34
+  %t36 = icmp eq i32 %t35, 0
+  br i1 %t36, label %share.keep.2, label %share.done.2
+share.keep.2:
+  %t37 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t34, i32 0, i32 2
+  br label %share.done.2
+share.done.2:
+  %t38 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t39 = ptrtoint ptr %t38 to i64
+  call i32 @willrt_task_store_result(ptr %t34, i64 %t39)
+  ret i32 1
 if.end.1:
-  %t24 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.79, i32 0, i32 0
-  store i32 0, ptr %t24
-  %t25 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.79, i32 0, i32 2
-  %t26 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.79
-  ret { i32, [4 x i8], %interface.Error } %t26
+  %t40 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.79, i32 0, i32 0
+  store i32 0, ptr %t40
+  %t41 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.79, i32 0, i32 2
+  %t42 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.79
+  store { i32, [4 x i8], %interface.Error } %t42, ptr %t43
+  %t44 = load i32, ptr %t43
+  %t45 = icmp eq i32 %t44, 0
+  br i1 %t45, label %share.keep.3, label %share.done.3
+share.keep.3:
+  %t46 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t43, i32 0, i32 2
+  br label %share.done.3
+share.done.3:
+  %t47 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t48 = ptrtoint ptr %t47 to i64
+  call i32 @willrt_task_store_result(ptr %t43, i64 %t48)
+  ret i32 1
+
+}
+define hidden ptr @"std/time.Sleep.task"(i64 %arg0) {
+entry:
+  %v.sm.frame = call ptr @willrt_alloc(i64 176)
+  %t49 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t49
+  %t50 = getelementptr i8, ptr %v.sm.frame, i64 8
+  store i64 %arg0, ptr %t50
+  %t51 = call i32 @willrt_lane_here()
+  %t52 = call ptr @willrt_task_new(ptr @"std/time.Sleep.sm", ptr %v.sm.frame, i64 176, i32 %t51, i32 0)
+  call void @willrt_task_own_frame(ptr %t52)
+  call void @willrt_task_run(ptr %t52)
+  ret ptr %t52
 }
 %"struct.std/time.Timezone" = type { i32 }
 %"struct.std/time.Instant" = type { i64, %"struct.std/time.Timezone" }
@@ -6904,101 +6976,10 @@ entry:
   call void @willrt_task_run(ptr %t1043)
   ret ptr %t1043
 }
-define i32 @"example.com/concurrency/multiasync.will$main"() {
-entry:
-  %v.path = alloca { ptr, i64 }
-  %v.result = alloca { i32, [4 x i8], %interface.Error }
-  %v.task = alloca ptr
-  %v.loaded = alloca { i32, [4 x i8], { ptr, i64, i64 } }
-  %v.ret.71 = alloca { i32, [4 x i8], %interface.Error }
-  %v.ret.84 = alloca { i32, [4 x i8], %interface.Error }
-  %v.ret.96 = alloca { i32, [4 x i8], { ptr, i64, i64 } }
-  %v.ret.101 = alloca { i32, [4 x i8], %interface.Error }
-  %v.str.55 = alloca { ptr, i64 }
-  %v.adt.60 = alloca { i32, [4 x i8], %interface.Error }
-  %v.join.out.76 = alloca { i32, [4 x i8], %interface.Error }
-  %v.join.err.76 = alloca %willrt.task_error
-  %t1 = getelementptr inbounds { ptr, i64 }, ptr %v.str.55, i32 0, i32 0
-  store ptr @.bytes.62, ptr %t1
-  %t2 = getelementptr inbounds { ptr, i64 }, ptr %v.str.55, i32 0, i32 1
-  store i64 31, ptr %t2
-  %t3 = load { ptr, i64 }, ptr %v.str.55
-  store { ptr, i64 } %t3, ptr %v.path
-  %t4 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.60, i32 0, i32 0
-  store i32 0, ptr %t4
-  %t5 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.60, i32 0, i32 2
-  %t6 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.60
-  store { i32, [4 x i8], %interface.Error } %t6, ptr %v.result
-  call void @willrt_region_enter()
-  %t7 = call ptr @"example.com/concurrency/multiasync.Fill.task"(ptr %v.path)
-  store ptr %t7, ptr %v.task
-  %t8 = load ptr, ptr %v.task
-  %t9 = call i32 @willrt_join(ptr %t8, ptr %v.join.out.76, ptr %v.join.err.76)
-  %t10 = getelementptr inbounds %willrt.task_error, ptr %v.join.err.76, i32 0, i32 1
-  store i32 %t9, ptr %t10
-  %t11 = icmp eq i32 %t9, 0
-  br i1 %t11, label %task.ok.1, label %task.fail.1
-task.fail.1:
-  %t12 = getelementptr inbounds %willrt_error, ptr %v.join.err.76, i32 0, i32 0
-  %t13 = load ptr, ptr %t12
-  %t14 = getelementptr inbounds %willrt_error, ptr %v.join.err.76, i32 0, i32 1
-  %t15 = load i64, ptr %t14
-  %t16 = getelementptr inbounds %willrt_error, ptr %v.join.err.76, i32 0, i32 2
-  %t17 = load ptr, ptr %t16
-  %t18 = getelementptr inbounds %willrt_error, ptr %v.join.err.76, i32 0, i32 3
-  %t19 = load ptr, ptr %t18
-  call void @willrt_panic_n(ptr %t13, i64 %t15, ptr %t17, ptr %t19)
-  unreachable
-task.ok.1:
-  %t20 = load { i32, [4 x i8], %interface.Error }, ptr %v.join.out.76
-  store { i32, [4 x i8], %interface.Error } %t20, ptr %v.result
-  call i32 @willrt_region_exit()
-  %t21 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.result, i32 0, i32 0
-  %t22 = load i32, ptr %t21
-  %t23 = icmp eq i32 %t22, 1
-  br i1 %t23, label %if.then.2, label %if.end.2
-if.then.2:
-  %t24 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
-  store { i32, [4 x i8], %interface.Error } %t24, ptr %v.ret.84
-  ret i32 1
-if.end.2:
-  %t25 = call { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.ReadFile"(ptr %v.path)
-  store { i32, [4 x i8], { ptr, i64, i64 } } %t25, ptr %v.ret.96
-  %t26 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.ret.96
-  store { i32, [4 x i8], { ptr, i64, i64 } } %t26, ptr %v.loaded
-  %t27 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
-  store { i32, [4 x i8], %interface.Error } %t27, ptr %v.ret.101
-  %t28 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 0
-  %t29 = load i32, ptr %t28
-  %t30 = icmp eq i32 %t29, 0
-  br i1 %t30, label %match.arm.3.0, label %match.next.3.0
-match.arm.3.0:
-  %t31 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 2
-  %t32 = getelementptr inbounds { ptr, i64, i64 }, ptr %t31, i32 0, i32 1
-  %t33 = load i64, ptr %t32
-  %t34 = icmp ne i64 %t33, 2
-  br i1 %t34, label %if.then.4, label %if.end.4
-if.then.4:
-  ret i32 2
-if.end.4:
-  br label %match.end.3
-match.next.3.0:
-  %t35 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 0
-  %t36 = load i32, ptr %t35
-  %t37 = icmp eq i32 %t36, 1
-  br i1 %t37, label %match.arm.3.1, label %match.next.3.1
-match.arm.3.1:
-  %t38 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 2
-  ret i32 3
-match.next.3.1:
-  unreachable
-match.end.3:
-  ret i32 0
-}
 define internal i32 @"example.com/concurrency/multiasync.Fill.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.5.39 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.5.1 = getelementptr i8, ptr %frame, i64 8
   %v.one = getelementptr i8, ptr %frame, i64 24
   %v.ret.19 = getelementptr i8, ptr %frame, i64 40
   %v.ret.30 = getelementptr i8, ptr %frame, i64 64
@@ -7009,225 +6990,392 @@ entry:
   %v.try.36 = getelementptr i8, ptr %frame, i64 176
   %v.slice.22 = getelementptr i8, ptr %frame, i64 200
   %v.slice.41 = getelementptr i8, ptr %frame, i64 216
-  %v.sm.call.out.54 = getelementptr i8, ptr %frame, i64 232
-  %v.sm.call.err.55 = getelementptr i8, ptr %frame, i64 256
-  %v.sm.join.task.56 = getelementptr i8, ptr %frame, i64 288
-  %t77 = getelementptr i8, ptr %frame, i64 296
-  %v.sm.call.out.108 = getelementptr i8, ptr %frame, i64 320
-  %v.sm.call.err.109 = getelementptr i8, ptr %frame, i64 344
-  %v.sm.join.task.110 = getelementptr i8, ptr %frame, i64 376
-  %t131 = getelementptr i8, ptr %frame, i64 384
-  %t140 = getelementptr i8, ptr %frame, i64 408
+  %v.sm.call.out.16 = getelementptr i8, ptr %frame, i64 232
+  %v.sm.call.err.17 = getelementptr i8, ptr %frame, i64 256
+  %v.sm.join.task.18 = getelementptr i8, ptr %frame, i64 288
+  %t39 = getelementptr i8, ptr %frame, i64 296
+  %v.sm.call.out.46 = getelementptr i8, ptr %frame, i64 320
+  %v.sm.call.err.47 = getelementptr i8, ptr %frame, i64 344
+  %v.sm.join.task.48 = getelementptr i8, ptr %frame, i64 376
+  %v.sm.call.out.85 = getelementptr i8, ptr %frame, i64 384
+  %v.sm.call.err.86 = getelementptr i8, ptr %frame, i64 408
+  %v.sm.join.task.87 = getelementptr i8, ptr %frame, i64 440
+  %t108 = getelementptr i8, ptr %frame, i64 448
+  %t117 = getelementptr i8, ptr %frame, i64 472
   %v.sm.statev = load i32, ptr %v.sm.state
-  switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 i32 2, label %sm.op.call.2 ]
+  switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 i32 2, label %sm.op.call.2 i32 3, label %sm.op.call.3 ]
 sm.init:
-  %t40 = getelementptr inbounds { ptr, i64 }, ptr %v.str.13, i32 0, i32 0
-  store ptr @.bytes.63, ptr %t40
-  %t41 = getelementptr inbounds { ptr, i64 }, ptr %v.str.13, i32 0, i32 1
-  store i64 1, ptr %t41
-  %t42 = load { ptr, i64 }, ptr %v.str.13
-  store { ptr, i64 } %t42, ptr %v.one
-  %t43 = icmp ugt i64 0, 1
-  br i1 %t43, label %panic.1, label %panic.ok.1
+  %t2 = getelementptr inbounds { ptr, i64 }, ptr %v.str.13, i32 0, i32 0
+  store ptr @.bytes.62, ptr %t2
+  %t3 = getelementptr inbounds { ptr, i64 }, ptr %v.str.13, i32 0, i32 1
+  store i64 1, ptr %t3
+  %t4 = load { ptr, i64 }, ptr %v.str.13
+  store { ptr, i64 } %t4, ptr %v.one
+  %t5 = icmp ugt i64 0, 1
+  br i1 %t5, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.124, ptr @.str.177, ptr @.str.178)
+  call void @willrt_panic(ptr @.str.124, ptr @.str.176, ptr @.str.177)
   unreachable
 panic.ok.1:
-  %t44 = getelementptr inbounds { ptr, i64 }, ptr %v.one, i32 0, i32 0
-  %t45 = load ptr, ptr %t44
-  %t46 = getelementptr inbounds { ptr, i64 }, ptr %v.one, i32 0, i32 1
-  %t47 = load i64, ptr %t46
-  %t48 = icmp ugt i64 1, %t47
-  br i1 %t48, label %panic.2, label %panic.ok.2
+  %t6 = getelementptr inbounds { ptr, i64 }, ptr %v.one, i32 0, i32 0
+  %t7 = load ptr, ptr %t6
+  %t8 = getelementptr inbounds { ptr, i64 }, ptr %v.one, i32 0, i32 1
+  %t9 = load i64, ptr %t8
+  %t10 = icmp ugt i64 1, %t9
+  br i1 %t10, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.124, ptr @.str.177, ptr @.str.178)
+  call void @willrt_panic(ptr @.str.124, ptr @.str.176, ptr @.str.177)
   unreachable
 panic.ok.2:
-  %t49 = getelementptr inbounds i8, ptr %t45, i64 0
-  %t50 = sub i64 1, 0
-  %t51 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.22, i32 0, i32 0
-  store ptr %t49, ptr %t51
-  %t52 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.22, i32 0, i32 1
-  store i64 %t50, ptr %t52
-  %t53 = call ptr @"std/os/fs.AsyncWriteFile.task"(ptr %v.sm.param.5.39, ptr %v.slice.22)
-  store ptr %t53, ptr %v.sm.join.task.56
+  %t11 = getelementptr inbounds i8, ptr %t7, i64 0
+  %t12 = sub i64 1, 0
+  %t13 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.22, i32 0, i32 0
+  store ptr %t11, ptr %t13
+  %t14 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.22, i32 0, i32 1
+  store i64 %t12, ptr %t14
+  %t15 = call ptr @"std/os/fs.AsyncWriteFile.task"(ptr %v.sm.param.5.1, ptr %v.slice.22)
+  store ptr %t15, ptr %v.sm.join.task.18
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t58 = load ptr, ptr %v.sm.join.task.56
-  %t57 = call i32 @willrt_task_try_join(ptr %t58, ptr %v.sm.call.out.54, ptr %v.sm.call.err.55)
-  %t59 = icmp eq i32 %t57, -1
-  br i1 %t59, label %sm.op.park.1, label %sm.op.cont.1
+  %t20 = load ptr, ptr %v.sm.join.task.18
+  %t19 = call i32 @willrt_task_try_join(ptr %t20, ptr %v.sm.call.out.16, ptr %v.sm.call.err.17)
+  %t21 = icmp eq i32 %t19, -1
+  br i1 %t21, label %sm.op.park.1, label %sm.op.cont.1
 sm.op.park.1:
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.op.cont.1:
-  %t60 = icmp eq i32 %t57, 0
-  br i1 %t60, label %sm.call.ok.3, label %sm.call.fail.3
+  %t22 = icmp eq i32 %t19, 0
+  br i1 %t22, label %sm.call.ok.3, label %sm.call.fail.3
 sm.call.fail.3:
-  %t61 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.55, i32 0, i32 0
-  %t62 = load ptr, ptr %t61
-  %t63 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.55, i32 0, i32 1
-  %t64 = load i64, ptr %t63
-  %t65 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.55, i32 0, i32 2
-  %t66 = load ptr, ptr %t65
-  %t67 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.55, i32 0, i32 3
-  %t68 = load ptr, ptr %t67
-  call void @willrt_panic_n(ptr %t62, i64 %t64, ptr %t66, ptr %t68)
+  %t23 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.17, i32 0, i32 0
+  %t24 = load ptr, ptr %t23
+  %t25 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.17, i32 0, i32 1
+  %t26 = load i64, ptr %t25
+  %t27 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.17, i32 0, i32 2
+  %t28 = load ptr, ptr %t27
+  %t29 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.17, i32 0, i32 3
+  %t30 = load ptr, ptr %t29
+  call void @willrt_panic_n(ptr %t24, i64 %t26, ptr %t28, ptr %t30)
   unreachable
 sm.call.ok.3:
-  %t69 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.sm.call.out.54, i32 0, i32 0
-  %t70 = load i32, ptr %t69
-  %t71 = icmp eq i32 %t70, 1
-  br i1 %t71, label %try.err.4, label %try.ok.4
+  %t31 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.sm.call.out.16, i32 0, i32 0
+  %t32 = load i32, ptr %t31
+  %t33 = icmp eq i32 %t32, 1
+  br i1 %t33, label %try.err.4, label %try.ok.4
 try.err.4:
-  %t72 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.17, i32 0, i32 0
-  store i32 1, ptr %t72
-  %t73 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.sm.call.out.54, i32 0, i32 2
-  %t74 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.17, i32 0, i32 2
-  %t75 = load %interface.Error, ptr %t73
-  store %interface.Error %t75, ptr %t74
-  %t76 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.17
-  store { i32, [4 x i8], %interface.Error } %t76, ptr %t77
-  %t78 = load i32, ptr %t77
-  %t79 = icmp eq i32 %t78, 0
-  br i1 %t79, label %share.keep.5, label %share.done.5
+  %t34 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.17, i32 0, i32 0
+  store i32 1, ptr %t34
+  %t35 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.sm.call.out.16, i32 0, i32 2
+  %t36 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.17, i32 0, i32 2
+  %t37 = load %interface.Error, ptr %t35
+  store %interface.Error %t37, ptr %t36
+  %t38 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.17
+  store { i32, [4 x i8], %interface.Error } %t38, ptr %t39
+  %t40 = load i32, ptr %t39
+  %t41 = icmp eq i32 %t40, 0
+  br i1 %t41, label %share.keep.5, label %share.done.5
 share.keep.5:
-  %t80 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t77, i32 0, i32 2
+  %t42 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t39, i32 0, i32 2
   br label %share.done.5
 share.done.5:
-  %t81 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t82 = ptrtoint ptr %t81 to i64
-  call i32 @willrt_task_store_result(ptr %t77, i64 %t82)
+  %t43 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t44 = ptrtoint ptr %t43 to i64
+  call i32 @willrt_task_store_result(ptr %t39, i64 %t44)
   ret i32 1
   unreachable
 try.ok.4:
-  %t83 = call { i32, [4 x i8], %interface.Error } @"std/time.Sleep"(i64 1000000)
-  store { i32, [4 x i8], %interface.Error } %t83, ptr %v.ret.30
-  %t84 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.30, i32 0, i32 0
-  %t85 = load i32, ptr %t84
-  %t86 = icmp eq i32 %t85, 1
-  br i1 %t86, label %unwrap.err.6, label %unwrap.ok.6
-unwrap.err.6:
-  %t87 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.30, i32 0, i32 2
-  %t88 = getelementptr inbounds %interface.Error, ptr %t87, i32 0, i32 0
-  %t89 = getelementptr inbounds %interface.Error, ptr %t87, i32 0, i32 1
-  %t90 = load ptr, ptr %t88
-  %t91 = load ptr, ptr %t89
-  %t92 = getelementptr inbounds ptr, ptr %t91, i32 0
-  %t93 = load ptr, ptr %t92
-  %t94 = call { ptr, i64 } %t93(ptr %t90)
-  %t95 = extractvalue { ptr, i64 } %t94, 0
-  %t96 = extractvalue { ptr, i64 } %t94, 1
-  call void @willrt_panic_n(ptr %t95, i64 %t96, ptr null, ptr null)
-  unreachable
-unwrap.ok.6:
-  %t97 = icmp ugt i64 0, 1
-  br i1 %t97, label %panic.7, label %panic.ok.7
-panic.7:
-  call void @willrt_panic(ptr @.str.124, ptr @.str.179, ptr @.str.178)
-  unreachable
-panic.ok.7:
-  %t98 = getelementptr inbounds { ptr, i64 }, ptr %v.one, i32 0, i32 0
-  %t99 = load ptr, ptr %t98
-  %t100 = getelementptr inbounds { ptr, i64 }, ptr %v.one, i32 0, i32 1
-  %t101 = load i64, ptr %t100
-  %t102 = icmp ugt i64 1, %t101
-  br i1 %t102, label %panic.8, label %panic.ok.8
-panic.8:
-  call void @willrt_panic(ptr @.str.124, ptr @.str.179, ptr @.str.178)
-  unreachable
-panic.ok.8:
-  %t103 = getelementptr inbounds i8, ptr %t99, i64 0
-  %t104 = sub i64 1, 0
-  %t105 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.41, i32 0, i32 0
-  store ptr %t103, ptr %t105
-  %t106 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.41, i32 0, i32 1
-  store i64 %t104, ptr %t106
-  %t107 = call ptr @"std/os/fs.AsyncAppend.task"(ptr %v.sm.param.5.39, ptr %v.slice.41)
-  store ptr %t107, ptr %v.sm.join.task.110
+  %t45 = call ptr @"std/time.Sleep.task"(i64 1000000)
+  store ptr %t45, ptr %v.sm.join.task.48
   store i32 2, ptr %v.sm.state
   br label %sm.op.call.2
 sm.op.call.2:
-  %t112 = load ptr, ptr %v.sm.join.task.110
-  %t111 = call i32 @willrt_task_try_join(ptr %t112, ptr %v.sm.call.out.108, ptr %v.sm.call.err.109)
-  %t113 = icmp eq i32 %t111, -1
-  br i1 %t113, label %sm.op.park.2, label %sm.op.cont.2
+  %t50 = load ptr, ptr %v.sm.join.task.48
+  %t49 = call i32 @willrt_task_try_join(ptr %t50, ptr %v.sm.call.out.46, ptr %v.sm.call.err.47)
+  %t51 = icmp eq i32 %t49, -1
+  br i1 %t51, label %sm.op.park.2, label %sm.op.cont.2
 sm.op.park.2:
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.op.cont.2:
-  %t114 = icmp eq i32 %t111, 0
-  br i1 %t114, label %sm.call.ok.9, label %sm.call.fail.9
-sm.call.fail.9:
-  %t115 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.109, i32 0, i32 0
-  %t116 = load ptr, ptr %t115
-  %t117 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.109, i32 0, i32 1
-  %t118 = load i64, ptr %t117
-  %t119 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.109, i32 0, i32 2
-  %t120 = load ptr, ptr %t119
-  %t121 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.109, i32 0, i32 3
-  %t122 = load ptr, ptr %t121
-  call void @willrt_panic_n(ptr %t116, i64 %t118, ptr %t120, ptr %t122)
+  %t52 = icmp eq i32 %t49, 0
+  br i1 %t52, label %sm.call.ok.6, label %sm.call.fail.6
+sm.call.fail.6:
+  %t53 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.47, i32 0, i32 0
+  %t54 = load ptr, ptr %t53
+  %t55 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.47, i32 0, i32 1
+  %t56 = load i64, ptr %t55
+  %t57 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.47, i32 0, i32 2
+  %t58 = load ptr, ptr %t57
+  %t59 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.47, i32 0, i32 3
+  %t60 = load ptr, ptr %t59
+  call void @willrt_panic_n(ptr %t54, i64 %t56, ptr %t58, ptr %t60)
   unreachable
-sm.call.ok.9:
-  %t123 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.sm.call.out.108, i32 0, i32 0
-  %t124 = load i32, ptr %t123
-  %t125 = icmp eq i32 %t124, 1
-  br i1 %t125, label %try.err.10, label %try.ok.10
-try.err.10:
-  %t126 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.36, i32 0, i32 0
-  store i32 1, ptr %t126
-  %t127 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.sm.call.out.108, i32 0, i32 2
-  %t128 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.36, i32 0, i32 2
-  %t129 = load %interface.Error, ptr %t127
-  store %interface.Error %t129, ptr %t128
-  %t130 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.36
-  store { i32, [4 x i8], %interface.Error } %t130, ptr %t131
-  %t132 = load i32, ptr %t131
-  %t133 = icmp eq i32 %t132, 0
-  br i1 %t133, label %share.keep.11, label %share.done.11
-share.keep.11:
-  %t134 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t131, i32 0, i32 2
-  br label %share.done.11
-share.done.11:
-  %t135 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t136 = ptrtoint ptr %t135 to i64
-  call i32 @willrt_task_store_result(ptr %t131, i64 %t136)
-  ret i32 1
+sm.call.ok.6:
+  %t61 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.sm.call.out.46, i32 0, i32 0
+  %t62 = load i32, ptr %t61
+  %t63 = icmp eq i32 %t62, 1
+  br i1 %t63, label %unwrap.err.7, label %unwrap.ok.7
+unwrap.err.7:
+  %t64 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.sm.call.out.46, i32 0, i32 2
+  %t65 = getelementptr inbounds %interface.Error, ptr %t64, i32 0, i32 0
+  %t66 = getelementptr inbounds %interface.Error, ptr %t64, i32 0, i32 1
+  %t67 = load ptr, ptr %t65
+  %t68 = load ptr, ptr %t66
+  %t69 = getelementptr inbounds ptr, ptr %t68, i32 0
+  %t70 = load ptr, ptr %t69
+  %t71 = call { ptr, i64 } %t70(ptr %t67)
+  %t72 = extractvalue { ptr, i64 } %t71, 0
+  %t73 = extractvalue { ptr, i64 } %t71, 1
+  call void @willrt_panic_n(ptr %t72, i64 %t73, ptr null, ptr null)
   unreachable
-try.ok.10:
-  %t137 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.47, i32 0, i32 0
-  store i32 0, ptr %t137
-  %t138 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.47, i32 0, i32 2
-  %t139 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.47
-  store { i32, [4 x i8], %interface.Error } %t139, ptr %t140
-  %t141 = load i32, ptr %t140
-  %t142 = icmp eq i32 %t141, 0
-  br i1 %t142, label %share.keep.12, label %share.done.12
+unwrap.ok.7:
+  %t74 = icmp ugt i64 0, 1
+  br i1 %t74, label %panic.8, label %panic.ok.8
+panic.8:
+  call void @willrt_panic(ptr @.str.124, ptr @.str.178, ptr @.str.177)
+  unreachable
+panic.ok.8:
+  %t75 = getelementptr inbounds { ptr, i64 }, ptr %v.one, i32 0, i32 0
+  %t76 = load ptr, ptr %t75
+  %t77 = getelementptr inbounds { ptr, i64 }, ptr %v.one, i32 0, i32 1
+  %t78 = load i64, ptr %t77
+  %t79 = icmp ugt i64 1, %t78
+  br i1 %t79, label %panic.9, label %panic.ok.9
+panic.9:
+  call void @willrt_panic(ptr @.str.124, ptr @.str.178, ptr @.str.177)
+  unreachable
+panic.ok.9:
+  %t80 = getelementptr inbounds i8, ptr %t76, i64 0
+  %t81 = sub i64 1, 0
+  %t82 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.41, i32 0, i32 0
+  store ptr %t80, ptr %t82
+  %t83 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.41, i32 0, i32 1
+  store i64 %t81, ptr %t83
+  %t84 = call ptr @"std/os/fs.AsyncAppend.task"(ptr %v.sm.param.5.1, ptr %v.slice.41)
+  store ptr %t84, ptr %v.sm.join.task.87
+  store i32 3, ptr %v.sm.state
+  br label %sm.op.call.3
+sm.op.call.3:
+  %t89 = load ptr, ptr %v.sm.join.task.87
+  %t88 = call i32 @willrt_task_try_join(ptr %t89, ptr %v.sm.call.out.85, ptr %v.sm.call.err.86)
+  %t90 = icmp eq i32 %t88, -1
+  br i1 %t90, label %sm.op.park.3, label %sm.op.cont.3
+sm.op.park.3:
+  call void @willrt_task_mark_wait()
+  ret i32 -1
+sm.op.cont.3:
+  %t91 = icmp eq i32 %t88, 0
+  br i1 %t91, label %sm.call.ok.10, label %sm.call.fail.10
+sm.call.fail.10:
+  %t92 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.86, i32 0, i32 0
+  %t93 = load ptr, ptr %t92
+  %t94 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.86, i32 0, i32 1
+  %t95 = load i64, ptr %t94
+  %t96 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.86, i32 0, i32 2
+  %t97 = load ptr, ptr %t96
+  %t98 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.86, i32 0, i32 3
+  %t99 = load ptr, ptr %t98
+  call void @willrt_panic_n(ptr %t93, i64 %t95, ptr %t97, ptr %t99)
+  unreachable
+sm.call.ok.10:
+  %t100 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.sm.call.out.85, i32 0, i32 0
+  %t101 = load i32, ptr %t100
+  %t102 = icmp eq i32 %t101, 1
+  br i1 %t102, label %try.err.11, label %try.ok.11
+try.err.11:
+  %t103 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.36, i32 0, i32 0
+  store i32 1, ptr %t103
+  %t104 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.sm.call.out.85, i32 0, i32 2
+  %t105 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.36, i32 0, i32 2
+  %t106 = load %interface.Error, ptr %t104
+  store %interface.Error %t106, ptr %t105
+  %t107 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.36
+  store { i32, [4 x i8], %interface.Error } %t107, ptr %t108
+  %t109 = load i32, ptr %t108
+  %t110 = icmp eq i32 %t109, 0
+  br i1 %t110, label %share.keep.12, label %share.done.12
 share.keep.12:
-  %t143 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t140, i32 0, i32 2
+  %t111 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t108, i32 0, i32 2
   br label %share.done.12
 share.done.12:
-  %t144 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t145 = ptrtoint ptr %t144 to i64
-  call i32 @willrt_task_store_result(ptr %t140, i64 %t145)
+  %t112 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t113 = ptrtoint ptr %t112 to i64
+  call i32 @willrt_task_store_result(ptr %t108, i64 %t113)
+  ret i32 1
+  unreachable
+try.ok.11:
+  %t114 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.47, i32 0, i32 0
+  store i32 0, ptr %t114
+  %t115 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.47, i32 0, i32 2
+  %t116 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.47
+  store { i32, [4 x i8], %interface.Error } %t116, ptr %t117
+  %t118 = load i32, ptr %t117
+  %t119 = icmp eq i32 %t118, 0
+  br i1 %t119, label %share.keep.13, label %share.done.13
+share.keep.13:
+  %t120 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t117, i32 0, i32 2
+  br label %share.done.13
+share.done.13:
+  %t121 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t122 = ptrtoint ptr %t121 to i64
+  call i32 @willrt_task_store_result(ptr %t117, i64 %t122)
   ret i32 1
 
 }
 define hidden ptr @"example.com/concurrency/multiasync.Fill.task"(ptr %arg0) {
 entry:
-  %v.sm.frame = call ptr @willrt_alloc(i64 432)
-  %t146 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t146
-  %t147 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t148 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t148, ptr %t147
-  %t149 = call i32 @willrt_lane_here()
-  %t150 = call ptr @willrt_task_new(ptr @"example.com/concurrency/multiasync.Fill.sm", ptr %v.sm.frame, i64 432, i32 %t149, i32 0)
-  call void @willrt_task_own_frame(ptr %t150)
-  call void @willrt_task_run(ptr %t150)
-  ret ptr %t150
+  %v.sm.frame = call ptr @willrt_alloc(i64 496)
+  %t123 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t123
+  %t124 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t125 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t125, ptr %t124
+  %t126 = call i32 @willrt_lane_here()
+  %t127 = call ptr @willrt_task_new(ptr @"example.com/concurrency/multiasync.Fill.sm", ptr %v.sm.frame, i64 496, i32 %t126, i32 0)
+  call void @willrt_task_own_frame(ptr %t127)
+  call void @willrt_task_run(ptr %t127)
+  ret ptr %t127
+}
+define internal i32 @"example.com/concurrency/multiasync.will$main.sm"(ptr %frame) {
+entry:
+  %v.sm.state = getelementptr i8, ptr %frame, i64 0
+  %v.path = getelementptr i8, ptr %frame, i64 8
+  %v.result = getelementptr i8, ptr %frame, i64 24
+  %v.task = getelementptr i8, ptr %frame, i64 48
+  %v.loaded = getelementptr i8, ptr %frame, i64 56
+  %v.ret.71 = getelementptr i8, ptr %frame, i64 88
+  %v.ret.85 = getelementptr i8, ptr %frame, i64 112
+  %v.ret.97 = getelementptr i8, ptr %frame, i64 136
+  %v.ret.102 = getelementptr i8, ptr %frame, i64 168
+  %v.str.55 = getelementptr i8, ptr %frame, i64 192
+  %v.adt.60 = getelementptr i8, ptr %frame, i64 208
+  %v.join.out.77 = getelementptr i8, ptr %frame, i64 232
+  %v.join.err.77 = getelementptr i8, ptr %frame, i64 256
+  %v.sm.join.task.136 = getelementptr i8, ptr %frame, i64 296
+  %t155 = getelementptr i8, ptr %frame, i64 304
+  %t168 = getelementptr i8, ptr %frame, i64 308
+  %t175 = getelementptr i8, ptr %frame, i64 312
+  %t178 = getelementptr i8, ptr %frame, i64 316
+  %v.sm.statev = load i32, ptr %v.sm.state
+  switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
+sm.init:
+  %t128 = getelementptr inbounds { ptr, i64 }, ptr %v.str.55, i32 0, i32 0
+  store ptr @.bytes.63, ptr %t128
+  %t129 = getelementptr inbounds { ptr, i64 }, ptr %v.str.55, i32 0, i32 1
+  store i64 31, ptr %t129
+  %t130 = load { ptr, i64 }, ptr %v.str.55
+  store { ptr, i64 } %t130, ptr %v.path
+  %t131 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.60, i32 0, i32 0
+  store i32 0, ptr %t131
+  %t132 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.60, i32 0, i32 2
+  %t133 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.60
+  store { i32, [4 x i8], %interface.Error } %t133, ptr %v.result
+  call void @willrt_region_enter()
+  %t134 = call ptr @"example.com/concurrency/multiasync.Fill.task"(ptr %v.path)
+  store ptr %t134, ptr %v.task
+  %t135 = load ptr, ptr %v.task
+  store ptr %t135, ptr %v.sm.join.task.136
+  store i32 1, ptr %v.sm.state
+  br label %sm.op.call.1
+sm.op.call.1:
+  %t138 = load ptr, ptr %v.sm.join.task.136
+  %t137 = call i32 @willrt_task_try_join(ptr %t138, ptr %v.join.out.77, ptr %v.join.err.77)
+  %t139 = icmp eq i32 %t137, -1
+  br i1 %t139, label %sm.op.park.1, label %sm.op.cont.1
+sm.op.park.1:
+  call void @willrt_task_mark_wait()
+  ret i32 -1
+sm.op.cont.1:
+  %t140 = getelementptr inbounds %willrt.task_error, ptr %v.join.err.77, i32 0, i32 1
+  store i32 %t137, ptr %t140
+  %t141 = icmp eq i32 %t137, 0
+  br i1 %t141, label %task.ok.1, label %task.fail.1
+task.fail.1:
+  %t142 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 0
+  %t143 = load ptr, ptr %t142
+  %t144 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 1
+  %t145 = load i64, ptr %t144
+  %t146 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 2
+  %t147 = load ptr, ptr %t146
+  %t148 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 3
+  %t149 = load ptr, ptr %t148
+  call void @willrt_panic_n(ptr %t143, i64 %t145, ptr %t147, ptr %t149)
+  unreachable
+task.ok.1:
+  %t150 = load { i32, [4 x i8], %interface.Error }, ptr %v.join.out.77
+  store { i32, [4 x i8], %interface.Error } %t150, ptr %v.result
+  call i32 @willrt_region_exit()
+  %t151 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.result, i32 0, i32 0
+  %t152 = load i32, ptr %t151
+  %t153 = icmp eq i32 %t152, 1
+  br i1 %t153, label %if.then.2, label %if.end.2
+if.then.2:
+  %t154 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
+  store { i32, [4 x i8], %interface.Error } %t154, ptr %v.ret.85
+  store i32 1, ptr %t155
+  %t156 = getelementptr i32, ptr null, i32 1
+  %t157 = ptrtoint ptr %t156 to i64
+  call i32 @willrt_task_store_result(ptr %t155, i64 %t157)
+  ret i32 1
+if.end.2:
+  %t158 = call { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.ReadFile"(ptr %v.path)
+  store { i32, [4 x i8], { ptr, i64, i64 } } %t158, ptr %v.ret.97
+  %t159 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.ret.97
+  store { i32, [4 x i8], { ptr, i64, i64 } } %t159, ptr %v.loaded
+  %t160 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
+  store { i32, [4 x i8], %interface.Error } %t160, ptr %v.ret.102
+  %t161 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 0
+  %t162 = load i32, ptr %t161
+  %t163 = icmp eq i32 %t162, 0
+  br i1 %t163, label %match.arm.3.0, label %match.next.3.0
+match.arm.3.0:
+  %t164 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 2
+  %t165 = getelementptr inbounds { ptr, i64, i64 }, ptr %t164, i32 0, i32 1
+  %t166 = load i64, ptr %t165
+  %t167 = icmp ne i64 %t166, 2
+  br i1 %t167, label %if.then.4, label %if.end.4
+if.then.4:
+  store i32 2, ptr %t168
+  %t169 = getelementptr i32, ptr null, i32 1
+  %t170 = ptrtoint ptr %t169 to i64
+  call i32 @willrt_task_store_result(ptr %t168, i64 %t170)
+  ret i32 1
+if.end.4:
+  br label %match.end.3
+match.next.3.0:
+  %t171 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 0
+  %t172 = load i32, ptr %t171
+  %t173 = icmp eq i32 %t172, 1
+  br i1 %t173, label %match.arm.3.1, label %match.next.3.1
+match.arm.3.1:
+  %t174 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 2
+  store i32 3, ptr %t175
+  %t176 = getelementptr i32, ptr null, i32 1
+  %t177 = ptrtoint ptr %t176 to i64
+  call i32 @willrt_task_store_result(ptr %t175, i64 %t177)
+  ret i32 1
+match.next.3.1:
+  unreachable
+match.end.3:
+  store i32 0, ptr %t178
+  %t179 = getelementptr i32, ptr null, i32 1
+  %t180 = ptrtoint ptr %t179 to i64
+  call i32 @willrt_task_store_result(ptr %t178, i64 %t180)
+  ret i32 1
+
+}
+define hidden ptr @"example.com/concurrency/multiasync.will$main.task"() {
+entry:
+  %v.sm.frame = call ptr @willrt_alloc(i64 320)
+  %t181 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t181
+  %t182 = call i32 @willrt_lane_here()
+  %t183 = call ptr @willrt_task_new(ptr @"example.com/concurrency/multiasync.will$main.sm", ptr %v.sm.frame, i64 320, i32 %t182, i32 0)
+  call void @willrt_task_own_frame(ptr %t183)
+  call void @willrt_task_run(ptr %t183)
+  ret ptr %t183
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -7235,12 +7383,25 @@ define i32 @main() {
 entry:
   call void @willrt_init()
   call void @"std/errors.will$init"()
-  %r = call i32 @"example.com/concurrency/multiasync.will$main"()
+  %t184 = call ptr @"example.com/concurrency/multiasync.will$main.task"()
+  %t186 = alloca i32
+  %t185 = call i32 @willrt_join(ptr %t184, ptr %t186, ptr null)
+  %t187 = icmp ne i32 %t185, 0
+  br i1 %t187, label %main.async.fail.5, label %main.async.ok.5
+main.async.fail.5:
   call void @willrt_shutdown()
-  ret i32 %r
+  ret i32 1
+main.async.ok.5:
+  %t188 = load i32, ptr %t186
+  call void @willrt_shutdown()
+  ret i32 %t188
 }
 declare i64 @willrt_now_ns()
-declare i32 @willrt_task_sleep_async(i32)
+declare ptr @willrt_task_sleep_async_start(i64)
+declare i32 @willrt_task_sleep_poll(ptr)
+declare i32 @willrt_task_sleep_finish(ptr)
+declare i64 @willrt_task_sleep_deadline(ptr)
+declare void @willrt_task_wait_until(i64)
 declare i32 @willrt_fs_read_file(i32, i32)
 declare i32 @willrt_fs_write_file(i32, i32)
 declare i32 @willrt_fs_append_file(i32, i32)
@@ -7277,7 +7438,6 @@ declare ptr @willrt_fs_async_read_file_start(ptr, ptr)
 declare i32 @willrt_io_poll(ptr)
 declare i32 @willrt_io_finish(ptr)
 declare i64 @willrt_io_deadline(ptr)
-declare void @willrt_task_wait_until(i64)
 declare ptr @willrt_fs_async_write_file_start(ptr, ptr)
 declare ptr @willrt_fs_async_append_start(ptr, ptr)
 declare ptr @willrt_fs_async_open_start(ptr, ptr, ptr)
@@ -7462,11 +7622,11 @@ declare ptr @willrt_fs_async_temp_file_start(ptr, ptr, ptr)
 @.bytes.60 = private unnamed_addr constant [22 x i8] c"fs: cannot append file", align 1
 @"std/os/fs.vtable.Error.std/errors.Fault" = internal constant [2 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status"], align 8
 @.bytes.61 = private unnamed_addr constant [0 x i8] zeroinitializer
-@.bytes.62 = private unnamed_addr constant [31 x i8] c"will-concurrency-multiasync.tmp", align 1
-@.bytes.63 = private unnamed_addr constant [1 x i8] c"a", align 1
-@.str.177 = private unnamed_addr constant [15 x i8] c"main.will:6:39\00", align 1
-@.str.178 = private unnamed_addr constant [40 x i8] c"example.com/concurrency/multiasync.Fill\00", align 1
-@.str.179 = private unnamed_addr constant [15 x i8] c"main.will:8:36\00", align 1
+@.bytes.62 = private unnamed_addr constant [1 x i8] c"a", align 1
+@.str.176 = private unnamed_addr constant [15 x i8] c"main.will:6:39\00", align 1
+@.str.177 = private unnamed_addr constant [40 x i8] c"example.com/concurrency/multiasync.Fill\00", align 1
+@.str.178 = private unnamed_addr constant [15 x i8] c"main.will:8:36\00", align 1
+@.bytes.63 = private unnamed_addr constant [31 x i8] c"will-concurrency-multiasync.tmp", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare i32 @willrt_utf8_decode(ptr, i64, ptr)

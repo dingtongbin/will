@@ -1,7 +1,7 @@
 import "std/task"
 
-func Worker(ch: chan<i32>, cancel: task.Cancel) -> i32 {
-    var item: Option<i32> = ch.Recv()
+async func Worker(ch: chan<i32>, cancel: task.Cancel) -> i32 {
+    var item: Option<i32> = await ch.Recv()
     match item {
         Some(_) => {
             return 1
@@ -16,14 +16,14 @@ func Worker(ch: chan<i32>, cancel: task.Cancel) -> i32 {
     return 3
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
     var cancel: task.Cancel = new task.Cancel()
     cancel.Cancel()
     var value: i32 = 0
     region {
         var worker: Task<i32> = spawn Worker(ch, cancel)
-        value = worker.Join()!
+        value = await worker.Join()!
     }
     if value != 7 {
         return 1

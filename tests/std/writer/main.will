@@ -6,11 +6,11 @@ struct NullWriter {
     n: usize
 }
 
-func (w: NullWriter) AsyncWrite(buf: []u8) -> Result<(), Error> {
+func (w: NullWriter) Write(buf: []u8) -> Result<(), Error> {
     return Ok(())
 }
 
-func (w: NullWriter) AsyncFlush() -> Result<(), Error> {
+func (w: NullWriter) Sync() -> Result<(), Error> {
     return Ok(())
 }
 
@@ -20,20 +20,20 @@ struct Wrap {
     inner: io.Writer
 }
 
-func (w: Wrap) AsyncWrite(buf: []u8) -> Result<(), Error> {
-    return w.inner.AsyncWrite(buf)
+func (w: Wrap) Write(buf: []u8) -> Result<(), Error> {
+    return w.inner.Write(buf)
 }
 
-func (w: Wrap) AsyncFlush() -> Result<(), Error> {
-    return w.inner.AsyncFlush()
+func (w: Wrap) Sync() -> Result<(), Error> {
+    return w.inner.Sync()
 }
 
 // sink takes the interface and calls a method whose result is an enum.
 func sink(w: io.Writer) -> Result<(), Error> {
     var storage: Array<u8> = new Array<u8>(0)
     var bytes: []u8 = storage[Range(0, storage.Len())]
-    _ = w.AsyncWrite(bytes)?
-    _ = w.AsyncFlush()?
+    _ = w.Write(bytes)?
+    _ = w.Sync()?
     return Ok(())
 }
 
@@ -47,7 +47,7 @@ struct Recorder {
     pad: usize
 }
 
-func (w: Recorder) AsyncWrite(buf: []u8) -> Result<(), Error> {
+func (w: Recorder) Write(buf: []u8) -> Result<(), Error> {
     var i: usize = 0
     for {
         if i >= buf.Len() {
@@ -63,7 +63,7 @@ func (w: Recorder) AsyncWrite(buf: []u8) -> Result<(), Error> {
     return Ok(())
 }
 
-func (w: Recorder) AsyncFlush() -> Result<(), Error> {
+func (w: Recorder) Sync() -> Result<(), Error> {
     return Ok(())
 }
 
@@ -71,7 +71,7 @@ func CheckPrintf() -> i32 {
     written = 0usize
     first = 0u8
     last = 0u8
-    match fmt.AsyncPrintf(Recorder{pad: 0usize}, "ab", 42i32) {
+    match fmt.Printf(Recorder{pad: 0usize}, "ab", 42i32) {
         Ok(_) => {}
         Err(_) => {
             return 3
@@ -87,7 +87,7 @@ func CheckPrintf() -> i32 {
 }
 
 func main() -> i32 {
-    fmt.AsyncPrintln("writer", 1i32)
+    fmt.Println("writer", 1i32)
     var null: NullWriter = NullWriter{n: 0}
     var wrapped: Wrap = Wrap{inner: null}
     match sink(wrapped) {

@@ -1,8 +1,8 @@
 import "std/os/exec"
 
-func main() -> i32 {
+async func main() -> i32 {
     var command: exec.Cmd = exec.Command("cmd", "/C", "echo hi")
-    var out: Result<exec.Output, Error> = command.AsyncOutput()
+    var out: Result<exec.Output, Error> = await command.AsyncOutput()
     match out {
         Ok(value) => {
             if value.status.code != 0 {
@@ -18,7 +18,7 @@ func main() -> i32 {
     }
 
     var failing: exec.Cmd = exec.Command("cmd", "/C", "exit 3")
-    var status: Result<exec.ExitStatus, Error> = failing.AsyncRun()
+    var status: Result<exec.ExitStatus, Error> = await failing.AsyncRun()
     match status {
         Ok(value) => {
             if value.code != 3 {

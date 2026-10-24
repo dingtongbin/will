@@ -1,8 +1,8 @@
-func main() -> i32 {
+async func main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
     var got: bool = false
     deadline 1ms {
-        var item: Option<i32> = ch.Recv()
+        var item: Option<i32> = await ch.Recv()
         match item {
             Some(_) => {
                 got = true

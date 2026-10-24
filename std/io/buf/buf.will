@@ -82,16 +82,16 @@ func NewWriter(w: io.Writer, size: usize) -> WriterBuf {
     }
 }
 
-// AsyncWrite appends bytes, flushing first when they would not fit.
-func (mut b: WriterBuf) AsyncWrite(bytes: []u8) -> Result<(), Error> {
+// Write appends bytes, flushing first when they would not fit.
+func (mut b: WriterBuf) Write(bytes: []u8) -> Result<(), Error> {
     if b.limit == 0usize {
-        return b.dst.AsyncWrite(bytes)
+        return b.dst.Write(bytes)
     }
     if b.data.Len() == 0usize && bytes.Len() >= b.limit {
-        return b.dst.AsyncWrite(bytes)
+        return b.dst.Write(bytes)
     }
     if b.data.Len() + bytes.Len() > b.limit {
-        _ = b.AsyncFlush()?
+        _ = b.Flush()?
     }
     var i: usize = 0
     for {
@@ -102,19 +102,19 @@ func (mut b: WriterBuf) AsyncWrite(bytes: []u8) -> Result<(), Error> {
         i += 1
     }
     if b.data.Len() >= b.limit {
-        _ = b.AsyncFlush()?
+        _ = b.Flush()?
     }
     return Ok(())
 }
 
-// AsyncFlush writes the buffered bytes and flushes the wrapped Writer. The
-// buffer is copied first so the write does not alias the array it clears.
-func (mut b: WriterBuf) AsyncFlush() -> Result<(), Error> {
+// Flush writes the buffered bytes and syncs the wrapped Writer. The buffer is
+// copied first so the write does not alias the array it clears.
+func (mut b: WriterBuf) Flush() -> Result<(), Error> {
     if b.data.Len() != 0usize {
         var out: Array<u8> = b.data.Clone()
         var n: usize = out.Len()
         b.data.Clear()
-        _ = b.dst.AsyncWrite(out[Range(0, n)])?
+        _ = b.dst.Write(out[Range(0, n)])?
     }
-    return b.dst.AsyncFlush()
+    return b.dst.Sync()
 }

@@ -20,13 +20,13 @@ async func WaitFor(m: sync.Mutex<Counter>, entered: chan<i32>) -> i32 {
     return g.n
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var m: sync.Mutex<Counter> = new sync.Mutex<Counter>(Counter { n: 0 })
     region {
         var t1: Task<i32> = spawn Bump(m)
         var t2: Task<i32> = spawn Bump(m)
-        _ = t1.Join()!
-        _ = t2.Join()!
+        _ = await t1.Join()!
+        _ = await t2.Join()!
     }
     var two: i32 = 0
     if true {
@@ -52,8 +52,8 @@ func main() -> i32 {
                 }
             }
         }
-        _ = entered.Recv()!
-        _ = waiter.Join()!
+        _ = await entered.Recv()!
+        _ = await waiter.Join()!
     }
     var after: i32 = 0
     if true {

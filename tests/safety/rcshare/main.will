@@ -23,36 +23,36 @@ func Pass(b: rc<Box>) -> i64 {
     return b.value
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { value: 7 })
     region {
         var task: Task<i64> = spawn Consume(box)
-        if task.Join()! != 7i64 {
+        if await task.Join()! != 7i64 {
             return 1
         }
     }
     region {
         var maker: Task<rc<Box>> = spawn MakeSlow()
-        var got: rc<Box> = maker.Join()!
+        var got: rc<Box> = await maker.Join()!
         if got.value != 5i64 {
             return 2
         }
     }
     region {
         var other: Task<i64> = spawn Pass(box)
-        if other.Join()! != 7i64 {
+        if await other.Join()! != 7i64 {
             return 3
         }
     }
     var pipe: chan<rc<Box>> = new chan<rc<Box>>(4)
-    var sent: Result<(), Error> = pipe.Send(box)
+    var sent: Result<(), Error> = await pipe.Send(box)
     match sent {
         Err(_) => {
             return 4
         }
         _ => {}
     }
-    var taken: Option<rc<Box>> = pipe.Recv()
+    var taken: Option<rc<Box>> = await pipe.Recv()
     match taken {
         Some(b) => {
             if b.value != 7i64 {

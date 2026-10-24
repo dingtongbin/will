@@ -14,12 +14,15 @@ import (
 // waits, and so does a function that calls a waiting function: the caller
 // runs the callee as a child task and waits for it.
 func (g *generator) generalMachine(fnID int) bool {
-	if fnID == 0 || fnID == g.entryID {
+	if fnID == 0 {
 		return false
 	}
 	fn, ok := g.recs[fnID]
 	if !ok || fn.Kind != "func" {
 		return false
+	}
+	if fnID == g.entryID && g.cur.path == g.entryPkg {
+		return g.entryAsync
 	}
 	if fieldText(fn, "async") == "true" {
 		return true

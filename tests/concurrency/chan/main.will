@@ -1,14 +1,14 @@
-func Producer(ch: chan<i32>) {
-    _ = ch.Send(7)
+async func Producer(ch: chan<i32>) {
+    _ = await ch.Send(7)
     ch.Close()
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
     var value: i32 = 0
     region {
         var task: Task<()> = spawn Producer(ch)
-        var item: Option<i32> = ch.Recv()
+        var item: Option<i32> = await ch.Recv()
         match item {
             Some(v) => {
                 value = v
@@ -17,7 +17,7 @@ func main() -> i32 {
                 return 1
             }
         }
-        _ = task.Join()!
+        _ = await task.Join()!
     }
     return value - 7
 }

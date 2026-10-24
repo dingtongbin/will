@@ -10,14 +10,14 @@ struct Sink {
     pad: usize
 }
 
-func (s: Sink) AsyncWrite(bytes: []u8) -> Result<(), Error> {
+func (s: Sink) Write(bytes: []u8) -> Result<(), Error> {
     writes += 1
     total += bytes.Len()
     last = bytes.Len()
     return Ok(())
 }
 
-func (s: Sink) AsyncFlush() -> Result<(), Error> {
+func (s: Sink) Sync() -> Result<(), Error> {
     return Ok(())
 }
 
@@ -26,7 +26,7 @@ func main() -> i32 {
     var writer: buf.WriterBuf = buf.NewWriter(Sink{pad: 0usize}, 8usize)
 
     // A write shorter than the buffer stays in memory.
-    match writer.AsyncWrite(text[Range(0, 5)]) {
+    match writer.Write(text[Range(0, 5)]) {
         Err(_) => {
             return 1
         }
@@ -37,7 +37,7 @@ func main() -> i32 {
     }
 
     // Flushing hands the buffered bytes over in one write.
-    match writer.AsyncFlush() {
+    match writer.Flush() {
         Err(_) => {
             return 3
         }
@@ -48,7 +48,7 @@ func main() -> i32 {
     }
 
     // A second small write buffers again instead of passing through.
-    match writer.AsyncWrite(text[Range(0, 5)]) {
+    match writer.Write(text[Range(0, 5)]) {
         Err(_) => {
             return 5
         }
@@ -59,7 +59,7 @@ func main() -> i32 {
     }
 
     // Filling the buffer exactly flushes it.
-    match writer.AsyncWrite(text[Range(0, 3)]) {
+    match writer.Write(text[Range(0, 3)]) {
         Err(_) => {
             return 7
         }
@@ -70,7 +70,7 @@ func main() -> i32 {
     }
 
     // A write that does not fit flushes first, then waits in the buffer.
-    match writer.AsyncWrite(text[Range(0, 5)]) {
+    match writer.Write(text[Range(0, 5)]) {
         Err(_) => {
             return 9
         }
@@ -79,7 +79,7 @@ func main() -> i32 {
     if writes != 2 {
         return 10
     }
-    match writer.AsyncWrite(text[Range(0, 1)]) {
+    match writer.Write(text[Range(0, 1)]) {
         Err(_) => {
             return 11
         }
@@ -88,7 +88,7 @@ func main() -> i32 {
     if writes != 2 {
         return 12
     }
-    match writer.AsyncWrite(text[Range(0, 5)]) {
+    match writer.Write(text[Range(0, 5)]) {
         Err(_) => {
             return 13
         }
@@ -99,7 +99,7 @@ func main() -> i32 {
     }
 
     // The final flush writes what is left.
-    match writer.AsyncFlush() {
+    match writer.Flush() {
         Err(_) => {
             return 15
         }

@@ -1,19 +1,19 @@
 import "std/sync"
 
 async func WaitFor(sem: sync.Semaphore, ready: chan<i32>, done: chan<i32>) -> i32 {
-    _ = ready.Send(1)
+    _ = await ready.Send(1)
     var permit: sync.Permit = await sem.Acquire()!
-    _ = done.Send(1)
+    _ = await done.Send(1)
     permit.Release()
     return 0
 }
 
-func Worker(count: sync.Count, done: chan<i32>) {
-    _ = done.Send(1)
+async func Worker(count: sync.Count, done: chan<i32>) {
+    _ = await done.Send(1)
     count.Add(-1i64)
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var sem: sync.Semaphore = new sync.Semaphore(1i64)
     var first: sync.Permit = sem.TryAcquire()!
     match sem.TryAcquire() {
@@ -29,7 +29,7 @@ func main() -> i32 {
     var done: chan<i32> = new chan<i32>(1)
     region {
         var task: Task<i32> = spawn WaitFor(sem, ready, done)
-        _ = ready.Recv()
+        _ = await ready.Recv()
         match done.TryRecv() {
             Some(early) => {
                 _ = early
@@ -39,19 +39,19 @@ func main() -> i32 {
             }
         }
         first.Release()
-        _ = done.Recv()
-        _ = task.Join()!
+        _ = await done.Recv()
+        _ = await task.Join()!
     }
     var count: sync.Count = new sync.Count(2i64)
     var finished: chan<i32> = new chan<i32>(2)
     region {
         var w1: Task<()> = spawn Worker(count, finished)
         var w2: Task<()> = spawn Worker(count, finished)
-        _ = wait(count.Wait())!
-        _ = finished.Recv()
-        _ = finished.Recv()
-        _ = w1.Join()!
-        _ = w2.Join()!
+        _ = await count.Wait()!
+        _ = await finished.Recv()
+        _ = await finished.Recv()
+        _ = await w1.Join()!
+        _ = await w2.Join()!
     }
     return 0
 }

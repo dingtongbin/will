@@ -9,12 +9,12 @@ async func Fill(path: str) -> Result<(), Error> {
     return Ok(())
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var path: str = "will-concurrency-multiasync.tmp"
     var result: Result<(), Error> = Ok(())
     region {
         var task: Task<Result<(), Error>> = spawn Fill(path)
-        result = task.Join()!
+        result = await task.Join()!
     }
     if result.IsErr() {
         _ = fs.Remove(path)

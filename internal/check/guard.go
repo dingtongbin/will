@@ -176,7 +176,6 @@ func (g *guardWalker) expr(e ast.Expr) {
 	case *ast.TryExpr:
 		g.expr(x.X)
 	case *ast.AwaitExpr:
-		g.suspend(x.Pos())
 		g.expr(x.X)
 	case *ast.UnwrapExpr:
 		g.expr(x.X)

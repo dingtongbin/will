@@ -22,6 +22,7 @@ type inferScope struct {
 	// is consumed instead of reported.
 	async          bool
 	allowAsyncCall bool
+	parallel       bool
 }
 
 func newInferScope(parent *inferScope) *inferScope {
@@ -31,6 +32,7 @@ func newInferScope(parent *inferScope) *inferScope {
 		s.tp = parent.tp
 		s.async = parent.async
 		s.allowAsyncCall = parent.allowAsyncCall
+		s.parallel = parent.parallel
 	}
 	return s
 }
@@ -199,11 +201,22 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 	case *ast.RegionStmt:
 		c.inferBlock(s, x.Body)
 	case *ast.ParallelStmt:
-		c.inferBlock(s, x.Body)
+		inner := newInferScope(s)
+		inner.parallel = true
+		c.inferBlock(inner, x.Body)
 	case *ast.SelectStmt:
+		if !s.async {
+			c.bag.Error(x.Pos(), diag.CodeSelectOutsideAsync,
+				"select is only allowed inside an async function",
+				"mark the function async, or move the select into an async helper")
+		}
 		for _, arm := range x.Arms {
 			inner := newInferScope(s)
-			if t := c.inferExpr(s, arm.Chan); arm.Bind != "" {
+			previous := s.allowAsyncCall
+			s.allowAsyncCall = true
+			t := c.inferExpr(s, arm.Chan)
+			s.allowAsyncCall = previous
+			if arm.Bind != "" {
 				inner.vars[arm.Bind] = elemOf(c.in, t)
 			}
 			c.inferExpr(s, arm.Timeout)
@@ -858,10 +871,8 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 				inst = c.instantiate(sig, subst)
 			}
 			c.checkCallArgs(s, inst, call.Args, call.Pos())
-			if inst.async && !s.allowAsyncCall {
-				c.bag.Error(call.Pos(), diag.CodeAsyncNotAwaited,
-					"this async call is not awaited",
-					"write await, wait(...), or spawn")
+			if inst.async {
+				c.requireWait(s, call.Pos())
 			}
 			return inst.result
 		}
@@ -1109,6 +1120,9 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 				sig = c.instantiate(sig, subst)
 			}
 			c.checkCallArgs(s, sig, call.Args, call.Pos())
+			if sig.async {
+				c.requireWait(s, call.Pos())
+			}
 			return sig.result
 		}
 	}
@@ -1147,9 +1161,11 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	}
 	switch call.Name {
 	case "Recv":
+		c.requireWait(s, call.Pos())
 		return elemOf(c.in, recv)
 	case "Send":
 		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "chan" {
+			c.requireWait(s, call.Pos())
 			var elem *Type
 			if len(recv.Args()) == 1 {
 				elem = recv.Args()[0]
@@ -1159,6 +1175,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		}
 	case "Join":
 		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "Task" && len(recv.Args()) == 1 {
+			c.requireWait(s, call.Pos())
 			return c.in.named("Result", []*Type{recv.Args()[0], c.in.named("TaskError", nil)})
 		}
 		return nil
@@ -1170,6 +1187,9 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	}
 	if recv == nil {
 		return nil
+	}
+	if strings.HasPrefix(call.Name, "Async") {
+		c.requireWait(s, call.Pos())
 	}
 	if recv.Kind() == ScalarKind && recv.Name() == "raw" {
 		return c.rawMethod(s, call)
@@ -1503,6 +1523,16 @@ func isReadGuardType(t *Type) bool {
 	}
 	name := t.Name()
 	return name == "ReadGuard" || strings.HasSuffix(name, "sync.ReadGuard")
+}
+
+// requireWait rejects a wait operation outside await, wait, or spawn.
+func (c *checker) requireWait(s *inferScope, pos source.Pos) {
+	if s.async || s.allowAsyncCall || s.parallel {
+		return
+	}
+	c.bag.Error(pos, diag.CodeAsyncNotAwaited,
+		"this wait operation is not awaited",
+		"write await, wait(...), or spawn")
 }
 
 // awaitOperand accepts the shapes await may wait on: an async call, a method

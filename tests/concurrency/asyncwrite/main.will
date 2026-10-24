@@ -5,12 +5,12 @@ async func Write(path: str) -> Result<(), Error> {
     return await fs.AsyncWriteFile(path, text[Range(0, 6)])
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var path: str = "will-concurrency-asyncwrite.tmp"
     var result: Result<(), Error> = Ok(())
     region {
         var task: Task<Result<(), Error>> = spawn Write(path)
-        result = task.Join()!
+        result = await task.Join()!
     }
     if result.IsErr() {
         _ = fs.Remove(path)

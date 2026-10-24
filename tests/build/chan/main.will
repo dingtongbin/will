@@ -1,9 +1,9 @@
-func main() -> i32 {
+async func main() -> i32 {
     var ch: chan<i32> = new chan<i32>(2)
-    _ = ch.Send(3)
+    _ = await ch.Send(3)
     var ok: bool = ch.TrySend(4)
     var first: Option<i32> = ch.TryRecv()
-    var second: Option<i32> = ch.Recv()
+    var second: Option<i32> = await ch.Recv()
     ch.Close()
     var v: i32 = 0
     match first {

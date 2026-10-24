@@ -2,17 +2,16 @@
 
 import "std/io"
 
-// AsyncPrintln writes the shown parts and a newline to standard output. The
-// write reaches the runtime directly, so the call does not wait on a task
-// frame.
-func AsyncPrintln(parts: ...Show) {
+// Println writes the shown parts and a newline to standard output. The write
+// reaches the runtime directly, so the call does not wait on a task frame.
+func Println(parts: ...Show) {
     print(textOf(parts))
     print("\n")
 }
 
-// AsyncPrintf writes the shown parts to w and reports the first write error.
-func AsyncPrintf(w: io.Writer, parts: ...Show) -> Result<(), Error> {
+// Printf writes the shown parts to w and reports the first write error.
+func Printf(w: io.Writer, parts: ...Show) -> Result<(), Error> {
     var text: str = textOf(parts)
     var n: usize = text.Len()
-    return w.AsyncWrite(text[Range(0, n)])
+    return w.Write(text[Range(0, n)])
 }

@@ -2,16 +2,16 @@ func Inner() -> i32 {
     return 7
 }
 
-func Wait(task: Task<i32>) -> i32 {
-    return task.Join()!
+async func Wait(task: Task<i32>) -> i32 {
+    return await task.Join()!
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var value: i32 = 0
     region {
         var inner: Task<i32> = spawn Inner()
-        var wait: Task<i32> = spawn Wait(inner)
-        value = wait.Join()!
+        var waiter: Task<i32> = spawn Wait(inner)
+        value = await waiter.Join()!
     }
     if value != 7 {
         return 1

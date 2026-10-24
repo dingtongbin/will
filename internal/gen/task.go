@@ -232,31 +232,40 @@ func (g *generator) callTargetSymbol(call willc.Record) string {
 
 // emitSpawns writes every step function queued by this document.
 func (g *generator) emitSpawns() error {
-	for _, req := range g.pendingSpawns {
-		if err := g.emitSpawnStep(req); err != nil {
-			return err
+	for pass := 0; pass < 64; pass++ {
+		spawns := g.pendingSpawns
+		generals := g.pendingGeneral
+		asyncs := g.pendingAsync
+		selects := g.pendingSelect
+		g.pendingSpawns = nil
+		g.pendingGeneral = nil
+		g.pendingAsync = nil
+		g.pendingSelect = nil
+		if len(spawns)+len(generals)+len(asyncs)+len(selects) == 0 {
+			return nil
+		}
+		for _, req := range spawns {
+			if err := g.emitSpawnStep(req); err != nil {
+				return err
+			}
+		}
+		for _, fn := range generals {
+			if err := g.emitGeneralStep(fn); err != nil {
+				return err
+			}
+		}
+		for _, info := range asyncs {
+			if err := g.emitAsyncSequenceStep(info); err != nil {
+				return err
+			}
+		}
+		for _, info := range selects {
+			if err := g.emitSelectMachineStep(info); err != nil {
+				return err
+			}
 		}
 	}
-	for _, fn := range g.pendingGeneral {
-		if err := g.emitGeneralStep(fn); err != nil {
-			return err
-		}
-	}
-	for _, info := range g.pendingAsync {
-		if err := g.emitAsyncSequenceStep(info); err != nil {
-			return err
-		}
-	}
-	for _, info := range g.pendingSelect {
-		if err := g.emitSelectMachineStep(info); err != nil {
-			return err
-		}
-	}
-	g.pendingSpawns = nil
-	g.pendingGeneral = nil
-	g.pendingAsync = nil
-	g.pendingSelect = nil
-	return nil
+	return fmt.Errorf("spawn lowering did not drain")
 }
 
 // emitSpawnStep writes one step: load the frame fields, call the target, store

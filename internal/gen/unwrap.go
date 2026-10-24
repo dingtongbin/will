@@ -11,6 +11,13 @@ import (
 // Error interface returns.
 func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 	exprID := refField(r, "expr")
+	for {
+		inner, ok := g.recs[exprID]
+		if !ok || inner.Kind != "await" {
+			break
+		}
+		exprID = refField(inner, "expr")
+	}
 	if inner, ok := g.recs[exprID]; ok && inner.Kind == "join" {
 		return g.joinUnwrap(inner)
 	}

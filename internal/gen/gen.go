@@ -354,6 +354,7 @@ func (g *generator) findEntry(entry, entryPkg string) {
 			g.entryPkg = d.path
 			g.entrySymbol = qualify(d.path, "will$"+entry)
 			g.entryResult = fieldText(r, "type")
+			g.entryAsync = fieldText(r, "async") == "true"
 			g.entryID = r.ID
 			g.entryFound = true
 			for _, c := range d.recs {
@@ -960,6 +961,7 @@ type generator struct {
 	entrySymbol   string
 	entryResult   string
 	entryFound    bool
+	entryAsync    bool
 	entryID       int
 	entryHasParam bool
 	// globalSymbols indexes every top-level variable of the module by its
@@ -1023,6 +1025,14 @@ func (g *generator) docUsesError() bool {
 
 // emitDoc lowers every function of the current document, in source order.
 func (g *generator) emitDoc() error {
+	g.pendingGeneral = nil
+	g.pendingAsync = nil
+	g.pendingSelect = nil
+	g.pendingSpawns = nil
+	g.pendingThunks = nil
+	g.pendingBlock = nil
+	g.pendingDrops = nil
+	g.pendingDefers = nil
 	if !g.errorEmitted && g.docUsesError() {
 		g.out.WriteString("%interface.Error = type { ptr, ptr }\n")
 		g.errorEmitted = true
@@ -1145,6 +1155,9 @@ func (g *generator) emitWrapper() error {
 	for _, init := range inits {
 		fmt.Fprintf(g.out, "  call void @%s()\n", llvmSymbol(init))
 	}
+	if g.entryAsync {
+		return g.emitAsyncWrapper()
+	}
 	if g.entryResult == "" {
 		fmt.Fprintf(g.out, "  call void @%s()\n", llvmSymbol(g.entrySymbol))
 		g.out.WriteString("  call void @willrt_shutdown()\n  ret i32 0\n}\n")
@@ -1158,7 +1171,40 @@ func (g *generator) emitWrapper() error {
 	return nil
 }
 
-// emitResultWrapper lowers the only non-integer entry shape the language
+// emitAsyncWrapper starts the entry as a task and blocks until it finishes.
+// The entry task is the only place a program may await at top level, so the
+// wrapper never installs a state machine of its own.
+func (g *generator) emitAsyncWrapper() error {
+	if g.entryResult != "" && g.entryResult != "i32" {
+		return g.errf(g.entryID, "cannot translate node #%d: an async entry result %s is not lowered yet", g.entryID, g.entryResult)
+	}
+	g.needTaskDecl = true
+	task := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @%s()\n", task, llvmSymbol(g.entrySymbol+".task"))
+	status := g.newTmp()
+	if g.entryResult == "" {
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr null, ptr null)\n", status, task)
+		g.out.WriteString("  call void @willrt_shutdown()\n  ret i32 0\n}\n")
+		return nil
+	}
+	out := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca i32\n", out)
+	fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr %s, ptr null)\n", status, task, out)
+	failed := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ne i32 %s, 0\n", failed, status)
+	g.labels++
+	n := g.labels
+	failLabel := fmt.Sprintf("main.async.fail.%d", n)
+	okLabel := fmt.Sprintf("main.async.ok.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", failed, failLabel, okLabel)
+	g.out.WriteString(failLabel + ":\n")
+	g.out.WriteString("  call void @willrt_shutdown()\n  ret i32 1\n")
+	g.out.WriteString(okLabel + ":\n")
+	result := g.load("i32", out)
+	g.out.WriteString("  call void @willrt_shutdown()\n")
+	fmt.Fprintf(g.out, "  ret i32 %s\n}\n", result)
+	return nil
+}
 // allows: Result<(), Error>. Ok exits 0; Err writes one stable line through the
 // report target and exits 1.
 func (g *generator) emitResultWrapper() error {

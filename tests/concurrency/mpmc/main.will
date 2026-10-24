@@ -22,16 +22,16 @@ lane L6 struct L6Marker {
 lane L7 struct L7Marker {
 }
 
-func Produce(ch: chan<i32>, n: i32) {
+async func Produce(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
-        _ = ch.Send(i)
+        _ = await ch.Send(i)
     }
 }
 
-func Consume(ch: chan<i32>) -> i64 {
+async func Consume(ch: chan<i32>) -> i64 {
     var sum: i64 = 0
     for {
-        var item: Option<i32> = ch.Recv()
+        var item: Option<i32> = await ch.Recv()
         match item {
             Some(value) => {
                 sum += i64(value)
@@ -44,7 +44,7 @@ func Consume(ch: chan<i32>) -> i64 {
     return sum
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1024)
     var total: i64 = 0
     region {
@@ -56,15 +56,15 @@ func main() -> i32 {
         var c2: Task<i64> = spawn on L5 Consume(ch)
         var c3: Task<i64> = spawn on L6 Consume(ch)
         var c4: Task<i64> = spawn on L7 Consume(ch)
-        _ = p1.Join()!
-        _ = p2.Join()!
-        _ = p3.Join()!
-        _ = p4.Join()!
+        _ = await p1.Join()!
+        _ = await p2.Join()!
+        _ = await p3.Join()!
+        _ = await p4.Join()!
         ch.Close()
-        var s1: i64 = c1.Join()!
-        var s2: i64 = c2.Join()!
-        var s3: i64 = c3.Join()!
-        var s4: i64 = c4.Join()!
+        var s1: i64 = await c1.Join()!
+        var s2: i64 = await c2.Join()!
+        var s3: i64 = await c3.Join()!
+        var s4: i64 = await c4.Join()!
         total = s1 + s2 + s3 + s4
     }
     if total != 79999600000 {

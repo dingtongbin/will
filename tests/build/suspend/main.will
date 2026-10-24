@@ -1,7 +1,7 @@
-func Worker(ch: chan<i32>) -> i32 {
+async func Worker(ch: chan<i32>) -> i32 {
     var sum: i32 = 0
     for {
-        var item: Option<i32> = ch.Recv()
+        var item: Option<i32> = await ch.Recv()
         match item {
             Some(value) => {
                 sum += value
@@ -14,15 +14,15 @@ func Worker(ch: chan<i32>) -> i32 {
     return sum
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var ch: chan<i32> = new chan<i32>(4)
     var result: i32 = 0
     region {
         var worker: Task<i32> = spawn Worker(ch)
-        _ = ch.Send(3)
-        _ = ch.Send(4)
+        _ = await ch.Send(3)
+        _ = await ch.Send(4)
         ch.Close()
-        result = worker.Join()!
+        result = await worker.Join()!
     }
     return result - 7
 }

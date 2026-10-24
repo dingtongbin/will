@@ -24,7 +24,7 @@ func (g *generator) collectSuspendable() {
 				if !ok || fn.Kind != "func" {
 					continue
 				}
-				if id == g.entryID {
+				if id == g.entryID && d.path == g.entryPkg {
 					// The entry waits with the runtime join on the program
 					// thread; it has no task frame.
 					continue
@@ -34,9 +34,12 @@ func (g *generator) collectSuspendable() {
 					changed = true
 					continue
 				}
-				if simpleAsyncBody(d, id, g.suspendable) ||
-					g.channelWaitBody(id) ||
-					g.markedBody(id) {
+				// A direct C async call still needs a state machine even when
+				// the declaration forgot `async`; the type checker reports the
+				// missing await at the call site. Do not propagate suspension
+				// through ordinary calls: an ordinary function is synchronous
+				// by definition now.
+				if simpleAsyncBody(d, id, g.suspendable) {
 					g.markSuspendable(sym)
 					changed = true
 				}

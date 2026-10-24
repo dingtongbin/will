@@ -1,6 +1,6 @@
 import "std/time"
 
-func Wait(ch: chan<i32>) -> i32 {
+async func Wait(ch: chan<i32>) -> i32 {
     var value: i32 = 0
     select {
         item = ch.Recv() => {
@@ -17,14 +17,14 @@ func Wait(ch: chan<i32>) -> i32 {
     return value
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
     var result: i32 = 0
     region {
         var task: Task<i32> = spawn Wait(ch)
-        _ = wait(time.Sleep(1ms))!
-        _ = ch.Send(7)
-        result = task.Join()!
+        _ = await time.Sleep(1ms)!
+        _ = await ch.Send(7)
+        result = await task.Join()!
     }
     if result != 7 {
         return 1

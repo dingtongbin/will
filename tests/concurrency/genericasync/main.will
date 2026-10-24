@@ -7,18 +7,18 @@ async func Slow<T>(v: T) -> T {
     return v
 }
 
-func main() -> i32 {
-    var v: i64 = wait(Slow(9i64))
+async func main() -> i32 {
+    var v: i64 = await Slow(9i64)
     if v != 9i64 {
         return 1
     }
     region {
         var t: Task<i64> = spawn Slow(4i64)
-        if t.Join()! != 4i64 {
+        if await t.Join()! != 4i64 {
             return 2
         }
     }
-    var s: str = wait(Slow("ok"))
+    var s: str = await Slow("ok")
     if s != "ok" {
         return 3
     }

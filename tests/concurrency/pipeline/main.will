@@ -16,18 +16,18 @@ lane StageLane struct StageMarker {
 lane Sink struct SinkMarker {
 }
 
-func Produce(ch: chan<i32>, n: i32) {
+async func Produce(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
-        _ = ch.Send(i)
+        _ = await ch.Send(i)
     }
 }
 
-func Stage(inp: chan<i32>, out: chan<i32>) {
+async func Stage(inp: chan<i32>, out: chan<i32>) {
     for {
-        var item: Option<i32> = inp.Recv()
+        var item: Option<i32> = await inp.Recv()
         match item {
             Some(value) => {
-                _ = out.Send(value * 2)
+                _ = await out.Send(value * 2)
             }
             None => {
                 break
@@ -37,10 +37,10 @@ func Stage(inp: chan<i32>, out: chan<i32>) {
     out.Close()
 }
 
-func Consume(ch: chan<i32>) -> i32 {
+async func Consume(ch: chan<i32>) -> i32 {
     var sum: i32 = 0
     for {
-        var item: Option<i32> = ch.Recv()
+        var item: Option<i32> = await ch.Recv()
         match item {
             Some(value) => {
                 sum += value
@@ -53,7 +53,7 @@ func Consume(ch: chan<i32>) -> i32 {
     return sum
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var first: chan<i32> = new chan<i32>(64)
     var second: chan<i32> = new chan<i32>(64)
     var total: i32 = 0
@@ -64,13 +64,13 @@ func main() -> i32 {
         var p3: Task<()> = spawn on P3 Produce(first, 10000)
         var stage: Task<()> = spawn on StageLane Stage(first, second)
         var sink: Task<i32> = spawn on Sink Consume(second)
-        _ = p0.Join()!
-        _ = p1.Join()!
-        _ = p2.Join()!
-        _ = p3.Join()!
+        _ = await p0.Join()!
+        _ = await p1.Join()!
+        _ = await p2.Join()!
+        _ = await p3.Join()!
         first.Close()
-        _ = stage.Join()!
-        total = sink.Join()!
+        _ = await stage.Join()!
+        total = await sink.Join()!
     }
     return total - 399960000
 }

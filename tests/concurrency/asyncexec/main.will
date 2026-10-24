@@ -5,12 +5,12 @@ async func Run(cmd: exec.Cmd) -> Result<exec.ExitStatus, Error> {
     return status
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var code: i32 = 1
     region {
         var task: Task<Result<exec.ExitStatus, Error>> =
             spawn Run(exec.Command("cmd", "/C", "exit 3"))
-        var status: Result<exec.ExitStatus, Error> = task.Join()!
+        var status: Result<exec.ExitStatus, Error> = await task.Join()!
         match status {
             Ok(value) => {
                 if value.code == 3 {

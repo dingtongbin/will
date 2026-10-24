@@ -4094,118 +4094,190 @@ panic.ok.10:
   %t1794 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.1730
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t1794
 }
-define i32 @"example.com/genericasync.will$main"() {
+define internal i32 @"example.com/genericasync.will$main.sm"(ptr %frame) {
 entry:
-  %v.v = alloca i64
-  %v.t = alloca ptr
-  %v.s = alloca { ptr, i64 }
-  %v.ret.55 = alloca { ptr, i64 }
-  %v.str.56 = alloca { ptr, i64 }
-  %v.str.60 = alloca { ptr, i64 }
-  %v.await.out.25 = alloca i64
-  %v.await.err.25 = alloca %willrt.task_error
-  %v.join.out.45 = alloca i64
-  %v.join.err.45 = alloca %willrt.task_error
-  %v.await.out.55 = alloca { ptr, i64 }
-  %v.await.err.55 = alloca %willrt.task_error
+  %v.sm.state = getelementptr i8, ptr %frame, i64 0
+  %v.v = getelementptr i8, ptr %frame, i64 8
+  %v.t = getelementptr i8, ptr %frame, i64 16
+  %v.s = getelementptr i8, ptr %frame, i64 24
+  %v.ret.54 = getelementptr i8, ptr %frame, i64 40
+  %v.str.55 = getelementptr i8, ptr %frame, i64 56
+  %v.str.59 = getelementptr i8, ptr %frame, i64 72
+  %v.join.out.45 = getelementptr i8, ptr %frame, i64 88
+  %v.join.err.45 = getelementptr i8, ptr %frame, i64 96
+  %v.sm.call.out.2 = getelementptr i8, ptr %frame, i64 136
+  %v.sm.call.err.3 = getelementptr i8, ptr %frame, i64 144
+  %v.sm.join.task.4 = getelementptr i8, ptr %frame, i64 176
+  %t20 = getelementptr i8, ptr %frame, i64 184
+  %v.sm.join.task.25 = getelementptr i8, ptr %frame, i64 192
+  %t41 = getelementptr i8, ptr %frame, i64 200
+  %v.sm.call.out.47 = getelementptr i8, ptr %frame, i64 208
+  %v.sm.call.err.48 = getelementptr i8, ptr %frame, i64 224
+  %v.sm.join.task.49 = getelementptr i8, ptr %frame, i64 256
+  %t80 = getelementptr i8, ptr %frame, i64 264
+  %t83 = getelementptr i8, ptr %frame, i64 268
+  %v.sm.statev = load i32, ptr %v.sm.state
+  switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 i32 2, label %sm.op.call.2 i32 3, label %sm.op.call.3 ]
+sm.init:
   %t1 = call ptr @"example.com/genericasync.Slow$i64.task"(i64 9)
-  %t2 = call i32 @willrt_join(ptr %t1, ptr %v.await.out.25, ptr %v.await.err.25)
-  %t3 = icmp eq i32 %t2, 0
-  br i1 %t3, label %await.ok.1, label %await.fail.1
-await.fail.1:
-  %t4 = getelementptr inbounds %willrt_error, ptr %v.await.err.25, i32 0, i32 0
-  %t5 = load ptr, ptr %t4
-  %t6 = getelementptr inbounds %willrt_error, ptr %v.await.err.25, i32 0, i32 1
-  %t7 = load i64, ptr %t6
-  %t8 = getelementptr inbounds %willrt_error, ptr %v.await.err.25, i32 0, i32 2
-  %t9 = load ptr, ptr %t8
-  %t10 = getelementptr inbounds %willrt_error, ptr %v.await.err.25, i32 0, i32 3
-  %t11 = load ptr, ptr %t10
-  call void @willrt_panic_n(ptr %t5, i64 %t7, ptr %t9, ptr %t11)
+  store ptr %t1, ptr %v.sm.join.task.4
+  store i32 1, ptr %v.sm.state
+  br label %sm.op.call.1
+sm.op.call.1:
+  %t6 = load ptr, ptr %v.sm.join.task.4
+  %t5 = call i32 @willrt_task_try_join(ptr %t6, ptr %v.sm.call.out.2, ptr %v.sm.call.err.3)
+  %t7 = icmp eq i32 %t5, -1
+  br i1 %t7, label %sm.op.park.1, label %sm.op.cont.1
+sm.op.park.1:
+  call void @willrt_task_mark_wait()
+  ret i32 -1
+sm.op.cont.1:
+  %t8 = icmp eq i32 %t5, 0
+  br i1 %t8, label %sm.call.ok.1, label %sm.call.fail.1
+sm.call.fail.1:
+  %t9 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.3, i32 0, i32 0
+  %t10 = load ptr, ptr %t9
+  %t11 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.3, i32 0, i32 1
+  %t12 = load i64, ptr %t11
+  %t13 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.3, i32 0, i32 2
+  %t14 = load ptr, ptr %t13
+  %t15 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.3, i32 0, i32 3
+  %t16 = load ptr, ptr %t15
+  call void @willrt_panic_n(ptr %t10, i64 %t12, ptr %t14, ptr %t16)
   unreachable
-await.ok.1:
-  %t12 = load i64, ptr %v.await.out.25
-  store i64 %t12, ptr %v.v
-  %t13 = load i64, ptr %v.v
-  %t14 = icmp ne i64 %t13, 9
-  br i1 %t14, label %if.then.2, label %if.end.2
+sm.call.ok.1:
+  %t17 = load i64, ptr %v.sm.call.out.2
+  store i64 %t17, ptr %v.v
+  %t18 = load i64, ptr %v.v
+  %t19 = icmp ne i64 %t18, 9
+  br i1 %t19, label %if.then.2, label %if.end.2
 if.then.2:
+  store i32 1, ptr %t20
+  %t21 = getelementptr i32, ptr null, i32 1
+  %t22 = ptrtoint ptr %t21 to i64
+  call i32 @willrt_task_store_result(ptr %t20, i64 %t22)
   ret i32 1
 if.end.2:
   call void @willrt_region_enter()
-  %t15 = call ptr @"example.com/genericasync.Slow$i64.task"(i64 4)
-  store ptr %t15, ptr %v.t
-  %t16 = load ptr, ptr %v.t
-  %t17 = call i32 @willrt_join(ptr %t16, ptr %v.join.out.45, ptr %v.join.err.45)
-  %t18 = getelementptr inbounds %willrt.task_error, ptr %v.join.err.45, i32 0, i32 1
-  store i32 %t17, ptr %t18
-  %t19 = icmp eq i32 %t17, 0
-  br i1 %t19, label %task.ok.4, label %task.fail.4
+  %t23 = call ptr @"example.com/genericasync.Slow$i64.task"(i64 4)
+  store ptr %t23, ptr %v.t
+  %t24 = load ptr, ptr %v.t
+  store ptr %t24, ptr %v.sm.join.task.25
+  store i32 2, ptr %v.sm.state
+  br label %sm.op.call.2
+sm.op.call.2:
+  %t27 = load ptr, ptr %v.sm.join.task.25
+  %t26 = call i32 @willrt_task_try_join(ptr %t27, ptr %v.join.out.45, ptr %v.join.err.45)
+  %t28 = icmp eq i32 %t26, -1
+  br i1 %t28, label %sm.op.park.2, label %sm.op.cont.2
+sm.op.park.2:
+  call void @willrt_task_mark_wait()
+  ret i32 -1
+sm.op.cont.2:
+  %t29 = getelementptr inbounds %willrt.task_error, ptr %v.join.err.45, i32 0, i32 1
+  store i32 %t26, ptr %t29
+  %t30 = icmp eq i32 %t26, 0
+  br i1 %t30, label %task.ok.4, label %task.fail.4
 task.fail.4:
-  %t20 = getelementptr inbounds %willrt_error, ptr %v.join.err.45, i32 0, i32 0
-  %t21 = load ptr, ptr %t20
-  %t22 = getelementptr inbounds %willrt_error, ptr %v.join.err.45, i32 0, i32 1
-  %t23 = load i64, ptr %t22
-  %t24 = getelementptr inbounds %willrt_error, ptr %v.join.err.45, i32 0, i32 2
-  %t25 = load ptr, ptr %t24
-  %t26 = getelementptr inbounds %willrt_error, ptr %v.join.err.45, i32 0, i32 3
-  %t27 = load ptr, ptr %t26
-  call void @willrt_panic_n(ptr %t21, i64 %t23, ptr %t25, ptr %t27)
+  %t31 = getelementptr inbounds %willrt_error, ptr %v.join.err.45, i32 0, i32 0
+  %t32 = load ptr, ptr %t31
+  %t33 = getelementptr inbounds %willrt_error, ptr %v.join.err.45, i32 0, i32 1
+  %t34 = load i64, ptr %t33
+  %t35 = getelementptr inbounds %willrt_error, ptr %v.join.err.45, i32 0, i32 2
+  %t36 = load ptr, ptr %t35
+  %t37 = getelementptr inbounds %willrt_error, ptr %v.join.err.45, i32 0, i32 3
+  %t38 = load ptr, ptr %t37
+  call void @willrt_panic_n(ptr %t32, i64 %t34, ptr %t36, ptr %t38)
   unreachable
 task.ok.4:
-  %t28 = load i64, ptr %v.join.out.45
-  %t29 = icmp ne i64 %t28, 4
-  br i1 %t29, label %if.then.3, label %if.end.3
+  %t39 = load i64, ptr %v.join.out.45
+  %t40 = icmp ne i64 %t39, 4
+  br i1 %t40, label %if.then.3, label %if.end.3
 if.then.3:
-  ret i32 2
+  store i32 2, ptr %t41
+  %t42 = getelementptr i32, ptr null, i32 1
+  %t43 = ptrtoint ptr %t42 to i64
+  call i32 @willrt_task_store_result(ptr %t41, i64 %t43)
+  ret i32 1
 if.end.3:
   call i32 @willrt_region_exit()
-  %t30 = getelementptr inbounds { ptr, i64 }, ptr %v.str.56, i32 0, i32 0
-  store ptr @.bytes.51, ptr %t30
-  %t31 = getelementptr inbounds { ptr, i64 }, ptr %v.str.56, i32 0, i32 1
-  store i64 2, ptr %t31
-  %t32 = call ptr @"example.com/genericasync.Slow$str.task"(ptr %v.str.56)
-  %t33 = call i32 @willrt_join(ptr %t32, ptr %v.await.out.55, ptr %v.await.err.55)
-  %t34 = icmp eq i32 %t33, 0
-  br i1 %t34, label %await.ok.5, label %await.fail.5
-await.fail.5:
-  %t35 = getelementptr inbounds %willrt_error, ptr %v.await.err.55, i32 0, i32 0
-  %t36 = load ptr, ptr %t35
-  %t37 = getelementptr inbounds %willrt_error, ptr %v.await.err.55, i32 0, i32 1
-  %t38 = load i64, ptr %t37
-  %t39 = getelementptr inbounds %willrt_error, ptr %v.await.err.55, i32 0, i32 2
-  %t40 = load ptr, ptr %t39
-  %t41 = getelementptr inbounds %willrt_error, ptr %v.await.err.55, i32 0, i32 3
-  %t42 = load ptr, ptr %t41
-  call void @willrt_panic_n(ptr %t36, i64 %t38, ptr %t40, ptr %t42)
+  %t44 = getelementptr inbounds { ptr, i64 }, ptr %v.str.55, i32 0, i32 0
+  store ptr @.bytes.51, ptr %t44
+  %t45 = getelementptr inbounds { ptr, i64 }, ptr %v.str.55, i32 0, i32 1
+  store i64 2, ptr %t45
+  %t46 = call ptr @"example.com/genericasync.Slow$str.task"(ptr %v.str.55)
+  store ptr %t46, ptr %v.sm.join.task.49
+  store i32 3, ptr %v.sm.state
+  br label %sm.op.call.3
+sm.op.call.3:
+  %t51 = load ptr, ptr %v.sm.join.task.49
+  %t50 = call i32 @willrt_task_try_join(ptr %t51, ptr %v.sm.call.out.47, ptr %v.sm.call.err.48)
+  %t52 = icmp eq i32 %t50, -1
+  br i1 %t52, label %sm.op.park.3, label %sm.op.cont.3
+sm.op.park.3:
+  call void @willrt_task_mark_wait()
+  ret i32 -1
+sm.op.cont.3:
+  %t53 = icmp eq i32 %t50, 0
+  br i1 %t53, label %sm.call.ok.5, label %sm.call.fail.5
+sm.call.fail.5:
+  %t54 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.48, i32 0, i32 0
+  %t55 = load ptr, ptr %t54
+  %t56 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.48, i32 0, i32 1
+  %t57 = load i64, ptr %t56
+  %t58 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.48, i32 0, i32 2
+  %t59 = load ptr, ptr %t58
+  %t60 = getelementptr inbounds %willrt_error, ptr %v.sm.call.err.48, i32 0, i32 3
+  %t61 = load ptr, ptr %t60
+  call void @willrt_panic_n(ptr %t55, i64 %t57, ptr %t59, ptr %t61)
   unreachable
-await.ok.5:
-  %t43 = load { ptr, i64 }, ptr %v.await.out.55
-  store { ptr, i64 } %t43, ptr %v.s
-  %t44 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
-  %t45 = load ptr, ptr %t44
-  %t46 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 1
-  %t47 = load i64, ptr %t46
-  %t48 = getelementptr inbounds { ptr, i64 }, ptr %v.str.60, i32 0, i32 0
-  store ptr @.bytes.51, ptr %t48
-  %t49 = getelementptr inbounds { ptr, i64 }, ptr %v.str.60, i32 0, i32 1
-  store i64 2, ptr %t49
-  %t50 = getelementptr inbounds { ptr, i64 }, ptr %v.str.60, i32 0, i32 0
-  %t51 = load ptr, ptr %t50
-  %t52 = getelementptr inbounds { ptr, i64 }, ptr %v.str.60, i32 0, i32 1
-  %t53 = load i64, ptr %t52
-  %t54 = icmp ult i64 %t47, %t53
-  %t55 = select i1 %t54, i64 %t47, i64 %t53
-  %t56 = call i32 @memcmp(ptr %t45, ptr %t51, i64 %t55)
-  %t57 = icmp eq i32 %t56, 0
-  %t58 = icmp eq i64 %t47, %t53
-  %t59 = and i1 %t57, %t58
-  %t60 = xor i1 %t59, true
-  br i1 %t60, label %if.then.6, label %if.end.6
+sm.call.ok.5:
+  %t62 = load { ptr, i64 }, ptr %v.sm.call.out.47
+  store { ptr, i64 } %t62, ptr %v.s
+  %t63 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
+  %t64 = load ptr, ptr %t63
+  %t65 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 1
+  %t66 = load i64, ptr %t65
+  %t67 = getelementptr inbounds { ptr, i64 }, ptr %v.str.59, i32 0, i32 0
+  store ptr @.bytes.51, ptr %t67
+  %t68 = getelementptr inbounds { ptr, i64 }, ptr %v.str.59, i32 0, i32 1
+  store i64 2, ptr %t68
+  %t69 = getelementptr inbounds { ptr, i64 }, ptr %v.str.59, i32 0, i32 0
+  %t70 = load ptr, ptr %t69
+  %t71 = getelementptr inbounds { ptr, i64 }, ptr %v.str.59, i32 0, i32 1
+  %t72 = load i64, ptr %t71
+  %t73 = icmp ult i64 %t66, %t72
+  %t74 = select i1 %t73, i64 %t66, i64 %t72
+  %t75 = call i32 @memcmp(ptr %t64, ptr %t70, i64 %t74)
+  %t76 = icmp eq i32 %t75, 0
+  %t77 = icmp eq i64 %t66, %t72
+  %t78 = and i1 %t76, %t77
+  %t79 = xor i1 %t78, true
+  br i1 %t79, label %if.then.6, label %if.end.6
 if.then.6:
-  ret i32 3
+  store i32 3, ptr %t80
+  %t81 = getelementptr i32, ptr null, i32 1
+  %t82 = ptrtoint ptr %t81 to i64
+  call i32 @willrt_task_store_result(ptr %t80, i64 %t82)
+  ret i32 1
 if.end.6:
-  ret i32 0
+  store i32 0, ptr %t83
+  %t84 = getelementptr i32, ptr null, i32 1
+  %t85 = ptrtoint ptr %t84 to i64
+  call i32 @willrt_task_store_result(ptr %t83, i64 %t85)
+  ret i32 1
+
+}
+define hidden ptr @"example.com/genericasync.will$main.task"() {
+entry:
+  %v.sm.frame = call ptr @willrt_alloc(i64 272)
+  %t86 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t86
+  %t87 = call i32 @willrt_lane_here()
+  %t88 = call ptr @willrt_task_new(ptr @"example.com/genericasync.will$main.sm", ptr %v.sm.frame, i64 272, i32 %t87, i32 0)
+  call void @willrt_task_own_frame(ptr %t88)
+  call void @willrt_task_run(ptr %t88)
+  ret ptr %t88
 }
 define internal i32 @"example.com/genericasync.Slow$i64.sm"(ptr %frame) {
 entry:
@@ -4369,9 +4441,18 @@ declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %r = call i32 @"example.com/genericasync.will$main"()
+  %t40 = call ptr @"example.com/genericasync.will$main.task"()
+  %t42 = alloca i32
+  %t41 = call i32 @willrt_join(ptr %t40, ptr %t42, ptr null)
+  %t43 = icmp ne i32 %t41, 0
+  br i1 %t43, label %main.async.fail.3, label %main.async.ok.3
+main.async.fail.3:
   call void @willrt_shutdown()
-  ret i32 %r
+  ret i32 1
+main.async.ok.3:
+  %t44 = load i32, ptr %t42
+  call void @willrt_shutdown()
+  ret i32 %t44
 }
 declare i64 @willrt_now_ns()
 declare ptr @willrt_task_sleep_async_start(i64)
