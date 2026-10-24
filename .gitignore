@@ -17,6 +17,7 @@
 
 # agent 配置：本机开发用，与 desc 同理，不进 git
 /.opencode/
+/.zcode/
 /AGENTS.md
 
 # 测试误落的模块骨架（will new 的产物只应出现在临时目录）
