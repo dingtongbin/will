@@ -127,14 +127,8 @@ func walkModule(n *moduleNode) ([]*Package, []diag.Diagnostic) {
 			}
 			f, fds := parser.Parse(filepath.ToSlash(rel), src)
 			bag.AddAll(fds)
-			if f != nil {
-				bag.AddAll(applyCHeaders(f, dir, n.Dir))
-			}
 			p.Files = append(p.Files, &File{Path: filepath.ToSlash(rel), AST: f})
 		}
-		p.Names, p.Diags = buildNames(p)
-		p.Exports = buildExports(p)
-		bag.AddAll(p.Diags)
 		pkgs = append(pkgs, p)
 	}
 	sort.Slice(pkgs, func(i, j int) bool { return pkgs[i].Path < pkgs[j].Path })

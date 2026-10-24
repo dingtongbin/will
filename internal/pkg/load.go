@@ -117,6 +117,7 @@ func load(root string, skipSums bool) *Build {
 		}
 	}
 	pkgs, pds = keepLoadedPackages(pkgs, table, b.Root, stdDir, pds)
+	pds = append(pds, applyLoadedHeaders(pkgs)...)
 	bag.AddAll(pds)
 	if !skipSums {
 		bag.AddAll(g.checkSums())

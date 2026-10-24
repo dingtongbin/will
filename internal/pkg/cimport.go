@@ -12,6 +12,26 @@ import (
 	"github.com/will-lang/will/internal/toolchain"
 )
 
+// applyLoadedHeaders resolves the C imports of the packages that survived
+// pruning and refreshes their name tables. A required module can carry packages
+// the build never imports, and asking clang for every unrelated header costs
+// more than the rest of the front end together.
+func applyLoadedHeaders(pkgs []*Package) []diag.Diagnostic {
+	var bag diag.Bag
+	for _, p := range pkgs {
+		for _, f := range p.Files {
+			if f.AST == nil {
+				continue
+			}
+			bag.AddAll(applyCHeaders(f.AST, p.Dir, p.Root))
+		}
+		p.Names, p.Diags = buildNames(p)
+		p.Exports = buildExports(p)
+		bag.AddAll(p.Diags)
+	}
+	return bag.Diagnostics()
+}
+
 // applyCHeaders fills the prototype of every import c link from its header.
 // An import without an explicit link block takes every function the subset can
 // read. A header that cannot be found is an error only when the import would
