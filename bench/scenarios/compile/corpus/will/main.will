@@ -1,0 +1,123 @@
+// The program is the part of the compile corpus that lives in the root
+// package. Together with the library it is the program the compile
+// scenarios build, so the compiler has real work to do.
+import "example.com/bench/compile/corpus/will/lib"
+
+// Record is one record of the log.
+struct Record {
+    level: i32
+    latency: i64
+    bytes: i64
+}
+
+// Reader reads records out of a buffer of numbers.
+struct Reader {
+    state: u64
+    count: i32
+}
+
+// Next returns the next latency of the reader.
+func (mut r: Reader) Next() -> i64 {
+    r.state = r.state *% 6364136223846793005 +% 1442695040888963407
+    var value: i64 = i64(r.state >> 12i64) % 1000i64
+    r.count += 1
+    return value
+}
+
+// MakeRecords builds the records of the corpus.
+func MakeRecords(count: i32) -> Array<Record> {
+    var records: Array<Record> = new Array<Record>(0)
+    var reader: Reader = Reader { state: 0x1234, count: 0}
+    for i in Range(0, count) {
+        var latency: i64 = reader.Next()
+        var level: i32 = 1
+        match i % 4 {
+            0 => {
+                level = 0
+            }
+            1 => {
+                level = 1
+            }
+            2 => {
+                level = 2
+            }
+            3 => {
+                level = 3
+            }
+        }
+        records.Push(Record { level: level, latency: latency, bytes: latency * 64i64})
+    }
+    return records
+}
+
+// Latencies returns the latencies of the records.
+func Latencies(records: Array<Record>) -> Array<i64> {
+    var out: Array<i64> = new Array<i64>(0)
+    for r in records {
+        out.Push(r.latency)
+    }
+    return out
+}
+
+// Bytes returns the sizes of the records.
+func Bytes(records: Array<Record>) -> Array<i64> {
+    var out: Array<i64> = new Array<i64>(0)
+    for r in records {
+        out.Push(r.bytes)
+    }
+    return out
+}
+
+// Report holds the numbers the corpus prints.
+struct Report {
+    records: i64
+    positive: i64
+    total: i64
+    slowest: i64
+    fastest: i64
+    mean: i64
+    buckets: i64
+    rolling: i64
+}
+
+// Build computes the report of the records.
+func Build(records: Array<Record>) -> Report {
+    var latencies: Array<i64> = Latencies(records)
+    var sizes: Array<i64> = Bytes(records)
+    var histogram: Array<i64> = lib.Histogram(latencies, 100i64)
+    var rolling: Array<i64> = lib.Rolling(latencies, 16)
+    var rollingTotal: i64 = 0i64
+    for v in rolling {
+        rollingTotal += v
+    }
+    var report: Report = Report {
+        records: i64(records.Len()),
+        positive: lib.Count(latencies),
+        total: lib.Sum(sizes),
+        slowest: lib.Max(latencies),
+        fastest: lib.Min(latencies),
+        mean: lib.Mean(latencies),
+        buckets: i64(histogram.Len()),
+        rolling: rollingTotal
+    }
+    return report
+}
+
+// Print writes the report.
+func Print(report: Report) {
+    print("records ", u64(report.records), "\n")
+    print("positive ", u64(report.positive), "\n")
+    print("total ", u64(report.total), "\n")
+    print("slowest ", u64(report.slowest), "\n")
+    print("fastest ", u64(report.fastest), "\n")
+    print("mean ", u64(report.mean), "\n")
+    print("buckets ", u64(report.buckets), "\n")
+    print("rolling ", u64(report.rolling), "\n")
+}
+
+func main() -> i32 {
+    var records: Array<Record> = MakeRecords(2000)
+    var report: Report = Build(records)
+    Print(report)
+    return 0
+}

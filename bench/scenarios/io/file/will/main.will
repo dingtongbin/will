@@ -1,0 +1,183 @@
+import "std/os/fs"
+import "std/time"
+
+const fileSize: usize = 4194304usize
+const reads: i32 = 4096
+const blockSize: usize = 4096usize
+const repetitions: i32 = 5
+var path: str = "bench_file.tmp"
+const seed: u64 = 0x5EEDu64
+
+func Lcg(state: u64) -> u64 {
+    return state *% 6364136223846793005u64 +% 1442695040888963407u64
+}
+
+func Fill(block: Array<u8>) {
+    var state: u64 = seed
+    for word in Range(0, i32(block.Len() / 8usize)) {
+        var value: u64 = Lcg(state)
+        state = value
+        for b in Range(0, 8) {
+            block[usize(word * 8 + b)] = u8(value & 0xFFu64)
+            value = value >> 8u64
+        }
+    }
+}
+
+func Sort(mut xs: Array<u64>) {
+    var n: i32 = i32(xs.Len())
+    var value: u64 = 0u64
+    var left: u64 = 0u64
+    for i in Range(1, n) {
+        value = xs[usize(i)]
+        var j: i32 = i - 1
+        for {
+            if j < 0 {
+                break
+            }
+            left = xs[usize(j)]
+            if left <= value {
+                break
+            }
+            xs[usize(j + 1)] = left
+            j -= 1
+        }
+        xs[usize(j + 1)] = value
+    }
+}
+
+func Percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
+    var count: i64 = i64(xs.Len())
+    if count == 0i64 {
+        return 0u64
+    }
+    var one: i64 = i64(1)
+    var rank: i64 = (count * num + den - one) / den
+    if rank < one {
+        rank = one
+    }
+    if rank > count {
+        rank = count
+    }
+    return xs[usize(rank - one)]
+}
+
+func OpenRead() -> Result<fs.File, Error> {
+    return fs.Open(path, fs.OpenFlags { read: true, write: false, create: false, append: false, truncate: false, exclusive: false })
+}
+
+func main() -> i32 {
+    var clock: time.Stopwatch = new time.Stopwatch()
+    var block: Array<u8> = new Array<u8>(blockSize)
+    for _ in Range(0, i32(blockSize)) {
+        block.Push(0u8)
+    }
+    Fill(block)
+    var view: []u8 = block[Range(0, block.Len())]
+
+
+    var created: Result<fs.File, Error> = fs.Create(path, 420u32)
+    match created {
+        Ok(file) => {
+            for _ in Range(0, i32(fileSize / blockSize)) {
+                _ = file.Write(view)
+            }
+            _ = file.Close()
+        }
+        Err(_) => {
+            return 1
+        }
+    }
+
+
+    var sequential: Array<u64> = new Array<u64>(0)
+    var random: Array<u64> = new Array<u64>(0)
+    var writes: Array<u64> = new Array<u64>(0)
+    var checksum: u64 = 0u64
+    var last0: u8 = 0u8
+    var last1: u8 = 0u8
+    for _ in Range(0, repetitions) {
+        var start: i64 = i64(clock.Elapsed())
+        var opened: Result<fs.File, Error> = OpenRead()
+        match opened {
+            Ok(file) => {
+                for _ in Range(0, reads) {
+                    block.Clear()
+                    var count: usize = file.Read(block)!
+                    if block.Len() > 0usize {
+                        last0 = block[0]
+                    }
+                    _ = count
+                }
+                _ = file.Close()
+            }
+            Err(_) => {
+                return 2
+            }
+        }
+        var stop: i64 = i64(clock.Elapsed())
+        sequential.Push(u64(stop - start))
+        checksum += u64(last0)
+    }
+
+
+    var state: u64 = 0x1234u64
+    for _ in Range(0, repetitions) {
+        var start: i64 = i64(clock.Elapsed())
+        var opened: Result<fs.File, Error> = OpenRead()
+        match opened {
+            Ok(file) => {
+                for _ in Range(0, reads) {
+                    state = Lcg(state)
+                    var at: usize = usize(state % 1024u64) * blockSize
+                    _ = file.Seek(i64(at), 0)
+                    block.Clear()
+                    var count: usize = file.Read(block)!
+                    if block.Len() > 1usize {
+                        last1 = block[1]
+                    }
+                    _ = count
+                }
+                _ = file.Close()
+            }
+            Err(_) => {
+                return 3
+            }
+        }
+        var stop: i64 = i64(clock.Elapsed())
+        random.Push(u64(stop - start))
+        checksum += u64(last1)
+    }
+
+    for _ in Range(0, repetitions) {
+        var start: i64 = i64(clock.Elapsed())
+        var made: Result<fs.File, Error> = fs.Create(path, 420u32)
+        match made {
+            Ok(file) => {
+                for _ in Range(0, i32(fileSize / blockSize)) {
+                    _ = file.Write(view)
+                }
+                _ = file.Close()
+            }
+            Err(_) => {
+                return 4
+            }
+        }
+        var stop: i64 = i64(clock.Elapsed())
+        writes.Push(u64(stop - start))
+    }
+    _ = fs.Remove(path)
+
+    Sort(sequential)
+    Sort(random)
+    Sort(writes)
+    print("bench metric sequential_read_p50 ", Percentile(sequential, 50i64, 100i64), " ns\n")
+    print("bench metric random_read_p50 ", Percentile(random, 50i64, 100i64), " ns\n")
+    print("bench metric write_p50 ", Percentile(writes, 50i64, 100i64), " ns\n")
+    print("bench metric bytes ", u64(fileSize), " bytes\n")
+    print("bench metric blocks ", u64(reads), " blocks\n")
+    print("bench checksum ", checksum, "\n")
+    
+    return 0
+}
+

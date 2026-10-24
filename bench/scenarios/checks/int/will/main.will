@@ -1,0 +1,54 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_rss_bytes
+    bench_sink
+}
+import "example.com/bench/checks/int/will/bench"
+
+// workload is the number of iterations of one measurement.
+const workload: i32 = 5000000
+
+// repetitions is the number of measured repetitions of the workload.
+const repetitions: i32 = 5
+
+// Work runs the integer chain. The arithmetic of the language is checked,
+// so every operation of the chain carries its check.
+func Work(n: i32, seed: i32) -> i64 {
+    var acc: i64 = 0i64
+    for i in Range(0, n) {
+        var x: i64 = (i64(i) * 3i64 + 1i64) ^ i64(seed)
+        acc += x * 3i64 + 1i64
+    }
+    return acc
+}
+
+func main() -> i32 {
+    var samples: Array<u64> = new Array<u64>(0)
+    // The warm up pays for the first touch of the pages and of the caches.
+    var warm: i64 = Work(1000, 0)
+    _ = warm
+
+    var checksum: i64 = 0i64
+    for r in Range(0, repetitions) {
+        _ = r
+        var start: u64 = c.bench_now_ns()
+        checksum += Work(workload, r)
+        var stop: u64 = c.bench_now_ns()
+        samples.Push(stop - start)
+        c.bench_sink(u64(checksum))
+    }
+
+    bench.SortSamples(samples)
+    var p50: u64 = bench.Percentile(samples, 50i64, 100i64)
+    var worst: u64 = bench.Max(samples)
+
+    print("bench metric checked_p50 ", p50, " ns\n")
+    print("bench metric checked_max ", worst, " ns\n")
+    print("bench metric workload ", u64(workload), " iterations\n")
+    print("bench check checked ", u64(checksum), "\n")
+    // The C side also reports the plain chain. The language has one checked
+    // arithmetic path, so the same checksum is the value of both chains.
+    print("bench check plain ", u64(checksum), "\n")
+    print("bench checksum ", u64(checksum), "\n")
+    return 0
+}

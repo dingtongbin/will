@@ -1,0 +1,85 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_rss_bytes
+    bench_sink
+}
+import "example.com/bench/text/utf8/will/bench"
+
+// workload is the number of times the text is walked.
+const workload: i32 = 100000
+
+// repetitions is the number of measured repetitions of the workload.
+const repetitions: i32 = 5
+
+// Walk goes over the text once. It counts the scalars, hashes them, counts
+// the fields of the split and parses the numbers.
+//
+// The text holds ASCII, three byte characters and a four byte character, so
+// the decoder does every case.
+//
+// The seed takes part in the work, so two calls with different seeds give
+// different results. Without it the compiler may run the loop once and
+// reuse the result, and the measurement would time nothing.
+func Walk(seed: u64) -> u64 {
+    var text: str = "the quick brown fox 42 jumps over 1337 lazy dogs \u{4e2d}\u{6587}\u{6d4b}\u{8bd5} \u{1f600} end"
+    var hash: u64 = seed
+    var fields: u64 = 0u64
+    var numbers: u64 = 0u64
+    var value: u64 = 0u64
+    var inNumber: bool = false
+    for scalar in text {
+        hash = hash *% 31u64 +% u64(scalar)
+        if scalar == 32u32 {
+            fields += 1u64
+            inNumber = false
+            value = 0u64
+        } else if scalar >= 48u32 && scalar <= 57u32 {
+            value = value *% 10u64 +% u64(scalar - 48u32)
+            inNumber = true
+        } else if inNumber {
+            numbers += value
+            value = 0u64
+            inNumber = false
+        }
+    }
+    if inNumber {
+        numbers += value
+    }
+    return hash ^ (numbers *% 1000003u64) ^ (fields <<% 40u64)
+}
+
+func main() -> i32 {
+    var samples: Array<u64> = new Array<u64>(0)
+    // The warm up pays for the first touch of the pages and of the caches.
+    var warm: u64 = Walk(0u64)
+    _ = warm
+
+    var checksum: u64 = 0u64
+    for r in Range(0, repetitions) {
+        _ = r
+        var start: u64 = c.bench_now_ns()
+        var hash: u64 = 0u64
+        for i in Range(0, workload) {
+            _ = i
+            hash = hash +% Walk(u64(r))
+        }
+        var stop: u64 = c.bench_now_ns()
+        samples.Push(stop - start)
+        checksum = checksum +% hash
+        c.bench_sink(checksum)
+    }
+
+    bench.SortSamples(samples)
+    var p50: u64 = bench.Percentile(samples, 50i64, 100i64)
+    var p95: u64 = bench.Percentile(samples, 95i64, 100i64)
+    var p99: u64 = bench.Percentile(samples, 99i64, 100i64)
+    var worst: u64 = bench.Max(samples)
+
+    print("bench metric p50 ", p50, " ns\n")
+    print("bench metric p95 ", p95, " ns\n")
+    print("bench metric p99 ", p99, " ns\n")
+    print("bench metric max ", worst, " ns\n")
+    print("bench metric workload ", u64(workload), " walks\n")
+    print("bench checksum ", checksum, "\n")
+    return 0
+}

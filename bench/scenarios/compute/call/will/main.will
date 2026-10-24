@@ -1,0 +1,149 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_rss_bytes
+    bench_sink
+}
+import "example.com/bench/compute/call/will/bench"
+import "example.com/bench/compute/call/will/lib"
+
+// workload is the number of iterations of one measurement.
+const workload: i32 = 2000000
+
+// repetitions is the number of measured repetitions of the workload.
+const repetitions: i32 = 5
+
+// Counter is the struct the method call works on.
+struct Counter {
+    total: i64
+}
+
+// Add adds a value to the total of the counter.
+func (mut counter: Counter) Add(value: i64) {
+    counter.total += value
+}
+
+// Shape is the interface of the scenario.
+interface Shape {
+    func Area(scale: i64) -> i64
+}
+
+// Square is one shape with an area.
+struct Square {
+    side: i64
+}
+
+// Area returns the area of the square, scaled by the value it is given.
+func (s: Square) Area(scale: i64) -> i64 {
+    return s.side * s.side + scale
+}
+
+// Direct is the direct call of the scenario.
+func Direct(value: i64) -> i64 {
+    return value * 3 + 1
+}
+
+// Baseline runs an empty loop, so the cost of the loop and of the counter is
+// measured apart from the calls.
+func Baseline(n: i32) -> i64 {
+    var acc: i64 = 0i64
+    for i in Range(0, n) {
+        acc ^= i64(i)
+    }
+    return acc
+}
+
+func main() -> i32 {
+    var directSamples: Array<u64> = new Array<u64>(0)
+    var crossSamples: Array<u64> = new Array<u64>(0)
+    var methodSamples: Array<u64> = new Array<u64>(0)
+    var ifaceSamples: Array<u64> = new Array<u64>(0)
+    var counter: Counter = Counter { total: 0i64}
+    var shape: Shape = Square { side: 3i64}
+
+    // The warm up pays for the first touch of the pages and of the caches.
+    // It uses a counter of its own, so the checksum covers the measured work
+    // only.
+    var warmCounter: Counter = Counter { total: 0i64}
+    var warm: i64 = Direct(1000) + lib.Double(1000)
+    warmCounter.Add(1000)
+    warm += shape.Area(1000)
+    _ = warm
+
+    var base: u64 = 0
+    var baseStart: u64 = c.bench_now_ns()
+    var baseAcc: i64 = Baseline(workload)
+    var baseStop: u64 = c.bench_now_ns()
+    base = baseStop - baseStart
+    _ = baseAcc
+
+    var directSum: i64 = 0i64
+    var crossSum: i64 = 0i64
+    var ifaceSum: i64 = 0i64
+    for r in Range(0, repetitions) {
+        _ = r
+        var acc: i64 = 0i64
+        var start: u64 = c.bench_now_ns()
+        for i in Range(0, workload) {
+            acc += Direct(i64(i) ^ i64(r))
+        }
+        var stop: u64 = c.bench_now_ns()
+        directSamples.Push(stop - start)
+        directSum += acc
+        c.bench_sink(u64(directSum))
+    }
+
+    for r in Range(0, repetitions) {
+        _ = r
+        var acc: i64 = 0i64
+        var start: u64 = c.bench_now_ns()
+        for i in Range(0, workload) {
+            acc += lib.Double(i64(i) ^ i64(r))
+        }
+        var stop: u64 = c.bench_now_ns()
+        crossSamples.Push(stop - start)
+        crossSum += acc
+        c.bench_sink(u64(crossSum))
+    }
+
+    for r in Range(0, repetitions) {
+        _ = r
+        var start: u64 = c.bench_now_ns()
+        for i in Range(0, workload) {
+            counter.Add(i64(i) ^ i64(r))
+        }
+        var stop: u64 = c.bench_now_ns()
+        methodSamples.Push(stop - start)
+        c.bench_sink(u64(counter.total))
+    }
+
+    for r in Range(0, repetitions) {
+        _ = r
+        var acc: i64 = 0i64
+        var start: u64 = c.bench_now_ns()
+        for i in Range(0, workload) {
+            acc += shape.Area(i64(i))
+        }
+        var stop: u64 = c.bench_now_ns()
+        ifaceSamples.Push(stop - start)
+        ifaceSum += acc
+        c.bench_sink(u64(ifaceSum))
+    }
+
+    bench.SortSamples(directSamples)
+    bench.SortSamples(crossSamples)
+    bench.SortSamples(methodSamples)
+    bench.SortSamples(ifaceSamples)
+
+    print("bench metric baseline ", base, " ns\n")
+    print("bench metric direct_p50 ", bench.Percentile(directSamples, 50i64, 100i64), " ns\n")
+    print("bench metric cross_p50 ", bench.Percentile(crossSamples, 50i64, 100i64), " ns\n")
+    print("bench metric method_p50 ", bench.Percentile(methodSamples, 50i64, 100i64), " ns\n")
+    print("bench metric iface_p50 ", bench.Percentile(ifaceSamples, 50i64, 100i64), " ns\n")
+    print("bench metric workload ", u64(workload), " iterations\n")
+    print("bench check direct ", u64(directSum), "\n")
+    print("bench check cross ", u64(crossSum), "\n")
+    print("bench check method ", u64(counter.total), "\n")
+    print("bench check iface ", u64(ifaceSum), "\n")
+    print("bench checksum ", u64(directSum + crossSum + counter.total + ifaceSum), "\n")
+    return 0
+}

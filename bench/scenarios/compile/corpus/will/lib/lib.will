@@ -1,0 +1,107 @@
+// The library is the part of the compile corpus that lives in another
+// package. The corpus measures the time the compiler needs, so the code
+// has to be ordinary code of a few hundred lines.
+
+// Count counts the values that are not negative.
+func Count(values: Array<i64>) -> i64 {
+    var total: i64 = 0i64
+    for v in values {
+        if v >= 0i64 {
+            total += 1i64
+        }
+    }
+    return total
+}
+
+// Sum adds the values.
+func Sum(values: Array<i64>) -> i64 {
+    var total: i64 = 0i64
+    for v in values {
+        total += v
+    }
+    return total
+}
+
+// Max returns the largest value, or zero for an empty slice.
+func Max(values: Array<i64>) -> i64 {
+    var best: i64 = 0i64
+    var first: bool = true
+    for v in values {
+        if first || v > best {
+            best = v
+            first = false
+        }
+    }
+    return best
+}
+
+// Min returns the smallest value, or zero for an empty slice.
+func Min(values: Array<i64>) -> i64 {
+    var best: i64 = 0i64
+    var first: bool = true
+    for v in values {
+        if first || v < best {
+            best = v
+            first = false
+        }
+    }
+    return best
+}
+
+// Mean returns the mean of the values, or zero for an empty slice.
+func Mean(values: Array<i64>) -> i64 {
+    if values.Len() == 0usize {
+        return 0i64
+    }
+    return Sum(values) / i64(values.Len())
+}
+
+// Histogram counts how many values fall into each bucket of the given width.
+func Histogram(values: Array<i64>, width: i64) -> Array<i64> {
+    var buckets: Array<i64> = new Array<i64>(0)
+    if width <= 0i64 {
+        return buckets
+    }
+    for v in values {
+        var bucket: i64 = v / width
+        if bucket < 0i64 {
+            bucket = -bucket
+        }
+        var index: i32 = i32(bucket)
+        var filled: i32 = i32(buckets.Len())
+        for {
+            if filled > index {
+                break
+            }
+            buckets.Push(0i64)
+            filled += 1
+        }
+        var count: i64 = 0i64
+        count = buckets[usize(index)]
+        buckets.Set(usize(index), count + 1i64)
+    }
+    return buckets
+}
+
+// Rolling returns the mean of every window of the given size.
+func Rolling(values: Array<i64>, size: i32) -> Array<i64> {
+    var out: Array<i64> = new Array<i64>(0)
+    if size <= 0 {
+        return out
+    }
+    var total: i64 = 0i64
+    var index: i32 = 0
+    for v in values {
+        total += v
+        index += 1
+        if index > size {
+            var old: i64 = 0i64
+            old = values[usize(index - size - 1)]
+            total -= old
+        }
+        if index >= size {
+            out.Push(total / i64(size))
+        }
+    }
+    return out
+}

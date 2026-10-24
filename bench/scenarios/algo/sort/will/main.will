@@ -1,0 +1,133 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_rss_bytes
+    bench_sink
+}
+import "example.com/bench/algo/sort/will/bench"
+
+// smallSize is the size of the first array.
+const smallSize: i32 = 1024
+
+// largeSize is the size of the second array.
+const largeSize: i32 = 1000000
+
+// smallRepetitions is the number of measured repetitions of the first array.
+const smallRepetitions: i32 = 10
+
+// largeRepetitions is the number of measured repetitions of the second
+// array. The sort of a million values costs enough on its own.
+const largeRepetitions: i32 = 1
+
+// seed is the seed of the input generator.
+const seed: u64 = 0x9E3779B97F4A7C15
+
+// Partition puts every value below the pivot left of it and returns the
+// place of the pivot.
+//
+// The values read from the array are assigned to variables that are declared
+// first, because a declaration that reads an index borrows the array until
+// the end of the block.
+func Partition(mut xs: Array<i64>, lo: i32, hi: i32) -> i32 {
+    var pivot: i64 = 0i64
+    pivot = xs[usize(hi)]
+    var i: i32 = lo
+    for j in Range(lo, hi) {
+        if xs[usize(j)] < pivot {
+            var tmp: i64 = 0i64
+            tmp = xs[usize(i)]
+            xs[usize(i)] = xs[usize(j)]
+            xs[usize(j)] = tmp
+            i += 1
+        }
+    }
+    var last: i64 = 0i64
+    last = xs[usize(i)]
+    xs[usize(i)] = xs[usize(hi)]
+    xs[usize(hi)] = last
+    return i
+}
+
+// Quicksort sorts the range of the array.
+func Quicksort(mut xs: Array<i64>, lo: i32, hi: i32) {
+    if lo >= hi {
+        return
+    }
+    var pivot: i32 = Partition(xs, lo, hi)
+    Quicksort(xs, lo, pivot - 1)
+    Quicksort(xs, pivot + 1, hi)
+}
+
+// Fill fills the array with the values of the generator. The C side writes
+// the same generator, so both sides sort the same values.
+//
+// The array is created with the capacity of the fill, so the pushes never
+// grow it.
+func Fill(mut xs: Array<i64>, size: i32) {
+    var state: u64 = seed
+    for i in Range(0, size) {
+        _ = i
+        state = state *% 6364136223846793005 +% 1442695040888963407
+        xs.Push(i64(state >> 1))
+    }
+}
+
+// Sum adds the values of the array, so the checksum covers every element.
+func Sum(xs: Array<i64>) -> u64 {
+    var total: u64 = 0u64
+    for x in xs {
+        total = total +% u64(x)
+    }
+    return total
+}
+
+func main() -> i32 {
+    var smallSamples: Array<u64> = new Array<u64>(0)
+    var largeSamples: Array<u64> = new Array<u64>(0)
+    var small: Array<i64> = new Array<i64>(usize(smallSize))
+    var large: Array<i64> = new Array<i64>(usize(largeSize))
+    Fill(small, smallSize)
+    Fill(large, largeSize)
+
+    // The warm up pays for the first touch of the pages and of the caches.
+    Quicksort(small, 0, smallSize - 1)
+    Quicksort(large, 0, largeSize - 1)
+
+    var checksum: u64 = 0u64
+    for r in Range(0, smallRepetitions) {
+        _ = r
+        // Every repetition sorts a fresh array, because an array that was
+        // sorted before is the worst case of the quicksort.
+        var work: Array<i64> = new Array<i64>(usize(smallSize))
+        Fill(work, smallSize)
+        var start: u64 = c.bench_now_ns()
+        Quicksort(work, 0, smallSize - 1)
+        var stop: u64 = c.bench_now_ns()
+        smallSamples.Push(stop - start)
+        checksum = checksum +% Sum(work)
+        c.bench_sink(checksum)
+    }
+    for r in Range(0, largeRepetitions) {
+        _ = r
+        var work: Array<i64> = new Array<i64>(usize(largeSize))
+        Fill(work, largeSize)
+        var start: u64 = c.bench_now_ns()
+        Quicksort(work, 0, largeSize - 1)
+        var stop: u64 = c.bench_now_ns()
+        largeSamples.Push(stop - start)
+        checksum = checksum +% Sum(work)
+        c.bench_sink(checksum)
+    }
+
+    bench.SortSamples(smallSamples)
+    bench.SortSamples(largeSamples)
+
+    print("bench metric p50_1k ", bench.Percentile(smallSamples, 50i64, 100i64), " ns\n")
+    print("bench metric p95_1k ", bench.Percentile(smallSamples, 95i64, 100i64), " ns\n")
+    print("bench metric max_1k ", bench.Max(smallSamples), " ns\n")
+    print("bench metric p50_1m ", bench.Percentile(largeSamples, 50i64, 100i64), " ns\n")
+    print("bench metric max_1m ", bench.Max(largeSamples), " ns\n")
+    print("bench metric small_size ", u64(smallSize), " values\n")
+    print("bench metric large_size ", u64(largeSize), " values\n")
+    print("bench checksum ", checksum, "\n")
+    return 0
+}

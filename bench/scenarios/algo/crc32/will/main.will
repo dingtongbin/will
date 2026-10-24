@@ -1,0 +1,101 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_rss_bytes
+    bench_sink
+}
+import "example.com/bench/algo/crc32/will/bench"
+
+// bufferSize is the size of the buffer in bytes.
+const bufferSize: i32 = 262144
+
+// seed is the seed of the input generator.
+const seed: u64 = 0x12345678
+
+// repetitions is the number of measured repetitions of the workload.
+const repetitions: i32 = 3
+
+// allOnes is the register value before the first byte and the xor applied at
+// the end.
+const allOnes: u32 = 4294967295u32
+
+// polynomial is the IEEE 802.3 polynomial in its reflected form.
+const polynomial: u32 = 3988292384u32
+
+// Fill fills the buffer with the same bytes the C support generates: the
+// bytes of a linear congruential generator, least significant byte first.
+//
+// The buffer is created with the capacity of the fill, so the pushes never
+// grow it.
+func Fill(mut buf: Array<u8>, size: i32, start: u64) {
+    var state: u64 = start
+    var whole: i32 = size / 8
+    for i in Range(0, whole) {
+        _ = i
+        state = state *% 6364136223846793005 +% 1442695040888963407
+        for k in Range(0, 8) {
+            buf.Push(u8((state >> (8i64 * i64(k))) & 0xffu64))
+        }
+    }
+    var rest: i32 = size - whole * 8
+    if rest > 0 {
+        state = state *% 6364136223846793005 +% 1442695040888963407
+        for k in Range(0, rest) {
+            buf.Push(u8((state >> (8i64 * i64(k))) & 0xffu64))
+        }
+    }
+}
+
+// Crc32 computes the CRC-32 of the buffer. The algorithm is the reflected
+// IEEE 802.3 variant, one bit at a time.
+//
+// The seed takes part in the work, so two calls with different seeds give
+// different results. Without it the compiler may run the loop once and
+// reuse the result, and the measurement would time nothing.
+func Crc32(buf: Array<u8>, start: u32) -> u32 {
+    var crc: u32 = start ^ allOnes
+    for b in buf {
+        crc = crc ^ u32(b)
+        for k in Range(0, 8) {
+            if (crc & 1u32) != 0u32 {
+                crc = (crc >> 1) ^ polynomial
+            } else {
+                crc = crc >> 1
+            }
+            _ = k
+        }
+    }
+    return crc ^ allOnes
+}
+
+func main() -> i32 {
+    var samples: Array<u64> = new Array<u64>(0)
+    var buf: Array<u8> = new Array<u8>(usize(bufferSize))
+    Fill(buf, bufferSize, seed)
+    // The warm up pays for the first touch of the pages and of the caches.
+    var warm: u32 = Crc32(buf, 0u32)
+    _ = warm
+
+    var checksum: u64 = 0u64
+    for r in Range(0, repetitions) {
+        _ = r
+        var start: u64 = c.bench_now_ns()
+        checksum += u64(Crc32(buf, u32(r)))
+        var stop: u64 = c.bench_now_ns()
+        samples.Push(stop - start)
+        c.bench_sink(checksum)
+    }
+
+    bench.SortSamples(samples)
+    var p50: u64 = bench.Percentile(samples, 50i64, 100i64)
+    var p95: u64 = bench.Percentile(samples, 95i64, 100i64)
+    var p99: u64 = bench.Percentile(samples, 99i64, 100i64)
+    var worst: u64 = bench.Max(samples)
+
+    print("bench metric p50 ", p50, " ns\n")
+    print("bench metric p95 ", p95, " ns\n")
+    print("bench metric p99 ", p99, " ns\n")
+    print("bench metric max ", worst, " ns\n")
+    print("bench metric bytes ", u64(bufferSize), " bytes\n")
+    print("bench checksum ", checksum, "\n")
+    return 0
+}

@@ -1,0 +1,272 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_rss_bytes
+    bench_sink
+}
+import "example.com/bench/algo/sha256/will/bench"
+
+// messageSize is the size of the message in bytes.
+const messageSize: i32 = 119
+
+// repetitions is the number of measured repetitions of the workload.
+const repetitions: i32 = 5
+
+// Ror rotates a word to the right.
+func Ror(value: u32, amount: u32) -> u32 {
+    return (value >> amount) | (value <<% (32u32 - amount))
+}
+
+// FillConstants puts the round constants of SHA-256 into the array.
+func FillConstants(k: Array<u32>) {
+    k.Push(0x428a2f98u32)
+    k.Push(0x71374491u32)
+    k.Push(0xb5c0fbcfu32)
+    k.Push(0xe9b5dba5u32)
+    k.Push(0x3956c25bu32)
+    k.Push(0x59f111f1u32)
+    k.Push(0x923f82a4u32)
+    k.Push(0xab1c5ed5u32)
+    k.Push(0xd807aa98u32)
+    k.Push(0x12835b01u32)
+    k.Push(0x243185beu32)
+    k.Push(0x550c7dc3u32)
+    k.Push(0x72be5d74u32)
+    k.Push(0x80deb1feu32)
+    k.Push(0x9bdc06a7u32)
+    k.Push(0xc19bf174u32)
+    k.Push(0xe49b69c1u32)
+    k.Push(0xefbe4786u32)
+    k.Push(0x0fc19dc6u32)
+    k.Push(0x240ca1ccu32)
+    k.Push(0x2de92c6fu32)
+    k.Push(0x4a7484aau32)
+    k.Push(0x5cb0a9dcu32)
+    k.Push(0x76f988dau32)
+    k.Push(0x983e5152u32)
+    k.Push(0xa831c66du32)
+    k.Push(0xb00327c8u32)
+    k.Push(0xbf597fc7u32)
+    k.Push(0xc6e00bf3u32)
+    k.Push(0xd5a79147u32)
+    k.Push(0x06ca6351u32)
+    k.Push(0x14292967u32)
+    k.Push(0x27b70a85u32)
+    k.Push(0x2e1b2138u32)
+    k.Push(0x4d2c6dfcu32)
+    k.Push(0x53380d13u32)
+    k.Push(0x650a7354u32)
+    k.Push(0x766a0abbu32)
+    k.Push(0x81c2c92eu32)
+    k.Push(0x92722c85u32)
+    k.Push(0xa2bfe8a1u32)
+    k.Push(0xa81a664bu32)
+    k.Push(0xc24b8b70u32)
+    k.Push(0xc76c51a3u32)
+    k.Push(0xd192e819u32)
+    k.Push(0xd6990624u32)
+    k.Push(0xf40e3585u32)
+    k.Push(0x106aa070u32)
+    k.Push(0x19a4c116u32)
+    k.Push(0x1e376c08u32)
+    k.Push(0x2748774cu32)
+    k.Push(0x34b0bcb5u32)
+    k.Push(0x391c0cb3u32)
+    k.Push(0x4ed8aa4au32)
+    k.Push(0x5b9cca4fu32)
+    k.Push(0x682e6ff3u32)
+    k.Push(0x748f82eeu32)
+    k.Push(0x78a5636fu32)
+    k.Push(0x84c87814u32)
+    k.Push(0x8cc70208u32)
+    k.Push(0x90befffau32)
+    k.Push(0xa4506cebu32)
+    k.Push(0xbef9a3f7u32)
+    k.Push(0xc67178f2u32)
+}
+
+// Compress runs the compression of one block into the state.
+func Compress(mut state: Array<u32>, mut words: Array<u32>, block: Array<u8>, at: i32, k: Array<u32>) {
+    for i in Range(0, 16) {
+        var p: i32 = at + i * 4
+        var b0: u8 = 0u8
+        var b1: u8 = 0u8
+        var b2: u8 = 0u8
+        var b3: u8 = 0u8
+        b0 = block[usize(p)]
+        b1 = block[usize(p + 1)]
+        b2 = block[usize(p + 2)]
+        b3 = block[usize(p + 3)]
+        var word: u32 = u32(b0) <<% 24u32
+        word = word | (u32(b1) <<% 16u32)
+        word = word | (u32(b2) <<% 8u32)
+        word = word | u32(b3)
+        words.Set(usize(i), word)
+    }
+    for i in Range(16, 64) {
+        var w15: u32 = words[usize(i - 15)]
+        var w2: u32 = words[usize(i - 2)]
+        var s0: u32 = Ror(w15, 7u32) ^ Ror(w15, 18u32) ^ (w15 >> 3u32)
+        var s1: u32 = Ror(w2, 17u32) ^ Ror(w2, 19u32) ^ (w2 >> 10u32)
+        var word: u32 = words[usize(i - 16)] +% s0 +% words[usize(i - 7)] +% s1
+        words.Set(usize(i), word)
+    }
+    // The values are read with an assignment, because a declaration that
+    // reads an index borrows the array until the end of the block.
+    var a: u32 = 0u32
+    a = state[usize(0)]
+    var b: u32 = 0u32
+    b = state[usize(1)]
+    var ca: u32 = 0u32
+    ca = state[usize(2)]
+    var d: u32 = 0u32
+    d = state[usize(3)]
+    var e: u32 = 0u32
+    e = state[usize(4)]
+    var f: u32 = 0u32
+    f = state[usize(5)]
+    var g: u32 = 0u32
+    g = state[usize(6)]
+    var h: u32 = 0u32
+    h = state[usize(7)]
+    for i in Range(0, 64) {
+        var s1: u32 = Ror(e, 6u32) ^ Ror(e, 11u32) ^ Ror(e, 25u32)
+        var choose: u32 = (e & f) ^ ((~e) & g)
+        var t1: u32 = h +% s1 +% choose +% k[usize(i)] +% words[usize(i)]
+        var s0: u32 = Ror(a, 2u32) ^ Ror(a, 13u32) ^ Ror(a, 22u32)
+        var major: u32 = (a & b) ^ (a & ca) ^ (b & ca)
+        var t2: u32 = s0 +% major
+        h = g
+        g = f
+        f = e
+        e = d +% t1
+        d = ca
+        ca = b
+        b = a
+        a = t1 +% t2
+    }
+    state.Set(usize(0), state[usize(0)] +% a)
+    state.Set(usize(1), state[usize(1)] +% b)
+    state.Set(usize(2), state[usize(2)] +% ca)
+    state.Set(usize(3), state[usize(3)] +% d)
+    state.Set(usize(4), state[usize(4)] +% e)
+    state.Set(usize(5), state[usize(5)] +% f)
+    state.Set(usize(6), state[usize(6)] +% g)
+    state.Set(usize(7), state[usize(7)] +% h)
+}
+
+// InitialState returns the state of a fresh hash.
+func InitialState() -> Array<u32> {
+    var state: Array<u32> = new Array<u32>(8)
+    state.Push(0x6a09e667u32)
+    state.Push(0xbb67ae85u32)
+    state.Push(0x3c6ef372u32)
+    state.Push(0xa54ff53au32)
+    state.Push(0x510e527fu32)
+    state.Push(0x9b05688cu32)
+    state.Push(0x1f83d9abu32)
+    state.Push(0x5be0cd19u32)
+    return state
+}
+
+// EmptyWords returns the array the schedule of the compression uses.
+func EmptyWords() -> Array<u32> {
+    var words: Array<u32> = new Array<u32>(64)
+    for i in Range(0, 64) {
+        _ = i
+        words.Push(0u32)
+    }
+    return words
+}
+
+// Message returns the padded message the workload hashes.
+func Message() -> Array<u8> {
+    var message: Array<u8> = new Array<u8>(128)
+    var state: u64 = 0xA5A5
+    var whole: i32 = messageSize / 8
+    for i in Range(0, whole) {
+        _ = i
+        state = state *% 6364136223846793005 +% 1442695040888963407
+        var value: u64 = state
+        for k in Range(0, 8) {
+            _ = k
+            message.Push(u8(value & 0xffu64))
+            value = value >> 8u64
+        }
+    }
+    var rest: i32 = messageSize - whole * 8
+    if rest > 0 {
+        state = state *% 6364136223846793005 +% 1442695040888963407
+        var value: u64 = state
+        for k in Range(0, rest) {
+            _ = k
+            message.Push(u8(value & 0xffu64))
+            value = value >> 8u64
+        }
+    }
+    // The padding is the one bit of the message, then zeroes, then the
+    // length of the message in bits, least significant byte first.
+    message.Push(0x80u8)
+    var bits: u64 = u64(messageSize) * 8u64
+    for i in Range(0, 8) {
+        _ = i
+        message.Push(u8((bits >> (8u64 * u64(i))) & 0xffu64))
+    }
+    return message
+}
+
+func main() -> i32 {
+    var samples: Array<u64> = new Array<u64>(0)
+    var k: Array<u32> = new Array<u32>(64)
+    FillConstants(k)
+    var message: Array<u8> = Message()
+    var words: Array<u32> = EmptyWords()
+    // The warm up pays for the first touch of the pages and of the caches.
+    var warmState: Array<u32> = InitialState()
+    Compress(warmState, words, message, 0, k)
+
+    var digest: Array<u32> = new Array<u32>(8)
+    for i in Range(0, 8) {
+        _ = i
+        digest.Push(0u32)
+    }
+    for r in Range(0, repetitions) {
+        _ = r
+        var state: Array<u32> = InitialState()
+        var start: u64 = c.bench_now_ns()
+        Compress(state, words, message, 0, k)
+        Compress(state, words, message, 64, k)
+        var stop: u64 = c.bench_now_ns()
+        samples.Push(stop - start)
+        for i in Range(0, 8) {
+            _ = i
+            var word: u32 = 0u32
+            word = state[usize(i)]
+            digest.Set(usize(i), digest[usize(i)] +% word)
+        }
+        var first: u32 = 0u32
+        first = digest[usize(0)]
+        c.bench_sink(u64(first))
+    }
+
+    bench.SortSamples(samples)
+    var p50: u64 = bench.Percentile(samples, 50i64, 100i64)
+    var p95: u64 = bench.Percentile(samples, 95i64, 100i64)
+    var p99: u64 = bench.Percentile(samples, 99i64, 100i64)
+    var worst: u64 = bench.Max(samples)
+
+    print("bench metric p50 ", p50, " ns\n")
+    print("bench metric p95 ", p95, " ns\n")
+    print("bench metric p99 ", p99, " ns\n")
+    print("bench metric max ", worst, " ns\n")
+    print("bench metric message ", u64(messageSize), " bytes\n")
+    print("bench metric blocks 2 blocks\n")
+    var checksum: u64 = 0u64
+    for i in Range(0, 8) {
+        _ = i
+        var word: u32 = 0u32
+        word = digest[usize(i)]
+        checksum = checksum *% 31u64 +% u64(word)
+    }
+    print("bench checksum ", checksum, "\n")
+    return 0
+}

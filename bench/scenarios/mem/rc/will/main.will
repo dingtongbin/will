@@ -1,0 +1,54 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_rss_bytes
+    bench_sink
+}
+import "example.com/bench/mem/rc/will/bench"
+
+// count is the number of reference count changes of the workload.
+const count: i32 = 1000000
+
+// repetitions is the number of measured repetitions of the workload.
+const repetitions: i32 = 5
+
+// Counter is the object the workload shares.
+struct Counter {
+    value: i64
+}
+
+func main() -> i32 {
+    var samples: Array<u64> = new Array<u64>(0)
+    var cell: rc<Counter> = new rc<Counter>(Counter { value: 0i64})
+    // The warm up pays for the first touch of the pages and of the caches.
+    var warm: rc<Counter> = cell
+    _ = warm
+
+    for r in Range(0, repetitions) {
+        _ = r
+        var start: u64 = c.bench_now_ns()
+        for i in Range(0, count) {
+            _ = i
+            // The copy retains the object, the end of the block releases it.
+            var copy: rc<Counter> = cell
+            cell.value += 1
+            _ = copy
+        }
+        var stop: u64 = c.bench_now_ns()
+        samples.Push(stop - start)
+        c.bench_sink(u64(cell.value))
+    }
+
+    bench.SortSamples(samples)
+    var p50: u64 = bench.Percentile(samples, 50i64, 100i64)
+    var p95: u64 = bench.Percentile(samples, 95i64, 100i64)
+    var p99: u64 = bench.Percentile(samples, 99i64, 100i64)
+    var worst: u64 = bench.Max(samples)
+
+    print("bench metric p50 ", p50, " ns\n")
+    print("bench metric p95 ", p95, " ns\n")
+    print("bench metric p99 ", p99, " ns\n")
+    print("bench metric max ", worst, " ns\n")
+    print("bench metric operations ", u64(count), " pairs\n")
+    print("bench checksum ", u64(cell.value), "\n")
+    return 0
+}
