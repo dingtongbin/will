@@ -28,10 +28,10 @@ func (counter: Count) Wait() -> Result<(), Error> {
         return Ok(())
     }
     if status == -5 {
-        return Err(errors.Canceled)
+        return Err(Canceled)
     }
     if status == -6 {
-        return Err(errors.Deadline)
+        return Err(Deadline)
     }
     return Err(errors.Io)
 }

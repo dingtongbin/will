@@ -28,17 +28,17 @@ func (mut s: Semaphore) init(permits: i64) {
 }
 
 // Acquire waits until one permit is free. A canceled or expired wait returns
-// the matching error and leaves the permit count unchanged.
+// the matching predeclared error and leaves the permit count unchanged.
 func (s: Semaphore) Acquire() -> Result<Permit, Error> {
     var status: i32 = c.willrt_sync_sema_acquire_async(s.handle)
     if status == 0 {
         return Ok(Permit { handle: s.handle })
     }
     if status == -5 {
-        return Err(errors.Canceled)
+        return Err(Canceled)
     }
     if status == -6 {
-        return Err(errors.Deadline)
+        return Err(Deadline)
     }
     return Err(errors.Io)
 }

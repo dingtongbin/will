@@ -7,16 +7,19 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// builtinErrorPlace stores one predeclared Error value in an interface slot.
-// The data and method-table globals are emitted by emitBuiltinErrors.
+// builtinErrorPlace returns the predeclared error as a module-level constant.
+// A per-use alloca does not survive the frame relocation of a state machine,
+// and Err(Canceled) is legal inside any function body.
 func (g *generator) builtinErrorPlace(r willc.Record, name string) (string, string, error) {
 	kind := 8
 	if name == "Deadline" {
 		kind = 9
 	}
-	slot := g.allocSlot(g.adtSlots, "builtin.error", r.ID, "%interface.Error")
-	g.builtinErrorInto(slot, kind)
-	return slot, "%interface.Error", nil
+	if g.builtinErrors == nil {
+		g.builtinErrors = map[int]bool{}
+	}
+	g.builtinErrors[kind] = true
+	return fmt.Sprintf("@will.error.value.%d", kind), "%interface.Error", nil
 }
 
 // builtinErrorInto fills an interface slot with one predeclared or internal
@@ -84,6 +87,8 @@ func (g *generator) emitBuiltinErrors() {
 		fmt.Fprintf(g.out, "  %s = load i32, ptr %s\n", status, statusPtr)
 		fmt.Fprintf(g.out, "  ret i32 %s\n}\n", status)
 		fmt.Fprintf(g.out, "@will.error.table.%d = private constant [2 x ptr] [ptr @will.error.message.%d, ptr @will.error.status.%d]\n",
+			kind, kind, kind)
+		fmt.Fprintf(g.out, "@will.error.value.%d = private constant %%interface.Error { ptr @will.error.data.%d, ptr @will.error.table.%d }\n",
 			kind, kind, kind)
 	}
 }
