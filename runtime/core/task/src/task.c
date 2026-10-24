@@ -24,8 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define WILLRT_TASK_STACK (128 * 1024)
-#define WILLRT_REGION_DEPTH 64
+#define WILLRT_REGION_INLINE 64
 
 enum {
     WILLRT_TASK_READY = 0,
@@ -113,8 +112,15 @@ static _Thread_local struct willrt_task* willrt_task_self;
 static _Thread_local jmp_buf willrt_panic_jump;
 static _Thread_local int32_t willrt_panic_jump_active;
 static _Thread_local int32_t willrt_lane_self = -1;
-static _Thread_local struct willrt_region willrt_regions[WILLRT_REGION_DEPTH];
+/* The region stack starts inline per thread and grows, so nesting a spawn
+   scope inside a spawn scope has no fixed ceiling. A scope that could not grow
+   is remembered in willrt_region_skipped and its exit joins nothing, which
+   keeps enters and exits balanced under memory exhaustion. */
+static _Thread_local struct willrt_region willrt_regions_inline[WILLRT_REGION_INLINE];
+static _Thread_local struct willrt_region* willrt_regions;
+static _Thread_local size_t willrt_regions_cap;
 static _Thread_local int willrt_region_depth;
+static _Thread_local int willrt_region_skipped;
 static _Thread_local int64_t willrt_main_deadline;
 
 static atomic_int willrt_task_globals_state;
@@ -945,11 +951,44 @@ int32_t willrt_task_fail(const char* message, size_t size, const char* site,
     return 0;
 }
 
+/* willrt_regions_grow doubles the region stack. The regions themselves hold
+   only a mutex and a task head, so copying them to a larger block is enough;
+   the old block is released unless it is the inline one. A failed growth leaves
+   the stack as it was so the caller can record a skipped scope. */
+static int willrt_regions_grow(void) {
+    size_t next = willrt_regions_cap * 2;
+    struct willrt_region* grown;
+
+    if (next < willrt_regions_cap
+        || next > SIZE_MAX / sizeof(*grown)) {
+        return 0;
+    }
+    grown = (struct willrt_region*)willrt_alloc(next * sizeof(*grown));
+    if (grown == NULL) {
+        return 0;
+    }
+    memcpy(grown, willrt_regions, willrt_regions_cap * sizeof(*grown));
+    if (willrt_regions != willrt_regions_inline) {
+        willrt_free(willrt_regions);
+    }
+    willrt_regions = grown;
+    willrt_regions_cap = next;
+    return 1;
+}
+
 void willrt_region_enter(void) {
     struct willrt_region* region;
 
     willrt_task_globals();
-    if (willrt_region_depth >= WILLRT_REGION_DEPTH) {
+    if (willrt_regions == NULL) {
+        /* The inline array is thread-local, so its address is not a constant
+           initializer; it is installed on the first scope of this thread. */
+        willrt_regions = willrt_regions_inline;
+        willrt_regions_cap = WILLRT_REGION_INLINE;
+    }
+    if ((size_t)willrt_region_depth == willrt_regions_cap
+        && !willrt_regions_grow()) {
+        willrt_region_skipped++;
         return;
     }
     region = &willrt_regions[willrt_region_depth];
@@ -999,6 +1038,10 @@ int32_t willrt_region_exit(void) {
     char line[64];
     int size;
 
+    if (willrt_region_skipped > 0) {
+        willrt_region_skipped--;
+        return 0;
+    }
     if (willrt_region_depth <= 0) {
         return 0;
     }

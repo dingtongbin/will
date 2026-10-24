@@ -1065,6 +1065,34 @@ static void test_region_recycles_tasks(void) {
     assert(settled == warm);
 }
 
+/* A spawn scope nested deeper than the inline region table must still own its
+   own members. The inner scope exits first and reports only its own failure; a
+   table that stops growing would drop the inner scope and let this exit close
+   the outer one, which reports the outer failure as well. */
+static void test_region_nests_past_inline(void) {
+    willrt_task* inner;
+    willrt_task* outer;
+    int depth;
+
+    for (depth = 0; depth < 64; depth++) {
+        willrt_region_enter();
+    }
+    outer = willrt_task_new((void*)step_panic, NULL, 0, 0, 0);
+    assert(outer != NULL);
+    willrt_task_run(outer);
+    willrt_region_enter();
+    inner = willrt_task_new((void*)step_panic, NULL, 0, 0, 0);
+    assert(inner != NULL);
+    willrt_task_run(inner);
+    assert(willrt_region_exit() == 1);
+    /* The outer failing task belongs to the scope below, so this exit sees it
+       and nothing from the scope that just closed. */
+    assert(willrt_region_exit() == 1);
+    for (depth = 0; depth < 63; depth++) {
+        assert(willrt_region_exit() == 0);
+    }
+}
+
 int main(void) {
 #ifdef _WIN32
     WSADATA data;
@@ -1098,6 +1126,7 @@ int main(void) {
     test_async_poll_survives_reuse();
     test_task_error_copy_accessors();
     test_region_recycles_tasks();
+    test_region_nests_past_inline();
     willrt_shutdown();
 #ifdef _WIN32
     (void)WSACleanup();
