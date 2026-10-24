@@ -215,6 +215,9 @@ func measureCompile(root, repo string, sc scenario, opts options, cc, ccVersion,
 	cLines := cSourceLines(root, sc)
 	cBuild := filepath.Join(buildDir, "c_"+strings.ReplaceAll(sc.name, "/", "_"))
 	var cBuildMs, cLineRates, cRSS, cIncremental []uint64
+	if warm := buildCProgram(root, sc, cc, cBuild, buildDir, false); warm.err != nil {
+		return nil, warm.err
+	}
 	for i := 0; i < opts.runs; i++ {
 		outcome := buildCProgram(root, sc, cc, cBuild, buildDir, false)
 		if outcome.err != nil {
@@ -223,7 +226,9 @@ func measureCompile(root, repo string, sc scenario, opts options, cc, ccVersion,
 		cBuildMs = append(cBuildMs, uint64(outcome.duration.Microseconds())/1000)
 		cLineRates = append(cLineRates, linesPerSecond(cLines, outcome.duration))
 		cRSS = append(cRSS, outcome.peakRSS)
-		if sc.touchC != "" {
+	}
+	if sc.touchC != "" {
+		for i := 0; i < opts.runs; i++ {
 			inc := buildCProgram(root, sc, cc, cBuild, buildDir, true)
 			if inc.err != nil {
 				return nil, inc.err
@@ -243,6 +248,9 @@ func measureCompile(root, repo string, sc scenario, opts options, cc, ccVersion,
 	willLines := willSourceLines(root, sc)
 	willBuild := filepath.Join(buildDir, "will_"+strings.ReplaceAll(sc.name, "/", "_"))
 	var wBuildMs, wLineRates, wRSS, wIncremental []uint64
+	if warm := buildWillProgram(root, repo, will, sc, willBuild, false); warm.err != nil {
+		return nil, warm.err
+	}
 	for i := 0; i < opts.runs; i++ {
 		outcome := buildWillProgram(root, repo, will, sc, willBuild, false)
 		if outcome.err != nil {
@@ -251,7 +259,9 @@ func measureCompile(root, repo string, sc scenario, opts options, cc, ccVersion,
 		wBuildMs = append(wBuildMs, uint64(outcome.duration.Microseconds())/1000)
 		wLineRates = append(wLineRates, linesPerSecond(willLines, outcome.duration))
 		wRSS = append(wRSS, outcome.peakRSS)
-		if sc.touchW != "" {
+	}
+	if sc.touchW != "" {
+		for i := 0; i < opts.runs; i++ {
 			inc := buildWillProgram(root, repo, will, sc, willBuild, true)
 			if inc.err != nil {
 				return nil, inc.err
