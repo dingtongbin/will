@@ -285,6 +285,81 @@ int64_t willrt_poll_wait_async_deadline(willrt_poll_request* req);
    poller stops carrying the descriptors. */
 void willrt_poll_request_abandon(willrt_poll_request* req);
 
+/* -------------------------------------------------------------------------
+   Sync primitives. One primitive serves Mutex and RwLock: exclusive and
+   shared acquisition share one FIFO waiter chain, so a later writer waits
+   behind queued readers instead of barging. Semaphore counts permits, Count
+   waits for a counter to reach zero, and Gate signals one generation flip.
+   Each acquire waits as a state-machine operation whose node embeds in the
+   task, so a contended wait allocates nothing. Cancellation and the scoped
+   deadline unlink the waiter without taking the resource, which keeps the
+   cancel-safety contract: permits, counts, and tokens never change on a
+   canceled wait. Like a channel, the object lives as long as the value that
+   owns it and is not freed.
+   ------------------------------------------------------------------------- */
+
+typedef struct willrt_sync_wait willrt_sync_wait;
+
+struct willrt_sync_wait {
+    int32_t active;
+    int32_t linked;
+    int32_t status;
+    int32_t mode;
+    void* owner;
+    struct willrt_task* task;
+    willrt_sync_wait* prev;
+    willrt_sync_wait* next;
+};
+
+/* Mode of one acquisition: 0 takes the resource exclusively, 1 shares it. */
+#define WILLRT_SYNC_EXCLUSIVE 0
+#define WILLRT_SYNC_SHARED 1
+
+void* willrt_sync_lock_new(void);
+void* willrt_sync_sema_new(int64_t permits);
+void* willrt_sync_count_new(int64_t count);
+void* willrt_sync_gate_new(void);
+/* willrt_sync_unlock releases one held acquisition. A null handle is a no-op,
+   which is how an empty guard releases nothing. */
+void willrt_sync_unlock(void* s, int32_t mode);
+int64_t willrt_sync_sema_release(void* s);
+/* willrt_sync_count_add moves the counter and wakes every waiter when it
+   reaches zero. A later add that raises the count re-arms future waits. */
+void willrt_sync_count_add(void* s, int64_t delta);
+int64_t willrt_sync_count_load(void* s);
+/* willrt_sync_gate_signal wakes every current and future waiter of this
+   generation; willrt_sync_gate_reset arms the next one. */
+void willrt_sync_gate_signal(void* s);
+void willrt_sync_gate_reset(void* s);
+
+/* willrt_sync_lock_async is the machine-declined fallback: it blocks the
+   calling thread until the acquisition is granted or the caller's deadline
+   passes. Generated state machines use the start form below. */
+int32_t willrt_sync_lock_async(void* s, int32_t mode);
+int32_t willrt_sync_sema_acquire_async(void* s);
+int32_t willrt_sync_count_wait_async(void* s);
+int32_t willrt_sync_gate_wait_async(void* s);
+/* The start forms register the current task's embedded node and return it. A
+   caller outside a task blocks in the start form and returns a granted or
+   timed-out node. */
+willrt_sync_wait* willrt_sync_lock_async_start(void* s, int32_t mode);
+willrt_sync_wait* willrt_sync_sema_acquire_async_start(void* s);
+willrt_sync_wait* willrt_sync_count_wait_async_start(void* s);
+willrt_sync_wait* willrt_sync_gate_wait_async_start(void* s);
+/* poll reports 1 when the wait resolved and 0 while the task should keep
+   waiting. It observes cancellation and the scoped deadline on every re-run
+   and unlinks the node before reporting either. */
+int32_t willrt_sync_wait_poll(willrt_sync_wait* wait);
+/* finish returns the resolved status and resets the node to idle. */
+int32_t willrt_sync_wait_finish(willrt_sync_wait* wait);
+/* deadline returns zero: these waits have no deadline of their own, the
+   enclosing scope governs. */
+int64_t willrt_sync_wait_deadline(willrt_sync_wait* wait);
+/* willrt_sync_wait_abandon unlinks a still-pending node from its primitive. A
+   task that leaves its frame while parked must call it, so a granted
+   acquisition is never handed to a dead task. */
+void willrt_sync_wait_abandon(willrt_sync_wait* wait);
+
 /* willrt_blocking_fn is one job for the blocking pool. It may block; the pool
    owns the thread, and the caller waits for the job's result. out is the same
    pointer the caller passed to willrt_blocking_call. */
@@ -458,6 +533,9 @@ willrt_chan_wait* willrt_task_chan_wait_node(void);
 /* willrt_task_poll_node returns the current task's embedded poll request, or
    NULL outside a task. The poller API stores the waiter in it. */
 willrt_poll_request* willrt_task_poll_node(void);
+/* willrt_task_sync_node returns the current task's embedded sync wait node,
+   or NULL outside a task. The sync primitives park through it. */
+willrt_sync_wait* willrt_task_sync_node(void);
 void willrt_task_wake_chan(willrt_task* task);
 /* willrt_task_wake_batch moves parked tasks to their lanes' ready queues,
    locking each lane once for the whole batch. The poller delivers one pass of

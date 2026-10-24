@@ -88,6 +88,7 @@ struct willrt_task {
        and the generated step finishes one before starting the next. */
     willrt_poll_request poll_node;
     willrt_sleep_op sleep_node;
+    willrt_sync_wait sync_node;
 };
 
 struct willrt_region {
@@ -134,6 +135,8 @@ extern void willrt_jobs_shutdown(void) __attribute__((weak));
 extern int32_t willrt_jobs_pending(void) __attribute__((weak));
 extern int32_t willrt_timer_pending(void) __attribute__((weak));
 extern void willrt_poll_request_abandon(willrt_poll_request* req)
+    __attribute__((weak));
+extern void willrt_sync_wait_abandon(willrt_sync_wait* wait)
     __attribute__((weak));
 
 static void willrt_lane_init(void);
@@ -385,9 +388,13 @@ static void willrt_task_finish(struct willrt_task* task) {
 
     /* A task that leaves its frame while parked would otherwise leave its
        poller request pending forever, so the poller would carry the
-       descriptors of a finished task. */
+       descriptors of a finished task. The same applies to a sync waiter: a
+       granted acquisition must never be handed to a dead task. */
     if (willrt_poll_request_abandon != NULL) {
         willrt_poll_request_abandon(&task->poll_node);
+    }
+    if (willrt_sync_wait_abandon != NULL) {
+        willrt_sync_wait_abandon(&task->sync_node);
     }
     willrt_os_mutex_lock(&task->lock);
     task->finished = 1;
@@ -638,6 +645,10 @@ void willrt_task_wake_chan(willrt_task* task) {
 
 willrt_poll_request* willrt_task_poll_node(void) {
     return willrt_task_self == NULL ? NULL : &willrt_task_self->poll_node;
+}
+
+willrt_sync_wait* willrt_task_sync_node(void) {
+    return willrt_task_self == NULL ? NULL : &willrt_task_self->sync_node;
 }
 
 /* willrt_task_wake_batch is the poller's delivery path: one pass of ready
