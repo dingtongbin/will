@@ -26,7 +26,7 @@ sm.init:
   %t5 = getelementptr {}, ptr null, i32 1
   %t6 = ptrtoint ptr %t5 to i64
   %t7 = call ptr @willrt_alloc(i64 %t6)
-  %t8 = call i32 @willrt_lane_here()
+  %t8 = call i32 @willrt_lane_choose()
   %t9 = call ptr @willrt_task_new(ptr @"example.com/rctask.spawn.1", ptr %t7, i64 %t6, i32 %t8, i32 0)
   call void @willrt_task_own_frame(ptr %t9)
   call void @willrt_task_run(ptr %t9)
@@ -150,6 +150,7 @@ declare i64 @willrt_now_ns()
 declare void @willrt_region_enter()
 declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
+declare i32 @willrt_lane_choose()
 declare void @willrt_task_mark_wait()
 declare void @willrt_task_own_frame(ptr)
 declare i64 @willrt_rc_new(ptr, i64)

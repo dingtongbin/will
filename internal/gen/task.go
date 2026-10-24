@@ -55,13 +55,19 @@ func (g *generator) spawnStepSymbol(node int) string {
 // frame, and starts one task. The args are captured by value, matching the move
 // rule the source checker enforces for spawn.
 func (g *generator) lowerSpawn(r willc.Record) (string, error) {
+	place := fieldText(r, "place")
 	laneValue := ""
-	if lane := fieldText(r, "lane"); lane != "" {
+	switch place {
+	case "auto", "here":
+	case "on":
+		lane := fieldText(r, "lane")
 		index, ok := g.laneIndex[qualify(g.pkg, lane)]
 		if !ok {
 			return "", g.errf(r.ID, "cannot translate node #%d: lane %s is not declared", r.ID, lane)
 		}
 		laneValue = strconv.Itoa(int(index))
+	default:
+		return "", g.errf(r.ID, "cannot translate node #%d: spawn has no place", r.ID)
 	}
 	callID := refField(r, "call")
 	call, ok := g.recs[callID]
@@ -183,10 +189,18 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		g.pendingSpawns = append(g.pendingSpawns, spawnRequest{node: r.ID, call: callID, sym: step})
 	}
 	lane := laneValue
-	if lane == "" {
-		here := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_here()\n", here)
-		lane = here
+	if g.parallelDepth == 0 {
+		switch place {
+		case "auto":
+			g.needLaneChooseDecl = true
+			chosen := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_choose()\n", chosen)
+			lane = chosen
+		case "here":
+			here := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_here()\n", here)
+			lane = here
+		}
 	}
 	task := g.newTmp()
 	if g.parallelDepth > 0 {

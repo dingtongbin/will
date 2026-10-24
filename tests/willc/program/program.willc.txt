@@ -135,7 +135,7 @@
 #135 var parent=#64 pos="program.will:53:5" text="t" type="Task<i32>"
 #136 type parent=#135 pos="program.will:53:12" text="Task<i32>" kind=task arg=#137
 #137 type parent=#136 pos="program.will:53:17" text="i32" kind=scalar
-#138 spawn parent=#135 pos="program.will:53:24" call=#139
+#138 spawn parent=#135 pos="program.will:53:24" place="auto" call=#139
 #139 call parent=#138 pos="program.will:53:30" to=#19 arg=#140
 #140 name parent=#139 pos="program.will:53:35" text="n" to=#61
 #141 exprstmt parent=#64 pos="program.will:54:5" expr=#142

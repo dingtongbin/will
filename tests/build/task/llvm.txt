@@ -75,7 +75,7 @@ sm.init:
   %t21 = call ptr @willrt_alloc(i64 %t20)
   %t22 = getelementptr { i32 }, ptr %t21, i32 0, i32 0
   store i32 20, ptr %t22
-  %t23 = call i32 @willrt_lane_here()
+  %t23 = call i32 @willrt_lane_choose()
   %t24 = call ptr @willrt_task_new(ptr @"example.com/task.spawn.1", ptr %t21, i64 %t20, i32 %t23, i32 0)
   call void @willrt_task_own_frame(ptr %t24)
   call void @willrt_task_run(ptr %t24)
@@ -85,7 +85,7 @@ sm.init:
   %t27 = call ptr @willrt_alloc(i64 %t26)
   %t28 = getelementptr { i32 }, ptr %t27, i32 0, i32 0
   store i32 21, ptr %t28
-  %t29 = call i32 @willrt_lane_here()
+  %t29 = call i32 @willrt_lane_choose()
   %t30 = call ptr @willrt_task_new(ptr @"example.com/task.spawn.2", ptr %t27, i64 %t26, i32 %t29, i32 0)
   call void @willrt_task_own_frame(ptr %t30)
   call void @willrt_task_run(ptr %t30)
@@ -177,7 +177,7 @@ panic.ok.3:
   %t74 = getelementptr { i32 }, ptr %t73, i32 0, i32 0
   %t75 = load i32, ptr %v.sum
   store i32 %t75, ptr %t74
-  %t76 = call i32 @willrt_lane_here()
+  %t76 = call i32 @willrt_lane_choose()
   %t77 = call ptr @willrt_task_new(ptr @"example.com/task.spawn.3", ptr %t73, i64 %t72, i32 %t76, i32 0)
   call void @willrt_task_own_frame(ptr %t77)
   call void @willrt_task_run(ptr %t77)
@@ -357,6 +357,7 @@ declare i64 @willrt_now_ns()
 declare void @willrt_region_enter()
 declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
+declare i32 @willrt_lane_choose()
 declare void @willrt_task_mark_wait()
 declare void @willrt_task_own_frame(ptr)
 declare i64 @willrt_fmt_i64_len(i64)

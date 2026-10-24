@@ -144,7 +144,7 @@ func TestMoreStatements(t *testing.T) {
 		t.Fatalf("statements = %d, want 5", len(fn.Body.Stmts))
 	}
 	spawn, ok := varDecl(t, f, "t").Value.(*ast.SpawnExpr)
-	if !ok || spawn.Lane != "Ui" {
+	if !ok || spawn.Place != "on" || spawn.Lane != "Ui" {
 		t.Fatalf("t = %+v, want spawn on Ui", varDecl(t, f, "t").Value)
 	}
 	if _, ok := varDecl(t, f, "l").Value.(*ast.LaneHereExpr); !ok {
@@ -167,6 +167,26 @@ func TestMoreStatements(t *testing.T) {
 	shift, ok := fn.Body.Stmts[4].(*ast.AssignStmt)
 	if !ok || shift.Op != "<<=" {
 		t.Fatalf("statement 4 = %+v, want <<=", fn.Body.Stmts[4])
+	}
+}
+
+func TestSpawnPlace(t *testing.T) {
+	src := `func G() {
+}
+
+func F() {
+    var a: Task<()> = spawn G()
+    var b: Task<()> = spawn here G()
+}
+`
+	f := parse(t, src)
+	auto, ok := varDecl(t, f, "a").Value.(*ast.SpawnExpr)
+	if !ok || auto.Place != "auto" || auto.Lane != "" {
+		t.Fatalf("a = %+v, want spawn auto", varDecl(t, f, "a").Value)
+	}
+	here, ok := varDecl(t, f, "b").Value.(*ast.SpawnExpr)
+	if !ok || here.Place != "here" || here.Lane != "" {
+		t.Fatalf("b = %+v, want spawn here", varDecl(t, f, "b").Value)
 	}
 }
 

@@ -372,9 +372,14 @@ func (p *Parser) parseMatchArm() *ast.MatchArm {
 
 func (p *Parser) parseSpawn() ast.Expr {
 	start := p.next()
+	place := "auto"
 	lane := ""
-	if p.atText("on") {
+	if p.atText("here") {
 		p.next()
+		place = "here"
+	} else if p.atText("on") {
+		p.next()
+		place = "on"
 		p.skipNL()
 		lane, _ = p.expectName("a lane name")
 	}
@@ -389,9 +394,10 @@ func (p *Parser) parseSpawn() ast.Expr {
 		p.failed = true
 	}
 	return &ast.SpawnExpr{
-		Span: ast.Span{Start: start.Pos, End: call.EndPos()},
-		Lane: lane,
-		Call: call,
+		Span:  ast.Span{Start: start.Pos, End: call.EndPos()},
+		Place: place,
+		Lane:  lane,
+		Call:  call,
 	}
 }
 

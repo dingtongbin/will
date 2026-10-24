@@ -269,7 +269,7 @@ sm.init:
   %t90 = getelementptr {}, ptr null, i32 1
   %t91 = ptrtoint ptr %t90 to i64
   %t92 = call ptr @willrt_alloc(i64 %t91)
-  %t93 = call i32 @willrt_lane_here()
+  %t93 = call i32 @willrt_lane_choose()
   %t94 = call ptr @willrt_task_new(ptr @"example.com/taskresume.spawn.1", ptr %t92, i64 %t91, i32 %t93, i32 0)
   call void @willrt_task_own_frame(ptr %t94)
   call void @willrt_task_run(ptr %t94)
@@ -481,5 +481,6 @@ declare i64 @willrt_now_ns()
 declare void @willrt_region_enter()
 declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
+declare i32 @willrt_lane_choose()
 declare void @willrt_task_mark_wait()
 declare void @willrt_task_own_frame(ptr)

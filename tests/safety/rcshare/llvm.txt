@@ -4421,7 +4421,7 @@ if.end.4:
   store i64 %t144, ptr %t143
   %t145 = load i64, ptr %t143
   call void @willrt_rc_share(i64 %t145)
-  %t146 = call i32 @willrt_lane_here()
+  %t146 = call i32 @willrt_lane_choose()
   %t147 = call ptr @willrt_task_new(ptr @"example.com/safety/rcshare.spawn.1", ptr %t142, i64 %t141, i32 %t146, i32 0)
   call void @willrt_task_own_frame(ptr %t147)
   call void @willrt_task_run(ptr %t147)
@@ -4882,6 +4882,7 @@ declare i32 @willrt_select_status()
 declare void @willrt_region_enter()
 declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
+declare i32 @willrt_lane_choose()
 declare void @willrt_task_mark_wait()
 declare void @willrt_task_mark_io()
 declare i32 @willrt_chan_recv_wait(ptr, ptr)

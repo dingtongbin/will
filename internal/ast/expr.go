@@ -173,11 +173,13 @@ type AwaitExpr struct {
 
 func (*AwaitExpr) exprNode() {}
 
-// SpawnExpr starts one task. Lane is empty unless spawn on is written.
+// SpawnExpr starts one task. Place is "auto", "here", or "on"; Lane is set
+// only when Place is "on".
 type SpawnExpr struct {
 	Span
-	Lane string
-	Call Expr
+	Place string
+	Lane  string
+	Call  Expr
 }
 
 func (*SpawnExpr) exprNode() {}

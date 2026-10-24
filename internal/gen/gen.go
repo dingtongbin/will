@@ -237,6 +237,9 @@ func (g *generator) emitAux() {
 	if g.needJobDecl {
 		g.out.WriteString("declare ptr @willrt_job_new(ptr, ptr, i64, i32)\n")
 	}
+	if g.needLaneChooseDecl {
+		g.out.WriteString("declare i32 @willrt_lane_choose()\n")
+	}
 	if g.needWaitDecl {
 		g.out.WriteString("declare void @willrt_task_mark_wait()\n")
 	}
@@ -771,6 +774,9 @@ type generator struct {
 	needTaskDecl bool
 	// needJobDecl records that a parallel block submitted a job.
 	needJobDecl bool
+	// needLaneChooseDecl records that an auto spawn asks the scheduler for a
+	// load-balanced lane.
+	needLaneChooseDecl bool
 	// needWaitDecl records that a generated state machine marks a wait.
 	needWaitDecl bool
 	// needIOMarkDecl records a park on an external operation.
@@ -1205,6 +1211,7 @@ func (g *generator) emitAsyncWrapper() error {
 	fmt.Fprintf(g.out, "  ret i32 %s\n}\n", result)
 	return nil
 }
+
 // allows: Result<(), Error>. Ok exits 0; Err writes one stable line through the
 // report target and exits 1.
 func (g *generator) emitResultWrapper() error {
