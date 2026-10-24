@@ -568,6 +568,7 @@ typedef struct willrt_select_state willrt_select_state;
    arm. value points at storage that stays alive until the node completes. */
 typedef struct willrt_chan_wait {
     struct willrt_chan_wait* next;
+    willrt_os_mutex wait_lock;
     willrt_os_cond cond;
     willrt_select_state* select;
     willrt_task* task;
