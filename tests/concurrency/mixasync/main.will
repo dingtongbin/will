@@ -1,8 +1,8 @@
 import "std/os/fs"
 
-func Mix(ch: chan<i32>, path: str) -> Result<(), Error> {
+async func Mix(ch: chan<i32>, path: str) -> Result<(), Error> {
     var one: str = "m"
-    _ = fs.AsyncAppend(path, one[Range(0, 1)])?
+    _ = await fs.AsyncAppend(path, one[Range(0, 1)])?
     _ = ch.Send(7)
     return Ok(())
 }

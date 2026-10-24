@@ -1,0 +1,110 @@
+// Two-sided mutual exclusion. A write guard forwards every field and method to
+// the guarded value; a read guard forwards only reads. Both release the lock
+// when their scope ends.
+import c "lock.h" {
+    fast willrt_sync_lock_new
+    fast willrt_sync_lock_async
+    fast willrt_sync_lock_try
+    fast willrt_sync_unlock
+}
+
+// MutexState is the shared box: one lock word and the value it guards. Every
+// guard keeps a reference to the box, so the value cannot outlive its lock.
+struct MutexState<T> {
+    lock: raw
+    value: T
+}
+
+// Mutex serializes access to one value. Lock parks the caller until the write
+// side is free; TryLock takes it only when it is free now.
+struct Mutex<T> {
+    state: rc<MutexState<T>>
+}
+
+// Guard is the write permission of one Mutex. held is false when a waiting
+// Lock was canceled; such a guard panics on first use and releases nothing.
+struct Guard<T> {
+    state: rc<MutexState<T>>
+    held: bool
+    mode: i32
+}
+
+func (mut m: Mutex<T>) init(value: T) {
+    var state: MutexState<T> = MutexState<T> {
+        lock: c.willrt_sync_lock_new(),
+        value: value
+    }
+    m.state = new rc<MutexState<T>>(state)
+}
+
+// Lock waits for the write side and returns its guard.
+async func (m: Mutex<T>) Lock() -> Guard<T> {
+    var status: i32 = await c.willrt_sync_lock_async(m.state.lock, 0)
+    if status == 0 {
+        return Guard<T> { state: m.state, held: true, mode: 0 }
+    }
+    return Guard<T> { state: m.state, held: false, mode: 0 }
+}
+
+// TryLock takes the write side without waiting.
+func (m: Mutex<T>) TryLock() -> Option<Guard<T>> {
+    if c.willrt_sync_lock_try(m.state.lock, 0) != 0 {
+        return Some(Guard<T> { state: m.state, held: true, mode: 0 })
+    }
+    return None
+}
+
+// RwLock allows several readers or one writer.
+struct RwLock<T> {
+    state: rc<MutexState<T>>
+}
+
+// ReadGuard is the read permission of one RwLock. It forwards fields and
+// methods but the checker rejects a write through it.
+struct ReadGuard<T> {
+    state: rc<MutexState<T>>
+    held: bool
+    mode: i32
+}
+
+func (mut r: RwLock<T>) init(value: T) {
+    var state: MutexState<T> = MutexState<T> {
+        lock: c.willrt_sync_lock_new(),
+        value: value
+    }
+    r.state = new rc<MutexState<T>>(state)
+}
+
+// RLock waits for exclusive holders to leave and joins the reader side.
+async func (r: RwLock<T>) RLock() -> ReadGuard<T> {
+    var status: i32 = await c.willrt_sync_lock_async(r.state.lock, 1)
+    if status == 0 {
+        return ReadGuard<T> { state: r.state, held: true, mode: 1 }
+    }
+    return ReadGuard<T> { state: r.state, held: false, mode: 1 }
+}
+
+// TryRLock joins the reader side without waiting.
+func (r: RwLock<T>) TryRLock() -> Option<ReadGuard<T>> {
+    if c.willrt_sync_lock_try(r.state.lock, 1) != 0 {
+        return Some(ReadGuard<T> { state: r.state, held: true, mode: 1 })
+    }
+    return None
+}
+
+// WLock waits for every holder to leave and returns the write side.
+async func (r: RwLock<T>) WLock() -> Guard<T> {
+    var status: i32 = await c.willrt_sync_lock_async(r.state.lock, 0)
+    if status == 0 {
+        return Guard<T> { state: r.state, held: true, mode: 0 }
+    }
+    return Guard<T> { state: r.state, held: false, mode: 0 }
+}
+
+// TryWLock takes the write side without waiting.
+func (r: RwLock<T>) TryWLock() -> Option<Guard<T>> {
+    if c.willrt_sync_lock_try(r.state.lock, 0) != 0 {
+        return Some(Guard<T> { state: r.state, held: true, mode: 0 })
+    }
+    return None
+}

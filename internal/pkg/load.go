@@ -444,6 +444,7 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 					bag.AddAll(check.Moves(f.AST))
 					bag.AddAll(check.Borrows(f.AST))
 					bag.AddAll(check.Cycles(f.AST))
+					bag.AddAll(check.Concurrency(f.AST))
 					bag.AddAll(check.SuspendInParallel(f.AST))
 				}
 			}

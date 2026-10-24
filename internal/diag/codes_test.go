@@ -50,6 +50,8 @@ func TestCodesMatchConstants(t *testing.T) {
 		CodeUnreleasableCycle, CodePossibleCycle, CodeRcSlotUnguarded, CodeExplicitLeak, CodeSmallPlate,
 		CodeSuspendInParallel, CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeWrongLane,
 		CodeSpawnNotCall, CodeDeadlock,
+		CodeGuardCopied, CodeReadGuardWrite,
+		CodeAwaitOutsideAsync, CodeAsyncNotAwaited, CodeAwaitNotAsync, CodeAsyncAsValue,
 		CodeResultDropped, CodeUnwrapType, CodePanicContained,
 		CodeBlockingNotAwaited, CodeWaitInSync, CodeWaitInAsync, CodeBlocksThreadInTask,
 		CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,

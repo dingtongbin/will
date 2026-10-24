@@ -287,6 +287,13 @@ func (g *generator) isCopySource(id int) bool {
 	case "name", "field", "index":
 		text, err := g.willTypeText(id)
 		return err == nil && g.needsReleaseText(text)
+	case "await":
+		return g.isCopySource(refField(r, "expr"))
+	case "call":
+		if arg, ok := g.waitArg(r); ok {
+			return g.isCopySource(arg)
+		}
+		return false
 	case "mcall":
 		// Array.Get and view Get return a borrow of the element. The array
 		// still owns its reference, so storing the result adds one.
@@ -442,6 +449,11 @@ func (g *generator) releaseValue(slot, text string, depth int) error {
 	text = g.canonicalTypeText(text)
 	if isWeakText(text) {
 		return nil
+	}
+	if _, ok := g.guardElemText(text); ok {
+		if err := g.guardUnlock(slot, text); err != nil {
+			return err
+		}
 	}
 	if isRcText(text) {
 		// The object's own fields are released by its drop glue, not here.

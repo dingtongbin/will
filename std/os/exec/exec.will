@@ -21,14 +21,14 @@ func (e: execError) Status() -> i32 {
 }
 
 // AsyncRun runs c and returns its exit status.
-func (cmd: Cmd) AsyncRun() -> Result<ExitStatus, Error> {
+async func (cmd: Cmd) AsyncRun() -> Result<ExitStatus, Error> {
     var envpairs: Array<str> = new Array<str>(0)
     for key, value in cmd.env {
         envpairs.Push(key)
         envpairs.Push(value)
     }
     var status: ExitStatus
-    var code: i32 = c.willrt_exec_run_async(raw(cmd.path), raw(cmd.args), raw(envpairs),
+    var code: i32 = await c.willrt_exec_run_async(raw(cmd.path), raw(cmd.args), raw(envpairs),
                                              raw(cmd.dir), raw(status))
     if code != 0 {
         return Err(execError { message: "exec: cannot run" })
@@ -37,7 +37,7 @@ func (cmd: Cmd) AsyncRun() -> Result<ExitStatus, Error> {
 }
 
 // AsyncOutput runs c and captures both output streams.
-func (cmd: Cmd) AsyncOutput() -> Result<Output, Error> {
+async func (cmd: Cmd) AsyncOutput() -> Result<Output, Error> {
     var envpairs: Array<str> = new Array<str>(0)
     for key, value in cmd.env {
         envpairs.Push(key)
@@ -46,7 +46,7 @@ func (cmd: Cmd) AsyncOutput() -> Result<Output, Error> {
     var out: Array<u8>
     var err: Array<u8>
     var status: ExitStatus
-    var code: i32 = c.willrt_exec_output_async(raw(cmd.path), raw(cmd.args), raw(envpairs),
+    var code: i32 = await c.willrt_exec_output_async(raw(cmd.path), raw(cmd.args), raw(envpairs),
                                                 raw(cmd.dir), raw(out), raw(err),
                                                 raw(status))
     if code != 0 {

@@ -6,15 +6,15 @@ struct Box {
 
 // Consume runs as a state machine, so its capture goes through the async
 // constructor and the crossing must share the handle there.
-func Consume(b: rc<Box>) -> i64 {
-    _ = time.Sleep(1ms)!
+async func Consume(b: rc<Box>) -> i64 {
+    _ = await time.Sleep(1ms)!
     return b.value
 }
 
 // MakeSlow returns an owned handle from a state machine, so the result copy
 // crosses to the joiner through the task result.
-func MakeSlow() -> rc<Box> {
-    _ = time.Sleep(1ms)!
+async func MakeSlow() -> rc<Box> {
+    _ = await time.Sleep(1ms)!
     return new rc<Box>(Box { value: 5 })
 }
 

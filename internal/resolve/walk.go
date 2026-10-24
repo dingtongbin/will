@@ -291,6 +291,8 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 		r.pop()
 	case *ast.TryExpr:
 		r.walkExpr(x.X, true)
+	case *ast.AwaitExpr:
+		r.walkExpr(x.X, true)
 	case *ast.UnwrapExpr:
 		r.walkExpr(x.X, true)
 	case *ast.SpawnExpr:

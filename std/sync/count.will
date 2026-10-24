@@ -22,8 +22,8 @@ func (counter: Count) Add(d: i64) {
 
 // Wait blocks until the counter reaches zero. A canceled or expired wait
 // leaves the count unchanged.
-func (counter: Count) Wait() -> Result<(), Error> {
-    var status: i32 = c.willrt_sync_count_wait_async(counter.handle)
+async func (counter: Count) Wait() -> Result<(), Error> {
+    var status: i32 = await c.willrt_sync_count_wait_async(counter.handle)
     if status == 0 {
         return Ok(())
     }

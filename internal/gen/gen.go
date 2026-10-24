@@ -1111,7 +1111,11 @@ func (g *generator) usesTaskRuntime() bool {
 				// has no task or channel of its own. A method call resolves
 				// its target through the receiver, which needs this document.
 				g.use(d)
-				if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendable[sym] {
+				if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendableFor(sym) {
+					return true
+				}
+			case "func":
+				if fieldText(r, "async") == "true" {
 					return true
 				}
 			}
@@ -1471,7 +1475,7 @@ func (g *generator) errf(id int, format string, args ...any) error {
 func (g *generator) funcDecl(fn willc.Record) error {
 	g.liveValues = map[int]string{}
 	if g.generalMachine(fn.ID) {
-		g.suspendable[g.cur.funcs[fn.ID]] = true
+		g.markSuspendable(g.cur.funcs[fn.ID])
 		g.enqueueGeneral(fn.ID)
 		return nil
 	}
@@ -1485,10 +1489,12 @@ func (g *generator) funcDecl(fn willc.Record) error {
 		g.pendingSelect = append(g.pendingSelect, info)
 		hasSelect = true
 	}
-	if g.suspendable[g.cur.funcs[fn.ID]] && !hasAsync && !hasSelect {
+	if g.suspendableFor(g.cur.funcs[fn.ID]) && !hasAsync && !hasSelect {
 		return g.errf(fn.ID, "cannot translate node #%d: suspendable function %s has no supported state-machine shape", fn.ID, fieldText(fn, "text"))
 	}
 	name := fieldText(fn, "text")
+	g.smMode = false
+	g.smGeneral = false
 	g.fnSymbol = g.cur.funcs[fn.ID]
 	g.fnPos = fieldText(fn, "pos")
 	recv := g.receiverOf(fn.ID)
@@ -2043,7 +2049,7 @@ func (g *generator) allocas(fn int) error {
 				if g.smGeneral || g.spawnedCall(r) {
 					continue
 				}
-				if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendable[sym] {
+				if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendableFor(sym) {
 					waits = append(waits, r)
 				}
 			}
@@ -2347,7 +2353,9 @@ func (g *generator) allocas(fn int) error {
 		elemName := names[len(names)-1]
 		g.loopTypes[r.ID][elemName] = elem
 	}
-	g.out.WriteString(entryAllocaMarker + "\n")
+	if !g.smGeneral {
+		g.out.WriteString(entryAllocaMarker + "\n")
+	}
 	return nil
 }
 
@@ -3152,6 +3160,8 @@ func (g *generator) value(id int) (string, error) {
 		return g.load(p.typ, p.ptr), nil
 	}
 	switch r.Kind {
+	case "await":
+		return g.value(refField(r, "expr"))
 	case "lit":
 		switch kind := fieldText(r, "kind"); kind {
 		case "int":
@@ -3312,6 +3322,9 @@ func (g *generator) value(id int) (string, error) {
 	case "bin":
 		return g.binary(r)
 	case "call", "mcall":
+		if arg, ok := g.waitArg(r); ok {
+			return g.value(arg)
+		}
 		if _, _, _, ok := g.adtConstructor(r); ok {
 			return "", g.errf(id, "cannot translate node #%d: an Option or Result value is a place, not a scalar", id)
 		}
@@ -3609,7 +3622,7 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 // type text. A void call returns an empty name and an empty text.
 func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	if g.smGeneral && !isAsyncCRecord(r) {
-		if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendable[sym] {
+		if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendableFor(sym) {
 			value, err := g.generalCallWait(r)
 			if err != nil {
 				return "", "", err
@@ -3671,6 +3684,10 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 			if isWeakText(recvText) && fieldText(r, "text") == "Upgrade" {
 				return g.upgradeCall(r, recvText)
 			}
+			if _, ok := g.guardElemText(recvText); ok {
+				value, text, _, err := g.guardMethodCall(r)
+				return value, text, err
+			}
 			if isRcText(recvText) {
 				return g.rcMethodCall(r, recvText)
 			}
@@ -3688,7 +3705,7 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		}
 	}
 	if !g.smGeneral {
-		if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendable[sym] {
+		if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendableFor(sym) {
 			return g.awaitCallValue(r)
 		}
 	}

@@ -1,11 +1,11 @@
 import "std/os/fs"
 import "std/time"
 
-func Fill(path: str) -> Result<(), Error> {
+async func Fill(path: str) -> Result<(), Error> {
     var one: str = "a"
-    _ = fs.AsyncWriteFile(path, one[Range(0, 1)])?
-    _ = time.Sleep(1ms)!
-    _ = fs.AsyncAppend(path, one[Range(0, 1)])?
+    _ = await fs.AsyncWriteFile(path, one[Range(0, 1)])?
+    _ = await time.Sleep(1ms)!
+    _ = await fs.AsyncAppend(path, one[Range(0, 1)])?
     return Ok(())
 }
 

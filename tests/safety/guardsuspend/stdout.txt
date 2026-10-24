@@ -1,0 +1,2 @@
+main.will:9:9: K0002 the guard is held across a suspension point
+    help: release it before suspending

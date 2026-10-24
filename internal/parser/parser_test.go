@@ -195,3 +195,26 @@ func TestParseProgram(t *testing.T) {
 		t.Fatalf("decl 8 = %+v, want generic Max", f.Decls[8])
 	}
 }
+
+func TestAsyncFunctionAndAwait(t *testing.T) {
+	f := parse(t, "async func Load() -> i32 {\n    return await Read()?\n}\n")
+	fn, ok := f.Decls[0].(*ast.FuncDecl)
+	if !ok || !fn.Async {
+		t.Fatalf("decl 0 = %+v, want async Load", f.Decls[0])
+	}
+	ret, ok := fn.Body.Stmts[0].(*ast.ReturnStmt)
+	if !ok {
+		t.Fatalf("statement = %T, want return", fn.Body.Stmts[0])
+	}
+	try, ok := ret.Value.(*ast.TryExpr)
+	if !ok {
+		t.Fatalf("return value = %T, want ? around await", ret.Value)
+	}
+	await, ok := try.X.(*ast.AwaitExpr)
+	if !ok {
+		t.Fatalf("? operand = %T, want await", try.X)
+	}
+	if _, ok := await.X.(*ast.CallExpr); !ok {
+		t.Fatalf("await operand = %T, want call", await.X)
+	}
+}

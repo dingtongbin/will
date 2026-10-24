@@ -21,6 +21,9 @@ func (g *generator) generalMachine(fnID int) bool {
 	if !ok || fn.Kind != "func" {
 		return false
 	}
+	if fieldText(fn, "async") == "true" {
+		return true
+	}
 	return g.channelWaitBody(fnID) || g.markedBody(fnID)
 }
 

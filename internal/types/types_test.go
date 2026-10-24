@@ -301,3 +301,26 @@ func findCode(t *testing.T, ds []diag.Diagnostic, code string) diag.Diagnostic {
 	t.Fatalf("missing %s in:\n%s", code, diag.FormatAll(ds))
 	return diag.Diagnostic{}
 }
+
+func TestAwaitRules(t *testing.T) {
+	ds := checkWithResolve(t, `async func Load() -> i32 { return 1 }
+func Use() -> i32 { return await Load() }
+`)
+	findCode(t, ds, "K0009")
+
+	ds = checkWithResolve(t, `async func Load() -> i32 { return 1 }
+func Use() -> i32 { return Load() }
+`)
+	findCode(t, ds, "K0010")
+
+	ds = checkWithResolve(t, `async func Use() -> i32 { return await 1 }
+`)
+	findCode(t, ds, "K0011")
+
+	ds = checkWithResolve(t, `async func Load() -> i32 { return 1 }
+async func Use() -> i32 { return await Load() }
+`)
+	if len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want 0:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}

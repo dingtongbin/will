@@ -1,7 +1,7 @@
 import "std/os/exec"
 
-func Run(cmd: exec.Cmd) -> Result<exec.ExitStatus, Error> {
-    var status: Result<exec.ExitStatus, Error> = cmd.AsyncRun()
+async func Run(cmd: exec.Cmd) -> Result<exec.ExitStatus, Error> {
+    var status: Result<exec.ExitStatus, Error> = await cmd.AsyncRun()
     return status
 }
 

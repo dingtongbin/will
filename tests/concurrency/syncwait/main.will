@@ -1,8 +1,8 @@
 import "std/sync"
 
-func WaitFor(sem: sync.Semaphore, ready: chan<i32>, done: chan<i32>) -> i32 {
+async func WaitFor(sem: sync.Semaphore, ready: chan<i32>, done: chan<i32>) -> i32 {
     _ = ready.Send(1)
-    var permit: sync.Permit = sem.Acquire()!
+    var permit: sync.Permit = await sem.Acquire()!
     _ = done.Send(1)
     permit.Release()
     return 0
@@ -47,7 +47,7 @@ func main() -> i32 {
     region {
         var w1: Task<()> = spawn Worker(count, finished)
         var w2: Task<()> = spawn Worker(count, finished)
-        _ = count.Wait()!
+        _ = wait(count.Wait())!
         _ = finished.Recv()
         _ = finished.Recv()
         _ = w1.Join()!

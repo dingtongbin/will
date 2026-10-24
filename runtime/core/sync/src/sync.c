@@ -420,6 +420,19 @@ void willrt_sync_unlock(void* s, int32_t mode) {
     willrt_os_mutex_unlock(&sync->lock);
 }
 
+int32_t willrt_sync_lock_try(void* s, int32_t mode) {
+    struct willrt_sync* sync = (struct willrt_sync*)s;
+    int32_t granted;
+
+    if (sync == NULL) {
+        return 0;
+    }
+    willrt_os_mutex_lock(&sync->lock);
+    granted = willrt_sync_try(sync, mode);
+    willrt_os_mutex_unlock(&sync->lock);
+    return granted;
+}
+
 int32_t willrt_sync_sema_try_acquire(void* s) {
     struct willrt_sync* sync = (struct willrt_sync*)s;
     int32_t granted;

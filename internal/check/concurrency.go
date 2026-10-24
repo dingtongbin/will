@@ -16,6 +16,7 @@ func Concurrency(f *ast.File) []diag.Diagnostic {
 	c := &concurrencyChecker{bag: diag.Bag{}}
 	m := marks.Analyze(f)
 	c.regionEscapes(f)
+	c.guardAcrossSuspend(f)
 	c.waitBridges(m)
 	return c.bag.Diagnostics()
 }
@@ -191,6 +192,8 @@ func (e *escapeWalker) use(expr ast.Expr, region int) {
 		e.use(x.Hi, region)
 	case *ast.TryExpr:
 		e.use(x.X, region)
+	case *ast.AwaitExpr:
+		e.use(x.X, region)
 	case *ast.UnwrapExpr:
 		e.use(x.X, region)
 	case *ast.SpawnExpr:
@@ -222,6 +225,9 @@ func (e *escapeWalker) use(expr ast.Expr, region int) {
 // function using the bridge as intended.
 func (c *concurrencyChecker) waitBridges(m *marks.File) {
 	for _, fn := range m.Funcs {
+		if !fn.Async {
+			continue
+		}
 		if len(fn.Suspends) <= len(fn.Waits) {
 			continue
 		}

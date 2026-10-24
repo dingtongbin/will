@@ -286,6 +286,10 @@ func (g *generator) fieldLLVMType(text string) (string, bool) {
 		if info, ok := g.ensureStruct(id); ok {
 			return info.llvm, true
 		}
+		return "", false
+	}
+	if typ, ok := g.structTypeBySuffix(text); ok {
+		return typ, true
 	}
 	if id, ok := g.enumDecl[text]; ok {
 		return g.enumLLVM(fieldText(g.recs[id], "text")), true
@@ -294,6 +298,31 @@ func (g *generator) fieldLLVMType(text string) (string, bool) {
 		return g.ifaceLLVM(fieldText(g.recs[id], "text")), true
 	}
 	return "", false
+}
+
+// structTypeBySuffix finds a struct declaration by its bare name across the
+// module. A generic instance in one package can name a type argument declared
+// in the importing package; the field layout of that instance is lowered in
+// the defining package, where the bare name is not in its own declaration
+// table. An ambiguous suffix stays unresolved so the caller reports it.
+func (g *generator) structTypeBySuffix(name string) (string, bool) {
+	if name == "" {
+		return "", false
+	}
+	found := ""
+	for q := range g.structDecls {
+		if q != name && !strings.HasSuffix(q, "."+name) {
+			continue
+		}
+		if found != "" && found != q {
+			return "", false
+		}
+		found = q
+	}
+	if found == "" {
+		return "", false
+	}
+	return qualifiedTypeName(found), true
 }
 
 // planStructInstances finds every generic struct use in the document. The

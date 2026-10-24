@@ -62,6 +62,7 @@ type FuncDecl struct {
 	Params     []*Param
 	Result     *Type
 	Body       *Block
+	Async      bool
 }
 
 func (*FuncDecl) declNode() {}
@@ -153,6 +154,7 @@ type MethodSig struct {
 	NamePos source.Pos
 	Params  []*Param
 	Result  *Type
+	Async   bool
 }
 
 // DeriveDecl asks the compiler to generate Json, Show, or Equal for a type.

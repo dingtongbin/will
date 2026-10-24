@@ -120,6 +120,8 @@ func recvInExpr(e ast.Expr) bool {
 				return true
 			}
 		}
+	case *ast.AwaitExpr:
+		return recvInExpr(x.X)
 	case *ast.UnwrapExpr:
 		return recvInExpr(x.X)
 	case *ast.TryExpr:

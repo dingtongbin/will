@@ -89,7 +89,7 @@ func Work(x: i32) -> i32 { return x }
 }
 
 func TestWaitInsideSuspendingFunctionWarns(t *testing.T) {
-	ds := runConcurrency(t, `func Load(ch: chan<i32>) -> Result<i32, Error> {
+	ds := runConcurrency(t, `async func Load(ch: chan<i32>) -> Result<i32, Error> {
     var x: Option<i32> = ch.Recv()
     var v: Result<i32, Error> = wait(ParseAsync(x!))?
     return Ok(v)

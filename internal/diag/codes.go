@@ -135,6 +135,12 @@ const (
 	CodeWrongLane          = "K0004"
 	CodeSpawnNotCall       = "K0005"
 	CodeDeadlock           = "K0006"
+	CodeGuardCopied        = "K0007"
+	CodeReadGuardWrite     = "K0008"
+	CodeAwaitOutsideAsync  = "K0009"
+	CodeAsyncNotAwaited    = "K0010"
+	CodeAwaitNotAsync      = "K0011"
+	CodeAsyncAsValue       = "K0012"
 
 	// Error propagation codes.
 	CodeResultDropped  = "R0001"
@@ -174,6 +180,8 @@ var Codes = []string{
 	CodeUnreleasableCycle, CodePossibleCycle, CodeRcSlotUnguarded, CodeExplicitLeak, CodeSmallPlate,
 	CodeSuspendInParallel, CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeWrongLane,
 	CodeSpawnNotCall, CodeDeadlock,
+	CodeGuardCopied, CodeReadGuardWrite,
+	CodeAwaitOutsideAsync, CodeAsyncNotAwaited, CodeAwaitNotAsync, CodeAsyncAsValue,
 	CodeResultDropped, CodeUnwrapType, CodePanicContained,
 	CodeBlockingNotAwaited, CodeWaitInSync, CodeWaitInAsync, CodeBlocksThreadInTask,
 	CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,

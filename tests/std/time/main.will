@@ -24,7 +24,7 @@ func main() -> i32 {
         ok += 1
     }
     var sw: time.Stopwatch = new time.Stopwatch()
-    var slept: Result<(), Error> = time.Sleep(1ms)
+    var slept: Result<(), Error> = wait(time.Sleep(1ms))
     _ = slept
     if sw.Elapsed() > 0ns {
         ok += 1

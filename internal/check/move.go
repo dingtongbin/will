@@ -283,6 +283,8 @@ func (m *mover) exprEventsIn(e ast.Expr, live map[string]bool, ev *events, trans
 		m.block(x.Body, false, live)
 	case *ast.TryExpr:
 		m.exprEventsIn(x.X, live, ev, false)
+	case *ast.AwaitExpr:
+		m.exprEventsIn(x.X, live, ev, false)
 	case *ast.UnwrapExpr:
 		m.exprEventsIn(x.X, live, ev, false)
 	case *ast.SpawnExpr:

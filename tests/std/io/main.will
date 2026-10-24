@@ -43,7 +43,7 @@ func main() -> i32 {
         }
     }
 
-    var asyncNext: Result<usize, Error> = poller.AsyncNext(0ns, out)
+    var asyncNext: Result<usize, Error> = wait(poller.AsyncNext(0ns, out))
     match asyncNext {
         Ok(count) => {
             if count != 0usize {

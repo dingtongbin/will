@@ -75,6 +75,17 @@ func (p *Parser) parseUnary(allowBrace bool) ast.Expr {
 }
 
 func (p *Parser) parsePostfix(allowBrace bool) ast.Expr {
+	return p.parsePostfixUntil(allowBrace, false)
+}
+
+// parseAwaitOperand parses the operand of await. It accepts calls, fields,
+// indexes, and type arguments, but stops before ? and ! so the suffix applies
+// to the awaited value, not to the call inside await.
+func (p *Parser) parseAwaitOperand(allowBrace bool) ast.Expr {
+	return p.parsePostfixUntil(allowBrace, true)
+}
+
+func (p *Parser) parsePostfixUntil(allowBrace, stopWaitSuffix bool) ast.Expr {
 	x := p.parsePrimary(allowBrace)
 	for !p.failed {
 		if allowBrace && p.at(token.LBrace) {
@@ -93,9 +104,15 @@ func (p *Parser) parsePostfix(allowBrace bool) ast.Expr {
 		case token.Dot:
 			x = p.parseFieldOrMethod(x)
 		case token.Question:
+			if stopWaitSuffix {
+				return x
+			}
 			tok := p.next()
 			x = &ast.TryExpr{Span: ast.Span{Start: x.Pos(), End: tok.End}, X: x}
 		case token.Bang:
+			if stopWaitSuffix {
+				return x
+			}
 			tok := p.next()
 			x = &ast.UnwrapExpr{Span: ast.Span{Start: x.Pos(), End: tok.End}, X: x}
 		case token.Lt:
@@ -222,6 +239,13 @@ func (p *Parser) parsePrimary(allowBrace bool) ast.Expr {
 	case token.KwTrue, token.KwFalse:
 		p.next()
 		return &ast.LiteralExpr{Span: p.emptySpan(tok), Kind: tok.Kind, Text: tok.Text}
+	case token.KwAwait:
+		p.next()
+		inner := p.parseAwaitOperand(allowBrace)
+		return &ast.AwaitExpr{
+			Span: ast.Span{Start: tok.Pos, End: inner.Pos()},
+			X:    inner,
+		}
 	case token.Ident:
 		p.next()
 		if tok.Text == "new" && startsType(p.cur().Kind) {

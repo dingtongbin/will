@@ -141,6 +141,8 @@ func (c *parallelChecker) expr(e ast.Expr) {
 		c.block(x.Body)
 	case *ast.TryExpr:
 		c.expr(x.X)
+	case *ast.AwaitExpr:
+		c.expr(x.X)
 	case *ast.UnwrapExpr:
 		c.expr(x.X)
 	case *ast.SpawnExpr:

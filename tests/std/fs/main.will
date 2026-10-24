@@ -182,14 +182,14 @@ func CheckAsync() -> i32 {
     var path: str = "will-fs-async.tmp"
     var text: str = "async"
     var data: []u8 = text[Range(0, 5)]
-    var written: Result<(), Error> = fs.AsyncWriteFile(path, data)
+    var written: Result<(), Error> = wait(fs.AsyncWriteFile(path, data))
     match written {
         Err(_) => {
             return 30
         }
         _ => {}
     }
-    var loaded: Result<Array<u8>, Error> = fs.AsyncReadFile(path)
+    var loaded: Result<Array<u8>, Error> = wait(fs.AsyncReadFile(path))
     match loaded {
         Ok(bytes) => {
             if bytes.Len() != 5usize || bytes.Get(0) != 97u8 {

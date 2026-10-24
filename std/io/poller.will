@@ -66,9 +66,9 @@ func (p: Poller) Next(timeout: Duration, mut out: Array<usize>) -> Result<usize,
 // AsyncNext parks the calling task while the runtime poller scans the
 // descriptors; the poller delivers ready tags into out and wakes the task's
 // lane directly.
-func (p: Poller) AsyncNext(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
+async func (p: Poller) AsyncNext(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
     var before: usize = out.Len()
-    var status: i32 = c.willrt_poll_wait_async(raw(p.fds), raw(p.events),
+    var status: i32 = await c.willrt_poll_wait_async(raw(p.fds), raw(p.events),
                                                  raw(p.users), i64(p.fds.Len()),
                                                  i64(timeout), raw(out))
     if status != 0 {

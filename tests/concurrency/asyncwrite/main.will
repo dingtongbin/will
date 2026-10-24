@@ -1,8 +1,8 @@
 import "std/os/fs"
 
-func Write(path: str) -> Result<(), Error> {
+async func Write(path: str) -> Result<(), Error> {
     var text: str = "worker"
-    return fs.AsyncWriteFile(path, text[Range(0, 6)])
+    return await fs.AsyncWriteFile(path, text[Range(0, 6)])
 }
 
 func main() -> i32 {

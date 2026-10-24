@@ -352,6 +352,8 @@ func (p *pruner) walkExpr(e ast.Expr, inCondition bool) {
 		p.pruneBlock(x.Body)
 	case *ast.TryExpr:
 		p.walkExpr(x.X, false)
+	case *ast.AwaitExpr:
+		p.walkExpr(x.X, false)
 	case *ast.UnwrapExpr:
 		p.walkExpr(x.X, false)
 	case *ast.SpawnExpr:

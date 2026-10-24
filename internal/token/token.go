@@ -38,6 +38,10 @@ const (
 
 	// KwFunc introduces a function or method declaration.
 	KwFunc
+	// KwAsync marks a function declaration whose body may await.
+	KwAsync
+	// KwAwait starts one explicit wait.
+	KwAwait
 	// KwStruct introduces a struct declaration.
 	KwStruct
 	// KwEnum introduces an enum declaration.
@@ -221,6 +225,8 @@ var names = map[Kind]string{
 	LineComment:     "line comment",
 	BlockComment:    "block comment",
 	KwFunc:          "func",
+	KwAsync:         "async",
+	KwAwait:         "await",
 	KwStruct:        "struct",
 	KwEnum:          "enum",
 	KwInterface:     "interface",
@@ -316,6 +322,8 @@ func (k Kind) String() string {
 // Keywords maps reserved words to their token kind.
 var Keywords = map[string]Kind{
 	"func":      KwFunc,
+	"async":     KwAsync,
+	"await":     KwAwait,
 	"struct":    KwStruct,
 	"enum":      KwEnum,
 	"interface": KwInterface,

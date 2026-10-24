@@ -1,7 +1,7 @@
 import "std/time"
 
-func Nap() -> i32 {
-    _ = time.Sleep(1ms)!
+async func Nap() -> i32 {
+    _ = await time.Sleep(1ms)!
     return 7
 }
 

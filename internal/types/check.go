@@ -86,6 +86,7 @@ func CheckPackageWithImported(files []*ast.File, results []*resolve.Result, init
 func CheckPackageFullWithImported(files []*ast.File, results []*resolve.Result, inits, funcs map[string]map[string]*ast.FuncDecl) (*Result, []diag.Diagnostic) {
 	c := &checker{in: newInterner(), foreignInits: inits, foreignFuncs: funcs}
 	c.env = buildEnvAll(c, files)
+	c.checkGuardDecls(files)
 	c.checkPackage(files, results)
 	return c.result(), c.bag.Diagnostics()
 }
@@ -95,6 +96,7 @@ func CheckPackageFullWithImported(files []*ast.File, results []*resolve.Result, 
 func CheckPackageFullWithForeign(files []*ast.File, results []*resolve.Result, foreign map[string]map[string]*ast.FuncDecl) (*Result, []diag.Diagnostic) {
 	c := &checker{in: newInterner(), foreignInits: foreign}
 	c.env = buildEnvAll(c, files)
+	c.checkGuardDecls(files)
 	c.checkPackage(files, results)
 	return c.result(), c.bag.Diagnostics()
 }
@@ -122,6 +124,7 @@ func checkWithResult(f *ast.File, res *resolve.Result, others []*ast.File) (*Res
 	files = append(files, others...)
 	files = append(files, f)
 	c.env = buildEnvAll(c, files)
+	c.checkGuardDecls(files)
 	c.walkFile(f)
 	c.inferFile(f)
 	return c.result(), c.bag.Diagnostics()
@@ -280,6 +283,8 @@ func (c *checker) walkExpr(e ast.Expr) {
 	case *ast.LambdaExpr:
 		c.walkBlock(x.Body)
 	case *ast.TryExpr:
+		c.walkExpr(x.X)
+	case *ast.AwaitExpr:
 		c.walkExpr(x.X)
 	case *ast.UnwrapExpr:
 		c.walkExpr(x.X)

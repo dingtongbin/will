@@ -137,7 +137,6 @@ entry:
   %v.sm.pval.8 = load ptr, ptr %v.sm.param.8.61
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
-;__will_entry_allocas__
 sm.init:
   store ptr %v.sm.pval.8, ptr %v.sm.join.task.62
   store i32 1, ptr %v.sm.state
@@ -200,7 +199,6 @@ entry:
   %v.sm.pval.18 = load ptr, ptr %v.sm.param.18.84
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
-;__will_entry_allocas__
 sm.init:
   store ptr %v.sm.pval.18, ptr %v.sm.join.task.85
   store i32 1, ptr %v.sm.state
@@ -275,7 +273,6 @@ entry:
   %v.sm.pval.33 = load ptr, ptr %v.sm.param.33.111
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
-;__will_entry_allocas__
 sm.init:
   %t112 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 1, i32 2)
   %t113 = extractvalue {i32, i1} %t112, 0

@@ -121,6 +121,8 @@ func walkObligationExpr(e ast.Expr, out *[]decisions.Record) {
 		walkObligationBlock(x.Body, out)
 	case *ast.TryExpr:
 		walkObligationExpr(x.X, out)
+	case *ast.AwaitExpr:
+		walkObligationExpr(x.X, out)
 	case *ast.UnwrapExpr:
 		walkObligationExpr(x.X, out)
 	case *ast.SpawnExpr:

@@ -97,6 +97,13 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 		e.field(rec, "expr", Ref(xid))
 		e.pop()
 		return rec
+	case *ast.AwaitExpr:
+		rec := e.add("await", v)
+		e.push(rec)
+		xid := e.emitExpr(v.X)
+		e.field(rec, "expr", Ref(xid))
+		e.pop()
+		return rec
 	case *ast.SpawnExpr:
 		rec := e.add("spawn", v)
 		if v.Lane != "" {

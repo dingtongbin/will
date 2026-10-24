@@ -1,6 +1,10 @@
 package gen
 
-import "github.com/will-lang/will/internal/willc"
+import (
+	"strings"
+
+	"github.com/will-lang/will/internal/willc"
+)
 
 // collectSuspendable marks the functions that cannot run as a normal call on
 // a lane. A function that waits on a channel, a task, or a select waits; a
@@ -13,7 +17,7 @@ func (g *generator) collectSuspendable() {
 		for _, d := range g.docs {
 			g.use(d)
 			for id, sym := range d.symbols {
-				if sym == "" || g.suspendable[sym] {
+				if sym == "" || g.suspendableFor(sym) {
 					continue
 				}
 				fn, ok := g.recs[id]
@@ -25,10 +29,15 @@ func (g *generator) collectSuspendable() {
 					// thread; it has no task frame.
 					continue
 				}
+				if fieldText(fn, "async") == "true" {
+					g.markSuspendable(sym)
+					changed = true
+					continue
+				}
 				if simpleAsyncBody(d, id, g.suspendable) ||
 					g.channelWaitBody(id) ||
 					g.markedBody(id) {
-					g.suspendable[sym] = true
+					g.markSuspendable(sym)
 					changed = true
 				}
 			}
@@ -97,20 +106,58 @@ func (g *generator) spawnedCall(r willc.Record) bool {
 
 // callWaits reports whether the call reaches a function that waits.
 func (g *generator) callWaits(r willc.Record) bool {
-	if sym := textField(r, "to"); sym != "" {
-		return g.suspendable[sym]
+	if sym := g.awaitTargetSymbol(r); sym != "" {
+		return g.suspendableFor(sym)
 	}
-	if target := refField(r, "to"); target != 0 {
-		return g.suspendable[g.cur.symbols[target]]
-	}
-	if r.Kind != "mcall" {
+	return false
+}
+
+// suspendableFor reports whether a symbol or its generic template waits. A
+// call names the instance (Mutex<Counter>.Lock) while the analysis marked the
+// template (Mutex.Lock); both must answer the same.
+func (g *generator) suspendableFor(sym string) bool {
+	if sym == "" {
 		return false
 	}
-	sym, err := g.methodSymbol(r)
-	if err != nil {
-		return false
+	if g.suspendable[sym] {
+		return true
 	}
-	return g.suspendable[sym]
+	base := stripTypeArgs(sym)
+	return base != sym && g.suspendable[base]
+}
+
+// markSuspendable records a symbol and its generic template, so a call that
+// names an instance sees the same answer as a call that names the template.
+func (g *generator) markSuspendable(sym string) {
+	if sym == "" {
+		return
+	}
+	g.suspendable[sym] = true
+	if base := stripTypeArgs(sym); base != sym {
+		g.suspendable[base] = true
+	}
+}
+
+// stripTypeArgs removes the generic argument lists from a symbol. A method
+// receiver may be generic, but the method name after the last dot never is.
+func stripTypeArgs(sym string) string {
+	var b strings.Builder
+	depth := 0
+	for i := 0; i < len(sym); i++ {
+		switch sym[i] {
+		case '<':
+			depth++
+		case '>':
+			if depth > 0 {
+				depth--
+			}
+		default:
+			if depth == 0 {
+				b.WriteByte(sym[i])
+			}
+		}
+	}
+	return b.String()
 }
 
 // containsWait reports whether an expression can suspend. A compound
@@ -155,11 +202,15 @@ func (g *generator) collectTaskCtors(keep func(d *docState) bool) {
 			continue
 		}
 		g.use(d)
+		// The call target lookup reads the function table this pass fills;
+		// without it a free call such as Drain's Worker looks unnamed on the
+		// first attempt and the constructor is declared instead of defined.
+		g.collect()
 		for id, sym := range d.symbols {
 			if sym == "" {
 				continue
 			}
-			if g.generalMachine(id) {
+			if g.generalMachine(id) || g.suspendableFor(sym) {
 				g.taskCtors[sym+".task"] = true
 				continue
 			}

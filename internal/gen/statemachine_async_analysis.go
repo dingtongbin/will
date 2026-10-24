@@ -89,14 +89,20 @@ func isAsyncCRecord(r willc.Record) bool {
 }
 
 func callTargetsMarked(d *docState, r willc.Record, marked map[string]bool) bool {
+	sym := ""
 	if q := textField(r, "to"); q != "" {
-		return marked[q]
+		sym = q
+	} else if target := refField(r, "to"); target != 0 {
+		sym = d.symbols[target]
 	}
-	target := refField(r, "to")
-	if target == 0 {
+	if sym == "" {
 		return false
 	}
-	return marked[d.symbols[target]]
+	if marked[sym] {
+		return true
+	}
+	base := stripTypeArgs(sym)
+	return base != sym && marked[base]
 }
 
 // asyncCallRecs lists the hidden receiver first, then the declared parameters

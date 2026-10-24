@@ -165,6 +165,14 @@ type UnwrapExpr struct {
 
 func (*UnwrapExpr) exprNode() {}
 
+// AwaitExpr explicitly waits for one async call or built-in wait operation.
+type AwaitExpr struct {
+	Span
+	X Expr
+}
+
+func (*AwaitExpr) exprNode() {}
+
 // SpawnExpr starts one task. Lane is empty unless spawn on is written.
 type SpawnExpr struct {
 	Span

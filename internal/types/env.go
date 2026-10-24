@@ -16,6 +16,8 @@ type signature struct {
 	typeParams int
 	typeNames  []string
 	recvParams []string
+	recvMut    bool
+	async      bool
 }
 
 // fieldInfo is one struct field.
@@ -238,11 +240,12 @@ func (c *checker) keyType(t *Type) bool {
 
 func (c *checker) buildSig(decl *ast.FuncDecl) *signature {
 	tp := typeParamSet(decl.TypeParams)
-	sig := &signature{name: decl.Name, typeParams: len(decl.TypeParams)}
+	sig := &signature{name: decl.Name, typeParams: len(decl.TypeParams), async: decl.Async}
 	for _, p := range decl.TypeParams {
 		sig.typeNames = append(sig.typeNames, p.Name)
 	}
 	if decl.Recv != nil {
+		sig.recvMut = decl.Recv.Mut
 		for _, a := range decl.Recv.Type.Args {
 			sig.recvParams = append(sig.recvParams, a.Name)
 		}

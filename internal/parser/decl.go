@@ -95,6 +95,8 @@ func (p *Parser) parseDecl(doc string) ast.Decl {
 		return p.parseValueDecl(doc, false)
 	case token.KwFunc:
 		return p.parseFuncDecl(doc)
+	case token.KwAsync:
+		return p.parseAsyncFuncDecl(doc)
 	case token.KwStruct:
 		return p.parseStructDecl(doc)
 	case token.KwEnum:
@@ -138,8 +140,17 @@ func (p *Parser) parseValueDecl(doc string, allowZero bool) ast.Decl {
 }
 
 func (p *Parser) parseFuncDecl(doc string) *ast.FuncDecl {
-	start := p.expect(token.KwFunc, "func")
-	fn := &ast.FuncDecl{Doc: doc}
+	return p.parseFuncDeclFrom(doc, p.cur(), false)
+}
+
+func (p *Parser) parseAsyncFuncDecl(doc string) *ast.FuncDecl {
+	start := p.next()
+	return p.parseFuncDeclFrom(doc, start, true)
+}
+
+func (p *Parser) parseFuncDeclFrom(doc string, start token.Token, async bool) *ast.FuncDecl {
+	p.expect(token.KwFunc, "func")
+	fn := &ast.FuncDecl{Doc: doc, Async: async}
 	if p.at(token.LParen) {
 		fn.Recv = p.parseReceiver()
 	}
@@ -372,8 +383,14 @@ func (p *Parser) parseInterfaceDecl(doc string) *ast.InterfaceDecl {
 }
 
 func (p *Parser) parseMethodSig() *ast.MethodSig {
-	start := p.expect(token.KwFunc, "func")
-	sig := &ast.MethodSig{}
+	start := p.cur()
+	async := false
+	if p.at(token.KwAsync) {
+		p.next()
+		async = true
+	}
+	p.expect(token.KwFunc, "func")
+	sig := &ast.MethodSig{Async: async}
 	name, nameTok := p.expectName("a method name")
 	sig.Name = name
 	sig.NamePos = nameTok.Pos

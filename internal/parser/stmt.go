@@ -132,6 +132,8 @@ func isCallLike(x ast.Expr) bool {
 		return true
 	case *ast.TryExpr:
 		return isCallLike(x.X)
+	case *ast.AwaitExpr:
+		return isCallLike(x.X)
 	case *ast.UnwrapExpr:
 		return isCallLike(x.X)
 	}

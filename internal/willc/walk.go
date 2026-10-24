@@ -86,6 +86,8 @@ func walkExprs(e ast.Expr, visit func(ast.Expr)) {
 		walkExprs(x.Hi, visit)
 	case *ast.TryExpr:
 		walkExprs(x.X, visit)
+	case *ast.AwaitExpr:
+		walkExprs(x.X, visit)
 	case *ast.UnwrapExpr:
 		walkExprs(x.X, visit)
 	case *ast.SpawnExpr:

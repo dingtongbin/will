@@ -349,6 +349,9 @@ func (e *emitter) emitDecl(d ast.Decl) {
 			mid := e.add("method-sig", m)
 			e.text(mid, "text", m.Name)
 			e.text(mid, "type", typeText(m.Result))
+			if m.Async {
+				e.boolean(mid, "async", true)
+			}
 			e.push(mid)
 			e.emitParams(m.Params)
 			e.emitType(m.Result)
@@ -381,6 +384,9 @@ func (e *emitter) emitFunc(fn *ast.FuncDecl) {
 	e.text(rec, "text", fn.Name)
 	if fn.Result != nil {
 		e.text(rec, "type", typeText(fn.Result))
+	}
+	if fn.Async {
+		e.boolean(rec, "async", true)
 	}
 	e.push(rec)
 	if fn.Recv != nil {

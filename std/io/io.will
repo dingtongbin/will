@@ -1,27 +1,28 @@
-// The IO capability interfaces. They name the asynchronous form only; a
-// synchronous caller uses wait(...) once the scheduler exposes that bridge.
+// The IO capability interfaces. They name synchronous methods only: an async
+// function cannot be dispatched through an interface without a future type, so
+// asynchronous IO lives on concrete types such as fs.File and fs.AsyncReadFile.
 
 interface Reader {
-    func AsyncRead(mut buf: Array<u8>) -> Result<usize, Error>
+    func Read(mut buf: Array<u8>) -> Result<usize, Error>
 }
 
 interface Writer {
-    func AsyncWrite(buf: []u8) -> Result<(), Error>
-    func AsyncFlush() -> Result<(), Error>
+    func Write(buf: []u8) -> Result<(), Error>
+    func Sync() -> Result<(), Error>
 }
 
 interface Seeker {
-    func AsyncSeek(offset: i64, whence: i32) -> Result<i64, Error>
+    func Seek(offset: i64, whence: i32) -> Result<i64, Error>
 }
 
-// AsyncReadAll appends every byte from r until end of stream. It returns the
-// number of bytes appended.
-func AsyncReadAll(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
+// ReadAll appends every byte from r until end of stream. It returns the number
+// of bytes appended.
+func ReadAll(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
     var before: usize = buf.Len()
     var chunk: Array<u8> = new Array<u8>(32768)
     for {
         chunk.Clear()
-        var n: usize = r.AsyncRead(chunk)?
+        var n: usize = r.Read(chunk)?
         if n == 0usize {
             break
         }
@@ -37,29 +38,19 @@ func AsyncReadAll(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
     return Ok(buf.Len() - before)
 }
 
-// AsyncCopy copies r to dst until end of stream and flushes dst.
-func AsyncCopy(dst: Writer, src: Reader) -> Result<u64, Error> {
+// Copy copies r to dst until end of stream and syncs dst.
+func Copy(dst: Writer, src: Reader) -> Result<u64, Error> {
     var total: u64 = 0
     var chunk: Array<u8> = new Array<u8>(32768)
     for {
         chunk.Clear()
-        var n: usize = src.AsyncRead(chunk)?
+        var n: usize = src.Read(chunk)?
         if n == 0usize {
             break
         }
-        _ = dst.AsyncWrite(chunk[Range(0, n)])?
+        _ = dst.Write(chunk[Range(0, n)])?
         total += u64(n)
     }
-    _ = dst.AsyncFlush()?
+    _ = dst.Sync()?
     return Ok(total)
-}
-
-// ReadAll is the blocking spelling of AsyncReadAll.
-func ReadAll(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
-    return AsyncReadAll(r, buf)
-}
-
-// Copy is the blocking spelling of AsyncCopy.
-func Copy(dst: Writer, src: Reader) -> Result<u64, Error> {
-    return AsyncCopy(dst, src)
 }

@@ -11,6 +11,7 @@ import (
 // Func holds the marks of one function body.
 type Func struct {
 	Name     string
+	Async    bool
 	Suspends []ast.Span
 	Waits    []ast.Span
 	Spawns   []*ast.SpawnExpr
@@ -33,7 +34,7 @@ func Analyze(f *ast.File) *File {
 		if !ok || fn.Body == nil {
 			continue
 		}
-		mf := &Func{Name: fn.Name}
+		mf := &Func{Name: fn.Name, Async: fn.Async}
 		walkBlock(fn.Body, mf)
 		if len(mf.Suspends) != 0 || len(mf.Waits) != 0 ||
 			len(mf.Spawns) != 0 || len(mf.Regions) != 0 {
@@ -153,6 +154,9 @@ func walkExpr(e ast.Expr, mf *Func) {
 	case *ast.LambdaExpr:
 		walkBlock(x.Body, mf)
 	case *ast.TryExpr:
+		walkExpr(x.X, mf)
+	case *ast.AwaitExpr:
+		mf.Suspends = append(mf.Suspends, x.Span)
 		walkExpr(x.X, mf)
 	case *ast.UnwrapExpr:
 		walkExpr(x.X, mf)

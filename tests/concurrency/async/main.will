@@ -1,7 +1,7 @@
 import "std/os/fs"
 
-func ReadFile(path: str) -> Result<usize, Error> {
-    var bytes: Array<u8> = fs.AsyncReadFile(path)?
+async func ReadFile(path: str) -> Result<usize, Error> {
+    var bytes: Array<u8> = await fs.AsyncReadFile(path)?
     return Ok(bytes.Len())
 }
 

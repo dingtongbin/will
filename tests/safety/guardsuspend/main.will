@@ -1,0 +1,15 @@
+import "std/sync"
+
+struct Counter {
+    n: i32
+}
+
+async func Bad(m: sync.Mutex<Counter>, ch: chan<i32>) -> i32 {
+    var g: sync.Guard<Counter> = await m.Lock()
+    _ = ch.Send(g.n)
+    return 0
+}
+
+func main() -> i32 {
+    return 0
+}

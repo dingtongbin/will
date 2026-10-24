@@ -250,6 +250,8 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 		b.expr(x.Hi, borrowed)
 	case *ast.TryExpr:
 		b.expr(x.X, borrowed)
+	case *ast.AwaitExpr:
+		b.expr(x.X, borrowed)
 	case *ast.UnwrapExpr:
 		b.expr(x.X, borrowed)
 	case *ast.SpawnExpr:

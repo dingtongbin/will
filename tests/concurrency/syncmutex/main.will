@@ -1,0 +1,98 @@
+import "std/sync"
+
+struct Counter {
+    n: i32
+}
+
+// Bump takes the write side, changes the value, and lets the guard release at
+// the return. Two of these run at the same time.
+async func Bump(m: sync.Mutex<Counter>) -> i32 {
+    var g: sync.Guard<Counter> = await m.Lock()
+    g.n += 1
+    return g.n
+}
+
+// WaitFor takes the write side only after the caller's guard is gone.
+async func WaitFor(m: sync.Mutex<Counter>, entered: chan<i32>) -> i32 {
+    var g: sync.Guard<Counter> = await m.Lock()
+    _ = entered.TrySend(1)
+    g.n += 10
+    return g.n
+}
+
+func main() -> i32 {
+    var m: sync.Mutex<Counter> = new sync.Mutex<Counter>(Counter { n: 0 })
+    region {
+        var t1: Task<i32> = spawn Bump(m)
+        var t2: Task<i32> = spawn Bump(m)
+        _ = t1.Join()!
+        _ = t2.Join()!
+    }
+    var two: i32 = 0
+    if true {
+        var g: sync.Guard<Counter> = m.TryLock()!
+        two = g.n
+    }
+    if two != 2 {
+        return 1
+    }
+
+    var entered: chan<i32> = new chan<i32>(1)
+    region {
+        var waiter: Task<i32>
+        if true {
+            var g: sync.Guard<Counter> = m.TryLock()!
+            g.n += 100
+            waiter = spawn WaitFor(m, entered)
+            match entered.TryRecv() {
+                Some(_) => {
+                    return 2
+                }
+                None => {
+                }
+            }
+        }
+        _ = entered.Recv()!
+        _ = waiter.Join()!
+    }
+    var after: i32 = 0
+    if true {
+        var g: sync.Guard<Counter> = m.TryLock()!
+        after = g.n
+    }
+    if after != 112 {
+        return 3
+    }
+
+    var rw: sync.RwLock<Counter> = new sync.RwLock<Counter>(Counter { n: 0 })
+    var shared: i32 = 0
+    if true {
+        var r1: sync.ReadGuard<Counter> = rw.TryRLock()!
+        var r2: sync.ReadGuard<Counter> = rw.TryRLock()!
+        shared = r1.n + r2.n
+        if rw.TryWLock().IsSome() {
+            return 4
+        }
+    }
+    if shared != 0 {
+        return 5
+    }
+    var exclusive: i32 = 0
+    if true {
+        var w: sync.Guard<Counter> = rw.TryWLock()!
+        w.n = 7
+        exclusive = w.n
+    }
+    if exclusive != 7 {
+        return 6
+    }
+    var final: i32 = 0
+    if true {
+        var r: sync.ReadGuard<Counter> = rw.TryRLock()!
+        final = r.n
+    }
+    if final != 7 {
+        return 7
+    }
+    return 0
+}

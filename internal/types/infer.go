@@ -17,6 +17,11 @@ type inferScope struct {
 	vars   map[string]*Type
 	result *Type
 	tp     map[string]bool
+	// async is set by an async function body. allowAsyncCall is raised while
+	// an await, wait, or spawn operand is inferred, so the async call itself
+	// is consumed instead of reported.
+	async          bool
+	allowAsyncCall bool
 }
 
 func newInferScope(parent *inferScope) *inferScope {
@@ -24,6 +29,8 @@ func newInferScope(parent *inferScope) *inferScope {
 	if parent != nil {
 		s.result = parent.result
 		s.tp = parent.tp
+		s.async = parent.async
+		s.allowAsyncCall = parent.allowAsyncCall
 	}
 	return s
 }
@@ -68,6 +75,7 @@ func (c *checker) inferFunc(decl *ast.FuncDecl) {
 	tp := typeParamSet(decl.TypeParams)
 	s := newInferScope(nil)
 	s.tp = tp
+	s.async = decl.Async
 	s.result = c.buildType(decl.Result, tp)
 	if decl.Recv != nil {
 		s.vars[decl.Recv.Name] = c.buildType(decl.Recv.Type, tp)
@@ -138,7 +146,11 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 			want := c.buildType(d.Type, s.tp)
 			c.rejectRawAddress(d.Value)
 			if d.Value == nil {
-				if !c.hasZero(want) {
+				if isGuardType(want) {
+					c.bag.Error(d.Pos(), diag.CodeGuardCopied,
+						"a guard must be created by Lock",
+						"let the lock call initialize it")
+				} else if !c.hasZero(want) {
 					c.bag.Error(d.Pos(), diag.CodeNoZero,
 						"type "+want.String()+" has no zero value",
 						"initialize it: var "+d.Name+": "+want.String()+" = ...")
@@ -150,6 +162,11 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 		}
 	case *ast.AssignStmt:
 		c.rejectRawAddress(x.Value)
+		if c.readGuardWrite(s, x.Target) {
+			c.bag.Error(x.Target.Pos(), diag.CodeReadGuardWrite,
+				"a read guard is read-only",
+				"take the write guard with WLock")
+		}
 		want := c.inferPlace(s, x.Target)
 		if x.Op != "=" && want != nil && !want.IsNumeric() {
 			c.typeMismatch(x.Target.Pos(), want, nil)
@@ -274,6 +291,11 @@ func (c *checker) checkValue(s *inferScope, e ast.Expr, want *Type) {
 		return
 	}
 	got := c.exprWithWant(s, e, want)
+	if isGuardType(got) && !guardProducer(e) {
+		c.bag.Error(e.Pos(), diag.CodeGuardCopied,
+			"a guard cannot be copied",
+			"keep it in the local that Lock returned")
+	}
 	if !Equal(got, want) {
 		c.mismatch(e.Pos(), got, want, false, "", 0)
 	}
@@ -445,6 +467,11 @@ func (c *checker) checkArg(s *inferScope, e ast.Expr, want *Type, callee string,
 		return
 	}
 	got := c.exprWithWant(s, e, want)
+	if isGuardType(got) && !guardProducer(e) {
+		c.bag.Error(e.Pos(), diag.CodeGuardCopied,
+			"a guard cannot be copied",
+			"keep it in the local that Lock returned")
+	}
 	if !Equal(got, want) {
 		c.mismatch(e.Pos(), got, want, true, callee, n)
 	}
@@ -669,11 +696,31 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 	case *ast.TryExpr:
 		c.inferExpr(s, x.X)
 		return nil
+	case *ast.AwaitExpr:
+		if !s.async {
+			c.bag.Error(x.Pos(), diag.CodeAwaitOutsideAsync,
+				"await is only allowed inside an async function",
+				"mark the function async, or use wait(...)")
+		}
+		if !awaitOperand(x.X) {
+			c.bag.Error(x.Pos(), diag.CodeAwaitNotAsync,
+				"await needs an async call or a wait operation",
+				"remove await or call an async function")
+		}
+		previous := s.allowAsyncCall
+		s.allowAsyncCall = true
+		t := c.inferExpr(s, x.X)
+		s.allowAsyncCall = previous
+		return t
 	case *ast.UnwrapExpr:
 		c.inferExpr(s, x.X)
 		return nil
 	case *ast.SpawnExpr:
-		return c.in.named("Task", []*Type{c.inferExpr(s, x.Call)})
+		previous := s.allowAsyncCall
+		s.allowAsyncCall = true
+		t := c.inferExpr(s, x.Call)
+		s.allowAsyncCall = previous
+		return c.in.named("Task", []*Type{t})
 	case *ast.DeadlineExpr:
 		c.inferExpr(s, x.Duration)
 		c.inferBlock(s, x.Body)
@@ -789,6 +836,13 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 		return nil
 	}
 	sym := c.symbolOf(name)
+	if name.Name == "wait" && len(call.Args) == 1 {
+		previous := s.allowAsyncCall
+		s.allowAsyncCall = true
+		t := c.inferExpr(s, call.Args[0].Expr)
+		s.allowAsyncCall = previous
+		return t
+	}
 	switch {
 	case sym != nil && sym.Kind == resolve.FuncKind:
 		sig := c.env.funcs[name.Name]
@@ -804,6 +858,11 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 				inst = c.instantiate(sig, subst)
 			}
 			c.checkCallArgs(s, inst, call.Args, call.Pos())
+			if inst.async && !s.allowAsyncCall {
+				c.bag.Error(call.Pos(), diag.CodeAsyncNotAwaited,
+					"this async call is not awaited",
+					"write await, wait(...), or spawn")
+			}
 			return inst.result
 		}
 	case sym != nil && sym.Kind == resolve.VariantKind:
@@ -1068,6 +1127,17 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		}
 		recv = recv.Args()[0]
 	}
+	if isGuardType(recv) {
+		readOnly := isReadGuardType(recv)
+		recv = recv.Args()[0]
+		if readOnly && recv != nil && recv.Kind() == NamedKind {
+			if sig, ok := c.env.methods[recv.Name()+"."+call.Name]; ok && sig.recvMut {
+				c.bag.Error(call.Pos(), diag.CodeReadGuardWrite,
+					"a read guard is read-only",
+					"take the write guard with WLock")
+			}
+		}
+	}
 	if recv != nil && recv.Kind() == NamedKind && recv.Name() == "weak" && len(recv.Args()) == 1 {
 		if call.Name == "Upgrade" {
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
@@ -1139,6 +1209,11 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			c.checkCallArgs(s, sig, call.Args, call.Pos())
 		} else {
 			c.checkPayload(s, sig.params, call.Args, call.Name, call.Pos())
+		}
+		if sig.async && !s.allowAsyncCall {
+			c.bag.Error(call.Pos(), diag.CodeAsyncNotAwaited,
+				"this async call is not awaited",
+				"write await, wait(...), or spawn")
 		}
 		return sig.result
 	}
@@ -1393,10 +1468,91 @@ func (c *checker) fieldType(recv *Type, name string, pos source.Pos) *Type {
 			return nil
 		}
 	}
-	fields, known := c.env.fields[recv.Name()]
-	if !known {
-		return nil
+	if fields, known := c.env.fields[recv.Name()]; known {
+		return c.fieldOf(recv, fields, name, pos)
 	}
+	// A guard forwards every field to the value it guards. A foreign value has
+	// no field table here; the lowering resolves that one.
+	if isGuardType(recv) && len(recv.Args()) == 1 {
+		elem := recv.Args()[0]
+		if elem != nil && elem.Kind() == NamedKind {
+			if fields, known := c.env.fields[elem.Name()]; known {
+				return c.fieldOf(elem, fields, name, pos)
+			}
+		}
+	}
+	return nil
+}
+
+// isGuardType reports whether a type is the transparent guard of std/sync.
+// The name test accepts the qualified spelling the checker uses for an
+// imported type and the bare spelling inside std/sync itself.
+func isGuardType(t *Type) bool {
+	if t == nil || t.Kind() != NamedKind || len(t.Args()) != 1 {
+		return false
+	}
+	name := t.Name()
+	return name == "Guard" || name == "ReadGuard" ||
+		strings.HasSuffix(name, "sync.Guard") || strings.HasSuffix(name, "sync.ReadGuard")
+}
+
+// isReadGuardType reports whether the type is the read side only.
+func isReadGuardType(t *Type) bool {
+	if t == nil || t.Kind() != NamedKind {
+		return false
+	}
+	name := t.Name()
+	return name == "ReadGuard" || strings.HasSuffix(name, "sync.ReadGuard")
+}
+
+// awaitOperand accepts the shapes await may wait on: an async call, a method
+// wait operation, or a ?/! wrapper around one.
+func awaitOperand(e ast.Expr) bool {
+	switch x := e.(type) {
+	case *ast.CallExpr, *ast.MethodCallExpr, *ast.DeadlineExpr:
+		return true
+	case *ast.TryExpr:
+		return awaitOperand(x.X)
+	case *ast.UnwrapExpr:
+		return awaitOperand(x.X)
+	}
+	return false
+}
+
+// guardProducer reports whether an expression creates a guard rather than
+// copying one. A call creates it; unwrapping an Option<Guard<T>> still does.
+func guardProducer(e ast.Expr) bool {
+	switch x := e.(type) {
+	case *ast.CallExpr, *ast.MethodCallExpr, *ast.AggregateExpr:
+		return true
+	case *ast.UnwrapExpr:
+		return guardProducer(x.X)
+	case *ast.AwaitExpr:
+		return guardProducer(x.X)
+	case *ast.TryExpr:
+		return guardProducer(x.X)
+	}
+	return false
+}
+
+// readGuardWrite reports whether a place is reached through a read guard. A
+// field or an index through the guard is a write to the guarded value; a name
+// is a rebinding of the guard itself.
+func (c *checker) readGuardWrite(s *inferScope, e ast.Expr) bool {
+	switch x := e.(type) {
+	case *ast.NameExpr:
+		return isReadGuardType(c.inferExpr(s, x))
+	case *ast.FieldExpr:
+		return isReadGuardType(c.inferExpr(s, x.Recv))
+	case *ast.IndexExpr:
+		return c.readGuardWrite(s, x.Recv)
+	}
+	return false
+}
+
+// fieldOf looks one name up in a known field list and substitutes the type
+// arguments of the receiver.
+func (c *checker) fieldOf(recv *Type, fields []*fieldInfo, name string, pos source.Pos) *Type {
 	subst := c.substFor(recv.Name(), recv.Args())
 	for _, f := range fields {
 		if f.name == name {

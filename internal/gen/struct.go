@@ -368,6 +368,9 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 	if adt, ok := g.adtType(fieldText(r, "type")); ok {
 		return adt.llvm, nil
 	}
+	if typ, ok := g.fieldLLVMType(fieldText(r, "type")); ok {
+		return typ, nil
+	}
 	if id := g.typeRef(decl); id != 0 {
 		if r, ok := g.recs[id]; ok && r.Kind == "enum" {
 			if info := g.enums[id]; info != nil {
@@ -425,6 +428,8 @@ func (g *generator) typeOf(id int) (string, error) {
 		return "", g.errf(id, "cannot translate node #%d: no such node", id)
 	}
 	switch r.Kind {
+	case "await":
+		return g.typeOf(refField(r, "expr"))
 	case "lit":
 		typ, ok := llvmTypeText(fieldText(r, "type"))
 		if !ok {
@@ -469,6 +474,23 @@ func (g *generator) typeOf(id int) (string, error) {
 	case "field":
 		if info, ok := g.importMember(r); ok {
 			return info.typ, nil
+		}
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if elem, ok := g.guardElemText(recvText); ok {
+				elemLLVM, ok := g.fieldLLVMType(elem)
+				if !ok {
+					return "", g.errf(id, "cannot translate node #%d: guard value %s is not lowered yet", id, elem)
+				}
+				info := g.structInfoByLLVM(elemLLVM)
+				if info == nil || !info.ok {
+					return "", g.errf(id, "cannot translate node #%d: %s has no fields", id, elemLLVM)
+				}
+				index, ok := info.index[fieldText(r, "text")]
+				if !ok {
+					return "", g.errf(id, "cannot translate node #%d: struct %s has no field %s", id, info.name, fieldText(r, "text"))
+				}
+				return info.types[index], nil
+			}
 		}
 		base, err := g.typeOf(refField(r, "recv"))
 		if err != nil {
@@ -591,6 +613,9 @@ func (g *generator) typeOf(id int) (string, error) {
 		}
 		return g.typeOf(refField(r, "expr"))
 	case "call", "mcall":
+		if arg, ok := g.waitArg(r); ok {
+			return g.typeOf(arg)
+		}
 		if r.Kind == "mcall" {
 			if llvm, _, known := g.strCallResult(r); known {
 				if llvm == "" {
@@ -681,6 +706,8 @@ func (g *generator) willTypeText(id int) (string, error) {
 		return "", g.errf(id, "cannot translate node #%d: no such node", id)
 	}
 	switch r.Kind {
+	case "await":
+		return g.willTypeText(refField(r, "expr"))
 	case "lit":
 		return fieldText(r, "type"), nil
 	case "name":
@@ -717,6 +744,23 @@ func (g *generator) willTypeText(id int) (string, error) {
 	case "field":
 		if info, ok := g.importMember(r); ok {
 			return info.text, nil
+		}
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if elem, ok := g.guardElemText(recvText); ok {
+				elemLLVM, ok := g.fieldLLVMType(elem)
+				if !ok {
+					return "", g.errf(id, "cannot translate node #%d: guard value %s is not lowered yet", id, elem)
+				}
+				info := g.structInfoByLLVM(elemLLVM)
+				if info == nil || !info.ok {
+					return "", g.errf(id, "cannot translate node #%d: %s has no fields", id, elemLLVM)
+				}
+				index, ok := info.index[fieldText(r, "text")]
+				if !ok {
+					return "", g.errf(id, "cannot translate node #%d: struct %s has no field %s", id, info.name, fieldText(r, "text"))
+				}
+				return info.texts[index], nil
+			}
 		}
 		base, err := g.willTypeText(refField(r, "recv"))
 		if err != nil {
@@ -815,6 +859,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		return g.willTypeText(refField(r, "expr"))
 	case "call", "mcall":
+		if arg, ok := g.waitArg(r); ok {
+			return g.willTypeText(arg)
+		}
 		if r.Kind == "mcall" {
 			if _, _, fnText, ok := g.functionField(r); ok {
 				_, result, ok := funcTypeParts(fnText)
@@ -1002,11 +1049,23 @@ func (g *generator) isCLink(r willc.Record) bool {
 // method is emitted under. A receiver whose type is declared in another
 // document resolves through the module-wide qualified type index.
 func (g *generator) methodSymbol(r willc.Record) (string, error) {
+	name := fieldText(r, "text")
+	if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+		if elem, ok := g.guardElemText(recvText); ok {
+			if sym := g.methodForType(elem, name); sym != "" {
+				return sym, nil
+			}
+		}
+	}
 	typ, err := g.receiverTypeName(refField(r, "recv"))
 	if err != nil {
 		return "", err
 	}
-	name := fieldText(r, "text")
+	if elem, ok := g.guardElemText(typ); ok {
+		if sym := g.methodForType(elem, name); sym != "" {
+			return sym, nil
+		}
+	}
 	if sym, ok := g.methodsQualified[typ+"."+name]; ok {
 		return sym, nil
 	}
@@ -1070,6 +1129,8 @@ func (g *generator) place(id int) (string, string, error) {
 		return p.ptr, p.typ, nil
 	}
 	switch r.Kind {
+	case "await":
+		return g.place(refField(r, "expr"))
 	case "lit":
 		kind := fieldText(r, "kind")
 		if kind == "str" || kind == "bytes" {
@@ -1160,6 +1221,13 @@ func (g *generator) place(id int) (string, string, error) {
 		recvID := refField(r, "recv")
 		recvText, rcErr := g.willTypeText(recvID)
 		if rcErr == nil {
+			if _, ok := g.guardElemText(recvText); ok {
+				ptr, fieldType, _, err := g.guardFieldPlace(recvID, fieldText(r, "text"), r)
+				if err != nil {
+					return "", "", err
+				}
+				return ptr, fieldType, nil
+			}
 			if elem, ok := rcElemText(recvText); ok && isRcText(recvText) {
 				handle, err := g.value(recvID)
 				if err != nil {
@@ -1260,11 +1328,14 @@ func (g *generator) place(id int) (string, string, error) {
 	case "new":
 		return g.constructNew(r)
 	case "call", "mcall":
+		if arg, ok := g.waitArg(r); ok {
+			return g.place(arg)
+		}
 		if g.smGeneral {
-			if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendable[sym] {
+			if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendableFor(sym) {
 				return g.generalCallWaitPlace(r)
 			}
-		} else if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendable[sym] {
+		} else if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendableFor(sym) {
 			return g.awaitCallPlace(r)
 		}
 		if r.Kind == "mcall" && fieldText(r, "text") == "Get" {

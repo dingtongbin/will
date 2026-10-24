@@ -103,7 +103,7 @@ func isPredeclaredType(name string) bool {
 }
 
 var predeclaredValues = []string{
-	"Some", "None", "Ok", "Err",
+	"Some", "None", "Ok", "Err", "wait",
 	"Canceled", "Deadline",
 	"print", "panic", "assert",
 	"take_c", "take_c_rc",
