@@ -1033,12 +1033,15 @@ func (c *checker) substFor(name string, args []*Type) map[string]*Type {
 // instantiateReceiver specializes the signature of a method or init on a
 // generic receiver for one receiver type.
 func (c *checker) instantiateReceiver(sig *signature, recv *Type) *signature {
-	if sig == nil || len(sig.recvParams) == 0 {
+	if sig == nil || recv == nil || len(sig.recvParams) == 0 {
 		return nil
 	}
-	subst := c.substFor(recv.Name(), recv.Args())
-	if subst == nil {
+	if len(sig.recvParams) != len(recv.Args()) {
 		return nil
+	}
+	subst := make(map[string]*Type, len(sig.recvParams))
+	for i, param := range sig.recvParams {
+		subst[param] = recv.Args()[i]
 	}
 	return c.instantiate(sig, subst)
 }
@@ -1158,6 +1161,27 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			return c.in.named("Option", []*Type{c.in.named("rc", []*Type{recv.Args()[0]})})
 		}
 		return nil
+	}
+	if decl := c.foreignMethod(recv, call.Name); decl != nil {
+		sig := c.buildSig(decl)
+		sig = c.inferCallTypeArgs(s, call.Args, call.TypeArgs, sig)
+		if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
+			subst := make(map[string]*Type, sig.typeParams)
+			for i, ta := range call.TypeArgs {
+				subst[sig.typeNames[i]] = c.buildType(ta, nil)
+			}
+			sig = c.instantiate(sig, subst)
+		}
+		if inst := c.instantiateReceiver(sig, recv); inst != nil {
+			sig = inst
+		}
+		c.checkCallArgs(s, sig, call.Args, call.Pos())
+		if sig.async && !s.allowAsyncCall {
+			c.bag.Error(call.Pos(), diag.CodeAsyncNotAwaited,
+				"this async call is not awaited",
+				"write await, wait(...), or spawn")
+		}
+		return sig.result
 	}
 	switch call.Name {
 	case "Recv":
@@ -1525,13 +1549,46 @@ func isReadGuardType(t *Type) bool {
 	return name == "ReadGuard" || strings.HasSuffix(name, "sync.ReadGuard")
 }
 
+// packageAndType splits a qualified type name into its package name and its
+// bare type name. It returns empty strings for an unqualified name, which is a
+// type of the current package.
+func packageAndType(name string) (string, string) {
+	dot := strings.LastIndexByte(name, '.')
+	if dot <= 0 || dot+1 >= len(name) {
+		return "", ""
+	}
+	path, typ := name[:dot], name[dot+1:]
+	if slash := strings.LastIndexByte(path, '/'); slash >= 0 {
+		path = path[slash+1:]
+	}
+	return path, typ
+}
+
+// foreignMethod returns the declaration of a method declared by an imported
+// package. The receiver type name carries the package qualifier, so the lookup
+// key is Type.Method under the package's short name.
+func (c *checker) foreignMethod(recv *Type, name string) *ast.FuncDecl {
+	if recv == nil || recv.Kind() != NamedKind {
+		return nil
+	}
+	pkg, typ := packageAndType(recv.Name())
+	if pkg == "" || typ == "" {
+		return nil
+	}
+	methods := c.foreignFuncs[pkg]
+	if methods == nil {
+		return nil
+	}
+	return methods[typ+"."+name]
+}
+
 // requireWait rejects a wait operation outside await, wait, or spawn.
 func (c *checker) requireWait(s *inferScope, pos source.Pos) {
 	if s.async || s.allowAsyncCall || s.parallel {
 		return
 	}
 	c.bag.Error(pos, diag.CodeAsyncNotAwaited,
-		"this wait operation is not awaited",
+		"this async call is not awaited",
 		"write await, wait(...), or spawn")
 }
 

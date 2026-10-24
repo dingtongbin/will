@@ -489,8 +489,9 @@ func (b *Build) foreignInits() map[string]map[string]*ast.FuncDecl {
 	return out
 }
 
-// foreignFuncs collects exported free functions by package name and function
-// name. A cross-package call needs the declaring signature for its arguments.
+// foreignFuncs collects exported free functions and methods by package name
+// and function name. A method is keyed as "Type.Method"; a cross-package call
+// needs the declaring signature for its arguments and its async bit.
 func (b *Build) foreignFuncs() map[string]map[string]*ast.FuncDecl {
 	out := map[string]map[string]*ast.FuncDecl{}
 	for _, p := range b.Packages {
@@ -500,13 +501,20 @@ func (b *Build) foreignFuncs() map[string]map[string]*ast.FuncDecl {
 			}
 			for _, d := range f.AST.Decls {
 				fn, ok := d.(*ast.FuncDecl)
-				if !ok || fn.Recv != nil {
+				if !ok {
 					continue
+				}
+				key := fn.Name
+				if fn.Recv != nil {
+					if fn.Recv.Type == nil || fn.Recv.Type.Name == "" {
+						continue
+					}
+					key = fn.Recv.Type.Name + "." + fn.Name
 				}
 				if out[p.Name] == nil {
 					out[p.Name] = map[string]*ast.FuncDecl{}
 				}
-				out[p.Name][fn.Name] = fn
+				out[p.Name][key] = fn
 			}
 		}
 	}
