@@ -1,0 +1,57 @@
+import "std/sync"
+
+func WaitFor(sem: sync.Semaphore, ready: chan<i32>, done: chan<i32>) -> i32 {
+    _ = ready.Send(1)
+    var permit: sync.Permit = sem.Acquire()!
+    _ = done.Send(1)
+    permit.Release()
+    return 0
+}
+
+func Worker(count: sync.Count, done: chan<i32>) {
+    _ = done.Send(1)
+    count.Add(-1i64)
+}
+
+func main() -> i32 {
+    var sem: sync.Semaphore = new sync.Semaphore(1i64)
+    var first: sync.Permit = sem.TryAcquire()!
+    match sem.TryAcquire() {
+        Some(extra) => {
+            extra.Release()
+            first.Release()
+            return 1
+        }
+        None => {
+        }
+    }
+    var ready: chan<i32> = new chan<i32>(1)
+    var done: chan<i32> = new chan<i32>(1)
+    region {
+        var task: Task<i32> = spawn WaitFor(sem, ready, done)
+        _ = ready.Recv()
+        match done.TryRecv() {
+            Some(early) => {
+                _ = early
+                return 2
+            }
+            None => {
+            }
+        }
+        first.Release()
+        _ = done.Recv()
+        _ = task.Join()!
+    }
+    var count: sync.Count = new sync.Count(2i64)
+    var finished: chan<i32> = new chan<i32>(2)
+    region {
+        var w1: Task<()> = spawn Worker(count, finished)
+        var w2: Task<()> = spawn Worker(count, finished)
+        _ = count.Wait()!
+        _ = finished.Recv()
+        _ = finished.Recv()
+        _ = w1.Join()!
+        _ = w2.Join()!
+    }
+    return 0
+}

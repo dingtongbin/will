@@ -1,0 +1,37 @@
+// Count waits for a counter to reach zero. Workers decrement it when they
+// finish, so the shutdown path waits on one value instead of joining each task.
+import "std/errors"
+
+import c "sync.h" {
+    fast willrt_sync_count_new
+    fast willrt_sync_count_add
+    fast willrt_sync_count_wait_async
+}
+
+struct Count {
+    handle: raw
+}
+
+func (mut counter: Count) init(n: i64) {
+    counter.handle = c.willrt_sync_count_new(n)
+}
+
+func (counter: Count) Add(d: i64) {
+    c.willrt_sync_count_add(counter.handle, d)
+}
+
+// Wait blocks until the counter reaches zero. A canceled or expired wait
+// leaves the count unchanged.
+func (counter: Count) Wait() -> Result<(), Error> {
+    var status: i32 = c.willrt_sync_count_wait_async(counter.handle)
+    if status == 0 {
+        return Ok(())
+    }
+    if status == -5 {
+        return Err(errors.Canceled)
+    }
+    if status == -6 {
+        return Err(errors.Deadline)
+    }
+    return Err(errors.Io)
+}

@@ -325,6 +325,9 @@ void* willrt_sync_gate_new(void);
    which is how an empty guard releases nothing. */
 void willrt_sync_unlock(void* s, int32_t mode);
 int64_t willrt_sync_sema_release(void* s);
+/* willrt_sync_sema_try_acquire takes one permit without waiting and reports
+   1 when it did. */
+int32_t willrt_sync_sema_try_acquire(void* s);
 /* willrt_sync_count_add moves the counter and wakes every waiter when it
    reaches zero. A later add that raises the count re-arms future waits. */
 void willrt_sync_count_add(void* s, int64_t delta);

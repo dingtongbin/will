@@ -4,6 +4,7 @@ enum ErrorClass {
     Busy
     Upstream
     Bug
+    Canceled
 }
 
 interface Classified {
@@ -38,6 +39,9 @@ func classOfStatus(status: i32) -> ErrorClass {
         }
         9 => {
             c = ErrorClass.Deadline()
+        }
+        10 => {
+            c = ErrorClass.Canceled()
         }
         _ => {
             c = ErrorClass.Bug()
