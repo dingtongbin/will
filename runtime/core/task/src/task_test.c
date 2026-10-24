@@ -1093,6 +1093,28 @@ static void test_region_nests_past_inline(void) {
     }
 }
 
+/* A region releases the failure text of its members with everything else, so a
+   program that spawns failing tasks in a loop settles back to its baseline
+   instead of growing a block per failure. */
+static void test_region_releases_failure_text(void) {
+    willrt_task* task;
+    int64_t warm;
+    int64_t settled;
+    int32_t i;
+
+    warm = willrt_alloc_live();
+    for (i = 0; i < 8; i++) {
+        willrt_region_enter();
+        task = willrt_task_new((void*)step_panic, NULL, 0, 0, 0);
+        assert(task != NULL);
+        willrt_task_run(task);
+        assert(willrt_join(task, NULL, NULL) == WILLRT_FAILED);
+        assert(willrt_region_exit() == 1);
+    }
+    settled = willrt_alloc_live();
+    assert(settled == warm);
+}
+
 int main(void) {
 #ifdef _WIN32
     WSADATA data;
@@ -1126,6 +1148,7 @@ int main(void) {
     test_async_poll_survives_reuse();
     test_task_error_copy_accessors();
     test_region_recycles_tasks();
+    test_region_releases_failure_text();
     test_region_nests_past_inline();
     willrt_shutdown();
 #ifdef _WIN32

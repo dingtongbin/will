@@ -1005,9 +1005,10 @@ void willrt_task_own_frame(willrt_task* task) {
 
 /* willrt_task_release returns one finished region member to the allocator.
    The region barrier joins every member first, so no joiner can still read
-   this task's frame or result, and no will-level handle can have left the
-   region. The failure text stays allocated: a TaskError copy names it, and
-   a failed task is the defect path, so the block is bounded. */
+   this task's frame, result, or failure text, and no will-level handle can
+   have left the region. The failure text goes back with the task: keeping it
+   would make every failed spawn a permanent block, which is not bounded by
+   anything a program controls. */
 static void willrt_task_release(struct willrt_task* task) {
     struct willrt_task** link;
 
@@ -1021,6 +1022,7 @@ static void willrt_task_release(struct willrt_task* task) {
     }
     willrt_os_mutex_unlock(&willrt_tasks_lock);
 
+    willrt_free(task->message);
     willrt_free(task->result);
     if (task->frame_owned) {
         willrt_free(task->frame);
