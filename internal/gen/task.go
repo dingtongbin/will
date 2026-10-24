@@ -98,6 +98,9 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		}
 	}
 	args := g.callArgs(call)
+	// The spawn expression is the crossing: every captured rc handle gets its
+	// promotion recorded under this position.
+	g.crossingPos = fieldText(r, "pos")
 	var frameTypes []string
 	var argTypes []string
 	var argTexts []string
@@ -1013,6 +1016,9 @@ func (g *generator) lowerSend(r willc.Record) error {
 		_, err := g.lowerSendResult(r)
 		return err
 	}
+	// The send is the crossing: the ring's copy and the sender's binding
+	// reach the count from two lanes.
+	g.crossingPos = fieldText(r, "pos")
 	chanPtr, err := g.value(refField(r, "chan"))
 	if err != nil {
 		return err
@@ -1051,6 +1057,9 @@ func (g *generator) lowerSend(r willc.Record) error {
 // lowerSendResult builds Result<(), Error> around one send. A closed channel
 // stores the built-in Closed fault in the error payload.
 func (g *generator) lowerSendResult(r willc.Record) (string, error) {
+	// The send is the crossing: the ring's copy and the sender's binding
+	// reach the count from two lanes.
+	g.crossingPos = fieldText(r, "pos")
 	chanPtr, err := g.value(refField(r, "chan"))
 	if err != nil {
 		return "", err

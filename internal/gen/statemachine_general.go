@@ -136,6 +136,8 @@ func (g *generator) emitGeneralStep(fnID int) error {
 	g.resultType = g.resultLLVM(fieldText(fn, "type"))
 	g.fnResultText = fieldText(fn, "type")
 	g.fnSymbol = sym
+	g.fnPos = fieldText(fn, "pos")
+	g.crossingPos = g.fnPos
 	g.currentLambda = 0
 
 	fmt.Fprintf(g.out, "  %s = alloca i32\n", g.smStateSlot)
@@ -277,11 +279,13 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 		fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %%v.sm.frame, i64 %d\n", ptr, offset)
 		if a.byPtr {
 			g.copyValue(fmt.Sprintf("%%arg%d", i), ptr, a.typ)
-			if err := g.shareValue(ptr, a.text); err != nil {
-				return err
-			}
 		} else {
 			fmt.Fprintf(g.out, "  store %s %%arg%d, ptr %s\n", a.typ, i, ptr)
+		}
+		// The capture is the crossing whether the parameter moves by value
+		// or by pointer: an rc handle lands in a frame another lane runs.
+		if err := g.shareValue(ptr, a.text); err != nil {
+			return err
 		}
 		if a.text == "task.Cancel" || strings.HasSuffix(a.text, ".Cancel") {
 			cancelPtrs = append(cancelPtrs, ptr)

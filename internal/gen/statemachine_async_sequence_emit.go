@@ -45,6 +45,8 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 	g.resultType = info.resultLLVM
 	g.fnResultText = info.resultText
 	g.fnSymbol = info.symbol
+	g.fnPos = fieldText(info.fn, "pos")
+	g.crossingPos = g.fnPos
 	g.currentLambda = 0
 	if err := g.emitAsyncConstructor(info); err != nil {
 		return err

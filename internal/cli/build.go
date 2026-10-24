@@ -364,14 +364,14 @@ func samePaths(got, want []string) bool {
 	return true
 }
 
-func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int) {
+func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, []byte, string, int) {
 	if d, bad := targetDiagnostic(opts.target, opts.targetSet); bad {
 		reportNoPos(d, opts.json, buildIdentityWith(opts.opt, opts.target), stdout)
-		return nil, "", 1
+		return nil, nil, "", 1
 	}
 	fe, code := runFrontEnd(opts, stdout, stderr)
 	if code != 0 {
-		return nil, "", code
+		return nil, nil, "", code
 	}
 	diagOut := stdout
 	if opts.textProduct {
@@ -380,35 +380,40 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, string, int
 	docs, texts, err := fe.docs(opts)
 	if err != nil {
 		reportTranslate(diagOut, err)
-		return nil, "", 1
+		return nil, nil, "", 1
 	}
-	record, err := moduleDecisionText(fe, opts.target)
+	astRecords, err := moduleDecisionRecords(fe, opts.target)
 	if err != nil {
 		reportTranslate(diagOut, &willc.Error{Message: err.Error()})
-		return nil, "", 1
+		return nil, nil, "", 1
 	}
+	record := decisions.Write(astRecords)
 	store, key := loweringCacheKey(texts, record, opts)
 	if store != nil {
 		if got, ok := store.Get(key, cache.ModuleLL, cache.Decisions); ok {
-			return got[cache.ModuleLL], fe.modulePath, 0
+			return got[cache.ModuleLL], got[cache.Decisions], fe.modulePath, 0
 		}
 	}
-	ir, err := gen.EmitModuleWithOptions(docs, opts.entry, fe.modulePath, fe.aliases, opts.lib)
+	ir, crossings, err := gen.EmitModuleWithRecords(docs, opts.entry, fe.modulePath, fe.aliases, opts.lib)
 	if err != nil {
 		reportTranslate(diagOut, err)
-		return nil, "", 1
+		return nil, nil, "", 1
 	}
+	// The record the build keeps carries one share obligation per promotion
+	// the lowering emitted; the cache key stays on the front-end record so
+	// the key remains a function of the inputs.
+	record = decisions.Write(append(astRecords, crossingRecords(crossings)...))
 	if store != nil {
 		_ = store.Put(key, map[string][]byte{cache.ModuleLL: ir, cache.Decisions: record})
 		_ = store.TrimIfNeeded()
 	}
-	return ir, fe.modulePath, 0
+	return ir, record, fe.modulePath, 0
 }
 
 // moduleDecisionText is the decision record of the batch a build lowers. The
 // lowering key takes it so a change in a layout decision cannot reuse an old
 // module, and the entry stores it next to the LLVM text.
-func moduleDecisionText(fe frontEnd, target string) ([]byte, error) {
+func moduleDecisionRecords(fe frontEnd, target string) ([]decisions.Record, error) {
 	var units []sourceUnit
 	if fe.build != nil {
 		for _, p := range fe.build.Packages {
@@ -429,7 +434,18 @@ func moduleDecisionText(fe frontEnd, target string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return decisions.Write(records), nil
+	return records, nil
+}
+
+// crossingRecords turns the lowering's share promotions into one obligation
+// each. verdict is emitted, not proved: the record documents that the
+// promotion happened, which is the share discipline's whole point.
+func crossingRecords(crossings []gen.Crossing) []decisions.Record {
+	records := make([]decisions.Record, 0, len(crossings))
+	for _, c := range crossings {
+		records = append(records, decisions.Obligation(c.Pos, "share", "emitted", "crossing"))
+	}
+	return records
 }
 
 // loweringCacheKey keys the lowering stage on every willc text it reads, in
@@ -484,7 +500,7 @@ func runBuild(args []string, stdout, stderr io.Writer) int {
 	} else if code != 0 {
 		return code
 	}
-	ir, modulePath, code := compileIR(opts, stdout, stderr)
+	ir, _, modulePath, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
 	}
@@ -848,7 +864,7 @@ func runRun(args []string, stdout, stderr io.Writer) int {
 	} else if code != 0 {
 		return code
 	}
-	ir, _, code := compileIR(opts, stdout, stderr)
+	ir, _, _, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
 	}
@@ -939,7 +955,7 @@ func runEmitLLVM(args []string, stdout, stderr io.Writer) int {
 		return code
 	}
 	opts.textProduct = true
-	ir, _, code := compileIR(opts, stdout, stderr)
+	ir, _, _, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
 	}
@@ -953,7 +969,7 @@ func runEmitAsm(args []string, stdout, stderr io.Writer) int {
 		return code
 	}
 	opts.textProduct = true
-	ir, _, code := compileIR(opts, stdout, stderr)
+	ir, _, _, code := compileIR(opts, stdout, stderr)
 	if code != 0 {
 		return code
 	}

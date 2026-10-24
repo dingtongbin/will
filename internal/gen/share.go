@@ -7,9 +7,25 @@ import (
 
 // shareValue marks every rc handle reachable in a value as cross-thread. A
 // value only needs this at a task frame, a task result, or a channel send;
-// ordinary local copies stay on the plain count path.
+// ordinary local copies stay on the plain count path. Every promotion lands
+// in the crossing list, so the decision record carries one obligation per
+// willrt_rc_share the module emits.
 func (g *generator) shareValue(ptr, text string) error {
 	return g.shareValueDepth(ptr, text, 0)
+}
+
+// recordCrossing notes one promotion. The crossing site names the position
+// when it knows it; a promotion inside a machine epilogue falls back to the
+// position of the function being lowered.
+func (g *generator) recordCrossing() {
+	pos := g.crossingPos
+	if pos == "" {
+		pos = g.fnPos
+	}
+	if pos == "" {
+		return
+	}
+	g.crossings = append(g.crossings, Crossing{Pos: pos})
 }
 
 func (g *generator) shareValueDepth(ptr, text string, depth int) error {
@@ -24,6 +40,7 @@ func (g *generator) shareValueDepth(ptr, text string, depth int) error {
 		g.needRcDecl = true
 		handle := g.load("i64", ptr)
 		fmt.Fprintf(g.out, "  call void @willrt_rc_share(i64 %s)\n", handle)
+		g.recordCrossing()
 		return nil
 	}
 	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
@@ -101,6 +118,7 @@ func (g *generator) eachViewShare(ptr, elem string, depth int) error {
 	if !ok || elemLLVM == "" {
 		return nil
 	}
+	g.recordCrossing()
 	g.labels++
 	n := g.labels
 	cond := fmt.Sprintf("share.view.cond.%d", n)
@@ -142,6 +160,9 @@ func (g *generator) eachElementShare(ptr, elem string, depth int) error {
 	if !ok || elemLLVM == "" {
 		return nil
 	}
+	// One loop shares every element the buffer holds at run time, so the
+	// static site carries a single obligation.
+	g.recordCrossing()
 	g.labels++
 	n := g.labels
 	cond := fmt.Sprintf("share.elem.cond.%d", n)

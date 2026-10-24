@@ -59,11 +59,13 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 		arg := "%arg" + fmt.Sprint(i)
 		if pab[i].byPtr {
 			g.copyValue(arg, field, pab[i].typ)
-			if err := g.shareValue(field, pab[i].text); err != nil {
-				return err
-			}
 		} else {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", pab[i].typ, arg, field)
+		}
+		// The capture is the crossing whether the parameter moves by value
+		// or by pointer: an rc handle lands in a frame another lane runs.
+		if err := g.shareValue(field, pab[i].text); err != nil {
+			return err
 		}
 	}
 	for i := len(paramRecs); i < len(info.fields); i++ {

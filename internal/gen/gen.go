@@ -11,6 +11,13 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
+// Crossing is one share promotion the lowering emitted at a task boundary.
+// The position is the source position of the function that carries the
+// crossing, or of the call itself when the lowering knows it.
+type Crossing struct {
+	Pos string
+}
+
 // Emit translates one willc document into LLVM text. Only the node subset
 // needed by the first lowering experiment is implemented: integer functions
 // with parameters, return, integer literals, names, and + - *.
@@ -51,6 +58,14 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 // In lib mode an exported top-level function keeps its plain C name and no
 // program entry wrapper is emitted.
 func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string, lib bool) ([]byte, error) {
+	ir, _, err := EmitModuleWithRecords(docs, entry, entryPkg, aliases, lib)
+	return ir, err
+}
+
+// EmitModuleWithRecords is EmitModuleWithOptions and also reports every share
+// promotion the lowering emitted, so the decision record can carry one
+// obligation per crossing.
+func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string, lib bool) ([]byte, []Crossing, error) {
 	g := &generator{
 		lib:            lib,
 		scope:          map[int]string{},
@@ -97,16 +112,16 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 	for _, d := range g.docs {
 		g.use(d)
 		if err := g.emitDoc(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	if g.entryFound && !g.lib {
 		if err := g.emitWrapper(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	g.emitAux()
-	return []byte(g.out.String()), nil
+	return []byte(g.out.String()), g.crossings, nil
 }
 
 // emitAux writes the module-level values the functions produced while they
@@ -920,7 +935,14 @@ type generator struct {
 	// fnSymbol is the stable symbol of the function being lowered; a runtime
 	// check names it in the report. strings holds the module-level string
 	// constants the checks use, and stringsByText shares equal texts.
-	fnSymbol      string
+	fnSymbol string
+	fnPos    string
+	// crossingPos names the source position the current crossing site
+	// reports; a share promotion under it lands in the crossing list.
+	crossingPos string
+	// crossings is one entry per share promotion this module emitted, in
+	// emission order.
+	crossings     []Crossing
 	strings       []string
 	stringsByText map[string]string
 	needPanicDecl bool
@@ -1431,6 +1453,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	}
 	name := fieldText(fn, "text")
 	g.fnSymbol = g.cur.funcs[fn.ID]
+	g.fnPos = fieldText(fn, "pos")
 	recv := g.receiverOf(fn.ID)
 	result := ""
 	g.fnResultText = ""
@@ -1618,6 +1641,7 @@ func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
 	g.resultType = ""
 	g.fnResultText = ""
 	g.fnSymbol = g.cur.funcs[fn.ID]
+	g.fnPos = fieldText(fn, "pos")
 	g.labels = 0
 	g.slots = map[int]string{}
 	g.slotNames = map[string]int{}
@@ -2803,7 +2827,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 				return false, err
 			}
 			if g.smMode {
-				g.storeTaskResult(iface.llvm, v)
+				if err := g.storeTaskResult(iface.llvm, v); err != nil {
+					return false, err
+				}
 			} else {
 				fmt.Fprintf(g.out, "  ret %s %s\n", iface.llvm, v)
 			}
@@ -2828,7 +2854,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 			return false, err
 		}
 		if g.smMode {
-			g.storeTaskResult(typ, tmp)
+			if err := g.storeTaskResult(typ, tmp); err != nil {
+				return false, err
+			}
 		} else {
 			fmt.Fprintf(g.out, "  ret %s %s\n", typ, tmp)
 		}
@@ -2845,7 +2873,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		return false, err
 	}
 	if g.smMode {
-		g.storeTaskResult(g.resultType, value)
+		if err := g.storeTaskResult(g.resultType, value); err != nil {
+			return false, err
+		}
 	} else {
 		fmt.Fprintf(g.out, "  ret %s %s\n", g.resultType, value)
 	}
@@ -2853,15 +2883,20 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 }
 
 // storeTaskResult copies one completed return value into the task result and
-// ends the step. The temporary is safe: a step returns exactly once.
-func (g *generator) storeTaskResult(typ, value string) {
+// ends the step. The temporary is safe: a step returns exactly once. The
+// result crosses to the joiner's lane, so every rc handle in it is shared.
+func (g *generator) storeTaskResult(typ, value string) error {
 	g.needTaskDecl = true
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, typ)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, slot)
+	if err := g.shareValue(slot, g.fnResultText); err != nil {
+		return err
+	}
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n",
 		slot, g.sizeOf(typ))
 	g.out.WriteString("  ret i32 1\n")
+	return nil
 }
 
 // jump leaves the innermost loop: break jumps past it, continue to its step
