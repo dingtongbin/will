@@ -178,8 +178,18 @@ func (g *generator) taskCtorDefined(sym string) bool {
 }
 
 // awaitTargetSymbol returns the symbol of the function a call names when that
-// function waits. A method call names its function through the receiver.
+// function waits. A generic call names its instance, because the declaration
+// itself is never emitted; a method call names its function through the
+// receiver.
 func (g *generator) awaitTargetSymbol(r willc.Record) string {
+	if name := g.genericCallName(r); name != "" {
+		return name
+	}
+	if r.Kind == "mcall" {
+		if name := g.genericMethodName(r); name != "" {
+			return name
+		}
+	}
 	if sym := g.callTargetSymbol(r); sym != "" {
 		return sym
 	}

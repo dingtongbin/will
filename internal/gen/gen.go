@@ -102,6 +102,13 @@ func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases ma
 	g.collectExternalEnums()
 	g.collectGlobals()
 	g.planInstances()
+	// Instance documents exist only after planning, so the signature, mark,
+	// and task-ctor tables must see them: an instance of a waiting generic is
+	// waiting too, and its constructor carries the mangled name. Every pass
+	// rebuilds its tables from scratch, so the second run only adds instances.
+	g.collectSignatures()
+	g.collectSuspendable()
+	g.collectTaskCtors(nil)
 	if g.usesTaskRuntime() {
 		g.out.WriteString("%willrt_error = type { ptr, i64, ptr, ptr }\n")
 		g.out.WriteString("%willrt.task_error = type { %willrt_error, i32 }\n")

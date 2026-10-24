@@ -73,7 +73,11 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	}
 	target, hasTarget := g.recs[refField(call, "to")]
 	indirect := hasTarget && g.isFuncValue(target)
-	if hasTarget && !indirect {
+	// A generic callee lowers through its instance document: the machine shape
+	// is decided and enqueued there, with the substituted body. Deciding from
+	// the declaration would emit the declaration's own records with type
+	// parameters still in place.
+	if hasTarget && !indirect && !g.isGenericCallee(call) {
 		if g.generalMachine(target.ID) {
 			sym := g.cur.funcs[target.ID]
 			if sym == "" {
@@ -89,7 +93,9 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	}
 	sym := ""
 	if !indirect {
-		sym = g.callTargetSymbol(call)
+		// A generic call names its instance: the constructor and the mark both
+		// hang off the mangled name, never off the declaration.
+		sym = g.awaitTargetSymbol(call)
 		if sym == "" {
 			return "", g.errf(r.ID, "cannot translate node #%d: the spawned call has no function", r.ID)
 		}
@@ -264,7 +270,9 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	if hasTarget && g.isFuncValue(target) {
 		return g.emitIndirectSpawnStep(req, call, target)
 	}
-	sym := g.callTargetSymbol(call)
+	// A generic call names its instance, whose body carries the substituted
+	// result type the step stores on the task.
+	sym := g.awaitTargetSymbol(call)
 	if sym == "" {
 		return g.errf(req.node, "cannot translate node #%d: the spawned call has no function", req.node)
 	}

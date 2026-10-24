@@ -45,8 +45,11 @@ func EmitPackageModule(docs []*willc.Doc, pkg, entry, entryPkg string, aliases m
 	g.collectGlobals()
 	if ownsInstances {
 		g.planInstances()
-		// Cloned generic instances were added after the first signature pass.
+		// Cloned generic instances were added after the first passes: an
+		// instance of a waiting generic is waiting too, so the mark must see
+		// the clones before any caller is lowered.
 		g.collectSignatures()
+		g.collectSuspendable()
 		g.collectExternalEnums()
 		g.collectGlobals()
 	}
