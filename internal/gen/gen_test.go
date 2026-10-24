@@ -422,18 +422,21 @@ func TestEmitSelect(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`%willrt_arm = type { ptr, ptr, ptr, i32, i64 }`,
-		`call ptr @willrt_select_start(ptr`,
-		`call i32 @willrt_select_poll(ptr`,
-		`call void @willrt_select_finish(ptr`,
-		`call i32 @willrt_select_status()`,
+		`call i32 @willrt_chan_try_recv(ptr`,
+		`select.fast.dispatch.`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
 		}
 	}
-	if strings.Contains(text, `call i32 @willrt_select(ptr`) {
-		t.Errorf("a default select still enters the blocking runtime:\n%s", text)
+	for _, unwanted := range []string{
+		`call ptr @willrt_select_start(ptr`,
+		`call i32 @willrt_select_poll(ptr`,
+		`call void @willrt_select_set_status(i32`,
+	} {
+		if strings.Contains(text, unwanted) {
+			t.Errorf("a ready select still enters the waiter path %q:\n%s", unwanted, text)
+		}
 	}
 }
 

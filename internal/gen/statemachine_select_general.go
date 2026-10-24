@@ -17,6 +17,11 @@ func (g *generator) generalSelectStmt(st willc.Record, void bool) (bool, error) 
 	if len(arms) == 0 {
 		return false, g.errf(st.ID, "cannot translate node #%d: the select has no arms", st.ID)
 	}
+	if fast, err := g.selectFast(st, arms, void); fast {
+		return g.selectFastStmt(st, arms, void)
+	} else if err != nil {
+		return false, err
+	}
 	armType := fmt.Sprintf("[%d x %%willrt_arm]", len(arms))
 	armsPtr := g.smAlloca(armType, "select.arms")
 	ctxSlot := g.smAlloca("ptr", "select.ctx")

@@ -249,6 +249,7 @@ func (g *generator) selectFast(r willc.Record, arms []willc.Record, void bool) (
 
 func (g *generator) selectFastStmt(r willc.Record, arms []willc.Record, void bool) (bool, error) {
 	index := g.allocSlot(g.selectFastSlots, "select.idx", r.ID, "i32")
+	statusSlot := g.allocSlot(g.selectFastStatusSlots, "select.status", r.ID, "i32")
 	chanVals := make([]string, len(arms))
 	valueVals := make([]string, len(arms))
 	valueTexts := make([]string, len(arms))
@@ -335,7 +336,7 @@ func (g *generator) selectFastStmt(r willc.Record, arms []willc.Record, void boo
 		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", ready, hit, next)
 		fmt.Fprintf(g.out, "%s:\n", hit)
 		fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", i, index)
-		fmt.Fprintf(g.out, "  call void @willrt_select_set_status(i32 %s)\n", status)
+		fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", status, statusSlot)
 		fmt.Fprintf(g.out, "  br label %%%s\n", dispatch)
 		fmt.Fprintf(g.out, "%s:\n", next)
 	}
@@ -343,7 +344,7 @@ func (g *generator) selectFastStmt(r willc.Record, arms []willc.Record, void boo
 		return false, g.errf(r.ID, "cannot translate node #%d: the fast select has no default", r.ID)
 	}
 	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", defaultIndex, index)
-	g.out.WriteString("  call void @willrt_select_set_status(i32 0)\n")
+	fmt.Fprintf(g.out, "  store i32 0, ptr %s\n", statusSlot)
 	fmt.Fprintf(g.out, "  br label %%%s\n", dispatch)
 	fmt.Fprintf(g.out, "%s:\n", dispatch)
 	value := g.load("i32", index)
@@ -355,6 +356,9 @@ func (g *generator) selectFastStmt(r willc.Record, arms []willc.Record, void boo
 		cases = append(cases, fmt.Sprintf("i32 %d, label %%select.fast.arm.%d.%d", i, n, i))
 	}
 	fmt.Fprintf(g.out, "  switch i32 %s, label %%%s [ %s ]\n", value, end, strings.Join(cases, " "))
+	previousStatus := g.fastSelectStatus
+	g.fastSelectStatus = statusSlot
+	defer func() { g.fastSelectStatus = previousStatus }()
 	anyFall := false
 	for i, arm := range arms {
 		fmt.Fprintf(g.out, "select.fast.arm.%d.%d:\n", n, i)
@@ -402,8 +406,13 @@ func (g *generator) selectBind(arm willc.Record) error {
 	tagPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
 	fmt.Fprintf(g.out, "  store i32 0, ptr %s\n", tagPtr)
-	status := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call i32 @willrt_select_status()\n", status)
+	status := ""
+	if g.fastSelectStatus != "" {
+		status = g.load("i32", g.fastSelectStatus)
+	} else {
+		status = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_select_status()\n", status)
+	}
 	okStatus := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", okStatus, status)
 	g.labels++

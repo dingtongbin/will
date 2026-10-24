@@ -612,6 +612,7 @@ func (g *generator) use(d *docState) {
 	g.selectOutSlots = map[int]string{}
 	g.selectBindSlots = map[int]string{}
 	g.selectBindTypes = map[int]string{}
+	g.selectFastStatusSlots = map[int]string{}
 	g.castSlots = map[int]string{}
 	g.variadicSlots = map[int]string{}
 	g.strMethodSlots = map[int]string{}
@@ -873,9 +874,15 @@ type generator struct {
 	trimLenSlots    map[int]string
 	selectSlots     map[int]string
 	selectFastSlots map[int]string
-	selectOutSlots  map[int]string
-	selectBindSlots map[int]string
-	selectBindTypes map[int]string
+	// selectFastStatusSlots holds the arm status of a no-wait select so its
+	// bind lowering can read the value without a thread-local round trip.
+	selectFastStatusSlots map[int]string
+	// fastSelectStatus is the slot of the fast select currently emitting arm
+	// bodies; it is empty while a general select is emitted.
+	fastSelectStatus string
+	selectOutSlots   map[int]string
+	selectBindSlots  map[int]string
+	selectBindTypes  map[int]string
 	// ifaceDecls holds every interface of the module by qualified name, so a
 	// call into another package can build the vtable for its interface.
 	ifaceDecls map[string]*ifaceInfo
