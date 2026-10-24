@@ -128,7 +128,37 @@ func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		}
 	}
 	g.emitAux()
-	return []byte(g.out.String()), g.crossings, nil
+	text := g.out.String()
+	// A synthesized Result<(), Error> can mention the predeclared interface
+	// without any source field naming it, so the definition may be written
+	// after its first use. LLVM needs an identified type defined before it is
+	// used; move the definition there, and leave an already correct order
+	// alone so existing recordings stay valid.
+	const errorType = "%interface.Error = type { ptr, ptr }\n"
+	if i := strings.Index(text, "%interface.Error"); i >= 0 && !strings.HasPrefix(text[i:], errorType) {
+		text = strings.ReplaceAll(text, errorType, "")
+		// Insert after the leading type definitions and before the first
+		// global or function, where an identified type may legally sit.
+		offset := 0
+		for offset < len(text) {
+			end := strings.IndexByte(text[offset:], '\n')
+			if end < 0 {
+				break
+			}
+			line := strings.TrimSpace(text[offset : offset+end])
+			offset += end + 1
+			if line == "" || strings.HasPrefix(line, ";") {
+				continue
+			}
+			if strings.HasPrefix(line, "%") && strings.Contains(line, " = type ") {
+				continue
+			}
+			offset -= end + 1
+			break
+		}
+		text = text[:offset] + errorType + text[offset:]
+	}
+	return []byte(text), g.crossings, nil
 }
 
 // emitAux writes the module-level values the functions produced while they
