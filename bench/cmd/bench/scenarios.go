@@ -29,6 +29,7 @@ type scenario struct {
 	cFile   string
 	cExtra  []string
 	willDir string
+	rustDir string
 	cflags  []string
 	touchC  string
 	touchW  string
@@ -219,6 +220,7 @@ var scenarios = []scenario{
 		desc:    "cost of the integer checks of the language",
 		cFile:   "scenarios/checks/int/c/main.c",
 		willDir: "scenarios/checks/int/will",
+		rustDir: "scenarios/checks/int/rust",
 		note:    "the will side always checks, the C side does not",
 	},
 	{

@@ -130,7 +130,11 @@ func measureProgram(root, repo string, sc scenario, opts options, cc, ccVersion,
 	for name, s := range willMetrics {
 		rows = append(rows, metricRow(machine, willIdentity, sc, name, s, opts.runs, sc.note))
 	}
-	return rows, nil
+	rustRows, err := rustSide(root, machine, buildDir, sc, opts.runs)
+	if err != nil {
+		return nil, err
+	}
+	return append(rows, rustRows...), nil
 }
 
 // compareChecks reports the checks the two sides of a scenario do not share.
