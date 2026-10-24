@@ -16,10 +16,10 @@ func TestRunJoinReturnsTheStoredValue(t *testing.T) {
     return 1234567890123i64
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     region {
         var t: Task<i64> = spawn Work()
-        var v: i64 = t.Join()!
+        var v: i64 = await t.Join()!
         print("v=", v, "\n")
     }
     return 0
@@ -54,16 +54,16 @@ lane L2 struct L2Marker {
 lane L3 struct L3Marker {
 }
 
-func Produce(ch: chan<i32>, n: i32) {
+async func Produce(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
-        _ = ch.Send(i)
+        _ = await ch.Send(i)
     }
 }
 
-func Consume(ch: chan<i32>) -> i64 {
+async func Consume(ch: chan<i32>) -> i64 {
     var sum: i64 = 0
     for {
-        var item: Option<i32> = ch.Recv()
+        var item: Option<i32> = await ch.Recv()
         match item {
             Some(value) => {
                 sum += i64(value)
@@ -76,7 +76,7 @@ func Consume(ch: chan<i32>) -> i64 {
     return sum
 }
 
-func main() -> i32 {
+async func main() -> i32 {
     var ch: chan<i32> = new chan<i32>(64)
     var total: i64 = 0
     region {
@@ -84,10 +84,12 @@ func main() -> i32 {
         var p2: Task<()> = spawn on L1 Produce(ch, 20000)
         var c1: Task<i64> = spawn on L2 Consume(ch)
         var c2: Task<i64> = spawn on L3 Consume(ch)
-        _ = p1.Join()!
-        _ = p2.Join()!
+        _ = await p1.Join()!
+        _ = await p2.Join()!
         ch.Close()
-        total = c1.Join()! + c2.Join()!
+        var c1v: i64 = await c1.Join()!
+        var c2v: i64 = await c2.Join()!
+        total = c1v + c2v
     }
     print("total=", total, "\n")
     if total != 399980000i64 {
