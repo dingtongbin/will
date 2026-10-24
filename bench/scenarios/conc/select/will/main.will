@@ -14,7 +14,7 @@ const count: i32 = 500000
 // repetitions is the number of measured repetitions of the workload.
 const repetitions: i32 = 5
 
-func main() -> i32 {
+async func main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     var first: chan<i64> = new chan<i64>(1)
     var second: chan<i64> = new chan<i64>(1)
@@ -23,7 +23,7 @@ func main() -> i32 {
     // The warm up pays for the first touch of the pages and of the caches.
     for i in Range(0, 1000) {
         _ = i
-        _ = first.Send(1i64)
+        _ = await first.Send(1i64)
         select {
             a = first.Recv() => {
                 match a {
@@ -54,7 +54,7 @@ func main() -> i32 {
         var start: u64 = c.bench_now_ns()
         var total: i64 = 0i64
         for i in Range(0, count) {
-            _ = first.Send(i64(i))
+            _ = await first.Send(i64(i))
             select {
                 a = first.Recv() => {
                     match a {
