@@ -14,11 +14,11 @@ entry:
   %v.pure = alloca ptr
   %v.gotPure = alloca i32
   %v.join.out.76 = alloca i32
-  %v.join.err.76 = alloca %willrt_error
+  %v.join.err.76 = alloca %willrt.task_error
   %v.join.out.94 = alloca i32
-  %v.join.err.94 = alloca %willrt_error
+  %v.join.err.94 = alloca %willrt.task_error
   %v.join.out.112 = alloca i32
-  %v.join.err.112 = alloca %willrt_error
+  %v.join.err.112 = alloca %willrt.task_error
   %t1 = getelementptr {}, ptr null, i32 1
   %t2 = ptrtoint ptr %t1 to i64
   %t3 = call ptr @willrt_alloc(i64 %t2)
@@ -132,8 +132,8 @@ entry:
   %v.sm.param.8.61 = getelementptr i8, ptr %frame, i64 8
   %v.join.out.15 = getelementptr i8, ptr %frame, i64 16
   %v.join.err.15 = getelementptr i8, ptr %frame, i64 24
-  %v.sm.join.task.62 = getelementptr i8, ptr %frame, i64 56
-  %t77 = getelementptr i8, ptr %frame, i64 64
+  %v.sm.join.task.62 = getelementptr i8, ptr %frame, i64 64
+  %t77 = getelementptr i8, ptr %frame, i64 72
   %v.sm.pval.8 = load ptr, ptr %v.sm.param.8.61
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
@@ -195,8 +195,8 @@ entry:
   %v.x = getelementptr i8, ptr %frame, i64 16
   %v.join.out.26 = getelementptr i8, ptr %frame, i64 20
   %v.join.err.26 = getelementptr i8, ptr %frame, i64 24
-  %v.sm.join.task.85 = getelementptr i8, ptr %frame, i64 56
-  %t104 = getelementptr i8, ptr %frame, i64 64
+  %v.sm.join.task.85 = getelementptr i8, ptr %frame, i64 64
+  %t104 = getelementptr i8, ptr %frame, i64 72
   %v.sm.pval.18 = load ptr, ptr %v.sm.param.18.84
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
@@ -270,8 +270,8 @@ entry:
   %v.x = getelementptr i8, ptr %frame, i64 24
   %v.join.out.51 = getelementptr i8, ptr %frame, i64 28
   %v.join.err.51 = getelementptr i8, ptr %frame, i64 32
-  %v.sm.join.task.119 = getelementptr i8, ptr %frame, i64 64
-  %t143 = getelementptr i8, ptr %frame, i64 72
+  %v.sm.join.task.119 = getelementptr i8, ptr %frame, i64 72
+  %t143 = getelementptr i8, ptr %frame, i64 80
   %v.sm.pval.33 = load ptr, ptr %v.sm.param.33.111
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
@@ -354,13 +354,13 @@ panic.ok.5:
 }
 define hidden ptr @"example.com/taskresume.WorkPure.task"(ptr %arg0) {
 entry:
-  %v.sm.frame = call ptr @willrt_alloc(i64 80)
+  %v.sm.frame = call ptr @willrt_alloc(i64 96)
   %t146 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t146
   %t147 = getelementptr i8, ptr %v.sm.frame, i64 8
   store ptr %arg0, ptr %t147
   %t148 = call i32 @willrt_lane_here()
-  %t149 = call ptr @willrt_task_new(ptr @"example.com/taskresume.WorkPure.sm", ptr %v.sm.frame, i64 80, i32 %t148, i32 0)
+  %t149 = call ptr @willrt_task_new(ptr @"example.com/taskresume.WorkPure.sm", ptr %v.sm.frame, i64 96, i32 %t148, i32 0)
   call void @willrt_task_own_frame(ptr %t149)
   call void @willrt_task_run(ptr %t149)
   ret ptr %t149

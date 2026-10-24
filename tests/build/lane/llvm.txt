@@ -11,7 +11,7 @@ define i32 @"example.com/lane.will$main"() {
 entry:
   %v.t = alloca ptr
   %v.join.out.23 = alloca i64
-  %v.join.err.23 = alloca %willrt_error
+  %v.join.err.23 = alloca %willrt.task_error
   %t3 = getelementptr {}, ptr null, i32 1
   %t4 = ptrtoint ptr %t3 to i64
   %t5 = call ptr @willrt_alloc(i64 %t4)

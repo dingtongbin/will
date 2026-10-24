@@ -88,6 +88,10 @@ struct willrt_task {
     willrt_poll_request poll_node;
     willrt_sleep_op sleep_node;
     willrt_sync_wait sync_node;
+    /* A file operation is heap-owned because the kernel keeps writing into its
+       OVERLAPPED after a canceled task unwinds; the task only holds the
+       handle it must abandon. */
+    void* io_node;
 };
 
 struct willrt_region {
@@ -144,6 +148,7 @@ extern void willrt_poll_request_abandon(willrt_poll_request* req)
     __attribute__((weak));
 extern void willrt_sync_wait_abandon(willrt_sync_wait* wait)
     __attribute__((weak));
+extern void willrt_io_abandon(void* op) __attribute__((weak));
 
 static void willrt_lane_init(void);
 static void willrt_task_check_dead(void);
@@ -402,6 +407,10 @@ static void willrt_task_finish(struct willrt_task* task) {
     if (willrt_sync_wait_abandon != NULL) {
         willrt_sync_wait_abandon(&task->sync_node);
     }
+    if (willrt_io_abandon != NULL) {
+        willrt_io_abandon(task->io_node);
+        task->io_node = NULL;
+    }
     willrt_os_mutex_lock(&task->lock);
     task->finished = 1;
     walk = task->join_head;
@@ -655,6 +664,18 @@ willrt_poll_request* willrt_task_poll_node(void) {
 
 willrt_sync_wait* willrt_task_sync_node(void) {
     return willrt_task_self == NULL ? NULL : &willrt_task_self->sync_node;
+}
+
+void willrt_task_set_io(void* op) {
+    if (willrt_task_self != NULL) {
+        willrt_task_self->io_node = op;
+    }
+}
+
+void willrt_task_clear_io(void* op) {
+    if (willrt_task_self != NULL && willrt_task_self->io_node == op) {
+        willrt_task_self->io_node = NULL;
+    }
 }
 
 /* willrt_task_wake_batch is the poller's delivery path: one pass of ready

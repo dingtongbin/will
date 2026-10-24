@@ -53,6 +53,10 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 	}
 	fmt.Fprintf(g.out, "define internal i32 @%s(ptr %%frame) {\nentry:\n",
 		llvmSymbol(info.symbol))
+	// The constructor is an ordinary function and flushes its own entry
+	// marker, so the step must request the late-alloca path again.
+	g.lateAllowed = true
+	g.lateAllocas = nil
 	if err := g.allocas(info.fn.ID); err != nil {
 		return err
 	}

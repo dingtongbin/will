@@ -2276,7 +2276,7 @@ func (g *generator) allocas(fn int) error {
 			g.slots[r.ID] = name
 			g.slotTypes[r.ID] = "i32"
 			g.bindLoopType(r.ID, bindNames(r)[0], "i32")
-			fmt.Fprintf(g.out, "  %s = alloca i32\n", name)
+			g.entryAlloca(fmt.Sprintf("  %s = alloca i32", name))
 			continue
 		}
 		// A fixed-array loop keeps its index in an i64 slot; the element
@@ -2305,12 +2305,12 @@ func (g *generator) allocas(fn int) error {
 			g.loopBinds[r.ID][hiddenIndex] = idx
 			g.bindLoopType(r.ID, idxName, "usize")
 			g.loopBinds[r.ID][idxName] = idx
-			fmt.Fprintf(g.out, "  %s = alloca i64\n", idx)
+			g.entryAlloca(fmt.Sprintf("  %s = alloca i64", idx))
 			elemName := names[len(names)-1]
 			elemSlot := g.newSlot(elemName)
 			g.loopBinds[r.ID][elemName] = elemSlot
 			g.bindLoopType(r.ID, elemName, "u32")
-			fmt.Fprintf(g.out, "  %s = alloca i32\n", elemSlot)
+			g.entryAlloca(fmt.Sprintf("  %s = alloca i32", elemSlot))
 			continue
 		}
 		n, elem, ok := arrayTypeText(iterText)
@@ -2343,7 +2343,7 @@ func (g *generator) allocas(fn int) error {
 		g.loopBinds[r.ID][hiddenIndex] = idx
 		g.bindLoopType(r.ID, idxName, "usize")
 		g.loopBinds[r.ID][idxName] = idx
-		fmt.Fprintf(g.out, "  %s = alloca i64\n", idx)
+		g.entryAlloca(fmt.Sprintf("  %s = alloca i64", idx))
 		elemName := names[len(names)-1]
 		g.loopTypes[r.ID][elemName] = elem
 	}
@@ -3343,6 +3343,18 @@ func (g *generator) allocSlot(slots map[int]string, prefix string, id int, llvm 
 		g.out.WriteString(line + "\n")
 	}
 	return slot
+}
+
+// entryAlloca emits one slot in the entry block. A slot discovered while the
+// body is lowered still belongs before the entry terminator, which in a state
+// machine is the dispatch switch; the marker holds that position until the
+// function ends.
+func (g *generator) entryAlloca(line string) {
+	if g.lateAllowed {
+		g.lateAllocas = append(g.lateAllocas, line)
+		return
+	}
+	g.out.WriteString(line + "\n")
 }
 
 // flushLateAllocas replaces the entry marker with the slots requested while

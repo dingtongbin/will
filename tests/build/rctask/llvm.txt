@@ -16,7 +16,7 @@ entry:
   %v.t = alloca ptr
   %v.got = alloca i64
   %v.join.out.26 = alloca i64
-  %v.join.err.26 = alloca %willrt_error
+  %v.join.err.26 = alloca %willrt.task_error
   %t5 = getelementptr {}, ptr null, i32 1
   %t6 = ptrtoint ptr %t5 to i64
   %t7 = call ptr @willrt_alloc(i64 %t6)

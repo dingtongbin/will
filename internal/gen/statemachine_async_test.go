@@ -140,8 +140,10 @@ func TestAsyncFileCallBecomesStateMachine(t *testing.T) {
 	for _, want := range []string{
 		`define i32 @"example.com/app.Load.sm"(ptr %frame) {`,
 		`call ptr @willrt_fs_async_read_file_start(ptr %`,
-		`call i32 @willrt_blocking_poll(ptr %`,
-		`call i32 @willrt_blocking_finish(ptr %`,
+		`call i32 @willrt_io_poll(ptr %`,
+		`call i32 @willrt_io_finish(ptr %`,
+		`call i64 @willrt_io_deadline(ptr %`,
+		`call void @willrt_task_mark_io()`,
 		`call void @willrt_task_mark_wait()`,
 	} {
 		if !strings.Contains(text, want) {

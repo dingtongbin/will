@@ -4,7 +4,7 @@ define i32 @"example.com/cblock.will$main"() {
 entry:
   %v.t = alloca ptr
   %v.join.out.16 = alloca i32
-  %v.join.err.16 = alloca %willrt_error
+  %v.join.err.16 = alloca %willrt.task_error
   %t1 = getelementptr { i32, i32, i32 }, ptr null, i32 1
   %t2 = ptrtoint ptr %t1 to i64
   %t3 = call ptr @willrt_alloc(i64 %t2)

@@ -1451,9 +1451,9 @@ entry:
   %v.str.60 = alloca { ptr, i64 }
   %v.str.61 = alloca { ptr, i64 }
   %v.await.out.17 = alloca { i32, [4 x i8], %"struct.std/os/exec.Output" }
-  %v.await.err.17 = alloca %willrt_error
+  %v.await.err.17 = alloca %willrt.task_error
   %v.await.out.66 = alloca { i32, [4 x i8], %interface.Error }
-  %v.await.err.66 = alloca %willrt_error
+  %v.await.err.66 = alloca %willrt.task_error
   %t1 = getelementptr inbounds { ptr, i64 }, ptr %v.str.10, i32 0, i32 0
   store ptr @.bytes.5, ptr %t1
   %t2 = getelementptr inbounds { ptr, i64 }, ptr %v.str.10, i32 0, i32 1
@@ -1620,8 +1620,8 @@ entry:
   call void @willrt_shutdown()
   ret i32 %r
 }
-declare i32 @willrt_exec_run_async(ptr, ptr, ptr, ptr, ptr)
-declare i32 @willrt_exec_output_async(ptr, ptr, ptr, ptr, ptr, ptr, ptr)
+declare i32 @willrt_exec_run_async(i32, i32, i32, i32, i32)
+declare i32 @willrt_exec_output_async(i32, i32, i32, i32, i32, i32, i32)
 declare i32 @willrt_blocking_poll(ptr)
 declare i32 @willrt_blocking_finish(ptr)
 declare ptr @willrt_exec_run_async_start(ptr, ptr, ptr, ptr, ptr)

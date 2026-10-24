@@ -487,6 +487,38 @@ void willrt_sched_wake_io(void);
 /* Wake every parked task. Cancellation uses this because a credential can be
    observed by a waiter parked on anything. */
 void willrt_sched_wake_all(void);
+
+/* -------------------------------------------------------------------------
+   Async file IO. An operation is one whole-file read, overwrite, or append.
+   Start copies the path and the write bytes, submits the OS call, and returns
+   a handle the generated step polls. The buffer of a successful read becomes
+   the data of the caller's Array<u8>; every other buffer belongs to the
+   operation and is released by finish. poll never blocks. A task that is
+   canceled or past its scoped deadline leaves the kernel completion to retire
+   the operation, so the frame can unwind without waiting for the disk.
+   ------------------------------------------------------------------------- */
+typedef struct willrt_io_op willrt_io_op;
+willrt_io_op* willrt_io_read_file(const void* path, int64_t path_len,
+                                  void* out_array);
+willrt_io_op* willrt_io_write_file(const void* path, int64_t path_len,
+                                   const void* data, int64_t len,
+                                   int32_t append);
+int32_t willrt_io_poll(willrt_io_op* op);
+int32_t willrt_io_finish(willrt_io_op* op);
+int64_t willrt_io_deadline(willrt_io_op* op);
+/* willrt_io_wait runs the blocking form for a caller outside the task engine
+   and releases the operation. */
+int32_t willrt_io_wait(willrt_io_op* op);
+/* willrt_io_abandon detaches the task from an operation that is still in
+   flight; the completion thread then owns the operation and frees it. */
+void willrt_io_abandon(void* op);
+void willrt_io_shutdown(void);
+/* The generated step records the one operation of the current task so a task
+   that finishes while the disk is busy abandons it instead of leaving the
+   completion to wake a dead frame. */
+void willrt_task_set_io(void* op);
+void willrt_task_clear_io(void* op);
+
 /* willrt_task_enter_deadline starts one scoped deadline and returns the
    previous absolute deadline. willrt_task_exit_deadline restores it. A zero
    duration means the block has no deadline. */

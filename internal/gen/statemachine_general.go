@@ -130,7 +130,9 @@ func (g *generator) emitGeneralStep(fnID int) error {
 	g.pendingReleases = nil
 	g.pendingTryReleases = nil
 	g.lateAllocas = nil
-	g.lateAllowed = true
+	// The general step relocates every alloca it lowers into the frame, so a
+	// slot must stay in the body text instead of waiting for an entry marker.
+	g.lateAllowed = false
 	g.smPlaces = map[int]smPlace{}
 	g.liveValues = map[int]string{}
 	g.resultType = g.resultLLVM(fieldText(fn, "type"))
@@ -308,7 +310,7 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 }
 
 // generalAlloca matches one alloca line emitted by the existing lowerer.
-var generalAlloca = regexp.MustCompile(`^\s*(%[A-Za-z0-9_.]+) = alloca (.+?)(?:, align \d+)?\s*$`)
+var generalAlloca = regexp.MustCompile(`^\s*(%[A-Za-z0-9_.$]+) = alloca (.+?)(?:, align \d+)?\s*$`)
 
 // relocateGeneralAllocas moves every alloca in one step into the task frame.
 // The frame is raw bytes; a GEP in the entry block replaces each alloca, so

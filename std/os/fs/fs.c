@@ -19,6 +19,16 @@
 void* willrt_alloc(size_t size);
 void willrt_free(void* ptr);
 
+/* The whole-file async forms move to the completion engine; the remaining
+   async forms still use the blocking pool until their operation has a
+   completion path. */
+typedef struct willrt_io_op willrt_io_op;
+willrt_io_op* willrt_io_read_file(const void* path, int64_t path_len,
+                                  void* out_array);
+willrt_io_op* willrt_io_write_file(const void* path, int64_t path_len,
+                                   const void* data, int64_t len,
+                                   int32_t append);
+
 typedef struct willrt_blocking_op willrt_blocking_op;
 willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out);
 willrt_blocking_op* willrt_blocking_submit_copy(void* fn, const void* arg,
@@ -486,10 +496,11 @@ static int32_t fs_async_temp_dir_worker(void* raw, void* ignored) {
     return willrt_fs_temp_dir(arg->dir, arg->pattern, arg->out);
 }
 
-/* The plain form is the machine-declined fallback: a call the async lowering
-   does not cover yet (a loop, a branch) lowers to it and blocks the calling
-   thread. The _start forms are what generated state machines call; they park
-   the task and the pool wakes its owner directly. */
+/* The async forms run on a worker when the generated state machine cannot
+   lower the call (a loop, a branch) and would otherwise block the lane. The
+   whole-file readers and writers use the completion engine directly; the other
+   _start forms still park on the pool until their operation gains a completion
+   path. */
 static int32_t fs_async_wait(void* fn, void* arg) {
     willrt_blocking_op* op = willrt_blocking_submit(fn, arg, NULL);
     if (op == NULL) {
@@ -606,25 +617,25 @@ int32_t willrt_fs_async_temp_dir(const void* dir, const void* pattern,
     return fs_async_wait(fs_async_temp_dir_worker, &arg);
 }
 
-willrt_blocking_op* willrt_fs_async_read_file_start(const void* path,
-                                                    void* out) {
-    fs_async_read_file arg = {(const fs_str*)path, (fs_array*)out};
-    return willrt_blocking_submit_copy(fs_async_read_file_worker, &arg,
-                                       sizeof(arg), NULL);
+willrt_io_op* willrt_fs_async_read_file_start(const void* path, void* out) {
+    const fs_str* name = (const fs_str*)path;
+    return willrt_io_read_file(name->data, name->len, out);
 }
 
-willrt_blocking_op* willrt_fs_async_write_file_start(const void* path,
-                                                     const void* data) {
-    fs_async_write_file arg = {(const fs_str*)path, (const fs_view*)data};
-    return willrt_blocking_submit_copy(fs_async_write_file_worker, &arg,
-                                       sizeof(arg), NULL);
+willrt_io_op* willrt_fs_async_write_file_start(const void* path,
+                                               const void* data) {
+    const fs_str* name = (const fs_str*)path;
+    const fs_view* view = (const fs_view*)data;
+    return willrt_io_write_file(name->data, name->len, view->data, view->len,
+                                0);
 }
 
-willrt_blocking_op* willrt_fs_async_append_start(const void* path,
-                                                 const void* data) {
-    fs_async_write_file arg = {(const fs_str*)path, (const fs_view*)data};
-    return willrt_blocking_submit_copy(fs_async_append_worker, &arg,
-                                       sizeof(arg), NULL);
+willrt_io_op* willrt_fs_async_append_start(const void* path,
+                                           const void* data) {
+    const fs_str* name = (const fs_str*)path;
+    const fs_view* view = (const fs_view*)data;
+    return willrt_io_write_file(name->data, name->len, view->data, view->len,
+                                1);
 }
 
 willrt_blocking_op* willrt_fs_async_open_start(const void* path,

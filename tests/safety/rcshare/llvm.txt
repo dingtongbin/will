@@ -4174,11 +4174,11 @@ entry:
   %v.taken = alloca { i32, [4 x i8], i64 }
   %v.agg.51 = alloca %"struct.example.com/safety/rcshare.Box"
   %v.join.out.64 = alloca i64
-  %v.join.err.64 = alloca %willrt_error
+  %v.join.err.64 = alloca %willrt.task_error
   %v.join.out.83 = alloca i64
-  %v.join.err.83 = alloca %willrt_error
+  %v.join.err.83 = alloca %willrt.task_error
   %v.join.out.107 = alloca i64
-  %v.join.err.107 = alloca %willrt_error
+  %v.join.err.107 = alloca %willrt.task_error
   %v.send.124 = alloca i64
   %v.recv.out.144 = alloca i64
   %v.recv.144 = alloca { i32, [4 x i8], i64 }
@@ -4628,6 +4628,7 @@ entry:
   ret i32 %t218
 }
 @will.error.table.4 = private constant [2 x ptr] [ptr @will.error.message.4, ptr @will.error.status.4]
+@will.error.value.4 = private constant %interface.Error { ptr @will.error.data.4, ptr @will.error.table.4 }
 declare i64 @willrt_now_ns()
 declare i32 @willrt_task_sleep_async(i32)
 declare i32 @willrt_task_sleep_poll(ptr)

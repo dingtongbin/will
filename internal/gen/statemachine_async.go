@@ -67,6 +67,11 @@ var asyncOps = map[string][3]string{
 	"willrt_sync_sema_acquire_async": {"willrt_sync_wait_poll", "willrt_sync_wait_finish", "willrt_sync_wait_deadline"},
 	"willrt_sync_count_wait_async":   {"willrt_sync_wait_poll", "willrt_sync_wait_finish", "willrt_sync_wait_deadline"},
 	"willrt_sync_gate_wait_async":    {"willrt_sync_wait_poll", "willrt_sync_wait_finish", "willrt_sync_wait_deadline"},
+	// The whole-file operations submit to the completion engine and park
+	// until the disk, the scope deadline, or cancellation decides.
+	"willrt_fs_async_read_file":  {"willrt_io_poll", "willrt_io_finish", "willrt_io_deadline"},
+	"willrt_fs_async_write_file": {"willrt_io_poll", "willrt_io_finish", "willrt_io_deadline"},
+	"willrt_fs_async_append":     {"willrt_io_poll", "willrt_io_finish", "willrt_io_deadline"},
 }
 
 func callTargetSymbolFor(d *docState, call willc.Record) string {

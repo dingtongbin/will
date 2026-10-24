@@ -4163,11 +4163,11 @@ entry:
   %v.str.51 = alloca { ptr, i64 }
   %v.str.55 = alloca { ptr, i64 }
   %v.await.out.22 = alloca i64
-  %v.await.err.22 = alloca %willrt_error
+  %v.await.err.22 = alloca %willrt.task_error
   %v.join.out.42 = alloca i64
-  %v.join.err.42 = alloca %willrt_error
+  %v.join.err.42 = alloca %willrt.task_error
   %v.await.out.50 = alloca { ptr, i64 }
-  %v.await.err.50 = alloca %willrt_error
+  %v.await.err.50 = alloca %willrt.task_error
   %t1 = call ptr @"example.com/genericasync.Slow$i64.task"(i64 9)
   %t2 = call i32 @willrt_join(ptr %t1, ptr %v.await.out.22, ptr %v.await.err.22)
   %t3 = icmp eq i32 %t2, 0

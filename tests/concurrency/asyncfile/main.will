@@ -1,0 +1,100 @@
+import "std/os/fs"
+
+// Checksum reads the whole file through the completion engine and sums every
+// byte, so a short or reordered read cannot pass.
+func Checksum(path: str) -> Result<i64, Error> {
+    var bytes: Array<u8> = fs.AsyncReadFile(path)?
+    var sum: i64 = 0
+    for b in bytes {
+        sum += i64(b)
+    }
+    return Ok(sum)
+}
+
+// AppendTail proves that a second write task can extend the file that two
+// readers just finished with.
+func AppendTail(path: str) -> Result<(), Error> {
+    var text: str = "end"
+    return fs.AsyncAppend(path, text[Range(0, 3)])
+}
+
+func main() -> i32 {
+    var path: str = "will-concurrency-asyncfile.tmp"
+    var n: usize = 262144
+    var data: Array<u8> = new Array<u8>(n)
+    for i in Range(0, 262144) {
+        data.Push(u8(i % 251))
+    }
+    var expected: i64 = 0
+    for b in data {
+        expected += i64(b)
+    }
+    var written: Result<(), Error> = fs.WriteFile(path, data[Range(0, n)])
+    match written {
+        Err(_) => {
+            return 1
+        }
+        _ => {}
+    }
+    var first: i64 = 0
+    var second: i64 = 0
+    region {
+        var t1: Task<Result<i64, Error>> = spawn Checksum(path)
+        var t2: Task<Result<i64, Error>> = spawn Checksum(path)
+        var r1: Result<i64, Error> = t1.Join()!
+        var r2: Result<i64, Error> = t2.Join()!
+        match r1 {
+            Ok(v) => {
+                first = v
+            }
+            Err(_) => {
+                _ = fs.Remove(path)
+                return 2
+            }
+        }
+        match r2 {
+            Ok(v) => {
+                second = v
+            }
+            Err(_) => {
+                _ = fs.Remove(path)
+                return 3
+            }
+        }
+    }
+    if first != expected || second != expected {
+        _ = fs.Remove(path)
+        return 4
+    }
+    var extended: Result<(), Error> = Ok(())
+    region {
+        var t: Task<Result<(), Error>> = spawn AppendTail(path)
+        extended = t.Join()!
+    }
+    match extended {
+        Err(_) => {
+            _ = fs.Remove(path)
+            return 5
+        }
+        _ => {}
+    }
+    var back: Result<Array<u8>, Error> = fs.ReadFile(path)
+    match back {
+        Ok(bytes) => {
+            if bytes.Len() != n + 3 {
+                _ = fs.Remove(path)
+                return 6
+            }
+            if bytes.Get(n) != u8(101) || bytes.Get(n + 1) != u8(110) || bytes.Get(n + 2) != u8(100) {
+                _ = fs.Remove(path)
+                return 7
+            }
+        }
+        Err(_) => {
+            _ = fs.Remove(path)
+            return 8
+        }
+    }
+    _ = fs.Remove(path)
+    return 0
+}
