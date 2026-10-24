@@ -40,6 +40,34 @@ func TestAsyncCallerWaitsOnAChildTask(t *testing.T) {
 	}
 }
 
+// TestSyncWaitUsesTheTaskNode checks that a sync acquisition in a task parks
+// on the embedded sync node. The default poll would treat the returned node as
+// a blocking-pool job.
+func TestSyncWaitUsesTheTaskNode(t *testing.T) {
+	src := "import c \"sync.h\" {\n" +
+		"    fast willrt_sync_sema_acquire_async\n" +
+		"}\n" +
+		"func Take(s: raw) -> i32 {\n" +
+		"    var status: i32 = c.willrt_sync_sema_acquire_async(s)\n" +
+		"    return status\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		`call ptr @willrt_sync_sema_acquire_async_start(ptr`,
+		`call i32 @willrt_sync_wait_poll(ptr`,
+		`call i32 @willrt_sync_wait_finish(ptr`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestAsyncSleepUsesTheTimerDeadline(t *testing.T) {
 	src := "import c \"clock.h\" {\n" +
 		"    fast willrt_task_sleep_async\n" +

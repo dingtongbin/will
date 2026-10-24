@@ -61,6 +61,12 @@ func asyncStartName(name string) string {
 var asyncOps = map[string][3]string{
 	"willrt_task_sleep_async": {"willrt_task_sleep_poll", "willrt_task_sleep_finish", "willrt_task_sleep_deadline"},
 	"willrt_poll_wait_async":  {"willrt_poll_wait_async_poll", "willrt_poll_wait_async_finish", "willrt_poll_wait_async_deadline"},
+	// A sync wait registers the task's embedded node and parks until the
+	// primitive grants it, the caller's deadline passes, or it is canceled.
+	"willrt_sync_lock_async":         {"willrt_sync_wait_poll", "willrt_sync_wait_finish", "willrt_sync_wait_deadline"},
+	"willrt_sync_sema_acquire_async": {"willrt_sync_wait_poll", "willrt_sync_wait_finish", "willrt_sync_wait_deadline"},
+	"willrt_sync_count_wait_async":   {"willrt_sync_wait_poll", "willrt_sync_wait_finish", "willrt_sync_wait_deadline"},
+	"willrt_sync_gate_wait_async":    {"willrt_sync_wait_poll", "willrt_sync_wait_finish", "willrt_sync_wait_deadline"},
 }
 
 func callTargetSymbolFor(d *docState, call willc.Record) string {
