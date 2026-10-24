@@ -222,11 +222,11 @@ var scenarios = []scenario{
 		note:    "the will side always checks, the C side does not",
 	},
 	{
-		name:  "checks/clone",
-		kind:  kindProgram,
-		desc:  "cost of copying a value that has to be copied",
-		cFile: "scenarios/checks/clone/c/main.c",
-		note:  "the will side waits for the clone decision of the memory model",
+		name:    "checks/clone",
+		kind:    kindProgram,
+		desc:    "cost of copying a value that has to be copied",
+		cFile:   "scenarios/checks/clone/c/main.c",
+		willDir: "scenarios/checks/clone/will",
 	},
 }
 

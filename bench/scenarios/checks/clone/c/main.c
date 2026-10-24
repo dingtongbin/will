@@ -50,6 +50,7 @@ int main(void) {
     for (int32_t r = 0; r < repetitions; r++) {
         uint64_t start = bench_now_ns();
         for (int32_t i = 0; i < workload; i++) {
+            value.words[0] = i;
             checksum += copy_by_value(value);
         }
         uint64_t stop = bench_now_ns();
@@ -62,6 +63,7 @@ int main(void) {
     for (int32_t r = 0; r < repetitions; r++) {
         uint64_t start = bench_now_ns();
         for (int32_t i = 0; i < workload; i++) {
+            value.words[0] = i;
             pointerChecksum += copy_by_pointer(&value);
         }
         uint64_t stop = bench_now_ns();
