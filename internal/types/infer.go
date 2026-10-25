@@ -639,6 +639,14 @@ func (c *checker) badArity(pos source.Pos, callee string) {
 }
 
 func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
+	t := c.inferExprInner(s, e)
+	if e != nil && c.exprTypes != nil {
+		c.exprTypes[e] = t
+	}
+	return t
+}
+
+func (c *checker) inferExprInner(s *inferScope, e ast.Expr) *Type {
 	switch x := e.(type) {
 	case nil:
 		return nil
@@ -733,6 +741,7 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 		s.allowAsyncCall = true
 		t := c.inferExpr(s, x.Call)
 		s.allowAsyncCall = previous
+		c.checkSpawnLane(x)
 		return c.in.named("Task", []*Type{t})
 	case *ast.DeadlineExpr:
 		c.inferExpr(s, x.Duration)

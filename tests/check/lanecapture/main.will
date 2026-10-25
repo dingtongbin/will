@@ -1,0 +1,16 @@
+lane Ui struct Job {
+    id: i32
+}
+
+func Work(job: Job) -> i32 {
+    return job.id
+}
+
+func main() -> i32 {
+    var job: Job = Job { id: 7 }
+    region {
+        var task: Task<i32> = spawn Work(job)
+        _ = task
+    }
+    return 0
+}

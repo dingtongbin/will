@@ -119,6 +119,10 @@ type envBuilder struct {
 func (b *envBuilder) decl(d ast.Decl) {
 	c, e := b.c, b.e
 	switch decl := d.(type) {
+	case *ast.LaneDecl:
+		if decl.Decl != nil {
+			b.decl(decl.Decl)
+		}
 	case *ast.StructDecl:
 		tp := typeParamSet(decl.TypeParams)
 		t := c.in.named(decl.Name, nil)

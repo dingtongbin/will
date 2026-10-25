@@ -282,6 +282,14 @@ func (r *resolver) addTopLevel() {
 			r.defineTop(&Symbol{Name: decl.Name, Kind: InterfaceKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
 		case *ast.LaneDecl:
 			r.defineTop(&Symbol{Name: decl.Name, Kind: LaneKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
+			switch inner := decl.Decl.(type) {
+			case *ast.StructDecl:
+				r.defineTop(&Symbol{Name: inner.Name, Kind: StructKind, Pos: inner.NamePos, Node: inner, Exported: isExported(inner.Name)})
+			case *ast.EnumDecl:
+				r.defineTop(&Symbol{Name: inner.Name, Kind: EnumKind, Pos: inner.NamePos, Node: inner, Exported: isExported(inner.Name)})
+			case *ast.InterfaceDecl:
+				r.defineTop(&Symbol{Name: inner.Name, Kind: InterfaceKind, Pos: inner.NamePos, Node: inner, Exported: isExported(inner.Name)})
+			}
 		}
 	}
 }
