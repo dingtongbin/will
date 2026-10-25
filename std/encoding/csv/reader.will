@@ -1,0 +1,220 @@
+// Reader decodes CSV records from a byte stream. The separator is one byte the
+// caller supplies, so a tab-separated file needs no second type. Fields are
+// copied into str values, which lets a row outlive the read buffer.
+import "std/errors"
+
+struct Reader {
+    src: byteReader
+    sep: u8
+    buf: Array<u8>
+    pos: usize
+    eof: bool
+}
+
+// init stores the source and separator. The first decode call performs the
+// first read, so construction itself does not touch the stream.
+func (mut r: Reader) init(src: byteReader, sep: u8) {
+    r.src = src
+    r.sep = sep
+    r.buf = new Array<u8>(0)
+    r.pos = 0usize
+    r.eof = false
+}
+
+// NewReader builds a decoder without new. The compiler cannot yet lower an
+// interface argument through a constructor call, so this spelling is the one
+// that runs today; new Reader(src, sep) stays the documented form.
+func NewReader(src: byteReader, sep: u8) -> Reader {
+    return Reader {
+        src: src,
+        sep: sep,
+        buf: new Array<u8>(0),
+        pos: 0usize,
+        eof: false,
+    }
+}
+
+// AsyncDecode appends the records that are available and returns how many it
+// appended. It parses every complete record the last read filled, and 0 means
+// the stream has no more records. The name is the documented IO spelling; the
+// body is synchronous because the wrapped byteReader is synchronous and the
+// current state-machine lowering rejects an interface receiver in an async
+// body.
+func (mut r: Reader) AsyncDecode(mut rows: Array<Row>) -> Result<usize, Error> {
+    var added: usize = 0usize
+    for {
+        var record: Option<Array<str>> = r.readRecord()?
+        match record {
+            Some(fields) => {
+                rows.Push(Row { fields: fields })
+                added += 1usize
+                if r.pos >= r.buf.Len() {
+                    break
+                }
+            }
+            None => {
+                break
+            }
+        }
+    }
+    return Ok(added)
+}
+
+// readRecord decodes one record. None means the stream ended before a field
+// started; a record with one empty field is Some, not None.
+func (mut r: Reader) readRecord() -> Result<Option<Array<str>>, Error> {
+    var first: i32 = r.peekByte()?
+    if first < 0 {
+        return Ok(None)
+    }
+    var fields: Array<str> = new Array<str>(0)
+    for {
+        var data: Array<u8> = new Array<u8>(0)
+        var end: i32 = 0
+        if first == i32(quoteByte) {
+            end = r.readQuoted(data)?
+        } else {
+            end = r.readUnquoted(data)?
+        }
+        if !validUtf8(data[Range(0, data.Len())]) {
+            return Err(errors.Invalid)
+        }
+        fields.Push(str(data))
+        if end == 0 {
+            first = r.peekByte()?
+            continue
+        }
+        return Ok(Some(fields))
+    }
+}
+
+// readUnquoted copies one field up to a separator, a line ending, or the end
+// of the stream. A quote inside an unquoted field is rejected because RFC 4180
+// requires such a field to be quoted.
+func (mut r: Reader) readUnquoted(mut f: Array<u8>) -> Result<i32, Error> {
+    for {
+        var c: i32 = r.peekByte()?
+        if c < 0 {
+            return Ok(2)
+        }
+        var b: u8 = u8(c)
+        if b == r.sep {
+            r.pos += 1usize
+            return Ok(0)
+        }
+        if b == lineFeed {
+            r.pos += 1usize
+            return Ok(1)
+        }
+        if b == carriageReturn {
+            r.pos += 1usize
+            if r.peekByte()? == i32(lineFeed) {
+                r.pos += 1usize
+                return Ok(1)
+            }
+            return Err(errors.Invalid)
+        }
+        if b == quoteByte {
+            return Err(errors.Invalid)
+        }
+        f.Push(b)
+        r.pos += 1usize
+    }
+}
+
+// readQuoted copies one quoted field. A doubled quote is one quote byte; the
+// closing quote must be followed by a separator, a line ending, or the end of
+// the stream.
+func (mut r: Reader) readQuoted(mut f: Array<u8>) -> Result<i32, Error> {
+    r.pos += 1usize
+    for {
+        var c: i32 = r.takeByte()?
+        if c < 0 {
+            return Err(errors.Invalid)
+        }
+        var b: u8 = u8(c)
+        if b != quoteByte {
+            f.Push(b)
+            continue
+        }
+        var next: i32 = r.peekByte()?
+        if next == i32(quoteByte) {
+            f.Push(quoteByte)
+            r.pos += 1usize
+            continue
+        }
+        return r.endField(next)
+    }
+}
+
+// endField consumes the byte after a closing quote and reports how the field
+// ended: 0 for a separator, 1 for a line ending, 2 for the end of the stream.
+func (mut r: Reader) endField(next: i32) -> Result<i32, Error> {
+    if next < 0 {
+        return Ok(2)
+    }
+    var b: u8 = u8(next)
+    if b == r.sep {
+        r.pos += 1usize
+        return Ok(0)
+    }
+    if b == lineFeed {
+        r.pos += 1usize
+        return Ok(1)
+    }
+    if b == carriageReturn {
+        r.pos += 1usize
+        if r.peekByte()? == i32(lineFeed) {
+            r.pos += 1usize
+            return Ok(1)
+        }
+    }
+    return Err(errors.Invalid)
+}
+
+// peekByte returns the next byte without consuming it, or -1 at the end of the
+// stream. A consumed buffer is dropped before the next read so the pending
+// bytes never grow across calls.
+func (mut r: Reader) peekByte() -> Result<i32, Error> {
+    if r.pos >= r.buf.Len() {
+        r.buf.Clear()
+        r.pos = 0usize
+        var more: bool = r.fill()?
+        if !more {
+            return Ok(-1)
+        }
+    }
+    return Ok(i32(r.buf.Get(r.pos)))
+}
+
+// takeByte consumes and returns the next byte, or -1 at the end of the stream.
+func (mut r: Reader) takeByte() -> Result<i32, Error> {
+    var c: i32 = r.peekByte()?
+    if c >= 0 {
+        r.pos += 1usize
+    }
+    return Ok(c)
+}
+
+// fill reads one chunk and appends it to the pending bytes. False means the
+// stream ended; the flag keeps later calls from reading it again.
+func (mut r: Reader) fill() -> Result<bool, Error> {
+    if r.eof {
+        return Ok(false)
+    }
+    var chunk: Array<u8> = new Array<u8>(8192)
+    var n: usize = r.src.Read(chunk)?
+    if n == 0usize {
+        r.eof = true
+        return Ok(false)
+    }
+    var i: usize = 0usize
+    for {
+        if i >= n {
+            break
+        }
+        r.buf.Push(chunk.Get(i))
+        i += 1usize
+    }
+    return Ok(true)
+}

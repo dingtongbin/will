@@ -1,0 +1,4 @@
+// The CSV syntax bytes shared by the reader and the writer.
+const quoteByte: u8 = 34
+const lineFeed: u8 = 10
+const carriageReturn: u8 = 13

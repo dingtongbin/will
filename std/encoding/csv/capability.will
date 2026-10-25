@@ -1,0 +1,11 @@
+// The byte-stream capabilities the decoder and encoder accept. They mirror
+// std/io.Reader and std/io.Writer structurally, so a concrete file, buffer, or
+// test source satisfies them without an adapter.
+interface byteReader {
+    func Read(mut buf: Array<u8>) -> Result<usize, Error>
+}
+
+interface byteWriter {
+    func Write(buf: []u8) -> Result<(), Error>
+    func Sync() -> Result<(), Error>
+}

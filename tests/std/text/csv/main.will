@@ -1,0 +1,345 @@
+import "std/encoding/csv"
+
+// Source hands out at most chunk bytes per read, so the decoder must keep a
+// partial record across reads.
+struct Source {
+    data: Array<u8>
+    pos: usize
+    chunk: usize
+}
+
+func (mut s: Source) Read(mut buf: Array<u8>) -> Result<usize, Error> {
+    var n: usize = 0usize
+    for {
+        if s.pos >= s.data.Len() || n >= s.chunk {
+            break
+        }
+        buf.Push(s.data.Get(s.pos))
+        s.pos += 1usize
+        n += 1usize
+    }
+    return Ok(n)
+}
+
+// Buffer carries the bytes the sink collects. The rc handle below shares this
+// value so the test can read the output after the interface takes its boxed
+// copy. Push is a declared method because a predeclared Array method is not
+// reached through an rc handle.
+struct Buffer {
+    data: Array<u8>
+}
+
+func (mut b: Buffer) Push(v: u8) {
+    b.data.Push(v)
+}
+
+func (b: Buffer) Copy() -> Array<u8> {
+    return b.data.Clone()
+}
+
+func (b: Buffer) SameAs(values: ...u8) -> bool {
+    if b.data.Len() != values.Len() {
+        return false
+    }
+    var i: usize = 0usize
+    for v in values {
+        if b.data.Get(i) != v {
+            return false
+        }
+        i += 1usize
+    }
+    return true
+}
+
+// Sink shares its buffer through rc so the test can read what the writer
+// wrote after the interface value has taken its own boxed copy.
+struct Sink {
+    data: rc<Buffer>
+}
+
+func (mut s: Sink) Write(buf: []u8) -> Result<(), Error> {
+    for b in buf {
+        s.data.Push(b)
+    }
+    return Ok(())
+}
+
+func (s: Sink) Sync() -> Result<(), Error> {
+    return Ok(())
+}
+
+func Ascii(s: str) -> Array<u8> {
+    var out: Array<u8> = new Array<u8>(0)
+    for b in s[Range(0, s.Len())] {
+        out.Push(b)
+    }
+    return out
+}
+
+func AppendAscii(mut out: Array<u8>, s: str) {
+    for b in s[Range(0, s.Len())] {
+        out.Push(b)
+    }
+}
+
+func AppendCrlf(mut out: Array<u8>) {
+    out.Push(13u8)
+    out.Push(10u8)
+}
+
+func Bytes(values: ...u8) -> Array<u8> {
+    var out: Array<u8> = new Array<u8>(0)
+    for v in values {
+        out.Push(v)
+    }
+    return out
+}
+
+func TextBytes(values: ...u8) -> str {
+    var out: Array<u8> = new Array<u8>(0)
+    for v in values {
+        out.Push(v)
+    }
+    return str(out)
+}
+
+func RowOf(a: str, b: str, c: str) -> csv.Row {
+    var fields: Array<str> = new Array<str>(0)
+    fields.Push(a)
+    fields.Push(b)
+    fields.Push(c)
+    return csv.Row { fields: fields }
+}
+
+func FieldsEqual(row: csv.Row, expected: ...str) -> bool {
+    if row.fields.Len() != expected.Len() {
+        return false
+    }
+    var i: usize = 0usize
+    for e in expected {
+        if row.fields.Get(i) != e {
+            return false
+        }
+        i += 1usize
+    }
+    return true
+}
+
+func DecodeAll(mut reader: csv.Reader, mut rows: Array<csv.Row>) -> Result<usize, Error> {
+    var total: usize = 0usize
+    for {
+        var batch: Result<usize, Error> = reader.AsyncDecode(rows)
+        match batch {
+            Ok(n) => {
+                if n == 0usize {
+                    break
+                }
+                total += n
+            }
+            Err(e) => {
+                return Err(e)
+            }
+        }
+    }
+    return Ok(total)
+}
+
+func Failed(r: Result<usize, Error>) -> bool {
+    match r {
+        Ok(v) => {
+            _ = v
+            return false
+        }
+        Err(e) => {
+            return e.Status() == 2
+        }
+    }
+}
+
+async func main() -> i32 {
+    var rows: Array<csv.Row> = new Array<csv.Row>(0)
+    var firstData: Array<u8> = Bytes(
+        97u8, 44u8, 34u8, 98u8, 44u8, 99u8, 34u8, 44u8,
+        34u8, 100u8, 34u8, 34u8, 101u8, 34u8,
+    )
+    AppendCrlf(firstData)
+    AppendAscii(firstData, "1,2,3\n")
+    var source: Source = Source {
+        data: firstData,
+        pos: 0usize,
+        chunk: 3usize,
+    }
+    var reader: csv.Reader = csv.NewReader(source, 44u8)
+    match DecodeAll(reader, rows) {
+        Ok(n) => {
+            if n != 2usize {
+                return 1
+            }
+        }
+        Err(_) => {
+            return 2
+        }
+    }
+    if rows.Len() != 2usize {
+        return 3
+    }
+    if !FieldsEqual(rows.Get(0usize), "a", "b,c", TextBytes(100u8, 34u8, 101u8)) {
+        return 4
+    }
+    if !FieldsEqual(rows.Get(1usize), "1", "2", "3") {
+        return 5
+    }
+
+    var emptyRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var emptySource: Source = Source {
+        data: Ascii(",x,\n"),
+        pos: 0usize,
+        chunk: 2usize,
+    }
+    var emptyReader: csv.Reader = csv.NewReader(emptySource, 44u8)
+    match DecodeAll(emptyReader, emptyRows) {
+        Ok(n) => {
+            if n != 1usize {
+                return 6
+            }
+        }
+        Err(_) => {
+            return 7
+        }
+    }
+    if !FieldsEqual(emptyRows.Get(0usize), "", "x", "") {
+        return 8
+    }
+
+    var lineRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var lineData: Array<u8> = Bytes(34u8, 97u8, 10u8, 98u8, 34u8, 44u8, 99u8)
+    AppendCrlf(lineData)
+    var lineSource: Source = Source {
+        data: lineData,
+        pos: 0usize,
+        chunk: 4usize,
+    }
+    var lineReader: csv.Reader = csv.NewReader(lineSource, 44u8)
+    match DecodeAll(lineReader, lineRows) {
+        Ok(n) => {
+            if n != 1usize {
+                return 9
+            }
+        }
+        Err(_) => {
+            return 10
+        }
+    }
+    if !FieldsEqual(lineRows.Get(0usize), "a\nb", "c") {
+        return 11
+    }
+
+    var tailRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var tailSource: Source = Source {
+        data: Ascii("a,\n\nb,"),
+        pos: 0usize,
+        chunk: 5usize,
+    }
+    var tailReader: csv.Reader = csv.NewReader(tailSource, 44u8)
+    match DecodeAll(tailReader, tailRows) {
+        Ok(n) => {
+            if n != 3usize {
+                return 12
+            }
+        }
+        Err(_) => {
+            return 13
+        }
+    }
+    if !FieldsEqual(tailRows.Get(0usize), "a", "") {
+        return 14
+    }
+    if !FieldsEqual(tailRows.Get(1usize), "") {
+        return 15
+    }
+    if !FieldsEqual(tailRows.Get(2usize), "b", "") {
+        return 16
+    }
+
+    var outRows: Array<csv.Row> = new Array<csv.Row>(0)
+    outRows.Push(RowOf("a", "b,c", TextBytes(100u8, 34u8, 101u8)))
+    outRows.Push(RowOf("1", "2", "3"))
+    var shared: rc<Buffer> = new rc<Buffer>(Buffer { data: new Array<u8>(0) })
+    var writer: csv.Writer = csv.NewWriter(Sink { data: shared }, 44u8)
+    match writer.AsyncEncode(outRows) {
+        Ok(_) => {
+        }
+        Err(_) => {
+            return 17
+        }
+    }
+    match writer.AsyncFlush() {
+        Ok(_) => {
+        }
+        Err(_) => {
+            return 18
+        }
+    }
+    if !shared.SameAs(
+        97u8, 44u8, 34u8, 98u8, 44u8, 99u8, 34u8, 44u8,
+        34u8, 100u8, 34u8, 34u8, 101u8, 34u8, 10u8, 49u8,
+        44u8, 50u8, 44u8, 51u8, 10u8,
+    ) {
+        return 19
+    }
+
+    var roundRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var roundSource: Source = Source {
+        data: shared.Copy(),
+        pos: 0usize,
+        chunk: 1usize,
+    }
+    var roundReader: csv.Reader = csv.NewReader(roundSource, 44u8)
+    match DecodeAll(roundReader, roundRows) {
+        Ok(n) => {
+            if n != 2usize {
+                return 20
+            }
+        }
+        Err(_) => {
+            return 21
+        }
+    }
+    if !FieldsEqual(roundRows.Get(0usize), "a", "b,c", TextBytes(100u8, 34u8, 101u8)) {
+        return 22
+    }
+
+    var badRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var badSource: Source = Source {
+        data: Bytes(97u8, 34u8, 98u8, 10u8),
+        pos: 0usize,
+        chunk: 4usize,
+    }
+    var badReader: csv.Reader = csv.NewReader(badSource, 44u8)
+    if !Failed(badReader.AsyncDecode(badRows)) {
+        return 23
+    }
+
+    var openRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var openSource: Source = Source {
+        data: Bytes(34u8, 97u8, 98u8, 99u8),
+        pos: 0usize,
+        chunk: 2usize,
+    }
+    var openReader: csv.Reader = csv.NewReader(openSource, 44u8)
+    if !Failed(openReader.AsyncDecode(openRows)) {
+        return 24
+    }
+
+    var utfRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var utfSource: Source = Source {
+        data: Bytes(0xffu8, 10u8),
+        pos: 0usize,
+        chunk: 2usize,
+    }
+    var utfReader: csv.Reader = csv.NewReader(utfSource, 44u8)
+    if !Failed(utfReader.AsyncDecode(utfRows)) {
+        return 25
+    }
+    return 0
+}
