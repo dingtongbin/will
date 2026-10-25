@@ -45,9 +45,11 @@ No single will lane count dominates: 16 lanes gives the lowest p999 but only
 between them; compio wins throughput and loses p999 because every runtime queues
 the whole burst before driving it.
 
-The absolute p999 target in `并发.md` is 10 us for wake latency. The 16-lane
-spawn p999 is above it (18.9-29.0 us), so spawn is still open. Channel and select
-p999 are within the target and ahead of crossbeam.
+The 10 us p999 target in `并发.md` is the park-to-running wake latency, not the
+whole spawn-to-completion latency measured here; this table does not replace
+that wake test. Spawn remains open on the combined p999/throughput frontier:
+16 lanes wins p999 but loses throughput, and 4 lanes does the opposite.
+Channel and select are ahead of crossbeam on both p999 and throughput.
 
 ## Commands
 
