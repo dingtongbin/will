@@ -1,0 +1,77 @@
+import "std/encoding/url"
+
+// Rejected reports whether a decode failed with the stable Invalid status.
+func Rejected(r: Result<str, Error>) -> bool {
+    match r {
+        Ok(v) => {
+            _ = v
+            return false
+        }
+        Err(e) => {
+            return e.Status() == 2
+        }
+    }
+}
+
+func main() -> i32 {
+    if url.Escape("") != "" {
+        return 1
+    }
+    if url.Escape("AZaz09-_.~") != "AZaz09-_.~" {
+        return 2
+    }
+    if url.Escape("Hello, World!") != "Hello%2C%20World%21" {
+        return 3
+    }
+    if url.Escape("a/b") != "a%2Fb" {
+        return 4
+    }
+    if url.Escape("\xe4\xbd\xa0") != "%E4%BD%A0" {
+        return 5
+    }
+    if url.Unescape("")! != "" {
+        return 6
+    }
+    if url.Unescape("%41%42")! != "AB" {
+        return 7
+    }
+    if url.Unescape("Hello%2C%20World%21")! != "Hello, World!" {
+        return 8
+    }
+    if url.Unescape("%2f")! != "/" {
+        return 9
+    }
+    if url.Unescape("a+b")! != "a+b" {
+        return 10
+    }
+    if url.Unescape("%E4%BD%A0")! != "\xe4\xbd\xa0" {
+        return 11
+    }
+    var nul: str = url.Unescape("%00")!
+    if nul.Len() != 1usize {
+        return 12
+    }
+    var nulBytes: []u8 = nul[Range(0, 1usize)]
+    if nulBytes.Get(0) != 0u8 {
+        return 13
+    }
+    if !Rejected(url.Unescape("%")) {
+        return 14
+    }
+    if !Rejected(url.Unescape("%4")) {
+        return 15
+    }
+    if !Rejected(url.Unescape("%GG")) {
+        return 16
+    }
+    if !Rejected(url.Unescape("%C0%AF")) {
+        return 17
+    }
+    if !Rejected(url.Unescape("%ED%A0%80")) {
+        return 18
+    }
+    if !Rejected(url.Unescape("%FF")) {
+        return 19
+    }
+    return 0
+}

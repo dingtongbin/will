@@ -1,0 +1,39 @@
+// Escape percent-encodes s for use as one URL path segment. Unreserved bytes
+// pass through; every other byte becomes %XX with uppercase hexadecimal. The
+// slash is encoded too, because a path segment cannot carry it.
+func Escape(s: str) -> str {
+    var out: Array<u8> = new Array<u8>(0)
+    var data: []u8 = s[Range(0, s.Len())]
+    for b in data {
+        if unreserved(b) {
+            out.Push(b)
+        } else {
+            out.Push(37u8)
+            out.Push(hexUpper(b >> 4))
+            out.Push(hexUpper(b & 15u8))
+        }
+    }
+    return str(out)
+}
+
+// unreserved reports whether b may appear literally in a path segment.
+func unreserved(b: u8) -> bool {
+    if b >= 65u8 && b <= 90u8 {
+        return true
+    }
+    if b >= 97u8 && b <= 122u8 {
+        return true
+    }
+    if b >= 48u8 && b <= 57u8 {
+        return true
+    }
+    return b == 45u8 || b == 46u8 || b == 95u8 || b == 126u8
+}
+
+// hexUpper maps one four-bit value to its uppercase hexadecimal digit.
+func hexUpper(v: u8) -> u8 {
+    if v < 10u8 {
+        return 48u8 + v
+    }
+    return 55u8 + v
+}
