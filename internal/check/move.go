@@ -181,6 +181,12 @@ func (m *mover) block(b *ast.Block, inLoop bool, inherited map[string]bool) bloc
 	// in the body reads the value the body moved.
 	if inLoop {
 		for name, mv := range moved {
+			if !inherited[name] {
+				continue
+			}
+			if mv.event < len(flows) && flows[mv.event].exits {
+				continue
+			}
 			for i := 0; i < mv.event; i++ {
 				for _, u := range seq[i].uses {
 					if u.name == name {
@@ -245,6 +251,14 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 		}
 	case *ast.AssignStmt:
 		m.exprEvents(s.Value, live, &ev)
+		discard := false
+		if target, ok := s.Target.(*ast.NameExpr); ok && target.Name == "_" {
+			discard = true
+		}
+		if b, ok := s.Value.(*ast.NameExpr); ok && live[b.Name] && !discard {
+			ev.transfers = append(ev.transfers, nameUse{name: b.Name, pos: b.Pos()})
+			ev.uses = removeUse(ev.uses, b.Name, b.Pos())
+		}
 	case *ast.ExprStmt:
 		m.exprEvents(s.Expr, live, &ev)
 	case *ast.DeferStmt:
@@ -320,11 +334,20 @@ func (m *mover) exprEventsIn(e ast.Expr, live map[string]bool, ev *events, trans
 		}
 	case *ast.CallExpr:
 		m.exprEventsIn(x.Callee, live, ev, false)
-		m.args(x.Args, live, ev, transferArgs)
+		transfer := transferArgs
+		if name, ok := x.Callee.(*ast.NameExpr); ok {
+			switch name.Name {
+			case "Some", "Ok", "Err":
+				transfer = true
+			}
+		}
+		m.args(x.Args, live, ev, transfer)
 	case *ast.MethodCallExpr:
 		m.exprEventsIn(x.Recv, live, ev, false)
-		// Send hands the value to the channel; every other method borrows it.
-		m.args(x.Args, live, ev, transferArgs || x.Name == "Send")
+		// Send hands the value to the channel; the container methods move the
+		// value into their storage. Every other method borrows it.
+		transfer := transferArgs || x.Name == "Send" || x.Name == "Push" || x.Name == "Set" || x.Name == "Add"
+		m.args(x.Args, live, ev, transfer)
 	case *ast.FieldExpr:
 		m.exprEventsIn(x.Recv, live, ev, false)
 	case *ast.IndexExpr:

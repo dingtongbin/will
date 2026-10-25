@@ -159,6 +159,45 @@ func TestMoveAcrossAConditionalBranch(t *testing.T) {
 	}
 }
 
+func TestMoveIntoContainerAndOption(t *testing.T) {
+	src := `func F() {
+    var a: str = "a"
+    var xs: Array<str> = new Array<str>(0)
+    xs.Push(a)
+    _ = xs
+    _ = a
+    var b: str = "b"
+    var opt: Option<str> = Some(b)
+    _ = opt
+    _ = b
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 2 {
+		t.Fatalf("diagnostics = %s, want two transfers that need a copy", diag.FormatAll(ds))
+	}
+	for _, d := range ds {
+		if d.Code != diag.CodeMissingClone {
+			t.Fatalf("diagnostic = %+v, want O0002", d)
+		}
+	}
+}
+
+func TestMoveAssignmentTransfersTheSource(t *testing.T) {
+	src := `func F() {
+    var a: str = "a"
+    var b: str = "b"
+    a = b
+    _ = a
+    _ = b
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+}
+
 func TestMoveOwnershipFollowsStructFields(t *testing.T) {
 	src := `struct Box {
     xs: Array<i32>

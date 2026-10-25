@@ -78,6 +78,23 @@ func TestBorrowRejectsAMoveWhileAViewIsLive(t *testing.T) {
 	}
 }
 
+func TestBorrowRejectsContainerGrowthWhileAViewIsLive(t *testing.T) {
+	src := `func F() {
+    var xs: Array<i32> = new Array<i32>(0)
+    var v: []i32 = xs[Range(0, xs.Len())]
+    xs.Push(1)
+    _ = v
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeContainerChanged {
+		t.Fatalf("diagnostics = %s, want one O0007", diag.FormatAll(ds))
+	}
+	if ds[0].Message != "cannot change xs while it is borrowed" {
+		t.Fatalf("message = %q", ds[0].Message)
+	}
+}
+
 func TestBorrowEndsAtTheViewsLastUse(t *testing.T) {
 	src := `func Fill(mut xs: Array<i32>) {
 }

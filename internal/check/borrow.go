@@ -303,6 +303,34 @@ func (b *borrower) mutAt(pos source.Pos, name string, borrowed map[string]source
 	})
 }
 
+// containerMutator names the predeclared methods that can reallocate or
+// restructure container storage. Writing one element is not in this set; that
+// is a mutable borrow of the element, not a structural change.
+func containerMutator(name string) bool {
+	switch name {
+	case "Push", "Append", "Clear", "Reserve", "Resize", "Delete":
+		return true
+	}
+	return false
+}
+
+func (b *borrower) containerMutAt(pos source.Pos, name string, borrowed map[string]source.Pos) {
+	if name == "" {
+		return
+	}
+	borrowPos, ok := borrowed[name]
+	if !ok {
+		return
+	}
+	b.bag.Add(diag.Diagnostic{
+		Pos: pos, End: pos, Severity: diag.Error,
+		Code:    diag.CodeContainerChanged,
+		Message: "cannot change " + name + " while it is borrowed",
+		Help:    "copy what you need before changing it",
+		Notes:   []diag.Note{{Pos: borrowPos, Message: "borrowed here"}},
+	})
+}
+
 func (b *borrower) moveAt(pos source.Pos, name string, borrowPos source.Pos) {
 	b.bag.Add(diag.Diagnostic{
 		Pos: pos, End: pos, Severity: diag.Error,
@@ -324,6 +352,8 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 	case *ast.MethodCallExpr:
 		if b.mutMethods[x.Name] {
 			b.mutAt(x.Pos(), rootName(x.Recv), borrowed)
+		} else if containerMutator(x.Name) {
+			b.containerMutAt(x.Pos(), rootName(x.Recv), borrowed)
 		}
 		b.expr(x.Recv, borrowed)
 		for _, a := range x.Args {
