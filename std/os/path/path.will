@@ -1,23 +1,64 @@
-// Package std/os/path works on slash-separated paths on every target: '/' is
-// the portable separator that Join, Clean, Dir, Base, Ext, IsAbs, and Match
-// read and produce, whatever the platform spells natively. The functions are
-// pure: they read no file system, working directory, or environment.
-//
-// Separator and Abs are not implemented: the language has no platform constant
-// for the native separator and no working-directory call.
+// Package std/os/path works on host paths. Join and Clean accept both '/' and
+// '\' and write the platform separator; Match is a portable matcher and treats
+// only '/' as a directory boundary. The functions are pure except Abs, which
+// reads the working directory through std/os.
 
 // slashScalar is the ASCII code of the portable separator '/'.
 const slashScalar: u32 = 47
 
+// backslashScalar is the ASCII code of the Windows separator '\'. It is
+// accepted on every target so one path spelling survives a copy across hosts.
+const backslashScalar: u32 = 92
+
+// colonScalar is the ASCII code that separates a Windows drive letter.
+const colonScalar: u32 = 58
+
 // dotScalar is the ASCII code of '.'.
 const dotScalar: u32 = 46
 
-// isSlash reports whether c is the portable separator.
+// isSlash reports whether c is the portable separator. Match uses this one;
+// it does not treat '\' as a boundary.
 func isSlash(c: u32) -> bool {
     return c == slashScalar
+}
+
+// isSeparator reports whether c separates path elements on any target.
+func isSeparator(c: u32) -> bool {
+    return c == slashScalar || c == backslashScalar
 }
 
 // isDot reports whether c is the character that names a dot element.
 func isDot(c: u32) -> bool {
     return c == dotScalar
+}
+
+// isDriveLetter reports whether c can start a Windows drive prefix.
+func isDriveLetter(c: u32) -> bool {
+    return (c >= 65u32 && c <= 90u32) || (c >= 97u32 && c <= 122u32)
+}
+
+// hasDrive reports whether p starts with a Windows drive prefix such as "C:".
+func hasDrive(p: str) -> bool {
+    if Separator() != 92u8 || p.Len() < 2usize {
+        return false
+    }
+    var s: str = p
+    var first: u32 = s[0]
+    var second: u32 = s[1]
+    return isDriveLetter(first) && second == colonScalar
+}
+
+// isDriveAbs reports whether p is rooted on a Windows drive, such as "C:\a".
+func isDriveAbs(p: str) -> bool {
+    if !hasDrive(p) || p.Len() < 3usize {
+        return false
+    }
+    var s: str = p
+    var third: u32 = s[2]
+    return isSeparator(third)
+}
+
+// separatorString returns the platform separator as a one-scalar str.
+func separatorString() -> str {
+    return str(u32(Separator()))
 }

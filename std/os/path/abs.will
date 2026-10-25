@@ -1,0 +1,12 @@
+// Abs resolves a relative path against the process working directory. A path
+// that is already rooted is only cleaned; the working directory is read once
+// through std/os for every relative call.
+import "std/os"
+
+func Abs(p: str) -> Result<str, Error> {
+    if IsAbs(p) {
+        return Ok(Clean(p))
+    }
+    var cwd: str = os.Cwd()?
+    return Ok(Clean(Join(cwd, p)))
+}
