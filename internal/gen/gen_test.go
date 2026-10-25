@@ -156,6 +156,57 @@ func TestEmitEnumConstructionAndMatch(t *testing.T) {
 	}
 }
 
+func TestEmitUnqualifiedEnumVariants(t *testing.T) {
+	src := "enum E {\n    A\n    B(i32)\n}\n\n" +
+		"func Payload() -> E {\n    return B(7)\n}\n\n" +
+		"func Empty() -> E {\n    return A\n}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		`define %"enum.example.com/app.E" @"example.com/app.Payload"() {`,
+		`define %"enum.example.com/app.E" @"example.com/app.Empty"() {`,
+		"store i32 1, ptr",
+		"store i32 0, ptr",
+		"store i32 7, ptr",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestEmitNewInterfaceArgument(t *testing.T) {
+	src := "interface Value {\n    func Get() -> i32\n}\n\n" +
+		"struct Item {\n    n: i32\n}\n\n" +
+		"func (i: Item) Get() -> i32 {\n    return i.n\n}\n\n" +
+		"struct Holder {\n    value: Value\n}\n\n" +
+		"func (mut h: Holder) init(value: Value) {\n    h.value = value\n}\n\n" +
+		"func Use() -> i32 {\n" +
+		"    var item: Item = Item { n: 7 }\n" +
+		"    var holder: Holder = new Holder(item)\n" +
+		"    return holder.value.Get()\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		`call void @"example.com/app.Holder.init"`,
+		`store ptr @"example.com/app.vtable.Value.Item"`,
+		`getelementptr inbounds %"interface.example.com/app.Value"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestEmitMatchWithGuardAndWildcard(t *testing.T) {
 	src := "func Pick(n: i32) -> i32 {\n    return match n {\n        0 => 10\n        x if x > 0 => x\n        _ => -1\n    }\n}\n"
 	doc := emitWillc(t, src)
@@ -676,7 +727,7 @@ func TestEmitBuiltinError(t *testing.T) {
 	for _, want := range []string{
 		`%interface.Error = type { ptr, ptr }`,
 		"vtable.Error.E",
-		"[2 x ptr]",
+		"[3 x ptr]",
 		"call i32 %t",
 	} {
 		if !strings.Contains(text, want) {
@@ -722,7 +773,7 @@ func TestEmitInterfaceValueAndCall(t *testing.T) {
 	for _, want := range []string{
 		`%"interface.example.com/app.Counter" = type { ptr, ptr }`,
 		`define i32 @"example.com/app.Use"(ptr %x) {`,
-		"getelementptr inbounds [1 x ptr], ptr",
+		"getelementptr inbounds [2 x ptr], ptr",
 		"call i32 %t",
 		"store ptr @",
 		"vtable.example.com/app.Counter.C",

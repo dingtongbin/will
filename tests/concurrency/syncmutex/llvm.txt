@@ -10,7 +10,7 @@ entry:
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 1
   %t4 = load ptr, ptr %t3
-  %t5 = getelementptr inbounds [2 x ptr], ptr %t4, i64 0, i64 1
+  %t5 = getelementptr inbounds [3 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
   %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t7)
@@ -524,7 +524,7 @@ if.end.1:
   %t49 = icmp eq i32 5, -2147483648
   br i1 %t49, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.12, ptr @.str.13)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.13, ptr @.str.14)
   unreachable
 panic.ok.4:
   %t48 = sub i32 0, 5
@@ -554,7 +554,7 @@ if.end.3:
   %t63 = icmp eq i32 6, -2147483648
   br i1 %t63, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.14, ptr @.str.13)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.15, ptr @.str.14)
   unreachable
 panic.ok.7:
   %t62 = sub i32 0, 6
@@ -680,7 +680,7 @@ sm.call.ok.1:
   %t21 = icmp eq i1 %t20, false
   br i1 %t21, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.15, ptr @.str.16, ptr @.str.17)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.17, ptr @.str.18)
   unreachable
 panic.ok.2:
   %t22 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g, i32 0, i32 0
@@ -694,7 +694,7 @@ panic.ok.2:
   %t30 = extractvalue {i32, i1} %t28, 1
   br i1 %t30, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.16, ptr @.str.17)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.17, ptr @.str.18)
   unreachable
 panic.ok.3:
   store i32 %t29, ptr %t26
@@ -703,7 +703,7 @@ panic.ok.3:
   %t33 = icmp eq i1 %t32, false
   br i1 %t33, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.15, ptr @.str.18, ptr @.str.17)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.19, ptr @.str.18)
   unreachable
 panic.ok.4:
   %t34 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g, i32 0, i32 0
@@ -818,7 +818,7 @@ sm.call.ok.1:
   %t89 = icmp eq i1 %t88, false
   br i1 %t89, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.15, ptr @.str.19, ptr @.str.20)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.20, ptr @.str.21)
   unreachable
 panic.ok.2:
   %t90 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g, i32 0, i32 0
@@ -832,7 +832,7 @@ panic.ok.2:
   %t98 = extractvalue {i32, i1} %t96, 1
   br i1 %t98, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.19, ptr @.str.20)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.20, ptr @.str.21)
   unreachable
 panic.ok.3:
   store i32 %t97, ptr %t94
@@ -841,7 +841,7 @@ panic.ok.3:
   %t101 = icmp eq i1 %t100, false
   br i1 %t101, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.15, ptr @.str.21, ptr @.str.20)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.22, ptr @.str.21)
   unreachable
 panic.ok.4:
   %t102 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g, i32 0, i32 0
@@ -1056,7 +1056,7 @@ if.then.3:
   %t176 = icmp eq i32 %t175, 0
   br i1 %t176, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.22, ptr @.str.23, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.23, ptr @.str.24, ptr @.str.25)
   unreachable
 panic.ok.4:
   %t177 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.99, i32 0, i32 2
@@ -1067,7 +1067,7 @@ panic.ok.4:
   %t181 = icmp eq i1 %t180, false
   br i1 %t181, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.15, ptr @.str.25, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.26, ptr @.str.25)
   unreachable
 panic.ok.5:
   %t182 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g, i32 0, i32 0
@@ -1125,7 +1125,7 @@ if.then.8:
   %t213 = icmp eq i32 %t212, 0
   br i1 %t213, label %panic.9, label %panic.ok.9
 panic.9:
-  call void @willrt_panic(ptr @.str.22, ptr @.str.26, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.23, ptr @.str.27, ptr @.str.25)
   unreachable
 panic.ok.9:
   %t214 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.131, i32 0, i32 2
@@ -1136,7 +1136,7 @@ panic.ok.9:
   %t218 = icmp eq i1 %t217, false
   br i1 %t218, label %panic.10, label %panic.ok.10
 panic.10:
-  call void @willrt_panic(ptr @.str.15, ptr @.str.27, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.28, ptr @.str.25)
   unreachable
 panic.ok.10:
   %t219 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 0
@@ -1150,7 +1150,7 @@ panic.ok.10:
   %t227 = extractvalue {i32, i1} %t225, 1
   br i1 %t227, label %panic.11, label %panic.ok.11
 panic.11:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.27, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.28, ptr @.str.25)
   unreachable
 panic.ok.11:
   store i32 %t226, ptr %t223
@@ -1273,7 +1273,7 @@ recv.end.16:
   %t288 = icmp eq i32 %t287, 0
   br i1 %t288, label %panic.17, label %panic.ok.17
 panic.17:
-  call void @willrt_panic(ptr @.str.22, ptr @.str.28, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.23, ptr @.str.29, ptr @.str.25)
   unreachable
 panic.ok.17:
   %t289 = getelementptr inbounds { i32, i32 }, ptr %v.recv.162, i32 0, i32 1
@@ -1328,7 +1328,7 @@ if.then.19:
   %t312 = icmp eq i32 %t311, 0
   br i1 %t312, label %panic.20, label %panic.ok.20
 panic.20:
-  call void @willrt_panic(ptr @.str.22, ptr @.str.29, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.23, ptr @.str.30, ptr @.str.25)
   unreachable
 panic.ok.20:
   %t313 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.180, i32 0, i32 2
@@ -1339,7 +1339,7 @@ panic.ok.20:
   %t317 = icmp eq i1 %t316, false
   br i1 %t317, label %panic.21, label %panic.ok.21
 panic.21:
-  call void @willrt_panic(ptr @.str.15, ptr @.str.30, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.31, ptr @.str.25)
   unreachable
 panic.ok.21:
   %t318 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 0
@@ -1397,7 +1397,7 @@ if.then.24:
   %t347 = icmp eq i32 %t346, 0
   br i1 %t347, label %panic.25, label %panic.ok.25
 panic.25:
-  call void @willrt_panic(ptr @.str.22, ptr @.str.31, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.23, ptr @.str.32, ptr @.str.25)
   unreachable
 panic.ok.25:
   %t348 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.211, i32 0, i32 2
@@ -1410,7 +1410,7 @@ panic.ok.25:
   %t353 = icmp eq i32 %t352, 0
   br i1 %t353, label %panic.26, label %panic.ok.26
 panic.26:
-  call void @willrt_panic(ptr @.str.22, ptr @.str.32, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.23, ptr @.str.33, ptr @.str.25)
   unreachable
 panic.ok.26:
   %t354 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.217, i32 0, i32 2
@@ -1421,7 +1421,7 @@ panic.ok.26:
   %t358 = icmp eq i1 %t357, false
   br i1 %t358, label %panic.27, label %panic.ok.27
 panic.27:
-  call void @willrt_panic(ptr @.str.15, ptr @.str.33, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.34, ptr @.str.25)
   unreachable
 panic.ok.27:
   %t359 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 0
@@ -1435,7 +1435,7 @@ panic.ok.27:
   %t367 = icmp eq i1 %t366, false
   br i1 %t367, label %panic.28, label %panic.ok.28
 panic.28:
-  call void @willrt_panic(ptr @.str.15, ptr @.str.34, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.35, ptr @.str.25)
   unreachable
 panic.ok.28:
   %t368 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 0
@@ -1449,7 +1449,7 @@ panic.ok.28:
   %t376 = extractvalue {i32, i1} %t374, 1
   br i1 %t376, label %panic.29, label %panic.ok.29
 panic.29:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.33, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.34, ptr @.str.25)
   unreachable
 panic.ok.29:
   store i32 %t375, ptr %v.shared
@@ -1568,7 +1568,7 @@ if.then.36:
   %t444 = icmp eq i32 %t443, 0
   br i1 %t444, label %panic.37, label %panic.ok.37
 panic.37:
-  call void @willrt_panic(ptr @.str.22, ptr @.str.35, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.23, ptr @.str.36, ptr @.str.25)
   unreachable
 panic.ok.37:
   %t445 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.258, i32 0, i32 2
@@ -1579,7 +1579,7 @@ panic.ok.37:
   %t449 = icmp eq i1 %t448, false
   br i1 %t449, label %panic.38, label %panic.ok.38
 panic.38:
-  call void @willrt_panic(ptr @.str.15, ptr @.str.36, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.37, ptr @.str.25)
   unreachable
 panic.ok.38:
   %t450 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 0
@@ -1593,7 +1593,7 @@ panic.ok.38:
   %t457 = icmp eq i1 %t456, false
   br i1 %t457, label %panic.39, label %panic.ok.39
 panic.39:
-  call void @willrt_panic(ptr @.str.15, ptr @.str.37, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.38, ptr @.str.25)
   unreachable
 panic.ok.39:
   %t458 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 0
@@ -1648,7 +1648,7 @@ if.then.42:
   %t487 = icmp eq i32 %t486, 0
   br i1 %t487, label %panic.43, label %panic.ok.43
 panic.43:
-  call void @willrt_panic(ptr @.str.22, ptr @.str.38, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.23, ptr @.str.39, ptr @.str.25)
   unreachable
 panic.ok.43:
   %t488 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.288, i32 0, i32 2
@@ -1659,7 +1659,7 @@ panic.ok.43:
   %t492 = icmp eq i1 %t491, false
   br i1 %t492, label %panic.44, label %panic.ok.44
 panic.44:
-  call void @willrt_panic(ptr @.str.15, ptr @.str.39, ptr @.str.24)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.40, ptr @.str.25)
   unreachable
 panic.ok.44:
   %t493 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 0
@@ -2031,7 +2031,7 @@ main.async.ok.1:
   call void @willrt_shutdown()
   ret i32 %t15
 }
-@will.error.data.8 = private constant { ptr, i64, i32 } { ptr @.str.40, i64 8, i32 8 }
+@will.error.data.8 = private constant { ptr, i64, i32 } { ptr @.str.41, i64 8, i32 8 }
 define internal { ptr, i64 } @will.error.message.8(ptr %data) {
 entry:
   %t16 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
@@ -2048,9 +2048,10 @@ entry:
   %t23 = load i32, ptr %t22
   ret i32 %t23
 }
-@will.error.table.8 = private constant [2 x ptr] [ptr @will.error.message.8, ptr @will.error.status.8]
+@will.error.id.8 = private constant i8 0
+@will.error.table.8 = private constant [3 x ptr] [ptr @will.error.message.8, ptr @will.error.status.8, ptr @will.error.id.8]
 @will.error.value.8 = private constant %interface.Error { ptr @will.error.data.8, ptr @will.error.table.8 }
-@will.error.data.9 = private constant { ptr, i64, i32 } { ptr @.str.41, i64 8, i32 9 }
+@will.error.data.9 = private constant { ptr, i64, i32 } { ptr @.str.42, i64 8, i32 9 }
 define internal { ptr, i64 } @will.error.message.9(ptr %data) {
 entry:
   %t24 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
@@ -2067,7 +2068,8 @@ entry:
   %t31 = load i32, ptr %t30
   ret i32 %t31
 }
-@will.error.table.9 = private constant [2 x ptr] [ptr @will.error.message.9, ptr @will.error.status.9]
+@will.error.id.9 = private constant i8 0
+@will.error.table.9 = private constant [3 x ptr] [ptr @will.error.message.9, ptr @will.error.status.9, ptr @will.error.id.9]
 @will.error.value.9 = private constant %interface.Error { ptr @will.error.data.9, ptr @will.error.table.9 }
 declare ptr @willrt_sync_count_new(i64)
 declare void @willrt_sync_count_add(ptr, i64)
@@ -2095,37 +2097,38 @@ declare ptr @willrt_sync_lock_new()
 @.str.8 = private unnamed_addr constant [22 x i8] c"sync/count.will:30:18\00", align 1
 @.str.9 = private unnamed_addr constant [20 x i8] c"std/sync.Count.Wait\00", align 1
 @.str.10 = private unnamed_addr constant [22 x i8] c"sync/count.will:33:18\00", align 1
-@"std/sync.vtable.Error.std/errors.Fault" = internal constant [2 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status"], align 8
-@.str.12 = private unnamed_addr constant [26 x i8] c"sync/semaphore.will:37:18\00", align 1
-@.str.13 = private unnamed_addr constant [27 x i8] c"std/sync.Semaphore.Acquire\00", align 1
-@.str.14 = private unnamed_addr constant [26 x i8] c"sync/semaphore.will:40:18\00", align 1
-@.str.15 = private unnamed_addr constant [13 x i8] c"empty handle\00", align 1
-@.str.16 = private unnamed_addr constant [15 x i8] c"main.will:11:5\00", align 1
-@.str.17 = private unnamed_addr constant [39 x i8] c"example.com/concurrency/syncmutex.Bump\00", align 1
-@.str.18 = private unnamed_addr constant [16 x i8] c"main.will:12:12\00", align 1
-@.str.19 = private unnamed_addr constant [15 x i8] c"main.will:19:5\00", align 1
-@.str.20 = private unnamed_addr constant [42 x i8] c"example.com/concurrency/syncmutex.WaitFor\00", align 1
-@.str.21 = private unnamed_addr constant [16 x i8] c"main.will:20:12\00", align 1
-@.str.22 = private unnamed_addr constant [16 x i8] c"unexpected None\00", align 1
-@.str.23 = private unnamed_addr constant [16 x i8] c"main.will:33:38\00", align 1
-@.str.24 = private unnamed_addr constant [44 x i8] c"example.com/concurrency/syncmutex.will$main\00", align 1
-@.str.25 = private unnamed_addr constant [16 x i8] c"main.will:34:15\00", align 1
-@.str.26 = private unnamed_addr constant [16 x i8] c"main.will:44:42\00", align 1
-@.str.27 = private unnamed_addr constant [16 x i8] c"main.will:45:13\00", align 1
-@.str.28 = private unnamed_addr constant [16 x i8] c"main.will:55:13\00", align 1
-@.str.29 = private unnamed_addr constant [16 x i8] c"main.will:60:38\00", align 1
-@.str.30 = private unnamed_addr constant [16 x i8] c"main.will:61:17\00", align 1
-@.str.31 = private unnamed_addr constant [16 x i8] c"main.will:70:43\00", align 1
-@.str.32 = private unnamed_addr constant [16 x i8] c"main.will:71:43\00", align 1
-@.str.33 = private unnamed_addr constant [16 x i8] c"main.will:72:18\00", align 1
-@.str.34 = private unnamed_addr constant [16 x i8] c"main.will:72:25\00", align 1
-@.str.35 = private unnamed_addr constant [16 x i8] c"main.will:82:38\00", align 1
-@.str.36 = private unnamed_addr constant [15 x i8] c"main.will:83:9\00", align 1
-@.str.37 = private unnamed_addr constant [16 x i8] c"main.will:84:21\00", align 1
-@.str.38 = private unnamed_addr constant [16 x i8] c"main.will:91:42\00", align 1
-@.str.39 = private unnamed_addr constant [16 x i8] c"main.will:92:17\00", align 1
-@.str.40 = private unnamed_addr constant [9 x i8] c"canceled\00", align 1
-@.str.41 = private unnamed_addr constant [9 x i8] c"deadline\00", align 1
+@"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
+@"std/sync.vtable.Error.std/errors.Fault" = internal constant [3 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"will.type.std/errors.Fault"], align 8
+@.str.13 = private unnamed_addr constant [26 x i8] c"sync/semaphore.will:37:18\00", align 1
+@.str.14 = private unnamed_addr constant [27 x i8] c"std/sync.Semaphore.Acquire\00", align 1
+@.str.15 = private unnamed_addr constant [26 x i8] c"sync/semaphore.will:40:18\00", align 1
+@.str.16 = private unnamed_addr constant [13 x i8] c"empty handle\00", align 1
+@.str.17 = private unnamed_addr constant [15 x i8] c"main.will:11:5\00", align 1
+@.str.18 = private unnamed_addr constant [39 x i8] c"example.com/concurrency/syncmutex.Bump\00", align 1
+@.str.19 = private unnamed_addr constant [16 x i8] c"main.will:12:12\00", align 1
+@.str.20 = private unnamed_addr constant [15 x i8] c"main.will:19:5\00", align 1
+@.str.21 = private unnamed_addr constant [42 x i8] c"example.com/concurrency/syncmutex.WaitFor\00", align 1
+@.str.22 = private unnamed_addr constant [16 x i8] c"main.will:20:12\00", align 1
+@.str.23 = private unnamed_addr constant [16 x i8] c"unexpected None\00", align 1
+@.str.24 = private unnamed_addr constant [16 x i8] c"main.will:33:38\00", align 1
+@.str.25 = private unnamed_addr constant [44 x i8] c"example.com/concurrency/syncmutex.will$main\00", align 1
+@.str.26 = private unnamed_addr constant [16 x i8] c"main.will:34:15\00", align 1
+@.str.27 = private unnamed_addr constant [16 x i8] c"main.will:44:42\00", align 1
+@.str.28 = private unnamed_addr constant [16 x i8] c"main.will:45:13\00", align 1
+@.str.29 = private unnamed_addr constant [16 x i8] c"main.will:55:13\00", align 1
+@.str.30 = private unnamed_addr constant [16 x i8] c"main.will:60:38\00", align 1
+@.str.31 = private unnamed_addr constant [16 x i8] c"main.will:61:17\00", align 1
+@.str.32 = private unnamed_addr constant [16 x i8] c"main.will:70:43\00", align 1
+@.str.33 = private unnamed_addr constant [16 x i8] c"main.will:71:43\00", align 1
+@.str.34 = private unnamed_addr constant [16 x i8] c"main.will:72:18\00", align 1
+@.str.35 = private unnamed_addr constant [16 x i8] c"main.will:72:25\00", align 1
+@.str.36 = private unnamed_addr constant [16 x i8] c"main.will:82:38\00", align 1
+@.str.37 = private unnamed_addr constant [15 x i8] c"main.will:83:9\00", align 1
+@.str.38 = private unnamed_addr constant [16 x i8] c"main.will:84:21\00", align 1
+@.str.39 = private unnamed_addr constant [16 x i8] c"main.will:91:42\00", align 1
+@.str.40 = private unnamed_addr constant [16 x i8] c"main.will:92:17\00", align 1
+@.str.41 = private unnamed_addr constant [9 x i8] c"canceled\00", align 1
+@.str.42 = private unnamed_addr constant [9 x i8] c"deadline\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare ptr @willrt_alloc(i64)

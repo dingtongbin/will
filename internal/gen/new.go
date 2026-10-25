@@ -101,6 +101,36 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	return slot, info.llvm, nil
 }
 
+// newInitParams returns the parameter types of the init a new expression calls.
+// Interface arguments need this before the new expression itself is lowered, so
+// their conversion slots are allocated in the function entry block.
+func (g *generator) newInitParams(r willc.Record) []string {
+	text := fieldText(r, "type")
+	if g.byName[text] != nil {
+		initSym := g.cur.methods[text+".init"]
+		if initSym == "" {
+			initSym = g.methodsQualified[text+".init"]
+		}
+		if initSym != "" {
+			return g.paramTypes[initSym]
+		}
+	}
+	q := g.canonicalTypeText(text)
+	if !strings.Contains(q, ".") {
+		q = qualify(g.pkg, text)
+	}
+	if g.declKinds[q] == "struct" {
+		initSym := g.methodsQualified[q+".init"]
+		if initSym != "" {
+			return g.paramTypes[initSym]
+		}
+	}
+	if _, params, _, ok := g.initForNew(g.cur, r); ok {
+		return params
+	}
+	return nil
+}
+
 // callNewInit passes the storage and the evaluated constructor arguments to one
 // init method. A non-empty result text means the call returns a Result value
 // that the caller must turn into the new expression's value.

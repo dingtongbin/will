@@ -29,14 +29,14 @@ entry:
   %t11 = load ptr, ptr %t10
   %t12 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %x, i32 0, i32 1
   %t13 = load ptr, ptr %t12
-  %t14 = getelementptr inbounds [2 x ptr], ptr %t13, i64 0, i64 0
+  %t14 = getelementptr inbounds [3 x ptr], ptr %t13, i64 0, i64 0
   %t15 = load ptr, ptr %t14
   %t16 = call i32 %t15(ptr %t11)
   %t17 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %x, i32 0, i32 0
   %t18 = load ptr, ptr %t17
   %t19 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %x, i32 0, i32 1
   %t20 = load ptr, ptr %t19
-  %t21 = getelementptr inbounds [2 x ptr], ptr %t20, i64 0, i64 1
+  %t21 = getelementptr inbounds [3 x ptr], ptr %t20, i64 0, i64 1
   %t22 = load ptr, ptr %t21
   %t23 = call i32 %t22(ptr %t18, i32 2)
   %t24 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t16, i32 %t23)
@@ -72,7 +72,7 @@ entry:
   %t35 = load ptr, ptr %t34
   %t36 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 1
   %t37 = load ptr, ptr %t36
-  %t38 = getelementptr inbounds [2 x ptr], ptr %t37, i64 0, i64 0
+  %t38 = getelementptr inbounds [3 x ptr], ptr %t37, i64 0, i64 0
   %t39 = load ptr, ptr %t38
   %t40 = call i32 %t39(ptr %t35)
   %t41 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t33, i32 %t40)
@@ -80,7 +80,7 @@ entry:
   %t43 = extractvalue {i32, i1} %t41, 1
   br i1 %t43, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.6, ptr @.str.7)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.7, ptr @.str.8)
   unreachable
 panic.ok.1:
   ret i32 %t42
@@ -99,8 +99,9 @@ entry:
 @.str.2 = private unnamed_addr constant [24 x i8] c"example.com/iface.C.Add\00", align 1
 @.str.3 = private unnamed_addr constant [16 x i8] c"main.will:20:12\00", align 1
 @.str.4 = private unnamed_addr constant [22 x i8] c"example.com/iface.Use\00", align 1
-@"example.com/iface.vtable.Counter.C" = internal constant [2 x ptr] [ptr @"example.com/iface.C.Get", ptr @"example.com/iface.C.Add"], align 8
-@.str.6 = private unnamed_addr constant [16 x i8] c"main.will:26:12\00", align 1
-@.str.7 = private unnamed_addr constant [28 x i8] c"example.com/iface.will$main\00", align 1
+@"will.type.example.com/iface.C" = linkonce_odr constant i8 0, align 1
+@"example.com/iface.vtable.Counter.C" = internal constant [3 x ptr] [ptr @"example.com/iface.C.Get", ptr @"example.com/iface.C.Add", ptr @"will.type.example.com/iface.C"], align 8
+@.str.7 = private unnamed_addr constant [16 x i8] c"main.will:26:12\00", align 1
+@.str.8 = private unnamed_addr constant [28 x i8] c"example.com/iface.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

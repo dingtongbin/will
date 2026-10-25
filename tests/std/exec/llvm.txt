@@ -1335,7 +1335,8 @@ declare ptr @willrt_exec_output_async_start(ptr, ptr, ptr, ptr, ptr, ptr, ptr)
 @.str.10 = private unnamed_addr constant [23 x i8] c"os/exec/cmd.will:36:28\00", align 1
 @.str.11 = private unnamed_addr constant [22 x i8] c"os/exec/cmd.will:37:9\00", align 1
 @.bytes.3 = private unnamed_addr constant [16 x i8] c"exec: cannot run", align 1
-@"std/os/exec.vtable.Error.execError" = internal constant [2 x ptr] [ptr @"std/os/exec.execError.Message", ptr @"std/os/exec.execError.Status"], align 8
+@"will.type.std/os/exec.execError" = linkonce_odr constant i8 0, align 1
+@"std/os/exec.vtable.Error.execError" = internal constant [3 x ptr] [ptr @"std/os/exec.execError.Message", ptr @"std/os/exec.execError.Status", ptr @"will.type.std/os/exec.execError"], align 8
 @.bytes.4 = private unnamed_addr constant [27 x i8] c"exec: cannot capture output", align 1
 @.bytes.5 = private unnamed_addr constant [3 x i8] c"cmd", align 1
 @.bytes.6 = private unnamed_addr constant [2 x i8] c"/C", align 1

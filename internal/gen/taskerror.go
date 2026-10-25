@@ -47,5 +47,6 @@ func (g *generator) emitTaskError() {
 	status := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call i32 @willrt_task_error_status(ptr %%data)\n", status)
 	fmt.Fprintf(g.out, "  ret i32 %s\n}\n", status)
-	g.out.WriteString("@will.task.error.table = private constant [2 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status]\n")
+	g.out.WriteString("@will.task.error.id = private constant i8 0\n")
+	g.out.WriteString("@will.task.error.table = private constant [3 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.id]\n")
 }

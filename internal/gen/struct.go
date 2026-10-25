@@ -862,6 +862,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		if arg, ok := g.waitArg(r); ok {
 			return g.willTypeText(arg)
 		}
+		if text, ok := g.downcastTypeText(r); ok {
+			return text, nil
+		}
 		if r.Kind == "mcall" {
 			if _, _, fnText, ok := g.functionField(r); ok {
 				_, result, ok := funcTypeParts(fnText)
@@ -910,6 +913,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 // callResultText returns the result type text of one call. A call names its
 // callee by a document reference or by the module-wide symbol.
 func (g *generator) callResultText(r willc.Record) (string, error) {
+	if text, ok := g.downcastTypeText(r); ok {
+		return text, nil
+	}
 	if name, ok := g.predeclaredCallName(r); ok {
 		switch name {
 		case "take_c", "take_c_rc":
@@ -930,6 +936,13 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 		return text, nil
 	}
 	if r.Kind == "mcall" {
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if iface, ok := g.ifaceOfText(recvText); ok {
+				if idx, ok := iface.byName[fieldText(r, "text")]; ok {
+					return iface.methods[idx].result, nil
+				}
+			}
+		}
 		if sym := g.genericMethodName(r); sym != "" {
 			if text, ok := g.sigs[sym]; ok {
 				return text, nil
@@ -1179,6 +1192,9 @@ func (g *generator) place(id int) (string, string, error) {
 		if adt, variant, arg, ok := g.adtConstructor(r); ok {
 			return g.adtConstruct(r, adt, variant, arg)
 		}
+		if info, v := g.enumVariantCall(r); info != nil {
+			return g.enumConstruct(r, info, v)
+		}
 		if ptr, ok := g.patternPlaces[decl]; ok {
 			return ptr, g.patternTypes[decl], nil
 		}
@@ -1330,6 +1346,12 @@ func (g *generator) place(id int) (string, string, error) {
 	case "call", "mcall":
 		if arg, ok := g.waitArg(r); ok {
 			return g.place(arg)
+		}
+		if d, ok := g.downcastOf(r); ok {
+			if !d.isAs {
+				return "", "", g.errf(r.ID, "cannot translate node #%d: a bool is not a place", r.ID)
+			}
+			return g.ifaceDowncastAs(r)
 		}
 		if g.smGeneral {
 			if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendableFor(sym) {

@@ -271,7 +271,8 @@ entry:
   %t104 = load i32, ptr %t103
   ret i32 %t104
 }
-@will.error.table.4 = private constant [2 x ptr] [ptr @will.error.message.4, ptr @will.error.status.4]
+@will.error.id.4 = private constant i8 0
+@will.error.table.4 = private constant [3 x ptr] [ptr @will.error.message.4, ptr @will.error.status.4, ptr @will.error.id.4]
 @will.error.value.4 = private constant %interface.Error { ptr @will.error.data.4, ptr @will.error.table.4 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [16 x i8] c"main.will:11:17\00", align 1

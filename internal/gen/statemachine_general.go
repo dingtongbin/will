@@ -157,6 +157,7 @@ func (g *generator) emitGeneralStep(fnID int) error {
 		slot string
 	}
 	var scalarParams []scalarParam
+	var mutParams []scalarParam
 	for _, p := range params {
 		typ, byPtr, err := g.asyncParamABI(p)
 		if err != nil {
@@ -165,7 +166,13 @@ func (g *generator) emitGeneralStep(fnID int) error {
 		slot := g.smAlloca(typ, "param."+strconv.Itoa(p.ID))
 		g.smParamSlot[p.ID] = slot
 		if byPtr {
-			g.scope[p.ID] = slot
+			if fieldText(p, "mut") == "true" {
+				name := g.newTmp()
+				g.scope[p.ID] = name
+				mutParams = append(mutParams, scalarParam{name: name, typ: "ptr", slot: slot})
+			} else {
+				g.scope[p.ID] = slot
+			}
 			g.borrows[p.ID] = true
 			continue
 		}
@@ -207,6 +214,9 @@ func (g *generator) emitGeneralStep(fnID int) error {
 
 	fmt.Fprintf(g.out, "define internal i32 @%s(ptr %%frame) {\nentry:\n", llvmSymbol(sym+".sm"))
 	g.out.WriteString(geps)
+	for _, p := range mutParams {
+		fmt.Fprintf(g.out, "  %s = load %s, ptr %s\n", p.name, p.typ, p.slot)
+	}
 	for _, p := range scalarParams {
 		fmt.Fprintf(g.out, "  %s = load %s, ptr %s\n", p.name, p.typ, p.slot)
 	}
@@ -287,14 +297,22 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 		}
 		ptr := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %%v.sm.frame, i64 %d\n", ptr, offset)
-		if a.byPtr {
-			g.copyValue(fmt.Sprintf("%%arg%d", i), ptr, a.typ)
+		arg := fmt.Sprintf("%%arg%d", i)
+		mut := fieldText(a.p, "mut") == "true"
+		if a.byPtr && mut {
+			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", arg, ptr)
+		} else if a.byPtr {
+			g.copyValue(arg, ptr, a.typ)
 		} else {
-			fmt.Fprintf(g.out, "  store %s %%arg%d, ptr %s\n", a.typ, i, ptr)
+			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", a.typ, arg, ptr)
 		}
 		// The capture is the crossing whether the parameter moves by value
 		// or by pointer: an rc handle lands in a frame another lane runs.
-		if err := g.shareValue(ptr, a.text); err != nil {
+		share := ptr
+		if a.byPtr && mut {
+			share = arg
+		}
+		if err := g.shareValue(share, a.text); err != nil {
 			return err
 		}
 		if a.text == "task.Cancel" || strings.HasSuffix(a.text, ".Cancel") {

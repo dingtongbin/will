@@ -70,6 +70,52 @@ func Use(x: Shape) -> i32 {
 	}
 }
 
+func TestInterfaceDowncasts(t *testing.T) {
+	src := `interface Shape {
+    func Area() -> i32
+}
+
+struct Square {
+    s: i32
+}
+
+func (q: Square) Area() -> i32 {
+    return q.s
+}
+
+func Use(x: Shape) -> i32 {
+    var yes: bool = x.Is<Square>()
+    var maybe: Option<Square> = x.As<Square>()
+    _ = yes
+    return match maybe {
+        Some(q) => q.Area()
+        None => 0
+    }
+}
+`
+	if ds := checkWithResolve(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
+func TestInterfaceDowncastNeedsOneType(t *testing.T) {
+	src := `interface Shape {
+    func Area() -> i32
+}
+
+func Use(x: Shape) -> bool {
+    return x.Is()
+}
+`
+	d := findCode(t, checkWithResolve(t, src), diag.CodeTypeArgCount)
+	if d.Message != "wrong number of type arguments" {
+		t.Errorf("message = %q", d.Message)
+	}
+	if d.Help != "a downcast takes one target type" {
+		t.Errorf("help = %q", d.Help)
+	}
+}
+
 func TestInterfaceToInterface(t *testing.T) {
 	narrow := `interface A {
     func F() -> i32

@@ -221,7 +221,7 @@ entry:
   %t18 = icmp eq i64 %b, 0
   br i1 %t18, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.6, ptr @.str.7)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.7, ptr @.str.8)
   unreachable
 panic.ok.1:
   %t19 = icmp eq i64 %a, -9223372036854775808
@@ -229,7 +229,7 @@ panic.ok.1:
   %t21 = and i1 %t19, %t20
   br i1 %t21, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.6, ptr @.str.7)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.7, ptr @.str.8)
   unreachable
 panic.ok.2:
   %t22 = sdiv i64 %a, %b
@@ -241,7 +241,7 @@ panic.ok.2:
   %t25 = icmp eq i64 %b, 0
   br i1 %t25, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.8, ptr @.str.7)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.9, ptr @.str.8)
   unreachable
 panic.ok.4:
   %t26 = icmp eq i64 %a, -9223372036854775808
@@ -249,7 +249,7 @@ panic.ok.4:
   %t28 = and i1 %t26, %t27
   br i1 %t28, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.8, ptr @.str.7)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.9, ptr @.str.8)
   unreachable
 panic.ok.5:
   %t29 = srem i64 %a, %b
@@ -266,7 +266,7 @@ if.then.3:
   %t38 = extractvalue {i64, i1} %t36, 1
   br i1 %t38, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.9, ptr @.str.7)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.10, ptr @.str.8)
   unreachable
 panic.ok.6:
   store i64 %t37, ptr %v.q
@@ -283,7 +283,7 @@ entry:
   %t43 = extractvalue {i64, i1} %t41, 1
   br i1 %t43, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.10, ptr @.str.11)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.11, ptr @.str.12)
   unreachable
 panic.ok.1:
   %t44 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %a, i64 %t42)
@@ -291,7 +291,7 @@ panic.ok.1:
   %t46 = extractvalue {i64, i1} %t44, 1
   br i1 %t46, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.12, ptr @.str.11)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.13, ptr @.str.12)
   unreachable
 panic.ok.2:
   ret i64 %t45
@@ -315,7 +315,7 @@ if.then.1:
   %t52 = extractvalue {i64, i1} %t50, 1
   br i1 %t52, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.13, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.14, ptr @.str.15)
   unreachable
 panic.ok.2:
   store i64 %t51, ptr %v.y
@@ -331,7 +331,7 @@ if.end.1:
   %t59 = extractvalue {i64, i1} %t57, 1
   br i1 %t59, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.15, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.16, ptr @.str.15)
   unreachable
 panic.ok.3:
   %t60 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t55, i64 %t58)
@@ -339,7 +339,7 @@ panic.ok.3:
   %t62 = extractvalue {i64, i1} %t60, 1
   br i1 %t62, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.16, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.17, ptr @.str.15)
   unreachable
 panic.ok.4:
   store i64 %t61, ptr %v.yoe
@@ -354,7 +354,7 @@ if.then.5:
   %t68 = extractvalue {i64, i1} %t66, 1
   br i1 %t68, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.17, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.18, ptr @.str.15)
   unreachable
 panic.ok.6:
   store i64 %t67, ptr %v.mp
@@ -366,7 +366,7 @@ if.else.5:
   %t72 = extractvalue {i64, i1} %t70, 1
   br i1 %t72, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.18, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.19, ptr @.str.15)
   unreachable
 panic.ok.7:
   store i64 %t71, ptr %v.mp
@@ -378,7 +378,7 @@ if.end.5:
   %t76 = extractvalue {i64, i1} %t74, 1
   br i1 %t76, label %panic.8, label %panic.ok.8
 panic.8:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.19, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.20, ptr @.str.15)
   unreachable
 panic.ok.8:
   %t77 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t75, i64 2)
@@ -386,13 +386,13 @@ panic.ok.8:
   %t79 = extractvalue {i64, i1} %t77, 1
   br i1 %t79, label %panic.9, label %panic.ok.9
 panic.9:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.19, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.20, ptr @.str.15)
   unreachable
 panic.ok.9:
   %t80 = icmp eq i64 5, 0
   br i1 %t80, label %panic.10, label %panic.ok.10
 panic.10:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.19, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.20, ptr @.str.15)
   unreachable
 panic.ok.10:
   %t81 = icmp eq i64 %t78, -9223372036854775808
@@ -400,7 +400,7 @@ panic.ok.10:
   %t83 = and i1 %t81, %t82
   br i1 %t83, label %panic.11, label %panic.ok.11
 panic.11:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.19, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.20, ptr @.str.15)
   unreachable
 panic.ok.11:
   %t84 = sdiv i64 %t78, 5
@@ -410,7 +410,7 @@ panic.ok.11:
   %t88 = extractvalue {i64, i1} %t86, 1
   br i1 %t88, label %panic.12, label %panic.ok.12
 panic.12:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.19, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.20, ptr @.str.15)
   unreachable
 panic.ok.12:
   %t89 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t87, i64 1)
@@ -418,7 +418,7 @@ panic.ok.12:
   %t91 = extractvalue {i64, i1} %t89, 1
   br i1 %t91, label %panic.13, label %panic.ok.13
 panic.13:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.19, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.20, ptr @.str.15)
   unreachable
 panic.ok.13:
   store i64 %t90, ptr %v.doy
@@ -428,14 +428,14 @@ panic.ok.13:
   %t95 = extractvalue {i64, i1} %t93, 1
   br i1 %t95, label %panic.14, label %panic.ok.14
 panic.14:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.20, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.21, ptr @.str.15)
   unreachable
 panic.ok.14:
   %t96 = load i64, ptr %v.yoe
   %t97 = icmp eq i64 4, 0
   br i1 %t97, label %panic.15, label %panic.ok.15
 panic.15:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.21, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.22, ptr @.str.15)
   unreachable
 panic.ok.15:
   %t98 = icmp eq i64 %t96, -9223372036854775808
@@ -443,7 +443,7 @@ panic.ok.15:
   %t100 = and i1 %t98, %t99
   br i1 %t100, label %panic.16, label %panic.ok.16
 panic.16:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.21, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.22, ptr @.str.15)
   unreachable
 panic.ok.16:
   %t101 = sdiv i64 %t96, 4
@@ -452,14 +452,14 @@ panic.ok.16:
   %t104 = extractvalue {i64, i1} %t102, 1
   br i1 %t104, label %panic.17, label %panic.ok.17
 panic.17:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.20, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.21, ptr @.str.15)
   unreachable
 panic.ok.17:
   %t105 = load i64, ptr %v.yoe
   %t106 = icmp eq i64 100, 0
   br i1 %t106, label %panic.18, label %panic.ok.18
 panic.18:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.22, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.23, ptr @.str.15)
   unreachable
 panic.ok.18:
   %t107 = icmp eq i64 %t105, -9223372036854775808
@@ -467,7 +467,7 @@ panic.ok.18:
   %t109 = and i1 %t107, %t108
   br i1 %t109, label %panic.19, label %panic.ok.19
 panic.19:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.22, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.23, ptr @.str.15)
   unreachable
 panic.ok.19:
   %t110 = sdiv i64 %t105, 100
@@ -476,7 +476,7 @@ panic.ok.19:
   %t113 = extractvalue {i64, i1} %t111, 1
   br i1 %t113, label %panic.20, label %panic.ok.20
 panic.20:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.20, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.21, ptr @.str.15)
   unreachable
 panic.ok.20:
   %t114 = load i64, ptr %v.doy
@@ -485,7 +485,7 @@ panic.ok.20:
   %t117 = extractvalue {i64, i1} %t115, 1
   br i1 %t117, label %panic.21, label %panic.ok.21
 panic.21:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.20, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.21, ptr @.str.15)
   unreachable
 panic.ok.21:
   store i64 %t116, ptr %v.doe
@@ -495,7 +495,7 @@ panic.ok.21:
   %t121 = extractvalue {i64, i1} %t119, 1
   br i1 %t121, label %panic.22, label %panic.ok.22
 panic.22:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.23, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.24, ptr @.str.15)
   unreachable
 panic.ok.22:
   %t122 = load i64, ptr %v.doe
@@ -504,7 +504,7 @@ panic.ok.22:
   %t125 = extractvalue {i64, i1} %t123, 1
   br i1 %t125, label %panic.23, label %panic.ok.23
 panic.23:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.23, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.24, ptr @.str.15)
   unreachable
 panic.ok.23:
   %t126 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t124, i64 719468)
@@ -512,7 +512,7 @@ panic.ok.23:
   %t128 = extractvalue {i64, i1} %t126, 1
   br i1 %t128, label %panic.24, label %panic.ok.24
 panic.24:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.23, ptr @.str.14)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.24, ptr @.str.15)
   unreachable
 panic.ok.24:
   ret i64 %t127
@@ -534,7 +534,7 @@ entry:
   %t131 = extractvalue {i64, i1} %t129, 1
   br i1 %t131, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.24, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.25, ptr @.str.26)
   unreachable
 panic.ok.1:
   store i64 %t130, ptr %v.z
@@ -548,7 +548,7 @@ panic.ok.1:
   %t138 = extractvalue {i64, i1} %t136, 1
   br i1 %t138, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.26, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.27, ptr @.str.26)
   unreachable
 panic.ok.2:
   %t139 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t134, i64 %t137)
@@ -556,7 +556,7 @@ panic.ok.2:
   %t141 = extractvalue {i64, i1} %t139, 1
   br i1 %t141, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.27, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.28, ptr @.str.26)
   unreachable
 panic.ok.3:
   store i64 %t140, ptr %v.doe
@@ -565,7 +565,7 @@ panic.ok.3:
   %t144 = icmp eq i64 1460, 0
   br i1 %t144, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.28, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.29, ptr @.str.26)
   unreachable
 panic.ok.4:
   %t145 = icmp eq i64 %t143, -9223372036854775808
@@ -573,7 +573,7 @@ panic.ok.4:
   %t147 = and i1 %t145, %t146
   br i1 %t147, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.28, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.29, ptr @.str.26)
   unreachable
 panic.ok.5:
   %t148 = sdiv i64 %t143, 1460
@@ -582,14 +582,14 @@ panic.ok.5:
   %t151 = extractvalue {i64, i1} %t149, 1
   br i1 %t151, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.29, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.30, ptr @.str.26)
   unreachable
 panic.ok.6:
   %t152 = load i64, ptr %v.doe
   %t153 = icmp eq i64 36524, 0
   br i1 %t153, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.30, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.31, ptr @.str.26)
   unreachable
 panic.ok.7:
   %t154 = icmp eq i64 %t152, -9223372036854775808
@@ -597,7 +597,7 @@ panic.ok.7:
   %t156 = and i1 %t154, %t155
   br i1 %t156, label %panic.8, label %panic.ok.8
 panic.8:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.30, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.31, ptr @.str.26)
   unreachable
 panic.ok.8:
   %t157 = sdiv i64 %t152, 36524
@@ -606,14 +606,14 @@ panic.ok.8:
   %t160 = extractvalue {i64, i1} %t158, 1
   br i1 %t160, label %panic.9, label %panic.ok.9
 panic.9:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.29, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.30, ptr @.str.26)
   unreachable
 panic.ok.9:
   %t161 = load i64, ptr %v.doe
   %t162 = icmp eq i64 146096, 0
   br i1 %t162, label %panic.10, label %panic.ok.10
 panic.10:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.31, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.32, ptr @.str.26)
   unreachable
 panic.ok.10:
   %t163 = icmp eq i64 %t161, -9223372036854775808
@@ -621,7 +621,7 @@ panic.ok.10:
   %t165 = and i1 %t163, %t164
   br i1 %t165, label %panic.11, label %panic.ok.11
 panic.11:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.31, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.32, ptr @.str.26)
   unreachable
 panic.ok.11:
   %t166 = sdiv i64 %t161, 146096
@@ -630,13 +630,13 @@ panic.ok.11:
   %t169 = extractvalue {i64, i1} %t167, 1
   br i1 %t169, label %panic.12, label %panic.ok.12
 panic.12:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.29, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.30, ptr @.str.26)
   unreachable
 panic.ok.12:
   %t170 = icmp eq i64 365, 0
   br i1 %t170, label %panic.13, label %panic.ok.13
 panic.13:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.29, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.30, ptr @.str.26)
   unreachable
 panic.ok.13:
   %t171 = icmp eq i64 %t168, -9223372036854775808
@@ -644,7 +644,7 @@ panic.ok.13:
   %t173 = and i1 %t171, %t172
   br i1 %t173, label %panic.14, label %panic.ok.14
 panic.14:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.29, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.30, ptr @.str.26)
   unreachable
 panic.ok.14:
   %t174 = sdiv i64 %t168, 365
@@ -656,7 +656,7 @@ panic.ok.14:
   %t179 = extractvalue {i64, i1} %t177, 1
   br i1 %t179, label %panic.15, label %panic.ok.15
 panic.15:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.32, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.33, ptr @.str.26)
   unreachable
 panic.ok.15:
   %t180 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t175, i64 %t178)
@@ -664,7 +664,7 @@ panic.ok.15:
   %t182 = extractvalue {i64, i1} %t180, 1
   br i1 %t182, label %panic.16, label %panic.ok.16
 panic.16:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.33, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.34, ptr @.str.26)
   unreachable
 panic.ok.16:
   store i64 %t181, ptr %v.y
@@ -675,14 +675,14 @@ panic.ok.16:
   %t187 = extractvalue {i64, i1} %t185, 1
   br i1 %t187, label %panic.17, label %panic.ok.17
 panic.17:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.34, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.35, ptr @.str.26)
   unreachable
 panic.ok.17:
   %t188 = load i64, ptr %v.yoe
   %t189 = icmp eq i64 4, 0
   br i1 %t189, label %panic.18, label %panic.ok.18
 panic.18:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.35, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.36, ptr @.str.26)
   unreachable
 panic.ok.18:
   %t190 = icmp eq i64 %t188, -9223372036854775808
@@ -690,7 +690,7 @@ panic.ok.18:
   %t192 = and i1 %t190, %t191
   br i1 %t192, label %panic.19, label %panic.ok.19
 panic.19:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.35, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.36, ptr @.str.26)
   unreachable
 panic.ok.19:
   %t193 = sdiv i64 %t188, 4
@@ -699,14 +699,14 @@ panic.ok.19:
   %t196 = extractvalue {i64, i1} %t194, 1
   br i1 %t196, label %panic.20, label %panic.ok.20
 panic.20:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.34, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.35, ptr @.str.26)
   unreachable
 panic.ok.20:
   %t197 = load i64, ptr %v.yoe
   %t198 = icmp eq i64 100, 0
   br i1 %t198, label %panic.21, label %panic.ok.21
 panic.21:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.36, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.37, ptr @.str.26)
   unreachable
 panic.ok.21:
   %t199 = icmp eq i64 %t197, -9223372036854775808
@@ -714,7 +714,7 @@ panic.ok.21:
   %t201 = and i1 %t199, %t200
   br i1 %t201, label %panic.22, label %panic.ok.22
 panic.22:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.36, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.37, ptr @.str.26)
   unreachable
 panic.ok.22:
   %t202 = sdiv i64 %t197, 100
@@ -723,7 +723,7 @@ panic.ok.22:
   %t205 = extractvalue {i64, i1} %t203, 1
   br i1 %t205, label %panic.23, label %panic.ok.23
 panic.23:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.34, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.35, ptr @.str.26)
   unreachable
 panic.ok.23:
   %t206 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t183, i64 %t204)
@@ -731,7 +731,7 @@ panic.ok.23:
   %t208 = extractvalue {i64, i1} %t206, 1
   br i1 %t208, label %panic.24, label %panic.ok.24
 panic.24:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.37, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.38, ptr @.str.26)
   unreachable
 panic.ok.24:
   store i64 %t207, ptr %v.doy
@@ -741,7 +741,7 @@ panic.ok.24:
   %t212 = extractvalue {i64, i1} %t210, 1
   br i1 %t212, label %panic.25, label %panic.ok.25
 panic.25:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.38, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.39, ptr @.str.26)
   unreachable
 panic.ok.25:
   %t213 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t211, i64 2)
@@ -749,13 +749,13 @@ panic.ok.25:
   %t215 = extractvalue {i64, i1} %t213, 1
   br i1 %t215, label %panic.26, label %panic.ok.26
 panic.26:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.38, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.39, ptr @.str.26)
   unreachable
 panic.ok.26:
   %t216 = icmp eq i64 153, 0
   br i1 %t216, label %panic.27, label %panic.ok.27
 panic.27:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.38, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.39, ptr @.str.26)
   unreachable
 panic.ok.27:
   %t217 = icmp eq i64 %t214, -9223372036854775808
@@ -763,7 +763,7 @@ panic.ok.27:
   %t219 = and i1 %t217, %t218
   br i1 %t219, label %panic.28, label %panic.ok.28
 panic.28:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.38, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.39, ptr @.str.26)
   unreachable
 panic.ok.28:
   %t220 = sdiv i64 %t214, 153
@@ -775,7 +775,7 @@ panic.ok.28:
   %t225 = extractvalue {i64, i1} %t223, 1
   br i1 %t225, label %panic.29, label %panic.ok.29
 panic.29:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.39, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.40, ptr @.str.26)
   unreachable
 panic.ok.29:
   %t226 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t224, i64 2)
@@ -783,13 +783,13 @@ panic.ok.29:
   %t228 = extractvalue {i64, i1} %t226, 1
   br i1 %t228, label %panic.30, label %panic.ok.30
 panic.30:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.39, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.40, ptr @.str.26)
   unreachable
 panic.ok.30:
   %t229 = icmp eq i64 5, 0
   br i1 %t229, label %panic.31, label %panic.ok.31
 panic.31:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.39, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.40, ptr @.str.26)
   unreachable
 panic.ok.31:
   %t230 = icmp eq i64 %t227, -9223372036854775808
@@ -797,7 +797,7 @@ panic.ok.31:
   %t232 = and i1 %t230, %t231
   br i1 %t232, label %panic.32, label %panic.ok.32
 panic.32:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.39, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.40, ptr @.str.26)
   unreachable
 panic.ok.32:
   %t233 = sdiv i64 %t227, 5
@@ -806,7 +806,7 @@ panic.ok.32:
   %t236 = extractvalue {i64, i1} %t234, 1
   br i1 %t236, label %panic.33, label %panic.ok.33
 panic.33:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.40, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.41, ptr @.str.26)
   unreachable
 panic.ok.33:
   %t237 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t235, i64 1)
@@ -814,7 +814,7 @@ panic.ok.33:
   %t239 = extractvalue {i64, i1} %t237, 1
   br i1 %t239, label %panic.34, label %panic.ok.34
 panic.34:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.40, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.41, ptr @.str.26)
   unreachable
 panic.ok.34:
   store i64 %t238, ptr %v.day
@@ -824,7 +824,7 @@ panic.ok.34:
   %t243 = extractvalue {i64, i1} %t241, 1
   br i1 %t243, label %panic.35, label %panic.ok.35
 panic.35:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.41, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.42, ptr @.str.26)
   unreachable
 panic.ok.35:
   store i64 %t242, ptr %v.month
@@ -838,7 +838,7 @@ if.then.36:
   %t249 = extractvalue {i64, i1} %t247, 1
   br i1 %t249, label %panic.37, label %panic.ok.37
 panic.37:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.42, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.43, ptr @.str.26)
   unreachable
 panic.ok.37:
   store i64 %t248, ptr %v.month
@@ -854,7 +854,7 @@ if.then.38:
   %t255 = extractvalue {i64, i1} %t253, 1
   br i1 %t255, label %panic.39, label %panic.ok.39
 panic.39:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.43, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.44, ptr @.str.26)
   unreachable
 panic.ok.39:
   store i64 %t254, ptr %v.y
@@ -865,13 +865,13 @@ if.end.38:
   %t258 = icmp slt i64 %t257, -2147483648
   br i1 %t258, label %panic.40, label %panic.ok.40
 panic.40:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.45, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.46, ptr @.str.26)
   unreachable
 panic.ok.40:
   %t259 = icmp sgt i64 %t257, 2147483647
   br i1 %t259, label %panic.41, label %panic.ok.41
 panic.41:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.45, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.46, ptr @.str.26)
   unreachable
 panic.ok.41:
   %t260 = trunc i64 %t257 to i32
@@ -881,13 +881,13 @@ panic.ok.41:
   %t263 = icmp slt i64 %t262, -2147483648
   br i1 %t263, label %panic.42, label %panic.ok.42
 panic.42:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.46, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.47, ptr @.str.26)
   unreachable
 panic.ok.42:
   %t264 = icmp sgt i64 %t262, 2147483647
   br i1 %t264, label %panic.43, label %panic.ok.43
 panic.43:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.46, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.47, ptr @.str.26)
   unreachable
 panic.ok.43:
   %t265 = trunc i64 %t262 to i32
@@ -897,13 +897,13 @@ panic.ok.43:
   %t268 = icmp slt i64 %t267, -2147483648
   br i1 %t268, label %panic.44, label %panic.ok.44
 panic.44:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.47, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.48, ptr @.str.26)
   unreachable
 panic.ok.44:
   %t269 = icmp sgt i64 %t267, 2147483647
   br i1 %t269, label %panic.45, label %panic.ok.45
 panic.45:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.47, ptr @.str.25)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.48, ptr @.str.26)
   unreachable
 panic.ok.45:
   %t270 = trunc i64 %t267 to i32
@@ -929,7 +929,7 @@ entry:
   %t275 = icmp eq i64 3600, 0
   br i1 %t275, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.48, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.49, ptr @.str.50)
   unreachable
 panic.ok.1:
   %t276 = icmp eq i64 %t274, -9223372036854775808
@@ -937,7 +937,7 @@ panic.ok.1:
   %t278 = and i1 %t276, %t277
   br i1 %t278, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.48, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.49, ptr @.str.50)
   unreachable
 panic.ok.2:
   %t279 = sdiv i64 %t274, 3600
@@ -946,7 +946,7 @@ panic.ok.2:
   %t281 = icmp eq i64 3600, 0
   br i1 %t281, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.50, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.51, ptr @.str.50)
   unreachable
 panic.ok.3:
   %t282 = icmp eq i64 %t280, -9223372036854775808
@@ -954,14 +954,14 @@ panic.ok.3:
   %t284 = and i1 %t282, %t283
   br i1 %t284, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.50, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.51, ptr @.str.50)
   unreachable
 panic.ok.4:
   %t285 = srem i64 %t280, 3600
   %t286 = icmp eq i64 60, 0
   br i1 %t286, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.50, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.51, ptr @.str.50)
   unreachable
 panic.ok.5:
   %t287 = icmp eq i64 %t285, -9223372036854775808
@@ -969,7 +969,7 @@ panic.ok.5:
   %t289 = and i1 %t287, %t288
   br i1 %t289, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.50, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.51, ptr @.str.50)
   unreachable
 panic.ok.6:
   %t290 = sdiv i64 %t285, 60
@@ -978,7 +978,7 @@ panic.ok.6:
   %t292 = icmp eq i64 60, 0
   br i1 %t292, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.51, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.52, ptr @.str.50)
   unreachable
 panic.ok.7:
   %t293 = icmp eq i64 %t291, -9223372036854775808
@@ -986,7 +986,7 @@ panic.ok.7:
   %t295 = and i1 %t293, %t294
   br i1 %t295, label %panic.8, label %panic.ok.8
 panic.8:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.51, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.52, ptr @.str.50)
   unreachable
 panic.ok.8:
   %t296 = srem i64 %t291, 60
@@ -996,13 +996,13 @@ panic.ok.8:
   %t299 = icmp slt i64 %t298, -2147483648
   br i1 %t299, label %panic.9, label %panic.ok.9
 panic.9:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.52, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.53, ptr @.str.50)
   unreachable
 panic.ok.9:
   %t300 = icmp sgt i64 %t298, 2147483647
   br i1 %t300, label %panic.10, label %panic.ok.10
 panic.10:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.52, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.53, ptr @.str.50)
   unreachable
 panic.ok.10:
   %t301 = trunc i64 %t298 to i32
@@ -1012,13 +1012,13 @@ panic.ok.10:
   %t304 = icmp slt i64 %t303, -2147483648
   br i1 %t304, label %panic.11, label %panic.ok.11
 panic.11:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.53, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.54, ptr @.str.50)
   unreachable
 panic.ok.11:
   %t305 = icmp sgt i64 %t303, 2147483647
   br i1 %t305, label %panic.12, label %panic.ok.12
 panic.12:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.53, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.54, ptr @.str.50)
   unreachable
 panic.ok.12:
   %t306 = trunc i64 %t303 to i32
@@ -1028,13 +1028,13 @@ panic.ok.12:
   %t309 = icmp slt i64 %t308, -2147483648
   br i1 %t309, label %panic.13, label %panic.ok.13
 panic.13:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.54, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.55, ptr @.str.50)
   unreachable
 panic.ok.13:
   %t310 = icmp sgt i64 %t308, 2147483647
   br i1 %t310, label %panic.14, label %panic.ok.14
 panic.14:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.54, ptr @.str.49)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.55, ptr @.str.50)
   unreachable
 panic.ok.14:
   %t311 = trunc i64 %t308 to i32
@@ -1055,7 +1055,7 @@ entry:
   %t321 = extractvalue {i64, i1} %t319, 1
   br i1 %t321, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.55, ptr @.str.56)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.56, ptr @.str.57)
   unreachable
 panic.ok.1:
   ret i64 %t320
@@ -1067,7 +1067,7 @@ entry:
   %t324 = extractvalue {i64, i1} %t322, 1
   br i1 %t324, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.57, ptr @.str.58)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.58, ptr @.str.59)
   unreachable
 panic.ok.1:
   %t325 = call i64 @"std/time.floorMod"(i64 %t323, i64 7)
@@ -1078,7 +1078,7 @@ entry:
   %t326 = icmp eq i32 4, 0
   br i1 %t326, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.59, ptr @.str.60)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.60, ptr @.str.61)
   unreachable
 panic.ok.2:
   %t327 = icmp eq i32 %year, -2147483648
@@ -1086,7 +1086,7 @@ panic.ok.2:
   %t329 = and i1 %t327, %t328
   br i1 %t329, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.59, ptr @.str.60)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.60, ptr @.str.61)
   unreachable
 panic.ok.3:
   %t330 = srem i32 %year, 4
@@ -1098,7 +1098,7 @@ if.end.1:
   %t332 = icmp eq i32 100, 0
   br i1 %t332, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.61, ptr @.str.60)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.62, ptr @.str.61)
   unreachable
 panic.ok.5:
   %t333 = icmp eq i32 %year, -2147483648
@@ -1106,7 +1106,7 @@ panic.ok.5:
   %t335 = and i1 %t333, %t334
   br i1 %t335, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.61, ptr @.str.60)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.62, ptr @.str.61)
   unreachable
 panic.ok.6:
   %t336 = srem i32 %year, 100
@@ -1118,7 +1118,7 @@ if.end.4:
   %t338 = icmp eq i32 400, 0
   br i1 %t338, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.62, ptr @.str.60)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.63, ptr @.str.61)
   unreachable
 panic.ok.7:
   %t339 = icmp eq i32 %year, -2147483648
@@ -1126,7 +1126,7 @@ panic.ok.7:
   %t341 = and i1 %t339, %t340
   br i1 %t341, label %panic.8, label %panic.ok.8
 panic.8:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.62, ptr @.str.60)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.63, ptr @.str.61)
   unreachable
 panic.ok.8:
   %t342 = srem i32 %year, 400
@@ -1391,7 +1391,7 @@ if.then.2:
   %t466 = icmp eq i64 %t464, -9223372036854775808
   br i1 %t466, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.69, ptr @.str.70)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.70, ptr @.str.71)
   unreachable
 panic.ok.3:
   %t465 = sub i64 0, %t464
@@ -1402,7 +1402,7 @@ if.end.2:
   %t468 = icmp eq i64 3600, 0
   br i1 %t468, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.71, ptr @.str.70)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.72, ptr @.str.71)
   unreachable
 panic.ok.4:
   %t469 = icmp eq i64 %t467, -9223372036854775808
@@ -1410,7 +1410,7 @@ panic.ok.4:
   %t471 = and i1 %t469, %t470
   br i1 %t471, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.71, ptr @.str.70)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.72, ptr @.str.71)
   unreachable
 panic.ok.5:
   %t472 = sdiv i64 %t467, 3600
@@ -1419,7 +1419,7 @@ panic.ok.5:
   %t474 = icmp eq i64 3600, 0
   br i1 %t474, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.72, ptr @.str.70)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.73, ptr @.str.71)
   unreachable
 panic.ok.6:
   %t475 = icmp eq i64 %t473, -9223372036854775808
@@ -1427,14 +1427,14 @@ panic.ok.6:
   %t477 = and i1 %t475, %t476
   br i1 %t477, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.72, ptr @.str.70)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.73, ptr @.str.71)
   unreachable
 panic.ok.7:
   %t478 = srem i64 %t473, 3600
   %t479 = icmp eq i64 60, 0
   br i1 %t479, label %panic.8, label %panic.ok.8
 panic.8:
-  call void @willrt_panic(ptr @.str.5, ptr @.str.72, ptr @.str.70)
+  call void @willrt_panic(ptr @.str.6, ptr @.str.73, ptr @.str.71)
   unreachable
 panic.ok.8:
   %t480 = icmp eq i64 %t478, -9223372036854775808
@@ -1442,7 +1442,7 @@ panic.ok.8:
   %t482 = and i1 %t480, %t481
   br i1 %t482, label %panic.9, label %panic.ok.9
 panic.9:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.72, ptr @.str.70)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.73, ptr @.str.71)
   unreachable
 panic.ok.9:
   %t483 = sdiv i64 %t478, 60
@@ -2922,7 +2922,7 @@ for.body.1:
   %t1252 = icmp sle i32 %t1251, 0
   br i1 %t1252, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.97, ptr @.str.98, ptr @.str.99)
+  call void @willrt_panic(ptr @.str.98, ptr @.str.99, ptr @.str.100)
   unreachable
 panic.ok.2:
   %t1253 = sext i32 %t1251 to i64
@@ -3001,13 +3001,13 @@ if.then.1:
   %t1289 = extractvalue {i32, i1} %t1287, 1
   br i1 %t1289, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.100, ptr @.str.101)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.101, ptr @.str.102)
   unreachable
 panic.ok.2:
   %t1290 = icmp ugt i32 %t1288, 2147483647
   br i1 %t1290, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.102, ptr @.str.101)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.103, ptr @.str.102)
   unreachable
 panic.ok.3:
   ret i32 %t1288
@@ -3015,7 +3015,7 @@ if.end.1:
   %t1292 = icmp eq i32 1, -2147483648
   br i1 %t1292, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.103, ptr @.str.101)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.104, ptr @.str.102)
   unreachable
 panic.ok.4:
   %t1291 = sub i32 0, 1
@@ -3029,7 +3029,7 @@ entry:
   %t1296 = icmp ugt i64 %t1295, 2147483647
   br i1 %t1296, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.104, ptr @.str.105)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.105, ptr @.str.106)
   unreachable
 panic.ok.2:
   %t1297 = trunc i64 %t1295 to i32
@@ -3047,7 +3047,7 @@ if.end.1:
   %t1305 = icmp uge i64 %t1300, %t1304
   br i1 %t1305, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.106, ptr @.str.107, ptr @.str.105)
+  call void @willrt_panic(ptr @.str.107, ptr @.str.108, ptr @.str.106)
   unreachable
 panic.ok.3:
   %t1306 = getelementptr inbounds i32, ptr %t1302, i64 %t1300
@@ -3068,7 +3068,7 @@ entry:
   %t1314 = extractvalue {i32, i1} %t1312, 1
   br i1 %t1314, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.108, ptr @.str.109)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.109, ptr @.str.110)
   unreachable
 panic.ok.2:
   %t1315 = getelementptr inbounds { ptr, i64 }, ptr %cs, i32 0, i32 1
@@ -3076,7 +3076,7 @@ panic.ok.2:
   %t1317 = icmp ugt i64 %t1316, 2147483647
   br i1 %t1317, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.110, ptr @.str.109)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.111, ptr @.str.110)
   unreachable
 panic.ok.3:
   %t1318 = trunc i64 %t1316 to i32
@@ -3087,7 +3087,7 @@ if.then.1:
   %t1322 = icmp eq i32 1, -2147483648
   br i1 %t1322, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.111, ptr @.str.109)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.112, ptr @.str.110)
   unreachable
 panic.ok.4:
   %t1321 = sub i32 0, 1
@@ -3109,7 +3109,7 @@ if.end.6:
   %t1328 = extractvalue {i32, i1} %t1326, 1
   br i1 %t1328, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.112, ptr @.str.109)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.113, ptr @.str.110)
   unreachable
 panic.ok.7:
   %t1329 = sext i32 %t1327 to i64
@@ -3120,7 +3120,7 @@ panic.ok.7:
   %t1334 = icmp uge i64 %t1329, %t1333
   br i1 %t1334, label %panic.8, label %panic.ok.8
 panic.8:
-  call void @willrt_panic(ptr @.str.106, ptr @.str.113, ptr @.str.109)
+  call void @willrt_panic(ptr @.str.107, ptr @.str.114, ptr @.str.110)
   unreachable
 panic.ok.8:
   %t1335 = getelementptr inbounds i32, ptr %t1331, i64 %t1329
@@ -3134,7 +3134,7 @@ if.then.9:
   %t1341 = icmp eq i32 1, -2147483648
   br i1 %t1341, label %panic.10, label %panic.ok.10
 panic.10:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.114, ptr @.str.109)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.115, ptr @.str.110)
   unreachable
 panic.ok.10:
   %t1340 = sub i32 0, 1
@@ -3146,7 +3146,7 @@ if.end.9:
   %t1345 = extractvalue {i32, i1} %t1343, 1
   br i1 %t1345, label %panic.11, label %panic.ok.11
 panic.11:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.115, ptr @.str.109)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.116, ptr @.str.110)
   unreachable
 panic.ok.11:
   %t1346 = load i32, ptr %v.d
@@ -3155,7 +3155,7 @@ panic.ok.11:
   %t1349 = extractvalue {i32, i1} %t1347, 1
   br i1 %t1349, label %panic.12, label %panic.ok.12
 panic.12:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.115, ptr @.str.109)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.116, ptr @.str.110)
   unreachable
 panic.ok.12:
   store i32 %t1348, ptr %v.value
@@ -3165,7 +3165,7 @@ panic.ok.12:
   %t1353 = extractvalue {i32, i1} %t1351, 1
   br i1 %t1353, label %panic.13, label %panic.ok.13
 panic.13:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.116, ptr @.str.109)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.117, ptr @.str.110)
   unreachable
 panic.ok.13:
   store i32 %t1352, ptr %v.k
@@ -3247,7 +3247,7 @@ entry:
   %t1359 = icmp ugt i64 0, %t1358
   br i1 %t1359, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.117, ptr @.str.118, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.118, ptr @.str.119, ptr @.str.120)
   unreachable
 panic.ok.1:
   %t1360 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
@@ -3257,7 +3257,7 @@ panic.ok.1:
   %t1364 = icmp ugt i64 %t1358, %t1363
   br i1 %t1364, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.117, ptr @.str.118, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.118, ptr @.str.119, ptr @.str.120)
   unreachable
 panic.ok.2:
   %t1365 = getelementptr inbounds i32, ptr %t1361, i64 0
@@ -3273,7 +3273,7 @@ panic.ok.2:
   %t1372 = icmp ugt i64 %t1371, 2147483647
   br i1 %t1372, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.120, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.121, ptr @.str.120)
   unreachable
 panic.ok.3:
   %t1373 = trunc i64 %t1371 to i32
@@ -3500,7 +3500,7 @@ if.then.12:
   %t1504 = extractvalue {i32, i1} %t1502, 1
   br i1 %t1504, label %panic.13, label %panic.ok.13
 panic.13:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.130, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.132, ptr @.str.120)
   unreachable
 panic.ok.13:
   store i32 %t1503, ptr %v.at
@@ -3524,7 +3524,7 @@ if.end.15:
   %t1515 = icmp uge i64 %t1510, %t1514
   br i1 %t1515, label %panic.17, label %panic.ok.17
 panic.17:
-  call void @willrt_panic(ptr @.str.106, ptr @.str.131, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.107, ptr @.str.133, ptr @.str.120)
   unreachable
 panic.ok.17:
   %t1516 = getelementptr inbounds i32, ptr %t1512, i64 %t1510
@@ -3541,7 +3541,7 @@ if.end.16:
   %t1523 = extractvalue {i32, i1} %t1521, 1
   br i1 %t1523, label %panic.18, label %panic.ok.18
 panic.18:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.132, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.134, ptr @.str.120)
   unreachable
 panic.ok.18:
   store i32 %t1522, ptr %v.at
@@ -3605,7 +3605,7 @@ if.then.21:
   %t1554 = extractvalue {i32, i1} %t1552, 1
   br i1 %t1554, label %panic.22, label %panic.ok.22
 panic.22:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.135, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.137, ptr @.str.120)
   unreachable
 panic.ok.22:
   store i32 %t1553, ptr %v.at
@@ -3624,7 +3624,7 @@ if.then.23:
   %t1563 = extractvalue {i32, i1} %t1561, 1
   br i1 %t1563, label %panic.24, label %panic.ok.24
 panic.24:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.136, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.138, ptr @.str.120)
   unreachable
 panic.ok.24:
   %t1564 = call i32 @"std/time.readDigits"(ptr %v.c, i32 %t1562, i32 2)
@@ -3635,7 +3635,7 @@ panic.ok.24:
   %t1568 = extractvalue {i32, i1} %t1566, 1
   br i1 %t1568, label %panic.25, label %panic.ok.25
 panic.25:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.137, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.139, ptr @.str.120)
   unreachable
 panic.ok.25:
   %t1569 = call i32 @"std/time.readDigits"(ptr %v.c, i32 %t1567, i32 2)
@@ -3651,7 +3651,7 @@ panic.ok.25:
   %t1578 = extractvalue {i32, i1} %t1576, 1
   br i1 %t1578, label %panic.27, label %panic.ok.27
 panic.27:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.138, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.140, ptr @.str.120)
   unreachable
 panic.ok.27:
   %t1579 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t1577, i32 58)
@@ -3704,7 +3704,7 @@ if.end.28:
   %t1606 = extractvalue {i32, i1} %t1604, 1
   br i1 %t1606, label %panic.29, label %panic.ok.29
 panic.29:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.141, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.143, ptr @.str.120)
   unreachable
 panic.ok.29:
   %t1607 = load i32, ptr %v.offsetMinute
@@ -3713,7 +3713,7 @@ panic.ok.29:
   %t1610 = extractvalue {i32, i1} %t1608, 1
   br i1 %t1610, label %panic.30, label %panic.ok.30
 panic.30:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.142, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.144, ptr @.str.120)
   unreachable
 panic.ok.30:
   %t1611 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t1605, i32 %t1609)
@@ -3721,7 +3721,7 @@ panic.ok.30:
   %t1613 = extractvalue {i32, i1} %t1611, 1
   br i1 %t1613, label %panic.31, label %panic.ok.31
 panic.31:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.141, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.143, ptr @.str.120)
   unreachable
 panic.ok.31:
   store i32 %t1612, ptr %v.offset
@@ -3733,7 +3733,7 @@ if.then.32:
   %t1618 = icmp eq i32 %t1616, -2147483648
   br i1 %t1618, label %panic.33, label %panic.ok.33
 panic.33:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.143, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.145, ptr @.str.120)
   unreachable
 panic.ok.33:
   %t1617 = sub i32 0, %t1616
@@ -3746,7 +3746,7 @@ if.end.32:
   %t1622 = extractvalue {i32, i1} %t1620, 1
   br i1 %t1622, label %panic.34, label %panic.ok.34
 panic.34:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.144, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.146, ptr @.str.120)
   unreachable
 panic.ok.34:
   store i32 %t1621, ptr %v.at
@@ -3800,7 +3800,7 @@ if.end.35:
   %t1648 = extractvalue {i64, i1} %t1646, 1
   br i1 %t1648, label %panic.36, label %panic.ok.36
 panic.36:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.147, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.149, ptr @.str.120)
   unreachable
 panic.ok.36:
   store i64 %t1647, ptr %v.local
@@ -3811,7 +3811,7 @@ panic.ok.36:
   %t1653 = extractvalue {i32, i1} %t1651, 1
   br i1 %t1653, label %panic.37, label %panic.ok.37
 panic.37:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.148, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.150, ptr @.str.120)
   unreachable
 panic.ok.37:
   %t1654 = load i32, ptr %v.minute
@@ -3820,7 +3820,7 @@ panic.ok.37:
   %t1657 = extractvalue {i32, i1} %t1655, 1
   br i1 %t1657, label %panic.38, label %panic.ok.38
 panic.38:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.149, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.151, ptr @.str.120)
   unreachable
 panic.ok.38:
   %t1658 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t1652, i32 %t1656)
@@ -3828,7 +3828,7 @@ panic.ok.38:
   %t1660 = extractvalue {i32, i1} %t1658, 1
   br i1 %t1660, label %panic.39, label %panic.ok.39
 panic.39:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.148, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.150, ptr @.str.120)
   unreachable
 panic.ok.39:
   %t1661 = load i32, ptr %v.second
@@ -3837,7 +3837,7 @@ panic.ok.39:
   %t1664 = extractvalue {i32, i1} %t1662, 1
   br i1 %t1664, label %panic.40, label %panic.ok.40
 panic.40:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.148, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.150, ptr @.str.120)
   unreachable
 panic.ok.40:
   %t1665 = sext i32 %t1663 to i64
@@ -3846,7 +3846,7 @@ panic.ok.40:
   %t1668 = extractvalue {i64, i1} %t1666, 1
   br i1 %t1668, label %panic.41, label %panic.ok.41
 panic.41:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.150, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.152, ptr @.str.120)
   unreachable
 panic.ok.41:
   store i64 %t1667, ptr %v.local
@@ -3862,7 +3862,7 @@ panic.ok.41:
   %t1677 = extractvalue {i64, i1} %t1675, 1
   br i1 %t1677, label %panic.42, label %panic.ok.42
 panic.42:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.151, ptr @.str.119)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.153, ptr @.str.120)
   unreachable
 panic.ok.42:
   store i64 %t1676, ptr %t1671
@@ -3914,7 +3914,7 @@ entry:
   %t1688 = icmp ugt i64 0, %t1687
   br i1 %t1688, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.117, ptr @.str.152, ptr @.str.153)
+  call void @willrt_panic(ptr @.str.118, ptr @.str.154, ptr @.str.155)
   unreachable
 panic.ok.1:
   %t1689 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
@@ -3924,7 +3924,7 @@ panic.ok.1:
   %t1693 = icmp ugt i64 %t1687, %t1692
   br i1 %t1693, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.117, ptr @.str.152, ptr @.str.153)
+  call void @willrt_panic(ptr @.str.118, ptr @.str.154, ptr @.str.155)
   unreachable
 panic.ok.2:
   %t1694 = getelementptr inbounds i32, ptr %t1690, i64 0
@@ -3940,7 +3940,7 @@ panic.ok.2:
   %t1701 = icmp ugt i64 %t1700, 2147483647
   br i1 %t1701, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.44, ptr @.str.154, ptr @.str.153)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.156, ptr @.str.155)
   unreachable
 panic.ok.3:
   %t1702 = trunc i64 %t1700 to i32
@@ -4078,7 +4078,7 @@ if.end.8:
   %t1780 = extractvalue {i64, i1} %t1778, 1
   br i1 %t1780, label %panic.9, label %panic.ok.9
 panic.9:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.160, ptr @.str.153)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.162, ptr @.str.155)
   unreachable
 panic.ok.9:
   store i64 %t1779, ptr %v.local
@@ -4095,7 +4095,7 @@ panic.ok.9:
   %t1790 = extractvalue {i64, i1} %t1788, 1
   br i1 %t1790, label %panic.10, label %panic.ok.10
 panic.10:
-  call void @willrt_panic(ptr @.str.0, ptr @.str.161, ptr @.str.153)
+  call void @willrt_panic(ptr @.str.0, ptr @.str.163, ptr @.str.155)
   unreachable
 panic.ok.10:
   store i64 %t1789, ptr %t1783
@@ -4778,7 +4778,7 @@ main.async.ok.16:
   call void @willrt_shutdown()
   ret i32 %t289
 }
-@will.error.data.4 = private constant { ptr, i64, i32 } { ptr @.str.162, i64 6, i32 4 }
+@will.error.data.4 = private constant { ptr, i64, i32 } { ptr @.str.164, i64 6, i32 4 }
 define internal { ptr, i64 } @will.error.message.4(ptr %data) {
 entry:
   %t290 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
@@ -4795,7 +4795,8 @@ entry:
   %t297 = load i32, ptr %t296
   ret i32 %t297
 }
-@will.error.table.4 = private constant [2 x ptr] [ptr @will.error.message.4, ptr @will.error.status.4]
+@will.error.id.4 = private constant i8 0
+@will.error.table.4 = private constant [3 x ptr] [ptr @will.error.message.4, ptr @will.error.status.4, ptr @will.error.id.4]
 @will.error.value.4 = private constant %interface.Error { ptr @will.error.data.4, ptr @will.error.table.4 }
 declare i64 @willrt_now_ns()
 declare ptr @willrt_task_sleep_async_start(i64)
@@ -4807,75 +4808,76 @@ declare void @willrt_task_wait_until(i64)
 @.str.1 = private unnamed_addr constant [22 x i8] c"time/clock.will:33:21\00", align 1
 @.str.2 = private unnamed_addr constant [27 x i8] c"std/time.Stopwatch.Elapsed\00", align 1
 @.bytes.1 = private unnamed_addr constant [20 x i8] c"time: negative sleep", align 1
-@"std/time.vtable.Error.clockError" = internal constant [2 x ptr] [ptr @"std/time.clockError.Message", ptr @"std/time.clockError.Status"], align 8
-@.str.5 = private unnamed_addr constant [17 x i8] c"division by zero\00", align 1
-@.str.6 = private unnamed_addr constant [21 x i8] c"time/time.will:63:18\00", align 1
-@.str.7 = private unnamed_addr constant [18 x i8] c"std/time.floorDiv\00", align 1
-@.str.8 = private unnamed_addr constant [20 x i8] c"time/time.will:66:8\00", align 1
-@.str.9 = private unnamed_addr constant [20 x i8] c"time/time.will:67:9\00", align 1
-@.str.10 = private unnamed_addr constant [21 x i8] c"time/time.will:75:16\00", align 1
-@.str.11 = private unnamed_addr constant [18 x i8] c"std/time.floorMod\00", align 1
-@.str.12 = private unnamed_addr constant [21 x i8] c"time/time.will:75:12\00", align 1
-@.str.13 = private unnamed_addr constant [20 x i8] c"time/time.will:84:9\00", align 1
-@.str.14 = private unnamed_addr constant [23 x i8] c"std/time.daysFromCivil\00", align 1
-@.str.15 = private unnamed_addr constant [21 x i8] c"time/time.will:87:24\00", align 1
-@.str.16 = private unnamed_addr constant [21 x i8] c"time/time.will:87:20\00", align 1
-@.str.17 = private unnamed_addr constant [20 x i8] c"time/time.will:90:9\00", align 1
-@.str.18 = private unnamed_addr constant [20 x i8] c"time/time.will:92:9\00", align 1
-@.str.19 = private unnamed_addr constant [21 x i8] c"time/time.will:94:21\00", align 1
-@.str.20 = private unnamed_addr constant [21 x i8] c"time/time.will:95:20\00", align 1
-@.str.21 = private unnamed_addr constant [21 x i8] c"time/time.will:95:35\00", align 1
-@.str.22 = private unnamed_addr constant [21 x i8] c"time/time.will:95:48\00", align 1
-@.str.23 = private unnamed_addr constant [21 x i8] c"time/time.will:96:12\00", align 1
-@.str.24 = private unnamed_addr constant [22 x i8] c"time/time.will:101:18\00", align 1
-@.str.25 = private unnamed_addr constant [23 x i8] c"std/time.civilFromDays\00", align 1
-@.str.26 = private unnamed_addr constant [22 x i8] c"time/time.will:103:24\00", align 1
-@.str.27 = private unnamed_addr constant [22 x i8] c"time/time.will:103:20\00", align 1
-@.str.28 = private unnamed_addr constant [22 x i8] c"time/time.will:104:27\00", align 1
-@.str.29 = private unnamed_addr constant [22 x i8] c"time/time.will:104:21\00", align 1
-@.str.30 = private unnamed_addr constant [22 x i8] c"time/time.will:104:43\00", align 1
-@.str.31 = private unnamed_addr constant [22 x i8] c"time/time.will:104:60\00", align 1
-@.str.32 = private unnamed_addr constant [22 x i8] c"time/time.will:105:24\00", align 1
-@.str.33 = private unnamed_addr constant [22 x i8] c"time/time.will:105:18\00", align 1
-@.str.34 = private unnamed_addr constant [22 x i8] c"time/time.will:106:27\00", align 1
-@.str.35 = private unnamed_addr constant [22 x i8] c"time/time.will:106:42\00", align 1
-@.str.36 = private unnamed_addr constant [22 x i8] c"time/time.will:106:55\00", align 1
-@.str.37 = private unnamed_addr constant [22 x i8] c"time/time.will:106:20\00", align 1
-@.str.38 = private unnamed_addr constant [22 x i8] c"time/time.will:107:20\00", align 1
-@.str.39 = private unnamed_addr constant [22 x i8] c"time/time.will:108:27\00", align 1
-@.str.40 = private unnamed_addr constant [22 x i8] c"time/time.will:108:20\00", align 1
-@.str.41 = private unnamed_addr constant [22 x i8] c"time/time.will:109:22\00", align 1
-@.str.42 = private unnamed_addr constant [22 x i8] c"time/time.will:111:17\00", align 1
-@.str.43 = private unnamed_addr constant [21 x i8] c"time/time.will:114:9\00", align 1
-@.str.44 = private unnamed_addr constant [24 x i8] c"conversion out of range\00", align 1
-@.str.45 = private unnamed_addr constant [22 x i8] c"time/time.will:116:30\00", align 1
-@.str.46 = private unnamed_addr constant [22 x i8] c"time/time.will:116:45\00", align 1
-@.str.47 = private unnamed_addr constant [22 x i8] c"time/time.will:116:62\00", align 1
-@.str.48 = private unnamed_addr constant [22 x i8] c"time/time.will:128:21\00", align 1
-@.str.49 = private unnamed_addr constant [19 x i8] c"std/time.timeOfDay\00", align 1
-@.str.50 = private unnamed_addr constant [22 x i8] c"time/time.will:129:24\00", align 1
-@.str.51 = private unnamed_addr constant [22 x i8] c"time/time.will:130:23\00", align 1
-@.str.52 = private unnamed_addr constant [22 x i8] c"time/time.will:131:30\00", align 1
-@.str.53 = private unnamed_addr constant [22 x i8] c"time/time.will:131:49\00", align 1
-@.str.54 = private unnamed_addr constant [22 x i8] c"time/time.will:131:70\00", align 1
-@.str.55 = private unnamed_addr constant [22 x i8] c"time/time.will:137:12\00", align 1
-@.str.56 = private unnamed_addr constant [22 x i8] c"std/time.localSeconds\00", align 1
-@.str.57 = private unnamed_addr constant [22 x i8] c"time/time.will:143:21\00", align 1
-@.str.58 = private unnamed_addr constant [19 x i8] c"std/time.weekdayOf\00", align 1
-@.str.59 = private unnamed_addr constant [21 x i8] c"time/time.will:147:8\00", align 1
-@.str.60 = private unnamed_addr constant [20 x i8] c"std/time.isLeapYear\00", align 1
-@.str.61 = private unnamed_addr constant [21 x i8] c"time/time.will:150:8\00", align 1
-@.str.62 = private unnamed_addr constant [22 x i8] c"time/time.will:153:12\00", align 1
+@"will.type.std/time.clockError" = linkonce_odr constant i8 0, align 1
+@"std/time.vtable.Error.clockError" = internal constant [3 x ptr] [ptr @"std/time.clockError.Message", ptr @"std/time.clockError.Status", ptr @"will.type.std/time.clockError"], align 8
+@.str.6 = private unnamed_addr constant [17 x i8] c"division by zero\00", align 1
+@.str.7 = private unnamed_addr constant [21 x i8] c"time/time.will:63:18\00", align 1
+@.str.8 = private unnamed_addr constant [18 x i8] c"std/time.floorDiv\00", align 1
+@.str.9 = private unnamed_addr constant [20 x i8] c"time/time.will:66:8\00", align 1
+@.str.10 = private unnamed_addr constant [20 x i8] c"time/time.will:67:9\00", align 1
+@.str.11 = private unnamed_addr constant [21 x i8] c"time/time.will:75:16\00", align 1
+@.str.12 = private unnamed_addr constant [18 x i8] c"std/time.floorMod\00", align 1
+@.str.13 = private unnamed_addr constant [21 x i8] c"time/time.will:75:12\00", align 1
+@.str.14 = private unnamed_addr constant [20 x i8] c"time/time.will:84:9\00", align 1
+@.str.15 = private unnamed_addr constant [23 x i8] c"std/time.daysFromCivil\00", align 1
+@.str.16 = private unnamed_addr constant [21 x i8] c"time/time.will:87:24\00", align 1
+@.str.17 = private unnamed_addr constant [21 x i8] c"time/time.will:87:20\00", align 1
+@.str.18 = private unnamed_addr constant [20 x i8] c"time/time.will:90:9\00", align 1
+@.str.19 = private unnamed_addr constant [20 x i8] c"time/time.will:92:9\00", align 1
+@.str.20 = private unnamed_addr constant [21 x i8] c"time/time.will:94:21\00", align 1
+@.str.21 = private unnamed_addr constant [21 x i8] c"time/time.will:95:20\00", align 1
+@.str.22 = private unnamed_addr constant [21 x i8] c"time/time.will:95:35\00", align 1
+@.str.23 = private unnamed_addr constant [21 x i8] c"time/time.will:95:48\00", align 1
+@.str.24 = private unnamed_addr constant [21 x i8] c"time/time.will:96:12\00", align 1
+@.str.25 = private unnamed_addr constant [22 x i8] c"time/time.will:101:18\00", align 1
+@.str.26 = private unnamed_addr constant [23 x i8] c"std/time.civilFromDays\00", align 1
+@.str.27 = private unnamed_addr constant [22 x i8] c"time/time.will:103:24\00", align 1
+@.str.28 = private unnamed_addr constant [22 x i8] c"time/time.will:103:20\00", align 1
+@.str.29 = private unnamed_addr constant [22 x i8] c"time/time.will:104:27\00", align 1
+@.str.30 = private unnamed_addr constant [22 x i8] c"time/time.will:104:21\00", align 1
+@.str.31 = private unnamed_addr constant [22 x i8] c"time/time.will:104:43\00", align 1
+@.str.32 = private unnamed_addr constant [22 x i8] c"time/time.will:104:60\00", align 1
+@.str.33 = private unnamed_addr constant [22 x i8] c"time/time.will:105:24\00", align 1
+@.str.34 = private unnamed_addr constant [22 x i8] c"time/time.will:105:18\00", align 1
+@.str.35 = private unnamed_addr constant [22 x i8] c"time/time.will:106:27\00", align 1
+@.str.36 = private unnamed_addr constant [22 x i8] c"time/time.will:106:42\00", align 1
+@.str.37 = private unnamed_addr constant [22 x i8] c"time/time.will:106:55\00", align 1
+@.str.38 = private unnamed_addr constant [22 x i8] c"time/time.will:106:20\00", align 1
+@.str.39 = private unnamed_addr constant [22 x i8] c"time/time.will:107:20\00", align 1
+@.str.40 = private unnamed_addr constant [22 x i8] c"time/time.will:108:27\00", align 1
+@.str.41 = private unnamed_addr constant [22 x i8] c"time/time.will:108:20\00", align 1
+@.str.42 = private unnamed_addr constant [22 x i8] c"time/time.will:109:22\00", align 1
+@.str.43 = private unnamed_addr constant [22 x i8] c"time/time.will:111:17\00", align 1
+@.str.44 = private unnamed_addr constant [21 x i8] c"time/time.will:114:9\00", align 1
+@.str.45 = private unnamed_addr constant [24 x i8] c"conversion out of range\00", align 1
+@.str.46 = private unnamed_addr constant [22 x i8] c"time/time.will:116:30\00", align 1
+@.str.47 = private unnamed_addr constant [22 x i8] c"time/time.will:116:45\00", align 1
+@.str.48 = private unnamed_addr constant [22 x i8] c"time/time.will:116:62\00", align 1
+@.str.49 = private unnamed_addr constant [22 x i8] c"time/time.will:128:21\00", align 1
+@.str.50 = private unnamed_addr constant [19 x i8] c"std/time.timeOfDay\00", align 1
+@.str.51 = private unnamed_addr constant [22 x i8] c"time/time.will:129:24\00", align 1
+@.str.52 = private unnamed_addr constant [22 x i8] c"time/time.will:130:23\00", align 1
+@.str.53 = private unnamed_addr constant [22 x i8] c"time/time.will:131:30\00", align 1
+@.str.54 = private unnamed_addr constant [22 x i8] c"time/time.will:131:49\00", align 1
+@.str.55 = private unnamed_addr constant [22 x i8] c"time/time.will:131:70\00", align 1
+@.str.56 = private unnamed_addr constant [22 x i8] c"time/time.will:137:12\00", align 1
+@.str.57 = private unnamed_addr constant [22 x i8] c"std/time.localSeconds\00", align 1
+@.str.58 = private unnamed_addr constant [22 x i8] c"time/time.will:143:21\00", align 1
+@.str.59 = private unnamed_addr constant [19 x i8] c"std/time.weekdayOf\00", align 1
+@.str.60 = private unnamed_addr constant [21 x i8] c"time/time.will:147:8\00", align 1
+@.str.61 = private unnamed_addr constant [20 x i8] c"std/time.isLeapYear\00", align 1
+@.str.62 = private unnamed_addr constant [21 x i8] c"time/time.will:150:8\00", align 1
+@.str.63 = private unnamed_addr constant [22 x i8] c"time/time.will:153:12\00", align 1
 @.bytes.2 = private unnamed_addr constant [1 x i8] c"0", align 1
 @.bytes.3 = private unnamed_addr constant [3 x i8] c"000", align 1
 @.bytes.4 = private unnamed_addr constant [2 x i8] c"00", align 1
 @.bytes.5 = private unnamed_addr constant [1 x i8] c"Z", align 1
 @.bytes.6 = private unnamed_addr constant [1 x i8] c"+", align 1
 @.bytes.7 = private unnamed_addr constant [1 x i8] c"-", align 1
-@.str.69 = private unnamed_addr constant [22 x i8] c"time/time.will:207:17\00", align 1
-@.str.70 = private unnamed_addr constant [22 x i8] c"std/time.offsetSuffix\00", align 1
-@.str.71 = private unnamed_addr constant [22 x i8] c"time/time.will:209:22\00", align 1
-@.str.72 = private unnamed_addr constant [22 x i8] c"time/time.will:210:25\00", align 1
+@.str.70 = private unnamed_addr constant [22 x i8] c"time/time.will:207:17\00", align 1
+@.str.71 = private unnamed_addr constant [22 x i8] c"std/time.offsetSuffix\00", align 1
+@.str.72 = private unnamed_addr constant [22 x i8] c"time/time.will:209:22\00", align 1
+@.str.73 = private unnamed_addr constant [22 x i8] c"time/time.will:210:25\00", align 1
 @.bytes.8 = private unnamed_addr constant [1 x i8] c":", align 1
 @.bytes.9 = private unnamed_addr constant [3 x i8] c"Sun", align 1
 @.bytes.10 = private unnamed_addr constant [3 x i8] c"Mon", align 1
@@ -4900,32 +4902,33 @@ declare void @willrt_task_wait_until(i64)
 @.bytes.29 = private unnamed_addr constant [2 x i8] c", ", align 1
 @.bytes.30 = private unnamed_addr constant [1 x i8] c" ", align 1
 @.bytes.31 = private unnamed_addr constant [4 x i8] c" GMT", align 1
-@.str.97 = private unnamed_addr constant [14 x i8] c"invalid UTF-8\00", align 1
-@.str.98 = private unnamed_addr constant [21 x i8] c"time/time.will:348:5\00", align 1
-@.str.99 = private unnamed_addr constant [17 x i8] c"std/time.charsOf\00", align 1
-@.str.100 = private unnamed_addr constant [22 x i8] c"time/time.will:356:20\00", align 1
-@.str.101 = private unnamed_addr constant [20 x i8] c"std/time.digitValue\00", align 1
-@.str.102 = private unnamed_addr constant [22 x i8] c"time/time.will:356:16\00", align 1
-@.str.103 = private unnamed_addr constant [22 x i8] c"time/time.will:358:12\00", align 1
-@.str.104 = private unnamed_addr constant [22 x i8] c"time/time.will:362:24\00", align 1
-@.str.105 = private unnamed_addr constant [15 x i8] c"std/time.hasAt\00", align 1
-@.str.106 = private unnamed_addr constant [20 x i8] c"index out of bounds\00", align 1
-@.str.107 = private unnamed_addr constant [22 x i8] c"time/time.will:365:12\00", align 1
-@.str.108 = private unnamed_addr constant [22 x i8] c"time/time.will:371:32\00", align 1
-@.str.109 = private unnamed_addr constant [20 x i8] c"std/time.readDigits\00", align 1
-@.str.110 = private unnamed_addr constant [22 x i8] c"time/time.will:371:45\00", align 1
-@.str.111 = private unnamed_addr constant [22 x i8] c"time/time.will:372:16\00", align 1
-@.str.112 = private unnamed_addr constant [22 x i8] c"time/time.will:380:42\00", align 1
-@.str.113 = private unnamed_addr constant [22 x i8] c"time/time.will:380:33\00", align 1
-@.str.114 = private unnamed_addr constant [22 x i8] c"time/time.will:382:20\00", align 1
-@.str.115 = private unnamed_addr constant [22 x i8] c"time/time.will:384:17\00", align 1
-@.str.116 = private unnamed_addr constant [21 x i8] c"time/time.will:385:9\00", align 1
-@.str.117 = private unnamed_addr constant [26 x i8] c"slice bounds out of range\00", align 1
-@.str.118 = private unnamed_addr constant [22 x i8] c"time/time.will:395:20\00", align 1
-@.str.119 = private unnamed_addr constant [22 x i8] c"std/time.ParseRfc3339\00", align 1
-@.str.120 = private unnamed_addr constant [22 x i8] c"time/time.will:396:18\00", align 1
+@.str.98 = private unnamed_addr constant [14 x i8] c"invalid UTF-8\00", align 1
+@.str.99 = private unnamed_addr constant [21 x i8] c"time/time.will:348:5\00", align 1
+@.str.100 = private unnamed_addr constant [17 x i8] c"std/time.charsOf\00", align 1
+@.str.101 = private unnamed_addr constant [22 x i8] c"time/time.will:356:20\00", align 1
+@.str.102 = private unnamed_addr constant [20 x i8] c"std/time.digitValue\00", align 1
+@.str.103 = private unnamed_addr constant [22 x i8] c"time/time.will:356:16\00", align 1
+@.str.104 = private unnamed_addr constant [22 x i8] c"time/time.will:358:12\00", align 1
+@.str.105 = private unnamed_addr constant [22 x i8] c"time/time.will:362:24\00", align 1
+@.str.106 = private unnamed_addr constant [15 x i8] c"std/time.hasAt\00", align 1
+@.str.107 = private unnamed_addr constant [20 x i8] c"index out of bounds\00", align 1
+@.str.108 = private unnamed_addr constant [22 x i8] c"time/time.will:365:12\00", align 1
+@.str.109 = private unnamed_addr constant [22 x i8] c"time/time.will:371:32\00", align 1
+@.str.110 = private unnamed_addr constant [20 x i8] c"std/time.readDigits\00", align 1
+@.str.111 = private unnamed_addr constant [22 x i8] c"time/time.will:371:45\00", align 1
+@.str.112 = private unnamed_addr constant [22 x i8] c"time/time.will:372:16\00", align 1
+@.str.113 = private unnamed_addr constant [22 x i8] c"time/time.will:380:42\00", align 1
+@.str.114 = private unnamed_addr constant [22 x i8] c"time/time.will:380:33\00", align 1
+@.str.115 = private unnamed_addr constant [22 x i8] c"time/time.will:382:20\00", align 1
+@.str.116 = private unnamed_addr constant [22 x i8] c"time/time.will:384:17\00", align 1
+@.str.117 = private unnamed_addr constant [21 x i8] c"time/time.will:385:9\00", align 1
+@.str.118 = private unnamed_addr constant [26 x i8] c"slice bounds out of range\00", align 1
+@.str.119 = private unnamed_addr constant [22 x i8] c"time/time.will:395:20\00", align 1
+@.str.120 = private unnamed_addr constant [22 x i8] c"std/time.ParseRfc3339\00", align 1
+@.str.121 = private unnamed_addr constant [22 x i8] c"time/time.will:396:18\00", align 1
 @.bytes.32 = private unnamed_addr constant [41 x i8] c"rfc3339: text is shorter than a timestamp", align 1
-@"std/time.vtable.Error.std/time.timeError" = internal constant [2 x ptr] [ptr @"std/time.timeError.Message", ptr @"std/time.timeError.Status"], align 8
+@"will.type.std/time.timeError" = linkonce_odr constant i8 0, align 1
+@"std/time.vtable.Error.std/time.timeError" = internal constant [3 x ptr] [ptr @"std/time.timeError.Message", ptr @"std/time.timeError.Status", ptr @"will.type.std/time.timeError"], align 8
 @.bytes.33 = private unnamed_addr constant [39 x i8] c"rfc3339: a numeric field is not a digit", align 1
 @.bytes.34 = private unnamed_addr constant [38 x i8] c"rfc3339: the date separators are wrong", align 1
 @.bytes.35 = private unnamed_addr constant [47 x i8] c"rfc3339: the date and time separator is missing", align 1
@@ -4933,39 +4936,39 @@ declare void @willrt_task_wait_until(i64)
 @.bytes.37 = private unnamed_addr constant [34 x i8] c"rfc3339: the month is out of range", align 1
 @.bytes.38 = private unnamed_addr constant [32 x i8] c"rfc3339: the day is out of range", align 1
 @.bytes.39 = private unnamed_addr constant [40 x i8] c"rfc3339: the time of day is out of range", align 1
-@.str.130 = private unnamed_addr constant [21 x i8] c"time/time.will:429:9\00", align 1
-@.str.131 = private unnamed_addr constant [22 x i8] c"time/time.will:435:27\00", align 1
-@.str.132 = private unnamed_addr constant [22 x i8] c"time/time.will:438:13\00", align 1
+@.str.132 = private unnamed_addr constant [21 x i8] c"time/time.will:429:9\00", align 1
+@.str.133 = private unnamed_addr constant [22 x i8] c"time/time.will:435:27\00", align 1
+@.str.134 = private unnamed_addr constant [22 x i8] c"time/time.will:438:13\00", align 1
 @.bytes.40 = private unnamed_addr constant [42 x i8] c"rfc3339: the fractional part has no digits", align 1
 @.bytes.41 = private unnamed_addr constant [30 x i8] c"rfc3339: the offset is missing", align 1
-@.str.135 = private unnamed_addr constant [21 x i8] c"time/time.will:449:9\00", align 1
-@.str.136 = private unnamed_addr constant [22 x i8] c"time/time.will:451:45\00", align 1
-@.str.137 = private unnamed_addr constant [22 x i8] c"time/time.will:452:47\00", align 1
-@.str.138 = private unnamed_addr constant [22 x i8] c"time/time.will:453:60\00", align 1
+@.str.137 = private unnamed_addr constant [21 x i8] c"time/time.will:449:9\00", align 1
+@.str.138 = private unnamed_addr constant [22 x i8] c"time/time.will:451:45\00", align 1
+@.str.139 = private unnamed_addr constant [22 x i8] c"time/time.will:452:47\00", align 1
+@.str.140 = private unnamed_addr constant [22 x i8] c"time/time.will:453:60\00", align 1
 @.bytes.42 = private unnamed_addr constant [33 x i8] c"rfc3339: the offset is not +HH:MM", align 1
 @.bytes.43 = private unnamed_addr constant [35 x i8] c"rfc3339: the offset is out of range", align 1
-@.str.141 = private unnamed_addr constant [22 x i8] c"time/time.will:459:18\00", align 1
-@.str.142 = private unnamed_addr constant [22 x i8] c"time/time.will:459:38\00", align 1
-@.str.143 = private unnamed_addr constant [22 x i8] c"time/time.will:461:22\00", align 1
-@.str.144 = private unnamed_addr constant [21 x i8] c"time/time.will:463:9\00", align 1
+@.str.143 = private unnamed_addr constant [22 x i8] c"time/time.will:459:18\00", align 1
+@.str.144 = private unnamed_addr constant [22 x i8] c"time/time.will:459:38\00", align 1
+@.str.145 = private unnamed_addr constant [22 x i8] c"time/time.will:461:22\00", align 1
+@.str.146 = private unnamed_addr constant [21 x i8] c"time/time.will:463:9\00", align 1
 @.bytes.44 = private unnamed_addr constant [38 x i8] c"rfc3339: the offset is not Z or +HH:MM", align 1
 @.bytes.45 = private unnamed_addr constant [35 x i8] c"rfc3339: text follows the timestamp", align 1
-@.str.147 = private unnamed_addr constant [22 x i8] c"time/time.will:470:22\00", align 1
-@.str.148 = private unnamed_addr constant [22 x i8] c"time/time.will:471:18\00", align 1
-@.str.149 = private unnamed_addr constant [22 x i8] c"time/time.will:471:32\00", align 1
-@.str.150 = private unnamed_addr constant [21 x i8] c"time/time.will:471:5\00", align 1
-@.str.151 = private unnamed_addr constant [22 x i8] c"time/time.will:472:31\00", align 1
-@.str.152 = private unnamed_addr constant [22 x i8] c"time/time.will:478:20\00", align 1
-@.str.153 = private unnamed_addr constant [19 x i8] c"std/time.ParseDate\00", align 1
-@.str.154 = private unnamed_addr constant [22 x i8] c"time/time.will:479:18\00", align 1
+@.str.149 = private unnamed_addr constant [22 x i8] c"time/time.will:470:22\00", align 1
+@.str.150 = private unnamed_addr constant [22 x i8] c"time/time.will:471:18\00", align 1
+@.str.151 = private unnamed_addr constant [22 x i8] c"time/time.will:471:32\00", align 1
+@.str.152 = private unnamed_addr constant [21 x i8] c"time/time.will:471:5\00", align 1
+@.str.153 = private unnamed_addr constant [22 x i8] c"time/time.will:472:31\00", align 1
+@.str.154 = private unnamed_addr constant [22 x i8] c"time/time.will:478:20\00", align 1
+@.str.155 = private unnamed_addr constant [19 x i8] c"std/time.ParseDate\00", align 1
+@.str.156 = private unnamed_addr constant [22 x i8] c"time/time.will:479:18\00", align 1
 @.bytes.46 = private unnamed_addr constant [33 x i8] c"date: text is not a calendar date", align 1
 @.bytes.47 = private unnamed_addr constant [36 x i8] c"date: a numeric field is not a digit", align 1
 @.bytes.48 = private unnamed_addr constant [30 x i8] c"date: the separators are wrong", align 1
 @.bytes.49 = private unnamed_addr constant [31 x i8] c"date: the month is out of range", align 1
 @.bytes.50 = private unnamed_addr constant [29 x i8] c"date: the day is out of range", align 1
-@.str.160 = private unnamed_addr constant [22 x i8] c"time/time.will:498:22\00", align 1
-@.str.161 = private unnamed_addr constant [22 x i8] c"time/time.will:499:31\00", align 1
-@.str.162 = private unnamed_addr constant [7 x i8] c"closed\00", align 1
+@.str.162 = private unnamed_addr constant [22 x i8] c"time/time.will:498:22\00", align 1
+@.str.163 = private unnamed_addr constant [22 x i8] c"time/time.will:499:31\00", align 1
+@.str.164 = private unnamed_addr constant [7 x i8] c"closed\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare i32 @willrt_utf8_decode(ptr, i64, ptr)

@@ -85,7 +85,7 @@ func (g *generator) buildInterfaces() {
 		}
 		sortByID(sigs)
 		for _, s := range sigs {
-			m := ifaceMethod{name: fieldText(s, "text"), result: fieldText(s, "type")}
+			m := ifaceMethod{name: fieldText(s, "text"), result: g.qualifyTypeText(g.pkg, fieldText(s, "type"))}
 			var params []willc.Record
 			for _, c := range g.recs {
 				if c.Kind == "param" && refField(c, "parent") == s.ID {
@@ -94,7 +94,7 @@ func (g *generator) buildInterfaces() {
 			}
 			sortByID(params)
 			for _, p := range params {
-				m.params = append(m.params, fieldText(p, "type"))
+				m.params = append(m.params, g.qualifyTypeText(g.pkg, fieldText(p, "type")))
 			}
 			info.byName[m.name] = len(info.methods)
 			info.methods = append(info.methods, m)
@@ -269,14 +269,17 @@ func (g *generator) ifaceConversion(r willc.Record, argIndex int, valueID int, i
 }
 
 // vtable returns the symbol of the method table for one concrete type and one
-// interface, and records its definition for the end of the module.
+// interface, and records its definition for the end of the module. The last
+// entry is the type identity of the concrete type; a downcast compares it
+// instead of the table pointer, which differs when two packages build a table
+// for the same type.
 func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 	key := iface.llvm + "|" + concrete
 	if sym, ok := g.vtables[key]; ok {
 		return sym, nil
 	}
 	sym := qualify(g.pkg, "vtable."+iface.name+"."+concrete)
-	entries := make([]string, 0, len(iface.methods))
+	entries := make([]string, 0, len(iface.methods)+1)
 	for _, m := range iface.methods {
 		method := g.methodsQualified[concrete+"."+m.name]
 		if method == "" {
@@ -304,6 +307,7 @@ func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 			}
 		}
 	}
+	entries = append(entries, "ptr @"+llvmSymbol(g.typeIdentity(concrete)))
 	g.vtables[key] = sym
 	if g.emittedVtables[sym] {
 		return sym, nil
@@ -312,6 +316,50 @@ func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 	g.strings = append(g.strings, fmt.Sprintf("@%s = internal constant [%d x ptr] [%s], align 8\n",
 		llvmSymbol(sym), len(entries), strings.Join(entries, ", ")))
 	return sym, nil
+}
+
+// typeIdentityText is the will type text that names one concrete type in a
+// module-wide way. A local name gains its package path, while a predeclared
+// scalar keeps the spelling that tells usize and u64 apart even though both
+// lower to i64.
+func (g *generator) typeIdentityText(concrete string) string {
+	text := g.canonicalTypeText(concrete)
+	if !strings.Contains(text, ".") {
+		if q := qualify(g.pkg, text); g.declKinds[q] != "" {
+			return q
+		}
+		var found string
+		for name := range g.declKinds {
+			if !strings.HasSuffix(name, "."+text) {
+				continue
+			}
+			if found != "" && found != name {
+				return text
+			}
+			found = name
+		}
+		if found != "" {
+			return found
+		}
+	}
+	return g.qualifyTypeText(g.pkg, text)
+}
+
+// typeIdentity returns the symbol of the type identity word. Every module that
+// mentions the type defines the same linkonce symbol, so addresses compare
+// equal after linking without a runtime registry.
+func (g *generator) typeIdentity(concrete string) string {
+	text := g.typeIdentityText(concrete)
+	if sym := g.typeIDs[text]; sym != "" {
+		return sym
+	}
+	sym := "will.type." + text
+	g.typeIDs[text] = sym
+	if !g.emittedTypeIDs[sym] {
+		g.emittedTypeIDs[sym] = true
+		g.strings = append(g.strings, fmt.Sprintf("@%s = linkonce_odr constant i8 0, align 1\n", llvmSymbol(sym)))
+	}
+	return sym
 }
 
 // interfaceCall lowers a method call whose receiver is an interface: load the
@@ -337,7 +385,7 @@ func (g *generator) interfaceCall(r willc.Record, iface *ifaceInfo) (string, str
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", tableField, iface.llvm, base)
 	table := g.load("ptr", tableField)
 	fnField := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n", fnField, len(iface.methods), table, idx)
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n", fnField, len(iface.methods)+1, table, idx)
 	fn := g.load("ptr", fnField)
 
 	parts := []string{"ptr " + data}

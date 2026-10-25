@@ -141,6 +141,8 @@ func newGenerator(lib bool, aliases map[string]string) *generator {
 		byteGlobals:    map[string]string{},
 		emittedTypes:   map[string]bool{},
 		emittedVtables: map[string]bool{},
+		typeIDs:        map[string]string{},
+		emittedTypeIDs: map[string]bool{},
 		thunkEmitted:   map[string]bool{},
 		spawnEmitted:   map[string]bool{},
 		dropEmitted:    map[string]bool{},

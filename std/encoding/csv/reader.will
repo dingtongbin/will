@@ -21,26 +21,10 @@ func (mut r: Reader) init(src: byteReader, sep: u8) {
     r.eof = false
 }
 
-// NewReader builds a decoder without new. The compiler cannot yet lower an
-// interface argument through a constructor call, so this spelling is the one
-// that runs today; new Reader(src, sep) stays the documented form.
-func NewReader(src: byteReader, sep: u8) -> Reader {
-    return Reader {
-        src: src,
-        sep: sep,
-        buf: new Array<u8>(0),
-        pos: 0usize,
-        eof: false,
-    }
-}
-
 // AsyncDecode appends the records that are available and returns how many it
 // appended. It parses every complete record the last read filled, and 0 means
-// the stream has no more records. The name is the documented IO spelling; the
-// body is synchronous because the wrapped byteReader is synchronous and the
-// current state-machine lowering rejects an interface receiver in an async
-// body.
-func (mut r: Reader) AsyncDecode(mut rows: Array<Row>) -> Result<usize, Error> {
+// the stream has no more records.
+async func (mut r: Reader) AsyncDecode(mut rows: Array<Row>) -> Result<usize, Error> {
     var added: usize = 0usize
     for {
         var record: Option<Array<str>> = r.readRecord()?

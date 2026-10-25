@@ -78,7 +78,6 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 		}
 	}
 	paramRecs := g.asyncCallRecs(info.fn.ID)
-	recv := receiverOfIn(g.cur, info.fn.ID)
 	for i, p := range paramRecs {
 		field := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n",
@@ -87,13 +86,12 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 		if err != nil {
 			return err
 		}
-		if recv != nil && i == 0 {
-			g.scope[p.ID] = field
-			g.borrows[p.ID] = true
-			continue
-		}
 		if byPtr {
-			g.scope[p.ID] = field
+			if fieldText(p, "mut") == "true" {
+				g.scope[p.ID] = g.load("ptr", field)
+			} else {
+				g.scope[p.ID] = field
+			}
 			g.borrows[p.ID] = true
 		} else {
 			g.scope[p.ID] = g.load(typ, field)

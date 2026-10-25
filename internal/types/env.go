@@ -2,6 +2,7 @@ package types
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
@@ -265,6 +266,73 @@ func (c *checker) buildSig(decl *ast.FuncDecl) *signature {
 	}
 	sig.result = c.buildType(decl.Result, tp)
 	return sig
+}
+
+// buildForeignSig builds a signature whose bare named types belong to the
+// imported package. The local declaration env names those types without a
+// qualifier, so a caller would otherwise compare []Row against []csv.Row.
+func (c *checker) buildForeignSig(decl *ast.FuncDecl, pkg string) *signature {
+	sig := c.buildSig(decl)
+	params := make(map[string]bool, len(sig.typeNames))
+	for _, name := range sig.typeNames {
+		params[name] = true
+	}
+	if decl.Recv != nil {
+		for _, a := range decl.Recv.Type.Args {
+			if a.Kind == ast.NamedType && len(a.Args) == 0 {
+				params[a.Name] = true
+			}
+		}
+	}
+	for i, p := range sig.params {
+		sig.params[i] = c.qualifyForeignType(p, pkg, params)
+	}
+	sig.result = c.qualifyForeignType(sig.result, pkg, params)
+	return sig
+}
+
+// qualifyForeignType adds the imported package name to every bare user type
+// inside one signature type. Predeclared names, type parameters, and already
+// qualified names stay as they are.
+func (c *checker) qualifyForeignType(t *Type, pkg string, params map[string]bool) *Type {
+	if t == nil {
+		return nil
+	}
+	args := func() []*Type {
+		if len(t.Args()) == 0 {
+			return nil
+		}
+		out := make([]*Type, len(t.Args()))
+		for i, a := range t.Args() {
+			out[i] = c.qualifyForeignType(a, pkg, params)
+		}
+		return out
+	}
+	switch t.Kind() {
+	case NamedKind:
+		name := t.Name()
+		a := args()
+		if params[name] || strings.Contains(name, ".") || isScalarName(name) ||
+			builtinArity[name] > 0 || name == "Value" || name == "Duration" ||
+			name == "Show" || name == "Error" || name == "TaskError" {
+			if len(a) == 0 {
+				return t
+			}
+			return c.in.named(name, a)
+		}
+		return c.in.named(pkg+"."+name, a)
+	case ViewKind:
+		return c.in.view(c.qualifyForeignType(t.Elem(), pkg, params))
+	case ArrayKind:
+		return c.in.array(t.length, c.qualifyForeignType(t.Elem(), pkg, params))
+	case FuncKind:
+		ps := make([]*Type, len(t.Params()))
+		for i, p := range t.Params() {
+			ps[i] = c.qualifyForeignType(p, pkg, params)
+		}
+		return c.in.funcT(ps, c.qualifyForeignType(t.Result(), pkg, params))
+	}
+	return t
 }
 
 // buildType turns an AST type into a checked type. It reports T0004 when a

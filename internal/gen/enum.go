@@ -342,9 +342,25 @@ func (g *generator) argLLVM(t willc.Record) (string, bool) {
 	return "", false
 }
 
-// enumVariantCall returns the enum and variant an mcall constructs, or nil when
-// the call is an ordinary method call.
+// enumVariantCall returns the enum and variant a call, name, or method call
+// constructs, or nil when the expression is not a variant constructor.
 func (g *generator) enumVariantCall(r willc.Record) (*enumInfo, *variantInfo) {
+	if r.Kind == "call" || r.Kind == "name" {
+		decl, ok := g.recs[refField(r, "to")]
+		if !ok || decl.Kind != "variant" {
+			return nil, nil
+		}
+		info := g.enums[refField(decl, "parent")]
+		if info == nil {
+			return nil, nil
+		}
+		name := fieldText(decl, "text")
+		i, ok := info.byName[name]
+		if !ok {
+			return nil, nil
+		}
+		return info, &info.variants[i]
+	}
 	if r.Kind != "mcall" {
 		return nil, nil
 	}

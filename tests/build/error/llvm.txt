@@ -56,7 +56,7 @@ match.arm.1.1:
   %t23 = load ptr, ptr %t22
   %t24 = getelementptr inbounds %interface.Error, ptr %t21, i32 0, i32 1
   %t25 = load ptr, ptr %t24
-  %t26 = getelementptr inbounds [2 x ptr], ptr %t25, i64 0, i64 1
+  %t26 = getelementptr inbounds [3 x ptr], ptr %t25, i64 0, i64 1
   %t27 = load ptr, ptr %t26
   %t28 = call i32 %t27(ptr %t23)
   store i32 %t28, ptr %v.match.37
@@ -82,4 +82,5 @@ entry:
   ret i32 %r
 }
 @.bytes.1 = private unnamed_addr constant [3 x i8] c"bad", align 1
-@"example.com/error.vtable.Error.E" = internal constant [2 x ptr] [ptr @"example.com/error.E.Message", ptr @"example.com/error.E.Status"], align 8
+@"will.type.example.com/error.E" = linkonce_odr constant i8 0, align 1
+@"example.com/error.vtable.Error.E" = internal constant [3 x ptr] [ptr @"example.com/error.E.Message", ptr @"example.com/error.E.Status", ptr @"will.type.example.com/error.E"], align 8

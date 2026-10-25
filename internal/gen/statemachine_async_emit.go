@@ -59,14 +59,23 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 %d\n",
 			field, info.frameType, frame, i+2)
 		arg := "%arg" + fmt.Sprint(i)
-		if pab[i].byPtr {
+		mut := fieldText(paramRecs[i], "mut") == "true"
+		if pab[i].byPtr && mut {
+			// A mutable borrow stays a pointer into the caller's place; the
+			// callee writes the caller's value instead of a frame copy.
+			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", arg, field)
+		} else if pab[i].byPtr {
 			g.copyValue(arg, field, pab[i].typ)
 		} else {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", pab[i].typ, arg, field)
 		}
 		// The capture is the crossing whether the parameter moves by value
 		// or by pointer: an rc handle lands in a frame another lane runs.
-		if err := g.shareValue(field, pab[i].text); err != nil {
+		share := field
+		if pab[i].byPtr && mut {
+			share = arg
+		}
+		if err := g.shareValue(share, pab[i].text); err != nil {
 			return err
 		}
 	}

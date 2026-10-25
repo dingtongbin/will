@@ -829,7 +829,7 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 	if field, ok := call.Callee.(*ast.FieldExpr); ok {
 		if recv, ok := field.Recv.(*ast.NameExpr); ok {
 			if decl := c.foreignFuncs[recv.Name][field.Name]; decl != nil {
-				sig := c.buildSig(decl)
+				sig := c.buildForeignSig(decl, recv.Name)
 				sig = c.inferCallTypeArgs(s, call.Args, call.TypeArgs, sig)
 				c.checkTypeArgs(call, sig)
 				inst := sig
@@ -1122,7 +1122,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	}
 	if recv, ok := call.Recv.(*ast.NameExpr); ok {
 		if decl := c.foreignFuncs[recv.Name][call.Name]; decl != nil {
-			sig := c.buildSig(decl)
+			sig := c.buildForeignSig(decl, recv.Name)
 			sig = c.inferCallTypeArgs(s, call.Args, call.TypeArgs, sig)
 			if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
 				subst := make(map[string]*Type, sig.typeParams)
@@ -1172,7 +1172,8 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		return nil
 	}
 	if decl := c.foreignMethod(recv, call.Name); decl != nil {
-		sig := c.buildSig(decl)
+		pkg, _ := packageAndType(recv.Name())
+		sig := c.buildForeignSig(decl, pkg)
 		sig = c.inferCallTypeArgs(s, call.Args, call.TypeArgs, sig)
 		if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
 			subst := make(map[string]*Type, sig.typeParams)
@@ -1234,6 +1235,22 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		return nil
 	}
 	if methods, ok := c.env.ifaces[recv.Name()]; ok {
+		if call.Name == "Is" || call.Name == "As" {
+			if len(call.TypeArgs) != 1 {
+				c.bag.Error(call.Pos(), diag.CodeTypeArgCount, "wrong number of type arguments",
+					"a downcast takes one target type")
+				return nil
+			}
+			target := c.buildType(call.TypeArgs[0], nil)
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			if call.Name == "Is" {
+				return c.in.scalar("bool")
+			}
+			if target == nil {
+				return nil
+			}
+			return c.in.named("Option", []*Type{target})
+		}
 		c.dispatch = append(c.dispatch, DispatchPoint{Pos: call.Pos(), Interface: recv.Name()})
 		for _, m := range methods {
 			if m.name == call.Name {
@@ -1705,7 +1722,7 @@ func (c *checker) foreignInitSig(name string, recv *Type) *signature {
 	if decl == nil || decl.Recv == nil || len(decl.Recv.Type.Args) != len(recv.Args()) {
 		return nil
 	}
-	sig := c.buildSig(decl)
+	sig := c.buildForeignSig(decl, name[:dot])
 	subst := make(map[string]*Type, len(recv.Args()))
 	for i, a := range decl.Recv.Type.Args {
 		if a.Kind == ast.NamedType && len(a.Args) == 0 {

@@ -86,8 +86,9 @@ func (g *generator) emitBuiltinErrors() {
 		status := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = load i32, ptr %s\n", status, statusPtr)
 		fmt.Fprintf(g.out, "  ret i32 %s\n}\n", status)
-		fmt.Fprintf(g.out, "@will.error.table.%d = private constant [2 x ptr] [ptr @will.error.message.%d, ptr @will.error.status.%d]\n",
-			kind, kind, kind)
+		fmt.Fprintf(g.out, "@will.error.id.%d = private constant i8 0\n", kind)
+		fmt.Fprintf(g.out, "@will.error.table.%d = private constant [3 x ptr] [ptr @will.error.message.%d, ptr @will.error.status.%d, ptr @will.error.id.%d]\n",
+			kind, kind, kind, kind)
 		fmt.Fprintf(g.out, "@will.error.value.%d = private constant %%interface.Error { ptr @will.error.data.%d, ptr @will.error.table.%d }\n",
 			kind, kind, kind)
 	}

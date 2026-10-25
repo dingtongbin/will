@@ -75,6 +75,8 @@ func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		byteGlobals:    map[string]string{},
 		emittedTypes:   map[string]bool{},
 		emittedVtables: map[string]bool{},
+		typeIDs:        map[string]string{},
+		emittedTypeIDs: map[string]bool{},
 		thunkEmitted:   map[string]bool{},
 		spawnEmitted:   map[string]bool{},
 		dropEmitted:    map[string]bool{},
@@ -443,7 +445,7 @@ func (g *generator) collectSignatures() {
 			}
 			sortByID(sigs)
 			for _, s := range sigs {
-				m := ifaceMethod{name: fieldText(s, "text"), result: fieldText(s, "type")}
+				m := ifaceMethod{name: fieldText(s, "text"), result: g.qualifyTypeText(d.path, fieldText(s, "type"))}
 				var ps []willc.Record
 				for _, c := range d.recs {
 					if c.Kind == "param" && refField(c, "parent") == s.ID {
@@ -452,7 +454,7 @@ func (g *generator) collectSignatures() {
 				}
 				sortByID(ps)
 				for _, p := range ps {
-					m.params = append(m.params, fieldText(p, "type"))
+					m.params = append(m.params, g.qualifyTypeText(d.path, fieldText(p, "type")))
 				}
 				info.byName[m.name] = len(info.methods)
 				info.methods = append(info.methods, m)
@@ -730,6 +732,12 @@ type generator struct {
 	// predeclared scalar, keyed by the value record.
 	ifaceDataSlots map[int]string
 	vtables        map[string]string
+	// typeIDs names the identity word appended to every method table, and
+	// emittedTypeIDs records the definition already written. The identity is
+	// a linkonce constant so two packages that mention the same type still
+	// compare the same address after linking.
+	typeIDs        map[string]string
+	emittedTypeIDs map[string]bool
 	paramTypes     map[string][]string
 	varargs        map[string]bool
 	// errorIface is the predeclared Error interface, and errorEmitted records
@@ -1916,6 +1924,41 @@ func (g *generator) allocas(fn int) error {
 			}
 		}
 	}
+	// A new expression can also pass an interface to its init. Its argument
+	// slots belong to the new record, not to a call record.
+	for _, r := range g.recs {
+		if r.Kind != "new" || g.enclosingFunc(r.ID) != fn {
+			continue
+		}
+		params := g.newInitParams(r)
+		for i, a := range g.callArgs(r) {
+			if i >= len(params) {
+				break
+			}
+			iface, ok := g.ifaceOfText(params[i])
+			if !ok {
+				continue
+			}
+			argText, err := g.willTypeText(a)
+			if err != nil {
+				continue
+			}
+			if _, same := g.ifaceOfText(argText); same {
+				continue
+			}
+			key := fmt.Sprintf("%d.%d", r.ID, i)
+			slot := "%v.iface." + strconv.Itoa(r.ID) + "." + strconv.Itoa(i)
+			g.ifaceSlots[key] = slot
+			fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, iface.llvm)
+			if showScalar(argText) {
+				data := "%v.ifacedata." + strconv.Itoa(a)
+				g.ifaceDataSlots[a] = data
+				if typ, ok := g.typeLLVMOf(argText); ok && typ != "" {
+					fmt.Fprintf(g.out, "  %s = alloca %s\n", data, typ)
+				}
+			}
+		}
+	}
 	// print of a Show value builds the interface in a slot of its own, so a
 	// print inside a loop does not grow the stack.
 	for _, r := range calls {
@@ -2049,6 +2092,36 @@ func (g *generator) allocas(fn int) error {
 		name := "%v.adt." + strconv.Itoa(r.ID)
 		g.adtSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
+	}
+	// A downcast also needs a result place: Option<T> for As and i1 for Is.
+	var downcasts []willc.Record
+	for _, r := range g.recs {
+		if r.Kind != "mcall" || g.enclosingFunc(r.ID) != fn {
+			continue
+		}
+		if _, ok := g.downcastOf(r); ok {
+			downcasts = append(downcasts, r)
+		}
+	}
+	sortByID(downcasts)
+	for _, r := range downcasts {
+		d, ok := g.downcastOf(r)
+		if !ok {
+			continue
+		}
+		if d.isAs {
+			info, ok := g.adtType("Option<" + d.target + ">")
+			if !ok {
+				continue
+			}
+			name := "%v.adt." + strconv.Itoa(r.ID)
+			g.adtSlots[r.ID] = name
+			fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
+			continue
+		}
+		name := "%v.is." + strconv.Itoa(r.ID)
+		g.callSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca i1\n", name)
 	}
 	// A str method that returns a str, a view of str, or an Option keeps its
 	// result, and a trim its two bounds, in the entry block.
@@ -3399,6 +3472,12 @@ func (g *generator) value(id int) (string, error) {
 	case "call", "mcall":
 		if arg, ok := g.waitArg(r); ok {
 			return g.value(arg)
+		}
+		if d, ok := g.downcastOf(r); ok {
+			if d.isAs {
+				return "", g.errf(id, "cannot translate node #%d: an Option value is a place, not a scalar", id)
+			}
+			return g.ifaceDowncastIs(r)
 		}
 		if _, _, _, ok := g.adtConstructor(r); ok {
 			return "", g.errf(id, "cannot translate node #%d: an Option or Result value is a place, not a scalar", id)
