@@ -121,5 +121,17 @@ func main() -> i32 {
     if emptyCopy.Len() != usize(0) {
         return 29
     }
+    var shrunk: bits.Bits = new bits.Bits(200usize)
+    shrunk.Set(199usize)
+    shrunk.Shrink()
+    if shrunk.Len() != usize(200) {
+        return 30
+    }
+    if !shrunk.Has(199usize) {
+        return 31
+    }
+    if shrunk.Count() != usize(1) {
+        return 32
+    }
     return 0
 }

@@ -126,6 +126,11 @@ func (mut b: Bits) AndNot(other: Bits) {
     }
 }
 
+// Shrink releases spare capacity in the word array while keeping the bits.
+func (mut b: Bits) Shrink() {
+    b.words.ShrinkToFit()
+}
+
 // Clone returns an independent copy of the set.
 func (b: Bits) Clone() -> Bits {
     var words: Array<u64> = new Array<u64>(0)

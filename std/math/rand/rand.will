@@ -4,9 +4,10 @@ struct Rand {
     state: u64
 }
 
-// New returns a stream that starts from seed.
-func New(seed: u64) -> Rand {
-    return Rand { state: seed}
+// init seeds the stream. The constructor is new Rand(seed), because the
+// language has no NewX free function.
+func (mut r: Rand) init(seed: u64) {
+    r.state = seed
 }
 
 // NextU64 advances the stream and returns the next 64 bits.
