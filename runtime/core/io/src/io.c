@@ -32,7 +32,6 @@
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
 #ifdef _WIN32
@@ -570,13 +569,8 @@ static void willrt_io_init(void) {
         }
 #else
 #ifdef __linux__
-        {
-            const char* ring = getenv("WILL_IO_URING");
-
-            willrt_io_ring_used =
-                ring != NULL && strcmp(ring, "1") == 0
-                && willrt_io_ring_start(willrt_io_complete_linux) == 0;
-        }
+        willrt_io_ring_used =
+            willrt_io_ring_start(willrt_io_complete_linux) == 0;
 #endif
         wanted = WILLRT_IO_POSIX_WORKERS;
         for (i = 0; i < wanted; i++) {
