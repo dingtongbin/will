@@ -98,6 +98,21 @@ The shared io_uring ring is correct but slower than the four pread workers on
 this VM and is not per-lane, so it stays behind the measurement switch. The
 Linux mixed throughput is 0.4-0.5x Rust; W33 remains open.
 
+Linux spawn, four lanes, one producer:
+
+| configuration | p999 | round | throughput |
+| --- | --- | --- | --- |
+| will, group 8 across 3 lanes | 319-615 us | 55-62 ms | 0.16-0.18 M tasks/s |
+| will, group 8 on 1 lane | 303-423 us | 20-22 ms | 0.45-0.49 M tasks/s |
+| will, group 32 on 1 lane | 412-492 us | 11.6-11.9 ms | 0.84-0.86 M tasks/s |
+| Tokio | 214-310 us | - | 1.35-1.60 M tasks/s |
+| compio, one runtime | 1.65-2.30 ms | - | 3.1-3.5 M tasks/s |
+
+The Linux VM does not reproduce the Windows p999 result: even one lane pays a
+large sleep/wake cost, and more lanes add futex traffic. The 32/1 arrangement is
+only a tuning probe; the tree keeps group 8 across 3 lanes. W35 remains open on
+Linux.
+
 ## Commands
 
 ```text
