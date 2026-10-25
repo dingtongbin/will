@@ -23,7 +23,7 @@ func (s: Sink) Sync() -> Result<(), Error> {
 
 func main() -> i32 {
     var text: str = "hello"
-    var writer: buf.WriterBuf = buf.NewWriter(Sink{pad: 0usize}, 8usize)
+    var writer: buf.WriterBuf = new buf.WriterBuf(Sink{pad: 0usize}, 8usize)
 
     // A write shorter than the buffer stays in memory.
     match writer.Write(text[Range(0, 5)]) {
