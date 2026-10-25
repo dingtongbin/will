@@ -264,6 +264,7 @@ async func main() -> i32 {
     var outRows: Array<csv.Row> = new Array<csv.Row>(0)
     outRows.Push(RowOf("a", "b,c", TextBytes(100u8, 34u8, 101u8)))
     outRows.Push(RowOf("1", "2", "3"))
+    outRows.Push(RowOf("x\ny", "z", ""))
     var shared: rc<Buffer> = new rc<Buffer>(Buffer { data: new Array<u8>(0) })
     var writer: csv.Writer = csv.NewWriter(Sink { data: shared }, 44u8)
     match writer.AsyncEncode(outRows) {
@@ -283,7 +284,8 @@ async func main() -> i32 {
     if !shared.SameAs(
         97u8, 44u8, 34u8, 98u8, 44u8, 99u8, 34u8, 44u8,
         34u8, 100u8, 34u8, 34u8, 101u8, 34u8, 10u8, 49u8,
-        44u8, 50u8, 44u8, 51u8, 10u8,
+        44u8, 50u8, 44u8, 51u8, 10u8, 34u8, 120u8, 10u8,
+        121u8, 34u8, 44u8, 122u8, 44u8, 10u8,
     ) {
         return 19
     }
@@ -297,7 +299,7 @@ async func main() -> i32 {
     var roundReader: csv.Reader = csv.NewReader(roundSource, 44u8)
     match DecodeAll(roundReader, roundRows) {
         Ok(n) => {
-            if n != 2usize {
+            if n != 3usize {
                 return 20
             }
         }
@@ -307,6 +309,9 @@ async func main() -> i32 {
     }
     if !FieldsEqual(roundRows.Get(0usize), "a", "b,c", TextBytes(100u8, 34u8, 101u8)) {
         return 22
+    }
+    if !FieldsEqual(roundRows.Get(2usize), "x\ny", "z", "") {
+        return 26
     }
 
     var badRows: Array<csv.Row> = new Array<csv.Row>(0)
