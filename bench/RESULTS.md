@@ -1,26 +1,69 @@
 # Async baseline results
 
+Acceptance is **p999 plus throughput/TPC**, not p50. p50 is recorded only to
+diagnose the body of the distribution.
+
 Machine: Intel Core i5-12500H, Windows 11, x86_64-win-msvc.
 Toolchain: clang 22.1.8, Rust 1.97.0, crossbeam-channel 0.5.17,
-crossbeam-utils 0.8.23, tokio 1.54.1.
-Will: `844fb8e` with the channel and select ready paths.
-Runs: five measured repetitions for the will harness, three process runs for
-the Rust baselines. The benchmarks ran alone; stale test processes were removed
-before the final runs.
+crossbeam-utils 0.8.23, tokio 1.54.1, compio 0.20.0-beta.1.
+Will: `844fb8e` plus the p999 benchmark support; five measured repetitions.
+The Windows clock has 100 ns granularity, so sub-100 ns differences in the
+channel/select tables are quantization, not a measured win.
 
-| scenario | will p50 | Rust p50 | comparison |
+## Channel and select tail
+
+`conc/tail` and `conc/selecttail` sample every operation and report the p999 of
+500,000 operations. TPC does not change these single-task paths; the strong
+comparator is crossbeam-channel.
+
+| scenario | will p999 | crossbeam p999 | will throughput | crossbeam throughput |
+| --- | --- | --- | --- | --- |
+| `conc/tail`, send+recv round trip | 200 ns | 200 ns | 7.7-8.3 M/s | 7.4-7.8 M/s |
+| `conc/selecttail`, 4 arms + default | 200 ns | 200-300 ns | 8.0-8.2 M/s | 5.8-6.4 M/s |
+
+The C hand-written ring reports 100 ns p999 for `conc/tail`, but it has no task,
+await, or channel contract; it is not the acceptance baseline. The async
+channel/select paths now meet or beat the strongest Rust comparator on p999 and
+throughput.
+
+## Spawn: TPC and work-stealing baselines
+
+`conc/spawntail` starts 10,000 tasks, records each task from just before spawn
+to its completion, and reports the p999 over 50,000 samples. The will run uses
+the default auto placement. The Rust baselines use the same task body:
+compio is the thread-per-core (TPC) runtime; Tokio is the work-stealing runtime.
+
+| runtime | p999 | throughput | per-core throughput |
 | --- | --- | --- | --- |
-| `conc/chan`, 1,000,000 round trips | 21.99 ms (22.0 ns/round) | crossbeam 26.1 ms (26.1 ns/round) | will is 1.19x faster (meets the 100% async gate) |
-| `conc/select`, 500,000 waits | 15.15 ms (30.3 ns/wait) | crossbeam 32.1 ms (64.2 ns/wait) | will is 2.12x faster (meets the 100% async gate) |
-| `conc/spawn`, 10,000 tasks | 20.12 ms (2.01 us/task) | tokio 6.30 ms (0.63 us/task) | will is 3.19x slower (does not meet the 100% async gate) |
+| will, 16 lanes | 18.9-29.0 us | 0.40-0.45 M tasks/s | 25-28 k/lane/s |
+| will, 4 lanes | 116.5 us | 1.05 M tasks/s | 262 k/lane/s |
+| compio TPC, 16 runtimes | 1.45-2.68 ms | 3.1-3.9 M tasks/s | 0.20-0.24 M/core/s |
+| Tokio work stealing, 16 workers | 68-96 us | 1.2-1.5 M tasks/s | 75-95 k/core/s |
 
-The C thread-per-task spawn figure (about 530 ms) is not an acceptance
-baseline: it creates one OS thread per task. The C ring and polling figures are
-also not acceptance baselines for channel and select; crossbeam is the strong
-comparator.
+No single will lane count dominates: 16 lanes gives the lowest p999 but only
+0.4 M tasks/s, while 4 lanes gives 1.05 M tasks/s at 116.5 us p999. Tokio is
+between them; compio wins throughput and loses p999 because every runtime queues
+the whole burst before driving it.
 
-The spawn gap is scheduling, not channel or select work: the will run
-distributes a burst of tiny tasks across all lanes and pays the cross-lane
-wake/placement cost. Closing it needs the W35/W30 follow-up (bounded local
-backlog plus work-stealing for not-yet-started auto tasks), not a weaker
-baseline.
+The absolute p999 target in `并发.md` is 10 us for wake latency. The 16-lane
+spawn p999 is above it (18.9-29.0 us), so spawn is still open. Channel and select
+p999 are within the target and ahead of crossbeam.
+
+## Commands
+
+```text
+# will channel/select/spawn tail
+build\will.exe run bench\scenarios\conc\tail\will
+build\will.exe run bench\scenarios\conc\selecttail\will
+build\will.exe run bench\scenarios\conc\spawntail\will
+
+# Rust strong baselines
+cd bench\baselines\rust
+cargo build --release --offline
+target\release\rustbench.exe tail
+target\release\rustbench.exe select-tail
+target\release\spawn.exe
+target\release\compio_spawn.exe
+```
+
+`WILL_LANES=1|2|4|8|16` selects the will lane count for scaling measurements.

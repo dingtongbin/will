@@ -17,24 +17,40 @@ async fn main() {
     let warm = tokio::spawn(async { work(0) });
     black_box(warm.await.unwrap());
 
-    let mut samples = Vec::with_capacity(REPS);
+    let mut samples = Vec::with_capacity(REPS * COUNT as usize);
+    let mut rounds = Vec::with_capacity(REPS);
     for _ in 0..REPS {
-        let start = Instant::now();
+        let round = Instant::now();
         let mut handles = Vec::with_capacity(COUNT as usize);
         for i in 0..COUNT {
-            handles.push(tokio::spawn(async move { work(i) }));
+            let start = Instant::now();
+            handles.push(tokio::spawn(async move {
+                black_box(work(i));
+                start.elapsed().as_nanos()
+            }));
         }
         let mut checksum = 0i64;
         for handle in handles {
-            checksum = checksum.wrapping_add(i64::from(handle.await.unwrap()));
+            let latency = handle.await.unwrap();
+            samples.push(latency);
+            checksum = checksum.wrapping_add(latency as i64);
         }
-        samples.push(start.elapsed().as_nanos());
+        rounds.push(round.elapsed().as_nanos());
         black_box(checksum);
     }
     samples.sort_unstable();
-    let p50 = samples[samples.len() / 2];
-    let p95 = samples[samples.len() * 95 / 100];
+    let p50 = samples[(samples.len() - 1) * 50 / 100];
+    let p99 = samples[(samples.len() - 1) * 99 / 100];
+    let p999 = samples[(samples.len() - 1) * 999 / 1000];
+    let elapsed: u128 = rounds.iter().sum();
+    let cores = std::thread::available_parallelism()
+        .map(|value| value.get() as u128)
+        .unwrap_or(1);
+    let ops_per_sec = (REPS * COUNT as usize) as u128 * 1_000_000_000u128 / elapsed.max(1);
     println!("spawn p50 {p50} ns");
-    println!("spawn p95 {p95} ns");
+    println!("spawn p99 {p99} ns");
+    println!("spawn p999 {p999} ns");
     println!("spawn tasks {COUNT}");
+    println!("spawn ops_per_sec {ops_per_sec}");
+    println!("spawn ops_per_core_sec {}", ops_per_sec / cores);
 }
