@@ -65,6 +65,32 @@ func (g *generator) buildInterfaces() {
 		g.emittedTypes["%interface.Show"] = true
 		fmt.Fprintf(g.out, "%%interface.Show = type { ptr, ptr }\n")
 	}
+	if g.emptyIface == nil {
+		g.emptyIface = &ifaceInfo{
+			name:   "interface {}",
+			llvm:   "%interface.empty",
+			byName: map[string]int{},
+		}
+	}
+	g.ifaceByName["interface {}"] = g.emptyIface
+	g.ifaceByLLVM["%interface.empty"] = g.emptyIface
+	emptyUsed := false
+	for _, d := range g.docs {
+		for _, r := range d.recs {
+			if strings.Contains(fieldText(r, "text"), "interface {}") ||
+				strings.Contains(fieldText(r, "type"), "interface {}") {
+				emptyUsed = true
+				break
+			}
+		}
+		if emptyUsed {
+			break
+		}
+	}
+	if emptyUsed && !g.emittedTypes["%interface.empty"] {
+		g.emittedTypes["%interface.empty"] = true
+		fmt.Fprintf(g.out, "%%interface.empty = type { ptr, ptr }\n")
+	}
 	var ifaces []willc.Record
 	for _, r := range g.recs {
 		if r.Kind == "interface" {
@@ -135,6 +161,12 @@ func isIfaceType(typ string) bool {
 // ifaceOfText returns the interface a type text names, when this document has
 // its declaration.
 func (g *generator) ifaceOfText(text string) (*ifaceInfo, bool) {
+	if text == "interface {}" {
+		if g.emptyIface == nil {
+			g.emptyIface = &ifaceInfo{name: "interface {}", llvm: "%interface.empty", byName: map[string]int{}}
+		}
+		return g.emptyIface, true
+	}
 	if text == "TaskError" {
 		text = "Error"
 	}
@@ -536,6 +568,9 @@ func (g *generator) callParamMut(r willc.Record) []bool {
 // resultLLVM maps a result type text to its LLVM type, or "" when it is not
 // lowered. It is the same order the function declaration uses.
 func (g *generator) resultLLVM(text string) string {
+	if text == "interface {}" {
+		return "%interface.empty"
+	}
 	if typ, ok := llvmTypeText(text); ok {
 		return typ
 	}

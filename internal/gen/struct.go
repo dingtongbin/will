@@ -356,6 +356,9 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 			return t, nil
 		}
 	}
+	if fieldText(r, "type") == "interface {}" {
+		return "%interface.empty", nil
+	}
 	if typ, ok := llvmTypeText(fieldText(r, "type")); ok {
 		return typ, nil
 	}

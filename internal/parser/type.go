@@ -13,6 +13,17 @@ func (p *Parser) parseType() *ast.Type {
 	switch {
 	case p.at(token.KwFunc):
 		return p.parseFuncType()
+	case p.at(token.KwInterface):
+		p.next()
+		p.skipNL()
+		p.expect(token.LBrace, "{")
+		p.skipNL()
+		p.expect(token.RBrace, "}")
+		return &ast.Type{
+			Span: p.spanFrom(start),
+			Kind: ast.NamedType,
+			Name: "interface {}",
+		}
 	case p.at(token.LBracket):
 		return p.parseArrayType()
 	case p.at(token.LParen) && p.peekRaw(1).Kind == token.RParen:

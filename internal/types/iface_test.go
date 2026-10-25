@@ -70,6 +70,26 @@ func Use(x: Shape) -> i32 {
 	}
 }
 
+func TestEmptyInterface(t *testing.T) {
+	src := `func Check(value: interface {}) -> bool {
+    return value.Is<i32>()
+}
+
+func Use() -> i32 {
+    var value: interface {} = 7
+    var number: Option<i32> = value.As<i32>()
+    _ = Check(value)
+    return match number {
+        Some(v) => v
+        None => 0
+    }
+}
+`
+	if ds := checkWithResolve(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
 func TestInterfaceDowncasts(t *testing.T) {
 	src := `interface Shape {
     func Area() -> i32

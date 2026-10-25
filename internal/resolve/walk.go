@@ -178,7 +178,7 @@ func (r *resolver) walkType(t *ast.Type) {
 	}
 	switch t.Kind {
 	case ast.ScalarType, ast.NamedType:
-		if t.Name == "" {
+		if t.Name == "" || t.Name == "interface {}" {
 			return
 		}
 		if sym, ok := r.qualifier(t.Name); ok {

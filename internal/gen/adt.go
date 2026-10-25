@@ -48,6 +48,12 @@ func parseADT(text string) (string, []string, bool) {
 // type. The unit type has no value and returns "".
 func (g *generator) typeLLVMOf(text string) (string, bool) {
 	text = g.canonicalTypeText(text)
+	if text == "interface {}" {
+		if g.emptyIface == nil {
+			g.emptyIface = &ifaceInfo{name: "interface {}", llvm: "%interface.empty", byName: map[string]int{}}
+		}
+		return "%interface.empty", true
+	}
 	if _, ok := chanElemText(text); ok {
 		return "ptr", true
 	}

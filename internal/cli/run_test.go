@@ -103,6 +103,64 @@ func main() -> i32 {
 	}
 }
 
+// TestRunEmptyInterface checks the anonymous interface at run time: any value
+// satisfies it, and only Is/As can recover the concrete type.
+func TestRunEmptyInterface(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func Number(value: interface {}) -> i32 {
+    var got: Option<i32> = value.As<i32>()
+    match got {
+        Some(number) => {
+            return number
+        }
+        None => {
+            return -1
+        }
+    }
+}
+
+func main() -> i32 {
+    var number: interface {} = 42
+    if !number.Is<i32>() {
+        return 1
+    }
+    if Number(number) != 42 {
+        return 2
+    }
+    if number.Is<str>() {
+        return 3
+    }
+    var text: interface {} = "will"
+    if !text.Is<str>() {
+        return 4
+    }
+    var empty: interface {}
+    if empty.Is<i32>() {
+        return 5
+    }
+    var same: Option<interface {}> = number.As<interface {}>()
+    match same {
+        Some(value) => {
+            if !value.Is<i32>() {
+                return 6
+            }
+        }
+        None => {
+            return 7
+        }
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+}
+
 // TestRunMutableScalarParameters checks that a mutable scalar is a pointer in
 // both the ordinary call ABI and the async task ABI.
 func TestRunMutableScalarParameters(t *testing.T) {

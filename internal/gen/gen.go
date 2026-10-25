@@ -753,6 +753,9 @@ type generator struct {
 	// that its module-wide type definition is already written.
 	errorIface   *ifaceInfo
 	errorEmitted bool
+	// emptyIface is the anonymous interface {}: no methods, but every value
+	// satisfies it, so it can only be used for Is/As downcasts.
+	emptyIface *ifaceInfo
 	// showIface is the predeclared Show interface. A predeclared scalar shows
 	// itself through a thunk this module defines, so showEmitted and
 	// pendingShows track those thunks and showUsed the type definition.

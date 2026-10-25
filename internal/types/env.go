@@ -314,7 +314,8 @@ func (c *checker) qualifyForeignType(t *Type, pkg string, params map[string]bool
 		a := args()
 		if params[name] || strings.Contains(name, ".") || isScalarName(name) ||
 			builtinArity[name] > 0 || name == "Value" || name == "Duration" ||
-			name == "Show" || name == "Error" || name == "TaskError" {
+			name == "Show" || name == "Error" || name == "TaskError" ||
+			name == "interface {}" {
 			if len(a) == 0 {
 				return t
 			}
@@ -349,6 +350,9 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 		return c.in.builtin(t.Name)
 	case ast.NamedType:
 		if tp[t.Name] {
+			return c.in.named(t.Name, nil)
+		}
+		if t.Name == "interface {}" {
 			return c.in.named(t.Name, nil)
 		}
 		if t.Name == "Equal" || t.Name == "Ord" {

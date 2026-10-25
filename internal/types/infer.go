@@ -501,6 +501,11 @@ func (c *checker) mismatch(pos source.Pos, got, want *Type, isArg bool, callee s
 			return
 		}
 	}
+	if want.Kind() == NamedKind && want.Name() == "interface {}" {
+		// The empty interface has no required method, so every value
+		// satisfies it. Only Is/As can recover the concrete type.
+		return
+	}
 	if methods, ok := c.env.ifaces[want.Name()]; ok {
 		if got != nil && got.Kind() == NamedKind && strings.Contains(got.Name(), ".") {
 			// The concrete type belongs to another package, whose declarations
@@ -1234,7 +1239,11 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	if recv.Kind() != NamedKind {
 		return nil
 	}
-	if methods, ok := c.env.ifaces[recv.Name()]; ok {
+	methods, isIface := c.env.ifaces[recv.Name()]
+	if recv.Name() == "interface {}" {
+		methods, isIface = nil, true
+	}
+	if isIface {
 		if call.Name == "Is" || call.Name == "As" {
 			if len(call.TypeArgs) != 1 {
 				c.bag.Error(call.Pos(), diag.CodeTypeArgCount, "wrong number of type arguments",
