@@ -42,7 +42,7 @@ func hasDrive(p: str) -> bool {
     if Separator() != 92u8 || p.Len() < 2usize {
         return false
     }
-    var s: str = p
+    var s: str = p.Clone()
     var first: u32 = s[0]
     var second: u32 = s[1]
     return isDriveLetter(first) && second == colonScalar
@@ -53,7 +53,7 @@ func isDriveAbs(p: str) -> bool {
     if !hasDrive(p) || p.Len() < 3usize {
         return false
     }
-    var s: str = p
+    var s: str = p.Clone()
     var third: u32 = s[2]
     return isSeparator(third)
 }

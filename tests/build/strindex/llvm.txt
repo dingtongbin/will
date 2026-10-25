@@ -121,6 +121,9 @@ panic.5:
   call void @willrt_panic(ptr @.str.10, ptr @.str.8, ptr @.str.4)
   unreachable
 panic.ok.5:
+  %t60 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
+  %t61 = load ptr, ptr %t60
+  call void @willrt_free_str(ptr %t61)
   ret i32 %t58
 }
 declare void @willrt_init()
@@ -145,6 +148,7 @@ entry:
 @.str.10 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
+declare void @willrt_free_str(ptr)
 declare void @willrt_write_stdout(ptr, i64)
 declare void @willrt_print_i64(i64)
 declare void @willrt_print_u64(i64)

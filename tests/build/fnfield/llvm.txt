@@ -42,6 +42,7 @@ panic.1:
   call void @willrt_panic(ptr @.str.0, ptr @.str.3, ptr @.str.4)
   unreachable
 panic.ok.1:
+  %t19 = getelementptr inbounds %"struct.example.com/fnfield.Handler", ptr %v.h, i32 0, i32 0
   ret i32 %t17
 }
 define i32 @"example.com/fnfield.thunk.Inc"(ptr %closure.env, i32 %x) {

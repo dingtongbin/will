@@ -54,7 +54,7 @@ entry:
   %v.c = alloca %"struct.example.com/iface.C"
   %v.x = alloca %"interface.example.com/iface.Counter"
   %v.agg.51 = alloca %"struct.example.com/iface.C"
-  %v.iface.60.0 = alloca %"interface.example.com/iface.Counter"
+  %v.iface.59.0 = alloca %"interface.example.com/iface.Counter"
   %t27 = getelementptr inbounds %"struct.example.com/iface.C", ptr %v.agg.51, i32 0, i32 0
   store i32 3, ptr %t27
   %t28 = load %"struct.example.com/iface.C", ptr %v.agg.51
@@ -63,11 +63,11 @@ entry:
   store ptr %v.c, ptr %t29
   %t30 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 1
   store ptr @"example.com/iface.vtable.Counter.C", ptr %t30
-  %t31 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.60.0, i32 0, i32 0
+  %t31 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.59.0, i32 0, i32 0
   store ptr %v.c, ptr %t31
-  %t32 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.60.0, i32 0, i32 1
+  %t32 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.59.0, i32 0, i32 1
   store ptr @"example.com/iface.vtable.Counter.C", ptr %t32
-  %t33 = call i32 @"example.com/iface.Use"(ptr %v.iface.60.0)
+  %t33 = call i32 @"example.com/iface.Use"(ptr %v.iface.59.0)
   %t34 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 0
   %t35 = load ptr, ptr %t34
   %t36 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 1

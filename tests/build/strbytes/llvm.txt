@@ -268,8 +268,76 @@ if.then.10:
   %t164 = getelementptr inbounds { ptr, i64 }, ptr %v.str.91, i32 0, i32 1
   %t165 = load i64, ptr %t164
   call void @willrt_write_stdout(ptr %t163, i64 %t165)
+  %t166 = getelementptr inbounds { ptr, i64 }, ptr %v.letter, i32 0, i32 0
+  %t167 = load ptr, ptr %t166
+  call void @willrt_free_str(ptr %t167)
+  %t168 = getelementptr inbounds { ptr, i64 }, ptr %v.head, i32 0, i32 0
+  %t169 = load ptr, ptr %t168
+  call void @willrt_free_str(ptr %t169)
+  %t170 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.copy, i32 0, i32 0
+  %t171 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.copy, i32 0, i32 1
+  %t172 = load ptr, ptr %t170
+  %t173 = load i64, ptr %t171
+  %t174 = alloca i64
+  store i64 0, ptr %t174
+  br label %deep.rel.arr.cond.11
+deep.rel.arr.cond.11:
+  %t175 = load i64, ptr %t174
+  %t176 = icmp ult i64 %t175, %t173
+  br i1 %t176, label %deep.rel.arr.body.11, label %deep.rel.arr.done.11
+deep.rel.arr.body.11:
+  %t177 = getelementptr inbounds i8, ptr %t172, i64 %t175
+  %t178 = add i64 %t175, 1
+  store i64 %t178, ptr %t174
+  br label %deep.rel.arr.cond.11
+deep.rel.arr.done.11:
+  call void @willrt_free(ptr %t172)
+  %t179 = load i32, ptr %v.idx
+  %t180 = icmp eq i32 %t179, 1
+  br i1 %t180, label %deep.rel.adt.12.1, label %deep.rel.adt.done.12.1
+deep.rel.adt.12.1:
+  %t181 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.idx, i32 0, i32 2
+  br label %deep.rel.adt.done.12.1
+deep.rel.adt.done.12.1:
+  %t182 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
+  %t183 = load ptr, ptr %t182
+  call void @willrt_free_str(ptr %t183)
   ret i32 1
 if.end.10:
+  %t184 = getelementptr inbounds { ptr, i64 }, ptr %v.letter, i32 0, i32 0
+  %t185 = load ptr, ptr %t184
+  call void @willrt_free_str(ptr %t185)
+  %t186 = getelementptr inbounds { ptr, i64 }, ptr %v.head, i32 0, i32 0
+  %t187 = load ptr, ptr %t186
+  call void @willrt_free_str(ptr %t187)
+  %t188 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.copy, i32 0, i32 0
+  %t189 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.copy, i32 0, i32 1
+  %t190 = load ptr, ptr %t188
+  %t191 = load i64, ptr %t189
+  %t192 = alloca i64
+  store i64 0, ptr %t192
+  br label %deep.rel.arr.cond.13
+deep.rel.arr.cond.13:
+  %t193 = load i64, ptr %t192
+  %t194 = icmp ult i64 %t193, %t191
+  br i1 %t194, label %deep.rel.arr.body.13, label %deep.rel.arr.done.13
+deep.rel.arr.body.13:
+  %t195 = getelementptr inbounds i8, ptr %t190, i64 %t193
+  %t196 = add i64 %t193, 1
+  store i64 %t196, ptr %t192
+  br label %deep.rel.arr.cond.13
+deep.rel.arr.done.13:
+  call void @willrt_free(ptr %t190)
+  %t197 = load i32, ptr %v.idx
+  %t198 = icmp eq i32 %t197, 1
+  br i1 %t198, label %deep.rel.adt.14.1, label %deep.rel.adt.done.14.1
+deep.rel.adt.14.1:
+  %t199 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.idx, i32 0, i32 2
+  br label %deep.rel.adt.done.14.1
+deep.rel.adt.done.14.1:
+  %t200 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
+  %t201 = load ptr, ptr %t200
+  call void @willrt_free_str(ptr %t201)
   ret i32 0
 }
 declare void @willrt_init()
@@ -295,6 +363,7 @@ declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
+declare void @willrt_free_str(ptr)
 declare i32 @memcmp(ptr, ptr, i64)
 declare void @memcpy(ptr, ptr, i64)
 declare void @willrt_write_stdout(ptr, i64)

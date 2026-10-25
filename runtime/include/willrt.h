@@ -96,6 +96,11 @@ void* willrt_alloc(size_t size);
    error, and its memory is left alone. */
 void willrt_free(void* ptr);
 
+/* willrt_free_str releases a heap-backed str. A str literal points into the
+   object file's read-only data, so a pointer outside the arena is ignored;
+   passing it to willrt_free would report a false error for every literal. */
+void willrt_free_str(void* ptr);
+
 /* willrt_alloc_count reports how many allocations were counted. Counting is
    off unless WILLRT_COUNT_ALLOC=1 was set before the first allocation; the
    zero-allocation acceptance runs use it. */

@@ -24,7 +24,7 @@ entry:
   store i32 %v, ptr %t1
   ret void
 }
-define hidden i32 @"example.com/genericimport/lib.Box<i32>.Get"(ptr %b) alwaysinline {
+define hidden i32 @"example.com/genericimport/lib.Box<i32>.Get"(ptr %b) inlinehint {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/genericimport/lib.Box$i32", ptr %b, i32 0, i32 0
   %t2 = load i32, ptr %t1

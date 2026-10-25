@@ -6,12 +6,12 @@ struct Fault {
 }
 
 func (mut f: Fault) init(message: str, status: i32) {
-    f.message = message
+    f.message = message.Clone()
     f.status = status
 }
 
 func (f: Fault) Message() -> str {
-    return f.message
+    return f.message.Clone()
 }
 
 func (f: Fault) Status() -> i32 {

@@ -152,6 +152,65 @@ func TestBorrowCanReturnAParameterView(t *testing.T) {
 	}
 }
 
+func TestBorrowNotPinnedByUnrelatedClosure(t *testing.T) {
+	src := `func Fill(mut xs: Array<i32>) {
+}
+
+func F() {
+    var xs: Array<i32> = new Array<i32>(0)
+    var v: []i32 = xs[Range(0, xs.Len())]
+    var f: func() -> i32 = func() -> i32 { return 1 }
+    _ = f
+    _ = v
+    Fill(xs)
+}
+`
+	if ds := borrows(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %s, want none", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowPinnedByCapturedView(t *testing.T) {
+	src := `func Fill(mut xs: Array<i32>) {
+}
+
+func F() {
+    var xs: Array<i32> = new Array<i32>(0)
+    var v: []i32 = xs[Range(0, xs.Len())]
+    var f: func() -> i32 = func() -> i32 {
+        return i32(v.Get(0))
+    }
+    _ = f
+    _ = v
+    Fill(xs)
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowConflict {
+		t.Fatalf("diagnostics = %s, want one O0003", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowNotPinnedByUnrelatedDefer(t *testing.T) {
+	src := `func Tick() {
+}
+
+func Fill(mut xs: Array<i32>) {
+}
+
+func F() {
+    var xs: Array<i32> = new Array<i32>(0)
+    var v: []i32 = xs[Range(0, xs.Len())]
+    defer Tick()
+    _ = v
+    Fill(xs)
+}
+`
+	if ds := borrows(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %s, want none", diag.FormatAll(ds))
+	}
+}
+
 func TestBorrowEndsWithItsBlock(t *testing.T) {
 	src := `func Fill(mut xs: Array<i32>) {
 }

@@ -3,7 +3,7 @@ func isDotElement(p: str, a: usize, b: usize) -> bool {
     if b - a != 1usize {
         return false
     }
-    var s: str = p
+    var s: str = p.Clone()
     var c: u32 = s[a]
     return isDot(c)
 }
@@ -14,7 +14,7 @@ func isDotDotElement(p: str, a: usize, b: usize) -> bool {
         return false
     }
     var second: usize = a + 1usize
-    var s: str = p
+    var s: str = p.Clone()
     var firstChar: u32 = s[a]
     var secondChar: u32 = s[second]
     return isDot(firstChar) && isDot(secondChar)
@@ -62,7 +62,7 @@ func pushElement(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>,
 // "." when nothing is left of a relative path, and the platform root when
 // nothing is left of a rooted one.
 func Clean(p: str) -> str {
-    var s: str = p
+    var s: str = p.Clone()
     var n: usize = s.Len()
     var volumeEnd: usize = 0usize
     var scan: usize = 0usize

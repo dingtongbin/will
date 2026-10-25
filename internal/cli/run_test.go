@@ -31,6 +31,78 @@ func main() -> i32 {
 	}
 }
 
+// TestRunMovedArrayIsReleasedOnce checks that a value move suppresses the
+// source release. Releasing both owners would report a dead block and double
+// free the same buffer.
+func TestRunMovedArrayIsReleasedOnce(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func main() -> i32 {
+    var first: Array<i32> = new Array<i32>(4)
+    first.Push(7)
+    var second: Array<i32> = first
+    second.Push(8)
+    return i32(second.Len())
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 2 {
+		t.Fatalf("code = %d, want 2, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
+// TestRunContainerPushMovesTheElement checks that Push takes ownership of an
+// owning element and the later release frees it exactly once.
+func TestRunContainerPushMovesTheElement(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func main() -> i32 {
+    var text: str = "abc".Clone()
+    var xs: Array<str> = new Array<str>(0)
+    xs.Push(text)
+    return i32(xs.Get(0).Len())
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 3 {
+		t.Fatalf("code = %d, want 3, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
+// TestRunArrayReleaseAtLastSafeUse checks the early release point for a value
+// owner whose remaining use is only a length query.
+func TestRunArrayReleaseAtLastSafeUse(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func main() -> i32 {
+    var xs: Array<i32> = new Array<i32>(4)
+    xs.Push(7)
+    var n: usize = xs.Len()
+    var later: i32 = 1
+    return i32(n) + later
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 2 {
+		t.Fatalf("code = %d, want 2, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunDeadlineChildReturnsDeadline checks the cancellation value of an
 // awaited child task: a scope deadline is a normal Err(Deadline), not an empty
 // panic from an uninitialized task error.

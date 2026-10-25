@@ -4,7 +4,7 @@ func IsAbs(p: str) -> bool {
     if p.Len() == 0usize {
         return false
     }
-    var s: str = p
+    var s: str = p.Clone()
     var first: u32 = s[0]
     if isSeparator(first) {
         return true

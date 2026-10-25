@@ -131,21 +131,22 @@ panic.ok.4:
   %t58 = getelementptr inbounds %"struct.example.com/rc.Holder", ptr %v.h, i32 0, i32 0
   %t59 = load i64, ptr %t58
   call void @willrt_rc_release(i64 %t59)
-  %t60 = load i64, ptr %v.e
-  call void @willrt_rc_release(i64 %t60)
-  %t61 = load i32, ptr %v.u
-  %t62 = icmp eq i32 %t61, 0
-  br i1 %t62, label %release.done.5, label %release.keep.5
-release.keep.5:
-  %t63 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.u, i32 0, i32 2
-  %t64 = load i64, ptr %t63
-  call void @willrt_rc_release(i64 %t64)
-  br label %release.done.5
-release.done.5:
-  %t65 = load i64, ptr %v.d
+  %t60 = getelementptr inbounds %"struct.example.com/rc.Holder", ptr %v.h, i32 0, i32 1
+  %t61 = load i64, ptr %v.e
+  call void @willrt_rc_release(i64 %t61)
+  %t62 = load i32, ptr %v.u
+  %t63 = icmp eq i32 %t62, 1
+  br i1 %t63, label %deep.rel.adt.5.1, label %deep.rel.adt.done.5.1
+deep.rel.adt.5.1:
+  %t64 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.u, i32 0, i32 2
+  %t65 = load i64, ptr %t64
   call void @willrt_rc_release(i64 %t65)
-  %t66 = load i64, ptr %v.c
+  br label %deep.rel.adt.done.5.1
+deep.rel.adt.done.5.1:
+  %t66 = load i64, ptr %v.d
   call void @willrt_rc_release(i64 %t66)
+  %t67 = load i64, ptr %v.c
+  call void @willrt_rc_release(i64 %t67)
   ret i32 %t56
 }
 declare void @willrt_init()

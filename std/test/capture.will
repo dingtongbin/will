@@ -23,7 +23,7 @@ func (mut t: T) Capture() -> Capture {
 // bytes that were read when capture stopped.
 func (cap: Capture) Text() -> str {
     if !cap.active {
-        return cap.text
+        return cap.text.Clone()
     }
     var text: str = ""
     var status: i32 = c.willtest_capture_read(raw(text))

@@ -237,12 +237,30 @@ panic.10:
   call void @willrt_panic(ptr @.str.3, ptr @.str.6, ptr @.str.2)
   unreachable
 panic.ok.10:
+  %t115 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
+  %t116 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
+  %t117 = load ptr, ptr %t115
+  %t118 = load i64, ptr %t116
+  %t119 = alloca i64
+  store i64 0, ptr %t119
+  br label %deep.rel.arr.cond.11
+deep.rel.arr.cond.11:
+  %t120 = load i64, ptr %t119
+  %t121 = icmp ult i64 %t120, %t118
+  br i1 %t121, label %deep.rel.arr.body.11, label %deep.rel.arr.done.11
+deep.rel.arr.body.11:
+  %t122 = getelementptr inbounds i32, ptr %t117, i64 %t120
+  %t123 = add i64 %t120, 1
+  store i64 %t123, ptr %t119
+  br label %deep.rel.arr.cond.11
+deep.rel.arr.done.11:
+  call void @willrt_free(ptr %t117)
   ret i32 %t113
 }
 define i32 @"example.com/array.will$main"() {
 entry:
-  %t115 = call i32 @"example.com/array.Sum"()
-  ret i32 %t115
+  %t124 = call i32 @"example.com/array.Sum"()
+  ret i32 %t124
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()

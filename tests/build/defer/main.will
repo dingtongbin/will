@@ -7,7 +7,7 @@ struct E {
 }
 
 func (e: E) Message() -> str {
-    return e.m
+    return e.m.Clone()
 }
 
 func (e: E) Status() -> i32 {

@@ -80,6 +80,27 @@ panic.4:
   unreachable
 panic.ok.4:
   %t41 = trunc i64 %t39 to i32
+  %t42 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
+  %t43 = load ptr, ptr %t42
+  call void @willrt_free_str(ptr %t43)
+  %t44 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
+  %t45 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
+  %t46 = load ptr, ptr %t44
+  %t47 = load i64, ptr %t45
+  %t48 = alloca i64
+  store i64 0, ptr %t48
+  br label %deep.rel.arr.cond.5
+deep.rel.arr.cond.5:
+  %t49 = load i64, ptr %t48
+  %t50 = icmp ult i64 %t49, %t47
+  br i1 %t50, label %deep.rel.arr.body.5, label %deep.rel.arr.done.5
+deep.rel.arr.body.5:
+  %t51 = getelementptr inbounds i8, ptr %t46, i64 %t49
+  %t52 = add i64 %t49, 1
+  store i64 %t52, ptr %t48
+  br label %deep.rel.arr.cond.5
+deep.rel.arr.done.5:
+  call void @willrt_free(ptr %t46)
   ret i32 %t41
 }
 declare void @willrt_init()
@@ -104,6 +125,7 @@ declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
+declare void @willrt_free_str(ptr)
 declare void @memcpy(ptr, ptr, i64)
 declare void @willrt_write_stdout(ptr, i64)
 declare void @willrt_print_i64(i64)

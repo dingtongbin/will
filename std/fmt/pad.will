@@ -10,14 +10,14 @@ func Pad(s: str, width: i32, pad: u8, left: bool) -> Format {
         width: width,
         pad: pad,
         left: left,
-        text: s
+        text: s.Clone()
     }
 }
 
 // padText returns s surrounded by fill bytes on the requested side.
 func padText(s: str, width: i32, pad: u8, left: bool) -> str {
     if width <= 0 || i32(s.Len()) >= width {
-        return s
+        return s.Clone()
     }
     var fill: str = filled(usize(width) - s.Len(), pad)
     if left {

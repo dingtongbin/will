@@ -258,8 +258,26 @@ panic.4:
   unreachable
 panic.ok.4:
   %t158 = trunc i64 %t156 to i32
+  %t159 = getelementptr inbounds { ptr, i64 }, ptr %v.x, i32 0, i32 0
+  %t160 = load ptr, ptr %t159
+  call void @willrt_free_str(ptr %t160)
+  %t161 = getelementptr inbounds { ptr, i64 }, ptr %v.r, i32 0, i32 0
+  %t162 = load ptr, ptr %t161
+  call void @willrt_free_str(ptr %t162)
+  %t163 = getelementptr inbounds { ptr, i64 }, ptr %v.t, i32 0, i32 0
+  %t164 = load ptr, ptr %t163
+  call void @willrt_free_str(ptr %t164)
+  %t165 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
+  %t166 = load ptr, ptr %t165
+  call void @willrt_free_str(ptr %t166)
   ret i32 %t158
 if.end.1:
+  %t167 = getelementptr inbounds { ptr, i64 }, ptr %v.t, i32 0, i32 0
+  %t168 = load ptr, ptr %t167
+  call void @willrt_free_str(ptr %t168)
+  %t169 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
+  %t170 = load ptr, ptr %t169
+  call void @willrt_free_str(ptr %t170)
   ret i32 0
 }
 declare void @willrt_init()
@@ -288,6 +306,7 @@ declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
+declare void @willrt_free_str(ptr)
 declare i32 @memcmp(ptr, ptr, i64)
 declare void @willrt_write_stdout(ptr, i64)
 declare void @willrt_print_i64(i64)

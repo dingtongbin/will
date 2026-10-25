@@ -12,7 +12,7 @@ struct clockError {
 }
 
 func (e: clockError) Message() -> str {
-    return e.message
+    return e.message.Clone()
 }
 
 func (e: clockError) Status() -> i32 {

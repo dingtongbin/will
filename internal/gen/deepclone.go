@@ -3,6 +3,8 @@ package gen
 import (
 	"fmt"
 	"strings"
+
+	"github.com/will-lang/will/internal/willc"
 )
 
 // cloneOwnedValue copies one value into fresh storage deep enough that the
@@ -318,12 +320,62 @@ func kindTypeText(kind string, args []string) string {
 	return "Result<" + args[0] + ">"
 }
 
+// cloneValueCall lowers the universal Clone method for a value type that has
+// no predeclared method: structs, Option/Result, and scalars. The result is a
+// fresh owner in a call slot, so the caller can bind or return it independently.
+func (g *generator) cloneValueCall(r willc.Record, text string) (string, string, error) {
+	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
+		src, _, err := g.place(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		info, ok := g.adtType(kindTypeText(kind, args))
+		if !ok {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, text)
+		}
+		slot := g.allocSlot(g.callSlots, "clone", r.ID, info.llvm)
+		if err := g.cloneOwnedValue(src, slot, text); err != nil {
+			return "", "", err
+		}
+		return g.load(info.llvm, slot), text, nil
+	}
+	typ, ok := g.typeLLVMOf(text)
+	if !ok || typ == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: type %s is not lowered yet", r.ID, text)
+	}
+	if !isAggregateType(typ) {
+		value, err := g.value(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		return value, text, nil
+	}
+	if !isStructType(typ) {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: Clone of %s is not lowered yet", r.ID, text)
+	}
+	src, _, err := g.place(refField(r, "recv"))
+	if err != nil {
+		return "", "", err
+	}
+	slot := g.allocSlot(g.callSlots, "clone", r.ID, typ)
+	if err := g.cloneOwnedValue(src, slot, text); err != nil {
+		return "", "", err
+	}
+	return g.load(typ, slot), text, nil
+}
+
 // releaseOwnedValue is the release half of cloneOwnedValue. It frees storage
 // the clone owns, including nested buffers that plain releaseValue does not
 // visit.
 func (g *generator) releaseOwnedValue(ptr, text string) error {
 	text = g.qualifyTypeText(g.pkg, text)
 	if isWeakText(text) {
+		return nil
+	}
+	// An enum has a tag in front of every variant payload; walking it as a
+	// plain struct would release the wrong variant. Enum release is not lowered
+	// yet, so it must stay a no-op rather than corrupt the tag.
+	if g.declKinds[text] == "enum" || g.declKinds[qualify(g.pkg, text)] == "enum" {
 		return nil
 	}
 	if isRcText(text) {
@@ -333,11 +385,11 @@ func (g *generator) releaseOwnedValue(ptr, text string) error {
 		return nil
 	}
 	if text == "str" {
-		g.needAllocDecl = true
+		g.needFreeStrDecl = true
 		dataPtr := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, ptr)
 		data := g.load("ptr", dataPtr)
-		fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
+		fmt.Fprintf(g.out, "  call void @willrt_free_str(ptr %s)\n", data)
 		return nil
 	}
 	if elem, ok := arrayElemText(text); ok {

@@ -14,7 +14,7 @@ struct timeError {
 }
 
 func (e: timeError) Message() -> str {
-    return e.message
+    return e.message.Clone()
 }
 
 func (e: timeError) Status() -> i32 {
@@ -22,7 +22,7 @@ func (e: timeError) Status() -> i32 {
 }
 
 func fail(message: str) -> timeError {
-    return timeError { message: message}
+    return timeError { message: message.Clone()}
 }
 
 // The ASCII scalars the parsers compare against. A character literal is not

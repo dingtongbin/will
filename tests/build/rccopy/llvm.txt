@@ -34,9 +34,6 @@ entry:
   %t17 = getelementptr inbounds %"struct.example.com/rccopy.Holder", ptr %v.b, i32 0, i32 0
   %t18 = load i64, ptr %t17
   call void @willrt_rc_release(i64 %t18)
-  %t19 = getelementptr inbounds %"struct.example.com/rccopy.Holder", ptr %v.a, i32 0, i32 0
-  %t20 = load i64, ptr %t19
-  call void @willrt_rc_release(i64 %t20)
   ret i32 %t15
 }
 declare void @willrt_init()

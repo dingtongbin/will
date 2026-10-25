@@ -11,7 +11,7 @@ struct Cmd {
 // Command builds a command for path with args. The environment and the working
 // directory are inherited until WithEnv or WithDir sets them.
 func Command(path: str, args: ...str) -> Cmd {
-    return Cmd { path: path, args: args, env: new Map<str, str>(0), dir: ""}
+    return Cmd { path: path.Clone(), args: args, env: new Map<str, str>(0), dir: ""}
 }
 
 // WithEnv returns a command whose environment is c's environment plus the
@@ -33,14 +33,23 @@ func (c: Cmd) WithEnv(kv: ...str) -> Cmd {
         if i >= kv.Len() {
             break
         }
-        env.Set(kv.Get(i), kv.Get(i + 1))
+        env.Set(kv.Get(i).Clone(), kv.Get(i + 1).Clone())
         i += 2
     }
-    return Cmd { path: c.path, args: c.args, env: env, dir: c.dir}
+    return Cmd { path: c.path.Clone(), args: c.args, env: env, dir: c.dir.Clone()}
 }
 
 // WithDir returns a command that runs in dir. The environment and arguments
 // are the same values c carries.
 func (c: Cmd) WithDir(dir: str) -> Cmd {
-    return Cmd { path: c.path, args: c.args, env: c.env, dir: dir}
+    return Cmd { path: c.path.Clone(), args: c.args, env: copyEnv(c.env), dir: dir.Clone()}
+}
+
+// copyEnv makes an independent map so changing the copy cannot alter c.
+func copyEnv(src: Map<str, str>) -> Map<str, str> {
+    var out: Map<str, str> = new Map<str, str>(src.Len())
+    for key, value in src {
+        out.Set(key.Clone(), value.Clone())
+    }
+    return out
 }

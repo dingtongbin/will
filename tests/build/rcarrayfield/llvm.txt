@@ -101,32 +101,25 @@ define void @"example.com/rcarrayfield.drop.1"(ptr %value) {
 entry:
   %t54 = getelementptr inbounds %"struct.example.com/rcarrayfield.Outer", ptr %value, i32 0, i32 0
   %t55 = getelementptr inbounds { ptr, i64, i64 }, ptr %t54, i32 0, i32 0
-  %t56 = load ptr, ptr %t55
-  %t57 = getelementptr inbounds { ptr, i64, i64 }, ptr %t54, i32 0, i32 1
-  %t58 = load i64, ptr %t57
+  %t56 = getelementptr inbounds { ptr, i64, i64 }, ptr %t54, i32 0, i32 1
+  %t57 = load ptr, ptr %t55
+  %t58 = load i64, ptr %t56
   %t59 = alloca i64
   store i64 0, ptr %t59
-  br label %elem.cond.3
-elem.cond.3:
+  br label %deep.rel.arr.cond.3
+deep.rel.arr.cond.3:
   %t60 = load i64, ptr %t59
   %t61 = icmp ult i64 %t60, %t58
-  br i1 %t61, label %elem.body.3, label %elem.done.3
-elem.body.3:
-  %t62 = getelementptr inbounds i64, ptr %t56, i64 %t60
+  br i1 %t61, label %deep.rel.arr.body.3, label %deep.rel.arr.done.3
+deep.rel.arr.body.3:
+  %t62 = getelementptr inbounds i64, ptr %t57, i64 %t60
   %t63 = load i64, ptr %t62
   call void @willrt_rc_release(i64 %t63)
   %t64 = add i64 %t60, 1
   store i64 %t64, ptr %t59
-  br label %elem.cond.3
-elem.done.3:
-  %t65 = getelementptr inbounds { ptr, i64, i64 }, ptr %t54, i32 0, i32 0
-  %t66 = load ptr, ptr %t65
-  %t67 = icmp ne ptr %t66, null
-  br i1 %t67, label %array.free.4, label %array.freed.4
-array.free.4:
-  call void @willrt_free(ptr %t66)
-  br label %array.freed.4
-array.freed.4:
+  br label %deep.rel.arr.cond.3
+deep.rel.arr.done.3:
+  call void @willrt_free(ptr %t57)
   ret void
 }
 declare void @willrt_init()

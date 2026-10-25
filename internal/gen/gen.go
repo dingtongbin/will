@@ -189,6 +189,9 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare ptr @willrt_alloc(i64)\n")
 		g.out.WriteString("declare void @willrt_free(ptr)\n")
 	}
+	if g.needFreeStrDecl {
+		g.out.WriteString("declare void @willrt_free_str(ptr)\n")
+	}
 	if g.needMemcmpDecl {
 		g.out.WriteString("declare i32 @memcmp(ptr, ptr, i64)\n")
 	}
@@ -778,6 +781,9 @@ type generator struct {
 	smParamSlot map[int]string
 	// needAllocDecl records that the lowering calls the allocator.
 	needAllocDecl bool
+	// needFreeStrDecl records that a str value was released. A literal must not
+	// reach willrt_free, so the str-specific entry point checks the arena first.
+	needFreeStrDecl bool
 	// needMemcmpDecl records that the lowering compares str or byte data.
 	needMemcmpDecl bool
 	// needMemmoveDecl records that a container removed an entry in place.
@@ -2848,7 +2854,7 @@ func (g *generator) releaseRecord(rel willc.Record) error {
 		return nil
 	}
 	text := fieldText(rec, "type")
-	if !needsReleaseText(g, text) {
+	if !ownsReleaseText(g, text) {
 		return nil
 	}
 	delete(g.liveValues, owner)
@@ -3899,6 +3905,19 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 			}
 		}
 	}
+	if r.Kind == "mcall" && fieldText(r, "text") == "Clone" {
+		recvText, err := g.willTypeText(refField(r, "recv"))
+		if err == nil {
+			recvText = stripPredeclaredPackage(recvText)
+			if recvText != "str" && recvText != "[]u8" {
+				if _, ok := arrayElemText(recvText); !ok {
+					if _, ok := viewElemText(recvText); !ok {
+						return g.cloneValueCall(r, recvText)
+					}
+				}
+			}
+		}
+	}
 	if target := refField(r, "to"); target != 0 {
 		if decl, ok := g.recs[target]; ok && g.isFuncValue(decl) {
 			return g.indirectCall(r, decl)
@@ -3945,6 +3964,9 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		}
 		if elem, ok := arrayElemText(recvText); ok {
 			return g.arrayMethod(r, elem)
+		}
+		if fieldText(r, "text") == "Clone" {
+			return g.cloneValueCall(r, recvText)
 		}
 		if _, ok := chanElemText(recvText); ok && fieldText(r, "text") == "Close" {
 			return "", "", g.lowerClose(r)

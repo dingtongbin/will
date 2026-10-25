@@ -49,6 +49,18 @@ func TestCycleTwoTypesWarns(t *testing.T) {
 	}
 }
 
+func TestGenericInstanceCycleWarns(t *testing.T) {
+	ds := cycles(t, "struct A<T> {\n    b: rc<B<Array<T>>>\n}\n\nstruct B<T> {\n    a: rc<A<T>>\n}\n")
+	if len(ds) != 2 {
+		t.Fatalf("diagnostics = %d, want two:\n%s", len(ds), diag.FormatAll(ds))
+	}
+	for _, d := range ds {
+		if d.Code != diag.CodePossibleCycle {
+			t.Fatalf("diagnostic = %+v", d)
+		}
+	}
+}
+
 func TestCycleAcrossPackageFilesWarns(t *testing.T) {
 	a, ds := parser.Parse("a.will", []byte("struct A {\n    b: rc<B>\n}\n"))
 	if len(ds) != 0 {

@@ -13,7 +13,7 @@ struct execError {
 }
 
 func (e: execError) Message() -> str {
-    return e.message
+    return e.message.Clone()
 }
 
 func (e: execError) Status() -> i32 {

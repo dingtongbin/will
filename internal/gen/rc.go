@@ -455,89 +455,52 @@ func (g *generator) releaseValue(slot, text string, depth int) error {
 			return err
 		}
 	}
-	if isRcText(text) {
-		// The object's own fields are released by its drop glue, not here.
-		g.needRcDecl = true
-		handle := g.load("i64", slot)
-		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", handle)
-		return nil
+	return g.releaseOwnedValue(slot, text)
+}
+
+// ownsReleaseText reports whether a value can own a buffer or handle that the
+// scope must release. It is wider than needsReleaseText: the latter tracks only
+// reference-counted fields, while an Array<i32> still owns its data buffer.
+func ownsReleaseText(g *generator, text string) bool {
+	text = g.qualifyTypeText(g.pkg, text)
+	if text == "" || isWeakText(text) {
+		return false
 	}
-	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
-		elem := strings.TrimSpace(text[len("Array<") : len(text)-1])
-		if needsReleaseText(g, elem) {
-			if err := g.eachElement(slot, elem, false, 0); err != nil {
-				return err
-			}
-		}
-		dataPtr := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, slot)
-		data := g.load("ptr", dataPtr)
-		notNull := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = icmp ne ptr %s, null\n", notNull, data)
-		g.labels++
-		n := g.labels
-		freeLabel := fmt.Sprintf("array.free.%d", n)
-		doneLabel := fmt.Sprintf("array.freed.%d", n)
-		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", notNull, freeLabel, doneLabel)
-		g.out.WriteString(freeLabel + ":\n")
-		g.needAllocDecl = true
-		fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
-		fmt.Fprintf(g.out, "  br label %%%s\n", doneLabel)
-		g.out.WriteString(doneLabel + ":\n")
-		return nil
+	if g.declKinds[text] == "enum" || g.declKinds[qualify(g.pkg, text)] == "enum" {
+		return false
 	}
-	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
-		tag := g.load("i32", slot)
-		emptyTag := 0
-		if kind == "result" {
-			emptyTag = 1
-		}
-		_ = emptyTag
-		g.labels++
-		n := g.labels
-		keep := fmt.Sprintf("release.keep.%d", n)
-		done := fmt.Sprintf("release.done.%d", n)
-		if kind == "option" {
-			// None has tag 0; Some has tag 1.
-			isNone := g.newTmp()
-			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", isNone, tag)
-			fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", isNone, done, keep)
-		} else {
-			// Only Ok carries the first payload.
-			isOk := g.newTmp()
-			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", isOk, tag)
-			fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", isOk, keep, done)
-		}
-		g.out.WriteString(keep + ":\n")
-		info, _ := g.adtType(text)
-		payload := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
-		if err := g.releaseValue(payload, args[0], depth+1); err != nil {
-			return err
-		}
-		fmt.Fprintf(g.out, "  br label %%%s\n", done)
-		g.out.WriteString(done + ":\n")
-		return nil
+	if text == "str" || isRcText(text) {
+		return true
+	}
+	if _, ok := arrayElemText(text); ok {
+		return true
+	}
+	if _, _, ok := mapTypeText(text); ok {
+		return true
+	}
+	if _, ok := setTypeText(text); ok {
+		return true
+	}
+	if _, args, ok := parseADT(text); ok {
+		return len(args) != 0
+	}
+	if _, ok := g.guardElemText(text); ok {
+		return true
 	}
 	typ, ok := g.typeLLVMOf(text)
 	if !ok || !isStructType(typ) {
-		return nil
+		return false
 	}
 	info := g.structInfoByLLVM(typ)
 	if info == nil || !info.ok {
-		return nil
+		return false
 	}
-	for i, ft := range info.texts {
-		if !needsReleaseText(g, ft) {
-			continue
-		}
-		field := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.llvm, slot, i)
-		if err := g.releaseValue(field, ft, depth+1); err != nil {
-			return err
+	for _, field := range info.texts {
+		if fieldTextNeedsClone(field) {
+			return true
 		}
 	}
-	return nil
+	return false
 }
 
 // needsReleaseText is the method form used by the call sites.

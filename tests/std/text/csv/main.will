@@ -105,9 +105,9 @@ func TextBytes(values: ...u8) -> str {
 
 func RowOf(a: str, b: str, c: str) -> csv.Row {
     var fields: Array<str> = new Array<str>(0)
-    fields.Push(a)
-    fields.Push(b)
-    fields.Push(c)
+    fields.Push(a.Clone())
+    fields.Push(b.Clone())
+    fields.Push(c.Clone())
     return csv.Row { fields: fields }
 }
 

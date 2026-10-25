@@ -182,32 +182,25 @@ panic.ok.6:
   %t92 = load i64, ptr %v.a
   call void @willrt_rc_release(i64 %t92)
   %t93 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.xs, i32 0, i32 0
-  %t94 = load ptr, ptr %t93
-  %t95 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.xs, i32 0, i32 1
-  %t96 = load i64, ptr %t95
+  %t94 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.xs, i32 0, i32 1
+  %t95 = load ptr, ptr %t93
+  %t96 = load i64, ptr %t94
   %t97 = alloca i64
   store i64 0, ptr %t97
-  br label %elem.cond.7
-elem.cond.7:
+  br label %deep.rel.arr.cond.7
+deep.rel.arr.cond.7:
   %t98 = load i64, ptr %t97
   %t99 = icmp ult i64 %t98, %t96
-  br i1 %t99, label %elem.body.7, label %elem.done.7
-elem.body.7:
-  %t100 = getelementptr inbounds i64, ptr %t94, i64 %t98
+  br i1 %t99, label %deep.rel.arr.body.7, label %deep.rel.arr.done.7
+deep.rel.arr.body.7:
+  %t100 = getelementptr inbounds i64, ptr %t95, i64 %t98
   %t101 = load i64, ptr %t100
   call void @willrt_rc_release(i64 %t101)
   %t102 = add i64 %t98, 1
   store i64 %t102, ptr %t97
-  br label %elem.cond.7
-elem.done.7:
-  %t103 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.xs, i32 0, i32 0
-  %t104 = load ptr, ptr %t103
-  %t105 = icmp ne ptr %t104, null
-  br i1 %t105, label %array.free.8, label %array.freed.8
-array.free.8:
-  call void @willrt_free(ptr %t104)
-  br label %array.freed.8
-array.freed.8:
+  br label %deep.rel.arr.cond.7
+deep.rel.arr.done.7:
+  call void @willrt_free(ptr %t95)
   ret i32 %t89
 }
 declare void @willrt_init()

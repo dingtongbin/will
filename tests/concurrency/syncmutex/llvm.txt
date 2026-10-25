@@ -91,36 +91,65 @@ match.end.1:
   ret %"enum.std/errors.ErrorClass" %t29
 }
 %"struct.std/errors.Fault" = type { { ptr, i64 }, i32 }
-define internal void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) alwaysinline {
+define internal void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
 entry:
+  %v.ret.18 = alloca { ptr, i64 }
+  %v.strm.18 = alloca { ptr, i64 }
   %t1 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 0
-  %t2 = load { ptr, i64 }, ptr %message
-  store { ptr, i64 } %t2, ptr %t1
-  %t3 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
-  store i32 %status, ptr %t3
+  %t2 = getelementptr inbounds { ptr, i64 }, ptr %message, i32 0, i32 0
+  %t3 = load ptr, ptr %t2
+  %t4 = getelementptr inbounds { ptr, i64 }, ptr %message, i32 0, i32 1
+  %t5 = load i64, ptr %t4
+  %t6 = call ptr @willrt_alloc(i64 %t5)
+  call void @memcpy(ptr %t6, ptr %t3, i64 %t5)
+  %t7 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.18, i32 0, i32 0
+  store ptr %t6, ptr %t7
+  %t8 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.18, i32 0, i32 1
+  store i64 %t5, ptr %t8
+  %t9 = load { ptr, i64 }, ptr %v.strm.18
+  store { ptr, i64 } %t9, ptr %v.ret.18
+  %t10 = load { ptr, i64 }, ptr %v.ret.18
+  store { ptr, i64 } %t10, ptr %t1
+  %t11 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
+  store i32 %status, ptr %t11
   ret void
 }
-define hidden { ptr, i64 } @"std/errors.Fault.Message"(ptr %f) alwaysinline {
+define hidden { ptr, i64 } @"std/errors.Fault.Message"(ptr %f) inlinehint {
 entry:
-  %t4 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 0
-  %t5 = load { ptr, i64 }, ptr %t4
-  ret { ptr, i64 } %t5
+  %v.ret.30 = alloca { ptr, i64 }
+  %v.strm.30 = alloca { ptr, i64 }
+  %t12 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 0
+  %t13 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 0
+  %t14 = getelementptr inbounds { ptr, i64 }, ptr %t13, i32 0, i32 0
+  %t15 = load ptr, ptr %t14
+  %t16 = getelementptr inbounds { ptr, i64 }, ptr %t13, i32 0, i32 1
+  %t17 = load i64, ptr %t16
+  %t18 = call ptr @willrt_alloc(i64 %t17)
+  call void @memcpy(ptr %t18, ptr %t15, i64 %t17)
+  %t19 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.30, i32 0, i32 0
+  store ptr %t18, ptr %t19
+  %t20 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.30, i32 0, i32 1
+  store i64 %t17, ptr %t20
+  %t21 = load { ptr, i64 }, ptr %v.strm.30
+  store { ptr, i64 } %t21, ptr %v.ret.30
+  %t22 = load { ptr, i64 }, ptr %v.ret.30
+  ret { ptr, i64 } %t22
 }
 define hidden i32 @"std/errors.Fault.Status"(ptr %f) alwaysinline {
 entry:
-  %t6 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
-  %t7 = load i32, ptr %t6
-  ret i32 %t7
+  %t23 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
+  %t24 = load i32, ptr %t23
+  ret i32 %t24
 }
 define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.Class"(ptr %f) inlinehint {
 entry:
-  %v.ret.45 = alloca %"enum.std/errors.ErrorClass"
-  %t8 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
-  %t9 = load i32, ptr %t8
-  %t10 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t9)
-  store %"enum.std/errors.ErrorClass" %t10, ptr %v.ret.45
-  %t11 = load %"enum.std/errors.ErrorClass", ptr %v.ret.45
-  ret %"enum.std/errors.ErrorClass" %t11
+  %v.ret.47 = alloca %"enum.std/errors.ErrorClass"
+  %t25 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
+  %t26 = load i32, ptr %t25
+  %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t26)
+  store %"enum.std/errors.ErrorClass" %t27, ptr %v.ret.47
+  %t28 = load %"enum.std/errors.ErrorClass", ptr %v.ret.47
+  ret %"enum.std/errors.ErrorClass" %t28
 }
 @"std/errors.NotFound" = internal global %"struct.std/errors.Fault" zeroinitializer
 @"std/errors.Invalid" = internal global %"struct.std/errors.Fault" zeroinitializer
@@ -928,40 +957,40 @@ entry:
   %v.final = getelementptr i8, ptr %frame, i64 184
   %v.r = getelementptr i8, ptr %frame, i64 192
   %v.agg.61 = getelementptr i8, ptr %frame, i64 208
-  %v.agg.199 = getelementptr i8, ptr %frame, i64 212
+  %v.agg.196 = getelementptr i8, ptr %frame, i64 212
   %v.ret.99 = getelementptr i8, ptr %frame, i64 216
-  %v.ret.131 = getelementptr i8, ptr %frame, i64 240
-  %v.ret.180 = getelementptr i8, ptr %frame, i64 264
-  %v.ret.211 = getelementptr i8, ptr %frame, i64 288
-  %v.ret.217 = getelementptr i8, ptr %frame, i64 312
-  %v.ret.228 = getelementptr i8, ptr %frame, i64 336
-  %v.ret.258 = getelementptr i8, ptr %frame, i64 360
-  %v.ret.288 = getelementptr i8, ptr %frame, i64 384
+  %v.ret.130 = getelementptr i8, ptr %frame, i64 240
+  %v.ret.178 = getelementptr i8, ptr %frame, i64 264
+  %v.ret.208 = getelementptr i8, ptr %frame, i64 288
+  %v.ret.214 = getelementptr i8, ptr %frame, i64 312
+  %v.ret.225 = getelementptr i8, ptr %frame, i64 336
+  %v.ret.253 = getelementptr i8, ptr %frame, i64 360
+  %v.ret.282 = getelementptr i8, ptr %frame, i64 384
   %v.new.60 = getelementptr i8, ptr %frame, i64 408
-  %v.new.198 = getelementptr i8, ptr %frame, i64 416
+  %v.new.195 = getelementptr i8, ptr %frame, i64 416
   %v.join.out.81 = getelementptr i8, ptr %frame, i64 424
   %v.join.err.81 = getelementptr i8, ptr %frame, i64 432
   %v.join.out.87 = getelementptr i8, ptr %frame, i64 472
   %v.join.err.87 = getelementptr i8, ptr %frame, i64 480
-  %v.recv.out.144 = getelementptr i8, ptr %frame, i64 520
-  %v.recv.144 = getelementptr i8, ptr %frame, i64 524
-  %v.recv.out.162 = getelementptr i8, ptr %frame, i64 532
-  %v.recv.162 = getelementptr i8, ptr %frame, i64 536
-  %v.join.out.168 = getelementptr i8, ptr %frame, i64 544
-  %v.join.err.168 = getelementptr i8, ptr %frame, i64 552
+  %v.recv.out.143 = getelementptr i8, ptr %frame, i64 520
+  %v.recv.143 = getelementptr i8, ptr %frame, i64 524
+  %v.recv.out.160 = getelementptr i8, ptr %frame, i64 532
+  %v.recv.160 = getelementptr i8, ptr %frame, i64 536
+  %v.join.out.166 = getelementptr i8, ptr %frame, i64 544
+  %v.join.err.166 = getelementptr i8, ptr %frame, i64 552
   %v.sm.join.task.140 = getelementptr i8, ptr %frame, i64 592
   %v.sm.join.task.156 = getelementptr i8, ptr %frame, i64 600
-  %t203 = getelementptr i8, ptr %frame, i64 608
-  %t254 = getelementptr i8, ptr %frame, i64 612
-  %v.sm.recv.chan.272 = getelementptr i8, ptr %frame, i64 616
-  %v.sm.recv.status.273 = getelementptr i8, ptr %frame, i64 624
-  %v.sm.join.task.292 = getelementptr i8, ptr %frame, i64 632
-  %t339 = getelementptr i8, ptr %frame, i64 640
-  %t407 = getelementptr i8, ptr %frame, i64 644
-  %t438 = getelementptr i8, ptr %frame, i64 648
-  %t481 = getelementptr i8, ptr %frame, i64 652
-  %t516 = getelementptr i8, ptr %frame, i64 656
-  %t523 = getelementptr i8, ptr %frame, i64 660
+  %t201 = getelementptr i8, ptr %frame, i64 608
+  %t250 = getelementptr i8, ptr %frame, i64 612
+  %v.sm.recv.chan.268 = getelementptr i8, ptr %frame, i64 616
+  %v.sm.recv.status.269 = getelementptr i8, ptr %frame, i64 624
+  %v.sm.join.task.288 = getelementptr i8, ptr %frame, i64 632
+  %t333 = getelementptr i8, ptr %frame, i64 640
+  %t399 = getelementptr i8, ptr %frame, i64 644
+  %t428 = getelementptr i8, ptr %frame, i64 648
+  %t469 = getelementptr i8, ptr %frame, i64 652
+  %t502 = getelementptr i8, ptr %frame, i64 656
+  %t507 = getelementptr i8, ptr %frame, i64 660
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 i32 2, label %sm.op.call.2 i32 3, label %sm.op.call.3 i32 4, label %sm.op.call.4 i32 5, label %sm.op.call.5 i32 6, label %sm.op.call.6 ]
 sm.init:
@@ -1100,220 +1129,214 @@ if.end.3:
   %t200 = icmp ne i32 %t199, 2
   br i1 %t200, label %if.then.7, label %if.end.7
 if.then.7:
-  %t201 = getelementptr inbounds %"struct.std/sync.Mutex$Counter", ptr %v.m, i32 0, i32 0
-  %t202 = load i64, ptr %t201
-  call void @willrt_rc_release(i64 %t202)
-  store i32 1, ptr %t203
-  %t204 = getelementptr i32, ptr null, i32 1
-  %t205 = ptrtoint ptr %t204 to i64
-  call i32 @willrt_task_store_result(ptr %t203, i64 %t205)
+  store i32 1, ptr %t201
+  %t202 = getelementptr i32, ptr null, i32 1
+  %t203 = ptrtoint ptr %t202 to i64
+  call i32 @willrt_task_store_result(ptr %t201, i64 %t203)
   ret i32 1
 if.end.7:
-  %t206 = sext i32 1 to i64
-  %t207 = getelementptr i32, ptr null, i32 1
-  %t208 = ptrtoint ptr %t207 to i64
-  %t209 = call ptr @willrt_chan_new(i64 %t208, i64 %t206, i32 0)
-  store ptr %t209, ptr %v.entered
+  %t204 = sext i32 1 to i64
+  %t205 = getelementptr i32, ptr null, i32 1
+  %t206 = ptrtoint ptr %t205 to i64
+  %t207 = call ptr @willrt_chan_new(i64 %t206, i64 %t204, i32 0)
+  store ptr %t207, ptr %v.entered
   call void @willrt_region_enter()
   store ptr null, ptr %v.waiter
   br i1 true, label %if.then.8, label %if.end.8
 if.then.8:
-  %t210 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.TryLock"(ptr %v.m)
-  store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t210, ptr %v.ret.131
-  %t211 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.131, i32 0, i32 0
-  %t212 = load i32, ptr %t211
-  %t213 = icmp eq i32 %t212, 0
-  br i1 %t213, label %panic.9, label %panic.ok.9
+  %t208 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.TryLock"(ptr %v.m)
+  store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t208, ptr %v.ret.130
+  %t209 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.130, i32 0, i32 0
+  %t210 = load i32, ptr %t209
+  %t211 = icmp eq i32 %t210, 0
+  br i1 %t211, label %panic.9, label %panic.ok.9
 panic.9:
   call void @willrt_panic(ptr @.str.23, ptr @.str.27, ptr @.str.25)
   unreachable
 panic.ok.9:
-  %t214 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.131, i32 0, i32 2
-  %t215 = load %"struct.std/sync.Guard$Counter", ptr %t214
-  store %"struct.std/sync.Guard$Counter" %t215, ptr %v.g.1
-  %t216 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 1
-  %t217 = load i1, ptr %t216
-  %t218 = icmp eq i1 %t217, false
-  br i1 %t218, label %panic.10, label %panic.ok.10
+  %t212 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.130, i32 0, i32 2
+  %t213 = load %"struct.std/sync.Guard$Counter", ptr %t212
+  store %"struct.std/sync.Guard$Counter" %t213, ptr %v.g.1
+  %t214 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 1
+  %t215 = load i1, ptr %t214
+  %t216 = icmp eq i1 %t215, false
+  br i1 %t216, label %panic.10, label %panic.ok.10
 panic.10:
   call void @willrt_panic(ptr @.str.16, ptr @.str.28, ptr @.str.25)
   unreachable
 panic.ok.10:
-  %t219 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 0
-  %t220 = load i64, ptr %t219
-  %t221 = call ptr @willrt_rc_deref(i64 %t220)
-  %t222 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t221, i32 0, i32 1
-  %t223 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t222, i32 0, i32 0
-  %t224 = load i32, ptr %t223
-  %t225 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t224, i32 100)
-  %t226 = extractvalue {i32, i1} %t225, 0
-  %t227 = extractvalue {i32, i1} %t225, 1
-  br i1 %t227, label %panic.11, label %panic.ok.11
+  %t217 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 0
+  %t218 = load i64, ptr %t217
+  %t219 = call ptr @willrt_rc_deref(i64 %t218)
+  %t220 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t219, i32 0, i32 1
+  %t221 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t220, i32 0, i32 0
+  %t222 = load i32, ptr %t221
+  %t223 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t222, i32 100)
+  %t224 = extractvalue {i32, i1} %t223, 0
+  %t225 = extractvalue {i32, i1} %t223, 1
+  br i1 %t225, label %panic.11, label %panic.ok.11
 panic.11:
   call void @willrt_panic(ptr @.str.7, ptr @.str.28, ptr @.str.25)
   unreachable
 panic.ok.11:
-  store i32 %t226, ptr %t223
+  store i32 %t224, ptr %t221
+  %t226 = load ptr, ptr %v.entered
+  %t227 = call ptr @"example.com/concurrency/syncmutex.WaitFor.task"(ptr %v.m, ptr %t226, i32 -1)
+  store ptr %t227, ptr %v.waiter
   %t228 = load ptr, ptr %v.entered
-  %t229 = call ptr @"example.com/concurrency/syncmutex.WaitFor.task"(ptr %v.m, ptr %t228, i32 -1)
-  store ptr %t229, ptr %v.waiter
-  %t230 = load ptr, ptr %v.entered
-  %t231 = call i32 @willrt_chan_try_recv(ptr %t230, ptr %v.recv.out.144)
-  %t232 = getelementptr inbounds { i32, i32 }, ptr %v.recv.144, i32 0, i32 0
-  store i32 0, ptr %t232
-  %t233 = icmp eq i32 %t231, 0
-  br i1 %t233, label %recv.some.12, label %recv.end.12
+  %t229 = call i32 @willrt_chan_try_recv(ptr %t228, ptr %v.recv.out.143)
+  %t230 = getelementptr inbounds { i32, i32 }, ptr %v.recv.143, i32 0, i32 0
+  store i32 0, ptr %t230
+  %t231 = icmp eq i32 %t229, 0
+  br i1 %t231, label %recv.some.12, label %recv.end.12
 recv.some.12:
-  store i32 1, ptr %t232
-  %t234 = getelementptr inbounds { i32, i32 }, ptr %v.recv.144, i32 0, i32 1
-  %t235 = load i32, ptr %v.recv.out.144
-  store i32 %t235, ptr %t234
+  store i32 1, ptr %t230
+  %t232 = getelementptr inbounds { i32, i32 }, ptr %v.recv.143, i32 0, i32 1
+  %t233 = load i32, ptr %v.recv.out.143
+  store i32 %t233, ptr %t232
   br label %recv.end.12
 recv.end.12:
-  %t236 = getelementptr inbounds { i32, i32 }, ptr %v.recv.144, i32 0, i32 0
-  %t237 = load i32, ptr %t236
-  %t238 = icmp eq i32 %t237, 1
-  br i1 %t238, label %match.arm.13.0, label %match.next.13.0
+  %t234 = getelementptr inbounds { i32, i32 }, ptr %v.recv.143, i32 0, i32 0
+  %t235 = load i32, ptr %t234
+  %t236 = icmp eq i32 %t235, 1
+  br i1 %t236, label %match.arm.13.0, label %match.next.13.0
 match.arm.13.0:
-  %t239 = getelementptr inbounds { i32, i32 }, ptr %v.recv.144, i32 0, i32 1
-  %t240 = load i32, ptr %t239
-  %t241 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 1
-  %t242 = load i1, ptr %t241
-  br i1 %t242, label %guard.unlock.14, label %guard.done.14
+  %t237 = getelementptr inbounds { i32, i32 }, ptr %v.recv.143, i32 0, i32 1
+  %t238 = load i32, ptr %t237
+  %t239 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 1
+  %t240 = load i1, ptr %t239
+  br i1 %t240, label %guard.unlock.14, label %guard.done.14
 guard.unlock.14:
-  %t243 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 0
-  %t244 = load i64, ptr %t243
-  %t245 = call ptr @willrt_rc_deref(i64 %t244)
-  %t246 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t245, i32 0, i32 0
-  %t247 = load ptr, ptr %t246
-  %t248 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 2
-  %t249 = load i32, ptr %t248
-  call void @willrt_sync_unlock(ptr %t247, i32 %t249)
+  %t241 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 0
+  %t242 = load i64, ptr %t241
+  %t243 = call ptr @willrt_rc_deref(i64 %t242)
+  %t244 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t243, i32 0, i32 0
+  %t245 = load ptr, ptr %t244
+  %t246 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 2
+  %t247 = load i32, ptr %t246
+  call void @willrt_sync_unlock(ptr %t245, i32 %t247)
   br label %guard.done.14
 guard.done.14:
-  %t250 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 0
-  %t251 = load i64, ptr %t250
-  call void @willrt_rc_release(i64 %t251)
-  %t252 = getelementptr inbounds %"struct.std/sync.Mutex$Counter", ptr %v.m, i32 0, i32 0
-  %t253 = load i64, ptr %t252
-  call void @willrt_rc_release(i64 %t253)
-  store i32 2, ptr %t254
-  %t255 = getelementptr i32, ptr null, i32 1
-  %t256 = ptrtoint ptr %t255 to i64
-  call i32 @willrt_task_store_result(ptr %t254, i64 %t256)
+  %t248 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 0
+  %t249 = load i64, ptr %t248
+  call void @willrt_rc_release(i64 %t249)
+  store i32 2, ptr %t250
+  %t251 = getelementptr i32, ptr null, i32 1
+  %t252 = ptrtoint ptr %t251 to i64
+  call i32 @willrt_task_store_result(ptr %t250, i64 %t252)
   ret i32 1
 match.next.13.0:
-  %t257 = getelementptr inbounds { i32, i32 }, ptr %v.recv.144, i32 0, i32 0
-  %t258 = load i32, ptr %t257
-  %t259 = icmp eq i32 %t258, 0
-  br i1 %t259, label %match.arm.13.1, label %match.next.13.1
+  %t253 = getelementptr inbounds { i32, i32 }, ptr %v.recv.143, i32 0, i32 0
+  %t254 = load i32, ptr %t253
+  %t255 = icmp eq i32 %t254, 0
+  br i1 %t255, label %match.arm.13.1, label %match.next.13.1
 match.arm.13.1:
   br label %match.end.13
 match.next.13.1:
   unreachable
 match.end.13:
-  %t260 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 1
-  %t261 = load i1, ptr %t260
-  br i1 %t261, label %guard.unlock.15, label %guard.done.15
+  %t256 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 1
+  %t257 = load i1, ptr %t256
+  br i1 %t257, label %guard.unlock.15, label %guard.done.15
 guard.unlock.15:
-  %t262 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 0
-  %t263 = load i64, ptr %t262
-  %t264 = call ptr @willrt_rc_deref(i64 %t263)
-  %t265 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t264, i32 0, i32 0
-  %t266 = load ptr, ptr %t265
-  %t267 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 2
-  %t268 = load i32, ptr %t267
-  call void @willrt_sync_unlock(ptr %t266, i32 %t268)
+  %t258 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 0
+  %t259 = load i64, ptr %t258
+  %t260 = call ptr @willrt_rc_deref(i64 %t259)
+  %t261 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t260, i32 0, i32 0
+  %t262 = load ptr, ptr %t261
+  %t263 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 2
+  %t264 = load i32, ptr %t263
+  call void @willrt_sync_unlock(ptr %t262, i32 %t264)
   br label %guard.done.15
 guard.done.15:
-  %t269 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 0
-  %t270 = load i64, ptr %t269
-  call void @willrt_rc_release(i64 %t270)
+  %t265 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 0
+  %t266 = load i64, ptr %t265
+  call void @willrt_rc_release(i64 %t266)
   br label %if.end.8
 if.end.8:
-  %t271 = load ptr, ptr %v.entered
-  store ptr %t271, ptr %v.sm.recv.chan.272
-  %t275 = load ptr, ptr %v.sm.recv.chan.272
-  %t274 = call i32 @willrt_chan_try_recv(ptr %t275, ptr %v.recv.out.162)
-  store i32 %t274, ptr %v.sm.recv.status.273
-  %t276 = icmp eq i32 %t274, 0
-  br i1 %t276, label %recv.result.162, label %recv.slowcheck.162
-recv.slowcheck.162:
-  %t277 = icmp eq i32 %t274, -4
-  br i1 %t277, label %recv.result.162, label %recv.slow.162
-recv.slow.162:
+  %t267 = load ptr, ptr %v.entered
+  store ptr %t267, ptr %v.sm.recv.chan.268
+  %t271 = load ptr, ptr %v.sm.recv.chan.268
+  %t270 = call i32 @willrt_chan_try_recv(ptr %t271, ptr %v.recv.out.160)
+  store i32 %t270, ptr %v.sm.recv.status.269
+  %t272 = icmp eq i32 %t270, 0
+  br i1 %t272, label %recv.result.160, label %recv.slowcheck.160
+recv.slowcheck.160:
+  %t273 = icmp eq i32 %t270, -4
+  br i1 %t273, label %recv.result.160, label %recv.slow.160
+recv.slow.160:
   store i32 4, ptr %v.sm.state
   br label %sm.op.call.4
 sm.op.call.4:
-  %t279 = load ptr, ptr %v.sm.recv.chan.272
-  %t278 = call i32 @willrt_chan_recv_wait(ptr %t279, ptr %v.recv.out.162)
-  store i32 %t278, ptr %v.sm.recv.status.273
-  %t280 = icmp eq i32 %t278, -1
-  br i1 %t280, label %sm.op.park.4, label %sm.op.cont.4
+  %t275 = load ptr, ptr %v.sm.recv.chan.268
+  %t274 = call i32 @willrt_chan_recv_wait(ptr %t275, ptr %v.recv.out.160)
+  store i32 %t274, ptr %v.sm.recv.status.269
+  %t276 = icmp eq i32 %t274, -1
+  br i1 %t276, label %sm.op.park.4, label %sm.op.cont.4
 sm.op.park.4:
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.op.cont.4:
-  br label %recv.result.162
-recv.result.162:
-  %t281 = load i32, ptr %v.sm.recv.status.273
-  %t282 = getelementptr inbounds { i32, i32 }, ptr %v.recv.162, i32 0, i32 0
-  store i32 0, ptr %t282
-  %t283 = icmp eq i32 %t281, 0
-  br i1 %t283, label %recv.some.16, label %recv.end.16
+  br label %recv.result.160
+recv.result.160:
+  %t277 = load i32, ptr %v.sm.recv.status.269
+  %t278 = getelementptr inbounds { i32, i32 }, ptr %v.recv.160, i32 0, i32 0
+  store i32 0, ptr %t278
+  %t279 = icmp eq i32 %t277, 0
+  br i1 %t279, label %recv.some.16, label %recv.end.16
 recv.some.16:
-  store i32 1, ptr %t282
-  %t284 = getelementptr inbounds { i32, i32 }, ptr %v.recv.162, i32 0, i32 1
-  %t285 = load i32, ptr %v.recv.out.162
-  store i32 %t285, ptr %t284
+  store i32 1, ptr %t278
+  %t280 = getelementptr inbounds { i32, i32 }, ptr %v.recv.160, i32 0, i32 1
+  %t281 = load i32, ptr %v.recv.out.160
+  store i32 %t281, ptr %t280
   br label %recv.end.16
 recv.end.16:
-  %t286 = getelementptr inbounds { i32, i32 }, ptr %v.recv.162, i32 0, i32 0
-  %t287 = load i32, ptr %t286
-  %t288 = icmp eq i32 %t287, 0
-  br i1 %t288, label %panic.17, label %panic.ok.17
+  %t282 = getelementptr inbounds { i32, i32 }, ptr %v.recv.160, i32 0, i32 0
+  %t283 = load i32, ptr %t282
+  %t284 = icmp eq i32 %t283, 0
+  br i1 %t284, label %panic.17, label %panic.ok.17
 panic.17:
   call void @willrt_panic(ptr @.str.23, ptr @.str.29, ptr @.str.25)
   unreachable
 panic.ok.17:
-  %t289 = getelementptr inbounds { i32, i32 }, ptr %v.recv.162, i32 0, i32 1
-  %t290 = load i32, ptr %t289
-  %t291 = load ptr, ptr %v.waiter
-  store ptr %t291, ptr %v.sm.join.task.292
+  %t285 = getelementptr inbounds { i32, i32 }, ptr %v.recv.160, i32 0, i32 1
+  %t286 = load i32, ptr %t285
+  %t287 = load ptr, ptr %v.waiter
+  store ptr %t287, ptr %v.sm.join.task.288
   store i32 5, ptr %v.sm.state
   br label %sm.op.call.5
 sm.op.call.5:
-  %t294 = load ptr, ptr %v.sm.join.task.292
-  %t293 = call i32 @willrt_task_try_join(ptr %t294, ptr %v.join.out.168, ptr %v.join.err.168)
-  %t295 = icmp eq i32 %t293, -1
-  br i1 %t295, label %sm.op.park.5, label %sm.op.cont.5
+  %t290 = load ptr, ptr %v.sm.join.task.288
+  %t289 = call i32 @willrt_task_try_join(ptr %t290, ptr %v.join.out.166, ptr %v.join.err.166)
+  %t291 = icmp eq i32 %t289, -1
+  br i1 %t291, label %sm.op.park.5, label %sm.op.cont.5
 sm.op.park.5:
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.op.cont.5:
-  %t296 = getelementptr inbounds %willrt.task_error, ptr %v.join.err.168, i32 0, i32 1
-  store i32 %t293, ptr %t296
-  %t297 = icmp eq i32 %t293, 0
-  br i1 %t297, label %task.ok.18, label %task.fail.18
+  %t292 = getelementptr inbounds %willrt.task_error, ptr %v.join.err.166, i32 0, i32 1
+  store i32 %t289, ptr %t292
+  %t293 = icmp eq i32 %t289, 0
+  br i1 %t293, label %task.ok.18, label %task.fail.18
 task.fail.18:
-  %t298 = getelementptr inbounds %willrt_error, ptr %v.join.err.168, i32 0, i32 0
+  %t294 = getelementptr inbounds %willrt_error, ptr %v.join.err.166, i32 0, i32 0
+  %t295 = load ptr, ptr %t294
+  %t296 = getelementptr inbounds %willrt_error, ptr %v.join.err.166, i32 0, i32 1
+  %t297 = load i64, ptr %t296
+  %t298 = getelementptr inbounds %willrt_error, ptr %v.join.err.166, i32 0, i32 2
   %t299 = load ptr, ptr %t298
-  %t300 = getelementptr inbounds %willrt_error, ptr %v.join.err.168, i32 0, i32 1
-  %t301 = load i64, ptr %t300
-  %t302 = getelementptr inbounds %willrt_error, ptr %v.join.err.168, i32 0, i32 2
-  %t303 = load ptr, ptr %t302
-  %t304 = getelementptr inbounds %willrt_error, ptr %v.join.err.168, i32 0, i32 3
-  %t305 = load ptr, ptr %t304
-  call void @willrt_panic_n(ptr %t299, i64 %t301, ptr %t303, ptr %t305)
+  %t300 = getelementptr inbounds %willrt_error, ptr %v.join.err.166, i32 0, i32 3
+  %t301 = load ptr, ptr %t300
+  call void @willrt_panic_n(ptr %t295, i64 %t297, ptr %t299, ptr %t301)
   unreachable
 task.ok.18:
-  %t306 = load i32, ptr %v.join.out.168
+  %t302 = load i32, ptr %v.join.out.166
   store i32 6, ptr %v.sm.state
   br label %sm.op.call.6
 sm.op.call.6:
-  %t307 = call i32 @willrt_region_exit_try()
-  %t308 = icmp eq i32 %t307, -1
-  br i1 %t308, label %sm.op.park.6, label %sm.op.cont.6
+  %t303 = call i32 @willrt_region_exit_try()
+  %t304 = icmp eq i32 %t303, -1
+  br i1 %t304, label %sm.op.park.6, label %sm.op.cont.6
 sm.op.park.6:
   call void @willrt_task_mark_wait()
   ret i32 -1
@@ -1321,425 +1344,407 @@ sm.op.cont.6:
   store i32 0, ptr %v.after
   br i1 true, label %if.then.19, label %if.end.19
 if.then.19:
-  %t309 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.TryLock"(ptr %v.m)
-  store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t309, ptr %v.ret.180
-  %t310 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.180, i32 0, i32 0
-  %t311 = load i32, ptr %t310
-  %t312 = icmp eq i32 %t311, 0
-  br i1 %t312, label %panic.20, label %panic.ok.20
+  %t305 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.TryLock"(ptr %v.m)
+  store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t305, ptr %v.ret.178
+  %t306 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.178, i32 0, i32 0
+  %t307 = load i32, ptr %t306
+  %t308 = icmp eq i32 %t307, 0
+  br i1 %t308, label %panic.20, label %panic.ok.20
 panic.20:
   call void @willrt_panic(ptr @.str.23, ptr @.str.30, ptr @.str.25)
   unreachable
 panic.ok.20:
-  %t313 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.180, i32 0, i32 2
-  %t314 = load %"struct.std/sync.Guard$Counter", ptr %t313
-  store %"struct.std/sync.Guard$Counter" %t314, ptr %v.g.2
-  %t315 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 1
-  %t316 = load i1, ptr %t315
-  %t317 = icmp eq i1 %t316, false
-  br i1 %t317, label %panic.21, label %panic.ok.21
+  %t309 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.178, i32 0, i32 2
+  %t310 = load %"struct.std/sync.Guard$Counter", ptr %t309
+  store %"struct.std/sync.Guard$Counter" %t310, ptr %v.g.2
+  %t311 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 1
+  %t312 = load i1, ptr %t311
+  %t313 = icmp eq i1 %t312, false
+  br i1 %t313, label %panic.21, label %panic.ok.21
 panic.21:
   call void @willrt_panic(ptr @.str.16, ptr @.str.31, ptr @.str.25)
   unreachable
 panic.ok.21:
-  %t318 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 0
-  %t319 = load i64, ptr %t318
-  %t320 = call ptr @willrt_rc_deref(i64 %t319)
-  %t321 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t320, i32 0, i32 1
-  %t322 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t321, i32 0, i32 0
-  %t323 = load i32, ptr %t322
-  store i32 %t323, ptr %v.after
-  %t324 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 1
-  %t325 = load i1, ptr %t324
-  br i1 %t325, label %guard.unlock.22, label %guard.done.22
+  %t314 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 0
+  %t315 = load i64, ptr %t314
+  %t316 = call ptr @willrt_rc_deref(i64 %t315)
+  %t317 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t316, i32 0, i32 1
+  %t318 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t317, i32 0, i32 0
+  %t319 = load i32, ptr %t318
+  store i32 %t319, ptr %v.after
+  %t320 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 1
+  %t321 = load i1, ptr %t320
+  br i1 %t321, label %guard.unlock.22, label %guard.done.22
 guard.unlock.22:
-  %t326 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 0
-  %t327 = load i64, ptr %t326
-  %t328 = call ptr @willrt_rc_deref(i64 %t327)
-  %t329 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t328, i32 0, i32 0
-  %t330 = load ptr, ptr %t329
-  %t331 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 2
-  %t332 = load i32, ptr %t331
-  call void @willrt_sync_unlock(ptr %t330, i32 %t332)
+  %t322 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 0
+  %t323 = load i64, ptr %t322
+  %t324 = call ptr @willrt_rc_deref(i64 %t323)
+  %t325 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t324, i32 0, i32 0
+  %t326 = load ptr, ptr %t325
+  %t327 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 2
+  %t328 = load i32, ptr %t327
+  call void @willrt_sync_unlock(ptr %t326, i32 %t328)
   br label %guard.done.22
 guard.done.22:
-  %t333 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 0
-  %t334 = load i64, ptr %t333
-  call void @willrt_rc_release(i64 %t334)
+  %t329 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 0
+  %t330 = load i64, ptr %t329
+  call void @willrt_rc_release(i64 %t330)
   br label %if.end.19
 if.end.19:
-  %t335 = load i32, ptr %v.after
-  %t336 = icmp ne i32 %t335, 112
-  br i1 %t336, label %if.then.23, label %if.end.23
+  %t331 = load i32, ptr %v.after
+  %t332 = icmp ne i32 %t331, 112
+  br i1 %t332, label %if.then.23, label %if.end.23
 if.then.23:
-  %t337 = getelementptr inbounds %"struct.std/sync.Mutex$Counter", ptr %v.m, i32 0, i32 0
-  %t338 = load i64, ptr %t337
-  call void @willrt_rc_release(i64 %t338)
-  store i32 3, ptr %t339
-  %t340 = getelementptr i32, ptr null, i32 1
-  %t341 = ptrtoint ptr %t340 to i64
-  call i32 @willrt_task_store_result(ptr %t339, i64 %t341)
+  store i32 3, ptr %t333
+  %t334 = getelementptr i32, ptr null, i32 1
+  %t335 = ptrtoint ptr %t334 to i64
+  call i32 @willrt_task_store_result(ptr %t333, i64 %t335)
   ret i32 1
 if.end.23:
-  store %"struct.std/sync.RwLock$Counter" zeroinitializer, ptr %v.new.198
-  %t342 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %v.agg.199, i32 0, i32 0
-  store i32 0, ptr %t342
-  call void @"std/sync.RwLock<Counter>.init"(ptr %v.new.198, ptr %v.agg.199)
-  %t343 = load %"struct.std/sync.RwLock$Counter", ptr %v.new.198
-  store %"struct.std/sync.RwLock$Counter" %t343, ptr %v.rw
+  store %"struct.std/sync.RwLock$Counter" zeroinitializer, ptr %v.new.195
+  %t336 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %v.agg.196, i32 0, i32 0
+  store i32 0, ptr %t336
+  call void @"std/sync.RwLock<Counter>.init"(ptr %v.new.195, ptr %v.agg.196)
+  %t337 = load %"struct.std/sync.RwLock$Counter", ptr %v.new.195
+  store %"struct.std/sync.RwLock$Counter" %t337, ptr %v.rw
   store i32 0, ptr %v.shared
   br i1 true, label %if.then.24, label %if.end.24
 if.then.24:
-  %t344 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.TryRLock"(ptr %v.rw)
-  store { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } %t344, ptr %v.ret.211
-  %t345 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.211, i32 0, i32 0
-  %t346 = load i32, ptr %t345
-  %t347 = icmp eq i32 %t346, 0
-  br i1 %t347, label %panic.25, label %panic.ok.25
+  %t338 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.TryRLock"(ptr %v.rw)
+  store { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } %t338, ptr %v.ret.208
+  %t339 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.208, i32 0, i32 0
+  %t340 = load i32, ptr %t339
+  %t341 = icmp eq i32 %t340, 0
+  br i1 %t341, label %panic.25, label %panic.ok.25
 panic.25:
   call void @willrt_panic(ptr @.str.23, ptr @.str.32, ptr @.str.25)
   unreachable
 panic.ok.25:
-  %t348 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.211, i32 0, i32 2
-  %t349 = load %"struct.std/sync.ReadGuard$Counter", ptr %t348
-  store %"struct.std/sync.ReadGuard$Counter" %t349, ptr %v.r1
-  %t350 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.TryRLock"(ptr %v.rw)
-  store { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } %t350, ptr %v.ret.217
-  %t351 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.217, i32 0, i32 0
-  %t352 = load i32, ptr %t351
-  %t353 = icmp eq i32 %t352, 0
-  br i1 %t353, label %panic.26, label %panic.ok.26
+  %t342 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.208, i32 0, i32 2
+  %t343 = load %"struct.std/sync.ReadGuard$Counter", ptr %t342
+  store %"struct.std/sync.ReadGuard$Counter" %t343, ptr %v.r1
+  %t344 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.TryRLock"(ptr %v.rw)
+  store { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } %t344, ptr %v.ret.214
+  %t345 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.214, i32 0, i32 0
+  %t346 = load i32, ptr %t345
+  %t347 = icmp eq i32 %t346, 0
+  br i1 %t347, label %panic.26, label %panic.ok.26
 panic.26:
   call void @willrt_panic(ptr @.str.23, ptr @.str.33, ptr @.str.25)
   unreachable
 panic.ok.26:
-  %t354 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.217, i32 0, i32 2
-  %t355 = load %"struct.std/sync.ReadGuard$Counter", ptr %t354
-  store %"struct.std/sync.ReadGuard$Counter" %t355, ptr %v.r2
-  %t356 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 1
-  %t357 = load i1, ptr %t356
-  %t358 = icmp eq i1 %t357, false
-  br i1 %t358, label %panic.27, label %panic.ok.27
+  %t348 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.214, i32 0, i32 2
+  %t349 = load %"struct.std/sync.ReadGuard$Counter", ptr %t348
+  store %"struct.std/sync.ReadGuard$Counter" %t349, ptr %v.r2
+  %t350 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 1
+  %t351 = load i1, ptr %t350
+  %t352 = icmp eq i1 %t351, false
+  br i1 %t352, label %panic.27, label %panic.ok.27
 panic.27:
   call void @willrt_panic(ptr @.str.16, ptr @.str.34, ptr @.str.25)
   unreachable
 panic.ok.27:
-  %t359 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 0
-  %t360 = load i64, ptr %t359
-  %t361 = call ptr @willrt_rc_deref(i64 %t360)
-  %t362 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t361, i32 0, i32 1
-  %t363 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t362, i32 0, i32 0
-  %t364 = load i32, ptr %t363
-  %t365 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 1
-  %t366 = load i1, ptr %t365
-  %t367 = icmp eq i1 %t366, false
-  br i1 %t367, label %panic.28, label %panic.ok.28
+  %t353 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 0
+  %t354 = load i64, ptr %t353
+  %t355 = call ptr @willrt_rc_deref(i64 %t354)
+  %t356 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t355, i32 0, i32 1
+  %t357 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t356, i32 0, i32 0
+  %t358 = load i32, ptr %t357
+  %t359 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 1
+  %t360 = load i1, ptr %t359
+  %t361 = icmp eq i1 %t360, false
+  br i1 %t361, label %panic.28, label %panic.ok.28
 panic.28:
   call void @willrt_panic(ptr @.str.16, ptr @.str.35, ptr @.str.25)
   unreachable
 panic.ok.28:
-  %t368 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 0
-  %t369 = load i64, ptr %t368
-  %t370 = call ptr @willrt_rc_deref(i64 %t369)
-  %t371 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t370, i32 0, i32 1
-  %t372 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t371, i32 0, i32 0
-  %t373 = load i32, ptr %t372
-  %t374 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t364, i32 %t373)
-  %t375 = extractvalue {i32, i1} %t374, 0
-  %t376 = extractvalue {i32, i1} %t374, 1
-  br i1 %t376, label %panic.29, label %panic.ok.29
+  %t362 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 0
+  %t363 = load i64, ptr %t362
+  %t364 = call ptr @willrt_rc_deref(i64 %t363)
+  %t365 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t364, i32 0, i32 1
+  %t366 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t365, i32 0, i32 0
+  %t367 = load i32, ptr %t366
+  %t368 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t358, i32 %t367)
+  %t369 = extractvalue {i32, i1} %t368, 0
+  %t370 = extractvalue {i32, i1} %t368, 1
+  br i1 %t370, label %panic.29, label %panic.ok.29
 panic.29:
   call void @willrt_panic(ptr @.str.7, ptr @.str.34, ptr @.str.25)
   unreachable
 panic.ok.29:
-  store i32 %t375, ptr %v.shared
-  %t377 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.RwLock<Counter>.TryWLock"(ptr %v.rw)
-  store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t377, ptr %v.ret.228
-  %t378 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.228, i32 0, i32 0
-  %t379 = load i32, ptr %t378
-  %t380 = icmp eq i32 %t379, 1
-  br i1 %t380, label %if.then.30, label %if.end.30
+  store i32 %t369, ptr %v.shared
+  %t371 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.RwLock<Counter>.TryWLock"(ptr %v.rw)
+  store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t371, ptr %v.ret.225
+  %t372 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.225, i32 0, i32 0
+  %t373 = load i32, ptr %t372
+  %t374 = icmp eq i32 %t373, 1
+  br i1 %t374, label %if.then.30, label %if.end.30
 if.then.30:
-  %t381 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 1
-  %t382 = load i1, ptr %t381
-  br i1 %t382, label %guard.unlock.31, label %guard.done.31
+  %t375 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 1
+  %t376 = load i1, ptr %t375
+  br i1 %t376, label %guard.unlock.31, label %guard.done.31
 guard.unlock.31:
-  %t383 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 0
-  %t384 = load i64, ptr %t383
-  %t385 = call ptr @willrt_rc_deref(i64 %t384)
-  %t386 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t385, i32 0, i32 0
-  %t387 = load ptr, ptr %t386
-  %t388 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 2
-  %t389 = load i32, ptr %t388
-  call void @willrt_sync_unlock(ptr %t387, i32 %t389)
+  %t377 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 0
+  %t378 = load i64, ptr %t377
+  %t379 = call ptr @willrt_rc_deref(i64 %t378)
+  %t380 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t379, i32 0, i32 0
+  %t381 = load ptr, ptr %t380
+  %t382 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 2
+  %t383 = load i32, ptr %t382
+  call void @willrt_sync_unlock(ptr %t381, i32 %t383)
   br label %guard.done.31
 guard.done.31:
-  %t390 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 0
-  %t391 = load i64, ptr %t390
-  call void @willrt_rc_release(i64 %t391)
-  %t392 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 1
-  %t393 = load i1, ptr %t392
-  br i1 %t393, label %guard.unlock.32, label %guard.done.32
+  %t384 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 0
+  %t385 = load i64, ptr %t384
+  call void @willrt_rc_release(i64 %t385)
+  %t386 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 1
+  %t387 = load i1, ptr %t386
+  br i1 %t387, label %guard.unlock.32, label %guard.done.32
 guard.unlock.32:
-  %t394 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 0
-  %t395 = load i64, ptr %t394
-  %t396 = call ptr @willrt_rc_deref(i64 %t395)
-  %t397 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t396, i32 0, i32 0
-  %t398 = load ptr, ptr %t397
-  %t399 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 2
-  %t400 = load i32, ptr %t399
-  call void @willrt_sync_unlock(ptr %t398, i32 %t400)
+  %t388 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 0
+  %t389 = load i64, ptr %t388
+  %t390 = call ptr @willrt_rc_deref(i64 %t389)
+  %t391 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t390, i32 0, i32 0
+  %t392 = load ptr, ptr %t391
+  %t393 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 2
+  %t394 = load i32, ptr %t393
+  call void @willrt_sync_unlock(ptr %t392, i32 %t394)
   br label %guard.done.32
 guard.done.32:
-  %t401 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 0
-  %t402 = load i64, ptr %t401
-  call void @willrt_rc_release(i64 %t402)
-  %t403 = getelementptr inbounds %"struct.std/sync.RwLock$Counter", ptr %v.rw, i32 0, i32 0
-  %t404 = load i64, ptr %t403
-  call void @willrt_rc_release(i64 %t404)
-  %t405 = getelementptr inbounds %"struct.std/sync.Mutex$Counter", ptr %v.m, i32 0, i32 0
-  %t406 = load i64, ptr %t405
-  call void @willrt_rc_release(i64 %t406)
-  store i32 4, ptr %t407
-  %t408 = getelementptr i32, ptr null, i32 1
-  %t409 = ptrtoint ptr %t408 to i64
-  call i32 @willrt_task_store_result(ptr %t407, i64 %t409)
+  %t395 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 0
+  %t396 = load i64, ptr %t395
+  call void @willrt_rc_release(i64 %t396)
+  %t397 = getelementptr inbounds %"struct.std/sync.RwLock$Counter", ptr %v.rw, i32 0, i32 0
+  %t398 = load i64, ptr %t397
+  call void @willrt_rc_release(i64 %t398)
+  store i32 4, ptr %t399
+  %t400 = getelementptr i32, ptr null, i32 1
+  %t401 = ptrtoint ptr %t400 to i64
+  call i32 @willrt_task_store_result(ptr %t399, i64 %t401)
   ret i32 1
 if.end.30:
-  %t410 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 1
-  %t411 = load i1, ptr %t410
-  br i1 %t411, label %guard.unlock.33, label %guard.done.33
+  %t402 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 1
+  %t403 = load i1, ptr %t402
+  br i1 %t403, label %guard.unlock.33, label %guard.done.33
 guard.unlock.33:
-  %t412 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 0
-  %t413 = load i64, ptr %t412
-  %t414 = call ptr @willrt_rc_deref(i64 %t413)
-  %t415 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t414, i32 0, i32 0
-  %t416 = load ptr, ptr %t415
-  %t417 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 2
-  %t418 = load i32, ptr %t417
-  call void @willrt_sync_unlock(ptr %t416, i32 %t418)
+  %t404 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 0
+  %t405 = load i64, ptr %t404
+  %t406 = call ptr @willrt_rc_deref(i64 %t405)
+  %t407 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t406, i32 0, i32 0
+  %t408 = load ptr, ptr %t407
+  %t409 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 2
+  %t410 = load i32, ptr %t409
+  call void @willrt_sync_unlock(ptr %t408, i32 %t410)
   br label %guard.done.33
 guard.done.33:
-  %t419 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 0
-  %t420 = load i64, ptr %t419
-  call void @willrt_rc_release(i64 %t420)
-  %t421 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 1
-  %t422 = load i1, ptr %t421
-  br i1 %t422, label %guard.unlock.34, label %guard.done.34
+  %t411 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 0
+  %t412 = load i64, ptr %t411
+  call void @willrt_rc_release(i64 %t412)
+  %t413 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 1
+  %t414 = load i1, ptr %t413
+  br i1 %t414, label %guard.unlock.34, label %guard.done.34
 guard.unlock.34:
-  %t423 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 0
-  %t424 = load i64, ptr %t423
-  %t425 = call ptr @willrt_rc_deref(i64 %t424)
-  %t426 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t425, i32 0, i32 0
-  %t427 = load ptr, ptr %t426
-  %t428 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 2
-  %t429 = load i32, ptr %t428
-  call void @willrt_sync_unlock(ptr %t427, i32 %t429)
+  %t415 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 0
+  %t416 = load i64, ptr %t415
+  %t417 = call ptr @willrt_rc_deref(i64 %t416)
+  %t418 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t417, i32 0, i32 0
+  %t419 = load ptr, ptr %t418
+  %t420 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 2
+  %t421 = load i32, ptr %t420
+  call void @willrt_sync_unlock(ptr %t419, i32 %t421)
   br label %guard.done.34
 guard.done.34:
-  %t430 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 0
-  %t431 = load i64, ptr %t430
-  call void @willrt_rc_release(i64 %t431)
+  %t422 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 0
+  %t423 = load i64, ptr %t422
+  call void @willrt_rc_release(i64 %t423)
   br label %if.end.24
 if.end.24:
-  %t432 = load i32, ptr %v.shared
-  %t433 = icmp ne i32 %t432, 0
-  br i1 %t433, label %if.then.35, label %if.end.35
+  %t424 = load i32, ptr %v.shared
+  %t425 = icmp ne i32 %t424, 0
+  br i1 %t425, label %if.then.35, label %if.end.35
 if.then.35:
-  %t434 = getelementptr inbounds %"struct.std/sync.RwLock$Counter", ptr %v.rw, i32 0, i32 0
-  %t435 = load i64, ptr %t434
-  call void @willrt_rc_release(i64 %t435)
-  %t436 = getelementptr inbounds %"struct.std/sync.Mutex$Counter", ptr %v.m, i32 0, i32 0
-  %t437 = load i64, ptr %t436
-  call void @willrt_rc_release(i64 %t437)
-  store i32 5, ptr %t438
-  %t439 = getelementptr i32, ptr null, i32 1
-  %t440 = ptrtoint ptr %t439 to i64
-  call i32 @willrt_task_store_result(ptr %t438, i64 %t440)
+  %t426 = getelementptr inbounds %"struct.std/sync.RwLock$Counter", ptr %v.rw, i32 0, i32 0
+  %t427 = load i64, ptr %t426
+  call void @willrt_rc_release(i64 %t427)
+  store i32 5, ptr %t428
+  %t429 = getelementptr i32, ptr null, i32 1
+  %t430 = ptrtoint ptr %t429 to i64
+  call i32 @willrt_task_store_result(ptr %t428, i64 %t430)
   ret i32 1
 if.end.35:
   store i32 0, ptr %v.exclusive
   br i1 true, label %if.then.36, label %if.end.36
 if.then.36:
-  %t441 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.RwLock<Counter>.TryWLock"(ptr %v.rw)
-  store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t441, ptr %v.ret.258
-  %t442 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.258, i32 0, i32 0
-  %t443 = load i32, ptr %t442
-  %t444 = icmp eq i32 %t443, 0
-  br i1 %t444, label %panic.37, label %panic.ok.37
+  %t431 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.RwLock<Counter>.TryWLock"(ptr %v.rw)
+  store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t431, ptr %v.ret.253
+  %t432 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.253, i32 0, i32 0
+  %t433 = load i32, ptr %t432
+  %t434 = icmp eq i32 %t433, 0
+  br i1 %t434, label %panic.37, label %panic.ok.37
 panic.37:
   call void @willrt_panic(ptr @.str.23, ptr @.str.36, ptr @.str.25)
   unreachable
 panic.ok.37:
-  %t445 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.258, i32 0, i32 2
-  %t446 = load %"struct.std/sync.Guard$Counter", ptr %t445
-  store %"struct.std/sync.Guard$Counter" %t446, ptr %v.w
-  %t447 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 1
-  %t448 = load i1, ptr %t447
-  %t449 = icmp eq i1 %t448, false
-  br i1 %t449, label %panic.38, label %panic.ok.38
+  %t435 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.253, i32 0, i32 2
+  %t436 = load %"struct.std/sync.Guard$Counter", ptr %t435
+  store %"struct.std/sync.Guard$Counter" %t436, ptr %v.w
+  %t437 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 1
+  %t438 = load i1, ptr %t437
+  %t439 = icmp eq i1 %t438, false
+  br i1 %t439, label %panic.38, label %panic.ok.38
 panic.38:
   call void @willrt_panic(ptr @.str.16, ptr @.str.37, ptr @.str.25)
   unreachable
 panic.ok.38:
-  %t450 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 0
-  %t451 = load i64, ptr %t450
-  %t452 = call ptr @willrt_rc_deref(i64 %t451)
-  %t453 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t452, i32 0, i32 1
-  %t454 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t453, i32 0, i32 0
-  store i32 7, ptr %t454
-  %t455 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 1
-  %t456 = load i1, ptr %t455
-  %t457 = icmp eq i1 %t456, false
-  br i1 %t457, label %panic.39, label %panic.ok.39
+  %t440 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 0
+  %t441 = load i64, ptr %t440
+  %t442 = call ptr @willrt_rc_deref(i64 %t441)
+  %t443 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t442, i32 0, i32 1
+  %t444 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t443, i32 0, i32 0
+  store i32 7, ptr %t444
+  %t445 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 1
+  %t446 = load i1, ptr %t445
+  %t447 = icmp eq i1 %t446, false
+  br i1 %t447, label %panic.39, label %panic.ok.39
 panic.39:
   call void @willrt_panic(ptr @.str.16, ptr @.str.38, ptr @.str.25)
   unreachable
 panic.ok.39:
-  %t458 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 0
-  %t459 = load i64, ptr %t458
-  %t460 = call ptr @willrt_rc_deref(i64 %t459)
-  %t461 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t460, i32 0, i32 1
-  %t462 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t461, i32 0, i32 0
-  %t463 = load i32, ptr %t462
-  store i32 %t463, ptr %v.exclusive
-  %t464 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 1
-  %t465 = load i1, ptr %t464
-  br i1 %t465, label %guard.unlock.40, label %guard.done.40
+  %t448 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 0
+  %t449 = load i64, ptr %t448
+  %t450 = call ptr @willrt_rc_deref(i64 %t449)
+  %t451 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t450, i32 0, i32 1
+  %t452 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t451, i32 0, i32 0
+  %t453 = load i32, ptr %t452
+  store i32 %t453, ptr %v.exclusive
+  %t454 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 1
+  %t455 = load i1, ptr %t454
+  br i1 %t455, label %guard.unlock.40, label %guard.done.40
 guard.unlock.40:
-  %t466 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 0
-  %t467 = load i64, ptr %t466
-  %t468 = call ptr @willrt_rc_deref(i64 %t467)
-  %t469 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t468, i32 0, i32 0
-  %t470 = load ptr, ptr %t469
-  %t471 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 2
-  %t472 = load i32, ptr %t471
-  call void @willrt_sync_unlock(ptr %t470, i32 %t472)
+  %t456 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 0
+  %t457 = load i64, ptr %t456
+  %t458 = call ptr @willrt_rc_deref(i64 %t457)
+  %t459 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t458, i32 0, i32 0
+  %t460 = load ptr, ptr %t459
+  %t461 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 2
+  %t462 = load i32, ptr %t461
+  call void @willrt_sync_unlock(ptr %t460, i32 %t462)
   br label %guard.done.40
 guard.done.40:
-  %t473 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 0
-  %t474 = load i64, ptr %t473
-  call void @willrt_rc_release(i64 %t474)
+  %t463 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 0
+  %t464 = load i64, ptr %t463
+  call void @willrt_rc_release(i64 %t464)
   br label %if.end.36
 if.end.36:
-  %t475 = load i32, ptr %v.exclusive
-  %t476 = icmp ne i32 %t475, 7
-  br i1 %t476, label %if.then.41, label %if.end.41
+  %t465 = load i32, ptr %v.exclusive
+  %t466 = icmp ne i32 %t465, 7
+  br i1 %t466, label %if.then.41, label %if.end.41
 if.then.41:
-  %t477 = getelementptr inbounds %"struct.std/sync.RwLock$Counter", ptr %v.rw, i32 0, i32 0
-  %t478 = load i64, ptr %t477
-  call void @willrt_rc_release(i64 %t478)
-  %t479 = getelementptr inbounds %"struct.std/sync.Mutex$Counter", ptr %v.m, i32 0, i32 0
-  %t480 = load i64, ptr %t479
-  call void @willrt_rc_release(i64 %t480)
-  store i32 6, ptr %t481
-  %t482 = getelementptr i32, ptr null, i32 1
-  %t483 = ptrtoint ptr %t482 to i64
-  call i32 @willrt_task_store_result(ptr %t481, i64 %t483)
+  %t467 = getelementptr inbounds %"struct.std/sync.RwLock$Counter", ptr %v.rw, i32 0, i32 0
+  %t468 = load i64, ptr %t467
+  call void @willrt_rc_release(i64 %t468)
+  store i32 6, ptr %t469
+  %t470 = getelementptr i32, ptr null, i32 1
+  %t471 = ptrtoint ptr %t470 to i64
+  call i32 @willrt_task_store_result(ptr %t469, i64 %t471)
   ret i32 1
 if.end.41:
   store i32 0, ptr %v.final
   br i1 true, label %if.then.42, label %if.end.42
 if.then.42:
-  %t484 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.TryRLock"(ptr %v.rw)
-  store { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } %t484, ptr %v.ret.288
-  %t485 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.288, i32 0, i32 0
-  %t486 = load i32, ptr %t485
-  %t487 = icmp eq i32 %t486, 0
-  br i1 %t487, label %panic.43, label %panic.ok.43
+  %t472 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.TryRLock"(ptr %v.rw)
+  store { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } %t472, ptr %v.ret.282
+  %t473 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.282, i32 0, i32 0
+  %t474 = load i32, ptr %t473
+  %t475 = icmp eq i32 %t474, 0
+  br i1 %t475, label %panic.43, label %panic.ok.43
 panic.43:
   call void @willrt_panic(ptr @.str.23, ptr @.str.39, ptr @.str.25)
   unreachable
 panic.ok.43:
-  %t488 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.288, i32 0, i32 2
-  %t489 = load %"struct.std/sync.ReadGuard$Counter", ptr %t488
-  store %"struct.std/sync.ReadGuard$Counter" %t489, ptr %v.r
-  %t490 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 1
-  %t491 = load i1, ptr %t490
-  %t492 = icmp eq i1 %t491, false
-  br i1 %t492, label %panic.44, label %panic.ok.44
+  %t476 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.282, i32 0, i32 2
+  %t477 = load %"struct.std/sync.ReadGuard$Counter", ptr %t476
+  store %"struct.std/sync.ReadGuard$Counter" %t477, ptr %v.r
+  %t478 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 1
+  %t479 = load i1, ptr %t478
+  %t480 = icmp eq i1 %t479, false
+  br i1 %t480, label %panic.44, label %panic.ok.44
 panic.44:
   call void @willrt_panic(ptr @.str.16, ptr @.str.40, ptr @.str.25)
   unreachable
 panic.ok.44:
-  %t493 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 0
-  %t494 = load i64, ptr %t493
-  %t495 = call ptr @willrt_rc_deref(i64 %t494)
-  %t496 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t495, i32 0, i32 1
-  %t497 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t496, i32 0, i32 0
-  %t498 = load i32, ptr %t497
-  store i32 %t498, ptr %v.final
-  %t499 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 1
-  %t500 = load i1, ptr %t499
-  br i1 %t500, label %guard.unlock.45, label %guard.done.45
+  %t481 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 0
+  %t482 = load i64, ptr %t481
+  %t483 = call ptr @willrt_rc_deref(i64 %t482)
+  %t484 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t483, i32 0, i32 1
+  %t485 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t484, i32 0, i32 0
+  %t486 = load i32, ptr %t485
+  store i32 %t486, ptr %v.final
+  %t487 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 1
+  %t488 = load i1, ptr %t487
+  br i1 %t488, label %guard.unlock.45, label %guard.done.45
 guard.unlock.45:
-  %t501 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 0
-  %t502 = load i64, ptr %t501
-  %t503 = call ptr @willrt_rc_deref(i64 %t502)
-  %t504 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t503, i32 0, i32 0
-  %t505 = load ptr, ptr %t504
-  %t506 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 2
-  %t507 = load i32, ptr %t506
-  call void @willrt_sync_unlock(ptr %t505, i32 %t507)
+  %t489 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 0
+  %t490 = load i64, ptr %t489
+  %t491 = call ptr @willrt_rc_deref(i64 %t490)
+  %t492 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t491, i32 0, i32 0
+  %t493 = load ptr, ptr %t492
+  %t494 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 2
+  %t495 = load i32, ptr %t494
+  call void @willrt_sync_unlock(ptr %t493, i32 %t495)
   br label %guard.done.45
 guard.done.45:
-  %t508 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 0
-  %t509 = load i64, ptr %t508
-  call void @willrt_rc_release(i64 %t509)
+  %t496 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 0
+  %t497 = load i64, ptr %t496
+  call void @willrt_rc_release(i64 %t497)
   br label %if.end.42
 if.end.42:
-  %t510 = load i32, ptr %v.final
-  %t511 = icmp ne i32 %t510, 7
-  br i1 %t511, label %if.then.46, label %if.end.46
+  %t498 = load i32, ptr %v.final
+  %t499 = icmp ne i32 %t498, 7
+  br i1 %t499, label %if.then.46, label %if.end.46
 if.then.46:
-  %t512 = getelementptr inbounds %"struct.std/sync.RwLock$Counter", ptr %v.rw, i32 0, i32 0
-  %t513 = load i64, ptr %t512
-  call void @willrt_rc_release(i64 %t513)
-  %t514 = getelementptr inbounds %"struct.std/sync.Mutex$Counter", ptr %v.m, i32 0, i32 0
-  %t515 = load i64, ptr %t514
-  call void @willrt_rc_release(i64 %t515)
-  store i32 7, ptr %t516
-  %t517 = getelementptr i32, ptr null, i32 1
-  %t518 = ptrtoint ptr %t517 to i64
-  call i32 @willrt_task_store_result(ptr %t516, i64 %t518)
+  %t500 = getelementptr inbounds %"struct.std/sync.RwLock$Counter", ptr %v.rw, i32 0, i32 0
+  %t501 = load i64, ptr %t500
+  call void @willrt_rc_release(i64 %t501)
+  store i32 7, ptr %t502
+  %t503 = getelementptr i32, ptr null, i32 1
+  %t504 = ptrtoint ptr %t503 to i64
+  call i32 @willrt_task_store_result(ptr %t502, i64 %t504)
   ret i32 1
 if.end.46:
-  %t519 = getelementptr inbounds %"struct.std/sync.RwLock$Counter", ptr %v.rw, i32 0, i32 0
-  %t520 = load i64, ptr %t519
-  call void @willrt_rc_release(i64 %t520)
-  %t521 = getelementptr inbounds %"struct.std/sync.Mutex$Counter", ptr %v.m, i32 0, i32 0
-  %t522 = load i64, ptr %t521
-  call void @willrt_rc_release(i64 %t522)
-  store i32 0, ptr %t523
-  %t524 = getelementptr i32, ptr null, i32 1
-  %t525 = ptrtoint ptr %t524 to i64
-  call i32 @willrt_task_store_result(ptr %t523, i64 %t525)
+  %t505 = getelementptr inbounds %"struct.std/sync.RwLock$Counter", ptr %v.rw, i32 0, i32 0
+  %t506 = load i64, ptr %t505
+  call void @willrt_rc_release(i64 %t506)
+  store i32 0, ptr %t507
+  %t508 = getelementptr i32, ptr null, i32 1
+  %t509 = ptrtoint ptr %t508 to i64
+  call i32 @willrt_task_store_result(ptr %t507, i64 %t509)
   ret i32 1
 
 }
 define hidden ptr @"example.com/concurrency/syncmutex.will$main.task"(i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 672)
-  %t526 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t526
-  %t527 = call i32 @willrt_lane_here()
-  %t528 = icmp eq i32 %start, -1
-  %t529 = icmp eq i32 %start, -2
-  %t530 = select i1 %t529, i32 %t527, i32 %start
-  br i1 %t528, label %sm.start.auto.47, label %sm.start.lane.47
+  %t510 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t510
+  %t511 = call i32 @willrt_lane_here()
+  %t512 = icmp eq i32 %start, -1
+  %t513 = icmp eq i32 %start, -2
+  %t514 = select i1 %t513, i32 %t511, i32 %start
+  br i1 %t512, label %sm.start.auto.47, label %sm.start.lane.47
 sm.start.auto.47:
-  %t531 = call ptr @willrt_task_new(ptr @"example.com/concurrency/syncmutex.will$main.sm", ptr %v.sm.frame, i64 672, i32 0, i32 0)
-  call void @willrt_task_own_frame(ptr %t531)
-  call void @willrt_task_run_auto(ptr %t531)
+  %t515 = call ptr @willrt_task_new(ptr @"example.com/concurrency/syncmutex.will$main.sm", ptr %v.sm.frame, i64 672, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t515)
+  call void @willrt_task_run_auto(ptr %t515)
   br label %sm.start.done.47
 sm.start.lane.47:
-  %t532 = call ptr @willrt_task_new(ptr @"example.com/concurrency/syncmutex.will$main.sm", ptr %v.sm.frame, i64 672, i32 %t530, i32 0)
-  call void @willrt_task_own_frame(ptr %t532)
-  call void @willrt_task_run(ptr %t532)
+  %t516 = call ptr @willrt_task_new(ptr @"example.com/concurrency/syncmutex.will$main.sm", ptr %v.sm.frame, i64 672, i32 %t514, i32 0)
+  call void @willrt_task_own_frame(ptr %t516)
+  call void @willrt_task_run(ptr %t516)
   br label %sm.start.done.47
 sm.start.done.47:
-  %t533 = phi ptr [ %t531, %sm.start.auto.47 ], [ %t532, %sm.start.lane.47 ]
-  ret ptr %t533
+  %t517 = phi ptr [ %t515, %sm.start.auto.47 ], [ %t516, %sm.start.lane.47 ]
+  ret ptr %t517
 }
 %"struct.std/sync.MutexState$Counter" = type { ptr, %"struct.example.com/concurrency/syncmutex.Counter" }
 define internal i32 @"std/sync.Mutex<Counter>.Lock.sm"(ptr %frame) {
@@ -2133,6 +2138,7 @@ declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
+declare void @memcpy(ptr, ptr, i64)
 declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)
 declare void @willrt_task_run(ptr)
 declare void @willrt_task_run_auto(ptr)

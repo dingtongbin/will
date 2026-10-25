@@ -24,6 +24,7 @@ func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diag
 		nameTypes:  nameTypes,
 		aliases:    aliases,
 		released:   map[ast.Node]bool{},
+		moved:      map[ast.Node]bool{},
 	}
 	root := e.add("module", f)
 	e.text(root, "path", modulePath)
@@ -65,6 +66,7 @@ type emitter struct {
 	scopes   [][]ast.Node
 	loops    []int
 	released map[ast.Node]bool
+	moved    map[ast.Node]bool
 }
 
 type pendingRef struct {

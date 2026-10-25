@@ -5,7 +5,7 @@ struct parseError {
 }
 
 func (e: parseError) Message() -> str {
-    return e.message
+    return e.message.Clone()
 }
 
 func (e: parseError) Status() -> i32 {
@@ -13,5 +13,5 @@ func (e: parseError) Status() -> i32 {
 }
 
 func fail(message: str) -> parseError {
-    return parseError { message: message }
+    return parseError { message: message.Clone() }
 }

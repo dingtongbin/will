@@ -919,6 +919,16 @@ func (g *generator) willTypeText(id int) (string, error) {
 // callResultText returns the result type text of one call. A call names its
 // callee by a document reference or by the module-wide symbol.
 func (g *generator) callResultText(r willc.Record) (string, error) {
+	if r.Kind == "mcall" && fieldText(r, "text") == "Clone" {
+		recvText, err := g.willTypeText(refField(r, "recv"))
+		if err != nil {
+			return "", err
+		}
+		if elem, ok := viewElemText(stripPredeclaredPackage(recvText)); ok {
+			return "Array<" + elem + ">", nil
+		}
+		return recvText, nil
+	}
 	if text, ok := g.downcastTypeText(r); ok {
 		return text, nil
 	}

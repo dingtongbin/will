@@ -1,0 +1,79 @@
+package check
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/will-lang/will/internal/diag"
+	"github.com/will-lang/will/internal/parser"
+)
+
+func valueCycles(t *testing.T, src string) []diag.Diagnostic {
+	t.Helper()
+	f, ds := parser.Parse("test.will", []byte(src))
+	if len(ds) != 0 {
+		t.Fatalf("parse: %s", diag.FormatAll(ds))
+	}
+	return ValueCycles(f)
+}
+
+func TestValueCycleTwoHandles(t *testing.T) {
+	src := `struct Node {
+    next: rc<Node>
+}
+
+func F() {
+    var a: rc<Node>
+    var b: rc<Node>
+    a.next = b
+    b.next = a
+}
+`
+	ds := valueCycles(t, src)
+	if len(ds) != 1 {
+		t.Fatalf("diagnostics = %d, want one:\n%s", len(ds), diag.FormatAll(ds))
+	}
+	d := ds[0]
+	if d.Code != diag.CodeUnreleasableCycle || d.Severity != diag.Error {
+		t.Fatalf("diagnostic = %+v", d)
+	}
+	if d.Message != "this cycle cannot be released" {
+		t.Fatalf("message = %q", d.Message)
+	}
+	if !strings.Contains(d.Help, "a.next") || !strings.Contains(d.Help, "b.next") {
+		t.Fatalf("help = %q", d.Help)
+	}
+}
+
+func TestValueCycleWeakEdgeDoesNotClose(t *testing.T) {
+	src := `struct Node {
+    next: weak<Node>
+}
+
+func F() {
+    var a: rc<Node>
+    var b: rc<Node>
+    a.next = b
+    b.next = a
+}
+`
+	if ds := valueCycles(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
+func TestValueCycleNoEdgeIsClean(t *testing.T) {
+	src := `struct Node {
+    next: rc<Node>
+}
+
+func F() {
+    var a: rc<Node>
+    var b: rc<Node>
+    a.next = b
+}
+`
+	if ds := valueCycles(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}

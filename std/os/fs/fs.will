@@ -84,7 +84,7 @@ struct fsError {
 }
 
 func (e: fsError) Message() -> str {
-    return e.message
+    return e.message.Clone()
 }
 
 func (e: fsError) Status() -> i32 {

@@ -23,8 +23,12 @@ func (e *emitter) emitBlock(b *ast.Block) int {
 	e.scopes = append(e.scopes, nil)
 	scope := len(e.scopes) - 1
 	early := earlyReleases(b)
+	for owner, point := range nonRcReleases(b) {
+		early[owner] = point
+	}
 	var last ast.Stmt
 	for i, s := range b.Stmts {
+		e.markMoves(s)
 		switch {
 		case isEarlyExit(s):
 			owned := e.liveOwned(exitFloor(e, s))
@@ -89,7 +93,7 @@ func withoutReturnedName(owned []ast.Node, value ast.Expr) []ast.Node {
 // position, the block as parent.
 func (e *emitter) emitReleases(owned []ast.Node, pos ast.Node) {
 	for i := len(owned) - 1; i >= 0; i-- {
-		if e.released[owned[i]] {
+		if e.released[owned[i]] || e.moved[owned[i]] {
 			continue
 		}
 		e.writeRelease(owned[i], pos)
@@ -100,7 +104,7 @@ func (e *emitter) emitReleases(owned []ast.Node, pos ast.Node) {
 // already been released. Multiple exits may still release a live owner; only
 // this early point is remembered permanently.
 func (e *emitter) emitRelease(owner ast.Node, pos ast.Node) {
-	if e.released[owner] {
+	if e.released[owner] || e.moved[owner] {
 		return
 	}
 	e.writeRelease(owner, pos)

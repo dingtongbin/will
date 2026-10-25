@@ -749,6 +749,15 @@ void willrt_free(void* ptr) {
     }
 }
 
+void willrt_free_str(void* ptr) {
+    /* A literal lives in read-only data, not in a chunk. There is no header to
+       inspect, so the chunk lookup is the only safe discriminator. */
+    if (ptr == NULL || willrt_mem_chunk_containing(ptr) == NULL) {
+        return;
+    }
+    willrt_free(ptr);
+}
+
 void* willrt_plate_new(size_t count, size_t elem) {
     struct willrt_plate_header* header;
     unsigned char* base;

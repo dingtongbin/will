@@ -41,19 +41,19 @@ struct caseResult {
 // NewT returns a case handle with no failures and no log lines.
 func NewT(name: str) -> T {
     return T {
-        name: name,
+        name: name.Clone(),
         state: new rc<TestState>(TestState { failed: false, parallelizable: false, logs: new Array<str>(0)})
     }
 }
 
 // NewB returns a benchmark handle with one iteration by default.
 func NewB(name: str) -> B {
-    return B { name: name, n: 1u64, bytes: 0u64, nsPerOp: 0.0, logs: new Array<str>(0)}
+    return B { name: name.Clone(), n: 1u64, bytes: 0u64, nsPerOp: 0.0, logs: new Array<str>(0)}
 }
 
 // Name returns the test name.
 func (t: T) Name() -> str {
-    return t.name
+    return t.name.Clone()
 }
 
 // Log records one message. Once the case has failed, the message is also
@@ -115,7 +115,7 @@ func runCase(spec: Case) -> caseResult {
     var t: T = NewT(spec.name)
     var state: rc<TestState> = t.state
     spec.run(t)
-    return caseResult { name: spec.name, state: state}
+    return caseResult { name: spec.name.Clone(), state: state}
 }
 
 // Table runs one case for every spec, in source order.
@@ -167,13 +167,13 @@ func sortResults(results: Array<caseResult>) {
         if i >= results.Len() {
             break
         }
-        var item: caseResult = results.Get(i)
+        var item: caseResult = results.Get(i).Clone()
         var j: usize = i
         for {
             if j == 0usize {
                 break
             }
-            var previous: caseResult = results.Get(j - 1usize)
+            var previous: caseResult = results.Get(j - 1usize).Clone()
             if !nameLess(item.name, previous.name) {
                 break
             }
@@ -213,7 +213,7 @@ func Parallel(cases: ...Case) {
 
 // Name returns the benchmark name.
 func (b: B) Name() -> str {
-    return b.name
+    return b.name.Clone()
 }
 
 // N returns the iteration count the runner asked for.

@@ -99,6 +99,15 @@ panic.ok.6:
   br label %if.end.5
 if.end.5:
   %t44 = load i32, ptr %v.n
+  %t45 = getelementptr inbounds { ptr, i64 }, ptr %v.c, i32 0, i32 0
+  %t46 = load ptr, ptr %t45
+  call void @willrt_free_str(ptr %t46)
+  %t47 = getelementptr inbounds { ptr, i64 }, ptr %v.b, i32 0, i32 0
+  %t48 = load ptr, ptr %t47
+  call void @willrt_free_str(ptr %t48)
+  %t49 = getelementptr inbounds { ptr, i64 }, ptr %v.a, i32 0, i32 0
+  %t50 = load ptr, ptr %t49
+  call void @willrt_free_str(ptr %t50)
   ret i32 %t44
 }
 declare void @willrt_init()
@@ -121,4 +130,5 @@ declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
+declare void @willrt_free_str(ptr)
 declare void @memcpy(ptr, ptr, i64)

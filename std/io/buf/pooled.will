@@ -19,10 +19,10 @@ func (p: PooledBuffer) Bytes() -> []u8 {
     return p.data[Range(0, p.data.Len())]
 }
 
-// Array returns the mutable backing array. The returned value is a header copy:
-// appended bytes share the storage, but the guard's own Len does not see them.
+// Array returns an independent copy of the backing array. A header copy would
+// give two owners one buffer; the language requires Clone for that boundary.
 func (p: PooledBuffer) Array() -> Array<u8> {
-    return p.data
+    return p.data.Clone()
 }
 
 // Len returns the number of live bytes.

@@ -1227,6 +1227,27 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	if recv == nil {
 		return nil
 	}
+	if call.Name == "Clone" && len(call.Args) == 0 && !isGuardType(recv) {
+		if recv.Kind() == ViewKind || recv.Kind() == ArrayKind {
+			return nil
+		}
+		if recv.Kind() == NamedKind {
+			switch recv.Name() {
+			case "chan", "Task":
+				return nil
+			case "str", "Array", "Map", "Set":
+				return nil
+			}
+			if _, isIface := c.env.ifaces[recv.Name()]; isIface {
+				return nil
+			}
+			if c.env.enums[recv.Name()] {
+				return nil
+			}
+		}
+		c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+		return recv
+	}
 	if strings.HasPrefix(call.Name, "Async") {
 		c.requireWait(s, call.Pos())
 	}

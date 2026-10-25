@@ -2,12 +2,12 @@
 define i32 @"example.com/genericstruct.will$main"() {
 entry:
   %v.a = alloca %"struct.example.com/genericstruct.Box$i32"
-  %v.agg.23 = alloca %"struct.example.com/genericstruct.Box$i32"
-  %t1 = getelementptr inbounds %"struct.example.com/genericstruct.Box$i32", ptr %v.agg.23, i32 0, i32 0
+  %v.agg.24 = alloca %"struct.example.com/genericstruct.Box$i32"
+  %t1 = getelementptr inbounds %"struct.example.com/genericstruct.Box$i32", ptr %v.agg.24, i32 0, i32 0
   store i32 3, ptr %t1
-  %t2 = getelementptr inbounds %"struct.example.com/genericstruct.Box$i32", ptr %v.agg.23, i32 0, i32 1
+  %t2 = getelementptr inbounds %"struct.example.com/genericstruct.Box$i32", ptr %v.agg.24, i32 0, i32 1
   store i32 4, ptr %t2
-  %t3 = load %"struct.example.com/genericstruct.Box$i32", ptr %v.agg.23
+  %t3 = load %"struct.example.com/genericstruct.Box$i32", ptr %v.agg.24
   store %"struct.example.com/genericstruct.Box$i32" %t3, ptr %v.a
   %t4 = call i32 @"example.com/genericstruct.Box<i32>.Get"(ptr %v.a)
   %t5 = getelementptr inbounds %"struct.example.com/genericstruct.Box$i32", ptr %v.a, i32 0, i32 1
@@ -22,7 +22,7 @@ panic.1:
 panic.ok.1:
   ret i32 %t8
 }
-define hidden i32 @"example.com/genericstruct.Box<i32>.Get"(ptr %b) alwaysinline {
+define hidden i32 @"example.com/genericstruct.Box<i32>.Get"(ptr %b) inlinehint {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/genericstruct.Box$i32", ptr %b, i32 0, i32 0
   %t2 = load i32, ptr %t1

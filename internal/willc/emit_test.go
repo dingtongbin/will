@@ -188,6 +188,71 @@ func TestEmitRcReleaseAtLastUse(t *testing.T) {
 	}
 }
 
+func TestEmitArrayReleaseAtLastSafeUse(t *testing.T) {
+	src := "func F() {\n" +
+		"    var xs: Array<i32> = new Array<i32>(0)\n" +
+		"    var n: usize = xs.Len()\n" +
+		"    _ = n\n" +
+		"    var later: i32 = 1\n" +
+		"    _ = later\n" +
+		"}\n"
+	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
+	var positions []string
+	for _, r := range doc.Records {
+		if r.Kind == "release" {
+			positions = append(positions, testFieldText(r, "pos"))
+		}
+	}
+	want := []string{"test.will:3:20"}
+	if len(positions) != len(want) || positions[0] != want[0] {
+		t.Fatalf("release positions = %v, want %v", positions, want)
+	}
+}
+
+func TestEmitViewPinsArrayToBlockEnd(t *testing.T) {
+	src := "func F() {\n" +
+		"    var xs: Array<i32> = new Array<i32>(0)\n" +
+		"    var v: []i32 = xs[Range(0, xs.Len())]\n" +
+		"    _ = v\n" +
+		"    xs.Push(1)\n" +
+		"}\n"
+	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
+	var positions []string
+	for _, r := range doc.Records {
+		if r.Kind == "release" {
+			positions = append(positions, testFieldText(r, "pos"))
+		}
+	}
+	want := []string{"test.will:1:10"}
+	if len(positions) != len(want) || positions[0] != want[0] {
+		t.Fatalf("release positions = %v, want block end %v", positions, want)
+	}
+}
+
+func TestEmitMovedArrayHasNoSourceRelease(t *testing.T) {
+	src := "func F() {\n" +
+		"    var first: Array<i32> = new Array<i32>(0)\n" +
+		"    var second: Array<i32> = first\n" +
+		"    _ = second\n" +
+		"}\n"
+	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
+	names := map[int]string{}
+	for _, r := range doc.Records {
+		if r.Kind == "var" {
+			names[r.ID] = testFieldText(r, "text")
+		}
+	}
+	var owners []string
+	for _, r := range doc.Records {
+		if r.Kind == "release" {
+			owners = append(owners, names[testRef(r, "owner")])
+		}
+	}
+	if len(owners) != 1 || owners[0] != "second" {
+		t.Fatalf("released owners = %v, want only second", owners)
+	}
+}
+
 func TestEmitReleaseGroups(t *testing.T) {
 	src := "func F(n: i32) -> i32 {\n" +
 		"    var a: str = \"a\"\n" +
@@ -219,8 +284,10 @@ func TestEmitReleaseGroups(t *testing.T) {
 		{"b", "test.will:5:9"}, {"a", "test.will:5:9"},
 		// A statement with ? may leave, so it gets its own group.
 		{"b", "test.will:7:5"}, {"a", "test.will:7:5"},
-		// The final return does the same; the block end adds nothing.
-		{"b", "test.will:9:5"}, {"a", "test.will:9:5"},
+		// b has no use after the discard, so it is released there. a still
+		// reaches the final return, which needs its own group.
+		{"b", "test.will:8:9"},
+		{"a", "test.will:9:5"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("release groups = %v, want %v", got, want)

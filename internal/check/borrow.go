@@ -57,7 +57,10 @@ type borrower struct {
 	lastUses   map[string]source.Pos
 	localViews map[string]string
 	inherited  map[string]bool
-	noPrune    bool
+	// pinned names the owners whose borrow is captured by a defer, closure, or
+	// spawn. Only those owners stay borrowed to the block end; an unrelated
+	// closure no longer widens every view in the block.
+	pinned map[string]bool
 }
 
 func cloneBorrows(in map[string]source.Pos) map[string]source.Pos {
@@ -73,11 +76,14 @@ func (b *borrower) block(blk *ast.Block, inherited map[string]source.Pos) {
 		return
 	}
 	borrowed := cloneBorrows(inherited)
-	oldUses, oldViews, oldInherited, oldNoPrune := b.lastUses, b.localViews, b.inherited, b.noPrune
+	oldUses, oldViews, oldInherited, oldPinned := b.lastUses, b.localViews, b.inherited, b.pinned
 	b.lastUses = lastUses(blk)
 	b.localViews = map[string]string{}
 	b.inherited = map[string]bool{}
-	b.noPrune = blockPins(blk)
+	b.pinned = clonePins(b.pinned)
+	for name := range pinnedNames(blk) {
+		b.pinned[name] = true
+	}
 	for name := range inherited {
 		b.inherited[name] = true
 	}
@@ -86,7 +92,15 @@ func (b *borrower) block(blk *ast.Block, inherited map[string]source.Pos) {
 		b.addView(st, borrowed)
 		b.prune(st, borrowed)
 	}
-	b.lastUses, b.localViews, b.inherited, b.noPrune = oldUses, oldViews, oldInherited, oldNoPrune
+	b.lastUses, b.localViews, b.inherited, b.pinned = oldUses, oldViews, oldInherited, oldPinned
+}
+
+func clonePins(in map[string]bool) map[string]bool {
+	out := make(map[string]bool, len(in)+1)
+	for name, ok := range in {
+		out[name] = ok
+	}
+	return out
 }
 
 // addView records the read borrow a view declaration creates. The borrow lasts
@@ -109,10 +123,15 @@ func (b *borrower) addView(st ast.Stmt, borrowed map[string]source.Pos) {
 			owner = b.localViews[name.Name]
 			if owner != "" && vd.Name != "" && vd.Name != "_" {
 				b.localViews[vd.Name] = owner
-				b.noPrune = true
+				// An alias can outlive the original view name, so keep the
+				// owner borrowed until the block ends.
+				b.pinned[owner] = true
 			}
 		}
 		return
+	}
+	if b.pinned[owner] || b.pinned[vd.Name] {
+		b.pinned[owner] = true
 	}
 	if _, exists := borrowed[owner]; !exists {
 		borrowed[owner] = pos
@@ -125,11 +144,11 @@ func (b *borrower) addView(st ast.Stmt, borrowed map[string]source.Pos) {
 // prune ends the borrow of every local view whose last use was in st. An
 // enclosing block's view keeps the owner borrowed until that block ends.
 func (b *borrower) prune(st ast.Stmt, borrowed map[string]source.Pos) {
-	if b.noPrune {
-		return
-	}
 	end := st.EndPos().Offset
 	for view, owner := range b.localViews {
+		if b.pinned[owner] || b.pinned[view] {
+			continue
+		}
 		last, seen := b.lastUses[view]
 		if seen && last.Offset > end {
 			continue
