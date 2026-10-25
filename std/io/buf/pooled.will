@@ -1,0 +1,42 @@
+// PooledBuffer is a buffer guard. It owns its backing Array; Release drops the
+// contents so a long-lived guard can be reused. The compiler does not yet run a
+// static release sequence for user guard types, and an Array returned by
+// Array() copies the header, so this form owns its storage instead of returning
+// it to a lane-local pool. Pooled keeps the documented acquisition shape.
+
+struct PooledBuffer {
+    data: Array<u8>
+}
+
+// Pooled returns a buffer with room for size bytes. Its live length starts at
+// zero; the capacity is the acquired room.
+func Pooled(size: usize) -> PooledBuffer {
+    return PooledBuffer { data: new Array<u8>(size) }
+}
+
+// Bytes returns a read-only view of the pooled contents.
+func (p: PooledBuffer) Bytes() -> []u8 {
+    return p.data[Range(0, p.data.Len())]
+}
+
+// Array returns the mutable backing array. The returned value is a header copy:
+// appended bytes share the storage, but the guard's own Len does not see them.
+func (p: PooledBuffer) Array() -> Array<u8> {
+    return p.data
+}
+
+// Len returns the number of live bytes.
+func (p: PooledBuffer) Len() -> usize {
+    return p.data.Len()
+}
+
+// Clear drops every live byte without releasing the pooled storage.
+func (mut p: PooledBuffer) Clear() {
+    p.data.Clear()
+}
+
+// Release drops the contents and keeps the capacity for reuse. Repeating it is
+// safe because the array becomes empty after the first call.
+func (mut p: PooledBuffer) Release() {
+    p.data.Clear()
+}

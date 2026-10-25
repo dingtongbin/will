@@ -1,7 +1,7 @@
 import "std/io/buf"
 
 func main() -> i32 {
-    var b: buf.Buffer = buf.NewBuffer()
+    var b: buf.Buffer = new buf.Buffer()
     b.data.Push(65u8)
     b.data.Push(66u8)
     if b.Len() != 2usize {

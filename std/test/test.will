@@ -1,28 +1,29 @@
-// T is the handle a test function receives. It records failures and log lines
-// and owns no global state, so one case cannot affect another.
+import c "capture.h" {
+    fast willtest_now_ns
+}
+
+// TestState is the mutable part of a case. It lives behind rc so a case can be
+// moved into a task while the runner keeps a handle for the verdict.
 struct TestState {
     failed: bool
+    parallelizable: bool
     logs: Array<str>
 }
 
+// T is the handle a test function receives.
 struct T {
     name: str
     state: rc<TestState>
 }
 
 // B is the handle a benchmark function receives. The runner owns the timing
-// loop; B only carries the iteration count and the byte count.
+// loop; B carries the iteration count, the byte count, and the last result.
 struct B {
     name: str
     n: u64
     bytes: u64
+    nsPerOp: f64
     logs: Array<str>
-}
-
-// Capture is a reserved hook for redirecting stdout. The portable runner does
-// not expose per-case capture yet, so Text is empty and Release is a no-op.
-struct Capture {
-    owned: bool
 }
 
 // Case is one table entry: a name and the body that receives its T.
@@ -31,14 +32,23 @@ struct Case {
     run: func(T)
 }
 
+// caseResult carries one finished parallel case back to its caller.
+struct caseResult {
+    name: str
+    state: rc<TestState>
+}
+
 // NewT returns a case handle with no failures and no log lines.
 func NewT(name: str) -> T {
-    return T { name: name, state: new rc<TestState>(TestState { failed: false, logs: new Array<str>(0)})}
+    return T {
+        name: name,
+        state: new rc<TestState>(TestState { failed: false, parallelizable: false, logs: new Array<str>(0)})
+    }
 }
 
 // NewB returns a benchmark handle with one iteration by default.
 func NewB(name: str) -> B {
-    return B { name: name, n: 1u64, bytes: 0u64, logs: new Array<str>(0)}
+    return B { name: name, n: 1u64, bytes: 0u64, nsPerOp: 0.0, logs: new Array<str>(0)}
 }
 
 // Name returns the test name.
@@ -46,19 +56,29 @@ func (t: T) Name() -> str {
     return t.name
 }
 
-// Log records one message. It is shown only when the case fails.
+// Log records one message. Once the case has failed, the message is also
+// written through so a failure report does not lose its context.
 func (mut t: T) Log(msg: str) {
     t.state.logs.Push(msg)
+    if t.state.failed {
+        print(msg, "\n")
+    }
 }
 
-// Fail marks the case as failed without stopping it.
+// Fail marks the case as failed without stopping it and writes the lines
+// recorded so far, once.
 func (mut t: T) Fail() {
-    t.state.failed = true
+    if !t.state.failed {
+        t.state.failed = true
+        for msg in t.state.logs {
+            print(msg, "\n")
+        }
+    }
 }
 
 // FailNow marks the case and ends it through the shared fatal path.
 func (mut t: T) FailNow() {
-    t.state.failed = true
+    t.Fail()
     Fatal("test failed: " + t.name)
 }
 
@@ -67,8 +87,11 @@ func (t: T) Failed() -> bool {
     return t.state.failed
 }
 
-// Parallel is accepted for source compatibility; this runner is serial.
+// Parallel records that the case can run beside other cases. The runner decides
+// whether the surrounding call actually runs cases in parallel; the marker is
+// never a request to change shared mutable state.
 func (mut t: T) Parallel() {
+    t.state.parallelizable = true
 }
 
 // Run runs one nested case. A failure in the child marks the parent.
@@ -80,45 +103,112 @@ func (mut t: T) Run(name: str, f: func(T)) {
     }
 }
 
-// Bench runs one benchmark body once. The timing loop belongs to the runner.
+// Bench runs one benchmark body once. The body owns its timing loop through
+// B.Run; T.Bench only constructs the handle.
 func (mut t: T) Bench(name: str, f: func(B)) {
     var b: B = NewB(t.name + "/" + name)
     f(b)
 }
 
-// runCases runs the entries in source order.
-func runCases(cases: []Case) {
-    for c in cases {
-        var t: T = NewT(c.name)
-        c.run(t)
+// runCase runs one table entry and returns its name and final state.
+func runCase(spec: Case) -> caseResult {
+    var t: T = NewT(spec.name)
+    var state: rc<TestState> = t.state
+    spec.run(t)
+    return caseResult { name: spec.name, state: state}
+}
+
+// Table runs one case for every spec, in source order.
+func Table(cases: ...Case) {
+    for spec in cases {
+        var result: caseResult = runCase(spec)
+        if result.state.failed {
+            print("FAIL ", result.name, "\n")
+        }
     }
 }
 
-// Table runs one case for every entry, in source order. The runner stays
-// serial; Parallel below has the same effect until a scheduler exposes it.
-func Table(cases: ...Case) {
-    runCases(cases)
+// charsOf returns the scalars of s so two names can be compared by code point
+// without a str ordering operator.
+func charsOf(s: str) -> Array<u32> {
+    var out: Array<u32> = new Array<u32>(0)
+    for ch in s {
+        out.Push(ch)
+    }
+    return out
 }
 
-// Parallel is accepted for source compatibility and runs the cases serially.
+// nameLess reports whether a sorts before b by code point order.
+func nameLess(a: str, b: str) -> bool {
+    var left: Array<u32> = charsOf(a)
+    var right: Array<u32> = charsOf(b)
+    var n: usize = left.Len()
+    if right.Len() < n {
+        n = right.Len()
+    }
+    for i in Range(0, i32(n)) {
+        var x: u32 = left.Get(usize(i))
+        var y: u32 = right.Get(usize(i))
+        if x < y {
+            return true
+        }
+        if x > y {
+            return false
+        }
+    }
+    return left.Len() < right.Len()
+}
+
+// sortResults orders finished cases by name. Insertion sort keeps the helper
+// independent of Array.Sort, which the lowering does not provide yet.
+func sortResults(results: Array<caseResult>) {
+    var i: usize = 1usize
+    for {
+        if i >= results.Len() {
+            break
+        }
+        var item: caseResult = results.Get(i)
+        var j: usize = i
+        for {
+            if j == 0usize {
+                break
+            }
+            var previous: caseResult = results.Get(j - 1usize)
+            if !nameLess(item.name, previous.name) {
+                break
+            }
+            results.Set(j, previous)
+            j -= 1usize
+        }
+        results.Set(j, item)
+        i += 1usize
+    }
+}
+
+// Parallel runs every entry in its own task and reports failures in name order,
+// so scheduling never changes the output. Cases must not share mutable state.
 func Parallel(cases: ...Case) {
-    runCases(cases)
-}
-
-// Capture starts a reserved output-capture scope. The portable runtime has no
-// per-case sink yet, so this returns an inactive handle.
-func (mut t: T) Capture() -> Capture {
-    return Capture { owned: false}
-}
-
-// Text returns the captured bytes. The portable runner has none.
-func (c: Capture) Text() -> str {
-    return ""
-}
-
-// Release restores direct output. It is a no-op for the inactive handle.
-func (mut c: Capture) Release() {
-    c.owned = false
+    var n: usize = cases.Len()
+    if n == 0usize {
+        return
+    }
+    var results: Array<caseResult> = new Array<caseResult>(n)
+    parallel {
+        var tasks: Array<Task<caseResult>> = new Array<Task<caseResult>>(n)
+        for i in Range(0, i32(n)) {
+            tasks.Push(spawn runCase(cases.Get(usize(i))))
+        }
+        for i in Range(0, i32(n)) {
+            var task: Task<caseResult> = tasks.Get(usize(i))
+            results.Push(task.Join()!)
+        }
+    }
+    sortResults(results)
+    for result in results {
+        if result.state.failed {
+            print("FAIL ", result.name, "\n")
+        }
+    }
 }
 
 // Name returns the benchmark name.
@@ -136,16 +226,29 @@ func (mut b: B) SetBytes(n: u64) {
     b.bytes = n
 }
 
-// NsPerOp returns the last measured time. The portable runner does not time
-// yet, so the value is zero rather than invented.
+// NsPerOp returns the last measured time in nanoseconds per iteration.
 func (b: B) NsPerOp() -> f64 {
-    return 0.0
+    return b.nsPerOp
 }
 
-// Run runs one benchmark body once. The runner owns repetition and timing, so
-// this is the single measured execution the portable path can provide.
+// Run times f over b.N() iterations. A zero count is treated as one so the
+// measurement is always defined.
 func (mut b: B) Run(f: func()) -> Result<(), Error> {
-    f()
+    var count: u64 = b.n
+    if count == 0u64 {
+        count = 1u64
+    }
+    var start: i64 = c.willtest_now_ns()
+    var i: u64 = 0u64
+    for {
+        if i >= count {
+            break
+        }
+        f()
+        i += 1u64
+    }
+    var elapsed: i64 = c.willtest_now_ns() - start
+    b.nsPerOp = f64(elapsed) / f64(count)
     return Ok(())
 }
 
@@ -153,5 +256,3 @@ func (mut b: B) Run(f: func()) -> Result<(), Error> {
 func (mut b: B) Log(msg: str) {
     b.logs.Push(msg)
 }
-
-

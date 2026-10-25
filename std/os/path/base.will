@@ -14,18 +14,25 @@ func scalarWidth(c: u32) -> usize {
 }
 
 // Base returns the last element of the path after trailing separators are
-// dropped. An empty path has base ".", and a path of only separators has base
-// "/", because the root has no element to name.
+// dropped. An empty path has base ".", and a path of only separators has the
+// platform separator as its base, because the root has no element to name.
 func Base(p: str) -> str {
     if p.Len() == 0usize {
         return "."
     }
-    var start: usize = 0
-    var end: usize = 0
+    var volumeEnd: usize = 0usize
+    if hasDrive(p) {
+        volumeEnd = 2usize
+    }
+    var start: usize = 0usize
+    var end: usize = 0usize
     var seen: bool = false
     var fresh: bool = true
     for i, c in p {
-        if isSlash(c) {
+        if i < volumeEnd {
+            continue
+        }
+        if isSeparator(c) {
             fresh = true
         } else {
             if fresh {
@@ -37,7 +44,10 @@ func Base(p: str) -> str {
         }
     }
     if !seen {
-        return "/"
+        if volumeEnd > 0usize && !isDriveAbs(p) {
+            return "."
+        }
+        return separatorString()
     }
     var tail: str = str(p[Range(start, end)])
     return tail

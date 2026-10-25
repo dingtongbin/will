@@ -3,7 +3,8 @@ func isDotElement(p: str, a: usize, b: usize) -> bool {
     if b - a != 1usize {
         return false
     }
-    var c: u32 = p[a]
+    var s: str = p
+    var c: u32 = s[a]
     return isDot(c)
 }
 
@@ -13,8 +14,9 @@ func isDotDotElement(p: str, a: usize, b: usize) -> bool {
         return false
     }
     var second: usize = a + 1usize
-    var firstChar: u32 = p[a]
-    var secondChar: u32 = p[second]
+    var s: str = p
+    var firstChar: u32 = s[a]
+    var secondChar: u32 = s[second]
     return isDot(firstChar) && isDot(secondChar)
 }
 
@@ -56,25 +58,44 @@ func pushElement(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>,
 
 // Clean returns the shortest path that names the same location: it removes
 // empty elements, single dots, and every element followed by dot-dot, and it
-// resolves leading dot-dot against a rooted path. The result is "." when
-// nothing is left of a relative path and "/" when nothing is left of a rooted
-// one.
+// resolves leading dot-dot against a rooted path or a drive root. The result is
+// "." when nothing is left of a relative path, and the platform root when
+// nothing is left of a rooted one.
 func Clean(p: str) -> str {
-    var n: usize = p.Len()
+    var s: str = p
+    var n: usize = s.Len()
+    var volumeEnd: usize = 0usize
+    var scan: usize = 0usize
     var rooted: bool = false
-    if n > 0usize {
-        var first: u32 = p[0]
-        rooted = isSlash(first)
+    if hasDrive(s) {
+        volumeEnd = 2usize
+        scan = 2usize
+        var third: u32 = 0u32
+        if n > 2usize {
+            third = s[2]
+        }
+        if isSeparator(third) {
+            rooted = true
+            scan = 3usize
+        }
+    } else if n > 0usize {
+        var first: u32 = s[0]
+        if isSeparator(first) {
+            rooted = true
+        }
     }
     var starts: Array<usize> = new Array<usize>(0)
     var ends: Array<usize> = new Array<usize>(0)
-    var count: usize = 0
-    var start: usize = 0
+    var count: usize = 0usize
+    var start: usize = 0usize
     var inElement: bool = false
-    for i, c in p {
-        if isSlash(c) {
+    for i, c in s {
+        if i < scan {
+            continue
+        }
+        if isSeparator(c) {
             if inElement {
-                count = pushElement(p, start, i, rooted, starts, ends, count)
+                count = pushElement(s, start, i, rooted, starts, ends, count)
                 inElement = false
             }
         } else if !inElement {
@@ -83,29 +104,39 @@ func Clean(p: str) -> str {
         }
     }
     if inElement {
-        count = pushElement(p, start, n, rooted, starts, ends, count)
+        count = pushElement(s, start, n, rooted, starts, ends, count)
     }
+    var sep: u8 = Separator()
     var out: Array<u8> = new Array<u8>(0)
-    if rooted {
-        out.Push(u8(47))
+    if volumeEnd > 0usize {
+        var driveLetter: u32 = s[0]
+        var driveColon: u32 = s[1]
+        out.Push(u8(driveLetter))
+        out.Push(u8(driveColon))
     }
-    var k: usize = 0
+    if rooted {
+        out.Push(sep)
+    }
+    var k: usize = 0usize
     for {
         if k >= count {
             break
         }
         if k > 0usize {
-            out.Push(u8(47))
+            out.Push(sep)
         }
         var a: usize = starts.Get(k)
         var b: usize = ends.Get(k)
-        for byte in p[Range(a, b)] {
-            out.Push(byte)
-        }
+        out.Append(s[Range(a, b)])
         k += 1usize
     }
-    if out.Len() == 0usize {
-        return "."
+    if count == 0usize {
+        if volumeEnd > 0usize && !rooted {
+            return str(out) + "."
+        }
+        if out.Len() == 0usize {
+            return "."
+        }
     }
     return str(out)
 }

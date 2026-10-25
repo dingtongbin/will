@@ -1,0 +1,26 @@
+// Buffer is an in-memory byte buffer. It owns its Array and exposes a stable
+// read-only view, so a caller can fill it and hand the view to a Writer.
+
+struct Buffer {
+    data: Array<u8>
+}
+
+// init starts an empty buffer.
+func (mut b: Buffer) init() {
+    b.data = new Array<u8>(0)
+}
+
+// Bytes returns a read-only view of the buffer contents.
+func (b: Buffer) Bytes() -> []u8 {
+    return b.data[Range(0, b.data.Len())]
+}
+
+// Len returns the number of live bytes.
+func (b: Buffer) Len() -> usize {
+    return b.data.Len()
+}
+
+// Clear drops every live byte without releasing the backing storage.
+func (mut b: Buffer) Clear() {
+    b.data.Clear()
+}
