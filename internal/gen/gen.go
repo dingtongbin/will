@@ -387,6 +387,7 @@ func (g *generator) collectSignatures() {
 	g.methodsQualified = map[string]string{}
 	g.methodSymbols = map[string]bool{}
 	g.paramTypes = map[string][]string{}
+	g.paramMut = map[string][]bool{}
 	g.varargs = map[string]bool{}
 	g.ifaceDecls = map[string]*ifaceInfo{}
 	g.structDecls = map[string]structDeclInfo{}
@@ -455,6 +456,7 @@ func (g *generator) collectSignatures() {
 				sortByID(ps)
 				for _, p := range ps {
 					m.params = append(m.params, g.qualifyTypeText(d.path, fieldText(p, "type")))
+					m.muts = append(m.muts, fieldText(p, "mut") == "true")
 				}
 				info.byName[m.name] = len(info.methods)
 				info.methods = append(info.methods, m)
@@ -477,9 +479,11 @@ func (g *generator) collectSignatures() {
 			}
 			sortByID(paramRecs)
 			var params []string
+			var muts []bool
 			variadic := false
 			for _, c := range paramRecs {
 				params = append(params, g.qualifyTypeText(d.path, fieldText(c, "type")))
+				muts = append(muts, fieldText(c, "mut") == "true")
 				if fieldText(c, "variadic") == "true" {
 					variadic = true
 				}
@@ -495,6 +499,7 @@ func (g *generator) collectSignatures() {
 			}
 			d.symbols[r.ID] = sym
 			g.paramTypes[sym] = params
+			g.paramMut[sym] = muts
 			if variadic {
 				g.varargs[sym] = true
 			}
@@ -732,6 +737,10 @@ type generator struct {
 	// predeclared scalar, keyed by the value record.
 	ifaceDataSlots map[int]string
 	vtables        map[string]string
+	// paramMut records the mutable bit of each parameter, aligned with
+	// paramTypes. A mutable scalar is passed as a pointer so writes reach the
+	// caller's place.
+	paramMut map[string][]bool
 	// typeIDs names the identity word appended to every method table, and
 	// emittedTypeIDs records the definition already written. The identity is
 	// a linkonce constant so two packages that mention the same type still
@@ -1607,12 +1616,23 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	for _, p := range params {
 		pname := fieldText(p, "text")
 		ptype := fieldText(p, "type")
+		mut := fieldText(p, "mut") == "true"
 		if fieldText(p, "variadic") == "true" {
 			// The call packs the tail arguments into one view.
 			g.scope[p.ID] = "%" + pname
 			g.borrows[p.ID] = true
 			sig = append(sig, "ptr %"+pname)
 			continue
+		}
+		if mut {
+			if _, _, ok := llvmScalar(ptype); ok || ptype == "Duration" {
+				// A mutable scalar is a pointer to the caller's place, like a
+				// mutable aggregate; only a read-only scalar travels by value.
+				g.scope[p.ID] = "%" + pname
+				g.borrows[p.ID] = true
+				sig = append(sig, "ptr %"+pname)
+				continue
+			}
 		}
 		if isRcText(ptype) || isWeakText(ptype) {
 			g.scope[p.ID] = "%" + pname
@@ -3411,7 +3431,15 @@ func (g *generator) value(id int) (string, error) {
 		decl = refField(r, "to")
 		if name, ok := g.scope[decl]; ok {
 			if g.borrows[decl] {
-				return "", g.errf(id, "cannot translate node #%d: %s is a borrow, not a scalar value", id, fieldText(r, "text"))
+				text, err := g.willTypeText(id)
+				if err != nil {
+					return "", err
+				}
+				typ, ok := g.typeLLVMOf(text)
+				if !ok || isAggregateType(typ) {
+					return "", g.errf(id, "cannot translate node #%d: %s is a borrowed aggregate, not a scalar", id, fieldText(r, "text"))
+				}
+				return g.load(typ, name), nil
 			}
 			return name, nil
 		}
@@ -4013,14 +4041,19 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 			return "", "", g.errf(r.ID, "cannot translate node #%d: %s needs %d arguments", r.ID, name, fixed)
 		}
 	}
+	muts := g.callParamMut(r)
 	for i := 0; i < fixed; i++ {
 		a := args[i]
 		paramType := ""
+		mut := false
 		if !link && i < len(g.paramTypes[name]) {
 			paramType = g.paramTypes[name][i]
 		}
+		if i < len(muts) {
+			mut = muts[i]
+		}
 		var err error
-		parts, err = g.callArgParts(parts, r, i, a, paramType, link)
+		parts, err = g.callArgParts(parts, r, i, a, paramType, mut, link)
 		if err != nil {
 			return "", "", err
 		}

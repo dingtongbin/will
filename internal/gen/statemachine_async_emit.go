@@ -171,6 +171,7 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
 	args := g.callArgs(call)
 	parts := make([]string, 0, len(args)+1)
 	paramTypes := append([]string(nil), g.paramTypes[targetSym]...)
+	paramMuts := g.paramMut[targetSym]
 	if len(paramTypes) != len(args) {
 		return "", g.errf(call.ID, "cannot translate node #%d: %s needs %d arguments", call.ID, targetSym, len(paramTypes))
 	}
@@ -183,15 +184,19 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
 		parts = append(parts, "ptr "+recv)
 		declParams = append(declParams, "ptr")
 	}
-	for _, a := range args {
+	for i, a := range args {
 		typ, err := g.typeOf(a)
 		if err != nil {
 			return "", err
 		}
-		if isAggregateType(typ) {
-			ptr, _, err := g.place(a)
+		mut := i < len(paramMuts) && paramMuts[i]
+		if isAggregateType(typ) || mut {
+			ptr, ptrType, err := g.place(a)
 			if err != nil {
 				return "", err
+			}
+			if ptrType != typ {
+				return "", g.errf(a, "cannot translate node #%d: the argument needs %s", a, typ)
 			}
 			parts = append(parts, "ptr "+ptr)
 			declParams = append(declParams, "ptr")

@@ -136,14 +136,16 @@ func (g *generator) newInitParams(r willc.Record) []string {
 // that the caller must turn into the new expression's value.
 func (g *generator) callNewInit(r willc.Record, slot, initSym string, params []string, initResult string) (string, string, error) {
 	g.noteExternalFunc(initSym)
+	muts := g.paramMut[initSym]
 	parts := []string{"ptr " + slot}
 	for i, a := range g.callArgs(r) {
 		paramType := ""
 		if i < len(params) {
 			paramType = params[i]
 		}
+		mut := i < len(muts) && muts[i]
 		var err error
-		parts, err = g.callArgParts(parts, r, i, a, paramType, false)
+		parts, err = g.callArgParts(parts, r, i, a, paramType, mut, false)
 		if err != nil {
 			return "", "", err
 		}
@@ -270,13 +272,15 @@ func (g *generator) constructImportedNew(r willc.Record, q string) (string, stri
 	}
 	args := g.callArgs(r)
 	params := g.paramTypes[initSym]
+	muts := g.paramMut[initSym]
 	if len(args) != len(params) {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: %s.init takes %d arguments", r.ID, q, len(params))
 	}
 	parts := []string{"ptr " + slot}
 	for i, a := range args {
+		mut := i < len(muts) && muts[i]
 		var err error
-		parts, err = g.callArgParts(parts, r, i, a, params[i], false)
+		parts, err = g.callArgParts(parts, r, i, a, params[i], mut, false)
 		if err != nil {
 			return "", "", err
 		}

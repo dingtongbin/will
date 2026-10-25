@@ -12,6 +12,7 @@ type ifaceMethod struct {
 	name   string
 	result string
 	params []string
+	muts   []bool
 }
 
 // ifaceInfo is the lowered form of one interface. The value is two words: the
@@ -95,6 +96,7 @@ func (g *generator) buildInterfaces() {
 			sortByID(params)
 			for _, p := range params {
 				m.params = append(m.params, g.qualifyTypeText(g.pkg, fieldText(p, "type")))
+				m.muts = append(m.muts, fieldText(p, "mut") == "true")
 			}
 			info.byName[m.name] = len(info.methods)
 			info.methods = append(info.methods, m)
@@ -394,7 +396,8 @@ func (g *generator) interfaceCall(r willc.Record, iface *ifaceInfo) (string, str
 		return "", "", g.errf(r.ID, "cannot translate node #%d: %s takes %d arguments", r.ID, method.name, len(method.params))
 	}
 	for i, a := range args {
-		parts, err = g.callArgParts(parts, r, i, a, method.params[i], false)
+		mut := i < len(method.muts) && method.muts[i]
+		parts, err = g.callArgParts(parts, r, i, a, method.params[i], mut, false)
 		if err != nil {
 			return "", "", err
 		}
@@ -420,7 +423,7 @@ func (g *generator) interfaceCall(r willc.Record, iface *ifaceInfo) (string, str
 // callArgParts appends one argument, converting a concrete value to an
 // interface when the parameter type asks for one. The index is the argument's
 // position, which names the slot reserved for the conversion.
-func (g *generator) callArgParts(parts []string, r willc.Record, index int, argID int, paramType string, link bool) ([]string, error) {
+func (g *generator) callArgParts(parts []string, r willc.Record, index int, argID int, paramType string, mut, link bool) ([]string, error) {
 	typ, err := g.typeOf(argID)
 	if err != nil {
 		return nil, err
@@ -437,6 +440,16 @@ func (g *generator) callArgParts(parts []string, r willc.Record, index int, argI
 			}
 			return append(parts, "ptr "+slot), nil
 		}
+	}
+	if mut && !isAggregateType(typ) {
+		ptr, ptrType, err := g.place(argID)
+		if err != nil {
+			return nil, err
+		}
+		if ptrType != typ {
+			return nil, g.errf(argID, "cannot translate node #%d: the argument needs %s", argID, typ)
+		}
+		return append(parts, "ptr "+ptr), nil
 	}
 	if isAggregateType(typ) {
 		if link {
@@ -488,6 +501,33 @@ func (g *generator) callParamTypes(r willc.Record) []string {
 	if to := refField(r, "to"); to != 0 {
 		if fn, ok := g.recs[to]; ok && fn.Kind == "func" {
 			return g.paramTypes[g.cur.funcs[to]]
+		}
+	}
+	return nil
+}
+
+// callParamMut returns the mutable bits of one call's parameters, aligned with
+// callParamTypes. A missing entry is read-only.
+func (g *generator) callParamMut(r willc.Record) []bool {
+	if qualified := textField(r, "to"); qualified != "" {
+		return g.paramMut[qualified]
+	}
+	if r.Kind == "mcall" {
+		if text, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if iface, ok := g.ifaceOfText(text); ok {
+				if idx, ok := iface.byName[fieldText(r, "text")]; ok {
+					return iface.methods[idx].muts
+				}
+			}
+		}
+		if sym, err := g.methodSymbol(r); err == nil {
+			return g.paramMut[sym]
+		}
+		return nil
+	}
+	if to := refField(r, "to"); to != 0 {
+		if fn, ok := g.recs[to]; ok && fn.Kind == "func" {
+			return g.paramMut[g.cur.funcs[to]]
 		}
 	}
 	return nil

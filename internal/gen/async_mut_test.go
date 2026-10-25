@@ -36,3 +36,32 @@ func TestAsyncMutParametersKeepTheCallerPlace(t *testing.T) {
 		}
 	}
 }
+
+// TestMutableScalarABI pins the pointer ABI for a mutable scalar in both an
+// ordinary call and an async task constructor.
+func TestMutableScalarABI(t *testing.T) {
+	src := "func Inc(mut value: i32) -> i32 {\n    value += 1\n    return value\n}\n\n" +
+		"async func Bump(mut value: i32) -> i32 {\n    value += 1\n    return value\n}\n\n" +
+		"async func Use() -> i32 {\n" +
+		"    var value: i32 = 1\n" +
+		"    var first: i32 = Inc(value)\n" +
+		"    var second: i32 = await Bump(value)\n" +
+		"    return first + second\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		`define i32 @"example.com/app.Inc"(ptr %value)`,
+		`call i32 @"example.com/app.Inc"(ptr`,
+		`define ptr @"example.com/app.Bump.task"(ptr %arg0, i32 %start)`,
+		`call ptr @"example.com/app.Bump.task"(ptr`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}

@@ -63,7 +63,7 @@ func (g *generator) fieldCall(r willc.Record, info *structInfo, index int, fnTex
 	}
 	parts := []string{"ptr " + env}
 	for i, id := range args {
-		parts, err = g.callArgParts(parts, r, i, id, params[i], false)
+		parts, err = g.callArgParts(parts, r, i, id, params[i], false, false)
 		if err != nil {
 			return "", "", err
 		}

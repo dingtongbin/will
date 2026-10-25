@@ -137,9 +137,15 @@ func (g *generator) asyncParamABI(p willc.Record) (string, bool, error) {
 		return "ptr", false, nil
 	}
 	if typ, _, ok := llvmScalar(text); ok {
+		if fieldText(p, "mut") == "true" {
+			return "ptr", true, nil
+		}
 		return typ, false, nil
 	}
 	if text == "Duration" {
+		if fieldText(p, "mut") == "true" {
+			return "ptr", true, nil
+		}
 		return "i64", false, nil
 	}
 	typ, err := g.declLLVMType(p.ID)

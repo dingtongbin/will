@@ -208,7 +208,7 @@ func (g *generator) indirectCall(r willc.Record, decl willc.Record) (string, str
 	}
 	sig := []string{"ptr " + env}
 	for i, id := range args {
-		sig, err = g.callArgParts(sig, r, i, id, params[i], false)
+		sig, err = g.callArgParts(sig, r, i, id, params[i], false, false)
 		if err != nil {
 			return "", "", err
 		}
@@ -455,6 +455,11 @@ func (g *generator) placeNamedFunction(r willc.Record, decl willc.Record) (strin
 	sym := g.cur.funcs[decl.ID]
 	if sym == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: a function of another document used as a value is not lowered yet", r.ID)
+	}
+	for _, mut := range g.paramMut[sym] {
+		if mut {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: a function with mutable parameters has no function value yet", r.ID)
+		}
 	}
 	thunk := qualify(g.pkg, "thunk."+fieldText(decl, "text"))
 	if !g.thunkEmitted[thunk] {

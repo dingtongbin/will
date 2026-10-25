@@ -103,6 +103,44 @@ func main() -> i32 {
 	}
 }
 
+// TestRunMutableScalarParameters checks that a mutable scalar is a pointer in
+// both the ordinary call ABI and the async task ABI.
+func TestRunMutableScalarParameters(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func Inc(mut value: i32) -> i32 {
+    value += 1
+    return value
+}
+
+async func Add(mut value: i32) -> i32 {
+    value += 2
+    return value
+}
+
+async func main() -> i32 {
+    var first: i32 = 1
+    var inc: i32 = Inc(first)
+    var second: i32 = 4
+    var add: i32 = await Add(second)
+    print(first, " ", inc, " ", second, " ", add, "\n")
+    if first != 2 || inc != 2 || second != 6 || add != 6 {
+        return 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if !strings.Contains(out, "2 2 6 6\n") {
+		t.Fatalf("stdout = %q", out)
+	}
+}
+
 // TestRunAsyncMutParameters checks that a task frame keeps the caller's
 // pointer for a mutable receiver and a mutable Array parameter.
 func TestRunAsyncMutParameters(t *testing.T) {
