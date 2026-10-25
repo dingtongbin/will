@@ -56,12 +56,14 @@ struct willrt_task {
     int32_t canceled;
     int32_t state;
     int32_t queued;
+    int32_t releasing;
     int32_t is_job;
     int32_t counted;
     int32_t wake_pending;
     int32_t wait_requested;
     int32_t io_wait;
     int32_t join_linked;
+    int32_t waiters;
     void* cancel_flag;
     int64_t deadline;
     int64_t wait_deadline;
@@ -101,7 +103,6 @@ struct willrt_task {
 };
 
 struct willrt_region {
-    willrt_os_mutex lock;
     struct willrt_task* head;
     int32_t failed;
 };
@@ -526,7 +527,9 @@ static void willrt_task_finish(struct willrt_task* task) {
     }
     waiter = task->join_head;
     task->join_head = NULL;
-    willrt_os_cond_broadcast(&task->cond);
+    if (task->waiters != 0) {
+        willrt_os_cond_broadcast(&task->cond);
+    }
     willrt_os_mutex_unlock(&task->lock);
 
     while (waiter != NULL) {
@@ -536,10 +539,11 @@ static void willrt_task_finish(struct willrt_task* task) {
         waiter = next;
     }
 
-    willrt_os_mutex_lock(&willrt_tasks_lock);
-    atomic_fetch_sub(&willrt_tasks_live, 1);
-    willrt_os_cond_broadcast(&willrt_tasks_cond);
-    willrt_os_mutex_unlock(&willrt_tasks_lock);
+    if (atomic_fetch_sub(&willrt_tasks_live, 1) == 1) {
+        willrt_os_mutex_lock(&willrt_tasks_lock);
+        willrt_os_cond_broadcast(&willrt_tasks_cond);
+        willrt_os_mutex_unlock(&willrt_tasks_lock);
+    }
 }
 
 static void willrt_task_run_step(struct willrt_task* task) {
@@ -814,10 +818,8 @@ willrt_task* willrt_task_new(void* step, void* frame, size_t size, int32_t lane,
 
     if (willrt_region_depth > 0) {
         region = &willrt_regions[willrt_region_depth - 1];
-        willrt_os_mutex_lock(&region->lock);
         task->next_region = region->head;
         region->head = task;
-        willrt_os_mutex_unlock(&region->lock);
     }
     return task;
 }
@@ -1200,7 +1202,9 @@ int32_t willrt_join(willrt_task* task, void* out, willrt_error* err) {
                     wait = left;
                 }
             }
+            task->waiters += 1;
             willrt_os_cond_timedwait(&task->cond, &task->lock, wait);
+            task->waiters -= 1;
         }
         finished = task->finished;
         if (finished) {
@@ -1296,7 +1300,6 @@ void willrt_region_enter(void) {
     }
     region = &willrt_regions[willrt_region_depth];
     memset(region, 0, sizeof(*region));
-    willrt_os_mutex_init(&region->lock);
     willrt_region_depth++;
 }
 
@@ -1306,25 +1309,11 @@ void willrt_task_own_frame(willrt_task* task) {
     }
 }
 
-/* willrt_task_release returns one finished region member to the allocator.
-   The region barrier joins every member first, so no joiner can still read
-   this task's frame, result, or failure text, and no will-level handle can
-   have left the region. The failure text goes back with the task: keeping it
-   would make every failed spawn a permanent block, which is not bounded by
-   anything a program controls. */
-static void willrt_task_release(struct willrt_task* task) {
-    struct willrt_task** link;
-
-    willrt_os_mutex_lock(&willrt_tasks_lock);
-    link = &willrt_all_tasks;
-    while (*link != NULL && *link != task) {
-        link = &(*link)->all_next;
-    }
-    if (*link == task) {
-        *link = task->all_next;
-    }
-    willrt_os_mutex_unlock(&willrt_tasks_lock);
-
+/* willrt_task_free returns one finished region member to the allocator. The
+   region barrier joins every member first, so no joiner can still read this
+   task's frame, result, or failure text, and no will-level handle can have
+   left the region. */
+static void willrt_task_free(struct willrt_task* task) {
     willrt_free(task->message);
     if (task->result != task->inline_result) {
         willrt_free(task->result);
@@ -1335,6 +1324,41 @@ static void willrt_task_release(struct willrt_task* task) {
     willrt_os_mutex_destroy(&task->lock);
     willrt_os_cond_destroy(&task->cond);
     willrt_free(task);
+}
+
+/* willrt_task_release_members removes a whole region from the all-task list
+   under one lock, then frees the members outside it. A per-task unlink would
+   take the global lock once per spawned task. */
+static void willrt_task_release_members(struct willrt_task* members) {
+    struct willrt_task* task = members;
+    struct willrt_task** link;
+
+    if (members == NULL) {
+        return;
+    }
+    while (task != NULL) {
+        task->releasing = 1;
+        task = task->next_region;
+    }
+    willrt_os_mutex_lock(&willrt_tasks_lock);
+    link = &willrt_all_tasks;
+    while (*link != NULL) {
+        task = *link;
+        if (task->releasing) {
+            *link = task->all_next;
+            task->releasing = 0;
+        } else {
+            link = &task->all_next;
+        }
+    }
+    willrt_os_mutex_unlock(&willrt_tasks_lock);
+    task = members;
+    while (task != NULL) {
+        struct willrt_task* next = task->next_region;
+
+        willrt_task_free(task);
+        task = next;
+    }
 }
 
 int32_t willrt_region_exit(void) {
@@ -1354,10 +1378,8 @@ int32_t willrt_region_exit(void) {
     }
     willrt_region_depth--;
     region = &willrt_regions[willrt_region_depth];
-    willrt_os_mutex_lock(&region->lock);
     members = region->head;
     region->head = NULL;
-    willrt_os_mutex_unlock(&region->lock);
     task = members;
     while (task != NULL) {
         struct willrt_task* next = task->next_region;
@@ -1378,14 +1400,7 @@ int32_t willrt_region_exit(void) {
     /* The join pass above is the barrier: every member has finished, so the
        frames and results are dead and go back to the allocator, whose
        per-lane size classes make the next region's tasks reuse them. */
-    task = members;
-    while (task != NULL) {
-        struct willrt_task* next = task->next_region;
-
-        willrt_task_release(task);
-        task = next;
-    }
-    willrt_os_mutex_destroy(&region->lock);
+    willrt_task_release_members(members);
     return failed;
 }
 
