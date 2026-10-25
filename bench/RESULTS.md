@@ -6,7 +6,7 @@ diagnose the body of the distribution.
 Machine: Intel Core i5-12500H, Windows 11, x86_64-win-msvc.
 Toolchain: clang 22.1.8, Rust 1.97.0, crossbeam-channel 0.5.17,
 crossbeam-utils 0.8.23, tokio 1.54.1, compio 0.20.0-beta.1.
-Will: `2be45fe`; six measured repetitions for spawn, five for channel and
+Will: `92e0384`; six measured repetitions for spawn, five for channel and
 select.
 The Windows clock has 100 ns granularity, so sub-100 ns differences in the
 channel/select tables are quantization, not a measured win.
@@ -69,17 +69,19 @@ its own p999; a single burst of ten thousand queued tasks is not used because it
 measures queue depth, not service latency. The Rust comparator uses a two-worker
 Tokio runtime for the reads and a 14-thread Rayon pool for the jobs.
 
-| runtime | IO p999 | CPU p999 | combined p999 | throughput |
-| --- | --- | --- | --- | --- |
-| will, 16 lanes, default reserve | 9.2-12.0 ms | 0.74-0.86 ms | 9.2-11.9 ms | 34-37 k ops/s |
-| will, 16 lanes, no reserve | 8.6-10.2 ms | 0.50-0.86 ms | 7.0-10.1 ms | 34.5-35.3 k ops/s |
-| Tokio + Rayon | 5.25-9.79 ms | 0.28-0.40 ms | 5.20-9.74 ms | 49.4-51.8 k ops/s |
+| runtime | IO p999 | CPU p999 | combined p999 | combined p99 | throughput |
+| --- | --- | --- | --- | --- | --- |
+| will, 16 lanes, default reserve | 4.4-10.8 ms | 1.3-2.0 ms | 4.3-10.8 ms | 3.4-5.7 ms | 46-50 k ops/s |
+| will, 16 lanes, no reserve | 5.4-6.7 ms | 0.97-1.87 ms | 5.3-6.5 ms | 3.7-4.6 ms | 45-49 k ops/s |
+| Tokio + Rayon | 5.25-11.4 ms | 0.28-0.70 ms | 5.20-11.4 ms | 3.3-5.1 ms | 49.4-50.7 k ops/s |
 
-will throughput is 0.66-0.72x the Rust comparator, so the mixed row is below the
-async 100% gate. At 8 lanes the round is already about 253 ms and at 16 lanes
-about 252 ms; 1/2/4 lanes are much slower. The Windows file path still uses two
-submit workers plus a completer rather than per-lane IOCP batches, so this table
-also records the unfinished W33 gap and does not claim a completion-engine win.
+will throughput is 0.91-1.01x the Rust comparator: the low end is below the
+async 100% gate and the high end only touches it. CPU p999 is about three times
+the Rust tail, while the combined p99 and p999 are in the same band. At 8 lanes
+the round is about 253 ms and at 16 lanes about 252 ms; 1/2/4 lanes are much
+slower. The Windows file path now uses four fixed submit workers plus a
+completer, not the per-lane IOCP batches required by W33; this table records the
+remaining architecture gap rather than a completion-engine win.
 
 ## Commands
 
