@@ -7,6 +7,30 @@ import (
 	"testing"
 )
 
+// TestRunEarlyRcRelease checks that releasing a copy-only rc handle at its
+// last use leaves the retained copy alive.
+func TestRunEarlyRcRelease(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `struct Counter {
+    n: i32
+}
+
+func main() -> i32 {
+    var first: rc<Counter> = new rc<Counter>(Counter { n: 7 })
+    var second: rc<Counter> = first
+    _ = second
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+}
+
 // TestRunDeadlineChildReturnsDeadline checks the cancellation value of an
 // awaited child task: a scope deadline is a normal Err(Deadline), not an empty
 // panic from an uninitialized task error.
