@@ -1,0 +1,2 @@
+main.will:2:5: K0014 an interface method cannot be async
+    help: use a concrete async type, a generic, or a channel

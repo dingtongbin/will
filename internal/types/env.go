@@ -157,6 +157,11 @@ func (b *envBuilder) decl(d ast.Decl) {
 		e.arity[decl.Name] = len(decl.TypeParams)
 		e.params[decl.Name] = typeParamNames(decl.TypeParams)
 		for _, m := range decl.Methods {
+			if m.Async {
+				c.bag.Error(m.Pos(), diag.CodeAsyncInterface,
+					"an interface method cannot be async",
+					"use a concrete async type, a generic, or a channel")
+			}
 			sig := &signature{name: m.Name}
 			for _, pm := range m.Params {
 				sig.params = append(sig.params, c.buildType(pm.Type, tp))

@@ -142,6 +142,7 @@ const (
 	CodeAwaitNotAsync      = "K0011"
 	CodeAsyncAsValue       = "K0012"
 	CodeSelectOutsideAsync = "K0013"
+	CodeAsyncInterface     = "K0014"
 
 	// Error propagation codes.
 	CodeResultDropped  = "R0001"
@@ -183,7 +184,7 @@ var Codes = []string{
 	CodeSpawnNotCall, CodeDeadlock,
 	CodeGuardCopied, CodeReadGuardWrite,
 	CodeAwaitOutsideAsync, CodeAsyncNotAwaited, CodeAwaitNotAsync, CodeAsyncAsValue,
-	CodeSelectOutsideAsync,
+	CodeSelectOutsideAsync, CodeAsyncInterface,
 	CodeResultDropped, CodeUnwrapType, CodePanicContained,
 	CodeBlockingNotAwaited, CodeWaitInSync, CodeWaitInAsync, CodeBlocksThreadInTask,
 	CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,
