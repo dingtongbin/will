@@ -1,0 +1,53 @@
+// ReaderBuf reads one chunk from a Reader at a time and hands it to callers in
+// smaller pieces. It never reads ahead when the wrapped Reader is at EOF.
+
+import "std/io"
+
+struct ReaderBuf {
+    src: io.Reader
+    data: Array<u8>
+    pos: usize
+    limit: usize
+}
+
+// init wraps r in a buffer of size bytes. A size of zero passes every read
+// straight through.
+func (mut b: ReaderBuf) init(r: io.Reader, size: usize) {
+    b.src = r
+    b.data = new Array<u8>(size)
+    b.pos = 0usize
+    b.limit = size
+}
+
+// NewReader builds a ReaderBuf. The compiler cannot yet pass an interface value
+// to new, so this function is the working constructor until that lowering is
+// fixed; it builds the same value init would.
+func NewReader(r: io.Reader, size: usize) -> ReaderBuf {
+    return ReaderBuf {
+        src: r,
+        data: new Array<u8>(size),
+        pos: 0usize,
+        limit: size
+    }
+}
+
+// Read appends the next buffered bytes to out. It returns the count appended;
+// zero means the wrapped Reader has no more bytes.
+func (mut b: ReaderBuf) Read(mut out: Array<u8>) -> Result<usize, Error> {
+    if b.limit == 0usize {
+        return b.src.Read(out)
+    }
+    if b.pos >= b.data.Len() {
+        b.data.Clear()
+        b.pos = 0usize
+        var n: usize = b.src.Read(b.data)?
+        if n == 0usize {
+            return Ok(0usize)
+        }
+    }
+    var start: usize = b.pos
+    var end: usize = b.data.Len()
+    b.pos = end
+    out.Append(b.data[Range(start, end)])
+    return Ok(end - start)
+}

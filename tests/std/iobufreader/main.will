@@ -1,0 +1,57 @@
+import "std/io/buf"
+
+// source hands out at most two bytes per read, so the buffered reader has to
+// keep its place across calls instead of throwing the rest of a chunk away.
+struct source {
+    data: Array<u8>
+    pos: usize
+}
+
+func (mut s: source) Read(mut out: Array<u8>) -> Result<usize, Error> {
+    if s.pos >= s.data.Len() {
+        return Ok(0usize)
+    }
+    out.Push(s.data.Get(s.pos))
+    s.pos += 1usize
+    if s.pos < s.data.Len() {
+        out.Push(s.data.Get(s.pos))
+        s.pos += 1usize
+    }
+    return Ok(2usize)
+}
+
+func main() -> i32 {
+    var src: source = source { data: new Array<u8>(0), pos: 0usize }
+    src.data.Push(104u8)
+    src.data.Push(101u8)
+    src.data.Push(108u8)
+    src.data.Push(108u8)
+    src.data.Push(111u8)
+    var reader: buf.ReaderBuf = buf.NewReader(src, 3usize)
+    var first: Array<u8> = new Array<u8>(0)
+    if reader.Read(first)! != 2usize {
+        return 1
+    }
+    if first.Get(0) != 104u8 || first.Get(1) != 101u8 {
+        return 2
+    }
+    var second: Array<u8> = new Array<u8>(0)
+    if reader.Read(second)! != 2usize {
+        return 3
+    }
+    if second.Get(0) != 108u8 || second.Get(1) != 108u8 {
+        return 4
+    }
+    var third: Array<u8> = new Array<u8>(0)
+    if reader.Read(third)! != 1usize {
+        return 5
+    }
+    if third.Get(0) != 111u8 {
+        return 6
+    }
+    var end: Array<u8> = new Array<u8>(0)
+    if reader.Read(end)! != 0usize {
+        return 7
+    }
+    return 0
+}

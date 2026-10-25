@@ -1,0 +1,69 @@
+// WriterBuf collects writes and hands them to the wrapped Writer when the
+// buffer fills or the caller flushes. A write at least as large as the buffer
+// bypasses it. The receiver is mutable because the buffered length changes.
+
+import "std/io"
+
+struct WriterBuf {
+    dst: io.Writer
+    data: Array<u8>
+    limit: usize
+}
+
+// init wraps w in a buffer of size bytes. A size of zero passes every write
+// straight through.
+func (mut b: WriterBuf) init(w: io.Writer, size: usize) {
+    b.dst = w
+    b.data = new Array<u8>(size)
+    b.limit = size
+}
+
+// NewWriter builds a WriterBuf. The compiler cannot yet pass an interface value
+// to new, so this function is the working constructor until that lowering is
+// fixed; it builds the same value init would.
+func NewWriter(w: io.Writer, size: usize) -> WriterBuf {
+    return WriterBuf {
+        dst: w,
+        data: new Array<u8>(size),
+        limit: size
+    }
+}
+
+// Write appends bytes, flushing first when they would not fit.
+func (mut b: WriterBuf) Write(bytes: []u8) -> Result<(), Error> {
+    if b.limit == 0usize {
+        return b.dst.Write(bytes)
+    }
+    if b.data.Len() == 0usize && bytes.Len() >= b.limit {
+        return b.dst.Write(bytes)
+    }
+    if b.data.Len() + bytes.Len() > b.limit {
+        _ = b.Flush()?
+    }
+    if bytes.Len() >= b.limit {
+        return b.dst.Write(bytes)
+    }
+    b.data.Append(bytes)
+    if b.data.Len() >= b.limit {
+        _ = b.Flush()?
+    }
+    return Ok(())
+}
+
+// Flush writes the buffered bytes. The buffer is copied first so the write does
+// not alias the array it clears.
+func (mut b: WriterBuf) Flush() -> Result<(), Error> {
+    if b.data.Len() != 0usize {
+        var out: Array<u8> = b.data.Clone()
+        var n: usize = out.Len()
+        b.data.Clear()
+        _ = b.dst.Write(out[Range(0, n)])?
+    }
+    return Ok(())
+}
+
+// Sync flushes the buffer and syncs the wrapped Writer.
+func (mut b: WriterBuf) Sync() -> Result<(), Error> {
+    _ = b.Flush()?
+    return b.dst.Sync()
+}
