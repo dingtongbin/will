@@ -71,7 +71,11 @@ func TestIOContract(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, output)
 	}
-	output, err := exec.Command(exe).CombinedOutput()
+	run := exec.Command(exe)
+	if runtime.GOOS == "linux" {
+		run.Env = append(os.Environ(), "WILL_IO_URING=1")
+	}
+	output, err := run.CombinedOutput()
 	if err != nil {
 		t.Fatalf("run: %v\n%s", err, output)
 	}

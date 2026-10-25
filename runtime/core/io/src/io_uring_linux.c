@@ -39,7 +39,10 @@ typedef struct willrt_io_ring {
 
 static willrt_io_ring ring;
 static willrt_os_mutex submit_lock;
+static willrt_os_cond submit_cond;
+static willrt_os_thread submitter;
 static willrt_os_thread completer;
+static unsigned submit_pending;
 static atomic_int stop_flag;
 static atomic_int ready_flag;
 static void (*complete_callback)(void*, int32_t, int64_t);
@@ -124,6 +127,31 @@ static int32_t submit_enter(unsigned count) {
     return result < 0 ? -1 : 0;
 }
 
+static void submit_thread(void* ignored) {
+    (void)ignored;
+    willrt_mem_set_lane(0);
+    for (;;) {
+        unsigned count;
+        int32_t done;
+
+        willrt_os_mutex_lock(&submit_lock);
+        while (submit_pending == 0 && atomic_load(&stop_flag) == 0) {
+            willrt_os_cond_wait(&submit_cond, &submit_lock);
+        }
+        count = submit_pending;
+        submit_pending = 0;
+        if (count != 0) {
+            (void)submit_enter(count);
+        }
+        done = atomic_load(&stop_flag) != 0 && submit_pending == 0;
+        willrt_os_mutex_unlock(&submit_lock);
+        if (done != 0) {
+            break;
+        }
+    }
+    willrt_mem_thread_flush();
+}
+
 static void complete_thread(void* ignored) {
     (void)ignored;
     willrt_mem_set_lane(0);
@@ -165,7 +193,23 @@ int32_t willrt_io_ring_start(void (*complete)(void*, int32_t, int64_t)) {
         return -1;
     }
     willrt_os_mutex_init(&submit_lock);
+    willrt_os_cond_init(&submit_cond);
+    submit_pending = 0;
+    if (willrt_os_thread_start(&submitter, submit_thread, NULL) != 0) {
+        munmap(ring.sqes, ring.sqes_size);
+        if (ring.cq_ring != ring.sq_ring) {
+            munmap(ring.cq_ring, ring.cq_ring_size);
+        }
+        munmap(ring.sq_ring, ring.sq_ring_size);
+        close(ring.fd);
+        return -1;
+    }
     if (willrt_os_thread_start(&completer, complete_thread, NULL) != 0) {
+        atomic_store(&stop_flag, 1);
+        willrt_os_mutex_lock(&submit_lock);
+        willrt_os_cond_broadcast(&submit_cond);
+        willrt_os_mutex_unlock(&submit_lock);
+        willrt_os_thread_join(&submitter);
         munmap(ring.sqes, ring.sqes_size);
         if (ring.cq_ring != ring.sq_ring) {
             munmap(ring.cq_ring, ring.cq_ring_size);
@@ -188,7 +232,6 @@ int32_t willrt_io_ring_submit(int fd, int32_t kind, void* buffer, int64_t len,
     unsigned tail;
     unsigned head;
     unsigned index;
-    int result;
 
     if (atomic_load(&ready_flag) == 0 || fd < 0 || len < 0) {
         return -1;
@@ -214,9 +257,10 @@ int32_t willrt_io_ring_submit(int fd, int32_t kind, void* buffer, int64_t len,
     sqe->user_data = (uint64_t)(uintptr_t)op;
     ring.sq_array[index] = index;
     __atomic_store_n(ring.sq_tail, tail + 1, __ATOMIC_RELEASE);
-    result = submit_enter(1);
+    submit_pending += 1;
+    willrt_os_cond_signal(&submit_cond);
     willrt_os_mutex_unlock(&submit_lock);
-    return result;
+    return 0;
 }
 
 void willrt_io_ring_stop(void) {
@@ -229,6 +273,10 @@ void willrt_io_ring_stop(void) {
         return;
     }
     atomic_store(&stop_flag, 1);
+    willrt_os_mutex_lock(&submit_lock);
+    willrt_os_cond_broadcast(&submit_cond);
+    willrt_os_mutex_unlock(&submit_lock);
+    willrt_os_thread_join(&submitter);
     willrt_os_mutex_lock(&submit_lock);
     tail = __atomic_load_n(ring.sq_tail, __ATOMIC_RELAXED);
     head = __atomic_load_n(ring.sq_head, __ATOMIC_ACQUIRE);
