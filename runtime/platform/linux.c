@@ -1,6 +1,12 @@
+#define _POSIX_C_SOURCE 200809L
 
 #include <errno.h>
+#include <pthread.h>
+#include <sched.h>
+#include <stdint.h>
+#include <sys/mman.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "../include/willrt.h"
@@ -9,6 +15,32 @@ int32_t willrt_os_cpu_count(void) {
     long count = sysconf(_SC_NPROCESSORS_ONLN);
 
     return count < 1 ? 1 : (int32_t)count;
+}
+
+void* willrt_os_alloc_pages(size_t size) {
+    void* memory;
+
+    if (size == 0) {
+        size = 1;
+    }
+    memory = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                  MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    return memory == MAP_FAILED ? NULL : memory;
+}
+
+void willrt_os_free_pages(void* ptr, size_t size) {
+    if (ptr != NULL) {
+        munmap(ptr, size == 0 ? 1 : size);
+    }
+}
+
+int64_t willrt_os_now_ns(void) {
+    struct timespec now;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) {
+        return 0;
+    }
+    return (int64_t)now.tv_sec * INT64_C(1000000000) + (int64_t)now.tv_nsec;
 }
 
 typedef struct willrt_posix_thread {

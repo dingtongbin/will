@@ -680,7 +680,11 @@ static void test_sock_close(test_sock sock) {
 
 static test_sock test_listener_open(struct sockaddr_in* addr) {
     test_sock listener = test_sock_open();
+#ifdef _WIN32
     int length = (int)sizeof(*addr);
+#else
+    socklen_t length = (socklen_t)sizeof(*addr);
+#endif
 
     if (listener == TEST_SOCK_INVALID) {
         return TEST_SOCK_INVALID;

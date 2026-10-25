@@ -1,3 +1,7 @@
+#ifndef _WIN32
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 /* Async whole-file IO.
  *
  * One operation is a read of a whole file into a freshly allocated buffer, an

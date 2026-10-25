@@ -32,6 +32,17 @@ static test_socket test_socket_new(void) {
 #endif
 }
 
+/* An unbound datagram socket is pollable and has no peer state to turn into a
+   hangup on POSIX. The bulk scan uses these so the contract is platform
+   neutral. */
+static test_socket test_socket_new_udp(void) {
+#ifdef _WIN32
+    return socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+#else
+    return socket(AF_INET, SOCK_DGRAM, 0);
+#endif
+}
+
 static void test_socket_close(test_socket socket_) {
 #ifdef _WIN32
     closesocket(socket_);
@@ -58,11 +69,15 @@ int main(void) {
     test_socket listener;
     test_socket client;
     struct sockaddr_in addr;
+#ifdef _WIN32
     int length = (int)sizeof(addr);
+#else
+    socklen_t length = (socklen_t)sizeof(addr);
+#endif
     int64_t fd;
     uint32_t event = WILLRT_POLL_IN;
     int64_t user = 7;
-    int64_t got[8];
+    int64_t got[300];
     test_out out;
     test_socket many[300];
     int64_t fds[300];
@@ -108,13 +123,15 @@ int main(void) {
 
     /* 300 descriptors in one call: the size comes from the caller. */
     for (index = 0; index < 300; index++) {
-        many[index] = test_socket_new();
+        many[index] = test_socket_new_udp();
         assert(many[index] != TEST_INVALID);
         fds[index] = (int64_t)many[index];
         events[index] = WILLRT_POLL_IN;
         users[index] = (int64_t)index;
     }
+    out.data = got;
     out.len = 0;
+    out.cap = 300;
     assert(scan_once(fds, events, users, 300, 0, &out) == WILLRT_OK);
     assert(out.len == 0);
     for (index = 0; index < 300; index++) {

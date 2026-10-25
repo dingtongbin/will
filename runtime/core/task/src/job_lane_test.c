@@ -1,3 +1,7 @@
+#ifndef _WIN32
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 /* Contract for jobs submitted from a task when only one lane exists. The
    parent must remain the current task, queue the jobs on its own lane, and park
    at the region barrier until every job ran. */
