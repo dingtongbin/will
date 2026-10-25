@@ -57,6 +57,26 @@ whole spawn-to-completion latency measured here; this table does not replace
 that wake test. Channel and select are ahead of crossbeam on both p999 and
 throughput.
 
+## Mixed CPU and IO
+
+`conc/mixed` keeps 64 readers in flight, each doing 100 asynchronous reads, and
+submits 2,743 CPU jobs. That is 70/30 by operation count. Every operation reports
+its own p999; a single burst of ten thousand queued tasks is not used because it
+measures queue depth, not service latency. The Rust comparator uses a two-worker
+Tokio runtime for the reads and a 14-thread Rayon pool for the jobs.
+
+| runtime | IO p999 | CPU p999 | combined p999 | throughput |
+| --- | --- | --- | --- | --- |
+| will, 16 lanes, default reserve | 9.2-12.0 ms | 0.74-0.86 ms | 9.2-11.9 ms | 34-37 k ops/s |
+| will, 16 lanes, no reserve | 8.6-10.2 ms | 0.50-0.86 ms | 7.0-10.1 ms | 34.5-35.3 k ops/s |
+| Tokio + Rayon | 5.25-9.79 ms | 0.28-0.40 ms | 5.20-9.74 ms | 49.4-51.8 k ops/s |
+
+will throughput is 0.66-0.72x the Rust comparator, so the mixed row is below the
+async 100% gate. At 8 lanes the round is already about 253 ms and at 16 lanes
+about 252 ms; 1/2/4 lanes are much slower. The Windows file path still uses two
+submit workers plus a completer rather than per-lane IOCP batches, so this table
+also records the unfinished W33 gap and does not claim a completion-engine win.
+
 ## Commands
 
 ```text
@@ -64,6 +84,7 @@ throughput.
 build\will.exe run bench\scenarios\conc\tail\will
 build\will.exe run bench\scenarios\conc\selecttail\will
 build\will.exe run bench\scenarios\conc\spawntail\will
+build\will.exe run bench\scenarios\conc\mixed\will
 
 # Rust strong baselines
 cd bench\baselines\rust
@@ -72,6 +93,7 @@ target\release\rustbench.exe tail
 target\release\rustbench.exe select-tail
 target\release\spawn.exe
 target\release\compio_spawn.exe
+target\release\mixed.exe
 ```
 
 `WILL_LANES=1|2|4|8|16` selects the will lane count for scaling measurements.

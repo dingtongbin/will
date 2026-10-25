@@ -16,6 +16,8 @@ They use the same message counts and work per task as the will scenarios.
   p999 and throughput.
 - `compio_spawn`: the same workload on one compio runtime per available core,
   the thread-per-core (TPC) comparator; reports per-task p999 and throughput.
+- `mixed`: 64 Tokio readers, 100 reads each, plus 2,743 Rayon CPU jobs, which is
+  the 70/30 mixed workload; reports IO, CPU, and combined p999 plus throughput.
 
 Build and run offline with the checked-in lock file:
 
@@ -27,7 +29,9 @@ target/release/rustbench.exe tail
 target/release/rustbench.exe select-tail
 target/release/spawn.exe
 target/release/compio_spawn.exe
+target/release/mixed.exe
 ```
 
 The versions used for the recorded numbers are crossbeam-channel 0.5.17,
-crossbeam-utils 0.8.23, tokio 1.54.1, compio 0.20.0-beta.1, and Rust 1.97.0.
+crossbeam-utils 0.8.23, tokio 1.54.1, compio 0.20.0-beta.1, rayon 1.12.0, and
+Rust 1.97.0.

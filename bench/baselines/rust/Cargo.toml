@@ -5,8 +5,9 @@ edition = "2021"
 
 [dependencies]
 crossbeam-channel = "0.5"
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs"] }
 compio = { version = "0.20.0-beta.1", default-features = false, features = ["runtime"] }
+rayon = "1"
 
 [profile.release]
 opt-level = 3
