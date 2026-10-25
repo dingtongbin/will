@@ -1,0 +1,91 @@
+// IsValid reports whether b is well-formed UTF-8. It only checks, so an
+// invalid text is a false result instead of a panic; the byte ranges below are
+// the ones RFC 3629 defines, which exclude overlong forms, surrogates, and
+// values past U+10FFFF.
+func IsValid(b: []u8) -> bool {
+    var i: usize = 0usize
+    for {
+        if i >= b.Len() {
+            break
+        }
+        var c: u8 = b.Get(i)
+        if c < 128u8 {
+            i += 1usize
+            continue
+        }
+        if c >= 194u8 && c <= 223u8 {
+            if !continuation(b, i + 1usize) {
+                return false
+            }
+            i += 2usize
+            continue
+        }
+        if c == 224u8 {
+            if !inRange(b, i + 1usize, 160u8, 191u8) || !continuation(b, i + 2usize) {
+                return false
+            }
+            i += 3usize
+            continue
+        }
+        if (c >= 225u8 && c <= 236u8) || (c >= 238u8 && c <= 239u8) {
+            if !continuation(b, i + 1usize) || !continuation(b, i + 2usize) {
+                return false
+            }
+            i += 3usize
+            continue
+        }
+        if c == 237u8 {
+            if !inRange(b, i + 1usize, 128u8, 159u8) || !continuation(b, i + 2usize) {
+                return false
+            }
+            i += 3usize
+            continue
+        }
+        if c == 240u8 {
+            if !inRange(b, i + 1usize, 144u8, 191u8) || !continuation(b, i + 2usize) ||
+                !continuation(b, i + 3usize) {
+                return false
+            }
+            i += 4usize
+            continue
+        }
+        if c >= 241u8 && c <= 243u8 {
+            if !continuation(b, i + 1usize) || !continuation(b, i + 2usize) ||
+                !continuation(b, i + 3usize) {
+                return false
+            }
+            i += 4usize
+            continue
+        }
+        if c == 244u8 {
+            if !inRange(b, i + 1usize, 128u8, 143u8) || !continuation(b, i + 2usize) ||
+                !continuation(b, i + 3usize) {
+                return false
+            }
+            i += 4usize
+            continue
+        }
+        return false
+    }
+    return true
+}
+
+// continuation reports whether b[i] is a trailing byte. A position past the
+// end is not a trailing byte, so a truncated sequence fails here.
+func continuation(b: []u8, i: usize) -> bool {
+    if i >= b.Len() {
+        return false
+    }
+    var c: u8 = b.Get(i)
+    return c >= 128u8 && c <= 191u8
+}
+
+// inRange reports whether b[i] lies in [lo, hi]. The lead-byte cases use it to
+// reject overlong forms, the surrogate block, and the range past U+10FFFF.
+func inRange(b: []u8, i: usize, lo: u8, hi: u8) -> bool {
+    if i >= b.Len() {
+        return false
+    }
+    var c: u8 = b.Get(i)
+    return c >= lo && c <= hi
+}
