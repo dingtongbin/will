@@ -3,6 +3,7 @@ package check
 import (
 	"testing"
 
+	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
 )
@@ -139,6 +140,69 @@ func F() {
 
 // TestMovePassingIsABorrow checks the settled convention: a parameter borrows
 // its value, so passing it on is not a move and cannot require a copy.
+func TestMoveAcrossAConditionalBranch(t *testing.T) {
+	src := `func F(flag: bool) {
+    var s: str = "a"
+    if flag {
+        var t: str = s
+        _ = t
+    }
+    _ = s
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMoved {
+		t.Fatalf("diagnostics = %s, want one O0001", diag.FormatAll(ds))
+	}
+	if ds[0].Pos.Line != 7 {
+		t.Fatalf("position = %d, want the use after the branch", ds[0].Pos.Line)
+	}
+}
+
+func TestMoveOwnershipFollowsStructFields(t *testing.T) {
+	src := `struct Box {
+    xs: Array<i32>
+}
+
+func F() {
+    var a: Box = Box { xs: new Array<i32>(0) }
+    var b: Box = a
+    _ = a
+    _ = b
+}
+`
+	f, ds := parser.Parse("test.will", []byte(src))
+	if len(ds) != 0 {
+		t.Fatalf("parse: %s", diag.FormatAll(ds))
+	}
+	ds = MovesWithOwnership(f, NewOwnership([]*ast.File{f}))
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+}
+
+func TestMoveOwnershipSubstitutesGenericFields(t *testing.T) {
+	src := `struct Box<T> {
+    value: T
+}
+
+func F() {
+    var a: Box<Array<i32>> = Box { value: new Array<i32>(0) }
+    var b: Box<Array<i32>> = a
+    _ = a
+    _ = b
+}
+`
+	f, ds := parser.Parse("test.will", []byte(src))
+	if len(ds) != 0 {
+		t.Fatalf("parse: %s", diag.FormatAll(ds))
+	}
+	ds = MovesWithOwnership(f, NewOwnership([]*ast.File{f}))
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+}
+
 func TestMovePassingIsABorrow(t *testing.T) {
 	src := `func G(s: str) {
 }

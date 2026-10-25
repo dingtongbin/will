@@ -17,7 +17,7 @@ async func main() -> i32 {
     }
     var size: usize = 0
     region {
-        var task: Task<Result<usize, Error>> = spawn ReadFile(path)
+        var task: Task<Result<usize, Error>> = spawn ReadFile(path.Clone())
         size = await task.Join()!!
     }
     _ = fs.Remove(path)

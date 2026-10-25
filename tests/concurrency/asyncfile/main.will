@@ -39,8 +39,8 @@ async func main() -> i32 {
     var first: i64 = 0
     var second: i64 = 0
     region {
-        var t1: Task<Result<i64, Error>> = spawn Checksum(path)
-        var t2: Task<Result<i64, Error>> = spawn Checksum(path)
+        var t1: Task<Result<i64, Error>> = spawn Checksum(path.Clone())
+        var t2: Task<Result<i64, Error>> = spawn Checksum(path.Clone())
         var r1: Result<i64, Error> = await t1.Join()!
         var r2: Result<i64, Error> = await t2.Join()!
         match r1 {
@@ -68,7 +68,7 @@ async func main() -> i32 {
     }
     var extended: Result<(), Error> = Ok(())
     region {
-        var t: Task<Result<(), Error>> = spawn AppendTail(path)
+        var t: Task<Result<(), Error>> = spawn AppendTail(path.Clone())
         extended = await t.Join()!
     }
     match extended {

@@ -9,7 +9,7 @@ async func main() -> i32 {
     var path: str = "will-concurrency-asyncwrite.tmp"
     var result: Result<(), Error> = Ok(())
     region {
-        var task: Task<Result<(), Error>> = spawn Write(path)
+        var task: Task<Result<(), Error>> = spawn Write(path.Clone())
         result = await task.Join()!
     }
     if result.IsErr() {

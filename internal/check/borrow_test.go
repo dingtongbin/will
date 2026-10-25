@@ -64,16 +64,74 @@ func F() {
 }
 
 func TestBorrowRejectsAMoveWhileAViewIsLive(t *testing.T) {
-	src := `func F() -> Array<i32> {
+	src := `func F() {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
+    var moved: Array<i32> = xs
     _ = v
-    return xs
+    _ = moved
 }
 `
 	ds := borrows(t, src)
 	if len(ds) != 1 || ds[0].Code != diag.CodeMoveWhileBorrowed {
 		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowEndsAtTheViewsLastUse(t *testing.T) {
+	src := `func Fill(mut xs: Array<i32>) {
+}
+
+func F() {
+    var xs: Array<i32> = new Array<i32>(0)
+    var v: []i32 = xs[Range(0, xs.Len())]
+    _ = v
+    Fill(xs)
+}
+`
+	if ds := borrows(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %s, want none", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowRejectsReturningALocalView(t *testing.T) {
+	src := `func Leak() -> []i32 {
+    var xs: Array<i32> = new Array<i32>(0)
+    return xs[Range(0, xs.Len())]
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowOutlives {
+		t.Fatalf("diagnostics = %s, want one O0004", diag.FormatAll(ds))
+	}
+	if ds[0].Message != "this borrow outlives xs" {
+		t.Fatalf("message = %q", ds[0].Message)
+	}
+}
+
+func TestBorrowRejectsStoringALocalView(t *testing.T) {
+	src := `struct Holder {
+    view: []i32
+}
+
+func Store() -> Holder {
+    var xs: Array<i32> = new Array<i32>(0)
+    return Holder { view: xs[Range(0, xs.Len())] }
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowStored {
+		t.Fatalf("diagnostics = %s, want one O0005", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowCanReturnAParameterView(t *testing.T) {
+	src := `func Slice(xs: []i32) -> []i32 {
+    return xs[Range(0, xs.Len())]
+}
+`
+	if ds := borrows(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %s, want none", diag.FormatAll(ds))
 	}
 }
 

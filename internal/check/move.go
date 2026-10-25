@@ -34,7 +34,17 @@ const (
 // Anything else is left alone: a false move error would reject a correct
 // program, so shapes the block cannot decide are not guessed at.
 func Moves(f *ast.File) []diag.Diagnostic {
-	m := &mover{}
+	return MovesWithOwnership(f, nil)
+}
+
+// MovesWithOwnership runs the move analysis with recursive ownership facts for
+// user structs, enums, arrays, and generic instances. A nil ownership set keeps
+// the syntax-only behavior used by the small unit tests.
+func MovesWithOwnership(f *ast.File, own *Ownership) []diag.Diagnostic {
+	m := &mover{owns: func(t *ast.Type) bool { return ast.OwnsHeap(t) }}
+	if own != nil {
+		m.owns = own.Owns
+	}
 	for _, d := range f.Decls {
 		if fn, ok := d.(*ast.FuncDecl); ok {
 			m.funcDecl(fn)
@@ -44,7 +54,8 @@ func Moves(f *ast.File) []diag.Diagnostic {
 }
 
 type mover struct {
-	bag diag.Bag
+	bag  diag.Bag
+	owns func(*ast.Type) bool
 }
 
 // owned reports whether a declared type carries a heap buffer, which is what
@@ -59,7 +70,7 @@ func (m *mover) funcDecl(fn *ast.FuncDecl) {
 	}
 	params := map[string]bool{}
 	for _, p := range fn.Params {
-		if owned(p.Type) {
+		if m.owns(p.Type) {
 			params[p.Name] = true
 		}
 	}
@@ -89,21 +100,42 @@ func (e events) hasTransfer(name string) bool {
 	return false
 }
 
-func (m *mover) block(b *ast.Block, inLoop bool, inherited map[string]bool) {
-	if b == nil {
+// blockFlow is the ownership effect of one block: the names that can reach
+// the next statement already moved, and whether every path leaves the block.
+type blockFlow struct {
+	moved map[string]source.Pos
+	exits bool
+}
+
+func mergeFlow(dst *blockFlow, src blockFlow, reaches bool) {
+	if !reaches {
 		return
+	}
+	for name, pos := range src.moved {
+		if _, ok := dst.moved[name]; !ok {
+			dst.moved[name] = pos
+		}
+	}
+}
+
+func (m *mover) block(b *ast.Block, inLoop bool, inherited map[string]bool) blockFlow {
+	out := blockFlow{moved: map[string]source.Pos{}}
+	if b == nil {
+		return out
 	}
 	live := map[string]bool{}
 	for name, ok := range inherited {
 		live[name] = ok
 	}
 	var seq []events
+	var flows []blockFlow
 	for _, st := range b.Stmts {
-		ev := m.stmt(st, live)
+		ev, flow := m.stmt(st, live)
 		seq = append(seq, ev)
+		flows = append(flows, flow)
 		// A declaration adds the name after its value is evaluated.
 		if vs, ok := st.(*ast.VarStmt); ok {
-			if vd, ok := vs.Decl.(*ast.VarDecl); ok && owned(vd.Type) && vd.Name != "" && vd.Name != "_" {
+			if vd, ok := vs.Decl.(*ast.VarDecl); ok && m.owns(vd.Type) && vd.Name != "" && vd.Name != "_" {
 				live[vd.Name] = true
 			}
 		}
@@ -120,11 +152,23 @@ func (m *mover) block(b *ast.Block, inLoop bool, inherited map[string]bool) {
 			if !live[tr.name] {
 				continue
 			}
+			if mv, ok := moved[tr.name]; ok {
+				m.reportMove(tr.pos, mv.pos)
+				continue
+			}
 			if laterUse(seq, i+1, tr.name) {
 				m.bag.Error(tr.pos, diag.CodeMissingClone, copyMessage, copyHelp)
 				continue
 			}
 			moved[tr.name] = moveRec{pos: tr.pos, event: i}
+		}
+		for name, pos := range flows[i].moved {
+			if !live[name] {
+				continue
+			}
+			if _, ok := moved[name]; !ok {
+				moved[name] = moveRec{pos: pos, event: i}
+			}
 		}
 		for _, u := range ev.uses {
 			if mv, ok := moved[u.name]; ok {
@@ -146,6 +190,16 @@ func (m *mover) block(b *ast.Block, inLoop bool, inherited map[string]bool) {
 			}
 		}
 	}
+
+	for name, mv := range moved {
+		if inherited[name] {
+			out.moved[name] = mv.pos
+		}
+	}
+	if len(flows) > 0 {
+		out.exits = flows[len(flows)-1].exits
+	}
+	return out
 }
 
 // reportMove reports O0001 at the use, with the transfer as its one note.
@@ -168,18 +222,20 @@ func laterUse(seq []events, from int, name string) bool {
 	return false
 }
 
-// stmt returns the uses and transfers of one statement. Nested blocks are
-// analyzed on their own, with their own scope.
-func (m *mover) stmt(st ast.Stmt, live map[string]bool) events {
+// stmt returns the uses, transfers, and nested-block ownership effect of one
+// statement. A nested block reports a move only if a path can reach the next
+// statement after it.
+func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 	var ev events
+	flow := blockFlow{moved: map[string]source.Pos{}}
 	switch s := st.(type) {
 	case *ast.Block:
-		m.block(s, false, live)
+		return ev, m.block(s, false, live)
 	case *ast.VarStmt:
 		switch d := s.Decl.(type) {
 		case *ast.VarDecl:
 			m.exprEvents(d.Value, live, &ev)
-			if b, ok := d.Value.(*ast.NameExpr); ok && owned(d.Type) && b.Name != "_" && live[b.Name] {
+			if b, ok := d.Value.(*ast.NameExpr); ok && m.owns(d.Type) && b.Name != "_" && live[b.Name] {
 				// The value moves into the new binding.
 				ev.transfers = append(ev.transfers, nameUse{name: b.Name, pos: b.Pos()})
 				ev.uses = removeUse(ev.uses, b.Name, b.Pos())
@@ -199,36 +255,52 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) events {
 			ev.transfers = append(ev.transfers, nameUse{name: b.Name, pos: b.Pos()})
 			ev.uses = removeUse(ev.uses, b.Name, b.Pos())
 		}
+		flow.exits = true
 	case *ast.ForStmt:
 		m.exprEvents(s.Iter, live, &ev)
-		m.block(s.Body, true, live)
+		body := m.block(s.Body, true, live)
+		if !body.exits {
+			for name, pos := range body.moved {
+				if live[name] {
+					flow.moved[name] = pos
+				}
+			}
+		}
 	case *ast.RegionStmt:
-		m.block(s.Body, false, live)
+		return ev, m.block(s.Body, false, live)
 	case *ast.ParallelStmt:
-		m.block(s.Body, false, live)
+		return ev, m.block(s.Body, false, live)
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {
 			m.exprEvents(arm.Chan, live, &ev)
 			m.exprEvents(arm.Timeout, live, &ev)
-			m.stmt(arm.Body, live)
+			_, armFlow := m.stmt(arm.Body, live)
+			mergeFlow(&flow, armFlow, !armFlow.exits)
 		}
 	case *ast.IfExpr:
 		m.exprEvents(s.Cond, live, &ev)
-		m.block(s.Then, false, live)
+		thenFlow := m.block(s.Then, false, live)
+		elseFlow := blockFlow{moved: map[string]source.Pos{}}
 		if s.Else != nil {
-			m.stmt(s.Else, live)
+			_, elseFlow = m.stmt(s.Else, live)
 		}
+		mergeFlow(&flow, thenFlow, !thenFlow.exits)
+		mergeFlow(&flow, elseFlow, !elseFlow.exits)
+		flow.exits = thenFlow.exits && (s.Else != nil && elseFlow.exits)
 	case *ast.MatchExpr:
 		m.exprEvents(s.Subject, live, &ev)
 		for _, arm := range s.Arms {
 			m.exprEvents(arm.Guard, live, &ev)
-			m.stmt(arm.Body, live)
+			_, armFlow := m.stmt(arm.Body, live)
+			mergeFlow(&flow, armFlow, !armFlow.exits)
 		}
 	case *ast.DeadlineExpr:
 		m.exprEvents(s.Duration, live, &ev)
-		m.block(s.Body, false, live)
+		return ev, m.block(s.Body, false, live)
+	case *ast.BreakStmt, *ast.ContinueStmt:
+		flow.exits = true
 	}
-	return ev
+	return ev, flow
 }
 
 // exprEvents collects the name occurrences of one expression.

@@ -13,7 +13,7 @@ async func main() -> i32 {
     var path: str = "will-concurrency-multiasync.tmp"
     var result: Result<(), Error> = Ok(())
     region {
-        var task: Task<Result<(), Error>> = spawn Fill(path)
+        var task: Task<Result<(), Error>> = spawn Fill(path.Clone())
         result = await task.Join()!
     }
     if result.IsErr() {

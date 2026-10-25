@@ -16,6 +16,8 @@ func Borrows(f *ast.File) []diag.Diagnostic {
 	b := &borrower{
 		funcs:      map[string]*ast.FuncDecl{},
 		mutMethods: map[string]bool{},
+		locals:     map[string]bool{},
+		params:     map[string]bool{},
 	}
 	for _, d := range f.Decls {
 		fn, ok := d.(*ast.FuncDecl)
@@ -29,6 +31,11 @@ func Borrows(f *ast.File) []diag.Diagnostic {
 	}
 	for _, d := range f.Decls {
 		if fn, ok := d.(*ast.FuncDecl); ok && fn.Body != nil {
+			b.locals = map[string]bool{}
+			b.params = map[string]bool{}
+			for _, p := range fn.Params {
+				b.params[p.Name] = true
+			}
 			b.block(fn.Body, map[string]source.Pos{})
 		}
 	}
@@ -39,6 +46,15 @@ type borrower struct {
 	bag        diag.Bag
 	funcs      map[string]*ast.FuncDecl
 	mutMethods map[string]bool
+	locals     map[string]bool
+	params     map[string]bool
+	// lastUses and localViews are scoped to one block. A view ends its
+	// borrower's read borrow after its last lexical use; inherited means the
+	// owner was already borrowed by an enclosing block and stays live there.
+	lastUses   map[string]source.Pos
+	localViews map[string]string
+	inherited  map[string]bool
+	noPrune    bool
 }
 
 func cloneBorrows(in map[string]source.Pos) map[string]source.Pos {
@@ -54,10 +70,20 @@ func (b *borrower) block(blk *ast.Block, inherited map[string]source.Pos) {
 		return
 	}
 	borrowed := cloneBorrows(inherited)
+	oldUses, oldViews, oldInherited, oldNoPrune := b.lastUses, b.localViews, b.inherited, b.noPrune
+	b.lastUses = lastUses(blk)
+	b.localViews = map[string]string{}
+	b.inherited = map[string]bool{}
+	b.noPrune = blockPins(blk)
+	for name := range inherited {
+		b.inherited[name] = true
+	}
 	for _, st := range blk.Stmts {
 		b.stmt(st, borrowed)
 		b.addView(st, borrowed)
+		b.prune(st, borrowed)
 	}
+	b.lastUses, b.localViews, b.inherited, b.noPrune = oldUses, oldViews, oldInherited, oldNoPrune
 }
 
 // addView records the read borrow a view declaration creates. The borrow lasts
@@ -73,11 +99,53 @@ func (b *borrower) addView(st ast.Stmt, borrowed map[string]source.Pos) {
 	}
 	owner, pos, ok := viewOwner(vd.Value)
 	if !ok {
+		// A view copied from another view keeps the same owner. The alias can
+		// outlive the original name, so this block keeps the borrow until its
+		// end rather than guessing at the alias's last use.
+		if name, isName := vd.Value.(*ast.NameExpr); isName {
+			owner = b.localViews[name.Name]
+			if owner != "" && vd.Name != "" && vd.Name != "_" {
+				b.localViews[vd.Name] = owner
+				b.noPrune = true
+			}
+		}
 		return
 	}
 	if _, exists := borrowed[owner]; !exists {
 		borrowed[owner] = pos
 	}
+	if vd.Name != "" && vd.Name != "_" {
+		b.localViews[vd.Name] = owner
+	}
+}
+
+// prune ends the borrow of every local view whose last use was in st. An
+// enclosing block's view keeps the owner borrowed until that block ends.
+func (b *borrower) prune(st ast.Stmt, borrowed map[string]source.Pos) {
+	if b.noPrune {
+		return
+	}
+	end := st.EndPos().Offset
+	for view, owner := range b.localViews {
+		last, seen := b.lastUses[view]
+		if seen && last.Offset > end {
+			continue
+		}
+		delete(b.localViews, view)
+		if b.inherited[owner] || b.hasLocalView(owner) {
+			continue
+		}
+		delete(borrowed, owner)
+	}
+}
+
+func (b *borrower) hasLocalView(owner string) bool {
+	for _, current := range b.localViews {
+		if current == owner {
+			return true
+		}
+	}
+	return false
 }
 
 // viewOwner names the value a slice or index borrows from.
@@ -104,6 +172,10 @@ func (b *borrower) stmt(st ast.Stmt, borrowed map[string]source.Pos) {
 		case *ast.VarDecl:
 			b.expr(d.Value, borrowed)
 			b.move(d.Value, borrowed)
+			b.store(d.Value, borrowed)
+			if d.Name != "" && d.Name != "_" {
+				b.locals[d.Name] = true
+			}
 		case *ast.ConstDecl:
 			b.expr(d.Value, borrowed)
 		}
@@ -111,6 +183,7 @@ func (b *borrower) stmt(st ast.Stmt, borrowed map[string]source.Pos) {
 		b.writeTarget(s.Target, borrowed)
 		b.expr(s.Value, borrowed)
 		b.move(s.Value, borrowed)
+		b.store(s.Value, borrowed)
 	case *ast.ExprStmt:
 		b.expr(s.Expr, borrowed)
 	case *ast.DeferStmt:
@@ -118,6 +191,8 @@ func (b *borrower) stmt(st ast.Stmt, borrowed map[string]source.Pos) {
 	case *ast.ReturnStmt:
 		b.expr(s.Value, borrowed)
 		b.move(s.Value, borrowed)
+		b.escape(s.Value)
+		b.store(s.Value, borrowed)
 	case *ast.ForStmt:
 		b.expr(s.Iter, borrowed)
 		b.block(s.Body, borrowed)
@@ -177,6 +252,37 @@ func (b *borrower) move(e ast.Expr, borrowed map[string]source.Pos) {
 	}
 	if pos, ok := borrowed[n.Name]; ok {
 		b.moveAt(n.Pos(), n.Name, pos)
+	}
+}
+
+// escape reports a view returned from the function that owns the underlying
+// value. Parameters are excluded because their object belongs to the caller.
+func (b *borrower) escape(e ast.Expr) {
+	owner, pos, ok := viewOwner(e)
+	if !ok || b.params[owner] || !b.locals[owner] {
+		return
+	}
+	b.bag.Error(pos, diag.CodeBorrowOutlives,
+		"this borrow outlives "+owner,
+		"release the borrow first")
+}
+
+// store reports a view put into an aggregate field, where the aggregate can
+// outlive the local the view points into.
+func (b *borrower) store(e ast.Expr, borrowed map[string]source.Pos) {
+	agg, ok := e.(*ast.AggregateExpr)
+	if !ok {
+		return
+	}
+	for _, f := range agg.Fields {
+		owner, pos, ok := viewOwner(f.Value)
+		if !ok || b.params[owner] || !b.locals[owner] {
+			continue
+		}
+		_ = borrowed
+		b.bag.Error(pos, diag.CodeBorrowStored,
+			"this borrow is stored where it outlives its owner",
+			"store a value, not a borrow")
 	}
 }
 
