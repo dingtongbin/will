@@ -6,7 +6,8 @@ diagnose the body of the distribution.
 Machine: Intel Core i5-12500H, Windows 11, x86_64-win-msvc.
 Toolchain: clang 22.1.8, Rust 1.97.0, crossbeam-channel 0.5.17,
 crossbeam-utils 0.8.23, tokio 1.54.1, compio 0.20.0-beta.1.
-Will: `844fb8e` plus the p999 benchmark support; five measured repetitions.
+Will: `e290b27`; six measured repetitions for spawn, five for channel and
+select.
 The Windows clock has 100 ns granularity, so sub-100 ns differences in the
 channel/select tables are quantization, not a measured win.
 
@@ -35,21 +36,26 @@ compio is the thread-per-core (TPC) runtime; Tokio is the work-stealing runtime.
 
 | runtime | p999 | throughput | per-core throughput |
 | --- | --- | --- | --- |
-| will, 16 lanes | 18.9-29.0 us | 0.40-0.45 M tasks/s | 25-28 k/lane/s |
-| will, 4 lanes | 116.5 us | 1.05 M tasks/s | 262 k/lane/s |
+| will, 16 lanes, auto group | 27.5-79.8 us | 0.97-1.06 M tasks/s | 61-66 k/lane/s |
 | compio TPC, 16 runtimes | 1.45-2.68 ms | 3.1-3.9 M tasks/s | 0.20-0.24 M/core/s |
 | Tokio work stealing, 16 workers | 68-96 us | 1.2-1.5 M tasks/s | 75-95 k/core/s |
 
-No single will lane count dominates: 16 lanes gives the lowest p999 but only
-0.4 M tasks/s, while 4 lanes gives 1.05 M tasks/s at 116.5 us p999. Tokio is
-between them; compio wins throughput and loses p999 because every runtime queues
-the whole burst before driving it.
+The will number is six clean runs. Auto now places a run of eight spawns across
+the three least-loaded lanes, enqueues every task before returning from
+`spawn`, and wakes each chosen lane once for the run. Results up to 32 bytes stay
+in the task object, so a scalar result no longer allocates and frees a block per
+task.
+
+will has the lowest p999 in this table: 27.5-79.8 us against Tokio 68-96 us and
+compio 1.45-2.68 ms. Its throughput is 0.65-0.88x Tokio and 0.25-0.34x compio.
+The compio number is not apples to apples: `compio_spawn` uses one producer per
+runtime, while the will and Tokio runs use one producer thread. A single-producer
+compio TPC baseline is still missing and stays on W34.
 
 The 10 us p999 target in `并发.md` is the park-to-running wake latency, not the
 whole spawn-to-completion latency measured here; this table does not replace
-that wake test. Spawn remains open on the combined p999/throughput frontier:
-16 lanes wins p999 but loses throughput, and 4 lanes does the opposite.
-Channel and select are ahead of crossbeam on both p999 and throughput.
+that wake test. Channel and select are ahead of crossbeam on both p999 and
+throughput.
 
 ## Commands
 
