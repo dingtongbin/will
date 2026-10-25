@@ -129,6 +129,7 @@ async func main() -> i32 {
     print("bench metric io_p999 ", bench.Percentile(io, 999i64, 1000i64), " ns\n")
     print("bench metric cpu_p999 ", bench.Percentile(cpu, 999i64, 1000i64), " ns\n")
     print("bench metric p999 ", bench.Percentile(all, 999i64, 1000i64), " ns\n")
+    print("bench metric p99 ", bench.Percentile(all, 99i64, 100i64), " ns\n")
     print("bench metric io_p99 ", bench.Percentile(io, 99i64, 100i64), " ns\n")
     print("bench metric cpu_p99 ", bench.Percentile(cpu, 99i64, 100i64), " ns\n")
     print("bench metric round_p50 ", bench.Percentile(rounds, 50i64, 100i64), " ns\n")

@@ -80,16 +80,22 @@ async fn main() {
     let _ = std::fs::remove_file(&path);
 
     let io_p999 = percentile(&mut io_samples.clone(), 999, 1000);
+    let io_p99 = percentile(&mut io_samples.clone(), 99, 100);
     let cpu_p999 = percentile(&mut cpu_samples.clone(), 999, 1000);
+    let cpu_p99 = percentile(&mut cpu_samples.clone(), 99, 100);
     let mut all = io_samples;
     all.extend(cpu_samples);
     let p999 = percentile(&mut all, 999, 1000);
+    let p99 = percentile(&mut all, 99, 100);
     let elapsed: u128 = rounds.iter().sum();
     let ops = REPS * (IO_WORKERS * IO_PER_WORKER + CPU_JOBS);
     let ops_per_sec = ops as u128 * 1_000_000_000u128 / elapsed.max(1);
     println!("mixed io_p999 {io_p999} ns");
+    println!("mixed io_p99 {io_p99} ns");
     println!("mixed cpu_p999 {cpu_p999} ns");
+    println!("mixed cpu_p99 {cpu_p99} ns");
     println!("mixed p999 {p999} ns");
+    println!("mixed p99 {p99} ns");
     println!("mixed ops_per_sec {ops_per_sec}");
     println!("mixed round_p50 {} ns", percentile(&mut rounds.clone(), 50, 100));
 }

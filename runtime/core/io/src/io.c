@@ -56,8 +56,9 @@ enum {
     /* One reference for the caller until finish, one for the worker or the
        kernel until the completion. */
     WILLRT_IO_REFS = 2,
-    WILLRT_IO_SUBMIT_WORKERS = 2,
+    WILLRT_IO_SUBMIT_WORKERS = 4,
     WILLRT_IO_POSIX_WORKERS = 4,
+    WILLRT_IO_WORKERS = 8,
     WILLRT_IO_POLL_MS = 100,
     WILLRT_IO_DRAIN_STEPS = 5000
 };
@@ -94,7 +95,7 @@ static willrt_os_cond willrt_io_cond;
 static willrt_io_op* willrt_io_head;
 static willrt_io_op* willrt_io_tail;
 static int32_t willrt_io_started;
-static willrt_os_thread willrt_io_workers[WILLRT_IO_POSIX_WORKERS];
+static willrt_os_thread willrt_io_workers[WILLRT_IO_WORKERS];
 #ifdef _WIN32
 static HANDLE willrt_io_port;
 static willrt_os_thread willrt_io_completer;
