@@ -54,6 +54,8 @@ static int32_t ring_setup(void) {
     int fd;
 
     memset(&params, 0, sizeof(params));
+    params.flags = IORING_SETUP_CQSIZE;
+    params.cq_entries = 4096;
     fd = (int)syscall(SYS_io_uring_setup, WILLRT_IO_RING_ENTRIES, &params);
     if (fd < 0) {
         return -1;
@@ -123,7 +125,7 @@ static int32_t submit_enter(unsigned count) {
         result = (int)syscall(SYS_io_uring_enter, ring.fd, count, 0, 0, NULL,
                               0);
     } while (result < 0 && errno == EINTR);
-    return result < 0 ? -1 : 0;
+    return result < 0 ? -1 : result;
 }
 
 static void submit_thread(void* ignored) {
@@ -140,7 +142,11 @@ static void submit_thread(void* ignored) {
         count = submit_pending;
         submit_pending = 0;
         if (count != 0) {
-            (void)submit_enter(count);
+            int32_t submitted = submit_enter(count);
+
+            if (submitted >= 0 && (unsigned)submitted < count) {
+                submit_pending = count - (unsigned)submitted;
+            }
         }
         done = atomic_load(&stop_flag) != 0 && submit_pending == 0;
         willrt_os_mutex_unlock(&submit_lock);
