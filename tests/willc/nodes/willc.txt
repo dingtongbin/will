@@ -65,11 +65,11 @@
 #65 exprstmt parent=#31 pos="nodes.will:28:5" expr=#66
 #66 discard parent=#65 pos="nodes.will:28:5" expr=#67
 #67 name parent=#66 pos="nodes.will:28:9" text="text" to=#35
-#68 exprstmt parent=#31 pos="nodes.will:29:5" expr=#69
-#69 discard parent=#68 pos="nodes.will:29:5" expr=#70
-#70 name parent=#69 pos="nodes.will:29:9" text="ch" to=#47
-#71 release parent=#31 pos="nodes.will:30:5" owner=#40 kind="value"
-#72 release parent=#31 pos="nodes.will:30:5" owner=#35 kind="value"
+#68 release parent=#31 pos="nodes.will:28:9" owner=#35 kind="value"
+#69 exprstmt parent=#31 pos="nodes.will:29:5" expr=#70
+#70 discard parent=#69 pos="nodes.will:29:5" expr=#71
+#71 name parent=#70 pos="nodes.will:29:9" text="ch" to=#47
+#72 release parent=#31 pos="nodes.will:30:5" owner=#40 kind="value"
 #73 return parent=#31 pos="nodes.will:30:5" value=#74
 #74 name parent=#73 pos="nodes.will:30:12" text="kind" to=#52
 #75 end

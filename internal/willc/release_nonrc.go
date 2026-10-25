@@ -6,7 +6,7 @@ import "github.com/will-lang/will/internal/ast"
 // the owner itself. A view, field read, call argument, move, closure, defer, or
 // nested statement could keep a buffer reachable past the lexical use, so those
 // shapes pin the owner to the block end.
-func nonRcReleases(b *ast.Block) map[*ast.VarDecl]earlyRelease {
+func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*ast.VarDecl]earlyRelease {
 	out := map[*ast.VarDecl]earlyRelease{}
 	if b == nil {
 		return out
@@ -20,7 +20,7 @@ func nonRcReleases(b *ast.Block) map[*ast.VarDecl]earlyRelease {
 		if !ok || vd.Type == nil || vd.Name == "" || vd.Name == "_" || rcType(vd.Type) || !ast.NeedsRelease(vd.Type) {
 			continue
 		}
-		if !safeContainerType(vd.Type) {
+		if !em.releaseType(vd.Type) {
 			continue
 		}
 		last := -1
@@ -38,7 +38,7 @@ func nonRcReleases(b *ast.Block) map[*ast.VarDecl]earlyRelease {
 				safe = false
 				break
 			}
-			ok, node := safeNonRcStmt(stmt, vd.Name, vd.Type)
+			ok, node := em.safeNonRcStmt(stmt, vd.Name, vd.Type, types)
 			if !ok {
 				safe = false
 				break
@@ -55,7 +55,9 @@ func nonRcReleases(b *ast.Block) map[*ast.VarDecl]earlyRelease {
 	return out
 }
 
-func safeContainerType(t *ast.Type) bool {
+// releaseType allows a predeclared container or a local struct. An imported
+// struct has no field table here, so its reads stay pinned.
+func (em *emitter) releaseType(t *ast.Type) bool {
 	if t == nil {
 		return false
 	}
@@ -67,23 +69,23 @@ func safeContainerType(t *ast.Type) bool {
 		case "Array", "Map", "Set":
 			return true
 		}
-		// A user struct may own nested buffers, but only a discard is safe
-		// without its field types, so it stays out of this fast path.
-		return false
+		_, ok := em.structs[shortName(t.Name)]
+		return ok
 	}
 	return false
 }
 
 // safeNonRcStmt accepts a statement that only calls methods which do not keep
-// or return a borrow of the owner. It returns the last name node on success.
-func safeNonRcStmt(st ast.Stmt, name string, typ *ast.Type) (bool, ast.Node) {
+// or return a borrow of the owner, or reads a non-owning scalar/rc field. It
+// returns the last name node on success.
+func (em *emitter) safeNonRcStmt(st ast.Stmt, name string, typ *ast.Type, types map[string]*ast.Type) (bool, ast.Node) {
 	switch s := st.(type) {
 	case *ast.VarStmt:
 		d, ok := s.Decl.(*ast.VarDecl)
 		if !ok {
 			return !containsNameInStmt(st, name), nil
 		}
-		if !safeNonRcExpr(d.Value, name, typ) {
+		if !em.safeNonRcExpr(d.Value, name, typ, types) {
 			return false, nil
 		}
 		return true, lastNameNode(d.Value, name)
@@ -98,12 +100,12 @@ func safeNonRcStmt(st ast.Stmt, name string, typ *ast.Type) (bool, ast.Node) {
 		} else if n, ok := s.Value.(*ast.NameExpr); ok && n.Name == name {
 			return true, n
 		}
-		if !safeNonRcExpr(s.Value, name, typ) {
+		if !em.safeNonRcExpr(s.Value, name, typ, types) {
 			return false, nil
 		}
 		return true, lastNameNode(s.Value, name)
 	case *ast.ExprStmt:
-		if !safeNonRcExpr(s.Expr, name, typ) {
+		if !em.safeNonRcExpr(s.Expr, name, typ, types) {
 			return false, nil
 		}
 		return true, lastNameNode(s.Expr, name)
@@ -112,21 +114,30 @@ func safeNonRcStmt(st ast.Stmt, name string, typ *ast.Type) (bool, ast.Node) {
 }
 
 // safeNonRcExpr accepts a method call on the owner whose method does not build a
-// view, plus scalar operators over such calls. A bare name is never accepted:
-// it is either a move/copy or a value passed to something unknown.
-func safeNonRcExpr(e ast.Expr, name string, typ *ast.Type) bool {
+// view, a read of a scalar or rc field, plus scalar operators over such calls.
+// A bare name is never accepted: it is either a move/copy or a value passed to
+// something unknown.
+func (em *emitter) safeNonRcExpr(e ast.Expr, name string, typ *ast.Type, types map[string]*ast.Type) bool {
 	switch x := e.(type) {
 	case nil:
 		return true
 	case *ast.NameExpr:
 		return x.Name != name
+	case *ast.FieldExpr:
+		if !containsNameInExpr(x, name) {
+			return true
+		}
+		return em.fieldReadSafe(x, name, typ, types)
 	case *ast.MethodCallExpr:
+		if !containsNameInExpr(x, name) {
+			return true
+		}
 		recv, ok := x.Recv.(*ast.NameExpr)
 		if !ok || recv.Name != name || !safeContainerMethod(typ, x.Name) {
 			return false
 		}
 		for _, a := range x.Args {
-			if containsNameInExpr(a.Expr, name) && !safeNonRcExpr(a.Expr, name, typ) {
+			if containsNameInExpr(a.Expr, name) && !em.safeNonRcExpr(a.Expr, name, typ, types) {
 				return false
 			}
 		}
@@ -135,11 +146,151 @@ func safeNonRcExpr(e ast.Expr, name string, typ *ast.Type) bool {
 		if !containsNameInExpr(x.L, name) && !containsNameInExpr(x.R, name) {
 			return true
 		}
-		return safeNonRcExpr(x.L, name, typ) && safeNonRcExpr(x.R, name, typ)
+		return em.safeNonRcExpr(x.L, name, typ, types) && em.safeNonRcExpr(x.R, name, typ, types)
 	case *ast.UnaryExpr:
-		return safeNonRcExpr(x.X, name, typ)
+		return em.safeNonRcExpr(x.X, name, typ, types)
 	}
 	return !containsNameInExpr(e, name)
+}
+
+// fieldReadSafe accepts a field chain rooted at the owner when every read is a
+// scalar or a copyable rc handle. A view or an owning field would either borrow
+// the owner or need an explicit Clone, so those pin it.
+func (em *emitter) fieldReadSafe(e ast.Expr, name string, typ *ast.Type, types map[string]*ast.Type) bool {
+	field, ok := e.(*ast.FieldExpr)
+	if !ok {
+		return false
+	}
+	root := exprRootName(field.Recv)
+	if root != name {
+		return false
+	}
+	t, ok := em.placeType(field, typ, types)
+	if !ok {
+		return false
+	}
+	return !em.typeOwns(t) && !em.typeBorrow(t)
+}
+
+func (em *emitter) placeType(e ast.Expr, typ *ast.Type, types map[string]*ast.Type) (*ast.Type, bool) {
+	switch x := e.(type) {
+	case *ast.NameExpr:
+		if x.Name == "" {
+			return nil, false
+		}
+		if t, ok := types[x.Name]; ok {
+			return t, true
+		}
+		return typ, true
+	case *ast.FieldExpr:
+		base, ok := em.placeType(x.Recv, typ, types)
+		if !ok {
+			return nil, false
+		}
+		ft := em.fieldType(base, x.Name)
+		if ft == nil {
+			return nil, false
+		}
+		return ft, true
+	}
+	return nil, false
+}
+
+func (em *emitter) fieldType(t *ast.Type, name string) *ast.Type {
+	if t == nil {
+		return nil
+	}
+	if t.Kind == ast.NamedType && t.Name == "rc" && len(t.Args) == 1 {
+		t = t.Args[0]
+	}
+	if t.Kind != ast.NamedType {
+		return nil
+	}
+	s, ok := em.structs[shortName(t.Name)]
+	if !ok {
+		return nil
+	}
+	for _, f := range s.Fields {
+		if f.Name == name {
+			return f.Type
+		}
+	}
+	return nil
+}
+
+func (em *emitter) typeOwns(t *ast.Type) bool {
+	return em.typeOwnsDepth(t, map[string]bool{})
+}
+
+func (em *emitter) typeOwnsDepth(t *ast.Type, active map[string]bool) bool {
+	if t == nil {
+		return true
+	}
+	switch t.Kind {
+	case ast.ScalarType:
+		return t.Name == "str"
+	case ast.ViewType:
+		return false
+	case ast.ArrayType:
+		return em.typeOwnsDepth(t.Elem, active)
+	case ast.FuncType, ast.UnitType:
+		return false
+	case ast.NamedType:
+		switch t.Name {
+		case "rc", "weak", "chan", "Task", "Duration", "Value", "Show", "Error":
+			return false
+		case "str", "Array", "Map", "Set":
+			return true
+		case "Option", "Result":
+			for _, a := range t.Args {
+				if em.typeOwnsDepth(a, active) {
+					return true
+				}
+			}
+			return false
+		}
+		s, ok := em.structs[shortName(t.Name)]
+		if !ok {
+			return true
+		}
+		if active[s.Name] {
+			return false
+		}
+		active[s.Name] = true
+		defer delete(active, s.Name)
+		for _, f := range s.Fields {
+			if em.typeOwnsDepth(f.Type, active) {
+				return true
+			}
+		}
+		return false
+	}
+	return true
+}
+
+func (em *emitter) typeBorrow(t *ast.Type) bool {
+	return t != nil && t.Kind == ast.ViewType
+}
+
+func exprRootName(e ast.Expr) string {
+	switch x := e.(type) {
+	case *ast.NameExpr:
+		return x.Name
+	case *ast.FieldExpr:
+		return exprRootName(x.Recv)
+	case *ast.IndexExpr:
+		return exprRootName(x.Recv)
+	case *ast.SliceExpr:
+		return exprRootName(x.Recv)
+	}
+	return ""
+}
+
+func shortName(name string) string {
+	if i := lastDot(name); i >= 0 {
+		return name[i+1:]
+	}
+	return name
 }
 
 func safeContainerMethod(t *ast.Type, method string) bool {

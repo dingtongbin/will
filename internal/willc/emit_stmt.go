@@ -22,8 +22,17 @@ func (e *emitter) emitBlock(b *ast.Block) int {
 	e.push(rec)
 	e.scopes = append(e.scopes, nil)
 	scope := len(e.scopes) - 1
+	oldTypes := e.localTypes
+	e.localTypes = cloneTypes(oldTypes)
+	for _, st := range b.Stmts {
+		if vs, ok := st.(*ast.VarStmt); ok {
+			if vd, ok := vs.Decl.(*ast.VarDecl); ok && vd.Name != "" && vd.Name != "_" {
+				e.localTypes[vd.Name] = vd.Type
+			}
+		}
+	}
 	early := earlyReleases(b)
-	for owner, point := range nonRcReleases(b) {
+	for owner, point := range e.nonRcReleases(b, e.localTypes) {
 		early[owner] = point
 	}
 	var last ast.Stmt
@@ -56,8 +65,17 @@ func (e *emitter) emitBlock(b *ast.Block) int {
 		e.emitReleases(e.scopes[scope], b)
 	}
 	e.scopes = e.scopes[:scope]
+	e.localTypes = oldTypes
 	e.pop()
 	return rec
+}
+
+func cloneTypes(in map[string]*ast.Type) map[string]*ast.Type {
+	out := make(map[string]*ast.Type, len(in)+1)
+	for name, t := range in {
+		out[name] = t
+	}
+	return out
 }
 
 // exitFloor returns the first scope a break or continue leaves; everything

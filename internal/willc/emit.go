@@ -25,6 +25,8 @@ func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diag
 		aliases:    aliases,
 		released:   map[ast.Node]bool{},
 		moved:      map[ast.Node]bool{},
+		structs:    collectStructs(f),
+		localTypes: map[string]*ast.Type{},
 	}
 	root := e.add("module", f)
 	e.text(root, "path", modulePath)
@@ -67,6 +69,24 @@ type emitter struct {
 	loops    []int
 	released map[ast.Node]bool
 	moved    map[ast.Node]bool
+	// structs holds the local struct declarations, so a field read can be
+	// classified as a scalar/rc copy, a view, or an owning value.
+	structs map[string]*ast.StructDecl
+	// localTypes is the type of every local and parameter currently visible.
+	localTypes map[string]*ast.Type
+}
+
+func collectStructs(f *ast.File) map[string]*ast.StructDecl {
+	out := map[string]*ast.StructDecl{}
+	if f == nil {
+		return out
+	}
+	for _, d := range f.Decls {
+		if s, ok := d.(*ast.StructDecl); ok {
+			out[s.Name] = s
+		}
+	}
+	return out
 }
 
 type pendingRef struct {
@@ -384,6 +404,15 @@ func (e *emitter) emitDecl(d ast.Decl) {
 }
 
 func (e *emitter) emitFunc(fn *ast.FuncDecl) {
+	oldTypes := e.localTypes
+	e.localTypes = map[string]*ast.Type{}
+	if fn.Recv != nil {
+		e.localTypes[fn.Recv.Name] = fn.Recv.Type
+	}
+	for _, p := range fn.Params {
+		e.localTypes[p.Name] = p.Type
+	}
+	defer func() { e.localTypes = oldTypes }()
 	rec := e.add("func", fn)
 	e.text(rec, "text", fn.Name)
 	if fn.Result != nil {

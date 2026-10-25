@@ -229,6 +229,53 @@ func TestEmitViewPinsArrayToBlockEnd(t *testing.T) {
 	}
 }
 
+func TestEmitStructReleaseAfterScalarFieldRead(t *testing.T) {
+	src := "struct Holder {\n" +
+		"    n: i32\n" +
+		"}\n" +
+		"func F() {\n" +
+		"    var h: Holder = Holder { n: 1 }\n" +
+		"    var n: i32 = h.n\n" +
+		"    var later: i32 = 2\n" +
+		"    _ = later\n" +
+		"    _ = n\n" +
+		"}\n"
+	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
+	var positions []string
+	for _, r := range doc.Records {
+		if r.Kind == "release" {
+			positions = append(positions, testFieldText(r, "pos"))
+		}
+	}
+	want := []string{"test.will:6:18"}
+	if len(positions) != len(want) || positions[0] != want[0] {
+		t.Fatalf("release positions = %v, want %v", positions, want)
+	}
+}
+
+func TestEmitStructOwningFieldPinsToBlockEnd(t *testing.T) {
+	src := "struct Holder {\n" +
+		"    items: Array<i32>\n" +
+		"}\n" +
+		"func F() {\n" +
+		"    var h: Holder = Holder { items: new Array<i32>(0) }\n" +
+		"    var n: i32 = 1\n" +
+		"    _ = h.items.Len()\n" +
+		"    _ = n\n" +
+		"}\n"
+	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
+	var positions []string
+	for _, r := range doc.Records {
+		if r.Kind == "release" {
+			positions = append(positions, testFieldText(r, "pos"))
+		}
+	}
+	want := []string{"test.will:4:10"}
+	if len(positions) != len(want) || positions[0] != want[0] {
+		t.Fatalf("release positions = %v, want block end %v", positions, want)
+	}
+}
+
 func TestEmitMovedArrayHasNoSourceRelease(t *testing.T) {
 	src := "func F() {\n" +
 		"    var first: Array<i32> = new Array<i32>(0)\n" +

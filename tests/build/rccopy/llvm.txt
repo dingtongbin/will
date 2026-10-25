@@ -25,16 +25,16 @@ entry:
   %t11 = load i64, ptr %t10
   call void @willrt_rc_retain(i64 %t11)
   store i64 %t11, ptr %v.c
-  %t12 = load i64, ptr %v.c
-  %t13 = call ptr @willrt_rc_deref(i64 %t12)
-  %t14 = getelementptr inbounds %"struct.example.com/rccopy.Inner", ptr %t13, i32 0, i32 0
-  %t15 = load i32, ptr %t14
-  %t16 = load i64, ptr %v.c
-  call void @willrt_rc_release(i64 %t16)
-  %t17 = getelementptr inbounds %"struct.example.com/rccopy.Holder", ptr %v.b, i32 0, i32 0
-  %t18 = load i64, ptr %t17
+  %t12 = getelementptr inbounds %"struct.example.com/rccopy.Holder", ptr %v.b, i32 0, i32 0
+  %t13 = load i64, ptr %t12
+  call void @willrt_rc_release(i64 %t13)
+  %t14 = load i64, ptr %v.c
+  %t15 = call ptr @willrt_rc_deref(i64 %t14)
+  %t16 = getelementptr inbounds %"struct.example.com/rccopy.Inner", ptr %t15, i32 0, i32 0
+  %t17 = load i32, ptr %t16
+  %t18 = load i64, ptr %v.c
   call void @willrt_rc_release(i64 %t18)
-  ret i32 %t15
+  ret i32 %t17
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
