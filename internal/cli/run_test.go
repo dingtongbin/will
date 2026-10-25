@@ -103,6 +103,43 @@ func main() -> i32 {
 	}
 }
 
+// TestRunUnitEnumEquality checks that a payload-free enum compares by its tag
+// even when one side is a qualified enum value from another package.
+func TestRunUnitEnumEquality(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `enum Choice {
+    A
+    B
+    C
+}
+
+func Pick() -> Choice {
+    return B
+}
+
+func main() -> i32 {
+    if Pick() != B {
+        return 1
+    }
+    if Pick() == C {
+        return 2
+    }
+    var choice: Choice = B
+    if choice != B {
+        return 3
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+}
+
 // TestRunEmptyInterface checks the anonymous interface at run time: any value
 // satisfies it, and only Is/As can recover the concrete type.
 func TestRunEmptyInterface(t *testing.T) {

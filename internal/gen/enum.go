@@ -436,6 +436,66 @@ func (g *generator) syntheticVariant(ext *externalEnum, name string) (*enumInfo,
 	return info, &variantInfo{name: name, tag: tag}
 }
 
+// enumAllUnit reports whether a type is an enum whose every variant has no
+// payload. Equality of such an enum is equality of the tag word.
+func (g *generator) enumAllUnit(text string) bool {
+	text = g.canonicalTypeText(text)
+	inspect := func(info *enumInfo) bool {
+		for _, v := range info.variants {
+			if len(v.args) != 0 {
+				return false
+			}
+		}
+		return true
+	}
+	if info := g.enumByName[text]; info != nil {
+		return inspect(info)
+	}
+	unit := func(ext *externalEnum) bool {
+		for _, payload := range ext.payload {
+			if payload {
+				return false
+			}
+		}
+		return true
+	}
+	if ext := g.externalEnums[text]; ext != nil {
+		return unit(ext)
+	}
+	if typ, ok := g.typeLLVMOf(text); ok {
+		if info := g.enumByLLVM[typ]; info != nil {
+			return inspect(info)
+		}
+		for _, ext := range g.externalEnums {
+			if ext.llvm == typ {
+				return unit(ext)
+			}
+		}
+	}
+	return false
+}
+
+// enumEqual compares the tag words of two unit-only enum values.
+func (g *generator) enumEqual(lID, rID int, op string) (string, error) {
+	left, _, err := g.place(lID)
+	if err != nil {
+		return "", err
+	}
+	right, _, err := g.place(rID)
+	if err != nil {
+		return "", err
+	}
+	l := g.load("i32", left)
+	r := g.load("i32", right)
+	out := g.newTmp()
+	instr := "eq"
+	if op == "!=" {
+		instr = "ne"
+	}
+	fmt.Fprintf(g.out, "  %s = icmp %s i32 %s, %s\n", out, instr, l, r)
+	return out, nil
+}
+
 // enumConstruct stores one constructed variant in the slot reserved for it and
 // returns the slot with the enum type.
 func (g *generator) enumConstruct(r willc.Record, info *enumInfo, v *variantInfo) (string, string, error) {

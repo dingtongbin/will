@@ -3703,6 +3703,13 @@ func (g *generator) binary(r willc.Record) (string, error) {
 		if lerr == nil && rerr == nil && lt == "str" && rt == "str" {
 			return g.strEqual(lID, rID, op, r)
 		}
+		if lerr == nil && rerr == nil {
+			ll, lok := g.typeLLVMOf(lt)
+			rl, rok := g.typeLLVMOf(rt)
+			if lok && rok && ll == rl && g.enumAllUnit(lt) {
+				return g.enumEqual(lID, rID, op)
+			}
+		}
 	}
 	if op == "+" {
 		if lt, err := g.willTypeText(lID); err == nil && lt == "raw" {

@@ -731,6 +731,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		if text, ok := g.selectBindTypes[decl.ID]; ok {
 			return text, nil
 		}
+		if info, _ := g.enumVariantCall(r); info != nil {
+			return info.text, nil
+		}
 		if fieldText(decl, "variadic") == "true" {
 			return "[]" + fieldText(decl, "type"), nil
 		}
@@ -918,6 +921,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 func (g *generator) callResultText(r willc.Record) (string, error) {
 	if text, ok := g.downcastTypeText(r); ok {
 		return text, nil
+	}
+	if info, _ := g.enumVariantCall(r); info != nil {
+		return info.text, nil
 	}
 	if name, ok := g.predeclaredCallName(r); ok {
 		switch name {
