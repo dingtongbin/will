@@ -6,7 +6,7 @@ diagnose the body of the distribution.
 Machine: Intel Core i5-12500H, Windows 11, x86_64-win-msvc.
 Toolchain: clang 22.1.8, Rust 1.97.0, crossbeam-channel 0.5.17,
 crossbeam-utils 0.8.23, tokio 1.54.1, compio 0.20.0-beta.1.
-Will: `2a781e5`; six measured repetitions for spawn, five for channel and
+Will: `2be45fe`; six measured repetitions for spawn, five for channel and
 select.
 The Windows clock has 100 ns granularity, so sub-100 ns differences in the
 channel/select tables are quantization, not a measured win.
