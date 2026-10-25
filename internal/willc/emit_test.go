@@ -162,6 +162,32 @@ func TestEmitVariantPatternsWithoutPayload(t *testing.T) {
 	}
 }
 
+func TestEmitRcReleaseAtLastUse(t *testing.T) {
+	src := "func F() {\n" +
+		"    var r: rc<i32> = new rc<i32>(1)\n" +
+		"    var s: rc<i32> = r\n" +
+		"    _ = s\n" +
+		"    var n: i32 = 1\n" +
+		"    _ = n\n" +
+		"}\n"
+	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
+	var positions []string
+	for _, r := range doc.Records {
+		if r.Kind == "release" {
+			positions = append(positions, testFieldText(r, "pos"))
+		}
+	}
+	want := []string{"test.will:3:22", "test.will:4:9"}
+	if len(positions) != len(want) {
+		t.Fatalf("release positions = %v, want %v", positions, want)
+	}
+	for i := range want {
+		if positions[i] != want[i] {
+			t.Fatalf("release position %d = %q, want %q", i, positions[i], want[i])
+		}
+	}
+}
+
 func TestEmitReleaseGroups(t *testing.T) {
 	src := "func F(n: i32) -> i32 {\n" +
 		"    var a: str = \"a\"\n" +

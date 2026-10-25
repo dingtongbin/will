@@ -22,8 +22,9 @@ func (e *emitter) emitBlock(b *ast.Block) int {
 	e.push(rec)
 	e.scopes = append(e.scopes, nil)
 	scope := len(e.scopes) - 1
+	early := earlyReleases(b)
 	var last ast.Stmt
-	for _, s := range b.Stmts {
+	for i, s := range b.Stmts {
 		switch {
 		case isEarlyExit(s):
 			owned := e.liveOwned(exitFloor(e, s))
@@ -38,6 +39,11 @@ func (e *emitter) emitBlock(b *ast.Block) int {
 		if vs, ok := s.(*ast.VarStmt); ok {
 			if vd, ok := vs.Decl.(*ast.VarDecl); ok && ast.NeedsRelease(vd.Type) && vd.Name != "_" {
 				e.scopes[scope] = append(e.scopes[scope], vd)
+			}
+		}
+		for owner, point := range early {
+			if point.after == i {
+				e.emitRelease(owner, point.node)
 			}
 		}
 		last = s
@@ -83,10 +89,28 @@ func withoutReturnedName(owned []ast.Node, value ast.Expr) []ast.Node {
 // position, the block as parent.
 func (e *emitter) emitReleases(owned []ast.Node, pos ast.Node) {
 	for i := len(owned) - 1; i >= 0; i-- {
-		release := e.addPos("release", pos)
-		e.ref(release, "owner", owned[i])
-		e.text(release, "kind", "value")
+		if e.released[owned[i]] {
+			continue
+		}
+		e.writeRelease(owned[i], pos)
 	}
+}
+
+// emitRelease writes one early release and remembers that the owner has
+// already been released. Multiple exits may still release a live owner; only
+// this early point is remembered permanently.
+func (e *emitter) emitRelease(owner ast.Node, pos ast.Node) {
+	if e.released[owner] {
+		return
+	}
+	e.writeRelease(owner, pos)
+	e.released[owner] = true
+}
+
+func (e *emitter) writeRelease(owner ast.Node, pos ast.Node) {
+	release := e.addPos("release", pos)
+	e.ref(release, "owner", owner)
+	e.text(release, "kind", "value")
 }
 
 // liveOwned lists the owners in scope from one scope depth outward, in

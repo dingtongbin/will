@@ -33,8 +33,10 @@ func Borrows(f *ast.File) []diag.Diagnostic {
 		if fn, ok := d.(*ast.FuncDecl); ok && fn.Body != nil {
 			b.locals = map[string]bool{}
 			b.params = map[string]bool{}
+			b.localTypes = map[string]*ast.Type{}
 			for _, p := range fn.Params {
 				b.params[p.Name] = true
+				b.localTypes[p.Name] = p.Type
 			}
 			b.block(fn.Body, map[string]source.Pos{})
 		}
@@ -48,6 +50,7 @@ type borrower struct {
 	mutMethods map[string]bool
 	locals     map[string]bool
 	params     map[string]bool
+	localTypes map[string]*ast.Type
 	// lastUses and localViews are scoped to one block. A view ends its
 	// borrower's read borrow after its last lexical use; inherited means the
 	// owner was already borrowed by an enclosing block and stays live there.
@@ -175,6 +178,7 @@ func (b *borrower) stmt(st ast.Stmt, borrowed map[string]source.Pos) {
 			b.store(d.Value, borrowed)
 			if d.Name != "" && d.Name != "_" {
 				b.locals[d.Name] = true
+				b.localTypes[d.Name] = d.Type
 			}
 		case *ast.ConstDecl:
 			b.expr(d.Value, borrowed)
@@ -304,12 +308,34 @@ func (b *borrower) mutAt(pos source.Pos, name string, borrowed map[string]source
 }
 
 // containerMutator names the predeclared methods that can reallocate or
-// restructure container storage. Writing one element is not in this set; that
-// is a mutable borrow of the element, not a structural change.
-func containerMutator(name string) bool {
-	switch name {
-	case "Push", "Append", "Clear", "Reserve", "Resize", "Delete":
-		return true
+// restructure container storage. A user method with the same name is not in
+// this set, and writing one element is a mutable element borrow, not a
+// structural change.
+func (b *borrower) containerMutator(recv ast.Expr, name string) bool {
+	n, ok := recv.(*ast.NameExpr)
+	if !ok {
+		return false
+	}
+	t := b.localTypes[n.Name]
+	if t == nil || t.Kind != ast.NamedType {
+		return false
+	}
+	switch t.Name {
+	case "Array":
+		switch name {
+		case "Push", "Append", "Clear", "Reserve", "Resize":
+			return true
+		}
+	case "Map":
+		switch name {
+		case "Set", "Clear", "Delete":
+			return true
+		}
+	case "Set":
+		switch name {
+		case "Add", "Clear", "Delete":
+			return true
+		}
 	}
 	return false
 }
@@ -352,7 +378,7 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 	case *ast.MethodCallExpr:
 		if b.mutMethods[x.Name] {
 			b.mutAt(x.Pos(), rootName(x.Recv), borrowed)
-		} else if containerMutator(x.Name) {
+		} else if b.containerMutator(x.Recv, x.Name) {
 			b.containerMutAt(x.Pos(), rootName(x.Recv), borrowed)
 		}
 		b.expr(x.Recv, borrowed)

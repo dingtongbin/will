@@ -23,6 +23,7 @@ func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diag
 		callTypes:  callTypes,
 		nameTypes:  nameTypes,
 		aliases:    aliases,
+		released:   map[ast.Node]bool{},
 	}
 	root := e.add("module", f)
 	e.text(root, "path", modulePath)
@@ -61,8 +62,9 @@ type emitter struct {
 	aliases map[string]string
 	// scopes stacks the heap-owning locals declared so far in each open block;
 	// loops records the scope depth of every enclosing loop body.
-	scopes [][]ast.Node
-	loops  []int
+	scopes   [][]ast.Node
+	loops    []int
+	released map[ast.Node]bool
 }
 
 type pendingRef struct {

@@ -54,8 +54,9 @@ func MovesWithOwnership(f *ast.File, own *Ownership) []diag.Diagnostic {
 }
 
 type mover struct {
-	bag  diag.Bag
-	owns func(*ast.Type) bool
+	bag   diag.Bag
+	owns  func(*ast.Type) bool
+	types map[string]*ast.Type
 }
 
 // owned reports whether a declared type carries a heap buffer, which is what
@@ -68,8 +69,10 @@ func (m *mover) funcDecl(fn *ast.FuncDecl) {
 	if fn.Body == nil {
 		return
 	}
+	m.types = map[string]*ast.Type{}
 	params := map[string]bool{}
 	for _, p := range fn.Params {
+		m.types[p.Name] = p.Type
 		if m.owns(p.Type) {
 			params[p.Name] = true
 		}
@@ -135,8 +138,13 @@ func (m *mover) block(b *ast.Block, inLoop bool, inherited map[string]bool) bloc
 		flows = append(flows, flow)
 		// A declaration adds the name after its value is evaluated.
 		if vs, ok := st.(*ast.VarStmt); ok {
-			if vd, ok := vs.Decl.(*ast.VarDecl); ok && m.owns(vd.Type) && vd.Name != "" && vd.Name != "_" {
-				live[vd.Name] = true
+			if vd, ok := vs.Decl.(*ast.VarDecl); ok {
+				if m.types != nil && vd.Name != "" && vd.Name != "_" {
+					m.types[vd.Name] = vd.Type
+				}
+				if m.owns(vd.Type) && vd.Name != "" && vd.Name != "_" {
+					live[vd.Name] = true
+				}
 			}
 		}
 	}
@@ -317,6 +325,29 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 	return ev, flow
 }
 
+// containerTransfer reports whether a method call moves an argument into
+// predeclared container storage. The receiver type comes from the nearest
+// declaration in this function.
+func (m *mover) containerTransfer(call *ast.MethodCallExpr) bool {
+	name, ok := call.Recv.(*ast.NameExpr)
+	if !ok || m.types == nil {
+		return false
+	}
+	t := m.types[name.Name]
+	if t == nil || t.Kind != ast.NamedType {
+		return false
+	}
+	switch t.Name {
+	case "Array":
+		return call.Name == "Push" || call.Name == "Append"
+	case "Map":
+		return call.Name == "Set"
+	case "Set":
+		return call.Name == "Add"
+	}
+	return false
+}
+
 // exprEvents collects the name occurrences of one expression.
 func (m *mover) exprEvents(e ast.Expr, live map[string]bool, ev *events) {
 	m.exprEventsIn(e, live, ev, false)
@@ -344,9 +375,10 @@ func (m *mover) exprEventsIn(e ast.Expr, live map[string]bool, ev *events, trans
 		m.args(x.Args, live, ev, transfer)
 	case *ast.MethodCallExpr:
 		m.exprEventsIn(x.Recv, live, ev, false)
-		// Send hands the value to the channel; the container methods move the
-		// value into their storage. Every other method borrows it.
-		transfer := transferArgs || x.Name == "Send" || x.Name == "Push" || x.Name == "Set" || x.Name == "Add"
+		// Send hands the value to the channel; the predeclared container
+		// methods move the value into their storage. A user method with the
+		// same name stays a borrow.
+		transfer := transferArgs || x.Name == "Send" || m.containerTransfer(x)
 		m.args(x.Args, live, ev, transfer)
 	case *ast.FieldExpr:
 		m.exprEventsIn(x.Recv, live, ev, false)
