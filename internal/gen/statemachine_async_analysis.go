@@ -146,5 +146,10 @@ func (g *generator) asyncParamABI(p willc.Record) (string, bool, error) {
 	if err != nil || typ == "" {
 		return "", false, g.errf(p.ID, "cannot translate node #%d: parameter %s is not lowered", p.ID, text)
 	}
+	if fieldText(p, "mut") == "true" {
+		// A mutable aggregate is a pointer into the caller's place, so the
+		// frame reserves one pointer, not a second copy of the aggregate.
+		return "ptr", true, nil
+	}
 	return typ, true, nil
 }

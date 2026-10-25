@@ -4946,14 +4946,14 @@ entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.397.251 = getelementptr i8, ptr %frame, i64 8
   %v.sm.param.399.252 = getelementptr i8, ptr %frame, i64 16
-  %v.count = getelementptr i8, ptr %frame, i64 40
-  %v.status = getelementptr i8, ptr %frame, i64 48
-  %v.adt.429 = getelementptr i8, ptr %frame, i64 56
-  %v.adt.434 = getelementptr i8, ptr %frame, i64 80
-  %v.sm.async.op.254 = getelementptr i8, ptr %frame, i64 104
-  %v.sm.async.status.255 = getelementptr i8, ptr %frame, i64 112
-  %t270 = getelementptr i8, ptr %frame, i64 120
-  %t280 = getelementptr i8, ptr %frame, i64 144
+  %v.count = getelementptr i8, ptr %frame, i64 24
+  %v.status = getelementptr i8, ptr %frame, i64 32
+  %v.adt.429 = getelementptr i8, ptr %frame, i64 40
+  %v.adt.434 = getelementptr i8, ptr %frame, i64 64
+  %v.sm.async.op.254 = getelementptr i8, ptr %frame, i64 88
+  %v.sm.async.status.255 = getelementptr i8, ptr %frame, i64 96
+  %t270 = getelementptr i8, ptr %frame, i64 104
+  %t280 = getelementptr i8, ptr %frame, i64 128
   %t253 = load ptr, ptr %v.sm.param.399.252
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
@@ -5032,7 +5032,7 @@ share.done.3:
 }
 define hidden ptr @"std/os/fs.File.AsyncRead.task"(ptr %arg0, ptr %arg1, i32 %start) {
 entry:
-  %v.sm.frame = call ptr @willrt_alloc(i64 176)
+  %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t286 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t286
   %t287 = getelementptr i8, ptr %v.sm.frame, i64 8
@@ -5046,12 +5046,12 @@ entry:
   %t293 = select i1 %t292, i32 %t290, i32 %start
   br i1 %t291, label %sm.start.auto.4, label %sm.start.lane.4
 sm.start.auto.4:
-  %t294 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncRead.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0)
+  %t294 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncRead.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t294)
   call void @willrt_task_run_auto(ptr %t294)
   br label %sm.start.done.4
 sm.start.lane.4:
-  %t295 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncRead.sm", ptr %v.sm.frame, i64 176, i32 %t293, i32 0)
+  %t295 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncRead.sm", ptr %v.sm.frame, i64 160, i32 %t293, i32 0)
   call void @willrt_task_own_frame(ptr %t295)
   call void @willrt_task_run(ptr %t295)
   br label %sm.start.done.4

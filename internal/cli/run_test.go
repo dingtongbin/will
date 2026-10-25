@@ -35,6 +35,116 @@ async func main() -> i32 {
 	}
 }
 
+// TestRunInterfaceDowncasts checks the type identity word at run time. The
+// concrete downcast returns a value; the interface downcast builds a second
+// table over the same data pointer.
+func TestRunInterfaceDowncasts(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `interface Shape {
+    func Area() -> i32
+}
+
+interface Labeled {
+    func Label() -> str
+}
+
+struct Square {
+    n: i32
+}
+
+func (s: Square) Area() -> i32 {
+    return s.n
+}
+
+func (s: Square) Label() -> str {
+    return "square"
+}
+
+func main() -> i32 {
+    var shape: Shape = Square { n: 12 }
+    if !shape.Is<Square>() {
+        return 1
+    }
+    var square: Option<Square> = shape.As<Square>()
+    match square {
+        Some(value) => {
+            if value.n != 12 {
+                return 2
+            }
+        }
+        None => {
+            return 3
+        }
+    }
+    var labeled: Option<Labeled> = shape.As<Labeled>()
+    match labeled {
+        Some(value) => {
+            if value.Label() != "square" {
+                return 4
+            }
+        }
+        None => {
+            return 5
+        }
+    }
+    var empty: Shape
+    if empty.Is<Square>() {
+        return 6
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+}
+
+// TestRunAsyncMutParameters checks that a task frame keeps the caller's
+// pointer for a mutable receiver and a mutable Array parameter.
+func TestRunAsyncMutParameters(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `struct Counter {
+    n: i32
+}
+
+async func (mut c: Counter) Add(value: i32) -> i32 {
+    c.n += value
+    return c.n
+}
+
+async func Grow(mut values: Array<i32>) -> i32 {
+    values.Push(7)
+    return i32(values.Len())
+}
+
+async func main() -> i32 {
+    var counter: Counter = Counter { n: 1 }
+    var added: i32 = await counter.Add(4)
+    var values: Array<i32> = new Array<i32>(0)
+    var grown: i32 = await Grow(values)
+    print(counter.n, " ", values.Len(), "\n")
+    if counter.n != 5 || added != 5 || grown != 1 || values.Len() != 1 {
+        return 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if !strings.Contains(out, "5 1\n") {
+		t.Fatalf("stdout = %q", out)
+	}
+}
+
 // TestRunMPMCCountsEveryMessage moves values across lanes through one channel
 // with two producers and two consumers. The result crosses two task boundaries,
 // so a truncated or duplicated join value changes the sum.
