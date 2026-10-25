@@ -9,24 +9,64 @@
 // first, because a declaration that reads an index borrows the array until
 // the end of the block.
 
-// SortSamples sorts the samples in ascending order.
+// Swap exchanges two elements of one array.
+func Swap(mut xs: Array<u64>, left: i32, right: i32) {
+    var leftValue: u64 = 0u64
+    var rightValue: u64 = 0u64
+    leftValue = xs[usize(left)]
+    rightValue = xs[usize(right)]
+    xs[usize(left)] = rightValue
+    xs[usize(right)] = leftValue
+}
+
+// Sift restores the max-heap property below root.
+func Sift(mut xs: Array<u64>, root: i32, count: i32) {
+    var at: i32 = root
+    for {
+        var child: i32 = 2i32 * at + 1i32
+        if child >= count {
+            break
+        }
+        var leftValue: u64 = 0u64
+        var rightValue: u64 = 0u64
+        var atValue: u64 = 0u64
+        var childValue: u64 = 0u64
+        if child + 1i32 < count {
+            leftValue = xs[usize(child)]
+            rightValue = xs[usize(child + 1i32)]
+            if leftValue < rightValue {
+                child += 1i32
+            }
+        }
+        atValue = xs[usize(at)]
+        childValue = xs[usize(child)]
+        if atValue >= childValue {
+            break
+        }
+        Swap(xs, at, child)
+        at = child
+    }
+}
+
+// SortSamples sorts the samples in ascending order with an in-place heapsort.
 func SortSamples(mut xs: Array<u64>) {
     var n: i32 = i32(xs.Len())
-    var value: u64 = 0u64
-    for i in Range(1, n) {
-        value = xs[usize(i)]
-        var j: i32 = i - 1
-        for {
-            if j < 0 {
-                break
-            }
-            if xs[usize(j)] <= value {
-                break
-            }
-            xs[usize(j + 1)] = xs[usize(j)]
-            j -= 1
+    var i: i32 = n / 2i32 - 1i32
+    for {
+        if i < 0 {
+            break
         }
-        xs[usize(j + 1)] = value
+        Sift(xs, i, n)
+        i -= 1i32
+    }
+    var end: i32 = n - 1i32
+    for {
+        if end <= 0 {
+            break
+        }
+        Swap(xs, 0i32, end)
+        Sift(xs, 0i32, end)
+        end -= 1i32
     }
 }
 
