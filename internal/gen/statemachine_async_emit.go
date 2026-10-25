@@ -40,7 +40,9 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	g.needTaskDecl = true
 	// The constructor is hidden, not internal: a function of another package
 	// waits on this task, so the object that owns the function must export
-	// the entry that starts it.
+	// the entry that starts it. The last argument is -1 for auto placement and
+	// -2 for the current lane; any other value is the declared lane index.
+	parts = append(parts, "i32 %start")
 	fmt.Fprintf(g.out, "define hidden ptr @%s(%s) {\nentry:\n",
 		llvmSymbol(info.constructor), strings.Join(parts, ", "))
 	size := g.sizeOf(info.frameType)
@@ -77,12 +79,40 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	}
 	lane := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_here()\n", lane)
-	task := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
-		task, llvmSymbol(info.symbol), frame, size, lane)
+	auto := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %%start, -1\n", auto)
+	here := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %%start, -2\n", here)
+	laneValue := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = select i1 %s, i32 %s, i32 %%start\n",
+		laneValue, here, lane)
+	g.labels++
+	n := g.labels
+	autoLabel := fmt.Sprintf("sm.start.auto.%d", n)
+	laneLabel := fmt.Sprintf("sm.start.lane.%d", n)
+	doneLabel := fmt.Sprintf("sm.start.done.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", auto, autoLabel, laneLabel)
+	fmt.Fprintf(g.out, "%s:\n", autoLabel)
+	autoTask := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 0, i32 0)\n",
+		autoTask, llvmSymbol(info.symbol), frame, size)
 	g.needOwnFrameDecl = true
-	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
-	fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
+	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", autoTask)
+	g.needAutoTaskDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_task_run_auto(ptr %s)\n", autoTask)
+	fmt.Fprintf(g.out, "  br label %%%s\n", doneLabel)
+	fmt.Fprintf(g.out, "%s:\n", laneLabel)
+	laneTask := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
+		laneTask, llvmSymbol(info.symbol), frame, size, laneValue)
+	g.needOwnFrameDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", laneTask)
+	fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", laneTask)
+	fmt.Fprintf(g.out, "  br label %%%s\n", doneLabel)
+	fmt.Fprintf(g.out, "%s:\n", doneLabel)
+	task := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = phi ptr [ %s, %%%s ], [ %s, %%%s ]\n",
+		task, autoTask, autoLabel, laneTask, laneLabel)
 	fmt.Fprintf(g.out, "  ret ptr %s\n}\n", task)
 	return nil
 }
@@ -124,7 +154,8 @@ func (g *generator) localSymbol(sym string) bool {
 // emitConstructorCall builds the child frame by calling the target's task
 // constructor. The constructor owns the frame layout, so this document does not
 // need the target's local fields.
-func (g *generator) emitConstructorCall(call willc.Record, targetSym string) (string, error) {
+func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
+	start string) (string, error) {
 	if targetSym == "" {
 		return "", g.errf(call.ID, "cannot translate node #%d: the suspendable call has no target", call.ID)
 	}
@@ -164,6 +195,8 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string) (st
 		parts = append(parts, typ+" "+value)
 		declParams = append(declParams, typ)
 	}
+	parts = append(parts, "i32 "+start)
+	declParams = append(declParams, "i32")
 	if !g.taskCtorDefined(targetSym) {
 		g.queueCDecl(targetSym+".task", "ptr", declParams)
 	}

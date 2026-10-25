@@ -335,7 +335,7 @@ share.done.3:
   ret i32 1
 
 }
-define hidden ptr @"std/time.Sleep.task"(i64 %arg0) {
+define hidden ptr @"std/time.Sleep.task"(i64 %arg0, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 176)
   %t49 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -343,10 +343,23 @@ entry:
   %t50 = getelementptr i8, ptr %v.sm.frame, i64 8
   store i64 %arg0, ptr %t50
   %t51 = call i32 @willrt_lane_here()
-  %t52 = call ptr @willrt_task_new(ptr @"std/time.Sleep.sm", ptr %v.sm.frame, i64 176, i32 %t51, i32 0)
-  call void @willrt_task_own_frame(ptr %t52)
-  call void @willrt_task_run(ptr %t52)
-  ret ptr %t52
+  %t52 = icmp eq i32 %start, -1
+  %t53 = icmp eq i32 %start, -2
+  %t54 = select i1 %t53, i32 %t51, i32 %start
+  br i1 %t52, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t55 = call ptr @willrt_task_new(ptr @"std/time.Sleep.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t55)
+  call void @willrt_task_run_auto(ptr %t55)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t56 = call ptr @willrt_task_new(ptr @"std/time.Sleep.sm", ptr %v.sm.frame, i64 176, i32 %t54, i32 0)
+  call void @willrt_task_own_frame(ptr %t56)
+  call void @willrt_task_run(ptr %t56)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t57 = phi ptr [ %t55, %sm.start.auto.4 ], [ %t56, %sm.start.lane.4 ]
+  ret ptr %t57
 }
 %"struct.std/time.Timezone" = type { i32 }
 %"struct.std/time.Instant" = type { i64, %"struct.std/time.Timezone" }
@@ -5016,7 +5029,7 @@ share.done.3:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncRead.task"(ptr %arg0, ptr %arg1) {
+define hidden ptr @"std/os/fs.File.AsyncRead.task"(ptr %arg0, ptr %arg1, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 176)
   %t285 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -5028,1953 +5041,2213 @@ entry:
   %t289 = load { ptr, i64, i64 }, ptr %arg1
   store { ptr, i64, i64 } %t289, ptr %t288
   %t290 = call i32 @willrt_lane_here()
-  %t291 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncRead.sm", ptr %v.sm.frame, i64 176, i32 %t290, i32 0)
-  call void @willrt_task_own_frame(ptr %t291)
-  call void @willrt_task_run(ptr %t291)
-  ret ptr %t291
+  %t291 = icmp eq i32 %start, -1
+  %t292 = icmp eq i32 %start, -2
+  %t293 = select i1 %t292, i32 %t290, i32 %start
+  br i1 %t291, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t294 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncRead.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t294)
+  call void @willrt_task_run_auto(ptr %t294)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t295 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncRead.sm", ptr %v.sm.frame, i64 176, i32 %t293, i32 0)
+  call void @willrt_task_own_frame(ptr %t295)
+  call void @willrt_task_run(ptr %t295)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t296 = phi ptr [ %t294, %sm.start.auto.4 ], [ %t295, %sm.start.lane.4 ]
+  ret ptr %t296
 }
 define internal i32 @"std/os/fs.File.AsyncWrite.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.438.292 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.440.293 = getelementptr i8, ptr %frame, i64 16
+  %v.sm.param.438.297 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.440.298 = getelementptr i8, ptr %frame, i64 16
   %v.status = getelementptr i8, ptr %frame, i64 32
   %v.adt.464 = getelementptr i8, ptr %frame, i64 40
   %v.adt.469 = getelementptr i8, ptr %frame, i64 64
-  %v.sm.async.op.294 = getelementptr i8, ptr %frame, i64 88
-  %v.sm.async.status.295 = getelementptr i8, ptr %frame, i64 96
-  %t310 = getelementptr i8, ptr %frame, i64 104
-  %t319 = getelementptr i8, ptr %frame, i64 128
+  %v.sm.async.op.299 = getelementptr i8, ptr %frame, i64 88
+  %v.sm.async.status.300 = getelementptr i8, ptr %frame, i64 96
+  %t315 = getelementptr i8, ptr %frame, i64 104
+  %t324 = getelementptr i8, ptr %frame, i64 128
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t296 = call ptr @willrt_fs_async_file_write_start(ptr %v.sm.param.438.292, ptr %v.sm.param.440.293)
-  store ptr %t296, ptr %v.sm.async.op.294
-  %t297 = icmp ne ptr %t296, null
-  br i1 %t297, label %sm.async.have.1, label %sm.async.fail.1
+  %t301 = call ptr @willrt_fs_async_file_write_start(ptr %v.sm.param.438.297, ptr %v.sm.param.440.298)
+  store ptr %t301, ptr %v.sm.async.op.299
+  %t302 = icmp ne ptr %t301, null
+  br i1 %t302, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.295
+  store i32 1, ptr %v.sm.async.status.300
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t298 = load ptr, ptr %v.sm.async.op.294
-  %t299 = call i32 @willrt_blocking_poll(ptr %t298)
-  %t300 = icmp eq i32 %t299, 0
-  br i1 %t300, label %sm.async.park.1, label %sm.async.done.1
+  %t303 = load ptr, ptr %v.sm.async.op.299
+  %t304 = call i32 @willrt_blocking_poll(ptr %t303)
+  %t305 = icmp eq i32 %t304, 0
+  br i1 %t305, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t301 = call i32 @willrt_blocking_finish(ptr %t298)
-  store i32 %t301, ptr %v.sm.async.status.295
+  %t306 = call i32 @willrt_blocking_finish(ptr %t303)
+  store i32 %t306, ptr %v.sm.async.status.300
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t302 = load i32, ptr %v.sm.async.status.295
-  store i32 %t302, ptr %v.status
-  %t303 = load i32, ptr %v.status
-  %t304 = icmp ne i32 %t303, 0
-  br i1 %t304, label %if.then.1, label %if.end.1
+  %t307 = load i32, ptr %v.sm.async.status.300
+  store i32 %t307, ptr %v.status
+  %t308 = load i32, ptr %v.status
+  %t309 = icmp ne i32 %t308, 0
+  br i1 %t309, label %if.then.1, label %if.end.1
 if.then.1:
-  %t305 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.464, i32 0, i32 0
-  store i32 1, ptr %t305
-  %t306 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.464, i32 0, i32 2
-  %t307 = getelementptr inbounds %interface.Error, ptr %t306, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t307
-  %t308 = getelementptr inbounds %interface.Error, ptr %t306, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t308
-  %t309 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.464
-  store { i32, [4 x i8], %interface.Error } %t309, ptr %t310
-  %t311 = load i32, ptr %t310
-  %t312 = icmp eq i32 %t311, 0
-  br i1 %t312, label %share.keep.2, label %share.done.2
+  %t310 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.464, i32 0, i32 0
+  store i32 1, ptr %t310
+  %t311 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.464, i32 0, i32 2
+  %t312 = getelementptr inbounds %interface.Error, ptr %t311, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t312
+  %t313 = getelementptr inbounds %interface.Error, ptr %t311, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t313
+  %t314 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.464
+  store { i32, [4 x i8], %interface.Error } %t314, ptr %t315
+  %t316 = load i32, ptr %t315
+  %t317 = icmp eq i32 %t316, 0
+  br i1 %t317, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t313 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t310, i32 0, i32 2
+  %t318 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t315, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t314 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t315 = ptrtoint ptr %t314 to i64
-  call i32 @willrt_task_store_result(ptr %t310, i64 %t315)
+  %t319 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t320 = ptrtoint ptr %t319 to i64
+  call i32 @willrt_task_store_result(ptr %t315, i64 %t320)
   ret i32 1
 if.end.1:
-  %t316 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.469, i32 0, i32 0
-  store i32 0, ptr %t316
-  %t317 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.469, i32 0, i32 2
-  %t318 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.469
-  store { i32, [4 x i8], %interface.Error } %t318, ptr %t319
-  %t320 = load i32, ptr %t319
-  %t321 = icmp eq i32 %t320, 0
-  br i1 %t321, label %share.keep.3, label %share.done.3
+  %t321 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.469, i32 0, i32 0
+  store i32 0, ptr %t321
+  %t322 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.469, i32 0, i32 2
+  %t323 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.469
+  store { i32, [4 x i8], %interface.Error } %t323, ptr %t324
+  %t325 = load i32, ptr %t324
+  %t326 = icmp eq i32 %t325, 0
+  br i1 %t326, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t322 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t319, i32 0, i32 2
+  %t327 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t324, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t323 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t324 = ptrtoint ptr %t323 to i64
-  call i32 @willrt_task_store_result(ptr %t319, i64 %t324)
+  %t328 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t329 = ptrtoint ptr %t328 to i64
+  call i32 @willrt_task_store_result(ptr %t324, i64 %t329)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncWrite.task"(ptr %arg0, ptr %arg1) {
+define hidden ptr @"std/os/fs.File.AsyncWrite.task"(ptr %arg0, ptr %arg1, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
-  %t325 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t325
-  %t326 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t327 = load %"struct.std/os/fs.File", ptr %arg0
-  store %"struct.std/os/fs.File" %t327, ptr %t326
-  %t328 = getelementptr i8, ptr %v.sm.frame, i64 16
-  %t329 = load { ptr, i64 }, ptr %arg1
-  store { ptr, i64 } %t329, ptr %t328
-  %t330 = call i32 @willrt_lane_here()
-  %t331 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncWrite.sm", ptr %v.sm.frame, i64 160, i32 %t330, i32 0)
-  call void @willrt_task_own_frame(ptr %t331)
-  call void @willrt_task_run(ptr %t331)
-  ret ptr %t331
+  %t330 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t330
+  %t331 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t332 = load %"struct.std/os/fs.File", ptr %arg0
+  store %"struct.std/os/fs.File" %t332, ptr %t331
+  %t333 = getelementptr i8, ptr %v.sm.frame, i64 16
+  %t334 = load { ptr, i64 }, ptr %arg1
+  store { ptr, i64 } %t334, ptr %t333
+  %t335 = call i32 @willrt_lane_here()
+  %t336 = icmp eq i32 %start, -1
+  %t337 = icmp eq i32 %start, -2
+  %t338 = select i1 %t337, i32 %t335, i32 %start
+  br i1 %t336, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t339 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncWrite.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t339)
+  call void @willrt_task_run_auto(ptr %t339)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t340 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncWrite.sm", ptr %v.sm.frame, i64 160, i32 %t338, i32 0)
+  call void @willrt_task_own_frame(ptr %t340)
+  call void @willrt_task_run(ptr %t340)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t341 = phi ptr [ %t339, %sm.start.auto.4 ], [ %t340, %sm.start.lane.4 ]
+  ret ptr %t341
 }
 define internal i32 @"std/os/fs.File.AsyncSeek.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.473.332 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.475.333 = getelementptr i8, ptr %frame, i64 16
-  %v.sm.param.477.334 = getelementptr i8, ptr %frame, i64 24
+  %v.sm.param.473.342 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.475.343 = getelementptr i8, ptr %frame, i64 16
+  %v.sm.param.477.344 = getelementptr i8, ptr %frame, i64 24
   %v.at = getelementptr i8, ptr %frame, i64 32
   %v.status = getelementptr i8, ptr %frame, i64 40
   %v.adt.505 = getelementptr i8, ptr %frame, i64 48
   %v.adt.510 = getelementptr i8, ptr %frame, i64 72
-  %v.sm.async.op.335 = getelementptr i8, ptr %frame, i64 96
-  %v.sm.async.status.336 = getelementptr i8, ptr %frame, i64 104
-  %t351 = getelementptr i8, ptr %frame, i64 112
-  %t361 = getelementptr i8, ptr %frame, i64 136
-  %v.sm.pval.475 = load i64, ptr %v.sm.param.475.333
-  %v.sm.pval.477 = load i32, ptr %v.sm.param.477.334
+  %v.sm.async.op.345 = getelementptr i8, ptr %frame, i64 96
+  %v.sm.async.status.346 = getelementptr i8, ptr %frame, i64 104
+  %t361 = getelementptr i8, ptr %frame, i64 112
+  %t371 = getelementptr i8, ptr %frame, i64 136
+  %v.sm.pval.475 = load i64, ptr %v.sm.param.475.343
+  %v.sm.pval.477 = load i32, ptr %v.sm.param.477.344
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
   store i64 0, ptr %v.at
-  %t337 = call ptr @willrt_fs_async_file_seek_start(ptr %v.sm.param.473.332, i64 %v.sm.pval.475, i32 %v.sm.pval.477, ptr %v.at)
-  store ptr %t337, ptr %v.sm.async.op.335
-  %t338 = icmp ne ptr %t337, null
-  br i1 %t338, label %sm.async.have.1, label %sm.async.fail.1
+  %t347 = call ptr @willrt_fs_async_file_seek_start(ptr %v.sm.param.473.342, i64 %v.sm.pval.475, i32 %v.sm.pval.477, ptr %v.at)
+  store ptr %t347, ptr %v.sm.async.op.345
+  %t348 = icmp ne ptr %t347, null
+  br i1 %t348, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.336
+  store i32 1, ptr %v.sm.async.status.346
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t339 = load ptr, ptr %v.sm.async.op.335
-  %t340 = call i32 @willrt_blocking_poll(ptr %t339)
-  %t341 = icmp eq i32 %t340, 0
-  br i1 %t341, label %sm.async.park.1, label %sm.async.done.1
+  %t349 = load ptr, ptr %v.sm.async.op.345
+  %t350 = call i32 @willrt_blocking_poll(ptr %t349)
+  %t351 = icmp eq i32 %t350, 0
+  br i1 %t351, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t342 = call i32 @willrt_blocking_finish(ptr %t339)
-  store i32 %t342, ptr %v.sm.async.status.336
+  %t352 = call i32 @willrt_blocking_finish(ptr %t349)
+  store i32 %t352, ptr %v.sm.async.status.346
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t343 = load i32, ptr %v.sm.async.status.336
-  store i32 %t343, ptr %v.status
-  %t344 = load i32, ptr %v.status
-  %t345 = icmp ne i32 %t344, 0
-  br i1 %t345, label %if.then.1, label %if.end.1
+  %t353 = load i32, ptr %v.sm.async.status.346
+  store i32 %t353, ptr %v.status
+  %t354 = load i32, ptr %v.status
+  %t355 = icmp ne i32 %t354, 0
+  br i1 %t355, label %if.then.1, label %if.end.1
 if.then.1:
-  %t346 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.505, i32 0, i32 0
-  store i32 1, ptr %t346
-  %t347 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.505, i32 0, i32 2
-  %t348 = getelementptr inbounds %interface.Error, ptr %t347, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t348
-  %t349 = getelementptr inbounds %interface.Error, ptr %t347, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t349
-  %t350 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.505
-  store { i32, [4 x i8], %interface.Error } %t350, ptr %t351
-  %t352 = load i32, ptr %t351
-  %t353 = icmp eq i32 %t352, 0
-  br i1 %t353, label %share.keep.2, label %share.done.2
-share.keep.2:
-  %t354 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t351, i32 0, i32 2
-  br label %share.done.2
-share.done.2:
-  %t355 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t356 = ptrtoint ptr %t355 to i64
-  call i32 @willrt_task_store_result(ptr %t351, i64 %t356)
-  ret i32 1
-if.end.1:
-  %t357 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.510, i32 0, i32 0
-  store i32 0, ptr %t357
-  %t358 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.510, i32 0, i32 2
-  %t359 = load i64, ptr %v.at
-  store i64 %t359, ptr %t358
-  %t360 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.510
+  %t356 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.505, i32 0, i32 0
+  store i32 1, ptr %t356
+  %t357 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.505, i32 0, i32 2
+  %t358 = getelementptr inbounds %interface.Error, ptr %t357, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t358
+  %t359 = getelementptr inbounds %interface.Error, ptr %t357, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t359
+  %t360 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.505
   store { i32, [4 x i8], %interface.Error } %t360, ptr %t361
   %t362 = load i32, ptr %t361
   %t363 = icmp eq i32 %t362, 0
-  br i1 %t363, label %share.keep.3, label %share.done.3
-share.keep.3:
+  br i1 %t363, label %share.keep.2, label %share.done.2
+share.keep.2:
   %t364 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t361, i32 0, i32 2
-  br label %share.done.3
-share.done.3:
+  br label %share.done.2
+share.done.2:
   %t365 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
   %t366 = ptrtoint ptr %t365 to i64
   call i32 @willrt_task_store_result(ptr %t361, i64 %t366)
   ret i32 1
+if.end.1:
+  %t367 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.510, i32 0, i32 0
+  store i32 0, ptr %t367
+  %t368 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.510, i32 0, i32 2
+  %t369 = load i64, ptr %v.at
+  store i64 %t369, ptr %t368
+  %t370 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.510
+  store { i32, [4 x i8], %interface.Error } %t370, ptr %t371
+  %t372 = load i32, ptr %t371
+  %t373 = icmp eq i32 %t372, 0
+  br i1 %t373, label %share.keep.3, label %share.done.3
+share.keep.3:
+  %t374 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t371, i32 0, i32 2
+  br label %share.done.3
+share.done.3:
+  %t375 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t376 = ptrtoint ptr %t375 to i64
+  call i32 @willrt_task_store_result(ptr %t371, i64 %t376)
+  ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncSeek.task"(ptr %arg0, i64 %arg1, i32 %arg2) {
+define hidden ptr @"std/os/fs.File.AsyncSeek.task"(ptr %arg0, i64 %arg1, i32 %arg2, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
-  %t367 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t367
-  %t368 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t369 = load %"struct.std/os/fs.File", ptr %arg0
-  store %"struct.std/os/fs.File" %t369, ptr %t368
-  %t370 = getelementptr i8, ptr %v.sm.frame, i64 16
-  store i64 %arg1, ptr %t370
-  %t371 = getelementptr i8, ptr %v.sm.frame, i64 24
-  store i32 %arg2, ptr %t371
-  %t372 = call i32 @willrt_lane_here()
-  %t373 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSeek.sm", ptr %v.sm.frame, i64 160, i32 %t372, i32 0)
-  call void @willrt_task_own_frame(ptr %t373)
-  call void @willrt_task_run(ptr %t373)
-  ret ptr %t373
+  %t377 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t377
+  %t378 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t379 = load %"struct.std/os/fs.File", ptr %arg0
+  store %"struct.std/os/fs.File" %t379, ptr %t378
+  %t380 = getelementptr i8, ptr %v.sm.frame, i64 16
+  store i64 %arg1, ptr %t380
+  %t381 = getelementptr i8, ptr %v.sm.frame, i64 24
+  store i32 %arg2, ptr %t381
+  %t382 = call i32 @willrt_lane_here()
+  %t383 = icmp eq i32 %start, -1
+  %t384 = icmp eq i32 %start, -2
+  %t385 = select i1 %t384, i32 %t382, i32 %start
+  br i1 %t383, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t386 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSeek.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t386)
+  call void @willrt_task_run_auto(ptr %t386)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t387 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSeek.sm", ptr %v.sm.frame, i64 160, i32 %t385, i32 0)
+  call void @willrt_task_own_frame(ptr %t387)
+  call void @willrt_task_run(ptr %t387)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t388 = phi ptr [ %t386, %sm.start.auto.4 ], [ %t387, %sm.start.lane.4 ]
+  ret ptr %t388
 }
 define internal i32 @"std/os/fs.File.AsyncSync.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.514.374 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.514.389 = getelementptr i8, ptr %frame, i64 8
   %v.status = getelementptr i8, ptr %frame, i64 16
   %v.adt.534 = getelementptr i8, ptr %frame, i64 24
   %v.adt.539 = getelementptr i8, ptr %frame, i64 48
-  %v.sm.async.op.375 = getelementptr i8, ptr %frame, i64 72
-  %v.sm.async.status.376 = getelementptr i8, ptr %frame, i64 80
-  %t391 = getelementptr i8, ptr %frame, i64 88
-  %t400 = getelementptr i8, ptr %frame, i64 112
+  %v.sm.async.op.390 = getelementptr i8, ptr %frame, i64 72
+  %v.sm.async.status.391 = getelementptr i8, ptr %frame, i64 80
+  %t406 = getelementptr i8, ptr %frame, i64 88
+  %t415 = getelementptr i8, ptr %frame, i64 112
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t377 = call ptr @willrt_fs_async_file_sync_start(ptr %v.sm.param.514.374)
-  store ptr %t377, ptr %v.sm.async.op.375
-  %t378 = icmp ne ptr %t377, null
-  br i1 %t378, label %sm.async.have.1, label %sm.async.fail.1
+  %t392 = call ptr @willrt_fs_async_file_sync_start(ptr %v.sm.param.514.389)
+  store ptr %t392, ptr %v.sm.async.op.390
+  %t393 = icmp ne ptr %t392, null
+  br i1 %t393, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.376
+  store i32 1, ptr %v.sm.async.status.391
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t379 = load ptr, ptr %v.sm.async.op.375
-  %t380 = call i32 @willrt_blocking_poll(ptr %t379)
-  %t381 = icmp eq i32 %t380, 0
-  br i1 %t381, label %sm.async.park.1, label %sm.async.done.1
+  %t394 = load ptr, ptr %v.sm.async.op.390
+  %t395 = call i32 @willrt_blocking_poll(ptr %t394)
+  %t396 = icmp eq i32 %t395, 0
+  br i1 %t396, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t382 = call i32 @willrt_blocking_finish(ptr %t379)
-  store i32 %t382, ptr %v.sm.async.status.376
+  %t397 = call i32 @willrt_blocking_finish(ptr %t394)
+  store i32 %t397, ptr %v.sm.async.status.391
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t383 = load i32, ptr %v.sm.async.status.376
-  store i32 %t383, ptr %v.status
-  %t384 = load i32, ptr %v.status
-  %t385 = icmp ne i32 %t384, 0
-  br i1 %t385, label %if.then.1, label %if.end.1
+  %t398 = load i32, ptr %v.sm.async.status.391
+  store i32 %t398, ptr %v.status
+  %t399 = load i32, ptr %v.status
+  %t400 = icmp ne i32 %t399, 0
+  br i1 %t400, label %if.then.1, label %if.end.1
 if.then.1:
-  %t386 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.534, i32 0, i32 0
-  store i32 1, ptr %t386
-  %t387 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.534, i32 0, i32 2
-  %t388 = getelementptr inbounds %interface.Error, ptr %t387, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t388
-  %t389 = getelementptr inbounds %interface.Error, ptr %t387, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t389
-  %t390 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.534
-  store { i32, [4 x i8], %interface.Error } %t390, ptr %t391
-  %t392 = load i32, ptr %t391
-  %t393 = icmp eq i32 %t392, 0
-  br i1 %t393, label %share.keep.2, label %share.done.2
+  %t401 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.534, i32 0, i32 0
+  store i32 1, ptr %t401
+  %t402 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.534, i32 0, i32 2
+  %t403 = getelementptr inbounds %interface.Error, ptr %t402, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t403
+  %t404 = getelementptr inbounds %interface.Error, ptr %t402, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t404
+  %t405 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.534
+  store { i32, [4 x i8], %interface.Error } %t405, ptr %t406
+  %t407 = load i32, ptr %t406
+  %t408 = icmp eq i32 %t407, 0
+  br i1 %t408, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t394 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t391, i32 0, i32 2
+  %t409 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t406, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t395 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t396 = ptrtoint ptr %t395 to i64
-  call i32 @willrt_task_store_result(ptr %t391, i64 %t396)
+  %t410 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t411 = ptrtoint ptr %t410 to i64
+  call i32 @willrt_task_store_result(ptr %t406, i64 %t411)
   ret i32 1
 if.end.1:
-  %t397 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.539, i32 0, i32 0
-  store i32 0, ptr %t397
-  %t398 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.539, i32 0, i32 2
-  %t399 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.539
-  store { i32, [4 x i8], %interface.Error } %t399, ptr %t400
-  %t401 = load i32, ptr %t400
-  %t402 = icmp eq i32 %t401, 0
-  br i1 %t402, label %share.keep.3, label %share.done.3
+  %t412 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.539, i32 0, i32 0
+  store i32 0, ptr %t412
+  %t413 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.539, i32 0, i32 2
+  %t414 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.539
+  store { i32, [4 x i8], %interface.Error } %t414, ptr %t415
+  %t416 = load i32, ptr %t415
+  %t417 = icmp eq i32 %t416, 0
+  br i1 %t417, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t403 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t400, i32 0, i32 2
+  %t418 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t415, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t404 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t405 = ptrtoint ptr %t404 to i64
-  call i32 @willrt_task_store_result(ptr %t400, i64 %t405)
+  %t419 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t420 = ptrtoint ptr %t419 to i64
+  call i32 @willrt_task_store_result(ptr %t415, i64 %t420)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncSync.task"(ptr %arg0) {
+define hidden ptr @"std/os/fs.File.AsyncSync.task"(ptr %arg0, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
-  %t406 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t406
-  %t407 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t408 = load %"struct.std/os/fs.File", ptr %arg0
-  store %"struct.std/os/fs.File" %t408, ptr %t407
-  %t409 = call i32 @willrt_lane_here()
-  %t410 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSync.sm", ptr %v.sm.frame, i64 144, i32 %t409, i32 0)
-  call void @willrt_task_own_frame(ptr %t410)
-  call void @willrt_task_run(ptr %t410)
-  ret ptr %t410
+  %t421 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t421
+  %t422 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t423 = load %"struct.std/os/fs.File", ptr %arg0
+  store %"struct.std/os/fs.File" %t423, ptr %t422
+  %t424 = call i32 @willrt_lane_here()
+  %t425 = icmp eq i32 %start, -1
+  %t426 = icmp eq i32 %start, -2
+  %t427 = select i1 %t426, i32 %t424, i32 %start
+  br i1 %t425, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t428 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSync.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t428)
+  call void @willrt_task_run_auto(ptr %t428)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t429 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSync.sm", ptr %v.sm.frame, i64 144, i32 %t427, i32 0)
+  call void @willrt_task_own_frame(ptr %t429)
+  call void @willrt_task_run(ptr %t429)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t430 = phi ptr [ %t428, %sm.start.auto.4 ], [ %t429, %sm.start.lane.4 ]
+  ret ptr %t430
 }
 define internal i32 @"std/os/fs.File.AsyncStat.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.543.411 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.543.431 = getelementptr i8, ptr %frame, i64 8
   %v.stat = getelementptr i8, ptr %frame, i64 16
   %v.status = getelementptr i8, ptr %frame, i64 48
   %v.adt.569 = getelementptr i8, ptr %frame, i64 56
   %v.adt.575 = getelementptr i8, ptr %frame, i64 96
-  %v.sm.async.op.412 = getelementptr i8, ptr %frame, i64 136
-  %v.sm.async.status.413 = getelementptr i8, ptr %frame, i64 144
-  %t428 = getelementptr i8, ptr %frame, i64 152
-  %t438 = getelementptr i8, ptr %frame, i64 192
+  %v.sm.async.op.432 = getelementptr i8, ptr %frame, i64 136
+  %v.sm.async.status.433 = getelementptr i8, ptr %frame, i64 144
+  %t448 = getelementptr i8, ptr %frame, i64 152
+  %t458 = getelementptr i8, ptr %frame, i64 192
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
   store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.stat
-  %t414 = call ptr @willrt_fs_async_file_stat_start(ptr %v.sm.param.543.411, ptr %v.stat)
-  store ptr %t414, ptr %v.sm.async.op.412
-  %t415 = icmp ne ptr %t414, null
-  br i1 %t415, label %sm.async.have.1, label %sm.async.fail.1
+  %t434 = call ptr @willrt_fs_async_file_stat_start(ptr %v.sm.param.543.431, ptr %v.stat)
+  store ptr %t434, ptr %v.sm.async.op.432
+  %t435 = icmp ne ptr %t434, null
+  br i1 %t435, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.413
+  store i32 1, ptr %v.sm.async.status.433
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t416 = load ptr, ptr %v.sm.async.op.412
-  %t417 = call i32 @willrt_blocking_poll(ptr %t416)
-  %t418 = icmp eq i32 %t417, 0
-  br i1 %t418, label %sm.async.park.1, label %sm.async.done.1
+  %t436 = load ptr, ptr %v.sm.async.op.432
+  %t437 = call i32 @willrt_blocking_poll(ptr %t436)
+  %t438 = icmp eq i32 %t437, 0
+  br i1 %t438, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t419 = call i32 @willrt_blocking_finish(ptr %t416)
-  store i32 %t419, ptr %v.sm.async.status.413
+  %t439 = call i32 @willrt_blocking_finish(ptr %t436)
+  store i32 %t439, ptr %v.sm.async.status.433
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t420 = load i32, ptr %v.sm.async.status.413
-  store i32 %t420, ptr %v.status
-  %t421 = load i32, ptr %v.status
-  %t422 = icmp ne i32 %t421, 0
-  br i1 %t422, label %if.then.1, label %if.end.1
+  %t440 = load i32, ptr %v.sm.async.status.433
+  store i32 %t440, ptr %v.status
+  %t441 = load i32, ptr %v.status
+  %t442 = icmp ne i32 %t441, 0
+  br i1 %t442, label %if.then.1, label %if.end.1
 if.then.1:
-  %t423 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.569, i32 0, i32 0
-  store i32 1, ptr %t423
-  %t424 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.569, i32 0, i32 2
-  %t425 = getelementptr inbounds %interface.Error, ptr %t424, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t425
-  %t426 = getelementptr inbounds %interface.Error, ptr %t424, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t426
-  %t427 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.569
-  store { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t427, ptr %t428
-  %t429 = load i32, ptr %t428
-  %t430 = icmp eq i32 %t429, 0
-  br i1 %t430, label %share.keep.2, label %share.done.2
+  %t443 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.569, i32 0, i32 0
+  store i32 1, ptr %t443
+  %t444 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.569, i32 0, i32 2
+  %t445 = getelementptr inbounds %interface.Error, ptr %t444, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t445
+  %t446 = getelementptr inbounds %interface.Error, ptr %t444, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t446
+  %t447 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.569
+  store { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t447, ptr %t448
+  %t449 = load i32, ptr %t448
+  %t450 = icmp eq i32 %t449, 0
+  br i1 %t450, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t431 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %t428, i32 0, i32 2
+  %t451 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %t448, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t432 = getelementptr { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr null, i32 1
-  %t433 = ptrtoint ptr %t432 to i64
-  call i32 @willrt_task_store_result(ptr %t428, i64 %t433)
+  %t452 = getelementptr { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr null, i32 1
+  %t453 = ptrtoint ptr %t452 to i64
+  call i32 @willrt_task_store_result(ptr %t448, i64 %t453)
   ret i32 1
 if.end.1:
-  %t434 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.575, i32 0, i32 0
-  store i32 0, ptr %t434
-  %t435 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.575, i32 0, i32 2
-  %t436 = load %"struct.std/os/fs.StatInfo", ptr %v.stat
-  store %"struct.std/os/fs.StatInfo" %t436, ptr %t435
-  %t437 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.575
-  store { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t437, ptr %t438
-  %t439 = load i32, ptr %t438
-  %t440 = icmp eq i32 %t439, 0
-  br i1 %t440, label %share.keep.3, label %share.done.3
+  %t454 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.575, i32 0, i32 0
+  store i32 0, ptr %t454
+  %t455 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.575, i32 0, i32 2
+  %t456 = load %"struct.std/os/fs.StatInfo", ptr %v.stat
+  store %"struct.std/os/fs.StatInfo" %t456, ptr %t455
+  %t457 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.575
+  store { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t457, ptr %t458
+  %t459 = load i32, ptr %t458
+  %t460 = icmp eq i32 %t459, 0
+  br i1 %t460, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t441 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %t438, i32 0, i32 2
+  %t461 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %t458, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t442 = getelementptr { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr null, i32 1
-  %t443 = ptrtoint ptr %t442 to i64
-  call i32 @willrt_task_store_result(ptr %t438, i64 %t443)
+  %t462 = getelementptr { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr null, i32 1
+  %t463 = ptrtoint ptr %t462 to i64
+  call i32 @willrt_task_store_result(ptr %t458, i64 %t463)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncStat.task"(ptr %arg0) {
+define hidden ptr @"std/os/fs.File.AsyncStat.task"(ptr %arg0, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
-  %t444 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t444
-  %t445 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t446 = load %"struct.std/os/fs.File", ptr %arg0
-  store %"struct.std/os/fs.File" %t446, ptr %t445
-  %t447 = call i32 @willrt_lane_here()
-  %t448 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 %t447, i32 0)
-  call void @willrt_task_own_frame(ptr %t448)
-  call void @willrt_task_run(ptr %t448)
-  ret ptr %t448
+  %t464 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t464
+  %t465 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t466 = load %"struct.std/os/fs.File", ptr %arg0
+  store %"struct.std/os/fs.File" %t466, ptr %t465
+  %t467 = call i32 @willrt_lane_here()
+  %t468 = icmp eq i32 %start, -1
+  %t469 = icmp eq i32 %start, -2
+  %t470 = select i1 %t469, i32 %t467, i32 %start
+  br i1 %t468, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t471 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t471)
+  call void @willrt_task_run_auto(ptr %t471)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t472 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 %t470, i32 0)
+  call void @willrt_task_own_frame(ptr %t472)
+  call void @willrt_task_run(ptr %t472)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t473 = phi ptr [ %t471, %sm.start.auto.4 ], [ %t472, %sm.start.lane.4 ]
+  ret ptr %t473
 }
 define internal i32 @"std/os/fs.AsyncMkdir.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.972.449 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.974.450 = getelementptr i8, ptr %frame, i64 24
+  %v.sm.param.972.474 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.974.475 = getelementptr i8, ptr %frame, i64 24
   %v.status = getelementptr i8, ptr %frame, i64 28
   %v.adt.995 = getelementptr i8, ptr %frame, i64 32
   %v.adt.1000 = getelementptr i8, ptr %frame, i64 56
-  %v.sm.async.op.451 = getelementptr i8, ptr %frame, i64 80
-  %v.sm.async.status.452 = getelementptr i8, ptr %frame, i64 88
-  %t467 = getelementptr i8, ptr %frame, i64 96
-  %t476 = getelementptr i8, ptr %frame, i64 120
-  %v.sm.pval.974 = load i32, ptr %v.sm.param.974.450
+  %v.sm.async.op.476 = getelementptr i8, ptr %frame, i64 80
+  %v.sm.async.status.477 = getelementptr i8, ptr %frame, i64 88
+  %t492 = getelementptr i8, ptr %frame, i64 96
+  %t501 = getelementptr i8, ptr %frame, i64 120
+  %v.sm.pval.974 = load i32, ptr %v.sm.param.974.475
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t453 = call ptr @willrt_fs_async_mkdir_start(ptr %v.sm.param.972.449, i32 %v.sm.pval.974)
-  store ptr %t453, ptr %v.sm.async.op.451
-  %t454 = icmp ne ptr %t453, null
-  br i1 %t454, label %sm.async.have.1, label %sm.async.fail.1
+  %t478 = call ptr @willrt_fs_async_mkdir_start(ptr %v.sm.param.972.474, i32 %v.sm.pval.974)
+  store ptr %t478, ptr %v.sm.async.op.476
+  %t479 = icmp ne ptr %t478, null
+  br i1 %t479, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.452
+  store i32 1, ptr %v.sm.async.status.477
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t455 = load ptr, ptr %v.sm.async.op.451
-  %t456 = call i32 @willrt_blocking_poll(ptr %t455)
-  %t457 = icmp eq i32 %t456, 0
-  br i1 %t457, label %sm.async.park.1, label %sm.async.done.1
+  %t480 = load ptr, ptr %v.sm.async.op.476
+  %t481 = call i32 @willrt_blocking_poll(ptr %t480)
+  %t482 = icmp eq i32 %t481, 0
+  br i1 %t482, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t458 = call i32 @willrt_blocking_finish(ptr %t455)
-  store i32 %t458, ptr %v.sm.async.status.452
+  %t483 = call i32 @willrt_blocking_finish(ptr %t480)
+  store i32 %t483, ptr %v.sm.async.status.477
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t459 = load i32, ptr %v.sm.async.status.452
-  store i32 %t459, ptr %v.status
-  %t460 = load i32, ptr %v.status
-  %t461 = icmp ne i32 %t460, 0
-  br i1 %t461, label %if.then.1, label %if.end.1
+  %t484 = load i32, ptr %v.sm.async.status.477
+  store i32 %t484, ptr %v.status
+  %t485 = load i32, ptr %v.status
+  %t486 = icmp ne i32 %t485, 0
+  br i1 %t486, label %if.then.1, label %if.end.1
 if.then.1:
-  %t462 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.995, i32 0, i32 0
-  store i32 1, ptr %t462
-  %t463 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.995, i32 0, i32 2
-  %t464 = getelementptr inbounds %interface.Error, ptr %t463, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t464
-  %t465 = getelementptr inbounds %interface.Error, ptr %t463, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t465
-  %t466 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.995
-  store { i32, [4 x i8], %interface.Error } %t466, ptr %t467
-  %t468 = load i32, ptr %t467
-  %t469 = icmp eq i32 %t468, 0
-  br i1 %t469, label %share.keep.2, label %share.done.2
+  %t487 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.995, i32 0, i32 0
+  store i32 1, ptr %t487
+  %t488 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.995, i32 0, i32 2
+  %t489 = getelementptr inbounds %interface.Error, ptr %t488, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t489
+  %t490 = getelementptr inbounds %interface.Error, ptr %t488, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t490
+  %t491 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.995
+  store { i32, [4 x i8], %interface.Error } %t491, ptr %t492
+  %t493 = load i32, ptr %t492
+  %t494 = icmp eq i32 %t493, 0
+  br i1 %t494, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t470 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t467, i32 0, i32 2
+  %t495 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t492, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t471 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t472 = ptrtoint ptr %t471 to i64
-  call i32 @willrt_task_store_result(ptr %t467, i64 %t472)
+  %t496 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t497 = ptrtoint ptr %t496 to i64
+  call i32 @willrt_task_store_result(ptr %t492, i64 %t497)
   ret i32 1
 if.end.1:
-  %t473 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1000, i32 0, i32 0
-  store i32 0, ptr %t473
-  %t474 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1000, i32 0, i32 2
-  %t475 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1000
-  store { i32, [4 x i8], %interface.Error } %t475, ptr %t476
-  %t477 = load i32, ptr %t476
-  %t478 = icmp eq i32 %t477, 0
-  br i1 %t478, label %share.keep.3, label %share.done.3
+  %t498 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1000, i32 0, i32 0
+  store i32 0, ptr %t498
+  %t499 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1000, i32 0, i32 2
+  %t500 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1000
+  store { i32, [4 x i8], %interface.Error } %t500, ptr %t501
+  %t502 = load i32, ptr %t501
+  %t503 = icmp eq i32 %t502, 0
+  br i1 %t503, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t479 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t476, i32 0, i32 2
+  %t504 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t501, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t480 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t481 = ptrtoint ptr %t480 to i64
-  call i32 @willrt_task_store_result(ptr %t476, i64 %t481)
+  %t505 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t506 = ptrtoint ptr %t505 to i64
+  call i32 @willrt_task_store_result(ptr %t501, i64 %t506)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncMkdir.task"(ptr %arg0, i32 %arg1) {
+define hidden ptr @"std/os/fs.AsyncMkdir.task"(ptr %arg0, i32 %arg1, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
-  %t482 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t482
-  %t483 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t484 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t484, ptr %t483
-  %t485 = getelementptr i8, ptr %v.sm.frame, i64 24
-  store i32 %arg1, ptr %t485
-  %t486 = call i32 @willrt_lane_here()
-  %t487 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncMkdir.sm", ptr %v.sm.frame, i64 144, i32 %t486, i32 0)
-  call void @willrt_task_own_frame(ptr %t487)
-  call void @willrt_task_run(ptr %t487)
-  ret ptr %t487
+  %t507 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t507
+  %t508 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t509 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t509, ptr %t508
+  %t510 = getelementptr i8, ptr %v.sm.frame, i64 24
+  store i32 %arg1, ptr %t510
+  %t511 = call i32 @willrt_lane_here()
+  %t512 = icmp eq i32 %start, -1
+  %t513 = icmp eq i32 %start, -2
+  %t514 = select i1 %t513, i32 %t511, i32 %start
+  br i1 %t512, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t515 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncMkdir.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t515)
+  call void @willrt_task_run_auto(ptr %t515)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t516 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncMkdir.sm", ptr %v.sm.frame, i64 144, i32 %t514, i32 0)
+  call void @willrt_task_own_frame(ptr %t516)
+  call void @willrt_task_run(ptr %t516)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t517 = phi ptr [ %t515, %sm.start.auto.4 ], [ %t516, %sm.start.lane.4 ]
+  ret ptr %t517
 }
 define internal i32 @"std/os/fs.AsyncMkdirAll.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1004.488 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.1006.489 = getelementptr i8, ptr %frame, i64 24
+  %v.sm.param.1004.518 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1006.519 = getelementptr i8, ptr %frame, i64 24
   %v.status = getelementptr i8, ptr %frame, i64 28
   %v.adt.1027 = getelementptr i8, ptr %frame, i64 32
   %v.adt.1032 = getelementptr i8, ptr %frame, i64 56
-  %v.sm.async.op.490 = getelementptr i8, ptr %frame, i64 80
-  %v.sm.async.status.491 = getelementptr i8, ptr %frame, i64 88
-  %t506 = getelementptr i8, ptr %frame, i64 96
-  %t515 = getelementptr i8, ptr %frame, i64 120
-  %v.sm.pval.1006 = load i32, ptr %v.sm.param.1006.489
+  %v.sm.async.op.520 = getelementptr i8, ptr %frame, i64 80
+  %v.sm.async.status.521 = getelementptr i8, ptr %frame, i64 88
+  %t536 = getelementptr i8, ptr %frame, i64 96
+  %t545 = getelementptr i8, ptr %frame, i64 120
+  %v.sm.pval.1006 = load i32, ptr %v.sm.param.1006.519
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t492 = call ptr @willrt_fs_async_mkdir_all_start(ptr %v.sm.param.1004.488, i32 %v.sm.pval.1006)
-  store ptr %t492, ptr %v.sm.async.op.490
-  %t493 = icmp ne ptr %t492, null
-  br i1 %t493, label %sm.async.have.1, label %sm.async.fail.1
+  %t522 = call ptr @willrt_fs_async_mkdir_all_start(ptr %v.sm.param.1004.518, i32 %v.sm.pval.1006)
+  store ptr %t522, ptr %v.sm.async.op.520
+  %t523 = icmp ne ptr %t522, null
+  br i1 %t523, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.491
+  store i32 1, ptr %v.sm.async.status.521
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t494 = load ptr, ptr %v.sm.async.op.490
-  %t495 = call i32 @willrt_blocking_poll(ptr %t494)
-  %t496 = icmp eq i32 %t495, 0
-  br i1 %t496, label %sm.async.park.1, label %sm.async.done.1
+  %t524 = load ptr, ptr %v.sm.async.op.520
+  %t525 = call i32 @willrt_blocking_poll(ptr %t524)
+  %t526 = icmp eq i32 %t525, 0
+  br i1 %t526, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t497 = call i32 @willrt_blocking_finish(ptr %t494)
-  store i32 %t497, ptr %v.sm.async.status.491
+  %t527 = call i32 @willrt_blocking_finish(ptr %t524)
+  store i32 %t527, ptr %v.sm.async.status.521
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t498 = load i32, ptr %v.sm.async.status.491
-  store i32 %t498, ptr %v.status
-  %t499 = load i32, ptr %v.status
-  %t500 = icmp ne i32 %t499, 0
-  br i1 %t500, label %if.then.1, label %if.end.1
+  %t528 = load i32, ptr %v.sm.async.status.521
+  store i32 %t528, ptr %v.status
+  %t529 = load i32, ptr %v.status
+  %t530 = icmp ne i32 %t529, 0
+  br i1 %t530, label %if.then.1, label %if.end.1
 if.then.1:
-  %t501 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1027, i32 0, i32 0
-  store i32 1, ptr %t501
-  %t502 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1027, i32 0, i32 2
-  %t503 = getelementptr inbounds %interface.Error, ptr %t502, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t503
-  %t504 = getelementptr inbounds %interface.Error, ptr %t502, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t504
-  %t505 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1027
-  store { i32, [4 x i8], %interface.Error } %t505, ptr %t506
-  %t507 = load i32, ptr %t506
-  %t508 = icmp eq i32 %t507, 0
-  br i1 %t508, label %share.keep.2, label %share.done.2
+  %t531 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1027, i32 0, i32 0
+  store i32 1, ptr %t531
+  %t532 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1027, i32 0, i32 2
+  %t533 = getelementptr inbounds %interface.Error, ptr %t532, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t533
+  %t534 = getelementptr inbounds %interface.Error, ptr %t532, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t534
+  %t535 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1027
+  store { i32, [4 x i8], %interface.Error } %t535, ptr %t536
+  %t537 = load i32, ptr %t536
+  %t538 = icmp eq i32 %t537, 0
+  br i1 %t538, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t509 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t506, i32 0, i32 2
+  %t539 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t536, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t510 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t511 = ptrtoint ptr %t510 to i64
-  call i32 @willrt_task_store_result(ptr %t506, i64 %t511)
+  %t540 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t541 = ptrtoint ptr %t540 to i64
+  call i32 @willrt_task_store_result(ptr %t536, i64 %t541)
   ret i32 1
 if.end.1:
-  %t512 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1032, i32 0, i32 0
-  store i32 0, ptr %t512
-  %t513 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1032, i32 0, i32 2
-  %t514 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1032
-  store { i32, [4 x i8], %interface.Error } %t514, ptr %t515
-  %t516 = load i32, ptr %t515
-  %t517 = icmp eq i32 %t516, 0
-  br i1 %t517, label %share.keep.3, label %share.done.3
+  %t542 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1032, i32 0, i32 0
+  store i32 0, ptr %t542
+  %t543 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1032, i32 0, i32 2
+  %t544 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1032
+  store { i32, [4 x i8], %interface.Error } %t544, ptr %t545
+  %t546 = load i32, ptr %t545
+  %t547 = icmp eq i32 %t546, 0
+  br i1 %t547, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t518 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t515, i32 0, i32 2
+  %t548 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t545, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t519 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t520 = ptrtoint ptr %t519 to i64
-  call i32 @willrt_task_store_result(ptr %t515, i64 %t520)
+  %t549 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t550 = ptrtoint ptr %t549 to i64
+  call i32 @willrt_task_store_result(ptr %t545, i64 %t550)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncMkdirAll.task"(ptr %arg0, i32 %arg1) {
+define hidden ptr @"std/os/fs.AsyncMkdirAll.task"(ptr %arg0, i32 %arg1, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
-  %t521 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t521
-  %t522 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t523 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t523, ptr %t522
-  %t524 = getelementptr i8, ptr %v.sm.frame, i64 24
-  store i32 %arg1, ptr %t524
-  %t525 = call i32 @willrt_lane_here()
-  %t526 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncMkdirAll.sm", ptr %v.sm.frame, i64 144, i32 %t525, i32 0)
-  call void @willrt_task_own_frame(ptr %t526)
-  call void @willrt_task_run(ptr %t526)
-  ret ptr %t526
+  %t551 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t551
+  %t552 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t553 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t553, ptr %t552
+  %t554 = getelementptr i8, ptr %v.sm.frame, i64 24
+  store i32 %arg1, ptr %t554
+  %t555 = call i32 @willrt_lane_here()
+  %t556 = icmp eq i32 %start, -1
+  %t557 = icmp eq i32 %start, -2
+  %t558 = select i1 %t557, i32 %t555, i32 %start
+  br i1 %t556, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t559 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncMkdirAll.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t559)
+  call void @willrt_task_run_auto(ptr %t559)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t560 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncMkdirAll.sm", ptr %v.sm.frame, i64 144, i32 %t558, i32 0)
+  call void @willrt_task_own_frame(ptr %t560)
+  call void @willrt_task_run(ptr %t560)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t561 = phi ptr [ %t559, %sm.start.auto.4 ], [ %t560, %sm.start.lane.4 ]
+  ret ptr %t561
 }
 define internal i32 @"std/os/fs.AsyncRemoveAll.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1036.527 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1036.562 = getelementptr i8, ptr %frame, i64 8
   %v.status = getelementptr i8, ptr %frame, i64 24
   %v.adt.1056 = getelementptr i8, ptr %frame, i64 32
   %v.adt.1061 = getelementptr i8, ptr %frame, i64 56
-  %v.sm.async.op.528 = getelementptr i8, ptr %frame, i64 80
-  %v.sm.async.status.529 = getelementptr i8, ptr %frame, i64 88
-  %t544 = getelementptr i8, ptr %frame, i64 96
-  %t553 = getelementptr i8, ptr %frame, i64 120
+  %v.sm.async.op.563 = getelementptr i8, ptr %frame, i64 80
+  %v.sm.async.status.564 = getelementptr i8, ptr %frame, i64 88
+  %t579 = getelementptr i8, ptr %frame, i64 96
+  %t588 = getelementptr i8, ptr %frame, i64 120
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t530 = call ptr @willrt_fs_async_remove_all_start(ptr %v.sm.param.1036.527)
-  store ptr %t530, ptr %v.sm.async.op.528
-  %t531 = icmp ne ptr %t530, null
-  br i1 %t531, label %sm.async.have.1, label %sm.async.fail.1
+  %t565 = call ptr @willrt_fs_async_remove_all_start(ptr %v.sm.param.1036.562)
+  store ptr %t565, ptr %v.sm.async.op.563
+  %t566 = icmp ne ptr %t565, null
+  br i1 %t566, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.529
+  store i32 1, ptr %v.sm.async.status.564
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t532 = load ptr, ptr %v.sm.async.op.528
-  %t533 = call i32 @willrt_blocking_poll(ptr %t532)
-  %t534 = icmp eq i32 %t533, 0
-  br i1 %t534, label %sm.async.park.1, label %sm.async.done.1
+  %t567 = load ptr, ptr %v.sm.async.op.563
+  %t568 = call i32 @willrt_blocking_poll(ptr %t567)
+  %t569 = icmp eq i32 %t568, 0
+  br i1 %t569, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t535 = call i32 @willrt_blocking_finish(ptr %t532)
-  store i32 %t535, ptr %v.sm.async.status.529
+  %t570 = call i32 @willrt_blocking_finish(ptr %t567)
+  store i32 %t570, ptr %v.sm.async.status.564
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t536 = load i32, ptr %v.sm.async.status.529
-  store i32 %t536, ptr %v.status
-  %t537 = load i32, ptr %v.status
-  %t538 = icmp ne i32 %t537, 0
-  br i1 %t538, label %if.then.1, label %if.end.1
+  %t571 = load i32, ptr %v.sm.async.status.564
+  store i32 %t571, ptr %v.status
+  %t572 = load i32, ptr %v.status
+  %t573 = icmp ne i32 %t572, 0
+  br i1 %t573, label %if.then.1, label %if.end.1
 if.then.1:
-  %t539 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1056, i32 0, i32 0
-  store i32 1, ptr %t539
-  %t540 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1056, i32 0, i32 2
-  %t541 = getelementptr inbounds %interface.Error, ptr %t540, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t541
-  %t542 = getelementptr inbounds %interface.Error, ptr %t540, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t542
-  %t543 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1056
-  store { i32, [4 x i8], %interface.Error } %t543, ptr %t544
-  %t545 = load i32, ptr %t544
-  %t546 = icmp eq i32 %t545, 0
-  br i1 %t546, label %share.keep.2, label %share.done.2
+  %t574 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1056, i32 0, i32 0
+  store i32 1, ptr %t574
+  %t575 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1056, i32 0, i32 2
+  %t576 = getelementptr inbounds %interface.Error, ptr %t575, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t576
+  %t577 = getelementptr inbounds %interface.Error, ptr %t575, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t577
+  %t578 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1056
+  store { i32, [4 x i8], %interface.Error } %t578, ptr %t579
+  %t580 = load i32, ptr %t579
+  %t581 = icmp eq i32 %t580, 0
+  br i1 %t581, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t547 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t544, i32 0, i32 2
+  %t582 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t579, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t548 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t549 = ptrtoint ptr %t548 to i64
-  call i32 @willrt_task_store_result(ptr %t544, i64 %t549)
+  %t583 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t584 = ptrtoint ptr %t583 to i64
+  call i32 @willrt_task_store_result(ptr %t579, i64 %t584)
   ret i32 1
 if.end.1:
-  %t550 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1061, i32 0, i32 0
-  store i32 0, ptr %t550
-  %t551 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1061, i32 0, i32 2
-  %t552 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1061
-  store { i32, [4 x i8], %interface.Error } %t552, ptr %t553
-  %t554 = load i32, ptr %t553
-  %t555 = icmp eq i32 %t554, 0
-  br i1 %t555, label %share.keep.3, label %share.done.3
+  %t585 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1061, i32 0, i32 0
+  store i32 0, ptr %t585
+  %t586 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1061, i32 0, i32 2
+  %t587 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1061
+  store { i32, [4 x i8], %interface.Error } %t587, ptr %t588
+  %t589 = load i32, ptr %t588
+  %t590 = icmp eq i32 %t589, 0
+  br i1 %t590, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t556 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t553, i32 0, i32 2
+  %t591 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t588, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t557 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t558 = ptrtoint ptr %t557 to i64
-  call i32 @willrt_task_store_result(ptr %t553, i64 %t558)
+  %t592 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t593 = ptrtoint ptr %t592 to i64
+  call i32 @willrt_task_store_result(ptr %t588, i64 %t593)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncRemoveAll.task"(ptr %arg0) {
+define hidden ptr @"std/os/fs.AsyncRemoveAll.task"(ptr %arg0, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
-  %t559 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t559
-  %t560 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t561 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t561, ptr %t560
-  %t562 = call i32 @willrt_lane_here()
-  %t563 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncRemoveAll.sm", ptr %v.sm.frame, i64 144, i32 %t562, i32 0)
-  call void @willrt_task_own_frame(ptr %t563)
-  call void @willrt_task_run(ptr %t563)
-  ret ptr %t563
+  %t594 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t594
+  %t595 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t596 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t596, ptr %t595
+  %t597 = call i32 @willrt_lane_here()
+  %t598 = icmp eq i32 %start, -1
+  %t599 = icmp eq i32 %start, -2
+  %t600 = select i1 %t599, i32 %t597, i32 %start
+  br i1 %t598, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t601 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncRemoveAll.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t601)
+  call void @willrt_task_run_auto(ptr %t601)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t602 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncRemoveAll.sm", ptr %v.sm.frame, i64 144, i32 %t600, i32 0)
+  call void @willrt_task_own_frame(ptr %t602)
+  call void @willrt_task_run(ptr %t602)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t603 = phi ptr [ %t601, %sm.start.auto.4 ], [ %t602, %sm.start.lane.4 ]
+  ret ptr %t603
 }
 define internal i32 @"std/os/fs.AsyncSymlink.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1065.564 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.1067.565 = getelementptr i8, ptr %frame, i64 24
+  %v.sm.param.1065.604 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1067.605 = getelementptr i8, ptr %frame, i64 24
   %v.status = getelementptr i8, ptr %frame, i64 40
   %v.adt.1090 = getelementptr i8, ptr %frame, i64 48
   %v.adt.1095 = getelementptr i8, ptr %frame, i64 72
-  %v.sm.async.op.566 = getelementptr i8, ptr %frame, i64 96
-  %v.sm.async.status.567 = getelementptr i8, ptr %frame, i64 104
-  %t582 = getelementptr i8, ptr %frame, i64 112
-  %t591 = getelementptr i8, ptr %frame, i64 136
+  %v.sm.async.op.606 = getelementptr i8, ptr %frame, i64 96
+  %v.sm.async.status.607 = getelementptr i8, ptr %frame, i64 104
+  %t622 = getelementptr i8, ptr %frame, i64 112
+  %t631 = getelementptr i8, ptr %frame, i64 136
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t568 = call ptr @willrt_fs_async_symlink_start(ptr %v.sm.param.1065.564, ptr %v.sm.param.1067.565)
-  store ptr %t568, ptr %v.sm.async.op.566
-  %t569 = icmp ne ptr %t568, null
-  br i1 %t569, label %sm.async.have.1, label %sm.async.fail.1
+  %t608 = call ptr @willrt_fs_async_symlink_start(ptr %v.sm.param.1065.604, ptr %v.sm.param.1067.605)
+  store ptr %t608, ptr %v.sm.async.op.606
+  %t609 = icmp ne ptr %t608, null
+  br i1 %t609, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.567
+  store i32 1, ptr %v.sm.async.status.607
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t570 = load ptr, ptr %v.sm.async.op.566
-  %t571 = call i32 @willrt_blocking_poll(ptr %t570)
-  %t572 = icmp eq i32 %t571, 0
-  br i1 %t572, label %sm.async.park.1, label %sm.async.done.1
+  %t610 = load ptr, ptr %v.sm.async.op.606
+  %t611 = call i32 @willrt_blocking_poll(ptr %t610)
+  %t612 = icmp eq i32 %t611, 0
+  br i1 %t612, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t573 = call i32 @willrt_blocking_finish(ptr %t570)
-  store i32 %t573, ptr %v.sm.async.status.567
+  %t613 = call i32 @willrt_blocking_finish(ptr %t610)
+  store i32 %t613, ptr %v.sm.async.status.607
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t574 = load i32, ptr %v.sm.async.status.567
-  store i32 %t574, ptr %v.status
-  %t575 = load i32, ptr %v.status
-  %t576 = icmp ne i32 %t575, 0
-  br i1 %t576, label %if.then.1, label %if.end.1
+  %t614 = load i32, ptr %v.sm.async.status.607
+  store i32 %t614, ptr %v.status
+  %t615 = load i32, ptr %v.status
+  %t616 = icmp ne i32 %t615, 0
+  br i1 %t616, label %if.then.1, label %if.end.1
 if.then.1:
-  %t577 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1090, i32 0, i32 0
-  store i32 1, ptr %t577
-  %t578 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1090, i32 0, i32 2
-  %t579 = getelementptr inbounds %interface.Error, ptr %t578, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t579
-  %t580 = getelementptr inbounds %interface.Error, ptr %t578, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t580
-  %t581 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1090
-  store { i32, [4 x i8], %interface.Error } %t581, ptr %t582
-  %t583 = load i32, ptr %t582
-  %t584 = icmp eq i32 %t583, 0
-  br i1 %t584, label %share.keep.2, label %share.done.2
+  %t617 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1090, i32 0, i32 0
+  store i32 1, ptr %t617
+  %t618 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1090, i32 0, i32 2
+  %t619 = getelementptr inbounds %interface.Error, ptr %t618, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t619
+  %t620 = getelementptr inbounds %interface.Error, ptr %t618, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t620
+  %t621 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1090
+  store { i32, [4 x i8], %interface.Error } %t621, ptr %t622
+  %t623 = load i32, ptr %t622
+  %t624 = icmp eq i32 %t623, 0
+  br i1 %t624, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t585 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t582, i32 0, i32 2
+  %t625 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t622, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t586 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t587 = ptrtoint ptr %t586 to i64
-  call i32 @willrt_task_store_result(ptr %t582, i64 %t587)
+  %t626 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t627 = ptrtoint ptr %t626 to i64
+  call i32 @willrt_task_store_result(ptr %t622, i64 %t627)
   ret i32 1
 if.end.1:
-  %t588 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1095, i32 0, i32 0
-  store i32 0, ptr %t588
-  %t589 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1095, i32 0, i32 2
-  %t590 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1095
-  store { i32, [4 x i8], %interface.Error } %t590, ptr %t591
-  %t592 = load i32, ptr %t591
-  %t593 = icmp eq i32 %t592, 0
-  br i1 %t593, label %share.keep.3, label %share.done.3
+  %t628 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1095, i32 0, i32 0
+  store i32 0, ptr %t628
+  %t629 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1095, i32 0, i32 2
+  %t630 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1095
+  store { i32, [4 x i8], %interface.Error } %t630, ptr %t631
+  %t632 = load i32, ptr %t631
+  %t633 = icmp eq i32 %t632, 0
+  br i1 %t633, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t594 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t591, i32 0, i32 2
+  %t634 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t631, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t595 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t596 = ptrtoint ptr %t595 to i64
-  call i32 @willrt_task_store_result(ptr %t591, i64 %t596)
+  %t635 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t636 = ptrtoint ptr %t635 to i64
+  call i32 @willrt_task_store_result(ptr %t631, i64 %t636)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncSymlink.task"(ptr %arg0, ptr %arg1) {
+define hidden ptr @"std/os/fs.AsyncSymlink.task"(ptr %arg0, ptr %arg1, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
-  %t597 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t597
-  %t598 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t599 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t599, ptr %t598
-  %t600 = getelementptr i8, ptr %v.sm.frame, i64 24
-  %t601 = load { ptr, i64 }, ptr %arg1
-  store { ptr, i64 } %t601, ptr %t600
-  %t602 = call i32 @willrt_lane_here()
-  %t603 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncSymlink.sm", ptr %v.sm.frame, i64 160, i32 %t602, i32 0)
-  call void @willrt_task_own_frame(ptr %t603)
-  call void @willrt_task_run(ptr %t603)
-  ret ptr %t603
+  %t637 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t637
+  %t638 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t639 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t639, ptr %t638
+  %t640 = getelementptr i8, ptr %v.sm.frame, i64 24
+  %t641 = load { ptr, i64 }, ptr %arg1
+  store { ptr, i64 } %t641, ptr %t640
+  %t642 = call i32 @willrt_lane_here()
+  %t643 = icmp eq i32 %start, -1
+  %t644 = icmp eq i32 %start, -2
+  %t645 = select i1 %t644, i32 %t642, i32 %start
+  br i1 %t643, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t646 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncSymlink.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t646)
+  call void @willrt_task_run_auto(ptr %t646)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t647 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncSymlink.sm", ptr %v.sm.frame, i64 160, i32 %t645, i32 0)
+  call void @willrt_task_own_frame(ptr %t647)
+  call void @willrt_task_run(ptr %t647)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t648 = phi ptr [ %t646, %sm.start.auto.4 ], [ %t647, %sm.start.lane.4 ]
+  ret ptr %t648
 }
 define internal i32 @"std/os/fs.AsyncTempDir.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1099.604 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.1101.605 = getelementptr i8, ptr %frame, i64 24
+  %v.sm.param.1099.649 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1101.650 = getelementptr i8, ptr %frame, i64 24
   %v.out = getelementptr i8, ptr %frame, i64 40
   %v.status = getelementptr i8, ptr %frame, i64 56
   %v.str.1109 = getelementptr i8, ptr %frame, i64 64
   %v.adt.1131 = getelementptr i8, ptr %frame, i64 80
   %v.adt.1137 = getelementptr i8, ptr %frame, i64 104
-  %v.sm.async.op.609 = getelementptr i8, ptr %frame, i64 128
-  %v.sm.async.status.610 = getelementptr i8, ptr %frame, i64 136
-  %t625 = getelementptr i8, ptr %frame, i64 144
-  %t635 = getelementptr i8, ptr %frame, i64 168
+  %v.sm.async.op.654 = getelementptr i8, ptr %frame, i64 128
+  %v.sm.async.status.655 = getelementptr i8, ptr %frame, i64 136
+  %t670 = getelementptr i8, ptr %frame, i64 144
+  %t680 = getelementptr i8, ptr %frame, i64 168
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t606 = getelementptr inbounds { ptr, i64 }, ptr %v.str.1109, i32 0, i32 0
-  store ptr @.bytes.61, ptr %t606
-  %t607 = getelementptr inbounds { ptr, i64 }, ptr %v.str.1109, i32 0, i32 1
-  store i64 0, ptr %t607
-  %t608 = load { ptr, i64 }, ptr %v.str.1109
-  store { ptr, i64 } %t608, ptr %v.out
-  %t611 = call ptr @willrt_fs_async_temp_dir_start(ptr %v.sm.param.1099.604, ptr %v.sm.param.1101.605, ptr %v.out)
-  store ptr %t611, ptr %v.sm.async.op.609
-  %t612 = icmp ne ptr %t611, null
-  br i1 %t612, label %sm.async.have.1, label %sm.async.fail.1
+  %t651 = getelementptr inbounds { ptr, i64 }, ptr %v.str.1109, i32 0, i32 0
+  store ptr @.bytes.61, ptr %t651
+  %t652 = getelementptr inbounds { ptr, i64 }, ptr %v.str.1109, i32 0, i32 1
+  store i64 0, ptr %t652
+  %t653 = load { ptr, i64 }, ptr %v.str.1109
+  store { ptr, i64 } %t653, ptr %v.out
+  %t656 = call ptr @willrt_fs_async_temp_dir_start(ptr %v.sm.param.1099.649, ptr %v.sm.param.1101.650, ptr %v.out)
+  store ptr %t656, ptr %v.sm.async.op.654
+  %t657 = icmp ne ptr %t656, null
+  br i1 %t657, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.610
+  store i32 1, ptr %v.sm.async.status.655
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t613 = load ptr, ptr %v.sm.async.op.609
-  %t614 = call i32 @willrt_blocking_poll(ptr %t613)
-  %t615 = icmp eq i32 %t614, 0
-  br i1 %t615, label %sm.async.park.1, label %sm.async.done.1
+  %t658 = load ptr, ptr %v.sm.async.op.654
+  %t659 = call i32 @willrt_blocking_poll(ptr %t658)
+  %t660 = icmp eq i32 %t659, 0
+  br i1 %t660, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t616 = call i32 @willrt_blocking_finish(ptr %t613)
-  store i32 %t616, ptr %v.sm.async.status.610
+  %t661 = call i32 @willrt_blocking_finish(ptr %t658)
+  store i32 %t661, ptr %v.sm.async.status.655
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t617 = load i32, ptr %v.sm.async.status.610
-  store i32 %t617, ptr %v.status
-  %t618 = load i32, ptr %v.status
-  %t619 = icmp ne i32 %t618, 0
-  br i1 %t619, label %if.then.1, label %if.end.1
+  %t662 = load i32, ptr %v.sm.async.status.655
+  store i32 %t662, ptr %v.status
+  %t663 = load i32, ptr %v.status
+  %t664 = icmp ne i32 %t663, 0
+  br i1 %t664, label %if.then.1, label %if.end.1
 if.then.1:
-  %t620 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.1131, i32 0, i32 0
-  store i32 1, ptr %t620
-  %t621 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.1131, i32 0, i32 2
-  %t622 = getelementptr inbounds %interface.Error, ptr %t621, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t622
-  %t623 = getelementptr inbounds %interface.Error, ptr %t621, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t623
-  %t624 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.1131
-  store { i32, [4 x i8], { ptr, i64 } } %t624, ptr %t625
-  %t626 = load i32, ptr %t625
-  %t627 = icmp eq i32 %t626, 0
-  br i1 %t627, label %share.keep.2, label %share.done.2
+  %t665 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.1131, i32 0, i32 0
+  store i32 1, ptr %t665
+  %t666 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.1131, i32 0, i32 2
+  %t667 = getelementptr inbounds %interface.Error, ptr %t666, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t667
+  %t668 = getelementptr inbounds %interface.Error, ptr %t666, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t668
+  %t669 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.1131
+  store { i32, [4 x i8], { ptr, i64 } } %t669, ptr %t670
+  %t671 = load i32, ptr %t670
+  %t672 = icmp eq i32 %t671, 0
+  br i1 %t672, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t628 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %t625, i32 0, i32 2
+  %t673 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %t670, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t629 = getelementptr { i32, [4 x i8], { ptr, i64 } }, ptr null, i32 1
-  %t630 = ptrtoint ptr %t629 to i64
-  call i32 @willrt_task_store_result(ptr %t625, i64 %t630)
+  %t674 = getelementptr { i32, [4 x i8], { ptr, i64 } }, ptr null, i32 1
+  %t675 = ptrtoint ptr %t674 to i64
+  call i32 @willrt_task_store_result(ptr %t670, i64 %t675)
   ret i32 1
 if.end.1:
-  %t631 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.1137, i32 0, i32 0
-  store i32 0, ptr %t631
-  %t632 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.1137, i32 0, i32 2
-  %t633 = load { ptr, i64 }, ptr %v.out
-  store { ptr, i64 } %t633, ptr %t632
-  %t634 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.1137
-  store { i32, [4 x i8], { ptr, i64 } } %t634, ptr %t635
-  %t636 = load i32, ptr %t635
-  %t637 = icmp eq i32 %t636, 0
-  br i1 %t637, label %share.keep.3, label %share.done.3
+  %t676 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.1137, i32 0, i32 0
+  store i32 0, ptr %t676
+  %t677 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.1137, i32 0, i32 2
+  %t678 = load { ptr, i64 }, ptr %v.out
+  store { ptr, i64 } %t678, ptr %t677
+  %t679 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.1137
+  store { i32, [4 x i8], { ptr, i64 } } %t679, ptr %t680
+  %t681 = load i32, ptr %t680
+  %t682 = icmp eq i32 %t681, 0
+  br i1 %t682, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t638 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %t635, i32 0, i32 2
+  %t683 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %t680, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t639 = getelementptr { i32, [4 x i8], { ptr, i64 } }, ptr null, i32 1
-  %t640 = ptrtoint ptr %t639 to i64
-  call i32 @willrt_task_store_result(ptr %t635, i64 %t640)
+  %t684 = getelementptr { i32, [4 x i8], { ptr, i64 } }, ptr null, i32 1
+  %t685 = ptrtoint ptr %t684 to i64
+  call i32 @willrt_task_store_result(ptr %t680, i64 %t685)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncTempDir.task"(ptr %arg0, ptr %arg1) {
+define hidden ptr @"std/os/fs.AsyncTempDir.task"(ptr %arg0, ptr %arg1, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 192)
-  %t641 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t641
-  %t642 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t643 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t643, ptr %t642
-  %t644 = getelementptr i8, ptr %v.sm.frame, i64 24
-  %t645 = load { ptr, i64 }, ptr %arg1
-  store { ptr, i64 } %t645, ptr %t644
-  %t646 = call i32 @willrt_lane_here()
-  %t647 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncTempDir.sm", ptr %v.sm.frame, i64 192, i32 %t646, i32 0)
-  call void @willrt_task_own_frame(ptr %t647)
-  call void @willrt_task_run(ptr %t647)
-  ret ptr %t647
+  %t686 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t686
+  %t687 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t688 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t688, ptr %t687
+  %t689 = getelementptr i8, ptr %v.sm.frame, i64 24
+  %t690 = load { ptr, i64 }, ptr %arg1
+  store { ptr, i64 } %t690, ptr %t689
+  %t691 = call i32 @willrt_lane_here()
+  %t692 = icmp eq i32 %start, -1
+  %t693 = icmp eq i32 %start, -2
+  %t694 = select i1 %t693, i32 %t691, i32 %start
+  br i1 %t692, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t695 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncTempDir.sm", ptr %v.sm.frame, i64 192, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t695)
+  call void @willrt_task_run_auto(ptr %t695)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t696 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncTempDir.sm", ptr %v.sm.frame, i64 192, i32 %t694, i32 0)
+  call void @willrt_task_own_frame(ptr %t696)
+  call void @willrt_task_run(ptr %t696)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t697 = phi ptr [ %t695, %sm.start.auto.4 ], [ %t696, %sm.start.lane.4 ]
+  ret ptr %t697
 }
 define internal i32 @"std/os/fs.AsyncReadFile.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1141.648 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1141.698 = getelementptr i8, ptr %frame, i64 8
   %v.out = getelementptr i8, ptr %frame, i64 24
   %v.status = getelementptr i8, ptr %frame, i64 48
   %v.adt.1169 = getelementptr i8, ptr %frame, i64 56
   %v.adt.1175 = getelementptr i8, ptr %frame, i64 88
-  %v.sm.async.op.649 = getelementptr i8, ptr %frame, i64 120
-  %v.sm.async.status.650 = getelementptr i8, ptr %frame, i64 128
-  %t666 = getelementptr i8, ptr %frame, i64 136
-  %t676 = getelementptr i8, ptr %frame, i64 168
+  %v.sm.async.op.699 = getelementptr i8, ptr %frame, i64 120
+  %v.sm.async.status.700 = getelementptr i8, ptr %frame, i64 128
+  %t716 = getelementptr i8, ptr %frame, i64 136
+  %t726 = getelementptr i8, ptr %frame, i64 168
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
   store { ptr, i64, i64 } zeroinitializer, ptr %v.out
-  %t651 = call ptr @willrt_fs_async_read_file_start(ptr %v.sm.param.1141.648, ptr %v.out)
-  store ptr %t651, ptr %v.sm.async.op.649
-  %t652 = icmp ne ptr %t651, null
-  br i1 %t652, label %sm.async.have.1, label %sm.async.fail.1
+  %t701 = call ptr @willrt_fs_async_read_file_start(ptr %v.sm.param.1141.698, ptr %v.out)
+  store ptr %t701, ptr %v.sm.async.op.699
+  %t702 = icmp ne ptr %t701, null
+  br i1 %t702, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.650
+  store i32 1, ptr %v.sm.async.status.700
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t653 = load ptr, ptr %v.sm.async.op.649
-  %t654 = call i32 @willrt_io_poll(ptr %t653)
-  %t655 = icmp eq i32 %t654, 0
-  br i1 %t655, label %sm.async.park.1, label %sm.async.done.1
+  %t703 = load ptr, ptr %v.sm.async.op.699
+  %t704 = call i32 @willrt_io_poll(ptr %t703)
+  %t705 = icmp eq i32 %t704, 0
+  br i1 %t705, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
-  %t656 = call i64 @willrt_io_deadline(ptr %t653)
-  call void @willrt_task_wait_until(i64 %t656)
+  %t706 = call i64 @willrt_io_deadline(ptr %t703)
+  call void @willrt_task_wait_until(i64 %t706)
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t657 = call i32 @willrt_io_finish(ptr %t653)
-  store i32 %t657, ptr %v.sm.async.status.650
+  %t707 = call i32 @willrt_io_finish(ptr %t703)
+  store i32 %t707, ptr %v.sm.async.status.700
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t658 = load i32, ptr %v.sm.async.status.650
-  store i32 %t658, ptr %v.status
-  %t659 = load i32, ptr %v.status
-  %t660 = icmp ne i32 %t659, 0
-  br i1 %t660, label %if.then.1, label %if.end.1
+  %t708 = load i32, ptr %v.sm.async.status.700
+  store i32 %t708, ptr %v.status
+  %t709 = load i32, ptr %v.status
+  %t710 = icmp ne i32 %t709, 0
+  br i1 %t710, label %if.then.1, label %if.end.1
 if.then.1:
-  %t661 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1169, i32 0, i32 0
-  store i32 1, ptr %t661
-  %t662 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1169, i32 0, i32 2
-  %t663 = getelementptr inbounds %interface.Error, ptr %t662, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t663
-  %t664 = getelementptr inbounds %interface.Error, ptr %t662, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t664
-  %t665 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1169
-  store { i32, [4 x i8], { ptr, i64, i64 } } %t665, ptr %t666
-  %t667 = load i32, ptr %t666
-  %t668 = icmp eq i32 %t667, 0
-  br i1 %t668, label %share.keep.2, label %share.done.2
+  %t711 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1169, i32 0, i32 0
+  store i32 1, ptr %t711
+  %t712 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1169, i32 0, i32 2
+  %t713 = getelementptr inbounds %interface.Error, ptr %t712, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t713
+  %t714 = getelementptr inbounds %interface.Error, ptr %t712, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t714
+  %t715 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1169
+  store { i32, [4 x i8], { ptr, i64, i64 } } %t715, ptr %t716
+  %t717 = load i32, ptr %t716
+  %t718 = icmp eq i32 %t717, 0
+  br i1 %t718, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t669 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %t666, i32 0, i32 2
+  %t719 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %t716, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t670 = getelementptr { i32, [4 x i8], { ptr, i64, i64 } }, ptr null, i32 1
-  %t671 = ptrtoint ptr %t670 to i64
-  call i32 @willrt_task_store_result(ptr %t666, i64 %t671)
+  %t720 = getelementptr { i32, [4 x i8], { ptr, i64, i64 } }, ptr null, i32 1
+  %t721 = ptrtoint ptr %t720 to i64
+  call i32 @willrt_task_store_result(ptr %t716, i64 %t721)
   ret i32 1
 if.end.1:
-  %t672 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1175, i32 0, i32 0
-  store i32 0, ptr %t672
-  %t673 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1175, i32 0, i32 2
-  %t674 = load { ptr, i64, i64 }, ptr %v.out
-  store { ptr, i64, i64 } %t674, ptr %t673
-  %t675 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1175
-  store { i32, [4 x i8], { ptr, i64, i64 } } %t675, ptr %t676
-  %t677 = load i32, ptr %t676
-  %t678 = icmp eq i32 %t677, 0
-  br i1 %t678, label %share.keep.3, label %share.done.3
+  %t722 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1175, i32 0, i32 0
+  store i32 0, ptr %t722
+  %t723 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1175, i32 0, i32 2
+  %t724 = load { ptr, i64, i64 }, ptr %v.out
+  store { ptr, i64, i64 } %t724, ptr %t723
+  %t725 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1175
+  store { i32, [4 x i8], { ptr, i64, i64 } } %t725, ptr %t726
+  %t727 = load i32, ptr %t726
+  %t728 = icmp eq i32 %t727, 0
+  br i1 %t728, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t679 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %t676, i32 0, i32 2
+  %t729 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %t726, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t680 = getelementptr { i32, [4 x i8], { ptr, i64, i64 } }, ptr null, i32 1
-  %t681 = ptrtoint ptr %t680 to i64
-  call i32 @willrt_task_store_result(ptr %t676, i64 %t681)
+  %t730 = getelementptr { i32, [4 x i8], { ptr, i64, i64 } }, ptr null, i32 1
+  %t731 = ptrtoint ptr %t730 to i64
+  call i32 @willrt_task_store_result(ptr %t726, i64 %t731)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncReadFile.task"(ptr %arg0) {
+define hidden ptr @"std/os/fs.AsyncReadFile.task"(ptr %arg0, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 208)
-  %t682 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t682
-  %t683 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t684 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t684, ptr %t683
-  %t685 = call i32 @willrt_lane_here()
-  %t686 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncReadFile.sm", ptr %v.sm.frame, i64 208, i32 %t685, i32 0)
-  call void @willrt_task_own_frame(ptr %t686)
-  call void @willrt_task_run(ptr %t686)
-  ret ptr %t686
+  %t732 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t732
+  %t733 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t734 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t734, ptr %t733
+  %t735 = call i32 @willrt_lane_here()
+  %t736 = icmp eq i32 %start, -1
+  %t737 = icmp eq i32 %start, -2
+  %t738 = select i1 %t737, i32 %t735, i32 %start
+  br i1 %t736, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t739 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncReadFile.sm", ptr %v.sm.frame, i64 208, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t739)
+  call void @willrt_task_run_auto(ptr %t739)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t740 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncReadFile.sm", ptr %v.sm.frame, i64 208, i32 %t738, i32 0)
+  call void @willrt_task_own_frame(ptr %t740)
+  call void @willrt_task_run(ptr %t740)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t741 = phi ptr [ %t739, %sm.start.auto.4 ], [ %t740, %sm.start.lane.4 ]
+  ret ptr %t741
 }
 define internal i32 @"std/os/fs.AsyncWriteFile.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1179.687 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.1181.688 = getelementptr i8, ptr %frame, i64 24
+  %v.sm.param.1179.742 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1181.743 = getelementptr i8, ptr %frame, i64 24
   %v.status = getelementptr i8, ptr %frame, i64 40
   %v.adt.1205 = getelementptr i8, ptr %frame, i64 48
   %v.adt.1210 = getelementptr i8, ptr %frame, i64 72
-  %v.sm.async.op.689 = getelementptr i8, ptr %frame, i64 96
-  %v.sm.async.status.690 = getelementptr i8, ptr %frame, i64 104
-  %t706 = getelementptr i8, ptr %frame, i64 112
-  %t715 = getelementptr i8, ptr %frame, i64 136
+  %v.sm.async.op.744 = getelementptr i8, ptr %frame, i64 96
+  %v.sm.async.status.745 = getelementptr i8, ptr %frame, i64 104
+  %t761 = getelementptr i8, ptr %frame, i64 112
+  %t770 = getelementptr i8, ptr %frame, i64 136
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t691 = call ptr @willrt_fs_async_write_file_start(ptr %v.sm.param.1179.687, ptr %v.sm.param.1181.688)
-  store ptr %t691, ptr %v.sm.async.op.689
-  %t692 = icmp ne ptr %t691, null
-  br i1 %t692, label %sm.async.have.1, label %sm.async.fail.1
+  %t746 = call ptr @willrt_fs_async_write_file_start(ptr %v.sm.param.1179.742, ptr %v.sm.param.1181.743)
+  store ptr %t746, ptr %v.sm.async.op.744
+  %t747 = icmp ne ptr %t746, null
+  br i1 %t747, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.690
+  store i32 1, ptr %v.sm.async.status.745
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t693 = load ptr, ptr %v.sm.async.op.689
-  %t694 = call i32 @willrt_io_poll(ptr %t693)
-  %t695 = icmp eq i32 %t694, 0
-  br i1 %t695, label %sm.async.park.1, label %sm.async.done.1
+  %t748 = load ptr, ptr %v.sm.async.op.744
+  %t749 = call i32 @willrt_io_poll(ptr %t748)
+  %t750 = icmp eq i32 %t749, 0
+  br i1 %t750, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
-  %t696 = call i64 @willrt_io_deadline(ptr %t693)
-  call void @willrt_task_wait_until(i64 %t696)
+  %t751 = call i64 @willrt_io_deadline(ptr %t748)
+  call void @willrt_task_wait_until(i64 %t751)
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t697 = call i32 @willrt_io_finish(ptr %t693)
-  store i32 %t697, ptr %v.sm.async.status.690
+  %t752 = call i32 @willrt_io_finish(ptr %t748)
+  store i32 %t752, ptr %v.sm.async.status.745
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t698 = load i32, ptr %v.sm.async.status.690
-  store i32 %t698, ptr %v.status
-  %t699 = load i32, ptr %v.status
-  %t700 = icmp ne i32 %t699, 0
-  br i1 %t700, label %if.then.1, label %if.end.1
+  %t753 = load i32, ptr %v.sm.async.status.745
+  store i32 %t753, ptr %v.status
+  %t754 = load i32, ptr %v.status
+  %t755 = icmp ne i32 %t754, 0
+  br i1 %t755, label %if.then.1, label %if.end.1
 if.then.1:
-  %t701 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1205, i32 0, i32 0
-  store i32 1, ptr %t701
-  %t702 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1205, i32 0, i32 2
-  %t703 = getelementptr inbounds %interface.Error, ptr %t702, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t703
-  %t704 = getelementptr inbounds %interface.Error, ptr %t702, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t704
-  %t705 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1205
-  store { i32, [4 x i8], %interface.Error } %t705, ptr %t706
-  %t707 = load i32, ptr %t706
-  %t708 = icmp eq i32 %t707, 0
-  br i1 %t708, label %share.keep.2, label %share.done.2
+  %t756 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1205, i32 0, i32 0
+  store i32 1, ptr %t756
+  %t757 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1205, i32 0, i32 2
+  %t758 = getelementptr inbounds %interface.Error, ptr %t757, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t758
+  %t759 = getelementptr inbounds %interface.Error, ptr %t757, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t759
+  %t760 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1205
+  store { i32, [4 x i8], %interface.Error } %t760, ptr %t761
+  %t762 = load i32, ptr %t761
+  %t763 = icmp eq i32 %t762, 0
+  br i1 %t763, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t709 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t706, i32 0, i32 2
+  %t764 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t761, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t710 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t711 = ptrtoint ptr %t710 to i64
-  call i32 @willrt_task_store_result(ptr %t706, i64 %t711)
+  %t765 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t766 = ptrtoint ptr %t765 to i64
+  call i32 @willrt_task_store_result(ptr %t761, i64 %t766)
   ret i32 1
 if.end.1:
-  %t712 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1210, i32 0, i32 0
-  store i32 0, ptr %t712
-  %t713 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1210, i32 0, i32 2
-  %t714 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1210
-  store { i32, [4 x i8], %interface.Error } %t714, ptr %t715
-  %t716 = load i32, ptr %t715
-  %t717 = icmp eq i32 %t716, 0
-  br i1 %t717, label %share.keep.3, label %share.done.3
+  %t767 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1210, i32 0, i32 0
+  store i32 0, ptr %t767
+  %t768 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1210, i32 0, i32 2
+  %t769 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1210
+  store { i32, [4 x i8], %interface.Error } %t769, ptr %t770
+  %t771 = load i32, ptr %t770
+  %t772 = icmp eq i32 %t771, 0
+  br i1 %t772, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t718 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t715, i32 0, i32 2
+  %t773 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t770, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t719 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t720 = ptrtoint ptr %t719 to i64
-  call i32 @willrt_task_store_result(ptr %t715, i64 %t720)
+  %t774 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t775 = ptrtoint ptr %t774 to i64
+  call i32 @willrt_task_store_result(ptr %t770, i64 %t775)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncWriteFile.task"(ptr %arg0, ptr %arg1) {
+define hidden ptr @"std/os/fs.AsyncWriteFile.task"(ptr %arg0, ptr %arg1, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
-  %t721 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t721
-  %t722 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t723 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t723, ptr %t722
-  %t724 = getelementptr i8, ptr %v.sm.frame, i64 24
-  %t725 = load { ptr, i64 }, ptr %arg1
-  store { ptr, i64 } %t725, ptr %t724
-  %t726 = call i32 @willrt_lane_here()
-  %t727 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncWriteFile.sm", ptr %v.sm.frame, i64 160, i32 %t726, i32 0)
-  call void @willrt_task_own_frame(ptr %t727)
-  call void @willrt_task_run(ptr %t727)
-  ret ptr %t727
+  %t776 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t776
+  %t777 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t778 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t778, ptr %t777
+  %t779 = getelementptr i8, ptr %v.sm.frame, i64 24
+  %t780 = load { ptr, i64 }, ptr %arg1
+  store { ptr, i64 } %t780, ptr %t779
+  %t781 = call i32 @willrt_lane_here()
+  %t782 = icmp eq i32 %start, -1
+  %t783 = icmp eq i32 %start, -2
+  %t784 = select i1 %t783, i32 %t781, i32 %start
+  br i1 %t782, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t785 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncWriteFile.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t785)
+  call void @willrt_task_run_auto(ptr %t785)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t786 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncWriteFile.sm", ptr %v.sm.frame, i64 160, i32 %t784, i32 0)
+  call void @willrt_task_own_frame(ptr %t786)
+  call void @willrt_task_run(ptr %t786)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t787 = phi ptr [ %t785, %sm.start.auto.4 ], [ %t786, %sm.start.lane.4 ]
+  ret ptr %t787
 }
 define internal i32 @"std/os/fs.AsyncAppend.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1214.728 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.1216.729 = getelementptr i8, ptr %frame, i64 24
+  %v.sm.param.1214.788 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1216.789 = getelementptr i8, ptr %frame, i64 24
   %v.status = getelementptr i8, ptr %frame, i64 40
   %v.adt.1240 = getelementptr i8, ptr %frame, i64 48
   %v.adt.1245 = getelementptr i8, ptr %frame, i64 72
-  %v.sm.async.op.730 = getelementptr i8, ptr %frame, i64 96
-  %v.sm.async.status.731 = getelementptr i8, ptr %frame, i64 104
-  %t747 = getelementptr i8, ptr %frame, i64 112
-  %t756 = getelementptr i8, ptr %frame, i64 136
+  %v.sm.async.op.790 = getelementptr i8, ptr %frame, i64 96
+  %v.sm.async.status.791 = getelementptr i8, ptr %frame, i64 104
+  %t807 = getelementptr i8, ptr %frame, i64 112
+  %t816 = getelementptr i8, ptr %frame, i64 136
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t732 = call ptr @willrt_fs_async_append_start(ptr %v.sm.param.1214.728, ptr %v.sm.param.1216.729)
-  store ptr %t732, ptr %v.sm.async.op.730
-  %t733 = icmp ne ptr %t732, null
-  br i1 %t733, label %sm.async.have.1, label %sm.async.fail.1
+  %t792 = call ptr @willrt_fs_async_append_start(ptr %v.sm.param.1214.788, ptr %v.sm.param.1216.789)
+  store ptr %t792, ptr %v.sm.async.op.790
+  %t793 = icmp ne ptr %t792, null
+  br i1 %t793, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.731
+  store i32 1, ptr %v.sm.async.status.791
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t734 = load ptr, ptr %v.sm.async.op.730
-  %t735 = call i32 @willrt_io_poll(ptr %t734)
-  %t736 = icmp eq i32 %t735, 0
-  br i1 %t736, label %sm.async.park.1, label %sm.async.done.1
+  %t794 = load ptr, ptr %v.sm.async.op.790
+  %t795 = call i32 @willrt_io_poll(ptr %t794)
+  %t796 = icmp eq i32 %t795, 0
+  br i1 %t796, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
-  %t737 = call i64 @willrt_io_deadline(ptr %t734)
-  call void @willrt_task_wait_until(i64 %t737)
+  %t797 = call i64 @willrt_io_deadline(ptr %t794)
+  call void @willrt_task_wait_until(i64 %t797)
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t738 = call i32 @willrt_io_finish(ptr %t734)
-  store i32 %t738, ptr %v.sm.async.status.731
+  %t798 = call i32 @willrt_io_finish(ptr %t794)
+  store i32 %t798, ptr %v.sm.async.status.791
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t739 = load i32, ptr %v.sm.async.status.731
-  store i32 %t739, ptr %v.status
-  %t740 = load i32, ptr %v.status
-  %t741 = icmp ne i32 %t740, 0
-  br i1 %t741, label %if.then.1, label %if.end.1
+  %t799 = load i32, ptr %v.sm.async.status.791
+  store i32 %t799, ptr %v.status
+  %t800 = load i32, ptr %v.status
+  %t801 = icmp ne i32 %t800, 0
+  br i1 %t801, label %if.then.1, label %if.end.1
 if.then.1:
-  %t742 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1240, i32 0, i32 0
-  store i32 1, ptr %t742
-  %t743 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1240, i32 0, i32 2
-  %t744 = getelementptr inbounds %interface.Error, ptr %t743, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t744
-  %t745 = getelementptr inbounds %interface.Error, ptr %t743, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t745
-  %t746 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1240
-  store { i32, [4 x i8], %interface.Error } %t746, ptr %t747
-  %t748 = load i32, ptr %t747
-  %t749 = icmp eq i32 %t748, 0
-  br i1 %t749, label %share.keep.2, label %share.done.2
+  %t802 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1240, i32 0, i32 0
+  store i32 1, ptr %t802
+  %t803 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1240, i32 0, i32 2
+  %t804 = getelementptr inbounds %interface.Error, ptr %t803, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t804
+  %t805 = getelementptr inbounds %interface.Error, ptr %t803, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t805
+  %t806 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1240
+  store { i32, [4 x i8], %interface.Error } %t806, ptr %t807
+  %t808 = load i32, ptr %t807
+  %t809 = icmp eq i32 %t808, 0
+  br i1 %t809, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t750 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t747, i32 0, i32 2
+  %t810 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t807, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t751 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t752 = ptrtoint ptr %t751 to i64
-  call i32 @willrt_task_store_result(ptr %t747, i64 %t752)
+  %t811 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t812 = ptrtoint ptr %t811 to i64
+  call i32 @willrt_task_store_result(ptr %t807, i64 %t812)
   ret i32 1
 if.end.1:
-  %t753 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1245, i32 0, i32 0
-  store i32 0, ptr %t753
-  %t754 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1245, i32 0, i32 2
-  %t755 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1245
-  store { i32, [4 x i8], %interface.Error } %t755, ptr %t756
-  %t757 = load i32, ptr %t756
-  %t758 = icmp eq i32 %t757, 0
-  br i1 %t758, label %share.keep.3, label %share.done.3
+  %t813 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1245, i32 0, i32 0
+  store i32 0, ptr %t813
+  %t814 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1245, i32 0, i32 2
+  %t815 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1245
+  store { i32, [4 x i8], %interface.Error } %t815, ptr %t816
+  %t817 = load i32, ptr %t816
+  %t818 = icmp eq i32 %t817, 0
+  br i1 %t818, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t759 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t756, i32 0, i32 2
+  %t819 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t816, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t760 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t761 = ptrtoint ptr %t760 to i64
-  call i32 @willrt_task_store_result(ptr %t756, i64 %t761)
+  %t820 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t821 = ptrtoint ptr %t820 to i64
+  call i32 @willrt_task_store_result(ptr %t816, i64 %t821)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncAppend.task"(ptr %arg0, ptr %arg1) {
+define hidden ptr @"std/os/fs.AsyncAppend.task"(ptr %arg0, ptr %arg1, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
-  %t762 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t762
-  %t763 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t764 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t764, ptr %t763
-  %t765 = getelementptr i8, ptr %v.sm.frame, i64 24
-  %t766 = load { ptr, i64 }, ptr %arg1
-  store { ptr, i64 } %t766, ptr %t765
-  %t767 = call i32 @willrt_lane_here()
-  %t768 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncAppend.sm", ptr %v.sm.frame, i64 160, i32 %t767, i32 0)
-  call void @willrt_task_own_frame(ptr %t768)
-  call void @willrt_task_run(ptr %t768)
-  ret ptr %t768
+  %t822 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t822
+  %t823 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t824 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t824, ptr %t823
+  %t825 = getelementptr i8, ptr %v.sm.frame, i64 24
+  %t826 = load { ptr, i64 }, ptr %arg1
+  store { ptr, i64 } %t826, ptr %t825
+  %t827 = call i32 @willrt_lane_here()
+  %t828 = icmp eq i32 %start, -1
+  %t829 = icmp eq i32 %start, -2
+  %t830 = select i1 %t829, i32 %t827, i32 %start
+  br i1 %t828, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t831 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncAppend.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t831)
+  call void @willrt_task_run_auto(ptr %t831)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t832 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncAppend.sm", ptr %v.sm.frame, i64 160, i32 %t830, i32 0)
+  call void @willrt_task_own_frame(ptr %t832)
+  call void @willrt_task_run(ptr %t832)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t833 = phi ptr [ %t831, %sm.start.auto.4 ], [ %t832, %sm.start.lane.4 ]
+  ret ptr %t833
 }
 define internal i32 @"std/os/fs.AsyncOpen.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1249.769 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.1251.770 = getelementptr i8, ptr %frame, i64 24
+  %v.sm.param.1249.834 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1251.835 = getelementptr i8, ptr %frame, i64 24
   %v.file = getelementptr i8, ptr %frame, i64 32
   %v.status = getelementptr i8, ptr %frame, i64 40
   %v.adt.1280 = getelementptr i8, ptr %frame, i64 48
   %v.adt.1286 = getelementptr i8, ptr %frame, i64 72
-  %v.sm.async.op.771 = getelementptr i8, ptr %frame, i64 96
-  %v.sm.async.status.772 = getelementptr i8, ptr %frame, i64 104
-  %t787 = getelementptr i8, ptr %frame, i64 112
-  %t797 = getelementptr i8, ptr %frame, i64 136
+  %v.sm.async.op.836 = getelementptr i8, ptr %frame, i64 96
+  %v.sm.async.status.837 = getelementptr i8, ptr %frame, i64 104
+  %t852 = getelementptr i8, ptr %frame, i64 112
+  %t862 = getelementptr i8, ptr %frame, i64 136
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
   store %"struct.std/os/fs.File" zeroinitializer, ptr %v.file
-  %t773 = call ptr @willrt_fs_async_open_start(ptr %v.sm.param.1249.769, ptr %v.sm.param.1251.770, ptr %v.file)
-  store ptr %t773, ptr %v.sm.async.op.771
-  %t774 = icmp ne ptr %t773, null
-  br i1 %t774, label %sm.async.have.1, label %sm.async.fail.1
+  %t838 = call ptr @willrt_fs_async_open_start(ptr %v.sm.param.1249.834, ptr %v.sm.param.1251.835, ptr %v.file)
+  store ptr %t838, ptr %v.sm.async.op.836
+  %t839 = icmp ne ptr %t838, null
+  br i1 %t839, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.772
+  store i32 1, ptr %v.sm.async.status.837
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t775 = load ptr, ptr %v.sm.async.op.771
-  %t776 = call i32 @willrt_blocking_poll(ptr %t775)
-  %t777 = icmp eq i32 %t776, 0
-  br i1 %t777, label %sm.async.park.1, label %sm.async.done.1
+  %t840 = load ptr, ptr %v.sm.async.op.836
+  %t841 = call i32 @willrt_blocking_poll(ptr %t840)
+  %t842 = icmp eq i32 %t841, 0
+  br i1 %t842, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t778 = call i32 @willrt_blocking_finish(ptr %t775)
-  store i32 %t778, ptr %v.sm.async.status.772
+  %t843 = call i32 @willrt_blocking_finish(ptr %t840)
+  store i32 %t843, ptr %v.sm.async.status.837
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t779 = load i32, ptr %v.sm.async.status.772
-  store i32 %t779, ptr %v.status
-  %t780 = load i32, ptr %v.status
-  %t781 = icmp ne i32 %t780, 0
-  br i1 %t781, label %if.then.1, label %if.end.1
+  %t844 = load i32, ptr %v.sm.async.status.837
+  store i32 %t844, ptr %v.status
+  %t845 = load i32, ptr %v.status
+  %t846 = icmp ne i32 %t845, 0
+  br i1 %t846, label %if.then.1, label %if.end.1
 if.then.1:
-  %t782 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1280, i32 0, i32 0
-  store i32 1, ptr %t782
-  %t783 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1280, i32 0, i32 2
-  %t784 = getelementptr inbounds %interface.Error, ptr %t783, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t784
-  %t785 = getelementptr inbounds %interface.Error, ptr %t783, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t785
-  %t786 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1280
-  store { i32, [4 x i8], %interface.Error } %t786, ptr %t787
-  %t788 = load i32, ptr %t787
-  %t789 = icmp eq i32 %t788, 0
-  br i1 %t789, label %share.keep.2, label %share.done.2
+  %t847 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1280, i32 0, i32 0
+  store i32 1, ptr %t847
+  %t848 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1280, i32 0, i32 2
+  %t849 = getelementptr inbounds %interface.Error, ptr %t848, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t849
+  %t850 = getelementptr inbounds %interface.Error, ptr %t848, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t850
+  %t851 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1280
+  store { i32, [4 x i8], %interface.Error } %t851, ptr %t852
+  %t853 = load i32, ptr %t852
+  %t854 = icmp eq i32 %t853, 0
+  br i1 %t854, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t790 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t787, i32 0, i32 2
+  %t855 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t852, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t791 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t792 = ptrtoint ptr %t791 to i64
-  call i32 @willrt_task_store_result(ptr %t787, i64 %t792)
+  %t856 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t857 = ptrtoint ptr %t856 to i64
+  call i32 @willrt_task_store_result(ptr %t852, i64 %t857)
   ret i32 1
 if.end.1:
-  %t793 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1286, i32 0, i32 0
-  store i32 0, ptr %t793
-  %t794 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1286, i32 0, i32 2
-  %t795 = load %"struct.std/os/fs.File", ptr %v.file
-  store %"struct.std/os/fs.File" %t795, ptr %t794
-  %t796 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1286
-  store { i32, [4 x i8], %interface.Error } %t796, ptr %t797
-  %t798 = load i32, ptr %t797
-  %t799 = icmp eq i32 %t798, 0
-  br i1 %t799, label %share.keep.3, label %share.done.3
+  %t858 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1286, i32 0, i32 0
+  store i32 0, ptr %t858
+  %t859 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1286, i32 0, i32 2
+  %t860 = load %"struct.std/os/fs.File", ptr %v.file
+  store %"struct.std/os/fs.File" %t860, ptr %t859
+  %t861 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1286
+  store { i32, [4 x i8], %interface.Error } %t861, ptr %t862
+  %t863 = load i32, ptr %t862
+  %t864 = icmp eq i32 %t863, 0
+  br i1 %t864, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t800 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t797, i32 0, i32 2
+  %t865 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t862, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t801 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t802 = ptrtoint ptr %t801 to i64
-  call i32 @willrt_task_store_result(ptr %t797, i64 %t802)
+  %t866 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t867 = ptrtoint ptr %t866 to i64
+  call i32 @willrt_task_store_result(ptr %t862, i64 %t867)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncOpen.task"(ptr %arg0, ptr %arg1) {
+define hidden ptr @"std/os/fs.AsyncOpen.task"(ptr %arg0, ptr %arg1, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
-  %t803 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t803
-  %t804 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t805 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t805, ptr %t804
-  %t806 = getelementptr i8, ptr %v.sm.frame, i64 24
-  %t807 = load %"struct.std/os/fs.OpenFlags", ptr %arg1
-  store %"struct.std/os/fs.OpenFlags" %t807, ptr %t806
-  %t808 = call i32 @willrt_lane_here()
-  %t809 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncOpen.sm", ptr %v.sm.frame, i64 160, i32 %t808, i32 0)
-  call void @willrt_task_own_frame(ptr %t809)
-  call void @willrt_task_run(ptr %t809)
-  ret ptr %t809
+  %t868 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t868
+  %t869 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t870 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t870, ptr %t869
+  %t871 = getelementptr i8, ptr %v.sm.frame, i64 24
+  %t872 = load %"struct.std/os/fs.OpenFlags", ptr %arg1
+  store %"struct.std/os/fs.OpenFlags" %t872, ptr %t871
+  %t873 = call i32 @willrt_lane_here()
+  %t874 = icmp eq i32 %start, -1
+  %t875 = icmp eq i32 %start, -2
+  %t876 = select i1 %t875, i32 %t873, i32 %start
+  br i1 %t874, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t877 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncOpen.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t877)
+  call void @willrt_task_run_auto(ptr %t877)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t878 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncOpen.sm", ptr %v.sm.frame, i64 160, i32 %t876, i32 0)
+  call void @willrt_task_own_frame(ptr %t878)
+  call void @willrt_task_run(ptr %t878)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t879 = phi ptr [ %t877, %sm.start.auto.4 ], [ %t878, %sm.start.lane.4 ]
+  ret ptr %t879
 }
 define internal i32 @"std/os/fs.AsyncCreate.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1290.810 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.1292.811 = getelementptr i8, ptr %frame, i64 24
+  %v.sm.param.1290.880 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1292.881 = getelementptr i8, ptr %frame, i64 24
   %v.file = getelementptr i8, ptr %frame, i64 32
   %v.status = getelementptr i8, ptr %frame, i64 40
   %v.adt.1319 = getelementptr i8, ptr %frame, i64 48
   %v.adt.1325 = getelementptr i8, ptr %frame, i64 72
-  %v.sm.async.op.812 = getelementptr i8, ptr %frame, i64 96
-  %v.sm.async.status.813 = getelementptr i8, ptr %frame, i64 104
-  %t828 = getelementptr i8, ptr %frame, i64 112
-  %t838 = getelementptr i8, ptr %frame, i64 136
-  %v.sm.pval.1292 = load i32, ptr %v.sm.param.1292.811
+  %v.sm.async.op.882 = getelementptr i8, ptr %frame, i64 96
+  %v.sm.async.status.883 = getelementptr i8, ptr %frame, i64 104
+  %t898 = getelementptr i8, ptr %frame, i64 112
+  %t908 = getelementptr i8, ptr %frame, i64 136
+  %v.sm.pval.1292 = load i32, ptr %v.sm.param.1292.881
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
   store %"struct.std/os/fs.File" zeroinitializer, ptr %v.file
-  %t814 = call ptr @willrt_fs_async_create_start(ptr %v.sm.param.1290.810, i32 %v.sm.pval.1292, ptr %v.file)
-  store ptr %t814, ptr %v.sm.async.op.812
-  %t815 = icmp ne ptr %t814, null
-  br i1 %t815, label %sm.async.have.1, label %sm.async.fail.1
+  %t884 = call ptr @willrt_fs_async_create_start(ptr %v.sm.param.1290.880, i32 %v.sm.pval.1292, ptr %v.file)
+  store ptr %t884, ptr %v.sm.async.op.882
+  %t885 = icmp ne ptr %t884, null
+  br i1 %t885, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.813
+  store i32 1, ptr %v.sm.async.status.883
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t816 = load ptr, ptr %v.sm.async.op.812
-  %t817 = call i32 @willrt_blocking_poll(ptr %t816)
-  %t818 = icmp eq i32 %t817, 0
-  br i1 %t818, label %sm.async.park.1, label %sm.async.done.1
+  %t886 = load ptr, ptr %v.sm.async.op.882
+  %t887 = call i32 @willrt_blocking_poll(ptr %t886)
+  %t888 = icmp eq i32 %t887, 0
+  br i1 %t888, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t819 = call i32 @willrt_blocking_finish(ptr %t816)
-  store i32 %t819, ptr %v.sm.async.status.813
+  %t889 = call i32 @willrt_blocking_finish(ptr %t886)
+  store i32 %t889, ptr %v.sm.async.status.883
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t820 = load i32, ptr %v.sm.async.status.813
-  store i32 %t820, ptr %v.status
-  %t821 = load i32, ptr %v.status
-  %t822 = icmp ne i32 %t821, 0
-  br i1 %t822, label %if.then.1, label %if.end.1
+  %t890 = load i32, ptr %v.sm.async.status.883
+  store i32 %t890, ptr %v.status
+  %t891 = load i32, ptr %v.status
+  %t892 = icmp ne i32 %t891, 0
+  br i1 %t892, label %if.then.1, label %if.end.1
 if.then.1:
-  %t823 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1319, i32 0, i32 0
-  store i32 1, ptr %t823
-  %t824 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1319, i32 0, i32 2
-  %t825 = getelementptr inbounds %interface.Error, ptr %t824, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t825
-  %t826 = getelementptr inbounds %interface.Error, ptr %t824, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t826
-  %t827 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1319
-  store { i32, [4 x i8], %interface.Error } %t827, ptr %t828
-  %t829 = load i32, ptr %t828
-  %t830 = icmp eq i32 %t829, 0
-  br i1 %t830, label %share.keep.2, label %share.done.2
+  %t893 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1319, i32 0, i32 0
+  store i32 1, ptr %t893
+  %t894 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1319, i32 0, i32 2
+  %t895 = getelementptr inbounds %interface.Error, ptr %t894, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t895
+  %t896 = getelementptr inbounds %interface.Error, ptr %t894, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t896
+  %t897 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1319
+  store { i32, [4 x i8], %interface.Error } %t897, ptr %t898
+  %t899 = load i32, ptr %t898
+  %t900 = icmp eq i32 %t899, 0
+  br i1 %t900, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t831 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t828, i32 0, i32 2
+  %t901 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t898, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t832 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t833 = ptrtoint ptr %t832 to i64
-  call i32 @willrt_task_store_result(ptr %t828, i64 %t833)
+  %t902 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t903 = ptrtoint ptr %t902 to i64
+  call i32 @willrt_task_store_result(ptr %t898, i64 %t903)
   ret i32 1
 if.end.1:
-  %t834 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1325, i32 0, i32 0
-  store i32 0, ptr %t834
-  %t835 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1325, i32 0, i32 2
-  %t836 = load %"struct.std/os/fs.File", ptr %v.file
-  store %"struct.std/os/fs.File" %t836, ptr %t835
-  %t837 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1325
-  store { i32, [4 x i8], %interface.Error } %t837, ptr %t838
-  %t839 = load i32, ptr %t838
-  %t840 = icmp eq i32 %t839, 0
-  br i1 %t840, label %share.keep.3, label %share.done.3
+  %t904 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1325, i32 0, i32 0
+  store i32 0, ptr %t904
+  %t905 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1325, i32 0, i32 2
+  %t906 = load %"struct.std/os/fs.File", ptr %v.file
+  store %"struct.std/os/fs.File" %t906, ptr %t905
+  %t907 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1325
+  store { i32, [4 x i8], %interface.Error } %t907, ptr %t908
+  %t909 = load i32, ptr %t908
+  %t910 = icmp eq i32 %t909, 0
+  br i1 %t910, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t841 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t838, i32 0, i32 2
+  %t911 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t908, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t842 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t843 = ptrtoint ptr %t842 to i64
-  call i32 @willrt_task_store_result(ptr %t838, i64 %t843)
+  %t912 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t913 = ptrtoint ptr %t912 to i64
+  call i32 @willrt_task_store_result(ptr %t908, i64 %t913)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncCreate.task"(ptr %arg0, i32 %arg1) {
+define hidden ptr @"std/os/fs.AsyncCreate.task"(ptr %arg0, i32 %arg1, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
-  %t844 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t844
-  %t845 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t846 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t846, ptr %t845
-  %t847 = getelementptr i8, ptr %v.sm.frame, i64 24
-  store i32 %arg1, ptr %t847
-  %t848 = call i32 @willrt_lane_here()
-  %t849 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncCreate.sm", ptr %v.sm.frame, i64 160, i32 %t848, i32 0)
-  call void @willrt_task_own_frame(ptr %t849)
-  call void @willrt_task_run(ptr %t849)
-  ret ptr %t849
+  %t914 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t914
+  %t915 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t916 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t916, ptr %t915
+  %t917 = getelementptr i8, ptr %v.sm.frame, i64 24
+  store i32 %arg1, ptr %t917
+  %t918 = call i32 @willrt_lane_here()
+  %t919 = icmp eq i32 %start, -1
+  %t920 = icmp eq i32 %start, -2
+  %t921 = select i1 %t920, i32 %t918, i32 %start
+  br i1 %t919, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t922 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncCreate.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t922)
+  call void @willrt_task_run_auto(ptr %t922)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t923 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncCreate.sm", ptr %v.sm.frame, i64 160, i32 %t921, i32 0)
+  call void @willrt_task_own_frame(ptr %t923)
+  call void @willrt_task_run(ptr %t923)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t924 = phi ptr [ %t922, %sm.start.auto.4 ], [ %t923, %sm.start.lane.4 ]
+  ret ptr %t924
 }
 define internal i32 @"std/os/fs.AsyncStat.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1329.850 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1329.925 = getelementptr i8, ptr %frame, i64 8
   %v.stat = getelementptr i8, ptr %frame, i64 24
   %v.status = getelementptr i8, ptr %frame, i64 56
   %v.adt.1355 = getelementptr i8, ptr %frame, i64 64
   %v.adt.1361 = getelementptr i8, ptr %frame, i64 104
-  %v.sm.async.op.851 = getelementptr i8, ptr %frame, i64 144
-  %v.sm.async.status.852 = getelementptr i8, ptr %frame, i64 152
-  %t867 = getelementptr i8, ptr %frame, i64 160
-  %t877 = getelementptr i8, ptr %frame, i64 200
+  %v.sm.async.op.926 = getelementptr i8, ptr %frame, i64 144
+  %v.sm.async.status.927 = getelementptr i8, ptr %frame, i64 152
+  %t942 = getelementptr i8, ptr %frame, i64 160
+  %t952 = getelementptr i8, ptr %frame, i64 200
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
   store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.stat
-  %t853 = call ptr @willrt_fs_async_stat_start(ptr %v.sm.param.1329.850, ptr %v.stat)
-  store ptr %t853, ptr %v.sm.async.op.851
-  %t854 = icmp ne ptr %t853, null
-  br i1 %t854, label %sm.async.have.1, label %sm.async.fail.1
+  %t928 = call ptr @willrt_fs_async_stat_start(ptr %v.sm.param.1329.925, ptr %v.stat)
+  store ptr %t928, ptr %v.sm.async.op.926
+  %t929 = icmp ne ptr %t928, null
+  br i1 %t929, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.852
+  store i32 1, ptr %v.sm.async.status.927
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t855 = load ptr, ptr %v.sm.async.op.851
-  %t856 = call i32 @willrt_blocking_poll(ptr %t855)
-  %t857 = icmp eq i32 %t856, 0
-  br i1 %t857, label %sm.async.park.1, label %sm.async.done.1
+  %t930 = load ptr, ptr %v.sm.async.op.926
+  %t931 = call i32 @willrt_blocking_poll(ptr %t930)
+  %t932 = icmp eq i32 %t931, 0
+  br i1 %t932, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t858 = call i32 @willrt_blocking_finish(ptr %t855)
-  store i32 %t858, ptr %v.sm.async.status.852
+  %t933 = call i32 @willrt_blocking_finish(ptr %t930)
+  store i32 %t933, ptr %v.sm.async.status.927
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t859 = load i32, ptr %v.sm.async.status.852
-  store i32 %t859, ptr %v.status
-  %t860 = load i32, ptr %v.status
-  %t861 = icmp ne i32 %t860, 0
-  br i1 %t861, label %if.then.1, label %if.end.1
+  %t934 = load i32, ptr %v.sm.async.status.927
+  store i32 %t934, ptr %v.status
+  %t935 = load i32, ptr %v.status
+  %t936 = icmp ne i32 %t935, 0
+  br i1 %t936, label %if.then.1, label %if.end.1
 if.then.1:
-  %t862 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1355, i32 0, i32 0
-  store i32 1, ptr %t862
-  %t863 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1355, i32 0, i32 2
-  %t864 = getelementptr inbounds %interface.Error, ptr %t863, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t864
-  %t865 = getelementptr inbounds %interface.Error, ptr %t863, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t865
-  %t866 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1355
-  store { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t866, ptr %t867
-  %t868 = load i32, ptr %t867
-  %t869 = icmp eq i32 %t868, 0
-  br i1 %t869, label %share.keep.2, label %share.done.2
+  %t937 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1355, i32 0, i32 0
+  store i32 1, ptr %t937
+  %t938 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1355, i32 0, i32 2
+  %t939 = getelementptr inbounds %interface.Error, ptr %t938, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t939
+  %t940 = getelementptr inbounds %interface.Error, ptr %t938, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t940
+  %t941 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1355
+  store { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t941, ptr %t942
+  %t943 = load i32, ptr %t942
+  %t944 = icmp eq i32 %t943, 0
+  br i1 %t944, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t870 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %t867, i32 0, i32 2
+  %t945 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %t942, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t871 = getelementptr { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr null, i32 1
-  %t872 = ptrtoint ptr %t871 to i64
-  call i32 @willrt_task_store_result(ptr %t867, i64 %t872)
+  %t946 = getelementptr { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr null, i32 1
+  %t947 = ptrtoint ptr %t946 to i64
+  call i32 @willrt_task_store_result(ptr %t942, i64 %t947)
   ret i32 1
 if.end.1:
-  %t873 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1361, i32 0, i32 0
-  store i32 0, ptr %t873
-  %t874 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1361, i32 0, i32 2
-  %t875 = load %"struct.std/os/fs.StatInfo", ptr %v.stat
-  store %"struct.std/os/fs.StatInfo" %t875, ptr %t874
-  %t876 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1361
-  store { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t876, ptr %t877
-  %t878 = load i32, ptr %t877
-  %t879 = icmp eq i32 %t878, 0
-  br i1 %t879, label %share.keep.3, label %share.done.3
+  %t948 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1361, i32 0, i32 0
+  store i32 0, ptr %t948
+  %t949 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1361, i32 0, i32 2
+  %t950 = load %"struct.std/os/fs.StatInfo", ptr %v.stat
+  store %"struct.std/os/fs.StatInfo" %t950, ptr %t949
+  %t951 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1361
+  store { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t951, ptr %t952
+  %t953 = load i32, ptr %t952
+  %t954 = icmp eq i32 %t953, 0
+  br i1 %t954, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t880 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %t877, i32 0, i32 2
+  %t955 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %t952, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t881 = getelementptr { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr null, i32 1
-  %t882 = ptrtoint ptr %t881 to i64
-  call i32 @willrt_task_store_result(ptr %t877, i64 %t882)
+  %t956 = getelementptr { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr null, i32 1
+  %t957 = ptrtoint ptr %t956 to i64
+  call i32 @willrt_task_store_result(ptr %t952, i64 %t957)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncStat.task"(ptr %arg0) {
+define hidden ptr @"std/os/fs.AsyncStat.task"(ptr %arg0, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
-  %t883 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t883
-  %t884 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t885 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t885, ptr %t884
-  %t886 = call i32 @willrt_lane_here()
-  %t887 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 %t886, i32 0)
-  call void @willrt_task_own_frame(ptr %t887)
-  call void @willrt_task_run(ptr %t887)
-  ret ptr %t887
+  %t958 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t958
+  %t959 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t960 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t960, ptr %t959
+  %t961 = call i32 @willrt_lane_here()
+  %t962 = icmp eq i32 %start, -1
+  %t963 = icmp eq i32 %start, -2
+  %t964 = select i1 %t963, i32 %t961, i32 %start
+  br i1 %t962, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t965 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t965)
+  call void @willrt_task_run_auto(ptr %t965)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t966 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 %t964, i32 0)
+  call void @willrt_task_own_frame(ptr %t966)
+  call void @willrt_task_run(ptr %t966)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t967 = phi ptr [ %t965, %sm.start.auto.4 ], [ %t966, %sm.start.lane.4 ]
+  ret ptr %t967
 }
 define internal i32 @"std/os/fs.AsyncReadDir.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1365.888 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1365.968 = getelementptr i8, ptr %frame, i64 8
   %v.entries = getelementptr i8, ptr %frame, i64 24
   %v.status = getelementptr i8, ptr %frame, i64 48
   %v.adt.1393 = getelementptr i8, ptr %frame, i64 56
   %v.adt.1399 = getelementptr i8, ptr %frame, i64 88
-  %v.sm.async.op.889 = getelementptr i8, ptr %frame, i64 120
-  %v.sm.async.status.890 = getelementptr i8, ptr %frame, i64 128
-  %t905 = getelementptr i8, ptr %frame, i64 136
-  %t915 = getelementptr i8, ptr %frame, i64 168
+  %v.sm.async.op.969 = getelementptr i8, ptr %frame, i64 120
+  %v.sm.async.status.970 = getelementptr i8, ptr %frame, i64 128
+  %t985 = getelementptr i8, ptr %frame, i64 136
+  %t995 = getelementptr i8, ptr %frame, i64 168
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
   store { ptr, i64, i64 } zeroinitializer, ptr %v.entries
-  %t891 = call ptr @willrt_fs_async_read_dir_start(ptr %v.sm.param.1365.888, ptr %v.entries)
-  store ptr %t891, ptr %v.sm.async.op.889
-  %t892 = icmp ne ptr %t891, null
-  br i1 %t892, label %sm.async.have.1, label %sm.async.fail.1
+  %t971 = call ptr @willrt_fs_async_read_dir_start(ptr %v.sm.param.1365.968, ptr %v.entries)
+  store ptr %t971, ptr %v.sm.async.op.969
+  %t972 = icmp ne ptr %t971, null
+  br i1 %t972, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.890
+  store i32 1, ptr %v.sm.async.status.970
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t893 = load ptr, ptr %v.sm.async.op.889
-  %t894 = call i32 @willrt_blocking_poll(ptr %t893)
-  %t895 = icmp eq i32 %t894, 0
-  br i1 %t895, label %sm.async.park.1, label %sm.async.done.1
+  %t973 = load ptr, ptr %v.sm.async.op.969
+  %t974 = call i32 @willrt_blocking_poll(ptr %t973)
+  %t975 = icmp eq i32 %t974, 0
+  br i1 %t975, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t896 = call i32 @willrt_blocking_finish(ptr %t893)
-  store i32 %t896, ptr %v.sm.async.status.890
+  %t976 = call i32 @willrt_blocking_finish(ptr %t973)
+  store i32 %t976, ptr %v.sm.async.status.970
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t897 = load i32, ptr %v.sm.async.status.890
-  store i32 %t897, ptr %v.status
-  %t898 = load i32, ptr %v.status
-  %t899 = icmp ne i32 %t898, 0
-  br i1 %t899, label %if.then.1, label %if.end.1
+  %t977 = load i32, ptr %v.sm.async.status.970
+  store i32 %t977, ptr %v.status
+  %t978 = load i32, ptr %v.status
+  %t979 = icmp ne i32 %t978, 0
+  br i1 %t979, label %if.then.1, label %if.end.1
 if.then.1:
-  %t900 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1393, i32 0, i32 0
-  store i32 1, ptr %t900
-  %t901 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1393, i32 0, i32 2
-  %t902 = getelementptr inbounds %interface.Error, ptr %t901, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t902
-  %t903 = getelementptr inbounds %interface.Error, ptr %t901, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t903
-  %t904 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1393
-  store { i32, [4 x i8], { ptr, i64, i64 } } %t904, ptr %t905
-  %t906 = load i32, ptr %t905
-  %t907 = icmp eq i32 %t906, 0
-  br i1 %t907, label %share.keep.2, label %share.done.2
+  %t980 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1393, i32 0, i32 0
+  store i32 1, ptr %t980
+  %t981 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1393, i32 0, i32 2
+  %t982 = getelementptr inbounds %interface.Error, ptr %t981, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t982
+  %t983 = getelementptr inbounds %interface.Error, ptr %t981, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t983
+  %t984 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1393
+  store { i32, [4 x i8], { ptr, i64, i64 } } %t984, ptr %t985
+  %t986 = load i32, ptr %t985
+  %t987 = icmp eq i32 %t986, 0
+  br i1 %t987, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t908 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %t905, i32 0, i32 2
+  %t988 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %t985, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t909 = getelementptr { i32, [4 x i8], { ptr, i64, i64 } }, ptr null, i32 1
-  %t910 = ptrtoint ptr %t909 to i64
-  call i32 @willrt_task_store_result(ptr %t905, i64 %t910)
+  %t989 = getelementptr { i32, [4 x i8], { ptr, i64, i64 } }, ptr null, i32 1
+  %t990 = ptrtoint ptr %t989 to i64
+  call i32 @willrt_task_store_result(ptr %t985, i64 %t990)
   ret i32 1
 if.end.1:
-  %t911 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1399, i32 0, i32 0
-  store i32 0, ptr %t911
-  %t912 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1399, i32 0, i32 2
-  %t913 = load { ptr, i64, i64 }, ptr %v.entries
-  store { ptr, i64, i64 } %t913, ptr %t912
-  %t914 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1399
-  store { i32, [4 x i8], { ptr, i64, i64 } } %t914, ptr %t915
-  %t916 = load i32, ptr %t915
-  %t917 = icmp eq i32 %t916, 0
-  br i1 %t917, label %share.keep.3, label %share.done.3
+  %t991 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1399, i32 0, i32 0
+  store i32 0, ptr %t991
+  %t992 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1399, i32 0, i32 2
+  %t993 = load { ptr, i64, i64 }, ptr %v.entries
+  store { ptr, i64, i64 } %t993, ptr %t992
+  %t994 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.adt.1399
+  store { i32, [4 x i8], { ptr, i64, i64 } } %t994, ptr %t995
+  %t996 = load i32, ptr %t995
+  %t997 = icmp eq i32 %t996, 0
+  br i1 %t997, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t918 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %t915, i32 0, i32 2
+  %t998 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %t995, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t919 = getelementptr { i32, [4 x i8], { ptr, i64, i64 } }, ptr null, i32 1
-  %t920 = ptrtoint ptr %t919 to i64
-  call i32 @willrt_task_store_result(ptr %t915, i64 %t920)
+  %t999 = getelementptr { i32, [4 x i8], { ptr, i64, i64 } }, ptr null, i32 1
+  %t1000 = ptrtoint ptr %t999 to i64
+  call i32 @willrt_task_store_result(ptr %t995, i64 %t1000)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncReadDir.task"(ptr %arg0) {
+define hidden ptr @"std/os/fs.AsyncReadDir.task"(ptr %arg0, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 208)
-  %t921 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t921
-  %t922 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t923 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t923, ptr %t922
-  %t924 = call i32 @willrt_lane_here()
-  %t925 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncReadDir.sm", ptr %v.sm.frame, i64 208, i32 %t924, i32 0)
-  call void @willrt_task_own_frame(ptr %t925)
-  call void @willrt_task_run(ptr %t925)
-  ret ptr %t925
+  %t1001 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t1001
+  %t1002 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t1003 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t1003, ptr %t1002
+  %t1004 = call i32 @willrt_lane_here()
+  %t1005 = icmp eq i32 %start, -1
+  %t1006 = icmp eq i32 %start, -2
+  %t1007 = select i1 %t1006, i32 %t1004, i32 %start
+  br i1 %t1005, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t1008 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncReadDir.sm", ptr %v.sm.frame, i64 208, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t1008)
+  call void @willrt_task_run_auto(ptr %t1008)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t1009 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncReadDir.sm", ptr %v.sm.frame, i64 208, i32 %t1007, i32 0)
+  call void @willrt_task_own_frame(ptr %t1009)
+  call void @willrt_task_run(ptr %t1009)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t1010 = phi ptr [ %t1008, %sm.start.auto.4 ], [ %t1009, %sm.start.lane.4 ]
+  ret ptr %t1010
 }
 define internal i32 @"std/os/fs.AsyncRename.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1403.926 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.1405.927 = getelementptr i8, ptr %frame, i64 24
+  %v.sm.param.1403.1011 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1405.1012 = getelementptr i8, ptr %frame, i64 24
   %v.status = getelementptr i8, ptr %frame, i64 40
   %v.adt.1428 = getelementptr i8, ptr %frame, i64 48
   %v.adt.1433 = getelementptr i8, ptr %frame, i64 72
-  %v.sm.async.op.928 = getelementptr i8, ptr %frame, i64 96
-  %v.sm.async.status.929 = getelementptr i8, ptr %frame, i64 104
-  %t944 = getelementptr i8, ptr %frame, i64 112
-  %t953 = getelementptr i8, ptr %frame, i64 136
+  %v.sm.async.op.1013 = getelementptr i8, ptr %frame, i64 96
+  %v.sm.async.status.1014 = getelementptr i8, ptr %frame, i64 104
+  %t1029 = getelementptr i8, ptr %frame, i64 112
+  %t1038 = getelementptr i8, ptr %frame, i64 136
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t930 = call ptr @willrt_fs_async_rename_start(ptr %v.sm.param.1403.926, ptr %v.sm.param.1405.927)
-  store ptr %t930, ptr %v.sm.async.op.928
-  %t931 = icmp ne ptr %t930, null
-  br i1 %t931, label %sm.async.have.1, label %sm.async.fail.1
+  %t1015 = call ptr @willrt_fs_async_rename_start(ptr %v.sm.param.1403.1011, ptr %v.sm.param.1405.1012)
+  store ptr %t1015, ptr %v.sm.async.op.1013
+  %t1016 = icmp ne ptr %t1015, null
+  br i1 %t1016, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.929
+  store i32 1, ptr %v.sm.async.status.1014
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t932 = load ptr, ptr %v.sm.async.op.928
-  %t933 = call i32 @willrt_blocking_poll(ptr %t932)
-  %t934 = icmp eq i32 %t933, 0
-  br i1 %t934, label %sm.async.park.1, label %sm.async.done.1
+  %t1017 = load ptr, ptr %v.sm.async.op.1013
+  %t1018 = call i32 @willrt_blocking_poll(ptr %t1017)
+  %t1019 = icmp eq i32 %t1018, 0
+  br i1 %t1019, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t935 = call i32 @willrt_blocking_finish(ptr %t932)
-  store i32 %t935, ptr %v.sm.async.status.929
+  %t1020 = call i32 @willrt_blocking_finish(ptr %t1017)
+  store i32 %t1020, ptr %v.sm.async.status.1014
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t936 = load i32, ptr %v.sm.async.status.929
-  store i32 %t936, ptr %v.status
-  %t937 = load i32, ptr %v.status
-  %t938 = icmp ne i32 %t937, 0
-  br i1 %t938, label %if.then.1, label %if.end.1
+  %t1021 = load i32, ptr %v.sm.async.status.1014
+  store i32 %t1021, ptr %v.status
+  %t1022 = load i32, ptr %v.status
+  %t1023 = icmp ne i32 %t1022, 0
+  br i1 %t1023, label %if.then.1, label %if.end.1
 if.then.1:
-  %t939 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1428, i32 0, i32 0
-  store i32 1, ptr %t939
-  %t940 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1428, i32 0, i32 2
-  %t941 = getelementptr inbounds %interface.Error, ptr %t940, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t941
-  %t942 = getelementptr inbounds %interface.Error, ptr %t940, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t942
-  %t943 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1428
-  store { i32, [4 x i8], %interface.Error } %t943, ptr %t944
-  %t945 = load i32, ptr %t944
-  %t946 = icmp eq i32 %t945, 0
-  br i1 %t946, label %share.keep.2, label %share.done.2
+  %t1024 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1428, i32 0, i32 0
+  store i32 1, ptr %t1024
+  %t1025 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1428, i32 0, i32 2
+  %t1026 = getelementptr inbounds %interface.Error, ptr %t1025, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t1026
+  %t1027 = getelementptr inbounds %interface.Error, ptr %t1025, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t1027
+  %t1028 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1428
+  store { i32, [4 x i8], %interface.Error } %t1028, ptr %t1029
+  %t1030 = load i32, ptr %t1029
+  %t1031 = icmp eq i32 %t1030, 0
+  br i1 %t1031, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t947 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t944, i32 0, i32 2
+  %t1032 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t1029, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t948 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t949 = ptrtoint ptr %t948 to i64
-  call i32 @willrt_task_store_result(ptr %t944, i64 %t949)
+  %t1033 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t1034 = ptrtoint ptr %t1033 to i64
+  call i32 @willrt_task_store_result(ptr %t1029, i64 %t1034)
   ret i32 1
 if.end.1:
-  %t950 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1433, i32 0, i32 0
-  store i32 0, ptr %t950
-  %t951 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1433, i32 0, i32 2
-  %t952 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1433
-  store { i32, [4 x i8], %interface.Error } %t952, ptr %t953
-  %t954 = load i32, ptr %t953
-  %t955 = icmp eq i32 %t954, 0
-  br i1 %t955, label %share.keep.3, label %share.done.3
+  %t1035 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1433, i32 0, i32 0
+  store i32 0, ptr %t1035
+  %t1036 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1433, i32 0, i32 2
+  %t1037 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1433
+  store { i32, [4 x i8], %interface.Error } %t1037, ptr %t1038
+  %t1039 = load i32, ptr %t1038
+  %t1040 = icmp eq i32 %t1039, 0
+  br i1 %t1040, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t956 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t953, i32 0, i32 2
+  %t1041 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t1038, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t957 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t958 = ptrtoint ptr %t957 to i64
-  call i32 @willrt_task_store_result(ptr %t953, i64 %t958)
+  %t1042 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t1043 = ptrtoint ptr %t1042 to i64
+  call i32 @willrt_task_store_result(ptr %t1038, i64 %t1043)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncRename.task"(ptr %arg0, ptr %arg1) {
+define hidden ptr @"std/os/fs.AsyncRename.task"(ptr %arg0, ptr %arg1, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
-  %t959 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t959
-  %t960 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t961 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t961, ptr %t960
-  %t962 = getelementptr i8, ptr %v.sm.frame, i64 24
-  %t963 = load { ptr, i64 }, ptr %arg1
-  store { ptr, i64 } %t963, ptr %t962
-  %t964 = call i32 @willrt_lane_here()
-  %t965 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncRename.sm", ptr %v.sm.frame, i64 160, i32 %t964, i32 0)
-  call void @willrt_task_own_frame(ptr %t965)
-  call void @willrt_task_run(ptr %t965)
-  ret ptr %t965
+  %t1044 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t1044
+  %t1045 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t1046 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t1046, ptr %t1045
+  %t1047 = getelementptr i8, ptr %v.sm.frame, i64 24
+  %t1048 = load { ptr, i64 }, ptr %arg1
+  store { ptr, i64 } %t1048, ptr %t1047
+  %t1049 = call i32 @willrt_lane_here()
+  %t1050 = icmp eq i32 %start, -1
+  %t1051 = icmp eq i32 %start, -2
+  %t1052 = select i1 %t1051, i32 %t1049, i32 %start
+  br i1 %t1050, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t1053 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncRename.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t1053)
+  call void @willrt_task_run_auto(ptr %t1053)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t1054 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncRename.sm", ptr %v.sm.frame, i64 160, i32 %t1052, i32 0)
+  call void @willrt_task_own_frame(ptr %t1054)
+  call void @willrt_task_run(ptr %t1054)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t1055 = phi ptr [ %t1053, %sm.start.auto.4 ], [ %t1054, %sm.start.lane.4 ]
+  ret ptr %t1055
 }
 define internal i32 @"std/os/fs.AsyncRemove.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1437.966 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1437.1056 = getelementptr i8, ptr %frame, i64 8
   %v.status = getelementptr i8, ptr %frame, i64 24
   %v.adt.1457 = getelementptr i8, ptr %frame, i64 32
   %v.adt.1462 = getelementptr i8, ptr %frame, i64 56
-  %v.sm.async.op.967 = getelementptr i8, ptr %frame, i64 80
-  %v.sm.async.status.968 = getelementptr i8, ptr %frame, i64 88
-  %t983 = getelementptr i8, ptr %frame, i64 96
-  %t992 = getelementptr i8, ptr %frame, i64 120
+  %v.sm.async.op.1057 = getelementptr i8, ptr %frame, i64 80
+  %v.sm.async.status.1058 = getelementptr i8, ptr %frame, i64 88
+  %t1073 = getelementptr i8, ptr %frame, i64 96
+  %t1082 = getelementptr i8, ptr %frame, i64 120
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t969 = call ptr @willrt_fs_async_remove_start(ptr %v.sm.param.1437.966)
-  store ptr %t969, ptr %v.sm.async.op.967
-  %t970 = icmp ne ptr %t969, null
-  br i1 %t970, label %sm.async.have.1, label %sm.async.fail.1
+  %t1059 = call ptr @willrt_fs_async_remove_start(ptr %v.sm.param.1437.1056)
+  store ptr %t1059, ptr %v.sm.async.op.1057
+  %t1060 = icmp ne ptr %t1059, null
+  br i1 %t1060, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.968
+  store i32 1, ptr %v.sm.async.status.1058
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t971 = load ptr, ptr %v.sm.async.op.967
-  %t972 = call i32 @willrt_blocking_poll(ptr %t971)
-  %t973 = icmp eq i32 %t972, 0
-  br i1 %t973, label %sm.async.park.1, label %sm.async.done.1
+  %t1061 = load ptr, ptr %v.sm.async.op.1057
+  %t1062 = call i32 @willrt_blocking_poll(ptr %t1061)
+  %t1063 = icmp eq i32 %t1062, 0
+  br i1 %t1063, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t974 = call i32 @willrt_blocking_finish(ptr %t971)
-  store i32 %t974, ptr %v.sm.async.status.968
+  %t1064 = call i32 @willrt_blocking_finish(ptr %t1061)
+  store i32 %t1064, ptr %v.sm.async.status.1058
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t975 = load i32, ptr %v.sm.async.status.968
-  store i32 %t975, ptr %v.status
-  %t976 = load i32, ptr %v.status
-  %t977 = icmp ne i32 %t976, 0
-  br i1 %t977, label %if.then.1, label %if.end.1
+  %t1065 = load i32, ptr %v.sm.async.status.1058
+  store i32 %t1065, ptr %v.status
+  %t1066 = load i32, ptr %v.status
+  %t1067 = icmp ne i32 %t1066, 0
+  br i1 %t1067, label %if.then.1, label %if.end.1
 if.then.1:
-  %t978 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1457, i32 0, i32 0
-  store i32 1, ptr %t978
-  %t979 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1457, i32 0, i32 2
-  %t980 = getelementptr inbounds %interface.Error, ptr %t979, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t980
-  %t981 = getelementptr inbounds %interface.Error, ptr %t979, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t981
-  %t982 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1457
-  store { i32, [4 x i8], %interface.Error } %t982, ptr %t983
-  %t984 = load i32, ptr %t983
-  %t985 = icmp eq i32 %t984, 0
-  br i1 %t985, label %share.keep.2, label %share.done.2
+  %t1068 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1457, i32 0, i32 0
+  store i32 1, ptr %t1068
+  %t1069 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1457, i32 0, i32 2
+  %t1070 = getelementptr inbounds %interface.Error, ptr %t1069, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t1070
+  %t1071 = getelementptr inbounds %interface.Error, ptr %t1069, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t1071
+  %t1072 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1457
+  store { i32, [4 x i8], %interface.Error } %t1072, ptr %t1073
+  %t1074 = load i32, ptr %t1073
+  %t1075 = icmp eq i32 %t1074, 0
+  br i1 %t1075, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t986 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t983, i32 0, i32 2
+  %t1076 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t1073, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t987 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t988 = ptrtoint ptr %t987 to i64
-  call i32 @willrt_task_store_result(ptr %t983, i64 %t988)
+  %t1077 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t1078 = ptrtoint ptr %t1077 to i64
+  call i32 @willrt_task_store_result(ptr %t1073, i64 %t1078)
   ret i32 1
 if.end.1:
-  %t989 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1462, i32 0, i32 0
-  store i32 0, ptr %t989
-  %t990 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1462, i32 0, i32 2
-  %t991 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1462
-  store { i32, [4 x i8], %interface.Error } %t991, ptr %t992
-  %t993 = load i32, ptr %t992
-  %t994 = icmp eq i32 %t993, 0
-  br i1 %t994, label %share.keep.3, label %share.done.3
+  %t1079 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1462, i32 0, i32 0
+  store i32 0, ptr %t1079
+  %t1080 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1462, i32 0, i32 2
+  %t1081 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1462
+  store { i32, [4 x i8], %interface.Error } %t1081, ptr %t1082
+  %t1083 = load i32, ptr %t1082
+  %t1084 = icmp eq i32 %t1083, 0
+  br i1 %t1084, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t995 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t992, i32 0, i32 2
+  %t1085 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t1082, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t996 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t997 = ptrtoint ptr %t996 to i64
-  call i32 @willrt_task_store_result(ptr %t992, i64 %t997)
+  %t1086 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t1087 = ptrtoint ptr %t1086 to i64
+  call i32 @willrt_task_store_result(ptr %t1082, i64 %t1087)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncRemove.task"(ptr %arg0) {
+define hidden ptr @"std/os/fs.AsyncRemove.task"(ptr %arg0, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
-  %t998 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t998
-  %t999 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t1000 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t1000, ptr %t999
-  %t1001 = call i32 @willrt_lane_here()
-  %t1002 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncRemove.sm", ptr %v.sm.frame, i64 144, i32 %t1001, i32 0)
-  call void @willrt_task_own_frame(ptr %t1002)
-  call void @willrt_task_run(ptr %t1002)
-  ret ptr %t1002
+  %t1088 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t1088
+  %t1089 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t1090 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t1090, ptr %t1089
+  %t1091 = call i32 @willrt_lane_here()
+  %t1092 = icmp eq i32 %start, -1
+  %t1093 = icmp eq i32 %start, -2
+  %t1094 = select i1 %t1093, i32 %t1091, i32 %start
+  br i1 %t1092, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t1095 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncRemove.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t1095)
+  call void @willrt_task_run_auto(ptr %t1095)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t1096 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncRemove.sm", ptr %v.sm.frame, i64 144, i32 %t1094, i32 0)
+  call void @willrt_task_own_frame(ptr %t1096)
+  call void @willrt_task_run(ptr %t1096)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t1097 = phi ptr [ %t1095, %sm.start.auto.4 ], [ %t1096, %sm.start.lane.4 ]
+  ret ptr %t1097
 }
 define internal i32 @"std/os/fs.AsyncTempFile.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.1466.1003 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.1468.1004 = getelementptr i8, ptr %frame, i64 24
+  %v.sm.param.1466.1098 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.1468.1099 = getelementptr i8, ptr %frame, i64 24
   %v.file = getelementptr i8, ptr %frame, i64 40
   %v.status = getelementptr i8, ptr %frame, i64 48
   %v.adt.1497 = getelementptr i8, ptr %frame, i64 56
   %v.adt.1503 = getelementptr i8, ptr %frame, i64 80
-  %v.sm.async.op.1005 = getelementptr i8, ptr %frame, i64 104
-  %v.sm.async.status.1006 = getelementptr i8, ptr %frame, i64 112
-  %t1021 = getelementptr i8, ptr %frame, i64 120
-  %t1031 = getelementptr i8, ptr %frame, i64 144
+  %v.sm.async.op.1100 = getelementptr i8, ptr %frame, i64 104
+  %v.sm.async.status.1101 = getelementptr i8, ptr %frame, i64 112
+  %t1116 = getelementptr i8, ptr %frame, i64 120
+  %t1126 = getelementptr i8, ptr %frame, i64 144
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
   store %"struct.std/os/fs.File" zeroinitializer, ptr %v.file
-  %t1007 = call ptr @willrt_fs_async_temp_file_start(ptr %v.sm.param.1466.1003, ptr %v.sm.param.1468.1004, ptr %v.file)
-  store ptr %t1007, ptr %v.sm.async.op.1005
-  %t1008 = icmp ne ptr %t1007, null
-  br i1 %t1008, label %sm.async.have.1, label %sm.async.fail.1
+  %t1102 = call ptr @willrt_fs_async_temp_file_start(ptr %v.sm.param.1466.1098, ptr %v.sm.param.1468.1099, ptr %v.file)
+  store ptr %t1102, ptr %v.sm.async.op.1100
+  %t1103 = icmp ne ptr %t1102, null
+  br i1 %t1103, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.1006
+  store i32 1, ptr %v.sm.async.status.1101
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t1009 = load ptr, ptr %v.sm.async.op.1005
-  %t1010 = call i32 @willrt_blocking_poll(ptr %t1009)
-  %t1011 = icmp eq i32 %t1010, 0
-  br i1 %t1011, label %sm.async.park.1, label %sm.async.done.1
+  %t1104 = load ptr, ptr %v.sm.async.op.1100
+  %t1105 = call i32 @willrt_blocking_poll(ptr %t1104)
+  %t1106 = icmp eq i32 %t1105, 0
+  br i1 %t1106, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t1012 = call i32 @willrt_blocking_finish(ptr %t1009)
-  store i32 %t1012, ptr %v.sm.async.status.1006
+  %t1107 = call i32 @willrt_blocking_finish(ptr %t1104)
+  store i32 %t1107, ptr %v.sm.async.status.1101
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t1013 = load i32, ptr %v.sm.async.status.1006
-  store i32 %t1013, ptr %v.status
-  %t1014 = load i32, ptr %v.status
-  %t1015 = icmp ne i32 %t1014, 0
-  br i1 %t1015, label %if.then.1, label %if.end.1
+  %t1108 = load i32, ptr %v.sm.async.status.1101
+  store i32 %t1108, ptr %v.status
+  %t1109 = load i32, ptr %v.status
+  %t1110 = icmp ne i32 %t1109, 0
+  br i1 %t1110, label %if.then.1, label %if.end.1
 if.then.1:
-  %t1016 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1497, i32 0, i32 0
-  store i32 1, ptr %t1016
-  %t1017 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1497, i32 0, i32 2
-  %t1018 = getelementptr inbounds %interface.Error, ptr %t1017, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t1018
-  %t1019 = getelementptr inbounds %interface.Error, ptr %t1017, i32 0, i32 1
-  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t1019
-  %t1020 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1497
-  store { i32, [4 x i8], %interface.Error } %t1020, ptr %t1021
-  %t1022 = load i32, ptr %t1021
-  %t1023 = icmp eq i32 %t1022, 0
-  br i1 %t1023, label %share.keep.2, label %share.done.2
+  %t1111 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1497, i32 0, i32 0
+  store i32 1, ptr %t1111
+  %t1112 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1497, i32 0, i32 2
+  %t1113 = getelementptr inbounds %interface.Error, ptr %t1112, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t1113
+  %t1114 = getelementptr inbounds %interface.Error, ptr %t1112, i32 0, i32 1
+  store ptr @"std/os/fs.vtable.Error.std/errors.Fault", ptr %t1114
+  %t1115 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1497
+  store { i32, [4 x i8], %interface.Error } %t1115, ptr %t1116
+  %t1117 = load i32, ptr %t1116
+  %t1118 = icmp eq i32 %t1117, 0
+  br i1 %t1118, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t1024 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t1021, i32 0, i32 2
+  %t1119 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t1116, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t1025 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t1026 = ptrtoint ptr %t1025 to i64
-  call i32 @willrt_task_store_result(ptr %t1021, i64 %t1026)
+  %t1120 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t1121 = ptrtoint ptr %t1120 to i64
+  call i32 @willrt_task_store_result(ptr %t1116, i64 %t1121)
   ret i32 1
 if.end.1:
-  %t1027 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1503, i32 0, i32 0
-  store i32 0, ptr %t1027
-  %t1028 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1503, i32 0, i32 2
-  %t1029 = load %"struct.std/os/fs.File", ptr %v.file
-  store %"struct.std/os/fs.File" %t1029, ptr %t1028
-  %t1030 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1503
-  store { i32, [4 x i8], %interface.Error } %t1030, ptr %t1031
-  %t1032 = load i32, ptr %t1031
-  %t1033 = icmp eq i32 %t1032, 0
-  br i1 %t1033, label %share.keep.3, label %share.done.3
+  %t1122 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1503, i32 0, i32 0
+  store i32 0, ptr %t1122
+  %t1123 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.1503, i32 0, i32 2
+  %t1124 = load %"struct.std/os/fs.File", ptr %v.file
+  store %"struct.std/os/fs.File" %t1124, ptr %t1123
+  %t1125 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.1503
+  store { i32, [4 x i8], %interface.Error } %t1125, ptr %t1126
+  %t1127 = load i32, ptr %t1126
+  %t1128 = icmp eq i32 %t1127, 0
+  br i1 %t1128, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t1034 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t1031, i32 0, i32 2
+  %t1129 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t1126, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t1035 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t1036 = ptrtoint ptr %t1035 to i64
-  call i32 @willrt_task_store_result(ptr %t1031, i64 %t1036)
+  %t1130 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t1131 = ptrtoint ptr %t1130 to i64
+  call i32 @willrt_task_store_result(ptr %t1126, i64 %t1131)
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncTempFile.task"(ptr %arg0, ptr %arg1) {
+define hidden ptr @"std/os/fs.AsyncTempFile.task"(ptr %arg0, ptr %arg1, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 176)
-  %t1037 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t1037
-  %t1038 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t1039 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t1039, ptr %t1038
-  %t1040 = getelementptr i8, ptr %v.sm.frame, i64 24
-  %t1041 = load { ptr, i64 }, ptr %arg1
-  store { ptr, i64 } %t1041, ptr %t1040
-  %t1042 = call i32 @willrt_lane_here()
-  %t1043 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncTempFile.sm", ptr %v.sm.frame, i64 176, i32 %t1042, i32 0)
-  call void @willrt_task_own_frame(ptr %t1043)
-  call void @willrt_task_run(ptr %t1043)
-  ret ptr %t1043
+  %t1132 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t1132
+  %t1133 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t1134 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t1134, ptr %t1133
+  %t1135 = getelementptr i8, ptr %v.sm.frame, i64 24
+  %t1136 = load { ptr, i64 }, ptr %arg1
+  store { ptr, i64 } %t1136, ptr %t1135
+  %t1137 = call i32 @willrt_lane_here()
+  %t1138 = icmp eq i32 %start, -1
+  %t1139 = icmp eq i32 %start, -2
+  %t1140 = select i1 %t1139, i32 %t1137, i32 %start
+  br i1 %t1138, label %sm.start.auto.4, label %sm.start.lane.4
+sm.start.auto.4:
+  %t1141 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncTempFile.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t1141)
+  call void @willrt_task_run_auto(ptr %t1141)
+  br label %sm.start.done.4
+sm.start.lane.4:
+  %t1142 = call ptr @willrt_task_new(ptr @"std/os/fs.AsyncTempFile.sm", ptr %v.sm.frame, i64 176, i32 %t1140, i32 0)
+  call void @willrt_task_own_frame(ptr %t1142)
+  call void @willrt_task_run(ptr %t1142)
+  br label %sm.start.done.4
+sm.start.done.4:
+  %t1143 = phi ptr [ %t1141, %sm.start.auto.4 ], [ %t1142, %sm.start.lane.4 ]
+  ret ptr %t1143
 }
 define internal i32 @"example.com/concurrency/multiasync.Fill.sm"(ptr %frame) {
 entry:
@@ -7033,7 +7306,7 @@ panic.ok.2:
   store ptr %t11, ptr %t13
   %t14 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.22, i32 0, i32 1
   store i64 %t12, ptr %t14
-  %t15 = call ptr @"std/os/fs.AsyncWriteFile.task"(ptr %v.sm.param.5.1, ptr %v.slice.22)
+  %t15 = call ptr @"std/os/fs.AsyncWriteFile.task"(ptr %v.sm.param.5.1, ptr %v.slice.22, i32 -2)
   store ptr %t15, ptr %v.sm.join.task.18
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
@@ -7086,7 +7359,7 @@ share.done.5:
   ret i32 1
   unreachable
 try.ok.4:
-  %t45 = call ptr @"std/time.Sleep.task"(i64 1000000)
+  %t45 = call ptr @"std/time.Sleep.task"(i64 1000000, i32 -2)
   store ptr %t45, ptr %v.sm.join.task.48
   store i32 2, ptr %v.sm.state
   br label %sm.op.call.2
@@ -7153,7 +7426,7 @@ panic.ok.9:
   store ptr %t80, ptr %t82
   %t83 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.41, i32 0, i32 1
   store i64 %t81, ptr %t83
-  %t84 = call ptr @"std/os/fs.AsyncAppend.task"(ptr %v.sm.param.5.1, ptr %v.slice.41)
+  %t84 = call ptr @"std/os/fs.AsyncAppend.task"(ptr %v.sm.param.5.1, ptr %v.slice.41, i32 -2)
   store ptr %t84, ptr %v.sm.join.task.87
   store i32 3, ptr %v.sm.state
   br label %sm.op.call.3
@@ -7224,7 +7497,7 @@ share.done.13:
   ret i32 1
 
 }
-define hidden ptr @"example.com/concurrency/multiasync.Fill.task"(ptr %arg0) {
+define hidden ptr @"example.com/concurrency/multiasync.Fill.task"(ptr %arg0, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 496)
   %t123 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -7233,10 +7506,23 @@ entry:
   %t125 = load { ptr, i64 }, ptr %arg0
   store { ptr, i64 } %t125, ptr %t124
   %t126 = call i32 @willrt_lane_here()
-  %t127 = call ptr @willrt_task_new(ptr @"example.com/concurrency/multiasync.Fill.sm", ptr %v.sm.frame, i64 496, i32 %t126, i32 0)
-  call void @willrt_task_own_frame(ptr %t127)
-  call void @willrt_task_run(ptr %t127)
-  ret ptr %t127
+  %t127 = icmp eq i32 %start, -1
+  %t128 = icmp eq i32 %start, -2
+  %t129 = select i1 %t128, i32 %t126, i32 %start
+  br i1 %t127, label %sm.start.auto.14, label %sm.start.lane.14
+sm.start.auto.14:
+  %t130 = call ptr @willrt_task_new(ptr @"example.com/concurrency/multiasync.Fill.sm", ptr %v.sm.frame, i64 496, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t130)
+  call void @willrt_task_run_auto(ptr %t130)
+  br label %sm.start.done.14
+sm.start.lane.14:
+  %t131 = call ptr @willrt_task_new(ptr @"example.com/concurrency/multiasync.Fill.sm", ptr %v.sm.frame, i64 496, i32 %t129, i32 0)
+  call void @willrt_task_own_frame(ptr %t131)
+  call void @willrt_task_run(ptr %t131)
+  br label %sm.start.done.14
+sm.start.done.14:
+  %t132 = phi ptr [ %t130, %sm.start.auto.14 ], [ %t131, %sm.start.lane.14 ]
+  ret ptr %t132
 }
 define internal i32 @"example.com/concurrency/multiasync.will$main.sm"(ptr %frame) {
 entry:
@@ -7253,129 +7539,142 @@ entry:
   %v.adt.60 = getelementptr i8, ptr %frame, i64 208
   %v.join.out.77 = getelementptr i8, ptr %frame, i64 232
   %v.join.err.77 = getelementptr i8, ptr %frame, i64 256
-  %v.sm.join.task.136 = getelementptr i8, ptr %frame, i64 296
-  %t155 = getelementptr i8, ptr %frame, i64 304
-  %t168 = getelementptr i8, ptr %frame, i64 308
-  %t175 = getelementptr i8, ptr %frame, i64 312
-  %t178 = getelementptr i8, ptr %frame, i64 316
+  %v.sm.join.task.141 = getelementptr i8, ptr %frame, i64 296
+  %t160 = getelementptr i8, ptr %frame, i64 304
+  %t173 = getelementptr i8, ptr %frame, i64 308
+  %t180 = getelementptr i8, ptr %frame, i64 312
+  %t183 = getelementptr i8, ptr %frame, i64 316
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t128 = getelementptr inbounds { ptr, i64 }, ptr %v.str.55, i32 0, i32 0
-  store ptr @.bytes.63, ptr %t128
-  %t129 = getelementptr inbounds { ptr, i64 }, ptr %v.str.55, i32 0, i32 1
-  store i64 31, ptr %t129
-  %t130 = load { ptr, i64 }, ptr %v.str.55
-  store { ptr, i64 } %t130, ptr %v.path
-  %t131 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.60, i32 0, i32 0
-  store i32 0, ptr %t131
-  %t132 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.60, i32 0, i32 2
-  %t133 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.60
-  store { i32, [4 x i8], %interface.Error } %t133, ptr %v.result
+  %t133 = getelementptr inbounds { ptr, i64 }, ptr %v.str.55, i32 0, i32 0
+  store ptr @.bytes.63, ptr %t133
+  %t134 = getelementptr inbounds { ptr, i64 }, ptr %v.str.55, i32 0, i32 1
+  store i64 31, ptr %t134
+  %t135 = load { ptr, i64 }, ptr %v.str.55
+  store { ptr, i64 } %t135, ptr %v.path
+  %t136 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.60, i32 0, i32 0
+  store i32 0, ptr %t136
+  %t137 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.60, i32 0, i32 2
+  %t138 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.60
+  store { i32, [4 x i8], %interface.Error } %t138, ptr %v.result
   call void @willrt_region_enter()
-  %t134 = call ptr @"example.com/concurrency/multiasync.Fill.task"(ptr %v.path)
-  store ptr %t134, ptr %v.task
-  %t135 = load ptr, ptr %v.task
-  store ptr %t135, ptr %v.sm.join.task.136
+  %t139 = call ptr @"example.com/concurrency/multiasync.Fill.task"(ptr %v.path, i32 -1)
+  store ptr %t139, ptr %v.task
+  %t140 = load ptr, ptr %v.task
+  store ptr %t140, ptr %v.sm.join.task.141
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t138 = load ptr, ptr %v.sm.join.task.136
-  %t137 = call i32 @willrt_task_try_join(ptr %t138, ptr %v.join.out.77, ptr %v.join.err.77)
-  %t139 = icmp eq i32 %t137, -1
-  br i1 %t139, label %sm.op.park.1, label %sm.op.cont.1
+  %t143 = load ptr, ptr %v.sm.join.task.141
+  %t142 = call i32 @willrt_task_try_join(ptr %t143, ptr %v.join.out.77, ptr %v.join.err.77)
+  %t144 = icmp eq i32 %t142, -1
+  br i1 %t144, label %sm.op.park.1, label %sm.op.cont.1
 sm.op.park.1:
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.op.cont.1:
-  %t140 = getelementptr inbounds %willrt.task_error, ptr %v.join.err.77, i32 0, i32 1
-  store i32 %t137, ptr %t140
-  %t141 = icmp eq i32 %t137, 0
-  br i1 %t141, label %task.ok.1, label %task.fail.1
+  %t145 = getelementptr inbounds %willrt.task_error, ptr %v.join.err.77, i32 0, i32 1
+  store i32 %t142, ptr %t145
+  %t146 = icmp eq i32 %t142, 0
+  br i1 %t146, label %task.ok.1, label %task.fail.1
 task.fail.1:
-  %t142 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 0
-  %t143 = load ptr, ptr %t142
-  %t144 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 1
-  %t145 = load i64, ptr %t144
-  %t146 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 2
-  %t147 = load ptr, ptr %t146
-  %t148 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 3
-  %t149 = load ptr, ptr %t148
-  call void @willrt_panic_n(ptr %t143, i64 %t145, ptr %t147, ptr %t149)
+  %t147 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 0
+  %t148 = load ptr, ptr %t147
+  %t149 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 1
+  %t150 = load i64, ptr %t149
+  %t151 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 2
+  %t152 = load ptr, ptr %t151
+  %t153 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 3
+  %t154 = load ptr, ptr %t153
+  call void @willrt_panic_n(ptr %t148, i64 %t150, ptr %t152, ptr %t154)
   unreachable
 task.ok.1:
-  %t150 = load { i32, [4 x i8], %interface.Error }, ptr %v.join.out.77
-  store { i32, [4 x i8], %interface.Error } %t150, ptr %v.result
+  %t155 = load { i32, [4 x i8], %interface.Error }, ptr %v.join.out.77
+  store { i32, [4 x i8], %interface.Error } %t155, ptr %v.result
   call i32 @willrt_region_exit()
-  %t151 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.result, i32 0, i32 0
-  %t152 = load i32, ptr %t151
-  %t153 = icmp eq i32 %t152, 1
-  br i1 %t153, label %if.then.2, label %if.end.2
+  %t156 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.result, i32 0, i32 0
+  %t157 = load i32, ptr %t156
+  %t158 = icmp eq i32 %t157, 1
+  br i1 %t158, label %if.then.2, label %if.end.2
 if.then.2:
-  %t154 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
-  store { i32, [4 x i8], %interface.Error } %t154, ptr %v.ret.85
-  store i32 1, ptr %t155
-  %t156 = getelementptr i32, ptr null, i32 1
-  %t157 = ptrtoint ptr %t156 to i64
-  call i32 @willrt_task_store_result(ptr %t155, i64 %t157)
+  %t159 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
+  store { i32, [4 x i8], %interface.Error } %t159, ptr %v.ret.85
+  store i32 1, ptr %t160
+  %t161 = getelementptr i32, ptr null, i32 1
+  %t162 = ptrtoint ptr %t161 to i64
+  call i32 @willrt_task_store_result(ptr %t160, i64 %t162)
   ret i32 1
 if.end.2:
-  %t158 = call { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.ReadFile"(ptr %v.path)
-  store { i32, [4 x i8], { ptr, i64, i64 } } %t158, ptr %v.ret.97
-  %t159 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.ret.97
-  store { i32, [4 x i8], { ptr, i64, i64 } } %t159, ptr %v.loaded
-  %t160 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
-  store { i32, [4 x i8], %interface.Error } %t160, ptr %v.ret.102
-  %t161 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 0
-  %t162 = load i32, ptr %t161
-  %t163 = icmp eq i32 %t162, 0
-  br i1 %t163, label %match.arm.3.0, label %match.next.3.0
+  %t163 = call { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.ReadFile"(ptr %v.path)
+  store { i32, [4 x i8], { ptr, i64, i64 } } %t163, ptr %v.ret.97
+  %t164 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.ret.97
+  store { i32, [4 x i8], { ptr, i64, i64 } } %t164, ptr %v.loaded
+  %t165 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
+  store { i32, [4 x i8], %interface.Error } %t165, ptr %v.ret.102
+  %t166 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 0
+  %t167 = load i32, ptr %t166
+  %t168 = icmp eq i32 %t167, 0
+  br i1 %t168, label %match.arm.3.0, label %match.next.3.0
 match.arm.3.0:
-  %t164 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 2
-  %t165 = getelementptr inbounds { ptr, i64, i64 }, ptr %t164, i32 0, i32 1
-  %t166 = load i64, ptr %t165
-  %t167 = icmp ne i64 %t166, 2
-  br i1 %t167, label %if.then.4, label %if.end.4
+  %t169 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 2
+  %t170 = getelementptr inbounds { ptr, i64, i64 }, ptr %t169, i32 0, i32 1
+  %t171 = load i64, ptr %t170
+  %t172 = icmp ne i64 %t171, 2
+  br i1 %t172, label %if.then.4, label %if.end.4
 if.then.4:
-  store i32 2, ptr %t168
-  %t169 = getelementptr i32, ptr null, i32 1
-  %t170 = ptrtoint ptr %t169 to i64
-  call i32 @willrt_task_store_result(ptr %t168, i64 %t170)
+  store i32 2, ptr %t173
+  %t174 = getelementptr i32, ptr null, i32 1
+  %t175 = ptrtoint ptr %t174 to i64
+  call i32 @willrt_task_store_result(ptr %t173, i64 %t175)
   ret i32 1
 if.end.4:
   br label %match.end.3
 match.next.3.0:
-  %t171 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 0
-  %t172 = load i32, ptr %t171
-  %t173 = icmp eq i32 %t172, 1
-  br i1 %t173, label %match.arm.3.1, label %match.next.3.1
+  %t176 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 0
+  %t177 = load i32, ptr %t176
+  %t178 = icmp eq i32 %t177, 1
+  br i1 %t178, label %match.arm.3.1, label %match.next.3.1
 match.arm.3.1:
-  %t174 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 2
-  store i32 3, ptr %t175
-  %t176 = getelementptr i32, ptr null, i32 1
-  %t177 = ptrtoint ptr %t176 to i64
-  call i32 @willrt_task_store_result(ptr %t175, i64 %t177)
+  %t179 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 2
+  store i32 3, ptr %t180
+  %t181 = getelementptr i32, ptr null, i32 1
+  %t182 = ptrtoint ptr %t181 to i64
+  call i32 @willrt_task_store_result(ptr %t180, i64 %t182)
   ret i32 1
 match.next.3.1:
   unreachable
 match.end.3:
-  store i32 0, ptr %t178
-  %t179 = getelementptr i32, ptr null, i32 1
-  %t180 = ptrtoint ptr %t179 to i64
-  call i32 @willrt_task_store_result(ptr %t178, i64 %t180)
+  store i32 0, ptr %t183
+  %t184 = getelementptr i32, ptr null, i32 1
+  %t185 = ptrtoint ptr %t184 to i64
+  call i32 @willrt_task_store_result(ptr %t183, i64 %t185)
   ret i32 1
 
 }
-define hidden ptr @"example.com/concurrency/multiasync.will$main.task"() {
+define hidden ptr @"example.com/concurrency/multiasync.will$main.task"(i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 320)
-  %t181 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t181
-  %t182 = call i32 @willrt_lane_here()
-  %t183 = call ptr @willrt_task_new(ptr @"example.com/concurrency/multiasync.will$main.sm", ptr %v.sm.frame, i64 320, i32 %t182, i32 0)
-  call void @willrt_task_own_frame(ptr %t183)
-  call void @willrt_task_run(ptr %t183)
-  ret ptr %t183
+  %t186 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t186
+  %t187 = call i32 @willrt_lane_here()
+  %t188 = icmp eq i32 %start, -1
+  %t189 = icmp eq i32 %start, -2
+  %t190 = select i1 %t189, i32 %t187, i32 %start
+  br i1 %t188, label %sm.start.auto.5, label %sm.start.lane.5
+sm.start.auto.5:
+  %t191 = call ptr @willrt_task_new(ptr @"example.com/concurrency/multiasync.will$main.sm", ptr %v.sm.frame, i64 320, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t191)
+  call void @willrt_task_run_auto(ptr %t191)
+  br label %sm.start.done.5
+sm.start.lane.5:
+  %t192 = call ptr @willrt_task_new(ptr @"example.com/concurrency/multiasync.will$main.sm", ptr %v.sm.frame, i64 320, i32 %t190, i32 0)
+  call void @willrt_task_own_frame(ptr %t192)
+  call void @willrt_task_run(ptr %t192)
+  br label %sm.start.done.5
+sm.start.done.5:
+  %t193 = phi ptr [ %t191, %sm.start.auto.5 ], [ %t192, %sm.start.lane.5 ]
+  ret ptr %t193
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -7383,18 +7682,18 @@ define i32 @main() {
 entry:
   call void @willrt_init()
   call void @"std/errors.will$init"()
-  %t184 = call ptr @"example.com/concurrency/multiasync.will$main.task"()
-  %t186 = alloca i32
-  %t185 = call i32 @willrt_join(ptr %t184, ptr %t186, ptr null)
-  %t187 = icmp ne i32 %t185, 0
-  br i1 %t187, label %main.async.fail.5, label %main.async.ok.5
-main.async.fail.5:
+  %t194 = call ptr @"example.com/concurrency/multiasync.will$main.task"(i32 -2)
+  %t196 = alloca i32
+  %t195 = call i32 @willrt_join(ptr %t194, ptr %t196, ptr null)
+  %t197 = icmp ne i32 %t195, 0
+  br i1 %t197, label %main.async.fail.6, label %main.async.ok.6
+main.async.fail.6:
   call void @willrt_shutdown()
   ret i32 1
-main.async.ok.5:
-  %t188 = load i32, ptr %t186
+main.async.ok.6:
+  %t198 = load i32, ptr %t196
   call void @willrt_shutdown()
-  ret i32 %t188
+  ret i32 %t198
 }
 declare i64 @willrt_now_ns()
 declare ptr @willrt_task_sleep_async_start(i64)
@@ -7635,6 +7934,7 @@ declare void @willrt_free(ptr)
 declare void @memcpy(ptr, ptr, i64)
 declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)
 declare void @willrt_task_run(ptr)
+declare void @willrt_task_run_auto(ptr)
 declare i32 @willrt_join(ptr, ptr, ptr)
 declare i32 @willrt_task_try_join(ptr, ptr, ptr)
 declare ptr @willrt_task_current()

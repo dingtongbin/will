@@ -31,7 +31,8 @@ func TestAsyncCallerWaitsOnAChildTask(t *testing.T) {
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		`define i32 @"example.com/app.Outer.sm"(ptr %frame) {`,
-		`call ptr @"example.com/app.Inner.task"(ptr %`,
+		`call ptr @"example.com/app.Inner.task"(ptr`,
+		`, i32 -2)`,
 		`call i32 @willrt_task_try_join(ptr %`,
 	} {
 		if !strings.Contains(text, want) {

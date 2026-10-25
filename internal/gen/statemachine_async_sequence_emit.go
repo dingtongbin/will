@@ -261,7 +261,7 @@ func (g *generator) emitAsyncStart(info *asyncMachineInfo, seg *asyncSegment, in
 			done, index, index)
 		fmt.Fprintf(g.out, "sm.start.wait.%d:\n", index)
 	} else {
-		child, err := g.emitConstructorCall(seg.call, seg.targetSym)
+		child, err := g.emitConstructorCall(seg.call, seg.targetSym, "-2")
 		if err != nil {
 			return err
 		}

@@ -191,51 +191,64 @@ select.fast.end.5:
   ret i32 1
 
 }
-define hidden ptr @"example.com/select.will$main.task"() {
+define hidden ptr @"example.com/select.will$main.task"(i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 256)
   %t70 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t70
   %t71 = call i32 @willrt_lane_here()
-  %t72 = call ptr @willrt_task_new(ptr @"example.com/select.will$main.sm", ptr %v.sm.frame, i64 256, i32 %t71, i32 0)
-  call void @willrt_task_own_frame(ptr %t72)
-  call void @willrt_task_run(ptr %t72)
-  ret ptr %t72
+  %t72 = icmp eq i32 %start, -1
+  %t73 = icmp eq i32 %start, -2
+  %t74 = select i1 %t73, i32 %t71, i32 %start
+  br i1 %t72, label %sm.start.auto.10, label %sm.start.lane.10
+sm.start.auto.10:
+  %t75 = call ptr @willrt_task_new(ptr @"example.com/select.will$main.sm", ptr %v.sm.frame, i64 256, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t75)
+  call void @willrt_task_run_auto(ptr %t75)
+  br label %sm.start.done.10
+sm.start.lane.10:
+  %t76 = call ptr @willrt_task_new(ptr @"example.com/select.will$main.sm", ptr %v.sm.frame, i64 256, i32 %t74, i32 0)
+  call void @willrt_task_own_frame(ptr %t76)
+  call void @willrt_task_run(ptr %t76)
+  br label %sm.start.done.10
+sm.start.done.10:
+  %t77 = phi ptr [ %t75, %sm.start.auto.10 ], [ %t76, %sm.start.lane.10 ]
+  ret ptr %t77
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %t73 = call ptr @"example.com/select.will$main.task"()
-  %t75 = alloca i32
-  %t74 = call i32 @willrt_join(ptr %t73, ptr %t75, ptr null)
-  %t76 = icmp ne i32 %t74, 0
-  br i1 %t76, label %main.async.fail.10, label %main.async.ok.10
-main.async.fail.10:
+  %t78 = call ptr @"example.com/select.will$main.task"(i32 -2)
+  %t80 = alloca i32
+  %t79 = call i32 @willrt_join(ptr %t78, ptr %t80, ptr null)
+  %t81 = icmp ne i32 %t79, 0
+  br i1 %t81, label %main.async.fail.11, label %main.async.ok.11
+main.async.fail.11:
   call void @willrt_shutdown()
   ret i32 1
-main.async.ok.10:
-  %t77 = load i32, ptr %t75
+main.async.ok.11:
+  %t82 = load i32, ptr %t80
   call void @willrt_shutdown()
-  ret i32 %t77
+  ret i32 %t82
 }
 @will.error.data.4 = private constant { ptr, i64, i32 } { ptr @.str.0, i64 6, i32 4 }
 define internal { ptr, i64 } @will.error.message.4(ptr %data) {
 entry:
-  %t78 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t79 = load ptr, ptr %t78
-  %t80 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
-  %t81 = load i64, ptr %t80
-  %t82 = insertvalue { ptr, i64 } undef, ptr %t79, 0
-  %t83 = insertvalue { ptr, i64 } %t82, i64 %t81, 1
-  ret { ptr, i64 } %t83
+  %t83 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t84 = load ptr, ptr %t83
+  %t85 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
+  %t86 = load i64, ptr %t85
+  %t87 = insertvalue { ptr, i64 } undef, ptr %t84, 0
+  %t88 = insertvalue { ptr, i64 } %t87, i64 %t86, 1
+  ret { ptr, i64 } %t88
 }
 define internal i32 @will.error.status.4(ptr %data) {
 entry:
-  %t84 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
-  %t85 = load i32, ptr %t84
-  ret i32 %t85
+  %t89 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
+  %t90 = load i32, ptr %t89
+  ret i32 %t90
 }
 @will.error.table.4 = private constant [2 x ptr] [ptr @will.error.message.4, ptr @will.error.status.4]
 @will.error.value.4 = private constant %interface.Error { ptr @will.error.data.4, ptr @will.error.table.4 }
@@ -244,6 +257,7 @@ declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
 declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)
 declare void @willrt_task_run(ptr)
+declare void @willrt_task_run_auto(ptr)
 declare i32 @willrt_join(ptr, ptr, ptr)
 declare i32 @willrt_task_try_join(ptr, ptr, ptr)
 declare ptr @willrt_task_current()

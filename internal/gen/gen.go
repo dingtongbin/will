@@ -1193,7 +1193,7 @@ func (g *generator) emitAsyncWrapper() error {
 	}
 	g.needTaskDecl = true
 	task := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @%s()\n", task, llvmSymbol(g.entrySymbol+".task"))
+	fmt.Fprintf(g.out, "  %s = call ptr @%s(i32 -2)\n", task, llvmSymbol(g.entrySymbol+".task"))
 	status := g.newTmp()
 	if g.entryResult == "" {
 		fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr null, ptr null)\n", status, task)

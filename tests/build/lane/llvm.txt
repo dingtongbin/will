@@ -69,25 +69,38 @@ panic.ok.2:
   ret i32 1
 
 }
-define hidden ptr @"example.com/lane.will$main.task"() {
+define hidden ptr @"example.com/lane.will$main.task"(i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 80)
   %t28 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t28
   %t29 = call i32 @willrt_lane_here()
-  %t30 = call ptr @willrt_task_new(ptr @"example.com/lane.will$main.sm", ptr %v.sm.frame, i64 80, i32 %t29, i32 0)
-  call void @willrt_task_own_frame(ptr %t30)
-  call void @willrt_task_run(ptr %t30)
-  ret ptr %t30
+  %t30 = icmp eq i32 %start, -1
+  %t31 = icmp eq i32 %start, -2
+  %t32 = select i1 %t31, i32 %t29, i32 %start
+  br i1 %t30, label %sm.start.auto.3, label %sm.start.lane.3
+sm.start.auto.3:
+  %t33 = call ptr @willrt_task_new(ptr @"example.com/lane.will$main.sm", ptr %v.sm.frame, i64 80, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t33)
+  call void @willrt_task_run_auto(ptr %t33)
+  br label %sm.start.done.3
+sm.start.lane.3:
+  %t34 = call ptr @willrt_task_new(ptr @"example.com/lane.will$main.sm", ptr %v.sm.frame, i64 80, i32 %t32, i32 0)
+  call void @willrt_task_own_frame(ptr %t34)
+  call void @willrt_task_run(ptr %t34)
+  br label %sm.start.done.3
+sm.start.done.3:
+  %t35 = phi ptr [ %t33, %sm.start.auto.3 ], [ %t34, %sm.start.lane.3 ]
+  ret ptr %t35
 }
 define i32 @"example.com/lane.spawn.1"(ptr %frame) {
 entry:
-  %t31 = call i64 @"example.com/lane.Work"()
-  %t32 = alloca i64
-  store i64 %t31, ptr %t32
-  %t33 = getelementptr i64, ptr null, i32 1
-  %t34 = ptrtoint ptr %t33 to i64
-  call i32 @willrt_task_store_result(ptr %t32, i64 %t34)
+  %t36 = call i64 @"example.com/lane.Work"()
+  %t37 = alloca i64
+  store i64 %t36, ptr %t37
+  %t38 = getelementptr i64, ptr null, i32 1
+  %t39 = ptrtoint ptr %t38 to i64
+  call i32 @willrt_task_store_result(ptr %t37, i64 %t39)
   ret i32 1
 }
 declare void @willrt_init()
@@ -95,18 +108,18 @@ declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %t35 = call ptr @"example.com/lane.will$main.task"()
-  %t37 = alloca i32
-  %t36 = call i32 @willrt_join(ptr %t35, ptr %t37, ptr null)
-  %t38 = icmp ne i32 %t36, 0
-  br i1 %t38, label %main.async.fail.3, label %main.async.ok.3
-main.async.fail.3:
+  %t40 = call ptr @"example.com/lane.will$main.task"(i32 -2)
+  %t42 = alloca i32
+  %t41 = call i32 @willrt_join(ptr %t40, ptr %t42, ptr null)
+  %t43 = icmp ne i32 %t41, 0
+  br i1 %t43, label %main.async.fail.4, label %main.async.ok.4
+main.async.fail.4:
   call void @willrt_shutdown()
   ret i32 1
-main.async.ok.3:
-  %t39 = load i32, ptr %t37
+main.async.ok.4:
+  %t44 = load i32, ptr %t42
   call void @willrt_shutdown()
-  ret i32 %t39
+  ret i32 %t44
 }
 @.str.0 = private unnamed_addr constant [24 x i8] c"conversion out of range\00", align 1
 @.str.1 = private unnamed_addr constant [16 x i8] c"main.will:11:12\00", align 1
@@ -117,6 +130,7 @@ declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
 declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)
 declare void @willrt_task_run(ptr)
+declare void @willrt_task_run_auto(ptr)
 declare i32 @willrt_join(ptr, ptr, ptr)
 declare i32 @willrt_task_try_join(ptr, ptr, ptr)
 declare ptr @willrt_task_current()

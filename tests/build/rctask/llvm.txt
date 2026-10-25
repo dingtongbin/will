@@ -83,27 +83,40 @@ panic.ok.2:
   ret i32 1
 
 }
-define hidden ptr @"example.com/rctask.will$main.task"() {
+define hidden ptr @"example.com/rctask.will$main.task"(i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 96)
   %t36 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t36
   %t37 = call i32 @willrt_lane_here()
-  %t38 = call ptr @willrt_task_new(ptr @"example.com/rctask.will$main.sm", ptr %v.sm.frame, i64 96, i32 %t37, i32 0)
-  call void @willrt_task_own_frame(ptr %t38)
-  call void @willrt_task_run(ptr %t38)
-  ret ptr %t38
+  %t38 = icmp eq i32 %start, -1
+  %t39 = icmp eq i32 %start, -2
+  %t40 = select i1 %t39, i32 %t37, i32 %start
+  br i1 %t38, label %sm.start.auto.3, label %sm.start.lane.3
+sm.start.auto.3:
+  %t41 = call ptr @willrt_task_new(ptr @"example.com/rctask.will$main.sm", ptr %v.sm.frame, i64 96, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t41)
+  call void @willrt_task_run_auto(ptr %t41)
+  br label %sm.start.done.3
+sm.start.lane.3:
+  %t42 = call ptr @willrt_task_new(ptr @"example.com/rctask.will$main.sm", ptr %v.sm.frame, i64 96, i32 %t40, i32 0)
+  call void @willrt_task_own_frame(ptr %t42)
+  call void @willrt_task_run(ptr %t42)
+  br label %sm.start.done.3
+sm.start.done.3:
+  %t43 = phi ptr [ %t41, %sm.start.auto.3 ], [ %t42, %sm.start.lane.3 ]
+  ret ptr %t43
 }
 define i32 @"example.com/rctask.spawn.1"(ptr %frame) {
 entry:
-  %t39 = call i64 @"example.com/rctask.Make"()
-  %t40 = alloca i64
-  store i64 %t39, ptr %t40
-  %t41 = load i64, ptr %t40
-  call void @willrt_rc_share(i64 %t41)
-  %t42 = getelementptr i64, ptr null, i32 1
-  %t43 = ptrtoint ptr %t42 to i64
-  call i32 @willrt_task_store_result(ptr %t40, i64 %t43)
+  %t44 = call i64 @"example.com/rctask.Make"()
+  %t45 = alloca i64
+  store i64 %t44, ptr %t45
+  %t46 = load i64, ptr %t45
+  call void @willrt_rc_share(i64 %t46)
+  %t47 = getelementptr i64, ptr null, i32 1
+  %t48 = ptrtoint ptr %t47 to i64
+  call i32 @willrt_task_store_result(ptr %t45, i64 %t48)
   ret i32 1
 }
 declare void @willrt_init()
@@ -111,18 +124,18 @@ declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %t44 = call ptr @"example.com/rctask.will$main.task"()
-  %t46 = alloca i32
-  %t45 = call i32 @willrt_join(ptr %t44, ptr %t46, ptr null)
-  %t47 = icmp ne i32 %t45, 0
-  br i1 %t47, label %main.async.fail.3, label %main.async.ok.3
-main.async.fail.3:
+  %t49 = call ptr @"example.com/rctask.will$main.task"(i32 -2)
+  %t51 = alloca i32
+  %t50 = call i32 @willrt_join(ptr %t49, ptr %t51, ptr null)
+  %t52 = icmp ne i32 %t50, 0
+  br i1 %t52, label %main.async.fail.4, label %main.async.ok.4
+main.async.fail.4:
   call void @willrt_shutdown()
   ret i32 1
-main.async.ok.3:
-  %t48 = load i32, ptr %t46
+main.async.ok.4:
+  %t53 = load i32, ptr %t51
   call void @willrt_shutdown()
-  ret i32 %t48
+  ret i32 %t53
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [16 x i8] c"main.will:12:12\00", align 1

@@ -106,34 +106,47 @@ sm.select.after.1:
   ret i32 1
 
 }
-define hidden ptr @"example.com/selecttimeout.will$main.task"() {
+define hidden ptr @"example.com/selecttimeout.will$main.task"(i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
   %t40 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t40
   %t41 = call i32 @willrt_lane_here()
-  %t42 = call ptr @willrt_task_new(ptr @"example.com/selecttimeout.will$main.sm", ptr %v.sm.frame, i64 240, i32 %t41, i32 0)
-  call void @willrt_task_own_frame(ptr %t42)
-  call void @willrt_task_run(ptr %t42)
-  ret ptr %t42
+  %t42 = icmp eq i32 %start, -1
+  %t43 = icmp eq i32 %start, -2
+  %t44 = select i1 %t43, i32 %t41, i32 %start
+  br i1 %t42, label %sm.start.auto.2, label %sm.start.lane.2
+sm.start.auto.2:
+  %t45 = call ptr @willrt_task_new(ptr @"example.com/selecttimeout.will$main.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t45)
+  call void @willrt_task_run_auto(ptr %t45)
+  br label %sm.start.done.2
+sm.start.lane.2:
+  %t46 = call ptr @willrt_task_new(ptr @"example.com/selecttimeout.will$main.sm", ptr %v.sm.frame, i64 240, i32 %t44, i32 0)
+  call void @willrt_task_own_frame(ptr %t46)
+  call void @willrt_task_run(ptr %t46)
+  br label %sm.start.done.2
+sm.start.done.2:
+  %t47 = phi ptr [ %t45, %sm.start.auto.2 ], [ %t46, %sm.start.lane.2 ]
+  ret ptr %t47
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %t43 = call ptr @"example.com/selecttimeout.will$main.task"()
-  %t45 = alloca i32
-  %t44 = call i32 @willrt_join(ptr %t43, ptr %t45, ptr null)
-  %t46 = icmp ne i32 %t44, 0
-  br i1 %t46, label %main.async.fail.2, label %main.async.ok.2
-main.async.fail.2:
+  %t48 = call ptr @"example.com/selecttimeout.will$main.task"(i32 -2)
+  %t50 = alloca i32
+  %t49 = call i32 @willrt_join(ptr %t48, ptr %t50, ptr null)
+  %t51 = icmp ne i32 %t49, 0
+  br i1 %t51, label %main.async.fail.3, label %main.async.ok.3
+main.async.fail.3:
   call void @willrt_shutdown()
   ret i32 1
-main.async.ok.2:
-  %t47 = load i32, ptr %t45
+main.async.ok.3:
+  %t52 = load i32, ptr %t50
   call void @willrt_shutdown()
-  ret i32 %t47
+  ret i32 %t52
 }
 declare ptr @willrt_select_start(ptr, i64)
 declare i32 @willrt_select_poll(ptr)
@@ -142,6 +155,7 @@ declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
 declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)
 declare void @willrt_task_run(ptr)
+declare void @willrt_task_run_auto(ptr)
 declare i32 @willrt_join(ptr, ptr, ptr)
 declare i32 @willrt_task_try_join(ptr, ptr, ptr)
 declare ptr @willrt_task_current()

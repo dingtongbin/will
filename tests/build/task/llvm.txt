@@ -250,51 +250,64 @@ panic.ok.6:
   ret i32 1
 
 }
-define hidden ptr @"example.com/task.will$main.task"() {
+define hidden ptr @"example.com/task.will$main.task"(i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 288)
   %t112 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t112
   %t113 = call i32 @willrt_lane_here()
-  %t114 = call ptr @willrt_task_new(ptr @"example.com/task.will$main.sm", ptr %v.sm.frame, i64 288, i32 %t113, i32 0)
-  call void @willrt_task_own_frame(ptr %t114)
-  call void @willrt_task_run(ptr %t114)
-  ret ptr %t114
+  %t114 = icmp eq i32 %start, -1
+  %t115 = icmp eq i32 %start, -2
+  %t116 = select i1 %t115, i32 %t113, i32 %start
+  br i1 %t114, label %sm.start.auto.7, label %sm.start.lane.7
+sm.start.auto.7:
+  %t117 = call ptr @willrt_task_new(ptr @"example.com/task.will$main.sm", ptr %v.sm.frame, i64 288, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t117)
+  call void @willrt_task_run_auto(ptr %t117)
+  br label %sm.start.done.7
+sm.start.lane.7:
+  %t118 = call ptr @willrt_task_new(ptr @"example.com/task.will$main.sm", ptr %v.sm.frame, i64 288, i32 %t116, i32 0)
+  call void @willrt_task_own_frame(ptr %t118)
+  call void @willrt_task_run(ptr %t118)
+  br label %sm.start.done.7
+sm.start.done.7:
+  %t119 = phi ptr [ %t117, %sm.start.auto.7 ], [ %t118, %sm.start.lane.7 ]
+  ret ptr %t119
 }
 define i32 @"example.com/task.spawn.1"(ptr %frame) {
 entry:
-  %t115 = getelementptr { i32 }, ptr %frame, i32 0, i32 0
-  %t116 = load i32, ptr %t115
-  %t117 = call i32 @"example.com/task.Compute"(i32 %t116)
-  %t118 = alloca i32
-  store i32 %t117, ptr %t118
-  %t119 = getelementptr i32, ptr null, i32 1
-  %t120 = ptrtoint ptr %t119 to i64
-  call i32 @willrt_task_store_result(ptr %t118, i64 %t120)
+  %t120 = getelementptr { i32 }, ptr %frame, i32 0, i32 0
+  %t121 = load i32, ptr %t120
+  %t122 = call i32 @"example.com/task.Compute"(i32 %t121)
+  %t123 = alloca i32
+  store i32 %t122, ptr %t123
+  %t124 = getelementptr i32, ptr null, i32 1
+  %t125 = ptrtoint ptr %t124 to i64
+  call i32 @willrt_task_store_result(ptr %t123, i64 %t125)
   ret i32 1
 }
 define i32 @"example.com/task.spawn.2"(ptr %frame) {
 entry:
-  %t121 = getelementptr { i32 }, ptr %frame, i32 0, i32 0
-  %t122 = load i32, ptr %t121
-  %t123 = call i32 @"example.com/task.Compute"(i32 %t122)
-  %t124 = alloca i32
-  store i32 %t123, ptr %t124
-  %t125 = getelementptr i32, ptr null, i32 1
-  %t126 = ptrtoint ptr %t125 to i64
-  call i32 @willrt_task_store_result(ptr %t124, i64 %t126)
+  %t126 = getelementptr { i32 }, ptr %frame, i32 0, i32 0
+  %t127 = load i32, ptr %t126
+  %t128 = call i32 @"example.com/task.Compute"(i32 %t127)
+  %t129 = alloca i32
+  store i32 %t128, ptr %t129
+  %t130 = getelementptr i32, ptr null, i32 1
+  %t131 = ptrtoint ptr %t130 to i64
+  call i32 @willrt_task_store_result(ptr %t129, i64 %t131)
   ret i32 1
 }
 define i32 @"example.com/task.spawn.3"(ptr %frame) {
 entry:
-  %t127 = getelementptr { i32 }, ptr %frame, i32 0, i32 0
-  %t128 = load i32, ptr %t127
-  %t129 = call { ptr, i64 } @"example.com/task.MakeText"(i32 %t128)
-  %t130 = alloca { ptr, i64 }
-  store { ptr, i64 } %t129, ptr %t130
-  %t131 = getelementptr { ptr, i64 }, ptr null, i32 1
-  %t132 = ptrtoint ptr %t131 to i64
-  call i32 @willrt_task_store_result(ptr %t130, i64 %t132)
+  %t132 = getelementptr { i32 }, ptr %frame, i32 0, i32 0
+  %t133 = load i32, ptr %t132
+  %t134 = call { ptr, i64 } @"example.com/task.MakeText"(i32 %t133)
+  %t135 = alloca { ptr, i64 }
+  store { ptr, i64 } %t134, ptr %t135
+  %t136 = getelementptr { ptr, i64 }, ptr null, i32 1
+  %t137 = ptrtoint ptr %t136 to i64
+  call i32 @willrt_task_store_result(ptr %t135, i64 %t137)
   ret i32 1
 }
 declare void @willrt_init()
@@ -302,18 +315,18 @@ declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %t133 = call ptr @"example.com/task.will$main.task"()
-  %t135 = alloca i32
-  %t134 = call i32 @willrt_join(ptr %t133, ptr %t135, ptr null)
-  %t136 = icmp ne i32 %t134, 0
-  br i1 %t136, label %main.async.fail.7, label %main.async.ok.7
-main.async.fail.7:
+  %t138 = call ptr @"example.com/task.will$main.task"(i32 -2)
+  %t140 = alloca i32
+  %t139 = call i32 @willrt_join(ptr %t138, ptr %t140, ptr null)
+  %t141 = icmp ne i32 %t139, 0
+  br i1 %t141, label %main.async.fail.8, label %main.async.ok.8
+main.async.fail.8:
   call void @willrt_shutdown()
   ret i32 1
-main.async.ok.7:
-  %t137 = load i32, ptr %t135
+main.async.ok.8:
+  %t142 = load i32, ptr %t140
   call void @willrt_shutdown()
-  ret i32 %t137
+  ret i32 %t142
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:2:12\00", align 1

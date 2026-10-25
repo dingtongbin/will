@@ -57,8 +57,11 @@ func (g *generator) spawnStepSymbol(node int) string {
 func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	place := fieldText(r, "place")
 	laneValue := ""
+	start := "-2"
 	switch place {
-	case "auto", "here":
+	case "auto":
+		start = "-1"
+	case "here":
 	case "on":
 		lane := fieldText(r, "lane")
 		index, ok := g.laneIndex[qualify(g.pkg, lane)]
@@ -66,6 +69,7 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			return "", g.errf(r.ID, "cannot translate node #%d: lane %s is not declared", r.ID, lane)
 		}
 		laneValue = strconv.Itoa(int(index))
+		start = laneValue
 	default:
 		return "", g.errf(r.ID, "cannot translate node #%d: spawn has no place", r.ID)
 	}
@@ -90,11 +94,11 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 				return "", g.errf(r.ID, "cannot translate node #%d: the spawned function has no symbol", r.ID)
 			}
 			g.enqueueGeneral(target.ID)
-			return g.emitConstructorCall(call, sym)
+			return g.emitConstructorCall(call, sym, start)
 		}
 		if info, ok := g.selectMachine(target.ID); ok {
 			g.pendingSelect = append(g.pendingSelect, info)
-			return g.emitConstructorCall(call, g.cur.funcs[target.ID])
+			return g.emitConstructorCall(call, g.cur.funcs[target.ID], start)
 		}
 	}
 	sym := ""
@@ -106,7 +110,7 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			return "", g.errf(r.ID, "cannot translate node #%d: the spawned call has no function", r.ID)
 		}
 		if g.suspendableFor(sym) {
-			return g.emitConstructorCall(call, sym)
+			return g.emitConstructorCall(call, sym, start)
 		}
 	}
 	args := g.callArgs(call)

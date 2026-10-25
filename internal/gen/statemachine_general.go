@@ -270,7 +270,9 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	g.needTaskDecl = true
 	// The constructor is hidden, not internal: a function of another package
 	// waits on this task, so the object that owns the function must export
-	// the entry that starts it.
+	// the entry that starts it. The last argument is -1 for auto placement and
+	// -2 for the current lane; any other value is the declared lane index.
+	parts = append(parts, "i32 %start")
 	fmt.Fprintf(g.out, "define hidden ptr @%s(%s) {\nentry:\n", llvmSymbol(sym+".task"), strings.Join(parts, ", "))
 	fmt.Fprintf(g.out, "  %%v.sm.frame = call ptr @willrt_alloc(i64 %d)\n", size)
 	stateOffset := offsets[g.smStateSlot]
@@ -301,16 +303,48 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	}
 	lane := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_here()\n", lane)
-	task := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0)\n",
-		task, llvmSymbol(sym+".sm"), size, lane)
+	auto := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %%start, -1\n", auto)
+	here := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %%start, -2\n", here)
+	laneValue := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = select i1 %s, i32 %s, i32 %%start\n",
+		laneValue, here, lane)
+	g.labels++
+	n := g.labels
+	autoLabel := fmt.Sprintf("sm.start.auto.%d", n)
+	laneLabel := fmt.Sprintf("sm.start.lane.%d", n)
+	doneLabel := fmt.Sprintf("sm.start.done.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", auto, autoLabel, laneLabel)
+	fmt.Fprintf(g.out, "%s:\n", autoLabel)
+	autoTask := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 0, i32 0)\n",
+		autoTask, llvmSymbol(sym+".sm"), size)
 	g.needOwnFrameDecl = true
-	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
+	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", autoTask)
 	for _, ptr := range cancelPtrs {
 		g.needCancelBind = true
-		fmt.Fprintf(g.out, "  call void @willrt_task_bind_cancel(ptr %s, ptr %s)\n", task, ptr)
+		fmt.Fprintf(g.out, "  call void @willrt_task_bind_cancel(ptr %s, ptr %s)\n", autoTask, ptr)
 	}
-	fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
+	g.needAutoTaskDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_task_run_auto(ptr %s)\n", autoTask)
+	fmt.Fprintf(g.out, "  br label %%%s\n", doneLabel)
+	fmt.Fprintf(g.out, "%s:\n", laneLabel)
+	laneTask := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0)\n",
+		laneTask, llvmSymbol(sym+".sm"), size, laneValue)
+	g.needOwnFrameDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", laneTask)
+	for _, ptr := range cancelPtrs {
+		g.needCancelBind = true
+		fmt.Fprintf(g.out, "  call void @willrt_task_bind_cancel(ptr %s, ptr %s)\n", laneTask, ptr)
+	}
+	fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", laneTask)
+	fmt.Fprintf(g.out, "  br label %%%s\n", doneLabel)
+	fmt.Fprintf(g.out, "%s:\n", doneLabel)
+	task := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = phi ptr [ %s, %%%s ], [ %s, %%%s ]\n",
+		task, autoTask, autoLabel, laneTask, laneLabel)
 	fmt.Fprintf(g.out, "  ret ptr %s\n}\n", task)
 	return nil
 }
