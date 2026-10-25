@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
 )
@@ -44,6 +45,26 @@ func TestCycleTwoTypesWarns(t *testing.T) {
 		}
 		if d.Message != "this field may form a cycle" {
 			t.Fatalf("message = %q", d.Message)
+		}
+	}
+}
+
+func TestCycleAcrossPackageFilesWarns(t *testing.T) {
+	a, ds := parser.Parse("a.will", []byte("struct A {\n    b: rc<B>\n}\n"))
+	if len(ds) != 0 {
+		t.Fatalf("parse a: %s", diag.FormatAll(ds))
+	}
+	b, ds := parser.Parse("b.will", []byte("struct B {\n    a: rc<A>\n}\n"))
+	if len(ds) != 0 {
+		t.Fatalf("parse b: %s", diag.FormatAll(ds))
+	}
+	ds = CyclesWithFiles([]*ast.File{a, b})
+	if len(ds) != 2 {
+		t.Fatalf("diagnostics = %d:\n%s", len(ds), diag.FormatAll(ds))
+	}
+	for _, d := range ds {
+		if d.Code != diag.CodePossibleCycle {
+			t.Fatalf("diagnostic = %+v", d)
 		}
 	}
 }

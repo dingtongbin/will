@@ -15,10 +15,25 @@ import (
 // pass has not shown that a particular object closes it. A weak field does not
 // add a strong edge, which is how the program marks the cycle as intentional.
 func Cycles(f *ast.File) []diag.Diagnostic {
+	return CyclesWithFiles([]*ast.File{f})
+}
+
+// CyclesWithFiles runs the type-level cycle check over every file of a package.
+// A type declared in two packages keeps the first declaration only when the
+// short names are ambiguous; the point of this pass is a warning/error for the
+// common same-package graph, not a whole-package symbol resolver.
+func CyclesWithFiles(files []*ast.File) []diag.Diagnostic {
 	decls := map[string]*ast.StructDecl{}
-	for _, d := range f.Decls {
-		if s, ok := d.(*ast.StructDecl); ok {
-			decls[s.Name] = s
+	for _, f := range files {
+		if f == nil {
+			continue
+		}
+		for _, d := range f.Decls {
+			if s, ok := d.(*ast.StructDecl); ok {
+				if _, exists := decls[s.Name]; !exists {
+					decls[s.Name] = s
+				}
+			}
 		}
 	}
 	graph := map[string][]cycleEdge{}
@@ -27,6 +42,11 @@ func Cycles(f *ast.File) []diag.Diagnostic {
 			target, pos, ok := strongOwner(field.Type)
 			if !ok {
 				continue
+			}
+			if _, exists := decls[target]; !exists {
+				if i := strings.LastIndexByte(target, '.'); i >= 0 {
+					target = target[i+1:]
+				}
 			}
 			if _, exists := decls[target]; !exists {
 				continue
