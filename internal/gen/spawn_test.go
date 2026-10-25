@@ -8,8 +8,9 @@ import (
 )
 
 // TestSpawnPlaceLowers checks the three placement forms reach the runtime:
-// auto asks the scheduler, here keeps the current lane, and on uses the declared
-// lane index. The parser and willc round-trip are covered by their own tests.
+// auto submits through the batched placement entry, here keeps the current
+// lane, and on uses the declared lane index. The parser and willc round-trip
+// are covered by their own tests.
 func TestSpawnPlaceLowers(t *testing.T) {
 	src := `lane Ui struct UiMarker {
     id: i32
@@ -38,9 +39,9 @@ func main() -> i32 {
 	}
 	text := string(ir)
 	for _, want := range []string{
-		"call i32 @willrt_lane_choose()",
+		"call void @willrt_task_run_auto(",
 		"call i32 @willrt_lane_here()",
-		"declare i32 @willrt_lane_choose()",
+		"declare void @willrt_task_run_auto(",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)

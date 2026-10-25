@@ -212,6 +212,9 @@ func (g *generator) emitAux() {
 	if g.needTaskDecl {
 		g.out.WriteString("declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)\n")
 		g.out.WriteString("declare void @willrt_task_run(ptr)\n")
+		if g.needAutoTaskDecl {
+			g.out.WriteString("declare void @willrt_task_run_auto(ptr)\n")
+		}
 		g.out.WriteString("declare i32 @willrt_join(ptr, ptr, ptr)\n")
 		g.out.WriteString("declare i32 @willrt_task_try_join(ptr, ptr, ptr)\n")
 		g.out.WriteString("declare ptr @willrt_task_current()\n")
@@ -236,9 +239,6 @@ func (g *generator) emitAux() {
 	}
 	if g.needJobDecl {
 		g.out.WriteString("declare ptr @willrt_job_new(ptr, ptr, i64, i32)\n")
-	}
-	if g.needLaneChooseDecl {
-		g.out.WriteString("declare i32 @willrt_lane_choose()\n")
 	}
 	if g.needWaitDecl {
 		g.out.WriteString("declare void @willrt_task_mark_wait()\n")
@@ -775,9 +775,9 @@ type generator struct {
 	needTaskDecl bool
 	// needJobDecl records that a parallel block submitted a job.
 	needJobDecl bool
-	// needLaneChooseDecl records that an auto spawn asks the scheduler for a
-	// load-balanced lane.
-	needLaneChooseDecl bool
+	// needAutoTaskDecl records that an auto spawn submits through the grouped
+	// auto placement entry.
+	needAutoTaskDecl bool
 	// needWaitDecl records that a generated state machine marks a wait.
 	needWaitDecl bool
 	// needIOMarkDecl records a park on an external operation.

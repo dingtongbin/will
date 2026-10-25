@@ -459,6 +459,10 @@ void willrt_task_run_job(willrt_task* task);
 willrt_task* willrt_task_job_next(willrt_task* task);
 void willrt_task_set_job_next(willrt_task* task, willrt_task* next);
 void willrt_task_run(willrt_task* task);
+/* willrt_task_run_auto submits a task through the auto placement batch. The
+   batch is flushed before any wait point and at the end of the submitting
+   task, so a task never waits behind an unsubmitted batch. */
+void willrt_task_run_auto(willrt_task* task);
 int32_t willrt_join(willrt_task* task, void* out, willrt_error* err);
 /* willrt_task_try_join is the step-facing form of a join: it returns
    WILLRT_SUSPEND instead of waiting when the dependency is not finished. */

@@ -188,15 +188,10 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		g.spawnEmitted[step] = true
 		g.pendingSpawns = append(g.pendingSpawns, spawnRequest{node: r.ID, call: callID, sym: step})
 	}
+	autoTask := place == "auto" && g.parallelDepth == 0
 	lane := laneValue
-	if g.parallelDepth == 0 {
-		switch place {
-		case "auto":
-			g.needLaneChooseDecl = true
-			chosen := g.newTmp()
-			fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_choose()\n", chosen)
-			lane = chosen
-		case "here":
+	if g.parallelDepth == 0 && !autoTask {
+		if place == "here" {
 			here := g.newTmp()
 			fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_here()\n", here)
 			lane = here
@@ -210,11 +205,22 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		g.needOwnFrameDecl = true
 		fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
 	} else {
+		initialLane := lane
+		if autoTask {
+			/* Auto placement chooses its lane when the submitting thread
+			   flushes the batch, so the constructor lane is not observable. */
+			initialLane = "0"
+			g.needAutoTaskDecl = true
+		}
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
-			task, llvmSymbol(step), frame, size, lane)
+			task, llvmSymbol(step), frame, size, initialLane)
 		g.needOwnFrameDecl = true
 		fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
-		fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
+		if autoTask {
+			fmt.Fprintf(g.out, "  call void @willrt_task_run_auto(ptr %s)\n", task)
+		} else {
+			fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
+		}
 	}
 	for i, text := range argTexts {
 		if text != "task.Cancel" && !strings.HasSuffix(text, ".Cancel") {
