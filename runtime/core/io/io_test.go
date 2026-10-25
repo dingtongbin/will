@@ -55,6 +55,7 @@ func TestIOContract(t *testing.T) {
 	}
 	args = append(args, "-o", exe,
 		filepath.Join(dir, "src", "io.c"),
+		filepath.Join(dir, "src", "io_uring_linux.c"),
 		filepath.Join(dir, "src", "io_test.c"),
 		filepath.Join(dir, "..", "task", "src", "task.c"),
 		filepath.Join(dir, "..", "chan", "src", "chan.c"),

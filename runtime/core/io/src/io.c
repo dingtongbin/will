@@ -41,6 +41,9 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#ifdef __linux__
+#include "io_uring_linux.h"
+#endif
 #endif
 
 /* The caller's Array<u8> header. The layout is fixed by the runtime ABI. */
@@ -188,6 +191,24 @@ static void willrt_io_release(willrt_io_op* op) {
         willrt_io_free(op);
     }
 }
+
+#ifdef __linux__
+static int32_t willrt_io_ring_used;
+
+static void willrt_io_complete_linux(void* raw, int32_t status,
+                                     int64_t bytes) {
+    willrt_io_op* op = (willrt_io_op*)raw;
+
+    willrt_os_mutex_lock(&willrt_io_lock);
+    if (op->file_open) {
+        close(op->fd);
+        op->file_open = 0;
+    }
+    willrt_os_mutex_unlock(&willrt_io_lock);
+    willrt_io_publish(op, status == 0 ? WILLRT_OK : WILLRT_FAILED, bytes);
+    willrt_io_release(op);
+}
+#endif
 
 #ifdef _WIN32
 static wchar_t* willrt_io_wide(const char* path, int64_t len) {
@@ -428,6 +449,13 @@ static void willrt_io_run_posix(willrt_io_op* op) {
         if (op->buffer == NULL) {
             goto fail;
         }
+#ifdef __linux__
+        if (willrt_io_ring_used
+            && willrt_io_ring_submit(fd, op->kind, op->buffer, op->length,
+                                     op) == 0) {
+            return;
+        }
+#endif
         while (done < op->length) {
             ssize_t got = pread(fd, (char*)op->buffer + done,
                                 (size_t)(op->length - done), (off_t)done);
@@ -443,6 +471,13 @@ static void willrt_io_run_posix(willrt_io_op* op) {
             done += got;
         }
     } else {
+#ifdef __linux__
+        if (willrt_io_ring_used
+            && willrt_io_ring_submit(fd, op->kind, op->buffer, op->length,
+                                     op) == 0) {
+            return;
+        }
+#endif
         while (done < op->length) {
             ssize_t put = write(fd, (const char*)op->buffer + done,
                                 (size_t)(op->length - done));
@@ -533,6 +568,10 @@ static void willrt_io_init(void) {
             willrt_io_started++;
         }
 #else
+#ifdef __linux__
+        willrt_io_ring_used =
+            willrt_io_ring_start(willrt_io_complete_linux) == 0;
+#endif
         wanted = WILLRT_IO_POSIX_WORKERS;
         for (i = 0; i < wanted; i++) {
             if (willrt_os_thread_start(&willrt_io_workers[i],
@@ -768,6 +807,10 @@ void willrt_io_shutdown(void) {
     for (i = 0; i < willrt_io_started; i++) {
         willrt_os_thread_join(&willrt_io_workers[i]);
     }
+#ifdef __linux__
+    willrt_io_ring_stop();
+    willrt_io_ring_used = 0;
+#endif
 #endif
     willrt_io_started = 0;
     atomic_store(&willrt_io_stop, 0);
