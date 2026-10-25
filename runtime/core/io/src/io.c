@@ -29,6 +29,8 @@
 
 #include "../../../include/willrt.h"
 
+#include "io_completion.h"
+
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -71,6 +73,7 @@ enum {
 };
 
 struct willrt_io_op {
+    willrt_io_req req;
     willrt_io_op* next;
     willrt_task* waiter;
     char* path;
@@ -452,7 +455,7 @@ static void willrt_io_run_posix(willrt_io_op* op) {
 #ifdef __linux__
         if (willrt_io_ring_used
             && willrt_io_ring_submit(fd, op->kind, op->buffer, op->length,
-                                     op) == 0) {
+                                     &op->req) == 0) {
             return;
         }
 #endif
@@ -474,7 +477,7 @@ static void willrt_io_run_posix(willrt_io_op* op) {
 #ifdef __linux__
         if (willrt_io_ring_used
             && willrt_io_ring_submit(fd, op->kind, op->buffer, op->length,
-                                     op) == 0) {
+                                     &op->req) == 0) {
             return;
         }
 #endif
@@ -569,8 +572,7 @@ static void willrt_io_init(void) {
         }
 #else
 #ifdef __linux__
-        willrt_io_ring_used =
-            willrt_io_ring_start(willrt_io_complete_linux) == 0;
+        willrt_io_ring_used = willrt_io_ring_start() == 0;
 #endif
         wanted = WILLRT_IO_POSIX_WORKERS;
         for (i = 0; i < wanted; i++) {
@@ -606,6 +608,10 @@ static willrt_io_op* willrt_io_new(int32_t kind, const void* path,
         return NULL;
     }
     memset(op, 0, sizeof(*op));
+#ifdef __linux__
+    op->req.complete = willrt_io_complete_linux;
+    op->req.owner = op;
+#endif
     op->path = willrt_io_copy_path(path, path_len);
     if (op->path == NULL) {
         willrt_free(op);

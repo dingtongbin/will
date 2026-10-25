@@ -45,7 +45,6 @@ static willrt_os_thread completer;
 static unsigned submit_pending;
 static atomic_int stop_flag;
 static atomic_int ready_flag;
-static void (*complete_callback)(void*, int32_t, int64_t);
 
 static int32_t ring_setup(void) {
     struct io_uring_params params;
@@ -173,10 +172,14 @@ static void complete_thread(void* ignored) {
         while (head != tail) {
             struct io_uring_cqe* cqe = &ring.cqes[head & *ring.cq_mask];
 
-            if (cqe->user_data != 0 && complete_callback != NULL) {
-                int32_t status = cqe->res < 0 ? -1 : 0;
-                complete_callback((void*)(uintptr_t)cqe->user_data, status,
+            if (cqe->user_data != 0) {
+                willrt_io_req* req = (willrt_io_req*)(uintptr_t)cqe->user_data;
+
+                if (req->complete != NULL) {
+                    req->complete(req->owner,
+                                  cqe->res < 0 ? -1 : 0,
                                   cqe->res < 0 ? 0 : (int64_t)cqe->res);
+                }
             }
             head++;
         }
@@ -185,8 +188,7 @@ static void complete_thread(void* ignored) {
     willrt_mem_thread_flush();
 }
 
-int32_t willrt_io_ring_start(void (*complete)(void*, int32_t, int64_t)) {
-    complete_callback = complete;
+int32_t willrt_io_ring_start(void) {
     atomic_store(&stop_flag, 0);
     atomic_store(&ready_flag, 0);
     if (ring_setup() != 0) {
@@ -227,7 +229,7 @@ int32_t willrt_io_ring_ready(void) {
 }
 
 int32_t willrt_io_ring_submit(int fd, int32_t kind, void* buffer, int64_t len,
-                              void* op) {
+                              willrt_io_req* req) {
     struct io_uring_sqe* sqe;
     unsigned tail;
     unsigned head;
@@ -254,7 +256,7 @@ int32_t willrt_io_ring_submit(int fd, int32_t kind, void* buffer, int64_t len,
     sqe->addr = (uint64_t)(uintptr_t)buffer;
     sqe->len = (uint32_t)len;
     sqe->off = kind == 2 ? (uint64_t)-1 : 0;
-    sqe->user_data = (uint64_t)(uintptr_t)op;
+    sqe->user_data = (uint64_t)(uintptr_t)req;
     ring.sq_array[index] = index;
     __atomic_store_n(ring.sq_tail, tail + 1, __ATOMIC_RELEASE);
     submit_pending += 1;
