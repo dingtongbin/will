@@ -6,6 +6,11 @@
  * live with the process, matching the standard library's no-hidden-free rule
  * for values that escape their call. */
 
+#ifndef _WIN32
+#define _POSIX_C_SOURCE 200809L
+#define _DEFAULT_SOURCE 1
+#endif
+
 #include "file.h"
 
 #include <errno.h>
@@ -997,7 +1002,11 @@ int32_t willrt_fs_file_stat(const void* file_raw, void* out_raw) {
     if (file == NULL || file->handle == NULL || out == NULL) {
         return 1;
     }
+#if defined(_WIN32)
     fd = _fileno((FILE*)file->handle);
+#else
+    fd = fileno((FILE*)file->handle);
+#endif
 #if defined(_WIN32)
     {
         struct _stat64 st;
