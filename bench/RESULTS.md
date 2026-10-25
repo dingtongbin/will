@@ -6,8 +6,8 @@ diagnose the body of the distribution.
 Machine: Intel Core i5-12500H, Windows 11, x86_64-win-msvc.
 Toolchain: clang 22.1.8, Rust 1.97.0, crossbeam-channel 0.5.17,
 crossbeam-utils 0.8.23, tokio 1.54.1, compio 0.20.0-beta.1.
-Will: `92e0384`; six measured repetitions for spawn, five for channel and
-select.
+Will: `342c24f`; six measured repetitions for spawn, five for channel and
+select on Windows; Linux numbers use the same tree on the four-core VM.
 The Windows clock has 100 ns granularity, so sub-100 ns differences in the
 channel/select tables are quantization, not a measured win.
 
@@ -82,6 +82,21 @@ the round is about 253 ms and at 16 lanes about 252 ms; 1/2/4 lanes are much
 slower. The Windows file path now uses four fixed submit workers plus a
 completer, not the per-lane IOCP batches required by W33; this table records the
 remaining architecture gap rather than a completion-engine win.
+
+## Linux VM cross-check
+
+Ubuntu 24.04, four cores, clang 18, Go 1.27.1. The whole test suite and
+`gate -full` pass. The mixed scenario on four lanes measures:
+
+| runtime | round | throughput | combined p999 |
+| --- | --- | --- | --- |
+| will, pread workers | 0.38-0.47 s | 19-24 k ops/s | 37-82 ms |
+| will, io_uring ring (`WILL_IO_URING=1`) | 0.50-0.54 s | 17-18 k ops/s | 37-64 ms |
+| Tokio + Rayon | 0.178-0.189 s | 46.9-51 k ops/s | 7.3-9.1 ms |
+
+The shared io_uring ring is correct but slower than the four pread workers on
+this VM and is not per-lane, so it stays behind the measurement switch. The
+Linux mixed throughput is 0.4-0.5x Rust; W33 remains open.
 
 ## Commands
 
