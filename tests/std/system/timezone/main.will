@@ -1,0 +1,83 @@
+import "std/time"
+
+// The compiled table must answer with the historical and daylight offsets the
+// named zones actually used, not with one fixed offset per zone.
+func main() -> i32 {
+    var t: time.Instant = time.FromUnix(1700000000i64)
+    var sh: time.Timezone = time.Load("Asia/Shanghai")!
+    if time.Rfc3339(time.In(t, sh)) != "2023-11-15T06:13:20+08:00" {
+        return 1
+    }
+    var ny: time.Timezone = time.Load("America/New_York")!
+    if time.Rfc3339(time.In(t, ny)) != "2023-11-14T17:13:20-05:00" {
+        return 2
+    }
+    // The spring transition is 2024-03-10T07:00:00Z.
+    var before: time.Instant = time.FromUnix(1710053999i64)
+    var after: time.Instant = time.FromUnix(1710054000i64)
+    if time.Rfc3339(time.In(before, ny)) != "2024-03-10T01:59:59-05:00" {
+        return 3
+    }
+    if time.Rfc3339(time.In(after, ny)) != "2024-03-10T03:00:00-04:00" {
+        return 4
+    }
+    // The fall transition repeats 01:00 local time in the new offset.
+    var fallBefore: time.Instant = time.FromUnix(1730613599i64)
+    var fallAfter: time.Instant = time.FromUnix(1730613600i64)
+    if time.Rfc3339(time.In(fallBefore, ny)) != "2024-11-03T01:59:59-04:00" {
+        return 5
+    }
+    if time.Rfc3339(time.In(fallAfter, ny)) != "2024-11-03T01:00:00-05:00" {
+        return 6
+    }
+    // 1900 is before the modern rules; the table still has the LMT offset.
+    var old: time.Instant = time.FromUnix(-2208988800i64)
+    if time.Rfc3339(time.In(old, sh)) != "1900-01-01T08:05:43+08:05" {
+        return 7
+    }
+    var parsed: time.Instant = time.ParseRfc3339("2023-11-14T22:13:20.120Z")!
+    if time.Rfc3339Nano(parsed) != "2023-11-14T22:13:20.12Z" {
+        return 8
+    }
+    if time.Unix(parsed) != 1700000000i64 {
+        return 9
+    }
+    // The largest Instant is the last nanosecond before 2262-04-12.
+    var last: time.Instant = time.ParseRfc3339("2262-04-11T23:47:16.854775807Z")!
+    if time.Rfc3339Nano(last) != "2262-04-11T23:47:16.854775807Z" {
+        return 16
+    }
+    match time.ParseRfc3339("2262-04-11T23:47:16.854775808Z") {
+        Err(_) => {}
+        _ => {
+            return 17
+        }
+    }
+    var plus: time.Instant = time.ParseRfc3339("2023-11-15T06:13:20+08:00")!
+    if time.Rfc3339(plus) != "2023-11-15T06:13:20+08:00" {
+        return 10
+    }
+    var date: time.Instant = time.ParseDate("2024-07-01", ny)!
+    if time.Rfc3339(date) != "2024-07-01T00:00:00-04:00" {
+        return 11
+    }
+    if time.Rfc1123(t) != "Tue, 14 Nov 2023 22:13:20 GMT" {
+        return 12
+    }
+    match time.Load("Nowhere/Land") {
+        Err(e) => {
+            if e.Status() != 1 {
+                return 13
+            }
+        }
+        _ => {
+            return 14
+        }
+    }
+    // Local is host dependent; require only that it produces a valid instant.
+    var local: time.Timezone = time.Local()
+    if time.Rfc3339(time.In(t, local)).Len() < usize(20) {
+        return 15
+    }
+    return 0
+}

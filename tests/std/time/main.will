@@ -29,5 +29,8 @@ func main() -> i32 {
     if sw.Elapsed() > 0ns {
         ok += 1
     }
-    return ok
+    if ok != 6 {
+        return 1
+    }
+    return 0
 }

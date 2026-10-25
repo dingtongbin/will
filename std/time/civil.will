@@ -1,0 +1,142 @@
+// Calendar arithmetic for std/time. The algorithms use the proleptic
+// Gregorian calendar and whole seconds; no leap second is counted.
+
+// civilDate is a calendar date.
+struct civilDate {
+    year: i32
+    month: i32
+    day: i32
+}
+
+// clockTime is a clock reading within one calendar day.
+struct clockTime {
+    hour: i32
+    minute: i32
+    second: i32
+}
+
+// secondsPerDay is the length of a calendar day in the Unix time model.
+const secondsPerDay: i64 = 86400
+
+// floorDiv divides rounding toward negative infinity. Calendar days before the
+// epoch are negative, and a truncating division would put them in the next day.
+func floorDiv(a: i64, b: i64) -> i64 {
+    var q: i64 = a / b
+    var aNegative: bool = a < 0
+    var bNegative: bool = b < 0
+    if a % b != 0 && aNegative != bNegative {
+        q -= 1
+    }
+    return q
+}
+
+// floorMod returns the remainder that belongs to the quotient of floorDiv, so
+// it is never negative when b is positive.
+func floorMod(a: i64, b: i64) -> i64 {
+    return a - floorDiv(a, b) * b
+}
+
+// secondsOf returns the whole second that contains a Unix nanosecond count.
+func secondsOf(nanos: i64) -> i64 {
+    return floorDiv(nanos, nanosPerSecond)
+}
+
+// fractionOf returns the nanosecond part of a count, in 0..999999999.
+func fractionOf(nanos: i64) -> i64 {
+    return floorMod(nanos, nanosPerSecond)
+}
+
+// daysFromCivil returns the number of days from 1970-01-01 to the given date.
+// The algorithm is Howard Hinnant's days_from_civil and is valid for every date
+// the proleptic Gregorian calendar defines.
+func daysFromCivil(year: i32, month: i32, day: i32) -> i64 {
+    var y: i64 = i64(year)
+    if month <= 2 {
+        y -= 1
+    }
+    var era: i64 = floorDiv(y, 400i64)
+    var yoe: i64 = y - era * 400i64
+    var mp: i64 = i64(month)
+    if month > 2 {
+        mp -= 3i64
+    } else {
+        mp += 9i64
+    }
+    var doy: i64 = (153i64 * mp + 2i64) / 5i64 + i64(day) - 1i64
+    var doe: i64 = yoe * 365i64 + yoe / 4i64 - yoe / 100i64 + doy
+    return era * 146097i64 + doe - 719468i64
+}
+
+// civilFromDays is the inverse of daysFromCivil.
+func civilFromDays(days: i64) -> civilDate {
+    var z: i64 = days + 719468i64
+    var era: i64 = floorDiv(z, 146097i64)
+    var doe: i64 = z - era * 146097i64
+    var yoe: i64 = (doe - doe / 1460i64 + doe / 36524i64 - doe / 146096i64) / 365i64
+    var y: i64 = yoe + era * 400i64
+    var doy: i64 = doe - (365i64 * yoe + yoe / 4i64 - yoe / 100i64)
+    var mp: i64 = (5i64 * doy + 2i64) / 153i64
+    var day: i64 = doy - (153i64 * mp + 2i64) / 5i64 + 1i64
+    var month: i64 = mp + 3i64
+    if mp >= 10i64 {
+        month = mp - 9i64
+    }
+    if month <= 2i64 {
+        y += 1i64
+    }
+    return civilDate { year: i32(y), month: i32(month), day: i32(day)}
+}
+
+// daysOf returns the calendar day that contains secs. The division floors, so a
+// second before the epoch still belongs to 1969-12-31.
+func daysOf(secs: i64) -> i64 {
+    return floorDiv(secs, secondsPerDay)
+}
+
+// timeOfDay returns the position of secs within its calendar day.
+func timeOfDay(secs: i64) -> clockTime {
+    var rem: i64 = floorMod(secs, secondsPerDay)
+    var hour: i64 = rem / 3600i64
+    var minute: i64 = (rem % 3600i64) / 60i64
+    var second: i64 = rem % 60i64
+    return clockTime { hour: i32(hour), minute: i32(minute), second: i32(second)}
+}
+
+// localSeconds returns the whole second of the wall clock reading. The offset
+// is added to the second, not to the nanosecond count, so a moment near the
+// end of the Instant range can still be shown in a positive zone.
+func localSeconds(t: Instant) -> i64 {
+    var at: i64 = secondsOf(t.nanos)
+    return at + i64(offsetAt(t.zone, at))
+}
+
+// weekdayOf returns 0 for Sunday through 6 for Saturday. 1970-01-01 was a
+// Thursday, which is 4 in this numbering.
+func weekdayOf(days: i64) -> i64 {
+    return floorMod(days + 4i64, 7i64)
+}
+
+func isLeapYear(year: i32) -> bool {
+    if year % 4 != 0 {
+        return false
+    }
+    if year % 100 != 0 {
+        return true
+    }
+    return year % 400 == 0
+}
+
+// daysInMonth returns the length of one month. The caller must pass a month in
+// 1..12.
+func daysInMonth(year: i32, month: i32) -> i32 {
+    if month == 2 {
+        if isLeapYear(year) {
+            return 29
+        }
+        return 28
+    }
+    if month == 4 || month == 6 || month == 9 || month == 11 {
+        return 30
+    }
+    return 31
+}
