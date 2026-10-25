@@ -444,6 +444,9 @@ willrt_task* willrt_job_new(void* step, void* frame, size_t size,
 willrt_task* willrt_job_pop(int32_t lane);
 /* willrt_job_steal removes the oldest job from another non-reserved lane. */
 willrt_task* willrt_job_steal(int32_t lane);
+/* willrt_job_count returns the queued jobs on one lane. Auto placement uses it
+   to keep async tasks off lanes that already have CPU work queued. */
+int32_t willrt_job_count(int32_t lane);
 /* willrt_jobs_pending reports whether any lane still holds a queued job. */
 int32_t willrt_jobs_pending(void);
 /* willrt_jobs_shutdown is the shutdown hook for the job queues. */

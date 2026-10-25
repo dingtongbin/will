@@ -20,6 +20,7 @@ typedef struct job_queue {
     willrt_task* head;
     willrt_task* tail;
     int32_t count;
+    _Atomic(int32_t) pending;
 } job_queue;
 
 static atomic_int job_state;
@@ -116,6 +117,7 @@ static void job_push(int32_t lane, willrt_task* task) {
     }
     queue->tail = task;
     queue->count++;
+    atomic_fetch_add(&queue->pending, 1);
     willrt_os_mutex_unlock(&queue->lock);
     willrt_lane_wake_jobs();
 }
@@ -134,6 +136,7 @@ static willrt_task* job_take_head(job_queue* queue) {
     }
     willrt_task_set_job_next(task, NULL);
     queue->count--;
+    atomic_fetch_sub(&queue->pending, 1);
     return task;
 }
 
@@ -170,6 +173,13 @@ willrt_task* willrt_job_steal(int32_t lane) {
         }
     }
     return NULL;
+}
+
+int32_t willrt_job_count(int32_t lane) {
+    if (atomic_load(&job_state) != 2 || lane < 0 || lane >= job_queue_count) {
+        return 0;
+    }
+    return atomic_load(&job_queues[lane].pending);
 }
 
 int32_t willrt_jobs_pending(void) {
@@ -212,8 +222,19 @@ willrt_task* willrt_job_new(void* step, void* frame, size_t size,
         int32_t lane = job_pick();
 
         if (lane < 0) {
-            willrt_task_run_job(task);
-            return task;
+            if (willrt_task_current() != NULL) {
+                /* A single lane cannot skip itself. Queue the job on the
+                   current lane and let the caller's region barrier park; the
+                   lane runs the job after the current step returns. Running it
+                   inline would overwrite the caller's task and panic boundary. */
+                lane = willrt_lane_here();
+                if (lane < 0) {
+                    lane = 0;
+                }
+            } else {
+                willrt_task_run_job(task);
+                return task;
+            }
         }
         job_push(lane, task);
     }

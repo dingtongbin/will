@@ -181,6 +181,7 @@ extern void willrt_jobs_shutdown(void) __attribute__((weak));
 extern int32_t willrt_jobs_pending(void) __attribute__((weak));
 extern willrt_task* willrt_job_pop(int32_t lane) __attribute__((weak));
 extern willrt_task* willrt_job_steal(int32_t lane) __attribute__((weak));
+extern int32_t willrt_job_count(int32_t lane) __attribute__((weak));
 extern int32_t willrt_timer_pending(void) __attribute__((weak));
 extern void willrt_poll_request_abandon(willrt_poll_request* req)
     __attribute__((weak));
@@ -314,6 +315,9 @@ static int32_t willrt_auto_pick_lanes(int32_t* lanes, int32_t want) {
             score = atomic_load(&worker->load);
             if (atomic_load(&worker->job_running) != 0) {
                 score += 1024;
+            }
+            if (willrt_job_count != NULL) {
+                score += willrt_job_count(lane) * 4;
             }
             if (score < best_score) {
                 best_score = score;
@@ -926,14 +930,18 @@ void willrt_task_set_job_next(willrt_task* task, willrt_task* next) {
 /* willrt_task_run_job advances one task on the caller thread. Jobs contain no
    suspension point, so a returned suspend is a failed job rather than a park. */
 void willrt_task_run_job(willrt_task* task) {
+    struct willrt_task* previous = willrt_task_self;
+
     if (task == NULL) {
         return;
     }
     atomic_store(&willrt_threads_live, 1);
     task->started = 1;
-    task->lane = 0;
-    willrt_mem_set_lane(0);
+    task->lane = willrt_lane_self >= 0 ? willrt_lane_self : 0;
+    willrt_mem_set_lane(task->lane);
     willrt_task_run_step(task);
+    willrt_task_self = previous;
+    willrt_mem_set_lane(willrt_lane_self >= 0 ? willrt_lane_self : 0);
 }
 
 willrt_task* willrt_task_current(void) {
@@ -1557,6 +1565,9 @@ int32_t willrt_lane_choose(void) {
         score = atomic_load(&worker->load);
         if (atomic_load(&worker->job_running) != 0) {
             score += 1024;
+        }
+        if (willrt_job_count != NULL) {
+            score += willrt_job_count(lane) * 4;
         }
         if (score < best_score) {
             best_score = score;
