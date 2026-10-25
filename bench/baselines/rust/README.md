@@ -16,6 +16,8 @@ They use the same message counts and work per task as the will scenarios.
   p999 and throughput.
 - `compio_spawn`: the same workload on one compio runtime per available core,
   the thread-per-core (TPC) comparator; reports per-task p999 and throughput.
+- `compio_spawn_single`: the same burst on one compio runtime with one producer,
+  the per-core TPC comparator.
 - `mixed`: 64 Tokio readers, 100 reads each, plus 2,743 Rayon CPU jobs, which is
   the 70/30 mixed workload; reports IO, CPU, and combined p999 plus throughput.
 
@@ -29,6 +31,7 @@ target/release/rustbench.exe tail
 target/release/rustbench.exe select-tail
 target/release/spawn.exe
 target/release/compio_spawn.exe
+target/release/compio_spawn_single.exe
 target/release/mixed.exe
 ```
 

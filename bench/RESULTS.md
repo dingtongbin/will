@@ -37,7 +37,8 @@ compio is the thread-per-core (TPC) runtime; Tokio is the work-stealing runtime.
 | runtime | p999 | throughput | per-core throughput |
 | --- | --- | --- | --- |
 | will, 16 lanes, auto group | 28.9-77.5 us | 0.95-1.04 M tasks/s | 59-65 k/lane/s |
-| compio TPC, 16 runtimes | 1.45-2.68 ms | 3.1-3.9 M tasks/s | 0.20-0.24 M/core/s |
+| compio TPC, 1 runtime, 1 producer | 1.84-2.95 ms | 2.9-3.5 M tasks/s | 2.9-3.5 M/core/s |
+| compio TPC, 16 runtimes, 16 producers | 1.45-2.68 ms | 3.1-3.9 M tasks/s | 0.20-0.24 M/core/s |
 | Tokio work stealing, 16 workers | 68-96 us | 1.2-1.5 M tasks/s | 75-95 k/core/s |
 
 The will number is six clean runs. Auto now places a run of eight spawns across
@@ -48,9 +49,12 @@ task.
 
 will has the lowest p999 in this table: 28.9-77.5 us against Tokio 68-96 us and
 compio 1.45-2.68 ms. Its throughput is 0.63-0.87x Tokio and 0.24-0.34x compio.
-The compio number is not apples to apples: `compio_spawn` uses one producer per
-runtime, while the will and Tokio runs use one producer thread. A single-producer
-compio TPC baseline is still missing and stays on W34.
+`compio_spawn_single` closes the producer-count gap: one compio runtime and one
+producer run the same 10,000-task burst at 2.9-3.5 M tasks/s on one core. will is
+therefore behind compio on task throughput even against the single-producer
+baseline; compio's p999 is high because it queues the whole burst before driving
+the runtime. The 16-runtime row is kept to show that compio does not scale the
+burst with more runtimes.
 
 The 10 us p999 target in `并发.md` is the park-to-running wake latency, not the
 whole spawn-to-completion latency measured here; this table does not replace
