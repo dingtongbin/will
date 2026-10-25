@@ -6,7 +6,7 @@ diagnose the body of the distribution.
 Machine: Intel Core i5-12500H, Windows 11, x86_64-win-msvc.
 Toolchain: clang 22.1.8, Rust 1.97.0, crossbeam-channel 0.5.17,
 crossbeam-utils 0.8.23, tokio 1.54.1, compio 0.20.0-beta.1.
-Will: `7ed5da6`; six measured repetitions for spawn, five for channel and
+Will: `2a781e5`; six measured repetitions for spawn, five for channel and
 select.
 The Windows clock has 100 ns granularity, so sub-100 ns differences in the
 channel/select tables are quantization, not a measured win.
@@ -36,7 +36,7 @@ compio is the thread-per-core (TPC) runtime; Tokio is the work-stealing runtime.
 
 | runtime | p999 | throughput | per-core throughput |
 | --- | --- | --- | --- |
-| will, 16 lanes, auto group | 33.8-51.2 us | 0.77-1.02 M tasks/s (median 0.96) | 48-64 k/lane/s |
+| will, 16 lanes, auto group | 28.9-77.5 us | 0.95-1.04 M tasks/s | 59-65 k/lane/s |
 | compio TPC, 16 runtimes | 1.45-2.68 ms | 3.1-3.9 M tasks/s | 0.20-0.24 M/core/s |
 | Tokio work stealing, 16 workers | 68-96 us | 1.2-1.5 M tasks/s | 75-95 k/core/s |
 
@@ -46,8 +46,8 @@ the three least-loaded lanes, enqueues every task before returning from
 in the task object, so a scalar result no longer allocates and frees a block per
 task.
 
-will has the lowest p999 in this table: 33.8-51.2 us against Tokio 68-96 us and
-compio 1.45-2.68 ms. Its throughput is 0.51-0.85x Tokio and 0.20-0.33x compio.
+will has the lowest p999 in this table: 28.9-77.5 us against Tokio 68-96 us and
+compio 1.45-2.68 ms. Its throughput is 0.63-0.87x Tokio and 0.24-0.34x compio.
 The compio number is not apples to apples: `compio_spawn` uses one producer per
 runtime, while the will and Tokio runs use one producer thread. A single-producer
 compio TPC baseline is still missing and stays on W34.
