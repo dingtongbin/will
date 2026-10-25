@@ -90,12 +90,13 @@ Ubuntu 24.04, four cores, clang 18, Go 1.27.1. The whole test suite and
 
 | runtime | round | throughput | combined p999 |
 | --- | --- | --- | --- |
-| will, pread workers | 0.38-0.47 s | 19-24 k ops/s | 37-82 ms |
-| will, io_uring ring (`WILL_IO_URING=1`) | 0.50-0.54 s | 17-18 k ops/s | 37-64 ms |
+| will, pread fallback | 0.38-0.47 s | 19-24 k ops/s | 37-82 ms |
+| will, io_uring ring (default) | 0.50-0.54 s | 17-18 k ops/s | 37-64 ms |
 | Tokio + Rayon | 0.178-0.189 s | 46.9-51 k ops/s | 7.3-9.1 ms |
 
-The shared io_uring ring is correct but slower than the four pread workers on
-this VM and is not per-lane, so it stays behind the measurement switch. The
+The shared io_uring ring is the default whole-file path now; pread is only the
+no-io_uring fallback. The ring is still slower than pread on this VM and is not
+per-lane; metadata operations and exec still use the blocking helper path. The
 Linux mixed throughput is 0.4-0.5x Rust; W33 remains open.
 
 Linux spawn, four lanes, one producer:
