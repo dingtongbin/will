@@ -647,6 +647,19 @@ static void willrt_lane_init(void) {
     if (count < 1) {
         count = 1;
     }
+    {
+        const char* env = getenv("WILL_LANES");
+        char* end;
+        long value;
+
+        if (env != NULL && *env != '\0') {
+            value = strtol(env, &end, 10);
+            if (end != env && *end == '\0' && value > 0 &&
+                value < count) {
+                count = (int32_t)value;
+            }
+        }
+    }
     willrt_lane_workers = (lane_worker*)willrt_alloc(
         sizeof(*willrt_lane_workers) * (size_t)count);
     if (willrt_lane_workers != NULL) {
