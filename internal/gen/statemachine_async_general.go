@@ -111,7 +111,9 @@ func (g *generator) generalCallWait(r willc.Record) (string, error) {
 	okLabel := fmt.Sprintf("sm.call.ok.%d", n)
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", ok, okLabel, failLabel)
 	fmt.Fprintf(g.out, "%s:\n", failLabel)
-	g.emitPanicFromError(errSlot)
+	if err := g.deadlineJoinFailure(status, out, text, errSlot, okLabel, r.ID); err != nil {
+		return "", err
+	}
 	fmt.Fprintf(g.out, "%s:\n", okLabel)
 	if llvm == "" {
 		return "", nil
@@ -152,7 +154,9 @@ func (g *generator) generalCallWaitPlace(r willc.Record) (string, string, error)
 	okLabel := fmt.Sprintf("sm.call.ok.%d", n)
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", success, okLabel, failLabel)
 	fmt.Fprintf(g.out, "%s:\n", failLabel)
-	g.emitPanicFromError(errSlot)
+	if err := g.deadlineJoinFailure(status, out, text, errSlot, okLabel, r.ID); err != nil {
+		return "", "", err
+	}
 	fmt.Fprintf(g.out, "%s:\n", okLabel)
 	return out, llvm, nil
 }

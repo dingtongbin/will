@@ -164,16 +164,20 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, -1\n", pending, joinStatus)
 			park := fmt.Sprintf("sm.park.%d", i)
 			done := fmt.Sprintf("sm.child.done.%d", i)
-			panicLabel := fmt.Sprintf("sm.child.panic.%d", i)
+			failLabel := fmt.Sprintf("sm.child.fail.%d", i)
+			after := fmt.Sprintf("sm.after.%d", i)
 			fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", pending, park, done)
 			fmt.Fprintf(g.out, "%s:\n", park)
 			g.out.WriteString("  call void @willrt_task_mark_wait()\n  ret i32 -1\n")
 			fmt.Fprintf(g.out, "%s:\n", done)
 			ok := g.newTmp()
 			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", ok, joinStatus)
-			fmt.Fprintf(g.out, "  br i1 %s, label %%sm.after.%d, label %%%s\n", ok, i, panicLabel)
-			fmt.Fprintf(g.out, "%s:\n", panicLabel)
-			g.emitPanicFromError(errSlot)
+			fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", ok, after, failLabel)
+			fmt.Fprintf(g.out, "%s:\n", failLabel)
+			if err := g.deadlineJoinFailure(joinStatus, resultFields[i],
+				g.callResultTextFor(seg.call), errSlot, after, i); err != nil {
+				return err
+			}
 		}
 	}
 	for i := range info.segments {

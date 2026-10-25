@@ -1,9 +1,89 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// TestRunDeadlineChildReturnsDeadline checks the cancellation value of an
+// awaited child task: a scope deadline is a normal Err(Deadline), not an empty
+// panic from an uninitialized task error.
+func TestRunDeadlineChildReturnsDeadline(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("repo root: %v", err)
+	}
+	dir := filepath.Join(t.TempDir(), "deadlinechild")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("make module: %v", err)
+	}
+	writeFile(t, dir, "will.mod", "module example.com/deadlinechild\nwill 1\n"+
+		"require std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(filepath.Join(root, "std"))+"\n")
+	src := `import "std/time"
+
+async func Nap() -> Result<(), Error> {
+    return await time.Sleep(50ms)
+}
+
+async func Wait() -> Option<i32> {
+    match await time.Sleep(50ms) {
+        Ok(_) => {
+            return Some(1)
+        }
+        Err(_) => {
+            return None
+        }
+    }
+}
+
+async func main() -> i32 {
+    var saw: bool = false
+    deadline 1ms {
+        var result: Result<(), Error> = await Nap()
+        match result {
+            Err(e) => {
+                if e.Status() != 9 {
+                    return 1
+                }
+                saw = true
+            }
+            Ok(_) => {
+                return 2
+            }
+        }
+    }
+    if !saw {
+        return 3
+    }
+    var none: bool = false
+    deadline 1ms {
+        var item: Option<i32> = await Wait()
+        match item {
+            None => {
+                none = true
+            }
+            Some(_) => {
+                return 4
+            }
+        }
+    }
+    if !none {
+        return 5
+    }
+    return 0
+}
+`
+	writeFile(t, dir, "main.will", src)
+	code, out, errOut := runCLI("run", dir)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+}
 
 // TestRunJoinReturnsTheStoredValue runs a real program through the same path
 // as will run. A join keeps its error copy in a task frame, and the status word

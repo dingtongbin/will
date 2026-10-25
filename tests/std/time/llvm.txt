@@ -5672,53 +5672,78 @@ sm.park.0:
   ret i32 -1
 sm.child.done.0:
   %t157 = icmp eq i32 %t154, 0
-  br i1 %t157, label %sm.after.0, label %sm.child.panic.0
-sm.child.panic.0:
-  %t158 = getelementptr inbounds %willrt_error, ptr %t153, i32 0, i32 0
-  %t159 = load ptr, ptr %t158
-  %t160 = getelementptr inbounds %willrt_error, ptr %t153, i32 0, i32 1
-  %t161 = load i64, ptr %t160
-  %t162 = getelementptr inbounds %willrt_error, ptr %t153, i32 0, i32 2
-  %t163 = load ptr, ptr %t162
-  %t164 = getelementptr inbounds %willrt_error, ptr %t153, i32 0, i32 3
-  %t165 = load ptr, ptr %t164
-  call void @willrt_panic_n(ptr %t159, i64 %t161, ptr %t163, ptr %t165)
+  br i1 %t157, label %sm.after.0, label %sm.child.fail.0
+sm.child.fail.0:
+  %t158 = icmp eq i32 %t154, -5
+  %t159 = icmp eq i32 %t154, -6
+  %t160 = or i1 %t158, %t159
+  br i1 %t160, label %deadline.hit.14, label %deadline.panic.14
+deadline.panic.14:
+  %t161 = getelementptr inbounds %willrt_error, ptr %t153, i32 0, i32 0
+  %t162 = load ptr, ptr %t161
+  %t163 = getelementptr inbounds %willrt_error, ptr %t153, i32 0, i32 1
+  %t164 = load i64, ptr %t163
+  %t165 = getelementptr inbounds %willrt_error, ptr %t153, i32 0, i32 2
+  %t166 = load ptr, ptr %t165
+  %t167 = getelementptr inbounds %willrt_error, ptr %t153, i32 0, i32 3
+  %t168 = load ptr, ptr %t167
+  call void @willrt_panic_n(ptr %t162, i64 %t164, ptr %t166, ptr %t168)
   unreachable
+deadline.hit.14:
+  br i1 %t158, label %deadline.canceled.15, label %deadline.timeout.15
+deadline.canceled.15:
+  %t169 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t93, i32 0, i32 0
+  store i32 1, ptr %t169
+  %t170 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t93, i32 0, i32 2
+  %t171 = getelementptr inbounds %interface.Error, ptr %t170, i32 0, i32 0
+  store ptr @will.error.data.8, ptr %t171
+  %t172 = getelementptr inbounds %interface.Error, ptr %t170, i32 0, i32 1
+  store ptr @will.error.table.8, ptr %t172
+  br label %sm.after.0
+deadline.timeout.15:
+  %t173 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t93, i32 0, i32 0
+  store i32 1, ptr %t173
+  %t174 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t93, i32 0, i32 2
+  %t175 = getelementptr inbounds %interface.Error, ptr %t174, i32 0, i32 0
+  store ptr @will.error.data.9, ptr %t175
+  %t176 = getelementptr inbounds %interface.Error, ptr %t174, i32 0, i32 1
+  store ptr @will.error.table.9, ptr %t176
+  br label %sm.after.0
 sm.after.0:
-  %t166 = load { i32, [4 x i8], %interface.Error }, ptr %t93
-  store { i32, [4 x i8], %interface.Error } %t166, ptr %t102
-  %t167 = call i64 @"std/time.Stopwatch.Elapsed"(ptr %t101)
-  %t168 = icmp sgt i64 %t167, 0
-  br i1 %t168, label %if.then.14, label %if.end.14
-if.then.14:
-  %t169 = load i32, ptr %t100
-  %t170 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t169, i32 1)
-  %t171 = extractvalue {i32, i1} %t170, 0
-  %t172 = extractvalue {i32, i1} %t170, 1
-  br i1 %t172, label %panic.15, label %panic.ok.15
-panic.15:
+  %t177 = load { i32, [4 x i8], %interface.Error }, ptr %t93
+  store { i32, [4 x i8], %interface.Error } %t177, ptr %t102
+  %t178 = call i64 @"std/time.Stopwatch.Elapsed"(ptr %t101)
+  %t179 = icmp sgt i64 %t178, 0
+  br i1 %t179, label %if.then.16, label %if.end.16
+if.then.16:
+  %t180 = load i32, ptr %t100
+  %t181 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t180, i32 1)
+  %t182 = extractvalue {i32, i1} %t181, 0
+  %t183 = extractvalue {i32, i1} %t181, 1
+  br i1 %t183, label %panic.17, label %panic.ok.17
+panic.17:
   call void @willrt_panic(ptr @.str.10, ptr @.str.211, ptr @.str.212)
   unreachable
-panic.ok.15:
-  store i32 %t171, ptr %t100
-  br label %if.end.14
-if.end.14:
-  %t173 = load i32, ptr %t100
-  %t174 = icmp ne i32 %t173, 6
-  br i1 %t174, label %if.then.16, label %if.end.16
-if.then.16:
-  %t175 = alloca i32
-  store i32 1, ptr %t175
-  %t176 = getelementptr i32, ptr null, i32 1
-  %t177 = ptrtoint ptr %t176 to i64
-  call i32 @willrt_task_store_result(ptr %t175, i64 %t177)
-  ret i32 1
+panic.ok.17:
+  store i32 %t182, ptr %t100
+  br label %if.end.16
 if.end.16:
-  %t178 = alloca i32
-  store i32 0, ptr %t178
-  %t179 = getelementptr i32, ptr null, i32 1
-  %t180 = ptrtoint ptr %t179 to i64
-  call i32 @willrt_task_store_result(ptr %t178, i64 %t180)
+  %t184 = load i32, ptr %t100
+  %t185 = icmp ne i32 %t184, 6
+  br i1 %t185, label %if.then.18, label %if.end.18
+if.then.18:
+  %t186 = alloca i32
+  store i32 1, ptr %t186
+  %t187 = getelementptr i32, ptr null, i32 1
+  %t188 = ptrtoint ptr %t187 to i64
+  call i32 @willrt_task_store_result(ptr %t186, i64 %t188)
+  ret i32 1
+if.end.18:
+  %t189 = alloca i32
+  store i32 0, ptr %t189
+  %t190 = getelementptr i32, ptr null, i32 1
+  %t191 = ptrtoint ptr %t190 to i64
+  call i32 @willrt_task_store_result(ptr %t189, i64 %t191)
   ret i32 1
 }
 declare void @willrt_init()
@@ -5731,6 +5756,46 @@ entry:
   call void @willrt_shutdown()
   ret i32 %r
 }
+@will.error.data.8 = private constant { ptr, i64, i32 } { ptr @.str.213, i64 8, i32 8 }
+define internal { ptr, i64 } @will.error.message.8(ptr %data) {
+entry:
+  %t192 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t193 = load ptr, ptr %t192
+  %t194 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
+  %t195 = load i64, ptr %t194
+  %t196 = insertvalue { ptr, i64 } undef, ptr %t193, 0
+  %t197 = insertvalue { ptr, i64 } %t196, i64 %t195, 1
+  ret { ptr, i64 } %t197
+}
+define internal i32 @will.error.status.8(ptr %data) {
+entry:
+  %t198 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
+  %t199 = load i32, ptr %t198
+  ret i32 %t199
+}
+@will.error.id.8 = private constant i8 0
+@will.error.table.8 = private constant [3 x ptr] [ptr @will.error.message.8, ptr @will.error.status.8, ptr @will.error.id.8]
+@will.error.value.8 = private constant %interface.Error { ptr @will.error.data.8, ptr @will.error.table.8 }
+@will.error.data.9 = private constant { ptr, i64, i32 } { ptr @.str.214, i64 8, i32 9 }
+define internal { ptr, i64 } @will.error.message.9(ptr %data) {
+entry:
+  %t200 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t201 = load ptr, ptr %t200
+  %t202 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
+  %t203 = load i64, ptr %t202
+  %t204 = insertvalue { ptr, i64 } undef, ptr %t201, 0
+  %t205 = insertvalue { ptr, i64 } %t204, i64 %t203, 1
+  ret { ptr, i64 } %t205
+}
+define internal i32 @will.error.status.9(ptr %data) {
+entry:
+  %t206 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
+  %t207 = load i32, ptr %t206
+  ret i32 %t207
+}
+@will.error.id.9 = private constant i8 0
+@will.error.table.9 = private constant [3 x ptr] [ptr @will.error.message.9, ptr @will.error.status.9, ptr @will.error.id.9]
+@will.error.value.9 = private constant %interface.Error { ptr @will.error.data.9, ptr @will.error.table.9 }
 declare i64 @willrt_now_ns()
 declare ptr @willrt_task_sleep_async_start(i64)
 declare i32 @willrt_task_sleep_poll(ptr)
@@ -5955,6 +6020,8 @@ declare i64 @willtime_wall_ns()
 @.str.210 = private unnamed_addr constant [15 x i8] c"main.will:24:9\00", align 1
 @.str.211 = private unnamed_addr constant [15 x i8] c"main.will:30:9\00", align 1
 @.str.212 = private unnamed_addr constant [38 x i8] c"example.com/stdtest/time.will$main.sm\00", align 1
+@.str.213 = private unnamed_addr constant [9 x i8] c"canceled\00", align 1
+@.str.214 = private unnamed_addr constant [9 x i8] c"deadline\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare i32 @willrt_utf8_decode(ptr, i64, ptr)
