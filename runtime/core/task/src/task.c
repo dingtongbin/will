@@ -41,6 +41,8 @@ struct willrt_sleep_op {
     int32_t active;
 };
 
+struct willrt_region;
+
 struct willrt_task {
     willrt_os_mutex lock;
     willrt_os_cond cond;
@@ -63,6 +65,7 @@ struct willrt_task {
     int32_t wait_requested;
     int32_t io_wait;
     int32_t join_linked;
+    int32_t joined_region;
     int32_t waiters;
     void* cancel_flag;
     int64_t deadline;
@@ -80,6 +83,8 @@ struct willrt_task {
     struct willrt_task* wait_next;
     struct willrt_task* job_next;
     struct willrt_task* all_next;
+    struct willrt_region* regions;
+    int32_t region_skipped;
     struct willrt_task* join_head;
     struct willrt_task* join_next;
     struct willrt_task* join_target;
@@ -104,7 +109,10 @@ struct willrt_task {
 
 struct willrt_region {
     struct willrt_task* head;
+    struct willrt_task* members;
+    struct willrt_region* previous;
     int32_t failed;
+    int32_t exiting;
 };
 
 typedef struct lane_worker {
@@ -816,8 +824,14 @@ willrt_task* willrt_task_new(void* step, void* frame, size_t size, int32_t lane,
     willrt_all_tasks = task;
     willrt_os_mutex_unlock(&willrt_tasks_lock);
 
-    if (willrt_region_depth > 0) {
-        region = &willrt_regions[willrt_region_depth - 1];
+    if (willrt_task_self != NULL) {
+        region = willrt_task_self->regions;
+    } else {
+        region = willrt_region_depth > 0
+                     ? &willrt_regions[willrt_region_depth - 1]
+                     : NULL;
+    }
+    if (region != NULL) {
         task->next_region = region->head;
         region->head = task;
     }
@@ -1287,6 +1301,17 @@ void willrt_region_enter(void) {
     struct willrt_region* region;
 
     willrt_task_globals();
+    if (willrt_task_self != NULL) {
+        region = (struct willrt_region*)willrt_alloc(sizeof(*region));
+        if (region == NULL) {
+            willrt_task_self->region_skipped += 1;
+            return;
+        }
+        memset(region, 0, sizeof(*region));
+        region->previous = willrt_task_self->regions;
+        willrt_task_self->regions = region;
+        return;
+    }
     if (willrt_regions == NULL) {
         /* The inline array is thread-local, so its address is not a constant
            initializer; it is installed on the first scope of this thread. */
@@ -1361,7 +1386,91 @@ static void willrt_task_release_members(struct willrt_task* members) {
     }
 }
 
+/* willrt_region_exit_try is the state-machine form of the region barrier. It
+   keeps the region on the stack across a suspension, so a caller that parks
+   does not hold a lane while its children run. Each member is joined once; a
+   member that is still running returns WILLRT_SUSPEND and the caller resumes
+   at the same call after the child wakes it. */
+int32_t willrt_region_exit_try(void) {
+    struct willrt_task* current = willrt_task_self;
+    struct willrt_region* region;
+    struct willrt_task* member;
+    int32_t failed;
+
+    if (current != NULL) {
+        if (current->region_skipped > 0) {
+            current->region_skipped--;
+            return 0;
+        }
+        region = current->regions;
+        if (region == NULL) {
+            return 0;
+        }
+    } else {
+        if (willrt_region_skipped > 0) {
+            willrt_region_skipped--;
+            return 0;
+        }
+        if (willrt_region_depth <= 0) {
+            return 0;
+        }
+        region = &willrt_regions[willrt_region_depth - 1];
+    }
+    if (!region->exiting) {
+        region->exiting = 1;
+        region->members = region->head;
+        region->head = NULL;
+        region->failed = 0;
+    }
+    member = region->members;
+    while (member != NULL) {
+        struct willrt_task* next = member->next_region;
+
+        if (!member->joined_region) {
+            int32_t status;
+
+            if (current != NULL) {
+                status = willrt_task_try_join(member, NULL, NULL);
+            } else {
+                status = willrt_join(member, NULL, NULL);
+            }
+            if (status == WILLRT_SUSPEND) {
+                return WILLRT_SUSPEND;
+            }
+            if (status == WILLRT_FAILED) {
+                region->failed += 1;
+            }
+            member->joined_region = 1;
+        }
+        member = next;
+    }
+    failed = region->failed;
+    if (failed != 0) {
+        char line[64];
+        int size = snprintf(line, sizeof(line), "region: %d tasks failed\n",
+                            failed);
+
+        if (size > 0) {
+            willrt_report_write_n(line,
+                                  (size_t)size < sizeof(line) ? (size_t)size
+                                                              : sizeof(line));
+        }
+    }
+    willrt_task_release_members(region->members);
+    region->members = NULL;
+    region->failed = 0;
+    region->exiting = 0;
+    if (current != NULL) {
+        current->regions = region->previous;
+        willrt_free(region);
+    } else {
+        willrt_region_depth--;
+    }
+    return failed;
+}
+
 int32_t willrt_region_exit(void) {
+    struct willrt_task* current = willrt_task_self;
     struct willrt_region* region;
     struct willrt_task* members;
     struct willrt_task* task;
@@ -1369,15 +1478,26 @@ int32_t willrt_region_exit(void) {
     char line[64];
     int size;
 
-    if (willrt_region_skipped > 0) {
-        willrt_region_skipped--;
-        return 0;
+    if (current != NULL) {
+        if (current->region_skipped > 0) {
+            current->region_skipped--;
+            return 0;
+        }
+        region = current->regions;
+        if (region == NULL) {
+            return 0;
+        }
+    } else {
+        if (willrt_region_skipped > 0) {
+            willrt_region_skipped--;
+            return 0;
+        }
+        if (willrt_region_depth <= 0) {
+            return 0;
+        }
+        willrt_region_depth--;
+        region = &willrt_regions[willrt_region_depth];
     }
-    if (willrt_region_depth <= 0) {
-        return 0;
-    }
-    willrt_region_depth--;
-    region = &willrt_regions[willrt_region_depth];
     members = region->head;
     region->head = NULL;
     task = members;
@@ -1401,6 +1521,10 @@ int32_t willrt_region_exit(void) {
        frames and results are dead and go back to the allocator, whose
        per-lane size classes make the next region's tasks reuse them. */
     willrt_task_release_members(members);
+    if (current != NULL) {
+        current->regions = region->previous;
+        willrt_free(region);
+    }
     return failed;
 }
 

@@ -475,6 +475,9 @@ int32_t willrt_task_store_result(const void* value, size_t size);
 
 void willrt_region_enter(void);
 int32_t willrt_region_exit(void);
+/* willrt_region_exit_try is the parked region barrier: it returns
+   WILLRT_SUSPEND until every member is joined, then the failure count. */
+int32_t willrt_region_exit_try(void);
 int32_t willrt_lane_here(void);
 /* willrt_lane_choose returns the least-loaded live lane for spawn auto. The
    score counts live tasks; a lane running a CPU job is penalized. */

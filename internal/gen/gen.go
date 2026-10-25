@@ -235,6 +235,9 @@ func (g *generator) emitAux() {
 		}
 		g.out.WriteString("declare void @willrt_region_enter()\n")
 		g.out.WriteString("declare i32 @willrt_region_exit()\n")
+		if g.needRegionTryDecl {
+			g.out.WriteString("declare i32 @willrt_region_exit_try()\n")
+		}
 		g.out.WriteString("declare i32 @willrt_lane_here()\n")
 	}
 	if g.needJobDecl {
@@ -778,6 +781,8 @@ type generator struct {
 	// needAutoTaskDecl records that an auto spawn submits through the grouped
 	// auto placement entry.
 	needAutoTaskDecl bool
+	// needRegionTryDecl records that a state machine parks on a region exit.
+	needRegionTryDecl bool
 	// needWaitDecl records that a generated state machine marks a wait.
 	needWaitDecl bool
 	// needIOMarkDecl records a park on an external operation.
@@ -2856,7 +2861,17 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		g.out.WriteString("  call i32 @willrt_region_exit()\n")
+		if g.smGeneral {
+			id := g.smReserve()
+			g.needRegionTryDecl = true
+			g.smStoreState(id)
+			status := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call i32 @willrt_region_exit_try()\n",
+				status)
+			g.smCheckPark(status, id)
+		} else {
+			g.out.WriteString("  call i32 @willrt_region_exit()\n")
+		}
 		return false, nil
 	}
 	return false, g.errf(st.ID, "cannot translate node #%d: statement %s is not lowered yet", st.ID, st.Kind)
@@ -3598,13 +3613,21 @@ func (g *generator) binary(r willc.Record) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	typ, err := g.typeOf(lID)
+	if err != nil {
+		return "", err
+	}
+	spill := ""
+	if g.smGeneral && g.containsWait(rID) {
+		spill = g.smAlloca(typ, "bin.left")
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, l, spill)
+	}
 	right, err := g.value(rID)
 	if err != nil {
 		return "", err
 	}
-	typ, err := g.typeOf(lID)
-	if err != nil {
-		return "", err
+	if spill != "" {
+		l = g.load(typ, spill)
 	}
 	other, err := g.typeOf(rID)
 	if err != nil {
