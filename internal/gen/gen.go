@@ -79,6 +79,7 @@ func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		emittedTypeIDs: map[string]bool{},
 		thunkEmitted:   map[string]bool{},
 		spawnEmitted:   map[string]bool{},
+		spawnDropped:   map[string]bool{},
 		dropEmitted:    map[string]bool{},
 		out:            &strings.Builder{},
 		aliases:        aliases,
@@ -221,6 +222,9 @@ func (g *generator) emitAux() {
 	}
 	if g.needTaskDecl {
 		g.out.WriteString("declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)\n")
+		if g.needFrameDropDecl {
+			g.out.WriteString("declare ptr @willrt_task_new_drop(ptr, ptr, i64, i32, i32, ptr)\n")
+		}
 		g.out.WriteString("declare void @willrt_task_run(ptr)\n")
 		if g.needAutoTaskDecl {
 			g.out.WriteString("declare void @willrt_task_run_auto(ptr)\n")
@@ -252,6 +256,9 @@ func (g *generator) emitAux() {
 	}
 	if g.needJobDecl {
 		g.out.WriteString("declare ptr @willrt_job_new(ptr, ptr, i64, i32)\n")
+		if g.needFrameDropDecl {
+			g.out.WriteString("declare ptr @willrt_job_new_drop(ptr, ptr, i64, i32, ptr)\n")
+		}
 	}
 	if g.needWaitDecl {
 		g.out.WriteString("declare void @willrt_task_mark_wait()\n")
@@ -839,6 +846,9 @@ type generator struct {
 	needCancelBind bool
 	// needOwnFrameDecl records a task whose frame the region barrier frees.
 	needOwnFrameDecl bool
+	// needFrameDropDecl records a spawn frame whose captured values need a
+	// generated drop callback.
+	needFrameDropDecl bool
 	// needReportDecl records that the entry wrapper reports a main Result.
 	needReportDecl bool
 	// needTaskErrorDecl records that Join built a TaskError interface.
@@ -904,6 +914,7 @@ type generator struct {
 	pendingAsync   []*asyncMachineInfo
 	pendingSelect  []*selectMachineInfo
 	spawnEmitted   map[string]bool
+	spawnDropped   map[string]bool
 	// The slots below keep a loop from growing the stack on every evaluation
 	// of a join, receive, or send.
 	joinOutSlots map[int]string
@@ -2827,16 +2838,25 @@ func (g *generator) zeroMovedSource(id int, dst string) error {
 // channel without a retain. It also accepts rc handles, unlike zeroMovedSource.
 func (g *generator) zeroTransferredSource(id int, dst string) error {
 	r, ok := g.recs[id]
-	if !ok || r.Kind != "name" {
+	if !ok {
+		return nil
+	}
+	switch r.Kind {
+	case "name":
+		decl := refField(r, "to")
+		d, ok := g.recs[decl]
+		if !ok || d.Kind != "var" {
+			return nil
+		}
+	case "field", "index":
+		if !g.localPlaceRoot(id) {
+			return nil
+		}
+	default:
 		return nil
 	}
 	text, err := g.willTypeText(id)
 	if err != nil || !ownsReleaseText(g, text) || isWeakText(text) {
-		return nil
-	}
-	decl := refField(r, "to")
-	d, ok := g.recs[decl]
-	if !ok || d.Kind != "var" {
 		return nil
 	}
 	src, typ, err := g.place(id)
@@ -3245,6 +3265,14 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		g.tmp++
 		tmp := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = load %s, ptr %s\n", tmp, typ, ptr)
+		if move, _ := g.moveSource(valueID); move {
+			r, ok := g.recs[valueID]
+			if ok && (r.Kind == "field" || r.Kind == "index") {
+				if err := g.zeroMovedSource(valueID, ""); err != nil {
+					return false, err
+				}
+			}
+		}
 		if err := g.runDefers(0); err != nil {
 			return false, err
 		}
@@ -3717,7 +3745,10 @@ func (g *generator) allocSlot(slots map[int]string, prefix string, id int, llvm 
 	slot := "%v." + prefix + "." + strconv.Itoa(id)
 	slots[id] = slot
 	line := fmt.Sprintf("  %s = alloca %s", slot, llvm)
-	if g.lateAllowed && prefix == "ret" {
+	// A string result slot can be discovered while lowering a container
+	// operation inside a branch. Moving it to the entry block keeps a later use
+	// dominated by the allocation.
+	if g.lateAllowed && (prefix == "ret" || prefix == "strm") {
 		g.lateAllocas = append(g.lateAllocas, line)
 	} else {
 		g.out.WriteString(line + "\n")
@@ -3794,6 +3825,11 @@ func (g *generator) exprStmt(st willc.Record) error {
 		}
 		_, err = g.value(inner)
 		return err
+	}
+	if r, ok := g.recs[id]; ok && r.Kind == "call" {
+		if name, ok := g.predeclaredCallName(r); ok && name == "leak" {
+			return nil
+		}
 	}
 	if r, ok := g.recs[id]; ok && (r.Kind == "call" || r.Kind == "mcall") {
 		_, _, err := g.callExpr(r)

@@ -80,6 +80,77 @@ func (o *Ownership) Owns(t *ast.Type) bool {
 	return o.owns(t, nil, map[string]bool{})
 }
 
+// HasView reports whether a value of this type contains a read-only view. An
+// indexed owned element is a value transfer; an indexed view keeps its owner
+// borrowed.
+func (o *Ownership) HasView(t *ast.Type) bool {
+	if o == nil || t == nil {
+		return false
+	}
+	return o.hasView(t, nil, map[string]bool{})
+}
+
+func (o *Ownership) hasView(t *ast.Type, bindings map[string]*ast.Type, active map[string]bool) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ast.ViewType:
+		return true
+	case ast.ArrayType:
+		return o.hasView(t.Elem, bindings, active)
+	case ast.FuncType, ast.UnitType:
+		return false
+	case ast.NamedType:
+		if bound := bindings[t.Name]; bound != nil && len(t.Args) == 0 {
+			return o.hasView(bound, bindings, active)
+		}
+		if t.Name == "Array" || t.Name == "Option" || t.Name == "Result" {
+			for _, arg := range t.Args {
+				if o.hasView(arg, bindings, active) {
+					return true
+				}
+			}
+			return false
+		}
+		short := shortTypeName(t.Name)
+		if active[short] {
+			return false
+		}
+		if structs := o.structs[short]; len(structs) == 1 {
+			active[short] = true
+			defer delete(active, short)
+			local := bindings
+			if params := structs[0].TypeParams; len(params) > 0 && len(t.Args) == len(params) {
+				local = make(map[string]*ast.Type, len(bindings)+len(params))
+				for k, v := range bindings {
+					local[k] = v
+				}
+				for i, p := range params {
+					local[p.Name] = t.Args[i]
+				}
+			}
+			for _, f := range structs[0].Fields {
+				if o.hasView(f.Type, local, active) {
+					return true
+				}
+			}
+		}
+		if enums := o.enums[short]; len(enums) == 1 {
+			active[short] = true
+			defer delete(active, short)
+			for _, v := range enums[0].Variants {
+				for _, arg := range v.Args {
+					if o.hasView(arg, bindings, active) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
 // FieldType returns the declared type of one field after substituting the type
 // arguments of a generic instance. A field of an rc<T> receiver is reached
 // through the handle, so the receiver is unwrapped first. An unknown field or

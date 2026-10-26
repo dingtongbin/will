@@ -528,7 +528,7 @@ func ownsReleaseText(g *generator, text string) bool {
 		return false
 	}
 	for _, field := range info.texts {
-		if fieldTextNeedsClone(field) {
+		if g.fieldNeedsClone(field) {
 			return true
 		}
 	}

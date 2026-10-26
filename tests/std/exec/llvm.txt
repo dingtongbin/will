@@ -713,7 +713,9 @@ entry:
   %v.key = alloca { ptr, i64 }
   %v.value = alloca { ptr, i64 }
   %v.ret.143 = alloca { ptr, i64 }
+  %v.strm.143 = alloca { ptr, i64 }
   %v.ret.145 = alloca { ptr, i64 }
+  %v.strm.145 = alloca { ptr, i64 }
   %t381 = getelementptr inbounds { ptr, i64, i64 }, ptr %src, i32 0, i32 0
   %t382 = getelementptr inbounds { ptr, i64, i64 }, ptr %src, i32 0, i32 1
   %t383 = getelementptr inbounds { ptr, i64, i64 }, ptr %src, i32 0, i32 2
@@ -778,7 +780,6 @@ find.body.3:
   %t419 = load i64, ptr %t418
   %t420 = call ptr @willrt_alloc(i64 %t419)
   call void @memcpy(ptr %t420, ptr %t417, i64 %t419)
-  %v.strm.143 = alloca { ptr, i64 }
   %t421 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.143, i32 0, i32 0
   store ptr %t420, ptr %t421
   %t422 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.143, i32 0, i32 1
@@ -823,7 +824,6 @@ set.replace.4:
   %t447 = load i64, ptr %t446
   %t448 = call ptr @willrt_alloc(i64 %t447)
   call void @memcpy(ptr %t448, ptr %t445, i64 %t447)
-  %v.strm.145 = alloca { ptr, i64 }
   %t449 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.145, i32 0, i32 0
   store ptr %t448, ptr %t449
   %t450 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.145, i32 0, i32 1

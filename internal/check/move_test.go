@@ -27,6 +27,28 @@ func movesOwned(t *testing.T, src string) []diag.Diagnostic {
 	return MovesWithOwnership(f, own)
 }
 
+func TestMovePatternBindingIsABorrow(t *testing.T) {
+	src := `enum E {
+    Text(str)
+    Empty
+}
+
+func F(e: E) -> str {
+    return match e {
+        Text(s) => s
+        Empty => ""
+    }
+}
+`
+	ds := movesOwned(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+	if ds[0].Message != "a copy is required here and cannot be proven" {
+		t.Fatalf("message = %q", ds[0].Message)
+	}
+}
+
 func TestMoveOwningParameterNeedsClone(t *testing.T) {
 	src := `func F(s: str) -> str {
     return s

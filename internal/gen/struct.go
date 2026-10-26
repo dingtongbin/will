@@ -239,6 +239,13 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 			info.types = append(info.types, typ)
 			continue
 		}
+		if n, elem, ok := arrayTypeText(t); ok {
+			elemLLVM, elemOK := g.typeLLVMOf(elem)
+			if elemOK && elemLLVM != "" {
+				info.types = append(info.types, "["+strconv.Itoa(n)+" x "+elemLLVM+"]")
+				continue
+			}
+		}
 		if adt, ok := g.adtType(t); ok {
 			info.types = append(info.types, adt.llvm)
 			continue
@@ -361,6 +368,11 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 	}
 	if typ, ok := llvmTypeText(fieldText(r, "type")); ok {
 		return typ, nil
+	}
+	if n, elem, ok := arrayTypeText(fieldText(r, "type")); ok {
+		if elemLLVM, ok := g.typeLLVMOf(elem); ok && elemLLVM != "" {
+			return "[" + strconv.Itoa(n) + " x " + elemLLVM + "]", nil
+		}
 	}
 	if strings.HasPrefix(fieldText(r, "type"), "func(") {
 		return "{ ptr, ptr }", nil

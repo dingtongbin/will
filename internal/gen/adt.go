@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/will-lang/will/internal/willc"
@@ -65,6 +66,11 @@ func (g *generator) typeLLVMOf(text string) (string, bool) {
 	}
 	if typ, ok := llvmTypeText(text); ok {
 		return typ, true
+	}
+	if n, elem, ok := arrayTypeText(text); ok {
+		if elemLLVM, ok := g.typeLLVMOf(elem); ok && elemLLVM != "" {
+			return "[" + strconv.Itoa(n) + " x " + elemLLVM + "]", true
+		}
 	}
 	if text == "()" {
 		return "", true

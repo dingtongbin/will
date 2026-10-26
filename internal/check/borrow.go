@@ -13,7 +13,21 @@ import (
 // the name is O0006. Calls whose declaration is outside this file are left
 // alone because their parameter modes are not visible here.
 func Borrows(f *ast.File) []diag.Diagnostic {
+	return BorrowsWithOwnership(f, nil)
+}
+
+// BorrowsWithOwnership runs the borrow analysis with recursive type facts. A
+// nil set keeps the syntax-only fallback for callers that have no declarations.
+func BorrowsWithOwnership(f *ast.File, own *Ownership) []diag.Diagnostic {
+	return BorrowsWithEffects(f, own, nil)
+}
+
+// BorrowsWithEffects adds the cross-file mut summaries of one package. Without
+// them a call to a sibling file's mut method or mut parameter is invisible.
+func BorrowsWithEffects(f *ast.File, own *Ownership, effects *MutEffects) []diag.Diagnostic {
 	b := &borrower{
+		own:        own,
+		effects:    effects,
 		funcs:      map[string]*ast.FuncDecl{},
 		mutMethods: map[string]bool{},
 		locals:     map[string]bool{},
@@ -48,6 +62,8 @@ func Borrows(f *ast.File) []diag.Diagnostic {
 
 type borrower struct {
 	bag        diag.Bag
+	own        *Ownership
+	effects    *MutEffects
 	funcs      map[string]*ast.FuncDecl
 	mutMethods map[string]bool
 	locals     map[string]bool
@@ -124,7 +140,7 @@ func (b *borrower) addView(st ast.Stmt, borrowed map[string]source.Pos) {
 	if !ok || vd.Value == nil {
 		return
 	}
-	owner, pos, ok := viewOwner(vd.Value)
+	owner, pos, ok := b.viewOwner(vd.Value)
 	if !ok {
 		// A view copied from another view keeps the same owner. The alias can
 		// outlive the original name, so this block keeps the borrow until its
@@ -180,19 +196,51 @@ func (b *borrower) hasLocalView(owner string) bool {
 	return false
 }
 
-// viewOwner names the value a slice or index borrows from.
-func viewOwner(e ast.Expr) (string, source.Pos, bool) {
+// viewOwner names the value a slice or index borrows from. An index of an
+// owned element is a value transfer, not a borrow; only an element that is a
+// view (directly or inside a struct) keeps the owner borrowed.
+func (b *borrower) viewOwner(e ast.Expr) (string, source.Pos, bool) {
 	switch x := e.(type) {
 	case *ast.SliceExpr:
 		if name := rootName(x.Recv); name != "" {
 			return name, x.Pos(), true
 		}
 	case *ast.IndexExpr:
-		if name := rootName(x.Recv); name != "" {
+		name := rootName(x.Recv)
+		if name == "" {
+			return "", source.Pos{}, false
+		}
+		if b.own == nil {
 			return name, x.Pos(), true
 		}
+		elem := b.own.IndexType(b.exprType(x.Recv))
+		if elem != nil && !b.own.HasView(elem) {
+			return "", source.Pos{}, false
+		}
+		return name, x.Pos(), true
 	}
 	return "", source.Pos{}, false
+}
+
+// exprType returns the declared type of a name, field, or index expression.
+// The borrow pass only needs places it can name from declarations in the file.
+// It is also used to key the cross-file mut method summary by receiver type.
+func (b *borrower) exprType(e ast.Expr) *ast.Type {
+	switch x := e.(type) {
+	case *ast.NameExpr:
+		return b.localTypes[x.Name]
+	case *ast.FieldExpr:
+		if b.own == nil {
+			return nil
+		}
+		return b.own.FieldType(b.exprType(x.Recv), x.Name)
+	case *ast.IndexExpr:
+		if b.own == nil {
+			return nil
+		}
+		return b.own.IndexType(b.exprType(x.Recv))
+	}
+	return nil
 }
 
 func (b *borrower) stmt(st ast.Stmt, borrowed map[string]source.Pos) {
@@ -312,7 +360,7 @@ func (b *borrower) escape(e ast.Expr) {
 			return
 		}
 	}
-	owner, pos, ok := viewOwner(e)
+	owner, pos, ok := b.viewOwner(e)
 	if !ok || b.params[owner] || !b.locals[owner] {
 		return
 	}
@@ -335,7 +383,7 @@ func (b *borrower) store(e ast.Expr, borrowed map[string]source.Pos) {
 				"store a value, not a borrow")
 			continue
 		}
-		owner, pos, ok := viewOwner(f.Value)
+		owner, pos, ok := b.viewOwner(f.Value)
 		if !ok || b.params[owner] || !b.locals[owner] {
 			continue
 		}
@@ -777,7 +825,7 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 	case *ast.CallExpr:
 		b.call(x, borrowed)
 	case *ast.MethodCallExpr:
-		if b.mutMethods[x.Name] {
+		if b.methodMutates(x) {
 			root := rootName(x.Recv)
 			if _, ok := b.copied[root]; ok {
 				b.copyNotBorrow(x.Pos())
@@ -849,21 +897,35 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 	}
 }
 
+func (b *borrower) methodMutates(call *ast.MethodCallExpr) bool {
+	if b.mutMethods[call.Name] {
+		return true
+	}
+	return b.effects.MethodMut(b.exprType(call.Recv), call.Name)
+}
+
 func (b *borrower) call(call *ast.CallExpr, borrowed map[string]source.Pos) {
 	name, ok := call.Callee.(*ast.NameExpr)
 	if ok {
+		var modes []bool
 		if fn := b.funcs[name.Name]; fn != nil {
-			for i, arg := range call.Args {
-				if i >= len(fn.Params) {
-					break
-				}
-				if fn.Params[i].Mut {
-					root := rootName(arg.Expr)
-					if _, ok := b.copied[root]; ok {
-						b.copyNotBorrow(arg.Pos())
-					} else {
-						b.mutAt(arg.Pos(), root, borrowed)
-					}
+			modes = make([]bool, len(fn.Params))
+			for i, p := range fn.Params {
+				modes[i] = p.Mut
+			}
+		} else {
+			modes = b.effects.FuncMut(name.Name)
+		}
+		for i, arg := range call.Args {
+			if i >= len(modes) {
+				break
+			}
+			if modes[i] {
+				root := rootName(arg.Expr)
+				if _, ok := b.copied[root]; ok {
+					b.copyNotBorrow(arg.Pos())
+				} else {
+					b.mutAt(arg.Pos(), root, borrowed)
 				}
 			}
 		}

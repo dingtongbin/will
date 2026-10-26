@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
 )
@@ -15,6 +16,42 @@ func borrows(t *testing.T, src string) []diag.Diagnostic {
 		t.Fatalf("parse: %s", diag.FormatAll(ds))
 	}
 	return Borrows(f)
+}
+
+func TestBorrowSeesAMutMethodInAnotherFile(t *testing.T) {
+	decl, ds := parser.Parse("decl.will", []byte(`struct C {
+    n: i32
+}
+
+func (mut c: C) Bump() {
+    c.n += 1
+}
+
+struct S {
+    c: C
+}
+`))
+	if len(ds) != 0 {
+		t.Fatalf("parse decl: %s", diag.FormatAll(ds))
+	}
+	caller, ds := parser.Parse("caller.will", []byte(`func F(s: S) {
+    var x: C = s.c
+    x.Bump()
+}
+`))
+	if len(ds) != 0 {
+		t.Fatalf("parse caller: %s", diag.FormatAll(ds))
+	}
+	files := []*ast.File{decl, caller}
+	own := NewOwnership(files)
+	effects := NewMutEffects(files)
+	got := BorrowsWithEffects(caller, own, effects)
+	if len(got) != 1 || got[0].Code != diag.CodeCopyNotBorrow {
+		t.Fatalf("diagnostics = %s, want one O0008", diag.FormatAll(got))
+	}
+	if got[0].Message != "this is a copy, not a borrow" {
+		t.Fatalf("message = %q", got[0].Message)
+	}
 }
 
 func TestBorrowRejectsAMutCallWhileAViewIsLive(t *testing.T) {

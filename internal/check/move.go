@@ -62,6 +62,7 @@ type mover struct {
 	params     map[string]bool
 	variadic   map[string]bool
 	locals     map[string]bool
+	borrowed   map[string]bool
 	placeMoves []placeMove
 }
 
@@ -199,11 +200,10 @@ func (m *mover) copyAt(pos source.Pos) {
 }
 
 // borrowTransfer reports O0002 when a transfer would move an owning value out
-// of a parameter or receiver. Parameters are borrows, so the callee must make
-// an explicit clone; moving the caller's object would leave the caller with a
-// dangling owner.
+// of a parameter, receiver, or pattern binding. Those are borrows of storage
+// owned elsewhere, so the caller must make an explicit clone.
 func (m *mover) borrowTransfer(name string, pos source.Pos) bool {
-	if !m.params[name] || m.variadic[name] {
+	if (!m.params[name] && !m.borrowed[name]) || m.variadic[name] {
 		return false
 	}
 	if m.own != nil && m.own.IsTypeParam(m.types[name]) {
@@ -224,6 +224,7 @@ func (m *mover) funcDecl(fn *ast.FuncDecl) {
 	m.params = map[string]bool{}
 	m.variadic = map[string]bool{}
 	m.locals = map[string]bool{}
+	m.borrowed = map[string]bool{}
 	m.placeMoves = nil
 	params := map[string]bool{}
 	if fn.Recv != nil {
@@ -435,7 +436,7 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 		}
 	case *ast.AssignStmt:
 		m.exprEvents(s.Value, live, &ev)
-		m.placeCopy(s.Value, false)
+		m.placeCopy(s.Value, true)
 		discard := false
 		if target, ok := s.Target.(*ast.NameExpr); ok && target.Name == "_" {
 			discard = true
@@ -453,7 +454,7 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 		m.exprEvents(s.Call, live, &ev)
 	case *ast.ReturnStmt:
 		m.exprEvents(s.Value, live, &ev)
-		m.placeCopy(s.Value, false)
+		m.placeCopy(s.Value, true)
 		if b, ok := s.Value.(*ast.NameExpr); ok && live[b.Name] {
 			if m.borrowTransfer(b.Name, b.Pos()) {
 				flow.exits = true
@@ -496,10 +497,48 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 		flow.exits = thenFlow.exits && (s.Else != nil && elseFlow.exits)
 	case *ast.MatchExpr:
 		m.exprEvents(s.Subject, live, &ev)
+		subjectType := m.exprType(s.Subject)
 		for _, arm := range s.Arms {
-			m.exprEvents(arm.Guard, live, &ev)
-			_, armFlow := m.stmt(arm.Body, live)
+			binds := map[string]*ast.Type{}
+			m.patternBinds(arm.Pattern, subjectType, binds)
+			savedTypes := map[string]*ast.Type{}
+			savedBorrowed := map[string]bool{}
+			armLive := map[string]bool{}
+			for name, ok := range live {
+				armLive[name] = ok
+			}
+			for name, typ := range binds {
+				if name == "" || name == "_" {
+					continue
+				}
+				savedTypes[name] = m.types[name]
+				savedBorrowed[name] = m.borrowed[name]
+				m.types[name] = typ
+				m.borrowed[name] = true
+				if m.owns(typ) {
+					armLive[name] = true
+				}
+			}
+			m.exprEvents(arm.Guard, armLive, &ev)
+			_, armFlow := m.stmt(arm.Body, armLive)
+			if name, pos, ok := armValueName(arm.Body); ok {
+				if typ := binds[name]; m.owns(typ) {
+					m.copyAt(pos)
+				}
+			}
 			mergeFlow(&flow, armFlow, !armFlow.exits)
+			for name := range binds {
+				if old, ok := savedTypes[name]; ok {
+					m.types[name] = old
+				} else {
+					delete(m.types, name)
+				}
+				if savedBorrowed[name] {
+					m.borrowed[name] = true
+				} else {
+					delete(m.borrowed, name)
+				}
+			}
 		}
 	case *ast.DeadlineExpr:
 		m.exprEvents(s.Duration, live, &ev)
@@ -508,6 +547,97 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 		flow.exits = true
 	}
 	return ev, flow
+}
+
+// armValueName returns the name a match arm yields directly. Such a name is a
+// copy of the subject payload when it is an owning binding, so it needs Clone.
+func armValueName(st ast.Stmt) (string, source.Pos, bool) {
+	if b, ok := st.(*ast.Block); ok {
+		if len(b.Stmts) == 0 {
+			return "", source.Pos{}, false
+		}
+		return armValueName(b.Stmts[len(b.Stmts)-1])
+	}
+	es, ok := st.(*ast.ExprStmt)
+	if !ok {
+		return "", source.Pos{}, false
+	}
+	name, ok := es.Expr.(*ast.NameExpr)
+	if !ok {
+		return "", source.Pos{}, false
+	}
+	return name.Name, name.Pos(), true
+}
+
+// patternBinds records the type each name in one pattern receives. A pattern
+// binding is a read borrow of the subject; transferring an owned payload out
+// therefore needs an explicit Clone.
+func (m *mover) patternBinds(pat *ast.Pattern, subject *ast.Type, out map[string]*ast.Type) {
+	if pat == nil {
+		return
+	}
+	switch pat.Kind {
+	case ast.BindPattern:
+		if pat.Name != "" && pat.Name != "_" {
+			out[pat.Name] = subject
+		}
+	case ast.VariantPattern:
+		args := m.variantArgTypes(subject, pat.Name)
+		for i, child := range pat.Args {
+			var typ *ast.Type
+			if i < len(args) {
+				typ = args[i]
+			}
+			m.patternBinds(child, typ, out)
+		}
+	case ast.OrPattern:
+		if len(pat.Alts) != 0 {
+			m.patternBinds(pat.Alts[0], subject, out)
+		}
+	}
+}
+
+// variantArgTypes returns the payload types of one variant pattern. The
+// predeclared Option and Result variants are handled before user enums.
+func (m *mover) variantArgTypes(subject *ast.Type, variant string) []*ast.Type {
+	if subject == nil || subject.Kind != ast.NamedType || m.own == nil {
+		return nil
+	}
+	name := shortTypeName(subject.Name)
+	switch name {
+	case "Option":
+		if len(subject.Args) == 1 && variant != "None" {
+			return []*ast.Type{subject.Args[0]}
+		}
+		return nil
+	case "Result":
+		if len(subject.Args) == 2 {
+			switch variant {
+			case "Ok":
+				return []*ast.Type{subject.Args[0]}
+			case "Err":
+				return []*ast.Type{subject.Args[1]}
+			}
+		}
+		return nil
+	}
+	enums := m.own.enums[name]
+	if len(enums) != 1 {
+		return nil
+	}
+	decl := enums[0]
+	bindings := typeBindings(decl.TypeParams, subject.Args)
+	for _, v := range decl.Variants {
+		if v.Name != variant {
+			continue
+		}
+		out := make([]*ast.Type, len(v.Args))
+		for i, arg := range v.Args {
+			out[i] = substituteType(arg, bindings)
+		}
+		return out
+	}
+	return nil
 }
 
 // containerTransfer reports whether a method call moves an argument into
@@ -636,7 +766,7 @@ func (m *mover) args(args []*ast.CallArg, live map[string]bool, ev *events, tran
 			continue
 		}
 		if transfer {
-			m.placeCopy(a.Expr, false)
+			m.placeCopy(a.Expr, true)
 		}
 		m.exprEventsIn(a.Expr, live, ev, false)
 	}

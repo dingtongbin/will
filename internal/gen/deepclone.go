@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/will-lang/will/internal/willc"
@@ -38,8 +39,14 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 	if elem, ok := setTypeText(text); ok {
 		return g.cloneSetValue(src, dst, elem)
 	}
+	if info := g.enumInfoForText(text); info != nil {
+		return g.cloneEnumValue(src, dst, info)
+	}
 	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
 		return g.cloneADTValue(src, dst, kind, args)
+	}
+	if n, elem, ok := arrayTypeText(text); ok {
+		return g.cloneFixedArray(src, dst, elem, n)
 	}
 	if isFuncText(text) {
 		return g.cloneClosureValue(src, dst)
@@ -57,7 +64,7 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 		return nil
 	}
 	for i, fieldText := range info.texts {
-		if !fieldTextNeedsClone(fieldText) {
+		if !g.fieldNeedsClone(fieldText) {
 			continue
 		}
 		from := g.newTmp()
@@ -71,7 +78,20 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 	return nil
 }
 
-// fieldTextNeedsClone reports whether a field can own a buffer or a handle.
+// fieldNeedsClone reports whether a field needs the deep copy and release
+// paths. It widens the syntax-only check with the lowered declaration tables,
+// because an enum or a fixed array can own a payload that the field spelling
+// alone does not reveal.
+func (g *generator) fieldNeedsClone(text string) bool {
+	if fieldTextNeedsClone(text) {
+		return true
+	}
+	return ownsReleaseText(g, text)
+}
+
+// fieldTextNeedsClone reports whether a field can own a buffer or a handle from
+// the field spelling alone. The generator calls fieldNeedsClone so nested
+// structs, enums, and fixed arrays are included.
 func fieldTextNeedsClone(text string) bool {
 	if text == "str" || isRcText(text) || isWeakText(text) {
 		return true
@@ -263,6 +283,97 @@ func (g *generator) cloneEntries(src, dst, entry string, entrySize int, fields [
 	return g.storeContainerHeader(dst, newData, length)
 }
 
+// cloneFixedArray deep-copies every element of one inline [N]T. The array has
+// no buffer of its own, so the destination receives independent element
+// storage and the same length.
+func (g *generator) cloneFixedArray(src, dst, elem string, n int) error {
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
+		return fmt.Errorf("fixed array element %s is not lowered yet", elem)
+	}
+	typ := "[" + strconv.Itoa(n) + " x " + elemLLVM + "]"
+	g.copyValue(src, dst, typ)
+	if n == 0 || !ownsReleaseText(g, elem) {
+		return nil
+	}
+	for i := 0; i < n; i++ {
+		from := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+			from, typ, src, i)
+		to := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+			to, typ, dst, i)
+		if err := g.cloneOwnedValue(from, to, elem); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// cloneEnumValue copies the active variant and deep-copies its owning payload.
+// Only the active branch is visited, matching releaseEnumValue.
+func (g *generator) cloneEnumValue(src, dst string, info *enumInfo) error {
+	if info == nil {
+		return fmt.Errorf("enum is not lowered yet")
+	}
+	g.copyValue(src, dst, info.llvm)
+	if info.payloadIndex == 0 || len(info.variants) == 0 {
+		return nil
+	}
+	tag := g.load("i32", src)
+	for i := range info.variants {
+		v := &info.variants[i]
+		if len(v.args) == 0 || len(v.argLLVM) != len(v.args) {
+			continue
+		}
+		owning := false
+		for _, arg := range v.args {
+			if ownsReleaseText(g, arg) {
+				owning = true
+				break
+			}
+		}
+		if !owning {
+			continue
+		}
+		g.labels++
+		n := g.labels
+		keep := fmt.Sprintf("enum.clone.%d.%d", n, v.tag)
+		done := fmt.Sprintf("enum.clone.done.%d.%d", n, v.tag)
+		cond := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, %d\n", cond, tag, v.tag)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, keep, done)
+		g.out.WriteString(keep + ":\n")
+		from := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+			from, info.llvm, src, info.payloadIndex)
+		to := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+			to, info.llvm, dst, info.payloadIndex)
+		for j, arg := range v.args {
+			if !ownsReleaseText(g, arg) {
+				continue
+			}
+			argFrom := from
+			argTo := to
+			if len(v.args) > 1 {
+				argFrom = g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+					argFrom, v.payload, from, j)
+				argTo = g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+					argTo, v.payload, to, j)
+			}
+			if err := g.cloneOwnedValue(argFrom, argTo, arg); err != nil {
+				return err
+			}
+		}
+		fmt.Fprintf(g.out, "  br label %%%s\n", done)
+		g.out.WriteString(done + ":\n")
+	}
+	return nil
+}
+
 // storeContainerHeader writes a cloned container's three-word header.
 func (g *generator) storeContainerHeader(dst, data, length string) error {
 	dataField := g.newTmp()
@@ -372,6 +483,28 @@ func (g *generator) cloneValueCall(r willc.Record, text string) (string, string,
 		}
 		return value, text, nil
 	}
+	if info := g.enumInfoForText(text); info != nil {
+		src, _, err := g.place(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		slot := g.allocSlot(g.callSlots, "clone", r.ID, info.llvm)
+		if err := g.cloneOwnedValue(src, slot, text); err != nil {
+			return "", "", err
+		}
+		return g.load(info.llvm, slot), text, nil
+	}
+	if n, elem, ok := arrayTypeText(text); ok {
+		src, _, err := g.place(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		slot := g.allocSlot(g.callSlots, "clone", r.ID, typ)
+		if err := g.cloneFixedArray(src, slot, elem, n); err != nil {
+			return "", "", err
+		}
+		return g.load(typ, slot), text, nil
+	}
 	if !isStructType(typ) {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: Clone of %s is not lowered yet", r.ID, text)
 	}
@@ -395,8 +528,7 @@ func (g *generator) releaseOwnedValue(ptr, text string) error {
 		return nil
 	}
 	// An enum has a tag in front of every variant payload; walking it as a
-	// plain struct would release the wrong variant. Enum release is not lowered
-	// yet, so it must stay a no-op rather than corrupt the tag.
+	// plain struct would release the wrong variant.
 	if info := g.enumInfoForText(text); info != nil {
 		return g.releaseEnumValue(ptr, info)
 	}
@@ -449,7 +581,7 @@ func (g *generator) releaseOwnedValue(ptr, text string) error {
 		return nil
 	}
 	for i, fieldText := range info.texts {
-		if !fieldTextNeedsClone(fieldText) {
+		if !g.fieldNeedsClone(fieldText) {
 			continue
 		}
 		field := g.newTmp()

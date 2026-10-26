@@ -30,7 +30,7 @@ async func (mut r: Reader) AsyncDecode(mut rows: Array<Row>) -> Result<usize, Er
         var record: Option<Array<str>> = r.readRecord()?
         match record {
             Some(fields) => {
-                rows.Push(Row { fields: fields })
+                rows.Push(Row { fields: fields.Clone() })
                 added += 1usize
                 if r.pos >= r.buf.Len() {
                     break

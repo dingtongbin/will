@@ -932,6 +932,14 @@ func (c *checker) predeclaredCall(s *inferScope, name string, call *ast.CallExpr
 			c.inferExpr(s, a.Expr)
 		}
 		return nil
+	case "leak":
+		if len(call.Args) != 1 {
+			c.bag.Error(call.Pos(), diag.CodeBadArgument,
+				"wrong number of arguments", "leak takes one value")
+			return nil
+		}
+		c.inferExpr(s, call.Args[0].Expr)
+		return nil
 	case "Some":
 		return c.in.named("Option", []*Type{c.oneArg(s, call)})
 	case "None":
@@ -1228,7 +1236,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		return nil
 	}
 	if call.Name == "Clone" && len(call.Args) == 0 && !isGuardType(recv) {
-		if recv.Kind() == ViewKind || recv.Kind() == ArrayKind {
+		if recv.Kind() == ViewKind {
 			return nil
 		}
 		if recv.Kind() == NamedKind {
@@ -1239,9 +1247,6 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 				return nil
 			}
 			if _, isIface := c.env.ifaces[recv.Name()]; isIface {
-				return nil
-			}
-			if c.env.enums[recv.Name()] {
 				return nil
 			}
 		}

@@ -422,20 +422,8 @@ func (g *generator) arrayClone(r willc.Record, base, elem, elemLLVM string) (str
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", src, elemLLVM, data, at)
 	dst := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", dst, elemLLVM, newData, at)
-	if isAggregateType(elemLLVM) {
-		if g.needsReleaseText(elem) {
-			if err := g.retainValue(src, elem); err != nil {
-				return "", "", err
-			}
-		}
-		g.copyValue(src, dst, elemLLVM)
-	} else {
-		value := g.load(elemLLVM, src)
-		if isRcText(elem) {
-			g.needRcDecl = true
-			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-		}
-		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, dst)
+	if err := g.cloneOwnedValue(src, dst, elem); err != nil {
+		return "", "", err
 	}
 	next := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", next, at)
