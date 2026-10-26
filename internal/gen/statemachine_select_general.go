@@ -47,7 +47,11 @@ func (g *generator) generalSelectStmt(st willc.Record, void bool) (bool, error) 
 			if !ok || elemLLVM == "" {
 				return false, g.errf(arm.ID, "cannot translate node #%d: channel element %s is not lowered", arm.ID, elem)
 			}
-			g.selectOutSlots[arm.ID] = g.smAlloca(elemLLVM, "select.out."+strconv.Itoa(arm.ID))
+			out := g.smAlloca(elemLLVM, "select.out."+strconv.Itoa(arm.ID))
+			g.selectOutSlots[arm.ID] = out
+			g.selectOutText[arm.ID] = elem
+			g.selectOutLLVM[arm.ID] = elemLLVM
+			g.storeZero(out, elemLLVM)
 			outIndex[arm.ID] = 0
 		case "send":
 			valueID := refField(chanNode, "value")
@@ -121,6 +125,8 @@ func (g *generator) generalSelectStmt(st willc.Record, void bool) (bool, error) 
 				if err := g.selectBind(arm); err != nil {
 					return false, err
 				}
+			} else if err := g.releaseSelectOut(arm); err != nil {
+				return false, err
 			}
 		}
 		body, ok := g.recs[refField(arm, "body")]

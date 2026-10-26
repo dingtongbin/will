@@ -27,6 +27,8 @@ entry:
   %t70 = getelementptr i8, ptr %frame, i64 252
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
+  store i32 0, ptr %v.select.out.25
+  store i32 0, ptr %v.select.out.41
 sm.init:
   %t1 = sext i32 1 to i64
   %t2 = getelementptr i32, ptr null, i32 1
@@ -126,6 +128,7 @@ select.some.6:
   %t44 = getelementptr inbounds { i32, i32 }, ptr %v.select.bind.25, i32 0, i32 1
   %t45 = load i32, ptr %v.select.out.25
   store i32 %t45, ptr %t44
+  store i32 0, ptr %v.select.out.25
   br label %select.merge.6
 select.merge.6:
   %t46 = getelementptr inbounds { i32, i32 }, ptr %v.select.bind.25, i32 0, i32 0
@@ -159,6 +162,7 @@ select.some.8:
   %t57 = getelementptr inbounds { i32, i32 }, ptr %v.select.bind.41, i32 0, i32 1
   %t58 = load i32, ptr %v.select.out.41
   store i32 %t58, ptr %t57
+  store i32 0, ptr %v.select.out.41
   br label %select.merge.8
 select.merge.8:
   %t59 = getelementptr inbounds { i32, i32 }, ptr %v.select.bind.41, i32 0, i32 0

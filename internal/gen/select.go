@@ -51,7 +51,10 @@ func (g *generator) prepareSelect(r willc.Record) error {
 			}
 			out := "%v.select.out." + strconv.Itoa(arm.ID)
 			g.selectOutSlots[arm.ID] = out
+			g.selectOutText[arm.ID] = elem
+			g.selectOutLLVM[arm.ID] = elemLLVM
 			fmt.Fprintf(g.out, "  %s = alloca %s\n", out, elemLLVM)
+			g.storeZero(out, elemLLVM)
 			if bind := fieldText(arm, "bind"); bind != "" && bind != "_" {
 				info, ok := g.adtType("Option<" + elem + ">")
 				if !ok {
@@ -201,6 +204,8 @@ func (g *generator) selectStmt(r willc.Record, void bool) (bool, error) {
 				if err := g.selectBind(arm); err != nil {
 					return false, err
 				}
+			} else if err := g.releaseSelectOut(arm); err != nil {
+				return false, err
 			}
 		}
 		body, ok := g.recs[refField(arm, "body")]
@@ -368,6 +373,8 @@ func (g *generator) selectFastStmt(r willc.Record, arms []willc.Record, void boo
 				if err := g.selectBind(arm); err != nil {
 					return false, err
 				}
+			} else if err := g.releaseSelectOut(arm); err != nil {
+				return false, err
 			}
 		}
 		body, ok := g.recs[refField(arm, "body")]
@@ -393,6 +400,22 @@ func (g *generator) selectFastStmt(r willc.Record, arms []willc.Record, void boo
 
 // selectBind builds the Option<T> one receive arm binds, using the status the
 // runtime recorded for the arm it chose.
+// releaseSelectOut drops a received value that no bind took out of the arm
+// buffer. The slot is cleared so the next loop iteration starts empty.
+func (g *generator) releaseSelectOut(arm willc.Record) error {
+	out := g.selectOutSlots[arm.ID]
+	text := g.selectOutText[arm.ID]
+	typ := g.selectOutLLVM[arm.ID]
+	if out == "" || text == "" || typ == "" {
+		return nil
+	}
+	if err := g.releaseOwnedValue(out, text); err != nil {
+		return err
+	}
+	g.storeZero(out, typ)
+	return nil
+}
+
 func (g *generator) selectBind(arm willc.Record) error {
 	slot := g.selectBindSlots[arm.ID]
 	text := g.selectBindTypes[arm.ID]
@@ -426,6 +449,7 @@ func (g *generator) selectBind(arm willc.Record) error {
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
 	value := g.load(info.argLLVM[0], g.selectOutSlots[arm.ID])
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.argLLVM[0], value, payload)
+	g.storeZero(g.selectOutSlots[arm.ID], info.argLLVM[0])
 	fmt.Fprintf(g.out, "  br label %%%s\n", mergeLabel)
 	g.out.WriteString(mergeLabel + ":\n")
 	return nil

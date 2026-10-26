@@ -652,6 +652,8 @@ func (g *generator) use(d *docState) {
 	g.selectSlots = map[int]string{}
 	g.selectFastSlots = map[int]string{}
 	g.selectOutSlots = map[int]string{}
+	g.selectOutText = map[int]string{}
+	g.selectOutLLVM = map[int]string{}
 	g.selectBindSlots = map[int]string{}
 	g.selectBindTypes = map[int]string{}
 	g.selectFastStatusSlots = map[int]string{}
@@ -964,6 +966,8 @@ type generator struct {
 	// bodies; it is empty while a general select is emitted.
 	fastSelectStatus string
 	selectOutSlots   map[int]string
+	selectOutText    map[int]string
+	selectOutLLVM    map[int]string
 	selectBindSlots  map[int]string
 	selectBindTypes  map[int]string
 	// ifaceDecls holds every interface of the module by qualified name, so a

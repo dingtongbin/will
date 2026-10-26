@@ -286,6 +286,20 @@ func (g *generator) emitSelectMachineStep(info *selectMachineInfo) error {
 		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n",
 			field, info.frameType, index+2)
 		g.selectOutSlots[armID] = field
+		for _, arm := range info.arms {
+			if arm.ID != armID {
+				continue
+			}
+			chanNode := g.recs[refField(arm, "chan")]
+			if text, err := g.willTypeText(refField(chanNode, "chan")); err == nil {
+				if elem, ok := chanElemText(text); ok {
+					if elemLLVM, ok := g.typeLLVMOf(elem); ok {
+						g.selectOutText[armID] = elem
+						g.selectOutLLVM[armID] = elemLLVM
+					}
+				}
+			}
+		}
 	}
 	for chanID, index := range info.valueIndex {
 		field := g.newTmp()
@@ -362,6 +376,8 @@ func (g *generator) emitSelectMachineStep(info *selectMachineInfo) error {
 				if err := g.selectBind(arm); err != nil {
 					return err
 				}
+			} else if err := g.releaseSelectOut(arm); err != nil {
+				return err
 			}
 		}
 		body, ok := g.recs[refField(arm, "body")]
