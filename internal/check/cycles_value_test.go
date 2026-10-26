@@ -135,6 +135,41 @@ func Link(a: rc<Node>, b: rc<Node>) {
 	}
 }
 
+// TestValueCycleLinkerAcrossPackages checks the program-wide summaries: a call
+// through an imported package still closes the cycle at the call site.
+func TestValueCycleLinkerAcrossPackages(t *testing.T) {
+	lib, ds := parser.Parse("a.will", []byte(`struct Node {
+    next: rc<Node>
+}
+
+func Link(a: rc<Node>, b: rc<Node>) {
+    a.next = b
+    b.next = a
+}
+`))
+	if len(ds) != 0 {
+		t.Fatalf("parse a: %s", diag.FormatAll(ds))
+	}
+	caller, ds := parser.Parse("b.will", []byte(`import "example.com/a"
+
+func F() {
+    var x: rc<a.Node>
+    var y: rc<a.Node>
+    a.Link(x, y)
+}
+`))
+	if len(ds) != 0 {
+		t.Fatalf("parse b: %s", diag.FormatAll(ds))
+	}
+	ds = ValueCyclesProgram([]*ast.File{lib, caller}, map[*ast.File]string{
+		lib:    "example.com/a",
+		caller: "example.com/b",
+	})
+	if len(ds) != 1 || ds[0].Code != diag.CodeUnreleasableCycle {
+		t.Fatalf("diagnostics = %s, want one M0001", diag.FormatAll(ds))
+	}
+}
+
 func TestValueCycleWeakEdgeDoesNotClose(t *testing.T) {
 	src := `struct Node {
     next: weak<Node>

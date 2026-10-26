@@ -23,7 +23,9 @@ func ValueCycles(f *ast.File) []diag.Diagnostic {
 // called in another still closes at the call.
 func ValueCyclesWithFiles(files []*ast.File) []diag.Diagnostic {
 	own := NewOwnership(files)
-	summaries := collectParamCycles(files, own)
+	summaries := collectParamCycles(files, own, func(_ *ast.File, fn *ast.FuncDecl) string {
+		return fn.Name
+	})
 	var out []diag.Diagnostic
 	for _, f := range files {
 		if f == nil {
@@ -34,10 +36,89 @@ func ValueCyclesWithFiles(files []*ast.File) []diag.Diagnostic {
 			if !ok || fn.Body == nil {
 				continue
 			}
-			out = append(out, valueCyclesInFunc(fn, own, summaries)...)
+			out = append(out, valueCyclesInFunc(fn, own, summaries, f, func(_ *ast.File, callee ast.Expr) string {
+				if name, ok := callee.(*ast.NameExpr); ok {
+					return name.Name
+				}
+				return ""
+			})...)
 		}
 	}
 	return out
+}
+
+// ValueCyclesProgram runs the value-cycle pass over every package of one
+// program. pkgOf supplies the package path for each file, so a call through an
+// imported package resolves to the summary of the function that closes the
+// cycle instead of being ignored.
+func ValueCyclesProgram(files []*ast.File, pkgOf map[*ast.File]string) []diag.Diagnostic {
+	own := NewOwnership(files)
+	summaries := collectParamCycles(files, own, func(file *ast.File, fn *ast.FuncDecl) string {
+		return packagePath(pkgOf, file) + "." + fn.Name
+	})
+	var out []diag.Diagnostic
+	for _, f := range files {
+		if f == nil {
+			continue
+		}
+		for _, d := range f.Decls {
+			fn, ok := d.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				continue
+			}
+			pkg := packagePath(pkgOf, f)
+			out = append(out, valueCyclesInFunc(fn, own, summaries, f,
+				func(file *ast.File, callee ast.Expr) string {
+					return qualifiedCallee(file, callee, pkg)
+				})...)
+		}
+	}
+	return out
+}
+
+func packagePath(pkgOf map[*ast.File]string, file *ast.File) string {
+	if pkgOf == nil {
+		return ""
+	}
+	return pkgOf[file]
+}
+
+// qualifiedCallee names a free-function call from one file. A bare name is a
+// local function; a package-qualified name resolves through the file's imports.
+func qualifiedCallee(file *ast.File, callee ast.Expr, pkg string) string {
+	switch x := callee.(type) {
+	case *ast.NameExpr:
+		return pkg + "." + x.Name
+	case *ast.FieldExpr:
+		return qualifiedMethodCallee(file, x.Recv, x.Name)
+	}
+	return ""
+}
+
+func qualifiedMethodCallee(file *ast.File, recv ast.Expr, name string) string {
+	if file == nil {
+		return ""
+	}
+	base, ok := recv.(*ast.NameExpr)
+	if !ok {
+		return ""
+	}
+	for _, imp := range file.Imports {
+		if imp == nil || imp.C || imp.SideEffect {
+			continue
+		}
+		if importBase(imp.Path) == base.Name {
+			return imp.Path + "." + name
+		}
+	}
+	return ""
+}
+
+func importBase(path string) string {
+	if i := strings.LastIndexByte(path, '/'); i >= 0 {
+		return path[i+1:]
+	}
+	return path
 }
 
 type valueEdge struct {
@@ -59,7 +140,8 @@ type summaryEdge struct {
 // collectParamCycles records functions whose direct parameter assignments form
 // a cycle. The function body itself does not prove a value cycle; a call with
 // concrete objects does.
-func collectParamCycles(files []*ast.File, own *Ownership) map[string][]summaryEdge {
+func collectParamCycles(files []*ast.File, own *Ownership,
+	key func(*ast.File, *ast.FuncDecl) string) map[string][]summaryEdge {
 	out := map[string][]summaryEdge{}
 	for _, f := range files {
 		if f == nil {
@@ -223,7 +305,8 @@ func collectParamCycles(files []*ast.File, own *Ownership) map[string][]summaryE
 					}
 				}
 				if len(ce) != 0 {
-					out[fn.Name] = append(out[fn.Name], ce...)
+					name := key(f, fn)
+					out[name] = append(out[name], ce...)
 				}
 			}
 		}
@@ -231,7 +314,8 @@ func collectParamCycles(files []*ast.File, own *Ownership) map[string][]summaryE
 	return out
 }
 
-func valueCyclesInFunc(fn *ast.FuncDecl, own *Ownership, summaries map[string][]summaryEdge) []diag.Diagnostic {
+func valueCyclesInFunc(fn *ast.FuncDecl, own *Ownership, summaries map[string][]summaryEdge,
+	file *ast.File, key func(*ast.File, ast.Expr) string) []diag.Diagnostic {
 	types := map[string]*ast.Type{}
 	params := map[string]bool{}
 	for _, p := range fn.Params {
@@ -243,6 +327,21 @@ func valueCyclesInFunc(fn *ast.FuncDecl, own *Ownership, summaries map[string][]
 		params[fn.Recv.Name] = true
 	}
 	var edges []valueEdge
+	applySummary := func(summary string, args []*ast.CallArg, pos source.Pos) {
+		for _, se := range summaries[summary] {
+			if se.from >= len(args) || se.to >= len(args) {
+				continue
+			}
+			from, fok := args[se.from].Expr.(*ast.NameExpr)
+			to, tok := args[se.to].Expr.(*ast.NameExpr)
+			if !fok || !tok || types[from.Name] == nil || types[to.Name] == nil {
+				continue
+			}
+			edges = append(edges, valueEdge{
+				from: from.Name, to: to.Name, field: se.field, pos: pos,
+			})
+		}
+	}
 	var walkStmt func(ast.Stmt)
 	var walkExpr func(ast.Expr)
 	walkExpr = func(e ast.Expr) {
@@ -253,25 +352,16 @@ func valueCyclesInFunc(fn *ast.FuncDecl, own *Ownership, summaries map[string][]
 			for _, a := range x.Args {
 				walkExpr(a.Expr)
 			}
-			if callee, ok := x.Callee.(*ast.NameExpr); ok {
-				for _, se := range summaries[callee.Name] {
-					if se.from >= len(x.Args) || se.to >= len(x.Args) {
-						continue
-					}
-					from, fok := x.Args[se.from].Expr.(*ast.NameExpr)
-					to, tok := x.Args[se.to].Expr.(*ast.NameExpr)
-					if !fok || !tok || types[from.Name] == nil || types[to.Name] == nil {
-						continue
-					}
-					edges = append(edges, valueEdge{
-						from: from.Name, to: to.Name, field: se.field, pos: x.Pos(),
-					})
-				}
+			if key != nil {
+				applySummary(key(file, x.Callee), x.Args, x.Pos())
 			}
 		case *ast.MethodCallExpr:
 			walkExpr(x.Recv)
 			for _, a := range x.Args {
 				walkExpr(a.Expr)
+			}
+			if key != nil {
+				applySummary(qualifiedMethodCallee(file, x.Recv, x.Name), x.Args, x.Pos())
 			}
 		case *ast.FieldExpr:
 			walkExpr(x.Recv)

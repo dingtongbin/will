@@ -439,10 +439,12 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 	}
 	if !bag.HasErrors() {
 		var ownershipFiles []*ast.File
+		pkgOf := map[*ast.File]string{}
 		for _, p := range b.Packages {
 			for _, f := range p.Files {
 				if f.AST != nil {
 					ownershipFiles = append(ownershipFiles, f.AST)
+					pkgOf[f.AST] = p.Path
 				}
 			}
 		}
@@ -450,14 +452,8 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 		effects := check.NewMutEffects(ownershipFiles)
 		bag.AddAll(check.CyclesWithFiles(ownershipFiles))
 		bag.AddAll(check.RcSlots(ownershipFiles, ownership))
+		bag.AddAll(check.ValueCyclesProgram(ownershipFiles, pkgOf))
 		for _, p := range b.Packages {
-			var packageFiles []*ast.File
-			for _, f := range p.Files {
-				if f.AST != nil {
-					packageFiles = append(packageFiles, f.AST)
-				}
-			}
-			bag.AddAll(check.ValueCyclesWithFiles(packageFiles))
 			for _, f := range p.Files {
 				if f.AST != nil {
 					bag.AddAll(check.MovesWithOwnership(f.AST, ownership))
