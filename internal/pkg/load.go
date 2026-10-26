@@ -447,6 +447,7 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 			}
 		}
 		ownership := check.NewOwnership(ownershipFiles)
+		effects := check.NewMutEffects(ownershipFiles)
 		bag.AddAll(check.CyclesWithFiles(ownershipFiles))
 		for _, p := range b.Packages {
 			var packageFiles []*ast.File
@@ -459,7 +460,9 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 			for _, f := range p.Files {
 				if f.AST != nil {
 					bag.AddAll(check.MovesWithOwnership(f.AST, ownership))
-					bag.AddAll(check.Borrows(f.AST))
+					bag.AddAll(check.BorrowsWithEffects(f.AST, ownership, effects))
+					bag.AddAll(check.TopLevelWritesWithEffects(f.AST, effects))
+					bag.AddAll(check.Leaks(f.AST))
 					bag.AddAll(check.Concurrency(f.AST))
 					bag.AddAll(check.SuspendInParallel(f.AST))
 				}

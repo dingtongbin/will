@@ -1,6 +1,5 @@
 var Seed: i32 = 5
 
 func Next() -> i32 {
-    Seed += 1
-    return Seed
+    return Seed + 1
 }

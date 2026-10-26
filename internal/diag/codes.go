@@ -120,6 +120,7 @@ const (
 	CodeMoveWhileBorrowed = "O0006"
 	CodeContainerChanged  = "O0007"
 	CodeCopyNotBorrow     = "O0008"
+	CodeTopLevelWrite     = "O0009"
 
 	// Memory and release codes.
 	CodeUnreleasableCycle = "M0001"

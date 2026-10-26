@@ -38,6 +38,7 @@ func (e *emitter) emitBlock(b *ast.Block) int {
 	var last ast.Stmt
 	for i, s := range b.Stmts {
 		e.markMoves(s)
+		e.markLeaks(s)
 		switch {
 		case isEarlyExit(s):
 			owned := e.liveOwned(exitFloor(e, s))
@@ -78,6 +79,36 @@ func cloneTypes(in map[string]*ast.Type) map[string]*ast.Type {
 	return out
 }
 
+// markLeaks records the owner of leak(name). The release records for that
+// owner are suppressed everywhere, so the value is handed to the process.
+func (e *emitter) markLeaks(st ast.Stmt) {
+	es, ok := st.(*ast.ExprStmt)
+	if !ok {
+		return
+	}
+	call, ok := es.Expr.(*ast.CallExpr)
+	if !ok || len(call.Args) != 1 {
+		return
+	}
+	name, ok := call.Callee.(*ast.NameExpr)
+	if !ok || name.Name != "leak" {
+		return
+	}
+	arg, ok := call.Args[0].Expr.(*ast.NameExpr)
+	if !ok {
+		return
+	}
+	for i := len(e.scopes) - 1; i >= 0; i-- {
+		for j := len(e.scopes[i]) - 1; j >= 0; j-- {
+			vd, ok := e.scopes[i][j].(*ast.VarDecl)
+			if ok && vd.Name == arg.Name {
+				e.leaked[vd] = true
+				return
+			}
+		}
+	}
+}
+
 // exitFloor returns the first scope a break or continue leaves; everything
 // from there outward stays alive. A return leaves every scope.
 func exitFloor(e *emitter, s ast.Stmt) int {
@@ -111,7 +142,7 @@ func withoutReturnedName(owned []ast.Node, value ast.Expr) []ast.Node {
 // position, the block as parent.
 func (e *emitter) emitReleases(owned []ast.Node, pos ast.Node) {
 	for i := len(owned) - 1; i >= 0; i-- {
-		if e.released[owned[i]] || e.moved[owned[i]] {
+		if e.released[owned[i]] || e.moved[owned[i]] || e.leaked[owned[i]] {
 			continue
 		}
 		e.writeRelease(owned[i], pos)
@@ -122,7 +153,7 @@ func (e *emitter) emitReleases(owned []ast.Node, pos ast.Node) {
 // already been released. Multiple exits may still release a live owner; only
 // this early point is remembered permanently.
 func (e *emitter) emitRelease(owner ast.Node, pos ast.Node) {
-	if e.released[owner] || e.moved[owner] {
+	if e.released[owner] || e.moved[owner] || e.leaked[owner] {
 		return
 	}
 	e.writeRelease(owner, pos)

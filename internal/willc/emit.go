@@ -29,6 +29,7 @@ func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diag
 		aliases:     aliases,
 		released:    map[ast.Node]bool{},
 		moved:       map[ast.Node]bool{},
+		leaked:      map[ast.Node]bool{},
 		structs:     collectStructs(f),
 		external:    externalStructs,
 		funcs:       collectFuncs(f),
@@ -76,6 +77,7 @@ type emitter struct {
 	loops    []int
 	released map[ast.Node]bool
 	moved    map[ast.Node]bool
+	leaked   map[ast.Node]bool
 	// structs holds the local struct declarations, so a field read can be
 	// classified as a scalar/rc copy, a view, or an owning value.
 	structs map[string]*ast.StructDecl

@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/cache"
 	"github.com/will-lang/will/internal/check"
 	"github.com/will-lang/will/internal/diag"
@@ -329,8 +330,14 @@ func checkFile(bag *diag.Bag, file string, data []byte, freestanding bool) {
 	_, tds := types.CheckWithFull(f, res, others)
 	own.AddAll(tds)
 	if !own.HasErrors() {
-		own.AddAll(check.Moves(f))
-		own.AddAll(check.Borrows(f))
+		files := append([]*ast.File{}, others...)
+		files = append(files, f)
+		ownership := check.NewOwnership(files)
+		effects := check.NewMutEffects(files)
+		own.AddAll(check.MovesWithOwnership(f, ownership))
+		own.AddAll(check.BorrowsWithEffects(f, ownership, effects))
+		own.AddAll(check.TopLevelWritesWithEffects(f, effects))
+		own.AddAll(check.Leaks(f))
 		own.AddAll(check.Cycles(f))
 		own.AddAll(check.Concurrency(f))
 	}
