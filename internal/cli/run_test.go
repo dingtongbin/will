@@ -32,7 +32,7 @@ func main() -> i32 {
 }
 
 // TestRunEscapingClosureOwnsItsCapture checks that a closure returned from a
-// frame clones an owning capture; the source release must not free the value
+// frame moves an owning capture; the source release must not free the value
 // the caller's closure still reads.
 func TestRunEscapingClosureOwnsItsCapture(t *testing.T) {
 	if !hasClang() {
@@ -54,6 +54,69 @@ func main() -> i32 {
 	code, out, errOut := runCLI("run", path)
 	if code != 5 {
 		t.Fatalf("code = %d, want 5, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
+// TestRunTwoClosuresMoveSeparateOwners checks the clone-at-the-transfer rule:
+// each closure gets its own string and each environment releases it once.
+func TestRunTwoClosuresMoveSeparateOwners(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func Run() -> i32 {
+    var text: str = "hello" + "!"
+    var copy: str = text.Clone()
+    var f: func() -> usize = func() -> usize {
+        return text.Len()
+    }
+    var g: func() -> usize = func() -> usize {
+        return copy.Len()
+    }
+    return i32(f() + g())
+}
+
+func main() -> i32 {
+    return Run() - 12
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
+// TestRunNestedClosureMovesItsLocal checks that an inner closure created in an
+// outer closure moves a local of that immediate body and releases it once.
+func TestRunNestedClosureMovesItsLocal(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func Run() -> i32 {
+    var make: func() -> func() -> usize = func() -> func() -> usize {
+        var inner: str = "abc" + "d"
+        return func() -> usize {
+            return inner.Len()
+        }
+    }
+    var g: func() -> usize = make()
+    return i32(g()) - 4
+}
+
+func main() -> i32 {
+    return Run()
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
 	}
 	if errOut != "" {
 		t.Fatalf("stderr = %q, want no allocator rejection", errOut)

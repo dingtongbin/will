@@ -228,6 +228,7 @@ func (g *generator) emitSelectMachineStep(info *selectMachineInfo) error {
 	g.fnPos = fieldText(info.fn, "pos")
 	g.crossingPos = g.fnPos
 	g.currentLambda = 0
+	g.currentFunc = info.fn.ID
 	if err := g.emitAsyncConstructor(info.base); err != nil {
 		return err
 	}

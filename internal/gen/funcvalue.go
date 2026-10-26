@@ -420,10 +420,17 @@ func (g *generator) buildEnvironment(lam willc.Record, info *lambdaInfo) (string
 		if typ != cap.typ {
 			return "", g.errf(lam.ID, "cannot translate node #%d: capture %s has type %s, want %s", lam.ID, cap.name, typ, cap.typ)
 		}
+		if g.captureMoves(cap) {
+			// A direct local of the function being lowered is moved into the
+			// environment. The source is cleared so a later use is O0001 and
+			// the frame drop cannot release the same owner twice.
+			g.copyValue(src, field, cap.typ)
+			g.zeroOwnedSlot(src, cap.text)
+			continue
+		}
 		if ownsReleaseText(g, cap.text) {
-			// The environment can outlive the creating frame, so it owns an
-			// independent value. Moving the source here would break a second
-			// closure that captures the same name.
+			// A parameter, global, or outer environment is borrowed or shared;
+			// the closure owns an independent value instead.
 			if err := g.cloneOwnedValue(src, field, cap.text); err != nil {
 				return "", err
 			}
@@ -433,6 +440,26 @@ func (g *generator) buildEnvironment(lam willc.Record, info *lambdaInfo) (string
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, field)
 	}
 	return env, nil
+}
+
+// captureMoves reports whether a capture is a direct local of the function
+// currently being lowered. Parameters, globals, and captures from an outer
+// closure environment are borrowed or shared and keep the clone path.
+func (g *generator) captureMoves(cap captureInfo) bool {
+	if g.deferThunk || cap.param {
+		return false
+	}
+	if g.captureFields[cap.decl] != "" || g.slots[cap.decl] == "" {
+		return false
+	}
+	if g.enclosingFunc(cap.decl) != g.currentFunc {
+		return false
+	}
+	if isRcText(cap.text) || isWeakText(cap.text) || isChanText(cap.text) {
+		// Copyable handles keep their source; the environment retains a handle.
+		return false
+	}
+	return ownsReleaseText(g, cap.text)
 }
 
 // emitLambdaDrops writes one drop function per captured environment. The

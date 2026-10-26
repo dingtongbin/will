@@ -150,6 +150,7 @@ func (g *generator) emitGeneralStep(fnID int) error {
 	g.fnPos = fieldText(fn, "pos")
 	g.crossingPos = g.fnPos
 	g.currentLambda = 0
+	g.currentFunc = fnID
 
 	fmt.Fprintf(g.out, "  %s = alloca i32\n", g.smStateSlot)
 

@@ -627,6 +627,7 @@ func (g *generator) use(d *docState) {
 	g.captureFields = map[int]string{}
 	g.captureSpills = map[int]string{}
 	g.currentLambda = 0
+	g.currentFunc = 0
 	g.pendingThunks = nil
 	g.spawnNames = map[int]string{}
 	g.pendingSpawns = nil
@@ -909,6 +910,10 @@ type generator struct {
 	captureFields map[int]string
 	captureSpills map[int]string
 	currentLambda int
+	// currentFunc is the function or lambda record whose body is being
+	// lowered. A closure may move a local of this function, while a capture
+	// from an outer function or lambda environment is copied.
+	currentFunc int
 	// pendingThunks are the wrappers that adapt a named function to the
 	// closure calling convention, and thunkEmitted dedupes them by symbol.
 	pendingThunks []thunkRequest
@@ -1628,6 +1633,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	g.smGeneral = false
 	g.fnSymbol = g.cur.funcs[fn.ID]
 	g.fnPos = fieldText(fn, "pos")
+	g.currentFunc = fn.ID
 	recv := g.receiverOf(fn.ID)
 	result := ""
 	g.fnResultText = ""
@@ -1827,6 +1833,7 @@ func (g *generator) voidFunc(fn willc.Record, name string, sig []string) error {
 	g.fnResultText = ""
 	g.fnSymbol = g.cur.funcs[fn.ID]
 	g.fnPos = fieldText(fn, "pos")
+	g.currentFunc = fn.ID
 	g.labels = 0
 	g.slots = map[int]string{}
 	g.slotNames = map[string]int{}

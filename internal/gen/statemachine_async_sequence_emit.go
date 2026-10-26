@@ -51,6 +51,7 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 	g.fnPos = fieldText(info.fn, "pos")
 	g.crossingPos = g.fnPos
 	g.currentLambda = 0
+	g.currentFunc = info.fn.ID
 	if err := g.emitAsyncConstructor(info); err != nil {
 		return err
 	}

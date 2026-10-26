@@ -64,6 +64,14 @@ type mover struct {
 	locals     map[string]bool
 	borrowed   map[string]bool
 	placeMoves []placeMove
+	// lambdaDepth counts enclosing lambda bodies. A direct closure created in
+	// the original function moves a local capture; a nested closure may move a
+	// local declared in its immediate lambda body but copies from an outer
+	// environment.
+	lambdaDepth int
+	// lambdaLocals is one declared-name set per open lambda body. A nested
+	// closure may move only a name from the innermost set.
+	lambdaLocals []map[string]bool
 }
 
 // placeMove is a field or index initializer that may move the place out when
@@ -228,6 +236,8 @@ func (m *mover) funcDecl(fn *ast.FuncDecl) {
 	m.locals = map[string]bool{}
 	m.borrowed = map[string]bool{}
 	m.placeMoves = nil
+	m.lambdaDepth = 0
+	m.lambdaLocals = nil
 	params := map[string]bool{}
 	if fn.Recv != nil {
 		m.types[fn.Recv.Name] = fn.Recv.Type
@@ -316,6 +326,9 @@ func (m *mover) block(b *ast.Block, inLoop bool, inherited map[string]bool) bloc
 				}
 				if vd.Name != "" && vd.Name != "_" {
 					m.locals[vd.Name] = true
+					if m.lambdaDepth > 0 && len(m.lambdaLocals) > 0 {
+						m.lambdaLocals[len(m.lambdaLocals)-1][vd.Name] = true
+					}
 				}
 				if m.owns(vd.Type) && vd.Name != "" && vd.Name != "_" {
 					live[vd.Name] = true
@@ -732,7 +745,7 @@ func (m *mover) exprEventsIn(e ast.Expr, live map[string]bool, ev *events, trans
 		m.exprEventsIn(x.Lo, live, ev, false)
 		m.exprEventsIn(x.Hi, live, ev, false)
 	case *ast.LambdaExpr:
-		m.block(x.Body, false, live)
+		m.lambdaExpr(x, live, ev)
 	case *ast.TryExpr:
 		m.exprEventsIn(x.X, live, ev, false)
 	case *ast.AwaitExpr:
