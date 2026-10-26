@@ -40,6 +40,11 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 			if !direct && !viewUse {
 				continue
 			}
+			if em.viewCallCreates(stmt, views, vd.Name) {
+				last = j
+				lastNode = lastNodeInStmt(stmt, vd.Name)
+				continue
+			}
 			if containsViewInNested(stmt, views) {
 				safe = false
 				break
@@ -561,8 +566,43 @@ func (em *emitter) blockViews(b *ast.Block, owner string, types map[string]*ast.
 				out[d.Name] = true
 			}
 		}
+		if call, ok := d.Value.(*ast.CallExpr); ok {
+			if callee, ok := call.Callee.(*ast.NameExpr); ok {
+				idx, ok := em.viewReturns[callee.Name]
+				if ok && idx < len(call.Args) && exprRootName(call.Args[idx].Expr) == owner {
+					out[d.Name] = true
+				}
+			}
+		}
 	}
 	return out
+}
+
+// viewCallCreates reports whether stmt declares the tracked view name from a
+// local function that returns a view of the candidate owner parameter. The
+// function summary was built without trusting unknown callees.
+func (em *emitter) viewCallCreates(stmt ast.Stmt, views map[string]bool, owner string) bool {
+	vs, ok := stmt.(*ast.VarStmt)
+	if !ok {
+		return false
+	}
+	d, ok := vs.Decl.(*ast.VarDecl)
+	if !ok || d.Type == nil || d.Type.Kind != ast.ViewType || !views[d.Name] {
+		return false
+	}
+	call, ok := d.Value.(*ast.CallExpr)
+	if !ok {
+		return false
+	}
+	callee, ok := call.Callee.(*ast.NameExpr)
+	if !ok {
+		return false
+	}
+	idx, ok := em.viewReturns[callee.Name]
+	if !ok || idx >= len(call.Args) || exprRootName(call.Args[idx].Expr) != owner {
+		return false
+	}
+	return true
 }
 
 func viewRootOwner(e ast.Expr) string {

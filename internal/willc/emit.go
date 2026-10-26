@@ -20,19 +20,20 @@ func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diag
 		externalStructs = external[0]
 	}
 	e := &emitter{
-		ids:        map[ast.Node]int{},
-		refs:       res.Refs,
-		modulePath: modulePath,
-		litTypes:   litTypes,
-		callTypes:  callTypes,
-		nameTypes:  nameTypes,
-		aliases:    aliases,
-		released:   map[ast.Node]bool{},
-		moved:      map[ast.Node]bool{},
-		structs:    collectStructs(f),
-		external:   externalStructs,
-		funcs:      collectFuncs(f),
-		localTypes: map[string]*ast.Type{},
+		ids:         map[ast.Node]int{},
+		refs:        res.Refs,
+		modulePath:  modulePath,
+		litTypes:    litTypes,
+		callTypes:   callTypes,
+		nameTypes:   nameTypes,
+		aliases:     aliases,
+		released:    map[ast.Node]bool{},
+		moved:       map[ast.Node]bool{},
+		structs:     collectStructs(f),
+		external:    externalStructs,
+		funcs:       collectFuncs(f),
+		viewReturns: collectViewReturns(f),
+		localTypes:  map[string]*ast.Type{},
 	}
 	root := e.add("module", f)
 	e.text(root, "path", modulePath)
@@ -85,8 +86,78 @@ type emitter struct {
 	// funcs holds the local free functions. A scalar-returning local call with
 	// no callback parameter cannot hand back a borrow of its argument.
 	funcs map[string]*ast.FuncDecl
+	// viewReturns maps a local function to the parameter index whose slice it
+	// returns as a view. It lets a call result participate in the same view
+	// lifetime as a direct slice.
+	viewReturns map[string]int
 	// localTypes is the type of every local and parameter currently visible.
 	localTypes map[string]*ast.Type
+}
+
+// collectViewReturns records local functions that return a view of one named
+// parameter. A function with a return from a local owner, an unknown
+// expression, or a different parameter stays out of the table and therefore
+// keeps the caller's owner pinned.
+func collectViewReturns(f *ast.File) map[string]int {
+	out := map[string]int{}
+	if f == nil {
+		return out
+	}
+	for _, d := range f.Decls {
+		fn, ok := d.(*ast.FuncDecl)
+		if !ok || fn.Recv != nil || fn.Body == nil || fn.Result == nil || fn.Result.Kind != ast.ViewType {
+			continue
+		}
+		index := map[string]int{}
+		for i, p := range fn.Params {
+			index[p.Name] = i
+		}
+		owner := -1
+		good := true
+		var walkStmt func(ast.Stmt)
+		walkStmt = func(st ast.Stmt) {
+			switch s := st.(type) {
+			case *ast.Block:
+				for _, inner := range s.Stmts {
+					walkStmt(inner)
+				}
+			case *ast.ReturnStmt:
+				root := viewRootOwner(s.Value)
+				i, ok := index[root]
+				if !ok || (owner != -1 && owner != i) {
+					good = false
+					return
+				}
+				owner = i
+			case *ast.ForStmt:
+				walkStmt(s.Body)
+			case *ast.RegionStmt:
+				walkStmt(s.Body)
+			case *ast.ParallelStmt:
+				walkStmt(s.Body)
+			case *ast.IfExpr:
+				walkStmt(s.Then)
+				if s.Else != nil {
+					walkStmt(s.Else)
+				}
+			case *ast.MatchExpr:
+				for _, arm := range s.Arms {
+					walkStmt(arm.Body)
+				}
+			case *ast.SelectStmt:
+				for _, arm := range s.Arms {
+					walkStmt(arm.Body)
+				}
+			case *ast.DeadlineExpr:
+				walkStmt(s.Body)
+			}
+		}
+		walkStmt(fn.Body)
+		if good && owner >= 0 {
+			out[fn.Name] = owner
+		}
+	}
+	return out
 }
 
 func collectFuncs(f *ast.File) map[string]*ast.FuncDecl {
