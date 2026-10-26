@@ -339,6 +339,11 @@ func (em *emitter) safeNonRcExpr(e ast.Expr, name string, typ *ast.Type, types m
 			}
 		}
 		return true
+	case *ast.CallExpr:
+		if !containsNameInExpr(x, name) {
+			return true
+		}
+		return em.safeLocalCall(x, name, typ, types)
 	case *ast.BinaryExpr:
 		if !containsNameInExpr(x.L, name) && !containsNameInExpr(x.R, name) {
 			return true
@@ -348,6 +353,45 @@ func (em *emitter) safeNonRcExpr(e ast.Expr, name string, typ *ast.Type, types m
 		return em.safeNonRcExpr(x.X, name, typ, types)
 	}
 	return !containsNameInExpr(e, name)
+}
+
+// safeLocalCall admits a call to a local free function that returns a scalar
+// or nothing and takes no callback or variadic parameter. Such a call borrows
+// its arguments only for the duration of the call. A returned view, aggregate,
+// callback, generic, or imported callee still pins the owner.
+func (em *emitter) safeLocalCall(call *ast.CallExpr, name string, typ *ast.Type, types map[string]*ast.Type) bool {
+	callee, ok := call.Callee.(*ast.NameExpr)
+	if !ok {
+		return false
+	}
+	fn := em.funcs[callee.Name]
+	if fn == nil || fn.Body == nil || len(fn.TypeParams) != 0 {
+		return false
+	}
+	if fn.Result != nil {
+		if fn.Result.Kind == ast.ScalarType {
+			if fn.Result.Name == "str" {
+				return false
+			}
+		} else if fn.Result.Kind != ast.UnitType {
+			return false
+		}
+	}
+	for _, p := range fn.Params {
+		if p.Variadic || (p.Type != nil && p.Type.Kind == ast.FuncType) {
+			return false
+		}
+	}
+	for _, a := range call.Args {
+		if !containsNameInExpr(a.Expr, name) {
+			continue
+		}
+		if n, ok := a.Expr.(*ast.NameExpr); ok && n.Name == name {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 // fieldReadSafe accepts a field chain rooted at the owner when every read is a

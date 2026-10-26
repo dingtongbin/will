@@ -31,6 +31,7 @@ func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diag
 		moved:      map[ast.Node]bool{},
 		structs:    collectStructs(f),
 		external:   externalStructs,
+		funcs:      collectFuncs(f),
 		localTypes: map[string]*ast.Type{},
 	}
 	root := e.add("module", f)
@@ -81,8 +82,24 @@ type emitter struct {
 	// their short and package-qualified names. Imported fields need the same
 	// ownership classification as local ones.
 	external map[string]*ast.StructDecl
+	// funcs holds the local free functions. A scalar-returning local call with
+	// no callback parameter cannot hand back a borrow of its argument.
+	funcs map[string]*ast.FuncDecl
 	// localTypes is the type of every local and parameter currently visible.
 	localTypes map[string]*ast.Type
+}
+
+func collectFuncs(f *ast.File) map[string]*ast.FuncDecl {
+	out := map[string]*ast.FuncDecl{}
+	if f == nil {
+		return out
+	}
+	for _, d := range f.Decls {
+		if fn, ok := d.(*ast.FuncDecl); ok && fn.Recv == nil {
+			out[fn.Name] = fn
+		}
+	}
+	return out
 }
 
 func collectStructs(f *ast.File) map[string]*ast.StructDecl {
