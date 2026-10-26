@@ -31,6 +31,60 @@ func main() -> i32 {
 	}
 }
 
+// TestRunTryMovesThePayload checks that ? copies the payload out, zeros the
+// source Option, and lets the caller release the payload once.
+func TestRunTryMovesThePayload(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func Take() -> Option<str> {
+    var o: Option<str> = Some("abc".Clone())
+    var s: str = o?
+    return Some(s)
+}
+
+func main() -> i32 {
+    return match Take() {
+        Some(s) => i32(s.Len())
+        None => 0
+    }
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 3 {
+		t.Fatalf("code = %d, want 3, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
+// TestRunUnwrapMovesThePayload checks the same source-zeroing rule for !.
+func TestRunUnwrapMovesThePayload(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func Take() -> i32 {
+    var o: Option<str> = Some("abcd".Clone())
+    var s: str = o!
+    return i32(s.Len())
+}
+
+func main() -> i32 {
+    return Take()
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 4 {
+		t.Fatalf("code = %d, want 4, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunFieldMoveZeroesTheSourceField checks that a field moved into a local
 // is not also released as part of the dead root struct.
 func TestRunFieldMoveZeroesTheSourceField(t *testing.T) {

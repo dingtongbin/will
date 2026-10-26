@@ -5916,373 +5916,385 @@ unwrap.err.1:
   unreachable
 unwrap.ok.1:
   %t19 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.14, i32 0, i32 2
+  %v.unwrap.out.13 = alloca %"struct.std/time.Timezone"
   %t20 = load %"struct.std/time.Timezone", ptr %t19
-  store %"struct.std/time.Timezone" %t20, ptr %v.sh
-  %t21 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.t, ptr %v.sh)
-  store %"struct.std/time.Instant" %t21, ptr %v.ret.21
-  %t22 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.21)
-  store { ptr, i64 } %t22, ptr %v.ret.19
-  %t23 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.19, i32 0, i32 0
-  %t24 = load ptr, ptr %t23
-  %t25 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.19, i32 0, i32 1
-  %t26 = load i64, ptr %t25
-  %t27 = getelementptr inbounds { ptr, i64 }, ptr %v.str.25, i32 0, i32 0
-  store ptr @.bytes.64, ptr %t27
-  %t28 = getelementptr inbounds { ptr, i64 }, ptr %v.str.25, i32 0, i32 1
-  store i64 25, ptr %t28
-  %t29 = getelementptr inbounds { ptr, i64 }, ptr %v.str.25, i32 0, i32 0
-  %t30 = load ptr, ptr %t29
-  %t31 = getelementptr inbounds { ptr, i64 }, ptr %v.str.25, i32 0, i32 1
-  %t32 = load i64, ptr %t31
-  %t33 = icmp ult i64 %t26, %t32
-  %t34 = select i1 %t33, i64 %t26, i64 %t32
-  %t35 = call i32 @memcmp(ptr %t24, ptr %t30, i64 %t34)
-  %t36 = icmp eq i32 %t35, 0
-  %t37 = icmp eq i64 %t26, %t32
-  %t38 = and i1 %t36, %t37
-  %t39 = xor i1 %t38, true
-  br i1 %t39, label %if.then.2, label %if.end.2
+  store %"struct.std/time.Timezone" %t20, ptr %v.unwrap.out.13
+  %t21 = load %"struct.std/time.Timezone", ptr %v.unwrap.out.13
+  store %"struct.std/time.Timezone" %t21, ptr %v.sh
+  %t22 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.t, ptr %v.sh)
+  store %"struct.std/time.Instant" %t22, ptr %v.ret.21
+  %t23 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.21)
+  store { ptr, i64 } %t23, ptr %v.ret.19
+  %t24 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.19, i32 0, i32 0
+  %t25 = load ptr, ptr %t24
+  %t26 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.19, i32 0, i32 1
+  %t27 = load i64, ptr %t26
+  %t28 = getelementptr inbounds { ptr, i64 }, ptr %v.str.25, i32 0, i32 0
+  store ptr @.bytes.64, ptr %t28
+  %t29 = getelementptr inbounds { ptr, i64 }, ptr %v.str.25, i32 0, i32 1
+  store i64 25, ptr %t29
+  %t30 = getelementptr inbounds { ptr, i64 }, ptr %v.str.25, i32 0, i32 0
+  %t31 = load ptr, ptr %t30
+  %t32 = getelementptr inbounds { ptr, i64 }, ptr %v.str.25, i32 0, i32 1
+  %t33 = load i64, ptr %t32
+  %t34 = icmp ult i64 %t27, %t33
+  %t35 = select i1 %t34, i64 %t27, i64 %t33
+  %t36 = call i32 @memcmp(ptr %t25, ptr %t31, i64 %t35)
+  %t37 = icmp eq i32 %t36, 0
+  %t38 = icmp eq i64 %t27, %t33
+  %t39 = and i1 %t37, %t38
+  %t40 = xor i1 %t39, true
+  br i1 %t40, label %if.then.2, label %if.end.2
 if.then.2:
   ret i32 1
 if.end.2:
-  %t40 = getelementptr inbounds { ptr, i64 }, ptr %v.str.36, i32 0, i32 0
-  store ptr @.bytes.65, ptr %t40
-  %t41 = getelementptr inbounds { ptr, i64 }, ptr %v.str.36, i32 0, i32 1
-  store i64 16, ptr %t41
-  %t42 = call { i32, [4 x i8], %interface.Error } @"std/time.Load"(ptr %v.str.36)
-  store { i32, [4 x i8], %interface.Error } %t42, ptr %v.ret.34
-  %t43 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.34, i32 0, i32 0
-  %t44 = load i32, ptr %t43
-  %t45 = icmp eq i32 %t44, 1
-  br i1 %t45, label %unwrap.err.3, label %unwrap.ok.3
+  %t41 = getelementptr inbounds { ptr, i64 }, ptr %v.str.36, i32 0, i32 0
+  store ptr @.bytes.65, ptr %t41
+  %t42 = getelementptr inbounds { ptr, i64 }, ptr %v.str.36, i32 0, i32 1
+  store i64 16, ptr %t42
+  %t43 = call { i32, [4 x i8], %interface.Error } @"std/time.Load"(ptr %v.str.36)
+  store { i32, [4 x i8], %interface.Error } %t43, ptr %v.ret.34
+  %t44 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.34, i32 0, i32 0
+  %t45 = load i32, ptr %t44
+  %t46 = icmp eq i32 %t45, 1
+  br i1 %t46, label %unwrap.err.3, label %unwrap.ok.3
 unwrap.err.3:
-  %t46 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.34, i32 0, i32 2
-  %t47 = getelementptr inbounds %interface.Error, ptr %t46, i32 0, i32 0
-  %t48 = getelementptr inbounds %interface.Error, ptr %t46, i32 0, i32 1
-  %t49 = load ptr, ptr %t47
+  %t47 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.34, i32 0, i32 2
+  %t48 = getelementptr inbounds %interface.Error, ptr %t47, i32 0, i32 0
+  %t49 = getelementptr inbounds %interface.Error, ptr %t47, i32 0, i32 1
   %t50 = load ptr, ptr %t48
-  %t51 = getelementptr inbounds ptr, ptr %t50, i32 0
-  %t52 = load ptr, ptr %t51
-  %t53 = call { ptr, i64 } %t52(ptr %t49)
-  %t54 = extractvalue { ptr, i64 } %t53, 0
-  %t55 = extractvalue { ptr, i64 } %t53, 1
-  call void @willrt_panic_n(ptr %t54, i64 %t55, ptr null, ptr null)
+  %t51 = load ptr, ptr %t49
+  %t52 = getelementptr inbounds ptr, ptr %t51, i32 0
+  %t53 = load ptr, ptr %t52
+  %t54 = call { ptr, i64 } %t53(ptr %t50)
+  %t55 = extractvalue { ptr, i64 } %t54, 0
+  %t56 = extractvalue { ptr, i64 } %t54, 1
+  call void @willrt_panic_n(ptr %t55, i64 %t56, ptr null, ptr null)
   unreachable
 unwrap.ok.3:
-  %t56 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.34, i32 0, i32 2
-  %t57 = load %"struct.std/time.Timezone", ptr %t56
-  store %"struct.std/time.Timezone" %t57, ptr %v.ny
-  %t58 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.t, ptr %v.ny)
-  store %"struct.std/time.Instant" %t58, ptr %v.ret.41
-  %t59 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.41)
-  store { ptr, i64 } %t59, ptr %v.ret.39
-  %t60 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.39, i32 0, i32 0
-  %t61 = load ptr, ptr %t60
-  %t62 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.39, i32 0, i32 1
-  %t63 = load i64, ptr %t62
-  %t64 = getelementptr inbounds { ptr, i64 }, ptr %v.str.45, i32 0, i32 0
-  store ptr @.bytes.66, ptr %t64
-  %t65 = getelementptr inbounds { ptr, i64 }, ptr %v.str.45, i32 0, i32 1
-  store i64 25, ptr %t65
+  %t57 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.34, i32 0, i32 2
+  %v.unwrap.out.33 = alloca %"struct.std/time.Timezone"
+  %t58 = load %"struct.std/time.Timezone", ptr %t57
+  store %"struct.std/time.Timezone" %t58, ptr %v.unwrap.out.33
+  %t59 = load %"struct.std/time.Timezone", ptr %v.unwrap.out.33
+  store %"struct.std/time.Timezone" %t59, ptr %v.ny
+  %t60 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.t, ptr %v.ny)
+  store %"struct.std/time.Instant" %t60, ptr %v.ret.41
+  %t61 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.41)
+  store { ptr, i64 } %t61, ptr %v.ret.39
+  %t62 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.39, i32 0, i32 0
+  %t63 = load ptr, ptr %t62
+  %t64 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.39, i32 0, i32 1
+  %t65 = load i64, ptr %t64
   %t66 = getelementptr inbounds { ptr, i64 }, ptr %v.str.45, i32 0, i32 0
-  %t67 = load ptr, ptr %t66
-  %t68 = getelementptr inbounds { ptr, i64 }, ptr %v.str.45, i32 0, i32 1
-  %t69 = load i64, ptr %t68
-  %t70 = icmp ult i64 %t63, %t69
-  %t71 = select i1 %t70, i64 %t63, i64 %t69
-  %t72 = call i32 @memcmp(ptr %t61, ptr %t67, i64 %t71)
-  %t73 = icmp eq i32 %t72, 0
-  %t74 = icmp eq i64 %t63, %t69
-  %t75 = and i1 %t73, %t74
-  %t76 = xor i1 %t75, true
-  br i1 %t76, label %if.then.4, label %if.end.4
+  store ptr @.bytes.66, ptr %t66
+  %t67 = getelementptr inbounds { ptr, i64 }, ptr %v.str.45, i32 0, i32 1
+  store i64 25, ptr %t67
+  %t68 = getelementptr inbounds { ptr, i64 }, ptr %v.str.45, i32 0, i32 0
+  %t69 = load ptr, ptr %t68
+  %t70 = getelementptr inbounds { ptr, i64 }, ptr %v.str.45, i32 0, i32 1
+  %t71 = load i64, ptr %t70
+  %t72 = icmp ult i64 %t65, %t71
+  %t73 = select i1 %t72, i64 %t65, i64 %t71
+  %t74 = call i32 @memcmp(ptr %t63, ptr %t69, i64 %t73)
+  %t75 = icmp eq i32 %t74, 0
+  %t76 = icmp eq i64 %t65, %t71
+  %t77 = and i1 %t75, %t76
+  %t78 = xor i1 %t77, true
+  br i1 %t78, label %if.then.4, label %if.end.4
 if.then.4:
   ret i32 2
 if.end.4:
-  %t77 = call %"struct.std/time.Instant" @"std/time.FromUnix"(i64 1710053999)
-  store %"struct.std/time.Instant" %t77, ptr %v.ret.54
-  %t78 = load %"struct.std/time.Instant", ptr %v.ret.54
-  store %"struct.std/time.Instant" %t78, ptr %v.before
-  %t79 = call %"struct.std/time.Instant" @"std/time.FromUnix"(i64 1710054000)
-  store %"struct.std/time.Instant" %t79, ptr %v.ret.59
-  %t80 = load %"struct.std/time.Instant", ptr %v.ret.59
-  store %"struct.std/time.Instant" %t80, ptr %v.after
-  %t81 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.before, ptr %v.ny)
-  store %"struct.std/time.Instant" %t81, ptr %v.ret.66
-  %t82 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.66)
-  store { ptr, i64 } %t82, ptr %v.ret.64
-  %t83 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.64, i32 0, i32 0
-  %t84 = load ptr, ptr %t83
-  %t85 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.64, i32 0, i32 1
-  %t86 = load i64, ptr %t85
-  %t87 = getelementptr inbounds { ptr, i64 }, ptr %v.str.70, i32 0, i32 0
-  store ptr @.bytes.67, ptr %t87
-  %t88 = getelementptr inbounds { ptr, i64 }, ptr %v.str.70, i32 0, i32 1
-  store i64 25, ptr %t88
+  %t79 = call %"struct.std/time.Instant" @"std/time.FromUnix"(i64 1710053999)
+  store %"struct.std/time.Instant" %t79, ptr %v.ret.54
+  %t80 = load %"struct.std/time.Instant", ptr %v.ret.54
+  store %"struct.std/time.Instant" %t80, ptr %v.before
+  %t81 = call %"struct.std/time.Instant" @"std/time.FromUnix"(i64 1710054000)
+  store %"struct.std/time.Instant" %t81, ptr %v.ret.59
+  %t82 = load %"struct.std/time.Instant", ptr %v.ret.59
+  store %"struct.std/time.Instant" %t82, ptr %v.after
+  %t83 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.before, ptr %v.ny)
+  store %"struct.std/time.Instant" %t83, ptr %v.ret.66
+  %t84 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.66)
+  store { ptr, i64 } %t84, ptr %v.ret.64
+  %t85 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.64, i32 0, i32 0
+  %t86 = load ptr, ptr %t85
+  %t87 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.64, i32 0, i32 1
+  %t88 = load i64, ptr %t87
   %t89 = getelementptr inbounds { ptr, i64 }, ptr %v.str.70, i32 0, i32 0
-  %t90 = load ptr, ptr %t89
-  %t91 = getelementptr inbounds { ptr, i64 }, ptr %v.str.70, i32 0, i32 1
-  %t92 = load i64, ptr %t91
-  %t93 = icmp ult i64 %t86, %t92
-  %t94 = select i1 %t93, i64 %t86, i64 %t92
-  %t95 = call i32 @memcmp(ptr %t84, ptr %t90, i64 %t94)
-  %t96 = icmp eq i32 %t95, 0
-  %t97 = icmp eq i64 %t86, %t92
-  %t98 = and i1 %t96, %t97
-  %t99 = xor i1 %t98, true
-  br i1 %t99, label %if.then.5, label %if.end.5
+  store ptr @.bytes.67, ptr %t89
+  %t90 = getelementptr inbounds { ptr, i64 }, ptr %v.str.70, i32 0, i32 1
+  store i64 25, ptr %t90
+  %t91 = getelementptr inbounds { ptr, i64 }, ptr %v.str.70, i32 0, i32 0
+  %t92 = load ptr, ptr %t91
+  %t93 = getelementptr inbounds { ptr, i64 }, ptr %v.str.70, i32 0, i32 1
+  %t94 = load i64, ptr %t93
+  %t95 = icmp ult i64 %t88, %t94
+  %t96 = select i1 %t95, i64 %t88, i64 %t94
+  %t97 = call i32 @memcmp(ptr %t86, ptr %t92, i64 %t96)
+  %t98 = icmp eq i32 %t97, 0
+  %t99 = icmp eq i64 %t88, %t94
+  %t100 = and i1 %t98, %t99
+  %t101 = xor i1 %t100, true
+  br i1 %t101, label %if.then.5, label %if.end.5
 if.then.5:
   ret i32 3
 if.end.5:
-  %t100 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.after, ptr %v.ny)
-  store %"struct.std/time.Instant" %t100, ptr %v.ret.83
-  %t101 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.83)
-  store { ptr, i64 } %t101, ptr %v.ret.81
-  %t102 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.81, i32 0, i32 0
-  %t103 = load ptr, ptr %t102
-  %t104 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.81, i32 0, i32 1
-  %t105 = load i64, ptr %t104
-  %t106 = getelementptr inbounds { ptr, i64 }, ptr %v.str.87, i32 0, i32 0
-  store ptr @.bytes.68, ptr %t106
-  %t107 = getelementptr inbounds { ptr, i64 }, ptr %v.str.87, i32 0, i32 1
-  store i64 25, ptr %t107
+  %t102 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.after, ptr %v.ny)
+  store %"struct.std/time.Instant" %t102, ptr %v.ret.83
+  %t103 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.83)
+  store { ptr, i64 } %t103, ptr %v.ret.81
+  %t104 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.81, i32 0, i32 0
+  %t105 = load ptr, ptr %t104
+  %t106 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.81, i32 0, i32 1
+  %t107 = load i64, ptr %t106
   %t108 = getelementptr inbounds { ptr, i64 }, ptr %v.str.87, i32 0, i32 0
-  %t109 = load ptr, ptr %t108
-  %t110 = getelementptr inbounds { ptr, i64 }, ptr %v.str.87, i32 0, i32 1
-  %t111 = load i64, ptr %t110
-  %t112 = icmp ult i64 %t105, %t111
-  %t113 = select i1 %t112, i64 %t105, i64 %t111
-  %t114 = call i32 @memcmp(ptr %t103, ptr %t109, i64 %t113)
-  %t115 = icmp eq i32 %t114, 0
-  %t116 = icmp eq i64 %t105, %t111
-  %t117 = and i1 %t115, %t116
-  %t118 = xor i1 %t117, true
-  br i1 %t118, label %if.then.6, label %if.end.6
+  store ptr @.bytes.68, ptr %t108
+  %t109 = getelementptr inbounds { ptr, i64 }, ptr %v.str.87, i32 0, i32 1
+  store i64 25, ptr %t109
+  %t110 = getelementptr inbounds { ptr, i64 }, ptr %v.str.87, i32 0, i32 0
+  %t111 = load ptr, ptr %t110
+  %t112 = getelementptr inbounds { ptr, i64 }, ptr %v.str.87, i32 0, i32 1
+  %t113 = load i64, ptr %t112
+  %t114 = icmp ult i64 %t107, %t113
+  %t115 = select i1 %t114, i64 %t107, i64 %t113
+  %t116 = call i32 @memcmp(ptr %t105, ptr %t111, i64 %t115)
+  %t117 = icmp eq i32 %t116, 0
+  %t118 = icmp eq i64 %t107, %t113
+  %t119 = and i1 %t117, %t118
+  %t120 = xor i1 %t119, true
+  br i1 %t120, label %if.then.6, label %if.end.6
 if.then.6:
   ret i32 4
 if.end.6:
-  %t119 = call %"struct.std/time.Instant" @"std/time.FromUnix"(i64 1730613599)
-  store %"struct.std/time.Instant" %t119, ptr %v.ret.98
-  %t120 = load %"struct.std/time.Instant", ptr %v.ret.98
-  store %"struct.std/time.Instant" %t120, ptr %v.fallBefore
-  %t121 = call %"struct.std/time.Instant" @"std/time.FromUnix"(i64 1730613600)
-  store %"struct.std/time.Instant" %t121, ptr %v.ret.103
-  %t122 = load %"struct.std/time.Instant", ptr %v.ret.103
-  store %"struct.std/time.Instant" %t122, ptr %v.fallAfter
-  %t123 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.fallBefore, ptr %v.ny)
-  store %"struct.std/time.Instant" %t123, ptr %v.ret.110
-  %t124 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.110)
-  store { ptr, i64 } %t124, ptr %v.ret.108
-  %t125 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.108, i32 0, i32 0
-  %t126 = load ptr, ptr %t125
-  %t127 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.108, i32 0, i32 1
-  %t128 = load i64, ptr %t127
-  %t129 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 0
-  store ptr @.bytes.69, ptr %t129
-  %t130 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 1
-  store i64 25, ptr %t130
+  %t121 = call %"struct.std/time.Instant" @"std/time.FromUnix"(i64 1730613599)
+  store %"struct.std/time.Instant" %t121, ptr %v.ret.98
+  %t122 = load %"struct.std/time.Instant", ptr %v.ret.98
+  store %"struct.std/time.Instant" %t122, ptr %v.fallBefore
+  %t123 = call %"struct.std/time.Instant" @"std/time.FromUnix"(i64 1730613600)
+  store %"struct.std/time.Instant" %t123, ptr %v.ret.103
+  %t124 = load %"struct.std/time.Instant", ptr %v.ret.103
+  store %"struct.std/time.Instant" %t124, ptr %v.fallAfter
+  %t125 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.fallBefore, ptr %v.ny)
+  store %"struct.std/time.Instant" %t125, ptr %v.ret.110
+  %t126 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.110)
+  store { ptr, i64 } %t126, ptr %v.ret.108
+  %t127 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.108, i32 0, i32 0
+  %t128 = load ptr, ptr %t127
+  %t129 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.108, i32 0, i32 1
+  %t130 = load i64, ptr %t129
   %t131 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 0
-  %t132 = load ptr, ptr %t131
-  %t133 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 1
-  %t134 = load i64, ptr %t133
-  %t135 = icmp ult i64 %t128, %t134
-  %t136 = select i1 %t135, i64 %t128, i64 %t134
-  %t137 = call i32 @memcmp(ptr %t126, ptr %t132, i64 %t136)
-  %t138 = icmp eq i32 %t137, 0
-  %t139 = icmp eq i64 %t128, %t134
-  %t140 = and i1 %t138, %t139
-  %t141 = xor i1 %t140, true
-  br i1 %t141, label %if.then.7, label %if.end.7
+  store ptr @.bytes.69, ptr %t131
+  %t132 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 1
+  store i64 25, ptr %t132
+  %t133 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 0
+  %t134 = load ptr, ptr %t133
+  %t135 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 1
+  %t136 = load i64, ptr %t135
+  %t137 = icmp ult i64 %t130, %t136
+  %t138 = select i1 %t137, i64 %t130, i64 %t136
+  %t139 = call i32 @memcmp(ptr %t128, ptr %t134, i64 %t138)
+  %t140 = icmp eq i32 %t139, 0
+  %t141 = icmp eq i64 %t130, %t136
+  %t142 = and i1 %t140, %t141
+  %t143 = xor i1 %t142, true
+  br i1 %t143, label %if.then.7, label %if.end.7
 if.then.7:
   ret i32 5
 if.end.7:
-  %t142 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.fallAfter, ptr %v.ny)
-  store %"struct.std/time.Instant" %t142, ptr %v.ret.129
-  %t143 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.129)
-  store { ptr, i64 } %t143, ptr %v.ret.127
-  %t144 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.127, i32 0, i32 0
-  %t145 = load ptr, ptr %t144
-  %t146 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.127, i32 0, i32 1
-  %t147 = load i64, ptr %t146
-  %t148 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 0
-  store ptr @.bytes.70, ptr %t148
-  %t149 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 1
-  store i64 25, ptr %t149
+  %t144 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.fallAfter, ptr %v.ny)
+  store %"struct.std/time.Instant" %t144, ptr %v.ret.129
+  %t145 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.129)
+  store { ptr, i64 } %t145, ptr %v.ret.127
+  %t146 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.127, i32 0, i32 0
+  %t147 = load ptr, ptr %t146
+  %t148 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.127, i32 0, i32 1
+  %t149 = load i64, ptr %t148
   %t150 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 0
-  %t151 = load ptr, ptr %t150
-  %t152 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 1
-  %t153 = load i64, ptr %t152
-  %t154 = icmp ult i64 %t147, %t153
-  %t155 = select i1 %t154, i64 %t147, i64 %t153
-  %t156 = call i32 @memcmp(ptr %t145, ptr %t151, i64 %t155)
-  %t157 = icmp eq i32 %t156, 0
-  %t158 = icmp eq i64 %t147, %t153
-  %t159 = and i1 %t157, %t158
-  %t160 = xor i1 %t159, true
-  br i1 %t160, label %if.then.8, label %if.end.8
+  store ptr @.bytes.70, ptr %t150
+  %t151 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 1
+  store i64 25, ptr %t151
+  %t152 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 0
+  %t153 = load ptr, ptr %t152
+  %t154 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 1
+  %t155 = load i64, ptr %t154
+  %t156 = icmp ult i64 %t149, %t155
+  %t157 = select i1 %t156, i64 %t149, i64 %t155
+  %t158 = call i32 @memcmp(ptr %t147, ptr %t153, i64 %t157)
+  %t159 = icmp eq i32 %t158, 0
+  %t160 = icmp eq i64 %t149, %t155
+  %t161 = and i1 %t159, %t160
+  %t162 = xor i1 %t161, true
+  br i1 %t162, label %if.then.8, label %if.end.8
 if.then.8:
   ret i32 6
 if.end.8:
-  %t162 = icmp eq i64 2208988800, -9223372036854775808
-  br i1 %t162, label %panic.9, label %panic.ok.9
+  %t164 = icmp eq i64 2208988800, -9223372036854775808
+  br i1 %t164, label %panic.9, label %panic.ok.9
 panic.9:
   call void @willrt_panic(ptr @.str.10, ptr @.str.211, ptr @.str.212)
   unreachable
 panic.ok.9:
-  %t161 = sub i64 0, 2208988800
-  %t163 = call %"struct.std/time.Instant" @"std/time.FromUnix"(i64 %t161)
-  store %"struct.std/time.Instant" %t163, ptr %v.ret.146
-  %t164 = load %"struct.std/time.Instant", ptr %v.ret.146
-  store %"struct.std/time.Instant" %t164, ptr %v.old
-  %t165 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.old, ptr %v.sh)
-  store %"struct.std/time.Instant" %t165, ptr %v.ret.154
-  %t166 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.154)
-  store { ptr, i64 } %t166, ptr %v.ret.152
-  %t167 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.152, i32 0, i32 0
-  %t168 = load ptr, ptr %t167
-  %t169 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.152, i32 0, i32 1
-  %t170 = load i64, ptr %t169
-  %t171 = getelementptr inbounds { ptr, i64 }, ptr %v.str.158, i32 0, i32 0
-  store ptr @.bytes.71, ptr %t171
-  %t172 = getelementptr inbounds { ptr, i64 }, ptr %v.str.158, i32 0, i32 1
-  store i64 25, ptr %t172
+  %t163 = sub i64 0, 2208988800
+  %t165 = call %"struct.std/time.Instant" @"std/time.FromUnix"(i64 %t163)
+  store %"struct.std/time.Instant" %t165, ptr %v.ret.146
+  %t166 = load %"struct.std/time.Instant", ptr %v.ret.146
+  store %"struct.std/time.Instant" %t166, ptr %v.old
+  %t167 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.old, ptr %v.sh)
+  store %"struct.std/time.Instant" %t167, ptr %v.ret.154
+  %t168 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.154)
+  store { ptr, i64 } %t168, ptr %v.ret.152
+  %t169 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.152, i32 0, i32 0
+  %t170 = load ptr, ptr %t169
+  %t171 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.152, i32 0, i32 1
+  %t172 = load i64, ptr %t171
   %t173 = getelementptr inbounds { ptr, i64 }, ptr %v.str.158, i32 0, i32 0
-  %t174 = load ptr, ptr %t173
-  %t175 = getelementptr inbounds { ptr, i64 }, ptr %v.str.158, i32 0, i32 1
-  %t176 = load i64, ptr %t175
-  %t177 = icmp ult i64 %t170, %t176
-  %t178 = select i1 %t177, i64 %t170, i64 %t176
-  %t179 = call i32 @memcmp(ptr %t168, ptr %t174, i64 %t178)
-  %t180 = icmp eq i32 %t179, 0
-  %t181 = icmp eq i64 %t170, %t176
-  %t182 = and i1 %t180, %t181
-  %t183 = xor i1 %t182, true
-  br i1 %t183, label %if.then.10, label %if.end.10
+  store ptr @.bytes.71, ptr %t173
+  %t174 = getelementptr inbounds { ptr, i64 }, ptr %v.str.158, i32 0, i32 1
+  store i64 25, ptr %t174
+  %t175 = getelementptr inbounds { ptr, i64 }, ptr %v.str.158, i32 0, i32 0
+  %t176 = load ptr, ptr %t175
+  %t177 = getelementptr inbounds { ptr, i64 }, ptr %v.str.158, i32 0, i32 1
+  %t178 = load i64, ptr %t177
+  %t179 = icmp ult i64 %t172, %t178
+  %t180 = select i1 %t179, i64 %t172, i64 %t178
+  %t181 = call i32 @memcmp(ptr %t170, ptr %t176, i64 %t180)
+  %t182 = icmp eq i32 %t181, 0
+  %t183 = icmp eq i64 %t172, %t178
+  %t184 = and i1 %t182, %t183
+  %t185 = xor i1 %t184, true
+  br i1 %t185, label %if.then.10, label %if.end.10
 if.then.10:
   ret i32 7
 if.end.10:
-  %t184 = getelementptr inbounds { ptr, i64 }, ptr %v.str.175, i32 0, i32 0
-  store ptr @.bytes.72, ptr %t184
-  %t185 = getelementptr inbounds { ptr, i64 }, ptr %v.str.175, i32 0, i32 1
-  store i64 24, ptr %t185
-  %t186 = call { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseRfc3339"(ptr %v.str.175)
-  store { i32, [4 x i8], %"struct.std/time.Instant" } %t186, ptr %v.ret.173
-  %t187 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.173, i32 0, i32 0
-  %t188 = load i32, ptr %t187
-  %t189 = icmp eq i32 %t188, 1
-  br i1 %t189, label %unwrap.err.11, label %unwrap.ok.11
+  %t186 = getelementptr inbounds { ptr, i64 }, ptr %v.str.175, i32 0, i32 0
+  store ptr @.bytes.72, ptr %t186
+  %t187 = getelementptr inbounds { ptr, i64 }, ptr %v.str.175, i32 0, i32 1
+  store i64 24, ptr %t187
+  %t188 = call { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseRfc3339"(ptr %v.str.175)
+  store { i32, [4 x i8], %"struct.std/time.Instant" } %t188, ptr %v.ret.173
+  %t189 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.173, i32 0, i32 0
+  %t190 = load i32, ptr %t189
+  %t191 = icmp eq i32 %t190, 1
+  br i1 %t191, label %unwrap.err.11, label %unwrap.ok.11
 unwrap.err.11:
-  %t190 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.173, i32 0, i32 2
-  %t191 = getelementptr inbounds %interface.Error, ptr %t190, i32 0, i32 0
-  %t192 = getelementptr inbounds %interface.Error, ptr %t190, i32 0, i32 1
-  %t193 = load ptr, ptr %t191
-  %t194 = load ptr, ptr %t192
-  %t195 = getelementptr inbounds ptr, ptr %t194, i32 0
-  %t196 = load ptr, ptr %t195
-  %t197 = call { ptr, i64 } %t196(ptr %t193)
-  %t198 = extractvalue { ptr, i64 } %t197, 0
-  %t199 = extractvalue { ptr, i64 } %t197, 1
-  call void @willrt_panic_n(ptr %t198, i64 %t199, ptr null, ptr null)
+  %t192 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.173, i32 0, i32 2
+  %t193 = getelementptr inbounds %interface.Error, ptr %t192, i32 0, i32 0
+  %t194 = getelementptr inbounds %interface.Error, ptr %t192, i32 0, i32 1
+  %t195 = load ptr, ptr %t193
+  %t196 = load ptr, ptr %t194
+  %t197 = getelementptr inbounds ptr, ptr %t196, i32 0
+  %t198 = load ptr, ptr %t197
+  %t199 = call { ptr, i64 } %t198(ptr %t195)
+  %t200 = extractvalue { ptr, i64 } %t199, 0
+  %t201 = extractvalue { ptr, i64 } %t199, 1
+  call void @willrt_panic_n(ptr %t200, i64 %t201, ptr null, ptr null)
   unreachable
 unwrap.ok.11:
-  %t200 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.173, i32 0, i32 2
-  %t201 = load %"struct.std/time.Instant", ptr %t200
-  store %"struct.std/time.Instant" %t201, ptr %v.parsed
-  %t202 = call { ptr, i64 } @"std/time.Rfc3339Nano"(ptr %v.parsed)
-  store { ptr, i64 } %t202, ptr %v.ret.178
-  %t203 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.178, i32 0, i32 0
-  %t204 = load ptr, ptr %t203
-  %t205 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.178, i32 0, i32 1
-  %t206 = load i64, ptr %t205
-  %t207 = getelementptr inbounds { ptr, i64 }, ptr %v.str.181, i32 0, i32 0
-  store ptr @.bytes.73, ptr %t207
-  %t208 = getelementptr inbounds { ptr, i64 }, ptr %v.str.181, i32 0, i32 1
-  store i64 23, ptr %t208
-  %t209 = getelementptr inbounds { ptr, i64 }, ptr %v.str.181, i32 0, i32 0
-  %t210 = load ptr, ptr %t209
+  %t202 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.173, i32 0, i32 2
+  %v.unwrap.out.172 = alloca %"struct.std/time.Instant"
+  %t203 = load %"struct.std/time.Instant", ptr %t202
+  store %"struct.std/time.Instant" %t203, ptr %v.unwrap.out.172
+  %t204 = load %"struct.std/time.Instant", ptr %v.unwrap.out.172
+  store %"struct.std/time.Instant" %t204, ptr %v.parsed
+  %t205 = call { ptr, i64 } @"std/time.Rfc3339Nano"(ptr %v.parsed)
+  store { ptr, i64 } %t205, ptr %v.ret.178
+  %t206 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.178, i32 0, i32 0
+  %t207 = load ptr, ptr %t206
+  %t208 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.178, i32 0, i32 1
+  %t209 = load i64, ptr %t208
+  %t210 = getelementptr inbounds { ptr, i64 }, ptr %v.str.181, i32 0, i32 0
+  store ptr @.bytes.73, ptr %t210
   %t211 = getelementptr inbounds { ptr, i64 }, ptr %v.str.181, i32 0, i32 1
-  %t212 = load i64, ptr %t211
-  %t213 = icmp ult i64 %t206, %t212
-  %t214 = select i1 %t213, i64 %t206, i64 %t212
-  %t215 = call i32 @memcmp(ptr %t204, ptr %t210, i64 %t214)
-  %t216 = icmp eq i32 %t215, 0
-  %t217 = icmp eq i64 %t206, %t212
-  %t218 = and i1 %t216, %t217
-  %t219 = xor i1 %t218, true
-  br i1 %t219, label %if.then.12, label %if.end.12
+  store i64 23, ptr %t211
+  %t212 = getelementptr inbounds { ptr, i64 }, ptr %v.str.181, i32 0, i32 0
+  %t213 = load ptr, ptr %t212
+  %t214 = getelementptr inbounds { ptr, i64 }, ptr %v.str.181, i32 0, i32 1
+  %t215 = load i64, ptr %t214
+  %t216 = icmp ult i64 %t209, %t215
+  %t217 = select i1 %t216, i64 %t209, i64 %t215
+  %t218 = call i32 @memcmp(ptr %t207, ptr %t213, i64 %t217)
+  %t219 = icmp eq i32 %t218, 0
+  %t220 = icmp eq i64 %t209, %t215
+  %t221 = and i1 %t219, %t220
+  %t222 = xor i1 %t221, true
+  br i1 %t222, label %if.then.12, label %if.end.12
 if.then.12:
   ret i32 8
 if.end.12:
-  %t220 = call i64 @"std/time.Unix"(ptr %v.parsed)
-  %t221 = icmp ne i64 %t220, 1700000000
-  br i1 %t221, label %if.then.13, label %if.end.13
+  %t223 = call i64 @"std/time.Unix"(ptr %v.parsed)
+  %t224 = icmp ne i64 %t223, 1700000000
+  br i1 %t224, label %if.then.13, label %if.end.13
 if.then.13:
   ret i32 9
 if.end.13:
-  %t222 = getelementptr inbounds { ptr, i64 }, ptr %v.str.217, i32 0, i32 0
-  store ptr @.bytes.74, ptr %t222
-  %t223 = getelementptr inbounds { ptr, i64 }, ptr %v.str.217, i32 0, i32 1
-  store i64 30, ptr %t223
-  %t224 = call { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseRfc3339"(ptr %v.str.217)
-  store { i32, [4 x i8], %"struct.std/time.Instant" } %t224, ptr %v.ret.215
-  %t225 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.215, i32 0, i32 0
-  %t226 = load i32, ptr %t225
-  %t227 = icmp eq i32 %t226, 1
-  br i1 %t227, label %unwrap.err.14, label %unwrap.ok.14
+  %t225 = getelementptr inbounds { ptr, i64 }, ptr %v.str.217, i32 0, i32 0
+  store ptr @.bytes.74, ptr %t225
+  %t226 = getelementptr inbounds { ptr, i64 }, ptr %v.str.217, i32 0, i32 1
+  store i64 30, ptr %t226
+  %t227 = call { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseRfc3339"(ptr %v.str.217)
+  store { i32, [4 x i8], %"struct.std/time.Instant" } %t227, ptr %v.ret.215
+  %t228 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.215, i32 0, i32 0
+  %t229 = load i32, ptr %t228
+  %t230 = icmp eq i32 %t229, 1
+  br i1 %t230, label %unwrap.err.14, label %unwrap.ok.14
 unwrap.err.14:
-  %t228 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.215, i32 0, i32 2
-  %t229 = getelementptr inbounds %interface.Error, ptr %t228, i32 0, i32 0
-  %t230 = getelementptr inbounds %interface.Error, ptr %t228, i32 0, i32 1
-  %t231 = load ptr, ptr %t229
-  %t232 = load ptr, ptr %t230
-  %t233 = getelementptr inbounds ptr, ptr %t232, i32 0
-  %t234 = load ptr, ptr %t233
-  %t235 = call { ptr, i64 } %t234(ptr %t231)
-  %t236 = extractvalue { ptr, i64 } %t235, 0
-  %t237 = extractvalue { ptr, i64 } %t235, 1
-  call void @willrt_panic_n(ptr %t236, i64 %t237, ptr null, ptr null)
+  %t231 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.215, i32 0, i32 2
+  %t232 = getelementptr inbounds %interface.Error, ptr %t231, i32 0, i32 0
+  %t233 = getelementptr inbounds %interface.Error, ptr %t231, i32 0, i32 1
+  %t234 = load ptr, ptr %t232
+  %t235 = load ptr, ptr %t233
+  %t236 = getelementptr inbounds ptr, ptr %t235, i32 0
+  %t237 = load ptr, ptr %t236
+  %t238 = call { ptr, i64 } %t237(ptr %t234)
+  %t239 = extractvalue { ptr, i64 } %t238, 0
+  %t240 = extractvalue { ptr, i64 } %t238, 1
+  call void @willrt_panic_n(ptr %t239, i64 %t240, ptr null, ptr null)
   unreachable
 unwrap.ok.14:
-  %t238 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.215, i32 0, i32 2
-  %t239 = load %"struct.std/time.Instant", ptr %t238
-  store %"struct.std/time.Instant" %t239, ptr %v.last
-  %t240 = call { ptr, i64 } @"std/time.Rfc3339Nano"(ptr %v.last)
-  store { ptr, i64 } %t240, ptr %v.ret.220
-  %t241 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.220, i32 0, i32 0
-  %t242 = load ptr, ptr %t241
-  %t243 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.220, i32 0, i32 1
-  %t244 = load i64, ptr %t243
-  %t245 = getelementptr inbounds { ptr, i64 }, ptr %v.str.223, i32 0, i32 0
-  store ptr @.bytes.74, ptr %t245
-  %t246 = getelementptr inbounds { ptr, i64 }, ptr %v.str.223, i32 0, i32 1
-  store i64 30, ptr %t246
-  %t247 = getelementptr inbounds { ptr, i64 }, ptr %v.str.223, i32 0, i32 0
-  %t248 = load ptr, ptr %t247
-  %t249 = getelementptr inbounds { ptr, i64 }, ptr %v.str.223, i32 0, i32 1
-  %t250 = load i64, ptr %t249
-  %t251 = icmp ult i64 %t244, %t250
-  %t252 = select i1 %t251, i64 %t244, i64 %t250
-  %t253 = call i32 @memcmp(ptr %t242, ptr %t248, i64 %t252)
-  %t254 = icmp eq i32 %t253, 0
-  %t255 = icmp eq i64 %t244, %t250
-  %t256 = and i1 %t254, %t255
-  %t257 = xor i1 %t256, true
-  br i1 %t257, label %if.then.15, label %if.end.15
+  %t241 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.215, i32 0, i32 2
+  %v.unwrap.out.214 = alloca %"struct.std/time.Instant"
+  %t242 = load %"struct.std/time.Instant", ptr %t241
+  store %"struct.std/time.Instant" %t242, ptr %v.unwrap.out.214
+  %t243 = load %"struct.std/time.Instant", ptr %v.unwrap.out.214
+  store %"struct.std/time.Instant" %t243, ptr %v.last
+  %t244 = call { ptr, i64 } @"std/time.Rfc3339Nano"(ptr %v.last)
+  store { ptr, i64 } %t244, ptr %v.ret.220
+  %t245 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.220, i32 0, i32 0
+  %t246 = load ptr, ptr %t245
+  %t247 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.220, i32 0, i32 1
+  %t248 = load i64, ptr %t247
+  %t249 = getelementptr inbounds { ptr, i64 }, ptr %v.str.223, i32 0, i32 0
+  store ptr @.bytes.74, ptr %t249
+  %t250 = getelementptr inbounds { ptr, i64 }, ptr %v.str.223, i32 0, i32 1
+  store i64 30, ptr %t250
+  %t251 = getelementptr inbounds { ptr, i64 }, ptr %v.str.223, i32 0, i32 0
+  %t252 = load ptr, ptr %t251
+  %t253 = getelementptr inbounds { ptr, i64 }, ptr %v.str.223, i32 0, i32 1
+  %t254 = load i64, ptr %t253
+  %t255 = icmp ult i64 %t248, %t254
+  %t256 = select i1 %t255, i64 %t248, i64 %t254
+  %t257 = call i32 @memcmp(ptr %t246, ptr %t252, i64 %t256)
+  %t258 = icmp eq i32 %t257, 0
+  %t259 = icmp eq i64 %t248, %t254
+  %t260 = and i1 %t258, %t259
+  %t261 = xor i1 %t260, true
+  br i1 %t261, label %if.then.15, label %if.end.15
 if.then.15:
   ret i32 16
 if.end.15:
-  %t258 = getelementptr inbounds { ptr, i64 }, ptr %v.str.240, i32 0, i32 0
-  store ptr @.bytes.75, ptr %t258
-  %t259 = getelementptr inbounds { ptr, i64 }, ptr %v.str.240, i32 0, i32 1
-  store i64 30, ptr %t259
-  %t260 = call { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseRfc3339"(ptr %v.str.240)
-  store { i32, [4 x i8], %"struct.std/time.Instant" } %t260, ptr %v.ret.238
-  %t261 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.238, i32 0, i32 0
-  %t262 = load i32, ptr %t261
-  %t263 = icmp eq i32 %t262, 1
-  br i1 %t263, label %match.arm.16.0, label %match.next.16.0
+  %t262 = getelementptr inbounds { ptr, i64 }, ptr %v.str.240, i32 0, i32 0
+  store ptr @.bytes.75, ptr %t262
+  %t263 = getelementptr inbounds { ptr, i64 }, ptr %v.str.240, i32 0, i32 1
+  store i64 30, ptr %t263
+  %t264 = call { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseRfc3339"(ptr %v.str.240)
+  store { i32, [4 x i8], %"struct.std/time.Instant" } %t264, ptr %v.ret.238
+  %t265 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.238, i32 0, i32 0
+  %t266 = load i32, ptr %t265
+  %t267 = icmp eq i32 %t266, 1
+  br i1 %t267, label %match.arm.16.0, label %match.next.16.0
 match.arm.16.0:
-  %t264 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.238, i32 0, i32 2
+  %t268 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.238, i32 0, i32 2
   br label %match.end.16
 match.next.16.0:
   br i1 true, label %match.arm.16.1, label %match.next.16.1
@@ -6291,156 +6303,162 @@ match.arm.16.1:
 match.next.16.1:
   unreachable
 match.end.16:
-  %t265 = getelementptr inbounds { ptr, i64 }, ptr %v.str.265, i32 0, i32 0
-  store ptr @.bytes.64, ptr %t265
-  %t266 = getelementptr inbounds { ptr, i64 }, ptr %v.str.265, i32 0, i32 1
-  store i64 25, ptr %t266
-  %t267 = call { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseRfc3339"(ptr %v.str.265)
-  store { i32, [4 x i8], %"struct.std/time.Instant" } %t267, ptr %v.ret.263
-  %t268 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.263, i32 0, i32 0
-  %t269 = load i32, ptr %t268
-  %t270 = icmp eq i32 %t269, 1
-  br i1 %t270, label %unwrap.err.17, label %unwrap.ok.17
+  %t269 = getelementptr inbounds { ptr, i64 }, ptr %v.str.265, i32 0, i32 0
+  store ptr @.bytes.64, ptr %t269
+  %t270 = getelementptr inbounds { ptr, i64 }, ptr %v.str.265, i32 0, i32 1
+  store i64 25, ptr %t270
+  %t271 = call { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseRfc3339"(ptr %v.str.265)
+  store { i32, [4 x i8], %"struct.std/time.Instant" } %t271, ptr %v.ret.263
+  %t272 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.263, i32 0, i32 0
+  %t273 = load i32, ptr %t272
+  %t274 = icmp eq i32 %t273, 1
+  br i1 %t274, label %unwrap.err.17, label %unwrap.ok.17
 unwrap.err.17:
-  %t271 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.263, i32 0, i32 2
-  %t272 = getelementptr inbounds %interface.Error, ptr %t271, i32 0, i32 0
-  %t273 = getelementptr inbounds %interface.Error, ptr %t271, i32 0, i32 1
-  %t274 = load ptr, ptr %t272
-  %t275 = load ptr, ptr %t273
-  %t276 = getelementptr inbounds ptr, ptr %t275, i32 0
-  %t277 = load ptr, ptr %t276
-  %t278 = call { ptr, i64 } %t277(ptr %t274)
-  %t279 = extractvalue { ptr, i64 } %t278, 0
-  %t280 = extractvalue { ptr, i64 } %t278, 1
-  call void @willrt_panic_n(ptr %t279, i64 %t280, ptr null, ptr null)
+  %t275 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.263, i32 0, i32 2
+  %t276 = getelementptr inbounds %interface.Error, ptr %t275, i32 0, i32 0
+  %t277 = getelementptr inbounds %interface.Error, ptr %t275, i32 0, i32 1
+  %t278 = load ptr, ptr %t276
+  %t279 = load ptr, ptr %t277
+  %t280 = getelementptr inbounds ptr, ptr %t279, i32 0
+  %t281 = load ptr, ptr %t280
+  %t282 = call { ptr, i64 } %t281(ptr %t278)
+  %t283 = extractvalue { ptr, i64 } %t282, 0
+  %t284 = extractvalue { ptr, i64 } %t282, 1
+  call void @willrt_panic_n(ptr %t283, i64 %t284, ptr null, ptr null)
   unreachable
 unwrap.ok.17:
-  %t281 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.263, i32 0, i32 2
-  %t282 = load %"struct.std/time.Instant", ptr %t281
-  store %"struct.std/time.Instant" %t282, ptr %v.plus
-  %t283 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.plus)
-  store { ptr, i64 } %t283, ptr %v.ret.268
-  %t284 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.268, i32 0, i32 0
-  %t285 = load ptr, ptr %t284
-  %t286 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.268, i32 0, i32 1
-  %t287 = load i64, ptr %t286
-  %t288 = getelementptr inbounds { ptr, i64 }, ptr %v.str.271, i32 0, i32 0
-  store ptr @.bytes.64, ptr %t288
-  %t289 = getelementptr inbounds { ptr, i64 }, ptr %v.str.271, i32 0, i32 1
-  store i64 25, ptr %t289
-  %t290 = getelementptr inbounds { ptr, i64 }, ptr %v.str.271, i32 0, i32 0
-  %t291 = load ptr, ptr %t290
-  %t292 = getelementptr inbounds { ptr, i64 }, ptr %v.str.271, i32 0, i32 1
-  %t293 = load i64, ptr %t292
-  %t294 = icmp ult i64 %t287, %t293
-  %t295 = select i1 %t294, i64 %t287, i64 %t293
-  %t296 = call i32 @memcmp(ptr %t285, ptr %t291, i64 %t295)
-  %t297 = icmp eq i32 %t296, 0
-  %t298 = icmp eq i64 %t287, %t293
-  %t299 = and i1 %t297, %t298
-  %t300 = xor i1 %t299, true
-  br i1 %t300, label %if.then.18, label %if.end.18
+  %t285 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.263, i32 0, i32 2
+  %v.unwrap.out.262 = alloca %"struct.std/time.Instant"
+  %t286 = load %"struct.std/time.Instant", ptr %t285
+  store %"struct.std/time.Instant" %t286, ptr %v.unwrap.out.262
+  %t287 = load %"struct.std/time.Instant", ptr %v.unwrap.out.262
+  store %"struct.std/time.Instant" %t287, ptr %v.plus
+  %t288 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.plus)
+  store { ptr, i64 } %t288, ptr %v.ret.268
+  %t289 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.268, i32 0, i32 0
+  %t290 = load ptr, ptr %t289
+  %t291 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.268, i32 0, i32 1
+  %t292 = load i64, ptr %t291
+  %t293 = getelementptr inbounds { ptr, i64 }, ptr %v.str.271, i32 0, i32 0
+  store ptr @.bytes.64, ptr %t293
+  %t294 = getelementptr inbounds { ptr, i64 }, ptr %v.str.271, i32 0, i32 1
+  store i64 25, ptr %t294
+  %t295 = getelementptr inbounds { ptr, i64 }, ptr %v.str.271, i32 0, i32 0
+  %t296 = load ptr, ptr %t295
+  %t297 = getelementptr inbounds { ptr, i64 }, ptr %v.str.271, i32 0, i32 1
+  %t298 = load i64, ptr %t297
+  %t299 = icmp ult i64 %t292, %t298
+  %t300 = select i1 %t299, i64 %t292, i64 %t298
+  %t301 = call i32 @memcmp(ptr %t290, ptr %t296, i64 %t300)
+  %t302 = icmp eq i32 %t301, 0
+  %t303 = icmp eq i64 %t292, %t298
+  %t304 = and i1 %t302, %t303
+  %t305 = xor i1 %t304, true
+  br i1 %t305, label %if.then.18, label %if.end.18
 if.then.18:
   ret i32 10
 if.end.18:
-  %t301 = getelementptr inbounds { ptr, i64 }, ptr %v.str.291, i32 0, i32 0
-  store ptr @.bytes.76, ptr %t301
-  %t302 = getelementptr inbounds { ptr, i64 }, ptr %v.str.291, i32 0, i32 1
-  store i64 10, ptr %t302
-  %t303 = call { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseDate"(ptr %v.str.291, ptr %v.ny)
-  store { i32, [4 x i8], %"struct.std/time.Instant" } %t303, ptr %v.ret.289
-  %t304 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.289, i32 0, i32 0
-  %t305 = load i32, ptr %t304
-  %t306 = icmp eq i32 %t305, 1
-  br i1 %t306, label %unwrap.err.19, label %unwrap.ok.19
+  %t306 = getelementptr inbounds { ptr, i64 }, ptr %v.str.291, i32 0, i32 0
+  store ptr @.bytes.76, ptr %t306
+  %t307 = getelementptr inbounds { ptr, i64 }, ptr %v.str.291, i32 0, i32 1
+  store i64 10, ptr %t307
+  %t308 = call { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseDate"(ptr %v.str.291, ptr %v.ny)
+  store { i32, [4 x i8], %"struct.std/time.Instant" } %t308, ptr %v.ret.289
+  %t309 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.289, i32 0, i32 0
+  %t310 = load i32, ptr %t309
+  %t311 = icmp eq i32 %t310, 1
+  br i1 %t311, label %unwrap.err.19, label %unwrap.ok.19
 unwrap.err.19:
-  %t307 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.289, i32 0, i32 2
-  %t308 = getelementptr inbounds %interface.Error, ptr %t307, i32 0, i32 0
-  %t309 = getelementptr inbounds %interface.Error, ptr %t307, i32 0, i32 1
-  %t310 = load ptr, ptr %t308
-  %t311 = load ptr, ptr %t309
-  %t312 = getelementptr inbounds ptr, ptr %t311, i32 0
-  %t313 = load ptr, ptr %t312
-  %t314 = call { ptr, i64 } %t313(ptr %t310)
-  %t315 = extractvalue { ptr, i64 } %t314, 0
-  %t316 = extractvalue { ptr, i64 } %t314, 1
-  call void @willrt_panic_n(ptr %t315, i64 %t316, ptr null, ptr null)
+  %t312 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.289, i32 0, i32 2
+  %t313 = getelementptr inbounds %interface.Error, ptr %t312, i32 0, i32 0
+  %t314 = getelementptr inbounds %interface.Error, ptr %t312, i32 0, i32 1
+  %t315 = load ptr, ptr %t313
+  %t316 = load ptr, ptr %t314
+  %t317 = getelementptr inbounds ptr, ptr %t316, i32 0
+  %t318 = load ptr, ptr %t317
+  %t319 = call { ptr, i64 } %t318(ptr %t315)
+  %t320 = extractvalue { ptr, i64 } %t319, 0
+  %t321 = extractvalue { ptr, i64 } %t319, 1
+  call void @willrt_panic_n(ptr %t320, i64 %t321, ptr null, ptr null)
   unreachable
 unwrap.ok.19:
-  %t317 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.289, i32 0, i32 2
-  %t318 = load %"struct.std/time.Instant", ptr %t317
-  store %"struct.std/time.Instant" %t318, ptr %v.date
-  %t319 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.date)
-  store { ptr, i64 } %t319, ptr %v.ret.295
-  %t320 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.295, i32 0, i32 0
-  %t321 = load ptr, ptr %t320
-  %t322 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.295, i32 0, i32 1
-  %t323 = load i64, ptr %t322
-  %t324 = getelementptr inbounds { ptr, i64 }, ptr %v.str.298, i32 0, i32 0
-  store ptr @.bytes.77, ptr %t324
-  %t325 = getelementptr inbounds { ptr, i64 }, ptr %v.str.298, i32 0, i32 1
-  store i64 25, ptr %t325
-  %t326 = getelementptr inbounds { ptr, i64 }, ptr %v.str.298, i32 0, i32 0
+  %t322 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.289, i32 0, i32 2
+  %v.unwrap.out.288 = alloca %"struct.std/time.Instant"
+  %t323 = load %"struct.std/time.Instant", ptr %t322
+  store %"struct.std/time.Instant" %t323, ptr %v.unwrap.out.288
+  %t324 = load %"struct.std/time.Instant", ptr %v.unwrap.out.288
+  store %"struct.std/time.Instant" %t324, ptr %v.date
+  %t325 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.date)
+  store { ptr, i64 } %t325, ptr %v.ret.295
+  %t326 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.295, i32 0, i32 0
   %t327 = load ptr, ptr %t326
-  %t328 = getelementptr inbounds { ptr, i64 }, ptr %v.str.298, i32 0, i32 1
+  %t328 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.295, i32 0, i32 1
   %t329 = load i64, ptr %t328
-  %t330 = icmp ult i64 %t323, %t329
-  %t331 = select i1 %t330, i64 %t323, i64 %t329
-  %t332 = call i32 @memcmp(ptr %t321, ptr %t327, i64 %t331)
-  %t333 = icmp eq i32 %t332, 0
-  %t334 = icmp eq i64 %t323, %t329
-  %t335 = and i1 %t333, %t334
-  %t336 = xor i1 %t335, true
-  br i1 %t336, label %if.then.20, label %if.end.20
+  %t330 = getelementptr inbounds { ptr, i64 }, ptr %v.str.298, i32 0, i32 0
+  store ptr @.bytes.77, ptr %t330
+  %t331 = getelementptr inbounds { ptr, i64 }, ptr %v.str.298, i32 0, i32 1
+  store i64 25, ptr %t331
+  %t332 = getelementptr inbounds { ptr, i64 }, ptr %v.str.298, i32 0, i32 0
+  %t333 = load ptr, ptr %t332
+  %t334 = getelementptr inbounds { ptr, i64 }, ptr %v.str.298, i32 0, i32 1
+  %t335 = load i64, ptr %t334
+  %t336 = icmp ult i64 %t329, %t335
+  %t337 = select i1 %t336, i64 %t329, i64 %t335
+  %t338 = call i32 @memcmp(ptr %t327, ptr %t333, i64 %t337)
+  %t339 = icmp eq i32 %t338, 0
+  %t340 = icmp eq i64 %t329, %t335
+  %t341 = and i1 %t339, %t340
+  %t342 = xor i1 %t341, true
+  br i1 %t342, label %if.then.20, label %if.end.20
 if.then.20:
   ret i32 11
 if.end.20:
-  %t337 = call { ptr, i64 } @"std/time.Rfc1123"(ptr %v.t)
-  store { ptr, i64 } %t337, ptr %v.ret.316
-  %t338 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.316, i32 0, i32 0
-  %t339 = load ptr, ptr %t338
-  %t340 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.316, i32 0, i32 1
-  %t341 = load i64, ptr %t340
-  %t342 = getelementptr inbounds { ptr, i64 }, ptr %v.str.319, i32 0, i32 0
-  store ptr @.bytes.78, ptr %t342
-  %t343 = getelementptr inbounds { ptr, i64 }, ptr %v.str.319, i32 0, i32 1
-  store i64 29, ptr %t343
-  %t344 = getelementptr inbounds { ptr, i64 }, ptr %v.str.319, i32 0, i32 0
+  %t343 = call { ptr, i64 } @"std/time.Rfc1123"(ptr %v.t)
+  store { ptr, i64 } %t343, ptr %v.ret.316
+  %t344 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.316, i32 0, i32 0
   %t345 = load ptr, ptr %t344
-  %t346 = getelementptr inbounds { ptr, i64 }, ptr %v.str.319, i32 0, i32 1
+  %t346 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.316, i32 0, i32 1
   %t347 = load i64, ptr %t346
-  %t348 = icmp ult i64 %t341, %t347
-  %t349 = select i1 %t348, i64 %t341, i64 %t347
-  %t350 = call i32 @memcmp(ptr %t339, ptr %t345, i64 %t349)
-  %t351 = icmp eq i32 %t350, 0
-  %t352 = icmp eq i64 %t341, %t347
-  %t353 = and i1 %t351, %t352
-  %t354 = xor i1 %t353, true
-  br i1 %t354, label %if.then.21, label %if.end.21
+  %t348 = getelementptr inbounds { ptr, i64 }, ptr %v.str.319, i32 0, i32 0
+  store ptr @.bytes.78, ptr %t348
+  %t349 = getelementptr inbounds { ptr, i64 }, ptr %v.str.319, i32 0, i32 1
+  store i64 29, ptr %t349
+  %t350 = getelementptr inbounds { ptr, i64 }, ptr %v.str.319, i32 0, i32 0
+  %t351 = load ptr, ptr %t350
+  %t352 = getelementptr inbounds { ptr, i64 }, ptr %v.str.319, i32 0, i32 1
+  %t353 = load i64, ptr %t352
+  %t354 = icmp ult i64 %t347, %t353
+  %t355 = select i1 %t354, i64 %t347, i64 %t353
+  %t356 = call i32 @memcmp(ptr %t345, ptr %t351, i64 %t355)
+  %t357 = icmp eq i32 %t356, 0
+  %t358 = icmp eq i64 %t347, %t353
+  %t359 = and i1 %t357, %t358
+  %t360 = xor i1 %t359, true
+  br i1 %t360, label %if.then.21, label %if.end.21
 if.then.21:
   ret i32 12
 if.end.21:
-  %t355 = getelementptr inbounds { ptr, i64 }, ptr %v.str.338, i32 0, i32 0
-  store ptr @.bytes.79, ptr %t355
-  %t356 = getelementptr inbounds { ptr, i64 }, ptr %v.str.338, i32 0, i32 1
-  store i64 12, ptr %t356
-  %t357 = call { i32, [4 x i8], %interface.Error } @"std/time.Load"(ptr %v.str.338)
-  store { i32, [4 x i8], %interface.Error } %t357, ptr %v.ret.336
-  %t358 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.336, i32 0, i32 0
-  %t359 = load i32, ptr %t358
-  %t360 = icmp eq i32 %t359, 1
-  br i1 %t360, label %match.arm.22.0, label %match.next.22.0
+  %t361 = getelementptr inbounds { ptr, i64 }, ptr %v.str.338, i32 0, i32 0
+  store ptr @.bytes.79, ptr %t361
+  %t362 = getelementptr inbounds { ptr, i64 }, ptr %v.str.338, i32 0, i32 1
+  store i64 12, ptr %t362
+  %t363 = call { i32, [4 x i8], %interface.Error } @"std/time.Load"(ptr %v.str.338)
+  store { i32, [4 x i8], %interface.Error } %t363, ptr %v.ret.336
+  %t364 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.336, i32 0, i32 0
+  %t365 = load i32, ptr %t364
+  %t366 = icmp eq i32 %t365, 1
+  br i1 %t366, label %match.arm.22.0, label %match.next.22.0
 match.arm.22.0:
-  %t361 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.336, i32 0, i32 2
-  %t362 = getelementptr inbounds %interface.Error, ptr %t361, i32 0, i32 0
-  %t363 = load ptr, ptr %t362
-  %t364 = getelementptr inbounds %interface.Error, ptr %t361, i32 0, i32 1
-  %t365 = load ptr, ptr %t364
-  %t366 = getelementptr inbounds [3 x ptr], ptr %t365, i64 0, i64 1
-  %t367 = load ptr, ptr %t366
-  %t368 = call i32 %t367(ptr %t363)
-  %t369 = icmp ne i32 %t368, 1
-  br i1 %t369, label %if.then.23, label %if.end.23
+  %t367 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.336, i32 0, i32 2
+  %t368 = getelementptr inbounds %interface.Error, ptr %t367, i32 0, i32 0
+  %t369 = load ptr, ptr %t368
+  %t370 = getelementptr inbounds %interface.Error, ptr %t367, i32 0, i32 1
+  %t371 = load ptr, ptr %t370
+  %t372 = getelementptr inbounds [3 x ptr], ptr %t371, i64 0, i64 1
+  %t373 = load ptr, ptr %t372
+  %t374 = call i32 %t373(ptr %t369)
+  %t375 = icmp ne i32 %t374, 1
+  br i1 %t375, label %if.then.23, label %if.end.23
 if.then.23:
   ret i32 13
 if.end.23:
@@ -6452,19 +6470,19 @@ match.arm.22.1:
 match.next.22.1:
   unreachable
 match.end.22:
-  %t370 = call %"struct.std/time.Timezone" @"std/time.Local"()
-  store %"struct.std/time.Timezone" %t370, ptr %v.ret.382
-  %t371 = load %"struct.std/time.Timezone", ptr %v.ret.382
-  store %"struct.std/time.Timezone" %t371, ptr %v.local
-  %t372 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.t, ptr %v.local)
-  store %"struct.std/time.Instant" %t372, ptr %v.ret.389
-  %t373 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.389)
-  store { ptr, i64 } %t373, ptr %v.ret.387
-  %t374 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.387, i32 0, i32 1
-  %t375 = load i64, ptr %t374
-  %t376 = sext i32 20 to i64
-  %t377 = icmp ult i64 %t375, %t376
-  br i1 %t377, label %if.then.24, label %if.end.24
+  %t376 = call %"struct.std/time.Timezone" @"std/time.Local"()
+  store %"struct.std/time.Timezone" %t376, ptr %v.ret.382
+  %t377 = load %"struct.std/time.Timezone", ptr %v.ret.382
+  store %"struct.std/time.Timezone" %t377, ptr %v.local
+  %t378 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.t, ptr %v.local)
+  store %"struct.std/time.Instant" %t378, ptr %v.ret.389
+  %t379 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.389)
+  store { ptr, i64 } %t379, ptr %v.ret.387
+  %t380 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.387, i32 0, i32 1
+  %t381 = load i64, ptr %t380
+  %t382 = sext i32 20 to i64
+  %t383 = icmp ult i64 %t381, %t382
+  br i1 %t383, label %if.then.24, label %if.end.24
 if.then.24:
   ret i32 15
 if.end.24:

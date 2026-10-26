@@ -90,11 +90,24 @@ func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 		g.out.WriteString(okLabel + ":\n")
 	}
 	if unit {
+		if err := g.zeroTransferredSource(exprID, ""); err != nil {
+			return "", "", "", err
+		}
 		return "", "", "", nil
 	}
-	addr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", addr, info.llvm, slot, info.payloadIndex)
-	return addr, info.argLLVM[0], info.args[0], nil
+	payload := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
+	out := g.allocSlot(g.callSlots, "unwrap.out", r.ID, info.argLLVM[0])
+	if isAggregateType(info.argLLVM[0]) {
+		g.copyValue(payload, out, info.argLLVM[0])
+	} else {
+		value := g.load(info.argLLVM[0], payload)
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.argLLVM[0], value, out)
+	}
+	if err := g.zeroTransferredSource(exprID, ""); err != nil {
+		return "", "", "", err
+	}
+	return out, info.argLLVM[0], info.args[0], nil
 }
 
 // ifaceSlotValue reads the data and method-table words of an interface stored
@@ -130,14 +143,7 @@ func (g *generator) unwrapValue(r willc.Record) (string, error) {
 	if isAggregateType(typ) {
 		return "", g.errf(r.ID, "cannot translate node #%d: the payload is an aggregate place", r.ID)
 	}
-	value := g.load(typ, addr)
-	if _, text, err := g.unwrapType(r); err == nil && isRcText(text) {
-		// The Option still owns its reference, so the copy this ! yields owns
-		// one of its own.
-		g.needRcDecl = true
-		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-	}
-	return value, nil
+	return g.load(typ, addr), nil
 }
 
 // unwrapPlace lowers `expr!` in a place position.

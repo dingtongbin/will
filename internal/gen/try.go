@@ -75,6 +75,9 @@ func (g *generator) tryCore(r willc.Record) (string, string, string, error) {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", srcErr, v, dstPayload)
 		}
 	}
+	if err := g.zeroTransferredSource(exprID, ""); err != nil {
+		return "", "", "", err
+	}
 	returned := g.load(dst.llvm, slot)
 	if err := g.runDefers(0); err != nil {
 		return "", "", "", err
@@ -94,11 +97,24 @@ func (g *generator) tryCore(r willc.Record) (string, string, string, error) {
 	g.out.WriteString(okLabel + ":\n")
 
 	if src.payloadIndex == 0 || len(src.argLLVM) == 0 || src.argLLVM[0] == "" {
+		if err := g.zeroTransferredSource(exprID, ""); err != nil {
+			return "", "", "", err
+		}
 		return "", "", "", nil
 	}
-	addr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", addr, src.llvm, srcSlot, src.payloadIndex)
-	return addr, src.argLLVM[0], src.args[0], nil
+	payload := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, src.llvm, srcSlot, src.payloadIndex)
+	out := g.allocSlot(g.callSlots, "try.out", r.ID, src.argLLVM[0])
+	if isAggregateType(src.argLLVM[0]) {
+		g.copyValue(payload, out, src.argLLVM[0])
+	} else {
+		value := g.load(src.argLLVM[0], payload)
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", src.argLLVM[0], value, out)
+	}
+	if err := g.zeroTransferredSource(exprID, ""); err != nil {
+		return "", "", "", err
+	}
+	return out, src.argLLVM[0], src.args[0], nil
 }
 
 // tryValue lowers `expr?` in a value position.

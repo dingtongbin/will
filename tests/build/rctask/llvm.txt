@@ -60,7 +60,6 @@ task.fail.1:
   unreachable
 task.ok.1:
   %t24 = load i64, ptr %v.join.out.27
-  call void @willrt_rc_retain(i64 %t24)
   store i64 %t24, ptr %v.got
   %t25 = load i64, ptr %v.got
   %t26 = call ptr @willrt_rc_deref(i64 %t25)
