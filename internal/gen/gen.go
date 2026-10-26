@@ -2709,19 +2709,73 @@ func (g *generator) assignStmt(r willc.Record) error {
 // borrow; neither may be zeroed here.
 func (g *generator) moveSource(id int) (bool, string) {
 	r, ok := g.recs[id]
-	if !ok || r.Kind != "name" {
+	if !ok {
 		return false, ""
 	}
 	text, err := g.willTypeText(id)
 	if err != nil || text == "" || isRcText(text) || isWeakText(text) || !ownsReleaseText(g, text) {
 		return false, ""
 	}
-	decl := refField(r, "to")
-	d, ok := g.recs[decl]
-	if !ok || d.Kind != "var" {
-		return false, ""
+	switch r.Kind {
+	case "name":
+		decl := refField(r, "to")
+		d, ok := g.recs[decl]
+		if !ok || d.Kind != "var" {
+			return false, ""
+		}
+		return true, text
+	case "field", "index":
+		if !g.localPlaceRoot(id) {
+			return false, ""
+		}
+		root := g.placeRootText(id)
+		if root == "" || root == "str" || isRcText(root) || isWeakText(root) ||
+			strings.HasPrefix(root, "[]") {
+			return false, ""
+		}
+		return true, text
 	}
-	return true, text
+	return false, ""
+}
+
+// localPlaceRoot reports whether a field or index chain ends at a local slot,
+// not at a parameter, a temporary, or a field of a borrowed receiver.
+func (g *generator) localPlaceRoot(id int) bool {
+	r, ok := g.recs[id]
+	if !ok {
+		return false
+	}
+	switch r.Kind {
+	case "name":
+		decl := refField(r, "to")
+		_, ok := g.slots[decl]
+		return ok
+	case "field":
+		return g.localPlaceRoot(refField(r, "recv"))
+	case "index":
+		return g.localPlaceRoot(refField(r, "recv"))
+	}
+	return false
+}
+
+func (g *generator) placeRootText(id int) string {
+	r, ok := g.recs[id]
+	if !ok {
+		return ""
+	}
+	switch r.Kind {
+	case "name":
+		text, err := g.willTypeText(id)
+		if err != nil {
+			return ""
+		}
+		return text
+	case "field":
+		return g.placeRootText(refField(r, "recv"))
+	case "index":
+		return g.placeRootText(refField(r, "recv"))
+	}
+	return ""
 }
 
 // zeroMovedSource clears a moved local's storage so a later release record

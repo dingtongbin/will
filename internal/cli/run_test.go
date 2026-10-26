@@ -31,6 +31,34 @@ func main() -> i32 {
 	}
 }
 
+// TestRunFieldMoveZeroesTheSourceField checks that a field moved into a local
+// is not also released as part of the dead root struct.
+func TestRunFieldMoveZeroesTheSourceField(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `struct Box {
+    items: Array<i32>
+}
+
+func main() -> i32 {
+    var b: Box = Box { items: new Array<i32>(4) }
+    b.items.Push(7)
+    var items: Array<i32> = b.items
+    items.Push(8)
+    return i32(items.Len())
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 2 {
+		t.Fatalf("code = %d, want 2, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunBranchMoveReleasesThePathThatStillOwnsTheValue checks the runtime
 // zeroing of a moved source: the moved path releases nothing, the other path
 // releases the value exactly once.

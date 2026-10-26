@@ -55,12 +55,22 @@ func MovesWithOwnership(f *ast.File, own *Ownership) []diag.Diagnostic {
 }
 
 type mover struct {
-	bag      diag.Bag
-	own      *Ownership
-	owns     func(*ast.Type) bool
-	types    map[string]*ast.Type
-	params   map[string]bool
-	variadic map[string]bool
+	bag        diag.Bag
+	own        *Ownership
+	owns       func(*ast.Type) bool
+	types      map[string]*ast.Type
+	params     map[string]bool
+	variadic   map[string]bool
+	locals     map[string]bool
+	placeMoves []placeMove
+}
+
+// placeMove is a field or index initializer that may move the place out when
+// the root local has no later use. The candidate is accepted after the whole
+// function has been scanned; a later use turns it back into O0002.
+type placeMove struct {
+	root string
+	pos  source.Pos
 }
 
 // owned reports whether a declared type carries a heap buffer, which is what
@@ -94,22 +104,22 @@ func (m *mover) exprType(e ast.Expr) *ast.Type {
 }
 
 // placeCopy reports O0002 when a transfer takes an owned field or element out
-// of a place that still owns it. The language has no partial move, so the
-// source must call Clone; a shallow header copy would let both owners release
-// the same buffer.
-func (m *mover) placeCopy(e ast.Expr) {
+// of a place that still owns it. A declaration is allowed to move the place
+// when the root local has no later use; the function-level check below turns it
+// back into O0002 if any later use exists.
+func (m *mover) placeCopy(e ast.Expr, allowMove bool) {
 	if m.own == nil || e == nil {
 		return
 	}
 	switch x := e.(type) {
 	case *ast.TryExpr:
-		m.placeCopy(x.X)
+		m.placeCopy(x.X, false)
 		return
 	case *ast.AwaitExpr:
-		m.placeCopy(x.X)
+		m.placeCopy(x.X, false)
 		return
 	case *ast.UnwrapExpr:
-		m.placeCopy(x.X)
+		m.placeCopy(x.X, false)
 		return
 	case *ast.FieldExpr:
 		root := rootName(x.Recv)
@@ -117,6 +127,10 @@ func (m *mover) placeCopy(e ast.Expr) {
 			return
 		}
 		if m.owns(m.own.FieldType(m.exprType(x.Recv), x.Name)) {
+			if allowMove && m.canMovePlace(root) {
+				m.placeMoves = append(m.placeMoves, placeMove{root: root, pos: x.Pos()})
+				return
+			}
 			m.copyAt(x.Pos())
 		}
 	case *ast.IndexExpr:
@@ -125,11 +139,29 @@ func (m *mover) placeCopy(e ast.Expr) {
 			return
 		}
 		if m.owns(m.own.IndexType(m.exprType(x.Recv))) {
+			if allowMove && m.canMovePlace(root) {
+				m.placeMoves = append(m.placeMoves, placeMove{root: root, pos: x.Pos()})
+				return
+			}
 			m.copyAt(x.Pos())
 		}
 	case *ast.MethodCallExpr:
 		m.containerGetCopy(x)
 	}
+}
+
+func (m *mover) canMovePlace(root string) bool {
+	if !m.locals[root] || m.params[root] || m.variadic[root] {
+		return false
+	}
+	t := m.types[root]
+	if t == nil || t.Kind == ast.ViewType {
+		return false
+	}
+	if t.Kind == ast.NamedType && (t.Name == "rc" || t.Name == "weak") {
+		return false
+	}
+	return true
 }
 
 // containerGetCopy reports O0002 when a predeclared container Get copies an
@@ -191,6 +223,8 @@ func (m *mover) funcDecl(fn *ast.FuncDecl) {
 	m.types = map[string]*ast.Type{}
 	m.params = map[string]bool{}
 	m.variadic = map[string]bool{}
+	m.locals = map[string]bool{}
+	m.placeMoves = nil
 	params := map[string]bool{}
 	if fn.Recv != nil {
 		m.types[fn.Recv.Name] = fn.Recv.Type
@@ -207,6 +241,12 @@ func (m *mover) funcDecl(fn *ast.FuncDecl) {
 		}
 	}
 	m.block(fn.Body, false, params)
+	last := lastUses(fn.Body)
+	for _, move := range m.placeMoves {
+		if use, ok := last[move.root]; ok && use.Offset > move.pos.Offset {
+			m.copyAt(move.pos)
+		}
+	}
 }
 
 // nameUse is one occurrence of a name with its position.
@@ -270,6 +310,9 @@ func (m *mover) block(b *ast.Block, inLoop bool, inherited map[string]bool) bloc
 			if vd, ok := vs.Decl.(*ast.VarDecl); ok {
 				if m.types != nil && vd.Name != "" && vd.Name != "_" {
 					m.types[vd.Name] = vd.Type
+				}
+				if vd.Name != "" && vd.Name != "_" {
+					m.locals[vd.Name] = true
 				}
 				if m.owns(vd.Type) && vd.Name != "" && vd.Name != "_" {
 					live[vd.Name] = true
@@ -378,7 +421,7 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 		switch d := s.Decl.(type) {
 		case *ast.VarDecl:
 			m.exprEvents(d.Value, live, &ev)
-			m.placeCopy(d.Value)
+			m.placeCopy(d.Value, true)
 			if b, ok := d.Value.(*ast.NameExpr); ok && m.owns(d.Type) && b.Name != "_" && live[b.Name] {
 				if !m.borrowTransfer(b.Name, b.Pos()) {
 					// The value moves into the new binding.
@@ -388,11 +431,11 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 			}
 		case *ast.ConstDecl:
 			m.exprEvents(d.Value, live, &ev)
-			m.placeCopy(d.Value)
+			m.placeCopy(d.Value, false)
 		}
 	case *ast.AssignStmt:
 		m.exprEvents(s.Value, live, &ev)
-		m.placeCopy(s.Value)
+		m.placeCopy(s.Value, false)
 		discard := false
 		if target, ok := s.Target.(*ast.NameExpr); ok && target.Name == "_" {
 			discard = true
@@ -410,7 +453,7 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 		m.exprEvents(s.Call, live, &ev)
 	case *ast.ReturnStmt:
 		m.exprEvents(s.Value, live, &ev)
-		m.placeCopy(s.Value)
+		m.placeCopy(s.Value, false)
 		if b, ok := s.Value.(*ast.NameExpr); ok && live[b.Name] {
 			if m.borrowTransfer(b.Name, b.Pos()) {
 				flow.exits = true
@@ -593,7 +636,7 @@ func (m *mover) args(args []*ast.CallArg, live map[string]bool, ev *events, tran
 			continue
 		}
 		if transfer {
-			m.placeCopy(a.Expr)
+			m.placeCopy(a.Expr, false)
 		}
 		m.exprEventsIn(a.Expr, live, ev, false)
 	}

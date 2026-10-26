@@ -69,6 +69,40 @@ func F(r: rc<Box>) -> rc<Box> {
 	}
 }
 
+func TestMoveOwnedFieldOutOfADeadLocal(t *testing.T) {
+	src := `struct Box {
+    items: Array<i32>
+}
+
+func F() {
+    var b: Box = Box { items: new Array<i32>(0) }
+    var items: Array<i32> = b.items
+    _ = items
+}
+`
+	if ds := movesOwned(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
+func TestMoveOwnedFieldWithLaterRootUseRequiresClone(t *testing.T) {
+	src := `struct Box {
+    items: Array<i32>
+}
+
+func F() {
+    var b: Box = Box { items: new Array<i32>(0) }
+    var items: Array<i32> = b.items
+    _ = b
+    _ = items
+}
+`
+	ds := movesOwned(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+}
+
 func TestMoveOwnedFieldRequiresClone(t *testing.T) {
 	src := `struct Box {
     items: Array<i32>
@@ -93,6 +127,22 @@ func F(b: Box) {
 	}
 	if d.Pos.Line != 6 || d.Pos.Col != 29 {
 		t.Fatalf("position = %d:%d, want the field transfer at 6:29", d.Pos.Line, d.Pos.Col)
+	}
+}
+
+func TestMoveOwnedIndexOutOfADeadLocal(t *testing.T) {
+	src := `struct Box {
+    items: Array<i32>
+}
+
+func F() {
+    var xs: Array<Box> = new Array<Box>(1)
+    var box: Box = xs[0]
+    _ = box
+}
+`
+	if ds := movesOwned(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
 	}
 }
 

@@ -329,10 +329,19 @@ func (b *borrower) noteCopiedPlace(name string, value ast.Expr) {
 	if !copyPlaceType(b.localTypes[name]) {
 		return
 	}
-	switch value.(type) {
-	case *ast.FieldExpr, *ast.IndexExpr:
-		b.copied[name] = value.Pos()
+	root := ""
+	switch v := value.(type) {
+	case *ast.FieldExpr:
+		root = rootName(v.Recv)
+	case *ast.IndexExpr:
+		root = rootName(v.Recv)
 	}
+	if root == "" || !b.params[root] {
+		// A local root with no later use can move the field or element out;
+		// that is not a copy of a place the caller can still name.
+		return
+	}
+	b.copied[name] = value.Pos()
 }
 
 func copyPlaceType(t *ast.Type) bool {
