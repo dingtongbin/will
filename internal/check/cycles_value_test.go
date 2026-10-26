@@ -45,6 +45,42 @@ func F() {
 	}
 }
 
+func TestValueCycleThroughOption(t *testing.T) {
+	src := `struct Node {
+    next: Option<rc<Node>>
+}
+
+func F() {
+    var a: rc<Node>
+    var b: rc<Node>
+    a.next = Some(b)
+    b.next = Some(a)
+}
+`
+	ds := valueCycles(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeUnreleasableCycle {
+		t.Fatalf("diagnostics = %s, want one M0001", diag.FormatAll(ds))
+	}
+}
+
+func TestValueCycleGenericInstance(t *testing.T) {
+	src := `struct Node<T> {
+    next: rc<Node<T>>
+}
+
+func F() {
+    var a: rc<Node<i32>>
+    var b: rc<Node<i32>>
+    a.next = b
+    b.next = a
+}
+`
+	ds := valueCycles(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeUnreleasableCycle {
+		t.Fatalf("diagnostics = %s, want one M0001", diag.FormatAll(ds))
+	}
+}
+
 func TestValueCycleWeakEdgeDoesNotClose(t *testing.T) {
 	src := `struct Node {
     next: weak<Node>

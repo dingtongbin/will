@@ -228,6 +228,11 @@ func valueEdgeOf(target, value ast.Expr, types map[string]*ast.Type, own *Owners
 	if !ok {
 		return valueEdge{}, false
 	}
+	if call, ok := value.(*ast.CallExpr); ok {
+		if callee, ok := call.Callee.(*ast.NameExpr); ok && callee.Name == "Some" && len(call.Args) == 1 {
+			value = call.Args[0].Expr
+		}
+	}
 	name := rootName(value)
 	if name == "" {
 		return valueEdge{}, false
@@ -247,14 +252,25 @@ func valueEdgeOf(target, value ast.Expr, types map[string]*ast.Type, own *Owners
 // wrapper. A direct field edge is the shape whose concrete link this pass can
 // prove; arrays and options stay type-level warnings.
 func strongRcElem(t *ast.Type) (string, bool) {
-	if t == nil || t.Kind != ast.NamedType || t.Name != "rc" || len(t.Args) != 1 {
+	if t == nil || t.Kind != ast.NamedType {
 		return "", false
 	}
-	elem := t.Args[0]
-	if elem.Kind != ast.NamedType {
-		return "", false
+	switch t.Name {
+	case "rc":
+		if len(t.Args) != 1 || t.Args[0].Kind != ast.NamedType {
+			return "", false
+		}
+		return t.Args[0].Name, true
+	case "Option", "Array", "Set":
+		if len(t.Args) != 0 {
+			return strongRcElem(t.Args[0])
+		}
+	case "Map":
+		if len(t.Args) == 2 {
+			return strongRcElem(t.Args[1])
+		}
 	}
-	return elem.Name, true
+	return "", false
 }
 
 func stronglyConnectedValue(graph map[string][]valueEdge) [][]string {
