@@ -123,9 +123,9 @@ func (b *borrower) addView(st ast.Stmt, borrowed map[string]source.Pos) {
 			owner = b.localViews[name.Name]
 			if owner != "" && vd.Name != "" && vd.Name != "_" {
 				b.localViews[vd.Name] = owner
-				// An alias can outlive the original view name, so keep the
-				// owner borrowed until the block ends.
-				b.pinned[owner] = true
+				// Keep the owner borrowed until every alias's own last use.
+				// prune removes one alias at a time and keeps the owner while
+				// another view still points at it.
 			}
 		}
 		return

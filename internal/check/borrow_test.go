@@ -152,6 +152,43 @@ func TestBorrowCanReturnAParameterView(t *testing.T) {
 	}
 }
 
+func TestBorrowAliasEndsAtItsOwnLastUse(t *testing.T) {
+	src := `func Fill(mut xs: Array<i32>) {
+}
+
+func F() {
+    var xs: Array<i32> = new Array<i32>(0)
+    var v: []i32 = xs[Range(0, xs.Len())]
+    var w: []i32 = v
+    _ = w
+    _ = v
+    Fill(xs)
+}
+`
+	if ds := borrows(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %s, want none", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowAliasKeepsOwnerBorrowed(t *testing.T) {
+	src := `func Fill(mut xs: Array<i32>) {
+}
+
+func F() {
+    var xs: Array<i32> = new Array<i32>(0)
+    var v: []i32 = xs[Range(0, xs.Len())]
+    var w: []i32 = v
+    _ = v
+    Fill(xs)
+    _ = w
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowConflict {
+		t.Fatalf("diagnostics = %s, want one O0003", diag.FormatAll(ds))
+	}
+}
+
 func TestBorrowNotPinnedByUnrelatedClosure(t *testing.T) {
 	src := `func Fill(mut xs: Array<i32>) {
 }
