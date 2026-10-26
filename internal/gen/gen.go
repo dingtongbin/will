@@ -80,6 +80,7 @@ func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		thunkEmitted:   map[string]bool{},
 		spawnEmitted:   map[string]bool{},
 		spawnDropped:   map[string]bool{},
+		ifaceThunkSeen: map[string]bool{},
 		dropEmitted:    map[string]bool{},
 		out:            &strings.Builder{},
 		aliases:        aliases,
@@ -915,6 +916,8 @@ type generator struct {
 	pendingSelect  []*selectMachineInfo
 	spawnEmitted   map[string]bool
 	spawnDropped   map[string]bool
+	ifaceThunks    []ifaceThunk
+	ifaceThunkSeen map[string]bool
 	// The slots below keep a loop from growing the stack on every evaluation
 	// of a join, receive, or send.
 	joinOutSlots map[int]string
@@ -1141,10 +1144,13 @@ func (g *generator) emitDoc() error {
 	// and a blocking step or spawn can contain another defer. Keep draining
 	// every queue until none of them gained work while the others ran.
 	for pass := 0; pass < 64; pass++ {
+		if err := g.emitIfaceThunks(); err != nil {
+			return err
+		}
 		pending := len(g.pendingThunks) + len(g.pendingSpawns) +
 			len(g.pendingGeneral) + len(g.pendingAsync) +
 			len(g.pendingSelect) + len(g.pendingBlock) + len(g.pendingDrops) +
-			len(g.pendingLambdaDrops) + len(g.pendingDefers)
+			len(g.pendingLambdaDrops) + len(g.pendingDefers) + len(g.ifaceThunks)
 		if pending == 0 {
 			break
 		}
@@ -1170,7 +1176,7 @@ func (g *generator) emitDoc() error {
 	if pending := len(g.pendingThunks) + len(g.pendingSpawns) +
 		len(g.pendingGeneral) + len(g.pendingAsync) +
 		len(g.pendingSelect) + len(g.pendingBlock) + len(g.pendingDrops) +
-		len(g.pendingLambdaDrops) + len(g.pendingDefers); pending != 0 {
+		len(g.pendingLambdaDrops) + len(g.pendingDefers) + len(g.ifaceThunks); pending != 0 {
 		return fmt.Errorf("pending lowering work did not drain")
 	}
 	return g.emitInit(g.cur)
@@ -2694,16 +2700,23 @@ func (g *generator) assignStmt(r willc.Record) error {
 		return nil
 	}
 	if iface, ok := g.ifaceOfType(typ); ok {
+		if refField(r, "target") == valueID {
+			return nil
+		}
 		valueText, err := g.willTypeText(valueID)
 		if err != nil {
 			return err
 		}
-		if _, same := g.ifaceOfText(valueText); !same {
-			if _, err := g.ifaceValue(ptr, valueID, iface, valueText); err != nil {
-				return err
-			}
-			return nil
+		tmp := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", tmp, iface.llvm)
+		if _, err := g.ifaceStoreValue(tmp, valueID, iface, valueText); err != nil {
+			return err
 		}
+		if err := g.releaseIfaceValue(ptr, iface); err != nil {
+			return err
+		}
+		g.copyValue(tmp, ptr, iface.llvm)
+		return nil
 	}
 	if isAggregateType(typ) {
 		src, srcType, err := g.place(valueID)
@@ -2921,12 +2934,10 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		if _, same := g.ifaceOfText(valueText); !same {
-			if _, err := g.ifaceValue(slot, valueID, iface, valueText); err != nil {
-				return false, err
-			}
-			return false, nil
+		if _, err := g.ifaceStoreValue(slot, valueID, iface, valueText); err != nil {
+			return false, err
 		}
+		return false, nil
 	}
 	if isAggregateType(typ) {
 		src, srcType, err := g.place(valueID)
@@ -3229,30 +3240,28 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		if _, same := g.ifaceOfText(valueText); !same {
-			slot := g.ifaceRetSlots[st.ID]
-			if slot == "" {
-				return false, g.errf(st.ID, "cannot translate node #%d: the interface result has no slot", st.ID)
-			}
-			if _, err := g.ifaceValue(slot, valueID, iface, valueText); err != nil {
-				return false, err
-			}
-			v := g.load(iface.llvm, slot)
-			if err := g.runDefers(0); err != nil {
-				return false, err
-			}
-			if err := g.flushReleases(); err != nil {
-				return false, err
-			}
-			if g.smMode {
-				if err := g.storeTaskResult(iface.llvm, v); err != nil {
-					return false, err
-				}
-			} else {
-				fmt.Fprintf(g.out, "  ret %s %s\n", iface.llvm, v)
-			}
-			return true, nil
+		slot := g.ifaceRetSlots[st.ID]
+		if slot == "" {
+			return false, g.errf(st.ID, "cannot translate node #%d: the interface result has no slot", st.ID)
 		}
+		if _, err := g.ifaceStoreValue(slot, valueID, iface, valueText); err != nil {
+			return false, err
+		}
+		v := g.load(iface.llvm, slot)
+		if err := g.runDefers(0); err != nil {
+			return false, err
+		}
+		if err := g.flushReleases(); err != nil {
+			return false, err
+		}
+		if g.smMode {
+			if err := g.storeTaskResult(iface.llvm, v); err != nil {
+				return false, err
+			}
+		} else {
+			fmt.Fprintf(g.out, "  ret %s %s\n", iface.llvm, v)
+		}
+		return true, nil
 	}
 	if isAggregateType(g.resultType) {
 		ptr, typ, err := g.place(valueID)

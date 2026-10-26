@@ -13,7 +13,7 @@ struct WriterBuf {
 // init wraps w in a buffer of size bytes. A size of zero passes every write
 // straight through.
 func (mut b: WriterBuf) init(w: io.Writer, size: usize) {
-    b.dst = w
+    b.dst = w.Clone()
     b.data = new Array<u8>(size)
     b.limit = size
 }

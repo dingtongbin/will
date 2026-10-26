@@ -231,7 +231,7 @@ func (g *generator) ifaceDowncastIs(r willc.Record) (string, error) {
 	g.out.WriteString(check + ":\n")
 	identity := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n",
-		identity, len(d.source.methods)+1, table, len(d.source.methods))
+		identity, len(d.source.methods)+3, table, len(d.source.methods)+2)
 	id := g.load("ptr", identity)
 	result := ""
 	for _, candidate := range candidates {
@@ -297,7 +297,9 @@ func (g *generator) ifaceDowncastAs(r willc.Record) (string, string, error) {
 		if err != nil {
 			return "", "", err
 		}
-		g.copyValue(base, payload, d.source.llvm)
+		if _, err := g.cloneIfaceAt(base, payload, d.source); err != nil {
+			return "", "", err
+		}
 		fmt.Fprintf(g.out, "  br label %%%s\n", done)
 	} else {
 		candidates := g.downcastCandidates(d.source, d.toIface)
@@ -306,7 +308,7 @@ func (g *generator) ifaceDowncastAs(r willc.Record) (string, string, error) {
 		} else {
 			identity := g.newTmp()
 			fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n",
-				identity, len(d.source.methods)+1, table, len(d.source.methods))
+				identity, len(d.source.methods)+3, table, len(d.source.methods)+2)
 			id := g.load("ptr", identity)
 			for i, candidate := range candidates {
 				equal := g.newTmp()
@@ -323,9 +325,15 @@ func (g *generator) ifaceDowncastAs(r willc.Record) (string, string, error) {
 				if err != nil {
 					return "", "", err
 				}
+				clonePtr := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n",
+					clonePtr, len(d.source.methods)+3, table, len(d.source.methods))
+				cloneFn := g.load("ptr", clonePtr)
+				newData := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = call ptr %s(ptr %s)\n", newData, cloneFn, data)
 				dataField := g.newTmp()
 				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", dataField, d.toIface.llvm, payload)
-				fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", data, dataField)
+				fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", newData, dataField)
 				tableField := g.newTmp()
 				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", tableField, d.toIface.llvm, payload)
 				fmt.Fprintf(g.out, "  store ptr @%s, ptr %s\n", llvmSymbol(tableSym), tableField)
@@ -367,11 +375,5 @@ func (g *generator) downcastStoreConcrete(id int, d *downcast, data string, adt 
 	if typ == "" || payload == "" {
 		return nil
 	}
-	if isAggregateType(typ) {
-		g.copyValue(data, payload, typ)
-		return nil
-	}
-	value := g.load(typ, data)
-	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, payload)
-	return nil
+	return g.cloneOwnedValue(data, payload, d.target)
 }

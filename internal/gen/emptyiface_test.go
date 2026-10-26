@@ -24,7 +24,7 @@ func TestEmitEmptyInterface(t *testing.T) {
 	for _, want := range []string{
 		"%interface.empty = type { ptr, ptr }",
 		"will.type.i32",
-		"getelementptr inbounds [1 x ptr], ptr",
+		"getelementptr inbounds [3 x ptr], ptr",
 		"cast.check.",
 	} {
 		if !strings.Contains(text, want) {

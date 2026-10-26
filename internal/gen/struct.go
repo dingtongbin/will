@@ -1473,12 +1473,10 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 				if err != nil {
 					return err
 				}
-				if _, same := g.ifaceOfText(valueText); !same {
-					if _, err := g.ifaceValue(ptr, valueID, iface, valueText); err != nil {
-						return err
-					}
-					continue
+				if _, err := g.ifaceStoreValue(ptr, valueID, iface, valueText); err != nil {
+					return err
 				}
+				continue
 			}
 			src, typ, err := g.place(valueID)
 			if err != nil {

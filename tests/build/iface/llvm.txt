@@ -29,14 +29,14 @@ entry:
   %t11 = load ptr, ptr %t10
   %t12 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %x, i32 0, i32 1
   %t13 = load ptr, ptr %t12
-  %t14 = getelementptr inbounds [3 x ptr], ptr %t13, i64 0, i64 0
+  %t14 = getelementptr inbounds [5 x ptr], ptr %t13, i64 0, i64 0
   %t15 = load ptr, ptr %t14
   %t16 = call i32 %t15(ptr %t11)
   %t17 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %x, i32 0, i32 0
   %t18 = load ptr, ptr %t17
   %t19 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %x, i32 0, i32 1
   %t20 = load ptr, ptr %t19
-  %t21 = getelementptr inbounds [3 x ptr], ptr %t20, i64 0, i64 1
+  %t21 = getelementptr inbounds [5 x ptr], ptr %t20, i64 0, i64 1
   %t22 = load ptr, ptr %t21
   %t23 = call i32 %t22(ptr %t18, i32 2)
   %t24 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t16, i32 %t23)
@@ -59,31 +59,84 @@ entry:
   store i32 3, ptr %t27
   %t28 = load %"struct.example.com/iface.C", ptr %v.agg.51
   store %"struct.example.com/iface.C" %t28, ptr %v.c
-  %t29 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 0
-  store ptr %v.c, ptr %t29
-  %t30 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 1
-  store ptr @"example.com/iface.vtable.Counter.C", ptr %t30
-  %t31 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.60.0, i32 0, i32 0
-  store ptr %v.c, ptr %t31
-  %t32 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.60.0, i32 0, i32 1
-  store ptr @"example.com/iface.vtable.Counter.C", ptr %t32
-  %t33 = call i32 @"example.com/iface.Use"(ptr %v.iface.60.0)
-  %t34 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 0
-  %t35 = load ptr, ptr %t34
-  %t36 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 1
-  %t37 = load ptr, ptr %t36
-  %t38 = getelementptr inbounds [3 x ptr], ptr %t37, i64 0, i64 0
+  %t30 = getelementptr %"struct.example.com/iface.C", ptr null, i32 1
+  %t31 = ptrtoint ptr %t30 to i64
+  %t29 = call ptr @willrt_alloc(i64 %t31)
+  %t32 = load %"struct.example.com/iface.C", ptr %v.c
+  store %"struct.example.com/iface.C" %t32, ptr %t29
+  %t33 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 0
+  %t34 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 1
+  store ptr %t29, ptr %t33
+  store ptr @"example.com/iface.vtable.Counter.C", ptr %t34
+  %t35 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.60.0, i32 0, i32 0
+  store ptr %v.c, ptr %t35
+  %t36 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.60.0, i32 0, i32 1
+  store ptr @"example.com/iface.vtable.Counter.C", ptr %t36
+  %t37 = call i32 @"example.com/iface.Use"(ptr %v.iface.60.0)
+  %t38 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 0
   %t39 = load ptr, ptr %t38
-  %t40 = call i32 %t39(ptr %t35)
-  %t41 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t33, i32 %t40)
-  %t42 = extractvalue {i32, i1} %t41, 0
-  %t43 = extractvalue {i32, i1} %t41, 1
-  br i1 %t43, label %panic.1, label %panic.ok.1
+  %t40 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 1
+  %t41 = load ptr, ptr %t40
+  %t42 = getelementptr inbounds [5 x ptr], ptr %t41, i64 0, i64 0
+  %t43 = load ptr, ptr %t42
+  %t44 = call i32 %t43(ptr %t39)
+  %t45 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t37, i32 %t44)
+  %t46 = extractvalue {i32, i1} %t45, 0
+  %t47 = extractvalue {i32, i1} %t45, 1
+  br i1 %t47, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.0, ptr @.str.7, ptr @.str.8)
   unreachable
 panic.ok.1:
-  ret i32 %t42
+  %t48 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 0
+  %t49 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 1
+  %t50 = load ptr, ptr %t48
+  %t51 = load ptr, ptr %t49
+  %t52 = icmp eq ptr %t50, null
+  br i1 %t52, label %iface.rel.empty.2, label %iface.rel.have.2
+iface.rel.empty.2:
+  br label %iface.rel.done.2
+iface.rel.have.2:
+  %t53 = getelementptr inbounds [5 x ptr], ptr %t51, i64 0, i64 3
+  %t54 = load ptr, ptr %t53
+  call void %t54(ptr %t50)
+  call void @willrt_free(ptr %t50)
+  store ptr null, ptr %t48
+  store ptr null, ptr %t49
+  br label %iface.rel.done.2
+iface.rel.done.2:
+  ret i32 %t46
+}
+define internal ptr @"example.com/iface.iface.clone.Counter.C"(ptr %data) {
+entry:
+  %t55 = alloca ptr
+  store ptr null, ptr %t55
+  %t56 = icmp eq ptr %data, null
+  br i1 %t56, label %iface.clone.null.3, label %iface.clone.have.3
+iface.clone.null.3:
+  br label %iface.clone.ret.3
+iface.clone.have.3:
+  %t58 = getelementptr %"struct.example.com/iface.C", ptr null, i32 1
+  %t59 = ptrtoint ptr %t58 to i64
+  %t57 = call ptr @willrt_alloc(i64 %t59)
+  %t60 = load %"struct.example.com/iface.C", ptr %data
+  store %"struct.example.com/iface.C" %t60, ptr %t57
+  store ptr %t57, ptr %t55
+  br label %iface.clone.ret.3
+iface.clone.ret.3:
+  %t61 = load ptr, ptr %t55
+  ret ptr %t61
+}
+define internal void @"example.com/iface.iface.drop.Counter.C"(ptr %data) {
+entry:
+  %t62 = icmp eq ptr %data, null
+  br i1 %t62, label %iface.drop.null.4, label %iface.drop.have.4
+iface.drop.null.4:
+  br label %iface.drop.done.4
+iface.drop.have.4:
+  br label %iface.drop.done.4
+iface.drop.done.4:
+  ret void
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -100,8 +153,10 @@ entry:
 @.str.3 = private unnamed_addr constant [16 x i8] c"main.will:20:12\00", align 1
 @.str.4 = private unnamed_addr constant [22 x i8] c"example.com/iface.Use\00", align 1
 @"will.type.example.com/iface.C" = linkonce_odr constant i8 0, align 1
-@"example.com/iface.vtable.Counter.C" = internal constant [3 x ptr] [ptr @"example.com/iface.C.Get", ptr @"example.com/iface.C.Add", ptr @"will.type.example.com/iface.C"], align 8
+@"example.com/iface.vtable.Counter.C" = internal constant [5 x ptr] [ptr @"example.com/iface.C.Get", ptr @"example.com/iface.C.Add", ptr @"example.com/iface.iface.clone.Counter.C", ptr @"example.com/iface.iface.drop.Counter.C", ptr @"will.type.example.com/iface.C"], align 8
 @.str.7 = private unnamed_addr constant [16 x i8] c"main.will:26:12\00", align 1
 @.str.8 = private unnamed_addr constant [28 x i8] c"example.com/iface.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
+declare ptr @willrt_alloc(i64)
+declare void @willrt_free(ptr)

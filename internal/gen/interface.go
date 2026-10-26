@@ -25,6 +25,16 @@ type ifaceInfo struct {
 	byName  map[string]int
 }
 
+// ifaceThunk is the clone and drop pair generated for one concrete type and
+// one interface. The table keeps the methods first, then clone, drop, and the
+// type identity; the identity stays the last word.
+type ifaceThunk struct {
+	iface    *ifaceInfo
+	concrete string
+	clone    string
+	drop     string
+}
+
 // buildInterfaces records every interface of the current document and emits
 // its two-word type. The method order is the declaration order, so a method
 // table entry is fixed.
@@ -313,7 +323,15 @@ func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 		return sym, nil
 	}
 	sym := qualify(g.pkg, "vtable."+iface.name+"."+concrete)
-	entries := make([]string, 0, len(iface.methods)+1)
+	cloneSym := qualify(g.pkg, "iface.clone."+iface.name+"."+concrete)
+	dropSym := qualify(g.pkg, "iface.drop."+iface.name+"."+concrete)
+	if !g.ifaceThunkSeen[cloneSym] {
+		g.ifaceThunkSeen[cloneSym] = true
+		g.ifaceThunks = append(g.ifaceThunks, ifaceThunk{
+			iface: iface, concrete: concrete, clone: cloneSym, drop: dropSym,
+		})
+	}
+	entries := make([]string, 0, len(iface.methods)+3)
 	for _, m := range iface.methods {
 		method := g.methodsQualified[concrete+"."+m.name]
 		if method == "" {
@@ -341,6 +359,8 @@ func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 			}
 		}
 	}
+	entries = append(entries, "ptr @"+llvmSymbol(cloneSym))
+	entries = append(entries, "ptr @"+llvmSymbol(dropSym))
 	entries = append(entries, "ptr @"+llvmSymbol(g.typeIdentity(concrete)))
 	g.vtables[key] = sym
 	if g.emittedVtables[sym] {
@@ -419,7 +439,7 @@ func (g *generator) interfaceCall(r willc.Record, iface *ifaceInfo) (string, str
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", tableField, iface.llvm, base)
 	table := g.load("ptr", tableField)
 	fnField := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n", fnField, len(iface.methods)+1, table, idx)
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n", fnField, len(iface.methods)+3, table, idx)
 	fn := g.load("ptr", fnField)
 
 	parts := []string{"ptr " + data}

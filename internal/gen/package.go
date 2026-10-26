@@ -146,6 +146,7 @@ func newGenerator(lib bool, aliases map[string]string) *generator {
 		thunkEmitted:   map[string]bool{},
 		spawnEmitted:   map[string]bool{},
 		spawnDropped:   map[string]bool{},
+		ifaceThunkSeen: map[string]bool{},
 		dropEmitted:    map[string]bool{},
 		out:            &strings.Builder{},
 		aliases:        aliases,

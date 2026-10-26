@@ -397,6 +397,21 @@ func (g *generator) strEqAt(aPtr, bData, bLen string) (string, error) {
 	return equal, nil
 }
 
+// storeContainerValue stores one element into a container slot. An interface
+// element is boxed into its own owner; other elements keep the normal copy
+// path used by Map and Set.
+func (g *generator) storeContainerValue(dst string, id int, text string) error {
+	if iface, ok := g.ifaceOfText(text); ok {
+		sourceText, err := g.willTypeText(id)
+		if err != nil {
+			return err
+		}
+		_, err = g.ifaceStoreValue(dst, id, iface, sourceText)
+		return err
+	}
+	return g.storeValueAt(dst, id)
+}
+
 // storeValueAt writes one value into a slot of the given LLVM type.
 func (g *generator) storeValueAt(dst string, id int) error {
 	typ, err := g.typeOf(id)
@@ -532,7 +547,7 @@ func (g *generator) mapSet(r willc.Record, entry string, entrySize int, keyLLVM,
 	if err := g.releaseOwnedValue(vPtr, valueText); err != nil {
 		return err
 	}
-	if err := g.storeValueAt(vPtr, valueID); err != nil {
+	if err := g.storeContainerValue(vPtr, valueID, valueText); err != nil {
 		return err
 	}
 	fmt.Fprintf(g.out, "  br label %%%s\n", done)
@@ -550,7 +565,7 @@ func (g *generator) mapSet(r willc.Record, entry string, entrySize int, keyLLVM,
 	}
 	vPtr = g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", vPtr, entry, newEntry)
-	if err := g.storeValueAt(vPtr, valueID); err != nil {
+	if err := g.storeContainerValue(vPtr, valueID, valueText); err != nil {
 		return err
 	}
 	nextLen := g.newTmp()

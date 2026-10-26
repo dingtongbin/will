@@ -1246,9 +1246,6 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			case "str", "Array", "Map", "Set":
 				return nil
 			}
-			if _, isIface := c.env.ifaces[recv.Name()]; isIface {
-				return nil
-			}
 		}
 		c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 		return recv

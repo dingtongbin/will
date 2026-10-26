@@ -296,12 +296,16 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 				if err != nil {
 					return "", "", err
 				}
-				if _, same := g.ifaceOfText(valueText); !same {
-					if _, err := g.ifaceValue(ptr, args[1], iface, valueText); err != nil {
-						return "", "", err
-					}
-					return "", "", nil
+				tmp := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = alloca %s\n", tmp, iface.llvm)
+				if _, err := g.ifaceStoreValue(tmp, args[1], iface, valueText); err != nil {
+					return "", "", err
 				}
+				if err := g.releaseIfaceValue(ptr, iface); err != nil {
+					return "", "", err
+				}
+				g.copyValue(tmp, ptr, iface.llvm)
+				return "", "", nil
 			}
 			src, srcType, err := g.place(args[1])
 			if err != nil {
@@ -550,12 +554,10 @@ func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemS
 			if err != nil {
 				return err
 			}
-			if _, same := g.ifaceOfText(valueText); !same {
-				if _, err := g.ifaceValue(slot, valueID, iface, valueText); err != nil {
-					return err
-				}
-				converted = true
+			if _, err := g.ifaceStoreValue(slot, valueID, iface, valueText); err != nil {
+				return err
 			}
+			converted = true
 		}
 		if !converted {
 			src, srcType, err := g.place(valueID)

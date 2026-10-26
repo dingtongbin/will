@@ -142,6 +142,126 @@ func main() -> i32 {
 	}
 }
 
+// TestRunInterfaceFieldAndArray checks that interfaces stored in a struct field
+// and in an Array are separately boxed and released.
+func TestRunInterfaceFieldAndArray(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `struct P {
+    s: str
+}
+
+func (p: P) Message() -> str {
+    return p.s.Clone()
+}
+
+func (p: P) Status() -> i32 {
+    return 1
+}
+
+struct H {
+    e: Error
+}
+
+func main() -> i32 {
+    var e: Error = P { s: "hello" }
+    var h: H = H { e: e }
+    var xs: Array<Error> = new Array<Error>(2)
+    xs.Push(e)
+    return i32(h.e.Message().Len()) + i32(xs.Get(0).Message().Len())
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 10 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
+// TestRunInterfaceDowncastClone checks that As<interface> boxes a new concrete
+// value instead of sharing the source box.
+func TestRunInterfaceDowncastClone(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `interface Shape {
+    func Area() -> i32
+}
+
+interface Labeled {
+    func Label() -> str
+}
+
+struct Square {
+    n: i32
+}
+
+func (s: Square) Area() -> i32 {
+    return s.n
+}
+
+func (s: Square) Label() -> str {
+    return "square"
+}
+
+func main() -> i32 {
+    var s: Shape = Square { n: 3 }
+    var l: Option<Labeled> = s.As<Labeled>()
+    return match l {
+        Some(x) => i32(x.Label().Len())
+        None => 0
+    }
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 6 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
+// TestRunInterfaceBoxAndClone checks that a stored interface owns a heap box,
+// Clone uses the table's clone thunk, and release calls the drop thunk.
+func TestRunInterfaceBoxAndClone(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `struct P {
+    s: str
+}
+
+func (p: P) Message() -> str {
+    return p.s.Clone()
+}
+
+func (p: P) Status() -> i32 {
+    return 1
+}
+
+func main() -> i32 {
+    var e: Error = P { s: "hello" }
+    var f: Error = e.Clone()
+    var n: i32 = i32(f.Message().Len())
+    return n
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 5 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunSpawnDropsArrayCapture checks that the task frame releases an owned
 // array before the runtime frees the frame.
 func TestRunSpawnDropsArrayCapture(t *testing.T) {

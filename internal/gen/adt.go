@@ -278,7 +278,7 @@ func (g *generator) adtConstruct(r willc.Record, info *adtInfo, variant string, 
 			if err != nil {
 				return "", "", err
 			}
-			if _, err := g.ifaceValue(payload, argID, iface, argText); err != nil {
+			if _, err := g.ifaceStoreValue(payload, argID, iface, argText); err != nil {
 				return "", "", err
 			}
 			return slot, info.llvm, nil

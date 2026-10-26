@@ -501,6 +501,9 @@ func ownsReleaseText(g *generator, text string) bool {
 	if text == "str" || isRcText(text) || isFuncText(text) {
 		return true
 	}
+	if _, ok := g.ifaceOfText(text); ok {
+		return true
+	}
 	if _, ok := arrayElemText(text); ok {
 		return true
 	}
@@ -550,6 +553,9 @@ func needsReleaseText(g *generator, text string) bool {
 		return false
 	}
 	if isFuncText(text) {
+		return true
+	}
+	if _, ok := g.ifaceOfText(text); ok {
 		return true
 	}
 	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {

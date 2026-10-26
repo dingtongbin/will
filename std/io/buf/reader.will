@@ -13,7 +13,7 @@ struct ReaderBuf {
 // init wraps r in a buffer of size bytes. A size of zero passes every read
 // straight through.
 func (mut b: ReaderBuf) init(r: io.Reader, size: usize) {
-    b.src = r
+    b.src = r.Clone()
     b.data = new Array<u8>(size)
     b.pos = 0usize
     b.limit = size

@@ -356,7 +356,8 @@ func (o *Ownership) ownsNamed(t *ast.Type, bindings map[string]*ast.Type, active
 		return false
 	}
 	if o.interfaces[short] {
-		return false
+		// A boxed interface owns the concrete value it points at.
+		return true
 	}
 	if enums := o.enums[short]; len(enums) == 1 {
 		active[short] = true

@@ -10,7 +10,7 @@ entry:
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 1
   %t4 = load ptr, ptr %t3
-  %t5 = getelementptr inbounds [3 x ptr], ptr %t4, i64 0, i64 1
+  %t5 = getelementptr inbounds [5 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
   %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t7)
@@ -1254,8 +1254,8 @@ entry:
   %v.adt.80 = getelementptr i8, ptr %frame, i64 88
   %v.sm.async.op.22 = getelementptr i8, ptr %frame, i64 112
   %v.sm.async.status.23 = getelementptr i8, ptr %frame, i64 120
-  %t43 = getelementptr i8, ptr %frame, i64 128
-  %t52 = getelementptr i8, ptr %frame, i64 152
+  %t56 = getelementptr i8, ptr %frame, i64 128
+  %t65 = getelementptr i8, ptr %frame, i64 152
   %v.sm.pval.52 = load i64, ptr %v.sm.param.52.20
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
@@ -1297,74 +1297,138 @@ if.then.1:
   %t34 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.75, i32 0, i32 0
   store i32 1, ptr %t34
   %t35 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.75, i32 0, i32 2
-  %t36 = getelementptr inbounds %"struct.std/time.clockError", ptr %v.agg.77, i32 0, i32 0
-  %t37 = getelementptr inbounds { ptr, i64 }, ptr %v.str.78, i32 0, i32 0
-  store ptr @.bytes.8, ptr %t37
-  %t38 = getelementptr inbounds { ptr, i64 }, ptr %v.str.78, i32 0, i32 1
-  store i64 20, ptr %t38
-  %t39 = load { ptr, i64 }, ptr %v.str.78
-  store { ptr, i64 } %t39, ptr %t36
-  %t40 = getelementptr inbounds %interface.Error, ptr %t35, i32 0, i32 0
-  store ptr %v.agg.77, ptr %t40
-  %t41 = getelementptr inbounds %interface.Error, ptr %t35, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.clockError", ptr %t41
-  %t42 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.75
-  store { i32, [4 x i8], %interface.Error } %t42, ptr %t43
-  %t44 = load i32, ptr %t43
-  %t45 = icmp eq i32 %t44, 0
-  br i1 %t45, label %share.keep.2, label %share.done.2
+  %t37 = getelementptr %"struct.std/time.clockError", ptr null, i32 1
+  %t38 = ptrtoint ptr %t37 to i64
+  %t36 = call ptr @willrt_alloc(i64 %t38)
+  %t39 = getelementptr inbounds %"struct.std/time.clockError", ptr %v.agg.77, i32 0, i32 0
+  %t40 = getelementptr inbounds { ptr, i64 }, ptr %v.str.78, i32 0, i32 0
+  store ptr @.bytes.8, ptr %t40
+  %t41 = getelementptr inbounds { ptr, i64 }, ptr %v.str.78, i32 0, i32 1
+  store i64 20, ptr %t41
+  %t42 = load { ptr, i64 }, ptr %v.str.78
+  store { ptr, i64 } %t42, ptr %t39
+  %t43 = load %"struct.std/time.clockError", ptr %v.agg.77
+  store %"struct.std/time.clockError" %t43, ptr %t36
+  %t44 = getelementptr inbounds %"struct.std/time.clockError", ptr %v.agg.77, i32 0, i32 0
+  %t45 = getelementptr inbounds %"struct.std/time.clockError", ptr %t36, i32 0, i32 0
+  %t46 = getelementptr inbounds { ptr, i64 }, ptr %t44, i32 0, i32 0
+  %t47 = getelementptr inbounds { ptr, i64 }, ptr %t44, i32 0, i32 1
+  %t48 = load ptr, ptr %t46
+  %t49 = load i64, ptr %t47
+  %t50 = call ptr @willrt_alloc(i64 %t49)
+  call void @memcpy(ptr %t50, ptr %t48, i64 %t49)
+  %t51 = getelementptr inbounds { ptr, i64 }, ptr %t45, i32 0, i32 0
+  store ptr %t50, ptr %t51
+  %t52 = getelementptr inbounds { ptr, i64 }, ptr %t45, i32 0, i32 1
+  store i64 %t49, ptr %t52
+  %t53 = getelementptr inbounds %interface.Error, ptr %t35, i32 0, i32 0
+  %t54 = getelementptr inbounds %interface.Error, ptr %t35, i32 0, i32 1
+  store ptr %t36, ptr %t53
+  store ptr @"std/time.vtable.Error.clockError", ptr %t54
+  %t55 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.75
+  store { i32, [4 x i8], %interface.Error } %t55, ptr %t56
+  %t57 = load i32, ptr %t56
+  %t58 = icmp eq i32 %t57, 0
+  br i1 %t58, label %share.keep.2, label %share.done.2
 share.keep.2:
-  %t46 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t43, i32 0, i32 2
+  %t59 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t56, i32 0, i32 2
   br label %share.done.2
 share.done.2:
-  %t47 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t48 = ptrtoint ptr %t47 to i64
-  call i32 @willrt_task_store_result(ptr %t43, i64 %t48)
+  %t60 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t61 = ptrtoint ptr %t60 to i64
+  call i32 @willrt_task_store_result(ptr %t56, i64 %t61)
   ret i32 1
 if.end.1:
-  %t49 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.80, i32 0, i32 0
-  store i32 0, ptr %t49
-  %t50 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.80, i32 0, i32 2
-  %t51 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.80
-  store { i32, [4 x i8], %interface.Error } %t51, ptr %t52
-  %t53 = load i32, ptr %t52
-  %t54 = icmp eq i32 %t53, 0
-  br i1 %t54, label %share.keep.3, label %share.done.3
+  %t62 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.80, i32 0, i32 0
+  store i32 0, ptr %t62
+  %t63 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.80, i32 0, i32 2
+  %t64 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.80
+  store { i32, [4 x i8], %interface.Error } %t64, ptr %t65
+  %t66 = load i32, ptr %t65
+  %t67 = icmp eq i32 %t66, 0
+  br i1 %t67, label %share.keep.3, label %share.done.3
 share.keep.3:
-  %t55 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t52, i32 0, i32 2
+  %t68 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t65, i32 0, i32 2
   br label %share.done.3
 share.done.3:
-  %t56 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t57 = ptrtoint ptr %t56 to i64
-  call i32 @willrt_task_store_result(ptr %t52, i64 %t57)
+  %t69 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t70 = ptrtoint ptr %t69 to i64
+  call i32 @willrt_task_store_result(ptr %t65, i64 %t70)
   ret i32 1
 
 }
 define hidden ptr @"std/time.Sleep.task"(i64 %arg0, i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 176)
-  %t58 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t58
-  %t59 = getelementptr i8, ptr %v.sm.frame, i64 8
-  store i64 %arg0, ptr %t59
-  %t60 = call i32 @willrt_lane_here()
-  %t61 = icmp eq i32 %start, -1
-  %t62 = icmp eq i32 %start, -2
-  %t63 = select i1 %t62, i32 %t60, i32 %start
-  br i1 %t61, label %sm.start.auto.4, label %sm.start.lane.4
+  %t71 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t71
+  %t72 = getelementptr i8, ptr %v.sm.frame, i64 8
+  store i64 %arg0, ptr %t72
+  %t73 = call i32 @willrt_lane_here()
+  %t74 = icmp eq i32 %start, -1
+  %t75 = icmp eq i32 %start, -2
+  %t76 = select i1 %t75, i32 %t73, i32 %start
+  br i1 %t74, label %sm.start.auto.4, label %sm.start.lane.4
 sm.start.auto.4:
-  %t64 = call ptr @willrt_task_new(ptr @"std/time.Sleep.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0)
-  call void @willrt_task_own_frame(ptr %t64)
-  call void @willrt_task_run_auto(ptr %t64)
+  %t77 = call ptr @willrt_task_new(ptr @"std/time.Sleep.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t77)
+  call void @willrt_task_run_auto(ptr %t77)
   br label %sm.start.done.4
 sm.start.lane.4:
-  %t65 = call ptr @willrt_task_new(ptr @"std/time.Sleep.sm", ptr %v.sm.frame, i64 176, i32 %t63, i32 0)
-  call void @willrt_task_own_frame(ptr %t65)
-  call void @willrt_task_run(ptr %t65)
+  %t78 = call ptr @willrt_task_new(ptr @"std/time.Sleep.sm", ptr %v.sm.frame, i64 176, i32 %t76, i32 0)
+  call void @willrt_task_own_frame(ptr %t78)
+  call void @willrt_task_run(ptr %t78)
   br label %sm.start.done.4
 sm.start.done.4:
-  %t66 = phi ptr [ %t64, %sm.start.auto.4 ], [ %t65, %sm.start.lane.4 ]
-  ret ptr %t66
+  %t79 = phi ptr [ %t77, %sm.start.auto.4 ], [ %t78, %sm.start.lane.4 ]
+  ret ptr %t79
+}
+define internal ptr @"std/time.iface.clone.Error.clockError"(ptr %data) {
+entry:
+  %t80 = alloca ptr
+  store ptr null, ptr %t80
+  %t81 = icmp eq ptr %data, null
+  br i1 %t81, label %iface.clone.null.5, label %iface.clone.have.5
+iface.clone.null.5:
+  br label %iface.clone.ret.5
+iface.clone.have.5:
+  %t83 = getelementptr %"struct.std/time.clockError", ptr null, i32 1
+  %t84 = ptrtoint ptr %t83 to i64
+  %t82 = call ptr @willrt_alloc(i64 %t84)
+  %t85 = load %"struct.std/time.clockError", ptr %data
+  store %"struct.std/time.clockError" %t85, ptr %t82
+  %t86 = getelementptr inbounds %"struct.std/time.clockError", ptr %data, i32 0, i32 0
+  %t87 = getelementptr inbounds %"struct.std/time.clockError", ptr %t82, i32 0, i32 0
+  %t88 = getelementptr inbounds { ptr, i64 }, ptr %t86, i32 0, i32 0
+  %t89 = getelementptr inbounds { ptr, i64 }, ptr %t86, i32 0, i32 1
+  %t90 = load ptr, ptr %t88
+  %t91 = load i64, ptr %t89
+  %t92 = call ptr @willrt_alloc(i64 %t91)
+  call void @memcpy(ptr %t92, ptr %t90, i64 %t91)
+  %t93 = getelementptr inbounds { ptr, i64 }, ptr %t87, i32 0, i32 0
+  store ptr %t92, ptr %t93
+  %t94 = getelementptr inbounds { ptr, i64 }, ptr %t87, i32 0, i32 1
+  store i64 %t91, ptr %t94
+  store ptr %t82, ptr %t80
+  br label %iface.clone.ret.5
+iface.clone.ret.5:
+  %t95 = load ptr, ptr %t80
+  ret ptr %t95
+}
+define internal void @"std/time.iface.drop.Error.clockError"(ptr %data) {
+entry:
+  %t96 = icmp eq ptr %data, null
+  br i1 %t96, label %iface.drop.null.6, label %iface.drop.have.6
+iface.drop.null.6:
+  br label %iface.drop.done.6
+iface.drop.have.6:
+  %t97 = getelementptr inbounds %"struct.std/time.clockError", ptr %data, i32 0, i32 0
+  %t98 = getelementptr inbounds { ptr, i64 }, ptr %t97, i32 0, i32 0
+  %t99 = load ptr, ptr %t98
+  call void @willrt_free_str(ptr %t99)
+  br label %iface.drop.done.6
+iface.drop.done.6:
+  ret void
 }
 define internal { ptr, i64 } @"std/time.pad2"(i64 %v) alwaysinline {
 entry:
@@ -4150,1033 +4214,1305 @@ if.then.4:
   %t163 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.263, i32 0, i32 0
   store i32 1, ptr %t163
   %t164 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.263, i32 0, i32 2
-  %t165 = getelementptr inbounds { ptr, i64 }, ptr %v.str.266, i32 0, i32 0
-  store ptr @.bytes.41, ptr %t165
-  %t166 = getelementptr inbounds { ptr, i64 }, ptr %v.str.266, i32 0, i32 1
-  store i64 41, ptr %t166
-  %t167 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.266)
-  store %"struct.std/time.timeError" %t167, ptr %v.ret.265
-  %t168 = getelementptr inbounds %interface.Error, ptr %t164, i32 0, i32 0
-  store ptr %v.ret.265, ptr %t168
-  %t169 = getelementptr inbounds %interface.Error, ptr %t164, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t169
-  %t170 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.263
-  %t171 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t172 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t173 = load ptr, ptr %t171
-  %t174 = load i64, ptr %t172
-  %t175 = alloca i64
-  store i64 0, ptr %t175
+  %t166 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t167 = ptrtoint ptr %t166 to i64
+  %t165 = call ptr @willrt_alloc(i64 %t167)
+  %t168 = getelementptr inbounds { ptr, i64 }, ptr %v.str.266, i32 0, i32 0
+  store ptr @.bytes.41, ptr %t168
+  %t169 = getelementptr inbounds { ptr, i64 }, ptr %v.str.266, i32 0, i32 1
+  store i64 41, ptr %t169
+  %t170 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.266)
+  store %"struct.std/time.timeError" %t170, ptr %v.ret.265
+  %t171 = load %"struct.std/time.timeError", ptr %v.ret.265
+  store %"struct.std/time.timeError" %t171, ptr %t165
+  %t172 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.265, i32 0, i32 0
+  %t173 = getelementptr inbounds %"struct.std/time.timeError", ptr %t165, i32 0, i32 0
+  %t174 = getelementptr inbounds { ptr, i64 }, ptr %t172, i32 0, i32 0
+  %t175 = getelementptr inbounds { ptr, i64 }, ptr %t172, i32 0, i32 1
+  %t176 = load ptr, ptr %t174
+  %t177 = load i64, ptr %t175
+  %t178 = call ptr @willrt_alloc(i64 %t177)
+  call void @memcpy(ptr %t178, ptr %t176, i64 %t177)
+  %t179 = getelementptr inbounds { ptr, i64 }, ptr %t173, i32 0, i32 0
+  store ptr %t178, ptr %t179
+  %t180 = getelementptr inbounds { ptr, i64 }, ptr %t173, i32 0, i32 1
+  store i64 %t177, ptr %t180
+  %t181 = getelementptr inbounds %interface.Error, ptr %t164, i32 0, i32 0
+  %t182 = getelementptr inbounds %interface.Error, ptr %t164, i32 0, i32 1
+  store ptr %t165, ptr %t181
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t182
+  %t183 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.263
+  %t184 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t185 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t186 = load ptr, ptr %t184
+  %t187 = load i64, ptr %t185
+  %t188 = alloca i64
+  store i64 0, ptr %t188
   br label %deep.rel.arr.cond.5
 deep.rel.arr.cond.5:
-  %t176 = load i64, ptr %t175
-  %t177 = icmp ult i64 %t176, %t174
-  br i1 %t177, label %deep.rel.arr.body.5, label %deep.rel.arr.done.5
+  %t189 = load i64, ptr %t188
+  %t190 = icmp ult i64 %t189, %t187
+  br i1 %t190, label %deep.rel.arr.body.5, label %deep.rel.arr.done.5
 deep.rel.arr.body.5:
-  %t178 = getelementptr inbounds i32, ptr %t173, i64 %t176
-  %t179 = add i64 %t176, 1
-  store i64 %t179, ptr %t175
+  %t191 = getelementptr inbounds i32, ptr %t186, i64 %t189
+  %t192 = add i64 %t189, 1
+  store i64 %t192, ptr %t188
   br label %deep.rel.arr.cond.5
 deep.rel.arr.done.5:
-  call void @willrt_free(ptr %t173)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t170
+  call void @willrt_free(ptr %t186)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t183
 if.end.4:
-  %t180 = call i32 @"std/time.readDigits"(ptr %v.c, i32 0, i32 4)
-  store i32 %t180, ptr %v.year
-  %t181 = call i32 @"std/time.readDigits"(ptr %v.c, i32 5, i32 2)
-  store i32 %t181, ptr %v.month
-  %t182 = call i32 @"std/time.readDigits"(ptr %v.c, i32 8, i32 2)
-  store i32 %t182, ptr %v.day
-  %t183 = call i32 @"std/time.readDigits"(ptr %v.c, i32 11, i32 2)
-  store i32 %t183, ptr %v.hour
-  %t184 = call i32 @"std/time.readDigits"(ptr %v.c, i32 14, i32 2)
-  store i32 %t184, ptr %v.minute
-  %t185 = call i32 @"std/time.readDigits"(ptr %v.c, i32 17, i32 2)
-  store i32 %t185, ptr %v.second
-  %t186 = load i32, ptr %v.year
-  %t187 = icmp slt i32 %t186, 0
-  %t188 = load i32, ptr %v.month
-  %t189 = icmp slt i32 %t188, 0
-  %t190 = or i1 %t187, %t189
-  %t191 = load i32, ptr %v.day
-  %t192 = icmp slt i32 %t191, 0
-  %t193 = or i1 %t190, %t192
-  %t194 = load i32, ptr %v.hour
-  %t195 = icmp slt i32 %t194, 0
-  %t196 = or i1 %t193, %t195
-  %t197 = load i32, ptr %v.minute
-  %t198 = icmp slt i32 %t197, 0
-  %t199 = or i1 %t196, %t198
-  %t200 = load i32, ptr %v.second
-  %t201 = icmp slt i32 %t200, 0
-  %t202 = or i1 %t199, %t201
-  br i1 %t202, label %if.then.6, label %if.end.6
+  %t193 = call i32 @"std/time.readDigits"(ptr %v.c, i32 0, i32 4)
+  store i32 %t193, ptr %v.year
+  %t194 = call i32 @"std/time.readDigits"(ptr %v.c, i32 5, i32 2)
+  store i32 %t194, ptr %v.month
+  %t195 = call i32 @"std/time.readDigits"(ptr %v.c, i32 8, i32 2)
+  store i32 %t195, ptr %v.day
+  %t196 = call i32 @"std/time.readDigits"(ptr %v.c, i32 11, i32 2)
+  store i32 %t196, ptr %v.hour
+  %t197 = call i32 @"std/time.readDigits"(ptr %v.c, i32 14, i32 2)
+  store i32 %t197, ptr %v.minute
+  %t198 = call i32 @"std/time.readDigits"(ptr %v.c, i32 17, i32 2)
+  store i32 %t198, ptr %v.second
+  %t199 = load i32, ptr %v.year
+  %t200 = icmp slt i32 %t199, 0
+  %t201 = load i32, ptr %v.month
+  %t202 = icmp slt i32 %t201, 0
+  %t203 = or i1 %t200, %t202
+  %t204 = load i32, ptr %v.day
+  %t205 = icmp slt i32 %t204, 0
+  %t206 = or i1 %t203, %t205
+  %t207 = load i32, ptr %v.hour
+  %t208 = icmp slt i32 %t207, 0
+  %t209 = or i1 %t206, %t208
+  %t210 = load i32, ptr %v.minute
+  %t211 = icmp slt i32 %t210, 0
+  %t212 = or i1 %t209, %t211
+  %t213 = load i32, ptr %v.second
+  %t214 = icmp slt i32 %t213, 0
+  %t215 = or i1 %t212, %t214
+  br i1 %t215, label %if.then.6, label %if.end.6
 if.then.6:
-  %t203 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.330, i32 0, i32 0
-  store i32 1, ptr %t203
-  %t204 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.330, i32 0, i32 2
-  %t205 = getelementptr inbounds { ptr, i64 }, ptr %v.str.333, i32 0, i32 0
-  store ptr @.bytes.42, ptr %t205
-  %t206 = getelementptr inbounds { ptr, i64 }, ptr %v.str.333, i32 0, i32 1
-  store i64 39, ptr %t206
-  %t207 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.333)
-  store %"struct.std/time.timeError" %t207, ptr %v.ret.332
-  %t208 = getelementptr inbounds %interface.Error, ptr %t204, i32 0, i32 0
-  store ptr %v.ret.332, ptr %t208
-  %t209 = getelementptr inbounds %interface.Error, ptr %t204, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t209
-  %t210 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.330
-  %t211 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t212 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t213 = load ptr, ptr %t211
-  %t214 = load i64, ptr %t212
-  %t215 = alloca i64
-  store i64 0, ptr %t215
+  %t216 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.330, i32 0, i32 0
+  store i32 1, ptr %t216
+  %t217 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.330, i32 0, i32 2
+  %t219 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t220 = ptrtoint ptr %t219 to i64
+  %t218 = call ptr @willrt_alloc(i64 %t220)
+  %t221 = getelementptr inbounds { ptr, i64 }, ptr %v.str.333, i32 0, i32 0
+  store ptr @.bytes.42, ptr %t221
+  %t222 = getelementptr inbounds { ptr, i64 }, ptr %v.str.333, i32 0, i32 1
+  store i64 39, ptr %t222
+  %t223 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.333)
+  store %"struct.std/time.timeError" %t223, ptr %v.ret.332
+  %t224 = load %"struct.std/time.timeError", ptr %v.ret.332
+  store %"struct.std/time.timeError" %t224, ptr %t218
+  %t225 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.332, i32 0, i32 0
+  %t226 = getelementptr inbounds %"struct.std/time.timeError", ptr %t218, i32 0, i32 0
+  %t227 = getelementptr inbounds { ptr, i64 }, ptr %t225, i32 0, i32 0
+  %t228 = getelementptr inbounds { ptr, i64 }, ptr %t225, i32 0, i32 1
+  %t229 = load ptr, ptr %t227
+  %t230 = load i64, ptr %t228
+  %t231 = call ptr @willrt_alloc(i64 %t230)
+  call void @memcpy(ptr %t231, ptr %t229, i64 %t230)
+  %t232 = getelementptr inbounds { ptr, i64 }, ptr %t226, i32 0, i32 0
+  store ptr %t231, ptr %t232
+  %t233 = getelementptr inbounds { ptr, i64 }, ptr %t226, i32 0, i32 1
+  store i64 %t230, ptr %t233
+  %t234 = getelementptr inbounds %interface.Error, ptr %t217, i32 0, i32 0
+  %t235 = getelementptr inbounds %interface.Error, ptr %t217, i32 0, i32 1
+  store ptr %t218, ptr %t234
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t235
+  %t236 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.330
+  %t237 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t238 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t239 = load ptr, ptr %t237
+  %t240 = load i64, ptr %t238
+  %t241 = alloca i64
+  store i64 0, ptr %t241
   br label %deep.rel.arr.cond.7
 deep.rel.arr.cond.7:
-  %t216 = load i64, ptr %t215
-  %t217 = icmp ult i64 %t216, %t214
-  br i1 %t217, label %deep.rel.arr.body.7, label %deep.rel.arr.done.7
+  %t242 = load i64, ptr %t241
+  %t243 = icmp ult i64 %t242, %t240
+  br i1 %t243, label %deep.rel.arr.body.7, label %deep.rel.arr.done.7
 deep.rel.arr.body.7:
-  %t218 = getelementptr inbounds i32, ptr %t213, i64 %t216
-  %t219 = add i64 %t216, 1
-  store i64 %t219, ptr %t215
+  %t244 = getelementptr inbounds i32, ptr %t239, i64 %t242
+  %t245 = add i64 %t242, 1
+  store i64 %t245, ptr %t241
   br label %deep.rel.arr.cond.7
 deep.rel.arr.done.7:
-  call void @willrt_free(ptr %t213)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t210
+  call void @willrt_free(ptr %t239)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t236
 if.end.6:
-  %t220 = call i1 @"std/time.hasAt"(ptr %v.c, i32 4, i32 45)
-  %t221 = xor i1 %t220, true
-  %t222 = call i1 @"std/time.hasAt"(ptr %v.c, i32 7, i32 45)
-  %t223 = xor i1 %t222, true
-  %t224 = or i1 %t221, %t223
-  br i1 %t224, label %if.then.8, label %if.end.8
+  %t246 = call i1 @"std/time.hasAt"(ptr %v.c, i32 4, i32 45)
+  %t247 = xor i1 %t246, true
+  %t248 = call i1 @"std/time.hasAt"(ptr %v.c, i32 7, i32 45)
+  %t249 = xor i1 %t248, true
+  %t250 = or i1 %t247, %t249
+  br i1 %t250, label %if.then.8, label %if.end.8
 if.then.8:
-  %t225 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.349, i32 0, i32 0
-  store i32 1, ptr %t225
-  %t226 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.349, i32 0, i32 2
-  %t227 = getelementptr inbounds { ptr, i64 }, ptr %v.str.352, i32 0, i32 0
-  store ptr @.bytes.43, ptr %t227
-  %t228 = getelementptr inbounds { ptr, i64 }, ptr %v.str.352, i32 0, i32 1
-  store i64 38, ptr %t228
-  %t229 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.352)
-  store %"struct.std/time.timeError" %t229, ptr %v.ret.351
-  %t230 = getelementptr inbounds %interface.Error, ptr %t226, i32 0, i32 0
-  store ptr %v.ret.351, ptr %t230
-  %t231 = getelementptr inbounds %interface.Error, ptr %t226, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t231
-  %t232 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.349
-  %t233 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t234 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t235 = load ptr, ptr %t233
-  %t236 = load i64, ptr %t234
-  %t237 = alloca i64
-  store i64 0, ptr %t237
+  %t251 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.349, i32 0, i32 0
+  store i32 1, ptr %t251
+  %t252 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.349, i32 0, i32 2
+  %t254 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t255 = ptrtoint ptr %t254 to i64
+  %t253 = call ptr @willrt_alloc(i64 %t255)
+  %t256 = getelementptr inbounds { ptr, i64 }, ptr %v.str.352, i32 0, i32 0
+  store ptr @.bytes.43, ptr %t256
+  %t257 = getelementptr inbounds { ptr, i64 }, ptr %v.str.352, i32 0, i32 1
+  store i64 38, ptr %t257
+  %t258 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.352)
+  store %"struct.std/time.timeError" %t258, ptr %v.ret.351
+  %t259 = load %"struct.std/time.timeError", ptr %v.ret.351
+  store %"struct.std/time.timeError" %t259, ptr %t253
+  %t260 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.351, i32 0, i32 0
+  %t261 = getelementptr inbounds %"struct.std/time.timeError", ptr %t253, i32 0, i32 0
+  %t262 = getelementptr inbounds { ptr, i64 }, ptr %t260, i32 0, i32 0
+  %t263 = getelementptr inbounds { ptr, i64 }, ptr %t260, i32 0, i32 1
+  %t264 = load ptr, ptr %t262
+  %t265 = load i64, ptr %t263
+  %t266 = call ptr @willrt_alloc(i64 %t265)
+  call void @memcpy(ptr %t266, ptr %t264, i64 %t265)
+  %t267 = getelementptr inbounds { ptr, i64 }, ptr %t261, i32 0, i32 0
+  store ptr %t266, ptr %t267
+  %t268 = getelementptr inbounds { ptr, i64 }, ptr %t261, i32 0, i32 1
+  store i64 %t265, ptr %t268
+  %t269 = getelementptr inbounds %interface.Error, ptr %t252, i32 0, i32 0
+  %t270 = getelementptr inbounds %interface.Error, ptr %t252, i32 0, i32 1
+  store ptr %t253, ptr %t269
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t270
+  %t271 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.349
+  %t272 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t273 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t274 = load ptr, ptr %t272
+  %t275 = load i64, ptr %t273
+  %t276 = alloca i64
+  store i64 0, ptr %t276
   br label %deep.rel.arr.cond.9
 deep.rel.arr.cond.9:
-  %t238 = load i64, ptr %t237
-  %t239 = icmp ult i64 %t238, %t236
-  br i1 %t239, label %deep.rel.arr.body.9, label %deep.rel.arr.done.9
+  %t277 = load i64, ptr %t276
+  %t278 = icmp ult i64 %t277, %t275
+  br i1 %t278, label %deep.rel.arr.body.9, label %deep.rel.arr.done.9
 deep.rel.arr.body.9:
-  %t240 = getelementptr inbounds i32, ptr %t235, i64 %t238
-  %t241 = add i64 %t238, 1
-  store i64 %t241, ptr %t237
+  %t279 = getelementptr inbounds i32, ptr %t274, i64 %t277
+  %t280 = add i64 %t277, 1
+  store i64 %t280, ptr %t276
   br label %deep.rel.arr.cond.9
 deep.rel.arr.done.9:
-  call void @willrt_free(ptr %t235)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t232
+  call void @willrt_free(ptr %t274)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t271
 if.end.8:
-  %t242 = call i1 @"std/time.hasAt"(ptr %v.c, i32 10, i32 84)
-  %t243 = xor i1 %t242, true
-  %t244 = call i1 @"std/time.hasAt"(ptr %v.c, i32 10, i32 116)
-  %t245 = xor i1 %t244, true
-  %t246 = and i1 %t243, %t245
-  br i1 %t246, label %if.then.10, label %if.end.10
+  %t281 = call i1 @"std/time.hasAt"(ptr %v.c, i32 10, i32 84)
+  %t282 = xor i1 %t281, true
+  %t283 = call i1 @"std/time.hasAt"(ptr %v.c, i32 10, i32 116)
+  %t284 = xor i1 %t283, true
+  %t285 = and i1 %t282, %t284
+  br i1 %t285, label %if.then.10, label %if.end.10
 if.then.10:
-  %t247 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.368, i32 0, i32 0
-  store i32 1, ptr %t247
-  %t248 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.368, i32 0, i32 2
-  %t249 = getelementptr inbounds { ptr, i64 }, ptr %v.str.371, i32 0, i32 0
-  store ptr @.bytes.44, ptr %t249
-  %t250 = getelementptr inbounds { ptr, i64 }, ptr %v.str.371, i32 0, i32 1
-  store i64 47, ptr %t250
-  %t251 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.371)
-  store %"struct.std/time.timeError" %t251, ptr %v.ret.370
-  %t252 = getelementptr inbounds %interface.Error, ptr %t248, i32 0, i32 0
-  store ptr %v.ret.370, ptr %t252
-  %t253 = getelementptr inbounds %interface.Error, ptr %t248, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t253
-  %t254 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.368
-  %t255 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t256 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t257 = load ptr, ptr %t255
-  %t258 = load i64, ptr %t256
-  %t259 = alloca i64
-  store i64 0, ptr %t259
+  %t286 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.368, i32 0, i32 0
+  store i32 1, ptr %t286
+  %t287 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.368, i32 0, i32 2
+  %t289 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t290 = ptrtoint ptr %t289 to i64
+  %t288 = call ptr @willrt_alloc(i64 %t290)
+  %t291 = getelementptr inbounds { ptr, i64 }, ptr %v.str.371, i32 0, i32 0
+  store ptr @.bytes.44, ptr %t291
+  %t292 = getelementptr inbounds { ptr, i64 }, ptr %v.str.371, i32 0, i32 1
+  store i64 47, ptr %t292
+  %t293 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.371)
+  store %"struct.std/time.timeError" %t293, ptr %v.ret.370
+  %t294 = load %"struct.std/time.timeError", ptr %v.ret.370
+  store %"struct.std/time.timeError" %t294, ptr %t288
+  %t295 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.370, i32 0, i32 0
+  %t296 = getelementptr inbounds %"struct.std/time.timeError", ptr %t288, i32 0, i32 0
+  %t297 = getelementptr inbounds { ptr, i64 }, ptr %t295, i32 0, i32 0
+  %t298 = getelementptr inbounds { ptr, i64 }, ptr %t295, i32 0, i32 1
+  %t299 = load ptr, ptr %t297
+  %t300 = load i64, ptr %t298
+  %t301 = call ptr @willrt_alloc(i64 %t300)
+  call void @memcpy(ptr %t301, ptr %t299, i64 %t300)
+  %t302 = getelementptr inbounds { ptr, i64 }, ptr %t296, i32 0, i32 0
+  store ptr %t301, ptr %t302
+  %t303 = getelementptr inbounds { ptr, i64 }, ptr %t296, i32 0, i32 1
+  store i64 %t300, ptr %t303
+  %t304 = getelementptr inbounds %interface.Error, ptr %t287, i32 0, i32 0
+  %t305 = getelementptr inbounds %interface.Error, ptr %t287, i32 0, i32 1
+  store ptr %t288, ptr %t304
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t305
+  %t306 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.368
+  %t307 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t308 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t309 = load ptr, ptr %t307
+  %t310 = load i64, ptr %t308
+  %t311 = alloca i64
+  store i64 0, ptr %t311
   br label %deep.rel.arr.cond.11
 deep.rel.arr.cond.11:
-  %t260 = load i64, ptr %t259
-  %t261 = icmp ult i64 %t260, %t258
-  br i1 %t261, label %deep.rel.arr.body.11, label %deep.rel.arr.done.11
+  %t312 = load i64, ptr %t311
+  %t313 = icmp ult i64 %t312, %t310
+  br i1 %t313, label %deep.rel.arr.body.11, label %deep.rel.arr.done.11
 deep.rel.arr.body.11:
-  %t262 = getelementptr inbounds i32, ptr %t257, i64 %t260
-  %t263 = add i64 %t260, 1
-  store i64 %t263, ptr %t259
+  %t314 = getelementptr inbounds i32, ptr %t309, i64 %t312
+  %t315 = add i64 %t312, 1
+  store i64 %t315, ptr %t311
   br label %deep.rel.arr.cond.11
 deep.rel.arr.done.11:
-  call void @willrt_free(ptr %t257)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t254
+  call void @willrt_free(ptr %t309)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t306
 if.end.10:
-  %t264 = call i1 @"std/time.hasAt"(ptr %v.c, i32 13, i32 58)
-  %t265 = xor i1 %t264, true
-  %t266 = call i1 @"std/time.hasAt"(ptr %v.c, i32 16, i32 58)
-  %t267 = xor i1 %t266, true
-  %t268 = or i1 %t265, %t267
-  br i1 %t268, label %if.then.12, label %if.end.12
+  %t316 = call i1 @"std/time.hasAt"(ptr %v.c, i32 13, i32 58)
+  %t317 = xor i1 %t316, true
+  %t318 = call i1 @"std/time.hasAt"(ptr %v.c, i32 16, i32 58)
+  %t319 = xor i1 %t318, true
+  %t320 = or i1 %t317, %t319
+  br i1 %t320, label %if.then.12, label %if.end.12
 if.then.12:
-  %t269 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.387, i32 0, i32 0
-  store i32 1, ptr %t269
-  %t270 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.387, i32 0, i32 2
-  %t271 = getelementptr inbounds { ptr, i64 }, ptr %v.str.390, i32 0, i32 0
-  store ptr @.bytes.45, ptr %t271
-  %t272 = getelementptr inbounds { ptr, i64 }, ptr %v.str.390, i32 0, i32 1
-  store i64 38, ptr %t272
-  %t273 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.390)
-  store %"struct.std/time.timeError" %t273, ptr %v.ret.389
-  %t274 = getelementptr inbounds %interface.Error, ptr %t270, i32 0, i32 0
-  store ptr %v.ret.389, ptr %t274
-  %t275 = getelementptr inbounds %interface.Error, ptr %t270, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t275
-  %t276 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.387
-  %t277 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t278 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t279 = load ptr, ptr %t277
-  %t280 = load i64, ptr %t278
-  %t281 = alloca i64
-  store i64 0, ptr %t281
+  %t321 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.387, i32 0, i32 0
+  store i32 1, ptr %t321
+  %t322 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.387, i32 0, i32 2
+  %t324 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t325 = ptrtoint ptr %t324 to i64
+  %t323 = call ptr @willrt_alloc(i64 %t325)
+  %t326 = getelementptr inbounds { ptr, i64 }, ptr %v.str.390, i32 0, i32 0
+  store ptr @.bytes.45, ptr %t326
+  %t327 = getelementptr inbounds { ptr, i64 }, ptr %v.str.390, i32 0, i32 1
+  store i64 38, ptr %t327
+  %t328 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.390)
+  store %"struct.std/time.timeError" %t328, ptr %v.ret.389
+  %t329 = load %"struct.std/time.timeError", ptr %v.ret.389
+  store %"struct.std/time.timeError" %t329, ptr %t323
+  %t330 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.389, i32 0, i32 0
+  %t331 = getelementptr inbounds %"struct.std/time.timeError", ptr %t323, i32 0, i32 0
+  %t332 = getelementptr inbounds { ptr, i64 }, ptr %t330, i32 0, i32 0
+  %t333 = getelementptr inbounds { ptr, i64 }, ptr %t330, i32 0, i32 1
+  %t334 = load ptr, ptr %t332
+  %t335 = load i64, ptr %t333
+  %t336 = call ptr @willrt_alloc(i64 %t335)
+  call void @memcpy(ptr %t336, ptr %t334, i64 %t335)
+  %t337 = getelementptr inbounds { ptr, i64 }, ptr %t331, i32 0, i32 0
+  store ptr %t336, ptr %t337
+  %t338 = getelementptr inbounds { ptr, i64 }, ptr %t331, i32 0, i32 1
+  store i64 %t335, ptr %t338
+  %t339 = getelementptr inbounds %interface.Error, ptr %t322, i32 0, i32 0
+  %t340 = getelementptr inbounds %interface.Error, ptr %t322, i32 0, i32 1
+  store ptr %t323, ptr %t339
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t340
+  %t341 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.387
+  %t342 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t343 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t344 = load ptr, ptr %t342
+  %t345 = load i64, ptr %t343
+  %t346 = alloca i64
+  store i64 0, ptr %t346
   br label %deep.rel.arr.cond.13
 deep.rel.arr.cond.13:
-  %t282 = load i64, ptr %t281
-  %t283 = icmp ult i64 %t282, %t280
-  br i1 %t283, label %deep.rel.arr.body.13, label %deep.rel.arr.done.13
+  %t347 = load i64, ptr %t346
+  %t348 = icmp ult i64 %t347, %t345
+  br i1 %t348, label %deep.rel.arr.body.13, label %deep.rel.arr.done.13
 deep.rel.arr.body.13:
-  %t284 = getelementptr inbounds i32, ptr %t279, i64 %t282
-  %t285 = add i64 %t282, 1
-  store i64 %t285, ptr %t281
+  %t349 = getelementptr inbounds i32, ptr %t344, i64 %t347
+  %t350 = add i64 %t347, 1
+  store i64 %t350, ptr %t346
   br label %deep.rel.arr.cond.13
 deep.rel.arr.done.13:
-  call void @willrt_free(ptr %t279)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t276
+  call void @willrt_free(ptr %t344)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t341
 if.end.12:
-  %t286 = load i32, ptr %v.month
-  %t287 = icmp slt i32 %t286, 1
-  %t288 = load i32, ptr %v.month
-  %t289 = icmp sgt i32 %t288, 12
-  %t290 = or i1 %t287, %t289
-  br i1 %t290, label %if.then.14, label %if.end.14
+  %t351 = load i32, ptr %v.month
+  %t352 = icmp slt i32 %t351, 1
+  %t353 = load i32, ptr %v.month
+  %t354 = icmp sgt i32 %t353, 12
+  %t355 = or i1 %t352, %t354
+  br i1 %t355, label %if.then.14, label %if.end.14
 if.then.14:
-  %t291 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.402, i32 0, i32 0
-  store i32 1, ptr %t291
-  %t292 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.402, i32 0, i32 2
-  %t293 = getelementptr inbounds { ptr, i64 }, ptr %v.str.405, i32 0, i32 0
-  store ptr @.bytes.46, ptr %t293
-  %t294 = getelementptr inbounds { ptr, i64 }, ptr %v.str.405, i32 0, i32 1
-  store i64 34, ptr %t294
-  %t295 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.405)
-  store %"struct.std/time.timeError" %t295, ptr %v.ret.404
-  %t296 = getelementptr inbounds %interface.Error, ptr %t292, i32 0, i32 0
-  store ptr %v.ret.404, ptr %t296
-  %t297 = getelementptr inbounds %interface.Error, ptr %t292, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t297
-  %t298 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.402
-  %t299 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t300 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t301 = load ptr, ptr %t299
-  %t302 = load i64, ptr %t300
-  %t303 = alloca i64
-  store i64 0, ptr %t303
+  %t356 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.402, i32 0, i32 0
+  store i32 1, ptr %t356
+  %t357 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.402, i32 0, i32 2
+  %t359 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t360 = ptrtoint ptr %t359 to i64
+  %t358 = call ptr @willrt_alloc(i64 %t360)
+  %t361 = getelementptr inbounds { ptr, i64 }, ptr %v.str.405, i32 0, i32 0
+  store ptr @.bytes.46, ptr %t361
+  %t362 = getelementptr inbounds { ptr, i64 }, ptr %v.str.405, i32 0, i32 1
+  store i64 34, ptr %t362
+  %t363 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.405)
+  store %"struct.std/time.timeError" %t363, ptr %v.ret.404
+  %t364 = load %"struct.std/time.timeError", ptr %v.ret.404
+  store %"struct.std/time.timeError" %t364, ptr %t358
+  %t365 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.404, i32 0, i32 0
+  %t366 = getelementptr inbounds %"struct.std/time.timeError", ptr %t358, i32 0, i32 0
+  %t367 = getelementptr inbounds { ptr, i64 }, ptr %t365, i32 0, i32 0
+  %t368 = getelementptr inbounds { ptr, i64 }, ptr %t365, i32 0, i32 1
+  %t369 = load ptr, ptr %t367
+  %t370 = load i64, ptr %t368
+  %t371 = call ptr @willrt_alloc(i64 %t370)
+  call void @memcpy(ptr %t371, ptr %t369, i64 %t370)
+  %t372 = getelementptr inbounds { ptr, i64 }, ptr %t366, i32 0, i32 0
+  store ptr %t371, ptr %t372
+  %t373 = getelementptr inbounds { ptr, i64 }, ptr %t366, i32 0, i32 1
+  store i64 %t370, ptr %t373
+  %t374 = getelementptr inbounds %interface.Error, ptr %t357, i32 0, i32 0
+  %t375 = getelementptr inbounds %interface.Error, ptr %t357, i32 0, i32 1
+  store ptr %t358, ptr %t374
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t375
+  %t376 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.402
+  %t377 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t378 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t379 = load ptr, ptr %t377
+  %t380 = load i64, ptr %t378
+  %t381 = alloca i64
+  store i64 0, ptr %t381
   br label %deep.rel.arr.cond.15
 deep.rel.arr.cond.15:
-  %t304 = load i64, ptr %t303
-  %t305 = icmp ult i64 %t304, %t302
-  br i1 %t305, label %deep.rel.arr.body.15, label %deep.rel.arr.done.15
+  %t382 = load i64, ptr %t381
+  %t383 = icmp ult i64 %t382, %t380
+  br i1 %t383, label %deep.rel.arr.body.15, label %deep.rel.arr.done.15
 deep.rel.arr.body.15:
-  %t306 = getelementptr inbounds i32, ptr %t301, i64 %t304
-  %t307 = add i64 %t304, 1
-  store i64 %t307, ptr %t303
+  %t384 = getelementptr inbounds i32, ptr %t379, i64 %t382
+  %t385 = add i64 %t382, 1
+  store i64 %t385, ptr %t381
   br label %deep.rel.arr.cond.15
 deep.rel.arr.done.15:
-  call void @willrt_free(ptr %t301)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t298
+  call void @willrt_free(ptr %t379)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t376
 if.end.14:
-  %t308 = load i32, ptr %v.day
-  %t309 = icmp slt i32 %t308, 1
-  %t310 = load i32, ptr %v.day
-  %t311 = load i32, ptr %v.year
-  %t312 = load i32, ptr %v.month
-  %t313 = call i32 @"std/time.daysInMonth"(i32 %t311, i32 %t312)
-  %t314 = icmp sgt i32 %t310, %t313
-  %t315 = or i1 %t309, %t314
-  br i1 %t315, label %if.then.16, label %if.end.16
+  %t386 = load i32, ptr %v.day
+  %t387 = icmp slt i32 %t386, 1
+  %t388 = load i32, ptr %v.day
+  %t389 = load i32, ptr %v.year
+  %t390 = load i32, ptr %v.month
+  %t391 = call i32 @"std/time.daysInMonth"(i32 %t389, i32 %t390)
+  %t392 = icmp sgt i32 %t388, %t391
+  %t393 = or i1 %t387, %t392
+  br i1 %t393, label %if.then.16, label %if.end.16
 if.then.16:
-  %t316 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.419, i32 0, i32 0
-  store i32 1, ptr %t316
-  %t317 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.419, i32 0, i32 2
-  %t318 = getelementptr inbounds { ptr, i64 }, ptr %v.str.422, i32 0, i32 0
-  store ptr @.bytes.47, ptr %t318
-  %t319 = getelementptr inbounds { ptr, i64 }, ptr %v.str.422, i32 0, i32 1
-  store i64 32, ptr %t319
-  %t320 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.422)
-  store %"struct.std/time.timeError" %t320, ptr %v.ret.421
-  %t321 = getelementptr inbounds %interface.Error, ptr %t317, i32 0, i32 0
-  store ptr %v.ret.421, ptr %t321
-  %t322 = getelementptr inbounds %interface.Error, ptr %t317, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t322
-  %t323 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.419
-  %t324 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t325 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t326 = load ptr, ptr %t324
-  %t327 = load i64, ptr %t325
-  %t328 = alloca i64
-  store i64 0, ptr %t328
+  %t394 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.419, i32 0, i32 0
+  store i32 1, ptr %t394
+  %t395 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.419, i32 0, i32 2
+  %t397 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t398 = ptrtoint ptr %t397 to i64
+  %t396 = call ptr @willrt_alloc(i64 %t398)
+  %t399 = getelementptr inbounds { ptr, i64 }, ptr %v.str.422, i32 0, i32 0
+  store ptr @.bytes.47, ptr %t399
+  %t400 = getelementptr inbounds { ptr, i64 }, ptr %v.str.422, i32 0, i32 1
+  store i64 32, ptr %t400
+  %t401 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.422)
+  store %"struct.std/time.timeError" %t401, ptr %v.ret.421
+  %t402 = load %"struct.std/time.timeError", ptr %v.ret.421
+  store %"struct.std/time.timeError" %t402, ptr %t396
+  %t403 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.421, i32 0, i32 0
+  %t404 = getelementptr inbounds %"struct.std/time.timeError", ptr %t396, i32 0, i32 0
+  %t405 = getelementptr inbounds { ptr, i64 }, ptr %t403, i32 0, i32 0
+  %t406 = getelementptr inbounds { ptr, i64 }, ptr %t403, i32 0, i32 1
+  %t407 = load ptr, ptr %t405
+  %t408 = load i64, ptr %t406
+  %t409 = call ptr @willrt_alloc(i64 %t408)
+  call void @memcpy(ptr %t409, ptr %t407, i64 %t408)
+  %t410 = getelementptr inbounds { ptr, i64 }, ptr %t404, i32 0, i32 0
+  store ptr %t409, ptr %t410
+  %t411 = getelementptr inbounds { ptr, i64 }, ptr %t404, i32 0, i32 1
+  store i64 %t408, ptr %t411
+  %t412 = getelementptr inbounds %interface.Error, ptr %t395, i32 0, i32 0
+  %t413 = getelementptr inbounds %interface.Error, ptr %t395, i32 0, i32 1
+  store ptr %t396, ptr %t412
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t413
+  %t414 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.419
+  %t415 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t416 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t417 = load ptr, ptr %t415
+  %t418 = load i64, ptr %t416
+  %t419 = alloca i64
+  store i64 0, ptr %t419
   br label %deep.rel.arr.cond.17
 deep.rel.arr.cond.17:
-  %t329 = load i64, ptr %t328
-  %t330 = icmp ult i64 %t329, %t327
-  br i1 %t330, label %deep.rel.arr.body.17, label %deep.rel.arr.done.17
+  %t420 = load i64, ptr %t419
+  %t421 = icmp ult i64 %t420, %t418
+  br i1 %t421, label %deep.rel.arr.body.17, label %deep.rel.arr.done.17
 deep.rel.arr.body.17:
-  %t331 = getelementptr inbounds i32, ptr %t326, i64 %t329
-  %t332 = add i64 %t329, 1
-  store i64 %t332, ptr %t328
+  %t422 = getelementptr inbounds i32, ptr %t417, i64 %t420
+  %t423 = add i64 %t420, 1
+  store i64 %t423, ptr %t419
   br label %deep.rel.arr.cond.17
 deep.rel.arr.done.17:
-  call void @willrt_free(ptr %t326)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t323
+  call void @willrt_free(ptr %t417)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t414
 if.end.16:
-  %t333 = load i32, ptr %v.hour
-  %t334 = icmp sgt i32 %t333, 23
-  %t335 = load i32, ptr %v.minute
-  %t336 = icmp sgt i32 %t335, 59
-  %t337 = or i1 %t334, %t336
-  %t338 = load i32, ptr %v.second
-  %t339 = icmp sgt i32 %t338, 59
-  %t340 = or i1 %t337, %t339
-  br i1 %t340, label %if.then.18, label %if.end.18
+  %t424 = load i32, ptr %v.hour
+  %t425 = icmp sgt i32 %t424, 23
+  %t426 = load i32, ptr %v.minute
+  %t427 = icmp sgt i32 %t426, 59
+  %t428 = or i1 %t425, %t427
+  %t429 = load i32, ptr %v.second
+  %t430 = icmp sgt i32 %t429, 59
+  %t431 = or i1 %t428, %t430
+  br i1 %t431, label %if.then.18, label %if.end.18
 if.then.18:
-  %t341 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.438, i32 0, i32 0
-  store i32 1, ptr %t341
-  %t342 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.438, i32 0, i32 2
-  %t343 = getelementptr inbounds { ptr, i64 }, ptr %v.str.441, i32 0, i32 0
-  store ptr @.bytes.48, ptr %t343
-  %t344 = getelementptr inbounds { ptr, i64 }, ptr %v.str.441, i32 0, i32 1
-  store i64 40, ptr %t344
-  %t345 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.441)
-  store %"struct.std/time.timeError" %t345, ptr %v.ret.440
-  %t346 = getelementptr inbounds %interface.Error, ptr %t342, i32 0, i32 0
-  store ptr %v.ret.440, ptr %t346
-  %t347 = getelementptr inbounds %interface.Error, ptr %t342, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t347
-  %t348 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.438
-  %t349 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t350 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t351 = load ptr, ptr %t349
-  %t352 = load i64, ptr %t350
-  %t353 = alloca i64
-  store i64 0, ptr %t353
+  %t432 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.438, i32 0, i32 0
+  store i32 1, ptr %t432
+  %t433 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.438, i32 0, i32 2
+  %t435 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t436 = ptrtoint ptr %t435 to i64
+  %t434 = call ptr @willrt_alloc(i64 %t436)
+  %t437 = getelementptr inbounds { ptr, i64 }, ptr %v.str.441, i32 0, i32 0
+  store ptr @.bytes.48, ptr %t437
+  %t438 = getelementptr inbounds { ptr, i64 }, ptr %v.str.441, i32 0, i32 1
+  store i64 40, ptr %t438
+  %t439 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.441)
+  store %"struct.std/time.timeError" %t439, ptr %v.ret.440
+  %t440 = load %"struct.std/time.timeError", ptr %v.ret.440
+  store %"struct.std/time.timeError" %t440, ptr %t434
+  %t441 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.440, i32 0, i32 0
+  %t442 = getelementptr inbounds %"struct.std/time.timeError", ptr %t434, i32 0, i32 0
+  %t443 = getelementptr inbounds { ptr, i64 }, ptr %t441, i32 0, i32 0
+  %t444 = getelementptr inbounds { ptr, i64 }, ptr %t441, i32 0, i32 1
+  %t445 = load ptr, ptr %t443
+  %t446 = load i64, ptr %t444
+  %t447 = call ptr @willrt_alloc(i64 %t446)
+  call void @memcpy(ptr %t447, ptr %t445, i64 %t446)
+  %t448 = getelementptr inbounds { ptr, i64 }, ptr %t442, i32 0, i32 0
+  store ptr %t447, ptr %t448
+  %t449 = getelementptr inbounds { ptr, i64 }, ptr %t442, i32 0, i32 1
+  store i64 %t446, ptr %t449
+  %t450 = getelementptr inbounds %interface.Error, ptr %t433, i32 0, i32 0
+  %t451 = getelementptr inbounds %interface.Error, ptr %t433, i32 0, i32 1
+  store ptr %t434, ptr %t450
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t451
+  %t452 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.438
+  %t453 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t454 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t455 = load ptr, ptr %t453
+  %t456 = load i64, ptr %t454
+  %t457 = alloca i64
+  store i64 0, ptr %t457
   br label %deep.rel.arr.cond.19
 deep.rel.arr.cond.19:
-  %t354 = load i64, ptr %t353
-  %t355 = icmp ult i64 %t354, %t352
-  br i1 %t355, label %deep.rel.arr.body.19, label %deep.rel.arr.done.19
+  %t458 = load i64, ptr %t457
+  %t459 = icmp ult i64 %t458, %t456
+  br i1 %t459, label %deep.rel.arr.body.19, label %deep.rel.arr.done.19
 deep.rel.arr.body.19:
-  %t356 = getelementptr inbounds i32, ptr %t351, i64 %t354
-  %t357 = add i64 %t354, 1
-  store i64 %t357, ptr %t353
+  %t460 = getelementptr inbounds i32, ptr %t455, i64 %t458
+  %t461 = add i64 %t458, 1
+  store i64 %t461, ptr %t457
   br label %deep.rel.arr.cond.19
 deep.rel.arr.done.19:
-  call void @willrt_free(ptr %t351)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t348
+  call void @willrt_free(ptr %t455)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t452
 if.end.18:
   store i32 19, ptr %v.at
   store i64 0, ptr %v.frac
-  %t358 = load i32, ptr %v.at
-  %t359 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t358, i32 46)
-  br i1 %t359, label %if.then.20, label %if.end.20
+  %t462 = load i32, ptr %v.at
+  %t463 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t462, i32 46)
+  br i1 %t463, label %if.then.20, label %if.end.20
 if.then.20:
-  %t360 = load i32, ptr %v.at
-  %t361 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t360, i32 1)
-  %t362 = extractvalue {i32, i1} %t361, 0
-  %t363 = extractvalue {i32, i1} %t361, 1
-  br i1 %t363, label %panic.21, label %panic.ok.21
+  %t464 = load i32, ptr %v.at
+  %t465 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t464, i32 1)
+  %t466 = extractvalue {i32, i1} %t465, 0
+  %t467 = extractvalue {i32, i1} %t465, 1
+  br i1 %t467, label %panic.21, label %panic.ok.21
 panic.21:
   call void @willrt_panic(ptr @.str.10, ptr @.str.150, ptr @.str.138)
   unreachable
 panic.ok.21:
-  store i32 %t362, ptr %v.at
+  store i32 %t466, ptr %v.at
   store i32 0, ptr %v.digits
   br label %for.body.22
 for.body.22:
-  %t364 = load i32, ptr %v.at
-  %t365 = load i32, ptr %v.n
-  %t366 = icmp sge i32 %t364, %t365
-  br i1 %t366, label %if.then.23, label %if.end.23
+  %t468 = load i32, ptr %v.at
+  %t469 = load i32, ptr %v.n
+  %t470 = icmp sge i32 %t468, %t469
+  br i1 %t470, label %if.then.23, label %if.end.23
 if.then.23:
   br label %for.end.22
 if.end.23:
-  %t367 = load i32, ptr %v.at
-  %t368 = sext i32 %t367 to i64
-  %t369 = getelementptr inbounds { ptr, i64 }, ptr %v.c, i32 0, i32 0
-  %t370 = load ptr, ptr %t369
-  %t371 = getelementptr inbounds { ptr, i64 }, ptr %v.c, i32 0, i32 1
-  %t372 = load i64, ptr %t371
-  %t373 = icmp uge i64 %t368, %t372
-  br i1 %t373, label %panic.24, label %panic.ok.24
+  %t471 = load i32, ptr %v.at
+  %t472 = sext i32 %t471 to i64
+  %t473 = getelementptr inbounds { ptr, i64 }, ptr %v.c, i32 0, i32 0
+  %t474 = load ptr, ptr %t473
+  %t475 = getelementptr inbounds { ptr, i64 }, ptr %v.c, i32 0, i32 1
+  %t476 = load i64, ptr %t475
+  %t477 = icmp uge i64 %t472, %t476
+  br i1 %t477, label %panic.24, label %panic.ok.24
 panic.24:
   call void @willrt_panic(ptr @.str.89, ptr @.str.151, ptr @.str.138)
   unreachable
 panic.ok.24:
-  %t374 = getelementptr inbounds i32, ptr %t370, i64 %t368
-  %t375 = load i32, ptr %t374
-  %t376 = call i32 @"std/time.digitValue"(i32 %t375)
-  store i32 %t376, ptr %v.d
-  %t377 = load i32, ptr %v.d
-  %t378 = icmp slt i32 %t377, 0
-  br i1 %t378, label %if.then.25, label %if.end.25
+  %t478 = getelementptr inbounds i32, ptr %t474, i64 %t472
+  %t479 = load i32, ptr %t478
+  %t480 = call i32 @"std/time.digitValue"(i32 %t479)
+  store i32 %t480, ptr %v.d
+  %t481 = load i32, ptr %v.d
+  %t482 = icmp slt i32 %t481, 0
+  br i1 %t482, label %if.then.25, label %if.end.25
 if.then.25:
   br label %for.end.22
 if.end.25:
-  %t379 = load i32, ptr %v.digits
-  %t380 = icmp slt i32 %t379, 9
-  br i1 %t380, label %if.then.26, label %if.end.26
+  %t483 = load i32, ptr %v.digits
+  %t484 = icmp slt i32 %t483, 9
+  br i1 %t484, label %if.then.26, label %if.end.26
 if.then.26:
-  %t381 = load i64, ptr %v.frac
-  %t382 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t381, i64 10)
-  %t383 = extractvalue {i64, i1} %t382, 0
-  %t384 = extractvalue {i64, i1} %t382, 1
-  br i1 %t384, label %panic.27, label %panic.ok.27
+  %t485 = load i64, ptr %v.frac
+  %t486 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t485, i64 10)
+  %t487 = extractvalue {i64, i1} %t486, 0
+  %t488 = extractvalue {i64, i1} %t486, 1
+  br i1 %t488, label %panic.27, label %panic.ok.27
 panic.27:
   call void @willrt_panic(ptr @.str.10, ptr @.str.152, ptr @.str.138)
   unreachable
 panic.ok.27:
-  %t385 = load i32, ptr %v.d
-  %t386 = sext i32 %t385 to i64
-  %t387 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t383, i64 %t386)
-  %t388 = extractvalue {i64, i1} %t387, 0
-  %t389 = extractvalue {i64, i1} %t387, 1
-  br i1 %t389, label %panic.28, label %panic.ok.28
+  %t489 = load i32, ptr %v.d
+  %t490 = sext i32 %t489 to i64
+  %t491 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t487, i64 %t490)
+  %t492 = extractvalue {i64, i1} %t491, 0
+  %t493 = extractvalue {i64, i1} %t491, 1
+  br i1 %t493, label %panic.28, label %panic.ok.28
 panic.28:
   call void @willrt_panic(ptr @.str.10, ptr @.str.152, ptr @.str.138)
   unreachable
 panic.ok.28:
-  store i64 %t388, ptr %v.frac
+  store i64 %t492, ptr %v.frac
   br label %if.end.26
 if.end.26:
-  %t390 = load i32, ptr %v.digits
-  %t391 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t390, i32 1)
-  %t392 = extractvalue {i32, i1} %t391, 0
-  %t393 = extractvalue {i32, i1} %t391, 1
-  br i1 %t393, label %panic.29, label %panic.ok.29
+  %t494 = load i32, ptr %v.digits
+  %t495 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t494, i32 1)
+  %t496 = extractvalue {i32, i1} %t495, 0
+  %t497 = extractvalue {i32, i1} %t495, 1
+  br i1 %t497, label %panic.29, label %panic.ok.29
 panic.29:
   call void @willrt_panic(ptr @.str.10, ptr @.str.153, ptr @.str.138)
   unreachable
 panic.ok.29:
-  store i32 %t392, ptr %v.digits
-  %t394 = load i32, ptr %v.at
-  %t395 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t394, i32 1)
-  %t396 = extractvalue {i32, i1} %t395, 0
-  %t397 = extractvalue {i32, i1} %t395, 1
-  br i1 %t397, label %panic.30, label %panic.ok.30
+  store i32 %t496, ptr %v.digits
+  %t498 = load i32, ptr %v.at
+  %t499 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t498, i32 1)
+  %t500 = extractvalue {i32, i1} %t499, 0
+  %t501 = extractvalue {i32, i1} %t499, 1
+  br i1 %t501, label %panic.30, label %panic.ok.30
 panic.30:
   call void @willrt_panic(ptr @.str.10, ptr @.str.154, ptr @.str.138)
   unreachable
 panic.ok.30:
-  store i32 %t396, ptr %v.at
+  store i32 %t500, ptr %v.at
   br label %for.body.22
 for.end.22:
-  %t398 = load i32, ptr %v.digits
-  %t399 = icmp eq i32 %t398, 0
-  br i1 %t399, label %if.then.31, label %if.end.31
+  %t502 = load i32, ptr %v.digits
+  %t503 = icmp eq i32 %t502, 0
+  br i1 %t503, label %if.then.31, label %if.end.31
 if.then.31:
-  %t400 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.509, i32 0, i32 0
-  store i32 1, ptr %t400
-  %t401 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.509, i32 0, i32 2
-  %t402 = getelementptr inbounds { ptr, i64 }, ptr %v.str.512, i32 0, i32 0
-  store ptr @.bytes.49, ptr %t402
-  %t403 = getelementptr inbounds { ptr, i64 }, ptr %v.str.512, i32 0, i32 1
-  store i64 42, ptr %t403
-  %t404 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.512)
-  store %"struct.std/time.timeError" %t404, ptr %v.ret.511
-  %t405 = getelementptr inbounds %interface.Error, ptr %t401, i32 0, i32 0
-  store ptr %v.ret.511, ptr %t405
-  %t406 = getelementptr inbounds %interface.Error, ptr %t401, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t406
-  %t407 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.509
-  %t408 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t409 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t410 = load ptr, ptr %t408
-  %t411 = load i64, ptr %t409
-  %t412 = alloca i64
-  store i64 0, ptr %t412
+  %t504 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.509, i32 0, i32 0
+  store i32 1, ptr %t504
+  %t505 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.509, i32 0, i32 2
+  %t507 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t508 = ptrtoint ptr %t507 to i64
+  %t506 = call ptr @willrt_alloc(i64 %t508)
+  %t509 = getelementptr inbounds { ptr, i64 }, ptr %v.str.512, i32 0, i32 0
+  store ptr @.bytes.49, ptr %t509
+  %t510 = getelementptr inbounds { ptr, i64 }, ptr %v.str.512, i32 0, i32 1
+  store i64 42, ptr %t510
+  %t511 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.512)
+  store %"struct.std/time.timeError" %t511, ptr %v.ret.511
+  %t512 = load %"struct.std/time.timeError", ptr %v.ret.511
+  store %"struct.std/time.timeError" %t512, ptr %t506
+  %t513 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.511, i32 0, i32 0
+  %t514 = getelementptr inbounds %"struct.std/time.timeError", ptr %t506, i32 0, i32 0
+  %t515 = getelementptr inbounds { ptr, i64 }, ptr %t513, i32 0, i32 0
+  %t516 = getelementptr inbounds { ptr, i64 }, ptr %t513, i32 0, i32 1
+  %t517 = load ptr, ptr %t515
+  %t518 = load i64, ptr %t516
+  %t519 = call ptr @willrt_alloc(i64 %t518)
+  call void @memcpy(ptr %t519, ptr %t517, i64 %t518)
+  %t520 = getelementptr inbounds { ptr, i64 }, ptr %t514, i32 0, i32 0
+  store ptr %t519, ptr %t520
+  %t521 = getelementptr inbounds { ptr, i64 }, ptr %t514, i32 0, i32 1
+  store i64 %t518, ptr %t521
+  %t522 = getelementptr inbounds %interface.Error, ptr %t505, i32 0, i32 0
+  %t523 = getelementptr inbounds %interface.Error, ptr %t505, i32 0, i32 1
+  store ptr %t506, ptr %t522
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t523
+  %t524 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.509
+  %t525 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t526 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t527 = load ptr, ptr %t525
+  %t528 = load i64, ptr %t526
+  %t529 = alloca i64
+  store i64 0, ptr %t529
   br label %deep.rel.arr.cond.32
 deep.rel.arr.cond.32:
-  %t413 = load i64, ptr %t412
-  %t414 = icmp ult i64 %t413, %t411
-  br i1 %t414, label %deep.rel.arr.body.32, label %deep.rel.arr.done.32
+  %t530 = load i64, ptr %t529
+  %t531 = icmp ult i64 %t530, %t528
+  br i1 %t531, label %deep.rel.arr.body.32, label %deep.rel.arr.done.32
 deep.rel.arr.body.32:
-  %t415 = getelementptr inbounds i32, ptr %t410, i64 %t413
-  %t416 = add i64 %t413, 1
-  store i64 %t416, ptr %t412
+  %t532 = getelementptr inbounds i32, ptr %t527, i64 %t530
+  %t533 = add i64 %t530, 1
+  store i64 %t533, ptr %t529
   br label %deep.rel.arr.cond.32
 deep.rel.arr.done.32:
-  call void @willrt_free(ptr %t410)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t407
+  call void @willrt_free(ptr %t527)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t524
 if.end.31:
   br label %for.body.33
 for.body.33:
-  %t417 = load i32, ptr %v.digits
-  %t418 = icmp sge i32 %t417, 9
-  br i1 %t418, label %if.then.34, label %if.end.34
+  %t534 = load i32, ptr %v.digits
+  %t535 = icmp sge i32 %t534, 9
+  br i1 %t535, label %if.then.34, label %if.end.34
 if.then.34:
   br label %for.end.33
 if.end.34:
-  %t419 = load i64, ptr %v.frac
-  %t420 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t419, i64 10)
-  %t421 = extractvalue {i64, i1} %t420, 0
-  %t422 = extractvalue {i64, i1} %t420, 1
-  br i1 %t422, label %panic.35, label %panic.ok.35
+  %t536 = load i64, ptr %v.frac
+  %t537 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t536, i64 10)
+  %t538 = extractvalue {i64, i1} %t537, 0
+  %t539 = extractvalue {i64, i1} %t537, 1
+  br i1 %t539, label %panic.35, label %panic.ok.35
 panic.35:
   call void @willrt_panic(ptr @.str.10, ptr @.str.156, ptr @.str.138)
   unreachable
 panic.ok.35:
-  store i64 %t421, ptr %v.frac
-  %t423 = load i32, ptr %v.digits
-  %t424 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t423, i32 1)
-  %t425 = extractvalue {i32, i1} %t424, 0
-  %t426 = extractvalue {i32, i1} %t424, 1
-  br i1 %t426, label %panic.36, label %panic.ok.36
+  store i64 %t538, ptr %v.frac
+  %t540 = load i32, ptr %v.digits
+  %t541 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t540, i32 1)
+  %t542 = extractvalue {i32, i1} %t541, 0
+  %t543 = extractvalue {i32, i1} %t541, 1
+  br i1 %t543, label %panic.36, label %panic.ok.36
 panic.36:
   call void @willrt_panic(ptr @.str.10, ptr @.str.157, ptr @.str.138)
   unreachable
 panic.ok.36:
-  store i32 %t425, ptr %v.digits
+  store i32 %t542, ptr %v.digits
   br label %for.body.33
 for.end.33:
   br label %if.end.20
 if.end.20:
   store i32 0, ptr %v.offset
-  %t427 = load i32, ptr %v.at
-  %t428 = load i32, ptr %v.n
-  %t429 = icmp sge i32 %t427, %t428
-  br i1 %t429, label %if.then.37, label %if.end.37
+  %t544 = load i32, ptr %v.at
+  %t545 = load i32, ptr %v.n
+  %t546 = icmp sge i32 %t544, %t545
+  br i1 %t546, label %if.then.37, label %if.end.37
 if.then.37:
-  %t430 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.539, i32 0, i32 0
-  store i32 1, ptr %t430
-  %t431 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.539, i32 0, i32 2
-  %t432 = getelementptr inbounds { ptr, i64 }, ptr %v.str.542, i32 0, i32 0
-  store ptr @.bytes.50, ptr %t432
-  %t433 = getelementptr inbounds { ptr, i64 }, ptr %v.str.542, i32 0, i32 1
-  store i64 30, ptr %t433
-  %t434 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.542)
-  store %"struct.std/time.timeError" %t434, ptr %v.ret.541
-  %t435 = getelementptr inbounds %interface.Error, ptr %t431, i32 0, i32 0
-  store ptr %v.ret.541, ptr %t435
-  %t436 = getelementptr inbounds %interface.Error, ptr %t431, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t436
-  %t437 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.539
-  %t438 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t439 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t440 = load ptr, ptr %t438
-  %t441 = load i64, ptr %t439
-  %t442 = alloca i64
-  store i64 0, ptr %t442
+  %t547 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.539, i32 0, i32 0
+  store i32 1, ptr %t547
+  %t548 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.539, i32 0, i32 2
+  %t550 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t551 = ptrtoint ptr %t550 to i64
+  %t549 = call ptr @willrt_alloc(i64 %t551)
+  %t552 = getelementptr inbounds { ptr, i64 }, ptr %v.str.542, i32 0, i32 0
+  store ptr @.bytes.50, ptr %t552
+  %t553 = getelementptr inbounds { ptr, i64 }, ptr %v.str.542, i32 0, i32 1
+  store i64 30, ptr %t553
+  %t554 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.542)
+  store %"struct.std/time.timeError" %t554, ptr %v.ret.541
+  %t555 = load %"struct.std/time.timeError", ptr %v.ret.541
+  store %"struct.std/time.timeError" %t555, ptr %t549
+  %t556 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.541, i32 0, i32 0
+  %t557 = getelementptr inbounds %"struct.std/time.timeError", ptr %t549, i32 0, i32 0
+  %t558 = getelementptr inbounds { ptr, i64 }, ptr %t556, i32 0, i32 0
+  %t559 = getelementptr inbounds { ptr, i64 }, ptr %t556, i32 0, i32 1
+  %t560 = load ptr, ptr %t558
+  %t561 = load i64, ptr %t559
+  %t562 = call ptr @willrt_alloc(i64 %t561)
+  call void @memcpy(ptr %t562, ptr %t560, i64 %t561)
+  %t563 = getelementptr inbounds { ptr, i64 }, ptr %t557, i32 0, i32 0
+  store ptr %t562, ptr %t563
+  %t564 = getelementptr inbounds { ptr, i64 }, ptr %t557, i32 0, i32 1
+  store i64 %t561, ptr %t564
+  %t565 = getelementptr inbounds %interface.Error, ptr %t548, i32 0, i32 0
+  %t566 = getelementptr inbounds %interface.Error, ptr %t548, i32 0, i32 1
+  store ptr %t549, ptr %t565
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t566
+  %t567 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.539
+  %t568 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t569 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t570 = load ptr, ptr %t568
+  %t571 = load i64, ptr %t569
+  %t572 = alloca i64
+  store i64 0, ptr %t572
   br label %deep.rel.arr.cond.38
 deep.rel.arr.cond.38:
-  %t443 = load i64, ptr %t442
-  %t444 = icmp ult i64 %t443, %t441
-  br i1 %t444, label %deep.rel.arr.body.38, label %deep.rel.arr.done.38
+  %t573 = load i64, ptr %t572
+  %t574 = icmp ult i64 %t573, %t571
+  br i1 %t574, label %deep.rel.arr.body.38, label %deep.rel.arr.done.38
 deep.rel.arr.body.38:
-  %t445 = getelementptr inbounds i32, ptr %t440, i64 %t443
-  %t446 = add i64 %t443, 1
-  store i64 %t446, ptr %t442
+  %t575 = getelementptr inbounds i32, ptr %t570, i64 %t573
+  %t576 = add i64 %t573, 1
+  store i64 %t576, ptr %t572
   br label %deep.rel.arr.cond.38
 deep.rel.arr.done.38:
-  call void @willrt_free(ptr %t440)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t437
+  call void @willrt_free(ptr %t570)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t567
 if.end.37:
-  %t447 = load i32, ptr %v.at
-  %t448 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t447, i32 90)
-  %t449 = load i32, ptr %v.at
-  %t450 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t449, i32 122)
-  %t451 = or i1 %t448, %t450
-  br i1 %t451, label %if.then.39, label %if.else.39
+  %t577 = load i32, ptr %v.at
+  %t578 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t577, i32 90)
+  %t579 = load i32, ptr %v.at
+  %t580 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t579, i32 122)
+  %t581 = or i1 %t578, %t580
+  br i1 %t581, label %if.then.39, label %if.else.39
 if.then.39:
-  %t452 = load i32, ptr %v.at
-  %t453 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t452, i32 1)
-  %t454 = extractvalue {i32, i1} %t453, 0
-  %t455 = extractvalue {i32, i1} %t453, 1
-  br i1 %t455, label %panic.40, label %panic.ok.40
+  %t582 = load i32, ptr %v.at
+  %t583 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t582, i32 1)
+  %t584 = extractvalue {i32, i1} %t583, 0
+  %t585 = extractvalue {i32, i1} %t583, 1
+  br i1 %t585, label %panic.40, label %panic.ok.40
 panic.40:
   call void @willrt_panic(ptr @.str.10, ptr @.str.159, ptr @.str.138)
   unreachable
 panic.ok.40:
-  store i32 %t454, ptr %v.at
+  store i32 %t584, ptr %v.at
   br label %if.end.39
 if.else.39:
-  %t456 = load i32, ptr %v.at
-  %t457 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t456, i32 43)
-  %t458 = load i32, ptr %v.at
-  %t459 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t458, i32 45)
-  %t460 = or i1 %t457, %t459
-  br i1 %t460, label %if.then.41, label %if.else.41
+  %t586 = load i32, ptr %v.at
+  %t587 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t586, i32 43)
+  %t588 = load i32, ptr %v.at
+  %t589 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t588, i32 45)
+  %t590 = or i1 %t587, %t589
+  br i1 %t590, label %if.then.41, label %if.else.41
 if.then.41:
-  %t461 = load i32, ptr %v.at
-  %t462 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t461, i32 1)
-  %t463 = extractvalue {i32, i1} %t462, 0
-  %t464 = extractvalue {i32, i1} %t462, 1
-  br i1 %t464, label %panic.42, label %panic.ok.42
+  %t591 = load i32, ptr %v.at
+  %t592 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t591, i32 1)
+  %t593 = extractvalue {i32, i1} %t592, 0
+  %t594 = extractvalue {i32, i1} %t592, 1
+  br i1 %t594, label %panic.42, label %panic.ok.42
 panic.42:
   call void @willrt_panic(ptr @.str.10, ptr @.str.160, ptr @.str.138)
   unreachable
 panic.ok.42:
-  %t465 = call i32 @"std/time.readDigits"(ptr %v.c, i32 %t463, i32 2)
-  store i32 %t465, ptr %v.offsetHour
-  %t466 = load i32, ptr %v.at
-  %t467 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t466, i32 4)
-  %t468 = extractvalue {i32, i1} %t467, 0
-  %t469 = extractvalue {i32, i1} %t467, 1
-  br i1 %t469, label %panic.43, label %panic.ok.43
+  %t595 = call i32 @"std/time.readDigits"(ptr %v.c, i32 %t593, i32 2)
+  store i32 %t595, ptr %v.offsetHour
+  %t596 = load i32, ptr %v.at
+  %t597 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t596, i32 4)
+  %t598 = extractvalue {i32, i1} %t597, 0
+  %t599 = extractvalue {i32, i1} %t597, 1
+  br i1 %t599, label %panic.43, label %panic.ok.43
 panic.43:
   call void @willrt_panic(ptr @.str.10, ptr @.str.161, ptr @.str.138)
   unreachable
 panic.ok.43:
-  %t470 = call i32 @"std/time.readDigits"(ptr %v.c, i32 %t468, i32 2)
-  store i32 %t470, ptr %v.offsetMinute
-  %t471 = load i32, ptr %v.offsetHour
-  %t472 = icmp slt i32 %t471, 0
-  %t473 = load i32, ptr %v.offsetMinute
-  %t474 = icmp slt i32 %t473, 0
-  %t475 = or i1 %t472, %t474
-  %t476 = load i32, ptr %v.at
-  %t477 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t476, i32 3)
-  %t478 = extractvalue {i32, i1} %t477, 0
-  %t479 = extractvalue {i32, i1} %t477, 1
-  br i1 %t479, label %panic.45, label %panic.ok.45
+  %t600 = call i32 @"std/time.readDigits"(ptr %v.c, i32 %t598, i32 2)
+  store i32 %t600, ptr %v.offsetMinute
+  %t601 = load i32, ptr %v.offsetHour
+  %t602 = icmp slt i32 %t601, 0
+  %t603 = load i32, ptr %v.offsetMinute
+  %t604 = icmp slt i32 %t603, 0
+  %t605 = or i1 %t602, %t604
+  %t606 = load i32, ptr %v.at
+  %t607 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t606, i32 3)
+  %t608 = extractvalue {i32, i1} %t607, 0
+  %t609 = extractvalue {i32, i1} %t607, 1
+  br i1 %t609, label %panic.45, label %panic.ok.45
 panic.45:
   call void @willrt_panic(ptr @.str.10, ptr @.str.162, ptr @.str.138)
   unreachable
 panic.ok.45:
-  %t480 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t478, i32 58)
-  %t481 = xor i1 %t480, true
-  %t482 = or i1 %t475, %t481
-  br i1 %t482, label %if.then.44, label %if.end.44
+  %t610 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t608, i32 58)
+  %t611 = xor i1 %t610, true
+  %t612 = or i1 %t605, %t611
+  br i1 %t612, label %if.then.44, label %if.end.44
 if.then.44:
-  %t483 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.603, i32 0, i32 0
-  store i32 1, ptr %t483
-  %t484 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.603, i32 0, i32 2
-  %t485 = getelementptr inbounds { ptr, i64 }, ptr %v.str.606, i32 0, i32 0
-  store ptr @.bytes.51, ptr %t485
-  %t486 = getelementptr inbounds { ptr, i64 }, ptr %v.str.606, i32 0, i32 1
-  store i64 33, ptr %t486
-  %t487 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.606)
-  store %"struct.std/time.timeError" %t487, ptr %v.ret.605
-  %t488 = getelementptr inbounds %interface.Error, ptr %t484, i32 0, i32 0
-  store ptr %v.ret.605, ptr %t488
-  %t489 = getelementptr inbounds %interface.Error, ptr %t484, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t489
-  %t490 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.603
-  %t491 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t492 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t493 = load ptr, ptr %t491
-  %t494 = load i64, ptr %t492
-  %t495 = alloca i64
-  store i64 0, ptr %t495
+  %t613 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.603, i32 0, i32 0
+  store i32 1, ptr %t613
+  %t614 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.603, i32 0, i32 2
+  %t616 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t617 = ptrtoint ptr %t616 to i64
+  %t615 = call ptr @willrt_alloc(i64 %t617)
+  %t618 = getelementptr inbounds { ptr, i64 }, ptr %v.str.606, i32 0, i32 0
+  store ptr @.bytes.51, ptr %t618
+  %t619 = getelementptr inbounds { ptr, i64 }, ptr %v.str.606, i32 0, i32 1
+  store i64 33, ptr %t619
+  %t620 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.606)
+  store %"struct.std/time.timeError" %t620, ptr %v.ret.605
+  %t621 = load %"struct.std/time.timeError", ptr %v.ret.605
+  store %"struct.std/time.timeError" %t621, ptr %t615
+  %t622 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.605, i32 0, i32 0
+  %t623 = getelementptr inbounds %"struct.std/time.timeError", ptr %t615, i32 0, i32 0
+  %t624 = getelementptr inbounds { ptr, i64 }, ptr %t622, i32 0, i32 0
+  %t625 = getelementptr inbounds { ptr, i64 }, ptr %t622, i32 0, i32 1
+  %t626 = load ptr, ptr %t624
+  %t627 = load i64, ptr %t625
+  %t628 = call ptr @willrt_alloc(i64 %t627)
+  call void @memcpy(ptr %t628, ptr %t626, i64 %t627)
+  %t629 = getelementptr inbounds { ptr, i64 }, ptr %t623, i32 0, i32 0
+  store ptr %t628, ptr %t629
+  %t630 = getelementptr inbounds { ptr, i64 }, ptr %t623, i32 0, i32 1
+  store i64 %t627, ptr %t630
+  %t631 = getelementptr inbounds %interface.Error, ptr %t614, i32 0, i32 0
+  %t632 = getelementptr inbounds %interface.Error, ptr %t614, i32 0, i32 1
+  store ptr %t615, ptr %t631
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t632
+  %t633 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.603
+  %t634 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t635 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t636 = load ptr, ptr %t634
+  %t637 = load i64, ptr %t635
+  %t638 = alloca i64
+  store i64 0, ptr %t638
   br label %deep.rel.arr.cond.46
 deep.rel.arr.cond.46:
-  %t496 = load i64, ptr %t495
-  %t497 = icmp ult i64 %t496, %t494
-  br i1 %t497, label %deep.rel.arr.body.46, label %deep.rel.arr.done.46
+  %t639 = load i64, ptr %t638
+  %t640 = icmp ult i64 %t639, %t637
+  br i1 %t640, label %deep.rel.arr.body.46, label %deep.rel.arr.done.46
 deep.rel.arr.body.46:
-  %t498 = getelementptr inbounds i32, ptr %t493, i64 %t496
-  %t499 = add i64 %t496, 1
-  store i64 %t499, ptr %t495
+  %t641 = getelementptr inbounds i32, ptr %t636, i64 %t639
+  %t642 = add i64 %t639, 1
+  store i64 %t642, ptr %t638
   br label %deep.rel.arr.cond.46
 deep.rel.arr.done.46:
-  call void @willrt_free(ptr %t493)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t490
+  call void @willrt_free(ptr %t636)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t633
 if.end.44:
-  %t500 = load i32, ptr %v.offsetHour
-  %t501 = icmp sgt i32 %t500, 23
-  %t502 = load i32, ptr %v.offsetMinute
-  %t503 = icmp sgt i32 %t502, 59
-  %t504 = or i1 %t501, %t503
-  br i1 %t504, label %if.then.47, label %if.end.47
+  %t643 = load i32, ptr %v.offsetHour
+  %t644 = icmp sgt i32 %t643, 23
+  %t645 = load i32, ptr %v.offsetMinute
+  %t646 = icmp sgt i32 %t645, 59
+  %t647 = or i1 %t644, %t646
+  br i1 %t647, label %if.then.47, label %if.end.47
 if.then.47:
-  %t505 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.618, i32 0, i32 0
-  store i32 1, ptr %t505
-  %t506 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.618, i32 0, i32 2
-  %t507 = getelementptr inbounds { ptr, i64 }, ptr %v.str.621, i32 0, i32 0
-  store ptr @.bytes.52, ptr %t507
-  %t508 = getelementptr inbounds { ptr, i64 }, ptr %v.str.621, i32 0, i32 1
-  store i64 35, ptr %t508
-  %t509 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.621)
-  store %"struct.std/time.timeError" %t509, ptr %v.ret.620
-  %t510 = getelementptr inbounds %interface.Error, ptr %t506, i32 0, i32 0
-  store ptr %v.ret.620, ptr %t510
-  %t511 = getelementptr inbounds %interface.Error, ptr %t506, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t511
-  %t512 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.618
-  %t513 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t514 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t515 = load ptr, ptr %t513
-  %t516 = load i64, ptr %t514
-  %t517 = alloca i64
-  store i64 0, ptr %t517
+  %t648 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.618, i32 0, i32 0
+  store i32 1, ptr %t648
+  %t649 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.618, i32 0, i32 2
+  %t651 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t652 = ptrtoint ptr %t651 to i64
+  %t650 = call ptr @willrt_alloc(i64 %t652)
+  %t653 = getelementptr inbounds { ptr, i64 }, ptr %v.str.621, i32 0, i32 0
+  store ptr @.bytes.52, ptr %t653
+  %t654 = getelementptr inbounds { ptr, i64 }, ptr %v.str.621, i32 0, i32 1
+  store i64 35, ptr %t654
+  %t655 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.621)
+  store %"struct.std/time.timeError" %t655, ptr %v.ret.620
+  %t656 = load %"struct.std/time.timeError", ptr %v.ret.620
+  store %"struct.std/time.timeError" %t656, ptr %t650
+  %t657 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.620, i32 0, i32 0
+  %t658 = getelementptr inbounds %"struct.std/time.timeError", ptr %t650, i32 0, i32 0
+  %t659 = getelementptr inbounds { ptr, i64 }, ptr %t657, i32 0, i32 0
+  %t660 = getelementptr inbounds { ptr, i64 }, ptr %t657, i32 0, i32 1
+  %t661 = load ptr, ptr %t659
+  %t662 = load i64, ptr %t660
+  %t663 = call ptr @willrt_alloc(i64 %t662)
+  call void @memcpy(ptr %t663, ptr %t661, i64 %t662)
+  %t664 = getelementptr inbounds { ptr, i64 }, ptr %t658, i32 0, i32 0
+  store ptr %t663, ptr %t664
+  %t665 = getelementptr inbounds { ptr, i64 }, ptr %t658, i32 0, i32 1
+  store i64 %t662, ptr %t665
+  %t666 = getelementptr inbounds %interface.Error, ptr %t649, i32 0, i32 0
+  %t667 = getelementptr inbounds %interface.Error, ptr %t649, i32 0, i32 1
+  store ptr %t650, ptr %t666
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t667
+  %t668 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.618
+  %t669 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t670 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t671 = load ptr, ptr %t669
+  %t672 = load i64, ptr %t670
+  %t673 = alloca i64
+  store i64 0, ptr %t673
   br label %deep.rel.arr.cond.48
 deep.rel.arr.cond.48:
-  %t518 = load i64, ptr %t517
-  %t519 = icmp ult i64 %t518, %t516
-  br i1 %t519, label %deep.rel.arr.body.48, label %deep.rel.arr.done.48
+  %t674 = load i64, ptr %t673
+  %t675 = icmp ult i64 %t674, %t672
+  br i1 %t675, label %deep.rel.arr.body.48, label %deep.rel.arr.done.48
 deep.rel.arr.body.48:
-  %t520 = getelementptr inbounds i32, ptr %t515, i64 %t518
-  %t521 = add i64 %t518, 1
-  store i64 %t521, ptr %t517
+  %t676 = getelementptr inbounds i32, ptr %t671, i64 %t674
+  %t677 = add i64 %t674, 1
+  store i64 %t677, ptr %t673
   br label %deep.rel.arr.cond.48
 deep.rel.arr.done.48:
-  call void @willrt_free(ptr %t515)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t512
+  call void @willrt_free(ptr %t671)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t668
 if.end.47:
-  %t522 = load i32, ptr %v.offsetHour
-  %t523 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %t522, i32 3600)
-  %t524 = extractvalue {i32, i1} %t523, 0
-  %t525 = extractvalue {i32, i1} %t523, 1
-  br i1 %t525, label %panic.49, label %panic.ok.49
+  %t678 = load i32, ptr %v.offsetHour
+  %t679 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %t678, i32 3600)
+  %t680 = extractvalue {i32, i1} %t679, 0
+  %t681 = extractvalue {i32, i1} %t679, 1
+  br i1 %t681, label %panic.49, label %panic.ok.49
 panic.49:
   call void @willrt_panic(ptr @.str.10, ptr @.str.165, ptr @.str.138)
   unreachable
 panic.ok.49:
-  %t526 = load i32, ptr %v.offsetMinute
-  %t527 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %t526, i32 60)
-  %t528 = extractvalue {i32, i1} %t527, 0
-  %t529 = extractvalue {i32, i1} %t527, 1
-  br i1 %t529, label %panic.50, label %panic.ok.50
+  %t682 = load i32, ptr %v.offsetMinute
+  %t683 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %t682, i32 60)
+  %t684 = extractvalue {i32, i1} %t683, 0
+  %t685 = extractvalue {i32, i1} %t683, 1
+  br i1 %t685, label %panic.50, label %panic.ok.50
 panic.50:
   call void @willrt_panic(ptr @.str.10, ptr @.str.166, ptr @.str.138)
   unreachable
 panic.ok.50:
-  %t530 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t524, i32 %t528)
-  %t531 = extractvalue {i32, i1} %t530, 0
-  %t532 = extractvalue {i32, i1} %t530, 1
-  br i1 %t532, label %panic.51, label %panic.ok.51
+  %t686 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t680, i32 %t684)
+  %t687 = extractvalue {i32, i1} %t686, 0
+  %t688 = extractvalue {i32, i1} %t686, 1
+  br i1 %t688, label %panic.51, label %panic.ok.51
 panic.51:
   call void @willrt_panic(ptr @.str.10, ptr @.str.165, ptr @.str.138)
   unreachable
 panic.ok.51:
-  store i32 %t531, ptr %v.offset
-  %t533 = load i32, ptr %v.at
-  %t534 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t533, i32 45)
-  br i1 %t534, label %if.then.52, label %if.end.52
+  store i32 %t687, ptr %v.offset
+  %t689 = load i32, ptr %v.at
+  %t690 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t689, i32 45)
+  br i1 %t690, label %if.then.52, label %if.end.52
 if.then.52:
-  %t535 = load i32, ptr %v.offset
-  %t537 = icmp eq i32 %t535, -2147483648
-  br i1 %t537, label %panic.53, label %panic.ok.53
+  %t691 = load i32, ptr %v.offset
+  %t693 = icmp eq i32 %t691, -2147483648
+  br i1 %t693, label %panic.53, label %panic.ok.53
 panic.53:
   call void @willrt_panic(ptr @.str.10, ptr @.str.167, ptr @.str.138)
   unreachable
 panic.ok.53:
-  %t536 = sub i32 0, %t535
-  store i32 %t536, ptr %v.offset
+  %t692 = sub i32 0, %t691
+  store i32 %t692, ptr %v.offset
   br label %if.end.52
 if.end.52:
-  %t538 = load i32, ptr %v.at
-  %t539 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t538, i32 6)
-  %t540 = extractvalue {i32, i1} %t539, 0
-  %t541 = extractvalue {i32, i1} %t539, 1
-  br i1 %t541, label %panic.54, label %panic.ok.54
+  %t694 = load i32, ptr %v.at
+  %t695 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t694, i32 6)
+  %t696 = extractvalue {i32, i1} %t695, 0
+  %t697 = extractvalue {i32, i1} %t695, 1
+  br i1 %t697, label %panic.54, label %panic.ok.54
 panic.54:
   call void @willrt_panic(ptr @.str.10, ptr @.str.168, ptr @.str.138)
   unreachable
 panic.ok.54:
-  store i32 %t540, ptr %v.at
+  store i32 %t696, ptr %v.at
   br label %if.end.41
 if.else.41:
-  %t542 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.647, i32 0, i32 0
-  store i32 1, ptr %t542
-  %t543 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.647, i32 0, i32 2
-  %t544 = getelementptr inbounds { ptr, i64 }, ptr %v.str.650, i32 0, i32 0
-  store ptr @.bytes.53, ptr %t544
-  %t545 = getelementptr inbounds { ptr, i64 }, ptr %v.str.650, i32 0, i32 1
-  store i64 38, ptr %t545
-  %t546 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.650)
-  store %"struct.std/time.timeError" %t546, ptr %v.ret.649
-  %t547 = getelementptr inbounds %interface.Error, ptr %t543, i32 0, i32 0
-  store ptr %v.ret.649, ptr %t547
-  %t548 = getelementptr inbounds %interface.Error, ptr %t543, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t548
-  %t549 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.647
-  %t550 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t551 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t552 = load ptr, ptr %t550
-  %t553 = load i64, ptr %t551
-  %t554 = alloca i64
-  store i64 0, ptr %t554
+  %t698 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.647, i32 0, i32 0
+  store i32 1, ptr %t698
+  %t699 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.647, i32 0, i32 2
+  %t701 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t702 = ptrtoint ptr %t701 to i64
+  %t700 = call ptr @willrt_alloc(i64 %t702)
+  %t703 = getelementptr inbounds { ptr, i64 }, ptr %v.str.650, i32 0, i32 0
+  store ptr @.bytes.53, ptr %t703
+  %t704 = getelementptr inbounds { ptr, i64 }, ptr %v.str.650, i32 0, i32 1
+  store i64 38, ptr %t704
+  %t705 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.650)
+  store %"struct.std/time.timeError" %t705, ptr %v.ret.649
+  %t706 = load %"struct.std/time.timeError", ptr %v.ret.649
+  store %"struct.std/time.timeError" %t706, ptr %t700
+  %t707 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.649, i32 0, i32 0
+  %t708 = getelementptr inbounds %"struct.std/time.timeError", ptr %t700, i32 0, i32 0
+  %t709 = getelementptr inbounds { ptr, i64 }, ptr %t707, i32 0, i32 0
+  %t710 = getelementptr inbounds { ptr, i64 }, ptr %t707, i32 0, i32 1
+  %t711 = load ptr, ptr %t709
+  %t712 = load i64, ptr %t710
+  %t713 = call ptr @willrt_alloc(i64 %t712)
+  call void @memcpy(ptr %t713, ptr %t711, i64 %t712)
+  %t714 = getelementptr inbounds { ptr, i64 }, ptr %t708, i32 0, i32 0
+  store ptr %t713, ptr %t714
+  %t715 = getelementptr inbounds { ptr, i64 }, ptr %t708, i32 0, i32 1
+  store i64 %t712, ptr %t715
+  %t716 = getelementptr inbounds %interface.Error, ptr %t699, i32 0, i32 0
+  %t717 = getelementptr inbounds %interface.Error, ptr %t699, i32 0, i32 1
+  store ptr %t700, ptr %t716
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t717
+  %t718 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.647
+  %t719 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t720 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t721 = load ptr, ptr %t719
+  %t722 = load i64, ptr %t720
+  %t723 = alloca i64
+  store i64 0, ptr %t723
   br label %deep.rel.arr.cond.55
 deep.rel.arr.cond.55:
-  %t555 = load i64, ptr %t554
-  %t556 = icmp ult i64 %t555, %t553
-  br i1 %t556, label %deep.rel.arr.body.55, label %deep.rel.arr.done.55
+  %t724 = load i64, ptr %t723
+  %t725 = icmp ult i64 %t724, %t722
+  br i1 %t725, label %deep.rel.arr.body.55, label %deep.rel.arr.done.55
 deep.rel.arr.body.55:
-  %t557 = getelementptr inbounds i32, ptr %t552, i64 %t555
-  %t558 = add i64 %t555, 1
-  store i64 %t558, ptr %t554
+  %t726 = getelementptr inbounds i32, ptr %t721, i64 %t724
+  %t727 = add i64 %t724, 1
+  store i64 %t727, ptr %t723
   br label %deep.rel.arr.cond.55
 deep.rel.arr.done.55:
-  call void @willrt_free(ptr %t552)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t549
+  call void @willrt_free(ptr %t721)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t718
 if.end.41:
   br label %if.end.39
 if.end.39:
-  %t559 = load i32, ptr %v.at
-  %t560 = load i32, ptr %v.n
-  %t561 = icmp ne i32 %t559, %t560
-  br i1 %t561, label %if.then.56, label %if.end.56
+  %t728 = load i32, ptr %v.at
+  %t729 = load i32, ptr %v.n
+  %t730 = icmp ne i32 %t728, %t729
+  br i1 %t730, label %if.then.56, label %if.end.56
 if.then.56:
-  %t562 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.658, i32 0, i32 0
-  store i32 1, ptr %t562
-  %t563 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.658, i32 0, i32 2
-  %t564 = getelementptr inbounds { ptr, i64 }, ptr %v.str.661, i32 0, i32 0
-  store ptr @.bytes.54, ptr %t564
-  %t565 = getelementptr inbounds { ptr, i64 }, ptr %v.str.661, i32 0, i32 1
-  store i64 35, ptr %t565
-  %t566 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.661)
-  store %"struct.std/time.timeError" %t566, ptr %v.ret.660
-  %t567 = getelementptr inbounds %interface.Error, ptr %t563, i32 0, i32 0
-  store ptr %v.ret.660, ptr %t567
-  %t568 = getelementptr inbounds %interface.Error, ptr %t563, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t568
-  %t569 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.658
-  %t570 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t571 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t572 = load ptr, ptr %t570
-  %t573 = load i64, ptr %t571
-  %t574 = alloca i64
-  store i64 0, ptr %t574
+  %t731 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.658, i32 0, i32 0
+  store i32 1, ptr %t731
+  %t732 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.658, i32 0, i32 2
+  %t734 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t735 = ptrtoint ptr %t734 to i64
+  %t733 = call ptr @willrt_alloc(i64 %t735)
+  %t736 = getelementptr inbounds { ptr, i64 }, ptr %v.str.661, i32 0, i32 0
+  store ptr @.bytes.54, ptr %t736
+  %t737 = getelementptr inbounds { ptr, i64 }, ptr %v.str.661, i32 0, i32 1
+  store i64 35, ptr %t737
+  %t738 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.661)
+  store %"struct.std/time.timeError" %t738, ptr %v.ret.660
+  %t739 = load %"struct.std/time.timeError", ptr %v.ret.660
+  store %"struct.std/time.timeError" %t739, ptr %t733
+  %t740 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.660, i32 0, i32 0
+  %t741 = getelementptr inbounds %"struct.std/time.timeError", ptr %t733, i32 0, i32 0
+  %t742 = getelementptr inbounds { ptr, i64 }, ptr %t740, i32 0, i32 0
+  %t743 = getelementptr inbounds { ptr, i64 }, ptr %t740, i32 0, i32 1
+  %t744 = load ptr, ptr %t742
+  %t745 = load i64, ptr %t743
+  %t746 = call ptr @willrt_alloc(i64 %t745)
+  call void @memcpy(ptr %t746, ptr %t744, i64 %t745)
+  %t747 = getelementptr inbounds { ptr, i64 }, ptr %t741, i32 0, i32 0
+  store ptr %t746, ptr %t747
+  %t748 = getelementptr inbounds { ptr, i64 }, ptr %t741, i32 0, i32 1
+  store i64 %t745, ptr %t748
+  %t749 = getelementptr inbounds %interface.Error, ptr %t732, i32 0, i32 0
+  %t750 = getelementptr inbounds %interface.Error, ptr %t732, i32 0, i32 1
+  store ptr %t733, ptr %t749
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t750
+  %t751 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.658
+  %t752 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t753 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t754 = load ptr, ptr %t752
+  %t755 = load i64, ptr %t753
+  %t756 = alloca i64
+  store i64 0, ptr %t756
   br label %deep.rel.arr.cond.57
 deep.rel.arr.cond.57:
-  %t575 = load i64, ptr %t574
-  %t576 = icmp ult i64 %t575, %t573
-  br i1 %t576, label %deep.rel.arr.body.57, label %deep.rel.arr.done.57
+  %t757 = load i64, ptr %t756
+  %t758 = icmp ult i64 %t757, %t755
+  br i1 %t758, label %deep.rel.arr.body.57, label %deep.rel.arr.done.57
 deep.rel.arr.body.57:
-  %t577 = getelementptr inbounds i32, ptr %t572, i64 %t575
-  %t578 = add i64 %t575, 1
-  store i64 %t578, ptr %t574
+  %t759 = getelementptr inbounds i32, ptr %t754, i64 %t757
+  %t760 = add i64 %t757, 1
+  store i64 %t760, ptr %t756
   br label %deep.rel.arr.cond.57
 deep.rel.arr.done.57:
-  call void @willrt_free(ptr %t572)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t569
+  call void @willrt_free(ptr %t754)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t751
 if.end.56:
-  %t579 = load i32, ptr %v.year
-  %t580 = load i32, ptr %v.month
-  %t581 = load i32, ptr %v.day
-  %t582 = call i64 @"std/time.daysFromCivil"(i32 %t579, i32 %t580, i32 %t581)
-  %t583 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t582, i64 86400)
-  %t584 = extractvalue {i64, i1} %t583, 0
-  %t585 = extractvalue {i64, i1} %t583, 1
-  br i1 %t585, label %panic.58, label %panic.ok.58
+  %t761 = load i32, ptr %v.year
+  %t762 = load i32, ptr %v.month
+  %t763 = load i32, ptr %v.day
+  %t764 = call i64 @"std/time.daysFromCivil"(i32 %t761, i32 %t762, i32 %t763)
+  %t765 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t764, i64 86400)
+  %t766 = extractvalue {i64, i1} %t765, 0
+  %t767 = extractvalue {i64, i1} %t765, 1
+  br i1 %t767, label %panic.58, label %panic.ok.58
 panic.58:
   call void @willrt_panic(ptr @.str.10, ptr @.str.171, ptr @.str.138)
   unreachable
 panic.ok.58:
-  store i64 %t584, ptr %v.local
-  %t586 = load i64, ptr %v.local
-  %t587 = load i32, ptr %v.hour
-  %t588 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %t587, i32 3600)
-  %t589 = extractvalue {i32, i1} %t588, 0
-  %t590 = extractvalue {i32, i1} %t588, 1
-  br i1 %t590, label %panic.59, label %panic.ok.59
+  store i64 %t766, ptr %v.local
+  %t768 = load i64, ptr %v.local
+  %t769 = load i32, ptr %v.hour
+  %t770 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %t769, i32 3600)
+  %t771 = extractvalue {i32, i1} %t770, 0
+  %t772 = extractvalue {i32, i1} %t770, 1
+  br i1 %t772, label %panic.59, label %panic.ok.59
 panic.59:
   call void @willrt_panic(ptr @.str.10, ptr @.str.172, ptr @.str.138)
   unreachable
 panic.ok.59:
-  %t591 = load i32, ptr %v.minute
-  %t592 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %t591, i32 60)
-  %t593 = extractvalue {i32, i1} %t592, 0
-  %t594 = extractvalue {i32, i1} %t592, 1
-  br i1 %t594, label %panic.60, label %panic.ok.60
+  %t773 = load i32, ptr %v.minute
+  %t774 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %t773, i32 60)
+  %t775 = extractvalue {i32, i1} %t774, 0
+  %t776 = extractvalue {i32, i1} %t774, 1
+  br i1 %t776, label %panic.60, label %panic.ok.60
 panic.60:
   call void @willrt_panic(ptr @.str.10, ptr @.str.173, ptr @.str.138)
   unreachable
 panic.ok.60:
-  %t595 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t589, i32 %t593)
-  %t596 = extractvalue {i32, i1} %t595, 0
-  %t597 = extractvalue {i32, i1} %t595, 1
-  br i1 %t597, label %panic.61, label %panic.ok.61
+  %t777 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t771, i32 %t775)
+  %t778 = extractvalue {i32, i1} %t777, 0
+  %t779 = extractvalue {i32, i1} %t777, 1
+  br i1 %t779, label %panic.61, label %panic.ok.61
 panic.61:
   call void @willrt_panic(ptr @.str.10, ptr @.str.172, ptr @.str.138)
   unreachable
 panic.ok.61:
-  %t598 = load i32, ptr %v.second
-  %t599 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t596, i32 %t598)
-  %t600 = extractvalue {i32, i1} %t599, 0
-  %t601 = extractvalue {i32, i1} %t599, 1
-  br i1 %t601, label %panic.62, label %panic.ok.62
+  %t780 = load i32, ptr %v.second
+  %t781 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t778, i32 %t780)
+  %t782 = extractvalue {i32, i1} %t781, 0
+  %t783 = extractvalue {i32, i1} %t781, 1
+  br i1 %t783, label %panic.62, label %panic.ok.62
 panic.62:
   call void @willrt_panic(ptr @.str.10, ptr @.str.172, ptr @.str.138)
   unreachable
 panic.ok.62:
-  %t602 = sext i32 %t600 to i64
-  %t603 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t586, i64 %t602)
-  %t604 = extractvalue {i64, i1} %t603, 0
-  %t605 = extractvalue {i64, i1} %t603, 1
-  br i1 %t605, label %panic.63, label %panic.ok.63
+  %t784 = sext i32 %t782 to i64
+  %t785 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t768, i64 %t784)
+  %t786 = extractvalue {i64, i1} %t785, 0
+  %t787 = extractvalue {i64, i1} %t785, 1
+  br i1 %t787, label %panic.63, label %panic.ok.63
 panic.63:
   call void @willrt_panic(ptr @.str.10, ptr @.str.174, ptr @.str.138)
   unreachable
 panic.ok.63:
-  store i64 %t604, ptr %v.local
-  %t606 = load i64, ptr %v.local
-  %t607 = load i32, ptr %v.offset
-  %t608 = sext i32 %t607 to i64
-  %t609 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t606, i64 %t608)
-  %t610 = extractvalue {i64, i1} %t609, 0
-  %t611 = extractvalue {i64, i1} %t609, 1
-  br i1 %t611, label %panic.64, label %panic.ok.64
+  store i64 %t786, ptr %v.local
+  %t788 = load i64, ptr %v.local
+  %t789 = load i32, ptr %v.offset
+  %t790 = sext i32 %t789 to i64
+  %t791 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t788, i64 %t790)
+  %t792 = extractvalue {i64, i1} %t791, 0
+  %t793 = extractvalue {i64, i1} %t791, 1
+  br i1 %t793, label %panic.64, label %panic.ok.64
 panic.64:
   call void @willrt_panic(ptr @.str.10, ptr @.str.175, ptr @.str.138)
   unreachable
 panic.ok.64:
-  store i64 %t610, ptr %v.utc
-  %t612 = load i64, ptr %v.utc
-  %t613 = call i1 @"std/time.secondInRange"(i64 %t612)
-  %t614 = xor i1 %t613, true
-  br i1 %t614, label %if.then.65, label %if.end.65
+  store i64 %t792, ptr %v.utc
+  %t794 = load i64, ptr %v.utc
+  %t795 = call i1 @"std/time.secondInRange"(i64 %t794)
+  %t796 = xor i1 %t795, true
+  br i1 %t796, label %if.then.65, label %if.end.65
 if.then.65:
-  %t615 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.697, i32 0, i32 0
-  store i32 1, ptr %t615
-  %t616 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.697, i32 0, i32 2
-  %t617 = getelementptr inbounds { ptr, i64 }, ptr %v.str.700, i32 0, i32 0
-  store ptr @.bytes.55, ptr %t617
-  %t618 = getelementptr inbounds { ptr, i64 }, ptr %v.str.700, i32 0, i32 1
-  store i64 46, ptr %t618
-  %t619 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.700)
-  store %"struct.std/time.timeError" %t619, ptr %v.ret.699
-  %t620 = getelementptr inbounds %interface.Error, ptr %t616, i32 0, i32 0
-  store ptr %v.ret.699, ptr %t620
-  %t621 = getelementptr inbounds %interface.Error, ptr %t616, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t621
-  %t622 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.697
-  %t623 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t624 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t625 = load ptr, ptr %t623
-  %t626 = load i64, ptr %t624
-  %t627 = alloca i64
-  store i64 0, ptr %t627
+  %t797 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.697, i32 0, i32 0
+  store i32 1, ptr %t797
+  %t798 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.697, i32 0, i32 2
+  %t800 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t801 = ptrtoint ptr %t800 to i64
+  %t799 = call ptr @willrt_alloc(i64 %t801)
+  %t802 = getelementptr inbounds { ptr, i64 }, ptr %v.str.700, i32 0, i32 0
+  store ptr @.bytes.55, ptr %t802
+  %t803 = getelementptr inbounds { ptr, i64 }, ptr %v.str.700, i32 0, i32 1
+  store i64 46, ptr %t803
+  %t804 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.700)
+  store %"struct.std/time.timeError" %t804, ptr %v.ret.699
+  %t805 = load %"struct.std/time.timeError", ptr %v.ret.699
+  store %"struct.std/time.timeError" %t805, ptr %t799
+  %t806 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.699, i32 0, i32 0
+  %t807 = getelementptr inbounds %"struct.std/time.timeError", ptr %t799, i32 0, i32 0
+  %t808 = getelementptr inbounds { ptr, i64 }, ptr %t806, i32 0, i32 0
+  %t809 = getelementptr inbounds { ptr, i64 }, ptr %t806, i32 0, i32 1
+  %t810 = load ptr, ptr %t808
+  %t811 = load i64, ptr %t809
+  %t812 = call ptr @willrt_alloc(i64 %t811)
+  call void @memcpy(ptr %t812, ptr %t810, i64 %t811)
+  %t813 = getelementptr inbounds { ptr, i64 }, ptr %t807, i32 0, i32 0
+  store ptr %t812, ptr %t813
+  %t814 = getelementptr inbounds { ptr, i64 }, ptr %t807, i32 0, i32 1
+  store i64 %t811, ptr %t814
+  %t815 = getelementptr inbounds %interface.Error, ptr %t798, i32 0, i32 0
+  %t816 = getelementptr inbounds %interface.Error, ptr %t798, i32 0, i32 1
+  store ptr %t799, ptr %t815
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t816
+  %t817 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.697
+  %t818 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t819 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t820 = load ptr, ptr %t818
+  %t821 = load i64, ptr %t819
+  %t822 = alloca i64
+  store i64 0, ptr %t822
   br label %deep.rel.arr.cond.66
 deep.rel.arr.cond.66:
-  %t628 = load i64, ptr %t627
-  %t629 = icmp ult i64 %t628, %t626
-  br i1 %t629, label %deep.rel.arr.body.66, label %deep.rel.arr.done.66
+  %t823 = load i64, ptr %t822
+  %t824 = icmp ult i64 %t823, %t821
+  br i1 %t824, label %deep.rel.arr.body.66, label %deep.rel.arr.done.66
 deep.rel.arr.body.66:
-  %t630 = getelementptr inbounds i32, ptr %t625, i64 %t628
-  %t631 = add i64 %t628, 1
-  store i64 %t631, ptr %t627
+  %t825 = getelementptr inbounds i32, ptr %t820, i64 %t823
+  %t826 = add i64 %t823, 1
+  store i64 %t826, ptr %t822
   br label %deep.rel.arr.cond.66
 deep.rel.arr.done.66:
-  call void @willrt_free(ptr %t625)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t622
+  call void @willrt_free(ptr %t820)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t817
 if.end.65:
-  %t632 = load i64, ptr %v.utc
-  %t633 = icmp eq i64 %t632, 9223372036
-  %t634 = load i64, ptr %v.frac
-  %t635 = icmp sgt i64 %t634, 854775807
-  %t636 = and i1 %t633, %t635
-  br i1 %t636, label %if.then.67, label %if.end.67
+  %t827 = load i64, ptr %v.utc
+  %t828 = icmp eq i64 %t827, 9223372036
+  %t829 = load i64, ptr %v.frac
+  %t830 = icmp sgt i64 %t829, 854775807
+  %t831 = and i1 %t828, %t830
+  br i1 %t831, label %if.then.67, label %if.end.67
 if.then.67:
-  %t637 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.712, i32 0, i32 0
-  store i32 1, ptr %t637
-  %t638 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.712, i32 0, i32 2
-  %t639 = getelementptr inbounds { ptr, i64 }, ptr %v.str.715, i32 0, i32 0
-  store ptr @.bytes.56, ptr %t639
-  %t640 = getelementptr inbounds { ptr, i64 }, ptr %v.str.715, i32 0, i32 1
-  store i64 50, ptr %t640
-  %t641 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.715)
-  store %"struct.std/time.timeError" %t641, ptr %v.ret.714
-  %t642 = getelementptr inbounds %interface.Error, ptr %t638, i32 0, i32 0
-  store ptr %v.ret.714, ptr %t642
-  %t643 = getelementptr inbounds %interface.Error, ptr %t638, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t643
-  %t644 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.712
-  %t645 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t646 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t647 = load ptr, ptr %t645
-  %t648 = load i64, ptr %t646
-  %t649 = alloca i64
-  store i64 0, ptr %t649
+  %t832 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.712, i32 0, i32 0
+  store i32 1, ptr %t832
+  %t833 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.712, i32 0, i32 2
+  %t835 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t836 = ptrtoint ptr %t835 to i64
+  %t834 = call ptr @willrt_alloc(i64 %t836)
+  %t837 = getelementptr inbounds { ptr, i64 }, ptr %v.str.715, i32 0, i32 0
+  store ptr @.bytes.56, ptr %t837
+  %t838 = getelementptr inbounds { ptr, i64 }, ptr %v.str.715, i32 0, i32 1
+  store i64 50, ptr %t838
+  %t839 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.715)
+  store %"struct.std/time.timeError" %t839, ptr %v.ret.714
+  %t840 = load %"struct.std/time.timeError", ptr %v.ret.714
+  store %"struct.std/time.timeError" %t840, ptr %t834
+  %t841 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.714, i32 0, i32 0
+  %t842 = getelementptr inbounds %"struct.std/time.timeError", ptr %t834, i32 0, i32 0
+  %t843 = getelementptr inbounds { ptr, i64 }, ptr %t841, i32 0, i32 0
+  %t844 = getelementptr inbounds { ptr, i64 }, ptr %t841, i32 0, i32 1
+  %t845 = load ptr, ptr %t843
+  %t846 = load i64, ptr %t844
+  %t847 = call ptr @willrt_alloc(i64 %t846)
+  call void @memcpy(ptr %t847, ptr %t845, i64 %t846)
+  %t848 = getelementptr inbounds { ptr, i64 }, ptr %t842, i32 0, i32 0
+  store ptr %t847, ptr %t848
+  %t849 = getelementptr inbounds { ptr, i64 }, ptr %t842, i32 0, i32 1
+  store i64 %t846, ptr %t849
+  %t850 = getelementptr inbounds %interface.Error, ptr %t833, i32 0, i32 0
+  %t851 = getelementptr inbounds %interface.Error, ptr %t833, i32 0, i32 1
+  store ptr %t834, ptr %t850
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t851
+  %t852 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.712
+  %t853 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t854 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t855 = load ptr, ptr %t853
+  %t856 = load i64, ptr %t854
+  %t857 = alloca i64
+  store i64 0, ptr %t857
   br label %deep.rel.arr.cond.68
 deep.rel.arr.cond.68:
-  %t650 = load i64, ptr %t649
-  %t651 = icmp ult i64 %t650, %t648
-  br i1 %t651, label %deep.rel.arr.body.68, label %deep.rel.arr.done.68
+  %t858 = load i64, ptr %t857
+  %t859 = icmp ult i64 %t858, %t856
+  br i1 %t859, label %deep.rel.arr.body.68, label %deep.rel.arr.done.68
 deep.rel.arr.body.68:
-  %t652 = getelementptr inbounds i32, ptr %t647, i64 %t650
-  %t653 = add i64 %t650, 1
-  store i64 %t653, ptr %t649
+  %t860 = getelementptr inbounds i32, ptr %t855, i64 %t858
+  %t861 = add i64 %t858, 1
+  store i64 %t861, ptr %t857
   br label %deep.rel.arr.cond.68
 deep.rel.arr.done.68:
-  call void @willrt_free(ptr %t647)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t644
+  call void @willrt_free(ptr %t855)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t852
 if.end.67:
-  %t654 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.718, i32 0, i32 0
-  store i32 0, ptr %t654
-  %t655 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.718, i32 0, i32 2
-  %t656 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.720, i32 0, i32 0
-  %t657 = load i64, ptr %v.utc
-  %t658 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t657, i64 1000000000)
-  %t659 = extractvalue {i64, i1} %t658, 0
-  %t660 = extractvalue {i64, i1} %t658, 1
-  br i1 %t660, label %panic.69, label %panic.ok.69
+  %t862 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.718, i32 0, i32 0
+  store i32 0, ptr %t862
+  %t863 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.718, i32 0, i32 2
+  %t864 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.720, i32 0, i32 0
+  %t865 = load i64, ptr %v.utc
+  %t866 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t865, i64 1000000000)
+  %t867 = extractvalue {i64, i1} %t866, 0
+  %t868 = extractvalue {i64, i1} %t866, 1
+  br i1 %t868, label %panic.69, label %panic.ok.69
 panic.69:
   call void @willrt_panic(ptr @.str.10, ptr @.str.178, ptr @.str.138)
   unreachable
 panic.ok.69:
-  %t661 = load i64, ptr %v.frac
-  %t662 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t659, i64 %t661)
-  %t663 = extractvalue {i64, i1} %t662, 0
-  %t664 = extractvalue {i64, i1} %t662, 1
-  br i1 %t664, label %panic.70, label %panic.ok.70
+  %t869 = load i64, ptr %v.frac
+  %t870 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t867, i64 %t869)
+  %t871 = extractvalue {i64, i1} %t870, 0
+  %t872 = extractvalue {i64, i1} %t870, 1
+  br i1 %t872, label %panic.70, label %panic.ok.70
 panic.70:
   call void @willrt_panic(ptr @.str.10, ptr @.str.178, ptr @.str.138)
   unreachable
 panic.ok.70:
-  store i64 %t663, ptr %t656
-  %t665 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.720, i32 0, i32 1
-  %t666 = load i32, ptr %v.offset
-  %t667 = call %"struct.std/time.Timezone" @"std/time.Fixed"(i32 %t666)
-  store %"struct.std/time.Timezone" %t667, ptr %v.ret.726
-  %t668 = load %"struct.std/time.Timezone", ptr %v.ret.726
-  store %"struct.std/time.Timezone" %t668, ptr %t665
-  %t669 = load %"struct.std/time.Instant", ptr %v.agg.720
-  store %"struct.std/time.Instant" %t669, ptr %t655
-  %t670 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.718
-  %t671 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t672 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t673 = load ptr, ptr %t671
-  %t674 = load i64, ptr %t672
-  %t675 = alloca i64
-  store i64 0, ptr %t675
+  store i64 %t871, ptr %t864
+  %t873 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.720, i32 0, i32 1
+  %t874 = load i32, ptr %v.offset
+  %t875 = call %"struct.std/time.Timezone" @"std/time.Fixed"(i32 %t874)
+  store %"struct.std/time.Timezone" %t875, ptr %v.ret.726
+  %t876 = load %"struct.std/time.Timezone", ptr %v.ret.726
+  store %"struct.std/time.Timezone" %t876, ptr %t873
+  %t877 = load %"struct.std/time.Instant", ptr %v.agg.720
+  store %"struct.std/time.Instant" %t877, ptr %t863
+  %t878 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.718
+  %t879 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t880 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t881 = load ptr, ptr %t879
+  %t882 = load i64, ptr %t880
+  %t883 = alloca i64
+  store i64 0, ptr %t883
   br label %deep.rel.arr.cond.71
 deep.rel.arr.cond.71:
-  %t676 = load i64, ptr %t675
-  %t677 = icmp ult i64 %t676, %t674
-  br i1 %t677, label %deep.rel.arr.body.71, label %deep.rel.arr.done.71
+  %t884 = load i64, ptr %t883
+  %t885 = icmp ult i64 %t884, %t882
+  br i1 %t885, label %deep.rel.arr.body.71, label %deep.rel.arr.done.71
 deep.rel.arr.body.71:
-  %t678 = getelementptr inbounds i32, ptr %t673, i64 %t676
-  %t679 = add i64 %t676, 1
-  store i64 %t679, ptr %t675
+  %t886 = getelementptr inbounds i32, ptr %t881, i64 %t884
+  %t887 = add i64 %t884, 1
+  store i64 %t887, ptr %t883
   br label %deep.rel.arr.cond.71
 deep.rel.arr.done.71:
-  call void @willrt_free(ptr %t673)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t670
+  call void @willrt_free(ptr %t881)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t878
 }
 define hidden { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseDate"(ptr %s, ptr %tz) inlinehint {
 entry:
@@ -5212,388 +5548,537 @@ entry:
   %v.adt.899 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
   %v.adt.905 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
   %v.slice.745 = alloca { ptr, i64 }
-  %t680 = call { ptr, i64, i64 } @"std/time.charsOf"(ptr %s)
-  store { ptr, i64, i64 } %t680, ptr %v.ret.740
-  %t681 = load { ptr, i64, i64 }, ptr %v.ret.740
-  store { ptr, i64, i64 } %t681, ptr %v.cs
-  %t682 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t683 = load i64, ptr %t682
-  %t684 = icmp ugt i64 0, %t683
-  br i1 %t684, label %panic.1, label %panic.ok.1
+  %t888 = call { ptr, i64, i64 } @"std/time.charsOf"(ptr %s)
+  store { ptr, i64, i64 } %t888, ptr %v.ret.740
+  %t889 = load { ptr, i64, i64 }, ptr %v.ret.740
+  store { ptr, i64, i64 } %t889, ptr %v.cs
+  %t890 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t891 = load i64, ptr %t890
+  %t892 = icmp ugt i64 0, %t891
+  br i1 %t892, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.86, ptr @.str.179, ptr @.str.180)
   unreachable
 panic.ok.1:
-  %t685 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t686 = load ptr, ptr %t685
-  %t687 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t688 = load i64, ptr %t687
-  %t689 = icmp ugt i64 %t683, %t688
-  br i1 %t689, label %panic.2, label %panic.ok.2
+  %t893 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t894 = load ptr, ptr %t893
+  %t895 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t896 = load i64, ptr %t895
+  %t897 = icmp ugt i64 %t891, %t896
+  br i1 %t897, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.86, ptr @.str.179, ptr @.str.180)
   unreachable
 panic.ok.2:
-  %t690 = getelementptr inbounds i32, ptr %t686, i64 0
-  %t691 = sub i64 %t683, 0
-  %t692 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.745, i32 0, i32 0
-  store ptr %t690, ptr %t692
-  %t693 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.745, i32 0, i32 1
-  store i64 %t691, ptr %t693
-  %t694 = load { ptr, i64 }, ptr %v.slice.745
-  store { ptr, i64 } %t694, ptr %v.c
-  %t695 = getelementptr inbounds { ptr, i64 }, ptr %v.c, i32 0, i32 1
-  %t696 = load i64, ptr %t695
-  %t697 = icmp ugt i64 %t696, 2147483647
-  br i1 %t697, label %panic.3, label %panic.ok.3
+  %t898 = getelementptr inbounds i32, ptr %t894, i64 0
+  %t899 = sub i64 %t891, 0
+  %t900 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.745, i32 0, i32 0
+  store ptr %t898, ptr %t900
+  %t901 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.745, i32 0, i32 1
+  store i64 %t899, ptr %t901
+  %t902 = load { ptr, i64 }, ptr %v.slice.745
+  store { ptr, i64 } %t902, ptr %v.c
+  %t903 = getelementptr inbounds { ptr, i64 }, ptr %v.c, i32 0, i32 1
+  %t904 = load i64, ptr %t903
+  %t905 = icmp ugt i64 %t904, 2147483647
+  br i1 %t905, label %panic.3, label %panic.ok.3
 panic.3:
   call void @willrt_panic(ptr @.str.47, ptr @.str.181, ptr @.str.180)
   unreachable
 panic.ok.3:
-  %t698 = trunc i64 %t696 to i32
-  store i32 %t698, ptr %v.n
-  %t699 = load i32, ptr %v.n
-  %t700 = icmp ne i32 %t699, 10
-  br i1 %t700, label %if.then.4, label %if.end.4
+  %t906 = trunc i64 %t904 to i32
+  store i32 %t906, ptr %v.n
+  %t907 = load i32, ptr %v.n
+  %t908 = icmp ne i32 %t907, 10
+  br i1 %t908, label %if.then.4, label %if.end.4
 if.then.4:
-  %t701 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.763, i32 0, i32 0
-  store i32 1, ptr %t701
-  %t702 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.763, i32 0, i32 2
-  %t703 = getelementptr inbounds { ptr, i64 }, ptr %v.str.766, i32 0, i32 0
-  store ptr @.bytes.57, ptr %t703
-  %t704 = getelementptr inbounds { ptr, i64 }, ptr %v.str.766, i32 0, i32 1
-  store i64 33, ptr %t704
-  %t705 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.766)
-  store %"struct.std/time.timeError" %t705, ptr %v.ret.765
-  %t706 = getelementptr inbounds %interface.Error, ptr %t702, i32 0, i32 0
-  store ptr %v.ret.765, ptr %t706
-  %t707 = getelementptr inbounds %interface.Error, ptr %t702, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t707
-  %t708 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.763
-  %t709 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t710 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t711 = load ptr, ptr %t709
-  %t712 = load i64, ptr %t710
-  %t713 = alloca i64
-  store i64 0, ptr %t713
+  %t909 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.763, i32 0, i32 0
+  store i32 1, ptr %t909
+  %t910 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.763, i32 0, i32 2
+  %t912 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t913 = ptrtoint ptr %t912 to i64
+  %t911 = call ptr @willrt_alloc(i64 %t913)
+  %t914 = getelementptr inbounds { ptr, i64 }, ptr %v.str.766, i32 0, i32 0
+  store ptr @.bytes.57, ptr %t914
+  %t915 = getelementptr inbounds { ptr, i64 }, ptr %v.str.766, i32 0, i32 1
+  store i64 33, ptr %t915
+  %t916 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.766)
+  store %"struct.std/time.timeError" %t916, ptr %v.ret.765
+  %t917 = load %"struct.std/time.timeError", ptr %v.ret.765
+  store %"struct.std/time.timeError" %t917, ptr %t911
+  %t918 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.765, i32 0, i32 0
+  %t919 = getelementptr inbounds %"struct.std/time.timeError", ptr %t911, i32 0, i32 0
+  %t920 = getelementptr inbounds { ptr, i64 }, ptr %t918, i32 0, i32 0
+  %t921 = getelementptr inbounds { ptr, i64 }, ptr %t918, i32 0, i32 1
+  %t922 = load ptr, ptr %t920
+  %t923 = load i64, ptr %t921
+  %t924 = call ptr @willrt_alloc(i64 %t923)
+  call void @memcpy(ptr %t924, ptr %t922, i64 %t923)
+  %t925 = getelementptr inbounds { ptr, i64 }, ptr %t919, i32 0, i32 0
+  store ptr %t924, ptr %t925
+  %t926 = getelementptr inbounds { ptr, i64 }, ptr %t919, i32 0, i32 1
+  store i64 %t923, ptr %t926
+  %t927 = getelementptr inbounds %interface.Error, ptr %t910, i32 0, i32 0
+  %t928 = getelementptr inbounds %interface.Error, ptr %t910, i32 0, i32 1
+  store ptr %t911, ptr %t927
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t928
+  %t929 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.763
+  %t930 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t931 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t932 = load ptr, ptr %t930
+  %t933 = load i64, ptr %t931
+  %t934 = alloca i64
+  store i64 0, ptr %t934
   br label %deep.rel.arr.cond.5
 deep.rel.arr.cond.5:
-  %t714 = load i64, ptr %t713
-  %t715 = icmp ult i64 %t714, %t712
-  br i1 %t715, label %deep.rel.arr.body.5, label %deep.rel.arr.done.5
+  %t935 = load i64, ptr %t934
+  %t936 = icmp ult i64 %t935, %t933
+  br i1 %t936, label %deep.rel.arr.body.5, label %deep.rel.arr.done.5
 deep.rel.arr.body.5:
-  %t716 = getelementptr inbounds i32, ptr %t711, i64 %t714
-  %t717 = add i64 %t714, 1
-  store i64 %t717, ptr %t713
+  %t937 = getelementptr inbounds i32, ptr %t932, i64 %t935
+  %t938 = add i64 %t935, 1
+  store i64 %t938, ptr %t934
   br label %deep.rel.arr.cond.5
 deep.rel.arr.done.5:
-  call void @willrt_free(ptr %t711)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t708
+  call void @willrt_free(ptr %t932)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t929
 if.end.4:
-  %t718 = call i32 @"std/time.readDigits"(ptr %v.c, i32 0, i32 4)
-  store i32 %t718, ptr %v.year
-  %t719 = call i32 @"std/time.readDigits"(ptr %v.c, i32 5, i32 2)
-  store i32 %t719, ptr %v.month
-  %t720 = call i32 @"std/time.readDigits"(ptr %v.c, i32 8, i32 2)
-  store i32 %t720, ptr %v.day
-  %t721 = load i32, ptr %v.year
-  %t722 = icmp slt i32 %t721, 0
-  %t723 = load i32, ptr %v.month
-  %t724 = icmp slt i32 %t723, 0
-  %t725 = or i1 %t722, %t724
-  %t726 = load i32, ptr %v.day
-  %t727 = icmp slt i32 %t726, 0
-  %t728 = or i1 %t725, %t727
-  br i1 %t728, label %if.then.6, label %if.end.6
+  %t939 = call i32 @"std/time.readDigits"(ptr %v.c, i32 0, i32 4)
+  store i32 %t939, ptr %v.year
+  %t940 = call i32 @"std/time.readDigits"(ptr %v.c, i32 5, i32 2)
+  store i32 %t940, ptr %v.month
+  %t941 = call i32 @"std/time.readDigits"(ptr %v.c, i32 8, i32 2)
+  store i32 %t941, ptr %v.day
+  %t942 = load i32, ptr %v.year
+  %t943 = icmp slt i32 %t942, 0
+  %t944 = load i32, ptr %v.month
+  %t945 = icmp slt i32 %t944, 0
+  %t946 = or i1 %t943, %t945
+  %t947 = load i32, ptr %v.day
+  %t948 = icmp slt i32 %t947, 0
+  %t949 = or i1 %t946, %t948
+  br i1 %t949, label %if.then.6, label %if.end.6
 if.then.6:
-  %t729 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.800, i32 0, i32 0
-  store i32 1, ptr %t729
-  %t730 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.800, i32 0, i32 2
-  %t731 = getelementptr inbounds { ptr, i64 }, ptr %v.str.803, i32 0, i32 0
-  store ptr @.bytes.58, ptr %t731
-  %t732 = getelementptr inbounds { ptr, i64 }, ptr %v.str.803, i32 0, i32 1
-  store i64 36, ptr %t732
-  %t733 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.803)
-  store %"struct.std/time.timeError" %t733, ptr %v.ret.802
-  %t734 = getelementptr inbounds %interface.Error, ptr %t730, i32 0, i32 0
-  store ptr %v.ret.802, ptr %t734
-  %t735 = getelementptr inbounds %interface.Error, ptr %t730, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t735
-  %t736 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.800
-  %t737 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t738 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t739 = load ptr, ptr %t737
-  %t740 = load i64, ptr %t738
-  %t741 = alloca i64
-  store i64 0, ptr %t741
+  %t950 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.800, i32 0, i32 0
+  store i32 1, ptr %t950
+  %t951 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.800, i32 0, i32 2
+  %t953 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t954 = ptrtoint ptr %t953 to i64
+  %t952 = call ptr @willrt_alloc(i64 %t954)
+  %t955 = getelementptr inbounds { ptr, i64 }, ptr %v.str.803, i32 0, i32 0
+  store ptr @.bytes.58, ptr %t955
+  %t956 = getelementptr inbounds { ptr, i64 }, ptr %v.str.803, i32 0, i32 1
+  store i64 36, ptr %t956
+  %t957 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.803)
+  store %"struct.std/time.timeError" %t957, ptr %v.ret.802
+  %t958 = load %"struct.std/time.timeError", ptr %v.ret.802
+  store %"struct.std/time.timeError" %t958, ptr %t952
+  %t959 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.802, i32 0, i32 0
+  %t960 = getelementptr inbounds %"struct.std/time.timeError", ptr %t952, i32 0, i32 0
+  %t961 = getelementptr inbounds { ptr, i64 }, ptr %t959, i32 0, i32 0
+  %t962 = getelementptr inbounds { ptr, i64 }, ptr %t959, i32 0, i32 1
+  %t963 = load ptr, ptr %t961
+  %t964 = load i64, ptr %t962
+  %t965 = call ptr @willrt_alloc(i64 %t964)
+  call void @memcpy(ptr %t965, ptr %t963, i64 %t964)
+  %t966 = getelementptr inbounds { ptr, i64 }, ptr %t960, i32 0, i32 0
+  store ptr %t965, ptr %t966
+  %t967 = getelementptr inbounds { ptr, i64 }, ptr %t960, i32 0, i32 1
+  store i64 %t964, ptr %t967
+  %t968 = getelementptr inbounds %interface.Error, ptr %t951, i32 0, i32 0
+  %t969 = getelementptr inbounds %interface.Error, ptr %t951, i32 0, i32 1
+  store ptr %t952, ptr %t968
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t969
+  %t970 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.800
+  %t971 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t972 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t973 = load ptr, ptr %t971
+  %t974 = load i64, ptr %t972
+  %t975 = alloca i64
+  store i64 0, ptr %t975
   br label %deep.rel.arr.cond.7
 deep.rel.arr.cond.7:
-  %t742 = load i64, ptr %t741
-  %t743 = icmp ult i64 %t742, %t740
-  br i1 %t743, label %deep.rel.arr.body.7, label %deep.rel.arr.done.7
+  %t976 = load i64, ptr %t975
+  %t977 = icmp ult i64 %t976, %t974
+  br i1 %t977, label %deep.rel.arr.body.7, label %deep.rel.arr.done.7
 deep.rel.arr.body.7:
-  %t744 = getelementptr inbounds i32, ptr %t739, i64 %t742
-  %t745 = add i64 %t742, 1
-  store i64 %t745, ptr %t741
+  %t978 = getelementptr inbounds i32, ptr %t973, i64 %t976
+  %t979 = add i64 %t976, 1
+  store i64 %t979, ptr %t975
   br label %deep.rel.arr.cond.7
 deep.rel.arr.done.7:
-  call void @willrt_free(ptr %t739)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t736
+  call void @willrt_free(ptr %t973)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t970
 if.end.6:
-  %t746 = call i1 @"std/time.hasAt"(ptr %v.c, i32 4, i32 45)
-  %t747 = xor i1 %t746, true
-  %t748 = call i1 @"std/time.hasAt"(ptr %v.c, i32 7, i32 45)
-  %t749 = xor i1 %t748, true
-  %t750 = or i1 %t747, %t749
-  br i1 %t750, label %if.then.8, label %if.end.8
+  %t980 = call i1 @"std/time.hasAt"(ptr %v.c, i32 4, i32 45)
+  %t981 = xor i1 %t980, true
+  %t982 = call i1 @"std/time.hasAt"(ptr %v.c, i32 7, i32 45)
+  %t983 = xor i1 %t982, true
+  %t984 = or i1 %t981, %t983
+  br i1 %t984, label %if.then.8, label %if.end.8
 if.then.8:
-  %t751 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.819, i32 0, i32 0
-  store i32 1, ptr %t751
-  %t752 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.819, i32 0, i32 2
-  %t753 = getelementptr inbounds { ptr, i64 }, ptr %v.str.822, i32 0, i32 0
-  store ptr @.bytes.59, ptr %t753
-  %t754 = getelementptr inbounds { ptr, i64 }, ptr %v.str.822, i32 0, i32 1
-  store i64 30, ptr %t754
-  %t755 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.822)
-  store %"struct.std/time.timeError" %t755, ptr %v.ret.821
-  %t756 = getelementptr inbounds %interface.Error, ptr %t752, i32 0, i32 0
-  store ptr %v.ret.821, ptr %t756
-  %t757 = getelementptr inbounds %interface.Error, ptr %t752, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t757
-  %t758 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.819
-  %t759 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t760 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t761 = load ptr, ptr %t759
-  %t762 = load i64, ptr %t760
-  %t763 = alloca i64
-  store i64 0, ptr %t763
+  %t985 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.819, i32 0, i32 0
+  store i32 1, ptr %t985
+  %t986 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.819, i32 0, i32 2
+  %t988 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t989 = ptrtoint ptr %t988 to i64
+  %t987 = call ptr @willrt_alloc(i64 %t989)
+  %t990 = getelementptr inbounds { ptr, i64 }, ptr %v.str.822, i32 0, i32 0
+  store ptr @.bytes.59, ptr %t990
+  %t991 = getelementptr inbounds { ptr, i64 }, ptr %v.str.822, i32 0, i32 1
+  store i64 30, ptr %t991
+  %t992 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.822)
+  store %"struct.std/time.timeError" %t992, ptr %v.ret.821
+  %t993 = load %"struct.std/time.timeError", ptr %v.ret.821
+  store %"struct.std/time.timeError" %t993, ptr %t987
+  %t994 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.821, i32 0, i32 0
+  %t995 = getelementptr inbounds %"struct.std/time.timeError", ptr %t987, i32 0, i32 0
+  %t996 = getelementptr inbounds { ptr, i64 }, ptr %t994, i32 0, i32 0
+  %t997 = getelementptr inbounds { ptr, i64 }, ptr %t994, i32 0, i32 1
+  %t998 = load ptr, ptr %t996
+  %t999 = load i64, ptr %t997
+  %t1000 = call ptr @willrt_alloc(i64 %t999)
+  call void @memcpy(ptr %t1000, ptr %t998, i64 %t999)
+  %t1001 = getelementptr inbounds { ptr, i64 }, ptr %t995, i32 0, i32 0
+  store ptr %t1000, ptr %t1001
+  %t1002 = getelementptr inbounds { ptr, i64 }, ptr %t995, i32 0, i32 1
+  store i64 %t999, ptr %t1002
+  %t1003 = getelementptr inbounds %interface.Error, ptr %t986, i32 0, i32 0
+  %t1004 = getelementptr inbounds %interface.Error, ptr %t986, i32 0, i32 1
+  store ptr %t987, ptr %t1003
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t1004
+  %t1005 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.819
+  %t1006 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t1007 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t1008 = load ptr, ptr %t1006
+  %t1009 = load i64, ptr %t1007
+  %t1010 = alloca i64
+  store i64 0, ptr %t1010
   br label %deep.rel.arr.cond.9
 deep.rel.arr.cond.9:
-  %t764 = load i64, ptr %t763
-  %t765 = icmp ult i64 %t764, %t762
-  br i1 %t765, label %deep.rel.arr.body.9, label %deep.rel.arr.done.9
+  %t1011 = load i64, ptr %t1010
+  %t1012 = icmp ult i64 %t1011, %t1009
+  br i1 %t1012, label %deep.rel.arr.body.9, label %deep.rel.arr.done.9
 deep.rel.arr.body.9:
-  %t766 = getelementptr inbounds i32, ptr %t761, i64 %t764
-  %t767 = add i64 %t764, 1
-  store i64 %t767, ptr %t763
+  %t1013 = getelementptr inbounds i32, ptr %t1008, i64 %t1011
+  %t1014 = add i64 %t1011, 1
+  store i64 %t1014, ptr %t1010
   br label %deep.rel.arr.cond.9
 deep.rel.arr.done.9:
-  call void @willrt_free(ptr %t761)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t758
+  call void @willrt_free(ptr %t1008)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t1005
 if.end.8:
-  %t768 = load i32, ptr %v.month
-  %t769 = icmp slt i32 %t768, 1
-  %t770 = load i32, ptr %v.month
-  %t771 = icmp sgt i32 %t770, 12
-  %t772 = or i1 %t769, %t771
-  br i1 %t772, label %if.then.10, label %if.end.10
+  %t1015 = load i32, ptr %v.month
+  %t1016 = icmp slt i32 %t1015, 1
+  %t1017 = load i32, ptr %v.month
+  %t1018 = icmp sgt i32 %t1017, 12
+  %t1019 = or i1 %t1016, %t1018
+  br i1 %t1019, label %if.then.10, label %if.end.10
 if.then.10:
-  %t773 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.834, i32 0, i32 0
-  store i32 1, ptr %t773
-  %t774 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.834, i32 0, i32 2
-  %t775 = getelementptr inbounds { ptr, i64 }, ptr %v.str.837, i32 0, i32 0
-  store ptr @.bytes.60, ptr %t775
-  %t776 = getelementptr inbounds { ptr, i64 }, ptr %v.str.837, i32 0, i32 1
-  store i64 31, ptr %t776
-  %t777 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.837)
-  store %"struct.std/time.timeError" %t777, ptr %v.ret.836
-  %t778 = getelementptr inbounds %interface.Error, ptr %t774, i32 0, i32 0
-  store ptr %v.ret.836, ptr %t778
-  %t779 = getelementptr inbounds %interface.Error, ptr %t774, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t779
-  %t780 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.834
-  %t781 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t782 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t783 = load ptr, ptr %t781
-  %t784 = load i64, ptr %t782
-  %t785 = alloca i64
-  store i64 0, ptr %t785
+  %t1020 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.834, i32 0, i32 0
+  store i32 1, ptr %t1020
+  %t1021 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.834, i32 0, i32 2
+  %t1023 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t1024 = ptrtoint ptr %t1023 to i64
+  %t1022 = call ptr @willrt_alloc(i64 %t1024)
+  %t1025 = getelementptr inbounds { ptr, i64 }, ptr %v.str.837, i32 0, i32 0
+  store ptr @.bytes.60, ptr %t1025
+  %t1026 = getelementptr inbounds { ptr, i64 }, ptr %v.str.837, i32 0, i32 1
+  store i64 31, ptr %t1026
+  %t1027 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.837)
+  store %"struct.std/time.timeError" %t1027, ptr %v.ret.836
+  %t1028 = load %"struct.std/time.timeError", ptr %v.ret.836
+  store %"struct.std/time.timeError" %t1028, ptr %t1022
+  %t1029 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.836, i32 0, i32 0
+  %t1030 = getelementptr inbounds %"struct.std/time.timeError", ptr %t1022, i32 0, i32 0
+  %t1031 = getelementptr inbounds { ptr, i64 }, ptr %t1029, i32 0, i32 0
+  %t1032 = getelementptr inbounds { ptr, i64 }, ptr %t1029, i32 0, i32 1
+  %t1033 = load ptr, ptr %t1031
+  %t1034 = load i64, ptr %t1032
+  %t1035 = call ptr @willrt_alloc(i64 %t1034)
+  call void @memcpy(ptr %t1035, ptr %t1033, i64 %t1034)
+  %t1036 = getelementptr inbounds { ptr, i64 }, ptr %t1030, i32 0, i32 0
+  store ptr %t1035, ptr %t1036
+  %t1037 = getelementptr inbounds { ptr, i64 }, ptr %t1030, i32 0, i32 1
+  store i64 %t1034, ptr %t1037
+  %t1038 = getelementptr inbounds %interface.Error, ptr %t1021, i32 0, i32 0
+  %t1039 = getelementptr inbounds %interface.Error, ptr %t1021, i32 0, i32 1
+  store ptr %t1022, ptr %t1038
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t1039
+  %t1040 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.834
+  %t1041 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t1042 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t1043 = load ptr, ptr %t1041
+  %t1044 = load i64, ptr %t1042
+  %t1045 = alloca i64
+  store i64 0, ptr %t1045
   br label %deep.rel.arr.cond.11
 deep.rel.arr.cond.11:
-  %t786 = load i64, ptr %t785
-  %t787 = icmp ult i64 %t786, %t784
-  br i1 %t787, label %deep.rel.arr.body.11, label %deep.rel.arr.done.11
+  %t1046 = load i64, ptr %t1045
+  %t1047 = icmp ult i64 %t1046, %t1044
+  br i1 %t1047, label %deep.rel.arr.body.11, label %deep.rel.arr.done.11
 deep.rel.arr.body.11:
-  %t788 = getelementptr inbounds i32, ptr %t783, i64 %t786
-  %t789 = add i64 %t786, 1
-  store i64 %t789, ptr %t785
+  %t1048 = getelementptr inbounds i32, ptr %t1043, i64 %t1046
+  %t1049 = add i64 %t1046, 1
+  store i64 %t1049, ptr %t1045
   br label %deep.rel.arr.cond.11
 deep.rel.arr.done.11:
-  call void @willrt_free(ptr %t783)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t780
+  call void @willrt_free(ptr %t1043)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t1040
 if.end.10:
-  %t790 = load i32, ptr %v.day
-  %t791 = icmp slt i32 %t790, 1
-  %t792 = load i32, ptr %v.day
-  %t793 = load i32, ptr %v.year
-  %t794 = load i32, ptr %v.month
-  %t795 = call i32 @"std/time.daysInMonth"(i32 %t793, i32 %t794)
-  %t796 = icmp sgt i32 %t792, %t795
-  %t797 = or i1 %t791, %t796
-  br i1 %t797, label %if.then.12, label %if.end.12
+  %t1050 = load i32, ptr %v.day
+  %t1051 = icmp slt i32 %t1050, 1
+  %t1052 = load i32, ptr %v.day
+  %t1053 = load i32, ptr %v.year
+  %t1054 = load i32, ptr %v.month
+  %t1055 = call i32 @"std/time.daysInMonth"(i32 %t1053, i32 %t1054)
+  %t1056 = icmp sgt i32 %t1052, %t1055
+  %t1057 = or i1 %t1051, %t1056
+  br i1 %t1057, label %if.then.12, label %if.end.12
 if.then.12:
-  %t798 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.851, i32 0, i32 0
-  store i32 1, ptr %t798
-  %t799 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.851, i32 0, i32 2
-  %t800 = getelementptr inbounds { ptr, i64 }, ptr %v.str.854, i32 0, i32 0
-  store ptr @.bytes.61, ptr %t800
-  %t801 = getelementptr inbounds { ptr, i64 }, ptr %v.str.854, i32 0, i32 1
-  store i64 29, ptr %t801
-  %t802 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.854)
-  store %"struct.std/time.timeError" %t802, ptr %v.ret.853
-  %t803 = getelementptr inbounds %interface.Error, ptr %t799, i32 0, i32 0
-  store ptr %v.ret.853, ptr %t803
-  %t804 = getelementptr inbounds %interface.Error, ptr %t799, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t804
-  %t805 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.851
-  %t806 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t807 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t808 = load ptr, ptr %t806
-  %t809 = load i64, ptr %t807
-  %t810 = alloca i64
-  store i64 0, ptr %t810
+  %t1058 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.851, i32 0, i32 0
+  store i32 1, ptr %t1058
+  %t1059 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.851, i32 0, i32 2
+  %t1061 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t1062 = ptrtoint ptr %t1061 to i64
+  %t1060 = call ptr @willrt_alloc(i64 %t1062)
+  %t1063 = getelementptr inbounds { ptr, i64 }, ptr %v.str.854, i32 0, i32 0
+  store ptr @.bytes.61, ptr %t1063
+  %t1064 = getelementptr inbounds { ptr, i64 }, ptr %v.str.854, i32 0, i32 1
+  store i64 29, ptr %t1064
+  %t1065 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.854)
+  store %"struct.std/time.timeError" %t1065, ptr %v.ret.853
+  %t1066 = load %"struct.std/time.timeError", ptr %v.ret.853
+  store %"struct.std/time.timeError" %t1066, ptr %t1060
+  %t1067 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.853, i32 0, i32 0
+  %t1068 = getelementptr inbounds %"struct.std/time.timeError", ptr %t1060, i32 0, i32 0
+  %t1069 = getelementptr inbounds { ptr, i64 }, ptr %t1067, i32 0, i32 0
+  %t1070 = getelementptr inbounds { ptr, i64 }, ptr %t1067, i32 0, i32 1
+  %t1071 = load ptr, ptr %t1069
+  %t1072 = load i64, ptr %t1070
+  %t1073 = call ptr @willrt_alloc(i64 %t1072)
+  call void @memcpy(ptr %t1073, ptr %t1071, i64 %t1072)
+  %t1074 = getelementptr inbounds { ptr, i64 }, ptr %t1068, i32 0, i32 0
+  store ptr %t1073, ptr %t1074
+  %t1075 = getelementptr inbounds { ptr, i64 }, ptr %t1068, i32 0, i32 1
+  store i64 %t1072, ptr %t1075
+  %t1076 = getelementptr inbounds %interface.Error, ptr %t1059, i32 0, i32 0
+  %t1077 = getelementptr inbounds %interface.Error, ptr %t1059, i32 0, i32 1
+  store ptr %t1060, ptr %t1076
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t1077
+  %t1078 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.851
+  %t1079 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t1080 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t1081 = load ptr, ptr %t1079
+  %t1082 = load i64, ptr %t1080
+  %t1083 = alloca i64
+  store i64 0, ptr %t1083
   br label %deep.rel.arr.cond.13
 deep.rel.arr.cond.13:
-  %t811 = load i64, ptr %t810
-  %t812 = icmp ult i64 %t811, %t809
-  br i1 %t812, label %deep.rel.arr.body.13, label %deep.rel.arr.done.13
+  %t1084 = load i64, ptr %t1083
+  %t1085 = icmp ult i64 %t1084, %t1082
+  br i1 %t1085, label %deep.rel.arr.body.13, label %deep.rel.arr.done.13
 deep.rel.arr.body.13:
-  %t813 = getelementptr inbounds i32, ptr %t808, i64 %t811
-  %t814 = add i64 %t811, 1
-  store i64 %t814, ptr %t810
+  %t1086 = getelementptr inbounds i32, ptr %t1081, i64 %t1084
+  %t1087 = add i64 %t1084, 1
+  store i64 %t1087, ptr %t1083
   br label %deep.rel.arr.cond.13
 deep.rel.arr.done.13:
-  call void @willrt_free(ptr %t808)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t805
+  call void @willrt_free(ptr %t1081)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t1078
 if.end.12:
-  %t815 = load i32, ptr %v.year
-  %t816 = load i32, ptr %v.month
-  %t817 = load i32, ptr %v.day
-  %t818 = call i64 @"std/time.daysFromCivil"(i32 %t815, i32 %t816, i32 %t817)
-  %t819 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t818, i64 86400)
-  %t820 = extractvalue {i64, i1} %t819, 0
-  %t821 = extractvalue {i64, i1} %t819, 1
-  br i1 %t821, label %panic.14, label %panic.ok.14
+  %t1088 = load i32, ptr %v.year
+  %t1089 = load i32, ptr %v.month
+  %t1090 = load i32, ptr %v.day
+  %t1091 = call i64 @"std/time.daysFromCivil"(i32 %t1088, i32 %t1089, i32 %t1090)
+  %t1092 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t1091, i64 86400)
+  %t1093 = extractvalue {i64, i1} %t1092, 0
+  %t1094 = extractvalue {i64, i1} %t1092, 1
+  br i1 %t1094, label %panic.14, label %panic.ok.14
 panic.14:
   call void @willrt_panic(ptr @.str.10, ptr @.str.187, ptr @.str.180)
   unreachable
 panic.ok.14:
-  store i64 %t820, ptr %v.local
-  %t822 = load i64, ptr %v.local
-  %t823 = call i32 @"std/time.offsetAt"(ptr %tz, i64 %t822)
-  store i32 %t823, ptr %v.offset
-  %t824 = load i64, ptr %v.local
-  %t825 = load i32, ptr %v.offset
-  %t826 = sext i32 %t825 to i64
-  %t827 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t824, i64 %t826)
-  %t828 = extractvalue {i64, i1} %t827, 0
-  %t829 = extractvalue {i64, i1} %t827, 1
-  br i1 %t829, label %panic.15, label %panic.ok.15
+  store i64 %t1093, ptr %v.local
+  %t1095 = load i64, ptr %v.local
+  %t1096 = call i32 @"std/time.offsetAt"(ptr %tz, i64 %t1095)
+  store i32 %t1096, ptr %v.offset
+  %t1097 = load i64, ptr %v.local
+  %t1098 = load i32, ptr %v.offset
+  %t1099 = sext i32 %t1098 to i64
+  %t1100 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t1097, i64 %t1099)
+  %t1101 = extractvalue {i64, i1} %t1100, 0
+  %t1102 = extractvalue {i64, i1} %t1100, 1
+  br i1 %t1102, label %panic.15, label %panic.ok.15
 panic.15:
   call void @willrt_panic(ptr @.str.10, ptr @.str.188, ptr @.str.180)
   unreachable
 panic.ok.15:
-  store i64 %t828, ptr %v.utc
-  %t830 = load i64, ptr %v.utc
-  %t831 = call i32 @"std/time.offsetAt"(ptr %tz, i64 %t830)
-  store i32 %t831, ptr %v.corrected
-  %t832 = load i32, ptr %v.corrected
-  %t833 = load i32, ptr %v.offset
-  %t834 = icmp ne i32 %t832, %t833
-  br i1 %t834, label %if.then.16, label %if.end.16
+  store i64 %t1101, ptr %v.utc
+  %t1103 = load i64, ptr %v.utc
+  %t1104 = call i32 @"std/time.offsetAt"(ptr %tz, i64 %t1103)
+  store i32 %t1104, ptr %v.corrected
+  %t1105 = load i32, ptr %v.corrected
+  %t1106 = load i32, ptr %v.offset
+  %t1107 = icmp ne i32 %t1105, %t1106
+  br i1 %t1107, label %if.then.16, label %if.end.16
 if.then.16:
-  %t835 = load i64, ptr %v.local
-  %t836 = load i32, ptr %v.corrected
-  %t837 = sext i32 %t836 to i64
-  %t838 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t835, i64 %t837)
-  %t839 = extractvalue {i64, i1} %t838, 0
-  %t840 = extractvalue {i64, i1} %t838, 1
-  br i1 %t840, label %panic.17, label %panic.ok.17
+  %t1108 = load i64, ptr %v.local
+  %t1109 = load i32, ptr %v.corrected
+  %t1110 = sext i32 %t1109 to i64
+  %t1111 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t1108, i64 %t1110)
+  %t1112 = extractvalue {i64, i1} %t1111, 0
+  %t1113 = extractvalue {i64, i1} %t1111, 1
+  br i1 %t1113, label %panic.17, label %panic.ok.17
 panic.17:
   call void @willrt_panic(ptr @.str.10, ptr @.str.189, ptr @.str.180)
   unreachable
 panic.ok.17:
-  store i64 %t839, ptr %v.utc
+  store i64 %t1112, ptr %v.utc
   br label %if.end.16
 if.end.16:
-  %t841 = load i64, ptr %v.utc
-  %t842 = call i1 @"std/time.secondInRange"(i64 %t841)
-  %t843 = xor i1 %t842, true
-  br i1 %t843, label %if.then.18, label %if.end.18
+  %t1114 = load i64, ptr %v.utc
+  %t1115 = call i1 @"std/time.secondInRange"(i64 %t1114)
+  %t1116 = xor i1 %t1115, true
+  br i1 %t1116, label %if.then.18, label %if.end.18
 if.then.18:
-  %t844 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.899, i32 0, i32 0
-  store i32 1, ptr %t844
-  %t845 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.899, i32 0, i32 2
-  %t846 = getelementptr inbounds { ptr, i64 }, ptr %v.str.902, i32 0, i32 0
-  store ptr @.bytes.62, ptr %t846
-  %t847 = getelementptr inbounds { ptr, i64 }, ptr %v.str.902, i32 0, i32 1
-  store i64 43, ptr %t847
-  %t848 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.902)
-  store %"struct.std/time.timeError" %t848, ptr %v.ret.901
-  %t849 = getelementptr inbounds %interface.Error, ptr %t845, i32 0, i32 0
-  store ptr %v.ret.901, ptr %t849
-  %t850 = getelementptr inbounds %interface.Error, ptr %t845, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t850
-  %t851 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.899
-  %t852 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t853 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t854 = load ptr, ptr %t852
-  %t855 = load i64, ptr %t853
-  %t856 = alloca i64
-  store i64 0, ptr %t856
+  %t1117 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.899, i32 0, i32 0
+  store i32 1, ptr %t1117
+  %t1118 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.899, i32 0, i32 2
+  %t1120 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t1121 = ptrtoint ptr %t1120 to i64
+  %t1119 = call ptr @willrt_alloc(i64 %t1121)
+  %t1122 = getelementptr inbounds { ptr, i64 }, ptr %v.str.902, i32 0, i32 0
+  store ptr @.bytes.62, ptr %t1122
+  %t1123 = getelementptr inbounds { ptr, i64 }, ptr %v.str.902, i32 0, i32 1
+  store i64 43, ptr %t1123
+  %t1124 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.902)
+  store %"struct.std/time.timeError" %t1124, ptr %v.ret.901
+  %t1125 = load %"struct.std/time.timeError", ptr %v.ret.901
+  store %"struct.std/time.timeError" %t1125, ptr %t1119
+  %t1126 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.901, i32 0, i32 0
+  %t1127 = getelementptr inbounds %"struct.std/time.timeError", ptr %t1119, i32 0, i32 0
+  %t1128 = getelementptr inbounds { ptr, i64 }, ptr %t1126, i32 0, i32 0
+  %t1129 = getelementptr inbounds { ptr, i64 }, ptr %t1126, i32 0, i32 1
+  %t1130 = load ptr, ptr %t1128
+  %t1131 = load i64, ptr %t1129
+  %t1132 = call ptr @willrt_alloc(i64 %t1131)
+  call void @memcpy(ptr %t1132, ptr %t1130, i64 %t1131)
+  %t1133 = getelementptr inbounds { ptr, i64 }, ptr %t1127, i32 0, i32 0
+  store ptr %t1132, ptr %t1133
+  %t1134 = getelementptr inbounds { ptr, i64 }, ptr %t1127, i32 0, i32 1
+  store i64 %t1131, ptr %t1134
+  %t1135 = getelementptr inbounds %interface.Error, ptr %t1118, i32 0, i32 0
+  %t1136 = getelementptr inbounds %interface.Error, ptr %t1118, i32 0, i32 1
+  store ptr %t1119, ptr %t1135
+  store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t1136
+  %t1137 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.899
+  %t1138 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t1139 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t1140 = load ptr, ptr %t1138
+  %t1141 = load i64, ptr %t1139
+  %t1142 = alloca i64
+  store i64 0, ptr %t1142
   br label %deep.rel.arr.cond.19
 deep.rel.arr.cond.19:
-  %t857 = load i64, ptr %t856
-  %t858 = icmp ult i64 %t857, %t855
-  br i1 %t858, label %deep.rel.arr.body.19, label %deep.rel.arr.done.19
+  %t1143 = load i64, ptr %t1142
+  %t1144 = icmp ult i64 %t1143, %t1141
+  br i1 %t1144, label %deep.rel.arr.body.19, label %deep.rel.arr.done.19
 deep.rel.arr.body.19:
-  %t859 = getelementptr inbounds i32, ptr %t854, i64 %t857
-  %t860 = add i64 %t857, 1
-  store i64 %t860, ptr %t856
+  %t1145 = getelementptr inbounds i32, ptr %t1140, i64 %t1143
+  %t1146 = add i64 %t1143, 1
+  store i64 %t1146, ptr %t1142
   br label %deep.rel.arr.cond.19
 deep.rel.arr.done.19:
-  call void @willrt_free(ptr %t854)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t851
+  call void @willrt_free(ptr %t1140)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t1137
 if.end.18:
-  %t861 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.905, i32 0, i32 0
-  store i32 0, ptr %t861
-  %t862 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.905, i32 0, i32 2
-  %t863 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.907, i32 0, i32 0
-  %t864 = load i64, ptr %v.utc
-  %t865 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t864, i64 1000000000)
-  %t866 = extractvalue {i64, i1} %t865, 0
-  %t867 = extractvalue {i64, i1} %t865, 1
-  br i1 %t867, label %panic.20, label %panic.ok.20
+  %t1147 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.905, i32 0, i32 0
+  store i32 0, ptr %t1147
+  %t1148 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.905, i32 0, i32 2
+  %t1149 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.907, i32 0, i32 0
+  %t1150 = load i64, ptr %v.utc
+  %t1151 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t1150, i64 1000000000)
+  %t1152 = extractvalue {i64, i1} %t1151, 0
+  %t1153 = extractvalue {i64, i1} %t1151, 1
+  br i1 %t1153, label %panic.20, label %panic.ok.20
 panic.20:
   call void @willrt_panic(ptr @.str.10, ptr @.str.191, ptr @.str.180)
   unreachable
 panic.ok.20:
-  store i64 %t866, ptr %t863
-  %t868 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.907, i32 0, i32 1
-  %t869 = load %"struct.std/time.Timezone", ptr %tz
-  store %"struct.std/time.Timezone" %t869, ptr %t868
-  %t870 = load %"struct.std/time.Instant", ptr %v.agg.907
-  store %"struct.std/time.Instant" %t870, ptr %t862
-  %t871 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.905
-  %t872 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
-  %t873 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
-  %t874 = load ptr, ptr %t872
-  %t875 = load i64, ptr %t873
-  %t876 = alloca i64
-  store i64 0, ptr %t876
+  store i64 %t1152, ptr %t1149
+  %t1154 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.907, i32 0, i32 1
+  %t1155 = load %"struct.std/time.Timezone", ptr %tz
+  store %"struct.std/time.Timezone" %t1155, ptr %t1154
+  %t1156 = load %"struct.std/time.Instant", ptr %v.agg.907
+  store %"struct.std/time.Instant" %t1156, ptr %t1148
+  %t1157 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.905
+  %t1158 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
+  %t1159 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
+  %t1160 = load ptr, ptr %t1158
+  %t1161 = load i64, ptr %t1159
+  %t1162 = alloca i64
+  store i64 0, ptr %t1162
   br label %deep.rel.arr.cond.21
 deep.rel.arr.cond.21:
-  %t877 = load i64, ptr %t876
-  %t878 = icmp ult i64 %t877, %t875
-  br i1 %t878, label %deep.rel.arr.body.21, label %deep.rel.arr.done.21
+  %t1163 = load i64, ptr %t1162
+  %t1164 = icmp ult i64 %t1163, %t1161
+  br i1 %t1164, label %deep.rel.arr.body.21, label %deep.rel.arr.done.21
 deep.rel.arr.body.21:
-  %t879 = getelementptr inbounds i32, ptr %t874, i64 %t877
-  %t880 = add i64 %t877, 1
-  store i64 %t880, ptr %t876
+  %t1165 = getelementptr inbounds i32, ptr %t1160, i64 %t1163
+  %t1166 = add i64 %t1163, 1
+  store i64 %t1166, ptr %t1162
   br label %deep.rel.arr.cond.21
 deep.rel.arr.done.21:
-  call void @willrt_free(ptr %t874)
-  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t871
+  call void @willrt_free(ptr %t1160)
+  ret { i32, [4 x i8], %"struct.std/time.Instant" } %t1157
+}
+define internal ptr @"std/time.iface.clone.Error.std/time.timeError"(ptr %data) {
+entry:
+  %t1167 = alloca ptr
+  store ptr null, ptr %t1167
+  %t1168 = icmp eq ptr %data, null
+  br i1 %t1168, label %iface.clone.null.22, label %iface.clone.have.22
+iface.clone.null.22:
+  br label %iface.clone.ret.22
+iface.clone.have.22:
+  %t1170 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
+  %t1171 = ptrtoint ptr %t1170 to i64
+  %t1169 = call ptr @willrt_alloc(i64 %t1171)
+  %t1172 = load %"struct.std/time.timeError", ptr %data
+  store %"struct.std/time.timeError" %t1172, ptr %t1169
+  %t1173 = getelementptr inbounds %"struct.std/time.timeError", ptr %data, i32 0, i32 0
+  %t1174 = getelementptr inbounds %"struct.std/time.timeError", ptr %t1169, i32 0, i32 0
+  %t1175 = getelementptr inbounds { ptr, i64 }, ptr %t1173, i32 0, i32 0
+  %t1176 = getelementptr inbounds { ptr, i64 }, ptr %t1173, i32 0, i32 1
+  %t1177 = load ptr, ptr %t1175
+  %t1178 = load i64, ptr %t1176
+  %t1179 = call ptr @willrt_alloc(i64 %t1178)
+  call void @memcpy(ptr %t1179, ptr %t1177, i64 %t1178)
+  %t1180 = getelementptr inbounds { ptr, i64 }, ptr %t1174, i32 0, i32 0
+  store ptr %t1179, ptr %t1180
+  %t1181 = getelementptr inbounds { ptr, i64 }, ptr %t1174, i32 0, i32 1
+  store i64 %t1178, ptr %t1181
+  store ptr %t1169, ptr %t1167
+  br label %iface.clone.ret.22
+iface.clone.ret.22:
+  %t1182 = load ptr, ptr %t1167
+  ret ptr %t1182
+}
+define internal void @"std/time.iface.drop.Error.std/time.timeError"(ptr %data) {
+entry:
+  %t1183 = icmp eq ptr %data, null
+  br i1 %t1183, label %iface.drop.null.23, label %iface.drop.have.23
+iface.drop.null.23:
+  br label %iface.drop.done.23
+iface.drop.have.23:
+  %t1184 = getelementptr inbounds %"struct.std/time.timeError", ptr %data, i32 0, i32 0
+  %t1185 = getelementptr inbounds { ptr, i64 }, ptr %t1184, i32 0, i32 0
+  %t1186 = load ptr, ptr %t1185
+  call void @willrt_free_str(ptr %t1186)
+  br label %iface.drop.done.23
+iface.drop.done.23:
+  ret void
 }
 %"struct.std/time.Instant" = type { i64, %"struct.std/time.Timezone" }
 define hidden %"struct.std/time.Instant" @"std/time.Now"() inlinehint {
@@ -5758,63 +6243,127 @@ if.then.2:
   %t35 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.97, i32 0, i32 0
   store i32 1, ptr %t35
   %t36 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.97, i32 0, i32 2
-  %t37 = getelementptr inbounds %interface.Error, ptr %t36, i32 0, i32 0
-  store ptr @"std/errors.NotFound", ptr %t37
-  %t38 = getelementptr inbounds %interface.Error, ptr %t36, i32 0, i32 1
-  store ptr @"std/time.vtable.Error.std/errors.Fault", ptr %t38
-  %t39 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.97
-  ret { i32, [4 x i8], %interface.Error } %t39
+  %t38 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t39 = ptrtoint ptr %t38 to i64
+  %t37 = call ptr @willrt_alloc(i64 %t39)
+  %t40 = load %"struct.std/errors.Fault", ptr @"std/errors.NotFound"
+  store %"struct.std/errors.Fault" %t40, ptr %t37
+  %t41 = getelementptr inbounds %"struct.std/errors.Fault", ptr @"std/errors.NotFound", i32 0, i32 0
+  %t42 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t37, i32 0, i32 0
+  %t43 = getelementptr inbounds { ptr, i64 }, ptr %t41, i32 0, i32 0
+  %t44 = getelementptr inbounds { ptr, i64 }, ptr %t41, i32 0, i32 1
+  %t45 = load ptr, ptr %t43
+  %t46 = load i64, ptr %t44
+  %t47 = call ptr @willrt_alloc(i64 %t46)
+  call void @memcpy(ptr %t47, ptr %t45, i64 %t46)
+  %t48 = getelementptr inbounds { ptr, i64 }, ptr %t42, i32 0, i32 0
+  store ptr %t47, ptr %t48
+  %t49 = getelementptr inbounds { ptr, i64 }, ptr %t42, i32 0, i32 1
+  store i64 %t46, ptr %t49
+  %t50 = getelementptr inbounds %interface.Error, ptr %t36, i32 0, i32 0
+  %t51 = getelementptr inbounds %interface.Error, ptr %t36, i32 0, i32 1
+  store ptr %t37, ptr %t50
+  store ptr @"std/time.vtable.Error.std/errors.Fault", ptr %t51
+  %t52 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.97
+  ret { i32, [4 x i8], %interface.Error } %t52
 if.end.2:
-  %t40 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.102, i32 0, i32 0
-  store i32 0, ptr %t40
-  %t41 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.102, i32 0, i32 2
-  %t42 = getelementptr inbounds %"struct.std/time.Timezone", ptr %v.agg.104, i32 0, i32 0
-  store i32 1, ptr %t42
-  %t43 = getelementptr inbounds %"struct.std/time.Timezone", ptr %v.agg.104, i32 0, i32 1
-  %t44 = load i32, ptr %v.id
-  store i32 %t44, ptr %t43
-  %t45 = getelementptr inbounds %"struct.std/time.Timezone", ptr %v.agg.104, i32 0, i32 2
-  store i32 0, ptr %t45
-  %t46 = load %"struct.std/time.Timezone", ptr %v.agg.104
-  store %"struct.std/time.Timezone" %t46, ptr %t41
-  %t47 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.102
-  ret { i32, [4 x i8], %interface.Error } %t47
+  %t53 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.102, i32 0, i32 0
+  store i32 0, ptr %t53
+  %t54 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.102, i32 0, i32 2
+  %t55 = getelementptr inbounds %"struct.std/time.Timezone", ptr %v.agg.104, i32 0, i32 0
+  store i32 1, ptr %t55
+  %t56 = getelementptr inbounds %"struct.std/time.Timezone", ptr %v.agg.104, i32 0, i32 1
+  %t57 = load i32, ptr %v.id
+  store i32 %t57, ptr %t56
+  %t58 = getelementptr inbounds %"struct.std/time.Timezone", ptr %v.agg.104, i32 0, i32 2
+  store i32 0, ptr %t58
+  %t59 = load %"struct.std/time.Timezone", ptr %v.agg.104
+  store %"struct.std/time.Timezone" %t59, ptr %t54
+  %t60 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.102
+  ret { i32, [4 x i8], %interface.Error } %t60
 }
 define internal i32 @"std/time.offsetAt"(ptr %tz, i64 %atSec) inlinehint {
 entry:
-  %t48 = getelementptr inbounds %"struct.std/time.Timezone", ptr %tz, i32 0, i32 0
-  %t49 = load i32, ptr %t48
-  %t50 = icmp eq i32 %t49, 0
-  br i1 %t50, label %if.then.1, label %if.end.1
+  %t61 = getelementptr inbounds %"struct.std/time.Timezone", ptr %tz, i32 0, i32 0
+  %t62 = load i32, ptr %t61
+  %t63 = icmp eq i32 %t62, 0
+  br i1 %t63, label %if.then.1, label %if.end.1
 if.then.1:
-  %t51 = getelementptr inbounds %"struct.std/time.Timezone", ptr %tz, i32 0, i32 2
-  %t52 = load i32, ptr %t51
-  ret i32 %t52
+  %t64 = getelementptr inbounds %"struct.std/time.Timezone", ptr %tz, i32 0, i32 2
+  %t65 = load i32, ptr %t64
+  ret i32 %t65
 if.end.1:
-  %t53 = getelementptr inbounds %"struct.std/time.Timezone", ptr %tz, i32 0, i32 0
-  %t54 = load i32, ptr %t53
-  %t55 = icmp eq i32 %t54, 1
-  br i1 %t55, label %if.then.2, label %if.end.2
+  %t66 = getelementptr inbounds %"struct.std/time.Timezone", ptr %tz, i32 0, i32 0
+  %t67 = load i32, ptr %t66
+  %t68 = icmp eq i32 %t67, 1
+  br i1 %t68, label %if.then.2, label %if.end.2
 if.then.2:
-  %t56 = getelementptr inbounds %"struct.std/time.Timezone", ptr %tz, i32 0, i32 1
-  %t57 = load i32, ptr %t56
-  %t58 = call i32 @willtime_zone_offset(i32 %t57, i64 %atSec)
-  ret i32 %t58
+  %t69 = getelementptr inbounds %"struct.std/time.Timezone", ptr %tz, i32 0, i32 1
+  %t70 = load i32, ptr %t69
+  %t71 = call i32 @willtime_zone_offset(i32 %t70, i64 %atSec)
+  ret i32 %t71
 if.end.2:
-  %t59 = getelementptr inbounds %"struct.std/time.Timezone", ptr %tz, i32 0, i32 0
-  %t60 = load i32, ptr %t59
-  %t61 = icmp eq i32 %t60, 2
-  br i1 %t61, label %if.then.3, label %if.end.3
+  %t72 = getelementptr inbounds %"struct.std/time.Timezone", ptr %tz, i32 0, i32 0
+  %t73 = load i32, ptr %t72
+  %t74 = icmp eq i32 %t73, 2
+  br i1 %t74, label %if.then.3, label %if.end.3
 if.then.3:
-  %t62 = call i32 @willtime_local_offset(i64 %atSec)
-  ret i32 %t62
+  %t75 = call i32 @willtime_local_offset(i64 %atSec)
+  ret i32 %t75
 if.end.3:
   ret i32 0
 }
 define internal i64 @"std/time.wallNanos"() inlinehint {
 entry:
-  %t63 = call i64 @willtime_wall_ns()
-  ret i64 %t63
+  %t76 = call i64 @willtime_wall_ns()
+  ret i64 %t76
+}
+define internal ptr @"std/time.iface.clone.Error.std/errors.Fault"(ptr %data) {
+entry:
+  %t77 = alloca ptr
+  store ptr null, ptr %t77
+  %t78 = icmp eq ptr %data, null
+  br i1 %t78, label %iface.clone.null.1, label %iface.clone.have.1
+iface.clone.null.1:
+  br label %iface.clone.ret.1
+iface.clone.have.1:
+  %t80 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t81 = ptrtoint ptr %t80 to i64
+  %t79 = call ptr @willrt_alloc(i64 %t81)
+  %t82 = load %"struct.std/errors.Fault", ptr %data
+  store %"struct.std/errors.Fault" %t82, ptr %t79
+  %t83 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
+  %t84 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t79, i32 0, i32 0
+  %t85 = getelementptr inbounds { ptr, i64 }, ptr %t83, i32 0, i32 0
+  %t86 = getelementptr inbounds { ptr, i64 }, ptr %t83, i32 0, i32 1
+  %t87 = load ptr, ptr %t85
+  %t88 = load i64, ptr %t86
+  %t89 = call ptr @willrt_alloc(i64 %t88)
+  call void @memcpy(ptr %t89, ptr %t87, i64 %t88)
+  %t90 = getelementptr inbounds { ptr, i64 }, ptr %t84, i32 0, i32 0
+  store ptr %t89, ptr %t90
+  %t91 = getelementptr inbounds { ptr, i64 }, ptr %t84, i32 0, i32 1
+  store i64 %t88, ptr %t91
+  store ptr %t79, ptr %t77
+  br label %iface.clone.ret.1
+iface.clone.ret.1:
+  %t92 = load ptr, ptr %t77
+  ret ptr %t92
+}
+define internal void @"std/time.iface.drop.Error.std/errors.Fault"(ptr %data) {
+entry:
+  %t93 = icmp eq ptr %data, null
+  br i1 %t93, label %iface.drop.null.2, label %iface.drop.have.2
+iface.drop.null.2:
+  br label %iface.drop.done.2
+iface.drop.have.2:
+  %t94 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
+  %t95 = getelementptr inbounds { ptr, i64 }, ptr %t94, i32 0, i32 0
+  %t96 = load ptr, ptr %t95
+  call void @willrt_free_str(ptr %t96)
+  br label %iface.drop.done.2
+iface.drop.done.2:
+  ret void
 }
 define i32 @"example.com/stdtest/system/timezone.will$main"() {
 entry:
@@ -6454,7 +7003,7 @@ match.arm.22.0:
   %t369 = load ptr, ptr %t368
   %t370 = getelementptr inbounds %interface.Error, ptr %t367, i32 0, i32 1
   %t371 = load ptr, ptr %t370
-  %t372 = getelementptr inbounds [3 x ptr], ptr %t371, i64 0, i64 1
+  %t372 = getelementptr inbounds [5 x ptr], ptr %t371, i64 0, i64 1
   %t373 = load ptr, ptr %t372
   %t374 = call i32 %t373(ptr %t369)
   %t375 = icmp ne i32 %t374, 1
@@ -6579,7 +7128,7 @@ declare i64 @willtime_wall_ns()
 @.str.67 = private unnamed_addr constant [27 x i8] c"std/time.Stopwatch.Elapsed\00", align 1
 @.bytes.8 = private unnamed_addr constant [20 x i8] c"time: negative sleep", align 1
 @"will.type.std/time.clockError" = linkonce_odr constant i8 0, align 1
-@"std/time.vtable.Error.clockError" = internal constant [3 x ptr] [ptr @"std/time.clockError.Message", ptr @"std/time.clockError.Status", ptr @"will.type.std/time.clockError"], align 8
+@"std/time.vtable.Error.clockError" = internal constant [5 x ptr] [ptr @"std/time.clockError.Message", ptr @"std/time.clockError.Status", ptr @"std/time.iface.clone.Error.clockError", ptr @"std/time.iface.drop.Error.clockError", ptr @"will.type.std/time.clockError"], align 8
 @.bytes.9 = private unnamed_addr constant [1 x i8] c"0", align 1
 @.bytes.10 = private unnamed_addr constant [3 x i8] c"000", align 1
 @.bytes.11 = private unnamed_addr constant [2 x i8] c"00", align 1
@@ -6651,7 +7200,7 @@ declare i64 @willtime_wall_ns()
 @.str.139 = private unnamed_addr constant [22 x i8] c"time/parse.will:98:18\00", align 1
 @.bytes.41 = private unnamed_addr constant [41 x i8] c"rfc3339: text is shorter than a timestamp", align 1
 @"will.type.std/time.timeError" = linkonce_odr constant i8 0, align 1
-@"std/time.vtable.Error.std/time.timeError" = internal constant [3 x ptr] [ptr @"std/time.timeError.Message", ptr @"std/time.timeError.Status", ptr @"will.type.std/time.timeError"], align 8
+@"std/time.vtable.Error.std/time.timeError" = internal constant [5 x ptr] [ptr @"std/time.timeError.Message", ptr @"std/time.timeError.Status", ptr @"std/time.iface.clone.Error.std/time.timeError", ptr @"std/time.iface.drop.Error.std/time.timeError", ptr @"will.type.std/time.timeError"], align 8
 @.bytes.42 = private unnamed_addr constant [39 x i8] c"rfc3339: a numeric field is not a digit", align 1
 @.bytes.43 = private unnamed_addr constant [38 x i8] c"rfc3339: the date separators are wrong", align 1
 @.bytes.44 = private unnamed_addr constant [47 x i8] c"rfc3339: the date and time separator is missing", align 1
@@ -6711,7 +7260,7 @@ declare i64 @willtime_wall_ns()
 @.str.199 = private unnamed_addr constant [21 x i8] c"time/zone.will:55:51\00", align 1
 @.str.200 = private unnamed_addr constant [14 x i8] c"std/time.Load\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/time.vtable.Error.std/errors.Fault" = internal constant [3 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"will.type.std/errors.Fault"], align 8
+@"std/time.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/time.iface.clone.Error.std/errors.Fault", ptr @"std/time.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.bytes.63 = private unnamed_addr constant [13 x i8] c"Asia/Shanghai", align 1
 @.bytes.64 = private unnamed_addr constant [25 x i8] c"2023-11-15T06:13:20+08:00", align 1
 @.bytes.65 = private unnamed_addr constant [16 x i8] c"America/New_York", align 1

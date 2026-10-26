@@ -39,6 +39,10 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 	if elem, ok := setTypeText(text); ok {
 		return g.cloneSetValue(src, dst, elem)
 	}
+	if iface, ok := g.ifaceOfText(text); ok {
+		_, err := g.cloneIfaceAt(src, dst, iface)
+		return err
+	}
 	if info := g.enumInfoForText(text); info != nil {
 		return g.cloneEnumValue(src, dst, info)
 	}
@@ -84,6 +88,9 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 // alone does not reveal.
 func (g *generator) fieldNeedsClone(text string) bool {
 	if fieldTextNeedsClone(text) {
+		return true
+	}
+	if _, ok := g.ifaceOfText(text); ok {
 		return true
 	}
 	return ownsReleaseText(g, text)
@@ -457,6 +464,17 @@ func kindTypeText(kind string, args []string) string {
 // no predeclared method: structs, Option/Result, and scalars. The result is a
 // fresh owner in a call slot, so the caller can bind or return it independently.
 func (g *generator) cloneValueCall(r willc.Record, text string) (string, string, error) {
+	if iface, ok := g.ifaceOfText(text); ok {
+		src, _, err := g.place(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		slot := g.allocSlot(g.callSlots, "clone", r.ID, iface.llvm)
+		if _, err := g.cloneIfaceAt(src, slot, iface); err != nil {
+			return "", "", err
+		}
+		return g.load(iface.llvm, slot), text, nil
+	}
 	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
 		src, _, err := g.place(refField(r, "recv"))
 		if err != nil {
@@ -529,6 +547,9 @@ func (g *generator) releaseOwnedValue(ptr, text string) error {
 	}
 	// An enum has a tag in front of every variant payload; walking it as a
 	// plain struct would release the wrong variant.
+	if iface, ok := g.ifaceOfText(text); ok {
+		return g.releaseIfaceValue(ptr, iface)
+	}
 	if info := g.enumInfoForText(text); info != nil {
 		return g.releaseEnumValue(ptr, info)
 	}

@@ -9,7 +9,7 @@ struct Writer {
 // init stores the destination and separator. Construction itself writes
 // nothing.
 func (mut w: Writer) init(dst: byteWriter, sep: u8) {
-    w.dst = dst
+    w.dst = dst.Clone()
     w.sep = sep
 }
 

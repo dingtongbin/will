@@ -14,7 +14,7 @@ struct Reader {
 // init stores the source and separator. The first decode call performs the
 // first read, so construction itself does not touch the stream.
 func (mut r: Reader) init(src: byteReader, sep: u8) {
-    r.src = src
+    r.src = src.Clone()
     r.sep = sep
     r.buf = new Array<u8>(0)
     r.pos = 0usize

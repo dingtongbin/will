@@ -8,7 +8,7 @@ entry:
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 1
   %t4 = load ptr, ptr %t3
-  %t5 = getelementptr inbounds [3 x ptr], ptr %t4, i64 0, i64 1
+  %t5 = getelementptr inbounds [5 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
   %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t7)
@@ -299,32 +299,66 @@ if.then.1:
   %t24 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.85, i32 0, i32 0
   store i32 1, ptr %t24
   %t25 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.85, i32 0, i32 2
-  %t26 = getelementptr inbounds %interface.Error, ptr %t25, i32 0, i32 0
-  store ptr @"std/errors.Invalid", ptr %t26
-  %t27 = getelementptr inbounds %interface.Error, ptr %t25, i32 0, i32 1
-  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t27
-  %t28 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.85
-  ret { i32, [4 x i8], %interface.Error } %t28
+  %t27 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t28 = ptrtoint ptr %t27 to i64
+  %t26 = call ptr @willrt_alloc(i64 %t28)
+  %t29 = load %"struct.std/errors.Fault", ptr @"std/errors.Invalid"
+  store %"struct.std/errors.Fault" %t29, ptr %t26
+  %t30 = getelementptr inbounds %"struct.std/errors.Fault", ptr @"std/errors.Invalid", i32 0, i32 0
+  %t31 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t26, i32 0, i32 0
+  %t32 = getelementptr inbounds { ptr, i64 }, ptr %t30, i32 0, i32 0
+  %t33 = getelementptr inbounds { ptr, i64 }, ptr %t30, i32 0, i32 1
+  %t34 = load ptr, ptr %t32
+  %t35 = load i64, ptr %t33
+  %t36 = call ptr @willrt_alloc(i64 %t35)
+  call void @memcpy(ptr %t36, ptr %t34, i64 %t35)
+  %t37 = getelementptr inbounds { ptr, i64 }, ptr %t31, i32 0, i32 0
+  store ptr %t36, ptr %t37
+  %t38 = getelementptr inbounds { ptr, i64 }, ptr %t31, i32 0, i32 1
+  store i64 %t35, ptr %t38
+  %t39 = getelementptr inbounds %interface.Error, ptr %t25, i32 0, i32 0
+  %t40 = getelementptr inbounds %interface.Error, ptr %t25, i32 0, i32 1
+  store ptr %t26, ptr %t39
+  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t40
+  %t41 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.85
+  ret { i32, [4 x i8], %interface.Error } %t41
 if.end.1:
-  %t29 = load i32, ptr %v.status
-  %t30 = icmp ne i32 %t29, 0
-  br i1 %t30, label %if.then.3, label %if.end.3
+  %t42 = load i32, ptr %v.status
+  %t43 = icmp ne i32 %t42, 0
+  br i1 %t43, label %if.then.3, label %if.end.3
 if.then.3:
-  %t31 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.95, i32 0, i32 0
-  store i32 1, ptr %t31
-  %t32 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.95, i32 0, i32 2
-  %t33 = getelementptr inbounds %interface.Error, ptr %t32, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t33
-  %t34 = getelementptr inbounds %interface.Error, ptr %t32, i32 0, i32 1
-  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t34
-  %t35 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.95
-  ret { i32, [4 x i8], %interface.Error } %t35
+  %t44 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.95, i32 0, i32 0
+  store i32 1, ptr %t44
+  %t45 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.95, i32 0, i32 2
+  %t47 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t48 = ptrtoint ptr %t47 to i64
+  %t46 = call ptr @willrt_alloc(i64 %t48)
+  %t49 = load %"struct.std/errors.Fault", ptr @"std/errors.Io"
+  store %"struct.std/errors.Fault" %t49, ptr %t46
+  %t50 = getelementptr inbounds %"struct.std/errors.Fault", ptr @"std/errors.Io", i32 0, i32 0
+  %t51 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t46, i32 0, i32 0
+  %t52 = getelementptr inbounds { ptr, i64 }, ptr %t50, i32 0, i32 0
+  %t53 = getelementptr inbounds { ptr, i64 }, ptr %t50, i32 0, i32 1
+  %t54 = load ptr, ptr %t52
+  %t55 = load i64, ptr %t53
+  %t56 = call ptr @willrt_alloc(i64 %t55)
+  call void @memcpy(ptr %t56, ptr %t54, i64 %t55)
+  %t57 = getelementptr inbounds { ptr, i64 }, ptr %t51, i32 0, i32 0
+  store ptr %t56, ptr %t57
+  %t58 = getelementptr inbounds { ptr, i64 }, ptr %t51, i32 0, i32 1
+  store i64 %t55, ptr %t58
+  %t59 = getelementptr inbounds %interface.Error, ptr %t45, i32 0, i32 0
+  %t60 = getelementptr inbounds %interface.Error, ptr %t45, i32 0, i32 1
+  store ptr %t46, ptr %t59
+  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t60
+  %t61 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.95
+  ret { i32, [4 x i8], %interface.Error } %t61
 if.end.3:
-  %t36 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.100, i32 0, i32 0
-  store i32 0, ptr %t36
-  %t37 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.100, i32 0, i32 2
-  %t38 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.100
-  ret { i32, [4 x i8], %interface.Error } %t38
+  %t62 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.100, i32 0, i32 0
+  store i32 0, ptr %t62
+  %t63 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.100, i32 0, i32 2
+  %t64 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.100
+  ret { i32, [4 x i8], %interface.Error } %t64
 }
 define hidden { ptr, i64, i64 } @"std/os.Environ"() inlinehint {
 entry:
@@ -336,196 +370,196 @@ entry:
   %v.new.112 = alloca { ptr, i64, i64 }
   %v.str.133 = alloca { ptr, i64 }
   %v.$idx = alloca i64
-  %t39 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.112, i32 0, i32 0
-  store ptr null, ptr %t39
-  %t40 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.112, i32 0, i32 1
-  store i64 0, ptr %t40
-  %t41 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.112, i32 0, i32 2
-  store i64 0, ptr %t41
-  %t42 = load { ptr, i64, i64 }, ptr %v.new.112
-  store { ptr, i64, i64 } %t42, ptr %v.out
+  %t65 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.112, i32 0, i32 0
+  store ptr null, ptr %t65
+  %t66 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.112, i32 0, i32 1
+  store i64 0, ptr %t66
+  %t67 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.112, i32 0, i32 2
+  store i64 0, ptr %t67
+  %t68 = load { ptr, i64, i64 }, ptr %v.new.112
+  store { ptr, i64, i64 } %t68, ptr %v.out
   store { ptr, i64 } zeroinitializer, ptr %v.pairs
-  %t43 = call i32 @willrt_os_environ(ptr %v.pairs)
-  store i32 %t43, ptr %v.status
-  %t44 = load i32, ptr %v.status
-  %t45 = icmp ne i32 %t44, 0
-  br i1 %t45, label %if.then.1, label %if.end.1
+  %t69 = call i32 @willrt_os_environ(ptr %v.pairs)
+  store i32 %t69, ptr %v.status
+  %t70 = load i32, ptr %v.status
+  %t71 = icmp ne i32 %t70, 0
+  br i1 %t71, label %if.then.1, label %if.end.1
 if.then.1:
-  %t46 = load { ptr, i64, i64 }, ptr %v.out
-  ret { ptr, i64, i64 } %t46
+  %t72 = load { ptr, i64, i64 }, ptr %v.out
+  ret { ptr, i64, i64 } %t72
 if.end.1:
-  %t47 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 0
-  store ptr @.bytes.8, ptr %t47
-  %t48 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 1
-  store i64 0, ptr %t48
-  %t49 = load { ptr, i64 }, ptr %v.str.133
-  store { ptr, i64 } %t49, ptr %v.key
+  %t73 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 0
+  store ptr @.bytes.8, ptr %t73
+  %t74 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 1
+  store i64 0, ptr %t74
+  %t75 = load { ptr, i64 }, ptr %v.str.133
+  store { ptr, i64 } %t75, ptr %v.key
   store i1 false, ptr %v.haveKey
-  %t50 = getelementptr inbounds { ptr, i64 }, ptr %v.pairs, i32 0, i32 0
-  %t51 = load ptr, ptr %t50
-  %t52 = getelementptr inbounds { ptr, i64 }, ptr %v.pairs, i32 0, i32 1
-  %t53 = load i64, ptr %t52
+  %t76 = getelementptr inbounds { ptr, i64 }, ptr %v.pairs, i32 0, i32 0
+  %t77 = load ptr, ptr %t76
+  %t78 = getelementptr inbounds { ptr, i64 }, ptr %v.pairs, i32 0, i32 1
+  %t79 = load i64, ptr %t78
   store i64 0, ptr %v.$idx
   br label %for.cond.2
 for.cond.2:
-  %t54 = load i64, ptr %v.$idx
-  %t55 = icmp ult i64 %t54, %t53
-  br i1 %t55, label %for.body.2, label %for.end.2
+  %t80 = load i64, ptr %v.$idx
+  %t81 = icmp ult i64 %t80, %t79
+  br i1 %t81, label %for.body.2, label %for.end.2
 for.body.2:
-  %t56 = getelementptr inbounds { ptr, i64 }, ptr %t51, i64 %t54
-  %t57 = load i1, ptr %v.haveKey
-  br i1 %t57, label %if.then.3, label %if.else.3
+  %t82 = getelementptr inbounds { ptr, i64 }, ptr %t77, i64 %t80
+  %t83 = load i1, ptr %v.haveKey
+  br i1 %t83, label %if.then.3, label %if.else.3
 if.then.3:
-  %t58 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 0
-  %t59 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
-  %t60 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 2
-  %t61 = load ptr, ptr %t58
-  %t62 = load i64, ptr %t59
-  %t63 = load ptr, ptr %t58
-  %t64 = load i64, ptr %t59
+  %t84 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 0
+  %t85 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
+  %t86 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 2
+  %t87 = load ptr, ptr %t84
+  %t88 = load i64, ptr %t85
+  %t89 = load ptr, ptr %t84
+  %t90 = load i64, ptr %t85
   br label %find.pre.4
 find.pre.4:
   br label %find.cond.4
 find.cond.4:
-  %t65 = phi i64 [ 0, %find.pre.4 ], [ %next.4, %find.next.4 ]
-  %t66 = icmp ult i64 %t65, %t64
-  br i1 %t66, label %find.body.4, label %find.miss.4
+  %t91 = phi i64 [ 0, %find.pre.4 ], [ %next.4, %find.next.4 ]
+  %t92 = icmp ult i64 %t91, %t90
+  br i1 %t92, label %find.body.4, label %find.miss.4
 find.body.4:
-  %t67 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t63, i64 %t65
-  %t68 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t67, i32 0, i32 0
-  %t69 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 0
-  %t70 = load ptr, ptr %t69
-  %t71 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 1
-  %t72 = load i64, ptr %t71
-  %t73 = getelementptr inbounds { ptr, i64 }, ptr %t68, i32 0, i32 0
-  %t74 = load ptr, ptr %t73
-  %t75 = getelementptr inbounds { ptr, i64 }, ptr %t68, i32 0, i32 1
-  %t76 = load i64, ptr %t75
-  %t77 = icmp ult i64 %t76, %t72
-  %t78 = select i1 %t77, i64 %t76, i64 %t72
-  %t79 = call i32 @memcmp(ptr %t74, ptr %t70, i64 %t78)
-  %t80 = icmp eq i32 %t79, 0
-  %t81 = icmp eq i64 %t76, %t72
-  %t82 = and i1 %t80, %t81
-  br i1 %t82, label %find.hit.4, label %find.next.4
+  %t93 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t89, i64 %t91
+  %t94 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t93, i32 0, i32 0
+  %t95 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 0
+  %t96 = load ptr, ptr %t95
+  %t97 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 1
+  %t98 = load i64, ptr %t97
+  %t99 = getelementptr inbounds { ptr, i64 }, ptr %t94, i32 0, i32 0
+  %t100 = load ptr, ptr %t99
+  %t101 = getelementptr inbounds { ptr, i64 }, ptr %t94, i32 0, i32 1
+  %t102 = load i64, ptr %t101
+  %t103 = icmp ult i64 %t102, %t98
+  %t104 = select i1 %t103, i64 %t102, i64 %t98
+  %t105 = call i32 @memcmp(ptr %t100, ptr %t96, i64 %t104)
+  %t106 = icmp eq i32 %t105, 0
+  %t107 = icmp eq i64 %t102, %t98
+  %t108 = and i1 %t106, %t107
+  br i1 %t108, label %find.hit.4, label %find.next.4
 find.next.4:
-  %next.4 = add i64 %t65, 1
+  %next.4 = add i64 %t91, 1
   br label %find.cond.4
 find.hit.4:
   br label %find.done.4
 find.miss.4:
   br label %find.done.4
 find.done.4:
-  %t83 = phi i64 [ %t65, %find.hit.4 ], [ %t64, %find.miss.4 ]
-  %t84 = phi i1 [ true, %find.hit.4 ], [ false, %find.miss.4 ]
-  br i1 %t84, label %set.replace.5, label %set.append.5
+  %t109 = phi i64 [ %t91, %find.hit.4 ], [ %t90, %find.miss.4 ]
+  %t110 = phi i1 [ true, %find.hit.4 ], [ false, %find.miss.4 ]
+  br i1 %t110, label %set.replace.5, label %set.append.5
 set.replace.5:
-  %t85 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t63, i64 %t83
-  %t86 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t85, i32 0, i32 1
-  %t87 = getelementptr inbounds { ptr, i64 }, ptr %t86, i32 0, i32 0
-  %t88 = load ptr, ptr %t87
-  call void @willrt_free_str(ptr %t88)
-  %t89 = getelementptr inbounds { ptr, i64 }, ptr %t56, i32 0, i32 0
-  %t90 = getelementptr inbounds { ptr, i64 }, ptr %t56, i32 0, i32 1
-  %t91 = load ptr, ptr %t89
-  %t92 = load i64, ptr %t90
-  %t93 = call ptr @willrt_alloc(i64 %t92)
-  call void @memcpy(ptr %t93, ptr %t91, i64 %t92)
-  %t94 = getelementptr inbounds { ptr, i64 }, ptr %t86, i32 0, i32 0
-  store ptr %t93, ptr %t94
-  %t95 = getelementptr inbounds { ptr, i64 }, ptr %t86, i32 0, i32 1
-  store i64 %t92, ptr %t95
-  br label %set.done.5
-set.append.5:
-  %t96 = load ptr, ptr %t58
-  %t97 = load i64, ptr %t59
-  %t98 = load i64, ptr %t60
-  %t99 = icmp eq i64 %t97, %t98
-  br i1 %t99, label %res.grow.6, label %res.ready.6
-res.grow.6:
-  %t100 = mul i64 %t98, 2
-  %t101 = icmp eq i64 %t98, 0
-  %t102 = select i1 %t101, i64 4, i64 %t100
-  %t103 = mul i64 %t102, 32
-  %t104 = call ptr @willrt_alloc(i64 %t103)
-  br label %copy.pre.7
-copy.pre.7:
-  br label %copy.cond.7
-copy.cond.7:
-  %t105 = phi i64 [ 0, %copy.pre.7 ], [ %copy.next.v.7, %copy.next.7 ]
-  %t106 = icmp ult i64 %t105, %t97
-  br i1 %t106, label %copy.body.7, label %copy.done.7
-copy.body.7:
-  %t107 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t96, i64 %t105
-  %t108 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t104, i64 %t105
-  %t109 = load { { ptr, i64 }, { ptr, i64 } }, ptr %t107
-  store { { ptr, i64 }, { ptr, i64 } } %t109, ptr %t108
-  br label %copy.next.7
-copy.next.7:
-  %copy.next.v.7 = add i64 %t105, 1
-  br label %copy.cond.7
-copy.done.7:
-  %t110 = icmp eq ptr %t96, null
-  br i1 %t110, label %res.nofree.8, label %res.free.8
-res.free.8:
-  call void @willrt_free(ptr %t96)
-  br label %res.freed.8
-res.nofree.8:
-  br label %res.freed.8
-res.freed.8:
-  store ptr %t104, ptr %t58
-  store i64 %t102, ptr %t60
-  br label %res.ready.6
-res.ready.6:
-  %t111 = load ptr, ptr %t58
-  %t112 = load i64, ptr %t59
-  %t113 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t111, i64 %t112
-  %t114 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t113, i32 0, i32 0
-  %t115 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 0
-  %t116 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 1
+  %t111 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t89, i64 %t109
+  %t112 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t111, i32 0, i32 1
+  %t113 = getelementptr inbounds { ptr, i64 }, ptr %t112, i32 0, i32 0
+  %t114 = load ptr, ptr %t113
+  call void @willrt_free_str(ptr %t114)
+  %t115 = getelementptr inbounds { ptr, i64 }, ptr %t82, i32 0, i32 0
+  %t116 = getelementptr inbounds { ptr, i64 }, ptr %t82, i32 0, i32 1
   %t117 = load ptr, ptr %t115
   %t118 = load i64, ptr %t116
   %t119 = call ptr @willrt_alloc(i64 %t118)
   call void @memcpy(ptr %t119, ptr %t117, i64 %t118)
-  %t120 = getelementptr inbounds { ptr, i64 }, ptr %t114, i32 0, i32 0
+  %t120 = getelementptr inbounds { ptr, i64 }, ptr %t112, i32 0, i32 0
   store ptr %t119, ptr %t120
-  %t121 = getelementptr inbounds { ptr, i64 }, ptr %t114, i32 0, i32 1
+  %t121 = getelementptr inbounds { ptr, i64 }, ptr %t112, i32 0, i32 1
   store i64 %t118, ptr %t121
-  %t122 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t113, i32 0, i32 1
-  %t123 = getelementptr inbounds { ptr, i64 }, ptr %t56, i32 0, i32 0
-  %t124 = getelementptr inbounds { ptr, i64 }, ptr %t56, i32 0, i32 1
-  %t125 = load ptr, ptr %t123
-  %t126 = load i64, ptr %t124
-  %t127 = call ptr @willrt_alloc(i64 %t126)
-  call void @memcpy(ptr %t127, ptr %t125, i64 %t126)
-  %t128 = getelementptr inbounds { ptr, i64 }, ptr %t122, i32 0, i32 0
-  store ptr %t127, ptr %t128
-  %t129 = getelementptr inbounds { ptr, i64 }, ptr %t122, i32 0, i32 1
-  store i64 %t126, ptr %t129
-  %t130 = add i64 %t112, 1
-  store i64 %t130, ptr %t59
+  br label %set.done.5
+set.append.5:
+  %t122 = load ptr, ptr %t84
+  %t123 = load i64, ptr %t85
+  %t124 = load i64, ptr %t86
+  %t125 = icmp eq i64 %t123, %t124
+  br i1 %t125, label %res.grow.6, label %res.ready.6
+res.grow.6:
+  %t126 = mul i64 %t124, 2
+  %t127 = icmp eq i64 %t124, 0
+  %t128 = select i1 %t127, i64 4, i64 %t126
+  %t129 = mul i64 %t128, 32
+  %t130 = call ptr @willrt_alloc(i64 %t129)
+  br label %copy.pre.7
+copy.pre.7:
+  br label %copy.cond.7
+copy.cond.7:
+  %t131 = phi i64 [ 0, %copy.pre.7 ], [ %copy.next.v.7, %copy.next.7 ]
+  %t132 = icmp ult i64 %t131, %t123
+  br i1 %t132, label %copy.body.7, label %copy.done.7
+copy.body.7:
+  %t133 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t122, i64 %t131
+  %t134 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t130, i64 %t131
+  %t135 = load { { ptr, i64 }, { ptr, i64 } }, ptr %t133
+  store { { ptr, i64 }, { ptr, i64 } } %t135, ptr %t134
+  br label %copy.next.7
+copy.next.7:
+  %copy.next.v.7 = add i64 %t131, 1
+  br label %copy.cond.7
+copy.done.7:
+  %t136 = icmp eq ptr %t122, null
+  br i1 %t136, label %res.nofree.8, label %res.free.8
+res.free.8:
+  call void @willrt_free(ptr %t122)
+  br label %res.freed.8
+res.nofree.8:
+  br label %res.freed.8
+res.freed.8:
+  store ptr %t130, ptr %t84
+  store i64 %t128, ptr %t86
+  br label %res.ready.6
+res.ready.6:
+  %t137 = load ptr, ptr %t84
+  %t138 = load i64, ptr %t85
+  %t139 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t137, i64 %t138
+  %t140 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t139, i32 0, i32 0
+  %t141 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 0
+  %t142 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 1
+  %t143 = load ptr, ptr %t141
+  %t144 = load i64, ptr %t142
+  %t145 = call ptr @willrt_alloc(i64 %t144)
+  call void @memcpy(ptr %t145, ptr %t143, i64 %t144)
+  %t146 = getelementptr inbounds { ptr, i64 }, ptr %t140, i32 0, i32 0
+  store ptr %t145, ptr %t146
+  %t147 = getelementptr inbounds { ptr, i64 }, ptr %t140, i32 0, i32 1
+  store i64 %t144, ptr %t147
+  %t148 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t139, i32 0, i32 1
+  %t149 = getelementptr inbounds { ptr, i64 }, ptr %t82, i32 0, i32 0
+  %t150 = getelementptr inbounds { ptr, i64 }, ptr %t82, i32 0, i32 1
+  %t151 = load ptr, ptr %t149
+  %t152 = load i64, ptr %t150
+  %t153 = call ptr @willrt_alloc(i64 %t152)
+  call void @memcpy(ptr %t153, ptr %t151, i64 %t152)
+  %t154 = getelementptr inbounds { ptr, i64 }, ptr %t148, i32 0, i32 0
+  store ptr %t153, ptr %t154
+  %t155 = getelementptr inbounds { ptr, i64 }, ptr %t148, i32 0, i32 1
+  store i64 %t152, ptr %t155
+  %t156 = add i64 %t138, 1
+  store i64 %t156, ptr %t85
   br label %set.done.5
 set.done.5:
   store i1 false, ptr %v.haveKey
   br label %if.end.3
 if.else.3:
-  %t131 = load { ptr, i64 }, ptr %t56
-  store { ptr, i64 } %t131, ptr %v.key
+  %t157 = load { ptr, i64 }, ptr %t82
+  store { ptr, i64 } %t157, ptr %v.key
   store i1 true, ptr %v.haveKey
   br label %if.end.3
 if.end.3:
   br label %for.step.2
 for.step.2:
-  %t132 = load i64, ptr %v.$idx
-  %t133 = add i64 %t132, 1
-  store i64 %t133, ptr %v.$idx
+  %t158 = load i64, ptr %v.$idx
+  %t159 = add i64 %t158, 1
+  store i64 %t159, ptr %v.$idx
   br label %for.cond.2
 for.end.2:
-  %t134 = load { ptr, i64, i64 }, ptr %v.out
-  %t135 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 0
-  %t136 = load ptr, ptr %t135
-  call void @willrt_free_str(ptr %t136)
-  ret { ptr, i64, i64 } %t134
+  %t160 = load { ptr, i64, i64 }, ptr %v.out
+  %t161 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 0
+  %t162 = load ptr, ptr %t161
+  call void @willrt_free_str(ptr %t162)
+  ret { ptr, i64, i64 } %t160
 }
 define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os.Cwd"() inlinehint {
 entry:
@@ -534,73 +568,154 @@ entry:
   %v.str.168 = alloca { ptr, i64 }
   %v.adt.183 = alloca { i32, [4 x i8], { ptr, i64 } }
   %v.adt.189 = alloca { i32, [4 x i8], { ptr, i64 } }
-  %t137 = getelementptr inbounds { ptr, i64 }, ptr %v.str.168, i32 0, i32 0
-  store ptr @.bytes.8, ptr %t137
-  %t138 = getelementptr inbounds { ptr, i64 }, ptr %v.str.168, i32 0, i32 1
-  store i64 0, ptr %t138
-  %t139 = load { ptr, i64 }, ptr %v.str.168
-  store { ptr, i64 } %t139, ptr %v.path
-  %t140 = call i32 @willrt_os_cwd(ptr %v.path)
-  store i32 %t140, ptr %v.status
-  %t141 = load i32, ptr %v.status
-  %t142 = icmp ne i32 %t141, 0
-  br i1 %t142, label %if.then.1, label %if.end.1
+  %t163 = getelementptr inbounds { ptr, i64 }, ptr %v.str.168, i32 0, i32 0
+  store ptr @.bytes.8, ptr %t163
+  %t164 = getelementptr inbounds { ptr, i64 }, ptr %v.str.168, i32 0, i32 1
+  store i64 0, ptr %t164
+  %t165 = load { ptr, i64 }, ptr %v.str.168
+  store { ptr, i64 } %t165, ptr %v.path
+  %t166 = call i32 @willrt_os_cwd(ptr %v.path)
+  store i32 %t166, ptr %v.status
+  %t167 = load i32, ptr %v.status
+  %t168 = icmp ne i32 %t167, 0
+  br i1 %t168, label %if.then.1, label %if.end.1
 if.then.1:
-  %t143 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.183, i32 0, i32 0
-  store i32 1, ptr %t143
-  %t144 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.183, i32 0, i32 2
-  %t145 = getelementptr inbounds %interface.Error, ptr %t144, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t145
-  %t146 = getelementptr inbounds %interface.Error, ptr %t144, i32 0, i32 1
-  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t146
-  %t147 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.183
-  %t148 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
-  %t149 = load ptr, ptr %t148
-  call void @willrt_free_str(ptr %t149)
-  ret { i32, [4 x i8], { ptr, i64 } } %t147
+  %t169 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.183, i32 0, i32 0
+  store i32 1, ptr %t169
+  %t170 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.183, i32 0, i32 2
+  %t172 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t173 = ptrtoint ptr %t172 to i64
+  %t171 = call ptr @willrt_alloc(i64 %t173)
+  %t174 = load %"struct.std/errors.Fault", ptr @"std/errors.Io"
+  store %"struct.std/errors.Fault" %t174, ptr %t171
+  %t175 = getelementptr inbounds %"struct.std/errors.Fault", ptr @"std/errors.Io", i32 0, i32 0
+  %t176 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t171, i32 0, i32 0
+  %t177 = getelementptr inbounds { ptr, i64 }, ptr %t175, i32 0, i32 0
+  %t178 = getelementptr inbounds { ptr, i64 }, ptr %t175, i32 0, i32 1
+  %t179 = load ptr, ptr %t177
+  %t180 = load i64, ptr %t178
+  %t181 = call ptr @willrt_alloc(i64 %t180)
+  call void @memcpy(ptr %t181, ptr %t179, i64 %t180)
+  %t182 = getelementptr inbounds { ptr, i64 }, ptr %t176, i32 0, i32 0
+  store ptr %t181, ptr %t182
+  %t183 = getelementptr inbounds { ptr, i64 }, ptr %t176, i32 0, i32 1
+  store i64 %t180, ptr %t183
+  %t184 = getelementptr inbounds %interface.Error, ptr %t170, i32 0, i32 0
+  %t185 = getelementptr inbounds %interface.Error, ptr %t170, i32 0, i32 1
+  store ptr %t171, ptr %t184
+  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t185
+  %t186 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.183
+  %t187 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
+  %t188 = load ptr, ptr %t187
+  call void @willrt_free_str(ptr %t188)
+  ret { i32, [4 x i8], { ptr, i64 } } %t186
 if.end.1:
-  %t150 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.189, i32 0, i32 0
-  store i32 0, ptr %t150
-  %t151 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.189, i32 0, i32 2
-  %t152 = load { ptr, i64 }, ptr %v.path
-  store { ptr, i64 } %t152, ptr %t151
+  %t189 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.189, i32 0, i32 0
+  store i32 0, ptr %t189
+  %t190 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.189, i32 0, i32 2
+  %t191 = load { ptr, i64 }, ptr %v.path
+  store { ptr, i64 } %t191, ptr %t190
   store { ptr, i64 } zeroinitializer, ptr %v.path
-  %t153 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.189
-  %t154 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
-  %t155 = load ptr, ptr %t154
-  call void @willrt_free_str(ptr %t155)
-  ret { i32, [4 x i8], { ptr, i64 } } %t153
+  %t192 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.189
+  %t193 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
+  %t194 = load ptr, ptr %t193
+  call void @willrt_free_str(ptr %t194)
+  ret { i32, [4 x i8], { ptr, i64 } } %t192
 }
 define hidden { i32, [4 x i8], %interface.Error } @"std/os.Chdir"(ptr %path) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.212 = alloca { i32, [4 x i8], %interface.Error }
   %v.adt.217 = alloca { i32, [4 x i8], %interface.Error }
-  %t156 = call i32 @willrt_os_chdir(ptr %path)
-  store i32 %t156, ptr %v.status
-  %t157 = load i32, ptr %v.status
-  %t158 = icmp ne i32 %t157, 0
-  br i1 %t158, label %if.then.1, label %if.end.1
+  %t195 = call i32 @willrt_os_chdir(ptr %path)
+  store i32 %t195, ptr %v.status
+  %t196 = load i32, ptr %v.status
+  %t197 = icmp ne i32 %t196, 0
+  br i1 %t197, label %if.then.1, label %if.end.1
 if.then.1:
-  %t159 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.212, i32 0, i32 0
-  store i32 1, ptr %t159
-  %t160 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.212, i32 0, i32 2
-  %t161 = getelementptr inbounds %interface.Error, ptr %t160, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t161
-  %t162 = getelementptr inbounds %interface.Error, ptr %t160, i32 0, i32 1
-  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t162
-  %t163 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.212
-  ret { i32, [4 x i8], %interface.Error } %t163
+  %t198 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.212, i32 0, i32 0
+  store i32 1, ptr %t198
+  %t199 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.212, i32 0, i32 2
+  %t201 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t202 = ptrtoint ptr %t201 to i64
+  %t200 = call ptr @willrt_alloc(i64 %t202)
+  %t203 = load %"struct.std/errors.Fault", ptr @"std/errors.Io"
+  store %"struct.std/errors.Fault" %t203, ptr %t200
+  %t204 = getelementptr inbounds %"struct.std/errors.Fault", ptr @"std/errors.Io", i32 0, i32 0
+  %t205 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t200, i32 0, i32 0
+  %t206 = getelementptr inbounds { ptr, i64 }, ptr %t204, i32 0, i32 0
+  %t207 = getelementptr inbounds { ptr, i64 }, ptr %t204, i32 0, i32 1
+  %t208 = load ptr, ptr %t206
+  %t209 = load i64, ptr %t207
+  %t210 = call ptr @willrt_alloc(i64 %t209)
+  call void @memcpy(ptr %t210, ptr %t208, i64 %t209)
+  %t211 = getelementptr inbounds { ptr, i64 }, ptr %t205, i32 0, i32 0
+  store ptr %t210, ptr %t211
+  %t212 = getelementptr inbounds { ptr, i64 }, ptr %t205, i32 0, i32 1
+  store i64 %t209, ptr %t212
+  %t213 = getelementptr inbounds %interface.Error, ptr %t199, i32 0, i32 0
+  %t214 = getelementptr inbounds %interface.Error, ptr %t199, i32 0, i32 1
+  store ptr %t200, ptr %t213
+  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t214
+  %t215 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.212
+  ret { i32, [4 x i8], %interface.Error } %t215
 if.end.1:
-  %t164 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.217, i32 0, i32 0
-  store i32 0, ptr %t164
-  %t165 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.217, i32 0, i32 2
-  %t166 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.217
-  ret { i32, [4 x i8], %interface.Error } %t166
+  %t216 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.217, i32 0, i32 0
+  store i32 0, ptr %t216
+  %t217 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.217, i32 0, i32 2
+  %t218 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.217
+  ret { i32, [4 x i8], %interface.Error } %t218
 }
 define hidden void @"std/os.Exit"(i32 %code) inlinehint {
 entry:
   call void @willrt_os_exit(i32 %code)
+  ret void
+}
+define internal ptr @"std/os.iface.clone.Error.std/errors.Fault"(ptr %data) {
+entry:
+  %t219 = alloca ptr
+  store ptr null, ptr %t219
+  %t220 = icmp eq ptr %data, null
+  br i1 %t220, label %iface.clone.null.1, label %iface.clone.have.1
+iface.clone.null.1:
+  br label %iface.clone.ret.1
+iface.clone.have.1:
+  %t222 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t223 = ptrtoint ptr %t222 to i64
+  %t221 = call ptr @willrt_alloc(i64 %t223)
+  %t224 = load %"struct.std/errors.Fault", ptr %data
+  store %"struct.std/errors.Fault" %t224, ptr %t221
+  %t225 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
+  %t226 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t221, i32 0, i32 0
+  %t227 = getelementptr inbounds { ptr, i64 }, ptr %t225, i32 0, i32 0
+  %t228 = getelementptr inbounds { ptr, i64 }, ptr %t225, i32 0, i32 1
+  %t229 = load ptr, ptr %t227
+  %t230 = load i64, ptr %t228
+  %t231 = call ptr @willrt_alloc(i64 %t230)
+  call void @memcpy(ptr %t231, ptr %t229, i64 %t230)
+  %t232 = getelementptr inbounds { ptr, i64 }, ptr %t226, i32 0, i32 0
+  store ptr %t231, ptr %t232
+  %t233 = getelementptr inbounds { ptr, i64 }, ptr %t226, i32 0, i32 1
+  store i64 %t230, ptr %t233
+  store ptr %t221, ptr %t219
+  br label %iface.clone.ret.1
+iface.clone.ret.1:
+  %t234 = load ptr, ptr %t219
+  ret ptr %t234
+}
+define internal void @"std/os.iface.drop.Error.std/errors.Fault"(ptr %data) {
+entry:
+  %t235 = icmp eq ptr %data, null
+  br i1 %t235, label %iface.drop.null.2, label %iface.drop.have.2
+iface.drop.null.2:
+  br label %iface.drop.done.2
+iface.drop.have.2:
+  %t236 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
+  %t237 = getelementptr inbounds { ptr, i64 }, ptr %t236, i32 0, i32 0
+  %t238 = load ptr, ptr %t237
+  call void @willrt_free_str(ptr %t238)
+  br label %iface.drop.done.2
+iface.drop.done.2:
   ret void
 }
 %"struct.std/os.User" = type { { ptr, i64 }, i32, i32, { ptr, i64 } }
@@ -4454,7 +4569,7 @@ declare i8 @willpath_separator()
 @.str.9 = private unnamed_addr constant [17 x i8] c"os/os.will:37:18\00", align 1
 @.str.10 = private unnamed_addr constant [14 x i8] c"std/os.Setenv\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/os.vtable.Error.std/errors.Fault" = internal constant [3 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"will.type.std/errors.Fault"], align 8
+@"std/os.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/os.iface.clone.Error.std/errors.Fault", ptr @"std/os.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.bytes.9 = private unnamed_addr constant [1 x i8] c".", align 1
 @.str.14 = private unnamed_addr constant [14 x i8] c"invalid UTF-8\00", align 1
 @.str.15 = private unnamed_addr constant [23 x i8] c"os/path/base.will:31:5\00", align 1
