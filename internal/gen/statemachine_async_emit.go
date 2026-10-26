@@ -38,6 +38,10 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	}
 	g.needAllocDecl = true
 	g.needTaskDecl = true
+	dropSym := g.asyncFrameDropSymbol(info)
+	if dropSym != "" {
+		g.needFrameDropDecl = true
+	}
 	// The constructor is hidden, not internal: a function of another package
 	// waits on this task, so the object that owns the function must export
 	// the entry that starts it. The last argument is -1 for auto placement and
@@ -103,8 +107,13 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", auto, autoLabel, laneLabel)
 	fmt.Fprintf(g.out, "%s:\n", autoLabel)
 	autoTask := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 0, i32 0)\n",
-		autoTask, llvmSymbol(info.symbol), frame, size)
+	if dropSym != "" {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr @%s)\n",
+			autoTask, llvmSymbol(info.symbol), frame, size, llvmSymbol(dropSym))
+	} else {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 0, i32 0)\n",
+			autoTask, llvmSymbol(info.symbol), frame, size)
+	}
 	g.needOwnFrameDecl = true
 	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", autoTask)
 	g.needAutoTaskDecl = true
@@ -112,8 +121,13 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	fmt.Fprintf(g.out, "  br label %%%s\n", doneLabel)
 	fmt.Fprintf(g.out, "%s:\n", laneLabel)
 	laneTask := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
-		laneTask, llvmSymbol(info.symbol), frame, size, laneValue)
+	if dropSym != "" {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr @%s)\n",
+			laneTask, llvmSymbol(info.symbol), frame, size, laneValue, llvmSymbol(dropSym))
+	} else {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
+			laneTask, llvmSymbol(info.symbol), frame, size, laneValue)
+	}
 	g.needOwnFrameDecl = true
 	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", laneTask)
 	fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", laneTask)

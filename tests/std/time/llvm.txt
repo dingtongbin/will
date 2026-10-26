@@ -6935,8 +6935,10 @@ iface.rel.have.21:
   store ptr null, ptr %t218
   br label %iface.rel.done.21
 iface.rel.done.21:
+  store %interface.Error zeroinitializer, ptr %t216
   br label %deep.rel.adt.done.20.1
 deep.rel.adt.done.20.1:
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t126
   %t224 = alloca i32
   store i32 1, ptr %t224
   %t225 = getelementptr i32, ptr null, i32 1
@@ -6972,8 +6974,10 @@ iface.rel.have.24:
   store ptr null, ptr %t233
   br label %iface.rel.done.24
 iface.rel.done.24:
+  store %interface.Error zeroinitializer, ptr %t231
   br label %deep.rel.adt.done.23.1
 deep.rel.adt.done.23.1:
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t126
   %t239 = alloca i32
   store i32 0, ptr %t239
   %t240 = getelementptr i32, ptr null, i32 1

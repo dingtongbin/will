@@ -860,6 +860,9 @@ type generator struct {
 	needFrameDropDecl bool
 	// needChanDecl records a channel retain, release, or drop constructor.
 	needChanDecl bool
+	// zeroReleases clears each released slot while a state-machine frame may
+	// still be visited by its drop callback.
+	zeroReleases bool
 	// needReportDecl records that the entry wrapper reports a main Result.
 	needReportDecl bool
 	// needTaskErrorDecl records that Join built a TaskError interface.
@@ -3319,6 +3322,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 			return false, err
 		}
 		if g.smMode {
+			if err := g.zeroTransferredSource(valueID, ""); err != nil {
+				return false, err
+			}
 			if err := g.storeTaskResult(iface.llvm, v); err != nil {
 				return false, err
 			}
@@ -3353,6 +3359,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 			return false, err
 		}
 		if g.smMode {
+			if err := g.zeroTransferredSource(valueID, ""); err != nil {
+				return false, err
+			}
 			if err := g.storeTaskResult(typ, tmp); err != nil {
 				return false, err
 			}
@@ -3372,6 +3381,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		return false, err
 	}
 	if g.smMode {
+		if err := g.zeroTransferredSource(valueID, ""); err != nil {
+			return false, err
+		}
 		if err := g.storeTaskResult(g.resultType, value); err != nil {
 			return false, err
 		}

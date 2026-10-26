@@ -41,6 +41,62 @@ func TestAsyncCallerWaitsOnAChildTask(t *testing.T) {
 	}
 }
 
+// TestAsyncFrameDropReleasesOwnedLocals checks that a typed async frame owns
+// local strings and arrays through the task boundary: the constructor installs
+// a drop callback and the callback releases both locals.
+func TestAsyncFrameDropReleasesOwnedLocals(t *testing.T) {
+	src := "import c \"fs.h\" {\n" +
+		"    fast willrt_fs_async_read_file\n" +
+		"}\n" +
+		"async func Read(path: str) -> i32 {\n" +
+		"    var text: str = \"hello\"\n" +
+		"    var items: Array<i32> = new Array<i32>(2)\n" +
+		"    var out: Array<u8>\n" +
+		"    var status: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
+		"    if status != 0 { return 1 }\n" +
+		"    return i32(text.Len()) + i32(items.Len())\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		`call ptr @willrt_task_new_drop(ptr @"example.com/app.Read.sm"`,
+		`define void @"example.com/app.Read.drop"(ptr %frame) {`,
+		`call void @willrt_free_str(ptr`,
+		`call void @willrt_free(ptr`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+// TestAsyncFrameDropSkipsExplicitLeak checks that the frame cleanup does not
+// release a local that leak deliberately handed to the process.
+func TestAsyncFrameDropSkipsExplicitLeak(t *testing.T) {
+	src := "import c \"clock.h\" {\n" +
+		"    fast willrt_task_sleep_async\n" +
+		"}\n" +
+		"async func Read(ns: i64) -> i32 {\n" +
+		"    var items: Array<i32> = new Array<i32>(2)\n" +
+		"    leak(items)\n" +
+		"    var status: i32 = c.willrt_task_sleep_async(ns)\n" +
+		"    return status\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	if strings.Contains(text, "@\"example.com/app.Read.drop\"") {
+		t.Errorf("leaked local has a frame drop callback:\n%s", text)
+	}
+}
+
 // TestSyncWaitUsesTheTaskNode checks that a sync acquisition in a task parks
 // on the embedded sync node. The default poll would treat the returned node as
 // a blocking-pool job.

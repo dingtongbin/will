@@ -203,6 +203,9 @@ func (g *generator) emitSelectMachineStep(info *selectMachineInfo) error {
 		return nil
 	}
 	g.spawnEmitted[info.symbol] = true
+	oldZeroReleases := g.zeroReleases
+	g.zeroReleases = true
+	defer func() { g.zeroReleases = oldZeroReleases }()
 	g.needTaskDecl = true
 	g.needWaitDecl = true
 	g.smMode = false
@@ -388,6 +391,11 @@ func (g *generator) emitSelectMachineStep(info *selectMachineInfo) error {
 	g.smMode = false
 	g.flushLateAllocas()
 	g.out.WriteString("}\n")
+	if dropSym := g.asyncFrameDropSymbol(info.base); dropSym != "" {
+		if err := g.emitAsyncFrameDrop(info.base, dropSym); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

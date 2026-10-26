@@ -16,6 +16,9 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 		return nil
 	}
 	g.spawnEmitted[info.symbol] = true
+	oldZeroReleases := g.zeroReleases
+	g.zeroReleases = true
+	defer func() { g.zeroReleases = oldZeroReleases }()
 	g.needTaskDecl = true
 	g.needWaitDecl = true
 	for _, seg := range info.segments {
@@ -220,6 +223,11 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 	g.smMode = false
 	g.flushLateAllocas()
 	g.out.WriteString("}\n")
+	if dropSym := g.asyncFrameDropSymbol(info); dropSym != "" {
+		if err := g.emitAsyncFrameDrop(info, dropSym); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

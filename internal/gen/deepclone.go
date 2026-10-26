@@ -547,9 +547,36 @@ func (g *generator) cloneValueCall(r willc.Record, text string) (string, string,
 
 // releaseOwnedValue is the release half of cloneOwnedValue. It frees storage
 // the clone owns, including nested buffers that plain releaseValue does not
-// visit.
+// visit. The slot is cleared after the release so a later frame cleanup sees a
+// null owner instead of releasing the same value twice.
 func (g *generator) releaseOwnedValue(ptr, text string) error {
 	text = g.qualifyTypeText(g.pkg, text)
+	if isWeakText(text) {
+		return nil
+	}
+	if err := g.releaseOwnedValueInner(ptr, text); err != nil {
+		return err
+	}
+	if g.zeroReleases {
+		g.zeroOwnedSlot(ptr, text)
+	}
+	return nil
+}
+
+// zeroOwnedSlot writes the zero value for one owned type. It is used after a
+// release and as the constructor state of a frame that may be dropped early.
+func (g *generator) zeroOwnedSlot(ptr, text string) {
+	if ptr == "" || text == "" || isWeakText(text) {
+		return
+	}
+	typ, ok := g.typeLLVMOf(text)
+	if !ok || typ == "" {
+		return
+	}
+	fmt.Fprintf(g.out, "  store %s zeroinitializer, ptr %s\n", typ, ptr)
+}
+
+func (g *generator) releaseOwnedValueInner(ptr, text string) error {
 	if isWeakText(text) {
 		return nil
 	}

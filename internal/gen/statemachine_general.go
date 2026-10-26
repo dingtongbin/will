@@ -109,6 +109,8 @@ func (g *generator) emitGeneralStep(fnID int) error {
 	oldStateSeq := g.smStateSeq
 	oldStates := g.smStates
 	oldParamSlot := g.smParamSlot
+	oldZeroReleases := g.zeroReleases
+	g.zeroReleases = true
 	defer func() {
 		g.out = oldOut
 		g.smGeneral = oldGeneral
@@ -116,6 +118,7 @@ func (g *generator) emitGeneralStep(fnID int) error {
 		g.smStateSeq = oldStateSeq
 		g.smStates = oldStates
 		g.smParamSlot = oldParamSlot
+		g.zeroReleases = oldZeroReleases
 	}()
 
 	var body strings.Builder
@@ -233,7 +236,11 @@ func (g *generator) emitGeneralStep(fnID int) error {
 	g.out.WriteString(relocated)
 	g.out.WriteString("}\n")
 
-	return g.emitGeneralConstructor(fnID, sym, params, size, offsets)
+	owners := g.generalFrameOwners(fnID, offsets)
+	if err := g.emitGeneralConstructor(fnID, sym, params, size, offsets, owners); err != nil {
+		return err
+	}
+	return g.emitGeneralFrameDrop(sym, owners)
 }
 
 // smTryJoin starts a non-blocking join. The task pointer is stored in the
@@ -254,7 +261,8 @@ func (g *generator) smTryJoin(task, out, errSlot string) string {
 	return status
 }
 
-func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.Record, size int, offsets map[string]int) error {
+func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.Record, size int,
+	offsets map[string]int, owners []generalFrameOwner) error {
 	var parts []string
 	var cancelPtrs []string
 	type paramABI struct {
@@ -278,6 +286,11 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	}
 	g.needAllocDecl = true
 	g.needTaskDecl = true
+	dropSym := ""
+	if len(owners) != 0 {
+		dropSym = sym + ".drop"
+		g.needFrameDropDecl = true
+	}
 	// The constructor is hidden, not internal: a function of another package
 	// waits on this task, so the object that owns the function must export
 	// the entry that starts it. The last argument is -1 for auto placement and
@@ -285,6 +298,7 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	parts = append(parts, "i32 %start")
 	fmt.Fprintf(g.out, "define hidden ptr @%s(%s) {\nentry:\n", llvmSymbol(sym+".task"), strings.Join(parts, ", "))
 	fmt.Fprintf(g.out, "  %%v.sm.frame = call ptr @willrt_alloc(i64 %d)\n", size)
+	g.emitGeneralFrameZero("%v.sm.frame", owners)
 	stateOffset := offsets[g.smStateSlot]
 	statePtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %%v.sm.frame, i64 %d\n", statePtr, stateOffset)
@@ -336,8 +350,13 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", auto, autoLabel, laneLabel)
 	fmt.Fprintf(g.out, "%s:\n", autoLabel)
 	autoTask := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 0, i32 0)\n",
-		autoTask, llvmSymbol(sym+".sm"), size)
+	if dropSym != "" {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 0, i32 0, ptr @%s)\n",
+			autoTask, llvmSymbol(sym+".sm"), size, llvmSymbol(dropSym))
+	} else {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 0, i32 0)\n",
+			autoTask, llvmSymbol(sym+".sm"), size)
+	}
 	g.needOwnFrameDecl = true
 	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", autoTask)
 	for _, ptr := range cancelPtrs {
@@ -349,8 +368,13 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	fmt.Fprintf(g.out, "  br label %%%s\n", doneLabel)
 	fmt.Fprintf(g.out, "%s:\n", laneLabel)
 	laneTask := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0)\n",
-		laneTask, llvmSymbol(sym+".sm"), size, laneValue)
+	if dropSym != "" {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0, ptr @%s)\n",
+			laneTask, llvmSymbol(sym+".sm"), size, laneValue, llvmSymbol(dropSym))
+	} else {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0)\n",
+			laneTask, llvmSymbol(sym+".sm"), size, laneValue)
+	}
 	g.needOwnFrameDecl = true
 	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", laneTask)
 	for _, ptr := range cancelPtrs {

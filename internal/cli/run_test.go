@@ -805,6 +805,59 @@ async func main() -> i32 {
 	}
 }
 
+// TestRunAsyncFrameDropsOwnedLocalsOnPanic checks that a failing async task
+// releases the strings and arrays held by its frame before the task boundary
+// frees it. A double release fails the allocator check instead of passing.
+func TestRunAsyncFrameDropsOwnedLocalsOnPanic(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("repo root: %v", err)
+	}
+	dir := filepath.Join(t.TempDir(), "asyncframedrop")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("make module: %v", err)
+	}
+	writeFile(t, dir, "will.mod", "module example.com/asyncframedrop\nwill 1\n"+
+		"require std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(filepath.Join(root, "std"))+"\n")
+	src := `import "std/time"
+
+async func Worker() -> i32 {
+    var text: str = "hello"
+    var items: Array<i32> = new Array<i32>(2)
+    _ = await time.Sleep(1ms)!
+    panic("stop")
+    return i32(text.Len()) + i32(items.Len())
+}
+
+async func main() -> i32 {
+    region {
+        var task: Task<i32> = spawn Worker()
+        match await task.Join() {
+            Ok(_) => {
+                return 1
+            }
+            Err(_) => {}
+        }
+    }
+    return 0
+}
+`
+	writeFile(t, dir, "main.will", src)
+	code, out, errOut := runCLI("run", dir)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if !strings.Contains(errOut, "panic: stop") {
+		t.Fatalf("stderr = %q, want the child panic report", errOut)
+	}
+	if strings.Contains(errOut, "free rejected") {
+		t.Fatalf("stderr = %q, frame cleanup released a value twice", errOut)
+	}
+}
+
 // TestRunJoinReturnsTheStoredValue runs a real program through the same path
 // as will run. A join keeps its error copy in a task frame, and the status word
 // after that copy must not touch the joined value.

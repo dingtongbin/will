@@ -6707,6 +6707,7 @@ task.ok.2:
 if.then.1:
   %t144 = load i64, ptr %v.box
   call void @willrt_rc_release(i64 %t144)
+  store i64 zeroinitializer, ptr %v.box
   store i32 1, ptr %t145
   %t146 = getelementptr i32, ptr null, i32 1
   %t147 = ptrtoint ptr %t146 to i64
@@ -6766,8 +6767,10 @@ task.ok.3:
 if.then.4:
   %t172 = load i64, ptr %v.got
   call void @willrt_rc_release(i64 %t172)
+  store i64 zeroinitializer, ptr %v.got
   %t173 = load i64, ptr %v.box
   call void @willrt_rc_release(i64 %t173)
+  store i64 zeroinitializer, ptr %v.box
   store i32 2, ptr %t174
   %t175 = getelementptr i32, ptr null, i32 1
   %t176 = ptrtoint ptr %t175 to i64
@@ -6776,6 +6779,7 @@ if.then.4:
 if.end.4:
   %t177 = load i64, ptr %v.got
   call void @willrt_rc_release(i64 %t177)
+  store i64 zeroinitializer, ptr %v.got
   store i32 4, ptr %v.sm.state
   br label %sm.op.call.4
 sm.op.call.4:
@@ -6836,6 +6840,7 @@ task.ok.6:
 if.then.5:
   %t205 = load i64, ptr %v.box
   call void @willrt_rc_release(i64 %t205)
+  store i64 zeroinitializer, ptr %v.box
   store i32 3, ptr %t206
   %t207 = getelementptr i32, ptr null, i32 1
   %t208 = ptrtoint ptr %t207 to i64
@@ -6945,12 +6950,16 @@ iface.rel.have.11:
   store ptr null, ptr %t249
   br label %iface.rel.done.11
 iface.rel.done.11:
+  store %interface.Error zeroinitializer, ptr %t247
   br label %deep.rel.adt.done.10.1
 deep.rel.adt.done.10.1:
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.sent
   %t255 = load ptr, ptr %v.pipe
   call void @willrt_chan_release(ptr %t255)
+  store ptr zeroinitializer, ptr %v.pipe
   %t256 = load i64, ptr %v.box
   call void @willrt_rc_release(i64 %t256)
+  store i64 zeroinitializer, ptr %v.box
   store i32 4, ptr %t257
   %t258 = getelementptr i32, ptr null, i32 1
   %t259 = ptrtoint ptr %t258 to i64
@@ -7022,8 +7031,10 @@ deep.rel.adt.15.1:
   %t287 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.taken, i32 0, i32 2
   %t288 = load i64, ptr %t287
   call void @willrt_rc_release(i64 %t288)
+  store i64 zeroinitializer, ptr %t287
   br label %deep.rel.adt.done.15.1
 deep.rel.adt.done.15.1:
+  store { i32, [4 x i8], i64 } zeroinitializer, ptr %v.taken
   %t289 = load i32, ptr %v.sent
   %t290 = icmp eq i32 %t289, 0
   br i1 %t290, label %deep.rel.adt.16.0, label %deep.rel.adt.done.16.0
@@ -7052,12 +7063,16 @@ iface.rel.have.18:
   store ptr null, ptr %t295
   br label %iface.rel.done.18
 iface.rel.done.18:
+  store %interface.Error zeroinitializer, ptr %t293
   br label %deep.rel.adt.done.17.1
 deep.rel.adt.done.17.1:
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.sent
   %t301 = load ptr, ptr %v.pipe
   call void @willrt_chan_release(ptr %t301)
+  store ptr zeroinitializer, ptr %v.pipe
   %t302 = load i64, ptr %v.box
   call void @willrt_rc_release(i64 %t302)
+  store i64 zeroinitializer, ptr %v.box
   store i32 5, ptr %t303
   %t304 = getelementptr i32, ptr null, i32 1
   %t305 = ptrtoint ptr %t304 to i64
@@ -7078,8 +7093,10 @@ deep.rel.adt.19.1:
   %t311 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.taken, i32 0, i32 2
   %t312 = load i64, ptr %t311
   call void @willrt_rc_release(i64 %t312)
+  store i64 zeroinitializer, ptr %t311
   br label %deep.rel.adt.done.19.1
 deep.rel.adt.done.19.1:
+  store { i32, [4 x i8], i64 } zeroinitializer, ptr %v.taken
   %t313 = load i32, ptr %v.sent
   %t314 = icmp eq i32 %t313, 0
   br i1 %t314, label %deep.rel.adt.20.0, label %deep.rel.adt.done.20.0
@@ -7108,12 +7125,16 @@ iface.rel.have.22:
   store ptr null, ptr %t319
   br label %iface.rel.done.22
 iface.rel.done.22:
+  store %interface.Error zeroinitializer, ptr %t317
   br label %deep.rel.adt.done.21.1
 deep.rel.adt.done.21.1:
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.sent
   %t325 = load ptr, ptr %v.pipe
   call void @willrt_chan_release(ptr %t325)
+  store ptr zeroinitializer, ptr %v.pipe
   %t326 = load i64, ptr %v.box
   call void @willrt_rc_release(i64 %t326)
+  store i64 zeroinitializer, ptr %v.box
   store i32 6, ptr %t327
   %t328 = getelementptr i32, ptr null, i32 1
   %t329 = ptrtoint ptr %t328 to i64
@@ -7129,8 +7150,10 @@ deep.rel.adt.23.1:
   %t332 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.taken, i32 0, i32 2
   %t333 = load i64, ptr %t332
   call void @willrt_rc_release(i64 %t333)
+  store i64 zeroinitializer, ptr %t332
   br label %deep.rel.adt.done.23.1
 deep.rel.adt.done.23.1:
+  store { i32, [4 x i8], i64 } zeroinitializer, ptr %v.taken
   %t334 = load i32, ptr %v.sent
   %t335 = icmp eq i32 %t334, 0
   br i1 %t335, label %deep.rel.adt.24.0, label %deep.rel.adt.done.24.0
@@ -7159,12 +7182,16 @@ iface.rel.have.26:
   store ptr null, ptr %t340
   br label %iface.rel.done.26
 iface.rel.done.26:
+  store %interface.Error zeroinitializer, ptr %t338
   br label %deep.rel.adt.done.25.1
 deep.rel.adt.done.25.1:
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.sent
   %t346 = load ptr, ptr %v.pipe
   call void @willrt_chan_release(ptr %t346)
+  store ptr zeroinitializer, ptr %v.pipe
   %t347 = load i64, ptr %v.box
   call void @willrt_rc_release(i64 %t347)
+  store i64 zeroinitializer, ptr %v.box
   store i32 0, ptr %t348
   %t349 = getelementptr i32, ptr null, i32 1
   %t350 = ptrtoint ptr %t349 to i64
@@ -7175,50 +7202,121 @@ deep.rel.adt.done.25.1:
 define hidden ptr @"example.com/safety/rcshare.will$main.task"(i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 400)
-  %t351 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t351
-  %t352 = call i32 @willrt_lane_here()
-  %t353 = icmp eq i32 %start, -1
-  %t354 = icmp eq i32 %start, -2
-  %t355 = select i1 %t354, i32 %t352, i32 %start
-  br i1 %t353, label %sm.start.auto.27, label %sm.start.lane.27
+  %t351 = getelementptr i8, ptr %v.sm.frame, i64 80
+  store { i32, [4 x i8], i64 } zeroinitializer, ptr %t351
+  %t352 = getelementptr i8, ptr %v.sm.frame, i64 56
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t352
+  %t353 = getelementptr i8, ptr %v.sm.frame, i64 48
+  store ptr zeroinitializer, ptr %t353
+  %t354 = getelementptr i8, ptr %v.sm.frame, i64 32
+  store i64 zeroinitializer, ptr %t354
+  %t355 = getelementptr i8, ptr %v.sm.frame, i64 8
+  store i64 zeroinitializer, ptr %t355
+  %t356 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t356
+  %t357 = call i32 @willrt_lane_here()
+  %t358 = icmp eq i32 %start, -1
+  %t359 = icmp eq i32 %start, -2
+  %t360 = select i1 %t359, i32 %t357, i32 %start
+  br i1 %t358, label %sm.start.auto.27, label %sm.start.lane.27
 sm.start.auto.27:
-  %t356 = call ptr @willrt_task_new(ptr @"example.com/safety/rcshare.will$main.sm", ptr %v.sm.frame, i64 400, i32 0, i32 0)
-  call void @willrt_task_own_frame(ptr %t356)
-  call void @willrt_task_run_auto(ptr %t356)
+  %t361 = call ptr @willrt_task_new_drop(ptr @"example.com/safety/rcshare.will$main.sm", ptr %v.sm.frame, i64 400, i32 0, i32 0, ptr @"example.com/safety/rcshare.will$main.drop")
+  call void @willrt_task_own_frame(ptr %t361)
+  call void @willrt_task_run_auto(ptr %t361)
   br label %sm.start.done.27
 sm.start.lane.27:
-  %t357 = call ptr @willrt_task_new(ptr @"example.com/safety/rcshare.will$main.sm", ptr %v.sm.frame, i64 400, i32 %t355, i32 0)
-  call void @willrt_task_own_frame(ptr %t357)
-  call void @willrt_task_run(ptr %t357)
+  %t362 = call ptr @willrt_task_new_drop(ptr @"example.com/safety/rcshare.will$main.sm", ptr %v.sm.frame, i64 400, i32 %t360, i32 0, ptr @"example.com/safety/rcshare.will$main.drop")
+  call void @willrt_task_own_frame(ptr %t362)
+  call void @willrt_task_run(ptr %t362)
   br label %sm.start.done.27
 sm.start.done.27:
-  %t358 = phi ptr [ %t356, %sm.start.auto.27 ], [ %t357, %sm.start.lane.27 ]
-  ret ptr %t358
+  %t363 = phi ptr [ %t361, %sm.start.auto.27 ], [ %t362, %sm.start.lane.27 ]
+  ret ptr %t363
+}
+define internal void @"example.com/safety/rcshare.will$main.drop"(ptr %frame) {
+entry:
+  %t364 = getelementptr i8, ptr %frame, i64 80
+  %t365 = load i32, ptr %t364
+  %t366 = icmp eq i32 %t365, 1
+  br i1 %t366, label %deep.rel.adt.28.1, label %deep.rel.adt.done.28.1
+deep.rel.adt.28.1:
+  %t367 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %t364, i32 0, i32 2
+  %t368 = load i64, ptr %t367
+  call void @willrt_rc_release(i64 %t368)
+  store i64 zeroinitializer, ptr %t367
+  br label %deep.rel.adt.done.28.1
+deep.rel.adt.done.28.1:
+  store { i32, [4 x i8], i64 } zeroinitializer, ptr %t364
+  %t369 = getelementptr i8, ptr %frame, i64 56
+  %t370 = load i32, ptr %t369
+  %t371 = icmp eq i32 %t370, 0
+  br i1 %t371, label %deep.rel.adt.29.0, label %deep.rel.adt.done.29.0
+deep.rel.adt.29.0:
+  %t372 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t369, i32 0, i32 2
+  br label %deep.rel.adt.done.29.0
+deep.rel.adt.done.29.0:
+  %t373 = icmp eq i32 %t370, 1
+  br i1 %t373, label %deep.rel.adt.30.1, label %deep.rel.adt.done.30.1
+deep.rel.adt.30.1:
+  %t374 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t369, i32 0, i32 2
+  %t375 = getelementptr inbounds %interface.Error, ptr %t374, i32 0, i32 0
+  %t376 = getelementptr inbounds %interface.Error, ptr %t374, i32 0, i32 1
+  %t377 = load ptr, ptr %t375
+  %t378 = load ptr, ptr %t376
+  %t379 = icmp eq ptr %t377, null
+  br i1 %t379, label %iface.rel.empty.31, label %iface.rel.have.31
+iface.rel.empty.31:
+  br label %iface.rel.done.31
+iface.rel.have.31:
+  %t380 = getelementptr inbounds [5 x ptr], ptr %t378, i64 0, i64 3
+  %t381 = load ptr, ptr %t380
+  call void %t381(ptr %t377)
+  call void @willrt_free(ptr %t377)
+  store ptr null, ptr %t375
+  store ptr null, ptr %t376
+  br label %iface.rel.done.31
+iface.rel.done.31:
+  store %interface.Error zeroinitializer, ptr %t374
+  br label %deep.rel.adt.done.30.1
+deep.rel.adt.done.30.1:
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t369
+  %t382 = getelementptr i8, ptr %frame, i64 48
+  %t383 = load ptr, ptr %t382
+  call void @willrt_chan_release(ptr %t383)
+  store ptr zeroinitializer, ptr %t382
+  %t384 = getelementptr i8, ptr %frame, i64 32
+  %t385 = load i64, ptr %t384
+  call void @willrt_rc_release(i64 %t385)
+  store i64 zeroinitializer, ptr %t384
+  %t386 = getelementptr i8, ptr %frame, i64 8
+  %t387 = load i64, ptr %t386
+  call void @willrt_rc_release(i64 %t387)
+  store i64 zeroinitializer, ptr %t386
+  ret void
 }
 define internal void @"example.com/safety/rcshare.spawn.1.drop"(ptr %frame) {
 entry:
-  %t359 = getelementptr { i64 }, ptr %frame, i32 0, i32 0
-  %t360 = load i64, ptr %t359
-  call void @willrt_rc_release(i64 %t360)
+  %t388 = getelementptr { i64 }, ptr %frame, i32 0, i32 0
+  %t389 = load i64, ptr %t388
+  call void @willrt_rc_release(i64 %t389)
   ret void
 }
 define i32 @"example.com/safety/rcshare.spawn.1"(ptr %frame) {
 entry:
-  %t361 = getelementptr { i64 }, ptr %frame, i32 0, i32 0
-  %t362 = load i64, ptr %t361
-  %t363 = call i64 @"example.com/safety/rcshare.Pass"(i64 %t362)
-  %t364 = alloca i64
-  store i64 %t363, ptr %t364
-  %t365 = getelementptr i64, ptr null, i32 1
-  %t366 = ptrtoint ptr %t365 to i64
-  call i32 @willrt_task_store_result(ptr %t364, i64 %t366)
+  %t390 = getelementptr { i64 }, ptr %frame, i32 0, i32 0
+  %t391 = load i64, ptr %t390
+  %t392 = call i64 @"example.com/safety/rcshare.Pass"(i64 %t391)
+  %t393 = alloca i64
+  store i64 %t392, ptr %t393
+  %t394 = getelementptr i64, ptr null, i32 1
+  %t395 = ptrtoint ptr %t394 to i64
+  call i32 @willrt_task_store_result(ptr %t393, i64 %t395)
   ret i32 1
 }
 define internal void @"example.com/safety/rcshare.chan.drop.rc<example.com/safety/rcshare.Box>"(ptr %elem) {
 entry:
-  %t367 = load i64, ptr %elem
-  call void @willrt_rc_release(i64 %t367)
+  %t396 = load i64, ptr %elem
+  call void @willrt_rc_release(i64 %t396)
   ret void
 }
 declare void @willrt_init()
@@ -7227,47 +7325,47 @@ define i32 @main() {
 entry:
   call void @willrt_init()
   call void @"std/errors.will$init"()
-  %t368 = call ptr @"example.com/safety/rcshare.will$main.task"(i32 -2)
-  %t370 = alloca i32
-  %t369 = call i32 @willrt_join(ptr %t368, ptr %t370, ptr null)
-  %t371 = icmp ne i32 %t369, 0
-  br i1 %t371, label %main.async.fail.28, label %main.async.ok.28
-main.async.fail.28:
+  %t397 = call ptr @"example.com/safety/rcshare.will$main.task"(i32 -2)
+  %t399 = alloca i32
+  %t398 = call i32 @willrt_join(ptr %t397, ptr %t399, ptr null)
+  %t400 = icmp ne i32 %t398, 0
+  br i1 %t400, label %main.async.fail.32, label %main.async.ok.32
+main.async.fail.32:
   call void @willrt_shutdown()
   ret i32 1
-main.async.ok.28:
-  %t372 = load i32, ptr %t370
+main.async.ok.32:
+  %t401 = load i32, ptr %t399
   call void @willrt_shutdown()
-  ret i32 %t372
+  ret i32 %t401
 }
 @will.error.data.4 = private constant { ptr, i64, i32 } { ptr @.str.203, i64 6, i32 4 }
 define internal { ptr, i64 } @will.error.message.4(ptr %data) {
 entry:
-  %t373 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t374 = load ptr, ptr %t373
-  %t375 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
-  %t376 = load i64, ptr %t375
-  %t377 = insertvalue { ptr, i64 } undef, ptr %t374, 0
-  %t378 = insertvalue { ptr, i64 } %t377, i64 %t376, 1
-  ret { ptr, i64 } %t378
+  %t402 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t403 = load ptr, ptr %t402
+  %t404 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
+  %t405 = load i64, ptr %t404
+  %t406 = insertvalue { ptr, i64 } undef, ptr %t403, 0
+  %t407 = insertvalue { ptr, i64 } %t406, i64 %t405, 1
+  ret { ptr, i64 } %t407
 }
 define internal i32 @will.error.status.4(ptr %data) {
 entry:
-  %t379 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
-  %t380 = load i32, ptr %t379
-  ret i32 %t380
+  %t408 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
+  %t409 = load i32, ptr %t408
+  ret i32 %t409
 }
 define internal ptr @will.error.clone.4(ptr %data) {
 entry:
-  %t381 = call ptr @willrt_alloc(i64 24)
-  call void @memcpy(ptr %t381, ptr %data, i64 24)
-  ret ptr %t381
+  %t410 = call ptr @willrt_alloc(i64 24)
+  call void @memcpy(ptr %t410, ptr %data, i64 24)
+  ret ptr %t410
 }
 define internal void @will.error.drop.4(ptr %data) {
 entry:
-  %t382 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t383 = load ptr, ptr %t382
-  call void @willrt_free_str(ptr %t383)
+  %t411 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t412 = load ptr, ptr %t411
+  call void @willrt_free_str(ptr %t412)
   ret void
 }
 @will.error.table.4 = private constant [5 x ptr] [ptr @will.error.message.4, ptr @will.error.status.4, ptr @will.error.clone.4, ptr @will.error.drop.4, ptr @"will.type.std/errors.Fault"]
@@ -7275,31 +7373,31 @@ entry:
 @will.error.data.8 = private constant { ptr, i64, i32 } { ptr @.str.204, i64 8, i32 8 }
 define internal { ptr, i64 } @will.error.message.8(ptr %data) {
 entry:
-  %t384 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t385 = load ptr, ptr %t384
-  %t386 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
-  %t387 = load i64, ptr %t386
-  %t388 = insertvalue { ptr, i64 } undef, ptr %t385, 0
-  %t389 = insertvalue { ptr, i64 } %t388, i64 %t387, 1
-  ret { ptr, i64 } %t389
+  %t413 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t414 = load ptr, ptr %t413
+  %t415 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
+  %t416 = load i64, ptr %t415
+  %t417 = insertvalue { ptr, i64 } undef, ptr %t414, 0
+  %t418 = insertvalue { ptr, i64 } %t417, i64 %t416, 1
+  ret { ptr, i64 } %t418
 }
 define internal i32 @will.error.status.8(ptr %data) {
 entry:
-  %t390 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
-  %t391 = load i32, ptr %t390
-  ret i32 %t391
+  %t419 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
+  %t420 = load i32, ptr %t419
+  ret i32 %t420
 }
 define internal ptr @will.error.clone.8(ptr %data) {
 entry:
-  %t392 = call ptr @willrt_alloc(i64 24)
-  call void @memcpy(ptr %t392, ptr %data, i64 24)
-  ret ptr %t392
+  %t421 = call ptr @willrt_alloc(i64 24)
+  call void @memcpy(ptr %t421, ptr %data, i64 24)
+  ret ptr %t421
 }
 define internal void @will.error.drop.8(ptr %data) {
 entry:
-  %t393 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t394 = load ptr, ptr %t393
-  call void @willrt_free_str(ptr %t394)
+  %t422 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t423 = load ptr, ptr %t422
+  call void @willrt_free_str(ptr %t423)
   ret void
 }
 @will.error.table.8 = private constant [5 x ptr] [ptr @will.error.message.8, ptr @will.error.status.8, ptr @will.error.clone.8, ptr @will.error.drop.8, ptr @"will.type.std/errors.Fault"]
@@ -7307,31 +7405,31 @@ entry:
 @will.error.data.9 = private constant { ptr, i64, i32 } { ptr @.str.205, i64 8, i32 9 }
 define internal { ptr, i64 } @will.error.message.9(ptr %data) {
 entry:
-  %t395 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t396 = load ptr, ptr %t395
-  %t397 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
-  %t398 = load i64, ptr %t397
-  %t399 = insertvalue { ptr, i64 } undef, ptr %t396, 0
-  %t400 = insertvalue { ptr, i64 } %t399, i64 %t398, 1
-  ret { ptr, i64 } %t400
+  %t424 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t425 = load ptr, ptr %t424
+  %t426 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
+  %t427 = load i64, ptr %t426
+  %t428 = insertvalue { ptr, i64 } undef, ptr %t425, 0
+  %t429 = insertvalue { ptr, i64 } %t428, i64 %t427, 1
+  ret { ptr, i64 } %t429
 }
 define internal i32 @will.error.status.9(ptr %data) {
 entry:
-  %t401 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
-  %t402 = load i32, ptr %t401
-  ret i32 %t402
+  %t430 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
+  %t431 = load i32, ptr %t430
+  ret i32 %t431
 }
 define internal ptr @will.error.clone.9(ptr %data) {
 entry:
-  %t403 = call ptr @willrt_alloc(i64 24)
-  call void @memcpy(ptr %t403, ptr %data, i64 24)
-  ret ptr %t403
+  %t432 = call ptr @willrt_alloc(i64 24)
+  call void @memcpy(ptr %t432, ptr %data, i64 24)
+  ret ptr %t432
 }
 define internal void @will.error.drop.9(ptr %data) {
 entry:
-  %t404 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t405 = load ptr, ptr %t404
-  call void @willrt_free_str(ptr %t405)
+  %t433 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t434 = load ptr, ptr %t433
+  call void @willrt_free_str(ptr %t434)
   ret void
 }
 @will.error.table.9 = private constant [5 x ptr] [ptr @will.error.message.9, ptr @will.error.status.9, ptr @will.error.clone.9, ptr @will.error.drop.9, ptr @"will.type.std/errors.Fault"]
