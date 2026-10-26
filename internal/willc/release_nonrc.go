@@ -23,6 +23,7 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 		if !em.releaseType(vd.Type) {
 			continue
 		}
+		views := em.blockViews(b, vd.Name, types)
 		last := -1
 		var lastNode ast.Node
 		safe := true
@@ -32,6 +33,24 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 				if containsNameInStmt(stmt, vd.Name) {
 					safe = false
 				}
+				continue
+			}
+			direct := containsNameInStmt(stmt, vd.Name)
+			viewUse := containsAnyView(stmt, views)
+			if !direct && !viewUse {
+				continue
+			}
+			if containsViewInNested(stmt, views) {
+				safe = false
+				break
+			}
+			if !direct {
+				if !em.safeViewStmt(stmt, views, vd.Name, types) {
+					safe = false
+					break
+				}
+				last = j
+				lastNode = lastViewNode(stmt, views)
 				continue
 			}
 			ok, used, node := em.safeNonRcTree(stmt, vd.Name, vd.Type, types)
@@ -254,6 +273,9 @@ func (em *emitter) safeNonRcStmt(st ast.Stmt, name string, typ *ast.Type, types 
 		if !ok {
 			return !containsNameInStmt(st, name), nil
 		}
+		if d.Type != nil && d.Type.Kind == ast.ViewType && viewRootOwner(d.Value) == name {
+			return true, lastNameNode(d.Value, name)
+		}
 		if !em.safeNonRcExpr(d.Value, name, typ, types) {
 			return false, nil
 		}
@@ -439,6 +461,217 @@ func (em *emitter) typeOwnsDepth(t *ast.Type, active map[string]bool) bool {
 
 func (em *emitter) typeBorrow(t *ast.Type) bool {
 	return t != nil && t.Kind == ast.ViewType
+}
+
+// blockViews maps a local view name to its owner for the direct declarations
+// of one block. Only a view whose value is a slice/index of the owner, or an
+// alias of such a view, is tracked; an arbitrary value typed as a view stays
+// out because its source is not known.
+func (em *emitter) blockViews(b *ast.Block, owner string, types map[string]*ast.Type) map[string]bool {
+	out := map[string]bool{}
+	if b == nil {
+		return out
+	}
+	for _, st := range b.Stmts {
+		vs, ok := st.(*ast.VarStmt)
+		if !ok {
+			continue
+		}
+		d, ok := vs.Decl.(*ast.VarDecl)
+		if !ok || d.Type == nil || d.Type.Kind != ast.ViewType || d.Name == "" || d.Name == "_" {
+			continue
+		}
+		if viewRootOwner(d.Value) == owner {
+			out[d.Name] = true
+			continue
+		}
+		if n, ok := d.Value.(*ast.NameExpr); ok && out[n.Name] {
+			out[d.Name] = true
+			continue
+		}
+		if call, ok := d.Value.(*ast.MethodCallExpr); ok && call.Name == "Slice" {
+			if viewRootOwner(call.Recv) == owner {
+				out[d.Name] = true
+			}
+		}
+	}
+	return out
+}
+
+func viewRootOwner(e ast.Expr) string {
+	switch x := e.(type) {
+	case *ast.SliceExpr:
+		return exprRootName(x.Recv)
+	case *ast.IndexExpr:
+		return exprRootName(x.Recv)
+	case *ast.MethodCallExpr:
+		if x.Name == "Slice" {
+			return exprRootName(x.Recv)
+		}
+	}
+	return ""
+}
+
+func containsAnyView(st ast.Stmt, views map[string]bool) bool {
+	if len(views) == 0 {
+		return false
+	}
+	found := false
+	walkStmtExprs(st, func(e ast.Expr) {
+		if found {
+			return
+		}
+		if containsViewInExpr(e, views) {
+			found = true
+		}
+	})
+	return found
+}
+
+func containsViewInExpr(e ast.Expr, views map[string]bool) bool {
+	found := false
+	walkExprs(e, func(x ast.Expr) {
+		if found {
+			return
+		}
+		if n, ok := x.(*ast.NameExpr); ok && views[n.Name] {
+			found = true
+		}
+	})
+	return found
+}
+
+func containsViewInNested(st ast.Stmt, views map[string]bool) bool {
+	if len(views) == 0 {
+		return false
+	}
+	switch s := st.(type) {
+	case *ast.Block:
+		return containsViewInBlock(s, views)
+	case *ast.ForStmt:
+		return containsViewInBlock(s.Body, views)
+	case *ast.RegionStmt:
+		return containsViewInBlock(s.Body, views)
+	case *ast.ParallelStmt:
+		return containsViewInBlock(s.Body, views)
+	case *ast.SelectStmt:
+		for _, arm := range s.Arms {
+			if containsViewInStmt(arm.Body, views) {
+				return true
+			}
+		}
+	case *ast.IfExpr:
+		return containsViewInBlock(s.Then, views) || (s.Else != nil && containsViewInStmt(s.Else, views))
+	case *ast.MatchExpr:
+		for _, arm := range s.Arms {
+			if containsViewInStmt(arm.Body, views) {
+				return true
+			}
+		}
+	case *ast.DeadlineExpr:
+		return containsViewInBlock(s.Body, views)
+	}
+	return false
+}
+
+func containsViewInBlock(b *ast.Block, views map[string]bool) bool {
+	if b == nil {
+		return false
+	}
+	for _, st := range b.Stmts {
+		if containsViewInStmt(st, views) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsViewInStmt(st ast.Stmt, views map[string]bool) bool {
+	if containsAnyView(st, views) {
+		return true
+	}
+	return containsViewInNested(st, views)
+}
+
+func lastViewNode(st ast.Stmt, views map[string]bool) ast.Node {
+	var node ast.Node
+	walkStmtExprs(st, func(e ast.Expr) {
+		walkExprs(e, func(x ast.Expr) {
+			if n, ok := x.(*ast.NameExpr); ok && views[n.Name] {
+				node = n
+			}
+		})
+	})
+	return node
+}
+
+// safeViewStmt admits only direct reads of a tracked view: discards, aliases,
+// and methods that neither return nor store a borrow. A view used in a control
+// statement, call, aggregate, or return pins the owner.
+func (em *emitter) safeViewStmt(st ast.Stmt, views map[string]bool, owner string, types map[string]*ast.Type) bool {
+	switch s := st.(type) {
+	case *ast.VarStmt:
+		d, ok := s.Decl.(*ast.VarDecl)
+		if !ok {
+			return false
+		}
+		if d.Type != nil && d.Type.Kind == ast.ViewType {
+			if n, ok := d.Value.(*ast.NameExpr); ok && views[n.Name] {
+				return true
+			}
+			if viewRootOwner(d.Value) == owner {
+				return true
+			}
+		}
+		return em.safeViewExpr(d.Value, views)
+	case *ast.AssignStmt:
+		if target, ok := s.Target.(*ast.NameExpr); ok && target.Name == "_" {
+			return em.safeViewExpr(s.Value, views)
+		}
+		if containsViewInExpr(s.Target, views) {
+			return false
+		}
+		return em.safeViewExpr(s.Value, views)
+	case *ast.ExprStmt:
+		return em.safeViewExpr(s.Expr, views)
+	}
+	return false
+}
+
+func (em *emitter) safeViewExpr(e ast.Expr, views map[string]bool) bool {
+	switch x := e.(type) {
+	case nil:
+		return true
+	case *ast.NameExpr:
+		return views[x.Name]
+	case *ast.MethodCallExpr:
+		recv, ok := x.Recv.(*ast.NameExpr)
+		if !ok || !views[recv.Name] || !safeViewMethod(x.Name) {
+			return false
+		}
+		for _, a := range x.Args {
+			if containsViewInExpr(a.Expr, views) {
+				return false
+			}
+		}
+		return true
+	case *ast.BinaryExpr:
+		if !containsViewInExpr(x.L, views) && !containsViewInExpr(x.R, views) {
+			return true
+		}
+		return em.safeViewExpr(x.L, views) && em.safeViewExpr(x.R, views)
+	case *ast.UnaryExpr:
+		return em.safeViewExpr(x.X, views)
+	}
+	return !containsViewInExpr(e, views)
+}
+
+func safeViewMethod(name string) bool {
+	switch name {
+	case "Len", "IsEmpty", "Equal", "Compare", "HasPrefix", "HasSuffix", "Index", "Clone":
+		return true
+	}
+	return false
 }
 
 func exprRootName(e ast.Expr) string {
