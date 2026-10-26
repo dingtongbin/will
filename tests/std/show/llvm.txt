@@ -10,7 +10,7 @@ entry:
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 1
   %t4 = load ptr, ptr %t3
-  %t5 = getelementptr inbounds [5 x ptr], ptr %t4, i64 0, i64 1
+  %t5 = getelementptr inbounds [6 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
   %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t7)
@@ -265,7 +265,7 @@ for.body.1:
   %t10 = load ptr, ptr %t9
   %t11 = getelementptr inbounds %"interface.std/io.Reader", ptr %r, i32 0, i32 1
   %t12 = load ptr, ptr %t11
-  %t13 = getelementptr inbounds [4 x ptr], ptr %t12, i64 0, i64 0
+  %t13 = getelementptr inbounds [5 x ptr], ptr %t12, i64 0, i64 0
   %t14 = load ptr, ptr %t13
   %t15 = call { i32, [4 x i8], %interface.Error } %t14(ptr %t10, ptr %v.chunk)
   store { i32, [4 x i8], %interface.Error } %t15, ptr %v.ret.59
@@ -467,7 +467,7 @@ for.body.1:
   %t102 = load ptr, ptr %t101
   %t103 = getelementptr inbounds %"interface.std/io.Reader", ptr %src, i32 0, i32 1
   %t104 = load ptr, ptr %t103
-  %t105 = getelementptr inbounds [4 x ptr], ptr %t104, i64 0, i64 0
+  %t105 = getelementptr inbounds [5 x ptr], ptr %t104, i64 0, i64 0
   %t106 = load ptr, ptr %t105
   %t107 = call { i32, [4 x i8], %interface.Error } %t106(ptr %t102, ptr %v.chunk)
   store { i32, [4 x i8], %interface.Error } %t107, ptr %v.ret.122
@@ -520,7 +520,7 @@ if.end.4:
   %t131 = load ptr, ptr %t130
   %t132 = getelementptr inbounds %"interface.std/io.Writer", ptr %dst, i32 0, i32 1
   %t133 = load ptr, ptr %t132
-  %t134 = getelementptr inbounds [5 x ptr], ptr %t133, i64 0, i64 0
+  %t134 = getelementptr inbounds [6 x ptr], ptr %t133, i64 0, i64 0
   %t135 = load ptr, ptr %t134
   %t136 = load i64, ptr %v.n
   %t137 = icmp ugt i64 0, %t136
@@ -597,7 +597,7 @@ for.end.1:
   %t171 = load ptr, ptr %t170
   %t172 = getelementptr inbounds %"interface.std/io.Writer", ptr %dst, i32 0, i32 1
   %t173 = load ptr, ptr %t172
-  %t174 = getelementptr inbounds [5 x ptr], ptr %t173, i64 0, i64 1
+  %t174 = getelementptr inbounds [6 x ptr], ptr %t173, i64 0, i64 1
   %t175 = load ptr, ptr %t174
   %t176 = call { i32, [4 x i8], %interface.Error } %t175(ptr %t171)
   store { i32, [4 x i8], %interface.Error } %t176, ptr %v.ret.150
@@ -1170,6 +1170,10 @@ iface.drop.have.5:
 iface.drop.done.5:
   ret void
 }
+define internal void @"std/io.iface.share.Error.std/errors.Fault"(ptr %data) {
+entry:
+  ret void
+}
 define internal i32 @"std/io.Poller.AsyncNext.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
@@ -1183,7 +1187,7 @@ entry:
   %v.sm.async.op.272 = getelementptr i8, ptr %frame, i64 160
   %v.sm.async.status.273 = getelementptr i8, ptr %frame, i64 168
   %t302 = getelementptr i8, ptr %frame, i64 176
-  %t317 = getelementptr i8, ptr %frame, i64 200
+  %t324 = getelementptr i8, ptr %frame, i64 200
   %t262 = load ptr, ptr %v.sm.param.192.261
   %v.sm.pval.190 = load i64, ptr %v.sm.param.190.260
   %v.sm.statev = load i32, ptr %v.sm.state
@@ -1263,77 +1267,105 @@ if.then.2:
   %t301 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.237
   store { i32, [4 x i8], %interface.Error } %t301, ptr %t302
   %t303 = load i32, ptr %t302
-  %t304 = icmp eq i32 %t303, 0
-  br i1 %t304, label %share.keep.3, label %share.done.3
-share.keep.3:
+  %t304 = icmp eq i32 %t303, 1
+  br i1 %t304, label %share.adt.3.1, label %share.adt.done.3.1
+share.adt.3.1:
   %t305 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t302, i32 0, i32 2
-  br label %share.done.3
-share.done.3:
-  %t306 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t307 = ptrtoint ptr %t306 to i64
-  call i32 @willrt_task_store_result(ptr %t302, i64 %t307)
+  %t306 = getelementptr inbounds %interface.Error, ptr %t305, i32 0, i32 0
+  %t307 = getelementptr inbounds %interface.Error, ptr %t305, i32 0, i32 1
+  %t308 = load ptr, ptr %t306
+  %t309 = load ptr, ptr %t307
+  %t310 = icmp eq ptr %t308, null
+  br i1 %t310, label %iface.share.empty.4, label %iface.share.have.4
+iface.share.empty.4:
+  br label %iface.share.done.4
+iface.share.have.4:
+  %t311 = getelementptr inbounds [6 x ptr], ptr %t309, i64 0, i64 4
+  %t312 = load ptr, ptr %t311
+  call void %t312(ptr %t308)
+  br label %iface.share.done.4
+iface.share.done.4:
+  br label %share.adt.done.3.1
+share.adt.done.3.1:
+  %t313 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t314 = ptrtoint ptr %t313 to i64
+  call i32 @willrt_task_store_result(ptr %t302, i64 %t314)
   ret i32 1
 if.end.2:
-  %t308 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.242, i32 0, i32 0
-  store i32 0, ptr %t308
-  %t309 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.242, i32 0, i32 2
-  %t310 = getelementptr inbounds { ptr, i64, i64 }, ptr %t262, i32 0, i32 1
-  %t311 = load i64, ptr %t310
-  %t312 = load i64, ptr %v.before
-  %t313 = call {i64, i1} @llvm.usub.with.overflow.i64(i64 %t311, i64 %t312)
-  %t314 = extractvalue {i64, i1} %t313, 0
-  %t315 = extractvalue {i64, i1} %t313, 1
-  br i1 %t315, label %panic.4, label %panic.ok.4
-panic.4:
+  %t315 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.242, i32 0, i32 0
+  store i32 0, ptr %t315
+  %t316 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.242, i32 0, i32 2
+  %t317 = getelementptr inbounds { ptr, i64, i64 }, ptr %t262, i32 0, i32 1
+  %t318 = load i64, ptr %t317
+  %t319 = load i64, ptr %v.before
+  %t320 = call {i64, i1} @llvm.usub.with.overflow.i64(i64 %t318, i64 %t319)
+  %t321 = extractvalue {i64, i1} %t320, 0
+  %t322 = extractvalue {i64, i1} %t320, 1
+  br i1 %t322, label %panic.5, label %panic.ok.5
+panic.5:
   call void @willrt_panic(ptr @.str.10, ptr @.str.31, ptr @.str.30)
   unreachable
-panic.ok.4:
-  store i64 %t314, ptr %t309
-  %t316 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.242
-  store { i32, [4 x i8], %interface.Error } %t316, ptr %t317
-  %t318 = load i32, ptr %t317
-  %t319 = icmp eq i32 %t318, 0
-  br i1 %t319, label %share.keep.5, label %share.done.5
-share.keep.5:
-  %t320 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t317, i32 0, i32 2
-  br label %share.done.5
-share.done.5:
-  %t321 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t322 = ptrtoint ptr %t321 to i64
-  call i32 @willrt_task_store_result(ptr %t317, i64 %t322)
+panic.ok.5:
+  store i64 %t321, ptr %t316
+  %t323 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.242
+  store { i32, [4 x i8], %interface.Error } %t323, ptr %t324
+  %t325 = load i32, ptr %t324
+  %t326 = icmp eq i32 %t325, 1
+  br i1 %t326, label %share.adt.6.1, label %share.adt.done.6.1
+share.adt.6.1:
+  %t327 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t324, i32 0, i32 2
+  %t328 = getelementptr inbounds %interface.Error, ptr %t327, i32 0, i32 0
+  %t329 = getelementptr inbounds %interface.Error, ptr %t327, i32 0, i32 1
+  %t330 = load ptr, ptr %t328
+  %t331 = load ptr, ptr %t329
+  %t332 = icmp eq ptr %t330, null
+  br i1 %t332, label %iface.share.empty.7, label %iface.share.have.7
+iface.share.empty.7:
+  br label %iface.share.done.7
+iface.share.have.7:
+  %t333 = getelementptr inbounds [6 x ptr], ptr %t331, i64 0, i64 4
+  %t334 = load ptr, ptr %t333
+  call void %t334(ptr %t330)
+  br label %iface.share.done.7
+iface.share.done.7:
+  br label %share.adt.done.6.1
+share.adt.done.6.1:
+  %t335 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t336 = ptrtoint ptr %t335 to i64
+  call i32 @willrt_task_store_result(ptr %t324, i64 %t336)
   ret i32 1
 
 }
 define hidden ptr @"std/io.Poller.AsyncNext.task"(ptr %arg0, i64 %arg1, ptr %arg2, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 224)
-  %t323 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t323
-  %t324 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t325 = load %"struct.std/io.Poller", ptr %arg0
-  store %"struct.std/io.Poller" %t325, ptr %t324
-  %t326 = getelementptr i8, ptr %v.sm.frame, i64 80
-  store i64 %arg1, ptr %t326
-  %t327 = getelementptr i8, ptr %v.sm.frame, i64 88
-  store ptr %arg2, ptr %t327
-  %t328 = call i32 @willrt_lane_here()
-  %t329 = icmp eq i32 %start, -1
-  %t330 = icmp eq i32 %start, -2
-  %t331 = select i1 %t330, i32 %t328, i32 %start
-  br i1 %t329, label %sm.start.auto.6, label %sm.start.lane.6
-sm.start.auto.6:
-  %t332 = call ptr @willrt_task_new(ptr @"std/io.Poller.AsyncNext.sm", ptr %v.sm.frame, i64 224, i32 0, i32 0)
-  call void @willrt_task_own_frame(ptr %t332)
-  call void @willrt_task_run_auto(ptr %t332)
-  br label %sm.start.done.6
-sm.start.lane.6:
-  %t333 = call ptr @willrt_task_new(ptr @"std/io.Poller.AsyncNext.sm", ptr %v.sm.frame, i64 224, i32 %t331, i32 0)
-  call void @willrt_task_own_frame(ptr %t333)
-  call void @willrt_task_run(ptr %t333)
-  br label %sm.start.done.6
-sm.start.done.6:
-  %t334 = phi ptr [ %t332, %sm.start.auto.6 ], [ %t333, %sm.start.lane.6 ]
-  ret ptr %t334
+  %t337 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t337
+  %t338 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t339 = load %"struct.std/io.Poller", ptr %arg0
+  store %"struct.std/io.Poller" %t339, ptr %t338
+  %t340 = getelementptr i8, ptr %v.sm.frame, i64 80
+  store i64 %arg1, ptr %t340
+  %t341 = getelementptr i8, ptr %v.sm.frame, i64 88
+  store ptr %arg2, ptr %t341
+  %t342 = call i32 @willrt_lane_here()
+  %t343 = icmp eq i32 %start, -1
+  %t344 = icmp eq i32 %start, -2
+  %t345 = select i1 %t344, i32 %t342, i32 %start
+  br i1 %t343, label %sm.start.auto.8, label %sm.start.lane.8
+sm.start.auto.8:
+  %t346 = call ptr @willrt_task_new(ptr @"std/io.Poller.AsyncNext.sm", ptr %v.sm.frame, i64 224, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t346)
+  call void @willrt_task_run_auto(ptr %t346)
+  br label %sm.start.done.8
+sm.start.lane.8:
+  %t347 = call ptr @willrt_task_new(ptr @"std/io.Poller.AsyncNext.sm", ptr %v.sm.frame, i64 224, i32 %t345, i32 0)
+  call void @willrt_task_own_frame(ptr %t347)
+  call void @willrt_task_run(ptr %t347)
+  br label %sm.start.done.8
+sm.start.done.8:
+  %t348 = phi ptr [ %t346, %sm.start.auto.8 ], [ %t347, %sm.start.lane.8 ]
+  ret ptr %t348
 }
 define hidden %"struct.std/fmt.Format" @"std/fmt.Float"(double %v, i32 %prec, i32 %width, i8 %pad) inlinehint {
 entry:
@@ -2475,7 +2507,7 @@ entry:
   %t17 = load ptr, ptr %t16
   %t18 = getelementptr inbounds %"interface.std/io.Writer", ptr %w, i32 0, i32 1
   %t19 = load ptr, ptr %t18
-  %t20 = getelementptr inbounds [5 x ptr], ptr %t19, i64 0, i64 0
+  %t20 = getelementptr inbounds [6 x ptr], ptr %t19, i64 0, i64 0
   %t21 = load ptr, ptr %t20
   %t22 = load i64, ptr %v.n
   %t23 = icmp ugt i64 0, %t22
@@ -2567,7 +2599,7 @@ panic.ok.4:
   %t22 = load ptr, ptr %t21
   %t23 = getelementptr inbounds %interface.Show, ptr %t20, i32 0, i32 1
   %t24 = load ptr, ptr %t23
-  %t25 = getelementptr inbounds [4 x ptr], ptr %t24, i64 0, i64 0
+  %t25 = getelementptr inbounds [5 x ptr], ptr %t24, i64 0, i64 0
   %t26 = load ptr, ptr %t25
   %t27 = call { ptr, i64 } %t26(ptr %t22)
   store { ptr, i64 } %t27, ptr %v.ret.26
@@ -2744,7 +2776,7 @@ entry:
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds %interface.Show, ptr %x, i32 0, i32 1
   %t4 = load ptr, ptr %t3
-  %t5 = getelementptr inbounds [4 x ptr], ptr %t4, i64 0, i64 0
+  %t5 = getelementptr inbounds [5 x ptr], ptr %t4, i64 0, i64 0
   %t6 = load ptr, ptr %t5
   %t7 = call { ptr, i64 } %t6(ptr %t2)
   store { ptr, i64 } %t7, ptr %v.ret.9
@@ -2810,7 +2842,7 @@ panic.ok.4:
   %t33 = load ptr, ptr %t32
   %t34 = getelementptr inbounds %interface.Show, ptr %t31, i32 0, i32 1
   %t35 = load ptr, ptr %t34
-  %t36 = getelementptr inbounds [4 x ptr], ptr %t35, i64 0, i64 0
+  %t36 = getelementptr inbounds [5 x ptr], ptr %t35, i64 0, i64 0
   %t37 = load ptr, ptr %t36
   %t38 = call { ptr, i64 } %t37(ptr %t33)
   store { ptr, i64 } %t38, ptr %v.ret.34
@@ -3309,6 +3341,10 @@ iface.drop.have.5:
 iface.drop.done.5:
   ret void
 }
+define internal void @"example.com/std/show.iface.share.Show.i32"(ptr %data) {
+entry:
+  ret void
+}
 define internal ptr @"example.com/std/show.iface.clone.Show.str"(ptr %data) {
 entry:
   %t323 = alloca ptr
@@ -3349,6 +3385,10 @@ iface.drop.have.7:
   call void @willrt_free_str(ptr %t338)
   br label %iface.drop.done.7
 iface.drop.done.7:
+  ret void
+}
+define internal void @"example.com/std/show.iface.share.Show.str"(ptr %data) {
+entry:
   ret void
 }
 define internal ptr @"example.com/std/show.iface.clone.Show.std/fmt.Format"(ptr %data) {
@@ -3396,6 +3436,10 @@ iface.drop.have.9:
   call void @willrt_free_str(ptr %t358)
   br label %iface.drop.done.9
 iface.drop.done.9:
+  ret void
+}
+define internal void @"example.com/std/show.iface.share.Show.std/fmt.Format"(ptr %data) {
+entry:
   ret void
 }
 declare void @willrt_init()
@@ -3455,7 +3499,7 @@ declare void @willrt_show_str(ptr, i64, ptr)
 @.str.15 = private unnamed_addr constant [12 x i8] c"std/io.Copy\00", align 1
 @.str.16 = private unnamed_addr constant [16 x i8] c"io/io.will:52:9\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/io.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/io.iface.clone.Error.std/errors.Fault", ptr @"std/io.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@"std/io.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/io.iface.clone.Error.std/errors.Fault", ptr @"std/io.iface.drop.Error.std/errors.Fault", ptr @"std/io.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.str.19 = private unnamed_addr constant [24 x i8] c"conversion out of range\00", align 1
 @.str.20 = private unnamed_addr constant [21 x i8] c"io/poller.will:43:23\00", align 1
 @.str.21 = private unnamed_addr constant [21 x i8] c"std/io.Poller.Remove\00", align 1
@@ -3523,12 +3567,12 @@ declare void @willrt_show_str(ptr, i64, ptr)
 @.str.83 = private unnamed_addr constant [29 x i8] c"example.com/std/show.joinAll\00", align 1
 @.str.84 = private unnamed_addr constant [16 x i8] c"main.will:13:21\00", align 1
 @will.type.i32 = linkonce_odr constant i8 0, align 1
-@"example.com/std/show.vtable.Show.i32" = internal constant [4 x ptr] [ptr @will.show.i32, ptr @"example.com/std/show.iface.clone.Show.i32", ptr @"example.com/std/show.iface.drop.Show.i32", ptr @will.type.i32], align 8
+@"example.com/std/show.vtable.Show.i32" = internal constant [5 x ptr] [ptr @will.show.i32, ptr @"example.com/std/show.iface.clone.Show.i32", ptr @"example.com/std/show.iface.drop.Show.i32", ptr @"example.com/std/show.iface.share.Show.i32", ptr @will.type.i32], align 8
 @.bytes.15 = private unnamed_addr constant [2 x i8] c"hi", align 1
 @will.type.str = linkonce_odr constant i8 0, align 1
-@"example.com/std/show.vtable.Show.str" = internal constant [4 x ptr] [ptr @will.show.str, ptr @"example.com/std/show.iface.clone.Show.str", ptr @"example.com/std/show.iface.drop.Show.str", ptr @will.type.str], align 8
+@"example.com/std/show.vtable.Show.str" = internal constant [5 x ptr] [ptr @will.show.str, ptr @"example.com/std/show.iface.clone.Show.str", ptr @"example.com/std/show.iface.drop.Show.str", ptr @"example.com/std/show.iface.share.Show.str", ptr @will.type.str], align 8
 @"will.type.std/fmt.Format" = linkonce_odr constant i8 0, align 1
-@"example.com/std/show.vtable.Show.std/fmt.Format" = internal constant [4 x ptr] [ptr @"std/fmt.Format.Show", ptr @"example.com/std/show.iface.clone.Show.std/fmt.Format", ptr @"example.com/std/show.iface.drop.Show.std/fmt.Format", ptr @"will.type.std/fmt.Format"], align 8
+@"example.com/std/show.vtable.Show.std/fmt.Format" = internal constant [5 x ptr] [ptr @"std/fmt.Format.Show", ptr @"example.com/std/show.iface.clone.Show.std/fmt.Format", ptr @"example.com/std/show.iface.drop.Show.std/fmt.Format", ptr @"example.com/std/show.iface.share.Show.std/fmt.Format", ptr @"will.type.std/fmt.Format"], align 8
 @.bytes.16 = private unnamed_addr constant [2 x i8] c"42", align 1
 @.bytes.17 = private unnamed_addr constant [1 x i8] c"7", align 1
 @.bytes.18 = private unnamed_addr constant [6 x i8] c"take: ", align 1

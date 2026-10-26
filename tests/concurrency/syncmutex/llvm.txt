@@ -10,7 +10,7 @@ entry:
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 1
   %t4 = load ptr, ptr %t3
-  %t5 = getelementptr inbounds [5 x ptr], ptr %t4, i64 0, i64 1
+  %t5 = getelementptr inbounds [6 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
   %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t7)
@@ -259,9 +259,9 @@ entry:
   %v.sm.async.op.8 = getelementptr i8, ptr %frame, i64 120
   %v.sm.async.status.9 = getelementptr i8, ptr %frame, i64 128
   %t23 = getelementptr i8, ptr %frame, i64 136
-  %t37 = getelementptr i8, ptr %frame, i64 160
-  %t51 = getelementptr i8, ptr %frame, i64 184
-  %t75 = getelementptr i8, ptr %frame, i64 208
+  %t44 = getelementptr i8, ptr %frame, i64 160
+  %t65 = getelementptr i8, ptr %frame, i64 184
+  %t96 = getelementptr i8, ptr %frame, i64 208
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
@@ -305,188 +305,248 @@ if.then.1:
   %t22 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.54
   store { i32, [4 x i8], %interface.Error } %t22, ptr %t23
   %t24 = load i32, ptr %t23
-  %t25 = icmp eq i32 %t24, 0
-  br i1 %t25, label %share.keep.2, label %share.done.2
-share.keep.2:
+  %t25 = icmp eq i32 %t24, 1
+  br i1 %t25, label %share.adt.2.1, label %share.adt.done.2.1
+share.adt.2.1:
   %t26 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t23, i32 0, i32 2
-  br label %share.done.2
-share.done.2:
-  %t27 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t28 = ptrtoint ptr %t27 to i64
-  call i32 @willrt_task_store_result(ptr %t23, i64 %t28)
+  %t27 = getelementptr inbounds %interface.Error, ptr %t26, i32 0, i32 0
+  %t28 = getelementptr inbounds %interface.Error, ptr %t26, i32 0, i32 1
+  %t29 = load ptr, ptr %t27
+  %t30 = load ptr, ptr %t28
+  %t31 = icmp eq ptr %t29, null
+  br i1 %t31, label %iface.share.empty.3, label %iface.share.have.3
+iface.share.empty.3:
+  br label %iface.share.done.3
+iface.share.have.3:
+  %t32 = getelementptr inbounds [6 x ptr], ptr %t30, i64 0, i64 4
+  %t33 = load ptr, ptr %t32
+  call void %t33(ptr %t29)
+  br label %iface.share.done.3
+iface.share.done.3:
+  br label %share.adt.done.2.1
+share.adt.done.2.1:
+  %t34 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t35 = ptrtoint ptr %t34 to i64
+  call i32 @willrt_task_store_result(ptr %t23, i64 %t35)
   ret i32 1
 if.end.1:
-  %t29 = load i32, ptr %v.status
-  %t31 = icmp eq i32 5, -2147483648
-  br i1 %t31, label %panic.4, label %panic.ok.4
-panic.4:
+  %t36 = load i32, ptr %v.status
+  %t38 = icmp eq i32 5, -2147483648
+  br i1 %t38, label %panic.5, label %panic.ok.5
+panic.5:
   call void @willrt_panic(ptr @.str.7, ptr @.str.8, ptr @.str.9)
   unreachable
-panic.ok.4:
-  %t30 = sub i32 0, 5
-  %t32 = icmp eq i32 %t29, %t30
-  br i1 %t32, label %if.then.3, label %if.end.3
-if.then.3:
-  %t33 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.64, i32 0, i32 0
-  store i32 1, ptr %t33
-  %t34 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.64, i32 0, i32 2
-  %t35 = load %interface.Error, ptr @will.error.value.8
-  store %interface.Error %t35, ptr %t34
-  %t36 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.64
-  store { i32, [4 x i8], %interface.Error } %t36, ptr %t37
-  %t38 = load i32, ptr %t37
-  %t39 = icmp eq i32 %t38, 0
-  br i1 %t39, label %share.keep.5, label %share.done.5
-share.keep.5:
-  %t40 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t37, i32 0, i32 2
-  br label %share.done.5
-share.done.5:
-  %t41 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t42 = ptrtoint ptr %t41 to i64
-  call i32 @willrt_task_store_result(ptr %t37, i64 %t42)
-  ret i32 1
-if.end.3:
-  %t43 = load i32, ptr %v.status
-  %t45 = icmp eq i32 6, -2147483648
-  br i1 %t45, label %panic.7, label %panic.ok.7
-panic.7:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.10, ptr @.str.9)
-  unreachable
-panic.ok.7:
-  %t44 = sub i32 0, 6
-  %t46 = icmp eq i32 %t43, %t44
-  br i1 %t46, label %if.then.6, label %if.end.6
-if.then.6:
-  %t47 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.74, i32 0, i32 0
-  store i32 1, ptr %t47
-  %t48 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.74, i32 0, i32 2
-  %t49 = load %interface.Error, ptr @will.error.value.9
-  store %interface.Error %t49, ptr %t48
-  %t50 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.74
-  store { i32, [4 x i8], %interface.Error } %t50, ptr %t51
-  %t52 = load i32, ptr %t51
-  %t53 = icmp eq i32 %t52, 0
-  br i1 %t53, label %share.keep.8, label %share.done.8
-share.keep.8:
-  %t54 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t51, i32 0, i32 2
-  br label %share.done.8
-share.done.8:
+panic.ok.5:
+  %t37 = sub i32 0, 5
+  %t39 = icmp eq i32 %t36, %t37
+  br i1 %t39, label %if.then.4, label %if.end.4
+if.then.4:
+  %t40 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.64, i32 0, i32 0
+  store i32 1, ptr %t40
+  %t41 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.64, i32 0, i32 2
+  %t42 = load %interface.Error, ptr @will.error.value.8
+  store %interface.Error %t42, ptr %t41
+  %t43 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.64
+  store { i32, [4 x i8], %interface.Error } %t43, ptr %t44
+  %t45 = load i32, ptr %t44
+  %t46 = icmp eq i32 %t45, 1
+  br i1 %t46, label %share.adt.6.1, label %share.adt.done.6.1
+share.adt.6.1:
+  %t47 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t44, i32 0, i32 2
+  %t48 = getelementptr inbounds %interface.Error, ptr %t47, i32 0, i32 0
+  %t49 = getelementptr inbounds %interface.Error, ptr %t47, i32 0, i32 1
+  %t50 = load ptr, ptr %t48
+  %t51 = load ptr, ptr %t49
+  %t52 = icmp eq ptr %t50, null
+  br i1 %t52, label %iface.share.empty.7, label %iface.share.have.7
+iface.share.empty.7:
+  br label %iface.share.done.7
+iface.share.have.7:
+  %t53 = getelementptr inbounds [6 x ptr], ptr %t51, i64 0, i64 4
+  %t54 = load ptr, ptr %t53
+  call void %t54(ptr %t50)
+  br label %iface.share.done.7
+iface.share.done.7:
+  br label %share.adt.done.6.1
+share.adt.done.6.1:
   %t55 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
   %t56 = ptrtoint ptr %t55 to i64
-  call i32 @willrt_task_store_result(ptr %t51, i64 %t56)
+  call i32 @willrt_task_store_result(ptr %t44, i64 %t56)
   ret i32 1
-if.end.6:
-  %t57 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.78, i32 0, i32 0
-  store i32 1, ptr %t57
-  %t58 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.78, i32 0, i32 2
-  %t60 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
-  %t61 = ptrtoint ptr %t60 to i64
-  %t59 = call ptr @willrt_alloc(i64 %t61)
-  %t62 = load %"struct.std/errors.Fault", ptr @"std/errors.Io"
-  store %"struct.std/errors.Fault" %t62, ptr %t59
-  %t63 = getelementptr inbounds %"struct.std/errors.Fault", ptr @"std/errors.Io", i32 0, i32 0
-  %t64 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t59, i32 0, i32 0
-  %t65 = getelementptr inbounds { ptr, i64 }, ptr %t63, i32 0, i32 0
-  %t66 = getelementptr inbounds { ptr, i64 }, ptr %t63, i32 0, i32 1
-  %t67 = load ptr, ptr %t65
-  %t68 = load i64, ptr %t66
-  %t69 = call ptr @willrt_alloc(i64 %t68)
-  call void @memcpy(ptr %t69, ptr %t67, i64 %t68)
-  %t70 = getelementptr inbounds { ptr, i64 }, ptr %t64, i32 0, i32 0
-  store ptr %t69, ptr %t70
-  %t71 = getelementptr inbounds { ptr, i64 }, ptr %t64, i32 0, i32 1
-  store i64 %t68, ptr %t71
-  %t72 = getelementptr inbounds %interface.Error, ptr %t58, i32 0, i32 0
-  %t73 = getelementptr inbounds %interface.Error, ptr %t58, i32 0, i32 1
-  store ptr %t59, ptr %t72
-  store ptr @"std/sync.vtable.Error.std/errors.Fault", ptr %t73
-  %t74 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.78
-  store { i32, [4 x i8], %interface.Error } %t74, ptr %t75
-  %t76 = load i32, ptr %t75
-  %t77 = icmp eq i32 %t76, 0
-  br i1 %t77, label %share.keep.9, label %share.done.9
-share.keep.9:
-  %t78 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t75, i32 0, i32 2
-  br label %share.done.9
-share.done.9:
-  %t79 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t80 = ptrtoint ptr %t79 to i64
-  call i32 @willrt_task_store_result(ptr %t75, i64 %t80)
+if.end.4:
+  %t57 = load i32, ptr %v.status
+  %t59 = icmp eq i32 6, -2147483648
+  br i1 %t59, label %panic.9, label %panic.ok.9
+panic.9:
+  call void @willrt_panic(ptr @.str.7, ptr @.str.10, ptr @.str.9)
+  unreachable
+panic.ok.9:
+  %t58 = sub i32 0, 6
+  %t60 = icmp eq i32 %t57, %t58
+  br i1 %t60, label %if.then.8, label %if.end.8
+if.then.8:
+  %t61 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.74, i32 0, i32 0
+  store i32 1, ptr %t61
+  %t62 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.74, i32 0, i32 2
+  %t63 = load %interface.Error, ptr @will.error.value.9
+  store %interface.Error %t63, ptr %t62
+  %t64 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.74
+  store { i32, [4 x i8], %interface.Error } %t64, ptr %t65
+  %t66 = load i32, ptr %t65
+  %t67 = icmp eq i32 %t66, 1
+  br i1 %t67, label %share.adt.10.1, label %share.adt.done.10.1
+share.adt.10.1:
+  %t68 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t65, i32 0, i32 2
+  %t69 = getelementptr inbounds %interface.Error, ptr %t68, i32 0, i32 0
+  %t70 = getelementptr inbounds %interface.Error, ptr %t68, i32 0, i32 1
+  %t71 = load ptr, ptr %t69
+  %t72 = load ptr, ptr %t70
+  %t73 = icmp eq ptr %t71, null
+  br i1 %t73, label %iface.share.empty.11, label %iface.share.have.11
+iface.share.empty.11:
+  br label %iface.share.done.11
+iface.share.have.11:
+  %t74 = getelementptr inbounds [6 x ptr], ptr %t72, i64 0, i64 4
+  %t75 = load ptr, ptr %t74
+  call void %t75(ptr %t71)
+  br label %iface.share.done.11
+iface.share.done.11:
+  br label %share.adt.done.10.1
+share.adt.done.10.1:
+  %t76 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t77 = ptrtoint ptr %t76 to i64
+  call i32 @willrt_task_store_result(ptr %t65, i64 %t77)
+  ret i32 1
+if.end.8:
+  %t78 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.78, i32 0, i32 0
+  store i32 1, ptr %t78
+  %t79 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.78, i32 0, i32 2
+  %t81 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t82 = ptrtoint ptr %t81 to i64
+  %t80 = call ptr @willrt_alloc(i64 %t82)
+  %t83 = load %"struct.std/errors.Fault", ptr @"std/errors.Io"
+  store %"struct.std/errors.Fault" %t83, ptr %t80
+  %t84 = getelementptr inbounds %"struct.std/errors.Fault", ptr @"std/errors.Io", i32 0, i32 0
+  %t85 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t80, i32 0, i32 0
+  %t86 = getelementptr inbounds { ptr, i64 }, ptr %t84, i32 0, i32 0
+  %t87 = getelementptr inbounds { ptr, i64 }, ptr %t84, i32 0, i32 1
+  %t88 = load ptr, ptr %t86
+  %t89 = load i64, ptr %t87
+  %t90 = call ptr @willrt_alloc(i64 %t89)
+  call void @memcpy(ptr %t90, ptr %t88, i64 %t89)
+  %t91 = getelementptr inbounds { ptr, i64 }, ptr %t85, i32 0, i32 0
+  store ptr %t90, ptr %t91
+  %t92 = getelementptr inbounds { ptr, i64 }, ptr %t85, i32 0, i32 1
+  store i64 %t89, ptr %t92
+  %t93 = getelementptr inbounds %interface.Error, ptr %t79, i32 0, i32 0
+  %t94 = getelementptr inbounds %interface.Error, ptr %t79, i32 0, i32 1
+  store ptr %t80, ptr %t93
+  store ptr @"std/sync.vtable.Error.std/errors.Fault", ptr %t94
+  %t95 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.78
+  store { i32, [4 x i8], %interface.Error } %t95, ptr %t96
+  %t97 = load i32, ptr %t96
+  %t98 = icmp eq i32 %t97, 1
+  br i1 %t98, label %share.adt.12.1, label %share.adt.done.12.1
+share.adt.12.1:
+  %t99 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t96, i32 0, i32 2
+  %t100 = getelementptr inbounds %interface.Error, ptr %t99, i32 0, i32 0
+  %t101 = getelementptr inbounds %interface.Error, ptr %t99, i32 0, i32 1
+  %t102 = load ptr, ptr %t100
+  %t103 = load ptr, ptr %t101
+  %t104 = icmp eq ptr %t102, null
+  br i1 %t104, label %iface.share.empty.13, label %iface.share.have.13
+iface.share.empty.13:
+  br label %iface.share.done.13
+iface.share.have.13:
+  %t105 = getelementptr inbounds [6 x ptr], ptr %t103, i64 0, i64 4
+  %t106 = load ptr, ptr %t105
+  call void %t106(ptr %t102)
+  br label %iface.share.done.13
+iface.share.done.13:
+  br label %share.adt.done.12.1
+share.adt.done.12.1:
+  %t107 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t108 = ptrtoint ptr %t107 to i64
+  call i32 @willrt_task_store_result(ptr %t96, i64 %t108)
   ret i32 1
 
 }
 define hidden ptr @"std/sync.Count.Wait.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
-  %t81 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t81
-  %t82 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t83 = load %"struct.std/sync.Count", ptr %arg0
-  store %"struct.std/sync.Count" %t83, ptr %t82
-  %t84 = call i32 @willrt_lane_here()
-  %t85 = icmp eq i32 %start, -1
-  %t86 = icmp eq i32 %start, -2
-  %t87 = select i1 %t86, i32 %t84, i32 %start
-  br i1 %t85, label %sm.start.auto.10, label %sm.start.lane.10
-sm.start.auto.10:
-  %t88 = call ptr @willrt_task_new(ptr @"std/sync.Count.Wait.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
-  call void @willrt_task_own_frame(ptr %t88)
-  call void @willrt_task_run_auto(ptr %t88)
-  br label %sm.start.done.10
-sm.start.lane.10:
-  %t89 = call ptr @willrt_task_new(ptr @"std/sync.Count.Wait.sm", ptr %v.sm.frame, i64 240, i32 %t87, i32 0)
-  call void @willrt_task_own_frame(ptr %t89)
-  call void @willrt_task_run(ptr %t89)
-  br label %sm.start.done.10
-sm.start.done.10:
-  %t90 = phi ptr [ %t88, %sm.start.auto.10 ], [ %t89, %sm.start.lane.10 ]
-  ret ptr %t90
+  %t109 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t109
+  %t110 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t111 = load %"struct.std/sync.Count", ptr %arg0
+  store %"struct.std/sync.Count" %t111, ptr %t110
+  %t112 = call i32 @willrt_lane_here()
+  %t113 = icmp eq i32 %start, -1
+  %t114 = icmp eq i32 %start, -2
+  %t115 = select i1 %t114, i32 %t112, i32 %start
+  br i1 %t113, label %sm.start.auto.14, label %sm.start.lane.14
+sm.start.auto.14:
+  %t116 = call ptr @willrt_task_new(ptr @"std/sync.Count.Wait.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t116)
+  call void @willrt_task_run_auto(ptr %t116)
+  br label %sm.start.done.14
+sm.start.lane.14:
+  %t117 = call ptr @willrt_task_new(ptr @"std/sync.Count.Wait.sm", ptr %v.sm.frame, i64 240, i32 %t115, i32 0)
+  call void @willrt_task_own_frame(ptr %t117)
+  call void @willrt_task_run(ptr %t117)
+  br label %sm.start.done.14
+sm.start.done.14:
+  %t118 = phi ptr [ %t116, %sm.start.auto.14 ], [ %t117, %sm.start.lane.14 ]
+  ret ptr %t118
 }
 define internal ptr @"std/sync.iface.clone.Error.std/errors.Fault"(ptr %data) {
 entry:
-  %t91 = alloca ptr
-  store ptr null, ptr %t91
-  %t92 = icmp eq ptr %data, null
-  br i1 %t92, label %iface.clone.null.11, label %iface.clone.have.11
-iface.clone.null.11:
-  br label %iface.clone.ret.11
-iface.clone.have.11:
-  %t94 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
-  %t95 = ptrtoint ptr %t94 to i64
-  %t93 = call ptr @willrt_alloc(i64 %t95)
-  %t96 = load %"struct.std/errors.Fault", ptr %data
-  store %"struct.std/errors.Fault" %t96, ptr %t93
-  %t97 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
-  %t98 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t93, i32 0, i32 0
-  %t99 = getelementptr inbounds { ptr, i64 }, ptr %t97, i32 0, i32 0
-  %t100 = getelementptr inbounds { ptr, i64 }, ptr %t97, i32 0, i32 1
-  %t101 = load ptr, ptr %t99
-  %t102 = load i64, ptr %t100
-  %t103 = call ptr @willrt_alloc(i64 %t102)
-  call void @memcpy(ptr %t103, ptr %t101, i64 %t102)
-  %t104 = getelementptr inbounds { ptr, i64 }, ptr %t98, i32 0, i32 0
-  store ptr %t103, ptr %t104
-  %t105 = getelementptr inbounds { ptr, i64 }, ptr %t98, i32 0, i32 1
-  store i64 %t102, ptr %t105
-  store ptr %t93, ptr %t91
-  br label %iface.clone.ret.11
-iface.clone.ret.11:
-  %t106 = load ptr, ptr %t91
-  ret ptr %t106
+  %t119 = alloca ptr
+  store ptr null, ptr %t119
+  %t120 = icmp eq ptr %data, null
+  br i1 %t120, label %iface.clone.null.15, label %iface.clone.have.15
+iface.clone.null.15:
+  br label %iface.clone.ret.15
+iface.clone.have.15:
+  %t122 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t123 = ptrtoint ptr %t122 to i64
+  %t121 = call ptr @willrt_alloc(i64 %t123)
+  %t124 = load %"struct.std/errors.Fault", ptr %data
+  store %"struct.std/errors.Fault" %t124, ptr %t121
+  %t125 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
+  %t126 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t121, i32 0, i32 0
+  %t127 = getelementptr inbounds { ptr, i64 }, ptr %t125, i32 0, i32 0
+  %t128 = getelementptr inbounds { ptr, i64 }, ptr %t125, i32 0, i32 1
+  %t129 = load ptr, ptr %t127
+  %t130 = load i64, ptr %t128
+  %t131 = call ptr @willrt_alloc(i64 %t130)
+  call void @memcpy(ptr %t131, ptr %t129, i64 %t130)
+  %t132 = getelementptr inbounds { ptr, i64 }, ptr %t126, i32 0, i32 0
+  store ptr %t131, ptr %t132
+  %t133 = getelementptr inbounds { ptr, i64 }, ptr %t126, i32 0, i32 1
+  store i64 %t130, ptr %t133
+  store ptr %t121, ptr %t119
+  br label %iface.clone.ret.15
+iface.clone.ret.15:
+  %t134 = load ptr, ptr %t119
+  ret ptr %t134
 }
 define internal void @"std/sync.iface.drop.Error.std/errors.Fault"(ptr %data) {
 entry:
-  %t107 = icmp eq ptr %data, null
-  br i1 %t107, label %iface.drop.null.12, label %iface.drop.have.12
-iface.drop.null.12:
-  br label %iface.drop.done.12
-iface.drop.have.12:
-  %t108 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
-  %t109 = getelementptr inbounds { ptr, i64 }, ptr %t108, i32 0, i32 0
-  %t110 = load ptr, ptr %t109
-  call void @willrt_free_str(ptr %t110)
-  br label %iface.drop.done.12
-iface.drop.done.12:
+  %t135 = icmp eq ptr %data, null
+  br i1 %t135, label %iface.drop.null.16, label %iface.drop.have.16
+iface.drop.null.16:
+  br label %iface.drop.done.16
+iface.drop.have.16:
+  %t136 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
+  %t137 = getelementptr inbounds { ptr, i64 }, ptr %t136, i32 0, i32 0
+  %t138 = load ptr, ptr %t137
+  call void @willrt_free_str(ptr %t138)
+  br label %iface.drop.done.16
+iface.drop.done.16:
+  ret void
+}
+define internal void @"std/sync.iface.share.Error.std/errors.Fault"(ptr %data) {
+entry:
   ret void
 }
 %"struct.std/sync.Guard$T" = type { i64, i1, i32 }
@@ -550,9 +610,9 @@ entry:
   %v.sm.async.op.22 = getelementptr i8, ptr %frame, i64 128
   %v.sm.async.status.23 = getelementptr i8, ptr %frame, i64 136
   %t41 = getelementptr i8, ptr %frame, i64 144
-  %t55 = getelementptr i8, ptr %frame, i64 168
-  %t69 = getelementptr i8, ptr %frame, i64 192
-  %t93 = getelementptr i8, ptr %frame, i64 216
+  %t62 = getelementptr i8, ptr %frame, i64 168
+  %t83 = getelementptr i8, ptr %frame, i64 192
+  %t114 = getelementptr i8, ptr %frame, i64 216
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
@@ -602,142 +662,198 @@ if.then.1:
   %t40 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.56
   store { i32, [4 x i8], %interface.Error } %t40, ptr %t41
   %t42 = load i32, ptr %t41
-  %t43 = icmp eq i32 %t42, 0
-  br i1 %t43, label %share.keep.2, label %share.done.2
-share.keep.2:
+  %t43 = icmp eq i32 %t42, 1
+  br i1 %t43, label %share.adt.2.1, label %share.adt.done.2.1
+share.adt.2.1:
   %t44 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t41, i32 0, i32 2
-  br label %share.done.2
-share.done.2:
-  %t45 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t46 = ptrtoint ptr %t45 to i64
-  call i32 @willrt_task_store_result(ptr %t41, i64 %t46)
+  %t45 = getelementptr inbounds %interface.Error, ptr %t44, i32 0, i32 0
+  %t46 = getelementptr inbounds %interface.Error, ptr %t44, i32 0, i32 1
+  %t47 = load ptr, ptr %t45
+  %t48 = load ptr, ptr %t46
+  %t49 = icmp eq ptr %t47, null
+  br i1 %t49, label %iface.share.empty.3, label %iface.share.have.3
+iface.share.empty.3:
+  br label %iface.share.done.3
+iface.share.have.3:
+  %t50 = getelementptr inbounds [6 x ptr], ptr %t48, i64 0, i64 4
+  %t51 = load ptr, ptr %t50
+  call void %t51(ptr %t47)
+  br label %iface.share.done.3
+iface.share.done.3:
+  br label %share.adt.done.2.1
+share.adt.done.2.1:
+  %t52 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t53 = ptrtoint ptr %t52 to i64
+  call i32 @willrt_task_store_result(ptr %t41, i64 %t53)
   ret i32 1
 if.end.1:
-  %t47 = load i32, ptr %v.status
-  %t49 = icmp eq i32 5, -2147483648
-  br i1 %t49, label %panic.4, label %panic.ok.4
-panic.4:
+  %t54 = load i32, ptr %v.status
+  %t56 = icmp eq i32 5, -2147483648
+  br i1 %t56, label %panic.5, label %panic.ok.5
+panic.5:
   call void @willrt_panic(ptr @.str.7, ptr @.str.13, ptr @.str.14)
   unreachable
-panic.ok.4:
-  %t48 = sub i32 0, 5
-  %t50 = icmp eq i32 %t47, %t48
-  br i1 %t50, label %if.then.3, label %if.end.3
-if.then.3:
-  %t51 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.68, i32 0, i32 0
-  store i32 1, ptr %t51
-  %t52 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.68, i32 0, i32 2
-  %t53 = load %interface.Error, ptr @will.error.value.8
-  store %interface.Error %t53, ptr %t52
-  %t54 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.68
-  store { i32, [4 x i8], %interface.Error } %t54, ptr %t55
-  %t56 = load i32, ptr %t55
-  %t57 = icmp eq i32 %t56, 0
-  br i1 %t57, label %share.keep.5, label %share.done.5
-share.keep.5:
-  %t58 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t55, i32 0, i32 2
-  br label %share.done.5
-share.done.5:
-  %t59 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t60 = ptrtoint ptr %t59 to i64
-  call i32 @willrt_task_store_result(ptr %t55, i64 %t60)
-  ret i32 1
-if.end.3:
-  %t61 = load i32, ptr %v.status
-  %t63 = icmp eq i32 6, -2147483648
-  br i1 %t63, label %panic.7, label %panic.ok.7
-panic.7:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.15, ptr @.str.14)
-  unreachable
-panic.ok.7:
-  %t62 = sub i32 0, 6
-  %t64 = icmp eq i32 %t61, %t62
-  br i1 %t64, label %if.then.6, label %if.end.6
-if.then.6:
-  %t65 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.78, i32 0, i32 0
-  store i32 1, ptr %t65
-  %t66 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.78, i32 0, i32 2
-  %t67 = load %interface.Error, ptr @will.error.value.9
-  store %interface.Error %t67, ptr %t66
-  %t68 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.78
-  store { i32, [4 x i8], %interface.Error } %t68, ptr %t69
-  %t70 = load i32, ptr %t69
-  %t71 = icmp eq i32 %t70, 0
-  br i1 %t71, label %share.keep.8, label %share.done.8
-share.keep.8:
-  %t72 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t69, i32 0, i32 2
-  br label %share.done.8
-share.done.8:
+panic.ok.5:
+  %t55 = sub i32 0, 5
+  %t57 = icmp eq i32 %t54, %t55
+  br i1 %t57, label %if.then.4, label %if.end.4
+if.then.4:
+  %t58 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.68, i32 0, i32 0
+  store i32 1, ptr %t58
+  %t59 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.68, i32 0, i32 2
+  %t60 = load %interface.Error, ptr @will.error.value.8
+  store %interface.Error %t60, ptr %t59
+  %t61 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.68
+  store { i32, [4 x i8], %interface.Error } %t61, ptr %t62
+  %t63 = load i32, ptr %t62
+  %t64 = icmp eq i32 %t63, 1
+  br i1 %t64, label %share.adt.6.1, label %share.adt.done.6.1
+share.adt.6.1:
+  %t65 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t62, i32 0, i32 2
+  %t66 = getelementptr inbounds %interface.Error, ptr %t65, i32 0, i32 0
+  %t67 = getelementptr inbounds %interface.Error, ptr %t65, i32 0, i32 1
+  %t68 = load ptr, ptr %t66
+  %t69 = load ptr, ptr %t67
+  %t70 = icmp eq ptr %t68, null
+  br i1 %t70, label %iface.share.empty.7, label %iface.share.have.7
+iface.share.empty.7:
+  br label %iface.share.done.7
+iface.share.have.7:
+  %t71 = getelementptr inbounds [6 x ptr], ptr %t69, i64 0, i64 4
+  %t72 = load ptr, ptr %t71
+  call void %t72(ptr %t68)
+  br label %iface.share.done.7
+iface.share.done.7:
+  br label %share.adt.done.6.1
+share.adt.done.6.1:
   %t73 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
   %t74 = ptrtoint ptr %t73 to i64
-  call i32 @willrt_task_store_result(ptr %t69, i64 %t74)
+  call i32 @willrt_task_store_result(ptr %t62, i64 %t74)
   ret i32 1
-if.end.6:
-  %t75 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.82, i32 0, i32 0
-  store i32 1, ptr %t75
-  %t76 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.82, i32 0, i32 2
-  %t78 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
-  %t79 = ptrtoint ptr %t78 to i64
-  %t77 = call ptr @willrt_alloc(i64 %t79)
-  %t80 = load %"struct.std/errors.Fault", ptr @"std/errors.Io"
-  store %"struct.std/errors.Fault" %t80, ptr %t77
-  %t81 = getelementptr inbounds %"struct.std/errors.Fault", ptr @"std/errors.Io", i32 0, i32 0
-  %t82 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t77, i32 0, i32 0
-  %t83 = getelementptr inbounds { ptr, i64 }, ptr %t81, i32 0, i32 0
-  %t84 = getelementptr inbounds { ptr, i64 }, ptr %t81, i32 0, i32 1
-  %t85 = load ptr, ptr %t83
-  %t86 = load i64, ptr %t84
-  %t87 = call ptr @willrt_alloc(i64 %t86)
-  call void @memcpy(ptr %t87, ptr %t85, i64 %t86)
-  %t88 = getelementptr inbounds { ptr, i64 }, ptr %t82, i32 0, i32 0
-  store ptr %t87, ptr %t88
-  %t89 = getelementptr inbounds { ptr, i64 }, ptr %t82, i32 0, i32 1
-  store i64 %t86, ptr %t89
-  %t90 = getelementptr inbounds %interface.Error, ptr %t76, i32 0, i32 0
-  %t91 = getelementptr inbounds %interface.Error, ptr %t76, i32 0, i32 1
-  store ptr %t77, ptr %t90
-  store ptr @"std/sync.vtable.Error.std/errors.Fault", ptr %t91
-  %t92 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.82
-  store { i32, [4 x i8], %interface.Error } %t92, ptr %t93
-  %t94 = load i32, ptr %t93
-  %t95 = icmp eq i32 %t94, 0
-  br i1 %t95, label %share.keep.9, label %share.done.9
-share.keep.9:
-  %t96 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t93, i32 0, i32 2
-  br label %share.done.9
-share.done.9:
-  %t97 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t98 = ptrtoint ptr %t97 to i64
-  call i32 @willrt_task_store_result(ptr %t93, i64 %t98)
+if.end.4:
+  %t75 = load i32, ptr %v.status
+  %t77 = icmp eq i32 6, -2147483648
+  br i1 %t77, label %panic.9, label %panic.ok.9
+panic.9:
+  call void @willrt_panic(ptr @.str.7, ptr @.str.15, ptr @.str.14)
+  unreachable
+panic.ok.9:
+  %t76 = sub i32 0, 6
+  %t78 = icmp eq i32 %t75, %t76
+  br i1 %t78, label %if.then.8, label %if.end.8
+if.then.8:
+  %t79 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.78, i32 0, i32 0
+  store i32 1, ptr %t79
+  %t80 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.78, i32 0, i32 2
+  %t81 = load %interface.Error, ptr @will.error.value.9
+  store %interface.Error %t81, ptr %t80
+  %t82 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.78
+  store { i32, [4 x i8], %interface.Error } %t82, ptr %t83
+  %t84 = load i32, ptr %t83
+  %t85 = icmp eq i32 %t84, 1
+  br i1 %t85, label %share.adt.10.1, label %share.adt.done.10.1
+share.adt.10.1:
+  %t86 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t83, i32 0, i32 2
+  %t87 = getelementptr inbounds %interface.Error, ptr %t86, i32 0, i32 0
+  %t88 = getelementptr inbounds %interface.Error, ptr %t86, i32 0, i32 1
+  %t89 = load ptr, ptr %t87
+  %t90 = load ptr, ptr %t88
+  %t91 = icmp eq ptr %t89, null
+  br i1 %t91, label %iface.share.empty.11, label %iface.share.have.11
+iface.share.empty.11:
+  br label %iface.share.done.11
+iface.share.have.11:
+  %t92 = getelementptr inbounds [6 x ptr], ptr %t90, i64 0, i64 4
+  %t93 = load ptr, ptr %t92
+  call void %t93(ptr %t89)
+  br label %iface.share.done.11
+iface.share.done.11:
+  br label %share.adt.done.10.1
+share.adt.done.10.1:
+  %t94 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t95 = ptrtoint ptr %t94 to i64
+  call i32 @willrt_task_store_result(ptr %t83, i64 %t95)
+  ret i32 1
+if.end.8:
+  %t96 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.82, i32 0, i32 0
+  store i32 1, ptr %t96
+  %t97 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.82, i32 0, i32 2
+  %t99 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t100 = ptrtoint ptr %t99 to i64
+  %t98 = call ptr @willrt_alloc(i64 %t100)
+  %t101 = load %"struct.std/errors.Fault", ptr @"std/errors.Io"
+  store %"struct.std/errors.Fault" %t101, ptr %t98
+  %t102 = getelementptr inbounds %"struct.std/errors.Fault", ptr @"std/errors.Io", i32 0, i32 0
+  %t103 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t98, i32 0, i32 0
+  %t104 = getelementptr inbounds { ptr, i64 }, ptr %t102, i32 0, i32 0
+  %t105 = getelementptr inbounds { ptr, i64 }, ptr %t102, i32 0, i32 1
+  %t106 = load ptr, ptr %t104
+  %t107 = load i64, ptr %t105
+  %t108 = call ptr @willrt_alloc(i64 %t107)
+  call void @memcpy(ptr %t108, ptr %t106, i64 %t107)
+  %t109 = getelementptr inbounds { ptr, i64 }, ptr %t103, i32 0, i32 0
+  store ptr %t108, ptr %t109
+  %t110 = getelementptr inbounds { ptr, i64 }, ptr %t103, i32 0, i32 1
+  store i64 %t107, ptr %t110
+  %t111 = getelementptr inbounds %interface.Error, ptr %t97, i32 0, i32 0
+  %t112 = getelementptr inbounds %interface.Error, ptr %t97, i32 0, i32 1
+  store ptr %t98, ptr %t111
+  store ptr @"std/sync.vtable.Error.std/errors.Fault", ptr %t112
+  %t113 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.82
+  store { i32, [4 x i8], %interface.Error } %t113, ptr %t114
+  %t115 = load i32, ptr %t114
+  %t116 = icmp eq i32 %t115, 1
+  br i1 %t116, label %share.adt.12.1, label %share.adt.done.12.1
+share.adt.12.1:
+  %t117 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t114, i32 0, i32 2
+  %t118 = getelementptr inbounds %interface.Error, ptr %t117, i32 0, i32 0
+  %t119 = getelementptr inbounds %interface.Error, ptr %t117, i32 0, i32 1
+  %t120 = load ptr, ptr %t118
+  %t121 = load ptr, ptr %t119
+  %t122 = icmp eq ptr %t120, null
+  br i1 %t122, label %iface.share.empty.13, label %iface.share.have.13
+iface.share.empty.13:
+  br label %iface.share.done.13
+iface.share.have.13:
+  %t123 = getelementptr inbounds [6 x ptr], ptr %t121, i64 0, i64 4
+  %t124 = load ptr, ptr %t123
+  call void %t124(ptr %t120)
+  br label %iface.share.done.13
+iface.share.done.13:
+  br label %share.adt.done.12.1
+share.adt.done.12.1:
+  %t125 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t126 = ptrtoint ptr %t125 to i64
+  call i32 @willrt_task_store_result(ptr %t114, i64 %t126)
   ret i32 1
 
 }
 define hidden ptr @"std/sync.Semaphore.Acquire.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
-  %t99 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t99
-  %t100 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t101 = load %"struct.std/sync.Semaphore", ptr %arg0
-  store %"struct.std/sync.Semaphore" %t101, ptr %t100
-  %t102 = call i32 @willrt_lane_here()
-  %t103 = icmp eq i32 %start, -1
-  %t104 = icmp eq i32 %start, -2
-  %t105 = select i1 %t104, i32 %t102, i32 %start
-  br i1 %t103, label %sm.start.auto.10, label %sm.start.lane.10
-sm.start.auto.10:
-  %t106 = call ptr @willrt_task_new(ptr @"std/sync.Semaphore.Acquire.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
-  call void @willrt_task_own_frame(ptr %t106)
-  call void @willrt_task_run_auto(ptr %t106)
-  br label %sm.start.done.10
-sm.start.lane.10:
-  %t107 = call ptr @willrt_task_new(ptr @"std/sync.Semaphore.Acquire.sm", ptr %v.sm.frame, i64 240, i32 %t105, i32 0)
-  call void @willrt_task_own_frame(ptr %t107)
-  call void @willrt_task_run(ptr %t107)
-  br label %sm.start.done.10
-sm.start.done.10:
-  %t108 = phi ptr [ %t106, %sm.start.auto.10 ], [ %t107, %sm.start.lane.10 ]
-  ret ptr %t108
+  %t127 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t127
+  %t128 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t129 = load %"struct.std/sync.Semaphore", ptr %arg0
+  store %"struct.std/sync.Semaphore" %t129, ptr %t128
+  %t130 = call i32 @willrt_lane_here()
+  %t131 = icmp eq i32 %start, -1
+  %t132 = icmp eq i32 %start, -2
+  %t133 = select i1 %t132, i32 %t130, i32 %start
+  br i1 %t131, label %sm.start.auto.14, label %sm.start.lane.14
+sm.start.auto.14:
+  %t134 = call ptr @willrt_task_new(ptr @"std/sync.Semaphore.Acquire.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t134)
+  call void @willrt_task_run_auto(ptr %t134)
+  br label %sm.start.done.14
+sm.start.lane.14:
+  %t135 = call ptr @willrt_task_new(ptr @"std/sync.Semaphore.Acquire.sm", ptr %v.sm.frame, i64 240, i32 %t133, i32 0)
+  call void @willrt_task_own_frame(ptr %t135)
+  call void @willrt_task_run(ptr %t135)
+  br label %sm.start.done.14
+sm.start.done.14:
+  %t136 = phi ptr [ %t134, %sm.start.auto.14 ], [ %t135, %sm.start.lane.14 ]
+  ret ptr %t136
 }
 %"struct.example.com/concurrency/syncmutex.Counter" = type { i32 }
 %"struct.std/sync.Guard$Counter" = type { i64, i1, i32 }
@@ -2417,7 +2533,11 @@ entry:
   call void @willrt_free_str(ptr %t26)
   ret void
 }
-@will.error.table.8 = private constant [5 x ptr] [ptr @will.error.message.8, ptr @will.error.status.8, ptr @will.error.clone.8, ptr @will.error.drop.8, ptr @"will.type.std/errors.Fault"]
+define internal void @will.error.share.8(ptr %data) {
+entry:
+  ret void
+}
+@will.error.table.8 = private constant [6 x ptr] [ptr @will.error.message.8, ptr @will.error.status.8, ptr @will.error.clone.8, ptr @will.error.drop.8, ptr @will.error.share.8, ptr @"will.type.std/errors.Fault"]
 @will.error.value.8 = private constant %interface.Error { ptr @will.error.data.8, ptr @will.error.table.8 }
 @will.error.data.9 = private constant { ptr, i64, i32 } { ptr @.str.42, i64 8, i32 9 }
 define internal { ptr, i64 } @will.error.message.9(ptr %data) {
@@ -2449,7 +2569,11 @@ entry:
   call void @willrt_free_str(ptr %t37)
   ret void
 }
-@will.error.table.9 = private constant [5 x ptr] [ptr @will.error.message.9, ptr @will.error.status.9, ptr @will.error.clone.9, ptr @will.error.drop.9, ptr @"will.type.std/errors.Fault"]
+define internal void @will.error.share.9(ptr %data) {
+entry:
+  ret void
+}
+@will.error.table.9 = private constant [6 x ptr] [ptr @will.error.message.9, ptr @will.error.status.9, ptr @will.error.clone.9, ptr @will.error.drop.9, ptr @will.error.share.9, ptr @"will.type.std/errors.Fault"]
 @will.error.value.9 = private constant %interface.Error { ptr @will.error.data.9, ptr @will.error.table.9 }
 declare ptr @willrt_sync_count_new(i64)
 declare void @willrt_sync_count_add(ptr, i64)
@@ -2478,7 +2602,7 @@ declare ptr @willrt_sync_lock_new()
 @.str.9 = private unnamed_addr constant [20 x i8] c"std/sync.Count.Wait\00", align 1
 @.str.10 = private unnamed_addr constant [22 x i8] c"sync/count.will:33:18\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/sync.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/sync.iface.clone.Error.std/errors.Fault", ptr @"std/sync.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@"std/sync.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/sync.iface.clone.Error.std/errors.Fault", ptr @"std/sync.iface.drop.Error.std/errors.Fault", ptr @"std/sync.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.str.13 = private unnamed_addr constant [26 x i8] c"sync/semaphore.will:37:18\00", align 1
 @.str.14 = private unnamed_addr constant [27 x i8] c"std/sync.Semaphore.Acquire\00", align 1
 @.str.15 = private unnamed_addr constant [26 x i8] c"sync/semaphore.will:40:18\00", align 1

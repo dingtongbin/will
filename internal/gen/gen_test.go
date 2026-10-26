@@ -729,7 +729,7 @@ func TestEmitBuiltinError(t *testing.T) {
 	for _, want := range []string{
 		`%interface.Error = type { ptr, ptr }`,
 		"vtable.Error.E",
-		"[5 x ptr]",
+		"[6 x ptr]",
 		"call i32 %t",
 	} {
 		if !strings.Contains(text, want) {
@@ -775,7 +775,7 @@ func TestEmitInterfaceValueAndCall(t *testing.T) {
 	for _, want := range []string{
 		`%"interface.example.com/app.Counter" = type { ptr, ptr }`,
 		`define i32 @"example.com/app.Use"(ptr %x) {`,
-		"getelementptr inbounds [4 x ptr], ptr",
+		"getelementptr inbounds [5 x ptr], ptr",
 		"call i32 %t",
 		"store ptr @",
 		"vtable.example.com/app.Counter.C",

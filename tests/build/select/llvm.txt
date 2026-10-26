@@ -287,7 +287,11 @@ entry:
   call void @willrt_free_str(ptr %t102)
   ret void
 }
-@will.error.table.4 = private constant [5 x ptr] [ptr @will.error.message.4, ptr @will.error.status.4, ptr @will.error.clone.4, ptr @will.error.drop.4, ptr @"will.type.std/errors.Fault"]
+define internal void @will.error.share.4(ptr %data) {
+entry:
+  ret void
+}
+@will.error.table.4 = private constant [6 x ptr] [ptr @will.error.message.4, ptr @will.error.status.4, ptr @will.error.clone.4, ptr @will.error.drop.4, ptr @will.error.share.4, ptr @"will.type.std/errors.Fault"]
 @will.error.value.4 = private constant %interface.Error { ptr @will.error.data.4, ptr @will.error.table.4 }
 @.str.0 = private unnamed_addr constant [7 x i8] c"closed\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1

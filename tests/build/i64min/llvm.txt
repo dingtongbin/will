@@ -1,3 +1,5 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 define hidden i64 @"example.com/i64min.Get"() alwaysinline {
 entry:
   ret i64 -9223372036854775808

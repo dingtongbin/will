@@ -1,3 +1,5 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 define hidden i32 @"example.com/map.Lookup"(ptr %m, i32 %k) inlinehint {
 entry:
   %v.ret.13 = alloca { i32, i32 }

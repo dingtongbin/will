@@ -1,3 +1,5 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 define i32 @"example.com/print.will$main"() {
 entry:
   %v.n = alloca i32

@@ -114,10 +114,10 @@ func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases ma
 	g.collectSignatures()
 	g.collectSuspendable()
 	g.collectTaskCtors(nil)
-	if g.usesTaskRuntime() {
-		g.out.WriteString("%willrt_error = type { ptr, i64, ptr, ptr }\n")
-		g.out.WriteString("%willrt.task_error = type { %willrt_error, i32 }\n")
-	}
+	// These layouts are emitted before lowering because a TaskError result can
+	// be introduced by a join that is discovered after the type block.
+	g.out.WriteString("%willrt_error = type { ptr, i64, ptr, ptr }\n")
+	g.out.WriteString("%willrt.task_error = type { %willrt_error, i32 }\n")
 	if g.usesSelect() {
 		g.out.WriteString("%willrt_arm = type { ptr, ptr, ptr, i32, i64 }\n")
 	}
@@ -196,9 +196,10 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_free_str(ptr)\n")
 	}
 	if g.needClosureDecl {
-		g.out.WriteString("declare ptr @willrt_closure_new(i64, ptr)\n")
+		g.out.WriteString("declare ptr @willrt_closure_new(i64, ptr, ptr)\n")
 		g.out.WriteString("declare void @willrt_closure_retain(ptr)\n")
 		g.out.WriteString("declare void @willrt_closure_release(ptr)\n")
+		g.out.WriteString("declare void @willrt_closure_share(ptr)\n")
 	}
 	if g.needMemcmpDecl {
 		g.out.WriteString("declare i32 @memcmp(ptr, ptr, i64)\n")
@@ -1076,7 +1077,10 @@ type generator struct {
 	crossingPos string
 	// crossings is one entry per share promotion this module emitted, in
 	// emission order.
-	crossings     []Crossing
+	crossings []Crossing
+	// quietShare suppresses crossing records while a generated share thunk is
+	// emitted. The call site that invokes the thunk records the one crossing.
+	quietShare    bool
 	strings       []string
 	stringsByText map[string]string
 	needPanicDecl bool
@@ -1202,38 +1206,12 @@ func (g *generator) emitDoc() error {
 	return g.emitInit(g.cur)
 }
 
-// usesTaskRuntime reports whether any document names a task or channel node.
 // usesSelect reports whether any document waits in a select statement.
 func (g *generator) usesSelect() bool {
 	for _, d := range g.docs {
 		for _, r := range d.recs {
 			if r.Kind == "select" {
 				return true
-			}
-		}
-	}
-	return false
-}
-
-func (g *generator) usesTaskRuntime() bool {
-	for _, d := range g.docs {
-		for _, r := range d.recs {
-			switch r.Kind {
-			case "spawn", "join", "recv", "tryrecv", "send", "trysend", "close", "channew":
-				return true
-			case "call", "mcall":
-				// A call to a waiting function joins a child task, so the
-				// module needs the willrt_error layout even when the source
-				// has no task or channel of its own. A method call resolves
-				// its target through the receiver, which needs this document.
-				g.use(d)
-				if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendableFor(sym) {
-					return true
-				}
-			case "func":
-				if fieldText(r, "async") == "true" {
-					return true
-				}
 			}
 		}
 	}

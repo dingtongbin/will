@@ -1,9 +1,6 @@
 package gen
 
-import (
-	"fmt"
-	"strings"
-)
+import "fmt"
 
 // shareValue marks every rc handle reachable in a value as cross-thread. A
 // value only needs this at a task frame, a task result, or a channel send;
@@ -18,6 +15,9 @@ func (g *generator) shareValue(ptr, text string) error {
 // when it knows it; a promotion inside a machine epilogue falls back to the
 // position of the function being lowered.
 func (g *generator) recordCrossing() {
+	if g.quietShare {
+		return
+	}
 	pos := g.crossingPos
 	if pos == "" {
 		pos = g.fnPos
@@ -33,7 +33,7 @@ func (g *generator) shareValueDepth(ptr, text string, depth int) error {
 		return nil
 	}
 	text = g.qualifyTypeText(g.pkg, text)
-	if isWeakText(text) {
+	if !g.needsShareText(text) {
 		return nil
 	}
 	if isRcText(text) {
@@ -43,46 +43,42 @@ func (g *generator) shareValueDepth(ptr, text string, depth int) error {
 		g.recordCrossing()
 		return nil
 	}
-	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
-		elem := strings.TrimSpace(text[len("Array<") : len(text)-1])
-		if !needsReleaseText(g, elem) {
-			return nil
-		}
-		return g.eachElementShare(ptr, elem, depth)
+	if isFuncText(text) {
+		envPtr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envPtr, ptr)
+		env := g.load("ptr", envPtr)
+		g.needClosureDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_closure_share(ptr %s)\n", env)
+		g.recordCrossing()
+		return nil
 	}
-	if strings.HasPrefix(text, "[]") && len(text) > 2 {
-		elem := text[2:]
-		if !needsReleaseText(g, elem) {
-			return nil
-		}
-		return g.eachViewShare(ptr, elem, depth)
-	}
-	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
-		info, ok := g.adtType(text)
-		if !ok {
-			return nil
-		}
-		tag := g.load("i32", ptr)
-		g.labels++
-		n := g.labels
-		keep := fmt.Sprintf("share.keep.%d", n)
-		done := fmt.Sprintf("share.done.%d", n)
-		cond := g.newTmp()
-		if kind == "option" {
-			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 1\n", cond, tag)
-		} else {
-			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", cond, tag)
-		}
-		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, keep, done)
-		g.out.WriteString(keep + ":\n")
-		payload := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, ptr, info.payloadIndex)
-		if err := g.shareValueDepth(payload, args[0], depth+1); err != nil {
+	if iface, ok := g.ifaceOfText(text); ok {
+		if err := g.shareIfaceValue(ptr, iface); err != nil {
 			return err
 		}
-		fmt.Fprintf(g.out, "  br label %%%s\n", done)
-		g.out.WriteString(done + ":\n")
+		g.recordCrossing()
 		return nil
+	}
+	if elem, ok := arrayElemText(text); ok {
+		return g.eachElementShare(ptr, elem, depth)
+	}
+	if elem, ok := viewElemText(text); ok {
+		return g.eachViewShare(ptr, elem, depth)
+	}
+	if n, elem, ok := arrayTypeText(text); ok {
+		return g.shareFixedArray(ptr, elem, n, depth)
+	}
+	if k, v, ok := mapTypeText(text); ok {
+		return g.shareEntries(ptr, k, v, true, depth)
+	}
+	if elem, ok := setTypeText(text); ok {
+		return g.shareEntries(ptr, elem, "", false, depth)
+	}
+	if info := g.enumInfoForText(text); info != nil {
+		return g.shareEnumValue(ptr, info, depth)
+	}
+	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
+		return g.shareADTValue(ptr, kind, args, depth)
 	}
 	typ, ok := g.typeLLVMOf(text)
 	if !ok || !isStructType(typ) {
@@ -93,7 +89,7 @@ func (g *generator) shareValueDepth(ptr, text string, depth int) error {
 		return nil
 	}
 	for i, ft := range info.texts {
-		if !needsReleaseText(g, ft) {
+		if !g.needsShareText(ft) {
 			continue
 		}
 		field := g.newTmp()
@@ -103,6 +99,76 @@ func (g *generator) shareValueDepth(ptr, text string, depth int) error {
 		}
 	}
 	return nil
+}
+
+// needsShareText reports whether a value can reach an rc handle that must be
+// promoted before the value crosses a task or channel boundary. Closure
+// environments and interface boxes are included because their generated share
+// thunks walk the concrete captures and payload.
+func (g *generator) needsShareText(text string) bool {
+	text = g.qualifyTypeText(g.pkg, text)
+	if text == "" || isWeakText(text) {
+		return false
+	}
+	if isRcText(text) {
+		return true
+	}
+	if text == "str" || isChanText(text) {
+		return false
+	}
+	if isFuncText(text) {
+		return true
+	}
+	if _, ok := g.ifaceOfText(text); ok {
+		return true
+	}
+	if elem, ok := arrayElemText(text); ok {
+		return g.needsShareText(elem)
+	}
+	if elem, ok := viewElemText(text); ok {
+		return g.needsShareText(elem)
+	}
+	if n, elem, ok := arrayTypeText(text); ok {
+		return n > 0 && g.needsShareText(elem)
+	}
+	if k, v, ok := mapTypeText(text); ok {
+		return g.needsShareText(k) || g.needsShareText(v)
+	}
+	if elem, ok := setTypeText(text); ok {
+		return g.needsShareText(elem)
+	}
+	if info := g.enumInfoForText(text); info != nil {
+		for i := range info.variants {
+			for _, arg := range info.variants[i].args {
+				if g.needsShareText(arg) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
+		for _, arg := range adtBranchTexts(kind, args) {
+			if g.needsShareText(arg) {
+				return true
+			}
+		}
+		return false
+	}
+	typ, ok := g.typeLLVMOf(text)
+	if !ok || !isStructType(typ) {
+		return false
+	}
+	info := g.structInfoByLLVM(typ)
+	if info == nil || !info.ok {
+		return false
+	}
+	for _, ft := range info.texts {
+		if g.needsShareText(ft) {
+			return true
+		}
+	}
+	return false
 }
 
 // eachViewShare walks the live elements of a view and shares every rc handle

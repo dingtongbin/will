@@ -1,3 +1,5 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 define hidden i32 @"example.com/control.Sign"(i32 %n) alwaysinline {
 entry:
   %t1 = icmp slt i32 %n, 0

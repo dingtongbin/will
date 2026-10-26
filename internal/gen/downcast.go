@@ -231,7 +231,7 @@ func (g *generator) ifaceDowncastIs(r willc.Record) (string, error) {
 	g.out.WriteString(check + ":\n")
 	identity := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n",
-		identity, len(d.source.methods)+3, table, len(d.source.methods)+2)
+		identity, ifaceTableSize(d.source), table, ifaceIdentityIndex(d.source))
 	id := g.load("ptr", identity)
 	result := ""
 	for _, candidate := range candidates {
@@ -308,7 +308,7 @@ func (g *generator) ifaceDowncastAs(r willc.Record) (string, string, error) {
 		} else {
 			identity := g.newTmp()
 			fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n",
-				identity, len(d.source.methods)+3, table, len(d.source.methods)+2)
+				identity, ifaceTableSize(d.source), table, ifaceIdentityIndex(d.source))
 			id := g.load("ptr", identity)
 			for i, candidate := range candidates {
 				equal := g.newTmp()
@@ -327,7 +327,7 @@ func (g *generator) ifaceDowncastAs(r willc.Record) (string, string, error) {
 				}
 				clonePtr := g.newTmp()
 				fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n",
-					clonePtr, len(d.source.methods)+3, table, len(d.source.methods))
+					clonePtr, ifaceTableSize(d.source), table, ifaceCloneIndex(d.source))
 				cloneFn := g.load("ptr", clonePtr)
 				newData := g.newTmp()
 				fmt.Fprintf(g.out, "  %s = call ptr %s(ptr %s)\n", newData, cloneFn, data)

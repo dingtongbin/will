@@ -25,15 +25,32 @@ type ifaceInfo struct {
 	byName  map[string]int
 }
 
-// ifaceThunk is the clone and drop pair generated for one concrete type and
-// one interface. The table keeps the methods first, then clone, drop, and the
-// type identity; the identity stays the last word.
+// ifaceThunk is the clone, drop, and share set generated for one concrete type
+// and one interface. The table keeps the methods first, then clone, drop,
+// share, and the type identity; the identity stays the last word.
 type ifaceThunk struct {
 	iface    *ifaceInfo
 	concrete string
 	clone    string
 	drop     string
+	share    string
 }
+
+// ifaceCloneIndex is the first compiler thunk after the user-visible methods.
+func ifaceCloneIndex(iface *ifaceInfo) int { return len(iface.methods) }
+
+// ifaceDropIndex follows clone.
+func ifaceDropIndex(iface *ifaceInfo) int { return len(iface.methods) + 1 }
+
+// ifaceShareIndex follows drop.
+func ifaceShareIndex(iface *ifaceInfo) int { return len(iface.methods) + 2 }
+
+// ifaceIdentityIndex is the last word of every method table.
+func ifaceIdentityIndex(iface *ifaceInfo) int { return len(iface.methods) + 3 }
+
+// ifaceTableSize counts the user-visible methods and the three compiler thunks
+// plus the type identity.
+func ifaceTableSize(iface *ifaceInfo) int { return len(iface.methods) + 4 }
 
 // buildInterfaces records every interface of the current document and emits
 // its two-word type. The method order is the declaration order, so a method
@@ -325,13 +342,14 @@ func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 	sym := qualify(g.pkg, "vtable."+iface.name+"."+concrete)
 	cloneSym := qualify(g.pkg, "iface.clone."+iface.name+"."+concrete)
 	dropSym := qualify(g.pkg, "iface.drop."+iface.name+"."+concrete)
+	shareSym := qualify(g.pkg, "iface.share."+iface.name+"."+concrete)
 	if !g.ifaceThunkSeen[cloneSym] {
 		g.ifaceThunkSeen[cloneSym] = true
 		g.ifaceThunks = append(g.ifaceThunks, ifaceThunk{
-			iface: iface, concrete: concrete, clone: cloneSym, drop: dropSym,
+			iface: iface, concrete: concrete, clone: cloneSym, drop: dropSym, share: shareSym,
 		})
 	}
-	entries := make([]string, 0, len(iface.methods)+3)
+	entries := make([]string, 0, ifaceTableSize(iface))
 	for _, m := range iface.methods {
 		method := g.methodsQualified[concrete+"."+m.name]
 		if method == "" {
@@ -361,6 +379,7 @@ func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 	}
 	entries = append(entries, "ptr @"+llvmSymbol(cloneSym))
 	entries = append(entries, "ptr @"+llvmSymbol(dropSym))
+	entries = append(entries, "ptr @"+llvmSymbol(shareSym))
 	entries = append(entries, "ptr @"+llvmSymbol(g.typeIdentity(concrete)))
 	g.vtables[key] = sym
 	if g.emittedVtables[sym] {
@@ -439,7 +458,7 @@ func (g *generator) interfaceCall(r willc.Record, iface *ifaceInfo) (string, str
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", tableField, iface.llvm, base)
 	table := g.load("ptr", tableField)
 	fnField := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n", fnField, len(iface.methods)+3, table, idx)
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n", fnField, ifaceTableSize(iface), table, idx)
 	fn := g.load("ptr", fnField)
 
 	parts := []string{"ptr " + data}

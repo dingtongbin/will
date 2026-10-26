@@ -1,3 +1,5 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/takec.Box" = type { i32 }
 define hidden void @"example.com/takec.Release"(ptr %p) inlinehint {
 entry:

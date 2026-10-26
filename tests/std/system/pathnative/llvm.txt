@@ -1,3 +1,5 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 %interface.Error = type { ptr, ptr }
 %"enum.std/errors.ErrorClass" = type { i32 }
 %"interface.std/errors.Classified" = type { ptr, ptr }
@@ -8,7 +10,7 @@ entry:
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 1
   %t4 = load ptr, ptr %t3
-  %t5 = getelementptr inbounds [5 x ptr], ptr %t4, i64 0, i64 1
+  %t5 = getelementptr inbounds [6 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
   %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t7)
@@ -716,6 +718,10 @@ iface.drop.have.2:
   call void @willrt_free_str(ptr %t238)
   br label %iface.drop.done.2
 iface.drop.done.2:
+  ret void
+}
+define internal void @"std/os.iface.share.Error.std/errors.Fault"(ptr %data) {
+entry:
   ret void
 }
 %"struct.std/os.User" = type { { ptr, i64 }, i32, i32, { ptr, i64 } }
@@ -4569,7 +4575,7 @@ declare i8 @willpath_separator()
 @.str.9 = private unnamed_addr constant [17 x i8] c"os/os.will:37:18\00", align 1
 @.str.10 = private unnamed_addr constant [14 x i8] c"std/os.Setenv\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/os.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/os.iface.clone.Error.std/errors.Fault", ptr @"std/os.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@"std/os.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/os.iface.clone.Error.std/errors.Fault", ptr @"std/os.iface.drop.Error.std/errors.Fault", ptr @"std/os.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.bytes.9 = private unnamed_addr constant [1 x i8] c".", align 1
 @.str.14 = private unnamed_addr constant [14 x i8] c"invalid UTF-8\00", align 1
 @.str.15 = private unnamed_addr constant [23 x i8] c"os/path/base.will:31:5\00", align 1

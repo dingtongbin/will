@@ -1,3 +1,5 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 define hidden i64 @"example.com/scalars.Sum"(i64 %a, i64 %b) alwaysinline {
 entry:
   %t1 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %a, i64 %b)

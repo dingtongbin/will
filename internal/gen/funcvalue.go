@@ -24,12 +24,14 @@ type captureInfo struct {
 type lambdaInfo struct {
 	name     string
 	drop     string
+	share    string
 	captures []captureInfo
 	envType  string
 }
 
 type lambdaDropRequest struct {
 	name     string
+	share    string
 	envType  string
 	captures []captureInfo
 }
@@ -265,8 +267,10 @@ func (g *generator) planLambdas() error {
 		if len(info.captures) != 0 {
 			g.lambdaDropSeq++
 			info.drop = qualify(g.pkg, "lambda.drop."+strconv.Itoa(g.lambdaDropSeq))
+			info.share = qualify(g.pkg, "lambda.share."+strconv.Itoa(g.lambdaDropSeq))
 			g.pendingLambdaDrops = append(g.pendingLambdaDrops, lambdaDropRequest{
-				name: info.drop, envType: info.envType, captures: append([]captureInfo(nil), info.captures...),
+				name: info.drop, share: info.share, envType: info.envType,
+				captures: append([]captureInfo(nil), info.captures...),
 			})
 		}
 		lam.Kind = "func"
@@ -400,7 +404,12 @@ func (g *generator) buildEnvironment(lam willc.Record, info *lambdaInfo) (string
 	fmt.Fprintf(g.out, "  %s = ptrtoint ptr %s to i64\n", size, end)
 	env := g.newTmp()
 	g.needClosureDecl = true
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_closure_new(i64 %s, ptr @%s)\n", env, size, llvmSymbol(info.drop))
+	share := "null"
+	if info.share != "" {
+		share = "@" + llvmSymbol(info.share)
+	}
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_closure_new(i64 %s, ptr @%s, ptr %s)\n",
+		env, size, llvmSymbol(info.drop), share)
 	for i, cap := range info.captures {
 		field := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.envType, env, i+2)
@@ -444,6 +453,25 @@ func (g *generator) emitLambdaDrops() error {
 			}
 		}
 		g.out.WriteString("  ret void\n}\n")
+		if req.share != "" {
+			fmt.Fprintf(g.out, "define void @%s(ptr %%env) {\nentry:\n", llvmSymbol(req.share))
+			saved := g.quietShare
+			g.quietShare = true
+			for i, cap := range req.captures {
+				if !g.needsShareText(cap.text) {
+					continue
+				}
+				field := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %%env, i32 0, i32 %d\n",
+					field, req.envType, i+2)
+				if err := g.shareValueDepth(field, cap.text, 0); err != nil {
+					g.quietShare = saved
+					return err
+				}
+			}
+			g.quietShare = saved
+			g.out.WriteString("  ret void\n}\n")
+		}
 	}
 	g.pendingLambdaDrops = nil
 	return nil

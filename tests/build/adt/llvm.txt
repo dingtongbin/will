@@ -1,3 +1,5 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 define hidden { i32, i32 } @"example.com/adt.Find"(i32 %x) inlinehint {
 entry:
   %v.adt.14 = alloca { i32, i32 }

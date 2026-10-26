@@ -115,9 +115,10 @@ func (g *generator) emitBuiltinErrors() {
 		messageData := g.load("ptr", msg)
 		fmt.Fprintf(g.out, "  call void @willrt_free_str(ptr %s)\n", messageData)
 		g.out.WriteString("  ret void\n}\n")
+		fmt.Fprintf(g.out, "define internal void @will.error.share.%d(ptr %%data) {\nentry:\n  ret void\n}\n", kind)
 		identity := g.typeIdentity("std/errors.Fault")
-		fmt.Fprintf(g.out, "@will.error.table.%d = private constant [5 x ptr] [ptr @will.error.message.%d, ptr @will.error.status.%d, ptr @will.error.clone.%d, ptr @will.error.drop.%d, ptr @%s]\n",
-			kind, kind, kind, kind, kind, llvmSymbol(identity))
+		fmt.Fprintf(g.out, "@will.error.table.%d = private constant [6 x ptr] [ptr @will.error.message.%d, ptr @will.error.status.%d, ptr @will.error.clone.%d, ptr @will.error.drop.%d, ptr @will.error.share.%d, ptr @%s]\n",
+			kind, kind, kind, kind, kind, kind, llvmSymbol(identity))
 		fmt.Fprintf(g.out, "@will.error.value.%d = private constant %%interface.Error { ptr @will.error.data.%d, ptr @will.error.table.%d }\n",
 			kind, kind, kind)
 	}
