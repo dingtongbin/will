@@ -34,16 +34,12 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 				}
 				continue
 			}
-			if containsNameInNested(stmt, vd.Name) {
-				safe = false
-				break
-			}
-			ok, node := em.safeNonRcStmt(stmt, vd.Name, vd.Type, types)
+			ok, used, node := em.safeNonRcTree(stmt, vd.Name, vd.Type, types)
 			if !ok {
 				safe = false
 				break
 			}
-			if node != nil {
+			if used {
 				last = j
 				lastNode = node
 			}
@@ -73,6 +69,179 @@ func (em *emitter) releaseType(t *ast.Type) bool {
 		return ok
 	}
 	return false
+}
+
+// safeNonRcTree accepts direct and nested uses. The release point stays after
+// the top-level statement, so a loop use releases after the loop and an if use
+// releases after the if. A view, call, move, defer, or parallel use still pins.
+func (em *emitter) safeNonRcTree(st ast.Stmt, name string, typ *ast.Type, types map[string]*ast.Type) (bool, bool, ast.Node) {
+	switch s := st.(type) {
+	case *ast.Block:
+		return em.safeNonRcBlock(s, name, typ, types)
+	case *ast.IfExpr:
+		ok, used, node := em.safeNonRcExprUse(s.Cond, name, typ, types)
+		if !ok {
+			return false, false, nil
+		}
+		tok, tused, tnode := em.safeNonRcBlock(s.Then, name, typ, types)
+		if !tok {
+			return false, false, nil
+		}
+		used = used || tused
+		if tnode != nil {
+			node = tnode
+		}
+		if s.Else != nil {
+			eok, eused, enode := em.safeNonRcTree(s.Else, name, typ, types)
+			if !eok {
+				return false, false, nil
+			}
+			used = used || eused
+			if enode != nil {
+				node = enode
+			}
+		}
+		return true, used, node
+	case *ast.ForStmt:
+		ok, used, node := em.safeNonRcExprUse(s.Iter, name, typ, types)
+		if !ok {
+			return false, false, nil
+		}
+		bok, bused, bnode := em.safeNonRcBlock(s.Body, name, typ, types)
+		if !bok {
+			return false, false, nil
+		}
+		used = used || bused
+		if bnode != nil {
+			node = bnode
+		}
+		return true, used, node
+	case *ast.RegionStmt:
+		return em.safeNonRcBlock(s.Body, name, typ, types)
+	case *ast.ParallelStmt:
+		return em.safeNonRcBlock(s.Body, name, typ, types)
+	case *ast.SelectStmt:
+		used := false
+		var node ast.Node
+		for _, arm := range s.Arms {
+			ok, u, n := em.safeNonRcExprUse(arm.Chan, name, typ, types)
+			if !ok {
+				return false, false, nil
+			}
+			used = used || u
+			if n != nil {
+				node = n
+			}
+			ok, u, n = em.safeNonRcExprUse(arm.Timeout, name, typ, types)
+			if !ok {
+				return false, false, nil
+			}
+			used = used || u
+			if n != nil {
+				node = n
+			}
+			ok, u, n = em.safeNonRcTree(arm.Body, name, typ, types)
+			if !ok {
+				return false, false, nil
+			}
+			used = used || u
+			if n != nil {
+				node = n
+			}
+		}
+		return true, used, node
+	case *ast.MatchExpr:
+		ok, used, node := em.safeNonRcExprUse(s.Subject, name, typ, types)
+		if !ok {
+			return false, false, nil
+		}
+		for _, arm := range s.Arms {
+			gok, gused, gnode := em.safeNonRcExprUse(arm.Guard, name, typ, types)
+			if !gok {
+				return false, false, nil
+			}
+			used = used || gused
+			if gnode != nil {
+				node = gnode
+			}
+			bok, bused, bnode := em.safeNonRcTree(arm.Body, name, typ, types)
+			if !bok {
+				return false, false, nil
+			}
+			used = used || bused
+			if bnode != nil {
+				node = bnode
+			}
+		}
+		return true, used, node
+	case *ast.DeadlineExpr:
+		ok, used, node := em.safeNonRcExprUse(s.Duration, name, typ, types)
+		if !ok {
+			return false, false, nil
+		}
+		bok, bused, bnode := em.safeNonRcBlock(s.Body, name, typ, types)
+		if !bok {
+			return false, false, nil
+		}
+		used = used || bused
+		if bnode != nil {
+			node = bnode
+		}
+		return true, used, node
+	}
+	ok, node := em.safeNonRcStmt(st, name, typ, types)
+	if !ok {
+		return false, false, nil
+	}
+	used := containsNameInStmt(st, name)
+	if node == nil && used {
+		node = lastNodeInStmt(st, name)
+	}
+	return true, used, node
+}
+
+func (em *emitter) safeNonRcBlock(b *ast.Block, name string, typ *ast.Type, types map[string]*ast.Type) (bool, bool, ast.Node) {
+	used := false
+	var node ast.Node
+	if b == nil {
+		return true, false, nil
+	}
+	for _, st := range b.Stmts {
+		ok, u, n := em.safeNonRcTree(st, name, typ, types)
+		if !ok {
+			return false, false, nil
+		}
+		used = used || u
+		if n != nil {
+			node = n
+		}
+	}
+	return true, used, node
+}
+
+func (em *emitter) safeNonRcExprUse(e ast.Expr, name string, typ *ast.Type, types map[string]*ast.Type) (bool, bool, ast.Node) {
+	if e == nil || !containsNameInExpr(e, name) {
+		return true, false, nil
+	}
+	if !em.safeNonRcExpr(e, name, typ, types) {
+		return false, false, nil
+	}
+	return true, true, lastNode(e, name)
+}
+
+func lastNodeInStmt(st ast.Stmt, name string) ast.Node {
+	found := false
+	var node ast.Node
+	walkStmtExprs(st, func(e ast.Expr) {
+		if n := lastNode(e, name); n != nil {
+			node = n
+			found = true
+		}
+	})
+	if found {
+		return node
+	}
+	return nil
 }
 
 // safeNonRcStmt accepts a statement that only calls methods which do not keep

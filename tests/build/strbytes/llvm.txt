@@ -304,30 +304,30 @@ deep.rel.adt.done.12.1:
   call void @willrt_free_str(ptr %t183)
   ret i32 1
 if.end.10:
-  %t184 = getelementptr inbounds { ptr, i64 }, ptr %v.letter, i32 0, i32 0
-  %t185 = load ptr, ptr %t184
-  call void @willrt_free_str(ptr %t185)
-  %t186 = getelementptr inbounds { ptr, i64 }, ptr %v.head, i32 0, i32 0
-  %t187 = load ptr, ptr %t186
-  call void @willrt_free_str(ptr %t187)
-  %t188 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.copy, i32 0, i32 0
-  %t189 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.copy, i32 0, i32 1
-  %t190 = load ptr, ptr %t188
-  %t191 = load i64, ptr %t189
-  %t192 = alloca i64
-  store i64 0, ptr %t192
+  %t184 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.copy, i32 0, i32 0
+  %t185 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.copy, i32 0, i32 1
+  %t186 = load ptr, ptr %t184
+  %t187 = load i64, ptr %t185
+  %t188 = alloca i64
+  store i64 0, ptr %t188
   br label %deep.rel.arr.cond.13
 deep.rel.arr.cond.13:
-  %t193 = load i64, ptr %t192
-  %t194 = icmp ult i64 %t193, %t191
-  br i1 %t194, label %deep.rel.arr.body.13, label %deep.rel.arr.done.13
+  %t189 = load i64, ptr %t188
+  %t190 = icmp ult i64 %t189, %t187
+  br i1 %t190, label %deep.rel.arr.body.13, label %deep.rel.arr.done.13
 deep.rel.arr.body.13:
-  %t195 = getelementptr inbounds i8, ptr %t190, i64 %t193
-  %t196 = add i64 %t193, 1
-  store i64 %t196, ptr %t192
+  %t191 = getelementptr inbounds i8, ptr %t186, i64 %t189
+  %t192 = add i64 %t189, 1
+  store i64 %t192, ptr %t188
   br label %deep.rel.arr.cond.13
 deep.rel.arr.done.13:
-  call void @willrt_free(ptr %t190)
+  call void @willrt_free(ptr %t186)
+  %t193 = getelementptr inbounds { ptr, i64 }, ptr %v.letter, i32 0, i32 0
+  %t194 = load ptr, ptr %t193
+  call void @willrt_free_str(ptr %t194)
+  %t195 = getelementptr inbounds { ptr, i64 }, ptr %v.head, i32 0, i32 0
+  %t196 = load ptr, ptr %t195
+  call void @willrt_free_str(ptr %t196)
   %t197 = load i32, ptr %v.idx
   %t198 = icmp eq i32 %t197, 1
   br i1 %t198, label %deep.rel.adt.14.1, label %deep.rel.adt.done.14.1

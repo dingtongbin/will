@@ -276,6 +276,50 @@ func TestEmitStructOwningFieldPinsToBlockEnd(t *testing.T) {
 	}
 }
 
+func TestEmitArrayReleaseAfterNestedIfUse(t *testing.T) {
+	src := "func F() {\n" +
+		"    var xs: Array<i32> = new Array<i32>(4)\n" +
+		"    if true {\n" +
+		"        xs.Push(1)\n" +
+		"    }\n" +
+		"    var later: i32 = 2\n" +
+		"    _ = later\n" +
+		"}\n"
+	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
+	var positions []string
+	for _, r := range doc.Records {
+		if r.Kind == "release" {
+			positions = append(positions, testFieldText(r, "pos"))
+		}
+	}
+	want := []string{"test.will:4:9"}
+	if len(positions) != len(want) || positions[0] != want[0] {
+		t.Fatalf("release positions = %v, want %v", positions, want)
+	}
+}
+
+func TestEmitArrayReleaseAfterLoopUse(t *testing.T) {
+	src := "func F() {\n" +
+		"    var xs: Array<i32> = new Array<i32>(4)\n" +
+		"    for i in Range(0, 3) {\n" +
+		"        xs.Push(i)\n" +
+		"    }\n" +
+		"    var later: i32 = 2\n" +
+		"    _ = later\n" +
+		"}\n"
+	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
+	var positions []string
+	for _, r := range doc.Records {
+		if r.Kind == "release" {
+			positions = append(positions, testFieldText(r, "pos"))
+		}
+	}
+	want := []string{"test.will:4:9"}
+	if len(positions) != len(want) || positions[0] != want[0] {
+		t.Fatalf("release positions = %v, want %v", positions, want)
+	}
+}
+
 func TestEmitMovedArrayKeepsReleaseForMovedSource(t *testing.T) {
 	src := "func F() {\n" +
 		"    var first: Array<i32> = new Array<i32>(0)\n" +
