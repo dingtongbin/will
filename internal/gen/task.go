@@ -11,9 +11,14 @@ import (
 // spawnRequest is one step function the document still has to write. The step
 // evaluates the spawned call on the task thread and stores its result.
 type spawnRequest struct {
-	node int
-	call int
-	sym  string
+	node      int
+	call      int
+	sym       string
+	frameType string
+	argTexts  []string
+	indirect  bool
+	closure   string
+	dropSym   string
 }
 
 // taskElemText returns the value type of Task<T>.
@@ -189,14 +194,35 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		if err := g.shareValue(field, argTexts[i]); err != nil {
 			return "", err
 		}
+		// An rc handle is a copyable handle, not an owning value. The task keeps
+		// its own reference and the source stays usable.
+		if isRcText(argTexts[i]) {
+			if err := g.retainValue(field, argTexts[i]); err != nil {
+				return "", err
+			}
+			continue
+		}
 		if err := g.zeroTransferredSource(a, field); err != nil {
 			return "", err
 		}
 	}
 	step := g.spawnStepSymbol(r.ID)
+	closure := ""
+	if indirect {
+		closure = g.functionValueType(target)
+	}
+	dropSym := ""
+	if g.spawnFrameNeedsDrop(indirect, closure, argTexts) {
+		dropSym = step + ".drop"
+		g.needFrameDropDecl = true
+	}
 	if !g.spawnEmitted[step] {
 		g.spawnEmitted[step] = true
-		g.pendingSpawns = append(g.pendingSpawns, spawnRequest{node: r.ID, call: callID, sym: step})
+		g.pendingSpawns = append(g.pendingSpawns, spawnRequest{
+			node: r.ID, call: callID, sym: step, frameType: frameType,
+			argTexts: append([]string(nil), argTexts...), indirect: indirect,
+			closure: closure, dropSym: dropSym,
+		})
 	}
 	autoTask := place == "auto" && g.parallelDepth == 0
 	lane := laneValue
@@ -210,8 +236,13 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	task := g.newTmp()
 	if g.parallelDepth > 0 {
 		g.needJobDecl = true
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new(ptr @%s, ptr %s, i64 %s, i32 0)\n",
-			task, llvmSymbol(step), frame, size)
+		if dropSym != "" {
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, ptr @%s)\n",
+				task, llvmSymbol(step), frame, size, llvmSymbol(dropSym))
+		} else {
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new(ptr @%s, ptr %s, i64 %s, i32 0)\n",
+				task, llvmSymbol(step), frame, size)
+		}
 		g.needOwnFrameDecl = true
 		fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
 	} else {
@@ -222,8 +253,13 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			initialLane = "0"
 			g.needAutoTaskDecl = true
 		}
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
-			task, llvmSymbol(step), frame, size, initialLane)
+		if dropSym != "" {
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr @%s)\n",
+				task, llvmSymbol(step), frame, size, initialLane, llvmSymbol(dropSym))
+		} else {
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
+				task, llvmSymbol(step), frame, size, initialLane)
+		}
 		g.needOwnFrameDecl = true
 		fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
 		if autoTask {
@@ -275,6 +311,9 @@ func (g *generator) emitSpawns() error {
 			return nil
 		}
 		for _, req := range spawns {
+			if err := g.emitFrameDrop(req); err != nil {
+				return err
+			}
 			if err := g.emitSpawnStep(req); err != nil {
 				return err
 			}
@@ -296,6 +335,53 @@ func (g *generator) emitSpawns() error {
 		}
 	}
 	return fmt.Errorf("spawn lowering did not drain")
+}
+
+func (g *generator) spawnFrameNeedsDrop(indirect bool, closure string, argTexts []string) bool {
+	if indirect && ownsReleaseText(g, closure) {
+		return true
+	}
+	for _, text := range argTexts {
+		if ownsReleaseText(g, text) {
+			return true
+		}
+	}
+	return false
+}
+
+// emitFrameDrop writes the callback that releases captured values before the
+// runtime frees the heap frame. The task still owns these values after its step
+// returns; the result is a separate copy.
+func (g *generator) emitFrameDrop(req spawnRequest) error {
+	if req.dropSym == "" || g.spawnDropped[req.dropSym] {
+		return nil
+	}
+	g.spawnDropped[req.dropSym] = true
+	fmt.Fprintf(g.out, "define internal void @%s(ptr %%frame) {\nentry:\n", llvmSymbol(req.dropSym))
+	if req.indirect {
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 0\n", field, req.frameType)
+		if err := g.releaseOwnedValue(field, req.closure); err != nil {
+			return err
+		}
+	}
+	for i, text := range req.argTexts {
+		if !ownsReleaseText(g, text) {
+			continue
+		}
+		index := i
+		if req.indirect {
+			index++
+		}
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n",
+			field, req.frameType, index)
+		if err := g.releaseOwnedValue(field, text); err != nil {
+			return err
+		}
+	}
+	g.out.WriteString("  ret void\n}\n")
+	return nil
 }
 
 // emitSpawnStep writes one step: load the frame fields, call the target, store

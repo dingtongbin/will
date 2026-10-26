@@ -441,6 +441,11 @@ typedef struct willrt_task_error {
 
 willrt_task* willrt_task_new(void* step, void* frame, size_t size,
                              int32_t lane, int32_t prio);
+/* willrt_task_new_drop is willrt_task_new with a callback that releases the
+   owned values in the frame before the frame itself is freed. */
+willrt_task* willrt_task_new_drop(void* step, void* frame, size_t size,
+                                  int32_t lane, int32_t prio,
+                                  void (*frame_drop)(void*));
 /* willrt_task_own_frame marks the frame as allocated on the heap, so the
    region barrier frees it with the task. A frame that lives anywhere else
    must not be marked. */
@@ -450,6 +455,9 @@ void willrt_task_own_frame(willrt_task* task);
    suspend. The returned handle is joined like a task handle. */
 willrt_task* willrt_job_new(void* step, void* frame, size_t size,
                             int32_t prio);
+/* willrt_job_new_drop is willrt_job_new with the frame drop callback. */
+willrt_task* willrt_job_new_drop(void* step, void* frame, size_t size,
+                                 int32_t prio, void (*frame_drop)(void*));
 /* willrt_job_pop removes the oldest job from one lane's local queue. The lane
    worker calls it while it holds that lane's lock, so a concurrent enqueue
    cannot lose the wake. */

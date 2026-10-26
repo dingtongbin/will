@@ -49,6 +49,7 @@ struct willrt_task {
     willrt_step step;
     void* frame;
     size_t frame_size;
+    void (*frame_drop)(void*);
     int32_t frame_owned;
     int32_t lane;
     int32_t prio;
@@ -805,6 +806,12 @@ static void willrt_lane_shutdown(void) {
 
 willrt_task* willrt_task_new(void* step, void* frame, size_t size, int32_t lane,
                              int32_t prio) {
+    return willrt_task_new_drop(step, frame, size, lane, prio, NULL);
+}
+
+willrt_task* willrt_task_new_drop(void* step, void* frame, size_t size,
+                                  int32_t lane, int32_t prio,
+                                  void (*frame_drop)(void*)) {
     struct willrt_task* task;
     struct willrt_region* region;
 
@@ -817,6 +824,7 @@ willrt_task* willrt_task_new(void* step, void* frame, size_t size, int32_t lane,
     task->step = (willrt_step)step;
     task->frame = frame;
     task->frame_size = size;
+    task->frame_drop = frame_drop;
     task->lane = lane < 0 ? 0 : lane;
     task->prio = prio;
     willrt_os_mutex_init(&task->lock);
@@ -1352,6 +1360,9 @@ static void willrt_task_free(struct willrt_task* task) {
         willrt_free(task->result);
     }
     if (task->frame_owned) {
+        if (task->frame_drop != NULL) {
+            task->frame_drop(task->frame);
+        }
         willrt_free(task->frame);
     }
     willrt_os_mutex_destroy(&task->lock);

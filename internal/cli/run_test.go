@@ -142,6 +142,170 @@ func main() -> i32 {
 	}
 }
 
+// TestRunSpawnDropsArrayCapture checks that the task frame releases an owned
+// array before the runtime frees the frame.
+func TestRunSpawnDropsArrayCapture(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func Count(xs: Array<str>) -> i32 {
+    return i32(xs.Len())
+}
+
+func main() -> i32 {
+    var xs: Array<str> = new Array<str>(2)
+    xs.Push("a")
+    xs.Push("b")
+    var t: Task<i32> = spawn Count(xs)
+    return wait(t.Join())!
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 2 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
+// TestCheckTopLevelWrite checks the O0009 message and help text through the
+// command line, not only through the check package.
+func TestCheckTopLevelWrite(t *testing.T) {
+	src := `var counter: i32 = 0
+
+func main() -> i32 {
+    counter = 1
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, _ := runCLI("check", path)
+	if code != 1 {
+		t.Fatalf("code = %d, stdout = %q", code, out)
+	}
+	if !strings.Contains(out, "O0009 top-level counter is published and read-only") ||
+		!strings.Contains(out, "help: put the mutable state behind an rc and a guard") {
+		t.Fatalf("stdout = %q", out)
+	}
+}
+
+// TestRunPlaceMoves checks that field and index places move out of a dead local
+// root in assignment, return, aggregate, and Option construction positions.
+func TestRunPlaceMoves(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `struct S {
+    x: str
+    y: str
+}
+
+struct T {
+    x: str
+}
+
+func FieldReturn() -> str {
+    var s: S = S { x: "abc", y: "de" }
+    return s.x
+}
+
+func IndexReturn() -> str {
+    var xs: Array<str> = new Array<str>(2)
+    xs.Push("wxyz")
+    return xs[0]
+}
+
+func Moves() -> i32 {
+    var s: S = S { x: "abc", y: "de" }
+    var t: T = T { x: s.x }
+    var s2: S = S { x: "fg", y: "hij" }
+    var o: Option<str> = Some(s2.y)
+    var n: i32 = i32(t.x.Len())
+    return n + match o {
+        Some(v) => i32(v.Len())
+        None => 0
+    }
+}
+
+func AssignMove() -> i32 {
+    var a: S = S { x: "abc", y: "de" }
+    var b: S
+    b.x = a.x
+    b.y = "z"
+    return i32(b.x.Len() + b.y.Len())
+}
+
+func main() -> i32 {
+    return i32(FieldReturn().Len() + IndexReturn().Len()) + Moves() + AssignMove()
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 17 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
+// TestRunNestedEnumAndFixedArrayClone checks that a struct field holding an
+// owning enum and a struct field holding an owning fixed array both deep-copy
+// and release through the recursive value paths.
+func TestRunNestedEnumAndFixedArrayClone(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `enum E {
+    Empty
+    Text(str)
+}
+
+struct H {
+    e: E
+}
+
+struct F {
+    xs: [2]str
+}
+
+func TextLen(e: E) -> i32 {
+    return match e {
+        Text(s) => i32(s.Len())
+        Empty => 0
+    }
+}
+
+func main() -> i32 {
+    var h: H = H { e: E.Text("hello") }
+    var hc: H = h.Clone()
+
+    var f: F
+    f.xs[0] = "ab"
+    f.xs[1] = "cde"
+    var fc: F = f.Clone()
+
+    var e2: E = E.Text("xy")
+    var e3: E = e2.Clone()
+    var xs: [2]str
+    xs[0] = "z"
+    var ys: [2]str = xs.Clone()
+
+    return TextLen(hc.e) + TextLen(e3) + i32(fc.xs[0].Len() + fc.xs[1].Len() + ys[0].Len())
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 13 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunArrayBatchRelease checks that two equal arrays released at one point
 // share a plate and free it once.
 func TestRunArrayBatchRelease(t *testing.T) {

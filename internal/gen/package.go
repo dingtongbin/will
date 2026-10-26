@@ -145,6 +145,7 @@ func newGenerator(lib bool, aliases map[string]string) *generator {
 		emittedTypeIDs: map[string]bool{},
 		thunkEmitted:   map[string]bool{},
 		spawnEmitted:   map[string]bool{},
+		spawnDropped:   map[string]bool{},
 		dropEmitted:    map[string]bool{},
 		out:            &strings.Builder{},
 		aliases:        aliases,

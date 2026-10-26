@@ -207,9 +207,14 @@ void willrt_jobs_shutdown(void) {
 
 willrt_task* willrt_job_new(void* step, void* frame, size_t size,
                             int32_t prio) {
+    return willrt_job_new_drop(step, frame, size, prio, NULL);
+}
+
+willrt_task* willrt_job_new_drop(void* step, void* frame, size_t size,
+                                 int32_t prio, void (*frame_drop)(void*)) {
     willrt_task* task;
 
-    task = willrt_task_new(step, frame, size, 0, prio);
+    task = willrt_task_new_drop(step, frame, size, 0, prio, frame_drop);
     if (task == NULL) {
         return NULL;
     }

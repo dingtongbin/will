@@ -1402,23 +1402,25 @@ func TestEmitStructArgumentIsABorrow(t *testing.T) {
 	}
 }
 
-func TestEmitUnusedUnloweredStructIsIgnored(t *testing.T) {
+func TestEmitNestedFixedArrayStructIsEmitted(t *testing.T) {
 	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: [2]P\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
 	}
-	if strings.Contains(normalizeIR(string(ir)), "%\"struct.example.com/app.Text\"") {
-		t.Fatalf("a struct whose field is not lowered was emitted:\n%s", ir)
+	text := normalizeIR(string(ir))
+	if !strings.Contains(text, `%"struct.example.com/app.Text"`) ||
+		!strings.Contains(text, `[2 x %"struct.example.com/app.P"]`) {
+		t.Fatalf("the nested fixed-array struct was not emitted:\n%s", ir)
 	}
 }
 
-func TestEmitUnloweredFieldIsReported(t *testing.T) {
+func TestEmitNestedFixedArrayFieldIsLowered(t *testing.T) {
 	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: [2]P\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
-	if _, err := Emit(doc); err == nil {
-		t.Fatal("a parameter whose struct field is not lowered was translated")
+	if _, err := Emit(doc); err != nil {
+		t.Fatalf("a parameter whose struct field is a fixed array was rejected: %v", err)
 	}
 }
 
@@ -1601,13 +1603,16 @@ func TestEmitArrayIterationWithOneBinding(t *testing.T) {
 	}
 }
 
-func TestEmitArrayIterationRejectsUnsupportedElements(t *testing.T) {
-	// An array of str is not lowered yet; the loop must say so instead of
-	// emitting a load of an unsupported type.
-	src := "func Count(xs: [2]str) -> i32 {\n    return 0\n}\n"
+func TestEmitFixedArrayOfStrIsLowered(t *testing.T) {
+	src := "func Count(xs: [2]str) -> i32 {\n    _ = xs[0].Len()\n    return 0\n}\n"
 	doc := emitWillc(t, src)
-	if _, err := Emit(doc); err == nil {
-		t.Fatal("an array of str was lowered")
+	ir, err := Emit(doc)
+	if err != nil {
+		t.Fatalf("fixed array of str: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	if !strings.Contains(text, "define i32") || !strings.Contains(text, "ptr %xs") {
+		t.Fatalf("the fixed array of str has no layout:\n%s", ir)
 	}
 }
 
@@ -1816,6 +1821,34 @@ func TestSpawnSharesRCHandles(t *testing.T) {
 	for _, want := range []string{
 		"call void @willrt_rc_share(i64",
 		"declare void @willrt_rc_share(i64)",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
+func TestSpawnFrameDropReleasesCapturedArray(t *testing.T) {
+	src := "func Count(xs: Array<str>) -> i32 {\n" +
+		"    return i32(xs.Len())\n" +
+		"}\n\n" +
+		"func main() -> i32 {\n" +
+		"    var xs: Array<str> = new Array<str>(2)\n" +
+		"    xs.Push(\"a\")\n" +
+		"    var t: Task<i32> = spawn Count(xs)\n" +
+		"    return t.Join()!\n" +
+		"}\n"
+	doc := emitWillc(t, src)
+	ir, err := EmitWithEntry(doc, "main")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		"call ptr @willrt_task_new_drop(ptr @",
+		"@\"example.com/app.spawn.1.drop\"(ptr %frame)",
+		"call void @willrt_free_str(ptr",
+		"call void @willrt_free(ptr",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
