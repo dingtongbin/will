@@ -84,7 +84,13 @@ func (em *emitter) releaseType(t *ast.Type) bool {
 		case "Array", "Map", "Set":
 			return true
 		}
-		_, ok := em.structs[shortName(t.Name)]
+		if _, ok := em.structs[shortName(t.Name)]; ok {
+			return true
+		}
+		_, ok := em.external[t.Name]
+		if !ok {
+			_, ok = em.external[shortName(t.Name)]
+		}
 		return ok
 	}
 	return false
@@ -399,6 +405,12 @@ func (em *emitter) fieldType(t *ast.Type, name string) *ast.Type {
 	}
 	s, ok := em.structs[shortName(t.Name)]
 	if !ok {
+		s = em.external[t.Name]
+	}
+	if s == nil {
+		s = em.external[shortName(t.Name)]
+	}
+	if s == nil {
 		return nil
 	}
 	for _, f := range s.Fields {
@@ -440,8 +452,14 @@ func (em *emitter) typeOwnsDepth(t *ast.Type, active map[string]bool) bool {
 			}
 			return false
 		}
-		s, ok := em.structs[shortName(t.Name)]
-		if !ok {
+		s := em.structs[shortName(t.Name)]
+		if s == nil {
+			s = em.external[t.Name]
+		}
+		if s == nil {
+			s = em.external[shortName(t.Name)]
+		}
+		if s == nil {
 			return true
 		}
 		if active[s.Name] {

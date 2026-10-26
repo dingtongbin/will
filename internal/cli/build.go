@@ -181,6 +181,35 @@ func reportDiagnostics(ds []diag.Diagnostic, opts buildOptions, stdout io.Writer
 	io.WriteString(stdout, diag.FormatAll(ds))
 }
 
+// externalStructs indexes every struct declaration in the loaded module so the
+// willc release planner can classify imported field reads. The map contains
+// short, package-name, and package-path spellings; ambiguous short names keep
+// the last declaration only, which is safe because the planner treats a missing
+// field as owning and pins the owner.
+func (fe frontEnd) externalStructs() map[string]*ast.StructDecl {
+	out := map[string]*ast.StructDecl{}
+	if fe.build == nil {
+		return out
+	}
+	for _, p := range fe.build.Packages {
+		for _, f := range p.Files {
+			if f.AST == nil {
+				continue
+			}
+			for _, d := range f.AST.Decls {
+				s, ok := d.(*ast.StructDecl)
+				if !ok {
+					continue
+				}
+				out[s.Name] = s
+				out[p.Name+"."+s.Name] = s
+				out[p.Path+"."+s.Name] = s
+			}
+		}
+	}
+	return out
+}
+
 // sourceReader returns a reader that reads each file's bytes once.
 func sourceReader() func(string) []byte {
 	cache := map[string][]byte{}
@@ -244,7 +273,7 @@ func (fe frontEnd) docs(opts buildOptions) ([]*willc.Doc, []string, error) {
 	var docs []*willc.Doc
 	var texts []string
 	emit := func(f *ast.File, path, pkgPath string, res *resolve.Result, lits map[*ast.LiteralExpr]string, calls map[*ast.CallExpr]string, names map[*ast.NameExpr]string) error {
-		text, err := willc.Emit(f, res, pkgPath, nil, lits, calls, names, fe.aliases)
+		text, err := willc.Emit(f, res, pkgPath, nil, lits, calls, names, fe.aliases, fe.externalStructs())
 		if err != nil {
 			return err
 		}

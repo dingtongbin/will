@@ -14,7 +14,11 @@ import (
 //
 // The emitter assigns ids in the same preorder it writes, so a reference to a
 // node that has not been written yet is patched after the walk.
-func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diagnostic, litTypes map[*ast.LiteralExpr]string, callTypes map[*ast.CallExpr]string, nameTypes map[*ast.NameExpr]string, aliases map[string]string) ([]byte, error) {
+func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diagnostic, litTypes map[*ast.LiteralExpr]string, callTypes map[*ast.CallExpr]string, nameTypes map[*ast.NameExpr]string, aliases map[string]string, external ...map[string]*ast.StructDecl) ([]byte, error) {
+	var externalStructs map[string]*ast.StructDecl
+	if len(external) != 0 {
+		externalStructs = external[0]
+	}
 	e := &emitter{
 		ids:        map[ast.Node]int{},
 		refs:       res.Refs,
@@ -26,6 +30,7 @@ func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diag
 		released:   map[ast.Node]bool{},
 		moved:      map[ast.Node]bool{},
 		structs:    collectStructs(f),
+		external:   externalStructs,
 		localTypes: map[string]*ast.Type{},
 	}
 	root := e.add("module", f)
@@ -72,6 +77,10 @@ type emitter struct {
 	// structs holds the local struct declarations, so a field read can be
 	// classified as a scalar/rc copy, a view, or an owning value.
 	structs map[string]*ast.StructDecl
+	// external holds struct declarations from other files or packages, keyed by
+	// their short and package-qualified names. Imported fields need the same
+	// ownership classification as local ones.
+	external map[string]*ast.StructDecl
 	// localTypes is the type of every local and parameter currently visible.
 	localTypes map[string]*ast.Type
 }
