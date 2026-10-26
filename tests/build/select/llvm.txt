@@ -199,7 +199,7 @@ select.fast.end.5:
   ret i32 1
 
 }
-define hidden ptr @"example.com/select.will$main.task"(i32 %start) {
+define hidden ptr @"example.com/select.will$main.task"(i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 256)
   %t73 = getelementptr i8, ptr %v.sm.frame, i64 16
@@ -244,7 +244,7 @@ declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %t87 = call ptr @"example.com/select.will$main.task"(i32 -2)
+  %t87 = call ptr @"example.com/select.will$main.task"(i32 -2, i32 0)
   %t89 = alloca i32
   %t88 = call i32 @willrt_join(ptr %t87, ptr %t89, ptr null)
   %t90 = icmp ne i32 %t88, 0

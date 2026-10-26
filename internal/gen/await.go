@@ -15,7 +15,7 @@ func (g *generator) awaitCallJoin(r willc.Record) (string, string, string, strin
 	if sym == "" {
 		return "", "", "", "", g.errf(r.ID, "cannot translate node #%d: the called function has no symbol", r.ID)
 	}
-	task, err := g.emitConstructorCall(r, sym, "-2")
+	task, err := g.emitConstructorCall(r, sym, "-2", false)
 	if err != nil {
 		return "", "", "", "", err
 	}

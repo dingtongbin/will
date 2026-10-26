@@ -223,8 +223,15 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 	g.smMode = false
 	g.flushLateAllocas()
 	g.out.WriteString("}\n")
-	if dropSym := g.asyncFrameDropSymbol(info); dropSym != "" {
-		if err := g.emitAsyncFrameDrop(info, dropSym); err != nil {
+	borrowDrop := g.asyncFrameDropSymbol(info, false)
+	ownDrop := g.asyncFrameDropSymbol(info, true)
+	if borrowDrop != "" {
+		if err := g.emitAsyncFrameDrop(info, borrowDrop, false); err != nil {
+			return err
+		}
+	}
+	if ownDrop != "" && ownDrop != borrowDrop {
+		if err := g.emitAsyncFrameDrop(info, ownDrop, true); err != nil {
 			return err
 		}
 	}
@@ -271,7 +278,7 @@ func (g *generator) emitAsyncStart(info *asyncMachineInfo, seg *asyncSegment, in
 			done, index, index)
 		fmt.Fprintf(g.out, "sm.start.wait.%d:\n", index)
 	} else {
-		child, err := g.emitConstructorCall(seg.call, seg.targetSym, "-2")
+		child, err := g.emitConstructorCall(seg.call, seg.targetSym, "-2", false)
 		if err != nil {
 			return err
 		}

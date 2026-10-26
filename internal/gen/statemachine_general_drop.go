@@ -3,6 +3,8 @@ package gen
 import (
 	"fmt"
 	"sort"
+
+	"github.com/will-lang/will/internal/willc"
 )
 
 // generalFrameOwner is one owning local slot in a raw general state-machine
@@ -65,13 +67,63 @@ func (g *generator) emitGeneralFrameZero(frame string, owners []generalFrameOwne
 	}
 }
 
-// emitGeneralFrameDrop writes the callback that releases locals left in a
-// general state-machine frame after cancellation, panic, or normal completion.
+// generalFrameParamOwners collects by-value parameters that a spawned frame
+// owns. A mut parameter is a pointer into the caller's place, and a receiver is
+// borrowed, so neither enters the cleanup list.
+func (g *generator) generalFrameParamOwners(fnID int, offsets map[string]int,
+	params []willc.Record) []generalFrameOwner {
+	var out []generalFrameOwner
+	for _, p := range params {
+		if p.Kind != "param" || fieldText(p, "mut") == "true" {
+			continue
+		}
+		text := fieldText(p, "type")
+		if !ownsReleaseText(g, text) {
+			continue
+		}
+		slot := g.smParamSlot[p.ID]
+		offset, ok := offsets[slot]
+		if !ok {
+			continue
+		}
+		llvm, ok := g.typeLLVMOf(text)
+		if !ok || llvm == "" {
+			continue
+		}
+		out = append(out, generalFrameOwner{id: p.ID, offset: offset, llvm: llvm, text: text})
+	}
+	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+		out[i], out[j] = out[j], out[i]
+	}
+	return out
+}
+
+// generalFrameDropSymbols returns the borrow and ownership callbacks for one
+// general frame. The constructor selects between them with the spawn owns flag.
+// An ownership-only frame still gets an empty borrow callback so await can
+// install it without releasing a borrowed parameter.
+func generalFrameDropSymbols(sym string, locals, params []generalFrameOwner) (string, string) {
+	borrow := ""
+	own := ""
+	if len(locals) != 0 || len(params) != 0 {
+		borrow = sym + ".drop"
+	}
+	if len(params) != 0 {
+		own = sym + ".drop.own"
+	} else {
+		own = borrow
+	}
+	return borrow, own
+}
+
+// emitGeneralFrameDrop writes the callback that releases locals and owned
+// parameters left in a general state-machine frame after cancellation, panic,
+// or normal completion.
 func (g *generator) emitGeneralFrameDrop(sym string, owners []generalFrameOwner) error {
-	if len(owners) == 0 {
+	if sym == "" {
 		return nil
 	}
-	fmt.Fprintf(g.out, "define internal void @%s(ptr %%frame) {\nentry:\n", llvmSymbol(sym+".drop"))
+	fmt.Fprintf(g.out, "define internal void @%s(ptr %%frame) {\nentry:\n", llvmSymbol(sym))
 	for _, owner := range owners {
 		ptr := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %%frame, i64 %d\n", ptr, owner.offset)

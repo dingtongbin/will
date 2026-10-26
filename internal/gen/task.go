@@ -104,11 +104,25 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 				return "", g.errf(r.ID, "cannot translate node #%d: the spawned function has no symbol", r.ID)
 			}
 			g.enqueueGeneral(target.ID)
-			return g.emitConstructorCall(call, sym, start)
+			task, err := g.emitConstructorCall(call, sym, start, true)
+			if err != nil {
+				return "", err
+			}
+			if err := g.finishAsyncSpawnArgs(call, sym); err != nil {
+				return "", err
+			}
+			return task, nil
 		}
 		if info, ok := g.selectMachine(target.ID); ok {
 			g.pendingSelect = append(g.pendingSelect, info)
-			return g.emitConstructorCall(call, g.cur.funcs[target.ID], start)
+			task, err := g.emitConstructorCall(call, g.cur.funcs[target.ID], start, true)
+			if err != nil {
+				return "", err
+			}
+			if err := g.finishAsyncSpawnArgs(call, g.cur.funcs[target.ID]); err != nil {
+				return "", err
+			}
+			return task, nil
 		}
 	}
 	sym := ""
@@ -120,7 +134,14 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			return "", g.errf(r.ID, "cannot translate node #%d: the spawned call has no function", r.ID)
 		}
 		if g.suspendableFor(sym) {
-			return g.emitConstructorCall(call, sym, start)
+			task, err := g.emitConstructorCall(call, sym, start, true)
+			if err != nil {
+				return "", err
+			}
+			if err := g.finishAsyncSpawnArgs(call, sym); err != nil {
+				return "", err
+			}
+			return task, nil
 		}
 	}
 	args := g.callArgs(call)
@@ -348,6 +369,56 @@ func (g *generator) emitSpawns() error {
 		}
 	}
 	return fmt.Errorf("spawn lowering did not drain")
+}
+
+// argIsParameter reports whether an argument expression names a parameter or
+// receiver. Such a value is borrowed; an async spawn clones it into its frame
+// instead of clearing the caller's place.
+func (g *generator) argIsParameter(id int) bool {
+	r, ok := g.recs[id]
+	if !ok || r.Kind != "name" {
+		return false
+	}
+	decl, ok := g.recs[refField(r, "to")]
+	if !ok {
+		return false
+	}
+	return decl.Kind == "param" || decl.Kind == "receiver"
+}
+
+// finishAsyncSpawnArgs transfers the arguments that an async constructor copied
+// into its frame. rc and channel handles stay copyable, so their source keeps a
+// reference; owned values are cleared after the constructor took the shallow
+// copy. Parameters were cloned by emitConstructorCall and stay with the caller.
+func (g *generator) finishAsyncSpawnArgs(call willc.Record, targetSym string) error {
+	args := g.callArgs(call)
+	muts := g.paramMut[targetSym]
+	for i, a := range args {
+		if i < len(muts) && muts[i] || g.argIsParameter(a) {
+			continue
+		}
+		text, err := g.willTypeText(a)
+		if err != nil || !ownsReleaseText(g, text) {
+			continue
+		}
+		if isRcText(text) || isChanText(text) {
+			if !g.isCopySource(a) {
+				continue
+			}
+			src, _, err := g.place(a)
+			if err != nil {
+				return err
+			}
+			if err := g.retainValue(src, text); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := g.zeroTransferredSource(a, ""); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (g *generator) spawnFrameNeedsDrop(indirect bool, closure string, argTexts []string) bool {

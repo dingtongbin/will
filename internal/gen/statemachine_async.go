@@ -12,6 +12,7 @@ type asyncField struct {
 	llvm      string
 	aggregate bool
 	param     bool
+	paramMut  bool
 }
 
 // asyncMachineInfo describes one function whose only wait is a direct async C
@@ -97,5 +98,6 @@ func (g *generator) asyncFieldOf(r willc.Record, param bool) (asyncField, bool) 
 		llvm:      llvm,
 		aggregate: isAggregateType(llvm),
 		param:     param,
+		paramMut:  fieldText(r, "mut") == "true" || r.Kind == "receiver",
 	}, true
 }

@@ -391,8 +391,15 @@ func (g *generator) emitSelectMachineStep(info *selectMachineInfo) error {
 	g.smMode = false
 	g.flushLateAllocas()
 	g.out.WriteString("}\n")
-	if dropSym := g.asyncFrameDropSymbol(info.base); dropSym != "" {
-		if err := g.emitAsyncFrameDrop(info.base, dropSym); err != nil {
+	borrowDrop := g.asyncFrameDropSymbol(info.base, false)
+	ownDrop := g.asyncFrameDropSymbol(info.base, true)
+	if borrowDrop != "" {
+		if err := g.emitAsyncFrameDrop(info.base, borrowDrop, false); err != nil {
+			return err
+		}
+	}
+	if ownDrop != "" && ownDrop != borrowDrop {
+		if err := g.emitAsyncFrameDrop(info.base, ownDrop, true); err != nil {
 			return err
 		}
 	}

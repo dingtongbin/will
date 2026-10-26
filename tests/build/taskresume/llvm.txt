@@ -52,7 +52,7 @@ task.ok.1:
   ret i32 1
 
 }
-define hidden ptr @"example.com/taskresume.Work.task"(ptr %arg0, i32 %start) {
+define hidden ptr @"example.com/taskresume.Work.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 80)
   %t20 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -137,7 +137,7 @@ panic.ok.2:
   ret i32 1
 
 }
-define hidden ptr @"example.com/taskresume.WorkLocal.task"(ptr %arg0, i32 %start) {
+define hidden ptr @"example.com/taskresume.WorkLocal.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 80)
   %t52 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -253,7 +253,7 @@ panic.ok.5:
   ret i32 1
 
 }
-define hidden ptr @"example.com/taskresume.WorkPure.task"(ptr %arg0, i32 %start) {
+define hidden ptr @"example.com/taskresume.WorkPure.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 96)
   %t96 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -313,7 +313,7 @@ sm.init:
   call void @willrt_task_run_auto(ptr %t108)
   store ptr %t108, ptr %v.inner
   %t109 = load ptr, ptr %v.inner
-  %t110 = call ptr @"example.com/taskresume.Work.task"(ptr %t109, i32 -1)
+  %t110 = call ptr @"example.com/taskresume.Work.task"(ptr %t109, i32 -1, i32 1)
   store ptr %t110, ptr %v.work
   %t111 = load ptr, ptr %v.work
   store ptr %t111, ptr %v.sm.join.task.112
@@ -357,7 +357,7 @@ if.then.2:
   ret i32 1
 if.end.2:
   %t132 = load ptr, ptr %v.inner
-  %t133 = call ptr @"example.com/taskresume.WorkLocal.task"(ptr %t132, i32 -1)
+  %t133 = call ptr @"example.com/taskresume.WorkLocal.task"(ptr %t132, i32 -1, i32 1)
   store ptr %t133, ptr %v.local
   %t134 = load ptr, ptr %v.local
   store ptr %t134, ptr %v.sm.join.task.135
@@ -401,7 +401,7 @@ if.then.4:
   ret i32 1
 if.end.4:
   %t155 = load ptr, ptr %v.inner
-  %t156 = call ptr @"example.com/taskresume.WorkPure.task"(ptr %t155, i32 -1)
+  %t156 = call ptr @"example.com/taskresume.WorkPure.task"(ptr %t155, i32 -1, i32 1)
   store ptr %t156, ptr %v.pure
   %t157 = load ptr, ptr %v.pure
   store ptr %t157, ptr %v.sm.join.task.158
@@ -451,7 +451,7 @@ if.end.6:
   ret i32 1
 
 }
-define hidden ptr @"example.com/taskresume.will$main.task"(i32 %start) {
+define hidden ptr @"example.com/taskresume.will$main.task"(i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 256)
   %t181 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -490,7 +490,7 @@ declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %t193 = call ptr @"example.com/taskresume.will$main.task"(i32 -2)
+  %t193 = call ptr @"example.com/taskresume.will$main.task"(i32 -2, i32 0)
   %t195 = alloca i32
   %t194 = call i32 @willrt_join(ptr %t193, ptr %t195, ptr null)
   %t196 = icmp ne i32 %t194, 0

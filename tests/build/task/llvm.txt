@@ -272,7 +272,7 @@ panic.ok.6:
   ret i32 1
 
 }
-define hidden ptr @"example.com/task.will$main.task"(i32 %start) {
+define hidden ptr @"example.com/task.will$main.task"(i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 288)
   %t118 = getelementptr i8, ptr %v.sm.frame, i64 32
@@ -348,7 +348,7 @@ declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %t148 = call ptr @"example.com/task.will$main.task"(i32 -2)
+  %t148 = call ptr @"example.com/task.will$main.task"(i32 -2, i32 0)
   %t150 = alloca i32
   %t149 = call i32 @willrt_join(ptr %t148, ptr %t150, ptr null)
   %t151 = icmp ne i32 %t149, 0

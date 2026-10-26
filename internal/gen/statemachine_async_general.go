@@ -85,7 +85,7 @@ func (g *generator) generalCallWait(r willc.Record) (string, error) {
 	if sym == "" {
 		return "", g.errf(r.ID, "cannot translate node #%d: the called function has no symbol", r.ID)
 	}
-	task, err := g.emitConstructorCall(r, sym, "-2")
+	task, err := g.emitConstructorCall(r, sym, "-2", false)
 	if err != nil {
 		return "", err
 	}
@@ -131,7 +131,7 @@ func (g *generator) generalCallWaitPlace(r willc.Record) (string, string, error)
 	if sym == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the called function has no symbol", r.ID)
 	}
-	task, err := g.emitConstructorCall(r, sym, "-2")
+	task, err := g.emitConstructorCall(r, sym, "-2", false)
 	if err != nil {
 		return "", "", err
 	}

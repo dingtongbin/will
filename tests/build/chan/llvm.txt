@@ -256,7 +256,7 @@ deep.rel.adt.done.12.1:
   ret i32 1
 
 }
-define hidden ptr @"example.com/chan.will$main.task"(i32 %start) {
+define hidden ptr @"example.com/chan.will$main.task"(i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
   %t99 = getelementptr i8, ptr %v.sm.frame, i64 28
@@ -319,7 +319,7 @@ declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %t120 = call ptr @"example.com/chan.will$main.task"(i32 -2)
+  %t120 = call ptr @"example.com/chan.will$main.task"(i32 -2, i32 0)
   %t122 = alloca i32
   %t121 = call i32 @willrt_join(ptr %t120, ptr %t122, ptr null)
   %t123 = icmp ne i32 %t121, 0

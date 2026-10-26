@@ -237,10 +237,19 @@ func (g *generator) emitGeneralStep(fnID int) error {
 	g.out.WriteString("}\n")
 
 	owners := g.generalFrameOwners(fnID, offsets)
-	if err := g.emitGeneralConstructor(fnID, sym, params, size, offsets, owners); err != nil {
+	paramOwners := g.generalFrameParamOwners(fnID, offsets, params)
+	borrowDrop, ownDrop := generalFrameDropSymbols(sym, owners, paramOwners)
+	if err := g.emitGeneralConstructor(fnID, sym, params, size, offsets, owners,
+		borrowDrop, ownDrop); err != nil {
 		return err
 	}
-	return g.emitGeneralFrameDrop(sym, owners)
+	if err := g.emitGeneralFrameDrop(borrowDrop, owners); err != nil {
+		return err
+	}
+	if ownDrop != borrowDrop {
+		return g.emitGeneralFrameDrop(ownDrop, append(owners, paramOwners...))
+	}
+	return nil
 }
 
 // smTryJoin starts a non-blocking join. The task pointer is stored in the
@@ -262,7 +271,7 @@ func (g *generator) smTryJoin(task, out, errSlot string) string {
 }
 
 func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.Record, size int,
-	offsets map[string]int, owners []generalFrameOwner) error {
+	offsets map[string]int, owners []generalFrameOwner, borrowDrop, ownDrop string) error {
 	var parts []string
 	var cancelPtrs []string
 	type paramABI struct {
@@ -286,16 +295,15 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	}
 	g.needAllocDecl = true
 	g.needTaskDecl = true
-	dropSym := ""
-	if len(owners) != 0 {
-		dropSym = sym + ".drop"
+	if borrowDrop != "" || ownDrop != "" {
 		g.needFrameDropDecl = true
 	}
 	// The constructor is hidden, not internal: a function of another package
 	// waits on this task, so the object that owns the function must export
 	// the entry that starts it. The last argument is -1 for auto placement and
 	// -2 for the current lane; any other value is the declared lane index.
-	parts = append(parts, "i32 %start")
+	// owns is set by spawn and clear by await.
+	parts = append(parts, "i32 %start", "i32 %owns")
 	fmt.Fprintf(g.out, "define hidden ptr @%s(%s) {\nentry:\n", llvmSymbol(sym+".task"), strings.Join(parts, ", "))
 	fmt.Fprintf(g.out, "  %%v.sm.frame = call ptr @willrt_alloc(i64 %d)\n", size)
 	g.emitGeneralFrameZero("%v.sm.frame", owners)
@@ -342,6 +350,18 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	laneValue := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = select i1 %s, i32 %s, i32 %%start\n",
 		laneValue, here, lane)
+	dropPtr := ""
+	if ownDrop != "" && borrowDrop != "" && ownDrop != borrowDrop {
+		ownsFlag := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp ne i32 %%owns, 0\n", ownsFlag)
+		dropPtr = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = select i1 %s, ptr @%s, ptr @%s\n",
+			dropPtr, ownsFlag, llvmSymbol(ownDrop), llvmSymbol(borrowDrop))
+	} else if ownDrop != "" {
+		dropPtr = ownDrop
+	} else {
+		dropPtr = borrowDrop
+	}
 	g.labels++
 	n := g.labels
 	autoLabel := fmt.Sprintf("sm.start.auto.%d", n)
@@ -350,9 +370,13 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", auto, autoLabel, laneLabel)
 	fmt.Fprintf(g.out, "%s:\n", autoLabel)
 	autoTask := g.newTmp()
-	if dropSym != "" {
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 0, i32 0, ptr @%s)\n",
-			autoTask, llvmSymbol(sym+".sm"), size, llvmSymbol(dropSym))
+	if dropPtr != "" {
+		dropValue := dropPtr
+		if dropPtr == ownDrop || dropPtr == borrowDrop {
+			dropValue = "@" + llvmSymbol(dropPtr)
+		}
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 0, i32 0, ptr %s)\n",
+			autoTask, llvmSymbol(sym+".sm"), size, dropValue)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 0, i32 0)\n",
 			autoTask, llvmSymbol(sym+".sm"), size)
@@ -368,9 +392,13 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	fmt.Fprintf(g.out, "  br label %%%s\n", doneLabel)
 	fmt.Fprintf(g.out, "%s:\n", laneLabel)
 	laneTask := g.newTmp()
-	if dropSym != "" {
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0, ptr @%s)\n",
-			laneTask, llvmSymbol(sym+".sm"), size, laneValue, llvmSymbol(dropSym))
+	if dropPtr != "" {
+		dropValue := dropPtr
+		if dropPtr == ownDrop || dropPtr == borrowDrop {
+			dropValue = "@" + llvmSymbol(dropPtr)
+		}
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0, ptr %s)\n",
+			laneTask, llvmSymbol(sym+".sm"), size, laneValue, dropValue)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0)\n",
 			laneTask, llvmSymbol(sym+".sm"), size, laneValue)

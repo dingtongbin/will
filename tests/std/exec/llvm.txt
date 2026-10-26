@@ -1271,7 +1271,7 @@ share.done.8:
   ret i32 1
 
 }
-define hidden ptr @"std/os/exec.Cmd.AsyncRun.task"(ptr %arg0, i32 %start) {
+define hidden ptr @"std/os/exec.Cmd.AsyncRun.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 368)
   %t155 = getelementptr i8, ptr %v.sm.frame, i64 80
@@ -1723,7 +1723,7 @@ share.done.12:
   ret i32 1
 
 }
-define hidden ptr @"std/os/exec.Cmd.AsyncOutput.task"(ptr %arg0, i32 %start) {
+define hidden ptr @"std/os/exec.Cmd.AsyncOutput.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 656)
   %t363 = getelementptr i8, ptr %v.sm.frame, i64 128
@@ -1959,7 +1959,7 @@ sm.init:
   store %"struct.std/os/exec.Cmd" %t16, ptr %v.ret.8
   %t17 = load %"struct.std/os/exec.Cmd", ptr %v.ret.8
   store %"struct.std/os/exec.Cmd" %t17, ptr %v.command
-  %t18 = call ptr @"std/os/exec.Cmd.AsyncOutput.task"(ptr %v.command, i32 -2)
+  %t18 = call ptr @"std/os/exec.Cmd.AsyncOutput.task"(ptr %v.command, i32 -2, i32 0)
   store ptr %t18, ptr %v.sm.join.task.21
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
@@ -2431,7 +2431,7 @@ match.end.4:
   store %"struct.std/os/exec.Cmd" %t250, ptr %v.ret.58
   %t251 = load %"struct.std/os/exec.Cmd", ptr %v.ret.58
   store %"struct.std/os/exec.Cmd" %t251, ptr %v.failing
-  %t252 = call ptr @"std/os/exec.Cmd.AsyncRun.task"(ptr %v.failing, i32 -2)
+  %t252 = call ptr @"std/os/exec.Cmd.AsyncRun.task"(ptr %v.failing, i32 -2, i32 0)
   store ptr %t252, ptr %v.sm.join.task.255
   store i32 2, ptr %v.sm.state
   br label %sm.op.call.2
@@ -3087,7 +3087,7 @@ deep.rel.map.done.59:
   ret i32 1
 
 }
-define hidden ptr @"example.com/stdtest/exec.will$main.task"(i32 %start) {
+define hidden ptr @"example.com/stdtest/exec.will$main.task"(i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 992)
   %t566 = getelementptr i8, ptr %v.sm.frame, i64 216
@@ -3322,7 +3322,7 @@ declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %t670 = call ptr @"example.com/stdtest/exec.will$main.task"(i32 -2)
+  %t670 = call ptr @"example.com/stdtest/exec.will$main.task"(i32 -2, i32 0)
   %t672 = alloca i32
   %t671 = call i32 @willrt_join(ptr %t670, ptr %t672, ptr null)
   %t673 = icmp ne i32 %t671, 0

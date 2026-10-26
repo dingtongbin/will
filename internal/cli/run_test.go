@@ -805,6 +805,49 @@ async func main() -> i32 {
 	}
 }
 
+// TestRunAsyncSpawnMovesOwnedArgument checks that a spawned async frame keeps
+// working after the caller's owned argument has been cleared by the move.
+func TestRunAsyncSpawnMovesOwnedArgument(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("repo root: %v", err)
+	}
+	dir := filepath.Join(t.TempDir(), "asyncspawnarg")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("make module: %v", err)
+	}
+	writeFile(t, dir, "will.mod", "module example.com/asyncspawnarg\nwill 1\n"+
+		"require std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(filepath.Join(root, "std"))+"\n")
+	src := `import "std/time"
+
+async func Worker(text: str) -> i32 {
+    _ = await time.Sleep(1ms)!
+    return i32(text.Len())
+}
+
+async func main() -> i32 {
+    var result: i32 = 0
+    region {
+        var text: str = "hello".Clone()
+        var task: Task<i32> = spawn Worker(text)
+        result = await task.Join()!
+    }
+    return result
+}
+`
+	writeFile(t, dir, "main.will", src)
+	code, out, errOut := runCLI("run", dir)
+	if code != 5 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunAsyncFrameDropsOwnedLocalsOnPanic checks that a failing async task
 // releases the strings and arrays held by its frame before the task boundary
 // frees it. A double release fails the allocator check instead of passing.

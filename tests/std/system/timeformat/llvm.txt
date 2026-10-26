@@ -1357,7 +1357,7 @@ share.done.3:
   ret i32 1
 
 }
-define hidden ptr @"std/time.Sleep.task"(i64 %arg0, i32 %start) {
+define hidden ptr @"std/time.Sleep.task"(i64 %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 176)
   %t71 = getelementptr i8, ptr %v.sm.frame, i64 0

@@ -57,7 +57,7 @@ func TestMutableScalarABI(t *testing.T) {
 	for _, want := range []string{
 		`define i32 @"example.com/app.Inc"(ptr %value)`,
 		`call i32 @"example.com/app.Inc"(ptr`,
-		`define ptr @"example.com/app.Bump.task"(ptr %arg0, i32 %start)`,
+		`define ptr @"example.com/app.Bump.task"(ptr %arg0, i32 %start, i32 %owns)`,
 		`call ptr @"example.com/app.Bump.task"(ptr`,
 	} {
 		if !strings.Contains(text, want) {

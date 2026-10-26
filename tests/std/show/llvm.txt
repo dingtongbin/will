@@ -1304,7 +1304,7 @@ share.done.5:
   ret i32 1
 
 }
-define hidden ptr @"std/io.Poller.AsyncNext.task"(ptr %arg0, i64 %arg1, ptr %arg2, i32 %start) {
+define hidden ptr @"std/io.Poller.AsyncNext.task"(ptr %arg0, i64 %arg1, ptr %arg2, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 224)
   %t323 = getelementptr i8, ptr %v.sm.frame, i64 0

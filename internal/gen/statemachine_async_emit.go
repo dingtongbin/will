@@ -38,15 +38,18 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	}
 	g.needAllocDecl = true
 	g.needTaskDecl = true
-	dropSym := g.asyncFrameDropSymbol(info)
-	if dropSym != "" {
+	borrowDrop := g.asyncFrameDropSymbol(info, false)
+	ownDrop := g.asyncFrameDropSymbol(info, true)
+	if borrowDrop != "" || ownDrop != "" {
 		g.needFrameDropDecl = true
 	}
 	// The constructor is hidden, not internal: a function of another package
 	// waits on this task, so the object that owns the function must export
 	// the entry that starts it. The last argument is -1 for auto placement and
 	// -2 for the current lane; any other value is the declared lane index.
-	parts = append(parts, "i32 %start")
+	// owns is set by spawn and clear by await: a spawned frame owns its by-value
+	// parameters, while an awaited frame only borrows them.
+	parts = append(parts, "i32 %start", "i32 %owns")
 	fmt.Fprintf(g.out, "define hidden ptr @%s(%s) {\nentry:\n",
 		llvmSymbol(info.constructor), strings.Join(parts, ", "))
 	size := g.sizeOf(info.frameType)
@@ -99,6 +102,18 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	laneValue := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = select i1 %s, i32 %s, i32 %%start\n",
 		laneValue, here, lane)
+	dropPtr := ""
+	if ownDrop != "" && borrowDrop != "" && ownDrop != borrowDrop {
+		ownsFlag := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp ne i32 %%owns, 0\n", ownsFlag)
+		dropPtr = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = select i1 %s, ptr @%s, ptr @%s\n",
+			dropPtr, ownsFlag, llvmSymbol(ownDrop), llvmSymbol(borrowDrop))
+	} else if ownDrop != "" {
+		dropPtr = ownDrop
+	} else {
+		dropPtr = borrowDrop
+	}
 	g.labels++
 	n := g.labels
 	autoLabel := fmt.Sprintf("sm.start.auto.%d", n)
@@ -107,9 +122,13 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", auto, autoLabel, laneLabel)
 	fmt.Fprintf(g.out, "%s:\n", autoLabel)
 	autoTask := g.newTmp()
-	if dropSym != "" {
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr @%s)\n",
-			autoTask, llvmSymbol(info.symbol), frame, size, llvmSymbol(dropSym))
+	if dropPtr != "" {
+		dropValue := dropPtr
+		if dropPtr == ownDrop || dropPtr == borrowDrop {
+			dropValue = "@" + llvmSymbol(dropPtr)
+		}
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr %s)\n",
+			autoTask, llvmSymbol(info.symbol), frame, size, dropValue)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 0, i32 0)\n",
 			autoTask, llvmSymbol(info.symbol), frame, size)
@@ -121,9 +140,13 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	fmt.Fprintf(g.out, "  br label %%%s\n", doneLabel)
 	fmt.Fprintf(g.out, "%s:\n", laneLabel)
 	laneTask := g.newTmp()
-	if dropSym != "" {
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr @%s)\n",
-			laneTask, llvmSymbol(info.symbol), frame, size, laneValue, llvmSymbol(dropSym))
+	if dropPtr != "" {
+		dropValue := dropPtr
+		if dropPtr == ownDrop || dropPtr == borrowDrop {
+			dropValue = "@" + llvmSymbol(dropPtr)
+		}
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr %s)\n",
+			laneTask, llvmSymbol(info.symbol), frame, size, laneValue, dropValue)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
 			laneTask, llvmSymbol(info.symbol), frame, size, laneValue)
@@ -178,7 +201,7 @@ func (g *generator) localSymbol(sym string) bool {
 // constructor. The constructor owns the frame layout, so this document does not
 // need the target's local fields.
 func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
-	start string) (string, error) {
+	start string, owns bool) (string, error) {
 	if targetSym == "" {
 		return "", g.errf(call.ID, "cannot translate node #%d: the suspendable call has no target", call.ID)
 	}
@@ -204,6 +227,31 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
 			return "", err
 		}
 		mut := i < len(paramMuts) && paramMuts[i]
+		text, textErr := g.willTypeText(a)
+		if owns && !mut && textErr == nil && g.argIsParameter(a) && ownsReleaseText(g, text) {
+			// A borrowed parameter cannot be handed to the frame by clearing the
+			// caller's place. Give the spawned frame its own copy instead.
+			src, srcType, err := g.place(a)
+			if err != nil {
+				return "", err
+			}
+			if srcType != typ {
+				return "", g.errf(a, "cannot translate node #%d: the argument needs %s", a, typ)
+			}
+			slot := g.allocSlot(g.callSlots, "spawnarg", a, typ)
+			if err := g.cloneOwnedValue(src, slot, text); err != nil {
+				return "", err
+			}
+			if isAggregateType(typ) {
+				parts = append(parts, "ptr "+slot)
+				declParams = append(declParams, "ptr")
+			} else {
+				value := g.load(typ, slot)
+				parts = append(parts, typ+" "+value)
+				declParams = append(declParams, typ)
+			}
+			continue
+		}
 		if isAggregateType(typ) || mut {
 			ptr, ptrType, err := g.place(a)
 			if err != nil {
@@ -224,6 +272,12 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
 		declParams = append(declParams, typ)
 	}
 	parts = append(parts, "i32 "+start)
+	declParams = append(declParams, "i32")
+	ownsValue := "0"
+	if owns {
+		ownsValue = "1"
+	}
+	parts = append(parts, "i32 "+ownsValue)
 	declParams = append(declParams, "i32")
 	if !g.taskCtorDefined(targetSym) {
 		g.queueCDecl(targetSym+".task", "ptr", declParams)

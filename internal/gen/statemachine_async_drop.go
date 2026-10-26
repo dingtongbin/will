@@ -6,14 +6,23 @@ import "fmt"
 // frame. Parameters are borrows: the caller owns them and the frame must not
 // release them. Synthetic status and result fields are consumed by the state
 // machine, so they are not part of the frame cleanup either.
-func (g *generator) asyncFrameDropFields(info *asyncMachineInfo) []asyncField {
+func (g *generator) asyncFrameDropFields(info *asyncMachineInfo, includeParams bool) []asyncField {
 	if info == nil {
 		return nil
 	}
 	released := g.releasedOwners()
 	var out []asyncField
 	for _, f := range info.fields {
-		if f.param || f.id == 0 || !released[f.id] {
+		if f.id == 0 {
+			continue
+		}
+		if f.param {
+			if includeParams && !f.paramMut && ownsReleaseText(g, f.willText) {
+				out = append(out, f)
+			}
+			continue
+		}
+		if !released[f.id] {
 			continue
 		}
 		if ownsReleaseText(g, f.willText) {
@@ -24,8 +33,23 @@ func (g *generator) asyncFrameDropFields(info *asyncMachineInfo) []asyncField {
 }
 
 // asyncFrameDropSymbol returns the cleanup callback for one typed async frame.
-func (g *generator) asyncFrameDropSymbol(info *asyncMachineInfo) string {
-	if len(g.asyncFrameDropFields(info)) == 0 {
+// A spawned frame owns its by-value parameters; an awaited frame borrows them.
+func (g *generator) asyncFrameDropSymbol(info *asyncMachineInfo, ownsParams bool) string {
+	if info == nil {
+		return ""
+	}
+	ownFields := g.asyncFrameDropFields(info, true)
+	borrowFields := g.asyncFrameDropFields(info, false)
+	if ownsParams {
+		if len(ownFields) == 0 {
+			return ""
+		}
+		if len(ownFields) != len(borrowFields) {
+			return info.symbol + ".drop.own"
+		}
+		return info.symbol + ".drop"
+	}
+	if len(ownFields) == 0 && len(borrowFields) == 0 {
 		return ""
 	}
 	return info.symbol + ".drop"
@@ -34,9 +58,9 @@ func (g *generator) asyncFrameDropSymbol(info *asyncMachineInfo) string {
 // emitAsyncFrameDrop writes the callback the task runtime calls before it
 // returns a typed async frame to the allocator. A normal completion has already
 // cleared every released local, so the same callback is safe on that path too.
-func (g *generator) emitAsyncFrameDrop(info *asyncMachineInfo, sym string) error {
-	fields := g.asyncFrameDropFields(info)
-	if len(fields) == 0 {
+func (g *generator) emitAsyncFrameDrop(info *asyncMachineInfo, sym string, includeParams bool) error {
+	fields := g.asyncFrameDropFields(info, includeParams)
+	if len(fields) == 0 && sym == "" {
 		return nil
 	}
 	fmt.Fprintf(g.out, "define internal void @%s(ptr %%frame) {\nentry:\n", llvmSymbol(sym))

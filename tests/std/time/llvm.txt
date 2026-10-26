@@ -1357,7 +1357,7 @@ share.done.3:
   ret i32 1
 
 }
-define hidden ptr @"std/time.Sleep.task"(i64 %arg0, i32 %start) {
+define hidden ptr @"std/time.Sleep.task"(i64 %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 176)
   %t71 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -6512,7 +6512,7 @@ if.end.11:
   call void @"std/time.Stopwatch.init"(ptr %v.new.96)
   %t48 = load %"struct.std/time.Stopwatch", ptr %v.new.96
   store %"struct.std/time.Stopwatch" %t48, ptr %v.sw
-  %t49 = call ptr @"std/time.Sleep.task"(i64 1000000, i32 -2)
+  %t49 = call ptr @"std/time.Sleep.task"(i64 1000000, i32 -2, i32 0)
   %t50 = call i32 @willrt_join(ptr %t49, ptr %v.await.out.103, ptr %v.await.err.103)
   %t51 = icmp eq i32 %t50, 0
   br i1 %t51, label %await.ok.13, label %await.fail.13
@@ -6614,7 +6614,7 @@ iface.rel.done.22:
 deep.rel.adt.done.21.1:
   ret i32 0
 }
-define hidden ptr @"example.com/stdtest/time.will$main.task"(i32 %start) {
+define hidden ptr @"example.com/stdtest/time.will$main.task"(i32 %start, i32 %owns) {
 entry:
   %t93 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr null, i32 1
   %t94 = ptrtoint ptr %t93 to i64
@@ -6826,7 +6826,7 @@ if.end.12:
   store %"struct.std/time.Stopwatch" %t175, ptr %t125
   br label %sm.start.0
 sm.start.0:
-  %t176 = call ptr @"std/time.Sleep.task"(i64 1000000, i32 -2)
+  %t176 = call ptr @"std/time.Sleep.task"(i64 1000000, i32 -2, i32 0)
   store ptr %t176, ptr %t116
   store i32 1, ptr %t115
   call void @willrt_task_mark_io()
