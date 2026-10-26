@@ -601,8 +601,15 @@ func containsViewInExpr(e ast.Expr, views map[string]bool) bool {
 		if found {
 			return
 		}
-		if n, ok := x.(*ast.NameExpr); ok && views[n.Name] {
-			found = true
+		switch n := x.(type) {
+		case *ast.NameExpr:
+			if views[n.Name] {
+				found = true
+			}
+		case *ast.LambdaExpr:
+			if containsViewInBlock(n.Body, views) {
+				found = true
+			}
 		}
 	})
 	return found
