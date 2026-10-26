@@ -50,6 +50,42 @@ func Main() -> i32 {
 	}
 }
 
+// TestRcSlotReportsMutMethodAfterSpawn proves the same slot through a method
+// call: the method writes its receiver's rc field and the receiver is shared.
+func TestRcSlotReportsMutMethodAfterSpawn(t *testing.T) {
+	src := `struct C {
+    n: i32
+}
+
+struct Box {
+    f: rc<C>
+}
+
+func (mut b: Box) Set(c: rc<C>) {
+    b.f = c
+}
+
+func Use(b: rc<Box>) -> i32 {
+    return 0
+}
+
+func Main() -> i32 {
+    var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
+    var c: rc<C> = new rc<C>(C { n: 2 })
+    region {
+        var task: Task<i32> = spawn Use(box)
+        box.Set(c)
+        _ = task
+    }
+    return 0
+}
+`
+	ds := rcSlots(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeRcSlotUnguarded {
+		t.Fatalf("diagnostics = %s, want one M0003", diag.FormatAll(ds))
+	}
+}
+
 // TestRcSlotAllowsWriteBeforeSpawn checks that the slot was not shared yet.
 func TestRcSlotAllowsWriteBeforeSpawn(t *testing.T) {
 	src := `struct C {

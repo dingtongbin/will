@@ -12,7 +12,13 @@ import (
 // join the task or exit its region before the write. Shapes outside that proof
 // stay unreported rather than guessing.
 func RcSlots(files []*ast.File, own *Ownership) []diag.Diagnostic {
-	c := &rcSlotChecker{own: own, seen: map[*ast.AssignStmt]bool{}}
+	c := &rcSlotChecker{
+		own:          own,
+		seen:         map[*ast.AssignStmt]bool{},
+		seenCalls:    map[*ast.MethodCallExpr]bool{},
+		methodWrites: map[string]bool{},
+	}
+	c.collectMethodWrites(files)
 	for _, f := range files {
 		if f == nil {
 			continue
@@ -29,15 +35,207 @@ func RcSlots(files []*ast.File, own *Ownership) []diag.Diagnostic {
 }
 
 type rcSlotChecker struct {
-	own  *Ownership
-	bag  diag.Bag
-	seen map[*ast.AssignStmt]bool
+	own          *Ownership
+	bag          diag.Bag
+	seen         map[*ast.AssignStmt]bool
+	seenCalls    map[*ast.MethodCallExpr]bool
+	methodWrites map[string]bool
 	// scopes maps a name to its declared type, innermost last.
 	scopes []map[string]*ast.Type
 	// shared counts captures in the current block. A second capture keeps the
 	// root shared until every task that holds it is joined.
 	shared map[string]int
 	tasks  map[string][]string
+}
+
+// collectMethodWrites summarizes same-package methods that write a direct rc
+// field of their own receiver. A method with any lock call is left out: the
+// local proof cannot tell which statements the guard covers.
+func (c *rcSlotChecker) collectMethodWrites(files []*ast.File) {
+	counts := map[string]int{}
+	for _, f := range files {
+		if f == nil {
+			continue
+		}
+		for _, d := range f.Decls {
+			if s, ok := d.(*ast.StructDecl); ok {
+				counts[shortTypeName(s.Name)]++
+			}
+		}
+	}
+	for _, f := range files {
+		if f == nil {
+			continue
+		}
+		for _, d := range f.Decls {
+			fn, ok := d.(*ast.FuncDecl)
+			if !ok || fn.Recv == nil || fn.Body == nil {
+				continue
+			}
+			recv := shortTypeName(fn.Recv.Type.Name)
+			if recv == "" || counts[recv] != 1 {
+				continue
+			}
+			if c.methodWritesRc(fn) {
+				c.methodWrites[recv+"."+fn.Name] = true
+			}
+		}
+	}
+}
+
+func (c *rcSlotChecker) methodWritesRc(fn *ast.FuncDecl) bool {
+	locked := false
+	found := false
+	var scanExpr func(ast.Expr)
+	var scanStmt func(ast.Stmt)
+	scanExpr = func(e ast.Expr) {
+		switch x := e.(type) {
+		case nil:
+		case *ast.CallExpr:
+			scanExpr(x.Callee)
+			for _, a := range x.Args {
+				scanExpr(a.Expr)
+			}
+		case *ast.MethodCallExpr:
+			switch x.Name {
+			case "Lock", "RLock", "TryLock":
+				locked = true
+			}
+			scanExpr(x.Recv)
+			for _, a := range x.Args {
+				scanExpr(a.Expr)
+			}
+		case *ast.FieldExpr:
+			scanExpr(x.Recv)
+		case *ast.IndexExpr:
+			scanExpr(x.Recv)
+			scanExpr(x.Index)
+		case *ast.SliceExpr:
+			scanExpr(x.Recv)
+			scanExpr(x.Lo)
+			scanExpr(x.Hi)
+		case *ast.UnaryExpr:
+			scanExpr(x.X)
+		case *ast.BinaryExpr:
+			scanExpr(x.L)
+			scanExpr(x.R)
+		case *ast.NewExpr:
+			for _, a := range x.Args {
+				scanExpr(a.Expr)
+			}
+		case *ast.AggregateExpr:
+			for _, f := range x.Fields {
+				scanExpr(f.Value)
+			}
+		case *ast.ArrayLitExpr:
+			for _, elem := range x.Elems {
+				scanExpr(elem)
+			}
+		case *ast.RangeExpr:
+			scanExpr(x.Lo)
+			scanExpr(x.Hi)
+		case *ast.LambdaExpr:
+			for _, st := range x.Body.Stmts {
+				scanStmt(st)
+			}
+		case *ast.TryExpr:
+			scanExpr(x.X)
+		case *ast.AwaitExpr:
+			scanExpr(x.X)
+		case *ast.UnwrapExpr:
+			scanExpr(x.X)
+		case *ast.SpawnExpr:
+			scanExpr(x.Call)
+		case *ast.IfExpr:
+			scanStmt(x)
+		case *ast.MatchExpr:
+			scanStmt(x)
+		case *ast.DeadlineExpr:
+			scanStmt(x)
+		case *ast.InterpExpr:
+			for _, p := range x.Parts {
+				scanExpr(p.Expr)
+			}
+		}
+	}
+	scanStmt = func(st ast.Stmt) {
+		switch s := st.(type) {
+		case nil:
+		case *ast.Block:
+			for _, inner := range s.Stmts {
+				scanStmt(inner)
+			}
+		case *ast.VarStmt:
+			switch d := s.Decl.(type) {
+			case *ast.VarDecl:
+				scanExpr(d.Value)
+			case *ast.ConstDecl:
+				scanExpr(d.Value)
+			}
+		case *ast.AssignStmt:
+			scanExpr(s.Value)
+			if fields, root, _, ok := c.fieldWrite(s.Target); ok && root == fn.Recv.Name {
+				if isRcType(c.fieldTypeFrom(fn.Recv.Type, fields)) {
+					found = true
+				}
+			}
+		case *ast.ExprStmt:
+			scanExpr(s.Expr)
+		case *ast.DeferStmt:
+			scanExpr(s.Call)
+		case *ast.ReturnStmt:
+			scanExpr(s.Value)
+		case *ast.ForStmt:
+			scanExpr(s.Iter)
+			scanStmt(s.Body)
+		case *ast.RegionStmt:
+			scanStmt(s.Body)
+		case *ast.ParallelStmt:
+			scanStmt(s.Body)
+		case *ast.SelectStmt:
+			for _, arm := range s.Arms {
+				scanExpr(arm.Chan)
+				scanExpr(arm.Timeout)
+				scanStmt(arm.Body)
+			}
+		case *ast.IfExpr:
+			scanExpr(s.Cond)
+			scanStmt(s.Then)
+			scanStmt(s.Else)
+		case *ast.MatchExpr:
+			scanExpr(s.Subject)
+			for _, arm := range s.Arms {
+				scanExpr(arm.Guard)
+				scanStmt(arm.Body)
+			}
+		case *ast.DeadlineExpr:
+			scanExpr(s.Duration)
+			scanStmt(s.Body)
+		}
+	}
+	scanStmt(fn.Body)
+	return found && !locked
+}
+
+func (c *rcSlotChecker) fieldTypeFrom(t *ast.Type, fields []string) *ast.Type {
+	for _, name := range fields {
+		t = c.own.FieldType(t, name)
+		if t == nil {
+			return nil
+		}
+	}
+	return t
+}
+
+func methodKey(typ *ast.Type, name string) string {
+	if typ == nil || typ.Kind != ast.NamedType || name == "" {
+		return ""
+	}
+	short := shortTypeName(typ.Name)
+	if short == "" {
+		return ""
+	}
+	return short + "." + name
 }
 
 func (c *rcSlotChecker) funcDecl(fn *ast.FuncDecl) {
@@ -285,6 +483,19 @@ func (c *rcSlotChecker) expr(e ast.Expr) {
 		c.expr(x.Recv)
 		for _, a := range x.Args {
 			c.expr(a.Expr)
+		}
+		if recv, ok := x.Recv.(*ast.NameExpr); ok && c.shared[recv.Name] > 0 {
+			if typ := c.typeOf(recv.Name); isRcType(typ) {
+				if c.methodWrites[methodKey(typ.Args[0], x.Name)] && !c.seenCalls[x] {
+					c.seenCalls[x] = true
+					c.bag.Add(diag.Diagnostic{
+						Pos: x.Pos(), End: x.Pos(), Severity: diag.Error,
+						Code:    diag.CodeRcSlotUnguarded,
+						Message: "this rc slot is shared and mutable without a guard or an atomic",
+						Help:    "protect it with a guard or an atomic",
+					})
+				}
+			}
 		}
 	case *ast.FieldExpr:
 		c.expr(x.Recv)

@@ -1,0 +1,26 @@
+struct C {
+    n: i32
+}
+
+struct Box {
+    f: rc<C>
+}
+
+func (mut b: Box) Set(c: rc<C>) {
+    b.f = c
+}
+
+func Use(b: rc<Box>) -> i32 {
+    return 0
+}
+
+func Main() -> i32 {
+    var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
+    var c: rc<C> = new rc<C>(C { n: 2 })
+    region {
+        var task: Task<i32> = spawn Use(box)
+        box.Set(c)
+        _ = task
+    }
+    return 0
+}
