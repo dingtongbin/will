@@ -100,6 +100,8 @@ func (m *mover) exprType(e ast.Expr) *ast.Type {
 			return nil
 		}
 		return m.own.IndexType(recv)
+	case *ast.ArrayLitExpr:
+		return x.Type
 	}
 	return nil
 }
@@ -711,6 +713,11 @@ func (m *mover) exprEventsIn(e ast.Expr, live map[string]bool, ev *events, trans
 		for _, f := range x.Fields {
 			// A field takes the value into the aggregate.
 			m.args([]*ast.CallArg{{Expr: f.Value}}, live, ev, true)
+		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			// A fixed-array element takes its value into the literal.
+			m.args([]*ast.CallArg{{Expr: elem}}, live, ev, true)
 		}
 	case *ast.NewExpr:
 		for _, a := range x.Args {

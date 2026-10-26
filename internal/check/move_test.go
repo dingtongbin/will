@@ -27,6 +27,31 @@ func movesOwned(t *testing.T, src string) []diag.Diagnostic {
 	return MovesWithOwnership(f, own)
 }
 
+func TestMoveFixedArrayElementNeedsClone(t *testing.T) {
+	src := `func F() -> i32 {
+    var a: str = "x"
+    var xs: [1]str = [1]str { a }
+    return i32(a.Len())
+}
+`
+	ds := movesOwned(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+}
+
+func TestMoveFixedArrayElementCanMove(t *testing.T) {
+	src := `func F() -> i32 {
+    var a: str = "x"
+    var xs: [1]str = [1]str { a }
+    return i32(xs[0].Len())
+}
+`
+	if ds := movesOwned(t, src); len(ds) != 0 {
+		t.Fatalf("a dead local element did not move:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestMovePatternBindingIsABorrow(t *testing.T) {
 	src := `enum E {
     Text(str)

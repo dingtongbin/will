@@ -56,6 +56,10 @@ func pinnedNames(b *ast.Block) map[string]bool {
 			for _, f := range x.Fields {
 				collectExpr(f.Value)
 			}
+		case *ast.ArrayLitExpr:
+			for _, elem := range x.Elems {
+				collectExpr(elem)
+			}
 		case *ast.RangeExpr:
 			collectExpr(x.Lo)
 			collectExpr(x.Hi)
@@ -178,6 +182,10 @@ func pinnedNames(b *ast.Block) map[string]bool {
 		case *ast.AggregateExpr:
 			for _, f := range x.Fields {
 				scanExpr(f.Value)
+			}
+		case *ast.ArrayLitExpr:
+			for _, elem := range x.Elems {
+				scanExpr(elem)
 			}
 		case *ast.RangeExpr:
 			scanExpr(x.Lo)

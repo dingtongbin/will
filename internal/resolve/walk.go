@@ -269,6 +269,11 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 		for _, f := range x.Fields {
 			r.walkExpr(f.Value, true)
 		}
+	case *ast.ArrayLitExpr:
+		r.walkType(x.Type)
+		for _, e := range x.Elems {
+			r.walkExpr(e, true)
+		}
 	case *ast.NewExpr:
 		r.walkType(x.Type)
 		r.walkArgs(x.Args)

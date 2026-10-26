@@ -181,6 +181,10 @@ func (c *checker) expr(e ast.Expr) {
 		for _, f := range x.Fields {
 			c.expr(f.Value)
 		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			c.expr(elem)
+		}
 	case *ast.UnaryExpr:
 		c.expr(x.X)
 	case *ast.BinaryExpr:

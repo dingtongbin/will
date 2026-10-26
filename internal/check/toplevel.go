@@ -296,6 +296,10 @@ func (w *topWriteWalker) expr(e ast.Expr) {
 		for _, f := range x.Fields {
 			w.expr(f.Value)
 		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			w.expr(elem)
+		}
 	case *ast.RangeExpr:
 		w.expr(x.Lo)
 		w.expr(x.Hi)

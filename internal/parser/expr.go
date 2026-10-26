@@ -264,6 +264,8 @@ func (p *Parser) parsePrimary(allowBrace bool) ast.Expr {
 		return p.parseDeadline()
 	case token.KwFunc:
 		return p.parseLambda()
+	case token.LBracket:
+		return p.parseArrayLiteral()
 	case token.LParen:
 		if p.peekRaw(1).Kind == token.RParen {
 			open := p.next()
@@ -280,6 +282,33 @@ func (p *Parser) parsePrimary(allowBrace bool) ast.Expr {
 	}
 	p.unexpected("an expression")
 	return &ast.NameExpr{Span: p.emptySpan(tok)}
+}
+
+// parseArrayLiteral parses one fixed-array literal. The explicit element type
+// before the brace makes the element type and the literal length unambiguous.
+func (p *Parser) parseArrayLiteral() ast.Expr {
+	start := p.cur()
+	typ := p.parseArrayType()
+	if typ.Kind != ast.ArrayType {
+		p.unexpected("a fixed array literal")
+		return &ast.ArrayLitExpr{Span: p.spanFrom(start), Type: typ}
+	}
+	p.expect(token.LBrace, "{")
+	p.enterGroup()
+	p.skipNL()
+	lit := &ast.ArrayLitExpr{Type: typ}
+	for !p.at(token.RBrace) && !p.at(token.EOF) && !p.failed {
+		lit.Elems = append(lit.Elems, p.parseExpr(0, true))
+		if !p.at(token.Comma) {
+			break
+		}
+		p.next()
+		p.skipNL()
+	}
+	p.expect(token.RBrace, "}")
+	p.leaveGroup()
+	lit.Span = p.spanFrom(start)
+	return lit
 }
 
 func startsType(k token.Kind) bool {

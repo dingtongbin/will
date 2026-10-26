@@ -127,6 +127,10 @@ func (c *parallelChecker) expr(e ast.Expr) {
 		for _, f := range x.Fields {
 			c.expr(f.Value)
 		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			c.expr(elem)
+		}
 	case *ast.NewExpr:
 		c.args(x.Args)
 	case *ast.UnaryExpr:

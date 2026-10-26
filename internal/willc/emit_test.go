@@ -188,6 +188,40 @@ func TestEmitRcReleaseAtLastUse(t *testing.T) {
 	}
 }
 
+func TestEmitFixedArrayLiteral(t *testing.T) {
+	src := "func F() -> i32 {\n" +
+		"    var xs: [3]i32 = [3]i32 { 1, 2, 3 }\n" +
+		"    return xs[0]\n" +
+		"}\n"
+	data := emitCheckedSourceIn(t, "test.will", src, "example.com/app", nil)
+	doc := mustRead(t, data)
+	var found bool
+	for _, r := range doc.Records {
+		if r.Kind != "arrlit" {
+			continue
+		}
+		found = true
+		if testFieldText(r, "type") != "[3]i32" {
+			t.Fatalf("arrlit type = %q", testFieldText(r, "type"))
+		}
+		n := 0
+		for _, f := range r.Fields {
+			if f.Name == "elem" && f.Value.Kind == RefValue {
+				n++
+			}
+		}
+		if n != 3 {
+			t.Fatalf("arrlit elements = %d, want 3", n)
+		}
+	}
+	if !found {
+		t.Fatalf("no arrlit record:\n%s", data)
+	}
+	if again := Write(doc); !bytes.Equal(again, data) {
+		t.Fatalf("array literal willc did not round-trip")
+	}
+}
+
 func TestEmitBatchesTwoArrayBuffers(t *testing.T) {
 	src := "func F() {\n" +
 		"    var a: Array<i32> = new Array<i32>(4)\n" +

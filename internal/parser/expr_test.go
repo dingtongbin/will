@@ -28,6 +28,20 @@ const exprProgram = `func F(n: i32) {
 }
 `
 
+func TestParseFixedArrayLiteral(t *testing.T) {
+	f := parse(t, "func F() -> i32 {\n    var xs: [3]i32 = [3]i32 { 1, 2, 3 }\n    return xs[0]\n}\n")
+	lit, ok := varValue(t, f, "xs").(*ast.ArrayLitExpr)
+	if !ok {
+		t.Fatalf("xs = %T, want fixed array literal", varValue(t, f, "xs"))
+	}
+	if lit.Type == nil || lit.Type.Len != "3" || lit.Type.Elem == nil || lit.Type.Elem.Name != "i32" {
+		t.Fatalf("array type = %+v", lit.Type)
+	}
+	if len(lit.Elems) != 3 {
+		t.Fatalf("elements = %d, want 3", len(lit.Elems))
+	}
+}
+
 func TestUnitValue(t *testing.T) {
 	src := `func F() -> Result<(), Error> {
     return Ok(())

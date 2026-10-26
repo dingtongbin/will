@@ -6,6 +6,25 @@ import (
 	"github.com/will-lang/will/internal/diag"
 )
 
+func TestFixedArrayLiteralChecksLengthAndElements(t *testing.T) {
+	src := "func F() -> i32 {\n" +
+		"    var xs: [3]i32 = [3]i32 { 1, 2, 3 }\n" +
+		"    return xs[0]\n" +
+		"}\n"
+	if ds := checkWithResolve(t, src); len(ds) != 0 {
+		t.Fatalf("fixed array literal was rejected:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestFixedArrayLiteralRejectsWrongLength(t *testing.T) {
+	src := "func F() -> i32 {\n    var xs: [3]i32 = [3]i32 { 1, 2 }\n    return xs[0]\n}\n"
+	d := findCode(t, checkWithResolve(t, src), diag.CodeBadArgument)
+	if d.Message != "wrong number of array elements" ||
+		d.Help != "write exactly 3 elements" {
+		t.Fatalf("diagnostic = %+v", d)
+	}
+}
+
 func TestExplicitTypeArgumentsInstantiateSignature(t *testing.T) {
 	src := "func Id<T>(x: T) -> T {\n    return x\n}\n\nfunc Use() -> i32 {\n    return Id<i32>(3)\n}\n"
 	if ds := checkWithResolve(t, src); len(ds) != 0 {

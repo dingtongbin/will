@@ -580,6 +580,7 @@ func (g *generator) use(d *docState) {
 	g.byType = map[string]*structInfo{}
 	g.byName = map[string]*structInfo{}
 	g.aggSlots = map[int]string{}
+	g.arrayLitSlots = map[int]string{}
 	g.enums = map[int]*enumInfo{}
 	g.enumByLLVM = map[string]*enumInfo{}
 	g.enumByName = map[string]*enumInfo{}
@@ -703,6 +704,7 @@ type generator struct {
 	byType          map[string]*structInfo
 	byName          map[string]*structInfo
 	aggSlots        map[int]string
+	arrayLitSlots   map[int]string
 	// enums holds the lowered enums of the current document by record id;
 	// enumByLLVM looks one up by its LLVM type name. enumSlots maps a
 	// construction to its temporary slot, and patternVals and patternPlaces
@@ -1924,6 +1926,25 @@ func (g *generator) allocas(fn int) error {
 		name := "%v.agg." + strconv.Itoa(r.ID)
 		g.aggSlots[r.ID] = name
 		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, info.llvm)
+	}
+	// A fixed-array literal also needs an entry-block slot, because its
+	// elements are evaluated in place and the value is passed as a borrow.
+	var arrayLits []willc.Record
+	for _, r := range g.recs {
+		if r.Kind == "arrlit" && g.enclosingFunc(r.ID) == fn {
+			arrayLits = append(arrayLits, r)
+		}
+	}
+	sortByID(arrayLits)
+	for _, r := range arrayLits {
+		text := fieldText(r, "type")
+		typ, ok := g.typeLLVMOf(text)
+		if !ok || typ == "" {
+			return g.errf(r.ID, "cannot translate node #%d: fixed array type %s is not lowered yet", r.ID, text)
+		}
+		name := "%v.arrlit." + strconv.Itoa(r.ID)
+		g.arrayLitSlots[r.ID] = name
+		fmt.Fprintf(g.out, "  %s = alloca %s\n", name, typ)
 	}
 	// A call whose result is a struct or an enum also needs a slot: its value
 	// has to be stored before a field can be read from it or before it is

@@ -693,6 +693,8 @@ func (c *checker) inferExprInner(s *inferScope, e ast.Expr) *Type {
 		return c.sliceOf(recv)
 	case *ast.AggregateExpr:
 		return c.aggregateType(s, x)
+	case *ast.ArrayLitExpr:
+		return c.arrayLitType(s, x)
 	case *ast.NewExpr:
 		return c.newType(s, x)
 	case *ast.UnaryExpr:
@@ -1709,6 +1711,25 @@ func (c *checker) fieldOf(recv *Type, fields []*fieldInfo, name string, pos sour
 	}
 	c.bag.Error(pos, diag.CodeNoField, "no field "+name+" on "+recv.Name(), "check the field name or the type")
 	return nil
+}
+
+// arrayLitType checks one fixed-array literal. The explicit type supplies the
+// element type, and the written length must match the number of elements.
+func (c *checker) arrayLitType(s *inferScope, lit *ast.ArrayLitExpr) *Type {
+	t := c.buildType(lit.Type, nil)
+	if t == nil || t.Kind() != ArrayKind {
+		return t
+	}
+	for _, elem := range lit.Elems {
+		c.checkValue(s, elem, t.Elem())
+	}
+	n, err := strconv.Atoi(t.Length())
+	if err == nil && n != len(lit.Elems) {
+		c.bag.Error(lit.Pos(), diag.CodeBadArgument,
+			"wrong number of array elements",
+			"write exactly "+strconv.Itoa(n)+" elements")
+	}
+	return t
 }
 
 func (c *checker) aggregateType(s *inferScope, agg *ast.AggregateExpr) *Type {

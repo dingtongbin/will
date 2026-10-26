@@ -71,6 +71,10 @@ func walkLeaks(st ast.Stmt, visit func(*ast.CallExpr)) {
 			for _, f := range x.Fields {
 				expr(f.Value)
 			}
+		case *ast.ArrayLitExpr:
+			for _, elem := range x.Elems {
+				expr(elem)
+			}
 		case *ast.RangeExpr:
 			expr(x.Lo)
 			expr(x.Hi)

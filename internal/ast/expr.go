@@ -102,6 +102,16 @@ type AggregateExpr struct {
 
 func (*AggregateExpr) exprNode() {}
 
+// ArrayLitExpr constructs one fixed-length array with an explicit element
+// type. The type's length must equal the number of elements.
+type ArrayLitExpr struct {
+	Span
+	Type  *Type
+	Elems []Expr
+}
+
+func (*ArrayLitExpr) exprNode() {}
+
 // NewExpr constructs a heap value.
 type NewExpr struct {
 	Span

@@ -141,6 +141,10 @@ func walkExpr(e ast.Expr, mf *Func) {
 		for _, f := range x.Fields {
 			walkExpr(f.Value, mf)
 		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			walkExpr(elem, mf)
+		}
 	case *ast.NewExpr:
 		walkArgs(x.Args, mf)
 	case *ast.UnaryExpr:

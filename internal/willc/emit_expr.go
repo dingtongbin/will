@@ -52,6 +52,8 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 		return rec
 	case *ast.AggregateExpr:
 		return e.emitAggregate(v)
+	case *ast.ArrayLitExpr:
+		return e.emitArrayLiteral(v)
 	case *ast.NewExpr:
 		return e.emitNew(v)
 	case *ast.UnaryExpr:
@@ -371,6 +373,18 @@ func (e *emitter) emitAggregate(v *ast.AggregateExpr) int {
 	for _, f := range v.Fields {
 		vid := e.emitExpr(f.Value)
 		e.field(rec, "field", Text(f.Name+"=#"+strconv.Itoa(vid)))
+	}
+	e.pop()
+	return rec
+}
+
+func (e *emitter) emitArrayLiteral(v *ast.ArrayLitExpr) int {
+	rec := e.add("arrlit", v)
+	e.text(rec, "type", typeText(v.Type))
+	e.push(rec)
+	for _, elem := range v.Elems {
+		id := e.emitExpr(elem)
+		e.field(rec, "elem", Ref(id))
 	}
 	e.pop()
 	return rec

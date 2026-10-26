@@ -353,11 +353,13 @@ func (b *borrower) move(e ast.Expr, borrowed map[string]source.Pos) {
 // value. Parameters are excluded because their object belongs to the caller.
 func (b *borrower) escape(e ast.Expr) {
 	if _, aggregate := e.(*ast.AggregateExpr); !aggregate {
-		if owner, ok := b.closureInExpr(e); ok && b.locals[owner] {
-			b.bag.Error(e.Pos(), diag.CodeBorrowOutlives,
-				"this borrow outlives "+owner,
-				"release the borrow first")
-			return
+		if _, array := e.(*ast.ArrayLitExpr); !array {
+			if owner, ok := b.closureInExpr(e); ok && b.locals[owner] {
+				b.bag.Error(e.Pos(), diag.CodeBorrowOutlives,
+					"this borrow outlives "+owner,
+					"release the borrow first")
+				return
+			}
 		}
 	}
 	owner, pos, ok := b.viewOwner(e)
@@ -372,26 +374,46 @@ func (b *borrower) escape(e ast.Expr) {
 // store reports a view put into an aggregate field, where the aggregate can
 // outlive the local the view points into.
 func (b *borrower) store(e ast.Expr, borrowed map[string]source.Pos) {
-	agg, ok := e.(*ast.AggregateExpr)
-	if !ok {
+	switch x := e.(type) {
+	case *ast.AggregateExpr:
+		for _, f := range x.Fields {
+			b.storeAggregateValue(f.Value, borrowed)
+		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			b.storeAggregateValue(elem, borrowed)
+		}
+	}
+}
+
+func (b *borrower) storeAggregateValue(e ast.Expr, borrowed map[string]source.Pos) {
+	switch x := e.(type) {
+	case *ast.AggregateExpr:
+		for _, f := range x.Fields {
+			b.storeAggregateValue(f.Value, borrowed)
+		}
+		return
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			b.storeAggregateValue(elem, borrowed)
+		}
+		return
+	case nil:
 		return
 	}
-	for _, f := range agg.Fields {
-		if owner, ok := b.closureCaptureOwner(f.Value); ok && b.locals[owner] {
-			b.bag.Error(f.Value.Pos(), diag.CodeBorrowStored,
-				"this borrow is stored where it outlives its owner",
-				"store a value, not a borrow")
-			continue
-		}
-		owner, pos, ok := b.viewOwner(f.Value)
-		if !ok || b.params[owner] || !b.locals[owner] {
-			continue
-		}
-		_ = borrowed
-		b.bag.Error(pos, diag.CodeBorrowStored,
+	if owner, ok := b.closureCaptureOwner(e); ok && b.locals[owner] {
+		b.bag.Error(e.Pos(), diag.CodeBorrowStored,
 			"this borrow is stored where it outlives its owner",
 			"store a value, not a borrow")
+		return
 	}
+	owner, pos, ok := b.viewOwner(e)
+	if !ok || b.params[owner] || !b.locals[owner] {
+		return
+	}
+	b.bag.Error(pos, diag.CodeBorrowStored,
+		"this borrow is stored where it outlives its owner",
+		"store a value, not a borrow")
 }
 
 // noteCopiedPlace records a local created from a field or index place. A later
@@ -614,6 +636,10 @@ func walkExprsForClosure(e ast.Expr, visit func(ast.Expr)) {
 		for _, f := range x.Fields {
 			walkExprsForClosure(f.Value, visit)
 		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			walkExprsForClosure(elem, visit)
+		}
 	case *ast.RangeExpr:
 		walkExprsForClosure(x.Lo, visit)
 		walkExprsForClosure(x.Hi, visit)
@@ -697,6 +723,12 @@ func (b *borrower) closureInExpr(e ast.Expr) (string, bool) {
 	case *ast.AggregateExpr:
 		for _, f := range x.Fields {
 			if owner, ok := b.closureInExpr(f.Value); ok {
+				return owner, true
+			}
+		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			if owner, ok := b.closureInExpr(elem); ok {
 				return owner, true
 			}
 		}
@@ -865,6 +897,10 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 	case *ast.AggregateExpr:
 		for _, f := range x.Fields {
 			b.expr(f.Value, borrowed)
+		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			b.expr(elem, borrowed)
 		}
 	case *ast.RangeExpr:
 		b.expr(x.Lo, borrowed)

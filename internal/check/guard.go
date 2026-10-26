@@ -159,6 +159,10 @@ func (g *guardWalker) expr(e ast.Expr) {
 		for _, field := range x.Fields {
 			g.expr(field.Value)
 		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			g.expr(elem)
+		}
 	case *ast.NewExpr:
 		for _, arg := range x.Args {
 			g.expr(arg.Expr)

@@ -1,0 +1,77 @@
+define i32 @"example.com/arraylit.will$main"() {
+entry:
+  %v.xs = alloca [3 x i32]
+  %v.arrlit.8 = alloca [3 x i32]
+  store [3 x i32] zeroinitializer, ptr %v.arrlit.8
+  %t1 = getelementptr inbounds [3 x i32], ptr %v.arrlit.8, i32 0, i32 0
+  store i32 1, ptr %t1
+  %t2 = getelementptr inbounds [3 x i32], ptr %v.arrlit.8, i32 0, i32 1
+  store i32 2, ptr %t2
+  %t3 = getelementptr inbounds [3 x i32], ptr %v.arrlit.8, i32 0, i32 2
+  store i32 3, ptr %t3
+  %t4 = load [3 x i32], ptr %v.arrlit.8
+  store [3 x i32] %t4, ptr %v.xs
+  %t5 = icmp uge i64 0, 3
+  br i1 %t5, label %panic.2, label %panic.ok.2
+panic.2:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.2:
+  %t6 = getelementptr inbounds [3 x i32], ptr %v.xs, i64 0, i64 0
+  %t7 = load i32, ptr %t6
+  %t8 = icmp uge i64 1, 3
+  br i1 %t8, label %panic.3, label %panic.ok.3
+panic.3:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.3, ptr @.str.2)
+  unreachable
+panic.ok.3:
+  %t9 = getelementptr inbounds [3 x i32], ptr %v.xs, i64 0, i64 1
+  %t10 = load i32, ptr %t9
+  %t11 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t7, i32 %t10)
+  %t12 = extractvalue {i32, i1} %t11, 0
+  %t13 = extractvalue {i32, i1} %t11, 1
+  br i1 %t13, label %panic.4, label %panic.ok.4
+panic.4:
+  call void @willrt_panic(ptr @.str.4, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.4:
+  %t14 = icmp uge i64 2, 3
+  br i1 %t14, label %panic.5, label %panic.ok.5
+panic.5:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.5, ptr @.str.2)
+  unreachable
+panic.ok.5:
+  %t15 = getelementptr inbounds [3 x i32], ptr %v.xs, i64 0, i64 2
+  %t16 = load i32, ptr %t15
+  %t17 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t12, i32 %t16)
+  %t18 = extractvalue {i32, i1} %t17, 0
+  %t19 = extractvalue {i32, i1} %t17, 1
+  br i1 %t19, label %panic.6, label %panic.ok.6
+panic.6:
+  call void @willrt_panic(ptr @.str.4, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.6:
+  %t20 = icmp ne i32 %t18, 6
+  br i1 %t20, label %if.then.1, label %if.end.1
+if.then.1:
+  ret i32 1
+if.end.1:
+  ret i32 0
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/arraylit.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+@.str.0 = private unnamed_addr constant [20 x i8] c"index out of bounds\00", align 1
+@.str.1 = private unnamed_addr constant [14 x i8] c"main.will:3:8\00", align 1
+@.str.2 = private unnamed_addr constant [31 x i8] c"example.com/arraylit.will$main\00", align 1
+@.str.3 = private unnamed_addr constant [15 x i8] c"main.will:3:16\00", align 1
+@.str.4 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.5 = private unnamed_addr constant [15 x i8] c"main.will:3:24\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)

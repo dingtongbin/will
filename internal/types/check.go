@@ -280,6 +280,10 @@ func (c *checker) walkExpr(e ast.Expr) {
 		for _, f := range x.Fields {
 			c.walkExpr(f.Value)
 		}
+	case *ast.ArrayLitExpr:
+		for _, e := range x.Elems {
+			c.walkExpr(e)
+		}
 	case *ast.NewExpr:
 		c.walkArgs(x.Args)
 	case *ast.UnaryExpr:

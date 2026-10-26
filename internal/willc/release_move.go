@@ -119,6 +119,10 @@ func (em *emitter) scanUnzeroed(x ast.Expr) {
 		for _, f := range v.Fields {
 			em.scanUnzeroed(f.Value)
 		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range v.Elems {
+			em.scanUnzeroed(elem)
+		}
 	case *ast.RangeExpr:
 		em.scanUnzeroed(v.Lo)
 		em.scanUnzeroed(v.Hi)

@@ -114,6 +114,10 @@ func collectParamCycles(files []*ast.File, own *Ownership) map[string][]summaryE
 					for _, f := range x.Fields {
 						walkExpr(f.Value)
 					}
+				case *ast.ArrayLitExpr:
+					for _, elem := range x.Elems {
+						walkExpr(elem)
+					}
 				case *ast.RangeExpr:
 					walkExpr(x.Lo)
 					walkExpr(x.Hi)
@@ -290,6 +294,10 @@ func valueCyclesInFunc(fn *ast.FuncDecl, own *Ownership, summaries map[string][]
 		case *ast.AggregateExpr:
 			for _, f := range x.Fields {
 				walkExpr(f.Value)
+			}
+		case *ast.ArrayLitExpr:
+			for _, elem := range x.Elems {
+				walkExpr(elem)
 			}
 		case *ast.RangeExpr:
 			walkExpr(x.Lo)

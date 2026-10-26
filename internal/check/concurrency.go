@@ -178,6 +178,10 @@ func (e *escapeWalker) use(expr ast.Expr, region int) {
 		for _, f := range x.Fields {
 			e.use(f.Value, region)
 		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			e.use(elem, region)
+		}
 	case *ast.NewExpr:
 		for _, a := range x.Args {
 			e.use(a.Expr, region)

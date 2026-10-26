@@ -60,6 +60,7 @@ var kindSpecs = map[string]KindSpec{
 	"index":   {Required: []string{"recv", "i"}},
 	"slice":   {Required: []string{"recv", "lo", "hi"}},
 	"agg":     {Required: []string{"to"}, Repeatable: []string{"field", "typearg"}},
+	"arrlit":  {Required: []string{"type"}, Repeatable: []string{"elem"}},
 	"new":     {Required: []string{"type"}, Repeatable: []string{"arg"}},
 	"cast":    {Required: []string{"to", "expr"}},
 	"un":      {Required: []string{"op", "expr"}},

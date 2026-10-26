@@ -251,6 +251,52 @@ func main() -> i32 {
 	}
 }
 
+// TestCheckFixedArrayLiteralWrongLength checks the diagnostics path for a
+// literal whose element count does not match its type.
+func TestCheckFixedArrayLiteralWrongLength(t *testing.T) {
+	src := `func main() -> i32 {
+    var xs: [2]i32 = [2]i32 { 1 }
+    return xs[0]
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, _ := runCLI("check", path)
+	if code != 1 {
+		t.Fatalf("code = %d, stdout = %q", code, out)
+	}
+	if !strings.Contains(out, "T0003 wrong number of array elements") ||
+		!strings.Contains(out, "help: write exactly 2 elements") {
+		t.Fatalf("stdout = %q", out)
+	}
+}
+
+// TestRunFixedArrayLiteral checks field and string elements, their owning
+// release, and left-to-right construction.
+func TestRunFixedArrayLiteral(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `struct S {
+    s: str
+}
+
+func main() -> i32 {
+    var a: str = "ab"
+    var xs: [2]str = [2]str { a, "cde" }
+    var ps: [2]S = [2]S { S { s: "xy" }, S { s: "z" } }
+    return i32(xs[0].Len() + xs[1].Len() + ps[0].s.Len() + ps[1].s.Len())
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 8 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunInterfaceBoxAndClone checks that a stored interface owns a heap box,
 // Clone uses the table's clone thunk, and release calls the drop thunk.
 func TestRunInterfaceBoxAndClone(t *testing.T) {

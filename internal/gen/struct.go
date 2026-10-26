@@ -533,6 +533,12 @@ func (g *generator) typeOf(id int) (string, error) {
 			return "", g.errf(id, "cannot translate node #%d: the aggregate type is not lowered yet", id)
 		}
 		return info.llvm, nil
+	case "arrlit":
+		typ, ok := g.typeLLVMOf(fieldText(r, "type"))
+		if !ok || typ == "" {
+			return "", g.errf(id, "cannot translate node #%d: fixed array type %s is not lowered yet", id, fieldText(r, "type"))
+		}
+		return typ, nil
 	case "interp":
 		return "{ ptr, i64 }", nil
 	case "spawn", "channew":
@@ -811,6 +817,8 @@ func (g *generator) willTypeText(id int) (string, error) {
 			}
 		}
 		return "", nil
+	case "arrlit":
+		return fieldText(r, "type"), nil
 	case "interp":
 		return "str", nil
 	case "spawn":
@@ -1324,6 +1332,19 @@ func (g *generator) place(id int) (string, string, error) {
 			return "", "", err
 		}
 		return slot, info.llvm, nil
+	case "arrlit":
+		typ, ok := g.typeLLVMOf(fieldText(r, "type"))
+		if !ok || typ == "" {
+			return "", "", g.errf(id, "cannot translate node #%d: fixed array type %s is not lowered yet", id, fieldText(r, "type"))
+		}
+		if err := g.storeArrayLiteral(r); err != nil {
+			return "", "", err
+		}
+		slot := g.arrayLitSlots[r.ID]
+		if slot == "" {
+			return "", "", g.errf(id, "cannot translate node #%d: fixed array literal has no slot", id)
+		}
+		return slot, typ, nil
 	case "slice":
 		slot, err := g.sliceValue(r)
 		if err != nil {
