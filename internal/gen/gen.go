@@ -1092,7 +1092,14 @@ type generator struct {
 	quietShare    bool
 	strings       []string
 	stringsByText map[string]string
-	needPanicDecl bool
+	// syntheticTemps are owned child-result slots created by the current
+	// statement. They are released after the statement, and frameTemps keeps
+	// the same slots for an abnormal exit.
+	syntheticTemps []syntheticTemp
+	frameTemps     []syntheticTemp
+	frameTempSeen  map[string]bool
+	stmtDepth      int
+	needPanicDecl  bool
 	// suspendable names the functions that a spawned caller must run as a
 	// state-machine task instead of calling on the lane.
 	suspendable map[string]bool
@@ -1614,6 +1621,7 @@ func (g *generator) errf(id int, format string, args ...any) error {
 
 func (g *generator) funcDecl(fn willc.Record) error {
 	g.liveValues = map[int]string{}
+	g.resetSyntheticTemps()
 	if g.generalMachine(fn.ID) {
 		g.markSuspendable(g.cur.funcs[fn.ID])
 		g.enqueueGeneral(fn.ID)
@@ -2726,6 +2734,7 @@ func (g *generator) assignStmt(r willc.Record) error {
 		old := g.load("ptr", ptr)
 		fmt.Fprintf(g.out, "  call void @willrt_chan_release(ptr %s)\n", old)
 		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", value, ptr)
+		g.clearSyntheticCallSource(valueID)
 		return nil
 	}
 	if textErr == nil && isRcText(targetText) {
@@ -2740,6 +2749,7 @@ func (g *generator) assignStmt(r willc.Record) error {
 		old := g.load("i64", ptr)
 		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", old)
 		fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", value, ptr)
+		g.clearSyntheticCallSource(valueID)
 		return nil
 	}
 	if iface, ok := g.ifaceOfType(typ); ok {
@@ -2804,8 +2814,19 @@ func (g *generator) moveSource(id int) (bool, string) {
 	if !ok {
 		return false, ""
 	}
+	if r.Kind == "await" {
+		return g.moveSource(refField(r, "expr"))
+	}
 	text, err := g.willTypeText(id)
-	if err != nil || text == "" || isRcText(text) || isWeakText(text) || isFuncText(text) || !ownsReleaseText(g, text) {
+	if err != nil || text == "" || isWeakText(text) || !ownsReleaseText(g, text) {
+		return false, ""
+	}
+	if r.Kind == "call" || r.Kind == "mcall" || r.Kind == "try" || r.Kind == "unwrap" {
+		if _, ok := g.smPlaces[id]; ok {
+			return true, text
+		}
+	}
+	if isRcText(text) || isFuncText(text) {
 		return false, ""
 	}
 	switch r.Kind {
@@ -2897,6 +2918,9 @@ func (g *generator) zeroTransferredSource(id int, dst string) error {
 	if !ok {
 		return nil
 	}
+	if r.Kind == "await" {
+		return g.zeroTransferredSource(refField(r, "expr"), dst)
+	}
 	switch r.Kind {
 	case "name":
 		decl := refField(r, "to")
@@ -2908,6 +2932,12 @@ func (g *generator) zeroTransferredSource(id int, dst string) error {
 		if !g.localPlaceRoot(id) {
 			return nil
 		}
+	case "call", "mcall", "try", "unwrap":
+		if place, ok := g.smPlaces[id]; ok {
+			g.storeZero(place.ptr, place.typ)
+			return nil
+		}
+		return nil
 	default:
 		return nil
 	}
@@ -2971,6 +3001,7 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 			fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
 		}
 		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", value, slot)
+		g.clearSyntheticCallSource(valueID)
 		return false, nil
 	}
 	if isRcText(fieldText(r, "type")) {
@@ -2983,6 +3014,7 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
 		}
 		fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", value, slot)
+		g.clearSyntheticCallSource(valueID)
 		return false, nil
 	}
 	if iface, ok := g.ifaceOfType(typ); ok {
@@ -3041,6 +3073,7 @@ func (g *generator) bodyStmts(stmts []willc.Record, void bool) (bool, error) {
 		savedLive[id] = text
 	}
 	g.defers = append(g.defers, nil)
+	top := g.stmtDepth == 0
 	terminated := false
 	var pending []willc.Record
 	for _, st := range stmts {
@@ -3054,7 +3087,9 @@ func (g *generator) bodyStmts(stmts []willc.Record, void bool) (bool, error) {
 		if st.Kind == "return" || st.Kind == "break" || st.Kind == "continue" {
 			g.pendingReleases = append(g.pendingReleases, pending...)
 			pending = nil
+			g.stmtDepth++
 			done, err := g.stmt(st, void)
+			g.stmtDepth--
 			if err != nil {
 				return false, err
 			}
@@ -3072,14 +3107,26 @@ func (g *generator) bodyStmts(stmts []willc.Record, void bool) (bool, error) {
 			}
 			pending = nil
 		}
+		g.stmtDepth++
 		done, err := g.stmt(st, void)
+		g.stmtDepth--
 		if err != nil {
 			return false, err
 		}
 		g.pendingTryReleases = nil
 		terminated = done
+		if top && !terminated {
+			if err := g.releaseSyntheticTemps(); err != nil {
+				return false, err
+			}
+		}
 	}
 	if !terminated {
+		if top {
+			if err := g.releaseSyntheticTemps(); err != nil {
+				return false, err
+			}
+		}
 		if err := g.runDefers(entry); err != nil {
 			return false, err
 		}
@@ -3248,6 +3295,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		if refField(st, "value") != 0 {
 			return false, g.errf(st.ID, "cannot translate node #%d: a void function returns no value", st.ID)
 		}
+		if err := g.releaseSyntheticTemps(); err != nil {
+			return false, err
+		}
 		if err := g.runDefers(0); err != nil {
 			return false, err
 		}
@@ -3304,6 +3354,9 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 			return false, err
 		}
 		v := g.load(iface.llvm, slot)
+		if err := g.releaseSyntheticTemps(); err != nil {
+			return false, err
+		}
 		if err := g.runDefers(0); err != nil {
 			return false, err
 		}
@@ -3335,11 +3388,14 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		fmt.Fprintf(g.out, "  %s = load %s, ptr %s\n", tmp, typ, ptr)
 		if move, _ := g.moveSource(valueID); move {
 			r, ok := g.recs[valueID]
-			if ok && (r.Kind == "field" || r.Kind == "index") {
+			if ok && (r.Kind == "field" || r.Kind == "index" || r.Kind == "call" || r.Kind == "mcall") {
 				if err := g.zeroMovedSource(valueID, ""); err != nil {
 					return false, err
 				}
 			}
+		}
+		if err := g.releaseSyntheticTemps(); err != nil {
+			return false, err
 		}
 		if err := g.runDefers(0); err != nil {
 			return false, err
@@ -3361,6 +3417,10 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 	}
 	value, err := g.value(valueID)
 	if err != nil {
+		return false, err
+	}
+	g.clearSyntheticCallSource(valueID)
+	if err := g.releaseSyntheticTemps(); err != nil {
 		return false, err
 	}
 	if err := g.runDefers(0); err != nil {
@@ -3414,6 +3474,9 @@ func (g *generator) jump(isBreak bool) (bool, error) {
 		return false, err
 	}
 	if err := g.flushReleases(); err != nil {
+		return false, err
+	}
+	if err := g.releaseSyntheticTemps(); err != nil {
 		return false, err
 	}
 	fmt.Fprintf(g.out, "  br label %%%s\n", target)

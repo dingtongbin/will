@@ -51,6 +51,13 @@ func (g *generator) generalFrameOwners(fnID int, offsets map[string]int) []gener
 		}
 		out = append(out, generalFrameOwner{id: r.ID, offset: offset, llvm: llvm, text: text})
 	}
+	for _, temp := range g.frameTemps {
+		offset, ok := offsets[temp.slot]
+		if !ok || temp.text == "" || temp.llvm == "" {
+			continue
+		}
+		out = append(out, generalFrameOwner{offset: offset, llvm: temp.llvm, text: temp.text})
+	}
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].id > out[j].id
 	})

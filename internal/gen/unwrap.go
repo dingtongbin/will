@@ -98,6 +98,11 @@ func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 	payload := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
 	out := g.allocSlot(g.callSlots, "unwrap.out", r.ID, info.argLLVM[0])
+	if _, seen := g.smPlaces[r.ID]; !seen {
+		g.storeZero(out, info.argLLVM[0])
+		g.smPlaces[r.ID] = smPlace{ptr: out, typ: info.argLLVM[0]}
+		g.addSyntheticTemp(out, info.args[0], info.argLLVM[0])
+	}
 	if isAggregateType(info.argLLVM[0]) {
 		g.copyValue(payload, out, info.argLLVM[0])
 	} else {
@@ -143,7 +148,9 @@ func (g *generator) unwrapValue(r willc.Record) (string, error) {
 	if isAggregateType(typ) {
 		return "", g.errf(r.ID, "cannot translate node #%d: the payload is an aggregate place", r.ID)
 	}
-	return g.load(typ, addr), nil
+	value := g.load(typ, addr)
+	g.clearSyntheticCallSource(r.ID)
+	return value, nil
 }
 
 // unwrapPlace lowers `expr!` in a place position.

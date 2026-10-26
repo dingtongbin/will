@@ -100,6 +100,9 @@ func (g *generator) generalCallWait(r willc.Record) (string, error) {
 	out := ""
 	if llvm != "" {
 		out = g.smAlloca(llvm, "call.out")
+		g.storeZero(out, llvm)
+		g.addSyntheticTemp(out, text, llvm)
+		g.smPlaces[r.ID] = smPlace{ptr: out, typ: llvm}
 	}
 	errSlot := g.smAlloca("%willrt_error", "call.err")
 	status := g.smTryJoin(task, out, errSlot)
@@ -121,7 +124,11 @@ func (g *generator) generalCallWait(r willc.Record) (string, error) {
 	if isAggregateType(llvm) {
 		return "", g.errf(r.ID, "cannot translate node #%d: a call result is a place", r.ID)
 	}
-	return g.load(llvm, out), nil
+	value := g.load(llvm, out)
+	if ownsReleaseText(g, text) {
+		g.storeZero(out, llvm)
+	}
+	return value, nil
 }
 
 // generalCallWaitPlace is the aggregate form: the child result slot is the
@@ -144,6 +151,9 @@ func (g *generator) generalCallWaitPlace(r willc.Record) (string, string, error)
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the call result has no place", r.ID)
 	}
 	out := g.smAlloca(llvm, "call.out")
+	g.storeZero(out, llvm)
+	g.addSyntheticTemp(out, text, llvm)
+	g.smPlaces[r.ID] = smPlace{ptr: out, typ: llvm}
 	errSlot := g.smAlloca("%willrt_error", "call.err")
 	status := g.smTryJoin(task, out, errSlot)
 	success := g.newTmp()

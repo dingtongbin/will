@@ -222,6 +222,7 @@ func (g *generator) emitSelectMachineStep(info *selectMachineInfo) error {
 	g.lateAllocas = nil
 	g.lateAllowed = true
 	g.smPlaces = map[int]smPlace{}
+	g.resetSyntheticTemps()
 	g.resultType = info.resultLLVM
 	g.fnResultText = info.resultText
 	g.fnSymbol = info.symbol

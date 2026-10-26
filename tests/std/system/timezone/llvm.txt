@@ -6506,10 +6506,12 @@ unwrap.err.1:
 unwrap.ok.1:
   %t19 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.14, i32 0, i32 2
   %v.unwrap.out.13 = alloca %"struct.std/time.Timezone"
+  store %"struct.std/time.Timezone" zeroinitializer, ptr %v.unwrap.out.13
   %t20 = load %"struct.std/time.Timezone", ptr %t19
   store %"struct.std/time.Timezone" %t20, ptr %v.unwrap.out.13
   %t21 = load %"struct.std/time.Timezone", ptr %v.unwrap.out.13
   store %"struct.std/time.Timezone" %t21, ptr %v.sh
+  store %"struct.std/time.Timezone" zeroinitializer, ptr %v.unwrap.out.13
   %t22 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.t, ptr %v.sh)
   store %"struct.std/time.Instant" %t22, ptr %v.ret.21
   %t23 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.21)
@@ -6563,10 +6565,12 @@ unwrap.err.3:
 unwrap.ok.3:
   %t57 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.34, i32 0, i32 2
   %v.unwrap.out.33 = alloca %"struct.std/time.Timezone"
+  store %"struct.std/time.Timezone" zeroinitializer, ptr %v.unwrap.out.33
   %t58 = load %"struct.std/time.Timezone", ptr %t57
   store %"struct.std/time.Timezone" %t58, ptr %v.unwrap.out.33
   %t59 = load %"struct.std/time.Timezone", ptr %v.unwrap.out.33
   store %"struct.std/time.Timezone" %t59, ptr %v.ny
+  store %"struct.std/time.Timezone" zeroinitializer, ptr %v.unwrap.out.33
   %t60 = call %"struct.std/time.Instant" @"std/time.In"(ptr %v.t, ptr %v.ny)
   store %"struct.std/time.Instant" %t60, ptr %v.ret.41
   %t61 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.ret.41)
@@ -6782,10 +6786,12 @@ unwrap.err.11:
 unwrap.ok.11:
   %t202 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.173, i32 0, i32 2
   %v.unwrap.out.172 = alloca %"struct.std/time.Instant"
+  store %"struct.std/time.Instant" zeroinitializer, ptr %v.unwrap.out.172
   %t203 = load %"struct.std/time.Instant", ptr %t202
   store %"struct.std/time.Instant" %t203, ptr %v.unwrap.out.172
   %t204 = load %"struct.std/time.Instant", ptr %v.unwrap.out.172
   store %"struct.std/time.Instant" %t204, ptr %v.parsed
+  store %"struct.std/time.Instant" zeroinitializer, ptr %v.unwrap.out.172
   %t205 = call { ptr, i64 } @"std/time.Rfc3339Nano"(ptr %v.parsed)
   store { ptr, i64 } %t205, ptr %v.ret.178
   %t206 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.178, i32 0, i32 0
@@ -6843,10 +6849,12 @@ unwrap.err.14:
 unwrap.ok.14:
   %t241 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.215, i32 0, i32 2
   %v.unwrap.out.214 = alloca %"struct.std/time.Instant"
+  store %"struct.std/time.Instant" zeroinitializer, ptr %v.unwrap.out.214
   %t242 = load %"struct.std/time.Instant", ptr %t241
   store %"struct.std/time.Instant" %t242, ptr %v.unwrap.out.214
   %t243 = load %"struct.std/time.Instant", ptr %v.unwrap.out.214
   store %"struct.std/time.Instant" %t243, ptr %v.last
+  store %"struct.std/time.Instant" zeroinitializer, ptr %v.unwrap.out.214
   %t244 = call { ptr, i64 } @"std/time.Rfc3339Nano"(ptr %v.last)
   store { ptr, i64 } %t244, ptr %v.ret.220
   %t245 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.220, i32 0, i32 0
@@ -6918,10 +6926,12 @@ unwrap.err.17:
 unwrap.ok.17:
   %t285 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.263, i32 0, i32 2
   %v.unwrap.out.262 = alloca %"struct.std/time.Instant"
+  store %"struct.std/time.Instant" zeroinitializer, ptr %v.unwrap.out.262
   %t286 = load %"struct.std/time.Instant", ptr %t285
   store %"struct.std/time.Instant" %t286, ptr %v.unwrap.out.262
   %t287 = load %"struct.std/time.Instant", ptr %v.unwrap.out.262
   store %"struct.std/time.Instant" %t287, ptr %v.plus
+  store %"struct.std/time.Instant" zeroinitializer, ptr %v.unwrap.out.262
   %t288 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.plus)
   store { ptr, i64 } %t288, ptr %v.ret.268
   %t289 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.268, i32 0, i32 0
@@ -6973,10 +6983,12 @@ unwrap.err.19:
 unwrap.ok.19:
   %t322 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.ret.289, i32 0, i32 2
   %v.unwrap.out.288 = alloca %"struct.std/time.Instant"
+  store %"struct.std/time.Instant" zeroinitializer, ptr %v.unwrap.out.288
   %t323 = load %"struct.std/time.Instant", ptr %t322
   store %"struct.std/time.Instant" %t323, ptr %v.unwrap.out.288
   %t324 = load %"struct.std/time.Instant", ptr %v.unwrap.out.288
   store %"struct.std/time.Instant" %t324, ptr %v.date
+  store %"struct.std/time.Instant" zeroinitializer, ptr %v.unwrap.out.288
   %t325 = call { ptr, i64 } @"std/time.Rfc3339"(ptr %v.date)
   store { ptr, i64 } %t325, ptr %v.ret.295
   %t326 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.295, i32 0, i32 0

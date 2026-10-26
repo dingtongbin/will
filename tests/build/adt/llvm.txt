@@ -109,10 +109,13 @@ try.err.1:
 try.ok.1:
   %t38 = getelementptr inbounds { i32, i32 }, ptr %v.ret.69, i32 0, i32 1
   %v.try.out.68 = alloca i32
+  store i32 0, ptr %v.try.out.68
   %t39 = load i32, ptr %t38
   store i32 %t39, ptr %v.try.out.68
   %t40 = load i32, ptr %v.try.out.68
+  store i32 0, ptr %v.try.out.68
   store i32 %t40, ptr %v.v
+  store i32 0, ptr %v.try.out.68
   %t41 = getelementptr inbounds { i32, i32 }, ptr %v.adt.72, i32 0, i32 0
   store i32 0, ptr %t41
   %t42 = getelementptr inbounds { i32, i32 }, ptr %v.adt.72, i32 0, i32 1

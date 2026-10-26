@@ -123,6 +123,94 @@ func main() -> i32 {
 	}
 }
 
+// TestRunAsyncChildResultMovesOnce checks that a typed async child result is
+// moved into its local and then released once; the frame drop must see a clear
+// slot instead of the same string owner.
+func TestRunAsyncChildResultMovesOnce(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("repo root: %v", err)
+	}
+	dir := filepath.Join(t.TempDir(), "childresult")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("make module: %v", err)
+	}
+	writeFile(t, dir, "will.mod", "module example.com/childresult\nwill 1\n"+
+		"require std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(filepath.Join(root, "std"))+"\n")
+	src := `import "std/time"
+
+async func Text() -> str {
+    _ = await time.Sleep(1ms)!
+    return "hello".Clone()
+}
+
+async func Parent() -> i32 {
+    var text: str = await Text()
+    return i32(text.Len())
+}
+
+async func main() -> i32 {
+    return await Parent() - 5
+}
+`
+	writeFile(t, dir, "main.will", src)
+	code, out, errOut := runCLI("run", dir)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
+// TestRunTryChildResultMovesOnce checks a child Result crossing through ? and
+// then into a local: the try slot and the child slot must not both release it.
+func TestRunTryChildResultMovesOnce(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("repo root: %v", err)
+	}
+	dir := filepath.Join(t.TempDir(), "childresulttry")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("make module: %v", err)
+	}
+	writeFile(t, dir, "will.mod", "module example.com/childresulttry\nwill 1\n"+
+		"require std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(filepath.Join(root, "std"))+"\n")
+	src := `import "std/time"
+
+async func Text() -> Result<str, Error> {
+    _ = await time.Sleep(1ms)!
+    return Ok("hello".Clone())
+}
+
+async func Parent() -> Result<i32, Error> {
+    var text: str = (await Text())?
+    return Ok(i32(text.Len()))
+}
+
+async func main() -> i32 {
+    return match await Parent() {
+        Ok(n) => n - 5
+        Err(_) => 1
+    }
+}
+`
+	writeFile(t, dir, "main.will", src)
+	code, out, errOut := runCLI("run", dir)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunTryMovesThePayload checks that ? copies the payload out, zeros the
 // source Option, and lets the caller release the payload once.
 func TestRunTryMovesThePayload(t *testing.T) {

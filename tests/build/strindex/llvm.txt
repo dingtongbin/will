@@ -58,11 +58,14 @@ panic.2:
 panic.ok.2:
   %t23 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.at, i32 0, i32 2
   %v.unwrap.out.16 = alloca i64
+  store i64 0, ptr %v.unwrap.out.16
   %t24 = load i64, ptr %t23
   store i64 %t24, ptr %v.unwrap.out.16
   store { i32, [4 x i8], i64 } zeroinitializer, ptr %v.at
   %t25 = load i64, ptr %v.unwrap.out.16
+  store i64 0, ptr %v.unwrap.out.16
   store i64 %t25, ptr %v.pos
+  store i64 0, ptr %v.unwrap.out.16
   %t26 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
   %t27 = load ptr, ptr %t26
   %t28 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 1

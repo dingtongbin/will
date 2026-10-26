@@ -79,6 +79,9 @@ func (g *generator) tryCore(r willc.Record) (string, string, string, error) {
 		return "", "", "", err
 	}
 	returned := g.load(dst.llvm, slot)
+	if err := g.releaseSyntheticTemps(); err != nil {
+		return "", "", "", err
+	}
 	if err := g.runDefers(0); err != nil {
 		return "", "", "", err
 	}
@@ -105,6 +108,11 @@ func (g *generator) tryCore(r willc.Record) (string, string, string, error) {
 	payload := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, src.llvm, srcSlot, src.payloadIndex)
 	out := g.allocSlot(g.callSlots, "try.out", r.ID, src.argLLVM[0])
+	if _, seen := g.smPlaces[r.ID]; !seen {
+		g.storeZero(out, src.argLLVM[0])
+		g.smPlaces[r.ID] = smPlace{ptr: out, typ: src.argLLVM[0]}
+		g.addSyntheticTemp(out, src.args[0], src.argLLVM[0])
+	}
 	if isAggregateType(src.argLLVM[0]) {
 		g.copyValue(payload, out, src.argLLVM[0])
 	} else {
@@ -129,7 +137,9 @@ func (g *generator) tryValue(r willc.Record) (string, error) {
 	if isAggregateType(typ) {
 		return "", g.errf(r.ID, "cannot translate node #%d: the success value is an aggregate place", r.ID)
 	}
-	return g.load(typ, addr), nil
+	value := g.load(typ, addr)
+	g.clearSyntheticCallSource(r.ID)
+	return value, nil
 }
 
 // tryPlace lowers `expr?` in a place position, for an aggregate payload.

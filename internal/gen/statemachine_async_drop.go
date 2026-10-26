@@ -6,19 +6,29 @@ import "fmt"
 // frame. Parameters are borrows: the caller owns them and the frame must not
 // release them. Synthetic status and result fields are consumed by the state
 // machine, so they are not part of the frame cleanup either.
-func (g *generator) asyncFrameDropFields(info *asyncMachineInfo, includeParams bool) []asyncField {
+type asyncDropField struct {
+	field asyncField
+	index int
+}
+
+func (g *generator) asyncFrameDropFields(info *asyncMachineInfo, includeParams bool) []asyncDropField {
 	if info == nil {
 		return nil
 	}
 	released := g.releasedOwners()
-	var out []asyncField
-	for _, f := range info.fields {
+	var out []asyncDropField
+	for i, f := range info.fields {
 		if f.id == 0 {
+			// A synthetic child result has no source declaration; the frame
+			// owns it until the after statement moves or releases it.
+			if f.willText != "" && ownsReleaseText(g, f.willText) {
+				out = append(out, asyncDropField{field: f, index: i})
+			}
 			continue
 		}
 		if f.param {
 			if includeParams && !f.paramMut && ownsReleaseText(g, f.willText) {
-				out = append(out, f)
+				out = append(out, asyncDropField{field: f, index: i})
 			}
 			continue
 		}
@@ -26,7 +36,7 @@ func (g *generator) asyncFrameDropFields(info *asyncMachineInfo, includeParams b
 			continue
 		}
 		if ownsReleaseText(g, f.willText) {
-			out = append(out, f)
+			out = append(out, asyncDropField{field: f, index: i})
 		}
 	}
 	return out
@@ -64,21 +74,11 @@ func (g *generator) emitAsyncFrameDrop(info *asyncMachineInfo, sym string, inclu
 		return nil
 	}
 	fmt.Fprintf(g.out, "define internal void @%s(ptr %%frame) {\nentry:\n", llvmSymbol(sym))
-	for _, f := range fields {
-		index := 0
-		for i := range info.fields {
-			if info.fields[i].id == f.id {
-				index = i + 2
-				break
-			}
-		}
-		if index == 0 {
-			continue
-		}
+	for _, drop := range fields {
 		field := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n",
-			field, info.frameType, index)
-		if err := g.releaseOwnedValue(field, f.willText); err != nil {
+			field, info.frameType, drop.index+2)
+		if err := g.releaseOwnedValue(field, drop.field.willText); err != nil {
 			return err
 		}
 	}

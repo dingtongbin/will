@@ -1316,14 +1316,17 @@ deep.rel.arr.done.3:
 try.ok.2:
   %t33 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.59, i32 0, i32 2
   %v.try.out.58 = alloca i64
+  store i64 0, ptr %v.try.out.58
   %t34 = load i64, ptr %t33
   store i64 %t34, ptr %v.try.out.58
   %t35 = load i64, ptr %v.try.out.58
+  store i64 0, ptr %v.try.out.58
   store i64 %t35, ptr %v.n
   %t36 = load i64, ptr %v.n
   %t37 = icmp eq i64 %t36, 0
   br i1 %t37, label %if.then.4, label %if.end.4
 if.then.4:
+  store i64 0, ptr %v.try.out.58
   br label %for.end.1
 if.end.4:
   store i64 0, ptr %v.i
@@ -1518,14 +1521,17 @@ deep.rel.arr.done.3:
 try.ok.2:
   %t125 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.122, i32 0, i32 2
   %v.try.out.121 = alloca i64
+  store i64 0, ptr %v.try.out.121
   %t126 = load i64, ptr %t125
   store i64 %t126, ptr %v.try.out.121
   %t127 = load i64, ptr %v.try.out.121
+  store i64 0, ptr %v.try.out.121
   store i64 %t127, ptr %v.n
   %t128 = load i64, ptr %v.n
   %t129 = icmp eq i64 %t128, 0
   br i1 %t129, label %if.then.4, label %if.end.4
 if.then.4:
+  store i64 0, ptr %v.try.out.121
   br label %for.end.1
 if.end.4:
   %t130 = getelementptr inbounds %"interface.std/io.Writer", ptr %dst, i32 0, i32 0

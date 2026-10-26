@@ -226,10 +226,13 @@ try.err.1:
 try.ok.1:
   %t92 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.127, i32 0, i32 2
   %v.try.out.126 = alloca i32
+  store i32 0, ptr %v.try.out.126
   %t93 = load i32, ptr %t92
   store i32 %t93, ptr %v.try.out.126
   %t94 = load i32, ptr %v.try.out.126
+  store i32 0, ptr %v.try.out.126
   store i32 %t94, ptr %v.v
+  store i32 0, ptr %v.try.out.126
   %t95 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.131, i32 0, i32 0
   store i32 0, ptr %t95
   %t96 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.131, i32 0, i32 2
@@ -304,9 +307,11 @@ try.err.1:
 try.ok.1:
   %t130 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.160, i32 0, i32 2
   %v.try.out.159 = alloca i32
+  store i32 0, ptr %v.try.out.159
   %t131 = load i32, ptr %t130
   store i32 %t131, ptr %v.try.out.159
   %t132 = load i32, ptr %v.try.out.159
+  store i32 0, ptr %v.try.out.159
   %t133 = load i64, ptr %v.x
   %t134 = call ptr @willrt_rc_deref(i64 %t133)
   %t135 = getelementptr inbounds %"struct.example.com/defer.C", ptr %t134, i32 0, i32 0
@@ -321,6 +326,7 @@ panic.2:
 panic.ok.2:
   store i32 %t138, ptr %t119
   %t140 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.156
+  store i32 0, ptr %v.try.out.159
   call void @"example.com/defer.defer.5"(ptr %t113)
   call void @willrt_free(ptr %t113)
   ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t140

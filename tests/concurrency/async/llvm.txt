@@ -5085,14 +5085,17 @@ entry:
   %v.sm.call.out.3 = getelementptr i8, ptr %frame, i64 128
   %v.sm.call.err.4 = getelementptr i8, ptr %frame, i64 160
   %v.sm.join.task.5 = getelementptr i8, ptr %frame, i64 192
-  %t39 = getelementptr i8, ptr %frame, i64 200
-  %v.try.out.13 = getelementptr i8, ptr %frame, i64 224
-  %t64 = getelementptr i8, ptr %frame, i64 248
-  %t69 = getelementptr i8, ptr %frame, i64 256
+  %t46 = getelementptr i8, ptr %frame, i64 200
+  %t60 = getelementptr i8, ptr %frame, i64 208
+  %v.try.out.13 = getelementptr i8, ptr %frame, i64 232
+  %t80 = getelementptr i8, ptr %frame, i64 256
+  %t94 = getelementptr i8, ptr %frame, i64 264
+  %t99 = getelementptr i8, ptr %frame, i64 272
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
   %t2 = call ptr @"std/os/fs.AsyncReadFile.task"(ptr %v.sm.param.4.1, i32 -2, i32 0)
+  store { i32, [4 x i8], { ptr, i64, i64 } } zeroinitializer, ptr %v.sm.call.out.3
   store ptr %t2, ptr %v.sm.join.task.5
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
@@ -5159,178 +5162,406 @@ try.err.4:
   %t36 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.13, i32 0, i32 2
   %t37 = load %interface.Error, ptr %t35
   store %interface.Error %t37, ptr %t36
+  store { i32, [4 x i8], { ptr, i64, i64 } } zeroinitializer, ptr %v.sm.call.out.3
   %t38 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.13
-  store { i32, [4 x i8], %interface.Error } %t38, ptr %t39
-  %t40 = load i32, ptr %t39
-  %t41 = icmp eq i32 %t40, 1
-  br i1 %t41, label %share.adt.5.1, label %share.adt.done.5.1
-share.adt.5.1:
-  %t42 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t39, i32 0, i32 2
-  %t43 = getelementptr inbounds %interface.Error, ptr %t42, i32 0, i32 0
-  %t44 = getelementptr inbounds %interface.Error, ptr %t42, i32 0, i32 1
-  %t45 = load ptr, ptr %t43
-  %t46 = load ptr, ptr %t44
-  %t47 = icmp eq ptr %t45, null
-  br i1 %t47, label %iface.share.empty.6, label %iface.share.have.6
-iface.share.empty.6:
-  br label %iface.share.done.6
-iface.share.have.6:
-  %t48 = getelementptr inbounds [6 x ptr], ptr %t46, i64 0, i64 4
-  %t49 = load ptr, ptr %t48
-  call void %t49(ptr %t45)
-  br label %iface.share.done.6
-iface.share.done.6:
-  br label %share.adt.done.5.1
-share.adt.done.5.1:
-  %t50 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t51 = ptrtoint ptr %t50 to i64
-  call i32 @willrt_task_store_result(ptr %t39, i64 %t51)
+  %t39 = load i32, ptr %v.sm.call.out.3
+  %t40 = icmp eq i32 %t39, 0
+  br i1 %t40, label %deep.rel.adt.5.0, label %deep.rel.adt.done.5.0
+deep.rel.adt.5.0:
+  %t41 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.sm.call.out.3, i32 0, i32 2
+  %t42 = getelementptr inbounds { ptr, i64, i64 }, ptr %t41, i32 0, i32 0
+  %t43 = getelementptr inbounds { ptr, i64, i64 }, ptr %t41, i32 0, i32 1
+  %t44 = load ptr, ptr %t42
+  %t45 = load i64, ptr %t43
+  store i64 0, ptr %t46
+  br label %deep.rel.arr.cond.6
+deep.rel.arr.cond.6:
+  %t47 = load i64, ptr %t46
+  %t48 = icmp ult i64 %t47, %t45
+  br i1 %t48, label %deep.rel.arr.body.6, label %deep.rel.arr.done.6
+deep.rel.arr.body.6:
+  %t49 = getelementptr inbounds i8, ptr %t44, i64 %t47
+  store i8 zeroinitializer, ptr %t49
+  %t50 = add i64 %t47, 1
+  store i64 %t50, ptr %t46
+  br label %deep.rel.arr.cond.6
+deep.rel.arr.done.6:
+  call void @willrt_free(ptr %t44)
+  store { ptr, i64, i64 } zeroinitializer, ptr %t41
+  br label %deep.rel.adt.done.5.0
+deep.rel.adt.done.5.0:
+  %t51 = icmp eq i32 %t39, 1
+  br i1 %t51, label %deep.rel.adt.7.1, label %deep.rel.adt.done.7.1
+deep.rel.adt.7.1:
+  %t52 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.sm.call.out.3, i32 0, i32 2
+  %t53 = getelementptr inbounds %interface.Error, ptr %t52, i32 0, i32 0
+  %t54 = getelementptr inbounds %interface.Error, ptr %t52, i32 0, i32 1
+  %t55 = load ptr, ptr %t53
+  %t56 = load ptr, ptr %t54
+  %t57 = icmp eq ptr %t55, null
+  br i1 %t57, label %iface.rel.empty.8, label %iface.rel.have.8
+iface.rel.empty.8:
+  br label %iface.rel.done.8
+iface.rel.have.8:
+  %t58 = getelementptr inbounds [6 x ptr], ptr %t56, i64 0, i64 3
+  %t59 = load ptr, ptr %t58
+  call void %t59(ptr %t55)
+  call void @willrt_free(ptr %t55)
+  store ptr null, ptr %t53
+  store ptr null, ptr %t54
+  br label %iface.rel.done.8
+iface.rel.done.8:
+  store %interface.Error zeroinitializer, ptr %t52
+  br label %deep.rel.adt.done.7.1
+deep.rel.adt.done.7.1:
+  store { i32, [4 x i8], { ptr, i64, i64 } } zeroinitializer, ptr %v.sm.call.out.3
+  store { i32, [4 x i8], { ptr, i64, i64 } } zeroinitializer, ptr %v.sm.call.out.3
+  store { i32, [4 x i8], %interface.Error } %t38, ptr %t60
+  %t61 = load i32, ptr %t60
+  %t62 = icmp eq i32 %t61, 1
+  br i1 %t62, label %share.adt.9.1, label %share.adt.done.9.1
+share.adt.9.1:
+  %t63 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t60, i32 0, i32 2
+  %t64 = getelementptr inbounds %interface.Error, ptr %t63, i32 0, i32 0
+  %t65 = getelementptr inbounds %interface.Error, ptr %t63, i32 0, i32 1
+  %t66 = load ptr, ptr %t64
+  %t67 = load ptr, ptr %t65
+  %t68 = icmp eq ptr %t66, null
+  br i1 %t68, label %iface.share.empty.10, label %iface.share.have.10
+iface.share.empty.10:
+  br label %iface.share.done.10
+iface.share.have.10:
+  %t69 = getelementptr inbounds [6 x ptr], ptr %t67, i64 0, i64 4
+  %t70 = load ptr, ptr %t69
+  call void %t70(ptr %t66)
+  br label %iface.share.done.10
+iface.share.done.10:
+  br label %share.adt.done.9.1
+share.adt.done.9.1:
+  %t71 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t72 = ptrtoint ptr %t71 to i64
+  call i32 @willrt_task_store_result(ptr %t60, i64 %t72)
   ret i32 1
   unreachable
 try.ok.4:
-  %t52 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.sm.call.out.3, i32 0, i32 2
-  %t53 = load { ptr, i64, i64 }, ptr %t52
-  store { ptr, i64, i64 } %t53, ptr %v.try.out.13
-  %t54 = load { ptr, i64, i64 }, ptr %v.try.out.13
-  store { ptr, i64, i64 } %t54, ptr %v.bytes
-  %t55 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.20, i32 0, i32 0
-  store i32 0, ptr %t55
-  %t56 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.20, i32 0, i32 2
-  %t57 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
-  %t58 = load i64, ptr %t57
-  store i64 %t58, ptr %t56
-  %t59 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.20
-  %t60 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
-  %t61 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
-  %t62 = load ptr, ptr %t60
-  %t63 = load i64, ptr %t61
-  store i64 0, ptr %t64
-  br label %deep.rel.arr.cond.7
-deep.rel.arr.cond.7:
-  %t65 = load i64, ptr %t64
-  %t66 = icmp ult i64 %t65, %t63
-  br i1 %t66, label %deep.rel.arr.body.7, label %deep.rel.arr.done.7
-deep.rel.arr.body.7:
-  %t67 = getelementptr inbounds i8, ptr %t62, i64 %t65
-  store i8 zeroinitializer, ptr %t67
-  %t68 = add i64 %t65, 1
-  store i64 %t68, ptr %t64
-  br label %deep.rel.arr.cond.7
-deep.rel.arr.done.7:
-  call void @willrt_free(ptr %t62)
+  %t73 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.sm.call.out.3, i32 0, i32 2
+  store { ptr, i64, i64 } zeroinitializer, ptr %v.try.out.13
+  %t74 = load { ptr, i64, i64 }, ptr %t73
+  store { ptr, i64, i64 } %t74, ptr %v.try.out.13
+  store { i32, [4 x i8], { ptr, i64, i64 } } zeroinitializer, ptr %v.sm.call.out.3
+  %t75 = load { ptr, i64, i64 }, ptr %v.try.out.13
+  store { ptr, i64, i64 } %t75, ptr %v.bytes
+  store { ptr, i64, i64 } zeroinitializer, ptr %v.try.out.13
+  %t76 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.try.out.13, i32 0, i32 0
+  %t77 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.try.out.13, i32 0, i32 1
+  %t78 = load ptr, ptr %t76
+  %t79 = load i64, ptr %t77
+  store i64 0, ptr %t80
+  br label %deep.rel.arr.cond.11
+deep.rel.arr.cond.11:
+  %t81 = load i64, ptr %t80
+  %t82 = icmp ult i64 %t81, %t79
+  br i1 %t82, label %deep.rel.arr.body.11, label %deep.rel.arr.done.11
+deep.rel.arr.body.11:
+  %t83 = getelementptr inbounds i8, ptr %t78, i64 %t81
+  store i8 zeroinitializer, ptr %t83
+  %t84 = add i64 %t81, 1
+  store i64 %t84, ptr %t80
+  br label %deep.rel.arr.cond.11
+deep.rel.arr.done.11:
+  call void @willrt_free(ptr %t78)
+  store { ptr, i64, i64 } zeroinitializer, ptr %v.try.out.13
+  store { ptr, i64, i64 } zeroinitializer, ptr %v.try.out.13
+  %t85 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.20, i32 0, i32 0
+  store i32 0, ptr %t85
+  %t86 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.20, i32 0, i32 2
+  %t87 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
+  %t88 = load i64, ptr %t87
+  store i64 %t88, ptr %t86
+  %t89 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.20
+  %t90 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
+  %t91 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
+  %t92 = load ptr, ptr %t90
+  %t93 = load i64, ptr %t91
+  store i64 0, ptr %t94
+  br label %deep.rel.arr.cond.12
+deep.rel.arr.cond.12:
+  %t95 = load i64, ptr %t94
+  %t96 = icmp ult i64 %t95, %t93
+  br i1 %t96, label %deep.rel.arr.body.12, label %deep.rel.arr.done.12
+deep.rel.arr.body.12:
+  %t97 = getelementptr inbounds i8, ptr %t92, i64 %t95
+  store i8 zeroinitializer, ptr %t97
+  %t98 = add i64 %t95, 1
+  store i64 %t98, ptr %t94
+  br label %deep.rel.arr.cond.12
+deep.rel.arr.done.12:
+  call void @willrt_free(ptr %t92)
   store { ptr, i64, i64 } zeroinitializer, ptr %v.bytes
-  store { i32, [4 x i8], %interface.Error } %t59, ptr %t69
-  %t70 = load i32, ptr %t69
-  %t71 = icmp eq i32 %t70, 1
-  br i1 %t71, label %share.adt.8.1, label %share.adt.done.8.1
-share.adt.8.1:
-  %t72 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t69, i32 0, i32 2
-  %t73 = getelementptr inbounds %interface.Error, ptr %t72, i32 0, i32 0
-  %t74 = getelementptr inbounds %interface.Error, ptr %t72, i32 0, i32 1
-  %t75 = load ptr, ptr %t73
-  %t76 = load ptr, ptr %t74
-  %t77 = icmp eq ptr %t75, null
-  br i1 %t77, label %iface.share.empty.9, label %iface.share.have.9
-iface.share.empty.9:
-  br label %iface.share.done.9
-iface.share.have.9:
-  %t78 = getelementptr inbounds [6 x ptr], ptr %t76, i64 0, i64 4
-  %t79 = load ptr, ptr %t78
-  call void %t79(ptr %t75)
-  br label %iface.share.done.9
-iface.share.done.9:
-  br label %share.adt.done.8.1
-share.adt.done.8.1:
-  %t80 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t81 = ptrtoint ptr %t80 to i64
-  call i32 @willrt_task_store_result(ptr %t69, i64 %t81)
+  store { i32, [4 x i8], %interface.Error } %t89, ptr %t99
+  %t100 = load i32, ptr %t99
+  %t101 = icmp eq i32 %t100, 1
+  br i1 %t101, label %share.adt.13.1, label %share.adt.done.13.1
+share.adt.13.1:
+  %t102 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t99, i32 0, i32 2
+  %t103 = getelementptr inbounds %interface.Error, ptr %t102, i32 0, i32 0
+  %t104 = getelementptr inbounds %interface.Error, ptr %t102, i32 0, i32 1
+  %t105 = load ptr, ptr %t103
+  %t106 = load ptr, ptr %t104
+  %t107 = icmp eq ptr %t105, null
+  br i1 %t107, label %iface.share.empty.14, label %iface.share.have.14
+iface.share.empty.14:
+  br label %iface.share.done.14
+iface.share.have.14:
+  %t108 = getelementptr inbounds [6 x ptr], ptr %t106, i64 0, i64 4
+  %t109 = load ptr, ptr %t108
+  call void %t109(ptr %t105)
+  br label %iface.share.done.14
+iface.share.done.14:
+  br label %share.adt.done.13.1
+share.adt.done.13.1:
+  %t110 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t111 = ptrtoint ptr %t110 to i64
+  call i32 @willrt_task_store_result(ptr %t99, i64 %t111)
   ret i32 1
 
 }
 define hidden ptr @"example.com/concurrency/async.ReadFile.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
-  %v.sm.frame = call ptr @willrt_alloc(i64 288)
-  %t82 = getelementptr i8, ptr %v.sm.frame, i64 24
-  store { ptr, i64, i64 } zeroinitializer, ptr %t82
-  %t83 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t83
-  %t84 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t85 = load { ptr, i64 }, ptr %arg0
-  store { ptr, i64 } %t85, ptr %t84
-  %t86 = call i32 @willrt_lane_here()
-  %t87 = icmp eq i32 %start, -1
-  %t88 = icmp eq i32 %start, -2
-  %t89 = select i1 %t88, i32 %t86, i32 %start
-  %t90 = icmp ne i32 %owns, 0
-  %t91 = select i1 %t90, ptr @"example.com/concurrency/async.ReadFile.drop.own", ptr @"example.com/concurrency/async.ReadFile.drop"
-  br i1 %t87, label %sm.start.auto.10, label %sm.start.lane.10
-sm.start.auto.10:
-  %t92 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/async.ReadFile.sm", ptr %v.sm.frame, i64 288, i32 0, i32 0, ptr %t91)
-  call void @willrt_task_own_frame(ptr %t92)
-  call void @willrt_task_run_auto(ptr %t92)
-  br label %sm.start.done.10
-sm.start.lane.10:
-  %t93 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/async.ReadFile.sm", ptr %v.sm.frame, i64 288, i32 %t89, i32 0, ptr %t91)
-  call void @willrt_task_own_frame(ptr %t93)
-  call void @willrt_task_run(ptr %t93)
-  br label %sm.start.done.10
-sm.start.done.10:
-  %t94 = phi ptr [ %t92, %sm.start.auto.10 ], [ %t93, %sm.start.lane.10 ]
-  ret ptr %t94
+  %v.sm.frame = call ptr @willrt_alloc(i64 304)
+  %t112 = getelementptr i8, ptr %v.sm.frame, i64 24
+  store { ptr, i64, i64 } zeroinitializer, ptr %t112
+  %t113 = getelementptr i8, ptr %v.sm.frame, i64 128
+  store { i32, [4 x i8], { ptr, i64, i64 } } zeroinitializer, ptr %t113
+  %t114 = getelementptr i8, ptr %v.sm.frame, i64 232
+  store { ptr, i64, i64 } zeroinitializer, ptr %t114
+  %t115 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t115
+  %t116 = getelementptr i8, ptr %v.sm.frame, i64 8
+  %t117 = load { ptr, i64 }, ptr %arg0
+  store { ptr, i64 } %t117, ptr %t116
+  %t118 = call i32 @willrt_lane_here()
+  %t119 = icmp eq i32 %start, -1
+  %t120 = icmp eq i32 %start, -2
+  %t121 = select i1 %t120, i32 %t118, i32 %start
+  %t122 = icmp ne i32 %owns, 0
+  %t123 = select i1 %t122, ptr @"example.com/concurrency/async.ReadFile.drop.own", ptr @"example.com/concurrency/async.ReadFile.drop"
+  br i1 %t119, label %sm.start.auto.15, label %sm.start.lane.15
+sm.start.auto.15:
+  %t124 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/async.ReadFile.sm", ptr %v.sm.frame, i64 304, i32 0, i32 0, ptr %t123)
+  call void @willrt_task_own_frame(ptr %t124)
+  call void @willrt_task_run_auto(ptr %t124)
+  br label %sm.start.done.15
+sm.start.lane.15:
+  %t125 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/async.ReadFile.sm", ptr %v.sm.frame, i64 304, i32 %t121, i32 0, ptr %t123)
+  call void @willrt_task_own_frame(ptr %t125)
+  call void @willrt_task_run(ptr %t125)
+  br label %sm.start.done.15
+sm.start.done.15:
+  %t126 = phi ptr [ %t124, %sm.start.auto.15 ], [ %t125, %sm.start.lane.15 ]
+  ret ptr %t126
 }
 define internal void @"example.com/concurrency/async.ReadFile.drop"(ptr %frame) {
 entry:
-  %t95 = getelementptr i8, ptr %frame, i64 24
-  %t96 = getelementptr inbounds { ptr, i64, i64 }, ptr %t95, i32 0, i32 0
-  %t97 = getelementptr inbounds { ptr, i64, i64 }, ptr %t95, i32 0, i32 1
-  %t98 = load ptr, ptr %t96
-  %t99 = load i64, ptr %t97
-  %t100 = alloca i64
-  store i64 0, ptr %t100
-  br label %deep.rel.arr.cond.11
-deep.rel.arr.cond.11:
-  %t101 = load i64, ptr %t100
-  %t102 = icmp ult i64 %t101, %t99
-  br i1 %t102, label %deep.rel.arr.body.11, label %deep.rel.arr.done.11
-deep.rel.arr.body.11:
-  %t103 = getelementptr inbounds i8, ptr %t98, i64 %t101
-  store i8 zeroinitializer, ptr %t103
-  %t104 = add i64 %t101, 1
-  store i64 %t104, ptr %t100
-  br label %deep.rel.arr.cond.11
-deep.rel.arr.done.11:
-  call void @willrt_free(ptr %t98)
-  store { ptr, i64, i64 } zeroinitializer, ptr %t95
+  %t127 = getelementptr i8, ptr %frame, i64 24
+  %t128 = getelementptr inbounds { ptr, i64, i64 }, ptr %t127, i32 0, i32 0
+  %t129 = getelementptr inbounds { ptr, i64, i64 }, ptr %t127, i32 0, i32 1
+  %t130 = load ptr, ptr %t128
+  %t131 = load i64, ptr %t129
+  %t132 = alloca i64
+  store i64 0, ptr %t132
+  br label %deep.rel.arr.cond.16
+deep.rel.arr.cond.16:
+  %t133 = load i64, ptr %t132
+  %t134 = icmp ult i64 %t133, %t131
+  br i1 %t134, label %deep.rel.arr.body.16, label %deep.rel.arr.done.16
+deep.rel.arr.body.16:
+  %t135 = getelementptr inbounds i8, ptr %t130, i64 %t133
+  store i8 zeroinitializer, ptr %t135
+  %t136 = add i64 %t133, 1
+  store i64 %t136, ptr %t132
+  br label %deep.rel.arr.cond.16
+deep.rel.arr.done.16:
+  call void @willrt_free(ptr %t130)
+  store { ptr, i64, i64 } zeroinitializer, ptr %t127
+  %t137 = getelementptr i8, ptr %frame, i64 128
+  %t138 = load i32, ptr %t137
+  %t139 = icmp eq i32 %t138, 0
+  br i1 %t139, label %deep.rel.adt.17.0, label %deep.rel.adt.done.17.0
+deep.rel.adt.17.0:
+  %t140 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %t137, i32 0, i32 2
+  %t141 = getelementptr inbounds { ptr, i64, i64 }, ptr %t140, i32 0, i32 0
+  %t142 = getelementptr inbounds { ptr, i64, i64 }, ptr %t140, i32 0, i32 1
+  %t143 = load ptr, ptr %t141
+  %t144 = load i64, ptr %t142
+  %t145 = alloca i64
+  store i64 0, ptr %t145
+  br label %deep.rel.arr.cond.18
+deep.rel.arr.cond.18:
+  %t146 = load i64, ptr %t145
+  %t147 = icmp ult i64 %t146, %t144
+  br i1 %t147, label %deep.rel.arr.body.18, label %deep.rel.arr.done.18
+deep.rel.arr.body.18:
+  %t148 = getelementptr inbounds i8, ptr %t143, i64 %t146
+  store i8 zeroinitializer, ptr %t148
+  %t149 = add i64 %t146, 1
+  store i64 %t149, ptr %t145
+  br label %deep.rel.arr.cond.18
+deep.rel.arr.done.18:
+  call void @willrt_free(ptr %t143)
+  store { ptr, i64, i64 } zeroinitializer, ptr %t140
+  br label %deep.rel.adt.done.17.0
+deep.rel.adt.done.17.0:
+  %t150 = icmp eq i32 %t138, 1
+  br i1 %t150, label %deep.rel.adt.19.1, label %deep.rel.adt.done.19.1
+deep.rel.adt.19.1:
+  %t151 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %t137, i32 0, i32 2
+  %t152 = getelementptr inbounds %interface.Error, ptr %t151, i32 0, i32 0
+  %t153 = getelementptr inbounds %interface.Error, ptr %t151, i32 0, i32 1
+  %t154 = load ptr, ptr %t152
+  %t155 = load ptr, ptr %t153
+  %t156 = icmp eq ptr %t154, null
+  br i1 %t156, label %iface.rel.empty.20, label %iface.rel.have.20
+iface.rel.empty.20:
+  br label %iface.rel.done.20
+iface.rel.have.20:
+  %t157 = getelementptr inbounds [6 x ptr], ptr %t155, i64 0, i64 3
+  %t158 = load ptr, ptr %t157
+  call void %t158(ptr %t154)
+  call void @willrt_free(ptr %t154)
+  store ptr null, ptr %t152
+  store ptr null, ptr %t153
+  br label %iface.rel.done.20
+iface.rel.done.20:
+  store %interface.Error zeroinitializer, ptr %t151
+  br label %deep.rel.adt.done.19.1
+deep.rel.adt.done.19.1:
+  store { i32, [4 x i8], { ptr, i64, i64 } } zeroinitializer, ptr %t137
+  %t159 = getelementptr i8, ptr %frame, i64 232
+  %t160 = getelementptr inbounds { ptr, i64, i64 }, ptr %t159, i32 0, i32 0
+  %t161 = getelementptr inbounds { ptr, i64, i64 }, ptr %t159, i32 0, i32 1
+  %t162 = load ptr, ptr %t160
+  %t163 = load i64, ptr %t161
+  %t164 = alloca i64
+  store i64 0, ptr %t164
+  br label %deep.rel.arr.cond.21
+deep.rel.arr.cond.21:
+  %t165 = load i64, ptr %t164
+  %t166 = icmp ult i64 %t165, %t163
+  br i1 %t166, label %deep.rel.arr.body.21, label %deep.rel.arr.done.21
+deep.rel.arr.body.21:
+  %t167 = getelementptr inbounds i8, ptr %t162, i64 %t165
+  store i8 zeroinitializer, ptr %t167
+  %t168 = add i64 %t165, 1
+  store i64 %t168, ptr %t164
+  br label %deep.rel.arr.cond.21
+deep.rel.arr.done.21:
+  call void @willrt_free(ptr %t162)
+  store { ptr, i64, i64 } zeroinitializer, ptr %t159
   ret void
 }
 define internal void @"example.com/concurrency/async.ReadFile.drop.own"(ptr %frame) {
 entry:
-  %t105 = getelementptr i8, ptr %frame, i64 24
-  %t106 = getelementptr inbounds { ptr, i64, i64 }, ptr %t105, i32 0, i32 0
-  %t107 = getelementptr inbounds { ptr, i64, i64 }, ptr %t105, i32 0, i32 1
-  %t108 = load ptr, ptr %t106
-  %t109 = load i64, ptr %t107
-  %t110 = alloca i64
-  store i64 0, ptr %t110
-  br label %deep.rel.arr.cond.12
-deep.rel.arr.cond.12:
-  %t111 = load i64, ptr %t110
-  %t112 = icmp ult i64 %t111, %t109
-  br i1 %t112, label %deep.rel.arr.body.12, label %deep.rel.arr.done.12
-deep.rel.arr.body.12:
-  %t113 = getelementptr inbounds i8, ptr %t108, i64 %t111
-  store i8 zeroinitializer, ptr %t113
-  %t114 = add i64 %t111, 1
-  store i64 %t114, ptr %t110
-  br label %deep.rel.arr.cond.12
-deep.rel.arr.done.12:
-  call void @willrt_free(ptr %t108)
-  store { ptr, i64, i64 } zeroinitializer, ptr %t105
-  %t115 = getelementptr i8, ptr %frame, i64 8
-  %t116 = getelementptr inbounds { ptr, i64 }, ptr %t115, i32 0, i32 0
-  %t117 = load ptr, ptr %t116
-  call void @willrt_free_str(ptr %t117)
-  store { ptr, i64 } zeroinitializer, ptr %t115
+  %t169 = getelementptr i8, ptr %frame, i64 24
+  %t170 = getelementptr inbounds { ptr, i64, i64 }, ptr %t169, i32 0, i32 0
+  %t171 = getelementptr inbounds { ptr, i64, i64 }, ptr %t169, i32 0, i32 1
+  %t172 = load ptr, ptr %t170
+  %t173 = load i64, ptr %t171
+  %t174 = alloca i64
+  store i64 0, ptr %t174
+  br label %deep.rel.arr.cond.22
+deep.rel.arr.cond.22:
+  %t175 = load i64, ptr %t174
+  %t176 = icmp ult i64 %t175, %t173
+  br i1 %t176, label %deep.rel.arr.body.22, label %deep.rel.arr.done.22
+deep.rel.arr.body.22:
+  %t177 = getelementptr inbounds i8, ptr %t172, i64 %t175
+  store i8 zeroinitializer, ptr %t177
+  %t178 = add i64 %t175, 1
+  store i64 %t178, ptr %t174
+  br label %deep.rel.arr.cond.22
+deep.rel.arr.done.22:
+  call void @willrt_free(ptr %t172)
+  store { ptr, i64, i64 } zeroinitializer, ptr %t169
+  %t179 = getelementptr i8, ptr %frame, i64 128
+  %t180 = load i32, ptr %t179
+  %t181 = icmp eq i32 %t180, 0
+  br i1 %t181, label %deep.rel.adt.23.0, label %deep.rel.adt.done.23.0
+deep.rel.adt.23.0:
+  %t182 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %t179, i32 0, i32 2
+  %t183 = getelementptr inbounds { ptr, i64, i64 }, ptr %t182, i32 0, i32 0
+  %t184 = getelementptr inbounds { ptr, i64, i64 }, ptr %t182, i32 0, i32 1
+  %t185 = load ptr, ptr %t183
+  %t186 = load i64, ptr %t184
+  %t187 = alloca i64
+  store i64 0, ptr %t187
+  br label %deep.rel.arr.cond.24
+deep.rel.arr.cond.24:
+  %t188 = load i64, ptr %t187
+  %t189 = icmp ult i64 %t188, %t186
+  br i1 %t189, label %deep.rel.arr.body.24, label %deep.rel.arr.done.24
+deep.rel.arr.body.24:
+  %t190 = getelementptr inbounds i8, ptr %t185, i64 %t188
+  store i8 zeroinitializer, ptr %t190
+  %t191 = add i64 %t188, 1
+  store i64 %t191, ptr %t187
+  br label %deep.rel.arr.cond.24
+deep.rel.arr.done.24:
+  call void @willrt_free(ptr %t185)
+  store { ptr, i64, i64 } zeroinitializer, ptr %t182
+  br label %deep.rel.adt.done.23.0
+deep.rel.adt.done.23.0:
+  %t192 = icmp eq i32 %t180, 1
+  br i1 %t192, label %deep.rel.adt.25.1, label %deep.rel.adt.done.25.1
+deep.rel.adt.25.1:
+  %t193 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %t179, i32 0, i32 2
+  %t194 = getelementptr inbounds %interface.Error, ptr %t193, i32 0, i32 0
+  %t195 = getelementptr inbounds %interface.Error, ptr %t193, i32 0, i32 1
+  %t196 = load ptr, ptr %t194
+  %t197 = load ptr, ptr %t195
+  %t198 = icmp eq ptr %t196, null
+  br i1 %t198, label %iface.rel.empty.26, label %iface.rel.have.26
+iface.rel.empty.26:
+  br label %iface.rel.done.26
+iface.rel.have.26:
+  %t199 = getelementptr inbounds [6 x ptr], ptr %t197, i64 0, i64 3
+  %t200 = load ptr, ptr %t199
+  call void %t200(ptr %t196)
+  call void @willrt_free(ptr %t196)
+  store ptr null, ptr %t194
+  store ptr null, ptr %t195
+  br label %iface.rel.done.26
+iface.rel.done.26:
+  store %interface.Error zeroinitializer, ptr %t193
+  br label %deep.rel.adt.done.25.1
+deep.rel.adt.done.25.1:
+  store { i32, [4 x i8], { ptr, i64, i64 } } zeroinitializer, ptr %t179
+  %t201 = getelementptr i8, ptr %frame, i64 232
+  %t202 = getelementptr inbounds { ptr, i64, i64 }, ptr %t201, i32 0, i32 0
+  %t203 = getelementptr inbounds { ptr, i64, i64 }, ptr %t201, i32 0, i32 1
+  %t204 = load ptr, ptr %t202
+  %t205 = load i64, ptr %t203
+  %t206 = alloca i64
+  store i64 0, ptr %t206
+  br label %deep.rel.arr.cond.27
+deep.rel.arr.cond.27:
+  %t207 = load i64, ptr %t206
+  %t208 = icmp ult i64 %t207, %t205
+  br i1 %t208, label %deep.rel.arr.body.27, label %deep.rel.arr.done.27
+deep.rel.arr.body.27:
+  %t209 = getelementptr inbounds i8, ptr %t204, i64 %t207
+  store i8 zeroinitializer, ptr %t209
+  %t210 = add i64 %t207, 1
+  store i64 %t210, ptr %t206
+  br label %deep.rel.arr.cond.27
+deep.rel.arr.done.27:
+  call void @willrt_free(ptr %t204)
+  store { ptr, i64, i64 } zeroinitializer, ptr %t201
+  %t211 = getelementptr i8, ptr %frame, i64 8
+  %t212 = getelementptr inbounds { ptr, i64 }, ptr %t211, i32 0, i32 0
+  %t213 = load ptr, ptr %t212
+  call void @willrt_free_str(ptr %t213)
+  store { ptr, i64 } zeroinitializer, ptr %t211
   ret void
 }
 define internal i32 @"example.com/concurrency/async.will$main.sm"(ptr %frame) {
@@ -5351,102 +5582,102 @@ entry:
   %v.join.out.77 = getelementptr i8, ptr %frame, i64 216
   %v.join.err.77 = getelementptr i8, ptr %frame, i64 240
   %v.slice.40 = getelementptr i8, ptr %frame, i64 280
-  %t156 = getelementptr i8, ptr %frame, i64 296
-  %v.sm.join.task.169 = getelementptr i8, ptr %frame, i64 304
+  %t252 = getelementptr i8, ptr %frame, i64 296
+  %v.sm.join.task.265 = getelementptr i8, ptr %frame, i64 304
   %v.unwrap.out.74 = getelementptr i8, ptr %frame, i64 312
-  %t220 = getelementptr i8, ptr %frame, i64 320
-  %t239 = getelementptr i8, ptr %frame, i64 324
+  %t316 = getelementptr i8, ptr %frame, i64 320
+  %t335 = getelementptr i8, ptr %frame, i64 324
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 i32 2, label %sm.op.call.2 ]
 sm.init:
-  %t118 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 0
-  store ptr @.bytes.12, ptr %t118
-  %t119 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 1
-  store i64 26, ptr %t119
-  %t120 = load { ptr, i64 }, ptr %v.str.29
-  store { ptr, i64 } %t120, ptr %v.path
-  %t121 = getelementptr inbounds { ptr, i64 }, ptr %v.str.32, i32 0, i32 0
-  store ptr @.bytes.13, ptr %t121
-  %t122 = getelementptr inbounds { ptr, i64 }, ptr %v.str.32, i32 0, i32 1
-  store i64 6, ptr %t122
-  %t123 = load { ptr, i64 }, ptr %v.str.32
-  store { ptr, i64 } %t123, ptr %v.text
-  %t124 = icmp ugt i64 0, 6
-  br i1 %t124, label %panic.1, label %panic.ok.1
+  %t214 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 0
+  store ptr @.bytes.12, ptr %t214
+  %t215 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 1
+  store i64 26, ptr %t215
+  %t216 = load { ptr, i64 }, ptr %v.str.29
+  store { ptr, i64 } %t216, ptr %v.path
+  %t217 = getelementptr inbounds { ptr, i64 }, ptr %v.str.32, i32 0, i32 0
+  store ptr @.bytes.13, ptr %t217
+  %t218 = getelementptr inbounds { ptr, i64 }, ptr %v.str.32, i32 0, i32 1
+  store i64 6, ptr %t218
+  %t219 = load { ptr, i64 }, ptr %v.str.32
+  store { ptr, i64 } %t219, ptr %v.text
+  %t220 = icmp ugt i64 0, 6
+  br i1 %t220, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.17, ptr @.str.18, ptr @.str.19)
   unreachable
 panic.ok.1:
-  %t125 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
-  %t126 = load ptr, ptr %t125
-  %t127 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 1
-  %t128 = load i64, ptr %t127
-  %t129 = icmp ugt i64 6, %t128
-  br i1 %t129, label %panic.2, label %panic.ok.2
+  %t221 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
+  %t222 = load ptr, ptr %t221
+  %t223 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 1
+  %t224 = load i64, ptr %t223
+  %t225 = icmp ugt i64 6, %t224
+  br i1 %t225, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.17, ptr @.str.18, ptr @.str.19)
   unreachable
 panic.ok.2:
-  %t130 = getelementptr inbounds i8, ptr %t126, i64 0
-  %t131 = sub i64 6, 0
-  %t132 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.40, i32 0, i32 0
-  store ptr %t130, ptr %t132
-  %t133 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.40, i32 0, i32 1
-  store i64 %t131, ptr %t133
-  %t134 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.WriteFile"(ptr %v.path, ptr %v.slice.40)
-  store { i32, [4 x i8], %interface.Error } %t134, ptr %v.ret.37
-  %t135 = load { i32, [4 x i8], %interface.Error }, ptr %v.ret.37
-  store { i32, [4 x i8], %interface.Error } %t135, ptr %v.written
-  %t136 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 0
-  %t137 = load i32, ptr %t136
-  %t138 = icmp eq i32 %t137, 1
-  br i1 %t138, label %match.arm.3.0, label %match.next.3.0
+  %t226 = getelementptr inbounds i8, ptr %t222, i64 0
+  %t227 = sub i64 6, 0
+  %t228 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.40, i32 0, i32 0
+  store ptr %t226, ptr %t228
+  %t229 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.40, i32 0, i32 1
+  store i64 %t227, ptr %t229
+  %t230 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.WriteFile"(ptr %v.path, ptr %v.slice.40)
+  store { i32, [4 x i8], %interface.Error } %t230, ptr %v.ret.37
+  %t231 = load { i32, [4 x i8], %interface.Error }, ptr %v.ret.37
+  store { i32, [4 x i8], %interface.Error } %t231, ptr %v.written
+  %t232 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 0
+  %t233 = load i32, ptr %t232
+  %t234 = icmp eq i32 %t233, 1
+  br i1 %t234, label %match.arm.3.0, label %match.next.3.0
 match.arm.3.0:
-  %t139 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
-  %t140 = load i32, ptr %v.written
-  %t141 = icmp eq i32 %t140, 0
-  br i1 %t141, label %deep.rel.adt.4.0, label %deep.rel.adt.done.4.0
+  %t235 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
+  %t236 = load i32, ptr %v.written
+  %t237 = icmp eq i32 %t236, 0
+  br i1 %t237, label %deep.rel.adt.4.0, label %deep.rel.adt.done.4.0
 deep.rel.adt.4.0:
-  %t142 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
+  %t238 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
   br label %deep.rel.adt.done.4.0
 deep.rel.adt.done.4.0:
-  %t143 = icmp eq i32 %t140, 1
-  br i1 %t143, label %deep.rel.adt.5.1, label %deep.rel.adt.done.5.1
+  %t239 = icmp eq i32 %t236, 1
+  br i1 %t239, label %deep.rel.adt.5.1, label %deep.rel.adt.done.5.1
 deep.rel.adt.5.1:
-  %t144 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
-  %t145 = getelementptr inbounds %interface.Error, ptr %t144, i32 0, i32 0
-  %t146 = getelementptr inbounds %interface.Error, ptr %t144, i32 0, i32 1
-  %t147 = load ptr, ptr %t145
-  %t148 = load ptr, ptr %t146
-  %t149 = icmp eq ptr %t147, null
-  br i1 %t149, label %iface.rel.empty.6, label %iface.rel.have.6
+  %t240 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
+  %t241 = getelementptr inbounds %interface.Error, ptr %t240, i32 0, i32 0
+  %t242 = getelementptr inbounds %interface.Error, ptr %t240, i32 0, i32 1
+  %t243 = load ptr, ptr %t241
+  %t244 = load ptr, ptr %t242
+  %t245 = icmp eq ptr %t243, null
+  br i1 %t245, label %iface.rel.empty.6, label %iface.rel.have.6
 iface.rel.empty.6:
   br label %iface.rel.done.6
 iface.rel.have.6:
-  %t150 = getelementptr inbounds [6 x ptr], ptr %t148, i64 0, i64 3
-  %t151 = load ptr, ptr %t150
-  call void %t151(ptr %t147)
-  call void @willrt_free(ptr %t147)
-  store ptr null, ptr %t145
-  store ptr null, ptr %t146
+  %t246 = getelementptr inbounds [6 x ptr], ptr %t244, i64 0, i64 3
+  %t247 = load ptr, ptr %t246
+  call void %t247(ptr %t243)
+  call void @willrt_free(ptr %t243)
+  store ptr null, ptr %t241
+  store ptr null, ptr %t242
   br label %iface.rel.done.6
 iface.rel.done.6:
-  store %interface.Error zeroinitializer, ptr %t144
+  store %interface.Error zeroinitializer, ptr %t240
   br label %deep.rel.adt.done.5.1
 deep.rel.adt.done.5.1:
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.written
-  %t152 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
-  %t153 = load ptr, ptr %t152
-  call void @willrt_free_str(ptr %t153)
+  %t248 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
+  %t249 = load ptr, ptr %t248
+  call void @willrt_free_str(ptr %t249)
   store { ptr, i64 } zeroinitializer, ptr %v.text
-  %t154 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
-  %t155 = load ptr, ptr %t154
-  call void @willrt_free_str(ptr %t155)
+  %t250 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
+  %t251 = load ptr, ptr %t250
+  call void @willrt_free_str(ptr %t251)
   store { ptr, i64 } zeroinitializer, ptr %v.path
-  store i32 1, ptr %t156
-  %t157 = getelementptr i32, ptr null, i32 1
-  %t158 = ptrtoint ptr %t157 to i64
-  call i32 @willrt_task_store_result(ptr %t156, i64 %t158)
+  store i32 1, ptr %t252
+  %t253 = getelementptr i32, ptr null, i32 1
+  %t254 = ptrtoint ptr %t253 to i64
+  call i32 @willrt_task_store_result(ptr %t252, i64 %t254)
   ret i32 1
 match.next.3.0:
   br i1 true, label %match.arm.3.1, label %match.next.3.1
@@ -5457,256 +5688,264 @@ match.next.3.1:
 match.end.3:
   store i64 0, ptr %v.size
   call void @willrt_region_enter()
-  %t159 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
-  %t160 = load ptr, ptr %t159
-  %t161 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 1
-  %t162 = load i64, ptr %t161
-  %t163 = call ptr @willrt_alloc(i64 %t162)
-  call void @memcpy(ptr %t163, ptr %t160, i64 %t162)
-  %t164 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.70, i32 0, i32 0
-  store ptr %t163, ptr %t164
-  %t165 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.70, i32 0, i32 1
-  store i64 %t162, ptr %t165
-  %t166 = load { ptr, i64 }, ptr %v.strm.70
-  store { ptr, i64 } %t166, ptr %v.ret.70
-  %t167 = call ptr @"example.com/concurrency/async.ReadFile.task"(ptr %v.ret.70, i32 -1, i32 1)
-  store ptr %t167, ptr %v.task
-  %t168 = load ptr, ptr %v.task
-  store ptr %t168, ptr %v.sm.join.task.169
+  %t255 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
+  %t256 = load ptr, ptr %t255
+  %t257 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 1
+  %t258 = load i64, ptr %t257
+  %t259 = call ptr @willrt_alloc(i64 %t258)
+  call void @memcpy(ptr %t259, ptr %t256, i64 %t258)
+  %t260 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.70, i32 0, i32 0
+  store ptr %t259, ptr %t260
+  %t261 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.70, i32 0, i32 1
+  store i64 %t258, ptr %t261
+  %t262 = load { ptr, i64 }, ptr %v.strm.70
+  store { ptr, i64 } %t262, ptr %v.ret.70
+  %t263 = call ptr @"example.com/concurrency/async.ReadFile.task"(ptr %v.ret.70, i32 -1, i32 1)
+  store ptr %t263, ptr %v.task
+  %t264 = load ptr, ptr %v.task
+  store ptr %t264, ptr %v.sm.join.task.265
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t171 = load ptr, ptr %v.sm.join.task.169
-  %t170 = call i32 @willrt_task_try_join(ptr %t171, ptr %v.join.out.77, ptr %v.join.err.77)
-  %t172 = icmp eq i32 %t170, -1
-  br i1 %t172, label %sm.op.park.1, label %sm.op.cont.1
+  %t267 = load ptr, ptr %v.sm.join.task.265
+  %t266 = call i32 @willrt_task_try_join(ptr %t267, ptr %v.join.out.77, ptr %v.join.err.77)
+  %t268 = icmp eq i32 %t266, -1
+  br i1 %t268, label %sm.op.park.1, label %sm.op.cont.1
 sm.op.park.1:
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.op.cont.1:
-  %t173 = getelementptr inbounds %willrt.task_error, ptr %v.join.err.77, i32 0, i32 1
-  store i32 %t170, ptr %t173
-  %t174 = icmp eq i32 %t170, 0
-  br i1 %t174, label %task.ok.7, label %task.fail.7
+  %t269 = getelementptr inbounds %willrt.task_error, ptr %v.join.err.77, i32 0, i32 1
+  store i32 %t266, ptr %t269
+  %t270 = icmp eq i32 %t266, 0
+  br i1 %t270, label %task.ok.7, label %task.fail.7
 task.fail.7:
-  %t175 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 0
-  %t176 = load ptr, ptr %t175
-  %t177 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 1
-  %t178 = load i64, ptr %t177
-  %t179 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 2
-  %t180 = load ptr, ptr %t179
-  %t181 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 3
-  %t182 = load ptr, ptr %t181
-  call void @willrt_panic_n(ptr %t176, i64 %t178, ptr %t180, ptr %t182)
+  %t271 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 0
+  %t272 = load ptr, ptr %t271
+  %t273 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 1
+  %t274 = load i64, ptr %t273
+  %t275 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 2
+  %t276 = load ptr, ptr %t275
+  %t277 = getelementptr inbounds %willrt_error, ptr %v.join.err.77, i32 0, i32 3
+  %t278 = load ptr, ptr %t277
+  call void @willrt_panic_n(ptr %t272, i64 %t274, ptr %t276, ptr %t278)
   unreachable
 task.ok.7:
-  %t183 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.join.out.77, i32 0, i32 0
-  %t184 = load i32, ptr %t183
-  %t185 = icmp eq i32 %t184, 1
-  br i1 %t185, label %unwrap.err.8, label %unwrap.ok.8
+  %t279 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.join.out.77, i32 0, i32 0
+  %t280 = load i32, ptr %t279
+  %t281 = icmp eq i32 %t280, 1
+  br i1 %t281, label %unwrap.err.8, label %unwrap.ok.8
 unwrap.err.8:
-  %t186 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.join.out.77, i32 0, i32 2
-  %t187 = getelementptr inbounds %interface.Error, ptr %t186, i32 0, i32 0
-  %t188 = getelementptr inbounds %interface.Error, ptr %t186, i32 0, i32 1
-  %t189 = load ptr, ptr %t187
-  %t190 = load ptr, ptr %t188
-  %t191 = getelementptr inbounds ptr, ptr %t190, i32 0
-  %t192 = load ptr, ptr %t191
-  %t193 = call { ptr, i64 } %t192(ptr %t189)
-  %t194 = extractvalue { ptr, i64 } %t193, 0
-  %t195 = extractvalue { ptr, i64 } %t193, 1
-  call void @willrt_panic_n(ptr %t194, i64 %t195, ptr null, ptr null)
+  %t282 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.join.out.77, i32 0, i32 2
+  %t283 = getelementptr inbounds %interface.Error, ptr %t282, i32 0, i32 0
+  %t284 = getelementptr inbounds %interface.Error, ptr %t282, i32 0, i32 1
+  %t285 = load ptr, ptr %t283
+  %t286 = load ptr, ptr %t284
+  %t287 = getelementptr inbounds ptr, ptr %t286, i32 0
+  %t288 = load ptr, ptr %t287
+  %t289 = call { ptr, i64 } %t288(ptr %t285)
+  %t290 = extractvalue { ptr, i64 } %t289, 0
+  %t291 = extractvalue { ptr, i64 } %t289, 1
+  call void @willrt_panic_n(ptr %t290, i64 %t291, ptr null, ptr null)
   unreachable
 unwrap.ok.8:
-  %t196 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.join.out.77, i32 0, i32 2
-  %t197 = load i64, ptr %t196
-  store i64 %t197, ptr %v.unwrap.out.74
-  %t198 = load i64, ptr %v.unwrap.out.74
-  store i64 %t198, ptr %v.size
+  %t292 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.join.out.77, i32 0, i32 2
+  store i64 0, ptr %v.unwrap.out.74
+  %t293 = load i64, ptr %t292
+  store i64 %t293, ptr %v.unwrap.out.74
+  %t294 = load i64, ptr %v.unwrap.out.74
+  store i64 0, ptr %v.unwrap.out.74
+  store i64 %t294, ptr %v.size
   store i32 2, ptr %v.sm.state
   br label %sm.op.call.2
 sm.op.call.2:
-  %t199 = call i32 @willrt_region_exit_try()
-  %t200 = icmp eq i32 %t199, -1
-  br i1 %t200, label %sm.op.park.2, label %sm.op.cont.2
+  %t295 = call i32 @willrt_region_exit_try()
+  %t296 = icmp eq i32 %t295, -1
+  br i1 %t296, label %sm.op.park.2, label %sm.op.cont.2
 sm.op.park.2:
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.op.cont.2:
-  %t201 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
-  store { i32, [4 x i8], %interface.Error } %t201, ptr %v.ret.81
-  %t202 = load i64, ptr %v.size
-  %t203 = icmp ne i64 %t202, 6
-  br i1 %t203, label %if.then.9, label %if.end.9
+  store i64 zeroinitializer, ptr %v.unwrap.out.74
+  store i64 0, ptr %v.unwrap.out.74
+  %t297 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
+  store { i32, [4 x i8], %interface.Error } %t297, ptr %v.ret.81
+  %t298 = load i64, ptr %v.size
+  %t299 = icmp ne i64 %t298, 6
+  br i1 %t299, label %if.then.9, label %if.end.9
 if.then.9:
-  %t204 = load i32, ptr %v.written
-  %t205 = icmp eq i32 %t204, 0
-  br i1 %t205, label %deep.rel.adt.10.0, label %deep.rel.adt.done.10.0
+  %t300 = load i32, ptr %v.written
+  %t301 = icmp eq i32 %t300, 0
+  br i1 %t301, label %deep.rel.adt.10.0, label %deep.rel.adt.done.10.0
 deep.rel.adt.10.0:
-  %t206 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
+  %t302 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
   br label %deep.rel.adt.done.10.0
 deep.rel.adt.done.10.0:
-  %t207 = icmp eq i32 %t204, 1
-  br i1 %t207, label %deep.rel.adt.11.1, label %deep.rel.adt.done.11.1
+  %t303 = icmp eq i32 %t300, 1
+  br i1 %t303, label %deep.rel.adt.11.1, label %deep.rel.adt.done.11.1
 deep.rel.adt.11.1:
-  %t208 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
-  %t209 = getelementptr inbounds %interface.Error, ptr %t208, i32 0, i32 0
-  %t210 = getelementptr inbounds %interface.Error, ptr %t208, i32 0, i32 1
-  %t211 = load ptr, ptr %t209
-  %t212 = load ptr, ptr %t210
-  %t213 = icmp eq ptr %t211, null
-  br i1 %t213, label %iface.rel.empty.12, label %iface.rel.have.12
+  %t304 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
+  %t305 = getelementptr inbounds %interface.Error, ptr %t304, i32 0, i32 0
+  %t306 = getelementptr inbounds %interface.Error, ptr %t304, i32 0, i32 1
+  %t307 = load ptr, ptr %t305
+  %t308 = load ptr, ptr %t306
+  %t309 = icmp eq ptr %t307, null
+  br i1 %t309, label %iface.rel.empty.12, label %iface.rel.have.12
 iface.rel.empty.12:
   br label %iface.rel.done.12
 iface.rel.have.12:
-  %t214 = getelementptr inbounds [6 x ptr], ptr %t212, i64 0, i64 3
-  %t215 = load ptr, ptr %t214
-  call void %t215(ptr %t211)
-  call void @willrt_free(ptr %t211)
-  store ptr null, ptr %t209
-  store ptr null, ptr %t210
+  %t310 = getelementptr inbounds [6 x ptr], ptr %t308, i64 0, i64 3
+  %t311 = load ptr, ptr %t310
+  call void %t311(ptr %t307)
+  call void @willrt_free(ptr %t307)
+  store ptr null, ptr %t305
+  store ptr null, ptr %t306
   br label %iface.rel.done.12
 iface.rel.done.12:
-  store %interface.Error zeroinitializer, ptr %t208
+  store %interface.Error zeroinitializer, ptr %t304
   br label %deep.rel.adt.done.11.1
 deep.rel.adt.done.11.1:
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.written
-  %t216 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
-  %t217 = load ptr, ptr %t216
-  call void @willrt_free_str(ptr %t217)
+  %t312 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
+  %t313 = load ptr, ptr %t312
+  call void @willrt_free_str(ptr %t313)
   store { ptr, i64 } zeroinitializer, ptr %v.text
-  %t218 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
-  %t219 = load ptr, ptr %t218
-  call void @willrt_free_str(ptr %t219)
+  %t314 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
+  %t315 = load ptr, ptr %t314
+  call void @willrt_free_str(ptr %t315)
   store { ptr, i64 } zeroinitializer, ptr %v.path
-  store i32 2, ptr %t220
-  %t221 = getelementptr i32, ptr null, i32 1
-  %t222 = ptrtoint ptr %t221 to i64
-  call i32 @willrt_task_store_result(ptr %t220, i64 %t222)
+  store i32 2, ptr %t316
+  %t317 = getelementptr i32, ptr null, i32 1
+  %t318 = ptrtoint ptr %t317 to i64
+  call i32 @willrt_task_store_result(ptr %t316, i64 %t318)
   ret i32 1
 if.end.9:
-  %t223 = load i32, ptr %v.written
-  %t224 = icmp eq i32 %t223, 0
-  br i1 %t224, label %deep.rel.adt.13.0, label %deep.rel.adt.done.13.0
+  %t319 = load i32, ptr %v.written
+  %t320 = icmp eq i32 %t319, 0
+  br i1 %t320, label %deep.rel.adt.13.0, label %deep.rel.adt.done.13.0
 deep.rel.adt.13.0:
-  %t225 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
+  %t321 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
   br label %deep.rel.adt.done.13.0
 deep.rel.adt.done.13.0:
-  %t226 = icmp eq i32 %t223, 1
-  br i1 %t226, label %deep.rel.adt.14.1, label %deep.rel.adt.done.14.1
+  %t322 = icmp eq i32 %t319, 1
+  br i1 %t322, label %deep.rel.adt.14.1, label %deep.rel.adt.done.14.1
 deep.rel.adt.14.1:
-  %t227 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
-  %t228 = getelementptr inbounds %interface.Error, ptr %t227, i32 0, i32 0
-  %t229 = getelementptr inbounds %interface.Error, ptr %t227, i32 0, i32 1
-  %t230 = load ptr, ptr %t228
-  %t231 = load ptr, ptr %t229
-  %t232 = icmp eq ptr %t230, null
-  br i1 %t232, label %iface.rel.empty.15, label %iface.rel.have.15
+  %t323 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.written, i32 0, i32 2
+  %t324 = getelementptr inbounds %interface.Error, ptr %t323, i32 0, i32 0
+  %t325 = getelementptr inbounds %interface.Error, ptr %t323, i32 0, i32 1
+  %t326 = load ptr, ptr %t324
+  %t327 = load ptr, ptr %t325
+  %t328 = icmp eq ptr %t326, null
+  br i1 %t328, label %iface.rel.empty.15, label %iface.rel.have.15
 iface.rel.empty.15:
   br label %iface.rel.done.15
 iface.rel.have.15:
-  %t233 = getelementptr inbounds [6 x ptr], ptr %t231, i64 0, i64 3
-  %t234 = load ptr, ptr %t233
-  call void %t234(ptr %t230)
-  call void @willrt_free(ptr %t230)
-  store ptr null, ptr %t228
-  store ptr null, ptr %t229
+  %t329 = getelementptr inbounds [6 x ptr], ptr %t327, i64 0, i64 3
+  %t330 = load ptr, ptr %t329
+  call void %t330(ptr %t326)
+  call void @willrt_free(ptr %t326)
+  store ptr null, ptr %t324
+  store ptr null, ptr %t325
   br label %iface.rel.done.15
 iface.rel.done.15:
-  store %interface.Error zeroinitializer, ptr %t227
+  store %interface.Error zeroinitializer, ptr %t323
   br label %deep.rel.adt.done.14.1
 deep.rel.adt.done.14.1:
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.written
-  %t235 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
-  %t236 = load ptr, ptr %t235
-  call void @willrt_free_str(ptr %t236)
+  %t331 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
+  %t332 = load ptr, ptr %t331
+  call void @willrt_free_str(ptr %t332)
   store { ptr, i64 } zeroinitializer, ptr %v.text
-  %t237 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
-  %t238 = load ptr, ptr %t237
-  call void @willrt_free_str(ptr %t238)
+  %t333 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
+  %t334 = load ptr, ptr %t333
+  call void @willrt_free_str(ptr %t334)
   store { ptr, i64 } zeroinitializer, ptr %v.path
-  store i32 0, ptr %t239
-  %t240 = getelementptr i32, ptr null, i32 1
-  %t241 = ptrtoint ptr %t240 to i64
-  call i32 @willrt_task_store_result(ptr %t239, i64 %t241)
+  store i32 0, ptr %t335
+  %t336 = getelementptr i32, ptr null, i32 1
+  %t337 = ptrtoint ptr %t336 to i64
+  call i32 @willrt_task_store_result(ptr %t335, i64 %t337)
   ret i32 1
 
 }
 define hidden ptr @"example.com/concurrency/async.will$main.task"(i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 336)
-  %t242 = getelementptr i8, ptr %v.sm.frame, i64 40
-  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t242
-  %t243 = getelementptr i8, ptr %v.sm.frame, i64 24
-  store { ptr, i64 } zeroinitializer, ptr %t243
-  %t244 = getelementptr i8, ptr %v.sm.frame, i64 8
-  store { ptr, i64 } zeroinitializer, ptr %t244
-  %t245 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t245
-  %t246 = call i32 @willrt_lane_here()
-  %t247 = icmp eq i32 %start, -1
-  %t248 = icmp eq i32 %start, -2
-  %t249 = select i1 %t248, i32 %t246, i32 %start
-  br i1 %t247, label %sm.start.auto.16, label %sm.start.lane.16
+  %t338 = getelementptr i8, ptr %v.sm.frame, i64 40
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t338
+  %t339 = getelementptr i8, ptr %v.sm.frame, i64 24
+  store { ptr, i64 } zeroinitializer, ptr %t339
+  %t340 = getelementptr i8, ptr %v.sm.frame, i64 8
+  store { ptr, i64 } zeroinitializer, ptr %t340
+  %t341 = getelementptr i8, ptr %v.sm.frame, i64 312
+  store i64 zeroinitializer, ptr %t341
+  %t342 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t342
+  %t343 = call i32 @willrt_lane_here()
+  %t344 = icmp eq i32 %start, -1
+  %t345 = icmp eq i32 %start, -2
+  %t346 = select i1 %t345, i32 %t343, i32 %start
+  br i1 %t344, label %sm.start.auto.16, label %sm.start.lane.16
 sm.start.auto.16:
-  %t250 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/async.will$main.sm", ptr %v.sm.frame, i64 336, i32 0, i32 0, ptr @"example.com/concurrency/async.will$main.drop")
-  call void @willrt_task_own_frame(ptr %t250)
-  call void @willrt_task_run_auto(ptr %t250)
+  %t347 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/async.will$main.sm", ptr %v.sm.frame, i64 336, i32 0, i32 0, ptr @"example.com/concurrency/async.will$main.drop")
+  call void @willrt_task_own_frame(ptr %t347)
+  call void @willrt_task_run_auto(ptr %t347)
   br label %sm.start.done.16
 sm.start.lane.16:
-  %t251 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/async.will$main.sm", ptr %v.sm.frame, i64 336, i32 %t249, i32 0, ptr @"example.com/concurrency/async.will$main.drop")
-  call void @willrt_task_own_frame(ptr %t251)
-  call void @willrt_task_run(ptr %t251)
+  %t348 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/async.will$main.sm", ptr %v.sm.frame, i64 336, i32 %t346, i32 0, ptr @"example.com/concurrency/async.will$main.drop")
+  call void @willrt_task_own_frame(ptr %t348)
+  call void @willrt_task_run(ptr %t348)
   br label %sm.start.done.16
 sm.start.done.16:
-  %t252 = phi ptr [ %t250, %sm.start.auto.16 ], [ %t251, %sm.start.lane.16 ]
-  ret ptr %t252
+  %t349 = phi ptr [ %t347, %sm.start.auto.16 ], [ %t348, %sm.start.lane.16 ]
+  ret ptr %t349
 }
 define internal void @"example.com/concurrency/async.will$main.drop"(ptr %frame) {
 entry:
-  %t253 = getelementptr i8, ptr %frame, i64 40
-  %t254 = load i32, ptr %t253
-  %t255 = icmp eq i32 %t254, 0
-  br i1 %t255, label %deep.rel.adt.17.0, label %deep.rel.adt.done.17.0
+  %t350 = getelementptr i8, ptr %frame, i64 40
+  %t351 = load i32, ptr %t350
+  %t352 = icmp eq i32 %t351, 0
+  br i1 %t352, label %deep.rel.adt.17.0, label %deep.rel.adt.done.17.0
 deep.rel.adt.17.0:
-  %t256 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t253, i32 0, i32 2
+  %t353 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t350, i32 0, i32 2
   br label %deep.rel.adt.done.17.0
 deep.rel.adt.done.17.0:
-  %t257 = icmp eq i32 %t254, 1
-  br i1 %t257, label %deep.rel.adt.18.1, label %deep.rel.adt.done.18.1
+  %t354 = icmp eq i32 %t351, 1
+  br i1 %t354, label %deep.rel.adt.18.1, label %deep.rel.adt.done.18.1
 deep.rel.adt.18.1:
-  %t258 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t253, i32 0, i32 2
-  %t259 = getelementptr inbounds %interface.Error, ptr %t258, i32 0, i32 0
-  %t260 = getelementptr inbounds %interface.Error, ptr %t258, i32 0, i32 1
-  %t261 = load ptr, ptr %t259
-  %t262 = load ptr, ptr %t260
-  %t263 = icmp eq ptr %t261, null
-  br i1 %t263, label %iface.rel.empty.19, label %iface.rel.have.19
+  %t355 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t350, i32 0, i32 2
+  %t356 = getelementptr inbounds %interface.Error, ptr %t355, i32 0, i32 0
+  %t357 = getelementptr inbounds %interface.Error, ptr %t355, i32 0, i32 1
+  %t358 = load ptr, ptr %t356
+  %t359 = load ptr, ptr %t357
+  %t360 = icmp eq ptr %t358, null
+  br i1 %t360, label %iface.rel.empty.19, label %iface.rel.have.19
 iface.rel.empty.19:
   br label %iface.rel.done.19
 iface.rel.have.19:
-  %t264 = getelementptr inbounds [6 x ptr], ptr %t262, i64 0, i64 3
-  %t265 = load ptr, ptr %t264
-  call void %t265(ptr %t261)
-  call void @willrt_free(ptr %t261)
-  store ptr null, ptr %t259
-  store ptr null, ptr %t260
+  %t361 = getelementptr inbounds [6 x ptr], ptr %t359, i64 0, i64 3
+  %t362 = load ptr, ptr %t361
+  call void %t362(ptr %t358)
+  call void @willrt_free(ptr %t358)
+  store ptr null, ptr %t356
+  store ptr null, ptr %t357
   br label %iface.rel.done.19
 iface.rel.done.19:
-  store %interface.Error zeroinitializer, ptr %t258
+  store %interface.Error zeroinitializer, ptr %t355
   br label %deep.rel.adt.done.18.1
 deep.rel.adt.done.18.1:
-  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t253
-  %t266 = getelementptr i8, ptr %frame, i64 24
-  %t267 = getelementptr inbounds { ptr, i64 }, ptr %t266, i32 0, i32 0
-  %t268 = load ptr, ptr %t267
-  call void @willrt_free_str(ptr %t268)
-  store { ptr, i64 } zeroinitializer, ptr %t266
-  %t269 = getelementptr i8, ptr %frame, i64 8
-  %t270 = getelementptr inbounds { ptr, i64 }, ptr %t269, i32 0, i32 0
-  %t271 = load ptr, ptr %t270
-  call void @willrt_free_str(ptr %t271)
-  store { ptr, i64 } zeroinitializer, ptr %t269
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t350
+  %t363 = getelementptr i8, ptr %frame, i64 24
+  %t364 = getelementptr inbounds { ptr, i64 }, ptr %t363, i32 0, i32 0
+  %t365 = load ptr, ptr %t364
+  call void @willrt_free_str(ptr %t365)
+  store { ptr, i64 } zeroinitializer, ptr %t363
+  %t366 = getelementptr i8, ptr %frame, i64 8
+  %t367 = getelementptr inbounds { ptr, i64 }, ptr %t366, i32 0, i32 0
+  %t368 = load ptr, ptr %t367
+  call void @willrt_free_str(ptr %t368)
+  store { ptr, i64 } zeroinitializer, ptr %t366
+  %t369 = getelementptr i8, ptr %frame, i64 312
+  store i64 zeroinitializer, ptr %t369
   ret void
 }
 declare void @willrt_init()
@@ -5715,47 +5954,47 @@ define i32 @main() {
 entry:
   call void @willrt_init()
   call void @"std/errors.will$init"()
-  %t272 = call ptr @"example.com/concurrency/async.will$main.task"(i32 -2, i32 0)
-  %t274 = alloca i32
-  %t273 = call i32 @willrt_join(ptr %t272, ptr %t274, ptr null)
-  %t275 = icmp ne i32 %t273, 0
-  br i1 %t275, label %main.async.fail.20, label %main.async.ok.20
+  %t370 = call ptr @"example.com/concurrency/async.will$main.task"(i32 -2, i32 0)
+  %t372 = alloca i32
+  %t371 = call i32 @willrt_join(ptr %t370, ptr %t372, ptr null)
+  %t373 = icmp ne i32 %t371, 0
+  br i1 %t373, label %main.async.fail.20, label %main.async.ok.20
 main.async.fail.20:
   call void @willrt_shutdown()
   ret i32 1
 main.async.ok.20:
-  %t276 = load i32, ptr %t274
+  %t374 = load i32, ptr %t372
   call void @willrt_shutdown()
-  ret i32 %t276
+  ret i32 %t374
 }
 @will.error.data.8 = private constant { ptr, i64, i32 } { ptr @.str.20, i64 8, i32 8 }
 define internal { ptr, i64 } @will.error.message.8(ptr %data) {
 entry:
-  %t277 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t278 = load ptr, ptr %t277
-  %t279 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
-  %t280 = load i64, ptr %t279
-  %t281 = insertvalue { ptr, i64 } undef, ptr %t278, 0
-  %t282 = insertvalue { ptr, i64 } %t281, i64 %t280, 1
-  ret { ptr, i64 } %t282
+  %t375 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t376 = load ptr, ptr %t375
+  %t377 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
+  %t378 = load i64, ptr %t377
+  %t379 = insertvalue { ptr, i64 } undef, ptr %t376, 0
+  %t380 = insertvalue { ptr, i64 } %t379, i64 %t378, 1
+  ret { ptr, i64 } %t380
 }
 define internal i32 @will.error.status.8(ptr %data) {
 entry:
-  %t283 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
-  %t284 = load i32, ptr %t283
-  ret i32 %t284
+  %t381 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
+  %t382 = load i32, ptr %t381
+  ret i32 %t382
 }
 define internal ptr @will.error.clone.8(ptr %data) {
 entry:
-  %t285 = call ptr @willrt_alloc(i64 24)
-  call void @memcpy(ptr %t285, ptr %data, i64 24)
-  ret ptr %t285
+  %t383 = call ptr @willrt_alloc(i64 24)
+  call void @memcpy(ptr %t383, ptr %data, i64 24)
+  ret ptr %t383
 }
 define internal void @will.error.drop.8(ptr %data) {
 entry:
-  %t286 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t287 = load ptr, ptr %t286
-  call void @willrt_free_str(ptr %t287)
+  %t384 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t385 = load ptr, ptr %t384
+  call void @willrt_free_str(ptr %t385)
   ret void
 }
 define internal void @will.error.share.8(ptr %data) {
@@ -5767,31 +6006,31 @@ entry:
 @will.error.data.9 = private constant { ptr, i64, i32 } { ptr @.str.21, i64 8, i32 9 }
 define internal { ptr, i64 } @will.error.message.9(ptr %data) {
 entry:
-  %t288 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t289 = load ptr, ptr %t288
-  %t290 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
-  %t291 = load i64, ptr %t290
-  %t292 = insertvalue { ptr, i64 } undef, ptr %t289, 0
-  %t293 = insertvalue { ptr, i64 } %t292, i64 %t291, 1
-  ret { ptr, i64 } %t293
+  %t386 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t387 = load ptr, ptr %t386
+  %t388 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
+  %t389 = load i64, ptr %t388
+  %t390 = insertvalue { ptr, i64 } undef, ptr %t387, 0
+  %t391 = insertvalue { ptr, i64 } %t390, i64 %t389, 1
+  ret { ptr, i64 } %t391
 }
 define internal i32 @will.error.status.9(ptr %data) {
 entry:
-  %t294 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
-  %t295 = load i32, ptr %t294
-  ret i32 %t295
+  %t392 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
+  %t393 = load i32, ptr %t392
+  ret i32 %t393
 }
 define internal ptr @will.error.clone.9(ptr %data) {
 entry:
-  %t296 = call ptr @willrt_alloc(i64 24)
-  call void @memcpy(ptr %t296, ptr %data, i64 24)
-  ret ptr %t296
+  %t394 = call ptr @willrt_alloc(i64 24)
+  call void @memcpy(ptr %t394, ptr %data, i64 24)
+  ret ptr %t394
 }
 define internal void @will.error.drop.9(ptr %data) {
 entry:
-  %t297 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t298 = load ptr, ptr %t297
-  call void @willrt_free_str(ptr %t298)
+  %t395 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
+  %t396 = load ptr, ptr %t395
+  call void @willrt_free_str(ptr %t396)
   ret void
 }
 define internal void @will.error.share.9(ptr %data) {

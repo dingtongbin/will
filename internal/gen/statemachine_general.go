@@ -143,6 +143,7 @@ func (g *generator) emitGeneralStep(fnID int) error {
 	// slot must stay in the body text instead of waiting for an entry marker.
 	g.lateAllowed = false
 	g.smPlaces = map[int]smPlace{}
+	g.resetSyntheticTemps()
 	g.liveValues = map[int]string{}
 	g.resultType = g.resultLLVM(fieldText(fn, "type"))
 	g.fnResultText = fieldText(fn, "type")

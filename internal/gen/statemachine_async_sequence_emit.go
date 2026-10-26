@@ -45,6 +45,7 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 	g.lateAllocas = nil
 	g.lateAllowed = true
 	g.smPlaces = map[int]smPlace{}
+	g.resetSyntheticTemps()
 	g.resultType = info.resultLLVM
 	g.fnResultText = info.resultText
 	g.fnSymbol = info.symbol
@@ -79,6 +80,11 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 			resultFields[i] = g.newTmp()
 			fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n",
 				resultFields[i], info.frameType, seg.resultIndex+2)
+			text := g.callResultTextFor(seg.call)
+			if llvm := g.resultLLVM(text); llvm != "" {
+				g.storeZero(resultFields[i], llvm)
+				g.addSyntheticTemp(resultFields[i], text, llvm)
+			}
 		}
 	}
 	paramRecs := g.asyncCallRecs(info.fn.ID)
