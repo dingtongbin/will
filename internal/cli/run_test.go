@@ -31,6 +31,38 @@ func main() -> i32 {
 	}
 }
 
+// TestRunBranchMoveReleasesThePathThatStillOwnsTheValue checks the runtime
+// zeroing of a moved source: the moved path releases nothing, the other path
+// releases the value exactly once.
+func TestRunBranchMoveReleasesThePathThatStillOwnsTheValue(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func Take(flag: bool) -> i32 {
+    var a: Array<i32> = new Array<i32>(4)
+    a.Push(7)
+    if flag {
+        var b: Array<i32> = a
+        b.Push(8)
+        return i32(b.Len())
+    }
+    return i32(a.Len())
+}
+
+func main() -> i32 {
+    return Take(true) + Take(false)
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 3 {
+		t.Fatalf("code = %d, want 3, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestEmitSomeRcRetainsTheHandle checks that storing an rc handle in an Option
 // copy retains it; the source owner may still be released later.
 func TestEmitSomeRcRetainsTheHandle(t *testing.T) {

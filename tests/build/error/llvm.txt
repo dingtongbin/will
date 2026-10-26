@@ -32,7 +32,7 @@ entry:
   %v.agg.26 = alloca %"struct.example.com/error.E"
   %v.str.27 = alloca { ptr, i64 }
   %v.adt.32 = alloca { i32, [4 x i8], %interface.Error }
-  %v.match.37 = alloca i32
+  %v.match.38 = alloca i32
   %t12 = getelementptr inbounds %"struct.example.com/error.E", ptr %v.agg.26, i32 0, i32 0
   %t13 = getelementptr inbounds { ptr, i64 }, ptr %v.str.27, i32 0, i32 0
   store ptr @.bytes.1, ptr %t13
@@ -58,7 +58,7 @@ entry:
 match.arm.1.0:
   %t25 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 2
   %t26 = load i32, ptr %t25
-  store i32 %t26, ptr %v.match.37
+  store i32 %t26, ptr %v.match.38
   br label %match.end.1
 match.next.1.0:
   %t27 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 0
@@ -74,12 +74,12 @@ match.arm.1.1:
   %t35 = getelementptr inbounds [3 x ptr], ptr %t34, i64 0, i64 1
   %t36 = load ptr, ptr %t35
   %t37 = call i32 %t36(ptr %t32)
-  store i32 %t37, ptr %v.match.37
+  store i32 %t37, ptr %v.match.38
   br label %match.end.1
 match.next.1.1:
   unreachable
 match.end.1:
-  %t38 = load i32, ptr %v.match.37
+  %t38 = load i32, ptr %v.match.38
   %t39 = load i32, ptr %v.r
   %t40 = icmp eq i32 %t39, 0
   br i1 %t40, label %deep.rel.adt.2.0, label %deep.rel.adt.done.2.0
@@ -93,12 +93,16 @@ deep.rel.adt.3.1:
   %t43 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 2
   br label %deep.rel.adt.done.3.1
 deep.rel.adt.done.3.1:
+  %t44 = getelementptr inbounds %"struct.example.com/error.E", ptr %v.e, i32 0, i32 0
+  %t45 = getelementptr inbounds { ptr, i64 }, ptr %t44, i32 0, i32 0
+  %t46 = load ptr, ptr %t45
+  call void @willrt_free_str(ptr %t46)
   ret i32 %t38
 }
 define i32 @"example.com/error.will$main"() {
 entry:
-  %t44 = call i32 @"example.com/error.Use"()
-  ret i32 %t44
+  %t47 = call i32 @"example.com/error.Use"()
+  ret i32 %t47
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -114,4 +118,5 @@ entry:
 @"example.com/error.vtable.Error.E" = internal constant [3 x ptr] [ptr @"example.com/error.E.Message", ptr @"example.com/error.E.Status", ptr @"will.type.example.com/error.E"], align 8
 declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
+declare void @willrt_free_str(ptr)
 declare void @memcpy(ptr, ptr, i64)

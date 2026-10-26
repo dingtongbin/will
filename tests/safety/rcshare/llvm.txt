@@ -6239,6 +6239,7 @@ sm.op.cont.4:
   store i64 %t180, ptr %t179
   %t181 = load i64, ptr %t179
   call void @willrt_rc_share(i64 %t181)
+  store i64 0, ptr %v.box
   %t182 = call ptr @willrt_task_new(ptr @"example.com/safety/rcshare.spawn.1", ptr %t178, i64 %t177, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t182)
   call void @willrt_task_run_auto(ptr %t182)
@@ -6335,6 +6336,7 @@ send.result.130:
   %t226 = icmp eq i32 %t225, 0
   br i1 %t226, label %send.ok.7, label %send.err.7
 send.ok.7:
+  store i64 0, ptr %v.box
   %t227 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.send.result.130, i32 0, i32 0
   store i32 0, ptr %t227
   br label %send.end.7

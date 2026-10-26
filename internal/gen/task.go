@@ -176,6 +176,9 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			if err := g.shareValue(field, argTexts[i]); err != nil {
 				return "", err
 			}
+			if err := g.zeroTransferredSource(a, field); err != nil {
+				return "", err
+			}
 			continue
 		}
 		value, err := g.value(a)
@@ -184,6 +187,9 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argTypes[i], value, field)
 		if err := g.shareValue(field, argTexts[i]); err != nil {
+			return "", err
+		}
+		if err := g.zeroTransferredSource(a, field); err != nil {
 			return "", err
 		}
 	}
@@ -1092,6 +1098,9 @@ func (g *generator) lowerSend(r willc.Record) error {
 	}
 	g.needTaskDecl = true
 	fmt.Fprintf(g.out, "  call i32 @willrt_chan_send(ptr %s, ptr %s)\n", chanPtr, ptr)
+	if err := g.zeroTransferredSource(valueID, ""); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1184,6 +1193,9 @@ func (g *generator) lowerSendResult(r willc.Record) (string, error) {
 	endLabel := fmt.Sprintf("send.end.%d", n)
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", okStatus, okLabel, errLabel)
 	g.out.WriteString(okLabel + ":\n")
+	if err := g.zeroTransferredSource(valueID, ""); err != nil {
+		return "", err
+	}
 	tagPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
 	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", info.tags["Ok"], tagPtr)

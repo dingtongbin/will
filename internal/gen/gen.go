@@ -2677,17 +2677,23 @@ func (g *generator) assignStmt(r willc.Record) error {
 		if srcType != typ {
 			return g.errf(r.ID, "cannot translate node #%d: the assignment needs %s", r.ID, typ)
 		}
+		move, _ := g.moveSource(valueID)
 		if g.needsReleaseText(targetText) {
 			if err := g.releaseSlot(ptr, targetText); err != nil {
 				return err
 			}
-			if g.isCopySource(valueID) {
+			if !move && g.isCopySource(valueID) {
 				if err := g.retainValue(src, targetText); err != nil {
 					return err
 				}
 			}
 		}
 		g.copyValue(src, ptr, typ)
+		if move {
+			if err := g.zeroMovedSource(valueID, ptr); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 	value, err := g.value(valueID)
@@ -2696,6 +2702,82 @@ func (g *generator) assignStmt(r willc.Record) error {
 	}
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
 	return nil
+}
+
+// moveSource reports whether one expression names a local value owner that a
+// transfer consumes. An rc handle is copied, and a parameter or receiver is a
+// borrow; neither may be zeroed here.
+func (g *generator) moveSource(id int) (bool, string) {
+	r, ok := g.recs[id]
+	if !ok || r.Kind != "name" {
+		return false, ""
+	}
+	text, err := g.willTypeText(id)
+	if err != nil || text == "" || isRcText(text) || isWeakText(text) || !ownsReleaseText(g, text) {
+		return false, ""
+	}
+	decl := refField(r, "to")
+	d, ok := g.recs[decl]
+	if !ok || d.Kind != "var" {
+		return false, ""
+	}
+	return true, text
+}
+
+// zeroMovedSource clears a moved local's storage so a later release record
+// sees an empty value on every path. The destination is passed separately so a
+// self-assignment cannot zero the value it just stored.
+func (g *generator) zeroMovedSource(id int, dst string) error {
+	move, text := g.moveSource(id)
+	if !move {
+		return nil
+	}
+	_ = text
+	src, typ, err := g.place(id)
+	if err != nil {
+		return err
+	}
+	if src == dst {
+		return nil
+	}
+	g.storeZero(src, typ)
+	return nil
+}
+
+// zeroTransferredSource clears a local whose value was handed to a task or a
+// channel without a retain. It also accepts rc handles, unlike zeroMovedSource.
+func (g *generator) zeroTransferredSource(id int, dst string) error {
+	r, ok := g.recs[id]
+	if !ok || r.Kind != "name" {
+		return nil
+	}
+	text, err := g.willTypeText(id)
+	if err != nil || !ownsReleaseText(g, text) || isWeakText(text) {
+		return nil
+	}
+	decl := refField(r, "to")
+	d, ok := g.recs[decl]
+	if !ok || d.Kind != "var" {
+		return nil
+	}
+	src, typ, err := g.place(id)
+	if err != nil {
+		return err
+	}
+	if src == dst {
+		return nil
+	}
+	g.storeZero(src, typ)
+	return nil
+}
+
+func (g *generator) storeZero(src, typ string) {
+	if typ == "i1" || typ == "i8" || typ == "i16" || typ == "i32" || typ == "i64" ||
+		typ == "float" || typ == "double" || typ == "ptr" {
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, zeroValueText(typ), src)
+		return
+	}
+	fmt.Fprintf(g.out, "  store %s zeroinitializer, ptr %s\n", typ, src)
 }
 
 // declStmt stores the initial value of a local into its slot.
@@ -2756,12 +2838,18 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 			return false, g.errf(r.ID, "cannot translate node #%d: %s needs a %s value", r.ID, fieldText(r, "text"), typ)
 		}
 		text := fieldText(r, "type")
-		if g.needsReleaseText(text) && g.isCopySource(valueID) {
+		move, _ := g.moveSource(valueID)
+		if !move && g.needsReleaseText(text) && g.isCopySource(valueID) {
 			if err := g.retainValue(src, text); err != nil {
 				return false, err
 			}
 		}
 		g.copyValue(src, slot, typ)
+		if move {
+			if err := g.zeroMovedSource(valueID, slot); err != nil {
+				return false, err
+			}
+		}
 		return false, nil
 	}
 	value, err := g.value(valueID)

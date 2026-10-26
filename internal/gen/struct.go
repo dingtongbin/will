@@ -1475,12 +1475,18 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 			if typ != info.types[i] {
 				return g.errf(valueID, "cannot translate node #%d: field %s needs %s", valueID, name, info.types[i])
 			}
-			if g.needsReleaseText(info.texts[i]) && g.isCopySource(valueID) {
+			move, _ := g.moveSource(valueID)
+			if !move && g.needsReleaseText(info.texts[i]) && g.isCopySource(valueID) {
 				if err := g.retainValue(src, info.texts[i]); err != nil {
 					return err
 				}
 			}
 			g.copyValue(src, ptr, typ)
+			if move {
+				if err := g.zeroMovedSource(valueID, ptr); err != nil {
+					return err
+				}
+			}
 			continue
 		}
 		v, err := g.value(valueID)

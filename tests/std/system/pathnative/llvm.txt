@@ -244,7 +244,7 @@ entry:
   %v.found = alloca i32
   %v.str.35 = alloca { ptr, i64 }
   %v.adt.53 = alloca { i32, [4 x i8], { ptr, i64 } }
-  %v.adt.55 = alloca { i32, [4 x i8], { ptr, i64 } }
+  %v.adt.56 = alloca { i32, [4 x i8], { ptr, i64 } }
   %t3 = getelementptr inbounds { ptr, i64 }, ptr %v.str.35, i32 0, i32 0
   store ptr @.bytes.8, ptr %t3
   %t4 = getelementptr inbounds { ptr, i64 }, ptr %v.str.35, i32 0, i32 1
@@ -265,62 +265,66 @@ if.then.1:
   call void @willrt_free_str(ptr %t12)
   ret { i32, [4 x i8], { ptr, i64 } } %t10
 if.end.1:
-  %t13 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.55, i32 0, i32 0
+  %t13 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.56, i32 0, i32 0
   store i32 1, ptr %t13
-  %t14 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.55, i32 0, i32 2
+  %t14 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.56, i32 0, i32 2
   %t15 = load { ptr, i64 }, ptr %v.value
   store { ptr, i64 } %t15, ptr %t14
-  %t16 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.55
+  store { ptr, i64 } zeroinitializer, ptr %v.value
+  %t16 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.56
+  %t17 = getelementptr inbounds { ptr, i64 }, ptr %v.value, i32 0, i32 0
+  %t18 = load ptr, ptr %t17
+  call void @willrt_free_str(ptr %t18)
   ret { i32, [4 x i8], { ptr, i64 } } %t16
 }
 define hidden { i32, [4 x i8], %interface.Error } @"std/os.Setenv"(ptr %name, ptr %value) inlinehint {
 entry:
   %v.status = alloca i32
-  %v.adt.84 = alloca { i32, [4 x i8], %interface.Error }
-  %v.adt.94 = alloca { i32, [4 x i8], %interface.Error }
-  %v.adt.99 = alloca { i32, [4 x i8], %interface.Error }
-  %t17 = call i32 @willrt_os_setenv(ptr %name, ptr %value)
-  store i32 %t17, ptr %v.status
-  %t18 = load i32, ptr %v.status
-  %t20 = icmp eq i32 2, -2147483648
-  br i1 %t20, label %panic.2, label %panic.ok.2
+  %v.adt.85 = alloca { i32, [4 x i8], %interface.Error }
+  %v.adt.95 = alloca { i32, [4 x i8], %interface.Error }
+  %v.adt.100 = alloca { i32, [4 x i8], %interface.Error }
+  %t19 = call i32 @willrt_os_setenv(ptr %name, ptr %value)
+  store i32 %t19, ptr %v.status
+  %t20 = load i32, ptr %v.status
+  %t22 = icmp eq i32 2, -2147483648
+  br i1 %t22, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.8, ptr @.str.9, ptr @.str.10)
   unreachable
 panic.ok.2:
-  %t19 = sub i32 0, 2
-  %t21 = icmp eq i32 %t18, %t19
-  br i1 %t21, label %if.then.1, label %if.end.1
+  %t21 = sub i32 0, 2
+  %t23 = icmp eq i32 %t20, %t21
+  br i1 %t23, label %if.then.1, label %if.end.1
 if.then.1:
-  %t22 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.84, i32 0, i32 0
-  store i32 1, ptr %t22
-  %t23 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.84, i32 0, i32 2
-  %t24 = getelementptr inbounds %interface.Error, ptr %t23, i32 0, i32 0
-  store ptr @"std/errors.Invalid", ptr %t24
-  %t25 = getelementptr inbounds %interface.Error, ptr %t23, i32 0, i32 1
-  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t25
-  %t26 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.84
-  ret { i32, [4 x i8], %interface.Error } %t26
+  %t24 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.85, i32 0, i32 0
+  store i32 1, ptr %t24
+  %t25 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.85, i32 0, i32 2
+  %t26 = getelementptr inbounds %interface.Error, ptr %t25, i32 0, i32 0
+  store ptr @"std/errors.Invalid", ptr %t26
+  %t27 = getelementptr inbounds %interface.Error, ptr %t25, i32 0, i32 1
+  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t27
+  %t28 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.85
+  ret { i32, [4 x i8], %interface.Error } %t28
 if.end.1:
-  %t27 = load i32, ptr %v.status
-  %t28 = icmp ne i32 %t27, 0
-  br i1 %t28, label %if.then.3, label %if.end.3
+  %t29 = load i32, ptr %v.status
+  %t30 = icmp ne i32 %t29, 0
+  br i1 %t30, label %if.then.3, label %if.end.3
 if.then.3:
-  %t29 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.94, i32 0, i32 0
-  store i32 1, ptr %t29
-  %t30 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.94, i32 0, i32 2
-  %t31 = getelementptr inbounds %interface.Error, ptr %t30, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t31
-  %t32 = getelementptr inbounds %interface.Error, ptr %t30, i32 0, i32 1
-  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t32
-  %t33 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.94
-  ret { i32, [4 x i8], %interface.Error } %t33
+  %t31 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.95, i32 0, i32 0
+  store i32 1, ptr %t31
+  %t32 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.95, i32 0, i32 2
+  %t33 = getelementptr inbounds %interface.Error, ptr %t32, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t33
+  %t34 = getelementptr inbounds %interface.Error, ptr %t32, i32 0, i32 1
+  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t34
+  %t35 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.95
+  ret { i32, [4 x i8], %interface.Error } %t35
 if.end.3:
-  %t34 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.99, i32 0, i32 0
-  store i32 0, ptr %t34
-  %t35 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.99, i32 0, i32 2
-  %t36 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.99
-  ret { i32, [4 x i8], %interface.Error } %t36
+  %t36 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.100, i32 0, i32 0
+  store i32 0, ptr %t36
+  %t37 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.100, i32 0, i32 2
+  %t38 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.100
+  ret { i32, [4 x i8], %interface.Error } %t38
 }
 define hidden { ptr, i64, i64 } @"std/os.Environ"() inlinehint {
 entry:
@@ -329,263 +333,270 @@ entry:
   %v.status = alloca i32
   %v.key = alloca { ptr, i64 }
   %v.haveKey = alloca i1
-  %v.new.111 = alloca { ptr, i64, i64 }
-  %v.str.132 = alloca { ptr, i64 }
+  %v.new.112 = alloca { ptr, i64, i64 }
+  %v.str.133 = alloca { ptr, i64 }
   %v.$idx = alloca i64
-  %t37 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.111, i32 0, i32 0
-  store ptr null, ptr %t37
-  %t38 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.111, i32 0, i32 1
-  store i64 0, ptr %t38
-  %t39 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.111, i32 0, i32 2
-  store i64 0, ptr %t39
-  %t40 = load { ptr, i64, i64 }, ptr %v.new.111
-  store { ptr, i64, i64 } %t40, ptr %v.out
+  %t39 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.112, i32 0, i32 0
+  store ptr null, ptr %t39
+  %t40 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.112, i32 0, i32 1
+  store i64 0, ptr %t40
+  %t41 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.112, i32 0, i32 2
+  store i64 0, ptr %t41
+  %t42 = load { ptr, i64, i64 }, ptr %v.new.112
+  store { ptr, i64, i64 } %t42, ptr %v.out
   store { ptr, i64 } zeroinitializer, ptr %v.pairs
-  %t41 = call i32 @willrt_os_environ(ptr %v.pairs)
-  store i32 %t41, ptr %v.status
-  %t42 = load i32, ptr %v.status
-  %t43 = icmp ne i32 %t42, 0
-  br i1 %t43, label %if.then.1, label %if.end.1
+  %t43 = call i32 @willrt_os_environ(ptr %v.pairs)
+  store i32 %t43, ptr %v.status
+  %t44 = load i32, ptr %v.status
+  %t45 = icmp ne i32 %t44, 0
+  br i1 %t45, label %if.then.1, label %if.end.1
 if.then.1:
-  %t44 = load { ptr, i64, i64 }, ptr %v.out
-  ret { ptr, i64, i64 } %t44
+  %t46 = load { ptr, i64, i64 }, ptr %v.out
+  ret { ptr, i64, i64 } %t46
 if.end.1:
-  %t45 = getelementptr inbounds { ptr, i64 }, ptr %v.str.132, i32 0, i32 0
-  store ptr @.bytes.8, ptr %t45
-  %t46 = getelementptr inbounds { ptr, i64 }, ptr %v.str.132, i32 0, i32 1
-  store i64 0, ptr %t46
-  %t47 = load { ptr, i64 }, ptr %v.str.132
-  store { ptr, i64 } %t47, ptr %v.key
+  %t47 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 0
+  store ptr @.bytes.8, ptr %t47
+  %t48 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 1
+  store i64 0, ptr %t48
+  %t49 = load { ptr, i64 }, ptr %v.str.133
+  store { ptr, i64 } %t49, ptr %v.key
   store i1 false, ptr %v.haveKey
-  %t48 = getelementptr inbounds { ptr, i64 }, ptr %v.pairs, i32 0, i32 0
-  %t49 = load ptr, ptr %t48
-  %t50 = getelementptr inbounds { ptr, i64 }, ptr %v.pairs, i32 0, i32 1
-  %t51 = load i64, ptr %t50
+  %t50 = getelementptr inbounds { ptr, i64 }, ptr %v.pairs, i32 0, i32 0
+  %t51 = load ptr, ptr %t50
+  %t52 = getelementptr inbounds { ptr, i64 }, ptr %v.pairs, i32 0, i32 1
+  %t53 = load i64, ptr %t52
   store i64 0, ptr %v.$idx
   br label %for.cond.2
 for.cond.2:
-  %t52 = load i64, ptr %v.$idx
-  %t53 = icmp ult i64 %t52, %t51
-  br i1 %t53, label %for.body.2, label %for.end.2
+  %t54 = load i64, ptr %v.$idx
+  %t55 = icmp ult i64 %t54, %t53
+  br i1 %t55, label %for.body.2, label %for.end.2
 for.body.2:
-  %t54 = getelementptr inbounds { ptr, i64 }, ptr %t49, i64 %t52
-  %t55 = load i1, ptr %v.haveKey
-  br i1 %t55, label %if.then.3, label %if.else.3
+  %t56 = getelementptr inbounds { ptr, i64 }, ptr %t51, i64 %t54
+  %t57 = load i1, ptr %v.haveKey
+  br i1 %t57, label %if.then.3, label %if.else.3
 if.then.3:
-  %t56 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 0
-  %t57 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
-  %t58 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 2
-  %t59 = load ptr, ptr %t56
-  %t60 = load i64, ptr %t57
-  %t61 = load ptr, ptr %t56
-  %t62 = load i64, ptr %t57
+  %t58 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 0
+  %t59 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
+  %t60 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 2
+  %t61 = load ptr, ptr %t58
+  %t62 = load i64, ptr %t59
+  %t63 = load ptr, ptr %t58
+  %t64 = load i64, ptr %t59
   br label %find.pre.4
 find.pre.4:
   br label %find.cond.4
 find.cond.4:
-  %t63 = phi i64 [ 0, %find.pre.4 ], [ %next.4, %find.next.4 ]
-  %t64 = icmp ult i64 %t63, %t62
-  br i1 %t64, label %find.body.4, label %find.miss.4
+  %t65 = phi i64 [ 0, %find.pre.4 ], [ %next.4, %find.next.4 ]
+  %t66 = icmp ult i64 %t65, %t64
+  br i1 %t66, label %find.body.4, label %find.miss.4
 find.body.4:
-  %t65 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t61, i64 %t63
-  %t66 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t65, i32 0, i32 0
-  %t67 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 0
-  %t68 = load ptr, ptr %t67
-  %t69 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 1
-  %t70 = load i64, ptr %t69
-  %t71 = getelementptr inbounds { ptr, i64 }, ptr %t66, i32 0, i32 0
-  %t72 = load ptr, ptr %t71
-  %t73 = getelementptr inbounds { ptr, i64 }, ptr %t66, i32 0, i32 1
-  %t74 = load i64, ptr %t73
-  %t75 = icmp ult i64 %t74, %t70
-  %t76 = select i1 %t75, i64 %t74, i64 %t70
-  %t77 = call i32 @memcmp(ptr %t72, ptr %t68, i64 %t76)
-  %t78 = icmp eq i32 %t77, 0
-  %t79 = icmp eq i64 %t74, %t70
-  %t80 = and i1 %t78, %t79
-  br i1 %t80, label %find.hit.4, label %find.next.4
+  %t67 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t63, i64 %t65
+  %t68 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t67, i32 0, i32 0
+  %t69 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 0
+  %t70 = load ptr, ptr %t69
+  %t71 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 1
+  %t72 = load i64, ptr %t71
+  %t73 = getelementptr inbounds { ptr, i64 }, ptr %t68, i32 0, i32 0
+  %t74 = load ptr, ptr %t73
+  %t75 = getelementptr inbounds { ptr, i64 }, ptr %t68, i32 0, i32 1
+  %t76 = load i64, ptr %t75
+  %t77 = icmp ult i64 %t76, %t72
+  %t78 = select i1 %t77, i64 %t76, i64 %t72
+  %t79 = call i32 @memcmp(ptr %t74, ptr %t70, i64 %t78)
+  %t80 = icmp eq i32 %t79, 0
+  %t81 = icmp eq i64 %t76, %t72
+  %t82 = and i1 %t80, %t81
+  br i1 %t82, label %find.hit.4, label %find.next.4
 find.next.4:
-  %next.4 = add i64 %t63, 1
+  %next.4 = add i64 %t65, 1
   br label %find.cond.4
 find.hit.4:
   br label %find.done.4
 find.miss.4:
   br label %find.done.4
 find.done.4:
-  %t81 = phi i64 [ %t63, %find.hit.4 ], [ %t62, %find.miss.4 ]
-  %t82 = phi i1 [ true, %find.hit.4 ], [ false, %find.miss.4 ]
-  br i1 %t82, label %set.replace.5, label %set.append.5
+  %t83 = phi i64 [ %t65, %find.hit.4 ], [ %t64, %find.miss.4 ]
+  %t84 = phi i1 [ true, %find.hit.4 ], [ false, %find.miss.4 ]
+  br i1 %t84, label %set.replace.5, label %set.append.5
 set.replace.5:
-  %t83 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t61, i64 %t81
-  %t84 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t83, i32 0, i32 1
-  %t85 = getelementptr inbounds { ptr, i64 }, ptr %t84, i32 0, i32 0
-  %t86 = load ptr, ptr %t85
-  call void @willrt_free_str(ptr %t86)
-  %t87 = getelementptr inbounds { ptr, i64 }, ptr %t54, i32 0, i32 0
-  %t88 = getelementptr inbounds { ptr, i64 }, ptr %t54, i32 0, i32 1
-  %t89 = load ptr, ptr %t87
-  %t90 = load i64, ptr %t88
-  %t91 = call ptr @willrt_alloc(i64 %t90)
-  call void @memcpy(ptr %t91, ptr %t89, i64 %t90)
-  %t92 = getelementptr inbounds { ptr, i64 }, ptr %t84, i32 0, i32 0
-  store ptr %t91, ptr %t92
-  %t93 = getelementptr inbounds { ptr, i64 }, ptr %t84, i32 0, i32 1
-  store i64 %t90, ptr %t93
+  %t85 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t63, i64 %t83
+  %t86 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t85, i32 0, i32 1
+  %t87 = getelementptr inbounds { ptr, i64 }, ptr %t86, i32 0, i32 0
+  %t88 = load ptr, ptr %t87
+  call void @willrt_free_str(ptr %t88)
+  %t89 = getelementptr inbounds { ptr, i64 }, ptr %t56, i32 0, i32 0
+  %t90 = getelementptr inbounds { ptr, i64 }, ptr %t56, i32 0, i32 1
+  %t91 = load ptr, ptr %t89
+  %t92 = load i64, ptr %t90
+  %t93 = call ptr @willrt_alloc(i64 %t92)
+  call void @memcpy(ptr %t93, ptr %t91, i64 %t92)
+  %t94 = getelementptr inbounds { ptr, i64 }, ptr %t86, i32 0, i32 0
+  store ptr %t93, ptr %t94
+  %t95 = getelementptr inbounds { ptr, i64 }, ptr %t86, i32 0, i32 1
+  store i64 %t92, ptr %t95
   br label %set.done.5
 set.append.5:
-  %t94 = load ptr, ptr %t56
-  %t95 = load i64, ptr %t57
-  %t96 = load i64, ptr %t58
-  %t97 = icmp eq i64 %t95, %t96
-  br i1 %t97, label %res.grow.6, label %res.ready.6
+  %t96 = load ptr, ptr %t58
+  %t97 = load i64, ptr %t59
+  %t98 = load i64, ptr %t60
+  %t99 = icmp eq i64 %t97, %t98
+  br i1 %t99, label %res.grow.6, label %res.ready.6
 res.grow.6:
-  %t98 = mul i64 %t96, 2
-  %t99 = icmp eq i64 %t96, 0
-  %t100 = select i1 %t99, i64 4, i64 %t98
-  %t101 = mul i64 %t100, 32
-  %t102 = call ptr @willrt_alloc(i64 %t101)
+  %t100 = mul i64 %t98, 2
+  %t101 = icmp eq i64 %t98, 0
+  %t102 = select i1 %t101, i64 4, i64 %t100
+  %t103 = mul i64 %t102, 32
+  %t104 = call ptr @willrt_alloc(i64 %t103)
   br label %copy.pre.7
 copy.pre.7:
   br label %copy.cond.7
 copy.cond.7:
-  %t103 = phi i64 [ 0, %copy.pre.7 ], [ %copy.next.v.7, %copy.next.7 ]
-  %t104 = icmp ult i64 %t103, %t95
-  br i1 %t104, label %copy.body.7, label %copy.done.7
+  %t105 = phi i64 [ 0, %copy.pre.7 ], [ %copy.next.v.7, %copy.next.7 ]
+  %t106 = icmp ult i64 %t105, %t97
+  br i1 %t106, label %copy.body.7, label %copy.done.7
 copy.body.7:
-  %t105 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t94, i64 %t103
-  %t106 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t102, i64 %t103
-  %t107 = load { { ptr, i64 }, { ptr, i64 } }, ptr %t105
-  store { { ptr, i64 }, { ptr, i64 } } %t107, ptr %t106
+  %t107 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t96, i64 %t105
+  %t108 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t104, i64 %t105
+  %t109 = load { { ptr, i64 }, { ptr, i64 } }, ptr %t107
+  store { { ptr, i64 }, { ptr, i64 } } %t109, ptr %t108
   br label %copy.next.7
 copy.next.7:
-  %copy.next.v.7 = add i64 %t103, 1
+  %copy.next.v.7 = add i64 %t105, 1
   br label %copy.cond.7
 copy.done.7:
-  %t108 = icmp eq ptr %t94, null
-  br i1 %t108, label %res.nofree.8, label %res.free.8
+  %t110 = icmp eq ptr %t96, null
+  br i1 %t110, label %res.nofree.8, label %res.free.8
 res.free.8:
-  call void @willrt_free(ptr %t94)
+  call void @willrt_free(ptr %t96)
   br label %res.freed.8
 res.nofree.8:
   br label %res.freed.8
 res.freed.8:
-  store ptr %t102, ptr %t56
-  store i64 %t100, ptr %t58
+  store ptr %t104, ptr %t58
+  store i64 %t102, ptr %t60
   br label %res.ready.6
 res.ready.6:
-  %t109 = load ptr, ptr %t56
-  %t110 = load i64, ptr %t57
-  %t111 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t109, i64 %t110
-  %t112 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t111, i32 0, i32 0
-  %t113 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 0
-  %t114 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 1
-  %t115 = load ptr, ptr %t113
-  %t116 = load i64, ptr %t114
-  %t117 = call ptr @willrt_alloc(i64 %t116)
-  call void @memcpy(ptr %t117, ptr %t115, i64 %t116)
-  %t118 = getelementptr inbounds { ptr, i64 }, ptr %t112, i32 0, i32 0
-  store ptr %t117, ptr %t118
-  %t119 = getelementptr inbounds { ptr, i64 }, ptr %t112, i32 0, i32 1
-  store i64 %t116, ptr %t119
-  %t120 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t111, i32 0, i32 1
-  %t121 = getelementptr inbounds { ptr, i64 }, ptr %t54, i32 0, i32 0
-  %t122 = getelementptr inbounds { ptr, i64 }, ptr %t54, i32 0, i32 1
-  %t123 = load ptr, ptr %t121
-  %t124 = load i64, ptr %t122
-  %t125 = call ptr @willrt_alloc(i64 %t124)
-  call void @memcpy(ptr %t125, ptr %t123, i64 %t124)
-  %t126 = getelementptr inbounds { ptr, i64 }, ptr %t120, i32 0, i32 0
-  store ptr %t125, ptr %t126
-  %t127 = getelementptr inbounds { ptr, i64 }, ptr %t120, i32 0, i32 1
-  store i64 %t124, ptr %t127
-  %t128 = add i64 %t110, 1
-  store i64 %t128, ptr %t57
+  %t111 = load ptr, ptr %t58
+  %t112 = load i64, ptr %t59
+  %t113 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t111, i64 %t112
+  %t114 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t113, i32 0, i32 0
+  %t115 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 0
+  %t116 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 1
+  %t117 = load ptr, ptr %t115
+  %t118 = load i64, ptr %t116
+  %t119 = call ptr @willrt_alloc(i64 %t118)
+  call void @memcpy(ptr %t119, ptr %t117, i64 %t118)
+  %t120 = getelementptr inbounds { ptr, i64 }, ptr %t114, i32 0, i32 0
+  store ptr %t119, ptr %t120
+  %t121 = getelementptr inbounds { ptr, i64 }, ptr %t114, i32 0, i32 1
+  store i64 %t118, ptr %t121
+  %t122 = getelementptr inbounds { { ptr, i64 }, { ptr, i64 } }, ptr %t113, i32 0, i32 1
+  %t123 = getelementptr inbounds { ptr, i64 }, ptr %t56, i32 0, i32 0
+  %t124 = getelementptr inbounds { ptr, i64 }, ptr %t56, i32 0, i32 1
+  %t125 = load ptr, ptr %t123
+  %t126 = load i64, ptr %t124
+  %t127 = call ptr @willrt_alloc(i64 %t126)
+  call void @memcpy(ptr %t127, ptr %t125, i64 %t126)
+  %t128 = getelementptr inbounds { ptr, i64 }, ptr %t122, i32 0, i32 0
+  store ptr %t127, ptr %t128
+  %t129 = getelementptr inbounds { ptr, i64 }, ptr %t122, i32 0, i32 1
+  store i64 %t126, ptr %t129
+  %t130 = add i64 %t112, 1
+  store i64 %t130, ptr %t59
   br label %set.done.5
 set.done.5:
   store i1 false, ptr %v.haveKey
   br label %if.end.3
 if.else.3:
-  %t129 = load { ptr, i64 }, ptr %t54
-  store { ptr, i64 } %t129, ptr %v.key
+  %t131 = load { ptr, i64 }, ptr %t56
+  store { ptr, i64 } %t131, ptr %v.key
   store i1 true, ptr %v.haveKey
   br label %if.end.3
 if.end.3:
   br label %for.step.2
 for.step.2:
-  %t130 = load i64, ptr %v.$idx
-  %t131 = add i64 %t130, 1
-  store i64 %t131, ptr %v.$idx
+  %t132 = load i64, ptr %v.$idx
+  %t133 = add i64 %t132, 1
+  store i64 %t133, ptr %v.$idx
   br label %for.cond.2
 for.end.2:
-  %t132 = load { ptr, i64, i64 }, ptr %v.out
-  ret { ptr, i64, i64 } %t132
+  %t134 = load { ptr, i64, i64 }, ptr %v.out
+  %t135 = getelementptr inbounds { ptr, i64 }, ptr %v.key, i32 0, i32 0
+  %t136 = load ptr, ptr %t135
+  call void @willrt_free_str(ptr %t136)
+  ret { ptr, i64, i64 } %t134
 }
 define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os.Cwd"() inlinehint {
 entry:
   %v.path = alloca { ptr, i64 }
   %v.status = alloca i32
-  %v.str.166 = alloca { ptr, i64 }
-  %v.adt.181 = alloca { i32, [4 x i8], { ptr, i64 } }
-  %v.adt.186 = alloca { i32, [4 x i8], { ptr, i64 } }
-  %t133 = getelementptr inbounds { ptr, i64 }, ptr %v.str.166, i32 0, i32 0
-  store ptr @.bytes.8, ptr %t133
-  %t134 = getelementptr inbounds { ptr, i64 }, ptr %v.str.166, i32 0, i32 1
-  store i64 0, ptr %t134
-  %t135 = load { ptr, i64 }, ptr %v.str.166
-  store { ptr, i64 } %t135, ptr %v.path
-  %t136 = call i32 @willrt_os_cwd(ptr %v.path)
-  store i32 %t136, ptr %v.status
-  %t137 = load i32, ptr %v.status
-  %t138 = icmp ne i32 %t137, 0
-  br i1 %t138, label %if.then.1, label %if.end.1
+  %v.str.168 = alloca { ptr, i64 }
+  %v.adt.183 = alloca { i32, [4 x i8], { ptr, i64 } }
+  %v.adt.189 = alloca { i32, [4 x i8], { ptr, i64 } }
+  %t137 = getelementptr inbounds { ptr, i64 }, ptr %v.str.168, i32 0, i32 0
+  store ptr @.bytes.8, ptr %t137
+  %t138 = getelementptr inbounds { ptr, i64 }, ptr %v.str.168, i32 0, i32 1
+  store i64 0, ptr %t138
+  %t139 = load { ptr, i64 }, ptr %v.str.168
+  store { ptr, i64 } %t139, ptr %v.path
+  %t140 = call i32 @willrt_os_cwd(ptr %v.path)
+  store i32 %t140, ptr %v.status
+  %t141 = load i32, ptr %v.status
+  %t142 = icmp ne i32 %t141, 0
+  br i1 %t142, label %if.then.1, label %if.end.1
 if.then.1:
-  %t139 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.181, i32 0, i32 0
-  store i32 1, ptr %t139
-  %t140 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.181, i32 0, i32 2
-  %t141 = getelementptr inbounds %interface.Error, ptr %t140, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t141
-  %t142 = getelementptr inbounds %interface.Error, ptr %t140, i32 0, i32 1
-  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t142
-  %t143 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.181
-  %t144 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
-  %t145 = load ptr, ptr %t144
-  call void @willrt_free_str(ptr %t145)
-  ret { i32, [4 x i8], { ptr, i64 } } %t143
+  %t143 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.183, i32 0, i32 0
+  store i32 1, ptr %t143
+  %t144 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.183, i32 0, i32 2
+  %t145 = getelementptr inbounds %interface.Error, ptr %t144, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t145
+  %t146 = getelementptr inbounds %interface.Error, ptr %t144, i32 0, i32 1
+  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t146
+  %t147 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.183
+  %t148 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
+  %t149 = load ptr, ptr %t148
+  call void @willrt_free_str(ptr %t149)
+  ret { i32, [4 x i8], { ptr, i64 } } %t147
 if.end.1:
-  %t146 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.186, i32 0, i32 0
-  store i32 0, ptr %t146
-  %t147 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.186, i32 0, i32 2
-  %t148 = load { ptr, i64 }, ptr %v.path
-  store { ptr, i64 } %t148, ptr %t147
-  %t149 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.186
-  ret { i32, [4 x i8], { ptr, i64 } } %t149
+  %t150 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.189, i32 0, i32 0
+  store i32 0, ptr %t150
+  %t151 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.189, i32 0, i32 2
+  %t152 = load { ptr, i64 }, ptr %v.path
+  store { ptr, i64 } %t152, ptr %t151
+  store { ptr, i64 } zeroinitializer, ptr %v.path
+  %t153 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.189
+  %t154 = getelementptr inbounds { ptr, i64 }, ptr %v.path, i32 0, i32 0
+  %t155 = load ptr, ptr %t154
+  call void @willrt_free_str(ptr %t155)
+  ret { i32, [4 x i8], { ptr, i64 } } %t153
 }
 define hidden { i32, [4 x i8], %interface.Error } @"std/os.Chdir"(ptr %path) inlinehint {
 entry:
   %v.status = alloca i32
-  %v.adt.209 = alloca { i32, [4 x i8], %interface.Error }
-  %v.adt.214 = alloca { i32, [4 x i8], %interface.Error }
-  %t150 = call i32 @willrt_os_chdir(ptr %path)
-  store i32 %t150, ptr %v.status
-  %t151 = load i32, ptr %v.status
-  %t152 = icmp ne i32 %t151, 0
-  br i1 %t152, label %if.then.1, label %if.end.1
+  %v.adt.212 = alloca { i32, [4 x i8], %interface.Error }
+  %v.adt.217 = alloca { i32, [4 x i8], %interface.Error }
+  %t156 = call i32 @willrt_os_chdir(ptr %path)
+  store i32 %t156, ptr %v.status
+  %t157 = load i32, ptr %v.status
+  %t158 = icmp ne i32 %t157, 0
+  br i1 %t158, label %if.then.1, label %if.end.1
 if.then.1:
-  %t153 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.209, i32 0, i32 0
-  store i32 1, ptr %t153
-  %t154 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.209, i32 0, i32 2
-  %t155 = getelementptr inbounds %interface.Error, ptr %t154, i32 0, i32 0
-  store ptr @"std/errors.Io", ptr %t155
-  %t156 = getelementptr inbounds %interface.Error, ptr %t154, i32 0, i32 1
-  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t156
-  %t157 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.209
-  ret { i32, [4 x i8], %interface.Error } %t157
+  %t159 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.212, i32 0, i32 0
+  store i32 1, ptr %t159
+  %t160 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.212, i32 0, i32 2
+  %t161 = getelementptr inbounds %interface.Error, ptr %t160, i32 0, i32 0
+  store ptr @"std/errors.Io", ptr %t161
+  %t162 = getelementptr inbounds %interface.Error, ptr %t160, i32 0, i32 1
+  store ptr @"std/os.vtable.Error.std/errors.Fault", ptr %t162
+  %t163 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.212
+  ret { i32, [4 x i8], %interface.Error } %t163
 if.end.1:
-  %t158 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.214, i32 0, i32 0
-  store i32 0, ptr %t158
-  %t159 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.214, i32 0, i32 2
-  %t160 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.214
-  ret { i32, [4 x i8], %interface.Error } %t160
+  %t164 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.217, i32 0, i32 0
+  store i32 0, ptr %t164
+  %t165 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.217, i32 0, i32 2
+  %t166 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.217
+  ret { i32, [4 x i8], %interface.Error } %t166
 }
 define hidden void @"std/os.Exit"(i32 %code) inlinehint {
 entry:

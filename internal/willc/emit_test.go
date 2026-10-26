@@ -276,7 +276,7 @@ func TestEmitStructOwningFieldPinsToBlockEnd(t *testing.T) {
 	}
 }
 
-func TestEmitMovedArrayHasNoSourceRelease(t *testing.T) {
+func TestEmitMovedArrayKeepsReleaseForMovedSource(t *testing.T) {
 	src := "func F() {\n" +
 		"    var first: Array<i32> = new Array<i32>(0)\n" +
 		"    var second: Array<i32> = first\n" +
@@ -295,8 +295,8 @@ func TestEmitMovedArrayHasNoSourceRelease(t *testing.T) {
 			owners = append(owners, names[testRef(r, "owner")])
 		}
 	}
-	if len(owners) != 1 || owners[0] != "second" {
-		t.Fatalf("released owners = %v, want only second", owners)
+	if len(owners) != 2 || owners[0] != "second" || owners[1] != "first" {
+		t.Fatalf("released owners = %v, want second then first", owners)
 	}
 }
 

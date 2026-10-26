@@ -286,7 +286,13 @@ func (g *generator) adtConstruct(r willc.Record, info *adtInfo, variant string, 
 		if srcType != argType {
 			return "", "", g.errf(argID, "cannot translate node #%d: the argument needs %s", argID, argType)
 		}
+		move, _ := g.moveSource(argID)
 		g.copyValue(src, payload, argType)
+		if move {
+			if err := g.zeroMovedSource(argID, payload); err != nil {
+				return "", "", err
+			}
+		}
 		return slot, info.llvm, nil
 	}
 	value, err := g.value(argID)

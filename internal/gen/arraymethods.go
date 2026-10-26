@@ -189,12 +189,18 @@ func (g *generator) arrayInsert(r willc.Record, base, elem, elemLLVM string) (st
 		if srcType != elemLLVM {
 			return "", "", g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
 		}
-		if g.needsReleaseText(elem) && g.isCopySource(args[1]) {
+		move, _ := g.moveSource(args[1])
+		if !move && g.needsReleaseText(elem) && g.isCopySource(args[1]) {
 			if err := g.retainValue(src, elem); err != nil {
 				return "", "", err
 			}
 		}
 		g.copyValue(src, temp, elemLLVM)
+		if move {
+			if err := g.zeroMovedSource(args[1], temp); err != nil {
+				return "", "", err
+			}
+		}
 	} else {
 		value, err := g.value(args[1])
 		if err != nil {
