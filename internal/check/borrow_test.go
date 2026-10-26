@@ -1,6 +1,7 @@
 package check
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/will-lang/will/internal/diag"
@@ -145,6 +146,60 @@ func Store() -> Holder {
 func TestBorrowCanReturnAParameterView(t *testing.T) {
 	src := `func Slice(xs: []i32) -> []i32 {
     return xs[Range(0, xs.Len())]
+}
+`
+	if ds := borrows(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %s, want none", diag.FormatAll(ds))
+	}
+}
+
+func TestCopyOfPlaceRejectsMutUse(t *testing.T) {
+	src := `struct P {
+    n: i32
+}
+
+struct Q {
+    p: P
+}
+
+func (mut p: P) Move() {
+}
+
+func Fill(mut p: P) {
+}
+
+func F(q: Q) {
+    var a: P = q.p
+    a.Move()
+    Fill(a)
+    _ = a
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 2 {
+		t.Fatalf("diagnostics = %d, want two:\n%s", len(ds), diag.FormatAll(ds))
+	}
+	for _, d := range ds {
+		if d.Code != diag.CodeCopyNotBorrow {
+			t.Fatalf("code = %s, want O0008", d.Code)
+		}
+		if d.Message != "this is a copy, not a borrow" {
+			t.Fatalf("message = %q", d.Message)
+		}
+		if !strings.Contains(d.Help, "write through the place") {
+			t.Fatalf("help = %q", d.Help)
+		}
+	}
+}
+
+func TestCopyOfScalarPlaceIsAllowed(t *testing.T) {
+	src := `func Fill(mut n: i32) {
+}
+
+func F(q: Q) {
+    var n: i32 = q.n
+    Fill(n)
+    _ = n
 }
 `
 	if ds := borrows(t, src); len(ds) != 0 {

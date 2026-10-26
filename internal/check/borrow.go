@@ -34,6 +34,7 @@ func Borrows(f *ast.File) []diag.Diagnostic {
 			b.locals = map[string]bool{}
 			b.params = map[string]bool{}
 			b.localTypes = map[string]*ast.Type{}
+			b.copied = map[string]source.Pos{}
 			for _, p := range fn.Params {
 				b.params[p.Name] = true
 				b.localTypes[p.Name] = p.Type
@@ -61,6 +62,10 @@ type borrower struct {
 	// spawn. Only those owners stay borrowed to the block end; an unrelated
 	// closure no longer widens every view in the block.
 	pinned map[string]bool
+	// copied records a local initialized from a field or index place. Mutating
+	// that local through a mut parameter or receiver is O0008: it changes the
+	// copy, not the place the programmer named.
+	copied map[string]source.Pos
 }
 
 func cloneBorrows(in map[string]source.Pos) map[string]source.Pos {
@@ -198,6 +203,7 @@ func (b *borrower) stmt(st ast.Stmt, borrowed map[string]source.Pos) {
 			if d.Name != "" && d.Name != "_" {
 				b.locals[d.Name] = true
 				b.localTypes[d.Name] = d.Type
+				b.noteCopiedPlace(d.Name, d.Value)
 			}
 		case *ast.ConstDecl:
 			b.expr(d.Value, borrowed)
@@ -207,6 +213,9 @@ func (b *borrower) stmt(st ast.Stmt, borrowed map[string]source.Pos) {
 		b.expr(s.Value, borrowed)
 		b.move(s.Value, borrowed)
 		b.store(s.Value, borrowed)
+		if target, ok := s.Target.(*ast.NameExpr); ok && target.Name != "_" {
+			b.noteCopiedPlace(target.Name, s.Value)
+		}
 	case *ast.ExprStmt:
 		b.expr(s.Expr, borrowed)
 	case *ast.DeferStmt:
@@ -309,6 +318,46 @@ func (b *borrower) store(e ast.Expr, borrowed map[string]source.Pos) {
 	}
 }
 
+// noteCopiedPlace records a local created from a field or index place. A later
+// mut parameter or receiver on that local reports O0008: the local is a copy,
+// not a name for the place.
+func (b *borrower) noteCopiedPlace(name string, value ast.Expr) {
+	if name == "" || name == "_" {
+		return
+	}
+	delete(b.copied, name)
+	if !copyPlaceType(b.localTypes[name]) {
+		return
+	}
+	switch value.(type) {
+	case *ast.FieldExpr, *ast.IndexExpr:
+		b.copied[name] = value.Pos()
+	}
+}
+
+func copyPlaceType(t *ast.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Kind {
+	case ast.NamedType:
+		switch t.Name {
+		case "rc", "weak", "chan", "Task", "Error", "Value", "Show", "Duration", "raw", "str":
+			return false
+		}
+		return true
+	case ast.ArrayType:
+		return true
+	}
+	return false
+}
+
+func (b *borrower) copyNotBorrow(pos source.Pos) {
+	b.bag.Error(pos, diag.CodeCopyNotBorrow,
+		"this is a copy, not a borrow",
+		"write through the place (xs[i].f = v), or use a method with a mut receiver")
+}
+
 func (b *borrower) mutAt(pos source.Pos, name string, borrowed map[string]source.Pos) {
 	if name == "" {
 		return
@@ -396,7 +445,12 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 		b.call(x, borrowed)
 	case *ast.MethodCallExpr:
 		if b.mutMethods[x.Name] {
-			b.mutAt(x.Pos(), rootName(x.Recv), borrowed)
+			root := rootName(x.Recv)
+			if _, ok := b.copied[root]; ok {
+				b.copyNotBorrow(x.Pos())
+			} else {
+				b.mutAt(x.Pos(), root, borrowed)
+			}
 		} else if b.containerMutator(x.Recv, x.Name) {
 			b.containerMutAt(x.Pos(), rootName(x.Recv), borrowed)
 		}
@@ -461,7 +515,12 @@ func (b *borrower) call(call *ast.CallExpr, borrowed map[string]source.Pos) {
 					break
 				}
 				if fn.Params[i].Mut {
-					b.mutAt(arg.Pos(), rootName(arg.Expr), borrowed)
+					root := rootName(arg.Expr)
+					if _, ok := b.copied[root]; ok {
+						b.copyNotBorrow(arg.Pos())
+					} else {
+						b.mutAt(arg.Pos(), root, borrowed)
+					}
 				}
 			}
 		}
