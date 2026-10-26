@@ -11,9 +11,12 @@ import (
 // captureInfo is one outer declaration a lambda reads. The environment stores
 // the value itself, so a closure keeps working after its creating frame ends.
 type captureInfo struct {
-	decl int
-	name string
-	typ  string
+	decl  int
+	name  string
+	typ   string
+	text  string
+	local bool
+	param bool
 }
 
 // lambdaInfo is the lowered shape of one lambda: its function symbol, the
@@ -324,7 +327,18 @@ func (g *generator) lambdaCaptureInfo(lam willc.Record) (*lambdaInfo, error) {
 			return nil, err
 		}
 		seen[key] = true
-		info.captures = append(info.captures, captureInfo{decl: decl.ID, name: fieldText(r, "text"), typ: typ})
+		text := fieldText(decl, "type")
+		if decl.Kind == "receiver" {
+			text = fieldText(decl, "type")
+		}
+		info.captures = append(info.captures, captureInfo{
+			decl:  decl.ID,
+			name:  fieldText(r, "text"),
+			typ:   typ,
+			text:  text,
+			local: decl.Kind == "var" && g.slots[decl.ID] != "",
+			param: decl.Kind == "param" || decl.Kind == "receiver",
+		})
 	}
 	if len(info.captures) != 0 {
 		types := make([]string, 0, len(info.captures))
@@ -381,6 +395,15 @@ func (g *generator) buildEnvironment(lam willc.Record, info *lambdaInfo) (string
 		}
 		if typ != cap.typ {
 			return "", g.errf(lam.ID, "cannot translate node #%d: capture %s has type %s, want %s", lam.ID, cap.name, typ, cap.typ)
+		}
+		if ownsReleaseText(g, cap.text) {
+			// The environment can outlive the creating frame, so it owns an
+			// independent value. Moving the source here would break a second
+			// closure that captures the same name.
+			if err := g.cloneOwnedValue(src, field, cap.text); err != nil {
+				return "", err
+			}
+			continue
 		}
 		value := g.load(typ, src)
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, field)

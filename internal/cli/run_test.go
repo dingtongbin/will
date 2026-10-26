@@ -31,6 +31,35 @@ func main() -> i32 {
 	}
 }
 
+// TestRunEscapingClosureOwnsItsCapture checks that a closure returned from a
+// frame clones an owning capture; the source release must not free the value
+// the caller's closure still reads.
+func TestRunEscapingClosureOwnsItsCapture(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func Make() -> func() -> i32 {
+    var text: str = "hello".Clone()
+    return func() -> i32 {
+        return i32(text.Len())
+    }
+}
+
+func main() -> i32 {
+    var f: func() -> i32 = Make()
+    return f()
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 5 {
+		t.Fatalf("code = %d, want 5, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunTryMovesThePayload checks that ? copies the payload out, zeros the
 // source Option, and lets the caller release the payload once.
 func TestRunTryMovesThePayload(t *testing.T) {
