@@ -92,6 +92,45 @@ func main() -> i32 {
 	}
 }
 
+// TestRunLoopClosureDropsInPackageMode checks a closure created in a loop of a
+// package object: its drop thunk must be defined in the same object as the call.
+func TestRunLoopClosureDropsInPackageMode(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	dir := filepath.Join(t.TempDir(), "loopcapture")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("make module: %v", err)
+	}
+	writeFile(t, dir, "will.mod", "module example.com/loopcapture\nwill 1\n")
+	src := `func Run() -> i32 {
+    var text: str = "hello" + "!"
+    var f: func() -> usize = func() -> usize {
+        return 0
+    }
+    for _ in Range(0, 2) {
+        var inner: str = text.Clone()
+        f = func() -> usize {
+            return inner.Len()
+        }
+    }
+    return i32(f()) - 6
+}
+
+func main() -> i32 {
+    return Run()
+}
+`
+	writeFile(t, dir, "main.will", src)
+	code, out, errOut := runCLI("run", dir)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunNestedClosureMovesItsLocal checks that an inner closure created in an
 // outer closure moves a local of that immediate body and releases it once.
 func TestRunNestedClosureMovesItsLocal(t *testing.T) {

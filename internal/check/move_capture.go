@@ -64,6 +64,19 @@ func (m *mover) lambdaExpr(lam *ast.LambdaExpr, live map[string]bool, ev *events
 			m.params[cap.name] || m.borrowed[cap.name] || m.variadic[cap.name] {
 			continue
 		}
+		if m.loopDepth > 0 {
+			fresh := false
+			if len(m.loopLocals) != 0 {
+				fresh = m.loopLocals[len(m.loopLocals)-1][cap.name]
+			}
+			if !fresh {
+				// Moving an outer owner on the first iteration would leave an
+				// empty slot for the next one. Ask for a clone or a fresh local
+				// declared inside the loop.
+				m.copyAt(cap.pos)
+				continue
+			}
+		}
 		if m.borrowTransfer(cap.name, cap.pos) {
 			continue
 		}

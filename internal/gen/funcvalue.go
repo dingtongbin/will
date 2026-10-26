@@ -245,15 +245,32 @@ func (g *generator) indirectCall(r willc.Record, decl willc.Record) (string, str
 // records what it captures. A capture is stored by value in a heap
 // environment, so a closure that escapes its creating frame still reads it.
 func (g *generator) planLambdas() error {
+	if g.lambdaDropEmitted == nil {
+		g.lambdaDropEmitted = map[string]bool{}
+	}
+	if g.lambdaDropPending == nil {
+		g.lambdaDropPending = map[string]bool{}
+	}
 	var lambdas []willc.Record
 	for _, r := range g.recs {
 		if r.Kind == "lambda" {
+			lambdas = append(lambdas, r)
+			continue
+		}
+		// A package-mode pre-pass already turned this lambda into a function.
+		// Reuse its plan so the drop and share thunks are queued for the
+		// document that emits the lambda.
+		if r.Kind == "func" && g.lambdas[r.ID] != nil {
 			lambdas = append(lambdas, r)
 		}
 	}
 	sortByID(lambdas)
 	infos := make(map[int]*lambdaInfo, len(lambdas))
 	for _, lam := range lambdas {
+		if info := g.lambdas[lam.ID]; info != nil {
+			infos[lam.ID] = info
+			continue
+		}
 		info, err := g.lambdaCaptureInfo(lam)
 		if err != nil {
 			return err
@@ -262,31 +279,36 @@ func (g *generator) planLambdas() error {
 	}
 	for _, lam := range lambdas {
 		info := infos[lam.ID]
-		g.lambdaSeq++
-		info.name = "lambda." + strconv.Itoa(g.lambdaSeq)
-		if len(info.captures) != 0 {
-			g.lambdaDropSeq++
-			info.drop = qualify(g.pkg, "lambda.drop."+strconv.Itoa(g.lambdaDropSeq))
-			info.share = qualify(g.pkg, "lambda.share."+strconv.Itoa(g.lambdaDropSeq))
+		if info.name == "" {
+			g.lambdaSeq++
+			info.name = "lambda." + strconv.Itoa(g.lambdaSeq)
+			if len(info.captures) != 0 {
+				g.lambdaDropSeq++
+				info.drop = qualify(g.pkg, "lambda.drop."+strconv.Itoa(g.lambdaDropSeq))
+				info.share = qualify(g.pkg, "lambda.share."+strconv.Itoa(g.lambdaDropSeq))
+			}
+			lam.Kind = "func"
+			found := false
+			for i := range lam.Fields {
+				if lam.Fields[i].Name == "text" {
+					lam.Fields[i].Value = willc.Text(info.name)
+					found = true
+				}
+			}
+			if !found {
+				lam.Fields = append(lam.Fields, willc.Field{Name: "text", Value: willc.Text(info.name)})
+			}
+			g.recs[lam.ID] = lam
+			g.lambdaNames[lam.ID] = info.name
+			g.lambdas[lam.ID] = info
+		}
+		if info.drop != "" && !g.lambdaDropEmitted[info.drop] && !g.lambdaDropPending[info.drop] {
+			g.lambdaDropPending[info.drop] = true
 			g.pendingLambdaDrops = append(g.pendingLambdaDrops, lambdaDropRequest{
 				name: info.drop, share: info.share, envType: info.envType,
 				captures: append([]captureInfo(nil), info.captures...),
 			})
 		}
-		lam.Kind = "func"
-		found := false
-		for i := range lam.Fields {
-			if lam.Fields[i].Name == "text" {
-				lam.Fields[i].Value = willc.Text(info.name)
-				found = true
-			}
-		}
-		if !found {
-			lam.Fields = append(lam.Fields, willc.Field{Name: "text", Value: willc.Text(info.name)})
-		}
-		g.recs[lam.ID] = lam
-		g.lambdaNames[lam.ID] = info.name
-		g.lambdas[lam.ID] = info
 	}
 	return nil
 }
@@ -480,6 +502,13 @@ func (g *generator) emitLambdaDrops() error {
 			}
 		}
 		g.out.WriteString("  ret void\n}\n")
+		if g.lambdaDropEmitted == nil {
+			g.lambdaDropEmitted = map[string]bool{}
+		}
+		g.lambdaDropEmitted[req.name] = true
+		if g.lambdaDropPending != nil {
+			delete(g.lambdaDropPending, req.name)
+		}
 		if req.share != "" {
 			fmt.Fprintf(g.out, "define void @%s(ptr %%env) {\nentry:\n", llvmSymbol(req.share))
 			saved := g.quietShare

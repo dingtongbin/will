@@ -72,6 +72,12 @@ type mover struct {
 	// lambdaLocals is one declared-name set per open lambda body. A nested
 	// closure may move only a name from the innermost set.
 	lambdaLocals []map[string]bool
+	// loopDepth and loopLocals track names declared in the current loop body.
+	// A capture of an outer local inside a loop would move it on the first
+	// iteration and read an empty slot on the next, so that capture needs an
+	// explicit clone or a fresh local inside the loop.
+	loopDepth  int
+	loopLocals []map[string]bool
 }
 
 // placeMove is a field or index initializer that may move the place out when
@@ -238,6 +244,8 @@ func (m *mover) funcDecl(fn *ast.FuncDecl) {
 	m.placeMoves = nil
 	m.lambdaDepth = 0
 	m.lambdaLocals = nil
+	m.loopDepth = 0
+	m.loopLocals = nil
 	params := map[string]bool{}
 	if fn.Recv != nil {
 		m.types[fn.Recv.Name] = fn.Recv.Type
@@ -328,6 +336,9 @@ func (m *mover) block(b *ast.Block, inLoop bool, inherited map[string]bool) bloc
 					m.locals[vd.Name] = true
 					if m.lambdaDepth > 0 && len(m.lambdaLocals) > 0 {
 						m.lambdaLocals[len(m.lambdaLocals)-1][vd.Name] = true
+					}
+					if m.loopDepth > 0 && len(m.loopLocals) > 0 {
+						m.loopLocals[len(m.loopLocals)-1][vd.Name] = true
 					}
 				}
 				if m.owns(vd.Type) && vd.Name != "" && vd.Name != "_" {
@@ -481,7 +492,17 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 		flow.exits = true
 	case *ast.ForStmt:
 		m.exprEvents(s.Iter, live, &ev)
+		m.loopDepth++
+		locals := map[string]bool{}
+		for _, name := range s.Names {
+			if name != "" && name != "_" {
+				locals[name] = true
+			}
+		}
+		m.loopLocals = append(m.loopLocals, locals)
 		body := m.block(s.Body, true, live)
+		m.loopLocals = m.loopLocals[:len(m.loopLocals)-1]
+		m.loopDepth--
 		if !body.exits {
 			for name, pos := range body.moved {
 				if live[name] {

@@ -649,6 +649,7 @@ func (g *generator) use(d *docState) {
 	g.dropNames = map[string]string{}
 	g.pendingDrops = nil
 	g.pendingLambdaDrops = nil
+	g.lambdaDropPending = map[string]bool{}
 	g.selectSlots = map[int]string{}
 	g.selectFastSlots = map[int]string{}
 	g.selectOutSlots = map[int]string{}
@@ -995,6 +996,8 @@ type generator struct {
 	lambdaDropSeq      int
 	pendingDrops       []dropRequest
 	pendingLambdaDrops []lambdaDropRequest
+	lambdaDropEmitted  map[string]bool
+	lambdaDropPending  map[string]bool
 	dropEmitted        map[string]bool
 	// pendingReleases are the release records that precede a return in the
 	// same block. They run after the return value is evaluated, so a returned

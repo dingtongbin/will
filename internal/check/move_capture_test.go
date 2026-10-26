@@ -132,6 +132,51 @@ func F() -> i32 {
 	}
 }
 
+// TestClosureCaptureInLoopNeedsFreshOwner checks that a capture inside a loop
+// cannot move a local declared outside it: the next iteration would see an
+// empty slot.
+func TestClosureCaptureInLoopNeedsFreshOwner(t *testing.T) {
+	src := `func F() -> i32 {
+    var text: str = "hello" + "!"
+    var f: func() -> usize = func() -> usize {
+        return 0
+    }
+    for _ in Range(0, 2) {
+        f = func() -> usize {
+            return text.Len()
+        }
+    }
+    return i32(f())
+}
+`
+	ds := movesOwned(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+}
+
+// TestClosureCaptureInLoopWithFreshLocal checks the legal form: a local
+// declared inside the loop is recreated for every capture.
+func TestClosureCaptureInLoopWithFreshLocal(t *testing.T) {
+	src := `func F() -> i32 {
+    var text: str = "hello" + "!"
+    var f: func() -> usize = func() -> usize {
+        return 0
+    }
+    for _ in Range(0, 2) {
+        var inner: str = text.Clone()
+        f = func() -> usize {
+            return inner.Len()
+        }
+    }
+    return i32(f())
+}
+`
+	if ds := movesOwned(t, src); len(ds) != 0 {
+		t.Fatalf("a fresh loop local was rejected:\n%s", diag.FormatAll(ds))
+	}
+}
+
 // TestNestedClosureMovesItsOwnLocal checks that a closure created inside
 // another closure may move a local declared in the immediate body, while a
 // capture from the outer environment stays a copy.
