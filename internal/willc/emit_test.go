@@ -188,6 +188,27 @@ func TestEmitRcReleaseAtLastUse(t *testing.T) {
 	}
 }
 
+func TestEmitBatchesTwoArrayBuffers(t *testing.T) {
+	src := "func F() {\n" +
+		"    var a: Array<i32> = new Array<i32>(4)\n" +
+		"    var b: Array<i32> = new Array<i32>(4)\n" +
+		"    if a.Len() + b.Len() > 0 {\n" +
+		"    }\n" +
+		"}\n"
+	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
+	batches := Batches(doc)
+	if len(batches) != 1 {
+		t.Fatalf("batches = %d, want one", len(batches))
+	}
+	b := batches[0]
+	if b.Elem != "i32" || b.Cap != 4 || b.ElementLen != 2 {
+		t.Fatalf("batch = %+v", b)
+	}
+	if b.Pos != "test.will:4:5" {
+		t.Fatalf("batch pos = %q", b.Pos)
+	}
+}
+
 func TestEmitArrayReleaseAtLastSafeUse(t *testing.T) {
 	src := "func F() {\n" +
 		"    var xs: Array<i32> = new Array<i32>(0)\n" +
@@ -203,7 +224,7 @@ func TestEmitArrayReleaseAtLastSafeUse(t *testing.T) {
 			positions = append(positions, testFieldText(r, "pos"))
 		}
 	}
-	want := []string{"test.will:3:20"}
+	want := []string{"test.will:3:5"}
 	if len(positions) != len(want) || positions[0] != want[0] {
 		t.Fatalf("release positions = %v, want %v", positions, want)
 	}
@@ -292,7 +313,7 @@ func TestEmitArrayReleaseAfterNestedIfUse(t *testing.T) {
 			positions = append(positions, testFieldText(r, "pos"))
 		}
 	}
-	want := []string{"test.will:4:9"}
+	want := []string{"test.will:3:5"}
 	if len(positions) != len(want) || positions[0] != want[0] {
 		t.Fatalf("release positions = %v, want %v", positions, want)
 	}
@@ -314,7 +335,7 @@ func TestEmitArrayReleaseAfterLoopUse(t *testing.T) {
 			positions = append(positions, testFieldText(r, "pos"))
 		}
 	}
-	want := []string{"test.will:4:9"}
+	want := []string{"test.will:3:5"}
 	if len(positions) != len(want) || positions[0] != want[0] {
 		t.Fatalf("release positions = %v, want %v", positions, want)
 	}
@@ -335,7 +356,7 @@ func TestEmitArrayReleaseAfterViewLastUse(t *testing.T) {
 			positions = append(positions, testFieldText(r, "pos"))
 		}
 	}
-	want := []string{"test.will:4:9"}
+	want := []string{"test.will:4:5"}
 	if len(positions) != len(want) || positions[0] != want[0] {
 		t.Fatalf("release positions = %v, want %v", positions, want)
 	}
@@ -359,7 +380,7 @@ func TestEmitArrayReleaseAfterViewReturningCall(t *testing.T) {
 			positions = append(positions, testFieldText(r, "pos"))
 		}
 	}
-	want := []string{"test.will:7:9"}
+	want := []string{"test.will:7:5"}
 	if len(positions) != len(want) || positions[0] != want[0] {
 		t.Fatalf("release positions = %#v, want %#v", positions, want)
 	}
@@ -383,7 +404,7 @@ func TestEmitArrayReleaseAfterScalarLocalCall(t *testing.T) {
 			positions = append(positions, testFieldText(r, "pos"))
 		}
 	}
-	want := []string{"test.will:6:24"}
+	want := []string{"test.will:6:5"}
 	if len(positions) != len(want) || positions[0] != want[0] {
 		t.Fatalf("release positions = %v, want %v", positions, want)
 	}
@@ -404,7 +425,7 @@ func TestEmitOwnerReleasedAfterClosureCapture(t *testing.T) {
 			positions = append(positions, testFieldText(r, "pos"))
 		}
 	}
-	want := []string{"test.will:3:55", "test.will:1:10"}
+	want := []string{"test.will:3:5", "test.will:1:10"}
 	if len(positions) != len(want) {
 		t.Fatalf("release positions len=%d = %#v, want %d", len(positions), positions, len(want))
 	}

@@ -142,6 +142,49 @@ func main() -> i32 {
 	}
 }
 
+// TestRunArrayBatchRelease checks that two equal arrays released at one point
+// share a plate and free it once.
+func TestRunArrayBatchRelease(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func main() -> i32 {
+    var a: Array<i32> = new Array<i32>(4)
+    var b: Array<i32> = new Array<i32>(4)
+    var n: i32 = i32(a.Len() + b.Len())
+    return n
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
+// TestEmitDecisionsArrayBatch checks that the same group writes one merge
+// decision with both release ids.
+func TestEmitDecisionsArrayBatch(t *testing.T) {
+	src := `func main() -> i32 {
+    var a: Array<i32> = new Array<i32>(4)
+    var b: Array<i32> = new Array<i32>(4)
+    var n: i32 = i32(a.Len() + b.Len())
+    return n
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("emit-decisions", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stderr = %q", code, errOut)
+	}
+	if !strings.Contains(out, `merge pos=`) || !strings.Contains(out, `count=2`) || !strings.Contains(out, `reason="same-dominator"`) {
+		t.Fatalf("decision record lacks the array merge:\n%s", out)
+	}
+}
+
 // TestRunBranchMoveReleasesThePathThatStillOwnsTheValue checks the runtime
 // zeroing of a moved source: the moved path releases nothing, the other path
 // releases the value exactly once.

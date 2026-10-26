@@ -181,7 +181,9 @@ func (g *generator) constructArray(r willc.Record, elem string) (string, string,
 		capValue = v
 	}
 	ptr := "null"
-	if lit := intLitValue(args, g); lit >= 0 {
+	if batch := g.arrayBatchByNew[r.ID]; batch != nil {
+		ptr = g.arrayBatchData(batch, size)
+	} else if lit := intLitValue(args, g); lit >= 0 {
 		if lit == 0 {
 			ptr = "null"
 		} else {

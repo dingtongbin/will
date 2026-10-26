@@ -26,6 +26,7 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 		views := em.blockViews(b, vd.Name, types)
 		last := -1
 		var lastNode ast.Node
+		var lastStmt ast.Stmt
 		safe := true
 		for j, stmt := range b.Stmts {
 			if j == i {
@@ -43,6 +44,7 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 			if em.viewCallCreates(stmt, views, vd.Name) {
 				last = j
 				lastNode = lastNodeInStmt(stmt, vd.Name)
+				lastStmt = stmt
 				continue
 			}
 			if containsViewInNested(stmt, views) {
@@ -56,6 +58,7 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 				}
 				last = j
 				lastNode = lastViewNode(stmt, views)
+				lastStmt = stmt
 				continue
 			}
 			ok, used, node := em.safeNonRcTree(stmt, vd.Name, vd.Type, types)
@@ -66,9 +69,15 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 			if used {
 				last = j
 				lastNode = node
+				lastStmt = stmt
 			}
 		}
 		if safe && last >= 0 {
+			if vd.Type != nil && vd.Type.Kind == ast.NamedType && vd.Type.Name == "Array" && lastStmt != nil {
+				// A container group shares the statement position; this lets
+				// several arrays released by one statement be one plate group.
+				lastNode = lastStmt
+			}
 			out[vd] = earlyRelease{after: last, node: lastNode}
 		}
 	}

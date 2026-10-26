@@ -302,6 +302,9 @@ func (g *generator) emitAux() {
 	if g.needPlateDecl {
 		g.out.WriteString("declare ptr @willrt_plate_new(i64, i64)\n")
 	}
+	if g.needPlateReleaseDecl {
+		g.out.WriteString("declare void @willrt_plate_release(ptr)\n")
+	}
 	if g.needInterpDecl {
 		g.out.WriteString("declare i64 @willrt_fmt_i64_len(i64)\n")
 		g.out.WriteString("declare i64 @willrt_fmt_u64_len(i64)\n")
@@ -329,10 +332,12 @@ type docState struct {
 	// top-level variable to its symbol and lowered type.
 	moduleID int
 	globals  map[int]*globalInfo
+	batches  []willc.Batch
 }
 
 func newDocState(doc *willc.Doc) *docState {
 	d := &docState{
+		batches: willc.Batches(doc),
 		recs:    map[int]willc.Record{},
 		funcs:   map[int]string{},
 		symbols: map[int]string{},
@@ -582,6 +587,7 @@ func (g *generator) use(d *docState) {
 	g.adtSlots = map[int]string{}
 	g.newSlots = map[int]string{}
 	g.newStoreSlots = map[int]string{}
+	g.buildArrayBatches(d)
 	g.strSlots = map[int]string{}
 	g.utf8Slots = map[int]string{}
 	g.utf8nSlots = map[int]string{}
@@ -793,6 +799,8 @@ type generator struct {
 	// needClosureDecl records a closure environment allocation, retain, or
 	// release. The environment owns its captured fields and frees them once.
 	needClosureDecl bool
+	// needPlateReleaseDecl records that one batch actually released a plate.
+	needPlateReleaseDecl bool
 	// needMemcmpDecl records that the lowering compares str or byte data.
 	needMemcmpDecl bool
 	// needMemmoveDecl records that a container removed an entry in place.
@@ -940,6 +948,9 @@ type generator struct {
 	loops []loopLabels
 	// dropNames and dropSeq name the per-type drop functions, and
 	// pendingDrops holds the ones this document still has to write.
+	arrayBatchByNew    map[int]*arrayBatch
+	arrayBatchByOwner  map[int]*arrayBatch
+	arrayBatches       []*arrayBatch
 	dropNames          map[string]string
 	dropSeq            int
 	lambdaDropSeq      int
@@ -3001,6 +3012,15 @@ func (g *generator) bodyStmts(stmts []willc.Record, void bool) (bool, error) {
 // releaseRecord lowers one release record for the owner still in its slot.
 func (g *generator) releaseRecord(rel willc.Record) error {
 	owner := refField(rel, "owner")
+	if batch := g.arrayBatchByOwner[owner]; batch != nil {
+		if !batch.released {
+			g.needPlateReleaseDecl = true
+			plate := g.load("ptr", batch.plateSlot)
+			fmt.Fprintf(g.out, "  call void @willrt_plate_release(ptr %s)\n", plate)
+			batch.released = true
+		}
+		return nil
+	}
 	slot := g.slots[owner]
 	if slot == "" {
 		return nil

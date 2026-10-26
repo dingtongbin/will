@@ -416,6 +416,11 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, []byte, str
 		reportTranslate(diagOut, &willc.Error{Message: err.Error()})
 		return nil, nil, "", 1
 	}
+	for _, doc := range docs {
+		for _, batch := range willc.Batches(doc) {
+			astRecords = append(astRecords, decisions.Merge(batch.Pos, batch.Members, batch.ElementLen, "same-dominator"))
+		}
+	}
 	record := decisions.Write(astRecords)
 	store, key := loweringCacheKey(texts, record, opts)
 	if store != nil {

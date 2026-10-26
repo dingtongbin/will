@@ -82,6 +82,17 @@ func FrameField(function, name string, offset int, typ string) Record {
 	return r
 }
 
+// Merge records one plate-backed release group. Members are release record ids
+// from the same file, written as a comma-separated list in one quoted field.
+func Merge(pos, members string, count int, reason string) Record {
+	r := Record{Category: "merge"}
+	r.text("pos", pos)
+	r.text("members", members)
+	r.number("count", count)
+	r.text("reason", reason)
+	return r
+}
+
 // Obligation records the verdict of one proof obligation.
 func Obligation(pos, check, verdict, by string) Record {
 	r := Record{Category: "obligation"}
