@@ -449,6 +449,7 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 		ownership := check.NewOwnership(ownershipFiles)
 		effects := check.NewMutEffects(ownershipFiles)
 		bag.AddAll(check.CyclesWithFiles(ownershipFiles))
+		bag.AddAll(check.RcSlots(ownershipFiles, ownership))
 		for _, p := range b.Packages {
 			var packageFiles []*ast.File
 			for _, f := range p.Files {
