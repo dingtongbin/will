@@ -270,6 +270,41 @@ func TestCheckFixedArrayLiteralWrongLength(t *testing.T) {
 	}
 }
 
+// TestRunChannelHandleCopies checks that copying a channel handle retains it
+// and that releasing both handles does not free it early.
+func TestRunChannelHandleCopies(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func main() -> i32 {
+    var ch: chan<str> = new chan<str>(2)
+    var ch2: chan<str> = ch
+    var sent: Result<(), Error> = wait(ch2.Send("hello"))
+    match sent {
+        Ok(_) => {}
+        Err(_) => {
+            return 1
+        }
+    }
+    var got: Option<str> = wait(ch.Recv())
+    var n: i32 = match got {
+        Some(v) => i32(v.Len())
+        None => 0
+    }
+    ch.Close()
+    return n
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 5 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunFixedArrayLiteral checks field and string elements, their owning
 // release, and left-to-right construction.
 func TestRunFixedArrayLiteral(t *testing.T) {

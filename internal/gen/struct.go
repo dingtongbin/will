@@ -1528,6 +1528,11 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 			g.needRcDecl = true
 			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", v)
 		}
+		if isChanText(info.texts[i]) && g.isCopySource(valueID) {
+			g.needTaskDecl = true
+			g.needChanDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", v)
+		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.types[i], v, ptr)
 	}
 	return nil

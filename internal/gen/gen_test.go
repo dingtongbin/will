@@ -1828,6 +1828,33 @@ func TestSpawnSharesRCHandles(t *testing.T) {
 	}
 }
 
+func TestChannelDropReleasesQueuedOwnedValue(t *testing.T) {
+	src := `func main() -> i32 {
+    var ch: chan<str> = new chan<str>(1)
+    var ch2: chan<str> = ch
+    _ = wait(ch2.Send("x"))
+    ch.Close()
+    return 0
+}
+`
+	doc := emitWillc(t, src)
+	ir, err := EmitWithEntry(doc, "main")
+	if err != nil {
+		t.Fatalf("gen: %v", err)
+	}
+	text := normalizeIR(string(ir))
+	for _, want := range []string{
+		"call ptr @willrt_chan_new_drop(i64",
+		"@\"example.com/app.chan.drop.str\"(ptr %elem)",
+		"call void @willrt_chan_retain(ptr",
+		"call void @willrt_chan_release(ptr",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestSpawnFrameDropReleasesCapturedArray(t *testing.T) {
 	src := "func Count(xs: Array<str>) -> i32 {\n" +
 		"    return i32(xs.Len())\n" +

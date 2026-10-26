@@ -15,7 +15,7 @@ entry:
   %v.sm.select.ctx.6 = getelementptr i8, ptr %frame, i64 208
   %v.sm.select.index.7 = getelementptr i8, ptr %frame, i64 216
   %v.sm.select.out.14.8 = getelementptr i8, ptr %frame, i64 220
-  %t37 = getelementptr i8, ptr %frame, i64 224
+  %t38 = getelementptr i8, ptr %frame, i64 224
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
@@ -99,54 +99,56 @@ sm.select.arm.1.1:
   br label %sm.select.after.1
 sm.select.after.1:
   %t36 = load i32, ptr %v.v
-  store i32 0, ptr %t37
-  %t38 = getelementptr i32, ptr null, i32 1
-  %t39 = ptrtoint ptr %t38 to i64
-  call i32 @willrt_task_store_result(ptr %t37, i64 %t39)
+  %t37 = load ptr, ptr %v.a
+  call void @willrt_chan_release(ptr %t37)
+  store i32 0, ptr %t38
+  %t39 = getelementptr i32, ptr null, i32 1
+  %t40 = ptrtoint ptr %t39 to i64
+  call i32 @willrt_task_store_result(ptr %t38, i64 %t40)
   ret i32 1
 
 }
 define hidden ptr @"example.com/selecttimeout.will$main.task"(i32 %start) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
-  %t40 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t40
-  %t41 = call i32 @willrt_lane_here()
-  %t42 = icmp eq i32 %start, -1
-  %t43 = icmp eq i32 %start, -2
-  %t44 = select i1 %t43, i32 %t41, i32 %start
-  br i1 %t42, label %sm.start.auto.2, label %sm.start.lane.2
+  %t41 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t41
+  %t42 = call i32 @willrt_lane_here()
+  %t43 = icmp eq i32 %start, -1
+  %t44 = icmp eq i32 %start, -2
+  %t45 = select i1 %t44, i32 %t42, i32 %start
+  br i1 %t43, label %sm.start.auto.2, label %sm.start.lane.2
 sm.start.auto.2:
-  %t45 = call ptr @willrt_task_new(ptr @"example.com/selecttimeout.will$main.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
-  call void @willrt_task_own_frame(ptr %t45)
-  call void @willrt_task_run_auto(ptr %t45)
+  %t46 = call ptr @willrt_task_new(ptr @"example.com/selecttimeout.will$main.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t46)
+  call void @willrt_task_run_auto(ptr %t46)
   br label %sm.start.done.2
 sm.start.lane.2:
-  %t46 = call ptr @willrt_task_new(ptr @"example.com/selecttimeout.will$main.sm", ptr %v.sm.frame, i64 240, i32 %t44, i32 0)
-  call void @willrt_task_own_frame(ptr %t46)
-  call void @willrt_task_run(ptr %t46)
+  %t47 = call ptr @willrt_task_new(ptr @"example.com/selecttimeout.will$main.sm", ptr %v.sm.frame, i64 240, i32 %t45, i32 0)
+  call void @willrt_task_own_frame(ptr %t47)
+  call void @willrt_task_run(ptr %t47)
   br label %sm.start.done.2
 sm.start.done.2:
-  %t47 = phi ptr [ %t45, %sm.start.auto.2 ], [ %t46, %sm.start.lane.2 ]
-  ret ptr %t47
+  %t48 = phi ptr [ %t46, %sm.start.auto.2 ], [ %t47, %sm.start.lane.2 ]
+  ret ptr %t48
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %t48 = call ptr @"example.com/selecttimeout.will$main.task"(i32 -2)
-  %t50 = alloca i32
-  %t49 = call i32 @willrt_join(ptr %t48, ptr %t50, ptr null)
-  %t51 = icmp ne i32 %t49, 0
-  br i1 %t51, label %main.async.fail.3, label %main.async.ok.3
+  %t49 = call ptr @"example.com/selecttimeout.will$main.task"(i32 -2)
+  %t51 = alloca i32
+  %t50 = call i32 @willrt_join(ptr %t49, ptr %t51, ptr null)
+  %t52 = icmp ne i32 %t50, 0
+  br i1 %t52, label %main.async.fail.3, label %main.async.ok.3
 main.async.fail.3:
   call void @willrt_shutdown()
   ret i32 1
 main.async.ok.3:
-  %t52 = load i32, ptr %t50
+  %t53 = load i32, ptr %t51
   call void @willrt_shutdown()
-  ret i32 %t52
+  ret i32 %t53
 }
 declare ptr @willrt_select_start(ptr, i64)
 declare i32 @willrt_select_poll(ptr)
@@ -172,5 +174,8 @@ declare i64 @willrt_now_ns()
 declare void @willrt_region_enter()
 declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
+declare void @willrt_chan_retain(ptr)
+declare void @willrt_chan_release(ptr)
+declare ptr @willrt_chan_new_drop(i64, i64, i32, ptr)
 declare void @willrt_task_mark_wait()
 declare void @willrt_task_own_frame(ptr)

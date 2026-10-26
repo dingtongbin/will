@@ -92,7 +92,7 @@ func NeedsRelease(t *Type) bool {
 		return false
 	}
 	switch t.Name {
-	case "weak", "Duration", "Value", "Show", "Task", "chan":
+	case "weak", "Duration", "Value", "Show", "Task":
 		return false
 	}
 	// A named struct, enum, Option, Result, or rc may hold an rc field; the

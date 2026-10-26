@@ -22,6 +22,11 @@ type spawnRequest struct {
 }
 
 // taskElemText returns the value type of Task<T>.
+func isChanText(text string) bool {
+	_, ok := chanElemText(text)
+	return ok
+}
+
 func taskElemText(text string) (string, bool) {
 	if strings.HasPrefix(text, "Task<") && strings.HasSuffix(text, ">") {
 		return strings.TrimSpace(text[len("Task<") : len(text)-1]), true
@@ -199,6 +204,14 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		if isRcText(argTexts[i]) {
 			if err := g.retainValue(field, argTexts[i]); err != nil {
 				return "", err
+			}
+			continue
+		}
+		if isChanText(argTexts[i]) {
+			if g.isCopySource(a) {
+				if err := g.retainValue(field, argTexts[i]); err != nil {
+					return "", err
+				}
 			}
 			continue
 		}
@@ -1137,8 +1150,15 @@ func (g *generator) lowerChanNew(r willc.Record) (string, error) {
 	fmt.Fprintf(g.out, "  %s = sext i32 %s to i64\n", cap64, capValue)
 	size := g.sizeOf(elemLLVM)
 	g.needTaskDecl = true
+	g.needChanDecl = true
 	chanPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_chan_new(i64 %s, i64 %s, i32 0)\n", chanPtr, size, cap64)
+	if ownsReleaseText(g, elem) {
+		drop := g.channelDrop(elem)
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_chan_new_drop(i64 %s, i64 %s, i32 0, ptr @%s)\n",
+			chanPtr, size, cap64, llvmSymbol(drop))
+	} else {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_chan_new(i64 %s, i64 %s, i32 0)\n", chanPtr, size, cap64)
+	}
 	return chanPtr, nil
 }
 
@@ -1182,10 +1202,19 @@ func (g *generator) lowerSend(r willc.Record) error {
 	if err := g.shareValue(ptr, valueText); err != nil {
 		return err
 	}
+	keep := isChanText(valueText) && g.isCopySource(valueID)
+	if keep {
+		g.needTaskDecl = true
+		if err := g.retainValue(ptr, valueText); err != nil {
+			return err
+		}
+	}
 	g.needTaskDecl = true
 	fmt.Fprintf(g.out, "  call i32 @willrt_chan_send(ptr %s, ptr %s)\n", chanPtr, ptr)
-	if err := g.zeroTransferredSource(valueID, ""); err != nil {
-		return err
+	if !keep {
+		if err := g.zeroTransferredSource(valueID, ""); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -1225,6 +1254,13 @@ func (g *generator) lowerSendResult(r willc.Record) (string, error) {
 	}
 	if err := g.shareValue(ptr, valueText); err != nil {
 		return "", err
+	}
+	keep := isChanText(valueText) && g.isCopySource(valueID)
+	if keep {
+		g.needTaskDecl = true
+		if err := g.retainValue(ptr, valueText); err != nil {
+			return "", err
+		}
 	}
 	info, ok := g.adtType("Result<(), Error>")
 	if !ok {
@@ -1279,14 +1315,21 @@ func (g *generator) lowerSendResult(r willc.Record) (string, error) {
 	endLabel := fmt.Sprintf("send.end.%d", n)
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", okStatus, okLabel, errLabel)
 	g.out.WriteString(okLabel + ":\n")
-	if err := g.zeroTransferredSource(valueID, ""); err != nil {
-		return "", err
+	if !keep {
+		if err := g.zeroTransferredSource(valueID, ""); err != nil {
+			return "", err
+		}
 	}
 	tagPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
 	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", info.tags["Ok"], tagPtr)
 	fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
 	g.out.WriteString(errLabel + ":\n")
+	if keep {
+		if err := g.releaseOwnedValue(ptr, valueText); err != nil {
+			return "", err
+		}
+	}
 	tagPtr = g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
 	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", info.tags["Err"], tagPtr)

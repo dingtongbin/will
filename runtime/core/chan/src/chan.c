@@ -52,6 +52,8 @@ typedef struct willrt_select_ctx {
 
 struct willrt_chan {
     _Atomic(int32_t) state_lock;
+    _Atomic(int32_t) refs;
+    void (*drop)(void*);
     unsigned char* data;
     size_t elem;
     size_t cap;
@@ -127,6 +129,17 @@ static void willrt_chan_copy(void* dst, const void* src, size_t elem) {
         return;
     }
     memcpy(dst, src, elem);
+}
+
+/* Moves one buffered element to the receiver and clears the ring slot. A null
+   receiver still drops the element, so a discarded receive cannot leak it. */
+static void willrt_chan_take(willrt_chan* chan, void* out, unsigned char* slot) {
+    if (out != NULL) {
+        willrt_chan_copy(out, slot, chan->elem);
+    } else if (chan->drop != NULL) {
+        chan->drop(slot);
+    }
+    memset(slot, 0, chan->elem);
 }
 
 /* Claims the select before copying a value. The first channel that claims wins;
@@ -327,6 +340,11 @@ static int32_t willrt_chan_deadline_passed(void) {
 }
 
 willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio) {
+    return willrt_chan_new_drop(elem, cap, prio, NULL);
+}
+
+willrt_chan* willrt_chan_new_drop(size_t elem, size_t cap, int32_t prio,
+                                  void (*drop)(void*)) {
     willrt_chan* chan;
     size_t bytes;
 
@@ -353,8 +371,35 @@ willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio) {
     chan->elem = elem;
     chan->cap = cap;
     chan->prio = prio;
+    chan->drop = drop;
     atomic_init(&chan->state_lock, 0);
+    atomic_init(&chan->refs, 1);
     return chan;
+}
+
+void willrt_chan_retain(willrt_chan* chan) {
+    if (chan != NULL) {
+        atomic_fetch_add_explicit(&chan->refs, 1, memory_order_relaxed);
+    }
+}
+
+void willrt_chan_release(willrt_chan* chan) {
+    size_t i;
+
+    if (chan == NULL) {
+        return;
+    }
+    if (atomic_fetch_sub_explicit(&chan->refs, 1, memory_order_acq_rel) != 1) {
+        return;
+    }
+    if (chan->drop != NULL) {
+        for (i = 0; i < chan->count; i++) {
+            size_t at = willrt_chan_at(chan, i);
+            chan->drop(chan->data + at * chan->elem);
+        }
+    }
+    willrt_free(chan->data);
+    willrt_free(chan);
 }
 
 static int32_t willrt_chan_try_send_slow(willrt_chan* chan, const void* value);
@@ -537,9 +582,7 @@ int32_t willrt_chan_try_recv(willrt_chan* chan, void* out) {
     }
     if (!willrt_runtime_threaded()) {
         if (chan->count != 0) {
-            if (out != NULL) {
-                willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
-            }
+            willrt_chan_take(chan, out, chan->data + chan->head * chan->elem);
             chan->head = willrt_chan_next(chan->head, chan->cap);
             chan->count--;
             return WILLRT_OK;
@@ -558,9 +601,7 @@ static int32_t willrt_chan_try_recv_slow(willrt_chan* chan, void* out) {
     }
     if (!willrt_runtime_threaded()) {
         if (chan->count != 0) {
-            if (out != NULL) {
-                willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
-            }
+            willrt_chan_take(chan, out, chan->data + chan->head * chan->elem);
             chan->head = willrt_chan_next(chan->head, chan->cap);
             chan->count--;
             return WILLRT_OK;
@@ -572,9 +613,7 @@ static int32_t willrt_chan_try_recv_slow(willrt_chan* chan, void* out) {
         atomic_fetch_sub(&chan->send_waiters, 1);
         (void)willrt_chan_handoff_send(wait, out, chan->elem);
     } else if (chan->count != 0) {
-        if (out != NULL) {
-            willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
-        }
+        willrt_chan_take(chan, out, chan->data + chan->head * chan->elem);
         chan->head = willrt_chan_next(chan->head, chan->cap);
         chan->count--;
     } else if (chan->closed) {
@@ -596,9 +635,7 @@ int32_t willrt_chan_recv(willrt_chan* chan, void* out) {
     }
     if (!willrt_runtime_threaded()) {
         if (chan->count != 0) {
-            if (out != NULL) {
-                willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
-            }
+            willrt_chan_take(chan, out, chan->data + chan->head * chan->elem);
             chan->head = willrt_chan_next(chan->head, chan->cap);
             chan->count--;
             return WILLRT_OK;
@@ -618,9 +655,7 @@ WILLRT_CHAN_SLOW static int32_t willrt_chan_recv_slow(willrt_chan* chan, void* o
     }
     if (!willrt_runtime_threaded()) {
         if (chan->count != 0) {
-            if (out != NULL) {
-                willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
-            }
+            willrt_chan_take(chan, out, chan->data + chan->head * chan->elem);
             chan->head = willrt_chan_next(chan->head, chan->cap);
             chan->count--;
             return WILLRT_OK;
@@ -638,9 +673,7 @@ WILLRT_CHAN_SLOW static int32_t willrt_chan_recv_slow(willrt_chan* chan, void* o
         return WILLRT_OK;
     }
     if (chan->count != 0) {
-        if (out != NULL) {
-            willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
-        }
+        willrt_chan_take(chan, out, chan->data + chan->head * chan->elem);
         chan->head = willrt_chan_next(chan->head, chan->cap);
         chan->count--;
         chan_unlock(chan);
@@ -741,9 +774,7 @@ int32_t willrt_chan_recv_wait(willrt_chan* chan, void* out) {
         return WILLRT_OK;
     }
     if (chan->count != 0) {
-        if (out != NULL) {
-            willrt_chan_copy(out, chan->data + chan->head * chan->elem, chan->elem);
-        }
+        willrt_chan_take(chan, out, chan->data + chan->head * chan->elem);
         chan->head = willrt_chan_next(chan->head, chan->cap);
         chan->count--;
         chan_unlock(chan);
@@ -1075,11 +1106,8 @@ void willrt_chan_close(willrt_chan* chan) {
         if (wait->select == NULL && wait->task == NULL) {
             willrt_os_mutex_lock(&wait->wait_lock);
             if (chan->count != 0) {
-                if (wait->out != NULL) {
-                    willrt_chan_copy(wait->out,
-                                     chan->data + chan->head * chan->elem,
-                                     chan->elem);
-                }
+                willrt_chan_take(chan, wait->out,
+                                 chan->data + chan->head * chan->elem);
                 chan->head = willrt_chan_next(chan->head, chan->cap);
                 chan->count--;
                 wait->status = WILLRT_OK;
@@ -1093,6 +1121,7 @@ void willrt_chan_close(willrt_chan* chan) {
             const void* value = chan->data + chan->head * chan->elem;
 
             if (willrt_chan_handoff_recv(wait, value, chan->elem)) {
+                memset(chan->data + chan->head * chan->elem, 0, chan->elem);
                 chan->head = willrt_chan_next(chan->head, chan->cap);
                 chan->count--;
             }

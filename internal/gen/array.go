@@ -345,6 +345,15 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 				fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", v)
 			}
 		}
+		if isChanText(elem) {
+			old := g.load("ptr", ptr)
+			g.needTaskDecl = true
+			g.needChanDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_chan_release(ptr %s)\n", old)
+			if g.isCopySource(args[1]) {
+				fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", v)
+			}
+		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, v, ptr)
 		return "", "", nil
 	case "Push":
@@ -588,6 +597,11 @@ func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemS
 		if isRcText(elem) && g.isCopySource(valueID) {
 			g.needRcDecl = true
 			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
+		}
+		if isChanText(elem) && g.isCopySource(valueID) {
+			g.needTaskDecl = true
+			g.needChanDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, slot)
 	}

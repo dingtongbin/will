@@ -346,6 +346,13 @@ func (g *generator) retainValueDepth(ptr, text string, depth int) error {
 		fmt.Fprintf(g.out, "  call void @willrt_closure_retain(ptr %s)\n", env)
 		return nil
 	}
+	if isChanText(text) {
+		g.needTaskDecl = true
+		g.needChanDecl = true
+		handle := g.load("ptr", ptr)
+		fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", handle)
+		return nil
+	}
 	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
 		elem := strings.TrimSpace(text[len("Array<") : len(text)-1])
 		if !needsReleaseText(g, elem) {
@@ -498,7 +505,7 @@ func ownsReleaseText(g *generator, text string) bool {
 	if info := g.enumInfoForText(qualify(g.pkg, text)); info != nil {
 		return enumNeedsRelease(g, info)
 	}
-	if text == "str" || isRcText(text) || isFuncText(text) {
+	if text == "str" || isRcText(text) || isFuncText(text) || isChanText(text) {
 		return true
 	}
 	if _, ok := g.ifaceOfText(text); ok {
@@ -552,7 +559,7 @@ func needsReleaseText(g *generator, text string) bool {
 	if isWeakText(text) {
 		return false
 	}
-	if isFuncText(text) {
+	if isFuncText(text) || isChanText(text) {
 		return true
 	}
 	if _, ok := g.ifaceOfText(text); ok {

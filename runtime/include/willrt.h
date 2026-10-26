@@ -612,6 +612,13 @@ typedef struct willrt_chan_wait {
 } willrt_chan_wait;
 
 willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio);
+/* willrt_chan_new_drop installs the callback that releases one buffered
+   element when the last channel handle is released. */
+willrt_chan* willrt_chan_new_drop(size_t elem, size_t cap, int32_t prio,
+                                  void (*drop)(void*));
+/* Channel handles are reference counted. */
+void willrt_chan_retain(willrt_chan* chan);
+void willrt_chan_release(willrt_chan* chan);
 int32_t willrt_chan_send(willrt_chan* chan, const void* value);
 int32_t willrt_chan_try_send(willrt_chan* chan, const void* value);
 int32_t willrt_chan_recv(willrt_chan* chan, void* out);

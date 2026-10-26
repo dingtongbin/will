@@ -45,6 +45,11 @@ func (g *generator) ifaceOwnedValue(dst string, valueID int, iface *ifaceInfo, c
 			g.needRcDecl = true
 			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
 		}
+		if isChanText(concrete) {
+			g.needTaskDecl = true
+			g.needChanDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
+		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", expected, value, box)
 	}
 	return g.storeIfaceBox(dst, iface, box, concrete)

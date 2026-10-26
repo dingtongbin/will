@@ -409,6 +409,17 @@ func (g *generator) storeContainerValue(dst string, id int, text string) error {
 		_, err = g.ifaceStoreValue(dst, id, iface, sourceText)
 		return err
 	}
+	if isChanText(text) {
+		if g.isCopySource(id) {
+			value, err := g.value(id)
+			if err != nil {
+				return err
+			}
+			g.needTaskDecl = true
+			g.needChanDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
+		}
+	}
 	return g.storeValueAt(dst, id)
 }
 

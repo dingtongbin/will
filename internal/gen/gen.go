@@ -81,6 +81,7 @@ func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		spawnEmitted:   map[string]bool{},
 		spawnDropped:   map[string]bool{},
 		ifaceThunkSeen: map[string]bool{},
+		chanDropDone:   map[string]bool{},
 		dropEmitted:    map[string]bool{},
 		out:            &strings.Builder{},
 		aliases:        aliases,
@@ -254,6 +255,11 @@ func (g *generator) emitAux() {
 			g.out.WriteString("declare i32 @willrt_region_exit_try()\n")
 		}
 		g.out.WriteString("declare i32 @willrt_lane_here()\n")
+	}
+	if g.needChanDecl {
+		g.out.WriteString("declare void @willrt_chan_retain(ptr)\n")
+		g.out.WriteString("declare void @willrt_chan_release(ptr)\n")
+		g.out.WriteString("declare ptr @willrt_chan_new_drop(i64, i64, i32, ptr)\n")
 	}
 	if g.needJobDecl {
 		g.out.WriteString("declare ptr @willrt_job_new(ptr, ptr, i64, i32)\n")
@@ -852,6 +858,8 @@ type generator struct {
 	// needFrameDropDecl records a spawn frame whose captured values need a
 	// generated drop callback.
 	needFrameDropDecl bool
+	// needChanDecl records a channel retain, release, or drop constructor.
+	needChanDecl bool
 	// needReportDecl records that the entry wrapper reports a main Result.
 	needReportDecl bool
 	// needTaskErrorDecl records that Join built a TaskError interface.
@@ -920,6 +928,8 @@ type generator struct {
 	spawnDropped   map[string]bool
 	ifaceThunks    []ifaceThunk
 	ifaceThunkSeen map[string]bool
+	chanDrops      []chanDrop
+	chanDropDone   map[string]bool
 	// The slots below keep a loop from growing the stack on every evaluation
 	// of a join, receive, or send.
 	joinOutSlots map[int]string
@@ -1149,10 +1159,14 @@ func (g *generator) emitDoc() error {
 		if err := g.emitIfaceThunks(); err != nil {
 			return err
 		}
+		if err := g.emitChanDrops(); err != nil {
+			return err
+		}
 		pending := len(g.pendingThunks) + len(g.pendingSpawns) +
 			len(g.pendingGeneral) + len(g.pendingAsync) +
 			len(g.pendingSelect) + len(g.pendingBlock) + len(g.pendingDrops) +
-			len(g.pendingLambdaDrops) + len(g.pendingDefers) + len(g.ifaceThunks)
+			len(g.pendingLambdaDrops) + len(g.pendingDefers) +
+			len(g.ifaceThunks) + len(g.chanDrops)
 		if pending == 0 {
 			break
 		}
@@ -1178,7 +1192,8 @@ func (g *generator) emitDoc() error {
 	if pending := len(g.pendingThunks) + len(g.pendingSpawns) +
 		len(g.pendingGeneral) + len(g.pendingAsync) +
 		len(g.pendingSelect) + len(g.pendingBlock) + len(g.pendingDrops) +
-		len(g.pendingLambdaDrops) + len(g.pendingDefers) + len(g.ifaceThunks); pending != 0 {
+		len(g.pendingLambdaDrops) + len(g.pendingDefers) +
+		len(g.ifaceThunks) + len(g.chanDrops); pending != 0 {
 		return fmt.Errorf("pending lowering work did not drain")
 	}
 	return g.emitInit(g.cur)
@@ -2706,6 +2721,21 @@ func (g *generator) assignStmt(r willc.Record) error {
 		return nil
 	}
 	targetText, textErr := g.willTypeText(target)
+	if textErr == nil && isChanText(targetText) {
+		value, err := g.value(valueID)
+		if err != nil {
+			return err
+		}
+		g.needTaskDecl = true
+		g.needChanDecl = true
+		if g.isCopySource(valueID) {
+			fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
+		}
+		old := g.load("ptr", ptr)
+		fmt.Fprintf(g.out, "  call void @willrt_chan_release(ptr %s)\n", old)
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", value, ptr)
+		return nil
+	}
 	if textErr == nil && isRcText(targetText) {
 		value, err := g.value(valueID)
 		if err != nil {
@@ -2936,6 +2966,19 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 		} else {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, zeroValueText(typ), slot)
 		}
+		return false, nil
+	}
+	if isChanText(fieldText(r, "type")) {
+		value, err := g.value(valueID)
+		if err != nil {
+			return false, err
+		}
+		g.needTaskDecl = true
+		g.needChanDecl = true
+		if g.isCopySource(valueID) {
+			fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
+		}
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", value, slot)
 		return false, nil
 	}
 	if isRcText(fieldText(r, "type")) {

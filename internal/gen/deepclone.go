@@ -27,6 +27,14 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
 		return nil
 	}
+	if isChanText(text) {
+		value := g.load("ptr", src)
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", value, dst)
+		g.needTaskDecl = true
+		g.needChanDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
+		return nil
+	}
 	if text == "str" {
 		return g.cloneStrValue(src, dst)
 	}
@@ -560,6 +568,13 @@ func (g *generator) releaseOwnedValue(ptr, text string) error {
 		g.needRcDecl = true
 		value := g.load("i64", ptr)
 		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", value)
+		return nil
+	}
+	if isChanText(text) {
+		g.needTaskDecl = true
+		g.needChanDecl = true
+		value := g.load("ptr", ptr)
+		fmt.Fprintf(g.out, "  call void @willrt_chan_release(ptr %s)\n", value)
 		return nil
 	}
 	if isFuncText(text) {

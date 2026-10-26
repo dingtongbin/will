@@ -188,6 +188,33 @@ static void test_channel_order(void) {
     assert(willrt_chan_send(chan, &value) == WILLRT_CLOSED);
 }
 
+static int32_t channel_drop_count;
+
+static void drop_counted_int(void* value) {
+    (void)value;
+    channel_drop_count += 1;
+}
+
+static void test_channel_release_drops_queued_values(void) {
+    willrt_chan* chan = willrt_chan_new_drop(sizeof(int32_t), 2, 0,
+                                             drop_counted_int);
+    int32_t one = 1;
+    int32_t two = 2;
+    int32_t got = 0;
+
+    channel_drop_count = 0;
+    assert(chan != NULL);
+    assert(willrt_chan_send(chan, &one) == WILLRT_OK);
+    assert(willrt_chan_send(chan, &two) == WILLRT_OK);
+    willrt_chan_retain(chan);
+    willrt_chan_release(chan);
+    assert(willrt_chan_recv(chan, &got) == WILLRT_OK);
+    assert(got == 1);
+    assert(channel_drop_count == 0);
+    willrt_chan_release(chan);
+    assert(channel_drop_count == 1);
+}
+
 static void test_channel_crosses_threads(void) {
     willrt_chan* chan = willrt_chan_new(sizeof(int32_t), 1, 0);
     willrt_task* task;
@@ -1153,6 +1180,7 @@ int main(void) {
     test_region_failure();
     test_panic_keeps_lanes();
     test_channel_order();
+    test_channel_release_drops_queued_values();
     test_channel_crosses_threads();
     test_channel_hands_off_to_waiting_task();
     test_channel_send_wait();

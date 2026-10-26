@@ -316,6 +316,11 @@ func (g *generator) adtConstruct(r willc.Record, info *adtInfo, variant string, 
 		g.needRcDecl = true
 		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
 	}
+	if text, err := g.willTypeText(argID); err == nil && isChanText(text) && g.isCopySource(argID) {
+		g.needTaskDecl = true
+		g.needChanDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
+	}
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argType, value, payload)
 	return slot, info.llvm, nil
 }
