@@ -142,6 +142,30 @@ func main() -> i32 {
 	}
 }
 
+// TestRunEmptyInterfaceBox checks that an empty interface local owns its
+// scalar box and downcasts without reading a dangling stack slot.
+func TestRunEmptyInterfaceBox(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func main() -> i32 {
+    var v: interface {} = 7
+    return match v.As<i32>() {
+        Some(n) => n
+        None => 0
+    }
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 7 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunInterfaceFieldAndArray checks that interfaces stored in a struct field
 // and in an Array are separately boxed and released.
 func TestRunInterfaceFieldAndArray(t *testing.T) {
