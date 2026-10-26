@@ -758,6 +758,52 @@ void willrt_free_str(void* ptr) {
     willrt_free(ptr);
 }
 
+struct willrt_closure_header {
+    void (*drop)(void*);
+    _Atomic int64_t refs;
+};
+
+void* willrt_closure_new(size_t bytes, void (*drop)(void*)) {
+    struct willrt_closure_header* env;
+
+    if (drop == NULL) {
+        return NULL;
+    }
+    env = (struct willrt_closure_header*)willrt_alloc(bytes);
+    if (env == NULL) {
+        return NULL;
+    }
+    env->drop = drop;
+    atomic_init(&env->refs, 1);
+    return env;
+}
+
+void willrt_closure_retain(void* env) {
+    struct willrt_closure_header* header = (struct willrt_closure_header*)env;
+
+    if (header == NULL) {
+        return;
+    }
+    atomic_fetch_add_explicit(&header->refs, 1, memory_order_relaxed);
+}
+
+void willrt_closure_release(void* env) {
+    struct willrt_closure_header* header = (struct willrt_closure_header*)env;
+    void (*drop)(void*);
+
+    if (header == NULL) {
+        return;
+    }
+    if (atomic_fetch_sub_explicit(&header->refs, 1, memory_order_acq_rel) != 1) {
+        return;
+    }
+    drop = header->drop;
+    if (drop != NULL) {
+        drop(env);
+    }
+    willrt_free(env);
+}
+
 void* willrt_plate_new(size_t count, size_t elem) {
     struct willrt_plate_header* header;
     unsigned char* base;

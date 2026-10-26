@@ -28,6 +28,10 @@ func isWeakText(text string) bool {
 	return strings.HasPrefix(text, "weak<") && strings.HasSuffix(text, ">")
 }
 
+func isFuncText(text string) bool {
+	return strings.HasPrefix(text, "func(")
+}
+
 // constructRc builds new rc<T>(value): the value is copied into the handle
 // table's object storage and the u64 handle is returned.
 func (g *generator) constructRc(r willc.Record, elem string) (string, string, error) {
@@ -334,6 +338,14 @@ func (g *generator) retainValueDepth(ptr, text string, depth int) error {
 		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", handle)
 		return nil
 	}
+	if isFuncText(text) {
+		envPtr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envPtr, ptr)
+		env := g.load("ptr", envPtr)
+		g.needClosureDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_closure_retain(ptr %s)\n", env)
+		return nil
+	}
 	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
 		elem := strings.TrimSpace(text[len("Array<") : len(text)-1])
 		if !needsReleaseText(g, elem) {
@@ -486,7 +498,7 @@ func ownsReleaseText(g *generator, text string) bool {
 	if info := g.enumInfoForText(qualify(g.pkg, text)); info != nil {
 		return enumNeedsRelease(g, info)
 	}
-	if text == "str" || isRcText(text) {
+	if text == "str" || isRcText(text) || isFuncText(text) {
 		return true
 	}
 	if _, ok := arrayElemText(text); ok {
@@ -536,6 +548,9 @@ func needsReleaseText(g *generator, text string) bool {
 	}
 	if isWeakText(text) {
 		return false
+	}
+	if isFuncText(text) {
+		return true
 	}
 	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
 		return needsReleaseText(g, strings.TrimSpace(text[len("Array<"):len(text)-1]))

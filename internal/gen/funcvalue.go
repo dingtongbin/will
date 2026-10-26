@@ -23,8 +23,15 @@ type captureInfo struct {
 // declarations it captures, and the literal struct type of its environment.
 type lambdaInfo struct {
 	name     string
+	drop     string
 	captures []captureInfo
 	envType  string
+}
+
+type lambdaDropRequest struct {
+	name     string
+	envType  string
+	captures []captureInfo
 }
 
 // thunkRequest is a named function that has to be wrapped in the closure
@@ -255,6 +262,13 @@ func (g *generator) planLambdas() error {
 		info := infos[lam.ID]
 		g.lambdaSeq++
 		info.name = "lambda." + strconv.Itoa(g.lambdaSeq)
+		if len(info.captures) != 0 {
+			g.lambdaDropSeq++
+			info.drop = qualify(g.pkg, "lambda.drop."+strconv.Itoa(g.lambdaDropSeq))
+			g.pendingLambdaDrops = append(g.pendingLambdaDrops, lambdaDropRequest{
+				name: info.drop, envType: info.envType, captures: append([]captureInfo(nil), info.captures...),
+			})
+		}
 		lam.Kind = "func"
 		found := false
 		for i := range lam.Fields {
@@ -341,7 +355,8 @@ func (g *generator) lambdaCaptureInfo(lam willc.Record) (*lambdaInfo, error) {
 		})
 	}
 	if len(info.captures) != 0 {
-		types := make([]string, 0, len(info.captures))
+		types := make([]string, 0, len(info.captures)+2)
+		types = append(types, "ptr", "i64")
 		for _, cap := range info.captures {
 			types = append(types, cap.typ)
 		}
@@ -384,11 +399,11 @@ func (g *generator) buildEnvironment(lam willc.Record, info *lambdaInfo) (string
 	size := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = ptrtoint ptr %s to i64\n", size, end)
 	env := g.newTmp()
-	g.needAllocDecl = true
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", env, size)
+	g.needClosureDecl = true
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_closure_new(i64 %s, ptr @%s)\n", env, size, llvmSymbol(info.drop))
 	for i, cap := range info.captures {
 		field := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.envType, env, i)
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.envType, env, i+2)
 		src, typ, err := g.captureSource(cap)
 		if err != nil {
 			return "", err
@@ -409,6 +424,29 @@ func (g *generator) buildEnvironment(lam willc.Record, info *lambdaInfo) (string
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, field)
 	}
 	return env, nil
+}
+
+// emitLambdaDrops writes one drop function per captured environment. The
+// runtime calls it once, after the reference count reaches zero, and then frees
+// the environment itself.
+func (g *generator) emitLambdaDrops() error {
+	for _, req := range g.pendingLambdaDrops {
+		fmt.Fprintf(g.out, "define void @%s(ptr %%env) {\nentry:\n", llvmSymbol(req.name))
+		for i, cap := range req.captures {
+			if !ownsReleaseText(g, cap.text) {
+				continue
+			}
+			field := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %%env, i32 0, i32 %d\n",
+				field, req.envType, i+2)
+			if err := g.releaseOwnedValue(field, cap.text); err != nil {
+				return err
+			}
+		}
+		g.out.WriteString("  ret void\n}\n")
+	}
+	g.pendingLambdaDrops = nil
+	return nil
 }
 
 // captureSource returns the storage a captured value is copied from in the
@@ -462,7 +500,7 @@ func (g *generator) setupCaptures(fn int) error {
 	}
 	for i, cap := range info.captures {
 		ptr := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %%closure.env, i32 0, i32 %d\n", ptr, info.envType, i)
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %%closure.env, i32 0, i32 %d\n", ptr, info.envType, i+2)
 		g.captureFields[cap.decl] = ptr
 	}
 	return nil

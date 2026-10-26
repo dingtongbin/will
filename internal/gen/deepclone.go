@@ -41,6 +41,9 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
 		return g.cloneADTValue(src, dst, kind, args)
 	}
+	if isFuncText(text) {
+		return g.cloneClosureValue(src, dst)
+	}
 	typ, ok := g.typeLLVMOf(text)
 	if !ok || typ == "" {
 		return fmt.Errorf("type %s is not lowered yet", text)
@@ -86,6 +89,25 @@ func fieldTextNeedsClone(text string) bool {
 		return len(args) != 0
 	}
 	return strings.HasPrefix(text, "func(") || strings.HasPrefix(text, "%")
+}
+
+// cloneClosureValue copies a closure value and retains its environment.
+func (g *generator) cloneClosureValue(src, dst string) error {
+	codePtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 0\n", codePtr, src)
+	envPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envPtr, src)
+	code := g.load("ptr", codePtr)
+	env := g.load("ptr", envPtr)
+	toCode := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 0\n", toCode, dst)
+	toEnv := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", toEnv, dst)
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", code, toCode)
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", env, toEnv)
+	g.needClosureDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_closure_retain(ptr %s)\n", env)
+	return nil
 }
 
 // cloneStrValue duplicates the bytes of one str.
@@ -385,6 +407,14 @@ func (g *generator) releaseOwnedValue(ptr, text string) error {
 		g.needRcDecl = true
 		value := g.load("i64", ptr)
 		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", value)
+		return nil
+	}
+	if isFuncText(text) {
+		envPtr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envPtr, ptr)
+		env := g.load("ptr", envPtr)
+		g.needClosureDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_closure_release(ptr %s)\n", env)
 		return nil
 	}
 	if text == "str" {

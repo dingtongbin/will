@@ -351,6 +351,11 @@ func (em *emitter) safeNonRcExpr(e ast.Expr, name string, typ *ast.Type, types m
 		return em.safeNonRcExpr(x.L, name, typ, types) && em.safeNonRcExpr(x.R, name, typ, types)
 	case *ast.UnaryExpr:
 		return em.safeNonRcExpr(x.X, name, typ, types)
+	case *ast.LambdaExpr:
+		// The closure environment deep-copies an owning capture, so the source
+		// only has to survive closure construction. A lambda passed, returned,
+		// or stored is rejected by its parent expression, not here.
+		return containsNameInExpr(x, name)
 	}
 	return !containsNameInExpr(e, name)
 }
@@ -795,9 +800,19 @@ func lastNode(e ast.Expr, name string) ast.Node {
 	found := false
 	var node ast.Node
 	walkExprs(e, func(x ast.Expr) {
-		if n, ok := x.(*ast.NameExpr); ok && n.Name == name {
-			node = n
-			found = true
+		switch v := x.(type) {
+		case *ast.NameExpr:
+			if v.Name == name {
+				node = v
+				found = true
+			}
+		case *ast.LambdaExpr:
+			for _, st := range v.Body.Stmts {
+				if n := lastNodeInStmt(st, name); n != nil {
+					node = n
+					found = true
+				}
+			}
 		}
 	})
 	if found {

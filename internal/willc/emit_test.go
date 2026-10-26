@@ -365,6 +365,32 @@ func TestEmitArrayReleaseAfterScalarLocalCall(t *testing.T) {
 	}
 }
 
+func TestEmitOwnerReleasedAfterClosureCapture(t *testing.T) {
+	src := "func F() {\n" +
+		"    var xs: Array<i32> = new Array<i32>(4)\n" +
+		"    var f: func() -> i32 = func() -> i32 { return i32(xs.Len()) }\n" +
+		"    var later: i32 = 1\n" +
+		"    _ = later\n" +
+		"    _ = f\n" +
+		"}\n"
+	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
+	var positions []string
+	for _, r := range doc.Records {
+		if r.Kind == "release" {
+			positions = append(positions, testFieldText(r, "pos"))
+		}
+	}
+	want := []string{"test.will:3:55", "test.will:1:10"}
+	if len(positions) != len(want) {
+		t.Fatalf("release positions len=%d = %#v, want %d", len(positions), positions, len(want))
+	}
+	for i := range want {
+		if positions[i] != want[i] {
+			t.Fatalf("release positions = %#v, want %#v", positions, want)
+		}
+	}
+}
+
 func TestEmitMovedArrayKeepsReleaseForMovedSource(t *testing.T) {
 	src := "func F() {\n" +
 		"    var first: Array<i32> = new Array<i32>(0)\n" +

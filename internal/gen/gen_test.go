@@ -344,10 +344,12 @@ func TestEmitCapturingClosure(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`getelementptr { i32 }, ptr null, i32 1`,
-		`call ptr @willrt_alloc(i64`,
+		`getelementptr { ptr, i64, i32 }, ptr null, i32 1`,
+		`call ptr @willrt_closure_new(i64`,
 		`define i32 @"example.com/app.lambda.1"(ptr %closure.env)`,
-		`getelementptr inbounds { i32 }, ptr %closure.env, i32 0, i32 0`,
+		`getelementptr inbounds { ptr, i64, i32 }, ptr %closure.env, i32 0, i32 2`,
+		`define void @"example.com/app.lambda.drop.1"(ptr %env)`,
+		`call void @willrt_closure_release(ptr`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\\n%s", want, text)

@@ -80,7 +80,15 @@ func NeedsRelease(t *Type) bool {
 	if OwnsHeap(t) {
 		return true
 	}
-	if t == nil || t.Kind != NamedType {
+	if t == nil {
+		return false
+	}
+	if t.Kind == FuncType {
+		// A closure value owns its heap environment; a plain function value has
+		// an empty environment and the same release is a no-op.
+		return true
+	}
+	if t.Kind != NamedType {
 		return false
 	}
 	switch t.Name {

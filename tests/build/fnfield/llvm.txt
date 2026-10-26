@@ -27,23 +27,32 @@ entry:
   %t8 = load %"struct.example.com/fnfield.Handler", ptr %v.agg.21
   store %"struct.example.com/fnfield.Handler" %t8, ptr %v.h
   %t9 = getelementptr inbounds %"struct.example.com/fnfield.Handler", ptr %v.h, i32 0, i32 0
-  %t10 = load { ptr, ptr }, ptr %t9
-  store { ptr, ptr } %t10, ptr %v.f
-  %t11 = getelementptr inbounds { ptr, ptr }, ptr %v.f, i32 0, i32 0
-  %t12 = getelementptr inbounds { ptr, ptr }, ptr %v.f, i32 0, i32 1
-  %t13 = load ptr, ptr %t11
-  %t14 = load ptr, ptr %t12
-  %t15 = call i32 %t13(ptr %t14, i32 1)
-  %t16 = call {i32, i1} @llvm.ssub.with.overflow.i32(i32 %t15, i32 2)
-  %t17 = extractvalue {i32, i1} %t16, 0
-  %t18 = extractvalue {i32, i1} %t16, 1
-  br i1 %t18, label %panic.1, label %panic.ok.1
+  %t10 = getelementptr inbounds { ptr, ptr }, ptr %t9, i32 0, i32 1
+  %t11 = load ptr, ptr %t10
+  call void @willrt_closure_retain(ptr %t11)
+  %t12 = load { ptr, ptr }, ptr %t9
+  store { ptr, ptr } %t12, ptr %v.f
+  %t13 = getelementptr inbounds { ptr, ptr }, ptr %v.f, i32 0, i32 0
+  %t14 = getelementptr inbounds { ptr, ptr }, ptr %v.f, i32 0, i32 1
+  %t15 = load ptr, ptr %t13
+  %t16 = load ptr, ptr %t14
+  %t17 = call i32 %t15(ptr %t16, i32 1)
+  %t18 = call {i32, i1} @llvm.ssub.with.overflow.i32(i32 %t17, i32 2)
+  %t19 = extractvalue {i32, i1} %t18, 0
+  %t20 = extractvalue {i32, i1} %t18, 1
+  br i1 %t20, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.0, ptr @.str.3, ptr @.str.4)
   unreachable
 panic.ok.1:
-  %t19 = getelementptr inbounds %"struct.example.com/fnfield.Handler", ptr %v.h, i32 0, i32 0
-  ret i32 %t17
+  %t21 = getelementptr inbounds %"struct.example.com/fnfield.Handler", ptr %v.h, i32 0, i32 0
+  %t22 = getelementptr inbounds { ptr, ptr }, ptr %t21, i32 0, i32 1
+  %t23 = load ptr, ptr %t22
+  call void @willrt_closure_release(ptr %t23)
+  %t24 = getelementptr inbounds { ptr, ptr }, ptr %v.f, i32 0, i32 1
+  %t25 = load ptr, ptr %t24
+  call void @willrt_closure_release(ptr %t25)
+  ret i32 %t19
 }
 define i32 @"example.com/fnfield.thunk.Inc"(ptr %closure.env, i32 %x) {
 entry:
@@ -66,3 +75,6 @@ entry:
 @.str.4 = private unnamed_addr constant [30 x i8] c"example.com/fnfield.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
+declare ptr @willrt_closure_new(i64, ptr)
+declare void @willrt_closure_retain(ptr)
+declare void @willrt_closure_release(ptr)

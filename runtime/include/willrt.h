@@ -101,6 +101,13 @@ void willrt_free(void* ptr);
    passing it to willrt_free would report a false error for every literal. */
 void willrt_free_str(void* ptr);
 
+/* A closure environment starts with a drop callback and an atomic reference
+   count; the captured fields follow. retain/release may run on a lane other
+   than the one that built the closure. */
+void* willrt_closure_new(size_t bytes, void (*drop)(void*));
+void willrt_closure_retain(void* env);
+void willrt_closure_release(void* env);
+
 /* willrt_alloc_count reports how many allocations were counted. Counting is
    off unless WILLRT_COUNT_ALLOC=1 was set before the first allocation; the
    zero-allocation acceptance runs use it. */

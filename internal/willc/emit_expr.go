@@ -431,7 +431,18 @@ func (e *emitter) emitLambda(v *ast.LambdaExpr) int {
 	e.emitParams(v.Params)
 	e.emitType(v.Result)
 	e.ref(rec, "body", v.Body)
+	// A closure body runs later and owns a copy of every capture. It must not
+	// release an outer owner at its own block end.
+	oldScopes, oldLoops := e.scopes, e.loops
+	oldTypes := e.localTypes
+	e.scopes = [][]ast.Node{{}}
+	e.loops = nil
+	e.localTypes = map[string]*ast.Type{}
+	for _, p := range v.Params {
+		e.localTypes[p.Name] = p.Type
+	}
 	e.emitBlock(v.Body)
+	e.scopes, e.loops, e.localTypes = oldScopes, oldLoops, oldTypes
 	e.pop()
 	return rec
 }

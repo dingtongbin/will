@@ -192,6 +192,11 @@ func (g *generator) emitAux() {
 	if g.needFreeStrDecl {
 		g.out.WriteString("declare void @willrt_free_str(ptr)\n")
 	}
+	if g.needClosureDecl {
+		g.out.WriteString("declare ptr @willrt_closure_new(i64, ptr)\n")
+		g.out.WriteString("declare void @willrt_closure_retain(ptr)\n")
+		g.out.WriteString("declare void @willrt_closure_release(ptr)\n")
+	}
 	if g.needMemcmpDecl {
 		g.out.WriteString("declare i32 @memcmp(ptr, ptr, i64)\n")
 	}
@@ -620,6 +625,7 @@ func (g *generator) use(d *docState) {
 	g.weakOutSlots = map[int]string{}
 	g.dropNames = map[string]string{}
 	g.pendingDrops = nil
+	g.pendingLambdaDrops = nil
 	g.selectSlots = map[int]string{}
 	g.selectFastSlots = map[int]string{}
 	g.selectOutSlots = map[int]string{}
@@ -784,6 +790,9 @@ type generator struct {
 	// needFreeStrDecl records that a str value was released. A literal must not
 	// reach willrt_free, so the str-specific entry point checks the arena first.
 	needFreeStrDecl bool
+	// needClosureDecl records a closure environment allocation, retain, or
+	// release. The environment owns its captured fields and frees them once.
+	needClosureDecl bool
 	// needMemcmpDecl records that the lowering compares str or byte data.
 	needMemcmpDecl bool
 	// needMemmoveDecl records that a container removed an entry in place.
@@ -931,10 +940,12 @@ type generator struct {
 	loops []loopLabels
 	// dropNames and dropSeq name the per-type drop functions, and
 	// pendingDrops holds the ones this document still has to write.
-	dropNames    map[string]string
-	dropSeq      int
-	pendingDrops []dropRequest
-	dropEmitted  map[string]bool
+	dropNames          map[string]string
+	dropSeq            int
+	lambdaDropSeq      int
+	pendingDrops       []dropRequest
+	pendingLambdaDrops []lambdaDropRequest
+	dropEmitted        map[string]bool
 	// pendingReleases are the release records that precede a return in the
 	// same block. They run after the return value is evaluated, so a returned
 	// borrow is still alive while it is read.
@@ -1111,7 +1122,7 @@ func (g *generator) emitDoc() error {
 		pending := len(g.pendingThunks) + len(g.pendingSpawns) +
 			len(g.pendingGeneral) + len(g.pendingAsync) +
 			len(g.pendingSelect) + len(g.pendingBlock) + len(g.pendingDrops) +
-			len(g.pendingDefers)
+			len(g.pendingLambdaDrops) + len(g.pendingDefers)
 		if pending == 0 {
 			break
 		}
@@ -1127,6 +1138,9 @@ func (g *generator) emitDoc() error {
 		if err := g.emitDrops(); err != nil {
 			return err
 		}
+		if err := g.emitLambdaDrops(); err != nil {
+			return err
+		}
 		if err := g.emitDeferThunks(); err != nil {
 			return err
 		}
@@ -1134,7 +1148,7 @@ func (g *generator) emitDoc() error {
 	if pending := len(g.pendingThunks) + len(g.pendingSpawns) +
 		len(g.pendingGeneral) + len(g.pendingAsync) +
 		len(g.pendingSelect) + len(g.pendingBlock) + len(g.pendingDrops) +
-		len(g.pendingDefers); pending != 0 {
+		len(g.pendingLambdaDrops) + len(g.pendingDefers); pending != 0 {
 		return fmt.Errorf("pending lowering work did not drain")
 	}
 	return g.emitInit(g.cur)
@@ -2713,7 +2727,7 @@ func (g *generator) moveSource(id int) (bool, string) {
 		return false, ""
 	}
 	text, err := g.willTypeText(id)
-	if err != nil || text == "" || isRcText(text) || isWeakText(text) || !ownsReleaseText(g, text) {
+	if err != nil || text == "" || isRcText(text) || isWeakText(text) || isFuncText(text) || !ownsReleaseText(g, text) {
 		return false, ""
 	}
 	switch r.Kind {
