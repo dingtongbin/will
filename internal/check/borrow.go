@@ -35,6 +35,7 @@ func Borrows(f *ast.File) []diag.Diagnostic {
 			b.params = map[string]bool{}
 			b.localTypes = map[string]*ast.Type{}
 			b.copied = map[string]source.Pos{}
+			b.closureOwners = map[string]string{}
 			for _, p := range fn.Params {
 				b.params[p.Name] = true
 				b.localTypes[p.Name] = p.Type
@@ -66,6 +67,10 @@ type borrower struct {
 	// that local through a mut parameter or receiver is O0008: it changes the
 	// copy, not the place the programmer named.
 	copied map[string]source.Pos
+	// closureOwners records a closure local whose body captures a view of a
+	// local owner. Returning or storing that closure would let the view outlive
+	// the owner.
+	closureOwners map[string]string
 }
 
 func cloneBorrows(in map[string]source.Pos) map[string]source.Pos {
@@ -204,6 +209,7 @@ func (b *borrower) stmt(st ast.Stmt, borrowed map[string]source.Pos) {
 				b.locals[d.Name] = true
 				b.localTypes[d.Name] = d.Type
 				b.noteCopiedPlace(d.Name, d.Value)
+				b.noteClosure(d.Name, d.Value)
 			}
 		case *ast.ConstDecl:
 			b.expr(d.Value, borrowed)
@@ -213,8 +219,16 @@ func (b *borrower) stmt(st ast.Stmt, borrowed map[string]source.Pos) {
 		b.expr(s.Value, borrowed)
 		b.move(s.Value, borrowed)
 		b.store(s.Value, borrowed)
+		if _, targetName := s.Target.(*ast.NameExpr); !targetName {
+			if owner, ok := b.closureInExpr(s.Value); ok && b.locals[owner] {
+				b.bag.Error(s.Value.Pos(), diag.CodeBorrowStored,
+					"this borrow is stored where it outlives its owner",
+					"store a value, not a borrow")
+			}
+		}
 		if target, ok := s.Target.(*ast.NameExpr); ok && target.Name != "_" {
 			b.noteCopiedPlace(target.Name, s.Value)
+			b.noteClosure(target.Name, s.Value)
 		}
 	case *ast.ExprStmt:
 		b.expr(s.Expr, borrowed)
@@ -290,6 +304,14 @@ func (b *borrower) move(e ast.Expr, borrowed map[string]source.Pos) {
 // escape reports a view returned from the function that owns the underlying
 // value. Parameters are excluded because their object belongs to the caller.
 func (b *borrower) escape(e ast.Expr) {
+	if _, aggregate := e.(*ast.AggregateExpr); !aggregate {
+		if owner, ok := b.closureInExpr(e); ok && b.locals[owner] {
+			b.bag.Error(e.Pos(), diag.CodeBorrowOutlives,
+				"this borrow outlives "+owner,
+				"release the borrow first")
+			return
+		}
+	}
 	owner, pos, ok := viewOwner(e)
 	if !ok || b.params[owner] || !b.locals[owner] {
 		return
@@ -307,6 +329,12 @@ func (b *borrower) store(e ast.Expr, borrowed map[string]source.Pos) {
 		return
 	}
 	for _, f := range agg.Fields {
+		if owner, ok := b.closureCaptureOwner(f.Value); ok && b.locals[owner] {
+			b.bag.Error(f.Value.Pos(), diag.CodeBorrowStored,
+				"this borrow is stored where it outlives its owner",
+				"store a value, not a borrow")
+			continue
+		}
 		owner, pos, ok := viewOwner(f.Value)
 		if !ok || b.params[owner] || !b.locals[owner] {
 			continue
@@ -359,6 +387,302 @@ func copyPlaceType(t *ast.Type) bool {
 		return true
 	}
 	return false
+}
+
+// noteClosure records a local closure that captures a view of a local owner.
+// An alias of such a closure keeps the same owner.
+func (b *borrower) noteClosure(name string, value ast.Expr) {
+	if name == "" || name == "_" {
+		return
+	}
+	delete(b.closureOwners, name)
+	if owner, ok := b.closureCaptureOwner(value); ok {
+		b.closureOwners[name] = owner
+	}
+}
+
+// closureCaptureOwner finds a view captured by a lambda, or the owner carried
+// by a closure variable named in the expression.
+func (b *borrower) closureCaptureOwner(e ast.Expr) (string, bool) {
+	switch x := e.(type) {
+	case *ast.LambdaExpr:
+		var owner string
+		for _, st := range x.Body.Stmts {
+			if o := b.closureViewInStmt(st); o != "" {
+				owner = o
+				break
+			}
+		}
+		if owner == "" {
+			return "", false
+		}
+		return owner, true
+	case *ast.NameExpr:
+		owner := b.closureOwners[x.Name]
+		return owner, owner != ""
+	}
+	return "", false
+}
+
+func (b *borrower) closureViewInStmt(st ast.Stmt) string {
+	var owner string
+	visit := func(e ast.Expr) {
+		if owner != "" || e == nil {
+			return
+		}
+		if n, ok := e.(*ast.NameExpr); ok {
+			if o := b.localViews[n.Name]; o != "" {
+				owner = o
+			}
+		}
+	}
+	switch s := st.(type) {
+	case *ast.Block:
+		for _, inner := range s.Stmts {
+			if owner = b.closureViewInStmt(inner); owner != "" {
+				return owner
+			}
+		}
+	case *ast.VarStmt:
+		switch d := s.Decl.(type) {
+		case *ast.VarDecl:
+			if lambda, ok := d.Value.(*ast.LambdaExpr); ok {
+				for _, inner := range lambda.Body.Stmts {
+					if owner = b.closureViewInStmt(inner); owner != "" {
+						return owner
+					}
+				}
+			} else {
+				walkExprsForClosure(d.Value, visit)
+			}
+		case *ast.ConstDecl:
+			walkExprsForClosure(d.Value, visit)
+		}
+	case *ast.AssignStmt:
+		walkExprsForClosure(s.Target, visit)
+		walkExprsForClosure(s.Value, visit)
+	case *ast.ExprStmt:
+		walkExprsForClosure(s.Expr, visit)
+	case *ast.DeferStmt:
+		walkExprsForClosure(s.Call, visit)
+	case *ast.ReturnStmt:
+		walkExprsForClosure(s.Value, visit)
+	case *ast.ForStmt:
+		walkExprsForClosure(s.Iter, visit)
+		for _, inner := range s.Body.Stmts {
+			if owner = b.closureViewInStmt(inner); owner != "" {
+				return owner
+			}
+		}
+	case *ast.RegionStmt:
+		for _, inner := range s.Body.Stmts {
+			if owner = b.closureViewInStmt(inner); owner != "" {
+				return owner
+			}
+		}
+	case *ast.ParallelStmt:
+		for _, inner := range s.Body.Stmts {
+			if owner = b.closureViewInStmt(inner); owner != "" {
+				return owner
+			}
+		}
+	case *ast.SelectStmt:
+		for _, arm := range s.Arms {
+			walkExprsForClosure(arm.Chan, visit)
+			walkExprsForClosure(arm.Timeout, visit)
+			if owner = b.closureViewInStmt(arm.Body); owner != "" {
+				return owner
+			}
+		}
+	case *ast.IfExpr:
+		walkExprsForClosure(s.Cond, visit)
+		for _, inner := range s.Then.Stmts {
+			if owner = b.closureViewInStmt(inner); owner != "" {
+				return owner
+			}
+		}
+		if s.Else != nil {
+			if owner = b.closureViewInStmt(s.Else); owner != "" {
+				return owner
+			}
+		}
+	case *ast.MatchExpr:
+		walkExprsForClosure(s.Subject, visit)
+		for _, arm := range s.Arms {
+			walkExprsForClosure(arm.Guard, visit)
+			if owner = b.closureViewInStmt(arm.Body); owner != "" {
+				return owner
+			}
+		}
+	case *ast.DeadlineExpr:
+		walkExprsForClosure(s.Duration, visit)
+		for _, inner := range s.Body.Stmts {
+			if owner = b.closureViewInStmt(inner); owner != "" {
+				return owner
+			}
+		}
+	}
+	return owner
+}
+
+// walkExprsForClosure is a small expression walker without the view scanner's
+// type knowledge. It intentionally stops at nested lambda bodies because those
+// are handled by closureViewInStmt when the lambda itself is a statement value.
+func walkExprsForClosure(e ast.Expr, visit func(ast.Expr)) {
+	if e == nil {
+		return
+	}
+	visit(e)
+	switch x := e.(type) {
+	case *ast.CallExpr:
+		walkExprsForClosure(x.Callee, visit)
+		for _, a := range x.Args {
+			walkExprsForClosure(a.Expr, visit)
+		}
+	case *ast.MethodCallExpr:
+		walkExprsForClosure(x.Recv, visit)
+		for _, a := range x.Args {
+			walkExprsForClosure(a.Expr, visit)
+		}
+	case *ast.FieldExpr:
+		walkExprsForClosure(x.Recv, visit)
+	case *ast.IndexExpr:
+		walkExprsForClosure(x.Recv, visit)
+		walkExprsForClosure(x.Index, visit)
+	case *ast.SliceExpr:
+		walkExprsForClosure(x.Recv, visit)
+		walkExprsForClosure(x.Lo, visit)
+		walkExprsForClosure(x.Hi, visit)
+	case *ast.UnaryExpr:
+		walkExprsForClosure(x.X, visit)
+	case *ast.BinaryExpr:
+		walkExprsForClosure(x.L, visit)
+		walkExprsForClosure(x.R, visit)
+	case *ast.NewExpr:
+		for _, a := range x.Args {
+			walkExprsForClosure(a.Expr, visit)
+		}
+	case *ast.AggregateExpr:
+		for _, f := range x.Fields {
+			walkExprsForClosure(f.Value, visit)
+		}
+	case *ast.RangeExpr:
+		walkExprsForClosure(x.Lo, visit)
+		walkExprsForClosure(x.Hi, visit)
+	case *ast.TryExpr:
+		walkExprsForClosure(x.X, visit)
+	case *ast.AwaitExpr:
+		walkExprsForClosure(x.X, visit)
+	case *ast.UnwrapExpr:
+		walkExprsForClosure(x.X, visit)
+	case *ast.SpawnExpr:
+		walkExprsForClosure(x.Call, visit)
+	case *ast.InterpExpr:
+		for _, p := range x.Parts {
+			walkExprsForClosure(p.Expr, visit)
+		}
+	case *ast.IfExpr:
+		walkExprsForClosure(x.Cond, visit)
+	case *ast.MatchExpr:
+		walkExprsForClosure(x.Subject, visit)
+		for _, arm := range x.Arms {
+			walkExprsForClosure(arm.Guard, visit)
+		}
+	case *ast.DeadlineExpr:
+		walkExprsForClosure(x.Duration, visit)
+	}
+}
+
+// closureInExpr finds a closure that captures a local view anywhere inside an
+// expression, including a constructor or a call argument.
+func (b *borrower) closureInExpr(e ast.Expr) (string, bool) {
+	if owner, ok := b.closureCaptureOwner(e); ok {
+		return owner, true
+	}
+	switch x := e.(type) {
+	case *ast.CallExpr:
+		if owner, ok := b.closureInExpr(x.Callee); ok {
+			return owner, true
+		}
+		for _, a := range x.Args {
+			if owner, ok := b.closureInExpr(a.Expr); ok {
+				return owner, true
+			}
+		}
+	case *ast.MethodCallExpr:
+		if owner, ok := b.closureInExpr(x.Recv); ok {
+			return owner, true
+		}
+		for _, a := range x.Args {
+			if owner, ok := b.closureInExpr(a.Expr); ok {
+				return owner, true
+			}
+		}
+	case *ast.FieldExpr:
+		return b.closureInExpr(x.Recv)
+	case *ast.IndexExpr:
+		if owner, ok := b.closureInExpr(x.Recv); ok {
+			return owner, true
+		}
+		return b.closureInExpr(x.Index)
+	case *ast.SliceExpr:
+		if owner, ok := b.closureInExpr(x.Recv); ok {
+			return owner, true
+		}
+		if owner, ok := b.closureInExpr(x.Lo); ok {
+			return owner, true
+		}
+		return b.closureInExpr(x.Hi)
+	case *ast.UnaryExpr:
+		return b.closureInExpr(x.X)
+	case *ast.BinaryExpr:
+		if owner, ok := b.closureInExpr(x.L); ok {
+			return owner, true
+		}
+		return b.closureInExpr(x.R)
+	case *ast.NewExpr:
+		for _, a := range x.Args {
+			if owner, ok := b.closureInExpr(a.Expr); ok {
+				return owner, true
+			}
+		}
+	case *ast.AggregateExpr:
+		for _, f := range x.Fields {
+			if owner, ok := b.closureInExpr(f.Value); ok {
+				return owner, true
+			}
+		}
+	case *ast.RangeExpr:
+		if owner, ok := b.closureInExpr(x.Lo); ok {
+			return owner, true
+		}
+		return b.closureInExpr(x.Hi)
+	case *ast.TryExpr:
+		return b.closureInExpr(x.X)
+	case *ast.AwaitExpr:
+		return b.closureInExpr(x.X)
+	case *ast.UnwrapExpr:
+		return b.closureInExpr(x.X)
+	case *ast.SpawnExpr:
+		return b.closureInExpr(x.Call)
+	case *ast.InterpExpr:
+		for _, p := range x.Parts {
+			if owner, ok := b.closureInExpr(p.Expr); ok {
+				return owner, true
+			}
+		}
+	case *ast.IfExpr:
+		if owner, ok := b.closureInExpr(x.Cond); ok {
+			return owner, true
+		}
+	case *ast.MatchExpr:
+		if owner, ok := b.closureInExpr(x.Subject); ok {
+			return owner, true
+		}
+	case *ast.DeadlineExpr:
+		return b.closureInExpr(x.Duration)
+	}
+	return "", false
 }
 
 func (b *borrower) copyNotBorrow(pos source.Pos) {
@@ -466,6 +790,11 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 		b.expr(x.Recv, borrowed)
 		for _, a := range x.Args {
 			b.expr(a.Expr, borrowed)
+			if owner, ok := b.closureInExpr(a.Expr); ok && b.locals[owner] {
+				b.bag.Error(a.Expr.Pos(), diag.CodeBorrowStored,
+					"this borrow is stored where it outlives its owner",
+					"store a value, not a borrow")
+			}
 		}
 	case *ast.FieldExpr:
 		b.expr(x.Recv, borrowed)
@@ -499,6 +828,11 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 	case *ast.UnwrapExpr:
 		b.expr(x.X, borrowed)
 	case *ast.SpawnExpr:
+		if owner, ok := b.closureInExpr(x.Call); ok && b.locals[owner] {
+			b.bag.Error(x.Pos(), diag.CodeBorrowOutlives,
+				"this borrow outlives "+owner,
+				"release the borrow first")
+		}
 		b.expr(x.Call, borrowed)
 	case *ast.DeadlineExpr:
 		b.stmt(x, borrowed)
@@ -537,6 +871,11 @@ func (b *borrower) call(call *ast.CallExpr, borrowed map[string]source.Pos) {
 	b.expr(call.Callee, borrowed)
 	for _, a := range call.Args {
 		b.expr(a.Expr, borrowed)
+		if owner, ok := b.closureInExpr(a.Expr); ok && b.locals[owner] {
+			b.bag.Error(a.Expr.Pos(), diag.CodeBorrowStored,
+				"this borrow is stored where it outlives its owner",
+				"store a value, not a borrow")
+		}
 	}
 }
 

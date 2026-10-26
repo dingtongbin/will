@@ -207,6 +207,73 @@ func F(q: Q) {
 	}
 }
 
+func TestBorrowRejectsReturningAClosureOfALocalView(t *testing.T) {
+	src := `func Leak() -> func() -> i32 {
+    var xs: Array<i32> = new Array<i32>(0)
+    var v: []i32 = xs[Range(0, xs.Len())]
+    return func() -> i32 {
+        return i32(v.Len())
+    }
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowOutlives {
+		t.Fatalf("diagnostics = %s, want one O0004", diag.FormatAll(ds))
+	}
+	if ds[0].Message != "this borrow outlives xs" {
+		t.Fatalf("message = %q", ds[0].Message)
+	}
+}
+
+func TestBorrowRejectsReturningAClosureVariableOfALocalView(t *testing.T) {
+	src := `func Leak() -> func() -> i32 {
+    var xs: Array<i32> = new Array<i32>(0)
+    var v: []i32 = xs[Range(0, xs.Len())]
+    var f: func() -> i32 = func() -> i32 { return i32(v.Len()) }
+    return f
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowOutlives {
+		t.Fatalf("diagnostics = %s, want one O0004", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowRejectsStoringAClosureOfALocalView(t *testing.T) {
+	src := `struct Holder {
+    cb: func() -> i32
+}
+
+func Store() -> Holder {
+    var xs: Array<i32> = new Array<i32>(0)
+    var v: []i32 = xs[Range(0, xs.Len())]
+    return Holder { cb: func() -> i32 { return i32(v.Len()) } }
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowStored {
+		t.Fatalf("diagnostics = %s, want one O0005", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowRejectsSpawningAClosureOfALocalView(t *testing.T) {
+	src := `func Work() -> i32 {
+	return 0
+}
+
+func F() {
+    var xs: Array<i32> = new Array<i32>(0)
+    var v: []i32 = xs[Range(0, xs.Len())]
+    var f: func() -> i32 = func() -> i32 { return i32(v.Len()) }
+    spawn f()
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowOutlives {
+		t.Fatalf("diagnostics = %s, want one O0004", diag.FormatAll(ds))
+	}
+}
+
 func TestBorrowAliasEndsAtItsOwnLastUse(t *testing.T) {
 	src := `func Fill(mut xs: Array<i32>) {
 }
