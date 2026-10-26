@@ -344,6 +344,24 @@ func (g *generator) argLLVM(t willc.Record) (string, bool) {
 
 // enumVariantCall returns the enum and variant a call, name, or method call
 // constructs, or nil when the expression is not a variant constructor.
+// enumInfoForText finds an enum by its short, qualified, or LLVM type text.
+// A release record carries the source spelling, while the type table may key
+// the declaration by its bare name.
+func (g *generator) enumInfoForText(text string) *enumInfo {
+	if info := g.enumByName[text]; info != nil {
+		return info
+	}
+	if info := g.enumByLLVM[text]; info != nil {
+		return info
+	}
+	if i := strings.LastIndexByte(text, '.'); i >= 0 {
+		if info := g.enumByName[text[i+1:]]; info != nil {
+			return info
+		}
+	}
+	return nil
+}
+
 func (g *generator) enumVariantCall(r willc.Record) (*enumInfo, *variantInfo) {
 	if r.Kind == "call" || r.Kind == "name" {
 		decl, ok := g.recs[refField(r, "to")]

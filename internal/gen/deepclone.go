@@ -375,8 +375,11 @@ func (g *generator) releaseOwnedValue(ptr, text string) error {
 	// An enum has a tag in front of every variant payload; walking it as a
 	// plain struct would release the wrong variant. Enum release is not lowered
 	// yet, so it must stay a no-op rather than corrupt the tag.
-	if g.declKinds[text] == "enum" || g.declKinds[qualify(g.pkg, text)] == "enum" {
-		return nil
+	if info := g.enumInfoForText(text); info != nil {
+		return g.releaseEnumValue(ptr, info)
+	}
+	if info := g.enumInfoForText(qualify(g.pkg, text)); info != nil {
+		return g.releaseEnumValue(ptr, info)
 	}
 	if isRcText(text) {
 		g.needRcDecl = true
@@ -394,6 +397,9 @@ func (g *generator) releaseOwnedValue(ptr, text string) error {
 	}
 	if elem, ok := arrayElemText(text); ok {
 		return g.releaseArrayValue(ptr, elem)
+	}
+	if n, elem, ok := arrayTypeText(text); ok {
+		return g.releaseFixedArray(ptr, elem, n)
 	}
 	if k, v, ok := mapTypeText(text); ok {
 		return g.releaseEntries(ptr, k, v, true)
@@ -419,6 +425,70 @@ func (g *generator) releaseOwnedValue(ptr, text string) error {
 		field := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.llvm, ptr, i)
 		if err := g.releaseOwnedValue(field, fieldText); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// releaseEnumValue releases the payload of the active variant. The tag is read
+// once and each variant with an owning argument gets its own branch.
+func (g *generator) releaseEnumValue(ptr string, info *enumInfo) error {
+	if info == nil || info.payloadIndex == 0 || len(info.variants) == 0 {
+		return nil
+	}
+	tag := g.load("i32", ptr)
+	for i := range info.variants {
+		v := &info.variants[i]
+		if len(v.args) == 0 || len(v.argLLVM) != len(v.args) {
+			continue
+		}
+		g.labels++
+		n := g.labels
+		keep := fmt.Sprintf("enum.rel.%d.%d", n, v.tag)
+		done := fmt.Sprintf("enum.rel.done.%d.%d", n, v.tag)
+		cond := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, %d\n", cond, tag, v.tag)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, keep, done)
+		g.out.WriteString(keep + ":\n")
+		payload := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+			payload, info.llvm, ptr, info.payloadIndex)
+		for j, arg := range v.args {
+			if !ownsReleaseText(g, arg) {
+				continue
+			}
+			at := payload
+			if len(v.args) > 1 {
+				at = g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+					at, v.payload, payload, j)
+			}
+			if err := g.releaseOwnedValue(at, arg); err != nil {
+				return err
+			}
+		}
+		fmt.Fprintf(g.out, "  br label %%%s\n", done)
+		g.out.WriteString(done + ":\n")
+	}
+	return nil
+}
+
+// releaseFixedArray releases every element of an inline [N]T. The array itself
+// has no buffer to free.
+func (g *generator) releaseFixedArray(ptr, elem string, n int) error {
+	if n == 0 || !ownsReleaseText(g, elem) {
+		return nil
+	}
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
+		return fmt.Errorf("fixed array element %s is not lowered yet", elem)
+	}
+	for i := 0; i < n; i++ {
+		at := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x %s], ptr %s, i32 0, i32 %d\n",
+			at, n, elemLLVM, ptr, i)
+		if err := g.releaseOwnedValue(at, elem); err != nil {
 			return err
 		}
 	}

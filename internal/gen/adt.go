@@ -293,6 +293,10 @@ func (g *generator) adtConstruct(r willc.Record, info *adtInfo, variant string, 
 	if err != nil {
 		return "", "", err
 	}
+	if text, err := g.willTypeText(argID); err == nil && isRcText(text) && g.isCopySource(argID) {
+		g.needRcDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
+	}
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argType, value, payload)
 	return slot, info.llvm, nil
 }

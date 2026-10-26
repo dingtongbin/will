@@ -31,6 +31,55 @@ func main() -> i32 {
 	}
 }
 
+// TestEmitSomeRcRetainsTheHandle checks that storing an rc handle in an Option
+// copy retains it; the source owner may still be released later.
+func TestEmitSomeRcRetainsTheHandle(t *testing.T) {
+	src := `struct C {
+    n: i32
+}
+
+func main() -> i32 {
+    var r: rc<C> = new rc<C>(C { n: 7 })
+    var o: Option<rc<C>> = Some(r)
+    _ = o
+    _ = r
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("emit-llvm", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stderr = %q", code, errOut)
+	}
+	if !strings.Contains(out, "willrt_rc_retain") {
+		t.Fatalf("Some(rc) did not retain the handle:\n%s", out)
+	}
+}
+
+// TestEmitEnumReleaseBranches checks that the active enum payload is released,
+// not the tag or an inactive variant.
+func TestEmitEnumReleaseBranches(t *testing.T) {
+	src := `enum E {
+    Text(str)
+    Number(i32)
+}
+
+func main() -> i32 {
+    var e: E = E.Text("hello".Clone())
+    _ = e
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("emit-llvm", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stderr = %q", code, errOut)
+	}
+	if !strings.Contains(out, "enum.rel.") || !strings.Contains(out, "willrt_free_str") {
+		t.Fatalf("enum release branch is missing:\n%s", out)
+	}
+}
+
 // TestRunMovedArrayIsReleasedOnce checks that a value move suppresses the
 // source release. Releasing both owners would report a dead block and double
 // free the same buffer.

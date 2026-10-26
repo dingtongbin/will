@@ -461,19 +461,39 @@ func (g *generator) releaseValue(slot, text string, depth int) error {
 // ownsReleaseText reports whether a value can own a buffer or handle that the
 // scope must release. It is wider than needsReleaseText: the latter tracks only
 // reference-counted fields, while an Array<i32> still owns its data buffer.
+func enumNeedsRelease(g *generator, info *enumInfo) bool {
+	if info == nil {
+		return false
+	}
+	for i := range info.variants {
+		for _, arg := range info.variants[i].args {
+			if ownsReleaseText(g, arg) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func ownsReleaseText(g *generator, text string) bool {
 	text = g.qualifyTypeText(g.pkg, text)
 	if text == "" || isWeakText(text) {
 		return false
 	}
-	if g.declKinds[text] == "enum" || g.declKinds[qualify(g.pkg, text)] == "enum" {
-		return false
+	if info := g.enumInfoForText(text); info != nil {
+		return enumNeedsRelease(g, info)
+	}
+	if info := g.enumInfoForText(qualify(g.pkg, text)); info != nil {
+		return enumNeedsRelease(g, info)
 	}
 	if text == "str" || isRcText(text) {
 		return true
 	}
 	if _, ok := arrayElemText(text); ok {
 		return true
+	}
+	if _, elem, ok := arrayTypeText(text); ok {
+		return ownsReleaseText(g, elem)
 	}
 	if _, _, ok := mapTypeText(text); ok {
 		return true
