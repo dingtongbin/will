@@ -15,14 +15,27 @@ import (
 // is deliberately local: handles stored through calls or returned objects need
 // a whole-program points-to result and stay a type-level warning.
 func ValueCycles(f *ast.File) []diag.Diagnostic {
-	own := NewOwnership([]*ast.File{f})
+	return ValueCyclesWithFiles([]*ast.File{f})
+}
+
+// ValueCyclesWithFiles joins the parameter cycle summaries of every file in a
+// package before analyzing call sites, so a linker declared in one file and
+// called in another still closes at the call.
+func ValueCyclesWithFiles(files []*ast.File) []diag.Diagnostic {
+	own := NewOwnership(files)
+	summaries := collectParamCycles(files, own)
 	var out []diag.Diagnostic
-	for _, d := range f.Decls {
-		fn, ok := d.(*ast.FuncDecl)
-		if !ok || fn.Body == nil {
+	for _, f := range files {
+		if f == nil {
 			continue
 		}
-		out = append(out, valueCyclesInFunc(fn, own)...)
+		for _, d := range f.Decls {
+			fn, ok := d.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				continue
+			}
+			out = append(out, valueCyclesInFunc(fn, own, summaries)...)
+		}
 	}
 	return out
 }
@@ -34,13 +47,196 @@ type valueEdge struct {
 	pos   source.Pos
 }
 
-func valueCyclesInFunc(fn *ast.FuncDecl, own *Ownership) []diag.Diagnostic {
+// summaryEdge is a cycle edge between two parameters of a linker function.
+// A call to that function with two local handles creates the same edge between
+// the actual arguments.
+type summaryEdge struct {
+	from  int
+	to    int
+	field string
+}
+
+// collectParamCycles records functions whose direct parameter assignments form
+// a cycle. The function body itself does not prove a value cycle; a call with
+// concrete objects does.
+func collectParamCycles(files []*ast.File, own *Ownership) map[string][]summaryEdge {
+	out := map[string][]summaryEdge{}
+	for _, f := range files {
+		if f == nil {
+			continue
+		}
+		for _, d := range f.Decls {
+			fn, ok := d.(*ast.FuncDecl)
+			if !ok || fn.Body == nil || fn.Recv != nil {
+				continue
+			}
+			index := map[string]int{}
+			types := map[string]*ast.Type{}
+			for i, p := range fn.Params {
+				index[p.Name] = i
+				types[p.Name] = p.Type
+			}
+			var edges []valueEdge
+			var walkStmt func(ast.Stmt)
+			var walkExpr func(ast.Expr)
+			walkExpr = func(e ast.Expr) {
+				switch x := e.(type) {
+				case nil:
+				case *ast.CallExpr:
+					walkExpr(x.Callee)
+					for _, a := range x.Args {
+						walkExpr(a.Expr)
+					}
+				case *ast.MethodCallExpr:
+					walkExpr(x.Recv)
+					for _, a := range x.Args {
+						walkExpr(a.Expr)
+					}
+				case *ast.FieldExpr:
+					walkExpr(x.Recv)
+				case *ast.IndexExpr:
+					walkExpr(x.Recv)
+					walkExpr(x.Index)
+				case *ast.SliceExpr:
+					walkExpr(x.Recv)
+					walkExpr(x.Lo)
+					walkExpr(x.Hi)
+				case *ast.UnaryExpr:
+					walkExpr(x.X)
+				case *ast.BinaryExpr:
+					walkExpr(x.L)
+					walkExpr(x.R)
+				case *ast.NewExpr:
+					for _, a := range x.Args {
+						walkExpr(a.Expr)
+					}
+				case *ast.AggregateExpr:
+					for _, f := range x.Fields {
+						walkExpr(f.Value)
+					}
+				case *ast.RangeExpr:
+					walkExpr(x.Lo)
+					walkExpr(x.Hi)
+				case *ast.TryExpr:
+					walkExpr(x.X)
+				case *ast.AwaitExpr:
+					walkExpr(x.X)
+				case *ast.UnwrapExpr:
+					walkExpr(x.X)
+				case *ast.SpawnExpr:
+					walkExpr(x.Call)
+				case *ast.LambdaExpr:
+					for _, st := range x.Body.Stmts {
+						walkStmt(st)
+					}
+				case *ast.InterpExpr:
+					for _, p := range x.Parts {
+						walkExpr(p.Expr)
+					}
+				case *ast.IfExpr:
+					walkStmt(x)
+				case *ast.MatchExpr:
+					walkStmt(x)
+				case *ast.DeadlineExpr:
+					walkStmt(x)
+				}
+			}
+			walkStmt = func(st ast.Stmt) {
+				switch s := st.(type) {
+				case *ast.Block:
+					for _, inner := range s.Stmts {
+						walkStmt(inner)
+					}
+				case *ast.AssignStmt:
+					if e, ok := valueEdgeOf(s.Target, s.Value, types, own); ok {
+						if _, ok := index[e.from]; ok {
+							if _, ok := index[e.to]; ok {
+								edges = append(edges, e)
+							}
+						}
+					}
+					walkExpr(s.Target)
+					walkExpr(s.Value)
+				case *ast.VarStmt:
+					switch d := s.Decl.(type) {
+					case *ast.VarDecl:
+						walkExpr(d.Value)
+					case *ast.ConstDecl:
+						walkExpr(d.Value)
+					}
+				case *ast.ExprStmt:
+					walkExpr(s.Expr)
+				case *ast.DeferStmt:
+					walkExpr(s.Call)
+				case *ast.ReturnStmt:
+					walkExpr(s.Value)
+				case *ast.ForStmt:
+					walkExpr(s.Iter)
+					walkStmt(s.Body)
+				case *ast.RegionStmt:
+					walkStmt(s.Body)
+				case *ast.ParallelStmt:
+					walkStmt(s.Body)
+				case *ast.SelectStmt:
+					for _, arm := range s.Arms {
+						walkExpr(arm.Chan)
+						walkExpr(arm.Timeout)
+						walkStmt(arm.Body)
+					}
+				case *ast.IfExpr:
+					walkExpr(s.Cond)
+					walkStmt(s.Then)
+					if s.Else != nil {
+						walkStmt(s.Else)
+					}
+				case *ast.MatchExpr:
+					walkExpr(s.Subject)
+					for _, arm := range s.Arms {
+						walkExpr(arm.Guard)
+						walkStmt(arm.Body)
+					}
+				case *ast.DeadlineExpr:
+					walkExpr(s.Duration)
+					walkStmt(s.Body)
+				}
+			}
+			walkStmt(fn.Body)
+			graph := map[string][]valueEdge{}
+			for _, e := range edges {
+				graph[e.from] = append(graph[e.from], e)
+			}
+			for _, comp := range stronglyConnectedValue(graph) {
+				var ce []summaryEdge
+				for _, name := range comp {
+					for _, e := range graph[name] {
+						if containsName(comp, e.to) {
+							from, fok := index[e.from]
+							to, tok := index[e.to]
+							if fok && tok {
+								ce = append(ce, summaryEdge{from: from, to: to, field: e.field})
+							}
+						}
+					}
+				}
+				if len(ce) != 0 {
+					out[fn.Name] = append(out[fn.Name], ce...)
+				}
+			}
+		}
+	}
+	return out
+}
+
+func valueCyclesInFunc(fn *ast.FuncDecl, own *Ownership, summaries map[string][]summaryEdge) []diag.Diagnostic {
 	types := map[string]*ast.Type{}
+	params := map[string]bool{}
 	for _, p := range fn.Params {
 		types[p.Name] = p.Type
+		params[p.Name] = true
 	}
 	if fn.Recv != nil {
 		types[fn.Recv.Name] = fn.Recv.Type
+		params[fn.Recv.Name] = true
 	}
 	var edges []valueEdge
 	var walkStmt func(ast.Stmt)
@@ -52,6 +248,21 @@ func valueCyclesInFunc(fn *ast.FuncDecl, own *Ownership) []diag.Diagnostic {
 			walkExpr(x.Callee)
 			for _, a := range x.Args {
 				walkExpr(a.Expr)
+			}
+			if callee, ok := x.Callee.(*ast.NameExpr); ok {
+				for _, se := range summaries[callee.Name] {
+					if se.from >= len(x.Args) || se.to >= len(x.Args) {
+						continue
+					}
+					from, fok := x.Args[se.from].Expr.(*ast.NameExpr)
+					to, tok := x.Args[se.to].Expr.(*ast.NameExpr)
+					if !fok || !tok || types[from.Name] == nil || types[to.Name] == nil {
+						continue
+					}
+					edges = append(edges, valueEdge{
+						from: from.Name, to: to.Name, field: se.field, pos: x.Pos(),
+					})
+				}
 			}
 		case *ast.MethodCallExpr:
 			walkExpr(x.Recv)
@@ -174,6 +385,18 @@ func valueCyclesInFunc(fn *ast.FuncDecl, own *Ownership) []diag.Diagnostic {
 	}
 	var out []diag.Diagnostic
 	for _, comp := range stronglyConnectedValue(graph) {
+		allParams := true
+		for _, name := range comp {
+			if !params[name] {
+				allParams = false
+				break
+			}
+		}
+		if allParams {
+			// A linker function only describes the edge; the concrete call
+			// site is where a value cycle can close.
+			continue
+		}
 		var cycle []valueEdge
 		for _, name := range comp {
 			for _, edge := range graph[name] {

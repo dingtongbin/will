@@ -449,11 +449,17 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 		ownership := check.NewOwnership(ownershipFiles)
 		bag.AddAll(check.CyclesWithFiles(ownershipFiles))
 		for _, p := range b.Packages {
+			var packageFiles []*ast.File
+			for _, f := range p.Files {
+				if f.AST != nil {
+					packageFiles = append(packageFiles, f.AST)
+				}
+			}
+			bag.AddAll(check.ValueCyclesWithFiles(packageFiles))
 			for _, f := range p.Files {
 				if f.AST != nil {
 					bag.AddAll(check.MovesWithOwnership(f.AST, ownership))
 					bag.AddAll(check.Borrows(f.AST))
-					bag.AddAll(check.ValueCycles(f.AST))
 					bag.AddAll(check.Concurrency(f.AST))
 					bag.AddAll(check.SuspendInParallel(f.AST))
 				}

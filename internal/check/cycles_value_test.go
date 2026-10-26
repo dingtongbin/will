@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
 )
@@ -76,6 +77,59 @@ func F() {
 }
 `
 	ds := valueCycles(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeUnreleasableCycle {
+		t.Fatalf("diagnostics = %s, want one M0001", diag.FormatAll(ds))
+	}
+}
+
+func TestValueCycleClosedByLinkerCall(t *testing.T) {
+	src := `struct Node {
+    next: rc<Node>
+}
+
+func Link(a: rc<Node>, b: rc<Node>) {
+    a.next = b
+    b.next = a
+}
+
+func F() {
+    var x: rc<Node>
+    var y: rc<Node>
+    Link(x, y)
+}
+`
+	ds := valueCycles(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeUnreleasableCycle {
+		t.Fatalf("diagnostics = %s, want one M0001 at the call", diag.FormatAll(ds))
+	}
+	if ds[0].Pos.Line != 13 {
+		t.Fatalf("position = %d, want the call line", ds[0].Pos.Line)
+	}
+}
+
+func TestValueCycleLinkerAcrossFiles(t *testing.T) {
+	link, ds := parser.Parse("a.will", []byte(`struct Node {
+    next: rc<Node>
+}
+
+func Link(a: rc<Node>, b: rc<Node>) {
+    a.next = b
+    b.next = a
+}
+`))
+	if len(ds) != 0 {
+		t.Fatalf("parse a: %s", diag.FormatAll(ds))
+	}
+	caller, ds := parser.Parse("b.will", []byte(`func F() {
+    var x: rc<Node>
+    var y: rc<Node>
+    Link(x, y)
+}
+`))
+	if len(ds) != 0 {
+		t.Fatalf("parse b: %s", diag.FormatAll(ds))
+	}
+	ds = ValueCyclesWithFiles([]*ast.File{link, caller})
 	if len(ds) != 1 || ds[0].Code != diag.CodeUnreleasableCycle {
 		t.Fatalf("diagnostics = %s, want one M0001", diag.FormatAll(ds))
 	}
