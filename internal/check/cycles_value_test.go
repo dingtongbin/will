@@ -170,6 +170,42 @@ func F() {
 	}
 }
 
+// TestValueCycleMethodAcrossPackages checks a mut method linker declared in one
+// package and called on an imported receiver type.
+func TestValueCycleMethodAcrossPackages(t *testing.T) {
+	lib, ds := parser.Parse("a.will", []byte(`struct Node {
+    next: rc<Node>
+}
+
+func (a: Node) Link(b: rc<Node>, c: rc<Node>) {
+    b.next = c
+    c.next = b
+}
+`))
+	if len(ds) != 0 {
+		t.Fatalf("parse a: %s", diag.FormatAll(ds))
+	}
+	caller, ds := parser.Parse("b.will", []byte(`import "example.com/a"
+
+func F() {
+    var root: a.Node
+    var x: rc<a.Node>
+    var y: rc<a.Node>
+    root.Link(x, y)
+}
+`))
+	if len(ds) != 0 {
+		t.Fatalf("parse b: %s", diag.FormatAll(ds))
+	}
+	ds = ValueCyclesProgram([]*ast.File{lib, caller}, map[*ast.File]string{
+		lib:    "example.com/a",
+		caller: "example.com/b",
+	})
+	if len(ds) != 1 || ds[0].Code != diag.CodeUnreleasableCycle {
+		t.Fatalf("diagnostics = %s, want one M0001", diag.FormatAll(ds))
+	}
+}
+
 func TestValueCycleWeakEdgeDoesNotClose(t *testing.T) {
 	src := `struct Node {
     next: weak<Node>
