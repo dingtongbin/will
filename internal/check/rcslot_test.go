@@ -86,6 +86,73 @@ func Main() -> i32 {
 	}
 }
 
+// TestRcSlotReportsNestedWrite checks that a nested block sees the shared
+// state established before it.
+func TestRcSlotReportsNestedWrite(t *testing.T) {
+	src := `struct C {
+    n: i32
+}
+
+struct Box {
+    f: rc<C>
+}
+
+func Use(b: rc<Box>) -> i32 {
+    return 0
+}
+
+func Main() -> i32 {
+    var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
+    var c: rc<C> = new rc<C>(C { n: 2 })
+    region {
+        var task: Task<i32> = spawn Use(box)
+        if true {
+            box.f = c
+        }
+        _ = task
+    }
+    return 0
+}
+`
+	ds := rcSlots(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeRcSlotUnguarded {
+		t.Fatalf("diagnostics = %s, want one M0003", diag.FormatAll(ds))
+	}
+}
+
+// TestRcSlotAllowsNestedJoin checks that a join inside a child block clears the
+// parent's shared state before an outer write.
+func TestRcSlotAllowsNestedJoin(t *testing.T) {
+	src := `struct C {
+    n: i32
+}
+
+struct Box {
+    f: rc<C>
+}
+
+func Use(b: rc<Box>) -> i32 {
+    return 0
+}
+
+func Main() -> i32 {
+    var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
+    var c: rc<C> = new rc<C>(C { n: 2 })
+    region {
+        var task: Task<i32> = spawn Use(box)
+        if true {
+            _ = task.Join()!
+        }
+        box.f = c
+    }
+    return 0
+}
+`
+	if ds := rcSlots(t, src); len(ds) != 0 {
+		t.Fatalf("a write after a nested join was reported:\n%s", diag.FormatAll(ds))
+	}
+}
+
 // TestRcSlotAllowsWriteBeforeSpawn checks that the slot was not shared yet.
 func TestRcSlotAllowsWriteBeforeSpawn(t *testing.T) {
 	src := `struct C {

@@ -46,6 +46,9 @@ type rcSlotChecker struct {
 	// root shared until every task that holds it is joined.
 	shared map[string]int
 	tasks  map[string][]string
+	// joined reports that a nested block joined a task. The parent block then
+	// drops its shared state instead of reporting a write after the join.
+	joined bool
 }
 
 // collectMethodWrites summarizes same-package methods that write a direct rc
@@ -277,31 +280,70 @@ func isRcType(t *ast.Type) bool {
 	return t != nil && t.Kind == ast.NamedType && t.Name == "rc" && len(t.Args) == 1
 }
 
-// block visits one statement list with a fresh capture set. Captures inside a
-// nested block do not escape it, so a later write in an outer block is not
-// reported on evidence the proof does not have.
+// block visits one statement list with a fresh capture set. A nested block
+// inherits the captures around it for writes inside, but captures created
+// inside the child do not escape to the parent. A join inside clears the
+// parent's shared state so a later outer write is not a false positive.
 func (c *rcSlotChecker) block(b *ast.Block) {
+	c.blockWith(b, nil, nil)
+}
+
+func (c *rcSlotChecker) blockWith(b *ast.Block, shared map[string]int, tasks map[string][]string) {
 	if b == nil {
 		return
 	}
 	savedShared := c.shared
 	savedTasks := c.tasks
-	c.shared = map[string]int{}
-	c.tasks = map[string][]string{}
+	savedJoined := c.joined
+	if shared == nil {
+		c.shared = map[string]int{}
+	} else {
+		c.shared = cloneShared(shared)
+	}
+	if tasks == nil {
+		c.tasks = map[string][]string{}
+	} else {
+		c.tasks = cloneTasks(tasks)
+	}
+	c.joined = false
 	c.push()
 	for _, st := range b.Stmts {
 		c.stmt(st)
 	}
 	c.pop()
+	childJoined := c.joined
 	c.shared = savedShared
 	c.tasks = savedTasks
+	c.joined = savedJoined || childJoined
+	if childJoined && savedShared != nil {
+		// The child joined a task whose handles were counted in the parent.
+		// Drop the parent counts rather than report a race the join removed.
+		c.shared = map[string]int{}
+		c.tasks = map[string][]string{}
+	}
+}
+
+func cloneShared(in map[string]int) map[string]int {
+	out := make(map[string]int, len(in))
+	for name, count := range in {
+		out[name] = count
+	}
+	return out
+}
+
+func cloneTasks(in map[string][]string) map[string][]string {
+	out := make(map[string][]string, len(in))
+	for name, roots := range in {
+		out[name] = append([]string(nil), roots...)
+	}
+	return out
 }
 
 func (c *rcSlotChecker) stmt(st ast.Stmt) {
 	switch s := st.(type) {
 	case nil:
 	case *ast.Block:
-		c.block(s)
+		c.blockWith(s, c.shared, c.tasks)
 	case *ast.VarStmt:
 		switch d := s.Decl.(type) {
 		case *ast.VarDecl:
@@ -330,11 +372,11 @@ func (c *rcSlotChecker) stmt(st ast.Stmt) {
 		c.expr(s.Value)
 	case *ast.ForStmt:
 		c.expr(s.Iter)
-		c.block(s.Body)
+		c.blockWith(s.Body, c.shared, c.tasks)
 	case *ast.RegionStmt:
-		c.block(s.Body)
+		c.blockWith(s.Body, c.shared, c.tasks)
 	case *ast.ParallelStmt:
-		c.block(s.Body)
+		c.blockWith(s.Body, c.shared, c.tasks)
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {
 			c.expr(arm.Chan)
@@ -343,7 +385,7 @@ func (c *rcSlotChecker) stmt(st ast.Stmt) {
 		}
 	case *ast.IfExpr:
 		c.expr(s.Cond)
-		c.block(s.Then)
+		c.blockWith(s.Then, c.shared, c.tasks)
 		c.stmt(s.Else)
 	case *ast.MatchExpr:
 		c.expr(s.Subject)
@@ -353,7 +395,7 @@ func (c *rcSlotChecker) stmt(st ast.Stmt) {
 		}
 	case *ast.DeadlineExpr:
 		c.expr(s.Duration)
-		c.block(s.Body)
+		c.blockWith(s.Body, c.shared, c.tasks)
 	case *ast.BreakStmt, *ast.ContinueStmt:
 	}
 }
@@ -451,6 +493,9 @@ func (c *rcSlotChecker) share(name string) {
 }
 
 func (c *rcSlotChecker) unshare(names []string) {
+	if len(names) != 0 {
+		c.joined = true
+	}
 	for _, name := range names {
 		if c.shared[name] <= 1 {
 			delete(c.shared, name)
@@ -541,7 +586,7 @@ func (c *rcSlotChecker) expr(e ast.Expr) {
 		c.expr(x.Call)
 	case *ast.IfExpr:
 		c.expr(x.Cond)
-		c.block(x.Then)
+		c.blockWith(x.Then, c.shared, c.tasks)
 		c.stmt(x.Else)
 	case *ast.MatchExpr:
 		c.expr(x.Subject)
@@ -551,7 +596,7 @@ func (c *rcSlotChecker) expr(e ast.Expr) {
 		}
 	case *ast.DeadlineExpr:
 		c.expr(x.Duration)
-		c.block(x.Body)
+		c.blockWith(x.Body, c.shared, c.tasks)
 	case *ast.InterpExpr:
 		for _, part := range x.Parts {
 			c.expr(part.Expr)
