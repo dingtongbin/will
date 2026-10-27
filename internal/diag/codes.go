@@ -56,6 +56,9 @@ const (
 
 	// CodeTypeMismatch reports a value of the wrong type.
 	CodeTypeMismatch = "T0001"
+	// CodeCrossTask reports a value whose Send or Sync rule forbids moving it
+	// to another task.
+	CodeCrossTask = "T0016"
 	// CodeInterfaceUnsatisfied reports a type that does not satisfy an interface.
 	CodeInterfaceUnsatisfied = "T0002"
 	// CodeBadArgument reports an argument count or type error.
@@ -125,11 +128,7 @@ const (
 	CodeTopLevelWrite     = "O0009"
 
 	// Memory and release codes.
-	CodeUnreleasableCycle = "M0001"
-	CodePossibleCycle     = "M0002"
-	CodeRcSlotUnguarded   = "M0003"
-	CodeExplicitLeak      = "M0004"
-	CodeSmallPlate        = "M0005"
+	CodeExplicitLeak = "M0004"
 
 	// Concurrency codes.
 	CodeSuspendInParallel  = "K0001"
@@ -145,7 +144,8 @@ const (
 	CodeAwaitNotAsync      = "K0011"
 	CodeAsyncAsValue       = "K0012"
 	CodeSelectOutsideAsync = "K0013"
-	CodeAsyncInterface     = "K0014"
+	// CodeDeferSuspend reports an await or async call in a defer.
+	CodeDeferSuspend = "K0016"
 
 	// Error propagation codes.
 	CodeResultDropped  = "R0001"
@@ -179,15 +179,15 @@ var Codes = []string{
 	CodeShiftAmount,
 	CodeFeatureOutsideIf,
 	CodeNoZero,
-	CodeVariadicWiden, CodeTypeAliasCycle,
+	CodeVariadicWiden, CodeTypeAliasCycle, CodeCrossTask,
 	CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
 	CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
-	CodeUnreleasableCycle, CodePossibleCycle, CodeRcSlotUnguarded, CodeExplicitLeak, CodeSmallPlate,
+	CodeExplicitLeak,
 	CodeSuspendInParallel, CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeWrongLane,
 	CodeSpawnNotCall, CodeDeadlock,
 	CodeGuardCopied, CodeReadGuardWrite,
 	CodeAwaitOutsideAsync, CodeAsyncNotAwaited, CodeAwaitNotAsync, CodeAsyncAsValue,
-	CodeSelectOutsideAsync, CodeAsyncInterface,
+	CodeSelectOutsideAsync, CodeDeferSuspend,
 	CodeResultDropped, CodeUnwrapType, CodePanicContained,
 	CodeBlockingNotAwaited, CodeWaitInSync, CodeWaitInAsync, CodeBlocksThreadInTask,
 	CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,

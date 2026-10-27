@@ -91,7 +91,7 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 		bag.AddAll(check.BorrowsWithEffects(f, ownership, effects))
 		bag.AddAll(check.TopLevelWritesWithEffects(f, effects))
 		bag.AddAll(check.Leaks(f))
-
+		bag.AddAll(check.CrossTask(f, checked))
 		bag.AddAll(check.Concurrency(f))
 	}
 

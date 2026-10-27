@@ -21,7 +21,7 @@ func rcType(t *ast.Type) bool {
 	if i := lastDot(name); i >= 0 {
 		name = name[i+1:]
 	}
-	return name == "rc"
+	return name == "rc" || name == "arc"
 }
 
 func lastDot(name string) int {

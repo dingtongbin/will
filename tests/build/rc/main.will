@@ -4,7 +4,7 @@ struct Counter {
 
 struct Holder {
     c: rc<Counter>
-    back: weak<Counter>
+    back: weak_rc<Counter>
 }
 
 def (mut c: Counter) add(d: i32) {
@@ -20,7 +20,7 @@ def main() -> i32 {
     c.add(4)
     c.n += 1
     var d: rc<Counter> = c
-    var w: weak<Counter> = c.weak()
+    var w: weak_rc<Counter> = c.weak()
     var u: Option<rc<Counter>> = w.upgrade()
     var e: rc<Counter> = identity(d)
     var h: Holder = Holder { c: e, back: w }

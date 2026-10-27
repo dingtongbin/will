@@ -157,7 +157,7 @@ func isBool(t *Type) bool {
 // builtinArity maps the predeclared generic type names to their arity.
 var builtinArity = map[string]int{
 	"Array": 1, "Set": 1, "Map": 2,
-	"chan": 1, "rc": 1, "weak": 1, "Task": 1,
+	"chan": 1, "rc": 1, "arc": 1, "weak_rc": 1, "weak_arc": 1, "Task": 1,
 	"Option": 1, "Result": 2,
 }
 

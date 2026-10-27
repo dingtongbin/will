@@ -503,7 +503,7 @@ func (em *emitter) typeOwnsDepth(t *ast.Type, active map[string]bool) bool {
 		return false
 	case ast.NamedType:
 		switch t.Name {
-		case "rc", "weak", "chan", "Task", "Duration", "Value", "Show", "Error":
+		case "rc", "arc", "weak_rc", "weak_arc", "chan", "Task", "Duration", "Value", "Show", "Error":
 			return false
 		case "str", "Array", "Map", "Set":
 			return true

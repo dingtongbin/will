@@ -347,12 +347,10 @@ type docState struct {
 	// top-level variable to its symbol and lowered type.
 	moduleID int
 	globals  map[int]*globalInfo
-	batches  []willc.Batch
 }
 
 func newDocState(doc *willc.Doc) *docState {
 	d := &docState{
-		batches: willc.Batches(doc),
 		recs:    map[int]willc.Record{},
 		funcs:   map[int]string{},
 		symbols: map[int]string{},
@@ -603,7 +601,6 @@ func (g *generator) use(d *docState) {
 	g.adtSlots = map[int]string{}
 	g.newSlots = map[int]string{}
 	g.newStoreSlots = map[int]string{}
-	g.buildArrayBatches(d)
 	g.strSlots = map[int]string{}
 	g.utf8Slots = map[int]string{}
 	g.utf8nSlots = map[int]string{}
@@ -988,9 +985,6 @@ type generator struct {
 	loops []loopLabels
 	// dropNames and dropSeq name the per-type drop functions, and
 	// pendingDrops holds the ones this document still has to write.
-	arrayBatchByNew    map[int]*arrayBatch
-	arrayBatchByOwner  map[int]*arrayBatch
-	arrayBatches       []*arrayBatch
 	dropNames          map[string]string
 	dropSeq            int
 	lambdaDropSeq      int
@@ -1525,7 +1519,7 @@ func qualify(pkg, name string) string {
 // user type keeps its qualified name.
 func stripPredeclaredPackage(text string) string {
 	for _, name := range []string{"Array<", "Map<", "Set<", "Option<", "Result<",
-		"rc<", "weak<", "chan<", "Task<"} {
+		"rc<", "arc<", "weak_rc<", "weak_arc<", "chan<", "Task<"} {
 		if i := strings.Index(text, name); i > 0 && text[i-1] == '.' {
 			return text[i:]
 		}
@@ -1560,7 +1554,7 @@ func (g *generator) qualifyTypeText(pkg, text string) string {
 	if strings.HasPrefix(text, "[]") {
 		return "[]" + g.qualifyTypeText(pkg, text[2:])
 	}
-	generics := []string{"Array<", "Option<", "Result<", "Map<", "Set<", "chan<", "Task<", "rc<", "weak<"}
+	generics := []string{"Array<", "Option<", "Result<", "Map<", "Set<", "chan<", "Task<", "rc<", "arc<", "weak_rc<", "weak_arc<"}
 	for _, prefix := range generics {
 		if strings.HasPrefix(text, prefix) && strings.HasSuffix(text, ">") {
 			args := splitTypeList(text[len(prefix) : len(text)-1])
@@ -3149,15 +3143,6 @@ func (g *generator) bodyStmts(stmts []willc.Record, void bool) (bool, error) {
 // releaseRecord lowers one release record for the owner still in its slot.
 func (g *generator) releaseRecord(rel willc.Record) error {
 	owner := refField(rel, "owner")
-	if batch := g.arrayBatchByOwner[owner]; batch != nil {
-		if !batch.released {
-			g.needPlateReleaseDecl = true
-			plate := g.load("ptr", batch.plateSlot)
-			fmt.Fprintf(g.out, "  call void @willrt_plate_release(ptr %s)\n", plate)
-			batch.released = true
-		}
-		return nil
-	}
 	slot := g.slots[owner]
 	if slot == "" {
 		return nil
@@ -3867,7 +3852,7 @@ func (g *generator) value(id int) (string, error) {
 	case "new":
 		if text := fieldText(r, "type"); isRcText(text) {
 			elem, _ := rcElemText(text)
-			handle, _, err := g.constructRc(r, elem)
+			handle, _, err := g.constructRc(r, elem, strongName(text))
 			return handle, err
 		}
 		return "", g.errf(id, "cannot translate node #%d: a new value is a place, not a scalar", id)

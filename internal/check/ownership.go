@@ -226,7 +226,7 @@ func (o *Ownership) ElementType(t *ast.Type) *ast.Type {
 }
 
 func (o *Ownership) unwrapRc(t *ast.Type) *ast.Type {
-	for t != nil && t.Kind == ast.NamedType && t.Name == "rc" && len(t.Args) == 1 {
+	for t != nil && t.Kind == ast.NamedType && (t.Name == "rc" || t.Name == "arc") && len(t.Args) == 1 {
 		t = t.Args[0]
 	}
 	return t
@@ -318,7 +318,7 @@ func (o *Ownership) ownsNamed(t *ast.Type, bindings map[string]*ast.Type, active
 	switch name {
 	case "str", "Array", "Map", "Set":
 		return true
-	case "rc", "weak", "chan", "Task", "Duration", "Value", "Show", "Error", "TaskError":
+	case "rc", "arc", "weak_rc", "weak_arc", "chan", "Task", "Duration", "Value", "Show", "Error", "TaskError":
 		return false
 	case "Option", "Result":
 		for _, arg := range t.Args {

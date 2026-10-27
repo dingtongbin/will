@@ -663,8 +663,12 @@ func typeKind(t *ast.Type) string {
 		return "result"
 	case "rc":
 		return "rc"
-	case "weak":
-		return "weak"
+	case "arc":
+		return "arc"
+	case "weak_rc":
+		return "weak_rc"
+	case "weak_arc":
+		return "weak_arc"
 	case "chan":
 		return "chan"
 	case "Task":

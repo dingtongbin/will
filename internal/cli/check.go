@@ -327,7 +327,7 @@ func checkFile(bag *diag.Bag, file string, data []byte, freestanding bool) {
 	}
 	res, rds := resolve.ResolveIn(f, names, imps)
 	own.AddAll(rds)
-	_, tds := types.CheckWithFull(f, res, others)
+	checked, tds := types.CheckWithFull(f, res, others)
 	own.AddAll(tds)
 	if !own.HasErrors() {
 		files := append([]*ast.File{}, others...)
@@ -338,7 +338,7 @@ func checkFile(bag *diag.Bag, file string, data []byte, freestanding bool) {
 		own.AddAll(check.BorrowsWithEffects(f, ownership, effects))
 		own.AddAll(check.TopLevelWritesWithEffects(f, effects))
 		own.AddAll(check.Leaks(f))
-		own.AddAll(check.Cycles(f))
+		own.AddAll(check.CrossTask(f, checked))
 		own.AddAll(check.Concurrency(f))
 	}
 	bag.AddAll(own.Diagnostics())

@@ -74,6 +74,70 @@ func (c *checker) inferFile(f *ast.File) {
 	}
 }
 
+// deferSuspends reports whether a defer body contains await or calls an async
+// function. A defer runs on the normal return path, so it cannot become a
+// suspension point.
+func (c *checker) deferSuspends(s *inferScope, e ast.Expr) bool {
+	var hasAwait func(ast.Expr) bool
+	hasAwait = func(e ast.Expr) bool {
+		switch x := e.(type) {
+		case nil:
+			return false
+		case *ast.AwaitExpr:
+			return true
+		case *ast.CallExpr:
+			if hasAwait(x.Callee) {
+				return true
+			}
+			for _, a := range x.Args {
+				if hasAwait(a.Expr) {
+					return true
+				}
+			}
+		case *ast.MethodCallExpr:
+			if hasAwait(x.Recv) {
+				return true
+			}
+			for _, a := range x.Args {
+				if hasAwait(a.Expr) {
+					return true
+				}
+			}
+		case *ast.UnaryExpr:
+			return hasAwait(x.X)
+		case *ast.BinaryExpr:
+			return hasAwait(x.L) || hasAwait(x.R)
+		}
+		return false
+	}
+	if hasAwait(e) {
+		return true
+	}
+	switch call := e.(type) {
+	case *ast.CallExpr:
+		name, ok := call.Callee.(*ast.NameExpr)
+		if !ok {
+			return false
+		}
+		sig := c.env.funcs[name.Name]
+		return sig != nil && sig.async
+	case *ast.MethodCallExpr:
+		recv := c.inferExpr(s, call.Recv)
+		if recv == nil || recv.Kind() != NamedKind {
+			return false
+		}
+		if sig := c.env.methods[recv.Name()+"."+call.Name]; sig != nil {
+			return sig.async
+		}
+		for _, m := range c.env.ifaces[recv.Name()] {
+			if m.name == call.Name {
+				return m.sig != nil && m.sig.async
+			}
+		}
+	}
+	return false
+}
+
 // inferGlobals resolves top-level var and const initializers before any
 // function body is checked, so an inferred global has a type at every use.
 func (c *checker) inferGlobals(global *inferScope, f *ast.File) {
@@ -221,7 +285,17 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 				"use ?, !, match, or discard it with _ =")
 		}
 	case *ast.DeferStmt:
-		c.inferExpr(s, x.Call)
+		if c.deferSuspends(s, x.Call) {
+			c.bag.Error(x.Call.Pos(), diag.CodeDeferSuspend,
+				"defer cannot suspend",
+				"run the async cleanup before the suspension point")
+			previous := s.allowAsyncCall
+			s.allowAsyncCall = true
+			c.inferExpr(s, x.Call)
+			s.allowAsyncCall = previous
+		} else {
+			c.inferExpr(s, x.Call)
+		}
 	case *ast.ReturnStmt:
 		c.rejectRawAddress(x.Value)
 		if s.result == nil {
@@ -645,7 +719,7 @@ func sameSignature(a, b *signature) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	if len(a.params) != len(b.params) || a.variadic != b.variadic {
+	if len(a.params) != len(b.params) || a.variadic != b.variadic || a.async != b.async {
 		return false
 	}
 	for i := range a.params {
@@ -1026,7 +1100,7 @@ func (c *checker) takeCType(s *inferScope, call *ast.CallExpr, name string) *Typ
 	if elem == nil {
 		return nil
 	}
-	return c.in.named("rc", []*Type{elem})
+	return c.in.named("arc", []*Type{elem})
 }
 
 // layoutCall checks the three compile-time layout queries. Each takes one type
@@ -1210,11 +1284,15 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	for _, a := range call.Args {
 		c.inferExpr(s, a.Expr)
 	}
-	if recv != nil && recv.Kind() == NamedKind && recv.Name() == "rc" && len(recv.Args()) == 1 {
+	if recv != nil && recv.Kind() == NamedKind && (recv.Name() == "rc" || recv.Name() == "arc") && len(recv.Args()) == 1 {
 		switch call.Name {
 		case "weak":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
-			return c.in.named("weak", []*Type{recv.Args()[0]})
+			weak := "weak_rc"
+			if recv.Name() == "arc" {
+				weak = "weak_arc"
+			}
+			return c.in.named(weak, []*Type{recv.Args()[0]})
 		case "clone":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return recv
@@ -1232,10 +1310,14 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			}
 		}
 	}
-	if recv != nil && recv.Kind() == NamedKind && recv.Name() == "weak" && len(recv.Args()) == 1 {
+	if recv != nil && recv.Kind() == NamedKind && (recv.Name() == "weak_rc" || recv.Name() == "weak_arc") && len(recv.Args()) == 1 {
 		if call.Name == "upgrade" {
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
-			return c.in.named("Option", []*Type{c.in.named("rc", []*Type{recv.Args()[0]})})
+			strong := "rc"
+			if recv.Name() == "weak_arc" {
+				strong = "arc"
+			}
+			return c.in.named("Option", []*Type{c.in.named(strong, []*Type{recv.Args()[0]})})
 		}
 		return nil
 	}
@@ -1619,7 +1701,7 @@ func (c *checker) fieldType(recv *Type, name string, pos source.Pos) *Type {
 	if recv == nil || recv.Kind() != NamedKind {
 		return nil
 	}
-	if recv.Name() == "rc" && len(recv.Args()) == 1 {
+	if (recv.Name() == "rc" || recv.Name() == "arc") && len(recv.Args()) == 1 {
 		recv = recv.Args()[0]
 		if recv == nil || recv.Kind() != NamedKind {
 			return nil
@@ -1844,7 +1926,7 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 	if t != nil {
 		name = t.Name()
 	}
-	if name == "rc" && t != nil && len(t.Args()) == 1 {
+	if (name == "rc" || name == "arc") && t != nil && len(t.Args()) == 1 {
 		elem := t.Args()[0]
 		if sig, ok := c.env.inits[elem.Name()]; ok {
 			if inst := c.instantiateReceiver(sig, elem); inst != nil {

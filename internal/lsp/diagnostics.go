@@ -53,7 +53,8 @@ func analyzeStandalone(path, text string) []diag.Diagnostic {
 	if f != nil {
 		res, rds := resolve.Resolve(f)
 		bag.AddAll(rds)
-		bag.AddAll(types.CheckWith(f, res, nil))
+		checked, ds := types.CheckWithFull(f, res, nil)
+		bag.AddAll(ds)
 		if !bag.HasErrors() {
 			ownership := check.NewOwnership([]*ast.File{f})
 			effects := check.NewMutEffects([]*ast.File{f})
@@ -61,7 +62,7 @@ func analyzeStandalone(path, text string) []diag.Diagnostic {
 			bag.AddAll(check.BorrowsWithEffects(f, ownership, effects))
 			bag.AddAll(check.TopLevelWrites(f))
 			bag.AddAll(check.Leaks(f))
-			bag.AddAll(check.Cycles(f))
+			bag.AddAll(check.CrossTask(f, checked))
 		}
 	}
 	return onlyFile(bag.Diagnostics(), name)

@@ -2,7 +2,7 @@ import c "capture.h" {
     fast willtest_now_ns
 }
 
-# TestState is the mutable part of a case. It lives behind rc so a case can be
+# TestState is the mutable part of a case. It lives behind arc so a case can be
 # moved into a task while the runner keeps a handle for the verdict.
 struct TestState {
     failed: bool
@@ -13,7 +13,7 @@ struct TestState {
 # T is the handle a test function receives.
 struct T {
     name: str
-    state: rc<TestState>
+    state: arc<TestState>
 }
 
 # B is the handle a benchmark function receives. The runner owns the timing
@@ -35,14 +35,14 @@ struct Case {
 # caseResult carries one finished parallel case back to its caller.
 struct caseResult {
     name: str
-    state: rc<TestState>
+    state: arc<TestState>
 }
 
 # NewT returns a case handle with no failures and no log lines.
 def new_t(name: str) -> T {
     return T {
         name: name.clone(),
-        state: new rc<TestState>(TestState { failed: False, parallelizable: False, logs: new Array<str>(0)})
+        state: new arc<TestState>(TestState { failed: False, parallelizable: False, logs: new Array<str>(0)})
     }
 }
 
@@ -113,7 +113,7 @@ def (mut t: T) bench(name: str, f: func(B)) {
 # runCase runs one table entry and returns its name and final state.
 def run_case(spec: Case) -> caseResult {
     var t: T = new_t(spec.name)
-    var state: rc<TestState> = t.state
+    var state: arc<TestState> = t.state
     spec.run(t)
     return caseResult { name: spec.name.clone(), state: state}
 }

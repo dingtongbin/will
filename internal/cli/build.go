@@ -145,7 +145,7 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		bag.AddAll(check.BorrowsWithEffects(f, ownership, effects))
 		bag.AddAll(check.TopLevelWritesWithEffects(f, effects))
 		bag.AddAll(check.Leaks(f))
-
+		bag.AddAll(check.CrossTask(f, checked))
 		bag.AddAll(check.Concurrency(f))
 	}
 	if opts.freestanding {
@@ -421,11 +421,6 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, []byte, str
 	if err != nil {
 		reportTranslate(diagOut, &willc.Error{Message: err.Error()})
 		return nil, nil, "", 1
-	}
-	for _, doc := range docs {
-		for _, batch := range willc.Batches(doc) {
-			astRecords = append(astRecords, decisions.Merge(batch.Pos, batch.Members, batch.ElementLen, "same-dominator"))
-		}
 	}
 	record := decisions.Write(astRecords)
 	store, key := loweringCacheKey(texts, record, opts)

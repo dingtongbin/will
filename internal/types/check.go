@@ -16,6 +16,15 @@ type DispatchPoint struct {
 }
 
 // Result carries what the checker learned beyond diagnostics.
+// TypeOf returns the checked type of one expression, or nil when the checker
+// did not visit it.
+func (r *Result) TypeOf(e ast.Expr) *Type {
+	if r == nil || e == nil {
+		return nil
+	}
+	return r.ExprTypes[e]
+}
+
 type Result struct {
 	Dispatch []DispatchPoint
 	// LiteralTypes is the resolved type text of every literal, by node. The
@@ -27,6 +36,10 @@ type Result struct {
 	CallTypes map[*ast.CallExpr]string
 	// NameTypes is the resolved type text of a predeclared value such as None.
 	NameTypes map[*ast.NameExpr]string
+	// ExprTypes is the checked type of every expression the checker visited.
+	// The ownership and task-boundary passes use it to ask Send/Sync.
+	ExprTypes map[ast.Expr]*Type
+	env       *env
 }
 
 // Check checks one resolved file and returns its diagnostics.
@@ -107,6 +120,7 @@ func CheckPackageFullWithForeign(files []*ast.File, results []*resolve.Result, f
 
 // checkPackage walks every file after the environment is built.
 func (c *checker) checkPackage(files []*ast.File, results []*resolve.Result) {
+	c.checkCrossTypes(files)
 	for i, f := range files {
 		if f == nil || i >= len(results) || results[i] == nil {
 			continue
@@ -119,7 +133,8 @@ func (c *checker) checkPackage(files []*ast.File, results []*resolve.Result) {
 
 // result packages what the checker recorded.
 func (c *checker) result() *Result {
-	return &Result{Dispatch: c.dispatch, LiteralTypes: c.litTypes, CallTypes: c.callTypes, NameTypes: c.nameTypes}
+	return &Result{Dispatch: c.dispatch, LiteralTypes: c.litTypes, CallTypes: c.callTypes,
+		NameTypes: c.nameTypes, ExprTypes: c.exprTypes, env: c.env}
 }
 
 func checkWithResult(f *ast.File, res *resolve.Result, others []*ast.File) (*Result, []diag.Diagnostic) {
@@ -131,6 +146,7 @@ func checkWithResult(f *ast.File, res *resolve.Result, others []*ast.File) (*Res
 	c.env = buildEnvAll(c, files)
 	c.collectLaneTypes(files)
 	c.checkGuardDecls(files)
+	c.checkCrossTypes(files)
 	c.walkFile(f)
 	c.inferFile(f)
 	return c.result(), c.bag.Diagnostics()

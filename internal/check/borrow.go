@@ -449,7 +449,7 @@ func copyPlaceType(t *ast.Type) bool {
 	switch t.Kind {
 	case ast.NamedType:
 		switch t.Name {
-		case "rc", "weak", "chan", "Task", "Error", "Value", "Show", "Duration", "raw", "str":
+		case "rc", "arc", "weak_rc", "weak_arc", "chan", "Task", "Error", "Value", "Show", "Duration", "raw", "str":
 			return false
 		}
 		return true

@@ -18,13 +18,13 @@ struct MutexState<T> {
 # Mutex serializes access to one value. Lock parks the caller until the write
 # side is free; TryLock takes it only when it is free now.
 struct Mutex<T> {
-    state: rc<MutexState<T>>
+    state: arc<MutexState<T>>
 }
 
 # Guard is the write permission of one Mutex. held is false when a waiting
 # Lock was canceled; such a guard panics on first use and releases nothing.
 struct Guard<T> {
-    state: rc<MutexState<T>>
+    state: arc<MutexState<T>>
     held: bool
     mode: i32
 }
@@ -34,7 +34,7 @@ def (mut m: Mutex<T>) init(value: T) {
         lock: c.willrt_sync_lock_new(),
         value: value
     }
-    m.state = new rc<MutexState<T>>(state)
+    m.state = new arc<MutexState<T>>(state)
 }
 
 # Lock waits for the write side and returns its guard.
@@ -56,13 +56,13 @@ def (m: Mutex<T>) try_lock() -> Option<Guard<T>> {
 
 # RwLock allows several readers or one writer.
 struct RwLock<T> {
-    state: rc<MutexState<T>>
+    state: arc<MutexState<T>>
 }
 
 # ReadGuard is the read permission of one RwLock. It forwards fields and
 # methods but the checker rejects a write through it.
 struct ReadGuard<T> {
-    state: rc<MutexState<T>>
+    state: arc<MutexState<T>>
     held: bool
     mode: i32
 }
@@ -72,7 +72,7 @@ def (mut r: RwLock<T>) init(value: T) {
         lock: c.willrt_sync_lock_new(),
         value: value
     }
-    r.state = new rc<MutexState<T>>(state)
+    r.state = new arc<MutexState<T>>(state)
 }
 
 # RLock waits for exclusive holders to leave and joins the reader side.

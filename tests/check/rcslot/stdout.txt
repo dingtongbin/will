@@ -1,2 +1,0 @@
-main.will:18:9: M0003 this rc slot is shared and mutable without a guard or an atomic
-    help: protect it with a guard or an atomic

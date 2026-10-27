@@ -8,9 +8,9 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// rcElemText returns T from rc<T> or weak<T>.
+// rcElemText returns T from a strong or weak handle type.
 func rcElemText(text string) (string, bool) {
-	for _, prefix := range []string{"rc<", "weak<"} {
+	for _, prefix := range []string{"rc<", "arc<", "weak_rc<", "weak_arc<"} {
 		if strings.HasPrefix(text, prefix) && strings.HasSuffix(text, ">") {
 			return strings.TrimSpace(text[len(prefix) : len(text)-1]), true
 		}
@@ -18,23 +18,41 @@ func rcElemText(text string) (string, bool) {
 	return "", false
 }
 
-// isRcText reports whether a type text is rc<T>.
+// isRcText reports whether a type text is a strong handle.
 func isRcText(text string) bool {
-	return strings.HasPrefix(text, "rc<") && strings.HasSuffix(text, ">")
+	return (strings.HasPrefix(text, "rc<") || strings.HasPrefix(text, "arc<")) &&
+		strings.HasSuffix(text, ">")
 }
 
-// isWeakText reports whether a type text is weak<T>.
+// isWeakText reports whether a type text is a weak handle.
 func isWeakText(text string) bool {
-	return strings.HasPrefix(text, "weak<") && strings.HasSuffix(text, ">")
+	return (strings.HasPrefix(text, "weak_rc<") || strings.HasPrefix(text, "weak_arc<")) &&
+		strings.HasSuffix(text, ">")
+}
+
+// strongName returns the strong handle name behind a strong or weak type.
+func strongName(text string) string {
+	if strings.HasPrefix(text, "arc<") || strings.HasPrefix(text, "weak_arc<") {
+		return "arc"
+	}
+	return "rc"
+}
+
+// weakName returns the weak handle name paired with a strong type.
+func weakName(text string) string {
+	if strings.HasPrefix(text, "arc<") {
+		return "weak_arc"
+	}
+	return "weak_rc"
 }
 
 func isFuncText(text string) bool {
 	return strings.HasPrefix(text, "func(")
 }
 
-// constructRc builds new rc<T>(value): the value is copied into the handle
-// table's object storage and the u64 handle is returned.
-func (g *generator) constructRc(r willc.Record, elem string) (string, string, error) {
+// constructRc builds new rc<T>(value) or new arc<T>(value): the value is
+// copied into the handle table's object storage and the u64 handle is returned.
+func (g *generator) constructRc(r willc.Record, elem, wrapper string) (string, string, error) {
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok || elemLLVM == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: rc value %s is not lowered yet", r.ID, elem)
@@ -95,7 +113,10 @@ func (g *generator) constructRc(r willc.Record, elem string) (string, string, er
 	}
 	handle := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call i64 @%s(%s)\n", handle, fn, callArgs)
-	return handle, "rc<" + elem + ">", nil
+	if wrapper == "arc" {
+		fmt.Fprintf(g.out, "  call void @willrt_rc_share(i64 %s)\n", handle)
+	}
+	return handle, wrapper + "<" + elem + ">", nil
 }
 
 // hasInit reports whether T has an init method in this or another document.
@@ -172,7 +193,7 @@ func (g *generator) rcMethodCall(r willc.Record, recvText string) (string, strin
 		g.needRcDecl = true
 		weak := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = call i64 @willrt_weak_new(i64 %s)\n", weak, handle)
-		return weak, "weak<" + elem + ">", nil
+		return weak, weakName(recvText) + "<" + elem + ">", nil
 	case "clone":
 		g.needRcDecl = true
 		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", handle)
@@ -188,7 +209,8 @@ func (g *generator) rcMethodCall(r willc.Record, recvText string) (string, strin
 	return g.emitCallFrom(r, symbol, false, object)
 }
 
-// upgradeCall lowers weak<T>.Upgrade() to Option<rc<T>>.
+// upgradeCall lowers weak_rc<T>.Upgrade() or weak_arc<T>.Upgrade() to an
+// Option of the matching strong handle.
 func (g *generator) upgradeCall(r willc.Record, weakText string) (string, string, error) {
 	elem, ok := rcElemText(weakText)
 	if !ok {
@@ -198,7 +220,7 @@ func (g *generator) upgradeCall(r willc.Record, weakText string) (string, string
 	if err != nil {
 		return "", "", err
 	}
-	text := "Option<rc<" + elem + ">>"
+	text := "Option<" + strongName(weakText) + "<" + elem + ">>"
 	info, ok := g.adtType(text)
 	if !ok {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, text)
@@ -258,7 +280,7 @@ func (g *generator) rcCallResult(r willc.Record) (string, bool) {
 	if isWeakText(recvText) {
 		if fieldText(r, "text") == "upgrade" {
 			elem, _ := rcElemText(recvText)
-			return "Option<rc<" + elem + ">>", true
+			return "Option<" + strongName(recvText) + "<" + elem + ">>", true
 		}
 		return "", false
 	}
@@ -268,7 +290,7 @@ func (g *generator) rcCallResult(r willc.Record) (string, bool) {
 	}
 	switch fieldText(r, "text") {
 	case "weak":
-		return "weak<" + elem + ">", true
+		return weakName(recvText) + "<" + elem + ">", true
 	case "clone":
 		return recvText, true
 	}

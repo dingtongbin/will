@@ -84,7 +84,7 @@ var predeclaredTypes = []string{
 	"u8", "u16", "u32", "u64", "usize",
 	"f32", "f64",
 	"Array", "Map", "Set",
-	"chan", "rc", "weak", "Task",
+	"chan", "rc", "arc", "weak_rc", "weak_arc", "Task",
 	"Option", "Result", "Value", "Duration",
 	"Show", "Error", "TaskError",
 	// Equal and Ord are built-in constraints: they name a property the

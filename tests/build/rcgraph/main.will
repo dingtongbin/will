@@ -1,6 +1,6 @@
 struct Node {
     value: i32
-    next: weak<Node>
+    next: weak_rc<Node>
 }
 
 def (mut n: Node) init(value: i32) {

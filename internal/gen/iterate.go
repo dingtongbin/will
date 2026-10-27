@@ -76,7 +76,8 @@ func llvmTypeText(text string) (string, bool) {
 		// A duration is a signed count of nanoseconds.
 		return "i64", true
 	}
-	if strings.HasPrefix(text, "rc<") || strings.HasPrefix(text, "weak<") {
+	if strings.HasPrefix(text, "rc<") || strings.HasPrefix(text, "arc<") ||
+		strings.HasPrefix(text, "weak_rc<") || strings.HasPrefix(text, "weak_arc<") {
 		// A handle packs the slot and the generation in one u64.
 		return "i64", true
 	}

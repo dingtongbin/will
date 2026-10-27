@@ -2,13 +2,11 @@ package gen
 
 import "fmt"
 
-// shareValue marks every rc handle reachable in a value as cross-thread. A
-// value only needs this at a task frame, a task result, or a channel send;
-// ordinary local copies stay on the plain count path. Every promotion lands
-// in the crossing list, so the decision record carries one obligation per
-// willrt_rc_share the module emits.
+// shareValue is kept as the one crossing hook. A strong handle is already
+// atomic when it is an arc, and the checker rejects an rc at every crossing,
+// so there is no promotion left to emit.
 func (g *generator) shareValue(ptr, text string) error {
-	return g.shareValueDepth(ptr, text, 0)
+	return nil
 }
 
 // recordCrossing notes one promotion. The crossing site names the position
@@ -30,6 +28,9 @@ func (g *generator) recordCrossing() {
 
 func (g *generator) shareValueDepth(ptr, text string, depth int) error {
 	if depth > 32 {
+		return nil
+	}
+	if true {
 		return nil
 	}
 	text = g.qualifyTypeText(g.pkg, text)

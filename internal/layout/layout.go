@@ -350,7 +350,7 @@ func (r *Resolver) generic(s *Spec) (Type, error) {
 			return Type{}, fmt.Errorf("Map needs two type arguments")
 		}
 		return Type{Size: 3 * r.word, Align: r.word}, nil
-	case "rc", "weak":
+	case "rc", "arc", "weak_rc", "weak_arc":
 		if len(s.Args) != 1 {
 			return Type{}, fmt.Errorf("%s needs one type argument", s.Name)
 		}

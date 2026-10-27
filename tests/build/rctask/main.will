@@ -2,12 +2,12 @@ struct C {
     n: i32
 }
 
-def make() -> rc<C> {
-    return new rc<C>(C { n: 9 })
+def make() -> arc<C> {
+    return new arc<C>(C { n: 9 })
 }
 
 async def main() -> i32 {
-    var t: Task<rc<C>> = spawn make()
-    var got: rc<C> = await t.join()!
+    var t: Task<arc<C>> = spawn make()
+    var got: arc<C> = await t.join()!
     return got.n - 9
 }

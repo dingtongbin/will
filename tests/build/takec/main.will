@@ -9,6 +9,6 @@ def release(p: raw) {
 }
 
 def main() -> i32 {
-    var box: rc<Box> = take_c<Box>(c.make_box(9), release)
+    var box: arc<Box> = take_c<Box>(c.make_box(9), release)
     return box.v - 9
 }

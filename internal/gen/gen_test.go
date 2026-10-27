@@ -398,7 +398,7 @@ func TestEmitRcHandles(t *testing.T) {
 		"    var c: rc<Counter> = new rc<Counter>(Counter { n: 1 })\n" +
 		"    c.add(1)\n" +
 		"    var d: rc<Counter> = c\n" +
-		"    var w: weak<Counter> = c.weak()\n" +
+		"    var w: weak_rc<Counter> = c.weak()\n" +
 		"    var u: Option<rc<Counter>> = w.upgrade()\n" +
 		"    var e: rc<Counter> = identity(d)\n" +
 		"    _ = e\n" +
@@ -1801,30 +1801,6 @@ func TestDeferCapturesArgumentsBeforeBlockExit(t *testing.T) {
 	}
 	if strings.Contains(body, "call void @willrt_print_i64") {
 		t.Errorf("the deferred print still runs before the thunk:\n%s", text)
-	}
-}
-
-func TestSpawnSharesRCHandles(t *testing.T) {
-	src := "struct C {\n    n: i32\n}\n\n" +
-		"def read(c: rc<C>) -> i32 {\n    return c.n\n}\n\n" +
-		"def main() -> i32 {\n" +
-		"    var r: rc<C> = new rc<C>(C { n: 7 })\n" +
-		"    var t: Task<i32> = spawn read(r)\n" +
-		"    return t.join()! - 7\n" +
-		"}\n"
-	doc := emitWillc(t, src)
-	ir, err := EmitWithEntry(doc, "main")
-	if err != nil {
-		t.Fatalf("gen: %v", err)
-	}
-	text := normalizeIR(string(ir))
-	for _, want := range []string{
-		"call void @willrt_rc_share(i64",
-		"declare void @willrt_rc_share(i64)",
-	} {
-		if !strings.Contains(text, want) {
-			t.Errorf("IR lacks %q:\n%s", want, text)
-		}
 	}
 }
 

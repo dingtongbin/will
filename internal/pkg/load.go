@@ -423,6 +423,7 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 	foreign := b.foreignInits()
 	foreignFuncs := b.foreignFuncs()
 	imps := b.Imports()
+	checkedByFile := map[*ast.File]*types.Result{}
 	for _, p := range b.Packages {
 		var files []*ast.File
 		var results []*resolve.Result
@@ -436,25 +437,24 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 			results = append(results, res)
 		}
 		if len(files) > 0 {
-			bag.AddAll(types.CheckPackageWithImported(files, results, foreign, foreignFuncs))
+			checked, tds := types.CheckPackageFullWithImported(files, results, foreign, foreignFuncs)
+			bag.AddAll(tds)
+			for _, f := range files {
+				checkedByFile[f] = checked
+			}
 		}
 	}
 	if !bag.HasErrors() {
 		var ownershipFiles []*ast.File
-		pkgOf := map[*ast.File]string{}
 		for _, p := range b.Packages {
 			for _, f := range p.Files {
 				if f.AST != nil {
 					ownershipFiles = append(ownershipFiles, f.AST)
-					pkgOf[f.AST] = p.Path
 				}
 			}
 		}
 		ownership := check.NewOwnership(ownershipFiles)
 		effects := check.NewMutEffects(ownershipFiles)
-		bag.AddAll(check.CyclesWithFiles(ownershipFiles))
-		bag.AddAll(check.RcSlots(ownershipFiles, ownership))
-		bag.AddAll(check.ValueCyclesProgram(ownershipFiles, pkgOf))
 		for _, p := range b.Packages {
 			for _, f := range p.Files {
 				if f.AST != nil {
@@ -462,6 +462,7 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 					bag.AddAll(check.BorrowsWithEffects(f.AST, ownership, effects))
 					bag.AddAll(check.TopLevelWritesWithEffects(f.AST, effects))
 					bag.AddAll(check.Leaks(f.AST))
+					bag.AddAll(check.CrossTask(f.AST, checkedByFile[f.AST]))
 					bag.AddAll(check.Concurrency(f.AST))
 					bag.AddAll(check.SuspendInParallel(f.AST))
 				}

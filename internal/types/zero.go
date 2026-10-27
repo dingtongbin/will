@@ -23,7 +23,7 @@ func (c *checker) hasZeroSeen(t *Type, seen map[*Type]bool) bool {
 		switch t.Name() {
 		case "Result", "Value":
 			return false
-		case "Option", "Array", "Map", "Set", "rc", "weak", "chan", "Task", "Duration":
+		case "Option", "Array", "Map", "Set", "rc", "arc", "weak_rc", "weak_arc", "chan", "Task", "Duration":
 			return true
 		}
 		if c.env.enums[t.Name()] {

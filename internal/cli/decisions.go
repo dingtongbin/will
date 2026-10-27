@@ -210,7 +210,7 @@ func registerTypes(res *layout.Resolver, u sourceUnit) error {
 // without a declaration in the package.
 func predeclaredLayoutType(name string) bool {
 	switch name {
-	case "Array", "Map", "Set", "chan", "Task", "rc", "weak", "Option", "Result", "Range":
+	case "Array", "Map", "Set", "chan", "Task", "rc", "arc", "weak_rc", "weak_arc", "Option", "Result", "Range":
 		return true
 	}
 	return false

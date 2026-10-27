@@ -60,25 +60,27 @@ type env struct {
 	// userTypes holds the types declared in this file. A method on one of
 	// them that no declaration provides is an error; built-in types have
 	// methods the checker does not model, so they are not in this set.
-	userTypes map[string]bool
+	userTypes  map[string]bool
+	typeParams map[string]bool
 }
 
 func newEnv() *env {
 	return &env{
-		types:     map[string]*Type{},
-		arity:     map[string]int{},
-		params:    map[string][]string{},
-		fields:    map[string][]*fieldInfo{},
-		enums:     map[string]bool{},
-		variants:  map[string]*variantInfo{},
-		funcs:     map[string]*signature{},
-		methods:   map[string]*signature{},
-		inits:     map[string]*signature{},
-		vars:      map[string]*Type{},
-		ifaces:    map[string][]*methodInfo{},
-		derives:   map[string]map[string]bool{},
-		aliases:   map[string]*ast.TypeAliasDecl{},
-		userTypes: map[string]bool{},
+		types:      map[string]*Type{},
+		arity:      map[string]int{},
+		params:     map[string][]string{},
+		fields:     map[string][]*fieldInfo{},
+		enums:      map[string]bool{},
+		variants:   map[string]*variantInfo{},
+		funcs:      map[string]*signature{},
+		methods:    map[string]*signature{},
+		inits:      map[string]*signature{},
+		vars:       map[string]*Type{},
+		ifaces:     map[string][]*methodInfo{},
+		derives:    map[string]map[string]bool{},
+		aliases:    map[string]*ast.TypeAliasDecl{},
+		userTypes:  map[string]bool{},
+		typeParams: map[string]bool{},
 	}
 }
 
@@ -137,6 +139,9 @@ func (b *envBuilder) decl(d ast.Decl) {
 		e.arity[decl.Name] = len(decl.TypeParams)
 		e.params[decl.Name] = typeParamNames(decl.TypeParams)
 		e.userTypes[decl.Name] = true
+		for _, p := range decl.TypeParams {
+			e.typeParams[p.Name] = true
+		}
 		var fields []*fieldInfo
 		for _, fd := range decl.Fields {
 			fields = append(fields, &fieldInfo{name: fd.Name, typ: c.buildType(fd.Type, tp)})
@@ -149,6 +154,9 @@ func (b *envBuilder) decl(d ast.Decl) {
 		e.arity[decl.Name] = len(decl.TypeParams)
 		e.params[decl.Name] = typeParamNames(decl.TypeParams)
 		e.userTypes[decl.Name] = true
+		for _, p := range decl.TypeParams {
+			e.typeParams[p.Name] = true
+		}
 		e.enums[decl.Name] = true
 		for _, v := range decl.Variants {
 			payload := make([]*Type, len(v.Args))
@@ -162,13 +170,11 @@ func (b *envBuilder) decl(d ast.Decl) {
 		e.types[decl.Name] = c.in.named(decl.Name, nil)
 		e.arity[decl.Name] = len(decl.TypeParams)
 		e.params[decl.Name] = typeParamNames(decl.TypeParams)
+		for _, p := range decl.TypeParams {
+			e.typeParams[p.Name] = true
+		}
 		for _, m := range decl.Methods {
-			if m.Async {
-				c.bag.Error(m.Pos(), diag.CodeAsyncInterface,
-					"an interface method cannot be async",
-					"use a concrete async type, a generic, or a channel")
-			}
-			sig := &signature{name: m.Name}
+			sig := &signature{name: m.Name, async: m.Async}
 			for _, pm := range m.Params {
 				sig.params = append(sig.params, c.buildType(pm.Type, tp))
 			}
@@ -176,6 +182,9 @@ func (b *envBuilder) decl(d ast.Decl) {
 			e.ifaces[decl.Name] = append(e.ifaces[decl.Name], &methodInfo{name: m.Name, sig: sig})
 		}
 	case *ast.FuncDecl:
+		for _, p := range decl.TypeParams {
+			e.typeParams[p.Name] = true
+		}
 		sig := c.buildSig(decl)
 		switch {
 		case decl.Recv == nil:
@@ -238,7 +247,7 @@ func (c *checker) keyType(t *Type) bool {
 		return name != "raw" && name != "f32" && name != "f64"
 	case NamedKind:
 		switch t.Name() {
-		case "raw", "rc", "weak", "chan", "Task", "f32", "f64":
+		case "raw", "rc", "arc", "weak_rc", "weak_arc", "chan", "Task", "f32", "f64":
 			return false
 		}
 		if fields, ok := c.env.fields[t.Name()]; ok {

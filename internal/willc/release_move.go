@@ -203,7 +203,7 @@ func (em *emitter) moveType(t *ast.Type) bool {
 	if rcType(t) {
 		return false
 	}
-	if t.Kind == ast.NamedType && t.Name == "weak" {
+	if t.Kind == ast.NamedType && (t.Name == "weak_rc" || t.Name == "weak_arc") {
 		return false
 	}
 	return true

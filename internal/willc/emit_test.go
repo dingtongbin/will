@@ -222,27 +222,6 @@ func TestEmitFixedArrayLiteral(t *testing.T) {
 	}
 }
 
-func TestEmitBatchesTwoArrayBuffers(t *testing.T) {
-	src := "def f() {\n" +
-		"    var a: Array<i32> = new Array<i32>(4)\n" +
-		"    var b: Array<i32> = new Array<i32>(4)\n" +
-		"    if a.len() + b.len() > 0 {\n" +
-		"    }\n" +
-		"}\n"
-	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
-	batches := Batches(doc)
-	if len(batches) != 1 {
-		t.Fatalf("batches = %d, want one", len(batches))
-	}
-	b := batches[0]
-	if b.Elem != "i32" || b.Cap != 4 || b.ElementLen != 2 {
-		t.Fatalf("batch = %+v", b)
-	}
-	if b.Pos != "test.will:4:5" {
-		t.Fatalf("batch pos = %q", b.Pos)
-	}
-}
-
 func TestEmitArrayReleaseAtLastSafeUse(t *testing.T) {
 	src := "def f() {\n" +
 		"    var xs: Array<i32> = new Array<i32>(0)\n" +

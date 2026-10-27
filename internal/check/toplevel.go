@@ -232,7 +232,7 @@ func isHandleType(t *ast.Type) bool {
 		return false
 	}
 	switch t.Name {
-	case "rc", "weak", "chan", "Task":
+	case "rc", "arc", "weak_rc", "weak_arc", "chan", "Task":
 		return true
 	}
 	return false
