@@ -166,6 +166,10 @@ func assignOp(k token.Kind) (string, bool) {
 		return "/=", true
 	case token.ModAssign:
 		return "%=", true
+	case token.FloorDivAssign:
+		return "//=", true
+	case token.PowAssign:
+		return "**=", true
 	case token.AndAssign:
 		return "&=", true
 	case token.OrAssign:

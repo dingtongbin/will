@@ -270,6 +270,8 @@ type fixedOp struct {
 
 var fixedOps = []fixedOp{
 	{"<<%=", token.ShlWrapAssign},
+	{"//=", token.FloorDivAssign},
+	{"**=", token.PowAssign},
 	{"+%=", token.PlusWrapAssign},
 	{"-%=", token.MinusWrapAssign},
 	{"*%=", token.StarWrapAssign},
@@ -285,6 +287,8 @@ var fixedOps = []fixedOp{
 	{"+|", token.PlusSat},
 	{"-|", token.MinusSat},
 	{"*|", token.StarSat},
+	{"//", token.FloorDiv},
+	{"**", token.Pow},
 	{"<<", token.Shl},
 	{">>", token.Shr},
 	{"&&", token.AndAnd},

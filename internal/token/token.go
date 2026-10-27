@@ -111,6 +111,10 @@ const (
 	Slash
 	// Percent is %.
 	Percent
+	// FloorDiv is //.
+	FloorDiv
+	// Pow is **.
+	Pow
 	// PlusWrap is +%.
 	PlusWrap
 	// MinusWrap is -%.
@@ -155,6 +159,10 @@ const (
 	DivAssign
 	// ModAssign is %=.
 	ModAssign
+	// FloorDivAssign is //=.
+	FloorDivAssign
+	// PowAssign is **=.
+	PowAssign
 	// AndAssign is &=.
 	AndAssign
 	// OrAssign is |=.
@@ -271,6 +279,8 @@ var names = map[Kind]string{
 	Star:            "*",
 	Slash:           "/",
 	Percent:         "%",
+	FloorDiv:        "//",
+	Pow:             "**",
 	PlusWrap:        "+%",
 	MinusWrap:       "-%",
 	StarWrap:        "*%",
@@ -293,6 +303,8 @@ var names = map[Kind]string{
 	MulAssign:       "*=",
 	DivAssign:       "/=",
 	ModAssign:       "%=",
+	FloorDivAssign:  "//=",
+	PowAssign:       "**=",
 	AndAssign:       "&=",
 	OrAssign:        "|=",
 	XorAssign:       "^=",

@@ -102,6 +102,57 @@ func (g *generator) checkedArith(op, typ string, signed bool, l, right string, r
 		return "", g.errf(r.ID, "cannot translate node #%d: %s is not an integer type", r.ID, typ)
 	}
 	switch op {
+	case "**":
+		result := g.smAlloca(typ, "pow.result")
+		base := g.smAlloca(typ, "pow.base")
+		exp := g.smAlloca(typ, "pow.exp")
+		fmt.Fprintf(g.out, "  store %s 1, ptr %s\n", typ, result)
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, l, base)
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, right, exp)
+		g.labels++
+		n := g.labels
+		condLabel := fmt.Sprintf("pow.cond.%d", n)
+		bodyLabel := fmt.Sprintf("pow.body.%d", n)
+		oddLabel := fmt.Sprintf("pow.odd.%d", n)
+		evenLabel := fmt.Sprintf("pow.even.%d", n)
+		mergeLabel := fmt.Sprintf("pow.merge.%d", n)
+		endLabel := fmt.Sprintf("pow.end.%d", n)
+		fmt.Fprintf(g.out, "  br label %%%s\n", condLabel)
+		g.out.WriteString(condLabel + ":\n")
+		currentExp := g.load(typ, exp)
+		done := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp eq %s %s, 0\n", done, typ, currentExp)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", done, endLabel, bodyLabel)
+		g.out.WriteString(bodyLabel + ":\n")
+		bit := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = and %s %s, 1\n", bit, typ, currentExp)
+		odd := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp ne %s %s, 0\n", odd, typ, bit)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", odd, oddLabel, evenLabel)
+		g.out.WriteString(evenLabel + ":\n")
+		fmt.Fprintf(g.out, "  br label %%%s\n", mergeLabel)
+		g.out.WriteString(oddLabel + ":\n")
+		curResult := g.load(typ, result)
+		curBase := g.load(typ, base)
+		mul, err := g.checkedArith("*", typ, signed, curResult, curBase, 0, r)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, mul, result)
+		fmt.Fprintf(g.out, "  br label %%%s\n", mergeLabel)
+		g.out.WriteString(mergeLabel + ":\n")
+		curBase = g.load(typ, base)
+		square, err := g.checkedArith("*", typ, signed, curBase, curBase, 0, r)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, square, base)
+		nextExp := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = lshr %s %s, 1\n", nextExp, typ, currentExp)
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, nextExp, exp)
+		fmt.Fprintf(g.out, "  br label %%%s\n", condLabel)
+		g.out.WriteString(endLabel + ":\n")
+		return g.load(typ, result), nil
 	case "+", "-", "*":
 		names := map[string]string{"+": "add", "-": "sub", "*": "mul"}
 		prefix := "u"
@@ -117,7 +168,7 @@ func (g *generator) checkedArith(op, typ string, signed bool, l, right string, r
 		fmt.Fprintf(g.out, "  %s = extractvalue {%s, i1} %s, 1\n", overflow, typ, pair)
 		g.panicCheck(overflow, panicOverflow, r)
 		return value, nil
-	case "/", "%":
+	case "/", "//", "%":
 		zero := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = icmp eq %s %s, 0\n", zero, typ, right)
 		g.panicCheck(zero, panicDivideByZero, r)
@@ -142,7 +193,36 @@ func (g *generator) checkedArith(op, typ string, signed bool, l, right string, r
 		}
 		value := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = %s %s %s, %s\n", value, instr, typ, l, right)
-		return value, nil
+		if !signed || op == "/" {
+			return value, nil
+		}
+		rem := value
+		if op == "//" {
+			rem = g.newTmp()
+			fmt.Fprintf(g.out, "  %s = srem %s %s, %s\n", rem, typ, l, right)
+		}
+		nonzero := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp ne %s %s, 0\n", nonzero, typ, rem)
+		remNeg := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp slt %s %s, 0\n", remNeg, typ, rem)
+		divNeg := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp slt %s %s, 0\n", divNeg, typ, right)
+		differ := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = xor i1 %s, %s\n", differ, remNeg, divNeg)
+		adjust := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = and i1 %s, %s\n", adjust, nonzero, differ)
+		if op == "%" {
+			fixed := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = add %s %s, %s\n", fixed, typ, rem, right)
+			out := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = select i1 %s, %s %s, %s %s\n", out, adjust, typ, fixed, typ, rem)
+			return out, nil
+		}
+		down := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = sub %s %s, 1\n", down, typ, value)
+		out := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = select i1 %s, %s %s, %s %s\n", out, adjust, typ, down, typ, value)
+		return out, nil
 	case "<<", ">>":
 		instr := "shl"
 		if op == ">>" {
@@ -183,7 +263,7 @@ func (g *generator) shiftAmountFits(id, width int) bool {
 // way to drop bits.
 func isCheckedArith(op string) bool {
 	switch op {
-	case "+", "-", "*", "/", "%", "<<", ">>":
+	case "+", "-", "*", "/", "//", "%", "**", "<<", ">>":
 		return true
 	}
 	return false

@@ -1036,6 +1036,12 @@ func (c *checker) castType(s *inferScope, name *ast.NameExpr, call *ast.CallExpr
 }
 
 func (c *checker) typeByName(name string) *Type {
+	if name == "int" {
+		return c.in.scalar("i64")
+	}
+	if name == "float" {
+		return c.in.scalar("f64")
+	}
 	if decl, ok := c.env.aliases[name]; ok {
 		return c.resolveAlias(decl)
 	}
@@ -1933,6 +1939,17 @@ func (c *checker) binaryType(s *inferScope, b *ast.BinaryExpr) *Type {
 		return c.in.scalar("bool")
 	}
 	lt := c.inferExpr(s, b.L)
+	if b.Op == token.Pow {
+		rt := c.inferExpr(s, b.R)
+		if lt != nil && !lt.IsNumeric() {
+			c.typeMismatch(b.Pos(), lt, nil)
+			return lt
+		}
+		if lt != nil && lt.IsInteger() && (rt == nil || !rt.IsInteger()) {
+			c.typeMismatch(b.R.Pos(), rt, c.in.scalar("u32"))
+		}
+		return lt
+	}
 	if b.Op == token.Plus && lt != nil && lt.Kind() == ScalarKind && lt.Name() == "raw" {
 		c.checkValue(s, b.R, c.in.scalar("usize"))
 		return lt

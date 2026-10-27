@@ -17,6 +17,7 @@ const (
 	precShift = 7
 	precAdd   = 8
 	precMul   = 9
+	precPow   = 10
 )
 
 func binaryPrec(k token.Kind) int {
@@ -37,8 +38,10 @@ func binaryPrec(k token.Kind) int {
 		return precShift
 	case token.Plus, token.Minus, token.PlusWrap, token.MinusWrap, token.PlusSat, token.MinusSat:
 		return precAdd
-	case token.Star, token.Slash, token.Percent, token.StarWrap, token.StarSat:
+	case token.Star, token.Slash, token.FloorDiv, token.Percent, token.StarWrap, token.StarSat:
 		return precMul
+	case token.Pow:
+		return precPow
 	}
 	return 0
 }
@@ -52,7 +55,11 @@ func (p *Parser) parseExpr(minPrec int, allowBrace bool) ast.Expr {
 		}
 		op := p.next()
 		p.skipNL()
-		right := p.parseExpr(prec+1, allowBrace)
+		nextPrec := prec + 1
+		if op.Kind == token.Pow {
+			nextPrec = prec
+		}
+		right := p.parseExpr(nextPrec, allowBrace)
 		span := ast.Span{Start: left.Pos(), End: right.EndPos()}
 		left = &ast.BinaryExpr{Span: span, Op: op.Kind, L: left, R: right}
 	}

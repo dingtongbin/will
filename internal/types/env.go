@@ -366,6 +366,12 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 		if tp[t.Name] {
 			return c.in.named(t.Name, nil)
 		}
+		switch t.Name {
+		case "int":
+			return c.in.scalar("i64")
+		case "float":
+			return c.in.scalar("f64")
+		}
 		if t.Name == "interface {}" {
 			return c.in.named(t.Name, nil)
 		}
