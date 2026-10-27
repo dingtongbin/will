@@ -250,6 +250,51 @@ async func main() -> i32 {
 	}
 }
 
+// TestRunTaskErrorOwnsItsMessage checks that a TaskError returned out of its
+// region copies the task-owned panic message instead of borrowing it.
+func TestRunTaskErrorOwnsItsMessage(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `func Fail(msg: str) -> i32 {
+    panic(msg)
+    return 0
+}
+
+async func Capture() -> Result<i32, TaskError> {
+    var result: Result<i32, TaskError> = Ok(0)
+    region {
+        var task: Task<i32> = spawn Fail("boom".Clone())
+        result = await task.Join()
+    }
+    return result
+}
+
+async func main() -> i32 {
+    match await Capture() {
+        Ok(_) => {
+            return 1
+        }
+        Err(e) => {
+            var text: str = e.Message()
+            if text == "boom" {
+                return 0
+            }
+            return 2
+        }
+    }
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if strings.Contains(errOut, "free rejected") {
+		t.Fatalf("stderr = %q, want no allocator rejection", errOut)
+	}
+}
+
 // TestRunTryMovesThePayload checks that ? copies the payload out, zeros the
 // source Option, and lets the caller release the payload once.
 func TestRunTryMovesThePayload(t *testing.T) {

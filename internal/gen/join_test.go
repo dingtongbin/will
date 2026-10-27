@@ -72,6 +72,10 @@ func Run(task: Task<i32>) -> Result<i32, TaskError> {
 		"join.result",
 		"will.task.error.table",
 		"@will.task.error.message",
+		"define internal ptr @will.task.error.clone",
+		"define internal void @will.task.error.drop",
+		"task.error.copy",
+		"call void @willrt_free_str",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
