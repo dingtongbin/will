@@ -1,10 +1,11 @@
 #1 module pos="b.will:1:1" path="example.com/twofile"
-#2 func parent=#1 pos="b.will:1:1" text="Use" type="i64"
+#2 func parent=#1 pos="b.will:1:1" text="use" type="i64"
 #3 param parent=#2 pos="b.will:1:9" text="b" type="Box"
 #4 type parent=#3 pos="b.will:1:12" text="Box" kind=named to="example.com/twofile.Box"
 #5 type parent=#2 pos="b.will:1:20" text="i64" kind=scalar
 #6 block parent=#2 pos="b.will:1:24"
 #7 return parent=#6 pos="b.will:2:5" value=#8
-#8 call parent=#7 pos="b.will:2:12" to="example.com/twofile.Value" arg=#9
-#9 name parent=#8 pos="b.will:2:18" text="b" to=#3
-#10 end
+#8 cast parent=#7 pos="b.will:2:12" to=#9 expr=#10
+#9 type parent=#8 pos="0" text="Value" kind=named
+#10 name parent=#8 pos="b.will:2:18" text="b" to=#3
+#11 end

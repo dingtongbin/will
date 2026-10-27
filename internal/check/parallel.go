@@ -31,7 +31,7 @@ func (c *parallelChecker) suspend(pos ast.Span) {
 	}
 	c.bag.Error(pos.Pos(), diag.CodeSuspendInParallel,
 		"a parallel block cannot suspend",
-		"use spawn and Join for CPU work, or move the wait outside the block")
+		"use spawn and join for CPU work, or move the wait outside the block")
 }
 
 func (c *parallelChecker) block(b *ast.Block) {
@@ -179,7 +179,7 @@ func (c *parallelChecker) args(args []*ast.CallArg) {
 
 func isSuspendMethod(name string) bool {
 	switch name {
-	case "Recv", "Send", "Sleep", "AsyncRead", "AsyncWrite", "AsyncFlush",
+	case "recv", "send", "sleep", "async_read", "async_write", "async_flush",
 		"AsyncSeek", "AsyncSync", "AsyncStat", "AsyncNext":
 		return true
 	}

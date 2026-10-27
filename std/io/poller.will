@@ -18,7 +18,7 @@ struct Poller {
 }
 
 // NewPoller returns an empty poller.
-def NewPoller() -> Poller {
+def new_poller() -> Poller {
     return Poller {
         fds: new Array<i64>(0),
         events: new Array<u32>(0),
@@ -27,24 +27,24 @@ def NewPoller() -> Poller {
 }
 
 // Add waits for input readiness on fd and reports user when it is ready.
-def (mut p: Poller) Add(fd: i64, user: usize) -> Result<(), Error> {
+def (mut p: Poller) add(fd: i64, user: usize) -> Result<(), Error> {
     if fd < 0 {
         return Err(errors.Invalid)
     }
-    p.fds.Push(fd)
-    p.events.Push(1u32)
-    p.users.Push(user)
+    p.fds.push(fd)
+    p.events.push(1u32)
+    p.users.push(user)
     return Ok(())
 }
 
 // Remove drops the registration for fd. Removing an absent descriptor is a
 // no-op.
-def (mut p: Poller) Remove(fd: i64) -> Result<(), Error> {
-    for i in Range(0, i32(p.fds.Len())) {
-        if p.fds.Get(usize(i)) == fd {
-            _ = p.fds.Remove(usize(i))
-            _ = p.events.Remove(usize(i))
-            _ = p.users.Remove(usize(i))
+def (mut p: Poller) remove(fd: i64) -> Result<(), Error> {
+    for i in Range(0, i32(p.fds.len())) {
+        if p.fds.get(usize(i)) == fd {
+            _ = p.fds.remove(usize(i))
+            _ = p.events.remove(usize(i))
+            _ = p.users.remove(usize(i))
             return Ok(())
         }
     }
@@ -53,26 +53,26 @@ def (mut p: Poller) Remove(fd: i64) -> Result<(), Error> {
 
 // Next waits up to timeout for ready descriptors and appends their user tags to
 // out in registration order. Zero means the timeout expired.
-def (p: Poller) Next(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
-    var before: usize = out.Len()
+def (p: Poller) next(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
+    var before: usize = out.len()
     var status: i32 = c.willrt_poll_wait(raw(p.fds), raw(p.events), raw(p.users),
-                                          i64(p.fds.Len()), i64(timeout), raw(out))
+                                          i64(p.fds.len()), i64(timeout), raw(out))
     if status != 0 {
         return Err(errors.Io)
     }
-    return Ok(out.Len() - before)
+    return Ok(out.len() - before)
 }
 
 // AsyncNext parks the calling task while the runtime poller scans the
 // descriptors; the poller delivers ready tags into out and wakes the task's
 // lane directly.
-async def (p: Poller) AsyncNext(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
-    var before: usize = out.Len()
+async def (p: Poller) async_next(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
+    var before: usize = out.len()
     var status: i32 = await c.willrt_poll_wait_async(raw(p.fds), raw(p.events),
-                                                 raw(p.users), i64(p.fds.Len()),
+                                                 raw(p.users), i64(p.fds.len()),
                                                  i64(timeout), raw(out))
     if status != 0 {
         return Err(errors.Io)
     }
-    return Ok(out.Len() - before)
+    return Ok(out.len() - before)
 }

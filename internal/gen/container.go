@@ -126,24 +126,24 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 	name := fieldText(r, "text")
 	if k, v, ok := mapTypeText(recvText); ok {
 		switch name {
-		case "Len":
+		case "len":
 			return "i64", "usize", true
-		case "Get":
+		case "get":
 			adt, ok := g.adtType("Option<" + v + ">")
 			if !ok || adt.llvm == "" {
 				return "", "", false
 			}
 			return adt.llvm, "Option<" + v + ">", true
-		case "Has", "Delete":
+		case "has", "delete":
 			return "i1", "bool", true
-		case "Set", "Clear":
+		case "set", "clear":
 			return "", "", true
-		case "Keys":
+		case "keys":
 			if _, ok := g.containerValueType(k); !ok {
 				return "", "", false
 			}
 			return "{ ptr, i64, i64 }", "Array<" + k + ">", true
-		case "Values":
+		case "values":
 			if _, ok := g.containerValueType(v); !ok {
 				return "", "", false
 			}
@@ -153,11 +153,11 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 	}
 	if _, ok := setTypeText(recvText); ok {
 		switch name {
-		case "Len":
+		case "len":
 			return "i64", "usize", true
-		case "Add", "Has", "Delete":
+		case "add", "has", "delete":
 			return "i1", "bool", true
-		case "Clear":
+		case "clear":
 			return "", "", true
 		}
 	}
@@ -195,29 +195,29 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 		}
 		args := g.callArgs(r)
 		switch name {
-		case "Len":
+		case "len":
 			return length, "usize", nil
-		case "Clear":
+		case "clear":
 			if err := g.releaseContainerEntries(data, length, entry, []string{k, v}); err != nil {
 				return "", "", err
 			}
 			fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", lenPtr)
 			return "", "", nil
-		case "Has":
+		case "has":
 			if len(args) != 1 {
-				return "", "", g.errf(r.ID, "cannot translate node #%d: Has takes one key", r.ID)
+				return "", "", g.errf(r.ID, "cannot translate node #%d: has takes one key", r.ID)
 			}
 			found, _, err := g.findMapKey(entry, kt, data, length, args[0])
 			if err != nil {
 				return "", "", err
 			}
 			return found, "bool", nil
-		case "Get":
+		case "get":
 			if len(args) != 1 {
-				return "", "", g.errf(r.ID, "cannot translate node #%d: Get takes one key", r.ID)
+				return "", "", g.errf(r.ID, "cannot translate node #%d: get takes one key", r.ID)
 			}
 			return g.mapGet(r, "Option<"+v+">", v, entry, kt, vt, data, length, args[0])
-		case "Set":
+		case "set":
 			if len(args) != 2 {
 				return "", "", g.errf(r.ID, "cannot translate node #%d: Set takes a key and a value", r.ID)
 			}
@@ -225,15 +225,15 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 				return "", "", err
 			}
 			return "", "", nil
-		case "Delete":
+		case "delete":
 			if len(args) != 1 {
-				return "", "", g.errf(r.ID, "cannot translate node #%d: Delete takes one key", r.ID)
+				return "", "", g.errf(r.ID, "cannot translate node #%d: delete takes one key", r.ID)
 			}
 			return g.mapDelete(r, entry, entrySize, kt, k, v, dataPtr, lenPtr, args[0])
-		case "Keys", "Values":
+		case "keys", "values":
 			field := 0
 			elemText := k
-			if name == "Values" {
+			if name == "values" {
 				field = 1
 				elemText = v
 			}
@@ -249,31 +249,31 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 		}
 		args := g.callArgs(r)
 		switch name {
-		case "Len":
+		case "len":
 			return length, "usize", nil
-		case "Clear":
+		case "clear":
 			if err := g.releaseContainerEntries(data, length, et, []string{elem}); err != nil {
 				return "", "", err
 			}
 			fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", lenPtr)
 			return "", "", nil
-		case "Has":
+		case "has":
 			if len(args) != 1 {
-				return "", "", g.errf(r.ID, "cannot translate node #%d: Has takes one value", r.ID)
+				return "", "", g.errf(r.ID, "cannot translate node #%d: has takes one value", r.ID)
 			}
 			found, _, err := g.findSetValue(et, data, length, args[0])
 			if err != nil {
 				return "", "", err
 			}
 			return found, "bool", nil
-		case "Add":
+		case "add":
 			if len(args) != 1 {
-				return "", "", g.errf(r.ID, "cannot translate node #%d: Add takes one value", r.ID)
+				return "", "", g.errf(r.ID, "cannot translate node #%d: add takes one value", r.ID)
 			}
 			return g.setAdd(r, et, entrySize, dataPtr, lenPtr, capPtr, args[0])
-		case "Delete":
+		case "delete":
 			if len(args) != 1 {
-				return "", "", g.errf(r.ID, "cannot translate node #%d: Delete takes one value", r.ID)
+				return "", "", g.errf(r.ID, "cannot translate node #%d: delete takes one value", r.ID)
 			}
 			return g.setDelete(r, et, elem, entrySize, dataPtr, lenPtr, args[0])
 		}

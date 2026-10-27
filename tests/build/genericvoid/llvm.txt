@@ -10,12 +10,12 @@ entry:
   call void @"example.com/genericvoid.Box<i64>.init"(ptr %v.new.30)
   %t1 = load %"struct.example.com/genericvoid.Box$i64", ptr %v.new.30
   store %"struct.example.com/genericvoid.Box$i64" %t1, ptr %v.a
-  call void @"example.com/genericvoid.Box<i64>.Bump"(ptr %v.a)
+  call void @"example.com/genericvoid.Box<i64>.bump"(ptr %v.a)
   %t2 = getelementptr inbounds %"struct.example.com/genericvoid.Box$i64", ptr %v.a, i32 0, i32 0
   %t3 = load i32, ptr %t2
   ret i32 %t3
 }
-define hidden void @"example.com/genericvoid.Box<i64>.Bump"(ptr %b) alwaysinline {
+define hidden void @"example.com/genericvoid.Box<i64>.bump"(ptr %b) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/genericvoid.Box$i64", ptr %b, i32 0, i32 0
   %t2 = load i32, ptr %t1
@@ -30,7 +30,7 @@ panic.ok.1:
   store i32 %t4, ptr %t1
   ret void
 }
-define internal void @"example.com/genericvoid.Box<i64>.init"(ptr %b) alwaysinline {
+define hidden void @"example.com/genericvoid.Box<i64>.init"(ptr %b) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/genericvoid.Box$i64", ptr %b, i32 0, i32 0
   store i32 0, ptr %t1
@@ -47,6 +47,6 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:10:5\00", align 1
-@.str.2 = private unnamed_addr constant [38 x i8] c"example.com/genericvoid.Box<i64>.Bump\00", align 1
+@.str.2 = private unnamed_addr constant [38 x i8] c"example.com/genericvoid.Box<i64>.bump\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

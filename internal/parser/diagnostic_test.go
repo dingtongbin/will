@@ -35,7 +35,7 @@ func TestMissingBraceDiagnostic(t *testing.T) {
 }
 
 func TestExpressionStatementDiagnostic(t *testing.T) {
-	_, ds := Parse("test.will", []byte("def f() {\n    1 + 2\n    Work()\n}\n"))
+	_, ds := Parse("test.will", []byte("def f() {\n    1 + 2\n    work()\n}\n"))
 	d := onlyDiagnostic(t, ds)
 	if d.Code != diag.CodeUnexpectedToken || d.Help != "expected a call or spawn" {
 		t.Fatalf("diagnostic = %+v", d)
@@ -91,7 +91,7 @@ func TestEmptyFile(t *testing.T) {
 }
 
 func TestDocCommentBindsToDeclaration(t *testing.T) {
-	f := parse(t, "/// first\n/// second\ndef F() {}\n")
+	f := parse(t, "/// first\n/// second\ndef f() {}\n")
 	fn, ok := f.Decls[0].(*ast.FuncDecl)
 	if !ok {
 		t.Fatalf("declaration = %T, want func", f.Decls[0])

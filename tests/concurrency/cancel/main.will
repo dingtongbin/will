@@ -1,13 +1,13 @@
 import "std/task"
 
-async def Worker(ch: chan<i32>, cancel: task.Cancel) -> i32 {
-    var item: Option<i32> = await ch.Recv()
+async def worker(ch: chan<i32>, cancel: task.cancel) -> i32 {
+    var item: Option<i32> = await ch.recv()
     match item {
         Some(_) => {
             return 1
         }
         None => {
-            if cancel.Canceled() {
+            if cancel.canceled() {
                 return 7
             }
             return 2
@@ -18,12 +18,12 @@ async def Worker(ch: chan<i32>, cancel: task.Cancel) -> i32 {
 
 async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
-    var cancel: task.Cancel = new task.Cancel()
-    cancel.Cancel()
+    var cancel: task.cancel = new task.cancel()
+    cancel.cancel()
     var value: i32 = 0
     region {
-        var worker: Task<i32> = spawn Worker(ch, cancel)
-        value = await worker.Join()!
+        var worker: Task<i32> = spawn worker(ch, cancel)
+        value = await worker.join()!
     }
     if value != 7 {
         return 1

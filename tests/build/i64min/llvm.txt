@@ -1,6 +1,6 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
-define hidden i64 @"example.com/i64min.Get"() alwaysinline {
+define hidden i64 @"example.com/i64min.get"() alwaysinline {
 entry:
   ret i64 -9223372036854775808
 }
@@ -16,7 +16,7 @@ panic.ok.1:
   %t1 = sub i64 0, 9223372036854775808
   store i64 %t1, ptr %v.x
   %t3 = load i64, ptr %v.x
-  %t4 = call i64 @"example.com/i64min.Get"()
+  %t4 = call i64 @"example.com/i64min.get"()
   %t5 = icmp eq i64 %t3, %t4
   br i1 %t5, label %if.then.2, label %if.end.2
 if.then.2:

@@ -13,39 +13,39 @@ def (mut d: Deque<T>) init() {
 }
 
 // PushFront adds one value at the front.
-def (mut d: Deque<T>) PushFront(v: T) {
-    d.front.Push(v)
+def (mut d: Deque<T>) push_front(v: T) {
+    d.front.push(v)
 }
 
 // PushBack adds one value at the back.
-def (mut d: Deque<T>) PushBack(v: T) {
-    d.back.Push(v)
+def (mut d: Deque<T>) push_back(v: T) {
+    d.back.push(v)
 }
 
 // PopFront removes and returns the front value, or None when the deque is
 // empty.
-def (mut d: Deque<T>) PopFront() -> Option<T> {
-    if d.front.Len() > 0 {
-        return d.front.Pop()
+def (mut d: Deque<T>) pop_front() -> Option<T> {
+    if d.front.len() > 0 {
+        return d.front.pop()
     }
-    if d.back.Len() == 0 {
+    if d.back.len() == 0 {
         return None
     }
     var tmp: Array<T> = new Array<T>(0)
     for {
-        if d.back.Len() == 0 {
+        if d.back.len() == 0 {
             break
         }
-        match d.back.Pop() {
+        match d.back.pop() {
             Some(v) => {
-                tmp.Push(v)
+                tmp.push(v)
             }
             None => {
                 break
             }
         }
     }
-    var half: usize = tmp.Len() / 2usize
+    var half: usize = tmp.len() / 2usize
     if half == 0usize {
         half = 1usize
     }
@@ -55,9 +55,9 @@ def (mut d: Deque<T>) PopFront() -> Option<T> {
         if i >= half {
             break
         }
-        match tmp.Pop() {
+        match tmp.pop() {
             Some(v) => {
-                rev.Push(v)
+                rev.push(v)
             }
             None => {
                 break
@@ -66,12 +66,12 @@ def (mut d: Deque<T>) PopFront() -> Option<T> {
         i += 1usize
     }
     for {
-        if rev.Len() == 0 {
+        if rev.len() == 0 {
             break
         }
-        match rev.Pop() {
+        match rev.pop() {
             Some(v) => {
-                d.front.Push(v)
+                d.front.push(v)
             }
             None => {
                 break
@@ -79,44 +79,44 @@ def (mut d: Deque<T>) PopFront() -> Option<T> {
         }
     }
     for {
-        if tmp.Len() == 0 {
+        if tmp.len() == 0 {
             break
         }
-        match tmp.Pop() {
+        match tmp.pop() {
             Some(v) => {
-                d.back.Push(v)
+                d.back.push(v)
             }
             None => {
                 break
             }
         }
     }
-    return d.front.Pop()
+    return d.front.pop()
 }
 
 // PopBack removes and returns the back value, or None when the deque is empty.
-def (mut d: Deque<T>) PopBack() -> Option<T> {
-    if d.back.Len() > 0 {
-        return d.back.Pop()
+def (mut d: Deque<T>) pop_back() -> Option<T> {
+    if d.back.len() > 0 {
+        return d.back.pop()
     }
-    if d.front.Len() == 0 {
+    if d.front.len() == 0 {
         return None
     }
     var tmp: Array<T> = new Array<T>(0)
     for {
-        if d.front.Len() == 0 {
+        if d.front.len() == 0 {
             break
         }
-        match d.front.Pop() {
+        match d.front.pop() {
             Some(v) => {
-                tmp.Push(v)
+                tmp.push(v)
             }
             None => {
                 break
             }
         }
     }
-    var half: usize = tmp.Len() / 2usize
+    var half: usize = tmp.len() / 2usize
     if half == 0usize {
         half = 1usize
     }
@@ -126,9 +126,9 @@ def (mut d: Deque<T>) PopBack() -> Option<T> {
         if i >= half {
             break
         }
-        match tmp.Pop() {
+        match tmp.pop() {
             Some(v) => {
-                rev.Push(v)
+                rev.push(v)
             }
             None => {
                 break
@@ -137,12 +137,12 @@ def (mut d: Deque<T>) PopBack() -> Option<T> {
         i += 1usize
     }
     for {
-        if tmp.Len() == 0 {
+        if tmp.len() == 0 {
             break
         }
-        match tmp.Pop() {
+        match tmp.pop() {
             Some(v) => {
-                d.front.Push(v)
+                d.front.push(v)
             }
             None => {
                 break
@@ -151,12 +151,12 @@ def (mut d: Deque<T>) PopBack() -> Option<T> {
     }
     var rev2: Array<T> = new Array<T>(0)
     for {
-        if rev.Len() == 0 {
+        if rev.len() == 0 {
             break
         }
-        match rev.Pop() {
+        match rev.pop() {
             Some(v) => {
-                rev2.Push(v)
+                rev2.push(v)
             }
             None => {
                 break
@@ -164,59 +164,59 @@ def (mut d: Deque<T>) PopBack() -> Option<T> {
         }
     }
     for {
-        if rev2.Len() == 0 {
+        if rev2.len() == 0 {
             break
         }
-        match rev2.Pop() {
+        match rev2.pop() {
             Some(v) => {
-                d.back.Push(v)
+                d.back.push(v)
             }
             None => {
                 break
             }
         }
     }
-    return d.back.Pop()
+    return d.back.pop()
 }
 
 // PeekFront returns a copy of the front value without removing it.
-def (d: Deque<T>) PeekFront() -> Option<T> {
-    if d.front.Len() > 0 {
-        return Some(d.front.Get(d.front.Len() - 1usize))
+def (d: Deque<T>) peek_front() -> Option<T> {
+    if d.front.len() > 0 {
+        return Some(d.front.get(d.front.len() - 1usize))
     }
-    if d.back.Len() == 0 {
+    if d.back.len() == 0 {
         return None
     }
-    return Some(d.back.Get(0usize))
+    return Some(d.back.get(0usize))
 }
 
 // PeekBack returns a copy of the back value without removing it.
-def (d: Deque<T>) PeekBack() -> Option<T> {
-    if d.back.Len() > 0 {
-        return Some(d.back.Get(d.back.Len() - 1usize))
+def (d: Deque<T>) peek_back() -> Option<T> {
+    if d.back.len() > 0 {
+        return Some(d.back.get(d.back.len() - 1usize))
     }
-    if d.front.Len() == 0 {
+    if d.front.len() == 0 {
         return None
     }
-    return Some(d.front.Get(0usize))
+    return Some(d.front.get(0usize))
 }
 
 // Len reports the number of stored values.
-def (d: Deque<T>) Len() -> usize {
-    return d.front.Len() + d.back.Len()
+def (d: Deque<T>) len() -> usize {
+    return d.front.len() + d.back.len()
 }
 
 // Clear releases every value.
-def (mut d: Deque<T>) Clear() {
-    d.front.Clear()
-    d.back.Clear()
+def (mut d: Deque<T>) clear() {
+    d.front.clear()
+    d.back.clear()
 }
 
 // Clone copies both stacks. Array.Clone gives each stored value its own
 // reference according to the container rule.
-def (d: Deque<T>) Clone() -> Deque<T> {
+def (d: Deque<T>) clone() -> Deque<T> {
     var out: Deque<T>
-    out.front = d.front.Clone()
-    out.back = d.back.Clone()
+    out.front = d.front.clone()
+    out.back = d.back.clone()
     return out
 }

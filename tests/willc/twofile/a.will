@@ -2,6 +2,6 @@ struct Box {
     v: i64
 }
 
-def Value(b: Box) -> i64 {
+def value(b: Box) -> i64 {
     return b.v
 }

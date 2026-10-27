@@ -20,7 +20,7 @@ func TestWriteMatchesTheFixedGrammar(t *testing.T) {
 		"obligation pos=\"src/a.will:7:9\" check=\"index\" verdict=\"proved\" by=\"range\"\n"
 	got := string(Write(records))
 	if got != want {
-		t.Fatalf("Write =\n%q\nwant\n%q", got, want)
+		t.Fatalf("write =\n%q\nwant\n%q", got, want)
 	}
 	if !strings.HasSuffix(got, "\n") || strings.Contains(got, "\n\n") {
 		t.Fatalf("the record must end with one newline and hold no blank line: %q", got)
@@ -29,6 +29,6 @@ func TestWriteMatchesTheFixedGrammar(t *testing.T) {
 
 func TestWriteEmpty(t *testing.T) {
 	if got := Write(nil); len(got) != 0 {
-		t.Fatalf("Write(nil) = %q, want empty", got)
+		t.Fatalf("write(nil) = %q, want empty", got)
 	}
 }

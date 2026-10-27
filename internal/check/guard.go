@@ -130,7 +130,7 @@ func (g *guardWalker) expr(e ast.Expr) {
 		if name, ok := x.Callee.(*ast.NameExpr); ok && name.Name == "wait" {
 			g.suspend(x.Pos())
 		}
-		if field, ok := x.Callee.(*ast.FieldExpr); ok && field.Name == "Sleep" {
+		if field, ok := x.Callee.(*ast.FieldExpr); ok && field.Name == "sleep" {
 			g.suspend(x.Pos())
 		}
 		g.expr(x.Callee)
@@ -138,8 +138,8 @@ func (g *guardWalker) expr(e ast.Expr) {
 			g.expr(arg.Expr)
 		}
 	case *ast.MethodCallExpr:
-		if marks.IsSuspendMethod(x.Name) || x.Name == "Lock" ||
-			x.Name == "RLock" || x.Name == "WLock" {
+		if marks.IsSuspendMethod(x.Name) || x.Name == "lock" ||
+			x.Name == "r_lock" || x.Name == "w_lock" {
 			g.suspend(x.Pos())
 		}
 		g.expr(x.Recv)

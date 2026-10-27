@@ -1,6 +1,6 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
-define hidden i32 @"example.com/iterate.Sum"(ptr %xs) inlinehint {
+define hidden i32 @"example.com/iterate.sum"(ptr %xs) inlinehint {
 entry:
   %v.total = alloca i32
   %v.i = alloca i64
@@ -40,7 +40,7 @@ for.end.1:
   %t13 = load i32, ptr %v.total
   ret i32 %t13
 }
-define hidden i64 @"example.com/iterate.Wide"(ptr %xs) inlinehint {
+define hidden i64 @"example.com/iterate.wide"(ptr %xs) inlinehint {
 entry:
   %v.total = alloca i64
   %v.$idx = alloca i64
@@ -89,8 +89,8 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [14 x i8] c"main.will:4:9\00", align 1
-@.str.2 = private unnamed_addr constant [24 x i8] c"example.com/iterate.Sum\00", align 1
+@.str.2 = private unnamed_addr constant [24 x i8] c"example.com/iterate.sum\00", align 1
 @.str.3 = private unnamed_addr constant [15 x i8] c"main.will:15:9\00", align 1
-@.str.4 = private unnamed_addr constant [25 x i8] c"example.com/iterate.Wide\00", align 1
+@.str.4 = private unnamed_addr constant [25 x i8] c"example.com/iterate.wide\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

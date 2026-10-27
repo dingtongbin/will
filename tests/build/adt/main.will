@@ -1,30 +1,30 @@
-def Find(x: i32) -> Option<i32> {
+def find(x: i32) -> Option<i32> {
     if x > 0 {
         return Some(x)
     }
     return None
 }
 
-def UseOpt(x: i32) -> i32 {
-    return match Find(x) {
+def use_opt(x: i32) -> i32 {
+    return match find(x) {
         Some(v) => v
         None => 0
     }
 }
 
-def Divide(x: i32) -> Result<i32, i32> {
+def divide(x: i32) -> Result<i32, i32> {
     if x == 0 {
         return Err(1)
     }
     return Ok(x / 2)
 }
 
-def UseRes(x: i32) -> Result<i32, i32> {
-    var v: i32 = Divide(x)?
+def use_res(x: i32) -> Result<i32, i32> {
+    var v: i32 = divide(x)?
     return Ok(v + 1)
 }
 
-def Pick(r: Result<i32, i32>) -> i32 {
+def pick(r: Result<i32, i32>) -> i32 {
     return match r {
         Ok(v) => v
         Err(e) => e
@@ -32,5 +32,5 @@ def Pick(r: Result<i32, i32>) -> i32 {
 }
 
 def main() -> i32 {
-    return UseOpt(3) + Pick(UseRes(4))
+    return use_opt(3) + pick(use_res(4))
 }

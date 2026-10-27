@@ -12,18 +12,18 @@ import (
 // error, so an undersized slot lets the store run past it and corrupt whatever
 // sits next to the slot.
 func TestJoinErrorSlotHoldsTheStatus(t *testing.T) {
-	src := `def Work() -> i64 {
+	src := `def work() -> i64 {
     return 1234567890123i64
 }
 
-def Run(task: Task<i64>) -> i64 {
-    return task.Join()!
+def run(task: Task<i64>) -> i64 {
+    return task.join()!
 }
 
 def main() -> i32 {
     region {
-        var t: Task<i64> = spawn Work()
-        var v: i64 = t.Join()!
+        var t: Task<i64> = spawn work()
+        var v: i64 = t.join()!
         print("v=", v, "\n")
     }
     return 0
@@ -52,12 +52,12 @@ def main() -> i32 {
 // TestJoinResultCarriesTaskError checks that Join in value position builds a
 // Result with the task error table, not just the unwrap panic path.
 func TestJoinResultCarriesTaskError(t *testing.T) {
-	src := `def Work() -> i32 {
+	src := `def work() -> i32 {
     return 7
 }
 
-def Run(task: Task<i32>) -> Result<i32, TaskError> {
-    var value: i32 = task.Join()?
+def run(task: Task<i32>) -> Result<i32, TaskError> {
+    var value: i32 = task.join()?
     return Ok(value)
 }
 `

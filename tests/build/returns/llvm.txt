@@ -1,7 +1,7 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/returns.Pair" = type { i32, i32 }
-define hidden %"struct.example.com/returns.Pair" @"example.com/returns.Make"(i32 %n) alwaysinline {
+define hidden %"struct.example.com/returns.Pair" @"example.com/returns.make"(i32 %n) alwaysinline {
 entry:
   %v.agg.13 = alloca %"struct.example.com/returns.Pair"
   %t1 = getelementptr inbounds %"struct.example.com/returns.Pair", ptr %v.agg.13, i32 0, i32 0
@@ -19,10 +19,10 @@ panic.ok.1:
   %t6 = load %"struct.example.com/returns.Pair", ptr %v.agg.13
   ret %"struct.example.com/returns.Pair" %t6
 }
-define hidden i32 @"example.com/returns.First"() inlinehint {
+define hidden i32 @"example.com/returns.first"() inlinehint {
 entry:
   %v.ret.23 = alloca %"struct.example.com/returns.Pair"
-  %t7 = call %"struct.example.com/returns.Pair" @"example.com/returns.Make"(i32 7)
+  %t7 = call %"struct.example.com/returns.Pair" @"example.com/returns.make"(i32 7)
   store %"struct.example.com/returns.Pair" %t7, ptr %v.ret.23
   %t8 = getelementptr inbounds %"struct.example.com/returns.Pair", ptr %v.ret.23, i32 0, i32 0
   %t9 = load i32, ptr %t8
@@ -32,11 +32,11 @@ define i32 @"example.com/returns.will$main"() {
 entry:
   %v.p = alloca %"struct.example.com/returns.Pair"
   %v.ret.30 = alloca %"struct.example.com/returns.Pair"
-  %t10 = call %"struct.example.com/returns.Pair" @"example.com/returns.Make"(i32 3)
+  %t10 = call %"struct.example.com/returns.Pair" @"example.com/returns.make"(i32 3)
   store %"struct.example.com/returns.Pair" %t10, ptr %v.ret.30
   %t11 = load %"struct.example.com/returns.Pair", ptr %v.ret.30
   store %"struct.example.com/returns.Pair" %t11, ptr %v.p
-  %t12 = call i32 @"example.com/returns.First"()
+  %t12 = call i32 @"example.com/returns.first"()
   %t13 = getelementptr inbounds %"struct.example.com/returns.Pair", ptr %v.p, i32 0, i32 1
   %t14 = load i32, ptr %t13
   %t15 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t12, i32 %t14)
@@ -60,7 +60,7 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:7:28\00", align 1
-@.str.2 = private unnamed_addr constant [25 x i8] c"example.com/returns.Make\00", align 1
+@.str.2 = private unnamed_addr constant [25 x i8] c"example.com/returns.make\00", align 1
 @.str.3 = private unnamed_addr constant [16 x i8] c"main.will:16:12\00", align 1
 @.str.4 = private unnamed_addr constant [30 x i8] c"example.com/returns.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)

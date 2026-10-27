@@ -13,7 +13,7 @@ const repetitions: i32 = 5
 
 // Max returns the larger of two values. The compiler instantiates it once
 // per type, so the call costs the same as a hand written function.
-def Max<T: Ord>(a: T, b: T) -> T {
+def max<T: Ord>(a: T, b: T) -> T {
     if a > b {
         return a
     }
@@ -25,17 +25,17 @@ def Max<T: Ord>(a: T, b: T) -> T {
 // The seed takes part in the work, so two calls with different seeds give
 // different results. Without it the compiler may run the loop once and
 // reuse the result, and the measurement would time nothing.
-def Work(n: i32, seed: i32) -> i64 {
+def work(n: i32, seed: i32) -> i64 {
     var acc: i64 = 0i64
     for i in Range(0, n) {
-        acc += Max<i64>(i64(i) ^ i64(seed), i64(i) + 1i64)
+        acc += max<i64>(i64(i) ^ i64(seed), i64(i) + 1i64)
     }
     return acc
 }
 
 // Baseline runs an empty loop, so the cost of the loop and of the counter is
 // measured apart from the calls.
-def Baseline(n: i32) -> i64 {
+def baseline(n: i32) -> i64 {
     var acc: i64 = 0i64
     for i in Range(0, n) {
         acc ^= i64(i)
@@ -46,12 +46,12 @@ def Baseline(n: i32) -> i64 {
 def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     // The warm up pays for the first touch of the pages and of the caches.
-    var warm: i64 = Work(1000, 0)
+    var warm: i64 = work(1000, 0)
     _ = warm
 
     var base: u64 = 0
     var baseStart: u64 = c.bench_now_ns()
-    var baseAcc: i64 = Baseline(workload)
+    var baseAcc: i64 = baseline(workload)
     var baseStop: u64 = c.bench_now_ns()
     base = baseStop - baseStart
     _ = baseAcc
@@ -61,18 +61,18 @@ def main() -> i32 {
         _ = r
         var acc: i64 = 0i64
         var start: u64 = c.bench_now_ns()
-        acc = Work(workload, r)
+        acc = work(workload, r)
         var stop: u64 = c.bench_now_ns()
-        samples.Push(stop - start)
+        samples.push(stop - start)
         checksum += acc
         c.bench_sink(u64(checksum))
     }
 
-    bench.SortSamples(samples)
-    var p50: u64 = bench.Percentile(samples, 50i64, 100i64)
-    var p95: u64 = bench.Percentile(samples, 95i64, 100i64)
-    var p99: u64 = bench.Percentile(samples, 99i64, 100i64)
-    var worst: u64 = bench.Max(samples)
+    bench.sort_samples(samples)
+    var p50: u64 = bench.percentile(samples, 50i64, 100i64)
+    var p95: u64 = bench.percentile(samples, 95i64, 100i64)
+    var p99: u64 = bench.percentile(samples, 99i64, 100i64)
+    var worst: u64 = bench.max(samples)
 
     print("bench metric baseline ", base, " ns\n")
     print("bench metric p50 ", p50, " ns\n")

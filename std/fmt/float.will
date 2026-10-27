@@ -9,7 +9,7 @@ import c "format.c" {
 // the result fills the gap with pad bytes between the sign and the digits; a
 // width at or below the result adds nothing. A negative precision is a
 // programming error and panics.
-def Float(v: f64, prec: i32, width: i32, pad: u8) -> Format {
+def format_float(v: f64, prec: i32, width: i32, pad: u8) -> Format {
     if prec < 0 {
         panic("fmt: precision must not be negative")
     }

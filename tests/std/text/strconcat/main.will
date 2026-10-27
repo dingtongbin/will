@@ -5,28 +5,28 @@ import "std/str"
 // literals because the import shadows the predeclared str type, so a str
 // variable cannot be named here.
 def main() -> i32 {
-    if str.Concat() != "" {
+    if str.concat() != "" {
         return 1
     }
-    if str.Concat("abc") != "abc" {
+    if str.concat("abc") != "abc" {
         return 2
     }
-    if str.Concat("a", "b", "c") != "abc" {
+    if str.concat("a", "b", "c") != "abc" {
         return 3
     }
-    if str.Concat("", "x", "") != "x" {
+    if str.concat("", "x", "") != "x" {
         return 4
     }
-    if str.Concat("a", "b", "c", "d", "e", "f") != "abcdef" {
+    if str.concat("a", "b", "c", "d", "e", "f") != "abcdef" {
         return 5
     }
-    if str.Concat("\xe4\xbd\xa0\xe5\xa5\xbd", "\xe4\xbd\xa0\xe5\xa5\xbd") != "\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xbd\xa0\xe5\xa5\xbd" {
+    if str.concat("\xe4\xbd\xa0\xe5\xa5\xbd", "\xe4\xbd\xa0\xe5\xa5\xbd") != "\xe4\xbd\xa0\xe5\xa5\xbd\xe4\xbd\xa0\xe5\xa5\xbd" {
         return 6
     }
-    if str.Concat("\xe4\xbd\xa0\xe5\xa5\xbd", "!") != "\xe4\xbd\xa0\xe5\xa5\xbd!" {
+    if str.concat("\xe4\xbd\xa0\xe5\xa5\xbd", "!") != "\xe4\xbd\xa0\xe5\xa5\xbd!" {
         return 7
     }
-    if str.Concat("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef") != "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" {
+    if str.concat("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef") != "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" {
         return 8
     }
     return 0

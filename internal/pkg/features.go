@@ -250,7 +250,7 @@ func (p *pruner) featureValue(e ast.Expr) (value, ok bool) {
 // isFeatureCall reports whether e is meta.Feature(...) in a file that imports
 // std/meta.
 func (p *pruner) isFeatureCall(x *ast.MethodCallExpr) bool {
-	if !p.meta || x.Name != "Feature" {
+	if !p.meta || x.Name != "feature" {
 		return false
 	}
 	recv, ok := x.Recv.(*ast.NameExpr)
@@ -264,8 +264,8 @@ func (p *pruner) outsideIf(pos source.Pos) {
 		End:      pos,
 		Severity: diag.Error,
 		Code:     diag.CodeFeatureOutsideIf,
-		Message:  "meta.Feature is only allowed in an if condition",
-		Help:     `write if meta.Feature("x") { ... }`,
+		Message:  "meta.feature is only allowed in an if condition",
+		Help:     `write if meta.feature("x") { ... }`,
 	})
 }
 

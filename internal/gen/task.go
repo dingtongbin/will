@@ -1108,7 +1108,7 @@ func (g *generator) joinUnwrap(r willc.Record) (string, string, string, error) {
 	}
 	elem, ok := taskElemText(taskText)
 	if !ok {
-		return "", "", "", g.errf(r.ID, "cannot translate node #%d: Join needs a Task", r.ID)
+		return "", "", "", g.errf(r.ID, "cannot translate node #%d: join needs a Task", r.ID)
 	}
 	if elem == "" || elem == "()" {
 		task, err := g.value(taskID)
@@ -1423,7 +1423,7 @@ func (g *generator) lowerJoinResult(r willc.Record) (string, error) {
 	}
 	elem, ok := taskElemText(taskText)
 	if !ok {
-		return "", g.errf(r.ID, "cannot translate node #%d: Join needs a Task", r.ID)
+		return "", g.errf(r.ID, "cannot translate node #%d: join needs a Task", r.ID)
 	}
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok {
@@ -1561,7 +1561,7 @@ func (g *generator) lowerRecv(r willc.Record, try bool) (string, string, error) 
 	}
 	elem, ok := chanElemText(chanText)
 	if !ok {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Recv needs a channel", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: recv needs a channel", r.ID)
 	}
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok || elemLLVM == "" {

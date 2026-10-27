@@ -1,6 +1,6 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
-define hidden i32 @"example.com/array.Sum"() inlinehint {
+define hidden i32 @"example.com/array.sum"() inlinehint {
 entry:
   %v.a = alloca { ptr, i64, i64 }
   %v.s = alloca i32
@@ -261,7 +261,7 @@ deep.rel.arr.done.11:
 }
 define i32 @"example.com/array.will$main"() {
 entry:
-  %t124 = call i32 @"example.com/array.Sum"()
+  %t124 = call i32 @"example.com/array.sum"()
   ret i32 %t124
 }
 declare void @willrt_init()
@@ -275,7 +275,7 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [20 x i8] c"index out of bounds\00", align 1
 @.str.1 = private unnamed_addr constant [14 x i8] c"main.will:6:5\00", align 1
-@.str.2 = private unnamed_addr constant [22 x i8] c"example.com/array.Sum\00", align 1
+@.str.2 = private unnamed_addr constant [22 x i8] c"example.com/array.sum\00", align 1
 @.str.3 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.4 = private unnamed_addr constant [14 x i8] c"main.will:9:9\00", align 1
 @.str.5 = private unnamed_addr constant [16 x i8] c"main.will:11:16\00", align 1

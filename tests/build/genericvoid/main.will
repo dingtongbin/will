@@ -6,12 +6,12 @@ def (mut b: Box<T>) init() {
     b.tag = 0
 }
 
-def (mut b: Box<T>) Bump() {
+def (mut b: Box<T>) bump() {
     b.tag += 1
 }
 
 def main() -> i32 {
     var a: Box<i64> = new Box<i64>()
-    a.Bump()
+    a.bump()
     return a.tag
 }

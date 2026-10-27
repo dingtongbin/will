@@ -16,11 +16,11 @@ def (mut self: Cancel) init() {
 }
 
 // Cancel marks the credential and every holder that observes it.
-def (mut self: Cancel) Cancel() {
+def (mut self: Cancel) cancel() {
     c.willrt_cancel_trigger(self.flag)
 }
 
 // Canceled reports whether Cancel has run.
-def (self: Cancel) Canceled() -> bool {
+def (self: Cancel) canceled() -> bool {
     return c.willrt_cancel_canceled(self.flag) != 0
 }

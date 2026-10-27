@@ -21,15 +21,15 @@ func TestCanonicalSpacing(t *testing.T) {
 		src  string
 		want string
 	}{
-		{"arithmetic", "def F() {\n    var x: i32 = 1+2*3\n}\n", "def F() {\n    var x: i32 = 1 + 2 * 3\n}\n"},
-		{"call and comma", "def F() {\n    G ( 1 ,2 )\n}\n", "def F() {\n    G(1, 2)\n}\n"},
-		{"colon and assign", "def F() {\n    var x : i32=1\n}\n", "def F() {\n    var x: i32 = 1\n}\n"},
-		{"brace joins header", "def F()\n{\n    G()\n}\n", "def F() {\n    G()\n}\n"},
-		{"type arguments keep adjacency", "def F(x: Array<i64>) {\n}\n", "def F(x: Array<i64>) {}\n"},
-		{"empty block is one line", "def F() {\n\n}\n", "def F() {}\n"},
-		{"nested empty block", "def F() {\n    if x {\n    }\n}\n", "def F() {\n    if x {}\n}\n"},
-		{"slice index keeps call spacing", "def F() {\n    var s: []i32 = xs[Range(1, 3)]\n}\n", "def F() {\n    var s: []i32 = xs[Range(1, 3)]\n}\n"},
-		{"unary has no space", "def F() {\n    var x: i32 = - a * b\n}\n", "def F() {\n    var x: i32 = -a * b\n}\n"},
+		{"arithmetic", "def f() {\n    var x: i32 = 1+2*3\n}\n", "def f() {\n    var x: i32 = 1 + 2 * 3\n}\n"},
+		{"call and comma", "def f() {\n    g ( 1 ,2 )\n}\n", "def f() {\n    g(1, 2)\n}\n"},
+		{"colon and assign", "def f() {\n    var x : i32=1\n}\n", "def f() {\n    var x: i32 = 1\n}\n"},
+		{"brace joins header", "def f()\n{\n    g()\n}\n", "def f() {\n    g()\n}\n"},
+		{"type arguments keep adjacency", "def f(x: Array<i64>) {\n}\n", "def f(x: Array<i64>) {}\n"},
+		{"empty block is one line", "def f() {\n\n}\n", "def f() {}\n"},
+		{"nested empty block", "def f() {\n    if x {\n    }\n}\n", "def f() {\n    if x {}\n}\n"},
+		{"slice index keeps call spacing", "def f() {\n    var s: []i32 = xs[Range(1, 3)]\n}\n", "def f() {\n    var s: []i32 = xs[Range(1, 3)]\n}\n"},
+		{"unary has no space", "def f() {\n    var x: i32 = - a * b\n}\n", "def f() {\n    var x: i32 = -a * b\n}\n"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -41,15 +41,15 @@ func TestCanonicalSpacing(t *testing.T) {
 }
 
 func TestIndentAndBlankLines(t *testing.T) {
-	src := "\n\ndef F() {\n\n\n\n    if x {\n            G()\n    }\n}\n\n\n"
-	want := "def F() {\n\n    if x {\n        G()\n    }\n}\n"
+	src := "\n\ndef f() {\n\n\n\n    if x {\n            g()\n    }\n}\n\n\n"
+	want := "def f() {\n\n    if x {\n        g()\n    }\n}\n"
 	if got := format(t, src); got != want {
 		t.Fatalf("format = %q, want %q", got, want)
 	}
 }
 
 func TestFormatIsIdempotent(t *testing.T) {
-	src := "\ndef F( ) {\n  var x : i32=1+2\n\n\n  if x>0 {\n      G( 1 , 2 )\n  }\n\treturn\n}\n"
+	src := "\ndef f( ) {\n  var x : i32=1+2\n\n\n  if x>0 {\n      g( 1 , 2 )\n  }\n\treturn\n}\n"
 	once := format(t, src)
 	twice := string(Source([]byte(once)))
 	if once != twice {
@@ -58,7 +58,7 @@ func TestFormatIsIdempotent(t *testing.T) {
 }
 
 func TestFormatKeepsComments(t *testing.T) {
-	src := "// header\ndef F() {\n    // step\n    G() /* tail */\n}\n"
+	src := "// header\ndef f() {\n    // step\n    g() /* tail */\n}\n"
 	got := format(t, src)
 	for _, want := range []string{"// header", "// step", "/* tail */"} {
 		if !bytes.Contains([]byte(got), []byte(want)) {
@@ -68,7 +68,7 @@ func TestFormatKeepsComments(t *testing.T) {
 }
 
 func TestFormatKeepsWillc(t *testing.T) {
-	src := `def Add(a: i32, b: i32) -> i32 {
+	src := `def add(a: i32, b: i32) -> i32 {
     var total: i32 = a+b
     if total > 0 {
         return total*2

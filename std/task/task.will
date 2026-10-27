@@ -3,26 +3,26 @@
 
 // ParallelFor calls f once for every index below n. The caller chooses the
 // chunking by choosing n; this function never adapts it.
-def ParallelFor(n: usize, f: func(usize)) {
+def parallel_for(n: usize, f: func(usize)) {
     if n == 0usize {
         return
     }
     parallel {
         var tasks: Array<Task<()>> = new Array<Task<()>>(n)
         for i in Range(0, i32(n)) {
-            tasks.Push(spawn f(usize(i)))
+            tasks.push(spawn f(usize(i)))
         }
         for i in Range(0, i32(n)) {
-            var task: Task<()> = tasks.Get(usize(i))
-            _ = task.Join()!
+            var task: Task<()> = tasks.get(usize(i))
+            _ = task.join()!
         }
     }
 }
 
 // ParallelMap returns f applied to every element in input order. The output
 // array has the same length as xs.
-def ParallelMap<T, U>(xs: []T, f: func(T) -> U) -> Array<U> {
-    var n: usize = xs.Len()
+def parallel_map<T, U>(xs: []T, f: func(T) -> U) -> Array<U> {
+    var n: usize = xs.len()
     var out: Array<U> = new Array<U>(n)
     if n == 0usize {
         return out
@@ -30,11 +30,11 @@ def ParallelMap<T, U>(xs: []T, f: func(T) -> U) -> Array<U> {
     parallel {
         var tasks: Array<Task<U>> = new Array<Task<U>>(n)
         for i in Range(0, i32(n)) {
-            tasks.Push(spawn f(xs.Get(usize(i))))
+            tasks.push(spawn f(xs.get(usize(i))))
         }
         for i in Range(0, i32(n)) {
-            var task: Task<U> = tasks.Get(usize(i))
-            out.Push(task.Join()!)
+            var task: Task<U> = tasks.get(usize(i))
+            out.push(task.join()!)
         }
     }
     return out

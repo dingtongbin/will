@@ -1,5 +1,5 @@
 import "example.com/crosspkg/lib"
 
-def Use() -> i64 {
-    return lib.Util()
+def use() -> i64 {
+    return lib.util()
 }

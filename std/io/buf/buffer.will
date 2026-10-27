@@ -11,16 +11,16 @@ def (mut b: Buffer) init() {
 }
 
 // Bytes returns a read-only view of the buffer contents.
-def (b: Buffer) Bytes() -> []u8 {
-    return b.data[Range(0, b.data.Len())]
+def (b: Buffer) bytes() -> []u8 {
+    return b.data[Range(0, b.data.len())]
 }
 
 // Len returns the number of live bytes.
-def (b: Buffer) Len() -> usize {
-    return b.data.Len()
+def (b: Buffer) len() -> usize {
+    return b.data.len()
 }
 
 // Clear drops every live byte without releasing the backing storage.
-def (mut b: Buffer) Clear() {
-    b.data.Clear()
+def (mut b: Buffer) clear() {
+    b.data.clear()
 }

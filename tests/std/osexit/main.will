@@ -1,6 +1,6 @@
 import "std/os"
 
 def main() -> i32 {
-    os.Exit(7)
+    os.exit(7)
     return 0
 }

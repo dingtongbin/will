@@ -7,22 +7,22 @@ struct Holder {
     back: weak<Counter>
 }
 
-def (mut c: Counter) Add(d: i32) {
+def (mut c: Counter) add(d: i32) {
     c.n += d
 }
 
-def Identity(c: rc<Counter>) -> rc<Counter> {
+def identity(c: rc<Counter>) -> rc<Counter> {
     return c
 }
 
 def main() -> i32 {
     var c: rc<Counter> = new rc<Counter>(Counter { n: 1 })
-    c.Add(4)
+    c.add(4)
     c.n += 1
     var d: rc<Counter> = c
-    var w: weak<Counter> = c.Weak()
-    var u: Option<rc<Counter>> = w.Upgrade()
-    var e: rc<Counter> = Identity(d)
+    var w: weak<Counter> = c.weak()
+    var u: Option<rc<Counter>> = w.upgrade()
+    var e: rc<Counter> = identity(d)
     var h: Holder = Holder { c: e, back: w }
     var v: i32 = 0
     match u {

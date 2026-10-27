@@ -1,6 +1,6 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
-define hidden i32 @"example.com/loops.Sum"(i32 %n) inlinehint {
+define hidden i32 @"example.com/loops.sum"(i32 %n) inlinehint {
 entry:
   %v.total = alloca i32
   %v.i = alloca i32
@@ -35,7 +35,7 @@ for.end.1:
 }
 define i32 @"example.com/loops.will$main"() {
 entry:
-  %t11 = call i32 @"example.com/loops.Sum"(i32 4)
+  %t11 = call i32 @"example.com/loops.sum"(i32 4)
   ret i32 %t11
 }
 declare void @willrt_init()
@@ -49,6 +49,6 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [14 x i8] c"main.will:4:9\00", align 1
-@.str.2 = private unnamed_addr constant [22 x i8] c"example.com/loops.Sum\00", align 1
+@.str.2 = private unnamed_addr constant [22 x i8] c"example.com/loops.sum\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

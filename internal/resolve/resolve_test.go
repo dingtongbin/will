@@ -54,26 +54,26 @@ struct Point {
     x: i32
 }
 
-def (mut p: Point) Move(dx: i32) {
+def (mut p: Point) move(dx: i32) {
     p.x += dx
 }
 
-def Run(n: i32) -> i32 {
+def run(n: i32) -> i32 {
     var xs: Array<i32> = new Array<i32>(0)
     var total: i32 = 0
     for i, x in xs {
         total += i + x
     }
     var q: Point = Point { x: 1 }
-    q.Move(n)
+    q.move(n)
     if n > 0 {
         total += Limit
     }
-    return http.Status(n) + total
+    return http.status(n) + total
 }
 `
 	res, ds := mustResolveWith(t, src, map[string][]string{
-		"std/net/http": {"Status"},
+		"std/net/http": {"status"},
 		"std/bytes":    {},
 	})
 	if len(ds) != 0 {
@@ -83,7 +83,7 @@ def Run(n: i32) -> i32 {
 	for _, s := range res.Symbols {
 		names[s.Name] = s.Kind
 	}
-	if names["Run"] != FuncKind || names["Move"] != MethodKind || names["Point"] != StructKind {
+	if names["run"] != FuncKind || names["move"] != MethodKind || names["Point"] != StructKind {
 		t.Fatalf("symbols = %v", names)
 	}
 	if names["http"] != ImportKind || names["Limit"] != ConstKind {
@@ -92,7 +92,7 @@ def Run(n: i32) -> i32 {
 }
 
 func TestReferencesAreRecorded(t *testing.T) {
-	src := `def F(n: i32) {
+	src := `def f(n: i32) {
     var x: i32 = n
     _ = x
 }
@@ -122,7 +122,7 @@ func TestReferencesAreRecorded(t *testing.T) {
 
 func TestUnexportedTopLevelVarIsNotReportedAsUnused(t *testing.T) {
 	src := `var counter: i32 = 0
-def F() {}
+def f() {}
 `
 	_, ds := mustResolve(t, src)
 	if len(ds) != 0 {
@@ -132,7 +132,7 @@ def F() {}
 
 func TestQualifiedTypeAndAggregate(t *testing.T) {
 	src := `import "std/net/http"
-def F() -> http.Ctx {
+def f() -> http.Ctx {
     var c: http.Ctx = http.Ctx { host: "x" }
     return c
 }

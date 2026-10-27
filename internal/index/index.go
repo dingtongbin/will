@@ -37,8 +37,8 @@ func (x *builder) run() {
 
 	methods := map[string]map[string]string{}
 	sigs := map[string]map[string]string{
-		"Show":  {"Show": "func()->str"},
-		"Error": {"Message": "func()->str", "Status": "func()->i32"},
+		"Show":  {"show": "func()->str"},
+		"Error": {"message": "func()->str", "status": "func()->i32"},
 	}
 	ifaces := []string{"Show", "Error"}
 	derived := map[string]bool{}

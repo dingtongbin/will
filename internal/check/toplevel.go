@@ -335,7 +335,7 @@ func (w *topWriteWalker) mutatingMethod(recv *ast.Type, name string) bool {
 		return true
 	}
 	switch name {
-	case "Push", "Append", "Set", "Insert", "Remove", "Pop", "Clear", "Reserve", "Resize", "ShrinkToFit", "Add", "Delete":
+	case "push", "append", "set", "insert", "remove", "pop", "clear", "reserve", "resize", "shrink_to_fit", "add", "delete":
 		return true
 	}
 	return false

@@ -2,24 +2,24 @@
 // removes it.
 def main() -> i32 {
     var s: Set<i32> = new Set<i32>(0usize)
-    if !s.Add(3) || !s.Add(1) || s.Add(3) {
+    if !s.add(3) || !s.add(1) || s.add(3) {
         return 1
     }
-    if s.Len() != 2usize {
+    if s.len() != 2usize {
         return 2
     }
-    if !s.Has(1) || s.Has(2) {
+    if !s.has(1) || s.has(2) {
         return 3
     }
-    if !s.Delete(3) || s.Len() != 1usize {
+    if !s.delete(3) || s.len() != 1usize {
         return 4
     }
-    if s.Delete(3) {
+    if s.delete(3) {
         return 5
     }
-    s.Add(7)
-    s.Clear()
-    if s.Len() != 0usize || s.Has(7) {
+    s.add(7)
+    s.clear()
+    if s.len() != 0usize || s.has(7) {
         return 6
     }
     return 0

@@ -26,17 +26,17 @@ func (g *generator) strCallResult(r willc.Record) (llvm, text string, known bool
 		return "", "", false
 	}
 	switch fieldText(r, "text") {
-	case "Len":
+	case "len":
 		return "i64", "usize", true
-	case "Contains", "HasPrefix", "HasSuffix":
+	case "contains", "has_prefix", "has_suffix":
 		return "i1", "bool", true
-	case "Index":
+	case "index":
 		if info, ok := g.adtType("Option<usize>"); ok {
 			return info.llvm, "Option<usize>", true
 		}
-	case "Trim", "TrimLeft", "TrimRight", "Repeat", "Replace", "Clone":
+	case "trim", "trim_left", "trim_right", "repeat", "replace", "clone":
 		return "{ ptr, i64 }", "str", true
-	case "Split", "SplitN", "Fields":
+	case "split", "split_n", "fields":
 		return "{ ptr, i64 }", "[]str", true
 	case "Chars":
 		return "{ ptr, i64, i64 }", "Array<u32>", true
@@ -53,7 +53,7 @@ func (g *generator) strMethod(r willc.Record) (string, string, error) {
 	if baseType != "{ ptr, i64 }" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the receiver is not a str", r.ID)
 	}
-	if fieldText(r, "text") == "Len" {
+	if fieldText(r, "text") == "len" {
 		lenField := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n", lenField, base)
 		return g.load("i64", lenField), "usize", nil

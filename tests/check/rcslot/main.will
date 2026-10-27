@@ -6,15 +6,15 @@ struct Box {
     f: rc<C>
 }
 
-def Use(b: rc<Box>) -> i32 {
+def use(b: rc<Box>) -> i32 {
     return 0
 }
 
-def Main() -> i32 {
+def main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {
-        var task: Task<i32> = spawn Use(box)
+        var task: Task<i32> = spawn use(box)
         box.f = c
         _ = task
     }

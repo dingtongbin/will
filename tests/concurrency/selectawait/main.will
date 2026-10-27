@@ -1,9 +1,9 @@
 import "std/time"
 
-async def Pick(ch: chan<i32>) -> i32 {
+async def pick(ch: chan<i32>) -> i32 {
     var result: i32 = 0
     select {
-        item = ch.Recv() => {
+        item = ch.recv() => {
             match item {
                 Some(v) => {
                     result = v
@@ -12,7 +12,7 @@ async def Pick(ch: chan<i32>) -> i32 {
                     result = -1
                 }
             }
-            _ = await time.Sleep(1ms)!
+            _ = await time.sleep(1ms)!
         }
         default => {
             result = 9
@@ -23,12 +23,12 @@ async def Pick(ch: chan<i32>) -> i32 {
 
 async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
-    _ = await ch.Send(7)
-    var ready: i32 = await Pick(ch)
+    _ = await ch.send(7)
+    var ready: i32 = await pick(ch)
     if ready != 7 {
         return 1
     }
-    var empty: i32 = await Pick(ch)
+    var empty: i32 = await pick(ch)
     if empty != 9 {
         return 2
     }

@@ -19,7 +19,7 @@ func topWrites(t *testing.T, src string) []diag.Diagnostic {
 func TestTopLevelWriteRejectsAssignment(t *testing.T) {
 	src := `var counter: i32 = 0
 
-def F() {
+def f() {
     counter = 1
 }
 `
@@ -37,8 +37,8 @@ def F() {
 func TestTopLevelWriteRejectsContainerMutation(t *testing.T) {
 	src := `var xs: Array<i32> = new Array<i32>(0)
 
-def F() {
-    xs.Push(1)
+def f() {
+    xs.push(1)
 }
 `
 	ds := topWrites(t, src)
@@ -54,7 +54,7 @@ func TestTopLevelWriteRejectsFieldWrite(t *testing.T) {
 
 var g: G = G { n: 0 }
 
-def F() {
+def f() {
     g.n = 1
 }
 `
@@ -67,12 +67,12 @@ def F() {
 func TestTopLevelWriteRejectsMutArgument(t *testing.T) {
 	src := `var counter: i32 = 0
 
-def Set(mut x: i32) {
+def set(mut x: i32) {
     x = 1
 }
 
-def F() {
-    Set(counter)
+def f() {
+    set(counter)
 }
 `
 	ds := topWrites(t, src)
@@ -89,14 +89,14 @@ func TestTopLevelWriteAllowsShadowAndHandleMethod(t *testing.T) {
 var counter: i32 = 0
 var c: rc<C> = new rc<C>(C { n: 0 })
 
-def (mut x: C) Bump() {
+def (mut x: C) bump() {
     x.n += 1
 }
 
-def F() {
+def f() {
     var counter: i32 = 1
     counter = 2
-    c.Bump()
+    c.bump()
 }
 `
 	ds := topWrites(t, src)

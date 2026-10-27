@@ -6,11 +6,11 @@ struct NullWriter {
     n: usize
 }
 
-def (w: NullWriter) Write(buf: []u8) -> Result<(), Error> {
+def (w: NullWriter) write(buf: []u8) -> Result<(), Error> {
     return Ok(())
 }
 
-def (w: NullWriter) Sync() -> Result<(), Error> {
+def (w: NullWriter) sync() -> Result<(), Error> {
     return Ok(())
 }
 
@@ -20,20 +20,20 @@ struct Wrap {
     inner: io.Writer
 }
 
-def (w: Wrap) Write(buf: []u8) -> Result<(), Error> {
-    return w.inner.Write(buf)
+def (w: Wrap) write(buf: []u8) -> Result<(), Error> {
+    return w.inner.write(buf)
 }
 
-def (w: Wrap) Sync() -> Result<(), Error> {
-    return w.inner.Sync()
+def (w: Wrap) sync() -> Result<(), Error> {
+    return w.inner.sync()
 }
 
 // sink takes the interface and calls a method whose result is an enum.
 def sink(w: io.Writer) -> Result<(), Error> {
     var storage: Array<u8> = new Array<u8>(0)
-    var bytes: []u8 = storage[Range(0, storage.Len())]
-    _ = w.Write(bytes)?
-    _ = w.Sync()?
+    var bytes: []u8 = storage[Range(0, storage.len())]
+    _ = w.write(bytes)?
+    _ = w.sync()?
     return Ok(())
 }
 
@@ -47,10 +47,10 @@ struct Recorder {
     pad: usize
 }
 
-def (w: Recorder) Write(buf: []u8) -> Result<(), Error> {
+def (w: Recorder) write(buf: []u8) -> Result<(), Error> {
     var i: usize = 0
     for {
-        if i >= buf.Len() {
+        if i >= buf.len() {
             break
         }
         if written == 0usize && i == 0usize {
@@ -59,19 +59,19 @@ def (w: Recorder) Write(buf: []u8) -> Result<(), Error> {
         last = buf[i]
         i += 1
     }
-    written += buf.Len()
+    written += buf.len()
     return Ok(())
 }
 
-def (w: Recorder) Sync() -> Result<(), Error> {
+def (w: Recorder) sync() -> Result<(), Error> {
     return Ok(())
 }
 
-def CheckPrintf() -> i32 {
+def check_printf() -> i32 {
     written = 0usize
     first = 0u8
     last = 0u8
-    match fmt.Printf(Recorder{pad: 0usize}, "ab", 42i32) {
+    match fmt.printf(Recorder{pad: 0usize}, "ab", 42i32) {
         Ok(_) => {}
         Err(_) => {
             return 3
@@ -87,7 +87,7 @@ def CheckPrintf() -> i32 {
 }
 
 def main() -> i32 {
-    fmt.Println("writer", 1i32)
+    fmt.println("writer", 1i32)
     var null: NullWriter = NullWriter{n: 0}
     var wrapped: Wrap = Wrap{inner: null}
     match sink(wrapped) {
@@ -96,7 +96,7 @@ def main() -> i32 {
             return 1
         }
     }
-    var code: i32 = CheckPrintf()
+    var code: i32 = check_printf()
     if code != 0 {
         return code
     }

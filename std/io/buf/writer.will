@@ -13,46 +13,46 @@ struct WriterBuf {
 // init wraps w in a buffer of size bytes. A size of zero passes every write
 // straight through.
 def (mut b: WriterBuf) init(w: io.Writer, size: usize) {
-    b.dst = w.Clone()
+    b.dst = w.clone()
     b.data = new Array<u8>(size)
     b.limit = size
 }
 
 // Write appends bytes, flushing first when they would not fit.
-def (mut b: WriterBuf) Write(bytes: []u8) -> Result<(), Error> {
+def (mut b: WriterBuf) write(bytes: []u8) -> Result<(), Error> {
     if b.limit == 0usize {
-        return b.dst.Write(bytes)
+        return b.dst.write(bytes)
     }
-    if b.data.Len() == 0usize && bytes.Len() >= b.limit {
-        return b.dst.Write(bytes)
+    if b.data.len() == 0usize && bytes.len() >= b.limit {
+        return b.dst.write(bytes)
     }
-    if b.data.Len() + bytes.Len() > b.limit {
-        _ = b.Flush()?
+    if b.data.len() + bytes.len() > b.limit {
+        _ = b.flush()?
     }
-    if bytes.Len() >= b.limit {
-        return b.dst.Write(bytes)
+    if bytes.len() >= b.limit {
+        return b.dst.write(bytes)
     }
-    b.data.Append(bytes)
-    if b.data.Len() >= b.limit {
-        _ = b.Flush()?
+    b.data.append(bytes)
+    if b.data.len() >= b.limit {
+        _ = b.flush()?
     }
     return Ok(())
 }
 
 // Flush writes the buffered bytes. The buffer is copied first so the write does
 // not alias the array it clears.
-def (mut b: WriterBuf) Flush() -> Result<(), Error> {
-    if b.data.Len() != 0usize {
-        var out: Array<u8> = b.data.Clone()
-        var n: usize = out.Len()
-        b.data.Clear()
-        _ = b.dst.Write(out[Range(0, n)])?
+def (mut b: WriterBuf) flush() -> Result<(), Error> {
+    if b.data.len() != 0usize {
+        var out: Array<u8> = b.data.clone()
+        var n: usize = out.len()
+        b.data.clear()
+        _ = b.dst.write(out[Range(0, n)])?
     }
     return Ok(())
 }
 
 // Sync flushes the buffer and syncs the wrapped Writer.
-def (mut b: WriterBuf) Sync() -> Result<(), Error> {
-    _ = b.Flush()?
-    return b.dst.Sync()
+def (mut b: WriterBuf) sync() -> Result<(), Error> {
+    _ = b.flush()?
+    return b.dst.sync()
 }

@@ -9,10 +9,10 @@ import (
 // moved into the environment: the source slot is cleared, so the frame release
 // and the environment drop cannot both own the buffer.
 func TestClosureMovesOwnedLocalCapture(t *testing.T) {
-	src := `def Make() -> func() -> usize {
+	src := `def make() -> func() -> usize {
     var text: str = "hello"
     return func() -> usize {
-        return text.Len()
+        return text.len()
     }
 }
 `

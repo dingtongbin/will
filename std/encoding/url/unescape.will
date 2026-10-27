@@ -4,32 +4,32 @@
 // not part of this package.
 import "std/errors"
 
-def Unescape(s: str) -> Result<str, Error> {
+def unescape(s: str) -> Result<str, Error> {
     var out: Array<u8> = new Array<u8>(0)
-    var data: []u8 = s[Range(0, s.Len())]
+    var data: []u8 = s[Range(0, s.len())]
     var i: usize = 0usize
     for {
-        if i >= data.Len() {
+        if i >= data.len() {
             break
         }
-        var b: u8 = data.Get(i)
+        var b: u8 = data.get(i)
         if b != 37u8 {
-            out.Push(b)
+            out.push(b)
             i += 1usize
             continue
         }
-        if data.Len() - i < 3usize {
+        if data.len() - i < 3usize {
             return Err(errors.Invalid)
         }
-        var high: i32 = hexValue(data.Get(i + 1usize))
-        var low: i32 = hexValue(data.Get(i + 2usize))
+        var high: i32 = hex_value(data.get(i + 1usize))
+        var low: i32 = hex_value(data.get(i + 2usize))
         if high < 0 || low < 0 {
             return Err(errors.Invalid)
         }
-        out.Push(u8(high * 16 + low))
+        out.push(u8(high * 16 + low))
         i += 3usize
     }
-    if !validUtf8(out[Range(0, out.Len())]) {
+    if !valid_utf8(out[Range(0, out.len())]) {
         return Err(errors.Invalid)
     }
     return Ok(str(out))
@@ -37,7 +37,7 @@ def Unescape(s: str) -> Result<str, Error> {
 
 // hexValue returns the value of one hexadecimal digit, or -1 when c is not a
 // digit.
-def hexValue(c: u8) -> i32 {
+def hex_value(c: u8) -> i32 {
     if c >= 48u8 && c <= 57u8 {
         return i32(c - 48u8)
     }

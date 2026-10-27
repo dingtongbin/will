@@ -2,6 +2,6 @@ struct P {
     x: i32
 }
 
-def F(p: P) -> i32 {
+def f(p: P) -> i32 {
     return p.Missing()
 }

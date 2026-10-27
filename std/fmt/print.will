@@ -4,14 +4,14 @@ import "std/io"
 
 // Println writes the shown parts and a newline to standard output. The write
 // reaches the runtime directly, so the call does not wait on a task frame.
-def Println(parts: ...Show) {
-    print(textOf(parts))
+def println(parts: ...Show) {
+    print(text_of(parts))
     print("\n")
 }
 
 // Printf writes the shown parts to w and reports the first write error.
-def Printf(w: io.Writer, parts: ...Show) -> Result<(), Error> {
-    var text: str = textOf(parts)
-    var n: usize = text.Len()
-    return w.Write(text[Range(0, n)])
+def printf(w: io.Writer, parts: ...Show) -> Result<(), Error> {
+    var text: str = text_of(parts)
+    var n: usize = text.len()
+    return w.write(text[Range(0, n)])
 }

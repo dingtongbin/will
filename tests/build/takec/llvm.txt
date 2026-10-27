@@ -1,7 +1,7 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/takec.Box" = type { i32 }
-define hidden void @"example.com/takec.Release"(ptr %p) inlinehint {
+define hidden void @"example.com/takec.release"(ptr %p) inlinehint {
 entry:
   call void @drop_box(ptr %p)
   ret void
@@ -12,7 +12,7 @@ entry:
   %v.box = alloca i64
   %t1 = call ptr @make_box(i32 9)
   %t2 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.28, i32 0, i32 0
-  store ptr @"example.com/takec.thunk.Release", ptr %t2
+  store ptr @"example.com/takec.thunk.release", ptr %t2
   %t3 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.28, i32 0, i32 1
   store ptr null, ptr %t3
   %t4 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.28, i32 0, i32 0
@@ -37,9 +37,9 @@ panic.ok.1:
   call void @willrt_rc_release(i64 %t16)
   ret i32 %t14
 }
-define void @"example.com/takec.thunk.Release"(ptr %closure.env, ptr %p) {
+define void @"example.com/takec.thunk.release"(ptr %closure.env, ptr %p) {
 entry:
-  call void @"example.com/takec.Release"(ptr %p)
+  call void @"example.com/takec.release"(ptr %p)
   ret void
 }
 declare void @willrt_init()

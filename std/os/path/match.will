@@ -6,10 +6,10 @@ const questionScalar: u32 = 63
 
 // charsOf returns the Unicode scalars of s, so the matcher compares characters
 // rather than bytes and a wildcard can never split one.
-def charsOf(s: str) -> Array<u32> {
+def chars_of(s: str) -> Array<u32> {
     var out: Array<u32> = new Array<u32>(0)
     for c in s {
-        out.Push(c)
+        out.push(c)
     }
     return out
 }
@@ -19,20 +19,20 @@ def charsOf(s: str) -> Array<u32> {
 // of non-separator scalars and '?' for one non-separator scalar, and every
 // other scalar matches itself. Neither wildcard matches the separator, so one
 // wildcard never spans a directory boundary.
-def Match(pattern: str, name: str) -> bool {
-    var pat: Array<u32> = charsOf(pattern)
-    var text: Array<u32> = charsOf(name)
+def match(pattern: str, name: str) -> bool {
+    var pat: Array<u32> = chars_of(pattern)
+    var text: Array<u32> = chars_of(name)
     var pi: usize = 0
     var si: usize = 0
     var star: usize = 0
     var mark: usize = 0
     var hasStar: bool = false
     for {
-        if si >= text.Len() {
+        if si >= text.len() {
             break
         }
-        if pi < pat.Len() {
-            var pc: u32 = pat.Get(pi)
+        if pi < pat.len() {
+            var pc: u32 = pat.get(pi)
             if pc == starScalar {
                 // Remember where the star starts and let the next pattern
                 // scalar try to match at once, which is the zero-length case.
@@ -42,10 +42,10 @@ def Match(pattern: str, name: str) -> bool {
                 pi += 1usize
                 continue
             }
-            var tc: u32 = text.Get(si)
+            var tc: u32 = text.get(si)
             var matched: bool = false
             if pc == questionScalar {
-                matched = !isSlash(tc)
+                matched = !is_slash(tc)
             } else {
                 matched = pc == tc
             }
@@ -60,8 +60,8 @@ def Match(pattern: str, name: str) -> bool {
         }
         // The star takes one more scalar and the rest of the pattern is retried
         // from the saved position, so a failure never needs a recursive frame.
-        var extend: u32 = text.Get(mark)
-        if isSlash(extend) {
+        var extend: u32 = text.get(mark)
+        if is_slash(extend) {
             return false
         }
         mark += 1usize
@@ -69,10 +69,10 @@ def Match(pattern: str, name: str) -> bool {
         pi = star
     }
     for {
-        if pi >= pat.Len() {
+        if pi >= pat.len() {
             break
         }
-        var pc: u32 = pat.Get(pi)
+        var pc: u32 = pat.get(pi)
         if pc != starScalar {
             return false
         }

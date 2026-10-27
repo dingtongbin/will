@@ -1,10 +1,10 @@
 async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(2)
-    _ = await ch.Send(3)
-    var ok: bool = ch.TrySend(4)
-    var first: Option<i32> = ch.TryRecv()
-    var second: Option<i32> = await ch.Recv()
-    ch.Close()
+    _ = await ch.send(3)
+    var ok: bool = ch.try_send(4)
+    var first: Option<i32> = ch.try_recv()
+    var second: Option<i32> = await ch.recv()
+    ch.close()
     var v: i32 = 0
     match first {
         Some(x) => {

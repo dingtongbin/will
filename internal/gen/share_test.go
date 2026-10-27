@@ -19,61 +19,61 @@ enum E {
     One(rc<C>)
 }
 
-interface Has {
-    def Get() -> i32
+interface has {
+    def get() -> i32
 }
 
 struct Holder {
     c: rc<C>
 }
 
-def (h: Holder) Get() -> i32 {
+def (h: Holder) get() -> i32 {
     return h.c.n
 }
 
-def TakeMap(m: Map<str, rc<C>>) -> i32 {
+def take_map(m: Map<str, rc<C>>) -> i32 {
     return 0
 }
 
-def TakeSet(s: Set<rc<C>>) -> i32 {
+def take_set(s: Set<rc<C>>) -> i32 {
     return 0
 }
 
-def TakeArray(a: [2]rc<C>) -> i32 {
+def take_array(a: [2]rc<C>) -> i32 {
     return 0
 }
 
-def TakeEnum(e: E) -> i32 {
+def take_enum(e: E) -> i32 {
     return 0
 }
 
-def TakeFunc(f: func() -> i32) -> i32 {
+def take_func(f: func() -> i32) -> i32 {
     return f()
 }
 
-def TakeIface(v: Has) -> i32 {
-    return v.Get()
+def take_iface(v: has) -> i32 {
+    return v.get()
 }
 
 def main() -> i32 {
     var c: rc<C> = new rc<C>(C { n: 1 })
     var m: Map<str, rc<C>> = new Map<str, rc<C>>()
-    m.Set("a".Clone(), c.Clone())
+    m.set("a".clone(), c.clone())
     var s: Set<rc<C>> = new Set<rc<C>>()
-    s.Add(c.Clone())
-    var a: [2]rc<C> = [2]rc<C> { c.Clone(), c.Clone() }
-    var e: E = E.One(c.Clone())
+    s.add(c.clone())
+    var a: [2]rc<C> = [2]rc<C> { c.clone(), c.clone() }
+    var e: E = E.One(c.clone())
     var f: func() -> i32 = func() -> i32 {
         return c.n
     }
-    var h: Holder = Holder { c: c.Clone() }
-    var v: Has = h
-    var tm: Task<i32> = spawn TakeMap(m)
-    var ts: Task<i32> = spawn TakeSet(s)
-    var ta: Task<i32> = spawn TakeArray(a)
-    var te: Task<i32> = spawn TakeEnum(e)
-    var tf: Task<i32> = spawn TakeFunc(f)
-    var tv: Task<i32> = spawn TakeIface(v)
+    var h: Holder = Holder { c: c.clone() }
+    var v: has = h
+    var tm: Task<i32> = spawn take_map(m)
+    var ts: Task<i32> = spawn take_set(s)
+    var ta: Task<i32> = spawn take_array(a)
+    var te: Task<i32> = spawn take_enum(e)
+    var tf: Task<i32> = spawn take_func(f)
+    var tv: Task<i32> = spawn take_iface(v)
     _ = tm
     _ = ts
     _ = ta

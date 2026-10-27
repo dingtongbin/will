@@ -28,24 +28,24 @@ func hasCode(ds []diag.Diagnostic, code string) bool {
 func TestSpawnOperandMustBeOneCall(t *testing.T) {
 	// K0005 is reported by the parser at the spawn itself; check sees only
 	// files that parsed.
-	_, ds := parser.Parse("test.will", []byte(`def F() {
+	_, ds := parser.Parse("test.will", []byte(`def f() {
     region {
-        spawn Helper
+        spawn helper
     }
 }
 
-def Helper() {}
+def helper() {}
 `))
 	if !hasCode(ds, "K0005") {
 		t.Fatalf("expected K0005 for a bare function spawn, got %v", ds)
 	}
-	_, ds = parser.Parse("test.will", []byte(`def F() {
+	_, ds = parser.Parse("test.will", []byte(`def f() {
     region {
-        spawn Helper()
+        spawn helper()
     }
 }
 
-def Helper() {}
+def helper() {}
 `))
 	if hasCode(ds, "K0005") {
 		t.Fatalf("a call-shaped spawn must parse clean: %v", ds)
@@ -56,17 +56,17 @@ func TestTaskHandleCannotEscapeRegion(t *testing.T) {
 	// The assignment carries the handle into an outer binding, so the use
 	// after the region escapes. A container push needs the parameter modes
 	// and is the type-level slice of this rule.
-	ds := runConcurrency(t, `def F() {
-    var keep: Task<i32> = spawn Zero()
+	ds := runConcurrency(t, `def f() {
+    var keep: Task<i32> = spawn zero()
     region {
-        var t: Task<i32> = spawn Work(1)
+        var t: Task<i32> = spawn work(1)
         keep = t
     }
-    print(keep.Join()!)
+    print(keep.join()!)
 }
 
-def Zero() -> i32 { return 0 }
-def Work(x: i32) -> i32 { return x }
+def zero() -> i32 { return 0 }
+def work(x: i32) -> i32 { return x }
 `)
 	if !hasCode(ds, "K0003") {
 		t.Fatalf("expected K0003 for the handle carried outside, got %v", ds)
@@ -74,14 +74,14 @@ def Work(x: i32) -> i32 { return x }
 }
 
 func TestTaskHandleInsideRegionIsFine(t *testing.T) {
-	ds := runConcurrency(t, `def F() {
+	ds := runConcurrency(t, `def f() {
     region {
-        var t: Task<i32> = spawn Work(1)
-        print(t.Join()!)
+        var t: Task<i32> = spawn work(1)
+        print(t.join()!)
     }
 }
 
-def Work(x: i32) -> i32 { return x }
+def work(x: i32) -> i32 { return x }
 `)
 	if hasCode(ds, "K0003") {
 		t.Fatalf("a handle joined inside its region is fine: %v", ds)
@@ -89,8 +89,8 @@ def Work(x: i32) -> i32 { return x }
 }
 
 func TestWaitInsideSuspendingFunctionWarns(t *testing.T) {
-	ds := runConcurrency(t, `async def Load(ch: chan<i32>) -> Result<i32, Error> {
-    var x: Option<i32> = ch.Recv()
+	ds := runConcurrency(t, `async def load(ch: chan<i32>) -> Result<i32, Error> {
+    var x: Option<i32> = ch.recv()
     var v: Result<i32, Error> = wait(ParseAsync(x!))?
     return Ok(v)
 }
@@ -106,7 +106,7 @@ func TestWaitInsideSuspendingFunctionWarns(t *testing.T) {
 }
 
 func TestWaitInSyncFunctionIsTheBridge(t *testing.T) {
-	ds := runConcurrency(t, `def Load(raw: []u8) -> Result<i32, Error> {
+	ds := runConcurrency(t, `def load(raw: []u8) -> Result<i32, Error> {
     var v: Result<i32, Error> = wait(ParseAsync(raw))?
     return Ok(v)
 }

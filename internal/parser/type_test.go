@@ -7,7 +7,7 @@ import (
 )
 
 func TestNestedTypeArguments(t *testing.T) {
-	src := `def F(y: i64) {
+	src := `def f(y: i64) {
     var a: Array<Array<i64>> = x
     var b: i64 = call<Array<i64>>(y)
     var c: Box<i64> = Box<i64> {
@@ -50,7 +50,7 @@ func TestNestedTypeArguments(t *testing.T) {
 
 func TestQualifiedNames(t *testing.T) {
 	src := `import "std/net/http"
-def F() -> http.Ctx {
+def f() -> http.Ctx {
     var c: http.Ctx = http.Ctx { host: "x" }
     return c
 }

@@ -10,8 +10,8 @@ struct Cmd {
 
 // Command builds a command for path with args. The environment and the working
 // directory are inherited until WithEnv or WithDir sets them.
-def Command(path: str, args: ...str) -> Cmd {
-    return Cmd { path: path.Clone(), args: args, env: new Map<str, str>(0), dir: ""}
+def command(path: str, args: ...str) -> Cmd {
+    return Cmd { path: path.clone(), args: args, env: new Map<str, str>(0), dir: ""}
 }
 
 // WithEnv returns a command whose environment is c's environment plus the
@@ -20,36 +20,36 @@ def Command(path: str, args: ...str) -> Cmd {
 //
 // kv must hold pairs: an odd count is a programming error, not a runtime
 // condition a caller can recover from.
-def (c: Cmd) WithEnv(kv: ...str) -> Cmd {
-    if kv.Len() % 2usize != 0usize {
+def (c: Cmd) with_env(kv: ...str) -> Cmd {
+    if kv.len() % 2usize != 0usize {
         panic("exec: WithEnv takes key and value pairs")
     }
     var env: Map<str, str> = new Map<str, str>(0)
     for key, value in c.env {
-        env.Set(key, value)
+        env.set(key, value)
     }
     var i: usize = 0
     for {
-        if i >= kv.Len() {
+        if i >= kv.len() {
             break
         }
-        env.Set(kv.Get(i).Clone(), kv.Get(i + 1).Clone())
+        env.set(kv.get(i).clone(), kv.get(i + 1).clone())
         i += 2
     }
-    return Cmd { path: c.path.Clone(), args: c.args, env: env, dir: c.dir.Clone()}
+    return Cmd { path: c.path.clone(), args: c.args, env: env, dir: c.dir.clone()}
 }
 
 // WithDir returns a command that runs in dir. The environment and arguments
 // are the same values c carries.
-def (c: Cmd) WithDir(dir: str) -> Cmd {
-    return Cmd { path: c.path.Clone(), args: c.args, env: copyEnv(c.env), dir: dir.Clone()}
+def (c: Cmd) with_dir(dir: str) -> Cmd {
+    return Cmd { path: c.path.clone(), args: c.args, env: copy_env(c.env), dir: dir.clone()}
 }
 
 // copyEnv makes an independent map so changing the copy cannot alter c.
-def copyEnv(src: Map<str, str>) -> Map<str, str> {
-    var out: Map<str, str> = new Map<str, str>(src.Len())
+def copy_env(src: Map<str, str>) -> Map<str, str> {
+    var out: Map<str, str> = new Map<str, str>(src.len())
     for key, value in src {
-        out.Set(key.Clone(), value.Clone())
+        out.set(key.clone(), value.clone())
     }
     return out
 }

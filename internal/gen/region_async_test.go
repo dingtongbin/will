@@ -11,14 +11,14 @@ import (
 // the try form and records a wait, instead of blocking the lane in the sync
 // barrier.
 func TestAsyncRegionParks(t *testing.T) {
-	src := `def Work() -> i32 {
+	src := `def work() -> i32 {
     return 1
 }
 
 async def main() -> i32 {
     region {
-        var a: Task<i32> = spawn Work()
-        _ = await a.Join()!
+        var a: Task<i32> = spawn work()
+        _ = await a.join()!
     }
     return 0
 }

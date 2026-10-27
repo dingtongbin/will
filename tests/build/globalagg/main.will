@@ -6,5 +6,5 @@ var Origin: P = P { n: 1 }
 var Greeting: str = "hi"
 
 def main() -> i32 {
-    return Origin.n + i32(Greeting.Len())
+    return Origin.n + i32(Greeting.len())
 }

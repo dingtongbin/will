@@ -1,21 +1,21 @@
 import "std/os/fs"
 
-async def Mix(ch: chan<i32>, path: str) -> Result<(), Error> {
+async def mix(ch: chan<i32>, path: str) -> Result<(), Error> {
     var one: str = "m"
-    _ = await fs.AsyncAppend(path, one[Range(0, 1)])?
-    _ = await ch.Send(7)
+    _ = await fs.async_append(path, one[Range(0, 1)])?
+    _ = await ch.send(7)
     return Ok(())
 }
 
 async def main() -> i32 {
     var path: str = "will-concurrency-mixasync.tmp"
-    _ = fs.Remove(path)
+    _ = fs.remove(path)
     var ch: chan<i32> = new chan<i32>(1)
     var result: Result<(), Error> = Ok(())
     var value: i32 = 0
     region {
-        var task: Task<Result<(), Error>> = spawn Mix(ch, path)
-        var item: Option<i32> = await ch.Recv()
+        var task: Task<Result<(), Error>> = spawn mix(ch, path)
+        var item: Option<i32> = await ch.recv()
         match item {
             Some(v) => {
                 value = v
@@ -24,13 +24,13 @@ async def main() -> i32 {
                 return 1
             }
         }
-        result = await task.Join()!
+        result = await task.join()!
     }
-    _ = fs.Remove(path)
+    _ = fs.remove(path)
     if value != 7 {
         return 2
     }
-    if result.IsErr() {
+    if result.is_err() {
         return 3
     }
     return 0

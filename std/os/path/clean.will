@@ -1,33 +1,33 @@
 // isDotElement reports whether p[a:b] is the single-dot element.
-def isDotElement(p: str, a: usize, b: usize) -> bool {
+def is_dot_element(p: str, a: usize, b: usize) -> bool {
     if b - a != 1usize {
         return false
     }
-    var s: str = p.Clone()
+    var s: str = p.clone()
     var c: u32 = s[a]
-    return isDot(c)
+    return is_dot(c)
 }
 
 // isDotDotElement reports whether p[a:b] is the two-dot element.
-def isDotDotElement(p: str, a: usize, b: usize) -> bool {
+def is_dot_dot_element(p: str, a: usize, b: usize) -> bool {
     if b - a != 2usize {
         return false
     }
     var second: usize = a + 1usize
-    var s: str = p.Clone()
+    var s: str = p.clone()
     var firstChar: u32 = s[a]
     var secondChar: u32 = s[second]
-    return isDot(firstChar) && isDot(secondChar)
+    return is_dot(firstChar) && is_dot(secondChar)
 }
 
 // pushElement adds one element to the cleaned path or resolves a dot-dot. It
 // returns the new element count; a dot-dot removes the previous element unless
 // that would leave a relative path, in which case the dot-dot itself is kept.
-def pushElement(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>, ends: Array<usize>, count: usize) -> usize {
-    if isDotElement(p, a, b) {
+def push_element(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>, ends: Array<usize>, count: usize) -> usize {
+    if is_dot_element(p, a, b) {
         return count
     }
-    if isDotDotElement(p, a, b) {
+    if is_dot_dot_element(p, a, b) {
         if rooted {
             if count > 0usize {
                 return count - 1usize
@@ -36,22 +36,22 @@ def pushElement(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>, 
         }
         if count > 0usize {
             var top: usize = count - 1usize
-            var topA: usize = starts.Get(top)
-            var topB: usize = ends.Get(top)
-            if !isDotDotElement(p, topA, topB) {
+            var topA: usize = starts.get(top)
+            var topB: usize = ends.get(top)
+            if !is_dot_dot_element(p, topA, topB) {
                 return count - 1usize
             }
         }
     }
-    if starts.Len() > count {
-        starts.Set(count, a)
+    if starts.len() > count {
+        starts.set(count, a)
     } else {
-        starts.Push(a)
+        starts.push(a)
     }
-    if ends.Len() > count {
-        ends.Set(count, b)
+    if ends.len() > count {
+        ends.set(count, b)
     } else {
-        ends.Push(b)
+        ends.push(b)
     }
     return count + 1usize
 }
@@ -61,26 +61,26 @@ def pushElement(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>, 
 // resolves leading dot-dot against a rooted path or a drive root. The result is
 // "." when nothing is left of a relative path, and the platform root when
 // nothing is left of a rooted one.
-def Clean(p: str) -> str {
-    var s: str = p.Clone()
-    var n: usize = s.Len()
+def clean(p: str) -> str {
+    var s: str = p.clone()
+    var n: usize = s.len()
     var volumeEnd: usize = 0usize
     var scan: usize = 0usize
     var rooted: bool = false
-    if hasDrive(s) {
+    if has_drive(s) {
         volumeEnd = 2usize
         scan = 2usize
         var third: u32 = 0u32
         if n > 2usize {
             third = s[2]
         }
-        if isSeparator(third) {
+        if is_separator(third) {
             rooted = true
             scan = 3usize
         }
     } else if n > 0usize {
         var first: u32 = s[0]
-        if isSeparator(first) {
+        if is_separator(first) {
             rooted = true
         }
     }
@@ -93,9 +93,9 @@ def Clean(p: str) -> str {
         if i < scan {
             continue
         }
-        if isSeparator(c) {
+        if is_separator(c) {
             if inElement {
-                count = pushElement(s, start, i, rooted, starts, ends, count)
+                count = push_element(s, start, i, rooted, starts, ends, count)
                 inElement = false
             }
         } else if !inElement {
@@ -104,18 +104,18 @@ def Clean(p: str) -> str {
         }
     }
     if inElement {
-        count = pushElement(s, start, n, rooted, starts, ends, count)
+        count = push_element(s, start, n, rooted, starts, ends, count)
     }
-    var sep: u8 = Separator()
+    var sep: u8 = separator()
     var out: Array<u8> = new Array<u8>(0)
     if volumeEnd > 0usize {
         var driveLetter: u32 = s[0]
         var driveColon: u32 = s[1]
-        out.Push(u8(driveLetter))
-        out.Push(u8(driveColon))
+        out.push(u8(driveLetter))
+        out.push(u8(driveColon))
     }
     if rooted {
-        out.Push(sep)
+        out.push(sep)
     }
     var k: usize = 0usize
     for {
@@ -123,18 +123,18 @@ def Clean(p: str) -> str {
             break
         }
         if k > 0usize {
-            out.Push(sep)
+            out.push(sep)
         }
-        var a: usize = starts.Get(k)
-        var b: usize = ends.Get(k)
-        out.Append(s[Range(a, b)])
+        var a: usize = starts.get(k)
+        var b: usize = ends.get(k)
+        out.append(s[Range(a, b)])
         k += 1usize
     }
     if count == 0usize {
         if volumeEnd > 0usize && !rooted {
             return str(out) + "."
         }
-        if out.Len() == 0usize {
+        if out.len() == 0usize {
             return "."
         }
     }

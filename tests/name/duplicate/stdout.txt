@@ -1,2 +1,2 @@
-dup.will:4:5: N0007 duplicate top-level name F
+dup.will:4:5: N0007 duplicate top-level name f
     help: names must be unique in a package: shadowing is a warning, two declarations with the same name are an error

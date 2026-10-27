@@ -61,10 +61,10 @@ func (g *generator) buildInterfaces() {
 			name: "Error",
 			llvm: "%interface.Error",
 			methods: []ifaceMethod{
-				{name: "Message", result: "str"},
-				{name: "Status", result: "i32"},
+				{name: "message", result: "str"},
+				{name: "status", result: "i32"},
 			},
-			byName: map[string]int{"Message": 0, "Status": 1},
+			byName: map[string]int{"message": 0, "status": 1},
 		}
 	}
 	g.ifaceByName["Error"] = g.errorIface
@@ -73,13 +73,13 @@ func (g *generator) buildInterfaces() {
 	if g.showIface == nil {
 		g.showIface = &ifaceInfo{
 			name:    "Show",
-			llvm:    "%interface.Show",
-			methods: []ifaceMethod{{name: "Show", result: "str"}},
-			byName:  map[string]int{"Show": 0},
+			llvm:    "%interface.show",
+			methods: []ifaceMethod{{name: "show", result: "str"}},
+			byName:  map[string]int{"show": 0},
 		}
 	}
 	g.ifaceByName["Show"] = g.showIface
-	g.ifaceByLLVM["%interface.Show"] = g.showIface
+	g.ifaceByLLVM["%interface.show"] = g.showIface
 	if !g.showUsed {
 		for _, r := range g.recs {
 			if fieldText(r, "text") == "Show" || fieldText(r, "type") == "Show" {
@@ -88,9 +88,9 @@ func (g *generator) buildInterfaces() {
 			}
 		}
 	}
-	if g.showUsed && !g.emittedTypes["%interface.Show"] {
-		g.emittedTypes["%interface.Show"] = true
-		fmt.Fprintf(g.out, "%%interface.Show = type { ptr, ptr }\n")
+	if g.showUsed && !g.emittedTypes["%interface.show"] {
+		g.emittedTypes["%interface.show"] = true
+		fmt.Fprintf(g.out, "%%interface.show = type { ptr, ptr }\n")
 	}
 	if g.emptyIface == nil {
 		g.emptyIface = &ifaceInfo{

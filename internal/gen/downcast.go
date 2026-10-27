@@ -23,7 +23,7 @@ func (g *generator) downcastOf(r willc.Record) (*downcast, bool) {
 		return nil, false
 	}
 	name := fieldText(r, "text")
-	if name != "Is" && name != "As" {
+	if name != "is" && name != "as" {
 		return nil, false
 	}
 	args := g.typeArgTexts(r)
@@ -43,7 +43,7 @@ func (g *generator) downcastOf(r willc.Record) (*downcast, bool) {
 		return nil, false
 	}
 	toIface, _ := g.ifaceOfText(target)
-	return &downcast{source: source, target: target, toIface: toIface, isAs: name == "As"}, true
+	return &downcast{source: source, target: target, toIface: toIface, isAs: name == "as"}, true
 }
 
 // downcastTypeText returns the result type of a downcast. Is gives bool and As

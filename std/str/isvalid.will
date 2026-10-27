@@ -2,13 +2,13 @@
 // invalid text is a false result instead of a panic; the byte ranges below are
 // the ones RFC 3629 defines, which exclude overlong forms, surrogates, and
 // values past U+10FFFF.
-def IsValid(b: []u8) -> bool {
+def is_valid(b: []u8) -> bool {
     var i: usize = 0usize
     for {
-        if i >= b.Len() {
+        if i >= b.len() {
             break
         }
-        var c: u8 = b.Get(i)
+        var c: u8 = b.get(i)
         if c < 128u8 {
             i += 1usize
             continue
@@ -21,7 +21,7 @@ def IsValid(b: []u8) -> bool {
             continue
         }
         if c == 224u8 {
-            if !inRange(b, i + 1usize, 160u8, 191u8) || !continuation(b, i + 2usize) {
+            if !in_range(b, i + 1usize, 160u8, 191u8) || !continuation(b, i + 2usize) {
                 return false
             }
             i += 3usize
@@ -35,14 +35,14 @@ def IsValid(b: []u8) -> bool {
             continue
         }
         if c == 237u8 {
-            if !inRange(b, i + 1usize, 128u8, 159u8) || !continuation(b, i + 2usize) {
+            if !in_range(b, i + 1usize, 128u8, 159u8) || !continuation(b, i + 2usize) {
                 return false
             }
             i += 3usize
             continue
         }
         if c == 240u8 {
-            if !inRange(b, i + 1usize, 144u8, 191u8) || !continuation(b, i + 2usize) ||
+            if !in_range(b, i + 1usize, 144u8, 191u8) || !continuation(b, i + 2usize) ||
                 !continuation(b, i + 3usize) {
                 return false
             }
@@ -58,7 +58,7 @@ def IsValid(b: []u8) -> bool {
             continue
         }
         if c == 244u8 {
-            if !inRange(b, i + 1usize, 128u8, 143u8) || !continuation(b, i + 2usize) ||
+            if !in_range(b, i + 1usize, 128u8, 143u8) || !continuation(b, i + 2usize) ||
                 !continuation(b, i + 3usize) {
                 return false
             }
@@ -73,19 +73,19 @@ def IsValid(b: []u8) -> bool {
 // continuation reports whether b[i] is a trailing byte. A position past the
 // end is not a trailing byte, so a truncated sequence fails here.
 def continuation(b: []u8, i: usize) -> bool {
-    if i >= b.Len() {
+    if i >= b.len() {
         return false
     }
-    var c: u8 = b.Get(i)
+    var c: u8 = b.get(i)
     return c >= 128u8 && c <= 191u8
 }
 
 // inRange reports whether b[i] lies in [lo, hi]. The lead-byte cases use it to
 // reject overlong forms, the surrogate block, and the range past U+10FFFF.
-def inRange(b: []u8, i: usize, lo: u8, hi: u8) -> bool {
-    if i >= b.Len() {
+def in_range(b: []u8, i: usize, lo: u8, hi: u8) -> bool {
+    if i >= b.len() {
         return false
     }
-    var c: u8 = b.Get(i)
+    var c: u8 = b.get(i)
     return c >= lo && c <= hi
 }

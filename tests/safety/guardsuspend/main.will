@@ -4,9 +4,9 @@ struct Counter {
     n: i32
 }
 
-async def Bad(m: sync.Mutex<Counter>, ch: chan<i32>) -> i32 {
-    var g: sync.Guard<Counter> = await m.Lock()
-    _ = await ch.Send(g.n)
+async def bad(m: sync.Mutex<Counter>, ch: chan<i32>) -> i32 {
+    var g: sync.Guard<Counter> = await m.lock()
+    _ = await ch.send(g.n)
     return 0
 }
 

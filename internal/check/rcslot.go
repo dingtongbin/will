@@ -101,7 +101,7 @@ func (c *rcSlotChecker) methodWritesRc(fn *ast.FuncDecl) bool {
 			}
 		case *ast.MethodCallExpr:
 			switch x.Name {
-			case "Lock", "RLock", "TryLock":
+			case "lock", "r_lock", "try_lock":
 				locked = true
 			}
 			scanExpr(x.Recv)
@@ -478,7 +478,7 @@ func (c *rcSlotChecker) captureRoot(e ast.Expr) (string, bool) {
 	case *ast.NameExpr:
 		return x.Name, isRcType(c.typeOf(x.Name))
 	case *ast.MethodCallExpr:
-		if x.Name == "Clone" {
+		if x.Name == "clone" {
 			return c.captureRoot(x.Recv)
 		}
 	}
@@ -519,7 +519,7 @@ func (c *rcSlotChecker) expr(e ast.Expr) {
 		// A channel send only proves sharing when the channel itself reaches
 		// another task. That escape proof is not available here, so a send
 		// does not make the slot shared for M0003.
-		if x.Name == "Join" {
+		if x.Name == "join" {
 			if task, ok := x.Recv.(*ast.NameExpr); ok {
 				c.unshare(c.tasks[task.Name])
 				delete(c.tasks, task.Name)

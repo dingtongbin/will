@@ -2,16 +2,16 @@ struct Counter {
     n: i32
 }
 
-def (c: Counter) Get() -> i32 {
+def (c: Counter) get() -> i32 {
     return c.n
 }
 
-def (mut c: Counter) Add(d: i32) {
+def (mut c: Counter) add(d: i32) {
     c.n += d
 }
 
 def main() -> i32 {
     var c: Counter = Counter { n: 7 }
-    c.Add(3)
-    return c.Get()
+    c.add(3)
+    return c.get()
 }

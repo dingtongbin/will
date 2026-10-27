@@ -1,10 +1,10 @@
 // Dir returns the path's directory: everything up to and including the last
 // separator, cleaned. A path with no separator has directory ".".
-def Dir(p: str) -> str {
+def dir(p: str) -> str {
     var last: usize = 0usize
     var found: bool = false
     for i, c in p {
-        if isSeparator(c) {
+        if is_separator(c) {
             last = i
             found = true
         }
@@ -14,5 +14,5 @@ def Dir(p: str) -> str {
     }
     var after: usize = last + 1usize
     var head: str = str(p[Range(0, after)])
-    return Clean(head)
+    return clean(head)
 }

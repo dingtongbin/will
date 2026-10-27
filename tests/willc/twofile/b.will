@@ -1,3 +1,3 @@
-def Use(b: Box) -> i64 {
+def use(b: Box) -> i64 {
     return Value(b)
 }

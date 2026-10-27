@@ -1,2 +1,2 @@
-def F(e: Equal) {
+def f(e: Equal) {
 }

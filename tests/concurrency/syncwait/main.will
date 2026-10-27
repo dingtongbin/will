@@ -1,25 +1,25 @@
 import "std/sync"
 
-async def WaitFor(sem: sync.Semaphore, ready: chan<i32>, done: chan<i32>) -> i32 {
-    _ = await ready.Send(1)
-    var permit: sync.Permit = await sem.Acquire()!
-    _ = await done.Send(1)
-    permit.Release()
+async def wait_for(sem: sync.Semaphore, ready: chan<i32>, done: chan<i32>) -> i32 {
+    _ = await ready.send(1)
+    var permit: sync.Permit = await sem.acquire()!
+    _ = await done.send(1)
+    permit.release()
     return 0
 }
 
-async def Worker(count: sync.Count, done: chan<i32>) {
-    _ = await done.Send(1)
-    count.Add(-1i64)
+async def worker(count: sync.count, done: chan<i32>) {
+    _ = await done.send(1)
+    count.add(-1i64)
 }
 
 async def main() -> i32 {
     var sem: sync.Semaphore = new sync.Semaphore(1i64)
-    var first: sync.Permit = sem.TryAcquire()!
-    match sem.TryAcquire() {
+    var first: sync.Permit = sem.try_acquire()!
+    match sem.try_acquire() {
         Some(extra) => {
-            extra.Release()
-            first.Release()
+            extra.release()
+            first.release()
             return 1
         }
         None => {
@@ -28,9 +28,9 @@ async def main() -> i32 {
     var ready: chan<i32> = new chan<i32>(1)
     var done: chan<i32> = new chan<i32>(1)
     region {
-        var task: Task<i32> = spawn WaitFor(sem, ready, done)
-        _ = await ready.Recv()
-        match done.TryRecv() {
+        var task: Task<i32> = spawn wait_for(sem, ready, done)
+        _ = await ready.recv()
+        match done.try_recv() {
             Some(early) => {
                 _ = early
                 return 2
@@ -38,20 +38,20 @@ async def main() -> i32 {
             None => {
             }
         }
-        first.Release()
-        _ = await done.Recv()
-        _ = await task.Join()!
+        first.release()
+        _ = await done.recv()
+        _ = await task.join()!
     }
-    var count: sync.Count = new sync.Count(2i64)
+    var count: sync.count = new sync.count(2i64)
     var finished: chan<i32> = new chan<i32>(2)
     region {
-        var w1: Task<()> = spawn Worker(count, finished)
-        var w2: Task<()> = spawn Worker(count, finished)
-        _ = await count.Wait()!
-        _ = await finished.Recv()
-        _ = await finished.Recv()
-        _ = await w1.Join()!
-        _ = await w2.Join()!
+        var w1: Task<()> = spawn worker(count, finished)
+        var w2: Task<()> = spawn worker(count, finished)
+        _ = await count.wait()!
+        _ = await finished.recv()
+        _ = await finished.recv()
+        _ = await w1.join()!
+        _ = await w2.join()!
     }
     return 0
 }

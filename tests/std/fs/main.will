@@ -1,36 +1,36 @@
 import "std/os/fs"
 
-def CheckFile() -> i32 {
+def check_file() -> i32 {
     var path: str = "will-fs-probe.tmp"
     var data: str = "hello"
     var bytes: []u8 = data[Range(0, 5)]
-    var created: Result<fs.File, Error> = fs.Create(path, 420u32)
+    var created: Result<fs.File, Error> = fs.create(path, 420u32)
     match created {
         Ok(file) => {
-            var wrote: Result<(), Error> = file.Write(bytes)
+            var wrote: Result<(), Error> = file.write(bytes)
             match wrote {
                 Err(e) => {
-                    if e.Status() != 7 {
+                    if e.status() != 7 {
                         return 1
                     }
                     return 2
                 }
                 _ => {}
             }
-            var synced: Result<(), Error> = file.Sync()
+            var synced: Result<(), Error> = file.sync()
             match synced {
                 Err(e) => {
-                    if e.Status() != 7 {
+                    if e.status() != 7 {
                         return 3
                     }
                     return 4
                 }
                 _ => {}
             }
-            var seeked: Result<i64, Error> = file.Seek(0i64, 0)
+            var seeked: Result<i64, Error> = file.seek(0i64, 0)
             match seeked {
                 Err(e) => {
-                    if e.Status() != 7 {
+                    if e.status() != 7 {
                         return 5
                     }
                     return 6
@@ -38,27 +38,27 @@ def CheckFile() -> i32 {
                 _ => {}
             }
             var buf: Array<u8> = new Array<u8>(16)
-            var read: Result<usize, Error> = file.Read(buf)
+            var read: Result<usize, Error> = file.read(buf)
             match read {
                 Ok(count) => {
-                    if count != 5usize || buf.Len() != 5usize {
+                    if count != 5usize || buf.len() != 5usize {
                         return 7
                     }
-                    if buf.Get(0) != 104u8 || buf.Get(4) != 111u8 {
+                    if buf.get(0) != 104u8 || buf.get(4) != 111u8 {
                         return 8
                     }
                 }
                 Err(e) => {
-                    if e.Status() != 7 {
+                    if e.status() != 7 {
                         return 9
                     }
                     return 10
                 }
             }
-            var closed: Result<(), Error> = file.Close()
+            var closed: Result<(), Error> = file.close()
             match closed {
                 Err(e) => {
-                    if e.Status() != 7 {
+                    if e.status() != 7 {
                         return 11
                     }
                     return 12
@@ -67,7 +67,7 @@ def CheckFile() -> i32 {
             }
         }
         Err(e) => {
-            if e.Status() != 7 {
+            if e.status() != 7 {
                 return 13
             }
             return 14
@@ -75,17 +75,17 @@ def CheckFile() -> i32 {
     }
 
     var flags: fs.OpenFlags = fs.OpenFlags { read: true, write: false, create: false, append: false, truncate: false, exclusive: false }
-    var opened: Result<fs.File, Error> = fs.Open(path, flags)
+    var opened: Result<fs.File, Error> = fs.open(path, flags)
     match opened {
         Ok(file) => {
-            _ = file.Close()
+            _ = file.close()
         }
         Err(_) => {
             return 28
         }
     }
 
-    var info: Result<fs.StatInfo, Error> = fs.Stat(path)
+    var info: Result<fs.StatInfo, Error> = fs.stat(path)
     match info {
         Ok(stat) => {
             if stat.size != 5i64 || stat.isDir {
@@ -93,27 +93,27 @@ def CheckFile() -> i32 {
             }
         }
         Err(e) => {
-            if e.Status() != 7 {
+            if e.status() != 7 {
                 return 16
             }
             return 17
         }
     }
 
-    var renamed: Result<(), Error> = fs.Rename(path, "will-fs-probe2.tmp")
+    var renamed: Result<(), Error> = fs.rename(path, "will-fs-probe2.tmp")
     match renamed {
         Err(e) => {
-            if e.Status() != 7 {
+            if e.status() != 7 {
                 return 18
             }
             return 19
         }
         _ => {}
     }
-    var removed: Result<(), Error> = fs.Remove("will-fs-probe2.tmp")
+    var removed: Result<(), Error> = fs.remove("will-fs-probe2.tmp")
     match removed {
         Err(e) => {
-            if e.Status() != 7 {
+            if e.status() != 7 {
                 return 20
             }
             return 21
@@ -123,36 +123,36 @@ def CheckFile() -> i32 {
     return 0
 }
 
-def CheckDir() -> i32 {
+def check_dir() -> i32 {
     var first: str = "will-fs-a.tmp"
     var second: str = "will-fs-b.tmp"
-    var a: Result<fs.File, Error> = fs.Create(first, 420u32)
+    var a: Result<fs.File, Error> = fs.create(first, 420u32)
     match a {
         Ok(file) => {
-            _ = file.Close()
+            _ = file.close()
         }
         Err(_) => {
             return 26
         }
     }
-    var b: Result<fs.File, Error> = fs.Create(second, 420u32)
+    var b: Result<fs.File, Error> = fs.create(second, 420u32)
     match b {
         Ok(file) => {
-            _ = file.Close()
+            _ = file.close()
         }
         Err(_) => {
-            _ = fs.Remove(first)
+            _ = fs.remove(first)
             return 27
         }
     }
 
-    var dir: Result<Array<fs.DirEntry>, Error> = fs.ReadDir(".")
+    var dir: Result<Array<fs.DirEntry>, Error> = fs.read_dir(".")
     match dir {
         Ok(entries) => {
             var aPos: i32 = -1
             var bPos: i32 = -1
-            for i in Range(0, i32(entries.Len())) {
-                var entry: fs.DirEntry = entries.Get(usize(i))
+            for i in Range(0, i32(entries.len())) {
+                var entry: fs.DirEntry = entries.get(usize(i))
                 if entry.name == first {
                     aPos = i
                 }
@@ -160,16 +160,16 @@ def CheckDir() -> i32 {
                     bPos = i
                 }
             }
-            _ = fs.Remove(first)
-            _ = fs.Remove(second)
+            _ = fs.remove(first)
+            _ = fs.remove(second)
             if aPos < 0 || bPos < 0 || aPos > bPos {
                 return 23
             }
         }
         Err(e) => {
-            _ = fs.Remove(first)
-            _ = fs.Remove(second)
-            if e.Status() != 7 {
+            _ = fs.remove(first)
+            _ = fs.remove(second)
+            if e.status() != 7 {
                 return 24
             }
             return 25
@@ -178,25 +178,25 @@ def CheckDir() -> i32 {
     return 0
 }
 
-def CheckAsync() -> i32 {
+def check_async() -> i32 {
     var path: str = "will-fs-async.tmp"
     var text: str = "async"
     var data: []u8 = text[Range(0, 5)]
-    var written: Result<(), Error> = wait(fs.AsyncWriteFile(path, data))
+    var written: Result<(), Error> = wait(fs.async_write_file(path, data))
     match written {
         Err(_) => {
             return 30
         }
         _ => {}
     }
-    var loaded: Result<Array<u8>, Error> = wait(fs.AsyncReadFile(path))
+    var loaded: Result<Array<u8>, Error> = wait(fs.async_read_file(path))
     match loaded {
         Ok(bytes) => {
-            if bytes.Len() != 5usize || bytes.Get(0) != 97u8 {
-                _ = fs.Remove(path)
+            if bytes.len() != 5usize || bytes.get(0) != 97u8 {
+                _ = fs.remove(path)
                 return 31
             }
-            _ = fs.Remove(path)
+            _ = fs.remove(path)
         }
         Err(_) => {
             return 32
@@ -206,13 +206,13 @@ def CheckAsync() -> i32 {
 }
 
 def main() -> i32 {
-    var code: i32 = CheckFile()
+    var code: i32 = check_file()
     if code != 0 {
         return code
     }
-    code = CheckDir()
+    code = check_dir()
     if code != 0 {
         return code
     }
-    return CheckAsync()
+    return check_async()
 }

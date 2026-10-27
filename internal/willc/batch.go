@@ -246,7 +246,7 @@ func safeBatchUses(owner int, records []Record, byID map[int]Record) bool {
 			}
 			name, _ := textField(parent, "text")
 			switch name {
-			case "Len", "Cap", "Get", "Set", "Clear", "IsEmpty", "Clone":
+			case "len", "cap", "get", "set", "clear", "is_empty", "clone":
 			default:
 				return false
 			}

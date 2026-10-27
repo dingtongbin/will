@@ -20,7 +20,7 @@ func (g *generator) viewDataLen(base, lenField string) (string, string) {
 // never reads past either view.
 func (g *generator) byteViewMethod(r willc.Record, base, lenField, name string) (string, string, error) {
 	data, length := g.viewDataLen(base, lenField)
-	if name == "Clone" {
+	if name == "clone" {
 		g.needAllocDecl = true
 		buffer := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buffer, length)
@@ -56,7 +56,7 @@ func (g *generator) byteViewMethod(r willc.Record, base, lenField, name string) 
 	shorterCond := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp slt i64 %s, %s\n", shorterCond, length, otherLength)
 	fmt.Fprintf(g.out, "  %s = select i1 %s, i64 %s, i64 %s\n", shorter, shorterCond, length, otherLength)
-	if name == "HasSuffix" {
+	if name == "has_suffix" {
 		// Start at length-suffix when the receiver is long enough; the length
 		// check below still reports false when it is not.
 		enough := g.newTmp()
@@ -75,19 +75,19 @@ func (g *generator) byteViewMethod(r willc.Record, base, lenField, name string) 
 	cmpZero := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", cmpZero, cmp)
 	switch name {
-	case "Equal":
+	case "equal":
 		sameLen := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = icmp eq i64 %s, %s\n", sameLen, length, otherLength)
 		result := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = and i1 %s, %s\n", result, sameLen, cmpZero)
 		return result, "bool", nil
-	case "HasPrefix", "HasSuffix":
+	case "has_prefix", "has_suffix":
 		enough := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = icmp uge i64 %s, %s\n", enough, length, otherLength)
 		result := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = and i1 %s, %s\n", result, enough, cmpZero)
 		return result, "bool", nil
-	case "Compare":
+	case "compare":
 		sameLen := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = icmp eq i64 %s, %s\n", sameLen, length, otherLength)
 		lengthOrder := g.newTmp()
@@ -111,21 +111,21 @@ func (g *generator) viewIndexPlace(r willc.Record) (string, string, error) {
 		return "", "", err
 	}
 	if baseType != "{ ptr, i64 }" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Index needs a byte view", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: index needs a byte view", r.ID)
 	}
 	lenField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n", lenField, base)
 	data, length := g.viewDataLen(base, lenField)
 	args := g.callArgs(r)
 	if len(args) != 1 {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Index takes one byte view", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: index takes one byte view", r.ID)
 	}
 	needleBase, needleType, err := g.place(args[0])
 	if err != nil {
 		return "", "", err
 	}
 	if needleType != "{ ptr, i64 }" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Index needs a byte view", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: index needs a byte view", r.ID)
 	}
 	needleLenField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n", needleLenField, needleBase)

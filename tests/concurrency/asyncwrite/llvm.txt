@@ -3,7 +3,7 @@
 %interface.Error = type { ptr, ptr }
 %"enum.std/errors.ErrorClass" = type { i32 }
 %"interface.std/errors.Classified" = type { ptr, ptr }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.ClassOf"(ptr %e) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.class_of"(ptr %e) inlinehint {
 entry:
   %v.ret.18 = alloca %"enum.std/errors.ErrorClass"
   %t1 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 0
@@ -13,12 +13,12 @@ entry:
   %t5 = getelementptr inbounds [6 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
-  %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t7)
+  %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t7)
   store %"enum.std/errors.ErrorClass" %t8, ptr %v.ret.18
   %t9 = load %"enum.std/errors.ErrorClass", ptr %v.ret.18
   ret %"enum.std/errors.ErrorClass" %t9
 }
-define internal %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %status) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %status) inlinehint {
 entry:
   %v.c = alloca %"enum.std/errors.ErrorClass"
   %v.enum.28 = alloca %"enum.std/errors.ErrorClass"
@@ -91,7 +91,7 @@ match.end.1:
   ret %"enum.std/errors.ErrorClass" %t29
 }
 %"struct.std/errors.Fault" = type { { ptr, i64 }, i32 }
-define internal void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
+define hidden void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
 entry:
   %v.ret.18 = alloca { ptr, i64 }
   %v.strm.18 = alloca { ptr, i64 }
@@ -114,7 +114,7 @@ entry:
   store i32 %status, ptr %t11
   ret void
 }
-define hidden { ptr, i64 } @"std/errors.Fault.Message"(ptr %f) inlinehint {
+define hidden { ptr, i64 } @"std/errors.Fault.message"(ptr %f) inlinehint {
 entry:
   %v.ret.30 = alloca { ptr, i64 }
   %v.strm.30 = alloca { ptr, i64 }
@@ -135,18 +135,18 @@ entry:
   %t22 = load { ptr, i64 }, ptr %v.ret.30
   ret { ptr, i64 } %t22
 }
-define hidden i32 @"std/errors.Fault.Status"(ptr %f) alwaysinline {
+define hidden i32 @"std/errors.Fault.status"(ptr %f) alwaysinline {
 entry:
   %t23 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
   %t24 = load i32, ptr %t23
   ret i32 %t24
 }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.Class"(ptr %f) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.class"(ptr %f) inlinehint {
 entry:
   %v.ret.47 = alloca %"enum.std/errors.ErrorClass"
   %t25 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
   %t26 = load i32, ptr %t25
-  %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t26)
+  %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t26)
   store %"enum.std/errors.ErrorClass" %t27, ptr %v.ret.47
   %t28 = load %"enum.std/errors.ErrorClass", ptr %v.ret.47
   ret %"enum.std/errors.ErrorClass" %t28
@@ -237,7 +237,7 @@ entry:
 %"struct.std/os/fs.StatInfo" = type { i64, i32, i64, i1, i1 }
 %"struct.std/os/fs.DirEntry" = type { { ptr, i64 }, i1, i64 }
 %"struct.std/os/fs.fsError" = type { { ptr, i64 } }
-define hidden { ptr, i64 } @"std/os/fs.fsError.Message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"std/os/fs.fsError.message"(ptr %e) inlinehint {
 entry:
   %v.ret.88 = alloca { ptr, i64 }
   %v.strm.88 = alloca { ptr, i64 }
@@ -258,11 +258,11 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.88
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"std/os/fs.fsError.Status"(ptr %e) alwaysinline {
+define hidden i32 @"std/os/fs.fsError.status"(ptr %e) alwaysinline {
 entry:
   ret i32 7
 }
-define hidden { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.ReadFile"(ptr %path) inlinehint {
+define hidden { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.read_file"(ptr %path) inlinehint {
 entry:
   %v.out = alloca { ptr, i64, i64 }
   %v.status = alloca i32
@@ -364,7 +364,7 @@ deep.rel.arr.done.3:
   call void @willrt_free(ptr %t56)
   ret { i32, [4 x i8], { ptr, i64, i64 } } %t53
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.WriteFile"(ptr %path, ptr %data) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.write_file"(ptr %path, ptr %data) inlinehint {
 entry:
   %v.status = alloca i32
   %v.agg.165 = alloca %"struct.std/os/fs.fsError"
@@ -417,7 +417,7 @@ if.end.1:
   %t90 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.168
   ret { i32, [4 x i8], %interface.Error } %t90
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Append"(ptr %path, ptr %data) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.append"(ptr %path, ptr %data) inlinehint {
 entry:
   %v.status = alloca i32
   %v.agg.199 = alloca %"struct.std/os/fs.fsError"
@@ -470,7 +470,7 @@ if.end.1:
   %t118 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.202
   ret { i32, [4 x i8], %interface.Error } %t118
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Open"(ptr %path, ptr %flags) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.open"(ptr %path, ptr %flags) inlinehint {
 entry:
   %v.file = alloca %"struct.std/os/fs.File"
   %v.status = alloca i32
@@ -518,7 +518,7 @@ if.end.1:
   %t143 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.242
   ret { i32, [4 x i8], %interface.Error } %t143
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Create"(ptr %path, i32 %mode) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.create"(ptr %path, i32 %mode) inlinehint {
 entry:
   %v.file = alloca %"struct.std/os/fs.File"
   %v.status = alloca i32
@@ -566,7 +566,7 @@ if.end.1:
   %t168 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.280
   ret { i32, [4 x i8], %interface.Error } %t168
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.Read"(ptr %f, ptr %buf) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.read"(ptr %f, ptr %buf) inlinehint {
 entry:
   %v.count = alloca i64
   %v.status = alloca i32
@@ -614,7 +614,7 @@ if.end.1:
   %t193 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.320
   ret { i32, [4 x i8], %interface.Error } %t193
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.Write"(ptr %f, ptr %buf) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.write"(ptr %f, ptr %buf) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.349 = alloca { i32, [4 x i8], %interface.Error }
@@ -658,7 +658,7 @@ if.end.1:
   %t217 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.354
   ret { i32, [4 x i8], %interface.Error } %t217
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.Seek"(ptr %f, i64 %offset, i32 %whence) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.seek"(ptr %f, i64 %offset, i32 %whence) inlinehint {
 entry:
   %v.at = alloca i64
   %v.status = alloca i32
@@ -706,7 +706,7 @@ if.end.1:
   %t242 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.394
   ret { i32, [4 x i8], %interface.Error } %t242
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.Sync"(ptr %f) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.sync"(ptr %f) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.599 = alloca { i32, [4 x i8], %interface.Error }
@@ -750,7 +750,7 @@ if.end.1:
   %t266 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.604
   ret { i32, [4 x i8], %interface.Error } %t266
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.Close"(ptr %f) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.close"(ptr %f) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.627 = alloca { i32, [4 x i8], %interface.Error }
@@ -794,7 +794,7 @@ if.end.1:
   %t290 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.632
   ret { i32, [4 x i8], %interface.Error } %t290
 }
-define hidden { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } @"std/os/fs.Stat"(ptr %path) inlinehint {
+define hidden { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } @"std/os/fs.stat"(ptr %path) inlinehint {
 entry:
   %v.stat = alloca %"struct.std/os/fs.StatInfo"
   %v.status = alloca i32
@@ -842,7 +842,7 @@ if.end.1:
   %t315 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.667
   ret { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t315
 }
-define hidden { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.ReadDir"(ptr %path) inlinehint {
+define hidden { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.read_dir"(ptr %path) inlinehint {
 entry:
   %v.entries = alloca { ptr, i64, i64 }
   %v.status = alloca i32
@@ -935,7 +935,7 @@ deep.rel.arr.done.3:
   call void @willrt_free(ptr %t355)
   ret { i32, [4 x i8], { ptr, i64, i64 } } %t352
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Rename"(ptr %old, ptr %new) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.rename"(ptr %old, ptr %new) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.732 = alloca { i32, [4 x i8], %interface.Error }
@@ -979,7 +979,7 @@ if.end.1:
   %t388 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.737
   ret { i32, [4 x i8], %interface.Error } %t388
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %path) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.remove"(ptr %path) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.760 = alloca { i32, [4 x i8], %interface.Error }
@@ -1023,7 +1023,7 @@ if.end.1:
   %t412 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.765
   ret { i32, [4 x i8], %interface.Error } %t412
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.TempFile"(ptr %dir, ptr %pattern) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.temp_file"(ptr %dir, ptr %pattern) inlinehint {
 entry:
   %v.file = alloca %"struct.std/os/fs.File"
   %v.status = alloca i32
@@ -1071,7 +1071,7 @@ if.end.1:
   %t437 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.805
   ret { i32, [4 x i8], %interface.Error } %t437
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Mkdir"(ptr %path, i32 %mode) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.mkdir"(ptr %path, i32 %mode) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.831 = alloca { i32, [4 x i8], %interface.Error }
@@ -1115,7 +1115,7 @@ if.end.1:
   %t461 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.836
   ret { i32, [4 x i8], %interface.Error } %t461
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.MkdirAll"(ptr %path, i32 %mode) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.mkdir_all"(ptr %path, i32 %mode) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.862 = alloca { i32, [4 x i8], %interface.Error }
@@ -1159,7 +1159,7 @@ if.end.1:
   %t485 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.867
   ret { i32, [4 x i8], %interface.Error } %t485
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.RemoveAll"(ptr %path) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.remove_all"(ptr %path) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.890 = alloca { i32, [4 x i8], %interface.Error }
@@ -1203,7 +1203,7 @@ if.end.1:
   %t509 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.895
   ret { i32, [4 x i8], %interface.Error } %t509
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Symlink"(ptr %target, ptr %link) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.symlink"(ptr %target, ptr %link) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.923 = alloca { i32, [4 x i8], %interface.Error }
@@ -1247,7 +1247,7 @@ if.end.1:
   %t533 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.928
   ret { i32, [4 x i8], %interface.Error } %t533
 }
-define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os/fs.TempDir"(ptr %dir, ptr %pattern) inlinehint {
+define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os/fs.temp_dir"(ptr %dir, ptr %pattern) inlinehint {
 entry:
   %v.out = alloca { ptr, i64 }
   %v.status = alloca i32
@@ -1410,7 +1410,7 @@ define internal void @"std/os/fs.iface.share.Error.std/errors.Fault"(ptr %data) 
 entry:
   ret void
 }
-define internal i32 @"std/os/fs.File.AsyncRead.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.File.async_read.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.398.606 = getelementptr i8, ptr %frame, i64 8
@@ -1544,7 +1544,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncRead.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.File.async_read.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t668 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -1560,12 +1560,12 @@ entry:
   %t675 = select i1 %t674, i32 %t672, i32 %start
   br i1 %t673, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t676 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncRead.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  %t676 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_read.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t676)
   call void @willrt_task_run_auto(ptr %t676)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t677 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncRead.sm", ptr %v.sm.frame, i64 160, i32 %t675, i32 0)
+  %t677 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_read.sm", ptr %v.sm.frame, i64 160, i32 %t675, i32 0)
   call void @willrt_task_own_frame(ptr %t677)
   call void @willrt_task_run(ptr %t677)
   br label %sm.start.done.6
@@ -1573,7 +1573,7 @@ sm.start.done.6:
   %t678 = phi ptr [ %t676, %sm.start.auto.6 ], [ %t677, %sm.start.lane.6 ]
   ret ptr %t678
 }
-define internal i32 @"std/os/fs.File.AsyncWrite.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.File.async_write.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.439.679 = getelementptr i8, ptr %frame, i64 8
@@ -1702,7 +1702,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncWrite.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.File.async_write.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t739 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -1719,12 +1719,12 @@ entry:
   %t747 = select i1 %t746, i32 %t744, i32 %start
   br i1 %t745, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t748 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncWrite.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  %t748 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_write.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t748)
   call void @willrt_task_run_auto(ptr %t748)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t749 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncWrite.sm", ptr %v.sm.frame, i64 160, i32 %t747, i32 0)
+  %t749 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_write.sm", ptr %v.sm.frame, i64 160, i32 %t747, i32 0)
   call void @willrt_task_own_frame(ptr %t749)
   call void @willrt_task_run(ptr %t749)
   br label %sm.start.done.6
@@ -1732,7 +1732,7 @@ sm.start.done.6:
   %t750 = phi ptr [ %t748, %sm.start.auto.6 ], [ %t749, %sm.start.lane.6 ]
   ret ptr %t750
 }
-define internal i32 @"std/os/fs.File.AsyncSeek.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.File.async_seek.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.474.751 = getelementptr i8, ptr %frame, i64 8
@@ -1868,7 +1868,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncSeek.task"(ptr %arg0, i64 %arg1, i32 %arg2, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.File.async_seek.task"(ptr %arg0, i64 %arg1, i32 %arg2, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t813 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -1886,12 +1886,12 @@ entry:
   %t821 = select i1 %t820, i32 %t818, i32 %start
   br i1 %t819, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t822 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSeek.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  %t822 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_seek.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t822)
   call void @willrt_task_run_auto(ptr %t822)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t823 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSeek.sm", ptr %v.sm.frame, i64 160, i32 %t821, i32 0)
+  %t823 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_seek.sm", ptr %v.sm.frame, i64 160, i32 %t821, i32 0)
   call void @willrt_task_own_frame(ptr %t823)
   call void @willrt_task_run(ptr %t823)
   br label %sm.start.done.6
@@ -1899,7 +1899,7 @@ sm.start.done.6:
   %t824 = phi ptr [ %t822, %sm.start.auto.6 ], [ %t823, %sm.start.lane.6 ]
   ret ptr %t824
 }
-define internal i32 @"std/os/fs.File.AsyncSync.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.File.async_sync.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.515.825 = getelementptr i8, ptr %frame, i64 8
@@ -2027,7 +2027,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncSync.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.File.async_sync.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
   %t884 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2041,12 +2041,12 @@ entry:
   %t890 = select i1 %t889, i32 %t887, i32 %start
   br i1 %t888, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t891 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSync.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0)
+  %t891 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_sync.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t891)
   call void @willrt_task_run_auto(ptr %t891)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t892 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSync.sm", ptr %v.sm.frame, i64 144, i32 %t890, i32 0)
+  %t892 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_sync.sm", ptr %v.sm.frame, i64 144, i32 %t890, i32 0)
   call void @willrt_task_own_frame(ptr %t892)
   call void @willrt_task_run(ptr %t892)
   br label %sm.start.done.6
@@ -2054,7 +2054,7 @@ sm.start.done.6:
   %t893 = phi ptr [ %t891, %sm.start.auto.6 ], [ %t892, %sm.start.lane.6 ]
   ret ptr %t893
 }
-define internal i32 @"std/os/fs.File.AsyncStat.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.File.async_stat.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.544.894 = getelementptr i8, ptr %frame, i64 8
@@ -2186,7 +2186,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncStat.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.File.async_stat.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
   %t954 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2200,12 +2200,12 @@ entry:
   %t960 = select i1 %t959, i32 %t957, i32 %start
   br i1 %t958, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t961 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
+  %t961 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_stat.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t961)
   call void @willrt_task_run_auto(ptr %t961)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t962 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 %t960, i32 0)
+  %t962 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_stat.sm", ptr %v.sm.frame, i64 240, i32 %t960, i32 0)
   call void @willrt_task_own_frame(ptr %t962)
   call void @willrt_task_run(ptr %t962)
   br label %sm.start.done.6
@@ -2213,7 +2213,7 @@ sm.start.done.6:
   %t963 = phi ptr [ %t961, %sm.start.auto.6 ], [ %t962, %sm.start.lane.6 ]
   ret ptr %t963
 }
-define internal i32 @"std/os/fs.AsyncMkdir.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_mkdir.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.973.964 = getelementptr i8, ptr %frame, i64 8
@@ -2343,7 +2343,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncMkdir.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_mkdir.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
   %t1024 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2358,15 +2358,15 @@ entry:
   %t1030 = icmp eq i32 %start, -2
   %t1031 = select i1 %t1030, i32 %t1028, i32 %start
   %t1032 = icmp ne i32 %owns, 0
-  %t1033 = select i1 %t1032, ptr @"std/os/fs.AsyncMkdir.drop.own", ptr @"std/os/fs.AsyncMkdir.drop"
+  %t1033 = select i1 %t1032, ptr @"std/os/fs.async_mkdir.drop.own", ptr @"std/os/fs.async_mkdir.drop"
   br i1 %t1029, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1034 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncMkdir.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t1033)
+  %t1034 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_mkdir.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t1033)
   call void @willrt_task_own_frame(ptr %t1034)
   call void @willrt_task_run_auto(ptr %t1034)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1035 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncMkdir.sm", ptr %v.sm.frame, i64 144, i32 %t1031, i32 0, ptr %t1033)
+  %t1035 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_mkdir.sm", ptr %v.sm.frame, i64 144, i32 %t1031, i32 0, ptr %t1033)
   call void @willrt_task_own_frame(ptr %t1035)
   call void @willrt_task_run(ptr %t1035)
   br label %sm.start.done.6
@@ -2374,11 +2374,11 @@ sm.start.done.6:
   %t1036 = phi ptr [ %t1034, %sm.start.auto.6 ], [ %t1035, %sm.start.lane.6 ]
   ret ptr %t1036
 }
-define internal void @"std/os/fs.AsyncMkdir.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_mkdir.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncMkdir.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_mkdir.drop.own"(ptr %frame) {
 entry:
   %t1037 = getelementptr i8, ptr %frame, i64 8
   %t1038 = getelementptr inbounds { ptr, i64 }, ptr %t1037, i32 0, i32 0
@@ -2387,7 +2387,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1037
   ret void
 }
-define internal i32 @"std/os/fs.AsyncMkdirAll.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_mkdir_all.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1005.1040 = getelementptr i8, ptr %frame, i64 8
@@ -2517,7 +2517,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncMkdirAll.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_mkdir_all.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
   %t1100 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2532,15 +2532,15 @@ entry:
   %t1106 = icmp eq i32 %start, -2
   %t1107 = select i1 %t1106, i32 %t1104, i32 %start
   %t1108 = icmp ne i32 %owns, 0
-  %t1109 = select i1 %t1108, ptr @"std/os/fs.AsyncMkdirAll.drop.own", ptr @"std/os/fs.AsyncMkdirAll.drop"
+  %t1109 = select i1 %t1108, ptr @"std/os/fs.async_mkdir_all.drop.own", ptr @"std/os/fs.async_mkdir_all.drop"
   br i1 %t1105, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1110 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncMkdirAll.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t1109)
+  %t1110 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_mkdir_all.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t1109)
   call void @willrt_task_own_frame(ptr %t1110)
   call void @willrt_task_run_auto(ptr %t1110)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1111 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncMkdirAll.sm", ptr %v.sm.frame, i64 144, i32 %t1107, i32 0, ptr %t1109)
+  %t1111 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_mkdir_all.sm", ptr %v.sm.frame, i64 144, i32 %t1107, i32 0, ptr %t1109)
   call void @willrt_task_own_frame(ptr %t1111)
   call void @willrt_task_run(ptr %t1111)
   br label %sm.start.done.6
@@ -2548,11 +2548,11 @@ sm.start.done.6:
   %t1112 = phi ptr [ %t1110, %sm.start.auto.6 ], [ %t1111, %sm.start.lane.6 ]
   ret ptr %t1112
 }
-define internal void @"std/os/fs.AsyncMkdirAll.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_mkdir_all.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncMkdirAll.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_mkdir_all.drop.own"(ptr %frame) {
 entry:
   %t1113 = getelementptr i8, ptr %frame, i64 8
   %t1114 = getelementptr inbounds { ptr, i64 }, ptr %t1113, i32 0, i32 0
@@ -2561,7 +2561,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1113
   ret void
 }
-define internal i32 @"std/os/fs.AsyncRemoveAll.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_remove_all.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1037.1116 = getelementptr i8, ptr %frame, i64 8
@@ -2689,7 +2689,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncRemoveAll.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_remove_all.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
   %t1175 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2702,15 +2702,15 @@ entry:
   %t1180 = icmp eq i32 %start, -2
   %t1181 = select i1 %t1180, i32 %t1178, i32 %start
   %t1182 = icmp ne i32 %owns, 0
-  %t1183 = select i1 %t1182, ptr @"std/os/fs.AsyncRemoveAll.drop.own", ptr @"std/os/fs.AsyncRemoveAll.drop"
+  %t1183 = select i1 %t1182, ptr @"std/os/fs.async_remove_all.drop.own", ptr @"std/os/fs.async_remove_all.drop"
   br i1 %t1179, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1184 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncRemoveAll.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t1183)
+  %t1184 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_remove_all.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t1183)
   call void @willrt_task_own_frame(ptr %t1184)
   call void @willrt_task_run_auto(ptr %t1184)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1185 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncRemoveAll.sm", ptr %v.sm.frame, i64 144, i32 %t1181, i32 0, ptr %t1183)
+  %t1185 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_remove_all.sm", ptr %v.sm.frame, i64 144, i32 %t1181, i32 0, ptr %t1183)
   call void @willrt_task_own_frame(ptr %t1185)
   call void @willrt_task_run(ptr %t1185)
   br label %sm.start.done.6
@@ -2718,11 +2718,11 @@ sm.start.done.6:
   %t1186 = phi ptr [ %t1184, %sm.start.auto.6 ], [ %t1185, %sm.start.lane.6 ]
   ret ptr %t1186
 }
-define internal void @"std/os/fs.AsyncRemoveAll.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_remove_all.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncRemoveAll.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_remove_all.drop.own"(ptr %frame) {
 entry:
   %t1187 = getelementptr i8, ptr %frame, i64 8
   %t1188 = getelementptr inbounds { ptr, i64 }, ptr %t1187, i32 0, i32 0
@@ -2731,7 +2731,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1187
   ret void
 }
-define internal i32 @"std/os/fs.AsyncSymlink.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_symlink.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1066.1190 = getelementptr i8, ptr %frame, i64 8
@@ -2860,7 +2860,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncSymlink.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_symlink.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t1250 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2876,15 +2876,15 @@ entry:
   %t1257 = icmp eq i32 %start, -2
   %t1258 = select i1 %t1257, i32 %t1255, i32 %start
   %t1259 = icmp ne i32 %owns, 0
-  %t1260 = select i1 %t1259, ptr @"std/os/fs.AsyncSymlink.drop.own", ptr @"std/os/fs.AsyncSymlink.drop"
+  %t1260 = select i1 %t1259, ptr @"std/os/fs.async_symlink.drop.own", ptr @"std/os/fs.async_symlink.drop"
   br i1 %t1256, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1261 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncSymlink.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1260)
+  %t1261 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_symlink.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1260)
   call void @willrt_task_own_frame(ptr %t1261)
   call void @willrt_task_run_auto(ptr %t1261)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1262 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncSymlink.sm", ptr %v.sm.frame, i64 160, i32 %t1258, i32 0, ptr %t1260)
+  %t1262 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_symlink.sm", ptr %v.sm.frame, i64 160, i32 %t1258, i32 0, ptr %t1260)
   call void @willrt_task_own_frame(ptr %t1262)
   call void @willrt_task_run(ptr %t1262)
   br label %sm.start.done.6
@@ -2892,11 +2892,11 @@ sm.start.done.6:
   %t1263 = phi ptr [ %t1261, %sm.start.auto.6 ], [ %t1262, %sm.start.lane.6 ]
   ret ptr %t1263
 }
-define internal void @"std/os/fs.AsyncSymlink.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_symlink.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncSymlink.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_symlink.drop.own"(ptr %frame) {
 entry:
   %t1264 = getelementptr i8, ptr %frame, i64 24
   %t1265 = getelementptr inbounds { ptr, i64 }, ptr %t1264, i32 0, i32 0
@@ -2910,7 +2910,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1267
   ret void
 }
-define internal i32 @"std/os/fs.AsyncTempDir.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_temp_dir.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1100.1270 = getelementptr i8, ptr %frame, i64 8
@@ -3058,7 +3058,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncTempDir.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_temp_dir.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 192)
   %t1338 = getelementptr i8, ptr %v.sm.frame, i64 40
@@ -3076,15 +3076,15 @@ entry:
   %t1346 = icmp eq i32 %start, -2
   %t1347 = select i1 %t1346, i32 %t1344, i32 %start
   %t1348 = icmp ne i32 %owns, 0
-  %t1349 = select i1 %t1348, ptr @"std/os/fs.AsyncTempDir.drop.own", ptr @"std/os/fs.AsyncTempDir.drop"
+  %t1349 = select i1 %t1348, ptr @"std/os/fs.async_temp_dir.drop.own", ptr @"std/os/fs.async_temp_dir.drop"
   br i1 %t1345, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1350 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncTempDir.sm", ptr %v.sm.frame, i64 192, i32 0, i32 0, ptr %t1349)
+  %t1350 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_temp_dir.sm", ptr %v.sm.frame, i64 192, i32 0, i32 0, ptr %t1349)
   call void @willrt_task_own_frame(ptr %t1350)
   call void @willrt_task_run_auto(ptr %t1350)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1351 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncTempDir.sm", ptr %v.sm.frame, i64 192, i32 %t1347, i32 0, ptr %t1349)
+  %t1351 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_temp_dir.sm", ptr %v.sm.frame, i64 192, i32 %t1347, i32 0, ptr %t1349)
   call void @willrt_task_own_frame(ptr %t1351)
   call void @willrt_task_run(ptr %t1351)
   br label %sm.start.done.6
@@ -3092,7 +3092,7 @@ sm.start.done.6:
   %t1352 = phi ptr [ %t1350, %sm.start.auto.6 ], [ %t1351, %sm.start.lane.6 ]
   ret ptr %t1352
 }
-define internal void @"std/os/fs.AsyncTempDir.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_temp_dir.drop"(ptr %frame) {
 entry:
   %t1353 = getelementptr i8, ptr %frame, i64 40
   %t1354 = getelementptr inbounds { ptr, i64 }, ptr %t1353, i32 0, i32 0
@@ -3101,7 +3101,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1353
   ret void
 }
-define internal void @"std/os/fs.AsyncTempDir.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_temp_dir.drop.own"(ptr %frame) {
 entry:
   %t1356 = getelementptr i8, ptr %frame, i64 40
   %t1357 = getelementptr inbounds { ptr, i64 }, ptr %t1356, i32 0, i32 0
@@ -3120,7 +3120,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1362
   ret void
 }
-define internal i32 @"std/os/fs.AsyncReadFile.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_read_file.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1142.1365 = getelementptr i8, ptr %frame, i64 8
@@ -3295,7 +3295,7 @@ share.adt.done.6.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncReadFile.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_read_file.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 224)
   %t1444 = getelementptr i8, ptr %v.sm.frame, i64 24
@@ -3310,15 +3310,15 @@ entry:
   %t1450 = icmp eq i32 %start, -2
   %t1451 = select i1 %t1450, i32 %t1448, i32 %start
   %t1452 = icmp ne i32 %owns, 0
-  %t1453 = select i1 %t1452, ptr @"std/os/fs.AsyncReadFile.drop.own", ptr @"std/os/fs.AsyncReadFile.drop"
+  %t1453 = select i1 %t1452, ptr @"std/os/fs.async_read_file.drop.own", ptr @"std/os/fs.async_read_file.drop"
   br i1 %t1449, label %sm.start.auto.8, label %sm.start.lane.8
 sm.start.auto.8:
-  %t1454 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncReadFile.sm", ptr %v.sm.frame, i64 224, i32 0, i32 0, ptr %t1453)
+  %t1454 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_read_file.sm", ptr %v.sm.frame, i64 224, i32 0, i32 0, ptr %t1453)
   call void @willrt_task_own_frame(ptr %t1454)
   call void @willrt_task_run_auto(ptr %t1454)
   br label %sm.start.done.8
 sm.start.lane.8:
-  %t1455 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncReadFile.sm", ptr %v.sm.frame, i64 224, i32 %t1451, i32 0, ptr %t1453)
+  %t1455 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_read_file.sm", ptr %v.sm.frame, i64 224, i32 %t1451, i32 0, ptr %t1453)
   call void @willrt_task_own_frame(ptr %t1455)
   call void @willrt_task_run(ptr %t1455)
   br label %sm.start.done.8
@@ -3326,7 +3326,7 @@ sm.start.done.8:
   %t1456 = phi ptr [ %t1454, %sm.start.auto.8 ], [ %t1455, %sm.start.lane.8 ]
   ret ptr %t1456
 }
-define internal void @"std/os/fs.AsyncReadFile.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_read_file.drop"(ptr %frame) {
 entry:
   %t1457 = getelementptr i8, ptr %frame, i64 24
   %t1458 = getelementptr inbounds { ptr, i64, i64 }, ptr %t1457, i32 0, i32 0
@@ -3351,7 +3351,7 @@ deep.rel.arr.done.9:
   store { ptr, i64, i64 } zeroinitializer, ptr %t1457
   ret void
 }
-define internal void @"std/os/fs.AsyncReadFile.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_read_file.drop.own"(ptr %frame) {
 entry:
   %t1467 = getelementptr i8, ptr %frame, i64 24
   %t1468 = getelementptr inbounds { ptr, i64, i64 }, ptr %t1467, i32 0, i32 0
@@ -3381,7 +3381,7 @@ deep.rel.arr.done.10:
   store { ptr, i64 } zeroinitializer, ptr %t1477
   ret void
 }
-define internal i32 @"std/os/fs.AsyncWriteFile.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_write_file.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1180.1480 = getelementptr i8, ptr %frame, i64 8
@@ -3512,7 +3512,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncWriteFile.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_write_file.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t1541 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -3528,15 +3528,15 @@ entry:
   %t1548 = icmp eq i32 %start, -2
   %t1549 = select i1 %t1548, i32 %t1546, i32 %start
   %t1550 = icmp ne i32 %owns, 0
-  %t1551 = select i1 %t1550, ptr @"std/os/fs.AsyncWriteFile.drop.own", ptr @"std/os/fs.AsyncWriteFile.drop"
+  %t1551 = select i1 %t1550, ptr @"std/os/fs.async_write_file.drop.own", ptr @"std/os/fs.async_write_file.drop"
   br i1 %t1547, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1552 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncWriteFile.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1551)
+  %t1552 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_write_file.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1551)
   call void @willrt_task_own_frame(ptr %t1552)
   call void @willrt_task_run_auto(ptr %t1552)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1553 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncWriteFile.sm", ptr %v.sm.frame, i64 160, i32 %t1549, i32 0, ptr %t1551)
+  %t1553 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_write_file.sm", ptr %v.sm.frame, i64 160, i32 %t1549, i32 0, ptr %t1551)
   call void @willrt_task_own_frame(ptr %t1553)
   call void @willrt_task_run(ptr %t1553)
   br label %sm.start.done.6
@@ -3544,11 +3544,11 @@ sm.start.done.6:
   %t1554 = phi ptr [ %t1552, %sm.start.auto.6 ], [ %t1553, %sm.start.lane.6 ]
   ret ptr %t1554
 }
-define internal void @"std/os/fs.AsyncWriteFile.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_write_file.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncWriteFile.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_write_file.drop.own"(ptr %frame) {
 entry:
   %t1555 = getelementptr i8, ptr %frame, i64 8
   %t1556 = getelementptr inbounds { ptr, i64 }, ptr %t1555, i32 0, i32 0
@@ -3557,7 +3557,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1555
   ret void
 }
-define internal i32 @"std/os/fs.AsyncAppend.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_append.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1215.1558 = getelementptr i8, ptr %frame, i64 8
@@ -3688,7 +3688,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncAppend.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_append.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t1619 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -3704,15 +3704,15 @@ entry:
   %t1626 = icmp eq i32 %start, -2
   %t1627 = select i1 %t1626, i32 %t1624, i32 %start
   %t1628 = icmp ne i32 %owns, 0
-  %t1629 = select i1 %t1628, ptr @"std/os/fs.AsyncAppend.drop.own", ptr @"std/os/fs.AsyncAppend.drop"
+  %t1629 = select i1 %t1628, ptr @"std/os/fs.async_append.drop.own", ptr @"std/os/fs.async_append.drop"
   br i1 %t1625, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1630 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncAppend.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1629)
+  %t1630 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_append.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1629)
   call void @willrt_task_own_frame(ptr %t1630)
   call void @willrt_task_run_auto(ptr %t1630)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1631 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncAppend.sm", ptr %v.sm.frame, i64 160, i32 %t1627, i32 0, ptr %t1629)
+  %t1631 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_append.sm", ptr %v.sm.frame, i64 160, i32 %t1627, i32 0, ptr %t1629)
   call void @willrt_task_own_frame(ptr %t1631)
   call void @willrt_task_run(ptr %t1631)
   br label %sm.start.done.6
@@ -3720,11 +3720,11 @@ sm.start.done.6:
   %t1632 = phi ptr [ %t1630, %sm.start.auto.6 ], [ %t1631, %sm.start.lane.6 ]
   ret ptr %t1632
 }
-define internal void @"std/os/fs.AsyncAppend.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_append.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncAppend.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_append.drop.own"(ptr %frame) {
 entry:
   %t1633 = getelementptr i8, ptr %frame, i64 8
   %t1634 = getelementptr inbounds { ptr, i64 }, ptr %t1633, i32 0, i32 0
@@ -3733,7 +3733,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1633
   ret void
 }
-define internal i32 @"std/os/fs.AsyncOpen.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_open.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1250.1636 = getelementptr i8, ptr %frame, i64 8
@@ -3866,7 +3866,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncOpen.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_open.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t1697 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -3882,15 +3882,15 @@ entry:
   %t1704 = icmp eq i32 %start, -2
   %t1705 = select i1 %t1704, i32 %t1702, i32 %start
   %t1706 = icmp ne i32 %owns, 0
-  %t1707 = select i1 %t1706, ptr @"std/os/fs.AsyncOpen.drop.own", ptr @"std/os/fs.AsyncOpen.drop"
+  %t1707 = select i1 %t1706, ptr @"std/os/fs.async_open.drop.own", ptr @"std/os/fs.async_open.drop"
   br i1 %t1703, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1708 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncOpen.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1707)
+  %t1708 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_open.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1707)
   call void @willrt_task_own_frame(ptr %t1708)
   call void @willrt_task_run_auto(ptr %t1708)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1709 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncOpen.sm", ptr %v.sm.frame, i64 160, i32 %t1705, i32 0, ptr %t1707)
+  %t1709 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_open.sm", ptr %v.sm.frame, i64 160, i32 %t1705, i32 0, ptr %t1707)
   call void @willrt_task_own_frame(ptr %t1709)
   call void @willrt_task_run(ptr %t1709)
   br label %sm.start.done.6
@@ -3898,11 +3898,11 @@ sm.start.done.6:
   %t1710 = phi ptr [ %t1708, %sm.start.auto.6 ], [ %t1709, %sm.start.lane.6 ]
   ret ptr %t1710
 }
-define internal void @"std/os/fs.AsyncOpen.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_open.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncOpen.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_open.drop.own"(ptr %frame) {
 entry:
   %t1711 = getelementptr i8, ptr %frame, i64 8
   %t1712 = getelementptr inbounds { ptr, i64 }, ptr %t1711, i32 0, i32 0
@@ -3911,7 +3911,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1711
   ret void
 }
-define internal i32 @"std/os/fs.AsyncCreate.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_create.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1291.1714 = getelementptr i8, ptr %frame, i64 8
@@ -4045,7 +4045,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncCreate.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_create.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t1775 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -4060,15 +4060,15 @@ entry:
   %t1781 = icmp eq i32 %start, -2
   %t1782 = select i1 %t1781, i32 %t1779, i32 %start
   %t1783 = icmp ne i32 %owns, 0
-  %t1784 = select i1 %t1783, ptr @"std/os/fs.AsyncCreate.drop.own", ptr @"std/os/fs.AsyncCreate.drop"
+  %t1784 = select i1 %t1783, ptr @"std/os/fs.async_create.drop.own", ptr @"std/os/fs.async_create.drop"
   br i1 %t1780, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1785 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncCreate.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1784)
+  %t1785 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_create.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1784)
   call void @willrt_task_own_frame(ptr %t1785)
   call void @willrt_task_run_auto(ptr %t1785)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1786 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncCreate.sm", ptr %v.sm.frame, i64 160, i32 %t1782, i32 0, ptr %t1784)
+  %t1786 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_create.sm", ptr %v.sm.frame, i64 160, i32 %t1782, i32 0, ptr %t1784)
   call void @willrt_task_own_frame(ptr %t1786)
   call void @willrt_task_run(ptr %t1786)
   br label %sm.start.done.6
@@ -4076,11 +4076,11 @@ sm.start.done.6:
   %t1787 = phi ptr [ %t1785, %sm.start.auto.6 ], [ %t1786, %sm.start.lane.6 ]
   ret ptr %t1787
 }
-define internal void @"std/os/fs.AsyncCreate.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_create.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncCreate.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_create.drop.own"(ptr %frame) {
 entry:
   %t1788 = getelementptr i8, ptr %frame, i64 8
   %t1789 = getelementptr inbounds { ptr, i64 }, ptr %t1788, i32 0, i32 0
@@ -4089,7 +4089,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1788
   ret void
 }
-define internal i32 @"std/os/fs.AsyncStat.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_stat.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1330.1791 = getelementptr i8, ptr %frame, i64 8
@@ -4221,7 +4221,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncStat.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_stat.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
   %t1851 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -4234,15 +4234,15 @@ entry:
   %t1856 = icmp eq i32 %start, -2
   %t1857 = select i1 %t1856, i32 %t1854, i32 %start
   %t1858 = icmp ne i32 %owns, 0
-  %t1859 = select i1 %t1858, ptr @"std/os/fs.AsyncStat.drop.own", ptr @"std/os/fs.AsyncStat.drop"
+  %t1859 = select i1 %t1858, ptr @"std/os/fs.async_stat.drop.own", ptr @"std/os/fs.async_stat.drop"
   br i1 %t1855, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1860 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0, ptr %t1859)
+  %t1860 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_stat.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0, ptr %t1859)
   call void @willrt_task_own_frame(ptr %t1860)
   call void @willrt_task_run_auto(ptr %t1860)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1861 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 %t1857, i32 0, ptr %t1859)
+  %t1861 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_stat.sm", ptr %v.sm.frame, i64 240, i32 %t1857, i32 0, ptr %t1859)
   call void @willrt_task_own_frame(ptr %t1861)
   call void @willrt_task_run(ptr %t1861)
   br label %sm.start.done.6
@@ -4250,11 +4250,11 @@ sm.start.done.6:
   %t1862 = phi ptr [ %t1860, %sm.start.auto.6 ], [ %t1861, %sm.start.lane.6 ]
   ret ptr %t1862
 }
-define internal void @"std/os/fs.AsyncStat.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_stat.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncStat.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_stat.drop.own"(ptr %frame) {
 entry:
   %t1863 = getelementptr i8, ptr %frame, i64 8
   %t1864 = getelementptr inbounds { ptr, i64 }, ptr %t1863, i32 0, i32 0
@@ -4263,7 +4263,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1863
   ret void
 }
-define internal i32 @"std/os/fs.AsyncReadDir.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_read_dir.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1366.1866 = getelementptr i8, ptr %frame, i64 8
@@ -4446,7 +4446,7 @@ share.adt.done.6.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncReadDir.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_read_dir.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 224)
   %t1950 = getelementptr i8, ptr %v.sm.frame, i64 24
@@ -4461,15 +4461,15 @@ entry:
   %t1956 = icmp eq i32 %start, -2
   %t1957 = select i1 %t1956, i32 %t1954, i32 %start
   %t1958 = icmp ne i32 %owns, 0
-  %t1959 = select i1 %t1958, ptr @"std/os/fs.AsyncReadDir.drop.own", ptr @"std/os/fs.AsyncReadDir.drop"
+  %t1959 = select i1 %t1958, ptr @"std/os/fs.async_read_dir.drop.own", ptr @"std/os/fs.async_read_dir.drop"
   br i1 %t1955, label %sm.start.auto.8, label %sm.start.lane.8
 sm.start.auto.8:
-  %t1960 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncReadDir.sm", ptr %v.sm.frame, i64 224, i32 0, i32 0, ptr %t1959)
+  %t1960 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_read_dir.sm", ptr %v.sm.frame, i64 224, i32 0, i32 0, ptr %t1959)
   call void @willrt_task_own_frame(ptr %t1960)
   call void @willrt_task_run_auto(ptr %t1960)
   br label %sm.start.done.8
 sm.start.lane.8:
-  %t1961 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncReadDir.sm", ptr %v.sm.frame, i64 224, i32 %t1957, i32 0, ptr %t1959)
+  %t1961 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_read_dir.sm", ptr %v.sm.frame, i64 224, i32 %t1957, i32 0, ptr %t1959)
   call void @willrt_task_own_frame(ptr %t1961)
   call void @willrt_task_run(ptr %t1961)
   br label %sm.start.done.8
@@ -4477,7 +4477,7 @@ sm.start.done.8:
   %t1962 = phi ptr [ %t1960, %sm.start.auto.8 ], [ %t1961, %sm.start.lane.8 ]
   ret ptr %t1962
 }
-define internal void @"std/os/fs.AsyncReadDir.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_read_dir.drop"(ptr %frame) {
 entry:
   %t1963 = getelementptr i8, ptr %frame, i64 24
   %t1964 = getelementptr inbounds { ptr, i64, i64 }, ptr %t1963, i32 0, i32 0
@@ -4507,7 +4507,7 @@ deep.rel.arr.done.9:
   store { ptr, i64, i64 } zeroinitializer, ptr %t1963
   ret void
 }
-define internal void @"std/os/fs.AsyncReadDir.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_read_dir.drop.own"(ptr %frame) {
 entry:
   %t1976 = getelementptr i8, ptr %frame, i64 24
   %t1977 = getelementptr inbounds { ptr, i64, i64 }, ptr %t1976, i32 0, i32 0
@@ -4542,7 +4542,7 @@ deep.rel.arr.done.10:
   store { ptr, i64 } zeroinitializer, ptr %t1989
   ret void
 }
-define internal i32 @"std/os/fs.AsyncRename.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_rename.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1404.1992 = getelementptr i8, ptr %frame, i64 8
@@ -4671,7 +4671,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncRename.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_rename.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t2052 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -4687,15 +4687,15 @@ entry:
   %t2059 = icmp eq i32 %start, -2
   %t2060 = select i1 %t2059, i32 %t2057, i32 %start
   %t2061 = icmp ne i32 %owns, 0
-  %t2062 = select i1 %t2061, ptr @"std/os/fs.AsyncRename.drop.own", ptr @"std/os/fs.AsyncRename.drop"
+  %t2062 = select i1 %t2061, ptr @"std/os/fs.async_rename.drop.own", ptr @"std/os/fs.async_rename.drop"
   br i1 %t2058, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t2063 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncRename.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t2062)
+  %t2063 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_rename.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t2062)
   call void @willrt_task_own_frame(ptr %t2063)
   call void @willrt_task_run_auto(ptr %t2063)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t2064 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncRename.sm", ptr %v.sm.frame, i64 160, i32 %t2060, i32 0, ptr %t2062)
+  %t2064 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_rename.sm", ptr %v.sm.frame, i64 160, i32 %t2060, i32 0, ptr %t2062)
   call void @willrt_task_own_frame(ptr %t2064)
   call void @willrt_task_run(ptr %t2064)
   br label %sm.start.done.6
@@ -4703,11 +4703,11 @@ sm.start.done.6:
   %t2065 = phi ptr [ %t2063, %sm.start.auto.6 ], [ %t2064, %sm.start.lane.6 ]
   ret ptr %t2065
 }
-define internal void @"std/os/fs.AsyncRename.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_rename.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncRename.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_rename.drop.own"(ptr %frame) {
 entry:
   %t2066 = getelementptr i8, ptr %frame, i64 24
   %t2067 = getelementptr inbounds { ptr, i64 }, ptr %t2066, i32 0, i32 0
@@ -4721,7 +4721,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t2069
   ret void
 }
-define internal i32 @"std/os/fs.AsyncRemove.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_remove.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1438.2072 = getelementptr i8, ptr %frame, i64 8
@@ -4849,7 +4849,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncRemove.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_remove.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
   %t2131 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -4862,15 +4862,15 @@ entry:
   %t2136 = icmp eq i32 %start, -2
   %t2137 = select i1 %t2136, i32 %t2134, i32 %start
   %t2138 = icmp ne i32 %owns, 0
-  %t2139 = select i1 %t2138, ptr @"std/os/fs.AsyncRemove.drop.own", ptr @"std/os/fs.AsyncRemove.drop"
+  %t2139 = select i1 %t2138, ptr @"std/os/fs.async_remove.drop.own", ptr @"std/os/fs.async_remove.drop"
   br i1 %t2135, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t2140 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncRemove.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t2139)
+  %t2140 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_remove.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t2139)
   call void @willrt_task_own_frame(ptr %t2140)
   call void @willrt_task_run_auto(ptr %t2140)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t2141 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncRemove.sm", ptr %v.sm.frame, i64 144, i32 %t2137, i32 0, ptr %t2139)
+  %t2141 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_remove.sm", ptr %v.sm.frame, i64 144, i32 %t2137, i32 0, ptr %t2139)
   call void @willrt_task_own_frame(ptr %t2141)
   call void @willrt_task_run(ptr %t2141)
   br label %sm.start.done.6
@@ -4878,11 +4878,11 @@ sm.start.done.6:
   %t2142 = phi ptr [ %t2140, %sm.start.auto.6 ], [ %t2141, %sm.start.lane.6 ]
   ret ptr %t2142
 }
-define internal void @"std/os/fs.AsyncRemove.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_remove.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncRemove.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_remove.drop.own"(ptr %frame) {
 entry:
   %t2143 = getelementptr i8, ptr %frame, i64 8
   %t2144 = getelementptr inbounds { ptr, i64 }, ptr %t2143, i32 0, i32 0
@@ -4891,7 +4891,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t2143
   ret void
 }
-define internal i32 @"std/os/fs.AsyncTempFile.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_temp_file.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1467.2146 = getelementptr i8, ptr %frame, i64 8
@@ -5024,7 +5024,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncTempFile.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_temp_file.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 176)
   %t2207 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -5040,15 +5040,15 @@ entry:
   %t2214 = icmp eq i32 %start, -2
   %t2215 = select i1 %t2214, i32 %t2212, i32 %start
   %t2216 = icmp ne i32 %owns, 0
-  %t2217 = select i1 %t2216, ptr @"std/os/fs.AsyncTempFile.drop.own", ptr @"std/os/fs.AsyncTempFile.drop"
+  %t2217 = select i1 %t2216, ptr @"std/os/fs.async_temp_file.drop.own", ptr @"std/os/fs.async_temp_file.drop"
   br i1 %t2213, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t2218 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncTempFile.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0, ptr %t2217)
+  %t2218 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_temp_file.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0, ptr %t2217)
   call void @willrt_task_own_frame(ptr %t2218)
   call void @willrt_task_run_auto(ptr %t2218)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t2219 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncTempFile.sm", ptr %v.sm.frame, i64 176, i32 %t2215, i32 0, ptr %t2217)
+  %t2219 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_temp_file.sm", ptr %v.sm.frame, i64 176, i32 %t2215, i32 0, ptr %t2217)
   call void @willrt_task_own_frame(ptr %t2219)
   call void @willrt_task_run(ptr %t2219)
   br label %sm.start.done.6
@@ -5056,11 +5056,11 @@ sm.start.done.6:
   %t2220 = phi ptr [ %t2218, %sm.start.auto.6 ], [ %t2219, %sm.start.lane.6 ]
   ret ptr %t2220
 }
-define internal void @"std/os/fs.AsyncTempFile.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_temp_file.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncTempFile.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_temp_file.drop.own"(ptr %frame) {
 entry:
   %t2221 = getelementptr i8, ptr %frame, i64 24
   %t2222 = getelementptr inbounds { ptr, i64 }, ptr %t2221, i32 0, i32 0
@@ -5074,7 +5074,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t2224
   ret void
 }
-define internal i32 @"example.com/concurrency/asyncwrite.Write.sm"(ptr %frame) {
+define internal i32 @"example.com/concurrency/asyncwrite.write.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.4.1 = getelementptr i8, ptr %frame, i64 8
@@ -5117,7 +5117,7 @@ panic.ok.2:
   store ptr %t11, ptr %t13
   %t14 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.19, i32 0, i32 1
   store i64 %t12, ptr %t14
-  %t15 = call ptr @"std/os/fs.AsyncWriteFile.task"(ptr %v.sm.param.4.1, ptr %v.slice.19, i32 -2, i32 0)
+  %t15 = call ptr @"std/os/fs.async_write_file.task"(ptr %v.sm.param.4.1, ptr %v.slice.19, i32 -2, i32 0)
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.sm.call.out.16
   store ptr %t15, ptr %v.sm.join.task.18
   store i32 1, ptr %v.sm.state
@@ -5241,7 +5241,7 @@ share.adt.done.9.1:
   ret i32 1
 
 }
-define hidden ptr @"example.com/concurrency/asyncwrite.Write.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"example.com/concurrency/asyncwrite.write.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 192)
   %t72 = getelementptr i8, ptr %v.sm.frame, i64 24
@@ -5258,15 +5258,15 @@ entry:
   %t79 = icmp eq i32 %start, -2
   %t80 = select i1 %t79, i32 %t77, i32 %start
   %t81 = icmp ne i32 %owns, 0
-  %t82 = select i1 %t81, ptr @"example.com/concurrency/asyncwrite.Write.drop.own", ptr @"example.com/concurrency/asyncwrite.Write.drop"
+  %t82 = select i1 %t81, ptr @"example.com/concurrency/asyncwrite.write.drop.own", ptr @"example.com/concurrency/asyncwrite.write.drop"
   br i1 %t78, label %sm.start.auto.11, label %sm.start.lane.11
 sm.start.auto.11:
-  %t83 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/asyncwrite.Write.sm", ptr %v.sm.frame, i64 192, i32 0, i32 0, ptr %t82)
+  %t83 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/asyncwrite.write.sm", ptr %v.sm.frame, i64 192, i32 0, i32 0, ptr %t82)
   call void @willrt_task_own_frame(ptr %t83)
   call void @willrt_task_run_auto(ptr %t83)
   br label %sm.start.done.11
 sm.start.lane.11:
-  %t84 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/asyncwrite.Write.sm", ptr %v.sm.frame, i64 192, i32 %t80, i32 0, ptr %t82)
+  %t84 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/asyncwrite.write.sm", ptr %v.sm.frame, i64 192, i32 %t80, i32 0, ptr %t82)
   call void @willrt_task_own_frame(ptr %t84)
   call void @willrt_task_run(ptr %t84)
   br label %sm.start.done.11
@@ -5274,7 +5274,7 @@ sm.start.done.11:
   %t85 = phi ptr [ %t83, %sm.start.auto.11 ], [ %t84, %sm.start.lane.11 ]
   ret ptr %t85
 }
-define internal void @"example.com/concurrency/asyncwrite.Write.drop"(ptr %frame) {
+define internal void @"example.com/concurrency/asyncwrite.write.drop"(ptr %frame) {
 entry:
   %t86 = getelementptr i8, ptr %frame, i64 24
   %t87 = getelementptr inbounds { ptr, i64 }, ptr %t86, i32 0, i32 0
@@ -5316,7 +5316,7 @@ deep.rel.adt.done.13.1:
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t89
   ret void
 }
-define internal void @"example.com/concurrency/asyncwrite.Write.drop.own"(ptr %frame) {
+define internal void @"example.com/concurrency/asyncwrite.write.drop.own"(ptr %frame) {
 entry:
   %t102 = getelementptr i8, ptr %frame, i64 24
   %t103 = getelementptr inbounds { ptr, i64 }, ptr %t102, i32 0, i32 0
@@ -5415,7 +5415,7 @@ sm.init:
   store i64 %t130, ptr %t133
   %t134 = load { ptr, i64 }, ptr %v.strm.45
   store { ptr, i64 } %t134, ptr %v.ret.45
-  %t135 = call ptr @"example.com/concurrency/asyncwrite.Write.task"(ptr %v.ret.45, i32 -1, i32 1)
+  %t135 = call ptr @"example.com/concurrency/asyncwrite.write.task"(ptr %v.ret.45, i32 -1, i32 1)
   store ptr %t135, ptr %v.task
   %t136 = load ptr, ptr %v.task
   store ptr %t136, ptr %v.sm.join.task.137
@@ -5463,7 +5463,7 @@ sm.op.cont.2:
   %t156 = icmp eq i32 %t155, 1
   br i1 %t156, label %if.then.2, label %if.end.2
 if.then.2:
-  %t157 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
+  %t157 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.remove"(ptr %v.path)
   store { i32, [4 x i8], %interface.Error } %t157, ptr %v.ret.59
   %t158 = load i32, ptr %v.result
   %t159 = icmp eq i32 %t158, 0
@@ -5507,11 +5507,11 @@ deep.rel.adt.done.4.1:
   call i32 @willrt_task_store_result(ptr %t172, i64 %t174)
   ret i32 1
 if.end.2:
-  %t175 = call { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.ReadFile"(ptr %v.path)
+  %t175 = call { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.read_file"(ptr %v.path)
   store { i32, [4 x i8], { ptr, i64, i64 } } %t175, ptr %v.ret.71
   %t176 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.ret.71
   store { i32, [4 x i8], { ptr, i64, i64 } } %t176, ptr %v.loaded
-  %t177 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
+  %t177 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.remove"(ptr %v.path)
   store { i32, [4 x i8], %interface.Error } %t177, ptr %v.ret.76
   %t178 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 0
   %t179 = load i32, ptr %t178
@@ -6085,16 +6085,16 @@ declare ptr @willrt_fs_async_temp_file_start(ptr, ptr, ptr)
 @.bytes.7 = private unnamed_addr constant [9 x i8] c"i/o error", align 1
 @.bytes.8 = private unnamed_addr constant [20 x i8] c"fs: cannot read file", align 1
 @"will.type.std/os/fs.fsError" = linkonce_odr constant i8 0, align 1
-@"std/os/fs.vtable.Error.fsError" = internal constant [6 x ptr] [ptr @"std/os/fs.fsError.Message", ptr @"std/os/fs.fsError.Status", ptr @"std/os/fs.iface.clone.Error.fsError", ptr @"std/os/fs.iface.drop.Error.fsError", ptr @"std/os/fs.iface.share.Error.fsError", ptr @"will.type.std/os/fs.fsError"], align 8
+@"std/os/fs.vtable.Error.fsError" = internal constant [6 x ptr] [ptr @"std/os/fs.fsError.message", ptr @"std/os/fs.fsError.status", ptr @"std/os/fs.iface.clone.Error.fsError", ptr @"std/os/fs.iface.drop.Error.fsError", ptr @"std/os/fs.iface.share.Error.fsError", ptr @"will.type.std/os/fs.fsError"], align 8
 @.bytes.9 = private unnamed_addr constant [21 x i8] c"fs: cannot write file", align 1
 @.bytes.10 = private unnamed_addr constant [22 x i8] c"fs: cannot append file", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/os/fs.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/os/fs.iface.clone.Error.std/errors.Fault", ptr @"std/os/fs.iface.drop.Error.std/errors.Fault", ptr @"std/os/fs.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@"std/os/fs.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/os/fs.iface.clone.Error.std/errors.Fault", ptr @"std/os/fs.iface.drop.Error.std/errors.Fault", ptr @"std/os/fs.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.bytes.11 = private unnamed_addr constant [0 x i8] zeroinitializer
 @.bytes.12 = private unnamed_addr constant [6 x i8] c"worker", align 1
 @.str.16 = private unnamed_addr constant [26 x i8] c"slice bounds out of range\00", align 1
-@.str.17 = private unnamed_addr constant [15 x i8] c"main.will:5:42\00", align 1
-@.str.18 = private unnamed_addr constant [41 x i8] c"example.com/concurrency/asyncwrite.Write\00", align 1
+@.str.17 = private unnamed_addr constant [15 x i8] c"main.will:5:44\00", align 1
+@.str.18 = private unnamed_addr constant [41 x i8] c"example.com/concurrency/asyncwrite.write\00", align 1
 @.bytes.13 = private unnamed_addr constant [31 x i8] c"will-concurrency-asyncwrite.tmp", align 1
 @.str.20 = private unnamed_addr constant [9 x i8] c"canceled\00", align 1
 @.str.21 = private unnamed_addr constant [9 x i8] c"deadline\00", align 1

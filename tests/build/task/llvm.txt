@@ -1,6 +1,6 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
-define hidden i32 @"example.com/task.Compute"(i32 %x) alwaysinline {
+define hidden i32 @"example.com/task.compute"(i32 %x) alwaysinline {
 entry:
   %t1 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %x, i32 1)
   %t2 = extractvalue {i32, i1} %t1, 0
@@ -12,7 +12,7 @@ panic.1:
 panic.ok.1:
   ret i32 %t2
 }
-define hidden { ptr, i64 } @"example.com/task.MakeText"(i32 %n) alwaysinline {
+define hidden { ptr, i64 } @"example.com/task.make_text"(i32 %n) alwaysinline {
 entry:
   %v.interp.17 = alloca { ptr, i64 }
   %t4 = add i64 0, 6
@@ -311,7 +311,7 @@ define i32 @"example.com/task.spawn.1"(ptr %frame) {
 entry:
   %t130 = getelementptr { i32 }, ptr %frame, i32 0, i32 0
   %t131 = load i32, ptr %t130
-  %t132 = call i32 @"example.com/task.Compute"(i32 %t131)
+  %t132 = call i32 @"example.com/task.compute"(i32 %t131)
   %t133 = alloca i32
   store i32 %t132, ptr %t133
   %t134 = getelementptr i32, ptr null, i32 1
@@ -323,7 +323,7 @@ define i32 @"example.com/task.spawn.2"(ptr %frame) {
 entry:
   %t136 = getelementptr { i32 }, ptr %frame, i32 0, i32 0
   %t137 = load i32, ptr %t136
-  %t138 = call i32 @"example.com/task.Compute"(i32 %t137)
+  %t138 = call i32 @"example.com/task.compute"(i32 %t137)
   %t139 = alloca i32
   store i32 %t138, ptr %t139
   %t140 = getelementptr i32, ptr null, i32 1
@@ -335,7 +335,7 @@ define i32 @"example.com/task.spawn.3"(ptr %frame) {
 entry:
   %t142 = getelementptr { i32 }, ptr %frame, i32 0, i32 0
   %t143 = load i32, ptr %t142
-  %t144 = call { ptr, i64 } @"example.com/task.MakeText"(i32 %t143)
+  %t144 = call { ptr, i64 } @"example.com/task.make_text"(i32 %t143)
   %t145 = alloca { ptr, i64 }
   store { ptr, i64 } %t144, ptr %t145
   %t146 = getelementptr { ptr, i64 }, ptr null, i32 1
@@ -363,7 +363,7 @@ main.async.ok.8:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:2:12\00", align 1
-@.str.2 = private unnamed_addr constant [25 x i8] c"example.com/task.Compute\00", align 1
+@.str.2 = private unnamed_addr constant [25 x i8] c"example.com/task.compute\00", align 1
 @.bytes.1 = private unnamed_addr constant [6 x i8] c"value=", align 1
 @.str.4 = private unnamed_addr constant [16 x i8] c"main.will:16:15\00", align 1
 @.str.5 = private unnamed_addr constant [27 x i8] c"example.com/task.will$main\00", align 1

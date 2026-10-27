@@ -532,7 +532,7 @@ func (g *generator) cloneValueCall(r willc.Record, text string) (string, string,
 		return g.load(typ, slot), text, nil
 	}
 	if !isStructType(typ) {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Clone of %s is not lowered yet", r.ID, text)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: clone of %s is not lowered yet", r.ID, text)
 	}
 	src, _, err := g.place(refField(r, "recv"))
 	if err != nil {

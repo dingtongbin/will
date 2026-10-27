@@ -1,6 +1,6 @@
-def G(a: i32) {
+def g(a: i32) {
 }
 
-def F() {
-    G()
+def f() {
+    g()
 }

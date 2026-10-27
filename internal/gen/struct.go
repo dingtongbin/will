@@ -429,7 +429,7 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 	}
 	if fieldText(r, "type") == "Show" {
 		g.showUsed = true
-		return "%interface.Show", nil
+		return "%interface.show", nil
 	}
 	return "", g.errf(decl, "cannot translate node #%d: type %s is not lowered yet", decl, fieldText(r, "type"))
 }
@@ -838,7 +838,7 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		elem, ok := chanElemText(chanText)
 		if !ok {
-			return "", g.errf(id, "cannot translate node #%d: Recv needs a channel", id)
+			return "", g.errf(id, "cannot translate node #%d: recv needs a channel", id)
 		}
 		return "Option<" + elem + ">", nil
 	case "trysend":
@@ -850,7 +850,7 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		elem, ok := taskElemText(taskText)
 		if !ok {
-			return "", g.errf(id, "cannot translate node #%d: Join needs a Task", id)
+			return "", g.errf(id, "cannot translate node #%d: join needs a Task", id)
 		}
 		return "Result<" + elem + ",TaskError>", nil
 	case "send":
@@ -939,7 +939,7 @@ func (g *generator) willTypeText(id int) (string, error) {
 // callResultText returns the result type text of one call. A call names its
 // callee by a document reference or by the module-wide symbol.
 func (g *generator) callResultText(r willc.Record) (string, error) {
-	if r.Kind == "mcall" && fieldText(r, "text") == "Clone" {
+	if r.Kind == "mcall" && fieldText(r, "text") == "clone" {
 		recvText, err := g.willTypeText(refField(r, "recv"))
 		if err != nil {
 			return "", err
@@ -1054,7 +1054,7 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 			recvText = stripPredeclaredPackage(recvText)
 			if kind, args, ok := parseADT(recvText); ok {
 				switch fieldText(r, "text") {
-				case "IsSome", "IsNone", "IsOk", "IsErr":
+				case "is_some", "is_none", "is_ok", "is_err":
 					return "bool", nil
 				case "Or":
 					if len(args) != 0 {
@@ -1412,7 +1412,7 @@ func (g *generator) place(id int) (string, string, error) {
 		} else if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendableFor(sym) {
 			return g.awaitCallPlace(r)
 		}
-		if r.Kind == "mcall" && fieldText(r, "text") == "Get" {
+		if r.Kind == "mcall" && fieldText(r, "text") == "get" {
 			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
 				if elem, ok := viewElemText(recvText); ok {
 					if typ, ok := g.typeLLVMOf(elem); ok && isAggregateType(typ) {
@@ -1421,7 +1421,7 @@ func (g *generator) place(id int) (string, string, error) {
 				}
 			}
 		}
-		if r.Kind == "mcall" && fieldText(r, "text") == "Index" {
+		if r.Kind == "mcall" && fieldText(r, "text") == "index" {
 			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
 				if elem, ok := viewElemText(recvText); ok && elem == "u8" {
 					return g.viewIndexPlace(r)

@@ -8,7 +8,7 @@ import (
 )
 
 func TestInterpolatedLiterals(t *testing.T) {
-	src := `def F(n: i32) {
+	src := `def f(n: i32) {
     var s: str = f"a {n + 1} b {{x}}"
     var p: str = f"plain"
     var e: str = f"{n}{n}"
@@ -39,7 +39,7 @@ func TestInterpolatedLiterals(t *testing.T) {
 }
 
 func TestEmptyInterpolationDiagnostic(t *testing.T) {
-	_, ds := Parse("test.will", []byte("def F() {\n    var s: str = f\"{}\"\n}\n"))
+	_, ds := Parse("test.will", []byte("def f() {\n    var s: str = f\"{}\"\n}\n"))
 	d := onlyDiagnostic(t, ds)
 	if d.Code != diag.CodeUnexpectedToken || d.Message != "unexpected token" || d.Help != "expected an expression" {
 		t.Fatalf("diagnostic = %+v", d)

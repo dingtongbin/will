@@ -79,7 +79,7 @@ func runTest(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	defer os.Remove(file)
-	code := runRun([]string{"--entry", "WillTestMain", root.Dir}, stdout, stderr)
+	code := runRun([]string{"--entry", "will_test_main", root.Dir}, stdout, stderr)
 	if code != 0 {
 		return 1
 	}
@@ -108,21 +108,21 @@ func isTestHandle(text, name string) bool {
 // Fail marks the shared state and lets the runner continue to the next case.
 func testEntry(module string, tests, benchmarks []string) string {
 	var out strings.Builder
-	out.WriteString("import \"std/test\"\n\ndef WillTestMain() -> i32 {\n")
+	out.WriteString("import \"std/test\"\n\ndef will_test_main() -> i32 {\n")
 	out.WriteString("    var passed: i32 = 0\n")
 	total := len(tests) + len(benchmarks)
 	fmt.Fprintf(&out, "    var total: i32 = %d\n", total)
 	for _, name := range tests {
 		label := strconv.Quote(module + "/" + name)
-		fmt.Fprintf(&out, "    var %s: test.T = test.NewT(%s)\n", testVar(name), label)
+		fmt.Fprintf(&out, "    var %s: test.T = test.new_t(%s)\n", testVar(name), label)
 		fmt.Fprintf(&out, "    %s(%s)\n", name, testVar(name))
-		fmt.Fprintf(&out, "    if %s.Failed() {\n", testVar(name))
+		fmt.Fprintf(&out, "    if %s.failed() {\n", testVar(name))
 		fmt.Fprintf(&out, "        print(\"FAIL \", %s, \"\\n\")\n", label)
 		out.WriteString("    } else {\n        passed += 1\n    }\n")
 	}
 	for _, name := range benchmarks {
 		label := strconv.Quote(module + "/" + name)
-		fmt.Fprintf(&out, "    var %s: test.B = test.NewB(%s)\n", benchVar(name), label)
+		fmt.Fprintf(&out, "    var %s: test.B = test.new_b(%s)\n", benchVar(name), label)
 		fmt.Fprintf(&out, "    %s(%s)\n", name, benchVar(name))
 		out.WriteString("    passed += 1\n")
 	}

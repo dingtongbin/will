@@ -150,7 +150,7 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 			if d.Value == nil {
 				if isGuardType(want) {
 					c.bag.Error(d.Pos(), diag.CodeGuardCopied,
-						"a guard must be created by Lock",
+						"a guard must be created by lock",
 						"let the lock call initialize it")
 				} else if !c.hasZero(want) {
 					c.bag.Error(d.Pos(), diag.CodeNoZero,
@@ -167,7 +167,7 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 		if c.readGuardWrite(s, x.Target) {
 			c.bag.Error(x.Target.Pos(), diag.CodeReadGuardWrite,
 				"a read guard is read-only",
-				"take the write guard with WLock")
+				"take the write guard with w_lock")
 		}
 		want := c.inferPlace(s, x.Target)
 		if x.Op != "=" && want != nil && !want.IsNumeric() {
@@ -307,7 +307,7 @@ func (c *checker) checkValue(s *inferScope, e ast.Expr, want *Type) {
 	if isGuardType(got) && !guardProducer(e) {
 		c.bag.Error(e.Pos(), diag.CodeGuardCopied,
 			"a guard cannot be copied",
-			"keep it in the local that Lock returned")
+			"keep it in the local that lock returned")
 	}
 	if !Equal(got, want) {
 		c.mismatch(e.Pos(), got, want, false, "", 0)
@@ -483,7 +483,7 @@ func (c *checker) checkArg(s *inferScope, e ast.Expr, want *Type, callee string,
 	if isGuardType(got) && !guardProducer(e) {
 		c.bag.Error(e.Pos(), diag.CodeGuardCopied,
 			"a guard cannot be copied",
-			"keep it in the local that Lock returned")
+			"keep it in the local that lock returned")
 	}
 	if !Equal(got, want) {
 		c.mismatch(e.Pos(), got, want, true, callee, n)
@@ -1162,10 +1162,10 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	}
 	if recv != nil && recv.Kind() == NamedKind && recv.Name() == "rc" && len(recv.Args()) == 1 {
 		switch call.Name {
-		case "Weak":
+		case "weak":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.named("weak", []*Type{recv.Args()[0]})
-		case "Clone":
+		case "clone":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return recv
 		}
@@ -1178,12 +1178,12 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			if sig, ok := c.env.methods[recv.Name()+"."+call.Name]; ok && sig.recvMut {
 				c.bag.Error(call.Pos(), diag.CodeReadGuardWrite,
 					"a read guard is read-only",
-					"take the write guard with WLock")
+					"take the write guard with w_lock")
 			}
 		}
 	}
 	if recv != nil && recv.Kind() == NamedKind && recv.Name() == "weak" && len(recv.Args()) == 1 {
-		if call.Name == "Upgrade" {
+		if call.Name == "upgrade" {
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.named("Option", []*Type{c.in.named("rc", []*Type{recv.Args()[0]})})
 		}
@@ -1212,10 +1212,10 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		return sig.result
 	}
 	switch call.Name {
-	case "Recv":
+	case "recv":
 		c.requireWait(s, call.Pos())
 		return elemOf(c.in, recv)
-	case "Send":
+	case "send":
 		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "chan" {
 			c.requireWait(s, call.Pos())
 			var elem *Type
@@ -1225,13 +1225,13 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
 			return c.in.named("Result", []*Type{c.in.unit(), c.in.named("Error", nil)})
 		}
-	case "Join":
+	case "join":
 		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "Task" && len(recv.Args()) == 1 {
 			c.requireWait(s, call.Pos())
 			return c.in.named("Result", []*Type{recv.Args()[0], c.in.named("TaskError", nil)})
 		}
 		return nil
-	case "Close":
+	case "close":
 		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "chan" {
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.unit()
@@ -1240,7 +1240,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	if recv == nil {
 		return nil
 	}
-	if call.Name == "Clone" && len(call.Args) == 0 && !isGuardType(recv) {
+	if call.Name == "clone" && len(call.Args) == 0 && !isGuardType(recv) {
 		if recv.Kind() == ViewKind {
 			return nil
 		}
@@ -1272,7 +1272,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		methods, isIface = nil, true
 	}
 	if isIface {
-		if call.Name == "Is" || call.Name == "As" {
+		if call.Name == "is" || call.Name == "as" {
 			if len(call.TypeArgs) != 1 {
 				c.bag.Error(call.Pos(), diag.CodeTypeArgCount, "wrong number of type arguments",
 					"a downcast takes one target type")
@@ -1280,7 +1280,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			}
 			target := c.buildType(call.TypeArgs[0], nil)
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
-			if call.Name == "Is" {
+			if call.Name == "is" {
 				return c.in.scalar("bool")
 			}
 			if target == nil {
@@ -1437,31 +1437,31 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 	if recv.Kind() == ScalarKind && recv.Name() == "str" {
 		strT := c.in.scalar("str")
 		switch call.Name {
-		case "Len":
+		case "len":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return usize, true
-		case "Contains", "HasPrefix", "HasSuffix":
+		case "contains", "has_prefix", "has_suffix":
 			c.checkPayload(s, []*Type{strT}, call.Args, call.Name, call.Pos())
 			return boolean, true
-		case "Index":
+		case "index":
 			c.checkPayload(s, []*Type{strT}, call.Args, call.Name, call.Pos())
 			return c.in.named("Option", []*Type{usize}), true
-		case "Trim", "TrimLeft", "TrimRight", "Upper", "Lower", "Clone":
+		case "trim", "trim_left", "trim_right", "upper", "lower", "clone":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return strT, true
-		case "Repeat":
+		case "repeat":
 			c.checkPayload(s, []*Type{usize}, call.Args, call.Name, call.Pos())
 			return strT, true
-		case "Replace":
+		case "replace":
 			c.checkPayload(s, []*Type{strT, strT}, call.Args, call.Name, call.Pos())
 			return strT, true
-		case "Split":
+		case "split":
 			c.checkPayload(s, []*Type{strT}, call.Args, call.Name, call.Pos())
 			return c.in.view(strT), true
-		case "SplitN":
+		case "split_n":
 			c.checkPayload(s, []*Type{strT, c.in.scalar("i32")}, call.Args, call.Name, call.Pos())
 			return c.in.view(strT), true
-		case "Fields":
+		case "fields":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.view(strT), true
 		case "Chars":
@@ -1471,7 +1471,7 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 		return nil, false
 	}
 	if recv.Kind() == ViewKind {
-		if call.Name == "Len" {
+		if call.Name == "len" {
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return usize, true
 		}
@@ -1480,37 +1480,37 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 	if recv.Kind() == NamedKind && recv.Name() == "Array" {
 		elem := argAt(recv, 0)
 		switch call.Name {
-		case "Len", "Cap":
+		case "len", "cap":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return usize, true
-		case "Get":
+		case "get":
 			c.checkPayload(s, []*Type{usize}, call.Args, call.Name, call.Pos())
 			return elem, true
-		case "Set":
+		case "set":
 			c.checkPayload(s, []*Type{usize, elem}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Push":
+		case "push":
 			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Append":
+		case "append":
 			c.checkPayload(s, []*Type{c.in.view(elem)}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Pop":
+		case "pop":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.named("Option", []*Type{elem}), true
-		case "Insert":
+		case "insert":
 			c.checkPayload(s, []*Type{usize, elem}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Remove":
+		case "remove":
 			c.checkPayload(s, []*Type{usize}, call.Args, call.Name, call.Pos())
 			return elem, true
-		case "Clear", "ShrinkToFit":
+		case "clear", "shrink_to_fit":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Slice":
+		case "slice":
 			c.checkPayload(s, []*Type{usize, usize}, call.Args, call.Name, call.Pos())
 			return c.in.view(elem), true
-		case "Clone":
+		case "clone":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.named("Array", []*Type{elem}), true
 		}
@@ -1523,34 +1523,34 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 	case "Map":
 		k, v := argAt(recv, 0), argAt(recv, 1)
 		switch call.Name {
-		case "Len":
+		case "len":
 			return usize, true
-		case "Get":
+		case "get":
 			c.checkPayload(s, []*Type{k}, call.Args, call.Name, call.Pos())
 			return c.in.named("Option", []*Type{v}), true
-		case "Set":
+		case "set":
 			c.checkPayload(s, []*Type{k, v}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Has", "Delete":
+		case "has", "delete":
 			c.checkPayload(s, []*Type{k}, call.Args, call.Name, call.Pos())
 			return boolean, true
-		case "Clear":
+		case "clear":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Keys":
+		case "keys":
 			return c.in.named("Array", []*Type{k}), true
-		case "Values":
+		case "values":
 			return c.in.named("Array", []*Type{v}), true
 		}
 	case "Set":
 		elem := argAt(recv, 0)
 		switch call.Name {
-		case "Len":
+		case "len":
 			return usize, true
-		case "Add", "Has", "Delete":
+		case "add", "has", "delete":
 			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
 			return boolean, true
-		case "Clear":
+		case "clear":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
 		}

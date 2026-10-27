@@ -13,7 +13,7 @@ func TestGeneralFrameDropsChildResult(t *testing.T) {
     fast willrt_task_sleep_async
 }
 
-async def Text() -> str {
+async def text() -> str {
     var status: i32 = c.willrt_task_sleep_async(1)
     if status != 0 {
         return ""
@@ -21,8 +21,8 @@ async def Text() -> str {
     return "hello"
 }
 
-async def Parent() -> i32 {
-    var n: i32 = i32((await Text()).Len())
+async def parent() -> i32 {
+    var n: i32 = i32((await text()).len())
     return n
 }
 `
@@ -33,8 +33,8 @@ async def Parent() -> i32 {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`define i32 @"example.com/app.Parent.sm"(ptr %frame)`,
-		`define void @"example.com/app.Parent.drop"(ptr %frame)`,
+		`define i32 @"example.com/app.parent.sm"(ptr %frame)`,
+		`define void @"example.com/app.parent.drop"(ptr %frame)`,
 		`call void @willrt_free_str(ptr`,
 		`store { ptr, i64 } zeroinitializer, ptr %v.sm.call.out.`,
 	} {
@@ -51,7 +51,7 @@ func TestAsyncFrameDropsChildResult(t *testing.T) {
     fast willrt_task_sleep_async
 }
 
-async def Text() -> str {
+async def text() -> str {
     var status: i32 = c.willrt_task_sleep_async(1)
     if status != 0 {
         return ""
@@ -59,9 +59,9 @@ async def Text() -> str {
     return "hello"
 }
 
-async def Parent() -> i32 {
-    var text: str = await Text()
-    return i32(text.Len())
+async def parent() -> i32 {
+    var text: str = await text()
+    return i32(text.len())
 }
 `
 	doc := emitWillc(t, src)
@@ -71,8 +71,8 @@ async def Parent() -> i32 {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`define i32 @"example.com/app.Parent.sm"(ptr %frame)`,
-		`define void @"example.com/app.Parent.drop"(ptr %frame)`,
+		`define i32 @"example.com/app.parent.sm"(ptr %frame)`,
+		`define void @"example.com/app.parent.drop"(ptr %frame)`,
 		`call void @willrt_free_str(ptr`,
 	} {
 		if !strings.Contains(text, want) {

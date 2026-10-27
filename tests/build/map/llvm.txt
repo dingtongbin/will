@@ -1,6 +1,6 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
-define hidden i32 @"example.com/map.Lookup"(ptr %m, i32 %k) inlinehint {
+define hidden i32 @"example.com/map.lookup"(ptr %m, i32 %k) inlinehint {
 entry:
   %v.ret.13 = alloca { i32, i32 }
   %v.match.12 = alloca i32
@@ -366,9 +366,9 @@ res.ready.13:
   store i64 %t151, ptr %t115
   br label %set.done.12
 set.done.12:
-  %t152 = call i32 @"example.com/map.Lookup"(ptr %v.m, i32 2)
+  %t152 = call i32 @"example.com/map.lookup"(ptr %v.m, i32 2)
   store i32 %t152, ptr %v.s
-  %t153 = call i32 @"example.com/map.Lookup"(ptr %v.m, i32 3)
+  %t153 = call i32 @"example.com/map.lookup"(ptr %v.m, i32 3)
   store i32 %t153, ptr %v.t
   %t154 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.m, i32 0, i32 0
   %t155 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.m, i32 0, i32 1
@@ -709,7 +709,7 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:4:17\00", align 1
-@.str.2 = private unnamed_addr constant [23 x i8] c"example.com/map.Lookup\00", align 1
+@.str.2 = private unnamed_addr constant [23 x i8] c"example.com/map.lookup\00", align 1
 @.str.3 = private unnamed_addr constant [16 x i8] c"main.will:19:13\00", align 1
 @.str.4 = private unnamed_addr constant [26 x i8] c"example.com/map.will$main\00", align 1
 @.str.5 = private unnamed_addr constant [16 x i8] c"main.will:22:13\00", align 1

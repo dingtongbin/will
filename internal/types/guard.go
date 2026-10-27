@@ -43,7 +43,7 @@ func guardFactory(recv, name string) bool {
 		return false
 	}
 	switch name {
-	case "Lock", "TryLock", "RLock", "TryRLock", "WLock", "TryWLock":
+	case "lock", "try_lock", "r_lock", "try_rlock", "w_lock", "try_wlock":
 		return true
 	}
 	return false
@@ -68,7 +68,7 @@ func (c *checker) checkGuardDecls(files []*ast.File) {
 					if typeHasGuard(field.Type) {
 						c.bag.Error(field.Pos(), diag.CodeGuardCopied,
 							"a guard cannot be stored in a field",
-							"keep it in the local that Lock returned")
+							"keep it in the local that lock returned")
 					}
 				}
 			case *ast.FuncDecl:
@@ -79,20 +79,20 @@ func (c *checker) checkGuardDecls(files []*ast.File) {
 				if typeHasGuard(decl.Result) && !guardFactory(recv, decl.Name) {
 					c.bag.Error(decl.Pos(), diag.CodeGuardCopied,
 						"a guard cannot be returned from this function",
-						"keep it in the local that Lock returned")
+						"keep it in the local that lock returned")
 				}
 				for _, param := range decl.Params {
 					if typeHasGuard(param.Type) {
 						c.bag.Error(param.Pos(), diag.CodeGuardCopied,
 							"a guard cannot be passed as a parameter",
-							"keep it in the local that Lock returned")
+							"keep it in the local that lock returned")
 					}
 				}
 			case *ast.VarDecl:
 				if typeHasGuard(decl.Type) {
 					c.bag.Error(decl.Pos(), diag.CodeGuardCopied,
 						"a guard cannot be a package variable",
-						"keep it in the local that Lock returned")
+						"keep it in the local that lock returned")
 				}
 			}
 		}

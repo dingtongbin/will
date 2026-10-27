@@ -5,9 +5,9 @@ import "std/math/rand"
 // state update and the three wrapping multiplies.
 def main() -> i32 {
     var r: rand.Rand = new rand.Rand(42u64)
-    var a: u64 = r.NextU64()
-    var b: u64 = r.NextU64()
-    var f: f64 = r.NextF64()
+    var a: u64 = r.next_u64()
+    var b: u64 = r.next_u64()
+    var f: f64 = r.next_f64()
     if a != 13679457532755275413u64 {
         return 1
     }
@@ -22,21 +22,21 @@ def main() -> i32 {
     }
 
     var same: rand.Rand = new rand.Rand(42u64)
-    if same.NextU64() != a {
+    if same.next_u64() != a {
         return 5
     }
-    if same.NextU64() != b {
+    if same.next_u64() != b {
         return 6
     }
 
     var other: rand.Rand = new rand.Rand(43u64)
-    if other.NextU64() == a {
+    if other.next_u64() == a {
         return 7
     }
 
     var zero: rand.Rand = new rand.Rand(0u64)
     var zeroAgain: rand.Rand = new rand.Rand(0u64)
-    if zero.NextU64() != zeroAgain.NextU64() {
+    if zero.next_u64() != zeroAgain.next_u64() {
         return 8
     }
     return 0

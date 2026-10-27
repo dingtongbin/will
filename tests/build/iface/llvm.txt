@@ -2,13 +2,13 @@
 %willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/iface.C" = type { i32 }
 %"interface.example.com/iface.Counter" = type { ptr, ptr }
-define hidden i32 @"example.com/iface.C.Get"(ptr %c) alwaysinline {
+define hidden i32 @"example.com/iface.C.get"(ptr %c) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/iface.C", ptr %c, i32 0, i32 0
   %t2 = load i32, ptr %t1
   ret i32 %t2
 }
-define hidden i32 @"example.com/iface.C.Add"(ptr %c, i32 %n) alwaysinline {
+define hidden i32 @"example.com/iface.C.add"(ptr %c, i32 %n) alwaysinline {
 entry:
   %t3 = getelementptr inbounds %"struct.example.com/iface.C", ptr %c, i32 0, i32 0
   %t4 = load i32, ptr %t3
@@ -25,7 +25,7 @@ panic.ok.1:
   %t9 = load i32, ptr %t8
   ret i32 %t9
 }
-define hidden i32 @"example.com/iface.Use"(ptr %x) inlinehint {
+define hidden i32 @"example.com/iface.use"(ptr %x) inlinehint {
 entry:
   %t10 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %x, i32 0, i32 0
   %t11 = load ptr, ptr %t10
@@ -74,7 +74,7 @@ entry:
   store ptr %v.c, ptr %t35
   %t36 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.60.0, i32 0, i32 1
   store ptr @"example.com/iface.vtable.Counter.C", ptr %t36
-  %t37 = call i32 @"example.com/iface.Use"(ptr %v.iface.60.0)
+  %t37 = call i32 @"example.com/iface.use"(ptr %v.iface.60.0)
   %t38 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 0
   %t39 = load ptr, ptr %t38
   %t40 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 1
@@ -155,11 +155,11 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:15:5\00", align 1
-@.str.2 = private unnamed_addr constant [24 x i8] c"example.com/iface.C.Add\00", align 1
+@.str.2 = private unnamed_addr constant [24 x i8] c"example.com/iface.C.add\00", align 1
 @.str.3 = private unnamed_addr constant [16 x i8] c"main.will:20:12\00", align 1
-@.str.4 = private unnamed_addr constant [22 x i8] c"example.com/iface.Use\00", align 1
+@.str.4 = private unnamed_addr constant [22 x i8] c"example.com/iface.use\00", align 1
 @"will.type.example.com/iface.C" = linkonce_odr constant i8 0, align 1
-@"example.com/iface.vtable.Counter.C" = internal constant [6 x ptr] [ptr @"example.com/iface.C.Get", ptr @"example.com/iface.C.Add", ptr @"example.com/iface.iface.clone.Counter.C", ptr @"example.com/iface.iface.drop.Counter.C", ptr @"example.com/iface.iface.share.Counter.C", ptr @"will.type.example.com/iface.C"], align 8
+@"example.com/iface.vtable.Counter.C" = internal constant [6 x ptr] [ptr @"example.com/iface.C.get", ptr @"example.com/iface.C.add", ptr @"example.com/iface.iface.clone.Counter.C", ptr @"example.com/iface.iface.drop.Counter.C", ptr @"example.com/iface.iface.share.Counter.C", ptr @"will.type.example.com/iface.C"], align 8
 @.str.7 = private unnamed_addr constant [16 x i8] c"main.will:26:12\00", align 1
 @.str.8 = private unnamed_addr constant [28 x i8] c"example.com/iface.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)

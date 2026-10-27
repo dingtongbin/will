@@ -2,13 +2,13 @@
 // "" when the element has no dot. A leading dot names a dotfile, so Ext(".txt")
 // is ".txt"; a dot before the last separator does not count, so Ext("a.b/c")
 // is "".
-def Ext(p: str) -> str {
+def ext(p: str) -> str {
     var at: usize = 0usize
     var found: bool = false
     for i, c in p {
-        if isSeparator(c) {
+        if is_separator(c) {
             found = false
-        } else if isDot(c) {
+        } else if is_dot(c) {
             at = i
             found = true
         }
@@ -16,6 +16,6 @@ def Ext(p: str) -> str {
     if !found {
         return ""
     }
-    var suffix: str = str(p[Range(at, p.Len())])
+    var suffix: str = str(p[Range(at, p.len())])
     return suffix
 }

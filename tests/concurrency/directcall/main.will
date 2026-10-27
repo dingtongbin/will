@@ -2,8 +2,8 @@ struct Box {
     ch: chan<i32>
 }
 
-async def (b: Box) Take() -> i32 {
-    var item: Option<i32> = await b.ch.Recv()
+async def (b: Box) take() -> i32 {
+    var item: Option<i32> = await b.ch.recv()
     match item {
         Some(value) => {
             return value
@@ -14,8 +14,8 @@ async def (b: Box) Take() -> i32 {
     }
 }
 
-async def Worker(ch: chan<i32>) -> i32 {
-    var item: Option<i32> = await ch.Recv()
+async def worker(ch: chan<i32>) -> i32 {
+    var item: Option<i32> = await ch.recv()
     match item {
         Some(value) => {
             return value
@@ -27,18 +27,18 @@ async def Worker(ch: chan<i32>) -> i32 {
 }
 
 // Driver calls a waiting function, so it waits as well.
-async def Driver(ch: chan<i32>) -> i32 {
-    return await Worker(ch)
+async def driver(ch: chan<i32>) -> i32 {
+    return await worker(ch)
 }
 
 // Fetch returns an aggregate, so the caller reads it from a place.
-async def Fetch(ch: chan<i32>) -> Option<i32> {
-    return await ch.Recv()
+async def fetch(ch: chan<i32>) -> Option<i32> {
+    return await ch.recv()
 }
 
 // UseFetch awaits a waiting function whose result is an aggregate.
-async def UseFetch(ch: chan<i32>) -> i32 {
-    var item: Option<i32> = await Fetch(ch)
+async def use_fetch(ch: chan<i32>) -> i32 {
+    var item: Option<i32> = await fetch(ch)
     match item {
         Some(value) => {
             return value
@@ -50,16 +50,16 @@ async def UseFetch(ch: chan<i32>) -> i32 {
 }
 
 // UseBox calls a waiting method, so it waits as well.
-async def UseBox(b: Box) -> i32 {
-    return await b.Take()
+async def use_box(b: Box) -> i32 {
+    return await b.take()
 }
 
 // Drain calls a waiting function on every loop iteration. The await slots
 // stay in the entry block, so a long loop does not grow the stack.
-async def Drain(ch: chan<i32>, n: i32) -> i32 {
+async def drain(ch: chan<i32>, n: i32) -> i32 {
     var sum: i32 = 0
     for _ in Range(0, n) {
-        sum += await Worker(ch)
+        sum += await worker(ch)
     }
     return sum
 }
@@ -71,42 +71,42 @@ async def main() -> i32 {
     var fourth: chan<i32> = new chan<i32>(4)
     var box: Box = Box{ch: other}
     region {
-        var producer: Task<()> = spawn Produce(ch, 42)
-        var second: Task<()> = spawn Produce(other, 7)
-        var thirdProducer: Task<()> = spawn Produce(third, 9)
-        var fourthProducer: Task<()> = spawn Fill(fourth, 4)
-        var value: i32 = await Driver(ch)
+        var producer: Task<()> = spawn produce(ch, 42)
+        var second: Task<()> = spawn produce(other, 7)
+        var thirdProducer: Task<()> = spawn produce(third, 9)
+        var fourthProducer: Task<()> = spawn fill(fourth, 4)
+        var value: i32 = await driver(ch)
         if value != 42 {
             return 1
         }
-        var boxed: i32 = await UseBox(box)
+        var boxed: i32 = await use_box(box)
         if boxed != 7 {
             return 2
         }
-        var fetched: i32 = await UseFetch(third)
+        var fetched: i32 = await use_fetch(third)
         if fetched != 9 {
             return 3
         }
-        var drained: i32 = await Drain(fourth, 4)
+        var drained: i32 = await drain(fourth, 4)
         if drained != 6 {
             return 4
         }
-        _ = await producer.Join()!
-        _ = await second.Join()!
-        _ = await thirdProducer.Join()!
-        _ = await fourthProducer.Join()!
+        _ = await producer.join()!
+        _ = await second.join()!
+        _ = await thirdProducer.join()!
+        _ = await fourthProducer.join()!
     }
     return 0
 }
 
 // Produce is declared after its use, so the call names it by symbol.
-async def Produce(ch: chan<i32>, value: i32) {
-    _ = await ch.Send(value)
+async def produce(ch: chan<i32>, value: i32) {
+    _ = await ch.send(value)
 }
 
 // Fill sends 0..n-1 into the channel.
-async def Fill(ch: chan<i32>, n: i32) {
+async def fill(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
-        _ = await ch.Send(i)
+        _ = await ch.send(i)
     }
 }

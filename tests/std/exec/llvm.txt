@@ -1,7 +1,7 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
 %"struct.std/os/exec.Cmd" = type { { ptr, i64 }, { ptr, i64 }, { ptr, i64, i64 }, { ptr, i64 } }
-define hidden %"struct.std/os/exec.Cmd" @"std/os/exec.Command"(ptr %path, ptr %args) inlinehint {
+define hidden %"struct.std/os/exec.Cmd" @"std/os/exec.command"(ptr %path, ptr %args) inlinehint {
 entry:
   %v.agg.22 = alloca %"struct.std/os/exec.Cmd"
   %v.ret.23 = alloca { ptr, i64 }
@@ -45,7 +45,7 @@ entry:
   %t22 = load %"struct.std/os/exec.Cmd", ptr %v.agg.22
   ret %"struct.std/os/exec.Cmd" %t22
 }
-define hidden %"struct.std/os/exec.Cmd" @"std/os/exec.Cmd.WithEnv"(ptr %c, ptr %kv) inlinehint {
+define hidden %"struct.std/os/exec.Cmd" @"std/os/exec.Cmd.with_env"(ptr %c, ptr %kv) inlinehint {
 entry:
   %v.env = alloca { ptr, i64, i64 }
   %v.i = alloca i64
@@ -652,7 +652,7 @@ deep.rel.map.done.29:
   call void @willrt_free(ptr %t338)
   ret %"struct.std/os/exec.Cmd" %t335
 }
-define hidden %"struct.std/os/exec.Cmd" @"std/os/exec.Cmd.WithDir"(ptr %c, ptr %dir) inlinehint {
+define hidden %"struct.std/os/exec.Cmd" @"std/os/exec.Cmd.with_dir"(ptr %c, ptr %dir) inlinehint {
 entry:
   %v.agg.110 = alloca %"struct.std/os/exec.Cmd"
   %v.ret.111 = alloca { ptr, i64 }
@@ -683,7 +683,7 @@ entry:
   store { ptr, i64 } %t365, ptr %t363
   %t366 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.110, i32 0, i32 2
   %t367 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %c, i32 0, i32 2
-  %t368 = call { ptr, i64, i64 } @"std/os/exec.copyEnv"(ptr %t367)
+  %t368 = call { ptr, i64, i64 } @"std/os/exec.copy_env"(ptr %t367)
   store { ptr, i64, i64 } %t368, ptr %v.ret.116
   %t369 = load { ptr, i64, i64 }, ptr %v.ret.116
   store { ptr, i64, i64 } %t369, ptr %t366
@@ -705,7 +705,7 @@ entry:
   %t380 = load %"struct.std/os/exec.Cmd", ptr %v.agg.110
   ret %"struct.std/os/exec.Cmd" %t380
 }
-define internal { ptr, i64, i64 } @"std/os/exec.copyEnv"(ptr %src) inlinehint {
+define hidden { ptr, i64, i64 } @"std/os/exec.copy_env"(ptr %src) inlinehint {
 entry:
   %v.out = alloca { ptr, i64, i64 }
   %v.new.134 = alloca { ptr, i64, i64 }
@@ -947,7 +947,7 @@ for.end.2:
 }
 %interface.Error = type { ptr, ptr }
 %"struct.std/os/exec.execError" = type { { ptr, i64 } }
-define hidden { ptr, i64 } @"std/os/exec.execError.Message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"std/os/exec.execError.message"(ptr %e) inlinehint {
 entry:
   %v.ret.16 = alloca { ptr, i64 }
   %v.strm.16 = alloca { ptr, i64 }
@@ -968,11 +968,11 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.16
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"std/os/exec.execError.Status"(ptr %e) alwaysinline {
+define hidden i32 @"std/os/exec.execError.status"(ptr %e) alwaysinline {
 entry:
   ret i32 7
 }
-define internal i32 @"std/os/exec.Cmd.AsyncRun.sm"(ptr %frame) {
+define internal i32 @"std/os/exec.Cmd.async_run.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.27.12 = getelementptr i8, ptr %frame, i64 8
@@ -1299,7 +1299,7 @@ share.adt.done.9.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/exec.Cmd.AsyncRun.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/exec.Cmd.async_run.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 368)
   %t169 = getelementptr i8, ptr %v.sm.frame, i64 80
@@ -1315,12 +1315,12 @@ entry:
   %t176 = select i1 %t175, i32 %t173, i32 %start
   br i1 %t174, label %sm.start.auto.11, label %sm.start.lane.11
 sm.start.auto.11:
-  %t177 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.AsyncRun.sm", ptr %v.sm.frame, i64 368, i32 0, i32 0, ptr @"std/os/exec.Cmd.AsyncRun.drop")
+  %t177 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.async_run.sm", ptr %v.sm.frame, i64 368, i32 0, i32 0, ptr @"std/os/exec.Cmd.async_run.drop")
   call void @willrt_task_own_frame(ptr %t177)
   call void @willrt_task_run_auto(ptr %t177)
   br label %sm.start.done.11
 sm.start.lane.11:
-  %t178 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.AsyncRun.sm", ptr %v.sm.frame, i64 368, i32 %t176, i32 0, ptr @"std/os/exec.Cmd.AsyncRun.drop")
+  %t178 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.async_run.sm", ptr %v.sm.frame, i64 368, i32 %t176, i32 0, ptr @"std/os/exec.Cmd.async_run.drop")
   call void @willrt_task_own_frame(ptr %t178)
   call void @willrt_task_run(ptr %t178)
   br label %sm.start.done.11
@@ -1328,7 +1328,7 @@ sm.start.done.11:
   %t179 = phi ptr [ %t177, %sm.start.auto.11 ], [ %t178, %sm.start.lane.11 ]
   ret ptr %t179
 }
-define internal void @"std/os/exec.Cmd.AsyncRun.drop"(ptr %frame) {
+define internal void @"std/os/exec.Cmd.async_run.drop"(ptr %frame) {
 entry:
   %t180 = getelementptr i8, ptr %frame, i64 80
   %t181 = getelementptr inbounds { ptr, i64, i64 }, ptr %t180, i32 0, i32 0
@@ -1356,7 +1356,7 @@ deep.rel.arr.done.12:
   store { ptr, i64, i64 } zeroinitializer, ptr %t180
   ret void
 }
-define internal i32 @"std/os/exec.Cmd.AsyncOutput.sm"(ptr %frame) {
+define internal i32 @"std/os/exec.Cmd.async_output.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.94.192 = getelementptr i8, ptr %frame, i64 8
@@ -1779,7 +1779,7 @@ share.adt.done.13.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/exec.Cmd.AsyncOutput.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/exec.Cmd.async_output.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 656)
   %t391 = getelementptr i8, ptr %v.sm.frame, i64 128
@@ -1799,12 +1799,12 @@ entry:
   %t400 = select i1 %t399, i32 %t397, i32 %start
   br i1 %t398, label %sm.start.auto.15, label %sm.start.lane.15
 sm.start.auto.15:
-  %t401 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.AsyncOutput.sm", ptr %v.sm.frame, i64 656, i32 0, i32 0, ptr @"std/os/exec.Cmd.AsyncOutput.drop")
+  %t401 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.async_output.sm", ptr %v.sm.frame, i64 656, i32 0, i32 0, ptr @"std/os/exec.Cmd.async_output.drop")
   call void @willrt_task_own_frame(ptr %t401)
   call void @willrt_task_run_auto(ptr %t401)
   br label %sm.start.done.15
 sm.start.lane.15:
-  %t402 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.AsyncOutput.sm", ptr %v.sm.frame, i64 656, i32 %t400, i32 0, ptr @"std/os/exec.Cmd.AsyncOutput.drop")
+  %t402 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.async_output.sm", ptr %v.sm.frame, i64 656, i32 %t400, i32 0, ptr @"std/os/exec.Cmd.async_output.drop")
   call void @willrt_task_own_frame(ptr %t402)
   call void @willrt_task_run(ptr %t402)
   br label %sm.start.done.15
@@ -1812,7 +1812,7 @@ sm.start.done.15:
   %t403 = phi ptr [ %t401, %sm.start.auto.15 ], [ %t402, %sm.start.lane.15 ]
   ret ptr %t403
 }
-define internal void @"std/os/exec.Cmd.AsyncOutput.drop"(ptr %frame) {
+define internal void @"std/os/exec.Cmd.async_output.drop"(ptr %frame) {
 entry:
   %t404 = getelementptr i8, ptr %frame, i64 128
   %t405 = getelementptr inbounds { ptr, i64, i64 }, ptr %t404, i32 0, i32 0
@@ -2017,11 +2017,11 @@ sm.init:
   store ptr %t5, ptr %t14
   %t15 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.8, i32 0, i32 1
   store i64 2, ptr %t15
-  %t16 = call %"struct.std/os/exec.Cmd" @"std/os/exec.Command"(ptr %v.str.10, ptr %v.varargs.8)
+  %t16 = call %"struct.std/os/exec.Cmd" @"std/os/exec.command"(ptr %v.str.10, ptr %v.varargs.8)
   store %"struct.std/os/exec.Cmd" %t16, ptr %v.ret.8
   %t17 = load %"struct.std/os/exec.Cmd", ptr %v.ret.8
   store %"struct.std/os/exec.Cmd" %t17, ptr %v.command
-  %t18 = call ptr @"std/os/exec.Cmd.AsyncOutput.task"(ptr %v.command, i32 -2, i32 0)
+  %t18 = call ptr @"std/os/exec.Cmd.async_output.task"(ptr %v.command, i32 -2, i32 0)
   store { i32, [4 x i8], %"struct.std/os/exec.Output" } zeroinitializer, ptr %v.sm.call.out.19
   store ptr %t18, ptr %v.sm.join.task.21
   store i32 1, ptr %v.sm.state
@@ -2565,11 +2565,11 @@ match.end.9:
   store ptr %t271, ptr %t280
   %t281 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.58, i32 0, i32 1
   store i64 2, ptr %t281
-  %t282 = call %"struct.std/os/exec.Cmd" @"std/os/exec.Command"(ptr %v.str.60, ptr %v.varargs.58)
+  %t282 = call %"struct.std/os/exec.Cmd" @"std/os/exec.command"(ptr %v.str.60, ptr %v.varargs.58)
   store %"struct.std/os/exec.Cmd" %t282, ptr %v.ret.58
   %t283 = load %"struct.std/os/exec.Cmd", ptr %v.ret.58
   store %"struct.std/os/exec.Cmd" %t283, ptr %v.failing
-  %t284 = call ptr @"std/os/exec.Cmd.AsyncRun.task"(ptr %v.failing, i32 -2, i32 0)
+  %t284 = call ptr @"std/os/exec.Cmd.async_run.task"(ptr %v.failing, i32 -2, i32 0)
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.sm.call.out.285
   store ptr %t284, ptr %v.sm.join.task.287
   store i32 2, ptr %v.sm.state
@@ -3702,7 +3702,7 @@ declare ptr @willrt_exec_output_async_start(ptr, ptr, ptr, ptr, ptr, ptr, ptr)
 @.bytes.1 = private unnamed_addr constant [0 x i8] zeroinitializer
 @.str.1 = private unnamed_addr constant [17 x i8] c"division by zero\00", align 1
 @.str.2 = private unnamed_addr constant [22 x i8] c"os/exec/cmd.will:24:8\00", align 1
-@.str.3 = private unnamed_addr constant [24 x i8] c"std/os/exec.Cmd.WithEnv\00", align 1
+@.str.3 = private unnamed_addr constant [25 x i8] c"std/os/exec.Cmd.with_env\00", align 1
 @.bytes.2 = private unnamed_addr constant [39 x i8] c"exec: WithEnv takes key and value pairs", align 1
 @.str.5 = private unnamed_addr constant [22 x i8] c"os/exec/cmd.will:25:9\00", align 1
 @.str.6 = private unnamed_addr constant [20 x i8] c"index out of bounds\00", align 1
@@ -3713,7 +3713,7 @@ declare ptr @willrt_exec_output_async_start(ptr, ptr, ptr, ptr, ptr, ptr, ptr)
 @.str.11 = private unnamed_addr constant [22 x i8] c"os/exec/cmd.will:37:9\00", align 1
 @.bytes.3 = private unnamed_addr constant [16 x i8] c"exec: cannot run", align 1
 @"will.type.std/os/exec.execError" = linkonce_odr constant i8 0, align 1
-@"std/os/exec.vtable.Error.execError" = internal constant [6 x ptr] [ptr @"std/os/exec.execError.Message", ptr @"std/os/exec.execError.Status", ptr @"std/os/exec.iface.clone.Error.execError", ptr @"std/os/exec.iface.drop.Error.execError", ptr @"std/os/exec.iface.share.Error.execError", ptr @"will.type.std/os/exec.execError"], align 8
+@"std/os/exec.vtable.Error.execError" = internal constant [6 x ptr] [ptr @"std/os/exec.execError.message", ptr @"std/os/exec.execError.status", ptr @"std/os/exec.iface.clone.Error.execError", ptr @"std/os/exec.iface.drop.Error.execError", ptr @"std/os/exec.iface.share.Error.execError", ptr @"will.type.std/os/exec.execError"], align 8
 @.bytes.4 = private unnamed_addr constant [27 x i8] c"exec: cannot capture output", align 1
 @.bytes.5 = private unnamed_addr constant [3 x i8] c"cmd", align 1
 @.bytes.6 = private unnamed_addr constant [2 x i8] c"/C", align 1

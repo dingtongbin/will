@@ -1,7 +1,7 @@
 import "std/meta"
 
-def F() -> bool {
-    var on: bool = meta.Feature("tls")
+def f() -> bool {
+    var on: bool = meta.feature("tls")
     return on
 }
 

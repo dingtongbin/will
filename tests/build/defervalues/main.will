@@ -1,11 +1,11 @@
 // A deferred str and a deferred Array must keep the value they had at the
 // defer statement even when the local is reassigned or grows afterwards.
-def Show(s: str) {
+def show(s: str) {
     print(s, "\n")
 }
 
-def ShowArray(a: Array<i32>) {
-    print(a.Len(), " ", a.Get(0usize), "\n")
+def show_array(a: Array<i32>) {
+    print(a.len(), " ", a.get(0usize), "\n")
 }
 
 def main() -> i32 {
@@ -14,9 +14,9 @@ def main() -> i32 {
     s = "new" + "?"
 
     var a: Array<i32> = new Array<i32>(1usize)
-    a.Push(7)
-    defer ShowArray(a)
-    a.Push(8)
-    a.Push(9)
+    a.push(7)
+    defer show_array(a)
+    a.push(8)
+    a.push(9)
     return 0
 }

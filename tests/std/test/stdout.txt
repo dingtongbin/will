@@ -1,0 +1,6 @@
+main.will:10:10: N0001 undefined name
+    help: declare it first
+test/test.will:1:1: N0004 unused import
+    help: remove it, or write import _ for side effects only
+test/test.will:93:16: S0002 a keyword cannot be used as a name
+    help: rename it

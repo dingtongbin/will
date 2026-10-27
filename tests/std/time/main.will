@@ -4,29 +4,29 @@ def main() -> i32 {
     var sec: i64 = 1000
     var negative: i64 = -5i64
     var zero: i64 = 0
-    var t: time.Instant = time.FromUnix(sec)
-    var shifted: time.Instant = time.In(t, time.Fixed(3600))
-    var plain: time.Instant = time.In(t, time.Utc())
+    var t: time.Instant = time.from_unix(sec)
+    var shifted: time.Instant = time.in_zone(t, time.fixed(3600))
+    var plain: time.Instant = time.in_zone(t, time.utc())
     var ok: i32 = 0
-    if time.Unix(t) == 1000i64 {
+    if time.unix(t) == 1000i64 {
         ok += 1
     }
-    if time.Unix(shifted) == 1000i64 {
+    if time.unix(shifted) == 1000i64 {
         ok += 1
     }
-    if time.Unix(plain) == 1000i64 {
+    if time.unix(plain) == 1000i64 {
         ok += 1
     }
-    if time.Unix(time.FromUnix(negative)) == -5i64 {
+    if time.unix(time.from_unix(negative)) == -5i64 {
         ok += 1
     }
-    if time.Unix(time.FromUnix(zero)) == 0i64 {
+    if time.unix(time.from_unix(zero)) == 0i64 {
         ok += 1
     }
     var sw: time.Stopwatch = new time.Stopwatch()
-    var slept: Result<(), Error> = wait(time.Sleep(1ms))
+    var slept: Result<(), Error> = wait(time.sleep(1ms))
     _ = slept
-    if sw.Elapsed() > 0ns {
+    if sw.elapsed() > 0ns {
         ok += 1
     }
     if ok != 6 {

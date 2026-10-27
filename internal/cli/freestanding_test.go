@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-const freestandingSource = `def F() {
+const freestandingSource = `def f() {
     var xs: Array<i64> = new Array<i64>(0)
     _ = xs
 }
@@ -28,7 +28,7 @@ func TestCheckFreestandingReportsRuntimeUse(t *testing.T) {
 }
 
 func TestCheckFreestandingReportsPackage(t *testing.T) {
-	src := "import \"std/net\"\n\ndef F() {\n}\n"
+	src := "import \"std/net\"\n\ndef f() {\n}\n"
 	path := writeFile(t, t.TempDir(), "b.will", src)
 	code, out, _ := runCLI("check", "--freestanding", path)
 	if code != 1 {

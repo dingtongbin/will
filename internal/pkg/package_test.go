@@ -25,7 +25,7 @@ func module(t *testing.T, files map[string]string) string {
 func TestSiblingFileNamesResolve(t *testing.T) {
 	root := module(t, map[string]string{
 		"a.will": "struct Box {\n    v: i64\n}\n\ndef value(b: Box) -> i64 {\n    return b.v\n}\n",
-		"b.will": "def Use(b: Box) -> i64 {\n    return value(b)\n}\n",
+		"b.will": "def use(b: Box) -> i64 {\n    return value(b)\n}\n",
 	})
 	ds := Load(root).CheckAll()
 	if len(ds) != 0 {
@@ -38,7 +38,7 @@ func TestSiblingFileNamesResolve(t *testing.T) {
 func TestSiblingFileTypesAreChecked(t *testing.T) {
 	root := module(t, map[string]string{
 		"a.will": "struct Box {\n    v: i64\n}\n",
-		"b.will": "def Use(b: Box) -> i64 {\n    return b.w\n}\n",
+		"b.will": "def use(b: Box) -> i64 {\n    return b.w\n}\n",
 	})
 	ds := Load(root).CheckAll()
 	d := findCode(t, ds, diag.CodeNoField)
@@ -52,12 +52,12 @@ func TestSiblingFileTypesAreChecked(t *testing.T) {
 // and that it is reported once.
 func TestCrossFileDuplicateName(t *testing.T) {
 	root := module(t, map[string]string{
-		"a.will": "def F() {\n}\n",
-		"b.will": "def F() {\n}\n",
+		"a.will": "def f() {\n}\n",
+		"b.will": "def f() {\n}\n",
 	})
 	ds := Load(root).CheckAll()
 	d := findCode(t, ds, diag.CodeDuplicateName)
-	if d.Message != "duplicate top-level name F" {
+	if d.Message != "duplicate top-level name f" {
 		t.Errorf("message = %q", d.Message)
 	}
 	count := 0

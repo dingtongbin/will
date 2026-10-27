@@ -12,8 +12,8 @@ import (
 // runtimeMethodNames are the built-in methods that reach the runtime: channels,
 // tasks, and the calls that release them.
 var runtimeMethodNames = map[string]bool{
-	"Join": true, "Send": true, "TrySend": true,
-	"Recv": true, "TryRecv": true, "Close": true,
+	"join": true, "send": true, "try_send": true,
+	"recv": true, "try_recv": true, "close": true,
 }
 
 // runtimeBuiltinNames are the predefined functions that reach the runtime.

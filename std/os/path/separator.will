@@ -5,6 +5,6 @@ import c "sep.h" {
 }
 
 // Separator returns the platform path separator: '\' on Windows, '/' elsewhere.
-def Separator() -> u8 {
+def separator() -> u8 {
     return c.willpath_separator()
 }

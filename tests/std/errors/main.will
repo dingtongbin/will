@@ -4,23 +4,23 @@ struct probeError {
     status: i32
 }
 
-def (e: probeError) Message() -> str {
+def (e: probeError) message() -> str {
     return "probe"
 }
 
-def (e: probeError) Status() -> i32 {
+def (e: probeError) status() -> i32 {
     return e.status
 }
 
-def classOfStatus(status: i32) -> errors.ErrorClass {
+def class_of_status(status: i32) -> errors.ErrorClass {
     var v: probeError = probeError { status: status }
     var e: Error = v
-    return errors.ClassOf(e)
+    return errors.class_of(e)
 }
 
 def main() -> i32 {
     var total: i32 = 0
-    var c: errors.ErrorClass = classOfStatus(1)
+    var c: errors.ErrorClass = class_of_status(1)
     match c {
         NotFound => {
             total += 1
@@ -38,7 +38,7 @@ def main() -> i32 {
             total += 5
         }
     }
-    var busy: errors.ErrorClass = classOfStatus(3)
+    var busy: errors.ErrorClass = class_of_status(3)
     total += match busy {
         NotFound => 10
         Deadline => 20

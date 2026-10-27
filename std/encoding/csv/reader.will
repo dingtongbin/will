@@ -14,7 +14,7 @@ struct Reader {
 // init stores the source and separator. The first decode call performs the
 // first read, so construction itself does not touch the stream.
 def (mut r: Reader) init(src: byteReader, sep: u8) {
-    r.src = src.Clone()
+    r.src = src.clone()
     r.sep = sep
     r.buf = new Array<u8>(0)
     r.pos = 0usize
@@ -24,15 +24,15 @@ def (mut r: Reader) init(src: byteReader, sep: u8) {
 // AsyncDecode appends the records that are available and returns how many it
 // appended. It parses every complete record the last read filled, and 0 means
 // the stream has no more records.
-async def (mut r: Reader) AsyncDecode(mut rows: Array<Row>) -> Result<usize, Error> {
+async def (mut r: Reader) async_decode(mut rows: Array<Row>) -> Result<usize, Error> {
     var added: usize = 0usize
     for {
-        var record: Option<Array<str>> = r.readRecord()?
+        var record: Option<Array<str>> = r.read_record()?
         match record {
             Some(fields) => {
-                rows.Push(Row { fields: fields.Clone() })
+                rows.push(Row { fields: fields.clone() })
                 added += 1usize
-                if r.pos >= r.buf.Len() {
+                if r.pos >= r.buf.len() {
                     break
                 }
             }
@@ -46,8 +46,8 @@ async def (mut r: Reader) AsyncDecode(mut rows: Array<Row>) -> Result<usize, Err
 
 // readRecord decodes one record. None means the stream ended before a field
 // started; a record with one empty field is Some, not None.
-def (mut r: Reader) readRecord() -> Result<Option<Array<str>>, Error> {
-    var first: i32 = r.peekByte()?
+def (mut r: Reader) read_record() -> Result<Option<Array<str>>, Error> {
+    var first: i32 = r.peek_byte()?
     if first < 0 {
         return Ok(None)
     }
@@ -56,16 +56,16 @@ def (mut r: Reader) readRecord() -> Result<Option<Array<str>>, Error> {
         var data: Array<u8> = new Array<u8>(0)
         var end: i32 = 0
         if first == i32(quoteByte) {
-            end = r.readQuoted(data)?
+            end = r.read_quoted(data)?
         } else {
-            end = r.readUnquoted(data)?
+            end = r.read_unquoted(data)?
         }
-        if !validUtf8(data[Range(0, data.Len())]) {
+        if !valid_utf8(data[Range(0, data.len())]) {
             return Err(errors.Invalid)
         }
-        fields.Push(str(data))
+        fields.push(str(data))
         if end == 0 {
-            first = r.peekByte()?
+            first = r.peek_byte()?
             continue
         }
         return Ok(Some(fields))
@@ -75,9 +75,9 @@ def (mut r: Reader) readRecord() -> Result<Option<Array<str>>, Error> {
 // readUnquoted copies one field up to a separator, a line ending, or the end
 // of the stream. A quote inside an unquoted field is rejected because RFC 4180
 // requires such a field to be quoted.
-def (mut r: Reader) readUnquoted(mut f: Array<u8>) -> Result<i32, Error> {
+def (mut r: Reader) read_unquoted(mut f: Array<u8>) -> Result<i32, Error> {
     for {
-        var c: i32 = r.peekByte()?
+        var c: i32 = r.peek_byte()?
         if c < 0 {
             return Ok(2)
         }
@@ -92,7 +92,7 @@ def (mut r: Reader) readUnquoted(mut f: Array<u8>) -> Result<i32, Error> {
         }
         if b == carriageReturn {
             r.pos += 1usize
-            if r.peekByte()? == i32(lineFeed) {
+            if r.peek_byte()? == i32(lineFeed) {
                 r.pos += 1usize
                 return Ok(1)
             }
@@ -101,7 +101,7 @@ def (mut r: Reader) readUnquoted(mut f: Array<u8>) -> Result<i32, Error> {
         if b == quoteByte {
             return Err(errors.Invalid)
         }
-        f.Push(b)
+        f.push(b)
         r.pos += 1usize
     }
 }
@@ -109,31 +109,31 @@ def (mut r: Reader) readUnquoted(mut f: Array<u8>) -> Result<i32, Error> {
 // readQuoted copies one quoted field. A doubled quote is one quote byte; the
 // closing quote must be followed by a separator, a line ending, or the end of
 // the stream.
-def (mut r: Reader) readQuoted(mut f: Array<u8>) -> Result<i32, Error> {
+def (mut r: Reader) read_quoted(mut f: Array<u8>) -> Result<i32, Error> {
     r.pos += 1usize
     for {
-        var c: i32 = r.takeByte()?
+        var c: i32 = r.take_byte()?
         if c < 0 {
             return Err(errors.Invalid)
         }
         var b: u8 = u8(c)
         if b != quoteByte {
-            f.Push(b)
+            f.push(b)
             continue
         }
-        var next: i32 = r.peekByte()?
+        var next: i32 = r.peek_byte()?
         if next == i32(quoteByte) {
-            f.Push(quoteByte)
+            f.push(quoteByte)
             r.pos += 1usize
             continue
         }
-        return r.endField(next)
+        return r.end_field(next)
     }
 }
 
 // endField consumes the byte after a closing quote and reports how the field
 // ended: 0 for a separator, 1 for a line ending, 2 for the end of the stream.
-def (mut r: Reader) endField(next: i32) -> Result<i32, Error> {
+def (mut r: Reader) end_field(next: i32) -> Result<i32, Error> {
     if next < 0 {
         return Ok(2)
     }
@@ -148,7 +148,7 @@ def (mut r: Reader) endField(next: i32) -> Result<i32, Error> {
     }
     if b == carriageReturn {
         r.pos += 1usize
-        if r.peekByte()? == i32(lineFeed) {
+        if r.peek_byte()? == i32(lineFeed) {
             r.pos += 1usize
             return Ok(1)
         }
@@ -159,21 +159,21 @@ def (mut r: Reader) endField(next: i32) -> Result<i32, Error> {
 // peekByte returns the next byte without consuming it, or -1 at the end of the
 // stream. A consumed buffer is dropped before the next read so the pending
 // bytes never grow across calls.
-def (mut r: Reader) peekByte() -> Result<i32, Error> {
-    if r.pos >= r.buf.Len() {
-        r.buf.Clear()
+def (mut r: Reader) peek_byte() -> Result<i32, Error> {
+    if r.pos >= r.buf.len() {
+        r.buf.clear()
         r.pos = 0usize
         var more: bool = r.fill()?
         if !more {
             return Ok(-1)
         }
     }
-    return Ok(i32(r.buf.Get(r.pos)))
+    return Ok(i32(r.buf.get(r.pos)))
 }
 
 // takeByte consumes and returns the next byte, or -1 at the end of the stream.
-def (mut r: Reader) takeByte() -> Result<i32, Error> {
-    var c: i32 = r.peekByte()?
+def (mut r: Reader) take_byte() -> Result<i32, Error> {
+    var c: i32 = r.peek_byte()?
     if c >= 0 {
         r.pos += 1usize
     }
@@ -187,7 +187,7 @@ def (mut r: Reader) fill() -> Result<bool, Error> {
         return Ok(false)
     }
     var chunk: Array<u8> = new Array<u8>(8192)
-    var n: usize = r.src.Read(chunk)?
+    var n: usize = r.src.read(chunk)?
     if n == 0usize {
         r.eof = true
         return Ok(false)
@@ -197,7 +197,7 @@ def (mut r: Reader) fill() -> Result<bool, Error> {
         if i >= n {
             break
         }
-        r.buf.Push(chunk.Get(i))
+        r.buf.push(chunk.get(i))
         i += 1usize
     }
     return Ok(true)

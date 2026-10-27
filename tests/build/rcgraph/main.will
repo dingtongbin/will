@@ -10,10 +10,10 @@ def (mut n: Node) init(value: i32) {
 def main() -> i32 {
     var a: rc<Node> = new rc<Node>(1)
     var b: rc<Node> = new rc<Node>(2)
-    a.next = b.Weak()
-    b.next = a.Weak()
+    a.next = b.weak()
+    b.next = a.weak()
     var v: i32 = 0
-    match a.next.Upgrade() {
+    match a.next.upgrade() {
         Some(x) => {
             v = x.value
         }

@@ -10,8 +10,8 @@
 // the end of the block.
 
 // SortSamples sorts the samples in ascending order.
-def SortSamples(mut xs: Array<u64>) {
-    var n: i32 = i32(xs.Len())
+def sort_samples(mut xs: Array<u64>) {
+    var n: i32 = i32(xs.len())
     var value: u64 = 0u64
     for i in Range(1, n) {
         value = xs[usize(i)]
@@ -31,8 +31,8 @@ def SortSamples(mut xs: Array<u64>) {
 }
 
 // Percentile returns the nearest rank percentile of ascending samples.
-def Percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
-    var count: i64 = i64(xs.Len())
+def percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
+    var count: i64 = i64(xs.len())
     if count == 0i64 {
         return 0u64
     }
@@ -48,7 +48,7 @@ def Percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
 }
 
 // Max returns the largest sample.
-def Max(xs: Array<u64>) -> u64 {
+def max(xs: Array<u64>) -> u64 {
     var out: u64 = 0u64
     for x in xs {
         if x > out {

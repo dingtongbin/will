@@ -12,7 +12,7 @@ func (g *generator) arrayAppend(r willc.Record, base, elem, elemLLVM string, ele
 		return err
 	}
 	if typ != "{ ptr, i64 }" {
-		return g.errf(r.ID, "cannot translate node #%d: Append needs a view", r.ID)
+		return g.errf(r.ID, "cannot translate node #%d: append needs a view", r.ID)
 	}
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, view)
@@ -162,7 +162,7 @@ func (g *generator) arrayPop(r willc.Record, base, elem, elemLLVM string) (strin
 func (g *generator) arrayInsert(r willc.Record, base, elem, elemLLVM string) (string, string, error) {
 	args := g.callArgs(r)
 	if len(args) != 2 {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Insert takes an index and a value", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: insert takes an index and a value", r.ID)
 	}
 	elemSize, _, ok := g.sizeAlign(elemLLVM)
 	if !ok {
@@ -450,7 +450,7 @@ func (g *generator) arrayClone(r willc.Record, base, elem, elemLLVM string) (str
 func (g *generator) arrayRemove(r willc.Record, base, elem, elemLLVM string) (string, string, error) {
 	args := g.callArgs(r)
 	if len(args) != 1 {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Remove takes one index", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: remove takes one index", r.ID)
 	}
 	idx, err := g.indexValue(args[0], r)
 	if err != nil {

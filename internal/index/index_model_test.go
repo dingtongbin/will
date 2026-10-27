@@ -53,12 +53,12 @@ func TestParseGoldenIndex(t *testing.T) {
 		t.Error("DeclByName(Missing) found a declaration")
 	}
 
-	area, ok := ix.MethodOf("example.com/app", "Square", "Area")
+	area, ok := ix.MethodOf("example.com/app", "Square", "area")
 	if !ok || area.Line != 9 || area.Col != 1 || area.Recv != "value" || area.File != "api.will" {
-		t.Errorf("MethodOf(Square.Area) = %+v, %v", area, ok)
+		t.Errorf("MethodOf(Square.area) = %+v, %v", area, ok)
 	}
-	if _, ok := ix.MethodOf("example.com/app", "Dot", "Area"); ok {
-		t.Error("MethodOf(Dot.Area) found a method")
+	if _, ok := ix.MethodOf("example.com/app", "Dot", "area"); ok {
+		t.Error("MethodOf(Dot.area) found a method")
 	}
 
 	if got := ix.ImportsOf("example.com/app"); got != nil {
@@ -111,7 +111,7 @@ func TestDeclAt(t *testing.T) {
 		t.Errorf("DeclAt(5:1) = %+v, %v", square, ok)
 	}
 	area, ok := ix.DeclAt("api.will", 9, 1)
-	if !ok || area.Kind != "method" || area.Name != "Area" || area.Type != "Square" || area.Recv != "value" {
+	if !ok || area.Kind != "method" || area.Name != "area" || area.Type != "Square" || area.Recv != "value" {
 		t.Errorf("DeclAt(9:1) = %+v, %v", area, ok)
 	}
 	if _, ok := ix.DeclAt("api.will", 2, 1); ok {

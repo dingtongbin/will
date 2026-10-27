@@ -1,21 +1,21 @@
-async def Fill(ch: chan<i32>) -> Result<(), Error> {
+async def fill(ch: chan<i32>) -> Result<(), Error> {
     for i in Range(0, 4) {
-        await ch.Send(i)?
+        await ch.send(i)?
     }
     return Ok(())
 }
 
 async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(4)
-    ch.Close()
+    ch.close()
     region {
-        var task: Task<Result<(), Error>> = spawn Fill(ch)
-        match await task.Join()! {
+        var task: Task<Result<(), Error>> = spawn fill(ch)
+        match await task.join()! {
             Ok(_) => {
                 return 1
             }
             Err(e) => {
-                if e.Status() != 4 {
+                if e.status() != 4 {
                     return 2
                 }
             }

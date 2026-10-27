@@ -2,5 +2,5 @@ import "std/errors"
 
 def main() -> i32 {
     var e: Error = errors.Invalid
-    return e.Status() - 2
+    return e.status() - 2
 }

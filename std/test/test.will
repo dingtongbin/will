@@ -39,27 +39,27 @@ struct caseResult {
 }
 
 // NewT returns a case handle with no failures and no log lines.
-def NewT(name: str) -> T {
+def new_t(name: str) -> T {
     return T {
-        name: name.Clone(),
+        name: name.clone(),
         state: new rc<TestState>(TestState { failed: false, parallelizable: false, logs: new Array<str>(0)})
     }
 }
 
 // NewB returns a benchmark handle with one iteration by default.
-def NewB(name: str) -> B {
-    return B { name: name.Clone(), n: 1u64, bytes: 0u64, nsPerOp: 0.0, logs: new Array<str>(0)}
+def new_b(name: str) -> B {
+    return B { name: name.clone(), n: 1u64, bytes: 0u64, nsPerOp: 0.0, logs: new Array<str>(0)}
 }
 
 // Name returns the test name.
-def (t: T) Name() -> str {
-    return t.name.Clone()
+def (t: T) name() -> str {
+    return t.name.clone()
 }
 
 // Log records one message. Once the case has failed, the message is also
 // written through so a failure report does not lose its context.
-def (mut t: T) Log(msg: str) {
-    t.state.logs.Push(msg)
+def (mut t: T) log(msg: str) {
+    t.state.logs.push(msg)
     if t.state.failed {
         print(msg, "\n")
     }
@@ -67,7 +67,7 @@ def (mut t: T) Log(msg: str) {
 
 // Fail marks the case as failed without stopping it and writes the lines
 // recorded so far, once.
-def (mut t: T) Fail() {
+def (mut t: T) fail() {
     if !t.state.failed {
         t.state.failed = true
         for msg in t.state.logs {
@@ -77,51 +77,51 @@ def (mut t: T) Fail() {
 }
 
 // FailNow marks the case and ends it through the shared fatal path.
-def (mut t: T) FailNow() {
-    t.Fail()
-    Fatal("test failed: " + t.name)
+def (mut t: T) fail_now() {
+    t.fail()
+    fatal("test failed: " + t.name)
 }
 
 // Failed reports whether the case failed.
-def (t: T) Failed() -> bool {
+def (t: T) failed() -> bool {
     return t.state.failed
 }
 
 // Parallel records that the case can run beside other cases. The runner decides
 // whether the surrounding call actually runs cases in parallel; the marker is
 // never a request to change shared mutable state.
-def (mut t: T) Parallel() {
+def (mut t: T) parallel() {
     t.state.parallelizable = true
 }
 
 // Run runs one nested case. A failure in the child marks the parent.
-def (mut t: T) Run(name: str, f: func(T)) {
-    var child: T = NewT(t.name + "/" + name)
+def (mut t: T) run(name: str, f: func(T)) {
+    var child: T = new_t(t.name + "/" + name)
     f(child)
-    if child.Failed() {
-        t.Fail()
+    if child.failed() {
+        t.fail()
     }
 }
 
 // Bench runs one benchmark body once. The body owns its timing loop through
 // B.Run; T.Bench only constructs the handle.
-def (mut t: T) Bench(name: str, f: func(B)) {
-    var b: B = NewB(t.name + "/" + name)
+def (mut t: T) bench(name: str, f: func(B)) {
+    var b: B = new_b(t.name + "/" + name)
     f(b)
 }
 
 // runCase runs one table entry and returns its name and final state.
-def runCase(spec: Case) -> caseResult {
-    var t: T = NewT(spec.name)
+def run_case(spec: Case) -> caseResult {
+    var t: T = new_t(spec.name)
     var state: rc<TestState> = t.state
     spec.run(t)
-    return caseResult { name: spec.name.Clone(), state: state}
+    return caseResult { name: spec.name.clone(), state: state}
 }
 
 // Table runs one case for every spec, in source order.
-def Table(cases: ...Case) {
+def table(cases: ...Case) {
     for spec in cases {
-        var result: caseResult = runCase(spec)
+        var result: caseResult = run_case(spec)
         if result.state.failed {
             print("FAIL ", result.name, "\n")
         }
@@ -130,25 +130,25 @@ def Table(cases: ...Case) {
 
 // charsOf returns the scalars of s so two names can be compared by code point
 // without a str ordering operator.
-def charsOf(s: str) -> Array<u32> {
+def chars_of(s: str) -> Array<u32> {
     var out: Array<u32> = new Array<u32>(0)
     for ch in s {
-        out.Push(ch)
+        out.push(ch)
     }
     return out
 }
 
 // nameLess reports whether a sorts before b by code point order.
-def nameLess(a: str, b: str) -> bool {
-    var left: Array<u32> = charsOf(a)
-    var right: Array<u32> = charsOf(b)
-    var n: usize = left.Len()
-    if right.Len() < n {
-        n = right.Len()
+def name_less(a: str, b: str) -> bool {
+    var left: Array<u32> = chars_of(a)
+    var right: Array<u32> = chars_of(b)
+    var n: usize = left.len()
+    if right.len() < n {
+        n = right.len()
     }
     for i in Range(0, i32(n)) {
-        var x: u32 = left.Get(usize(i))
-        var y: u32 = right.Get(usize(i))
+        var x: u32 = left.get(usize(i))
+        var y: u32 = right.get(usize(i))
         if x < y {
             return true
         }
@@ -156,39 +156,39 @@ def nameLess(a: str, b: str) -> bool {
             return false
         }
     }
-    return left.Len() < right.Len()
+    return left.len() < right.len()
 }
 
 // sortResults orders finished cases by name. Insertion sort keeps the helper
 // independent of Array.Sort, which the lowering does not provide yet.
-def sortResults(results: Array<caseResult>) {
+def sort_results(results: Array<caseResult>) {
     var i: usize = 1usize
     for {
-        if i >= results.Len() {
+        if i >= results.len() {
             break
         }
-        var item: caseResult = results.Get(i).Clone()
+        var item: caseResult = results.get(i).clone()
         var j: usize = i
         for {
             if j == 0usize {
                 break
             }
-            var previous: caseResult = results.Get(j - 1usize).Clone()
-            if !nameLess(item.name, previous.name) {
+            var previous: caseResult = results.get(j - 1usize).clone()
+            if !name_less(item.name, previous.name) {
                 break
             }
-            results.Set(j, previous)
+            results.set(j, previous)
             j -= 1usize
         }
-        results.Set(j, item)
+        results.set(j, item)
         i += 1usize
     }
 }
 
 // Parallel runs every entry in its own task and reports failures in name order,
 // so scheduling never changes the output. Cases must not share mutable state.
-def Parallel(cases: ...Case) {
-    var n: usize = cases.Len()
+def parallel(cases: ...Case) {
+    var n: usize = cases.len()
     if n == 0usize {
         return
     }
@@ -196,14 +196,14 @@ def Parallel(cases: ...Case) {
     parallel {
         var tasks: Array<Task<caseResult>> = new Array<Task<caseResult>>(n)
         for i in Range(0, i32(n)) {
-            tasks.Push(spawn runCase(cases.Get(usize(i))))
+            tasks.push(spawn run_case(cases.get(usize(i))))
         }
         for i in Range(0, i32(n)) {
-            var task: Task<caseResult> = tasks.Get(usize(i))
-            results.Push(task.Join()!)
+            var task: Task<caseResult> = tasks.get(usize(i))
+            results.push(task.join()!)
         }
     }
-    sortResults(results)
+    sort_results(results)
     for result in results {
         if result.state.failed {
             print("FAIL ", result.name, "\n")
@@ -212,28 +212,28 @@ def Parallel(cases: ...Case) {
 }
 
 // Name returns the benchmark name.
-def (b: B) Name() -> str {
-    return b.name.Clone()
+def (b: B) name() -> str {
+    return b.name.clone()
 }
 
 // N returns the iteration count the runner asked for.
-def (b: B) N() -> u64 {
+def (b: B) n() -> u64 {
     return b.n
 }
 
 // SetBytes records the payload size for a throughput report.
-def (mut b: B) SetBytes(n: u64) {
+def (mut b: B) set_bytes(n: u64) {
     b.bytes = n
 }
 
 // NsPerOp returns the last measured time in nanoseconds per iteration.
-def (b: B) NsPerOp() -> f64 {
+def (b: B) ns_per_op() -> f64 {
     return b.nsPerOp
 }
 
 // Run times f over b.N() iterations. A zero count is treated as one so the
 // measurement is always defined.
-def (mut b: B) Run(f: func()) -> Result<(), Error> {
+def (mut b: B) run(f: func()) -> Result<(), Error> {
     var count: u64 = b.n
     if count == 0u64 {
         count = 1u64
@@ -253,6 +253,6 @@ def (mut b: B) Run(f: func()) -> Result<(), Error> {
 }
 
 // Log records one benchmark message.
-def (mut b: B) Log(msg: str) {
-    b.logs.Push(msg)
+def (mut b: B) log(msg: str) {
+    b.logs.push(msg)
 }

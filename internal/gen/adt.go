@@ -81,7 +81,7 @@ func (g *generator) typeLLVMOf(text string) (string, bool) {
 	}
 	if text == "Show" {
 		g.showUsed = true
-		return "%interface.Show", true
+		return "%interface.show", true
 	}
 	if strings.HasPrefix(text, "func(") {
 		return "{ ptr, ptr }", true

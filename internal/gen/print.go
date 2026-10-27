@@ -83,7 +83,7 @@ func (g *generator) printShow(call willc.Record, index, arg int) error {
 	slot := g.ifaceSlots[fmt.Sprintf("print.%d.%d", call.ID, index)]
 	if slot == "" {
 		slot = g.newTmp()
-		fmt.Fprintf(g.out, "  %s = alloca %%interface.Show\n", slot)
+		fmt.Fprintf(g.out, "  %s = alloca %%interface.show\n", slot)
 	}
 	if _, already := g.ifaceOfText(text); !already {
 		if _, err := g.ifaceValue(slot, arg, iface, text); err != nil {
@@ -91,10 +91,10 @@ func (g *generator) printShow(call willc.Record, index, arg int) error {
 		}
 	}
 	t := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%interface.Show, ptr %s, i32 0, i32 0\n", t, slot)
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%interface.show, ptr %s, i32 0, i32 0\n", t, slot)
 	data := g.load("ptr", t)
 	tt := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%interface.Show, ptr %s, i32 0, i32 1\n", tt, slot)
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%interface.show, ptr %s, i32 0, i32 1\n", tt, slot)
 	table := g.load("ptr", tt)
 	fnField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds [1 x ptr], ptr %s, i64 0, i64 0\n", fnField, table)

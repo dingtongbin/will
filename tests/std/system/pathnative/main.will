@@ -3,55 +3,55 @@ import "std/os/path"
 // The expected text is built from Separator so this corpus passes on every
 // target. Both slash spellings are accepted as input; output uses the host one.
 def main() -> i32 {
-    var sep: str = str(u32(path.Separator()))
-    if path.Clean("a/./b") != "a" + sep + "b" {
+    var sep: str = str(u32(path.separator()))
+    if path.clean("a/./b") != "a" + sep + "b" {
         return 1
     }
-    if path.Clean("a\\b") != "a" + sep + "b" {
+    if path.clean("a\\b") != "a" + sep + "b" {
         return 2
     }
-    if path.Clean("a/../b") != "b" {
+    if path.clean("a/../b") != "b" {
         return 3
     }
-    if path.Join("a", "b") != "a" + sep + "b" {
+    if path.join("a", "b") != "a" + sep + "b" {
         return 4
     }
-    if path.Join("", "") != "" {
+    if path.join("", "") != "" {
         return 5
     }
-    if path.Base("a/b/") != "b" {
+    if path.base("a/b/") != "b" {
         return 6
     }
-    if path.Ext("a/b.txt") != ".txt" {
+    if path.ext("a/b.txt") != ".txt" {
         return 7
     }
-    if !path.IsAbs(sep + "a") {
+    if !path.is_abs(sep + "a") {
         return 8
     }
-    if path.IsAbs("a" + sep + "b") {
+    if path.is_abs("a" + sep + "b") {
         return 9
     }
-    var abs: str = path.Abs("a")!
-    if !path.IsAbs(abs) {
+    var abs: str = path.abs("a")!
+    if !path.is_abs(abs) {
         return 10
     }
-    if !path.Match("*.txt", "a.txt") {
+    if !path.match("*.txt", "a.txt") {
         return 11
     }
-    if path.Match("*.txt", "a/b.txt") {
+    if path.match("*.txt", "a/b.txt") {
         return 12
     }
-    if path.Separator() == 92u8 {
-        if path.Clean("C:\\a\\..\\b") != "C:" + sep + "b" {
+    if path.separator() == 92u8 {
+        if path.clean("C:\\a\\..\\b") != "C:" + sep + "b" {
             return 13
         }
-        if path.Base("C:\\") != sep {
+        if path.base("C:\\") != sep {
             return 14
         }
-        if path.Dir("C:\\a\\b") != "C:" + sep + "a" {
+        if path.dir("C:\\a\\b") != "C:" + sep + "a" {
             return 15
         }
-        if !path.IsAbs("C:\\a") {
+        if !path.is_abs("C:\\a") {
             return 16
         }
     }

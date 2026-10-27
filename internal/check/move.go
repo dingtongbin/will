@@ -13,9 +13,9 @@ const noteMovedHere = "this value moved here"
 // Move codes and their fixed text, from the diagnostics volume.
 const (
 	movedMessage = "this value has been moved"
-	movedHelp    = "call Clone() to keep a copy, or take a borrow"
+	movedHelp    = "call clone() to keep a copy, or take a borrow"
 	copyMessage  = "a copy is required here and cannot be proven"
-	copyHelp     = "call Clone()"
+	copyHelp     = "call clone()"
 )
 
 // Moves reports O0001 and O0002 over one file.
@@ -185,7 +185,7 @@ func (m *mover) canMovePlace(root string) bool {
 // owning element into a new owner. The call itself returns a copy; storing it
 // without Clone would leave two owners of one buffer.
 func (m *mover) containerGetCopy(call *ast.MethodCallExpr) {
-	if m.own == nil || (call.Name != "Get" && call.Name != "Peek") {
+	if m.own == nil || (call.Name != "get" && call.Name != "peek") {
 		return
 	}
 	recv := m.exprType(call.Recv)
@@ -691,13 +691,13 @@ func (m *mover) containerTransfer(call *ast.MethodCallExpr) bool {
 	switch t.Name {
 	case "Array":
 		switch call.Name {
-		case "Push", "Append", "Set", "Insert":
+		case "push", "append", "set", "insert":
 			return true
 		}
 	case "Map":
-		return call.Name == "Set"
+		return call.Name == "set"
 	case "Set":
-		return call.Name == "Add"
+		return call.Name == "add"
 	}
 	return false
 }
@@ -732,7 +732,7 @@ func (m *mover) exprEventsIn(e ast.Expr, live map[string]bool, ev *events, trans
 		// Send hands the value to the channel; the predeclared container
 		// methods move the value into their storage. A user method with the
 		// same name stays a borrow.
-		transfer := transferArgs || x.Name == "Send" || m.containerTransfer(x)
+		transfer := transferArgs || x.Name == "send" || m.containerTransfer(x)
 		m.args(x.Args, live, ev, transfer)
 	case *ast.FieldExpr:
 		m.exprEventsIn(x.Recv, live, ev, false)

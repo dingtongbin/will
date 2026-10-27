@@ -2,10 +2,10 @@ struct Counter {
     n: i32
 }
 
-def (c: Counter) Get() -> i32 {
+def (c: Counter) get() -> i32 {
     return c.n
 }
 
-def New(n: i32) -> Counter {
+def new(n: i32) -> Counter {
     return Counter { n: n }
 }

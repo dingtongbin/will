@@ -9,7 +9,7 @@ const calls: i32 = 10000000
 
 // Empty is a function of the same module. A call to it is inlined, so it
 // shows the cost of the loop alone.
-def Empty(value: i64) -> i64 {
+def empty(value: i64) -> i64 {
     return value
 }
 
@@ -40,7 +40,7 @@ def main() -> i32 {
     var t4: u64 = c.bench_now_ns()
     for i in Range(0, calls) {
         _ = i
-        acc = Empty(acc)
+        acc = empty(acc)
     }
     var t5: u64 = c.bench_now_ns()
 

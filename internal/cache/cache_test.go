@@ -10,19 +10,19 @@ import (
 
 func TestKeyIsDeterministicAndSensitive(t *testing.T) {
 	a := NewHasher()
-	a.Add("source", []byte("def F() {}"))
+	a.Add("source", []byte("def f() {}"))
 	a.Add("compiler", []byte("will dev"))
 	first := a.Key()
 
 	b := NewHasher()
-	b.Add("source", []byte("def F() {}"))
+	b.Add("source", []byte("def f() {}"))
 	b.Add("compiler", []byte("will dev"))
 	if first != b.Key() {
 		t.Fatalf("same inputs gave different keys: %s %s", first, b.Key())
 	}
 
 	c := NewHasher()
-	c.Add("source", []byte("def G() {}"))
+	c.Add("source", []byte("def g() {}"))
 	c.Add("compiler", []byte("will dev"))
 	if first == c.Key() {
 		t.Fatalf("a changed source kept the same key")
@@ -30,7 +30,7 @@ func TestKeyIsDeterministicAndSensitive(t *testing.T) {
 
 	d := NewHasher()
 	d.Add("compiler", []byte("will dev"))
-	d.Add("source", []byte("def F() {}"))
+	d.Add("source", []byte("def f() {}"))
 	if first == d.Key() {
 		t.Fatalf("part order did not change the key")
 	}

@@ -18,7 +18,7 @@ struct Big {
 }
 
 // CopyByValue copies the value and returns two of its words.
-def CopyByValue(value: Big) -> i64 {
+def copy_by_value(value: Big) -> i64 {
     var copy: Big = value
     return copy.words[0usize] + copy.words[7usize]
 }
@@ -26,7 +26,7 @@ def CopyByValue(value: Big) -> i64 {
 // CopyFromView copies the value word by word through a borrowed view, which is
 // the spelling will has for the pointer form of the C side: the caller lends
 // the words and the callee copies them out.
-def CopyFromView(view: []i64) -> i64 {
+def copy_from_view(view: []i64) -> i64 {
     var copy: [8]i64
     for i in Range(0, 8) {
         copy[usize(i)] = view[usize(i)]
@@ -42,7 +42,7 @@ def main() -> i32 {
 
     var samples: Array<u64> = new Array<u64>(0)
     // The warm up pays for the first touch of the pages and of the caches.
-    var warm: i64 = CopyByValue(value)
+    var warm: i64 = copy_by_value(value)
     _ = warm
 
     var checksum: i64 = 0i64
@@ -51,10 +51,10 @@ def main() -> i32 {
         var start: u64 = c.bench_now_ns()
         for i in Range(0, workload) {
             value.words[0usize] = i64(i)
-            checksum += CopyByValue(value)
+            checksum += copy_by_value(value)
         }
         var stop: u64 = c.bench_now_ns()
-        samples.Push(stop - start)
+        samples.push(stop - start)
         c.bench_sink(u64(checksum))
     }
 
@@ -65,17 +65,17 @@ def main() -> i32 {
         var start: u64 = c.bench_now_ns()
         for i in Range(0, workload) {
             value.words[0usize] = i64(i)
-            pointerChecksum += CopyFromView(value.words[Range(0, 8)])
+            pointerChecksum += copy_from_view(value.words[Range(0, 8)])
         }
         var stop: u64 = c.bench_now_ns()
-        pointerSamples.Push(stop - start)
+        pointerSamples.push(stop - start)
         c.bench_sink(u64(pointerChecksum))
     }
 
-    bench.SortSamples(samples)
-    bench.SortSamples(pointerSamples)
-    var byValue: u64 = bench.Percentile(samples, 50i64, 100i64)
-    var byPointer: u64 = bench.Percentile(pointerSamples, 50i64, 100i64)
+    bench.sort_samples(samples)
+    bench.sort_samples(pointerSamples)
+    var byValue: u64 = bench.percentile(samples, 50i64, 100i64)
+    var byPointer: u64 = bench.percentile(pointerSamples, 50i64, 100i64)
 
     print("bench metric by_value_p50 ", byValue, " ns\n")
     print("bench metric by_pointer_p50 ", byPointer, " ns\n")

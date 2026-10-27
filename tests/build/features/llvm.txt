@@ -1,6 +1,6 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
-define hidden i32 @"example.com/features.F"() alwaysinline {
+define hidden i32 @"example.com/features.f"() alwaysinline {
 entry:
   br i1 false, label %if.then.1, label %if.end.1
 if.then.1:
@@ -10,7 +10,7 @@ if.end.1:
 }
 define i32 @"example.com/features.will$main"() {
 entry:
-  %t1 = call i32 @"example.com/features.F"()
+  %t1 = call i32 @"example.com/features.f"()
   ret i32 %t1
 }
 declare void @willrt_init()

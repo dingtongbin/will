@@ -3,26 +3,26 @@
 // asynchronous IO lives on concrete types such as fs.File and fs.AsyncReadFile.
 
 interface Reader {
-    def Read(mut buf: Array<u8>) -> Result<usize, Error>
+    def read(mut buf: Array<u8>) -> Result<usize, Error>
 }
 
 interface Writer {
-    def Write(buf: []u8) -> Result<(), Error>
-    def Sync() -> Result<(), Error>
+    def write(buf: []u8) -> Result<(), Error>
+    def sync() -> Result<(), Error>
 }
 
 interface Seeker {
-    def Seek(offset: i64, whence: i32) -> Result<i64, Error>
+    def seek(offset: i64, whence: i32) -> Result<i64, Error>
 }
 
 // ReadAll appends every byte from r until end of stream. It returns the number
 // of bytes appended.
-def ReadAll(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
-    var before: usize = buf.Len()
+def read_all(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
+    var before: usize = buf.len()
     var chunk: Array<u8> = new Array<u8>(32768)
     for {
-        chunk.Clear()
-        var n: usize = r.Read(chunk)?
+        chunk.clear()
+        var n: usize = r.read(chunk)?
         if n == 0usize {
             break
         }
@@ -31,26 +31,26 @@ def ReadAll(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
             if i >= n {
                 break
             }
-            buf.Push(chunk.Get(i))
+            buf.push(chunk.get(i))
             i += 1
         }
     }
-    return Ok(buf.Len() - before)
+    return Ok(buf.len() - before)
 }
 
 // Copy copies r to dst until end of stream and syncs dst.
-def Copy(dst: Writer, src: Reader) -> Result<u64, Error> {
+def copy(dst: Writer, src: Reader) -> Result<u64, Error> {
     var total: u64 = 0
     var chunk: Array<u8> = new Array<u8>(32768)
     for {
-        chunk.Clear()
-        var n: usize = src.Read(chunk)?
+        chunk.clear()
+        var n: usize = src.read(chunk)?
         if n == 0usize {
             break
         }
-        _ = dst.Write(chunk[Range(0, n)])?
+        _ = dst.write(chunk[Range(0, n)])?
         total += u64(n)
     }
-    _ = dst.Sync()?
+    _ = dst.sync()?
     return Ok(total)
 }

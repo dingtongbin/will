@@ -1,5 +1,5 @@
 import "example.com/dep"
 
-def F() {
-    dep.G()
+def f() {
+    dep.g()
 }

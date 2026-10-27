@@ -12,52 +12,52 @@ def (mut q: Queue<T>) init() {
 }
 
 // Push adds one value at the back.
-def (mut q: Queue<T>) Push(v: T) {
-    q.back.Push(v)
+def (mut q: Queue<T>) push(v: T) {
+    q.back.push(v)
 }
 
 // Pop removes and returns the front value, or None when the queue is empty.
-def (mut q: Queue<T>) Pop() -> Option<T> {
-    if q.front.Len() > 0 {
-        return q.front.Pop()
+def (mut q: Queue<T>) pop() -> Option<T> {
+    if q.front.len() > 0 {
+        return q.front.pop()
     }
-    if q.back.Len() == 0 {
+    if q.back.len() == 0 {
         return None
     }
     for {
-        if q.back.Len() == 0 {
+        if q.back.len() == 0 {
             break
         }
-        match q.back.Pop() {
+        match q.back.pop() {
             Some(v) => {
-                q.front.Push(v)
+                q.front.push(v)
             }
             None => {
                 break
             }
         }
     }
-    return q.front.Pop()
+    return q.front.pop()
 }
 
 // Peek returns a copy of the front value without removing it.
-def (q: Queue<T>) Peek() -> Option<T> {
-    if q.front.Len() > 0 {
-        return Some(q.front.Get(q.front.Len() - 1))
+def (q: Queue<T>) peek() -> Option<T> {
+    if q.front.len() > 0 {
+        return Some(q.front.get(q.front.len() - 1))
     }
-    if q.back.Len() == 0 {
+    if q.back.len() == 0 {
         return None
     }
-    return Some(q.back.Get(0))
+    return Some(q.back.get(0))
 }
 
 // Len reports the number of stored values.
-def (q: Queue<T>) Len() -> usize {
-    return q.front.Len() + q.back.Len()
+def (q: Queue<T>) len() -> usize {
+    return q.front.len() + q.back.len()
 }
 
 // Clear releases every value.
-def (mut q: Queue<T>) Clear() {
-    q.front.Clear()
-    q.back.Clear()
+def (mut q: Queue<T>) clear() {
+    q.front.clear()
+    q.back.clear()
 }

@@ -2,15 +2,15 @@ import "std/fmt"
 
 // take boxes any value that shows itself.
 def take(x: Show) -> str {
-    return x.Show()
+    return x.show()
 }
 
 // joinAll walks the view a variadic Show parameter packs.
-def joinAll(parts: ...Show) -> str {
+def join_all(parts: ...Show) -> str {
     var out: str = ""
-    var n: i32 = i32(parts.Len())
+    var n: i32 = i32(parts.len())
     for i in Range(0, n) {
-        out = out + parts[i].Show()
+        out = out + parts[i].show()
     }
     return out
 }
@@ -18,17 +18,17 @@ def joinAll(parts: ...Show) -> str {
 def main() -> i32 {
     var a: str = take(42)
     var b: str = take("hi")
-    var c: str = take(fmt.Int(7i64, 10, 0, 48u8))
+    var c: str = take(fmt.int(7i64, 10, 0, 48u8))
     if a != "42" || b != "hi" || c != "7" {
         print("take: ", a, " ", b, " ", c, "\n")
         return 1
     }
-    var joined: str = joinAll(1, "-", 2)
+    var joined: str = join_all(1, "-", 2)
     if joined != "1-2" {
         print("view: ", joined, "\n")
         return 2
     }
-    var text: str = fmt.Str(42, "|", "hi", "|", fmt.Int(7i64, 10, 0, 48u8))
+    var text: str = fmt.str(42, "|", "hi", "|", fmt.int(7i64, 10, 0, 48u8))
     if text != "42|hi|7" {
         print("str: ", text, "\n")
         return 3

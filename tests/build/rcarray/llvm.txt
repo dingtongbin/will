@@ -1,7 +1,7 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/rcarray.C" = type { i32 }
-define internal i64 @"example.com/rcarray.pick"(ptr %xs) inlinehint {
+define hidden i64 @"example.com/rcarray.pick"(ptr %xs) inlinehint {
 entry:
   %t1 = getelementptr inbounds { ptr, i64, i64 }, ptr %xs, i32 0, i32 0
   %t2 = load ptr, ptr %t1

@@ -103,7 +103,7 @@ func recvInExpr(e ast.Expr) bool {
 	}
 	switch x := e.(type) {
 	case *ast.MethodCallExpr:
-		if x.Name == "Recv" {
+		if x.Name == "recv" {
 			return true
 		}
 		if recvInExpr(x.Recv) {

@@ -18,47 +18,47 @@ const dotScalar: u32 = 46
 
 // isSlash reports whether c is the portable separator. Match uses this one;
 // it does not treat '\' as a boundary.
-def isSlash(c: u32) -> bool {
+def is_slash(c: u32) -> bool {
     return c == slashScalar
 }
 
 // isSeparator reports whether c separates path elements on any target.
-def isSeparator(c: u32) -> bool {
+def is_separator(c: u32) -> bool {
     return c == slashScalar || c == backslashScalar
 }
 
 // isDot reports whether c is the character that names a dot element.
-def isDot(c: u32) -> bool {
+def is_dot(c: u32) -> bool {
     return c == dotScalar
 }
 
 // isDriveLetter reports whether c can start a Windows drive prefix.
-def isDriveLetter(c: u32) -> bool {
+def is_drive_letter(c: u32) -> bool {
     return (c >= 65u32 && c <= 90u32) || (c >= 97u32 && c <= 122u32)
 }
 
 // hasDrive reports whether p starts with a Windows drive prefix such as "C:".
-def hasDrive(p: str) -> bool {
-    if Separator() != 92u8 || p.Len() < 2usize {
+def has_drive(p: str) -> bool {
+    if separator() != 92u8 || p.len() < 2usize {
         return false
     }
-    var s: str = p.Clone()
+    var s: str = p.clone()
     var first: u32 = s[0]
     var second: u32 = s[1]
-    return isDriveLetter(first) && second == colonScalar
+    return is_drive_letter(first) && second == colonScalar
 }
 
 // isDriveAbs reports whether p is rooted on a Windows drive, such as "C:\a".
-def isDriveAbs(p: str) -> bool {
-    if !hasDrive(p) || p.Len() < 3usize {
+def is_drive_abs(p: str) -> bool {
+    if !has_drive(p) || p.len() < 3usize {
         return false
     }
-    var s: str = p.Clone()
+    var s: str = p.clone()
     var third: u32 = s[2]
-    return isSeparator(third)
+    return is_separator(third)
 }
 
 // separatorString returns the platform separator as a one-scalar str.
-def separatorString() -> str {
-    return str(u32(Separator()))
+def separator_string() -> str {
+    return str(u32(separator()))
 }

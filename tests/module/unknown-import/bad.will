@@ -1,4 +1,4 @@
 import "std/net/http"
 
-def F() {
+def f() {
 }

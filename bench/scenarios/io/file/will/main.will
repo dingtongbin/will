@@ -8,14 +8,14 @@ const repetitions: i32 = 5
 var path: str = "bench_file.tmp"
 const seed: u64 = 0x5EEDu64
 
-def Lcg(state: u64) -> u64 {
+def lcg(state: u64) -> u64 {
     return state *% 6364136223846793005u64 +% 1442695040888963407u64
 }
 
-def Fill(block: Array<u8>) {
+def fill(block: Array<u8>) {
     var state: u64 = seed
-    for word in Range(0, i32(block.Len() / 8usize)) {
-        var value: u64 = Lcg(state)
+    for word in Range(0, i32(block.len() / 8usize)) {
+        var value: u64 = lcg(state)
         state = value
         for b in Range(0, 8) {
             block[usize(word * 8 + b)] = u8(value & 0xFFu64)
@@ -24,8 +24,8 @@ def Fill(block: Array<u8>) {
     }
 }
 
-def Sort(mut xs: Array<u64>) {
-    var n: i32 = i32(xs.Len())
+def sort(mut xs: Array<u64>) {
+    var n: i32 = i32(xs.len())
     var value: u64 = 0u64
     var left: u64 = 0u64
     for i in Range(1, n) {
@@ -46,8 +46,8 @@ def Sort(mut xs: Array<u64>) {
     }
 }
 
-def Percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
-    var count: i64 = i64(xs.Len())
+def percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
+    var count: i64 = i64(xs.len())
     if count == 0i64 {
         return 0u64
     }
@@ -62,27 +62,27 @@ def Percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
     return xs[usize(rank - one)]
 }
 
-def OpenRead() -> Result<fs.File, Error> {
-    return fs.Open(path, fs.OpenFlags { read: true, write: false, create: false, append: false, truncate: false, exclusive: false })
+def open_read() -> Result<fs.File, Error> {
+    return fs.open(path, fs.OpenFlags { read: true, write: false, create: false, append: false, truncate: false, exclusive: false })
 }
 
 def main() -> i32 {
     var clock: time.Stopwatch = new time.Stopwatch()
     var block: Array<u8> = new Array<u8>(blockSize)
     for _ in Range(0, i32(blockSize)) {
-        block.Push(0u8)
+        block.push(0u8)
     }
-    Fill(block)
-    var view: []u8 = block[Range(0, block.Len())]
+    fill(block)
+    var view: []u8 = block[Range(0, block.len())]
 
 
-    var created: Result<fs.File, Error> = fs.Create(path, 420u32)
+    var created: Result<fs.File, Error> = fs.create(path, 420u32)
     match created {
         Ok(file) => {
             for _ in Range(0, i32(fileSize / blockSize)) {
-                _ = file.Write(view)
+                _ = file.write(view)
             }
-            _ = file.Close()
+            _ = file.close()
         }
         Err(_) => {
             return 1
@@ -97,83 +97,83 @@ def main() -> i32 {
     var last0: u8 = 0u8
     var last1: u8 = 0u8
     for _ in Range(0, repetitions) {
-        var start: i64 = i64(clock.Elapsed())
-        var opened: Result<fs.File, Error> = OpenRead()
+        var start: i64 = i64(clock.elapsed())
+        var opened: Result<fs.File, Error> = open_read()
         match opened {
             Ok(file) => {
                 for _ in Range(0, reads) {
-                    block.Clear()
-                    var count: usize = file.Read(block)!
-                    if block.Len() > 0usize {
+                    block.clear()
+                    var count: usize = file.read(block)!
+                    if block.len() > 0usize {
                         last0 = block[0]
                     }
                     _ = count
                 }
-                _ = file.Close()
+                _ = file.close()
             }
             Err(_) => {
                 return 2
             }
         }
-        var stop: i64 = i64(clock.Elapsed())
-        sequential.Push(u64(stop - start))
+        var stop: i64 = i64(clock.elapsed())
+        sequential.push(u64(stop - start))
         checksum += u64(last0)
     }
 
 
     var state: u64 = 0x1234u64
     for _ in Range(0, repetitions) {
-        var start: i64 = i64(clock.Elapsed())
-        var opened: Result<fs.File, Error> = OpenRead()
+        var start: i64 = i64(clock.elapsed())
+        var opened: Result<fs.File, Error> = open_read()
         match opened {
             Ok(file) => {
                 for _ in Range(0, reads) {
-                    state = Lcg(state)
+                    state = lcg(state)
                     var at: usize = usize(state % 1024u64) * blockSize
-                    _ = file.Seek(i64(at), 0)
-                    block.Clear()
-                    var count: usize = file.Read(block)!
-                    if block.Len() > 1usize {
+                    _ = file.seek(i64(at), 0)
+                    block.clear()
+                    var count: usize = file.read(block)!
+                    if block.len() > 1usize {
                         last1 = block[1]
                     }
                     _ = count
                 }
-                _ = file.Close()
+                _ = file.close()
             }
             Err(_) => {
                 return 3
             }
         }
-        var stop: i64 = i64(clock.Elapsed())
-        random.Push(u64(stop - start))
+        var stop: i64 = i64(clock.elapsed())
+        random.push(u64(stop - start))
         checksum += u64(last1)
     }
 
     for _ in Range(0, repetitions) {
-        var start: i64 = i64(clock.Elapsed())
-        var made: Result<fs.File, Error> = fs.Create(path, 420u32)
+        var start: i64 = i64(clock.elapsed())
+        var made: Result<fs.File, Error> = fs.create(path, 420u32)
         match made {
             Ok(file) => {
                 for _ in Range(0, i32(fileSize / blockSize)) {
-                    _ = file.Write(view)
+                    _ = file.write(view)
                 }
-                _ = file.Close()
+                _ = file.close()
             }
             Err(_) => {
                 return 4
             }
         }
-        var stop: i64 = i64(clock.Elapsed())
-        writes.Push(u64(stop - start))
+        var stop: i64 = i64(clock.elapsed())
+        writes.push(u64(stop - start))
     }
-    _ = fs.Remove(path)
+    _ = fs.remove(path)
 
-    Sort(sequential)
-    Sort(random)
-    Sort(writes)
-    print("bench metric sequential_read_p50 ", Percentile(sequential, 50i64, 100i64), " ns\n")
-    print("bench metric random_read_p50 ", Percentile(random, 50i64, 100i64), " ns\n")
-    print("bench metric write_p50 ", Percentile(writes, 50i64, 100i64), " ns\n")
+    sort(sequential)
+    sort(random)
+    sort(writes)
+    print("bench metric sequential_read_p50 ", percentile(sequential, 50i64, 100i64), " ns\n")
+    print("bench metric random_read_p50 ", percentile(random, 50i64, 100i64), " ns\n")
+    print("bench metric write_p50 ", percentile(writes, 50i64, 100i64), " ns\n")
     print("bench metric bytes ", u64(fileSize), " bytes\n")
     print("bench metric blocks ", u64(reads), " blocks\n")
     print("bench checksum ", checksum, "\n")

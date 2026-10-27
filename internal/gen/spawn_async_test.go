@@ -15,17 +15,17 @@ func TestAsyncSpawnOwnsByValueParameters(t *testing.T) {
     fast willrt_task_sleep_async
 }
 
-async def Read(text: str) -> i32 {
+async def read(text: str) -> i32 {
     var status: i32 = c.willrt_task_sleep_async(1)
     if status != 0 { return 1 }
-    return i32(text.Len())
+    return i32(text.len())
 }
 
 async def main() -> i32 {
     var result: i32 = 0
     region {
-        var task: Task<i32> = spawn Read("hello".Clone())
-        result = await task.Join()!
+        var task: Task<i32> = spawn read("hello".clone())
+        result = await task.join()!
     }
     return result
 }
@@ -37,9 +37,9 @@ async def main() -> i32 {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`define ptr @"example.com/app.Read.task"(ptr %arg0, i32 %start, i32 %owns)`,
-		`define void @"example.com/app.Read.drop"(ptr %frame)`,
-		`define void @"example.com/app.Read.drop.own"(ptr %frame)`,
+		`define ptr @"example.com/app.read.task"(ptr %arg0, i32 %start, i32 %owns)`,
+		`define void @"example.com/app.read.drop"(ptr %frame)`,
+		`define void @"example.com/app.read.drop.own"(ptr %frame)`,
 		`icmp ne i32 %owns, 0`,
 		`call void @willrt_free_str(ptr`,
 	} {
@@ -58,15 +58,15 @@ func TestAsyncSpawnPlaceLowers(t *testing.T) {
     id: i32
 }
 
-async def Fetch(value: i32) -> i32 {
+async def fetch(value: i32) -> i32 {
     return value
 }
 
 def main() -> i32 {
     region {
-        var a: Task<i32> = spawn Fetch(1)
-        var b: Task<i32> = spawn here Fetch(2)
-        var c: Task<i32> = spawn on Ui Fetch(3)
+        var a: Task<i32> = spawn fetch(1)
+        var b: Task<i32> = spawn here fetch(2)
+        var c: Task<i32> = spawn on Ui fetch(3)
         _ = a
         _ = b
         _ = c
@@ -81,9 +81,9 @@ def main() -> i32 {
 	}
 	text := string(ir)
 	for _, want := range []string{
-		`@"example.com/app.Fetch.task"(i32 1, i32 -1, i32 1)`,
-		`@"example.com/app.Fetch.task"(i32 2, i32 -2, i32 1)`,
-		`@"example.com/app.Fetch.task"(i32 3, i32 0, i32 1)`,
+		`@"example.com/app.fetch.task"(i32 1, i32 -1, i32 1)`,
+		`@"example.com/app.fetch.task"(i32 2, i32 -2, i32 1)`,
+		`@"example.com/app.fetch.task"(i32 3, i32 0, i32 1)`,
 		`call void @willrt_task_run_auto(ptr`,
 	} {
 		if !strings.Contains(text, want) {

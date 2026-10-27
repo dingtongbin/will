@@ -11,11 +11,11 @@ struct clockError {
     message: str
 }
 
-def (e: clockError) Message() -> str {
-    return e.message.Clone()
+def (e: clockError) message() -> str {
+    return e.message.clone()
 }
 
-def (e: clockError) Status() -> i32 {
+def (e: clockError) status() -> i32 {
     return 2
 }
 
@@ -29,13 +29,13 @@ def (mut s: Stopwatch) init() {
 }
 
 // Elapsed returns the time since construction.
-def (s: Stopwatch) Elapsed() -> Duration {
+def (s: Stopwatch) elapsed() -> Duration {
     return Duration(c.willrt_now_ns() - s.start)
 }
 
 // Sleep suspends the current task for d. A synchronous caller reaches it
 // through wait(...); a spawned caller awaits it inside the task.
-async def Sleep(d: Duration) -> Result<(), Error> {
+async def sleep(d: Duration) -> Result<(), Error> {
     var ns: i64 = i64(d)
     var status: i32 = await c.willrt_task_sleep_async(ns)
     if status != 0 {

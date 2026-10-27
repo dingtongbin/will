@@ -8,13 +8,13 @@ struct Source {
     chunk: usize
 }
 
-def (mut s: Source) Read(mut buf: Array<u8>) -> Result<usize, Error> {
+def (mut s: Source) read(mut buf: Array<u8>) -> Result<usize, Error> {
     var n: usize = 0usize
     for {
-        if s.pos >= s.data.Len() || n >= s.chunk {
+        if s.pos >= s.data.len() || n >= s.chunk {
             break
         }
-        buf.Push(s.data.Get(s.pos))
+        buf.push(s.data.get(s.pos))
         s.pos += 1usize
         n += 1usize
     }
@@ -29,21 +29,21 @@ struct Buffer {
     data: Array<u8>
 }
 
-def (mut b: Buffer) Push(v: u8) {
-    b.data.Push(v)
+def (mut b: Buffer) push(v: u8) {
+    b.data.push(v)
 }
 
-def (b: Buffer) Copy() -> Array<u8> {
-    return b.data.Clone()
+def (b: Buffer) copy() -> Array<u8> {
+    return b.data.clone()
 }
 
-def (b: Buffer) SameAs(values: ...u8) -> bool {
-    if b.data.Len() != values.Len() {
+def (b: Buffer) same_as(values: ...u8) -> bool {
+    if b.data.len() != values.len() {
         return false
     }
     var i: usize = 0usize
     for v in values {
-        if b.data.Get(i) != v {
+        if b.data.get(i) != v {
             return false
         }
         i += 1usize
@@ -57,67 +57,67 @@ struct Sink {
     data: rc<Buffer>
 }
 
-def (mut s: Sink) Write(buf: []u8) -> Result<(), Error> {
+def (mut s: Sink) write(buf: []u8) -> Result<(), Error> {
     for b in buf {
-        s.data.Push(b)
+        s.data.push(b)
     }
     return Ok(())
 }
 
-def (s: Sink) Sync() -> Result<(), Error> {
+def (s: Sink) sync() -> Result<(), Error> {
     return Ok(())
 }
 
-def Ascii(s: str) -> Array<u8> {
+def ascii(s: str) -> Array<u8> {
     var out: Array<u8> = new Array<u8>(0)
-    for b in s[Range(0, s.Len())] {
-        out.Push(b)
+    for b in s[Range(0, s.len())] {
+        out.push(b)
     }
     return out
 }
 
-def AppendAscii(mut out: Array<u8>, s: str) {
-    for b in s[Range(0, s.Len())] {
-        out.Push(b)
+def append_ascii(mut out: Array<u8>, s: str) {
+    for b in s[Range(0, s.len())] {
+        out.push(b)
     }
 }
 
-def AppendCrlf(mut out: Array<u8>) {
-    out.Push(13u8)
-    out.Push(10u8)
+def append_crlf(mut out: Array<u8>) {
+    out.push(13u8)
+    out.push(10u8)
 }
 
-def Bytes(values: ...u8) -> Array<u8> {
+def bytes(values: ...u8) -> Array<u8> {
     var out: Array<u8> = new Array<u8>(0)
     for v in values {
-        out.Push(v)
+        out.push(v)
     }
     return out
 }
 
-def TextBytes(values: ...u8) -> str {
+def text_bytes(values: ...u8) -> str {
     var out: Array<u8> = new Array<u8>(0)
     for v in values {
-        out.Push(v)
+        out.push(v)
     }
     return str(out)
 }
 
-def RowOf(a: str, b: str, c: str) -> csv.Row {
+def row_of(a: str, b: str, c: str) -> csv.Row {
     var fields: Array<str> = new Array<str>(0)
-    fields.Push(a.Clone())
-    fields.Push(b.Clone())
-    fields.Push(c.Clone())
+    fields.push(a.clone())
+    fields.push(b.clone())
+    fields.push(c.clone())
     return csv.Row { fields: fields }
 }
 
-def FieldsEqual(row: csv.Row, expected: ...str) -> bool {
-    if row.fields.Len() != expected.Len() {
+def fields_equal(row: csv.Row, expected: ...str) -> bool {
+    if row.fields.len() != expected.len() {
         return false
     }
     var i: usize = 0usize
     for e in expected {
-        if row.fields.Get(i) != e {
+        if row.fields.get(i) != e {
             return false
         }
         i += 1usize
@@ -125,10 +125,10 @@ def FieldsEqual(row: csv.Row, expected: ...str) -> bool {
     return true
 }
 
-async def DecodeAll(mut reader: csv.Reader, mut rows: Array<csv.Row>) -> Result<usize, Error> {
+async def decode_all(mut reader: csv.Reader, mut rows: Array<csv.Row>) -> Result<usize, Error> {
     var total: usize = 0usize
     for {
-        var batch: Result<usize, Error> = await reader.AsyncDecode(rows)
+        var batch: Result<usize, Error> = await reader.async_decode(rows)
         match batch {
             Ok(n) => {
                 if n == 0usize {
@@ -144,33 +144,33 @@ async def DecodeAll(mut reader: csv.Reader, mut rows: Array<csv.Row>) -> Result<
     return Ok(total)
 }
 
-def Failed(r: Result<usize, Error>) -> bool {
+def failed(r: Result<usize, Error>) -> bool {
     match r {
         Ok(v) => {
             _ = v
             return false
         }
         Err(e) => {
-            return e.Status() == 2
+            return e.status() == 2
         }
     }
 }
 
 async def main() -> i32 {
     var rows: Array<csv.Row> = new Array<csv.Row>(0)
-    var firstData: Array<u8> = Bytes(
+    var firstData: Array<u8> = bytes(
         97u8, 44u8, 34u8, 98u8, 44u8, 99u8, 34u8, 44u8,
         34u8, 100u8, 34u8, 34u8, 101u8, 34u8,
     )
-    AppendCrlf(firstData)
-    AppendAscii(firstData, "1,2,3\n")
+    append_crlf(firstData)
+    append_ascii(firstData, "1,2,3\n")
     var source: Source = Source {
         data: firstData,
         pos: 0usize,
         chunk: 3usize,
     }
     var reader: csv.Reader = new csv.Reader(source, 44u8)
-    match await DecodeAll(reader, rows) {
+    match await decode_all(reader, rows) {
         Ok(n) => {
             if n != 2usize {
                 return 1
@@ -180,24 +180,24 @@ async def main() -> i32 {
             return 2
         }
     }
-    if rows.Len() != 2usize {
+    if rows.len() != 2usize {
         return 3
     }
-    if !FieldsEqual(rows.Get(0usize), "a", "b,c", TextBytes(100u8, 34u8, 101u8)) {
+    if !fields_equal(rows.get(0usize), "a", "b,c", text_bytes(100u8, 34u8, 101u8)) {
         return 4
     }
-    if !FieldsEqual(rows.Get(1usize), "1", "2", "3") {
+    if !fields_equal(rows.get(1usize), "1", "2", "3") {
         return 5
     }
 
     var emptyRows: Array<csv.Row> = new Array<csv.Row>(0)
     var emptySource: Source = Source {
-        data: Ascii(",x,\n"),
+        data: ascii(",x,\n"),
         pos: 0usize,
         chunk: 2usize,
     }
     var emptyReader: csv.Reader = new csv.Reader(emptySource, 44u8)
-    match await DecodeAll(emptyReader, emptyRows) {
+    match await decode_all(emptyReader, emptyRows) {
         Ok(n) => {
             if n != 1usize {
                 return 6
@@ -207,20 +207,20 @@ async def main() -> i32 {
             return 7
         }
     }
-    if !FieldsEqual(emptyRows.Get(0usize), "", "x", "") {
+    if !fields_equal(emptyRows.get(0usize), "", "x", "") {
         return 8
     }
 
     var lineRows: Array<csv.Row> = new Array<csv.Row>(0)
-    var lineData: Array<u8> = Bytes(34u8, 97u8, 10u8, 98u8, 34u8, 44u8, 99u8)
-    AppendCrlf(lineData)
+    var lineData: Array<u8> = bytes(34u8, 97u8, 10u8, 98u8, 34u8, 44u8, 99u8)
+    append_crlf(lineData)
     var lineSource: Source = Source {
         data: lineData,
         pos: 0usize,
         chunk: 4usize,
     }
     var lineReader: csv.Reader = new csv.Reader(lineSource, 44u8)
-    match await DecodeAll(lineReader, lineRows) {
+    match await decode_all(lineReader, lineRows) {
         Ok(n) => {
             if n != 1usize {
                 return 9
@@ -230,18 +230,18 @@ async def main() -> i32 {
             return 10
         }
     }
-    if !FieldsEqual(lineRows.Get(0usize), "a\nb", "c") {
+    if !fields_equal(lineRows.get(0usize), "a\nb", "c") {
         return 11
     }
 
     var tailRows: Array<csv.Row> = new Array<csv.Row>(0)
     var tailSource: Source = Source {
-        data: Ascii("a,\n\nb,"),
+        data: ascii("a,\n\nb,"),
         pos: 0usize,
         chunk: 5usize,
     }
     var tailReader: csv.Reader = new csv.Reader(tailSource, 44u8)
-    match await DecodeAll(tailReader, tailRows) {
+    match await decode_all(tailReader, tailRows) {
         Ok(n) => {
             if n != 3usize {
                 return 12
@@ -251,37 +251,37 @@ async def main() -> i32 {
             return 13
         }
     }
-    if !FieldsEqual(tailRows.Get(0usize), "a", "") {
+    if !fields_equal(tailRows.get(0usize), "a", "") {
         return 14
     }
-    if !FieldsEqual(tailRows.Get(1usize), "") {
+    if !fields_equal(tailRows.get(1usize), "") {
         return 15
     }
-    if !FieldsEqual(tailRows.Get(2usize), "b", "") {
+    if !fields_equal(tailRows.get(2usize), "b", "") {
         return 16
     }
 
     var outRows: Array<csv.Row> = new Array<csv.Row>(0)
-    outRows.Push(RowOf("a", "b,c", TextBytes(100u8, 34u8, 101u8)))
-    outRows.Push(RowOf("1", "2", "3"))
-    outRows.Push(RowOf("x\ny", "z", ""))
+    outRows.push(row_of("a", "b,c", text_bytes(100u8, 34u8, 101u8)))
+    outRows.push(row_of("1", "2", "3"))
+    outRows.push(row_of("x\ny", "z", ""))
     var shared: rc<Buffer> = new rc<Buffer>(Buffer { data: new Array<u8>(0) })
     var writer: csv.Writer = new csv.Writer(Sink { data: shared }, 44u8)
-    match await writer.AsyncEncode(outRows[Range(0, outRows.Len())]) {
+    match await writer.async_encode(outRows[Range(0, outRows.len())]) {
         Ok(_) => {
         }
         Err(_) => {
             return 17
         }
     }
-    match await writer.AsyncFlush() {
+    match await writer.async_flush() {
         Ok(_) => {
         }
         Err(_) => {
             return 18
         }
     }
-    if !shared.SameAs(
+    if !shared.same_as(
         97u8, 44u8, 34u8, 98u8, 44u8, 99u8, 34u8, 44u8,
         34u8, 100u8, 34u8, 34u8, 101u8, 34u8, 10u8, 49u8,
         44u8, 50u8, 44u8, 51u8, 10u8, 34u8, 120u8, 10u8,
@@ -292,12 +292,12 @@ async def main() -> i32 {
 
     var roundRows: Array<csv.Row> = new Array<csv.Row>(0)
     var roundSource: Source = Source {
-        data: shared.Copy(),
+        data: shared.copy(),
         pos: 0usize,
         chunk: 1usize,
     }
     var roundReader: csv.Reader = new csv.Reader(roundSource, 44u8)
-    match await DecodeAll(roundReader, roundRows) {
+    match await decode_all(roundReader, roundRows) {
         Ok(n) => {
             if n != 3usize {
                 return 20
@@ -307,43 +307,43 @@ async def main() -> i32 {
             return 21
         }
     }
-    if !FieldsEqual(roundRows.Get(0usize), "a", "b,c", TextBytes(100u8, 34u8, 101u8)) {
+    if !fields_equal(roundRows.get(0usize), "a", "b,c", text_bytes(100u8, 34u8, 101u8)) {
         return 22
     }
-    if !FieldsEqual(roundRows.Get(2usize), "x\ny", "z", "") {
+    if !fields_equal(roundRows.get(2usize), "x\ny", "z", "") {
         return 26
     }
 
     var badRows: Array<csv.Row> = new Array<csv.Row>(0)
     var badSource: Source = Source {
-        data: Bytes(97u8, 34u8, 98u8, 10u8),
+        data: bytes(97u8, 34u8, 98u8, 10u8),
         pos: 0usize,
         chunk: 4usize,
     }
     var badReader: csv.Reader = new csv.Reader(badSource, 44u8)
-    if !Failed(await badReader.AsyncDecode(badRows)) {
+    if !failed(await badReader.async_decode(badRows)) {
         return 23
     }
 
     var openRows: Array<csv.Row> = new Array<csv.Row>(0)
     var openSource: Source = Source {
-        data: Bytes(34u8, 97u8, 98u8, 99u8),
+        data: bytes(34u8, 97u8, 98u8, 99u8),
         pos: 0usize,
         chunk: 2usize,
     }
     var openReader: csv.Reader = new csv.Reader(openSource, 44u8)
-    if !Failed(await openReader.AsyncDecode(openRows)) {
+    if !failed(await openReader.async_decode(openRows)) {
         return 24
     }
 
     var utfRows: Array<csv.Row> = new Array<csv.Row>(0)
     var utfSource: Source = Source {
-        data: Bytes(0xffu8, 10u8),
+        data: bytes(0xffu8, 10u8),
         pos: 0usize,
         chunk: 2usize,
     }
     var utfReader: csv.Reader = new csv.Reader(utfSource, 44u8)
-    if !Failed(await utfReader.AsyncDecode(utfRows)) {
+    if !failed(await utfReader.async_decode(utfRows)) {
         return 25
     }
     return 0

@@ -10,7 +10,7 @@
 // the end of the block.
 
 // Swap exchanges two elements of one array.
-def Swap(mut xs: Array<u64>, left: i32, right: i32) {
+def swap(mut xs: Array<u64>, left: i32, right: i32) {
     var leftValue: u64 = 0u64
     var rightValue: u64 = 0u64
     leftValue = xs[usize(left)]
@@ -20,7 +20,7 @@ def Swap(mut xs: Array<u64>, left: i32, right: i32) {
 }
 
 // Sift restores the max-heap property below root.
-def Sift(mut xs: Array<u64>, root: i32, count: i32) {
+def sift(mut xs: Array<u64>, root: i32, count: i32) {
     var at: i32 = root
     for {
         var child: i32 = 2i32 * at + 1i32
@@ -43,20 +43,20 @@ def Sift(mut xs: Array<u64>, root: i32, count: i32) {
         if atValue >= childValue {
             break
         }
-        Swap(xs, at, child)
+        swap(xs, at, child)
         at = child
     }
 }
 
 // SortSamples sorts the samples in ascending order with an in-place heapsort.
-def SortSamples(mut xs: Array<u64>) {
-    var n: i32 = i32(xs.Len())
+def sort_samples(mut xs: Array<u64>) {
+    var n: i32 = i32(xs.len())
     var i: i32 = n / 2i32 - 1i32
     for {
         if i < 0 {
             break
         }
-        Sift(xs, i, n)
+        sift(xs, i, n)
         i -= 1i32
     }
     var end: i32 = n - 1i32
@@ -64,15 +64,15 @@ def SortSamples(mut xs: Array<u64>) {
         if end <= 0 {
             break
         }
-        Swap(xs, 0i32, end)
-        Sift(xs, 0i32, end)
+        swap(xs, 0i32, end)
+        sift(xs, 0i32, end)
         end -= 1i32
     }
 }
 
 // Percentile returns the nearest rank percentile of ascending samples.
-def Percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
-    var count: i64 = i64(xs.Len())
+def percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
+    var count: i64 = i64(xs.len())
     if count == 0i64 {
         return 0u64
     }
@@ -88,7 +88,7 @@ def Percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
 }
 
 // Max returns the largest sample.
-def Max(xs: Array<u64>) -> u64 {
+def max(xs: Array<u64>) -> u64 {
     var out: u64 = 0u64
     for x in xs {
         if x > out {

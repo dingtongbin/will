@@ -6,16 +6,16 @@ struct Counter {
 
 // Bump takes the write side, changes the value, and lets the guard release at
 // the return. Two of these run at the same time.
-async def Bump(m: sync.Mutex<Counter>) -> i32 {
-    var g: sync.Guard<Counter> = await m.Lock()
+async def bump(m: sync.Mutex<Counter>) -> i32 {
+    var g: sync.Guard<Counter> = await m.lock()
     g.n += 1
     return g.n
 }
 
 // WaitFor takes the write side only after the caller's guard is gone.
-async def WaitFor(m: sync.Mutex<Counter>, entered: chan<i32>) -> i32 {
-    var g: sync.Guard<Counter> = await m.Lock()
-    _ = entered.TrySend(1)
+async def wait_for(m: sync.Mutex<Counter>, entered: chan<i32>) -> i32 {
+    var g: sync.Guard<Counter> = await m.lock()
+    _ = entered.try_send(1)
     g.n += 10
     return g.n
 }
@@ -23,14 +23,14 @@ async def WaitFor(m: sync.Mutex<Counter>, entered: chan<i32>) -> i32 {
 async def main() -> i32 {
     var m: sync.Mutex<Counter> = new sync.Mutex<Counter>(Counter { n: 0 })
     region {
-        var t1: Task<i32> = spawn Bump(m)
-        var t2: Task<i32> = spawn Bump(m)
-        _ = await t1.Join()!
-        _ = await t2.Join()!
+        var t1: Task<i32> = spawn bump(m)
+        var t2: Task<i32> = spawn bump(m)
+        _ = await t1.join()!
+        _ = await t2.join()!
     }
     var two: i32 = 0
     if true {
-        var g: sync.Guard<Counter> = m.TryLock()!
+        var g: sync.Guard<Counter> = m.try_lock()!
         two = g.n
     }
     if two != 2 {
@@ -41,10 +41,10 @@ async def main() -> i32 {
     region {
         var waiter: Task<i32>
         if true {
-            var g: sync.Guard<Counter> = m.TryLock()!
+            var g: sync.Guard<Counter> = m.try_lock()!
             g.n += 100
-            waiter = spawn WaitFor(m, entered)
-            match entered.TryRecv() {
+            waiter = spawn wait_for(m, entered)
+            match entered.try_recv() {
                 Some(_) => {
                     return 2
                 }
@@ -52,12 +52,12 @@ async def main() -> i32 {
                 }
             }
         }
-        _ = await entered.Recv()!
-        _ = await waiter.Join()!
+        _ = await entered.recv()!
+        _ = await waiter.join()!
     }
     var after: i32 = 0
     if true {
-        var g: sync.Guard<Counter> = m.TryLock()!
+        var g: sync.Guard<Counter> = m.try_lock()!
         after = g.n
     }
     if after != 112 {
@@ -67,10 +67,10 @@ async def main() -> i32 {
     var rw: sync.RwLock<Counter> = new sync.RwLock<Counter>(Counter { n: 0 })
     var shared: i32 = 0
     if true {
-        var r1: sync.ReadGuard<Counter> = rw.TryRLock()!
-        var r2: sync.ReadGuard<Counter> = rw.TryRLock()!
+        var r1: sync.ReadGuard<Counter> = rw.try_rlock()!
+        var r2: sync.ReadGuard<Counter> = rw.try_rlock()!
         shared = r1.n + r2.n
-        if rw.TryWLock().IsSome() {
+        if rw.try_wlock().is_some() {
             return 4
         }
     }
@@ -79,7 +79,7 @@ async def main() -> i32 {
     }
     var exclusive: i32 = 0
     if true {
-        var w: sync.Guard<Counter> = rw.TryWLock()!
+        var w: sync.Guard<Counter> = rw.try_wlock()!
         w.n = 7
         exclusive = w.n
     }
@@ -88,7 +88,7 @@ async def main() -> i32 {
     }
     var final: i32 = 0
     if true {
-        var r: sync.ReadGuard<Counter> = rw.TryRLock()!
+        var r: sync.ReadGuard<Counter> = rw.try_rlock()!
         final = r.n
     }
     if final != 7 {

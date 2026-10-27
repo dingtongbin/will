@@ -26,14 +26,14 @@ import c "stdio.h" {
 }
 
 interface Shape {
-    def Area() -> i32
+    def area() -> i32
 }
 
 struct Square {
     s: i32
 }
 
-def (q: Square) Area() -> i32 {
+def (q: Square) area() -> i32 {
     return q.s * q.s
 }
 
@@ -41,8 +41,8 @@ struct Dot {
     s: i32
 }
 
-def Use(x: Shape) -> i32 {
-    return x.Area()
+def use(x: Shape) -> i32 {
+    return x.area()
 }
 `
 
@@ -51,7 +51,7 @@ func buildIndex(t *testing.T) string {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
 	write(t, filepath.Join(root, "api.will"), moduleSource)
-	write(t, filepath.Join(root, "lib", "lib.will"), "def Util() {\n}\n")
+	write(t, filepath.Join(root, "lib", "lib.will"), "def util() {\n}\n")
 	b := pkg.Load(root)
 	if b.Err != nil {
 		t.Fatalf("load: %v", b.Err)
@@ -70,8 +70,8 @@ func TestIndexLines(t *testing.T) {
 		`decl file="api.will" line=7 col=1 kind="interface" name="Shape" vis="public"`,
 		`decl file="api.will" line=11 col=1 kind="struct" name="Square" vis="public"`,
 		`decl file="api.will" line=19 col=1 kind="struct" name="Dot" vis="public"`,
-		`decl file="api.will" line=23 col=1 kind="func" name="Use" vis="public"`,
-		`method file="api.will" line=15 col=1 type="Square" name="Area" recv="value"`,
+		`decl file="api.will" line=23 col=1 kind="func" name="use" vis="public"`,
+		`method file="api.will" line=15 col=1 type="Square" name="area" recv="value"`,
 		`satisfies type="example.com/app.Square" interface="example.com/app.Shape"`,
 		`dispatch file="api.will" line=24 col=12 interface="example.com/app.Shape" targets="example.com/app.Square"`,
 	}
@@ -102,11 +102,11 @@ func TestIndexBuiltinError(t *testing.T) {
     code: i32
 }
 
-def (e: E) Message() -> str {
+def (e: E) message() -> str {
     return "failed"
 }
 
-def (e: E) Status() -> i32 {
+def (e: E) status() -> i32 {
     return e.code
 }
 `
@@ -121,7 +121,7 @@ func TestIndexIsDeterministic(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
 	write(t, filepath.Join(root, "api.will"), moduleSource)
-	write(t, filepath.Join(root, "lib", "lib.will"), "def Util() {\n}\n")
+	write(t, filepath.Join(root, "lib", "lib.will"), "def util() {\n}\n")
 	first := string(Build(pkg.Load(root)))
 	second := string(Build(pkg.Load(root)))
 	if first != second {

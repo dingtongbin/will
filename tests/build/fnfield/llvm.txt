@@ -1,7 +1,7 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/fnfield.Handler" = type { { ptr, ptr } }
-define hidden i32 @"example.com/fnfield.Inc"(i32 %x) alwaysinline {
+define hidden i32 @"example.com/fnfield.inc"(i32 %x) alwaysinline {
 entry:
   %t1 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %x, i32 1)
   %t2 = extractvalue {i32, i1} %t1, 0
@@ -21,7 +21,7 @@ entry:
   %v.agg.21 = alloca %"struct.example.com/fnfield.Handler"
   %t4 = getelementptr inbounds %"struct.example.com/fnfield.Handler", ptr %v.agg.21, i32 0, i32 0
   %t5 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.22, i32 0, i32 0
-  store ptr @"example.com/fnfield.thunk.Inc", ptr %t5
+  store ptr @"example.com/fnfield.thunk.inc", ptr %t5
   %t6 = getelementptr inbounds { ptr, ptr }, ptr %v.closure.22, i32 0, i32 1
   store ptr null, ptr %t6
   %t7 = load { ptr, ptr }, ptr %v.closure.22
@@ -56,9 +56,9 @@ panic.ok.1:
   call void @willrt_closure_release(ptr %t25)
   ret i32 %t19
 }
-define i32 @"example.com/fnfield.thunk.Inc"(ptr %closure.env, i32 %x) {
+define i32 @"example.com/fnfield.thunk.inc"(ptr %closure.env, i32 %x) {
 entry:
-  %r = call i32 @"example.com/fnfield.Inc"(i32 %x)
+  %r = call i32 @"example.com/fnfield.inc"(i32 %x)
   ret i32 %r
 }
 declare void @willrt_init()
@@ -72,7 +72,7 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:6:12\00", align 1
-@.str.2 = private unnamed_addr constant [24 x i8] c"example.com/fnfield.Inc\00", align 1
+@.str.2 = private unnamed_addr constant [24 x i8] c"example.com/fnfield.inc\00", align 1
 @.str.3 = private unnamed_addr constant [16 x i8] c"main.will:12:12\00", align 1
 @.str.4 = private unnamed_addr constant [30 x i8] c"example.com/fnfield.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)

@@ -28,12 +28,12 @@ func (g *generator) adtMethod(r willc.Record, kind string, args []string) (strin
 		presentTag = 0
 	}
 	switch name {
-	case "IsSome", "IsNone", "IsOk", "IsErr":
+	case "is_some", "is_none", "is_ok", "is_err":
 		if len(g.callArgs(r)) != 0 {
 			return "", "", g.errf(r.ID, "cannot translate node #%d: %s takes no arguments", r.ID, name)
 		}
 		want := presentTag
-		if name == "IsNone" || name == "IsErr" {
+		if name == "is_none" || name == "is_err" {
 			want = 1 - presentTag
 		}
 		out := g.newTmp()

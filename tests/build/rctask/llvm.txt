@@ -1,7 +1,7 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/rctask.C" = type { i32 }
-define hidden i64 @"example.com/rctask.Make"() alwaysinline {
+define hidden i64 @"example.com/rctask.make"() alwaysinline {
 entry:
   %v.agg.11 = alloca %"struct.example.com/rctask.C"
   %t1 = getelementptr inbounds %"struct.example.com/rctask.C", ptr %v.agg.11, i32 0, i32 0
@@ -119,7 +119,7 @@ entry:
 }
 define i32 @"example.com/rctask.spawn.1"(ptr %frame) {
 entry:
-  %t47 = call i64 @"example.com/rctask.Make"()
+  %t47 = call i64 @"example.com/rctask.make"()
   %t48 = alloca i64
   store i64 %t47, ptr %t48
   %t49 = load i64, ptr %t48

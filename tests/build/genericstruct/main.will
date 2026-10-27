@@ -3,11 +3,11 @@ struct Box<T> {
     tag: i32
 }
 
-def (b: Box<T>) Get() -> T {
-    return b.value.Clone()
+def (b: Box<T>) get() -> T {
+    return b.value.clone()
 }
 
 def main() -> i32 {
     var a: Box<i32> = Box<i32> { value: 3, tag: 4 }
-    return a.Get() + a.tag
+    return a.get() + a.tag
 }

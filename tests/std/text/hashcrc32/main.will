@@ -4,20 +4,20 @@ import "std/hash/crc32"
 // the published check value, and splitting that text across two Update calls
 // must give the same result as one Sum.
 def main() -> i32 {
-    if crc32.Sum(""[Range(0, 0)]) != 0u32 {
+    if crc32.sum(""[Range(0, 0)]) != 0u32 {
         return 1
     }
-    if crc32.Sum("a"[Range(0, 1)]) != 0xe8b7be43u32 {
+    if crc32.sum("a"[Range(0, 1)]) != 0xe8b7be43u32 {
         return 2
     }
-    if crc32.Sum("abc"[Range(0, 3)]) != 0x352441c2u32 {
+    if crc32.sum("abc"[Range(0, 3)]) != 0x352441c2u32 {
         return 3
     }
-    if crc32.Sum("123456789"[Range(0, 9)]) != 0xcbf43926u32 {
+    if crc32.sum("123456789"[Range(0, 9)]) != 0xcbf43926u32 {
         return 4
     }
-    var head: u32 = crc32.Update(0u32, "1234"[Range(0, 4)])
-    if crc32.Update(head, "56789"[Range(0, 5)]) != 0xcbf43926u32 {
+    var head: u32 = crc32.update(0u32, "1234"[Range(0, 4)])
+    if crc32.update(head, "56789"[Range(0, 5)]) != 0xcbf43926u32 {
         return 5
     }
     return 0

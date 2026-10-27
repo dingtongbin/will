@@ -1,5 +1,5 @@
 import "example.com/crosspkg/lib"
 
 def main() -> i32 {
-    return lib.Util()
+    return lib.util()
 }

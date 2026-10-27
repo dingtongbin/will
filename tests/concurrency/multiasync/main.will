@@ -1,11 +1,11 @@
 import "std/os/fs"
 import "std/time"
 
-async def Fill(path: str) -> Result<(), Error> {
+async def fill(path: str) -> Result<(), Error> {
     var one: str = "a"
-    _ = await fs.AsyncWriteFile(path, one[Range(0, 1)])?
-    _ = await time.Sleep(1ms)!
-    _ = await fs.AsyncAppend(path, one[Range(0, 1)])?
+    _ = await fs.async_write_file(path, one[Range(0, 1)])?
+    _ = await time.sleep(1ms)!
+    _ = await fs.async_append(path, one[Range(0, 1)])?
     return Ok(())
 }
 
@@ -13,18 +13,18 @@ async def main() -> i32 {
     var path: str = "will-concurrency-multiasync.tmp"
     var result: Result<(), Error> = Ok(())
     region {
-        var task: Task<Result<(), Error>> = spawn Fill(path.Clone())
-        result = await task.Join()!
+        var task: Task<Result<(), Error>> = spawn fill(path.clone())
+        result = await task.join()!
     }
-    if result.IsErr() {
-        _ = fs.Remove(path)
+    if result.is_err() {
+        _ = fs.remove(path)
         return 1
     }
-    var loaded: Result<Array<u8>, Error> = fs.ReadFile(path)
-    _ = fs.Remove(path)
+    var loaded: Result<Array<u8>, Error> = fs.read_file(path)
+    _ = fs.remove(path)
     match loaded {
         Ok(bytes) => {
-            if bytes.Len() != 2usize {
+            if bytes.len() != 2usize {
                 return 2
             }
         }

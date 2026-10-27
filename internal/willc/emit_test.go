@@ -85,14 +85,14 @@ func emitCheckedSourceIn(t *testing.T, file, src, module string, tables map[stri
 func TestEmitCharLiteralIsU32(t *testing.T) {
 	// A character is one Unicode scalar value, so its recorded type is u32 even
 	// though the source spelling is a quoted character.
-	data := emitSource(t, "a.will", "def F() -> u32 {\n    return 'a'\n}\n", "m")
+	data := emitSource(t, "a.will", "def f() -> u32 {\n    return 'a'\n}\n", "m")
 	if !strings.Contains(string(data), `kind=char text="97" type="u32"`) {
 		t.Fatalf("the character literal type is not u32:\n%s", data)
 	}
 }
 
 func TestEmitRoundTrip(t *testing.T) {
-	src := `def F(n: i32) -> i32 {
+	src := `def f(n: i32) -> i32 {
     var x: i32 = n + 1
     if x > 0 {
         return x
@@ -111,7 +111,7 @@ func TestEmitRoundTrip(t *testing.T) {
 }
 
 func TestEmitIsDeterministic(t *testing.T) {
-	src := "def F() {\n    Work()\n}\ndef Work() {}\n"
+	src := "def f() {\n    work()\n}\ndef work() {}\n"
 	a := emitSource(t, "test.will", src, "example.com/app")
 	b := emitSource(t, "test.will", src, "example.com/app")
 	if !bytes.Equal(a, b) {
@@ -124,8 +124,8 @@ func TestEmitMethodTypeArgs(t *testing.T) {
 	// a call does. The corpus cannot show this yet because instantiation of
 	// generic methods is not modelled by the checker.
 	src := "struct Box {\n    v: i64\n}\n\n" +
-		"def (b: Box) Get<T>(x: T) -> T {\n    return x\n}\n\n" +
-		"def Use(b: Box) -> i64 {\n    return b.Get<i64>(1)\n}\n"
+		"def (b: Box) get<T>(x: T) -> T {\n    return x\n}\n\n" +
+		"def use(b: Box) -> i64 {\n    return b.get<i64>(1)\n}\n"
 	data := emitSource(t, "test.will", src, "example.com/app")
 	if _, err := Read(data); err != nil {
 		t.Fatalf("read emitted: %v\n%s", err, data)
@@ -142,7 +142,7 @@ func TestEmitMethodTypeArgs(t *testing.T) {
 }
 
 func TestEmitChannelPriorityIsText(t *testing.T) {
-	src := "def F() {\n    var ch: chan<i64> = new chan<i64>(4, Priority.High)\n    _ = ch\n}\n"
+	src := "def f() {\n    var ch: chan<i64> = new chan<i64>(4, Priority.High)\n    _ = ch\n}\n"
 	data := emitSource(t, "test.will", src, "example.com/app")
 	if !strings.Contains(string(data), `prio="High"`) {
 		t.Fatalf("channel priority is not text:\n%s", data)
@@ -151,7 +151,7 @@ func TestEmitChannelPriorityIsText(t *testing.T) {
 
 func TestEmitVariantPatternsWithoutPayload(t *testing.T) {
 	src := "enum Shape {\n    Dot\n    Line\n}\n\n" +
-		"def F(s: Shape) -> i64 {\n    return match s {\n        Dot | Line => 1\n    }\n}\n"
+		"def f(s: Shape) -> i64 {\n    return match s {\n        Dot | Line => 1\n    }\n}\n"
 	data := emitSource(t, "test.will", src, "example.com/app")
 	text := string(data)
 	if strings.Count(text, "kind=variant") != 2 {
@@ -163,7 +163,7 @@ func TestEmitVariantPatternsWithoutPayload(t *testing.T) {
 }
 
 func TestEmitRcReleaseAtLastUse(t *testing.T) {
-	src := "def F() {\n" +
+	src := "def f() {\n" +
 		"    var r: rc<i32> = new rc<i32>(1)\n" +
 		"    var s: rc<i32> = r\n" +
 		"    _ = s\n" +
@@ -189,7 +189,7 @@ func TestEmitRcReleaseAtLastUse(t *testing.T) {
 }
 
 func TestEmitFixedArrayLiteral(t *testing.T) {
-	src := "def F() -> i32 {\n" +
+	src := "def f() -> i32 {\n" +
 		"    var xs: [3]i32 = [3]i32 { 1, 2, 3 }\n" +
 		"    return xs[0]\n" +
 		"}\n"
@@ -223,10 +223,10 @@ func TestEmitFixedArrayLiteral(t *testing.T) {
 }
 
 func TestEmitBatchesTwoArrayBuffers(t *testing.T) {
-	src := "def F() {\n" +
+	src := "def f() {\n" +
 		"    var a: Array<i32> = new Array<i32>(4)\n" +
 		"    var b: Array<i32> = new Array<i32>(4)\n" +
-		"    if a.Len() + b.Len() > 0 {\n" +
+		"    if a.len() + b.len() > 0 {\n" +
 		"    }\n" +
 		"}\n"
 	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
@@ -244,9 +244,9 @@ func TestEmitBatchesTwoArrayBuffers(t *testing.T) {
 }
 
 func TestEmitArrayReleaseAtLastSafeUse(t *testing.T) {
-	src := "def F() {\n" +
+	src := "def f() {\n" +
 		"    var xs: Array<i32> = new Array<i32>(0)\n" +
-		"    var n: usize = xs.Len()\n" +
+		"    var n: usize = xs.len()\n" +
 		"    _ = n\n" +
 		"    var later: i32 = 1\n" +
 		"    _ = later\n" +
@@ -265,11 +265,11 @@ func TestEmitArrayReleaseAtLastSafeUse(t *testing.T) {
 }
 
 func TestEmitViewPinsArrayUntilLastViewUse(t *testing.T) {
-	src := "def F() {\n" +
+	src := "def f() {\n" +
 		"    var xs: Array<i32> = new Array<i32>(0)\n" +
-		"    var v: []i32 = xs[Range(0, xs.Len())]\n" +
+		"    var v: []i32 = xs[Range(0, xs.len())]\n" +
 		"    _ = v\n" +
-		"    xs.Push(1)\n" +
+		"    xs.push(1)\n" +
 		"}\n"
 	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
 	var positions []string
@@ -288,7 +288,7 @@ func TestEmitStructReleaseAfterScalarFieldRead(t *testing.T) {
 	src := "struct Holder {\n" +
 		"    n: i32\n" +
 		"}\n" +
-		"def F() {\n" +
+		"def f() {\n" +
 		"    var h: Holder = Holder { n: 1 }\n" +
 		"    var n: i32 = h.n\n" +
 		"    var later: i32 = 2\n" +
@@ -312,10 +312,10 @@ func TestEmitStructOwningFieldPinsToBlockEnd(t *testing.T) {
 	src := "struct Holder {\n" +
 		"    items: Array<i32>\n" +
 		"}\n" +
-		"def F() {\n" +
+		"def f() {\n" +
 		"    var h: Holder = Holder { items: new Array<i32>(0) }\n" +
 		"    var n: i32 = 1\n" +
-		"    _ = h.items.Len()\n" +
+		"    _ = h.items.len()\n" +
 		"    _ = n\n" +
 		"}\n"
 	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
@@ -332,10 +332,10 @@ func TestEmitStructOwningFieldPinsToBlockEnd(t *testing.T) {
 }
 
 func TestEmitArrayReleaseAfterNestedIfUse(t *testing.T) {
-	src := "def F() {\n" +
+	src := "def f() {\n" +
 		"    var xs: Array<i32> = new Array<i32>(4)\n" +
 		"    if true {\n" +
-		"        xs.Push(1)\n" +
+		"        xs.push(1)\n" +
 		"    }\n" +
 		"    var later: i32 = 2\n" +
 		"    _ = later\n" +
@@ -354,10 +354,10 @@ func TestEmitArrayReleaseAfterNestedIfUse(t *testing.T) {
 }
 
 func TestEmitArrayReleaseAfterLoopUse(t *testing.T) {
-	src := "def F() {\n" +
+	src := "def f() {\n" +
 		"    var xs: Array<i32> = new Array<i32>(4)\n" +
 		"    for i in Range(0, 3) {\n" +
-		"        xs.Push(i)\n" +
+		"        xs.push(i)\n" +
 		"    }\n" +
 		"    var later: i32 = 2\n" +
 		"    _ = later\n" +
@@ -376,9 +376,9 @@ func TestEmitArrayReleaseAfterLoopUse(t *testing.T) {
 }
 
 func TestEmitArrayReleaseAfterViewLastUse(t *testing.T) {
-	src := "def F() {\n" +
+	src := "def f() {\n" +
 		"    var xs: Array<i32> = new Array<i32>(0)\n" +
-		"    var v: []i32 = xs[Range(0, xs.Len())]\n" +
+		"    var v: []i32 = xs[Range(0, xs.len())]\n" +
 		"    _ = v\n" +
 		"    var later: i32 = 1\n" +
 		"    _ = later\n" +
@@ -397,12 +397,12 @@ func TestEmitArrayReleaseAfterViewLastUse(t *testing.T) {
 }
 
 func TestEmitArrayReleaseAfterViewReturningCall(t *testing.T) {
-	src := "def Slice(xs: Array<i32>) -> []i32 {\n" +
-		"    return xs[Range(0, xs.Len())]\n" +
+	src := "def slice(xs: Array<i32>) -> []i32 {\n" +
+		"    return xs[Range(0, xs.len())]\n" +
 		"}\n" +
-		"def F() {\n" +
+		"def f() {\n" +
 		"    var xs: Array<i32> = new Array<i32>(4)\n" +
-		"    var v: []i32 = Slice(xs)\n" +
+		"    var v: []i32 = slice(xs)\n" +
 		"    _ = v\n" +
 		"    var later: i32 = 1\n" +
 		"    _ = later\n" +
@@ -421,12 +421,12 @@ func TestEmitArrayReleaseAfterViewReturningCall(t *testing.T) {
 }
 
 func TestEmitArrayReleaseAfterScalarLocalCall(t *testing.T) {
-	src := "def Touch(xs: Array<i32>) -> i32 {\n" +
-		"    return i32(xs.Len())\n" +
+	src := "def touch(xs: Array<i32>) -> i32 {\n" +
+		"    return i32(xs.len())\n" +
 		"}\n" +
-		"def F() {\n" +
+		"def f() {\n" +
 		"    var xs: Array<i32> = new Array<i32>(0)\n" +
-		"    var n: i32 = Touch(xs)\n" +
+		"    var n: i32 = touch(xs)\n" +
 		"    var later: i32 = 1\n" +
 		"    _ = later\n" +
 		"    _ = n\n" +
@@ -445,12 +445,12 @@ func TestEmitArrayReleaseAfterScalarLocalCall(t *testing.T) {
 }
 
 func TestEmitOwnerReleasedAfterClosureCapture(t *testing.T) {
-	src := "def F() {\n" +
+	src := "def f() {\n" +
 		"    var xs: Array<i32> = new Array<i32>(4)\n" +
-		"    var f: func() -> i32 = func() -> i32 { return i32(xs.Len()) }\n" +
+		"    var fn: func() -> i32 = func() -> i32 { return i32(xs.len()) }\n" +
 		"    var later: i32 = 1\n" +
 		"    _ = later\n" +
-		"    _ = f\n" +
+		"    _ = fn\n" +
 		"}\n"
 	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
 	var positions []string
@@ -471,13 +471,13 @@ func TestEmitOwnerReleasedAfterClosureCapture(t *testing.T) {
 }
 
 func TestEmitClosureViewCapturePinsOwner(t *testing.T) {
-	src := "def F() {\n" +
+	src := "def f() {\n" +
 		"    var xs: Array<i32> = new Array<i32>(4)\n" +
-		"    var v: []i32 = xs[Range(0, xs.Len())]\n" +
-		"    var f: func() -> i32 = func() -> i32 { return i32(v.Len()) }\n" +
+		"    var v: []i32 = xs[Range(0, xs.len())]\n" +
+		"    var fn: func() -> i32 = func() -> i32 { return i32(v.len()) }\n" +
 		"    var later: i32 = 1\n" +
 		"    _ = later\n" +
-		"    _ = f\n" +
+		"    _ = fn\n" +
 		"}\n"
 	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
 	var positions []string
@@ -498,7 +498,7 @@ func TestEmitClosureViewCapturePinsOwner(t *testing.T) {
 }
 
 func TestEmitMovedArrayKeepsReleaseForMovedSource(t *testing.T) {
-	src := "def F() {\n" +
+	src := "def f() {\n" +
 		"    var first: Array<i32> = new Array<i32>(0)\n" +
 		"    var second: Array<i32> = first\n" +
 		"    _ = second\n" +
@@ -522,7 +522,7 @@ func TestEmitMovedArrayKeepsReleaseForMovedSource(t *testing.T) {
 }
 
 func TestEmitReleaseGroups(t *testing.T) {
-	src := "def F(n: i32) -> i32 {\n" +
+	src := "def f(n: i32) -> i32 {\n" +
 		"    var a: str = \"a\"\n" +
 		"    var b: str = \"b\"\n" +
 		"    if n > 0 {\n" +
@@ -604,7 +604,7 @@ func TestEmitGolden(t *testing.T) {
 		t.Fatalf("read corpus: %v", err)
 	}
 	got := emitCheckedSourceIn(t, "program.will", string(src), "example.com/app",
-		map[string][]string{"example.com/app/http": {"Status"}})
+		map[string][]string{"example.com/app/http": {"status"}})
 	golden := filepath.Join(dir, "program.willc.txt")
 	if *update {
 		if err := os.WriteFile(golden, got, 0o644); err != nil {

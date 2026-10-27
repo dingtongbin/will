@@ -1,8 +1,8 @@
-async def Wait() -> i32 {
+async def wait() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
     var result: i32 = 0
     deadline 1ms {
-        var item: Option<i32> = await ch.Recv()
+        var item: Option<i32> = await ch.recv()
         match item {
             Some(_) => {
                 result = 1
@@ -18,8 +18,8 @@ async def Wait() -> i32 {
 async def main() -> i32 {
     var value: i32 = 0
     region {
-        var task: Task<i32> = spawn Wait()
-        value = await task.Join()!
+        var task: Task<i32> = spawn wait()
+        value = await task.join()!
     }
     if value != 7 {
         return 1

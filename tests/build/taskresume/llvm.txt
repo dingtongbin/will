@@ -1,10 +1,10 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
-define hidden i32 @"example.com/taskresume.Inner"() alwaysinline {
+define hidden i32 @"example.com/taskresume.inner"() alwaysinline {
 entry:
   ret i32 7
 }
-define internal i32 @"example.com/taskresume.Work.sm"(ptr %frame) {
+define internal i32 @"example.com/taskresume.work.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.8.1 = getelementptr i8, ptr %frame, i64 8
@@ -52,7 +52,7 @@ task.ok.1:
   ret i32 1
 
 }
-define hidden ptr @"example.com/taskresume.Work.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"example.com/taskresume.work.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 80)
   %t20 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -65,12 +65,12 @@ entry:
   %t25 = select i1 %t24, i32 %t22, i32 %start
   br i1 %t23, label %sm.start.auto.2, label %sm.start.lane.2
 sm.start.auto.2:
-  %t26 = call ptr @willrt_task_new(ptr @"example.com/taskresume.Work.sm", ptr %v.sm.frame, i64 80, i32 0, i32 0)
+  %t26 = call ptr @willrt_task_new(ptr @"example.com/taskresume.work.sm", ptr %v.sm.frame, i64 80, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t26)
   call void @willrt_task_run_auto(ptr %t26)
   br label %sm.start.done.2
 sm.start.lane.2:
-  %t27 = call ptr @willrt_task_new(ptr @"example.com/taskresume.Work.sm", ptr %v.sm.frame, i64 80, i32 %t25, i32 0)
+  %t27 = call ptr @willrt_task_new(ptr @"example.com/taskresume.work.sm", ptr %v.sm.frame, i64 80, i32 %t25, i32 0)
   call void @willrt_task_own_frame(ptr %t27)
   call void @willrt_task_run(ptr %t27)
   br label %sm.start.done.2
@@ -78,7 +78,7 @@ sm.start.done.2:
   %t28 = phi ptr [ %t26, %sm.start.auto.2 ], [ %t27, %sm.start.lane.2 ]
   ret ptr %t28
 }
-define internal i32 @"example.com/taskresume.WorkLocal.sm"(ptr %frame) {
+define internal i32 @"example.com/taskresume.work_local.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.19.29 = getelementptr i8, ptr %frame, i64 8
@@ -137,7 +137,7 @@ panic.ok.2:
   ret i32 1
 
 }
-define hidden ptr @"example.com/taskresume.WorkLocal.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"example.com/taskresume.work_local.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 80)
   %t52 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -150,12 +150,12 @@ entry:
   %t57 = select i1 %t56, i32 %t54, i32 %start
   br i1 %t55, label %sm.start.auto.3, label %sm.start.lane.3
 sm.start.auto.3:
-  %t58 = call ptr @willrt_task_new(ptr @"example.com/taskresume.WorkLocal.sm", ptr %v.sm.frame, i64 80, i32 0, i32 0)
+  %t58 = call ptr @willrt_task_new(ptr @"example.com/taskresume.work_local.sm", ptr %v.sm.frame, i64 80, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t58)
   call void @willrt_task_run_auto(ptr %t58)
   br label %sm.start.done.3
 sm.start.lane.3:
-  %t59 = call ptr @willrt_task_new(ptr @"example.com/taskresume.WorkLocal.sm", ptr %v.sm.frame, i64 80, i32 %t57, i32 0)
+  %t59 = call ptr @willrt_task_new(ptr @"example.com/taskresume.work_local.sm", ptr %v.sm.frame, i64 80, i32 %t57, i32 0)
   call void @willrt_task_own_frame(ptr %t59)
   call void @willrt_task_run(ptr %t59)
   br label %sm.start.done.3
@@ -163,7 +163,7 @@ sm.start.done.3:
   %t60 = phi ptr [ %t58, %sm.start.auto.3 ], [ %t59, %sm.start.lane.3 ]
   ret ptr %t60
 }
-define internal i32 @"example.com/taskresume.WorkPure.sm"(ptr %frame) {
+define internal i32 @"example.com/taskresume.work_pure.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.35.61 = getelementptr i8, ptr %frame, i64 8
@@ -253,7 +253,7 @@ panic.ok.5:
   ret i32 1
 
 }
-define hidden ptr @"example.com/taskresume.WorkPure.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"example.com/taskresume.work_pure.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 96)
   %t96 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -266,12 +266,12 @@ entry:
   %t101 = select i1 %t100, i32 %t98, i32 %start
   br i1 %t99, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t102 = call ptr @willrt_task_new(ptr @"example.com/taskresume.WorkPure.sm", ptr %v.sm.frame, i64 96, i32 0, i32 0)
+  %t102 = call ptr @willrt_task_new(ptr @"example.com/taskresume.work_pure.sm", ptr %v.sm.frame, i64 96, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t102)
   call void @willrt_task_run_auto(ptr %t102)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t103 = call ptr @willrt_task_new(ptr @"example.com/taskresume.WorkPure.sm", ptr %v.sm.frame, i64 96, i32 %t101, i32 0)
+  %t103 = call ptr @willrt_task_new(ptr @"example.com/taskresume.work_pure.sm", ptr %v.sm.frame, i64 96, i32 %t101, i32 0)
   call void @willrt_task_own_frame(ptr %t103)
   call void @willrt_task_run(ptr %t103)
   br label %sm.start.done.6
@@ -313,7 +313,7 @@ sm.init:
   call void @willrt_task_run_auto(ptr %t108)
   store ptr %t108, ptr %v.inner
   %t109 = load ptr, ptr %v.inner
-  %t110 = call ptr @"example.com/taskresume.Work.task"(ptr %t109, i32 -1, i32 1)
+  %t110 = call ptr @"example.com/taskresume.work.task"(ptr %t109, i32 -1, i32 1)
   store ptr %t110, ptr %v.work
   %t111 = load ptr, ptr %v.work
   store ptr %t111, ptr %v.sm.join.task.112
@@ -357,7 +357,7 @@ if.then.2:
   ret i32 1
 if.end.2:
   %t132 = load ptr, ptr %v.inner
-  %t133 = call ptr @"example.com/taskresume.WorkLocal.task"(ptr %t132, i32 -1, i32 1)
+  %t133 = call ptr @"example.com/taskresume.work_local.task"(ptr %t132, i32 -1, i32 1)
   store ptr %t133, ptr %v.local
   %t134 = load ptr, ptr %v.local
   store ptr %t134, ptr %v.sm.join.task.135
@@ -401,7 +401,7 @@ if.then.4:
   ret i32 1
 if.end.4:
   %t155 = load ptr, ptr %v.inner
-  %t156 = call ptr @"example.com/taskresume.WorkPure.task"(ptr %t155, i32 -1, i32 1)
+  %t156 = call ptr @"example.com/taskresume.work_pure.task"(ptr %t155, i32 -1, i32 1)
   store ptr %t156, ptr %v.pure
   %t157 = load ptr, ptr %v.pure
   store ptr %t157, ptr %v.sm.join.task.158
@@ -477,7 +477,7 @@ sm.start.done.7:
 }
 define i32 @"example.com/taskresume.spawn.1"(ptr %frame) {
 entry:
-  %t189 = call i32 @"example.com/taskresume.Inner"()
+  %t189 = call i32 @"example.com/taskresume.inner"()
   %t190 = alloca i32
   store i32 %t189, ptr %t190
   %t191 = getelementptr i32, ptr null, i32 1
@@ -505,9 +505,9 @@ main.async.ok.8:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [16 x i8] c"main.will:11:12\00", align 1
-@.str.2 = private unnamed_addr constant [33 x i8] c"example.com/taskresume.WorkLocal\00", align 1
+@.str.2 = private unnamed_addr constant [34 x i8] c"example.com/taskresume.work_local\00", align 1
 @.str.3 = private unnamed_addr constant [16 x i8] c"main.will:15:18\00", align 1
-@.str.4 = private unnamed_addr constant [32 x i8] c"example.com/taskresume.WorkPure\00", align 1
+@.str.4 = private unnamed_addr constant [33 x i8] c"example.com/taskresume.work_pure\00", align 1
 @.str.5 = private unnamed_addr constant [16 x i8] c"main.will:16:18\00", align 1
 @.str.6 = private unnamed_addr constant [16 x i8] c"main.will:18:12\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)

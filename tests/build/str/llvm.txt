@@ -1,6 +1,6 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
-define hidden i32 @"example.com/str.At"(ptr %s, i32 %i) alwaysinline {
+define hidden i32 @"example.com/str.at"(ptr %s, i32 %i) alwaysinline {
 entry:
   %v.utf8.10 = alloca i32
   %t1 = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0
@@ -32,7 +32,7 @@ panic.ok.3:
   %t12 = load i32, ptr %v.utf8.10
   ret i32 %t12
 }
-define hidden i32 @"example.com/str.Count"(ptr %s) inlinehint {
+define hidden i32 @"example.com/str.count"(ptr %s) inlinehint {
 entry:
   %v.n = alloca i32
   %v.utf8.21 = alloca i32
@@ -100,12 +100,12 @@ entry:
   store ptr @.bytes.1, ptr %t36
   %t37 = getelementptr inbounds { ptr, i64 }, ptr %v.str.43, i32 0, i32 1
   store i64 4, ptr %t37
-  %t38 = call i32 @"example.com/str.Count"(ptr %v.str.43)
+  %t38 = call i32 @"example.com/str.count"(ptr %v.str.43)
   %t39 = getelementptr inbounds { ptr, i64 }, ptr %v.str.47, i32 0, i32 0
   store ptr @.bytes.1, ptr %t39
   %t40 = getelementptr inbounds { ptr, i64 }, ptr %v.str.47, i32 0, i32 1
   store i64 4, ptr %t40
-  %t41 = call i32 @"example.com/str.At"(ptr %v.str.47, i32 0)
+  %t41 = call i32 @"example.com/str.at"(ptr %v.str.47, i32 0)
   %t42 = icmp ugt i32 %t41, 2147483647
   br i1 %t42, label %panic.1, label %panic.ok.1
 panic.1:
@@ -133,10 +133,10 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [20 x i8] c"index out of bounds\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:2:12\00", align 1
-@.str.2 = private unnamed_addr constant [19 x i8] c"example.com/str.At\00", align 1
+@.str.2 = private unnamed_addr constant [19 x i8] c"example.com/str.at\00", align 1
 @.str.3 = private unnamed_addr constant [14 x i8] c"invalid UTF-8\00", align 1
 @.str.4 = private unnamed_addr constant [14 x i8] c"main.will:7:5\00", align 1
-@.str.5 = private unnamed_addr constant [22 x i8] c"example.com/str.Count\00", align 1
+@.str.5 = private unnamed_addr constant [22 x i8] c"example.com/str.count\00", align 1
 @.str.6 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.7 = private unnamed_addr constant [15 x i8] c"main.will:9:13\00", align 1
 @.bytes.1 = private unnamed_addr constant [4 x i8] c"Ahoj", align 1

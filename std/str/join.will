@@ -2,17 +2,17 @@
 // bytes, so a valid text is not decoded and encoded again, and Push doubles the
 // buffer when it is full, so the whole join is linear in the total length. An
 // empty part still takes its place between two separators.
-def Join(parts: []str, sep: str) -> str {
+def join(parts: []str, sep: str) -> str {
     var out: Array<u8> = new Array<u8>(0)
     var first: bool = true
     for p in parts {
         if !first {
-            for b in sep[Range(0, sep.Len())] {
-                out.Push(b)
+            for b in sep[Range(0, sep.len())] {
+                out.push(b)
             }
         }
-        for b in p[Range(0, p.Len())] {
-            out.Push(b)
+        for b in p[Range(0, p.len())] {
+            out.push(b)
         }
         first = false
     }

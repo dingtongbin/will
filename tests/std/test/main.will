@@ -1,13 +1,13 @@
 import "std/test"
 
 def main() -> i32 {
-    test.Assert(true, "true must hold")
-    test.AssertEqual<i32>(2, 2, "two equals two")
-    test.AssertEqual<str>("a", "a", "strings compare by bytes")
+    test.assert(true, "true must hold")
+    test.assert_equal<i32>(2, 2, "two equals two")
+    test.assert_equal<str>("a", "a", "strings compare by bytes")
     if !true {
-        test.Fatal("unreachable")
+        test.fatal("unreachable")
     }
-    test.Table(
+    test.table(
         test.Case { name: "first", run: func(t: test.T) { print("R") } },
         test.Case { name: "second", run: func(t: test.T) { print("R") } },
     )

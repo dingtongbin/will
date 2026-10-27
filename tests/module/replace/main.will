@@ -1,5 +1,5 @@
 import "example.com/dep"
 
-def F() -> i32 {
-    return dep.Double(2)
+def f() -> i32 {
+    return dep.double(2)
 }

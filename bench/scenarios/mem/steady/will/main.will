@@ -19,19 +19,19 @@ const seed: u64 = 0x2545F4914F6CDD1D
 //
 // The array is created with the capacity of the fill, so the pushes never
 // grow it.
-def Fill(mut values: Array<i64>) {
+def fill(mut values: Array<i64>) {
     var state: u64 = seed
     for i in Range(0, count) {
         _ = i
         state = state *% 6364136223846793005 +% 1442695040888963407
-        values.Push(i64(state >> 1))
+        values.push(i64(state >> 1))
     }
 }
 
 def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     var values: Array<i64> = new Array<i64>(usize(count))
-    Fill(values)
+    fill(values)
     // The warm up pays for the first touch of the pages and of the caches.
     var warm: u64 = 0u64
     for v in values {
@@ -49,17 +49,17 @@ def main() -> i32 {
             total = total +% (u64(v) ^ u64(r))
         }
         var stop: u64 = c.bench_now_ns()
-        samples.Push(stop - start)
+        samples.push(stop - start)
         checksum = checksum +% total
         c.bench_sink(checksum)
     }
     var rssAfter: u64 = c.bench_rss_bytes()
 
-    bench.SortSamples(samples)
-    var p50: u64 = bench.Percentile(samples, 50i64, 100i64)
-    var p95: u64 = bench.Percentile(samples, 95i64, 100i64)
-    var p99: u64 = bench.Percentile(samples, 99i64, 100i64)
-    var worst: u64 = bench.Max(samples)
+    bench.sort_samples(samples)
+    var p50: u64 = bench.percentile(samples, 50i64, 100i64)
+    var p95: u64 = bench.percentile(samples, 95i64, 100i64)
+    var p99: u64 = bench.percentile(samples, 99i64, 100i64)
+    var worst: u64 = bench.max(samples)
 
     print("bench metric p50 ", p50, " ns\n")
     print("bench metric p95 ", p95, " ns\n")

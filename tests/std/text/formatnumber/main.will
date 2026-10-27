@@ -3,32 +3,32 @@ import "std/str"
 // FormatI64 and FormatF64 must spell the same text print does, including the
 // smallest i64, whose digits do not fit a positive i64 literal.
 def main() -> i32 {
-    if str.FormatI64(0i64) != "0" {
+    if str.format_i64(0i64) != "0" {
         return 1
     }
-    if str.FormatI64(7i64) != "7" {
+    if str.format_i64(7i64) != "7" {
         return 2
     }
-    if str.FormatI64(-42i64) != "-42" {
+    if str.format_i64(-42i64) != "-42" {
         return 3
     }
-    if str.FormatI64(9223372036854775807i64) != "9223372036854775807" {
+    if str.format_i64(9223372036854775807i64) != "9223372036854775807" {
         return 4
     }
     var lowest: i64 = -9223372036854775807i64 - 1
-    if str.FormatI64(lowest) != "-9223372036854775808" {
+    if str.format_i64(lowest) != "-9223372036854775808" {
         return 5
     }
-    if str.FormatF64(0.0) != "0" {
+    if str.format_f64(0.0) != "0" {
         return 6
     }
-    if str.FormatF64(1.5) != "1.5" {
+    if str.format_f64(1.5) != "1.5" {
         return 7
     }
-    if str.FormatF64(-2.25) != "-2.25" {
+    if str.format_f64(-2.25) != "-2.25" {
         return 8
     }
-    if str.FormatF64(10.0) != "10" {
+    if str.format_f64(10.0) != "10" {
         return 9
     }
     return 0

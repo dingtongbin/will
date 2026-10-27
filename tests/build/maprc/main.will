@@ -7,11 +7,11 @@ struct C {
 def main() -> i32 {
     var r: rc<C> = new rc<C>(C { n: 7 })
     var m: Map<str, rc<C>> = new Map<str, rc<C>>(0usize)
-    m.Set("x", r)
-    if m.Len() != 1usize {
+    m.set("x", r)
+    if m.len() != 1usize {
         return 1
     }
-    match m.Get("x") {
+    match m.get("x") {
         Some(v) => {
             if v.n != 7 {
                 return 2
@@ -21,12 +21,12 @@ def main() -> i32 {
             return 3
         }
     }
-    m.Clear()
-    if m.Len() != 0usize || r.n != 7 {
+    m.clear()
+    if m.len() != 0usize || r.n != 7 {
         return 4
     }
-    m.Set("y", r)
-    if !m.Delete("y") || r.n != 7 {
+    m.set("y", r)
+    if !m.delete("y") || r.n != 7 {
         return 5
     }
     return 0

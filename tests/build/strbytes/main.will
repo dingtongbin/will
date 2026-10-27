@@ -2,16 +2,16 @@ def main() -> i32 {
     var text: str = "hello world"
     var view: []u8 = text[Range(0, 11)]
     var word: []u8 = text[Range(6, 11)]
-    var same: bool = view.Equal(view)
-    var cmp: i32 = view.Compare(word)
-    var pre: bool = view.HasPrefix(word)
-    var suf: bool = view.HasSuffix(word)
-    var idx: Option<usize> = view.Index(word)
-    var copy: Array<u8> = view.Clone()
+    var same: bool = view.equal(view)
+    var cmp: i32 = view.compare(word)
+    var pre: bool = view.has_prefix(word)
+    var suf: bool = view.has_suffix(word)
+    var idx: Option<usize> = view.index(word)
+    var copy: Array<u8> = view.clone()
     var head: str = str(text[Range(0, 2)])
     var letter: str = str(65u32)
     _ = idx
-    if same && !pre && suf && cmp > 0 && copy.Len() == 11 {
+    if same && !pre && suf && cmp > 0 && copy.len() == 11 {
         print(head, letter, "\n")
         return 1
     }

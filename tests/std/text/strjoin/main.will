@@ -4,25 +4,25 @@ import "std/str"
 // empty separator, and keep the bytes of a UTF-8 part. Split is how a caller
 // gets a []str without naming the shadowed str type.
 def main() -> i32 {
-    if str.Join("a,b,c".Split(","), "-") != "a-b-c" {
+    if str.join("a,b,c".split(","), "-") != "a-b-c" {
         return 1
     }
-    if str.Join("abc".Split(","), "-") != "abc" {
+    if str.join("abc".split(","), "-") != "abc" {
         return 2
     }
-    if str.Join("".Split(","), "-") != "" {
+    if str.join("".split(","), "-") != "" {
         return 3
     }
-    if str.Join("a,,b".Split(","), "-") != "a--b" {
+    if str.join("a,,b".split(","), "-") != "a--b" {
         return 4
     }
-    if str.Join("a,b".Split(","), "") != "ab" {
+    if str.join("a,b".split(","), "") != "ab" {
         return 5
     }
-    if str.Join("x".Split(","), "-") != "x" {
+    if str.join("x".split(","), "-") != "x" {
         return 6
     }
-    if str.Join("\xe4\xbd\xa0,\xe5\xa5\xbd".Split(","), "\xe4\xbd\xa0") != "\xe4\xbd\xa0\xe4\xbd\xa0\xe5\xa5\xbd" {
+    if str.join("\xe4\xbd\xa0,\xe5\xa5\xbd".split(","), "\xe4\xbd\xa0") != "\xe4\xbd\xa0\xe4\xbd\xa0\xe5\xa5\xbd" {
         return 7
     }
     return 0

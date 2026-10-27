@@ -29,15 +29,15 @@ struct Box {
     f: rc<C>
 }
 
-def Use(b: rc<Box>) -> i32 {
+def use(b: rc<Box>) -> i32 {
     return 0
 }
 
-def Main() -> i32 {
+def main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {
-        var task: Task<i32> = spawn Use(box)
+        var task: Task<i32> = spawn use(box)
         box.f = c
         _ = task
     }
@@ -61,20 +61,20 @@ struct Box {
     f: rc<C>
 }
 
-def (mut b: Box) Set(c: rc<C>) {
+def (mut b: Box) set(c: rc<C>) {
     b.f = c
 }
 
-def Use(b: rc<Box>) -> i32 {
+def use(b: rc<Box>) -> i32 {
     return 0
 }
 
-def Main() -> i32 {
+def main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {
-        var task: Task<i32> = spawn Use(box)
-        box.Set(c)
+        var task: Task<i32> = spawn use(box)
+        box.set(c)
         _ = task
     }
     return 0
@@ -97,15 +97,15 @@ struct Box {
     f: rc<C>
 }
 
-def Use(b: rc<Box>) -> i32 {
+def use(b: rc<Box>) -> i32 {
     return 0
 }
 
-def Main() -> i32 {
+def main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {
-        var task: Task<i32> = spawn Use(box)
+        var task: Task<i32> = spawn use(box)
         if true {
             box.f = c
         }
@@ -131,17 +131,17 @@ struct Box {
     f: rc<C>
 }
 
-def Use(b: rc<Box>) -> i32 {
+def use(b: rc<Box>) -> i32 {
     return 0
 }
 
-def Main() -> i32 {
+def main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {
-        var task: Task<i32> = spawn Use(box)
+        var task: Task<i32> = spawn use(box)
         if true {
-            _ = task.Join()!
+            _ = task.join()!
         }
         box.f = c
     }
@@ -163,16 +163,16 @@ struct Box {
     f: rc<C>
 }
 
-def Use(b: rc<Box>) -> i32 {
+def use(b: rc<Box>) -> i32 {
     return 0
 }
 
-def Main() -> i32 {
+def main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     box.f = c
     region {
-        var task: Task<i32> = spawn Use(box)
+        var task: Task<i32> = spawn use(box)
         _ = task
     }
     return 0
@@ -189,14 +189,14 @@ func TestRcSlotAllowsNonRcField(t *testing.T) {
     n: i32
 }
 
-def Use(b: rc<Box>) -> i32 {
+def use(b: rc<Box>) -> i32 {
     return 0
 }
 
-def Main() -> i32 {
+def main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { n: 1 })
     region {
-        var task: Task<i32> = spawn Use(box)
+        var task: Task<i32> = spawn use(box)
         box.n = 2
         _ = task
     }
@@ -219,16 +219,16 @@ struct Box {
     f: rc<C>
 }
 
-def Use(b: rc<Box>) -> i32 {
+def use(b: rc<Box>) -> i32 {
     return 0
 }
 
-def Main() -> i32 {
+def main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {
-        var task: Task<i32> = spawn Use(box)
-        _ = task.Join()!
+        var task: Task<i32> = spawn use(box)
+        _ = task.join()!
         box.f = c
     }
     return 0

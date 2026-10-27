@@ -2,11 +2,11 @@ lane Ui struct Marker {
     id: i32
 }
 
-def Work() -> usize {
-    return lane.Here()
+def work() -> usize {
+    return lane.here()
 }
 
 async def main() -> i32 {
-    var t: Task<usize> = spawn on Ui Work()
-    return i32(await t.Join()!)
+    var t: Task<usize> = spawn on Ui work()
+    return i32(await t.join()!)
 }

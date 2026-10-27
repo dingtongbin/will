@@ -13,30 +13,30 @@ func TestTryUploadsConcreteErrorAndMatchesUnit(t *testing.T) {
     msg: str
 }
 
-def (e: E) Message() -> str {
+def (e: E) message() -> str {
     return e.msg
 }
 
-def (e: E) Status() -> i32 {
+def (e: E) status() -> i32 {
     return 7
 }
 
-def Fail() -> Result<(), E> {
+def fail() -> Result<(), E> {
     return Err(E { msg: "bad" })
 }
 
-def Run() -> Result<(), E> {
-    Fail()?
+def run() -> Result<(), E> {
+    fail()?
     return Ok(())
 }
 
 def main() -> i32 {
-    match Run() {
+    match run() {
         Ok(_) => {
             return 0
         }
         Err(e) => {
-            return e.Status()
+            return e.status()
         }
     }
 }

@@ -7,11 +7,11 @@ def (mut p: P) init(y: i32) {
     p.y = y
 }
 
-def Make() -> P {
+def make() -> P {
     return new P(7)
 }
 
 def main() -> i32 {
-    var p: P = Make()
+    var p: P = make()
     return p.x + p.y
 }

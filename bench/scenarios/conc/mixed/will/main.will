@@ -28,7 +28,7 @@ const repetitions: i32 = 3
 const fileSize: i32 = 65536
 
 // Cpu is one 30 percent job. It records its own completion time.
-def Cpu(slot: i32) -> i32 {
+def cpu(slot: i32) -> i32 {
     var acc: i32 = 0
     for i in Range(0, 1000) {
         acc += i
@@ -39,12 +39,12 @@ def Cpu(slot: i32) -> i32 {
 
 // CpuBatch submits the CPU half of the workload as jobs. The parallel block
 // joins its jobs through the parked barrier.
-async def CpuBatch(base: i32) -> i32 {
+async def cpu_batch(base: i32) -> i32 {
     parallel {
         for i in Range(0, cpuCount) {
             var slot: i32 = base + i
             c.bench_latency_start(slot)
-            spawn Cpu(slot)
+            spawn cpu(slot)
         }
     }
     return 0
@@ -53,12 +53,12 @@ async def CpuBatch(base: i32) -> i32 {
 // IoWorker performs one stream of 70 percent operations. Keeping only
 // ioWorkers readers in flight measures service latency instead of the length of
 // a ten-thousand-task queue.
-async def IoWorker(path: str, base: i32) -> i32 {
+async def io_worker(path: str, base: i32) -> i32 {
     var sum: i32 = 0
     for i in Range(0, ioPerWorker) {
         var slot: i32 = base + i
         c.bench_latency_start(slot)
-        var bytes: Array<u8> = await fs.AsyncReadFile(path)!
+        var bytes: Array<u8> = await fs.async_read_file(path)!
         for b in bytes {
             sum += i32(b)
         }
@@ -68,12 +68,12 @@ async def IoWorker(path: str, base: i32) -> i32 {
 }
 
 // Fill writes the read buffer once, outside the measured region.
-def Fill(path: str) -> bool {
+def fill(path: str) -> bool {
     var data: Array<u8> = new Array<u8>(usize(fileSize))
     for i in Range(0, fileSize) {
-        data.Push(u8(i % 251))
+        data.push(u8(i % 251))
     }
-    var written: Result<(), Error> = fs.WriteFile(path, data[Range(0, usize(fileSize))])
+    var written: Result<(), Error> = fs.write_file(path, data[Range(0, usize(fileSize))])
     match written {
         Err(_) => {
             return false
@@ -86,7 +86,7 @@ def Fill(path: str) -> bool {
 
 async def main() -> i32 {
     var path: str = "will-mixed-bench.tmp"
-    if !Fill(path) {
+    if !fill(path) {
         return 1
     }
     var io: Array<u64> = new Array<u64>(0)
@@ -98,41 +98,41 @@ async def main() -> i32 {
         _ = r
         var roundStart: u64 = c.bench_now_ns()
         region {
-            var cpuTask: Task<i32> = spawn CpuBatch(ioCount)
+            var cpuTask: Task<i32> = spawn cpu_batch(ioCount)
             for i in Range(0, ioWorkers) {
                 var base: i32 = i * ioPerWorker
-                spawn IoWorker(path, base)
+                spawn io_worker(path, base)
             }
-            var cpuResult: i32 = await cpuTask.Join()!
+            var cpuResult: i32 = await cpuTask.join()!
             checksum += i64(cpuResult)
         }
         var roundStop: u64 = c.bench_now_ns()
         for i in Range(0, ioCount) {
             var value: u64 = c.bench_latency(i)
-            io.Push(value)
-            all.Push(value)
+            io.push(value)
+            all.push(value)
         }
         for i in Range(0, cpuCount) {
             var value: u64 = c.bench_latency(ioCount + i)
-            cpu.Push(value)
-            all.Push(value)
+            cpu.push(value)
+            all.push(value)
         }
-        rounds.Push(roundStop - roundStart)
+        rounds.push(roundStop - roundStart)
         c.bench_sink(u64(checksum))
     }
-    _ = fs.Remove(path)
+    _ = fs.remove(path)
 
-    bench.SortSamples(io)
-    bench.SortSamples(cpu)
-    bench.SortSamples(all)
-    bench.SortSamples(rounds)
-    print("bench metric io_p999 ", bench.Percentile(io, 999i64, 1000i64), " ns\n")
-    print("bench metric cpu_p999 ", bench.Percentile(cpu, 999i64, 1000i64), " ns\n")
-    print("bench metric p999 ", bench.Percentile(all, 999i64, 1000i64), " ns\n")
-    print("bench metric p99 ", bench.Percentile(all, 99i64, 100i64), " ns\n")
-    print("bench metric io_p99 ", bench.Percentile(io, 99i64, 100i64), " ns\n")
-    print("bench metric cpu_p99 ", bench.Percentile(cpu, 99i64, 100i64), " ns\n")
-    print("bench metric round_p50 ", bench.Percentile(rounds, 50i64, 100i64), " ns\n")
+    bench.sort_samples(io)
+    bench.sort_samples(cpu)
+    bench.sort_samples(all)
+    bench.sort_samples(rounds)
+    print("bench metric io_p999 ", bench.percentile(io, 999i64, 1000i64), " ns\n")
+    print("bench metric cpu_p999 ", bench.percentile(cpu, 999i64, 1000i64), " ns\n")
+    print("bench metric p999 ", bench.percentile(all, 999i64, 1000i64), " ns\n")
+    print("bench metric p99 ", bench.percentile(all, 99i64, 100i64), " ns\n")
+    print("bench metric io_p99 ", bench.percentile(io, 99i64, 100i64), " ns\n")
+    print("bench metric cpu_p99 ", bench.percentile(cpu, 99i64, 100i64), " ns\n")
+    print("bench metric round_p50 ", bench.percentile(rounds, 50i64, 100i64), " ns\n")
     print("bench metric io ", u64(ioCount), " tasks\n")
     print("bench metric cpu ", u64(cpuCount), " jobs\n")
     print("bench checksum ", u64(checksum), "\n")

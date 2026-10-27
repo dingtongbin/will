@@ -4,11 +4,11 @@ struct decodeError {
     message: str
 }
 
-def (e: decodeError) Message() -> str {
+def (e: decodeError) message() -> str {
     return e.message
 }
 
-def (e: decodeError) Status() -> i32 {
+def (e: decodeError) status() -> i32 {
     return 2
 }
 
@@ -19,11 +19,11 @@ def fail(message: str) -> decodeError {
 // 61 is the ASCII code of the padding character '='.
 const padScalar: u32 = 61
 
-def Decode(s: str) -> Result<Array<u8>, Error> {
+def decode(s: str) -> Result<Array<u8>, Error> {
     return decode(s, false)
 }
 
-def DecodeUrl(s: str) -> Result<Array<u8>, Error> {
+def decode_url(s: str) -> Result<Array<u8>, Error> {
     return decode(s, true)
 }
 
@@ -59,7 +59,7 @@ def decode(s: str, url: bool) -> Result<Array<u8>, Error> {
             if pad > 0 {
                 return Err(fail("invalid padding"))
             }
-            var v: u32 = alphabetValue(c, url)
+            var v: u32 = alphabet_value(c, url)
             if v >= 64u32 {
                 return Err(fail("invalid character"))
             }
@@ -75,12 +75,12 @@ def decode(s: str, url: bool) -> Result<Array<u8>, Error> {
         }
         inGroup += 1
         if inGroup == 4 {
-            out.Push(u8((q0 << 2) | (q1 >> 4)))
+            out.push(u8((q0 << 2) | (q1 >> 4)))
             if pad < 2 {
-                out.Push(u8(((q1 & 15u32) << 4) | (q2 >> 2)))
+                out.push(u8(((q1 & 15u32) << 4) | (q2 >> 2)))
             }
             if pad < 1 {
-                out.Push(u8(((q2 & 3u32) << 6) | q3))
+                out.push(u8(((q2 & 3u32) << 6) | q3))
             }
             inGroup = 0
             if pad > 0 {
@@ -97,7 +97,7 @@ def decode(s: str, url: bool) -> Result<Array<u8>, Error> {
 
 // alphabetValue maps one character to its six-bit value. 64 marks a character
 // outside the selected alphabet, so it is above every value a group accepts.
-def alphabetValue(c: u32, url: bool) -> u32 {
+def alphabet_value(c: u32, url: bool) -> u32 {
     if c >= 65u32 && c <= 90u32 {   // 'A' to 'Z'
         return c - 65u32
     }

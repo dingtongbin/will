@@ -2,14 +2,14 @@ import "std/container/stack"
 
 def main() -> i32 {
     var s: stack.Stack<i32> = new stack.Stack<i32>()
-    s.Push(1)
-    s.Push(2)
-    s.Push(3)
-    s.Reserve(8usize)
-    if s.Len() != 3usize {
+    s.push(1)
+    s.push(2)
+    s.push(3)
+    s.reserve(8usize)
+    if s.len() != 3usize {
         return 1
     }
-    match s.Peek() {
+    match s.peek() {
         Some(v) => {
             if v != 3 {
                 return 2
@@ -19,7 +19,7 @@ def main() -> i32 {
             return 3
         }
     }
-    match s.Pop() {
+    match s.pop() {
         Some(v) => {
             if v != 3 {
                 return 4
@@ -29,13 +29,13 @@ def main() -> i32 {
             return 5
         }
     }
-    var copy: stack.Stack<i32> = s.Clone()
-    copy.Push(9)
-    if s.Len() != 2usize || copy.Len() != 3usize {
+    var copy: stack.Stack<i32> = s.clone()
+    copy.push(9)
+    if s.len() != 2usize || copy.len() != 3usize {
         return 6
     }
-    copy.Clear()
-    if copy.Len() != 0usize {
+    copy.clear()
+    if copy.len() != 0usize {
         return 7
     }
     return 0

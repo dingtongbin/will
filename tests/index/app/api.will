@@ -1,12 +1,12 @@
 interface Shape {
-    def Area() -> i32
+    def area() -> i32
 }
 
 struct Square {
     s: i32
 }
 
-def (q: Square) Area() -> i32 {
+def (q: Square) area() -> i32 {
     return q.s * q.s
 }
 
@@ -14,6 +14,6 @@ struct Dot {
     s: i32
 }
 
-def Use(x: Shape) -> i32 {
-    return x.Area()
+def use(x: Shape) -> i32 {
+    return x.area()
 }

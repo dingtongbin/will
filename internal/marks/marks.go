@@ -117,7 +117,7 @@ func walkExpr(e ast.Expr, mf *Func) {
 			mf.Waits = append(mf.Waits, x.Span)
 			mf.Suspends = append(mf.Suspends, x.Span)
 		}
-		if name, ok := x.Callee.(*ast.FieldExpr); ok && isQualifiedName(name, "time", "Sleep") {
+		if name, ok := x.Callee.(*ast.FieldExpr); ok && isQualifiedName(name, "time", "sleep") {
 			mf.Suspends = append(mf.Suspends, x.Span)
 		}
 		walkExpr(x.Callee, mf)
@@ -205,8 +205,8 @@ func isQualifiedName(f *ast.FieldExpr, pkg, name string) bool {
 // the wait primitives themselves.
 func IsSuspendMethod(name string) bool {
 	switch name {
-	case "Join", "Recv", "Send", "Sleep", "AsyncRead", "AsyncWrite",
-		"AsyncFlush", "AsyncSeek", "AsyncSync", "AsyncStat", "AsyncNext":
+	case "join", "recv", "send", "sleep", "async_read", "async_write",
+		"async_flush", "AsyncSeek", "AsyncSync", "AsyncStat", "AsyncNext":
 		return true
 	}
 	return len(name) > 5 && name[:5] == "Async"

@@ -1,7 +1,7 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/lane.Marker" = type { i32 }
-define hidden i64 @"example.com/lane.Work"() alwaysinline {
+define hidden i64 @"example.com/lane.work"() alwaysinline {
 entry:
   %t1 = call i32 @willrt_lane_here()
   %t2 = sext i32 %t1 to i64
@@ -95,7 +95,7 @@ sm.start.done.3:
 }
 define i32 @"example.com/lane.spawn.1"(ptr %frame) {
 entry:
-  %t36 = call i64 @"example.com/lane.Work"()
+  %t36 = call i64 @"example.com/lane.work"()
   %t37 = alloca i64
   store i64 %t36, ptr %t37
   %t38 = getelementptr i64, ptr null, i32 1

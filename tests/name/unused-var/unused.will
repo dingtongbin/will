@@ -1,3 +1,3 @@
-def F() {
+def f() {
     var x: i32 = 1
 }

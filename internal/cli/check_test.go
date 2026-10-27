@@ -8,12 +8,12 @@ import (
 	"testing"
 )
 
-const goodSource = `def Add(a: i32, b: i32) -> i32 {
+const goodSource = `def add(a: i32, b: i32) -> i32 {
     return a + b
 }
 `
 
-const badSource = `def F() {
+const badSource = `def f() {
     var x: i32 = "s"
     _ = x
 }
@@ -75,7 +75,7 @@ func TestCheckBadFileJSON(t *testing.T) {
 
 // warningSource declares a local name that shadows a predeclared type, which
 // is a warning and not an error.
-const warningSource = `def F() {
+const warningSource = `def f() {
     var i32: i32 = 0
     _ = i32
 }
@@ -201,7 +201,7 @@ func TestCheckDirectoryCache(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	writeModuleFile(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
 	writeModuleFile(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n")
-	writeModuleFile(t, filepath.Join(root, "sub", "method.will"), "def (t: T) Move() {\n}\n")
+	writeModuleFile(t, filepath.Join(root, "sub", "method.will"), "def (t: T) move() {\n}\n")
 	cacheDir := filepath.Join(t.TempDir(), "cache")
 	t.Setenv("WILL_CACHE", cacheDir)
 
@@ -229,7 +229,7 @@ func TestCheckModuleDirectory(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	writeModuleFile(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
 	writeModuleFile(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n")
-	writeModuleFile(t, filepath.Join(root, "sub", "method.will"), "def (t: T) Move() {\n}\n")
+	writeModuleFile(t, filepath.Join(root, "sub", "method.will"), "def (t: T) move() {\n}\n")
 
 	code, out, _ := runCLI("check", root)
 	if code != 1 {
@@ -243,7 +243,7 @@ func TestCheckModuleDirectory(t *testing.T) {
 func TestCheckModuleDirectoryGood(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	writeModuleFile(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	writeModuleFile(t, filepath.Join(root, "main.will"), "def Main() {\n}\n")
+	writeModuleFile(t, filepath.Join(root, "main.will"), "def main() {\n}\n")
 	code, out, errOut := runCLI("check", root)
 	if code != 0 || out != "" || errOut != "" {
 		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
@@ -262,7 +262,7 @@ func writeModuleFile(t *testing.T, path, content string) {
 
 func TestCheckWerror(t *testing.T) {
 	// A local name that shadows a predeclared name is a warning (N0003).
-	src := "def F() {\n    var i32: i32 = 0\n    _ = i32\n}\n"
+	src := "def f() {\n    var i32: i32 = 0\n    _ = i32\n}\n"
 	path := writeFile(t, t.TempDir(), "warn.will", src)
 	if code, out, _ := runCLI("check", path); code != 0 || !strings.Contains(out, "N0003") {
 		t.Fatalf("warning-only check: code = %d, stdout = %q", code, out)

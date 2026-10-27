@@ -3,11 +3,11 @@ struct ringError {
     message: str
 }
 
-def (e: ringError) Message() -> str {
+def (e: ringError) message() -> str {
     return e.message
 }
 
-def (e: ringError) Status() -> i32 {
+def (e: ringError) status() -> i32 {
     return 2
 }
 
@@ -31,61 +31,61 @@ def (mut r: Ring<T>) init(cap: usize) -> Result<(), Error> {
 }
 
 // Push adds one value at the back. It returns false when the ring is full.
-def (mut r: Ring<T>) Push(v: T) -> bool {
-    if r.Len() >= r.cap {
+def (mut r: Ring<T>) push(v: T) -> bool {
+    if r.len() >= r.cap {
         return false
     }
-    r.back.Push(v)
+    r.back.push(v)
     return true
 }
 
 // Pop removes and returns the front value, or None when the ring is empty.
-def (mut r: Ring<T>) Pop() -> Option<T> {
-    if r.front.Len() > 0 {
-        return r.front.Pop()
+def (mut r: Ring<T>) pop() -> Option<T> {
+    if r.front.len() > 0 {
+        return r.front.pop()
     }
-    if r.back.Len() == 0 {
+    if r.back.len() == 0 {
         return None
     }
     for {
-        if r.back.Len() == 0 {
+        if r.back.len() == 0 {
             break
         }
-        match r.back.Pop() {
+        match r.back.pop() {
             Some(v) => {
-                r.front.Push(v)
+                r.front.push(v)
             }
             None => {
                 break
             }
         }
     }
-    return r.front.Pop()
+    return r.front.pop()
 }
 
 // Peek returns a copy of the front value without removing it.
-def (r: Ring<T>) Peek() -> Option<T> {
-    if r.front.Len() > 0 {
-        return Some(r.front.Get(r.front.Len() - 1))
+def (r: Ring<T>) peek() -> Option<T> {
+    if r.front.len() > 0 {
+        return Some(r.front.get(r.front.len() - 1))
     }
-    if r.back.Len() == 0 {
+    if r.back.len() == 0 {
         return None
     }
-    return Some(r.back.Get(0))
+    return Some(r.back.get(0))
 }
 
 // Len reports the number of stored values.
-def (r: Ring<T>) Len() -> usize {
-    return r.front.Len() + r.back.Len()
+def (r: Ring<T>) len() -> usize {
+    return r.front.len() + r.back.len()
 }
 
 // Full reports whether no more values fit.
-def (r: Ring<T>) Full() -> bool {
-    return r.Len() >= r.cap
+def (r: Ring<T>) full() -> bool {
+    return r.len() >= r.cap
 }
 
 // Clear releases every value and keeps the capacity setting.
-def (mut r: Ring<T>) Clear() {
-    r.front.Clear()
-    r.back.Clear()
+def (mut r: Ring<T>) clear() {
+    r.front.clear()
+    r.back.clear()
 }

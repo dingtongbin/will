@@ -2,7 +2,7 @@
 %willrt.task_error = type { %willrt_error, i32 }
 %interface.Error = type { ptr, ptr }
 %"struct.example.com/error.E" = type { { ptr, i64 } }
-define hidden { ptr, i64 } @"example.com/error.E.Message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"example.com/error.E.message"(ptr %e) inlinehint {
 entry:
   %v.ret.11 = alloca { ptr, i64 }
   %v.strm.11 = alloca { ptr, i64 }
@@ -23,11 +23,11 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.11
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"example.com/error.E.Status"(ptr %e) alwaysinline {
+define hidden i32 @"example.com/error.E.status"(ptr %e) alwaysinline {
 entry:
   ret i32 7
 }
-define hidden i32 @"example.com/error.Use"() inlinehint {
+define hidden i32 @"example.com/error.use"() inlinehint {
 entry:
   %v.e = alloca %"struct.example.com/error.E"
   %v.r = alloca { i32, [4 x i8], %interface.Error }
@@ -137,7 +137,7 @@ deep.rel.adt.done.3.1:
 }
 define i32 @"example.com/error.will$main"() {
 entry:
-  %t67 = call i32 @"example.com/error.Use"()
+  %t67 = call i32 @"example.com/error.use"()
   ret i32 %t67
 }
 define internal ptr @"example.com/error.iface.clone.Error.E"(ptr %data) {
@@ -202,7 +202,7 @@ entry:
 }
 @.bytes.1 = private unnamed_addr constant [3 x i8] c"bad", align 1
 @"will.type.example.com/error.E" = linkonce_odr constant i8 0, align 1
-@"example.com/error.vtable.Error.E" = internal constant [6 x ptr] [ptr @"example.com/error.E.Message", ptr @"example.com/error.E.Status", ptr @"example.com/error.iface.clone.Error.E", ptr @"example.com/error.iface.drop.Error.E", ptr @"example.com/error.iface.share.Error.E", ptr @"will.type.example.com/error.E"], align 8
+@"example.com/error.vtable.Error.E" = internal constant [6 x ptr] [ptr @"example.com/error.E.message", ptr @"example.com/error.E.status", ptr @"example.com/error.iface.clone.Error.E", ptr @"example.com/error.iface.drop.Error.E", ptr @"example.com/error.iface.share.Error.E", ptr @"will.type.example.com/error.E"], align 8
 declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
 declare void @willrt_free_str(ptr)

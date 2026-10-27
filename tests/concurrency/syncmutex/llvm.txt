@@ -3,7 +3,7 @@
 %interface.Error = type { ptr, ptr }
 %"enum.std/errors.ErrorClass" = type { i32 }
 %"interface.std/errors.Classified" = type { ptr, ptr }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.ClassOf"(ptr %e) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.class_of"(ptr %e) inlinehint {
 entry:
   %v.ret.18 = alloca %"enum.std/errors.ErrorClass"
   %t1 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 0
@@ -13,12 +13,12 @@ entry:
   %t5 = getelementptr inbounds [6 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
-  %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t7)
+  %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t7)
   store %"enum.std/errors.ErrorClass" %t8, ptr %v.ret.18
   %t9 = load %"enum.std/errors.ErrorClass", ptr %v.ret.18
   ret %"enum.std/errors.ErrorClass" %t9
 }
-define internal %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %status) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %status) inlinehint {
 entry:
   %v.c = alloca %"enum.std/errors.ErrorClass"
   %v.enum.28 = alloca %"enum.std/errors.ErrorClass"
@@ -91,7 +91,7 @@ match.end.1:
   ret %"enum.std/errors.ErrorClass" %t29
 }
 %"struct.std/errors.Fault" = type { { ptr, i64 }, i32 }
-define internal void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
+define hidden void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
 entry:
   %v.ret.18 = alloca { ptr, i64 }
   %v.strm.18 = alloca { ptr, i64 }
@@ -114,7 +114,7 @@ entry:
   store i32 %status, ptr %t11
   ret void
 }
-define hidden { ptr, i64 } @"std/errors.Fault.Message"(ptr %f) inlinehint {
+define hidden { ptr, i64 } @"std/errors.Fault.message"(ptr %f) inlinehint {
 entry:
   %v.ret.30 = alloca { ptr, i64 }
   %v.strm.30 = alloca { ptr, i64 }
@@ -135,18 +135,18 @@ entry:
   %t22 = load { ptr, i64 }, ptr %v.ret.30
   ret { ptr, i64 } %t22
 }
-define hidden i32 @"std/errors.Fault.Status"(ptr %f) alwaysinline {
+define hidden i32 @"std/errors.Fault.status"(ptr %f) alwaysinline {
 entry:
   %t23 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
   %t24 = load i32, ptr %t23
   ret i32 %t24
 }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.Class"(ptr %f) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.class"(ptr %f) inlinehint {
 entry:
   %v.ret.47 = alloca %"enum.std/errors.ErrorClass"
   %t25 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
   %t26 = load i32, ptr %t25
-  %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t26)
+  %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t26)
   store %"enum.std/errors.ErrorClass" %t27, ptr %v.ret.47
   %t28 = load %"enum.std/errors.ErrorClass", ptr %v.ret.47
   ret %"enum.std/errors.ErrorClass" %t28
@@ -233,21 +233,21 @@ entry:
   ret void
 }
 %"struct.std/sync.Count" = type { ptr }
-define internal void @"std/sync.Count.init"(ptr %counter, i64 %n) inlinehint {
+define hidden void @"std/sync.Count.init"(ptr %counter, i64 %n) inlinehint {
 entry:
   %t1 = getelementptr inbounds %"struct.std/sync.Count", ptr %counter, i32 0, i32 0
   %t2 = call ptr @willrt_sync_count_new(i64 %n)
   store ptr %t2, ptr %t1
   ret void
 }
-define hidden void @"std/sync.Count.Add"(ptr %counter, i64 %d) inlinehint {
+define hidden void @"std/sync.Count.add"(ptr %counter, i64 %d) inlinehint {
 entry:
   %t3 = getelementptr inbounds %"struct.std/sync.Count", ptr %counter, i32 0, i32 0
   %t4 = load ptr, ptr %t3
   call void @willrt_sync_count_add(ptr %t4, i64 %d)
   ret void
 }
-define internal i32 @"std/sync.Count.Wait.sm"(ptr %frame) {
+define internal i32 @"std/sync.Count.wait.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.35.5 = getelementptr i8, ptr %frame, i64 8
@@ -471,7 +471,7 @@ share.adt.done.12.1:
   ret i32 1
 
 }
-define hidden ptr @"std/sync.Count.Wait.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/sync.Count.wait.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
   %t109 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -485,12 +485,12 @@ entry:
   %t115 = select i1 %t114, i32 %t112, i32 %start
   br i1 %t113, label %sm.start.auto.14, label %sm.start.lane.14
 sm.start.auto.14:
-  %t116 = call ptr @willrt_task_new(ptr @"std/sync.Count.Wait.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
+  %t116 = call ptr @willrt_task_new(ptr @"std/sync.Count.wait.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t116)
   call void @willrt_task_run_auto(ptr %t116)
   br label %sm.start.done.14
 sm.start.lane.14:
-  %t117 = call ptr @willrt_task_new(ptr @"std/sync.Count.Wait.sm", ptr %v.sm.frame, i64 240, i32 %t115, i32 0)
+  %t117 = call ptr @willrt_task_new(ptr @"std/sync.Count.wait.sm", ptr %v.sm.frame, i64 240, i32 %t115, i32 0)
   call void @willrt_task_own_frame(ptr %t117)
   call void @willrt_task_run(ptr %t117)
   br label %sm.start.done.14
@@ -555,21 +555,21 @@ entry:
 %"struct.std/sync.RwLock$T" = type { i64 }
 %"struct.std/sync.Permit" = type { ptr }
 %"struct.std/sync.Semaphore" = type { ptr }
-define hidden void @"std/sync.Permit.Release"(ptr %p) inlinehint {
+define hidden void @"std/sync.Permit.release"(ptr %p) inlinehint {
 entry:
   %t1 = getelementptr inbounds %"struct.std/sync.Permit", ptr %p, i32 0, i32 0
   %t2 = load ptr, ptr %t1
   %t3 = call i64 @willrt_sync_sema_release(ptr %t2)
   ret void
 }
-define internal void @"std/sync.Semaphore.init"(ptr %s, i64 %permits) inlinehint {
+define hidden void @"std/sync.Semaphore.init"(ptr %s, i64 %permits) inlinehint {
 entry:
   %t4 = getelementptr inbounds %"struct.std/sync.Semaphore", ptr %s, i32 0, i32 0
   %t5 = call ptr @willrt_sync_sema_new(i64 %permits)
   store ptr %t5, ptr %t4
   ret void
 }
-define hidden { i32, [4 x i8], %"struct.std/sync.Permit" } @"std/sync.Semaphore.TryAcquire"(ptr %s) inlinehint {
+define hidden { i32, [4 x i8], %"struct.std/sync.Permit" } @"std/sync.Semaphore.try_acquire"(ptr %s) inlinehint {
 entry:
   %v.agg.103 = alloca %"struct.std/sync.Permit"
   %v.adt.101 = alloca { i32, [4 x i8], %"struct.std/sync.Permit" }
@@ -597,7 +597,7 @@ if.end.1:
   %t18 = load { i32, [4 x i8], %"struct.std/sync.Permit" }, ptr %v.adt.107
   ret { i32, [4 x i8], %"struct.std/sync.Permit" } %t18
 }
-define internal i32 @"std/sync.Semaphore.Acquire.sm"(ptr %frame) {
+define internal i32 @"std/sync.Semaphore.acquire.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.37.19 = getelementptr i8, ptr %frame, i64 8
@@ -828,7 +828,7 @@ share.adt.done.12.1:
   ret i32 1
 
 }
-define hidden ptr @"std/sync.Semaphore.Acquire.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/sync.Semaphore.acquire.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
   %t127 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -842,12 +842,12 @@ entry:
   %t133 = select i1 %t132, i32 %t130, i32 %start
   br i1 %t131, label %sm.start.auto.14, label %sm.start.lane.14
 sm.start.auto.14:
-  %t134 = call ptr @willrt_task_new(ptr @"std/sync.Semaphore.Acquire.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
+  %t134 = call ptr @willrt_task_new(ptr @"std/sync.Semaphore.acquire.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t134)
   call void @willrt_task_run_auto(ptr %t134)
   br label %sm.start.done.14
 sm.start.lane.14:
-  %t135 = call ptr @willrt_task_new(ptr @"std/sync.Semaphore.Acquire.sm", ptr %v.sm.frame, i64 240, i32 %t133, i32 0)
+  %t135 = call ptr @willrt_task_new(ptr @"std/sync.Semaphore.acquire.sm", ptr %v.sm.frame, i64 240, i32 %t133, i32 0)
   call void @willrt_task_own_frame(ptr %t135)
   call void @willrt_task_run(ptr %t135)
   br label %sm.start.done.14
@@ -860,7 +860,7 @@ sm.start.done.14:
 %"struct.std/sync.Mutex$Counter" = type { i64 }
 %"struct.std/sync.ReadGuard$Counter" = type { i64, i1, i32 }
 %"struct.std/sync.RwLock$Counter" = type { i64 }
-define internal i32 @"example.com/concurrency/syncmutex.Bump.sm"(ptr %frame) {
+define internal i32 @"example.com/concurrency/syncmutex.bump.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.7.1 = getelementptr i8, ptr %frame, i64 8
@@ -872,7 +872,7 @@ entry:
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t2 = call ptr @"std/sync.Mutex<Counter>.Lock.task"(ptr %v.sm.param.7.1, i32 -2, i32 0)
+  %t2 = call ptr @"std/sync.Mutex<Counter>.lock.task"(ptr %v.sm.param.7.1, i32 -2, i32 0)
   store %"struct.std/sync.Guard$Counter" zeroinitializer, ptr %v.sm.call.out.3
   store ptr %t2, ptr %v.sm.join.task.5
   store i32 1, ptr %v.sm.state
@@ -972,7 +972,7 @@ guard.done.5:
   ret i32 1
 
 }
-define hidden ptr @"example.com/concurrency/syncmutex.Bump.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"example.com/concurrency/syncmutex.bump.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 96)
   %t56 = getelementptr i8, ptr %v.sm.frame, i64 16
@@ -992,15 +992,15 @@ entry:
   %t65 = icmp eq i32 %start, -2
   %t66 = select i1 %t65, i32 %t63, i32 %start
   %t67 = icmp ne i32 %owns, 0
-  %t68 = select i1 %t67, ptr @"example.com/concurrency/syncmutex.Bump.drop.own", ptr @"example.com/concurrency/syncmutex.Bump.drop"
+  %t68 = select i1 %t67, ptr @"example.com/concurrency/syncmutex.bump.drop.own", ptr @"example.com/concurrency/syncmutex.bump.drop"
   br i1 %t64, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t69 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/syncmutex.Bump.sm", ptr %v.sm.frame, i64 96, i32 0, i32 0, ptr %t68)
+  %t69 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/syncmutex.bump.sm", ptr %v.sm.frame, i64 96, i32 0, i32 0, ptr %t68)
   call void @willrt_task_own_frame(ptr %t69)
   call void @willrt_task_run_auto(ptr %t69)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t70 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/syncmutex.Bump.sm", ptr %v.sm.frame, i64 96, i32 %t66, i32 0, ptr %t68)
+  %t70 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/syncmutex.bump.sm", ptr %v.sm.frame, i64 96, i32 %t66, i32 0, ptr %t68)
   call void @willrt_task_own_frame(ptr %t70)
   call void @willrt_task_run(ptr %t70)
   br label %sm.start.done.6
@@ -1008,7 +1008,7 @@ sm.start.done.6:
   %t71 = phi ptr [ %t69, %sm.start.auto.6 ], [ %t70, %sm.start.lane.6 ]
   ret ptr %t71
 }
-define internal void @"example.com/concurrency/syncmutex.Bump.drop"(ptr %frame) {
+define internal void @"example.com/concurrency/syncmutex.bump.drop"(ptr %frame) {
 entry:
   %t72 = getelementptr i8, ptr %frame, i64 16
   %t73 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %t72, i32 0, i32 0
@@ -1024,7 +1024,7 @@ entry:
   store %"struct.std/sync.Guard$Counter" zeroinitializer, ptr %t75
   ret void
 }
-define internal void @"example.com/concurrency/syncmutex.Bump.drop.own"(ptr %frame) {
+define internal void @"example.com/concurrency/syncmutex.bump.drop.own"(ptr %frame) {
 entry:
   %t78 = getelementptr i8, ptr %frame, i64 16
   %t79 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %t78, i32 0, i32 0
@@ -1046,7 +1046,7 @@ entry:
   store %"struct.std/sync.Mutex$Counter" zeroinitializer, ptr %t84
   ret void
 }
-define internal i32 @"example.com/concurrency/syncmutex.WaitFor.sm"(ptr %frame) {
+define internal i32 @"example.com/concurrency/syncmutex.wait_for.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.27.87 = getelementptr i8, ptr %frame, i64 8
@@ -1061,7 +1061,7 @@ entry:
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t89 = call ptr @"std/sync.Mutex<Counter>.Lock.task"(ptr %v.sm.param.27.87, i32 -2, i32 0)
+  %t89 = call ptr @"std/sync.Mutex<Counter>.lock.task"(ptr %v.sm.param.27.87, i32 -2, i32 0)
   store %"struct.std/sync.Guard$Counter" zeroinitializer, ptr %v.sm.call.out.90
   store ptr %t89, ptr %v.sm.join.task.92
   store i32 1, ptr %v.sm.state
@@ -1164,7 +1164,7 @@ guard.done.5:
   ret i32 1
 
 }
-define hidden ptr @"example.com/concurrency/syncmutex.WaitFor.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"example.com/concurrency/syncmutex.wait_for.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 112)
   %t145 = getelementptr i8, ptr %v.sm.frame, i64 24
@@ -1186,15 +1186,15 @@ entry:
   %t155 = icmp eq i32 %start, -2
   %t156 = select i1 %t155, i32 %t153, i32 %start
   %t157 = icmp ne i32 %owns, 0
-  %t158 = select i1 %t157, ptr @"example.com/concurrency/syncmutex.WaitFor.drop.own", ptr @"example.com/concurrency/syncmutex.WaitFor.drop"
+  %t158 = select i1 %t157, ptr @"example.com/concurrency/syncmutex.wait_for.drop.own", ptr @"example.com/concurrency/syncmutex.wait_for.drop"
   br i1 %t154, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t159 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/syncmutex.WaitFor.sm", ptr %v.sm.frame, i64 112, i32 0, i32 0, ptr %t158)
+  %t159 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/syncmutex.wait_for.sm", ptr %v.sm.frame, i64 112, i32 0, i32 0, ptr %t158)
   call void @willrt_task_own_frame(ptr %t159)
   call void @willrt_task_run_auto(ptr %t159)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t160 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/syncmutex.WaitFor.sm", ptr %v.sm.frame, i64 112, i32 %t156, i32 0, ptr %t158)
+  %t160 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/syncmutex.wait_for.sm", ptr %v.sm.frame, i64 112, i32 %t156, i32 0, ptr %t158)
   call void @willrt_task_own_frame(ptr %t160)
   call void @willrt_task_run(ptr %t160)
   br label %sm.start.done.6
@@ -1202,7 +1202,7 @@ sm.start.done.6:
   %t161 = phi ptr [ %t159, %sm.start.auto.6 ], [ %t160, %sm.start.lane.6 ]
   ret ptr %t161
 }
-define internal void @"example.com/concurrency/syncmutex.WaitFor.drop"(ptr %frame) {
+define internal void @"example.com/concurrency/syncmutex.wait_for.drop"(ptr %frame) {
 entry:
   %t162 = getelementptr i8, ptr %frame, i64 24
   %t163 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %t162, i32 0, i32 0
@@ -1218,7 +1218,7 @@ entry:
   store %"struct.std/sync.Guard$Counter" zeroinitializer, ptr %t165
   ret void
 }
-define internal void @"example.com/concurrency/syncmutex.WaitFor.drop.own"(ptr %frame) {
+define internal void @"example.com/concurrency/syncmutex.wait_for.drop.own"(ptr %frame) {
 entry:
   %t168 = getelementptr i8, ptr %frame, i64 24
   %t169 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %t168, i32 0, i32 0
@@ -1318,10 +1318,10 @@ sm.init:
   %t180 = load %"struct.std/sync.Mutex$Counter", ptr %v.new.60
   store %"struct.std/sync.Mutex$Counter" %t180, ptr %v.m
   call void @willrt_region_enter()
-  %t181 = call ptr @"example.com/concurrency/syncmutex.Bump.task"(ptr %v.m, i32 -1, i32 1)
+  %t181 = call ptr @"example.com/concurrency/syncmutex.bump.task"(ptr %v.m, i32 -1, i32 1)
   store %"struct.std/sync.Mutex$Counter" zeroinitializer, ptr %v.m
   store ptr %t181, ptr %v.t1
-  %t182 = call ptr @"example.com/concurrency/syncmutex.Bump.task"(ptr %v.m, i32 -1, i32 1)
+  %t182 = call ptr @"example.com/concurrency/syncmutex.bump.task"(ptr %v.m, i32 -1, i32 1)
   store %"struct.std/sync.Mutex$Counter" zeroinitializer, ptr %v.m
   store ptr %t182, ptr %v.t2
   %t183 = load ptr, ptr %v.t1
@@ -1397,7 +1397,7 @@ sm.op.cont.3:
   store i32 0, ptr %v.two
   br i1 true, label %if.then.3, label %if.end.3
 if.then.3:
-  %t217 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.TryLock"(ptr %v.m)
+  %t217 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.try_lock"(ptr %v.m)
   store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t217, ptr %v.ret.99
   %t218 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.99, i32 0, i32 0
   %t219 = load i32, ptr %t218
@@ -1480,7 +1480,7 @@ if.end.7:
   store ptr null, ptr %v.waiter
   br i1 true, label %if.then.8, label %if.end.8
 if.then.8:
-  %t257 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.TryLock"(ptr %v.m)
+  %t257 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.try_lock"(ptr %v.m)
   store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t257, ptr %v.ret.131
   %t258 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.131, i32 0, i32 0
   %t259 = load i32, ptr %t258
@@ -1521,7 +1521,7 @@ panic.11:
 panic.ok.11:
   store i32 %t274, ptr %t271
   %t276 = load ptr, ptr %v.entered
-  %t277 = call ptr @"example.com/concurrency/syncmutex.WaitFor.task"(ptr %v.m, ptr %t276, i32 -1, i32 1)
+  %t277 = call ptr @"example.com/concurrency/syncmutex.wait_for.task"(ptr %v.m, ptr %t276, i32 -1, i32 1)
   store %"struct.std/sync.Mutex$Counter" zeroinitializer, ptr %v.m
   %t278 = load ptr, ptr %v.entered
   call void @willrt_chan_retain(ptr %t278)
@@ -1711,7 +1711,7 @@ sm.op.cont.6:
   store i32 0, ptr %v.after
   br i1 true, label %if.then.19, label %if.end.19
 if.then.19:
-  %t362 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.TryLock"(ptr %v.m)
+  %t362 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.try_lock"(ptr %v.m)
   store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t362, ptr %v.ret.181
   %t363 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.181, i32 0, i32 0
   %t364 = load i32, ptr %t363
@@ -1797,7 +1797,7 @@ if.end.23:
   store i32 0, ptr %v.shared
   br i1 true, label %if.then.24, label %if.end.24
 if.then.24:
-  %t401 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.TryRLock"(ptr %v.rw)
+  %t401 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.try_rlock"(ptr %v.rw)
   store { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } %t401, ptr %v.ret.213
   %t402 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.213, i32 0, i32 0
   %t403 = load i32, ptr %t402
@@ -1814,7 +1814,7 @@ panic.ok.25:
   %t407 = load %"struct.std/sync.ReadGuard$Counter", ptr %v.unwrap.out.212
   store %"struct.std/sync.ReadGuard$Counter" %t407, ptr %v.r1
   store %"struct.std/sync.ReadGuard$Counter" zeroinitializer, ptr %v.unwrap.out.212
-  %t408 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.TryRLock"(ptr %v.rw)
+  %t408 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.try_rlock"(ptr %v.rw)
   store { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } %t408, ptr %v.ret.219
   %t409 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.219, i32 0, i32 0
   %t410 = load i32, ptr %t409
@@ -1868,7 +1868,7 @@ panic.29:
   unreachable
 panic.ok.29:
   store i32 %t434, ptr %v.shared
-  %t436 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.RwLock<Counter>.TryWLock"(ptr %v.rw)
+  %t436 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.RwLock<Counter>.try_wlock"(ptr %v.rw)
   store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t436, ptr %v.ret.230
   %t437 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.230, i32 0, i32 0
   %t438 = load i32, ptr %t437
@@ -2010,7 +2010,7 @@ if.end.35:
   store i32 0, ptr %v.exclusive
   br i1 true, label %if.then.36, label %if.end.36
 if.then.36:
-  %t506 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.RwLock<Counter>.TryWLock"(ptr %v.rw)
+  %t506 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.RwLock<Counter>.try_wlock"(ptr %v.rw)
   store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t506, ptr %v.ret.262
   %t507 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.ret.262, i32 0, i32 0
   %t508 = load i32, ptr %t507
@@ -2109,7 +2109,7 @@ if.end.41:
   store i32 0, ptr %v.final
   br i1 true, label %if.then.42, label %if.end.42
 if.then.42:
-  %t553 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.TryRLock"(ptr %v.rw)
+  %t553 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.try_rlock"(ptr %v.rw)
   store { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } %t553, ptr %v.ret.293
   %t554 = getelementptr inbounds { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.ret.293, i32 0, i32 0
   %t555 = load i32, ptr %t554
@@ -2378,7 +2378,7 @@ entry:
   ret void
 }
 %"struct.std/sync.MutexState$Counter" = type { ptr, %"struct.example.com/concurrency/syncmutex.Counter" }
-define internal i32 @"std/sync.Mutex<Counter>.Lock.sm"(ptr %frame) {
+define internal i32 @"std/sync.Mutex<Counter>.lock.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.51.1 = getelementptr i8, ptr %frame, i64 8
@@ -2468,7 +2468,7 @@ if.end.1:
   ret i32 1
 
 }
-define hidden ptr @"std/sync.Mutex<Counter>.Lock.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/sync.Mutex<Counter>.lock.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 112)
   %t41 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2485,12 +2485,12 @@ entry:
   %t49 = select i1 %t48, i32 %t46, i32 %start
   br i1 %t47, label %sm.start.auto.2, label %sm.start.lane.2
 sm.start.auto.2:
-  %t50 = call ptr @willrt_task_new(ptr @"std/sync.Mutex<Counter>.Lock.sm", ptr %v.sm.frame, i64 112, i32 0, i32 0)
+  %t50 = call ptr @willrt_task_new(ptr @"std/sync.Mutex<Counter>.lock.sm", ptr %v.sm.frame, i64 112, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t50)
   call void @willrt_task_run_auto(ptr %t50)
   br label %sm.start.done.2
 sm.start.lane.2:
-  %t51 = call ptr @willrt_task_new(ptr @"std/sync.Mutex<Counter>.Lock.sm", ptr %v.sm.frame, i64 112, i32 %t49, i32 0)
+  %t51 = call ptr @willrt_task_new(ptr @"std/sync.Mutex<Counter>.lock.sm", ptr %v.sm.frame, i64 112, i32 %t49, i32 0)
   call void @willrt_task_own_frame(ptr %t51)
   call void @willrt_task_run(ptr %t51)
   br label %sm.start.done.2
@@ -2498,7 +2498,7 @@ sm.start.done.2:
   %t52 = phi ptr [ %t50, %sm.start.auto.2 ], [ %t51, %sm.start.lane.2 ]
   ret ptr %t52
 }
-define hidden { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.TryLock"(ptr %m) inlinehint {
+define hidden { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.try_lock"(ptr %m) inlinehint {
 entry:
   %v.agg.106 = alloca %"struct.std/sync.Guard$Counter"
   %v.adt.104 = alloca { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }
@@ -2534,7 +2534,7 @@ if.end.1:
   %t18 = load { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.adt.113
   ret { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t18
 }
-define hidden { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.TryRLock"(ptr %r) inlinehint {
+define hidden { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.try_rlock"(ptr %r) inlinehint {
 entry:
   %v.agg.207 = alloca %"struct.std/sync.ReadGuard$Counter"
   %v.adt.205 = alloca { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }
@@ -2570,7 +2570,7 @@ if.end.1:
   %t18 = load { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" }, ptr %v.adt.214
   ret { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } %t18
 }
-define hidden { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.RwLock<Counter>.TryWLock"(ptr %r) inlinehint {
+define hidden { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.RwLock<Counter>.try_wlock"(ptr %r) inlinehint {
 entry:
   %v.agg.271 = alloca %"struct.std/sync.Guard$Counter"
   %v.adt.269 = alloca { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }
@@ -2606,7 +2606,7 @@ if.end.1:
   %t18 = load { i32, [4 x i8], %"struct.std/sync.Guard$Counter" }, ptr %v.adt.278
   ret { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t18
 }
-define internal void @"std/sync.Mutex<Counter>.init"(ptr %m, ptr %value) inlinehint {
+define hidden void @"std/sync.Mutex<Counter>.init"(ptr %m, ptr %value) inlinehint {
 entry:
   %v.state = alloca %"struct.std/sync.MutexState$Counter"
   %v.agg.39 = alloca %"struct.std/sync.MutexState$Counter"
@@ -2627,7 +2627,7 @@ entry:
   store i64 %t9, ptr %t6
   ret void
 }
-define internal void @"std/sync.RwLock<Counter>.init"(ptr %r, ptr %value) inlinehint {
+define hidden void @"std/sync.RwLock<Counter>.init"(ptr %r, ptr %value) inlinehint {
 entry:
   %v.state = alloca %"struct.std/sync.MutexState$Counter"
   %v.agg.140 = alloca %"struct.std/sync.MutexState$Counter"
@@ -2763,19 +2763,19 @@ declare ptr @willrt_sync_lock_new()
 @.bytes.7 = private unnamed_addr constant [9 x i8] c"i/o error", align 1
 @.str.7 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.8 = private unnamed_addr constant [22 x i8] c"sync/count.will:30:18\00", align 1
-@.str.9 = private unnamed_addr constant [20 x i8] c"std/sync.Count.Wait\00", align 1
+@.str.9 = private unnamed_addr constant [20 x i8] c"std/sync.Count.wait\00", align 1
 @.str.10 = private unnamed_addr constant [22 x i8] c"sync/count.will:33:18\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/sync.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/sync.iface.clone.Error.std/errors.Fault", ptr @"std/sync.iface.drop.Error.std/errors.Fault", ptr @"std/sync.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@"std/sync.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/sync.iface.clone.Error.std/errors.Fault", ptr @"std/sync.iface.drop.Error.std/errors.Fault", ptr @"std/sync.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.str.13 = private unnamed_addr constant [26 x i8] c"sync/semaphore.will:37:18\00", align 1
-@.str.14 = private unnamed_addr constant [27 x i8] c"std/sync.Semaphore.Acquire\00", align 1
+@.str.14 = private unnamed_addr constant [27 x i8] c"std/sync.Semaphore.acquire\00", align 1
 @.str.15 = private unnamed_addr constant [26 x i8] c"sync/semaphore.will:40:18\00", align 1
 @.str.16 = private unnamed_addr constant [13 x i8] c"empty handle\00", align 1
 @.str.17 = private unnamed_addr constant [15 x i8] c"main.will:11:5\00", align 1
-@.str.18 = private unnamed_addr constant [39 x i8] c"example.com/concurrency/syncmutex.Bump\00", align 1
+@.str.18 = private unnamed_addr constant [39 x i8] c"example.com/concurrency/syncmutex.bump\00", align 1
 @.str.19 = private unnamed_addr constant [16 x i8] c"main.will:12:12\00", align 1
 @.str.20 = private unnamed_addr constant [15 x i8] c"main.will:19:5\00", align 1
-@.str.21 = private unnamed_addr constant [42 x i8] c"example.com/concurrency/syncmutex.WaitFor\00", align 1
+@.str.21 = private unnamed_addr constant [43 x i8] c"example.com/concurrency/syncmutex.wait_for\00", align 1
 @.str.22 = private unnamed_addr constant [16 x i8] c"main.will:20:12\00", align 1
 @.str.23 = private unnamed_addr constant [16 x i8] c"unexpected None\00", align 1
 @.str.24 = private unnamed_addr constant [16 x i8] c"main.will:33:38\00", align 1

@@ -1320,9 +1320,9 @@ func (g *generator) emitResultWrapper() error {
 	if !ok {
 		return g.errf(g.entryID, "cannot translate node #%d: the Error interface is not lowered", g.entryID)
 	}
-	messageIndex, ok := iface.byName["Message"]
+	messageIndex, ok := iface.byName["message"]
 	if !ok {
-		return g.errf(g.entryID, "cannot translate node #%d: Error has no Message method", g.entryID)
+		return g.errf(g.entryID, "cannot translate node #%d: Error has no message method", g.entryID)
 	}
 	if !g.errorEmitted {
 		g.out.WriteString("%interface.Error = type { ptr, ptr }\n")
@@ -1495,10 +1495,10 @@ func (g *generator) symbolName(name string) string {
 	return qualify(g.pkg, name)
 }
 
-// cExported reports whether a top-level name is in the C surface: a leading
-// ASCII capital, as the language's export rule already requires.
+// cExported reports whether a top-level name is in the C surface: it is
+// public under the __ visibility rule.
 func cExported(name string) bool {
-	return name != "" && name[0] >= 'A' && name[0] <= 'Z'
+	return name != "" && !strings.HasPrefix(name, "__")
 }
 
 // loopLabels names the two places a loop body can leave to: the step block
@@ -2089,7 +2089,7 @@ func (g *generator) allocas(fn int) error {
 			key := fmt.Sprintf("print.%d.%d", r.ID, i)
 			slot := "%v.printshow." + strconv.Itoa(r.ID) + "." + strconv.Itoa(i)
 			g.ifaceSlots[key] = slot
-			fmt.Fprintf(g.out, "  %s = alloca %%interface.Show\n", slot)
+			fmt.Fprintf(g.out, "  %s = alloca %%interface.show\n", slot)
 		}
 	}
 	// A new value is built in a slot: the field defaults and init write it
@@ -2257,7 +2257,7 @@ func (g *generator) allocas(fn int) error {
 			fmt.Fprintf(g.out, "  %s = alloca %s\n", name, llvm)
 		}
 		switch fieldText(r, "text") {
-		case "Trim", "TrimLeft", "TrimRight":
+		case "trim", "trim_left", "trim_right":
 			start := "%v.trim.start." + strconv.Itoa(r.ID)
 			g.trimStartSlots[r.ID] = start
 			fmt.Fprintf(g.out, "  %s = alloca i64\n", start)
@@ -2398,7 +2398,7 @@ func (g *generator) allocas(fn int) error {
 			}
 		case "mcall":
 			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil &&
-				isWeakText(recvText) && fieldText(r, "text") == "Upgrade" {
+				isWeakText(recvText) && fieldText(r, "text") == "upgrade" {
 				name := "%v.weakout." + strconv.Itoa(r.ID)
 				g.weakOutSlots[r.ID] = name
 				fmt.Fprintf(g.out, "  %s = alloca i64\n", name)
@@ -3719,9 +3719,9 @@ func (g *generator) value(id int) (string, error) {
 	case "send":
 		return g.lowerSendResult(r)
 	case "close":
-		return "", g.errf(id, "cannot translate node #%d: Close is a statement", id)
+		return "", g.errf(id, "cannot translate node #%d: close is a statement", id)
 	case "recv":
-		return "", g.errf(id, "cannot translate node #%d: Recv is a place", id)
+		return "", g.errf(id, "cannot translate node #%d: recv is a place", id)
 	case "join":
 		return g.lowerJoinResult(r)
 	case "func":
@@ -4239,7 +4239,7 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	if r.Kind == "mcall" {
 		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
 			recvText = stripPredeclaredPackage(recvText)
-			if isWeakText(recvText) && fieldText(r, "text") == "Upgrade" {
+			if isWeakText(recvText) && fieldText(r, "text") == "upgrade" {
 				return g.upgradeCall(r, recvText)
 			}
 			if _, ok := g.guardElemText(recvText); ok {
@@ -4251,13 +4251,13 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 			}
 			if kind, args, ok := parseADT(recvText); ok {
 				switch fieldText(r, "text") {
-				case "IsSome", "IsNone", "IsOk", "IsErr", "Or":
+				case "is_some", "is_none", "is_ok", "is_err", "Or":
 					return g.adtMethod(r, kind, args)
 				}
 			}
 		}
 	}
-	if r.Kind == "mcall" && fieldText(r, "text") == "Clone" {
+	if r.Kind == "mcall" && fieldText(r, "text") == "clone" {
 		recvText, err := g.willTypeText(refField(r, "recv"))
 		if err == nil {
 			recvText = stripPredeclaredPackage(recvText)
@@ -4317,10 +4317,10 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		if elem, ok := arrayElemText(recvText); ok {
 			return g.arrayMethod(r, elem)
 		}
-		if fieldText(r, "text") == "Clone" {
+		if fieldText(r, "text") == "clone" {
 			return g.cloneValueCall(r, recvText)
 		}
-		if _, ok := chanElemText(recvText); ok && fieldText(r, "text") == "Close" {
+		if _, ok := chanElemText(recvText); ok && fieldText(r, "text") == "close" {
 			return "", "", g.lowerClose(r)
 		}
 		if iface, ok := g.ifaceOfText(recvText); ok {

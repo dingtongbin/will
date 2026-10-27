@@ -73,9 +73,9 @@ func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 			return "", "", "", g.errf(r.ID, "cannot translate node #%d: the Error interface is not lowered yet", r.ID)
 		}
 		errData, errTable := g.ifaceSlotValue(info, slot)
-		index, ok := iface.byName["Message"]
+		index, ok := iface.byName["message"]
 		if !ok {
-			return "", "", "", g.errf(r.ID, "cannot translate node #%d: Error has no Message method", r.ID)
+			return "", "", "", g.errf(r.ID, "cannot translate node #%d: Error has no message method", r.ID)
 		}
 		method := g.ifaceMethod(errTable, index)
 		message := g.newTmp()
@@ -175,7 +175,7 @@ func (g *generator) unwrapType(r willc.Record) (string, string, error) {
 		}
 		elem, ok := taskElemText(taskText)
 		if !ok {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: Join needs a Task", r.ID)
+			return "", "", g.errf(r.ID, "cannot translate node #%d: join needs a Task", r.ID)
 		}
 		typ, ok := g.typeLLVMOf(elem)
 		if !ok {

@@ -97,10 +97,10 @@ func buildEnvAll(c *checker, files []*ast.File) *env {
 	for _, name := range []string{"Value", "Duration", "Show", "Error", "TaskError"} {
 		e.types[name] = c.in.named(name, nil)
 	}
-	e.ifaces["Show"] = []*methodInfo{{name: "Show", sig: &signature{name: "Show", result: c.in.scalar("str")}}}
+	e.ifaces["Show"] = []*methodInfo{{name: "show", sig: &signature{name: "show", result: c.in.scalar("str")}}}
 	e.ifaces["Error"] = []*methodInfo{
-		{name: "Message", sig: &signature{name: "Message", result: c.in.scalar("str")}},
-		{name: "Status", sig: &signature{name: "Status", result: c.in.scalar("i32")}},
+		{name: "message", sig: &signature{name: "message", result: c.in.scalar("str")}},
+		{name: "status", sig: &signature{name: "status", result: c.in.scalar("i32")}},
 	}
 	e.ifaces["TaskError"] = e.ifaces["Error"]
 	for _, f := range files {
@@ -376,7 +376,7 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 			}
 			return c.resolveAlias(alias)
 		}
-		if t.Name == "Equal" || t.Name == "Ord" {
+		if t.Name == "equal" || t.Name == "Ord" {
 			// Both are predeclared constraints: they constrain a type
 			// parameter and are not interfaces, so this use is an error.
 			c.bag.Error(t.Pos(), diag.CodeBuiltinConstraintAsInterface,
@@ -389,11 +389,11 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 			args[i] = c.buildType(a, tp)
 		}
 		if t.Name == "Set" && len(args) == 1 && !c.keyType(args[0]) {
-			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "Set element type does not support Equal",
+			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "Set element type does not support equal",
 				"use a type with a stable equality, such as an integer, str, struct, or enum")
 		}
 		if t.Name == "Map" && len(args) == 2 && !c.keyType(args[0]) {
-			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "Map key type does not support Equal",
+			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "Map key type does not support equal",
 				"use a type with a stable equality, such as an integer, str, struct, or enum")
 		}
 		if want, ok := c.env.arity[t.Name]; ok {

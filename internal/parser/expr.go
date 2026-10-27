@@ -329,8 +329,8 @@ func (p *Parser) parseLaneHere() ast.Expr {
 	start := p.next()
 	p.expect(token.Dot, ".")
 	name := p.cur()
-	if name.Kind != token.Ident || name.Text != "Here" {
-		p.unexpected("lane.Here()")
+	if name.Kind != token.Ident || name.Text != "here" {
+		p.unexpected("lane.here()")
 		return &ast.LaneHereExpr{Span: p.spanFrom(start)}
 	}
 	p.next()

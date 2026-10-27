@@ -38,10 +38,10 @@ func TestStoreRoundTripAcrossNames(t *testing.T) {
 		t.Fatal("a key that was never written reported a hit")
 	}
 	if !s.Has("key-one") {
-		t.Fatal("Has reported false for a written key")
+		t.Fatal("has reported false for a written key")
 	}
 	if s.Has("key-two") {
-		t.Fatal("Has reported true for a key that was never written")
+		t.Fatal("has reported true for a key that was never written")
 	}
 }
 
@@ -53,7 +53,7 @@ func TestStoreDefaultsToWillc(t *testing.T) {
 	}
 	got, ok := s.Get("k")
 	if !ok || string(got[Willc]) != "front end" {
-		t.Fatalf("default Get = %q, %v", got, ok)
+		t.Fatalf("default get = %q, %v", got, ok)
 	}
 }
 
@@ -100,7 +100,7 @@ func TestStoreCorruptEntryDoesNotPanic(t *testing.T) {
 	}
 	got, ok, recovered := getRecover(s, key, Willc)
 	if recovered != nil {
-		t.Fatalf("Get panicked on a truncated entry: %v", recovered)
+		t.Fatalf("get panicked on a truncated entry: %v", recovered)
 	}
 	if !ok || string(got[Willc]) != "fro" {
 		t.Fatalf("truncated entry = %q, %v; want the raw bytes and a hit", got, ok)
@@ -111,7 +111,7 @@ func TestStoreCorruptEntryDoesNotPanic(t *testing.T) {
 	}
 	got, ok, recovered = getRecover(s, key, Willc)
 	if recovered != nil {
-		t.Fatalf("Get panicked on a garbage entry: %v", recovered)
+		t.Fatalf("get panicked on a garbage entry: %v", recovered)
 	}
 	if !ok || string(got[Willc]) != "garbage" {
 		t.Fatalf("garbage entry = %q, %v; want the raw bytes and a hit", got, ok)
@@ -125,7 +125,7 @@ func TestStoreCorruptEntryDoesNotPanic(t *testing.T) {
 	}
 	_, ok, recovered = getRecover(s, key, Willc)
 	if recovered != nil {
-		t.Fatalf("Get panicked on a directory entry: %v", recovered)
+		t.Fatalf("get panicked on a directory entry: %v", recovered)
 	}
 	if ok {
 		t.Fatal("a directory where an entry file belongs reported a hit")
@@ -137,7 +137,7 @@ func TestStoreCorruptEntryDoesNotPanic(t *testing.T) {
 	}
 	_, ok, recovered = getRecover(s, "key-is-a-file", Willc)
 	if recovered != nil {
-		t.Fatalf("Get panicked when the key path was a file: %v", recovered)
+		t.Fatalf("get panicked when the key path was a file: %v", recovered)
 	}
 	if ok {
 		t.Fatal("a key path that is a regular file reported a hit")

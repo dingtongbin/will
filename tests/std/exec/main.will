@@ -1,14 +1,14 @@
 import "std/os/exec"
 
 async def main() -> i32 {
-    var command: exec.Cmd = exec.Command("cmd", "/C", "echo hi")
-    var out: Result<exec.Output, Error> = await command.AsyncOutput()
+    var command: exec.Cmd = exec.command("cmd", "/C", "echo hi")
+    var out: Result<exec.Output, Error> = await command.async_output()
     match out {
         Ok(value) => {
             if value.status.code != 0 {
                 return 1
             }
-            if value.stdout.Len() == 0usize {
+            if value.stdout.len() == 0usize {
                 return 2
             }
         }
@@ -17,8 +17,8 @@ async def main() -> i32 {
         }
     }
 
-    var failing: exec.Cmd = exec.Command("cmd", "/C", "exit 3")
-    var status: Result<exec.ExitStatus, Error> = await failing.AsyncRun()
+    var failing: exec.Cmd = exec.command("cmd", "/C", "exit 3")
+    var status: Result<exec.ExitStatus, Error> = await failing.async_run()
     match status {
         Ok(value) => {
             if value.code != 3 {

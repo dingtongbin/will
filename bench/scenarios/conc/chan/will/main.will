@@ -20,8 +20,8 @@ async def main() -> i32 {
     // The warm up pays for the first touch of the pages and of the caches.
     for i in Range(0, 1000) {
         _ = i
-        _ = await ch.Send(i64(i))
-        match await ch.Recv() {
+        _ = await ch.send(i64(i))
+        match await ch.recv() {
             Some(v) => {
                 _ = v
             }
@@ -36,8 +36,8 @@ async def main() -> i32 {
         var start: u64 = c.bench_now_ns()
         var total: i64 = 0i64
         for i in Range(0, count) {
-            _ = await ch.Send(i64(i))
-            match await ch.Recv() {
+            _ = await ch.send(i64(i))
+            match await ch.recv() {
                 Some(v) => {
                     total += v
                 }
@@ -46,16 +46,16 @@ async def main() -> i32 {
             }
         }
         var stop: u64 = c.bench_now_ns()
-        samples.Push(stop - start)
+        samples.push(stop - start)
         checksum += total
         c.bench_sink(u64(checksum))
     }
 
-    bench.SortSamples(samples)
-    var p50: u64 = bench.Percentile(samples, 50i64, 100i64)
-    var p95: u64 = bench.Percentile(samples, 95i64, 100i64)
-    var p99: u64 = bench.Percentile(samples, 99i64, 100i64)
-    var worst: u64 = bench.Max(samples)
+    bench.sort_samples(samples)
+    var p50: u64 = bench.percentile(samples, 50i64, 100i64)
+    var p95: u64 = bench.percentile(samples, 95i64, 100i64)
+    var p99: u64 = bench.percentile(samples, 99i64, 100i64)
+    var worst: u64 = bench.max(samples)
 
     print("bench metric p50 ", p50, " ns\n")
     print("bench metric p95 ", p95, " ns\n")

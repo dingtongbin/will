@@ -1,9 +1,9 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
-define hidden i32 @"example.com/genericfn.Twice"(i32 %x) inlinehint {
+define hidden i32 @"example.com/genericfn.twice"(i32 %x) inlinehint {
 entry:
-  %t1 = call i32 @"example.com/genericfn.Id$i32"(i32 %x)
-  %t2 = call i32 @"example.com/genericfn.Id$i32"(i32 %x)
+  %t1 = call i32 @"example.com/genericfn.id$i32"(i32 %x)
+  %t2 = call i32 @"example.com/genericfn.id$i32"(i32 %x)
   %t3 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t1, i32 %t2)
   %t4 = extractvalue {i32, i1} %t3, 0
   %t5 = extractvalue {i32, i1} %t3, 1
@@ -16,10 +16,10 @@ panic.ok.1:
 }
 define i32 @"example.com/genericfn.will$main"() {
 entry:
-  %t6 = call i32 @"example.com/genericfn.Twice"(i32 2)
+  %t6 = call i32 @"example.com/genericfn.twice"(i32 2)
   ret i32 %t6
 }
-define internal i32 @"example.com/genericfn.Id$i32"(i32 %x) alwaysinline {
+define internal i32 @"example.com/genericfn.id$i32"(i32 %x) alwaysinline {
 entry:
   ret i32 %x
 }
@@ -34,6 +34,6 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:6:12\00", align 1
-@.str.2 = private unnamed_addr constant [28 x i8] c"example.com/genericfn.Twice\00", align 1
+@.str.2 = private unnamed_addr constant [28 x i8] c"example.com/genericfn.twice\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

@@ -1,7 +1,7 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/fieldaccess.Point" = type { i32, i32, i64 }
-define hidden i32 @"example.com/fieldaccess.Sum"(ptr %p) alwaysinline {
+define hidden i32 @"example.com/fieldaccess.sum"(ptr %p) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/fieldaccess.Point", ptr %p, i32 0, i32 0
   %t2 = load i32, ptr %t1
@@ -53,7 +53,7 @@ panic.2:
   unreachable
 panic.ok.2:
   store i64 %t22, ptr %t18
-  %t24 = call i32 @"example.com/fieldaccess.Sum"(ptr %v.q)
+  %t24 = call i32 @"example.com/fieldaccess.sum"(ptr %v.q)
   %t25 = getelementptr inbounds %"struct.example.com/fieldaccess.Point", ptr %v.q, i32 0, i32 1
   %t26 = load i32, ptr %t25
   %t27 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t24, i32 %t26)
@@ -77,7 +77,7 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:8:12\00", align 1
-@.str.2 = private unnamed_addr constant [28 x i8] c"example.com/fieldaccess.Sum\00", align 1
+@.str.2 = private unnamed_addr constant [28 x i8] c"example.com/fieldaccess.sum\00", align 1
 @.str.3 = private unnamed_addr constant [16 x i8] c"main.will:13:11\00", align 1
 @.str.4 = private unnamed_addr constant [34 x i8] c"example.com/fieldaccess.will$main\00", align 1
 @.str.5 = private unnamed_addr constant [16 x i8] c"main.will:14:13\00", align 1

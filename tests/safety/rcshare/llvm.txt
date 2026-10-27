@@ -3,7 +3,7 @@
 %interface.Error = type { ptr, ptr }
 %"enum.std/errors.ErrorClass" = type { i32 }
 %"interface.std/errors.Classified" = type { ptr, ptr }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.ClassOf"(ptr %e) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.class_of"(ptr %e) inlinehint {
 entry:
   %v.ret.18 = alloca %"enum.std/errors.ErrorClass"
   %t1 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 0
@@ -13,12 +13,12 @@ entry:
   %t5 = getelementptr inbounds [6 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
-  %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t7)
+  %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t7)
   store %"enum.std/errors.ErrorClass" %t8, ptr %v.ret.18
   %t9 = load %"enum.std/errors.ErrorClass", ptr %v.ret.18
   ret %"enum.std/errors.ErrorClass" %t9
 }
-define internal %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %status) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %status) inlinehint {
 entry:
   %v.c = alloca %"enum.std/errors.ErrorClass"
   %v.enum.28 = alloca %"enum.std/errors.ErrorClass"
@@ -91,7 +91,7 @@ match.end.1:
   ret %"enum.std/errors.ErrorClass" %t29
 }
 %"struct.std/errors.Fault" = type { { ptr, i64 }, i32 }
-define internal void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
+define hidden void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
 entry:
   %v.ret.18 = alloca { ptr, i64 }
   %v.strm.18 = alloca { ptr, i64 }
@@ -114,7 +114,7 @@ entry:
   store i32 %status, ptr %t11
   ret void
 }
-define hidden { ptr, i64 } @"std/errors.Fault.Message"(ptr %f) inlinehint {
+define hidden { ptr, i64 } @"std/errors.Fault.message"(ptr %f) inlinehint {
 entry:
   %v.ret.30 = alloca { ptr, i64 }
   %v.strm.30 = alloca { ptr, i64 }
@@ -135,18 +135,18 @@ entry:
   %t22 = load { ptr, i64 }, ptr %v.ret.30
   ret { ptr, i64 } %t22
 }
-define hidden i32 @"std/errors.Fault.Status"(ptr %f) alwaysinline {
+define hidden i32 @"std/errors.Fault.status"(ptr %f) alwaysinline {
 entry:
   %t23 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
   %t24 = load i32, ptr %t23
   ret i32 %t24
 }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.Class"(ptr %f) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.class"(ptr %f) inlinehint {
 entry:
   %v.ret.47 = alloca %"enum.std/errors.ErrorClass"
   %t25 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
   %t26 = load i32, ptr %t25
-  %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t26)
+  %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t26)
   store %"enum.std/errors.ErrorClass" %t27, ptr %v.ret.47
   %t28 = load %"enum.std/errors.ErrorClass", ptr %v.ret.47
   ret %"enum.std/errors.ErrorClass" %t28
@@ -234,7 +234,7 @@ entry:
 }
 %"struct.std/time.civilDate" = type { i32, i32, i32 }
 %"struct.std/time.clockTime" = type { i32, i32, i32 }
-define internal i64 @"std/time.floorDiv"(i64 %a, i64 %b) alwaysinline {
+define hidden i64 @"std/time.floor_div"(i64 %a, i64 %b) alwaysinline {
 entry:
   %v.q = alloca i64
   %v.aNegative = alloca i1
@@ -296,9 +296,9 @@ if.end.3:
   %t22 = load i64, ptr %v.q
   ret i64 %t22
 }
-define internal i64 @"std/time.floorMod"(i64 %a, i64 %b) inlinehint {
+define hidden i64 @"std/time.floor_mod"(i64 %a, i64 %b) inlinehint {
 entry:
-  %t23 = call i64 @"std/time.floorDiv"(i64 %a, i64 %b)
+  %t23 = call i64 @"std/time.floor_div"(i64 %a, i64 %b)
   %t24 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t23, i64 %b)
   %t25 = extractvalue {i64, i1} %t24, 0
   %t26 = extractvalue {i64, i1} %t24, 1
@@ -317,17 +317,17 @@ panic.2:
 panic.ok.2:
   ret i64 %t28
 }
-define internal i64 @"std/time.secondsOf"(i64 %nanos) inlinehint {
+define hidden i64 @"std/time.seconds_of"(i64 %nanos) inlinehint {
 entry:
-  %t30 = call i64 @"std/time.floorDiv"(i64 %nanos, i64 1000000000)
+  %t30 = call i64 @"std/time.floor_div"(i64 %nanos, i64 1000000000)
   ret i64 %t30
 }
-define internal i64 @"std/time.fractionOf"(i64 %nanos) inlinehint {
+define hidden i64 @"std/time.fraction_of"(i64 %nanos) inlinehint {
 entry:
-  %t31 = call i64 @"std/time.floorMod"(i64 %nanos, i64 1000000000)
+  %t31 = call i64 @"std/time.floor_mod"(i64 %nanos, i64 1000000000)
   ret i64 %t31
 }
-define internal i64 @"std/time.daysFromCivil"(i32 %year, i32 %month, i32 %day) inlinehint {
+define hidden i64 @"std/time.days_from_civil"(i32 %year, i32 %month, i32 %day) inlinehint {
 entry:
   %v.y = alloca i64
   %v.era = alloca i64
@@ -353,7 +353,7 @@ panic.ok.2:
   br label %if.end.1
 if.end.1:
   %t38 = load i64, ptr %v.y
-  %t39 = call i64 @"std/time.floorDiv"(i64 %t38, i64 400)
+  %t39 = call i64 @"std/time.floor_div"(i64 %t38, i64 400)
   store i64 %t39, ptr %v.era
   %t40 = load i64, ptr %v.y
   %t41 = load i64, ptr %v.era
@@ -548,7 +548,7 @@ panic.24:
 panic.ok.24:
   ret i64 %t112
 }
-define internal %"struct.std/time.civilDate" @"std/time.civilFromDays"(i64 %days) inlinehint {
+define hidden %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %days) inlinehint {
 entry:
   %v.z = alloca i64
   %v.era = alloca i64
@@ -570,7 +570,7 @@ panic.1:
 panic.ok.1:
   store i64 %t115, ptr %v.z
   %t117 = load i64, ptr %v.z
-  %t118 = call i64 @"std/time.floorDiv"(i64 %t117, i64 146097)
+  %t118 = call i64 @"std/time.floor_div"(i64 %t117, i64 146097)
   store i64 %t118, ptr %v.era
   %t119 = load i64, ptr %v.z
   %t120 = load i64, ptr %v.era
@@ -942,19 +942,19 @@ panic.ok.45:
   %t256 = load %"struct.std/time.civilDate", ptr %v.agg.286
   ret %"struct.std/time.civilDate" %t256
 }
-define internal i64 @"std/time.daysOf"(i64 %secs) inlinehint {
+define hidden i64 @"std/time.days_of"(i64 %secs) inlinehint {
 entry:
-  %t257 = call i64 @"std/time.floorDiv"(i64 %secs, i64 86400)
+  %t257 = call i64 @"std/time.floor_div"(i64 %secs, i64 86400)
   ret i64 %t257
 }
-define internal %"struct.std/time.clockTime" @"std/time.timeOfDay"(i64 %secs) inlinehint {
+define hidden %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %secs) inlinehint {
 entry:
   %v.rem = alloca i64
   %v.hour = alloca i64
   %v.minute = alloca i64
   %v.second = alloca i64
   %v.agg.333 = alloca %"struct.std/time.clockTime"
-  %t258 = call i64 @"std/time.floorMod"(i64 %secs, i64 86400)
+  %t258 = call i64 @"std/time.floor_mod"(i64 %secs, i64 86400)
   store i64 %t258, ptr %v.rem
   %t259 = load i64, ptr %v.rem
   %t260 = icmp eq i64 3600, 0
@@ -1073,17 +1073,17 @@ panic.ok.14:
   %t297 = load %"struct.std/time.clockTime", ptr %v.agg.333
   ret %"struct.std/time.clockTime" %t297
 }
-define internal i64 @"std/time.localSeconds"(ptr %t) inlinehint {
+define hidden i64 @"std/time.local_seconds"(ptr %t) inlinehint {
 entry:
   %v.at = alloca i64
   %t298 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t299 = load i64, ptr %t298
-  %t300 = call i64 @"std/time.secondsOf"(i64 %t299)
+  %t300 = call i64 @"std/time.seconds_of"(i64 %t299)
   store i64 %t300, ptr %v.at
   %t301 = load i64, ptr %v.at
   %t302 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 1
   %t303 = load i64, ptr %v.at
-  %t304 = call i32 @"std/time.offsetAt"(ptr %t302, i64 %t303)
+  %t304 = call i32 @"std/time.offset_at"(ptr %t302, i64 %t303)
   %t305 = sext i32 %t304 to i64
   %t306 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t301, i64 %t305)
   %t307 = extractvalue {i64, i1} %t306, 0
@@ -1095,7 +1095,7 @@ panic.1:
 panic.ok.1:
   ret i64 %t307
 }
-define internal i64 @"std/time.weekdayOf"(i64 %days) inlinehint {
+define hidden i64 @"std/time.weekday_of"(i64 %days) inlinehint {
 entry:
   %t309 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %days, i64 4)
   %t310 = extractvalue {i64, i1} %t309, 0
@@ -1105,10 +1105,10 @@ panic.1:
   call void @willrt_panic(ptr @.str.10, ptr @.str.60, ptr @.str.61)
   unreachable
 panic.ok.1:
-  %t312 = call i64 @"std/time.floorMod"(i64 %t310, i64 7)
+  %t312 = call i64 @"std/time.floor_mod"(i64 %t310, i64 7)
   ret i64 %t312
 }
-define internal i1 @"std/time.isLeapYear"(i32 %year) alwaysinline {
+define hidden i1 @"std/time.is_leap_year"(i32 %year) alwaysinline {
 entry:
   %t313 = icmp eq i32 4, 0
   br i1 %t313, label %panic.2, label %panic.ok.2
@@ -1168,12 +1168,12 @@ panic.ok.8:
   %t330 = icmp eq i32 %t329, 0
   ret i1 %t330
 }
-define internal i32 @"std/time.daysInMonth"(i32 %year, i32 %month) inlinehint {
+define hidden i32 @"std/time.days_in_month"(i32 %year, i32 %month) inlinehint {
 entry:
   %t331 = icmp eq i32 %month, 2
   br i1 %t331, label %if.then.1, label %if.end.1
 if.then.1:
-  %t332 = call i1 @"std/time.isLeapYear"(i32 %year)
+  %t332 = call i1 @"std/time.is_leap_year"(i32 %year)
   br i1 %t332, label %if.then.2, label %if.end.2
 if.then.2:
   ret i32 29
@@ -1195,7 +1195,7 @@ if.end.3:
 }
 %"struct.std/time.clockError" = type { { ptr, i64 } }
 %"struct.std/time.Stopwatch" = type { i64 }
-define hidden { ptr, i64 } @"std/time.clockError.Message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"std/time.clockError.message"(ptr %e) inlinehint {
 entry:
   %v.ret.16 = alloca { ptr, i64 }
   %v.strm.16 = alloca { ptr, i64 }
@@ -1216,18 +1216,18 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.16
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"std/time.clockError.Status"(ptr %e) alwaysinline {
+define hidden i32 @"std/time.clockError.status"(ptr %e) alwaysinline {
 entry:
   ret i32 2
 }
-define internal void @"std/time.Stopwatch.init"(ptr %s) inlinehint {
+define hidden void @"std/time.Stopwatch.init"(ptr %s) inlinehint {
 entry:
   %t12 = getelementptr inbounds %"struct.std/time.Stopwatch", ptr %s, i32 0, i32 0
   %t13 = call i64 @willrt_now_ns()
   store i64 %t13, ptr %t12
   ret void
 }
-define hidden i64 @"std/time.Stopwatch.Elapsed"(ptr %s) inlinehint {
+define hidden i64 @"std/time.Stopwatch.elapsed"(ptr %s) inlinehint {
 entry:
   %t14 = call i64 @willrt_now_ns()
   %t15 = getelementptr inbounds %"struct.std/time.Stopwatch", ptr %s, i32 0, i32 0
@@ -1242,7 +1242,7 @@ panic.1:
 panic.ok.1:
   ret i64 %t18
 }
-define internal i32 @"std/time.Sleep.sm"(ptr %frame) {
+define internal i32 @"std/time.sleep.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.52.20 = getelementptr i8, ptr %frame, i64 8
@@ -1385,7 +1385,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/time.Sleep.task"(i64 %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/time.sleep.task"(i64 %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 176)
   %t85 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -1398,12 +1398,12 @@ entry:
   %t90 = select i1 %t89, i32 %t87, i32 %start
   br i1 %t88, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t91 = call ptr @willrt_task_new(ptr @"std/time.Sleep.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0)
+  %t91 = call ptr @willrt_task_new(ptr @"std/time.sleep.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t91)
   call void @willrt_task_run_auto(ptr %t91)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t92 = call ptr @willrt_task_new(ptr @"std/time.Sleep.sm", ptr %v.sm.frame, i64 176, i32 %t90, i32 0)
+  %t92 = call ptr @willrt_task_new(ptr @"std/time.sleep.sm", ptr %v.sm.frame, i64 176, i32 %t90, i32 0)
   call void @willrt_task_own_frame(ptr %t92)
   call void @willrt_task_run(ptr %t92)
   br label %sm.start.done.6
@@ -1462,7 +1462,7 @@ define internal void @"std/time.iface.share.Error.clockError"(ptr %data) {
 entry:
   ret void
 }
-define internal { ptr, i64 } @"std/time.pad2"(i64 %v) alwaysinline {
+define hidden { ptr, i64 } @"std/time.pad2"(i64 %v) alwaysinline {
 entry:
   %v.interp.17 = alloca { ptr, i64 }
   %v.interp.20 = alloca { ptr, i64 }
@@ -1519,7 +1519,7 @@ interp.ready.3:
   %t28 = load { ptr, i64 }, ptr %v.interp.20
   ret { ptr, i64 } %t28
 }
-define internal { ptr, i64 } @"std/time.padYear"(i32 %year) alwaysinline {
+define hidden { ptr, i64 } @"std/time.pad_year"(i32 %year) alwaysinline {
 entry:
   %v.interp.37 = alloca { ptr, i64 }
   %v.interp.49 = alloca { ptr, i64 }
@@ -1644,7 +1644,7 @@ interp.ready.7:
   %t94 = load { ptr, i64 }, ptr %v.interp.64
   ret { ptr, i64 } %t94
 }
-define internal { ptr, i64 } @"std/time.offsetSuffix"(i32 %offsetSec) inlinehint {
+define hidden { ptr, i64 } @"std/time.offset_suffix"(i32 %offsetSec) inlinehint {
 entry:
   %v.total = alloca i64
   %v.sign = alloca { ptr, i64 }
@@ -1839,7 +1839,7 @@ cat.ready.12:
   call void @willrt_free_str(ptr %t182)
   ret { ptr, i64 } %t180
 }
-define internal { ptr, i64 } @"std/time.fractionText"(i64 %frac) inlinehint {
+define hidden { ptr, i64 } @"std/time.fraction_text"(i64 %frac) inlinehint {
 entry:
   %v.digits = alloca { ptr, i64 }
   %v.zeros = alloca i32
@@ -2319,7 +2319,7 @@ deep.rel.arr.done.24:
   call void @willrt_free_str(ptr %t406)
   ret { ptr, i64 } %t386
 }
-define internal { ptr, i64 } @"std/time.weekdayName"(i64 %weekday) alwaysinline {
+define hidden { ptr, i64 } @"std/time.weekday_name"(i64 %weekday) alwaysinline {
 entry:
   %v.str.226 = alloca { ptr, i64 }
   %v.str.233 = alloca { ptr, i64 }
@@ -2395,7 +2395,7 @@ if.end.6:
   %t433 = load { ptr, i64 }, ptr %v.str.263
   ret { ptr, i64 } %t433
 }
-define internal { ptr, i64 } @"std/time.monthName"(i32 %month) alwaysinline {
+define hidden { ptr, i64 } @"std/time.month_name"(i32 %month) alwaysinline {
 entry:
   %v.str.275 = alloca { ptr, i64 }
   %v.str.282 = alloca { ptr, i64 }
@@ -2526,7 +2526,7 @@ if.end.11:
   %t480 = load { ptr, i64 }, ptr %v.str.347
   ret { ptr, i64 } %t480
 }
-define internal { ptr, i64 } @"std/time.rfc3339Body"(ptr %t, i64 %frac) inlinehint {
+define hidden { ptr, i64 } @"std/time.rfc3339_body"(ptr %t, i64 %frac) inlinehint {
 entry:
   %v.local = alloca i64
   %v.date = alloca %"struct.std/time.civilDate"
@@ -2560,22 +2560,22 @@ entry:
   %v.cat.420 = alloca { ptr, i64 }
   %v.cat.430 = alloca { ptr, i64 }
   %v.cat.431 = alloca { ptr, i64 }
-  %t481 = call i64 @"std/time.localSeconds"(ptr %t)
+  %t481 = call i64 @"std/time.local_seconds"(ptr %t)
   store i64 %t481, ptr %v.local
   %t482 = load i64, ptr %v.local
-  %t483 = call i64 @"std/time.daysOf"(i64 %t482)
-  %t484 = call %"struct.std/time.civilDate" @"std/time.civilFromDays"(i64 %t483)
+  %t483 = call i64 @"std/time.days_of"(i64 %t482)
+  %t484 = call %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %t483)
   store %"struct.std/time.civilDate" %t484, ptr %v.ret.361
   %t485 = load %"struct.std/time.civilDate", ptr %v.ret.361
   store %"struct.std/time.civilDate" %t485, ptr %v.date
   %t486 = load i64, ptr %v.local
-  %t487 = call %"struct.std/time.clockTime" @"std/time.timeOfDay"(i64 %t486)
+  %t487 = call %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %t486)
   store %"struct.std/time.clockTime" %t487, ptr %v.ret.366
   %t488 = load %"struct.std/time.clockTime", ptr %v.ret.366
   store %"struct.std/time.clockTime" %t488, ptr %v.tod
   %t489 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 0
   %t490 = load i32, ptr %t489
-  %t491 = call { ptr, i64 } @"std/time.padYear"(i32 %t490)
+  %t491 = call { ptr, i64 } @"std/time.pad_year"(i32 %t490)
   store { ptr, i64 } %t491, ptr %v.ret.374
   %t492 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.374, i32 0, i32 0
   %t493 = load ptr, ptr %t492
@@ -2858,7 +2858,7 @@ cat.ready.10:
   %t661 = load ptr, ptr %t660
   %t662 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.420, i32 0, i32 1
   %t663 = load i64, ptr %t662
-  %t664 = call { ptr, i64 } @"std/time.fractionText"(i64 %frac)
+  %t664 = call { ptr, i64 } @"std/time.fraction_text"(i64 %frac)
   store { ptr, i64 } %t664, ptr %v.ret.423
   %t665 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.423, i32 0, i32 0
   %t666 = load ptr, ptr %t665
@@ -2948,7 +2948,7 @@ cat.ready.13:
   call void @willrt_free_str(ptr %t713)
   ret { ptr, i64 } %t709
 }
-define hidden { ptr, i64 } @"std/time.Rfc3339"(ptr %t) inlinehint {
+define hidden { ptr, i64 } @"std/time.rfc3339"(ptr %t) inlinehint {
 entry:
   %v.at = alloca i64
   %v.ret.447 = alloca { ptr, i64 }
@@ -2956,9 +2956,9 @@ entry:
   %v.cat.446 = alloca { ptr, i64 }
   %t714 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t715 = load i64, ptr %t714
-  %t716 = call i64 @"std/time.secondsOf"(i64 %t715)
+  %t716 = call i64 @"std/time.seconds_of"(i64 %t715)
   store i64 %t716, ptr %v.at
-  %t717 = call { ptr, i64 } @"std/time.rfc3339Body"(ptr %t, i64 0)
+  %t717 = call { ptr, i64 } @"std/time.rfc3339_body"(ptr %t, i64 0)
   store { ptr, i64 } %t717, ptr %v.ret.447
   %t718 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.447, i32 0, i32 0
   %t719 = load ptr, ptr %t718
@@ -2966,8 +2966,8 @@ entry:
   %t721 = load i64, ptr %t720
   %t722 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 1
   %t723 = load i64, ptr %v.at
-  %t724 = call i32 @"std/time.offsetAt"(ptr %t722, i64 %t723)
-  %t725 = call { ptr, i64 } @"std/time.offsetSuffix"(i32 %t724)
+  %t724 = call i32 @"std/time.offset_at"(ptr %t722, i64 %t723)
+  %t725 = call { ptr, i64 } @"std/time.offset_suffix"(i32 %t724)
   store { ptr, i64 } %t725, ptr %v.ret.450
   %t726 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.450, i32 0, i32 0
   %t727 = load ptr, ptr %t726
@@ -2993,7 +2993,7 @@ cat.ready.1:
   %t737 = load { ptr, i64 }, ptr %v.cat.446
   ret { ptr, i64 } %t737
 }
-define hidden { ptr, i64 } @"std/time.Rfc3339Nano"(ptr %t) inlinehint {
+define hidden { ptr, i64 } @"std/time.rfc3339_nano"(ptr %t) inlinehint {
 entry:
   %v.at = alloca i64
   %v.ret.467 = alloca { ptr, i64 }
@@ -3001,12 +3001,12 @@ entry:
   %v.cat.466 = alloca { ptr, i64 }
   %t738 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t739 = load i64, ptr %t738
-  %t740 = call i64 @"std/time.secondsOf"(i64 %t739)
+  %t740 = call i64 @"std/time.seconds_of"(i64 %t739)
   store i64 %t740, ptr %v.at
   %t741 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t742 = load i64, ptr %t741
-  %t743 = call i64 @"std/time.fractionOf"(i64 %t742)
-  %t744 = call { ptr, i64 } @"std/time.rfc3339Body"(ptr %t, i64 %t743)
+  %t743 = call i64 @"std/time.fraction_of"(i64 %t742)
+  %t744 = call { ptr, i64 } @"std/time.rfc3339_body"(ptr %t, i64 %t743)
   store { ptr, i64 } %t744, ptr %v.ret.467
   %t745 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.467, i32 0, i32 0
   %t746 = load ptr, ptr %t745
@@ -3014,8 +3014,8 @@ entry:
   %t748 = load i64, ptr %t747
   %t749 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 1
   %t750 = load i64, ptr %v.at
-  %t751 = call i32 @"std/time.offsetAt"(ptr %t749, i64 %t750)
-  %t752 = call { ptr, i64 } @"std/time.offsetSuffix"(i32 %t751)
+  %t751 = call i32 @"std/time.offset_at"(ptr %t749, i64 %t750)
+  %t752 = call { ptr, i64 } @"std/time.offset_suffix"(i32 %t751)
   store { ptr, i64 } %t752, ptr %v.ret.472
   %t753 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.472, i32 0, i32 0
   %t754 = load ptr, ptr %t753
@@ -3041,7 +3041,7 @@ cat.ready.1:
   %t764 = load { ptr, i64 }, ptr %v.cat.466
   ret { ptr, i64 } %t764
 }
-define hidden { ptr, i64 } @"std/time.Rfc1123"(ptr %t) inlinehint {
+define hidden { ptr, i64 } @"std/time.rfc1123"(ptr %t) inlinehint {
 entry:
   %v.secs = alloca i64
   %v.date = alloca %"struct.std/time.civilDate"
@@ -3080,23 +3080,23 @@ entry:
   %v.cat.554 = alloca { ptr, i64 }
   %t765 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t766 = load i64, ptr %t765
-  %t767 = call i64 @"std/time.secondsOf"(i64 %t766)
+  %t767 = call i64 @"std/time.seconds_of"(i64 %t766)
   store i64 %t767, ptr %v.secs
   %t768 = load i64, ptr %v.secs
-  %t769 = call i64 @"std/time.daysOf"(i64 %t768)
-  %t770 = call %"struct.std/time.civilDate" @"std/time.civilFromDays"(i64 %t769)
+  %t769 = call i64 @"std/time.days_of"(i64 %t768)
+  %t770 = call %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %t769)
   store %"struct.std/time.civilDate" %t770, ptr %v.ret.489
   %t771 = load %"struct.std/time.civilDate", ptr %v.ret.489
   store %"struct.std/time.civilDate" %t771, ptr %v.date
   %t772 = load i64, ptr %v.secs
-  %t773 = call %"struct.std/time.clockTime" @"std/time.timeOfDay"(i64 %t772)
+  %t773 = call %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %t772)
   store %"struct.std/time.clockTime" %t773, ptr %v.ret.494
   %t774 = load %"struct.std/time.clockTime", ptr %v.ret.494
   store %"struct.std/time.clockTime" %t774, ptr %v.tod
   %t775 = load i64, ptr %v.secs
-  %t776 = call i64 @"std/time.daysOf"(i64 %t775)
-  %t777 = call i64 @"std/time.weekdayOf"(i64 %t776)
-  %t778 = call { ptr, i64 } @"std/time.weekdayName"(i64 %t777)
+  %t776 = call i64 @"std/time.days_of"(i64 %t775)
+  %t777 = call i64 @"std/time.weekday_of"(i64 %t776)
+  %t778 = call { ptr, i64 } @"std/time.weekday_name"(i64 %t777)
   store { ptr, i64 } %t778, ptr %v.ret.500
   %t779 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.500, i32 0, i32 0
   %t780 = load ptr, ptr %t779
@@ -3161,7 +3161,7 @@ cat.ready.2:
   store { ptr, i64 } %t815, ptr %v.left
   %t816 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 1
   %t817 = load i32, ptr %t816
-  %t818 = call { ptr, i64 } @"std/time.monthName"(i32 %t817)
+  %t818 = call { ptr, i64 } @"std/time.month_name"(i32 %t817)
   store { ptr, i64 } %t818, ptr %v.ret.514
   %t819 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.514, i32 0, i32 0
   %t820 = load ptr, ptr %t819
@@ -3198,7 +3198,7 @@ cat.ready.3:
   %t839 = load i64, ptr %t838
   %t840 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 0
   %t841 = load i32, ptr %t840
-  %t842 = call { ptr, i64 } @"std/time.padYear"(i32 %t841)
+  %t842 = call { ptr, i64 } @"std/time.pad_year"(i32 %t841)
   store { ptr, i64 } %t842, ptr %v.ret.518
   %t843 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.518, i32 0, i32 0
   %t844 = load ptr, ptr %t843
@@ -3497,7 +3497,7 @@ cat.ready.13:
   call void @willrt_free_str(ptr %t1019)
   ret { ptr, i64 } %t1013
 }
-define hidden { ptr, i64 } @"std/time.Date"(ptr %t) inlinehint {
+define hidden { ptr, i64 } @"std/time.date"(ptr %t) inlinehint {
 entry:
   %v.date = alloca %"struct.std/time.civilDate"
   %v.ret.568 = alloca %"struct.std/time.civilDate"
@@ -3510,15 +3510,15 @@ entry:
   %v.cat.575 = alloca { ptr, i64 }
   %v.cat.576 = alloca { ptr, i64 }
   %v.cat.577 = alloca { ptr, i64 }
-  %t1020 = call i64 @"std/time.localSeconds"(ptr %t)
-  %t1021 = call i64 @"std/time.daysOf"(i64 %t1020)
-  %t1022 = call %"struct.std/time.civilDate" @"std/time.civilFromDays"(i64 %t1021)
+  %t1020 = call i64 @"std/time.local_seconds"(ptr %t)
+  %t1021 = call i64 @"std/time.days_of"(i64 %t1020)
+  %t1022 = call %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %t1021)
   store %"struct.std/time.civilDate" %t1022, ptr %v.ret.568
   %t1023 = load %"struct.std/time.civilDate", ptr %v.ret.568
   store %"struct.std/time.civilDate" %t1023, ptr %v.date
   %t1024 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 0
   %t1025 = load i32, ptr %t1024
-  %t1026 = call { ptr, i64 } @"std/time.padYear"(i32 %t1025)
+  %t1026 = call { ptr, i64 } @"std/time.pad_year"(i32 %t1025)
   store { ptr, i64 } %t1026, ptr %v.ret.578
   %t1027 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.578, i32 0, i32 0
   %t1028 = load ptr, ptr %t1027
@@ -3641,7 +3641,7 @@ cat.ready.4:
   %t1099 = load { ptr, i64 }, ptr %v.cat.574
   ret { ptr, i64 } %t1099
 }
-define hidden { ptr, i64 } @"std/time.Clock"(ptr %t) inlinehint {
+define hidden { ptr, i64 } @"std/time.clock"(ptr %t) inlinehint {
 entry:
   %v.tod = alloca %"struct.std/time.clockTime"
   %v.ret.600 = alloca %"struct.std/time.clockTime"
@@ -3654,8 +3654,8 @@ entry:
   %v.cat.606 = alloca { ptr, i64 }
   %v.cat.607 = alloca { ptr, i64 }
   %v.cat.608 = alloca { ptr, i64 }
-  %t1100 = call i64 @"std/time.localSeconds"(ptr %t)
-  %t1101 = call %"struct.std/time.clockTime" @"std/time.timeOfDay"(i64 %t1100)
+  %t1100 = call i64 @"std/time.local_seconds"(ptr %t)
+  %t1101 = call %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %t1100)
   store %"struct.std/time.clockTime" %t1101, ptr %v.ret.600
   %t1102 = load %"struct.std/time.clockTime", ptr %v.ret.600
   store %"struct.std/time.clockTime" %t1102, ptr %v.tod
@@ -3786,7 +3786,7 @@ cat.ready.4:
   ret { ptr, i64 } %t1179
 }
 %"struct.std/time.timeError" = type { { ptr, i64 } }
-define hidden { ptr, i64 } @"std/time.timeError.Message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"std/time.timeError.message"(ptr %e) inlinehint {
 entry:
   %v.ret.18 = alloca { ptr, i64 }
   %v.strm.18 = alloca { ptr, i64 }
@@ -3807,11 +3807,11 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.18
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"std/time.timeError.Status"(ptr %e) alwaysinline {
+define hidden i32 @"std/time.timeError.status"(ptr %e) alwaysinline {
 entry:
   ret i32 2
 }
-define internal %"struct.std/time.timeError" @"std/time.fail"(ptr %message) inlinehint {
+define hidden %"struct.std/time.timeError" @"std/time.fail"(ptr %message) inlinehint {
 entry:
   %v.agg.34 = alloca %"struct.std/time.timeError"
   %v.ret.35 = alloca { ptr, i64 }
@@ -3834,7 +3834,7 @@ entry:
   %t22 = load %"struct.std/time.timeError", ptr %v.agg.34
   ret %"struct.std/time.timeError" %t22
 }
-define internal { ptr, i64, i64 } @"std/time.charsOf"(ptr %s) inlinehint {
+define hidden { ptr, i64, i64 } @"std/time.chars_of"(ptr %s) inlinehint {
 entry:
   %v.out = alloca { ptr, i64, i64 }
   %v.new.76 = alloca { ptr, i64, i64 }
@@ -3934,7 +3934,7 @@ for.end.1:
   %t67 = load { ptr, i64, i64 }, ptr %v.out
   ret { ptr, i64, i64 } %t67
 }
-define internal i32 @"std/time.digitValue"(i32 %c) alwaysinline {
+define hidden i32 @"std/time.digit_value"(i32 %c) alwaysinline {
 entry:
   %t68 = icmp uge i32 %c, 48
   %t69 = icmp ule i32 %c, 57
@@ -3966,7 +3966,7 @@ panic.ok.4:
   %t75 = sub i32 0, 1
   ret i32 %t75
 }
-define internal i1 @"std/time.hasAt"(ptr %cs, i32 %at, i32 %want) inlinehint {
+define hidden i1 @"std/time.has_at"(ptr %cs, i32 %at, i32 %want) inlinehint {
 entry:
   %t77 = icmp slt i32 %at, 0
   %t78 = getelementptr inbounds { ptr, i64 }, ptr %cs, i32 0, i32 1
@@ -4000,7 +4000,7 @@ panic.ok.3:
   %t92 = icmp eq i32 %t91, %want
   ret i1 %t92
 }
-define internal i32 @"std/time.readDigits"(ptr %cs, i32 %at, i32 %count) inlinehint {
+define hidden i32 @"std/time.read_digits"(ptr %cs, i32 %at, i32 %count) inlinehint {
 entry:
   %v.value = alloca i32
   %v.k = alloca i32
@@ -4070,7 +4070,7 @@ panic.8:
 panic.ok.8:
   %t119 = getelementptr inbounds i32, ptr %t115, i64 %t113
   %t120 = load i32, ptr %t119
-  %t121 = call i32 @"std/time.digitValue"(i32 %t120)
+  %t121 = call i32 @"std/time.digit_value"(i32 %t120)
   store i32 %t121, ptr %v.d
   %t122 = load i32, ptr %v.d
   %t123 = icmp slt i32 %t122, 0
@@ -4119,14 +4119,14 @@ for.end.5:
   %t138 = load i32, ptr %v.value
   ret i32 %t138
 }
-define internal i1 @"std/time.secondInRange"(i64 %sec) alwaysinline {
+define hidden i1 @"std/time.second_in_range"(i64 %sec) alwaysinline {
 entry:
   %t139 = icmp sge i64 %sec, -9223372036
   %t140 = icmp sle i64 %sec, 9223372036
   %t141 = and i1 %t139, %t140
   ret i1 %t141
 }
-define hidden { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseRfc3339"(ptr %s) inlinehint {
+define hidden { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.parse_rfc3339"(ptr %s) inlinehint {
 entry:
   %v.cs = alloca { ptr, i64, i64 }
   %v.c = alloca { ptr, i64 }
@@ -4144,8 +4144,8 @@ entry:
   %v.offset = alloca i32
   %v.offsetHour = alloca i32
   %v.offsetMinute = alloca i32
-  %v.local = alloca i64
-  %v.utc = alloca i64
+  %v.local_seconds = alloca i64
+  %v.utc_seconds = alloca i64
   %v.agg.720 = alloca %"struct.std/time.Instant"
   %v.ret.240 = alloca { ptr, i64, i64 }
   %v.ret.265 = alloca %"struct.std/time.timeError"
@@ -4199,7 +4199,7 @@ entry:
   %v.adt.712 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
   %v.adt.718 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
   %v.slice.245 = alloca { ptr, i64 }
-  %t142 = call { ptr, i64, i64 } @"std/time.charsOf"(ptr %s)
+  %t142 = call { ptr, i64, i64 } @"std/time.chars_of"(ptr %s)
   store { ptr, i64, i64 } %t142, ptr %v.ret.240
   %t143 = load { ptr, i64, i64 }, ptr %v.ret.240
   store { ptr, i64, i64 } %t143, ptr %v.cs
@@ -4294,17 +4294,17 @@ deep.rel.arr.done.5:
   call void @willrt_free(ptr %t186)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t183
 if.end.4:
-  %t193 = call i32 @"std/time.readDigits"(ptr %v.c, i32 0, i32 4)
+  %t193 = call i32 @"std/time.read_digits"(ptr %v.c, i32 0, i32 4)
   store i32 %t193, ptr %v.year
-  %t194 = call i32 @"std/time.readDigits"(ptr %v.c, i32 5, i32 2)
+  %t194 = call i32 @"std/time.read_digits"(ptr %v.c, i32 5, i32 2)
   store i32 %t194, ptr %v.month
-  %t195 = call i32 @"std/time.readDigits"(ptr %v.c, i32 8, i32 2)
+  %t195 = call i32 @"std/time.read_digits"(ptr %v.c, i32 8, i32 2)
   store i32 %t195, ptr %v.day
-  %t196 = call i32 @"std/time.readDigits"(ptr %v.c, i32 11, i32 2)
+  %t196 = call i32 @"std/time.read_digits"(ptr %v.c, i32 11, i32 2)
   store i32 %t196, ptr %v.hour
-  %t197 = call i32 @"std/time.readDigits"(ptr %v.c, i32 14, i32 2)
+  %t197 = call i32 @"std/time.read_digits"(ptr %v.c, i32 14, i32 2)
   store i32 %t197, ptr %v.minute
-  %t198 = call i32 @"std/time.readDigits"(ptr %v.c, i32 17, i32 2)
+  %t198 = call i32 @"std/time.read_digits"(ptr %v.c, i32 17, i32 2)
   store i32 %t198, ptr %v.second
   %t199 = load i32, ptr %v.year
   %t200 = icmp slt i32 %t199, 0
@@ -4376,9 +4376,9 @@ deep.rel.arr.done.7:
   call void @willrt_free(ptr %t239)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t236
 if.end.6:
-  %t246 = call i1 @"std/time.hasAt"(ptr %v.c, i32 4, i32 45)
+  %t246 = call i1 @"std/time.has_at"(ptr %v.c, i32 4, i32 45)
   %t247 = xor i1 %t246, true
-  %t248 = call i1 @"std/time.hasAt"(ptr %v.c, i32 7, i32 45)
+  %t248 = call i1 @"std/time.has_at"(ptr %v.c, i32 7, i32 45)
   %t249 = xor i1 %t248, true
   %t250 = or i1 %t247, %t249
   br i1 %t250, label %if.then.8, label %if.end.8
@@ -4434,9 +4434,9 @@ deep.rel.arr.done.9:
   call void @willrt_free(ptr %t274)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t271
 if.end.8:
-  %t281 = call i1 @"std/time.hasAt"(ptr %v.c, i32 10, i32 84)
+  %t281 = call i1 @"std/time.has_at"(ptr %v.c, i32 10, i32 84)
   %t282 = xor i1 %t281, true
-  %t283 = call i1 @"std/time.hasAt"(ptr %v.c, i32 10, i32 116)
+  %t283 = call i1 @"std/time.has_at"(ptr %v.c, i32 10, i32 116)
   %t284 = xor i1 %t283, true
   %t285 = and i1 %t282, %t284
   br i1 %t285, label %if.then.10, label %if.end.10
@@ -4492,9 +4492,9 @@ deep.rel.arr.done.11:
   call void @willrt_free(ptr %t309)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t306
 if.end.10:
-  %t316 = call i1 @"std/time.hasAt"(ptr %v.c, i32 13, i32 58)
+  %t316 = call i1 @"std/time.has_at"(ptr %v.c, i32 13, i32 58)
   %t317 = xor i1 %t316, true
-  %t318 = call i1 @"std/time.hasAt"(ptr %v.c, i32 16, i32 58)
+  %t318 = call i1 @"std/time.has_at"(ptr %v.c, i32 16, i32 58)
   %t319 = xor i1 %t318, true
   %t320 = or i1 %t317, %t319
   br i1 %t320, label %if.then.12, label %if.end.12
@@ -4613,7 +4613,7 @@ if.end.14:
   %t388 = load i32, ptr %v.day
   %t389 = load i32, ptr %v.year
   %t390 = load i32, ptr %v.month
-  %t391 = call i32 @"std/time.daysInMonth"(i32 %t389, i32 %t390)
+  %t391 = call i32 @"std/time.days_in_month"(i32 %t389, i32 %t390)
   %t392 = icmp sgt i32 %t388, %t391
   %t393 = or i1 %t387, %t392
   br i1 %t393, label %if.then.16, label %if.end.16
@@ -4733,7 +4733,7 @@ if.end.18:
   store i32 19, ptr %v.at
   store i64 0, ptr %v.frac
   %t462 = load i32, ptr %v.at
-  %t463 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t462, i32 46)
+  %t463 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t462, i32 46)
   br i1 %t463, label %if.then.20, label %if.end.20
 if.then.20:
   %t464 = load i32, ptr %v.at
@@ -4770,7 +4770,7 @@ panic.24:
 panic.ok.24:
   %t478 = getelementptr inbounds i32, ptr %t474, i64 %t472
   %t479 = load i32, ptr %t478
-  %t480 = call i32 @"std/time.digitValue"(i32 %t479)
+  %t480 = call i32 @"std/time.digit_value"(i32 %t479)
   store i32 %t480, ptr %v.d
   %t481 = load i32, ptr %v.d
   %t482 = icmp slt i32 %t481, 0
@@ -4971,9 +4971,9 @@ deep.rel.arr.done.38:
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t567
 if.end.37:
   %t577 = load i32, ptr %v.at
-  %t578 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t577, i32 90)
+  %t578 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t577, i32 90)
   %t579 = load i32, ptr %v.at
-  %t580 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t579, i32 122)
+  %t580 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t579, i32 122)
   %t581 = or i1 %t578, %t580
   br i1 %t581, label %if.then.39, label %if.else.39
 if.then.39:
@@ -4990,9 +4990,9 @@ panic.ok.40:
   br label %if.end.39
 if.else.39:
   %t586 = load i32, ptr %v.at
-  %t587 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t586, i32 43)
+  %t587 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t586, i32 43)
   %t588 = load i32, ptr %v.at
-  %t589 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t588, i32 45)
+  %t589 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t588, i32 45)
   %t590 = or i1 %t587, %t589
   br i1 %t590, label %if.then.41, label %if.else.41
 if.then.41:
@@ -5005,7 +5005,7 @@ panic.42:
   call void @willrt_panic(ptr @.str.10, ptr @.str.160, ptr @.str.138)
   unreachable
 panic.ok.42:
-  %t595 = call i32 @"std/time.readDigits"(ptr %v.c, i32 %t593, i32 2)
+  %t595 = call i32 @"std/time.read_digits"(ptr %v.c, i32 %t593, i32 2)
   store i32 %t595, ptr %v.offsetHour
   %t596 = load i32, ptr %v.at
   %t597 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t596, i32 4)
@@ -5016,7 +5016,7 @@ panic.43:
   call void @willrt_panic(ptr @.str.10, ptr @.str.161, ptr @.str.138)
   unreachable
 panic.ok.43:
-  %t600 = call i32 @"std/time.readDigits"(ptr %v.c, i32 %t598, i32 2)
+  %t600 = call i32 @"std/time.read_digits"(ptr %v.c, i32 %t598, i32 2)
   store i32 %t600, ptr %v.offsetMinute
   %t601 = load i32, ptr %v.offsetHour
   %t602 = icmp slt i32 %t601, 0
@@ -5032,7 +5032,7 @@ panic.45:
   call void @willrt_panic(ptr @.str.10, ptr @.str.162, ptr @.str.138)
   unreachable
 panic.ok.45:
-  %t610 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t608, i32 58)
+  %t610 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t608, i32 58)
   %t611 = xor i1 %t610, true
   %t612 = or i1 %t605, %t611
   br i1 %t612, label %if.then.44, label %if.end.44
@@ -5174,7 +5174,7 @@ panic.51:
 panic.ok.51:
   store i32 %t687, ptr %v.offset
   %t689 = load i32, ptr %v.at
-  %t690 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t689, i32 45)
+  %t690 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t689, i32 45)
   br i1 %t690, label %if.then.52, label %if.end.52
 if.then.52:
   %t691 = load i32, ptr %v.offset
@@ -5312,7 +5312,7 @@ if.end.56:
   %t761 = load i32, ptr %v.year
   %t762 = load i32, ptr %v.month
   %t763 = load i32, ptr %v.day
-  %t764 = call i64 @"std/time.daysFromCivil"(i32 %t761, i32 %t762, i32 %t763)
+  %t764 = call i64 @"std/time.days_from_civil"(i32 %t761, i32 %t762, i32 %t763)
   %t765 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t764, i64 86400)
   %t766 = extractvalue {i64, i1} %t765, 0
   %t767 = extractvalue {i64, i1} %t765, 1
@@ -5321,8 +5321,8 @@ panic.58:
   call void @willrt_panic(ptr @.str.10, ptr @.str.171, ptr @.str.138)
   unreachable
 panic.ok.58:
-  store i64 %t766, ptr %v.local
-  %t768 = load i64, ptr %v.local
+  store i64 %t766, ptr %v.local_seconds
+  %t768 = load i64, ptr %v.local_seconds
   %t769 = load i32, ptr %v.hour
   %t770 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %t769, i32 3600)
   %t771 = extractvalue {i32, i1} %t770, 0
@@ -5367,8 +5367,8 @@ panic.63:
   call void @willrt_panic(ptr @.str.10, ptr @.str.174, ptr @.str.138)
   unreachable
 panic.ok.63:
-  store i64 %t786, ptr %v.local
-  %t788 = load i64, ptr %v.local
+  store i64 %t786, ptr %v.local_seconds
+  %t788 = load i64, ptr %v.local_seconds
   %t789 = load i32, ptr %v.offset
   %t790 = sext i32 %t789 to i64
   %t791 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t788, i64 %t790)
@@ -5379,9 +5379,9 @@ panic.64:
   call void @willrt_panic(ptr @.str.10, ptr @.str.175, ptr @.str.138)
   unreachable
 panic.ok.64:
-  store i64 %t792, ptr %v.utc
-  %t794 = load i64, ptr %v.utc
-  %t795 = call i1 @"std/time.secondInRange"(i64 %t794)
+  store i64 %t792, ptr %v.utc_seconds
+  %t794 = load i64, ptr %v.utc_seconds
+  %t795 = call i1 @"std/time.second_in_range"(i64 %t794)
   %t796 = xor i1 %t795, true
   br i1 %t796, label %if.then.65, label %if.end.65
 if.then.65:
@@ -5436,7 +5436,7 @@ deep.rel.arr.done.66:
   call void @willrt_free(ptr %t820)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t817
 if.end.65:
-  %t827 = load i64, ptr %v.utc
+  %t827 = load i64, ptr %v.utc_seconds
   %t828 = icmp eq i64 %t827, 9223372036
   %t829 = load i64, ptr %v.frac
   %t830 = icmp sgt i64 %t829, 854775807
@@ -5498,7 +5498,7 @@ if.end.67:
   store i32 0, ptr %t862
   %t863 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.718, i32 0, i32 2
   %t864 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.720, i32 0, i32 0
-  %t865 = load i64, ptr %v.utc
+  %t865 = load i64, ptr %v.utc_seconds
   %t866 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t865, i64 1000000000)
   %t867 = extractvalue {i64, i1} %t866, 0
   %t868 = extractvalue {i64, i1} %t866, 1
@@ -5519,7 +5519,7 @@ panic.ok.70:
   store i64 %t871, ptr %t864
   %t873 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.720, i32 0, i32 1
   %t874 = load i32, ptr %v.offset
-  %t875 = call %"struct.std/time.Timezone" @"std/time.Fixed"(i32 %t874)
+  %t875 = call %"struct.std/time.Timezone" @"std/time.fixed"(i32 %t874)
   store %"struct.std/time.Timezone" %t875, ptr %v.ret.726
   %t876 = load %"struct.std/time.Timezone", ptr %v.ret.726
   store %"struct.std/time.Timezone" %t876, ptr %t873
@@ -5546,7 +5546,7 @@ deep.rel.arr.done.71:
   call void @willrt_free(ptr %t881)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t878
 }
-define hidden { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseDate"(ptr %s, ptr %tz) inlinehint {
+define hidden { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.parse_date"(ptr %s, ptr %tz) inlinehint {
 entry:
   %v.cs = alloca { ptr, i64, i64 }
   %v.c = alloca { ptr, i64 }
@@ -5554,9 +5554,9 @@ entry:
   %v.year = alloca i32
   %v.month = alloca i32
   %v.day = alloca i32
-  %v.local = alloca i64
+  %v.local_seconds = alloca i64
   %v.offset = alloca i32
-  %v.utc = alloca i64
+  %v.utc_seconds = alloca i64
   %v.corrected = alloca i32
   %v.agg.907 = alloca %"struct.std/time.Instant"
   %v.ret.740 = alloca { ptr, i64, i64 }
@@ -5580,7 +5580,7 @@ entry:
   %v.adt.899 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
   %v.adt.905 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
   %v.slice.745 = alloca { ptr, i64 }
-  %t888 = call { ptr, i64, i64 } @"std/time.charsOf"(ptr %s)
+  %t888 = call { ptr, i64, i64 } @"std/time.chars_of"(ptr %s)
   store { ptr, i64, i64 } %t888, ptr %v.ret.740
   %t889 = load { ptr, i64, i64 }, ptr %v.ret.740
   store { ptr, i64, i64 } %t889, ptr %v.cs
@@ -5675,11 +5675,11 @@ deep.rel.arr.done.5:
   call void @willrt_free(ptr %t932)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t929
 if.end.4:
-  %t939 = call i32 @"std/time.readDigits"(ptr %v.c, i32 0, i32 4)
+  %t939 = call i32 @"std/time.read_digits"(ptr %v.c, i32 0, i32 4)
   store i32 %t939, ptr %v.year
-  %t940 = call i32 @"std/time.readDigits"(ptr %v.c, i32 5, i32 2)
+  %t940 = call i32 @"std/time.read_digits"(ptr %v.c, i32 5, i32 2)
   store i32 %t940, ptr %v.month
-  %t941 = call i32 @"std/time.readDigits"(ptr %v.c, i32 8, i32 2)
+  %t941 = call i32 @"std/time.read_digits"(ptr %v.c, i32 8, i32 2)
   store i32 %t941, ptr %v.day
   %t942 = load i32, ptr %v.year
   %t943 = icmp slt i32 %t942, 0
@@ -5742,9 +5742,9 @@ deep.rel.arr.done.7:
   call void @willrt_free(ptr %t973)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t970
 if.end.6:
-  %t980 = call i1 @"std/time.hasAt"(ptr %v.c, i32 4, i32 45)
+  %t980 = call i1 @"std/time.has_at"(ptr %v.c, i32 4, i32 45)
   %t981 = xor i1 %t980, true
-  %t982 = call i1 @"std/time.hasAt"(ptr %v.c, i32 7, i32 45)
+  %t982 = call i1 @"std/time.has_at"(ptr %v.c, i32 7, i32 45)
   %t983 = xor i1 %t982, true
   %t984 = or i1 %t981, %t983
   br i1 %t984, label %if.then.8, label %if.end.8
@@ -5863,7 +5863,7 @@ if.end.10:
   %t1052 = load i32, ptr %v.day
   %t1053 = load i32, ptr %v.year
   %t1054 = load i32, ptr %v.month
-  %t1055 = call i32 @"std/time.daysInMonth"(i32 %t1053, i32 %t1054)
+  %t1055 = call i32 @"std/time.days_in_month"(i32 %t1053, i32 %t1054)
   %t1056 = icmp sgt i32 %t1052, %t1055
   %t1057 = or i1 %t1051, %t1056
   br i1 %t1057, label %if.then.12, label %if.end.12
@@ -5922,7 +5922,7 @@ if.end.12:
   %t1088 = load i32, ptr %v.year
   %t1089 = load i32, ptr %v.month
   %t1090 = load i32, ptr %v.day
-  %t1091 = call i64 @"std/time.daysFromCivil"(i32 %t1088, i32 %t1089, i32 %t1090)
+  %t1091 = call i64 @"std/time.days_from_civil"(i32 %t1088, i32 %t1089, i32 %t1090)
   %t1092 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t1091, i64 86400)
   %t1093 = extractvalue {i64, i1} %t1092, 0
   %t1094 = extractvalue {i64, i1} %t1092, 1
@@ -5931,11 +5931,11 @@ panic.14:
   call void @willrt_panic(ptr @.str.10, ptr @.str.187, ptr @.str.180)
   unreachable
 panic.ok.14:
-  store i64 %t1093, ptr %v.local
-  %t1095 = load i64, ptr %v.local
-  %t1096 = call i32 @"std/time.offsetAt"(ptr %tz, i64 %t1095)
+  store i64 %t1093, ptr %v.local_seconds
+  %t1095 = load i64, ptr %v.local_seconds
+  %t1096 = call i32 @"std/time.offset_at"(ptr %tz, i64 %t1095)
   store i32 %t1096, ptr %v.offset
-  %t1097 = load i64, ptr %v.local
+  %t1097 = load i64, ptr %v.local_seconds
   %t1098 = load i32, ptr %v.offset
   %t1099 = sext i32 %t1098 to i64
   %t1100 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t1097, i64 %t1099)
@@ -5946,16 +5946,16 @@ panic.15:
   call void @willrt_panic(ptr @.str.10, ptr @.str.188, ptr @.str.180)
   unreachable
 panic.ok.15:
-  store i64 %t1101, ptr %v.utc
-  %t1103 = load i64, ptr %v.utc
-  %t1104 = call i32 @"std/time.offsetAt"(ptr %tz, i64 %t1103)
+  store i64 %t1101, ptr %v.utc_seconds
+  %t1103 = load i64, ptr %v.utc_seconds
+  %t1104 = call i32 @"std/time.offset_at"(ptr %tz, i64 %t1103)
   store i32 %t1104, ptr %v.corrected
   %t1105 = load i32, ptr %v.corrected
   %t1106 = load i32, ptr %v.offset
   %t1107 = icmp ne i32 %t1105, %t1106
   br i1 %t1107, label %if.then.16, label %if.end.16
 if.then.16:
-  %t1108 = load i64, ptr %v.local
+  %t1108 = load i64, ptr %v.local_seconds
   %t1109 = load i32, ptr %v.corrected
   %t1110 = sext i32 %t1109 to i64
   %t1111 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t1108, i64 %t1110)
@@ -5966,11 +5966,11 @@ panic.17:
   call void @willrt_panic(ptr @.str.10, ptr @.str.189, ptr @.str.180)
   unreachable
 panic.ok.17:
-  store i64 %t1112, ptr %v.utc
+  store i64 %t1112, ptr %v.utc_seconds
   br label %if.end.16
 if.end.16:
-  %t1114 = load i64, ptr %v.utc
-  %t1115 = call i1 @"std/time.secondInRange"(i64 %t1114)
+  %t1114 = load i64, ptr %v.utc_seconds
+  %t1115 = call i1 @"std/time.second_in_range"(i64 %t1114)
   %t1116 = xor i1 %t1115, true
   br i1 %t1116, label %if.then.18, label %if.end.18
 if.then.18:
@@ -6029,7 +6029,7 @@ if.end.18:
   store i32 0, ptr %t1147
   %t1148 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.905, i32 0, i32 2
   %t1149 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.907, i32 0, i32 0
-  %t1150 = load i64, ptr %v.utc
+  %t1150 = load i64, ptr %v.utc_seconds
   %t1151 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t1150, i64 1000000000)
   %t1152 = extractvalue {i64, i1} %t1151, 0
   %t1153 = extractvalue {i64, i1} %t1151, 1
@@ -6117,22 +6117,22 @@ entry:
   ret void
 }
 %"struct.std/time.Instant" = type { i64, %"struct.std/time.Timezone" }
-define hidden %"struct.std/time.Instant" @"std/time.Now"() inlinehint {
+define hidden %"struct.std/time.Instant" @"std/time.now"() inlinehint {
 entry:
   %v.agg.14 = alloca %"struct.std/time.Instant"
   %v.ret.16 = alloca %"struct.std/time.Timezone"
   %t1 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.14, i32 0, i32 0
-  %t2 = call i64 @"std/time.wallNanos"()
+  %t2 = call i64 @"std/time.wall_nanos"()
   store i64 %t2, ptr %t1
   %t3 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.14, i32 0, i32 1
-  %t4 = call %"struct.std/time.Timezone" @"std/time.Utc"()
+  %t4 = call %"struct.std/time.Timezone" @"std/time.utc"()
   store %"struct.std/time.Timezone" %t4, ptr %v.ret.16
   %t5 = load %"struct.std/time.Timezone", ptr %v.ret.16
   store %"struct.std/time.Timezone" %t5, ptr %t3
   %t6 = load %"struct.std/time.Instant", ptr %v.agg.14
   ret %"struct.std/time.Instant" %t6
 }
-define hidden %"struct.std/time.Instant" @"std/time.FromUnix"(i64 %sec) inlinehint {
+define hidden %"struct.std/time.Instant" @"std/time.from_unix"(i64 %sec) inlinehint {
 entry:
   %v.agg.23 = alloca %"struct.std/time.Instant"
   %v.ret.27 = alloca %"struct.std/time.Timezone"
@@ -6147,21 +6147,21 @@ panic.1:
 panic.ok.1:
   store i64 %t9, ptr %t7
   %t11 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.23, i32 0, i32 1
-  %t12 = call %"struct.std/time.Timezone" @"std/time.Utc"()
+  %t12 = call %"struct.std/time.Timezone" @"std/time.utc"()
   store %"struct.std/time.Timezone" %t12, ptr %v.ret.27
   %t13 = load %"struct.std/time.Timezone", ptr %v.ret.27
   store %"struct.std/time.Timezone" %t13, ptr %t11
   %t14 = load %"struct.std/time.Instant", ptr %v.agg.23
   ret %"struct.std/time.Instant" %t14
 }
-define hidden i64 @"std/time.Unix"(ptr %t) inlinehint {
+define hidden i64 @"std/time.unix"(ptr %t) inlinehint {
 entry:
   %t15 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t16 = load i64, ptr %t15
-  %t17 = call i64 @"std/time.floorDiv"(i64 %t16, i64 1000000000)
+  %t17 = call i64 @"std/time.floor_div"(i64 %t16, i64 1000000000)
   ret i64 %t17
 }
-define hidden %"struct.std/time.Instant" @"std/time.In"(ptr %t, ptr %tz) alwaysinline {
+define hidden %"struct.std/time.Instant" @"std/time.in_zone"(ptr %t, ptr %tz) alwaysinline {
 entry:
   %v.agg.46 = alloca %"struct.std/time.Instant"
   %t18 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.46, i32 0, i32 0
@@ -6175,15 +6175,15 @@ entry:
   ret %"struct.std/time.Instant" %t23
 }
 %"struct.std/time.Timezone" = type { i32, i32, i32 }
-define hidden %"struct.std/time.Timezone" @"std/time.Utc"() inlinehint {
+define hidden %"struct.std/time.Timezone" @"std/time.utc"() inlinehint {
 entry:
   %v.ret.29 = alloca %"struct.std/time.Timezone"
-  %t1 = call %"struct.std/time.Timezone" @"std/time.Fixed"(i32 0)
+  %t1 = call %"struct.std/time.Timezone" @"std/time.fixed"(i32 0)
   store %"struct.std/time.Timezone" %t1, ptr %v.ret.29
   %t2 = load %"struct.std/time.Timezone", ptr %v.ret.29
   ret %"struct.std/time.Timezone" %t2
 }
-define hidden %"struct.std/time.Timezone" @"std/time.Fixed"(i32 %offsetSec) alwaysinline {
+define hidden %"struct.std/time.Timezone" @"std/time.fixed"(i32 %offsetSec) alwaysinline {
 entry:
   %v.agg.37 = alloca %"struct.std/time.Timezone"
   %t3 = getelementptr inbounds %"struct.std/time.Timezone", ptr %v.agg.37, i32 0, i32 0
@@ -6202,7 +6202,7 @@ panic.ok.1:
   %t8 = load %"struct.std/time.Timezone", ptr %v.agg.37
   ret %"struct.std/time.Timezone" %t8
 }
-define hidden %"struct.std/time.Timezone" @"std/time.Local"() inlinehint {
+define hidden %"struct.std/time.Timezone" @"std/time.local"() inlinehint {
 entry:
   %v.id = alloca i32
   %v.agg.55 = alloca %"struct.std/time.Timezone"
@@ -6251,12 +6251,12 @@ panic.ok.4:
   %t26 = load %"struct.std/time.Timezone", ptr %v.agg.66
   ret %"struct.std/time.Timezone" %t26
 if.end.2:
-  %t27 = call %"struct.std/time.Timezone" @"std/time.Utc"()
+  %t27 = call %"struct.std/time.Timezone" @"std/time.utc"()
   store %"struct.std/time.Timezone" %t27, ptr %v.ret.72
   %t28 = load %"struct.std/time.Timezone", ptr %v.ret.72
   ret %"struct.std/time.Timezone" %t28
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/time.Load"(ptr %name) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/time.load"(ptr %name) inlinehint {
 entry:
   %v.id = alloca i32
   %v.agg.104 = alloca %"struct.std/time.Timezone"
@@ -6318,7 +6318,7 @@ if.end.2:
   %t60 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.102
   ret { i32, [4 x i8], %interface.Error } %t60
 }
-define internal i32 @"std/time.offsetAt"(ptr %tz, i64 %atSec) inlinehint {
+define hidden i32 @"std/time.offset_at"(ptr %tz, i64 %atSec) inlinehint {
 entry:
   %t61 = getelementptr inbounds %"struct.std/time.Timezone", ptr %tz, i32 0, i32 0
   %t62 = load i32, ptr %t61
@@ -6349,7 +6349,7 @@ if.then.3:
 if.end.3:
   ret i32 0
 }
-define internal i64 @"std/time.wallNanos"() inlinehint {
+define hidden i64 @"std/time.wall_nanos"() inlinehint {
 entry:
   %t76 = call i64 @willtime_wall_ns()
   ret i64 %t76
@@ -6406,14 +6406,14 @@ entry:
   ret void
 }
 %"struct.example.com/safety/rcshare.Box" = type { i64 }
-define hidden i64 @"example.com/safety/rcshare.Pass"(i64 %b) alwaysinline {
+define hidden i64 @"example.com/safety/rcshare.pass"(i64 %b) alwaysinline {
 entry:
   %t1 = call ptr @willrt_rc_deref(i64 %b)
   %t2 = getelementptr inbounds %"struct.example.com/safety/rcshare.Box", ptr %t1, i32 0, i32 0
   %t3 = load i64, ptr %t2
   ret i64 %t3
 }
-define internal i32 @"example.com/safety/rcshare.Consume.sm"(ptr %frame) {
+define internal i32 @"example.com/safety/rcshare.consume.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.7.4 = getelementptr i8, ptr %frame, i64 8
@@ -6426,7 +6426,7 @@ entry:
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t5 = call ptr @"std/time.Sleep.task"(i64 1000000, i32 -2, i32 0)
+  %t5 = call ptr @"std/time.sleep.task"(i64 1000000, i32 -2, i32 0)
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.sm.call.out.6
   store ptr %t5, ptr %v.sm.join.task.8
   store i32 1, ptr %v.sm.state
@@ -6545,7 +6545,7 @@ deep.rel.adt.done.6.1:
   ret i32 1
 
 }
-define hidden ptr @"example.com/safety/rcshare.Consume.task"(i64 %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"example.com/safety/rcshare.consume.task"(i64 %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 112)
   %t65 = getelementptr i8, ptr %v.sm.frame, i64 40
@@ -6561,15 +6561,15 @@ entry:
   %t71 = icmp eq i32 %start, -2
   %t72 = select i1 %t71, i32 %t69, i32 %start
   %t73 = icmp ne i32 %owns, 0
-  %t74 = select i1 %t73, ptr @"example.com/safety/rcshare.Consume.drop.own", ptr @"example.com/safety/rcshare.Consume.drop"
+  %t74 = select i1 %t73, ptr @"example.com/safety/rcshare.consume.drop.own", ptr @"example.com/safety/rcshare.consume.drop"
   br i1 %t70, label %sm.start.auto.8, label %sm.start.lane.8
 sm.start.auto.8:
-  %t75 = call ptr @willrt_task_new_drop(ptr @"example.com/safety/rcshare.Consume.sm", ptr %v.sm.frame, i64 112, i32 0, i32 0, ptr %t74)
+  %t75 = call ptr @willrt_task_new_drop(ptr @"example.com/safety/rcshare.consume.sm", ptr %v.sm.frame, i64 112, i32 0, i32 0, ptr %t74)
   call void @willrt_task_own_frame(ptr %t75)
   call void @willrt_task_run_auto(ptr %t75)
   br label %sm.start.done.8
 sm.start.lane.8:
-  %t76 = call ptr @willrt_task_new_drop(ptr @"example.com/safety/rcshare.Consume.sm", ptr %v.sm.frame, i64 112, i32 %t72, i32 0, ptr %t74)
+  %t76 = call ptr @willrt_task_new_drop(ptr @"example.com/safety/rcshare.consume.sm", ptr %v.sm.frame, i64 112, i32 %t72, i32 0, ptr %t74)
   call void @willrt_task_own_frame(ptr %t76)
   call void @willrt_task_run(ptr %t76)
   br label %sm.start.done.8
@@ -6577,7 +6577,7 @@ sm.start.done.8:
   %t77 = phi ptr [ %t75, %sm.start.auto.8 ], [ %t76, %sm.start.lane.8 ]
   ret ptr %t77
 }
-define internal void @"example.com/safety/rcshare.Consume.drop"(ptr %frame) {
+define internal void @"example.com/safety/rcshare.consume.drop"(ptr %frame) {
 entry:
   %t78 = getelementptr i8, ptr %frame, i64 40
   %t79 = load i32, ptr %t78
@@ -6614,7 +6614,7 @@ deep.rel.adt.done.10.1:
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t78
   ret void
 }
-define internal void @"example.com/safety/rcshare.Consume.drop.own"(ptr %frame) {
+define internal void @"example.com/safety/rcshare.consume.drop.own"(ptr %frame) {
 entry:
   %t91 = getelementptr i8, ptr %frame, i64 40
   %t92 = load i32, ptr %t91
@@ -6655,7 +6655,7 @@ deep.rel.adt.done.13.1:
   store i64 zeroinitializer, ptr %t104
   ret void
 }
-define internal i32 @"example.com/safety/rcshare.MakeSlow.sm"(ptr %frame) {
+define internal i32 @"example.com/safety/rcshare.make_slow.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.agg.35 = getelementptr i8, ptr %frame, i64 8
@@ -6667,7 +6667,7 @@ entry:
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t106 = call ptr @"std/time.Sleep.task"(i64 1000000, i32 -2, i32 0)
+  %t106 = call ptr @"std/time.sleep.task"(i64 1000000, i32 -2, i32 0)
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.sm.call.out.107
   store ptr %t106, ptr %v.sm.join.task.109
   store i32 1, ptr %v.sm.state
@@ -6790,7 +6790,7 @@ deep.rel.adt.done.6.1:
   ret i32 1
 
 }
-define hidden ptr @"example.com/safety/rcshare.MakeSlow.task"(i32 %start, i32 %owns) {
+define hidden ptr @"example.com/safety/rcshare.make_slow.task"(i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 112)
   %t168 = getelementptr i8, ptr %v.sm.frame, i64 40
@@ -6803,12 +6803,12 @@ entry:
   %t173 = select i1 %t172, i32 %t170, i32 %start
   br i1 %t171, label %sm.start.auto.8, label %sm.start.lane.8
 sm.start.auto.8:
-  %t174 = call ptr @willrt_task_new_drop(ptr @"example.com/safety/rcshare.MakeSlow.sm", ptr %v.sm.frame, i64 112, i32 0, i32 0, ptr @"example.com/safety/rcshare.MakeSlow.drop")
+  %t174 = call ptr @willrt_task_new_drop(ptr @"example.com/safety/rcshare.make_slow.sm", ptr %v.sm.frame, i64 112, i32 0, i32 0, ptr @"example.com/safety/rcshare.make_slow.drop")
   call void @willrt_task_own_frame(ptr %t174)
   call void @willrt_task_run_auto(ptr %t174)
   br label %sm.start.done.8
 sm.start.lane.8:
-  %t175 = call ptr @willrt_task_new_drop(ptr @"example.com/safety/rcshare.MakeSlow.sm", ptr %v.sm.frame, i64 112, i32 %t173, i32 0, ptr @"example.com/safety/rcshare.MakeSlow.drop")
+  %t175 = call ptr @willrt_task_new_drop(ptr @"example.com/safety/rcshare.make_slow.sm", ptr %v.sm.frame, i64 112, i32 %t173, i32 0, ptr @"example.com/safety/rcshare.make_slow.drop")
   call void @willrt_task_own_frame(ptr %t175)
   call void @willrt_task_run(ptr %t175)
   br label %sm.start.done.8
@@ -6816,7 +6816,7 @@ sm.start.done.8:
   %t176 = phi ptr [ %t174, %sm.start.auto.8 ], [ %t175, %sm.start.lane.8 ]
   ret ptr %t176
 }
-define internal void @"example.com/safety/rcshare.MakeSlow.drop"(ptr %frame) {
+define internal void @"example.com/safety/rcshare.make_slow.drop"(ptr %frame) {
 entry:
   %t177 = getelementptr i8, ptr %frame, i64 40
   %t178 = load i32, ptr %t177
@@ -6901,7 +6901,7 @@ sm.init:
   store i64 %t193, ptr %v.box
   call void @willrt_region_enter()
   %t194 = load i64, ptr %v.box
-  %t195 = call ptr @"example.com/safety/rcshare.Consume.task"(i64 %t194, i32 -1, i32 1)
+  %t195 = call ptr @"example.com/safety/rcshare.consume.task"(i64 %t194, i32 -1, i32 1)
   %t196 = load i64, ptr %v.box
   call void @willrt_rc_retain(i64 %t196)
   store ptr %t195, ptr %v.task
@@ -6958,7 +6958,7 @@ sm.op.park.2:
   ret i32 -1
 sm.op.cont.2:
   call void @willrt_region_enter()
-  %t220 = call ptr @"example.com/safety/rcshare.MakeSlow.task"(i32 -1, i32 1)
+  %t220 = call ptr @"example.com/safety/rcshare.make_slow.task"(i32 -1, i32 1)
   store ptr %t220, ptr %v.maker
   %t221 = load ptr, ptr %v.maker
   store ptr %t221, ptr %v.sm.join.task.222
@@ -7538,7 +7538,7 @@ define i32 @"example.com/safety/rcshare.spawn.1"(ptr %frame) {
 entry:
   %t460 = getelementptr { i64 }, ptr %frame, i32 0, i32 0
   %t461 = load i64, ptr %t460
-  %t462 = call i64 @"example.com/safety/rcshare.Pass"(i64 %t461)
+  %t462 = call i64 @"example.com/safety/rcshare.pass"(i64 %t461)
   %t463 = alloca i64
   store i64 %t462, ptr %t463
   %t464 = getelementptr i64, ptr null, i32 1
@@ -7699,15 +7699,15 @@ declare i64 @willtime_wall_ns()
 @.bytes.7 = private unnamed_addr constant [9 x i8] c"i/o error", align 1
 @.str.7 = private unnamed_addr constant [17 x i8] c"division by zero\00", align 1
 @.str.8 = private unnamed_addr constant [22 x i8] c"time/civil.will:24:18\00", align 1
-@.str.9 = private unnamed_addr constant [18 x i8] c"std/time.floorDiv\00", align 1
+@.str.9 = private unnamed_addr constant [19 x i8] c"std/time.floor_div\00", align 1
 @.str.10 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.11 = private unnamed_addr constant [21 x i8] c"time/civil.will:27:8\00", align 1
 @.str.12 = private unnamed_addr constant [21 x i8] c"time/civil.will:28:9\00", align 1
 @.str.13 = private unnamed_addr constant [22 x i8] c"time/civil.will:36:16\00", align 1
-@.str.14 = private unnamed_addr constant [18 x i8] c"std/time.floorMod\00", align 1
+@.str.14 = private unnamed_addr constant [19 x i8] c"std/time.floor_mod\00", align 1
 @.str.15 = private unnamed_addr constant [22 x i8] c"time/civil.will:36:12\00", align 1
 @.str.16 = private unnamed_addr constant [21 x i8] c"time/civil.will:55:9\00", align 1
-@.str.17 = private unnamed_addr constant [23 x i8] c"std/time.daysFromCivil\00", align 1
+@.str.17 = private unnamed_addr constant [25 x i8] c"std/time.days_from_civil\00", align 1
 @.str.18 = private unnamed_addr constant [22 x i8] c"time/civil.will:58:24\00", align 1
 @.str.19 = private unnamed_addr constant [22 x i8] c"time/civil.will:58:20\00", align 1
 @.str.20 = private unnamed_addr constant [21 x i8] c"time/civil.will:61:9\00", align 1
@@ -7718,7 +7718,7 @@ declare i64 @willtime_wall_ns()
 @.str.25 = private unnamed_addr constant [22 x i8] c"time/civil.will:66:48\00", align 1
 @.str.26 = private unnamed_addr constant [22 x i8] c"time/civil.will:67:12\00", align 1
 @.str.27 = private unnamed_addr constant [22 x i8] c"time/civil.will:72:18\00", align 1
-@.str.28 = private unnamed_addr constant [23 x i8] c"std/time.civilFromDays\00", align 1
+@.str.28 = private unnamed_addr constant [25 x i8] c"std/time.civil_from_days\00", align 1
 @.str.29 = private unnamed_addr constant [22 x i8] c"time/civil.will:74:24\00", align 1
 @.str.30 = private unnamed_addr constant [22 x i8] c"time/civil.will:74:20\00", align 1
 @.str.31 = private unnamed_addr constant [22 x i8] c"time/civil.will:75:27\00", align 1
@@ -7742,25 +7742,25 @@ declare i64 @willtime_wall_ns()
 @.str.49 = private unnamed_addr constant [22 x i8] c"time/civil.will:87:45\00", align 1
 @.str.50 = private unnamed_addr constant [22 x i8] c"time/civil.will:87:62\00", align 1
 @.str.51 = private unnamed_addr constant [22 x i8] c"time/civil.will:99:21\00", align 1
-@.str.52 = private unnamed_addr constant [19 x i8] c"std/time.timeOfDay\00", align 1
+@.str.52 = private unnamed_addr constant [21 x i8] c"std/time.time_of_day\00", align 1
 @.str.53 = private unnamed_addr constant [23 x i8] c"time/civil.will:100:24\00", align 1
 @.str.54 = private unnamed_addr constant [23 x i8] c"time/civil.will:101:23\00", align 1
 @.str.55 = private unnamed_addr constant [23 x i8] c"time/civil.will:102:30\00", align 1
 @.str.56 = private unnamed_addr constant [23 x i8] c"time/civil.will:102:49\00", align 1
 @.str.57 = private unnamed_addr constant [23 x i8] c"time/civil.will:102:70\00", align 1
 @.str.58 = private unnamed_addr constant [23 x i8] c"time/civil.will:110:12\00", align 1
-@.str.59 = private unnamed_addr constant [22 x i8] c"std/time.localSeconds\00", align 1
-@.str.60 = private unnamed_addr constant [23 x i8] c"time/civil.will:116:21\00", align 1
-@.str.61 = private unnamed_addr constant [19 x i8] c"std/time.weekdayOf\00", align 1
+@.str.59 = private unnamed_addr constant [23 x i8] c"std/time.local_seconds\00", align 1
+@.str.60 = private unnamed_addr constant [23 x i8] c"time/civil.will:116:22\00", align 1
+@.str.61 = private unnamed_addr constant [20 x i8] c"std/time.weekday_of\00", align 1
 @.str.62 = private unnamed_addr constant [22 x i8] c"time/civil.will:120:8\00", align 1
-@.str.63 = private unnamed_addr constant [20 x i8] c"std/time.isLeapYear\00", align 1
+@.str.63 = private unnamed_addr constant [22 x i8] c"std/time.is_leap_year\00", align 1
 @.str.64 = private unnamed_addr constant [22 x i8] c"time/civil.will:123:8\00", align 1
 @.str.65 = private unnamed_addr constant [23 x i8] c"time/civil.will:126:12\00", align 1
 @.str.66 = private unnamed_addr constant [22 x i8] c"time/clock.will:33:21\00", align 1
-@.str.67 = private unnamed_addr constant [27 x i8] c"std/time.Stopwatch.Elapsed\00", align 1
+@.str.67 = private unnamed_addr constant [27 x i8] c"std/time.Stopwatch.elapsed\00", align 1
 @.bytes.8 = private unnamed_addr constant [20 x i8] c"time: negative sleep", align 1
 @"will.type.std/time.clockError" = linkonce_odr constant i8 0, align 1
-@"std/time.vtable.Error.clockError" = internal constant [6 x ptr] [ptr @"std/time.clockError.Message", ptr @"std/time.clockError.Status", ptr @"std/time.iface.clone.Error.clockError", ptr @"std/time.iface.drop.Error.clockError", ptr @"std/time.iface.share.Error.clockError", ptr @"will.type.std/time.clockError"], align 8
+@"std/time.vtable.Error.clockError" = internal constant [6 x ptr] [ptr @"std/time.clockError.message", ptr @"std/time.clockError.status", ptr @"std/time.iface.clone.Error.clockError", ptr @"std/time.iface.drop.Error.clockError", ptr @"std/time.iface.share.Error.clockError", ptr @"will.type.std/time.clockError"], align 8
 @.bytes.9 = private unnamed_addr constant [1 x i8] c"0", align 1
 @.bytes.10 = private unnamed_addr constant [3 x i8] c"000", align 1
 @.bytes.11 = private unnamed_addr constant [2 x i8] c"00", align 1
@@ -7768,13 +7768,13 @@ declare i64 @willtime_wall_ns()
 @.bytes.13 = private unnamed_addr constant [1 x i8] c"+", align 1
 @.bytes.14 = private unnamed_addr constant [1 x i8] c"-", align 1
 @.str.77 = private unnamed_addr constant [23 x i8] c"time/format.will:40:17\00", align 1
-@.str.78 = private unnamed_addr constant [22 x i8] c"std/time.offsetSuffix\00", align 1
+@.str.78 = private unnamed_addr constant [23 x i8] c"std/time.offset_suffix\00", align 1
 @.str.79 = private unnamed_addr constant [23 x i8] c"time/format.will:42:22\00", align 1
 @.str.80 = private unnamed_addr constant [23 x i8] c"time/format.will:43:25\00", align 1
 @.bytes.15 = private unnamed_addr constant [1 x i8] c":", align 1
 @.bytes.16 = private unnamed_addr constant [0 x i8] zeroinitializer
 @.str.83 = private unnamed_addr constant [23 x i8] c"time/format.will:54:26\00", align 1
-@.str.84 = private unnamed_addr constant [22 x i8] c"std/time.fractionText\00", align 1
+@.str.84 = private unnamed_addr constant [23 x i8] c"std/time.fraction_text\00", align 1
 @.str.85 = private unnamed_addr constant [23 x i8] c"time/format.will:54:22\00", align 1
 @.str.86 = private unnamed_addr constant [26 x i8] c"slice bounds out of range\00", align 1
 @.str.87 = private unnamed_addr constant [23 x i8] c"time/format.will:59:16\00", align 1
@@ -7810,29 +7810,29 @@ declare i64 @willtime_wall_ns()
 @.bytes.39 = private unnamed_addr constant [1 x i8] c" ", align 1
 @.bytes.40 = private unnamed_addr constant [4 x i8] c" GMT", align 1
 @.str.119 = private unnamed_addr constant [21 x i8] c"time/parse.will:45:5\00", align 1
-@.str.120 = private unnamed_addr constant [17 x i8] c"std/time.charsOf\00", align 1
+@.str.120 = private unnamed_addr constant [18 x i8] c"std/time.chars_of\00", align 1
 @.str.121 = private unnamed_addr constant [22 x i8] c"time/parse.will:53:20\00", align 1
-@.str.122 = private unnamed_addr constant [20 x i8] c"std/time.digitValue\00", align 1
+@.str.122 = private unnamed_addr constant [21 x i8] c"std/time.digit_value\00", align 1
 @.str.123 = private unnamed_addr constant [22 x i8] c"time/parse.will:53:16\00", align 1
 @.str.124 = private unnamed_addr constant [22 x i8] c"time/parse.will:55:12\00", align 1
 @.str.125 = private unnamed_addr constant [22 x i8] c"time/parse.will:59:24\00", align 1
-@.str.126 = private unnamed_addr constant [15 x i8] c"std/time.hasAt\00", align 1
+@.str.126 = private unnamed_addr constant [16 x i8] c"std/time.has_at\00", align 1
 @.str.127 = private unnamed_addr constant [22 x i8] c"time/parse.will:62:12\00", align 1
 @.str.128 = private unnamed_addr constant [22 x i8] c"time/parse.will:68:32\00", align 1
-@.str.129 = private unnamed_addr constant [20 x i8] c"std/time.readDigits\00", align 1
+@.str.129 = private unnamed_addr constant [21 x i8] c"std/time.read_digits\00", align 1
 @.str.130 = private unnamed_addr constant [22 x i8] c"time/parse.will:68:45\00", align 1
 @.str.131 = private unnamed_addr constant [22 x i8] c"time/parse.will:69:16\00", align 1
-@.str.132 = private unnamed_addr constant [22 x i8] c"time/parse.will:77:42\00", align 1
-@.str.133 = private unnamed_addr constant [22 x i8] c"time/parse.will:77:33\00", align 1
+@.str.132 = private unnamed_addr constant [22 x i8] c"time/parse.will:77:43\00", align 1
+@.str.133 = private unnamed_addr constant [22 x i8] c"time/parse.will:77:34\00", align 1
 @.str.134 = private unnamed_addr constant [22 x i8] c"time/parse.will:79:20\00", align 1
 @.str.135 = private unnamed_addr constant [22 x i8] c"time/parse.will:81:17\00", align 1
 @.str.136 = private unnamed_addr constant [21 x i8] c"time/parse.will:82:9\00", align 1
 @.str.137 = private unnamed_addr constant [22 x i8] c"time/parse.will:97:20\00", align 1
-@.str.138 = private unnamed_addr constant [22 x i8] c"std/time.ParseRfc3339\00", align 1
+@.str.138 = private unnamed_addr constant [23 x i8] c"std/time.parse_rfc3339\00", align 1
 @.str.139 = private unnamed_addr constant [22 x i8] c"time/parse.will:98:18\00", align 1
 @.bytes.41 = private unnamed_addr constant [41 x i8] c"rfc3339: text is shorter than a timestamp", align 1
 @"will.type.std/time.timeError" = linkonce_odr constant i8 0, align 1
-@"std/time.vtable.Error.std/time.timeError" = internal constant [6 x ptr] [ptr @"std/time.timeError.Message", ptr @"std/time.timeError.Status", ptr @"std/time.iface.clone.Error.std/time.timeError", ptr @"std/time.iface.drop.Error.std/time.timeError", ptr @"std/time.iface.share.Error.std/time.timeError", ptr @"will.type.std/time.timeError"], align 8
+@"std/time.vtable.Error.std/time.timeError" = internal constant [6 x ptr] [ptr @"std/time.timeError.message", ptr @"std/time.timeError.status", ptr @"std/time.iface.clone.Error.std/time.timeError", ptr @"std/time.iface.drop.Error.std/time.timeError", ptr @"std/time.iface.share.Error.std/time.timeError", ptr @"will.type.std/time.timeError"], align 8
 @.bytes.42 = private unnamed_addr constant [39 x i8] c"rfc3339: a numeric field is not a digit", align 1
 @.bytes.43 = private unnamed_addr constant [38 x i8] c"rfc3339: the date separators are wrong", align 1
 @.bytes.44 = private unnamed_addr constant [47 x i8] c"rfc3339: the date and time separator is missing", align 1
@@ -7841,7 +7841,7 @@ declare i64 @willtime_wall_ns()
 @.bytes.47 = private unnamed_addr constant [32 x i8] c"rfc3339: the day is out of range", align 1
 @.bytes.48 = private unnamed_addr constant [40 x i8] c"rfc3339: the time of day is out of range", align 1
 @.str.150 = private unnamed_addr constant [22 x i8] c"time/parse.will:132:9\00", align 1
-@.str.151 = private unnamed_addr constant [23 x i8] c"time/parse.will:138:37\00", align 1
+@.str.151 = private unnamed_addr constant [23 x i8] c"time/parse.will:138:38\00", align 1
 @.str.152 = private unnamed_addr constant [23 x i8] c"time/parse.will:143:24\00", align 1
 @.str.153 = private unnamed_addr constant [23 x i8] c"time/parse.will:145:13\00", align 1
 @.str.154 = private unnamed_addr constant [23 x i8] c"time/parse.will:146:13\00", align 1
@@ -7850,9 +7850,9 @@ declare i64 @willtime_wall_ns()
 @.str.157 = private unnamed_addr constant [23 x i8] c"time/parse.will:156:13\00", align 1
 @.bytes.50 = private unnamed_addr constant [30 x i8] c"rfc3339: the offset is missing", align 1
 @.str.159 = private unnamed_addr constant [22 x i8] c"time/parse.will:164:9\00", align 1
-@.str.160 = private unnamed_addr constant [23 x i8] c"time/parse.will:166:45\00", align 1
-@.str.161 = private unnamed_addr constant [23 x i8] c"time/parse.will:167:47\00", align 1
-@.str.162 = private unnamed_addr constant [23 x i8] c"time/parse.will:168:60\00", align 1
+@.str.160 = private unnamed_addr constant [23 x i8] c"time/parse.will:166:46\00", align 1
+@.str.161 = private unnamed_addr constant [23 x i8] c"time/parse.will:167:48\00", align 1
+@.str.162 = private unnamed_addr constant [23 x i8] c"time/parse.will:168:61\00", align 1
 @.bytes.51 = private unnamed_addr constant [33 x i8] c"rfc3339: the offset is not +HH:MM", align 1
 @.bytes.52 = private unnamed_addr constant [35 x i8] c"rfc3339: the offset is out of range", align 1
 @.str.165 = private unnamed_addr constant [23 x i8] c"time/parse.will:174:18\00", align 1
@@ -7861,38 +7861,38 @@ declare i64 @willtime_wall_ns()
 @.str.168 = private unnamed_addr constant [22 x i8] c"time/parse.will:178:9\00", align 1
 @.bytes.53 = private unnamed_addr constant [38 x i8] c"rfc3339: the offset is not Z or +HH:MM", align 1
 @.bytes.54 = private unnamed_addr constant [35 x i8] c"rfc3339: text follows the timestamp", align 1
-@.str.171 = private unnamed_addr constant [23 x i8] c"time/parse.will:185:22\00", align 1
-@.str.172 = private unnamed_addr constant [23 x i8] c"time/parse.will:186:18\00", align 1
-@.str.173 = private unnamed_addr constant [23 x i8] c"time/parse.will:186:32\00", align 1
+@.str.171 = private unnamed_addr constant [23 x i8] c"time/parse.will:185:30\00", align 1
+@.str.172 = private unnamed_addr constant [23 x i8] c"time/parse.will:186:26\00", align 1
+@.str.173 = private unnamed_addr constant [23 x i8] c"time/parse.will:186:40\00", align 1
 @.str.174 = private unnamed_addr constant [22 x i8] c"time/parse.will:186:5\00", align 1
-@.str.175 = private unnamed_addr constant [23 x i8] c"time/parse.will:187:20\00", align 1
+@.str.175 = private unnamed_addr constant [23 x i8] c"time/parse.will:187:28\00", align 1
 @.bytes.55 = private unnamed_addr constant [46 x i8] c"rfc3339: the year is outside the Instant range", align 1
 @.bytes.56 = private unnamed_addr constant [50 x i8] c"rfc3339: the fraction is outside the Instant range", align 1
 @.str.178 = private unnamed_addr constant [23 x i8] c"time/parse.will:195:32\00", align 1
 @.str.179 = private unnamed_addr constant [23 x i8] c"time/parse.will:201:20\00", align 1
-@.str.180 = private unnamed_addr constant [19 x i8] c"std/time.ParseDate\00", align 1
+@.str.180 = private unnamed_addr constant [20 x i8] c"std/time.parse_date\00", align 1
 @.str.181 = private unnamed_addr constant [23 x i8] c"time/parse.will:202:18\00", align 1
 @.bytes.57 = private unnamed_addr constant [33 x i8] c"date: text is not a calendar date", align 1
 @.bytes.58 = private unnamed_addr constant [36 x i8] c"date: a numeric field is not a digit", align 1
 @.bytes.59 = private unnamed_addr constant [30 x i8] c"date: the separators are wrong", align 1
 @.bytes.60 = private unnamed_addr constant [31 x i8] c"date: the month is out of range", align 1
 @.bytes.61 = private unnamed_addr constant [29 x i8] c"date: the day is out of range", align 1
-@.str.187 = private unnamed_addr constant [23 x i8] c"time/parse.will:221:22\00", align 1
-@.str.188 = private unnamed_addr constant [23 x i8] c"time/parse.will:225:20\00", align 1
-@.str.189 = private unnamed_addr constant [23 x i8] c"time/parse.will:228:15\00", align 1
+@.str.187 = private unnamed_addr constant [23 x i8] c"time/parse.will:221:30\00", align 1
+@.str.188 = private unnamed_addr constant [23 x i8] c"time/parse.will:225:28\00", align 1
+@.str.189 = private unnamed_addr constant [23 x i8] c"time/parse.will:228:23\00", align 1
 @.bytes.62 = private unnamed_addr constant [43 x i8] c"date: the year is outside the Instant range", align 1
 @.str.191 = private unnamed_addr constant [23 x i8] c"time/parse.will:233:32\00", align 1
 @.str.192 = private unnamed_addr constant [21 x i8] c"time/time.will:23:29\00", align 1
-@.str.193 = private unnamed_addr constant [18 x i8] c"std/time.FromUnix\00", align 1
+@.str.193 = private unnamed_addr constant [19 x i8] c"std/time.from_unix\00", align 1
 @.str.194 = private unnamed_addr constant [21 x i8] c"time/zone.will:36:44\00", align 1
-@.str.195 = private unnamed_addr constant [15 x i8] c"std/time.Fixed\00", align 1
+@.str.195 = private unnamed_addr constant [15 x i8] c"std/time.fixed\00", align 1
 @.str.196 = private unnamed_addr constant [21 x i8] c"time/zone.will:46:14\00", align 1
-@.str.197 = private unnamed_addr constant [15 x i8] c"std/time.Local\00", align 1
+@.str.197 = private unnamed_addr constant [15 x i8] c"std/time.local\00", align 1
 @.str.198 = private unnamed_addr constant [21 x i8] c"time/zone.will:47:47\00", align 1
 @.str.199 = private unnamed_addr constant [21 x i8] c"time/zone.will:55:51\00", align 1
-@.str.200 = private unnamed_addr constant [14 x i8] c"std/time.Load\00", align 1
+@.str.200 = private unnamed_addr constant [14 x i8] c"std/time.load\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/time.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/time.iface.clone.Error.std/errors.Fault", ptr @"std/time.iface.drop.Error.std/errors.Fault", ptr @"std/time.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@"std/time.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/time.iface.clone.Error.std/errors.Fault", ptr @"std/time.iface.drop.Error.std/errors.Fault", ptr @"std/time.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.str.203 = private unnamed_addr constant [7 x i8] c"closed\00", align 1
 @.str.204 = private unnamed_addr constant [9 x i8] c"canceled\00", align 1
 @.str.205 = private unnamed_addr constant [9 x i8] c"deadline\00", align 1

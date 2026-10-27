@@ -3,7 +3,7 @@
 %interface.Error = type { ptr, ptr }
 %"enum.std/errors.ErrorClass" = type { i32 }
 %"interface.std/errors.Classified" = type { ptr, ptr }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.ClassOf"(ptr %e) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.class_of"(ptr %e) inlinehint {
 entry:
   %v.ret.18 = alloca %"enum.std/errors.ErrorClass"
   %t1 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 0
@@ -13,12 +13,12 @@ entry:
   %t5 = getelementptr inbounds [6 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
-  %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t7)
+  %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t7)
   store %"enum.std/errors.ErrorClass" %t8, ptr %v.ret.18
   %t9 = load %"enum.std/errors.ErrorClass", ptr %v.ret.18
   ret %"enum.std/errors.ErrorClass" %t9
 }
-define internal %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %status) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %status) inlinehint {
 entry:
   %v.c = alloca %"enum.std/errors.ErrorClass"
   %v.enum.28 = alloca %"enum.std/errors.ErrorClass"
@@ -91,7 +91,7 @@ match.end.1:
   ret %"enum.std/errors.ErrorClass" %t29
 }
 %"struct.std/errors.Fault" = type { { ptr, i64 }, i32 }
-define internal void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
+define hidden void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
 entry:
   %v.ret.18 = alloca { ptr, i64 }
   %v.strm.18 = alloca { ptr, i64 }
@@ -114,7 +114,7 @@ entry:
   store i32 %status, ptr %t11
   ret void
 }
-define hidden { ptr, i64 } @"std/errors.Fault.Message"(ptr %f) inlinehint {
+define hidden { ptr, i64 } @"std/errors.Fault.message"(ptr %f) inlinehint {
 entry:
   %v.ret.30 = alloca { ptr, i64 }
   %v.strm.30 = alloca { ptr, i64 }
@@ -135,18 +135,18 @@ entry:
   %t22 = load { ptr, i64 }, ptr %v.ret.30
   ret { ptr, i64 } %t22
 }
-define hidden i32 @"std/errors.Fault.Status"(ptr %f) alwaysinline {
+define hidden i32 @"std/errors.Fault.status"(ptr %f) alwaysinline {
 entry:
   %t23 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
   %t24 = load i32, ptr %t23
   ret i32 %t24
 }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.Class"(ptr %f) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.class"(ptr %f) inlinehint {
 entry:
   %v.ret.47 = alloca %"enum.std/errors.ErrorClass"
   %t25 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
   %t26 = load i32, ptr %t25
-  %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t26)
+  %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t26)
   store %"enum.std/errors.ErrorClass" %t27, ptr %v.ret.47
   %t28 = load %"enum.std/errors.ErrorClass", ptr %v.ret.47
   ret %"enum.std/errors.ErrorClass" %t28
@@ -237,7 +237,7 @@ entry:
 %"struct.std/os/fs.StatInfo" = type { i64, i32, i64, i1, i1 }
 %"struct.std/os/fs.DirEntry" = type { { ptr, i64 }, i1, i64 }
 %"struct.std/os/fs.fsError" = type { { ptr, i64 } }
-define hidden { ptr, i64 } @"std/os/fs.fsError.Message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"std/os/fs.fsError.message"(ptr %e) inlinehint {
 entry:
   %v.ret.88 = alloca { ptr, i64 }
   %v.strm.88 = alloca { ptr, i64 }
@@ -258,11 +258,11 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.88
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"std/os/fs.fsError.Status"(ptr %e) alwaysinline {
+define hidden i32 @"std/os/fs.fsError.status"(ptr %e) alwaysinline {
 entry:
   ret i32 7
 }
-define hidden { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.ReadFile"(ptr %path) inlinehint {
+define hidden { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.read_file"(ptr %path) inlinehint {
 entry:
   %v.out = alloca { ptr, i64, i64 }
   %v.status = alloca i32
@@ -364,7 +364,7 @@ deep.rel.arr.done.3:
   call void @willrt_free(ptr %t56)
   ret { i32, [4 x i8], { ptr, i64, i64 } } %t53
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.WriteFile"(ptr %path, ptr %data) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.write_file"(ptr %path, ptr %data) inlinehint {
 entry:
   %v.status = alloca i32
   %v.agg.165 = alloca %"struct.std/os/fs.fsError"
@@ -417,7 +417,7 @@ if.end.1:
   %t90 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.168
   ret { i32, [4 x i8], %interface.Error } %t90
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Append"(ptr %path, ptr %data) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.append"(ptr %path, ptr %data) inlinehint {
 entry:
   %v.status = alloca i32
   %v.agg.199 = alloca %"struct.std/os/fs.fsError"
@@ -470,7 +470,7 @@ if.end.1:
   %t118 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.202
   ret { i32, [4 x i8], %interface.Error } %t118
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Open"(ptr %path, ptr %flags) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.open"(ptr %path, ptr %flags) inlinehint {
 entry:
   %v.file = alloca %"struct.std/os/fs.File"
   %v.status = alloca i32
@@ -518,7 +518,7 @@ if.end.1:
   %t143 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.242
   ret { i32, [4 x i8], %interface.Error } %t143
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Create"(ptr %path, i32 %mode) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.create"(ptr %path, i32 %mode) inlinehint {
 entry:
   %v.file = alloca %"struct.std/os/fs.File"
   %v.status = alloca i32
@@ -566,7 +566,7 @@ if.end.1:
   %t168 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.280
   ret { i32, [4 x i8], %interface.Error } %t168
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.Read"(ptr %f, ptr %buf) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.read"(ptr %f, ptr %buf) inlinehint {
 entry:
   %v.count = alloca i64
   %v.status = alloca i32
@@ -614,7 +614,7 @@ if.end.1:
   %t193 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.320
   ret { i32, [4 x i8], %interface.Error } %t193
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.Write"(ptr %f, ptr %buf) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.write"(ptr %f, ptr %buf) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.349 = alloca { i32, [4 x i8], %interface.Error }
@@ -658,7 +658,7 @@ if.end.1:
   %t217 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.354
   ret { i32, [4 x i8], %interface.Error } %t217
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.Seek"(ptr %f, i64 %offset, i32 %whence) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.seek"(ptr %f, i64 %offset, i32 %whence) inlinehint {
 entry:
   %v.at = alloca i64
   %v.status = alloca i32
@@ -706,7 +706,7 @@ if.end.1:
   %t242 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.394
   ret { i32, [4 x i8], %interface.Error } %t242
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.Sync"(ptr %f) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.sync"(ptr %f) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.599 = alloca { i32, [4 x i8], %interface.Error }
@@ -750,7 +750,7 @@ if.end.1:
   %t266 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.604
   ret { i32, [4 x i8], %interface.Error } %t266
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.Close"(ptr %f) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.File.close"(ptr %f) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.627 = alloca { i32, [4 x i8], %interface.Error }
@@ -794,7 +794,7 @@ if.end.1:
   %t290 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.632
   ret { i32, [4 x i8], %interface.Error } %t290
 }
-define hidden { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } @"std/os/fs.Stat"(ptr %path) inlinehint {
+define hidden { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } @"std/os/fs.stat"(ptr %path) inlinehint {
 entry:
   %v.stat = alloca %"struct.std/os/fs.StatInfo"
   %v.status = alloca i32
@@ -842,7 +842,7 @@ if.end.1:
   %t315 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.667
   ret { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t315
 }
-define hidden { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.ReadDir"(ptr %path) inlinehint {
+define hidden { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.read_dir"(ptr %path) inlinehint {
 entry:
   %v.entries = alloca { ptr, i64, i64 }
   %v.status = alloca i32
@@ -935,7 +935,7 @@ deep.rel.arr.done.3:
   call void @willrt_free(ptr %t355)
   ret { i32, [4 x i8], { ptr, i64, i64 } } %t352
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Rename"(ptr %old, ptr %new) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.rename"(ptr %old, ptr %new) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.732 = alloca { i32, [4 x i8], %interface.Error }
@@ -979,7 +979,7 @@ if.end.1:
   %t388 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.737
   ret { i32, [4 x i8], %interface.Error } %t388
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %path) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.remove"(ptr %path) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.760 = alloca { i32, [4 x i8], %interface.Error }
@@ -1023,7 +1023,7 @@ if.end.1:
   %t412 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.765
   ret { i32, [4 x i8], %interface.Error } %t412
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.TempFile"(ptr %dir, ptr %pattern) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.temp_file"(ptr %dir, ptr %pattern) inlinehint {
 entry:
   %v.file = alloca %"struct.std/os/fs.File"
   %v.status = alloca i32
@@ -1071,7 +1071,7 @@ if.end.1:
   %t437 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.805
   ret { i32, [4 x i8], %interface.Error } %t437
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Mkdir"(ptr %path, i32 %mode) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.mkdir"(ptr %path, i32 %mode) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.831 = alloca { i32, [4 x i8], %interface.Error }
@@ -1115,7 +1115,7 @@ if.end.1:
   %t461 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.836
   ret { i32, [4 x i8], %interface.Error } %t461
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.MkdirAll"(ptr %path, i32 %mode) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.mkdir_all"(ptr %path, i32 %mode) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.862 = alloca { i32, [4 x i8], %interface.Error }
@@ -1159,7 +1159,7 @@ if.end.1:
   %t485 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.867
   ret { i32, [4 x i8], %interface.Error } %t485
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.RemoveAll"(ptr %path) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.remove_all"(ptr %path) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.890 = alloca { i32, [4 x i8], %interface.Error }
@@ -1203,7 +1203,7 @@ if.end.1:
   %t509 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.895
   ret { i32, [4 x i8], %interface.Error } %t509
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.Symlink"(ptr %target, ptr %link) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os/fs.symlink"(ptr %target, ptr %link) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.923 = alloca { i32, [4 x i8], %interface.Error }
@@ -1247,7 +1247,7 @@ if.end.1:
   %t533 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.928
   ret { i32, [4 x i8], %interface.Error } %t533
 }
-define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os/fs.TempDir"(ptr %dir, ptr %pattern) inlinehint {
+define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os/fs.temp_dir"(ptr %dir, ptr %pattern) inlinehint {
 entry:
   %v.out = alloca { ptr, i64 }
   %v.status = alloca i32
@@ -1410,7 +1410,7 @@ define internal void @"std/os/fs.iface.share.Error.std/errors.Fault"(ptr %data) 
 entry:
   ret void
 }
-define internal i32 @"std/os/fs.File.AsyncRead.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.File.async_read.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.398.606 = getelementptr i8, ptr %frame, i64 8
@@ -1544,7 +1544,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncRead.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.File.async_read.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t668 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -1560,12 +1560,12 @@ entry:
   %t675 = select i1 %t674, i32 %t672, i32 %start
   br i1 %t673, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t676 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncRead.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  %t676 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_read.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t676)
   call void @willrt_task_run_auto(ptr %t676)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t677 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncRead.sm", ptr %v.sm.frame, i64 160, i32 %t675, i32 0)
+  %t677 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_read.sm", ptr %v.sm.frame, i64 160, i32 %t675, i32 0)
   call void @willrt_task_own_frame(ptr %t677)
   call void @willrt_task_run(ptr %t677)
   br label %sm.start.done.6
@@ -1573,7 +1573,7 @@ sm.start.done.6:
   %t678 = phi ptr [ %t676, %sm.start.auto.6 ], [ %t677, %sm.start.lane.6 ]
   ret ptr %t678
 }
-define internal i32 @"std/os/fs.File.AsyncWrite.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.File.async_write.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.439.679 = getelementptr i8, ptr %frame, i64 8
@@ -1702,7 +1702,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncWrite.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.File.async_write.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t739 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -1719,12 +1719,12 @@ entry:
   %t747 = select i1 %t746, i32 %t744, i32 %start
   br i1 %t745, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t748 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncWrite.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  %t748 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_write.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t748)
   call void @willrt_task_run_auto(ptr %t748)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t749 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncWrite.sm", ptr %v.sm.frame, i64 160, i32 %t747, i32 0)
+  %t749 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_write.sm", ptr %v.sm.frame, i64 160, i32 %t747, i32 0)
   call void @willrt_task_own_frame(ptr %t749)
   call void @willrt_task_run(ptr %t749)
   br label %sm.start.done.6
@@ -1732,7 +1732,7 @@ sm.start.done.6:
   %t750 = phi ptr [ %t748, %sm.start.auto.6 ], [ %t749, %sm.start.lane.6 ]
   ret ptr %t750
 }
-define internal i32 @"std/os/fs.File.AsyncSeek.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.File.async_seek.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.474.751 = getelementptr i8, ptr %frame, i64 8
@@ -1868,7 +1868,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncSeek.task"(ptr %arg0, i64 %arg1, i32 %arg2, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.File.async_seek.task"(ptr %arg0, i64 %arg1, i32 %arg2, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t813 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -1886,12 +1886,12 @@ entry:
   %t821 = select i1 %t820, i32 %t818, i32 %start
   br i1 %t819, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t822 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSeek.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
+  %t822 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_seek.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t822)
   call void @willrt_task_run_auto(ptr %t822)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t823 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSeek.sm", ptr %v.sm.frame, i64 160, i32 %t821, i32 0)
+  %t823 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_seek.sm", ptr %v.sm.frame, i64 160, i32 %t821, i32 0)
   call void @willrt_task_own_frame(ptr %t823)
   call void @willrt_task_run(ptr %t823)
   br label %sm.start.done.6
@@ -1899,7 +1899,7 @@ sm.start.done.6:
   %t824 = phi ptr [ %t822, %sm.start.auto.6 ], [ %t823, %sm.start.lane.6 ]
   ret ptr %t824
 }
-define internal i32 @"std/os/fs.File.AsyncSync.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.File.async_sync.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.515.825 = getelementptr i8, ptr %frame, i64 8
@@ -2027,7 +2027,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncSync.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.File.async_sync.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
   %t884 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2041,12 +2041,12 @@ entry:
   %t890 = select i1 %t889, i32 %t887, i32 %start
   br i1 %t888, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t891 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSync.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0)
+  %t891 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_sync.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t891)
   call void @willrt_task_run_auto(ptr %t891)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t892 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncSync.sm", ptr %v.sm.frame, i64 144, i32 %t890, i32 0)
+  %t892 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_sync.sm", ptr %v.sm.frame, i64 144, i32 %t890, i32 0)
   call void @willrt_task_own_frame(ptr %t892)
   call void @willrt_task_run(ptr %t892)
   br label %sm.start.done.6
@@ -2054,7 +2054,7 @@ sm.start.done.6:
   %t893 = phi ptr [ %t891, %sm.start.auto.6 ], [ %t892, %sm.start.lane.6 ]
   ret ptr %t893
 }
-define internal i32 @"std/os/fs.File.AsyncStat.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.File.async_stat.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.544.894 = getelementptr i8, ptr %frame, i64 8
@@ -2186,7 +2186,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.File.AsyncStat.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.File.async_stat.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
   %t954 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2200,12 +2200,12 @@ entry:
   %t960 = select i1 %t959, i32 %t957, i32 %start
   br i1 %t958, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t961 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
+  %t961 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_stat.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t961)
   call void @willrt_task_run_auto(ptr %t961)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t962 = call ptr @willrt_task_new(ptr @"std/os/fs.File.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 %t960, i32 0)
+  %t962 = call ptr @willrt_task_new(ptr @"std/os/fs.File.async_stat.sm", ptr %v.sm.frame, i64 240, i32 %t960, i32 0)
   call void @willrt_task_own_frame(ptr %t962)
   call void @willrt_task_run(ptr %t962)
   br label %sm.start.done.6
@@ -2213,7 +2213,7 @@ sm.start.done.6:
   %t963 = phi ptr [ %t961, %sm.start.auto.6 ], [ %t962, %sm.start.lane.6 ]
   ret ptr %t963
 }
-define internal i32 @"std/os/fs.AsyncMkdir.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_mkdir.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.973.964 = getelementptr i8, ptr %frame, i64 8
@@ -2343,7 +2343,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncMkdir.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_mkdir.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
   %t1024 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2358,15 +2358,15 @@ entry:
   %t1030 = icmp eq i32 %start, -2
   %t1031 = select i1 %t1030, i32 %t1028, i32 %start
   %t1032 = icmp ne i32 %owns, 0
-  %t1033 = select i1 %t1032, ptr @"std/os/fs.AsyncMkdir.drop.own", ptr @"std/os/fs.AsyncMkdir.drop"
+  %t1033 = select i1 %t1032, ptr @"std/os/fs.async_mkdir.drop.own", ptr @"std/os/fs.async_mkdir.drop"
   br i1 %t1029, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1034 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncMkdir.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t1033)
+  %t1034 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_mkdir.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t1033)
   call void @willrt_task_own_frame(ptr %t1034)
   call void @willrt_task_run_auto(ptr %t1034)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1035 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncMkdir.sm", ptr %v.sm.frame, i64 144, i32 %t1031, i32 0, ptr %t1033)
+  %t1035 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_mkdir.sm", ptr %v.sm.frame, i64 144, i32 %t1031, i32 0, ptr %t1033)
   call void @willrt_task_own_frame(ptr %t1035)
   call void @willrt_task_run(ptr %t1035)
   br label %sm.start.done.6
@@ -2374,11 +2374,11 @@ sm.start.done.6:
   %t1036 = phi ptr [ %t1034, %sm.start.auto.6 ], [ %t1035, %sm.start.lane.6 ]
   ret ptr %t1036
 }
-define internal void @"std/os/fs.AsyncMkdir.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_mkdir.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncMkdir.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_mkdir.drop.own"(ptr %frame) {
 entry:
   %t1037 = getelementptr i8, ptr %frame, i64 8
   %t1038 = getelementptr inbounds { ptr, i64 }, ptr %t1037, i32 0, i32 0
@@ -2387,7 +2387,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1037
   ret void
 }
-define internal i32 @"std/os/fs.AsyncMkdirAll.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_mkdir_all.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1005.1040 = getelementptr i8, ptr %frame, i64 8
@@ -2517,7 +2517,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncMkdirAll.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_mkdir_all.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
   %t1100 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2532,15 +2532,15 @@ entry:
   %t1106 = icmp eq i32 %start, -2
   %t1107 = select i1 %t1106, i32 %t1104, i32 %start
   %t1108 = icmp ne i32 %owns, 0
-  %t1109 = select i1 %t1108, ptr @"std/os/fs.AsyncMkdirAll.drop.own", ptr @"std/os/fs.AsyncMkdirAll.drop"
+  %t1109 = select i1 %t1108, ptr @"std/os/fs.async_mkdir_all.drop.own", ptr @"std/os/fs.async_mkdir_all.drop"
   br i1 %t1105, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1110 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncMkdirAll.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t1109)
+  %t1110 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_mkdir_all.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t1109)
   call void @willrt_task_own_frame(ptr %t1110)
   call void @willrt_task_run_auto(ptr %t1110)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1111 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncMkdirAll.sm", ptr %v.sm.frame, i64 144, i32 %t1107, i32 0, ptr %t1109)
+  %t1111 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_mkdir_all.sm", ptr %v.sm.frame, i64 144, i32 %t1107, i32 0, ptr %t1109)
   call void @willrt_task_own_frame(ptr %t1111)
   call void @willrt_task_run(ptr %t1111)
   br label %sm.start.done.6
@@ -2548,11 +2548,11 @@ sm.start.done.6:
   %t1112 = phi ptr [ %t1110, %sm.start.auto.6 ], [ %t1111, %sm.start.lane.6 ]
   ret ptr %t1112
 }
-define internal void @"std/os/fs.AsyncMkdirAll.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_mkdir_all.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncMkdirAll.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_mkdir_all.drop.own"(ptr %frame) {
 entry:
   %t1113 = getelementptr i8, ptr %frame, i64 8
   %t1114 = getelementptr inbounds { ptr, i64 }, ptr %t1113, i32 0, i32 0
@@ -2561,7 +2561,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1113
   ret void
 }
-define internal i32 @"std/os/fs.AsyncRemoveAll.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_remove_all.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1037.1116 = getelementptr i8, ptr %frame, i64 8
@@ -2689,7 +2689,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncRemoveAll.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_remove_all.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
   %t1175 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2702,15 +2702,15 @@ entry:
   %t1180 = icmp eq i32 %start, -2
   %t1181 = select i1 %t1180, i32 %t1178, i32 %start
   %t1182 = icmp ne i32 %owns, 0
-  %t1183 = select i1 %t1182, ptr @"std/os/fs.AsyncRemoveAll.drop.own", ptr @"std/os/fs.AsyncRemoveAll.drop"
+  %t1183 = select i1 %t1182, ptr @"std/os/fs.async_remove_all.drop.own", ptr @"std/os/fs.async_remove_all.drop"
   br i1 %t1179, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1184 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncRemoveAll.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t1183)
+  %t1184 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_remove_all.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t1183)
   call void @willrt_task_own_frame(ptr %t1184)
   call void @willrt_task_run_auto(ptr %t1184)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1185 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncRemoveAll.sm", ptr %v.sm.frame, i64 144, i32 %t1181, i32 0, ptr %t1183)
+  %t1185 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_remove_all.sm", ptr %v.sm.frame, i64 144, i32 %t1181, i32 0, ptr %t1183)
   call void @willrt_task_own_frame(ptr %t1185)
   call void @willrt_task_run(ptr %t1185)
   br label %sm.start.done.6
@@ -2718,11 +2718,11 @@ sm.start.done.6:
   %t1186 = phi ptr [ %t1184, %sm.start.auto.6 ], [ %t1185, %sm.start.lane.6 ]
   ret ptr %t1186
 }
-define internal void @"std/os/fs.AsyncRemoveAll.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_remove_all.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncRemoveAll.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_remove_all.drop.own"(ptr %frame) {
 entry:
   %t1187 = getelementptr i8, ptr %frame, i64 8
   %t1188 = getelementptr inbounds { ptr, i64 }, ptr %t1187, i32 0, i32 0
@@ -2731,7 +2731,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1187
   ret void
 }
-define internal i32 @"std/os/fs.AsyncSymlink.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_symlink.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1066.1190 = getelementptr i8, ptr %frame, i64 8
@@ -2860,7 +2860,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncSymlink.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_symlink.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t1250 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -2876,15 +2876,15 @@ entry:
   %t1257 = icmp eq i32 %start, -2
   %t1258 = select i1 %t1257, i32 %t1255, i32 %start
   %t1259 = icmp ne i32 %owns, 0
-  %t1260 = select i1 %t1259, ptr @"std/os/fs.AsyncSymlink.drop.own", ptr @"std/os/fs.AsyncSymlink.drop"
+  %t1260 = select i1 %t1259, ptr @"std/os/fs.async_symlink.drop.own", ptr @"std/os/fs.async_symlink.drop"
   br i1 %t1256, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1261 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncSymlink.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1260)
+  %t1261 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_symlink.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1260)
   call void @willrt_task_own_frame(ptr %t1261)
   call void @willrt_task_run_auto(ptr %t1261)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1262 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncSymlink.sm", ptr %v.sm.frame, i64 160, i32 %t1258, i32 0, ptr %t1260)
+  %t1262 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_symlink.sm", ptr %v.sm.frame, i64 160, i32 %t1258, i32 0, ptr %t1260)
   call void @willrt_task_own_frame(ptr %t1262)
   call void @willrt_task_run(ptr %t1262)
   br label %sm.start.done.6
@@ -2892,11 +2892,11 @@ sm.start.done.6:
   %t1263 = phi ptr [ %t1261, %sm.start.auto.6 ], [ %t1262, %sm.start.lane.6 ]
   ret ptr %t1263
 }
-define internal void @"std/os/fs.AsyncSymlink.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_symlink.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncSymlink.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_symlink.drop.own"(ptr %frame) {
 entry:
   %t1264 = getelementptr i8, ptr %frame, i64 24
   %t1265 = getelementptr inbounds { ptr, i64 }, ptr %t1264, i32 0, i32 0
@@ -2910,7 +2910,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1267
   ret void
 }
-define internal i32 @"std/os/fs.AsyncTempDir.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_temp_dir.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1100.1270 = getelementptr i8, ptr %frame, i64 8
@@ -3058,7 +3058,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncTempDir.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_temp_dir.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 192)
   %t1338 = getelementptr i8, ptr %v.sm.frame, i64 40
@@ -3076,15 +3076,15 @@ entry:
   %t1346 = icmp eq i32 %start, -2
   %t1347 = select i1 %t1346, i32 %t1344, i32 %start
   %t1348 = icmp ne i32 %owns, 0
-  %t1349 = select i1 %t1348, ptr @"std/os/fs.AsyncTempDir.drop.own", ptr @"std/os/fs.AsyncTempDir.drop"
+  %t1349 = select i1 %t1348, ptr @"std/os/fs.async_temp_dir.drop.own", ptr @"std/os/fs.async_temp_dir.drop"
   br i1 %t1345, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1350 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncTempDir.sm", ptr %v.sm.frame, i64 192, i32 0, i32 0, ptr %t1349)
+  %t1350 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_temp_dir.sm", ptr %v.sm.frame, i64 192, i32 0, i32 0, ptr %t1349)
   call void @willrt_task_own_frame(ptr %t1350)
   call void @willrt_task_run_auto(ptr %t1350)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1351 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncTempDir.sm", ptr %v.sm.frame, i64 192, i32 %t1347, i32 0, ptr %t1349)
+  %t1351 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_temp_dir.sm", ptr %v.sm.frame, i64 192, i32 %t1347, i32 0, ptr %t1349)
   call void @willrt_task_own_frame(ptr %t1351)
   call void @willrt_task_run(ptr %t1351)
   br label %sm.start.done.6
@@ -3092,7 +3092,7 @@ sm.start.done.6:
   %t1352 = phi ptr [ %t1350, %sm.start.auto.6 ], [ %t1351, %sm.start.lane.6 ]
   ret ptr %t1352
 }
-define internal void @"std/os/fs.AsyncTempDir.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_temp_dir.drop"(ptr %frame) {
 entry:
   %t1353 = getelementptr i8, ptr %frame, i64 40
   %t1354 = getelementptr inbounds { ptr, i64 }, ptr %t1353, i32 0, i32 0
@@ -3101,7 +3101,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1353
   ret void
 }
-define internal void @"std/os/fs.AsyncTempDir.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_temp_dir.drop.own"(ptr %frame) {
 entry:
   %t1356 = getelementptr i8, ptr %frame, i64 40
   %t1357 = getelementptr inbounds { ptr, i64 }, ptr %t1356, i32 0, i32 0
@@ -3120,7 +3120,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1362
   ret void
 }
-define internal i32 @"std/os/fs.AsyncReadFile.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_read_file.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1142.1365 = getelementptr i8, ptr %frame, i64 8
@@ -3295,7 +3295,7 @@ share.adt.done.6.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncReadFile.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_read_file.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 224)
   %t1444 = getelementptr i8, ptr %v.sm.frame, i64 24
@@ -3310,15 +3310,15 @@ entry:
   %t1450 = icmp eq i32 %start, -2
   %t1451 = select i1 %t1450, i32 %t1448, i32 %start
   %t1452 = icmp ne i32 %owns, 0
-  %t1453 = select i1 %t1452, ptr @"std/os/fs.AsyncReadFile.drop.own", ptr @"std/os/fs.AsyncReadFile.drop"
+  %t1453 = select i1 %t1452, ptr @"std/os/fs.async_read_file.drop.own", ptr @"std/os/fs.async_read_file.drop"
   br i1 %t1449, label %sm.start.auto.8, label %sm.start.lane.8
 sm.start.auto.8:
-  %t1454 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncReadFile.sm", ptr %v.sm.frame, i64 224, i32 0, i32 0, ptr %t1453)
+  %t1454 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_read_file.sm", ptr %v.sm.frame, i64 224, i32 0, i32 0, ptr %t1453)
   call void @willrt_task_own_frame(ptr %t1454)
   call void @willrt_task_run_auto(ptr %t1454)
   br label %sm.start.done.8
 sm.start.lane.8:
-  %t1455 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncReadFile.sm", ptr %v.sm.frame, i64 224, i32 %t1451, i32 0, ptr %t1453)
+  %t1455 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_read_file.sm", ptr %v.sm.frame, i64 224, i32 %t1451, i32 0, ptr %t1453)
   call void @willrt_task_own_frame(ptr %t1455)
   call void @willrt_task_run(ptr %t1455)
   br label %sm.start.done.8
@@ -3326,7 +3326,7 @@ sm.start.done.8:
   %t1456 = phi ptr [ %t1454, %sm.start.auto.8 ], [ %t1455, %sm.start.lane.8 ]
   ret ptr %t1456
 }
-define internal void @"std/os/fs.AsyncReadFile.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_read_file.drop"(ptr %frame) {
 entry:
   %t1457 = getelementptr i8, ptr %frame, i64 24
   %t1458 = getelementptr inbounds { ptr, i64, i64 }, ptr %t1457, i32 0, i32 0
@@ -3351,7 +3351,7 @@ deep.rel.arr.done.9:
   store { ptr, i64, i64 } zeroinitializer, ptr %t1457
   ret void
 }
-define internal void @"std/os/fs.AsyncReadFile.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_read_file.drop.own"(ptr %frame) {
 entry:
   %t1467 = getelementptr i8, ptr %frame, i64 24
   %t1468 = getelementptr inbounds { ptr, i64, i64 }, ptr %t1467, i32 0, i32 0
@@ -3381,7 +3381,7 @@ deep.rel.arr.done.10:
   store { ptr, i64 } zeroinitializer, ptr %t1477
   ret void
 }
-define internal i32 @"std/os/fs.AsyncWriteFile.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_write_file.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1180.1480 = getelementptr i8, ptr %frame, i64 8
@@ -3512,7 +3512,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncWriteFile.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_write_file.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t1541 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -3528,15 +3528,15 @@ entry:
   %t1548 = icmp eq i32 %start, -2
   %t1549 = select i1 %t1548, i32 %t1546, i32 %start
   %t1550 = icmp ne i32 %owns, 0
-  %t1551 = select i1 %t1550, ptr @"std/os/fs.AsyncWriteFile.drop.own", ptr @"std/os/fs.AsyncWriteFile.drop"
+  %t1551 = select i1 %t1550, ptr @"std/os/fs.async_write_file.drop.own", ptr @"std/os/fs.async_write_file.drop"
   br i1 %t1547, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1552 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncWriteFile.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1551)
+  %t1552 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_write_file.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1551)
   call void @willrt_task_own_frame(ptr %t1552)
   call void @willrt_task_run_auto(ptr %t1552)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1553 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncWriteFile.sm", ptr %v.sm.frame, i64 160, i32 %t1549, i32 0, ptr %t1551)
+  %t1553 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_write_file.sm", ptr %v.sm.frame, i64 160, i32 %t1549, i32 0, ptr %t1551)
   call void @willrt_task_own_frame(ptr %t1553)
   call void @willrt_task_run(ptr %t1553)
   br label %sm.start.done.6
@@ -3544,11 +3544,11 @@ sm.start.done.6:
   %t1554 = phi ptr [ %t1552, %sm.start.auto.6 ], [ %t1553, %sm.start.lane.6 ]
   ret ptr %t1554
 }
-define internal void @"std/os/fs.AsyncWriteFile.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_write_file.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncWriteFile.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_write_file.drop.own"(ptr %frame) {
 entry:
   %t1555 = getelementptr i8, ptr %frame, i64 8
   %t1556 = getelementptr inbounds { ptr, i64 }, ptr %t1555, i32 0, i32 0
@@ -3557,7 +3557,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1555
   ret void
 }
-define internal i32 @"std/os/fs.AsyncAppend.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_append.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1215.1558 = getelementptr i8, ptr %frame, i64 8
@@ -3688,7 +3688,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncAppend.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_append.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t1619 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -3704,15 +3704,15 @@ entry:
   %t1626 = icmp eq i32 %start, -2
   %t1627 = select i1 %t1626, i32 %t1624, i32 %start
   %t1628 = icmp ne i32 %owns, 0
-  %t1629 = select i1 %t1628, ptr @"std/os/fs.AsyncAppend.drop.own", ptr @"std/os/fs.AsyncAppend.drop"
+  %t1629 = select i1 %t1628, ptr @"std/os/fs.async_append.drop.own", ptr @"std/os/fs.async_append.drop"
   br i1 %t1625, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1630 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncAppend.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1629)
+  %t1630 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_append.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1629)
   call void @willrt_task_own_frame(ptr %t1630)
   call void @willrt_task_run_auto(ptr %t1630)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1631 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncAppend.sm", ptr %v.sm.frame, i64 160, i32 %t1627, i32 0, ptr %t1629)
+  %t1631 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_append.sm", ptr %v.sm.frame, i64 160, i32 %t1627, i32 0, ptr %t1629)
   call void @willrt_task_own_frame(ptr %t1631)
   call void @willrt_task_run(ptr %t1631)
   br label %sm.start.done.6
@@ -3720,11 +3720,11 @@ sm.start.done.6:
   %t1632 = phi ptr [ %t1630, %sm.start.auto.6 ], [ %t1631, %sm.start.lane.6 ]
   ret ptr %t1632
 }
-define internal void @"std/os/fs.AsyncAppend.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_append.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncAppend.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_append.drop.own"(ptr %frame) {
 entry:
   %t1633 = getelementptr i8, ptr %frame, i64 8
   %t1634 = getelementptr inbounds { ptr, i64 }, ptr %t1633, i32 0, i32 0
@@ -3733,7 +3733,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1633
   ret void
 }
-define internal i32 @"std/os/fs.AsyncOpen.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_open.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1250.1636 = getelementptr i8, ptr %frame, i64 8
@@ -3866,7 +3866,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncOpen.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_open.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t1697 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -3882,15 +3882,15 @@ entry:
   %t1704 = icmp eq i32 %start, -2
   %t1705 = select i1 %t1704, i32 %t1702, i32 %start
   %t1706 = icmp ne i32 %owns, 0
-  %t1707 = select i1 %t1706, ptr @"std/os/fs.AsyncOpen.drop.own", ptr @"std/os/fs.AsyncOpen.drop"
+  %t1707 = select i1 %t1706, ptr @"std/os/fs.async_open.drop.own", ptr @"std/os/fs.async_open.drop"
   br i1 %t1703, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1708 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncOpen.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1707)
+  %t1708 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_open.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1707)
   call void @willrt_task_own_frame(ptr %t1708)
   call void @willrt_task_run_auto(ptr %t1708)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1709 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncOpen.sm", ptr %v.sm.frame, i64 160, i32 %t1705, i32 0, ptr %t1707)
+  %t1709 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_open.sm", ptr %v.sm.frame, i64 160, i32 %t1705, i32 0, ptr %t1707)
   call void @willrt_task_own_frame(ptr %t1709)
   call void @willrt_task_run(ptr %t1709)
   br label %sm.start.done.6
@@ -3898,11 +3898,11 @@ sm.start.done.6:
   %t1710 = phi ptr [ %t1708, %sm.start.auto.6 ], [ %t1709, %sm.start.lane.6 ]
   ret ptr %t1710
 }
-define internal void @"std/os/fs.AsyncOpen.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_open.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncOpen.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_open.drop.own"(ptr %frame) {
 entry:
   %t1711 = getelementptr i8, ptr %frame, i64 8
   %t1712 = getelementptr inbounds { ptr, i64 }, ptr %t1711, i32 0, i32 0
@@ -3911,7 +3911,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1711
   ret void
 }
-define internal i32 @"std/os/fs.AsyncCreate.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_create.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1291.1714 = getelementptr i8, ptr %frame, i64 8
@@ -4045,7 +4045,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncCreate.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_create.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t1775 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -4060,15 +4060,15 @@ entry:
   %t1781 = icmp eq i32 %start, -2
   %t1782 = select i1 %t1781, i32 %t1779, i32 %start
   %t1783 = icmp ne i32 %owns, 0
-  %t1784 = select i1 %t1783, ptr @"std/os/fs.AsyncCreate.drop.own", ptr @"std/os/fs.AsyncCreate.drop"
+  %t1784 = select i1 %t1783, ptr @"std/os/fs.async_create.drop.own", ptr @"std/os/fs.async_create.drop"
   br i1 %t1780, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1785 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncCreate.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1784)
+  %t1785 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_create.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t1784)
   call void @willrt_task_own_frame(ptr %t1785)
   call void @willrt_task_run_auto(ptr %t1785)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1786 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncCreate.sm", ptr %v.sm.frame, i64 160, i32 %t1782, i32 0, ptr %t1784)
+  %t1786 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_create.sm", ptr %v.sm.frame, i64 160, i32 %t1782, i32 0, ptr %t1784)
   call void @willrt_task_own_frame(ptr %t1786)
   call void @willrt_task_run(ptr %t1786)
   br label %sm.start.done.6
@@ -4076,11 +4076,11 @@ sm.start.done.6:
   %t1787 = phi ptr [ %t1785, %sm.start.auto.6 ], [ %t1786, %sm.start.lane.6 ]
   ret ptr %t1787
 }
-define internal void @"std/os/fs.AsyncCreate.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_create.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncCreate.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_create.drop.own"(ptr %frame) {
 entry:
   %t1788 = getelementptr i8, ptr %frame, i64 8
   %t1789 = getelementptr inbounds { ptr, i64 }, ptr %t1788, i32 0, i32 0
@@ -4089,7 +4089,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1788
   ret void
 }
-define internal i32 @"std/os/fs.AsyncStat.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_stat.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1330.1791 = getelementptr i8, ptr %frame, i64 8
@@ -4221,7 +4221,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncStat.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_stat.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
   %t1851 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -4234,15 +4234,15 @@ entry:
   %t1856 = icmp eq i32 %start, -2
   %t1857 = select i1 %t1856, i32 %t1854, i32 %start
   %t1858 = icmp ne i32 %owns, 0
-  %t1859 = select i1 %t1858, ptr @"std/os/fs.AsyncStat.drop.own", ptr @"std/os/fs.AsyncStat.drop"
+  %t1859 = select i1 %t1858, ptr @"std/os/fs.async_stat.drop.own", ptr @"std/os/fs.async_stat.drop"
   br i1 %t1855, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t1860 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0, ptr %t1859)
+  %t1860 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_stat.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0, ptr %t1859)
   call void @willrt_task_own_frame(ptr %t1860)
   call void @willrt_task_run_auto(ptr %t1860)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t1861 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncStat.sm", ptr %v.sm.frame, i64 240, i32 %t1857, i32 0, ptr %t1859)
+  %t1861 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_stat.sm", ptr %v.sm.frame, i64 240, i32 %t1857, i32 0, ptr %t1859)
   call void @willrt_task_own_frame(ptr %t1861)
   call void @willrt_task_run(ptr %t1861)
   br label %sm.start.done.6
@@ -4250,11 +4250,11 @@ sm.start.done.6:
   %t1862 = phi ptr [ %t1860, %sm.start.auto.6 ], [ %t1861, %sm.start.lane.6 ]
   ret ptr %t1862
 }
-define internal void @"std/os/fs.AsyncStat.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_stat.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncStat.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_stat.drop.own"(ptr %frame) {
 entry:
   %t1863 = getelementptr i8, ptr %frame, i64 8
   %t1864 = getelementptr inbounds { ptr, i64 }, ptr %t1863, i32 0, i32 0
@@ -4263,7 +4263,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t1863
   ret void
 }
-define internal i32 @"std/os/fs.AsyncReadDir.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_read_dir.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1366.1866 = getelementptr i8, ptr %frame, i64 8
@@ -4446,7 +4446,7 @@ share.adt.done.6.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncReadDir.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_read_dir.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 224)
   %t1950 = getelementptr i8, ptr %v.sm.frame, i64 24
@@ -4461,15 +4461,15 @@ entry:
   %t1956 = icmp eq i32 %start, -2
   %t1957 = select i1 %t1956, i32 %t1954, i32 %start
   %t1958 = icmp ne i32 %owns, 0
-  %t1959 = select i1 %t1958, ptr @"std/os/fs.AsyncReadDir.drop.own", ptr @"std/os/fs.AsyncReadDir.drop"
+  %t1959 = select i1 %t1958, ptr @"std/os/fs.async_read_dir.drop.own", ptr @"std/os/fs.async_read_dir.drop"
   br i1 %t1955, label %sm.start.auto.8, label %sm.start.lane.8
 sm.start.auto.8:
-  %t1960 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncReadDir.sm", ptr %v.sm.frame, i64 224, i32 0, i32 0, ptr %t1959)
+  %t1960 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_read_dir.sm", ptr %v.sm.frame, i64 224, i32 0, i32 0, ptr %t1959)
   call void @willrt_task_own_frame(ptr %t1960)
   call void @willrt_task_run_auto(ptr %t1960)
   br label %sm.start.done.8
 sm.start.lane.8:
-  %t1961 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncReadDir.sm", ptr %v.sm.frame, i64 224, i32 %t1957, i32 0, ptr %t1959)
+  %t1961 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_read_dir.sm", ptr %v.sm.frame, i64 224, i32 %t1957, i32 0, ptr %t1959)
   call void @willrt_task_own_frame(ptr %t1961)
   call void @willrt_task_run(ptr %t1961)
   br label %sm.start.done.8
@@ -4477,7 +4477,7 @@ sm.start.done.8:
   %t1962 = phi ptr [ %t1960, %sm.start.auto.8 ], [ %t1961, %sm.start.lane.8 ]
   ret ptr %t1962
 }
-define internal void @"std/os/fs.AsyncReadDir.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_read_dir.drop"(ptr %frame) {
 entry:
   %t1963 = getelementptr i8, ptr %frame, i64 24
   %t1964 = getelementptr inbounds { ptr, i64, i64 }, ptr %t1963, i32 0, i32 0
@@ -4507,7 +4507,7 @@ deep.rel.arr.done.9:
   store { ptr, i64, i64 } zeroinitializer, ptr %t1963
   ret void
 }
-define internal void @"std/os/fs.AsyncReadDir.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_read_dir.drop.own"(ptr %frame) {
 entry:
   %t1976 = getelementptr i8, ptr %frame, i64 24
   %t1977 = getelementptr inbounds { ptr, i64, i64 }, ptr %t1976, i32 0, i32 0
@@ -4542,7 +4542,7 @@ deep.rel.arr.done.10:
   store { ptr, i64 } zeroinitializer, ptr %t1989
   ret void
 }
-define internal i32 @"std/os/fs.AsyncRename.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_rename.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1404.1992 = getelementptr i8, ptr %frame, i64 8
@@ -4671,7 +4671,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncRename.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_rename.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 160)
   %t2052 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -4687,15 +4687,15 @@ entry:
   %t2059 = icmp eq i32 %start, -2
   %t2060 = select i1 %t2059, i32 %t2057, i32 %start
   %t2061 = icmp ne i32 %owns, 0
-  %t2062 = select i1 %t2061, ptr @"std/os/fs.AsyncRename.drop.own", ptr @"std/os/fs.AsyncRename.drop"
+  %t2062 = select i1 %t2061, ptr @"std/os/fs.async_rename.drop.own", ptr @"std/os/fs.async_rename.drop"
   br i1 %t2058, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t2063 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncRename.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t2062)
+  %t2063 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_rename.sm", ptr %v.sm.frame, i64 160, i32 0, i32 0, ptr %t2062)
   call void @willrt_task_own_frame(ptr %t2063)
   call void @willrt_task_run_auto(ptr %t2063)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t2064 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncRename.sm", ptr %v.sm.frame, i64 160, i32 %t2060, i32 0, ptr %t2062)
+  %t2064 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_rename.sm", ptr %v.sm.frame, i64 160, i32 %t2060, i32 0, ptr %t2062)
   call void @willrt_task_own_frame(ptr %t2064)
   call void @willrt_task_run(ptr %t2064)
   br label %sm.start.done.6
@@ -4703,11 +4703,11 @@ sm.start.done.6:
   %t2065 = phi ptr [ %t2063, %sm.start.auto.6 ], [ %t2064, %sm.start.lane.6 ]
   ret ptr %t2065
 }
-define internal void @"std/os/fs.AsyncRename.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_rename.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncRename.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_rename.drop.own"(ptr %frame) {
 entry:
   %t2066 = getelementptr i8, ptr %frame, i64 24
   %t2067 = getelementptr inbounds { ptr, i64 }, ptr %t2066, i32 0, i32 0
@@ -4721,7 +4721,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t2069
   ret void
 }
-define internal i32 @"std/os/fs.AsyncRemove.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_remove.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1438.2072 = getelementptr i8, ptr %frame, i64 8
@@ -4849,7 +4849,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncRemove.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_remove.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 144)
   %t2131 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -4862,15 +4862,15 @@ entry:
   %t2136 = icmp eq i32 %start, -2
   %t2137 = select i1 %t2136, i32 %t2134, i32 %start
   %t2138 = icmp ne i32 %owns, 0
-  %t2139 = select i1 %t2138, ptr @"std/os/fs.AsyncRemove.drop.own", ptr @"std/os/fs.AsyncRemove.drop"
+  %t2139 = select i1 %t2138, ptr @"std/os/fs.async_remove.drop.own", ptr @"std/os/fs.async_remove.drop"
   br i1 %t2135, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t2140 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncRemove.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t2139)
+  %t2140 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_remove.sm", ptr %v.sm.frame, i64 144, i32 0, i32 0, ptr %t2139)
   call void @willrt_task_own_frame(ptr %t2140)
   call void @willrt_task_run_auto(ptr %t2140)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t2141 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncRemove.sm", ptr %v.sm.frame, i64 144, i32 %t2137, i32 0, ptr %t2139)
+  %t2141 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_remove.sm", ptr %v.sm.frame, i64 144, i32 %t2137, i32 0, ptr %t2139)
   call void @willrt_task_own_frame(ptr %t2141)
   call void @willrt_task_run(ptr %t2141)
   br label %sm.start.done.6
@@ -4878,11 +4878,11 @@ sm.start.done.6:
   %t2142 = phi ptr [ %t2140, %sm.start.auto.6 ], [ %t2141, %sm.start.lane.6 ]
   ret ptr %t2142
 }
-define internal void @"std/os/fs.AsyncRemove.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_remove.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncRemove.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_remove.drop.own"(ptr %frame) {
 entry:
   %t2143 = getelementptr i8, ptr %frame, i64 8
   %t2144 = getelementptr inbounds { ptr, i64 }, ptr %t2143, i32 0, i32 0
@@ -4891,7 +4891,7 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t2143
   ret void
 }
-define internal i32 @"std/os/fs.AsyncTempFile.sm"(ptr %frame) {
+define internal i32 @"std/os/fs.async_temp_file.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1467.2146 = getelementptr i8, ptr %frame, i64 8
@@ -5024,7 +5024,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/os/fs.AsyncTempFile.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/fs.async_temp_file.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 176)
   %t2207 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -5040,15 +5040,15 @@ entry:
   %t2214 = icmp eq i32 %start, -2
   %t2215 = select i1 %t2214, i32 %t2212, i32 %start
   %t2216 = icmp ne i32 %owns, 0
-  %t2217 = select i1 %t2216, ptr @"std/os/fs.AsyncTempFile.drop.own", ptr @"std/os/fs.AsyncTempFile.drop"
+  %t2217 = select i1 %t2216, ptr @"std/os/fs.async_temp_file.drop.own", ptr @"std/os/fs.async_temp_file.drop"
   br i1 %t2213, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t2218 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncTempFile.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0, ptr %t2217)
+  %t2218 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_temp_file.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0, ptr %t2217)
   call void @willrt_task_own_frame(ptr %t2218)
   call void @willrt_task_run_auto(ptr %t2218)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t2219 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.AsyncTempFile.sm", ptr %v.sm.frame, i64 176, i32 %t2215, i32 0, ptr %t2217)
+  %t2219 = call ptr @willrt_task_new_drop(ptr @"std/os/fs.async_temp_file.sm", ptr %v.sm.frame, i64 176, i32 %t2215, i32 0, ptr %t2217)
   call void @willrt_task_own_frame(ptr %t2219)
   call void @willrt_task_run(ptr %t2219)
   br label %sm.start.done.6
@@ -5056,11 +5056,11 @@ sm.start.done.6:
   %t2220 = phi ptr [ %t2218, %sm.start.auto.6 ], [ %t2219, %sm.start.lane.6 ]
   ret ptr %t2220
 }
-define internal void @"std/os/fs.AsyncTempFile.drop"(ptr %frame) {
+define internal void @"std/os/fs.async_temp_file.drop"(ptr %frame) {
 entry:
   ret void
 }
-define internal void @"std/os/fs.AsyncTempFile.drop.own"(ptr %frame) {
+define internal void @"std/os/fs.async_temp_file.drop.own"(ptr %frame) {
 entry:
   %t2221 = getelementptr i8, ptr %frame, i64 24
   %t2222 = getelementptr inbounds { ptr, i64 }, ptr %t2221, i32 0, i32 0
@@ -5076,7 +5076,7 @@ entry:
 }
 %"struct.std/time.civilDate" = type { i32, i32, i32 }
 %"struct.std/time.clockTime" = type { i32, i32, i32 }
-define internal i64 @"std/time.floorDiv"(i64 %a, i64 %b) alwaysinline {
+define hidden i64 @"std/time.floor_div"(i64 %a, i64 %b) alwaysinline {
 entry:
   %v.q = alloca i64
   %v.aNegative = alloca i1
@@ -5138,9 +5138,9 @@ if.end.3:
   %t22 = load i64, ptr %v.q
   ret i64 %t22
 }
-define internal i64 @"std/time.floorMod"(i64 %a, i64 %b) inlinehint {
+define hidden i64 @"std/time.floor_mod"(i64 %a, i64 %b) inlinehint {
 entry:
-  %t23 = call i64 @"std/time.floorDiv"(i64 %a, i64 %b)
+  %t23 = call i64 @"std/time.floor_div"(i64 %a, i64 %b)
   %t24 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t23, i64 %b)
   %t25 = extractvalue {i64, i1} %t24, 0
   %t26 = extractvalue {i64, i1} %t24, 1
@@ -5159,17 +5159,17 @@ panic.2:
 panic.ok.2:
   ret i64 %t28
 }
-define internal i64 @"std/time.secondsOf"(i64 %nanos) inlinehint {
+define hidden i64 @"std/time.seconds_of"(i64 %nanos) inlinehint {
 entry:
-  %t30 = call i64 @"std/time.floorDiv"(i64 %nanos, i64 1000000000)
+  %t30 = call i64 @"std/time.floor_div"(i64 %nanos, i64 1000000000)
   ret i64 %t30
 }
-define internal i64 @"std/time.fractionOf"(i64 %nanos) inlinehint {
+define hidden i64 @"std/time.fraction_of"(i64 %nanos) inlinehint {
 entry:
-  %t31 = call i64 @"std/time.floorMod"(i64 %nanos, i64 1000000000)
+  %t31 = call i64 @"std/time.floor_mod"(i64 %nanos, i64 1000000000)
   ret i64 %t31
 }
-define internal i64 @"std/time.daysFromCivil"(i32 %year, i32 %month, i32 %day) inlinehint {
+define hidden i64 @"std/time.days_from_civil"(i32 %year, i32 %month, i32 %day) inlinehint {
 entry:
   %v.y = alloca i64
   %v.era = alloca i64
@@ -5195,7 +5195,7 @@ panic.ok.2:
   br label %if.end.1
 if.end.1:
   %t38 = load i64, ptr %v.y
-  %t39 = call i64 @"std/time.floorDiv"(i64 %t38, i64 400)
+  %t39 = call i64 @"std/time.floor_div"(i64 %t38, i64 400)
   store i64 %t39, ptr %v.era
   %t40 = load i64, ptr %v.y
   %t41 = load i64, ptr %v.era
@@ -5390,7 +5390,7 @@ panic.24:
 panic.ok.24:
   ret i64 %t112
 }
-define internal %"struct.std/time.civilDate" @"std/time.civilFromDays"(i64 %days) inlinehint {
+define hidden %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %days) inlinehint {
 entry:
   %v.z = alloca i64
   %v.era = alloca i64
@@ -5412,7 +5412,7 @@ panic.1:
 panic.ok.1:
   store i64 %t115, ptr %v.z
   %t117 = load i64, ptr %v.z
-  %t118 = call i64 @"std/time.floorDiv"(i64 %t117, i64 146097)
+  %t118 = call i64 @"std/time.floor_div"(i64 %t117, i64 146097)
   store i64 %t118, ptr %v.era
   %t119 = load i64, ptr %v.z
   %t120 = load i64, ptr %v.era
@@ -5784,19 +5784,19 @@ panic.ok.45:
   %t256 = load %"struct.std/time.civilDate", ptr %v.agg.286
   ret %"struct.std/time.civilDate" %t256
 }
-define internal i64 @"std/time.daysOf"(i64 %secs) inlinehint {
+define hidden i64 @"std/time.days_of"(i64 %secs) inlinehint {
 entry:
-  %t257 = call i64 @"std/time.floorDiv"(i64 %secs, i64 86400)
+  %t257 = call i64 @"std/time.floor_div"(i64 %secs, i64 86400)
   ret i64 %t257
 }
-define internal %"struct.std/time.clockTime" @"std/time.timeOfDay"(i64 %secs) inlinehint {
+define hidden %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %secs) inlinehint {
 entry:
   %v.rem = alloca i64
   %v.hour = alloca i64
   %v.minute = alloca i64
   %v.second = alloca i64
   %v.agg.333 = alloca %"struct.std/time.clockTime"
-  %t258 = call i64 @"std/time.floorMod"(i64 %secs, i64 86400)
+  %t258 = call i64 @"std/time.floor_mod"(i64 %secs, i64 86400)
   store i64 %t258, ptr %v.rem
   %t259 = load i64, ptr %v.rem
   %t260 = icmp eq i64 3600, 0
@@ -5915,17 +5915,17 @@ panic.ok.14:
   %t297 = load %"struct.std/time.clockTime", ptr %v.agg.333
   ret %"struct.std/time.clockTime" %t297
 }
-define internal i64 @"std/time.localSeconds"(ptr %t) inlinehint {
+define hidden i64 @"std/time.local_seconds"(ptr %t) inlinehint {
 entry:
   %v.at = alloca i64
   %t298 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t299 = load i64, ptr %t298
-  %t300 = call i64 @"std/time.secondsOf"(i64 %t299)
+  %t300 = call i64 @"std/time.seconds_of"(i64 %t299)
   store i64 %t300, ptr %v.at
   %t301 = load i64, ptr %v.at
   %t302 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 1
   %t303 = load i64, ptr %v.at
-  %t304 = call i32 @"std/time.offsetAt"(ptr %t302, i64 %t303)
+  %t304 = call i32 @"std/time.offset_at"(ptr %t302, i64 %t303)
   %t305 = sext i32 %t304 to i64
   %t306 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t301, i64 %t305)
   %t307 = extractvalue {i64, i1} %t306, 0
@@ -5937,7 +5937,7 @@ panic.1:
 panic.ok.1:
   ret i64 %t307
 }
-define internal i64 @"std/time.weekdayOf"(i64 %days) inlinehint {
+define hidden i64 @"std/time.weekday_of"(i64 %days) inlinehint {
 entry:
   %t309 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %days, i64 4)
   %t310 = extractvalue {i64, i1} %t309, 0
@@ -5947,10 +5947,10 @@ panic.1:
   call void @willrt_panic(ptr @.str.18, ptr @.str.68, ptr @.str.69)
   unreachable
 panic.ok.1:
-  %t312 = call i64 @"std/time.floorMod"(i64 %t310, i64 7)
+  %t312 = call i64 @"std/time.floor_mod"(i64 %t310, i64 7)
   ret i64 %t312
 }
-define internal i1 @"std/time.isLeapYear"(i32 %year) alwaysinline {
+define hidden i1 @"std/time.is_leap_year"(i32 %year) alwaysinline {
 entry:
   %t313 = icmp eq i32 4, 0
   br i1 %t313, label %panic.2, label %panic.ok.2
@@ -6010,12 +6010,12 @@ panic.ok.8:
   %t330 = icmp eq i32 %t329, 0
   ret i1 %t330
 }
-define internal i32 @"std/time.daysInMonth"(i32 %year, i32 %month) inlinehint {
+define hidden i32 @"std/time.days_in_month"(i32 %year, i32 %month) inlinehint {
 entry:
   %t331 = icmp eq i32 %month, 2
   br i1 %t331, label %if.then.1, label %if.end.1
 if.then.1:
-  %t332 = call i1 @"std/time.isLeapYear"(i32 %year)
+  %t332 = call i1 @"std/time.is_leap_year"(i32 %year)
   br i1 %t332, label %if.then.2, label %if.end.2
 if.then.2:
   ret i32 29
@@ -6037,7 +6037,7 @@ if.end.3:
 }
 %"struct.std/time.clockError" = type { { ptr, i64 } }
 %"struct.std/time.Stopwatch" = type { i64 }
-define hidden { ptr, i64 } @"std/time.clockError.Message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"std/time.clockError.message"(ptr %e) inlinehint {
 entry:
   %v.ret.16 = alloca { ptr, i64 }
   %v.strm.16 = alloca { ptr, i64 }
@@ -6058,18 +6058,18 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.16
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"std/time.clockError.Status"(ptr %e) alwaysinline {
+define hidden i32 @"std/time.clockError.status"(ptr %e) alwaysinline {
 entry:
   ret i32 2
 }
-define internal void @"std/time.Stopwatch.init"(ptr %s) inlinehint {
+define hidden void @"std/time.Stopwatch.init"(ptr %s) inlinehint {
 entry:
   %t12 = getelementptr inbounds %"struct.std/time.Stopwatch", ptr %s, i32 0, i32 0
   %t13 = call i64 @willrt_now_ns()
   store i64 %t13, ptr %t12
   ret void
 }
-define hidden i64 @"std/time.Stopwatch.Elapsed"(ptr %s) inlinehint {
+define hidden i64 @"std/time.Stopwatch.elapsed"(ptr %s) inlinehint {
 entry:
   %t14 = call i64 @willrt_now_ns()
   %t15 = getelementptr inbounds %"struct.std/time.Stopwatch", ptr %s, i32 0, i32 0
@@ -6084,7 +6084,7 @@ panic.1:
 panic.ok.1:
   ret i64 %t18
 }
-define internal i32 @"std/time.Sleep.sm"(ptr %frame) {
+define internal i32 @"std/time.sleep.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.52.20 = getelementptr i8, ptr %frame, i64 8
@@ -6227,7 +6227,7 @@ share.adt.done.4.1:
   ret i32 1
 
 }
-define hidden ptr @"std/time.Sleep.task"(i64 %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/time.sleep.task"(i64 %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 176)
   %t85 = getelementptr i8, ptr %v.sm.frame, i64 0
@@ -6240,12 +6240,12 @@ entry:
   %t90 = select i1 %t89, i32 %t87, i32 %start
   br i1 %t88, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t91 = call ptr @willrt_task_new(ptr @"std/time.Sleep.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0)
+  %t91 = call ptr @willrt_task_new(ptr @"std/time.sleep.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0)
   call void @willrt_task_own_frame(ptr %t91)
   call void @willrt_task_run_auto(ptr %t91)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t92 = call ptr @willrt_task_new(ptr @"std/time.Sleep.sm", ptr %v.sm.frame, i64 176, i32 %t90, i32 0)
+  %t92 = call ptr @willrt_task_new(ptr @"std/time.sleep.sm", ptr %v.sm.frame, i64 176, i32 %t90, i32 0)
   call void @willrt_task_own_frame(ptr %t92)
   call void @willrt_task_run(ptr %t92)
   br label %sm.start.done.6
@@ -6304,7 +6304,7 @@ define internal void @"std/time.iface.share.Error.clockError"(ptr %data) {
 entry:
   ret void
 }
-define internal { ptr, i64 } @"std/time.pad2"(i64 %v) alwaysinline {
+define hidden { ptr, i64 } @"std/time.pad2"(i64 %v) alwaysinline {
 entry:
   %v.interp.17 = alloca { ptr, i64 }
   %v.interp.20 = alloca { ptr, i64 }
@@ -6361,7 +6361,7 @@ interp.ready.3:
   %t28 = load { ptr, i64 }, ptr %v.interp.20
   ret { ptr, i64 } %t28
 }
-define internal { ptr, i64 } @"std/time.padYear"(i32 %year) alwaysinline {
+define hidden { ptr, i64 } @"std/time.pad_year"(i32 %year) alwaysinline {
 entry:
   %v.interp.37 = alloca { ptr, i64 }
   %v.interp.49 = alloca { ptr, i64 }
@@ -6486,7 +6486,7 @@ interp.ready.7:
   %t94 = load { ptr, i64 }, ptr %v.interp.64
   ret { ptr, i64 } %t94
 }
-define internal { ptr, i64 } @"std/time.offsetSuffix"(i32 %offsetSec) inlinehint {
+define hidden { ptr, i64 } @"std/time.offset_suffix"(i32 %offsetSec) inlinehint {
 entry:
   %v.total = alloca i64
   %v.sign = alloca { ptr, i64 }
@@ -6681,7 +6681,7 @@ cat.ready.12:
   call void @willrt_free_str(ptr %t182)
   ret { ptr, i64 } %t180
 }
-define internal { ptr, i64 } @"std/time.fractionText"(i64 %frac) inlinehint {
+define hidden { ptr, i64 } @"std/time.fraction_text"(i64 %frac) inlinehint {
 entry:
   %v.digits = alloca { ptr, i64 }
   %v.zeros = alloca i32
@@ -7161,7 +7161,7 @@ deep.rel.arr.done.24:
   call void @willrt_free_str(ptr %t406)
   ret { ptr, i64 } %t386
 }
-define internal { ptr, i64 } @"std/time.weekdayName"(i64 %weekday) alwaysinline {
+define hidden { ptr, i64 } @"std/time.weekday_name"(i64 %weekday) alwaysinline {
 entry:
   %v.str.226 = alloca { ptr, i64 }
   %v.str.233 = alloca { ptr, i64 }
@@ -7237,7 +7237,7 @@ if.end.6:
   %t433 = load { ptr, i64 }, ptr %v.str.263
   ret { ptr, i64 } %t433
 }
-define internal { ptr, i64 } @"std/time.monthName"(i32 %month) alwaysinline {
+define hidden { ptr, i64 } @"std/time.month_name"(i32 %month) alwaysinline {
 entry:
   %v.str.275 = alloca { ptr, i64 }
   %v.str.282 = alloca { ptr, i64 }
@@ -7368,7 +7368,7 @@ if.end.11:
   %t480 = load { ptr, i64 }, ptr %v.str.347
   ret { ptr, i64 } %t480
 }
-define internal { ptr, i64 } @"std/time.rfc3339Body"(ptr %t, i64 %frac) inlinehint {
+define hidden { ptr, i64 } @"std/time.rfc3339_body"(ptr %t, i64 %frac) inlinehint {
 entry:
   %v.local = alloca i64
   %v.date = alloca %"struct.std/time.civilDate"
@@ -7402,22 +7402,22 @@ entry:
   %v.cat.420 = alloca { ptr, i64 }
   %v.cat.430 = alloca { ptr, i64 }
   %v.cat.431 = alloca { ptr, i64 }
-  %t481 = call i64 @"std/time.localSeconds"(ptr %t)
+  %t481 = call i64 @"std/time.local_seconds"(ptr %t)
   store i64 %t481, ptr %v.local
   %t482 = load i64, ptr %v.local
-  %t483 = call i64 @"std/time.daysOf"(i64 %t482)
-  %t484 = call %"struct.std/time.civilDate" @"std/time.civilFromDays"(i64 %t483)
+  %t483 = call i64 @"std/time.days_of"(i64 %t482)
+  %t484 = call %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %t483)
   store %"struct.std/time.civilDate" %t484, ptr %v.ret.361
   %t485 = load %"struct.std/time.civilDate", ptr %v.ret.361
   store %"struct.std/time.civilDate" %t485, ptr %v.date
   %t486 = load i64, ptr %v.local
-  %t487 = call %"struct.std/time.clockTime" @"std/time.timeOfDay"(i64 %t486)
+  %t487 = call %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %t486)
   store %"struct.std/time.clockTime" %t487, ptr %v.ret.366
   %t488 = load %"struct.std/time.clockTime", ptr %v.ret.366
   store %"struct.std/time.clockTime" %t488, ptr %v.tod
   %t489 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 0
   %t490 = load i32, ptr %t489
-  %t491 = call { ptr, i64 } @"std/time.padYear"(i32 %t490)
+  %t491 = call { ptr, i64 } @"std/time.pad_year"(i32 %t490)
   store { ptr, i64 } %t491, ptr %v.ret.374
   %t492 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.374, i32 0, i32 0
   %t493 = load ptr, ptr %t492
@@ -7700,7 +7700,7 @@ cat.ready.10:
   %t661 = load ptr, ptr %t660
   %t662 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.420, i32 0, i32 1
   %t663 = load i64, ptr %t662
-  %t664 = call { ptr, i64 } @"std/time.fractionText"(i64 %frac)
+  %t664 = call { ptr, i64 } @"std/time.fraction_text"(i64 %frac)
   store { ptr, i64 } %t664, ptr %v.ret.423
   %t665 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.423, i32 0, i32 0
   %t666 = load ptr, ptr %t665
@@ -7790,7 +7790,7 @@ cat.ready.13:
   call void @willrt_free_str(ptr %t713)
   ret { ptr, i64 } %t709
 }
-define hidden { ptr, i64 } @"std/time.Rfc3339"(ptr %t) inlinehint {
+define hidden { ptr, i64 } @"std/time.rfc3339"(ptr %t) inlinehint {
 entry:
   %v.at = alloca i64
   %v.ret.447 = alloca { ptr, i64 }
@@ -7798,9 +7798,9 @@ entry:
   %v.cat.446 = alloca { ptr, i64 }
   %t714 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t715 = load i64, ptr %t714
-  %t716 = call i64 @"std/time.secondsOf"(i64 %t715)
+  %t716 = call i64 @"std/time.seconds_of"(i64 %t715)
   store i64 %t716, ptr %v.at
-  %t717 = call { ptr, i64 } @"std/time.rfc3339Body"(ptr %t, i64 0)
+  %t717 = call { ptr, i64 } @"std/time.rfc3339_body"(ptr %t, i64 0)
   store { ptr, i64 } %t717, ptr %v.ret.447
   %t718 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.447, i32 0, i32 0
   %t719 = load ptr, ptr %t718
@@ -7808,8 +7808,8 @@ entry:
   %t721 = load i64, ptr %t720
   %t722 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 1
   %t723 = load i64, ptr %v.at
-  %t724 = call i32 @"std/time.offsetAt"(ptr %t722, i64 %t723)
-  %t725 = call { ptr, i64 } @"std/time.offsetSuffix"(i32 %t724)
+  %t724 = call i32 @"std/time.offset_at"(ptr %t722, i64 %t723)
+  %t725 = call { ptr, i64 } @"std/time.offset_suffix"(i32 %t724)
   store { ptr, i64 } %t725, ptr %v.ret.450
   %t726 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.450, i32 0, i32 0
   %t727 = load ptr, ptr %t726
@@ -7835,7 +7835,7 @@ cat.ready.1:
   %t737 = load { ptr, i64 }, ptr %v.cat.446
   ret { ptr, i64 } %t737
 }
-define hidden { ptr, i64 } @"std/time.Rfc3339Nano"(ptr %t) inlinehint {
+define hidden { ptr, i64 } @"std/time.rfc3339_nano"(ptr %t) inlinehint {
 entry:
   %v.at = alloca i64
   %v.ret.467 = alloca { ptr, i64 }
@@ -7843,12 +7843,12 @@ entry:
   %v.cat.466 = alloca { ptr, i64 }
   %t738 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t739 = load i64, ptr %t738
-  %t740 = call i64 @"std/time.secondsOf"(i64 %t739)
+  %t740 = call i64 @"std/time.seconds_of"(i64 %t739)
   store i64 %t740, ptr %v.at
   %t741 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t742 = load i64, ptr %t741
-  %t743 = call i64 @"std/time.fractionOf"(i64 %t742)
-  %t744 = call { ptr, i64 } @"std/time.rfc3339Body"(ptr %t, i64 %t743)
+  %t743 = call i64 @"std/time.fraction_of"(i64 %t742)
+  %t744 = call { ptr, i64 } @"std/time.rfc3339_body"(ptr %t, i64 %t743)
   store { ptr, i64 } %t744, ptr %v.ret.467
   %t745 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.467, i32 0, i32 0
   %t746 = load ptr, ptr %t745
@@ -7856,8 +7856,8 @@ entry:
   %t748 = load i64, ptr %t747
   %t749 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 1
   %t750 = load i64, ptr %v.at
-  %t751 = call i32 @"std/time.offsetAt"(ptr %t749, i64 %t750)
-  %t752 = call { ptr, i64 } @"std/time.offsetSuffix"(i32 %t751)
+  %t751 = call i32 @"std/time.offset_at"(ptr %t749, i64 %t750)
+  %t752 = call { ptr, i64 } @"std/time.offset_suffix"(i32 %t751)
   store { ptr, i64 } %t752, ptr %v.ret.472
   %t753 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.472, i32 0, i32 0
   %t754 = load ptr, ptr %t753
@@ -7883,7 +7883,7 @@ cat.ready.1:
   %t764 = load { ptr, i64 }, ptr %v.cat.466
   ret { ptr, i64 } %t764
 }
-define hidden { ptr, i64 } @"std/time.Rfc1123"(ptr %t) inlinehint {
+define hidden { ptr, i64 } @"std/time.rfc1123"(ptr %t) inlinehint {
 entry:
   %v.secs = alloca i64
   %v.date = alloca %"struct.std/time.civilDate"
@@ -7922,23 +7922,23 @@ entry:
   %v.cat.554 = alloca { ptr, i64 }
   %t765 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t766 = load i64, ptr %t765
-  %t767 = call i64 @"std/time.secondsOf"(i64 %t766)
+  %t767 = call i64 @"std/time.seconds_of"(i64 %t766)
   store i64 %t767, ptr %v.secs
   %t768 = load i64, ptr %v.secs
-  %t769 = call i64 @"std/time.daysOf"(i64 %t768)
-  %t770 = call %"struct.std/time.civilDate" @"std/time.civilFromDays"(i64 %t769)
+  %t769 = call i64 @"std/time.days_of"(i64 %t768)
+  %t770 = call %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %t769)
   store %"struct.std/time.civilDate" %t770, ptr %v.ret.489
   %t771 = load %"struct.std/time.civilDate", ptr %v.ret.489
   store %"struct.std/time.civilDate" %t771, ptr %v.date
   %t772 = load i64, ptr %v.secs
-  %t773 = call %"struct.std/time.clockTime" @"std/time.timeOfDay"(i64 %t772)
+  %t773 = call %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %t772)
   store %"struct.std/time.clockTime" %t773, ptr %v.ret.494
   %t774 = load %"struct.std/time.clockTime", ptr %v.ret.494
   store %"struct.std/time.clockTime" %t774, ptr %v.tod
   %t775 = load i64, ptr %v.secs
-  %t776 = call i64 @"std/time.daysOf"(i64 %t775)
-  %t777 = call i64 @"std/time.weekdayOf"(i64 %t776)
-  %t778 = call { ptr, i64 } @"std/time.weekdayName"(i64 %t777)
+  %t776 = call i64 @"std/time.days_of"(i64 %t775)
+  %t777 = call i64 @"std/time.weekday_of"(i64 %t776)
+  %t778 = call { ptr, i64 } @"std/time.weekday_name"(i64 %t777)
   store { ptr, i64 } %t778, ptr %v.ret.500
   %t779 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.500, i32 0, i32 0
   %t780 = load ptr, ptr %t779
@@ -8003,7 +8003,7 @@ cat.ready.2:
   store { ptr, i64 } %t815, ptr %v.left
   %t816 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 1
   %t817 = load i32, ptr %t816
-  %t818 = call { ptr, i64 } @"std/time.monthName"(i32 %t817)
+  %t818 = call { ptr, i64 } @"std/time.month_name"(i32 %t817)
   store { ptr, i64 } %t818, ptr %v.ret.514
   %t819 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.514, i32 0, i32 0
   %t820 = load ptr, ptr %t819
@@ -8040,7 +8040,7 @@ cat.ready.3:
   %t839 = load i64, ptr %t838
   %t840 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 0
   %t841 = load i32, ptr %t840
-  %t842 = call { ptr, i64 } @"std/time.padYear"(i32 %t841)
+  %t842 = call { ptr, i64 } @"std/time.pad_year"(i32 %t841)
   store { ptr, i64 } %t842, ptr %v.ret.518
   %t843 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.518, i32 0, i32 0
   %t844 = load ptr, ptr %t843
@@ -8339,7 +8339,7 @@ cat.ready.13:
   call void @willrt_free_str(ptr %t1019)
   ret { ptr, i64 } %t1013
 }
-define hidden { ptr, i64 } @"std/time.Date"(ptr %t) inlinehint {
+define hidden { ptr, i64 } @"std/time.date"(ptr %t) inlinehint {
 entry:
   %v.date = alloca %"struct.std/time.civilDate"
   %v.ret.568 = alloca %"struct.std/time.civilDate"
@@ -8352,15 +8352,15 @@ entry:
   %v.cat.575 = alloca { ptr, i64 }
   %v.cat.576 = alloca { ptr, i64 }
   %v.cat.577 = alloca { ptr, i64 }
-  %t1020 = call i64 @"std/time.localSeconds"(ptr %t)
-  %t1021 = call i64 @"std/time.daysOf"(i64 %t1020)
-  %t1022 = call %"struct.std/time.civilDate" @"std/time.civilFromDays"(i64 %t1021)
+  %t1020 = call i64 @"std/time.local_seconds"(ptr %t)
+  %t1021 = call i64 @"std/time.days_of"(i64 %t1020)
+  %t1022 = call %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %t1021)
   store %"struct.std/time.civilDate" %t1022, ptr %v.ret.568
   %t1023 = load %"struct.std/time.civilDate", ptr %v.ret.568
   store %"struct.std/time.civilDate" %t1023, ptr %v.date
   %t1024 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 0
   %t1025 = load i32, ptr %t1024
-  %t1026 = call { ptr, i64 } @"std/time.padYear"(i32 %t1025)
+  %t1026 = call { ptr, i64 } @"std/time.pad_year"(i32 %t1025)
   store { ptr, i64 } %t1026, ptr %v.ret.578
   %t1027 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.578, i32 0, i32 0
   %t1028 = load ptr, ptr %t1027
@@ -8483,7 +8483,7 @@ cat.ready.4:
   %t1099 = load { ptr, i64 }, ptr %v.cat.574
   ret { ptr, i64 } %t1099
 }
-define hidden { ptr, i64 } @"std/time.Clock"(ptr %t) inlinehint {
+define hidden { ptr, i64 } @"std/time.clock"(ptr %t) inlinehint {
 entry:
   %v.tod = alloca %"struct.std/time.clockTime"
   %v.ret.600 = alloca %"struct.std/time.clockTime"
@@ -8496,8 +8496,8 @@ entry:
   %v.cat.606 = alloca { ptr, i64 }
   %v.cat.607 = alloca { ptr, i64 }
   %v.cat.608 = alloca { ptr, i64 }
-  %t1100 = call i64 @"std/time.localSeconds"(ptr %t)
-  %t1101 = call %"struct.std/time.clockTime" @"std/time.timeOfDay"(i64 %t1100)
+  %t1100 = call i64 @"std/time.local_seconds"(ptr %t)
+  %t1101 = call %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %t1100)
   store %"struct.std/time.clockTime" %t1101, ptr %v.ret.600
   %t1102 = load %"struct.std/time.clockTime", ptr %v.ret.600
   store %"struct.std/time.clockTime" %t1102, ptr %v.tod
@@ -8628,7 +8628,7 @@ cat.ready.4:
   ret { ptr, i64 } %t1179
 }
 %"struct.std/time.timeError" = type { { ptr, i64 } }
-define hidden { ptr, i64 } @"std/time.timeError.Message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"std/time.timeError.message"(ptr %e) inlinehint {
 entry:
   %v.ret.18 = alloca { ptr, i64 }
   %v.strm.18 = alloca { ptr, i64 }
@@ -8649,11 +8649,11 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.18
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"std/time.timeError.Status"(ptr %e) alwaysinline {
+define hidden i32 @"std/time.timeError.status"(ptr %e) alwaysinline {
 entry:
   ret i32 2
 }
-define internal %"struct.std/time.timeError" @"std/time.fail"(ptr %message) inlinehint {
+define hidden %"struct.std/time.timeError" @"std/time.fail"(ptr %message) inlinehint {
 entry:
   %v.agg.34 = alloca %"struct.std/time.timeError"
   %v.ret.35 = alloca { ptr, i64 }
@@ -8676,7 +8676,7 @@ entry:
   %t22 = load %"struct.std/time.timeError", ptr %v.agg.34
   ret %"struct.std/time.timeError" %t22
 }
-define internal { ptr, i64, i64 } @"std/time.charsOf"(ptr %s) inlinehint {
+define hidden { ptr, i64, i64 } @"std/time.chars_of"(ptr %s) inlinehint {
 entry:
   %v.out = alloca { ptr, i64, i64 }
   %v.new.76 = alloca { ptr, i64, i64 }
@@ -8776,7 +8776,7 @@ for.end.1:
   %t67 = load { ptr, i64, i64 }, ptr %v.out
   ret { ptr, i64, i64 } %t67
 }
-define internal i32 @"std/time.digitValue"(i32 %c) alwaysinline {
+define hidden i32 @"std/time.digit_value"(i32 %c) alwaysinline {
 entry:
   %t68 = icmp uge i32 %c, 48
   %t69 = icmp ule i32 %c, 57
@@ -8808,7 +8808,7 @@ panic.ok.4:
   %t75 = sub i32 0, 1
   ret i32 %t75
 }
-define internal i1 @"std/time.hasAt"(ptr %cs, i32 %at, i32 %want) inlinehint {
+define hidden i1 @"std/time.has_at"(ptr %cs, i32 %at, i32 %want) inlinehint {
 entry:
   %t77 = icmp slt i32 %at, 0
   %t78 = getelementptr inbounds { ptr, i64 }, ptr %cs, i32 0, i32 1
@@ -8842,7 +8842,7 @@ panic.ok.3:
   %t92 = icmp eq i32 %t91, %want
   ret i1 %t92
 }
-define internal i32 @"std/time.readDigits"(ptr %cs, i32 %at, i32 %count) inlinehint {
+define hidden i32 @"std/time.read_digits"(ptr %cs, i32 %at, i32 %count) inlinehint {
 entry:
   %v.value = alloca i32
   %v.k = alloca i32
@@ -8912,7 +8912,7 @@ panic.8:
 panic.ok.8:
   %t119 = getelementptr inbounds i32, ptr %t115, i64 %t113
   %t120 = load i32, ptr %t119
-  %t121 = call i32 @"std/time.digitValue"(i32 %t120)
+  %t121 = call i32 @"std/time.digit_value"(i32 %t120)
   store i32 %t121, ptr %v.d
   %t122 = load i32, ptr %v.d
   %t123 = icmp slt i32 %t122, 0
@@ -8961,14 +8961,14 @@ for.end.5:
   %t138 = load i32, ptr %v.value
   ret i32 %t138
 }
-define internal i1 @"std/time.secondInRange"(i64 %sec) alwaysinline {
+define hidden i1 @"std/time.second_in_range"(i64 %sec) alwaysinline {
 entry:
   %t139 = icmp sge i64 %sec, -9223372036
   %t140 = icmp sle i64 %sec, 9223372036
   %t141 = and i1 %t139, %t140
   ret i1 %t141
 }
-define hidden { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseRfc3339"(ptr %s) inlinehint {
+define hidden { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.parse_rfc3339"(ptr %s) inlinehint {
 entry:
   %v.cs = alloca { ptr, i64, i64 }
   %v.c = alloca { ptr, i64 }
@@ -8986,8 +8986,8 @@ entry:
   %v.offset = alloca i32
   %v.offsetHour = alloca i32
   %v.offsetMinute = alloca i32
-  %v.local = alloca i64
-  %v.utc = alloca i64
+  %v.local_seconds = alloca i64
+  %v.utc_seconds = alloca i64
   %v.agg.720 = alloca %"struct.std/time.Instant"
   %v.ret.240 = alloca { ptr, i64, i64 }
   %v.ret.265 = alloca %"struct.std/time.timeError"
@@ -9041,7 +9041,7 @@ entry:
   %v.adt.712 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
   %v.adt.718 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
   %v.slice.245 = alloca { ptr, i64 }
-  %t142 = call { ptr, i64, i64 } @"std/time.charsOf"(ptr %s)
+  %t142 = call { ptr, i64, i64 } @"std/time.chars_of"(ptr %s)
   store { ptr, i64, i64 } %t142, ptr %v.ret.240
   %t143 = load { ptr, i64, i64 }, ptr %v.ret.240
   store { ptr, i64, i64 } %t143, ptr %v.cs
@@ -9136,17 +9136,17 @@ deep.rel.arr.done.5:
   call void @willrt_free(ptr %t186)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t183
 if.end.4:
-  %t193 = call i32 @"std/time.readDigits"(ptr %v.c, i32 0, i32 4)
+  %t193 = call i32 @"std/time.read_digits"(ptr %v.c, i32 0, i32 4)
   store i32 %t193, ptr %v.year
-  %t194 = call i32 @"std/time.readDigits"(ptr %v.c, i32 5, i32 2)
+  %t194 = call i32 @"std/time.read_digits"(ptr %v.c, i32 5, i32 2)
   store i32 %t194, ptr %v.month
-  %t195 = call i32 @"std/time.readDigits"(ptr %v.c, i32 8, i32 2)
+  %t195 = call i32 @"std/time.read_digits"(ptr %v.c, i32 8, i32 2)
   store i32 %t195, ptr %v.day
-  %t196 = call i32 @"std/time.readDigits"(ptr %v.c, i32 11, i32 2)
+  %t196 = call i32 @"std/time.read_digits"(ptr %v.c, i32 11, i32 2)
   store i32 %t196, ptr %v.hour
-  %t197 = call i32 @"std/time.readDigits"(ptr %v.c, i32 14, i32 2)
+  %t197 = call i32 @"std/time.read_digits"(ptr %v.c, i32 14, i32 2)
   store i32 %t197, ptr %v.minute
-  %t198 = call i32 @"std/time.readDigits"(ptr %v.c, i32 17, i32 2)
+  %t198 = call i32 @"std/time.read_digits"(ptr %v.c, i32 17, i32 2)
   store i32 %t198, ptr %v.second
   %t199 = load i32, ptr %v.year
   %t200 = icmp slt i32 %t199, 0
@@ -9218,9 +9218,9 @@ deep.rel.arr.done.7:
   call void @willrt_free(ptr %t239)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t236
 if.end.6:
-  %t246 = call i1 @"std/time.hasAt"(ptr %v.c, i32 4, i32 45)
+  %t246 = call i1 @"std/time.has_at"(ptr %v.c, i32 4, i32 45)
   %t247 = xor i1 %t246, true
-  %t248 = call i1 @"std/time.hasAt"(ptr %v.c, i32 7, i32 45)
+  %t248 = call i1 @"std/time.has_at"(ptr %v.c, i32 7, i32 45)
   %t249 = xor i1 %t248, true
   %t250 = or i1 %t247, %t249
   br i1 %t250, label %if.then.8, label %if.end.8
@@ -9276,9 +9276,9 @@ deep.rel.arr.done.9:
   call void @willrt_free(ptr %t274)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t271
 if.end.8:
-  %t281 = call i1 @"std/time.hasAt"(ptr %v.c, i32 10, i32 84)
+  %t281 = call i1 @"std/time.has_at"(ptr %v.c, i32 10, i32 84)
   %t282 = xor i1 %t281, true
-  %t283 = call i1 @"std/time.hasAt"(ptr %v.c, i32 10, i32 116)
+  %t283 = call i1 @"std/time.has_at"(ptr %v.c, i32 10, i32 116)
   %t284 = xor i1 %t283, true
   %t285 = and i1 %t282, %t284
   br i1 %t285, label %if.then.10, label %if.end.10
@@ -9334,9 +9334,9 @@ deep.rel.arr.done.11:
   call void @willrt_free(ptr %t309)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t306
 if.end.10:
-  %t316 = call i1 @"std/time.hasAt"(ptr %v.c, i32 13, i32 58)
+  %t316 = call i1 @"std/time.has_at"(ptr %v.c, i32 13, i32 58)
   %t317 = xor i1 %t316, true
-  %t318 = call i1 @"std/time.hasAt"(ptr %v.c, i32 16, i32 58)
+  %t318 = call i1 @"std/time.has_at"(ptr %v.c, i32 16, i32 58)
   %t319 = xor i1 %t318, true
   %t320 = or i1 %t317, %t319
   br i1 %t320, label %if.then.12, label %if.end.12
@@ -9455,7 +9455,7 @@ if.end.14:
   %t388 = load i32, ptr %v.day
   %t389 = load i32, ptr %v.year
   %t390 = load i32, ptr %v.month
-  %t391 = call i32 @"std/time.daysInMonth"(i32 %t389, i32 %t390)
+  %t391 = call i32 @"std/time.days_in_month"(i32 %t389, i32 %t390)
   %t392 = icmp sgt i32 %t388, %t391
   %t393 = or i1 %t387, %t392
   br i1 %t393, label %if.then.16, label %if.end.16
@@ -9575,7 +9575,7 @@ if.end.18:
   store i32 19, ptr %v.at
   store i64 0, ptr %v.frac
   %t462 = load i32, ptr %v.at
-  %t463 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t462, i32 46)
+  %t463 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t462, i32 46)
   br i1 %t463, label %if.then.20, label %if.end.20
 if.then.20:
   %t464 = load i32, ptr %v.at
@@ -9612,7 +9612,7 @@ panic.24:
 panic.ok.24:
   %t478 = getelementptr inbounds i32, ptr %t474, i64 %t472
   %t479 = load i32, ptr %t478
-  %t480 = call i32 @"std/time.digitValue"(i32 %t479)
+  %t480 = call i32 @"std/time.digit_value"(i32 %t479)
   store i32 %t480, ptr %v.d
   %t481 = load i32, ptr %v.d
   %t482 = icmp slt i32 %t481, 0
@@ -9813,9 +9813,9 @@ deep.rel.arr.done.38:
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t567
 if.end.37:
   %t577 = load i32, ptr %v.at
-  %t578 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t577, i32 90)
+  %t578 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t577, i32 90)
   %t579 = load i32, ptr %v.at
-  %t580 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t579, i32 122)
+  %t580 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t579, i32 122)
   %t581 = or i1 %t578, %t580
   br i1 %t581, label %if.then.39, label %if.else.39
 if.then.39:
@@ -9832,9 +9832,9 @@ panic.ok.40:
   br label %if.end.39
 if.else.39:
   %t586 = load i32, ptr %v.at
-  %t587 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t586, i32 43)
+  %t587 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t586, i32 43)
   %t588 = load i32, ptr %v.at
-  %t589 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t588, i32 45)
+  %t589 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t588, i32 45)
   %t590 = or i1 %t587, %t589
   br i1 %t590, label %if.then.41, label %if.else.41
 if.then.41:
@@ -9847,7 +9847,7 @@ panic.42:
   call void @willrt_panic(ptr @.str.18, ptr @.str.167, ptr @.str.145)
   unreachable
 panic.ok.42:
-  %t595 = call i32 @"std/time.readDigits"(ptr %v.c, i32 %t593, i32 2)
+  %t595 = call i32 @"std/time.read_digits"(ptr %v.c, i32 %t593, i32 2)
   store i32 %t595, ptr %v.offsetHour
   %t596 = load i32, ptr %v.at
   %t597 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t596, i32 4)
@@ -9858,7 +9858,7 @@ panic.43:
   call void @willrt_panic(ptr @.str.18, ptr @.str.168, ptr @.str.145)
   unreachable
 panic.ok.43:
-  %t600 = call i32 @"std/time.readDigits"(ptr %v.c, i32 %t598, i32 2)
+  %t600 = call i32 @"std/time.read_digits"(ptr %v.c, i32 %t598, i32 2)
   store i32 %t600, ptr %v.offsetMinute
   %t601 = load i32, ptr %v.offsetHour
   %t602 = icmp slt i32 %t601, 0
@@ -9874,7 +9874,7 @@ panic.45:
   call void @willrt_panic(ptr @.str.18, ptr @.str.169, ptr @.str.145)
   unreachable
 panic.ok.45:
-  %t610 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t608, i32 58)
+  %t610 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t608, i32 58)
   %t611 = xor i1 %t610, true
   %t612 = or i1 %t605, %t611
   br i1 %t612, label %if.then.44, label %if.end.44
@@ -10016,7 +10016,7 @@ panic.51:
 panic.ok.51:
   store i32 %t687, ptr %v.offset
   %t689 = load i32, ptr %v.at
-  %t690 = call i1 @"std/time.hasAt"(ptr %v.c, i32 %t689, i32 45)
+  %t690 = call i1 @"std/time.has_at"(ptr %v.c, i32 %t689, i32 45)
   br i1 %t690, label %if.then.52, label %if.end.52
 if.then.52:
   %t691 = load i32, ptr %v.offset
@@ -10154,7 +10154,7 @@ if.end.56:
   %t761 = load i32, ptr %v.year
   %t762 = load i32, ptr %v.month
   %t763 = load i32, ptr %v.day
-  %t764 = call i64 @"std/time.daysFromCivil"(i32 %t761, i32 %t762, i32 %t763)
+  %t764 = call i64 @"std/time.days_from_civil"(i32 %t761, i32 %t762, i32 %t763)
   %t765 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t764, i64 86400)
   %t766 = extractvalue {i64, i1} %t765, 0
   %t767 = extractvalue {i64, i1} %t765, 1
@@ -10163,8 +10163,8 @@ panic.58:
   call void @willrt_panic(ptr @.str.18, ptr @.str.178, ptr @.str.145)
   unreachable
 panic.ok.58:
-  store i64 %t766, ptr %v.local
-  %t768 = load i64, ptr %v.local
+  store i64 %t766, ptr %v.local_seconds
+  %t768 = load i64, ptr %v.local_seconds
   %t769 = load i32, ptr %v.hour
   %t770 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %t769, i32 3600)
   %t771 = extractvalue {i32, i1} %t770, 0
@@ -10209,8 +10209,8 @@ panic.63:
   call void @willrt_panic(ptr @.str.18, ptr @.str.181, ptr @.str.145)
   unreachable
 panic.ok.63:
-  store i64 %t786, ptr %v.local
-  %t788 = load i64, ptr %v.local
+  store i64 %t786, ptr %v.local_seconds
+  %t788 = load i64, ptr %v.local_seconds
   %t789 = load i32, ptr %v.offset
   %t790 = sext i32 %t789 to i64
   %t791 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t788, i64 %t790)
@@ -10221,9 +10221,9 @@ panic.64:
   call void @willrt_panic(ptr @.str.18, ptr @.str.182, ptr @.str.145)
   unreachable
 panic.ok.64:
-  store i64 %t792, ptr %v.utc
-  %t794 = load i64, ptr %v.utc
-  %t795 = call i1 @"std/time.secondInRange"(i64 %t794)
+  store i64 %t792, ptr %v.utc_seconds
+  %t794 = load i64, ptr %v.utc_seconds
+  %t795 = call i1 @"std/time.second_in_range"(i64 %t794)
   %t796 = xor i1 %t795, true
   br i1 %t796, label %if.then.65, label %if.end.65
 if.then.65:
@@ -10278,7 +10278,7 @@ deep.rel.arr.done.66:
   call void @willrt_free(ptr %t820)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t817
 if.end.65:
-  %t827 = load i64, ptr %v.utc
+  %t827 = load i64, ptr %v.utc_seconds
   %t828 = icmp eq i64 %t827, 9223372036
   %t829 = load i64, ptr %v.frac
   %t830 = icmp sgt i64 %t829, 854775807
@@ -10340,7 +10340,7 @@ if.end.67:
   store i32 0, ptr %t862
   %t863 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.718, i32 0, i32 2
   %t864 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.720, i32 0, i32 0
-  %t865 = load i64, ptr %v.utc
+  %t865 = load i64, ptr %v.utc_seconds
   %t866 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t865, i64 1000000000)
   %t867 = extractvalue {i64, i1} %t866, 0
   %t868 = extractvalue {i64, i1} %t866, 1
@@ -10361,7 +10361,7 @@ panic.ok.70:
   store i64 %t871, ptr %t864
   %t873 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.720, i32 0, i32 1
   %t874 = load i32, ptr %v.offset
-  %t875 = call %"struct.std/time.Timezone" @"std/time.Fixed"(i32 %t874)
+  %t875 = call %"struct.std/time.Timezone" @"std/time.fixed"(i32 %t874)
   store %"struct.std/time.Timezone" %t875, ptr %v.ret.726
   %t876 = load %"struct.std/time.Timezone", ptr %v.ret.726
   store %"struct.std/time.Timezone" %t876, ptr %t873
@@ -10388,7 +10388,7 @@ deep.rel.arr.done.71:
   call void @willrt_free(ptr %t881)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t878
 }
-define hidden { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.ParseDate"(ptr %s, ptr %tz) inlinehint {
+define hidden { i32, [4 x i8], %"struct.std/time.Instant" } @"std/time.parse_date"(ptr %s, ptr %tz) inlinehint {
 entry:
   %v.cs = alloca { ptr, i64, i64 }
   %v.c = alloca { ptr, i64 }
@@ -10396,9 +10396,9 @@ entry:
   %v.year = alloca i32
   %v.month = alloca i32
   %v.day = alloca i32
-  %v.local = alloca i64
+  %v.local_seconds = alloca i64
   %v.offset = alloca i32
-  %v.utc = alloca i64
+  %v.utc_seconds = alloca i64
   %v.corrected = alloca i32
   %v.agg.907 = alloca %"struct.std/time.Instant"
   %v.ret.740 = alloca { ptr, i64, i64 }
@@ -10422,7 +10422,7 @@ entry:
   %v.adt.899 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
   %v.adt.905 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
   %v.slice.745 = alloca { ptr, i64 }
-  %t888 = call { ptr, i64, i64 } @"std/time.charsOf"(ptr %s)
+  %t888 = call { ptr, i64, i64 } @"std/time.chars_of"(ptr %s)
   store { ptr, i64, i64 } %t888, ptr %v.ret.740
   %t889 = load { ptr, i64, i64 }, ptr %v.ret.740
   store { ptr, i64, i64 } %t889, ptr %v.cs
@@ -10517,11 +10517,11 @@ deep.rel.arr.done.5:
   call void @willrt_free(ptr %t932)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t929
 if.end.4:
-  %t939 = call i32 @"std/time.readDigits"(ptr %v.c, i32 0, i32 4)
+  %t939 = call i32 @"std/time.read_digits"(ptr %v.c, i32 0, i32 4)
   store i32 %t939, ptr %v.year
-  %t940 = call i32 @"std/time.readDigits"(ptr %v.c, i32 5, i32 2)
+  %t940 = call i32 @"std/time.read_digits"(ptr %v.c, i32 5, i32 2)
   store i32 %t940, ptr %v.month
-  %t941 = call i32 @"std/time.readDigits"(ptr %v.c, i32 8, i32 2)
+  %t941 = call i32 @"std/time.read_digits"(ptr %v.c, i32 8, i32 2)
   store i32 %t941, ptr %v.day
   %t942 = load i32, ptr %v.year
   %t943 = icmp slt i32 %t942, 0
@@ -10584,9 +10584,9 @@ deep.rel.arr.done.7:
   call void @willrt_free(ptr %t973)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t970
 if.end.6:
-  %t980 = call i1 @"std/time.hasAt"(ptr %v.c, i32 4, i32 45)
+  %t980 = call i1 @"std/time.has_at"(ptr %v.c, i32 4, i32 45)
   %t981 = xor i1 %t980, true
-  %t982 = call i1 @"std/time.hasAt"(ptr %v.c, i32 7, i32 45)
+  %t982 = call i1 @"std/time.has_at"(ptr %v.c, i32 7, i32 45)
   %t983 = xor i1 %t982, true
   %t984 = or i1 %t981, %t983
   br i1 %t984, label %if.then.8, label %if.end.8
@@ -10705,7 +10705,7 @@ if.end.10:
   %t1052 = load i32, ptr %v.day
   %t1053 = load i32, ptr %v.year
   %t1054 = load i32, ptr %v.month
-  %t1055 = call i32 @"std/time.daysInMonth"(i32 %t1053, i32 %t1054)
+  %t1055 = call i32 @"std/time.days_in_month"(i32 %t1053, i32 %t1054)
   %t1056 = icmp sgt i32 %t1052, %t1055
   %t1057 = or i1 %t1051, %t1056
   br i1 %t1057, label %if.then.12, label %if.end.12
@@ -10764,7 +10764,7 @@ if.end.12:
   %t1088 = load i32, ptr %v.year
   %t1089 = load i32, ptr %v.month
   %t1090 = load i32, ptr %v.day
-  %t1091 = call i64 @"std/time.daysFromCivil"(i32 %t1088, i32 %t1089, i32 %t1090)
+  %t1091 = call i64 @"std/time.days_from_civil"(i32 %t1088, i32 %t1089, i32 %t1090)
   %t1092 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t1091, i64 86400)
   %t1093 = extractvalue {i64, i1} %t1092, 0
   %t1094 = extractvalue {i64, i1} %t1092, 1
@@ -10773,11 +10773,11 @@ panic.14:
   call void @willrt_panic(ptr @.str.18, ptr @.str.194, ptr @.str.187)
   unreachable
 panic.ok.14:
-  store i64 %t1093, ptr %v.local
-  %t1095 = load i64, ptr %v.local
-  %t1096 = call i32 @"std/time.offsetAt"(ptr %tz, i64 %t1095)
+  store i64 %t1093, ptr %v.local_seconds
+  %t1095 = load i64, ptr %v.local_seconds
+  %t1096 = call i32 @"std/time.offset_at"(ptr %tz, i64 %t1095)
   store i32 %t1096, ptr %v.offset
-  %t1097 = load i64, ptr %v.local
+  %t1097 = load i64, ptr %v.local_seconds
   %t1098 = load i32, ptr %v.offset
   %t1099 = sext i32 %t1098 to i64
   %t1100 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t1097, i64 %t1099)
@@ -10788,16 +10788,16 @@ panic.15:
   call void @willrt_panic(ptr @.str.18, ptr @.str.195, ptr @.str.187)
   unreachable
 panic.ok.15:
-  store i64 %t1101, ptr %v.utc
-  %t1103 = load i64, ptr %v.utc
-  %t1104 = call i32 @"std/time.offsetAt"(ptr %tz, i64 %t1103)
+  store i64 %t1101, ptr %v.utc_seconds
+  %t1103 = load i64, ptr %v.utc_seconds
+  %t1104 = call i32 @"std/time.offset_at"(ptr %tz, i64 %t1103)
   store i32 %t1104, ptr %v.corrected
   %t1105 = load i32, ptr %v.corrected
   %t1106 = load i32, ptr %v.offset
   %t1107 = icmp ne i32 %t1105, %t1106
   br i1 %t1107, label %if.then.16, label %if.end.16
 if.then.16:
-  %t1108 = load i64, ptr %v.local
+  %t1108 = load i64, ptr %v.local_seconds
   %t1109 = load i32, ptr %v.corrected
   %t1110 = sext i32 %t1109 to i64
   %t1111 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t1108, i64 %t1110)
@@ -10808,11 +10808,11 @@ panic.17:
   call void @willrt_panic(ptr @.str.18, ptr @.str.196, ptr @.str.187)
   unreachable
 panic.ok.17:
-  store i64 %t1112, ptr %v.utc
+  store i64 %t1112, ptr %v.utc_seconds
   br label %if.end.16
 if.end.16:
-  %t1114 = load i64, ptr %v.utc
-  %t1115 = call i1 @"std/time.secondInRange"(i64 %t1114)
+  %t1114 = load i64, ptr %v.utc_seconds
+  %t1115 = call i1 @"std/time.second_in_range"(i64 %t1114)
   %t1116 = xor i1 %t1115, true
   br i1 %t1116, label %if.then.18, label %if.end.18
 if.then.18:
@@ -10871,7 +10871,7 @@ if.end.18:
   store i32 0, ptr %t1147
   %t1148 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.905, i32 0, i32 2
   %t1149 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.907, i32 0, i32 0
-  %t1150 = load i64, ptr %v.utc
+  %t1150 = load i64, ptr %v.utc_seconds
   %t1151 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t1150, i64 1000000000)
   %t1152 = extractvalue {i64, i1} %t1151, 0
   %t1153 = extractvalue {i64, i1} %t1151, 1
@@ -10959,22 +10959,22 @@ entry:
   ret void
 }
 %"struct.std/time.Instant" = type { i64, %"struct.std/time.Timezone" }
-define hidden %"struct.std/time.Instant" @"std/time.Now"() inlinehint {
+define hidden %"struct.std/time.Instant" @"std/time.now"() inlinehint {
 entry:
   %v.agg.14 = alloca %"struct.std/time.Instant"
   %v.ret.16 = alloca %"struct.std/time.Timezone"
   %t1 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.14, i32 0, i32 0
-  %t2 = call i64 @"std/time.wallNanos"()
+  %t2 = call i64 @"std/time.wall_nanos"()
   store i64 %t2, ptr %t1
   %t3 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.14, i32 0, i32 1
-  %t4 = call %"struct.std/time.Timezone" @"std/time.Utc"()
+  %t4 = call %"struct.std/time.Timezone" @"std/time.utc"()
   store %"struct.std/time.Timezone" %t4, ptr %v.ret.16
   %t5 = load %"struct.std/time.Timezone", ptr %v.ret.16
   store %"struct.std/time.Timezone" %t5, ptr %t3
   %t6 = load %"struct.std/time.Instant", ptr %v.agg.14
   ret %"struct.std/time.Instant" %t6
 }
-define hidden %"struct.std/time.Instant" @"std/time.FromUnix"(i64 %sec) inlinehint {
+define hidden %"struct.std/time.Instant" @"std/time.from_unix"(i64 %sec) inlinehint {
 entry:
   %v.agg.23 = alloca %"struct.std/time.Instant"
   %v.ret.27 = alloca %"struct.std/time.Timezone"
@@ -10989,21 +10989,21 @@ panic.1:
 panic.ok.1:
   store i64 %t9, ptr %t7
   %t11 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.23, i32 0, i32 1
-  %t12 = call %"struct.std/time.Timezone" @"std/time.Utc"()
+  %t12 = call %"struct.std/time.Timezone" @"std/time.utc"()
   store %"struct.std/time.Timezone" %t12, ptr %v.ret.27
   %t13 = load %"struct.std/time.Timezone", ptr %v.ret.27
   store %"struct.std/time.Timezone" %t13, ptr %t11
   %t14 = load %"struct.std/time.Instant", ptr %v.agg.23
   ret %"struct.std/time.Instant" %t14
 }
-define hidden i64 @"std/time.Unix"(ptr %t) inlinehint {
+define hidden i64 @"std/time.unix"(ptr %t) inlinehint {
 entry:
   %t15 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t16 = load i64, ptr %t15
-  %t17 = call i64 @"std/time.floorDiv"(i64 %t16, i64 1000000000)
+  %t17 = call i64 @"std/time.floor_div"(i64 %t16, i64 1000000000)
   ret i64 %t17
 }
-define hidden %"struct.std/time.Instant" @"std/time.In"(ptr %t, ptr %tz) alwaysinline {
+define hidden %"struct.std/time.Instant" @"std/time.in_zone"(ptr %t, ptr %tz) alwaysinline {
 entry:
   %v.agg.46 = alloca %"struct.std/time.Instant"
   %t18 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.46, i32 0, i32 0
@@ -11017,15 +11017,15 @@ entry:
   ret %"struct.std/time.Instant" %t23
 }
 %"struct.std/time.Timezone" = type { i32, i32, i32 }
-define hidden %"struct.std/time.Timezone" @"std/time.Utc"() inlinehint {
+define hidden %"struct.std/time.Timezone" @"std/time.utc"() inlinehint {
 entry:
   %v.ret.29 = alloca %"struct.std/time.Timezone"
-  %t1 = call %"struct.std/time.Timezone" @"std/time.Fixed"(i32 0)
+  %t1 = call %"struct.std/time.Timezone" @"std/time.fixed"(i32 0)
   store %"struct.std/time.Timezone" %t1, ptr %v.ret.29
   %t2 = load %"struct.std/time.Timezone", ptr %v.ret.29
   ret %"struct.std/time.Timezone" %t2
 }
-define hidden %"struct.std/time.Timezone" @"std/time.Fixed"(i32 %offsetSec) alwaysinline {
+define hidden %"struct.std/time.Timezone" @"std/time.fixed"(i32 %offsetSec) alwaysinline {
 entry:
   %v.agg.37 = alloca %"struct.std/time.Timezone"
   %t3 = getelementptr inbounds %"struct.std/time.Timezone", ptr %v.agg.37, i32 0, i32 0
@@ -11044,7 +11044,7 @@ panic.ok.1:
   %t8 = load %"struct.std/time.Timezone", ptr %v.agg.37
   ret %"struct.std/time.Timezone" %t8
 }
-define hidden %"struct.std/time.Timezone" @"std/time.Local"() inlinehint {
+define hidden %"struct.std/time.Timezone" @"std/time.local"() inlinehint {
 entry:
   %v.id = alloca i32
   %v.agg.55 = alloca %"struct.std/time.Timezone"
@@ -11093,12 +11093,12 @@ panic.ok.4:
   %t26 = load %"struct.std/time.Timezone", ptr %v.agg.66
   ret %"struct.std/time.Timezone" %t26
 if.end.2:
-  %t27 = call %"struct.std/time.Timezone" @"std/time.Utc"()
+  %t27 = call %"struct.std/time.Timezone" @"std/time.utc"()
   store %"struct.std/time.Timezone" %t27, ptr %v.ret.72
   %t28 = load %"struct.std/time.Timezone", ptr %v.ret.72
   ret %"struct.std/time.Timezone" %t28
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/time.Load"(ptr %name) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/time.load"(ptr %name) inlinehint {
 entry:
   %v.id = alloca i32
   %v.agg.104 = alloca %"struct.std/time.Timezone"
@@ -11160,7 +11160,7 @@ if.end.2:
   %t60 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.102
   ret { i32, [4 x i8], %interface.Error } %t60
 }
-define internal i32 @"std/time.offsetAt"(ptr %tz, i64 %atSec) inlinehint {
+define hidden i32 @"std/time.offset_at"(ptr %tz, i64 %atSec) inlinehint {
 entry:
   %t61 = getelementptr inbounds %"struct.std/time.Timezone", ptr %tz, i32 0, i32 0
   %t62 = load i32, ptr %t61
@@ -11191,7 +11191,7 @@ if.then.3:
 if.end.3:
   ret i32 0
 }
-define internal i64 @"std/time.wallNanos"() inlinehint {
+define hidden i64 @"std/time.wall_nanos"() inlinehint {
 entry:
   %t76 = call i64 @willtime_wall_ns()
   ret i64 %t76
@@ -11247,7 +11247,7 @@ define internal void @"std/time.iface.share.Error.std/errors.Fault"(ptr %data) {
 entry:
   ret void
 }
-define internal i32 @"example.com/concurrency/multiasync.Fill.sm"(ptr %frame) {
+define internal i32 @"example.com/concurrency/multiasync.fill.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.5.1 = getelementptr i8, ptr %frame, i64 8
@@ -11304,7 +11304,7 @@ panic.ok.2:
   store ptr %t11, ptr %t13
   %t14 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.22, i32 0, i32 1
   store i64 %t12, ptr %t14
-  %t15 = call ptr @"std/os/fs.AsyncWriteFile.task"(ptr %v.sm.param.5.1, ptr %v.slice.22, i32 -2, i32 0)
+  %t15 = call ptr @"std/os/fs.async_write_file.task"(ptr %v.sm.param.5.1, ptr %v.slice.22, i32 -2, i32 0)
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.sm.call.out.16
   store ptr %t15, ptr %v.sm.join.task.18
   store i32 1, ptr %v.sm.state
@@ -11440,7 +11440,7 @@ share.adt.done.10.1:
   unreachable
 try.ok.6:
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.sm.call.out.16
-  %t79 = call ptr @"std/time.Sleep.task"(i64 1000000, i32 -2, i32 0)
+  %t79 = call ptr @"std/time.sleep.task"(i64 1000000, i32 -2, i32 0)
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.sm.call.out.80
   store ptr %t79, ptr %v.sm.join.task.82
   store i32 2, ptr %v.sm.state
@@ -11571,7 +11571,7 @@ panic.ok.20:
   store ptr %t139, ptr %t141
   %t142 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.41, i32 0, i32 1
   store i64 %t140, ptr %t142
-  %t143 = call ptr @"std/os/fs.AsyncAppend.task"(ptr %v.sm.param.5.1, ptr %v.slice.41, i32 -2, i32 0)
+  %t143 = call ptr @"std/os/fs.async_append.task"(ptr %v.sm.param.5.1, ptr %v.slice.41, i32 -2, i32 0)
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.sm.call.out.144
   store ptr %t143, ptr %v.sm.join.task.146
   store i32 3, ptr %v.sm.state
@@ -11743,7 +11743,7 @@ share.adt.done.30.1:
   ret i32 1
 
 }
-define hidden ptr @"example.com/concurrency/multiasync.Fill.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"example.com/concurrency/multiasync.fill.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 496)
   %t225 = getelementptr i8, ptr %v.sm.frame, i64 24
@@ -11764,15 +11764,15 @@ entry:
   %t234 = icmp eq i32 %start, -2
   %t235 = select i1 %t234, i32 %t232, i32 %start
   %t236 = icmp ne i32 %owns, 0
-  %t237 = select i1 %t236, ptr @"example.com/concurrency/multiasync.Fill.drop.own", ptr @"example.com/concurrency/multiasync.Fill.drop"
+  %t237 = select i1 %t236, ptr @"example.com/concurrency/multiasync.fill.drop.own", ptr @"example.com/concurrency/multiasync.fill.drop"
   br i1 %t233, label %sm.start.auto.32, label %sm.start.lane.32
 sm.start.auto.32:
-  %t238 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/multiasync.Fill.sm", ptr %v.sm.frame, i64 496, i32 0, i32 0, ptr %t237)
+  %t238 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/multiasync.fill.sm", ptr %v.sm.frame, i64 496, i32 0, i32 0, ptr %t237)
   call void @willrt_task_own_frame(ptr %t238)
   call void @willrt_task_run_auto(ptr %t238)
   br label %sm.start.done.32
 sm.start.lane.32:
-  %t239 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/multiasync.Fill.sm", ptr %v.sm.frame, i64 496, i32 %t235, i32 0, ptr %t237)
+  %t239 = call ptr @willrt_task_new_drop(ptr @"example.com/concurrency/multiasync.fill.sm", ptr %v.sm.frame, i64 496, i32 %t235, i32 0, ptr %t237)
   call void @willrt_task_own_frame(ptr %t239)
   call void @willrt_task_run(ptr %t239)
   br label %sm.start.done.32
@@ -11780,7 +11780,7 @@ sm.start.done.32:
   %t240 = phi ptr [ %t238, %sm.start.auto.32 ], [ %t239, %sm.start.lane.32 ]
   ret ptr %t240
 }
-define internal void @"example.com/concurrency/multiasync.Fill.drop"(ptr %frame) {
+define internal void @"example.com/concurrency/multiasync.fill.drop"(ptr %frame) {
 entry:
   %t241 = getelementptr i8, ptr %frame, i64 24
   %t242 = getelementptr inbounds { ptr, i64 }, ptr %t241, i32 0, i32 0
@@ -11888,7 +11888,7 @@ deep.rel.adt.done.40.1:
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t270
   ret void
 }
-define internal void @"example.com/concurrency/multiasync.Fill.drop.own"(ptr %frame) {
+define internal void @"example.com/concurrency/multiasync.fill.drop.own"(ptr %frame) {
 entry:
   %t283 = getelementptr i8, ptr %frame, i64 24
   %t284 = getelementptr inbounds { ptr, i64 }, ptr %t283, i32 0, i32 0
@@ -12053,7 +12053,7 @@ sm.init:
   store i64 %t337, ptr %t340
   %t341 = load { ptr, i64 }, ptr %v.strm.72
   store { ptr, i64 } %t341, ptr %v.ret.72
-  %t342 = call ptr @"example.com/concurrency/multiasync.Fill.task"(ptr %v.ret.72, i32 -1, i32 1)
+  %t342 = call ptr @"example.com/concurrency/multiasync.fill.task"(ptr %v.ret.72, i32 -1, i32 1)
   store ptr %t342, ptr %v.task
   %t343 = load ptr, ptr %v.task
   store ptr %t343, ptr %v.sm.join.task.344
@@ -12101,7 +12101,7 @@ sm.op.cont.2:
   %t363 = icmp eq i32 %t362, 1
   br i1 %t363, label %if.then.2, label %if.end.2
 if.then.2:
-  %t364 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
+  %t364 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.remove"(ptr %v.path)
   store { i32, [4 x i8], %interface.Error } %t364, ptr %v.ret.86
   %t365 = load i32, ptr %v.result
   %t366 = icmp eq i32 %t365, 0
@@ -12145,11 +12145,11 @@ deep.rel.adt.done.4.1:
   call i32 @willrt_task_store_result(ptr %t379, i64 %t381)
   ret i32 1
 if.end.2:
-  %t382 = call { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.ReadFile"(ptr %v.path)
+  %t382 = call { i32, [4 x i8], { ptr, i64, i64 } } @"std/os/fs.read_file"(ptr %v.path)
   store { i32, [4 x i8], { ptr, i64, i64 } } %t382, ptr %v.ret.98
   %t383 = load { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.ret.98
   store { i32, [4 x i8], { ptr, i64, i64 } } %t383, ptr %v.loaded
-  %t384 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.Remove"(ptr %v.path)
+  %t384 = call { i32, [4 x i8], %interface.Error } @"std/os/fs.remove"(ptr %v.path)
   store { i32, [4 x i8], %interface.Error } %t384, ptr %v.ret.103
   %t385 = getelementptr inbounds { i32, [4 x i8], { ptr, i64, i64 } }, ptr %v.loaded, i32 0, i32 0
   %t386 = load i32, ptr %t385
@@ -12733,23 +12733,23 @@ declare i64 @willtime_wall_ns()
 @.bytes.7 = private unnamed_addr constant [9 x i8] c"i/o error", align 1
 @.bytes.8 = private unnamed_addr constant [20 x i8] c"fs: cannot read file", align 1
 @"will.type.std/os/fs.fsError" = linkonce_odr constant i8 0, align 1
-@"std/os/fs.vtable.Error.fsError" = internal constant [6 x ptr] [ptr @"std/os/fs.fsError.Message", ptr @"std/os/fs.fsError.Status", ptr @"std/os/fs.iface.clone.Error.fsError", ptr @"std/os/fs.iface.drop.Error.fsError", ptr @"std/os/fs.iface.share.Error.fsError", ptr @"will.type.std/os/fs.fsError"], align 8
+@"std/os/fs.vtable.Error.fsError" = internal constant [6 x ptr] [ptr @"std/os/fs.fsError.message", ptr @"std/os/fs.fsError.status", ptr @"std/os/fs.iface.clone.Error.fsError", ptr @"std/os/fs.iface.drop.Error.fsError", ptr @"std/os/fs.iface.share.Error.fsError", ptr @"will.type.std/os/fs.fsError"], align 8
 @.bytes.9 = private unnamed_addr constant [21 x i8] c"fs: cannot write file", align 1
 @.bytes.10 = private unnamed_addr constant [22 x i8] c"fs: cannot append file", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/os/fs.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/os/fs.iface.clone.Error.std/errors.Fault", ptr @"std/os/fs.iface.drop.Error.std/errors.Fault", ptr @"std/os/fs.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@"std/os/fs.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/os/fs.iface.clone.Error.std/errors.Fault", ptr @"std/os/fs.iface.drop.Error.std/errors.Fault", ptr @"std/os/fs.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.bytes.11 = private unnamed_addr constant [0 x i8] zeroinitializer
 @.str.15 = private unnamed_addr constant [17 x i8] c"division by zero\00", align 1
 @.str.16 = private unnamed_addr constant [22 x i8] c"time/civil.will:24:18\00", align 1
-@.str.17 = private unnamed_addr constant [18 x i8] c"std/time.floorDiv\00", align 1
+@.str.17 = private unnamed_addr constant [19 x i8] c"std/time.floor_div\00", align 1
 @.str.18 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.19 = private unnamed_addr constant [21 x i8] c"time/civil.will:27:8\00", align 1
 @.str.20 = private unnamed_addr constant [21 x i8] c"time/civil.will:28:9\00", align 1
 @.str.21 = private unnamed_addr constant [22 x i8] c"time/civil.will:36:16\00", align 1
-@.str.22 = private unnamed_addr constant [18 x i8] c"std/time.floorMod\00", align 1
+@.str.22 = private unnamed_addr constant [19 x i8] c"std/time.floor_mod\00", align 1
 @.str.23 = private unnamed_addr constant [22 x i8] c"time/civil.will:36:12\00", align 1
 @.str.24 = private unnamed_addr constant [21 x i8] c"time/civil.will:55:9\00", align 1
-@.str.25 = private unnamed_addr constant [23 x i8] c"std/time.daysFromCivil\00", align 1
+@.str.25 = private unnamed_addr constant [25 x i8] c"std/time.days_from_civil\00", align 1
 @.str.26 = private unnamed_addr constant [22 x i8] c"time/civil.will:58:24\00", align 1
 @.str.27 = private unnamed_addr constant [22 x i8] c"time/civil.will:58:20\00", align 1
 @.str.28 = private unnamed_addr constant [21 x i8] c"time/civil.will:61:9\00", align 1
@@ -12760,7 +12760,7 @@ declare i64 @willtime_wall_ns()
 @.str.33 = private unnamed_addr constant [22 x i8] c"time/civil.will:66:48\00", align 1
 @.str.34 = private unnamed_addr constant [22 x i8] c"time/civil.will:67:12\00", align 1
 @.str.35 = private unnamed_addr constant [22 x i8] c"time/civil.will:72:18\00", align 1
-@.str.36 = private unnamed_addr constant [23 x i8] c"std/time.civilFromDays\00", align 1
+@.str.36 = private unnamed_addr constant [25 x i8] c"std/time.civil_from_days\00", align 1
 @.str.37 = private unnamed_addr constant [22 x i8] c"time/civil.will:74:24\00", align 1
 @.str.38 = private unnamed_addr constant [22 x i8] c"time/civil.will:74:20\00", align 1
 @.str.39 = private unnamed_addr constant [22 x i8] c"time/civil.will:75:27\00", align 1
@@ -12784,25 +12784,25 @@ declare i64 @willtime_wall_ns()
 @.str.57 = private unnamed_addr constant [22 x i8] c"time/civil.will:87:45\00", align 1
 @.str.58 = private unnamed_addr constant [22 x i8] c"time/civil.will:87:62\00", align 1
 @.str.59 = private unnamed_addr constant [22 x i8] c"time/civil.will:99:21\00", align 1
-@.str.60 = private unnamed_addr constant [19 x i8] c"std/time.timeOfDay\00", align 1
+@.str.60 = private unnamed_addr constant [21 x i8] c"std/time.time_of_day\00", align 1
 @.str.61 = private unnamed_addr constant [23 x i8] c"time/civil.will:100:24\00", align 1
 @.str.62 = private unnamed_addr constant [23 x i8] c"time/civil.will:101:23\00", align 1
 @.str.63 = private unnamed_addr constant [23 x i8] c"time/civil.will:102:30\00", align 1
 @.str.64 = private unnamed_addr constant [23 x i8] c"time/civil.will:102:49\00", align 1
 @.str.65 = private unnamed_addr constant [23 x i8] c"time/civil.will:102:70\00", align 1
 @.str.66 = private unnamed_addr constant [23 x i8] c"time/civil.will:110:12\00", align 1
-@.str.67 = private unnamed_addr constant [22 x i8] c"std/time.localSeconds\00", align 1
-@.str.68 = private unnamed_addr constant [23 x i8] c"time/civil.will:116:21\00", align 1
-@.str.69 = private unnamed_addr constant [19 x i8] c"std/time.weekdayOf\00", align 1
+@.str.67 = private unnamed_addr constant [23 x i8] c"std/time.local_seconds\00", align 1
+@.str.68 = private unnamed_addr constant [23 x i8] c"time/civil.will:116:22\00", align 1
+@.str.69 = private unnamed_addr constant [20 x i8] c"std/time.weekday_of\00", align 1
 @.str.70 = private unnamed_addr constant [22 x i8] c"time/civil.will:120:8\00", align 1
-@.str.71 = private unnamed_addr constant [20 x i8] c"std/time.isLeapYear\00", align 1
+@.str.71 = private unnamed_addr constant [22 x i8] c"std/time.is_leap_year\00", align 1
 @.str.72 = private unnamed_addr constant [22 x i8] c"time/civil.will:123:8\00", align 1
 @.str.73 = private unnamed_addr constant [23 x i8] c"time/civil.will:126:12\00", align 1
 @.str.74 = private unnamed_addr constant [22 x i8] c"time/clock.will:33:21\00", align 1
-@.str.75 = private unnamed_addr constant [27 x i8] c"std/time.Stopwatch.Elapsed\00", align 1
+@.str.75 = private unnamed_addr constant [27 x i8] c"std/time.Stopwatch.elapsed\00", align 1
 @.bytes.12 = private unnamed_addr constant [20 x i8] c"time: negative sleep", align 1
 @"will.type.std/time.clockError" = linkonce_odr constant i8 0, align 1
-@"std/time.vtable.Error.clockError" = internal constant [6 x ptr] [ptr @"std/time.clockError.Message", ptr @"std/time.clockError.Status", ptr @"std/time.iface.clone.Error.clockError", ptr @"std/time.iface.drop.Error.clockError", ptr @"std/time.iface.share.Error.clockError", ptr @"will.type.std/time.clockError"], align 8
+@"std/time.vtable.Error.clockError" = internal constant [6 x ptr] [ptr @"std/time.clockError.message", ptr @"std/time.clockError.status", ptr @"std/time.iface.clone.Error.clockError", ptr @"std/time.iface.drop.Error.clockError", ptr @"std/time.iface.share.Error.clockError", ptr @"will.type.std/time.clockError"], align 8
 @.bytes.13 = private unnamed_addr constant [1 x i8] c"0", align 1
 @.bytes.14 = private unnamed_addr constant [3 x i8] c"000", align 1
 @.bytes.15 = private unnamed_addr constant [2 x i8] c"00", align 1
@@ -12810,12 +12810,12 @@ declare i64 @willtime_wall_ns()
 @.bytes.17 = private unnamed_addr constant [1 x i8] c"+", align 1
 @.bytes.18 = private unnamed_addr constant [1 x i8] c"-", align 1
 @.str.85 = private unnamed_addr constant [23 x i8] c"time/format.will:40:17\00", align 1
-@.str.86 = private unnamed_addr constant [22 x i8] c"std/time.offsetSuffix\00", align 1
+@.str.86 = private unnamed_addr constant [23 x i8] c"std/time.offset_suffix\00", align 1
 @.str.87 = private unnamed_addr constant [23 x i8] c"time/format.will:42:22\00", align 1
 @.str.88 = private unnamed_addr constant [23 x i8] c"time/format.will:43:25\00", align 1
 @.bytes.19 = private unnamed_addr constant [1 x i8] c":", align 1
 @.str.90 = private unnamed_addr constant [23 x i8] c"time/format.will:54:26\00", align 1
-@.str.91 = private unnamed_addr constant [22 x i8] c"std/time.fractionText\00", align 1
+@.str.91 = private unnamed_addr constant [23 x i8] c"std/time.fraction_text\00", align 1
 @.str.92 = private unnamed_addr constant [23 x i8] c"time/format.will:54:22\00", align 1
 @.str.93 = private unnamed_addr constant [26 x i8] c"slice bounds out of range\00", align 1
 @.str.94 = private unnamed_addr constant [23 x i8] c"time/format.will:59:16\00", align 1
@@ -12851,29 +12851,29 @@ declare i64 @willtime_wall_ns()
 @.bytes.42 = private unnamed_addr constant [1 x i8] c" ", align 1
 @.bytes.43 = private unnamed_addr constant [4 x i8] c" GMT", align 1
 @.str.126 = private unnamed_addr constant [21 x i8] c"time/parse.will:45:5\00", align 1
-@.str.127 = private unnamed_addr constant [17 x i8] c"std/time.charsOf\00", align 1
+@.str.127 = private unnamed_addr constant [18 x i8] c"std/time.chars_of\00", align 1
 @.str.128 = private unnamed_addr constant [22 x i8] c"time/parse.will:53:20\00", align 1
-@.str.129 = private unnamed_addr constant [20 x i8] c"std/time.digitValue\00", align 1
+@.str.129 = private unnamed_addr constant [21 x i8] c"std/time.digit_value\00", align 1
 @.str.130 = private unnamed_addr constant [22 x i8] c"time/parse.will:53:16\00", align 1
 @.str.131 = private unnamed_addr constant [22 x i8] c"time/parse.will:55:12\00", align 1
 @.str.132 = private unnamed_addr constant [22 x i8] c"time/parse.will:59:24\00", align 1
-@.str.133 = private unnamed_addr constant [15 x i8] c"std/time.hasAt\00", align 1
+@.str.133 = private unnamed_addr constant [16 x i8] c"std/time.has_at\00", align 1
 @.str.134 = private unnamed_addr constant [22 x i8] c"time/parse.will:62:12\00", align 1
 @.str.135 = private unnamed_addr constant [22 x i8] c"time/parse.will:68:32\00", align 1
-@.str.136 = private unnamed_addr constant [20 x i8] c"std/time.readDigits\00", align 1
+@.str.136 = private unnamed_addr constant [21 x i8] c"std/time.read_digits\00", align 1
 @.str.137 = private unnamed_addr constant [22 x i8] c"time/parse.will:68:45\00", align 1
 @.str.138 = private unnamed_addr constant [22 x i8] c"time/parse.will:69:16\00", align 1
-@.str.139 = private unnamed_addr constant [22 x i8] c"time/parse.will:77:42\00", align 1
-@.str.140 = private unnamed_addr constant [22 x i8] c"time/parse.will:77:33\00", align 1
+@.str.139 = private unnamed_addr constant [22 x i8] c"time/parse.will:77:43\00", align 1
+@.str.140 = private unnamed_addr constant [22 x i8] c"time/parse.will:77:34\00", align 1
 @.str.141 = private unnamed_addr constant [22 x i8] c"time/parse.will:79:20\00", align 1
 @.str.142 = private unnamed_addr constant [22 x i8] c"time/parse.will:81:17\00", align 1
 @.str.143 = private unnamed_addr constant [21 x i8] c"time/parse.will:82:9\00", align 1
 @.str.144 = private unnamed_addr constant [22 x i8] c"time/parse.will:97:20\00", align 1
-@.str.145 = private unnamed_addr constant [22 x i8] c"std/time.ParseRfc3339\00", align 1
+@.str.145 = private unnamed_addr constant [23 x i8] c"std/time.parse_rfc3339\00", align 1
 @.str.146 = private unnamed_addr constant [22 x i8] c"time/parse.will:98:18\00", align 1
 @.bytes.44 = private unnamed_addr constant [41 x i8] c"rfc3339: text is shorter than a timestamp", align 1
 @"will.type.std/time.timeError" = linkonce_odr constant i8 0, align 1
-@"std/time.vtable.Error.std/time.timeError" = internal constant [6 x ptr] [ptr @"std/time.timeError.Message", ptr @"std/time.timeError.Status", ptr @"std/time.iface.clone.Error.std/time.timeError", ptr @"std/time.iface.drop.Error.std/time.timeError", ptr @"std/time.iface.share.Error.std/time.timeError", ptr @"will.type.std/time.timeError"], align 8
+@"std/time.vtable.Error.std/time.timeError" = internal constant [6 x ptr] [ptr @"std/time.timeError.message", ptr @"std/time.timeError.status", ptr @"std/time.iface.clone.Error.std/time.timeError", ptr @"std/time.iface.drop.Error.std/time.timeError", ptr @"std/time.iface.share.Error.std/time.timeError", ptr @"will.type.std/time.timeError"], align 8
 @.bytes.45 = private unnamed_addr constant [39 x i8] c"rfc3339: a numeric field is not a digit", align 1
 @.bytes.46 = private unnamed_addr constant [38 x i8] c"rfc3339: the date separators are wrong", align 1
 @.bytes.47 = private unnamed_addr constant [47 x i8] c"rfc3339: the date and time separator is missing", align 1
@@ -12882,7 +12882,7 @@ declare i64 @willtime_wall_ns()
 @.bytes.50 = private unnamed_addr constant [32 x i8] c"rfc3339: the day is out of range", align 1
 @.bytes.51 = private unnamed_addr constant [40 x i8] c"rfc3339: the time of day is out of range", align 1
 @.str.157 = private unnamed_addr constant [22 x i8] c"time/parse.will:132:9\00", align 1
-@.str.158 = private unnamed_addr constant [23 x i8] c"time/parse.will:138:37\00", align 1
+@.str.158 = private unnamed_addr constant [23 x i8] c"time/parse.will:138:38\00", align 1
 @.str.159 = private unnamed_addr constant [23 x i8] c"time/parse.will:143:24\00", align 1
 @.str.160 = private unnamed_addr constant [23 x i8] c"time/parse.will:145:13\00", align 1
 @.str.161 = private unnamed_addr constant [23 x i8] c"time/parse.will:146:13\00", align 1
@@ -12891,9 +12891,9 @@ declare i64 @willtime_wall_ns()
 @.str.164 = private unnamed_addr constant [23 x i8] c"time/parse.will:156:13\00", align 1
 @.bytes.53 = private unnamed_addr constant [30 x i8] c"rfc3339: the offset is missing", align 1
 @.str.166 = private unnamed_addr constant [22 x i8] c"time/parse.will:164:9\00", align 1
-@.str.167 = private unnamed_addr constant [23 x i8] c"time/parse.will:166:45\00", align 1
-@.str.168 = private unnamed_addr constant [23 x i8] c"time/parse.will:167:47\00", align 1
-@.str.169 = private unnamed_addr constant [23 x i8] c"time/parse.will:168:60\00", align 1
+@.str.167 = private unnamed_addr constant [23 x i8] c"time/parse.will:166:46\00", align 1
+@.str.168 = private unnamed_addr constant [23 x i8] c"time/parse.will:167:48\00", align 1
+@.str.169 = private unnamed_addr constant [23 x i8] c"time/parse.will:168:61\00", align 1
 @.bytes.54 = private unnamed_addr constant [33 x i8] c"rfc3339: the offset is not +HH:MM", align 1
 @.bytes.55 = private unnamed_addr constant [35 x i8] c"rfc3339: the offset is out of range", align 1
 @.str.172 = private unnamed_addr constant [23 x i8] c"time/parse.will:174:18\00", align 1
@@ -12902,41 +12902,41 @@ declare i64 @willtime_wall_ns()
 @.str.175 = private unnamed_addr constant [22 x i8] c"time/parse.will:178:9\00", align 1
 @.bytes.56 = private unnamed_addr constant [38 x i8] c"rfc3339: the offset is not Z or +HH:MM", align 1
 @.bytes.57 = private unnamed_addr constant [35 x i8] c"rfc3339: text follows the timestamp", align 1
-@.str.178 = private unnamed_addr constant [23 x i8] c"time/parse.will:185:22\00", align 1
-@.str.179 = private unnamed_addr constant [23 x i8] c"time/parse.will:186:18\00", align 1
-@.str.180 = private unnamed_addr constant [23 x i8] c"time/parse.will:186:32\00", align 1
+@.str.178 = private unnamed_addr constant [23 x i8] c"time/parse.will:185:30\00", align 1
+@.str.179 = private unnamed_addr constant [23 x i8] c"time/parse.will:186:26\00", align 1
+@.str.180 = private unnamed_addr constant [23 x i8] c"time/parse.will:186:40\00", align 1
 @.str.181 = private unnamed_addr constant [22 x i8] c"time/parse.will:186:5\00", align 1
-@.str.182 = private unnamed_addr constant [23 x i8] c"time/parse.will:187:20\00", align 1
+@.str.182 = private unnamed_addr constant [23 x i8] c"time/parse.will:187:28\00", align 1
 @.bytes.58 = private unnamed_addr constant [46 x i8] c"rfc3339: the year is outside the Instant range", align 1
 @.bytes.59 = private unnamed_addr constant [50 x i8] c"rfc3339: the fraction is outside the Instant range", align 1
 @.str.185 = private unnamed_addr constant [23 x i8] c"time/parse.will:195:32\00", align 1
 @.str.186 = private unnamed_addr constant [23 x i8] c"time/parse.will:201:20\00", align 1
-@.str.187 = private unnamed_addr constant [19 x i8] c"std/time.ParseDate\00", align 1
+@.str.187 = private unnamed_addr constant [20 x i8] c"std/time.parse_date\00", align 1
 @.str.188 = private unnamed_addr constant [23 x i8] c"time/parse.will:202:18\00", align 1
 @.bytes.60 = private unnamed_addr constant [33 x i8] c"date: text is not a calendar date", align 1
 @.bytes.61 = private unnamed_addr constant [36 x i8] c"date: a numeric field is not a digit", align 1
 @.bytes.62 = private unnamed_addr constant [30 x i8] c"date: the separators are wrong", align 1
 @.bytes.63 = private unnamed_addr constant [31 x i8] c"date: the month is out of range", align 1
 @.bytes.64 = private unnamed_addr constant [29 x i8] c"date: the day is out of range", align 1
-@.str.194 = private unnamed_addr constant [23 x i8] c"time/parse.will:221:22\00", align 1
-@.str.195 = private unnamed_addr constant [23 x i8] c"time/parse.will:225:20\00", align 1
-@.str.196 = private unnamed_addr constant [23 x i8] c"time/parse.will:228:15\00", align 1
+@.str.194 = private unnamed_addr constant [23 x i8] c"time/parse.will:221:30\00", align 1
+@.str.195 = private unnamed_addr constant [23 x i8] c"time/parse.will:225:28\00", align 1
+@.str.196 = private unnamed_addr constant [23 x i8] c"time/parse.will:228:23\00", align 1
 @.bytes.65 = private unnamed_addr constant [43 x i8] c"date: the year is outside the Instant range", align 1
 @.str.198 = private unnamed_addr constant [23 x i8] c"time/parse.will:233:32\00", align 1
 @.str.199 = private unnamed_addr constant [21 x i8] c"time/time.will:23:29\00", align 1
-@.str.200 = private unnamed_addr constant [18 x i8] c"std/time.FromUnix\00", align 1
+@.str.200 = private unnamed_addr constant [19 x i8] c"std/time.from_unix\00", align 1
 @.str.201 = private unnamed_addr constant [21 x i8] c"time/zone.will:36:44\00", align 1
-@.str.202 = private unnamed_addr constant [15 x i8] c"std/time.Fixed\00", align 1
+@.str.202 = private unnamed_addr constant [15 x i8] c"std/time.fixed\00", align 1
 @.str.203 = private unnamed_addr constant [21 x i8] c"time/zone.will:46:14\00", align 1
-@.str.204 = private unnamed_addr constant [15 x i8] c"std/time.Local\00", align 1
+@.str.204 = private unnamed_addr constant [15 x i8] c"std/time.local\00", align 1
 @.str.205 = private unnamed_addr constant [21 x i8] c"time/zone.will:47:47\00", align 1
 @.str.206 = private unnamed_addr constant [21 x i8] c"time/zone.will:55:51\00", align 1
-@.str.207 = private unnamed_addr constant [14 x i8] c"std/time.Load\00", align 1
-@"std/time.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/time.iface.clone.Error.std/errors.Fault", ptr @"std/time.iface.drop.Error.std/errors.Fault", ptr @"std/time.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@.str.207 = private unnamed_addr constant [14 x i8] c"std/time.load\00", align 1
+@"std/time.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/time.iface.clone.Error.std/errors.Fault", ptr @"std/time.iface.drop.Error.std/errors.Fault", ptr @"std/time.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.bytes.66 = private unnamed_addr constant [1 x i8] c"a", align 1
-@.str.210 = private unnamed_addr constant [15 x i8] c"main.will:6:39\00", align 1
-@.str.211 = private unnamed_addr constant [40 x i8] c"example.com/concurrency/multiasync.Fill\00", align 1
-@.str.212 = private unnamed_addr constant [15 x i8] c"main.will:8:36\00", align 1
+@.str.210 = private unnamed_addr constant [15 x i8] c"main.will:6:41\00", align 1
+@.str.211 = private unnamed_addr constant [40 x i8] c"example.com/concurrency/multiasync.fill\00", align 1
+@.str.212 = private unnamed_addr constant [15 x i8] c"main.will:8:37\00", align 1
 @.bytes.67 = private unnamed_addr constant [31 x i8] c"will-concurrency-multiasync.tmp", align 1
 @.str.214 = private unnamed_addr constant [9 x i8] c"canceled\00", align 1
 @.str.215 = private unnamed_addr constant [9 x i8] c"deadline\00", align 1

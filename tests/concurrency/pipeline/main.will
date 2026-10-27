@@ -16,31 +16,31 @@ lane StageLane struct StageMarker {
 lane Sink struct SinkMarker {
 }
 
-async def Produce(ch: chan<i32>, n: i32) {
+async def produce(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
-        _ = await ch.Send(i)
+        _ = await ch.send(i)
     }
 }
 
-async def Stage(inp: chan<i32>, out: chan<i32>) {
+async def stage(inp: chan<i32>, out: chan<i32>) {
     for {
-        var item: Option<i32> = await inp.Recv()
+        var item: Option<i32> = await inp.recv()
         match item {
             Some(value) => {
-                _ = await out.Send(value * 2)
+                _ = await out.send(value * 2)
             }
             None => {
                 break
             }
         }
     }
-    out.Close()
+    out.close()
 }
 
-async def Consume(ch: chan<i32>) -> i32 {
+async def consume(ch: chan<i32>) -> i32 {
     var sum: i32 = 0
     for {
-        var item: Option<i32> = await ch.Recv()
+        var item: Option<i32> = await ch.recv()
         match item {
             Some(value) => {
                 sum += value
@@ -58,19 +58,19 @@ async def main() -> i32 {
     var second: chan<i32> = new chan<i32>(64)
     var total: i32 = 0
     region {
-        var p0: Task<()> = spawn on P0 Produce(first, 10000)
-        var p1: Task<()> = spawn on P1 Produce(first, 10000)
-        var p2: Task<()> = spawn on P2 Produce(first, 10000)
-        var p3: Task<()> = spawn on P3 Produce(first, 10000)
-        var stage: Task<()> = spawn on StageLane Stage(first, second)
-        var sink: Task<i32> = spawn on Sink Consume(second)
-        _ = await p0.Join()!
-        _ = await p1.Join()!
-        _ = await p2.Join()!
-        _ = await p3.Join()!
-        first.Close()
-        _ = await stage.Join()!
-        total = await sink.Join()!
+        var p0: Task<()> = spawn on P0 produce(first, 10000)
+        var p1: Task<()> = spawn on P1 produce(first, 10000)
+        var p2: Task<()> = spawn on P2 produce(first, 10000)
+        var p3: Task<()> = spawn on P3 produce(first, 10000)
+        var stage: Task<()> = spawn on StageLane stage(first, second)
+        var sink: Task<i32> = spawn on Sink consume(second)
+        _ = await p0.join()!
+        _ = await p1.join()!
+        _ = await p2.join()!
+        _ = await p3.join()!
+        first.close()
+        _ = await stage.join()!
+        total = await sink.join()!
     }
     return total - 399960000
 }

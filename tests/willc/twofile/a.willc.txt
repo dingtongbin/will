@@ -2,7 +2,7 @@
 #2 struct parent=#1 pos="a.will:1:1" text="Box"
 #3 field parent=#2 pos="a.will:2:5" text="v" type="i64"
 #4 type parent=#3 pos="a.will:2:8" text="i64" kind=scalar
-#5 func parent=#1 pos="a.will:5:1" text="Value" type="i64"
+#5 func parent=#1 pos="a.will:5:1" text="value" type="i64"
 #6 param parent=#5 pos="a.will:5:11" text="b" type="Box"
 #7 type parent=#6 pos="a.will:5:14" text="Box" kind=named to=#2
 #8 type parent=#5 pos="a.will:5:22" text="i64" kind=scalar

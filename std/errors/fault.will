@@ -6,18 +6,18 @@ struct Fault {
 }
 
 def (mut f: Fault) init(message: str, status: i32) {
-    f.message = message.Clone()
+    f.message = message.clone()
     f.status = status
 }
 
-def (f: Fault) Message() -> str {
-    return f.message.Clone()
+def (f: Fault) message() -> str {
+    return f.message.clone()
 }
 
-def (f: Fault) Status() -> i32 {
+def (f: Fault) status() -> i32 {
     return f.status
 }
 
-def (f: Fault) Class() -> ErrorClass {
-    return classOfStatus(f.status)
+def (f: Fault) class() -> ErrorClass {
+    return class_of_status(f.status)
 }

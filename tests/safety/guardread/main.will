@@ -4,8 +4,8 @@ struct Counter {
     n: i32
 }
 
-async def Bad(rw: sync.RwLock<Counter>) {
-    var r: sync.ReadGuard<Counter> = await rw.RLock()
+async def bad(rw: sync.RwLock<Counter>) {
+    var r: sync.ReadGuard<Counter> = await rw.r_lock()
     r.n = 1
 }
 

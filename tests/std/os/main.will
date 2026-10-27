@@ -1,10 +1,10 @@
 import "std/os"
 
-def CheckEnv() -> i32 {
-    var set: Result<(), Error> = os.Setenv("WILL_OS_PROBE", "value")
+def check_env() -> i32 {
+    var set: Result<(), Error> = os.setenv("WILL_OS_PROBE", "value")
     match set {
         Err(e) => {
-            if e.Status() != 7 {
+            if e.status() != 7 {
                 return 1
             }
             return 2
@@ -12,7 +12,7 @@ def CheckEnv() -> i32 {
         _ => {}
     }
 
-    var got: Option<str> = os.Getenv("WILL_OS_PROBE")
+    var got: Option<str> = os.getenv("WILL_OS_PROBE")
     match got {
         Some(value) => {
             if value != "value" {
@@ -24,15 +24,15 @@ def CheckEnv() -> i32 {
         }
     }
 
-    var environ: Map<str, str> = os.Environ()
-    if !environ.Has("WILL_OS_PROBE") {
+    var environ: Map<str, str> = os.environ()
+    if !environ.has("WILL_OS_PROBE") {
         return 5
     }
 
-    var invalid: Result<(), Error> = os.Setenv("A\0B", "x")
+    var invalid: Result<(), Error> = os.setenv("A\0B", "x")
     match invalid {
         Err(e) => {
-            if e.Status() != 2 {
+            if e.status() != 2 {
                 return 7
             }
         }
@@ -43,26 +43,26 @@ def CheckEnv() -> i32 {
     return 0
 }
 
-def CheckCwd() -> i32 {
-    var cwd: Result<str, Error> = os.Cwd()
+def check_cwd() -> i32 {
+    var cwd: Result<str, Error> = os.cwd()
     match cwd {
         Ok(path) => {
-            if path.Len() == 0usize {
+            if path.len() == 0usize {
                 return 8
             }
         }
         Err(e) => {
-            if e.Status() != 7 {
+            if e.status() != 7 {
                 return 9
             }
             return 10
         }
     }
 
-    var here: Result<(), Error> = os.Chdir(".")
+    var here: Result<(), Error> = os.chdir(".")
     match here {
         Err(e) => {
-            if e.Status() != 7 {
+            if e.status() != 7 {
                 return 11
             }
             return 12
@@ -70,10 +70,10 @@ def CheckCwd() -> i32 {
         _ => {}
     }
 
-    var missing: Result<(), Error> = os.Chdir("will-no-such-directory")
+    var missing: Result<(), Error> = os.chdir("will-no-such-directory")
     match missing {
         Err(e) => {
-            if e.Status() != 7 {
+            if e.status() != 7 {
                 return 14
             }
         }
@@ -85,13 +85,13 @@ def CheckCwd() -> i32 {
 }
 
 def main() -> i32 {
-    var args: []str = os.Args()
-    if args.Len() == 0usize {
+    var args: []str = os.args()
+    if args.len() == 0usize {
         return 15
     }
-    var code: i32 = CheckEnv()
+    var code: i32 = check_env()
     if code != 0 {
         return code
     }
-    return CheckCwd()
+    return check_cwd()
 }

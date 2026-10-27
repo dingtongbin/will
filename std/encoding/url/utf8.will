@@ -3,6 +3,6 @@
 // predeclared type in the importing file.
 import "std/str"
 
-def validUtf8(data: []u8) -> bool {
-    return str.IsValid(data)
+def valid_utf8(data: []u8) -> bool {
+    return str.is_valid(data)
 }

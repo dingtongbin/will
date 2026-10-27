@@ -8,6 +8,6 @@ struct Outer {
 
 def main() -> i32 {
     var o: rc<Outer> = new rc<Outer>(Outer { xs: new Array<rc<Inner>>(0) })
-    o.xs.Push(new rc<Inner>(Inner { n: 4 }))
-    return o.xs.Get(0).n
+    o.xs.push(new rc<Inner>(Inner { n: 4 }))
+    return o.xs.get(0).n
 }

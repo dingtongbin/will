@@ -13,7 +13,7 @@ struct ReaderBuf {
 // init wraps r in a buffer of size bytes. A size of zero passes every read
 // straight through.
 def (mut b: ReaderBuf) init(r: io.Reader, size: usize) {
-    b.src = r.Clone()
+    b.src = r.clone()
     b.data = new Array<u8>(size)
     b.pos = 0usize
     b.limit = size
@@ -21,21 +21,21 @@ def (mut b: ReaderBuf) init(r: io.Reader, size: usize) {
 
 // Read appends the next buffered bytes to out. It returns the count appended;
 // zero means the wrapped Reader has no more bytes.
-def (mut b: ReaderBuf) Read(mut out: Array<u8>) -> Result<usize, Error> {
+def (mut b: ReaderBuf) read(mut out: Array<u8>) -> Result<usize, Error> {
     if b.limit == 0usize {
-        return b.src.Read(out)
+        return b.src.read(out)
     }
-    if b.pos >= b.data.Len() {
-        b.data.Clear()
+    if b.pos >= b.data.len() {
+        b.data.clear()
         b.pos = 0usize
-        var n: usize = b.src.Read(b.data)?
+        var n: usize = b.src.read(b.data)?
         if n == 0usize {
             return Ok(0usize)
         }
     }
     var start: usize = b.pos
-    var end: usize = b.data.Len()
+    var end: usize = b.data.len()
     b.pos = end
-    out.Append(b.data[Range(start, end)])
+    out.append(b.data[Range(start, end)])
     return Ok(end - start)
 }

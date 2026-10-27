@@ -3,5 +3,5 @@ import "example.com/init/lib"
 var start: i32 = 10
 
 def main() -> i32 {
-    return start + lib.Next()
+    return start + lib.next()
 }

@@ -16,7 +16,7 @@ const repetitions: i32 = 5
 
 // Work runs the same integer loop as the spawn scenario and records the end of
 // its own latency window in the shared C cells.
-def Work(index: i32, slot: i32) -> i32 {
+def work(index: i32, slot: i32) -> i32 {
     var acc: i32 = 0
     for i in Range(0, 100) {
         acc += i
@@ -36,27 +36,27 @@ def main() -> i32 {
             for i in Range(0, count) {
                 var slot: i32 = startIndex + i
                 c.bench_latency_start(slot)
-                spawn Work(i, slot)
+                spawn work(i, slot)
             }
         }
         var roundStop: u64 = c.bench_now_ns()
         for i in Range(0, count) {
             var latency: u64 = c.bench_latency(startIndex + i)
-            samples.Push(latency)
+            samples.push(latency)
             checksum += i64(latency)
         }
-        rounds.Push(roundStop - roundStart)
+        rounds.push(roundStop - roundStart)
         c.bench_sink(u64(checksum))
     }
 
-    bench.SortSamples(samples)
-    bench.SortSamples(rounds)
-    print("bench metric p50 ", bench.Percentile(samples, 50i64, 100i64), " ns\n")
-    print("bench metric p95 ", bench.Percentile(samples, 95i64, 100i64), " ns\n")
-    print("bench metric p99 ", bench.Percentile(samples, 99i64, 100i64), " ns\n")
-    print("bench metric p999 ", bench.Percentile(samples, 999i64, 1000i64), " ns\n")
-    print("bench metric max ", bench.Max(samples), " ns\n")
-    print("bench metric round_p50 ", bench.Percentile(rounds, 50i64, 100i64), " ns\n")
+    bench.sort_samples(samples)
+    bench.sort_samples(rounds)
+    print("bench metric p50 ", bench.percentile(samples, 50i64, 100i64), " ns\n")
+    print("bench metric p95 ", bench.percentile(samples, 95i64, 100i64), " ns\n")
+    print("bench metric p99 ", bench.percentile(samples, 99i64, 100i64), " ns\n")
+    print("bench metric p999 ", bench.percentile(samples, 999i64, 1000i64), " ns\n")
+    print("bench metric max ", bench.max(samples), " ns\n")
+    print("bench metric round_p50 ", bench.percentile(rounds, 50i64, 100i64), " ns\n")
     print("bench metric tasks ", u64(count * repetitions), " tasks\n")
     print("bench checksum ", u64(checksum), "\n")
     return 0

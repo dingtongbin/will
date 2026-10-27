@@ -7,14 +7,14 @@ import (
 )
 
 const ifaceProgram = `interface Shape {
-    def Area() -> i32
+    def area() -> i32
 }
 
 struct Square {
     s: i32
 }
 
-def (q: Square) Area() -> i32 {
+def (q: Square) area() -> i32 {
     return q.s * q.s
 }
 
@@ -22,17 +22,17 @@ struct Dot {
     s: i32
 }
 
-def Use(x: Shape) -> i32 {
-    return x.Area()
+def use(x: Shape) -> i32 {
+    return x.area()
 }
 
-def F() {
+def f() {
     var ok: Shape = Square { s: 1 }
     _ = ok
-    _ = Use(Square { s: 1 })
+    _ = use(Square { s: 1 })
     var bad: Shape = Dot { s: 1 }
     _ = bad
-    _ = Use(Dot { s: 1 })
+    _ = use(Dot { s: 1 })
 }
 `
 
@@ -45,7 +45,7 @@ func TestInterfaceSatisfaction(t *testing.T) {
 			if d.Message != "type Dot does not satisfy Shape" {
 				t.Errorf("message = %q", d.Message)
 			}
-			if d.Help != "missing method Area" {
+			if d.Help != "missing method area" {
 				t.Errorf("help = %q", d.Help)
 			}
 		}
@@ -57,11 +57,11 @@ func TestInterfaceSatisfaction(t *testing.T) {
 
 func TestInterfaceMethodCall(t *testing.T) {
 	src := `interface Shape {
-    def Area() -> i32
+    def area() -> i32
 }
 
-def Use(x: Shape) -> i32 {
-    return x.Area()
+def use(x: Shape) -> i32 {
+    return x.area()
 }
 `
 	ds := checkWithResolve(t, src)
@@ -71,14 +71,14 @@ def Use(x: Shape) -> i32 {
 }
 
 func TestEmptyInterface(t *testing.T) {
-	src := `def Check(value: interface {}) -> bool {
-    return value.Is<i32>()
+	src := `def check(value: interface {}) -> bool {
+    return value.is<i32>()
 }
 
-def Use() -> i32 {
+def use() -> i32 {
     var value: interface {} = 7
-    var number: Option<i32> = value.As<i32>()
-    _ = Check(value)
+    var number: Option<i32> = value.as<i32>()
+    _ = check(value)
     return match number {
         Some(v) => v
         None => 0
@@ -92,23 +92,23 @@ def Use() -> i32 {
 
 func TestInterfaceDowncasts(t *testing.T) {
 	src := `interface Shape {
-    def Area() -> i32
+    def area() -> i32
 }
 
 struct Square {
     s: i32
 }
 
-def (q: Square) Area() -> i32 {
+def (q: Square) area() -> i32 {
     return q.s
 }
 
-def Use(x: Shape) -> i32 {
-    var yes: bool = x.Is<Square>()
-    var maybe: Option<Square> = x.As<Square>()
+def use(x: Shape) -> i32 {
+    var yes: bool = x.is<Square>()
+    var maybe: Option<Square> = x.as<Square>()
     _ = yes
     return match maybe {
-        Some(q) => q.Area()
+        Some(q) => q.area()
         None => 0
     }
 }
@@ -120,11 +120,11 @@ def Use(x: Shape) -> i32 {
 
 func TestInterfaceDowncastNeedsOneType(t *testing.T) {
 	src := `interface Shape {
-    def Area() -> i32
+    def area() -> i32
 }
 
-def Use(x: Shape) -> bool {
-    return x.Is()
+def use(x: Shape) -> bool {
+    return x.is()
 }
 `
 	d := findCode(t, checkWithResolve(t, src), diag.CodeTypeArgCount)
@@ -138,15 +138,15 @@ def Use(x: Shape) -> bool {
 
 func TestInterfaceToInterface(t *testing.T) {
 	narrow := `interface A {
-    def F() -> i32
+    def f() -> i32
 }
 
 interface B {
-    def F() -> i32
-    def G() -> i32
+    def f() -> i32
+    def g() -> i32
 }
 
-def Use(b: B) {
+def use(b: B) {
     var a: A = b
     _ = a
 }
@@ -158,32 +158,32 @@ def Use(b: B) {
 	}
 
 	wider := `interface A {
-    def F() -> i32
+    def f() -> i32
 }
 
 interface B {
-    def F() -> i32
-    def G() -> i32
+    def f() -> i32
+    def g() -> i32
 }
 
-def Use(a: A) {
+def use(a: A) {
     var b: B = a
     _ = b
 }
 `
 	d := findCode(t, checkWithResolve(t, wider), diag.CodeInterfaceUnsatisfied)
-	if d.Help != "missing method G" {
-		t.Errorf("help = %q, want missing method G", d.Help)
+	if d.Help != "missing method g" {
+		t.Errorf("help = %q, want missing method g", d.Help)
 	}
 }
 
 func TestDispatchPoints(t *testing.T) {
 	src := `interface Shape {
-    def Area() -> i32
+    def area() -> i32
 }
 
-def Use(x: Shape) -> i32 {
-    return x.Area()
+def use(x: Shape) -> i32 {
+    return x.area()
 }
 `
 	f, res := parseResolve(t, src)
@@ -203,7 +203,7 @@ func TestDerivedShowSatisfiesShow(t *testing.T) {
 
 derive Show for P
 
-def F() {
+def f() {
     var s: Show = P { x: 1 }
     _ = s
 }
@@ -221,15 +221,15 @@ func TestBuiltinErrorInterface(t *testing.T) {
     code: i32
 }
 
-def (e: E) Message() -> str {
+def (e: E) message() -> str {
     return "failed"
 }
 
-def (e: E) Status() -> i32 {
+def (e: E) status() -> i32 {
     return e.code
 }
 
-def F() {
+def f() {
     var x: Error = E { code: 1 }
     _ = x
 }
@@ -244,42 +244,42 @@ def F() {
     code: i32
 }
 
-def (e: E) Message() -> str {
+def (e: E) message() -> str {
     return "failed"
 }
 
-def F() {
+def f() {
     var x: Error = E { code: 1 }
     _ = x
 }
 `
 	d := findCode(t, checkWithResolve(t, bad), diag.CodeInterfaceUnsatisfied)
-	if d.Help != "missing method Status" {
+	if d.Help != "missing method status" {
 		t.Errorf("help = %q", d.Help)
 	}
 }
 
 func TestInterfaceMethodSignatureMismatch(t *testing.T) {
 	src := `interface Shape {
-    def Area() -> i32
+    def area() -> i32
 }
 
 struct Square {
     s: i32
 }
 
-def (q: Square) Area() -> i64 {
+def (q: Square) area() -> i64 {
     return q.s
 }
 
-def F() {
+def f() {
     var x: Shape = Square { s: 1 }
     _ = x
 }
 `
 	ds := checkWithResolve(t, src)
 	d := findCode(t, ds, diag.CodeInterfaceUnsatisfied)
-	if d.Help != "missing method Area" {
+	if d.Help != "missing method area" {
 		t.Errorf("help = %q", d.Help)
 	}
 }

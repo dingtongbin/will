@@ -1,35 +1,35 @@
-async def Produce(ch: chan<i32>, n: i32) {
+async def produce(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
-        _ = await ch.Send(i)
+        _ = await ch.send(i)
     }
 }
 
-async def Stage(inp: chan<i32>, out: chan<i32>) {
+async def stage(inp: chan<i32>, out: chan<i32>) {
     for {
         select {
-            item = inp.Recv() => {
+            item = inp.recv() => {
                 match item {
                     Some(value) => {
-                        _ = await out.Send(value + 1)
+                        _ = await out.send(value + 1)
                     }
                     None => {
-                        out.Close()
+                        out.close()
                         return
                     }
                 }
             }
             timeout 100ms => {
-                out.Close()
+                out.close()
                 return
             }
         }
     }
 }
 
-async def Consume(ch: chan<i32>) -> i32 {
+async def consume(ch: chan<i32>) -> i32 {
     var sum: i32 = 0
     for {
-        var item: Option<i32> = await ch.Recv()
+        var item: Option<i32> = await ch.recv()
         match item {
             Some(value) => {
                 sum += value
@@ -47,13 +47,13 @@ async def main() -> i32 {
     var second: chan<i32> = new chan<i32>(64)
     var total: i32 = 0
     region {
-        var producer: Task<()> = spawn Produce(first, 100)
-        var stage: Task<()> = spawn Stage(first, second)
-        var sink: Task<i32> = spawn Consume(second)
-        _ = await producer.Join()!
-        first.Close()
-        _ = await stage.Join()!
-        total = await sink.Join()!
+        var producer: Task<()> = spawn produce(first, 100)
+        var stage: Task<()> = spawn stage(first, second)
+        var sink: Task<i32> = spawn consume(second)
+        _ = await producer.join()!
+        first.close()
+        _ = await stage.join()!
+        total = await sink.join()!
     }
     return total - 5050
 }

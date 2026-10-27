@@ -1,14 +1,14 @@
 import "std/os/fs"
 
-async def ReadFile(path: str) -> Result<usize, Error> {
-    var bytes: Array<u8> = await fs.AsyncReadFile(path)?
-    return Ok(bytes.Len())
+async def read_file(path: str) -> Result<usize, Error> {
+    var bytes: Array<u8> = await fs.async_read_file(path)?
+    return Ok(bytes.len())
 }
 
 async def main() -> i32 {
     var path: str = "will-concurrency-async.tmp"
     var text: str = "worker"
-    var written: Result<(), Error> = fs.WriteFile(path, text[Range(0, 6)])
+    var written: Result<(), Error> = fs.write_file(path, text[Range(0, 6)])
     match written {
         Err(_) => {
             return 1
@@ -17,10 +17,10 @@ async def main() -> i32 {
     }
     var size: usize = 0
     region {
-        var task: Task<Result<usize, Error>> = spawn ReadFile(path.Clone())
-        size = await task.Join()!!
+        var task: Task<Result<usize, Error>> = spawn read_file(path.clone())
+        size = await task.join()!!
     }
-    _ = fs.Remove(path)
+    _ = fs.remove(path)
     if size != 6usize {
         return 2
     }

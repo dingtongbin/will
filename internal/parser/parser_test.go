@@ -40,7 +40,7 @@ enum Shape {
 }
 
 interface Showable {
-    def Show() -> str
+    def show() -> str
 }
 
 derive Show for Point
@@ -49,19 +49,19 @@ lane Ui struct Job {
     id: u32
 }
 
-def (mut p: Point) Move(dx: i32, dy: i32) {
+def (mut p: Point) move(dx: i32, dy: i32) {
     p.x += dx
     p.y += dy
 }
 
-def Max<T: Ord>(a: T, b: T) -> T {
+def max<T: Ord>(a: T, b: T) -> T {
     if a > b {
         return a
     }
     return b
 }
 
-def Run(n: i32) -> Result<i32, Error> {
+def run(n: i32) -> Result<i32, Error> {
     var total: i32 = 0
     var p: Point = Point { x: 1, y: n }
     var text: str = f"value {n} {{ok}}"
@@ -84,11 +84,11 @@ def Run(n: i32) -> Result<i32, Error> {
         _ => { total = 4 }
     }
     region {
-        var t: Task<i32> = spawn Fetch(n)
-        _ = t.Join()
+        var t: Task<i32> = spawn fetch(n)
+        _ = t.join()
     }
     select {
-        v = ch.Recv() => { total = v }
+        v = ch.recv() => { total = v }
         timeout 5ms => { total = -1 }
         default => { total = 0 }
     }
@@ -96,10 +96,10 @@ def Run(n: i32) -> Result<i32, Error> {
         total += 1
     }
     deadline 3ms {
-        Work()
+        work()
     }
     defer Cleanup()
-    func() { Work() }()
+    func() { work() }()
     return Ok(total)
 }
 `
@@ -175,7 +175,7 @@ func TestParseProgram(t *testing.T) {
 		t.Fatalf("decl 3 = %+v, want Shape", f.Decls[3])
 	}
 	iface, ok := f.Decls[4].(*ast.InterfaceDecl)
-	if !ok || len(iface.Methods) != 1 || iface.Methods[0].Name != "Show" {
+	if !ok || len(iface.Methods) != 1 || iface.Methods[0].Name != "show" {
 		t.Fatalf("decl 4 = %+v, want Showable", f.Decls[4])
 	}
 	derive, ok := f.Decls[5].(*ast.DeriveDecl)
@@ -187,8 +187,8 @@ func TestParseProgram(t *testing.T) {
 		t.Fatalf("decl 6 = %+v, want lane Ui", f.Decls[6])
 	}
 	move, ok := f.Decls[7].(*ast.FuncDecl)
-	if !ok || move.Recv == nil || !move.Recv.Mut || move.Name != "Move" {
-		t.Fatalf("decl 7 = %+v, want method Move", f.Decls[7])
+	if !ok || move.Recv == nil || !move.Recv.Mut || move.Name != "move" {
+		t.Fatalf("decl 7 = %+v, want method move", f.Decls[7])
 	}
 	max, ok := f.Decls[8].(*ast.FuncDecl)
 	if !ok || len(max.TypeParams) != 1 || len(max.TypeParams[0].Constraints) != 1 {
@@ -197,7 +197,7 @@ func TestParseProgram(t *testing.T) {
 }
 
 func TestAsyncFunctionAndAwait(t *testing.T) {
-	f := parse(t, "async def Load() -> i32 {\n    return await Read()?\n}\n")
+	f := parse(t, "async def load() -> i32 {\n    return await read()?\n}\n")
 	fn, ok := f.Decls[0].(*ast.FuncDecl)
 	if !ok || !fn.Async {
 		t.Fatalf("decl 0 = %+v, want async Load", f.Decls[0])

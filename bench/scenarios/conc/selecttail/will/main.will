@@ -24,9 +24,9 @@ async def main() -> i32 {
     // The warm up pays for the first touch of the pages and of the caches.
     for i in Range(0, 1000) {
         _ = i
-        _ = await first.Send(1i64)
+        _ = await first.send(1i64)
         select {
-            a = first.Recv() => {
+            a = first.recv() => {
                 match a {
                     Some(v) => {
                         _ = v
@@ -35,7 +35,7 @@ async def main() -> i32 {
                     }
                 }
             }
-            b = second.Recv() => {
+            b = second.recv() => {
                 match b {
                     Some(v) => {
                         _ = v
@@ -56,9 +56,9 @@ async def main() -> i32 {
         var total: i64 = 0i64
         for i in Range(0, count) {
             var start: u64 = c.bench_now_ns()
-            _ = await first.Send(i64(i))
+            _ = await first.send(i64(i))
             select {
-                a = first.Recv() => {
+                a = first.recv() => {
                     match a {
                         Some(v) => {
                             total += v
@@ -67,7 +67,7 @@ async def main() -> i32 {
                         }
                     }
                 }
-                b = second.Recv() => {
+                b = second.recv() => {
                     match b {
                         Some(v) => {
                             total += v
@@ -76,7 +76,7 @@ async def main() -> i32 {
                         }
                     }
                 }
-                d = third.Recv() => {
+                d = third.recv() => {
                     match d {
                         Some(v) => {
                             total += v
@@ -85,7 +85,7 @@ async def main() -> i32 {
                         }
                     }
                 }
-                e = fourth.Recv() => {
+                e = fourth.recv() => {
                     match e {
                         Some(v) => {
                             total += v
@@ -98,28 +98,28 @@ async def main() -> i32 {
                 }
             }
             var stop: u64 = c.bench_now_ns()
-            samples.Push(stop - start)
+            samples.push(stop - start)
         }
         var roundStop: u64 = c.bench_now_ns()
-        rounds.Push(roundStop - roundStart)
+        rounds.push(roundStop - roundStart)
         checksum += total
         c.bench_sink(u64(checksum))
     }
 
-    bench.SortSamples(samples)
-    bench.SortSamples(rounds)
-    var p50: u64 = bench.Percentile(samples, 50i64, 100i64)
-    var p95: u64 = bench.Percentile(samples, 95i64, 100i64)
-    var p99: u64 = bench.Percentile(samples, 99i64, 100i64)
-    var p999: u64 = bench.Percentile(samples, 999i64, 1000i64)
-    var worst: u64 = bench.Max(samples)
+    bench.sort_samples(samples)
+    bench.sort_samples(rounds)
+    var p50: u64 = bench.percentile(samples, 50i64, 100i64)
+    var p95: u64 = bench.percentile(samples, 95i64, 100i64)
+    var p99: u64 = bench.percentile(samples, 99i64, 100i64)
+    var p999: u64 = bench.percentile(samples, 999i64, 1000i64)
+    var worst: u64 = bench.max(samples)
 
     print("bench metric p50 ", p50, " ns\n")
     print("bench metric p95 ", p95, " ns\n")
     print("bench metric p99 ", p99, " ns\n")
     print("bench metric p999 ", p999, " ns\n")
     print("bench metric max ", worst, " ns\n")
-    print("bench metric round_p50 ", bench.Percentile(rounds, 50i64, 100i64), " ns\n")
+    print("bench metric round_p50 ", bench.percentile(rounds, 50i64, 100i64), " ns\n")
     print("bench metric waits ", u64(count * repetitions), " waits\n")
     print("bench metric queues ", u64(queues), " queues\n")
     print("bench checksum ", u64(checksum), "\n")

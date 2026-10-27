@@ -13,7 +13,7 @@ func TestLambdaCapturesNames(t *testing.T) {
     n: i32
 }
 
-def F() -> i32 {
+def f() -> i32 {
     var c: rc<C> = new rc<C>(C { n: 1 })
     var f: func() -> i32 = func() -> i32 {
         return c.n
@@ -61,13 +61,13 @@ def F() -> i32 {
 // TestClosureMovesOwnedLocal checks the capture rule in semantics: a closure
 // takes an owned local by move, so a later use is O0001.
 func TestClosureMovesOwnedLocal(t *testing.T) {
-	src := `def F() -> i32 {
+	src := `def f() -> i32 {
     var text: str = "hello"
     var f: func() -> usize = func() -> usize {
-        return text.Len()
+        return text.len()
     }
     _ = f
-    return i32(text.Len())
+    return i32(text.len())
 }
 `
 	ds := movesOwned(t, src)
@@ -79,10 +79,10 @@ func TestClosureMovesOwnedLocal(t *testing.T) {
 // TestClosureCanMoveDeadOwnedLocal checks the normal path: no later use means
 // the local moves into the environment without a clone.
 func TestClosureCanMoveDeadOwnedLocal(t *testing.T) {
-	src := `def F() -> i32 {
+	src := `def f() -> i32 {
     var text: str = "hello"
     var f: func() -> usize = func() -> usize {
-        return text.Len()
+        return text.len()
     }
     return i32(f())
 }
@@ -95,13 +95,13 @@ func TestClosureCanMoveDeadOwnedLocal(t *testing.T) {
 // TestSecondClosureCaptureNeedsClone checks that two closures cannot move the
 // same local; the second capture is a use of the moved value.
 func TestSecondClosureCaptureNeedsClone(t *testing.T) {
-	src := `def F() -> i32 {
+	src := `def f() -> i32 {
     var text: str = "hello"
     var f: func() -> usize = func() -> usize {
-        return text.Len()
+        return text.len()
     }
     var g: func() -> usize = func() -> usize {
-        return text.Len()
+        return text.len()
     }
     return i32(f() + g())
 }
@@ -119,7 +119,7 @@ func TestClosureCopiesRcHandle(t *testing.T) {
     n: i32
 }
 
-def F() -> i32 {
+def f() -> i32 {
     var c: rc<C> = new rc<C>(C { n: 1 })
     var f: func() -> i32 = func() -> i32 {
         return c.n
@@ -136,14 +136,14 @@ def F() -> i32 {
 // cannot move a local declared outside it: the next iteration would see an
 // empty slot.
 func TestClosureCaptureInLoopNeedsFreshOwner(t *testing.T) {
-	src := `def F() -> i32 {
+	src := `def f() -> i32 {
     var text: str = "hello" + "!"
     var f: func() -> usize = func() -> usize {
         return 0
     }
     for _ in Range(0, 2) {
         f = func() -> usize {
-            return text.Len()
+            return text.len()
         }
     }
     return i32(f())
@@ -158,15 +158,15 @@ func TestClosureCaptureInLoopNeedsFreshOwner(t *testing.T) {
 // TestClosureCaptureInLoopWithFreshLocal checks the legal form: a local
 // declared inside the loop is recreated for every capture.
 func TestClosureCaptureInLoopWithFreshLocal(t *testing.T) {
-	src := `def F() -> i32 {
+	src := `def f() -> i32 {
     var text: str = "hello" + "!"
     var f: func() -> usize = func() -> usize {
         return 0
     }
     for _ in Range(0, 2) {
-        var inner: str = text.Clone()
+        var inner: str = text.clone()
         f = func() -> usize {
-            return inner.Len()
+            return inner.len()
         }
     }
     return i32(f())
@@ -181,11 +181,11 @@ func TestClosureCaptureInLoopWithFreshLocal(t *testing.T) {
 // another closure may move a local declared in the immediate body, while a
 // capture from the outer environment stays a copy.
 func TestNestedClosureMovesItsOwnLocal(t *testing.T) {
-	src := `def F() -> i32 {
+	src := `def f() -> i32 {
     var make: func() -> func() -> usize = func() -> func() -> usize {
         var inner: str = "abc" + "d"
         return func() -> usize {
-            return inner.Len()
+            return inner.len()
         }
     }
     var g: func() -> usize = make()
@@ -204,7 +204,7 @@ func TestClosureCapturesParameterByCopy(t *testing.T) {
     n: i32
 }
 
-def Make(c: rc<C>) -> func() -> i32 {
+def make(c: rc<C>) -> func() -> i32 {
     return func() -> i32 {
         return c.n
     }

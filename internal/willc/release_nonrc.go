@@ -570,7 +570,7 @@ func (em *emitter) blockViews(b *ast.Block, owner string, types map[string]*ast.
 			out[d.Name] = true
 			continue
 		}
-		if call, ok := d.Value.(*ast.MethodCallExpr); ok && call.Name == "Slice" {
+		if call, ok := d.Value.(*ast.MethodCallExpr); ok && call.Name == "slice" {
 			if viewRootOwner(call.Recv) == owner {
 				out[d.Name] = true
 			}
@@ -621,7 +621,7 @@ func viewRootOwner(e ast.Expr) string {
 	case *ast.IndexExpr:
 		return exprRootName(x.Recv)
 	case *ast.MethodCallExpr:
-		if x.Name == "Slice" {
+		if x.Name == "slice" {
 			return exprRootName(x.Recv)
 		}
 	}
@@ -791,7 +791,7 @@ func (em *emitter) safeViewExpr(e ast.Expr, views map[string]bool) bool {
 
 func safeViewMethod(name string) bool {
 	switch name {
-	case "Len", "IsEmpty", "Equal", "Compare", "HasPrefix", "HasSuffix", "Index", "Clone":
+	case "len", "is_empty", "equal", "compare", "has_prefix", "has_suffix", "index", "clone":
 		return true
 	}
 	return false
@@ -824,7 +824,7 @@ func safeContainerMethod(t *ast.Type, method string) bool {
 	}
 	if t.Kind == ast.ScalarType && t.Name == "str" {
 		switch method {
-		case "Len", "IsEmpty", "Clone", "Compare", "HasPrefix", "HasSuffix":
+		case "len", "is_empty", "clone", "compare", "has_prefix", "has_suffix":
 			return true
 		}
 		return false
@@ -835,17 +835,17 @@ func safeContainerMethod(t *ast.Type, method string) bool {
 	switch t.Name {
 	case "Array":
 		switch method {
-		case "Len", "Cap", "IsEmpty", "Push", "Append", "Set", "Insert", "Pop", "Remove", "Clear", "Reserve", "Resize", "ShrinkToFit", "Clone":
+		case "len", "cap", "is_empty", "push", "append", "set", "insert", "pop", "remove", "clear", "reserve", "resize", "shrink_to_fit", "clone":
 			return true
 		}
 	case "Map":
 		switch method {
-		case "Len", "IsEmpty", "Has", "Set", "Delete", "Clear":
+		case "len", "is_empty", "has", "set", "delete", "clear":
 			return true
 		}
 	case "Set":
 		switch method {
-		case "Len", "IsEmpty", "Has", "Add", "Delete", "Clear":
+		case "len", "is_empty", "has", "add", "delete", "clear":
 			return true
 		}
 	}

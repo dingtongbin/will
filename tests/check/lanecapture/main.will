@@ -2,14 +2,14 @@ lane Ui struct Job {
     id: i32
 }
 
-def Work(job: Job) -> i32 {
+def work(job: Job) -> i32 {
     return job.id
 }
 
 def main() -> i32 {
     var job: Job = Job { id: 7 }
     region {
-        var task: Task<i32> = spawn Work(job)
+        var task: Task<i32> = spawn work(job)
         _ = task
     }
     return 0

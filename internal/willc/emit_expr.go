@@ -341,15 +341,15 @@ func (e *emitter) emitMethodCall(v *ast.MethodCallExpr) int {
 
 func specialCall(name string, args int) (string, bool) {
 	switch {
-	case name == "Join" && args == 0:
+	case name == "join" && args == 0:
 		return "join", true
-	case name == "Send" && args == 1:
+	case name == "send" && args == 1:
 		return "send", true
-	case name == "TrySend" && args == 1:
+	case name == "try_send" && args == 1:
 		return "trysend", true
-	case name == "Recv" && args == 0:
+	case name == "recv" && args == 0:
 		return "recv", true
-	case name == "TryRecv" && args == 0:
+	case name == "try_recv" && args == 0:
 		return "tryrecv", true
 	}
 	return "", false

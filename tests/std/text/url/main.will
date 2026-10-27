@@ -1,76 +1,76 @@
 import "std/encoding/url"
 
 // Rejected reports whether a decode failed with the stable Invalid status.
-def Rejected(r: Result<str, Error>) -> bool {
+def rejected(r: Result<str, Error>) -> bool {
     match r {
         Ok(v) => {
             _ = v
             return false
         }
         Err(e) => {
-            return e.Status() == 2
+            return e.status() == 2
         }
     }
 }
 
 def main() -> i32 {
-    if url.Escape("") != "" {
+    if url.escape("") != "" {
         return 1
     }
-    if url.Escape("AZaz09-_.~") != "AZaz09-_.~" {
+    if url.escape("AZaz09-_.~") != "AZaz09-_.~" {
         return 2
     }
-    if url.Escape("Hello, World!") != "Hello%2C%20World%21" {
+    if url.escape("Hello, World!") != "Hello%2C%20World%21" {
         return 3
     }
-    if url.Escape("a/b") != "a%2Fb" {
+    if url.escape("a/b") != "a%2Fb" {
         return 4
     }
-    if url.Escape("\xe4\xbd\xa0") != "%E4%BD%A0" {
+    if url.escape("\xe4\xbd\xa0") != "%E4%BD%A0" {
         return 5
     }
-    if url.Unescape("")! != "" {
+    if url.unescape("")! != "" {
         return 6
     }
-    if url.Unescape("%41%42")! != "AB" {
+    if url.unescape("%41%42")! != "AB" {
         return 7
     }
-    if url.Unescape("Hello%2C%20World%21")! != "Hello, World!" {
+    if url.unescape("Hello%2C%20World%21")! != "Hello, World!" {
         return 8
     }
-    if url.Unescape("%2f")! != "/" {
+    if url.unescape("%2f")! != "/" {
         return 9
     }
-    if url.Unescape("a+b")! != "a+b" {
+    if url.unescape("a+b")! != "a+b" {
         return 10
     }
-    if url.Unescape("%E4%BD%A0")! != "\xe4\xbd\xa0" {
+    if url.unescape("%E4%BD%A0")! != "\xe4\xbd\xa0" {
         return 11
     }
-    var nul: str = url.Unescape("%00")!
-    if nul.Len() != 1usize {
+    var nul: str = url.unescape("%00")!
+    if nul.len() != 1usize {
         return 12
     }
     var nulBytes: []u8 = nul[Range(0, 1usize)]
-    if nulBytes.Get(0) != 0u8 {
+    if nulBytes.get(0) != 0u8 {
         return 13
     }
-    if !Rejected(url.Unescape("%")) {
+    if !rejected(url.unescape("%")) {
         return 14
     }
-    if !Rejected(url.Unescape("%4")) {
+    if !rejected(url.unescape("%4")) {
         return 15
     }
-    if !Rejected(url.Unescape("%GG")) {
+    if !rejected(url.unescape("%GG")) {
         return 16
     }
-    if !Rejected(url.Unescape("%C0%AF")) {
+    if !rejected(url.unescape("%C0%AF")) {
         return 17
     }
-    if !Rejected(url.Unescape("%ED%A0%80")) {
+    if !rejected(url.unescape("%ED%A0%80")) {
         return 18
     }
-    if !Rejected(url.Unescape("%FF")) {
+    if !rejected(url.unescape("%FF")) {
         return 19
     }
     return 0

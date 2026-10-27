@@ -13,14 +13,14 @@ func TestAsyncCallerWaitsOnAChildTask(t *testing.T) {
 	src := "import c \"fs.h\" {\n" +
 		"    fast willrt_fs_async_read_file\n" +
 		"}\n" +
-		"def Inner(path: str) -> Result<i32, i32> {\n" +
+		"def inner(path: str) -> Result<i32, i32> {\n" +
 		"    var out: Array<u8>\n" +
 		"    var status: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
 		"    if status != 0 { return Err(1) }\n" +
 		"    return Ok(1)\n" +
 		"}\n" +
-		"def Outer(path: str) -> Result<i32, i32> {\n" +
-		"    var n: i32 = Inner(path)?\n" +
+		"def outer(path: str) -> Result<i32, i32> {\n" +
+		"    var n: i32 = inner(path)?\n" +
 		"    return Ok(n + 1)\n" +
 		"}\n"
 	doc := emitWillc(t, src)
@@ -30,8 +30,8 @@ func TestAsyncCallerWaitsOnAChildTask(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`define i32 @"example.com/app.Outer.sm"(ptr %frame) {`,
-		`call ptr @"example.com/app.Inner.task"(ptr`,
+		`define i32 @"example.com/app.outer.sm"(ptr %frame) {`,
+		`call ptr @"example.com/app.inner.task"(ptr`,
 		`, i32 -2, i32 0)`,
 		`call i32 @willrt_task_try_join(ptr %`,
 	} {
@@ -48,13 +48,13 @@ func TestAsyncFrameDropReleasesOwnedLocals(t *testing.T) {
 	src := "import c \"fs.h\" {\n" +
 		"    fast willrt_fs_async_read_file\n" +
 		"}\n" +
-		"async def Read(path: str) -> i32 {\n" +
+		"async def read(path: str) -> i32 {\n" +
 		"    var text: str = \"hello\"\n" +
 		"    var items: Array<i32> = new Array<i32>(2)\n" +
 		"    var out: Array<u8>\n" +
 		"    var status: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
 		"    if status != 0 { return 1 }\n" +
-		"    return i32(text.Len()) + i32(items.Len())\n" +
+		"    return i32(text.len()) + i32(items.len())\n" +
 		"}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
@@ -63,8 +63,8 @@ func TestAsyncFrameDropReleasesOwnedLocals(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`call ptr @willrt_task_new_drop(ptr @"example.com/app.Read.sm"`,
-		`define void @"example.com/app.Read.drop"(ptr %frame) {`,
+		`call ptr @willrt_task_new_drop(ptr @"example.com/app.read.sm"`,
+		`define void @"example.com/app.read.drop"(ptr %frame) {`,
 		`call void @willrt_free_str(ptr`,
 		`call void @willrt_free(ptr`,
 	} {
@@ -80,7 +80,7 @@ func TestAsyncFrameDropSkipsExplicitLeak(t *testing.T) {
 	src := "import c \"clock.h\" {\n" +
 		"    fast willrt_task_sleep_async\n" +
 		"}\n" +
-		"async def Read(ns: i64) -> i32 {\n" +
+		"async def read(ns: i64) -> i32 {\n" +
 		"    var items: Array<i32> = new Array<i32>(2)\n" +
 		"    leak(items)\n" +
 		"    var status: i32 = c.willrt_task_sleep_async(ns)\n" +
@@ -92,7 +92,7 @@ func TestAsyncFrameDropSkipsExplicitLeak(t *testing.T) {
 		t.Fatalf("gen: %v", err)
 	}
 	text := normalizeIR(string(ir))
-	if strings.Contains(text, "@\"example.com/app.Read.drop\"") {
+	if strings.Contains(text, "@\"example.com/app.read.drop\"") {
 		t.Errorf("leaked local has a frame drop callback:\n%s", text)
 	}
 }
@@ -104,7 +104,7 @@ func TestSyncWaitUsesTheTaskNode(t *testing.T) {
 	src := "import c \"sync.h\" {\n" +
 		"    fast willrt_sync_sema_acquire_async\n" +
 		"}\n" +
-		"def Take(s: raw) -> i32 {\n" +
+		"def take(s: raw) -> i32 {\n" +
 		"    var status: i32 = c.willrt_sync_sema_acquire_async(s)\n" +
 		"    return status\n" +
 		"}\n"
@@ -129,7 +129,7 @@ func TestAsyncSleepUsesTheTimerDeadline(t *testing.T) {
 	src := "import c \"clock.h\" {\n" +
 		"    fast willrt_task_sleep_async\n" +
 		"}\n" +
-		"def Nap(ns: i64) -> i32 {\n" +
+		"def nap(ns: i64) -> i32 {\n" +
 		"    var status: i32 = c.willrt_task_sleep_async(ns)\n" +
 		"    return status\n" +
 		"}\n"
@@ -155,7 +155,7 @@ func TestTwoDirectAsyncCallsGetTwoWaitStates(t *testing.T) {
 	src := "import c \"fs.h\" {\n" +
 		"    fast willrt_fs_async_read_file\n" +
 		"}\n" +
-		"def Two(path: str) -> i32 {\n" +
+		"def two(path: str) -> i32 {\n" +
 		"    var out: Array<u8>\n" +
 		"    var first: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
 		"    var second: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
@@ -183,7 +183,7 @@ func TestAsyncFileCallBecomesStateMachine(t *testing.T) {
 	src := "import c \"fs.h\" {\n" +
 		"    fast willrt_fs_async_read_file\n" +
 		"}\n" +
-		"def Load(path: str) -> i32 {\n" +
+		"def load(path: str) -> i32 {\n" +
 		"    var out: Array<u8>\n" +
 		"    var status: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
 		"    return status\n" +
@@ -195,7 +195,7 @@ func TestAsyncFileCallBecomesStateMachine(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`define i32 @"example.com/app.Load.sm"(ptr %frame) {`,
+		`define i32 @"example.com/app.load.sm"(ptr %frame) {`,
 		`call ptr @willrt_fs_async_read_file_start(ptr %`,
 		`call i32 @willrt_io_poll(ptr %`,
 		`call i32 @willrt_io_finish(ptr %`,

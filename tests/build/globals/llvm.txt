@@ -1,7 +1,7 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
 @"example.com/globals/lib.Seed" = internal global i32 zeroinitializer
-define hidden i32 @"example.com/globals/lib.Next"() alwaysinline {
+define hidden i32 @"example.com/globals/lib.next"() alwaysinline {
 entry:
   %t1 = load i32, ptr @"example.com/globals/lib.Seed"
   %t2 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t1, i32 1)
@@ -22,7 +22,7 @@ entry:
 define i32 @"example.com/globals.will$main"() {
 entry:
   %t1 = load i32, ptr @"example.com/globals/lib.Seed"
-  %t2 = call i32 @"example.com/globals/lib.Next"()
+  %t2 = call i32 @"example.com/globals/lib.next"()
   %t3 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t1, i32 %t2)
   %t4 = extractvalue {i32, i1} %t3, 0
   %t5 = extractvalue {i32, i1} %t3, 1
@@ -45,7 +45,7 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [18 x i8] c"lib/lib.will:4:12\00", align 1
-@.str.2 = private unnamed_addr constant [29 x i8] c"example.com/globals/lib.Next\00", align 1
+@.str.2 = private unnamed_addr constant [29 x i8] c"example.com/globals/lib.next\00", align 1
 @.str.3 = private unnamed_addr constant [15 x i8] c"main.will:4:12\00", align 1
 @.str.4 = private unnamed_addr constant [30 x i8] c"example.com/globals.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)

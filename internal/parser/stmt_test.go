@@ -20,7 +20,7 @@ func findFunc(t *testing.T, f *ast.File, name string) *ast.FuncDecl {
 
 func TestParseStatements(t *testing.T) {
 	f := parse(t, program)
-	run := findFunc(t, f, "Run")
+	run := findFunc(t, f, "run")
 	if len(run.Body.Stmts) != 16 {
 		t.Fatalf("statements = %d, want 16", len(run.Body.Stmts))
 	}
@@ -103,17 +103,17 @@ func TestParseStatements(t *testing.T) {
 }
 
 func TestBlockValueAndNewlineRules(t *testing.T) {
-	src := `def F(n: i32) {
-    var a: i32 = Add(1,
+	src := `def f(n: i32) {
+    var a: i32 = add(1,
         2)
     var b: i32 = 1 +
         2
     var c: i32 = if n > 0 { 1 } else { 2 }
     if (Point { x: 1 }) == p {
-        Work()
+        work()
     }
     if n > 0 {
-        Work()
+        work()
     } else {
         Stop()
     }
@@ -130,10 +130,10 @@ func TestBlockValueAndNewlineRules(t *testing.T) {
 }
 
 func TestMoreStatements(t *testing.T) {
-	src := `def F() {
-    var t: Task<i32> = spawn on Ui Fetch(1)
-    var l: usize = lane.Here()
-    _ = t.Join()
+	src := `def f() {
+    var t: Task<i32> = spawn on Ui fetch(1)
+    var l: usize = lane.here()
+    _ = t.join()
     p.x += 1
     p.x <<= 2
 }
@@ -148,7 +148,7 @@ func TestMoreStatements(t *testing.T) {
 		t.Fatalf("t = %+v, want spawn on Ui", varDecl(t, f, "t").Value)
 	}
 	if _, ok := varDecl(t, f, "l").Value.(*ast.LaneHereExpr); !ok {
-		t.Errorf("l = %T, want lane.Here()", varDecl(t, f, "l").Value)
+		t.Errorf("l = %T, want lane.here()", varDecl(t, f, "l").Value)
 	}
 	discard, ok := fn.Body.Stmts[2].(*ast.AssignStmt)
 	if !ok {
@@ -171,12 +171,12 @@ func TestMoreStatements(t *testing.T) {
 }
 
 func TestSpawnPlace(t *testing.T) {
-	src := `def G() {
+	src := `def g() {
 }
 
-def F() {
-    var a: Task<()> = spawn G()
-    var b: Task<()> = spawn here G()
+def f() {
+    var a: Task<()> = spawn g()
+    var b: Task<()> = spawn here g()
 }
 `
 	f := parse(t, src)
@@ -191,9 +191,9 @@ def F() {
 }
 
 func TestCallTryAndUnwrapAsStatements(t *testing.T) {
-	src := `def F() -> Result<(), Error> {
-    Check()?
-    Check()!
+	src := `def f() -> Result<(), Error> {
+    check()?
+    check()!
     return Ok(())
 }
 `
@@ -221,18 +221,18 @@ func TestCallTryAndUnwrapAsStatements(t *testing.T) {
 func TestSuffixDoesNotExtendDeferOrSpawn(t *testing.T) {
 	// A defer still reports the generic shape; a spawn operand rule has its
 	// own code (K0005) because the concurrency volume fixes it.
-	_, ds := Parse("test.will", []byte("def F() {\n    defer G()?\n}\n"))
+	_, ds := Parse("test.will", []byte("def f() {\n    defer g()?\n}\n"))
 	if len(ds) != 1 || ds[0].Help != "expected a call" {
 		t.Fatalf("defer diagnostics = %+v, want one expected-call error", ds)
 	}
-	_, ds = Parse("test.will", []byte("def F() {\n    spawn G()?\n}\n"))
+	_, ds = Parse("test.will", []byte("def f() {\n    spawn g()?\n}\n"))
 	if len(ds) != 1 || ds[0].Code != diag.CodeSpawnNotCall {
 		t.Fatalf("spawn diagnostics = %+v, want one K0005", ds)
 	}
 }
 
 func TestNewlineBeforeDotEndsStatement(t *testing.T) {
-	src := `def F() {
+	src := `def f() {
     p
     .x
 }

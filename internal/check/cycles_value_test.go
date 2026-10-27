@@ -23,7 +23,7 @@ func TestValueCycleTwoHandles(t *testing.T) {
     next: rc<Node>
 }
 
-def F() {
+def f() {
     var a: rc<Node>
     var b: rc<Node>
     a.next = b
@@ -51,7 +51,7 @@ func TestValueCycleThroughOption(t *testing.T) {
     next: Option<rc<Node>>
 }
 
-def F() {
+def f() {
     var a: rc<Node>
     var b: rc<Node>
     a.next = Some(b)
@@ -69,7 +69,7 @@ func TestValueCycleGenericInstance(t *testing.T) {
     next: rc<Node<T>>
 }
 
-def F() {
+def f() {
     var a: rc<Node<i32>>
     var b: rc<Node<i32>>
     a.next = b
@@ -87,15 +87,15 @@ func TestValueCycleClosedByLinkerCall(t *testing.T) {
     next: rc<Node>
 }
 
-def Link(a: rc<Node>, b: rc<Node>) {
+def link(a: rc<Node>, b: rc<Node>) {
     a.next = b
     b.next = a
 }
 
-def F() {
+def f() {
     var x: rc<Node>
     var y: rc<Node>
-    Link(x, y)
+    link(x, y)
 }
 `
 	ds := valueCycles(t, src)
@@ -112,7 +112,7 @@ func TestValueCycleLinkerAcrossFiles(t *testing.T) {
     next: rc<Node>
 }
 
-def Link(a: rc<Node>, b: rc<Node>) {
+def link(a: rc<Node>, b: rc<Node>) {
     a.next = b
     b.next = a
 }
@@ -120,10 +120,10 @@ def Link(a: rc<Node>, b: rc<Node>) {
 	if len(ds) != 0 {
 		t.Fatalf("parse a: %s", diag.FormatAll(ds))
 	}
-	caller, ds := parser.Parse("b.will", []byte(`def F() {
+	caller, ds := parser.Parse("b.will", []byte(`def f() {
     var x: rc<Node>
     var y: rc<Node>
-    Link(x, y)
+    link(x, y)
 }
 `))
 	if len(ds) != 0 {
@@ -142,7 +142,7 @@ func TestValueCycleLinkerAcrossPackages(t *testing.T) {
     next: rc<Node>
 }
 
-def Link(a: rc<Node>, b: rc<Node>) {
+def link(a: rc<Node>, b: rc<Node>) {
     a.next = b
     b.next = a
 }
@@ -152,10 +152,10 @@ def Link(a: rc<Node>, b: rc<Node>) {
 	}
 	caller, ds := parser.Parse("b.will", []byte(`import "example.com/a"
 
-def F() {
+def f() {
     var x: rc<a.Node>
     var y: rc<a.Node>
-    a.Link(x, y)
+    a.link(x, y)
 }
 `))
 	if len(ds) != 0 {
@@ -177,7 +177,7 @@ func TestValueCycleMethodAcrossPackages(t *testing.T) {
     next: rc<Node>
 }
 
-def (a: Node) Link(b: rc<Node>, c: rc<Node>) {
+def (a: Node) link(b: rc<Node>, c: rc<Node>) {
     b.next = c
     c.next = b
 }
@@ -187,11 +187,11 @@ def (a: Node) Link(b: rc<Node>, c: rc<Node>) {
 	}
 	caller, ds := parser.Parse("b.will", []byte(`import "example.com/a"
 
-def F() {
+def f() {
     var root: a.Node
     var x: rc<a.Node>
     var y: rc<a.Node>
-    root.Link(x, y)
+    root.link(x, y)
 }
 `))
 	if len(ds) != 0 {
@@ -211,7 +211,7 @@ func TestValueCycleWeakEdgeDoesNotClose(t *testing.T) {
     next: weak<Node>
 }
 
-def F() {
+def f() {
     var a: rc<Node>
     var b: rc<Node>
     a.next = b
@@ -228,7 +228,7 @@ func TestValueCycleNoEdgeIsClean(t *testing.T) {
     next: rc<Node>
 }
 
-def F() {
+def f() {
     var a: rc<Node>
     var b: rc<Node>
     a.next = b

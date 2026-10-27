@@ -17,11 +17,11 @@ func TestDirectoryCacheKeyCoversDependencySources(t *testing.T) {
 	dep := filepath.Join(base, "dep")
 	writeTree(t, app, map[string]string{
 		"will.mod":  "module example.com/app\nwill 1\nrequire example.com/dep@v1.0.0\nreplace example.com/dep@v1.0.0 => ../dep\n",
-		"main.will": "import \"example.com/dep\"\n\ndef main() -> i32 {\n    return dep.Double(2)\n}\n",
+		"main.will": "import \"example.com/dep\"\n\ndef main() -> i32 {\n    return dep.double(2)\n}\n",
 	})
 	writeTree(t, dep, map[string]string{
 		"will.mod": "module example.com/dep\nwill 1\n",
-		"dep.will": "def Double(n: i32) -> i32 {\n    return n + n\n}\n",
+		"dep.will": "def double(n: i32) -> i32 {\n    return n + n\n}\n",
 	})
 
 	t.Setenv("WILL_CACHE", t.TempDir())
@@ -30,7 +30,7 @@ func TestDirectoryCacheKeyCoversDependencySources(t *testing.T) {
 		t.Fatal("the module is not cacheable")
 	}
 	writeTree(t, dep, map[string]string{
-		"dep.will": "def Double(n: i32) -> i32 {\n    return n + n + 1\n}\n",
+		"dep.will": "def double(n: i32) -> i32 {\n    return n + n + 1\n}\n",
 	})
 	_, changed, ok := dirCacheKey(pkg.Load(app), checkFlags{})
 	if !ok {
@@ -61,7 +61,7 @@ func TestDirectoryCacheKeyCoversSubpackageFiles(t *testing.T) {
 	files := map[string]string{
 		"will.mod":     "module example.com/sub\nwill 1\n",
 		"main.will":    "def main() -> i32 {\n    return 0\n}\n",
-		"lib/lib.will": "def Double(n: i32) -> i32 {\n    return n + n\n}\n",
+		"lib/lib.will": "def double(n: i32) -> i32 {\n    return n + n\n}\n",
 	}
 	for name, body := range files {
 		path := filepath.Join(root, filepath.FromSlash(name))
@@ -83,7 +83,7 @@ func TestDirectoryCacheKeyCoversSubpackageFiles(t *testing.T) {
 	}
 
 	lib := filepath.Join(root, "lib", "lib.will")
-	if err := os.WriteFile(lib, []byte("def Double(n: i32) -> i32 {\n    return n + n + 1\n}\n"), 0o644); err != nil {
+	if err := os.WriteFile(lib, []byte("def double(n: i32) -> i32 {\n    return n + n + 1\n}\n"), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 	_, changed, ok := dirCacheKey(pkg.Load(root), checkFlags{})

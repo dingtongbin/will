@@ -10,9 +10,9 @@ import (
 func TestSelectDiscardReleasesReceiveOut(t *testing.T) {
 	src := `async def main() -> i32 {
     var ch: chan<str> = new chan<str>(1)
-    _ = await ch.Send("hello".Clone())
+    _ = await ch.send("hello".clone())
     select {
-        _ = ch.Recv() => {
+        _ = ch.recv() => {
         }
     }
     return 0
@@ -40,15 +40,15 @@ func TestSelectDiscardReleasesReceiveOut(t *testing.T) {
 func TestSelectBindClearsReceiveOut(t *testing.T) {
 	src := `async def main() -> i32 {
     var ch: chan<str> = new chan<str>(1)
-    _ = await ch.Send("hello".Clone())
+    _ = await ch.send("hello".clone())
     var got: Option<str> = None
     select {
-        x = ch.Recv() => {
+        x = ch.recv() => {
             got = x
         }
     }
     return match got {
-        Some(s) => i32(s.Len())
+        Some(s) => i32(s.len())
         None => 1
     }
 }

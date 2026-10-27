@@ -4,7 +4,7 @@ struct Point {
     tag: i64
 }
 
-def Sum(p: Point) -> i32 {
+def sum(p: Point) -> i32 {
     return p.x + p.y
 }
 
@@ -12,5 +12,5 @@ def main() -> i32 {
     var q: Point = Point { x: 3, y: 4, tag: 5 }
     q.x = q.x + 1
     q.tag = q.tag + 1
-    return Sum(q) + q.y
+    return sum(q) + q.y
 }

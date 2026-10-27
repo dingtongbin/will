@@ -1,6 +1,6 @@
 // scalarWidth returns the number of bytes a valid UTF-8 scalar occupies. A str
 // holds only valid UTF-8, so these four ranges cover every scalar.
-def scalarWidth(c: u32) -> usize {
+def scalar_width(c: u32) -> usize {
     if c <= 127u32 {
         return 1usize
     }
@@ -16,12 +16,12 @@ def scalarWidth(c: u32) -> usize {
 // Base returns the last element of the path after trailing separators are
 // dropped. An empty path has base ".", and a path of only separators has the
 // platform separator as its base, because the root has no element to name.
-def Base(p: str) -> str {
-    if p.Len() == 0usize {
+def base(p: str) -> str {
+    if p.len() == 0usize {
         return "."
     }
     var volumeEnd: usize = 0usize
-    if hasDrive(p) {
+    if has_drive(p) {
         volumeEnd = 2usize
     }
     var start: usize = 0usize
@@ -32,22 +32,22 @@ def Base(p: str) -> str {
         if i < volumeEnd {
             continue
         }
-        if isSeparator(c) {
+        if is_separator(c) {
             fresh = true
         } else {
             if fresh {
                 start = i
                 fresh = false
             }
-            end = i + scalarWidth(c)
+            end = i + scalar_width(c)
             seen = true
         }
     }
     if !seen {
-        if volumeEnd > 0usize && !isDriveAbs(p) {
+        if volumeEnd > 0usize && !is_drive_abs(p) {
             return "."
         }
-        return separatorString()
+        return separator_string()
     }
     var tail: str = str(p[Range(start, end)])
     return tail

@@ -7,14 +7,14 @@ struct source {
     pos: usize
 }
 
-def (mut s: source) Read(mut out: Array<u8>) -> Result<usize, Error> {
-    if s.pos >= s.data.Len() {
+def (mut s: source) read(mut out: Array<u8>) -> Result<usize, Error> {
+    if s.pos >= s.data.len() {
         return Ok(0usize)
     }
-    out.Push(s.data.Get(s.pos))
+    out.push(s.data.get(s.pos))
     s.pos += 1usize
-    if s.pos < s.data.Len() {
-        out.Push(s.data.Get(s.pos))
+    if s.pos < s.data.len() {
+        out.push(s.data.get(s.pos))
         s.pos += 1usize
     }
     return Ok(2usize)
@@ -22,35 +22,35 @@ def (mut s: source) Read(mut out: Array<u8>) -> Result<usize, Error> {
 
 def main() -> i32 {
     var src: source = source { data: new Array<u8>(0), pos: 0usize }
-    src.data.Push(104u8)
-    src.data.Push(101u8)
-    src.data.Push(108u8)
-    src.data.Push(108u8)
-    src.data.Push(111u8)
+    src.data.push(104u8)
+    src.data.push(101u8)
+    src.data.push(108u8)
+    src.data.push(108u8)
+    src.data.push(111u8)
     var reader: buf.ReaderBuf = new buf.ReaderBuf(src, 3usize)
     var first: Array<u8> = new Array<u8>(0)
-    if reader.Read(first)! != 2usize {
+    if reader.read(first)! != 2usize {
         return 1
     }
-    if first.Get(0) != 104u8 || first.Get(1) != 101u8 {
+    if first.get(0) != 104u8 || first.get(1) != 101u8 {
         return 2
     }
     var second: Array<u8> = new Array<u8>(0)
-    if reader.Read(second)! != 2usize {
+    if reader.read(second)! != 2usize {
         return 3
     }
-    if second.Get(0) != 108u8 || second.Get(1) != 108u8 {
+    if second.get(0) != 108u8 || second.get(1) != 108u8 {
         return 4
     }
     var third: Array<u8> = new Array<u8>(0)
-    if reader.Read(third)! != 1usize {
+    if reader.read(third)! != 1usize {
         return 5
     }
-    if third.Get(0) != 111u8 {
+    if third.get(0) != 111u8 {
         return 6
     }
     var end: Array<u8> = new Array<u8>(0)
-    if reader.Read(end)! != 0usize {
+    if reader.read(end)! != 0usize {
         return 7
     }
     return 0

@@ -804,17 +804,17 @@ func (b *borrower) containerMutator(recv ast.Expr, name string) bool {
 	switch t.Name {
 	case "Array":
 		switch name {
-		case "Push", "Append", "Clear", "Reserve", "Resize":
+		case "push", "append", "clear", "reserve", "resize":
 			return true
 		}
 	case "Map":
 		switch name {
-		case "Set", "Clear", "Delete":
+		case "set", "clear", "delete":
 			return true
 		}
 	case "Set":
 		switch name {
-		case "Add", "Clear", "Delete":
+		case "add", "clear", "delete":
 			return true
 		}
 	}

@@ -26,19 +26,19 @@ struct Timezone {
 }
 
 // Utc returns the zero offset.
-def Utc() -> Timezone {
-    return Fixed(0)
+def utc() -> Timezone {
+    return fixed(0)
 }
 
 // Fixed returns a zone with the given offset from UTC in seconds. It has no
 // daylight saving rule, so the offset applies to every instant.
-def Fixed(offsetSec: i32) -> Timezone {
+def fixed(offsetSec: i32) -> Timezone {
     return Timezone { kind: zoneFixed, id: -1, offsetSec: offsetSec }
 }
 
 // Local returns the host's zone. When the host names an IANA zone the compiled
 // table is used; otherwise the host's own rule answers each instant.
-def Local() -> Timezone {
+def local() -> Timezone {
     var id: i32 = c.willtime_local_zone()
     if id >= 0 {
         return Timezone { kind: zoneNamed, id: id, offsetSec: 0 }
@@ -46,13 +46,13 @@ def Local() -> Timezone {
     if id == -2 {
         return Timezone { kind: zoneHost, id: -1, offsetSec: 0 }
     }
-    return Utc()
+    return utc()
 }
 
 // Load returns the IANA zone with this name. A name that is not in the
 // compiled table is NotFound; the name is never resolved through the host.
-def Load(name: str) -> Result<Timezone, Error> {
-    var id: i32 = c.willtime_zone_find(raw(name), i64(name.Len()))
+def load(name: str) -> Result<Timezone, Error> {
+    var id: i32 = c.willtime_zone_find(raw(name), i64(name.len()))
     if id < 0 {
         return Err(errors.NotFound)
     }
@@ -61,7 +61,7 @@ def Load(name: str) -> Result<Timezone, Error> {
 
 // offsetAt returns the offset of tz at one Unix second. The integer result is
 // the presentation offset; it never shifts the instant itself.
-def offsetAt(tz: Timezone, atSec: i64) -> i32 {
+def offset_at(tz: Timezone, atSec: i64) -> i32 {
     if tz.kind == zoneFixed {
         return tz.offsetSec
     }
@@ -76,6 +76,6 @@ def offsetAt(tz: Timezone, atSec: i64) -> i32 {
 
 // wallNanos returns the host wall clock as Unix nanoseconds. It is separate
 // from Stopwatch, which reads the monotonic clock.
-def wallNanos() -> i64 {
+def wall_nanos() -> i64 {
     return c.willtime_wall_ns()
 }

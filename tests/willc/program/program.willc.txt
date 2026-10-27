@@ -14,16 +14,16 @@
 #14 type parent=#13 pos="program.will:11:12" text="f64" kind=scalar
 #15 variant parent=#12 pos="program.will:12:5" text="Square"
 #16 interface parent=#1 pos="program.will:15:1" text="Showable"
-#17 method-sig parent=#16 pos="program.will:16:5" text="Show" type="str"
+#17 method-sig parent=#16 pos="program.will:16:5" text="show" type="str"
 #18 type parent=#17 pos="program.will:16:19" text="str" kind=scalar
-#19 func parent=#1 pos="program.will:19:1" text="Work" type="i32"
+#19 func parent=#1 pos="program.will:19:1" text="work" type="i32"
 #20 param parent=#19 pos="program.will:19:10" text="n" type="i32"
 #21 type parent=#20 pos="program.will:19:13" text="i32" kind=scalar
 #22 type parent=#19 pos="program.will:19:21" text="i32" kind=scalar
 #23 block parent=#19 pos="program.will:19:25"
 #24 return parent=#23 pos="program.will:20:5" value=#25
 #25 name parent=#24 pos="program.will:20:12" text="n" to=#20
-#26 func parent=#1 pos="program.will:23:1" text="Move"
+#26 func parent=#1 pos="program.will:23:1" text="move"
 #27 receiver parent=#26 pos="program.will:23:5" text="p" type="Point" mut=true
 #28 type parent=#27 pos="program.will:23:13" text="Point" kind=named to=#6
 #29 param parent=#26 pos="program.will:23:25" text="dx" type="i32"
@@ -39,7 +39,7 @@
 #39 field parent=#38 pos="program.will:25:5" text="y" recv=#40
 #40 name parent=#39 pos="program.will:25:5" text="p" to=#27
 #41 name parent=#38 pos="program.will:25:12" text="dy" to=#31
-#42 func parent=#1 pos="program.will:28:1" text="Max" type="T"
+#42 func parent=#1 pos="program.will:28:1" text="max" type="T"
 #43 typeparam parent=#42 pos="program.will:28:9" text="T" constraint="Show"
 #44 type parent=#43 pos="program.will:28:12" text="Show" kind=named
 #45 param parent=#42 pos="program.will:28:18" text="a" type="T"
@@ -57,7 +57,7 @@
 #57 name parent=#56 pos="program.will:30:16" text="a" to=#45
 #58 return parent=#50 pos="program.will:32:5" value=#59
 #59 name parent=#58 pos="program.will:32:12" text="b" to=#47
-#60 func parent=#1 pos="program.will:35:1" text="Run" type="i32" async=true
+#60 func parent=#1 pos="program.will:35:1" text="run" type="i32" async=true
 #61 param parent=#60 pos="program.will:35:15" text="n" type="i32"
 #62 type parent=#61 pos="program.will:35:18" text="i32" kind=scalar
 #63 type parent=#60 pos="program.will:35:26" text="i32" kind=scalar
@@ -86,7 +86,7 @@
 #86 lit parent=#85 pos="program.will:41:31" kind=int text="1" type="i32"
 #87 name parent=#85 pos="program.will:41:37" text="n" to=#61
 #88 exprstmt parent=#64 pos="program.will:42:5" expr=#89
-#89 mcall parent=#88 pos="program.will:42:5" text="Move" recv=#90 arg=#91 arg=#92
+#89 mcall parent=#88 pos="program.will:42:5" text="move" recv=#90 arg=#91 arg=#92
 #90 name parent=#89 pos="program.will:42:5" text="p" to=#83
 #91 name parent=#89 pos="program.will:42:12" text="n" to=#61
 #92 lit parent=#89 pos="program.will:42:15" kind=int text="2" type="i32"
@@ -198,7 +198,7 @@
 #198 return parent=#64 pos="program.will:72:5" value=#199
 #199 bin parent=#198 pos="program.will:72:12" op="+" l=#200 r=#205
 #200 bin parent=#199 pos="program.will:72:12" op="+" l=#201 r=#204
-#201 mcall parent=#200 pos="program.will:72:12" text="Status" to="example.com/app/http.Status" recv=#202 arg=#203
+#201 mcall parent=#200 pos="program.will:72:12" text="status" to="example.com/app/http.status" recv=#202 arg=#203
 #202 name parent=#201 pos="program.will:72:12" text="http" to=#2
 #203 lit parent=#201 pos="program.will:72:24" kind=int text="200" type="i32"
 #204 name parent=#200 pos="program.will:72:31" text="total" to=#70

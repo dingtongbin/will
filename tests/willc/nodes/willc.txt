@@ -2,7 +2,7 @@
 #2 struct parent=#1 pos="nodes.will:1:1" text="Box"
 #3 field parent=#2 pos="nodes.will:2:5" text="v" type="i64"
 #4 type parent=#3 pos="nodes.will:2:8" text="i64" kind=scalar
-#5 func parent=#1 pos="nodes.will:5:1" text="Value" type="i64"
+#5 func parent=#1 pos="nodes.will:5:1" text="value" type="i64"
 #6 receiver parent=#5 pos="nodes.will:5:5" text="b" type="Box"
 #7 type parent=#6 pos="nodes.will:5:9" text="Box" kind=named to=#2
 #8 type parent=#5 pos="nodes.will:5:25" text="i64" kind=scalar
@@ -13,7 +13,7 @@
 #13 enum parent=#1 pos="nodes.will:9:1" text="Shape"
 #14 variant parent=#13 pos="nodes.will:10:5" text="Dot"
 #15 variant parent=#13 pos="nodes.will:11:5" text="Line"
-#16 func parent=#1 pos="nodes.will:14:1" text="Unit" type="Result<(),Error>"
+#16 func parent=#1 pos="nodes.will:14:1" text="unit" type="Result<(),Error>"
 #17 type parent=#16 pos="nodes.will:14:15" text="Result<(),Error>" kind=result arg=#18 arg=#19
 #18 type parent=#17 pos="nodes.will:14:22" text="()" kind=unit
 #19 type parent=#17 pos="nodes.will:14:26" text="Error" kind=named
@@ -22,7 +22,7 @@
 #22 call parent=#21 pos="nodes.will:15:12" type="Result<(),Error>" to=#23 arg=#24
 #23 name parent=#22 pos="nodes.will:15:12" text="Ok"
 #24 lit parent=#22 pos="nodes.will:15:15" kind=unit text="()" type="()"
-#25 func parent=#1 pos="nodes.will:18:1" text="Use" type="i64"
+#25 func parent=#1 pos="nodes.will:18:1" text="use" type="i64"
 #26 param parent=#25 pos="nodes.will:18:9" text="b" type="Box"
 #27 type parent=#26 pos="nodes.will:18:12" text="Box" kind=named to=#2
 #28 param parent=#25 pos="nodes.will:18:17" text="s" type="Shape"
@@ -42,7 +42,7 @@
 #42 name parent=#40 pos="nodes.will:21:18" text="b" to=#26
 #43 var parent=#31 pos="nodes.will:22:5" text="n" type="i64"
 #44 type parent=#43 pos="nodes.will:22:12" text="i64" kind=scalar
-#45 mcall parent=#43 pos="nodes.will:22:18" text="Value" recv=#46
+#45 mcall parent=#43 pos="nodes.will:22:18" text="value" recv=#46
 #46 name parent=#45 pos="nodes.will:22:18" text="p" to=#40
 #47 var parent=#31 pos="nodes.will:23:5" text="ch" type="chan<i64>"
 #48 type parent=#47 pos="nodes.will:23:13" text="chan<i64>" kind=chan arg=#49

@@ -168,12 +168,12 @@ func (g *generator) rcMethodCall(r willc.Record, recvText string) (string, strin
 		return "", "", err
 	}
 	switch fieldText(r, "text") {
-	case "Weak":
+	case "weak":
 		g.needRcDecl = true
 		weak := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = call i64 @willrt_weak_new(i64 %s)\n", weak, handle)
 		return weak, "weak<" + elem + ">", nil
-	case "Clone":
+	case "clone":
 		g.needRcDecl = true
 		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", handle)
 		return handle, recvText, nil
@@ -192,7 +192,7 @@ func (g *generator) rcMethodCall(r willc.Record, recvText string) (string, strin
 func (g *generator) upgradeCall(r willc.Record, weakText string) (string, string, error) {
 	elem, ok := rcElemText(weakText)
 	if !ok {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Upgrade needs a weak handle", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: upgrade needs a weak handle", r.ID)
 	}
 	weak, err := g.value(refField(r, "recv"))
 	if err != nil {
@@ -256,7 +256,7 @@ func (g *generator) rcCallResult(r willc.Record) (string, bool) {
 		return "", false
 	}
 	if isWeakText(recvText) {
-		if fieldText(r, "text") == "Upgrade" {
+		if fieldText(r, "text") == "upgrade" {
 			elem, _ := rcElemText(recvText)
 			return "Option<rc<" + elem + ">>", true
 		}
@@ -267,9 +267,9 @@ func (g *generator) rcCallResult(r willc.Record) (string, bool) {
 		return "", false
 	}
 	switch fieldText(r, "text") {
-	case "Weak":
+	case "weak":
 		return "weak<" + elem + ">", true
-	case "Clone":
+	case "clone":
 		return recvText, true
 	}
 	sym := g.methodForType(elem, fieldText(r, "text"))
@@ -301,7 +301,7 @@ func (g *generator) isCopySource(id int) bool {
 	case "mcall":
 		// Array.Get and view Get return a borrow of the element. The array
 		// still owns its reference, so storing the result adds one.
-		if fieldText(r, "text") != "Get" {
+		if fieldText(r, "text") != "get" {
 			return false
 		}
 		recvText, err := g.willTypeText(refField(r, "recv"))

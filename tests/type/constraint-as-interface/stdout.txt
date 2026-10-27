@@ -1,4 +1,2 @@
 value.will:1:10: N0001 undefined name
     help: did you mean equal?
-value.will:1:10: T0008 Equal is a builtin constraint, not an interface
-    help: use it only as a type-parameter constraint
