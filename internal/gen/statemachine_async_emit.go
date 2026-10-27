@@ -66,10 +66,9 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 %d\n",
 			field, info.frameType, frame, i+2)
 		arg := "%arg" + fmt.Sprint(i)
-		mut := isMutText(fieldText(paramRecs[i], "type"))
-		if pab[i].byPtr && (mut || isSingleBorrow(pab[i].text)) {
-			// An explicit borrow stays a pointer into the caller's place; a
-			// mutable borrow writes the caller's value instead of a copy.
+		if pab[i].byPtr && isSingleBorrow(pab[i].text) {
+			// An explicit single-value borrow stays a pointer into the caller's
+			// place. A mutable view is a descriptor and is copied by value.
 			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", arg, field)
 		} else if pab[i].byPtr {
 			g.copyValue(arg, field, pab[i].typ)
@@ -79,7 +78,7 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 		// The capture is the crossing whether the parameter moves by value
 		// or by pointer: an rc handle lands in a frame another lane runs.
 		share := field
-		if pab[i].byPtr && mut {
+		if pab[i].byPtr && isSingleBorrow(pab[i].text) {
 			share = arg
 		}
 		if err := g.shareValue(share, pab[i].text); err != nil {

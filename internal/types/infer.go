@@ -255,17 +255,33 @@ func (c *checker) checkFrom(decl *ast.FuncDecl, s *inferScope) {
 			"write from <parameter>, or return an owned value")
 		return
 	}
+	fromRoots := map[string]bool{}
+	validFrom := true
 	for _, src := range decl.From {
 		root := sourceRoot(src)
 		if root == "" || !names[root] {
 			c.bag.Error(src.Pos(), diag.CodeBorrowOutlives,
 				"from source is not a parameter or receiver",
 				"name a parameter or self")
+			validFrom = false
 			continue
 		}
+		fromRoots[root] = true
 		// The source names the owner, not necessarily a value of the result
 		// type: from self may return a field view or reference.
 		_ = c.inferExpr(s, src)
+	}
+	if decl.Recv != nil && fromRoots["self"] {
+		fromRoots[decl.Recv.Name] = true
+	}
+	if validFrom {
+		for root := range roots {
+			if !fromRoots[root] {
+				c.bag.Error(decl.Result.Pos(), diag.CodeBorrowOutlives,
+					"this returned borrow comes from "+root+", which is not in from",
+					"add it to the from list, or return an owned value")
+			}
+		}
 	}
 }
 

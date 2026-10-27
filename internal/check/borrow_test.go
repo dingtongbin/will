@@ -563,6 +563,50 @@ def f() {
 	}
 }
 
+func TestBorrowTracksEveryFromSource(t *testing.T) {
+	src := `struct User {
+    score: i32
+}
+
+def better(a: ref User, b: ref User) -> ref User from a, b {
+    if a.score >= b.score {
+        return a
+    }
+    return b
+}
+
+def f() {
+    var a: User = User { score: 1 }
+    var b: User = User { score: 2 }
+    var best: ref User = better(a, b)
+    b.score = 3
+    _ = best
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowConflict {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowRejectsAssigningLocalRefToField(t *testing.T) {
+	src := `struct Holder {
+    value: ref i32
+}
+
+def f() {
+    var x: i32 = 1
+    var h: Holder = Holder { value: ref x }
+    h.value = ref x
+    _ = h
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 2 || ds[0].Code != diag.CodeBorrowStored || ds[1].Code != diag.CodeBorrowStored {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestBorrowEndsWithItsBlock(t *testing.T) {
 	src := `def fill(xs: mut Array<i32>) {
 }

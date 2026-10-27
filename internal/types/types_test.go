@@ -157,6 +157,11 @@ func TestFromSourceRules(t *testing.T) {
 			"",
 		},
 		{
+			"from must cover every returned source",
+			"def better(a: ref User, b: ref User) -> ref User from a { return b }\n",
+			diag.CodeBorrowOutlives,
+		},
+		{
 			"from self names the receiver",
 			"struct Box { n: i32 }\ndef (b: ref Box) number() -> ref i32 from self { return ref b.n }\n",
 			"",

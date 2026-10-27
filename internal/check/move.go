@@ -145,7 +145,7 @@ func (m *mover) placeCopy(e ast.Expr, allowMove bool) {
 		if root == "" || m.types[root] == nil || m.variadic[root] {
 			return
 		}
-		if m.owns(m.own.FieldType(m.exprType(x.Recv), x.Name)) {
+		if ft := m.own.FieldType(m.exprType(x.Recv), x.Name); m.owns(ft) || linearType(ft) {
 			if allowMove && m.canMovePlace(root) {
 				m.placeMoves = append(m.placeMoves, placeMove{root: root, pos: x.Pos()})
 				return
@@ -157,7 +157,7 @@ func (m *mover) placeCopy(e ast.Expr, allowMove bool) {
 		if root == "" || m.types[root] == nil || m.variadic[root] {
 			return
 		}
-		if m.owns(m.own.IndexType(m.exprType(x.Recv))) {
+		if it := m.own.IndexType(m.exprType(x.Recv)); m.owns(it) || linearType(it) {
 			if allowMove && m.canMovePlace(root) {
 				m.placeMoves = append(m.placeMoves, placeMove{root: root, pos: x.Pos()})
 				return
@@ -174,7 +174,7 @@ func (m *mover) canMovePlace(root string) bool {
 		return false
 	}
 	t := m.types[root]
-	if t == nil || t.Kind == ast.ViewType {
+	if t == nil || t.Kind == ast.ViewType && !t.ViewMut {
 		return false
 	}
 	if t.Kind == ast.NamedType && (t.Name == "rc" || t.Name == "arc" || t.Name == "weak_rc" || t.Name == "weak_arc") {

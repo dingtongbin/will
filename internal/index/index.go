@@ -218,37 +218,7 @@ func sigText(params []*ast.Param, result *ast.Type) string {
 }
 
 func typeText(t *ast.Type) string {
-	if t == nil {
-		return ""
-	}
-	switch t.Kind {
-	case ast.ScalarType, ast.NamedType:
-		if len(t.Args) == 0 {
-			return t.Name
-		}
-		parts := make([]string, len(t.Args))
-		for i, a := range t.Args {
-			parts[i] = typeText(a)
-		}
-		return t.Name + "<" + strings.Join(parts, ",") + ">"
-	case ast.ArrayType:
-		return "[" + t.Len + "]" + typeText(t.Elem)
-	case ast.ViewType:
-		return "[]" + typeText(t.Elem)
-	case ast.FuncType:
-		parts := make([]string, len(t.Params))
-		for i, p := range t.Params {
-			parts[i] = typeText(p)
-		}
-		out := "func(" + strings.Join(parts, ",") + ")"
-		if t.Result != nil {
-			out += "->" + typeText(t.Result)
-		}
-		return out
-	case ast.UnitType:
-		return "()"
-	}
-	return ""
+	return ast.TypeText(t)
 }
 
 func receiver(t *ast.Type) string {

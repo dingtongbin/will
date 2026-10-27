@@ -171,7 +171,7 @@ func (g *generator) emitGeneralStep(fnID int) error {
 		slot := g.smAlloca(typ, "param."+strconv.Itoa(p.ID))
 		g.smParamSlot[p.ID] = slot
 		if byPtr {
-			if isMutText(fieldText(p, "type")) {
+			if isSingleBorrow(fieldText(p, "type")) {
 				name := g.newTmp()
 				g.scope[p.ID] = name
 				mutParams = append(mutParams, scalarParam{name: name, typ: "ptr", slot: slot})
@@ -322,8 +322,7 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 		ptr := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %%v.sm.frame, i64 %d\n", ptr, offset)
 		arg := fmt.Sprintf("%%arg%d", i)
-		mut := isMutText(a.text)
-		if a.byPtr && (mut || isSingleBorrow(a.text)) {
+		if a.byPtr && isSingleBorrow(a.text) {
 			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", arg, ptr)
 		} else if a.byPtr {
 			g.copyValue(arg, ptr, a.typ)
@@ -333,7 +332,7 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 		// The capture is the crossing whether the parameter moves by value
 		// or by pointer: an rc handle lands in a frame another lane runs.
 		share := ptr
-		if a.byPtr && mut {
+		if a.byPtr && isSingleBorrow(a.text) {
 			share = arg
 		}
 		if err := g.shareValue(share, a.text); err != nil {

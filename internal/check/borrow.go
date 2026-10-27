@@ -188,6 +188,8 @@ func (b *borrower) addView(st ast.Stmt, borrowed map[string]source.Pos) {
 	if _, exists := borrowed[owner]; !exists {
 		borrowed[owner] = pos
 	}
+	b.borrowCallSources(vd.Value, borrowed)
+	b.borrowMethodSources(vd.Value, borrowed)
 	if vd.Name != "" && vd.Name != "_" {
 		b.localViews[vd.Name] = owner
 	}
@@ -290,6 +292,78 @@ func (b *borrower) viewOwner(e ast.Expr) (string, source.Pos, bool) {
 // exprType returns the declared type of a name, field, or index expression.
 // The borrow pass only needs places it can name from declarations in the file.
 // It is also used to key the cross-file mut method summary by receiver type.
+// borrowCallSources borrows every parameter named by a returning call's from
+// clause. A view built from two sources must keep both owners live while the
+// result is stored.
+func (b *borrower) borrowCallSources(e ast.Expr, borrowed map[string]source.Pos) {
+	call, ok := e.(*ast.CallExpr)
+	if !ok {
+		return
+	}
+	name, ok := call.Callee.(*ast.NameExpr)
+	if !ok {
+		return
+	}
+	fn := b.funcs[name.Name]
+	if fn == nil || len(fn.From) == 0 {
+		return
+	}
+	for _, src := range fn.From {
+		root := rootName(src)
+		if root == "" {
+			continue
+		}
+		for i, p := range fn.Params {
+			if p.Name != root || i >= len(call.Args) {
+				continue
+			}
+			owner := rootName(call.Args[i].Expr)
+			if owner == "" {
+				continue
+			}
+			if _, exists := borrowed[owner]; !exists {
+				borrowed[owner] = call.Pos()
+			}
+			b.pinned[owner] = true
+		}
+	}
+}
+
+func (b *borrower) borrowMethodSources(e ast.Expr, borrowed map[string]source.Pos) {
+	call, ok := e.(*ast.MethodCallExpr)
+	if !ok {
+		return
+	}
+	fn := b.methods[call.Name]
+	if fn == nil || fn.Recv == nil || len(fn.From) == 0 {
+		return
+	}
+	for _, src := range fn.From {
+		root := rootName(src)
+		if root == "" {
+			continue
+		}
+		owner := ""
+		if root == fn.Recv.Name || root == "self" {
+			owner = rootName(call.Recv)
+		} else {
+			for i, p := range fn.Params {
+				if p.Name == root && i < len(call.Args) {
+					owner = rootName(call.Args[i].Expr)
+					break
+				}
+			}
+		}
+		if owner == "" {
+			continue
+		}
+		if _, exists := borrowed[owner]; !exists {
+			borrowed[owner] = call.Pos()
+		}
+		b.pinned[owner] = true
+	}
+}
+
 func (b *borrower) exprType(e ast.Expr) *ast.Type {
 	switch x := e.(type) {
 	case *ast.NameExpr:
@@ -340,6 +414,7 @@ func (b *borrower) stmt(st ast.Stmt, borrowed map[string]source.Pos) {
 					"this borrow is stored where it outlives its owner",
 					"store an owned value, or clone it")
 			}
+			b.storeBorrow(s.Value)
 		}
 		if target, ok := s.Target.(*ast.NameExpr); ok && target.Name != "_" {
 			b.noteCopiedPlace(target.Name, s.Value)
@@ -449,6 +524,17 @@ func (b *borrower) store(e ast.Expr, borrowed map[string]source.Pos) {
 	case *ast.ArrayLitExpr:
 		for _, elem := range x.Elems {
 			b.storeAggregateValue(elem, borrowed)
+		}
+	}
+}
+
+func (b *borrower) storeBorrow(e ast.Expr) {
+	if x, ok := e.(*ast.BorrowExpr); ok {
+		owner, pos, found := b.viewOwner(x)
+		if found && b.locals[owner] {
+			b.bag.Error(pos, diag.CodeBorrowStored,
+				"this borrow is stored where it outlives its owner",
+				"store an owned value, or clone it")
 		}
 	}
 }
