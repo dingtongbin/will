@@ -4,11 +4,11 @@ struct decodeError {
     message: str
 }
 
-def (e: decodeError) message() -> str {
+def (e: ref decodeError) message() -> str {
     return e.message
 }
 
-def (e: decodeError) status() -> i32 {
+def (e: ref decodeError) status() -> i32 {
     return 2
 }
 

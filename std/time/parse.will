@@ -13,11 +13,11 @@ struct timeError {
     message: str
 }
 
-def (e: timeError) message() -> str {
+def (e: ref timeError) message() -> str {
     return e.message.clone()
 }
 
-def (e: timeError) status() -> i32 {
+def (e: ref timeError) status() -> i32 {
     return 2
 }
 

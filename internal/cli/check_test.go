@@ -201,7 +201,7 @@ func TestCheckDirectoryCache(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	writeModuleFile(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
 	writeModuleFile(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n")
-	writeModuleFile(t, filepath.Join(root, "sub", "method.will"), "def (t: T) move() {\n}\n")
+	writeModuleFile(t, filepath.Join(root, "sub", "method.will"), "def (t: ref T) move() {\n}\n")
 	cacheDir := filepath.Join(t.TempDir(), "cache")
 	t.Setenv("WILL_CACHE", cacheDir)
 
@@ -229,7 +229,7 @@ func TestCheckModuleDirectory(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	writeModuleFile(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
 	writeModuleFile(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n")
-	writeModuleFile(t, filepath.Join(root, "sub", "method.will"), "def (t: T) move() {\n}\n")
+	writeModuleFile(t, filepath.Join(root, "sub", "method.will"), "def (t: ref T) move() {\n}\n")
 
 	code, out, _ := runCLI("check", root)
 	if code != 1 {

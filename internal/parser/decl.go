@@ -170,6 +170,7 @@ func (p *Parser) parseFuncDeclFrom(doc string, start token.Token, async bool) *a
 		p.skipNL()
 		fn.Result = p.parseType()
 	}
+	fn.From = p.parseFromSources()
 	fn.Body = p.parseBlock("a function body")
 	fn.Span = p.spanFrom(start)
 	return fn
@@ -180,15 +181,12 @@ func (p *Parser) parseReceiver() *ast.Receiver {
 	p.enterGroup()
 	p.skipNL()
 	recv := &ast.Receiver{}
-	if p.atText("mut") {
-		recv.Mut = true
-		p.next()
-	}
 	name, nameTok := p.expectName("a receiver name")
 	recv.Name = name
 	recv.NamePos = nameTok.Pos
 	p.expect(token.Colon, ":")
 	recv.Type = p.parseType()
+	recv.Mut = recv.Type.IsMutRef() || recv.Type.ViewMut
 	p.expect(token.RParen, ")")
 	p.leaveGroup()
 	recv.Span = p.spanFrom(start)
@@ -221,10 +219,6 @@ func (p *Parser) parseParams() []*ast.Param {
 func (p *Parser) parseParam() *ast.Param {
 	start := p.cur()
 	param := &ast.Param{}
-	if p.atText("mut") {
-		param.Mut = true
-		p.next()
-	}
 	name, nameTok := p.expectName("a parameter name")
 	param.Name = name
 	param.NamePos = nameTok.Pos
@@ -234,6 +228,7 @@ func (p *Parser) parseParam() *ast.Param {
 		p.next()
 	}
 	param.Type = p.parseType()
+	param.Mut = param.Type.IsMutRef() || param.Type.ViewMut
 	param.Span = p.spanFrom(start)
 	return param
 }
@@ -421,8 +416,28 @@ func (p *Parser) parseMethodSig() *ast.MethodSig {
 		p.skipNL()
 		sig.Result = p.parseType()
 	}
+	sig.From = p.parseFromSources()
 	sig.Span = p.spanFrom(start)
 	return sig
+}
+
+// parseFromSources reads the optional from clause after a return type. Each
+// source is a place expression, so a field path stays attached to its root.
+func (p *Parser) parseFromSources() []ast.Expr {
+	if !p.atText("from") {
+		return nil
+	}
+	p.next()
+	var out []ast.Expr
+	for {
+		p.skipNL()
+		out = append(out, p.parseExpr(0, false))
+		if !p.at(token.Comma) {
+			break
+		}
+		p.next()
+	}
+	return out
 }
 
 func (p *Parser) parseDeriveDecl(doc string) *ast.DeriveDecl {

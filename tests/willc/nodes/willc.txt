@@ -3,10 +3,10 @@
 #3 field parent=#2 pos="nodes.will:2:5" text="v" type="i64"
 #4 type parent=#3 pos="nodes.will:2:8" text="i64" kind=scalar
 #5 func parent=#1 pos="nodes.will:5:1" text="value" type="i64"
-#6 receiver parent=#5 pos="nodes.will:5:5" text="b" type="Box"
-#7 type parent=#6 pos="nodes.will:5:9" text="Box" kind=named to=#2
-#8 type parent=#5 pos="nodes.will:5:25" text="i64" kind=scalar
-#9 block parent=#5 pos="nodes.will:5:29"
+#6 receiver parent=#5 pos="nodes.will:5:5" text="b" type="ref Box"
+#7 type parent=#6 pos="nodes.will:5:9" text="ref Box" kind=ref to=#2
+#8 type parent=#5 pos="nodes.will:5:29" text="i64" kind=scalar
+#9 block parent=#5 pos="nodes.will:5:33"
 #10 return parent=#9 pos="nodes.will:6:5" value=#11
 #11 field parent=#10 pos="nodes.will:6:12" text="v" recv=#12
 #12 name parent=#11 pos="nodes.will:6:12" text="b" to=#6

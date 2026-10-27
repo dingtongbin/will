@@ -11,11 +11,11 @@ struct clockError {
     message: str
 }
 
-def (e: clockError) message() -> str {
+def (e: ref clockError) message() -> str {
     return e.message.clone()
 }
 
-def (e: clockError) status() -> i32 {
+def (e: ref clockError) status() -> i32 {
     return 2
 }
 
@@ -24,12 +24,12 @@ struct Stopwatch {
 }
 
 # init records the monotonic clock at construction.
-def (mut s: Stopwatch) init() {
+def (s: mut Stopwatch) init() {
     s.start = c.willrt_now_ns()
 }
 
 # Elapsed returns the time since construction.
-def (s: Stopwatch) elapsed() -> Duration {
+def (s: ref Stopwatch) elapsed() -> Duration {
     return Duration(c.willrt_now_ns() - s.start)
 }
 

@@ -50,6 +50,16 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 		e.field(rec, "hi", Ref(hid))
 		e.pop()
 		return rec
+	case *ast.BorrowExpr:
+		rec := e.add("borrow", v)
+		if v.Mut {
+			e.boolean(rec, "mut", true)
+		}
+		e.push(rec)
+		xid := e.emitExpr(v.X)
+		e.field(rec, "expr", Ref(xid))
+		e.pop()
+		return rec
 	case *ast.AggregateExpr:
 		return e.emitAggregate(v)
 	case *ast.ArrayLitExpr:

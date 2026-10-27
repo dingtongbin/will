@@ -7,7 +7,7 @@ struct Holder {
     back: weak_rc<Counter>
 }
 
-def (mut c: Counter) add(d: i32) {
+def (c: mut Counter) add(d: i32) {
     c.n += d
 }
 

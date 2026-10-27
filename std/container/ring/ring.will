@@ -3,11 +3,11 @@ struct ringError {
     message: str
 }
 
-def (e: ringError) message() -> str {
+def (e: ref ringError) message() -> str {
     return e.message
 }
 
-def (e: ringError) status() -> i32 {
+def (e: ref ringError) status() -> i32 {
     return 2
 }
 
@@ -20,7 +20,7 @@ struct Ring<T> {
 }
 
 # init reserves the two stacks used by the ring. A zero capacity is invalid.
-def (mut r: Ring<T>) init(cap: usize) -> Result<(), Error> {
+def (r: mut Ring<T>) init(cap: usize) -> Result<(), Error> {
     if cap == 0usize {
         return Err(ringError { message: "ring capacity must be positive" })
     }
@@ -31,7 +31,7 @@ def (mut r: Ring<T>) init(cap: usize) -> Result<(), Error> {
 }
 
 # Push adds one value at the back. It returns false when the ring is full.
-def (mut r: Ring<T>) push(v: T) -> bool {
+def (r: mut Ring<T>) push(v: T) -> bool {
     if r.len() >= r.cap {
         return False
     }
@@ -40,7 +40,7 @@ def (mut r: Ring<T>) push(v: T) -> bool {
 }
 
 # Pop removes and returns the front value, or None when the ring is empty.
-def (mut r: Ring<T>) pop() -> Option<T> {
+def (r: mut Ring<T>) pop() -> Option<T> {
     if r.front.len() > 0 {
         return r.front.pop()
     }
@@ -64,7 +64,7 @@ def (mut r: Ring<T>) pop() -> Option<T> {
 }
 
 # Peek returns a copy of the front value without removing it.
-def (r: Ring<T>) peek() -> Option<T> {
+def (r: ref Ring<T>) peek() -> Option<T> {
     if r.front.len() > 0 {
         return Some(r.front.get(r.front.len() - 1))
     }
@@ -75,17 +75,17 @@ def (r: Ring<T>) peek() -> Option<T> {
 }
 
 # Len reports the number of stored values.
-def (r: Ring<T>) len() -> usize {
+def (r: ref Ring<T>) len() -> usize {
     return r.front.len() + r.back.len()
 }
 
 # Full reports whether no more values fit.
-def (r: Ring<T>) full() -> bool {
+def (r: ref Ring<T>) full() -> bool {
     return r.len() >= r.cap
 }
 
 # Clear releases every value and keeps the capacity setting.
-def (mut r: Ring<T>) clear() {
+def (r: mut Ring<T>) clear() {
     r.front.clear()
     r.back.clear()
 }

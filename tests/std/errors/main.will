@@ -4,11 +4,11 @@ struct probeError {
     status: i32
 }
 
-def (e: probeError) message() -> str {
+def (e: ref probeError) message() -> str {
     return "probe"
 }
 
-def (e: probeError) status() -> i32 {
+def (e: ref probeError) status() -> i32 {
     return e.status
 }
 

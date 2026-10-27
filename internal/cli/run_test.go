@@ -411,11 +411,11 @@ func TestRunInterfaceFieldAndArray(t *testing.T) {
     s: str
 }
 
-def (p: P) message() -> str {
+def (p: ref P) message() -> str {
     return p.s.clone()
 }
 
-def (p: P) status() -> i32 {
+def (p: ref P) status() -> i32 {
     return 1
 }
 
@@ -459,11 +459,11 @@ struct Square {
     n: i32
 }
 
-def (s: Square) area() -> i32 {
+def (s: ref Square) area() -> i32 {
     return s.n
 }
 
-def (s: Square) label() -> str {
+def (s: ref Square) label() -> str {
     return "square"
 }
 
@@ -577,11 +577,11 @@ func TestRunInterfaceBoxAndClone(t *testing.T) {
     s: str
 }
 
-def (p: P) message() -> str {
+def (p: ref P) message() -> str {
     return p.s.clone()
 }
 
-def (p: P) status() -> i32 {
+def (p: ref P) status() -> i32 {
     return 1
 }
 
@@ -1142,11 +1142,11 @@ struct Square {
     n: i32
 }
 
-def (s: Square) area() -> i32 {
+def (s: ref Square) area() -> i32 {
     return s.n
 }
 
-def (s: Square) label() -> str {
+def (s: ref Square) label() -> str {
     return "square"
 }
 
@@ -1292,12 +1292,12 @@ func TestRunMutableScalarParameters(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `def inc(mut value: i32) -> i32 {
+	src := `def inc(value: mut i32) -> i32 {
     value += 1
     return value
 }
 
-async def add(mut value: i32) -> i32 {
+async def add(value: mut i32) -> i32 {
     value += 2
     return value
 }
@@ -1334,12 +1334,12 @@ func TestRunAsyncMutParameters(t *testing.T) {
     n: i32
 }
 
-async def (mut c: Counter) add(value: i32) -> i32 {
+async def (c: mut Counter) add(value: i32) -> i32 {
     c.n += value
     return c.n
 }
 
-async def grow(mut values: Array<i32>) -> i32 {
+async def grow(values: mut Array<i32>) -> i32 {
     values.push(7)
     return i32(values.len())
 }

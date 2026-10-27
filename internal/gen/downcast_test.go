@@ -12,8 +12,8 @@ func TestEmitInterfaceDowncasts(t *testing.T) {
 	src := "interface Shape {\n    def area() -> i32\n}\n\n" +
 		"interface Labeled {\n    def label() -> str\n}\n\n" +
 		"struct Square {\n    n: i32\n}\n\n" +
-		"def (s: Square) area() -> i32 {\n    return s.n\n}\n\n" +
-		"def (s: Square) label() -> str {\n    return \"square\"\n}\n\n" +
+		"def (s: ref Square) area() -> i32 {\n    return s.n\n}\n\n" +
+		"def (s: ref Square) label() -> str {\n    return \"square\"\n}\n\n" +
 		"def use(v: Shape) -> i32 {\n" +
 		"    if not v.is<Square>() {\n        return -1\n    }\n" +
 		"    var labeled: Option<Labeled> = v.as<Labeled>()\n" +

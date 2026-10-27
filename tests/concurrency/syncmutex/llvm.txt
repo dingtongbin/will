@@ -393,70 +393,69 @@ entry:
   %t69 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t69
   %t70 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t71 = load %"struct.std/sync.Count", ptr %arg0
-  store %"struct.std/sync.Count" %t71, ptr %t70
-  %t72 = call i32 @willrt_lane_here()
-  %t73 = icmp eq i32 %start, -1
-  %t74 = icmp eq i32 %start, -2
-  %t75 = select i1 %t74, i32 %t72, i32 %start
-  br i1 %t73, label %sm.start.auto.6, label %sm.start.lane.6
+  store ptr %arg0, ptr %t70
+  %t71 = call i32 @willrt_lane_here()
+  %t72 = icmp eq i32 %start, -1
+  %t73 = icmp eq i32 %start, -2
+  %t74 = select i1 %t73, i32 %t71, i32 %start
+  br i1 %t72, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t76 = call ptr @willrt_task_new(ptr @"std/sync.Count.wait.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
-  call void @willrt_task_own_frame(ptr %t76)
-  call void @willrt_task_run_auto(ptr %t76)
+  %t75 = call ptr @willrt_task_new(ptr @"std/sync.Count.wait.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t75)
+  call void @willrt_task_run_auto(ptr %t75)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t77 = call ptr @willrt_task_new(ptr @"std/sync.Count.wait.sm", ptr %v.sm.frame, i64 240, i32 %t75, i32 0)
-  call void @willrt_task_own_frame(ptr %t77)
-  call void @willrt_task_run(ptr %t77)
+  %t76 = call ptr @willrt_task_new(ptr @"std/sync.Count.wait.sm", ptr %v.sm.frame, i64 240, i32 %t74, i32 0)
+  call void @willrt_task_own_frame(ptr %t76)
+  call void @willrt_task_run(ptr %t76)
   br label %sm.start.done.6
 sm.start.done.6:
-  %t78 = phi ptr [ %t76, %sm.start.auto.6 ], [ %t77, %sm.start.lane.6 ]
-  ret ptr %t78
+  %t77 = phi ptr [ %t75, %sm.start.auto.6 ], [ %t76, %sm.start.lane.6 ]
+  ret ptr %t77
 }
 define internal ptr @"std/sync.iface.clone.Error.std/errors.Fault"(ptr %data) {
 entry:
-  %t79 = alloca ptr
-  store ptr null, ptr %t79
-  %t80 = icmp eq ptr %data, null
-  br i1 %t80, label %iface.clone.null.7, label %iface.clone.have.7
+  %t78 = alloca ptr
+  store ptr null, ptr %t78
+  %t79 = icmp eq ptr %data, null
+  br i1 %t79, label %iface.clone.null.7, label %iface.clone.have.7
 iface.clone.null.7:
   br label %iface.clone.ret.7
 iface.clone.have.7:
-  %t82 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
-  %t83 = ptrtoint ptr %t82 to i64
-  %t81 = call ptr @willrt_alloc(i64 %t83)
-  %t84 = load %"struct.std/errors.Fault", ptr %data
-  store %"struct.std/errors.Fault" %t84, ptr %t81
-  %t85 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
-  %t86 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t81, i32 0, i32 0
-  %t87 = getelementptr inbounds { ptr, i64 }, ptr %t85, i32 0, i32 0
-  %t88 = getelementptr inbounds { ptr, i64 }, ptr %t85, i32 0, i32 1
-  %t89 = load ptr, ptr %t87
-  %t90 = load i64, ptr %t88
-  %t91 = call ptr @willrt_alloc(i64 %t90)
-  call void @memcpy(ptr %t91, ptr %t89, i64 %t90)
-  %t92 = getelementptr inbounds { ptr, i64 }, ptr %t86, i32 0, i32 0
-  store ptr %t91, ptr %t92
-  %t93 = getelementptr inbounds { ptr, i64 }, ptr %t86, i32 0, i32 1
-  store i64 %t90, ptr %t93
-  store ptr %t81, ptr %t79
+  %t81 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t82 = ptrtoint ptr %t81 to i64
+  %t80 = call ptr @willrt_alloc(i64 %t82)
+  %t83 = load %"struct.std/errors.Fault", ptr %data
+  store %"struct.std/errors.Fault" %t83, ptr %t80
+  %t84 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
+  %t85 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t80, i32 0, i32 0
+  %t86 = getelementptr inbounds { ptr, i64 }, ptr %t84, i32 0, i32 0
+  %t87 = getelementptr inbounds { ptr, i64 }, ptr %t84, i32 0, i32 1
+  %t88 = load ptr, ptr %t86
+  %t89 = load i64, ptr %t87
+  %t90 = call ptr @willrt_alloc(i64 %t89)
+  call void @memcpy(ptr %t90, ptr %t88, i64 %t89)
+  %t91 = getelementptr inbounds { ptr, i64 }, ptr %t85, i32 0, i32 0
+  store ptr %t90, ptr %t91
+  %t92 = getelementptr inbounds { ptr, i64 }, ptr %t85, i32 0, i32 1
+  store i64 %t89, ptr %t92
+  store ptr %t80, ptr %t78
   br label %iface.clone.ret.7
 iface.clone.ret.7:
-  %t94 = load ptr, ptr %t79
-  ret ptr %t94
+  %t93 = load ptr, ptr %t78
+  ret ptr %t93
 }
 define internal void @"std/sync.iface.drop.Error.std/errors.Fault"(ptr %data) {
 entry:
-  %t95 = icmp eq ptr %data, null
-  br i1 %t95, label %iface.drop.null.8, label %iface.drop.have.8
+  %t94 = icmp eq ptr %data, null
+  br i1 %t94, label %iface.drop.null.8, label %iface.drop.have.8
 iface.drop.null.8:
   br label %iface.drop.done.8
 iface.drop.have.8:
-  %t96 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
-  %t97 = getelementptr inbounds { ptr, i64 }, ptr %t96, i32 0, i32 0
-  %t98 = load ptr, ptr %t97
-  call void @willrt_free_str(ptr %t98)
+  %t95 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
+  %t96 = getelementptr inbounds { ptr, i64 }, ptr %t95, i32 0, i32 0
+  %t97 = load ptr, ptr %t96
+  call void @willrt_free_str(ptr %t97)
   br label %iface.drop.done.8
 iface.drop.done.8:
   ret void
@@ -666,26 +665,25 @@ entry:
   %t87 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t87
   %t88 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t89 = load %"struct.std/sync.Semaphore", ptr %arg0
-  store %"struct.std/sync.Semaphore" %t89, ptr %t88
-  %t90 = call i32 @willrt_lane_here()
-  %t91 = icmp eq i32 %start, -1
-  %t92 = icmp eq i32 %start, -2
-  %t93 = select i1 %t92, i32 %t90, i32 %start
-  br i1 %t91, label %sm.start.auto.6, label %sm.start.lane.6
+  store ptr %arg0, ptr %t88
+  %t89 = call i32 @willrt_lane_here()
+  %t90 = icmp eq i32 %start, -1
+  %t91 = icmp eq i32 %start, -2
+  %t92 = select i1 %t91, i32 %t89, i32 %start
+  br i1 %t90, label %sm.start.auto.6, label %sm.start.lane.6
 sm.start.auto.6:
-  %t94 = call ptr @willrt_task_new(ptr @"std/sync.Semaphore.acquire.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
-  call void @willrt_task_own_frame(ptr %t94)
-  call void @willrt_task_run_auto(ptr %t94)
+  %t93 = call ptr @willrt_task_new(ptr @"std/sync.Semaphore.acquire.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t93)
+  call void @willrt_task_run_auto(ptr %t93)
   br label %sm.start.done.6
 sm.start.lane.6:
-  %t95 = call ptr @willrt_task_new(ptr @"std/sync.Semaphore.acquire.sm", ptr %v.sm.frame, i64 240, i32 %t93, i32 0)
-  call void @willrt_task_own_frame(ptr %t95)
-  call void @willrt_task_run(ptr %t95)
+  %t94 = call ptr @willrt_task_new(ptr @"std/sync.Semaphore.acquire.sm", ptr %v.sm.frame, i64 240, i32 %t92, i32 0)
+  call void @willrt_task_own_frame(ptr %t94)
+  call void @willrt_task_run(ptr %t94)
   br label %sm.start.done.6
 sm.start.done.6:
-  %t96 = phi ptr [ %t94, %sm.start.auto.6 ], [ %t95, %sm.start.lane.6 ]
-  ret ptr %t96
+  %t95 = phi ptr [ %t93, %sm.start.auto.6 ], [ %t94, %sm.start.lane.6 ]
+  ret ptr %t95
 }
 %"struct.example.com/concurrency/syncmutex.Counter" = type { i32 }
 %"struct.std/sync.Guard$Counter" = type { i64, i1, i32 }
@@ -2294,26 +2292,25 @@ entry:
   %t37 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t37
   %t38 = getelementptr i8, ptr %v.sm.frame, i64 8
-  %t39 = load %"struct.std/sync.Mutex$Counter", ptr %arg0
-  store %"struct.std/sync.Mutex$Counter" %t39, ptr %t38
-  %t40 = call i32 @willrt_lane_here()
-  %t41 = icmp eq i32 %start, -1
-  %t42 = icmp eq i32 %start, -2
-  %t43 = select i1 %t42, i32 %t40, i32 %start
-  br i1 %t41, label %sm.start.auto.2, label %sm.start.lane.2
+  store ptr %arg0, ptr %t38
+  %t39 = call i32 @willrt_lane_here()
+  %t40 = icmp eq i32 %start, -1
+  %t41 = icmp eq i32 %start, -2
+  %t42 = select i1 %t41, i32 %t39, i32 %start
+  br i1 %t40, label %sm.start.auto.2, label %sm.start.lane.2
 sm.start.auto.2:
-  %t44 = call ptr @willrt_task_new(ptr @"std/sync.Mutex<Counter>.lock.sm", ptr %v.sm.frame, i64 112, i32 0, i32 0)
-  call void @willrt_task_own_frame(ptr %t44)
-  call void @willrt_task_run_auto(ptr %t44)
+  %t43 = call ptr @willrt_task_new(ptr @"std/sync.Mutex<Counter>.lock.sm", ptr %v.sm.frame, i64 112, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t43)
+  call void @willrt_task_run_auto(ptr %t43)
   br label %sm.start.done.2
 sm.start.lane.2:
-  %t45 = call ptr @willrt_task_new(ptr @"std/sync.Mutex<Counter>.lock.sm", ptr %v.sm.frame, i64 112, i32 %t43, i32 0)
-  call void @willrt_task_own_frame(ptr %t45)
-  call void @willrt_task_run(ptr %t45)
+  %t44 = call ptr @willrt_task_new(ptr @"std/sync.Mutex<Counter>.lock.sm", ptr %v.sm.frame, i64 112, i32 %t42, i32 0)
+  call void @willrt_task_own_frame(ptr %t44)
+  call void @willrt_task_run(ptr %t44)
   br label %sm.start.done.2
 sm.start.done.2:
-  %t46 = phi ptr [ %t44, %sm.start.auto.2 ], [ %t45, %sm.start.lane.2 ]
-  ret ptr %t46
+  %t45 = phi ptr [ %t43, %sm.start.auto.2 ], [ %t44, %sm.start.lane.2 ]
+  ret ptr %t45
 }
 define hidden { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.try_lock"(ptr %m) inlinehint {
 entry:

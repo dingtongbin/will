@@ -20,7 +20,7 @@ def work(n: i32) -> i32 {
     return n
 }
 
-def (mut p: Point) move(dx: i32, dy: i32) {
+def (p: mut Point) move(dx: i32, dy: i32) {
     p.x += dx
     p.y += dy
 }

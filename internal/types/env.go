@@ -241,6 +241,9 @@ func (c *checker) keyType(t *Type) bool {
 	if t == nil {
 		return true
 	}
+	if t.Borrow() != ast.OwnedBorrow || t.Kind() == ViewKind {
+		return false
+	}
 	switch t.Kind() {
 	case ScalarKind:
 		name := t.Name()
@@ -321,6 +324,12 @@ func (c *checker) qualifyForeignType(t *Type, pkg string, params map[string]bool
 	if t == nil {
 		return nil
 	}
+	if t.borrow != ast.OwnedBorrow {
+		base := *t
+		base.borrow = ast.OwnedBorrow
+		base.text = strings.TrimPrefix(strings.TrimPrefix(t.text, "ref "), "mut ")
+		return c.in.borrowed(c.qualifyForeignType(&base, pkg, params), t.borrow)
+	}
 	args := func() []*Type {
 		if len(t.Args()) == 0 {
 			return nil
@@ -346,7 +355,7 @@ func (c *checker) qualifyForeignType(t *Type, pkg string, params map[string]bool
 		}
 		return c.in.named(pkg+"."+name, a)
 	case ViewKind:
-		return c.in.view(c.qualifyForeignType(t.Elem(), pkg, params))
+		return c.in.view(c.qualifyForeignType(t.Elem(), pkg, params), t.viewMut)
 	case ArrayKind:
 		return c.in.array(t.length, c.qualifyForeignType(t.Elem(), pkg, params))
 	case FuncKind:
@@ -365,31 +374,40 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 	if t == nil {
 		return nil
 	}
+	var out *Type
 	switch t.Kind {
 	case ast.ScalarType:
 		if tp[t.Name] {
-			return c.in.named(t.Name, nil)
+			out = c.in.named(t.Name, nil)
+		} else {
+			out = c.in.builtin(t.Name)
 		}
-		return c.in.builtin(t.Name)
 	case ast.NamedType:
 		if tp[t.Name] {
-			return c.in.named(t.Name, nil)
+			out = c.in.named(t.Name, nil)
+			break
 		}
 		switch t.Name {
 		case "int":
-			return c.in.scalar("i64")
+			out = c.in.scalar("i64")
+			break
 		case "float":
-			return c.in.scalar("f64")
+			out = c.in.scalar("f64")
+			break
+		case "interface {}":
+			out = c.in.named(t.Name, nil)
+			break
 		}
-		if t.Name == "interface {}" {
-			return c.in.named(t.Name, nil)
+		if out != nil {
+			break
 		}
 		if alias, ok := c.env.aliases[t.Name]; ok {
 			if len(t.Args) != 0 {
 				c.bag.Error(t.Pos(), diag.CodeTypeArgCount, "wrong number of type arguments",
 					"the declaration takes 0")
 			}
-			return c.resolveAlias(alias)
+			out = c.resolveAlias(alias)
+			break
 		}
 		if t.Name == "equal" || t.Name == "Ord" {
 			// Both are predeclared constraints: they constrain a type
@@ -397,7 +415,8 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 			c.bag.Error(t.Pos(), diag.CodeBuiltinConstraintAsInterface,
 				t.Name+" is a builtin constraint, not an interface",
 				"use it only as a type-parameter constraint")
-			return c.in.named(t.Name, nil)
+			out = c.in.named(t.Name, nil)
+			break
 		}
 		args := make([]*Type, len(t.Args))
 		for i, a := range t.Args {
@@ -416,34 +435,40 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 				c.bag.Error(t.Pos(), diag.CodeTypeArgCount, "wrong number of type arguments",
 					"the declaration takes "+strconv.Itoa(want))
 			}
-			return c.in.named(t.Name, args)
+			out = c.in.named(t.Name, args)
+			break
 		}
 		if bt := c.in.builtin(t.Name); bt != nil {
 			if len(args) != 0 {
 				c.bag.Error(t.Pos(), diag.CodeTypeArgCount, "wrong number of type arguments", "the declaration takes 0")
 			}
-			return bt
+			out = bt
+			break
 		}
 		if u, ok := c.env.types[t.Name]; ok {
-			return u
+			out = u
+			break
 		}
 		// A package-qualified or unknown name stays opaque; resolve already
 		// reported an undefined name when it could.
 		if len(t.Name) > 0 {
-			return c.in.named(t.Name, args)
+			out = c.in.named(t.Name, args)
 		}
 	case ast.ArrayType:
-		return c.in.array(t.Len, c.buildType(t.Elem, tp))
+		out = c.in.array(t.Len, c.buildType(t.Elem, tp))
 	case ast.ViewType:
-		return c.in.view(c.buildType(t.Elem, tp))
+		out = c.in.view(c.buildType(t.Elem, tp), t.ViewMut)
 	case ast.FuncType:
 		params := make([]*Type, len(t.Params))
 		for i, p := range t.Params {
 			params[i] = c.buildType(p, tp)
 		}
-		return c.in.funcT(params, c.buildType(t.Result, tp))
+		out = c.in.funcT(params, c.buildType(t.Result, tp))
 	case ast.UnitType:
-		return c.in.unit()
+		out = c.in.unit()
 	}
-	return nil
+	if out == nil {
+		return nil
+	}
+	return c.in.borrowed(out, t.Borrow)
 }

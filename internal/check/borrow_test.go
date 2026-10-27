@@ -23,7 +23,7 @@ func TestBorrowSeesAMutMethodInAnotherFile(t *testing.T) {
     n: i32
 }
 
-def (mut c: C) bump() {
+def (c: mut C) bump() {
     c.n += 1
 }
 
@@ -59,7 +59,7 @@ func TestBorrowRejectsAMutCallWhileAViewIsLive(t *testing.T) {
     xs: Array<i32>
 }
 
-def (mut b: Bag) add() {
+def (b: mut Bag) add() {
 }
 
 def f() {
@@ -85,7 +85,7 @@ def f() {
 }
 
 func TestBorrowRejectsAMutParameterWhileAViewIsLive(t *testing.T) {
-	src := `def fill(mut xs: Array<i32>) {
+	src := `def fill(xs: mut Array<i32>) {
 }
 
 def f() {
@@ -134,7 +134,7 @@ func TestBorrowRejectsContainerGrowthWhileAViewIsLive(t *testing.T) {
 }
 
 func TestBorrowEndsAtTheViewsLastUse(t *testing.T) {
-	src := `def fill(mut xs: Array<i32>) {
+	src := `def fill(xs: mut Array<i32>) {
 }
 
 def f() {
@@ -199,10 +199,10 @@ struct Q {
     p: P
 }
 
-def (mut p: P) move() {
+def (p: mut P) move() {
 }
 
-def fill(mut p: P) {
+def fill(p: mut P) {
 }
 
 def f(q: Q) {
@@ -230,7 +230,7 @@ def f(q: Q) {
 }
 
 func TestCopyOfScalarPlaceIsAllowed(t *testing.T) {
-	src := `def fill(mut n: i32) {
+	src := `def fill(n: mut i32) {
 }
 
 def f(q: Q) {
@@ -312,7 +312,7 @@ def f() {
 }
 
 func TestBorrowAliasEndsAtItsOwnLastUse(t *testing.T) {
-	src := `def fill(mut xs: Array<i32>) {
+	src := `def fill(xs: mut Array<i32>) {
 }
 
 def f() {
@@ -330,7 +330,7 @@ def f() {
 }
 
 func TestBorrowAliasKeepsOwnerBorrowed(t *testing.T) {
-	src := `def fill(mut xs: Array<i32>) {
+	src := `def fill(xs: mut Array<i32>) {
 }
 
 def f() {
@@ -349,7 +349,7 @@ def f() {
 }
 
 func TestBorrowNotPinnedByUnrelatedClosure(t *testing.T) {
-	src := `def fill(mut xs: Array<i32>) {
+	src := `def fill(xs: mut Array<i32>) {
 }
 
 def f() {
@@ -367,7 +367,7 @@ def f() {
 }
 
 func TestBorrowPinnedByCapturedView(t *testing.T) {
-	src := `def fill(mut xs: Array<i32>) {
+	src := `def fill(xs: mut Array<i32>) {
 }
 
 def f() {
@@ -391,7 +391,7 @@ func TestBorrowNotPinnedByUnrelatedDefer(t *testing.T) {
 	src := `def tick() {
 }
 
-def fill(mut xs: Array<i32>) {
+def fill(xs: mut Array<i32>) {
 }
 
 def f() {
@@ -407,8 +407,75 @@ def f() {
 	}
 }
 
+func TestBorrowRejectsWritingAnExplicitlyBorrowedLocal(t *testing.T) {
+	src := `def f() {
+    var x: i32 = 1
+    var r: ref i32 = ref x
+    x = 2
+    _ = r
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMoveWhileBorrowed {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowRejectsASecondExclusiveBorrow(t *testing.T) {
+	src := `def f() {
+    var x: i32 = 1
+    var a: mut i32 = mut x
+    var b: mut i32 = mut x
+    _ = a
+    _ = b
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowConflict {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowRejectsSharedAfterExclusive(t *testing.T) {
+	src := `def f() {
+    var x: i32 = 1
+    var a: mut i32 = mut x
+    var b: ref i32 = ref x
+    _ = a
+    _ = b
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowConflict {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowRejectsReturningLocalRef(t *testing.T) {
+	src := `def f() -> ref i32 {
+    var x: i32 = 1
+    return ref x
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowOutlives {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowAllowsReturningParameterRef(t *testing.T) {
+	src := `def f(x: ref i32) -> ref i32 {
+    return x
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 0 {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestBorrowEndsWithItsBlock(t *testing.T) {
-	src := `def fill(mut xs: Array<i32>) {
+	src := `def fill(xs: mut Array<i32>) {
 }
 
 def f() {

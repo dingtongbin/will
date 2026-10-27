@@ -323,7 +323,7 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 		fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %%v.sm.frame, i64 %d\n", ptr, offset)
 		arg := fmt.Sprintf("%%arg%d", i)
 		mut := fieldText(a.p, "mut") == "true"
-		if a.byPtr && mut {
+		if a.byPtr && (mut || isSingleBorrow(a.text)) {
 			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", arg, ptr)
 		} else if a.byPtr {
 			g.copyValue(arg, ptr, a.typ)

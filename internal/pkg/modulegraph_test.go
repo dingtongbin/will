@@ -246,8 +246,8 @@ func TestHighestVersionWins(t *testing.T) {
 func TestSameTypeNameInTwoPackages(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	writeModule(t, root, "example.com/app", map[string]string{
-		"a.will":     "struct T {\n    v: i32\n}\n\ndef (t: T) value() -> i32 {\n    return t.v\n}\n",
-		"sub/b.will": "struct T {\n    v: i32\n}\n\ndef (t: T) value() -> i32 {\n    return t.v\n}\n",
+		"a.will":     "struct T {\n    v: i32\n}\n\ndef (t: ref T) value() -> i32 {\n    return t.v\n}\n",
+		"sub/b.will": "struct T {\n    v: i32\n}\n\ndef (t: ref T) value() -> i32 {\n    return t.v\n}\n",
 	})
 	b := Load(root)
 	for _, d := range b.Diags {
@@ -264,10 +264,10 @@ func TestSameTypeNameInTwoModules(t *testing.T) {
 	app := filepath.Join(parent, "app")
 	lib := filepath.Join(parent, "lib")
 	writeModule(t, lib, "example.com/lib", map[string]string{
-		"lib.will": "struct T {\n    v: i32\n}\n\ndef (t: T) value() -> i32 {\n    return t.v\n}\n",
+		"lib.will": "struct T {\n    v: i32\n}\n\ndef (t: ref T) value() -> i32 {\n    return t.v\n}\n",
 	})
 	writeModule(t, app, "example.com/app", map[string]string{
-		"main.will": "struct T {\n    v: i32\n}\n\ndef (t: T) value() -> i32 {\n    return t.v\n}\n",
+		"main.will": "struct T {\n    v: i32\n}\n\ndef (t: ref T) value() -> i32 {\n    return t.v\n}\n",
 	})
 	requireReplace(t, app, "example.com/lib", "v1.0.0", "../lib")
 

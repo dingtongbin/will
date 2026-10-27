@@ -6,7 +6,7 @@ struct Box {
     f: rc<C>
 }
 
-def (mut b: Box) set(c: rc<C>) {
+def (b: mut Box) set(c: rc<C>) {
     b.f = c
 }
 

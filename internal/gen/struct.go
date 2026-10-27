@@ -363,27 +363,40 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 			return t, nil
 		}
 	}
-	if fieldText(r, "type") == "interface {}" {
+	text := fieldText(r, "type")
+	base, kind := borrowText(text)
+	if kind == "ref" || kind == "mut" {
+		// A borrowed parameter is stored as a pointer in the ABI, but its
+		// expression type is the underlying value so field and method lowering
+		// sees the real type. A local ref value owns a pointer slot instead.
+		if r.Kind != "param" && r.Kind != "receiver" {
+			return "ptr", nil
+		}
+		text = base
+	} else {
+		text = base
+	}
+	if text == "interface {}" {
 		return "%interface.empty", nil
 	}
-	if typ, ok := llvmTypeText(fieldText(r, "type")); ok {
+	if typ, ok := llvmTypeText(text); ok {
 		return typ, nil
 	}
-	if n, elem, ok := arrayTypeText(fieldText(r, "type")); ok {
+	if n, elem, ok := arrayTypeText(text); ok {
 		if elemLLVM, ok := g.typeLLVMOf(elem); ok && elemLLVM != "" {
 			return "[" + strconv.Itoa(n) + " x " + elemLLVM + "]", nil
 		}
 	}
-	if strings.HasPrefix(fieldText(r, "type"), "func(") {
+	if strings.HasPrefix(text, "func(") {
 		return "{ ptr, ptr }", nil
 	}
-	if typ, ok := g.structInstanceFromText(fieldText(r, "type")); ok {
+	if typ, ok := g.structInstanceFromText(text); ok {
 		return typ, nil
 	}
-	if adt, ok := g.adtType(fieldText(r, "type")); ok {
+	if adt, ok := g.adtType(text); ok {
 		return adt.llvm, nil
 	}
-	if typ, ok := g.fieldLLVMType(fieldText(r, "type")); ok {
+	if typ, ok := g.fieldLLVMType(text); ok {
 		return typ, nil
 	}
 	if id := g.typeRef(decl); id != 0 {
@@ -485,7 +498,16 @@ func (g *generator) typeOf(id int) (string, error) {
 			}
 			return typ, nil
 		}
+		if d, ok := g.recs[decl]; ok && d.Kind == "var" {
+			if base, kind := borrowText(fieldText(d, "type")); kind == "ref" || kind == "mut" {
+				if typ, ok := g.typeLLVMOf(base); ok {
+					return typ, nil
+				}
+			}
+		}
 		return g.declLLVMType(decl)
+	case "borrow":
+		return "ptr", nil
 	case "field":
 		if info, ok := g.importMember(r); ok {
 			return info.typ, nil
@@ -729,6 +751,15 @@ func (g *generator) willTypeText(id int) (string, error) {
 	switch r.Kind {
 	case "await":
 		return g.willTypeText(refField(r, "expr"))
+	case "borrow":
+		base, err := g.willTypeText(refField(r, "expr"))
+		if err != nil {
+			return "", err
+		}
+		if fieldText(r, "mut") == "true" {
+			return "mut " + base, nil
+		}
+		return "ref " + base, nil
 	case "lit":
 		return fieldText(r, "type"), nil
 	case "name":
@@ -751,6 +782,11 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		if info, _ := g.enumVariantCall(r); info != nil {
 			return info.text, nil
+		}
+		if decl.Kind == "param" || decl.Kind == "receiver" {
+			if base, kind := borrowText(fieldText(decl, "type")); kind != "" {
+				return base, nil
+			}
 		}
 		if fieldText(decl, "variadic") == "true" {
 			return "[]" + fieldText(decl, "type"), nil
@@ -1183,6 +1219,8 @@ func (g *generator) place(id int) (string, string, error) {
 	switch r.Kind {
 	case "await":
 		return g.place(refField(r, "expr"))
+	case "borrow":
+		return "", "", g.errf(id, "cannot translate node #%d: a borrow is a value, not a place", id)
 	case "lit":
 		kind := fieldText(r, "kind")
 		if kind == "str" || kind == "bytes" {
@@ -1253,6 +1291,15 @@ func (g *generator) place(id int) (string, string, error) {
 		if slot, typ, ok := g.nameSlot(r); ok {
 			if typ == "" {
 				return "", "", g.errf(id, "cannot translate node #%d: the local has no type", id)
+			}
+			if d, ok := g.recs[decl]; ok {
+				if base, kind := borrowText(fieldText(d, "type")); (kind == "ref" || kind == "mut") && d.Kind != "param" && d.Kind != "receiver" {
+					baseLLVM, ok := g.typeLLVMOf(base)
+					if !ok || baseLLVM == "" {
+						return "", "", g.errf(id, "cannot translate node #%d: borrowed type %s is not lowered", id, base)
+					}
+					return g.load("ptr", slot), baseLLVM, nil
+				}
 			}
 			return slot, typ, nil
 		}

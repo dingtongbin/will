@@ -15,28 +15,28 @@ def pooled(size: usize) -> PooledBuffer {
 }
 
 # Bytes returns a read-only view of the pooled contents.
-def (p: PooledBuffer) bytes() -> []u8 {
+def (p: ref PooledBuffer) bytes() -> []u8 {
     return p.data[Range(0, p.data.len())]
 }
 
 # Array returns an independent copy of the backing array. A header copy would
 # give two owners one buffer; the language requires Clone for that boundary.
-def (p: PooledBuffer) array() -> Array<u8> {
+def (p: ref PooledBuffer) array() -> Array<u8> {
     return p.data.clone()
 }
 
 # Len returns the number of live bytes.
-def (p: PooledBuffer) len() -> usize {
+def (p: ref PooledBuffer) len() -> usize {
     return p.data.len()
 }
 
 # Clear drops every live byte without releasing the pooled storage.
-def (mut p: PooledBuffer) clear() {
+def (p: mut PooledBuffer) clear() {
     p.data.clear()
 }
 
 # Release drops the contents and keeps the capacity for reuse. Repeating it is
 # safe because the array becomes empty after the first call.
-def (mut p: PooledBuffer) release() {
+def (p: mut PooledBuffer) release() {
     p.data.clear()
 }

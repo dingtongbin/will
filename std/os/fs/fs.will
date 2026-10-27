@@ -83,11 +83,11 @@ struct fsError {
     message: str
 }
 
-def (e: fsError) message() -> str {
+def (e: ref fsError) message() -> str {
     return e.message.clone()
 }
 
-def (e: fsError) status() -> i32 {
+def (e: ref fsError) status() -> i32 {
     return 7
 }
 
@@ -140,7 +140,7 @@ def create(path: str, mode: u32) -> Result<File, Error> {
 }
 
 # Read appends bytes into buf. It returns the number read; zero means EOF.
-def (f: File) read(mut buf: Array<u8>) -> Result<usize, Error> {
+def (f: ref File) read(buf: mut Array<u8>) -> Result<usize, Error> {
     var count: usize = 0
     var status: i32 = c.willrt_fs_file_read(raw(f), raw(count), raw(buf))
     if status != 0 {
@@ -150,7 +150,7 @@ def (f: File) read(mut buf: Array<u8>) -> Result<usize, Error> {
 }
 
 # Write writes every byte of buf.
-def (f: File) write(buf: []u8) -> Result<(), Error> {
+def (f: ref File) write(buf: []u8) -> Result<(), Error> {
     var status: i32 = c.willrt_fs_file_write(raw(f), raw(buf))
     if status != 0 {
         return Err(errors.Io)
@@ -159,7 +159,7 @@ def (f: File) write(buf: []u8) -> Result<(), Error> {
 }
 
 # Seek moves the file position and returns the new offset.
-def (f: File) seek(offset: i64, whence: i32) -> Result<i64, Error> {
+def (f: ref File) seek(offset: i64, whence: i32) -> Result<i64, Error> {
     var at: i64 = 0
     var status: i32 = c.willrt_fs_file_seek(raw(f), offset, whence, raw(at))
     if status != 0 {
@@ -170,7 +170,7 @@ def (f: File) seek(offset: i64, whence: i32) -> Result<i64, Error> {
 
 # AsyncRead is the async spelling of Read. A call parks its task frame until
 # the blocking pool finishes the host read.
-async def (f: File) async_read(mut buf: Array<u8>) -> Result<usize, Error> {
+async def (f: ref File) async_read(buf: mut Array<u8>) -> Result<usize, Error> {
     var count: usize = 0
     var status: i32 = await c.willrt_fs_async_file_read(raw(f), raw(count), raw(buf))
     if status != 0 {
@@ -180,7 +180,7 @@ async def (f: File) async_read(mut buf: Array<u8>) -> Result<usize, Error> {
 }
 
 # AsyncWrite is the async spelling of Write.
-async def (f: File) async_write(buf: []u8) -> Result<(), Error> {
+async def (f: ref File) async_write(buf: []u8) -> Result<(), Error> {
     var status: i32 = await c.willrt_fs_async_file_write(raw(f), raw(buf))
     if status != 0 {
         return Err(errors.Io)
@@ -189,7 +189,7 @@ async def (f: File) async_write(buf: []u8) -> Result<(), Error> {
 }
 
 # AsyncSeek is the async spelling of Seek.
-async def (f: File) async_seek(offset: i64, whence: i32) -> Result<i64, Error> {
+async def (f: ref File) async_seek(offset: i64, whence: i32) -> Result<i64, Error> {
     var at: i64 = 0
     var status: i32 = await c.willrt_fs_async_file_seek(raw(f), offset, whence, raw(at))
     if status != 0 {
@@ -199,7 +199,7 @@ async def (f: File) async_seek(offset: i64, whence: i32) -> Result<i64, Error> {
 }
 
 # AsyncSync is the async spelling of Sync.
-async def (f: File) async_sync() -> Result<(), Error> {
+async def (f: ref File) async_sync() -> Result<(), Error> {
     var status: i32 = await c.willrt_fs_async_file_sync(raw(f))
     if status != 0 {
         return Err(errors.Io)
@@ -208,7 +208,7 @@ async def (f: File) async_sync() -> Result<(), Error> {
 }
 
 # AsyncStat returns the metadata of the open file.
-async def (f: File) async_stat() -> Result<StatInfo, Error> {
+async def (f: ref File) async_stat() -> Result<StatInfo, Error> {
     var info: StatInfo
     var status: i32 = await c.willrt_fs_async_file_stat(raw(f), raw(info))
     if status != 0 {
@@ -218,7 +218,7 @@ async def (f: File) async_stat() -> Result<StatInfo, Error> {
 }
 
 # Sync flushes buffered writes to the host.
-def (f: File) sync() -> Result<(), Error> {
+def (f: ref File) sync() -> Result<(), Error> {
     var status: i32 = c.willrt_fs_file_sync(raw(f))
     if status != 0 {
         return Err(errors.Io)
@@ -227,7 +227,7 @@ def (f: File) sync() -> Result<(), Error> {
 }
 
 # Close releases the file handle. A closed handle is safe to close again.
-def (mut f: File) close() -> Result<(), Error> {
+def (f: mut File) close() -> Result<(), Error> {
     var status: i32 = c.willrt_fs_file_close(raw(f))
     if status != 0 {
         return Err(errors.Io)

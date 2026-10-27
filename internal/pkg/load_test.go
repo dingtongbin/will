@@ -65,7 +65,7 @@ func TestMethodLeavesTypePackage(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
 	write(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n")
-	write(t, filepath.Join(root, "sub", "method.will"), "def (t: T) move() {\n}\n")
+	write(t, filepath.Join(root, "sub", "method.will"), "def (t: ref T) move() {\n}\n")
 	b := Load(root)
 	d := findCode(t, b.Diags, diag.CodeMethodsTwoPackages)
 	if d.Message != "methods of T are declared in two packages" {
@@ -82,7 +82,7 @@ func TestMethodLeavesTypePackage(t *testing.T) {
 func TestMethodInDeclaringPackageIsFine(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	write(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n\ndef (t: T) move() {\n}\n")
+	write(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n\ndef (t: ref T) move() {\n}\n")
 	b := Load(root)
 	for _, d := range b.Diags {
 		if d.Code == diag.CodeMethodsTwoPackages {

@@ -7,11 +7,11 @@ struct C {
     n: i32
 }
 
-def (c: C) get() -> i32 {
+def (c: ref C) get() -> i32 {
     return c.n
 }
 
-def (mut c: C) add(n: i32) -> i32 {
+def (c: mut C) add(n: i32) -> i32 {
     c.n += n
     return c.n
 }

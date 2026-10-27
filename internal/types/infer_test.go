@@ -49,7 +49,7 @@ func TestNegativeLiteralMayBeTheTypeMinimum(t *testing.T) {
 
 func TestGenericStructFieldsAndMethods(t *testing.T) {
 	src := "struct Box<T> {\n    value: T\n}\n\n" +
-		"def (b: Box<T>) get() -> T {\n    return b.value\n}\n\n" +
+		"def (b: ref Box<T>) get() -> T {\n    return b.value\n}\n\n" +
 		"def main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return b.get()\n}\n"
 	if ds := checkWithResolve(t, src); len(ds) != 0 {
 		t.Fatalf("a generic struct field and method were not instantiated:\n%s", diag.FormatAll(ds))
@@ -137,7 +137,7 @@ func TestNewWithInit(t *testing.T) {
 	src := `struct P {
     x: i32
 }
-def (mut p: P) init(x: i32) -> Result<(), Error> {
+def (p: mut P) init(x: i32) -> Result<(), Error> {
     p.x = x
     return Ok(())
 }

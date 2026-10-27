@@ -54,7 +54,7 @@ struct Point {
     x: i32
 }
 
-def (mut p: Point) move(dx: i32) {
+def (p: mut Point) move(dx: i32) {
     p.x += dx
 }
 

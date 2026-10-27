@@ -48,6 +48,44 @@ func TestNestedTypeArguments(t *testing.T) {
 	}
 }
 
+func TestBorrowAndFromSyntax(t *testing.T) {
+	src := `def (r: ref Reader) read(buf: mut []u8) -> ref Item from r {
+    var shared: ref Item = ref r.item
+    var exclusive: mut []u8 = mut buf
+    return shared
+}
+`
+	f := parse(t, src)
+	fn := firstFunc(t, f)
+	if fn.Recv == nil || !fn.Recv.Type.IsRef() || fn.Recv.Type.Name != "Reader" {
+		t.Fatalf("receiver = %+v, want ref Reader", fn.Recv)
+	}
+	if len(fn.Params) != 1 || !fn.Params[0].Type.ViewMut {
+		t.Fatalf("params = %+v, want one mut []u8", fn.Params)
+	}
+	if len(fn.From) != 1 {
+		t.Fatalf("from = %+v, want one source", fn.From)
+	}
+	if _, ok := fn.From[0].(*ast.NameExpr); !ok {
+		t.Fatalf("from source = %T, want name", fn.From[0])
+	}
+	if !fn.Result.IsRef() || fn.Result.Name != "Item" {
+		t.Fatalf("result = %+v, want ref Item", fn.Result)
+	}
+	shared := varDecl(t, f, "shared")
+	if !shared.Type.IsRef() || shared.Type.Name != "Item" {
+		t.Fatalf("shared type = %+v, want ref Item", shared.Type)
+	}
+	exclusive := varDecl(t, f, "exclusive")
+	if exclusive.Type.Kind != ast.ViewType || !exclusive.Type.ViewMut {
+		t.Fatalf("exclusive type = %+v, want mut []u8", exclusive.Type)
+	}
+	b, ok := exclusive.Value.(*ast.BorrowExpr)
+	if !ok || !b.Mut {
+		t.Fatalf("exclusive value = %T, want mut borrow", exclusive.Value)
+	}
+}
+
 func TestQualifiedNames(t *testing.T) {
 	src := `import "std/net/http"
 def f() -> http.Ctx {

@@ -18,7 +18,7 @@ struct Counter {
 }
 
 # Add adds a value to the total of the counter.
-def (mut counter: Counter) add(value: i64) {
+def (counter: mut Counter) add(value: i64) {
     counter.total += value
 }
 
@@ -33,7 +33,7 @@ struct Square {
 }
 
 # Area returns the area of the square, scaled by the value it is given.
-def (s: Square) area(scale: i64) -> i64 {
+def (s: ref Square) area(scale: i64) -> i64 {
     return s.side * s.side + scale
 }
 

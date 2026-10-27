@@ -12,16 +12,16 @@ struct execError {
     message: str
 }
 
-def (e: execError) message() -> str {
+def (e: ref execError) message() -> str {
     return e.message.clone()
 }
 
-def (e: execError) status() -> i32 {
+def (e: ref execError) status() -> i32 {
     return 7
 }
 
 # AsyncRun runs c and returns its exit status.
-async def (cmd: Cmd) async_run() -> Result<ExitStatus, Error> {
+async def (cmd: ref Cmd) async_run() -> Result<ExitStatus, Error> {
     var envpairs: Array<str> = new Array<str>(0)
     for key, value in cmd.env {
         envpairs.push(key)
@@ -37,7 +37,7 @@ async def (cmd: Cmd) async_run() -> Result<ExitStatus, Error> {
 }
 
 # AsyncOutput runs c and captures both output streams.
-async def (cmd: Cmd) async_output() -> Result<Output, Error> {
+async def (cmd: ref Cmd) async_output() -> Result<Output, Error> {
     var envpairs: Array<str> = new Array<str>(0)
     for key, value in cmd.env {
         envpairs.push(key)

@@ -3,7 +3,7 @@ struct Node {
     next: weak_rc<Node>
 }
 
-def (mut n: Node) init(value: i32) {
+def (n: mut Node) init(value: i32) {
     n.value = value
 }
 

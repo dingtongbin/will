@@ -50,6 +50,7 @@ func BorrowsWithEffects(f *ast.File, own *Ownership, effects *MutEffects) []diag
 			b.localTypes = map[string]*ast.Type{}
 			b.copied = map[string]source.Pos{}
 			b.closureOwners = map[string]string{}
+			b.exclusive = map[string]source.Pos{}
 			for _, p := range fn.Params {
 				b.params[p.Name] = true
 				b.localTypes[p.Name] = p.Type
@@ -79,6 +80,9 @@ type borrower struct {
 	// spawn. Only those owners stay borrowed to the block end; an unrelated
 	// closure no longer widens every view in the block.
 	pinned map[string]bool
+	// exclusive records an explicit mut borrow that is live in the block.
+	// Shared views and refs cannot be created while it is live.
+	exclusive map[string]source.Pos
 	// copied records a local initialized from a field or index place. Mutating
 	// that local through a mut parameter or receiver is O0008: it changes the
 	// copy, not the place the programmer named.
@@ -103,9 +107,11 @@ func (b *borrower) block(blk *ast.Block, inherited map[string]source.Pos) {
 	}
 	borrowed := cloneBorrows(inherited)
 	oldUses, oldViews, oldInherited, oldPinned := b.lastUses, b.localViews, b.inherited, b.pinned
+	oldExclusive := b.exclusive
 	b.lastUses = lastUses(blk)
 	b.localViews = map[string]string{}
 	b.inherited = map[string]bool{}
+	b.exclusive = cloneBorrows(b.exclusive)
 	b.pinned = clonePins(b.pinned)
 	for name := range pinnedNames(blk) {
 		b.pinned[name] = true
@@ -119,6 +125,7 @@ func (b *borrower) block(blk *ast.Block, inherited map[string]source.Pos) {
 		b.prune(st, borrowed)
 	}
 	b.lastUses, b.localViews, b.inherited, b.pinned = oldUses, oldViews, oldInherited, oldPinned
+	b.exclusive = oldExclusive
 }
 
 func clonePins(in map[string]bool) map[string]bool {
@@ -140,7 +147,21 @@ func (b *borrower) addView(st ast.Stmt, borrowed map[string]source.Pos) {
 	if !ok || vd.Value == nil {
 		return
 	}
+	if _, explicit := vd.Value.(*ast.BorrowExpr); explicit {
+		// The borrow expression already recorded the source and its exclusivity.
+		return
+	}
 	owner, pos, ok := b.viewOwner(vd.Value)
+	if ok {
+		if mutView := vd.Type != nil && vd.Type.ViewMut; mutView {
+			if prev, live := b.exclusive[owner]; live && prev != pos {
+				b.conflictAt(vd.Value.Pos(), owner, prev)
+			}
+			b.exclusive[owner] = pos
+		} else if prev, live := b.exclusive[owner]; live {
+			b.conflictAt(vd.Value.Pos(), owner, prev)
+		}
+	}
 	if !ok {
 		// A view copied from another view keeps the same owner. The alias can
 		// outlive the original name, so this block keeps the borrow until its
@@ -201,6 +222,10 @@ func (b *borrower) hasLocalView(owner string) bool {
 // view (directly or inside a struct) keeps the owner borrowed.
 func (b *borrower) viewOwner(e ast.Expr) (string, source.Pos, bool) {
 	switch x := e.(type) {
+	case *ast.BorrowExpr:
+		if name := rootName(x.X); name != "" {
+			return name, x.Pos(), true
+		}
 	case *ast.SliceExpr:
 		if name := rootName(x.Recv); name != "" {
 			return name, x.Pos(), true
@@ -229,6 +254,8 @@ func (b *borrower) exprType(e ast.Expr) *ast.Type {
 	switch x := e.(type) {
 	case *ast.NameExpr:
 		return b.localTypes[x.Name]
+	case *ast.BorrowExpr:
+		return b.exprType(x.X)
 	case *ast.FieldExpr:
 		if b.own == nil {
 			return nil
@@ -604,6 +631,8 @@ func walkExprsForClosure(e ast.Expr, visit func(ast.Expr)) {
 	}
 	visit(e)
 	switch x := e.(type) {
+	case *ast.BorrowExpr:
+		walkExprsForClosure(x.X, visit)
 	case *ast.CallExpr:
 		walkExprsForClosure(x.Callee, visit)
 		for _, a := range x.Args {
@@ -674,6 +703,8 @@ func (b *borrower) closureInExpr(e ast.Expr) (string, bool) {
 		return owner, true
 	}
 	switch x := e.(type) {
+	case *ast.BorrowExpr:
+		return b.closureInExpr(x.X)
 	case *ast.CallExpr:
 		if owner, ok := b.closureInExpr(x.Callee); ok {
 			return owner, true
@@ -771,6 +802,16 @@ func (b *borrower) copyNotBorrow(pos source.Pos) {
 		"write through the place (xs[i].f = v), or use a method with a mut receiver")
 }
 
+func (b *borrower) conflictAt(pos source.Pos, name string, borrowPos source.Pos) {
+	b.bag.Add(diag.Diagnostic{
+		Pos: pos, End: pos, Severity: diag.Error,
+		Code:    diag.CodeBorrowConflict,
+		Message: "cannot borrow " + name + " while an exclusive borrow is live",
+		Help:    "end the first borrow before taking another",
+		Notes:   []diag.Note{{Pos: borrowPos, Message: "borrowed here"}},
+	})
+}
+
 func (b *borrower) mutAt(pos source.Pos, name string, borrowed map[string]source.Pos) {
 	if name == "" {
 		return
@@ -854,6 +895,27 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 	switch x := e.(type) {
 	case nil:
 		return
+	case *ast.BorrowExpr:
+		root := rootName(x.X)
+		if root == "" {
+			b.expr(x.X, borrowed)
+			return
+		}
+		if x.Mut {
+			if pos, ok := borrowed[root]; ok {
+				b.conflictAt(x.Pos(), root, pos)
+			}
+			if _, ok := b.exclusive[root]; !ok {
+				b.exclusive[root] = x.Pos()
+			}
+		} else if pos, ok := b.exclusive[root]; ok {
+			b.conflictAt(x.Pos(), root, pos)
+		}
+		if _, ok := borrowed[root]; !ok {
+			borrowed[root] = x.Pos()
+		}
+		b.pinned[root] = true
+		b.expr(x.X, borrowed)
 	case *ast.CallExpr:
 		b.call(x, borrowed)
 	case *ast.MethodCallExpr:

@@ -1,6 +1,10 @@
 package types
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/will-lang/will/internal/ast"
+)
 
 // Send reports whether a value of t can move to another task. The answer is
 // structural: a handle is sendable only when its payload is, a task when its
@@ -20,6 +24,9 @@ func (r *Result) Sync(t *Type) bool {
 func (r *Result) send(t *Type, active map[string]bool) bool {
 	if t == nil || r == nil || r.env == nil {
 		return true
+	}
+	if t.Borrow() != ast.OwnedBorrow || t.Kind() == ViewKind {
+		return false
 	}
 	key := t.String()
 	if active[key] {
@@ -45,6 +52,9 @@ func (r *Result) send(t *Type, active map[string]bool) bool {
 func (r *Result) sync(t *Type, active map[string]bool) bool {
 	if t == nil || r == nil || r.env == nil {
 		return true
+	}
+	if t.Borrow() != ast.OwnedBorrow || t.Kind() == ViewKind {
+		return false
 	}
 	key := t.String()
 	if active[key] {

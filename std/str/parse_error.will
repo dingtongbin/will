@@ -4,11 +4,11 @@ struct parseError {
     message: str
 }
 
-def (e: parseError) message() -> str {
+def (e: ref parseError) message() -> str {
     return e.message.clone()
 }
 
-def (e: parseError) status() -> i32 {
+def (e: ref parseError) status() -> i32 {
     return 2
 }
 

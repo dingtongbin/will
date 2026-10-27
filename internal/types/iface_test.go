@@ -14,7 +14,7 @@ struct Square {
     s: i32
 }
 
-def (q: Square) area() -> i32 {
+def (q: ref Square) area() -> i32 {
     return q.s * q.s
 }
 
@@ -99,7 +99,7 @@ struct Square {
     s: i32
 }
 
-def (q: Square) area() -> i32 {
+def (q: ref Square) area() -> i32 {
     return q.s
 }
 
@@ -221,11 +221,11 @@ func TestBuiltinErrorInterface(t *testing.T) {
     code: i32
 }
 
-def (e: E) message() -> str {
+def (e: ref E) message() -> str {
     return "failed"
 }
 
-def (e: E) status() -> i32 {
+def (e: ref E) status() -> i32 {
     return e.code
 }
 
@@ -244,7 +244,7 @@ def f() {
     code: i32
 }
 
-def (e: E) message() -> str {
+def (e: ref E) message() -> str {
     return "failed"
 }
 
@@ -268,7 +268,7 @@ struct Square {
     s: i32
 }
 
-def (q: Square) area() -> i64 {
+def (q: ref Square) area() -> i64 {
     return q.s
 }
 

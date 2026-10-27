@@ -67,7 +67,7 @@ def f() {
 func TestTopLevelWriteRejectsMutArgument(t *testing.T) {
 	src := `var counter: i32 = 0
 
-def set(mut x: i32) {
+def set(x: mut i32) {
     x = 1
 }
 
@@ -89,7 +89,7 @@ func TestTopLevelWriteAllowsShadowAndHandleMethod(t *testing.T) {
 var counter: i32 = 0
 var c: rc<C> = new rc<C>(C { n: 0 })
 
-def (mut x: C) bump() {
+def (x: mut C) bump() {
     x.n += 1
 }
 

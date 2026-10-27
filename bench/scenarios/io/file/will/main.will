@@ -24,7 +24,7 @@ def fill(block: Array<u8>) {
     }
 }
 
-def sort(mut xs: Array<u64>) {
+def sort(xs: mut Array<u64>) {
     var n: i32 = i32(xs.len())
     var value: u64 = 0u64
     var left: u64 = 0u64

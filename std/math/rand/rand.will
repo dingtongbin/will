@@ -6,12 +6,12 @@ struct Rand {
 
 # init seeds the stream. The constructor is new Rand(seed), because the
 # language has no NewX free function.
-def (mut r: Rand) init(seed: u64) {
+def (r: mut Rand) init(seed: u64) {
     r.state = seed
 }
 
 # NextU64 advances the stream and returns the next 64 bits.
-def (mut r: Rand) next_u64() -> u64 {
+def (r: mut Rand) next_u64() -> u64 {
     r.state = add_u64(r.state, 11400714819323198485u64)
     var z: u64 = r.state
     z = mul_u64(z ^ (z >> 30), 13787848793156543929u64)
@@ -21,6 +21,6 @@ def (mut r: Rand) next_u64() -> u64 {
 
 # NextF64 returns a value in [0, 1). The top 53 bits fill the mantissa exactly,
 # so the division is a shift in the exponent and cannot round up to 1.
-def (mut r: Rand) next_f64() -> f64 {
+def (r: mut Rand) next_f64() -> f64 {
     return f64(r.next_u64() >> 11) / 9007199254740992.0
 }

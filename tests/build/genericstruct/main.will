@@ -3,7 +3,7 @@ struct Box<T> {
     tag: i32
 }
 
-def (b: Box<T>) get() -> T {
+def (b: ref Box<T>) get() -> T {
     return b.value.clone()
 }
 

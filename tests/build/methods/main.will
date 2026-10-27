@@ -2,11 +2,11 @@ struct Counter {
     n: i32
 }
 
-def (c: Counter) get() -> i32 {
+def (c: ref Counter) get() -> i32 {
     return c.n
 }
 
-def (mut c: Counter) add(d: i32) {
+def (c: mut Counter) add(d: i32) {
     c.n += d
 }
 

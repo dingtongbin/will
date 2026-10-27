@@ -67,6 +67,16 @@ func (p *Parser) parseExpr(minPrec int, allowBrace bool) ast.Expr {
 }
 
 func (p *Parser) parseUnary(allowBrace bool) ast.Expr {
+	if p.atText("ref") || p.atText("mut") {
+		tok := p.next()
+		p.skipNL()
+		x := p.parseUnary(allowBrace)
+		return &ast.BorrowExpr{
+			Span: ast.Span{Start: tok.Pos, End: x.EndPos()},
+			Mut:  tok.Text == "mut",
+			X:    x,
+		}
+	}
 	switch p.cur().Kind {
 	case token.Minus, token.KwNot, token.Tilde:
 		op := p.next()

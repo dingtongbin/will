@@ -12,14 +12,14 @@ struct WriterBuf {
 
 # init wraps w in a buffer of size bytes. A size of zero passes every write
 # straight through.
-def (mut b: WriterBuf) init(w: io.Writer, size: usize) {
+def (b: mut WriterBuf) init(w: io.Writer, size: usize) {
     b.dst = w.clone()
     b.data = new Array<u8>(size)
     b.limit = size
 }
 
 # Write appends bytes, flushing first when they would not fit.
-def (mut b: WriterBuf) write(bytes: []u8) -> Result<(), Error> {
+def (b: mut WriterBuf) write(bytes: []u8) -> Result<(), Error> {
     if b.limit == 0usize {
         return b.dst.write(bytes)
     }
@@ -41,7 +41,7 @@ def (mut b: WriterBuf) write(bytes: []u8) -> Result<(), Error> {
 
 # Flush writes the buffered bytes. The buffer is copied first so the write does
 # not alias the array it clears.
-def (mut b: WriterBuf) flush() -> Result<(), Error> {
+def (b: mut WriterBuf) flush() -> Result<(), Error> {
     if b.data.len() != 0usize {
         var out: Array<u8> = b.data.clone()
         var n: usize = out.len()
@@ -52,7 +52,7 @@ def (mut b: WriterBuf) flush() -> Result<(), Error> {
 }
 
 # Sync flushes the buffer and syncs the wrapped Writer.
-def (mut b: WriterBuf) sync() -> Result<(), Error> {
+def (b: mut WriterBuf) sync() -> Result<(), Error> {
     _ = b.flush()?
     return b.dst.sync()
 }

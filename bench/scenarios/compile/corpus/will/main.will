@@ -17,7 +17,7 @@ struct Reader {
 }
 
 # Next returns the next latency of the reader.
-def (mut r: Reader) next() -> i64 {
+def (r: mut Reader) next() -> i64 {
     r.state = r.state *% 6364136223846793005 +% 1442695040888963407
     var value: i64 = i64(r.state >> 12i64) % 1000i64
     r.count += 1

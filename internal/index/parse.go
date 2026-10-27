@@ -328,9 +328,9 @@ func (ix *Index) addRecord(no int, kind string, f []field) error {
 		if err := checkPos(no, "method", m.Line, m.Col); err != nil {
 			return err
 		}
-		if m.Recv != "value" && m.Recv != "mut" {
+		if m.Recv != "value" && m.Recv != "ref" && m.Recv != "mut" {
 			return &Error{Line: no, Message: "method recv has the value " + strconv.Quote(m.Recv) +
-				"; it must be value or mut"}
+				"; it must be value, ref, or mut"}
 		}
 		ix.Methods = append(ix.Methods, m)
 	case "satisfies":

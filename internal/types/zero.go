@@ -1,5 +1,7 @@
 package types
 
+import "github.com/will-lang/will/internal/ast"
+
 // hasZero reports whether a local variable of t may omit its initializer. An
 // enum and Result have no zero value; a struct has one only when every field
 // does. Option always has None, and the predeclared handles and containers
@@ -11,6 +13,9 @@ func (c *checker) hasZero(t *Type) bool {
 func (c *checker) hasZeroSeen(t *Type, seen map[*Type]bool) bool {
 	if t == nil {
 		return true
+	}
+	if t.Borrow() != ast.OwnedBorrow {
+		return false
 	}
 	if seen[t] {
 		return true

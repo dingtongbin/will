@@ -106,6 +106,8 @@ func (em *emitter) scanUnzeroed(x ast.Expr) {
 		em.scanUnzeroed(v.Recv)
 		em.scanUnzeroed(v.Lo)
 		em.scanUnzeroed(v.Hi)
+	case *ast.BorrowExpr:
+		em.scanUnzeroed(v.X)
 	case *ast.UnaryExpr:
 		em.scanUnzeroed(v.X)
 	case *ast.BinaryExpr:

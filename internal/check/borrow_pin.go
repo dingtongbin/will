@@ -43,6 +43,8 @@ func pinnedNames(b *ast.Block) map[string]bool {
 			collectExpr(x.Recv)
 			collectExpr(x.Lo)
 			collectExpr(x.Hi)
+		case *ast.BorrowExpr:
+			collectExpr(x.X)
 		case *ast.UnaryExpr:
 			collectExpr(x.X)
 		case *ast.BinaryExpr:
@@ -170,6 +172,8 @@ func pinnedNames(b *ast.Block) map[string]bool {
 			scanExpr(x.Recv)
 			scanExpr(x.Lo)
 			scanExpr(x.Hi)
+		case *ast.BorrowExpr:
+			scanExpr(x.X)
 		case *ast.UnaryExpr:
 			scanExpr(x.X)
 		case *ast.BinaryExpr:

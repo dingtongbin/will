@@ -10,7 +10,7 @@
 # the end of the block.
 
 # Swap exchanges two elements of one array.
-def swap(mut xs: Array<u64>, left: i32, right: i32) {
+def swap(xs: mut Array<u64>, left: i32, right: i32) {
     var leftValue: u64 = 0u64
     var rightValue: u64 = 0u64
     leftValue = xs[usize(left)]
@@ -20,7 +20,7 @@ def swap(mut xs: Array<u64>, left: i32, right: i32) {
 }
 
 # Sift restores the max-heap property below root.
-def sift(mut xs: Array<u64>, root: i32, count: i32) {
+def sift(xs: mut Array<u64>, root: i32, count: i32) {
     var at: i32 = root
     while True {
         var child: i32 = 2i32 * at + 1i32
@@ -49,7 +49,7 @@ def sift(mut xs: Array<u64>, root: i32, count: i32) {
 }
 
 # SortSamples sorts the samples in ascending order with an in-place heapsort.
-def sort_samples(mut xs: Array<u64>) {
+def sort_samples(xs: mut Array<u64>) {
     var n: i32 = i32(xs.len())
     var i: i32 = n / 2i32 - 1i32
     while True {

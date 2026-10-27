@@ -6,11 +6,11 @@ struct E {
     m: str
 }
 
-def (e: E) message() -> str {
+def (e: ref E) message() -> str {
     return e.m.clone()
 }
 
-def (e: E) status() -> i32 {
+def (e: ref E) status() -> i32 {
     return 1
 }
 

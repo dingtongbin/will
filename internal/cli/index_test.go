@@ -15,7 +15,7 @@ struct Square {
     s: i32
 }
 
-def (q: Square) area() -> i32 {
+def (q: ref Square) area() -> i32 {
     return q.s * q.s
 }
 `

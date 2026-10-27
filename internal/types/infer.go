@@ -184,6 +184,7 @@ func (c *checker) inferFunc(decl *ast.FuncDecl) {
 		s.vars[pm.Name] = t
 	}
 	body := c.inferBlock(s, decl.Body)
+	c.checkFrom(decl, s)
 	if s.result == nil && body != nil && body.Kind() == NamedKind && body.Name() == "Result" {
 		if n := len(decl.Body.Stmts); n != 0 {
 			c.bag.Error(decl.Body.Stmts[n-1].Pos(), diag.CodeResultDropped,
@@ -191,6 +192,226 @@ func (c *checker) inferFunc(decl *ast.FuncDecl) {
 				"use ?, !, match, or discard it with _ =")
 		}
 	}
+}
+
+// checkFrom enforces the return-borrow source rule. A result that contains a
+// borrow needs exactly one source parameter or an explicit from list. The
+// checker does not guess a source when several inputs could own the data.
+func (c *checker) checkFrom(decl *ast.FuncDecl, s *inferScope) {
+	result := c.buildType(decl.Result, s.tp)
+	if result == nil {
+		return
+	}
+	borrows := c.borrowsType(result, map[*Type]bool{})
+	if !borrows {
+		if len(decl.From) != 0 {
+			c.bag.Error(decl.From[0].Pos(), diag.CodeBorrowOutlives,
+				"from is only valid on a function that returns a borrow",
+				"remove from, or return a ref/view")
+		}
+		return
+	}
+	eligible := 0
+	names := map[string]bool{}
+	if decl.Recv != nil {
+		names[decl.Recv.Name] = true
+		if c.borrowsType(c.buildType(decl.Recv.Type, s.tp), map[*Type]bool{}) {
+			eligible++
+		}
+	}
+	for _, pm := range decl.Params {
+		names[pm.Name] = true
+		pt := c.buildType(pm.Type, s.tp)
+		if pm.Variadic && pt != nil {
+			pt = c.in.view(pt)
+		}
+		if c.borrowsType(pt, map[*Type]bool{}) {
+			eligible++
+		}
+	}
+	roots := make(map[string]bool)
+	c.collectReturnRoots(decl.Body, s, names, roots)
+	if len(decl.From) == 0 {
+		direct := result.IsRef() || result.IsMutRef() || result.Kind() == ViewKind
+		if direct && eligible > 1 {
+			pos := decl.Result.Pos()
+			c.bag.Error(pos, diag.CodeBorrowOutlives,
+				"this returned borrow needs an explicit from source",
+				"write from <parameter>, or return an owned value")
+			return
+		}
+		if len(roots) == 1 {
+			return
+		}
+		if len(roots) == 0 && eligible == 0 {
+			return
+		}
+		pos := decl.Result.Pos()
+		c.bag.Error(pos, diag.CodeBorrowOutlives,
+			"this returned borrow needs an explicit from source",
+			"write from <parameter>, or return an owned value")
+		return
+	}
+	for _, src := range decl.From {
+		root := sourceRoot(src)
+		if root == "" || !names[root] {
+			c.bag.Error(src.Pos(), diag.CodeBorrowOutlives,
+				"from source is not a parameter or receiver",
+				"name a parameter or self")
+			continue
+		}
+		got := c.inferExpr(s, src)
+		if got != nil && (result.IsRef() || result.IsMutRef() || result.Kind() == ViewKind) {
+			if !Equal(got.Unref(), result.Unref()) {
+				c.bag.Error(src.Pos(), diag.CodeBorrowOutlives,
+					"from source has type "+got.String()+", want "+result.Unref().String(),
+					"name a source of the returned borrow type")
+			}
+		}
+	}
+}
+
+// borrowsType reports whether a checked type contains an explicit borrow or a
+// slice view. Struct fields are followed so a returned page with a view field
+// still requires a source.
+func (c *checker) borrowsType(t *Type, seen map[*Type]bool) bool {
+	if t == nil || seen[t] {
+		return false
+	}
+	seen[t] = true
+	if t.Borrow() != ast.OwnedBorrow || t.Kind() == ViewKind {
+		return true
+	}
+	if t.Kind() == NamedKind {
+		if fields, ok := c.env.fields[t.Name()]; ok {
+			for _, f := range fields {
+				if c.borrowsType(f.typ, seen) {
+					return true
+				}
+			}
+		}
+	}
+	for _, a := range t.Args() {
+		if c.borrowsType(a, seen) {
+			return true
+		}
+	}
+	return false
+}
+
+// collectReturnRoots records which parameters appear in return values. A view
+// or ref built from two parameters needs from; a function that returns only a
+// page built from one receiver does not.
+func (c *checker) collectReturnRoots(st ast.Stmt, scope *inferScope, names, out map[string]bool) {
+	switch s := st.(type) {
+	case *ast.Block:
+		for _, inner := range s.Stmts {
+			c.collectReturnRoots(inner, scope, names, out)
+		}
+	case *ast.ReturnStmt:
+		c.collectExprRoots(s.Value, scope, names, out)
+	case *ast.IfExpr:
+		c.collectReturnRoots(s.Then, scope, names, out)
+		if s.Else != nil {
+			c.collectReturnRoots(s.Else, scope, names, out)
+		}
+	case *ast.MatchExpr:
+		for _, arm := range s.Arms {
+			c.collectReturnRoots(arm.Body, scope, names, out)
+		}
+	case *ast.ForStmt:
+		c.collectReturnRoots(s.Body, scope, names, out)
+	case *ast.RegionStmt:
+		c.collectReturnRoots(s.Body, scope, names, out)
+	case *ast.ParallelStmt:
+		c.collectReturnRoots(s.Body, scope, names, out)
+	case *ast.DeadlineExpr:
+		c.collectReturnRoots(s.Body, scope, names, out)
+	case *ast.SelectStmt:
+		for _, arm := range s.Arms {
+			c.collectReturnRoots(arm.Body, scope, names, out)
+		}
+	}
+}
+
+func (c *checker) collectExprRoots(e ast.Expr, scope *inferScope, names, out map[string]bool) {
+	if e == nil {
+		return
+	}
+	add := func(root string) {
+		if root != "" && names[root] {
+			out[root] = true
+		}
+	}
+	switch x := e.(type) {
+	case *ast.BorrowExpr:
+		add(sourceRoot(x.X))
+		c.collectExprRoots(x.X, scope, names, out)
+	case *ast.SliceExpr:
+		add(sourceRoot(x.Recv))
+		c.collectExprRoots(x.Recv, scope, names, out)
+		c.collectExprRoots(x.Lo, scope, names, out)
+		c.collectExprRoots(x.Hi, scope, names, out)
+	case *ast.CallExpr:
+		for _, a := range x.Args {
+			c.collectExprRoots(a.Expr, scope, names, out)
+		}
+	case *ast.MethodCallExpr:
+		c.collectExprRoots(x.Recv, scope, names, out)
+		for _, a := range x.Args {
+			c.collectExprRoots(a.Expr, scope, names, out)
+		}
+	case *ast.FieldExpr:
+		root := sourceRoot(x)
+		if t, ok := scope.lookup(sourceRoot(x)); ok && c.borrowsType(t, map[*Type]bool{}) {
+			add(root)
+		}
+		c.collectExprRoots(x.Recv, scope, names, out)
+	case *ast.IndexExpr:
+		root := sourceRoot(x)
+		if t, ok := scope.lookup(sourceRoot(x)); ok && c.borrowsType(t, map[*Type]bool{}) {
+			add(root)
+		}
+		c.collectExprRoots(x.Recv, scope, names, out)
+		c.collectExprRoots(x.Index, scope, names, out)
+	case *ast.NameExpr:
+		if t, ok := scope.lookup(x.Name); ok && c.borrowsType(t, map[*Type]bool{}) {
+			add(x.Name)
+		}
+	case *ast.AggregateExpr:
+		for _, f := range x.Fields {
+			c.collectExprRoots(f.Value, scope, names, out)
+		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			c.collectExprRoots(elem, scope, names, out)
+		}
+	case *ast.TryExpr:
+		c.collectExprRoots(x.X, scope, names, out)
+	case *ast.AwaitExpr:
+		c.collectExprRoots(x.X, scope, names, out)
+	case *ast.UnwrapExpr:
+		c.collectExprRoots(x.X, scope, names, out)
+	case *ast.UnaryExpr:
+		c.collectExprRoots(x.X, scope, names, out)
+	case *ast.BinaryExpr:
+		c.collectExprRoots(x.L, scope, names, out)
+		c.collectExprRoots(x.R, scope, names, out)
+	}
+}
+
+func sourceRoot(e ast.Expr) string {
+	switch x := e.(type) {
+	case *ast.NameExpr:
+		return x.Name
+	case *ast.FieldExpr:
+		return sourceRoot(x.Recv)
+	case *ast.IndexExpr:
+		return sourceRoot(x.Recv)
+	case *ast.SliceExpr:
+		return sourceRoot(x.Recv)
+	}
+	return ""
 }
 
 // inferBlock checks a block and returns the type of its last statement when
@@ -603,9 +824,35 @@ func (c *checker) checkArg(s *inferScope, e ast.Expr, want *Type, callee string,
 			"a guard cannot be copied",
 			"keep it in the local that lock returned")
 	}
-	if !Equal(got, want) {
-		c.mismatch(e.Pos(), got, want, true, callee, n)
+	if Equal(got, want) || c.borrowArg(got, want, e) {
+		return
 	}
+	c.mismatch(e.Pos(), got, want, true, callee, n)
+}
+
+// borrowArg accepts a place where a parameter asks for a borrow. The borrow
+// stays implicit at the call boundary because the parameter type already spells
+// the access; an explicit ref or mut expression is still accepted.
+func (c *checker) borrowArg(got, want *Type, e ast.Expr) bool {
+	if got == nil || want == nil {
+		return false
+	}
+	if want.IsRef() {
+		if got.IsRef() {
+			return Equal(got.Unref(), want.Unref())
+		}
+		return got.Borrow() == ast.OwnedBorrow && isPlaceExpr(e) && Equal(got, want.Unref())
+	}
+	if want.IsMutRef() {
+		if got.IsMutRef() {
+			return Equal(got.Unref(), want.Unref())
+		}
+		return got.Borrow() == ast.OwnedBorrow && isPlaceExpr(e) && Equal(got, want.Unref())
+	}
+	if want.Kind() == ViewKind && want.ViewMut() {
+		return got.Kind() == ViewKind && got.ViewMut() && Equal(got.Elem(), want.Elem())
+	}
+	return false
 }
 
 // mismatch reports a value that does not fit a required type. A concrete type
@@ -775,6 +1022,31 @@ func (c *checker) inferExprInner(s *inferScope, e ast.Expr) *Type {
 		return nil
 	case *ast.LiteralExpr:
 		return c.literalType(x, nil)
+	case *ast.BorrowExpr:
+		base := c.inferExpr(s, x.X)
+		if base == nil {
+			return nil
+		}
+		if !isPlaceExpr(x.X) {
+			c.bag.Error(x.Pos(), diag.CodeTypeMismatch,
+				"a borrow needs a place", "borrow a name, field, index, or slice")
+			return base
+		}
+		if base.Borrow() != ast.OwnedBorrow {
+			c.bag.Error(x.Pos(), diag.CodeTypeMismatch,
+				"cannot borrow a borrow", "copy the ref value instead")
+			return base
+		}
+		if x.Mut && base.Kind() == ViewKind {
+			if base.ViewMut() {
+				return base
+			}
+			return c.in.view(base.Elem(), true)
+		}
+		if x.Mut {
+			return c.in.borrowed(base, ast.MutBorrow)
+		}
+		return c.in.borrowed(base, ast.RefBorrow)
 	case *ast.NameExpr:
 		if x.Name == "_" {
 			return nil
@@ -890,6 +1162,14 @@ func (c *checker) inferExprInner(s *inferScope, e ast.Expr) *Type {
 		return c.in.unit()
 	}
 	return nil
+}
+
+func isPlaceExpr(e ast.Expr) bool {
+	switch e.(type) {
+	case *ast.NameExpr, *ast.FieldExpr, *ast.IndexExpr, *ast.SliceExpr:
+		return true
+	}
+	return false
 }
 
 func (c *checker) literalType(lit *ast.LiteralExpr, want *Type) *Type {

@@ -33,7 +33,7 @@ struct Square {
     s: i32
 }
 
-def (q: Square) area() -> i32 {
+def (q: ref Square) area() -> i32 {
     return q.s * q.s
 }
 
@@ -71,7 +71,7 @@ func TestIndexLines(t *testing.T) {
 		`decl file="api.will" line=11 col=1 kind="struct" name="Square" vis="public"`,
 		`decl file="api.will" line=19 col=1 kind="struct" name="Dot" vis="public"`,
 		`decl file="api.will" line=23 col=1 kind="func" name="use" vis="public"`,
-		`method file="api.will" line=15 col=1 type="Square" name="area" recv="value"`,
+		`method file="api.will" line=15 col=1 type="Square" name="area" recv="ref"`,
 		`satisfies type="example.com/app.Square" interface="example.com/app.Shape"`,
 		`dispatch file="api.will" line=24 col=12 interface="example.com/app.Shape" targets="example.com/app.Square"`,
 	}
@@ -102,11 +102,11 @@ func TestIndexBuiltinError(t *testing.T) {
     code: i32
 }
 
-def (e: E) message() -> str {
+def (e: ref E) message() -> str {
     return "failed"
 }
 
-def (e: E) status() -> i32 {
+def (e: ref E) status() -> i32 {
     return e.code
 }
 `

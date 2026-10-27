@@ -13,14 +13,14 @@ struct Sink {
     stats: rc<Stats>
 }
 
-def (s: Sink) write(bytes: []u8) -> Result<(), Error> {
+def (s: ref Sink) write(bytes: []u8) -> Result<(), Error> {
     s.stats.writes += 1
     s.stats.total += bytes.len()
     s.stats.last = bytes.len()
     return Ok(())
 }
 
-def (s: Sink) sync() -> Result<(), Error> {
+def (s: ref Sink) sync() -> Result<(), Error> {
     return Ok(())
 }
 

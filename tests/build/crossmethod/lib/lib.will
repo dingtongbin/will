@@ -2,7 +2,7 @@ struct Counter {
     n: i32
 }
 
-def (c: Counter) get() -> i32 {
+def (c: ref Counter) get() -> i32 {
     return c.n
 }
 

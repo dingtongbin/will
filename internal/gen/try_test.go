@@ -13,11 +13,11 @@ func TestTryUploadsConcreteErrorAndMatchesUnit(t *testing.T) {
     msg: str
 }
 
-def (e: E) message() -> str {
+def (e: ref E) message() -> str {
     return e.msg
 }
 
-def (e: E) status() -> i32 {
+def (e: ref E) status() -> i32 {
     return 7
 }
 

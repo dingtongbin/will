@@ -495,6 +495,22 @@ func (g *generator) interfaceCall(r willc.Record, iface *ifaceInfo) (string, str
 // interface when the parameter type asks for one. The index is the argument's
 // position, which names the slot reserved for the conversion.
 func (g *generator) callArgParts(parts []string, r willc.Record, index int, argID int, paramType string, mut, link bool) ([]string, error) {
+	if isSingleBorrow(paramType) {
+		if argText, err := g.willTypeText(argID); err == nil {
+			if _, kind := borrowText(argText); kind == "ref" || kind == "mut" {
+				v, err := g.value(argID)
+				if err != nil {
+					return nil, err
+				}
+				return append(parts, "ptr "+v), nil
+			}
+		}
+		ptr, _, err := g.place(argID)
+		if err != nil {
+			return nil, err
+		}
+		return append(parts, "ptr "+ptr), nil
+	}
 	typ, err := g.typeOf(argID)
 	if err != nil {
 		return nil, err

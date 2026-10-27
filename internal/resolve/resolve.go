@@ -393,6 +393,9 @@ func (r *resolver) walkDecl(d ast.Decl) {
 				r.walkType(pm.Type)
 			}
 			r.walkType(m.Result)
+			for _, src := range m.From {
+				r.walkExpr(src, true)
+			}
 			r.pop()
 		}
 		r.pop()
@@ -437,6 +440,9 @@ func (r *resolver) walkFunc(decl *ast.FuncDecl) {
 		r.walkType(pm.Type)
 	}
 	r.walkType(decl.Result)
+	for _, src := range decl.From {
+		r.walkExpr(src, true)
+	}
 	r.walkBlock(decl.Body)
 	r.pop()
 }

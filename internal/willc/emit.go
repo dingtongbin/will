@@ -488,6 +488,10 @@ func (e *emitter) emitDecl(d ast.Decl) {
 			e.push(mid)
 			e.emitParams(m.Params)
 			e.emitType(m.Result)
+			for _, src := range m.From {
+				id := e.emitExpr(src)
+				e.field(mid, "from", Ref(id))
+			}
 			e.pop()
 		}
 		e.pop()
@@ -545,6 +549,10 @@ func (e *emitter) emitFunc(fn *ast.FuncDecl) {
 	e.emitTypeParams(fn.TypeParams)
 	e.emitParams(fn.Params)
 	e.emitType(fn.Result)
+	for _, src := range fn.From {
+		id := e.emitExpr(src)
+		e.field(rec, "from", Ref(id))
+	}
 	e.emitBlock(fn.Body)
 	e.pop()
 }
@@ -592,6 +600,9 @@ func (e *emitter) emitType(t *ast.Type) int {
 	rec := e.add("type", t)
 	e.text(rec, "text", typeText(t))
 	e.word(rec, "kind", typeKind(t))
+	if t.Kind == ast.ViewType && t.ViewMut {
+		e.boolean(rec, "mut", true)
+	}
 	e.typeRef(rec, t)
 	e.push(rec)
 	switch t.Kind {
@@ -644,6 +655,12 @@ func typeText(t *ast.Type) string {
 }
 
 func typeKind(t *ast.Type) string {
+	switch t.Borrow {
+	case ast.RefBorrow:
+		return "ref"
+	case ast.MutBorrow:
+		return "mutref"
+	}
 	switch t.Kind {
 	case ast.ScalarType:
 		return "scalar"

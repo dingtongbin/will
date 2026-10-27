@@ -109,6 +109,8 @@ func lastUses(b *ast.Block) map[string]source.Pos {
 			walkExpr(x.Recv)
 			walkExpr(x.Lo)
 			walkExpr(x.Hi)
+		case *ast.BorrowExpr:
+			walkExpr(x.X)
 		case *ast.UnaryExpr:
 			walkExpr(x.X)
 		case *ast.BinaryExpr:

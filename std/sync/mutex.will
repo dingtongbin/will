@@ -29,7 +29,7 @@ struct Guard<T> {
     mode: i32
 }
 
-def (mut m: Mutex<T>) init(value: T) {
+def (m: mut Mutex<T>) init(value: T) {
     var state: MutexState<T> = MutexState<T> {
         lock: c.willrt_sync_lock_new(),
         value: value
@@ -38,7 +38,7 @@ def (mut m: Mutex<T>) init(value: T) {
 }
 
 # Lock waits for the write side and returns its guard.
-async def (m: Mutex<T>) lock() -> Guard<T> {
+async def (m: ref Mutex<T>) lock() -> Guard<T> {
     var status: i32 = await c.willrt_sync_lock_async(m.state.lock, 0)
     if status == 0 {
         return Guard<T> { state: m.state, held: True, mode: 0 }
@@ -47,7 +47,7 @@ async def (m: Mutex<T>) lock() -> Guard<T> {
 }
 
 # TryLock takes the write side without waiting.
-def (m: Mutex<T>) try_lock() -> Option<Guard<T>> {
+def (m: ref Mutex<T>) try_lock() -> Option<Guard<T>> {
     if c.willrt_sync_lock_try(m.state.lock, 0) != 0 {
         return Some(Guard<T> { state: m.state, held: True, mode: 0 })
     }
@@ -67,7 +67,7 @@ struct ReadGuard<T> {
     mode: i32
 }
 
-def (mut r: RwLock<T>) init(value: T) {
+def (r: mut RwLock<T>) init(value: T) {
     var state: MutexState<T> = MutexState<T> {
         lock: c.willrt_sync_lock_new(),
         value: value
@@ -76,7 +76,7 @@ def (mut r: RwLock<T>) init(value: T) {
 }
 
 # RLock waits for exclusive holders to leave and joins the reader side.
-async def (r: RwLock<T>) r_lock() -> ReadGuard<T> {
+async def (r: ref RwLock<T>) r_lock() -> ReadGuard<T> {
     var status: i32 = await c.willrt_sync_lock_async(r.state.lock, 1)
     if status == 0 {
         return ReadGuard<T> { state: r.state, held: True, mode: 1 }
@@ -85,7 +85,7 @@ async def (r: RwLock<T>) r_lock() -> ReadGuard<T> {
 }
 
 # TryRLock joins the reader side without waiting.
-def (r: RwLock<T>) try_rlock() -> Option<ReadGuard<T>> {
+def (r: ref RwLock<T>) try_rlock() -> Option<ReadGuard<T>> {
     if c.willrt_sync_lock_try(r.state.lock, 1) != 0 {
         return Some(ReadGuard<T> { state: r.state, held: True, mode: 1 })
     }
@@ -93,7 +93,7 @@ def (r: RwLock<T>) try_rlock() -> Option<ReadGuard<T>> {
 }
 
 # WLock waits for every holder to leave and returns the write side.
-async def (r: RwLock<T>) w_lock() -> Guard<T> {
+async def (r: ref RwLock<T>) w_lock() -> Guard<T> {
     var status: i32 = await c.willrt_sync_lock_async(r.state.lock, 0)
     if status == 0 {
         return Guard<T> { state: r.state, held: True, mode: 0 }
@@ -102,7 +102,7 @@ async def (r: RwLock<T>) w_lock() -> Guard<T> {
 }
 
 # TryWLock takes the write side without waiting.
-def (r: RwLock<T>) try_wlock() -> Option<Guard<T>> {
+def (r: ref RwLock<T>) try_wlock() -> Option<Guard<T>> {
     if c.willrt_sync_lock_try(r.state.lock, 0) != 0 {
         return Some(Guard<T> { state: r.state, held: True, mode: 0 })
     }

@@ -456,7 +456,7 @@ func (g *generator) genericMethodIn(d *docState, recs map[int]willc.Record, recv
 		if recv == nil {
 			continue
 		}
-		declName, declArgs, ok := splitGenericType(fieldText(*recv, "type"))
+		declName, declArgs, ok := splitGenericType(baseBorrowText(fieldText(*recv, "type")))
 		if !ok || declName != recvName || len(declArgs) != len(params) {
 			continue
 		}
@@ -523,7 +523,7 @@ func (g *generator) genericMethodDecl(fn willc.Record) bool {
 	if recv == nil {
 		return false
 	}
-	name, args, ok := splitGenericType(fieldText(*recv, "type"))
+	name, args, ok := splitGenericType(baseBorrowText(fieldText(*recv, "type")))
 	if !ok {
 		return false
 	}

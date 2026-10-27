@@ -5,19 +5,19 @@ struct Fault {
     status: i32
 }
 
-def (mut f: Fault) init(message: str, status: i32) {
+def (f: mut Fault) init(message: str, status: i32) {
     f.message = message.clone()
     f.status = status
 }
 
-def (f: Fault) message() -> str {
+def (f: ref Fault) message() -> str {
     return f.message.clone()
 }
 
-def (f: Fault) status() -> i32 {
+def (f: ref Fault) status() -> i32 {
     return f.status
 }
 
-def (f: Fault) class() -> ErrorClass {
+def (f: ref Fault) class() -> ErrorClass {
     return class_of_status(f.status)
 }

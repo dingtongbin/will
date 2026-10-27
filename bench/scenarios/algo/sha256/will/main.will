@@ -85,7 +85,7 @@ def fill_constants(k: Array<u32>) {
 }
 
 # Compress runs the compression of one block into the state.
-def compress(mut state: Array<u32>, mut words: Array<u32>, block: Array<u8>, at: i32, k: Array<u32>) {
+def compress(state: mut Array<u32>, words: mut Array<u32>, block: Array<u8>, at: i32, k: Array<u32>) {
     for i in Range(0, 16) {
         var p: i32 = at + i * 4
         var b0: u8 = 0u8

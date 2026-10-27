@@ -27,7 +27,7 @@ const seed: u64 = 0x9E3779B97F4A7C15
 # The values read from the array are assigned to variables that are declared
 # first, because a declaration that reads an index borrows the array until
 # the end of the block.
-def partition(mut xs: Array<i64>, lo: i32, hi: i32) -> i32 {
+def partition(xs: mut Array<i64>, lo: i32, hi: i32) -> i32 {
     var pivot: i64 = 0i64
     pivot = xs[usize(hi)]
     var i: i32 = lo
@@ -48,7 +48,7 @@ def partition(mut xs: Array<i64>, lo: i32, hi: i32) -> i32 {
 }
 
 # Quicksort sorts the range of the array.
-def quicksort(mut xs: Array<i64>, lo: i32, hi: i32) {
+def quicksort(xs: mut Array<i64>, lo: i32, hi: i32) {
     if lo >= hi {
         return
     }
@@ -62,7 +62,7 @@ def quicksort(mut xs: Array<i64>, lo: i32, hi: i32) {
 #
 # The array is created with the capacity of the fill, so the pushes never
 # grow it.
-def fill(mut xs: Array<i64>, size: i32) {
+def fill(xs: mut Array<i64>, size: i32) {
     var state: u64 = seed
     for i in Range(0, size) {
         _ = i

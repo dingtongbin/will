@@ -182,9 +182,9 @@ func TestEmitUnqualifiedEnumVariants(t *testing.T) {
 func TestEmitNewInterfaceArgument(t *testing.T) {
 	src := "interface Value {\n    def get() -> i32\n}\n\n" +
 		"struct Item {\n    n: i32\n}\n\n" +
-		"def (i: Item) get() -> i32 {\n    return i.n\n}\n\n" +
+		"def (i: ref Item) get() -> i32 {\n    return i.n\n}\n\n" +
 		"struct Holder {\n    value: Value\n}\n\n" +
-		"def (mut h: Holder) init(value: Value) {\n    h.value = value\n}\n\n" +
+		"def (h: mut Holder) init(value: Value) {\n    h.value = value\n}\n\n" +
 		"def use() -> i32 {\n" +
 		"    var item: Item = Item { n: 7 }\n" +
 		"    var holder: Holder = new Holder(item)\n" +
@@ -276,7 +276,7 @@ func TestEmitGenericStructInstance(t *testing.T) {
 
 func TestEmitGenericMethodInstance(t *testing.T) {
 	src := "struct Box<T> {\n    value: T\n}\n\n" +
-		"def (b: Box<T>) get() -> T {\n    return b.value\n}\n\n" +
+		"def (b: ref Box<T>) get() -> T {\n    return b.value\n}\n\n" +
 		"def main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return b.get()\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
@@ -388,7 +388,7 @@ func TestEmitRcHandles(t *testing.T) {
 	src := "struct Counter {\n" +
 		"    n: i32\n" +
 		"}\n\n" +
-		"def (mut c: Counter) add(d: i32) {\n" +
+		"def (c: mut Counter) add(d: i32) {\n" +
 		"    c.n += d\n" +
 		"}\n\n" +
 		"def identity(c: rc<Counter>) -> rc<Counter> {\n" +
@@ -717,8 +717,8 @@ func TestEmitArrayNewPushAndLen(t *testing.T) {
 
 func TestEmitBuiltinError(t *testing.T) {
 	src := "struct E {\n    msg: str\n}\n\n" +
-		"def (e: E) message() -> str {\n    return e.msg\n}\n\n" +
-		"def (e: E) status() -> i32 {\n    return 7\n}\n\n" +
+		"def (e: ref E) message() -> str {\n    return e.msg\n}\n\n" +
+		"def (e: ref E) status() -> i32 {\n    return 7\n}\n\n" +
 		"def use() -> i32 {\n    var e: E = E { msg: \"bad\" }\n    var r: Result<i32, Error> = Err(e)\n    return match r {\n        Ok(v) => v\n        Err(x) => x.status()\n    }\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
@@ -740,7 +740,7 @@ func TestEmitBuiltinError(t *testing.T) {
 
 func TestEmitNewRunsDefaultsAndInit(t *testing.T) {
 	src := "struct P {\n    x: i32 = 5\n    y: i32\n}\n\n" +
-		"def (mut p: P) init(y: i32) {\n    p.y = y\n}\n\n" +
+		"def (p: mut P) init(y: i32) {\n    p.y = y\n}\n\n" +
 		"def make() -> P {\n    return new P(7)\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
@@ -763,7 +763,7 @@ func TestEmitNewRunsDefaultsAndInit(t *testing.T) {
 func TestEmitInterfaceValueAndCall(t *testing.T) {
 	src := "interface Counter {\n    def get() -> i32\n}\n\n" +
 		"struct C {\n    n: i32\n}\n\n" +
-		"def (c: C) get() -> i32 {\n    return c.n\n}\n\n" +
+		"def (c: ref C) get() -> i32 {\n    return c.n\n}\n\n" +
 		"def use(x: Counter) -> i32 {\n    return x.get()\n}\n\n" +
 		"def main() -> i32 {\n    var c: C = C { n: 3 }\n    return use(c)\n}\n"
 	doc := emitWillc(t, src)
@@ -1011,9 +1011,9 @@ func TestEmitCrossPackageNewAndInterface(t *testing.T) {
 		"example.com/app", map[string][]string{"example.com/app/lib": {"Fault"}})
 	lib := emitWillcIn(t, "lib.will",
 		"struct Fault {\n    message: str\n    status: i32\n}\n\n"+
-			"def (f: Fault) init(message: str, status: i32) {\n    f.message = message\n    f.status = status\n}\n\n"+
-			"def (f: Fault) message() -> str {\n    return f.message\n}\n\n"+
-			"def (f: Fault) status() -> i32 {\n    return f.status\n}\n",
+			"def (f: ref Fault) init(message: str, status: i32) {\n    f.message = message\n    f.status = status\n}\n\n"+
+			"def (f: ref Fault) message() -> str {\n    return f.message\n}\n\n"+
+			"def (f: ref Fault) status() -> i32 {\n    return f.status\n}\n",
 		"example.com/app/lib", nil)
 	ir, err := EmitModule([]*willc.Doc{app, lib}, "main")
 	if err != nil {
@@ -1073,8 +1073,8 @@ func TestEmitModuleResolvesQualifiedCalls(t *testing.T) {
 }
 
 func TestEmitMethodSignature(t *testing.T) {
-	src := "struct Box {\n    v: i64\n}\n\ndef (b: Box) ping() {\n}\n\n" +
-		"def (b: Box) answer(n: i32) -> i32 {\n    return n\n}\n"
+	src := "struct Box {\n    v: i64\n}\n\ndef (b: ref Box) ping() {\n}\n\n" +
+		"def (b: ref Box) answer(n: i32) -> i32 {\n    return n\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1653,8 +1653,8 @@ func TestEmitViewAndArrayIteration(t *testing.T) {
 
 func TestEmitMethodCallPassesTheReceiver(t *testing.T) {
 	src := "struct Counter {\n    n: i32\n}\n\n" +
-		"def (c: Counter) get() -> i32 {\n    return c.n\n}\n\n" +
-		"def (mut c: Counter) add(d: i32) {\n    c.n += d\n}\n\n" +
+		"def (c: ref Counter) get() -> i32 {\n    return c.n\n}\n\n" +
+		"def (c: mut Counter) add(d: i32) {\n    c.n += d\n}\n\n" +
 		"def main() -> i32 {\n    var c: Counter = Counter { n: 7 }\n    c.add(3)\n    return c.get()\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)

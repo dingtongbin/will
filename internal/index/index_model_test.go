@@ -54,7 +54,7 @@ func TestParseGoldenIndex(t *testing.T) {
 	}
 
 	area, ok := ix.MethodOf("example.com/app", "Square", "area")
-	if !ok || area.Line != 9 || area.Col != 1 || area.Recv != "value" || area.File != "api.will" {
+	if !ok || area.Line != 9 || area.Col != 1 || area.Recv != "ref" || area.File != "api.will" {
 		t.Errorf("MethodOf(Square.area) = %+v, %v", area, ok)
 	}
 	if _, ok := ix.MethodOf("example.com/app", "Dot", "area"); ok {
@@ -111,7 +111,7 @@ func TestDeclAt(t *testing.T) {
 		t.Errorf("DeclAt(5:1) = %+v, %v", square, ok)
 	}
 	area, ok := ix.DeclAt("api.will", 9, 1)
-	if !ok || area.Kind != "method" || area.Name != "area" || area.Type != "Square" || area.Recv != "value" {
+	if !ok || area.Kind != "method" || area.Name != "area" || area.Type != "Square" || area.Recv != "ref" {
 		t.Errorf("DeclAt(9:1) = %+v, %v", area, ok)
 	}
 	if _, ok := ix.DeclAt("api.will", 2, 1); ok {
@@ -205,7 +205,7 @@ func TestParseRejectsBadInput(t *testing.T) {
 		{"bad vis", declPrefix + "decl file=\"a.will\" line=1 col=1 kind=\"func\" name=\"F\" vis=\"internal\"\n",
 			2, "it must be public or private"},
 		{"bad recv", declPrefix + "method file=\"a.will\" line=1 col=1 type=\"T\" name=\"M\" recv=\"const\"\n",
-			2, "it must be value or mut"},
+			2, "it must be value, ref, or mut"},
 		{"bad linkage", "cfunc header=\"stdio.h\" name=\"puts\" linkage=\"slow\"\n",
 			1, "it must be fast, blocking, or plain"},
 		{"empty target", "dispatch file=\"a.will\" line=1 col=1 interface=\"p.I\" targets=\"a,,b\"\n",

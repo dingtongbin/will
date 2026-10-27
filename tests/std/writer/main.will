@@ -6,11 +6,11 @@ struct NullWriter {
     n: usize
 }
 
-def (w: NullWriter) write(buf: []u8) -> Result<(), Error> {
+def (w: ref NullWriter) write(buf: []u8) -> Result<(), Error> {
     return Ok(())
 }
 
-def (w: NullWriter) sync() -> Result<(), Error> {
+def (w: ref NullWriter) sync() -> Result<(), Error> {
     return Ok(())
 }
 
@@ -20,11 +20,11 @@ struct Wrap {
     inner: io.Writer
 }
 
-def (w: Wrap) write(buf: []u8) -> Result<(), Error> {
+def (w: ref Wrap) write(buf: []u8) -> Result<(), Error> {
     return w.inner.write(buf)
 }
 
-def (w: Wrap) sync() -> Result<(), Error> {
+def (w: ref Wrap) sync() -> Result<(), Error> {
     return w.inner.sync()
 }
 
@@ -47,7 +47,7 @@ struct Recorder {
     pad: usize
 }
 
-def (w: Recorder) write(buf: []u8) -> Result<(), Error> {
+def (w: ref Recorder) write(buf: []u8) -> Result<(), Error> {
     var i: usize = 0
     while True {
         if i >= buf.len() {
@@ -63,7 +63,7 @@ def (w: Recorder) write(buf: []u8) -> Result<(), Error> {
     return Ok(())
 }
 
-def (w: Recorder) sync() -> Result<(), Error> {
+def (w: ref Recorder) sync() -> Result<(), Error> {
     return Ok(())
 }
 

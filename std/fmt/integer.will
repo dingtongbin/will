@@ -51,7 +51,7 @@ def check_base(base: i32) {
 }
 
 # numberText renders an integer field with its sign and fill bytes.
-def number_text(f: Format) -> str {
+def number_text(f: ref Format) -> str {
     return signed_text(f.negative, digits_of(f.value, f.base), f.width, f.pad)
 }
 

@@ -48,7 +48,11 @@ func parseADT(text string) (string, []string, bool) {
 // typeLLVMOf maps a type text used as an Option or Result argument to its LLVM
 // type. The unit type has no value and returns "".
 func (g *generator) typeLLVMOf(text string) (string, bool) {
-	text = g.canonicalTypeText(text)
+	base, borrowKind := borrowText(text)
+	if borrowKind == "ref" || borrowKind == "mut" {
+		return "ptr", true
+	}
+	text = g.canonicalTypeText(base)
 	if text == "interface {}" {
 		if g.emptyIface == nil {
 			g.emptyIface = &ifaceInfo{name: "interface {}", llvm: "%interface.empty", byName: map[string]int{}}

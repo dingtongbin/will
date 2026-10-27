@@ -2,7 +2,7 @@ struct Box {
     v: i64
 }
 
-def (b: Box) value() -> i64 {
+def (b: ref Box) value() -> i64 {
     return b.v
 }
 

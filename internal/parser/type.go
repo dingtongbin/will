@@ -11,6 +11,34 @@ import (
 func (p *Parser) parseType() *ast.Type {
 	start := p.cur()
 	switch {
+	case p.atText("ref"):
+		p.next()
+		p.skipNL()
+		base := p.parseType()
+		if base.Borrow != ast.OwnedBorrow {
+			p.typeUnexpected("a type after ref")
+			return base
+		}
+		out := *base
+		out.Borrow = ast.RefBorrow
+		out.Span = ast.Span{Start: start.Pos, End: base.EndPos()}
+		return &out
+	case p.atText("mut"):
+		p.next()
+		p.skipNL()
+		base := p.parseType()
+		if base.Borrow != ast.OwnedBorrow {
+			p.typeUnexpected("a type after mut")
+			return base
+		}
+		out := *base
+		out.Span = ast.Span{Start: start.Pos, End: base.EndPos()}
+		if base.Kind == ast.ViewType {
+			out.ViewMut = true
+		} else {
+			out.Borrow = ast.MutBorrow
+		}
+		return &out
 	case p.at(token.KwFunc):
 		return p.parseFuncType()
 	case p.at(token.KwInterface):

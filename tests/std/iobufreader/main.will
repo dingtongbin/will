@@ -7,7 +7,7 @@ struct source {
     pos: usize
 }
 
-def (mut s: source) read(mut out: Array<u8>) -> Result<usize, Error> {
+def (s: mut source) read(out: mut Array<u8>) -> Result<usize, Error> {
     if s.pos >= s.data.len() {
         return Ok(0usize)
     }

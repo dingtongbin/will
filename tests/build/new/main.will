@@ -3,7 +3,7 @@ struct P {
     y: i32
 }
 
-def (mut p: P) init(y: i32) {
+def (p: mut P) init(y: i32) {
     p.y = y
 }
 

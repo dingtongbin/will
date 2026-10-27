@@ -102,6 +102,8 @@ func (m *mover) exprType(e ast.Expr) *ast.Type {
 	switch x := e.(type) {
 	case *ast.NameExpr:
 		return m.types[x.Name]
+	case *ast.BorrowExpr:
+		return m.exprType(x.X)
 	case *ast.FieldExpr:
 		recv := m.exprType(x.Recv)
 		if m.own == nil {
@@ -219,6 +221,11 @@ func (m *mover) copyAt(pos source.Pos) {
 // of a parameter, receiver, or pattern binding. Those are borrows of storage
 // owned elsewhere, so the caller must make an explicit clone.
 func (m *mover) borrowTransfer(name string, pos source.Pos) bool {
+	if linearType(m.types[name]) {
+		// An exclusive borrow is a value: passing it on moves it once and does
+		// not require cloning the underlying object.
+		return false
+	}
 	if (!m.params[name] && !m.borrowed[name]) || m.variadic[name] {
 		return false
 	}
@@ -230,6 +237,13 @@ func (m *mover) borrowTransfer(name string, pos source.Pos) bool {
 	}
 	m.copyAt(pos)
 	return true
+}
+
+func linearType(t *ast.Type) bool {
+	if t == nil {
+		return false
+	}
+	return t.Borrow == ast.MutBorrow || (t.Kind == ast.ViewType && t.ViewMut)
 }
 
 func (m *mover) funcDecl(fn *ast.FuncDecl) {
@@ -257,7 +271,7 @@ func (m *mover) funcDecl(fn *ast.FuncDecl) {
 		if p.Variadic {
 			m.variadic[p.Name] = true
 		}
-		if m.owns(p.Type) && !p.Variadic {
+		if (m.owns(p.Type) || linearType(p.Type)) && !p.Variadic {
 			params[p.Name] = true
 		}
 	}
@@ -341,7 +355,7 @@ func (m *mover) block(b *ast.Block, inLoop bool, inherited map[string]bool) bloc
 						m.loopLocals[len(m.loopLocals)-1][vd.Name] = true
 					}
 				}
-				if m.owns(vd.Type) && vd.Name != "" && vd.Name != "_" {
+				if (m.owns(vd.Type) || linearType(vd.Type)) && vd.Name != "" && vd.Name != "_" {
 					live[vd.Name] = true
 				}
 			}
@@ -449,7 +463,7 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 		case *ast.VarDecl:
 			m.exprEvents(d.Value, live, &ev)
 			m.placeCopy(d.Value, true)
-			if b, ok := d.Value.(*ast.NameExpr); ok && m.owns(d.Type) && b.Name != "_" && live[b.Name] {
+			if b, ok := d.Value.(*ast.NameExpr); ok && (m.owns(d.Type) || linearType(d.Type)) && b.Name != "_" && live[b.Name] {
 				if !m.borrowTransfer(b.Name, b.Pos()) {
 					// The value moves into the new binding.
 					ev.transfers = append(ev.transfers, nameUse{name: b.Name, pos: b.Pos()})
@@ -717,6 +731,8 @@ func (m *mover) exprEventsIn(e ast.Expr, live map[string]bool, ev *events, trans
 		if x.Name != "_" {
 			ev.uses = append(ev.uses, nameUse{name: x.Name, pos: x.Pos()})
 		}
+	case *ast.BorrowExpr:
+		m.exprEventsIn(x.X, live, ev, false)
 	case *ast.CallExpr:
 		m.exprEventsIn(x.Callee, live, ev, false)
 		transfer := transferArgs

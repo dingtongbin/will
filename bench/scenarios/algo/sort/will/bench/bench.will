@@ -10,7 +10,7 @@
 # the end of the block.
 
 # SortSamples sorts the samples in ascending order.
-def sort_samples(mut xs: Array<u64>) {
+def sort_samples(xs: mut Array<u64>) {
     var n: i32 = i32(xs.len())
     var value: u64 = 0u64
     for i in Range(1, n) {

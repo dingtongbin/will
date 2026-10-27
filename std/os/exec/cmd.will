@@ -20,7 +20,7 @@ def command(path: str, args: ...str) -> Cmd {
 #
 # kv must hold pairs: an odd count is a programming error, not a runtime
 # condition a caller can recover from.
-def (c: Cmd) with_env(kv: ...str) -> Cmd {
+def (c: ref Cmd) with_env(kv: ...str) -> Cmd {
     if kv.len() % 2usize != 0usize {
         panic("exec: WithEnv takes key and value pairs")
     }
@@ -41,7 +41,7 @@ def (c: Cmd) with_env(kv: ...str) -> Cmd {
 
 # WithDir returns a command that runs in dir. The environment and arguments
 # are the same values c carries.
-def (c: Cmd) with_dir(dir: str) -> Cmd {
+def (c: ref Cmd) with_dir(dir: str) -> Cmd {
     return Cmd { path: c.path.clone(), args: c.args, env: copy_env(c.env), dir: dir.clone()}
 }
 

@@ -111,6 +111,73 @@ func checkTypes(t *testing.T, src string) []diag.Diagnostic {
 	return Check(f, nil)
 }
 
+func TestBorrowTypeInterningAndText(t *testing.T) {
+	in := newInterner()
+	x := in.named("User", nil)
+	ref := in.borrowed(x, ast.RefBorrow)
+	ref2 := in.borrowed(in.named("User", nil), ast.RefBorrow)
+	if ref != ref2 || ref.String() != "ref User" {
+		t.Fatalf("ref User = %p %q", ref, ref.String())
+	}
+	mut := in.borrowed(x, ast.MutBorrow)
+	if mut.String() != "mut User" || Equal(ref, mut) {
+		t.Fatalf("mut User = %q, equal %v", mut.String(), Equal(ref, mut))
+	}
+	view := in.view(x, true)
+	if view.String() != "mut []User" || !view.ViewMut() {
+		t.Fatalf("mutable view = %q", view.String())
+	}
+}
+
+func TestFromSourceRules(t *testing.T) {
+	structSrc := "struct User { n: i32 }\n"
+	cases := []struct {
+		name string
+		body string
+		code string
+	}{
+		{
+			"two sources need from",
+			"def better(a: ref User, b: ref User) -> ref User { return a }\n",
+			diag.CodeBorrowOutlives,
+		},
+		{
+			"explicit from is accepted",
+			"def better(a: ref User, b: ref User) -> ref User from a, b { return a }\n",
+			"",
+		},
+		{
+			"single source is elided",
+			"def first(a: ref User) -> ref User { return a }\n",
+			"",
+		},
+		{
+			"one view among owned parameters is elided",
+			"struct Page { users: []User }\ndef page_of(users: []User, n: i32) -> Page { return Page { users: users } }\n",
+			"",
+		},
+		{
+			"from must name a parameter",
+			"def first(a: ref User) -> ref User from tmp {\n    var tmp: User = User { n: 1 }\n    return a\n}\n",
+			diag.CodeBorrowOutlives,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ds := checkTypes(t, structSrc+c.body)
+			if c.code == "" {
+				if len(ds) != 0 {
+					t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+				}
+				return
+			}
+			if len(ds) != 1 || ds[0].Code != c.code {
+				t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+			}
+		})
+	}
+}
+
 func TestConstantShiftAmount(t *testing.T) {
 	src := `def f(n: i32, m: i64, b: u8) {
     _ = n << 32

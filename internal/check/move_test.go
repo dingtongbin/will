@@ -481,6 +481,38 @@ def f() {
 	}
 }
 
+func TestExclusiveBorrowMovesOnce(t *testing.T) {
+	src := `def f() {
+    var x: i32 = 1
+    var a: mut i32 = mut x
+    var b: mut i32 = a
+    var c: mut i32 = a
+    _ = b
+    _ = c
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMoved {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestSharedBorrowCopies(t *testing.T) {
+	src := `def f() {
+    var x: i32 = 1
+    var a: ref i32 = ref x
+    var b: ref i32 = a
+    var c: ref i32 = a
+    _ = b
+    _ = c
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 0 {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestMovePassingIsABorrow(t *testing.T) {
 	src := `def g(s: str) {
 }

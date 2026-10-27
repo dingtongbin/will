@@ -616,6 +616,8 @@ func (em *emitter) viewCallCreates(stmt ast.Stmt, views map[string]bool, owner s
 
 func viewRootOwner(e ast.Expr) string {
 	switch x := e.(type) {
+	case *ast.BorrowExpr:
+		return exprRootName(x.X)
 	case *ast.SliceExpr:
 		return exprRootName(x.Recv)
 	case *ast.IndexExpr:

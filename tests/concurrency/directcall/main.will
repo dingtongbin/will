@@ -2,7 +2,7 @@ struct Box {
     ch: chan<i32>
 }
 
-async def (b: Box) take() -> i32 {
+async def (b: ref Box) take() -> i32 {
     var item: Option<i32> = await b.ch.recv()
     match item {
         Some(value) => {

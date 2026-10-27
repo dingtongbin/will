@@ -3,7 +3,7 @@
 # asynchronous IO lives on concrete types such as fs.File and fs.AsyncReadFile.
 
 interface Reader {
-    def read(mut buf: Array<u8>) -> Result<usize, Error>
+    def read(buf: mut Array<u8>) -> Result<usize, Error>
 }
 
 interface Writer {
@@ -17,7 +17,7 @@ interface Seeker {
 
 # ReadAll appends every byte from r until end of stream. It returns the number
 # of bytes appended.
-def read_all(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
+def read_all(r: Reader, buf: mut Array<u8>) -> Result<usize, Error> {
     var before: usize = buf.len()
     var chunk: Array<u8> = new Array<u8>(32768)
     while True {

@@ -530,6 +530,14 @@ func (g *generator) collectSignatures() {
 				g.varargs[sym] = true
 			}
 			res := fieldText(r, "type")
+			prefix := ""
+			if base, borrowKind := borrowText(res); borrowKind == "ref" {
+				prefix = "ref "
+				res = base
+			} else if borrowKind == "mut" {
+				prefix = "mut "
+				res = base
+			}
 			kind := ""
 			for _, c := range d.recs {
 				if c.Kind != "type" || refField(c, "parent") != r.ID {
@@ -545,6 +553,7 @@ func (g *generator) collectSignatures() {
 					}
 				}
 			}
+			res = prefix + res
 			res = g.qualifyTypeText(d.path, res)
 			g.sigs[sym] = res
 			switch kind {
@@ -1417,9 +1426,10 @@ func (g *generator) receiverOf(fn int) *willc.Record {
 	return nil
 }
 
-// receiverType returns the type text of a receiver record.
+// receiverType returns the base type text of a receiver record. The borrow
+// wrapper is an ABI detail, not part of the method symbol.
 func receiverType(r *willc.Record) string {
-	return fieldText(*r, "type")
+	return baseBorrowText(fieldText(*r, "type"))
 }
 
 // symbolName returns the IR symbol of one function of the current document.
@@ -1550,6 +1560,12 @@ func (g *generator) qualifyTypeText(pkg, text string) string {
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return text
+	}
+	if strings.HasPrefix(text, "ref ") {
+		return "ref " + g.qualifyTypeText(pkg, strings.TrimPrefix(text, "ref "))
+	}
+	if strings.HasPrefix(text, "mut ") {
+		return "mut " + g.qualifyTypeText(pkg, strings.TrimPrefix(text, "mut "))
 	}
 	if strings.HasPrefix(text, "[]") {
 		return "[]" + g.qualifyTypeText(pkg, text[2:])
@@ -1687,6 +1703,16 @@ func (g *generator) funcDecl(fn willc.Record) error {
 			g.borrows[p.ID] = true
 			sig = append(sig, "ptr %"+pname)
 			continue
+		}
+		if base, kind := borrowText(ptype); kind == "ref" || kind == "mut" {
+			// An explicit single-value borrow is always a pointer into the
+			// caller's place, for scalars and aggregates alike.
+			g.scope[p.ID] = "%" + pname
+			g.borrows[p.ID] = true
+			sig = append(sig, "ptr %"+pname)
+			continue
+		} else if kind == "mutview" {
+			ptype = base
 		}
 		if mut {
 			if _, _, ok := llvmScalar(ptype); ok || ptype == "Duration" {
@@ -2676,8 +2702,18 @@ func (g *generator) assignStmt(r willc.Record) error {
 	if err != nil {
 		return err
 	}
-	valueID := refField(r, "value")
 	op := fieldText(r, "op")
+	if op == "=" {
+		if name, ok := g.recs[target]; ok && name.Kind == "name" {
+			decl := refField(name, "to")
+			if d, ok := g.recs[decl]; ok && d.Kind == "var" && isSingleBorrow(fieldText(d, "type")) {
+				if slot, ok := g.slots[decl]; ok {
+					ptr, typ = slot, "ptr"
+				}
+			}
+		}
+	}
+	valueID := refField(r, "value")
 	if op != "=" {
 		text, err := g.willTypeText(target)
 		if err != nil {
@@ -3693,6 +3729,12 @@ func (g *generator) value(id int) (string, error) {
 	switch r.Kind {
 	case "await":
 		return g.value(refField(r, "expr"))
+	case "borrow":
+		ptr, _, err := g.place(refField(r, "expr"))
+		if err != nil {
+			return "", err
+		}
+		return ptr, nil
 	case "lit":
 		switch kind := fieldText(r, "kind"); kind {
 		case "int":
@@ -3793,6 +3835,9 @@ func (g *generator) value(id int) (string, error) {
 		}
 		decl = refField(r, "to")
 		if name, ok := g.scope[decl]; ok {
+			if d, ok := g.recs[decl]; ok && isSingleBorrow(fieldText(d, "type")) {
+				return name, nil
+			}
 			if g.borrows[decl] {
 				text, err := g.willTypeText(id)
 				if err != nil {
@@ -4180,7 +4225,7 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 	}
 	_, taskScalar := taskElemText(text)
 	_, chanScalar := chanElemText(text)
-	if _, _, ok := llvmScalar(text); !ok && text != "Duration" && !isRcText(text) && !isWeakText(text) && !taskScalar && !chanScalar {
+	if _, _, ok := llvmScalar(text); !ok && !isSingleBorrow(text) && text != "Duration" && !isRcText(text) && !isWeakText(text) && !taskScalar && !chanScalar {
 		return "", g.errf(r.ID, "cannot translate node #%d: an aggregate result is a place, not a scalar value", r.ID)
 	}
 	return name, nil

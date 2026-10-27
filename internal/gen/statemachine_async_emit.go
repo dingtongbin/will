@@ -67,9 +67,9 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 			field, info.frameType, frame, i+2)
 		arg := "%arg" + fmt.Sprint(i)
 		mut := fieldText(paramRecs[i], "mut") == "true"
-		if pab[i].byPtr && mut {
-			// A mutable borrow stays a pointer into the caller's place; the
-			// callee writes the caller's value instead of a frame copy.
+		if pab[i].byPtr && (mut || isSingleBorrow(pab[i].text)) {
+			// An explicit borrow stays a pointer into the caller's place; a
+			// mutable borrow writes the caller's value instead of a copy.
 			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", arg, field)
 		} else if pab[i].byPtr {
 			g.copyValue(arg, field, pab[i].typ)

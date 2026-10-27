@@ -8,7 +8,7 @@ struct Source {
     chunk: usize
 }
 
-def (mut s: Source) read(mut buf: Array<u8>) -> Result<usize, Error> {
+def (s: mut Source) read(buf: mut Array<u8>) -> Result<usize, Error> {
     var n: usize = 0usize
     while True {
         if s.pos >= s.data.len() or n >= s.chunk {
@@ -29,15 +29,15 @@ struct Buffer {
     data: Array<u8>
 }
 
-def (mut b: Buffer) push(v: u8) {
+def (b: mut Buffer) push(v: u8) {
     b.data.push(v)
 }
 
-def (b: Buffer) copy() -> Array<u8> {
+def (b: ref Buffer) copy() -> Array<u8> {
     return b.data.clone()
 }
 
-def (b: Buffer) same_as(values: ...u8) -> bool {
+def (b: ref Buffer) same_as(values: ...u8) -> bool {
     if b.data.len() != values.len() {
         return False
     }
@@ -57,14 +57,14 @@ struct Sink {
     data: rc<Buffer>
 }
 
-def (mut s: Sink) write(buf: []u8) -> Result<(), Error> {
+def (s: mut Sink) write(buf: []u8) -> Result<(), Error> {
     for b in buf {
         s.data.push(b)
     }
     return Ok(())
 }
 
-def (s: Sink) sync() -> Result<(), Error> {
+def (s: ref Sink) sync() -> Result<(), Error> {
     return Ok(())
 }
 
@@ -76,13 +76,13 @@ def ascii(s: str) -> Array<u8> {
     return out
 }
 
-def append_ascii(mut out: Array<u8>, s: str) {
+def append_ascii(out: mut Array<u8>, s: str) {
     for b in s[Range(0, s.len())] {
         out.push(b)
     }
 }
 
-def append_crlf(mut out: Array<u8>) {
+def append_crlf(out: mut Array<u8>) {
     out.push(13u8)
     out.push(10u8)
 }
@@ -125,7 +125,7 @@ def fields_equal(row: csv.Row, expected: ...str) -> bool {
     return True
 }
 
-async def decode_all(mut reader: csv.Reader, mut rows: Array<csv.Row>) -> Result<usize, Error> {
+async def decode_all(reader: mut csv.Reader, rows: mut Array<csv.Row>) -> Result<usize, Error> {
     var total: usize = 0usize
     while True {
         var batch: Result<usize, Error> = await reader.async_decode(rows)

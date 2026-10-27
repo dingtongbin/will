@@ -91,6 +91,37 @@ func TestEmitCharLiteralIsU32(t *testing.T) {
 	}
 }
 
+func TestEmitRefAndFromRoundTrip(t *testing.T) {
+	src := `struct User {
+    score: i32
+}
+
+def better(a: ref User, b: ref User) -> ref User from a, b {
+    if a.score >= b.score {
+        return a
+    }
+    return b
+}
+`
+	data := emitCheckedSourceIn(t, "ref.will", src, "example.com/app", nil)
+	for _, want := range []string{
+		`type="ref User"`,
+		`kind=ref`,
+		`from=#`,
+	} {
+		if !strings.Contains(string(data), want) {
+			t.Fatalf("willc lacks %q:\n%s", want, data)
+		}
+	}
+	doc, err := Read(data)
+	if err != nil {
+		t.Fatalf("read emitted: %v\n%s", err, data)
+	}
+	if again := Write(doc); !bytes.Equal(again, data) {
+		t.Fatalf("round trip differs:\n--- want\n%s\n--- got\n%s", data, again)
+	}
+}
+
 func TestEmitRoundTrip(t *testing.T) {
 	src := `def f(n: i32) -> i32 {
     var x: i32 = n + 1
@@ -124,7 +155,7 @@ func TestEmitMethodTypeArgs(t *testing.T) {
 	// a call does. The corpus cannot show this yet because instantiation of
 	// generic methods is not modelled by the checker.
 	src := "struct Box {\n    v: i64\n}\n\n" +
-		"def (b: Box) get<T>(x: T) -> T {\n    return x\n}\n\n" +
+		"def (b: ref Box) get<T>(x: T) -> T {\n    return x\n}\n\n" +
 		"def use(b: Box) -> i64 {\n    return b.get<i64>(1)\n}\n"
 	data := emitSource(t, "test.will", src, "example.com/app")
 	if _, err := Read(data); err != nil {

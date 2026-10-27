@@ -127,6 +127,12 @@ func (g *generator) asyncParamABI(p willc.Record) (string, bool, error) {
 	if fieldText(p, "variadic") == "true" {
 		return "", false, g.errf(p.ID, "cannot translate node #%d: a state machine takes no variadic parameter", p.ID)
 	}
+	if isSingleBorrow(text) {
+		return "ptr", true, nil
+	}
+	if base, kind := borrowText(text); kind == "mutview" {
+		text = base
+	}
 	if isRcText(text) || isWeakText(text) {
 		return "i64", false, nil
 	}

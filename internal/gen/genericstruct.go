@@ -270,6 +270,11 @@ func (g *generator) ensureStructInstance(id int, args []string) (*structInfo, bo
 
 // fieldLLVMType lowers the type of one struct field after substitution.
 func (g *generator) fieldLLVMType(text string) (string, bool) {
+	base, kind := borrowText(text)
+	if kind == "ref" || kind == "mut" {
+		return "ptr", true
+	}
+	text = base
 	if typ, _, ok := llvmScalar(text); ok {
 		return typ, true
 	}

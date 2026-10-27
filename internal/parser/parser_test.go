@@ -49,7 +49,7 @@ lane Ui struct Job {
     id: u32
 }
 
-def (mut p: Point) move(dx: i32, dy: i32) {
+def (p: mut Point) move(dx: i32, dy: i32) {
     p.x += dx
     p.y += dy
 }

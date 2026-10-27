@@ -74,6 +74,7 @@ type FuncDecl struct {
 	TypeParams []*TypeParam
 	Params     []*Param
 	Result     *Type
+	From       []Expr
 	Body       *Block
 	Async      bool
 }
@@ -167,6 +168,7 @@ type MethodSig struct {
 	NamePos source.Pos
 	Params  []*Param
 	Result  *Type
+	From    []Expr
 	Async   bool
 }
 

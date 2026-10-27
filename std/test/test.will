@@ -52,13 +52,13 @@ def new_b(name: str) -> B {
 }
 
 # Name returns the test name.
-def (t: T) name() -> str {
+def (t: ref T) name() -> str {
     return t.name.clone()
 }
 
 # Log records one message. Once the case has failed, the message is also
 # written through so a failure report does not lose its context.
-def (mut t: T) log(msg: str) {
+def (t: mut T) log(msg: str) {
     t.state.logs.push(msg)
     if t.state.failed {
         print(msg, "\n")
@@ -67,7 +67,7 @@ def (mut t: T) log(msg: str) {
 
 # Fail marks the case as failed without stopping it and writes the lines
 # recorded so far, once.
-def (mut t: T) fail() {
+def (t: mut T) fail() {
     if not t.state.failed {
         t.state.failed = True
         for msg in t.state.logs {
@@ -77,25 +77,25 @@ def (mut t: T) fail() {
 }
 
 # FailNow marks the case and ends it through the shared fatal path.
-def (mut t: T) fail_now() {
+def (t: mut T) fail_now() {
     t.fail()
     fatal("test failed: " + t.name)
 }
 
 # Failed reports whether the case failed.
-def (t: T) failed() -> bool {
+def (t: ref T) failed() -> bool {
     return t.state.failed
 }
 
 # Parallel records that the case can run beside other cases. The runner decides
 # whether the surrounding call actually runs cases in parallel; the marker is
 # never a request to change shared mutable state.
-def (mut t: T) parallel() {
+def (t: mut T) parallel() {
     t.state.parallelizable = True
 }
 
 # Run runs one nested case. A failure in the child marks the parent.
-def (mut t: T) run(name: str, f: func(T)) {
+def (t: mut T) run(name: str, f: func(T)) {
     var child: T = new_t(t.name + "/" + name)
     f(child)
     if child.failed() {
@@ -105,7 +105,7 @@ def (mut t: T) run(name: str, f: func(T)) {
 
 # Bench runs one benchmark body once. The body owns its timing loop through
 # B.Run; T.Bench only constructs the handle.
-def (mut t: T) bench(name: str, f: func(B)) {
+def (t: mut T) bench(name: str, f: func(B)) {
     var b: B = new_b(t.name + "/" + name)
     f(b)
 }
@@ -212,28 +212,28 @@ def parallel(cases: ...Case) {
 }
 
 # Name returns the benchmark name.
-def (b: B) name() -> str {
+def (b: ref B) name() -> str {
     return b.name.clone()
 }
 
 # N returns the iteration count the runner asked for.
-def (b: B) n() -> u64 {
+def (b: ref B) n() -> u64 {
     return b.n
 }
 
 # SetBytes records the payload size for a throughput report.
-def (mut b: B) set_bytes(n: u64) {
+def (b: mut B) set_bytes(n: u64) {
     b.bytes = n
 }
 
 # NsPerOp returns the last measured time in nanoseconds per iteration.
-def (b: B) ns_per_op() -> f64 {
+def (b: ref B) ns_per_op() -> f64 {
     return b.nsPerOp
 }
 
 # Run times f over b.N() iterations. A zero count is treated as one so the
 # measurement is always defined.
-def (mut b: B) run(f: func()) -> Result<(), Error> {
+def (b: mut B) run(f: func()) -> Result<(), Error> {
     var count: u64 = b.n
     if count == 0u64 {
         count = 1u64
@@ -253,6 +253,6 @@ def (mut b: B) run(f: func()) -> Result<(), Error> {
 }
 
 # Log records one benchmark message.
-def (mut b: B) log(msg: str) {
+def (b: mut B) log(msg: str) {
     b.logs.push(msg)
 }
