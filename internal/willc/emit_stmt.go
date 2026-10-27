@@ -292,13 +292,6 @@ func (e *emitter) emitStmt(s ast.Stmt) int {
 		e.emitBlock(st.Body)
 		e.pop()
 		return rec
-	case *ast.ParallelStmt:
-		rec := e.add("parallel", st)
-		e.push(rec)
-		e.ref(rec, "body", st.Body)
-		e.emitBlock(st.Body)
-		e.pop()
-		return rec
 	case *ast.SelectStmt:
 		rec := e.add("select", st)
 		e.push(rec)

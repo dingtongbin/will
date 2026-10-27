@@ -502,17 +502,6 @@ func (e *emitter) emitDecl(d ast.Decl) {
 		e.push(rec)
 		e.emitType(decl.Type)
 		e.pop()
-	case *ast.LaneDecl:
-		rec := e.add("lane", decl)
-		e.text(rec, "text", decl.Name)
-		if decl.Decl != nil {
-			e.ref(rec, "to", decl.Decl)
-		}
-		e.push(rec)
-		if decl.Decl != nil {
-			e.emitDecl(decl.Decl)
-		}
-		e.pop()
 	}
 }
 

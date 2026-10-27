@@ -131,10 +131,6 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 		return e.emitMatch(v)
 	case *ast.InterpExpr:
 		return e.emitInterp(v)
-	case *ast.LaneHereExpr:
-		// lane.Here() is a built-in expression with no fields; it is not a
-		// name, so it can never be confused with a user name.
-		return e.add("lanehere", v)
 	case *ast.UnitExpr:
 		rec := e.add("lit", v)
 		e.word(rec, "kind", "unit")
@@ -315,9 +311,7 @@ func (e *emitter) emitMethodCall(v *ast.MethodCallExpr) int {
 		e.push(rec)
 		rid := e.emitExpr(v.Recv)
 		switch special {
-		case "join":
-			e.field(rec, "task", Ref(rid))
-		case "send", "trysend":
+		case "send":
 			e.field(rec, "chan", Ref(rid))
 			aid := e.emitExpr(v.Args[0].Expr)
 			e.field(rec, "value", Ref(aid))
@@ -352,16 +346,10 @@ func (e *emitter) emitMethodCall(v *ast.MethodCallExpr) int {
 
 func specialCall(name string, args int) (string, bool) {
 	switch {
-	case name == "join" && args == 0:
-		return "join", true
 	case name == "send" && args == 1:
 		return "send", true
-	case name == "try_send" && args == 1:
-		return "trysend", true
 	case name == "recv" && args == 0:
 		return "recv", true
-	case name == "try_recv" && args == 0:
-		return "tryrecv", true
 	}
 	return "", false
 }
@@ -410,15 +398,6 @@ func (e *emitter) emitNew(v *ast.NewExpr) int {
 			aid := e.emitExpr(v.Args[0].Expr)
 			e.field(rec, "cap", Ref(aid))
 		}
-		if len(v.Args) > 1 {
-			if name, ok := priorityArg(v.Args[1].Expr); ok {
-				// The channel priority is written as its name.
-				e.text(rec, "prio", name)
-			} else {
-				pid := e.emitExpr(v.Args[1].Expr)
-				e.field(rec, "prio", Ref(pid))
-			}
-		}
 		e.pop()
 		return rec
 	}
@@ -430,20 +409,6 @@ func (e *emitter) emitNew(v *ast.NewExpr) int {
 	}
 	e.pop()
 	return rec
-}
-
-// priorityArg returns the name of a Priority.X argument, which the willc
-// channel record writes as text.
-func priorityArg(x ast.Expr) (string, bool) {
-	f, ok := x.(*ast.FieldExpr)
-	if !ok {
-		return "", false
-	}
-	recv, ok := f.Recv.(*ast.NameExpr)
-	if !ok || recv.Name != "Priority" {
-		return "", false
-	}
-	return f.Name, true
 }
 
 func (e *emitter) emitLambda(v *ast.LambdaExpr) int {

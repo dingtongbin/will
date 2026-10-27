@@ -155,7 +155,7 @@ var wordVocab = map[string]map[string][]string{
 		"result", "option", "rc", "arc", "weak_rc", "weak_arc", "chan", "task"}},
 	"lit":        {"kind": {"int", "float", "char", "str", "bytes", "bool", "duration", "unit"}},
 	"release":    {"kind": {"value", "rc", "guard", "frame"}},
-	"count":      {"name": {"values", "releases", "merges", "refs", "diagnostics"}},
+	"count":      {"name": {"values", "releases", "refs", "diagnostics"}},
 	"diagnostic": {"severity": {"error", "warning"}},
 }
 

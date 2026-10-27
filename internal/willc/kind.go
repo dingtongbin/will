@@ -24,7 +24,6 @@ var kindSpecs = map[string]KindSpec{
 	"derive":     {Required: []string{"text", "to"}},
 	"typeparam":  {Required: []string{"text"}, Optional: []string{"constraint"}},
 	"instance":   {Required: []string{"to"}, Repeatable: []string{"arg"}, Optional: []string{"text"}},
-	"lane":       {Required: []string{"text"}, Optional: []string{"to"}},
 
 	"type": {Required: []string{"text", "kind"}, Optional: []string{"mut"}, Repeatable: []string{"arg"}},
 
@@ -41,7 +40,6 @@ var kindSpecs = map[string]KindSpec{
 	"assign":   {Required: []string{"target", "value", "op"}},
 	"exprstmt": {Required: []string{"expr"}},
 	"region":   {Required: []string{"body"}},
-	"parallel": {Required: []string{"body"}},
 	"deadline": {Required: []string{"d", "body"}},
 	"select":   {Repeatable: []string{"arm"}},
 	"selarm": {
@@ -49,10 +47,9 @@ var kindSpecs = map[string]KindSpec{
 		Optional: []string{"bind", "chan", "timeout", "default"},
 	},
 
-	"name":     {Required: []string{"text"}, Optional: []string{"to", "builtin", "type"}},
-	"lanehere": {},
-	"lit":      {Required: []string{"kind", "text", "type"}},
-	"call":     {Required: []string{"to"}, Repeatable: []string{"arg", "typearg", "name"}, Optional: []string{"tostr", "type"}},
+	"name": {Required: []string{"text"}, Optional: []string{"to", "builtin", "type"}},
+	"lit":  {Required: []string{"kind", "text", "type"}},
+	"call": {Required: []string{"to"}, Repeatable: []string{"arg", "typearg", "name"}, Optional: []string{"tostr", "type"}},
 	"mcall": {
 		Required:   []string{"recv", "text"},
 		Repeatable: []string{"arg", "typearg", "name"},
@@ -77,16 +74,10 @@ var kindSpecs = map[string]KindSpec{
 	"assert":  {Repeatable: []string{"arg"}},
 	"interp":  {Repeatable: []string{"part"}},
 	"spawn":   {Required: []string{"call"}},
-	"join":    {Required: []string{"task"}},
 	"send":    {Required: []string{"chan", "value"}},
-	"trysend": {Required: []string{"chan", "value"}},
 	"recv":    {Required: []string{"chan"}},
-	"tryrecv": {Required: []string{"chan"}},
 	"close":   {Required: []string{"chan"}},
-	"channew": {
-		Required: []string{"type"},
-		Optional: []string{"cap", "prio"},
-	},
+	"channew": {Required: []string{"type"}, Optional: []string{"cap"}},
 
 	"release": {
 		Required: []string{"owner"},

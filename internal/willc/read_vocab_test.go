@@ -1,9 +1,6 @@
 package willc
 
-import (
-	"bytes"
-	"testing"
-)
+import "testing"
 
 // TestReadRejectsRangePattern checks that a pattern kind the grammar cannot
 // produce is a shape error: the two-dot range is not part of the language.
@@ -22,19 +19,6 @@ func TestReadRejectsUnknownLitKind(t *testing.T) {
 		"#3 end\n"
 	if _, err := Read([]byte(doc)); err == nil {
 		t.Fatal("an unknown literal kind was accepted")
-	}
-}
-
-func TestReadAcceptsLaneHere(t *testing.T) {
-	data := []byte("#1 module path=\"m\"\n" +
-		"#2 lanehere parent=#1 pos=\"a.will:1:1\"\n" +
-		"#3 end\n")
-	doc, err := Read(data)
-	if err != nil {
-		t.Fatalf("read: %v", err)
-	}
-	if !bytes.Equal(Write(doc), data) {
-		t.Fatalf("round trip differs:\n%s", Write(doc))
 	}
 }
 

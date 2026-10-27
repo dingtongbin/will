@@ -200,14 +200,6 @@ func TestEmitMethodTypeArgs(t *testing.T) {
 	}
 }
 
-func TestEmitChannelPriorityIsText(t *testing.T) {
-	src := "def f() {\n    var ch: chan<i64> = new chan<i64>(4, Priority.High)\n    _ = ch\n}\n"
-	data := emitSource(t, "test.will", src, "example.com/app")
-	if !strings.Contains(string(data), `prio="High"`) {
-		t.Fatalf("channel priority is not text:\n%s", data)
-	}
-}
-
 func TestEmitVariantPatternsWithoutPayload(t *testing.T) {
 	src := "enum Shape {\n    Dot\n    Line\n}\n\n" +
 		"def f(s: Shape) -> i64 {\n    return match s {\n        Dot | Line => 1\n    }\n}\n"

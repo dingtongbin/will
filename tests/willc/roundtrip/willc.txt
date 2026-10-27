@@ -26,7 +26,7 @@
 #26 method-sig text="Show" type="str"
 #27 type text="str" kind="scalar"
 #28 derive text="Show" to=#19
-#29 lane text="Ui" to=#19
+#29 derive text="Show" to=#19
 #30 func text="Run"
 #31 block
 #32 if cond=#33 then=#34 else=#35
