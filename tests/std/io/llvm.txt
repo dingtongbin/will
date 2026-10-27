@@ -241,10 +241,10 @@ entry:
   %v.chunk = alloca { ptr, i64, i64 }
   %v.n = alloca i64
   %v.i = alloca i64
-  %v.ret.59 = alloca { i32, [4 x i8], %interface.Error }
+  %v.ret.60 = alloca { i32, [4 x i8], %interface.Error }
   %v.new.48 = alloca { ptr, i64, i64 }
-  %v.adt.90 = alloca { i32, [4 x i8], %interface.Error }
-  %v.try.58 = alloca { i32, [4 x i8], %interface.Error }
+  %v.adt.92 = alloca { i32, [4 x i8], %interface.Error }
+  %v.try.59 = alloca { i32, [4 x i8], %interface.Error }
   %t1 = getelementptr inbounds { ptr, i64, i64 }, ptr %buf, i32 0, i32 1
   %t2 = load i64, ptr %t1
   store i64 %t2, ptr %v.before
@@ -257,7 +257,9 @@ entry:
   store i64 32768, ptr %t6
   %t7 = load { ptr, i64, i64 }, ptr %v.new.48
   store { ptr, i64, i64 } %t7, ptr %v.chunk
-  br label %for.body.1
+  br label %while.cond.1
+while.cond.1:
+  br i1 True, label %for.body.1, label %for.end.1
 for.body.1:
   %t8 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 1
   store i64 0, ptr %t8
@@ -268,19 +270,19 @@ for.body.1:
   %t13 = getelementptr inbounds [5 x ptr], ptr %t12, i64 0, i64 0
   %t14 = load ptr, ptr %t13
   %t15 = call { i32, [4 x i8], %interface.Error } %t14(ptr %t10, ptr %v.chunk)
-  store { i32, [4 x i8], %interface.Error } %t15, ptr %v.ret.59
-  %t16 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.59, i32 0, i32 0
+  store { i32, [4 x i8], %interface.Error } %t15, ptr %v.ret.60
+  %t16 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.60, i32 0, i32 0
   %t17 = load i32, ptr %t16
   %t18 = icmp eq i32 %t17, 1
   br i1 %t18, label %try.err.2, label %try.ok.2
 try.err.2:
-  %t19 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.58, i32 0, i32 0
+  %t19 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.59, i32 0, i32 0
   store i32 1, ptr %t19
-  %t20 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.59, i32 0, i32 2
-  %t21 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.58, i32 0, i32 2
+  %t20 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.60, i32 0, i32 2
+  %t21 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.59, i32 0, i32 2
   %t22 = load %interface.Error, ptr %t20
   store %interface.Error %t22, ptr %t21
-  %t23 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.58
+  %t23 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.59
   %t24 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 0
   %t25 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 1
   %t26 = load ptr, ptr %t24
@@ -302,23 +304,25 @@ deep.rel.arr.done.3:
   ret { i32, [4 x i8], %interface.Error } %t23
   unreachable
 try.ok.2:
-  %t33 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.59, i32 0, i32 2
-  %v.try.out.58 = alloca i64
-  store i64 0, ptr %v.try.out.58
+  %t33 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.60, i32 0, i32 2
+  %v.try.out.59 = alloca i64
+  store i64 0, ptr %v.try.out.59
   %t34 = load i64, ptr %t33
-  store i64 %t34, ptr %v.try.out.58
-  %t35 = load i64, ptr %v.try.out.58
-  store i64 0, ptr %v.try.out.58
+  store i64 %t34, ptr %v.try.out.59
+  %t35 = load i64, ptr %v.try.out.59
+  store i64 0, ptr %v.try.out.59
   store i64 %t35, ptr %v.n
   %t36 = load i64, ptr %v.n
   %t37 = icmp eq i64 %t36, 0
   br i1 %t37, label %if.then.4, label %if.end.4
 if.then.4:
-  store i64 0, ptr %v.try.out.58
+  store i64 0, ptr %v.try.out.59
   br label %for.end.1
 if.end.4:
   store i64 0, ptr %v.i
-  br label %for.body.5
+  br label %while.cond.5
+while.cond.5:
+  br i1 True, label %for.body.5, label %for.end.5
 for.body.5:
   %t38 = load i64, ptr %v.i
   %t39 = load i64, ptr %v.n
@@ -398,13 +402,13 @@ panic.9:
   unreachable
 panic.ok.9:
   store i64 %t75, ptr %v.i
-  br label %for.body.5
+  br label %while.cond.5
 for.end.5:
-  br label %for.body.1
+  br label %while.cond.1
 for.end.1:
-  %t77 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.90, i32 0, i32 0
+  %t77 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.92, i32 0, i32 0
   store i32 0, ptr %t77
-  %t78 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.90, i32 0, i32 2
+  %t78 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.92, i32 0, i32 2
   %t79 = getelementptr inbounds { ptr, i64, i64 }, ptr %buf, i32 0, i32 1
   %t80 = load i64, ptr %t79
   %t81 = load i64, ptr %v.before
@@ -417,7 +421,7 @@ panic.10:
   unreachable
 panic.ok.10:
   store i64 %t83, ptr %t78
-  %t85 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.90
+  %t85 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.92
   %t86 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 0
   %t87 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 1
   %t88 = load ptr, ptr %t86
@@ -443,26 +447,28 @@ entry:
   %v.total = alloca i64
   %v.chunk = alloca { ptr, i64, i64 }
   %v.n = alloca i64
-  %v.ret.122 = alloca { i32, [4 x i8], %interface.Error }
-  %v.ret.135 = alloca { i32, [4 x i8], %interface.Error }
-  %v.ret.150 = alloca { i32, [4 x i8], %interface.Error }
-  %v.new.111 = alloca { ptr, i64, i64 }
-  %v.adt.154 = alloca { i32, [4 x i8], %interface.Error }
-  %v.try.121 = alloca { i32, [4 x i8], %interface.Error }
-  %v.try.134 = alloca { i32, [4 x i8], %interface.Error }
-  %v.try.149 = alloca { i32, [4 x i8], %interface.Error }
-  %v.slice.137 = alloca { ptr, i64 }
+  %v.ret.125 = alloca { i32, [4 x i8], %interface.Error }
+  %v.ret.138 = alloca { i32, [4 x i8], %interface.Error }
+  %v.ret.153 = alloca { i32, [4 x i8], %interface.Error }
+  %v.new.113 = alloca { ptr, i64, i64 }
+  %v.adt.157 = alloca { i32, [4 x i8], %interface.Error }
+  %v.try.124 = alloca { i32, [4 x i8], %interface.Error }
+  %v.try.137 = alloca { i32, [4 x i8], %interface.Error }
+  %v.try.152 = alloca { i32, [4 x i8], %interface.Error }
+  %v.slice.140 = alloca { ptr, i64 }
   store i64 0, ptr %v.total
   %t95 = call ptr @willrt_alloc(i64 32768)
-  %t96 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.111, i32 0, i32 0
+  %t96 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.113, i32 0, i32 0
   store ptr %t95, ptr %t96
-  %t97 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.111, i32 0, i32 1
+  %t97 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.113, i32 0, i32 1
   store i64 0, ptr %t97
-  %t98 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.111, i32 0, i32 2
+  %t98 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.113, i32 0, i32 2
   store i64 32768, ptr %t98
-  %t99 = load { ptr, i64, i64 }, ptr %v.new.111
+  %t99 = load { ptr, i64, i64 }, ptr %v.new.113
   store { ptr, i64, i64 } %t99, ptr %v.chunk
-  br label %for.body.1
+  br label %while.cond.1
+while.cond.1:
+  br i1 True, label %for.body.1, label %for.end.1
 for.body.1:
   %t100 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 1
   store i64 0, ptr %t100
@@ -473,19 +479,19 @@ for.body.1:
   %t105 = getelementptr inbounds [5 x ptr], ptr %t104, i64 0, i64 0
   %t106 = load ptr, ptr %t105
   %t107 = call { i32, [4 x i8], %interface.Error } %t106(ptr %t102, ptr %v.chunk)
-  store { i32, [4 x i8], %interface.Error } %t107, ptr %v.ret.122
-  %t108 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.122, i32 0, i32 0
+  store { i32, [4 x i8], %interface.Error } %t107, ptr %v.ret.125
+  %t108 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.125, i32 0, i32 0
   %t109 = load i32, ptr %t108
   %t110 = icmp eq i32 %t109, 1
   br i1 %t110, label %try.err.2, label %try.ok.2
 try.err.2:
-  %t111 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.121, i32 0, i32 0
+  %t111 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.124, i32 0, i32 0
   store i32 1, ptr %t111
-  %t112 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.122, i32 0, i32 2
-  %t113 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.121, i32 0, i32 2
+  %t112 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.125, i32 0, i32 2
+  %t113 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.124, i32 0, i32 2
   %t114 = load %interface.Error, ptr %t112
   store %interface.Error %t114, ptr %t113
-  %t115 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.121
+  %t115 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.124
   %t116 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 0
   %t117 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 1
   %t118 = load ptr, ptr %t116
@@ -507,19 +513,19 @@ deep.rel.arr.done.3:
   ret { i32, [4 x i8], %interface.Error } %t115
   unreachable
 try.ok.2:
-  %t125 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.122, i32 0, i32 2
-  %v.try.out.121 = alloca i64
-  store i64 0, ptr %v.try.out.121
+  %t125 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.125, i32 0, i32 2
+  %v.try.out.124 = alloca i64
+  store i64 0, ptr %v.try.out.124
   %t126 = load i64, ptr %t125
-  store i64 %t126, ptr %v.try.out.121
-  %t127 = load i64, ptr %v.try.out.121
-  store i64 0, ptr %v.try.out.121
+  store i64 %t126, ptr %v.try.out.124
+  %t127 = load i64, ptr %v.try.out.124
+  store i64 0, ptr %v.try.out.124
   store i64 %t127, ptr %v.n
   %t128 = load i64, ptr %v.n
   %t129 = icmp eq i64 %t128, 0
   br i1 %t129, label %if.then.4, label %if.end.4
 if.then.4:
-  store i64 0, ptr %v.try.out.121
+  store i64 0, ptr %v.try.out.124
   br label %for.end.1
 if.end.4:
   %t130 = getelementptr inbounds %"interface.std/io.Writer", ptr %dst, i32 0, i32 0
@@ -547,24 +553,24 @@ panic.6:
 panic.ok.6:
   %t143 = getelementptr inbounds i8, ptr %t139, i64 0
   %t144 = sub i64 %t136, 0
-  %t145 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.137, i32 0, i32 0
+  %t145 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.140, i32 0, i32 0
   store ptr %t143, ptr %t145
-  %t146 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.137, i32 0, i32 1
+  %t146 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.140, i32 0, i32 1
   store i64 %t144, ptr %t146
-  %t147 = call { i32, [4 x i8], %interface.Error } %t135(ptr %t131, ptr %v.slice.137)
-  store { i32, [4 x i8], %interface.Error } %t147, ptr %v.ret.135
-  %t148 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.135, i32 0, i32 0
+  %t147 = call { i32, [4 x i8], %interface.Error } %t135(ptr %t131, ptr %v.slice.140)
+  store { i32, [4 x i8], %interface.Error } %t147, ptr %v.ret.138
+  %t148 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.138, i32 0, i32 0
   %t149 = load i32, ptr %t148
   %t150 = icmp eq i32 %t149, 1
   br i1 %t150, label %try.err.7, label %try.ok.7
 try.err.7:
-  %t151 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.134, i32 0, i32 0
+  %t151 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.137, i32 0, i32 0
   store i32 1, ptr %t151
-  %t152 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.135, i32 0, i32 2
-  %t153 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.134, i32 0, i32 2
+  %t152 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.138, i32 0, i32 2
+  %t153 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.137, i32 0, i32 2
   %t154 = load %interface.Error, ptr %t152
   store %interface.Error %t154, ptr %t153
-  %t155 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.134
+  %t155 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.137
   %t156 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 0
   %t157 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 1
   %t158 = load ptr, ptr %t156
@@ -597,7 +603,7 @@ panic.9:
   unreachable
 panic.ok.9:
   store i64 %t168, ptr %v.total
-  br label %for.body.1
+  br label %while.cond.1
 for.end.1:
   %t170 = getelementptr inbounds %"interface.std/io.Writer", ptr %dst, i32 0, i32 0
   %t171 = load ptr, ptr %t170
@@ -606,19 +612,19 @@ for.end.1:
   %t174 = getelementptr inbounds [6 x ptr], ptr %t173, i64 0, i64 1
   %t175 = load ptr, ptr %t174
   %t176 = call { i32, [4 x i8], %interface.Error } %t175(ptr %t171)
-  store { i32, [4 x i8], %interface.Error } %t176, ptr %v.ret.150
-  %t177 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.150, i32 0, i32 0
+  store { i32, [4 x i8], %interface.Error } %t176, ptr %v.ret.153
+  %t177 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.153, i32 0, i32 0
   %t178 = load i32, ptr %t177
   %t179 = icmp eq i32 %t178, 1
   br i1 %t179, label %try.err.10, label %try.ok.10
 try.err.10:
-  %t180 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.149, i32 0, i32 0
+  %t180 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.152, i32 0, i32 0
   store i32 1, ptr %t180
-  %t181 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.150, i32 0, i32 2
-  %t182 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.149, i32 0, i32 2
+  %t181 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.ret.153, i32 0, i32 2
+  %t182 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.try.152, i32 0, i32 2
   %t183 = load %interface.Error, ptr %t181
   store %interface.Error %t183, ptr %t182
-  %t184 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.149
+  %t184 = load { i32, [4 x i8], %interface.Error }, ptr %v.try.152
   %t185 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 0
   %t186 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 1
   %t187 = load ptr, ptr %t185
@@ -640,12 +646,12 @@ deep.rel.arr.done.11:
   ret { i32, [4 x i8], %interface.Error } %t184
   unreachable
 try.ok.10:
-  %t194 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.154, i32 0, i32 0
+  %t194 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.157, i32 0, i32 0
   store i32 0, ptr %t194
-  %t195 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.154, i32 0, i32 2
+  %t195 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.157, i32 0, i32 2
   %t196 = load i64, ptr %v.total
   store i64 %t196, ptr %t195
-  %t197 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.154
+  %t197 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.157
   %t198 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 0
   %t199 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.chunk, i32 0, i32 1
   %t200 = load ptr, ptr %t198
@@ -1937,12 +1943,12 @@ if.end.1:
 }
 define hidden { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } @"std/os/fs.stat"(ptr %path) inlinehint {
 entry:
-  %v.stat = alloca %"struct.std/os/fs.StatInfo"
+  %v.info = alloca %"struct.std/os/fs.StatInfo"
   %v.status = alloca i32
   %v.adt.661 = alloca { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }
   %v.adt.667 = alloca { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }
-  store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.stat
-  %t291 = call i32 @willrt_fs_stat(ptr %path, ptr %v.stat)
+  store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.info
+  %t291 = call i32 @willrt_fs_stat(ptr %path, ptr %v.info)
   store i32 %t291, ptr %v.status
   %t292 = load i32, ptr %v.status
   %t293 = icmp ne i32 %t292, 0
@@ -1978,7 +1984,7 @@ if.end.1:
   %t312 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.667, i32 0, i32 0
   store i32 0, ptr %t312
   %t313 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.667, i32 0, i32 2
-  %t314 = load %"struct.std/os/fs.StatInfo", ptr %v.stat
+  %t314 = load %"struct.std/os/fs.StatInfo", ptr %v.info
   store %"struct.std/os/fs.StatInfo" %t314, ptr %t313
   %t315 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.667
   ret { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t315
@@ -3199,7 +3205,7 @@ define internal i32 @"std/os/fs.File.async_stat.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.544.894 = getelementptr i8, ptr %frame, i64 8
-  %v.stat = getelementptr i8, ptr %frame, i64 16
+  %v.info = getelementptr i8, ptr %frame, i64 16
   %v.status = getelementptr i8, ptr %frame, i64 48
   %v.adt.570 = getelementptr i8, ptr %frame, i64 56
   %v.adt.576 = getelementptr i8, ptr %frame, i64 96
@@ -3210,8 +3216,8 @@ entry:
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.stat
-  %t897 = call ptr @willrt_fs_async_file_stat_start(ptr %v.sm.param.544.894, ptr %v.stat)
+  store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.info
+  %t897 = call ptr @willrt_fs_async_file_stat_start(ptr %v.sm.param.544.894, ptr %v.info)
   store ptr %t897, ptr %v.sm.async.op.895
   %t898 = icmp ne ptr %t897, null
   br i1 %t898, label %sm.async.have.1, label %sm.async.fail.1
@@ -3296,7 +3302,7 @@ if.end.1:
   %t937 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.576, i32 0, i32 0
   store i32 0, ptr %t937
   %t938 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.576, i32 0, i32 2
-  %t939 = load %"struct.std/os/fs.StatInfo", ptr %v.stat
+  %t939 = load %"struct.std/os/fs.StatInfo", ptr %v.info
   store %"struct.std/os/fs.StatInfo" %t939, ptr %t938
   %t940 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.576
   store { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t940, ptr %t941
@@ -5234,7 +5240,7 @@ define internal i32 @"std/os/fs.async_stat.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1330.1791 = getelementptr i8, ptr %frame, i64 8
-  %v.stat = getelementptr i8, ptr %frame, i64 24
+  %v.info = getelementptr i8, ptr %frame, i64 24
   %v.status = getelementptr i8, ptr %frame, i64 56
   %v.adt.1356 = getelementptr i8, ptr %frame, i64 64
   %v.adt.1362 = getelementptr i8, ptr %frame, i64 104
@@ -5245,8 +5251,8 @@ entry:
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.stat
-  %t1794 = call ptr @willrt_fs_async_stat_start(ptr %v.sm.param.1330.1791, ptr %v.stat)
+  store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.info
+  %t1794 = call ptr @willrt_fs_async_stat_start(ptr %v.sm.param.1330.1791, ptr %v.info)
   store ptr %t1794, ptr %v.sm.async.op.1792
   %t1795 = icmp ne ptr %t1794, null
   br i1 %t1795, label %sm.async.have.1, label %sm.async.fail.1
@@ -5331,7 +5337,7 @@ if.end.1:
   %t1834 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1362, i32 0, i32 0
   store i32 0, ptr %t1834
   %t1835 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1362, i32 0, i32 2
-  %t1836 = load %"struct.std/os/fs.StatInfo", ptr %v.stat
+  %t1836 = load %"struct.std/os/fs.StatInfo", ptr %v.info
   store %"struct.std/os/fs.StatInfo" %t1836, ptr %t1835
   %t1837 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1362
   store { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t1837, ptr %t1838

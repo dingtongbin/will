@@ -1,6 +1,6 @@
-// Abs resolves a relative path against the process working directory. A path
-// that is already rooted is only cleaned; the working directory is read once
-// through std/os for every relative call.
+# Abs resolves a relative path against the process working directory. A path
+# that is already rooted is only cleaned; the working directory is read once
+# through std/os for every relative call.
 import "std/os"
 
 def abs(p: str) -> Result<str, Error> {

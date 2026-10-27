@@ -49,19 +49,19 @@ define hidden %"struct.std/os/exec.Cmd" @"std/os/exec.Cmd.with_env"(ptr %c, ptr 
 entry:
   %v.env = alloca { ptr, i64, i64 }
   %v.i = alloca i64
-  %v.agg.92 = alloca %"struct.std/os/exec.Cmd"
-  %v.ret.77 = alloca { ptr, i64 }
+  %v.agg.93 = alloca %"struct.std/os/exec.Cmd"
   %v.ret.78 = alloca { ptr, i64 }
-  %v.ret.81 = alloca { ptr, i64 }
+  %v.ret.79 = alloca { ptr, i64 }
   %v.ret.82 = alloca { ptr, i64 }
-  %v.ret.93 = alloca { ptr, i64 }
-  %v.ret.99 = alloca { ptr, i64 }
+  %v.ret.83 = alloca { ptr, i64 }
+  %v.ret.94 = alloca { ptr, i64 }
+  %v.ret.100 = alloca { ptr, i64 }
   %v.new.51 = alloca { ptr, i64, i64 }
   %v.str.46 = alloca { ptr, i64 }
-  %v.strm.77 = alloca { ptr, i64 }
-  %v.strm.81 = alloca { ptr, i64 }
-  %v.strm.93 = alloca { ptr, i64 }
-  %v.strm.99 = alloca { ptr, i64 }
+  %v.strm.78 = alloca { ptr, i64 }
+  %v.strm.82 = alloca { ptr, i64 }
+  %v.strm.94 = alloca { ptr, i64 }
+  %v.strm.100 = alloca { ptr, i64 }
   %v.$idx = alloca i64
   %v.key = alloca { ptr, i64 }
   %v.value = alloca { ptr, i64 }
@@ -253,7 +253,9 @@ for.step.3:
   br label %for.cond.3
 for.end.3:
   store i64 0, ptr %v.i
-  br label %for.body.9
+  br label %while.cond.9
+while.cond.9:
+  br i1 True, label %for.body.9, label %for.end.9
 for.body.9:
   %t125 = load i64, ptr %v.i
   %t126 = getelementptr inbounds { ptr, i64 }, ptr %kv, i32 0, i32 1
@@ -310,15 +312,15 @@ panic.ok.13:
   %t157 = load i64, ptr %t156
   %t158 = call ptr @willrt_alloc(i64 %t157)
   call void @memcpy(ptr %t158, ptr %t155, i64 %t157)
-  %t159 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.77, i32 0, i32 0
+  %t159 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.78, i32 0, i32 0
   store ptr %t158, ptr %t159
-  %t160 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.77, i32 0, i32 1
+  %t160 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.78, i32 0, i32 1
   store i64 %t157, ptr %t160
-  %t161 = load { ptr, i64 }, ptr %v.strm.77
-  store { ptr, i64 } %t161, ptr %v.ret.77
-  %t162 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.77, i32 0, i32 0
+  %t161 = load { ptr, i64 }, ptr %v.strm.78
+  store { ptr, i64 } %t161, ptr %v.ret.78
+  %t162 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.78, i32 0, i32 0
   %t163 = load ptr, ptr %t162
-  %t164 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.77, i32 0, i32 1
+  %t164 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.78, i32 0, i32 1
   %t165 = load i64, ptr %t164
   %t166 = getelementptr inbounds { ptr, i64 }, ptr %t139, i32 0, i32 0
   %t167 = load ptr, ptr %t166
@@ -394,14 +396,14 @@ panic.ok.18:
   %t205 = load i64, ptr %t204
   %t206 = call ptr @willrt_alloc(i64 %t205)
   call void @memcpy(ptr %t206, ptr %t203, i64 %t205)
-  %t207 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.81, i32 0, i32 0
+  %t207 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.82, i32 0, i32 0
   store ptr %t206, ptr %t207
-  %t208 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.81, i32 0, i32 1
+  %t208 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.82, i32 0, i32 1
   store i64 %t205, ptr %t208
-  %t209 = load { ptr, i64 }, ptr %v.strm.81
-  store { ptr, i64 } %t209, ptr %v.ret.81
-  %t210 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.81, i32 0, i32 0
-  %t211 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.81, i32 0, i32 1
+  %t209 = load { ptr, i64 }, ptr %v.strm.82
+  store { ptr, i64 } %t209, ptr %v.ret.82
+  %t210 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.82, i32 0, i32 0
+  %t211 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.82, i32 0, i32 1
   %t212 = load ptr, ptr %t210
   %t213 = load i64, ptr %t211
   %t214 = call ptr @willrt_alloc(i64 %t213)
@@ -486,14 +488,14 @@ panic.ok.23:
   %t253 = load i64, ptr %t252
   %t254 = call ptr @willrt_alloc(i64 %t253)
   call void @memcpy(ptr %t254, ptr %t251, i64 %t253)
-  %t255 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.77, i32 0, i32 0
+  %t255 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.78, i32 0, i32 0
   store ptr %t254, ptr %t255
-  %t256 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.77, i32 0, i32 1
+  %t256 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.78, i32 0, i32 1
   store i64 %t253, ptr %t256
-  %t257 = load { ptr, i64 }, ptr %v.strm.77
-  store { ptr, i64 } %t257, ptr %v.ret.77
-  %t258 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.77, i32 0, i32 0
-  %t259 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.77, i32 0, i32 1
+  %t257 = load { ptr, i64 }, ptr %v.strm.78
+  store { ptr, i64 } %t257, ptr %v.ret.78
+  %t258 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.78, i32 0, i32 0
+  %t259 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.78, i32 0, i32 1
   %t260 = load ptr, ptr %t258
   %t261 = load i64, ptr %t259
   %t262 = call ptr @willrt_alloc(i64 %t261)
@@ -549,14 +551,14 @@ panic.ok.27:
   %t289 = load i64, ptr %t288
   %t290 = call ptr @willrt_alloc(i64 %t289)
   call void @memcpy(ptr %t290, ptr %t287, i64 %t289)
-  %t291 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.81, i32 0, i32 0
+  %t291 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.82, i32 0, i32 0
   store ptr %t290, ptr %t291
-  %t292 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.81, i32 0, i32 1
+  %t292 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.82, i32 0, i32 1
   store i64 %t289, ptr %t292
-  %t293 = load { ptr, i64 }, ptr %v.strm.81
-  store { ptr, i64 } %t293, ptr %v.ret.81
-  %t294 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.81, i32 0, i32 0
-  %t295 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.81, i32 0, i32 1
+  %t293 = load { ptr, i64 }, ptr %v.strm.82
+  store { ptr, i64 } %t293, ptr %v.ret.82
+  %t294 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.82, i32 0, i32 0
+  %t295 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.82, i32 0, i32 1
   %t296 = load ptr, ptr %t294
   %t297 = load i64, ptr %t295
   %t298 = call ptr @willrt_alloc(i64 %t297)
@@ -579,9 +581,9 @@ panic.28:
   unreachable
 panic.ok.28:
   store i64 %t304, ptr %v.i
-  br label %for.body.9
+  br label %while.cond.9
 for.end.9:
-  %t306 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.92, i32 0, i32 0
+  %t306 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.93, i32 0, i32 0
   %t307 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %c, i32 0, i32 0
   %t308 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %c, i32 0, i32 0
   %t309 = getelementptr inbounds { ptr, i64 }, ptr %t308, i32 0, i32 0
@@ -590,23 +592,23 @@ for.end.9:
   %t312 = load i64, ptr %t311
   %t313 = call ptr @willrt_alloc(i64 %t312)
   call void @memcpy(ptr %t313, ptr %t310, i64 %t312)
-  %t314 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.93, i32 0, i32 0
+  %t314 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.94, i32 0, i32 0
   store ptr %t313, ptr %t314
-  %t315 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.93, i32 0, i32 1
+  %t315 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.94, i32 0, i32 1
   store i64 %t312, ptr %t315
-  %t316 = load { ptr, i64 }, ptr %v.strm.93
-  store { ptr, i64 } %t316, ptr %v.ret.93
-  %t317 = load { ptr, i64 }, ptr %v.ret.93
+  %t316 = load { ptr, i64 }, ptr %v.strm.94
+  store { ptr, i64 } %t316, ptr %v.ret.94
+  %t317 = load { ptr, i64 }, ptr %v.ret.94
   store { ptr, i64 } %t317, ptr %t306
-  %t318 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.92, i32 0, i32 1
+  %t318 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.93, i32 0, i32 1
   %t319 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %c, i32 0, i32 1
   %t320 = load { ptr, i64 }, ptr %t319
   store { ptr, i64 } %t320, ptr %t318
-  %t321 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.92, i32 0, i32 2
+  %t321 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.93, i32 0, i32 2
   %t322 = load { ptr, i64, i64 }, ptr %v.env
   store { ptr, i64, i64 } %t322, ptr %t321
   store { ptr, i64, i64 } zeroinitializer, ptr %v.env
-  %t323 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.92, i32 0, i32 3
+  %t323 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.93, i32 0, i32 3
   %t324 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %c, i32 0, i32 3
   %t325 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %c, i32 0, i32 3
   %t326 = getelementptr inbounds { ptr, i64 }, ptr %t325, i32 0, i32 0
@@ -615,15 +617,15 @@ for.end.9:
   %t329 = load i64, ptr %t328
   %t330 = call ptr @willrt_alloc(i64 %t329)
   call void @memcpy(ptr %t330, ptr %t327, i64 %t329)
-  %t331 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.99, i32 0, i32 0
+  %t331 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.100, i32 0, i32 0
   store ptr %t330, ptr %t331
-  %t332 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.99, i32 0, i32 1
+  %t332 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.100, i32 0, i32 1
   store i64 %t329, ptr %t332
-  %t333 = load { ptr, i64 }, ptr %v.strm.99
-  store { ptr, i64 } %t333, ptr %v.ret.99
-  %t334 = load { ptr, i64 }, ptr %v.ret.99
+  %t333 = load { ptr, i64 }, ptr %v.strm.100
+  store { ptr, i64 } %t333, ptr %v.ret.100
+  %t334 = load { ptr, i64 }, ptr %v.ret.100
   store { ptr, i64 } %t334, ptr %t323
-  %t335 = load %"struct.std/os/exec.Cmd", ptr %v.agg.92
+  %t335 = load %"struct.std/os/exec.Cmd", ptr %v.agg.93
   %t336 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.env, i32 0, i32 0
   %t337 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.env, i32 0, i32 1
   %t338 = load ptr, ptr %t336
@@ -654,13 +656,13 @@ deep.rel.map.done.29:
 }
 define hidden %"struct.std/os/exec.Cmd" @"std/os/exec.Cmd.with_dir"(ptr %c, ptr %dir) inlinehint {
 entry:
-  %v.agg.110 = alloca %"struct.std/os/exec.Cmd"
-  %v.ret.111 = alloca { ptr, i64 }
-  %v.ret.116 = alloca { ptr, i64, i64 }
-  %v.ret.119 = alloca { ptr, i64 }
-  %v.strm.111 = alloca { ptr, i64 }
-  %v.strm.119 = alloca { ptr, i64 }
-  %t351 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.110, i32 0, i32 0
+  %v.agg.111 = alloca %"struct.std/os/exec.Cmd"
+  %v.ret.112 = alloca { ptr, i64 }
+  %v.ret.117 = alloca { ptr, i64, i64 }
+  %v.ret.120 = alloca { ptr, i64 }
+  %v.strm.112 = alloca { ptr, i64 }
+  %v.strm.120 = alloca { ptr, i64 }
+  %t351 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.111, i32 0, i32 0
   %t352 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %c, i32 0, i32 0
   %t353 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %c, i32 0, i32 0
   %t354 = getelementptr inbounds { ptr, i64 }, ptr %t353, i32 0, i32 0
@@ -669,53 +671,53 @@ entry:
   %t357 = load i64, ptr %t356
   %t358 = call ptr @willrt_alloc(i64 %t357)
   call void @memcpy(ptr %t358, ptr %t355, i64 %t357)
-  %t359 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.111, i32 0, i32 0
+  %t359 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.112, i32 0, i32 0
   store ptr %t358, ptr %t359
-  %t360 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.111, i32 0, i32 1
+  %t360 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.112, i32 0, i32 1
   store i64 %t357, ptr %t360
-  %t361 = load { ptr, i64 }, ptr %v.strm.111
-  store { ptr, i64 } %t361, ptr %v.ret.111
-  %t362 = load { ptr, i64 }, ptr %v.ret.111
+  %t361 = load { ptr, i64 }, ptr %v.strm.112
+  store { ptr, i64 } %t361, ptr %v.ret.112
+  %t362 = load { ptr, i64 }, ptr %v.ret.112
   store { ptr, i64 } %t362, ptr %t351
-  %t363 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.110, i32 0, i32 1
+  %t363 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.111, i32 0, i32 1
   %t364 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %c, i32 0, i32 1
   %t365 = load { ptr, i64 }, ptr %t364
   store { ptr, i64 } %t365, ptr %t363
-  %t366 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.110, i32 0, i32 2
+  %t366 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.111, i32 0, i32 2
   %t367 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %c, i32 0, i32 2
   %t368 = call { ptr, i64, i64 } @"std/os/exec.copy_env"(ptr %t367)
-  store { ptr, i64, i64 } %t368, ptr %v.ret.116
-  %t369 = load { ptr, i64, i64 }, ptr %v.ret.116
+  store { ptr, i64, i64 } %t368, ptr %v.ret.117
+  %t369 = load { ptr, i64, i64 }, ptr %v.ret.117
   store { ptr, i64, i64 } %t369, ptr %t366
-  %t370 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.110, i32 0, i32 3
+  %t370 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %v.agg.111, i32 0, i32 3
   %t371 = getelementptr inbounds { ptr, i64 }, ptr %dir, i32 0, i32 0
   %t372 = load ptr, ptr %t371
   %t373 = getelementptr inbounds { ptr, i64 }, ptr %dir, i32 0, i32 1
   %t374 = load i64, ptr %t373
   %t375 = call ptr @willrt_alloc(i64 %t374)
   call void @memcpy(ptr %t375, ptr %t372, i64 %t374)
-  %t376 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.119, i32 0, i32 0
+  %t376 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.120, i32 0, i32 0
   store ptr %t375, ptr %t376
-  %t377 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.119, i32 0, i32 1
+  %t377 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.120, i32 0, i32 1
   store i64 %t374, ptr %t377
-  %t378 = load { ptr, i64 }, ptr %v.strm.119
-  store { ptr, i64 } %t378, ptr %v.ret.119
-  %t379 = load { ptr, i64 }, ptr %v.ret.119
+  %t378 = load { ptr, i64 }, ptr %v.strm.120
+  store { ptr, i64 } %t378, ptr %v.ret.120
+  %t379 = load { ptr, i64 }, ptr %v.ret.120
   store { ptr, i64 } %t379, ptr %t370
-  %t380 = load %"struct.std/os/exec.Cmd", ptr %v.agg.110
+  %t380 = load %"struct.std/os/exec.Cmd", ptr %v.agg.111
   ret %"struct.std/os/exec.Cmd" %t380
 }
 define hidden { ptr, i64, i64 } @"std/os/exec.copy_env"(ptr %src) inlinehint {
 entry:
   %v.out = alloca { ptr, i64, i64 }
-  %v.new.134 = alloca { ptr, i64, i64 }
+  %v.new.135 = alloca { ptr, i64, i64 }
   %v.$idx = alloca i64
   %v.key = alloca { ptr, i64 }
   %v.value = alloca { ptr, i64 }
-  %v.ret.143 = alloca { ptr, i64 }
-  %v.strm.143 = alloca { ptr, i64 }
-  %v.ret.145 = alloca { ptr, i64 }
-  %v.strm.145 = alloca { ptr, i64 }
+  %v.ret.144 = alloca { ptr, i64 }
+  %v.strm.144 = alloca { ptr, i64 }
+  %v.ret.146 = alloca { ptr, i64 }
+  %v.strm.146 = alloca { ptr, i64 }
   %t381 = getelementptr inbounds { ptr, i64, i64 }, ptr %src, i32 0, i32 0
   %t382 = getelementptr inbounds { ptr, i64, i64 }, ptr %src, i32 0, i32 1
   %t383 = getelementptr inbounds { ptr, i64, i64 }, ptr %src, i32 0, i32 2
@@ -731,13 +733,13 @@ seq.alloc.1:
   br label %seq.ptr.1
 seq.ptr.1:
   %t389 = phi ptr [ null, %seq.zero.1 ], [ %t388, %seq.alloc.1 ]
-  %t390 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.134, i32 0, i32 0
+  %t390 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.135, i32 0, i32 0
   store ptr %t389, ptr %t390
-  %t391 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.134, i32 0, i32 1
+  %t391 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.135, i32 0, i32 1
   store i64 0, ptr %t391
-  %t392 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.134, i32 0, i32 2
+  %t392 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.135, i32 0, i32 2
   store i64 %t385, ptr %t392
-  %t393 = load { ptr, i64, i64 }, ptr %v.new.134
+  %t393 = load { ptr, i64, i64 }, ptr %v.new.135
   store { ptr, i64, i64 } %t393, ptr %v.out
   %t394 = getelementptr inbounds { ptr, i64, i64 }, ptr %src, i32 0, i32 0
   %t395 = load ptr, ptr %t394
@@ -780,15 +782,15 @@ find.body.3:
   %t419 = load i64, ptr %t418
   %t420 = call ptr @willrt_alloc(i64 %t419)
   call void @memcpy(ptr %t420, ptr %t417, i64 %t419)
-  %t421 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.143, i32 0, i32 0
+  %t421 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.144, i32 0, i32 0
   store ptr %t420, ptr %t421
-  %t422 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.143, i32 0, i32 1
+  %t422 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.144, i32 0, i32 1
   store i64 %t419, ptr %t422
-  %t423 = load { ptr, i64 }, ptr %v.strm.143
-  store { ptr, i64 } %t423, ptr %v.ret.143
-  %t424 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.143, i32 0, i32 0
+  %t423 = load { ptr, i64 }, ptr %v.strm.144
+  store { ptr, i64 } %t423, ptr %v.ret.144
+  %t424 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.144, i32 0, i32 0
   %t425 = load ptr, ptr %t424
-  %t426 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.143, i32 0, i32 1
+  %t426 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.144, i32 0, i32 1
   %t427 = load i64, ptr %t426
   %t428 = getelementptr inbounds { ptr, i64 }, ptr %t415, i32 0, i32 0
   %t429 = load ptr, ptr %t428
@@ -824,14 +826,14 @@ set.replace.4:
   %t447 = load i64, ptr %t446
   %t448 = call ptr @willrt_alloc(i64 %t447)
   call void @memcpy(ptr %t448, ptr %t445, i64 %t447)
-  %t449 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.145, i32 0, i32 0
+  %t449 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.146, i32 0, i32 0
   store ptr %t448, ptr %t449
-  %t450 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.145, i32 0, i32 1
+  %t450 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.146, i32 0, i32 1
   store i64 %t447, ptr %t450
-  %t451 = load { ptr, i64 }, ptr %v.strm.145
-  store { ptr, i64 } %t451, ptr %v.ret.145
-  %t452 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.145, i32 0, i32 0
-  %t453 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.145, i32 0, i32 1
+  %t451 = load { ptr, i64 }, ptr %v.strm.146
+  store { ptr, i64 } %t451, ptr %v.ret.146
+  %t452 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.146, i32 0, i32 0
+  %t453 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.146, i32 0, i32 1
   %t454 = load ptr, ptr %t452
   %t455 = load i64, ptr %t453
   %t456 = call ptr @willrt_alloc(i64 %t455)
@@ -892,14 +894,14 @@ res.ready.5:
   %t481 = load i64, ptr %t480
   %t482 = call ptr @willrt_alloc(i64 %t481)
   call void @memcpy(ptr %t482, ptr %t479, i64 %t481)
-  %t483 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.143, i32 0, i32 0
+  %t483 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.144, i32 0, i32 0
   store ptr %t482, ptr %t483
-  %t484 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.143, i32 0, i32 1
+  %t484 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.144, i32 0, i32 1
   store i64 %t481, ptr %t484
-  %t485 = load { ptr, i64 }, ptr %v.strm.143
-  store { ptr, i64 } %t485, ptr %v.ret.143
-  %t486 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.143, i32 0, i32 0
-  %t487 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.143, i32 0, i32 1
+  %t485 = load { ptr, i64 }, ptr %v.strm.144
+  store { ptr, i64 } %t485, ptr %v.ret.144
+  %t486 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.144, i32 0, i32 0
+  %t487 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.144, i32 0, i32 1
   %t488 = load ptr, ptr %t486
   %t489 = load i64, ptr %t487
   %t490 = call ptr @willrt_alloc(i64 %t489)
@@ -915,14 +917,14 @@ res.ready.5:
   %t497 = load i64, ptr %t496
   %t498 = call ptr @willrt_alloc(i64 %t497)
   call void @memcpy(ptr %t498, ptr %t495, i64 %t497)
-  %t499 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.145, i32 0, i32 0
+  %t499 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.146, i32 0, i32 0
   store ptr %t498, ptr %t499
-  %t500 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.145, i32 0, i32 1
+  %t500 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.146, i32 0, i32 1
   store i64 %t497, ptr %t500
-  %t501 = load { ptr, i64 }, ptr %v.strm.145
-  store { ptr, i64 } %t501, ptr %v.ret.145
-  %t502 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.145, i32 0, i32 0
-  %t503 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.145, i32 0, i32 1
+  %t501 = load { ptr, i64 }, ptr %v.strm.146
+  store { ptr, i64 } %t501, ptr %v.ret.146
+  %t502 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.146, i32 0, i32 0
+  %t503 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.146, i32 0, i32 1
   %t504 = load ptr, ptr %t502
   %t505 = load i64, ptr %t503
   %t506 = call ptr @willrt_alloc(i64 %t505)

@@ -1,11 +1,11 @@
-// starScalar is the ASCII code of the wildcard '*'.
+# starScalar is the ASCII code of the wildcard '*'.
 const starScalar: u32 = 42
 
-// questionScalar is the ASCII code of the wildcard '?'.
+# questionScalar is the ASCII code of the wildcard '?'.
 const questionScalar: u32 = 63
 
-// charsOf returns the Unicode scalars of s, so the matcher compares characters
-// rather than bytes and a wildcard can never split one.
+# charsOf returns the Unicode scalars of s, so the matcher compares characters
+# rather than bytes and a wildcard can never split one.
 def chars_of(s: str) -> Array<u32> {
     var out: Array<u32> = new Array<u32>(0)
     for c in s {
@@ -14,11 +14,11 @@ def chars_of(s: str) -> Array<u32> {
     return out
 }
 
-// Match reports whether name matches pattern as a whole. The volume fixes the
-// signature but not the grammar; this implementation supports '*' for any run
-// of non-separator scalars and '?' for one non-separator scalar, and every
-// other scalar matches itself. Neither wildcard matches the separator, so one
-// wildcard never spans a directory boundary.
+# Match reports whether name matches pattern as a whole. The volume fixes the
+# signature but not the grammar; this implementation supports '*' for any run
+# of non-separator scalars and '?' for one non-separator scalar, and every
+# other scalar matches itself. Neither wildcard matches the separator, so one
+# wildcard never spans a directory boundary.
 def match(pattern: str, name: str) -> bool {
     var pat: Array<u32> = chars_of(pattern)
     var text: Array<u32> = chars_of(name)
@@ -26,26 +26,26 @@ def match(pattern: str, name: str) -> bool {
     var si: usize = 0
     var star: usize = 0
     var mark: usize = 0
-    var hasStar: bool = false
-    for {
+    var hasStar: bool = False
+    while True {
         if si >= text.len() {
             break
         }
         if pi < pat.len() {
             var pc: u32 = pat.get(pi)
             if pc == starScalar {
-                // Remember where the star starts and let the next pattern
-                // scalar try to match at once, which is the zero-length case.
+                # Remember where the star starts and let the next pattern
+                # scalar try to match at once, which is the zero-length case.
                 star = pi + 1usize
                 mark = si
-                hasStar = true
+                hasStar = True
                 pi += 1usize
                 continue
             }
             var tc: u32 = text.get(si)
-            var matched: bool = false
+            var matched: bool = False
             if pc == questionScalar {
-                matched = !is_slash(tc)
+                matched = not is_slash(tc)
             } else {
                 matched = pc == tc
             }
@@ -55,28 +55,28 @@ def match(pattern: str, name: str) -> bool {
                 continue
             }
         }
-        if !hasStar {
-            return false
+        if not hasStar {
+            return False
         }
-        // The star takes one more scalar and the rest of the pattern is retried
-        // from the saved position, so a failure never needs a recursive frame.
+        # The star takes one more scalar and the rest of the pattern is retried
+        # from the saved position, so a failure never needs a recursive frame.
         var extend: u32 = text.get(mark)
         if is_slash(extend) {
-            return false
+            return False
         }
         mark += 1usize
         si = mark
         pi = star
     }
-    for {
+    while True {
         if pi >= pat.len() {
             break
         }
         var pc: u32 = pat.get(pi)
         if pc != starScalar {
-            return false
+            return False
         }
         pi += 1usize
     }
-    return true
+    return True
 }

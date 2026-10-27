@@ -1,7 +1,7 @@
 import "std/bytes"
 
-// A []u8 source cannot be built from Array<u8> yet, so this wrapper keeps the
-// Copy signature in the compile check without a call site.
+# A []u8 source cannot be built from Array<u8> yet, so this wrapper keeps the
+# Copy signature in the compile check without a call site.
 def fill(dst: Array<u8>, src: []u8) -> usize {
     return bytes.copy(dst, src)
 }

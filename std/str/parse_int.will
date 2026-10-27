@@ -1,42 +1,42 @@
-// digitValue maps an ASCII digit to its value. 64 marks a scalar that is not a
-// digit in any base, so it is above every accepted radix.
+# digitValue maps an ASCII digit to its value. 64 marks a scalar that is not a
+# digit in any base, so it is above every accepted radix.
 def digit_value(c: u32) -> u32 {
-    if c >= asciiZero && c <= asciiNine {
+    if c >= asciiZero and c <= asciiNine {
         return c - asciiZero
     }
-    if c >= asciiLowerA && c <= asciiLowerZ {
+    if c >= asciiLowerA and c <= asciiLowerZ {
         return c - asciiLowerA + 10u32
     }
-    if c >= asciiUpperA && c <= asciiUpperZ {
+    if c >= asciiUpperA and c <= asciiUpperZ {
         return c - asciiUpperA + 10u32
     }
     return 64u32
 }
 
 def parse_i64(s: str, base: i32) -> Result<i64, Error> {
-    if base < 2 || base > 36 {
+    if base < 2 or base > 36 {
         return Err(fail("invalid base"))
     }
     var radix: u64 = u64(base)
     var limit: u64 = 9223372036854775807
     var acc: u64 = 0
-    var negative: bool = false
-    var seen: bool = false
-    var first: bool = true
+    var negative: bool = False
+    var seen: bool = False
+    var first: bool = True
     for c in s {
         if first {
-            first = false
+            first = False
             if c == asciiPlus {
                 continue
             }
             if c == asciiMinus {
-                negative = true
+                negative = True
                 limit = 9223372036854775808
                 continue
             }
         }
         var d: u32 = digit_value(c)
-        if d >= 64u32 || u64(d) >= radix {
+        if d >= 64u32 or u64(d) >= radix {
             return Err(fail("invalid digit"))
         }
         var digit: u64 = u64(d)
@@ -44,9 +44,9 @@ def parse_i64(s: str, base: i32) -> Result<i64, Error> {
             return Err(fail("value out of range"))
         }
         acc = acc * radix + digit
-        seen = true
+        seen = True
     }
-    if !seen {
+    if not seen {
         return Err(fail("no digits"))
     }
     if negative {
@@ -59,15 +59,15 @@ def parse_i64(s: str, base: i32) -> Result<i64, Error> {
 }
 
 def parse_u64(s: str, base: i32) -> Result<u64, Error> {
-    if base < 2 || base > 36 {
+    if base < 2 or base > 36 {
         return Err(fail("invalid base"))
     }
     var radix: u64 = u64(base)
     var acc: u64 = 0
-    var seen: bool = false
+    var seen: bool = False
     for c in s {
         var d: u32 = digit_value(c)
-        if d >= 64u32 || u64(d) >= radix {
+        if d >= 64u32 or u64(d) >= radix {
             return Err(fail("invalid digit"))
         }
         var digit: u64 = u64(d)
@@ -75,9 +75,9 @@ def parse_u64(s: str, base: i32) -> Result<u64, Error> {
             return Err(fail("value out of range"))
         }
         acc = acc * radix + digit
-        seen = true
+        seen = True
     }
-    if !seen {
+    if not seen {
         return Err(fail("no digits"))
     }
     return Ok(acc)

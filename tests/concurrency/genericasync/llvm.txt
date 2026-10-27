@@ -1128,7 +1128,7 @@ panic.ok.3:
   %t318 = icmp ne i32 %t317, 0
   br i1 %t318, label %if.then.1, label %if.end.1
 if.then.1:
-  ret i1 false
+  ret i1 False
 if.end.1:
   %t319 = icmp eq i32 100, 0
   br i1 %t319, label %panic.5, label %panic.ok.5
@@ -1148,7 +1148,7 @@ panic.ok.6:
   %t324 = icmp ne i32 %t323, 0
   br i1 %t324, label %if.then.4, label %if.end.4
 if.then.4:
-  ret i1 true
+  ret i1 True
 if.end.4:
   %t325 = icmp eq i32 400, 0
   br i1 %t325, label %panic.7, label %panic.ok.7
@@ -1847,12 +1847,12 @@ entry:
   %v.end = alloca i64
   %v.trimmed = alloca { ptr, i64, i64 }
   %v.new.148 = alloca { ptr, i64, i64 }
-  %v.new.199 = alloca { ptr, i64, i64 }
+  %v.new.200 = alloca { ptr, i64, i64 }
   %v.str.132 = alloca { ptr, i64 }
   %v._ = alloca i32
-  %v.cast.212 = alloca { ptr, i64 }
+  %v.cast.213 = alloca { ptr, i64 }
   %v.slice.162 = alloca { ptr, i64 }
-  %v.slice.204 = alloca { ptr, i64 }
+  %v.slice.205 = alloca { ptr, i64 }
   %v.interp.135 = alloca { ptr, i64 }
   %t183 = icmp eq i64 %frac, 0
   br i1 %t183, label %if.then.1, label %if.end.1
@@ -2086,7 +2086,9 @@ append.done.9:
   %t293 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
   %t294 = load i64, ptr %t293
   store i64 %t294, ptr %v.end
-  br label %for.body.11
+  br label %while.cond.11
+while.cond.11:
+  br i1 True, label %for.body.11, label %for.end.11
 for.body.11:
   %t295 = load i64, ptr %v.end
   %t296 = icmp eq i64 %t295, 0
@@ -2132,7 +2134,7 @@ panic.16:
   unreachable
 panic.ok.16:
   store i64 %t313, ptr %v.end
-  br label %for.body.11
+  br label %while.cond.11
 for.end.11:
   %t315 = load i64, ptr %v.end
   %t316 = icmp eq i64 %t315, 0
@@ -2145,13 +2147,13 @@ arr.alloc.17:
   br label %arr.ptr.17
 arr.ptr.17:
   %t319 = phi ptr [ null, %arr.zero.17 ], [ %t318, %arr.alloc.17 ]
-  %t320 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.199, i32 0, i32 0
+  %t320 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.200, i32 0, i32 0
   store ptr %t319, ptr %t320
-  %t321 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.199, i32 0, i32 1
+  %t321 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.200, i32 0, i32 1
   store i64 0, ptr %t321
-  %t322 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.199, i32 0, i32 2
+  %t322 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.200, i32 0, i32 2
   store i64 %t315, ptr %t322
-  %t323 = load { ptr, i64, i64 }, ptr %v.new.199
+  %t323 = load { ptr, i64, i64 }, ptr %v.new.200
   store { ptr, i64, i64 } %t323, ptr %v.trimmed
   %t324 = load i64, ptr %v.end
   %t325 = icmp ugt i64 0, %t324
@@ -2172,13 +2174,13 @@ panic.19:
 panic.ok.19:
   %t331 = getelementptr inbounds i8, ptr %t327, i64 0
   %t332 = sub i64 %t324, 0
-  %t333 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.204, i32 0, i32 0
+  %t333 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.205, i32 0, i32 0
   store ptr %t331, ptr %t333
-  %t334 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.204, i32 0, i32 1
+  %t334 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.205, i32 0, i32 1
   store i64 %t332, ptr %t334
-  %t335 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.204, i32 0, i32 0
+  %t335 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.205, i32 0, i32 0
   %t336 = load ptr, ptr %t335
-  %t337 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.204, i32 0, i32 1
+  %t337 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.205, i32 0, i32 1
   %t338 = load i64, ptr %t337
   %t339 = mul i64 %t338, 1
   %t340 = call ptr @willrt_alloc(i64 %t339)
@@ -2273,11 +2275,11 @@ utf8.bad.22:
 utf8.ok.22:
   %t383 = call ptr @willrt_alloc(i64 %t380)
   call void @memcpy(ptr %t383, ptr %t378, i64 %t380)
-  %t384 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.212, i32 0, i32 0
+  %t384 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.213, i32 0, i32 0
   store ptr %t383, ptr %t384
-  %t385 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.212, i32 0, i32 1
+  %t385 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.213, i32 0, i32 1
   store i64 %t380, ptr %t385
-  %t386 = load { ptr, i64 }, ptr %v.cast.212
+  %t386 = load { ptr, i64 }, ptr %v.cast.213
   %t387 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.trimmed, i32 0, i32 0
   %t388 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.trimmed, i32 0, i32 1
   %t389 = load ptr, ptr %t387
@@ -2321,209 +2323,209 @@ deep.rel.arr.done.24:
 }
 define hidden { ptr, i64 } @"std/time.weekday_name"(i64 %weekday) alwaysinline {
 entry:
-  %v.str.226 = alloca { ptr, i64 }
-  %v.str.233 = alloca { ptr, i64 }
-  %v.str.240 = alloca { ptr, i64 }
-  %v.str.247 = alloca { ptr, i64 }
-  %v.str.254 = alloca { ptr, i64 }
-  %v.str.261 = alloca { ptr, i64 }
-  %v.str.263 = alloca { ptr, i64 }
+  %v.str.227 = alloca { ptr, i64 }
+  %v.str.234 = alloca { ptr, i64 }
+  %v.str.241 = alloca { ptr, i64 }
+  %v.str.248 = alloca { ptr, i64 }
+  %v.str.255 = alloca { ptr, i64 }
+  %v.str.262 = alloca { ptr, i64 }
+  %v.str.264 = alloca { ptr, i64 }
   %t407 = icmp eq i64 %weekday, 0
   br i1 %t407, label %if.then.1, label %if.end.1
 if.then.1:
-  %t408 = getelementptr inbounds { ptr, i64 }, ptr %v.str.226, i32 0, i32 0
+  %t408 = getelementptr inbounds { ptr, i64 }, ptr %v.str.227, i32 0, i32 0
   store ptr @.bytes.17, ptr %t408
-  %t409 = getelementptr inbounds { ptr, i64 }, ptr %v.str.226, i32 0, i32 1
+  %t409 = getelementptr inbounds { ptr, i64 }, ptr %v.str.227, i32 0, i32 1
   store i64 3, ptr %t409
-  %t410 = load { ptr, i64 }, ptr %v.str.226
+  %t410 = load { ptr, i64 }, ptr %v.str.227
   ret { ptr, i64 } %t410
 if.end.1:
   %t411 = icmp eq i64 %weekday, 1
   br i1 %t411, label %if.then.2, label %if.end.2
 if.then.2:
-  %t412 = getelementptr inbounds { ptr, i64 }, ptr %v.str.233, i32 0, i32 0
+  %t412 = getelementptr inbounds { ptr, i64 }, ptr %v.str.234, i32 0, i32 0
   store ptr @.bytes.18, ptr %t412
-  %t413 = getelementptr inbounds { ptr, i64 }, ptr %v.str.233, i32 0, i32 1
+  %t413 = getelementptr inbounds { ptr, i64 }, ptr %v.str.234, i32 0, i32 1
   store i64 3, ptr %t413
-  %t414 = load { ptr, i64 }, ptr %v.str.233
+  %t414 = load { ptr, i64 }, ptr %v.str.234
   ret { ptr, i64 } %t414
 if.end.2:
   %t415 = icmp eq i64 %weekday, 2
   br i1 %t415, label %if.then.3, label %if.end.3
 if.then.3:
-  %t416 = getelementptr inbounds { ptr, i64 }, ptr %v.str.240, i32 0, i32 0
+  %t416 = getelementptr inbounds { ptr, i64 }, ptr %v.str.241, i32 0, i32 0
   store ptr @.bytes.19, ptr %t416
-  %t417 = getelementptr inbounds { ptr, i64 }, ptr %v.str.240, i32 0, i32 1
+  %t417 = getelementptr inbounds { ptr, i64 }, ptr %v.str.241, i32 0, i32 1
   store i64 3, ptr %t417
-  %t418 = load { ptr, i64 }, ptr %v.str.240
+  %t418 = load { ptr, i64 }, ptr %v.str.241
   ret { ptr, i64 } %t418
 if.end.3:
   %t419 = icmp eq i64 %weekday, 3
   br i1 %t419, label %if.then.4, label %if.end.4
 if.then.4:
-  %t420 = getelementptr inbounds { ptr, i64 }, ptr %v.str.247, i32 0, i32 0
+  %t420 = getelementptr inbounds { ptr, i64 }, ptr %v.str.248, i32 0, i32 0
   store ptr @.bytes.20, ptr %t420
-  %t421 = getelementptr inbounds { ptr, i64 }, ptr %v.str.247, i32 0, i32 1
+  %t421 = getelementptr inbounds { ptr, i64 }, ptr %v.str.248, i32 0, i32 1
   store i64 3, ptr %t421
-  %t422 = load { ptr, i64 }, ptr %v.str.247
+  %t422 = load { ptr, i64 }, ptr %v.str.248
   ret { ptr, i64 } %t422
 if.end.4:
   %t423 = icmp eq i64 %weekday, 4
   br i1 %t423, label %if.then.5, label %if.end.5
 if.then.5:
-  %t424 = getelementptr inbounds { ptr, i64 }, ptr %v.str.254, i32 0, i32 0
+  %t424 = getelementptr inbounds { ptr, i64 }, ptr %v.str.255, i32 0, i32 0
   store ptr @.bytes.21, ptr %t424
-  %t425 = getelementptr inbounds { ptr, i64 }, ptr %v.str.254, i32 0, i32 1
+  %t425 = getelementptr inbounds { ptr, i64 }, ptr %v.str.255, i32 0, i32 1
   store i64 3, ptr %t425
-  %t426 = load { ptr, i64 }, ptr %v.str.254
+  %t426 = load { ptr, i64 }, ptr %v.str.255
   ret { ptr, i64 } %t426
 if.end.5:
   %t427 = icmp eq i64 %weekday, 5
   br i1 %t427, label %if.then.6, label %if.end.6
 if.then.6:
-  %t428 = getelementptr inbounds { ptr, i64 }, ptr %v.str.261, i32 0, i32 0
+  %t428 = getelementptr inbounds { ptr, i64 }, ptr %v.str.262, i32 0, i32 0
   store ptr @.bytes.22, ptr %t428
-  %t429 = getelementptr inbounds { ptr, i64 }, ptr %v.str.261, i32 0, i32 1
+  %t429 = getelementptr inbounds { ptr, i64 }, ptr %v.str.262, i32 0, i32 1
   store i64 3, ptr %t429
-  %t430 = load { ptr, i64 }, ptr %v.str.261
+  %t430 = load { ptr, i64 }, ptr %v.str.262
   ret { ptr, i64 } %t430
 if.end.6:
-  %t431 = getelementptr inbounds { ptr, i64 }, ptr %v.str.263, i32 0, i32 0
+  %t431 = getelementptr inbounds { ptr, i64 }, ptr %v.str.264, i32 0, i32 0
   store ptr @.bytes.23, ptr %t431
-  %t432 = getelementptr inbounds { ptr, i64 }, ptr %v.str.263, i32 0, i32 1
+  %t432 = getelementptr inbounds { ptr, i64 }, ptr %v.str.264, i32 0, i32 1
   store i64 3, ptr %t432
-  %t433 = load { ptr, i64 }, ptr %v.str.263
+  %t433 = load { ptr, i64 }, ptr %v.str.264
   ret { ptr, i64 } %t433
 }
 define hidden { ptr, i64 } @"std/time.month_name"(i32 %month) alwaysinline {
 entry:
-  %v.str.275 = alloca { ptr, i64 }
-  %v.str.282 = alloca { ptr, i64 }
-  %v.str.289 = alloca { ptr, i64 }
-  %v.str.296 = alloca { ptr, i64 }
-  %v.str.303 = alloca { ptr, i64 }
-  %v.str.310 = alloca { ptr, i64 }
-  %v.str.317 = alloca { ptr, i64 }
-  %v.str.324 = alloca { ptr, i64 }
-  %v.str.331 = alloca { ptr, i64 }
-  %v.str.338 = alloca { ptr, i64 }
-  %v.str.345 = alloca { ptr, i64 }
-  %v.str.347 = alloca { ptr, i64 }
+  %v.str.276 = alloca { ptr, i64 }
+  %v.str.283 = alloca { ptr, i64 }
+  %v.str.290 = alloca { ptr, i64 }
+  %v.str.297 = alloca { ptr, i64 }
+  %v.str.304 = alloca { ptr, i64 }
+  %v.str.311 = alloca { ptr, i64 }
+  %v.str.318 = alloca { ptr, i64 }
+  %v.str.325 = alloca { ptr, i64 }
+  %v.str.332 = alloca { ptr, i64 }
+  %v.str.339 = alloca { ptr, i64 }
+  %v.str.346 = alloca { ptr, i64 }
+  %v.str.348 = alloca { ptr, i64 }
   %t434 = icmp eq i32 %month, 1
   br i1 %t434, label %if.then.1, label %if.end.1
 if.then.1:
-  %t435 = getelementptr inbounds { ptr, i64 }, ptr %v.str.275, i32 0, i32 0
+  %t435 = getelementptr inbounds { ptr, i64 }, ptr %v.str.276, i32 0, i32 0
   store ptr @.bytes.24, ptr %t435
-  %t436 = getelementptr inbounds { ptr, i64 }, ptr %v.str.275, i32 0, i32 1
+  %t436 = getelementptr inbounds { ptr, i64 }, ptr %v.str.276, i32 0, i32 1
   store i64 3, ptr %t436
-  %t437 = load { ptr, i64 }, ptr %v.str.275
+  %t437 = load { ptr, i64 }, ptr %v.str.276
   ret { ptr, i64 } %t437
 if.end.1:
   %t438 = icmp eq i32 %month, 2
   br i1 %t438, label %if.then.2, label %if.end.2
 if.then.2:
-  %t439 = getelementptr inbounds { ptr, i64 }, ptr %v.str.282, i32 0, i32 0
+  %t439 = getelementptr inbounds { ptr, i64 }, ptr %v.str.283, i32 0, i32 0
   store ptr @.bytes.25, ptr %t439
-  %t440 = getelementptr inbounds { ptr, i64 }, ptr %v.str.282, i32 0, i32 1
+  %t440 = getelementptr inbounds { ptr, i64 }, ptr %v.str.283, i32 0, i32 1
   store i64 3, ptr %t440
-  %t441 = load { ptr, i64 }, ptr %v.str.282
+  %t441 = load { ptr, i64 }, ptr %v.str.283
   ret { ptr, i64 } %t441
 if.end.2:
   %t442 = icmp eq i32 %month, 3
   br i1 %t442, label %if.then.3, label %if.end.3
 if.then.3:
-  %t443 = getelementptr inbounds { ptr, i64 }, ptr %v.str.289, i32 0, i32 0
+  %t443 = getelementptr inbounds { ptr, i64 }, ptr %v.str.290, i32 0, i32 0
   store ptr @.bytes.26, ptr %t443
-  %t444 = getelementptr inbounds { ptr, i64 }, ptr %v.str.289, i32 0, i32 1
+  %t444 = getelementptr inbounds { ptr, i64 }, ptr %v.str.290, i32 0, i32 1
   store i64 3, ptr %t444
-  %t445 = load { ptr, i64 }, ptr %v.str.289
+  %t445 = load { ptr, i64 }, ptr %v.str.290
   ret { ptr, i64 } %t445
 if.end.3:
   %t446 = icmp eq i32 %month, 4
   br i1 %t446, label %if.then.4, label %if.end.4
 if.then.4:
-  %t447 = getelementptr inbounds { ptr, i64 }, ptr %v.str.296, i32 0, i32 0
+  %t447 = getelementptr inbounds { ptr, i64 }, ptr %v.str.297, i32 0, i32 0
   store ptr @.bytes.27, ptr %t447
-  %t448 = getelementptr inbounds { ptr, i64 }, ptr %v.str.296, i32 0, i32 1
+  %t448 = getelementptr inbounds { ptr, i64 }, ptr %v.str.297, i32 0, i32 1
   store i64 3, ptr %t448
-  %t449 = load { ptr, i64 }, ptr %v.str.296
+  %t449 = load { ptr, i64 }, ptr %v.str.297
   ret { ptr, i64 } %t449
 if.end.4:
   %t450 = icmp eq i32 %month, 5
   br i1 %t450, label %if.then.5, label %if.end.5
 if.then.5:
-  %t451 = getelementptr inbounds { ptr, i64 }, ptr %v.str.303, i32 0, i32 0
+  %t451 = getelementptr inbounds { ptr, i64 }, ptr %v.str.304, i32 0, i32 0
   store ptr @.bytes.28, ptr %t451
-  %t452 = getelementptr inbounds { ptr, i64 }, ptr %v.str.303, i32 0, i32 1
+  %t452 = getelementptr inbounds { ptr, i64 }, ptr %v.str.304, i32 0, i32 1
   store i64 3, ptr %t452
-  %t453 = load { ptr, i64 }, ptr %v.str.303
+  %t453 = load { ptr, i64 }, ptr %v.str.304
   ret { ptr, i64 } %t453
 if.end.5:
   %t454 = icmp eq i32 %month, 6
   br i1 %t454, label %if.then.6, label %if.end.6
 if.then.6:
-  %t455 = getelementptr inbounds { ptr, i64 }, ptr %v.str.310, i32 0, i32 0
+  %t455 = getelementptr inbounds { ptr, i64 }, ptr %v.str.311, i32 0, i32 0
   store ptr @.bytes.29, ptr %t455
-  %t456 = getelementptr inbounds { ptr, i64 }, ptr %v.str.310, i32 0, i32 1
+  %t456 = getelementptr inbounds { ptr, i64 }, ptr %v.str.311, i32 0, i32 1
   store i64 3, ptr %t456
-  %t457 = load { ptr, i64 }, ptr %v.str.310
+  %t457 = load { ptr, i64 }, ptr %v.str.311
   ret { ptr, i64 } %t457
 if.end.6:
   %t458 = icmp eq i32 %month, 7
   br i1 %t458, label %if.then.7, label %if.end.7
 if.then.7:
-  %t459 = getelementptr inbounds { ptr, i64 }, ptr %v.str.317, i32 0, i32 0
+  %t459 = getelementptr inbounds { ptr, i64 }, ptr %v.str.318, i32 0, i32 0
   store ptr @.bytes.30, ptr %t459
-  %t460 = getelementptr inbounds { ptr, i64 }, ptr %v.str.317, i32 0, i32 1
+  %t460 = getelementptr inbounds { ptr, i64 }, ptr %v.str.318, i32 0, i32 1
   store i64 3, ptr %t460
-  %t461 = load { ptr, i64 }, ptr %v.str.317
+  %t461 = load { ptr, i64 }, ptr %v.str.318
   ret { ptr, i64 } %t461
 if.end.7:
   %t462 = icmp eq i32 %month, 8
   br i1 %t462, label %if.then.8, label %if.end.8
 if.then.8:
-  %t463 = getelementptr inbounds { ptr, i64 }, ptr %v.str.324, i32 0, i32 0
+  %t463 = getelementptr inbounds { ptr, i64 }, ptr %v.str.325, i32 0, i32 0
   store ptr @.bytes.31, ptr %t463
-  %t464 = getelementptr inbounds { ptr, i64 }, ptr %v.str.324, i32 0, i32 1
+  %t464 = getelementptr inbounds { ptr, i64 }, ptr %v.str.325, i32 0, i32 1
   store i64 3, ptr %t464
-  %t465 = load { ptr, i64 }, ptr %v.str.324
+  %t465 = load { ptr, i64 }, ptr %v.str.325
   ret { ptr, i64 } %t465
 if.end.8:
   %t466 = icmp eq i32 %month, 9
   br i1 %t466, label %if.then.9, label %if.end.9
 if.then.9:
-  %t467 = getelementptr inbounds { ptr, i64 }, ptr %v.str.331, i32 0, i32 0
+  %t467 = getelementptr inbounds { ptr, i64 }, ptr %v.str.332, i32 0, i32 0
   store ptr @.bytes.32, ptr %t467
-  %t468 = getelementptr inbounds { ptr, i64 }, ptr %v.str.331, i32 0, i32 1
+  %t468 = getelementptr inbounds { ptr, i64 }, ptr %v.str.332, i32 0, i32 1
   store i64 3, ptr %t468
-  %t469 = load { ptr, i64 }, ptr %v.str.331
+  %t469 = load { ptr, i64 }, ptr %v.str.332
   ret { ptr, i64 } %t469
 if.end.9:
   %t470 = icmp eq i32 %month, 10
   br i1 %t470, label %if.then.10, label %if.end.10
 if.then.10:
-  %t471 = getelementptr inbounds { ptr, i64 }, ptr %v.str.338, i32 0, i32 0
+  %t471 = getelementptr inbounds { ptr, i64 }, ptr %v.str.339, i32 0, i32 0
   store ptr @.bytes.33, ptr %t471
-  %t472 = getelementptr inbounds { ptr, i64 }, ptr %v.str.338, i32 0, i32 1
+  %t472 = getelementptr inbounds { ptr, i64 }, ptr %v.str.339, i32 0, i32 1
   store i64 3, ptr %t472
-  %t473 = load { ptr, i64 }, ptr %v.str.338
+  %t473 = load { ptr, i64 }, ptr %v.str.339
   ret { ptr, i64 } %t473
 if.end.10:
   %t474 = icmp eq i32 %month, 11
   br i1 %t474, label %if.then.11, label %if.end.11
 if.then.11:
-  %t475 = getelementptr inbounds { ptr, i64 }, ptr %v.str.345, i32 0, i32 0
+  %t475 = getelementptr inbounds { ptr, i64 }, ptr %v.str.346, i32 0, i32 0
   store ptr @.bytes.34, ptr %t475
-  %t476 = getelementptr inbounds { ptr, i64 }, ptr %v.str.345, i32 0, i32 1
+  %t476 = getelementptr inbounds { ptr, i64 }, ptr %v.str.346, i32 0, i32 1
   store i64 3, ptr %t476
-  %t477 = load { ptr, i64 }, ptr %v.str.345
+  %t477 = load { ptr, i64 }, ptr %v.str.346
   ret { ptr, i64 } %t477
 if.end.11:
-  %t478 = getelementptr inbounds { ptr, i64 }, ptr %v.str.347, i32 0, i32 0
+  %t478 = getelementptr inbounds { ptr, i64 }, ptr %v.str.348, i32 0, i32 0
   store ptr @.bytes.35, ptr %t478
-  %t479 = getelementptr inbounds { ptr, i64 }, ptr %v.str.347, i32 0, i32 1
+  %t479 = getelementptr inbounds { ptr, i64 }, ptr %v.str.348, i32 0, i32 1
   store i64 3, ptr %t479
-  %t480 = load { ptr, i64 }, ptr %v.str.347
+  %t480 = load { ptr, i64 }, ptr %v.str.348
   ret { ptr, i64 } %t480
 }
 define hidden { ptr, i64 } @"std/time.rfc3339_body"(ptr %t, i64 %frac) inlinehint {
@@ -2533,61 +2535,61 @@ entry:
   %v.tod = alloca %"struct.std/time.clockTime"
   %v.left = alloca { ptr, i64 }
   %v.right = alloca { ptr, i64 }
-  %v.ret.361 = alloca %"struct.std/time.civilDate"
-  %v.ret.366 = alloca %"struct.std/time.clockTime"
-  %v.ret.374 = alloca { ptr, i64 }
-  %v.ret.378 = alloca { ptr, i64 }
-  %v.ret.384 = alloca { ptr, i64 }
-  %v.ret.395 = alloca { ptr, i64 }
-  %v.ret.401 = alloca { ptr, i64 }
-  %v.ret.407 = alloca { ptr, i64 }
-  %v.ret.423 = alloca { ptr, i64 }
-  %v.str.377 = alloca { ptr, i64 }
-  %v.str.383 = alloca { ptr, i64 }
-  %v.str.400 = alloca { ptr, i64 }
-  %v.str.406 = alloca { ptr, i64 }
-  %v.str.422 = alloca { ptr, i64 }
-  %v.str.433 = alloca { ptr, i64 }
-  %v.cat.370 = alloca { ptr, i64 }
+  %v.ret.362 = alloca %"struct.std/time.civilDate"
+  %v.ret.367 = alloca %"struct.std/time.clockTime"
+  %v.ret.375 = alloca { ptr, i64 }
+  %v.ret.379 = alloca { ptr, i64 }
+  %v.ret.385 = alloca { ptr, i64 }
+  %v.ret.396 = alloca { ptr, i64 }
+  %v.ret.402 = alloca { ptr, i64 }
+  %v.ret.408 = alloca { ptr, i64 }
+  %v.ret.424 = alloca { ptr, i64 }
+  %v.str.378 = alloca { ptr, i64 }
+  %v.str.384 = alloca { ptr, i64 }
+  %v.str.401 = alloca { ptr, i64 }
+  %v.str.407 = alloca { ptr, i64 }
+  %v.str.423 = alloca { ptr, i64 }
+  %v.str.434 = alloca { ptr, i64 }
   %v.cat.371 = alloca { ptr, i64 }
   %v.cat.372 = alloca { ptr, i64 }
   %v.cat.373 = alloca { ptr, i64 }
-  %v.cat.391 = alloca { ptr, i64 }
+  %v.cat.374 = alloca { ptr, i64 }
   %v.cat.392 = alloca { ptr, i64 }
   %v.cat.393 = alloca { ptr, i64 }
   %v.cat.394 = alloca { ptr, i64 }
-  %v.cat.419 = alloca { ptr, i64 }
+  %v.cat.395 = alloca { ptr, i64 }
   %v.cat.420 = alloca { ptr, i64 }
-  %v.cat.430 = alloca { ptr, i64 }
+  %v.cat.421 = alloca { ptr, i64 }
   %v.cat.431 = alloca { ptr, i64 }
+  %v.cat.432 = alloca { ptr, i64 }
   %t481 = call i64 @"std/time.local_seconds"(ptr %t)
   store i64 %t481, ptr %v.local
   %t482 = load i64, ptr %v.local
   %t483 = call i64 @"std/time.days_of"(i64 %t482)
   %t484 = call %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %t483)
-  store %"struct.std/time.civilDate" %t484, ptr %v.ret.361
-  %t485 = load %"struct.std/time.civilDate", ptr %v.ret.361
+  store %"struct.std/time.civilDate" %t484, ptr %v.ret.362
+  %t485 = load %"struct.std/time.civilDate", ptr %v.ret.362
   store %"struct.std/time.civilDate" %t485, ptr %v.date
   %t486 = load i64, ptr %v.local
   %t487 = call %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %t486)
-  store %"struct.std/time.clockTime" %t487, ptr %v.ret.366
-  %t488 = load %"struct.std/time.clockTime", ptr %v.ret.366
+  store %"struct.std/time.clockTime" %t487, ptr %v.ret.367
+  %t488 = load %"struct.std/time.clockTime", ptr %v.ret.367
   store %"struct.std/time.clockTime" %t488, ptr %v.tod
   %t489 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 0
   %t490 = load i32, ptr %t489
   %t491 = call { ptr, i64 } @"std/time.pad_year"(i32 %t490)
-  store { ptr, i64 } %t491, ptr %v.ret.374
-  %t492 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.374, i32 0, i32 0
+  store { ptr, i64 } %t491, ptr %v.ret.375
+  %t492 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.375, i32 0, i32 0
   %t493 = load ptr, ptr %t492
-  %t494 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.374, i32 0, i32 1
+  %t494 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.375, i32 0, i32 1
   %t495 = load i64, ptr %t494
-  %t496 = getelementptr inbounds { ptr, i64 }, ptr %v.str.377, i32 0, i32 0
+  %t496 = getelementptr inbounds { ptr, i64 }, ptr %v.str.378, i32 0, i32 0
   store ptr @.bytes.14, ptr %t496
-  %t497 = getelementptr inbounds { ptr, i64 }, ptr %v.str.377, i32 0, i32 1
+  %t497 = getelementptr inbounds { ptr, i64 }, ptr %v.str.378, i32 0, i32 1
   store i64 1, ptr %t497
-  %t498 = getelementptr inbounds { ptr, i64 }, ptr %v.str.377, i32 0, i32 0
+  %t498 = getelementptr inbounds { ptr, i64 }, ptr %v.str.378, i32 0, i32 0
   %t499 = load ptr, ptr %t498
-  %t500 = getelementptr inbounds { ptr, i64 }, ptr %v.str.377, i32 0, i32 1
+  %t500 = getelementptr inbounds { ptr, i64 }, ptr %v.str.378, i32 0, i32 1
   %t501 = load i64, ptr %t500
   %t502 = add i64 %t495, %t501
   %t503 = icmp eq i64 %t502, 0
@@ -2602,22 +2604,22 @@ cat.zero.1:
   br label %cat.ready.1
 cat.ready.1:
   %t506 = phi ptr [ null, %cat.zero.1 ], [ %t504, %cat.alloc.1 ]
-  %t507 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.373, i32 0, i32 0
+  %t507 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.374, i32 0, i32 0
   store ptr %t506, ptr %t507
-  %t508 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.373, i32 0, i32 1
+  %t508 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.374, i32 0, i32 1
   store i64 %t502, ptr %t508
-  %t509 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.373, i32 0, i32 0
+  %t509 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.374, i32 0, i32 0
   %t510 = load ptr, ptr %t509
-  %t511 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.373, i32 0, i32 1
+  %t511 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.374, i32 0, i32 1
   %t512 = load i64, ptr %t511
   %t513 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 1
   %t514 = load i32, ptr %t513
   %t515 = sext i32 %t514 to i64
   %t516 = call { ptr, i64 } @"std/time.pad2"(i64 %t515)
-  store { ptr, i64 } %t516, ptr %v.ret.378
-  %t517 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.378, i32 0, i32 0
+  store { ptr, i64 } %t516, ptr %v.ret.379
+  %t517 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.379, i32 0, i32 0
   %t518 = load ptr, ptr %t517
-  %t519 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.378, i32 0, i32 1
+  %t519 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.379, i32 0, i32 1
   %t520 = load i64, ptr %t519
   %t521 = add i64 %t512, %t520
   %t522 = icmp eq i64 %t521, 0
@@ -2632,21 +2634,21 @@ cat.zero.2:
   br label %cat.ready.2
 cat.ready.2:
   %t525 = phi ptr [ null, %cat.zero.2 ], [ %t523, %cat.alloc.2 ]
-  %t526 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.372, i32 0, i32 0
+  %t526 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.373, i32 0, i32 0
   store ptr %t525, ptr %t526
-  %t527 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.372, i32 0, i32 1
+  %t527 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.373, i32 0, i32 1
   store i64 %t521, ptr %t527
-  %t528 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.372, i32 0, i32 0
+  %t528 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.373, i32 0, i32 0
   %t529 = load ptr, ptr %t528
-  %t530 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.372, i32 0, i32 1
+  %t530 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.373, i32 0, i32 1
   %t531 = load i64, ptr %t530
-  %t532 = getelementptr inbounds { ptr, i64 }, ptr %v.str.383, i32 0, i32 0
+  %t532 = getelementptr inbounds { ptr, i64 }, ptr %v.str.384, i32 0, i32 0
   store ptr @.bytes.14, ptr %t532
-  %t533 = getelementptr inbounds { ptr, i64 }, ptr %v.str.383, i32 0, i32 1
+  %t533 = getelementptr inbounds { ptr, i64 }, ptr %v.str.384, i32 0, i32 1
   store i64 1, ptr %t533
-  %t534 = getelementptr inbounds { ptr, i64 }, ptr %v.str.383, i32 0, i32 0
+  %t534 = getelementptr inbounds { ptr, i64 }, ptr %v.str.384, i32 0, i32 0
   %t535 = load ptr, ptr %t534
-  %t536 = getelementptr inbounds { ptr, i64 }, ptr %v.str.383, i32 0, i32 1
+  %t536 = getelementptr inbounds { ptr, i64 }, ptr %v.str.384, i32 0, i32 1
   %t537 = load i64, ptr %t536
   %t538 = add i64 %t531, %t537
   %t539 = icmp eq i64 %t538, 0
@@ -2661,22 +2663,22 @@ cat.zero.3:
   br label %cat.ready.3
 cat.ready.3:
   %t542 = phi ptr [ null, %cat.zero.3 ], [ %t540, %cat.alloc.3 ]
-  %t543 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.371, i32 0, i32 0
+  %t543 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.372, i32 0, i32 0
   store ptr %t542, ptr %t543
-  %t544 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.371, i32 0, i32 1
+  %t544 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.372, i32 0, i32 1
   store i64 %t538, ptr %t544
-  %t545 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.371, i32 0, i32 0
+  %t545 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.372, i32 0, i32 0
   %t546 = load ptr, ptr %t545
-  %t547 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.371, i32 0, i32 1
+  %t547 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.372, i32 0, i32 1
   %t548 = load i64, ptr %t547
   %t549 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 2
   %t550 = load i32, ptr %t549
   %t551 = sext i32 %t550 to i64
   %t552 = call { ptr, i64 } @"std/time.pad2"(i64 %t551)
-  store { ptr, i64 } %t552, ptr %v.ret.384
-  %t553 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.384, i32 0, i32 0
+  store { ptr, i64 } %t552, ptr %v.ret.385
+  %t553 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.385, i32 0, i32 0
   %t554 = load ptr, ptr %t553
-  %t555 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.384, i32 0, i32 1
+  %t555 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.385, i32 0, i32 1
   %t556 = load i64, ptr %t555
   %t557 = add i64 %t548, %t556
   %t558 = icmp eq i64 %t557, 0
@@ -2691,28 +2693,28 @@ cat.zero.4:
   br label %cat.ready.4
 cat.ready.4:
   %t561 = phi ptr [ null, %cat.zero.4 ], [ %t559, %cat.alloc.4 ]
-  %t562 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.370, i32 0, i32 0
+  %t562 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.371, i32 0, i32 0
   store ptr %t561, ptr %t562
-  %t563 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.370, i32 0, i32 1
+  %t563 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.371, i32 0, i32 1
   store i64 %t557, ptr %t563
-  %t564 = load { ptr, i64 }, ptr %v.cat.370
+  %t564 = load { ptr, i64 }, ptr %v.cat.371
   store { ptr, i64 } %t564, ptr %v.left
   %t565 = getelementptr inbounds %"struct.std/time.clockTime", ptr %v.tod, i32 0, i32 0
   %t566 = load i32, ptr %t565
   %t567 = sext i32 %t566 to i64
   %t568 = call { ptr, i64 } @"std/time.pad2"(i64 %t567)
-  store { ptr, i64 } %t568, ptr %v.ret.395
-  %t569 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.395, i32 0, i32 0
+  store { ptr, i64 } %t568, ptr %v.ret.396
+  %t569 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.396, i32 0, i32 0
   %t570 = load ptr, ptr %t569
-  %t571 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.395, i32 0, i32 1
+  %t571 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.396, i32 0, i32 1
   %t572 = load i64, ptr %t571
-  %t573 = getelementptr inbounds { ptr, i64 }, ptr %v.str.400, i32 0, i32 0
+  %t573 = getelementptr inbounds { ptr, i64 }, ptr %v.str.401, i32 0, i32 0
   store ptr @.bytes.15, ptr %t573
-  %t574 = getelementptr inbounds { ptr, i64 }, ptr %v.str.400, i32 0, i32 1
+  %t574 = getelementptr inbounds { ptr, i64 }, ptr %v.str.401, i32 0, i32 1
   store i64 1, ptr %t574
-  %t575 = getelementptr inbounds { ptr, i64 }, ptr %v.str.400, i32 0, i32 0
+  %t575 = getelementptr inbounds { ptr, i64 }, ptr %v.str.401, i32 0, i32 0
   %t576 = load ptr, ptr %t575
-  %t577 = getelementptr inbounds { ptr, i64 }, ptr %v.str.400, i32 0, i32 1
+  %t577 = getelementptr inbounds { ptr, i64 }, ptr %v.str.401, i32 0, i32 1
   %t578 = load i64, ptr %t577
   %t579 = add i64 %t572, %t578
   %t580 = icmp eq i64 %t579, 0
@@ -2727,22 +2729,22 @@ cat.zero.5:
   br label %cat.ready.5
 cat.ready.5:
   %t583 = phi ptr [ null, %cat.zero.5 ], [ %t581, %cat.alloc.5 ]
-  %t584 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.394, i32 0, i32 0
+  %t584 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.395, i32 0, i32 0
   store ptr %t583, ptr %t584
-  %t585 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.394, i32 0, i32 1
+  %t585 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.395, i32 0, i32 1
   store i64 %t579, ptr %t585
-  %t586 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.394, i32 0, i32 0
+  %t586 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.395, i32 0, i32 0
   %t587 = load ptr, ptr %t586
-  %t588 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.394, i32 0, i32 1
+  %t588 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.395, i32 0, i32 1
   %t589 = load i64, ptr %t588
   %t590 = getelementptr inbounds %"struct.std/time.clockTime", ptr %v.tod, i32 0, i32 1
   %t591 = load i32, ptr %t590
   %t592 = sext i32 %t591 to i64
   %t593 = call { ptr, i64 } @"std/time.pad2"(i64 %t592)
-  store { ptr, i64 } %t593, ptr %v.ret.401
-  %t594 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.401, i32 0, i32 0
+  store { ptr, i64 } %t593, ptr %v.ret.402
+  %t594 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.402, i32 0, i32 0
   %t595 = load ptr, ptr %t594
-  %t596 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.401, i32 0, i32 1
+  %t596 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.402, i32 0, i32 1
   %t597 = load i64, ptr %t596
   %t598 = add i64 %t589, %t597
   %t599 = icmp eq i64 %t598, 0
@@ -2757,21 +2759,21 @@ cat.zero.6:
   br label %cat.ready.6
 cat.ready.6:
   %t602 = phi ptr [ null, %cat.zero.6 ], [ %t600, %cat.alloc.6 ]
-  %t603 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.393, i32 0, i32 0
+  %t603 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.394, i32 0, i32 0
   store ptr %t602, ptr %t603
-  %t604 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.393, i32 0, i32 1
+  %t604 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.394, i32 0, i32 1
   store i64 %t598, ptr %t604
-  %t605 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.393, i32 0, i32 0
+  %t605 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.394, i32 0, i32 0
   %t606 = load ptr, ptr %t605
-  %t607 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.393, i32 0, i32 1
+  %t607 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.394, i32 0, i32 1
   %t608 = load i64, ptr %t607
-  %t609 = getelementptr inbounds { ptr, i64 }, ptr %v.str.406, i32 0, i32 0
+  %t609 = getelementptr inbounds { ptr, i64 }, ptr %v.str.407, i32 0, i32 0
   store ptr @.bytes.15, ptr %t609
-  %t610 = getelementptr inbounds { ptr, i64 }, ptr %v.str.406, i32 0, i32 1
+  %t610 = getelementptr inbounds { ptr, i64 }, ptr %v.str.407, i32 0, i32 1
   store i64 1, ptr %t610
-  %t611 = getelementptr inbounds { ptr, i64 }, ptr %v.str.406, i32 0, i32 0
+  %t611 = getelementptr inbounds { ptr, i64 }, ptr %v.str.407, i32 0, i32 0
   %t612 = load ptr, ptr %t611
-  %t613 = getelementptr inbounds { ptr, i64 }, ptr %v.str.406, i32 0, i32 1
+  %t613 = getelementptr inbounds { ptr, i64 }, ptr %v.str.407, i32 0, i32 1
   %t614 = load i64, ptr %t613
   %t615 = add i64 %t608, %t614
   %t616 = icmp eq i64 %t615, 0
@@ -2786,22 +2788,22 @@ cat.zero.7:
   br label %cat.ready.7
 cat.ready.7:
   %t619 = phi ptr [ null, %cat.zero.7 ], [ %t617, %cat.alloc.7 ]
-  %t620 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.392, i32 0, i32 0
+  %t620 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.393, i32 0, i32 0
   store ptr %t619, ptr %t620
-  %t621 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.392, i32 0, i32 1
+  %t621 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.393, i32 0, i32 1
   store i64 %t615, ptr %t621
-  %t622 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.392, i32 0, i32 0
+  %t622 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.393, i32 0, i32 0
   %t623 = load ptr, ptr %t622
-  %t624 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.392, i32 0, i32 1
+  %t624 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.393, i32 0, i32 1
   %t625 = load i64, ptr %t624
   %t626 = getelementptr inbounds %"struct.std/time.clockTime", ptr %v.tod, i32 0, i32 2
   %t627 = load i32, ptr %t626
   %t628 = sext i32 %t627 to i64
   %t629 = call { ptr, i64 } @"std/time.pad2"(i64 %t628)
-  store { ptr, i64 } %t629, ptr %v.ret.407
-  %t630 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.407, i32 0, i32 0
+  store { ptr, i64 } %t629, ptr %v.ret.408
+  %t630 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.408, i32 0, i32 0
   %t631 = load ptr, ptr %t630
-  %t632 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.407, i32 0, i32 1
+  %t632 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.408, i32 0, i32 1
   %t633 = load i64, ptr %t632
   %t634 = add i64 %t625, %t633
   %t635 = icmp eq i64 %t634, 0
@@ -2816,11 +2818,11 @@ cat.zero.8:
   br label %cat.ready.8
 cat.ready.8:
   %t638 = phi ptr [ null, %cat.zero.8 ], [ %t636, %cat.alloc.8 ]
-  %t639 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.391, i32 0, i32 0
+  %t639 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.392, i32 0, i32 0
   store ptr %t638, ptr %t639
-  %t640 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.391, i32 0, i32 1
+  %t640 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.392, i32 0, i32 1
   store i64 %t634, ptr %t640
-  %t641 = load { ptr, i64 }, ptr %v.cat.391
+  %t641 = load { ptr, i64 }, ptr %v.cat.392
   store { ptr, i64 } %t641, ptr %v.right
   %t642 = icmp ne i64 %frac, 0
   br i1 %t642, label %if.then.9, label %if.end.9
@@ -2829,13 +2831,13 @@ if.then.9:
   %t644 = load ptr, ptr %t643
   %t645 = getelementptr inbounds { ptr, i64 }, ptr %v.right, i32 0, i32 1
   %t646 = load i64, ptr %t645
-  %t647 = getelementptr inbounds { ptr, i64 }, ptr %v.str.422, i32 0, i32 0
+  %t647 = getelementptr inbounds { ptr, i64 }, ptr %v.str.423, i32 0, i32 0
   store ptr @.bytes.36, ptr %t647
-  %t648 = getelementptr inbounds { ptr, i64 }, ptr %v.str.422, i32 0, i32 1
+  %t648 = getelementptr inbounds { ptr, i64 }, ptr %v.str.423, i32 0, i32 1
   store i64 1, ptr %t648
-  %t649 = getelementptr inbounds { ptr, i64 }, ptr %v.str.422, i32 0, i32 0
+  %t649 = getelementptr inbounds { ptr, i64 }, ptr %v.str.423, i32 0, i32 0
   %t650 = load ptr, ptr %t649
-  %t651 = getelementptr inbounds { ptr, i64 }, ptr %v.str.422, i32 0, i32 1
+  %t651 = getelementptr inbounds { ptr, i64 }, ptr %v.str.423, i32 0, i32 1
   %t652 = load i64, ptr %t651
   %t653 = add i64 %t646, %t652
   %t654 = icmp eq i64 %t653, 0
@@ -2850,19 +2852,19 @@ cat.zero.10:
   br label %cat.ready.10
 cat.ready.10:
   %t657 = phi ptr [ null, %cat.zero.10 ], [ %t655, %cat.alloc.10 ]
-  %t658 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.420, i32 0, i32 0
+  %t658 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.421, i32 0, i32 0
   store ptr %t657, ptr %t658
-  %t659 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.420, i32 0, i32 1
+  %t659 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.421, i32 0, i32 1
   store i64 %t653, ptr %t659
-  %t660 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.420, i32 0, i32 0
+  %t660 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.421, i32 0, i32 0
   %t661 = load ptr, ptr %t660
-  %t662 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.420, i32 0, i32 1
+  %t662 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.421, i32 0, i32 1
   %t663 = load i64, ptr %t662
   %t664 = call { ptr, i64 } @"std/time.fraction_text"(i64 %frac)
-  store { ptr, i64 } %t664, ptr %v.ret.423
-  %t665 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.423, i32 0, i32 0
+  store { ptr, i64 } %t664, ptr %v.ret.424
+  %t665 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.424, i32 0, i32 0
   %t666 = load ptr, ptr %t665
-  %t667 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.423, i32 0, i32 1
+  %t667 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.424, i32 0, i32 1
   %t668 = load i64, ptr %t667
   %t669 = add i64 %t663, %t668
   %t670 = icmp eq i64 %t669, 0
@@ -2877,11 +2879,11 @@ cat.zero.11:
   br label %cat.ready.11
 cat.ready.11:
   %t673 = phi ptr [ null, %cat.zero.11 ], [ %t671, %cat.alloc.11 ]
-  %t674 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.419, i32 0, i32 0
+  %t674 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.420, i32 0, i32 0
   store ptr %t673, ptr %t674
-  %t675 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.419, i32 0, i32 1
+  %t675 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.420, i32 0, i32 1
   store i64 %t669, ptr %t675
-  %t676 = load { ptr, i64 }, ptr %v.cat.419
+  %t676 = load { ptr, i64 }, ptr %v.cat.420
   store { ptr, i64 } %t676, ptr %v.right
   br label %if.end.9
 if.end.9:
@@ -2889,13 +2891,13 @@ if.end.9:
   %t678 = load ptr, ptr %t677
   %t679 = getelementptr inbounds { ptr, i64 }, ptr %v.left, i32 0, i32 1
   %t680 = load i64, ptr %t679
-  %t681 = getelementptr inbounds { ptr, i64 }, ptr %v.str.433, i32 0, i32 0
+  %t681 = getelementptr inbounds { ptr, i64 }, ptr %v.str.434, i32 0, i32 0
   store ptr @.bytes.37, ptr %t681
-  %t682 = getelementptr inbounds { ptr, i64 }, ptr %v.str.433, i32 0, i32 1
+  %t682 = getelementptr inbounds { ptr, i64 }, ptr %v.str.434, i32 0, i32 1
   store i64 1, ptr %t682
-  %t683 = getelementptr inbounds { ptr, i64 }, ptr %v.str.433, i32 0, i32 0
+  %t683 = getelementptr inbounds { ptr, i64 }, ptr %v.str.434, i32 0, i32 0
   %t684 = load ptr, ptr %t683
-  %t685 = getelementptr inbounds { ptr, i64 }, ptr %v.str.433, i32 0, i32 1
+  %t685 = getelementptr inbounds { ptr, i64 }, ptr %v.str.434, i32 0, i32 1
   %t686 = load i64, ptr %t685
   %t687 = add i64 %t680, %t686
   %t688 = icmp eq i64 %t687, 0
@@ -2910,13 +2912,13 @@ cat.zero.12:
   br label %cat.ready.12
 cat.ready.12:
   %t691 = phi ptr [ null, %cat.zero.12 ], [ %t689, %cat.alloc.12 ]
-  %t692 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.431, i32 0, i32 0
+  %t692 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.432, i32 0, i32 0
   store ptr %t691, ptr %t692
-  %t693 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.431, i32 0, i32 1
+  %t693 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.432, i32 0, i32 1
   store i64 %t687, ptr %t693
-  %t694 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.431, i32 0, i32 0
+  %t694 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.432, i32 0, i32 0
   %t695 = load ptr, ptr %t694
-  %t696 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.431, i32 0, i32 1
+  %t696 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.432, i32 0, i32 1
   %t697 = load i64, ptr %t696
   %t698 = getelementptr inbounds { ptr, i64 }, ptr %v.right, i32 0, i32 0
   %t699 = load ptr, ptr %t698
@@ -2935,11 +2937,11 @@ cat.zero.13:
   br label %cat.ready.13
 cat.ready.13:
   %t706 = phi ptr [ null, %cat.zero.13 ], [ %t704, %cat.alloc.13 ]
-  %t707 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.430, i32 0, i32 0
+  %t707 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.431, i32 0, i32 0
   store ptr %t706, ptr %t707
-  %t708 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.430, i32 0, i32 1
+  %t708 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.431, i32 0, i32 1
   store i64 %t702, ptr %t708
-  %t709 = load { ptr, i64 }, ptr %v.cat.430
+  %t709 = load { ptr, i64 }, ptr %v.cat.431
   %t710 = getelementptr inbounds { ptr, i64 }, ptr %v.right, i32 0, i32 0
   %t711 = load ptr, ptr %t710
   call void @willrt_free_str(ptr %t711)
@@ -2951,27 +2953,27 @@ cat.ready.13:
 define hidden { ptr, i64 } @"std/time.rfc3339"(ptr %t) inlinehint {
 entry:
   %v.at = alloca i64
-  %v.ret.447 = alloca { ptr, i64 }
-  %v.ret.450 = alloca { ptr, i64 }
-  %v.cat.446 = alloca { ptr, i64 }
+  %v.ret.448 = alloca { ptr, i64 }
+  %v.ret.451 = alloca { ptr, i64 }
+  %v.cat.447 = alloca { ptr, i64 }
   %t714 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t715 = load i64, ptr %t714
   %t716 = call i64 @"std/time.seconds_of"(i64 %t715)
   store i64 %t716, ptr %v.at
   %t717 = call { ptr, i64 } @"std/time.rfc3339_body"(ptr %t, i64 0)
-  store { ptr, i64 } %t717, ptr %v.ret.447
-  %t718 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.447, i32 0, i32 0
+  store { ptr, i64 } %t717, ptr %v.ret.448
+  %t718 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.448, i32 0, i32 0
   %t719 = load ptr, ptr %t718
-  %t720 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.447, i32 0, i32 1
+  %t720 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.448, i32 0, i32 1
   %t721 = load i64, ptr %t720
   %t722 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 1
   %t723 = load i64, ptr %v.at
   %t724 = call i32 @"std/time.offset_at"(ptr %t722, i64 %t723)
   %t725 = call { ptr, i64 } @"std/time.offset_suffix"(i32 %t724)
-  store { ptr, i64 } %t725, ptr %v.ret.450
-  %t726 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.450, i32 0, i32 0
+  store { ptr, i64 } %t725, ptr %v.ret.451
+  %t726 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.451, i32 0, i32 0
   %t727 = load ptr, ptr %t726
-  %t728 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.450, i32 0, i32 1
+  %t728 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.451, i32 0, i32 1
   %t729 = load i64, ptr %t728
   %t730 = add i64 %t721, %t729
   %t731 = icmp eq i64 %t730, 0
@@ -2986,19 +2988,19 @@ cat.zero.1:
   br label %cat.ready.1
 cat.ready.1:
   %t734 = phi ptr [ null, %cat.zero.1 ], [ %t732, %cat.alloc.1 ]
-  %t735 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.446, i32 0, i32 0
+  %t735 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.447, i32 0, i32 0
   store ptr %t734, ptr %t735
-  %t736 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.446, i32 0, i32 1
+  %t736 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.447, i32 0, i32 1
   store i64 %t730, ptr %t736
-  %t737 = load { ptr, i64 }, ptr %v.cat.446
+  %t737 = load { ptr, i64 }, ptr %v.cat.447
   ret { ptr, i64 } %t737
 }
 define hidden { ptr, i64 } @"std/time.rfc3339_nano"(ptr %t) inlinehint {
 entry:
   %v.at = alloca i64
-  %v.ret.467 = alloca { ptr, i64 }
-  %v.ret.472 = alloca { ptr, i64 }
-  %v.cat.466 = alloca { ptr, i64 }
+  %v.ret.468 = alloca { ptr, i64 }
+  %v.ret.473 = alloca { ptr, i64 }
+  %v.cat.467 = alloca { ptr, i64 }
   %t738 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t739 = load i64, ptr %t738
   %t740 = call i64 @"std/time.seconds_of"(i64 %t739)
@@ -3007,19 +3009,19 @@ entry:
   %t742 = load i64, ptr %t741
   %t743 = call i64 @"std/time.fraction_of"(i64 %t742)
   %t744 = call { ptr, i64 } @"std/time.rfc3339_body"(ptr %t, i64 %t743)
-  store { ptr, i64 } %t744, ptr %v.ret.467
-  %t745 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.467, i32 0, i32 0
+  store { ptr, i64 } %t744, ptr %v.ret.468
+  %t745 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.468, i32 0, i32 0
   %t746 = load ptr, ptr %t745
-  %t747 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.467, i32 0, i32 1
+  %t747 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.468, i32 0, i32 1
   %t748 = load i64, ptr %t747
   %t749 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 1
   %t750 = load i64, ptr %v.at
   %t751 = call i32 @"std/time.offset_at"(ptr %t749, i64 %t750)
   %t752 = call { ptr, i64 } @"std/time.offset_suffix"(i32 %t751)
-  store { ptr, i64 } %t752, ptr %v.ret.472
-  %t753 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.472, i32 0, i32 0
+  store { ptr, i64 } %t752, ptr %v.ret.473
+  %t753 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.473, i32 0, i32 0
   %t754 = load ptr, ptr %t753
-  %t755 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.472, i32 0, i32 1
+  %t755 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.473, i32 0, i32 1
   %t756 = load i64, ptr %t755
   %t757 = add i64 %t748, %t756
   %t758 = icmp eq i64 %t757, 0
@@ -3034,11 +3036,11 @@ cat.zero.1:
   br label %cat.ready.1
 cat.ready.1:
   %t761 = phi ptr [ null, %cat.zero.1 ], [ %t759, %cat.alloc.1 ]
-  %t762 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.466, i32 0, i32 0
+  %t762 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.467, i32 0, i32 0
   store ptr %t761, ptr %t762
-  %t763 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.466, i32 0, i32 1
+  %t763 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.467, i32 0, i32 1
   store i64 %t757, ptr %t763
-  %t764 = load { ptr, i64 }, ptr %v.cat.466
+  %t764 = load { ptr, i64 }, ptr %v.cat.467
   ret { ptr, i64 } %t764
 }
 define hidden { ptr, i64 } @"std/time.rfc1123"(ptr %t) inlinehint {
@@ -3049,35 +3051,35 @@ entry:
   %v.left = alloca { ptr, i64 }
   %v.middle = alloca { ptr, i64 }
   %v.right = alloca { ptr, i64 }
-  %v.ret.489 = alloca %"struct.std/time.civilDate"
-  %v.ret.494 = alloca %"struct.std/time.clockTime"
-  %v.ret.500 = alloca { ptr, i64 }
-  %v.ret.505 = alloca { ptr, i64 }
-  %v.ret.514 = alloca { ptr, i64 }
-  %v.ret.518 = alloca { ptr, i64 }
-  %v.ret.527 = alloca { ptr, i64 }
-  %v.ret.533 = alloca { ptr, i64 }
-  %v.ret.539 = alloca { ptr, i64 }
-  %v.str.504 = alloca { ptr, i64 }
-  %v.str.517 = alloca { ptr, i64 }
-  %v.str.532 = alloca { ptr, i64 }
-  %v.str.538 = alloca { ptr, i64 }
-  %v.str.556 = alloca { ptr, i64 }
-  %v.str.558 = alloca { ptr, i64 }
-  %v.str.560 = alloca { ptr, i64 }
-  %v.cat.498 = alloca { ptr, i64 }
+  %v.ret.490 = alloca %"struct.std/time.civilDate"
+  %v.ret.495 = alloca %"struct.std/time.clockTime"
+  %v.ret.501 = alloca { ptr, i64 }
+  %v.ret.506 = alloca { ptr, i64 }
+  %v.ret.515 = alloca { ptr, i64 }
+  %v.ret.519 = alloca { ptr, i64 }
+  %v.ret.528 = alloca { ptr, i64 }
+  %v.ret.534 = alloca { ptr, i64 }
+  %v.ret.540 = alloca { ptr, i64 }
+  %v.str.505 = alloca { ptr, i64 }
+  %v.str.518 = alloca { ptr, i64 }
+  %v.str.533 = alloca { ptr, i64 }
+  %v.str.539 = alloca { ptr, i64 }
+  %v.str.557 = alloca { ptr, i64 }
+  %v.str.559 = alloca { ptr, i64 }
+  %v.str.561 = alloca { ptr, i64 }
   %v.cat.499 = alloca { ptr, i64 }
-  %v.cat.512 = alloca { ptr, i64 }
+  %v.cat.500 = alloca { ptr, i64 }
   %v.cat.513 = alloca { ptr, i64 }
-  %v.cat.523 = alloca { ptr, i64 }
+  %v.cat.514 = alloca { ptr, i64 }
   %v.cat.524 = alloca { ptr, i64 }
   %v.cat.525 = alloca { ptr, i64 }
   %v.cat.526 = alloca { ptr, i64 }
-  %v.cat.550 = alloca { ptr, i64 }
+  %v.cat.527 = alloca { ptr, i64 }
   %v.cat.551 = alloca { ptr, i64 }
   %v.cat.552 = alloca { ptr, i64 }
   %v.cat.553 = alloca { ptr, i64 }
   %v.cat.554 = alloca { ptr, i64 }
+  %v.cat.555 = alloca { ptr, i64 }
   %t765 = getelementptr inbounds %"struct.std/time.Instant", ptr %t, i32 0, i32 0
   %t766 = load i64, ptr %t765
   %t767 = call i64 @"std/time.seconds_of"(i64 %t766)
@@ -3085,30 +3087,30 @@ entry:
   %t768 = load i64, ptr %v.secs
   %t769 = call i64 @"std/time.days_of"(i64 %t768)
   %t770 = call %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %t769)
-  store %"struct.std/time.civilDate" %t770, ptr %v.ret.489
-  %t771 = load %"struct.std/time.civilDate", ptr %v.ret.489
+  store %"struct.std/time.civilDate" %t770, ptr %v.ret.490
+  %t771 = load %"struct.std/time.civilDate", ptr %v.ret.490
   store %"struct.std/time.civilDate" %t771, ptr %v.date
   %t772 = load i64, ptr %v.secs
   %t773 = call %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %t772)
-  store %"struct.std/time.clockTime" %t773, ptr %v.ret.494
-  %t774 = load %"struct.std/time.clockTime", ptr %v.ret.494
+  store %"struct.std/time.clockTime" %t773, ptr %v.ret.495
+  %t774 = load %"struct.std/time.clockTime", ptr %v.ret.495
   store %"struct.std/time.clockTime" %t774, ptr %v.tod
   %t775 = load i64, ptr %v.secs
   %t776 = call i64 @"std/time.days_of"(i64 %t775)
   %t777 = call i64 @"std/time.weekday_of"(i64 %t776)
   %t778 = call { ptr, i64 } @"std/time.weekday_name"(i64 %t777)
-  store { ptr, i64 } %t778, ptr %v.ret.500
-  %t779 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.500, i32 0, i32 0
+  store { ptr, i64 } %t778, ptr %v.ret.501
+  %t779 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.501, i32 0, i32 0
   %t780 = load ptr, ptr %t779
-  %t781 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.500, i32 0, i32 1
+  %t781 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.501, i32 0, i32 1
   %t782 = load i64, ptr %t781
-  %t783 = getelementptr inbounds { ptr, i64 }, ptr %v.str.504, i32 0, i32 0
+  %t783 = getelementptr inbounds { ptr, i64 }, ptr %v.str.505, i32 0, i32 0
   store ptr @.bytes.38, ptr %t783
-  %t784 = getelementptr inbounds { ptr, i64 }, ptr %v.str.504, i32 0, i32 1
+  %t784 = getelementptr inbounds { ptr, i64 }, ptr %v.str.505, i32 0, i32 1
   store i64 2, ptr %t784
-  %t785 = getelementptr inbounds { ptr, i64 }, ptr %v.str.504, i32 0, i32 0
+  %t785 = getelementptr inbounds { ptr, i64 }, ptr %v.str.505, i32 0, i32 0
   %t786 = load ptr, ptr %t785
-  %t787 = getelementptr inbounds { ptr, i64 }, ptr %v.str.504, i32 0, i32 1
+  %t787 = getelementptr inbounds { ptr, i64 }, ptr %v.str.505, i32 0, i32 1
   %t788 = load i64, ptr %t787
   %t789 = add i64 %t782, %t788
   %t790 = icmp eq i64 %t789, 0
@@ -3123,22 +3125,22 @@ cat.zero.1:
   br label %cat.ready.1
 cat.ready.1:
   %t793 = phi ptr [ null, %cat.zero.1 ], [ %t791, %cat.alloc.1 ]
-  %t794 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.499, i32 0, i32 0
+  %t794 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.500, i32 0, i32 0
   store ptr %t793, ptr %t794
-  %t795 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.499, i32 0, i32 1
+  %t795 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.500, i32 0, i32 1
   store i64 %t789, ptr %t795
-  %t796 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.499, i32 0, i32 0
+  %t796 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.500, i32 0, i32 0
   %t797 = load ptr, ptr %t796
-  %t798 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.499, i32 0, i32 1
+  %t798 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.500, i32 0, i32 1
   %t799 = load i64, ptr %t798
   %t800 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 2
   %t801 = load i32, ptr %t800
   %t802 = sext i32 %t801 to i64
   %t803 = call { ptr, i64 } @"std/time.pad2"(i64 %t802)
-  store { ptr, i64 } %t803, ptr %v.ret.505
-  %t804 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.505, i32 0, i32 0
+  store { ptr, i64 } %t803, ptr %v.ret.506
+  %t804 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.506, i32 0, i32 0
   %t805 = load ptr, ptr %t804
-  %t806 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.505, i32 0, i32 1
+  %t806 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.506, i32 0, i32 1
   %t807 = load i64, ptr %t806
   %t808 = add i64 %t799, %t807
   %t809 = icmp eq i64 %t808, 0
@@ -3153,27 +3155,27 @@ cat.zero.2:
   br label %cat.ready.2
 cat.ready.2:
   %t812 = phi ptr [ null, %cat.zero.2 ], [ %t810, %cat.alloc.2 ]
-  %t813 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.498, i32 0, i32 0
+  %t813 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.499, i32 0, i32 0
   store ptr %t812, ptr %t813
-  %t814 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.498, i32 0, i32 1
+  %t814 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.499, i32 0, i32 1
   store i64 %t808, ptr %t814
-  %t815 = load { ptr, i64 }, ptr %v.cat.498
+  %t815 = load { ptr, i64 }, ptr %v.cat.499
   store { ptr, i64 } %t815, ptr %v.left
   %t816 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 1
   %t817 = load i32, ptr %t816
   %t818 = call { ptr, i64 } @"std/time.month_name"(i32 %t817)
-  store { ptr, i64 } %t818, ptr %v.ret.514
-  %t819 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.514, i32 0, i32 0
+  store { ptr, i64 } %t818, ptr %v.ret.515
+  %t819 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.515, i32 0, i32 0
   %t820 = load ptr, ptr %t819
-  %t821 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.514, i32 0, i32 1
+  %t821 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.515, i32 0, i32 1
   %t822 = load i64, ptr %t821
-  %t823 = getelementptr inbounds { ptr, i64 }, ptr %v.str.517, i32 0, i32 0
+  %t823 = getelementptr inbounds { ptr, i64 }, ptr %v.str.518, i32 0, i32 0
   store ptr @.bytes.39, ptr %t823
-  %t824 = getelementptr inbounds { ptr, i64 }, ptr %v.str.517, i32 0, i32 1
+  %t824 = getelementptr inbounds { ptr, i64 }, ptr %v.str.518, i32 0, i32 1
   store i64 1, ptr %t824
-  %t825 = getelementptr inbounds { ptr, i64 }, ptr %v.str.517, i32 0, i32 0
+  %t825 = getelementptr inbounds { ptr, i64 }, ptr %v.str.518, i32 0, i32 0
   %t826 = load ptr, ptr %t825
-  %t827 = getelementptr inbounds { ptr, i64 }, ptr %v.str.517, i32 0, i32 1
+  %t827 = getelementptr inbounds { ptr, i64 }, ptr %v.str.518, i32 0, i32 1
   %t828 = load i64, ptr %t827
   %t829 = add i64 %t822, %t828
   %t830 = icmp eq i64 %t829, 0
@@ -3188,21 +3190,21 @@ cat.zero.3:
   br label %cat.ready.3
 cat.ready.3:
   %t833 = phi ptr [ null, %cat.zero.3 ], [ %t831, %cat.alloc.3 ]
-  %t834 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.513, i32 0, i32 0
+  %t834 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.514, i32 0, i32 0
   store ptr %t833, ptr %t834
-  %t835 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.513, i32 0, i32 1
+  %t835 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.514, i32 0, i32 1
   store i64 %t829, ptr %t835
-  %t836 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.513, i32 0, i32 0
+  %t836 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.514, i32 0, i32 0
   %t837 = load ptr, ptr %t836
-  %t838 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.513, i32 0, i32 1
+  %t838 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.514, i32 0, i32 1
   %t839 = load i64, ptr %t838
   %t840 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 0
   %t841 = load i32, ptr %t840
   %t842 = call { ptr, i64 } @"std/time.pad_year"(i32 %t841)
-  store { ptr, i64 } %t842, ptr %v.ret.518
-  %t843 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.518, i32 0, i32 0
+  store { ptr, i64 } %t842, ptr %v.ret.519
+  %t843 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.519, i32 0, i32 0
   %t844 = load ptr, ptr %t843
-  %t845 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.518, i32 0, i32 1
+  %t845 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.519, i32 0, i32 1
   %t846 = load i64, ptr %t845
   %t847 = add i64 %t839, %t846
   %t848 = icmp eq i64 %t847, 0
@@ -3217,28 +3219,28 @@ cat.zero.4:
   br label %cat.ready.4
 cat.ready.4:
   %t851 = phi ptr [ null, %cat.zero.4 ], [ %t849, %cat.alloc.4 ]
-  %t852 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.512, i32 0, i32 0
+  %t852 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.513, i32 0, i32 0
   store ptr %t851, ptr %t852
-  %t853 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.512, i32 0, i32 1
+  %t853 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.513, i32 0, i32 1
   store i64 %t847, ptr %t853
-  %t854 = load { ptr, i64 }, ptr %v.cat.512
+  %t854 = load { ptr, i64 }, ptr %v.cat.513
   store { ptr, i64 } %t854, ptr %v.middle
   %t855 = getelementptr inbounds %"struct.std/time.clockTime", ptr %v.tod, i32 0, i32 0
   %t856 = load i32, ptr %t855
   %t857 = sext i32 %t856 to i64
   %t858 = call { ptr, i64 } @"std/time.pad2"(i64 %t857)
-  store { ptr, i64 } %t858, ptr %v.ret.527
-  %t859 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.527, i32 0, i32 0
+  store { ptr, i64 } %t858, ptr %v.ret.528
+  %t859 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.528, i32 0, i32 0
   %t860 = load ptr, ptr %t859
-  %t861 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.527, i32 0, i32 1
+  %t861 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.528, i32 0, i32 1
   %t862 = load i64, ptr %t861
-  %t863 = getelementptr inbounds { ptr, i64 }, ptr %v.str.532, i32 0, i32 0
+  %t863 = getelementptr inbounds { ptr, i64 }, ptr %v.str.533, i32 0, i32 0
   store ptr @.bytes.15, ptr %t863
-  %t864 = getelementptr inbounds { ptr, i64 }, ptr %v.str.532, i32 0, i32 1
+  %t864 = getelementptr inbounds { ptr, i64 }, ptr %v.str.533, i32 0, i32 1
   store i64 1, ptr %t864
-  %t865 = getelementptr inbounds { ptr, i64 }, ptr %v.str.532, i32 0, i32 0
+  %t865 = getelementptr inbounds { ptr, i64 }, ptr %v.str.533, i32 0, i32 0
   %t866 = load ptr, ptr %t865
-  %t867 = getelementptr inbounds { ptr, i64 }, ptr %v.str.532, i32 0, i32 1
+  %t867 = getelementptr inbounds { ptr, i64 }, ptr %v.str.533, i32 0, i32 1
   %t868 = load i64, ptr %t867
   %t869 = add i64 %t862, %t868
   %t870 = icmp eq i64 %t869, 0
@@ -3253,22 +3255,22 @@ cat.zero.5:
   br label %cat.ready.5
 cat.ready.5:
   %t873 = phi ptr [ null, %cat.zero.5 ], [ %t871, %cat.alloc.5 ]
-  %t874 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.526, i32 0, i32 0
+  %t874 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.527, i32 0, i32 0
   store ptr %t873, ptr %t874
-  %t875 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.526, i32 0, i32 1
+  %t875 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.527, i32 0, i32 1
   store i64 %t869, ptr %t875
-  %t876 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.526, i32 0, i32 0
+  %t876 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.527, i32 0, i32 0
   %t877 = load ptr, ptr %t876
-  %t878 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.526, i32 0, i32 1
+  %t878 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.527, i32 0, i32 1
   %t879 = load i64, ptr %t878
   %t880 = getelementptr inbounds %"struct.std/time.clockTime", ptr %v.tod, i32 0, i32 1
   %t881 = load i32, ptr %t880
   %t882 = sext i32 %t881 to i64
   %t883 = call { ptr, i64 } @"std/time.pad2"(i64 %t882)
-  store { ptr, i64 } %t883, ptr %v.ret.533
-  %t884 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.533, i32 0, i32 0
+  store { ptr, i64 } %t883, ptr %v.ret.534
+  %t884 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.534, i32 0, i32 0
   %t885 = load ptr, ptr %t884
-  %t886 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.533, i32 0, i32 1
+  %t886 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.534, i32 0, i32 1
   %t887 = load i64, ptr %t886
   %t888 = add i64 %t879, %t887
   %t889 = icmp eq i64 %t888, 0
@@ -3283,21 +3285,21 @@ cat.zero.6:
   br label %cat.ready.6
 cat.ready.6:
   %t892 = phi ptr [ null, %cat.zero.6 ], [ %t890, %cat.alloc.6 ]
-  %t893 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.525, i32 0, i32 0
+  %t893 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.526, i32 0, i32 0
   store ptr %t892, ptr %t893
-  %t894 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.525, i32 0, i32 1
+  %t894 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.526, i32 0, i32 1
   store i64 %t888, ptr %t894
-  %t895 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.525, i32 0, i32 0
+  %t895 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.526, i32 0, i32 0
   %t896 = load ptr, ptr %t895
-  %t897 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.525, i32 0, i32 1
+  %t897 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.526, i32 0, i32 1
   %t898 = load i64, ptr %t897
-  %t899 = getelementptr inbounds { ptr, i64 }, ptr %v.str.538, i32 0, i32 0
+  %t899 = getelementptr inbounds { ptr, i64 }, ptr %v.str.539, i32 0, i32 0
   store ptr @.bytes.15, ptr %t899
-  %t900 = getelementptr inbounds { ptr, i64 }, ptr %v.str.538, i32 0, i32 1
+  %t900 = getelementptr inbounds { ptr, i64 }, ptr %v.str.539, i32 0, i32 1
   store i64 1, ptr %t900
-  %t901 = getelementptr inbounds { ptr, i64 }, ptr %v.str.538, i32 0, i32 0
+  %t901 = getelementptr inbounds { ptr, i64 }, ptr %v.str.539, i32 0, i32 0
   %t902 = load ptr, ptr %t901
-  %t903 = getelementptr inbounds { ptr, i64 }, ptr %v.str.538, i32 0, i32 1
+  %t903 = getelementptr inbounds { ptr, i64 }, ptr %v.str.539, i32 0, i32 1
   %t904 = load i64, ptr %t903
   %t905 = add i64 %t898, %t904
   %t906 = icmp eq i64 %t905, 0
@@ -3312,22 +3314,22 @@ cat.zero.7:
   br label %cat.ready.7
 cat.ready.7:
   %t909 = phi ptr [ null, %cat.zero.7 ], [ %t907, %cat.alloc.7 ]
-  %t910 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.524, i32 0, i32 0
+  %t910 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.525, i32 0, i32 0
   store ptr %t909, ptr %t910
-  %t911 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.524, i32 0, i32 1
+  %t911 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.525, i32 0, i32 1
   store i64 %t905, ptr %t911
-  %t912 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.524, i32 0, i32 0
+  %t912 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.525, i32 0, i32 0
   %t913 = load ptr, ptr %t912
-  %t914 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.524, i32 0, i32 1
+  %t914 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.525, i32 0, i32 1
   %t915 = load i64, ptr %t914
   %t916 = getelementptr inbounds %"struct.std/time.clockTime", ptr %v.tod, i32 0, i32 2
   %t917 = load i32, ptr %t916
   %t918 = sext i32 %t917 to i64
   %t919 = call { ptr, i64 } @"std/time.pad2"(i64 %t918)
-  store { ptr, i64 } %t919, ptr %v.ret.539
-  %t920 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.539, i32 0, i32 0
+  store { ptr, i64 } %t919, ptr %v.ret.540
+  %t920 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.540, i32 0, i32 0
   %t921 = load ptr, ptr %t920
-  %t922 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.539, i32 0, i32 1
+  %t922 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.540, i32 0, i32 1
   %t923 = load i64, ptr %t922
   %t924 = add i64 %t915, %t923
   %t925 = icmp eq i64 %t924, 0
@@ -3342,23 +3344,23 @@ cat.zero.8:
   br label %cat.ready.8
 cat.ready.8:
   %t928 = phi ptr [ null, %cat.zero.8 ], [ %t926, %cat.alloc.8 ]
-  %t929 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.523, i32 0, i32 0
+  %t929 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.524, i32 0, i32 0
   store ptr %t928, ptr %t929
-  %t930 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.523, i32 0, i32 1
+  %t930 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.524, i32 0, i32 1
   store i64 %t924, ptr %t930
-  %t931 = load { ptr, i64 }, ptr %v.cat.523
+  %t931 = load { ptr, i64 }, ptr %v.cat.524
   store { ptr, i64 } %t931, ptr %v.right
   %t932 = getelementptr inbounds { ptr, i64 }, ptr %v.left, i32 0, i32 0
   %t933 = load ptr, ptr %t932
   %t934 = getelementptr inbounds { ptr, i64 }, ptr %v.left, i32 0, i32 1
   %t935 = load i64, ptr %t934
-  %t936 = getelementptr inbounds { ptr, i64 }, ptr %v.str.556, i32 0, i32 0
+  %t936 = getelementptr inbounds { ptr, i64 }, ptr %v.str.557, i32 0, i32 0
   store ptr @.bytes.39, ptr %t936
-  %t937 = getelementptr inbounds { ptr, i64 }, ptr %v.str.556, i32 0, i32 1
+  %t937 = getelementptr inbounds { ptr, i64 }, ptr %v.str.557, i32 0, i32 1
   store i64 1, ptr %t937
-  %t938 = getelementptr inbounds { ptr, i64 }, ptr %v.str.556, i32 0, i32 0
+  %t938 = getelementptr inbounds { ptr, i64 }, ptr %v.str.557, i32 0, i32 0
   %t939 = load ptr, ptr %t938
-  %t940 = getelementptr inbounds { ptr, i64 }, ptr %v.str.556, i32 0, i32 1
+  %t940 = getelementptr inbounds { ptr, i64 }, ptr %v.str.557, i32 0, i32 1
   %t941 = load i64, ptr %t940
   %t942 = add i64 %t935, %t941
   %t943 = icmp eq i64 %t942, 0
@@ -3373,13 +3375,13 @@ cat.zero.9:
   br label %cat.ready.9
 cat.ready.9:
   %t946 = phi ptr [ null, %cat.zero.9 ], [ %t944, %cat.alloc.9 ]
-  %t947 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.554, i32 0, i32 0
+  %t947 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.555, i32 0, i32 0
   store ptr %t946, ptr %t947
-  %t948 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.554, i32 0, i32 1
+  %t948 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.555, i32 0, i32 1
   store i64 %t942, ptr %t948
-  %t949 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.554, i32 0, i32 0
+  %t949 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.555, i32 0, i32 0
   %t950 = load ptr, ptr %t949
-  %t951 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.554, i32 0, i32 1
+  %t951 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.555, i32 0, i32 1
   %t952 = load i64, ptr %t951
   %t953 = getelementptr inbounds { ptr, i64 }, ptr %v.middle, i32 0, i32 0
   %t954 = load ptr, ptr %t953
@@ -3398,21 +3400,21 @@ cat.zero.10:
   br label %cat.ready.10
 cat.ready.10:
   %t961 = phi ptr [ null, %cat.zero.10 ], [ %t959, %cat.alloc.10 ]
-  %t962 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.553, i32 0, i32 0
+  %t962 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.554, i32 0, i32 0
   store ptr %t961, ptr %t962
-  %t963 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.553, i32 0, i32 1
+  %t963 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.554, i32 0, i32 1
   store i64 %t957, ptr %t963
-  %t964 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.553, i32 0, i32 0
+  %t964 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.554, i32 0, i32 0
   %t965 = load ptr, ptr %t964
-  %t966 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.553, i32 0, i32 1
+  %t966 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.554, i32 0, i32 1
   %t967 = load i64, ptr %t966
-  %t968 = getelementptr inbounds { ptr, i64 }, ptr %v.str.558, i32 0, i32 0
+  %t968 = getelementptr inbounds { ptr, i64 }, ptr %v.str.559, i32 0, i32 0
   store ptr @.bytes.39, ptr %t968
-  %t969 = getelementptr inbounds { ptr, i64 }, ptr %v.str.558, i32 0, i32 1
+  %t969 = getelementptr inbounds { ptr, i64 }, ptr %v.str.559, i32 0, i32 1
   store i64 1, ptr %t969
-  %t970 = getelementptr inbounds { ptr, i64 }, ptr %v.str.558, i32 0, i32 0
+  %t970 = getelementptr inbounds { ptr, i64 }, ptr %v.str.559, i32 0, i32 0
   %t971 = load ptr, ptr %t970
-  %t972 = getelementptr inbounds { ptr, i64 }, ptr %v.str.558, i32 0, i32 1
+  %t972 = getelementptr inbounds { ptr, i64 }, ptr %v.str.559, i32 0, i32 1
   %t973 = load i64, ptr %t972
   %t974 = add i64 %t967, %t973
   %t975 = icmp eq i64 %t974, 0
@@ -3427,13 +3429,13 @@ cat.zero.11:
   br label %cat.ready.11
 cat.ready.11:
   %t978 = phi ptr [ null, %cat.zero.11 ], [ %t976, %cat.alloc.11 ]
-  %t979 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.552, i32 0, i32 0
+  %t979 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.553, i32 0, i32 0
   store ptr %t978, ptr %t979
-  %t980 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.552, i32 0, i32 1
+  %t980 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.553, i32 0, i32 1
   store i64 %t974, ptr %t980
-  %t981 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.552, i32 0, i32 0
+  %t981 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.553, i32 0, i32 0
   %t982 = load ptr, ptr %t981
-  %t983 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.552, i32 0, i32 1
+  %t983 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.553, i32 0, i32 1
   %t984 = load i64, ptr %t983
   %t985 = getelementptr inbounds { ptr, i64 }, ptr %v.right, i32 0, i32 0
   %t986 = load ptr, ptr %t985
@@ -3452,21 +3454,21 @@ cat.zero.12:
   br label %cat.ready.12
 cat.ready.12:
   %t993 = phi ptr [ null, %cat.zero.12 ], [ %t991, %cat.alloc.12 ]
-  %t994 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.551, i32 0, i32 0
+  %t994 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.552, i32 0, i32 0
   store ptr %t993, ptr %t994
-  %t995 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.551, i32 0, i32 1
+  %t995 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.552, i32 0, i32 1
   store i64 %t989, ptr %t995
-  %t996 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.551, i32 0, i32 0
+  %t996 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.552, i32 0, i32 0
   %t997 = load ptr, ptr %t996
-  %t998 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.551, i32 0, i32 1
+  %t998 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.552, i32 0, i32 1
   %t999 = load i64, ptr %t998
-  %t1000 = getelementptr inbounds { ptr, i64 }, ptr %v.str.560, i32 0, i32 0
+  %t1000 = getelementptr inbounds { ptr, i64 }, ptr %v.str.561, i32 0, i32 0
   store ptr @.bytes.40, ptr %t1000
-  %t1001 = getelementptr inbounds { ptr, i64 }, ptr %v.str.560, i32 0, i32 1
+  %t1001 = getelementptr inbounds { ptr, i64 }, ptr %v.str.561, i32 0, i32 1
   store i64 4, ptr %t1001
-  %t1002 = getelementptr inbounds { ptr, i64 }, ptr %v.str.560, i32 0, i32 0
+  %t1002 = getelementptr inbounds { ptr, i64 }, ptr %v.str.561, i32 0, i32 0
   %t1003 = load ptr, ptr %t1002
-  %t1004 = getelementptr inbounds { ptr, i64 }, ptr %v.str.560, i32 0, i32 1
+  %t1004 = getelementptr inbounds { ptr, i64 }, ptr %v.str.561, i32 0, i32 1
   %t1005 = load i64, ptr %t1004
   %t1006 = add i64 %t999, %t1005
   %t1007 = icmp eq i64 %t1006, 0
@@ -3481,11 +3483,11 @@ cat.zero.13:
   br label %cat.ready.13
 cat.ready.13:
   %t1010 = phi ptr [ null, %cat.zero.13 ], [ %t1008, %cat.alloc.13 ]
-  %t1011 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.550, i32 0, i32 0
+  %t1011 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.551, i32 0, i32 0
   store ptr %t1010, ptr %t1011
-  %t1012 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.550, i32 0, i32 1
+  %t1012 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.551, i32 0, i32 1
   store i64 %t1006, ptr %t1012
-  %t1013 = load { ptr, i64 }, ptr %v.cat.550
+  %t1013 = load { ptr, i64 }, ptr %v.cat.551
   %t1014 = getelementptr inbounds { ptr, i64 }, ptr %v.right, i32 0, i32 0
   %t1015 = load ptr, ptr %t1014
   call void @willrt_free_str(ptr %t1015)
@@ -3500,37 +3502,37 @@ cat.ready.13:
 define hidden { ptr, i64 } @"std/time.date"(ptr %t) inlinehint {
 entry:
   %v.date = alloca %"struct.std/time.civilDate"
-  %v.ret.568 = alloca %"struct.std/time.civilDate"
-  %v.ret.578 = alloca { ptr, i64 }
-  %v.ret.582 = alloca { ptr, i64 }
-  %v.ret.588 = alloca { ptr, i64 }
-  %v.str.581 = alloca { ptr, i64 }
-  %v.str.587 = alloca { ptr, i64 }
-  %v.cat.574 = alloca { ptr, i64 }
+  %v.ret.569 = alloca %"struct.std/time.civilDate"
+  %v.ret.579 = alloca { ptr, i64 }
+  %v.ret.583 = alloca { ptr, i64 }
+  %v.ret.589 = alloca { ptr, i64 }
+  %v.str.582 = alloca { ptr, i64 }
+  %v.str.588 = alloca { ptr, i64 }
   %v.cat.575 = alloca { ptr, i64 }
   %v.cat.576 = alloca { ptr, i64 }
   %v.cat.577 = alloca { ptr, i64 }
+  %v.cat.578 = alloca { ptr, i64 }
   %t1020 = call i64 @"std/time.local_seconds"(ptr %t)
   %t1021 = call i64 @"std/time.days_of"(i64 %t1020)
   %t1022 = call %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %t1021)
-  store %"struct.std/time.civilDate" %t1022, ptr %v.ret.568
-  %t1023 = load %"struct.std/time.civilDate", ptr %v.ret.568
+  store %"struct.std/time.civilDate" %t1022, ptr %v.ret.569
+  %t1023 = load %"struct.std/time.civilDate", ptr %v.ret.569
   store %"struct.std/time.civilDate" %t1023, ptr %v.date
   %t1024 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 0
   %t1025 = load i32, ptr %t1024
   %t1026 = call { ptr, i64 } @"std/time.pad_year"(i32 %t1025)
-  store { ptr, i64 } %t1026, ptr %v.ret.578
-  %t1027 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.578, i32 0, i32 0
+  store { ptr, i64 } %t1026, ptr %v.ret.579
+  %t1027 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.579, i32 0, i32 0
   %t1028 = load ptr, ptr %t1027
-  %t1029 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.578, i32 0, i32 1
+  %t1029 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.579, i32 0, i32 1
   %t1030 = load i64, ptr %t1029
-  %t1031 = getelementptr inbounds { ptr, i64 }, ptr %v.str.581, i32 0, i32 0
+  %t1031 = getelementptr inbounds { ptr, i64 }, ptr %v.str.582, i32 0, i32 0
   store ptr @.bytes.14, ptr %t1031
-  %t1032 = getelementptr inbounds { ptr, i64 }, ptr %v.str.581, i32 0, i32 1
+  %t1032 = getelementptr inbounds { ptr, i64 }, ptr %v.str.582, i32 0, i32 1
   store i64 1, ptr %t1032
-  %t1033 = getelementptr inbounds { ptr, i64 }, ptr %v.str.581, i32 0, i32 0
+  %t1033 = getelementptr inbounds { ptr, i64 }, ptr %v.str.582, i32 0, i32 0
   %t1034 = load ptr, ptr %t1033
-  %t1035 = getelementptr inbounds { ptr, i64 }, ptr %v.str.581, i32 0, i32 1
+  %t1035 = getelementptr inbounds { ptr, i64 }, ptr %v.str.582, i32 0, i32 1
   %t1036 = load i64, ptr %t1035
   %t1037 = add i64 %t1030, %t1036
   %t1038 = icmp eq i64 %t1037, 0
@@ -3545,22 +3547,22 @@ cat.zero.1:
   br label %cat.ready.1
 cat.ready.1:
   %t1041 = phi ptr [ null, %cat.zero.1 ], [ %t1039, %cat.alloc.1 ]
-  %t1042 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.577, i32 0, i32 0
+  %t1042 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.578, i32 0, i32 0
   store ptr %t1041, ptr %t1042
-  %t1043 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.577, i32 0, i32 1
+  %t1043 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.578, i32 0, i32 1
   store i64 %t1037, ptr %t1043
-  %t1044 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.577, i32 0, i32 0
+  %t1044 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.578, i32 0, i32 0
   %t1045 = load ptr, ptr %t1044
-  %t1046 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.577, i32 0, i32 1
+  %t1046 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.578, i32 0, i32 1
   %t1047 = load i64, ptr %t1046
   %t1048 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 1
   %t1049 = load i32, ptr %t1048
   %t1050 = sext i32 %t1049 to i64
   %t1051 = call { ptr, i64 } @"std/time.pad2"(i64 %t1050)
-  store { ptr, i64 } %t1051, ptr %v.ret.582
-  %t1052 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.582, i32 0, i32 0
+  store { ptr, i64 } %t1051, ptr %v.ret.583
+  %t1052 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.583, i32 0, i32 0
   %t1053 = load ptr, ptr %t1052
-  %t1054 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.582, i32 0, i32 1
+  %t1054 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.583, i32 0, i32 1
   %t1055 = load i64, ptr %t1054
   %t1056 = add i64 %t1047, %t1055
   %t1057 = icmp eq i64 %t1056, 0
@@ -3575,21 +3577,21 @@ cat.zero.2:
   br label %cat.ready.2
 cat.ready.2:
   %t1060 = phi ptr [ null, %cat.zero.2 ], [ %t1058, %cat.alloc.2 ]
-  %t1061 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.576, i32 0, i32 0
+  %t1061 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.577, i32 0, i32 0
   store ptr %t1060, ptr %t1061
-  %t1062 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.576, i32 0, i32 1
+  %t1062 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.577, i32 0, i32 1
   store i64 %t1056, ptr %t1062
-  %t1063 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.576, i32 0, i32 0
+  %t1063 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.577, i32 0, i32 0
   %t1064 = load ptr, ptr %t1063
-  %t1065 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.576, i32 0, i32 1
+  %t1065 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.577, i32 0, i32 1
   %t1066 = load i64, ptr %t1065
-  %t1067 = getelementptr inbounds { ptr, i64 }, ptr %v.str.587, i32 0, i32 0
+  %t1067 = getelementptr inbounds { ptr, i64 }, ptr %v.str.588, i32 0, i32 0
   store ptr @.bytes.14, ptr %t1067
-  %t1068 = getelementptr inbounds { ptr, i64 }, ptr %v.str.587, i32 0, i32 1
+  %t1068 = getelementptr inbounds { ptr, i64 }, ptr %v.str.588, i32 0, i32 1
   store i64 1, ptr %t1068
-  %t1069 = getelementptr inbounds { ptr, i64 }, ptr %v.str.587, i32 0, i32 0
+  %t1069 = getelementptr inbounds { ptr, i64 }, ptr %v.str.588, i32 0, i32 0
   %t1070 = load ptr, ptr %t1069
-  %t1071 = getelementptr inbounds { ptr, i64 }, ptr %v.str.587, i32 0, i32 1
+  %t1071 = getelementptr inbounds { ptr, i64 }, ptr %v.str.588, i32 0, i32 1
   %t1072 = load i64, ptr %t1071
   %t1073 = add i64 %t1066, %t1072
   %t1074 = icmp eq i64 %t1073, 0
@@ -3604,22 +3606,22 @@ cat.zero.3:
   br label %cat.ready.3
 cat.ready.3:
   %t1077 = phi ptr [ null, %cat.zero.3 ], [ %t1075, %cat.alloc.3 ]
-  %t1078 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.575, i32 0, i32 0
+  %t1078 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.576, i32 0, i32 0
   store ptr %t1077, ptr %t1078
-  %t1079 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.575, i32 0, i32 1
+  %t1079 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.576, i32 0, i32 1
   store i64 %t1073, ptr %t1079
-  %t1080 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.575, i32 0, i32 0
+  %t1080 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.576, i32 0, i32 0
   %t1081 = load ptr, ptr %t1080
-  %t1082 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.575, i32 0, i32 1
+  %t1082 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.576, i32 0, i32 1
   %t1083 = load i64, ptr %t1082
   %t1084 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 2
   %t1085 = load i32, ptr %t1084
   %t1086 = sext i32 %t1085 to i64
   %t1087 = call { ptr, i64 } @"std/time.pad2"(i64 %t1086)
-  store { ptr, i64 } %t1087, ptr %v.ret.588
-  %t1088 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.588, i32 0, i32 0
+  store { ptr, i64 } %t1087, ptr %v.ret.589
+  %t1088 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.589, i32 0, i32 0
   %t1089 = load ptr, ptr %t1088
-  %t1090 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.588, i32 0, i32 1
+  %t1090 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.589, i32 0, i32 1
   %t1091 = load i64, ptr %t1090
   %t1092 = add i64 %t1083, %t1091
   %t1093 = icmp eq i64 %t1092, 0
@@ -3634,47 +3636,47 @@ cat.zero.4:
   br label %cat.ready.4
 cat.ready.4:
   %t1096 = phi ptr [ null, %cat.zero.4 ], [ %t1094, %cat.alloc.4 ]
-  %t1097 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.574, i32 0, i32 0
+  %t1097 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.575, i32 0, i32 0
   store ptr %t1096, ptr %t1097
-  %t1098 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.574, i32 0, i32 1
+  %t1098 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.575, i32 0, i32 1
   store i64 %t1092, ptr %t1098
-  %t1099 = load { ptr, i64 }, ptr %v.cat.574
+  %t1099 = load { ptr, i64 }, ptr %v.cat.575
   ret { ptr, i64 } %t1099
 }
 define hidden { ptr, i64 } @"std/time.clock"(ptr %t) inlinehint {
 entry:
   %v.tod = alloca %"struct.std/time.clockTime"
-  %v.ret.600 = alloca %"struct.std/time.clockTime"
-  %v.ret.609 = alloca { ptr, i64 }
-  %v.ret.615 = alloca { ptr, i64 }
-  %v.ret.621 = alloca { ptr, i64 }
-  %v.str.614 = alloca { ptr, i64 }
-  %v.str.620 = alloca { ptr, i64 }
-  %v.cat.605 = alloca { ptr, i64 }
+  %v.ret.601 = alloca %"struct.std/time.clockTime"
+  %v.ret.610 = alloca { ptr, i64 }
+  %v.ret.616 = alloca { ptr, i64 }
+  %v.ret.622 = alloca { ptr, i64 }
+  %v.str.615 = alloca { ptr, i64 }
+  %v.str.621 = alloca { ptr, i64 }
   %v.cat.606 = alloca { ptr, i64 }
   %v.cat.607 = alloca { ptr, i64 }
   %v.cat.608 = alloca { ptr, i64 }
+  %v.cat.609 = alloca { ptr, i64 }
   %t1100 = call i64 @"std/time.local_seconds"(ptr %t)
   %t1101 = call %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %t1100)
-  store %"struct.std/time.clockTime" %t1101, ptr %v.ret.600
-  %t1102 = load %"struct.std/time.clockTime", ptr %v.ret.600
+  store %"struct.std/time.clockTime" %t1101, ptr %v.ret.601
+  %t1102 = load %"struct.std/time.clockTime", ptr %v.ret.601
   store %"struct.std/time.clockTime" %t1102, ptr %v.tod
   %t1103 = getelementptr inbounds %"struct.std/time.clockTime", ptr %v.tod, i32 0, i32 0
   %t1104 = load i32, ptr %t1103
   %t1105 = sext i32 %t1104 to i64
   %t1106 = call { ptr, i64 } @"std/time.pad2"(i64 %t1105)
-  store { ptr, i64 } %t1106, ptr %v.ret.609
-  %t1107 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.609, i32 0, i32 0
+  store { ptr, i64 } %t1106, ptr %v.ret.610
+  %t1107 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.610, i32 0, i32 0
   %t1108 = load ptr, ptr %t1107
-  %t1109 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.609, i32 0, i32 1
+  %t1109 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.610, i32 0, i32 1
   %t1110 = load i64, ptr %t1109
-  %t1111 = getelementptr inbounds { ptr, i64 }, ptr %v.str.614, i32 0, i32 0
+  %t1111 = getelementptr inbounds { ptr, i64 }, ptr %v.str.615, i32 0, i32 0
   store ptr @.bytes.15, ptr %t1111
-  %t1112 = getelementptr inbounds { ptr, i64 }, ptr %v.str.614, i32 0, i32 1
+  %t1112 = getelementptr inbounds { ptr, i64 }, ptr %v.str.615, i32 0, i32 1
   store i64 1, ptr %t1112
-  %t1113 = getelementptr inbounds { ptr, i64 }, ptr %v.str.614, i32 0, i32 0
+  %t1113 = getelementptr inbounds { ptr, i64 }, ptr %v.str.615, i32 0, i32 0
   %t1114 = load ptr, ptr %t1113
-  %t1115 = getelementptr inbounds { ptr, i64 }, ptr %v.str.614, i32 0, i32 1
+  %t1115 = getelementptr inbounds { ptr, i64 }, ptr %v.str.615, i32 0, i32 1
   %t1116 = load i64, ptr %t1115
   %t1117 = add i64 %t1110, %t1116
   %t1118 = icmp eq i64 %t1117, 0
@@ -3689,22 +3691,22 @@ cat.zero.1:
   br label %cat.ready.1
 cat.ready.1:
   %t1121 = phi ptr [ null, %cat.zero.1 ], [ %t1119, %cat.alloc.1 ]
-  %t1122 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.608, i32 0, i32 0
+  %t1122 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.609, i32 0, i32 0
   store ptr %t1121, ptr %t1122
-  %t1123 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.608, i32 0, i32 1
+  %t1123 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.609, i32 0, i32 1
   store i64 %t1117, ptr %t1123
-  %t1124 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.608, i32 0, i32 0
+  %t1124 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.609, i32 0, i32 0
   %t1125 = load ptr, ptr %t1124
-  %t1126 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.608, i32 0, i32 1
+  %t1126 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.609, i32 0, i32 1
   %t1127 = load i64, ptr %t1126
   %t1128 = getelementptr inbounds %"struct.std/time.clockTime", ptr %v.tod, i32 0, i32 1
   %t1129 = load i32, ptr %t1128
   %t1130 = sext i32 %t1129 to i64
   %t1131 = call { ptr, i64 } @"std/time.pad2"(i64 %t1130)
-  store { ptr, i64 } %t1131, ptr %v.ret.615
-  %t1132 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.615, i32 0, i32 0
+  store { ptr, i64 } %t1131, ptr %v.ret.616
+  %t1132 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.616, i32 0, i32 0
   %t1133 = load ptr, ptr %t1132
-  %t1134 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.615, i32 0, i32 1
+  %t1134 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.616, i32 0, i32 1
   %t1135 = load i64, ptr %t1134
   %t1136 = add i64 %t1127, %t1135
   %t1137 = icmp eq i64 %t1136, 0
@@ -3719,21 +3721,21 @@ cat.zero.2:
   br label %cat.ready.2
 cat.ready.2:
   %t1140 = phi ptr [ null, %cat.zero.2 ], [ %t1138, %cat.alloc.2 ]
-  %t1141 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.607, i32 0, i32 0
+  %t1141 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.608, i32 0, i32 0
   store ptr %t1140, ptr %t1141
-  %t1142 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.607, i32 0, i32 1
+  %t1142 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.608, i32 0, i32 1
   store i64 %t1136, ptr %t1142
-  %t1143 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.607, i32 0, i32 0
+  %t1143 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.608, i32 0, i32 0
   %t1144 = load ptr, ptr %t1143
-  %t1145 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.607, i32 0, i32 1
+  %t1145 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.608, i32 0, i32 1
   %t1146 = load i64, ptr %t1145
-  %t1147 = getelementptr inbounds { ptr, i64 }, ptr %v.str.620, i32 0, i32 0
+  %t1147 = getelementptr inbounds { ptr, i64 }, ptr %v.str.621, i32 0, i32 0
   store ptr @.bytes.15, ptr %t1147
-  %t1148 = getelementptr inbounds { ptr, i64 }, ptr %v.str.620, i32 0, i32 1
+  %t1148 = getelementptr inbounds { ptr, i64 }, ptr %v.str.621, i32 0, i32 1
   store i64 1, ptr %t1148
-  %t1149 = getelementptr inbounds { ptr, i64 }, ptr %v.str.620, i32 0, i32 0
+  %t1149 = getelementptr inbounds { ptr, i64 }, ptr %v.str.621, i32 0, i32 0
   %t1150 = load ptr, ptr %t1149
-  %t1151 = getelementptr inbounds { ptr, i64 }, ptr %v.str.620, i32 0, i32 1
+  %t1151 = getelementptr inbounds { ptr, i64 }, ptr %v.str.621, i32 0, i32 1
   %t1152 = load i64, ptr %t1151
   %t1153 = add i64 %t1146, %t1152
   %t1154 = icmp eq i64 %t1153, 0
@@ -3748,22 +3750,22 @@ cat.zero.3:
   br label %cat.ready.3
 cat.ready.3:
   %t1157 = phi ptr [ null, %cat.zero.3 ], [ %t1155, %cat.alloc.3 ]
-  %t1158 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.606, i32 0, i32 0
+  %t1158 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.607, i32 0, i32 0
   store ptr %t1157, ptr %t1158
-  %t1159 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.606, i32 0, i32 1
+  %t1159 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.607, i32 0, i32 1
   store i64 %t1153, ptr %t1159
-  %t1160 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.606, i32 0, i32 0
+  %t1160 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.607, i32 0, i32 0
   %t1161 = load ptr, ptr %t1160
-  %t1162 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.606, i32 0, i32 1
+  %t1162 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.607, i32 0, i32 1
   %t1163 = load i64, ptr %t1162
   %t1164 = getelementptr inbounds %"struct.std/time.clockTime", ptr %v.tod, i32 0, i32 2
   %t1165 = load i32, ptr %t1164
   %t1166 = sext i32 %t1165 to i64
   %t1167 = call { ptr, i64 } @"std/time.pad2"(i64 %t1166)
-  store { ptr, i64 } %t1167, ptr %v.ret.621
-  %t1168 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.621, i32 0, i32 0
+  store { ptr, i64 } %t1167, ptr %v.ret.622
+  %t1168 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.622, i32 0, i32 0
   %t1169 = load ptr, ptr %t1168
-  %t1170 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.621, i32 0, i32 1
+  %t1170 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.622, i32 0, i32 1
   %t1171 = load i64, ptr %t1170
   %t1172 = add i64 %t1163, %t1171
   %t1173 = icmp eq i64 %t1172, 0
@@ -3778,11 +3780,11 @@ cat.zero.4:
   br label %cat.ready.4
 cat.ready.4:
   %t1176 = phi ptr [ null, %cat.zero.4 ], [ %t1174, %cat.alloc.4 ]
-  %t1177 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.605, i32 0, i32 0
+  %t1177 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.606, i32 0, i32 0
   store ptr %t1176, ptr %t1177
-  %t1178 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.605, i32 0, i32 1
+  %t1178 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.606, i32 0, i32 1
   store i64 %t1172, ptr %t1178
-  %t1179 = load { ptr, i64 }, ptr %v.cat.605
+  %t1179 = load { ptr, i64 }, ptr %v.cat.606
   ret { ptr, i64 } %t1179
 }
 %"struct.std/time.timeError" = type { { ptr, i64 } }
@@ -3982,7 +3984,7 @@ panic.ok.2:
   %t83 = or i1 %t77, %t82
   br i1 %t83, label %if.then.1, label %if.end.1
 if.then.1:
-  ret i1 false
+  ret i1 False
 if.end.1:
   %t84 = sext i32 %at to i64
   %t85 = getelementptr inbounds { ptr, i64 }, ptr %cs, i32 0, i32 0
@@ -4040,7 +4042,9 @@ panic.ok.4:
 if.end.1:
   store i32 0, ptr %v.value
   store i32 0, ptr %v.k
-  br label %for.body.5
+  br label %while.cond.5
+while.cond.5:
+  br i1 True, label %for.body.5, label %for.end.5
 for.body.5:
   %t107 = load i32, ptr %v.k
   %t108 = icmp sge i32 %t107, %count
@@ -4114,7 +4118,7 @@ panic.13:
   unreachable
 panic.ok.13:
   store i32 %t136, ptr %v.k
-  br label %for.body.5
+  br label %while.cond.5
 for.end.5:
   %t138 = load i32, ptr %v.value
   ret i32 %t138
@@ -4144,64 +4148,64 @@ entry:
   %v.offset = alloca i32
   %v.offsetHour = alloca i32
   %v.offsetMinute = alloca i32
-  %v.local_seconds = alloca i64
-  %v.utc_seconds = alloca i64
-  %v.agg.720 = alloca %"struct.std/time.Instant"
-  %v.ret.240 = alloca { ptr, i64, i64 }
-  %v.ret.265 = alloca %"struct.std/time.timeError"
-  %v.ret.332 = alloca %"struct.std/time.timeError"
-  %v.ret.351 = alloca %"struct.std/time.timeError"
-  %v.ret.370 = alloca %"struct.std/time.timeError"
-  %v.ret.389 = alloca %"struct.std/time.timeError"
-  %v.ret.404 = alloca %"struct.std/time.timeError"
-  %v.ret.421 = alloca %"struct.std/time.timeError"
-  %v.ret.440 = alloca %"struct.std/time.timeError"
-  %v.ret.511 = alloca %"struct.std/time.timeError"
-  %v.ret.541 = alloca %"struct.std/time.timeError"
-  %v.ret.605 = alloca %"struct.std/time.timeError"
-  %v.ret.620 = alloca %"struct.std/time.timeError"
-  %v.ret.649 = alloca %"struct.std/time.timeError"
-  %v.ret.660 = alloca %"struct.std/time.timeError"
-  %v.ret.699 = alloca %"struct.std/time.timeError"
-  %v.ret.714 = alloca %"struct.std/time.timeError"
-  %v.ret.726 = alloca %"struct.std/time.Timezone"
-  %v.str.266 = alloca { ptr, i64 }
-  %v.str.333 = alloca { ptr, i64 }
-  %v.str.352 = alloca { ptr, i64 }
-  %v.str.371 = alloca { ptr, i64 }
-  %v.str.390 = alloca { ptr, i64 }
-  %v.str.405 = alloca { ptr, i64 }
-  %v.str.422 = alloca { ptr, i64 }
-  %v.str.441 = alloca { ptr, i64 }
-  %v.str.512 = alloca { ptr, i64 }
-  %v.str.542 = alloca { ptr, i64 }
-  %v.str.606 = alloca { ptr, i64 }
-  %v.str.621 = alloca { ptr, i64 }
-  %v.str.650 = alloca { ptr, i64 }
-  %v.str.661 = alloca { ptr, i64 }
-  %v.str.700 = alloca { ptr, i64 }
-  %v.str.715 = alloca { ptr, i64 }
-  %v.adt.263 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.330 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.349 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.368 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.387 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.402 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.419 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.438 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.509 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.539 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.603 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.618 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.647 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.658 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.697 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.712 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.718 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.slice.245 = alloca { ptr, i64 }
+  %v.local_at = alloca i64
+  %v.utc_at = alloca i64
+  %v.agg.723 = alloca %"struct.std/time.Instant"
+  %v.ret.241 = alloca { ptr, i64, i64 }
+  %v.ret.266 = alloca %"struct.std/time.timeError"
+  %v.ret.333 = alloca %"struct.std/time.timeError"
+  %v.ret.352 = alloca %"struct.std/time.timeError"
+  %v.ret.371 = alloca %"struct.std/time.timeError"
+  %v.ret.390 = alloca %"struct.std/time.timeError"
+  %v.ret.405 = alloca %"struct.std/time.timeError"
+  %v.ret.422 = alloca %"struct.std/time.timeError"
+  %v.ret.441 = alloca %"struct.std/time.timeError"
+  %v.ret.513 = alloca %"struct.std/time.timeError"
+  %v.ret.544 = alloca %"struct.std/time.timeError"
+  %v.ret.608 = alloca %"struct.std/time.timeError"
+  %v.ret.623 = alloca %"struct.std/time.timeError"
+  %v.ret.652 = alloca %"struct.std/time.timeError"
+  %v.ret.663 = alloca %"struct.std/time.timeError"
+  %v.ret.702 = alloca %"struct.std/time.timeError"
+  %v.ret.717 = alloca %"struct.std/time.timeError"
+  %v.ret.729 = alloca %"struct.std/time.Timezone"
+  %v.str.267 = alloca { ptr, i64 }
+  %v.str.334 = alloca { ptr, i64 }
+  %v.str.353 = alloca { ptr, i64 }
+  %v.str.372 = alloca { ptr, i64 }
+  %v.str.391 = alloca { ptr, i64 }
+  %v.str.406 = alloca { ptr, i64 }
+  %v.str.423 = alloca { ptr, i64 }
+  %v.str.442 = alloca { ptr, i64 }
+  %v.str.514 = alloca { ptr, i64 }
+  %v.str.545 = alloca { ptr, i64 }
+  %v.str.609 = alloca { ptr, i64 }
+  %v.str.624 = alloca { ptr, i64 }
+  %v.str.653 = alloca { ptr, i64 }
+  %v.str.664 = alloca { ptr, i64 }
+  %v.str.703 = alloca { ptr, i64 }
+  %v.str.718 = alloca { ptr, i64 }
+  %v.adt.264 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.331 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.350 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.369 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.388 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.403 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.420 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.439 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.511 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.542 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.606 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.621 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.650 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.661 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.700 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.715 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.721 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.slice.246 = alloca { ptr, i64 }
   %t142 = call { ptr, i64, i64 } @"std/time.chars_of"(ptr %s)
-  store { ptr, i64, i64 } %t142, ptr %v.ret.240
-  %t143 = load { ptr, i64, i64 }, ptr %v.ret.240
+  store { ptr, i64, i64 } %t142, ptr %v.ret.241
+  %t143 = load { ptr, i64, i64 }, ptr %v.ret.241
   store { ptr, i64, i64 } %t143, ptr %v.cs
   %t144 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t145 = load i64, ptr %t144
@@ -4223,11 +4227,11 @@ panic.2:
 panic.ok.2:
   %t152 = getelementptr inbounds i32, ptr %t148, i64 0
   %t153 = sub i64 %t145, 0
-  %t154 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.245, i32 0, i32 0
+  %t154 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.246, i32 0, i32 0
   store ptr %t152, ptr %t154
-  %t155 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.245, i32 0, i32 1
+  %t155 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.246, i32 0, i32 1
   store i64 %t153, ptr %t155
-  %t156 = load { ptr, i64 }, ptr %v.slice.245
+  %t156 = load { ptr, i64 }, ptr %v.slice.246
   store { ptr, i64 } %t156, ptr %v.c
   %t157 = getelementptr inbounds { ptr, i64 }, ptr %v.c, i32 0, i32 1
   %t158 = load i64, ptr %t157
@@ -4243,21 +4247,21 @@ panic.ok.3:
   %t162 = icmp slt i32 %t161, 20
   br i1 %t162, label %if.then.4, label %if.end.4
 if.then.4:
-  %t163 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.263, i32 0, i32 0
+  %t163 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.264, i32 0, i32 0
   store i32 1, ptr %t163
-  %t164 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.263, i32 0, i32 2
+  %t164 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.264, i32 0, i32 2
   %t166 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t167 = ptrtoint ptr %t166 to i64
   %t165 = call ptr @willrt_alloc(i64 %t167)
-  %t168 = getelementptr inbounds { ptr, i64 }, ptr %v.str.266, i32 0, i32 0
+  %t168 = getelementptr inbounds { ptr, i64 }, ptr %v.str.267, i32 0, i32 0
   store ptr @.bytes.41, ptr %t168
-  %t169 = getelementptr inbounds { ptr, i64 }, ptr %v.str.266, i32 0, i32 1
+  %t169 = getelementptr inbounds { ptr, i64 }, ptr %v.str.267, i32 0, i32 1
   store i64 41, ptr %t169
-  %t170 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.266)
-  store %"struct.std/time.timeError" %t170, ptr %v.ret.265
-  %t171 = load %"struct.std/time.timeError", ptr %v.ret.265
+  %t170 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.267)
+  store %"struct.std/time.timeError" %t170, ptr %v.ret.266
+  %t171 = load %"struct.std/time.timeError", ptr %v.ret.266
   store %"struct.std/time.timeError" %t171, ptr %t165
-  %t172 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.265, i32 0, i32 0
+  %t172 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.266, i32 0, i32 0
   %t173 = getelementptr inbounds %"struct.std/time.timeError", ptr %t165, i32 0, i32 0
   %t174 = getelementptr inbounds { ptr, i64 }, ptr %t172, i32 0, i32 0
   %t175 = getelementptr inbounds { ptr, i64 }, ptr %t172, i32 0, i32 1
@@ -4273,7 +4277,7 @@ if.then.4:
   %t182 = getelementptr inbounds %interface.Error, ptr %t164, i32 0, i32 1
   store ptr %t165, ptr %t181
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t182
-  %t183 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.263
+  %t183 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.264
   %t184 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t185 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t186 = load ptr, ptr %t184
@@ -4325,21 +4329,21 @@ if.end.4:
   %t215 = or i1 %t212, %t214
   br i1 %t215, label %if.then.6, label %if.end.6
 if.then.6:
-  %t216 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.330, i32 0, i32 0
+  %t216 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.331, i32 0, i32 0
   store i32 1, ptr %t216
-  %t217 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.330, i32 0, i32 2
+  %t217 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.331, i32 0, i32 2
   %t219 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t220 = ptrtoint ptr %t219 to i64
   %t218 = call ptr @willrt_alloc(i64 %t220)
-  %t221 = getelementptr inbounds { ptr, i64 }, ptr %v.str.333, i32 0, i32 0
+  %t221 = getelementptr inbounds { ptr, i64 }, ptr %v.str.334, i32 0, i32 0
   store ptr @.bytes.42, ptr %t221
-  %t222 = getelementptr inbounds { ptr, i64 }, ptr %v.str.333, i32 0, i32 1
+  %t222 = getelementptr inbounds { ptr, i64 }, ptr %v.str.334, i32 0, i32 1
   store i64 39, ptr %t222
-  %t223 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.333)
-  store %"struct.std/time.timeError" %t223, ptr %v.ret.332
-  %t224 = load %"struct.std/time.timeError", ptr %v.ret.332
+  %t223 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.334)
+  store %"struct.std/time.timeError" %t223, ptr %v.ret.333
+  %t224 = load %"struct.std/time.timeError", ptr %v.ret.333
   store %"struct.std/time.timeError" %t224, ptr %t218
-  %t225 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.332, i32 0, i32 0
+  %t225 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.333, i32 0, i32 0
   %t226 = getelementptr inbounds %"struct.std/time.timeError", ptr %t218, i32 0, i32 0
   %t227 = getelementptr inbounds { ptr, i64 }, ptr %t225, i32 0, i32 0
   %t228 = getelementptr inbounds { ptr, i64 }, ptr %t225, i32 0, i32 1
@@ -4355,7 +4359,7 @@ if.then.6:
   %t235 = getelementptr inbounds %interface.Error, ptr %t217, i32 0, i32 1
   store ptr %t218, ptr %t234
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t235
-  %t236 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.330
+  %t236 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.331
   %t237 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t238 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t239 = load ptr, ptr %t237
@@ -4383,21 +4387,21 @@ if.end.6:
   %t250 = or i1 %t247, %t249
   br i1 %t250, label %if.then.8, label %if.end.8
 if.then.8:
-  %t251 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.349, i32 0, i32 0
+  %t251 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.350, i32 0, i32 0
   store i32 1, ptr %t251
-  %t252 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.349, i32 0, i32 2
+  %t252 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.350, i32 0, i32 2
   %t254 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t255 = ptrtoint ptr %t254 to i64
   %t253 = call ptr @willrt_alloc(i64 %t255)
-  %t256 = getelementptr inbounds { ptr, i64 }, ptr %v.str.352, i32 0, i32 0
+  %t256 = getelementptr inbounds { ptr, i64 }, ptr %v.str.353, i32 0, i32 0
   store ptr @.bytes.43, ptr %t256
-  %t257 = getelementptr inbounds { ptr, i64 }, ptr %v.str.352, i32 0, i32 1
+  %t257 = getelementptr inbounds { ptr, i64 }, ptr %v.str.353, i32 0, i32 1
   store i64 38, ptr %t257
-  %t258 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.352)
-  store %"struct.std/time.timeError" %t258, ptr %v.ret.351
-  %t259 = load %"struct.std/time.timeError", ptr %v.ret.351
+  %t258 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.353)
+  store %"struct.std/time.timeError" %t258, ptr %v.ret.352
+  %t259 = load %"struct.std/time.timeError", ptr %v.ret.352
   store %"struct.std/time.timeError" %t259, ptr %t253
-  %t260 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.351, i32 0, i32 0
+  %t260 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.352, i32 0, i32 0
   %t261 = getelementptr inbounds %"struct.std/time.timeError", ptr %t253, i32 0, i32 0
   %t262 = getelementptr inbounds { ptr, i64 }, ptr %t260, i32 0, i32 0
   %t263 = getelementptr inbounds { ptr, i64 }, ptr %t260, i32 0, i32 1
@@ -4413,7 +4417,7 @@ if.then.8:
   %t270 = getelementptr inbounds %interface.Error, ptr %t252, i32 0, i32 1
   store ptr %t253, ptr %t269
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t270
-  %t271 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.349
+  %t271 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.350
   %t272 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t273 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t274 = load ptr, ptr %t272
@@ -4441,21 +4445,21 @@ if.end.8:
   %t285 = and i1 %t282, %t284
   br i1 %t285, label %if.then.10, label %if.end.10
 if.then.10:
-  %t286 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.368, i32 0, i32 0
+  %t286 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.369, i32 0, i32 0
   store i32 1, ptr %t286
-  %t287 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.368, i32 0, i32 2
+  %t287 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.369, i32 0, i32 2
   %t289 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t290 = ptrtoint ptr %t289 to i64
   %t288 = call ptr @willrt_alloc(i64 %t290)
-  %t291 = getelementptr inbounds { ptr, i64 }, ptr %v.str.371, i32 0, i32 0
+  %t291 = getelementptr inbounds { ptr, i64 }, ptr %v.str.372, i32 0, i32 0
   store ptr @.bytes.44, ptr %t291
-  %t292 = getelementptr inbounds { ptr, i64 }, ptr %v.str.371, i32 0, i32 1
+  %t292 = getelementptr inbounds { ptr, i64 }, ptr %v.str.372, i32 0, i32 1
   store i64 47, ptr %t292
-  %t293 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.371)
-  store %"struct.std/time.timeError" %t293, ptr %v.ret.370
-  %t294 = load %"struct.std/time.timeError", ptr %v.ret.370
+  %t293 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.372)
+  store %"struct.std/time.timeError" %t293, ptr %v.ret.371
+  %t294 = load %"struct.std/time.timeError", ptr %v.ret.371
   store %"struct.std/time.timeError" %t294, ptr %t288
-  %t295 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.370, i32 0, i32 0
+  %t295 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.371, i32 0, i32 0
   %t296 = getelementptr inbounds %"struct.std/time.timeError", ptr %t288, i32 0, i32 0
   %t297 = getelementptr inbounds { ptr, i64 }, ptr %t295, i32 0, i32 0
   %t298 = getelementptr inbounds { ptr, i64 }, ptr %t295, i32 0, i32 1
@@ -4471,7 +4475,7 @@ if.then.10:
   %t305 = getelementptr inbounds %interface.Error, ptr %t287, i32 0, i32 1
   store ptr %t288, ptr %t304
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t305
-  %t306 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.368
+  %t306 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.369
   %t307 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t308 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t309 = load ptr, ptr %t307
@@ -4499,21 +4503,21 @@ if.end.10:
   %t320 = or i1 %t317, %t319
   br i1 %t320, label %if.then.12, label %if.end.12
 if.then.12:
-  %t321 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.387, i32 0, i32 0
+  %t321 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.388, i32 0, i32 0
   store i32 1, ptr %t321
-  %t322 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.387, i32 0, i32 2
+  %t322 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.388, i32 0, i32 2
   %t324 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t325 = ptrtoint ptr %t324 to i64
   %t323 = call ptr @willrt_alloc(i64 %t325)
-  %t326 = getelementptr inbounds { ptr, i64 }, ptr %v.str.390, i32 0, i32 0
+  %t326 = getelementptr inbounds { ptr, i64 }, ptr %v.str.391, i32 0, i32 0
   store ptr @.bytes.45, ptr %t326
-  %t327 = getelementptr inbounds { ptr, i64 }, ptr %v.str.390, i32 0, i32 1
+  %t327 = getelementptr inbounds { ptr, i64 }, ptr %v.str.391, i32 0, i32 1
   store i64 38, ptr %t327
-  %t328 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.390)
-  store %"struct.std/time.timeError" %t328, ptr %v.ret.389
-  %t329 = load %"struct.std/time.timeError", ptr %v.ret.389
+  %t328 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.391)
+  store %"struct.std/time.timeError" %t328, ptr %v.ret.390
+  %t329 = load %"struct.std/time.timeError", ptr %v.ret.390
   store %"struct.std/time.timeError" %t329, ptr %t323
-  %t330 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.389, i32 0, i32 0
+  %t330 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.390, i32 0, i32 0
   %t331 = getelementptr inbounds %"struct.std/time.timeError", ptr %t323, i32 0, i32 0
   %t332 = getelementptr inbounds { ptr, i64 }, ptr %t330, i32 0, i32 0
   %t333 = getelementptr inbounds { ptr, i64 }, ptr %t330, i32 0, i32 1
@@ -4529,7 +4533,7 @@ if.then.12:
   %t340 = getelementptr inbounds %interface.Error, ptr %t322, i32 0, i32 1
   store ptr %t323, ptr %t339
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t340
-  %t341 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.387
+  %t341 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.388
   %t342 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t343 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t344 = load ptr, ptr %t342
@@ -4557,21 +4561,21 @@ if.end.12:
   %t355 = or i1 %t352, %t354
   br i1 %t355, label %if.then.14, label %if.end.14
 if.then.14:
-  %t356 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.402, i32 0, i32 0
+  %t356 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.403, i32 0, i32 0
   store i32 1, ptr %t356
-  %t357 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.402, i32 0, i32 2
+  %t357 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.403, i32 0, i32 2
   %t359 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t360 = ptrtoint ptr %t359 to i64
   %t358 = call ptr @willrt_alloc(i64 %t360)
-  %t361 = getelementptr inbounds { ptr, i64 }, ptr %v.str.405, i32 0, i32 0
+  %t361 = getelementptr inbounds { ptr, i64 }, ptr %v.str.406, i32 0, i32 0
   store ptr @.bytes.46, ptr %t361
-  %t362 = getelementptr inbounds { ptr, i64 }, ptr %v.str.405, i32 0, i32 1
+  %t362 = getelementptr inbounds { ptr, i64 }, ptr %v.str.406, i32 0, i32 1
   store i64 34, ptr %t362
-  %t363 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.405)
-  store %"struct.std/time.timeError" %t363, ptr %v.ret.404
-  %t364 = load %"struct.std/time.timeError", ptr %v.ret.404
+  %t363 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.406)
+  store %"struct.std/time.timeError" %t363, ptr %v.ret.405
+  %t364 = load %"struct.std/time.timeError", ptr %v.ret.405
   store %"struct.std/time.timeError" %t364, ptr %t358
-  %t365 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.404, i32 0, i32 0
+  %t365 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.405, i32 0, i32 0
   %t366 = getelementptr inbounds %"struct.std/time.timeError", ptr %t358, i32 0, i32 0
   %t367 = getelementptr inbounds { ptr, i64 }, ptr %t365, i32 0, i32 0
   %t368 = getelementptr inbounds { ptr, i64 }, ptr %t365, i32 0, i32 1
@@ -4587,7 +4591,7 @@ if.then.14:
   %t375 = getelementptr inbounds %interface.Error, ptr %t357, i32 0, i32 1
   store ptr %t358, ptr %t374
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t375
-  %t376 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.402
+  %t376 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.403
   %t377 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t378 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t379 = load ptr, ptr %t377
@@ -4618,21 +4622,21 @@ if.end.14:
   %t393 = or i1 %t387, %t392
   br i1 %t393, label %if.then.16, label %if.end.16
 if.then.16:
-  %t394 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.419, i32 0, i32 0
+  %t394 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.420, i32 0, i32 0
   store i32 1, ptr %t394
-  %t395 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.419, i32 0, i32 2
+  %t395 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.420, i32 0, i32 2
   %t397 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t398 = ptrtoint ptr %t397 to i64
   %t396 = call ptr @willrt_alloc(i64 %t398)
-  %t399 = getelementptr inbounds { ptr, i64 }, ptr %v.str.422, i32 0, i32 0
+  %t399 = getelementptr inbounds { ptr, i64 }, ptr %v.str.423, i32 0, i32 0
   store ptr @.bytes.47, ptr %t399
-  %t400 = getelementptr inbounds { ptr, i64 }, ptr %v.str.422, i32 0, i32 1
+  %t400 = getelementptr inbounds { ptr, i64 }, ptr %v.str.423, i32 0, i32 1
   store i64 32, ptr %t400
-  %t401 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.422)
-  store %"struct.std/time.timeError" %t401, ptr %v.ret.421
-  %t402 = load %"struct.std/time.timeError", ptr %v.ret.421
+  %t401 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.423)
+  store %"struct.std/time.timeError" %t401, ptr %v.ret.422
+  %t402 = load %"struct.std/time.timeError", ptr %v.ret.422
   store %"struct.std/time.timeError" %t402, ptr %t396
-  %t403 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.421, i32 0, i32 0
+  %t403 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.422, i32 0, i32 0
   %t404 = getelementptr inbounds %"struct.std/time.timeError", ptr %t396, i32 0, i32 0
   %t405 = getelementptr inbounds { ptr, i64 }, ptr %t403, i32 0, i32 0
   %t406 = getelementptr inbounds { ptr, i64 }, ptr %t403, i32 0, i32 1
@@ -4648,7 +4652,7 @@ if.then.16:
   %t413 = getelementptr inbounds %interface.Error, ptr %t395, i32 0, i32 1
   store ptr %t396, ptr %t412
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t413
-  %t414 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.419
+  %t414 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.420
   %t415 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t416 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t417 = load ptr, ptr %t415
@@ -4679,21 +4683,21 @@ if.end.16:
   %t431 = or i1 %t428, %t430
   br i1 %t431, label %if.then.18, label %if.end.18
 if.then.18:
-  %t432 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.438, i32 0, i32 0
+  %t432 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.439, i32 0, i32 0
   store i32 1, ptr %t432
-  %t433 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.438, i32 0, i32 2
+  %t433 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.439, i32 0, i32 2
   %t435 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t436 = ptrtoint ptr %t435 to i64
   %t434 = call ptr @willrt_alloc(i64 %t436)
-  %t437 = getelementptr inbounds { ptr, i64 }, ptr %v.str.441, i32 0, i32 0
+  %t437 = getelementptr inbounds { ptr, i64 }, ptr %v.str.442, i32 0, i32 0
   store ptr @.bytes.48, ptr %t437
-  %t438 = getelementptr inbounds { ptr, i64 }, ptr %v.str.441, i32 0, i32 1
+  %t438 = getelementptr inbounds { ptr, i64 }, ptr %v.str.442, i32 0, i32 1
   store i64 40, ptr %t438
-  %t439 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.441)
-  store %"struct.std/time.timeError" %t439, ptr %v.ret.440
-  %t440 = load %"struct.std/time.timeError", ptr %v.ret.440
+  %t439 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.442)
+  store %"struct.std/time.timeError" %t439, ptr %v.ret.441
+  %t440 = load %"struct.std/time.timeError", ptr %v.ret.441
   store %"struct.std/time.timeError" %t440, ptr %t434
-  %t441 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.440, i32 0, i32 0
+  %t441 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.441, i32 0, i32 0
   %t442 = getelementptr inbounds %"struct.std/time.timeError", ptr %t434, i32 0, i32 0
   %t443 = getelementptr inbounds { ptr, i64 }, ptr %t441, i32 0, i32 0
   %t444 = getelementptr inbounds { ptr, i64 }, ptr %t441, i32 0, i32 1
@@ -4709,7 +4713,7 @@ if.then.18:
   %t451 = getelementptr inbounds %interface.Error, ptr %t433, i32 0, i32 1
   store ptr %t434, ptr %t450
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t451
-  %t452 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.438
+  %t452 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.439
   %t453 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t454 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t455 = load ptr, ptr %t453
@@ -4747,7 +4751,9 @@ panic.21:
 panic.ok.21:
   store i32 %t466, ptr %v.at
   store i32 0, ptr %v.digits
-  br label %for.body.22
+  br label %while.cond.22
+while.cond.22:
+  br i1 True, label %for.body.22, label %for.end.22
 for.body.22:
   %t468 = load i32, ptr %v.at
   %t469 = load i32, ptr %v.n
@@ -4824,27 +4830,27 @@ panic.30:
   unreachable
 panic.ok.30:
   store i32 %t500, ptr %v.at
-  br label %for.body.22
+  br label %while.cond.22
 for.end.22:
   %t502 = load i32, ptr %v.digits
   %t503 = icmp eq i32 %t502, 0
   br i1 %t503, label %if.then.31, label %if.end.31
 if.then.31:
-  %t504 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.509, i32 0, i32 0
+  %t504 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.511, i32 0, i32 0
   store i32 1, ptr %t504
-  %t505 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.509, i32 0, i32 2
+  %t505 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.511, i32 0, i32 2
   %t507 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t508 = ptrtoint ptr %t507 to i64
   %t506 = call ptr @willrt_alloc(i64 %t508)
-  %t509 = getelementptr inbounds { ptr, i64 }, ptr %v.str.512, i32 0, i32 0
+  %t509 = getelementptr inbounds { ptr, i64 }, ptr %v.str.514, i32 0, i32 0
   store ptr @.bytes.49, ptr %t509
-  %t510 = getelementptr inbounds { ptr, i64 }, ptr %v.str.512, i32 0, i32 1
+  %t510 = getelementptr inbounds { ptr, i64 }, ptr %v.str.514, i32 0, i32 1
   store i64 42, ptr %t510
-  %t511 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.512)
-  store %"struct.std/time.timeError" %t511, ptr %v.ret.511
-  %t512 = load %"struct.std/time.timeError", ptr %v.ret.511
+  %t511 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.514)
+  store %"struct.std/time.timeError" %t511, ptr %v.ret.513
+  %t512 = load %"struct.std/time.timeError", ptr %v.ret.513
   store %"struct.std/time.timeError" %t512, ptr %t506
-  %t513 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.511, i32 0, i32 0
+  %t513 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.513, i32 0, i32 0
   %t514 = getelementptr inbounds %"struct.std/time.timeError", ptr %t506, i32 0, i32 0
   %t515 = getelementptr inbounds { ptr, i64 }, ptr %t513, i32 0, i32 0
   %t516 = getelementptr inbounds { ptr, i64 }, ptr %t513, i32 0, i32 1
@@ -4860,7 +4866,7 @@ if.then.31:
   %t523 = getelementptr inbounds %interface.Error, ptr %t505, i32 0, i32 1
   store ptr %t506, ptr %t522
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t523
-  %t524 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.509
+  %t524 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.511
   %t525 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t526 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t527 = load ptr, ptr %t525
@@ -4881,7 +4887,9 @@ deep.rel.arr.done.32:
   call void @willrt_free(ptr %t527)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t524
 if.end.31:
-  br label %for.body.33
+  br label %while.cond.33
+while.cond.33:
+  br i1 True, label %for.body.33, label %for.end.33
 for.body.33:
   %t534 = load i32, ptr %v.digits
   %t535 = icmp sge i32 %t534, 9
@@ -4909,7 +4917,7 @@ panic.36:
   unreachable
 panic.ok.36:
   store i32 %t542, ptr %v.digits
-  br label %for.body.33
+  br label %while.cond.33
 for.end.33:
   br label %if.end.20
 if.end.20:
@@ -4919,21 +4927,21 @@ if.end.20:
   %t546 = icmp sge i32 %t544, %t545
   br i1 %t546, label %if.then.37, label %if.end.37
 if.then.37:
-  %t547 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.539, i32 0, i32 0
+  %t547 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.542, i32 0, i32 0
   store i32 1, ptr %t547
-  %t548 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.539, i32 0, i32 2
+  %t548 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.542, i32 0, i32 2
   %t550 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t551 = ptrtoint ptr %t550 to i64
   %t549 = call ptr @willrt_alloc(i64 %t551)
-  %t552 = getelementptr inbounds { ptr, i64 }, ptr %v.str.542, i32 0, i32 0
+  %t552 = getelementptr inbounds { ptr, i64 }, ptr %v.str.545, i32 0, i32 0
   store ptr @.bytes.50, ptr %t552
-  %t553 = getelementptr inbounds { ptr, i64 }, ptr %v.str.542, i32 0, i32 1
+  %t553 = getelementptr inbounds { ptr, i64 }, ptr %v.str.545, i32 0, i32 1
   store i64 30, ptr %t553
-  %t554 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.542)
-  store %"struct.std/time.timeError" %t554, ptr %v.ret.541
-  %t555 = load %"struct.std/time.timeError", ptr %v.ret.541
+  %t554 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.545)
+  store %"struct.std/time.timeError" %t554, ptr %v.ret.544
+  %t555 = load %"struct.std/time.timeError", ptr %v.ret.544
   store %"struct.std/time.timeError" %t555, ptr %t549
-  %t556 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.541, i32 0, i32 0
+  %t556 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.544, i32 0, i32 0
   %t557 = getelementptr inbounds %"struct.std/time.timeError", ptr %t549, i32 0, i32 0
   %t558 = getelementptr inbounds { ptr, i64 }, ptr %t556, i32 0, i32 0
   %t559 = getelementptr inbounds { ptr, i64 }, ptr %t556, i32 0, i32 1
@@ -4949,7 +4957,7 @@ if.then.37:
   %t566 = getelementptr inbounds %interface.Error, ptr %t548, i32 0, i32 1
   store ptr %t549, ptr %t565
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t566
-  %t567 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.539
+  %t567 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.542
   %t568 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t569 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t570 = load ptr, ptr %t568
@@ -5037,21 +5045,21 @@ panic.ok.45:
   %t612 = or i1 %t605, %t611
   br i1 %t612, label %if.then.44, label %if.end.44
 if.then.44:
-  %t613 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.603, i32 0, i32 0
+  %t613 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.606, i32 0, i32 0
   store i32 1, ptr %t613
-  %t614 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.603, i32 0, i32 2
+  %t614 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.606, i32 0, i32 2
   %t616 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t617 = ptrtoint ptr %t616 to i64
   %t615 = call ptr @willrt_alloc(i64 %t617)
-  %t618 = getelementptr inbounds { ptr, i64 }, ptr %v.str.606, i32 0, i32 0
+  %t618 = getelementptr inbounds { ptr, i64 }, ptr %v.str.609, i32 0, i32 0
   store ptr @.bytes.51, ptr %t618
-  %t619 = getelementptr inbounds { ptr, i64 }, ptr %v.str.606, i32 0, i32 1
+  %t619 = getelementptr inbounds { ptr, i64 }, ptr %v.str.609, i32 0, i32 1
   store i64 33, ptr %t619
-  %t620 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.606)
-  store %"struct.std/time.timeError" %t620, ptr %v.ret.605
-  %t621 = load %"struct.std/time.timeError", ptr %v.ret.605
+  %t620 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.609)
+  store %"struct.std/time.timeError" %t620, ptr %v.ret.608
+  %t621 = load %"struct.std/time.timeError", ptr %v.ret.608
   store %"struct.std/time.timeError" %t621, ptr %t615
-  %t622 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.605, i32 0, i32 0
+  %t622 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.608, i32 0, i32 0
   %t623 = getelementptr inbounds %"struct.std/time.timeError", ptr %t615, i32 0, i32 0
   %t624 = getelementptr inbounds { ptr, i64 }, ptr %t622, i32 0, i32 0
   %t625 = getelementptr inbounds { ptr, i64 }, ptr %t622, i32 0, i32 1
@@ -5067,7 +5075,7 @@ if.then.44:
   %t632 = getelementptr inbounds %interface.Error, ptr %t614, i32 0, i32 1
   store ptr %t615, ptr %t631
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t632
-  %t633 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.603
+  %t633 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.606
   %t634 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t635 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t636 = load ptr, ptr %t634
@@ -5095,21 +5103,21 @@ if.end.44:
   %t647 = or i1 %t644, %t646
   br i1 %t647, label %if.then.47, label %if.end.47
 if.then.47:
-  %t648 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.618, i32 0, i32 0
+  %t648 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.621, i32 0, i32 0
   store i32 1, ptr %t648
-  %t649 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.618, i32 0, i32 2
+  %t649 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.621, i32 0, i32 2
   %t651 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t652 = ptrtoint ptr %t651 to i64
   %t650 = call ptr @willrt_alloc(i64 %t652)
-  %t653 = getelementptr inbounds { ptr, i64 }, ptr %v.str.621, i32 0, i32 0
+  %t653 = getelementptr inbounds { ptr, i64 }, ptr %v.str.624, i32 0, i32 0
   store ptr @.bytes.52, ptr %t653
-  %t654 = getelementptr inbounds { ptr, i64 }, ptr %v.str.621, i32 0, i32 1
+  %t654 = getelementptr inbounds { ptr, i64 }, ptr %v.str.624, i32 0, i32 1
   store i64 35, ptr %t654
-  %t655 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.621)
-  store %"struct.std/time.timeError" %t655, ptr %v.ret.620
-  %t656 = load %"struct.std/time.timeError", ptr %v.ret.620
+  %t655 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.624)
+  store %"struct.std/time.timeError" %t655, ptr %v.ret.623
+  %t656 = load %"struct.std/time.timeError", ptr %v.ret.623
   store %"struct.std/time.timeError" %t656, ptr %t650
-  %t657 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.620, i32 0, i32 0
+  %t657 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.623, i32 0, i32 0
   %t658 = getelementptr inbounds %"struct.std/time.timeError", ptr %t650, i32 0, i32 0
   %t659 = getelementptr inbounds { ptr, i64 }, ptr %t657, i32 0, i32 0
   %t660 = getelementptr inbounds { ptr, i64 }, ptr %t657, i32 0, i32 1
@@ -5125,7 +5133,7 @@ if.then.47:
   %t667 = getelementptr inbounds %interface.Error, ptr %t649, i32 0, i32 1
   store ptr %t650, ptr %t666
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t667
-  %t668 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.618
+  %t668 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.621
   %t669 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t670 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t671 = load ptr, ptr %t669
@@ -5200,21 +5208,21 @@ panic.ok.54:
   store i32 %t696, ptr %v.at
   br label %if.end.41
 if.else.41:
-  %t698 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.647, i32 0, i32 0
+  %t698 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.650, i32 0, i32 0
   store i32 1, ptr %t698
-  %t699 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.647, i32 0, i32 2
+  %t699 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.650, i32 0, i32 2
   %t701 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t702 = ptrtoint ptr %t701 to i64
   %t700 = call ptr @willrt_alloc(i64 %t702)
-  %t703 = getelementptr inbounds { ptr, i64 }, ptr %v.str.650, i32 0, i32 0
+  %t703 = getelementptr inbounds { ptr, i64 }, ptr %v.str.653, i32 0, i32 0
   store ptr @.bytes.53, ptr %t703
-  %t704 = getelementptr inbounds { ptr, i64 }, ptr %v.str.650, i32 0, i32 1
+  %t704 = getelementptr inbounds { ptr, i64 }, ptr %v.str.653, i32 0, i32 1
   store i64 38, ptr %t704
-  %t705 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.650)
-  store %"struct.std/time.timeError" %t705, ptr %v.ret.649
-  %t706 = load %"struct.std/time.timeError", ptr %v.ret.649
+  %t705 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.653)
+  store %"struct.std/time.timeError" %t705, ptr %v.ret.652
+  %t706 = load %"struct.std/time.timeError", ptr %v.ret.652
   store %"struct.std/time.timeError" %t706, ptr %t700
-  %t707 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.649, i32 0, i32 0
+  %t707 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.652, i32 0, i32 0
   %t708 = getelementptr inbounds %"struct.std/time.timeError", ptr %t700, i32 0, i32 0
   %t709 = getelementptr inbounds { ptr, i64 }, ptr %t707, i32 0, i32 0
   %t710 = getelementptr inbounds { ptr, i64 }, ptr %t707, i32 0, i32 1
@@ -5230,7 +5238,7 @@ if.else.41:
   %t717 = getelementptr inbounds %interface.Error, ptr %t699, i32 0, i32 1
   store ptr %t700, ptr %t716
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t717
-  %t718 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.647
+  %t718 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.650
   %t719 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t720 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t721 = load ptr, ptr %t719
@@ -5258,21 +5266,21 @@ if.end.39:
   %t730 = icmp ne i32 %t728, %t729
   br i1 %t730, label %if.then.56, label %if.end.56
 if.then.56:
-  %t731 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.658, i32 0, i32 0
+  %t731 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.661, i32 0, i32 0
   store i32 1, ptr %t731
-  %t732 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.658, i32 0, i32 2
+  %t732 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.661, i32 0, i32 2
   %t734 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t735 = ptrtoint ptr %t734 to i64
   %t733 = call ptr @willrt_alloc(i64 %t735)
-  %t736 = getelementptr inbounds { ptr, i64 }, ptr %v.str.661, i32 0, i32 0
+  %t736 = getelementptr inbounds { ptr, i64 }, ptr %v.str.664, i32 0, i32 0
   store ptr @.bytes.54, ptr %t736
-  %t737 = getelementptr inbounds { ptr, i64 }, ptr %v.str.661, i32 0, i32 1
+  %t737 = getelementptr inbounds { ptr, i64 }, ptr %v.str.664, i32 0, i32 1
   store i64 35, ptr %t737
-  %t738 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.661)
-  store %"struct.std/time.timeError" %t738, ptr %v.ret.660
-  %t739 = load %"struct.std/time.timeError", ptr %v.ret.660
+  %t738 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.664)
+  store %"struct.std/time.timeError" %t738, ptr %v.ret.663
+  %t739 = load %"struct.std/time.timeError", ptr %v.ret.663
   store %"struct.std/time.timeError" %t739, ptr %t733
-  %t740 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.660, i32 0, i32 0
+  %t740 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.663, i32 0, i32 0
   %t741 = getelementptr inbounds %"struct.std/time.timeError", ptr %t733, i32 0, i32 0
   %t742 = getelementptr inbounds { ptr, i64 }, ptr %t740, i32 0, i32 0
   %t743 = getelementptr inbounds { ptr, i64 }, ptr %t740, i32 0, i32 1
@@ -5288,7 +5296,7 @@ if.then.56:
   %t750 = getelementptr inbounds %interface.Error, ptr %t732, i32 0, i32 1
   store ptr %t733, ptr %t749
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t750
-  %t751 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.658
+  %t751 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.661
   %t752 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t753 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t754 = load ptr, ptr %t752
@@ -5321,8 +5329,8 @@ panic.58:
   call void @willrt_panic(ptr @.str.10, ptr @.str.171, ptr @.str.138)
   unreachable
 panic.ok.58:
-  store i64 %t766, ptr %v.local_seconds
-  %t768 = load i64, ptr %v.local_seconds
+  store i64 %t766, ptr %v.local_at
+  %t768 = load i64, ptr %v.local_at
   %t769 = load i32, ptr %v.hour
   %t770 = call {i32, i1} @llvm.smul.with.overflow.i32(i32 %t769, i32 3600)
   %t771 = extractvalue {i32, i1} %t770, 0
@@ -5367,8 +5375,8 @@ panic.63:
   call void @willrt_panic(ptr @.str.10, ptr @.str.174, ptr @.str.138)
   unreachable
 panic.ok.63:
-  store i64 %t786, ptr %v.local_seconds
-  %t788 = load i64, ptr %v.local_seconds
+  store i64 %t786, ptr %v.local_at
+  %t788 = load i64, ptr %v.local_at
   %t789 = load i32, ptr %v.offset
   %t790 = sext i32 %t789 to i64
   %t791 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t788, i64 %t790)
@@ -5379,27 +5387,27 @@ panic.64:
   call void @willrt_panic(ptr @.str.10, ptr @.str.175, ptr @.str.138)
   unreachable
 panic.ok.64:
-  store i64 %t792, ptr %v.utc_seconds
-  %t794 = load i64, ptr %v.utc_seconds
+  store i64 %t792, ptr %v.utc_at
+  %t794 = load i64, ptr %v.utc_at
   %t795 = call i1 @"std/time.second_in_range"(i64 %t794)
   %t796 = xor i1 %t795, true
   br i1 %t796, label %if.then.65, label %if.end.65
 if.then.65:
-  %t797 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.697, i32 0, i32 0
+  %t797 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.700, i32 0, i32 0
   store i32 1, ptr %t797
-  %t798 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.697, i32 0, i32 2
+  %t798 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.700, i32 0, i32 2
   %t800 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t801 = ptrtoint ptr %t800 to i64
   %t799 = call ptr @willrt_alloc(i64 %t801)
-  %t802 = getelementptr inbounds { ptr, i64 }, ptr %v.str.700, i32 0, i32 0
+  %t802 = getelementptr inbounds { ptr, i64 }, ptr %v.str.703, i32 0, i32 0
   store ptr @.bytes.55, ptr %t802
-  %t803 = getelementptr inbounds { ptr, i64 }, ptr %v.str.700, i32 0, i32 1
+  %t803 = getelementptr inbounds { ptr, i64 }, ptr %v.str.703, i32 0, i32 1
   store i64 46, ptr %t803
-  %t804 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.700)
-  store %"struct.std/time.timeError" %t804, ptr %v.ret.699
-  %t805 = load %"struct.std/time.timeError", ptr %v.ret.699
+  %t804 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.703)
+  store %"struct.std/time.timeError" %t804, ptr %v.ret.702
+  %t805 = load %"struct.std/time.timeError", ptr %v.ret.702
   store %"struct.std/time.timeError" %t805, ptr %t799
-  %t806 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.699, i32 0, i32 0
+  %t806 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.702, i32 0, i32 0
   %t807 = getelementptr inbounds %"struct.std/time.timeError", ptr %t799, i32 0, i32 0
   %t808 = getelementptr inbounds { ptr, i64 }, ptr %t806, i32 0, i32 0
   %t809 = getelementptr inbounds { ptr, i64 }, ptr %t806, i32 0, i32 1
@@ -5415,7 +5423,7 @@ if.then.65:
   %t816 = getelementptr inbounds %interface.Error, ptr %t798, i32 0, i32 1
   store ptr %t799, ptr %t815
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t816
-  %t817 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.697
+  %t817 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.700
   %t818 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t819 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t820 = load ptr, ptr %t818
@@ -5436,28 +5444,28 @@ deep.rel.arr.done.66:
   call void @willrt_free(ptr %t820)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t817
 if.end.65:
-  %t827 = load i64, ptr %v.utc_seconds
+  %t827 = load i64, ptr %v.utc_at
   %t828 = icmp eq i64 %t827, 9223372036
   %t829 = load i64, ptr %v.frac
   %t830 = icmp sgt i64 %t829, 854775807
   %t831 = and i1 %t828, %t830
   br i1 %t831, label %if.then.67, label %if.end.67
 if.then.67:
-  %t832 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.712, i32 0, i32 0
+  %t832 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.715, i32 0, i32 0
   store i32 1, ptr %t832
-  %t833 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.712, i32 0, i32 2
+  %t833 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.715, i32 0, i32 2
   %t835 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t836 = ptrtoint ptr %t835 to i64
   %t834 = call ptr @willrt_alloc(i64 %t836)
-  %t837 = getelementptr inbounds { ptr, i64 }, ptr %v.str.715, i32 0, i32 0
+  %t837 = getelementptr inbounds { ptr, i64 }, ptr %v.str.718, i32 0, i32 0
   store ptr @.bytes.56, ptr %t837
-  %t838 = getelementptr inbounds { ptr, i64 }, ptr %v.str.715, i32 0, i32 1
+  %t838 = getelementptr inbounds { ptr, i64 }, ptr %v.str.718, i32 0, i32 1
   store i64 50, ptr %t838
-  %t839 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.715)
-  store %"struct.std/time.timeError" %t839, ptr %v.ret.714
-  %t840 = load %"struct.std/time.timeError", ptr %v.ret.714
+  %t839 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.718)
+  store %"struct.std/time.timeError" %t839, ptr %v.ret.717
+  %t840 = load %"struct.std/time.timeError", ptr %v.ret.717
   store %"struct.std/time.timeError" %t840, ptr %t834
-  %t841 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.714, i32 0, i32 0
+  %t841 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.717, i32 0, i32 0
   %t842 = getelementptr inbounds %"struct.std/time.timeError", ptr %t834, i32 0, i32 0
   %t843 = getelementptr inbounds { ptr, i64 }, ptr %t841, i32 0, i32 0
   %t844 = getelementptr inbounds { ptr, i64 }, ptr %t841, i32 0, i32 1
@@ -5473,7 +5481,7 @@ if.then.67:
   %t851 = getelementptr inbounds %interface.Error, ptr %t833, i32 0, i32 1
   store ptr %t834, ptr %t850
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t851
-  %t852 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.712
+  %t852 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.715
   %t853 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t854 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t855 = load ptr, ptr %t853
@@ -5494,11 +5502,11 @@ deep.rel.arr.done.68:
   call void @willrt_free(ptr %t855)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t852
 if.end.67:
-  %t862 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.718, i32 0, i32 0
+  %t862 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.721, i32 0, i32 0
   store i32 0, ptr %t862
-  %t863 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.718, i32 0, i32 2
-  %t864 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.720, i32 0, i32 0
-  %t865 = load i64, ptr %v.utc_seconds
+  %t863 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.721, i32 0, i32 2
+  %t864 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.723, i32 0, i32 0
+  %t865 = load i64, ptr %v.utc_at
   %t866 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t865, i64 1000000000)
   %t867 = extractvalue {i64, i1} %t866, 0
   %t868 = extractvalue {i64, i1} %t866, 1
@@ -5517,15 +5525,15 @@ panic.70:
   unreachable
 panic.ok.70:
   store i64 %t871, ptr %t864
-  %t873 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.720, i32 0, i32 1
+  %t873 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.723, i32 0, i32 1
   %t874 = load i32, ptr %v.offset
   %t875 = call %"struct.std/time.Timezone" @"std/time.fixed"(i32 %t874)
-  store %"struct.std/time.Timezone" %t875, ptr %v.ret.726
-  %t876 = load %"struct.std/time.Timezone", ptr %v.ret.726
+  store %"struct.std/time.Timezone" %t875, ptr %v.ret.729
+  %t876 = load %"struct.std/time.Timezone", ptr %v.ret.729
   store %"struct.std/time.Timezone" %t876, ptr %t873
-  %t877 = load %"struct.std/time.Instant", ptr %v.agg.720
+  %t877 = load %"struct.std/time.Instant", ptr %v.agg.723
   store %"struct.std/time.Instant" %t877, ptr %t863
-  %t878 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.718
+  %t878 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.721
   %t879 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t880 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t881 = load ptr, ptr %t879
@@ -5554,35 +5562,35 @@ entry:
   %v.year = alloca i32
   %v.month = alloca i32
   %v.day = alloca i32
-  %v.local_seconds = alloca i64
+  %v.local_at = alloca i64
   %v.offset = alloca i32
-  %v.utc_seconds = alloca i64
+  %v.utc_at = alloca i64
   %v.corrected = alloca i32
-  %v.agg.907 = alloca %"struct.std/time.Instant"
-  %v.ret.740 = alloca { ptr, i64, i64 }
-  %v.ret.765 = alloca %"struct.std/time.timeError"
-  %v.ret.802 = alloca %"struct.std/time.timeError"
-  %v.ret.821 = alloca %"struct.std/time.timeError"
-  %v.ret.836 = alloca %"struct.std/time.timeError"
-  %v.ret.853 = alloca %"struct.std/time.timeError"
-  %v.ret.901 = alloca %"struct.std/time.timeError"
-  %v.str.766 = alloca { ptr, i64 }
-  %v.str.803 = alloca { ptr, i64 }
-  %v.str.822 = alloca { ptr, i64 }
-  %v.str.837 = alloca { ptr, i64 }
-  %v.str.854 = alloca { ptr, i64 }
-  %v.str.902 = alloca { ptr, i64 }
-  %v.adt.763 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.800 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.819 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.834 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.851 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.899 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.adt.905 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
-  %v.slice.745 = alloca { ptr, i64 }
+  %v.agg.910 = alloca %"struct.std/time.Instant"
+  %v.ret.743 = alloca { ptr, i64, i64 }
+  %v.ret.768 = alloca %"struct.std/time.timeError"
+  %v.ret.805 = alloca %"struct.std/time.timeError"
+  %v.ret.824 = alloca %"struct.std/time.timeError"
+  %v.ret.839 = alloca %"struct.std/time.timeError"
+  %v.ret.856 = alloca %"struct.std/time.timeError"
+  %v.ret.904 = alloca %"struct.std/time.timeError"
+  %v.str.769 = alloca { ptr, i64 }
+  %v.str.806 = alloca { ptr, i64 }
+  %v.str.825 = alloca { ptr, i64 }
+  %v.str.840 = alloca { ptr, i64 }
+  %v.str.857 = alloca { ptr, i64 }
+  %v.str.905 = alloca { ptr, i64 }
+  %v.adt.766 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.803 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.822 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.837 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.854 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.902 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.adt.908 = alloca { i32, [4 x i8], %"struct.std/time.Instant" }
+  %v.slice.748 = alloca { ptr, i64 }
   %t888 = call { ptr, i64, i64 } @"std/time.chars_of"(ptr %s)
-  store { ptr, i64, i64 } %t888, ptr %v.ret.740
-  %t889 = load { ptr, i64, i64 }, ptr %v.ret.740
+  store { ptr, i64, i64 } %t888, ptr %v.ret.743
+  %t889 = load { ptr, i64, i64 }, ptr %v.ret.743
   store { ptr, i64, i64 } %t889, ptr %v.cs
   %t890 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t891 = load i64, ptr %t890
@@ -5604,11 +5612,11 @@ panic.2:
 panic.ok.2:
   %t898 = getelementptr inbounds i32, ptr %t894, i64 0
   %t899 = sub i64 %t891, 0
-  %t900 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.745, i32 0, i32 0
+  %t900 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.748, i32 0, i32 0
   store ptr %t898, ptr %t900
-  %t901 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.745, i32 0, i32 1
+  %t901 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.748, i32 0, i32 1
   store i64 %t899, ptr %t901
-  %t902 = load { ptr, i64 }, ptr %v.slice.745
+  %t902 = load { ptr, i64 }, ptr %v.slice.748
   store { ptr, i64 } %t902, ptr %v.c
   %t903 = getelementptr inbounds { ptr, i64 }, ptr %v.c, i32 0, i32 1
   %t904 = load i64, ptr %t903
@@ -5624,21 +5632,21 @@ panic.ok.3:
   %t908 = icmp ne i32 %t907, 10
   br i1 %t908, label %if.then.4, label %if.end.4
 if.then.4:
-  %t909 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.763, i32 0, i32 0
+  %t909 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.766, i32 0, i32 0
   store i32 1, ptr %t909
-  %t910 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.763, i32 0, i32 2
+  %t910 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.766, i32 0, i32 2
   %t912 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t913 = ptrtoint ptr %t912 to i64
   %t911 = call ptr @willrt_alloc(i64 %t913)
-  %t914 = getelementptr inbounds { ptr, i64 }, ptr %v.str.766, i32 0, i32 0
+  %t914 = getelementptr inbounds { ptr, i64 }, ptr %v.str.769, i32 0, i32 0
   store ptr @.bytes.57, ptr %t914
-  %t915 = getelementptr inbounds { ptr, i64 }, ptr %v.str.766, i32 0, i32 1
+  %t915 = getelementptr inbounds { ptr, i64 }, ptr %v.str.769, i32 0, i32 1
   store i64 33, ptr %t915
-  %t916 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.766)
-  store %"struct.std/time.timeError" %t916, ptr %v.ret.765
-  %t917 = load %"struct.std/time.timeError", ptr %v.ret.765
+  %t916 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.769)
+  store %"struct.std/time.timeError" %t916, ptr %v.ret.768
+  %t917 = load %"struct.std/time.timeError", ptr %v.ret.768
   store %"struct.std/time.timeError" %t917, ptr %t911
-  %t918 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.765, i32 0, i32 0
+  %t918 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.768, i32 0, i32 0
   %t919 = getelementptr inbounds %"struct.std/time.timeError", ptr %t911, i32 0, i32 0
   %t920 = getelementptr inbounds { ptr, i64 }, ptr %t918, i32 0, i32 0
   %t921 = getelementptr inbounds { ptr, i64 }, ptr %t918, i32 0, i32 1
@@ -5654,7 +5662,7 @@ if.then.4:
   %t928 = getelementptr inbounds %interface.Error, ptr %t910, i32 0, i32 1
   store ptr %t911, ptr %t927
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t928
-  %t929 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.763
+  %t929 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.766
   %t930 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t931 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t932 = load ptr, ptr %t930
@@ -5691,21 +5699,21 @@ if.end.4:
   %t949 = or i1 %t946, %t948
   br i1 %t949, label %if.then.6, label %if.end.6
 if.then.6:
-  %t950 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.800, i32 0, i32 0
+  %t950 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.803, i32 0, i32 0
   store i32 1, ptr %t950
-  %t951 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.800, i32 0, i32 2
+  %t951 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.803, i32 0, i32 2
   %t953 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t954 = ptrtoint ptr %t953 to i64
   %t952 = call ptr @willrt_alloc(i64 %t954)
-  %t955 = getelementptr inbounds { ptr, i64 }, ptr %v.str.803, i32 0, i32 0
+  %t955 = getelementptr inbounds { ptr, i64 }, ptr %v.str.806, i32 0, i32 0
   store ptr @.bytes.58, ptr %t955
-  %t956 = getelementptr inbounds { ptr, i64 }, ptr %v.str.803, i32 0, i32 1
+  %t956 = getelementptr inbounds { ptr, i64 }, ptr %v.str.806, i32 0, i32 1
   store i64 36, ptr %t956
-  %t957 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.803)
-  store %"struct.std/time.timeError" %t957, ptr %v.ret.802
-  %t958 = load %"struct.std/time.timeError", ptr %v.ret.802
+  %t957 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.806)
+  store %"struct.std/time.timeError" %t957, ptr %v.ret.805
+  %t958 = load %"struct.std/time.timeError", ptr %v.ret.805
   store %"struct.std/time.timeError" %t958, ptr %t952
-  %t959 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.802, i32 0, i32 0
+  %t959 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.805, i32 0, i32 0
   %t960 = getelementptr inbounds %"struct.std/time.timeError", ptr %t952, i32 0, i32 0
   %t961 = getelementptr inbounds { ptr, i64 }, ptr %t959, i32 0, i32 0
   %t962 = getelementptr inbounds { ptr, i64 }, ptr %t959, i32 0, i32 1
@@ -5721,7 +5729,7 @@ if.then.6:
   %t969 = getelementptr inbounds %interface.Error, ptr %t951, i32 0, i32 1
   store ptr %t952, ptr %t968
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t969
-  %t970 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.800
+  %t970 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.803
   %t971 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t972 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t973 = load ptr, ptr %t971
@@ -5749,21 +5757,21 @@ if.end.6:
   %t984 = or i1 %t981, %t983
   br i1 %t984, label %if.then.8, label %if.end.8
 if.then.8:
-  %t985 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.819, i32 0, i32 0
+  %t985 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.822, i32 0, i32 0
   store i32 1, ptr %t985
-  %t986 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.819, i32 0, i32 2
+  %t986 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.822, i32 0, i32 2
   %t988 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t989 = ptrtoint ptr %t988 to i64
   %t987 = call ptr @willrt_alloc(i64 %t989)
-  %t990 = getelementptr inbounds { ptr, i64 }, ptr %v.str.822, i32 0, i32 0
+  %t990 = getelementptr inbounds { ptr, i64 }, ptr %v.str.825, i32 0, i32 0
   store ptr @.bytes.59, ptr %t990
-  %t991 = getelementptr inbounds { ptr, i64 }, ptr %v.str.822, i32 0, i32 1
+  %t991 = getelementptr inbounds { ptr, i64 }, ptr %v.str.825, i32 0, i32 1
   store i64 30, ptr %t991
-  %t992 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.822)
-  store %"struct.std/time.timeError" %t992, ptr %v.ret.821
-  %t993 = load %"struct.std/time.timeError", ptr %v.ret.821
+  %t992 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.825)
+  store %"struct.std/time.timeError" %t992, ptr %v.ret.824
+  %t993 = load %"struct.std/time.timeError", ptr %v.ret.824
   store %"struct.std/time.timeError" %t993, ptr %t987
-  %t994 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.821, i32 0, i32 0
+  %t994 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.824, i32 0, i32 0
   %t995 = getelementptr inbounds %"struct.std/time.timeError", ptr %t987, i32 0, i32 0
   %t996 = getelementptr inbounds { ptr, i64 }, ptr %t994, i32 0, i32 0
   %t997 = getelementptr inbounds { ptr, i64 }, ptr %t994, i32 0, i32 1
@@ -5779,7 +5787,7 @@ if.then.8:
   %t1004 = getelementptr inbounds %interface.Error, ptr %t986, i32 0, i32 1
   store ptr %t987, ptr %t1003
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t1004
-  %t1005 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.819
+  %t1005 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.822
   %t1006 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t1007 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t1008 = load ptr, ptr %t1006
@@ -5807,21 +5815,21 @@ if.end.8:
   %t1019 = or i1 %t1016, %t1018
   br i1 %t1019, label %if.then.10, label %if.end.10
 if.then.10:
-  %t1020 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.834, i32 0, i32 0
+  %t1020 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.837, i32 0, i32 0
   store i32 1, ptr %t1020
-  %t1021 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.834, i32 0, i32 2
+  %t1021 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.837, i32 0, i32 2
   %t1023 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t1024 = ptrtoint ptr %t1023 to i64
   %t1022 = call ptr @willrt_alloc(i64 %t1024)
-  %t1025 = getelementptr inbounds { ptr, i64 }, ptr %v.str.837, i32 0, i32 0
+  %t1025 = getelementptr inbounds { ptr, i64 }, ptr %v.str.840, i32 0, i32 0
   store ptr @.bytes.60, ptr %t1025
-  %t1026 = getelementptr inbounds { ptr, i64 }, ptr %v.str.837, i32 0, i32 1
+  %t1026 = getelementptr inbounds { ptr, i64 }, ptr %v.str.840, i32 0, i32 1
   store i64 31, ptr %t1026
-  %t1027 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.837)
-  store %"struct.std/time.timeError" %t1027, ptr %v.ret.836
-  %t1028 = load %"struct.std/time.timeError", ptr %v.ret.836
+  %t1027 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.840)
+  store %"struct.std/time.timeError" %t1027, ptr %v.ret.839
+  %t1028 = load %"struct.std/time.timeError", ptr %v.ret.839
   store %"struct.std/time.timeError" %t1028, ptr %t1022
-  %t1029 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.836, i32 0, i32 0
+  %t1029 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.839, i32 0, i32 0
   %t1030 = getelementptr inbounds %"struct.std/time.timeError", ptr %t1022, i32 0, i32 0
   %t1031 = getelementptr inbounds { ptr, i64 }, ptr %t1029, i32 0, i32 0
   %t1032 = getelementptr inbounds { ptr, i64 }, ptr %t1029, i32 0, i32 1
@@ -5837,7 +5845,7 @@ if.then.10:
   %t1039 = getelementptr inbounds %interface.Error, ptr %t1021, i32 0, i32 1
   store ptr %t1022, ptr %t1038
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t1039
-  %t1040 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.834
+  %t1040 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.837
   %t1041 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t1042 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t1043 = load ptr, ptr %t1041
@@ -5868,21 +5876,21 @@ if.end.10:
   %t1057 = or i1 %t1051, %t1056
   br i1 %t1057, label %if.then.12, label %if.end.12
 if.then.12:
-  %t1058 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.851, i32 0, i32 0
+  %t1058 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.854, i32 0, i32 0
   store i32 1, ptr %t1058
-  %t1059 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.851, i32 0, i32 2
+  %t1059 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.854, i32 0, i32 2
   %t1061 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t1062 = ptrtoint ptr %t1061 to i64
   %t1060 = call ptr @willrt_alloc(i64 %t1062)
-  %t1063 = getelementptr inbounds { ptr, i64 }, ptr %v.str.854, i32 0, i32 0
+  %t1063 = getelementptr inbounds { ptr, i64 }, ptr %v.str.857, i32 0, i32 0
   store ptr @.bytes.61, ptr %t1063
-  %t1064 = getelementptr inbounds { ptr, i64 }, ptr %v.str.854, i32 0, i32 1
+  %t1064 = getelementptr inbounds { ptr, i64 }, ptr %v.str.857, i32 0, i32 1
   store i64 29, ptr %t1064
-  %t1065 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.854)
-  store %"struct.std/time.timeError" %t1065, ptr %v.ret.853
-  %t1066 = load %"struct.std/time.timeError", ptr %v.ret.853
+  %t1065 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.857)
+  store %"struct.std/time.timeError" %t1065, ptr %v.ret.856
+  %t1066 = load %"struct.std/time.timeError", ptr %v.ret.856
   store %"struct.std/time.timeError" %t1066, ptr %t1060
-  %t1067 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.853, i32 0, i32 0
+  %t1067 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.856, i32 0, i32 0
   %t1068 = getelementptr inbounds %"struct.std/time.timeError", ptr %t1060, i32 0, i32 0
   %t1069 = getelementptr inbounds { ptr, i64 }, ptr %t1067, i32 0, i32 0
   %t1070 = getelementptr inbounds { ptr, i64 }, ptr %t1067, i32 0, i32 1
@@ -5898,7 +5906,7 @@ if.then.12:
   %t1077 = getelementptr inbounds %interface.Error, ptr %t1059, i32 0, i32 1
   store ptr %t1060, ptr %t1076
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t1077
-  %t1078 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.851
+  %t1078 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.854
   %t1079 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t1080 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t1081 = load ptr, ptr %t1079
@@ -5931,11 +5939,11 @@ panic.14:
   call void @willrt_panic(ptr @.str.10, ptr @.str.187, ptr @.str.180)
   unreachable
 panic.ok.14:
-  store i64 %t1093, ptr %v.local_seconds
-  %t1095 = load i64, ptr %v.local_seconds
+  store i64 %t1093, ptr %v.local_at
+  %t1095 = load i64, ptr %v.local_at
   %t1096 = call i32 @"std/time.offset_at"(ptr %tz, i64 %t1095)
   store i32 %t1096, ptr %v.offset
-  %t1097 = load i64, ptr %v.local_seconds
+  %t1097 = load i64, ptr %v.local_at
   %t1098 = load i32, ptr %v.offset
   %t1099 = sext i32 %t1098 to i64
   %t1100 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t1097, i64 %t1099)
@@ -5946,8 +5954,8 @@ panic.15:
   call void @willrt_panic(ptr @.str.10, ptr @.str.188, ptr @.str.180)
   unreachable
 panic.ok.15:
-  store i64 %t1101, ptr %v.utc_seconds
-  %t1103 = load i64, ptr %v.utc_seconds
+  store i64 %t1101, ptr %v.utc_at
+  %t1103 = load i64, ptr %v.utc_at
   %t1104 = call i32 @"std/time.offset_at"(ptr %tz, i64 %t1103)
   store i32 %t1104, ptr %v.corrected
   %t1105 = load i32, ptr %v.corrected
@@ -5955,7 +5963,7 @@ panic.ok.15:
   %t1107 = icmp ne i32 %t1105, %t1106
   br i1 %t1107, label %if.then.16, label %if.end.16
 if.then.16:
-  %t1108 = load i64, ptr %v.local_seconds
+  %t1108 = load i64, ptr %v.local_at
   %t1109 = load i32, ptr %v.corrected
   %t1110 = sext i32 %t1109 to i64
   %t1111 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t1108, i64 %t1110)
@@ -5966,29 +5974,29 @@ panic.17:
   call void @willrt_panic(ptr @.str.10, ptr @.str.189, ptr @.str.180)
   unreachable
 panic.ok.17:
-  store i64 %t1112, ptr %v.utc_seconds
+  store i64 %t1112, ptr %v.utc_at
   br label %if.end.16
 if.end.16:
-  %t1114 = load i64, ptr %v.utc_seconds
+  %t1114 = load i64, ptr %v.utc_at
   %t1115 = call i1 @"std/time.second_in_range"(i64 %t1114)
   %t1116 = xor i1 %t1115, true
   br i1 %t1116, label %if.then.18, label %if.end.18
 if.then.18:
-  %t1117 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.899, i32 0, i32 0
+  %t1117 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.902, i32 0, i32 0
   store i32 1, ptr %t1117
-  %t1118 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.899, i32 0, i32 2
+  %t1118 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.902, i32 0, i32 2
   %t1120 = getelementptr %"struct.std/time.timeError", ptr null, i32 1
   %t1121 = ptrtoint ptr %t1120 to i64
   %t1119 = call ptr @willrt_alloc(i64 %t1121)
-  %t1122 = getelementptr inbounds { ptr, i64 }, ptr %v.str.902, i32 0, i32 0
+  %t1122 = getelementptr inbounds { ptr, i64 }, ptr %v.str.905, i32 0, i32 0
   store ptr @.bytes.62, ptr %t1122
-  %t1123 = getelementptr inbounds { ptr, i64 }, ptr %v.str.902, i32 0, i32 1
+  %t1123 = getelementptr inbounds { ptr, i64 }, ptr %v.str.905, i32 0, i32 1
   store i64 43, ptr %t1123
-  %t1124 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.902)
-  store %"struct.std/time.timeError" %t1124, ptr %v.ret.901
-  %t1125 = load %"struct.std/time.timeError", ptr %v.ret.901
+  %t1124 = call %"struct.std/time.timeError" @"std/time.fail"(ptr %v.str.905)
+  store %"struct.std/time.timeError" %t1124, ptr %v.ret.904
+  %t1125 = load %"struct.std/time.timeError", ptr %v.ret.904
   store %"struct.std/time.timeError" %t1125, ptr %t1119
-  %t1126 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.901, i32 0, i32 0
+  %t1126 = getelementptr inbounds %"struct.std/time.timeError", ptr %v.ret.904, i32 0, i32 0
   %t1127 = getelementptr inbounds %"struct.std/time.timeError", ptr %t1119, i32 0, i32 0
   %t1128 = getelementptr inbounds { ptr, i64 }, ptr %t1126, i32 0, i32 0
   %t1129 = getelementptr inbounds { ptr, i64 }, ptr %t1126, i32 0, i32 1
@@ -6004,7 +6012,7 @@ if.then.18:
   %t1136 = getelementptr inbounds %interface.Error, ptr %t1118, i32 0, i32 1
   store ptr %t1119, ptr %t1135
   store ptr @"std/time.vtable.Error.std/time.timeError", ptr %t1136
-  %t1137 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.899
+  %t1137 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.902
   %t1138 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t1139 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t1140 = load ptr, ptr %t1138
@@ -6025,11 +6033,11 @@ deep.rel.arr.done.19:
   call void @willrt_free(ptr %t1140)
   ret { i32, [4 x i8], %"struct.std/time.Instant" } %t1137
 if.end.18:
-  %t1147 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.905, i32 0, i32 0
+  %t1147 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.908, i32 0, i32 0
   store i32 0, ptr %t1147
-  %t1148 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.905, i32 0, i32 2
-  %t1149 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.907, i32 0, i32 0
-  %t1150 = load i64, ptr %v.utc_seconds
+  %t1148 = getelementptr inbounds { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.908, i32 0, i32 2
+  %t1149 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.910, i32 0, i32 0
+  %t1150 = load i64, ptr %v.utc_at
   %t1151 = call {i64, i1} @llvm.smul.with.overflow.i64(i64 %t1150, i64 1000000000)
   %t1152 = extractvalue {i64, i1} %t1151, 0
   %t1153 = extractvalue {i64, i1} %t1151, 1
@@ -6039,12 +6047,12 @@ panic.20:
   unreachable
 panic.ok.20:
   store i64 %t1152, ptr %t1149
-  %t1154 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.907, i32 0, i32 1
+  %t1154 = getelementptr inbounds %"struct.std/time.Instant", ptr %v.agg.910, i32 0, i32 1
   %t1155 = load %"struct.std/time.Timezone", ptr %tz
   store %"struct.std/time.Timezone" %t1155, ptr %t1154
-  %t1156 = load %"struct.std/time.Instant", ptr %v.agg.907
+  %t1156 = load %"struct.std/time.Instant", ptr %v.agg.910
   store %"struct.std/time.Instant" %t1156, ptr %t1148
-  %t1157 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.905
+  %t1157 = load { i32, [4 x i8], %"struct.std/time.Instant" }, ptr %v.adt.908
   %t1158 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 0
   %t1159 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.cs, i32 0, i32 1
   %t1160 = load ptr, ptr %t1158
@@ -7349,7 +7357,7 @@ declare i64 @willtime_wall_ns()
 @.str.159 = private unnamed_addr constant [22 x i8] c"time/parse.will:164:9\00", align 1
 @.str.160 = private unnamed_addr constant [23 x i8] c"time/parse.will:166:46\00", align 1
 @.str.161 = private unnamed_addr constant [23 x i8] c"time/parse.will:167:48\00", align 1
-@.str.162 = private unnamed_addr constant [23 x i8] c"time/parse.will:168:61\00", align 1
+@.str.162 = private unnamed_addr constant [23 x i8] c"time/parse.will:168:64\00", align 1
 @.bytes.51 = private unnamed_addr constant [33 x i8] c"rfc3339: the offset is not +HH:MM", align 1
 @.bytes.52 = private unnamed_addr constant [35 x i8] c"rfc3339: the offset is out of range", align 1
 @.str.165 = private unnamed_addr constant [23 x i8] c"time/parse.will:174:18\00", align 1
@@ -7358,11 +7366,11 @@ declare i64 @willtime_wall_ns()
 @.str.168 = private unnamed_addr constant [22 x i8] c"time/parse.will:178:9\00", align 1
 @.bytes.53 = private unnamed_addr constant [38 x i8] c"rfc3339: the offset is not Z or +HH:MM", align 1
 @.bytes.54 = private unnamed_addr constant [35 x i8] c"rfc3339: text follows the timestamp", align 1
-@.str.171 = private unnamed_addr constant [23 x i8] c"time/parse.will:185:30\00", align 1
-@.str.172 = private unnamed_addr constant [23 x i8] c"time/parse.will:186:26\00", align 1
-@.str.173 = private unnamed_addr constant [23 x i8] c"time/parse.will:186:40\00", align 1
+@.str.171 = private unnamed_addr constant [23 x i8] c"time/parse.will:185:25\00", align 1
+@.str.172 = private unnamed_addr constant [23 x i8] c"time/parse.will:186:21\00", align 1
+@.str.173 = private unnamed_addr constant [23 x i8] c"time/parse.will:186:35\00", align 1
 @.str.174 = private unnamed_addr constant [22 x i8] c"time/parse.will:186:5\00", align 1
-@.str.175 = private unnamed_addr constant [23 x i8] c"time/parse.will:187:28\00", align 1
+@.str.175 = private unnamed_addr constant [23 x i8] c"time/parse.will:187:23\00", align 1
 @.bytes.55 = private unnamed_addr constant [46 x i8] c"rfc3339: the year is outside the Instant range", align 1
 @.bytes.56 = private unnamed_addr constant [50 x i8] c"rfc3339: the fraction is outside the Instant range", align 1
 @.str.178 = private unnamed_addr constant [23 x i8] c"time/parse.will:195:32\00", align 1
@@ -7374,9 +7382,9 @@ declare i64 @willtime_wall_ns()
 @.bytes.59 = private unnamed_addr constant [30 x i8] c"date: the separators are wrong", align 1
 @.bytes.60 = private unnamed_addr constant [31 x i8] c"date: the month is out of range", align 1
 @.bytes.61 = private unnamed_addr constant [29 x i8] c"date: the day is out of range", align 1
-@.str.187 = private unnamed_addr constant [23 x i8] c"time/parse.will:221:30\00", align 1
-@.str.188 = private unnamed_addr constant [23 x i8] c"time/parse.will:225:28\00", align 1
-@.str.189 = private unnamed_addr constant [23 x i8] c"time/parse.will:228:23\00", align 1
+@.str.187 = private unnamed_addr constant [23 x i8] c"time/parse.will:221:25\00", align 1
+@.str.188 = private unnamed_addr constant [23 x i8] c"time/parse.will:225:23\00", align 1
+@.str.189 = private unnamed_addr constant [23 x i8] c"time/parse.will:228:18\00", align 1
 @.bytes.62 = private unnamed_addr constant [43 x i8] c"date: the year is outside the Instant range", align 1
 @.str.191 = private unnamed_addr constant [23 x i8] c"time/parse.will:233:32\00", align 1
 @.str.192 = private unnamed_addr constant [21 x i8] c"time/time.will:23:29\00", align 1

@@ -1,8 +1,8 @@
 import "std/str"
 
-// ParseI64 and ParseU64 must accept a sign where the type has one, every base
-// from 2 to 36, and the exact bounds of the type; a rejected text reports the
-// stable Invalid status, 2.
+# ParseI64 and ParseU64 must accept a sign where the type has one, every base
+# from 2 to 36, and the exact bounds of the type; a rejected text reports the
+# stable Invalid status, 2.
 def main() -> i32 {
     if str.parse_i64("0", 10)! != 0i64 {
         return 1
@@ -89,8 +89,8 @@ def main() -> i32 {
             }
         }
     }
-    // ParseF64 accepts a sign, a missing whole or fractional part, and a
-    // decimal exponent; the vectors stay exactly representable.
+    # ParseF64 accepts a sign, a missing whole or fractional part, and a
+    # decimal exponent; the vectors stay exactly representable.
     if str.parse_f64("2")! != 2.0 {
         return 21
     }

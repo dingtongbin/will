@@ -1,8 +1,8 @@
 import "std/bits"
 
-// Set, Clear, Flip, and Has must cross word boundaries, Count must count the
-// set bits, Clone must be independent, and the four bitwise operations must
-// combine two sets of one width.
+# Set, Clear, Flip, and Has must cross word boundaries, Count must count the
+# set bits, Clone must be independent, and the four bitwise operations must
+# combine two sets of one width.
 def main() -> i32 {
     var b: bits.Bits = new bits.Bits(130usize)
     if b.len() != usize(130) {
@@ -15,16 +15,16 @@ def main() -> i32 {
     b.set(63usize)
     b.set(64usize)
     b.set(129usize)
-    if !b.has(0usize) {
+    if not b.has(0usize) {
         return 3
     }
-    if !b.has(63usize) {
+    if not b.has(63usize) {
         return 4
     }
-    if !b.has(64usize) {
+    if not b.has(64usize) {
         return 5
     }
-    if !b.has(129usize) {
+    if not b.has(129usize) {
         return 6
     }
     if b.has(65usize) {
@@ -41,7 +41,7 @@ def main() -> i32 {
         return 10
     }
     b.flip(65usize)
-    if !b.has(65usize) {
+    if not b.has(65usize) {
         return 11
     }
     b.flip(65usize)
@@ -77,7 +77,7 @@ def main() -> i32 {
     if both.count() != usize(2) {
         return 17
     }
-    if !both.has(2usize) {
+    if not both.has(2usize) {
         return 18
     }
     var either: bits.Bits = left.clone()
@@ -85,7 +85,7 @@ def main() -> i32 {
     if either.count() != usize(6) {
         return 19
     }
-    if !either.has(5usize) {
+    if not either.has(5usize) {
         return 20
     }
     var differing: bits.Bits = left.clone()
@@ -96,7 +96,7 @@ def main() -> i32 {
     if differing.has(2usize) {
         return 22
     }
-    if !differing.has(0usize) {
+    if not differing.has(0usize) {
         return 23
     }
     var only: bits.Bits = left.clone()
@@ -104,7 +104,7 @@ def main() -> i32 {
     if only.count() != usize(2) {
         return 24
     }
-    if !only.has(1usize) {
+    if not only.has(1usize) {
         return 25
     }
     if only.has(3usize) {
@@ -127,7 +127,7 @@ def main() -> i32 {
     if shrunk.len() != usize(200) {
         return 30
     }
-    if !shrunk.has(199usize) {
+    if not shrunk.has(199usize) {
         return 31
     }
     if shrunk.count() != usize(1) {

@@ -101,10 +101,10 @@ func (l *Lexer) run() {
 			start := l.pos()
 			l.advance()
 			l.toks = append(l.toks, token.Token{Kind: token.Newline, Text: "\n", Pos: start, End: l.pos()})
-		case b == '/' && l.peek(1) == '/':
-			l.scanLineComment()
-		case b == '/' && l.peek(1) == '*':
-			l.scanBlockComment()
+		case b == '#':
+			l.scanHashComment()
+		case b == '"' && l.peek(1) == '"' && l.peek(2) == '"':
+			l.scanTripleComment()
 		case b == 'b' && l.peek(1) == '"':
 			l.scanQuoted(token.Bytes, 1)
 		case b == 'f' && l.peek(1) == '"':

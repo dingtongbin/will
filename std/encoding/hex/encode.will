@@ -1,8 +1,8 @@
-// Encode returns the lowercase hexadecimal text of b: two characters per byte.
-// Any byte value is accepted and the result is ASCII, so the call cannot fail.
-// Lowercase keeps the output stable for comparisons and matches Decode, which
-// accepts either case. Push doubles the array when it is full, so the whole
-// encode stays linear in the input length.
+# Encode returns the lowercase hexadecimal text of b: two characters per byte.
+# Any byte value is accepted and the result is ASCII, so the call cannot fail.
+# Lowercase keeps the output stable for comparisons and matches Decode, which
+# accepts either case. Push doubles the array when it is full, so the whole
+# encode stays linear in the input length.
 def encode(b: []u8) -> str {
     var out: Array<u8> = new Array<u8>(0)
     for v in b {
@@ -12,7 +12,7 @@ def encode(b: []u8) -> str {
     return str(out)
 }
 
-// nibbleChar maps one four-bit value to its lowercase hexadecimal digit.
+# nibbleChar maps one four-bit value to its lowercase hexadecimal digit.
 def nibble_char(v: u8) -> u8 {
     if v < 10u8 {
         return 48u8 + v

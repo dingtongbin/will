@@ -8,7 +8,7 @@ def main() -> i32 {
         return 1
     }
     var view: []u8 = b.bytes()
-    if view.get(0) != 65u8 || view.get(1) != 66u8 {
+    if view.get(0) != 65u8 or view.get(1) != 66u8 {
         return 2
     }
     b.clear()
@@ -18,7 +18,7 @@ def main() -> i32 {
 
     var p: buf.PooledBuffer = buf.pooled(8usize)
     p.data.push(67u8)
-    if p.len() != 1usize || p.array().get(0) != 67u8 {
+    if p.len() != 1usize or p.array().get(0) != 67u8 {
         return 4
     }
     p.release()

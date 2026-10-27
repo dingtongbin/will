@@ -1,8 +1,8 @@
-// CPU parallelism helpers. Both functions use one parallel block and one job
-// per index, so they have the same shape as handwritten spawn/Join code.
+# CPU parallelism helpers. Both functions use one parallel block and one job
+# per index, so they have the same shape as handwritten spawn/Join code.
 
-// ParallelFor calls f once for every index below n. The caller chooses the
-// chunking by choosing n; this function never adapts it.
+# ParallelFor calls f once for every index below n. The caller chooses the
+# chunking by choosing n; this function never adapts it.
 def parallel_for(n: usize, f: func(usize)) {
     if n == 0usize {
         return
@@ -19,8 +19,8 @@ def parallel_for(n: usize, f: func(usize)) {
     }
 }
 
-// ParallelMap returns f applied to every element in input order. The output
-// array has the same length as xs.
+# ParallelMap returns f applied to every element in input order. The output
+# array has the same length as xs.
 def parallel_map<T, U>(xs: []T, f: func(T) -> U) -> Array<U> {
     var n: usize = xs.len()
     var out: Array<U> = new Array<U>(n)

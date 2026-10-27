@@ -41,10 +41,10 @@ def check_file() -> i32 {
             var read: Result<usize, Error> = file.read(buf)
             match read {
                 Ok(count) => {
-                    if count != 5usize || buf.len() != 5usize {
+                    if count != 5usize or buf.len() != 5usize {
                         return 7
                     }
-                    if buf.get(0) != 104u8 || buf.get(4) != 111u8 {
+                    if buf.get(0) != 104u8 or buf.get(4) != 111u8 {
                         return 8
                     }
                 }
@@ -74,7 +74,7 @@ def check_file() -> i32 {
         }
     }
 
-    var flags: fs.OpenFlags = fs.OpenFlags { read: true, write: false, create: false, append: false, truncate: false, exclusive: false }
+    var flags: fs.OpenFlags = fs.OpenFlags { read: True, write: False, create: False, append: False, truncate: False, exclusive: False }
     var opened: Result<fs.File, Error> = fs.open(path, flags)
     match opened {
         Ok(file) => {
@@ -88,7 +88,7 @@ def check_file() -> i32 {
     var info: Result<fs.StatInfo, Error> = fs.stat(path)
     match info {
         Ok(stat) => {
-            if stat.size != 5i64 || stat.isDir {
+            if stat.size != 5i64 or stat.isDir {
                 return 15
             }
         }
@@ -162,7 +162,7 @@ def check_dir() -> i32 {
             }
             _ = fs.remove(first)
             _ = fs.remove(second)
-            if aPos < 0 || bPos < 0 || aPos > bPos {
+            if aPos < 0 or bPos < 0 or aPos > bPos {
                 return 23
             }
         }
@@ -192,7 +192,7 @@ def check_async() -> i32 {
     var loaded: Result<Array<u8>, Error> = wait(fs.async_read_file(path))
     match loaded {
         Ok(bytes) => {
-            if bytes.len() != 5usize || bytes.get(0) != 97u8 {
+            if bytes.len() != 5usize or bytes.get(0) != 97u8 {
                 _ = fs.remove(path)
                 return 31
             }

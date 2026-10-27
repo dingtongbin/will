@@ -8,14 +8,14 @@ import c "bench_clock.h" {
 }
 import "example.com/bench/conc/spawntail/will/bench"
 
-// count is the number of tasks in one measured burst.
+# count is the number of tasks in one measured burst.
 const count: i32 = 10000
 
-// repetitions is the number of measured bursts.
+# repetitions is the number of measured bursts.
 const repetitions: i32 = 5
 
-// Work runs the same integer loop as the spawn scenario and records the end of
-// its own latency window in the shared C cells.
+# Work runs the same integer loop as the spawn scenario and records the end of
+# its own latency window in the shared C cells.
 def work(index: i32, slot: i32) -> i32 {
     var acc: i32 = 0
     for i in Range(0, 100) {

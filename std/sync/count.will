@@ -1,5 +1,5 @@
-// Count waits for a counter to reach zero. Workers decrement it when they
-// finish, so the shutdown path waits on one value instead of joining each task.
+# Count waits for a counter to reach zero. Workers decrement it when they
+# finish, so the shutdown path waits on one value instead of joining each task.
 import "std/errors"
 
 import c "sync.h" {
@@ -20,8 +20,8 @@ def (counter: Count) add(d: i64) {
     c.willrt_sync_count_add(counter.handle, d)
 }
 
-// Wait blocks until the counter reaches zero. A canceled or expired wait
-// leaves the count unchanged.
+# Wait blocks until the counter reaches zero. A canceled or expired wait
+# leaves the count unchanged.
 async def (counter: Count) wait() -> Result<(), Error> {
     var status: i32 = await c.willrt_sync_count_wait_async(counter.handle)
     if status == 0 {

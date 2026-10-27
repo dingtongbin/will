@@ -796,12 +796,12 @@ if.end.1:
 }
 define hidden { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } @"std/os/fs.stat"(ptr %path) inlinehint {
 entry:
-  %v.stat = alloca %"struct.std/os/fs.StatInfo"
+  %v.info = alloca %"struct.std/os/fs.StatInfo"
   %v.status = alloca i32
   %v.adt.661 = alloca { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }
   %v.adt.667 = alloca { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }
-  store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.stat
-  %t291 = call i32 @willrt_fs_stat(ptr %path, ptr %v.stat)
+  store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.info
+  %t291 = call i32 @willrt_fs_stat(ptr %path, ptr %v.info)
   store i32 %t291, ptr %v.status
   %t292 = load i32, ptr %v.status
   %t293 = icmp ne i32 %t292, 0
@@ -837,7 +837,7 @@ if.end.1:
   %t312 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.667, i32 0, i32 0
   store i32 0, ptr %t312
   %t313 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.667, i32 0, i32 2
-  %t314 = load %"struct.std/os/fs.StatInfo", ptr %v.stat
+  %t314 = load %"struct.std/os/fs.StatInfo", ptr %v.info
   store %"struct.std/os/fs.StatInfo" %t314, ptr %t313
   %t315 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.667
   ret { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t315
@@ -2058,7 +2058,7 @@ define internal i32 @"std/os/fs.File.async_stat.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.544.894 = getelementptr i8, ptr %frame, i64 8
-  %v.stat = getelementptr i8, ptr %frame, i64 16
+  %v.info = getelementptr i8, ptr %frame, i64 16
   %v.status = getelementptr i8, ptr %frame, i64 48
   %v.adt.570 = getelementptr i8, ptr %frame, i64 56
   %v.adt.576 = getelementptr i8, ptr %frame, i64 96
@@ -2069,8 +2069,8 @@ entry:
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.stat
-  %t897 = call ptr @willrt_fs_async_file_stat_start(ptr %v.sm.param.544.894, ptr %v.stat)
+  store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.info
+  %t897 = call ptr @willrt_fs_async_file_stat_start(ptr %v.sm.param.544.894, ptr %v.info)
   store ptr %t897, ptr %v.sm.async.op.895
   %t898 = icmp ne ptr %t897, null
   br i1 %t898, label %sm.async.have.1, label %sm.async.fail.1
@@ -2155,7 +2155,7 @@ if.end.1:
   %t937 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.576, i32 0, i32 0
   store i32 0, ptr %t937
   %t938 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.576, i32 0, i32 2
-  %t939 = load %"struct.std/os/fs.StatInfo", ptr %v.stat
+  %t939 = load %"struct.std/os/fs.StatInfo", ptr %v.info
   store %"struct.std/os/fs.StatInfo" %t939, ptr %t938
   %t940 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.576
   store { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t940, ptr %t941
@@ -4093,7 +4093,7 @@ define internal i32 @"std/os/fs.async_stat.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.1330.1791 = getelementptr i8, ptr %frame, i64 8
-  %v.stat = getelementptr i8, ptr %frame, i64 24
+  %v.info = getelementptr i8, ptr %frame, i64 24
   %v.status = getelementptr i8, ptr %frame, i64 56
   %v.adt.1356 = getelementptr i8, ptr %frame, i64 64
   %v.adt.1362 = getelementptr i8, ptr %frame, i64 104
@@ -4104,8 +4104,8 @@ entry:
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.stat
-  %t1794 = call ptr @willrt_fs_async_stat_start(ptr %v.sm.param.1330.1791, ptr %v.stat)
+  store %"struct.std/os/fs.StatInfo" zeroinitializer, ptr %v.info
+  %t1794 = call ptr @willrt_fs_async_stat_start(ptr %v.sm.param.1330.1791, ptr %v.info)
   store ptr %t1794, ptr %v.sm.async.op.1792
   %t1795 = icmp ne ptr %t1794, null
   br i1 %t1795, label %sm.async.have.1, label %sm.async.fail.1
@@ -4190,7 +4190,7 @@ if.end.1:
   %t1834 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1362, i32 0, i32 0
   store i32 0, ptr %t1834
   %t1835 = getelementptr inbounds { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1362, i32 0, i32 2
-  %t1836 = load %"struct.std/os/fs.StatInfo", ptr %v.stat
+  %t1836 = load %"struct.std/os/fs.StatInfo", ptr %v.info
   store %"struct.std/os/fs.StatInfo" %t1836, ptr %t1835
   %t1837 = load { i32, [4 x i8], %"struct.std/os/fs.StatInfo" }, ptr %v.adt.1362
   store { i32, [4 x i8], %"struct.std/os/fs.StatInfo" } %t1837, ptr %t1838

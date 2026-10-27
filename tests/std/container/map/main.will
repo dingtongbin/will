@@ -1,5 +1,5 @@
-// Map is insertion ordered in this implementation. Set replaces a value,
-// Delete removes one entry, and Keys/Values copy the live entries.
+# Map is insertion ordered in this implementation. Set replaces a value,
+# Delete removes one entry, and Keys/Values copy the live entries.
 def main() -> i32 {
     var m: Map<str, i32> = new Map<str, i32>(0usize)
     if m.len() != 0usize {
@@ -11,7 +11,7 @@ def main() -> i32 {
     if m.len() != 2usize {
         return 2
     }
-    if !m.has("a") || m.has("c") {
+    if not m.has("a") or m.has("c") {
         return 3
     }
     match m.get("a") {
@@ -33,14 +33,14 @@ def main() -> i32 {
         }
     }
     var keys: Array<str> = m.keys()
-    if keys.len() != 2usize || keys.get(0usize) != "a" || keys.get(1usize) != "b" {
+    if keys.len() != 2usize or keys.get(0usize) != "a" or keys.get(1usize) != "b" {
         return 7
     }
     var values: Array<i32> = m.values()
-    if values.len() != 2usize || values.get(0usize) != 3 || values.get(1usize) != 2 {
+    if values.len() != 2usize or values.get(0usize) != 3 or values.get(1usize) != 2 {
         return 8
     }
-    if !m.delete("a") || m.len() != 1usize {
+    if not m.delete("a") or m.len() != 1usize {
         return 9
     }
     if m.delete("a") {
@@ -48,7 +48,7 @@ def main() -> i32 {
     }
     m.set("c", 4)
     m.clear()
-    if m.len() != 0usize || m.has("c") {
+    if m.len() != 0usize or m.has("c") {
         return 11
     }
     var nested: Map<str, Array<i32>> = new Map<str, Array<i32>>(0usize)
@@ -58,7 +58,7 @@ def main() -> i32 {
     nestedValues.push(2)
     match nested.get("a") {
         Some(copy) => {
-            if copy.len() != 1usize || copy.get(0usize) != 1 {
+            if copy.len() != 1usize or copy.get(0usize) != 1 {
                 return 12
             }
         }

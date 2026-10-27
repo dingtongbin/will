@@ -275,6 +275,10 @@ func (e *emitter) emitStmt(s ast.Stmt) int {
 			e.ref(rec, "iter", st.Iter)
 			e.emitExpr(st.Iter)
 		}
+		if st.Cond != nil {
+			e.ref(rec, "cond", st.Cond)
+			e.emitExpr(st.Cond)
+		}
 		e.ref(rec, "body", st.Body)
 		e.loops = append(e.loops, len(e.scopes))
 		e.emitBlock(st.Body)

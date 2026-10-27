@@ -1,8 +1,8 @@
 import "std/math/rand"
 
-// Two streams with one seed must stay identical, different seeds must diverge,
-// and NextF64 must stay in [0, 1). The published SplitMix64 values pin the
-// state update and the three wrapping multiplies.
+# Two streams with one seed must stay identical, different seeds must diverge,
+# and NextF64 must stay in [0, 1). The published SplitMix64 values pin the
+# state update and the three wrapping multiplies.
 def main() -> i32 {
     var r: rand.Rand = new rand.Rand(42u64)
     var a: u64 = r.next_u64()
@@ -17,7 +17,7 @@ def main() -> i32 {
     if a == b {
         return 3
     }
-    if f < 0.0 || f >= 1.0 {
+    if f < 0.0 or f >= 1.0 {
         return 4
     }
 

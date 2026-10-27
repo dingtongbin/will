@@ -1,29 +1,29 @@
-// Deque is a double-ended queue backed by two stacks. Both ends push in
-// constant time; a pop that finds one stack empty moves half of the other
-// stack, so every element moves amortized constant time.
+# Deque is a double-ended queue backed by two stacks. Both ends push in
+# constant time; a pop that finds one stack empty moves half of the other
+# stack, so every element moves amortized constant time.
 struct Deque<T> {
     front: Array<T>
     back: Array<T>
 }
 
-// init starts both stacks empty.
+# init starts both stacks empty.
 def (mut d: Deque<T>) init() {
     d.front = new Array<T>(0)
     d.back = new Array<T>(0)
 }
 
-// PushFront adds one value at the front.
+# PushFront adds one value at the front.
 def (mut d: Deque<T>) push_front(v: T) {
     d.front.push(v)
 }
 
-// PushBack adds one value at the back.
+# PushBack adds one value at the back.
 def (mut d: Deque<T>) push_back(v: T) {
     d.back.push(v)
 }
 
-// PopFront removes and returns the front value, or None when the deque is
-// empty.
+# PopFront removes and returns the front value, or None when the deque is
+# empty.
 def (mut d: Deque<T>) pop_front() -> Option<T> {
     if d.front.len() > 0 {
         return d.front.pop()
@@ -32,7 +32,7 @@ def (mut d: Deque<T>) pop_front() -> Option<T> {
         return None
     }
     var tmp: Array<T> = new Array<T>(0)
-    for {
+    while True {
         if d.back.len() == 0 {
             break
         }
@@ -51,7 +51,7 @@ def (mut d: Deque<T>) pop_front() -> Option<T> {
     }
     var rev: Array<T> = new Array<T>(0)
     var i: usize = 0usize
-    for {
+    while True {
         if i >= half {
             break
         }
@@ -65,7 +65,7 @@ def (mut d: Deque<T>) pop_front() -> Option<T> {
         }
         i += 1usize
     }
-    for {
+    while True {
         if rev.len() == 0 {
             break
         }
@@ -78,7 +78,7 @@ def (mut d: Deque<T>) pop_front() -> Option<T> {
             }
         }
     }
-    for {
+    while True {
         if tmp.len() == 0 {
             break
         }
@@ -94,7 +94,7 @@ def (mut d: Deque<T>) pop_front() -> Option<T> {
     return d.front.pop()
 }
 
-// PopBack removes and returns the back value, or None when the deque is empty.
+# PopBack removes and returns the back value, or None when the deque is empty.
 def (mut d: Deque<T>) pop_back() -> Option<T> {
     if d.back.len() > 0 {
         return d.back.pop()
@@ -103,7 +103,7 @@ def (mut d: Deque<T>) pop_back() -> Option<T> {
         return None
     }
     var tmp: Array<T> = new Array<T>(0)
-    for {
+    while True {
         if d.front.len() == 0 {
             break
         }
@@ -122,7 +122,7 @@ def (mut d: Deque<T>) pop_back() -> Option<T> {
     }
     var rev: Array<T> = new Array<T>(0)
     var i: usize = 0usize
-    for {
+    while True {
         if i >= half {
             break
         }
@@ -136,7 +136,7 @@ def (mut d: Deque<T>) pop_back() -> Option<T> {
         }
         i += 1usize
     }
-    for {
+    while True {
         if tmp.len() == 0 {
             break
         }
@@ -150,7 +150,7 @@ def (mut d: Deque<T>) pop_back() -> Option<T> {
         }
     }
     var rev2: Array<T> = new Array<T>(0)
-    for {
+    while True {
         if rev.len() == 0 {
             break
         }
@@ -163,7 +163,7 @@ def (mut d: Deque<T>) pop_back() -> Option<T> {
             }
         }
     }
-    for {
+    while True {
         if rev2.len() == 0 {
             break
         }
@@ -179,7 +179,7 @@ def (mut d: Deque<T>) pop_back() -> Option<T> {
     return d.back.pop()
 }
 
-// PeekFront returns a copy of the front value without removing it.
+# PeekFront returns a copy of the front value without removing it.
 def (d: Deque<T>) peek_front() -> Option<T> {
     if d.front.len() > 0 {
         return Some(d.front.get(d.front.len() - 1usize))
@@ -190,7 +190,7 @@ def (d: Deque<T>) peek_front() -> Option<T> {
     return Some(d.back.get(0usize))
 }
 
-// PeekBack returns a copy of the back value without removing it.
+# PeekBack returns a copy of the back value without removing it.
 def (d: Deque<T>) peek_back() -> Option<T> {
     if d.back.len() > 0 {
         return Some(d.back.get(d.back.len() - 1usize))
@@ -201,19 +201,19 @@ def (d: Deque<T>) peek_back() -> Option<T> {
     return Some(d.front.get(0usize))
 }
 
-// Len reports the number of stored values.
+# Len reports the number of stored values.
 def (d: Deque<T>) len() -> usize {
     return d.front.len() + d.back.len()
 }
 
-// Clear releases every value.
+# Clear releases every value.
 def (mut d: Deque<T>) clear() {
     d.front.clear()
     d.back.clear()
 }
 
-// Clone copies both stacks. Array.Clone gives each stored value its own
-// reference according to the container rule.
+# Clone copies both stacks. Array.Clone gives each stored value its own
+# reference according to the container rule.
 def (d: Deque<T>) clone() -> Deque<T> {
     var out: Deque<T>
     out.front = d.front.clone()

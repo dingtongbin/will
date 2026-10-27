@@ -1,7 +1,7 @@
 import "std/str"
 
-// FormatI64 and FormatF64 must spell the same text print does, including the
-// smallest i64, whose digits do not fit a positive i64 literal.
+# FormatI64 and FormatF64 must spell the same text print does, including the
+# smallest i64, whose digits do not fit a positive i64 literal.
 def main() -> i32 {
     if str.format_i64(0i64) != "0" {
         return 1

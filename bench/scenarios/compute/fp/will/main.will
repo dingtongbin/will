@@ -5,17 +5,17 @@ import c "bench_clock.h" {
 }
 import "example.com/bench/compute/fp/will/bench"
 
-// workload is the number of iterations of one measurement.
+# workload is the number of iterations of one measurement.
 const workload: i32 = 2000000
 
-// repetitions is the number of measured repetitions of the workload.
+# repetitions is the number of measured repetitions of the workload.
 const repetitions: i32 = 5
 
-// Work runs the measured loop and returns its checksum.
-//
-// The seed takes part in the work, so two calls with different seeds give
-// different results. Without it the compiler may run the loop once and
-// reuse the result, and the measurement would time nothing.
+# Work runs the measured loop and returns its checksum.
+#
+# The seed takes part in the work, so two calls with different seeds give
+# different results. Without it the compiler may run the loop once and
+# reuse the result, and the measurement would time nothing.
 def work(n: i32, seed: i32) -> f64 {
     var acc: f64 = 0.0
     for i in Range(0, n) {
@@ -27,8 +27,8 @@ def work(n: i32, seed: i32) -> f64 {
     return acc
 }
 
-// Baseline runs the same loop with one add in the body, so the cost of the
-// loop and of the counter is measured apart from the work.
+# Baseline runs the same loop with one add in the body, so the cost of the
+# loop and of the counter is measured apart from the work.
 def baseline(n: i32) -> f64 {
     var acc: f64 = 0.0
     for i in Range(0, n) {
@@ -39,7 +39,7 @@ def baseline(n: i32) -> f64 {
 
 def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
-    // The warm up pays for the first touch of the pages and of the caches.
+    # The warm up pays for the first touch of the pages and of the caches.
     var warm: f64 = work(1000, 0)
     _ = warm
 

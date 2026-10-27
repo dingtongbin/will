@@ -3501,6 +3501,31 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 		return false, g.errf(r.ID, "cannot translate node #%d: the loop body is missing", r.ID)
 	}
 	binds := bindNames(r)
+	if condID := refField(r, "cond"); condID != 0 {
+		if len(binds) != 0 {
+			return false, g.errf(r.ID, "cannot translate node #%d: a while loop binds nothing", r.ID)
+		}
+		condLabel := fmt.Sprintf("while.cond.%d", n)
+		fmt.Fprintf(g.out, "  br label %%%s\n", condLabel)
+		g.out.WriteString(condLabel + ":\n")
+		cond, err := g.value(condID)
+		if err != nil {
+			return false, err
+		}
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, bodyLabel, endLabel)
+		g.out.WriteString(bodyLabel + ":\n")
+		g.loops = append(g.loops, loopLabels{step: condLabel, end: endLabel, deferDepth: len(g.defers)})
+		done, err := g.body(body, void)
+		g.loops = g.loops[:len(g.loops)-1]
+		if err != nil {
+			return false, err
+		}
+		if !done {
+			fmt.Fprintf(g.out, "  br label %%%s\n", condLabel)
+		}
+		fmt.Fprintf(g.out, "%s:\n", endLabel)
+		return false, nil
+	}
 	iterID := refField(r, "iter")
 	if iterID == 0 {
 		if len(binds) != 0 {
@@ -4040,7 +4065,7 @@ func (g *generator) unary(r willc.Record) (string, error) {
 			return "", g.errf(r.ID, "cannot translate node #%d: ~ needs an integer", r.ID)
 		}
 		fmt.Fprintf(g.out, "  %s = xor %s %s, -1\n", name, typ, x)
-	case "!":
+	case "!", "not":
 		fmt.Fprintf(g.out, "  %s = xor i1 %s, true\n", name, x)
 	default:
 		return "", g.errf(r.ID, "cannot translate node #%d: operator %s is not lowered yet", r.ID, op)

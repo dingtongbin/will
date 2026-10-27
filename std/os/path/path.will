@@ -1,64 +1,64 @@
-// Package std/os/path works on host paths. Join and Clean accept both '/' and
-// '\' and write the platform separator; Match is a portable matcher and treats
-// only '/' as a directory boundary. The functions are pure except Abs, which
-// reads the working directory through std/os.
+# Package std/os/path works on host paths. Join and Clean accept both '/' and
+# '\' and write the platform separator; Match is a portable matcher and treats
+# only '/' as a directory boundary. The functions are pure except Abs, which
+# reads the working directory through std/os.
 
-// slashScalar is the ASCII code of the portable separator '/'.
+# slashScalar is the ASCII code of the portable separator '/'.
 const slashScalar: u32 = 47
 
-// backslashScalar is the ASCII code of the Windows separator '\'. It is
-// accepted on every target so one path spelling survives a copy across hosts.
+# backslashScalar is the ASCII code of the Windows separator '\'. It is
+# accepted on every target so one path spelling survives a copy across hosts.
 const backslashScalar: u32 = 92
 
-// colonScalar is the ASCII code that separates a Windows drive letter.
+# colonScalar is the ASCII code that separates a Windows drive letter.
 const colonScalar: u32 = 58
 
-// dotScalar is the ASCII code of '.'.
+# dotScalar is the ASCII code of '.'.
 const dotScalar: u32 = 46
 
-// isSlash reports whether c is the portable separator. Match uses this one;
-// it does not treat '\' as a boundary.
+# isSlash reports whether c is the portable separator. Match uses this one;
+# it does not treat '\' as a boundary.
 def is_slash(c: u32) -> bool {
     return c == slashScalar
 }
 
-// isSeparator reports whether c separates path elements on any target.
+# isSeparator reports whether c separates path elements on any target.
 def is_separator(c: u32) -> bool {
-    return c == slashScalar || c == backslashScalar
+    return c == slashScalar or c == backslashScalar
 }
 
-// isDot reports whether c is the character that names a dot element.
+# isDot reports whether c is the character that names a dot element.
 def is_dot(c: u32) -> bool {
     return c == dotScalar
 }
 
-// isDriveLetter reports whether c can start a Windows drive prefix.
+# isDriveLetter reports whether c can start a Windows drive prefix.
 def is_drive_letter(c: u32) -> bool {
-    return (c >= 65u32 && c <= 90u32) || (c >= 97u32 && c <= 122u32)
+    return (c >= 65u32 and c <= 90u32) or (c >= 97u32 and c <= 122u32)
 }
 
-// hasDrive reports whether p starts with a Windows drive prefix such as "C:".
+# hasDrive reports whether p starts with a Windows drive prefix such as "C:".
 def has_drive(p: str) -> bool {
-    if separator() != 92u8 || p.len() < 2usize {
-        return false
+    if separator() != 92u8 or p.len() < 2usize {
+        return False
     }
     var s: str = p.clone()
     var first: u32 = s[0]
     var second: u32 = s[1]
-    return is_drive_letter(first) && second == colonScalar
+    return is_drive_letter(first) and second == colonScalar
 }
 
-// isDriveAbs reports whether p is rooted on a Windows drive, such as "C:\a".
+# isDriveAbs reports whether p is rooted on a Windows drive, such as "C:\a".
 def is_drive_abs(p: str) -> bool {
-    if !has_drive(p) || p.len() < 3usize {
-        return false
+    if not has_drive(p) or p.len() < 3usize {
+        return False
     }
     var s: str = p.clone()
     var third: u32 = s[2]
     return is_separator(third)
 }
 
-// separatorString returns the platform separator as a one-scalar str.
+# separatorString returns the platform separator as a one-scalar str.
 def separator_string() -> str {
     return str(u32(separator()))
 }

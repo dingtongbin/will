@@ -70,6 +70,8 @@ const (
 	KwElse
 	// KwFor introduces a loop.
 	KwFor
+	// KwWhile introduces a condition loop.
+	KwWhile
 	// KwIn separates the binding from the iterable in a for loop.
 	KwIn
 	// KwMatch introduces a match expression.
@@ -90,10 +92,14 @@ const (
 	KwBreak
 	// KwContinue starts the next iteration of the nearest loop.
 	KwContinue
-	// KwTrue is the boolean true literal.
+	// KwTrue is the boolean True literal.
 	KwTrue
-	// KwFalse is the boolean false literal.
+	// KwFalse is the boolean False literal.
 	KwFalse
+	// KwNone is the Option None literal.
+	KwNone
+	// KwNot is the prefix logical negation operator.
+	KwNot
 
 	// Plus is +.
 	Plus
@@ -245,6 +251,7 @@ var names = map[Kind]string{
 	KwIf:            "if",
 	KwElse:          "else",
 	KwFor:           "for",
+	KwWhile:         "while",
 	KwIn:            "in",
 	KwMatch:         "match",
 	KwSpawn:         "spawn",
@@ -255,8 +262,10 @@ var names = map[Kind]string{
 	KwDefer:         "defer",
 	KwBreak:         "break",
 	KwContinue:      "continue",
-	KwTrue:          "true",
-	KwFalse:         "false",
+	KwTrue:          "True",
+	KwFalse:         "False",
+	KwNone:          "None",
+	KwNot:           "not",
 	Plus:            "+",
 	Minus:           "-",
 	Star:            "*",
@@ -344,6 +353,7 @@ var Keywords = map[string]Kind{
 	"if":        KwIf,
 	"else":      KwElse,
 	"for":       KwFor,
+	"while":     KwWhile,
 	"in":        KwIn,
 	"match":     KwMatch,
 	"spawn":     KwSpawn,
@@ -354,8 +364,12 @@ var Keywords = map[string]Kind{
 	"defer":     KwDefer,
 	"break":     KwBreak,
 	"continue":  KwContinue,
-	"true":      KwTrue,
-	"false":     KwFalse,
+	"True":      KwTrue,
+	"False":     KwFalse,
+	"None":      KwNone,
+	"not":       KwNot,
+	"and":       AndAnd,
+	"or":        OrOr,
 }
 
 // Token is one lexical token with its original spelling and decoded value.
@@ -374,7 +388,7 @@ func (t Token) Is(k Kind) bool {
 
 // IsKeyword reports whether k is a strict keyword.
 func (k Kind) IsKeyword() bool {
-	return k >= KwDef && k <= KwFalse
+	return k >= KwDef && k <= KwNot
 }
 
 // IsComment reports whether k is any comment kind.

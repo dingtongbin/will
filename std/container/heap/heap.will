@@ -1,29 +1,29 @@
-// Heap is a binary min-heap. The comparison function decides the order, so the
-// same structure serves integer, text, and user-defined priorities.
+# Heap is a binary min-heap. The comparison function decides the order, so the
+# same structure serves integer, text, and user-defined priorities.
 struct Heap<T> {
     items: Array<T>
     less: func(T, T) -> bool
 }
 
-// init stores the comparison function and starts with no items.
+# init stores the comparison function and starts with no items.
 def (mut h: Heap<T>) init(less: func(T, T) -> bool) {
     h.items = new Array<T>(0)
     h.less = less
 }
 
-// Push adds one value and restores the heap order.
+# Push adds one value and restores the heap order.
 def (mut h: Heap<T>) push(v: T) {
     h.items.push(v)
     var cmp: func(T, T) -> bool = h.less
     var i: usize = h.items.len() - 1usize
-    for {
+    while True {
         if i == 0usize {
             break
         }
         var parent: usize = (i - 1usize) / 2usize
         var childValue: T = h.items.get(i)
         var parentValue: T = h.items.get(parent)
-        if !cmp(childValue, parentValue) {
+        if not cmp(childValue, parentValue) {
             break
         }
         h.items.set(i, parentValue)
@@ -32,7 +32,7 @@ def (mut h: Heap<T>) push(v: T) {
     }
 }
 
-// Pop removes and returns the smallest value, or None when the heap is empty.
+# Pop removes and returns the smallest value, or None when the heap is empty.
 def (mut h: Heap<T>) pop() -> Option<T> {
     if h.items.len() == 0usize {
         return None
@@ -44,7 +44,7 @@ def (mut h: Heap<T>) pop() -> Option<T> {
             if h.items.len() > 0usize {
                 h.items.set(0usize, last)
                 var i: usize = 0usize
-                for {
+                while True {
                     var left: usize = i * 2usize + 1usize
                     if left >= h.items.len() {
                         break
@@ -60,7 +60,7 @@ def (mut h: Heap<T>) pop() -> Option<T> {
                     }
                     var smallValue: T = h.items.get(smallest)
                     var current: T = h.items.get(i)
-                    if !cmp(smallValue, current) {
+                    if not cmp(smallValue, current) {
                         break
                     }
                     h.items.set(i, smallValue)
@@ -75,7 +75,7 @@ def (mut h: Heap<T>) pop() -> Option<T> {
     return Some(top)
 }
 
-// Peek returns a copy of the smallest value without removing it.
+# Peek returns a copy of the smallest value without removing it.
 def (h: Heap<T>) peek() -> Option<T> {
     if h.items.len() == 0usize {
         return None
@@ -83,7 +83,7 @@ def (h: Heap<T>) peek() -> Option<T> {
     return Some(h.items.get(0usize))
 }
 
-// Len reports the number of stored values.
+# Len reports the number of stored values.
 def (h: Heap<T>) len() -> usize {
     return h.items.len()
 }

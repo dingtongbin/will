@@ -334,7 +334,7 @@ func TestEmitStructOwningFieldPinsToBlockEnd(t *testing.T) {
 func TestEmitArrayReleaseAfterNestedIfUse(t *testing.T) {
 	src := "def f() {\n" +
 		"    var xs: Array<i32> = new Array<i32>(4)\n" +
-		"    if true {\n" +
+		"    if True {\n" +
 		"        xs.push(1)\n" +
 		"    }\n" +
 		"    var later: i32 = 2\n" +

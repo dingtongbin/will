@@ -1,10 +1,10 @@
-// IsValid reports whether b is well-formed UTF-8. It only checks, so an
-// invalid text is a false result instead of a panic; the byte ranges below are
-// the ones RFC 3629 defines, which exclude overlong forms, surrogates, and
-// values past U+10FFFF.
+# IsValid reports whether b is well-formed UTF-8. It only checks, so an
+# invalid text is a false result instead of a panic; the byte ranges below are
+# the ones RFC 3629 defines, which exclude overlong forms, surrogates, and
+# values past U+10FFFF.
 def is_valid(b: []u8) -> bool {
     var i: usize = 0usize
-    for {
+    while True {
         if i >= b.len() {
             break
         }
@@ -13,79 +13,79 @@ def is_valid(b: []u8) -> bool {
             i += 1usize
             continue
         }
-        if c >= 194u8 && c <= 223u8 {
-            if !continuation(b, i + 1usize) {
-                return false
+        if c >= 194u8 and c <= 223u8 {
+            if not continuation(b, i + 1usize) {
+                return False
             }
             i += 2usize
             continue
         }
         if c == 224u8 {
-            if !in_range(b, i + 1usize, 160u8, 191u8) || !continuation(b, i + 2usize) {
-                return false
+            if not in_range(b, i + 1usize, 160u8, 191u8) or not continuation(b, i + 2usize) {
+                return False
             }
             i += 3usize
             continue
         }
-        if (c >= 225u8 && c <= 236u8) || (c >= 238u8 && c <= 239u8) {
-            if !continuation(b, i + 1usize) || !continuation(b, i + 2usize) {
-                return false
+        if (c >= 225u8 and c <= 236u8) or (c >= 238u8 and c <= 239u8) {
+            if not continuation(b, i + 1usize) or not continuation(b, i + 2usize) {
+                return False
             }
             i += 3usize
             continue
         }
         if c == 237u8 {
-            if !in_range(b, i + 1usize, 128u8, 159u8) || !continuation(b, i + 2usize) {
-                return false
+            if not in_range(b, i + 1usize, 128u8, 159u8) or not continuation(b, i + 2usize) {
+                return False
             }
             i += 3usize
             continue
         }
         if c == 240u8 {
-            if !in_range(b, i + 1usize, 144u8, 191u8) || !continuation(b, i + 2usize) ||
-                !continuation(b, i + 3usize) {
-                return false
+            if not in_range(b, i + 1usize, 144u8, 191u8) or not continuation(b, i + 2usize) or
+                not continuation(b, i + 3usize) {
+                return False
             }
             i += 4usize
             continue
         }
-        if c >= 241u8 && c <= 243u8 {
-            if !continuation(b, i + 1usize) || !continuation(b, i + 2usize) ||
-                !continuation(b, i + 3usize) {
-                return false
+        if c >= 241u8 and c <= 243u8 {
+            if not continuation(b, i + 1usize) or not continuation(b, i + 2usize) or
+                not continuation(b, i + 3usize) {
+                return False
             }
             i += 4usize
             continue
         }
         if c == 244u8 {
-            if !in_range(b, i + 1usize, 128u8, 143u8) || !continuation(b, i + 2usize) ||
-                !continuation(b, i + 3usize) {
-                return false
+            if not in_range(b, i + 1usize, 128u8, 143u8) or not continuation(b, i + 2usize) or
+                not continuation(b, i + 3usize) {
+                return False
             }
             i += 4usize
             continue
         }
-        return false
+        return False
     }
-    return true
+    return True
 }
 
-// continuation reports whether b[i] is a trailing byte. A position past the
-// end is not a trailing byte, so a truncated sequence fails here.
+# continuation reports whether b[i] is a trailing byte. A position past the
+# end is not a trailing byte, so a truncated sequence fails here.
 def continuation(b: []u8, i: usize) -> bool {
     if i >= b.len() {
-        return false
+        return False
     }
     var c: u8 = b.get(i)
-    return c >= 128u8 && c <= 191u8
+    return c >= 128u8 and c <= 191u8
 }
 
-// inRange reports whether b[i] lies in [lo, hi]. The lead-byte cases use it to
-// reject overlong forms, the surrogate block, and the range past U+10FFFF.
+# inRange reports whether b[i] lies in [lo, hi]. The lead-byte cases use it to
+# reject overlong forms, the surrogate block, and the range past U+10FFFF.
 def in_range(b: []u8, i: usize, lo: u8, hi: u8) -> bool {
     if i >= b.len() {
-        return false
+        return False
     }
     var c: u8 = b.get(i)
-    return c >= lo && c <= hi
+    return c >= lo and c <= hi
 }

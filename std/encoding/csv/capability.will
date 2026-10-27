@@ -1,9 +1,9 @@
-// The byte-stream capabilities the decoder and encoder accept. They mirror
-// std/io.Reader and std/io.Writer structurally, so a concrete file, buffer, or
-// test source satisfies them without an adapter. They are declared here
-// instead of importing std/io because a struct named Reader or Writer in a
-// package that imports io makes the current method lookup resolve to the io
-// type.
+# The byte-stream capabilities the decoder and encoder accept. They mirror
+# std/io.Reader and std/io.Writer structurally, so a concrete file, buffer, or
+# test source satisfies them without an adapter. They are declared here
+# instead of importing std/io because a struct named Reader or Writer in a
+# package that imports io makes the current method lookup resolve to the io
+# type.
 interface byteReader {
     def read(mut buf: Array<u8>) -> Result<usize, Error>
 }

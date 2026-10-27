@@ -5,7 +5,7 @@ async def produce(ch: chan<i32>, n: i32) {
 }
 
 async def stage(inp: chan<i32>, out: chan<i32>) {
-    for {
+    while True {
         select {
             item = inp.recv() => {
                 match item {
@@ -28,7 +28,7 @@ async def stage(inp: chan<i32>, out: chan<i32>) {
 
 async def consume(ch: chan<i32>) -> i32 {
     var sum: i32 = 0
-    for {
+    while True {
         var item: Option<i32> = await ch.recv()
         match item {
             Some(value) => {

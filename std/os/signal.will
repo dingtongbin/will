@@ -1,5 +1,5 @@
-// SIGINT, SIGTERM, and SIGHUP are the process signals a program can subscribe
-// to. The values are the ones the C runtime uses on every target.
+# SIGINT, SIGTERM, and SIGHUP are the process signals a program can subscribe
+# to. The values are the ones the C runtime uses on every target.
 const SIGINT: i32 = 2
 const SIGTERM: i32 = 15
 const SIGHUP: i32 = 1

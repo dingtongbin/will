@@ -1,6 +1,6 @@
-// validUtf8 wraps str.IsValid for the reader. The conversion and the validation
-// live in different files because an import named str hides the predeclared
-// type in the importing file.
+# validUtf8 wraps str.IsValid for the reader. The conversion and the validation
+# live in different files because an import named str hides the predeclared
+# type in the importing file.
 import "std/str"
 
 def valid_utf8(data: []u8) -> bool {

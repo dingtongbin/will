@@ -1,5 +1,5 @@
-// Process state and environment. The host shim fills will str and view
-// headers; the public API keeps the ownership and error rules in will.
+# Process state and environment. The host shim fills will str and view
+# headers; the public API keeps the ownership and error rules in will.
 import "std/errors"
 
 import c "os.c" {
@@ -12,16 +12,16 @@ import c "os.c" {
     fast willrt_os_exit
 }
 
-// Args returns the process arguments for the lifetime of the process. The
-// returned view is borrowed; callers must not free it.
+# Args returns the process arguments for the lifetime of the process. The
+# returned view is borrowed; callers must not free it.
 def args() -> []str {
     var args: []str
     _ = c.willrt_os_args(raw(args))
     return args
 }
 
-// Getenv reads one environment variable. A missing value and a value that is
-// not valid UTF-8 both become None.
+# Getenv reads one environment variable. A missing value and a value that is
+# not valid UTF-8 both become None.
 def getenv(name: str) -> Option<str> {
     var value: str = ""
     var found: i32 = c.willrt_os_getenv(raw(name), raw(value))
@@ -31,7 +31,7 @@ def getenv(name: str) -> Option<str> {
     return Some(value)
 }
 
-// Setenv sets one environment variable and replaces an existing value.
+# Setenv sets one environment variable and replaces an existing value.
 def setenv(name: str, value: str) -> Result<(), Error> {
     var status: i32 = c.willrt_os_setenv(raw(name), raw(value))
     if status == -2 {
@@ -43,7 +43,7 @@ def setenv(name: str, value: str) -> Result<(), Error> {
     return Ok(())
 }
 
-// Environ returns every environment entry whose key and value are valid UTF-8.
+# Environ returns every environment entry whose key and value are valid UTF-8.
 def environ() -> Map<str, str> {
     var out: Map<str, str> = new Map<str, str>(0)
     var pairs: []str
@@ -52,20 +52,20 @@ def environ() -> Map<str, str> {
         return out
     }
     var key: str = ""
-    var haveKey: bool = false
+    var haveKey: bool = False
     for part in pairs {
         if haveKey {
             out.set(key, part)
-            haveKey = false
+            haveKey = False
         } else {
             key = part
-            haveKey = true
+            haveKey = True
         }
     }
     return out
 }
 
-// Cwd returns the current working directory.
+# Cwd returns the current working directory.
 def cwd() -> Result<str, Error> {
     var path: str = ""
     var status: i32 = c.willrt_os_cwd(raw(path))
@@ -75,7 +75,7 @@ def cwd() -> Result<str, Error> {
     return Ok(path)
 }
 
-// Chdir changes the current working directory.
+# Chdir changes the current working directory.
 def chdir(path: str) -> Result<(), Error> {
     var status: i32 = c.willrt_os_chdir(raw(path))
     if status != 0 {
@@ -84,7 +84,7 @@ def chdir(path: str) -> Result<(), Error> {
     return Ok(())
 }
 
-// Exit ends the process and does not return.
+# Exit ends the process and does not return.
 def exit(code: i32) {
     c.willrt_os_exit(code)
 }

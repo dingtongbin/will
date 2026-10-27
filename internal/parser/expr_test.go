@@ -8,7 +8,7 @@ import (
 
 const exprProgram = `def f(n: i32) {
     var a: i32 = 1 + 2 * 3
-    var b: bool = a < 4 && n > 0
+    var b: bool = a < 4 and n > 0
     var c: i32 = -a
     var d: i32 = a?
     var e: i32 = xs[0]

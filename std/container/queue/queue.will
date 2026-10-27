@@ -1,22 +1,22 @@
-// Queue is a FIFO backed by two stacks. Push and Pop are amortized constant
-// time; Peek copies the front value without removing it.
+# Queue is a FIFO backed by two stacks. Push and Pop are amortized constant
+# time; Peek copies the front value without removing it.
 struct Queue<T> {
     front: Array<T>
     back: Array<T>
 }
 
-// init starts both stacks empty. A later Push grows the back stack.
+# init starts both stacks empty. A later Push grows the back stack.
 def (mut q: Queue<T>) init() {
     q.front = new Array<T>(0)
     q.back = new Array<T>(0)
 }
 
-// Push adds one value at the back.
+# Push adds one value at the back.
 def (mut q: Queue<T>) push(v: T) {
     q.back.push(v)
 }
 
-// Pop removes and returns the front value, or None when the queue is empty.
+# Pop removes and returns the front value, or None when the queue is empty.
 def (mut q: Queue<T>) pop() -> Option<T> {
     if q.front.len() > 0 {
         return q.front.pop()
@@ -24,7 +24,7 @@ def (mut q: Queue<T>) pop() -> Option<T> {
     if q.back.len() == 0 {
         return None
     }
-    for {
+    while True {
         if q.back.len() == 0 {
             break
         }
@@ -40,7 +40,7 @@ def (mut q: Queue<T>) pop() -> Option<T> {
     return q.front.pop()
 }
 
-// Peek returns a copy of the front value without removing it.
+# Peek returns a copy of the front value without removing it.
 def (q: Queue<T>) peek() -> Option<T> {
     if q.front.len() > 0 {
         return Some(q.front.get(q.front.len() - 1))
@@ -51,12 +51,12 @@ def (q: Queue<T>) peek() -> Option<T> {
     return Some(q.back.get(0))
 }
 
-// Len reports the number of stored values.
+# Len reports the number of stored values.
 def (q: Queue<T>) len() -> usize {
     return q.front.len() + q.back.len()
 }
 
-// Clear releases every value.
+# Clear releases every value.
 def (mut q: Queue<T>) clear() {
     q.front.clear()
     q.back.clear()

@@ -25,7 +25,7 @@ def check_env() -> i32 {
     }
 
     var environ: Map<str, str> = os.environ()
-    if !environ.has("WILL_OS_PROBE") {
+    if not environ.has("WILL_OS_PROBE") {
         return 5
     }
 

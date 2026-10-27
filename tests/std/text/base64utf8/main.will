@@ -1,7 +1,7 @@
 import "std/encoding/base64"
 
-// Decode must give back the exact bytes of a UTF-8 text, treat empty text as an
-// empty result, read the URL alphabet, and reject a group that is short.
+# Decode must give back the exact bytes of a UTF-8 text, treat empty text as an
+# empty result, read the URL alphabet, and reject a group that is short.
 def main() -> i32 {
     var plain: Result<Array<u8>, Error> = base64.decode("5L2g5aW9")
     match plain {

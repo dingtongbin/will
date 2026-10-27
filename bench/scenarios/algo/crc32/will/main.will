@@ -5,27 +5,27 @@ import c "bench_clock.h" {
 }
 import "example.com/bench/algo/crc32/will/bench"
 
-// bufferSize is the size of the buffer in bytes.
+# bufferSize is the size of the buffer in bytes.
 const bufferSize: i32 = 262144
 
-// seed is the seed of the input generator.
+# seed is the seed of the input generator.
 const seed: u64 = 0x12345678
 
-// repetitions is the number of measured repetitions of the workload.
+# repetitions is the number of measured repetitions of the workload.
 const repetitions: i32 = 3
 
-// allOnes is the register value before the first byte and the xor applied at
-// the end.
+# allOnes is the register value before the first byte and the xor applied at
+# the end.
 const allOnes: u32 = 4294967295u32
 
-// polynomial is the IEEE 802.3 polynomial in its reflected form.
+# polynomial is the IEEE 802.3 polynomial in its reflected form.
 const polynomial: u32 = 3988292384u32
 
-// Fill fills the buffer with the same bytes the C support generates: the
-// bytes of a linear congruential generator, least significant byte first.
-//
-// The buffer is created with the capacity of the fill, so the pushes never
-// grow it.
+# Fill fills the buffer with the same bytes the C support generates: the
+# bytes of a linear congruential generator, least significant byte first.
+#
+# The buffer is created with the capacity of the fill, so the pushes never
+# grow it.
 def fill(mut buf: Array<u8>, size: i32, start: u64) {
     var state: u64 = start
     var whole: i32 = size / 8
@@ -45,12 +45,12 @@ def fill(mut buf: Array<u8>, size: i32, start: u64) {
     }
 }
 
-// Crc32 computes the CRC-32 of the buffer. The algorithm is the reflected
-// IEEE 802.3 variant, one bit at a time.
-//
-// The seed takes part in the work, so two calls with different seeds give
-// different results. Without it the compiler may run the loop once and
-// reuse the result, and the measurement would time nothing.
+# Crc32 computes the CRC-32 of the buffer. The algorithm is the reflected
+# IEEE 802.3 variant, one bit at a time.
+#
+# The seed takes part in the work, so two calls with different seeds give
+# different results. Without it the compiler may run the loop once and
+# reuse the result, and the measurement would time nothing.
 def crc32(buf: Array<u8>, start: u32) -> u32 {
     var crc: u32 = start ^ allOnes
     for b in buf {
@@ -71,7 +71,7 @@ def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     var buf: Array<u8> = new Array<u8>(usize(bufferSize))
     fill(buf, bufferSize, seed)
-    // The warm up pays for the first touch of the pages and of the caches.
+    # The warm up pays for the first touch of the pages and of the caches.
     var warm: u32 = crc32(buf, 0u32)
     _ = warm
 

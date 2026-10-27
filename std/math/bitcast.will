@@ -1,6 +1,6 @@
-// The four bit conversions are the only bit reinterpretation the language
-// offers. They preserve every bit, including a nan payload and a negative
-// zero, which arithmetic conversions would not.
+# The four bit conversions are the only bit reinterpretation the language
+# offers. They preserve every bit, including a nan payload and a negative
+# zero, which arithmetic conversions would not.
 import c "bits.h" {
     fast willrt_f64_bits
     fast willrt_f64_from_bits
@@ -8,22 +8,22 @@ import c "bits.h" {
     fast willrt_f32_from_bits
 }
 
-// F64Bits returns the IEEE 754 binary64 representation of x.
+# F64Bits returns the IEEE 754 binary64 representation of x.
 def f64_bits(x: f64) -> u64 {
     return c.willrt_f64_bits(x)
 }
 
-// F64FromBits builds the binary64 value with the given representation.
+# F64FromBits builds the binary64 value with the given representation.
 def f64_from_bits(bits: u64) -> f64 {
     return c.willrt_f64_from_bits(bits)
 }
 
-// F32Bits returns the IEEE 754 binary32 representation of x.
+# F32Bits returns the IEEE 754 binary32 representation of x.
 def f32_bits(x: f32) -> u32 {
     return c.willrt_f32_bits(x)
 }
 
-// F32FromBits builds the binary32 value with the given representation.
+# F32FromBits builds the binary32 value with the given representation.
 def f32_from_bits(bits: u32) -> f32 {
     return c.willrt_f32_from_bits(bits)
 }

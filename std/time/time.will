@@ -1,36 +1,36 @@
-// Instant is one moment on the UTC timeline together with the zone it should
-// be read in. The epoch count is Unix nanoseconds; the zone never shifts the
-// moment, only its presentation. The zone is carried because In returns an
-// Instant and the named formats take only an Instant.
+# Instant is one moment on the UTC timeline together with the zone it should
+# be read in. The epoch count is Unix nanoseconds; the zone never shifts the
+# moment, only its presentation. The zone is carried because In returns an
+# Instant and the named formats take only an Instant.
 struct Instant {
     nanos: i64
     zone: Timezone
 }
 
-// nanosPerSecond is the fixed ratio between the Instant count and a second.
-// The time model counts no leap seconds, so every second is exactly this long.
+# nanosPerSecond is the fixed ratio between the Instant count and a second.
+# The time model counts no leap seconds, so every second is exactly this long.
 const nanosPerSecond: i64 = 1000000000
 
-// Now returns the host wall clock. The result is read in UTC; use In to view
-// the same moment in another zone.
+# Now returns the host wall clock. The result is read in UTC; use In to view
+# the same moment in another zone.
 def now() -> Instant {
     return Instant { nanos: wall_nanos(), zone: utc() }
 }
 
-// FromUnix returns the moment sec seconds after 1970-01-01T00:00:00Z, read in
-// UTC.
+# FromUnix returns the moment sec seconds after 1970-01-01T00:00:00Z, read in
+# UTC.
 def from_unix(sec: i64) -> Instant {
     return Instant { nanos: sec * nanosPerSecond, zone: utc() }
 }
 
-// Unix returns the number of whole seconds between 1970-01-01T00:00:00Z and t.
-// A moment before the epoch rounds toward negative infinity, so its whole
-// second belongs to the second that contains it.
+# Unix returns the number of whole seconds between 1970-01-01T00:00:00Z and t.
+# A moment before the epoch rounds toward negative infinity, so its whole
+# second belongs to the second that contains it.
 def unix(t: Instant) -> i64 {
     return floor_div(t.nanos, nanosPerSecond)
 }
 
-// In returns the same moment read in tz.
+# In returns the same moment read in tz.
 def in_zone(t: Instant, tz: Timezone) -> Instant {
     return Instant { nanos: t.nanos, zone: tz }
 }

@@ -413,7 +413,7 @@ func TestBorrowEndsWithItsBlock(t *testing.T) {
 
 def f() {
     var xs: Array<i32> = new Array<i32>(0)
-    if true {
+    if True {
         var v: []i32 = xs[Range(0, xs.len())]
         _ = v
     }

@@ -1,18 +1,18 @@
-// allOnes is the register value before the first byte and the xor applied at
-// the end.
+# allOnes is the register value before the first byte and the xor applied at
+# the end.
 const allOnes: u32 = 4294967295
 
-// polynomial is the IEEE 802.3 polynomial in its reflected form.
+# polynomial is the IEEE 802.3 polynomial in its reflected form.
 const polynomial: u32 = 3988292384
 
-// Sum returns the CRC-32 of b. It is the reflected IEEE 802.3 variant, the one
-// whose published check value for "123456789" is 0xCBF43926.
+# Sum returns the CRC-32 of b. It is the reflected IEEE 802.3 variant, the one
+# whose published check value for "123456789" is 0xCBF43926.
 def sum(b: []u8) -> u32 {
     return update(0u32, b)
 }
 
-// Update continues a CRC-32 from a previous result, so a caller can hash
-// several buffers in sequence. Update(0, b) is Sum(b).
+# Update continues a CRC-32 from a previous result, so a caller can hash
+# several buffers in sequence. Update(0, b) is Sum(b).
 def update(crc: u32, b: []u8) -> u32 {
     var c: u32 = crc ^ allOnes
     for v in b {

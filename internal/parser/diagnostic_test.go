@@ -91,7 +91,7 @@ func TestEmptyFile(t *testing.T) {
 }
 
 func TestDocCommentBindsToDeclaration(t *testing.T) {
-	f := parse(t, "/// first\n/// second\ndef f() {}\n")
+	f := parse(t, "## first\n## second\ndef f() {}\n")
 	fn, ok := f.Decls[0].(*ast.FuncDecl)
 	if !ok {
 		t.Fatalf("declaration = %T, want func", f.Decls[0])

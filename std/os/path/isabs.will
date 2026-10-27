@@ -1,13 +1,13 @@
-// IsAbs reports whether the path is rooted. On Windows that includes a drive
-// root such as "C:\"; on every target a leading separator is rooted.
+# IsAbs reports whether the path is rooted. On Windows that includes a drive
+# root such as "C:\"; on every target a leading separator is rooted.
 def is_abs(p: str) -> bool {
     if p.len() == 0usize {
-        return false
+        return False
     }
     var s: str = p.clone()
     var first: u32 = s[0]
     if is_separator(first) {
-        return true
+        return True
     }
     return is_drive_abs(s)
 }

@@ -1,5 +1,5 @@
-// A deferred str and a deferred Array must keep the value they had at the
-// defer statement even when the local is reassigned or grows afterwards.
+# A deferred str and a deferred Array must keep the value they had at the
+# defer statement even when the local is reassigned or grows afterwards.
 def show(s: str) {
     print(s, "\n")
 }

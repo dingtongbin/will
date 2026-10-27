@@ -5,13 +5,13 @@ import c "bench_clock.h" {
 }
 import "example.com/bench/conc/selecttail/will/bench"
 
-// queues is the number of channels the select waits on.
+# queues is the number of channels the select waits on.
 const queues: i32 = 4
 
-// count is the number of times the workload waits.
+# count is the number of times the workload waits.
 const count: i32 = 100000
 
-// repetitions is the number of measured repetitions of the workload.
+# repetitions is the number of measured repetitions of the workload.
 const repetitions: i32 = 5
 
 async def main() -> i32 {
@@ -21,7 +21,7 @@ async def main() -> i32 {
     var second: chan<i64> = new chan<i64>(1)
     var third: chan<i64> = new chan<i64>(1)
     var fourth: chan<i64> = new chan<i64>(1)
-    // The warm up pays for the first touch of the pages and of the caches.
+    # The warm up pays for the first touch of the pages and of the caches.
     for i in Range(0, 1000) {
         _ = i
         _ = await first.send(1i64)

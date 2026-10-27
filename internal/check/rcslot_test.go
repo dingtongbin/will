@@ -106,7 +106,7 @@ def main() -> i32 {
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {
         var task: Task<i32> = spawn use(box)
-        if true {
+        if True {
             box.f = c
         }
         _ = task
@@ -140,7 +140,7 @@ def main() -> i32 {
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {
         var task: Task<i32> = spawn use(box)
-        if true {
+        if True {
             _ = task.join()!
         }
         box.f = c

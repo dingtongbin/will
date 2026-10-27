@@ -5,20 +5,20 @@ import c "bench_clock.h" {
 }
 import "example.com/bench/mem/alloc/will/bench"
 
-// count is the number of objects the workload allocates.
+# count is the number of objects the workload allocates.
 const count: i32 = 1000000
 
-// repetitions is the number of measured repetitions of the workload.
+# repetitions is the number of measured repetitions of the workload.
 const repetitions: i32 = 5
 
-// Cell is the object the workload allocates.
+# Cell is the object the workload allocates.
 struct Cell {
     value: i64
 }
 
 def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
-    // The warm up pays for the first touch of the pages and of the caches.
+    # The warm up pays for the first touch of the pages and of the caches.
     var warm: rc<Cell> = new rc<Cell>(Cell { value: 0i64})
     _ = warm
 

@@ -6,44 +6,44 @@ import c "bench_clock.h" {
 import "example.com/bench/compute/call/will/bench"
 import "example.com/bench/compute/call/will/lib"
 
-// workload is the number of iterations of one measurement.
+# workload is the number of iterations of one measurement.
 const workload: i32 = 2000000
 
-// repetitions is the number of measured repetitions of the workload.
+# repetitions is the number of measured repetitions of the workload.
 const repetitions: i32 = 5
 
-// Counter is the struct the method call works on.
+# Counter is the struct the method call works on.
 struct Counter {
     total: i64
 }
 
-// Add adds a value to the total of the counter.
+# Add adds a value to the total of the counter.
 def (mut counter: Counter) add(value: i64) {
     counter.total += value
 }
 
-// Shape is the interface of the scenario.
+# Shape is the interface of the scenario.
 interface Shape {
     def area(scale: i64) -> i64
 }
 
-// Square is one shape with an area.
+# Square is one shape with an area.
 struct Square {
     side: i64
 }
 
-// Area returns the area of the square, scaled by the value it is given.
+# Area returns the area of the square, scaled by the value it is given.
 def (s: Square) area(scale: i64) -> i64 {
     return s.side * s.side + scale
 }
 
-// Direct is the direct call of the scenario.
+# Direct is the direct call of the scenario.
 def direct(value: i64) -> i64 {
     return value * 3 + 1
 }
 
-// Baseline runs an empty loop, so the cost of the loop and of the counter is
-// measured apart from the calls.
+# Baseline runs an empty loop, so the cost of the loop and of the counter is
+# measured apart from the calls.
 def baseline(n: i32) -> i64 {
     var acc: i64 = 0i64
     for i in Range(0, n) {
@@ -60,9 +60,9 @@ def main() -> i32 {
     var counter: Counter = Counter { total: 0i64}
     var shape: Shape = Square { side: 3i64}
 
-    // The warm up pays for the first touch of the pages and of the caches.
-    // It uses a counter of its own, so the checksum covers the measured work
-    // only.
+    # The warm up pays for the first touch of the pages and of the caches.
+    # It uses a counter of its own, so the checksum covers the measured work
+    # only.
     var warmCounter: Counter = Counter { total: 0i64}
     var warm: i64 = direct(1000) + lib.double(1000)
     warmCounter.add(1000)

@@ -12,7 +12,7 @@ func TestEmitEmptyInterface(t *testing.T) {
 		"def number(value: interface {}) -> Option<i32> {\n    return value.as<i32>()\n}\n\n" +
 		"def use() -> i32 {\n" +
 		"    var value: interface {} = 7\n" +
-		"    if !check(value) {\n        return 0\n    }\n" +
+		"    if not check(value) {\n        return 0\n    }\n" +
 		"    var num: Option<i32> = number(value)\n" +
 		"    return match num {\n        Some(v) => v\n        None => 0\n    }\n}\n"
 	doc := emitWillc(t, src)

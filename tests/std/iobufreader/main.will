@@ -1,7 +1,7 @@
 import "std/io/buf"
 
-// source hands out at most two bytes per read, so the buffered reader has to
-// keep its place across calls instead of throwing the rest of a chunk away.
+# source hands out at most two bytes per read, so the buffered reader has to
+# keep its place across calls instead of throwing the rest of a chunk away.
 struct source {
     data: Array<u8>
     pos: usize
@@ -32,14 +32,14 @@ def main() -> i32 {
     if reader.read(first)! != 2usize {
         return 1
     }
-    if first.get(0) != 104u8 || first.get(1) != 101u8 {
+    if first.get(0) != 104u8 or first.get(1) != 101u8 {
         return 2
     }
     var second: Array<u8> = new Array<u8>(0)
     if reader.read(second)! != 2usize {
         return 3
     }
-    if second.get(0) != 108u8 || second.get(1) != 108u8 {
+    if second.get(0) != 108u8 or second.get(1) != 108u8 {
         return 4
     }
     var third: Array<u8> = new Array<u8>(0)

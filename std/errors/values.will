@@ -1,5 +1,5 @@
-// The stable error values. Their status codes are the ones the core volume
-// fixes; the messages are for people and never reach classification.
+# The stable error values. Their status codes are the ones the core volume
+# fixes; the messages are for people and never reach classification.
 var NotFound: Fault = new Fault("not found", 1)
 var Invalid: Fault = new Fault("invalid", 2)
 var Busy: Fault = new Fault("busy", 3)

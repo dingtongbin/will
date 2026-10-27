@@ -1,7 +1,7 @@
 import "std/container/deque"
 
-// The deque must preserve logical order across both rebalancing directions,
-// including alternation between the front and the back.
+# The deque must preserve logical order across both rebalancing directions,
+# including alternation between the front and the back.
 def main() -> i32 {
     var d: deque.Deque<i32> = new deque.Deque<i32>()
     if d.len() != 0usize {
@@ -110,7 +110,7 @@ def main() -> i32 {
     d.push_front(9)
     var copy: deque.Deque<i32> = d.clone()
     d.push_back(10)
-    if copy.len() != 1usize || d.len() != 2usize {
+    if copy.len() != 1usize or d.len() != 2usize {
         return 15
     }
     copy.clear()

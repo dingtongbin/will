@@ -1395,7 +1395,7 @@ sm.op.park.3:
   ret i32 -1
 sm.op.cont.3:
   store i32 0, ptr %v.two
-  br i1 true, label %if.then.3, label %if.end.3
+  br i1 True, label %if.then.3, label %if.end.3
 if.then.3:
   %t217 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.try_lock"(ptr %v.m)
   store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t217, ptr %v.ret.99
@@ -1478,7 +1478,7 @@ if.end.7:
   store ptr %t256, ptr %v.entered
   call void @willrt_region_enter()
   store ptr null, ptr %v.waiter
-  br i1 true, label %if.then.8, label %if.end.8
+  br i1 True, label %if.then.8, label %if.end.8
 if.then.8:
   %t257 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.try_lock"(ptr %v.m)
   store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t257, ptr %v.ret.131
@@ -1709,7 +1709,7 @@ sm.op.cont.6:
   store i32 zeroinitializer, ptr %v.unwrap.out.161
   store i32 0, ptr %v.unwrap.out.161
   store i32 0, ptr %v.after
-  br i1 true, label %if.then.19, label %if.end.19
+  br i1 True, label %if.then.19, label %if.end.19
 if.then.19:
   %t362 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.Mutex<Counter>.try_lock"(ptr %v.m)
   store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t362, ptr %v.ret.181
@@ -1795,7 +1795,7 @@ if.end.23:
   %t400 = load %"struct.std/sync.RwLock$Counter", ptr %v.new.200
   store %"struct.std/sync.RwLock$Counter" %t400, ptr %v.rw
   store i32 0, ptr %v.shared
-  br i1 true, label %if.then.24, label %if.end.24
+  br i1 True, label %if.then.24, label %if.end.24
 if.then.24:
   %t401 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.try_rlock"(ptr %v.rw)
   store { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } %t401, ptr %v.ret.213
@@ -2008,7 +2008,7 @@ if.then.35:
   ret i32 1
 if.end.35:
   store i32 0, ptr %v.exclusive
-  br i1 true, label %if.then.36, label %if.end.36
+  br i1 True, label %if.then.36, label %if.end.36
 if.then.36:
   %t506 = call { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } @"std/sync.RwLock<Counter>.try_wlock"(ptr %v.rw)
   store { i32, [4 x i8], %"struct.std/sync.Guard$Counter" } %t506, ptr %v.ret.262
@@ -2107,7 +2107,7 @@ if.then.41:
   ret i32 1
 if.end.41:
   store i32 0, ptr %v.final
-  br i1 true, label %if.then.42, label %if.end.42
+  br i1 True, label %if.then.42, label %if.end.42
 if.then.42:
   %t553 = call { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } @"std/sync.RwLock<Counter>.try_rlock"(ptr %v.rw)
   store { i32, [4 x i8], %"struct.std/sync.ReadGuard$Counter" } %t553, ptr %v.ret.293
@@ -2435,7 +2435,7 @@ if.then.1:
   call void @willrt_rc_retain(i64 %t21)
   store i64 %t21, ptr %t19
   %t22 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.agg.72, i32 0, i32 1
-  store i1 true, ptr %t22
+  store i1 True, ptr %t22
   %t23 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.agg.72, i32 0, i32 2
   store i32 0, ptr %t23
   %t24 = load %"struct.std/sync.Guard$Counter", ptr %v.agg.72
@@ -2454,7 +2454,7 @@ if.end.1:
   call void @willrt_rc_retain(i64 %t32)
   store i64 %t32, ptr %t30
   %t33 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.agg.79, i32 0, i32 1
-  store i1 false, ptr %t33
+  store i1 False, ptr %t33
   %t34 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.agg.79, i32 0, i32 2
   store i32 0, ptr %t34
   %t35 = load %"struct.std/sync.Guard$Counter", ptr %v.agg.79
@@ -2521,7 +2521,7 @@ if.then.1:
   call void @willrt_rc_retain(i64 %t12)
   store i64 %t12, ptr %t10
   %t13 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.agg.106, i32 0, i32 1
-  store i1 true, ptr %t13
+  store i1 True, ptr %t13
   %t14 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.agg.106, i32 0, i32 2
   store i32 0, ptr %t14
   %t15 = load %"struct.std/sync.Guard$Counter", ptr %v.agg.106
@@ -2557,7 +2557,7 @@ if.then.1:
   call void @willrt_rc_retain(i64 %t12)
   store i64 %t12, ptr %t10
   %t13 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.agg.207, i32 0, i32 1
-  store i1 true, ptr %t13
+  store i1 True, ptr %t13
   %t14 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.agg.207, i32 0, i32 2
   store i32 1, ptr %t14
   %t15 = load %"struct.std/sync.ReadGuard$Counter", ptr %v.agg.207
@@ -2593,7 +2593,7 @@ if.then.1:
   call void @willrt_rc_retain(i64 %t12)
   store i64 %t12, ptr %t10
   %t13 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.agg.271, i32 0, i32 1
-  store i1 true, ptr %t13
+  store i1 True, ptr %t13
   %t14 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.agg.271, i32 0, i32 2
   store i32 0, ptr %t14
   %t15 = load %"struct.std/sync.Guard$Counter", ptr %v.agg.271

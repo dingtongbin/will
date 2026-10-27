@@ -157,16 +157,6 @@ func (l *Lexer) scanFStringBody() (bool, int) {
 			l.advance()
 		case '"', '\'':
 			l.skipNestedQuote(c)
-		case '/':
-			if l.peek(1) == '/' {
-				for l.off < len(l.src) && l.src[l.off] != '\n' {
-					l.advance()
-				}
-			} else if l.peek(1) == '*' {
-				l.skipNestedBlockComment()
-			} else {
-				l.advance()
-			}
 		default:
 			l.advance()
 		}

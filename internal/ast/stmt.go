@@ -65,15 +65,26 @@ type ContinueStmt struct {
 
 func (*ContinueStmt) stmtNode() {}
 
-// ForStmt is a counted, infinite, or iterator loop.
+// ForStmt is a counted loop or a while loop. Exactly one of Iter and Cond is
+// set: a for loop carries Iter and bindings, a while loop carries Cond.
 type ForStmt struct {
 	Span
 	Names []string
 	Iter  Expr
+	Cond  Expr
 	Body  *Block
 }
 
 func (*ForStmt) stmtNode() {}
+
+// LoopExpr returns the expression that controls the loop: the condition of a
+// while loop, or the iterator of a for loop.
+func (s *ForStmt) LoopExpr() Expr {
+	if s.Cond != nil {
+		return s.Cond
+	}
+	return s.Iter
+}
 
 // RegionStmt opens a structured task region.
 type RegionStmt struct {

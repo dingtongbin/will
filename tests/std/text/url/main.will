@@ -1,11 +1,11 @@
 import "std/encoding/url"
 
-// Rejected reports whether a decode failed with the stable Invalid status.
+# Rejected reports whether a decode failed with the stable Invalid status.
 def rejected(r: Result<str, Error>) -> bool {
     match r {
         Ok(v) => {
             _ = v
-            return false
+            return False
         }
         Err(e) => {
             return e.status() == 2
@@ -55,22 +55,22 @@ def main() -> i32 {
     if nulBytes.get(0) != 0u8 {
         return 13
     }
-    if !rejected(url.unescape("%")) {
+    if not rejected(url.unescape("%")) {
         return 14
     }
-    if !rejected(url.unescape("%4")) {
+    if not rejected(url.unescape("%4")) {
         return 15
     }
-    if !rejected(url.unescape("%GG")) {
+    if not rejected(url.unescape("%GG")) {
         return 16
     }
-    if !rejected(url.unescape("%C0%AF")) {
+    if not rejected(url.unescape("%C0%AF")) {
         return 17
     }
-    if !rejected(url.unescape("%ED%A0%80")) {
+    if not rejected(url.unescape("%ED%A0%80")) {
         return 18
     }
-    if !rejected(url.unescape("%FF")) {
+    if not rejected(url.unescape("%FF")) {
         return 19
     }
     return 0

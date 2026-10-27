@@ -5,13 +5,13 @@ import c "bench_clock.h" {
 }
 import "example.com/bench/conc/spawn/will/bench"
 
-// count is the number of tasks the workload creates.
+# count is the number of tasks the workload creates.
 const count: i32 = 10000
 
-// repetitions is the number of measured repetitions of the workload.
+# repetitions is the number of measured repetitions of the workload.
 const repetitions: i32 = 5
 
-// Work is the work one task does.
+# Work is the work one task does.
 def work(index: i32) -> i32 {
     var acc: i32 = 0
     for i in Range(0, 100) {
@@ -22,7 +22,7 @@ def work(index: i32) -> i32 {
 
 def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
-    // The warm up pays for the first touch of the pages and of the caches.
+    # The warm up pays for the first touch of the pages and of the caches.
     region {
         var warm: Task<i32> = spawn work(0)
         var warmValue: i32 = wait(warm.join())!
@@ -41,7 +41,7 @@ def main() -> i32 {
         samples.push(stop - start)
     }
 
-    // The tasks write nowhere, so the checksum is the sum the work produces.
+    # The tasks write nowhere, so the checksum is the sum the work produces.
     var checksum: i64 = 0i64
     for i in Range(0, count) {
         checksum += i64(i) + 4950i64

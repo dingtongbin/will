@@ -1,7 +1,7 @@
 import "std/encoding/csv"
 
-// Source hands out at most chunk bytes per read, so the decoder must keep a
-// partial record across reads.
+# Source hands out at most chunk bytes per read, so the decoder must keep a
+# partial record across reads.
 struct Source {
     data: Array<u8>
     pos: usize
@@ -10,8 +10,8 @@ struct Source {
 
 def (mut s: Source) read(mut buf: Array<u8>) -> Result<usize, Error> {
     var n: usize = 0usize
-    for {
-        if s.pos >= s.data.len() || n >= s.chunk {
+    while True {
+        if s.pos >= s.data.len() or n >= s.chunk {
             break
         }
         buf.push(s.data.get(s.pos))
@@ -21,10 +21,10 @@ def (mut s: Source) read(mut buf: Array<u8>) -> Result<usize, Error> {
     return Ok(n)
 }
 
-// Buffer carries the bytes the sink collects. The rc handle below shares this
-// value so the test can read the output after the interface takes its boxed
-// copy. Push is a declared method because a predeclared Array method is not
-// reached through an rc handle.
+# Buffer carries the bytes the sink collects. The rc handle below shares this
+# value so the test can read the output after the interface takes its boxed
+# copy. Push is a declared method because a predeclared Array method is not
+# reached through an rc handle.
 struct Buffer {
     data: Array<u8>
 }
@@ -39,20 +39,20 @@ def (b: Buffer) copy() -> Array<u8> {
 
 def (b: Buffer) same_as(values: ...u8) -> bool {
     if b.data.len() != values.len() {
-        return false
+        return False
     }
     var i: usize = 0usize
     for v in values {
         if b.data.get(i) != v {
-            return false
+            return False
         }
         i += 1usize
     }
-    return true
+    return True
 }
 
-// Sink shares its buffer through rc so the test can read what the writer
-// wrote after the interface value has taken its own boxed copy.
+# Sink shares its buffer through rc so the test can read what the writer
+# wrote after the interface value has taken its own boxed copy.
 struct Sink {
     data: rc<Buffer>
 }
@@ -113,21 +113,21 @@ def row_of(a: str, b: str, c: str) -> csv.Row {
 
 def fields_equal(row: csv.Row, expected: ...str) -> bool {
     if row.fields.len() != expected.len() {
-        return false
+        return False
     }
     var i: usize = 0usize
     for e in expected {
         if row.fields.get(i) != e {
-            return false
+            return False
         }
         i += 1usize
     }
-    return true
+    return True
 }
 
 async def decode_all(mut reader: csv.Reader, mut rows: Array<csv.Row>) -> Result<usize, Error> {
     var total: usize = 0usize
-    for {
+    while True {
         var batch: Result<usize, Error> = await reader.async_decode(rows)
         match batch {
             Ok(n) => {
@@ -148,7 +148,7 @@ def failed(r: Result<usize, Error>) -> bool {
     match r {
         Ok(v) => {
             _ = v
-            return false
+            return False
         }
         Err(e) => {
             return e.status() == 2
@@ -183,10 +183,10 @@ async def main() -> i32 {
     if rows.len() != 2usize {
         return 3
     }
-    if !fields_equal(rows.get(0usize), "a", "b,c", text_bytes(100u8, 34u8, 101u8)) {
+    if not fields_equal(rows.get(0usize), "a", "b,c", text_bytes(100u8, 34u8, 101u8)) {
         return 4
     }
-    if !fields_equal(rows.get(1usize), "1", "2", "3") {
+    if not fields_equal(rows.get(1usize), "1", "2", "3") {
         return 5
     }
 
@@ -207,7 +207,7 @@ async def main() -> i32 {
             return 7
         }
     }
-    if !fields_equal(emptyRows.get(0usize), "", "x", "") {
+    if not fields_equal(emptyRows.get(0usize), "", "x", "") {
         return 8
     }
 
@@ -230,7 +230,7 @@ async def main() -> i32 {
             return 10
         }
     }
-    if !fields_equal(lineRows.get(0usize), "a\nb", "c") {
+    if not fields_equal(lineRows.get(0usize), "a\nb", "c") {
         return 11
     }
 
@@ -251,13 +251,13 @@ async def main() -> i32 {
             return 13
         }
     }
-    if !fields_equal(tailRows.get(0usize), "a", "") {
+    if not fields_equal(tailRows.get(0usize), "a", "") {
         return 14
     }
-    if !fields_equal(tailRows.get(1usize), "") {
+    if not fields_equal(tailRows.get(1usize), "") {
         return 15
     }
-    if !fields_equal(tailRows.get(2usize), "b", "") {
+    if not fields_equal(tailRows.get(2usize), "b", "") {
         return 16
     }
 
@@ -281,7 +281,7 @@ async def main() -> i32 {
             return 18
         }
     }
-    if !shared.same_as(
+    if not shared.same_as(
         97u8, 44u8, 34u8, 98u8, 44u8, 99u8, 34u8, 44u8,
         34u8, 100u8, 34u8, 34u8, 101u8, 34u8, 10u8, 49u8,
         44u8, 50u8, 44u8, 51u8, 10u8, 34u8, 120u8, 10u8,
@@ -307,10 +307,10 @@ async def main() -> i32 {
             return 21
         }
     }
-    if !fields_equal(roundRows.get(0usize), "a", "b,c", text_bytes(100u8, 34u8, 101u8)) {
+    if not fields_equal(roundRows.get(0usize), "a", "b,c", text_bytes(100u8, 34u8, 101u8)) {
         return 22
     }
-    if !fields_equal(roundRows.get(2usize), "x\ny", "z", "") {
+    if not fields_equal(roundRows.get(2usize), "x\ny", "z", "") {
         return 26
     }
 
@@ -321,7 +321,7 @@ async def main() -> i32 {
         chunk: 4usize,
     }
     var badReader: csv.Reader = new csv.Reader(badSource, 44u8)
-    if !failed(await badReader.async_decode(badRows)) {
+    if not failed(await badReader.async_decode(badRows)) {
         return 23
     }
 
@@ -332,7 +332,7 @@ async def main() -> i32 {
         chunk: 2usize,
     }
     var openReader: csv.Reader = new csv.Reader(openSource, 44u8)
-    if !failed(await openReader.async_decode(openRows)) {
+    if not failed(await openReader.async_decode(openRows)) {
         return 24
     }
 
@@ -343,7 +343,7 @@ async def main() -> i32 {
         chunk: 2usize,
     }
     var utfReader: csv.Reader = new csv.Reader(utfSource, 44u8)
-    if !failed(await utfReader.async_decode(utfRows)) {
+    if not failed(await utfReader.async_decode(utfRows)) {
         return 25
     }
     return 0

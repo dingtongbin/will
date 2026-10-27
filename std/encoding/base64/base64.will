@@ -1,5 +1,5 @@
-// decodeError is the error value of rejected base64 text. 2 is the stable
-// status of Invalid, so a caller classifies it without knowing this type.
+# decodeError is the error value of rejected base64 text. 2 is the stable
+# status of Invalid, so a caller classifies it without knowing this type.
 struct decodeError {
     message: str
 }
@@ -16,22 +16,22 @@ def fail(message: str) -> decodeError {
     return decodeError { message: message }
 }
 
-// 61 is the ASCII code of the padding character '='.
+# 61 is the ASCII code of the padding character '='.
 const padScalar: u32 = 61
 
 def decode(s: str) -> Result<Array<u8>, Error> {
-    return decode(s, false)
+    return decode(s, False)
 }
 
 def decode_url(s: str) -> Result<Array<u8>, Error> {
-    return decode(s, true)
+    return decode(s, True)
 }
 
-// decode reads one padded base64 text. Every group is four characters, the
-// last two of which may be padding; text that is not a whole number of groups,
-// has data after padding, or uses a character outside the alphabet is rejected.
-// A padded group is emitted when the padding completes it, so the pad count
-// decides how many bytes of that group are real.
+# decode reads one padded base64 text. Every group is four characters, the
+# last two of which may be padding; text that is not a whole number of groups,
+# has data after padding, or uses a character outside the alphabet is rejected.
+# A padded group is emitted when the padding completes it, so the pad count
+# decides how many bytes of that group are real.
 def decode(s: str, url: bool) -> Result<Array<u8>, Error> {
     var out: Array<u8> = new Array<u8>(0)
     var q0: u32 = 0
@@ -40,14 +40,14 @@ def decode(s: str, url: bool) -> Result<Array<u8>, Error> {
     var q3: u32 = 0
     var inGroup: i32 = 0
     var pad: i32 = 0
-    var ended: bool = false
+    var ended: bool = False
     for c in s {
         if ended {
             return Err(fail("invalid padding"))
         }
         if c == padScalar {
-            // Padding needs two data characters before it, and a group
-            // carries at most two padding characters.
+            # Padding needs two data characters before it, and a group
+            # carries at most two padding characters.
             if inGroup < 2 {
                 return Err(fail("invalid padding"))
             }
@@ -84,7 +84,7 @@ def decode(s: str, url: bool) -> Result<Array<u8>, Error> {
             }
             inGroup = 0
             if pad > 0 {
-                ended = true
+                ended = True
             }
             pad = 0
         }
@@ -95,31 +95,31 @@ def decode(s: str, url: bool) -> Result<Array<u8>, Error> {
     return Ok(out)
 }
 
-// alphabetValue maps one character to its six-bit value. 64 marks a character
-// outside the selected alphabet, so it is above every value a group accepts.
+# alphabetValue maps one character to its six-bit value. 64 marks a character
+# outside the selected alphabet, so it is above every value a group accepts.
 def alphabet_value(c: u32, url: bool) -> u32 {
-    if c >= 65u32 && c <= 90u32 {   // 'A' to 'Z'
+    if c >= 65u32 and c <= 90u32 {   # 'A' to 'Z'
         return c - 65u32
     }
-    if c >= 97u32 && c <= 122u32 {  // 'a' to 'z'
+    if c >= 97u32 and c <= 122u32 {  # 'a' to 'z'
         return c - 97u32 + 26u32
     }
-    if c >= 48u32 && c <= 57u32 {   // '0' to '9'
+    if c >= 48u32 and c <= 57u32 {   # '0' to '9'
         return c - 48u32 + 52u32
     }
     if url {
-        if c == 45u32 {             // '-'
+        if c == 45u32 {             # '-'
             return 62u32
         }
-        if c == 95u32 {             // '_'
+        if c == 95u32 {             # '_'
             return 63u32
         }
         return 64u32
     }
-    if c == 43u32 {                 // '+'
+    if c == 43u32 {                 # '+'
         return 62u32
     }
-    if c == 47u32 {                 // '/'
+    if c == 47u32 {                 # '/'
         return 63u32
     }
     return 64u32

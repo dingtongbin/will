@@ -4,8 +4,8 @@ def less(a: i32, b: i32) -> bool {
     return a < b
 }
 
-// Tree must keep ordered lookups correct through rotations and through both
-// one-child and two-child deletion.
+# Tree must keep ordered lookups correct through rotations and through both
+# one-child and two-child deletion.
 def main() -> i32 {
     var t: tree.Tree<i32, i32> = new tree.Tree<i32, i32>(less)
     if t.len() != 0usize {
@@ -42,7 +42,7 @@ def main() -> i32 {
     }
     match t.min() {
         Some(p) => {
-            if p.first != 1 || p.second != 10 {
+            if p.first != 1 or p.second != 10 {
                 return 6
             }
         }
@@ -52,7 +52,7 @@ def main() -> i32 {
     }
     match t.max() {
         Some(p) => {
-            if p.first != 9 || p.second != 90 {
+            if p.first != 9 or p.second != 90 {
                 return 8
             }
         }
@@ -80,7 +80,7 @@ def main() -> i32 {
             return 13
         }
     }
-    if !t.delete(8) || t.len() != 6usize {
+    if not t.delete(8) or t.len() != 6usize {
         return 14
     }
     if t.delete(8) {
@@ -94,7 +94,7 @@ def main() -> i32 {
         None => {
         }
     }
-    if !t.delete(5) || t.len() != 5usize {
+    if not t.delete(5) or t.len() != 5usize {
         return 17
     }
     match t.min() {

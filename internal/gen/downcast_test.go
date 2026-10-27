@@ -15,7 +15,7 @@ func TestEmitInterfaceDowncasts(t *testing.T) {
 		"def (s: Square) area() -> i32 {\n    return s.n\n}\n\n" +
 		"def (s: Square) label() -> str {\n    return \"square\"\n}\n\n" +
 		"def use(v: Shape) -> i32 {\n" +
-		"    if !v.is<Square>() {\n        return -1\n    }\n" +
+		"    if not v.is<Square>() {\n        return -1\n    }\n" +
 		"    var labeled: Option<Labeled> = v.as<Labeled>()\n" +
 		"    match labeled {\n        Some(x) => {\n            if x.label() == \"square\" {\n                return 1\n            }\n            return 2\n        }\n        None => {\n            return -2\n        }\n    }\n}\n\n" +
 		"def main() -> i32 {\n    return 0\n}\n"

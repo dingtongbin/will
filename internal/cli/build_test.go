@@ -123,7 +123,7 @@ func TestEmitDecisionsUsage(t *testing.T) {
 }
 
 func TestEmitDecisionsNestedAndEnum(t *testing.T) {
-	src := "struct Inner {\n    v: i32\n}\n\nstruct Outer {\n    tag: u8\n    inner: Inner\n}\n\nenum Value {\n    None\n    Number(i64)\n}\n"
+	src := "struct Inner {\n    v: i32\n}\n\nstruct Outer {\n    tag: u8\n    inner: Inner\n}\n\nenum Value {\n    Empty\n    Number(i64)\n}\n"
 	path := writeFile(t, t.TempDir(), "a.will", src)
 	code, out, errOut := runCLI("emit-decisions", path)
 	if code != 0 {
@@ -136,7 +136,7 @@ func TestEmitDecisionsNestedAndEnum(t *testing.T) {
 		"field type=\"Outer\" name=\"inner\" offset=4 size=4\n" +
 		"layout type=\"Value\" size=16 align=8\n" +
 		"field type=\"Value\" name=\"tag\" offset=0 size=4\n" +
-		"field type=\"Value\" name=\"None\" offset=8 size=0\n" +
+		"field type=\"Value\" name=\"Empty\" offset=8 size=0\n" +
 		"field type=\"Value\" name=\"Number\" offset=8 size=8\n"
 	if out != want {
 		t.Fatalf("stdout = %q, want %q", out, want)

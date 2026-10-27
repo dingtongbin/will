@@ -4,11 +4,11 @@ import c "bench_clock.h" {
     bench_step
 }
 
-// calls is the number of calls one measurement makes.
+# calls is the number of calls one measurement makes.
 const calls: i32 = 10000000
 
-// Empty is a function of the same module. A call to it is inlined, so it
-// shows the cost of the loop alone.
+# Empty is a function of the same module. A call to it is inlined, so it
+# shows the cost of the loop alone.
 def empty(value: i64) -> i64 {
     return value
 }
@@ -18,8 +18,8 @@ def main() -> i32 {
     var clockSink: u64 = 0u64
     var acc: i64 = 0i64
 
-    // The clock call on its own. It is the resolution the other two
-    // measurements are read with.
+    # The clock call on its own. It is the resolution the other two
+    # measurements are read with.
     var t0: u64 = c.bench_now_ns()
     for i in Range(0, calls) {
         _ = i
@@ -28,7 +28,7 @@ def main() -> i32 {
     var t1: u64 = c.bench_now_ns()
     _ = clockSink
 
-    // A call into a C function.
+    # A call into a C function.
     var t2: u64 = c.bench_now_ns()
     for i in Range(0, calls) {
         _ = i
@@ -36,7 +36,7 @@ def main() -> i32 {
     }
     var t3: u64 = c.bench_now_ns()
 
-    // A call into a function of the same module.
+    # A call into a function of the same module.
     var t4: u64 = c.bench_now_ns()
     for i in Range(0, calls) {
         _ = i

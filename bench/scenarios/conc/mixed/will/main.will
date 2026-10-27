@@ -8,26 +8,26 @@ import c "bench_clock.h" {
 import "std/os/fs"
 import "example.com/bench/conc/mixed/will/bench"
 
-// ioWorkers is the number of concurrent readers.
+# ioWorkers is the number of concurrent readers.
 const ioWorkers: i32 = 64
 
-// ioPerWorker is the number of sequential reads each reader performs.
+# ioPerWorker is the number of sequential reads each reader performs.
 const ioPerWorker: i32 = 100
 
-// ioCount is the number of asynchronous file reads in one burst.
+# ioCount is the number of asynchronous file reads in one burst.
 const ioCount: i32 = 6400
 
-// cpuCount is the number of CPU jobs in one burst, about 30 percent of the
-// combined operation count.
+# cpuCount is the number of CPU jobs in one burst, about 30 percent of the
+# combined operation count.
 const cpuCount: i32 = 2743
 
-// repetitions is the number of measured bursts.
+# repetitions is the number of measured bursts.
 const repetitions: i32 = 3
 
-// fileSize is the number of bytes each read consumes.
+# fileSize is the number of bytes each read consumes.
 const fileSize: i32 = 65536
 
-// Cpu is one 30 percent job. It records its own completion time.
+# Cpu is one 30 percent job. It records its own completion time.
 def cpu(slot: i32) -> i32 {
     var acc: i32 = 0
     for i in Range(0, 1000) {
@@ -37,8 +37,8 @@ def cpu(slot: i32) -> i32 {
     return acc
 }
 
-// CpuBatch submits the CPU half of the workload as jobs. The parallel block
-// joins its jobs through the parked barrier.
+# CpuBatch submits the CPU half of the workload as jobs. The parallel block
+# joins its jobs through the parked barrier.
 async def cpu_batch(base: i32) -> i32 {
     parallel {
         for i in Range(0, cpuCount) {
@@ -50,9 +50,9 @@ async def cpu_batch(base: i32) -> i32 {
     return 0
 }
 
-// IoWorker performs one stream of 70 percent operations. Keeping only
-// ioWorkers readers in flight measures service latency instead of the length of
-// a ten-thousand-task queue.
+# IoWorker performs one stream of 70 percent operations. Keeping only
+# ioWorkers readers in flight measures service latency instead of the length of
+# a ten-thousand-task queue.
 async def io_worker(path: str, base: i32) -> i32 {
     var sum: i32 = 0
     for i in Range(0, ioPerWorker) {
@@ -67,7 +67,7 @@ async def io_worker(path: str, base: i32) -> i32 {
     return sum
 }
 
-// Fill writes the read buffer once, outside the measured region.
+# Fill writes the read buffer once, outside the measured region.
 def fill(path: str) -> bool {
     var data: Array<u8> = new Array<u8>(usize(fileSize))
     for i in Range(0, fileSize) {
@@ -76,17 +76,17 @@ def fill(path: str) -> bool {
     var written: Result<(), Error> = fs.write_file(path, data[Range(0, usize(fileSize))])
     match written {
         Err(_) => {
-            return false
+            return False
         }
         _ => {
-            return true
+            return True
         }
     }
 }
 
 async def main() -> i32 {
     var path: str = "will-mixed-bench.tmp"
-    if !fill(path) {
+    if not fill(path) {
         return 1
     }
     var io: Array<u64> = new Array<u64>(0)

@@ -1,8 +1,8 @@
 import "std/io/buf"
 
-// Stats counts the writes the sink is handed so the checks can tell a buffered
-// write from a passed-through one. The sink shares the counters through rc
-// because a package-level name is published read-only.
+# Stats counts the writes the sink is handed so the checks can tell a buffered
+# write from a passed-through one. The sink shares the counters through rc
+# because a package-level name is published read-only.
 struct Stats {
     writes: i32
     total: usize
@@ -29,7 +29,7 @@ def main() -> i32 {
     var stats: rc<Stats> = new rc<Stats>(Stats { writes: 0, total: 0usize, last: 0usize })
     var writer: buf.WriterBuf = new buf.WriterBuf(Sink { stats: stats }, 8usize)
 
-    // A write shorter than the buffer stays in memory.
+    # A write shorter than the buffer stays in memory.
     match writer.write(text[Range(0, 5)]) {
         Err(_) => {
             return 1
@@ -40,18 +40,18 @@ def main() -> i32 {
         return 2
     }
 
-    // Flushing hands the buffered bytes over in one write.
+    # Flushing hands the buffered bytes over in one write.
     match writer.flush() {
         Err(_) => {
             return 3
         }
         _ => {}
     }
-    if stats.writes != 1 || stats.total != 5usize || stats.last != 5usize {
+    if stats.writes != 1 or stats.total != 5usize or stats.last != 5usize {
         return 4
     }
 
-    // A second small write buffers again instead of passing through.
+    # A second small write buffers again instead of passing through.
     match writer.write(text[Range(0, 5)]) {
         Err(_) => {
             return 5
@@ -62,18 +62,18 @@ def main() -> i32 {
         return 6
     }
 
-    // Filling the buffer exactly flushes it.
+    # Filling the buffer exactly flushes it.
     match writer.write(text[Range(0, 3)]) {
         Err(_) => {
             return 7
         }
         _ => {}
     }
-    if stats.writes != 2 || stats.total != 13usize || stats.last != 8usize {
+    if stats.writes != 2 or stats.total != 13usize or stats.last != 8usize {
         return 8
     }
 
-    // A write that does not fit flushes first, then waits in the buffer.
+    # A write that does not fit flushes first, then waits in the buffer.
     match writer.write(text[Range(0, 5)]) {
         Err(_) => {
             return 9
@@ -98,18 +98,18 @@ def main() -> i32 {
         }
         _ => {}
     }
-    if stats.writes != 3 || stats.last != 6usize {
+    if stats.writes != 3 or stats.last != 6usize {
         return 14
     }
 
-    // The final flush writes what is left.
+    # The final flush writes what is left.
     match writer.flush() {
         Err(_) => {
             return 15
         }
         _ => {}
     }
-    if stats.writes != 4 || stats.last != 5usize || stats.total != 24usize {
+    if stats.writes != 4 or stats.last != 5usize or stats.total != 24usize {
         return 16
     }
     return 0

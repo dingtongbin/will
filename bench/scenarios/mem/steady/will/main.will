@@ -5,20 +5,20 @@ import c "bench_clock.h" {
 }
 import "example.com/bench/mem/steady/will/bench"
 
-// count is the number of values the loop walks.
+# count is the number of values the loop walks.
 const count: i32 = 1000000
 
-// repetitions is the number of measured repetitions of the workload.
+# repetitions is the number of measured repetitions of the workload.
 const repetitions: i32 = 5
 
-// seed is the seed of the input generator.
+# seed is the seed of the input generator.
 const seed: u64 = 0x2545F4914F6CDD1D
 
-// Fill fills the array with the values of the generator. The C side writes
-// the same generator, so both sides walk the same values.
-//
-// The array is created with the capacity of the fill, so the pushes never
-// grow it.
+# Fill fills the array with the values of the generator. The C side writes
+# the same generator, so both sides walk the same values.
+#
+# The array is created with the capacity of the fill, so the pushes never
+# grow it.
 def fill(mut values: Array<i64>) {
     var state: u64 = seed
     for i in Range(0, count) {
@@ -32,7 +32,7 @@ def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     var values: Array<i64> = new Array<i64>(usize(count))
     fill(values)
-    // The warm up pays for the first touch of the pages and of the caches.
+    # The warm up pays for the first touch of the pages and of the caches.
     var warm: u64 = 0u64
     for v in values {
         warm = warm +% u64(v)

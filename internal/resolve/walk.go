@@ -50,7 +50,7 @@ func (r *resolver) walkStmt(s ast.Stmt) {
 	case *ast.BreakStmt, *ast.ContinueStmt:
 	case *ast.ForStmt:
 		r.push()
-		r.walkExpr(st.Iter, true)
+		r.walkExpr(st.LoopExpr(), true)
 		for _, name := range st.Names {
 			r.declareLocal(&Symbol{Name: name, Kind: LocalKind, Pos: st.Pos(), Node: st, Exported: isExported(name)})
 		}

@@ -828,7 +828,7 @@ func TestRunBranchMoveReleasesThePathThatStillOwnsTheValue(t *testing.T) {
 }
 
 def main() -> i32 {
-    return take(true) + take(false)
+    return take(True) + take(False)
 }
 `
 	path := writeFile(t, t.TempDir(), "main.will", src)
@@ -997,7 +997,7 @@ async def wait() -> Option<i32> {
 }
 
 async def main() -> i32 {
-    var saw: bool = false
+    var saw: bool = False
     deadline 1ms {
         var result: Result<(), Error> = await nap()
         match result {
@@ -1005,29 +1005,29 @@ async def main() -> i32 {
                 if e.status() != 9 {
                     return 1
                 }
-                saw = true
+                saw = True
             }
             Ok(_) => {
                 return 2
             }
         }
     }
-    if !saw {
+    if notsaw {
         return 3
     }
-    var none: bool = false
+    var none: bool = False
     deadline 1ms {
         var item: Option<i32> = await wait()
         match item {
             None => {
-                none = true
+                none = True
             }
             Some(_) => {
                 return 4
             }
         }
     }
-    if !none {
+    if notnone {
         return 5
     }
     return 0
@@ -1195,7 +1195,7 @@ def (s: Square) label() -> str {
 
 def main() -> i32 {
     var shape: Shape = Square { n: 12 }
-    if !shape.is<Square>() {
+    if notshape.is<Square>() {
         return 1
     }
     var square: Option<Square> = shape.as<Square>()
@@ -1291,7 +1291,7 @@ func TestRunEmptyInterface(t *testing.T) {
 
 def main() -> i32 {
     var number: interface {} = 42
-    if !number.is<i32>() {
+    if notnumber.is<i32>() {
         return 1
     }
     if Number(number) != 42 {
@@ -1301,7 +1301,7 @@ def main() -> i32 {
         return 3
     }
     var text: interface {} = "will"
-    if !text.is<str>() {
+    if nottext.is<str>() {
         return 4
     }
     var empty: interface {}
@@ -1311,7 +1311,7 @@ def main() -> i32 {
     var same: Option<interface {}> = number.as<interface {}>()
     match same {
         Some(value) => {
-            if !value.is<i32>() {
+            if notvalue.is<i32>() {
                 return 6
             }
         }
@@ -1351,7 +1351,7 @@ async def main() -> i32 {
     var second: i32 = 4
     var add: i32 = await add(second)
     print(first, " ", inc, " ", second, " ", add, "\n")
-    if first != 2 || inc != 2 || second != 6 || add != 6 {
+    if first != 2 or inc != 2 or second != 6 or add != 6 {
         return 1
     }
     return 0
@@ -1393,7 +1393,7 @@ async def main() -> i32 {
     var values: Array<i32> = new Array<i32>(0)
     var grown: i32 = await grow(values)
     print(counter.n, " ", values.len(), "\n")
-    if counter.n != 5 || added != 5 || grown != 1 || values.len() != 1 {
+    if counter.n != 5 or added != 5 or grown != 1 or values.len() != 1 {
         return 1
     }
     return 0
@@ -1436,7 +1436,7 @@ async def produce(ch: chan<i32>, n: i32) {
 
 async def consume(ch: chan<i32>) -> i64 {
     var sum: i64 = 0
-    for {
+    while True {
         var item: Option<i32> = await ch.recv()
         match item {
             Some(value) => {

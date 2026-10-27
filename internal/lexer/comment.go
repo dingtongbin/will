@@ -5,11 +5,10 @@ import (
 	"github.com/will-lang/will/internal/token"
 )
 
-func (l *Lexer) scanLineComment() {
+func (l *Lexer) scanHashComment() {
 	startOff := l.off
 	start := l.pos()
-	doc := l.peek(2) == '/'
-	l.advance()
+	doc := l.peek(1) == '#'
 	l.advance()
 	if doc {
 		l.advance()
@@ -31,28 +30,21 @@ func (l *Lexer) scanLineComment() {
 	})
 }
 
-func (l *Lexer) scanBlockComment() {
+func (l *Lexer) scanTripleComment() {
 	startOff := l.off
 	start := l.pos()
-	l.advance()
-	l.advance()
-	doc := l.peek(0) == '*' && l.peek(1) != '/'
-	contentOff := l.off
-	if doc {
+	for i := 0; i < 3; i++ {
 		l.advance()
-		contentOff = l.off
 	}
+	contentOff := l.off
 	for l.off < len(l.src) {
-		if l.src[l.off] == '*' && l.peek(1) == '/' {
+		if l.src[l.off] == '"' && l.peek(1) == '"' && l.peek(2) == '"' {
 			endOff := l.off
-			kind := token.BlockComment
-			if doc {
-				kind = token.DocComment
-			}
+			l.advance()
 			l.advance()
 			l.advance()
 			l.toks = append(l.toks, token.Token{
-				Kind:  kind,
+				Kind:  token.BlockComment,
 				Text:  string(l.src[startOff:l.off]),
 				Value: string(l.src[contentOff:endOff]),
 				Pos:   start,

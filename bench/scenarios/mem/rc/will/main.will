@@ -5,13 +5,13 @@ import c "bench_clock.h" {
 }
 import "example.com/bench/mem/rc/will/bench"
 
-// count is the number of reference count changes of the workload.
+# count is the number of reference count changes of the workload.
 const count: i32 = 1000000
 
-// repetitions is the number of measured repetitions of the workload.
+# repetitions is the number of measured repetitions of the workload.
 const repetitions: i32 = 5
 
-// Counter is the object the workload shares.
+# Counter is the object the workload shares.
 struct Counter {
     value: i64
 }
@@ -19,7 +19,7 @@ struct Counter {
 def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     var cell: rc<Counter> = new rc<Counter>(Counter { value: 0i64})
-    // The warm up pays for the first touch of the pages and of the caches.
+    # The warm up pays for the first touch of the pages and of the caches.
     var warm: rc<Counter> = cell
     _ = warm
 
@@ -28,7 +28,7 @@ def main() -> i32 {
         var start: u64 = c.bench_now_ns()
         for i in Range(0, count) {
             _ = i
-            // The copy retains the object, the end of the block releases it.
+            # The copy retains the object, the end of the block releases it.
             var copy: rc<Counter> = cell
             cell.value += 1
             _ = copy

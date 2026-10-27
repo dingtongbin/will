@@ -4,8 +4,8 @@ def less(a: i32, b: i32) -> bool {
     return a < b
 }
 
-// Heap must keep the root smallest through every Push and Pop, including the
-// sift-down path with two children.
+# Heap must keep the root smallest through every Push and Pop, including the
+# sift-down path with two children.
 def main() -> i32 {
     var h: heap.Heap<i32> = new heap.Heap<i32>(less)
     if h.len() != 0usize {
@@ -36,7 +36,7 @@ def main() -> i32 {
     expected.push(7)
     expected.push(9)
     var i: usize = 0usize
-    for {
+    while True {
         if i >= 5usize {
             break
         }

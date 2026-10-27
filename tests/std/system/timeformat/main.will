@@ -1,7 +1,7 @@
 import "std/time"
 
-// The named formats are pure functions of an instant, so a corpus can pin
-// every field of the calendar and clock they write.
+# The named formats are pure functions of an instant, so a corpus can pin
+# every field of the calendar and clock they write.
 def main() -> i32 {
     var t: time.Instant = time.from_unix(1700000000i64)
     if time.rfc3339(t) != "2023-11-14T22:13:20Z" {
@@ -33,7 +33,7 @@ def main() -> i32 {
     if time.rfc3339(west) != "2023-11-14T17:13:20-05:00" {
         return 9
     }
-    // One second before the epoch belongs to the previous day in UTC.
+    # One second before the epoch belongs to the previous day in UTC.
     var before: time.Instant = time.from_unix(-1i64)
     if time.rfc3339(before) != "1969-12-31T23:59:59Z" {
         return 10
@@ -41,7 +41,7 @@ def main() -> i32 {
     if time.date(before) != "1969-12-31" {
         return 11
     }
-    // A leap day is the day a plain four-year rule would miss.
+    # A leap day is the day a plain four-year rule would miss.
     var leap: time.Instant = time.from_unix(1709164800i64)
     if time.date(leap) != "2024-02-29" {
         return 12

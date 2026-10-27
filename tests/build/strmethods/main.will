@@ -1,7 +1,7 @@
 def main() -> i32 {
     var s: str = "  hello,world  "
     var t: str = s.trim()
-    if t.contains("world") && t.has_prefix("hello") && t.has_suffix("world") {
+    if t.contains("world") and t.has_prefix("hello") and t.has_suffix("world") {
         var parts: []str = t.split(",")
         var total: usize = 0
         for p in parts {

@@ -31,7 +31,7 @@ def sort(mut xs: Array<u64>) {
     for i in Range(1, n) {
         value = xs[usize(i)]
         var j: i32 = i - 1
-        for {
+        while True {
             if j < 0 {
                 break
             }
@@ -63,7 +63,7 @@ def percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
 }
 
 def open_read() -> Result<fs.File, Error> {
-    return fs.open(path, fs.OpenFlags { read: true, write: false, create: false, append: false, truncate: false, exclusive: false })
+    return fs.open(path, fs.OpenFlags { read: True, write: False, create: False, append: False, truncate: False, exclusive: False })
 }
 
 def main() -> i32 {

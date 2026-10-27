@@ -1,7 +1,7 @@
 import "std/time"
 
-// Slow suspends inside a generic body that also names another package, so the
-// instance document must carry the import and the mark must see the clone.
+# Slow suspends inside a generic body that also names another package, so the
+# instance document must carry the import and the mark must see the clone.
 async def slow<T>(v: T) -> T {
     _ = await time.sleep(1ms)!
     return v

@@ -65,9 +65,9 @@ def tail(c: bool) -> Result<i32, E> {
 
 def main() -> i32 {
     _ = order()
-    _ = early(false)
+    _ = early(False)
     _ = loop()
-    match held(true) {
+    match held(True) {
         Ok(v) => {
             _ = v
         }
@@ -75,7 +75,7 @@ def main() -> i32 {
             _ = e
         }
     }
-    match held(false) {
+    match held(False) {
         Ok(v) => {
             _ = v
         }
@@ -83,7 +83,7 @@ def main() -> i32 {
             _ = e
         }
     }
-    match tail(false) {
+    match tail(False) {
         Ok(v) => {
             _ = v
         }

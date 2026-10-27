@@ -30,7 +30,7 @@ var kindSpecs = map[string]KindSpec{
 
 	"block":    {},
 	"if":       {Required: []string{"cond"}, Optional: []string{"then", "else"}},
-	"for":      {Required: []string{"body"}, Optional: []string{"iter"}, Repeatable: []string{"bind"}},
+	"for":      {Required: []string{"body"}, Optional: []string{"iter", "cond"}, Repeatable: []string{"bind"}},
 	"match":    {Required: []string{"subject"}, Repeatable: []string{"arm"}},
 	"arm":      {Required: []string{"pattern", "body"}, Optional: []string{"guard"}},
 	"pattern":  {Required: []string{"text", "kind"}, Optional: []string{"to"}},

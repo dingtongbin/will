@@ -1,5 +1,5 @@
-// scalarWidth returns the number of bytes a valid UTF-8 scalar occupies. A str
-// holds only valid UTF-8, so these four ranges cover every scalar.
+# scalarWidth returns the number of bytes a valid UTF-8 scalar occupies. A str
+# holds only valid UTF-8, so these four ranges cover every scalar.
 def scalar_width(c: u32) -> usize {
     if c <= 127u32 {
         return 1usize
@@ -13,9 +13,9 @@ def scalar_width(c: u32) -> usize {
     return 4usize
 }
 
-// Base returns the last element of the path after trailing separators are
-// dropped. An empty path has base ".", and a path of only separators has the
-// platform separator as its base, because the root has no element to name.
+# Base returns the last element of the path after trailing separators are
+# dropped. An empty path has base ".", and a path of only separators has the
+# platform separator as its base, because the root has no element to name.
 def base(p: str) -> str {
     if p.len() == 0usize {
         return "."
@@ -26,25 +26,25 @@ def base(p: str) -> str {
     }
     var start: usize = 0usize
     var end: usize = 0usize
-    var seen: bool = false
-    var fresh: bool = true
+    var seen: bool = False
+    var fresh: bool = True
     for i, c in p {
         if i < volumeEnd {
             continue
         }
         if is_separator(c) {
-            fresh = true
+            fresh = True
         } else {
             if fresh {
                 start = i
-                fresh = false
+                fresh = False
             }
             end = i + scalar_width(c)
-            seen = true
+            seen = True
         }
     }
-    if !seen {
-        if volumeEnd > 0usize && !is_drive_abs(p) {
+    if not seen {
+        if volumeEnd > 0usize and not is_drive_abs(p) {
             return "."
         }
         return separator_string()

@@ -242,6 +242,11 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 }
 
 func (c *checker) inferFor(s *inferScope, st *ast.ForStmt) {
+	if st.Cond != nil {
+		c.checkValue(s, st.Cond, c.in.scalar("bool"))
+		c.inferBlock(s, st.Body)
+		return
+	}
 	names := len(st.Names)
 	nameTypes := make([]*Type, names)
 	if st.Iter != nil {
@@ -1888,7 +1893,7 @@ func (c *checker) unaryType(s *inferScope, u *ast.UnaryExpr) *Type {
 		if t != nil && !t.IsNumeric() {
 			c.typeMismatch(u.Pos(), t, nil)
 		}
-	case token.Bang:
+	case token.Bang, token.KwNot:
 		if t != nil && !isBool(t) {
 			c.typeMismatch(u.Pos(), t, c.in.scalar("bool"))
 		}

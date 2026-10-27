@@ -18,7 +18,7 @@ func TestDiagnosticFormat(t *testing.T) {
 }
 
 func TestDiagnosticsAreSorted(t *testing.T) {
-	_, ds := scan(t, "@ #\n")
+	_, ds := scan(t, "@ $\n")
 	if len(ds) != 2 {
 		t.Fatalf("diagnostics = %d, want 2:\n%s", len(ds), diag.FormatAll(ds))
 	}

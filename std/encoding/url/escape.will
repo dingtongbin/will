@@ -1,6 +1,6 @@
-// Escape percent-encodes s for use as one URL path segment. Unreserved bytes
-// pass through; every other byte becomes %XX with uppercase hexadecimal. The
-// slash is encoded too, because a path segment cannot carry it.
+# Escape percent-encodes s for use as one URL path segment. Unreserved bytes
+# pass through; every other byte becomes %XX with uppercase hexadecimal. The
+# slash is encoded too, because a path segment cannot carry it.
 def escape(s: str) -> str {
     var out: Array<u8> = new Array<u8>(0)
     var data: []u8 = s[Range(0, s.len())]
@@ -16,21 +16,21 @@ def escape(s: str) -> str {
     return str(out)
 }
 
-// unreserved reports whether b may appear literally in a path segment.
+# unreserved reports whether b may appear literally in a path segment.
 def unreserved(b: u8) -> bool {
-    if b >= 65u8 && b <= 90u8 {
-        return true
+    if b >= 65u8 and b <= 90u8 {
+        return True
     }
-    if b >= 97u8 && b <= 122u8 {
-        return true
+    if b >= 97u8 and b <= 122u8 {
+        return True
     }
-    if b >= 48u8 && b <= 57u8 {
-        return true
+    if b >= 48u8 and b <= 57u8 {
+        return True
     }
-    return b == 45u8 || b == 46u8 || b == 95u8 || b == 126u8
+    return b == 45u8 or b == 46u8 or b == 95u8 or b == 126u8
 }
 
-// hexUpper maps one four-bit value to its uppercase hexadecimal digit.
+# hexUpper maps one four-bit value to its uppercase hexadecimal digit.
 def hex_upper(v: u8) -> u8 {
     if v < 10u8 {
         return 48u8 + v

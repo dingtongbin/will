@@ -1,8 +1,8 @@
 import "std/encoding/base64"
 
-// Decode must finish a padded group: one '=' leaves two bytes, two '=' leave
-// one, and a group that is still short is rejected. The vectors are the
-// standard ones for "Hello", "a", "ab", and the bytes 251 255.
+# Decode must finish a padded group: one '=' leaves two bytes, two '=' leave
+# one, and a group that is still short is rejected. The vectors are the
+# standard ones for "Hello", "a", "ab", and the bytes 251 255.
 def main() -> i32 {
     var hello: Result<Array<u8>, Error> = base64.decode("SGVsbG8=")
     match hello {

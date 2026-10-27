@@ -1,5 +1,5 @@
-// Fault is the concrete error value shared by the standard library: a stable
-// message for people and a stable status code for classification.
+# Fault is the concrete error value shared by the standard library: a stable
+# message for people and a stable status code for classification.
 struct Fault {
     message: str
     status: i32

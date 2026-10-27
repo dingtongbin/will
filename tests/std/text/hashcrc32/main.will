@@ -1,8 +1,8 @@
 import "std/hash/crc32"
 
-// The vectors are the IEEE ones: the empty text hashes to zero, "123456789" is
-// the published check value, and splitting that text across two Update calls
-// must give the same result as one Sum.
+# The vectors are the IEEE ones: the empty text hashes to zero, "123456789" is
+# the published check value, and splitting that text across two Update calls
+# must give the same result as one Sum.
 def main() -> i32 {
     if crc32.sum(""[Range(0, 0)]) != 0u32 {
         return 1

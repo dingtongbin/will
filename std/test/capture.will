@@ -1,6 +1,6 @@
-// Capture redirects the current case's standard output and standard error into
-// a temporary file. It is process-wide by nature, so a parallel case must not
-// capture while another case is running.
+# Capture redirects the current case's standard output and standard error into
+# a temporary file. It is process-wide by nature, so a parallel case must not
+# capture while another case is running.
 import c "capture.h" {
     fast willtest_capture_begin
     fast willtest_capture_end
@@ -13,16 +13,16 @@ struct Capture {
     text: str
 }
 
-// Capture starts capturing the current case's output.
+# Capture starts capturing the current case's output.
 def (mut t: T) capture() -> Capture {
     var status: i32 = c.willtest_capture_begin()
     return Capture { active: status == 0, text: ""}
 }
 
-// Text returns the bytes captured so far. After Release it returns the final
-// bytes that were read when capture stopped.
+# Text returns the bytes captured so far. After Release it returns the final
+# bytes that were read when capture stopped.
 def (cap: Capture) text() -> str {
-    if !cap.active {
+    if not cap.active {
         return cap.text.clone()
     }
     var text: str = ""
@@ -33,9 +33,9 @@ def (cap: Capture) text() -> str {
     return text
 }
 
-// Release stops capturing, stores the final bytes, and restores direct output.
+# Release stops capturing, stores the final bytes, and restores direct output.
 def (mut cap: Capture) release() {
-    if !cap.active {
+    if not cap.active {
         return
     }
     _ = c.willtest_capture_end()
@@ -45,5 +45,5 @@ def (mut cap: Capture) release() {
         cap.text = text
     }
     c.willtest_capture_close()
-    cap.active = false
+    cap.active = False
 }

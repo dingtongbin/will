@@ -223,7 +223,7 @@ func (c *checker) walkStmt(s ast.Stmt) {
 	case *ast.ReturnStmt:
 		c.walkExpr(st.Value)
 	case *ast.ForStmt:
-		c.walkExpr(st.Iter)
+		c.walkExpr(st.LoopExpr())
 		c.walkBlock(st.Body)
 	case *ast.RegionStmt:
 		c.walkBlock(st.Body)

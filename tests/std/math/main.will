@@ -26,10 +26,10 @@ def main() -> i32 {
     if math.sign(0.0) == 0.0 {
         ok += 1
     }
-    if !math.is_na_n(1.0) {
+    if not math.is_na_n(1.0) {
         ok += 1
     }
-    if !math.is_inf(1.0) {
+    if not math.is_inf(1.0) {
         ok += 1
     }
     if math.is_finite(1.0) {

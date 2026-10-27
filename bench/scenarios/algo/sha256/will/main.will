@@ -5,18 +5,18 @@ import c "bench_clock.h" {
 }
 import "example.com/bench/algo/sha256/will/bench"
 
-// messageSize is the size of the message in bytes.
+# messageSize is the size of the message in bytes.
 const messageSize: i32 = 119
 
-// repetitions is the number of measured repetitions of the workload.
+# repetitions is the number of measured repetitions of the workload.
 const repetitions: i32 = 5
 
-// Ror rotates a word to the right.
+# Ror rotates a word to the right.
 def ror(value: u32, amount: u32) -> u32 {
     return (value >> amount) | (value <<% (32u32 - amount))
 }
 
-// FillConstants puts the round constants of SHA-256 into the array.
+# FillConstants puts the round constants of SHA-256 into the array.
 def fill_constants(k: Array<u32>) {
     k.push(0x428a2f98u32)
     k.push(0x71374491u32)
@@ -84,7 +84,7 @@ def fill_constants(k: Array<u32>) {
     k.push(0xc67178f2u32)
 }
 
-// Compress runs the compression of one block into the state.
+# Compress runs the compression of one block into the state.
 def compress(mut state: Array<u32>, mut words: Array<u32>, block: Array<u8>, at: i32, k: Array<u32>) {
     for i in Range(0, 16) {
         var p: i32 = at + i * 4
@@ -110,8 +110,8 @@ def compress(mut state: Array<u32>, mut words: Array<u32>, block: Array<u8>, at:
         var word: u32 = words[usize(i - 16)] +% s0 +% words[usize(i - 7)] +% s1
         words.set(usize(i), word)
     }
-    // The values are read with an assignment, because a declaration that
-    // reads an index borrows the array until the end of the block.
+    # The values are read with an assignment, because a declaration that
+    # reads an index borrows the array until the end of the block.
     var a: u32 = 0u32
     a = state[usize(0)]
     var b: u32 = 0u32
@@ -154,7 +154,7 @@ def compress(mut state: Array<u32>, mut words: Array<u32>, block: Array<u8>, at:
     state.set(usize(7), state[usize(7)] +% h)
 }
 
-// InitialState returns the state of a fresh hash.
+# InitialState returns the state of a fresh hash.
 def initial_state() -> Array<u32> {
     var state: Array<u32> = new Array<u32>(8)
     state.push(0x6a09e667u32)
@@ -168,7 +168,7 @@ def initial_state() -> Array<u32> {
     return state
 }
 
-// EmptyWords returns the array the schedule of the compression uses.
+# EmptyWords returns the array the schedule of the compression uses.
 def empty_words() -> Array<u32> {
     var words: Array<u32> = new Array<u32>(64)
     for i in Range(0, 64) {
@@ -178,7 +178,7 @@ def empty_words() -> Array<u32> {
     return words
 }
 
-// Message returns the padded message the workload hashes.
+# Message returns the padded message the workload hashes.
 def message() -> Array<u8> {
     var message: Array<u8> = new Array<u8>(128)
     var state: u64 = 0xA5A5
@@ -203,8 +203,8 @@ def message() -> Array<u8> {
             value = value >> 8u64
         }
     }
-    // The padding is the one bit of the message, then zeroes, then the
-    // length of the message in bits, least significant byte first.
+    # The padding is the one bit of the message, then zeroes, then the
+    # length of the message in bits, least significant byte first.
     message.push(0x80u8)
     var bits: u64 = u64(messageSize) * 8u64
     for i in Range(0, 8) {
@@ -220,7 +220,7 @@ def main() -> i32 {
     fill_constants(k)
     var message: Array<u8> = message()
     var words: Array<u32> = empty_words()
-    // The warm up pays for the first touch of the pages and of the caches.
+    # The warm up pays for the first touch of the pages and of the caches.
     var warmState: Array<u32> = initial_state()
     compress(warmState, words, message, 0, k)
 

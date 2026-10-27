@@ -1,7 +1,7 @@
 import "std/container/queue"
 
-// Push must fill the back stack, Pop must drain it in FIFO order, and a new
-// Push after a partial drain must still go behind the older values.
+# Push must fill the back stack, Pop must drain it in FIFO order, and a new
+# Push after a partial drain must still go behind the older values.
 def main() -> i32 {
     var q: queue.Queue<i32> = new queue.Queue<i32>()
     if q.len() != 0usize {

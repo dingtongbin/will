@@ -13,7 +13,7 @@ def check_read_all() -> i32 {
             var count: usize = io.read_all(file, buf)!
             _ = file.close()
             _ = fs.remove(path)
-            if count != 3usize || buf.len() != 3usize {
+            if count != 3usize or buf.len() != 3usize {
                 return 5
             }
         }

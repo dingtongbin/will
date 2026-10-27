@@ -1,14 +1,14 @@
-// Unescape decodes percent-encoded text. Both hexadecimal cases are accepted;
-// a percent sign that does not start a two-digit escape, or decoded bytes that
-// are not valid UTF-8, are Invalid. A plus sign stays a plus: form encoding is
-// not part of this package.
+# Unescape decodes percent-encoded text. Both hexadecimal cases are accepted;
+# a percent sign that does not start a two-digit escape, or decoded bytes that
+# are not valid UTF-8, are Invalid. A plus sign stays a plus: form encoding is
+# not part of this package.
 import "std/errors"
 
 def unescape(s: str) -> Result<str, Error> {
     var out: Array<u8> = new Array<u8>(0)
     var data: []u8 = s[Range(0, s.len())]
     var i: usize = 0usize
-    for {
+    while True {
         if i >= data.len() {
             break
         }
@@ -23,28 +23,28 @@ def unescape(s: str) -> Result<str, Error> {
         }
         var high: i32 = hex_value(data.get(i + 1usize))
         var low: i32 = hex_value(data.get(i + 2usize))
-        if high < 0 || low < 0 {
+        if high < 0 or low < 0 {
             return Err(errors.Invalid)
         }
         out.push(u8(high * 16 + low))
         i += 3usize
     }
-    if !valid_utf8(out[Range(0, out.len())]) {
+    if not valid_utf8(out[Range(0, out.len())]) {
         return Err(errors.Invalid)
     }
     return Ok(str(out))
 }
 
-// hexValue returns the value of one hexadecimal digit, or -1 when c is not a
-// digit.
+# hexValue returns the value of one hexadecimal digit, or -1 when c is not a
+# digit.
 def hex_value(c: u8) -> i32 {
-    if c >= 48u8 && c <= 57u8 {
+    if c >= 48u8 and c <= 57u8 {
         return i32(c - 48u8)
     }
-    if c >= 65u8 && c <= 70u8 {
+    if c >= 65u8 and c <= 70u8 {
         return i32(c - 65u8) + 10
     }
-    if c >= 97u8 && c <= 102u8 {
+    if c >= 97u8 and c <= 102u8 {
         return i32(c - 97u8) + 10
     }
     return -1

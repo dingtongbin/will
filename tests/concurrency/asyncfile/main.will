@@ -1,7 +1,7 @@
 import "std/os/fs"
 
-// Checksum reads the whole file through the completion engine and sums every
-// byte, so a short or reordered read cannot pass.
+# Checksum reads the whole file through the completion engine and sums every
+# byte, so a short or reordered read cannot pass.
 async def checksum(path: str) -> Result<i64, Error> {
     var bytes: Array<u8> = await fs.async_read_file(path)?
     var sum: i64 = 0
@@ -11,8 +11,8 @@ async def checksum(path: str) -> Result<i64, Error> {
     return Ok(sum)
 }
 
-// AppendTail proves that a second write task can extend the file that two
-// readers just finished with.
+# AppendTail proves that a second write task can extend the file that two
+# readers just finished with.
 async def append_tail(path: str) -> Result<(), Error> {
     var text: str = "end"
     return await fs.async_append(path, text[Range(0, 3)])
@@ -62,7 +62,7 @@ async def main() -> i32 {
             }
         }
     }
-    if first != expected || second != expected {
+    if first != expected or second != expected {
         _ = fs.remove(path)
         return 4
     }
@@ -85,7 +85,7 @@ async def main() -> i32 {
                 _ = fs.remove(path)
                 return 6
             }
-            if bytes.get(n) != u8(101) || bytes.get(n + 1) != u8(110) || bytes.get(n + 2) != u8(100) {
+            if bytes.get(n) != u8(101) or bytes.get(n + 1) != u8(110) or bytes.get(n + 2) != u8(100) {
                 _ = fs.remove(path)
                 return 7
             }

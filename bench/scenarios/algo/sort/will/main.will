@@ -5,28 +5,28 @@ import c "bench_clock.h" {
 }
 import "example.com/bench/algo/sort/will/bench"
 
-// smallSize is the size of the first array.
+# smallSize is the size of the first array.
 const smallSize: i32 = 1024
 
-// largeSize is the size of the second array.
+# largeSize is the size of the second array.
 const largeSize: i32 = 1000000
 
-// smallRepetitions is the number of measured repetitions of the first array.
+# smallRepetitions is the number of measured repetitions of the first array.
 const smallRepetitions: i32 = 10
 
-// largeRepetitions is the number of measured repetitions of the second
-// array. The sort of a million values costs enough on its own.
+# largeRepetitions is the number of measured repetitions of the second
+# array. The sort of a million values costs enough on its own.
 const largeRepetitions: i32 = 1
 
-// seed is the seed of the input generator.
+# seed is the seed of the input generator.
 const seed: u64 = 0x9E3779B97F4A7C15
 
-// Partition puts every value below the pivot left of it and returns the
-// place of the pivot.
-//
-// The values read from the array are assigned to variables that are declared
-// first, because a declaration that reads an index borrows the array until
-// the end of the block.
+# Partition puts every value below the pivot left of it and returns the
+# place of the pivot.
+#
+# The values read from the array are assigned to variables that are declared
+# first, because a declaration that reads an index borrows the array until
+# the end of the block.
 def partition(mut xs: Array<i64>, lo: i32, hi: i32) -> i32 {
     var pivot: i64 = 0i64
     pivot = xs[usize(hi)]
@@ -47,7 +47,7 @@ def partition(mut xs: Array<i64>, lo: i32, hi: i32) -> i32 {
     return i
 }
 
-// Quicksort sorts the range of the array.
+# Quicksort sorts the range of the array.
 def quicksort(mut xs: Array<i64>, lo: i32, hi: i32) {
     if lo >= hi {
         return
@@ -57,11 +57,11 @@ def quicksort(mut xs: Array<i64>, lo: i32, hi: i32) {
     quicksort(xs, pivot + 1, hi)
 }
 
-// Fill fills the array with the values of the generator. The C side writes
-// the same generator, so both sides sort the same values.
-//
-// The array is created with the capacity of the fill, so the pushes never
-// grow it.
+# Fill fills the array with the values of the generator. The C side writes
+# the same generator, so both sides sort the same values.
+#
+# The array is created with the capacity of the fill, so the pushes never
+# grow it.
 def fill(mut xs: Array<i64>, size: i32) {
     var state: u64 = seed
     for i in Range(0, size) {
@@ -71,7 +71,7 @@ def fill(mut xs: Array<i64>, size: i32) {
     }
 }
 
-// Sum adds the values of the array, so the checksum covers every element.
+# Sum adds the values of the array, so the checksum covers every element.
 def sum(xs: Array<i64>) -> u64 {
     var total: u64 = 0u64
     for x in xs {
@@ -88,15 +88,15 @@ def main() -> i32 {
     fill(small, smallSize)
     fill(large, largeSize)
 
-    // The warm up pays for the first touch of the pages and of the caches.
+    # The warm up pays for the first touch of the pages and of the caches.
     quicksort(small, 0, smallSize - 1)
     quicksort(large, 0, largeSize - 1)
 
     var checksum: u64 = 0u64
     for r in Range(0, smallRepetitions) {
         _ = r
-        // Every repetition sorts a fresh array, because an array that was
-        // sorted before is the worst case of the quicksort.
+        # Every repetition sorts a fresh array, because an array that was
+        # sorted before is the worst case of the quicksort.
         var work: Array<i64> = new Array<i64>(usize(smallSize))
         fill(work, smallSize)
         var start: u64 = c.bench_now_ns()

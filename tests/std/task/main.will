@@ -14,7 +14,7 @@ def main() -> i32 {
     if doubled.len() != 4usize {
         return 1
     }
-    if doubled.get(0) != 2 || doubled.get(3) != 8 {
+    if doubled.get(0) != 2 or doubled.get(3) != 8 {
         return 2
     }
 
@@ -27,7 +27,7 @@ def main() -> i32 {
         return 4
     }
     cancel.cancel()
-    if !cancel.canceled() {
+    if not cancel.canceled() {
         return 5
     }
     return 0

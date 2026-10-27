@@ -45,6 +45,8 @@ func (p *Parser) parseStmt() ast.Stmt {
 		return p.parseIf()
 	case token.KwFor:
 		return p.parseFor()
+	case token.KwWhile:
+		return p.parseWhile()
 	case token.KwMatch:
 		return p.parseMatch()
 	case token.KwSelect:
@@ -195,24 +197,38 @@ func assignOp(k token.Kind) (string, bool) {
 func (p *Parser) parseFor() *ast.ForStmt {
 	start := p.next()
 	f := &ast.ForStmt{}
-	if !p.at(token.LBrace) {
-		p.skipNL()
-		for {
-			name, _ := p.expectName("a loop binding")
-			f.Names = append(f.Names, name)
-			if !p.at(token.Comma) {
-				break
-			}
-			p.next()
-			p.skipNL()
-		}
-		p.expect(token.KwIn, "in")
-		p.skipNL()
-		f.Iter = p.parseExpr(0, false)
+	if p.at(token.LBrace) {
+		p.unexpected("in")
+		return f
 	}
+	p.skipNL()
+	for {
+		name, _ := p.expectName("a loop binding")
+		f.Names = append(f.Names, name)
+		if !p.at(token.Comma) {
+			break
+		}
+		p.next()
+		p.skipNL()
+	}
+	p.expect(token.KwIn, "in")
+	p.skipNL()
+	f.Iter = p.parseExpr(0, false)
 	f.Body = p.parseBlock("a loop body")
 	f.Span = p.spanFrom(start)
 	return f
+}
+
+func (p *Parser) parseWhile() *ast.ForStmt {
+	start := p.next()
+	p.skipNL()
+	cond := p.parseExpr(0, false)
+	body := p.parseBlock("a while body")
+	return &ast.ForStmt{
+		Span: ast.Span{Start: start.Pos, End: p.prev().End},
+		Cond: cond,
+		Body: body,
+	}
 }
 
 func (p *Parser) parseReturn() *ast.ReturnStmt {

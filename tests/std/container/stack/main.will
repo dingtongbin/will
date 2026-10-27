@@ -31,7 +31,7 @@ def main() -> i32 {
     }
     var copy: stack.Stack<i32> = s.clone()
     copy.push(9)
-    if s.len() != 2usize || copy.len() != 3usize {
+    if s.len() != 2usize or copy.len() != 3usize {
         return 6
     }
     copy.clear()

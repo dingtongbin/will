@@ -1,8 +1,8 @@
-// The library is the part of the compile corpus that lives in another
-// package. The corpus measures the time the compiler needs, so the code
-// has to be ordinary code of a few hundred lines.
+# The library is the part of the compile corpus that lives in another
+# package. The corpus measures the time the compiler needs, so the code
+# has to be ordinary code of a few hundred lines.
 
-// Count counts the values that are not negative.
+# Count counts the values that are not negative.
 def count(values: Array<i64>) -> i64 {
     var total: i64 = 0i64
     for v in values {
@@ -13,7 +13,7 @@ def count(values: Array<i64>) -> i64 {
     return total
 }
 
-// Sum adds the values.
+# Sum adds the values.
 def sum(values: Array<i64>) -> i64 {
     var total: i64 = 0i64
     for v in values {
@@ -22,33 +22,33 @@ def sum(values: Array<i64>) -> i64 {
     return total
 }
 
-// Max returns the largest value, or zero for an empty slice.
+# Max returns the largest value, or zero for an empty slice.
 def max(values: Array<i64>) -> i64 {
     var best: i64 = 0i64
-    var first: bool = true
+    var first: bool = True
     for v in values {
-        if first || v > best {
+        if first or v > best {
             best = v
-            first = false
+            first = False
         }
     }
     return best
 }
 
-// Min returns the smallest value, or zero for an empty slice.
+# Min returns the smallest value, or zero for an empty slice.
 def min(values: Array<i64>) -> i64 {
     var best: i64 = 0i64
-    var first: bool = true
+    var first: bool = True
     for v in values {
-        if first || v < best {
+        if first or v < best {
             best = v
-            first = false
+            first = False
         }
     }
     return best
 }
 
-// Mean returns the mean of the values, or zero for an empty slice.
+# Mean returns the mean of the values, or zero for an empty slice.
 def mean(values: Array<i64>) -> i64 {
     if values.len() == 0usize {
         return 0i64
@@ -56,7 +56,7 @@ def mean(values: Array<i64>) -> i64 {
     return sum(values) / i64(values.len())
 }
 
-// Histogram counts how many values fall into each bucket of the given width.
+# Histogram counts how many values fall into each bucket of the given width.
 def histogram(values: Array<i64>, width: i64) -> Array<i64> {
     var buckets: Array<i64> = new Array<i64>(0)
     if width <= 0i64 {
@@ -69,7 +69,7 @@ def histogram(values: Array<i64>, width: i64) -> Array<i64> {
         }
         var index: i32 = i32(bucket)
         var filled: i32 = i32(buckets.len())
-        for {
+        while True {
             if filled > index {
                 break
             }
@@ -83,7 +83,7 @@ def histogram(values: Array<i64>, width: i64) -> Array<i64> {
     return buckets
 }
 
-// Rolling returns the mean of every window of the given size.
+# Rolling returns the mean of every window of the given size.
 def rolling(values: Array<i64>, size: i32) -> Array<i64> {
     var out: Array<i64> = new Array<i64>(0)
     if size <= 0 {

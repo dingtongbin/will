@@ -1,10 +1,10 @@
 import "std/test"
 
 def main() -> i32 {
-    test.assert(true, "true must hold")
+    test.assert(True, "true must hold")
     test.assert_equal<i32>(2, 2, "two equals two")
     test.assert_equal<str>("a", "a", "strings compare by bytes")
-    if !true {
+    if not True {
         test.fatal("unreachable")
     }
     test.table(

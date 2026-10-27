@@ -4,23 +4,23 @@ import c "cancel.c" {
     fast willrt_cancel_canceled
 }
 
-// Cancel is an explicit cancellation credential. The holder decides when to
-// flip it; nothing cancels a task implicitly.
+# Cancel is an explicit cancellation credential. The holder decides when to
+# flip it; nothing cancels a task implicitly.
 struct Cancel {
     flag: raw
 }
 
-// init allocates the shared flag for new Cancel().
+# init allocates the shared flag for new Cancel().
 def (mut self: Cancel) init() {
     self.flag = c.willrt_cancel_new()
 }
 
-// Cancel marks the credential and every holder that observes it.
+# Cancel marks the credential and every holder that observes it.
 def (mut self: Cancel) cancel() {
     c.willrt_cancel_trigger(self.flag)
 }
 
-// Canceled reports whether Cancel has run.
+# Canceled reports whether Cancel has run.
 def (self: Cancel) canceled() -> bool {
     return c.willrt_cancel_canceled(self.flag) != 0
 }

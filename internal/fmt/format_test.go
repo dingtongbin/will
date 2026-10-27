@@ -58,9 +58,9 @@ func TestFormatIsIdempotent(t *testing.T) {
 }
 
 func TestFormatKeepsComments(t *testing.T) {
-	src := "// header\ndef f() {\n    // step\n    g() /* tail */\n}\n"
+	src := "# header\ndef f() {\n    # step\n    g() \"\"\" tail \"\"\"\n}\n"
 	got := format(t, src)
-	for _, want := range []string{"// header", "// step", "/* tail */"} {
+	for _, want := range []string{"# header", "# step", "\"\"\" tail \"\"\""} {
 		if !bytes.Contains([]byte(got), []byte(want)) {
 			t.Fatalf("format dropped %q:\n%s", want, got)
 		}

@@ -11,7 +11,7 @@ def main() -> i32 {
     var head: str = str(text[Range(0, 2)])
     var letter: str = str(65u32)
     _ = idx
-    if same && !pre && suf && cmp > 0 && copy.len() == 11 {
+    if same and not pre and suf and cmp > 0 and copy.len() == 11 {
         print(head, letter, "\n")
         return 1
     }

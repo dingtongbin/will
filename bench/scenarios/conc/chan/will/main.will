@@ -5,19 +5,19 @@ import c "bench_clock.h" {
 }
 import "example.com/bench/conc/chan/will/bench"
 
-// capacity is the number of slots of the channel.
+# capacity is the number of slots of the channel.
 const capacity: i32 = 64
 
-// count is the number of messages the workload moves.
+# count is the number of messages the workload moves.
 const count: i32 = 1000000
 
-// repetitions is the number of measured repetitions of the workload.
+# repetitions is the number of measured repetitions of the workload.
 const repetitions: i32 = 5
 
 async def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     var ch: chan<i64> = new chan<i64>(capacity)
-    // The warm up pays for the first touch of the pages and of the caches.
+    # The warm up pays for the first touch of the pages and of the caches.
     for i in Range(0, 1000) {
         _ = i
         _ = await ch.send(i64(i))

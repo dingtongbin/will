@@ -528,7 +528,7 @@ func TestDurationLiteral(t *testing.T) {
 func TestEmitPrintAndInterpolation(t *testing.T) {
 	src := "def main() -> i32 {\n" +
 		"    var n: i32 = 3\n" +
-		"    var ok: bool = true\n" +
+		"    var ok: bool = True\n" +
 		"    var x: f64 = 1.5\n" +
 		"    var s: str = f\"n={n} ok={ok} x={x}\"\n" +
 		"    print(s, \"\\n\")\n" +
@@ -1151,7 +1151,7 @@ func TestEmitIfBothBranchesReturn(t *testing.T) {
 
 func TestEmitLogicalAndNegation(t *testing.T) {
 	src := "def f(a: i32, b: i32) -> i32 {\n" +
-		"    if a < b && a != 0 {\n        return 0 - a\n    }\n    return ~b\n}\n"
+		"    if a < b and a != 0 {\n        return 0 - a\n    }\n    return ~b\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1287,7 +1287,7 @@ func TestEmitRangeLoop(t *testing.T) {
 
 func TestEmitEndlessLoopWithBreak(t *testing.T) {
 	src := "def f(n: i32) -> i32 {\n" +
-		"    for {\n        if n > 0 {\n            break\n        }\n        return 1\n    }\n}\n"
+		"    while True {\n        if n > 0 {\n            break\n        }\n        return 1\n    }\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {

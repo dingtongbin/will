@@ -1,6 +1,6 @@
-// Process execution. The shim launches the explicit path and argument vector
-// through the host shell and returns the exit status; Output captures stdout
-// and stderr in separate arrays.
+# Process execution. The shim launches the explicit path and argument vector
+# through the host shell and returns the exit status; Output captures stdout
+# and stderr in separate arrays.
 import c "exec.c" {
     fast willrt_exec_run
     fast willrt_exec_output
@@ -20,7 +20,7 @@ def (e: execError) status() -> i32 {
     return 7
 }
 
-// AsyncRun runs c and returns its exit status.
+# AsyncRun runs c and returns its exit status.
 async def (cmd: Cmd) async_run() -> Result<ExitStatus, Error> {
     var envpairs: Array<str> = new Array<str>(0)
     for key, value in cmd.env {
@@ -36,7 +36,7 @@ async def (cmd: Cmd) async_run() -> Result<ExitStatus, Error> {
     return Ok(status)
 }
 
-// AsyncOutput runs c and captures both output streams.
+# AsyncOutput runs c and captures both output streams.
 async def (cmd: Cmd) async_output() -> Result<Output, Error> {
     var envpairs: Array<str> = new Array<str>(0)
     for key, value in cmd.env {

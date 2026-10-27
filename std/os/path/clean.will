@@ -1,28 +1,28 @@
-// isDotElement reports whether p[a:b] is the single-dot element.
+# isDotElement reports whether p[a:b] is the single-dot element.
 def is_dot_element(p: str, a: usize, b: usize) -> bool {
     if b - a != 1usize {
-        return false
+        return False
     }
     var s: str = p.clone()
     var c: u32 = s[a]
     return is_dot(c)
 }
 
-// isDotDotElement reports whether p[a:b] is the two-dot element.
+# isDotDotElement reports whether p[a:b] is the two-dot element.
 def is_dot_dot_element(p: str, a: usize, b: usize) -> bool {
     if b - a != 2usize {
-        return false
+        return False
     }
     var second: usize = a + 1usize
     var s: str = p.clone()
     var firstChar: u32 = s[a]
     var secondChar: u32 = s[second]
-    return is_dot(firstChar) && is_dot(secondChar)
+    return is_dot(firstChar) and is_dot(secondChar)
 }
 
-// pushElement adds one element to the cleaned path or resolves a dot-dot. It
-// returns the new element count; a dot-dot removes the previous element unless
-// that would leave a relative path, in which case the dot-dot itself is kept.
+# pushElement adds one element to the cleaned path or resolves a dot-dot. It
+# returns the new element count; a dot-dot removes the previous element unless
+# that would leave a relative path, in which case the dot-dot itself is kept.
 def push_element(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>, ends: Array<usize>, count: usize) -> usize {
     if is_dot_element(p, a, b) {
         return count
@@ -38,7 +38,7 @@ def push_element(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>,
             var top: usize = count - 1usize
             var topA: usize = starts.get(top)
             var topB: usize = ends.get(top)
-            if !is_dot_dot_element(p, topA, topB) {
+            if not is_dot_dot_element(p, topA, topB) {
                 return count - 1usize
             }
         }
@@ -56,17 +56,17 @@ def push_element(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>,
     return count + 1usize
 }
 
-// Clean returns the shortest path that names the same location: it removes
-// empty elements, single dots, and every element followed by dot-dot, and it
-// resolves leading dot-dot against a rooted path or a drive root. The result is
-// "." when nothing is left of a relative path, and the platform root when
-// nothing is left of a rooted one.
+# Clean returns the shortest path that names the same location: it removes
+# empty elements, single dots, and every element followed by dot-dot, and it
+# resolves leading dot-dot against a rooted path or a drive root. The result is
+# "." when nothing is left of a relative path, and the platform root when
+# nothing is left of a rooted one.
 def clean(p: str) -> str {
     var s: str = p.clone()
     var n: usize = s.len()
     var volumeEnd: usize = 0usize
     var scan: usize = 0usize
-    var rooted: bool = false
+    var rooted: bool = False
     if has_drive(s) {
         volumeEnd = 2usize
         scan = 2usize
@@ -75,20 +75,20 @@ def clean(p: str) -> str {
             third = s[2]
         }
         if is_separator(third) {
-            rooted = true
+            rooted = True
             scan = 3usize
         }
     } else if n > 0usize {
         var first: u32 = s[0]
         if is_separator(first) {
-            rooted = true
+            rooted = True
         }
     }
     var starts: Array<usize> = new Array<usize>(0)
     var ends: Array<usize> = new Array<usize>(0)
     var count: usize = 0usize
     var start: usize = 0usize
-    var inElement: bool = false
+    var inElement: bool = False
     for i, c in s {
         if i < scan {
             continue
@@ -96,11 +96,11 @@ def clean(p: str) -> str {
         if is_separator(c) {
             if inElement {
                 count = push_element(s, start, i, rooted, starts, ends, count)
-                inElement = false
+                inElement = False
             }
-        } else if !inElement {
+        } else if not inElement {
             start = i
-            inElement = true
+            inElement = True
         }
     }
     if inElement {
@@ -118,7 +118,7 @@ def clean(p: str) -> str {
         out.push(sep)
     }
     var k: usize = 0usize
-    for {
+    while True {
         if k >= count {
             break
         }
@@ -131,7 +131,7 @@ def clean(p: str) -> str {
         k += 1usize
     }
     if count == 0usize {
-        if volumeEnd > 0usize && !rooted {
+        if volumeEnd > 0usize and not rooted {
             return str(out) + "."
         }
         if out.len() == 0usize {

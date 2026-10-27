@@ -1,5 +1,5 @@
-// AbsI64 returns the absolute value of x. The smallest i64 has no positive
-// counterpart, so the checked negation panics there.
+# AbsI64 returns the absolute value of x. The smallest i64 has no positive
+# counterpart, so the checked negation panics there.
 def abs_i64(x: i64) -> i64 {
     if x < 0 {
         return -x
@@ -7,8 +7,8 @@ def abs_i64(x: i64) -> i64 {
     return x
 }
 
-// AbsI32 returns the absolute value of x. The smallest i32 has no positive
-// counterpart, so the checked negation panics there.
+# AbsI32 returns the absolute value of x. The smallest i32 has no positive
+# counterpart, so the checked negation panics there.
 def abs_i32(x: i32) -> i32 {
     if x < 0 {
         return -x
@@ -16,7 +16,7 @@ def abs_i32(x: i32) -> i32 {
     return x
 }
 
-// MinI64 returns the smaller of a and b.
+# MinI64 returns the smaller of a and b.
 def min_i64(a: i64, b: i64) -> i64 {
     if a < b {
         return a
@@ -24,7 +24,7 @@ def min_i64(a: i64, b: i64) -> i64 {
     return b
 }
 
-// MaxI64 returns the larger of a and b.
+# MaxI64 returns the larger of a and b.
 def max_i64(a: i64, b: i64) -> i64 {
     if a > b {
         return a
@@ -32,7 +32,7 @@ def max_i64(a: i64, b: i64) -> i64 {
     return b
 }
 
-// MinU64 returns the smaller of a and b.
+# MinU64 returns the smaller of a and b.
 def min_u64(a: u64, b: u64) -> u64 {
     if a < b {
         return a
@@ -40,7 +40,7 @@ def min_u64(a: u64, b: u64) -> u64 {
     return b
 }
 
-// MaxU64 returns the larger of a and b.
+# MaxU64 returns the larger of a and b.
 def max_u64(a: u64, b: u64) -> u64 {
     if a > b {
         return a
@@ -48,7 +48,7 @@ def max_u64(a: u64, b: u64) -> u64 {
     return b
 }
 
-// ClampI64 limits x to the closed range [lo, hi]. The caller must pass lo <= hi.
+# ClampI64 limits x to the closed range [lo, hi]. The caller must pass lo <= hi.
 def clamp_i64(x: i64, lo: i64, hi: i64) -> i64 {
     if x < lo {
         return lo
@@ -59,7 +59,7 @@ def clamp_i64(x: i64, lo: i64, hi: i64) -> i64 {
     return x
 }
 
-// SignI64 returns -1, 0, or 1.
+# SignI64 returns -1, 0, or 1.
 def sign_i64(x: i64) -> i64 {
     if x > 0 {
         return 1i64

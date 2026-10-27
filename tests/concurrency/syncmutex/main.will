@@ -4,15 +4,15 @@ struct Counter {
     n: i32
 }
 
-// Bump takes the write side, changes the value, and lets the guard release at
-// the return. Two of these run at the same time.
+# Bump takes the write side, changes the value, and lets the guard release at
+# the return. Two of these run at the same time.
 async def bump(m: sync.Mutex<Counter>) -> i32 {
     var g: sync.Guard<Counter> = await m.lock()
     g.n += 1
     return g.n
 }
 
-// WaitFor takes the write side only after the caller's guard is gone.
+# WaitFor takes the write side only after the caller's guard is gone.
 async def wait_for(m: sync.Mutex<Counter>, entered: chan<i32>) -> i32 {
     var g: sync.Guard<Counter> = await m.lock()
     _ = entered.try_send(1)
@@ -29,7 +29,7 @@ async def main() -> i32 {
         _ = await t2.join()!
     }
     var two: i32 = 0
-    if true {
+    if True {
         var g: sync.Guard<Counter> = m.try_lock()!
         two = g.n
     }
@@ -40,7 +40,7 @@ async def main() -> i32 {
     var entered: chan<i32> = new chan<i32>(1)
     region {
         var waiter: Task<i32>
-        if true {
+        if True {
             var g: sync.Guard<Counter> = m.try_lock()!
             g.n += 100
             waiter = spawn wait_for(m, entered)
@@ -56,7 +56,7 @@ async def main() -> i32 {
         _ = await waiter.join()!
     }
     var after: i32 = 0
-    if true {
+    if True {
         var g: sync.Guard<Counter> = m.try_lock()!
         after = g.n
     }
@@ -66,7 +66,7 @@ async def main() -> i32 {
 
     var rw: sync.RwLock<Counter> = new sync.RwLock<Counter>(Counter { n: 0 })
     var shared: i32 = 0
-    if true {
+    if True {
         var r1: sync.ReadGuard<Counter> = rw.try_rlock()!
         var r2: sync.ReadGuard<Counter> = rw.try_rlock()!
         shared = r1.n + r2.n
@@ -78,7 +78,7 @@ async def main() -> i32 {
         return 5
     }
     var exclusive: i32 = 0
-    if true {
+    if True {
         var w: sync.Guard<Counter> = rw.try_wlock()!
         w.n = 7
         exclusive = w.n
@@ -87,7 +87,7 @@ async def main() -> i32 {
         return 6
     }
     var final: i32 = 0
-    if true {
+    if True {
         var r: sync.ReadGuard<Counter> = rw.try_rlock()!
         final = r.n
     }

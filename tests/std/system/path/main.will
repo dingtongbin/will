@@ -1,7 +1,7 @@
 import "std/os/path"
 
-// Clean must drop empty and dot elements, resolve dot-dot where it can, keep a
-// leading dot-dot on a relative path, and name the empty result "." or "/".
+# Clean must drop empty and dot elements, resolve dot-dot where it can, keep a
+# leading dot-dot on a relative path, and name the empty result "." or "/".
 def main() -> i32 {
     if path.clean("") != "." {
         return 1
@@ -48,9 +48,9 @@ def main() -> i32 {
     if path.clean("/h\xc3\xa9llo/") != "/h\xc3\xa9llo" {
         return 15
     }
-    // A zero-part Join would be path.Join(), but the compiler reads a Join call
-    // with no arguments as the task join, so an all-empty call is written as
-    // Join("", ""), which also returns "".
+    # A zero-part Join would be path.Join(), but the compiler reads a Join call
+    # with no arguments as the task join, so an all-empty call is written as
+    # Join("", ""), which also returns "".
     if path.join("", "") != "" {
         return 16
     }
@@ -72,7 +72,7 @@ def main() -> i32 {
     if path.join("", "a", "") != "a" {
         return 22
     }
-    // Dir keeps everything before the last separator and cleans it.
+    # Dir keeps everything before the last separator and cleans it.
     if path.dir("") != "." {
         return 23
     }
@@ -97,7 +97,7 @@ def main() -> i32 {
     if path.dir("/h\xc3\xa9llo/x") != "/h\xc3\xa9llo" {
         return 30
     }
-    // Base is the last element after trailing separators are dropped.
+    # Base is the last element after trailing separators are dropped.
     if path.base("") != "." {
         return 31
     }
@@ -119,7 +119,7 @@ def main() -> i32 {
     if path.base("/h\xc3\xa9llo") != "h\xc3\xa9llo" {
         return 37
     }
-    // Ext starts at the final dot of the last element; a dotfile has one.
+    # Ext starts at the final dot of the last element; a dotfile has one.
     if path.ext("") != "" {
         return 38
     }
@@ -147,10 +147,10 @@ def main() -> i32 {
     if path.is_abs("") {
         return 46
     }
-    if !path.is_abs("/") {
+    if not path.is_abs("/") {
         return 47
     }
-    if !path.is_abs("/a") {
+    if not path.is_abs("/a") {
         return 48
     }
     if path.is_abs("a") {
@@ -159,41 +159,41 @@ def main() -> i32 {
     if path.is_abs("./a") {
         return 50
     }
-    // Match is anchored, and neither wildcard crosses the separator.
-    if !path.match("*.txt", "a.txt") {
+    # Match is anchored, and neither wildcard crosses the separator.
+    if not path.match("*.txt", "a.txt") {
         return 51
     }
     if path.match("*.txt", "a.txt.bak") {
         return 52
     }
-    if !path.match("a?c", "abc") {
+    if not path.match("a?c", "abc") {
         return 53
     }
     if path.match("a?c", "ac") {
         return 54
     }
-    if !path.match("*", "abc") {
+    if not path.match("*", "abc") {
         return 55
     }
-    if !path.match("*", "") {
+    if not path.match("*", "") {
         return 56
     }
     if path.match("*", "a/b") {
         return 57
     }
-    if !path.match("a/*", "a/b") {
+    if not path.match("a/*", "a/b") {
         return 58
     }
     if path.match("a/*", "a/b/c") {
         return 59
     }
-    if !path.match("", "") {
+    if not path.match("", "") {
         return 60
     }
     if path.match("", "a") {
         return 61
     }
-    if !path.match("a*b*c", "aXbYc") {
+    if not path.match("a*b*c", "aXbYc") {
         return 62
     }
     if path.match("a*b*c", "aXbY") {
@@ -202,10 +202,10 @@ def main() -> i32 {
     if path.match("a?b", "a/b") {
         return 64
     }
-    if !path.match("/a/*", "/a/b") {
+    if not path.match("/a/*", "/a/b") {
         return 65
     }
-    if !path.match("src-?-main.will", "src-a-main.will") {
+    if not path.match("src-?-main.will", "src-a-main.will") {
         return 66
     }
     if path.ext("a.tar.gz") != ".gz" {
@@ -217,17 +217,17 @@ def main() -> i32 {
     if path.base("...") != "..." {
         return 69
     }
-    if !path.match("*", ".") {
+    if not path.match("*", ".") {
         return 70
     }
-    if !path.is_abs("//a") {
+    if not path.is_abs("//a") {
         return 71
     }
     if path.clean("a/./") != "a" {
         return 72
     }
-    // A long name exercises the star loop without recursion.
-    if !path.match("*", "a".repeat(1000usize)) {
+    # A long name exercises the star loop without recursion.
+    if not path.match("*", "a".repeat(1000usize)) {
         return 73
     }
     if path.match("*", "a".repeat(1000usize) + "/b") {

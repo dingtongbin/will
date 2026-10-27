@@ -337,9 +337,9 @@ entry:
   %v.ret.195 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
   %v.ret.212 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
   %t141 = call i32 @"example.com/defer.order"()
-  %t142 = call i32 @"example.com/defer.early"(i1 false)
+  %t142 = call i32 @"example.com/defer.early"(i1 False)
   %t143 = call i32 @"example.com/defer.loop"()
-  %t144 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 true)
+  %t144 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 True)
   store { i32, [4 x i8], %"struct.example.com/defer.E" } %t144, ptr %v.ret.178
   %t145 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.178, i32 0, i32 0
   %t146 = load i32, ptr %t145
@@ -360,7 +360,7 @@ match.arm.1.1:
 match.next.1.1:
   unreachable
 match.end.1:
-  %t154 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 false)
+  %t154 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 False)
   store { i32, [4 x i8], %"struct.example.com/defer.E" } %t154, ptr %v.ret.195
   %t155 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.195, i32 0, i32 0
   %t156 = load i32, ptr %t155
@@ -381,7 +381,7 @@ match.arm.2.1:
 match.next.2.1:
   unreachable
 match.end.2:
-  %t164 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.tail"(i1 false)
+  %t164 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.tail"(i1 False)
   store { i32, [4 x i8], %"struct.example.com/defer.E" } %t164, ptr %v.ret.212
   %t165 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.212, i32 0, i32 0
   %t166 = load i32, ptr %t165

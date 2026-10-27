@@ -1,6 +1,6 @@
-// Reader decodes CSV records from a byte stream. The separator is one byte the
-// caller supplies, so a tab-separated file needs no second type. Fields are
-// copied into str values, which lets a row outlive the read buffer.
+# Reader decodes CSV records from a byte stream. The separator is one byte the
+# caller supplies, so a tab-separated file needs no second type. Fields are
+# copied into str values, which lets a row outlive the read buffer.
 import "std/errors"
 
 struct Reader {
@@ -11,22 +11,22 @@ struct Reader {
     eof: bool
 }
 
-// init stores the source and separator. The first decode call performs the
-// first read, so construction itself does not touch the stream.
+# init stores the source and separator. The first decode call performs the
+# first read, so construction itself does not touch the stream.
 def (mut r: Reader) init(src: byteReader, sep: u8) {
     r.src = src.clone()
     r.sep = sep
     r.buf = new Array<u8>(0)
     r.pos = 0usize
-    r.eof = false
+    r.eof = False
 }
 
-// AsyncDecode appends the records that are available and returns how many it
-// appended. It parses every complete record the last read filled, and 0 means
-// the stream has no more records.
+# AsyncDecode appends the records that are available and returns how many it
+# appended. It parses every complete record the last read filled, and 0 means
+# the stream has no more records.
 async def (mut r: Reader) async_decode(mut rows: Array<Row>) -> Result<usize, Error> {
     var added: usize = 0usize
-    for {
+    while True {
         var record: Option<Array<str>> = r.read_record()?
         match record {
             Some(fields) => {
@@ -44,15 +44,15 @@ async def (mut r: Reader) async_decode(mut rows: Array<Row>) -> Result<usize, Er
     return Ok(added)
 }
 
-// readRecord decodes one record. None means the stream ended before a field
-// started; a record with one empty field is Some, not None.
+# readRecord decodes one record. None means the stream ended before a field
+# started; a record with one empty field is Some, not None.
 def (mut r: Reader) read_record() -> Result<Option<Array<str>>, Error> {
     var first: i32 = r.peek_byte()?
     if first < 0 {
         return Ok(None)
     }
     var fields: Array<str> = new Array<str>(0)
-    for {
+    while True {
         var data: Array<u8> = new Array<u8>(0)
         var end: i32 = 0
         if first == i32(quoteByte) {
@@ -60,7 +60,7 @@ def (mut r: Reader) read_record() -> Result<Option<Array<str>>, Error> {
         } else {
             end = r.read_unquoted(data)?
         }
-        if !valid_utf8(data[Range(0, data.len())]) {
+        if not valid_utf8(data[Range(0, data.len())]) {
             return Err(errors.Invalid)
         }
         fields.push(str(data))
@@ -72,11 +72,11 @@ def (mut r: Reader) read_record() -> Result<Option<Array<str>>, Error> {
     }
 }
 
-// readUnquoted copies one field up to a separator, a line ending, or the end
-// of the stream. A quote inside an unquoted field is rejected because RFC 4180
-// requires such a field to be quoted.
+# readUnquoted copies one field up to a separator, a line ending, or the end
+# of the stream. A quote inside an unquoted field is rejected because RFC 4180
+# requires such a field to be quoted.
 def (mut r: Reader) read_unquoted(mut f: Array<u8>) -> Result<i32, Error> {
-    for {
+    while True {
         var c: i32 = r.peek_byte()?
         if c < 0 {
             return Ok(2)
@@ -106,12 +106,12 @@ def (mut r: Reader) read_unquoted(mut f: Array<u8>) -> Result<i32, Error> {
     }
 }
 
-// readQuoted copies one quoted field. A doubled quote is one quote byte; the
-// closing quote must be followed by a separator, a line ending, or the end of
-// the stream.
+# readQuoted copies one quoted field. A doubled quote is one quote byte; the
+# closing quote must be followed by a separator, a line ending, or the end of
+# the stream.
 def (mut r: Reader) read_quoted(mut f: Array<u8>) -> Result<i32, Error> {
     r.pos += 1usize
-    for {
+    while True {
         var c: i32 = r.take_byte()?
         if c < 0 {
             return Err(errors.Invalid)
@@ -131,8 +131,8 @@ def (mut r: Reader) read_quoted(mut f: Array<u8>) -> Result<i32, Error> {
     }
 }
 
-// endField consumes the byte after a closing quote and reports how the field
-// ended: 0 for a separator, 1 for a line ending, 2 for the end of the stream.
+# endField consumes the byte after a closing quote and reports how the field
+# ended: 0 for a separator, 1 for a line ending, 2 for the end of the stream.
 def (mut r: Reader) end_field(next: i32) -> Result<i32, Error> {
     if next < 0 {
         return Ok(2)
@@ -156,22 +156,22 @@ def (mut r: Reader) end_field(next: i32) -> Result<i32, Error> {
     return Err(errors.Invalid)
 }
 
-// peekByte returns the next byte without consuming it, or -1 at the end of the
-// stream. A consumed buffer is dropped before the next read so the pending
-// bytes never grow across calls.
+# peekByte returns the next byte without consuming it, or -1 at the end of the
+# stream. A consumed buffer is dropped before the next read so the pending
+# bytes never grow across calls.
 def (mut r: Reader) peek_byte() -> Result<i32, Error> {
     if r.pos >= r.buf.len() {
         r.buf.clear()
         r.pos = 0usize
         var more: bool = r.fill()?
-        if !more {
+        if not more {
             return Ok(-1)
         }
     }
     return Ok(i32(r.buf.get(r.pos)))
 }
 
-// takeByte consumes and returns the next byte, or -1 at the end of the stream.
+# takeByte consumes and returns the next byte, or -1 at the end of the stream.
 def (mut r: Reader) take_byte() -> Result<i32, Error> {
     var c: i32 = r.peek_byte()?
     if c >= 0 {
@@ -180,25 +180,25 @@ def (mut r: Reader) take_byte() -> Result<i32, Error> {
     return Ok(c)
 }
 
-// fill reads one chunk and appends it to the pending bytes. False means the
-// stream ended; the flag keeps later calls from reading it again.
+# fill reads one chunk and appends it to the pending bytes. False means the
+# stream ended; the flag keeps later calls from reading it again.
 def (mut r: Reader) fill() -> Result<bool, Error> {
     if r.eof {
-        return Ok(false)
+        return Ok(False)
     }
     var chunk: Array<u8> = new Array<u8>(8192)
     var n: usize = r.src.read(chunk)?
     if n == 0usize {
-        r.eof = true
-        return Ok(false)
+        r.eof = True
+        return Ok(False)
     }
     var i: usize = 0usize
-    for {
+    while True {
         if i >= n {
             break
         }
         r.buf.push(chunk.get(i))
         i += 1usize
     }
-    return Ok(true)
+    return Ok(True)
 }

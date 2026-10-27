@@ -1,10 +1,10 @@
-// Join joins the non-empty parts with the platform separator and cleans the
-// result. Empty parts contribute nothing, so Join("a", "") is "a", and a call
-// with no non-empty part is "" rather than ".".
+# Join joins the non-empty parts with the platform separator and cleans the
+# result. Empty parts contribute nothing, so Join("a", "") is "a", and a call
+# with no non-empty part is "" rather than ".".
 def join(parts: ...str) -> str {
     var sep: u8 = separator()
     var out: Array<u8> = new Array<u8>(0)
-    var any: bool = false
+    var any: bool = False
     for p in parts {
         if p.len() == 0usize {
             continue
@@ -13,9 +13,9 @@ def join(parts: ...str) -> str {
             out.push(sep)
         }
         out.append(p[Range(0, p.len())])
-        any = true
+        any = True
     }
-    if !any {
+    if not any {
         return ""
     }
     var joined: str = str(out)

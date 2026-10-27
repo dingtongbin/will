@@ -30,7 +30,7 @@ async def produce(ch: chan<i32>, n: i32) {
 
 async def consume(ch: chan<i32>) -> i64 {
     var sum: i64 = 0
-    for {
+    while True {
         var item: Option<i32> = await ch.recv()
         match item {
             Some(value) => {

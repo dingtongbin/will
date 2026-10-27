@@ -9,7 +9,7 @@ import (
 // receive and a send without a separate shape for each operation.
 func TestGeneralMachineSplitsTwoChannelOps(t *testing.T) {
 	src := `def stage(inp: chan<i32>, out: chan<i32>) {
-    for {
+    while True {
         var item: Option<i32> = inp.recv()
         match item {
             Some(value) => {

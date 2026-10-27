@@ -1,7 +1,7 @@
 import "std/os/exec"
 
-// The constructors are pure: they only move strings and maps into a value, so
-// a corpus can inspect every field without starting a process.
+# The constructors are pure: they only move strings and maps into a value, so
+# a corpus can inspect every field without starting a process.
 def main() -> i32 {
     var c: exec.Cmd = exec.command("/bin/echo", "hello", "world")
     if c.path != "/bin/echo" {
@@ -19,7 +19,7 @@ def main() -> i32 {
     if c.args.get(1) != "world" {
         return 5
     }
-    // An empty environment means the child inherits ours.
+    # An empty environment means the child inherits ours.
     if c.env.len() != 0usize {
         return 6
     }
@@ -65,13 +65,13 @@ def main() -> i32 {
     if e.dir != "/tmp" {
         return 16
     }
-    // The receiver keeps its own map, so setting a variable in a copy does not
-    // leak back into the command it came from.
+    # The receiver keeps its own map, so setting a variable in a copy does not
+    # leak back into the command it came from.
     if d.env.len() != 0usize {
         return 17
     }
 
-    // A second WithEnv keeps the pairs of the first and lets a later pair win.
+    # A second WithEnv keeps the pairs of the first and lets a later pair win.
     var f: exec.Cmd = e.with_env("A", "9", "C", "3")
     if f.env.len() != 3usize {
         return 18
@@ -97,36 +97,36 @@ def main() -> i32 {
         }
     }
 
-    // The same call shape through a chained expression.
+    # The same call shape through a chained expression.
     var g: exec.Cmd = exec.command("ls", "-l").with_dir("/").with_env("LANG", "C")
-    if g.path != "ls" || g.dir != "/" || g.args.len() != 1usize {
+    if g.path != "ls" or g.dir != "/" or g.args.len() != 1usize {
         return 23
     }
     if g.env.len() != 1usize {
         return 24
     }
 
-    // The result types are plain values too. A field of an imported struct is
-    // read through a local because a chained read of a nested imported field is
-    // not lowered yet.
-    var status: exec.ExitStatus = exec.ExitStatus { code: 2, signaled: false}
+    # The result types are plain values too. A field of an imported struct is
+    # read through a local because a chained read of a nested imported field is
+    # not lowered yet.
+    var status: exec.ExitStatus = exec.ExitStatus { code: 2, signaled: False}
     var out: exec.Output = exec.Output {
         stdout: new Array<u8>(0),
         stderr: new Array<u8>(0),
         status: status,
     }
     var got: exec.ExitStatus = out.status
-    if got.code != 2 || got.signaled {
+    if got.code != 2 or got.signaled {
         return 25
     }
     if out.stdout.len() != 0usize {
         return 26
     }
 
-    // A pair-less WithEnv only copies the environment, and a command with no
-    // arguments carries an empty view.
+    # A pair-less WithEnv only copies the environment, and a command with no
+    # arguments carries an empty view.
     var h: exec.Cmd = c.with_env()
-    if h.env.len() != 0usize || h.path != c.path {
+    if h.env.len() != 0usize or h.path != c.path {
         return 27
     }
     var bare: exec.Cmd = exec.command("true")

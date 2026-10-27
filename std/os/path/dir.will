@@ -1,15 +1,15 @@
-// Dir returns the path's directory: everything up to and including the last
-// separator, cleaned. A path with no separator has directory ".".
+# Dir returns the path's directory: everything up to and including the last
+# separator, cleaned. A path with no separator has directory ".".
 def dir(p: str) -> str {
     var last: usize = 0usize
-    var found: bool = false
+    var found: bool = False
     for i, c in p {
         if is_separator(c) {
             last = i
-            found = true
+            found = True
         }
     }
-    if !found {
+    if not found {
         return "."
     }
     var after: usize = last + 1usize

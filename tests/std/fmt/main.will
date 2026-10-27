@@ -2,8 +2,8 @@ import "std/fmt"
 
 import "std/math"
 
-// eq reports whether got equals want. A mismatch prints both values once, so a
-// failing case names itself without a table of expected text.
+# eq reports whether got equals want. A mismatch prints both values once, so a
+# failing case names itself without a table of expected text.
 def eq(got: str, want: str) -> i32 {
     if got == want {
         return 1
@@ -30,10 +30,10 @@ def main() -> i32 {
     passed += eq(fmt.uint(18446744073709551615u64, 10, 0, 48u8).show(), "18446744073709551615")
     passed += eq(fmt.hex(255u64).show(), "ff")
     passed += eq(fmt.hex(0u64).show(), "0")
-    passed += eq(fmt.pad("ab", 4, 46u8, false).show(), "ab..")
-    passed += eq(fmt.pad("ab", 4, 46u8, true).show(), "..ab")
-    passed += eq(fmt.pad("abcd", 2, 46u8, false).show(), "abcd")
-    passed += eq(fmt.pad("", 3, 120u8, false).show(), "xxx")
+    passed += eq(fmt.pad("ab", 4, 46u8, False).show(), "ab..")
+    passed += eq(fmt.pad("ab", 4, 46u8, True).show(), "..ab")
+    passed += eq(fmt.pad("abcd", 2, 46u8, False).show(), "abcd")
+    passed += eq(fmt.pad("", 3, 120u8, False).show(), "xxx")
     passed += eq(fmt.int(255i64, 16, 6, 48u8).show(), "0000ff")
     passed += eq(fmt.int(-1i64, 2, 0, 48u8).show(), "-1")
     passed += eq(fmt.uint(8u64, 8, 0, 48u8).show(), "10")

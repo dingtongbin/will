@@ -61,7 +61,7 @@ func (p *Parser) parseExpr(minPrec int, allowBrace bool) ast.Expr {
 
 func (p *Parser) parseUnary(allowBrace bool) ast.Expr {
 	switch p.cur().Kind {
-	case token.Minus, token.Bang, token.Tilde:
+	case token.Minus, token.KwNot, token.Tilde:
 		op := p.next()
 		p.skipNL()
 		x := p.parseUnary(allowBrace)
@@ -239,6 +239,9 @@ func (p *Parser) parsePrimary(allowBrace bool) ast.Expr {
 	case token.KwTrue, token.KwFalse:
 		p.next()
 		return &ast.LiteralExpr{Span: p.emptySpan(tok), Kind: tok.Kind, Text: tok.Text}
+	case token.KwNone:
+		p.next()
+		return &ast.NameExpr{Span: p.emptySpan(tok), Name: "None"}
 	case token.KwAwait:
 		p.next()
 		inner := p.parseAwaitOperand(allowBrace)

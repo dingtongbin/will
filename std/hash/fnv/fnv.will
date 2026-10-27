@@ -1,17 +1,17 @@
-// offset32 is the FNV-1a offset basis for 32-bit hashes.
+# offset32 is the FNV-1a offset basis for 32-bit hashes.
 const offset32: u32 = 2166136261
 
-// prime32 is the FNV-1a prime for 32-bit hashes.
+# prime32 is the FNV-1a prime for 32-bit hashes.
 const prime32: u32 = 16777619
 
-// offset64 is the FNV-1a offset basis for 64-bit hashes.
+# offset64 is the FNV-1a offset basis for 64-bit hashes.
 const offset64: u64 = 14695981039346656037
 
-// prime64 is the FNV-1a prime for 64-bit hashes.
+# prime64 is the FNV-1a prime for 64-bit hashes.
 const prime64: u64 = 1099511628211
 
-// Sum32 returns the 32-bit FNV-1a hash of b. The multiply wraps because the
-// hash is defined modulo 2^32, so it uses the wrapping operator.
+# Sum32 returns the 32-bit FNV-1a hash of b. The multiply wraps because the
+# hash is defined modulo 2^32, so it uses the wrapping operator.
 def sum32(b: []u8) -> u32 {
     var h: u32 = offset32
     for v in b {
@@ -21,8 +21,8 @@ def sum32(b: []u8) -> u32 {
     return h
 }
 
-// Sum64 returns the 64-bit FNV-1a hash of b. The multiply wraps because the
-// hash is defined modulo 2^64, so it uses the wrapping operator.
+# Sum64 returns the 64-bit FNV-1a hash of b. The multiply wraps because the
+# hash is defined modulo 2^64, so it uses the wrapping operator.
 def sum64(b: []u8) -> u64 {
     var h: u64 = offset64
     for v in b {

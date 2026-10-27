@@ -26,17 +26,17 @@ async def worker(ch: chan<i32>) -> i32 {
     }
 }
 
-// Driver calls a waiting function, so it waits as well.
+# Driver calls a waiting function, so it waits as well.
 async def driver(ch: chan<i32>) -> i32 {
     return await worker(ch)
 }
 
-// Fetch returns an aggregate, so the caller reads it from a place.
+# Fetch returns an aggregate, so the caller reads it from a place.
 async def fetch(ch: chan<i32>) -> Option<i32> {
     return await ch.recv()
 }
 
-// UseFetch awaits a waiting function whose result is an aggregate.
+# UseFetch awaits a waiting function whose result is an aggregate.
 async def use_fetch(ch: chan<i32>) -> i32 {
     var item: Option<i32> = await fetch(ch)
     match item {
@@ -49,13 +49,13 @@ async def use_fetch(ch: chan<i32>) -> i32 {
     }
 }
 
-// UseBox calls a waiting method, so it waits as well.
+# UseBox calls a waiting method, so it waits as well.
 async def use_box(b: Box) -> i32 {
     return await b.take()
 }
 
-// Drain calls a waiting function on every loop iteration. The await slots
-// stay in the entry block, so a long loop does not grow the stack.
+# Drain calls a waiting function on every loop iteration. The await slots
+# stay in the entry block, so a long loop does not grow the stack.
 async def drain(ch: chan<i32>, n: i32) -> i32 {
     var sum: i32 = 0
     for _ in Range(0, n) {
@@ -99,12 +99,12 @@ async def main() -> i32 {
     return 0
 }
 
-// Produce is declared after its use, so the call names it by symbol.
+# Produce is declared after its use, so the call names it by symbol.
 async def produce(ch: chan<i32>, value: i32) {
     _ = await ch.send(value)
 }
 
-// Fill sends 0..n-1 into the channel.
+# Fill sends 0..n-1 into the channel.
 async def fill(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
         _ = await ch.send(i)
