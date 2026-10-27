@@ -846,17 +846,20 @@ func (c *checker) inferExprInner(s *inferScope, e ast.Expr) *Type {
 		if !s.async {
 			c.bag.Error(x.Pos(), diag.CodeAwaitOutsideAsync,
 				"await is only allowed inside an async function",
-				"mark the function async, or use wait(...)")
-		}
-		if !awaitOperand(x.X) {
-			c.bag.Error(x.Pos(), diag.CodeAwaitNotAsync,
-				"await needs an async call or a wait operation",
-				"remove await or call an async function")
+				"mark the function async")
 		}
 		previous := s.allowAsyncCall
 		s.allowAsyncCall = true
 		t := c.inferExpr(s, x.X)
 		s.allowAsyncCall = previous
+		if t != nil && t.Kind() == NamedKind && t.Name() == "Task" && len(t.Args()) == 1 {
+			return c.in.named("Result", []*Type{t.Args()[0], c.in.named("TaskError", nil)})
+		}
+		if !awaitOperand(x.X) {
+			c.bag.Error(x.Pos(), diag.CodeAwaitNotAsync,
+				"await needs a Task or an async call",
+				"remove await or call an async function")
+		}
 		return t
 	case *ast.UnwrapExpr:
 		c.inferExpr(s, x.X)
@@ -1357,6 +1360,12 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
 			return c.in.named("Result", []*Type{c.in.unit(), c.in.named("Error", nil)})
 		}
+	case "cancel":
+		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "Task" {
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.unit()
+		}
+		return nil
 	case "join":
 		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "Task" && len(recv.Args()) == 1 {
 			c.requireWait(s, call.Pos())
