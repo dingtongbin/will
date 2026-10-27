@@ -8,7 +8,7 @@ import (
 )
 
 func TestLeakWarnsAtTheCall(t *testing.T) {
-	src := `func F(xs: Array<i32>) {
+	src := `def F(xs: Array<i32>) {
     leak(xs)
 }
 `

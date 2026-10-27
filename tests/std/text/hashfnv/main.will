@@ -2,7 +2,7 @@ import "std/hash/fnv"
 
 // The vectors are the published FNV-1a ones: the empty text gives the offset
 // basis, "a" and "foobar" exercise both the xor and the wrapping multiply.
-func main() -> i32 {
+def main() -> i32 {
     if fnv.Sum32(""[Range(0, 0)]) != 0x811c9dc5u32 {
         return 1
     }

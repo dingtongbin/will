@@ -23,7 +23,7 @@ func TestBorrowSeesAMutMethodInAnotherFile(t *testing.T) {
     n: i32
 }
 
-func (mut c: C) Bump() {
+def (mut c: C) Bump() {
     c.n += 1
 }
 
@@ -34,7 +34,7 @@ struct S {
 	if len(ds) != 0 {
 		t.Fatalf("parse decl: %s", diag.FormatAll(ds))
 	}
-	caller, ds := parser.Parse("caller.will", []byte(`func F(s: S) {
+	caller, ds := parser.Parse("caller.will", []byte(`def F(s: S) {
     var x: C = s.c
     x.Bump()
 }
@@ -59,10 +59,10 @@ func TestBorrowRejectsAMutCallWhileAViewIsLive(t *testing.T) {
     xs: Array<i32>
 }
 
-func (mut b: Bag) Add() {
+def (mut b: Bag) Add() {
 }
 
-func F() {
+def F() {
     var b: Bag = Bag { xs: new Array<i32>(0)}
     var v: []i32 = b.xs[Range(0, b.xs.Len())]
     b.Add()
@@ -85,10 +85,10 @@ func F() {
 }
 
 func TestBorrowRejectsAMutParameterWhileAViewIsLive(t *testing.T) {
-	src := `func Fill(mut xs: Array<i32>) {
+	src := `def Fill(mut xs: Array<i32>) {
 }
 
-func F() {
+def F() {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     Fill(xs)
@@ -102,7 +102,7 @@ func F() {
 }
 
 func TestBorrowRejectsAMoveWhileAViewIsLive(t *testing.T) {
-	src := `func F() {
+	src := `def F() {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     var moved: Array<i32> = xs
@@ -117,7 +117,7 @@ func TestBorrowRejectsAMoveWhileAViewIsLive(t *testing.T) {
 }
 
 func TestBorrowRejectsContainerGrowthWhileAViewIsLive(t *testing.T) {
-	src := `func F() {
+	src := `def F() {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     xs.Push(1)
@@ -134,10 +134,10 @@ func TestBorrowRejectsContainerGrowthWhileAViewIsLive(t *testing.T) {
 }
 
 func TestBorrowEndsAtTheViewsLastUse(t *testing.T) {
-	src := `func Fill(mut xs: Array<i32>) {
+	src := `def Fill(mut xs: Array<i32>) {
 }
 
-func F() {
+def F() {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     _ = v
@@ -150,7 +150,7 @@ func F() {
 }
 
 func TestBorrowRejectsReturningALocalView(t *testing.T) {
-	src := `func Leak() -> []i32 {
+	src := `def Leak() -> []i32 {
     var xs: Array<i32> = new Array<i32>(0)
     return xs[Range(0, xs.Len())]
 }
@@ -169,7 +169,7 @@ func TestBorrowRejectsStoringALocalView(t *testing.T) {
     view: []i32
 }
 
-func Store() -> Holder {
+def Store() -> Holder {
     var xs: Array<i32> = new Array<i32>(0)
     return Holder { view: xs[Range(0, xs.Len())] }
 }
@@ -181,7 +181,7 @@ func Store() -> Holder {
 }
 
 func TestBorrowCanReturnAParameterView(t *testing.T) {
-	src := `func Slice(xs: []i32) -> []i32 {
+	src := `def Slice(xs: []i32) -> []i32 {
     return xs[Range(0, xs.Len())]
 }
 `
@@ -199,13 +199,13 @@ struct Q {
     p: P
 }
 
-func (mut p: P) Move() {
+def (mut p: P) Move() {
 }
 
-func Fill(mut p: P) {
+def Fill(mut p: P) {
 }
 
-func F(q: Q) {
+def F(q: Q) {
     var a: P = q.p
     a.Move()
     Fill(a)
@@ -230,10 +230,10 @@ func F(q: Q) {
 }
 
 func TestCopyOfScalarPlaceIsAllowed(t *testing.T) {
-	src := `func Fill(mut n: i32) {
+	src := `def Fill(mut n: i32) {
 }
 
-func F(q: Q) {
+def F(q: Q) {
     var n: i32 = q.n
     Fill(n)
     _ = n
@@ -245,7 +245,7 @@ func F(q: Q) {
 }
 
 func TestBorrowRejectsReturningAClosureOfALocalView(t *testing.T) {
-	src := `func Leak() -> func() -> i32 {
+	src := `def Leak() -> func() -> i32 {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     return func() -> i32 {
@@ -263,7 +263,7 @@ func TestBorrowRejectsReturningAClosureOfALocalView(t *testing.T) {
 }
 
 func TestBorrowRejectsReturningAClosureVariableOfALocalView(t *testing.T) {
-	src := `func Leak() -> func() -> i32 {
+	src := `def Leak() -> func() -> i32 {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     var f: func() -> i32 = func() -> i32 { return i32(v.Len()) }
@@ -281,7 +281,7 @@ func TestBorrowRejectsStoringAClosureOfALocalView(t *testing.T) {
     cb: func() -> i32
 }
 
-func Store() -> Holder {
+def Store() -> Holder {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     return Holder { cb: func() -> i32 { return i32(v.Len()) } }
@@ -294,11 +294,11 @@ func Store() -> Holder {
 }
 
 func TestBorrowRejectsSpawningAClosureOfALocalView(t *testing.T) {
-	src := `func Work() -> i32 {
+	src := `def Work() -> i32 {
 	return 0
 }
 
-func F() {
+def F() {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     var f: func() -> i32 = func() -> i32 { return i32(v.Len()) }
@@ -312,10 +312,10 @@ func F() {
 }
 
 func TestBorrowAliasEndsAtItsOwnLastUse(t *testing.T) {
-	src := `func Fill(mut xs: Array<i32>) {
+	src := `def Fill(mut xs: Array<i32>) {
 }
 
-func F() {
+def F() {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     var w: []i32 = v
@@ -330,10 +330,10 @@ func F() {
 }
 
 func TestBorrowAliasKeepsOwnerBorrowed(t *testing.T) {
-	src := `func Fill(mut xs: Array<i32>) {
+	src := `def Fill(mut xs: Array<i32>) {
 }
 
-func F() {
+def F() {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     var w: []i32 = v
@@ -349,10 +349,10 @@ func F() {
 }
 
 func TestBorrowNotPinnedByUnrelatedClosure(t *testing.T) {
-	src := `func Fill(mut xs: Array<i32>) {
+	src := `def Fill(mut xs: Array<i32>) {
 }
 
-func F() {
+def F() {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     var f: func() -> i32 = func() -> i32 { return 1 }
@@ -367,10 +367,10 @@ func F() {
 }
 
 func TestBorrowPinnedByCapturedView(t *testing.T) {
-	src := `func Fill(mut xs: Array<i32>) {
+	src := `def Fill(mut xs: Array<i32>) {
 }
 
-func F() {
+def F() {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     var f: func() -> i32 = func() -> i32 {
@@ -388,13 +388,13 @@ func F() {
 }
 
 func TestBorrowNotPinnedByUnrelatedDefer(t *testing.T) {
-	src := `func Tick() {
+	src := `def Tick() {
 }
 
-func Fill(mut xs: Array<i32>) {
+def Fill(mut xs: Array<i32>) {
 }
 
-func F() {
+def F() {
     var xs: Array<i32> = new Array<i32>(0)
     var v: []i32 = xs[Range(0, xs.Len())]
     defer Tick()
@@ -408,10 +408,10 @@ func F() {
 }
 
 func TestBorrowEndsWithItsBlock(t *testing.T) {
-	src := `func Fill(mut xs: Array<i32>) {
+	src := `def Fill(mut xs: Array<i32>) {
 }
 
-func F() {
+def F() {
     var xs: Array<i32> = new Array<i32>(0)
     if true {
         var v: []i32 = xs[Range(0, xs.Len())]

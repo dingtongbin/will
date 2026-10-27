@@ -40,7 +40,7 @@ enum Shape {
 }
 
 interface Showable {
-    func Show() -> str
+    def Show() -> str
 }
 
 derive Show for Point
@@ -49,19 +49,19 @@ lane Ui struct Job {
     id: u32
 }
 
-func (mut p: Point) Move(dx: i32, dy: i32) {
+def (mut p: Point) Move(dx: i32, dy: i32) {
     p.x += dx
     p.y += dy
 }
 
-func Max<T: Ord>(a: T, b: T) -> T {
+def Max<T: Ord>(a: T, b: T) -> T {
     if a > b {
         return a
     }
     return b
 }
 
-func Run(n: i32) -> Result<i32, Error> {
+def Run(n: i32) -> Result<i32, Error> {
     var total: i32 = 0
     var p: Point = Point { x: 1, y: n }
     var text: str = f"value {n} {{ok}}"
@@ -197,7 +197,7 @@ func TestParseProgram(t *testing.T) {
 }
 
 func TestAsyncFunctionAndAwait(t *testing.T) {
-	f := parse(t, "async func Load() -> i32 {\n    return await Read()?\n}\n")
+	f := parse(t, "async def Load() -> i32 {\n    return await Read()?\n}\n")
 	fn, ok := f.Decls[0].(*ast.FuncDecl)
 	if !ok || !fn.Async {
 		t.Fatalf("decl 0 = %+v, want async Load", f.Decls[0])

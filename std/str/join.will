@@ -2,7 +2,7 @@
 // bytes, so a valid text is not decoded and encoded again, and Push doubles the
 // buffer when it is full, so the whole join is linear in the total length. An
 // empty part still takes its place between two separators.
-func Join(parts: []str, sep: str) -> str {
+def Join(parts: []str, sep: str) -> str {
     var out: Array<u8> = new Array<u8>(0)
     var first: bool = true
     for p in parts {

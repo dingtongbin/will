@@ -1,4 +1,4 @@
-func Sum() -> i32 {
+def Sum() -> i32 {
     var a: Array<i32> = new Array<i32>(0)
     a.Push(1)
     a.Push(2)
@@ -11,6 +11,6 @@ func Sum() -> i32 {
     return s + a.Get(0) + i32(a.Len())
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return Sum()
 }

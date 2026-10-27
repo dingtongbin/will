@@ -2,7 +2,7 @@ import "std/os/path"
 
 // The expected text is built from Separator so this corpus passes on every
 // target. Both slash spellings are accepted as input; output uses the host one.
-func main() -> i32 {
+def main() -> i32 {
     var sep: str = str(u32(path.Separator()))
     if path.Clean("a/./b") != "a" + sep + "b" {
         return 1

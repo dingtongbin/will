@@ -108,7 +108,7 @@ func isTestHandle(text, name string) bool {
 // Fail marks the shared state and lets the runner continue to the next case.
 func testEntry(module string, tests, benchmarks []string) string {
 	var out strings.Builder
-	out.WriteString("import \"std/test\"\n\nfunc WillTestMain() -> i32 {\n")
+	out.WriteString("import \"std/test\"\n\ndef WillTestMain() -> i32 {\n")
 	out.WriteString("    var passed: i32 = 0\n")
 	total := len(tests) + len(benchmarks)
 	fmt.Fprintf(&out, "    var total: i32 = %d\n", total)

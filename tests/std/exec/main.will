@@ -1,6 +1,6 @@
 import "std/os/exec"
 
-async func main() -> i32 {
+async def main() -> i32 {
     var command: exec.Cmd = exec.Command("cmd", "/C", "echo hi")
     var out: Result<exec.Output, Error> = await command.AsyncOutput()
     match out {

@@ -8,14 +8,14 @@ const halfPi: f64 = 1.57079632679489661923
 
 // nan is the value Sqrt and the angle functions return outside their domain.
 // The language has no nan literal, so they build one by dividing zero by zero.
-func nan() -> f64 {
+def nan() -> f64 {
     var zero: f64 = 0.0
     return zero / zero
 }
 
 // Sqrt returns the non-negative square root of x. A negative input gives nan,
 // and an infinite input is returned unchanged.
-func Sqrt(x: f64) -> f64 {
+def Sqrt(x: f64) -> f64 {
     if x != x {
         return x
     }
@@ -69,7 +69,7 @@ func Sqrt(x: f64) -> f64 {
 
 // reduce brings x into [-Pi, Pi]. A turn count that does not fit an i64 also
 // has no representable fraction in an f64, so such an argument gets nan.
-func reduce(x: f64) -> f64 {
+def reduce(x: f64) -> f64 {
     var turns: f64 = x / twoPi
     if turns > 9.0e18 || turns < -9.0e18 {
         return nan()
@@ -86,7 +86,7 @@ func reduce(x: f64) -> f64 {
 }
 
 // Sin returns the sine of x, where x is in radians.
-func Sin(x: f64) -> f64 {
+def Sin(x: f64) -> f64 {
     if x != x {
         return x
     }
@@ -124,7 +124,7 @@ func Sin(x: f64) -> f64 {
 
 // Cos returns the cosine of x, where x is in radians. A quarter turn turns the
 // sine of the shifted angle into the cosine, so both share one series.
-func Cos(x: f64) -> f64 {
+def Cos(x: f64) -> f64 {
     if x != x {
         return x
     }
@@ -138,7 +138,7 @@ func Cos(x: f64) -> f64 {
 // atanSeries sums the Taylor series of atan for a small non-negative t. The
 // caller has already reduced the argument below about 0.02, so terms past the
 // first few are below the f64 resolution.
-func atanSeries(t: f64) -> f64 {
+def atanSeries(t: f64) -> f64 {
     var square: f64 = t * t
     var term: f64 = t
     var sum: f64 = t
@@ -165,7 +165,7 @@ func atanSeries(t: f64) -> f64 {
 // atan returns the arc tangent of x in radians. Halving the angle six times
 // moves the argument below 0.02, where the series converges quickly; each
 // halving doubles the result back.
-func atan(x: f64) -> f64 {
+def atan(x: f64) -> f64 {
     var t: f64 = x
     var sign: f64 = 1.0
     if t < 0.0 {
@@ -198,7 +198,7 @@ func atan(x: f64) -> f64 {
 // Atan2 returns the angle in radians of the vector (x, y), with the result in
 // [-Pi, Pi]. It uses the signs of both arguments, so the quarter matters; a
 // zero vector has angle zero.
-func Atan2(y: f64, x: f64) -> f64 {
+def Atan2(y: f64, x: f64) -> f64 {
     if y != y || x != x {
         return nan()
     }

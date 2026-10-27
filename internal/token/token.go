@@ -36,7 +36,9 @@ const (
 	// BlockComment is a /* */ comment; only the formatter keeps it.
 	BlockComment
 
-	// KwFunc introduces a function or method declaration.
+	// KwDef introduces a function or method declaration.
+	KwDef
+	// KwFunc introduces a function type or a function literal.
 	KwFunc
 	// KwAsync marks a function declaration whose body may await.
 	KwAsync
@@ -52,6 +54,8 @@ const (
 	KwConst
 	// KwVar introduces a variable declaration.
 	KwVar
+	// KwType introduces a type alias.
+	KwType
 	// KwImport introduces an import declaration.
 	KwImport
 	// KwDerive introduces a derive declaration.
@@ -224,6 +228,7 @@ var names = map[Kind]string{
 	DocComment:      "documentation comment",
 	LineComment:     "line comment",
 	BlockComment:    "block comment",
+	KwDef:           "def",
 	KwFunc:          "func",
 	KwAsync:         "async",
 	KwAwait:         "await",
@@ -232,6 +237,7 @@ var names = map[Kind]string{
 	KwInterface:     "interface",
 	KwConst:         "const",
 	KwVar:           "var",
+	KwType:          "type",
 	KwImport:        "import",
 	KwDerive:        "derive",
 	KwLane:          "lane",
@@ -321,6 +327,7 @@ func (k Kind) String() string {
 
 // Keywords maps reserved words to their token kind.
 var Keywords = map[string]Kind{
+	"def":       KwDef,
 	"func":      KwFunc,
 	"async":     KwAsync,
 	"await":     KwAwait,
@@ -329,6 +336,7 @@ var Keywords = map[string]Kind{
 	"interface": KwInterface,
 	"const":     KwConst,
 	"var":       KwVar,
+	"type":      KwType,
 	"import":    KwImport,
 	"derive":    KwDerive,
 	"lane":      KwLane,
@@ -366,7 +374,7 @@ func (t Token) Is(k Kind) bool {
 
 // IsKeyword reports whether k is a strict keyword.
 func (k Kind) IsKeyword() bool {
-	return k >= KwFunc && k <= KwFalse
+	return k >= KwDef && k <= KwFalse
 }
 
 // IsComment reports whether k is any comment kind.

@@ -1,10 +1,10 @@
 import "std/meta"
 
-func F() -> bool {
+def F() -> bool {
     var on: bool = meta.Feature("tls")
     return on
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return 0
 }

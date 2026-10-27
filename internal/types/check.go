@@ -160,6 +160,12 @@ type checker struct {
 	exprTypes map[ast.Expr]*Type
 	// laneTypes maps a lane-marked type name in this package to its lane.
 	laneTypes map[string]string
+	// aliasResolved caches expanded aliases. aliasActive and aliasStack detect
+	// a cycle while aliases are expanded.
+	aliasResolved map[string]*Type
+	aliasActive   map[string]bool
+	aliasStack    []string
+	aliasReported map[string]bool
 }
 
 func (c *checker) walkFile(f *ast.File) {

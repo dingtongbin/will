@@ -1,6 +1,6 @@
 import "std/os/fs"
 
-func CheckFile() -> i32 {
+def CheckFile() -> i32 {
     var path: str = "will-fs-probe.tmp"
     var data: str = "hello"
     var bytes: []u8 = data[Range(0, 5)]
@@ -123,7 +123,7 @@ func CheckFile() -> i32 {
     return 0
 }
 
-func CheckDir() -> i32 {
+def CheckDir() -> i32 {
     var first: str = "will-fs-a.tmp"
     var second: str = "will-fs-b.tmp"
     var a: Result<fs.File, Error> = fs.Create(first, 420u32)
@@ -178,7 +178,7 @@ func CheckDir() -> i32 {
     return 0
 }
 
-func CheckAsync() -> i32 {
+def CheckAsync() -> i32 {
     var path: str = "will-fs-async.tmp"
     var text: str = "async"
     var data: []u8 = text[Range(0, 5)]
@@ -205,7 +205,7 @@ func CheckAsync() -> i32 {
     return 0
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var code: i32 = CheckFile()
     if code != 0 {
         return code

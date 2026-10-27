@@ -1,4 +1,4 @@
-func main() -> i32 {
+def main() -> i32 {
     var s: Set<i32> = new Set<i32>()
     if s.Add(1) {
         s.Add(2)

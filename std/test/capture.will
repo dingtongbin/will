@@ -14,14 +14,14 @@ struct Capture {
 }
 
 // Capture starts capturing the current case's output.
-func (mut t: T) Capture() -> Capture {
+def (mut t: T) Capture() -> Capture {
     var status: i32 = c.willtest_capture_begin()
     return Capture { active: status == 0, text: ""}
 }
 
 // Text returns the bytes captured so far. After Release it returns the final
 // bytes that were read when capture stopped.
-func (cap: Capture) Text() -> str {
+def (cap: Capture) Text() -> str {
     if !cap.active {
         return cap.text.Clone()
     }
@@ -34,7 +34,7 @@ func (cap: Capture) Text() -> str {
 }
 
 // Release stops capturing, stores the final bytes, and restores direct output.
-func (mut cap: Capture) Release() {
+def (mut cap: Capture) Release() {
     if !cap.active {
         return
     }

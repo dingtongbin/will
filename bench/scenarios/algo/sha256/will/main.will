@@ -12,12 +12,12 @@ const messageSize: i32 = 119
 const repetitions: i32 = 5
 
 // Ror rotates a word to the right.
-func Ror(value: u32, amount: u32) -> u32 {
+def Ror(value: u32, amount: u32) -> u32 {
     return (value >> amount) | (value <<% (32u32 - amount))
 }
 
 // FillConstants puts the round constants of SHA-256 into the array.
-func FillConstants(k: Array<u32>) {
+def FillConstants(k: Array<u32>) {
     k.Push(0x428a2f98u32)
     k.Push(0x71374491u32)
     k.Push(0xb5c0fbcfu32)
@@ -85,7 +85,7 @@ func FillConstants(k: Array<u32>) {
 }
 
 // Compress runs the compression of one block into the state.
-func Compress(mut state: Array<u32>, mut words: Array<u32>, block: Array<u8>, at: i32, k: Array<u32>) {
+def Compress(mut state: Array<u32>, mut words: Array<u32>, block: Array<u8>, at: i32, k: Array<u32>) {
     for i in Range(0, 16) {
         var p: i32 = at + i * 4
         var b0: u8 = 0u8
@@ -155,7 +155,7 @@ func Compress(mut state: Array<u32>, mut words: Array<u32>, block: Array<u8>, at
 }
 
 // InitialState returns the state of a fresh hash.
-func InitialState() -> Array<u32> {
+def InitialState() -> Array<u32> {
     var state: Array<u32> = new Array<u32>(8)
     state.Push(0x6a09e667u32)
     state.Push(0xbb67ae85u32)
@@ -169,7 +169,7 @@ func InitialState() -> Array<u32> {
 }
 
 // EmptyWords returns the array the schedule of the compression uses.
-func EmptyWords() -> Array<u32> {
+def EmptyWords() -> Array<u32> {
     var words: Array<u32> = new Array<u32>(64)
     for i in Range(0, 64) {
         _ = i
@@ -179,7 +179,7 @@ func EmptyWords() -> Array<u32> {
 }
 
 // Message returns the padded message the workload hashes.
-func Message() -> Array<u8> {
+def Message() -> Array<u8> {
     var message: Array<u8> = new Array<u8>(128)
     var state: u64 = 0xA5A5
     var whole: i32 = messageSize / 8
@@ -214,7 +214,7 @@ func Message() -> Array<u8> {
     return message
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     var k: Array<u32> = new Array<u32>(64)
     FillConstants(k)

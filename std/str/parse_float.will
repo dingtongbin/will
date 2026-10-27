@@ -2,7 +2,7 @@
 // digit, and an optional decimal exponent: [+-]digits[.digits][e[+-]digits].
 // The mantissa is accumulated in binary floating point, so a value with more
 // digits than f64 can hold is rounded rather than rejected.
-func ParseF64(s: str) -> Result<f64, Error> {
+def ParseF64(s: str) -> Result<f64, Error> {
     var value: f64 = 0.0
     var fraction: f64 = 1.0
     var exponent: i32 = 0

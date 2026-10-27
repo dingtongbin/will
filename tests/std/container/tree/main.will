@@ -1,12 +1,12 @@
 import "std/container/tree"
 
-func Less(a: i32, b: i32) -> bool {
+def Less(a: i32, b: i32) -> bool {
     return a < b
 }
 
 // Tree must keep ordered lookups correct through rotations and through both
 // one-child and two-child deletion.
-func main() -> i32 {
+def main() -> i32 {
     var t: tree.Tree<i32, i32> = new tree.Tree<i32, i32>(Less)
     if t.Len() != 0usize {
         return 1

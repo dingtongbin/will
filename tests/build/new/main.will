@@ -3,15 +3,15 @@ struct P {
     y: i32
 }
 
-func (mut p: P) init(y: i32) {
+def (mut p: P) init(y: i32) {
     p.y = y
 }
 
-func Make() -> P {
+def Make() -> P {
     return new P(7)
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var p: P = Make()
     return p.x + p.y
 }

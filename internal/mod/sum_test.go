@@ -29,7 +29,7 @@ func hash(t *testing.T, root string) string {
 func TestSourceFaceHashIsStable(t *testing.T) {
 	root := t.TempDir()
 	write(t, root, "will.mod", "module example.com/app\nwill 1\n")
-	write(t, root, "src/a.will", "func F() {\n}\n")
+	write(t, root, "src/a.will", "def F() {\n}\n")
 	write(t, root, "src/native.h", "int puts(const char *);\n")
 	first := hash(t, root)
 	if second := hash(t, root); first != second {
@@ -40,7 +40,7 @@ func TestSourceFaceHashIsStable(t *testing.T) {
 func TestSourceFaceHashFollowsTheFace(t *testing.T) {
 	base := t.TempDir()
 	write(t, base, "will.mod", "module example.com/app\nwill 1\n")
-	write(t, base, "a.will", "func F() {\n}\n")
+	write(t, base, "a.will", "def F() {\n}\n")
 	before := hash(t, base)
 
 	// A source file, a package header, and the module file are all in the face.
@@ -49,18 +49,18 @@ func TestSourceFaceHashFollowsTheFace(t *testing.T) {
 		path string
 		data string
 	}{
-		{"source", "b.will", "func G() {\n}\n"},
+		{"source", "b.will", "def G() {\n}\n"},
 		{"header", "pkg/native.h", "int atoi(const char *);\n"},
 		{"module", "will.mod", "module example.com/app\nwill 2\n"},
 		{"sum", "will.sum", "example.com/lib sha256:00\n"},
 		{"readme", "README", "notes\n"},
-		{"corpus", "tests/case/helper.will", "func Helper() {\n}\n"},
+		{"corpus", "tests/case/helper.will", "def Helper() {\n}\n"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			root := t.TempDir()
 			write(t, root, "will.mod", "module example.com/app\nwill 1\n")
-			write(t, root, "a.will", "func F() {\n}\n")
+			write(t, root, "a.will", "def F() {\n}\n")
 			if got := hash(t, root); got != before {
 				t.Fatalf("a fresh copy hashed differently")
 			}

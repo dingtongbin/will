@@ -30,9 +30,9 @@ func writeModule(t *testing.T) (root string) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	writeFile(t, root, "will.mod", "module example.com/app\nwill 1\nrequire example.com/lib@v1.0.0\nreplace example.com/lib@v1.0.0 => ../lib\n")
-	writeFile(t, root, "app.will", "func F() {\n}\n")
+	writeFile(t, root, "app.will", "def F() {\n}\n")
 	writeIn(t, lib, "will.mod", "module example.com/lib\nwill 1\n")
-	writeIn(t, lib, "lib.will", "func Util() {\n}\n")
+	writeIn(t, lib, "lib.will", "def Util() {\n}\n")
 	return root
 }
 
@@ -64,7 +64,7 @@ func TestModVerifyReportsMismatch(t *testing.T) {
 		t.Fatalf("a README changed the checksum: %q", out)
 	}
 	// Changing the dependency's source must change its checksum.
-	writeFile(t, filepath.Join(filepath.Dir(root), "lib"), "lib.will", "func Util() -> i32 {\n    return 1\n}\n")
+	writeFile(t, filepath.Join(filepath.Dir(root), "lib"), "lib.will", "def Util() -> i32 {\n    return 1\n}\n")
 	code, out, _ := runCLI("mod", "verify", root)
 	if code != 1 {
 		t.Fatalf("code = %d, want 1", code)
@@ -81,11 +81,11 @@ func TestModTidyCoversTransitiveDependencies(t *testing.T) {
 	a := filepath.Join(parent, "a")
 	b := filepath.Join(parent, "b")
 	writeIn(t, app, "will.mod", "module example.com/app\nwill 1\nrequire example.com/a@v1.0.0\nreplace example.com/a@v1.0.0 => ../a\n")
-	writeIn(t, app, "app.will", "func F() {\n}\n")
+	writeIn(t, app, "app.will", "def F() {\n}\n")
 	writeIn(t, a, "will.mod", "module example.com/a\nwill 1\nrequire example.com/b@v1.0.0\nreplace example.com/b@v1.0.0 => ../b\n")
-	writeIn(t, a, "a.will", "func A() {\n}\n")
+	writeIn(t, a, "a.will", "def A() {\n}\n")
 	writeIn(t, b, "will.mod", "module example.com/b\nwill 1\n")
-	writeIn(t, b, "b.will", "func B() {\n}\n")
+	writeIn(t, b, "b.will", "def B() {\n}\n")
 
 	if code, out, errOut := runCLI("mod", "tidy", app); code != 0 {
 		t.Fatalf("tidy: code = %d, stdout = %q, stderr = %q", code, out, errOut)
@@ -102,7 +102,7 @@ func TestModTidyCoversTransitiveDependencies(t *testing.T) {
 	if code, out, _ := runCLI("mod", "verify", app); code != 0 {
 		t.Fatalf("verify: code = %d, stdout = %q", code, out)
 	}
-	writeIn(t, b, "b.will", "func B() -> i32 {\n    return 1\n}\n")
+	writeIn(t, b, "b.will", "def B() -> i32 {\n    return 1\n}\n")
 	code, out, _ := runCLI("mod", "verify", app)
 	if code != 1 || !strings.Contains(out, "B0003 checksum mismatch for example.com/b") {
 		t.Fatalf("after a transitive change: code = %d, stdout = %q", code, out)
@@ -114,9 +114,9 @@ func TestModVerifyRequiresALineForEveryLocalModule(t *testing.T) {
 	app := filepath.Join(parent, "app")
 	lib := filepath.Join(parent, "lib")
 	writeIn(t, app, "will.mod", "module example.com/app\nwill 1\nrequire example.com/lib@v1.0.0\nreplace example.com/lib@v1.0.0 => ../lib\n")
-	writeIn(t, app, "app.will", "func F() {\n}\n")
+	writeIn(t, app, "app.will", "def F() {\n}\n")
 	writeIn(t, lib, "will.mod", "module example.com/lib\nwill 1\n")
-	writeIn(t, lib, "lib.will", "func Util() {\n}\n")
+	writeIn(t, lib, "lib.will", "def Util() {\n}\n")
 	if code, _, _ := runCLI("mod", "tidy", app); code != 0 {
 		t.Fatalf("tidy failed")
 	}
@@ -134,9 +134,9 @@ func TestModTidyCoversAnAliasReplace(t *testing.T) {
 	app := filepath.Join(parent, "app")
 	shared := filepath.Join(parent, "shared")
 	writeIn(t, app, "will.mod", "module example.com/app\nwill 1\nrequire example.com/a@v1.0.0\nreplace example.com/a@v1.0.0 => ../shared\n")
-	writeIn(t, app, "app.will", "func F() {\n}\n")
+	writeIn(t, app, "app.will", "def F() {\n}\n")
 	writeIn(t, shared, "will.mod", "module example.com/shared\nwill 1\n")
-	writeIn(t, shared, "shared.will", "func S() {\n}\n")
+	writeIn(t, shared, "shared.will", "def S() {\n}\n")
 
 	if code, out, errOut := runCLI("mod", "tidy", app); code != 0 {
 		t.Fatalf("tidy: code = %d, stdout = %q, stderr = %q", code, out, errOut)

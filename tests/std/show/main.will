@@ -1,12 +1,12 @@
 import "std/fmt"
 
 // take boxes any value that shows itself.
-func take(x: Show) -> str {
+def take(x: Show) -> str {
     return x.Show()
 }
 
 // joinAll walks the view a variadic Show parameter packs.
-func joinAll(parts: ...Show) -> str {
+def joinAll(parts: ...Show) -> str {
     var out: str = ""
     var n: i32 = i32(parts.Len())
     for i in Range(0, n) {
@@ -15,7 +15,7 @@ func joinAll(parts: ...Show) -> str {
     return out
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var a: str = take(42)
     var b: str = take("hi")
     var c: str = take(fmt.Int(7i64, 10, 0, 48u8))

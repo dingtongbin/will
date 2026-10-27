@@ -18,7 +18,7 @@ struct Poller {
 }
 
 // NewPoller returns an empty poller.
-func NewPoller() -> Poller {
+def NewPoller() -> Poller {
     return Poller {
         fds: new Array<i64>(0),
         events: new Array<u32>(0),
@@ -27,7 +27,7 @@ func NewPoller() -> Poller {
 }
 
 // Add waits for input readiness on fd and reports user when it is ready.
-func (mut p: Poller) Add(fd: i64, user: usize) -> Result<(), Error> {
+def (mut p: Poller) Add(fd: i64, user: usize) -> Result<(), Error> {
     if fd < 0 {
         return Err(errors.Invalid)
     }
@@ -39,7 +39,7 @@ func (mut p: Poller) Add(fd: i64, user: usize) -> Result<(), Error> {
 
 // Remove drops the registration for fd. Removing an absent descriptor is a
 // no-op.
-func (mut p: Poller) Remove(fd: i64) -> Result<(), Error> {
+def (mut p: Poller) Remove(fd: i64) -> Result<(), Error> {
     for i in Range(0, i32(p.fds.Len())) {
         if p.fds.Get(usize(i)) == fd {
             _ = p.fds.Remove(usize(i))
@@ -53,7 +53,7 @@ func (mut p: Poller) Remove(fd: i64) -> Result<(), Error> {
 
 // Next waits up to timeout for ready descriptors and appends their user tags to
 // out in registration order. Zero means the timeout expired.
-func (p: Poller) Next(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
+def (p: Poller) Next(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
     var before: usize = out.Len()
     var status: i32 = c.willrt_poll_wait(raw(p.fds), raw(p.events), raw(p.users),
                                           i64(p.fds.Len()), i64(timeout), raw(out))
@@ -66,7 +66,7 @@ func (p: Poller) Next(timeout: Duration, mut out: Array<usize>) -> Result<usize,
 // AsyncNext parks the calling task while the runtime poller scans the
 // descriptors; the poller delivers ready tags into out and wakes the task's
 // lane directly.
-async func (p: Poller) AsyncNext(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
+async def (p: Poller) AsyncNext(timeout: Duration, mut out: Array<usize>) -> Result<usize, Error> {
     var before: usize = out.Len()
     var status: i32 = await c.willrt_poll_wait_async(raw(p.fds), raw(p.events),
                                                  raw(p.users), i64(p.fds.Len()),

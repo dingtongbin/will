@@ -28,7 +28,7 @@ func movesOwned(t *testing.T, src string) []diag.Diagnostic {
 }
 
 func TestMoveFixedArrayElementNeedsClone(t *testing.T) {
-	src := `func F() -> i32 {
+	src := `def F() -> i32 {
     var a: str = "x"
     var xs: [1]str = [1]str { a }
     return i32(a.Len())
@@ -41,7 +41,7 @@ func TestMoveFixedArrayElementNeedsClone(t *testing.T) {
 }
 
 func TestMoveFixedArrayElementCanMove(t *testing.T) {
-	src := `func F() -> i32 {
+	src := `def F() -> i32 {
     var a: str = "x"
     var xs: [1]str = [1]str { a }
     return i32(xs[0].Len())
@@ -58,7 +58,7 @@ func TestMovePatternBindingIsABorrow(t *testing.T) {
     Empty
 }
 
-func F(e: E) -> str {
+def F(e: E) -> str {
     return match e {
         Text(s) => s
         Empty => ""
@@ -75,7 +75,7 @@ func F(e: E) -> str {
 }
 
 func TestMoveOwningParameterNeedsClone(t *testing.T) {
-	src := `func F(s: str) -> str {
+	src := `def F(s: str) -> str {
     return s
 }
 `
@@ -92,7 +92,7 @@ func TestMoveOwningParameterNeedsClone(t *testing.T) {
 }
 
 func TestMoveOwningParameterIntoContainerNeedsClone(t *testing.T) {
-	src := `func F(s: str, xs: Array<str>) {
+	src := `def F(s: str, xs: Array<str>) {
     xs.Push(s)
 }
 `
@@ -107,7 +107,7 @@ func TestMoveRcParameterIsACopy(t *testing.T) {
     n: i32
 }
 
-func F(r: rc<Box>) -> rc<Box> {
+def F(r: rc<Box>) -> rc<Box> {
     return r
 }
 `
@@ -121,7 +121,7 @@ func TestMoveOwnedFieldOutOfADeadLocal(t *testing.T) {
     items: Array<i32>
 }
 
-func F() {
+def F() {
     var b: Box = Box { items: new Array<i32>(0) }
     var items: Array<i32> = b.items
     _ = items
@@ -137,7 +137,7 @@ func TestMoveOwnedFieldWithLaterRootUseRequiresClone(t *testing.T) {
     items: Array<i32>
 }
 
-func F() {
+def F() {
     var b: Box = Box { items: new Array<i32>(0) }
     var items: Array<i32> = b.items
     _ = b
@@ -155,7 +155,7 @@ func TestMoveOwnedFieldRequiresClone(t *testing.T) {
     items: Array<i32>
 }
 
-func F(b: Box) {
+def F(b: Box) {
     var items: Array<i32> = b.items
     _ = b
     _ = items
@@ -182,7 +182,7 @@ func TestMoveOwnedIndexOutOfADeadLocal(t *testing.T) {
     items: Array<i32>
 }
 
-func F() {
+def F() {
     var xs: Array<Box> = new Array<Box>(1)
     var box: Box = xs[0]
     _ = box
@@ -198,7 +198,7 @@ func TestMoveOwnedIndexRequiresClone(t *testing.T) {
     items: Array<i32>
 }
 
-func F(xs: Array<Box>) {
+def F(xs: Array<Box>) {
     var box: Box = xs[0]
     _ = xs
     _ = box
@@ -226,7 +226,7 @@ struct Holder {
     item: rc<Box>
 }
 
-func F(b: Box, h: Holder) {
+def F(b: Box, h: Holder) {
     var n: i32 = b.n
     var r: rc<Box> = h.item
     _ = b
@@ -245,7 +245,7 @@ func TestMoveClonedFieldIsNotACopyError(t *testing.T) {
     items: Array<i32>
 }
 
-func F(b: Box) {
+def F(b: Box) {
     var items: Array<i32> = b.items.Clone()
     _ = b
     _ = items
@@ -257,7 +257,7 @@ func F(b: Box) {
 }
 
 func TestMoveRequiresACopyWhenTheSourceIsStillLive(t *testing.T) {
-	src := `func F() {
+	src := `def F() {
     var s: str = "a"
     var t: str = s
     _ = s
@@ -292,7 +292,7 @@ func TestMoveRequiresACopyWhenTheSourceIsStillLive(t *testing.T) {
 }
 
 func TestMoveLastUseIsAccepted(t *testing.T) {
-	src := `func F() {
+	src := `def F() {
     var s: str = "a"
     var t: str = s
     _ = t
@@ -304,10 +304,10 @@ func TestMoveLastUseIsAccepted(t *testing.T) {
 }
 
 func TestMoveLoopCarriedUse(t *testing.T) {
-	src := `func G(s: str) {
+	src := `def G(s: str) {
 }
 
-func F(xs: []i32) {
+def F(xs: []i32) {
     var s: str = "a"
     for i in xs {
         _ = i
@@ -340,7 +340,7 @@ func F(xs: []i32) {
 }
 
 func TestMoveIgnoresCopiedValues(t *testing.T) {
-	src := `func F() {
+	src := `def F() {
     var n: i32 = 1
     var m: i32 = n
     _ = n
@@ -358,7 +358,7 @@ func TestMoveTwoUsesInOneAggregate(t *testing.T) {
     b: str
 }
 
-func F() {
+def F() {
     var s: str = "a"
     var p: Pair = Pair { a: s, b: s }
     _ = p
@@ -380,7 +380,7 @@ func F() {
 // TestMovePassingIsABorrow checks the settled convention: a parameter borrows
 // its value, so passing it on is not a move and cannot require a copy.
 func TestMoveAcrossAConditionalBranch(t *testing.T) {
-	src := `func F(flag: bool) {
+	src := `def F(flag: bool) {
     var s: str = "a"
     if flag {
         var t: str = s
@@ -399,7 +399,7 @@ func TestMoveAcrossAConditionalBranch(t *testing.T) {
 }
 
 func TestMoveIntoContainerAndOption(t *testing.T) {
-	src := `func F() {
+	src := `def F() {
     var a: str = "a"
     var xs: Array<str> = new Array<str>(0)
     xs.Push(a)
@@ -423,7 +423,7 @@ func TestMoveIntoContainerAndOption(t *testing.T) {
 }
 
 func TestMoveAssignmentTransfersTheSource(t *testing.T) {
-	src := `func F() {
+	src := `def F() {
     var a: str = "a"
     var b: str = "b"
     a = b
@@ -442,7 +442,7 @@ func TestMoveOwnershipFollowsStructFields(t *testing.T) {
     xs: Array<i32>
 }
 
-func F() {
+def F() {
     var a: Box = Box { xs: new Array<i32>(0) }
     var b: Box = a
     _ = a
@@ -464,7 +464,7 @@ func TestMoveOwnershipSubstitutesGenericFields(t *testing.T) {
     value: T
 }
 
-func F() {
+def F() {
     var a: Box<Array<i32>> = Box { value: new Array<i32>(0) }
     var b: Box<Array<i32>> = a
     _ = a
@@ -482,10 +482,10 @@ func F() {
 }
 
 func TestMovePassingIsABorrow(t *testing.T) {
-	src := `func G(s: str) {
+	src := `def G(s: str) {
 }
 
-func F() {
+def F() {
     var s: str = "a"
     G(s)
     G(s)
@@ -497,7 +497,7 @@ func F() {
 }
 
 func TestMoveReturnIsAccepted(t *testing.T) {
-	src := `func Take() -> str {
+	src := `def Take() -> str {
     var s: str = "a"
     return s
 }

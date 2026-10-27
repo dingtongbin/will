@@ -15,7 +15,7 @@ func TestFormatLongEchoesLineAndCaret(t *testing.T) {
 		Help:     "convert explicitly with T(x)",
 		Severity: Error,
 	}
-	src := []byte("func F() {\n    var x: i32 = \"s\"\n}\n")
+	src := []byte("def F() {\n    var x: i32 = \"s\"\n}\n")
 	got := FormatLong(d, src)
 	want := "a.will:2:18: T0001 type mismatch: got str, want i32\n" +
 		"    help: convert explicitly with T(x)\n" +

@@ -2,7 +2,7 @@ struct Box {
     v: i64
 }
 
-func (b: Box) Value() -> i64 {
+def (b: Box) Value() -> i64 {
     return b.v
 }
 
@@ -11,11 +11,11 @@ enum Shape {
     Line
 }
 
-func Unit() -> Result<(), Error> {
+def Unit() -> Result<(), Error> {
     return Ok(())
 }
 
-func Use(b: Box, s: Shape) -> i64 {
+def Use(b: Box, s: Shape) -> i64 {
     var here: usize = lane.Here()
     var text: str = f"v={b.v} end"
     var p: Box = b

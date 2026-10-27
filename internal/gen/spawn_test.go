@@ -16,11 +16,11 @@ func TestSpawnPlaceLowers(t *testing.T) {
     id: i32
 }
 
-func Work() -> i32 {
+def Work() -> i32 {
     return 1
 }
 
-func main() -> i32 {
+def main() -> i32 {
     region {
         var a: Task<i32> = spawn Work()
         var b: Task<i32> = spawn here Work()

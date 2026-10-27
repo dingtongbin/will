@@ -13,15 +13,15 @@ struct timeError {
     message: str
 }
 
-func (e: timeError) Message() -> str {
+def (e: timeError) Message() -> str {
     return e.message.Clone()
 }
 
-func (e: timeError) Status() -> i32 {
+def (e: timeError) Status() -> i32 {
     return 2
 }
 
-func fail(message: str) -> timeError {
+def fail(message: str) -> timeError {
     return timeError { message: message.Clone()}
 }
 
@@ -40,7 +40,7 @@ const charLowerZ: u32 = 122
 
 // charsOf copies the scalars of s. The parsers look at fixed positions, and a
 // byte offset inside a multi-byte scalar would not be a valid index into s.
-func charsOf(s: str) -> Array<u32> {
+def charsOf(s: str) -> Array<u32> {
     var out: Array<u32> = new Array<u32>(0)
     for c in s {
         out.Push(c)
@@ -48,14 +48,14 @@ func charsOf(s: str) -> Array<u32> {
     return out
 }
 
-func digitValue(c: u32) -> i32 {
+def digitValue(c: u32) -> i32 {
     if c >= charZero && c <= charNine {
         return i32(c - charZero)
     }
     return -1
 }
 
-func hasAt(cs: []u32, at: i32, want: u32) -> bool {
+def hasAt(cs: []u32, at: i32, want: u32) -> bool {
     if at < 0 || at >= i32(cs.Len()) {
         return false
     }
@@ -64,7 +64,7 @@ func hasAt(cs: []u32, at: i32, want: u32) -> bool {
 
 // readDigits reads count decimal digits at at, or returns -1 when any of them
 // is missing or not a digit.
-func readDigits(cs: []u32, at: i32, count: i32) -> i32 {
+def readDigits(cs: []u32, at: i32, count: i32) -> i32 {
     if at < 0 || count <= 0 || at + count > i32(cs.Len()) {
         return -1
     }
@@ -85,14 +85,14 @@ func readDigits(cs: []u32, at: i32, count: i32) -> i32 {
 }
 
 // secondInRange rejects a Unix second that the Instant count cannot represent.
-func secondInRange(sec: i64) -> bool {
+def secondInRange(sec: i64) -> bool {
     return sec >= minUnixSecond && sec <= maxUnixSecond
 }
 
 // ParseRfc3339 reads the RFC 3339 timestamp format and keeps the offset the
 // text names as the zone of the result. Up to nine fractional digits are
 // kept; any further digits are accepted and dropped.
-func ParseRfc3339(s: str) -> Result<Instant, Error> {
+def ParseRfc3339(s: str) -> Result<Instant, Error> {
     var cs: Array<u32> = charsOf(s)
     var c: []u32 = cs[Range(0, cs.Len())]
     var n: i32 = i32(c.Len())
@@ -196,7 +196,7 @@ func ParseRfc3339(s: str) -> Result<Instant, Error> {
 }
 
 // ParseDate reads a calendar date as midnight in tz.
-func ParseDate(s: str, tz: Timezone) -> Result<Instant, Error> {
+def ParseDate(s: str, tz: Timezone) -> Result<Instant, Error> {
     var cs: Array<u32> = charsOf(s)
     var c: []u32 = cs[Range(0, cs.Len())]
     var n: i32 = i32(c.Len())

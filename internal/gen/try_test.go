@@ -13,24 +13,24 @@ func TestTryUploadsConcreteErrorAndMatchesUnit(t *testing.T) {
     msg: str
 }
 
-func (e: E) Message() -> str {
+def (e: E) Message() -> str {
     return e.msg
 }
 
-func (e: E) Status() -> i32 {
+def (e: E) Status() -> i32 {
     return 7
 }
 
-func Fail() -> Result<(), E> {
+def Fail() -> Result<(), E> {
     return Err(E { msg: "bad" })
 }
 
-func Run() -> Result<(), E> {
+def Run() -> Result<(), E> {
     Fail()?
     return Ok(())
 }
 
-func main() -> i32 {
+def main() -> i32 {
     match Run() {
         Ok(_) => {
             return 0

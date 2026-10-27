@@ -1,4 +1,4 @@
-func main() -> i32 {
+def main() -> i32 {
     var v: i32 = 1
     var p: raw = raw(v)
     _ = p

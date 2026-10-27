@@ -2,7 +2,7 @@
 // the magnitude is the value without its sign, so the i64 minimum formats too.
 // A width larger than the result fills the gap with pad bytes between the sign
 // and the digits; a width at or below the result adds nothing.
-func Int(v: i64, base: i32, width: i32, pad: u8) -> Format {
+def Int(v: i64, base: i32, width: i32, pad: u8) -> Format {
     checkBase(base)
     var magnitude: u64 = 0u64
     var negative: bool = false
@@ -28,7 +28,7 @@ func Int(v: i64, base: i32, width: i32, pad: u8) -> Format {
 
 // Uint formats an unsigned value in the given base. Digits and width behave as
 // in Int; there is no sign to place.
-func Uint(v: u64, base: i32, width: i32, pad: u8) -> Format {
+def Uint(v: u64, base: i32, width: i32, pad: u8) -> Format {
     checkBase(base)
     return Format {
         kind: formatNumber,
@@ -44,21 +44,21 @@ func Uint(v: u64, base: i32, width: i32, pad: u8) -> Format {
 
 // checkBase rejects a base outside 2 through 36. The digit table covers exactly
 // that range, and Format has no error channel, so misuse is a panic.
-func checkBase(base: i32) {
+def checkBase(base: i32) {
     if base < 2 || base > 36 {
         panic("fmt: base must be between 2 and 36")
     }
 }
 
 // numberText renders an integer field with its sign and fill bytes.
-func numberText(f: Format) -> str {
+def numberText(f: Format) -> str {
     return signedText(f.negative, digitsOf(f.value, f.base), f.width, f.pad)
 }
 
 // signedText renders a numeric body with its sign and fill bytes. The sign
 // comes first and the fill bytes sit between it and the body, so a zero-filled
 // field keeps the sign at the edge.
-func signedText(negative: bool, body: str, width: i32, pad: u8) -> str {
+def signedText(negative: bool, body: str, width: i32, pad: u8) -> str {
     var sign: str = ""
     if negative {
         sign = "-"
@@ -72,7 +72,7 @@ func signedText(negative: bool, body: str, width: i32, pad: u8) -> str {
 }
 
 // digitsOf writes v in base, most significant digit first. Zero is one digit.
-func digitsOf(v: u64, base: u32) -> str {
+def digitsOf(v: u64, base: u32) -> str {
     if v == 0u64 {
         return "0"
     }

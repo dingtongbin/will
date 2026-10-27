@@ -1,12 +1,12 @@
 // FormatI64 returns the decimal text of v. The digits come from the same
 // formatter print and interpolation use, so the three spell a value alike.
-func FormatI64(v: i64) -> str {
+def FormatI64(v: i64) -> str {
     return f"{v}"
 }
 
 // FormatF64 returns the text of v as print and interpolation spell it. The
 // formatter prints up to 17 significant digits, which is enough for the text to
 // read back as the same f64.
-func FormatF64(v: f64) -> str {
+def FormatF64(v: f64) -> str {
     return f"{v}"
 }

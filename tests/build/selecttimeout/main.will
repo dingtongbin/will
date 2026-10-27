@@ -1,4 +1,4 @@
-async func main() -> i32 {
+async def main() -> i32 {
     var a: chan<i32> = new chan<i32>(1)
     var v: i32 = 0
     select {

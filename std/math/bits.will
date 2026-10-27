@@ -1,5 +1,5 @@
 // PopCount64 returns the number of set bits in x.
-func PopCount64(x: u64) -> u32 {
+def PopCount64(x: u64) -> u32 {
     var n: u32 = 0
     var v: u64 = x
     for {
@@ -14,7 +14,7 @@ func PopCount64(x: u64) -> u32 {
 
 // TrailingZeros64 returns the number of zero bits below the lowest set bit.
 // A zero input has 64 of them.
-func TrailingZeros64(x: u64) -> u32 {
+def TrailingZeros64(x: u64) -> u32 {
     if x == 0 {
         return 64
     }
@@ -32,7 +32,7 @@ func TrailingZeros64(x: u64) -> u32 {
 
 // LeadingZeros64 returns the number of zero bits above the highest set bit.
 // A zero input has 64 of them.
-func LeadingZeros64(x: u64) -> u32 {
+def LeadingZeros64(x: u64) -> u32 {
     if x == 0 {
         return 64
     }
@@ -50,7 +50,7 @@ func LeadingZeros64(x: u64) -> u32 {
 
 // RotateLeft64 rotates x left by k bits; only k mod 64 matters. The shift
 // amount has the width of x because a shift needs two operands of one type.
-func RotateLeft64(x: u64, k: u64) -> u64 {
+def RotateLeft64(x: u64, k: u64) -> u64 {
     var s: u64 = k % 64
     if s == 0 {
         return x
@@ -59,7 +59,7 @@ func RotateLeft64(x: u64, k: u64) -> u64 {
 }
 
 // RotateRight64 rotates x right by k bits; only k mod 64 matters.
-func RotateRight64(x: u64, k: u64) -> u64 {
+def RotateRight64(x: u64, k: u64) -> u64 {
     var s: u64 = k % 64
     if s == 0 {
         return x

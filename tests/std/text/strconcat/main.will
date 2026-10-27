@@ -4,7 +4,7 @@ import "std/str"
 // including a UTF-8 text whose bytes must survive the copy. The corpus uses
 // literals because the import shadows the predeclared str type, so a str
 // variable cannot be named here.
-func main() -> i32 {
+def main() -> i32 {
     if str.Concat() != "" {
         return 1
     }

@@ -1,6 +1,6 @@
 import "std/container/stack"
 
-func main() -> i32 {
+def main() -> i32 {
     var s: stack.Stack<i32> = new stack.Stack<i32>()
     s.Push(1)
     s.Push(2)

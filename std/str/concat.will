@@ -1,7 +1,7 @@
 // Concat returns the bytes of every part in order. Each part is copied as
 // bytes, so a valid text is not decoded and encoded again; Push doubles the
 // buffer when it is full, so the whole concatenation is linear.
-func Concat(parts: ...str) -> str {
+def Concat(parts: ...str) -> str {
     var out: Array<u8> = new Array<u8>(0)
     for p in parts {
         for b in p[Range(0, p.Len())] {

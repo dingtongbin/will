@@ -2,11 +2,11 @@ struct C {
     n: i32
 }
 
-func pick(xs: Array<rc<C>>) -> rc<C> {
+def pick(xs: Array<rc<C>>) -> rc<C> {
     return xs.Get(0)
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var xs: Array<rc<C>> = new Array<rc<C>>(0)
     var a: rc<C> = new rc<C>(C { n: 1 })
     xs.Push(a)

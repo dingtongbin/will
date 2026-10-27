@@ -10,7 +10,7 @@ import (
 
 // mismatchSource fails the type checker, so its stdout recording is a
 // diagnostic and the check exits 1.
-const mismatchSource = "func F() {\n    var n: i32 = \"text\"\n    _ = n\n}\n"
+const mismatchSource = "def F() {\n    var n: i32 = \"text\"\n    _ = n\n}\n"
 
 func TestRunCorpusUpdateRewritesChangedRecording(t *testing.T) {
 	root, caseDir := newCorpusCase(t)

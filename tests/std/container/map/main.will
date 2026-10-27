@@ -1,6 +1,6 @@
 // Map is insertion ordered in this implementation. Set replaces a value,
 // Delete removes one entry, and Keys/Values copy the live entries.
-func main() -> i32 {
+def main() -> i32 {
     var m: Map<str, i32> = new Map<str, i32>(0usize)
     if m.Len() != 0usize {
         return 1

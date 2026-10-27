@@ -6,11 +6,11 @@ struct NullWriter {
     n: usize
 }
 
-func (w: NullWriter) Write(buf: []u8) -> Result<(), Error> {
+def (w: NullWriter) Write(buf: []u8) -> Result<(), Error> {
     return Ok(())
 }
 
-func (w: NullWriter) Sync() -> Result<(), Error> {
+def (w: NullWriter) Sync() -> Result<(), Error> {
     return Ok(())
 }
 
@@ -20,16 +20,16 @@ struct Wrap {
     inner: io.Writer
 }
 
-func (w: Wrap) Write(buf: []u8) -> Result<(), Error> {
+def (w: Wrap) Write(buf: []u8) -> Result<(), Error> {
     return w.inner.Write(buf)
 }
 
-func (w: Wrap) Sync() -> Result<(), Error> {
+def (w: Wrap) Sync() -> Result<(), Error> {
     return w.inner.Sync()
 }
 
 // sink takes the interface and calls a method whose result is an enum.
-func sink(w: io.Writer) -> Result<(), Error> {
+def sink(w: io.Writer) -> Result<(), Error> {
     var storage: Array<u8> = new Array<u8>(0)
     var bytes: []u8 = storage[Range(0, storage.Len())]
     _ = w.Write(bytes)?
@@ -47,7 +47,7 @@ struct Recorder {
     pad: usize
 }
 
-func (w: Recorder) Write(buf: []u8) -> Result<(), Error> {
+def (w: Recorder) Write(buf: []u8) -> Result<(), Error> {
     var i: usize = 0
     for {
         if i >= buf.Len() {
@@ -63,11 +63,11 @@ func (w: Recorder) Write(buf: []u8) -> Result<(), Error> {
     return Ok(())
 }
 
-func (w: Recorder) Sync() -> Result<(), Error> {
+def (w: Recorder) Sync() -> Result<(), Error> {
     return Ok(())
 }
 
-func CheckPrintf() -> i32 {
+def CheckPrintf() -> i32 {
     written = 0usize
     first = 0u8
     last = 0u8
@@ -86,7 +86,7 @@ func CheckPrintf() -> i32 {
     return 0
 }
 
-func main() -> i32 {
+def main() -> i32 {
     fmt.Println("writer", 1i32)
     var null: NullWriter = NullWriter{n: 0}
     var wrapped: Wrap = Wrap{inner: null}

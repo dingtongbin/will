@@ -2,7 +2,7 @@ import "std/encoding/hex"
 
 // Encode must use two lowercase digits per byte, keep every byte value, and
 // feed Decode back the same bytes. 251 and 255 are above the ASCII range.
-func main() -> i32 {
+def main() -> i32 {
     var short: str = "Hi"
     if hex.Encode(short[Range(0, 2)]) != "4869" {
         return 1

@@ -53,6 +53,10 @@ type env struct {
 	vars     map[string]*Type
 	ifaces   map[string][]*methodInfo
 	derives  map[string]map[string]bool
+	// aliases holds source-level type aliases. The target is expanded on use,
+	// so an alias never becomes a distinct type identity.
+	aliases    map[string]*ast.TypeAliasDecl
+	aliasOrder []*ast.TypeAliasDecl
 	// userTypes holds the types declared in this file. A method on one of
 	// them that no declaration provides is an error; built-in types have
 	// methods the checker does not model, so they are not in this set.
@@ -73,6 +77,7 @@ func newEnv() *env {
 		vars:      map[string]*Type{},
 		ifaces:    map[string][]*methodInfo{},
 		derives:   map[string]map[string]bool{},
+		aliases:   map[string]*ast.TypeAliasDecl{},
 		userTypes: map[string]bool{},
 	}
 }
@@ -107,6 +112,7 @@ func buildEnvAll(c *checker, files []*ast.File) *env {
 			b.decl(d)
 		}
 	}
+	c.checkAliases(e)
 	return e
 }
 
@@ -183,6 +189,9 @@ func (b *envBuilder) decl(d ast.Decl) {
 		e.vars[decl.Name] = c.buildType(decl.Type, nil)
 	case *ast.VarDecl:
 		e.vars[decl.Name] = c.buildType(decl.Type, nil)
+	case *ast.TypeAliasDecl:
+		e.aliases[decl.Name] = decl
+		e.aliasOrder = append(e.aliasOrder, decl)
 	case *ast.DeriveDecl:
 		if decl.Name == "Show" {
 			name := receiverName(decl.Type)
@@ -359,6 +368,13 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 		}
 		if t.Name == "interface {}" {
 			return c.in.named(t.Name, nil)
+		}
+		if alias, ok := c.env.aliases[t.Name]; ok {
+			if len(t.Args) != 0 {
+				c.bag.Error(t.Pos(), diag.CodeTypeArgCount, "wrong number of type arguments",
+					"the declaration takes 0")
+			}
+			return c.resolveAlias(alias)
 		}
 		if t.Name == "Equal" || t.Name == "Ord" {
 			// Both are predeclared constraints: they constrain a type

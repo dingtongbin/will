@@ -8,7 +8,7 @@ import (
 // TestGeneralMachineSplitsTwoChannelOps checks that a loop may contain a
 // receive and a send without a separate shape for each operation.
 func TestGeneralMachineSplitsTwoChannelOps(t *testing.T) {
-	src := `func Stage(inp: chan<i32>, out: chan<i32>) {
+	src := `def Stage(inp: chan<i32>, out: chan<i32>) {
     for {
         var item: Option<i32> = inp.Recv()
         match item {
@@ -22,7 +22,7 @@ func TestGeneralMachineSplitsTwoChannelOps(t *testing.T) {
     }
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var first: chan<i32> = new chan<i32>(1)
     var second: chan<i32> = new chan<i32>(1)
     region {

@@ -1,6 +1,6 @@
 // Dir returns the path's directory: everything up to and including the last
 // separator, cleaned. A path with no separator has directory ".".
-func Dir(p: str) -> str {
+def Dir(p: str) -> str {
     var last: usize = 0usize
     var found: bool = false
     for i, c in p {

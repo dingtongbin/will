@@ -8,7 +8,7 @@ import (
 // TestPanicPathSkipsDefers checks that a panic statement terminates its path
 // before the block's deferred calls are lowered.
 func TestPanicPathSkipsDefers(t *testing.T) {
-	src := `func F() {
+	src := `def F() {
     defer print("deferred")
     panic("boom")
 }

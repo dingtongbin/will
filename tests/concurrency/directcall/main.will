@@ -2,7 +2,7 @@ struct Box {
     ch: chan<i32>
 }
 
-async func (b: Box) Take() -> i32 {
+async def (b: Box) Take() -> i32 {
     var item: Option<i32> = await b.ch.Recv()
     match item {
         Some(value) => {
@@ -14,7 +14,7 @@ async func (b: Box) Take() -> i32 {
     }
 }
 
-async func Worker(ch: chan<i32>) -> i32 {
+async def Worker(ch: chan<i32>) -> i32 {
     var item: Option<i32> = await ch.Recv()
     match item {
         Some(value) => {
@@ -27,17 +27,17 @@ async func Worker(ch: chan<i32>) -> i32 {
 }
 
 // Driver calls a waiting function, so it waits as well.
-async func Driver(ch: chan<i32>) -> i32 {
+async def Driver(ch: chan<i32>) -> i32 {
     return await Worker(ch)
 }
 
 // Fetch returns an aggregate, so the caller reads it from a place.
-async func Fetch(ch: chan<i32>) -> Option<i32> {
+async def Fetch(ch: chan<i32>) -> Option<i32> {
     return await ch.Recv()
 }
 
 // UseFetch awaits a waiting function whose result is an aggregate.
-async func UseFetch(ch: chan<i32>) -> i32 {
+async def UseFetch(ch: chan<i32>) -> i32 {
     var item: Option<i32> = await Fetch(ch)
     match item {
         Some(value) => {
@@ -50,13 +50,13 @@ async func UseFetch(ch: chan<i32>) -> i32 {
 }
 
 // UseBox calls a waiting method, so it waits as well.
-async func UseBox(b: Box) -> i32 {
+async def UseBox(b: Box) -> i32 {
     return await b.Take()
 }
 
 // Drain calls a waiting function on every loop iteration. The await slots
 // stay in the entry block, so a long loop does not grow the stack.
-async func Drain(ch: chan<i32>, n: i32) -> i32 {
+async def Drain(ch: chan<i32>, n: i32) -> i32 {
     var sum: i32 = 0
     for _ in Range(0, n) {
         sum += await Worker(ch)
@@ -64,7 +64,7 @@ async func Drain(ch: chan<i32>, n: i32) -> i32 {
     return sum
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
     var other: chan<i32> = new chan<i32>(1)
     var third: chan<i32> = new chan<i32>(1)
@@ -100,12 +100,12 @@ async func main() -> i32 {
 }
 
 // Produce is declared after its use, so the call names it by symbol.
-async func Produce(ch: chan<i32>, value: i32) {
+async def Produce(ch: chan<i32>, value: i32) {
     _ = await ch.Send(value)
 }
 
 // Fill sends 0..n-1 into the channel.
-async func Fill(ch: chan<i32>, n: i32) {
+async def Fill(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
         _ = await ch.Send(i)
     }

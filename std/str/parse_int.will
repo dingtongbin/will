@@ -1,6 +1,6 @@
 // digitValue maps an ASCII digit to its value. 64 marks a scalar that is not a
 // digit in any base, so it is above every accepted radix.
-func digitValue(c: u32) -> u32 {
+def digitValue(c: u32) -> u32 {
     if c >= asciiZero && c <= asciiNine {
         return c - asciiZero
     }
@@ -13,7 +13,7 @@ func digitValue(c: u32) -> u32 {
     return 64u32
 }
 
-func ParseI64(s: str, base: i32) -> Result<i64, Error> {
+def ParseI64(s: str, base: i32) -> Result<i64, Error> {
     if base < 2 || base > 36 {
         return Err(fail("invalid base"))
     }
@@ -58,7 +58,7 @@ func ParseI64(s: str, base: i32) -> Result<i64, Error> {
     return Ok(i64(acc))
 }
 
-func ParseU64(s: str, base: i32) -> Result<u64, Error> {
+def ParseU64(s: str, base: i32) -> Result<u64, Error> {
     if base < 2 || base > 36 {
         return Err(fail("invalid base"))
     }

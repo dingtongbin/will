@@ -6,22 +6,22 @@ struct Stack<T> {
 
 // init starts with no allocated storage. The first Push grows it to four
 // elements.
-func (mut s: Stack<T>) init() {
+def (mut s: Stack<T>) init() {
     s.items = new Array<T>(0)
 }
 
 // Push adds one value at the top.
-func (mut s: Stack<T>) Push(v: T) {
+def (mut s: Stack<T>) Push(v: T) {
     s.items.Push(v)
 }
 
 // Pop removes and returns the top value, or None when the stack is empty.
-func (mut s: Stack<T>) Pop() -> Option<T> {
+def (mut s: Stack<T>) Pop() -> Option<T> {
     return s.items.Pop()
 }
 
 // Peek returns a copy of the top value without removing it.
-func (s: Stack<T>) Peek() -> Option<T> {
+def (s: Stack<T>) Peek() -> Option<T> {
     var n: usize = s.items.Len()
     if n == 0 {
         return None
@@ -30,18 +30,18 @@ func (s: Stack<T>) Peek() -> Option<T> {
 }
 
 // Len reports the number of stored values.
-func (s: Stack<T>) Len() -> usize {
+def (s: Stack<T>) Len() -> usize {
     return s.items.Len()
 }
 
 // Clear releases every value and keeps the allocated storage.
-func (mut s: Stack<T>) Clear() {
+def (mut s: Stack<T>) Clear() {
     s.items.Clear()
 }
 
 // Reserve grows the backing storage to at least n elements. Existing values
 // keep their order.
-func (mut s: Stack<T>) Reserve(n: usize) {
+def (mut s: Stack<T>) Reserve(n: usize) {
     if n <= s.items.Cap() {
         return
     }
@@ -59,7 +59,7 @@ func (mut s: Stack<T>) Reserve(n: usize) {
 
 // Clone returns a stack with the same values. Elements that own references use
 // the same copy discipline as Array.Push.
-func (s: Stack<T>) Clone() -> Stack<T> {
+def (s: Stack<T>) Clone() -> Stack<T> {
     var out: Stack<T>
     out.items = s.items.Clone()
     return out

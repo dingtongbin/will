@@ -20,42 +20,42 @@ enum E {
 }
 
 interface Has {
-    func Get() -> i32
+    def Get() -> i32
 }
 
 struct Holder {
     c: rc<C>
 }
 
-func (h: Holder) Get() -> i32 {
+def (h: Holder) Get() -> i32 {
     return h.c.n
 }
 
-func TakeMap(m: Map<str, rc<C>>) -> i32 {
+def TakeMap(m: Map<str, rc<C>>) -> i32 {
     return 0
 }
 
-func TakeSet(s: Set<rc<C>>) -> i32 {
+def TakeSet(s: Set<rc<C>>) -> i32 {
     return 0
 }
 
-func TakeArray(a: [2]rc<C>) -> i32 {
+def TakeArray(a: [2]rc<C>) -> i32 {
     return 0
 }
 
-func TakeEnum(e: E) -> i32 {
+def TakeEnum(e: E) -> i32 {
     return 0
 }
 
-func TakeFunc(f: func() -> i32) -> i32 {
+def TakeFunc(f: func() -> i32) -> i32 {
     return f()
 }
 
-func TakeIface(v: Has) -> i32 {
+def TakeIface(v: Has) -> i32 {
     return v.Get()
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var c: rc<C> = new rc<C>(C { n: 1 })
     var m: Map<str, rc<C>> = new Map<str, rc<C>>()
     m.Set("a".Clone(), c.Clone())

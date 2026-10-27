@@ -44,8 +44,8 @@ func TestFrontEndCacheHitsOnTheSecondRun(t *testing.T) {
 	t.Setenv("WILL_CACHE", cacheRoot)
 	writeTree(t, root, map[string]string{
 		"will.mod":     "module example.com/front\nwill 1\n",
-		"main.will":    "import \"example.com/front/lib\"\n\nfunc main() -> i32 {\n    return lib.Double(2)\n}\n",
-		"lib/lib.will": "func Double(n: i32) -> i32 {\n    return n + n\n}\n",
+		"main.will":    "import \"example.com/front/lib\"\n\ndef main() -> i32 {\n    return lib.Double(2)\n}\n",
+		"lib/lib.will": "def Double(n: i32) -> i32 {\n    return n + n\n}\n",
 	})
 
 	frontEndStats.hits, frontEndStats.misses = 0, 0
@@ -85,8 +85,8 @@ func TestFrontEndCacheInvalidatesTheDependent(t *testing.T) {
 	t.Setenv("WILL_CACHE", t.TempDir())
 	writeTree(t, root, map[string]string{
 		"will.mod":     "module example.com/front\nwill 1\n",
-		"main.will":    "import \"example.com/front/lib\"\n\nfunc main() -> i32 {\n    return lib.Double(2)\n}\n",
-		"lib/lib.will": "func Double(n: i32) -> i32 {\n    return n + n\n}\n",
+		"main.will":    "import \"example.com/front/lib\"\n\ndef main() -> i32 {\n    return lib.Double(2)\n}\n",
+		"lib/lib.will": "def Double(n: i32) -> i32 {\n    return n + n\n}\n",
 	})
 	frontEndStats.hits, frontEndStats.misses = 0, 0
 	if code, out, errOut := runCLI("emit-llvm", root); code != 0 {
@@ -94,7 +94,7 @@ func TestFrontEndCacheInvalidatesTheDependent(t *testing.T) {
 	}
 
 	writeTree(t, root, map[string]string{
-		"lib/lib.will": "func Double(n: i32) -> i32 {\n    return n + n + 1\n}\n",
+		"lib/lib.will": "def Double(n: i32) -> i32 {\n    return n + n + 1\n}\n",
 	})
 	frontEndStats.hits, frontEndStats.misses = 0, 0
 	if code, _, errOut := runCLI("emit-llvm", root); code != 0 {
@@ -121,11 +121,11 @@ func TestFrontEndCacheCoversAnAliasImport(t *testing.T) {
 	t.Setenv("WILL_CACHE", t.TempDir())
 	writeTree(t, root, map[string]string{
 		"will.mod":  "module example.com/app\nwill 1\nrequire example.com/lib@v1.0.0\nreplace example.com/lib@v1.0.0 => ../shared\n",
-		"main.will": "import \"example.com/lib\"\n\nfunc main() -> i32 {\n    return lib.Double(2)\n}\n",
+		"main.will": "import \"example.com/lib\"\n\ndef main() -> i32 {\n    return lib.Double(2)\n}\n",
 	})
 	writeTree(t, shared, map[string]string{
 		"will.mod":    "module example.com/shared\nwill 1\n",
-		"shared.will": "func Double(n: i32) -> i32 {\n    return n + n\n}\n",
+		"shared.will": "def Double(n: i32) -> i32 {\n    return n + n\n}\n",
 	})
 
 	frontEndStats.hits, frontEndStats.misses = 0, 0

@@ -4,14 +4,14 @@ struct parseError {
     message: str
 }
 
-func (e: parseError) Message() -> str {
+def (e: parseError) Message() -> str {
     return e.message.Clone()
 }
 
-func (e: parseError) Status() -> i32 {
+def (e: parseError) Status() -> i32 {
     return 2
 }
 
-func fail(message: str) -> parseError {
+def fail(message: str) -> parseError {
     return parseError { message: message.Clone() }
 }

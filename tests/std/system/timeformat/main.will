@@ -2,7 +2,7 @@ import "std/time"
 
 // The named formats are pure functions of an instant, so a corpus can pin
 // every field of the calendar and clock they write.
-func main() -> i32 {
+def main() -> i32 {
     var t: time.Instant = time.FromUnix(1700000000i64)
     if time.Rfc3339(t) != "2023-11-14T22:13:20Z" {
         return 1

@@ -7,14 +7,14 @@ import (
 )
 
 const ifaceProgram = `interface Shape {
-    func Area() -> i32
+    def Area() -> i32
 }
 
 struct Square {
     s: i32
 }
 
-func (q: Square) Area() -> i32 {
+def (q: Square) Area() -> i32 {
     return q.s * q.s
 }
 
@@ -22,11 +22,11 @@ struct Dot {
     s: i32
 }
 
-func Use(x: Shape) -> i32 {
+def Use(x: Shape) -> i32 {
     return x.Area()
 }
 
-func F() {
+def F() {
     var ok: Shape = Square { s: 1 }
     _ = ok
     _ = Use(Square { s: 1 })
@@ -57,10 +57,10 @@ func TestInterfaceSatisfaction(t *testing.T) {
 
 func TestInterfaceMethodCall(t *testing.T) {
 	src := `interface Shape {
-    func Area() -> i32
+    def Area() -> i32
 }
 
-func Use(x: Shape) -> i32 {
+def Use(x: Shape) -> i32 {
     return x.Area()
 }
 `
@@ -71,11 +71,11 @@ func Use(x: Shape) -> i32 {
 }
 
 func TestEmptyInterface(t *testing.T) {
-	src := `func Check(value: interface {}) -> bool {
+	src := `def Check(value: interface {}) -> bool {
     return value.Is<i32>()
 }
 
-func Use() -> i32 {
+def Use() -> i32 {
     var value: interface {} = 7
     var number: Option<i32> = value.As<i32>()
     _ = Check(value)
@@ -92,18 +92,18 @@ func Use() -> i32 {
 
 func TestInterfaceDowncasts(t *testing.T) {
 	src := `interface Shape {
-    func Area() -> i32
+    def Area() -> i32
 }
 
 struct Square {
     s: i32
 }
 
-func (q: Square) Area() -> i32 {
+def (q: Square) Area() -> i32 {
     return q.s
 }
 
-func Use(x: Shape) -> i32 {
+def Use(x: Shape) -> i32 {
     var yes: bool = x.Is<Square>()
     var maybe: Option<Square> = x.As<Square>()
     _ = yes
@@ -120,10 +120,10 @@ func Use(x: Shape) -> i32 {
 
 func TestInterfaceDowncastNeedsOneType(t *testing.T) {
 	src := `interface Shape {
-    func Area() -> i32
+    def Area() -> i32
 }
 
-func Use(x: Shape) -> bool {
+def Use(x: Shape) -> bool {
     return x.Is()
 }
 `
@@ -138,15 +138,15 @@ func Use(x: Shape) -> bool {
 
 func TestInterfaceToInterface(t *testing.T) {
 	narrow := `interface A {
-    func F() -> i32
+    def F() -> i32
 }
 
 interface B {
-    func F() -> i32
-    func G() -> i32
+    def F() -> i32
+    def G() -> i32
 }
 
-func Use(b: B) {
+def Use(b: B) {
     var a: A = b
     _ = a
 }
@@ -158,15 +158,15 @@ func Use(b: B) {
 	}
 
 	wider := `interface A {
-    func F() -> i32
+    def F() -> i32
 }
 
 interface B {
-    func F() -> i32
-    func G() -> i32
+    def F() -> i32
+    def G() -> i32
 }
 
-func Use(a: A) {
+def Use(a: A) {
     var b: B = a
     _ = b
 }
@@ -179,10 +179,10 @@ func Use(a: A) {
 
 func TestDispatchPoints(t *testing.T) {
 	src := `interface Shape {
-    func Area() -> i32
+    def Area() -> i32
 }
 
-func Use(x: Shape) -> i32 {
+def Use(x: Shape) -> i32 {
     return x.Area()
 }
 `
@@ -203,7 +203,7 @@ func TestDerivedShowSatisfiesShow(t *testing.T) {
 
 derive Show for P
 
-func F() {
+def F() {
     var s: Show = P { x: 1 }
     _ = s
 }
@@ -221,15 +221,15 @@ func TestBuiltinErrorInterface(t *testing.T) {
     code: i32
 }
 
-func (e: E) Message() -> str {
+def (e: E) Message() -> str {
     return "failed"
 }
 
-func (e: E) Status() -> i32 {
+def (e: E) Status() -> i32 {
     return e.code
 }
 
-func F() {
+def F() {
     var x: Error = E { code: 1 }
     _ = x
 }
@@ -244,11 +244,11 @@ func F() {
     code: i32
 }
 
-func (e: E) Message() -> str {
+def (e: E) Message() -> str {
     return "failed"
 }
 
-func F() {
+def F() {
     var x: Error = E { code: 1 }
     _ = x
 }
@@ -261,18 +261,18 @@ func F() {
 
 func TestInterfaceMethodSignatureMismatch(t *testing.T) {
 	src := `interface Shape {
-    func Area() -> i32
+    def Area() -> i32
 }
 
 struct Square {
     s: i32
 }
 
-func (q: Square) Area() -> i64 {
+def (q: Square) Area() -> i64 {
     return q.s
 }
 
-func F() {
+def F() {
     var x: Shape = Square { s: 1 }
     _ = x
 }

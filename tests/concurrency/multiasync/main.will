@@ -1,7 +1,7 @@
 import "std/os/fs"
 import "std/time"
 
-async func Fill(path: str) -> Result<(), Error> {
+async def Fill(path: str) -> Result<(), Error> {
     var one: str = "a"
     _ = await fs.AsyncWriteFile(path, one[Range(0, 1)])?
     _ = await time.Sleep(1ms)!
@@ -9,7 +9,7 @@ async func Fill(path: str) -> Result<(), Error> {
     return Ok(())
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var path: str = "will-concurrency-multiasync.tmp"
     var result: Result<(), Error> = Ok(())
     region {

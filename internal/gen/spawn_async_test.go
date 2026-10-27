@@ -15,13 +15,13 @@ func TestAsyncSpawnOwnsByValueParameters(t *testing.T) {
     fast willrt_task_sleep_async
 }
 
-async func Read(text: str) -> i32 {
+async def Read(text: str) -> i32 {
     var status: i32 = c.willrt_task_sleep_async(1)
     if status != 0 { return 1 }
     return i32(text.Len())
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var result: i32 = 0
     region {
         var task: Task<i32> = spawn Read("hello".Clone())
@@ -58,11 +58,11 @@ func TestAsyncSpawnPlaceLowers(t *testing.T) {
     id: i32
 }
 
-async func Fetch(value: i32) -> i32 {
+async def Fetch(value: i32) -> i32 {
     return value
 }
 
-func main() -> i32 {
+def main() -> i32 {
     region {
         var a: Task<i32> = spawn Fetch(1)
         var b: Task<i32> = spawn here Fetch(2)

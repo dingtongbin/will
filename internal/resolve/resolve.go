@@ -88,7 +88,7 @@ var predeclaredTypes = []string{
 	// Equal and Ord are built-in constraints: they name a property the
 	// compiler implements for each type, and they are only usable as type
 	// parameter constraints.
-	"Equal", "Ord",
+	"equal", "Ord",
 }
 
 // isPredeclaredType reports whether a name is one of the type names every
@@ -178,7 +178,7 @@ func (r *resolver) addImports() {
 					Kind:     CLinkKind,
 					Pos:      link.Span.Start,
 					Node:     link,
-					Exported: isExported(link.Name),
+					Exported: true,
 				}
 				r.symbols = append(r.symbols, sym)
 				if table != nil {
@@ -251,6 +251,8 @@ func (r *resolver) addTopLevel() {
 			r.defineTop(&Symbol{Name: decl.Name, Kind: ConstKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
 		case *ast.VarDecl:
 			r.defineTop(&Symbol{Name: decl.Name, Kind: VarKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
+		case *ast.TypeAliasDecl:
+			r.defineTop(&Symbol{Name: decl.Name, Kind: TypeAliasKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
 		case *ast.FuncDecl:
 			if decl.Recv != nil {
 				r.addMethod(decl)
@@ -350,6 +352,8 @@ func (r *resolver) walkDecl(d ast.Decl) {
 	case *ast.VarDecl:
 		r.walkType(decl.Type)
 		r.walkExpr(decl.Value, true)
+	case *ast.TypeAliasDecl:
+		r.walkType(decl.Type)
 	case *ast.FuncDecl:
 		r.walkFunc(decl)
 	case *ast.StructDecl:
@@ -478,6 +482,9 @@ func (r *resolver) declareLocal(sym *Symbol) {
 	if sym.Name == "" || sym.Name == "_" {
 		return
 	}
+	// Visibility is a property of package-level declarations. A local binding
+	// never becomes exported merely because it has no __ prefix.
+	sym.Exported = false
 	scope := r.current()
 	if _, ok := scope.lookup(sym.Name); ok {
 		r.shadow(sym.Pos, sym.Name)
@@ -563,10 +570,7 @@ func (r *resolver) duplicate(pos source.Pos, name string) {
 }
 
 func isExported(name string) bool {
-	if name == "" {
-		return false
-	}
-	return name[0] >= 'A' && name[0] <= 'Z'
+	return name != "" && !strings.HasPrefix(name, "__")
 }
 
 // typeName returns the simple name of a named type, or "" for any other shape.

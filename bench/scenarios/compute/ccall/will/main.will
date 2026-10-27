@@ -9,11 +9,11 @@ const calls: i32 = 10000000
 
 // Empty is a function of the same module. A call to it is inlined, so it
 // shows the cost of the loop alone.
-func Empty(value: i64) -> i64 {
+def Empty(value: i64) -> i64 {
     return value
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var sink: u64 = 0u64
     var clockSink: u64 = 0u64
     var acc: i64 = 0i64

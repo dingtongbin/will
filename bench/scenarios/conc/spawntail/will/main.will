@@ -16,7 +16,7 @@ const repetitions: i32 = 5
 
 // Work runs the same integer loop as the spawn scenario and records the end of
 // its own latency window in the shared C cells.
-func Work(index: i32, slot: i32) -> i32 {
+def Work(index: i32, slot: i32) -> i32 {
     var acc: i32 = 0
     for i in Range(0, 100) {
         acc += i
@@ -25,7 +25,7 @@ func Work(index: i32, slot: i32) -> i32 {
     return acc + index
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     var rounds: Array<u64> = new Array<u64>(0)
     var checksum: i64 = 0i64

@@ -2,15 +2,15 @@ struct Counter {
     n: i32
 }
 
-func (c: Counter) Get() -> i32 {
+def (c: Counter) Get() -> i32 {
     return c.n
 }
 
-func (mut c: Counter) Add(d: i32) {
+def (mut c: Counter) Add(d: i32) {
     c.n += d
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var c: Counter = Counter { n: 7 }
     c.Add(3)
     return c.Get()

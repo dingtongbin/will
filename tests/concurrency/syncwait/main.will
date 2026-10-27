@@ -1,6 +1,6 @@
 import "std/sync"
 
-async func WaitFor(sem: sync.Semaphore, ready: chan<i32>, done: chan<i32>) -> i32 {
+async def WaitFor(sem: sync.Semaphore, ready: chan<i32>, done: chan<i32>) -> i32 {
     _ = await ready.Send(1)
     var permit: sync.Permit = await sem.Acquire()!
     _ = await done.Send(1)
@@ -8,12 +8,12 @@ async func WaitFor(sem: sync.Semaphore, ready: chan<i32>, done: chan<i32>) -> i3
     return 0
 }
 
-async func Worker(count: sync.Count, done: chan<i32>) {
+async def Worker(count: sync.Count, done: chan<i32>) {
     _ = await done.Send(1)
     count.Add(-1i64)
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var sem: sync.Semaphore = new sync.Semaphore(1i64)
     var first: sync.Permit = sem.TryAcquire()!
     match sem.TryAcquire() {

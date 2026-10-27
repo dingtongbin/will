@@ -3,7 +3,7 @@ import "std/bytes"
 // Copy writes into the initialized prefix of the destination: a longer source
 // is cut at the destination length, a shorter one leaves the rest alone, and an
 // empty source writes nothing.
-func main() -> i32 {
+def main() -> i32 {
     var src: str = "abcdef"
     var dst: Array<u8> = new Array<u8>(3)
     dst.Push(u8(0))

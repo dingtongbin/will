@@ -427,6 +427,13 @@ func (e *emitter) emitDecl(d ast.Decl) {
 		e.emitType(decl.Type)
 		e.emitExpr(decl.Value)
 		e.pop()
+	case *ast.TypeAliasDecl:
+		rec := e.add("typealias", decl)
+		e.text(rec, "text", decl.Name)
+		e.ref(rec, "to", decl.Type)
+		e.push(rec)
+		e.emitType(decl.Type)
+		e.pop()
 	case *ast.FuncDecl:
 		e.emitFunc(decl)
 	case *ast.StructDecl:

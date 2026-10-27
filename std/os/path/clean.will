@@ -1,5 +1,5 @@
 // isDotElement reports whether p[a:b] is the single-dot element.
-func isDotElement(p: str, a: usize, b: usize) -> bool {
+def isDotElement(p: str, a: usize, b: usize) -> bool {
     if b - a != 1usize {
         return false
     }
@@ -9,7 +9,7 @@ func isDotElement(p: str, a: usize, b: usize) -> bool {
 }
 
 // isDotDotElement reports whether p[a:b] is the two-dot element.
-func isDotDotElement(p: str, a: usize, b: usize) -> bool {
+def isDotDotElement(p: str, a: usize, b: usize) -> bool {
     if b - a != 2usize {
         return false
     }
@@ -23,7 +23,7 @@ func isDotDotElement(p: str, a: usize, b: usize) -> bool {
 // pushElement adds one element to the cleaned path or resolves a dot-dot. It
 // returns the new element count; a dot-dot removes the previous element unless
 // that would leave a relative path, in which case the dot-dot itself is kept.
-func pushElement(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>, ends: Array<usize>, count: usize) -> usize {
+def pushElement(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>, ends: Array<usize>, count: usize) -> usize {
     if isDotElement(p, a, b) {
         return count
     }
@@ -61,7 +61,7 @@ func pushElement(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>,
 // resolves leading dot-dot against a rooted path or a drive root. The result is
 // "." when nothing is left of a relative path, and the platform root when
 // nothing is left of a rooted one.
-func Clean(p: str) -> str {
+def Clean(p: str) -> str {
     var s: str = p.Clone()
     var n: usize = s.Len()
     var volumeEnd: usize = 0usize

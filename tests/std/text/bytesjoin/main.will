@@ -1,21 +1,21 @@
 import "std/bytes"
 
 // one returns a byte array holding a single byte.
-func one(value: u8) -> Array<u8> {
+def one(value: u8) -> Array<u8> {
     var p: Array<u8> = new Array<u8>(1)
     p.Push(value)
     return p
 }
 
 // empty returns a byte array with no bytes.
-func empty() -> Array<u8> {
+def empty() -> Array<u8> {
     var p: Array<u8> = new Array<u8>(0)
     return p
 }
 
 // Join must place the separator only between parts, keep an empty part in
 // place, accept an empty separator, and copy every byte value unchanged.
-func main() -> i32 {
+def main() -> i32 {
     var comma: Array<u8> = new Array<u8>(1)
     comma.Push(u8(44))
     var two: Array<Array<u8>> = new Array<Array<u8>>(2)

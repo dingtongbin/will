@@ -2,7 +2,7 @@
 // invalid text is a false result instead of a panic; the byte ranges below are
 // the ones RFC 3629 defines, which exclude overlong forms, surrogates, and
 // values past U+10FFFF.
-func IsValid(b: []u8) -> bool {
+def IsValid(b: []u8) -> bool {
     var i: usize = 0usize
     for {
         if i >= b.Len() {
@@ -72,7 +72,7 @@ func IsValid(b: []u8) -> bool {
 
 // continuation reports whether b[i] is a trailing byte. A position past the
 // end is not a trailing byte, so a truncated sequence fails here.
-func continuation(b: []u8, i: usize) -> bool {
+def continuation(b: []u8, i: usize) -> bool {
     if i >= b.Len() {
         return false
     }
@@ -82,7 +82,7 @@ func continuation(b: []u8, i: usize) -> bool {
 
 // inRange reports whether b[i] lies in [lo, hi]. The lead-byte cases use it to
 // reject overlong forms, the surrogate block, and the range past U+10FFFF.
-func inRange(b: []u8, i: usize, lo: u8, hi: u8) -> bool {
+def inRange(b: []u8, i: usize, lo: u8, hi: u8) -> bool {
     if i >= b.Len() {
         return false
     }

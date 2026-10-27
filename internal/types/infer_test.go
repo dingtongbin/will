@@ -7,7 +7,7 @@ import (
 )
 
 func TestFixedArrayLiteralChecksLengthAndElements(t *testing.T) {
-	src := "func F() -> i32 {\n" +
+	src := "def F() -> i32 {\n" +
 		"    var xs: [3]i32 = [3]i32 { 1, 2, 3 }\n" +
 		"    return xs[0]\n" +
 		"}\n"
@@ -17,7 +17,7 @@ func TestFixedArrayLiteralChecksLengthAndElements(t *testing.T) {
 }
 
 func TestFixedArrayLiteralRejectsWrongLength(t *testing.T) {
-	src := "func F() -> i32 {\n    var xs: [3]i32 = [3]i32 { 1, 2 }\n    return xs[0]\n}\n"
+	src := "def F() -> i32 {\n    var xs: [3]i32 = [3]i32 { 1, 2 }\n    return xs[0]\n}\n"
 	d := findCode(t, checkWithResolve(t, src), diag.CodeBadArgument)
 	if d.Message != "wrong number of array elements" ||
 		d.Help != "write exactly 3 elements" {
@@ -26,14 +26,14 @@ func TestFixedArrayLiteralRejectsWrongLength(t *testing.T) {
 }
 
 func TestExplicitTypeArgumentsInstantiateSignature(t *testing.T) {
-	src := "func Id<T>(x: T) -> T {\n    return x\n}\n\nfunc Use() -> i32 {\n    return Id<i32>(3)\n}\n"
+	src := "def Id<T>(x: T) -> T {\n    return x\n}\n\ndef Use() -> i32 {\n    return Id<i32>(3)\n}\n"
 	if ds := checkWithResolve(t, src); len(ds) != 0 {
 		t.Fatalf("explicit type arguments did not instantiate the signature:\n%s", diag.FormatAll(ds))
 	}
 }
 
 func TestLambdaBodyIsChecked(t *testing.T) {
-	src := "func F() {\n    var f: func(i32) -> i32 = func(x: i32) -> i32 { return \"s\" }\n    _ = f\n}\n"
+	src := "def F() {\n    var f: func(i32) -> i32 = func(x: i32) -> i32 { return \"s\" }\n    _ = f\n}\n"
 	d := findCode(t, checkWithResolve(t, src), diag.CodeTypeMismatch)
 	if d.Message == "" {
 		t.Fatal("the lambda body was not checked")
@@ -41,7 +41,7 @@ func TestLambdaBodyIsChecked(t *testing.T) {
 }
 
 func TestNegativeLiteralMayBeTheTypeMinimum(t *testing.T) {
-	src := "func F() -> i64 {\n    var x: i64 = -9223372036854775808\n    return x\n}\n"
+	src := "def F() -> i64 {\n    var x: i64 = -9223372036854775808\n    return x\n}\n"
 	if ds := checkWithResolve(t, src); len(ds) != 0 {
 		t.Fatalf("the smallest i64 was rejected:\n%s", diag.FormatAll(ds))
 	}
@@ -49,15 +49,15 @@ func TestNegativeLiteralMayBeTheTypeMinimum(t *testing.T) {
 
 func TestGenericStructFieldsAndMethods(t *testing.T) {
 	src := "struct Box<T> {\n    value: T\n}\n\n" +
-		"func (b: Box<T>) Get() -> T {\n    return b.value\n}\n\n" +
-		"func main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return b.Get()\n}\n"
+		"def (b: Box<T>) Get() -> T {\n    return b.value\n}\n\n" +
+		"def main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return b.Get()\n}\n"
 	if ds := checkWithResolve(t, src); len(ds) != 0 {
 		t.Fatalf("a generic struct field and method were not instantiated:\n%s", diag.FormatAll(ds))
 	}
 }
 
 func TestNoMethodOnUserType(t *testing.T) {
-	src := "struct P {\n    x: i32\n}\n\nfunc F(p: P) -> i32 {\n    return p.Missing()\n}\n"
+	src := "struct P {\n    x: i32\n}\n\ndef F(p: P) -> i32 {\n    return p.Missing()\n}\n"
 	ds := checkWithResolve(t, src)
 	d := findCode(t, ds, diag.CodeNoMethod)
 	if d.Message != "no method Missing on P" {
@@ -69,7 +69,7 @@ func TestNoMethodOnUserType(t *testing.T) {
 }
 
 func TestBuiltinConstraintIsNotAValueType(t *testing.T) {
-	src := "func F(e: Equal) {\n}\n"
+	src := "def F(e: Equal) {\n}\n"
 	ds := checkWithResolve(t, src)
 	d := findCode(t, ds, diag.CodeBuiltinConstraintAsInterface)
 	if d.Message != "Equal is a builtin constraint, not an interface" {
@@ -81,7 +81,7 @@ func TestBuiltinConstraintIsNotAValueType(t *testing.T) {
 }
 
 func TestBuiltinConstraintInAConstraintPosition(t *testing.T) {
-	src := "func Max<T: Ord>(a: T, b: T) -> T {\n    return a\n}\n"
+	src := "def Max<T: Ord>(a: T, b: T) -> T {\n    return a\n}\n"
 	if ds := checkWithResolve(t, src); len(ds) != 0 {
 		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
 	}
@@ -92,8 +92,8 @@ func TestNoField(t *testing.T) {
 		name string
 		src  string
 	}{
-		{"read", "struct P {\n    x: i32\n}\nfunc F(p: P) {\n    _ = p.y\n}\n"},
-		{"aggregate", "struct P {\n    x: i32\n}\nfunc F() {\n    var p: P = P { y: 1 }\n    _ = p\n}\n"},
+		{"read", "struct P {\n    x: i32\n}\ndef F(p: P) {\n    _ = p.y\n}\n"},
+		{"aggregate", "struct P {\n    x: i32\n}\ndef F() {\n    var p: P = P { y: 1 }\n    _ = p\n}\n"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -110,7 +110,7 @@ func TestNoField(t *testing.T) {
 }
 
 func TestSendResultMustBeHandled(t *testing.T) {
-	src := `func F(ch: chan<i32>) {
+	src := `def F(ch: chan<i32>) {
     ch.Send(1)
 }
 `
@@ -122,7 +122,7 @@ func TestSendResultMustBeHandled(t *testing.T) {
 }
 
 func TestNewWithoutInit(t *testing.T) {
-	src := "struct P {\n    x: i32\n}\nfunc F() {\n    var p: P = new P(1)\n    _ = p\n}\n"
+	src := "struct P {\n    x: i32\n}\ndef F() {\n    var p: P = new P(1)\n    _ = p\n}\n"
 	ds := checkWithResolve(t, src)
 	d := findCode(t, ds, diag.CodeNewWithoutInit)
 	if d.Message != "type P has no init; use a literal" {
@@ -137,11 +137,11 @@ func TestNewWithInit(t *testing.T) {
 	src := `struct P {
     x: i32
 }
-func (mut p: P) init(x: i32) -> Result<(), Error> {
+def (mut p: P) init(x: i32) -> Result<(), Error> {
     p.x = x
     return Ok(())
 }
-func F() {
+def F() {
     var p: P = new P(1)!
     _ = p
 }
@@ -155,7 +155,7 @@ func F() {
 }
 
 func TestBlockValueTakesExpectedType(t *testing.T) {
-	src := `func F(c: bool) {
+	src := `def F(c: bool) {
     var x: u8 = if c {
         1
     } else {
@@ -171,7 +171,7 @@ func TestBlockValueTakesExpectedType(t *testing.T) {
 }
 
 func TestBlockValueRange(t *testing.T) {
-	src := `func F(c: bool) {
+	src := `def F(c: bool) {
     var x: u8 = if c {
         1
     } else {
@@ -188,7 +188,7 @@ func TestBlockValueRange(t *testing.T) {
 }
 
 func TestBlockValueMismatch(t *testing.T) {
-	src := `func F(c: bool) {
+	src := `def F(c: bool) {
     _ = if c {
         1
     } else {
@@ -204,7 +204,7 @@ func TestBlockValueMismatch(t *testing.T) {
 }
 
 func TestMatchValueTakesExpectedType(t *testing.T) {
-	src := `func F(n: i32) {
+	src := `def F(n: i32) {
     var x: i32 = match n {
         0 => 1
         _ => 2
@@ -222,7 +222,7 @@ func TestMatchValueTakesExpectedType(t *testing.T) {
 // against usize. Without that, a literal inside an index keeps no type and the
 // backend sees a pair of different widths for an arithmetic index.
 func TestIndexGivesItsLiteralAWidth(t *testing.T) {
-	src := `func Last(buf: []u8) -> u8 {
+	src := `def Last(buf: []u8) -> u8 {
     return buf[buf.Len() - 1usize]
 }
 `
@@ -244,7 +244,7 @@ func TestIndexGivesItsLiteralAWidth(t *testing.T) {
 // TestIndexRejectsAWrongWidth checks that an index of the wrong type is
 // reported at the index, not left to the backend.
 func TestIndexRejectsAWrongWidth(t *testing.T) {
-	src := `func Last(buf: []u8) -> u8 {
+	src := `def Last(buf: []u8) -> u8 {
     var i: i32 = 0
     return buf[i]
 }

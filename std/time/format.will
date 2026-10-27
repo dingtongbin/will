@@ -3,7 +3,7 @@
 
 // pad2 writes a two-digit field. The caller passes a value in 0..99, so two
 // digits are enough.
-func pad2(v: i64) -> str {
+def pad2(v: i64) -> str {
     if v >= 0 && v < 10 {
         return f"0{v}"
     }
@@ -13,7 +13,7 @@ func pad2(v: i64) -> str {
 // padYear writes the four-digit year the named formats use. An instant accepts
 // a wide range, so a year outside 0000..9999 is written as its decimal value
 // rather than clipped to the four digits RFC 3339 defines.
-func padYear(year: i32) -> str {
+def padYear(year: i32) -> str {
     if year >= 0 && year < 10 {
         return f"000{year}"
     }
@@ -29,7 +29,7 @@ func padYear(year: i32) -> str {
 // offsetSuffix writes the zone offset as RFC 3339 does: Z for zero, otherwise
 // the signed hour and minute offset. RFC 3339 has no seconds in an offset, so
 // a sub-minute part of a fixed offset is not written.
-func offsetSuffix(offsetSec: i32) -> str {
+def offsetSuffix(offsetSec: i32) -> str {
     var total: i64 = i64(offsetSec)
     if total == 0 {
         return "Z"
@@ -46,7 +46,7 @@ func offsetSuffix(offsetSec: i32) -> str {
 
 // fractionText writes the nanosecond part with trailing zeros removed. The
 // input is in 1..999999999; zero has no fractional text at all.
-func fractionText(frac: i64) -> str {
+def fractionText(frac: i64) -> str {
     if frac == 0 {
         return ""
     }
@@ -72,7 +72,7 @@ func fractionText(frac: i64) -> str {
     return str(trimmed)
 }
 
-func weekdayName(weekday: i64) -> str {
+def weekdayName(weekday: i64) -> str {
     if weekday == 0 {
         return "Sun"
     }
@@ -94,7 +94,7 @@ func weekdayName(weekday: i64) -> str {
     return "Sat"
 }
 
-func monthName(month: i32) -> str {
+def monthName(month: i32) -> str {
     if month == 1 {
         return "Jan"
     }
@@ -132,7 +132,7 @@ func monthName(month: i32) -> str {
 }
 
 // rfc3339Body writes the date, time, and optional fraction without the offset.
-func rfc3339Body(t: Instant, frac: i64) -> str {
+def rfc3339Body(t: Instant, frac: i64) -> str {
     var local: i64 = localSeconds(t)
     var date: civilDate = civilFromDays(daysOf(local))
     var tod: clockTime = timeOfDay(local)
@@ -146,21 +146,21 @@ func rfc3339Body(t: Instant, frac: i64) -> str {
 
 // Rfc3339 formats t as 2006-01-02T15:04:05Z07:00 in the zone t carries. The
 // fractional part is left out; Rfc3339Nano is the form that keeps it.
-func Rfc3339(t: Instant) -> str {
+def Rfc3339(t: Instant) -> str {
     var at: i64 = secondsOf(t.nanos)
     return rfc3339Body(t, 0i64) + offsetSuffix(offsetAt(t.zone, at))
 }
 
 // Rfc3339Nano formats t like Rfc3339 and adds the fractional second with
 // trailing zeros removed. A whole second has no fractional part.
-func Rfc3339Nano(t: Instant) -> str {
+def Rfc3339Nano(t: Instant) -> str {
     var at: i64 = secondsOf(t.nanos)
     return rfc3339Body(t, fractionOf(t.nanos)) + offsetSuffix(offsetAt(t.zone, at))
 }
 
 // Rfc1123 formats t as an HTTP date in GMT: Sun, 06 Nov 1994 08:49:37 GMT.
 // The header format is always UTC, so the zone of t does not show.
-func Rfc1123(t: Instant) -> str {
+def Rfc1123(t: Instant) -> str {
     var secs: i64 = secondsOf(t.nanos)
     var date: civilDate = civilFromDays(daysOf(secs))
     var tod: clockTime = timeOfDay(secs)
@@ -171,13 +171,13 @@ func Rfc1123(t: Instant) -> str {
 }
 
 // Date formats the calendar date of t in its zone as 2006-01-02.
-func Date(t: Instant) -> str {
+def Date(t: Instant) -> str {
     var date: civilDate = civilFromDays(daysOf(localSeconds(t)))
     return padYear(date.year) + "-" + pad2(i64(date.month)) + "-" + pad2(i64(date.day))
 }
 
 // Clock formats the time of day of t in its zone as 15:04:05.
-func Clock(t: Instant) -> str {
+def Clock(t: Instant) -> str {
     var tod: clockTime = timeOfDay(localSeconds(t))
     return pad2(i64(tod.hour)) + ":" + pad2(i64(tod.minute)) + ":" + pad2(i64(tod.second))
 }

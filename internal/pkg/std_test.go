@@ -14,7 +14,7 @@ func writeStdTree(t *testing.T) string {
 	t.Helper()
 	std := filepath.Join(t.TempDir(), "std")
 	write(t, filepath.Join(std, "will.mod"), "module std\nwill 1\n")
-	write(t, filepath.Join(std, "net", "http", "http.will"), "func Get() -> i32 {\n    return 1\n}\n")
+	write(t, filepath.Join(std, "net", "http", "http.will"), "def Get() -> i32 {\n    return 1\n}\n")
 	return std
 }
 
@@ -26,7 +26,7 @@ func stdApp(t *testing.T, std string) string {
 	write(t, filepath.Join(app, "will.mod"),
 		"module example.com/app\nwill 1\nrequire std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(std)+"\n")
 	write(t, filepath.Join(app, "main.will"),
-		"import \"std/net/http\"\n\nfunc F() -> i32 {\n    return http.Get()\n}\n")
+		"import \"std/net/http\"\n\ndef F() -> i32 {\n    return http.Get()\n}\n")
 	return app
 }
 
@@ -65,7 +65,7 @@ func TestStdResolvesThroughReplace(t *testing.T) {
 func TestStdMissingSubpackage(t *testing.T) {
 	std := filepath.Join(t.TempDir(), "std")
 	write(t, filepath.Join(std, "will.mod"), "module std\nwill 1\n")
-	write(t, filepath.Join(std, "net", "other", "other.will"), "func Get() -> i32 {\n    return 1\n}\n")
+	write(t, filepath.Join(std, "net", "other", "other.will"), "def Get() -> i32 {\n    return 1\n}\n")
 	app := stdApp(t, std)
 
 	b := Load(app)
@@ -84,7 +84,7 @@ func TestStdImportWithoutRequire(t *testing.T) {
 	app := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(app, "will.mod"), "module example.com/app\nwill 1\n")
 	write(t, filepath.Join(app, "main.will"),
-		"import \"std/net/http\"\n\nfunc F() -> i32 {\n    return http.Get()\n}\n")
+		"import \"std/net/http\"\n\ndef F() -> i32 {\n    return http.Get()\n}\n")
 
 	b := Load(app)
 	if len(b.Diags) != 0 {

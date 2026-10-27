@@ -16,7 +16,7 @@ struct Cell {
     value: i64
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     // The warm up pays for the first touch of the pages and of the caches.
     var warm: rc<Cell> = new rc<Cell>(Cell { value: 0i64})

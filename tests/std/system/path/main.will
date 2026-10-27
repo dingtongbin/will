@@ -2,7 +2,7 @@ import "std/os/path"
 
 // Clean must drop empty and dot elements, resolve dot-dot where it can, keep a
 // leading dot-dot on a relative path, and name the empty result "." or "/".
-func main() -> i32 {
+def main() -> i32 {
     if path.Clean("") != "." {
         return 1
     }

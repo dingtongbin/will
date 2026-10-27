@@ -20,7 +20,7 @@ const secondsPerDay: i64 = 86400
 
 // floorDiv divides rounding toward negative infinity. Calendar days before the
 // epoch are negative, and a truncating division would put them in the next day.
-func floorDiv(a: i64, b: i64) -> i64 {
+def floorDiv(a: i64, b: i64) -> i64 {
     var q: i64 = a / b
     var aNegative: bool = a < 0
     var bNegative: bool = b < 0
@@ -32,24 +32,24 @@ func floorDiv(a: i64, b: i64) -> i64 {
 
 // floorMod returns the remainder that belongs to the quotient of floorDiv, so
 // it is never negative when b is positive.
-func floorMod(a: i64, b: i64) -> i64 {
+def floorMod(a: i64, b: i64) -> i64 {
     return a - floorDiv(a, b) * b
 }
 
 // secondsOf returns the whole second that contains a Unix nanosecond count.
-func secondsOf(nanos: i64) -> i64 {
+def secondsOf(nanos: i64) -> i64 {
     return floorDiv(nanos, nanosPerSecond)
 }
 
 // fractionOf returns the nanosecond part of a count, in 0..999999999.
-func fractionOf(nanos: i64) -> i64 {
+def fractionOf(nanos: i64) -> i64 {
     return floorMod(nanos, nanosPerSecond)
 }
 
 // daysFromCivil returns the number of days from 1970-01-01 to the given date.
 // The algorithm is Howard Hinnant's days_from_civil and is valid for every date
 // the proleptic Gregorian calendar defines.
-func daysFromCivil(year: i32, month: i32, day: i32) -> i64 {
+def daysFromCivil(year: i32, month: i32, day: i32) -> i64 {
     var y: i64 = i64(year)
     if month <= 2 {
         y -= 1
@@ -68,7 +68,7 @@ func daysFromCivil(year: i32, month: i32, day: i32) -> i64 {
 }
 
 // civilFromDays is the inverse of daysFromCivil.
-func civilFromDays(days: i64) -> civilDate {
+def civilFromDays(days: i64) -> civilDate {
     var z: i64 = days + 719468i64
     var era: i64 = floorDiv(z, 146097i64)
     var doe: i64 = z - era * 146097i64
@@ -89,12 +89,12 @@ func civilFromDays(days: i64) -> civilDate {
 
 // daysOf returns the calendar day that contains secs. The division floors, so a
 // second before the epoch still belongs to 1969-12-31.
-func daysOf(secs: i64) -> i64 {
+def daysOf(secs: i64) -> i64 {
     return floorDiv(secs, secondsPerDay)
 }
 
 // timeOfDay returns the position of secs within its calendar day.
-func timeOfDay(secs: i64) -> clockTime {
+def timeOfDay(secs: i64) -> clockTime {
     var rem: i64 = floorMod(secs, secondsPerDay)
     var hour: i64 = rem / 3600i64
     var minute: i64 = (rem % 3600i64) / 60i64
@@ -105,18 +105,18 @@ func timeOfDay(secs: i64) -> clockTime {
 // localSeconds returns the whole second of the wall clock reading. The offset
 // is added to the second, not to the nanosecond count, so a moment near the
 // end of the Instant range can still be shown in a positive zone.
-func localSeconds(t: Instant) -> i64 {
+def localSeconds(t: Instant) -> i64 {
     var at: i64 = secondsOf(t.nanos)
     return at + i64(offsetAt(t.zone, at))
 }
 
 // weekdayOf returns 0 for Sunday through 6 for Saturday. 1970-01-01 was a
 // Thursday, which is 4 in this numbering.
-func weekdayOf(days: i64) -> i64 {
+def weekdayOf(days: i64) -> i64 {
     return floorMod(days + 4i64, 7i64)
 }
 
-func isLeapYear(year: i32) -> bool {
+def isLeapYear(year: i32) -> bool {
     if year % 4 != 0 {
         return false
     }
@@ -128,7 +128,7 @@ func isLeapYear(year: i32) -> bool {
 
 // daysInMonth returns the length of one month. The caller must pass a month in
 // 1..12.
-func daysInMonth(year: i32, month: i32) -> i32 {
+def daysInMonth(year: i32, month: i32) -> i32 {
     if month == 2 {
         if isLeapYear(year) {
             return 29

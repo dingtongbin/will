@@ -14,8 +14,8 @@ func TestFileModeFindsTheModuleRoot(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	writeTree(t, root, map[string]string{
 		"will.mod":      "module example.com/app\nwill 1\n",
-		"src/main.will": "import \"example.com/app/lib\"\n\nfunc main() -> i32 {\n    return lib.Double(2)\n}\n",
-		"lib/lib.will":  "func Double(n: i32) -> i32 {\n    return n + n\n}\n",
+		"src/main.will": "import \"example.com/app/lib\"\n\ndef main() -> i32 {\n    return lib.Double(2)\n}\n",
+		"lib/lib.will":  "def Double(n: i32) -> i32 {\n    return n + n\n}\n",
 	})
 	file := filepath.Join(root, "src", "main.will")
 
@@ -37,7 +37,7 @@ func TestFileModeAgreesWithBuildOnErrors(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	writeTree(t, root, map[string]string{
 		"will.mod":      "module example.com/app\nwill 1\n",
-		"src/main.will": "func main() -> i32 {\n    var n: i32 = \"text\"\n    return n\n}\n",
+		"src/main.will": "def main() -> i32 {\n    var n: i32 = \"text\"\n    return n\n}\n",
 	})
 	file := filepath.Join(root, "src", "main.will")
 	checkCode, checkOut, _ := runCLI("check", file)

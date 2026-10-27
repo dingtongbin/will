@@ -3,19 +3,19 @@ struct Packet {
     values: Array<i32>
 }
 
-func ShowPacket(p: Packet) {
+def ShowPacket(p: Packet) {
     print(p.name, " ", p.values.Len(), " ", p.values.Get(0usize), "\n")
 }
 
-func ShowMap(m: Map<str, i32>) {
+def ShowMap(m: Map<str, i32>) {
     print(m.Len(), "\n")
 }
 
-func ShowNested(xs: Array<Array<i32>>) {
+def ShowNested(xs: Array<Array<i32>>) {
     print(xs.Len(), " ", xs.Get(0usize).Len(), "\n")
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var p: Packet = Packet {
         name: "old" + "!",
         values: new Array<i32>(1usize),

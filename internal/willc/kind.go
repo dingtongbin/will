@@ -2,16 +2,17 @@ package willc
 
 // kindSpecs is the single owner of the record kinds and their fields.
 var kindSpecs = map[string]KindSpec{
-	"module":   {Required: []string{"path"}},
-	"import":   {Required: []string{"path"}, Optional: []string{"unused"}},
-	"cimport":  {Required: []string{"path"}},
-	"link":     {Required: []string{"text"}, Optional: []string{"fast", "blocking", "typed", "type", "param", "variadic"}, Repeatable: []string{"param"}},
-	"const":    {Required: []string{"text", "type"}},
-	"var":      {Required: []string{"text", "type"}},
-	"func":     {Required: []string{"text"}, Optional: []string{"type", "async"}},
-	"receiver": {Required: []string{"text", "type"}, Optional: []string{"mut"}},
-	"param":    {Required: []string{"text", "type"}, Optional: []string{"mut", "variadic"}},
-	"struct":   {Required: []string{"text"}},
+	"module":    {Required: []string{"path"}},
+	"import":    {Required: []string{"path"}, Optional: []string{"unused"}},
+	"cimport":   {Required: []string{"path"}},
+	"link":      {Required: []string{"text"}, Optional: []string{"fast", "blocking", "typed", "type", "param", "variadic"}, Repeatable: []string{"param"}},
+	"const":     {Required: []string{"text", "type"}},
+	"var":       {Required: []string{"text", "type"}},
+	"typealias": {Required: []string{"text", "to"}},
+	"func":      {Required: []string{"text"}, Optional: []string{"type", "async"}},
+	"receiver":  {Required: []string{"text", "type"}, Optional: []string{"mut"}},
+	"param":     {Required: []string{"text", "type"}, Optional: []string{"mut", "variadic"}},
+	"struct":    {Required: []string{"text"}},
 	"field": {
 		RequiredAny: [][]string{{"text", "type"}, {"recv", "text"}},
 		Optional:    []string{"default", "type", "recv", "text"},

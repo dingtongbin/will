@@ -1,6 +1,6 @@
 import c "api.h"
 
-func main() -> i32 {
+def main() -> i32 {
     var p: raw = c.malloc(32usize)
     p.StoreI32(41)
     var loaded: i32 = p.LoadI32()

@@ -1,6 +1,6 @@
 import "std/os"
 
-func main() -> i32 {
+def main() -> i32 {
     if os.SIGINT != 2 {
         return 1
     }

@@ -12,7 +12,7 @@ const prime64: u64 = 1099511628211
 
 // Sum32 returns the 32-bit FNV-1a hash of b. The multiply wraps because the
 // hash is defined modulo 2^32, so it uses the wrapping operator.
-func Sum32(b: []u8) -> u32 {
+def Sum32(b: []u8) -> u32 {
     var h: u32 = offset32
     for v in b {
         h = h ^ u32(v)
@@ -23,7 +23,7 @@ func Sum32(b: []u8) -> u32 {
 
 // Sum64 returns the 64-bit FNV-1a hash of b. The multiply wraps because the
 // hash is defined modulo 2^64, so it uses the wrapping operator.
-func Sum64(b: []u8) -> u64 {
+def Sum64(b: []u8) -> u64 {
     var h: u64 = offset64
     for v in b {
         h = h ^ u64(v)

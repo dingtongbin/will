@@ -2,18 +2,18 @@
 // panicking with the caller's message, so the report carries the source
 // position of the assertion.
 
-func Assert(cond: bool, message: str) {
+def Assert(cond: bool, message: str) {
     if !cond {
         panic(message)
     }
 }
 
-func AssertEqual<V>(got: V, want: V, message: str) {
+def AssertEqual<V>(got: V, want: V, message: str) {
     if !(got == want) {
         panic(message)
     }
 }
 
-func Fatal(message: str) {
+def Fatal(message: str) {
     panic(message)
 }

@@ -12,14 +12,14 @@ struct WriterBuf {
 
 // init wraps w in a buffer of size bytes. A size of zero passes every write
 // straight through.
-func (mut b: WriterBuf) init(w: io.Writer, size: usize) {
+def (mut b: WriterBuf) init(w: io.Writer, size: usize) {
     b.dst = w.Clone()
     b.data = new Array<u8>(size)
     b.limit = size
 }
 
 // Write appends bytes, flushing first when they would not fit.
-func (mut b: WriterBuf) Write(bytes: []u8) -> Result<(), Error> {
+def (mut b: WriterBuf) Write(bytes: []u8) -> Result<(), Error> {
     if b.limit == 0usize {
         return b.dst.Write(bytes)
     }
@@ -41,7 +41,7 @@ func (mut b: WriterBuf) Write(bytes: []u8) -> Result<(), Error> {
 
 // Flush writes the buffered bytes. The buffer is copied first so the write does
 // not alias the array it clears.
-func (mut b: WriterBuf) Flush() -> Result<(), Error> {
+def (mut b: WriterBuf) Flush() -> Result<(), Error> {
     if b.data.Len() != 0usize {
         var out: Array<u8> = b.data.Clone()
         var n: usize = out.Len()
@@ -52,7 +52,7 @@ func (mut b: WriterBuf) Flush() -> Result<(), Error> {
 }
 
 // Sync flushes the buffer and syncs the wrapped Writer.
-func (mut b: WriterBuf) Sync() -> Result<(), Error> {
+def (mut b: WriterBuf) Sync() -> Result<(), Error> {
     _ = b.Flush()?
     return b.dst.Sync()
 }

@@ -2,6 +2,6 @@ struct P {
     x: i32
 }
 
-func F() -> P {
+def F() -> P {
     return new P()
 }

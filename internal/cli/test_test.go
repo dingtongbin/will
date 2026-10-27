@@ -9,7 +9,7 @@ func TestTestEntryRunsCasesSerially(t *testing.T) {
 	src := testEntry("example.com/app", []string{"TestAlpha", "TestBeta"}, []string{"BenchmarkOne"})
 	for _, want := range []string{
 		"import \"std/test\"",
-		"func WillTestMain() -> i32",
+		"def WillTestMain() -> i32",
 		"test.NewT(\"example.com/app/TestAlpha\")",
 		"TestBeta(t_Beta)",
 		"test.NewB(\"example.com/app/BenchmarkOne\")",

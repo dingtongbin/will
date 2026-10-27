@@ -22,8 +22,8 @@ func write(t *testing.T, path, content string) {
 func TestLoadModule(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	write(t, filepath.Join(root, "main.will"), "func Main() {\n}\n")
-	write(t, filepath.Join(root, "lib", "util.will"), "func Util() {\n}\n")
+	write(t, filepath.Join(root, "main.will"), "def Main() {\n}\n")
+	write(t, filepath.Join(root, "lib", "util.will"), "def Util() {\n}\n")
 
 	b := Load(root)
 	if b.Err != nil {
@@ -56,7 +56,7 @@ func TestModuleRootNameMismatch(t *testing.T) {
 func TestInvalidPackageDirectoryName(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	write(t, filepath.Join(root, "Bad", "x.will"), "func F() {\n}\n")
+	write(t, filepath.Join(root, "Bad", "x.will"), "def F() {\n}\n")
 	b := Load(root)
 	findCode(t, b.Diags, diag.CodePackageNameMismatch)
 }
@@ -65,7 +65,7 @@ func TestMethodLeavesTypePackage(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
 	write(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n")
-	write(t, filepath.Join(root, "sub", "method.will"), "func (t: T) Move() {\n}\n")
+	write(t, filepath.Join(root, "sub", "method.will"), "def (t: T) Move() {\n}\n")
 	b := Load(root)
 	d := findCode(t, b.Diags, diag.CodeMethodsTwoPackages)
 	if d.Message != "methods of T are declared in two packages" {
@@ -82,7 +82,7 @@ func TestMethodLeavesTypePackage(t *testing.T) {
 func TestMethodInDeclaringPackageIsFine(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	write(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n\nfunc (t: T) Move() {\n}\n")
+	write(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n\ndef (t: T) Move() {\n}\n")
 	b := Load(root)
 	for _, d := range b.Diags {
 		if d.Code == diag.CodeMethodsTwoPackages {
@@ -94,8 +94,8 @@ func TestMethodInDeclaringPackageIsFine(t *testing.T) {
 func TestCrossPackageMemberResolution(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	write(t, filepath.Join(root, "api.will"), "func Exported() -> i32 {\n    return 1\n}\n\nfunc hidden() {\n}\n")
-	write(t, filepath.Join(root, "sub", "use.will"), "import \"example.com/app\"\n\nfunc F() {\n    _ = app.Exported()\n}\n")
+	write(t, filepath.Join(root, "api.will"), "def Exported() -> i32 {\n    return 1\n}\n\ndef hidden() {\n}\n")
+	write(t, filepath.Join(root, "sub", "use.will"), "import \"example.com/app\"\n\ndef F() {\n    _ = app.Exported()\n}\n")
 	b := Load(root)
 	for _, d := range b.CheckAll() {
 		if d.Code == diag.CodeUndefinedName || d.Code == diag.CodeUnusedImport {
@@ -107,8 +107,8 @@ func TestCrossPackageMemberResolution(t *testing.T) {
 func TestCrossPackageMissingMember(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	write(t, filepath.Join(root, "api.will"), "func Exported() {\n}\n")
-	write(t, filepath.Join(root, "sub", "use.will"), "import \"example.com/app\"\n\nfunc F() {\n    _ = app.Nope()\n}\n")
+	write(t, filepath.Join(root, "api.will"), "def Exported() {\n}\n")
+	write(t, filepath.Join(root, "sub", "use.will"), "import \"example.com/app\"\n\ndef F() {\n    _ = app.Nope()\n}\n")
 	ds := Load(root).CheckAll()
 	d := findCode(t, ds, diag.CodeUndefinedName)
 	if d.Pos.Line != 4 {
@@ -119,8 +119,8 @@ func TestCrossPackageMissingMember(t *testing.T) {
 func TestCrossPackagePrivateMember(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	write(t, filepath.Join(root, "api.will"), "func hidden() {\n}\n")
-	write(t, filepath.Join(root, "sub", "use.will"), "import \"example.com/app\"\n\nfunc F() {\n    _ = app.hidden()\n}\n")
+	write(t, filepath.Join(root, "api.will"), "def __hidden() {\n}\n")
+	write(t, filepath.Join(root, "sub", "use.will"), "import \"example.com/app\"\n\ndef F() {\n    _ = app.__hidden()\n}\n")
 	findCode(t, Load(root).CheckAll(), diag.CodePrivateName)
 }
 

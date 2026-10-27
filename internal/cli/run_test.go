@@ -17,7 +17,7 @@ func TestRunEarlyRcRelease(t *testing.T) {
     n: i32
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var first: rc<Counter> = new rc<Counter>(Counter { n: 7 })
     var second: rc<Counter> = first
     _ = second
@@ -38,14 +38,14 @@ func TestRunEscapingClosureOwnsItsCapture(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func Make() -> func() -> i32 {
+	src := `def Make() -> func() -> i32 {
     var text: str = "hello".Clone()
     return func() -> i32 {
         return i32(text.Len())
     }
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var f: func() -> i32 = Make()
     return f()
 }
@@ -66,7 +66,7 @@ func TestRunTwoClosuresMoveSeparateOwners(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func Run() -> i32 {
+	src := `def Run() -> i32 {
     var text: str = "hello" + "!"
     var copy: str = text.Clone()
     var f: func() -> usize = func() -> usize {
@@ -78,7 +78,7 @@ func TestRunTwoClosuresMoveSeparateOwners(t *testing.T) {
     return i32(f() + g())
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return Run() - 12
 }
 `
@@ -103,7 +103,7 @@ func TestRunLoopClosureDropsInPackageMode(t *testing.T) {
 		t.Fatalf("make module: %v", err)
 	}
 	writeFile(t, dir, "will.mod", "module example.com/loopcapture\nwill 1\n")
-	src := `func Run() -> i32 {
+	src := `def Run() -> i32 {
     var text: str = "hello" + "!"
     var f: func() -> usize = func() -> usize {
         return 0
@@ -117,7 +117,7 @@ func TestRunLoopClosureDropsInPackageMode(t *testing.T) {
     return i32(f()) - 6
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return Run()
 }
 `
@@ -137,7 +137,7 @@ func TestRunNestedClosureMovesItsLocal(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func Run() -> i32 {
+	src := `def Run() -> i32 {
     var make: func() -> func() -> usize = func() -> func() -> usize {
         var inner: str = "abc" + "d"
         return func() -> usize {
@@ -148,7 +148,7 @@ func TestRunNestedClosureMovesItsLocal(t *testing.T) {
     return i32(g()) - 4
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return Run()
 }
 `
@@ -181,17 +181,17 @@ func TestRunAsyncChildResultMovesOnce(t *testing.T) {
 		"require std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(filepath.Join(root, "std"))+"\n")
 	src := `import "std/time"
 
-async func Text() -> str {
+async def Text() -> str {
     _ = await time.Sleep(1ms)!
     return "hello".Clone()
 }
 
-async func Parent() -> i32 {
+async def Parent() -> i32 {
     var text: str = await Text()
     return i32(text.Len())
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     return await Parent() - 5
 }
 `
@@ -223,17 +223,17 @@ func TestRunTryChildResultMovesOnce(t *testing.T) {
 		"require std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(filepath.Join(root, "std"))+"\n")
 	src := `import "std/time"
 
-async func Text() -> Result<str, Error> {
+async def Text() -> Result<str, Error> {
     _ = await time.Sleep(1ms)!
     return Ok("hello".Clone())
 }
 
-async func Parent() -> Result<i32, Error> {
+async def Parent() -> Result<i32, Error> {
     var text: str = (await Text())?
     return Ok(i32(text.Len()))
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     return match await Parent() {
         Ok(n) => n - 5
         Err(_) => 1
@@ -256,12 +256,12 @@ func TestRunTaskErrorOwnsItsMessage(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func Fail(msg: str) -> i32 {
+	src := `def Fail(msg: str) -> i32 {
     panic(msg)
     return 0
 }
 
-async func Capture() -> Result<i32, TaskError> {
+async def Capture() -> Result<i32, TaskError> {
     var result: Result<i32, TaskError> = Ok(0)
     region {
         var task: Task<i32> = spawn Fail("boom".Clone())
@@ -270,7 +270,7 @@ async func Capture() -> Result<i32, TaskError> {
     return result
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     match await Capture() {
         Ok(_) => {
             return 1
@@ -301,13 +301,13 @@ func TestRunTryMovesThePayload(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func Take() -> Option<str> {
+	src := `def Take() -> Option<str> {
     var o: Option<str> = Some("abc".Clone())
     var s: str = o?
     return Some(s)
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return match Take() {
         Some(s) => i32(s.Len())
         None => 0
@@ -329,13 +329,13 @@ func TestRunUnwrapMovesThePayload(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func Take() -> i32 {
+	src := `def Take() -> i32 {
     var o: Option<str> = Some("abcd".Clone())
     var s: str = o!
     return i32(s.Len())
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return Take()
 }
 `
@@ -359,7 +359,7 @@ func TestRunFieldMoveZeroesTheSourceField(t *testing.T) {
     items: Array<i32>
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var b: Box = Box { items: new Array<i32>(4) }
     b.items.Push(7)
     var items: Array<i32> = b.items
@@ -383,7 +383,7 @@ func TestRunEmptyInterfaceBox(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func main() -> i32 {
+	src := `def main() -> i32 {
     var v: interface {} = 7
     return match v.As<i32>() {
         Some(n) => n
@@ -411,11 +411,11 @@ func TestRunInterfaceFieldAndArray(t *testing.T) {
     s: str
 }
 
-func (p: P) Message() -> str {
+def (p: P) Message() -> str {
     return p.s.Clone()
 }
 
-func (p: P) Status() -> i32 {
+def (p: P) Status() -> i32 {
     return 1
 }
 
@@ -423,7 +423,7 @@ struct H {
     e: Error
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var e: Error = P { s: "hello" }
     var h: H = H { e: e }
     var xs: Array<Error> = new Array<Error>(2)
@@ -448,26 +448,26 @@ func TestRunInterfaceDowncastClone(t *testing.T) {
 		t.Skip("clang is not installed")
 	}
 	src := `interface Shape {
-    func Area() -> i32
+    def Area() -> i32
 }
 
 interface Labeled {
-    func Label() -> str
+    def Label() -> str
 }
 
 struct Square {
     n: i32
 }
 
-func (s: Square) Area() -> i32 {
+def (s: Square) Area() -> i32 {
     return s.n
 }
 
-func (s: Square) Label() -> str {
+def (s: Square) Label() -> str {
     return "square"
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var s: Shape = Square { n: 3 }
     var l: Option<Labeled> = s.As<Labeled>()
     return match l {
@@ -489,7 +489,7 @@ func main() -> i32 {
 // TestCheckFixedArrayLiteralWrongLength checks the diagnostics path for a
 // literal whose element count does not match its type.
 func TestCheckFixedArrayLiteralWrongLength(t *testing.T) {
-	src := `func main() -> i32 {
+	src := `def main() -> i32 {
     var xs: [2]i32 = [2]i32 { 1 }
     return xs[0]
 }
@@ -511,7 +511,7 @@ func TestRunChannelHandleCopies(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func main() -> i32 {
+	src := `def main() -> i32 {
     var ch: chan<str> = new chan<str>(2)
     var ch2: chan<str> = ch
     var sent: Result<(), Error> = wait(ch2.Send("hello"))
@@ -550,7 +550,7 @@ func TestRunFixedArrayLiteral(t *testing.T) {
     s: str
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var a: str = "ab"
     var xs: [2]str = [2]str { a, "cde" }
     var ps: [2]S = [2]S { S { s: "xy" }, S { s: "z" } }
@@ -577,15 +577,15 @@ func TestRunInterfaceBoxAndClone(t *testing.T) {
     s: str
 }
 
-func (p: P) Message() -> str {
+def (p: P) Message() -> str {
     return p.s.Clone()
 }
 
-func (p: P) Status() -> i32 {
+def (p: P) Status() -> i32 {
     return 1
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var e: Error = P { s: "hello" }
     var f: Error = e.Clone()
     var n: i32 = i32(f.Message().Len())
@@ -608,11 +608,11 @@ func TestRunSpawnDropsArrayCapture(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func Count(xs: Array<str>) -> i32 {
+	src := `def Count(xs: Array<str>) -> i32 {
     return i32(xs.Len())
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var xs: Array<str> = new Array<str>(2)
     xs.Push("a")
     xs.Push("b")
@@ -635,7 +635,7 @@ func main() -> i32 {
 func TestCheckTopLevelWrite(t *testing.T) {
 	src := `var counter: i32 = 0
 
-func main() -> i32 {
+def main() -> i32 {
     counter = 1
     return 0
 }
@@ -666,18 +666,18 @@ struct T {
     x: str
 }
 
-func FieldReturn() -> str {
+def FieldReturn() -> str {
     var s: S = S { x: "abc", y: "de" }
     return s.x
 }
 
-func IndexReturn() -> str {
+def IndexReturn() -> str {
     var xs: Array<str> = new Array<str>(2)
     xs.Push("wxyz")
     return xs[0]
 }
 
-func Moves() -> i32 {
+def Moves() -> i32 {
     var s: S = S { x: "abc", y: "de" }
     var t: T = T { x: s.x }
     var s2: S = S { x: "fg", y: "hij" }
@@ -689,7 +689,7 @@ func Moves() -> i32 {
     }
 }
 
-func AssignMove() -> i32 {
+def AssignMove() -> i32 {
     var a: S = S { x: "abc", y: "de" }
     var b: S
     b.x = a.x
@@ -697,7 +697,7 @@ func AssignMove() -> i32 {
     return i32(b.x.Len() + b.y.Len())
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return i32(FieldReturn().Len() + IndexReturn().Len()) + Moves() + AssignMove()
 }
 `
@@ -731,14 +731,14 @@ struct F {
     xs: [2]str
 }
 
-func TextLen(e: E) -> i32 {
+def TextLen(e: E) -> i32 {
     return match e {
         Text(s) => i32(s.Len())
         Empty => 0
     }
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var h: H = H { e: E.Text("hello") }
     var hc: H = h.Clone()
 
@@ -772,7 +772,7 @@ func TestRunArrayBatchRelease(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func main() -> i32 {
+	src := `def main() -> i32 {
     var a: Array<i32> = new Array<i32>(4)
     var b: Array<i32> = new Array<i32>(4)
     var n: i32 = i32(a.Len() + b.Len())
@@ -792,7 +792,7 @@ func TestRunArrayBatchRelease(t *testing.T) {
 // TestEmitDecisionsArrayBatch checks that the same group writes one merge
 // decision with both release ids.
 func TestEmitDecisionsArrayBatch(t *testing.T) {
-	src := `func main() -> i32 {
+	src := `def main() -> i32 {
     var a: Array<i32> = new Array<i32>(4)
     var b: Array<i32> = new Array<i32>(4)
     var n: i32 = i32(a.Len() + b.Len())
@@ -816,7 +816,7 @@ func TestRunBranchMoveReleasesThePathThatStillOwnsTheValue(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func Take(flag: bool) -> i32 {
+	src := `def Take(flag: bool) -> i32 {
     var a: Array<i32> = new Array<i32>(4)
     a.Push(7)
     if flag {
@@ -827,7 +827,7 @@ func TestRunBranchMoveReleasesThePathThatStillOwnsTheValue(t *testing.T) {
     return i32(a.Len())
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return Take(true) + Take(false)
 }
 `
@@ -848,7 +848,7 @@ func TestEmitSomeRcRetainsTheHandle(t *testing.T) {
     n: i32
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var r: rc<C> = new rc<C>(C { n: 7 })
     var o: Option<rc<C>> = Some(r)
     _ = o
@@ -874,7 +874,7 @@ func TestEmitEnumReleaseBranches(t *testing.T) {
     Number(i32)
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var e: E = E.Text("hello".Clone())
     _ = e
     return 0
@@ -897,7 +897,7 @@ func TestRunMovedArrayIsReleasedOnce(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func main() -> i32 {
+	src := `def main() -> i32 {
     var first: Array<i32> = new Array<i32>(4)
     first.Push(7)
     var second: Array<i32> = first
@@ -921,7 +921,7 @@ func TestRunContainerPushMovesTheElement(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func main() -> i32 {
+	src := `def main() -> i32 {
     var text: str = "abc".Clone()
     var xs: Array<str> = new Array<str>(0)
     xs.Push(text)
@@ -944,7 +944,7 @@ func TestRunArrayReleaseAtLastSafeUse(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func main() -> i32 {
+	src := `def main() -> i32 {
     var xs: Array<i32> = new Array<i32>(4)
     xs.Push(7)
     var n: usize = xs.Len()
@@ -981,11 +981,11 @@ func TestRunDeadlineChildReturnsDeadline(t *testing.T) {
 		"require std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(filepath.Join(root, "std"))+"\n")
 	src := `import "std/time"
 
-async func Nap() -> Result<(), Error> {
+async def Nap() -> Result<(), Error> {
     return await time.Sleep(50ms)
 }
 
-async func Wait() -> Option<i32> {
+async def Wait() -> Option<i32> {
     match await time.Sleep(50ms) {
         Ok(_) => {
             return Some(1)
@@ -996,7 +996,7 @@ async func Wait() -> Option<i32> {
     }
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var saw: bool = false
     deadline 1ms {
         var result: Result<(), Error> = await Nap()
@@ -1058,12 +1058,12 @@ func TestRunAsyncSpawnMovesOwnedArgument(t *testing.T) {
 		"require std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(filepath.Join(root, "std"))+"\n")
 	src := `import "std/time"
 
-async func Worker(text: str) -> i32 {
+async def Worker(text: str) -> i32 {
     _ = await time.Sleep(1ms)!
     return i32(text.Len())
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var result: i32 = 0
     region {
         var text: str = "hello".Clone()
@@ -1102,7 +1102,7 @@ func TestRunAsyncFrameDropsOwnedLocalsOnPanic(t *testing.T) {
 		"require std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(filepath.Join(root, "std"))+"\n")
 	src := `import "std/time"
 
-async func Worker() -> i32 {
+async def Worker() -> i32 {
     var text: str = "hello"
     var items: Array<i32> = new Array<i32>(2)
     _ = await time.Sleep(1ms)!
@@ -1110,7 +1110,7 @@ async func Worker() -> i32 {
     return i32(text.Len()) + i32(items.Len())
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     region {
         var task: Task<i32> = spawn Worker()
         match await task.Join() {
@@ -1143,11 +1143,11 @@ func TestRunJoinReturnsTheStoredValue(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func Work() -> i64 {
+	src := `def Work() -> i64 {
     return 1234567890123i64
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     region {
         var t: Task<i64> = spawn Work()
         var v: i64 = await t.Join()!
@@ -1174,26 +1174,26 @@ func TestRunInterfaceDowncasts(t *testing.T) {
 		t.Skip("clang is not installed")
 	}
 	src := `interface Shape {
-    func Area() -> i32
+    def Area() -> i32
 }
 
 interface Labeled {
-    func Label() -> str
+    def Label() -> str
 }
 
 struct Square {
     n: i32
 }
 
-func (s: Square) Area() -> i32 {
+def (s: Square) Area() -> i32 {
     return s.n
 }
 
-func (s: Square) Label() -> str {
+def (s: Square) Label() -> str {
     return "square"
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var shape: Shape = Square { n: 12 }
     if !shape.Is<Square>() {
         return 1
@@ -1246,11 +1246,11 @@ func TestRunUnitEnumEquality(t *testing.T) {
     C
 }
 
-func Pick() -> Choice {
+def Pick() -> Choice {
     return B
 }
 
-func main() -> i32 {
+def main() -> i32 {
     if Pick() != B {
         return 1
     }
@@ -1277,7 +1277,7 @@ func TestRunEmptyInterface(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func Number(value: interface {}) -> i32 {
+	src := `def Number(value: interface {}) -> i32 {
     var got: Option<i32> = value.As<i32>()
     match got {
         Some(number) => {
@@ -1289,7 +1289,7 @@ func TestRunEmptyInterface(t *testing.T) {
     }
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var number: interface {} = 42
     if !number.Is<i32>() {
         return 1
@@ -1335,17 +1335,17 @@ func TestRunMutableScalarParameters(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `func Inc(mut value: i32) -> i32 {
+	src := `def Inc(mut value: i32) -> i32 {
     value += 1
     return value
 }
 
-async func Add(mut value: i32) -> i32 {
+async def Add(mut value: i32) -> i32 {
     value += 2
     return value
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var first: i32 = 1
     var inc: i32 = Inc(first)
     var second: i32 = 4
@@ -1377,17 +1377,17 @@ func TestRunAsyncMutParameters(t *testing.T) {
     n: i32
 }
 
-async func (mut c: Counter) Add(value: i32) -> i32 {
+async def (mut c: Counter) Add(value: i32) -> i32 {
     c.n += value
     return c.n
 }
 
-async func Grow(mut values: Array<i32>) -> i32 {
+async def Grow(mut values: Array<i32>) -> i32 {
     values.Push(7)
     return i32(values.Len())
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var counter: Counter = Counter { n: 1 }
     var added: i32 = await counter.Add(4)
     var values: Array<i32> = new Array<i32>(0)
@@ -1428,13 +1428,13 @@ lane L2 struct L2Marker {
 lane L3 struct L3Marker {
 }
 
-async func Produce(ch: chan<i32>, n: i32) {
+async def Produce(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
         _ = await ch.Send(i)
     }
 }
 
-async func Consume(ch: chan<i32>) -> i64 {
+async def Consume(ch: chan<i32>) -> i64 {
     var sum: i64 = 0
     for {
         var item: Option<i32> = await ch.Recv()
@@ -1450,7 +1450,7 @@ async func Consume(ch: chan<i32>) -> i64 {
     return sum
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(64)
     var total: i64 = 0
     region {

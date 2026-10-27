@@ -2,12 +2,12 @@ import "std/time"
 
 // Slow suspends inside a generic body that also names another package, so the
 // instance document must carry the import and the mark must see the clone.
-async func Slow<T>(v: T) -> T {
+async def Slow<T>(v: T) -> T {
     _ = await time.Sleep(1ms)!
     return v
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var v: i64 = await Slow(9i64)
     if v != 9i64 {
         return 1

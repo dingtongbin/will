@@ -93,10 +93,12 @@ func (p *Parser) parseDecl(doc string) ast.Decl {
 	switch p.cur().Kind {
 	case token.KwConst, token.KwVar:
 		return p.parseValueDecl(doc, false)
-	case token.KwFunc:
+	case token.KwDef:
 		return p.parseFuncDecl(doc)
 	case token.KwAsync:
 		return p.parseAsyncFuncDecl(doc)
+	case token.KwType:
+		return p.parseTypeAliasDecl(doc)
 	case token.KwStruct:
 		return p.parseStructDecl(doc)
 	case token.KwEnum:
@@ -149,7 +151,7 @@ func (p *Parser) parseAsyncFuncDecl(doc string) *ast.FuncDecl {
 }
 
 func (p *Parser) parseFuncDeclFrom(doc string, start token.Token, async bool) *ast.FuncDecl {
-	p.expect(token.KwFunc, "func")
+	p.expect(token.KwDef, "def")
 	fn := &ast.FuncDecl{Doc: doc, Async: async}
 	if p.at(token.LParen) {
 		fn.Recv = p.parseReceiver()
@@ -230,6 +232,21 @@ func (p *Parser) parseParam() *ast.Param {
 	param.Type = p.parseType()
 	param.Span = p.spanFrom(start)
 	return param
+}
+
+func (p *Parser) parseTypeAliasDecl(doc string) *ast.TypeAliasDecl {
+	start := p.expect(token.KwType, "type")
+	name, nameTok := p.expectName("a type alias name")
+	p.expect(token.Assign, "=")
+	p.skipNL()
+	typ := p.parseType()
+	return &ast.TypeAliasDecl{
+		Span:    p.spanFrom(start),
+		Doc:     doc,
+		Name:    name,
+		NamePos: nameTok.Pos,
+		Type:    typ,
+	}
 }
 
 func (p *Parser) parseTypeParams() []*ast.TypeParam {
@@ -389,7 +406,7 @@ func (p *Parser) parseMethodSig() *ast.MethodSig {
 		p.next()
 		async = true
 	}
-	p.expect(token.KwFunc, "func")
+	p.expect(token.KwDef, "def")
 	sig := &ast.MethodSig{Async: async}
 	name, nameTok := p.expectName("a method name")
 	sig.Name = name

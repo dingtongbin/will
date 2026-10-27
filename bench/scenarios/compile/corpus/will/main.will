@@ -17,7 +17,7 @@ struct Reader {
 }
 
 // Next returns the next latency of the reader.
-func (mut r: Reader) Next() -> i64 {
+def (mut r: Reader) Next() -> i64 {
     r.state = r.state *% 6364136223846793005 +% 1442695040888963407
     var value: i64 = i64(r.state >> 12i64) % 1000i64
     r.count += 1
@@ -25,7 +25,7 @@ func (mut r: Reader) Next() -> i64 {
 }
 
 // MakeRecords builds the records of the corpus.
-func MakeRecords(count: i32) -> Array<Record> {
+def MakeRecords(count: i32) -> Array<Record> {
     var records: Array<Record> = new Array<Record>(0)
     var reader: Reader = Reader { state: 0x1234, count: 0}
     for i in Range(0, count) {
@@ -51,7 +51,7 @@ func MakeRecords(count: i32) -> Array<Record> {
 }
 
 // Latencies returns the latencies of the records.
-func Latencies(records: Array<Record>) -> Array<i64> {
+def Latencies(records: Array<Record>) -> Array<i64> {
     var out: Array<i64> = new Array<i64>(0)
     for r in records {
         out.Push(r.latency)
@@ -60,7 +60,7 @@ func Latencies(records: Array<Record>) -> Array<i64> {
 }
 
 // Bytes returns the sizes of the records.
-func Bytes(records: Array<Record>) -> Array<i64> {
+def Bytes(records: Array<Record>) -> Array<i64> {
     var out: Array<i64> = new Array<i64>(0)
     for r in records {
         out.Push(r.bytes)
@@ -81,7 +81,7 @@ struct Report {
 }
 
 // Build computes the report of the records.
-func Build(records: Array<Record>) -> Report {
+def Build(records: Array<Record>) -> Report {
     var latencies: Array<i64> = Latencies(records)
     var sizes: Array<i64> = Bytes(records)
     var histogram: Array<i64> = lib.Histogram(latencies, 100i64)
@@ -104,7 +104,7 @@ func Build(records: Array<Record>) -> Report {
 }
 
 // Print writes the report.
-func Print(report: Report) {
+def Print(report: Report) {
     print("records ", u64(report.records), "\n")
     print("positive ", u64(report.positive), "\n")
     print("total ", u64(report.total), "\n")
@@ -115,7 +115,7 @@ func Print(report: Report) {
     print("rolling ", u64(report.rolling), "\n")
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var records: Array<Record> = MakeRecords(2000)
     var report: Report = Build(records)
     Print(report)

@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const mainSource = `func main() {
+const mainSource = `def main() {
 }
 `
 

@@ -1,5 +1,5 @@
 var Seed: i32 = 5
 
-func Next() -> i32 {
+def Next() -> i32 {
     return Seed + 1
 }

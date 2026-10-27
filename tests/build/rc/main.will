@@ -7,15 +7,15 @@ struct Holder {
     back: weak<Counter>
 }
 
-func (mut c: Counter) Add(d: i32) {
+def (mut c: Counter) Add(d: i32) {
     c.n += d
 }
 
-func Identity(c: rc<Counter>) -> rc<Counter> {
+def Identity(c: rc<Counter>) -> rc<Counter> {
     return c
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var c: rc<Counter> = new rc<Counter>(Counter { n: 1 })
     c.Add(4)
     c.n += 1

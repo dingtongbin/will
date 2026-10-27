@@ -6,24 +6,24 @@ struct Box {
 
 // Consume runs as a state machine, so its capture goes through the async
 // constructor and the crossing must share the handle there.
-async func Consume(b: rc<Box>) -> i64 {
+async def Consume(b: rc<Box>) -> i64 {
     _ = await time.Sleep(1ms)!
     return b.value
 }
 
 // MakeSlow returns an owned handle from a state machine, so the result copy
 // crosses to the joiner through the task result.
-async func MakeSlow() -> rc<Box> {
+async def MakeSlow() -> rc<Box> {
     _ = await time.Sleep(1ms)!
     return new rc<Box>(Box { value: 5 })
 }
 
 // Pass runs as a plain spawn step; its capture shares in the spawn frame.
-func Pass(b: rc<Box>) -> i64 {
+def Pass(b: rc<Box>) -> i64 {
     return b.value
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { value: 7 })
     region {
         var task: Task<i64> = spawn Consume(box)

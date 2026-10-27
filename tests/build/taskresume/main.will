@@ -1,24 +1,24 @@
-func Inner() -> i32 {
+def Inner() -> i32 {
     return 7
 }
 
-async func Work(t: Task<i32>) -> i32 {
+async def Work(t: Task<i32>) -> i32 {
     return await t.Join()!
 }
 
-async func WorkLocal(t: Task<i32>) -> i32 {
+async def WorkLocal(t: Task<i32>) -> i32 {
     var x: i32 = await t.Join()!
     return x + 1
 }
 
-async func WorkPure(t: Task<i32>) -> i32 {
+async def WorkPure(t: Task<i32>) -> i32 {
     var a: i32 = 1 + 2
     var b: i32 = a + 3
     var x: i32 = await t.Join()!
     return a + b + x
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var inner: Task<i32> = spawn Inner()
     var work: Task<i32> = spawn Work(inner)
     var got: i32 = await work.Join()!

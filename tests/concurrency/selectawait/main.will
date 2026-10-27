@@ -1,6 +1,6 @@
 import "std/time"
 
-async func Pick(ch: chan<i32>) -> i32 {
+async def Pick(ch: chan<i32>) -> i32 {
     var result: i32 = 0
     select {
         item = ch.Recv() => {
@@ -21,7 +21,7 @@ async func Pick(ch: chan<i32>) -> i32 {
     return result
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
     _ = await ch.Send(7)
     var ready: i32 = await Pick(ch)

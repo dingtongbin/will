@@ -1,10 +1,10 @@
 const Min: i64 = -9223372036854775808
 
-func Get() -> i64 {
+def Get() -> i64 {
     return Min
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var x: i64 = -9223372036854775808
     if x == Get() {
         return 1

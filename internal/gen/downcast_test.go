@@ -9,16 +9,16 @@ import (
 // explicit downcast: Is gives a branch-free bool chain and As gives an Option
 // whose Some payload is the concrete value or another interface table.
 func TestEmitInterfaceDowncasts(t *testing.T) {
-	src := "interface Shape {\n    func Area() -> i32\n}\n\n" +
-		"interface Labeled {\n    func Label() -> str\n}\n\n" +
+	src := "interface Shape {\n    def Area() -> i32\n}\n\n" +
+		"interface Labeled {\n    def Label() -> str\n}\n\n" +
 		"struct Square {\n    n: i32\n}\n\n" +
-		"func (s: Square) Area() -> i32 {\n    return s.n\n}\n\n" +
-		"func (s: Square) Label() -> str {\n    return \"square\"\n}\n\n" +
-		"func Use(v: Shape) -> i32 {\n" +
+		"def (s: Square) Area() -> i32 {\n    return s.n\n}\n\n" +
+		"def (s: Square) Label() -> str {\n    return \"square\"\n}\n\n" +
+		"def Use(v: Shape) -> i32 {\n" +
 		"    if !v.Is<Square>() {\n        return -1\n    }\n" +
 		"    var labeled: Option<Labeled> = v.As<Labeled>()\n" +
 		"    match labeled {\n        Some(x) => {\n            if x.Label() == \"square\" {\n                return 1\n            }\n            return 2\n        }\n        None => {\n            return -2\n        }\n    }\n}\n\n" +
-		"func main() -> i32 {\n    return 0\n}\n"
+		"def main() -> i32 {\n    return 0\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {

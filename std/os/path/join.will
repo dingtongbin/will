@@ -1,7 +1,7 @@
 // Join joins the non-empty parts with the platform separator and cleans the
 // result. Empty parts contribute nothing, so Join("a", "") is "a", and a call
 // with no non-empty part is "" rather than ".".
-func Join(parts: ...str) -> str {
+def Join(parts: ...str) -> str {
     var sep: u8 = Separator()
     var out: Array<u8> = new Array<u8>(0)
     var any: bool = false

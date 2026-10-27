@@ -1,4 +1,4 @@
-func main() -> i32 {
+def main() -> i32 {
     var n: i32 = 3
     var ok: bool = true
     var x: f64 = 1.5

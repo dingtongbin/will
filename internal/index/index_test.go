@@ -26,14 +26,14 @@ import c "stdio.h" {
 }
 
 interface Shape {
-    func Area() -> i32
+    def Area() -> i32
 }
 
 struct Square {
     s: i32
 }
 
-func (q: Square) Area() -> i32 {
+def (q: Square) Area() -> i32 {
     return q.s * q.s
 }
 
@@ -41,7 +41,7 @@ struct Dot {
     s: i32
 }
 
-func Use(x: Shape) -> i32 {
+def Use(x: Shape) -> i32 {
     return x.Area()
 }
 `
@@ -51,7 +51,7 @@ func buildIndex(t *testing.T) string {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
 	write(t, filepath.Join(root, "api.will"), moduleSource)
-	write(t, filepath.Join(root, "lib", "lib.will"), "func Util() {\n}\n")
+	write(t, filepath.Join(root, "lib", "lib.will"), "def Util() {\n}\n")
 	b := pkg.Load(root)
 	if b.Err != nil {
 		t.Fatalf("load: %v", b.Err)
@@ -102,11 +102,11 @@ func TestIndexBuiltinError(t *testing.T) {
     code: i32
 }
 
-func (e: E) Message() -> str {
+def (e: E) Message() -> str {
     return "failed"
 }
 
-func (e: E) Status() -> i32 {
+def (e: E) Status() -> i32 {
     return e.code
 }
 `
@@ -121,7 +121,7 @@ func TestIndexIsDeterministic(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
 	write(t, filepath.Join(root, "api.will"), moduleSource)
-	write(t, filepath.Join(root, "lib", "lib.will"), "func Util() {\n}\n")
+	write(t, filepath.Join(root, "lib", "lib.will"), "def Util() {\n}\n")
 	first := string(Build(pkg.Load(root)))
 	second := string(Build(pkg.Load(root)))
 	if first != second {

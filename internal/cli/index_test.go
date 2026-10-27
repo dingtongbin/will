@@ -8,14 +8,14 @@ import (
 )
 
 const indexModule = `interface Shape {
-    func Area() -> i32
+    def Area() -> i32
 }
 
 struct Square {
     s: i32
 }
 
-func (q: Square) Area() -> i32 {
+def (q: Square) Area() -> i32 {
     return q.s * q.s
 }
 `

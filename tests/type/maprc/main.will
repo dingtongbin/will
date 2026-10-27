@@ -1,4 +1,4 @@
-func main() -> i32 {
+def main() -> i32 {
     var values: Map<rc<i32>, i32> = new Map<rc<i32>, i32>(0usize)
     if values.Len() != 0usize {
         return 1

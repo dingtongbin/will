@@ -1,26 +1,26 @@
 interface Counter {
-    func Get() -> i32
-    func Add(n: i32) -> i32
+    def Get() -> i32
+    def Add(n: i32) -> i32
 }
 
 struct C {
     n: i32
 }
 
-func (c: C) Get() -> i32 {
+def (c: C) Get() -> i32 {
     return c.n
 }
 
-func (mut c: C) Add(n: i32) -> i32 {
+def (mut c: C) Add(n: i32) -> i32 {
     c.n += n
     return c.n
 }
 
-func Use(x: Counter) -> i32 {
+def Use(x: Counter) -> i32 {
     return x.Get() + x.Add(2)
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var c: C = C { n: 3 }
     var x: Counter = c
     return Use(c) + x.Get()

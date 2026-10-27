@@ -2,15 +2,15 @@ struct Box<T> {
     tag: i32
 }
 
-func (mut b: Box<T>) init() {
+def (mut b: Box<T>) init() {
     b.tag = 0
 }
 
-func (mut b: Box<T>) Bump() {
+def (mut b: Box<T>) Bump() {
     b.tag += 1
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var a: Box<i64> = new Box<i64>()
     a.Bump()
     return a.tag

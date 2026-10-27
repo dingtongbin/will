@@ -1,6 +1,6 @@
 // scalarWidth returns the number of bytes a valid UTF-8 scalar occupies. A str
 // holds only valid UTF-8, so these four ranges cover every scalar.
-func scalarWidth(c: u32) -> usize {
+def scalarWidth(c: u32) -> usize {
     if c <= 127u32 {
         return 1usize
     }
@@ -16,7 +16,7 @@ func scalarWidth(c: u32) -> usize {
 // Base returns the last element of the path after trailing separators are
 // dropped. An empty path has base ".", and a path of only separators has the
 // platform separator as its base, because the root has no element to name.
-func Base(p: str) -> str {
+def Base(p: str) -> str {
     if p.Len() == 0usize {
         return "."
     }

@@ -13,7 +13,7 @@ func TestGeneralFrameDropsChildResult(t *testing.T) {
     fast willrt_task_sleep_async
 }
 
-async func Text() -> str {
+async def Text() -> str {
     var status: i32 = c.willrt_task_sleep_async(1)
     if status != 0 {
         return ""
@@ -21,7 +21,7 @@ async func Text() -> str {
     return "hello"
 }
 
-async func Parent() -> i32 {
+async def Parent() -> i32 {
     var n: i32 = i32((await Text()).Len())
     return n
 }
@@ -51,7 +51,7 @@ func TestAsyncFrameDropsChildResult(t *testing.T) {
     fast willrt_task_sleep_async
 }
 
-async func Text() -> str {
+async def Text() -> str {
     var status: i32 = c.willrt_task_sleep_async(1)
     if status != 0 {
         return ""
@@ -59,7 +59,7 @@ async func Text() -> str {
     return "hello"
 }
 
-async func Parent() -> i32 {
+async def Parent() -> i32 {
     var text: str = await Text()
     return i32(text.Len())
 }

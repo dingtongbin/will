@@ -103,7 +103,7 @@ func TestParseStatements(t *testing.T) {
 }
 
 func TestBlockValueAndNewlineRules(t *testing.T) {
-	src := `func F(n: i32) {
+	src := `def F(n: i32) {
     var a: i32 = Add(1,
         2)
     var b: i32 = 1 +
@@ -130,7 +130,7 @@ func TestBlockValueAndNewlineRules(t *testing.T) {
 }
 
 func TestMoreStatements(t *testing.T) {
-	src := `func F() {
+	src := `def F() {
     var t: Task<i32> = spawn on Ui Fetch(1)
     var l: usize = lane.Here()
     _ = t.Join()
@@ -171,10 +171,10 @@ func TestMoreStatements(t *testing.T) {
 }
 
 func TestSpawnPlace(t *testing.T) {
-	src := `func G() {
+	src := `def G() {
 }
 
-func F() {
+def F() {
     var a: Task<()> = spawn G()
     var b: Task<()> = spawn here G()
 }
@@ -191,7 +191,7 @@ func F() {
 }
 
 func TestCallTryAndUnwrapAsStatements(t *testing.T) {
-	src := `func F() -> Result<(), Error> {
+	src := `def F() -> Result<(), Error> {
     Check()?
     Check()!
     return Ok(())
@@ -221,18 +221,18 @@ func TestCallTryAndUnwrapAsStatements(t *testing.T) {
 func TestSuffixDoesNotExtendDeferOrSpawn(t *testing.T) {
 	// A defer still reports the generic shape; a spawn operand rule has its
 	// own code (K0005) because the concurrency volume fixes it.
-	_, ds := Parse("test.will", []byte("func F() {\n    defer G()?\n}\n"))
+	_, ds := Parse("test.will", []byte("def F() {\n    defer G()?\n}\n"))
 	if len(ds) != 1 || ds[0].Help != "expected a call" {
 		t.Fatalf("defer diagnostics = %+v, want one expected-call error", ds)
 	}
-	_, ds = Parse("test.will", []byte("func F() {\n    spawn G()?\n}\n"))
+	_, ds = Parse("test.will", []byte("def F() {\n    spawn G()?\n}\n"))
 	if len(ds) != 1 || ds[0].Code != diag.CodeSpawnNotCall {
 		t.Fatalf("spawn diagnostics = %+v, want one K0005", ds)
 	}
 }
 
 func TestNewlineBeforeDotEndsStatement(t *testing.T) {
-	src := `func F() {
+	src := `def F() {
     p
     .x
 }

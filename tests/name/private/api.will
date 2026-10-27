@@ -1,5 +1,5 @@
 import "example.com/private/lib"
 
-func F() -> i32 {
-    return lib.hidden()
+def f() -> i32 {
+    return lib.__hidden()
 }

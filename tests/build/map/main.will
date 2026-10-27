@@ -1,11 +1,11 @@
-func Lookup(m: Map<i32, i32>, k: i32) -> i32 {
+def Lookup(m: Map<i32, i32>, k: i32) -> i32 {
     return match m.Get(k) {
         Some(v) => v
         None => 0 - 1
     }
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var m: Map<i32, i32> = new Map<i32, i32>(2)
     m.Set(1, 10)
     m.Set(2, 20)

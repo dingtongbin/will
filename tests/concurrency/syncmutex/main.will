@@ -6,21 +6,21 @@ struct Counter {
 
 // Bump takes the write side, changes the value, and lets the guard release at
 // the return. Two of these run at the same time.
-async func Bump(m: sync.Mutex<Counter>) -> i32 {
+async def Bump(m: sync.Mutex<Counter>) -> i32 {
     var g: sync.Guard<Counter> = await m.Lock()
     g.n += 1
     return g.n
 }
 
 // WaitFor takes the write side only after the caller's guard is gone.
-async func WaitFor(m: sync.Mutex<Counter>, entered: chan<i32>) -> i32 {
+async def WaitFor(m: sync.Mutex<Counter>, entered: chan<i32>) -> i32 {
     var g: sync.Guard<Counter> = await m.Lock()
     _ = entered.TrySend(1)
     g.n += 10
     return g.n
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var m: sync.Mutex<Counter> = new sync.Mutex<Counter>(Counter { n: 0 })
     region {
         var t1: Task<i32> = spawn Bump(m)

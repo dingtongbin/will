@@ -34,6 +34,16 @@ type Decl struct {
 	Recv string
 }
 
+// Alias is one type alias declaration. Target is the canonical target type
+// text; the alias has no type identity of its own.
+type Alias struct {
+	File   string
+	Line   int
+	Col    int
+	Name   string
+	Target string
+}
+
 // Method is one method declaration. Pkg is derived from the file line.
 type Method struct {
 	File string
@@ -88,6 +98,7 @@ type Index struct {
 	Files      []File
 	Imports    []Import
 	Decls      []Decl
+	Aliases    []Alias
 	Methods    []Method
 	Satisfies  []Satisfies
 	Dispatches []Dispatch

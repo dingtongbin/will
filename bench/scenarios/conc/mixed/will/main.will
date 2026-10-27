@@ -28,7 +28,7 @@ const repetitions: i32 = 3
 const fileSize: i32 = 65536
 
 // Cpu is one 30 percent job. It records its own completion time.
-func Cpu(slot: i32) -> i32 {
+def Cpu(slot: i32) -> i32 {
     var acc: i32 = 0
     for i in Range(0, 1000) {
         acc += i
@@ -39,7 +39,7 @@ func Cpu(slot: i32) -> i32 {
 
 // CpuBatch submits the CPU half of the workload as jobs. The parallel block
 // joins its jobs through the parked barrier.
-async func CpuBatch(base: i32) -> i32 {
+async def CpuBatch(base: i32) -> i32 {
     parallel {
         for i in Range(0, cpuCount) {
             var slot: i32 = base + i
@@ -53,7 +53,7 @@ async func CpuBatch(base: i32) -> i32 {
 // IoWorker performs one stream of 70 percent operations. Keeping only
 // ioWorkers readers in flight measures service latency instead of the length of
 // a ten-thousand-task queue.
-async func IoWorker(path: str, base: i32) -> i32 {
+async def IoWorker(path: str, base: i32) -> i32 {
     var sum: i32 = 0
     for i in Range(0, ioPerWorker) {
         var slot: i32 = base + i
@@ -68,7 +68,7 @@ async func IoWorker(path: str, base: i32) -> i32 {
 }
 
 // Fill writes the read buffer once, outside the measured region.
-func Fill(path: str) -> bool {
+def Fill(path: str) -> bool {
     var data: Array<u8> = new Array<u8>(usize(fileSize))
     for i in Range(0, fileSize) {
         data.Push(u8(i % 251))
@@ -84,7 +84,7 @@ func Fill(path: str) -> bool {
     }
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var path: str = "will-mixed-bench.tmp"
     if !Fill(path) {
         return 1

@@ -6,7 +6,7 @@ import c "bench_clock.h" {
 
 // The program does nothing, so the tool measures the size of the executable.
 // The metric line keeps the shape of the other scenarios.
-func main() -> i32 {
+def main() -> i32 {
     var start: u64 = c.bench_now_ns()
     var stop: u64 = c.bench_now_ns()
     c.bench_sink(stop - start)

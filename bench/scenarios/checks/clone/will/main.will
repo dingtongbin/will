@@ -18,7 +18,7 @@ struct Big {
 }
 
 // CopyByValue copies the value and returns two of its words.
-func CopyByValue(value: Big) -> i64 {
+def CopyByValue(value: Big) -> i64 {
     var copy: Big = value
     return copy.words[0usize] + copy.words[7usize]
 }
@@ -26,7 +26,7 @@ func CopyByValue(value: Big) -> i64 {
 // CopyFromView copies the value word by word through a borrowed view, which is
 // the spelling will has for the pointer form of the C side: the caller lends
 // the words and the callee copies them out.
-func CopyFromView(view: []i64) -> i64 {
+def CopyFromView(view: []i64) -> i64 {
     var copy: [8]i64
     for i in Range(0, 8) {
         copy[usize(i)] = view[usize(i)]
@@ -34,7 +34,7 @@ func CopyFromView(view: []i64) -> i64 {
     return copy[0usize] + copy[7usize]
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var value: Big
     for i in Range(0, 8) {
         value.words[usize(i)] = i64(i)

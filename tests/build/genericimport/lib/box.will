@@ -2,10 +2,10 @@ struct Box<T> {
     value: T
 }
 
-func (b: Box<T>) Get() -> T {
+def (b: Box<T>) Get() -> T {
     return b.value.Clone()
 }
 
-func (mut b: Box<T>) Set(v: T) {
+def (mut b: Box<T>) Set(v: T) {
     b.value = v
 }

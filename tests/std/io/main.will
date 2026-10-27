@@ -1,7 +1,7 @@
 import "std/io"
 import "std/os/fs"
 
-func CheckReadAll() -> i32 {
+def CheckReadAll() -> i32 {
     var path: str = "will-io-probe.tmp"
     var made: Result<fs.File, Error> = fs.Create(path, 420u32)
     match made {
@@ -24,7 +24,7 @@ func CheckReadAll() -> i32 {
     return 0
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var readCode: i32 = CheckReadAll()
     if readCode != 0 {
         return readCode

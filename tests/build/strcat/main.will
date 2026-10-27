@@ -1,4 +1,4 @@
-func main() -> i32 {
+def main() -> i32 {
     var a: str = "foo"
     var b: str = "bar"
     var c: str = a + b

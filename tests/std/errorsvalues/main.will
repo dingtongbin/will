@@ -1,6 +1,6 @@
 import "std/errors"
 
-func main() -> i32 {
+def main() -> i32 {
     var a: Error = errors.NotFound
     var b: Error = errors.Busy
     var c: Error = errors.Io

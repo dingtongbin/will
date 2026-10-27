@@ -1,5 +1,5 @@
 import "example.com/cycle"
 
-func G() {
+def G() {
     cycle.F()
 }

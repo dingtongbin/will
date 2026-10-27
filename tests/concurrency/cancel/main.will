@@ -1,6 +1,6 @@
 import "std/task"
 
-async func Worker(ch: chan<i32>, cancel: task.Cancel) -> i32 {
+async def Worker(ch: chan<i32>, cancel: task.Cancel) -> i32 {
     var item: Option<i32> = await ch.Recv()
     match item {
         Some(_) => {
@@ -16,7 +16,7 @@ async func Worker(ch: chan<i32>, cancel: task.Cancel) -> i32 {
     return 3
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
     var cancel: task.Cancel = new task.Cancel()
     cancel.Cancel()

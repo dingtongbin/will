@@ -2,7 +2,7 @@ import "std/os/exec"
 
 // The constructors are pure: they only move strings and maps into a value, so
 // a corpus can inspect every field without starting a process.
-func main() -> i32 {
+def main() -> i32 {
     var c: exec.Cmd = exec.Command("/bin/echo", "hello", "world")
     if c.path != "/bin/echo" {
         return 1

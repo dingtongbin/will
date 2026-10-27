@@ -10,33 +10,33 @@ struct PooledBuffer {
 
 // Pooled returns a buffer with room for size bytes. Its live length starts at
 // zero; the capacity is the acquired room.
-func Pooled(size: usize) -> PooledBuffer {
+def Pooled(size: usize) -> PooledBuffer {
     return PooledBuffer { data: new Array<u8>(size) }
 }
 
 // Bytes returns a read-only view of the pooled contents.
-func (p: PooledBuffer) Bytes() -> []u8 {
+def (p: PooledBuffer) Bytes() -> []u8 {
     return p.data[Range(0, p.data.Len())]
 }
 
 // Array returns an independent copy of the backing array. A header copy would
 // give two owners one buffer; the language requires Clone for that boundary.
-func (p: PooledBuffer) Array() -> Array<u8> {
+def (p: PooledBuffer) Array() -> Array<u8> {
     return p.data.Clone()
 }
 
 // Len returns the number of live bytes.
-func (p: PooledBuffer) Len() -> usize {
+def (p: PooledBuffer) Len() -> usize {
     return p.data.Len()
 }
 
 // Clear drops every live byte without releasing the pooled storage.
-func (mut p: PooledBuffer) Clear() {
+def (mut p: PooledBuffer) Clear() {
     p.data.Clear()
 }
 
 // Release drops the contents and keeps the capacity for reuse. Repeating it is
 // safe because the array becomes empty after the first call.
-func (mut p: PooledBuffer) Release() {
+def (mut p: PooledBuffer) Release() {
     p.data.Clear()
 }

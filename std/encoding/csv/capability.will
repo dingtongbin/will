@@ -5,10 +5,10 @@
 // package that imports io makes the current method lookup resolve to the io
 // type.
 interface byteReader {
-    func Read(mut buf: Array<u8>) -> Result<usize, Error>
+    def Read(mut buf: Array<u8>) -> Result<usize, Error>
 }
 
 interface byteWriter {
-    func Write(buf: []u8) -> Result<(), Error>
-    func Sync() -> Result<(), Error>
+    def Write(buf: []u8) -> Result<(), Error>
+    def Sync() -> Result<(), Error>
 }

@@ -15,7 +15,7 @@ struct Permit {
     handle: raw
 }
 
-func (mut p: Permit) Release() {
+def (mut p: Permit) Release() {
     _ = c.willrt_sync_sema_release(p.handle)
 }
 
@@ -23,13 +23,13 @@ struct Semaphore {
     handle: raw
 }
 
-func (mut s: Semaphore) init(permits: i64) {
+def (mut s: Semaphore) init(permits: i64) {
     s.handle = c.willrt_sync_sema_new(permits)
 }
 
 // Acquire waits until one permit is free. A canceled or expired wait returns
 // the matching predeclared error and leaves the permit count unchanged.
-async func (s: Semaphore) Acquire() -> Result<Permit, Error> {
+async def (s: Semaphore) Acquire() -> Result<Permit, Error> {
     var status: i32 = await c.willrt_sync_sema_acquire_async(s.handle)
     if status == 0 {
         return Ok(Permit { handle: s.handle })
@@ -44,7 +44,7 @@ async func (s: Semaphore) Acquire() -> Result<Permit, Error> {
 }
 
 // TryAcquire takes one permit without waiting.
-func (s: Semaphore) TryAcquire() -> Option<Permit> {
+def (s: Semaphore) TryAcquire() -> Option<Permit> {
     if c.willrt_sync_sema_try_acquire(s.handle) != 0 {
         return Some(Permit { handle: s.handle })
     }

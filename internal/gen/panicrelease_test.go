@@ -12,7 +12,7 @@ func TestPanicReleasesLiveRc(t *testing.T) {
     n: i32
 }
 
-func F() -> i32 {
+def F() -> i32 {
     var x: rc<C> = new rc<C>(C { n: 7 })
     var value: i32 = x.n
     panic("boom")

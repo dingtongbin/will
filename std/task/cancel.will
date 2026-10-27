@@ -11,16 +11,16 @@ struct Cancel {
 }
 
 // init allocates the shared flag for new Cancel().
-func (mut self: Cancel) init() {
+def (mut self: Cancel) init() {
     self.flag = c.willrt_cancel_new()
 }
 
 // Cancel marks the credential and every holder that observes it.
-func (mut self: Cancel) Cancel() {
+def (mut self: Cancel) Cancel() {
     c.willrt_cancel_trigger(self.flag)
 }
 
 // Canceled reports whether Cancel has run.
-func (self: Cancel) Canceled() -> bool {
+def (self: Cancel) Canceled() -> bool {
     return c.willrt_cancel_canceled(self.flag) != 0
 }

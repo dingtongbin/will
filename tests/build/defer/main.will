@@ -6,29 +6,29 @@ struct E {
     m: str
 }
 
-func (e: E) Message() -> str {
+def (e: E) Message() -> str {
     return e.m.Clone()
 }
 
-func (e: E) Status() -> i32 {
+def (e: E) Status() -> i32 {
     return 1
 }
 
-func maybe(ok: bool) -> Result<i32, E> {
+def maybe(ok: bool) -> Result<i32, E> {
     if ok {
         return Ok(1)
     }
     return Err(E { m: "no" })
 }
 
-func order() -> i32 {
+def order() -> i32 {
     defer print("one\n")
     defer print("two\n")
     print("body\n")
     return 5
 }
 
-func early(c: bool) -> i32 {
+def early(c: bool) -> i32 {
     defer print("early\n")
     if c {
         return 1
@@ -36,7 +36,7 @@ func early(c: bool) -> i32 {
     return 2
 }
 
-func loop() -> i32 {
+def loop() -> i32 {
     for i in Range(0, 4) {
         defer print("loop\n")
         if i == 1 {
@@ -50,20 +50,20 @@ func loop() -> i32 {
     return 0
 }
 
-func held(c: bool) -> Result<i32, E> {
+def held(c: bool) -> Result<i32, E> {
     var x: rc<C> = new rc<C>(C { n: 7 })
     defer print("held\n")
     var v: i32 = maybe(c)?
     return Ok(v + x.n)
 }
 
-func tail(c: bool) -> Result<i32, E> {
+def tail(c: bool) -> Result<i32, E> {
     var x: rc<C> = new rc<C>(C { n: 9 })
     defer print("tail\n")
     return Ok(maybe(c)? + x.n)
 }
 
-func main() -> i32 {
+def main() -> i32 {
     _ = order()
     _ = early(false)
     _ = loop()

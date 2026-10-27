@@ -3,7 +3,7 @@ import "std/str"
 // Join must put sep only between parts, keep an empty part in place, accept an
 // empty separator, and keep the bytes of a UTF-8 part. Split is how a caller
 // gets a []str without naming the shadowed str type.
-func main() -> i32 {
+def main() -> i32 {
     if str.Join("a,b,c".Split(","), "-") != "a-b-c" {
         return 1
     }

@@ -112,7 +112,7 @@ func checkTypes(t *testing.T, src string) []diag.Diagnostic {
 }
 
 func TestConstantShiftAmount(t *testing.T) {
-	src := `func F(n: i32, m: i64, b: u8) {
+	src := `def F(n: i32, m: i64, b: u8) {
     _ = n << 32
     _ = m >> 64
     _ = b << 9
@@ -141,7 +141,7 @@ func TestConstantShiftAmount(t *testing.T) {
 }
 
 func TestShiftAmountBelowWidthAndTruncatingShift(t *testing.T) {
-	src := `func F(n: i32) {
+	src := `def F(n: i32) {
     _ = n << 31
     _ = n >> 0
     _ = n <<% 64
@@ -153,7 +153,7 @@ func TestShiftAmountBelowWidthAndTruncatingShift(t *testing.T) {
 }
 
 func TestSlicingAFixedArrayYieldsAView(t *testing.T) {
-	src := `func F(xs: [4]i32) -> i32 {
+	src := `def F(xs: [4]i32) -> i32 {
     var v: []i32 = xs[Range(0, 4)]
     return v[0]
 }
@@ -164,7 +164,7 @@ func TestSlicingAFixedArrayYieldsAView(t *testing.T) {
 }
 
 func TestChainedComparison(t *testing.T) {
-	src := `func F(a: i32, b: i32, c: i32) {
+	src := `def F(a: i32, b: i32, c: i32) {
     _ = a < b < c
 }
 `
@@ -180,7 +180,7 @@ func TestChainedComparison(t *testing.T) {
 }
 
 func TestIntegerConstantRange(t *testing.T) {
-	src := `func F() {
+	src := `def F() {
     var a: u8 = 300u8
     var b: i8 = 120i8
 }
@@ -202,7 +202,7 @@ func TestIntegerConstantRange(t *testing.T) {
 }
 
 func TestUntypedConstantFitsDefault(t *testing.T) {
-	ds := checkTypes(t, "func F() {\n    _ = 300\n}\n")
+	ds := checkTypes(t, "def F() {\n    _ = 300\n}\n")
 	if len(ds) != 0 {
 		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
 	}
@@ -236,9 +236,9 @@ func TestTypeMismatch(t *testing.T) {
 		src  string
 		want string
 	}{
-		{"var initializer", "func F() {\n    var x: i32 = \"s\"\n}\n", "got str, want i32"},
-		{"return value", "func F() -> i32 {\n    return \"s\"\n}\n", "got str, want i32"},
-		{"condition", "func F() {\n    var b: i32 = 1\n    if b {\n    }\n}\n", "got i32, want bool"},
+		{"var initializer", "def F() {\n    var x: i32 = \"s\"\n}\n", "got str, want i32"},
+		{"return value", "def F() -> i32 {\n    return \"s\"\n}\n", "got str, want i32"},
+		{"condition", "def F() {\n    var b: i32 = 1\n    if b {\n    }\n}\n", "got i32, want bool"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -257,7 +257,7 @@ func TestTypeMismatch(t *testing.T) {
 }
 
 func TestBadArgument(t *testing.T) {
-	ds := checkWithResolve(t, "func G(a: i32) {\n}\nfunc F() {\n    G(\"s\")\n}\n")
+	ds := checkWithResolve(t, "def G(a: i32) {\n}\ndef F() {\n    G(\"s\")\n}\n")
 	d := findCode(t, ds, diag.CodeBadArgument)
 	if d.Message != "argument 1 has type str, want i32" {
 		t.Errorf("message = %q", d.Message)
@@ -268,7 +268,7 @@ func TestBadArgument(t *testing.T) {
 }
 
 func TestWrongArgumentCount(t *testing.T) {
-	ds := checkWithResolve(t, "func G(a: i32) {\n}\nfunc F() {\n    G()\n}\n")
+	ds := checkWithResolve(t, "def G(a: i32) {\n}\ndef F() {\n    G()\n}\n")
 	d := findCode(t, ds, diag.CodeBadArgument)
 	if d.Message != "wrong number of arguments" {
 		t.Errorf("message = %q", d.Message)
@@ -276,7 +276,7 @@ func TestWrongArgumentCount(t *testing.T) {
 }
 
 func TestWrongTypeArgumentCount(t *testing.T) {
-	ds := checkWithResolve(t, "func G<T>(a: T) {\n}\nfunc F() {\n    G<i32, i64>(1)\n}\n")
+	ds := checkWithResolve(t, "def G<T>(a: T) {\n}\ndef F() {\n    G<i32, i64>(1)\n}\n")
 	d := findCode(t, ds, diag.CodeTypeArgCount)
 	if d.Message != "wrong number of type arguments" || !strings.Contains(d.Help, "1") {
 		t.Errorf("diagnostic = %+v", d)
@@ -284,7 +284,7 @@ func TestWrongTypeArgumentCount(t *testing.T) {
 }
 
 func TestUntypedConstantRangeUsesExpectedType(t *testing.T) {
-	ds := checkWithResolve(t, "func F() {\n    var x: u8 = 300\n}\n")
+	ds := checkWithResolve(t, "def F() {\n    var x: u8 = 300\n}\n")
 	d := findCode(t, ds, diag.CodeConstantRange)
 	if d.Message != "constant 300 is out of range for u8" {
 		t.Errorf("message = %q", d.Message)
@@ -303,22 +303,22 @@ func findCode(t *testing.T, ds []diag.Diagnostic, code string) diag.Diagnostic {
 }
 
 func TestAwaitRules(t *testing.T) {
-	ds := checkWithResolve(t, `async func Load() -> i32 { return 1 }
-func Use() -> i32 { return await Load() }
+	ds := checkWithResolve(t, `async def Load() -> i32 { return 1 }
+def Use() -> i32 { return await Load() }
 `)
 	findCode(t, ds, "K0009")
 
-	ds = checkWithResolve(t, `async func Load() -> i32 { return 1 }
-func Use() -> i32 { return Load() }
+	ds = checkWithResolve(t, `async def Load() -> i32 { return 1 }
+def Use() -> i32 { return Load() }
 `)
 	findCode(t, ds, "K0010")
 
-	ds = checkWithResolve(t, `async func Use() -> i32 { return await 1 }
+	ds = checkWithResolve(t, `async def Use() -> i32 { return await 1 }
 `)
 	findCode(t, ds, "K0011")
 
-	ds = checkWithResolve(t, `async func Load() -> i32 { return 1 }
-async func Use() -> i32 { return await Load() }
+	ds = checkWithResolve(t, `async def Load() -> i32 { return 1 }
+async def Use() -> i32 { return await Load() }
 `)
 	if len(ds) != 0 {
 		t.Fatalf("diagnostics = %d, want 0:\n%s", len(ds), diag.FormatAll(ds))

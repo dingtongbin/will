@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-const messySource = "func Add( ) {\n    var x : i32=1+2\n}\n"
+const messySource = "def Add( ) {\n    var x : i32=1+2\n}\n"
 
-const canonicalSource = "func Add() {\n    var x: i32 = 1 + 2\n}\n"
+const canonicalSource = "def Add() {\n    var x: i32 = 1 + 2\n}\n"
 
 func TestFmtWritesCanonicalText(t *testing.T) {
 	path := writeFile(t, t.TempDir(), "messy.will", messySource)

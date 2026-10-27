@@ -6,18 +6,18 @@ struct Queue<T> {
 }
 
 // init starts both stacks empty. A later Push grows the back stack.
-func (mut q: Queue<T>) init() {
+def (mut q: Queue<T>) init() {
     q.front = new Array<T>(0)
     q.back = new Array<T>(0)
 }
 
 // Push adds one value at the back.
-func (mut q: Queue<T>) Push(v: T) {
+def (mut q: Queue<T>) Push(v: T) {
     q.back.Push(v)
 }
 
 // Pop removes and returns the front value, or None when the queue is empty.
-func (mut q: Queue<T>) Pop() -> Option<T> {
+def (mut q: Queue<T>) Pop() -> Option<T> {
     if q.front.Len() > 0 {
         return q.front.Pop()
     }
@@ -41,7 +41,7 @@ func (mut q: Queue<T>) Pop() -> Option<T> {
 }
 
 // Peek returns a copy of the front value without removing it.
-func (q: Queue<T>) Peek() -> Option<T> {
+def (q: Queue<T>) Peek() -> Option<T> {
     if q.front.Len() > 0 {
         return Some(q.front.Get(q.front.Len() - 1))
     }
@@ -52,12 +52,12 @@ func (q: Queue<T>) Peek() -> Option<T> {
 }
 
 // Len reports the number of stored values.
-func (q: Queue<T>) Len() -> usize {
+def (q: Queue<T>) Len() -> usize {
     return q.front.Len() + q.back.Len()
 }
 
 // Clear releases every value.
-func (mut q: Queue<T>) Clear() {
+def (mut q: Queue<T>) Clear() {
     q.front.Clear()
     q.back.Clear()
 }

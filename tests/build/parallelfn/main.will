@@ -1,4 +1,4 @@
-func Run(f: func(i32) -> i32) -> i32 {
+def Run(f: func(i32) -> i32) -> i32 {
     var out: i32 = 0
     parallel {
         var task: Task<i32> = spawn f(3)
@@ -7,6 +7,6 @@ func Run(f: func(i32) -> i32) -> i32 {
     return out
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return Run(func(x: i32) -> i32 { return x + 1 }) - 4
 }

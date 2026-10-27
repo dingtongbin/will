@@ -3,21 +3,21 @@
 // asynchronous IO lives on concrete types such as fs.File and fs.AsyncReadFile.
 
 interface Reader {
-    func Read(mut buf: Array<u8>) -> Result<usize, Error>
+    def Read(mut buf: Array<u8>) -> Result<usize, Error>
 }
 
 interface Writer {
-    func Write(buf: []u8) -> Result<(), Error>
-    func Sync() -> Result<(), Error>
+    def Write(buf: []u8) -> Result<(), Error>
+    def Sync() -> Result<(), Error>
 }
 
 interface Seeker {
-    func Seek(offset: i64, whence: i32) -> Result<i64, Error>
+    def Seek(offset: i64, whence: i32) -> Result<i64, Error>
 }
 
 // ReadAll appends every byte from r until end of stream. It returns the number
 // of bytes appended.
-func ReadAll(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
+def ReadAll(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
     var before: usize = buf.Len()
     var chunk: Array<u8> = new Array<u8>(32768)
     for {
@@ -39,7 +39,7 @@ func ReadAll(r: Reader, mut buf: Array<u8>) -> Result<usize, Error> {
 }
 
 // Copy copies r to dst until end of stream and syncs dst.
-func Copy(dst: Writer, src: Reader) -> Result<u64, Error> {
+def Copy(dst: Writer, src: Reader) -> Result<u64, Error> {
     var total: u64 = 0
     var chunk: Array<u8> = new Array<u8>(32768)
     for {

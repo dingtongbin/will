@@ -3,7 +3,7 @@ struct Node {
     next: weak<Node>
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var w: weak<Node>
     var a: rc<Node> = new rc<Node>(Node { value: 1, next: w })
     var b: rc<Node> = new rc<Node>(Node { value: 2, next: a.Weak() })

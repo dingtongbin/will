@@ -3,7 +3,7 @@ enum Kind {
     B
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var k: Kind
     var r: Result<i32, Error>
     _ = k

@@ -8,7 +8,7 @@ import (
 // TestEntryResultWrapperReportsError checks the only non-integer entry shape:
 // Err is written through the report target and exits 1.
 func TestEntryResultWrapperReportsError(t *testing.T) {
-	src := `func main() -> Result<(), Error> {
+	src := `def main() -> Result<(), Error> {
     return Err(Canceled)
 }
 `

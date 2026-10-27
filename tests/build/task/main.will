@@ -1,12 +1,12 @@
-func Compute(x: i32) -> i32 {
+def Compute(x: i32) -> i32 {
     return x + 1
 }
 
-func MakeText(n: i32) -> str {
+def MakeText(n: i32) -> str {
     return f"value={n}"
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var sum: i32 = 0
     region {
         var a: Task<i32> = spawn Compute(20)

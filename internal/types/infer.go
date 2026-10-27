@@ -1031,6 +1031,9 @@ func (c *checker) castType(s *inferScope, name *ast.NameExpr, call *ast.CallExpr
 }
 
 func (c *checker) typeByName(name string) *Type {
+	if decl, ok := c.env.aliases[name]; ok {
+		return c.resolveAlias(decl)
+	}
 	if t, ok := c.env.types[name]; ok {
 		return t
 	}

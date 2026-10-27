@@ -14,7 +14,7 @@ import c "os.c" {
 
 // Args returns the process arguments for the lifetime of the process. The
 // returned view is borrowed; callers must not free it.
-func Args() -> []str {
+def Args() -> []str {
     var args: []str
     _ = c.willrt_os_args(raw(args))
     return args
@@ -22,7 +22,7 @@ func Args() -> []str {
 
 // Getenv reads one environment variable. A missing value and a value that is
 // not valid UTF-8 both become None.
-func Getenv(name: str) -> Option<str> {
+def Getenv(name: str) -> Option<str> {
     var value: str = ""
     var found: i32 = c.willrt_os_getenv(raw(name), raw(value))
     if found != 1 {
@@ -32,7 +32,7 @@ func Getenv(name: str) -> Option<str> {
 }
 
 // Setenv sets one environment variable and replaces an existing value.
-func Setenv(name: str, value: str) -> Result<(), Error> {
+def Setenv(name: str, value: str) -> Result<(), Error> {
     var status: i32 = c.willrt_os_setenv(raw(name), raw(value))
     if status == -2 {
         return Err(errors.Invalid)
@@ -44,7 +44,7 @@ func Setenv(name: str, value: str) -> Result<(), Error> {
 }
 
 // Environ returns every environment entry whose key and value are valid UTF-8.
-func Environ() -> Map<str, str> {
+def Environ() -> Map<str, str> {
     var out: Map<str, str> = new Map<str, str>(0)
     var pairs: []str
     var status: i32 = c.willrt_os_environ(raw(pairs))
@@ -66,7 +66,7 @@ func Environ() -> Map<str, str> {
 }
 
 // Cwd returns the current working directory.
-func Cwd() -> Result<str, Error> {
+def Cwd() -> Result<str, Error> {
     var path: str = ""
     var status: i32 = c.willrt_os_cwd(raw(path))
     if status != 0 {
@@ -76,7 +76,7 @@ func Cwd() -> Result<str, Error> {
 }
 
 // Chdir changes the current working directory.
-func Chdir(path: str) -> Result<(), Error> {
+def Chdir(path: str) -> Result<(), Error> {
     var status: i32 = c.willrt_os_chdir(raw(path))
     if status != 0 {
         return Err(errors.Io)
@@ -85,6 +85,6 @@ func Chdir(path: str) -> Result<(), Error> {
 }
 
 // Exit ends the process and does not return.
-func Exit(code: i32) {
+def Exit(code: i32) {
     c.willrt_os_exit(code)
 }

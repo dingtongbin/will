@@ -8,7 +8,7 @@ struct Source {
     chunk: usize
 }
 
-func (mut s: Source) Read(mut buf: Array<u8>) -> Result<usize, Error> {
+def (mut s: Source) Read(mut buf: Array<u8>) -> Result<usize, Error> {
     var n: usize = 0usize
     for {
         if s.pos >= s.data.Len() || n >= s.chunk {
@@ -29,15 +29,15 @@ struct Buffer {
     data: Array<u8>
 }
 
-func (mut b: Buffer) Push(v: u8) {
+def (mut b: Buffer) Push(v: u8) {
     b.data.Push(v)
 }
 
-func (b: Buffer) Copy() -> Array<u8> {
+def (b: Buffer) Copy() -> Array<u8> {
     return b.data.Clone()
 }
 
-func (b: Buffer) SameAs(values: ...u8) -> bool {
+def (b: Buffer) SameAs(values: ...u8) -> bool {
     if b.data.Len() != values.Len() {
         return false
     }
@@ -57,18 +57,18 @@ struct Sink {
     data: rc<Buffer>
 }
 
-func (mut s: Sink) Write(buf: []u8) -> Result<(), Error> {
+def (mut s: Sink) Write(buf: []u8) -> Result<(), Error> {
     for b in buf {
         s.data.Push(b)
     }
     return Ok(())
 }
 
-func (s: Sink) Sync() -> Result<(), Error> {
+def (s: Sink) Sync() -> Result<(), Error> {
     return Ok(())
 }
 
-func Ascii(s: str) -> Array<u8> {
+def Ascii(s: str) -> Array<u8> {
     var out: Array<u8> = new Array<u8>(0)
     for b in s[Range(0, s.Len())] {
         out.Push(b)
@@ -76,18 +76,18 @@ func Ascii(s: str) -> Array<u8> {
     return out
 }
 
-func AppendAscii(mut out: Array<u8>, s: str) {
+def AppendAscii(mut out: Array<u8>, s: str) {
     for b in s[Range(0, s.Len())] {
         out.Push(b)
     }
 }
 
-func AppendCrlf(mut out: Array<u8>) {
+def AppendCrlf(mut out: Array<u8>) {
     out.Push(13u8)
     out.Push(10u8)
 }
 
-func Bytes(values: ...u8) -> Array<u8> {
+def Bytes(values: ...u8) -> Array<u8> {
     var out: Array<u8> = new Array<u8>(0)
     for v in values {
         out.Push(v)
@@ -95,7 +95,7 @@ func Bytes(values: ...u8) -> Array<u8> {
     return out
 }
 
-func TextBytes(values: ...u8) -> str {
+def TextBytes(values: ...u8) -> str {
     var out: Array<u8> = new Array<u8>(0)
     for v in values {
         out.Push(v)
@@ -103,7 +103,7 @@ func TextBytes(values: ...u8) -> str {
     return str(out)
 }
 
-func RowOf(a: str, b: str, c: str) -> csv.Row {
+def RowOf(a: str, b: str, c: str) -> csv.Row {
     var fields: Array<str> = new Array<str>(0)
     fields.Push(a.Clone())
     fields.Push(b.Clone())
@@ -111,7 +111,7 @@ func RowOf(a: str, b: str, c: str) -> csv.Row {
     return csv.Row { fields: fields }
 }
 
-func FieldsEqual(row: csv.Row, expected: ...str) -> bool {
+def FieldsEqual(row: csv.Row, expected: ...str) -> bool {
     if row.fields.Len() != expected.Len() {
         return false
     }
@@ -125,7 +125,7 @@ func FieldsEqual(row: csv.Row, expected: ...str) -> bool {
     return true
 }
 
-async func DecodeAll(mut reader: csv.Reader, mut rows: Array<csv.Row>) -> Result<usize, Error> {
+async def DecodeAll(mut reader: csv.Reader, mut rows: Array<csv.Row>) -> Result<usize, Error> {
     var total: usize = 0usize
     for {
         var batch: Result<usize, Error> = await reader.AsyncDecode(rows)
@@ -144,7 +144,7 @@ async func DecodeAll(mut reader: csv.Reader, mut rows: Array<csv.Row>) -> Result
     return Ok(total)
 }
 
-func Failed(r: Result<usize, Error>) -> bool {
+def Failed(r: Result<usize, Error>) -> bool {
     match r {
         Ok(v) => {
             _ = v
@@ -156,7 +156,7 @@ func Failed(r: Result<usize, Error>) -> bool {
     }
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var rows: Array<csv.Row> = new Array<csv.Row>(0)
     var firstData: Array<u8> = Bytes(
         97u8, 44u8, 34u8, 98u8, 44u8, 99u8, 34u8, 44u8,

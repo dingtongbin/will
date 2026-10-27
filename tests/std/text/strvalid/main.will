@@ -3,7 +3,7 @@ import "std/str"
 // Valid builds one byte sequence and asks IsValid about it. The cases cover
 // the boundary scalars and every rejected shape: stray continuation, overlong
 // form, surrogate, truncated sequence, and a value past U+10FFFF.
-func Valid(values: ...u8) -> bool {
+def Valid(values: ...u8) -> bool {
     var data: Array<u8> = new Array<u8>(0)
     for v in values {
         data.Push(v)
@@ -11,7 +11,7 @@ func Valid(values: ...u8) -> bool {
     return str.IsValid(data[Range(0, data.Len())])
 }
 
-func main() -> i32 {
+def main() -> i32 {
     if !Valid() {
         return 1
     }

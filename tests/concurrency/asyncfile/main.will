@@ -2,7 +2,7 @@ import "std/os/fs"
 
 // Checksum reads the whole file through the completion engine and sums every
 // byte, so a short or reordered read cannot pass.
-async func Checksum(path: str) -> Result<i64, Error> {
+async def Checksum(path: str) -> Result<i64, Error> {
     var bytes: Array<u8> = await fs.AsyncReadFile(path)?
     var sum: i64 = 0
     for b in bytes {
@@ -13,12 +13,12 @@ async func Checksum(path: str) -> Result<i64, Error> {
 
 // AppendTail proves that a second write task can extend the file that two
 // readers just finished with.
-async func AppendTail(path: str) -> Result<(), Error> {
+async def AppendTail(path: str) -> Result<(), Error> {
     var text: str = "end"
     return await fs.AsyncAppend(path, text[Range(0, 3)])
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var path: str = "will-concurrency-asyncfile.tmp"
     var n: usize = 262144
     var data: Array<u8> = new Array<u8>(n)

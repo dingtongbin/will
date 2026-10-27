@@ -12,7 +12,7 @@ const count: i32 = 10000
 const repetitions: i32 = 5
 
 // Work is the work one task does.
-func Work(index: i32) -> i32 {
+def Work(index: i32) -> i32 {
     var acc: i32 = 0
     for i in Range(0, 100) {
         acc += i
@@ -20,7 +20,7 @@ func Work(index: i32) -> i32 {
     return acc + index
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     // The warm up pays for the first touch of the pages and of the caches.
     region {

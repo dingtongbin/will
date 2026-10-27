@@ -3,7 +3,7 @@
 // has to be ordinary code of a few hundred lines.
 
 // Count counts the values that are not negative.
-func Count(values: Array<i64>) -> i64 {
+def Count(values: Array<i64>) -> i64 {
     var total: i64 = 0i64
     for v in values {
         if v >= 0i64 {
@@ -14,7 +14,7 @@ func Count(values: Array<i64>) -> i64 {
 }
 
 // Sum adds the values.
-func Sum(values: Array<i64>) -> i64 {
+def Sum(values: Array<i64>) -> i64 {
     var total: i64 = 0i64
     for v in values {
         total += v
@@ -23,7 +23,7 @@ func Sum(values: Array<i64>) -> i64 {
 }
 
 // Max returns the largest value, or zero for an empty slice.
-func Max(values: Array<i64>) -> i64 {
+def Max(values: Array<i64>) -> i64 {
     var best: i64 = 0i64
     var first: bool = true
     for v in values {
@@ -36,7 +36,7 @@ func Max(values: Array<i64>) -> i64 {
 }
 
 // Min returns the smallest value, or zero for an empty slice.
-func Min(values: Array<i64>) -> i64 {
+def Min(values: Array<i64>) -> i64 {
     var best: i64 = 0i64
     var first: bool = true
     for v in values {
@@ -49,7 +49,7 @@ func Min(values: Array<i64>) -> i64 {
 }
 
 // Mean returns the mean of the values, or zero for an empty slice.
-func Mean(values: Array<i64>) -> i64 {
+def Mean(values: Array<i64>) -> i64 {
     if values.Len() == 0usize {
         return 0i64
     }
@@ -57,7 +57,7 @@ func Mean(values: Array<i64>) -> i64 {
 }
 
 // Histogram counts how many values fall into each bucket of the given width.
-func Histogram(values: Array<i64>, width: i64) -> Array<i64> {
+def Histogram(values: Array<i64>, width: i64) -> Array<i64> {
     var buckets: Array<i64> = new Array<i64>(0)
     if width <= 0i64 {
         return buckets
@@ -84,7 +84,7 @@ func Histogram(values: Array<i64>, width: i64) -> Array<i64> {
 }
 
 // Rolling returns the mean of every window of the given size.
-func Rolling(values: Array<i64>, size: i32) -> Array<i64> {
+def Rolling(values: Array<i64>, size: i32) -> Array<i64> {
     var out: Array<i64> = new Array<i64>(0)
     if size <= 0 {
         return out

@@ -7,7 +7,7 @@ struct Outer {
     label: i32
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var o: rc<Outer> = new rc<Outer>(Outer { inner: new rc<Inner>(Inner { n: 1 }), label: 2 })
     return o.inner.n + o.label
 }

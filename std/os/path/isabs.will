@@ -1,6 +1,6 @@
 // IsAbs reports whether the path is rooted. On Windows that includes a drive
 // root such as "C:\"; on every target a leading separator is rooted.
-func IsAbs(p: str) -> bool {
+def IsAbs(p: str) -> bool {
     if p.Len() == 0usize {
         return false
     }

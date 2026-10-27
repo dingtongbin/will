@@ -51,6 +51,18 @@ type VarDecl struct {
 
 func (*VarDecl) declNode() {}
 
+// TypeAliasDecl declares a source-level name for another type. The alias has
+// no type identity of its own.
+type TypeAliasDecl struct {
+	Span
+	Doc     string
+	Name    string
+	NamePos source.Pos
+	Type    *Type
+}
+
+func (*TypeAliasDecl) declNode() {}
+
 // FuncDecl declares a function or, when Recv is set, a method.
 type FuncDecl struct {
 	Span

@@ -1,5 +1,5 @@
 import "example.com/a"
 
-func A() -> i32 {
+def A() -> i32 {
     return a.Value()
 }

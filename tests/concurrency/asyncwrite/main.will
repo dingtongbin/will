@@ -1,11 +1,11 @@
 import "std/os/fs"
 
-async func Write(path: str) -> Result<(), Error> {
+async def Write(path: str) -> Result<(), Error> {
     var text: str = "worker"
     return await fs.AsyncWriteFile(path, text[Range(0, 6)])
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var path: str = "will-concurrency-asyncwrite.tmp"
     var result: Result<(), Error> = Ok(())
     region {

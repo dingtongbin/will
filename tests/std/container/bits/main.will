@@ -3,7 +3,7 @@ import "std/bits"
 // Set, Clear, Flip, and Has must cross word boundaries, Count must count the
 // set bits, Clone must be independent, and the four bitwise operations must
 // combine two sets of one width.
-func main() -> i32 {
+def main() -> i32 {
     var b: bits.Bits = new bits.Bits(130usize)
     if b.Len() != usize(130) {
         return 1

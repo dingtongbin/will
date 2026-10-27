@@ -1,7 +1,7 @@
 import "std/encoding/url"
 
 // Rejected reports whether a decode failed with the stable Invalid status.
-func Rejected(r: Result<str, Error>) -> bool {
+def Rejected(r: Result<str, Error>) -> bool {
     match r {
         Ok(v) => {
             _ = v
@@ -13,7 +13,7 @@ func Rejected(r: Result<str, Error>) -> bool {
     }
 }
 
-func main() -> i32 {
+def main() -> i32 {
     if url.Escape("") != "" {
         return 1
     }

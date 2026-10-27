@@ -52,6 +52,13 @@ var lineSpecs = map[string][]fieldSpec{
 		{name: "name", kind: textField},
 		{name: "vis", kind: textField},
 	},
+	"alias": {
+		{name: "file", kind: textField},
+		{name: "line", kind: intField},
+		{name: "col", kind: intField},
+		{name: "name", kind: textField},
+		{name: "target", kind: textField},
+	},
 	"method": {
 		{name: "file", kind: textField},
 		{name: "line", kind: intField},
@@ -294,6 +301,21 @@ func (ix *Index) addRecord(no int, kind string, f []field) error {
 				"; it must be public or private"}
 		}
 		ix.Decls = append(ix.Decls, d)
+	case "alias":
+		a := Alias{
+			File:   f[0].text,
+			Line:   f[1].num,
+			Col:    f[2].num,
+			Name:   f[3].text,
+			Target: f[4].text,
+		}
+		if err := checkPos(no, "alias", a.Line, a.Col); err != nil {
+			return err
+		}
+		if a.Name == "" || a.Target == "" {
+			return &Error{Line: no, Message: "an alias name and target are never empty"}
+		}
+		ix.Aliases = append(ix.Aliases, a)
 	case "method":
 		m := Method{
 			File: f[0].text,

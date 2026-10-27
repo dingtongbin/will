@@ -26,19 +26,19 @@ struct Timezone {
 }
 
 // Utc returns the zero offset.
-func Utc() -> Timezone {
+def Utc() -> Timezone {
     return Fixed(0)
 }
 
 // Fixed returns a zone with the given offset from UTC in seconds. It has no
 // daylight saving rule, so the offset applies to every instant.
-func Fixed(offsetSec: i32) -> Timezone {
+def Fixed(offsetSec: i32) -> Timezone {
     return Timezone { kind: zoneFixed, id: -1, offsetSec: offsetSec }
 }
 
 // Local returns the host's zone. When the host names an IANA zone the compiled
 // table is used; otherwise the host's own rule answers each instant.
-func Local() -> Timezone {
+def Local() -> Timezone {
     var id: i32 = c.willtime_local_zone()
     if id >= 0 {
         return Timezone { kind: zoneNamed, id: id, offsetSec: 0 }
@@ -51,7 +51,7 @@ func Local() -> Timezone {
 
 // Load returns the IANA zone with this name. A name that is not in the
 // compiled table is NotFound; the name is never resolved through the host.
-func Load(name: str) -> Result<Timezone, Error> {
+def Load(name: str) -> Result<Timezone, Error> {
     var id: i32 = c.willtime_zone_find(raw(name), i64(name.Len()))
     if id < 0 {
         return Err(errors.NotFound)
@@ -61,7 +61,7 @@ func Load(name: str) -> Result<Timezone, Error> {
 
 // offsetAt returns the offset of tz at one Unix second. The integer result is
 // the presentation offset; it never shifts the instant itself.
-func offsetAt(tz: Timezone, atSec: i64) -> i32 {
+def offsetAt(tz: Timezone, atSec: i64) -> i32 {
     if tz.kind == zoneFixed {
         return tz.offsetSec
     }
@@ -76,6 +76,6 @@ func offsetAt(tz: Timezone, atSec: i64) -> i32 {
 
 // wallNanos returns the host wall clock as Unix nanoseconds. It is separate
 // from Stopwatch, which reads the monotonic clock.
-func wallNanos() -> i64 {
+def wallNanos() -> i64 {
     return c.willtime_wall_ns()
 }

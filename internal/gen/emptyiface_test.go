@@ -8,9 +8,9 @@ import (
 // TestEmitEmptyInterface checks the anonymous interface type, its table, and a
 // concrete downcast from a value that could hold any type.
 func TestEmitEmptyInterface(t *testing.T) {
-	src := "func Check(value: interface {}) -> bool {\n    return value.Is<i32>()\n}\n\n" +
-		"func Number(value: interface {}) -> Option<i32> {\n    return value.As<i32>()\n}\n\n" +
-		"func Use() -> i32 {\n" +
+	src := "def Check(value: interface {}) -> bool {\n    return value.Is<i32>()\n}\n\n" +
+		"def Number(value: interface {}) -> Option<i32> {\n    return value.As<i32>()\n}\n\n" +
+		"def Use() -> i32 {\n" +
 		"    var value: interface {} = 7\n" +
 		"    if !Check(value) {\n        return 0\n    }\n" +
 		"    var number: Option<i32> = Number(value)\n" +

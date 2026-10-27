@@ -374,8 +374,8 @@ func (r *resolver) cLink(recv ast.Expr, name string) *ast.Link {
 	return nil
 }
 
-// checkImportedMember reports N0002 when a package-qualified member starts
-// with a lowercase letter, so it is private to its own package.
+// checkImportedMember reports N0002 when a package-qualified member carries
+// the __ prefix, so it is private to its own package.
 func (r *resolver) checkImportedMember(recv ast.Expr, name string, pos source.Pos) {
 	if name == "" {
 		return
@@ -402,7 +402,7 @@ func (r *resolver) checkImportedMember(recv ast.Expr, name string, pos source.Po
 	}
 	if !isExported(name) {
 		r.bag.Error(pos, diag.CodePrivateName, "private name used outside its package",
-			"it starts with a lowercase letter, so it is private")
+			"names starting with __ are private")
 		return
 	}
 	if !loaded {

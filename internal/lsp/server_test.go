@@ -14,13 +14,13 @@ import (
 	"github.com/will-lang/will/internal/diag"
 )
 
-const badSource = `func F() {
+const badSource = `def F() {
     var x: i32 = "s"
     _ = x
 }
 `
 
-const goodSource = `func F() {
+const goodSource = `def F() {
     var x: i32 = 1
     _ = x
 }

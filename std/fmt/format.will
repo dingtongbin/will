@@ -20,7 +20,7 @@ const formatFloat: i32 = 2
 
 // Show renders the field. A number is right aligned: the sign, then the fill
 // bytes, then the digits. Text follows the side Pad was given.
-func (f: Format) Show() -> str {
+def (f: Format) Show() -> str {
     if f.kind == formatText {
         return padText(f.text, f.width, f.pad, f.left)
     }

@@ -2,7 +2,7 @@ import "std/time"
 
 // The compiled table must answer with the historical and daylight offsets the
 // named zones actually used, not with one fixed offset per zone.
-func main() -> i32 {
+def main() -> i32 {
     var t: time.Instant = time.FromUnix(1700000000i64)
     var sh: time.Timezone = time.Load("Asia/Shanghai")!
     if time.Rfc3339(time.In(t, sh)) != "2023-11-15T06:13:20+08:00" {

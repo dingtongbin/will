@@ -3,7 +3,7 @@
 
 // ParallelFor calls f once for every index below n. The caller chooses the
 // chunking by choosing n; this function never adapts it.
-func ParallelFor(n: usize, f: func(usize)) {
+def ParallelFor(n: usize, f: func(usize)) {
     if n == 0usize {
         return
     }
@@ -21,7 +21,7 @@ func ParallelFor(n: usize, f: func(usize)) {
 
 // ParallelMap returns f applied to every element in input order. The output
 // array has the same length as xs.
-func ParallelMap<T, U>(xs: []T, f: func(T) -> U) -> Array<U> {
+def ParallelMap<T, U>(xs: []T, f: func(T) -> U) -> Array<U> {
     var n: usize = xs.Len()
     var out: Array<U> = new Array<U>(n)
     if n == 0usize {

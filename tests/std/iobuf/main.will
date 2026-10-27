@@ -1,6 +1,6 @@
 import "std/io/buf"
 
-func main() -> i32 {
+def main() -> i32 {
     var b: buf.Buffer = new buf.Buffer()
     b.data.Push(65u8)
     b.data.Push(66u8)

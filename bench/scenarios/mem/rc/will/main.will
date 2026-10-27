@@ -16,7 +16,7 @@ struct Counter {
     value: i64
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     var cell: rc<Counter> = new rc<Counter>(Counter { value: 0i64})
     // The warm up pays for the first touch of the pages and of the caches.

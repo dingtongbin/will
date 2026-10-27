@@ -20,7 +20,7 @@ const repetitions: i32 = 5
 // The seed takes part in the work, so two calls with different seeds give
 // different results. Without it the compiler may run the loop once and
 // reuse the result, and the measurement would time nothing.
-func Walk(seed: u64) -> u64 {
+def Walk(seed: u64) -> u64 {
     var text: str = "the quick brown fox 42 jumps over 1337 lazy dogs \u{4e2d}\u{6587}\u{6d4b}\u{8bd5} \u{1f600} end"
     var hash: u64 = seed
     var fields: u64 = 0u64
@@ -48,7 +48,7 @@ func Walk(seed: u64) -> u64 {
     return hash ^ (numbers *% 1000003u64) ^ (fields <<% 40u64)
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     // The warm up pays for the first touch of the pages and of the caches.
     var warm: u64 = Walk(0u64)

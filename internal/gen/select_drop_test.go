@@ -8,7 +8,7 @@ import (
 // TestSelectDiscardReleasesReceiveOut checks that a receive arm without a bind
 // drops the received value and clears its frame slot before the arm body runs.
 func TestSelectDiscardReleasesReceiveOut(t *testing.T) {
-	src := `async func main() -> i32 {
+	src := `async def main() -> i32 {
     var ch: chan<str> = new chan<str>(1)
     _ = await ch.Send("hello".Clone())
     select {
@@ -38,7 +38,7 @@ func TestSelectDiscardReleasesReceiveOut(t *testing.T) {
 // TestSelectBindClearsReceiveOut checks that the bind moves the received value
 // into its Option and zeroes the arm buffer instead of leaving a second owner.
 func TestSelectBindClearsReceiveOut(t *testing.T) {
-	src := `async func main() -> i32 {
+	src := `async def main() -> i32 {
     var ch: chan<str> = new chan<str>(1)
     _ = await ch.Send("hello".Clone())
     var got: Option<str> = None

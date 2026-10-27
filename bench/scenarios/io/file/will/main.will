@@ -8,11 +8,11 @@ const repetitions: i32 = 5
 var path: str = "bench_file.tmp"
 const seed: u64 = 0x5EEDu64
 
-func Lcg(state: u64) -> u64 {
+def Lcg(state: u64) -> u64 {
     return state *% 6364136223846793005u64 +% 1442695040888963407u64
 }
 
-func Fill(block: Array<u8>) {
+def Fill(block: Array<u8>) {
     var state: u64 = seed
     for word in Range(0, i32(block.Len() / 8usize)) {
         var value: u64 = Lcg(state)
@@ -24,7 +24,7 @@ func Fill(block: Array<u8>) {
     }
 }
 
-func Sort(mut xs: Array<u64>) {
+def Sort(mut xs: Array<u64>) {
     var n: i32 = i32(xs.Len())
     var value: u64 = 0u64
     var left: u64 = 0u64
@@ -46,7 +46,7 @@ func Sort(mut xs: Array<u64>) {
     }
 }
 
-func Percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
+def Percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
     var count: i64 = i64(xs.Len())
     if count == 0i64 {
         return 0u64
@@ -62,11 +62,11 @@ func Percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
     return xs[usize(rank - one)]
 }
 
-func OpenRead() -> Result<fs.File, Error> {
+def OpenRead() -> Result<fs.File, Error> {
     return fs.Open(path, fs.OpenFlags { read: true, write: false, create: false, append: false, truncate: false, exclusive: false })
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var clock: time.Stopwatch = new time.Stopwatch()
     var block: Array<u8> = new Array<u8>(blockSize)
     for _ in Range(0, i32(blockSize)) {

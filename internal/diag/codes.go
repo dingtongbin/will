@@ -81,6 +81,8 @@ const (
 	// CodeVariadicWiden reports a C variadic argument that needs an explicit
 	// widening cast.
 	CodeVariadicWiden = "T0012"
+	// CodeTypeAliasCycle reports a type alias that expands to itself.
+	CodeTypeAliasCycle = "T0013"
 
 	// CodePackageNameMismatch reports a package name that differs from its directory.
 	CodePackageNameMismatch = "B0001"
@@ -177,7 +179,7 @@ var Codes = []string{
 	CodeShiftAmount,
 	CodeFeatureOutsideIf,
 	CodeNoZero,
-	CodeVariadicWiden,
+	CodeVariadicWiden, CodeTypeAliasCycle,
 	CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
 	CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
 	CodeUnreleasableCycle, CodePossibleCycle, CodeRcSlotUnguarded, CodeExplicitLeak, CodeSmallPlate,

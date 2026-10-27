@@ -7,24 +7,24 @@ struct Deque<T> {
 }
 
 // init starts both stacks empty.
-func (mut d: Deque<T>) init() {
+def (mut d: Deque<T>) init() {
     d.front = new Array<T>(0)
     d.back = new Array<T>(0)
 }
 
 // PushFront adds one value at the front.
-func (mut d: Deque<T>) PushFront(v: T) {
+def (mut d: Deque<T>) PushFront(v: T) {
     d.front.Push(v)
 }
 
 // PushBack adds one value at the back.
-func (mut d: Deque<T>) PushBack(v: T) {
+def (mut d: Deque<T>) PushBack(v: T) {
     d.back.Push(v)
 }
 
 // PopFront removes and returns the front value, or None when the deque is
 // empty.
-func (mut d: Deque<T>) PopFront() -> Option<T> {
+def (mut d: Deque<T>) PopFront() -> Option<T> {
     if d.front.Len() > 0 {
         return d.front.Pop()
     }
@@ -95,7 +95,7 @@ func (mut d: Deque<T>) PopFront() -> Option<T> {
 }
 
 // PopBack removes and returns the back value, or None when the deque is empty.
-func (mut d: Deque<T>) PopBack() -> Option<T> {
+def (mut d: Deque<T>) PopBack() -> Option<T> {
     if d.back.Len() > 0 {
         return d.back.Pop()
     }
@@ -180,7 +180,7 @@ func (mut d: Deque<T>) PopBack() -> Option<T> {
 }
 
 // PeekFront returns a copy of the front value without removing it.
-func (d: Deque<T>) PeekFront() -> Option<T> {
+def (d: Deque<T>) PeekFront() -> Option<T> {
     if d.front.Len() > 0 {
         return Some(d.front.Get(d.front.Len() - 1usize))
     }
@@ -191,7 +191,7 @@ func (d: Deque<T>) PeekFront() -> Option<T> {
 }
 
 // PeekBack returns a copy of the back value without removing it.
-func (d: Deque<T>) PeekBack() -> Option<T> {
+def (d: Deque<T>) PeekBack() -> Option<T> {
     if d.back.Len() > 0 {
         return Some(d.back.Get(d.back.Len() - 1usize))
     }
@@ -202,19 +202,19 @@ func (d: Deque<T>) PeekBack() -> Option<T> {
 }
 
 // Len reports the number of stored values.
-func (d: Deque<T>) Len() -> usize {
+def (d: Deque<T>) Len() -> usize {
     return d.front.Len() + d.back.Len()
 }
 
 // Clear releases every value.
-func (mut d: Deque<T>) Clear() {
+def (mut d: Deque<T>) Clear() {
     d.front.Clear()
     d.back.Clear()
 }
 
 // Clone copies both stacks. Array.Clone gives each stored value its own
 // reference according to the container rule.
-func (d: Deque<T>) Clone() -> Deque<T> {
+def (d: Deque<T>) Clone() -> Deque<T> {
     var out: Deque<T>
     out.front = d.front.Clone()
     out.back = d.back.Clone()

@@ -18,11 +18,11 @@ func TestAnalyzeTextFollowsALocalReplace(t *testing.T) {
 		"will.mod": "module example.com/app\nwill 1\n" +
 			"require example.com/dep@v1.0.0\n" +
 			"replace example.com/dep@v1.0.0 => ../dep\n",
-		"app.will": "import \"example.com/dep\"\n\nfunc F() -> i32 {\n    return dep.Double(2)\n}\n",
+		"app.will": "import \"example.com/dep\"\n\ndef F() -> i32 {\n    return dep.Double(2)\n}\n",
 	})
 	writeText(t, dep, map[string]string{
 		"will.mod": "module example.com/dep\nwill 1\n",
-		"dep.will": "func Double(n: i32) -> i32 {\n    return n + n\n}\n",
+		"dep.will": "def Double(n: i32) -> i32 {\n    return n + n\n}\n",
 	})
 	path := filepath.Join(app, "app.will")
 	body, err := os.ReadFile(path)

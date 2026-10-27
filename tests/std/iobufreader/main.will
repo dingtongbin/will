@@ -7,7 +7,7 @@ struct source {
     pos: usize
 }
 
-func (mut s: source) Read(mut out: Array<u8>) -> Result<usize, Error> {
+def (mut s: source) Read(mut out: Array<u8>) -> Result<usize, Error> {
     if s.pos >= s.data.Len() {
         return Ok(0usize)
     }
@@ -20,7 +20,7 @@ func (mut s: source) Read(mut out: Array<u8>) -> Result<usize, Error> {
     return Ok(2usize)
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var src: source = source { data: new Array<u8>(0), pos: 0usize }
     src.data.Push(104u8)
     src.data.Push(101u8)

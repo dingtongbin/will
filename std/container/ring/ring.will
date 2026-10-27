@@ -3,11 +3,11 @@ struct ringError {
     message: str
 }
 
-func (e: ringError) Message() -> str {
+def (e: ringError) Message() -> str {
     return e.message
 }
 
-func (e: ringError) Status() -> i32 {
+def (e: ringError) Status() -> i32 {
     return 2
 }
 
@@ -20,7 +20,7 @@ struct Ring<T> {
 }
 
 // init reserves the two stacks used by the ring. A zero capacity is invalid.
-func (mut r: Ring<T>) init(cap: usize) -> Result<(), Error> {
+def (mut r: Ring<T>) init(cap: usize) -> Result<(), Error> {
     if cap == 0usize {
         return Err(ringError { message: "ring capacity must be positive" })
     }
@@ -31,7 +31,7 @@ func (mut r: Ring<T>) init(cap: usize) -> Result<(), Error> {
 }
 
 // Push adds one value at the back. It returns false when the ring is full.
-func (mut r: Ring<T>) Push(v: T) -> bool {
+def (mut r: Ring<T>) Push(v: T) -> bool {
     if r.Len() >= r.cap {
         return false
     }
@@ -40,7 +40,7 @@ func (mut r: Ring<T>) Push(v: T) -> bool {
 }
 
 // Pop removes and returns the front value, or None when the ring is empty.
-func (mut r: Ring<T>) Pop() -> Option<T> {
+def (mut r: Ring<T>) Pop() -> Option<T> {
     if r.front.Len() > 0 {
         return r.front.Pop()
     }
@@ -64,7 +64,7 @@ func (mut r: Ring<T>) Pop() -> Option<T> {
 }
 
 // Peek returns a copy of the front value without removing it.
-func (r: Ring<T>) Peek() -> Option<T> {
+def (r: Ring<T>) Peek() -> Option<T> {
     if r.front.Len() > 0 {
         return Some(r.front.Get(r.front.Len() - 1))
     }
@@ -75,17 +75,17 @@ func (r: Ring<T>) Peek() -> Option<T> {
 }
 
 // Len reports the number of stored values.
-func (r: Ring<T>) Len() -> usize {
+def (r: Ring<T>) Len() -> usize {
     return r.front.Len() + r.back.Len()
 }
 
 // Full reports whether no more values fit.
-func (r: Ring<T>) Full() -> bool {
+def (r: Ring<T>) Full() -> bool {
     return r.Len() >= r.cap
 }
 
 // Clear releases every value and keeps the capacity setting.
-func (mut r: Ring<T>) Clear() {
+def (mut r: Ring<T>) Clear() {
     r.front.Clear()
     r.back.Clear()
 }

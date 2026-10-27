@@ -1,36 +1,36 @@
-func Find(x: i32) -> Option<i32> {
+def Find(x: i32) -> Option<i32> {
     if x > 0 {
         return Some(x)
     }
     return None
 }
 
-func UseOpt(x: i32) -> i32 {
+def UseOpt(x: i32) -> i32 {
     return match Find(x) {
         Some(v) => v
         None => 0
     }
 }
 
-func Divide(x: i32) -> Result<i32, i32> {
+def Divide(x: i32) -> Result<i32, i32> {
     if x == 0 {
         return Err(1)
     }
     return Ok(x / 2)
 }
 
-func UseRes(x: i32) -> Result<i32, i32> {
+def UseRes(x: i32) -> Result<i32, i32> {
     var v: i32 = Divide(x)?
     return Ok(v + 1)
 }
 
-func Pick(r: Result<i32, i32>) -> i32 {
+def Pick(r: Result<i32, i32>) -> i32 {
     return match r {
         Ok(v) => v
         Err(e) => e
     }
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return UseOpt(3) + Pick(UseRes(4))
 }

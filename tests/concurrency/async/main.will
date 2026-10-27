@@ -1,11 +1,11 @@
 import "std/os/fs"
 
-async func ReadFile(path: str) -> Result<usize, Error> {
+async def ReadFile(path: str) -> Result<usize, Error> {
     var bytes: Array<u8> = await fs.AsyncReadFile(path)?
     return Ok(bytes.Len())
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var path: str = "will-concurrency-async.tmp"
     var text: str = "worker"
     var written: Result<(), Error> = fs.WriteFile(path, text[Range(0, 6)])

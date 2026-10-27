@@ -1,7 +1,7 @@
 // Join returns the parts separated by sep. Every byte is copied once, so the
 // total work is linear in the sum of the part lengths plus the separators; an
 // empty part still takes its place between two separators.
-func Join(parts: []Array<u8>, sep: []u8) -> Array<u8> {
+def Join(parts: []Array<u8>, sep: []u8) -> Array<u8> {
     var out: Array<u8> = new Array<u8>(0)
     var first: bool = true
     for p in parts {

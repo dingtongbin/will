@@ -1,6 +1,6 @@
 import "std/str"
 
-func main() -> i32 {
+def main() -> i32 {
     var total: i32 = 0
 
     var small: Result<i64, Error> = str.ParseI64("-123", 10)

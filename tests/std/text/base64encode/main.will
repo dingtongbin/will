@@ -2,7 +2,7 @@ import "std/encoding/base64"
 
 // Encode must pad whole groups, read every byte value, and feed Decode back the
 // same bytes. 251 and 255 are the two values whose URL characters differ.
-func main() -> i32 {
+def main() -> i32 {
     var hello: str = "Hello"
     if base64.Encode(hello[Range(0, 5)]) != "SGVsbG8=" {
         return 1

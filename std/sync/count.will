@@ -12,17 +12,17 @@ struct Count {
     handle: raw
 }
 
-func (mut counter: Count) init(n: i64) {
+def (mut counter: Count) init(n: i64) {
     counter.handle = c.willrt_sync_count_new(n)
 }
 
-func (counter: Count) Add(d: i64) {
+def (counter: Count) Add(d: i64) {
     c.willrt_sync_count_add(counter.handle, d)
 }
 
 // Wait blocks until the counter reaches zero. A canceled or expired wait
 // leaves the count unchanged.
-async func (counter: Count) Wait() -> Result<(), Error> {
+async def (counter: Count) Wait() -> Result<(), Error> {
     var status: i32 = await c.willrt_sync_count_wait_async(counter.handle)
     if status == 0 {
         return Ok(())

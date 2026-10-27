@@ -9,7 +9,7 @@ import (
 // initializes and releases local owners. A channel wait keeps the function on
 // the general path, so the frame cleanup cannot rely on the typed async layout.
 func TestGeneralFrameDropReleasesOwnedLocals(t *testing.T) {
-	src := `async func Worker(ch: chan<i32>) -> i32 {
+	src := `async def Worker(ch: chan<i32>) -> i32 {
     var text: str = "hello"
     var items: Array<i32> = new Array<i32>(2)
     var got: Option<i32> = await ch.Recv()
@@ -17,7 +17,7 @@ func TestGeneralFrameDropReleasesOwnedLocals(t *testing.T) {
     return i32(text.Len()) + i32(items.Len())
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
     region {
         var task: Task<i32> = spawn Worker(ch)
@@ -50,13 +50,13 @@ async func main() -> i32 {
 // ranged loop whose only wait is a channel send parks on the task wait node
 // instead of blocking the lane.
 func TestSendLoopBecomesStateMachine(t *testing.T) {
-	src := `func Produce(ch: chan<i32>, n: i32) {
+	src := `def Produce(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
         _ = ch.Send(i)
     }
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
     region {
         var task: Task<()> = spawn Produce(ch, 1)

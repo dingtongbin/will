@@ -1,6 +1,6 @@
 import "std/encoding/hex"
 
-func Sum(b: Array<u8>) -> i32 {
+def Sum(b: Array<u8>) -> i32 {
     var total: i32 = 0
     for v in b {
         total += i32(v)
@@ -8,7 +8,7 @@ func Sum(b: Array<u8>) -> i32 {
     return total
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var total: i32 = 0
     var plain: Result<Array<u8>, Error> = hex.Decode("48656c6C6f")
     match plain {

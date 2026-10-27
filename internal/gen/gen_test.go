@@ -49,7 +49,7 @@ func emitWillcAs(t *testing.T, src, module string) *willc.Doc {
 }
 
 func TestEmitIntegerFunction(t *testing.T) {
-	doc := emitWillc(t, "func Add(a: i32, b: i32) -> i32 {\n    return a + b\n}\n")
+	doc := emitWillc(t, "def Add(a: i32, b: i32) -> i32 {\n    return a + b\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -72,7 +72,7 @@ func TestEmitIntegerFunction(t *testing.T) {
 }
 
 func TestEmitIndexChecksTheBound(t *testing.T) {
-	src := "func At(xs: []i32, i: usize) -> i32 {\n    return xs[i]\n}\n"
+	src := "def At(xs: []i32, i: usize) -> i32 {\n    return xs[i]\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -91,7 +91,7 @@ func TestEmitIndexChecksTheBound(t *testing.T) {
 }
 
 func TestEmitSignedIndexChecksBelowZero(t *testing.T) {
-	src := "func At(xs: [2]i32, i: i32) -> i32 {\n    return xs[i]\n}\n"
+	src := "def At(xs: [2]i32, i: i32) -> i32 {\n    return xs[i]\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -110,7 +110,7 @@ func TestEmitSignedIndexChecksBelowZero(t *testing.T) {
 }
 
 func TestEmitSliceChecksBothBounds(t *testing.T) {
-	src := "func Mid(xs: []i32, lo: usize, hi: usize) -> i32 {\n    return xs[Range(lo, hi)][0]\n}\n"
+	src := "def Mid(xs: []i32, lo: usize, hi: usize) -> i32 {\n    return xs[Range(lo, hi)][0]\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -130,8 +130,8 @@ func TestEmitSliceChecksBothBounds(t *testing.T) {
 
 func TestEmitEnumConstructionAndMatch(t *testing.T) {
 	src := "enum E {\n    A\n    B(i32)\n}\n\n" +
-		"func F(e: E) -> i32 {\n    return match e {\n        A => 0\n        B(v) => v\n    }\n}\n\n" +
-		"func Make() -> E {\n    return E.B(7)\n}\n"
+		"def F(e: E) -> i32 {\n    return match e {\n        A => 0\n        B(v) => v\n    }\n}\n\n" +
+		"def Make() -> E {\n    return E.B(7)\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -158,8 +158,8 @@ func TestEmitEnumConstructionAndMatch(t *testing.T) {
 
 func TestEmitUnqualifiedEnumVariants(t *testing.T) {
 	src := "enum E {\n    A\n    B(i32)\n}\n\n" +
-		"func Payload() -> E {\n    return B(7)\n}\n\n" +
-		"func Empty() -> E {\n    return A\n}\n"
+		"def Payload() -> E {\n    return B(7)\n}\n\n" +
+		"def Empty() -> E {\n    return A\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -180,12 +180,12 @@ func TestEmitUnqualifiedEnumVariants(t *testing.T) {
 }
 
 func TestEmitNewInterfaceArgument(t *testing.T) {
-	src := "interface Value {\n    func Get() -> i32\n}\n\n" +
+	src := "interface Value {\n    def Get() -> i32\n}\n\n" +
 		"struct Item {\n    n: i32\n}\n\n" +
-		"func (i: Item) Get() -> i32 {\n    return i.n\n}\n\n" +
+		"def (i: Item) Get() -> i32 {\n    return i.n\n}\n\n" +
 		"struct Holder {\n    value: Value\n}\n\n" +
-		"func (mut h: Holder) init(value: Value) {\n    h.value = value\n}\n\n" +
-		"func Use() -> i32 {\n" +
+		"def (mut h: Holder) init(value: Value) {\n    h.value = value\n}\n\n" +
+		"def Use() -> i32 {\n" +
 		"    var item: Item = Item { n: 7 }\n" +
 		"    var holder: Holder = new Holder(item)\n" +
 		"    return holder.value.Get()\n" +
@@ -208,7 +208,7 @@ func TestEmitNewInterfaceArgument(t *testing.T) {
 }
 
 func TestEmitMatchWithGuardAndWildcard(t *testing.T) {
-	src := "func Pick(n: i32) -> i32 {\n    return match n {\n        0 => 10\n        x if x > 0 => x\n        _ => -1\n    }\n}\n"
+	src := "def Pick(n: i32) -> i32 {\n    return match n {\n        0 => 10\n        x if x > 0 => x\n        _ => -1\n    }\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -230,9 +230,9 @@ func TestEmitMatchWithGuardAndWildcard(t *testing.T) {
 }
 
 func TestEmitStrLiteralIndexAndLoop(t *testing.T) {
-	src := "func At(s: str, i: i32) -> u32 {\n    return s[i]\n}\n\n" +
-		"func One() -> u32 {\n    return At(\"hi\", 0)\n}\n\n" +
-		"func Count(s: str) -> i32 {\n    var n: i32 = 0\n    for i, c in s {\n        if c == 65u32 { n += 1 }\n        _ = i\n    }\n    return n\n}\n"
+	src := "def At(s: str, i: i32) -> u32 {\n    return s[i]\n}\n\n" +
+		"def One() -> u32 {\n    return At(\"hi\", 0)\n}\n\n" +
+		"def Count(s: str) -> i32 {\n    var n: i32 = 0\n    for i, c in s {\n        if c == 65u32 { n += 1 }\n        _ = i\n    }\n    return n\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -256,8 +256,8 @@ func TestEmitStrLiteralIndexAndLoop(t *testing.T) {
 
 func TestEmitGenericStructInstance(t *testing.T) {
 	src := "struct Box<T> {\n    value: T\n}\n\n" +
-		"func Read(b: Box<i32>) -> i32 {\n    return b.value\n}\n\n" +
-		"func main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return Read(b)\n}\n"
+		"def Read(b: Box<i32>) -> i32 {\n    return b.value\n}\n\n" +
+		"def main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return Read(b)\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -276,8 +276,8 @@ func TestEmitGenericStructInstance(t *testing.T) {
 
 func TestEmitGenericMethodInstance(t *testing.T) {
 	src := "struct Box<T> {\n    value: T\n}\n\n" +
-		"func (b: Box<T>) Get() -> T {\n    return b.value\n}\n\n" +
-		"func main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return b.Get()\n}\n"
+		"def (b: Box<T>) Get() -> T {\n    return b.value\n}\n\n" +
+		"def main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return b.Get()\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -298,10 +298,10 @@ func TestEmitGenericMethodInstance(t *testing.T) {
 }
 
 func TestEmitFunctionValue(t *testing.T) {
-	src := "func Apply(f: func(i32) -> i32, x: i32) -> i32 {\n" +
+	src := "def Apply(f: func(i32) -> i32, x: i32) -> i32 {\n" +
 		"    return f(x)\n" +
 		"}\n\n" +
-		"func main() -> i32 {\n" +
+		"def main() -> i32 {\n" +
 		"    var inc: func(i32) -> i32 = func(x: i32) -> i32 { return x + 1 }\n" +
 		"    return Apply(inc, 1)\n" +
 		"}\n"
@@ -325,14 +325,14 @@ func TestEmitFunctionValue(t *testing.T) {
 }
 
 func TestEmitCapturingClosure(t *testing.T) {
-	src := "func Counter() -> func() -> i32 {\n" +
+	src := "def Counter() -> func() -> i32 {\n" +
 		"    var n: i32 = 0\n" +
 		"    return func() -> i32 {\n" +
 		"        n += 1\n" +
 		"        return n\n" +
 		"    }\n" +
 		"}\n\n" +
-		"func main() -> i32 {\n" +
+		"def main() -> i32 {\n" +
 		"    var c: func() -> i32 = Counter()\n" +
 		"    var a: i32 = c()\n" +
 		"    return a\n" +
@@ -358,13 +358,13 @@ func TestEmitCapturingClosure(t *testing.T) {
 }
 
 func TestEmitNamedFunctionValue(t *testing.T) {
-	src := "func Inc(x: i32) -> i32 {\n" +
+	src := "def Inc(x: i32) -> i32 {\n" +
 		"    return x + 1\n" +
 		"}\n\n" +
-		"func Apply(f: func(i32) -> i32, x: i32) -> i32 {\n" +
+		"def Apply(f: func(i32) -> i32, x: i32) -> i32 {\n" +
 		"    return f(x)\n" +
 		"}\n\n" +
-		"func main() -> i32 {\n" +
+		"def main() -> i32 {\n" +
 		"    return Apply(Inc, 4)\n" +
 		"}\n"
 	doc := emitWillc(t, src)
@@ -388,13 +388,13 @@ func TestEmitRcHandles(t *testing.T) {
 	src := "struct Counter {\n" +
 		"    n: i32\n" +
 		"}\n\n" +
-		"func (mut c: Counter) Add(d: i32) {\n" +
+		"def (mut c: Counter) Add(d: i32) {\n" +
 		"    c.n += d\n" +
 		"}\n\n" +
-		"func Identity(c: rc<Counter>) -> rc<Counter> {\n" +
+		"def Identity(c: rc<Counter>) -> rc<Counter> {\n" +
 		"    return c\n" +
 		"}\n\n" +
-		"func main() -> i32 {\n" +
+		"def main() -> i32 {\n" +
 		"    var c: rc<Counter> = new rc<Counter>(Counter { n: 1 })\n" +
 		"    c.Add(1)\n" +
 		"    var d: rc<Counter> = c\n" +
@@ -427,14 +427,14 @@ func TestEmitRcHandles(t *testing.T) {
 }
 
 func TestEmitVariadicCall(t *testing.T) {
-	src := "func Sum(xs: ...i32) -> i32 {\n" +
+	src := "def Sum(xs: ...i32) -> i32 {\n" +
 		"    var total: i32 = 0\n" +
 		"    for x in xs {\n" +
 		"        total += x\n" +
 		"    }\n" +
 		"    return total\n" +
 		"}\n\n" +
-		"func main() -> i32 {\n" +
+		"def main() -> i32 {\n" +
 		"    return Sum(1, 2, 3)\n" +
 		"}\n"
 	doc := emitWillc(t, src)
@@ -455,7 +455,7 @@ func TestEmitVariadicCall(t *testing.T) {
 }
 
 func TestEmitSelect(t *testing.T) {
-	src := "func main() -> i32 {\n" +
+	src := "def main() -> i32 {\n" +
 		"    var a: chan<i32> = new chan<i32>(1)\n" +
 		"    var v: i32 = 0\n" +
 		"    select {\n" +
@@ -526,7 +526,7 @@ func TestDurationLiteral(t *testing.T) {
 }
 
 func TestEmitPrintAndInterpolation(t *testing.T) {
-	src := "func main() -> i32 {\n" +
+	src := "def main() -> i32 {\n" +
 		"    var n: i32 = 3\n" +
 		"    var ok: bool = true\n" +
 		"    var x: f64 = 1.5\n" +
@@ -555,7 +555,7 @@ func TestEmitPrintAndInterpolation(t *testing.T) {
 }
 
 func TestEmitStrConcatAndSlice(t *testing.T) {
-	src := "func main() -> i32 {\n" +
+	src := "def main() -> i32 {\n" +
 		"    var a: str = \"foo\"\n" +
 		"    var b: str = \"bar\"\n" +
 		"    var c: str = a + b\n" +
@@ -580,7 +580,7 @@ func TestEmitStrConcatAndSlice(t *testing.T) {
 }
 
 func TestEmitMapContainer(t *testing.T) {
-	src := "func main() -> i32 {\n" +
+	src := "def main() -> i32 {\n" +
 		"    var m: Map<i32, i32> = new Map<i32, i32>()\n" +
 		"    m.Set(1, 10)\n" +
 		"    var s: i32 = 0\n" +
@@ -607,7 +607,7 @@ func TestEmitMapContainer(t *testing.T) {
 }
 
 func TestEmitSetContainer(t *testing.T) {
-	src := "func main() -> i32 {\n" +
+	src := "def main() -> i32 {\n" +
 		"    var s: Set<i32> = new Set<i32>()\n" +
 		"    s.Add(1)\n" +
 		"    var n: i32 = 0\n" +
@@ -633,7 +633,7 @@ func TestEmitSetContainer(t *testing.T) {
 }
 
 func TestEmitGenericFunctionInstance(t *testing.T) {
-	src := "func Id<T>(x: T) -> T {\n    return x\n}\n\nfunc Use() -> i32 {\n    return Id<i32>(3)\n}\n"
+	src := "def Id<T>(x: T) -> T {\n    return x\n}\n\ndef Use() -> i32 {\n    return Id<i32>(3)\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -654,7 +654,7 @@ func TestEmitGenericFunctionInstance(t *testing.T) {
 }
 
 func TestEmitStrEquality(t *testing.T) {
-	src := "func Eq(a: str, b: str) -> bool {\n    return a == b\n}\n\nfunc Ne(a: str, b: str) -> bool {\n    return a != b\n}\n"
+	src := "def Eq(a: str, b: str) -> bool {\n    return a == b\n}\n\ndef Ne(a: str, b: str) -> bool {\n    return a != b\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -674,7 +674,7 @@ func TestEmitStrEquality(t *testing.T) {
 }
 
 func TestEmitAggregateMatchReturn(t *testing.T) {
-	src := "func Pick(n: i32) -> str {\n    return match n {\n        0 => \"zero\"\n        _ => \"many\"\n    }\n}\n"
+	src := "def Pick(n: i32) -> str {\n    return match n {\n        0 => \"zero\"\n        _ => \"many\"\n    }\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -693,7 +693,7 @@ func TestEmitAggregateMatchReturn(t *testing.T) {
 }
 
 func TestEmitArrayNewPushAndLen(t *testing.T) {
-	src := "func Sum() -> i32 {\n    var a: Array<i32> = new Array<i32>(0)\n    a.Push(1)\n    a.Push(2)\n    a.Set(0, 7)\n    var s: i32 = 0\n    for v in a { s += v }\n    return s + a.Get(1) + i32(a.Len())\n}\n"
+	src := "def Sum() -> i32 {\n    var a: Array<i32> = new Array<i32>(0)\n    a.Push(1)\n    a.Push(2)\n    a.Set(0, 7)\n    var s: i32 = 0\n    for v in a { s += v }\n    return s + a.Get(1) + i32(a.Len())\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -717,9 +717,9 @@ func TestEmitArrayNewPushAndLen(t *testing.T) {
 
 func TestEmitBuiltinError(t *testing.T) {
 	src := "struct E {\n    msg: str\n}\n\n" +
-		"func (e: E) Message() -> str {\n    return e.msg\n}\n\n" +
-		"func (e: E) Status() -> i32 {\n    return 7\n}\n\n" +
-		"func Use() -> i32 {\n    var e: E = E { msg: \"bad\" }\n    var r: Result<i32, Error> = Err(e)\n    return match r {\n        Ok(v) => v\n        Err(x) => x.Status()\n    }\n}\n"
+		"def (e: E) Message() -> str {\n    return e.msg\n}\n\n" +
+		"def (e: E) Status() -> i32 {\n    return 7\n}\n\n" +
+		"def Use() -> i32 {\n    var e: E = E { msg: \"bad\" }\n    var r: Result<i32, Error> = Err(e)\n    return match r {\n        Ok(v) => v\n        Err(x) => x.Status()\n    }\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -740,8 +740,8 @@ func TestEmitBuiltinError(t *testing.T) {
 
 func TestEmitNewRunsDefaultsAndInit(t *testing.T) {
 	src := "struct P {\n    x: i32 = 5\n    y: i32\n}\n\n" +
-		"func (mut p: P) init(y: i32) {\n    p.y = y\n}\n\n" +
-		"func Make() -> P {\n    return new P(7)\n}\n"
+		"def (mut p: P) init(y: i32) {\n    p.y = y\n}\n\n" +
+		"def Make() -> P {\n    return new P(7)\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -761,11 +761,11 @@ func TestEmitNewRunsDefaultsAndInit(t *testing.T) {
 }
 
 func TestEmitInterfaceValueAndCall(t *testing.T) {
-	src := "interface Counter {\n    func Get() -> i32\n}\n\n" +
+	src := "interface Counter {\n    def Get() -> i32\n}\n\n" +
 		"struct C {\n    n: i32\n}\n\n" +
-		"func (c: C) Get() -> i32 {\n    return c.n\n}\n\n" +
-		"func Use(x: Counter) -> i32 {\n    return x.Get()\n}\n\n" +
-		"func main() -> i32 {\n    var c: C = C { n: 3 }\n    return Use(c)\n}\n"
+		"def (c: C) Get() -> i32 {\n    return c.n\n}\n\n" +
+		"def Use(x: Counter) -> i32 {\n    return x.Get()\n}\n\n" +
+		"def main() -> i32 {\n    var c: C = C { n: 3 }\n    return Use(c)\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -787,10 +787,10 @@ func TestEmitInterfaceValueAndCall(t *testing.T) {
 }
 
 func TestEmitOptionAndResultConstructors(t *testing.T) {
-	src := "func Find(x: i32) -> Option<i32> {\n    if x > 0 {\n        return Some(x)\n    }\n    return None\n}\n\n" +
-		"func UseOpt(x: i32) -> i32 {\n    return match Find(x) {\n        Some(v) => v\n        None => 0\n    }\n}\n\n" +
-		"func Divide(x: i32) -> Result<i32, i32> {\n    if x == 0 {\n        return Err(1)\n    }\n    return Ok(x / 2)\n}\n\n" +
-		"func UseRes(x: i32) -> Result<i32, i32> {\n    var v: i32 = Divide(x)?\n    return Ok(v + 1)\n}\n"
+	src := "def Find(x: i32) -> Option<i32> {\n    if x > 0 {\n        return Some(x)\n    }\n    return None\n}\n\n" +
+		"def UseOpt(x: i32) -> i32 {\n    return match Find(x) {\n        Some(v) => v\n        None => 0\n    }\n}\n\n" +
+		"def Divide(x: i32) -> Result<i32, i32> {\n    if x == 0 {\n        return Err(1)\n    }\n    return Ok(x / 2)\n}\n\n" +
+		"def UseRes(x: i32) -> Result<i32, i32> {\n    var v: i32 = Divide(x)?\n    return Ok(v + 1)\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -816,10 +816,10 @@ func TestEmitOptionAndResultConstructors(t *testing.T) {
 }
 
 func TestEmitCheckedCasts(t *testing.T) {
-	src := "func Widen(a: i32) -> i64 {\n    return i64(a)\n}\n\n" +
-		"func Narrow(a: i64) -> i32 {\n    return i32(a)\n}\n\n" +
-		"func FromFloat(f: f64) -> i32 {\n    return i32(f)\n}\n\n" +
-		"func ToFloat(a: i32) -> f64 {\n    return f64(a)\n}\n"
+	src := "def Widen(a: i32) -> i64 {\n    return i64(a)\n}\n\n" +
+		"def Narrow(a: i64) -> i32 {\n    return i32(a)\n}\n\n" +
+		"def FromFloat(f: f64) -> i32 {\n    return i32(f)\n}\n\n" +
+		"def ToFloat(a: i32) -> f64 {\n    return f64(a)\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -844,11 +844,11 @@ func TestEmitCheckedCasts(t *testing.T) {
 }
 
 func TestEmitCheckedArithmeticUsesFixedMessages(t *testing.T) {
-	src := "func Mul(a: i32, b: i32) -> i32 {\n    return a * b\n}\n\n" +
-		"func Rem(a: i32, b: i32) -> i32 {\n    return a % b\n}\n\n" +
-		"func Shr(a: i32, n: i32) -> i32 {\n    return a >> n\n}\n\n" +
-		"func Neg(a: i32) -> i32 {\n    return -a\n}\n\n" +
-		"func ShiftConst(a: i32) -> i32 {\n    return a << 1\n}\n"
+	src := "def Mul(a: i32, b: i32) -> i32 {\n    return a * b\n}\n\n" +
+		"def Rem(a: i32, b: i32) -> i32 {\n    return a % b\n}\n\n" +
+		"def Shr(a: i32, n: i32) -> i32 {\n    return a >> n\n}\n\n" +
+		"def Neg(a: i32) -> i32 {\n    return -a\n}\n\n" +
+		"def ShiftConst(a: i32) -> i32 {\n    return a << 1\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -884,7 +884,7 @@ func TestEmitCCall(t *testing.T) {
     fast putchar
 }
 
-func Write() -> i32 {
+def Write() -> i32 {
     return c.putchar(65)
 }
 `
@@ -906,7 +906,7 @@ func Write() -> i32 {
 }
 
 func TestEmitVoidFunction(t *testing.T) {
-	doc := emitWillc(t, "func main() {\n}\n")
+	doc := emitWillc(t, "def main() {\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -922,7 +922,7 @@ func TestEmitVoidFunction(t *testing.T) {
 // TestEmitVoidEntryIsWrapped checks the entry rule: a void entry is not the C
 // main, so the generator mangles it and writes an i32 main that returns 0.
 func TestEmitVoidEntryIsWrapped(t *testing.T) {
-	doc := emitWillc(t, "func Other() {\n}\n\nfunc main() {\n}\n")
+	doc := emitWillc(t, "def Other() {\n}\n\ndef main() {\n}\n")
 	ir, err := EmitWithEntry(doc, "main")
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -945,7 +945,7 @@ func TestEmitVoidEntryIsWrapped(t *testing.T) {
 }
 
 func TestEmitEntryWithoutWrapperWhenNoEntryGiven(t *testing.T) {
-	doc := emitWillc(t, "func main() {\n}\n")
+	doc := emitWillc(t, "def main() {\n}\n")
 	ir, err := EmitWithEntry(doc, "")
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -956,7 +956,7 @@ func TestEmitEntryWithoutWrapperWhenNoEntryGiven(t *testing.T) {
 }
 
 func TestEmitKeepsI32Entry(t *testing.T) {
-	doc := emitWillc(t, "func main() -> i32 {\n    return 7\n}\n")
+	doc := emitWillc(t, "def main() -> i32 {\n    return 7\n}\n")
 	ir, err := EmitWithEntry(doc, "main")
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -967,7 +967,7 @@ func TestEmitKeepsI32Entry(t *testing.T) {
 }
 
 func TestEmitBareReturnIsVoid(t *testing.T) {
-	doc := emitWillc(t, "func F() {\n    return\n}\n")
+	doc := emitWillc(t, "def F() {\n    return\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -1007,13 +1007,13 @@ func emitWillcIn(t *testing.T, file, src, module string, tables map[string][]str
 
 func TestEmitCrossPackageNewAndInterface(t *testing.T) {
 	app := emitWillcIn(t, "main.will",
-		"import \"example.com/app/lib\"\n\nfunc Use() -> i32 {\n    var f: lib.Fault = new lib.Fault(\"bad\", 2)\n    var e: Error = f\n    return e.Status()\n}\n\nfunc main() -> i32 {\n    return Use()\n}\n",
+		"import \"example.com/app/lib\"\n\ndef Use() -> i32 {\n    var f: lib.Fault = new lib.Fault(\"bad\", 2)\n    var e: Error = f\n    return e.Status()\n}\n\ndef main() -> i32 {\n    return Use()\n}\n",
 		"example.com/app", map[string][]string{"example.com/app/lib": {"Fault"}})
 	lib := emitWillcIn(t, "lib.will",
 		"struct Fault {\n    message: str\n    status: i32\n}\n\n"+
-			"func (f: Fault) init(message: str, status: i32) {\n    f.message = message\n    f.status = status\n}\n\n"+
-			"func (f: Fault) Message() -> str {\n    return f.message\n}\n\n"+
-			"func (f: Fault) Status() -> i32 {\n    return f.status\n}\n",
+			"def (f: Fault) init(message: str, status: i32) {\n    f.message = message\n    f.status = status\n}\n\n"+
+			"def (f: Fault) Message() -> str {\n    return f.message\n}\n\n"+
+			"def (f: Fault) Status() -> i32 {\n    return f.status\n}\n",
 		"example.com/app/lib", nil)
 	ir, err := EmitModule([]*willc.Doc{app, lib}, "main")
 	if err != nil {
@@ -1033,7 +1033,7 @@ func TestEmitCrossPackageNewAndInterface(t *testing.T) {
 
 func TestEmitCrossPackageEnumVariant(t *testing.T) {
 	app := emitWillcIn(t, "main.will",
-		"import \"example.com/app/lib\"\n\nfunc Use() -> i32 {\n    var x: lib.Level = lib.Level.Warn()\n    _ = x\n    return 0\n}\n\nfunc main() -> i32 {\n    return Use()\n}\n",
+		"import \"example.com/app/lib\"\n\ndef Use() -> i32 {\n    var x: lib.Level = lib.Level.Warn()\n    _ = x\n    return 0\n}\n\ndef main() -> i32 {\n    return Use()\n}\n",
 		"example.com/app", map[string][]string{"example.com/app/lib": {"Level"}})
 	lib := emitWillcIn(t, "lib.will", "enum Level {\n    Debug\n    Info\n    Warn\n}\n", "example.com/app/lib", nil)
 	ir, err := EmitModule([]*willc.Doc{app, lib}, "main")
@@ -1053,9 +1053,9 @@ func TestEmitCrossPackageEnumVariant(t *testing.T) {
 
 func TestEmitModuleResolvesQualifiedCalls(t *testing.T) {
 	app := emitWillcIn(t, "main.will",
-		"import \"example.com/app/lib\"\n\nfunc main() -> i32 {\n    return lib.Util()\n}\n",
+		"import \"example.com/app/lib\"\n\ndef main() -> i32 {\n    return lib.Util()\n}\n",
 		"example.com/app", map[string][]string{"example.com/app/lib": {"Util"}})
-	lib := emitWillcIn(t, "lib.will", "func Util() -> i32 {\n    return 7\n}\n", "example.com/app/lib", nil)
+	lib := emitWillcIn(t, "lib.will", "def Util() -> i32 {\n    return 7\n}\n", "example.com/app/lib", nil)
 	ir, err := EmitModule([]*willc.Doc{app, lib}, "main")
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -1073,8 +1073,8 @@ func TestEmitModuleResolvesQualifiedCalls(t *testing.T) {
 }
 
 func TestEmitMethodSignature(t *testing.T) {
-	src := "struct Box {\n    v: i64\n}\n\nfunc (b: Box) Ping() {\n}\n\n" +
-		"func (b: Box) Answer(n: i32) -> i32 {\n    return n\n}\n"
+	src := "struct Box {\n    v: i64\n}\n\ndef (b: Box) Ping() {\n}\n\n" +
+		"def (b: Box) Answer(n: i32) -> i32 {\n    return n\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1092,7 +1092,7 @@ func TestEmitMethodSignature(t *testing.T) {
 }
 
 func TestEmitAggregateParameterIsABorrow(t *testing.T) {
-	doc := emitWillc(t, "struct Box {\n    v: i32\n}\n\nfunc Take(b: Box) {\n}\n")
+	doc := emitWillc(t, "struct Box {\n    v: i32\n}\n\ndef Take(b: Box) {\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -1103,7 +1103,7 @@ func TestEmitAggregateParameterIsABorrow(t *testing.T) {
 }
 
 func TestEmitIfStatement(t *testing.T) {
-	src := "func Sign(n: i32) -> i32 {\n" +
+	src := "def Sign(n: i32) -> i32 {\n" +
 		"    if n < 0 {\n        return 0 - 1\n    } else if n > 0 {\n        return 1\n    }\n" +
 		"    return 0\n}\n"
 	doc := emitWillc(t, src)
@@ -1128,7 +1128,7 @@ func TestEmitIfStatement(t *testing.T) {
 }
 
 func TestEmitIfBothBranchesReturn(t *testing.T) {
-	src := "func Pick(n: i32) -> i32 {\n" +
+	src := "def Pick(n: i32) -> i32 {\n" +
 		"    if n == 0 {\n        return 1\n    } else {\n        return 2\n    }\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
@@ -1150,7 +1150,7 @@ func TestEmitIfBothBranchesReturn(t *testing.T) {
 }
 
 func TestEmitLogicalAndNegation(t *testing.T) {
-	src := "func F(a: i32, b: i32) -> i32 {\n" +
+	src := "def F(a: i32, b: i32) -> i32 {\n" +
 		"    if a < b && a != 0 {\n        return 0 - a\n    }\n    return ~b\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
@@ -1172,9 +1172,9 @@ func TestEmitLogicalAndNegation(t *testing.T) {
 }
 
 func TestEmitIsDeterministic(t *testing.T) {
-	src := "func A(n: i32) -> i32 {\n    return n + 1\n}\n\n" +
-		"func B(n: i32) -> i32 {\n    if n > 0 {\n        return A(n)\n    }\n    return 0\n}\n\n" +
-		"func C() {\n}\n"
+	src := "def A(n: i32) -> i32 {\n    return n + 1\n}\n\n" +
+		"def B(n: i32) -> i32 {\n    if n > 0 {\n        return A(n)\n    }\n    return 0\n}\n\n" +
+		"def C() {\n}\n"
 	doc := emitWillc(t, src)
 	first, err := Emit(doc)
 	if err != nil {
@@ -1192,7 +1192,7 @@ func TestEmitIsDeterministic(t *testing.T) {
 }
 
 func TestEmitLocalsAndAssignment(t *testing.T) {
-	src := "func Max(a: i32, b: i32) -> i32 {\n" +
+	src := "def Max(a: i32, b: i32) -> i32 {\n" +
 		"    var m: i32 = a\n" +
 		"    if b > m {\n        m = b\n    }\n" +
 		"    return m\n}\n"
@@ -1222,7 +1222,7 @@ func TestEmitLocalsAndAssignment(t *testing.T) {
 }
 
 func TestEmitCompoundAssignment(t *testing.T) {
-	src := "func Sum(n: i32) -> i32 {\n" +
+	src := "def Sum(n: i32) -> i32 {\n" +
 		"    var total: i32 = 0\n" +
 		"    total += n\n" +
 		"    return total\n}\n"
@@ -1240,7 +1240,7 @@ func TestEmitCompoundAssignment(t *testing.T) {
 }
 
 func TestEmitShadowedLocalsGetTheirOwnSlots(t *testing.T) {
-	src := "func F(a: i32) -> i32 {\n" +
+	src := "def F(a: i32) -> i32 {\n" +
 		"    var x: i32 = a\n" +
 		"    if a > 0 {\n        var x: i32 = 1\n        x += 1\n    }\n" +
 		"    return x\n}\n"
@@ -1258,7 +1258,7 @@ func TestEmitShadowedLocalsGetTheirOwnSlots(t *testing.T) {
 }
 
 func TestEmitRangeLoop(t *testing.T) {
-	src := "func Sum() -> i32 {\n" +
+	src := "def Sum() -> i32 {\n" +
 		"    var total: i32 = 0\n" +
 		"    for i in Range(0, 3) {\n        total += i\n    }\n" +
 		"    return total\n}\n"
@@ -1286,7 +1286,7 @@ func TestEmitRangeLoop(t *testing.T) {
 }
 
 func TestEmitEndlessLoopWithBreak(t *testing.T) {
-	src := "func F(n: i32) -> i32 {\n" +
+	src := "def F(n: i32) -> i32 {\n" +
 		"    for {\n        if n > 0 {\n            break\n        }\n        return 1\n    }\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
@@ -1302,7 +1302,7 @@ func TestEmitEndlessLoopWithBreak(t *testing.T) {
 }
 
 func TestEmitDeadlineScope(t *testing.T) {
-	doc := emitWillc(t, "func F() {\n    deadline 1ms {\n    }\n}\n")
+	doc := emitWillc(t, "def F() {\n    deadline 1ms {\n    }\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -1320,7 +1320,7 @@ func TestEmitDeadlineScope(t *testing.T) {
 
 func TestEmitStructFieldRead(t *testing.T) {
 	src := "struct Point {\n    x: i32\n    y: i32\n}\n\n" +
-		"func Sum(p: Point) -> i32 {\n    return p.x + p.y\n}\n"
+		"def Sum(p: Point) -> i32 {\n    return p.x + p.y\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1342,7 +1342,7 @@ func TestEmitStructFieldRead(t *testing.T) {
 
 func TestEmitAggregateAndFieldWrite(t *testing.T) {
 	src := "struct Point {\n    x: i32\n    y: i32\n}\n\n" +
-		"func F() -> i32 {\n" +
+		"def F() -> i32 {\n" +
 		"    var p: Point = Point { x: 3, y: 4 }\n" +
 		"    p.x = p.x + 1\n" +
 		"    return p.x\n}\n"
@@ -1369,7 +1369,7 @@ func TestEmitAggregateAndFieldWrite(t *testing.T) {
 
 func TestEmitNestedField(t *testing.T) {
 	src := "struct Inner {\n    v: i32\n}\n\nstruct Outer {\n    inner: Inner\n}\n\n" +
-		"func Get(o: Outer) -> i32 {\n    return o.inner.v\n}\n"
+		"def Get(o: Outer) -> i32 {\n    return o.inner.v\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1390,8 +1390,8 @@ func TestEmitNestedField(t *testing.T) {
 
 func TestEmitStructArgumentIsABorrow(t *testing.T) {
 	src := "struct Point {\n    x: i32\n}\n\n" +
-		"func Take(p: Point) -> i32 {\n    return p.x\n}\n\n" +
-		"func F() -> i32 {\n    var q: Point = Point { x: 1 }\n    return Take(q)\n}\n"
+		"def Take(p: Point) -> i32 {\n    return p.x\n}\n\n" +
+		"def F() -> i32 {\n    var q: Point = Point { x: 1 }\n    return Take(q)\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1403,7 +1403,7 @@ func TestEmitStructArgumentIsABorrow(t *testing.T) {
 }
 
 func TestEmitNestedFixedArrayStructIsEmitted(t *testing.T) {
-	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: [2]P\n}\n\nfunc F() -> i32 {\n    return 1\n}\n"
+	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: [2]P\n}\n\ndef F() -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1417,7 +1417,7 @@ func TestEmitNestedFixedArrayStructIsEmitted(t *testing.T) {
 }
 
 func TestEmitNestedFixedArrayFieldIsLowered(t *testing.T) {
-	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: [2]P\n}\n\nfunc F(t: Text) -> i32 {\n    return 1\n}\n"
+	src := "struct P {\n    n: i32\n}\n\nstruct Text {\n    body: [2]P\n}\n\ndef F(t: Text) -> i32 {\n    return 1\n}\n"
 	doc := emitWillc(t, src)
 	if _, err := Emit(doc); err != nil {
 		t.Fatalf("a parameter whose struct field is a fixed array was rejected: %v", err)
@@ -1425,7 +1425,7 @@ func TestEmitNestedFixedArrayFieldIsLowered(t *testing.T) {
 }
 
 func TestEmitI64Function(t *testing.T) {
-	doc := emitWillc(t, "func Add(a: i64, b: i64) -> i64 {\n    return a + b\n}\n")
+	doc := emitWillc(t, "def Add(a: i64, b: i64) -> i64 {\n    return a + b\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -1442,7 +1442,7 @@ func TestEmitI64Function(t *testing.T) {
 }
 
 func TestEmitUnsignedUsesUnsignedPredicates(t *testing.T) {
-	doc := emitWillc(t, "func Below(a: usize, b: usize) -> bool {\n    return a < b\n}\n")
+	doc := emitWillc(t, "def Below(a: usize, b: usize) -> bool {\n    return a < b\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -1453,7 +1453,7 @@ func TestEmitUnsignedUsesUnsignedPredicates(t *testing.T) {
 }
 
 func TestEmitSignedUsesSignedPredicates(t *testing.T) {
-	doc := emitWillc(t, "func Below(a: isize, b: isize) -> bool {\n    return a < b\n}\n")
+	doc := emitWillc(t, "def Below(a: isize, b: isize) -> bool {\n    return a < b\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -1464,8 +1464,8 @@ func TestEmitSignedUsesSignedPredicates(t *testing.T) {
 }
 
 func TestEmitShiftFollowsSign(t *testing.T) {
-	src := "func Half(n: u64) -> u64 {\n    return n >> 1\n}\n\n" +
-		"func HalfSigned(n: i64) -> i64 {\n    return n >> 1\n}\n"
+	src := "def Half(n: u64) -> u64 {\n    return n >> 1\n}\n\n" +
+		"def HalfSigned(n: i64) -> i64 {\n    return n >> 1\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1481,7 +1481,7 @@ func TestEmitShiftFollowsSign(t *testing.T) {
 }
 
 func TestEmitFloatArithmetic(t *testing.T) {
-	doc := emitWillc(t, "func Mid(a: f64, b: f64) -> f64 {\n    return (a + b) / 2.0\n}\n")
+	doc := emitWillc(t, "def Mid(a: f64, b: f64) -> f64 {\n    return (a + b) / 2.0\n}\n")
 	ir, err := Emit(doc)
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -1496,8 +1496,8 @@ func TestEmitFloatArithmetic(t *testing.T) {
 
 func TestEmitStructResultByValue(t *testing.T) {
 	src := "struct Point {\n    x: i32\n    y: i32\n}\n\n" +
-		"func Make() -> Point {\n    return Point { x: 1, y: 2 }\n}\n\n" +
-		"func Use() -> i32 {\n    return Make().x\n}\n"
+		"def Make() -> Point {\n    return Point { x: 1, y: 2 }\n}\n\n" +
+		"def Use() -> i32 {\n    return Make().x\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1519,8 +1519,8 @@ func TestEmitStructResultByValue(t *testing.T) {
 
 func TestEmitStructWithWideFields(t *testing.T) {
 	src := "struct Wide {\n    a: i64\n    b: u32\n    c: f64\n}\n\n" +
-		"func Get(w: Wide) -> i64 {\n    return w.a\n}\n\n" +
-		"func Make() -> i32 {\n" +
+		"def Get(w: Wide) -> i64 {\n    return w.a\n}\n\n" +
+		"def Make() -> i32 {\n" +
 		"    var w: Wide = Wide { a: 1, b: 2, c: 3.5 }\n" +
 		"    w.a = w.a + 1\n" +
 		"    return 0\n}\n"
@@ -1545,7 +1545,7 @@ func TestEmitStructWithWideFields(t *testing.T) {
 }
 
 func TestEmitArrayIteration(t *testing.T) {
-	src := "func Sum(xs: [3]i32) -> i32 {\n" +
+	src := "def Sum(xs: [3]i32) -> i32 {\n" +
 		"    var total: i32 = 0\n" +
 		"    for i, x in xs {\n" +
 		"        total += x\n" +
@@ -1583,7 +1583,7 @@ func TestEmitArrayIteration(t *testing.T) {
 }
 
 func TestEmitArrayIterationWithOneBinding(t *testing.T) {
-	src := "func Sum(xs: [2]i64) -> i64 {\n" +
+	src := "def Sum(xs: [2]i64) -> i64 {\n" +
 		"    var total: i64 = 0\n" +
 		"    for x in xs {\n        total += x\n    }\n" +
 		"    return total\n}\n"
@@ -1604,7 +1604,7 @@ func TestEmitArrayIterationWithOneBinding(t *testing.T) {
 }
 
 func TestEmitFixedArrayOfStrIsLowered(t *testing.T) {
-	src := "func Count(xs: [2]str) -> i32 {\n    _ = xs[0].Len()\n    return 0\n}\n"
+	src := "def Count(xs: [2]str) -> i32 {\n    _ = xs[0].Len()\n    return 0\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1617,11 +1617,11 @@ func TestEmitFixedArrayOfStrIsLowered(t *testing.T) {
 }
 
 func TestEmitViewAndArrayIteration(t *testing.T) {
-	src := "func Sum(xs: []i32) -> i32 {\n" +
+	src := "def Sum(xs: []i32) -> i32 {\n" +
 		"    var total: i32 = 0\n" +
 		"    for i, x in xs {\n        total += x\n        if i > 100 {\n            break\n        }\n    }\n" +
 		"    return total\n}\n\n" +
-		"func Count(xs: Array<i32>) -> i64 {\n" +
+		"def Count(xs: Array<i32>) -> i64 {\n" +
 		"    var n: i64 = 0\n" +
 		"    for x in xs {\n        if x > 0 {\n            n += 1\n        }\n    }\n" +
 		"    return n\n}\n"
@@ -1653,9 +1653,9 @@ func TestEmitViewAndArrayIteration(t *testing.T) {
 
 func TestEmitMethodCallPassesTheReceiver(t *testing.T) {
 	src := "struct Counter {\n    n: i32\n}\n\n" +
-		"func (c: Counter) Get() -> i32 {\n    return c.n\n}\n\n" +
-		"func (mut c: Counter) Add(d: i32) {\n    c.n += d\n}\n\n" +
-		"func main() -> i32 {\n    var c: Counter = Counter { n: 7 }\n    c.Add(3)\n    return c.Get()\n}\n"
+		"def (c: Counter) Get() -> i32 {\n    return c.n\n}\n\n" +
+		"def (mut c: Counter) Add(d: i32) {\n    c.n += d\n}\n\n" +
+		"def main() -> i32 {\n    var c: Counter = Counter { n: 7 }\n    c.Add(3)\n    return c.Get()\n}\n"
 	doc := emitWillc(t, src)
 	ir, err := Emit(doc)
 	if err != nil {
@@ -1677,8 +1677,8 @@ func TestEmitMethodCallPassesTheReceiver(t *testing.T) {
 
 func TestEmitTopLevelInitialization(t *testing.T) {
 	doc := emitWillc(t, "var counter: i32 = 40\n\nconst step: i32 = 2\n\n"+
-		"func Bump() -> i32 {\n    counter += step\n    return counter\n}\n\n"+
-		"func main() -> i32 {\n    return Bump()\n}\n")
+		"def Bump() -> i32 {\n    counter += step\n    return counter\n}\n\n"+
+		"def main() -> i32 {\n    return Bump()\n}\n")
 	ir, err := EmitWithEntry(doc, "main")
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -1706,8 +1706,8 @@ func TestEmitTopLevelInitialization(t *testing.T) {
 }
 
 func TestEmitPackageInitOrder(t *testing.T) {
-	lib := emitWillcAs(t, "var seed: i32 = 5\n\nfunc Unused() -> i32 {\n    return seed\n}\n", "example.com/lib")
-	app := emitWillcAs(t, "var start: i32 = 10\n\nfunc main() -> i32 {\n    return start\n}\n", "example.com/app")
+	lib := emitWillcAs(t, "var seed: i32 = 5\n\ndef Unused() -> i32 {\n    return seed\n}\n", "example.com/lib")
+	app := emitWillcAs(t, "var start: i32 = 10\n\ndef main() -> i32 {\n    return start\n}\n", "example.com/app")
 	ir, err := EmitModule([]*willc.Doc{lib, app}, "main")
 	if err != nil {
 		t.Fatalf("gen: %v", err)
@@ -1725,11 +1725,11 @@ func TestEmitPackageInitOrder(t *testing.T) {
 }
 
 func TestEmitSliceBuildsAView(t *testing.T) {
-	src := "func Sum(xs: []i32) -> i32 {\n" +
+	src := "def Sum(xs: []i32) -> i32 {\n" +
 		"    var total: i32 = 0\n" +
 		"    for x in xs {\n        total += x\n    }\n" +
 		"    return total\n}\n\n" +
-		"func Mid(xs: [4]i32) -> i32 {\n" +
+		"def Mid(xs: [4]i32) -> i32 {\n" +
 		"    var v: []i32 = xs[Range(1, 3)]\n" +
 		"    return Sum(v) + Sum(xs[Range(0, 2)])\n}\n"
 	doc := emitWillc(t, src)
@@ -1756,7 +1756,7 @@ func TestEmitSliceBuildsAView(t *testing.T) {
 func TestEmitLiteralCarriesItsContextType(t *testing.T) {
 	// 42 in an i64 position must be recorded as an i64 literal, and the
 	// backend must use that type instead of assuming i32.
-	doc := emitWillc(t, "func Wide() -> i64 {\n    var n: i64 = 42\n    return n\n}\n")
+	doc := emitWillc(t, "def Wide() -> i64 {\n    var n: i64 = 42\n    return n\n}\n")
 	if !strings.Contains(willcText(t, doc), `kind=int text="42" type="i64"`) {
 		t.Fatalf("the literal type is not recorded:\n%s", willcText(t, doc))
 	}
@@ -1770,7 +1770,7 @@ func TestEmitLiteralCarriesItsContextType(t *testing.T) {
 }
 
 func TestDeferCapturesArgumentsBeforeBlockExit(t *testing.T) {
-	src := "func main() -> i32 {\n" +
+	src := "def main() -> i32 {\n" +
 		"    for i in Range(0, 3) {\n" +
 		"        defer print(i)\n" +
 		"    }\n" +
@@ -1806,8 +1806,8 @@ func TestDeferCapturesArgumentsBeforeBlockExit(t *testing.T) {
 
 func TestSpawnSharesRCHandles(t *testing.T) {
 	src := "struct C {\n    n: i32\n}\n\n" +
-		"func Read(c: rc<C>) -> i32 {\n    return c.n\n}\n\n" +
-		"func main() -> i32 {\n" +
+		"def Read(c: rc<C>) -> i32 {\n    return c.n\n}\n\n" +
+		"def main() -> i32 {\n" +
 		"    var r: rc<C> = new rc<C>(C { n: 7 })\n" +
 		"    var t: Task<i32> = spawn Read(r)\n" +
 		"    return t.Join()! - 7\n" +
@@ -1829,7 +1829,7 @@ func TestSpawnSharesRCHandles(t *testing.T) {
 }
 
 func TestChannelDropReleasesQueuedOwnedValue(t *testing.T) {
-	src := `func main() -> i32 {
+	src := `def main() -> i32 {
     var ch: chan<str> = new chan<str>(1)
     var ch2: chan<str> = ch
     _ = wait(ch2.Send("x"))
@@ -1856,10 +1856,10 @@ func TestChannelDropReleasesQueuedOwnedValue(t *testing.T) {
 }
 
 func TestSpawnFrameDropReleasesCapturedArray(t *testing.T) {
-	src := "func Count(xs: Array<str>) -> i32 {\n" +
+	src := "def Count(xs: Array<str>) -> i32 {\n" +
 		"    return i32(xs.Len())\n" +
 		"}\n\n" +
-		"func main() -> i32 {\n" +
+		"def main() -> i32 {\n" +
 		"    var xs: Array<str> = new Array<str>(2)\n" +
 		"    xs.Push(\"a\")\n" +
 		"    var t: Task<i32> = spawn Count(xs)\n" +
@@ -1884,7 +1884,7 @@ func TestSpawnFrameDropReleasesCapturedArray(t *testing.T) {
 }
 
 func TestFixedArrayIndexHasTheElementType(t *testing.T) {
-	src := "func First(xs: [16]u8) -> u8 {\n" +
+	src := "def First(xs: [16]u8) -> u8 {\n" +
 		"    return xs[0]\n" +
 		"}\n"
 	doc := emitWillc(t, src)
@@ -1905,7 +1905,7 @@ func TestFixedArrayIndexHasTheElementType(t *testing.T) {
 }
 
 func TestArrayMethodsLower(t *testing.T) {
-	src := "func F(src: []i32) -> i32 {\n" +
+	src := "def F(src: []i32) -> i32 {\n" +
 		"    var xs: Array<i32> = new Array<i32>(0)\n" +
 		"    xs.Append(src)\n" +
 		"    xs.Insert(0, 1)\n" +

@@ -6,7 +6,7 @@ struct Counter {
 
 // Bump takes the lock without awaiting the imported async method. The checker
 // must reject the call at this site, not at link time.
-async func Bump(m: sync.Mutex<Counter>) -> i32 {
+async def Bump(m: sync.Mutex<Counter>) -> i32 {
     var g: sync.Guard<Counter> = m.Lock()
     g.n += 1
     return g.n

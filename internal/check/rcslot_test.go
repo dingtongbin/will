@@ -29,11 +29,11 @@ struct Box {
     f: rc<C>
 }
 
-func Use(b: rc<Box>) -> i32 {
+def Use(b: rc<Box>) -> i32 {
     return 0
 }
 
-func Main() -> i32 {
+def Main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {
@@ -61,15 +61,15 @@ struct Box {
     f: rc<C>
 }
 
-func (mut b: Box) Set(c: rc<C>) {
+def (mut b: Box) Set(c: rc<C>) {
     b.f = c
 }
 
-func Use(b: rc<Box>) -> i32 {
+def Use(b: rc<Box>) -> i32 {
     return 0
 }
 
-func Main() -> i32 {
+def Main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {
@@ -97,11 +97,11 @@ struct Box {
     f: rc<C>
 }
 
-func Use(b: rc<Box>) -> i32 {
+def Use(b: rc<Box>) -> i32 {
     return 0
 }
 
-func Main() -> i32 {
+def Main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {
@@ -131,11 +131,11 @@ struct Box {
     f: rc<C>
 }
 
-func Use(b: rc<Box>) -> i32 {
+def Use(b: rc<Box>) -> i32 {
     return 0
 }
 
-func Main() -> i32 {
+def Main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {
@@ -163,11 +163,11 @@ struct Box {
     f: rc<C>
 }
 
-func Use(b: rc<Box>) -> i32 {
+def Use(b: rc<Box>) -> i32 {
     return 0
 }
 
-func Main() -> i32 {
+def Main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     box.f = c
@@ -189,11 +189,11 @@ func TestRcSlotAllowsNonRcField(t *testing.T) {
     n: i32
 }
 
-func Use(b: rc<Box>) -> i32 {
+def Use(b: rc<Box>) -> i32 {
     return 0
 }
 
-func Main() -> i32 {
+def Main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { n: 1 })
     region {
         var task: Task<i32> = spawn Use(box)
@@ -219,11 +219,11 @@ struct Box {
     f: rc<C>
 }
 
-func Use(b: rc<Box>) -> i32 {
+def Use(b: rc<Box>) -> i32 {
     return 0
 }
 
-func Main() -> i32 {
+def Main() -> i32 {
     var box: rc<Box> = new rc<Box>(Box { f: new rc<C>(C { n: 1 }) })
     var c: rc<C> = new rc<C>(C { n: 2 })
     region {

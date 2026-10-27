@@ -3,7 +3,7 @@ import "std/encoding/hex"
 // Decode must give back the exact bytes of a UTF-8 text in either case, treat
 // empty text as an empty result, and reject an odd digit count or a foreign
 // character instead of returning a partial result.
-func main() -> i32 {
+def main() -> i32 {
     var plain: Result<Array<u8>, Error> = hex.Decode("e4bda0e5a5bd")
     match plain {
         Ok(v) => {

@@ -24,6 +24,8 @@ const (
 	ConstKind
 	// VarKind is a variable.
 	VarKind
+	// TypeAliasKind is a source-level alias for another type.
+	TypeAliasKind
 	// FuncKind is a free function.
 	FuncKind
 	// MethodKind is a method; RecvType holds the receiver type name.
@@ -50,7 +52,7 @@ const (
 
 func (k Kind) isType() bool {
 	switch k {
-	case PredeclaredTypeKind, StructKind, EnumKind, InterfaceKind, TypeParamKind:
+	case PredeclaredTypeKind, TypeAliasKind, StructKind, EnumKind, InterfaceKind, TypeParamKind:
 		return true
 	}
 	return false

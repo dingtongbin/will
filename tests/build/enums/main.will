@@ -9,7 +9,7 @@ struct Holder {
     n: i32
 }
 
-func Area(s: Shape) -> i32 {
+def Area(s: Shape) -> i32 {
     return match s {
         Circle(r) => r * r
         Box(a, b) => a * b
@@ -17,7 +17,7 @@ func Area(s: Shape) -> i32 {
     }
 }
 
-func Count(h: Holder) -> i32 {
+def Count(h: Holder) -> i32 {
     match h.shape {
         Circle(r) => {
             return r + h.n
@@ -28,7 +28,7 @@ func Count(h: Holder) -> i32 {
     }
 }
 
-func Pick(n: i32) -> i32 {
+def Pick(n: i32) -> i32 {
     return match n {
         0 => 10
         x if x > 0 => x
@@ -36,7 +36,7 @@ func Pick(n: i32) -> i32 {
     }
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var h: Holder = Holder { shape: Shape.Circle(3), n: 2 }
     return Area(Shape.Circle(3)) + Count(h) + Pick(4)
 }

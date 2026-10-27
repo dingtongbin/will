@@ -4,21 +4,21 @@ struct decodeError {
     message: str
 }
 
-func (e: decodeError) Message() -> str {
+def (e: decodeError) Message() -> str {
     return e.message
 }
 
-func (e: decodeError) Status() -> i32 {
+def (e: decodeError) Status() -> i32 {
     return 2
 }
 
-func fail(message: str) -> decodeError {
+def fail(message: str) -> decodeError {
     return decodeError { message: message }
 }
 
 // Decode reads pairs of hexadecimal digits, upper or lower case. An odd number
 // of digits is a rejected text, not a partial byte.
-func Decode(s: str) -> Result<Array<u8>, Error> {
+def Decode(s: str) -> Result<Array<u8>, Error> {
     var out: Array<u8> = new Array<u8>(0)
     var high: i32 = -1
     for c in s {
@@ -41,7 +41,7 @@ func Decode(s: str) -> Result<Array<u8>, Error> {
 
 // digitValue returns the value of one hexadecimal digit, or -1 when the
 // character is not a digit.
-func digitValue(c: u32) -> i32 {
+def digitValue(c: u32) -> i32 {
     if c >= 48u32 && c <= 57u32 {   // '0' to '9'
         return i32(c - 48u32)
     }

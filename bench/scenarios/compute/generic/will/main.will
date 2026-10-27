@@ -13,7 +13,7 @@ const repetitions: i32 = 5
 
 // Max returns the larger of two values. The compiler instantiates it once
 // per type, so the call costs the same as a hand written function.
-func Max<T: Ord>(a: T, b: T) -> T {
+def Max<T: Ord>(a: T, b: T) -> T {
     if a > b {
         return a
     }
@@ -25,7 +25,7 @@ func Max<T: Ord>(a: T, b: T) -> T {
 // The seed takes part in the work, so two calls with different seeds give
 // different results. Without it the compiler may run the loop once and
 // reuse the result, and the measurement would time nothing.
-func Work(n: i32, seed: i32) -> i64 {
+def Work(n: i32, seed: i32) -> i64 {
     var acc: i64 = 0i64
     for i in Range(0, n) {
         acc += Max<i64>(i64(i) ^ i64(seed), i64(i) + 1i64)
@@ -35,7 +35,7 @@ func Work(n: i32, seed: i32) -> i64 {
 
 // Baseline runs an empty loop, so the cost of the loop and of the counter is
 // measured apart from the calls.
-func Baseline(n: i32) -> i64 {
+def Baseline(n: i32) -> i64 {
     var acc: i64 = 0i64
     for i in Range(0, n) {
         acc ^= i64(i)
@@ -43,7 +43,7 @@ func Baseline(n: i32) -> i64 {
     return acc
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     // The warm up pays for the first touch of the pages and of the caches.
     var warm: i64 = Work(1000, 0)

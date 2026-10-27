@@ -18,7 +18,7 @@ func stdModule(t *testing.T, std string) string {
 	writeFile(t, root, "will.mod",
 		"module example.com/app\nwill 1\nrequire std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(std)+"\n")
 	writeFile(t, root, "main.will",
-		"import \"std/net/http\"\n\nfunc F() -> i32 {\n    return http.Get()\n}\n")
+		"import \"std/net/http\"\n\ndef F() -> i32 {\n    return http.Get()\n}\n")
 	return root
 }
 
@@ -38,7 +38,7 @@ func TestCheckResolvesStdThroughReplace(t *testing.T) {
 	std := filepath.Join(t.TempDir(), "std")
 	writeStdFile(t, std, "will.mod", "module std\nwill 1\n")
 	writeStdFile(t, filepath.Join(std, "net", "http"), "http.will",
-		"func Get() -> i32 {\n    return 1\n}\n")
+		"def Get() -> i32 {\n    return 1\n}\n")
 	root := stdModule(t, std)
 
 	code, out, errOut := runCLI("check", root)
@@ -56,7 +56,7 @@ func TestCheckStdWithoutRequireIsB0008(t *testing.T) {
 	}
 	writeFile(t, root, "will.mod", "module example.com/app\nwill 1\n")
 	writeFile(t, root, "main.will",
-		"import \"std/net/http\"\n\nfunc F() -> i32 {\n    return http.Get()\n}\n")
+		"import \"std/net/http\"\n\ndef F() -> i32 {\n    return http.Get()\n}\n")
 
 	code, out, _ := runCLI("check", root)
 	if code != 1 {
@@ -73,7 +73,7 @@ func TestCheckStdMissingSubpackageIsB0008(t *testing.T) {
 	std := filepath.Join(t.TempDir(), "std")
 	writeStdFile(t, std, "will.mod", "module std\nwill 1\n")
 	writeStdFile(t, filepath.Join(std, "net", "other"), "other.will",
-		"func Get() -> i32 {\n    return 1\n}\n")
+		"def Get() -> i32 {\n    return 1\n}\n")
 	root := stdModule(t, std)
 
 	code, out, _ := runCLI("check", root)

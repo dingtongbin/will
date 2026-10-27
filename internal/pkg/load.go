@@ -350,6 +350,8 @@ func buildNames(p *Package) (resolve.Exported, []diag.Diagnostic) {
 				add(decl.Name, resolve.ConstKind, decl.NamePos, decl)
 			case *ast.VarDecl:
 				add(decl.Name, resolve.VarKind, decl.NamePos, decl)
+			case *ast.TypeAliasDecl:
+				add(decl.Name, resolve.TypeAliasKind, decl.NamePos, decl)
 			case *ast.FuncDecl:
 				if decl.Recv == nil {
 					add(decl.Name, resolve.FuncKind, decl.NamePos, decl)
@@ -372,7 +374,7 @@ func buildNames(p *Package) (resolve.Exported, []diag.Diagnostic) {
 }
 
 func isExported(name string) bool {
-	return name != "" && name[0] >= 'A' && name[0] <= 'Z'
+	return name != "" && !strings.HasPrefix(name, "__")
 }
 
 // Dispatch is one interface call site.

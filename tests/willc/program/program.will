@@ -13,26 +13,26 @@ enum Shape {
 }
 
 interface Showable {
-    func Show() -> str
+    def Show() -> str
 }
 
-func Work(n: i32) -> i32 {
+def Work(n: i32) -> i32 {
     return n
 }
 
-func (mut p: Point) Move(dx: i32, dy: i32) {
+def (mut p: Point) Move(dx: i32, dy: i32) {
     p.x += dx
     p.y += dy
 }
 
-func Max<T: Show>(a: T, b: T) -> T {
+def Max<T: Show>(a: T, b: T) -> T {
     if a > b {
         return a
     }
     return b
 }
 
-async func Run(n: i32) -> i32 {
+async def Run(n: i32) -> i32 {
     var xs: Array<i32> = new Array<i32>(0)
     var total: i32 = 0
     for i, x in xs {

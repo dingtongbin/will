@@ -1,15 +1,15 @@
 interface Shape {
-    func Area() -> i32
+    def Area() -> i32
 }
 
 struct Dot {
     s: i32
 }
 
-func Use(x: Shape) -> i32 {
+def Use(x: Shape) -> i32 {
     return x.Area()
 }
 
-func F(d: Dot) -> i32 {
+def F(d: Dot) -> i32 {
     return Use(d)
 }

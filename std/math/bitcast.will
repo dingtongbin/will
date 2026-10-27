@@ -9,21 +9,21 @@ import c "bits.h" {
 }
 
 // F64Bits returns the IEEE 754 binary64 representation of x.
-func F64Bits(x: f64) -> u64 {
+def F64Bits(x: f64) -> u64 {
     return c.willrt_f64_bits(x)
 }
 
 // F64FromBits builds the binary64 value with the given representation.
-func F64FromBits(bits: u64) -> f64 {
+def F64FromBits(bits: u64) -> f64 {
     return c.willrt_f64_from_bits(bits)
 }
 
 // F32Bits returns the IEEE 754 binary32 representation of x.
-func F32Bits(x: f32) -> u32 {
+def F32Bits(x: f32) -> u32 {
     return c.willrt_f32_bits(x)
 }
 
 // F32FromBits builds the binary32 value with the given representation.
-func F32FromBits(bits: u32) -> f32 {
+def F32FromBits(bits: u32) -> f32 {
     return c.willrt_f32_from_bits(bits)
 }

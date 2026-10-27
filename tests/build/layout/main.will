@@ -3,7 +3,7 @@ struct P {
     b: i64
 }
 
-func main() -> i32 {
+def main() -> i32 {
     if SizeOf<P>() != 16usize {
         return 1
     }

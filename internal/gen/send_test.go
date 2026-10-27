@@ -12,11 +12,11 @@ import (
 // field names it, so the document-level check cannot see it, but the send
 // result's layout mentions the interface.
 func TestDiscardedSendDefinesTheErrorInterface(t *testing.T) {
-	src := `func Put(ch: chan<i32>) {
+	src := `def Put(ch: chan<i32>) {
     _ = ch.Send(1)
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return 0
 }
 `
@@ -32,7 +32,7 @@ func main() -> i32 {
 }
 
 func TestSendResultCarriesClosedFault(t *testing.T) {
-	src := `func Put(ch: chan<i32>) -> Result<(), Error> {
+	src := `def Put(ch: chan<i32>) -> Result<(), Error> {
     ch.Send(1)?
     return Ok(())
 }

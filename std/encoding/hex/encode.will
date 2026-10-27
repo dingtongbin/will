@@ -3,7 +3,7 @@
 // Lowercase keeps the output stable for comparisons and matches Decode, which
 // accepts either case. Push doubles the array when it is full, so the whole
 // encode stays linear in the input length.
-func Encode(b: []u8) -> str {
+def Encode(b: []u8) -> str {
     var out: Array<u8> = new Array<u8>(0)
     for v in b {
         out.Push(nibbleChar(v >> 4))
@@ -13,7 +13,7 @@ func Encode(b: []u8) -> str {
 }
 
 // nibbleChar maps one four-bit value to its lowercase hexadecimal digit.
-func nibbleChar(v: u8) -> u8 {
+def nibbleChar(v: u8) -> u8 {
     if v < 10u8 {
         return 48u8 + v
     }

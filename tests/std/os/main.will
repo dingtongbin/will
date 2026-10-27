@@ -1,6 +1,6 @@
 import "std/os"
 
-func CheckEnv() -> i32 {
+def CheckEnv() -> i32 {
     var set: Result<(), Error> = os.Setenv("WILL_OS_PROBE", "value")
     match set {
         Err(e) => {
@@ -43,7 +43,7 @@ func CheckEnv() -> i32 {
     return 0
 }
 
-func CheckCwd() -> i32 {
+def CheckCwd() -> i32 {
     var cwd: Result<str, Error> = os.Cwd()
     match cwd {
         Ok(path) => {
@@ -84,7 +84,7 @@ func CheckCwd() -> i32 {
     return 0
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var args: []str = os.Args()
     if args.Len() == 0usize {
         return 15

@@ -15,22 +15,22 @@
 #15 variant parent=#12 pos="program.will:12:5" text="Square"
 #16 interface parent=#1 pos="program.will:15:1" text="Showable"
 #17 method-sig parent=#16 pos="program.will:16:5" text="Show" type="str"
-#18 type parent=#17 pos="program.will:16:20" text="str" kind=scalar
+#18 type parent=#17 pos="program.will:16:19" text="str" kind=scalar
 #19 func parent=#1 pos="program.will:19:1" text="Work" type="i32"
-#20 param parent=#19 pos="program.will:19:11" text="n" type="i32"
-#21 type parent=#20 pos="program.will:19:14" text="i32" kind=scalar
-#22 type parent=#19 pos="program.will:19:22" text="i32" kind=scalar
-#23 block parent=#19 pos="program.will:19:26"
+#20 param parent=#19 pos="program.will:19:10" text="n" type="i32"
+#21 type parent=#20 pos="program.will:19:13" text="i32" kind=scalar
+#22 type parent=#19 pos="program.will:19:21" text="i32" kind=scalar
+#23 block parent=#19 pos="program.will:19:25"
 #24 return parent=#23 pos="program.will:20:5" value=#25
 #25 name parent=#24 pos="program.will:20:12" text="n" to=#20
 #26 func parent=#1 pos="program.will:23:1" text="Move"
-#27 receiver parent=#26 pos="program.will:23:6" text="p" type="Point" mut=true
-#28 type parent=#27 pos="program.will:23:14" text="Point" kind=named to=#6
-#29 param parent=#26 pos="program.will:23:26" text="dx" type="i32"
-#30 type parent=#29 pos="program.will:23:30" text="i32" kind=scalar
-#31 param parent=#26 pos="program.will:23:35" text="dy" type="i32"
-#32 type parent=#31 pos="program.will:23:39" text="i32" kind=scalar
-#33 block parent=#26 pos="program.will:23:44"
+#27 receiver parent=#26 pos="program.will:23:5" text="p" type="Point" mut=true
+#28 type parent=#27 pos="program.will:23:13" text="Point" kind=named to=#6
+#29 param parent=#26 pos="program.will:23:25" text="dx" type="i32"
+#30 type parent=#29 pos="program.will:23:29" text="i32" kind=scalar
+#31 param parent=#26 pos="program.will:23:34" text="dy" type="i32"
+#32 type parent=#31 pos="program.will:23:38" text="i32" kind=scalar
+#33 block parent=#26 pos="program.will:23:43"
 #34 assign parent=#33 pos="program.will:24:5" op="+=" target=#35 value=#37
 #35 field parent=#34 pos="program.will:24:5" text="x" recv=#36
 #36 name parent=#35 pos="program.will:24:5" text="p" to=#27
@@ -40,14 +40,14 @@
 #40 name parent=#39 pos="program.will:25:5" text="p" to=#27
 #41 name parent=#38 pos="program.will:25:12" text="dy" to=#31
 #42 func parent=#1 pos="program.will:28:1" text="Max" type="T"
-#43 typeparam parent=#42 pos="program.will:28:10" text="T" constraint="Show"
-#44 type parent=#43 pos="program.will:28:13" text="Show" kind=named
-#45 param parent=#42 pos="program.will:28:19" text="a" type="T"
-#46 type parent=#45 pos="program.will:28:22" text="T" kind=named to=#43
-#47 param parent=#42 pos="program.will:28:25" text="b" type="T"
-#48 type parent=#47 pos="program.will:28:28" text="T" kind=named to=#43
-#49 type parent=#42 pos="program.will:28:34" text="T" kind=named to=#43
-#50 block parent=#42 pos="program.will:28:36"
+#43 typeparam parent=#42 pos="program.will:28:9" text="T" constraint="Show"
+#44 type parent=#43 pos="program.will:28:12" text="Show" kind=named
+#45 param parent=#42 pos="program.will:28:18" text="a" type="T"
+#46 type parent=#45 pos="program.will:28:21" text="T" kind=named to=#43
+#47 param parent=#42 pos="program.will:28:24" text="b" type="T"
+#48 type parent=#47 pos="program.will:28:27" text="T" kind=named to=#43
+#49 type parent=#42 pos="program.will:28:33" text="T" kind=named to=#43
+#50 block parent=#42 pos="program.will:28:35"
 #51 if parent=#50 pos="program.will:29:5" cond=#52 then=#55
 #52 bin parent=#51 pos="program.will:29:8" op=">" l=#53 r=#54
 #53 name parent=#52 pos="program.will:29:8" text="a" to=#45
@@ -58,10 +58,10 @@
 #58 return parent=#50 pos="program.will:32:5" value=#59
 #59 name parent=#58 pos="program.will:32:12" text="b" to=#47
 #60 func parent=#1 pos="program.will:35:1" text="Run" type="i32" async=true
-#61 param parent=#60 pos="program.will:35:16" text="n" type="i32"
-#62 type parent=#61 pos="program.will:35:19" text="i32" kind=scalar
-#63 type parent=#60 pos="program.will:35:27" text="i32" kind=scalar
-#64 block parent=#60 pos="program.will:35:31"
+#61 param parent=#60 pos="program.will:35:15" text="n" type="i32"
+#62 type parent=#61 pos="program.will:35:18" text="i32" kind=scalar
+#63 type parent=#60 pos="program.will:35:26" text="i32" kind=scalar
+#64 block parent=#60 pos="program.will:35:30"
 #65 var parent=#64 pos="program.will:36:5" text="xs" type="Array<i32>"
 #66 type parent=#65 pos="program.will:36:13" text="Array<i32>" kind=named arg=#67
 #67 type parent=#66 pos="program.will:36:19" text="i32" kind=scalar

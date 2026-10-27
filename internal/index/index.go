@@ -104,6 +104,13 @@ func (x *builder) emitFile(p *pkg.Package, f *pkg.File) {
 			x.decl(f.Path, decl.Pos(), "const", decl.Name)
 		case *ast.VarDecl:
 			x.decl(f.Path, decl.Pos(), "var", decl.Name)
+		case *ast.TypeAliasDecl:
+			x.decl(f.Path, decl.Pos(), "typealias", decl.Name)
+			if decl.Type != nil {
+				x.line("alias", quote("file", f.Path), "line="+strconv.Itoa(decl.NamePos.Line),
+					"col="+strconv.Itoa(decl.NamePos.Col), quote("name", decl.Name),
+					quote("target", typeText(decl.Type)))
+			}
 		case *ast.FuncDecl:
 			x.decl(f.Path, decl.Pos(), "func", decl.Name)
 			if decl.Recv != nil {
@@ -269,10 +276,10 @@ func linkage(link *ast.Link) string {
 }
 
 func visibility(name string) string {
-	if name != "" && name[0] >= 'A' && name[0] <= 'Z' {
-		return "public"
+	if name == "" || strings.HasPrefix(name, "__") {
+		return "private"
 	}
-	return "private"
+	return "public"
 }
 
 func qualified(pkgPath, name string) string {

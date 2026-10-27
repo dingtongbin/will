@@ -4,7 +4,7 @@ import "std/math"
 
 // eq reports whether got equals want. A mismatch prints both values once, so a
 // failing case names itself without a table of expected text.
-func eq(got: str, want: str) -> i32 {
+def eq(got: str, want: str) -> i32 {
     if got == want {
         return 1
     }
@@ -12,7 +12,7 @@ func eq(got: str, want: str) -> i32 {
     return 0
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var passed: i32 = 0
     passed += eq(fmt.Int(0i64, 10, 0, 48u8).Show(), "0")
     passed += eq(fmt.Int(-5i64, 10, 4, 48u8).Show(), "-005")

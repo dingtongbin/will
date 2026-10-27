@@ -13,7 +13,7 @@ const repetitions: i32 = 5
 
 // Work runs the integer chain. The arithmetic of the language is checked,
 // so every operation of the chain carries its check.
-func Work(n: i32, seed: i32) -> i64 {
+def Work(n: i32, seed: i32) -> i64 {
     var acc: i64 = 0i64
     for i in Range(0, n) {
         var x: i64 = (i64(i) * 3i64 + 1i64) ^ i64(seed)
@@ -22,7 +22,7 @@ func Work(n: i32, seed: i32) -> i64 {
     return acc
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var samples: Array<u64> = new Array<u64>(0)
     // The warm up pays for the first touch of the pages and of the caches.
     var warm: i64 = Work(1000, 0)

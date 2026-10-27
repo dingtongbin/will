@@ -22,13 +22,13 @@ lane L6 struct L6Marker {
 lane L7 struct L7Marker {
 }
 
-async func Produce(ch: chan<i32>, n: i32) {
+async def Produce(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
         _ = await ch.Send(i)
     }
 }
 
-async func Consume(ch: chan<i32>) -> i64 {
+async def Consume(ch: chan<i32>) -> i64 {
     var sum: i64 = 0
     for {
         var item: Option<i32> = await ch.Recv()
@@ -44,7 +44,7 @@ async func Consume(ch: chan<i32>) -> i64 {
     return sum
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1024)
     var total: i64 = 0
     region {

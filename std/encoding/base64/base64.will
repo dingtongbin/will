@@ -4,26 +4,26 @@ struct decodeError {
     message: str
 }
 
-func (e: decodeError) Message() -> str {
+def (e: decodeError) Message() -> str {
     return e.message
 }
 
-func (e: decodeError) Status() -> i32 {
+def (e: decodeError) Status() -> i32 {
     return 2
 }
 
-func fail(message: str) -> decodeError {
+def fail(message: str) -> decodeError {
     return decodeError { message: message }
 }
 
 // 61 is the ASCII code of the padding character '='.
 const padScalar: u32 = 61
 
-func Decode(s: str) -> Result<Array<u8>, Error> {
+def Decode(s: str) -> Result<Array<u8>, Error> {
     return decode(s, false)
 }
 
-func DecodeUrl(s: str) -> Result<Array<u8>, Error> {
+def DecodeUrl(s: str) -> Result<Array<u8>, Error> {
     return decode(s, true)
 }
 
@@ -32,7 +32,7 @@ func DecodeUrl(s: str) -> Result<Array<u8>, Error> {
 // has data after padding, or uses a character outside the alphabet is rejected.
 // A padded group is emitted when the padding completes it, so the pad count
 // decides how many bytes of that group are real.
-func decode(s: str, url: bool) -> Result<Array<u8>, Error> {
+def decode(s: str, url: bool) -> Result<Array<u8>, Error> {
     var out: Array<u8> = new Array<u8>(0)
     var q0: u32 = 0
     var q1: u32 = 0
@@ -97,7 +97,7 @@ func decode(s: str, url: bool) -> Result<Array<u8>, Error> {
 
 // alphabetValue maps one character to its six-bit value. 64 marks a character
 // outside the selected alphabet, so it is above every value a group accepts.
-func alphabetValue(c: u32, url: bool) -> u32 {
+def alphabetValue(c: u32, url: bool) -> u32 {
     if c >= 65u32 && c <= 90u32 {   // 'A' to 'Z'
         return c - 65u32
     }

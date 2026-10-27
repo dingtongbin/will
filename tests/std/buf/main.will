@@ -13,18 +13,18 @@ struct Sink {
     stats: rc<Stats>
 }
 
-func (s: Sink) Write(bytes: []u8) -> Result<(), Error> {
+def (s: Sink) Write(bytes: []u8) -> Result<(), Error> {
     s.stats.writes += 1
     s.stats.total += bytes.Len()
     s.stats.last = bytes.Len()
     return Ok(())
 }
 
-func (s: Sink) Sync() -> Result<(), Error> {
+def (s: Sink) Sync() -> Result<(), Error> {
     return Ok(())
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var text: str = "hello"
     var stats: rc<Stats> = new rc<Stats>(Stats { writes: 0, total: 0usize, last: 0usize })
     var writer: buf.WriterBuf = new buf.WriterBuf(Sink { stats: stats }, 8usize)

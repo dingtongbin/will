@@ -2,11 +2,11 @@ import "std/bytes"
 
 // A []u8 source cannot be built from Array<u8> yet, so this wrapper keeps the
 // Copy signature in the compile check without a call site.
-func fill(dst: Array<u8>, src: []u8) -> usize {
+def fill(dst: Array<u8>, src: []u8) -> usize {
     return bytes.Copy(dst, src)
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var a: Array<u8> = new Array<u8>(2)
     a.Push(u8(1))
     a.Push(u8(2))

@@ -1,6 +1,6 @@
 import "std/math"
 
-func main() -> i32 {
+def main() -> i32 {
     var ok: i32 = 0
     if math.Abs(-2.5) == 2.5 {
         ok += 1

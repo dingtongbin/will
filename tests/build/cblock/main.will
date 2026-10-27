@@ -2,7 +2,7 @@ import c "api.h" {
     blocking add
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var t: Task<i32> = c.add(2, 3)
     return await t.Join()!
 }

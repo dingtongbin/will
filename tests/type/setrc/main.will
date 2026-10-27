@@ -1,4 +1,4 @@
-func main() -> i32 {
+def main() -> i32 {
     var values: Set<rc<i32>> = new Set<rc<i32>>(0usize)
     if values.Len() != 0usize {
         return 1

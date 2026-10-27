@@ -1,11 +1,11 @@
 import "std/os/exec"
 
-async func Run(cmd: exec.Cmd) -> Result<exec.ExitStatus, Error> {
+async def Run(cmd: exec.Cmd) -> Result<exec.ExitStatus, Error> {
     var status: Result<exec.ExitStatus, Error> = await cmd.AsyncRun()
     return status
 }
 
-async func main() -> i32 {
+async def main() -> i32 {
     var code: i32 = 1
     region {
         var task: Task<Result<exec.ExitStatus, Error>> =

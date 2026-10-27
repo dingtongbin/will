@@ -1,7 +1,7 @@
-func G(s: str) {
+def G(s: str) {
 }
 
-func F(xs: []i32) {
+def F(xs: []i32) {
     var s: str = "a"
     for i in xs {
         _ = i

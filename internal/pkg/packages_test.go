@@ -14,7 +14,7 @@ import (
 func TestWalkModuleDefersNameTables(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	write(t, filepath.Join(root, "main.will"), "func Main() {\n}\n")
+	write(t, filepath.Join(root, "main.will"), "def Main() {\n}\n")
 
 	pkgs, ds := walkModule(&moduleNode{Dir: root, Path: "example.com/app"})
 	if len(ds) != 0 {
