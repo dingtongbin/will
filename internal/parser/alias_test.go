@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/diag"
 )
 
 func TestParseTypeAlias(t *testing.T) {
@@ -17,5 +18,19 @@ func TestParseTypeAlias(t *testing.T) {
 	}
 	if alias.Name != "UserId" || alias.Type == nil || alias.Type.Name != "i64" {
 		t.Fatalf("alias = %+v, want UserId = i64", alias)
+	}
+}
+
+func TestFuncDeclarationIsRejected(t *testing.T) {
+	_, ds := Parse("test.will", []byte("func f() {}\n"))
+	if len(ds) != 1 || ds[0].Code != diag.CodeUnexpectedToken {
+		t.Fatalf("diagnostics = %v, want one S0001", ds)
+	}
+}
+
+func TestTypeAliasIsTopLevelOnly(t *testing.T) {
+	_, ds := Parse("test.will", []byte("def f() {\n    type UserId = i64\n}\n"))
+	if len(ds) != 1 || ds[0].Code != diag.CodeUnexpectedToken {
+		t.Fatalf("diagnostics = %v, want one S0001", ds)
 	}
 }
