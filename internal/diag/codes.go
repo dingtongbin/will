@@ -134,6 +134,8 @@ const (
 	CodeSuspendInParallel  = "K0001"
 	CodeGuardAcrossSuspend = "K0002"
 	CodeTaskEscapesRegion  = "K0003"
+	// CodeTaskNotAwaited reports a task handle still live when its region exits.
+	CodeTaskNotAwaited     = "K0015"
 	CodeWrongLane          = "K0004"
 	CodeSpawnNotCall       = "K0005"
 	CodeDeadlock           = "K0006"
@@ -183,7 +185,7 @@ var Codes = []string{
 	CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
 	CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
 	CodeExplicitLeak,
-	CodeSuspendInParallel, CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeWrongLane,
+	CodeSuspendInParallel, CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeWrongLane, CodeTaskNotAwaited,
 	CodeSpawnNotCall, CodeDeadlock,
 	CodeGuardCopied, CodeReadGuardWrite,
 	CodeAwaitOutsideAsync, CodeAsyncNotAwaited, CodeAwaitNotAsync, CodeAsyncAsValue,

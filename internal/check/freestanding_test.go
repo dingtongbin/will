@@ -52,14 +52,14 @@ func TestFreestandingTasksAndChannels(t *testing.T) {
 	src := "def f(ch: chan<i64>) {\n" +
 		"    region {\n" +
 		"        var t: Task<i64> = spawn G()\n" +
-		"        _ = t.join()\n" +
+		"        _ = await t\n" +
 		"    }\n" +
 		"    _ = ch.recv()\n" +
 		"    ch.send(1)\n" +
 		"}\n"
 	ds := freestanding(t, src)
-	if got := count(ds, runtimeMessage); got != 5 {
-		t.Fatalf("runtime uses = %d, want 5 (region, spawn, join, recv, send):\n%s", got, diag.FormatAll(ds))
+	if got := count(ds, runtimeMessage); got != 4 {
+		t.Fatalf("runtime uses = %d, want 4 (region, spawn, await, channel):\n%s", got, diag.FormatAll(ds))
 	}
 }
 

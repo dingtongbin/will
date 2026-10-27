@@ -1168,7 +1168,6 @@ func (c *checker) inferExprInner(s *inferScope, e ast.Expr) *Type {
 		s.allowAsyncCall = true
 		t := c.inferExpr(s, x.Call)
 		s.allowAsyncCall = previous
-		c.checkSpawnLane(x)
 		return c.in.named("Task", []*Type{t})
 	case *ast.DeadlineExpr:
 		c.inferExpr(s, x.Duration)

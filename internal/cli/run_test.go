@@ -265,7 +265,7 @@ async def capture() -> Result<i32, TaskError> {
     var result: Result<i32, TaskError> = Ok(0)
     region {
         var task: Task<i32> = spawn fail("boom".clone())
-        result = await task.join()
+        result = await task
     }
     return result
 }
@@ -617,7 +617,7 @@ def main() -> i32 {
     xs.push("a")
     xs.push("b")
     var t: Task<i32> = spawn count(xs)
-    return wait(t.join())!
+    return await t!
 }
 `
 	path := writeFile(t, t.TempDir(), "main.will", src)
@@ -1025,7 +1025,7 @@ async def main() -> i32 {
     region {
         var text: str = "hello".clone()
         var task: Task<i32> = spawn worker(text)
-        result = await task.join()!
+        result = await task!
     }
     return result
 }
@@ -1070,7 +1070,7 @@ async def worker() -> i32 {
 async def main() -> i32 {
     region {
         var task: Task<i32> = spawn worker()
-        match await task.join() {
+        match await task {
             Ok(_) => {
                 return 1
             }
@@ -1107,7 +1107,7 @@ func TestRunJoinReturnsTheStoredValue(t *testing.T) {
 async def main() -> i32 {
     region {
         var t: Task<i64> = spawn work()
-        var v: i64 = await t.join()!
+        var v: i64 = await t!
         print("v=", v, "\n")
     }
     return 0
@@ -1415,11 +1415,11 @@ async def main() -> i32 {
         var p2: Task<()> = spawn on L1 produce(ch, 20000)
         var c1: Task<i64> = spawn on L2 consume(ch)
         var c2: Task<i64> = spawn on L3 consume(ch)
-        _ = await p1.join()!
-        _ = await p2.join()!
+        _ = await p1!
+        _ = await p2!
         ch.close()
-        var c1v: i64 = await c1.join()!
-        var c2v: i64 = await c2.join()!
+        var c1v: i64 = await c1!
+        var c2v: i64 = await c2!
         total = c1v + c2v
     }
     print("total=", total, "\n")

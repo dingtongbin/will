@@ -22,13 +22,5 @@ def main() -> i32 {
         _ = i
     })
 
-    var cancel: task.cancel = new task.cancel()
-    if cancel.canceled() {
-        return 4
-    }
-    cancel.cancel()
-    if not cancel.canceled() {
-        return 5
-    }
     return 0
 }

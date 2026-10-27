@@ -14,7 +14,7 @@ async def main() -> i32 {
     var result: Result<(), Error> = Ok(())
     region {
         var task: Task<Result<(), Error>> = spawn fill(path.clone())
-        result = await task.join()!
+        result = await task!
     }
     if result.is_err() {
         _ = fs.remove(path)

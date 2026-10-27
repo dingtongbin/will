@@ -110,8 +110,6 @@ func (p *Parser) parseDecl(doc string) ast.Decl {
 		return p.parseInterfaceDecl(doc)
 	case token.KwDerive:
 		return p.parseDeriveDecl(doc)
-	case token.KwLane:
-		return p.parseLaneDecl()
 	}
 	p.unexpected("a declaration")
 	return &ast.VarDecl{Span: p.emptySpan(p.cur())}

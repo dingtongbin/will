@@ -41,8 +41,8 @@ async def main() -> i32 {
     region {
         var t1: Task<Result<i64, Error>> = spawn checksum(path.clone())
         var t2: Task<Result<i64, Error>> = spawn checksum(path.clone())
-        var r1: Result<i64, Error> = await t1.join()!
-        var r2: Result<i64, Error> = await t2.join()!
+        var r1: Result<i64, Error> = await t1!
+        var r2: Result<i64, Error> = await t2!
         match r1 {
             Ok(v) => {
                 first = v
@@ -69,7 +69,7 @@ async def main() -> i32 {
     var extended: Result<(), Error> = Ok(())
     region {
         var t: Task<Result<(), Error>> = spawn append_tail(path.clone())
-        extended = await t.join()!
+        extended = await t!
     }
     match extended {
         Err(_) => {

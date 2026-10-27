@@ -7,27 +7,18 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// TestSpawnPlaceLowers checks the three placement forms reach the runtime:
-// auto submits through the batched placement entry, here keeps the current
-// lane, and on uses the declared lane index. The parser and willc round-trip
-// are covered by their own tests.
-func TestSpawnPlaceLowers(t *testing.T) {
-	src := `lane Ui struct UiMarker {
-    id: i32
-}
-
-def work() -> i32 {
+// TestSpawnLowersToAutoTask checks the only spawn surface: one call, one task,
+// runtime-selected placement.
+func TestSpawnLowersToAutoTask(t *testing.T) {
+	src := `def work() -> i32 {
     return 1
 }
 
 def main() -> i32 {
     region {
         var a: Task<i32> = spawn work()
-        var b: Task<i32> = spawn here work()
-        var c: Task<i32> = spawn on Ui work()
-        _ = a
-        _ = b
-        _ = c
+        var result: Result<i32, TaskError> = await a
+        _ = result
     }
     return 0
 }
@@ -40,8 +31,8 @@ def main() -> i32 {
 	text := string(ir)
 	for _, want := range []string{
 		"call void @willrt_task_run_auto(",
-		"call i32 @willrt_lane_here()",
 		"declare void @willrt_task_run_auto(",
+		"call i32 @willrt_join(",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)

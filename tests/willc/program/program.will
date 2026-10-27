@@ -51,7 +51,7 @@ async def run(n: i32) -> i32 {
     _ = text
     var ch: chan<i32> = new chan<i32>(8)
     var t: Task<i32> = spawn work(n)
-    _ = await t.join()
+    _ = await t
     select {
         v = ch.recv() => { total = v }
         timeout 5ms => { total = -1 }
@@ -62,9 +62,6 @@ async def run(n: i32) -> i32 {
     }
     region {
         work(n)
-    }
-    parallel {
-        total += 1
     }
     if total == 0 {
         return 0

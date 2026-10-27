@@ -48,7 +48,7 @@ func TestCodesMatchConstants(t *testing.T) {
 		CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
 		CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
 		CodeExplicitLeak,
-		CodeSuspendInParallel, CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeWrongLane,
+		CodeSuspendInParallel, CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeWrongLane, CodeTaskNotAwaited,
 		CodeSpawnNotCall, CodeDeadlock,
 		CodeGuardCopied, CodeReadGuardWrite,
 		CodeAwaitOutsideAsync, CodeAsyncNotAwaited, CodeAwaitNotAsync, CodeAsyncAsValue,

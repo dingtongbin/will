@@ -50,10 +50,10 @@ async def main() -> i32 {
         var producer: Task<()> = spawn produce(first, 100)
         var stage: Task<()> = spawn stage(first, second)
         var sink: Task<i32> = spawn consume(second)
-        _ = await producer.join()!
+        _ = await producer!
         first.close()
-        _ = await stage.join()!
-        total = await sink.join()!
+        _ = await stage!
+        total = await sink!
     }
     return total - 5050
 }

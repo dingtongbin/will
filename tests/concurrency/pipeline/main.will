@@ -1,19 +1,8 @@
-lane P0 struct P0Marker {
 }
-
-lane P1 struct P1Marker {
 }
-
-lane P2 struct P2Marker {
 }
-
-lane P3 struct P3Marker {
 }
-
-lane StageLane struct StageMarker {
 }
-
-lane Sink struct SinkMarker {
 }
 
 async def produce(ch: chan<i32>, n: i32) {
@@ -58,19 +47,19 @@ async def main() -> i32 {
     var second: chan<i32> = new chan<i32>(64)
     var total: i32 = 0
     region {
-        var p0: Task<()> = spawn on P0 produce(first, 10000)
-        var p1: Task<()> = spawn on P1 produce(first, 10000)
-        var p2: Task<()> = spawn on P2 produce(first, 10000)
-        var p3: Task<()> = spawn on P3 produce(first, 10000)
-        var stage: Task<()> = spawn on StageLane stage(first, second)
-        var sink: Task<i32> = spawn on Sink consume(second)
-        _ = await p0.join()!
-        _ = await p1.join()!
-        _ = await p2.join()!
-        _ = await p3.join()!
+        var p0: Task<()> = spawn produce(first, 10000)
+        var p1: Task<()> = spawn produce(first, 10000)
+        var p2: Task<()> = spawn produce(first, 10000)
+        var p3: Task<()> = spawn produce(first, 10000)
+        var stage: Task<()> = spawn stage(first, second)
+        var sink: Task<i32> = spawn consume(second)
+        _ = await p0!
+        _ = await p1!
+        _ = await p2!
+        _ = await p3!
         first.close()
-        _ = await stage.join()!
-        total = await sink.join()!
+        _ = await stage!
+        total = await sink!
     }
     return total - 399960000
 }

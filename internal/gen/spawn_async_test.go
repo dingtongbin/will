@@ -25,7 +25,7 @@ async def main() -> i32 {
     var result: i32 = 0
     region {
         var task: Task<i32> = spawn read("hello".clone())
-        result = await task.join()!
+        result = await task!
     }
     return result
 }
@@ -49,27 +49,17 @@ async def main() -> i32 {
 	}
 }
 
-// TestAsyncSpawnPlaceLowers passes the placement discriminator to the async
-// constructor: -1 is auto, -2 is the current lane, and a declared lane index is
-// used for an explicit lane. The constructor itself chooses the runtime start
-// entry from that value.
-func TestAsyncSpawnPlaceLowers(t *testing.T) {
-	src := `lane Ui struct UiMarker {
-    id: i32
-}
-
-async def fetch(value: i32) -> i32 {
+// TestAsyncSpawnLowersToAutoTask passes -1 as the placement discriminator:
+// every spawn is one task, and the runtime chooses its lane.
+func TestAsyncSpawnLowersToAutoTask(t *testing.T) {
+	src := `async def fetch(value: i32) -> i32 {
     return value
 }
 
 def main() -> i32 {
     region {
         var a: Task<i32> = spawn fetch(1)
-        var b: Task<i32> = spawn here fetch(2)
-        var c: Task<i32> = spawn on Ui fetch(3)
-        _ = a
-        _ = b
-        _ = c
+        _ = await a
     }
     return 0
 }
@@ -82,8 +72,6 @@ def main() -> i32 {
 	text := string(ir)
 	for _, want := range []string{
 		`@"example.com/app.fetch.task"(i32 1, i32 -1, i32 1)`,
-		`@"example.com/app.fetch.task"(i32 2, i32 -2, i32 1)`,
-		`@"example.com/app.fetch.task"(i32 3, i32 0, i32 1)`,
 		`call void @willrt_task_run_auto(ptr`,
 	} {
 		if !strings.Contains(text, want) {

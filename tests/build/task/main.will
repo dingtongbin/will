@@ -11,14 +11,14 @@ async def main() -> i32 {
     region {
         var a: Task<i32> = spawn compute(20)
         var b: Task<i32> = spawn compute(21)
-        var first: i32 = await a.join()!
-        var second: i32 = await b.join()!
+        var first: i32 = await a!
+        var second: i32 = await b!
         sum = first + second
     }
     var text: str = ""
     region {
         var t: Task<str> = spawn make_text(sum)
-        text = await t.join()!
+        text = await t!
     }
     print(text, "\n")
     return sum + i32(text.len())

@@ -55,10 +55,6 @@ func (p *Parser) parseStmt() ast.Stmt {
 		start := p.next()
 		body := p.parseBlock("a region body")
 		return &ast.RegionStmt{Span: p.spanFrom(start), Body: body}
-	case token.KwParallel:
-		start := p.next()
-		body := p.parseBlock("a parallel body")
-		return &ast.ParallelStmt{Span: p.spanFrom(start), Body: body}
 	case token.KwReturn:
 		return p.parseReturn()
 	case token.KwBreak:

@@ -65,24 +65,9 @@ func (g *generator) spawnStepSymbol(node int) string {
 // frame, and starts one task. The args are captured by value, matching the move
 // rule the source checker enforces for spawn.
 func (g *generator) lowerSpawn(r willc.Record) (string, error) {
-	place := fieldText(r, "place")
-	laneValue := ""
-	start := "-2"
-	switch place {
-	case "auto":
-		start = "-1"
-	case "here":
-	case "on":
-		lane := fieldText(r, "lane")
-		index, ok := g.laneIndex[qualify(g.pkg, lane)]
-		if !ok {
-			return "", g.errf(r.ID, "cannot translate node #%d: lane %s is not declared", r.ID, lane)
-		}
-		laneValue = strconv.Itoa(int(index))
-		start = laneValue
-	default:
-		return "", g.errf(r.ID, "cannot translate node #%d: spawn has no place", r.ID)
-	}
+	// Every spawn is one task. The runtime chooses a lane; the surface no
+	// longer exposes placement or lane selection.
+	start := "-1"
 	callID := refField(r, "call")
 	call, ok := g.recs[callID]
 	if !ok {
@@ -258,65 +243,18 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			closure: closure, dropSym: dropSym,
 		})
 	}
-	autoTask := place == "auto" && g.parallelDepth == 0
-	lane := laneValue
-	if g.parallelDepth == 0 && !autoTask {
-		if place == "here" {
-			here := g.newTmp()
-			fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_here()\n", here)
-			lane = here
-		}
-	}
 	task := g.newTmp()
-	if g.parallelDepth > 0 {
-		g.needJobDecl = true
-		if dropSym != "" {
-			fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, ptr @%s)\n",
-				task, llvmSymbol(step), frame, size, llvmSymbol(dropSym))
-		} else {
-			fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new(ptr @%s, ptr %s, i64 %s, i32 0)\n",
-				task, llvmSymbol(step), frame, size)
-		}
-		g.needOwnFrameDecl = true
-		fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
+	g.needAutoTaskDecl = true
+	if dropSym != "" {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr @%s)\n",
+			task, llvmSymbol(step), frame, size, llvmSymbol(dropSym))
 	} else {
-		initialLane := lane
-		if autoTask {
-			/* Auto placement chooses its lane when the submitting thread
-			   flushes the batch, so the constructor lane is not observable. */
-			initialLane = "0"
-			g.needAutoTaskDecl = true
-		}
-		if dropSym != "" {
-			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr @%s)\n",
-				task, llvmSymbol(step), frame, size, initialLane, llvmSymbol(dropSym))
-		} else {
-			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
-				task, llvmSymbol(step), frame, size, initialLane)
-		}
-		g.needOwnFrameDecl = true
-		fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
-		if autoTask {
-			fmt.Fprintf(g.out, "  call void @willrt_task_run_auto(ptr %s)\n", task)
-		} else {
-			fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
-		}
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 0, i32 0)\n",
+			task, llvmSymbol(step), frame, size)
 	}
-	for i, text := range argTexts {
-		if text != "task.Cancel" && !strings.HasSuffix(text, ".Cancel") {
-			continue
-		}
-		index := i
-		if indirect {
-			index++
-		}
-		field := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 %d\n",
-			field, frameType, frame, index)
-		g.needCancelBind = true
-		fmt.Fprintf(g.out, "  call void @willrt_task_bind_cancel(ptr %s, ptr %s)\n",
-			task, field)
-	}
+	g.needOwnFrameDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
+	fmt.Fprintf(g.out, "  call void @willrt_task_run_auto(ptr %s)\n", task)
 	return task, nil
 }
 

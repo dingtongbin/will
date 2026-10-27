@@ -90,7 +90,7 @@ def (t: ref T) failed() -> bool {
 # Parallel records that the case can run beside other cases. The runner decides
 # whether the surrounding call actually runs cases in parallel; the marker is
 # never a request to change shared mutable state.
-def (t: mut T) parallel() {
+def (t: mut T) allow_parallel() {
     t.state.parallelizable = True
 }
 
@@ -187,20 +187,20 @@ def sort_results(results: Array<caseResult>) {
 
 # Parallel runs every entry in its own task and reports failures in name order,
 # so scheduling never changes the output. Cases must not share mutable state.
-def parallel(cases: ...Case) {
+async def run_cases(cases: ...Case) {
     var n: usize = cases.len()
     if n == 0usize {
         return
     }
     var results: Array<caseResult> = new Array<caseResult>(n)
-    parallel {
+    region {
         var tasks: Array<Task<caseResult>> = new Array<Task<caseResult>>(n)
         for i in Range(0, i32(n)) {
             tasks.push(spawn run_case(cases.get(usize(i))))
         }
         for i in Range(0, i32(n)) {
             var task: Task<caseResult> = tasks.get(usize(i))
-            results.push(task.join()!)
+            results.push(await task!)
         }
     }
     sort_results(results)

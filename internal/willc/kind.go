@@ -76,7 +76,7 @@ var kindSpecs = map[string]KindSpec{
 	"panic":   {Required: []string{"arg"}},
 	"assert":  {Repeatable: []string{"arg"}},
 	"interp":  {Repeatable: []string{"part"}},
-	"spawn":   {Required: []string{"call", "place"}, Optional: []string{"lane"}},
+	"spawn":   {Required: []string{"call"}},
 	"join":    {Required: []string{"task"}},
 	"send":    {Required: []string{"chan", "value"}},
 	"trysend": {Required: []string{"chan", "value"}},

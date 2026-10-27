@@ -118,10 +118,6 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 		return rec
 	case *ast.SpawnExpr:
 		rec := e.add("spawn", v)
-		e.text(rec, "place", v.Place)
-		if v.Place == "on" {
-			e.text(rec, "lane", v.Lane)
-		}
 		e.push(rec)
 		cid := e.emitExpr(v.Call)
 		e.field(rec, "call", Ref(cid))

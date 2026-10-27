@@ -91,10 +91,10 @@ async def main() -> i32 {
         if drained != 6 {
             return 4
         }
-        _ = await producer.join()!
-        _ = await second.join()!
-        _ = await thirdProducer.join()!
-        _ = await fourthProducer.join()!
+        _ = await producer!
+        _ = await second!
+        _ = await thirdProducer!
+        _ = await fourthProducer!
     }
     return 0
 }

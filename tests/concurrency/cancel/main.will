@@ -1,15 +1,10 @@
-import "std/task"
-
-async def worker(ch: chan<i32>, cancel: task.cancel) -> i32 {
+async def worker(ch: chan<i32>) -> i32 {
     var item: Option<i32> = await ch.recv()
     match item {
         Some(_) => {
             return 1
         }
         None => {
-            if cancel.canceled() {
-                return 7
-            }
             return 2
         }
     }
@@ -18,12 +13,18 @@ async def worker(ch: chan<i32>, cancel: task.cancel) -> i32 {
 
 async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
-    var cancel: task.cancel = new task.cancel()
-    cancel.cancel()
     var value: i32 = 0
     region {
-        var worker: Task<i32> = spawn worker(ch, cancel)
-        value = await worker.join()!
+        var task: Task<i32> = spawn worker(ch)
+        task.cancel()
+        match await task {
+            Ok(v) => {
+                value = v
+            }
+            Err(_) => {
+                value = 7
+            }
+        }
     }
     if value != 7 {
         return 1

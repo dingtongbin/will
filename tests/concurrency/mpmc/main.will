@@ -1,25 +1,10 @@
-lane L0 struct L0Marker {
 }
-
-lane L1 struct L1Marker {
 }
-
-lane L2 struct L2Marker {
 }
-
-lane L3 struct L3Marker {
 }
-
-lane L4 struct L4Marker {
 }
-
-lane L5 struct L5Marker {
 }
-
-lane L6 struct L6Marker {
 }
-
-lane L7 struct L7Marker {
 }
 
 async def produce(ch: chan<i32>, n: i32) {
@@ -48,23 +33,23 @@ async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1024)
     var total: i64 = 0
     region {
-        var p1: Task<()> = spawn on L0 produce(ch, 200000)
-        var p2: Task<()> = spawn on L1 produce(ch, 200000)
-        var p3: Task<()> = spawn on L2 produce(ch, 200000)
-        var p4: Task<()> = spawn on L3 produce(ch, 200000)
-        var c1: Task<i64> = spawn on L4 consume(ch)
-        var c2: Task<i64> = spawn on L5 consume(ch)
-        var c3: Task<i64> = spawn on L6 consume(ch)
-        var c4: Task<i64> = spawn on L7 consume(ch)
-        _ = await p1.join()!
-        _ = await p2.join()!
-        _ = await p3.join()!
-        _ = await p4.join()!
+        var p1: Task<()> = spawn produce(ch, 200000)
+        var p2: Task<()> = spawn produce(ch, 200000)
+        var p3: Task<()> = spawn produce(ch, 200000)
+        var p4: Task<()> = spawn produce(ch, 200000)
+        var c1: Task<i64> = spawn consume(ch)
+        var c2: Task<i64> = spawn consume(ch)
+        var c3: Task<i64> = spawn consume(ch)
+        var c4: Task<i64> = spawn consume(ch)
+        _ = await p1!
+        _ = await p2!
+        _ = await p3!
+        _ = await p4!
         ch.close()
-        var s1: i64 = await c1.join()!
-        var s2: i64 = await c2.join()!
-        var s3: i64 = await c3.join()!
-        var s4: i64 = await c4.join()!
+        var s1: i64 = await c1!
+        var s2: i64 = await c2!
+        var s3: i64 = await c3!
+        var s4: i64 = await c4!
         total = s1 + s2 + s3 + s4
     }
     if total != 79999600000 {

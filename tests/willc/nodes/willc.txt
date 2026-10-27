@@ -31,7 +31,7 @@
 #31 block parent=#25 pos="nodes.will:18:34"
 #32 var parent=#31 pos="nodes.will:19:5" text="here" type="usize"
 #33 type parent=#32 pos="nodes.will:19:15" text="usize" kind=scalar
-#34 lanehere parent=#32 pos="nodes.will:19:23"
+#34 lit parent=#32 pos="nodes.will:19:23" kind=int text="0usize" type="usize"
 #35 var parent=#31 pos="nodes.will:20:5" text="text" type="str"
 #36 type parent=#35 pos="nodes.will:20:15" text="str" kind=scalar
 #37 interp parent=#35 pos="nodes.will:20:21" part="v=" part=#38 part=" end"
@@ -47,7 +47,7 @@
 #47 var parent=#31 pos="nodes.will:23:5" text="ch" type="chan<i64>"
 #48 type parent=#47 pos="nodes.will:23:13" text="chan<i64>" kind=chan arg=#49
 #49 type parent=#48 pos="nodes.will:23:18" text="i64" kind=scalar
-#50 channew parent=#47 pos="nodes.will:23:25" type="chan<i64>" cap=#51 prio="High"
+#50 channew parent=#47 pos="nodes.will:23:25" type="chan<i64>" cap=#51
 #51 lit parent=#50 pos="nodes.will:23:39" kind=int text="4" type="i32"
 #52 var parent=#31 pos="nodes.will:24:5" text="kind" type="i64"
 #53 type parent=#52 pos="nodes.will:24:15" text="i64" kind=scalar

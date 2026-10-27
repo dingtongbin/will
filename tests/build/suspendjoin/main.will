@@ -3,7 +3,7 @@ def inner() -> i32 {
 }
 
 async def wait(task: Task<i32>) -> i32 {
-    return await task.join()!
+    return await task!
 }
 
 async def main() -> i32 {
@@ -11,7 +11,7 @@ async def main() -> i32 {
     region {
         var inner: Task<i32> = spawn inner()
         var waiter: Task<i32> = spawn wait(inner)
-        value = await waiter.join()!
+        value = await waiter!
     }
     if value != 7 {
         return 1

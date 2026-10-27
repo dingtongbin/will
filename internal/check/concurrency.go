@@ -16,6 +16,7 @@ func Concurrency(f *ast.File) []diag.Diagnostic {
 	c := &concurrencyChecker{bag: diag.Bag{}}
 	m := marks.Analyze(f)
 	c.regionEscapes(f)
+	c.regionTasks(f)
 	c.guardAcrossSuspend(f)
 	c.waitBridges(m)
 	return c.bag.Diagnostics()

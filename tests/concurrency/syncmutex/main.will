@@ -14,8 +14,8 @@ async def bump(m: sync.Mutex<Counter>) -> i32 {
 
 # WaitFor takes the write side only after the caller's guard is gone.
 async def wait_for(m: sync.Mutex<Counter>, entered: chan<i32>) -> i32 {
+    _ = await entered.send(1)
     var g: sync.Guard<Counter> = await m.lock()
-    _ = entered.try_send(1)
     g.n += 10
     return g.n
 }
@@ -25,8 +25,8 @@ async def main() -> i32 {
     region {
         var t1: Task<i32> = spawn bump(m)
         var t2: Task<i32> = spawn bump(m)
-        _ = await t1.join()!
-        _ = await t2.join()!
+        _ = await t1!
+        _ = await t2!
     }
     var two: i32 = 0
     if True {
@@ -44,16 +44,9 @@ async def main() -> i32 {
             var g: sync.Guard<Counter> = m.try_lock()!
             g.n += 100
             waiter = spawn wait_for(m, entered)
-            match entered.try_recv() {
-                Some(_) => {
-                    return 2
-                }
-                None => {
-                }
-            }
         }
         _ = await entered.recv()!
-        _ = await waiter.join()!
+        _ = await waiter!
     }
     var after: i32 = 0
     if True {

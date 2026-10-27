@@ -27,7 +27,7 @@ def main() -> i32 {
     var second: chan<i32> = new chan<i32>(1)
     region {
         var task: Task<()> = spawn stage(first, second)
-        _ = task.join()!
+        _ = await task!
     }
     return 0
 }

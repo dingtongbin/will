@@ -30,6 +30,9 @@ func (g *generator) awaitCallJoin(r willc.Record) (string, string, string, strin
 	out := ""
 	if llvm != "" {
 		out = g.allocSlot(g.awaitOutSlots, "await.out", r.ID, llvm)
+		if ownsReleaseText(g, text) {
+			g.addSyntheticTemp(out, text, llvm)
+		}
 	}
 	errSlot := g.allocSlot(g.awaitErrSlots, "await.err", r.ID, "%willrt_error")
 	g.needTaskDecl = true

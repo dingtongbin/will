@@ -16,10 +16,6 @@ func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 		if !ok {
 			break
 		}
-		if inner.Kind == "await" {
-			exprID = refField(inner, "expr")
-			continue
-		}
 		if arg, ok := g.waitArg(inner); ok {
 			exprID = arg
 			continue
@@ -65,7 +61,7 @@ func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 		okLabel := fmt.Sprintf("unwrap.ok.%d", n)
 		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", failed, failLabel, okLabel)
 		g.out.WriteString(failLabel + ":\n")
-		if info.args[1] != "Error" {
+		if info.args[1] != "Error" && info.args[1] != "TaskError" {
 			return "", "", "", g.errf(r.ID, "cannot translate node #%d: unwrapping a Result with error %s is not lowered yet", r.ID, info.args[1])
 		}
 		iface, ok := g.ifaceOfText("Error")

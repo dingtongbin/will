@@ -25,7 +25,7 @@ def main() -> i32 {
     # The warm up pays for the first touch of the pages and of the caches.
     region {
         var warm: Task<i32> = spawn work(0)
-        var warmValue: i32 = wait(warm.join())!
+        var warmValue: i32 = await warm!
         _ = warmValue
     }
 

@@ -45,10 +45,6 @@ interface Showable {
 
 derive Show for Point
 
-lane Ui struct Job {
-    id: u32
-}
-
 def (p: mut Point) move(dx: i32, dy: i32) {
     p.x += dx
     p.y += dy
@@ -85,15 +81,12 @@ def run(n: i32) -> Result<i32, Error> {
     }
     region {
         var t: Task<i32> = spawn fetch(n)
-        _ = t.join()
+        _ = await t
     }
     select {
         v = ch.recv() => { total = v }
         timeout 5ms => { total = -1 }
         default => { total = 0 }
-    }
-    parallel {
-        total += 1
     }
     deadline 3ms {
         work()
@@ -157,8 +150,8 @@ func TestParseProgram(t *testing.T) {
 	if !f.Imports[2].Links[1].Blocking || f.Imports[2].Links[1].Name != "read" {
 		t.Errorf("second link = %+v", f.Imports[2].Links[1])
 	}
-	if len(f.Decls) != 10 {
-		t.Fatalf("declarations = %d, want 10", len(f.Decls))
+	if len(f.Decls) != 9 {
+		t.Fatalf("declarations = %d, want 9", len(f.Decls))
 	}
 	if _, ok := f.Decls[0].(*ast.ConstDecl); !ok {
 		t.Errorf("decl 0 = %T, want const", f.Decls[0])
@@ -182,17 +175,16 @@ func TestParseProgram(t *testing.T) {
 	if !ok || derive.Name != "Show" {
 		t.Fatalf("decl 5 = %+v, want derive Show", f.Decls[5])
 	}
-	lane, ok := f.Decls[6].(*ast.LaneDecl)
-	if !ok || lane.Name != "Ui" {
-		t.Fatalf("decl 6 = %+v, want lane Ui", f.Decls[6])
-	}
-	move, ok := f.Decls[7].(*ast.FuncDecl)
+	move, ok := f.Decls[6].(*ast.FuncDecl)
 	if !ok || move.Recv == nil || !move.Recv.Mut || move.Name != "move" {
-		t.Fatalf("decl 7 = %+v, want method move", f.Decls[7])
+		t.Fatalf("decl 6 = %+v, want method move", f.Decls[6])
 	}
-	max, ok := f.Decls[8].(*ast.FuncDecl)
+	max, ok := f.Decls[7].(*ast.FuncDecl)
 	if !ok || len(max.TypeParams) != 1 || len(max.TypeParams[0].Constraints) != 1 {
-		t.Fatalf("decl 8 = %+v, want generic Max", f.Decls[8])
+		t.Fatalf("decl 7 = %+v, want generic Max", f.Decls[7])
+	}
+	if _, ok := f.Decls[8].(*ast.FuncDecl); !ok {
+		t.Fatalf("decl 8 = %+v, want run", f.Decls[8])
 	}
 }
 

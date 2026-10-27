@@ -22,7 +22,7 @@ async def main() -> i32 {
         _ = await ch.send(3)
         _ = await ch.send(4)
         ch.close()
-        result = await worker.join()!
+        result = await worker!
     }
     return result - 7
 }

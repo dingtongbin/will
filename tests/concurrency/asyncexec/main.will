@@ -10,7 +10,7 @@ async def main() -> i32 {
     region {
         var task: Task<Result<exec.ExitStatus, Error>> =
             spawn run(exec.command("cmd", "/C", "exit 3"))
-        var status: Result<exec.ExitStatus, Error> = await task.join()!
+        var status: Result<exec.ExitStatus, Error> = await task!
         match status {
             Ok(value) => {
                 if value.code == 3 {

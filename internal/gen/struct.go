@@ -466,7 +466,14 @@ func (g *generator) typeOf(id int) (string, error) {
 	}
 	switch r.Kind {
 	case "await":
-		return g.typeOf(refField(r, "expr"))
+		text, err := g.awaitResultText(refField(r, "expr"))
+		if err != nil {
+			return "", err
+		}
+		if adt, ok := g.adtType(text); ok {
+			return adt.llvm, nil
+		}
+		return "", g.errf(id, "cannot translate node #%d: await result %s is not lowered", id, text)
 	case "lit":
 		typ, ok := llvmTypeText(fieldText(r, "type"))
 		if !ok {
@@ -766,7 +773,7 @@ func (g *generator) willTypeText(id int) (string, error) {
 	}
 	switch r.Kind {
 	case "await":
-		return g.willTypeText(refField(r, "expr"))
+		return g.awaitResultText(refField(r, "expr"))
 	case "borrow":
 		base, err := g.willTypeText(refField(r, "expr"))
 		if err != nil {
@@ -1234,7 +1241,56 @@ func (g *generator) place(id int) (string, string, error) {
 	}
 	switch r.Kind {
 	case "await":
-		return g.place(refField(r, "expr"))
+		exprID := refField(r, "expr")
+		if op, ok := g.recs[exprID]; ok && (op.Kind == "recv" || op.Kind == "send") {
+			return g.place(exprID)
+		}
+		if call, ok := g.recs[exprID]; ok && (call.Kind == "call" || call.Kind == "mcall") {
+			text, err := g.callResultText(call)
+			if err != nil {
+				return "", "", err
+			}
+			if _, isTask := taskElemText(text); !isTask {
+				if sym := g.awaitTargetSymbol(call); sym != "" && g.suspendableFor(sym) {
+					out, llvm, _, _, err := g.awaitCallJoin(call)
+					if err != nil {
+						return "", "", err
+					}
+					return out, llvm, nil
+				}
+				text, err := g.callResultText(call)
+				if err != nil {
+					return "", "", err
+				}
+				llvm := g.resultLLVM(text)
+				if llvm == "" {
+					return "", "", nil
+				}
+				if isAggregateType(llvm) {
+					return g.place(exprID)
+				}
+				slot := g.allocSlot(g.awaitOutSlots, "await.scalar", r.ID, llvm)
+				value, err := g.value(exprID)
+				if err != nil {
+					return "", "", err
+				}
+				g.out.WriteString("  store " + llvm + " " + value + ", ptr " + slot + "\n")
+				return slot, llvm, nil
+			}
+		}
+		text, err := g.awaitResultText(exprID)
+		if err != nil {
+			return "", "", err
+		}
+		slot, err := g.lowerAwaitResult(r)
+		if err != nil {
+			return "", "", err
+		}
+		info, ok := g.adtType(text)
+		if !ok {
+			return "", "", g.errf(id, "cannot translate node #%d: await result %s is not lowered", id, text)
+		}
+		return slot, info.llvm, nil
 	case "borrow":
 		if v, ok := g.recs[refField(r, "expr")]; ok && v.Kind == "slice" && fieldText(r, "mut") == "true" {
 			return g.place(refField(r, "expr"))

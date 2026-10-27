@@ -1,40 +1,26 @@
-# CPU parallelism helpers. Both functions use one parallel block and one job
-# per index, so they have the same shape as handwritten spawn/Join code.
+# CPU helpers submit ordinary calls through spawn. The runtime decides where a
+# job runs; the surface has no parallel block or lane selector.
 
-# ParallelFor calls f once for every index below n. The caller chooses the
-# chunking by choosing n; this function never adapts it.
 def parallel_for(n: usize, f: func(usize)) {
-    if n == 0usize {
-        return
-    }
-    parallel {
-        var tasks: Array<Task<()>> = new Array<Task<()>>(n)
-        for i in Range(0, i32(n)) {
-            tasks.push(spawn f(usize(i)))
-        }
-        for i in Range(0, i32(n)) {
-            var task: Task<()> = tasks.get(usize(i))
-            _ = task.join()!
+    region {
+        var i: usize = 0
+        while i < n {
+            var task: Task<()> = spawn f(i)
+            _ = await task!
+            i += 1
         }
     }
 }
 
-# ParallelMap returns f applied to every element in input order. The output
-# array has the same length as xs.
 def parallel_map<T, U>(xs: []T, f: func(T) -> U) -> Array<U> {
-    var n: usize = xs.len()
-    var out: Array<U> = new Array<U>(n)
-    if n == 0usize {
-        return out
-    }
-    parallel {
-        var tasks: Array<Task<U>> = new Array<Task<U>>(n)
-        for i in Range(0, i32(n)) {
-            tasks.push(spawn f(xs.get(usize(i))))
-        }
-        for i in Range(0, i32(n)) {
-            var task: Task<U> = tasks.get(usize(i))
-            out.push(task.join()!)
+    var out: Array<U> = new Array<U>(xs.len())
+    region {
+        var i: usize = 0
+        while i < xs.len() {
+            var value: T = xs[i]
+            var task: Task<U> = spawn f(value)
+            out.push(await task!)
+            i += 1
         }
     }
     return out

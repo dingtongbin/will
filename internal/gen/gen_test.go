@@ -1839,7 +1839,7 @@ func TestSpawnFrameDropReleasesCapturedArray(t *testing.T) {
 		"    var xs: Array<str> = new Array<str>(2)\n" +
 		"    xs.push(\"a\")\n" +
 		"    var t: Task<i32> = spawn count(xs)\n" +
-		"    return t.join()!\n" +
+		"    return await t!\n" +
 		"}\n"
 	doc := emitWillc(t, src)
 	ir, err := EmitWithEntry(doc, "main")

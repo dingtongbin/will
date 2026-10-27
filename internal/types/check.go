@@ -98,9 +98,8 @@ func CheckPackageWithImported(files []*ast.File, results []*resolve.Result, init
 // front end can emit the literal types it resolved across packages.
 func CheckPackageFullWithImported(files []*ast.File, results []*resolve.Result, inits, funcs map[string]map[string]*ast.FuncDecl) (*Result, []diag.Diagnostic) {
 	c := &checker{in: newInterner(), foreignInits: inits, foreignFuncs: funcs,
-		exprTypes: map[ast.Expr]*Type{}, laneTypes: map[string]string{}}
+		exprTypes: map[ast.Expr]*Type{}}
 	c.env = buildEnvAll(c, files)
-	c.collectLaneTypes(files)
 	c.checkGuardDecls(files)
 	c.checkPackage(files, results)
 	return c.result(), c.bag.Diagnostics()
@@ -110,9 +109,8 @@ func CheckPackageFullWithImported(files []*ast.File, results []*resolve.Result, 
 // declarations keyed by package name and type name.
 func CheckPackageFullWithForeign(files []*ast.File, results []*resolve.Result, foreign map[string]map[string]*ast.FuncDecl) (*Result, []diag.Diagnostic) {
 	c := &checker{in: newInterner(), foreignInits: foreign,
-		exprTypes: map[ast.Expr]*Type{}, laneTypes: map[string]string{}}
+		exprTypes: map[ast.Expr]*Type{}}
 	c.env = buildEnvAll(c, files)
-	c.collectLaneTypes(files)
 	c.checkGuardDecls(files)
 	c.checkPackage(files, results)
 	return c.result(), c.bag.Diagnostics()
@@ -139,12 +137,11 @@ func (c *checker) result() *Result {
 
 func checkWithResult(f *ast.File, res *resolve.Result, others []*ast.File) (*Result, []diag.Diagnostic) {
 	c := &checker{res: res, in: newInterner(),
-		exprTypes: map[ast.Expr]*Type{}, laneTypes: map[string]string{}}
+		exprTypes: map[ast.Expr]*Type{}}
 	files := make([]*ast.File, 0, len(others)+1)
 	files = append(files, others...)
 	files = append(files, f)
 	c.env = buildEnvAll(c, files)
-	c.collectLaneTypes(files)
 	c.checkGuardDecls(files)
 	c.checkCrossTypes(files)
 	c.walkFile(f)
@@ -171,11 +168,9 @@ type checker struct {
 	// foreignFuncs holds imported free functions by package name and function
 	// name, so a call checks its arguments against the declaring signature.
 	foreignFuncs map[string]map[string]*ast.FuncDecl
-	// exprTypes caches the inferred type of each expression for post-pass
-	// checks such as lane capture. inferExpr fills it.
+	// exprTypes caches the inferred type of each expression for post-passes.
+	// inferExpr fills it.
 	exprTypes map[ast.Expr]*Type
-	// laneTypes maps a lane-marked type name in this package to its lane.
-	laneTypes map[string]string
 	// aliasResolved caches expanded aliases. aliasActive and aliasStack detect
 	// a cycle while aliases are expanded.
 	aliasResolved map[string]*Type

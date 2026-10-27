@@ -52,6 +52,40 @@ def helper() {}
 	}
 }
 
+func TestRegionRejectsUnawaitedTask(t *testing.T) {
+	ds := runConcurrency(t, `async def zero() -> i32 {
+    return 0
+}
+
+async def f() {
+    region {
+        var task: Task<i32> = spawn zero()
+        _ = task
+    }
+}
+`)
+	if !hasCode(ds, diag.CodeTaskNotAwaited) {
+		t.Fatalf("expected K0015, got:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestRegionAcceptsAwaitedTask(t *testing.T) {
+	ds := runConcurrency(t, `async def zero() -> i32 {
+    return 0
+}
+
+async def f() {
+    region {
+        var task: Task<i32> = spawn zero()
+        _ = await task
+    }
+}
+`)
+	if hasCode(ds, diag.CodeTaskNotAwaited) {
+		t.Fatalf("awaited task was rejected:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestTaskHandleCannotEscapeRegion(t *testing.T) {
 	// The assignment carries the handle into an outer binding, so the use
 	// after the region escapes. A container push needs the parameter modes
@@ -62,7 +96,7 @@ func TestTaskHandleCannotEscapeRegion(t *testing.T) {
         var t: Task<i32> = spawn work(1)
         keep = t
     }
-    print(keep.join()!)
+    print(await keep!)
 }
 
 def zero() -> i32 { return 0 }
@@ -77,7 +111,7 @@ func TestTaskHandleInsideRegionIsFine(t *testing.T) {
 	ds := runConcurrency(t, `def f() {
     region {
         var t: Task<i32> = spawn work(1)
-        print(t.join()!)
+        print(await t!)
     }
 }
 

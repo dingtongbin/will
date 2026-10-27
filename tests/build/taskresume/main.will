@@ -3,35 +3,35 @@ def inner() -> i32 {
 }
 
 async def work(t: Task<i32>) -> i32 {
-    return await t.join()!
+    return await t!
 }
 
 async def work_local(t: Task<i32>) -> i32 {
-    var x: i32 = await t.join()!
+    var x: i32 = await t!
     return x + 1
 }
 
 async def work_pure(t: Task<i32>) -> i32 {
     var a: i32 = 1 + 2
     var b: i32 = a + 3
-    var x: i32 = await t.join()!
+    var x: i32 = await t!
     return a + b + x
 }
 
 async def main() -> i32 {
     var inner: Task<i32> = spawn inner()
     var work: Task<i32> = spawn work(inner)
-    var got: i32 = await work.join()!
+    var got: i32 = await work!
     if got != 7 {
         return 1
     }
     var local: Task<i32> = spawn work_local(inner)
-    var gotLocal: i32 = await local.join()!
+    var gotLocal: i32 = await local!
     if gotLocal != 8 {
         return 2
     }
     var pure: Task<i32> = spawn work_pure(inner)
-    var gotPure: i32 = await pure.join()!
+    var gotPure: i32 = await pure!
     if gotPure != 16 {
         return 3
     }

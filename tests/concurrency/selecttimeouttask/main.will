@@ -23,7 +23,7 @@ async def main() -> i32 {
     var result: i32 = 0
     region {
         var task: Task<i32> = spawn wait(ch)
-        result = await task.join()!
+        result = await task!
     }
     if result != 9 {
         return 1

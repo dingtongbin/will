@@ -17,13 +17,13 @@ func TestJoinErrorSlotHoldsTheStatus(t *testing.T) {
 }
 
 def run(task: Task<i64>) -> i64 {
-    return task.join()!
+    return await task!
 }
 
 def main() -> i32 {
     region {
         var t: Task<i64> = spawn work()
-        var v: i64 = t.join()!
+        var v: i64 = await t!
         print("v=", v, "\n")
     }
     return 0
@@ -37,7 +37,7 @@ def main() -> i32 {
 	text := string(ir)
 	found := false
 	for _, line := range strings.Split(text, "\n") {
-		if strings.Contains(line, "join.err.") && strings.Contains(line, "= alloca") {
+		if strings.Contains(line, "await.err.") && strings.Contains(line, "= alloca") {
 			found = true
 			if !strings.HasSuffix(strings.TrimSpace(line), "alloca %willrt.task_error") {
 				t.Errorf("join error slot is too small: %q", line)
@@ -57,7 +57,7 @@ func TestJoinResultCarriesTaskError(t *testing.T) {
 }
 
 def run(task: Task<i32>) -> Result<i32, TaskError> {
-    var value: i32 = task.join()?
+    var value: i32 = await task?
     return Ok(value)
 }
 `
@@ -68,8 +68,8 @@ def run(task: Task<i32>) -> Result<i32, TaskError> {
 	}
 	text := string(ir)
 	for _, want := range []string{
-		"call i32 @willrt_task_try_join",
-		"join.result",
+		"call i32 @willrt_join",
+		"await.result",
 		"will.task.error.table",
 		"@will.task.error.message",
 		"define internal ptr @will.task.error.clone",

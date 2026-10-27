@@ -22,7 +22,7 @@ async def main() -> i32 {
     region {
         var task: Task<i32> = spawn worker(ch)
         _ = await ch.send(1)
-        _ = await task.join()
+        _ = await task
     }
     return 0
 }
@@ -60,7 +60,7 @@ def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(1)
     region {
         var task: Task<()> = spawn produce(ch, 1)
-        _ = task.join()!
+        _ = await task!
     }
     return 0
 }

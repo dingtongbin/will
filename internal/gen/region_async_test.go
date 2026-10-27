@@ -18,7 +18,7 @@ func TestAsyncRegionParks(t *testing.T) {
 async def main() -> i32 {
     region {
         var a: Task<i32> = spawn work()
-        _ = await a.join()!
+        _ = await a!
     }
     return 0
 }

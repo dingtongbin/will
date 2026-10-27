@@ -18,7 +18,7 @@ async def main() -> i32 {
     var size: usize = 0
     region {
         var task: Task<Result<usize, Error>> = spawn read_file(path.clone())
-        size = await task.join()!!
+        size = await task!!
     }
     _ = fs.remove(path)
     if size != 6usize {

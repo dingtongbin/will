@@ -16,11 +16,11 @@ def unit() -> Result<(), Error> {
 }
 
 def use(b: Box, s: Shape) -> i64 {
-    var here: usize = lane.here()
+    var here: usize = 0usize
     var text: str = f"v={b.v} end"
     var p: Box = b
     var n: i64 = p.value()
-    var ch: chan<i64> = new chan<i64>(4, Priority.High)
+    var ch: chan<i64> = new chan<i64>(4)
     var kind: i64 = match s {
         Dot | Line => n
     }

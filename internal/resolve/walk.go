@@ -303,14 +303,6 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 	case *ast.UnwrapExpr:
 		r.walkExpr(x.X, true)
 	case *ast.SpawnExpr:
-		if x.Lane != "" {
-			if sym, ok := r.current().lookup(x.Lane); ok && sym.Kind == LaneKind {
-				r.refs[x] = sym
-				sym.Used = true
-			} else {
-				r.undefined(x.Pos(), x.Lane)
-			}
-		}
 		r.walkExpr(x.Call, true)
 	case *ast.DeadlineExpr:
 		r.walkExpr(x.Duration, true)

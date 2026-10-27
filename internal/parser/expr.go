@@ -272,8 +272,6 @@ func (p *Parser) parsePrimary(allowBrace bool) ast.Expr {
 			return p.parseNew(tok)
 		}
 		return &ast.NameExpr{Span: p.emptySpan(tok), Name: tok.Text}
-	case token.KwLane:
-		return p.parseLaneHere()
 	case token.KwIf:
 		return p.parseIf()
 	case token.KwMatch:
@@ -421,17 +419,6 @@ func (p *Parser) parseMatchArm() *ast.MatchArm {
 
 func (p *Parser) parseSpawn() ast.Expr {
 	start := p.next()
-	place := "auto"
-	lane := ""
-	if p.atText("here") {
-		p.next()
-		place = "here"
-	} else if p.atText("on") {
-		p.next()
-		place = "on"
-		p.skipNL()
-		lane, _ = p.expectName("a lane name")
-	}
 	call := p.parsePostfix(true)
 	if !isCall(call) {
 		/* The concurrency volume fixes this shape as K0005: the operand of a
@@ -443,10 +430,8 @@ func (p *Parser) parseSpawn() ast.Expr {
 		p.failed = true
 	}
 	return &ast.SpawnExpr{
-		Span:  ast.Span{Start: start.Pos, End: call.EndPos()},
-		Place: place,
-		Lane:  lane,
-		Call:  call,
+		Span: ast.Span{Start: start.Pos, End: call.EndPos()},
+		Call: call,
 	}
 }
 

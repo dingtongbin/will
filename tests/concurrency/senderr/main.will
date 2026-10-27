@@ -10,7 +10,7 @@ async def main() -> i32 {
     ch.close()
     region {
         var task: Task<Result<(), Error>> = spawn fill(ch)
-        match await task.join()! {
+        match await task! {
             Ok(_) => {
                 return 1
             }

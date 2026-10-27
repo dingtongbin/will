@@ -24,7 +24,7 @@ async def main() -> i32 {
                 return 1
             }
         }
-        result = await task.join()!
+        result = await task!
     }
     _ = fs.remove(path)
     if value != 7 {
