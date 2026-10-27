@@ -270,6 +270,8 @@ func (w *captureWalker) expr(e ast.Expr) {
 		w.expr(x.Recv)
 		w.expr(x.Lo)
 		w.expr(x.Hi)
+	case *ast.BorrowExpr:
+		w.expr(x.X)
 	case *ast.UnaryExpr:
 		w.expr(x.X)
 	case *ast.BinaryExpr:

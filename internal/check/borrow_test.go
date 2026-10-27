@@ -474,6 +474,95 @@ func TestBorrowAllowsReturningParameterRef(t *testing.T) {
 	}
 }
 
+func TestBorrowRejectsStoringLocalRefInAStruct(t *testing.T) {
+	src := `struct Holder {
+    value: ref i32
+}
+
+def f() {
+    var x: i32 = 1
+    var h: Holder = Holder { value: ref x }
+    _ = h
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowStored {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowRejectsStoringLocalRefInAnArray(t *testing.T) {
+	src := `def f() {
+    var x: i32 = 1
+    var xs: [1]ref i32 = [1]ref i32 { ref x }
+    _ = xs
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowStored {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowTracksAViewReturningCall(t *testing.T) {
+	src := `def first(xs: []i32) -> []i32 {
+    return xs[Range(0, xs.len())]
+}
+
+def f() {
+    var xs: Array<i32> = new Array<i32>(1)
+    var v: []i32 = first(xs[Range(0, xs.len())])
+    xs.push(2)
+    _ = v
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeContainerChanged {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowTracksMethodReturningRef(t *testing.T) {
+	src := `struct Box {
+    n: i32
+}
+
+def (b: ref Box) number() -> ref i32 from self {
+    return ref b.n
+}
+
+def f() {
+    var b: Box = Box { n: 1 }
+    var n: ref i32 = b.number()
+    b.n = 2
+    _ = n
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowConflict {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestBorrowRejectsSharedCallWhileExclusiveBorrowIsLive(t *testing.T) {
+	src := `def read(x: ref i32) -> i32 {
+    return x
+}
+
+def f() {
+    var x: i32 = 1
+    var m: mut i32 = mut x
+    var y: i32 = read(x)
+    _ = m
+    _ = y
+}
+`
+	ds := borrows(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeBorrowConflict {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestBorrowEndsWithItsBlock(t *testing.T) {
 	src := `def fill(xs: mut Array<i32>) {
 }

@@ -98,6 +98,6 @@ func (g *generator) asyncFieldOf(r willc.Record, param bool) (asyncField, bool) 
 		llvm:      llvm,
 		aggregate: isAggregateType(llvm),
 		param:     param,
-		paramMut:  fieldText(r, "mut") == "true" || r.Kind == "receiver",
+		paramMut:  isMutText(fieldText(r, "type")),
 	}, true
 }

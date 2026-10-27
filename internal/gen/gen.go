@@ -482,7 +482,7 @@ func (g *generator) collectSignatures() {
 				sortByID(ps)
 				for _, p := range ps {
 					m.params = append(m.params, g.qualifyTypeText(d.path, fieldText(p, "type")))
-					m.muts = append(m.muts, fieldText(p, "mut") == "true")
+					m.muts = append(m.muts, isMutText(fieldText(p, "type")))
 				}
 				info.byName[m.name] = len(info.methods)
 				info.methods = append(info.methods, m)
@@ -509,7 +509,7 @@ func (g *generator) collectSignatures() {
 			variadic := false
 			for _, c := range paramRecs {
 				params = append(params, g.qualifyTypeText(d.path, fieldText(c, "type")))
-				muts = append(muts, fieldText(c, "mut") == "true")
+				muts = append(muts, isMutText(fieldText(c, "type")))
 				if fieldText(c, "variadic") == "true" {
 					variadic = true
 				}
@@ -1696,7 +1696,7 @@ func (g *generator) funcDecl(fn willc.Record) error {
 	for _, p := range params {
 		pname := fieldText(p, "text")
 		ptype := fieldText(p, "type")
-		mut := fieldText(p, "mut") == "true"
+		mut := isMutText(ptype)
 		if fieldText(p, "variadic") == "true" {
 			// The call packs the tail arguments into one view.
 			g.scope[p.ID] = "%" + pname
@@ -2703,10 +2703,12 @@ func (g *generator) assignStmt(r willc.Record) error {
 		return err
 	}
 	op := fieldText(r, "op")
+	refTarget := false
 	if op == "=" {
 		if name, ok := g.recs[target]; ok && name.Kind == "name" {
 			decl := refField(name, "to")
 			if d, ok := g.recs[decl]; ok && d.Kind == "var" && isSingleBorrow(fieldText(d, "type")) {
+				refTarget = true
 				if slot, ok := g.slots[decl]; ok {
 					ptr, typ = slot, "ptr"
 				}
@@ -2831,7 +2833,12 @@ func (g *generator) assignStmt(r willc.Record) error {
 		}
 		return nil
 	}
-	value, err := g.value(valueID)
+	var value string
+	if refTarget {
+		value, err = g.referenceValue(valueID)
+	} else {
+		value, err = g.value(valueID)
+	}
 	if err != nil {
 		return err
 	}
@@ -3021,6 +3028,14 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 		} else {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, zeroValueText(typ), slot)
 		}
+		return false, nil
+	}
+	if isSingleBorrow(fieldText(r, "type")) {
+		value, err := g.referenceValue(valueID)
+		if err != nil {
+			return false, err
+		}
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", value, slot)
 		return false, nil
 	}
 	if isChanText(fieldText(r, "type")) {
@@ -3439,7 +3454,13 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 		}
 		return true, nil
 	}
-	value, err := g.value(valueID)
+	var value string
+	var err error
+	if isSingleBorrow(g.fnResultText) {
+		value, err = g.referenceValue(valueID)
+	} else {
+		value, err = g.value(valueID)
+	}
 	if err != nil {
 		return false, err
 	}
@@ -3828,6 +3849,16 @@ func (g *generator) value(id int) (string, error) {
 			}
 		}
 		if slot, typ, ok := g.nameSlot(r); ok {
+			if d, ok := g.recs[decl]; ok && d.Kind == "var" {
+				if base, kind := borrowText(fieldText(d, "type")); kind == "ref" || kind == "mut" {
+					ptr := g.load("ptr", slot)
+					baseLLVM, ok := g.typeLLVMOf(base)
+					if !ok || baseLLVM == "" {
+						return "", g.errf(id, "cannot translate node #%d: borrowed type %s is not lowered", id, base)
+					}
+					return g.load(baseLLVM, ptr), nil
+				}
+			}
 			if isAggregateType(typ) {
 				return "", g.errf(id, "cannot translate node #%d: %s is an aggregate, not a scalar", id, fieldText(r, "text"))
 			}
@@ -3836,7 +3867,12 @@ func (g *generator) value(id int) (string, error) {
 		decl = refField(r, "to")
 		if name, ok := g.scope[decl]; ok {
 			if d, ok := g.recs[decl]; ok && isSingleBorrow(fieldText(d, "type")) {
-				return name, nil
+				base, _ := borrowText(fieldText(d, "type"))
+				typ, ok := g.typeLLVMOf(base)
+				if !ok || typ == "" {
+					return "", g.errf(id, "cannot translate node #%d: borrowed type %s is not lowered", id, base)
+				}
+				return g.load(typ, name), nil
 			}
 			if g.borrows[decl] {
 				text, err := g.willTypeText(id)
@@ -3865,6 +3901,16 @@ func (g *generator) value(id int) (string, error) {
 		ptr, typ, err := g.place(id)
 		if err != nil {
 			return "", err
+		}
+		if text, err := g.willTypeText(id); err == nil {
+			if base, kind := borrowText(text); kind == "ref" || kind == "mut" {
+				refPtr := g.load("ptr", ptr)
+				baseLLVM, ok := g.typeLLVMOf(base)
+				if !ok || baseLLVM == "" {
+					return "", g.errf(id, "cannot translate node #%d: borrowed type %s is not lowered", id, base)
+				}
+				return g.load(baseLLVM, refPtr), nil
+			}
 		}
 		if isAggregateType(typ) {
 			return "", g.errf(id, "cannot translate node #%d: %s is a struct field, not a scalar", id, fieldText(r, "text"))

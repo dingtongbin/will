@@ -539,9 +539,6 @@ func (e *emitter) emitFunc(fn *ast.FuncDecl) {
 		rid := e.add("receiver", fn.Recv)
 		e.text(rid, "text", fn.Recv.Name)
 		e.text(rid, "type", typeText(fn.Recv.Type))
-		if fn.Recv.Mut {
-			e.boolean(rid, "mut", true)
-		}
 		e.push(rid)
 		e.emitType(fn.Recv.Type)
 		e.pop()
@@ -581,9 +578,6 @@ func (e *emitter) emitParams(params []*ast.Param) {
 		id := e.add("param", pm)
 		e.text(id, "text", pm.Name)
 		e.text(id, "type", typeText(pm.Type))
-		if pm.Mut {
-			e.boolean(id, "mut", true)
-		}
 		if pm.Variadic {
 			e.boolean(id, "variadic", true)
 		}

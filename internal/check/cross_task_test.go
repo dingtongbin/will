@@ -65,6 +65,25 @@ def f(c: rc<C>) {
 	}
 }
 
+func TestSpawnRejectsRefCapture(t *testing.T) {
+	src := `def read(x: ref i32) -> i32 {
+    return x
+}
+
+def f() {
+    var x: i32 = 1
+    region {
+        var t: Task<i32> = spawn read(ref x)
+        _ = t
+    }
+}
+`
+	ds := crossDiagnostics(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeCrossTask {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestSpawnAllowsArcCapture(t *testing.T) {
 	src := `struct C { n: i32 }
 

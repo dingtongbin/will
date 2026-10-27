@@ -127,6 +127,8 @@ func (c *crossTaskChecker) expr(e ast.Expr) {
 		c.expr(x.Recv)
 		c.expr(x.Lo)
 		c.expr(x.Hi)
+	case *ast.BorrowExpr:
+		c.expr(x.X)
 	case *ast.UnaryExpr:
 		c.expr(x.X)
 	case *ast.BinaryExpr:
@@ -173,6 +175,7 @@ func (c *crossTaskChecker) spawn(x *ast.SpawnExpr) {
 			"task result type cannot cross a task boundary",
 			"use a sendable result type")
 	}
+	c.rejectBorrowArgs(x.Call)
 	for _, name := range spawnNames(x.Call) {
 		t := c.types.TypeOf(name)
 		if t == nil {
@@ -199,6 +202,40 @@ func (c *crossTaskChecker) spawn(x *ast.SpawnExpr) {
 			if lam := c.lambdas[callee.Name]; lam != nil {
 				c.lambda(lam)
 			}
+		}
+	}
+}
+
+func (c *crossTaskChecker) rejectBorrowArgs(e ast.Expr) {
+	if e == nil {
+		return
+	}
+	if b, ok := e.(*ast.BorrowExpr); ok {
+		if t := c.types.TypeOf(b); t != nil && !c.types.Send(t) {
+			c.bag.Error(b.Pos(), diag.CodeCrossTask,
+				"this borrow cannot cross a task boundary",
+				"move an owned value into the task instead")
+		}
+		c.rejectBorrowArgs(b.X)
+		return
+	}
+	switch x := e.(type) {
+	case *ast.CallExpr:
+		for _, a := range x.Args {
+			c.rejectBorrowArgs(a.Expr)
+		}
+	case *ast.MethodCallExpr:
+		c.rejectBorrowArgs(x.Recv)
+		for _, a := range x.Args {
+			c.rejectBorrowArgs(a.Expr)
+		}
+	case *ast.AggregateExpr:
+		for _, f := range x.Fields {
+			c.rejectBorrowArgs(f.Value)
+		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			c.rejectBorrowArgs(elem)
 		}
 	}
 }
@@ -246,6 +283,8 @@ func (c *crossTaskChecker) lambda(lam *ast.LambdaExpr) {
 			walk(x.Recv)
 			walk(x.Lo)
 			walk(x.Hi)
+		case *ast.BorrowExpr:
+			walk(x.X)
 		case *ast.UnaryExpr:
 			walk(x.X)
 		case *ast.BinaryExpr:
@@ -456,6 +495,8 @@ func spawnNames(e ast.Expr) []*ast.NameExpr {
 			walk(x.Recv, false)
 			walk(x.Lo, false)
 			walk(x.Hi, false)
+		case *ast.BorrowExpr:
+			walk(x.X, false)
 		case *ast.CallExpr:
 			walk(x.Callee, true)
 			for _, a := range x.Args {

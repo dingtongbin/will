@@ -29,6 +29,7 @@ func BorrowsWithEffects(f *ast.File, own *Ownership, effects *MutEffects) []diag
 		own:        own,
 		effects:    effects,
 		funcs:      map[string]*ast.FuncDecl{},
+		methods:    map[string]*ast.FuncDecl{},
 		mutMethods: map[string]bool{},
 		locals:     map[string]bool{},
 		params:     map[string]bool{},
@@ -39,8 +40,11 @@ func BorrowsWithEffects(f *ast.File, own *Ownership, effects *MutEffects) []diag
 			continue
 		}
 		b.funcs[fn.Name] = fn
-		if fn.Recv != nil && fn.Recv.Mut {
-			b.mutMethods[fn.Name] = true
+		if fn.Recv != nil {
+			b.methods[fn.Name] = fn
+			if fn.Recv.Mut {
+				b.mutMethods[fn.Name] = true
+			}
 		}
 	}
 	for _, d := range f.Decls {
@@ -66,6 +70,7 @@ type borrower struct {
 	own        *Ownership
 	effects    *MutEffects
 	funcs      map[string]*ast.FuncDecl
+	methods    map[string]*ast.FuncDecl
 	mutMethods map[string]bool
 	locals     map[string]bool
 	params     map[string]bool
@@ -226,6 +231,41 @@ func (b *borrower) viewOwner(e ast.Expr) (string, source.Pos, bool) {
 		if name := rootName(x.X); name != "" {
 			return name, x.Pos(), true
 		}
+	case *ast.MethodCallExpr:
+		fn := b.methods[x.Name]
+		if fn != nil && borrowedResult(fn.Result) {
+			if name := rootName(x.Recv); name != "" {
+				return name, x.Pos(), true
+			}
+		}
+	case *ast.CallExpr:
+		name, ok := x.Callee.(*ast.NameExpr)
+		if !ok {
+			return "", source.Pos{}, false
+		}
+		fn := b.funcs[name.Name]
+		if fn == nil || fn.Result == nil || !borrowedResult(fn.Result) {
+			return "", source.Pos{}, false
+		}
+		if len(fn.From) != 0 {
+			root := rootName(fn.From[0])
+			if root == "" {
+				return "", source.Pos{}, false
+			}
+			for i, p := range fn.Params {
+				if p.Name == root && i < len(x.Args) {
+					if name := rootName(x.Args[i].Expr); name != "" {
+						return name, x.Pos(), true
+					}
+				}
+			}
+			return "", source.Pos{}, false
+		}
+		if len(x.Args) != 0 {
+			if name := rootName(x.Args[0].Expr); name != "" {
+				return name, x.Pos(), true
+			}
+		}
 	case *ast.SliceExpr:
 		if name := rootName(x.Recv); name != "" {
 			return name, x.Pos(), true
@@ -298,7 +338,7 @@ func (b *borrower) stmt(st ast.Stmt, borrowed map[string]source.Pos) {
 			if owner, ok := b.closureInExpr(s.Value); ok && b.locals[owner] {
 				b.bag.Error(s.Value.Pos(), diag.CodeBorrowStored,
 					"this borrow is stored where it outlives its owner",
-					"store a value, not a borrow")
+					"store an owned value, or clone it")
 			}
 		}
 		if target, ok := s.Target.(*ast.NameExpr); ok && target.Name != "_" {
@@ -384,7 +424,7 @@ func (b *borrower) escape(e ast.Expr) {
 			if owner, ok := b.closureInExpr(e); ok && b.locals[owner] {
 				b.bag.Error(e.Pos(), diag.CodeBorrowOutlives,
 					"this borrow outlives "+owner,
-					"release the borrow first")
+					"shorten the borrow or use clone()")
 				return
 			}
 		}
@@ -395,7 +435,7 @@ func (b *borrower) escape(e ast.Expr) {
 	}
 	b.bag.Error(pos, diag.CodeBorrowOutlives,
 		"this borrow outlives "+owner,
-		"release the borrow first")
+		"shorten the borrow or use clone()")
 }
 
 // store reports a view put into an aggregate field, where the aggregate can
@@ -431,7 +471,7 @@ func (b *borrower) storeAggregateValue(e ast.Expr, borrowed map[string]source.Po
 	if owner, ok := b.closureCaptureOwner(e); ok && b.locals[owner] {
 		b.bag.Error(e.Pos(), diag.CodeBorrowStored,
 			"this borrow is stored where it outlives its owner",
-			"store a value, not a borrow")
+			"store an owned value, or clone it")
 		return
 	}
 	owner, pos, ok := b.viewOwner(e)
@@ -440,7 +480,7 @@ func (b *borrower) storeAggregateValue(e ast.Expr, borrowed map[string]source.Po
 	}
 	b.bag.Error(pos, diag.CodeBorrowStored,
 		"this borrow is stored where it outlives its owner",
-		"store a value, not a borrow")
+		"store an owned value, or clone it")
 }
 
 // noteCopiedPlace records a local created from a field or index place. A later
@@ -799,7 +839,7 @@ func (b *borrower) closureInExpr(e ast.Expr) (string, bool) {
 func (b *borrower) copyNotBorrow(pos source.Pos) {
 	b.bag.Error(pos, diag.CodeCopyNotBorrow,
 		"this is a copy, not a borrow",
-		"write through the place (xs[i].f = v), or use a method with a mut receiver")
+		"write through the place, or use ref/mut explicitly")
 }
 
 func (b *borrower) conflictAt(pos source.Pos, name string, borrowPos source.Pos) {
@@ -919,6 +959,11 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 	case *ast.CallExpr:
 		b.call(x, borrowed)
 	case *ast.MethodCallExpr:
+		if fn := b.methods[x.Name]; fn != nil && (fn.Recv == nil || !fn.Recv.Mut) {
+			if pos, ok := b.exclusive[rootName(x.Recv)]; ok {
+				b.conflictAt(x.Pos(), rootName(x.Recv), pos)
+			}
+		}
 		if b.methodMutates(x) {
 			root := rootName(x.Recv)
 			if _, ok := b.copied[root]; ok {
@@ -935,7 +980,7 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 			if owner, ok := b.closureInExpr(a.Expr); ok && b.locals[owner] {
 				b.bag.Error(a.Expr.Pos(), diag.CodeBorrowStored,
 					"this borrow is stored where it outlives its owner",
-					"store a value, not a borrow")
+					"store an owned value, or clone it")
 			}
 		}
 	case *ast.FieldExpr:
@@ -977,7 +1022,7 @@ func (b *borrower) expr(e ast.Expr, borrowed map[string]source.Pos) {
 		if owner, ok := b.closureInExpr(x.Call); ok && b.locals[owner] {
 			b.bag.Error(x.Pos(), diag.CodeBorrowOutlives,
 				"this borrow outlives "+owner,
-				"release the borrow first")
+				"shorten the borrow or use clone()")
 		}
 		b.expr(x.Call, borrowed)
 	case *ast.DeadlineExpr:
@@ -1026,6 +1071,18 @@ func (b *borrower) call(call *ast.CallExpr, borrowed map[string]source.Pos) {
 					b.mutAt(arg.Pos(), root, borrowed)
 				}
 			}
+			if fn := b.funcs[name.Name]; fn != nil && i < len(fn.Params) {
+				pt := fn.Params[i].Type
+				if pt == nil {
+					continue
+				}
+				root := rootName(arg.Expr)
+				if pt.IsRef() || pt.Kind == ast.ViewType && !pt.ViewMut {
+					if pos, ok := b.exclusive[root]; ok {
+						b.conflictAt(arg.Pos(), root, pos)
+					}
+				}
+			}
 		}
 	}
 	b.expr(call.Callee, borrowed)
@@ -1034,9 +1091,16 @@ func (b *borrower) call(call *ast.CallExpr, borrowed map[string]source.Pos) {
 		if owner, ok := b.closureInExpr(a.Expr); ok && b.locals[owner] {
 			b.bag.Error(a.Expr.Pos(), diag.CodeBorrowStored,
 				"this borrow is stored where it outlives its owner",
-				"store a value, not a borrow")
+				"store an owned value, or clone it")
 		}
 	}
+}
+
+func borrowedResult(t *ast.Type) bool {
+	if t == nil {
+		return false
+	}
+	return t.Borrow != ast.OwnedBorrow || t.Kind == ast.ViewType
 }
 
 func rootName(e ast.Expr) string {

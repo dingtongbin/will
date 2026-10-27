@@ -149,7 +149,7 @@ func (g *generator) buildInterfaces() {
 			sortByID(params)
 			for _, p := range params {
 				m.params = append(m.params, g.qualifyTypeText(g.pkg, fieldText(p, "type")))
-				m.muts = append(m.muts, fieldText(p, "mut") == "true")
+				m.muts = append(m.muts, isMutText(fieldText(p, "type")))
 			}
 			info.byName[m.name] = len(info.methods)
 			info.methods = append(info.methods, m)
@@ -496,14 +496,12 @@ func (g *generator) interfaceCall(r willc.Record, iface *ifaceInfo) (string, str
 // position, which names the slot reserved for the conversion.
 func (g *generator) callArgParts(parts []string, r willc.Record, index int, argID int, paramType string, mut, link bool) ([]string, error) {
 	if isSingleBorrow(paramType) {
-		if argText, err := g.willTypeText(argID); err == nil {
-			if _, kind := borrowText(argText); kind == "ref" || kind == "mut" {
-				v, err := g.value(argID)
-				if err != nil {
-					return nil, err
-				}
-				return append(parts, "ptr "+v), nil
+		if g.isReferenceExpr(argID) {
+			v, err := g.referenceValue(argID)
+			if err != nil {
+				return nil, err
 			}
+			return append(parts, "ptr "+v), nil
 		}
 		ptr, _, err := g.place(argID)
 		if err != nil {

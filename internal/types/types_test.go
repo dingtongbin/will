@@ -157,6 +157,11 @@ func TestFromSourceRules(t *testing.T) {
 			"",
 		},
 		{
+			"from self names the receiver",
+			"struct Box { n: i32 }\ndef (b: ref Box) number() -> ref i32 from self { return ref b.n }\n",
+			"",
+		},
+		{
 			"from must name a parameter",
 			"def first(a: ref User) -> ref User from tmp {\n    var tmp: User = User { n: 1 }\n    return a\n}\n",
 			diag.CodeBorrowOutlives,

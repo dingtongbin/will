@@ -433,6 +433,9 @@ func (r *resolver) walkFunc(decl *ast.FuncDecl) {
 		r.declareReceiverTypeParams(decl.Recv.Type)
 		r.walkType(decl.Recv.Type)
 		r.declareLocal(&Symbol{Name: decl.Recv.Name, Kind: ReceiverKind, Pos: decl.Recv.NamePos, Node: decl.Recv, Exported: isExported(decl.Recv.Name)})
+		if decl.Recv.Name != "self" {
+			r.declareLocal(&Symbol{Name: "self", Kind: ReceiverKind, Pos: decl.Recv.NamePos, Node: decl.Recv, Exported: false})
+		}
 	}
 	r.declareTypeParams(decl.TypeParams)
 	for _, pm := range decl.Params {

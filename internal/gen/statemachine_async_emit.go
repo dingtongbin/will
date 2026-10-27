@@ -66,7 +66,7 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 %d\n",
 			field, info.frameType, frame, i+2)
 		arg := "%arg" + fmt.Sprint(i)
-		mut := fieldText(paramRecs[i], "mut") == "true"
+		mut := isMutText(fieldText(paramRecs[i], "type"))
 		if pab[i].byPtr && (mut || isSingleBorrow(pab[i].text)) {
 			// An explicit borrow stays a pointer into the caller's place; a
 			// mutable borrow writes the caller's value instead of a copy.

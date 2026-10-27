@@ -217,6 +217,9 @@ func predeclaredLayoutType(name string) bool {
 }
 
 func layoutSpec(t *ast.Type, prefix string) (*layout.Spec, error) {
+	if t != nil && t.Borrow != ast.OwnedBorrow {
+		return &layout.Spec{Kind: layout.RefKind}, nil
+	}
 	if t == nil {
 		return nil, fmt.Errorf("the type is missing")
 	}

@@ -231,6 +231,15 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 		info.names = append(info.names, fieldText(f, "text"))
 		info.texts = append(info.texts, fieldText(f, "type"))
 		t := fieldText(f, "type")
+		if base, kind := borrowText(t); kind == "ref" || kind == "mut" {
+			info.types = append(info.types, "ptr")
+			continue
+		} else if kind == "mutview" {
+			if typ, ok := g.typeLLVMOf(base); ok {
+				info.types = append(info.types, typ)
+				continue
+			}
+		}
 		if typ, _, ok := llvmScalar(t); ok {
 			info.types = append(info.types, typ)
 			continue
@@ -507,6 +516,13 @@ func (g *generator) typeOf(id int) (string, error) {
 		}
 		return g.declLLVMType(decl)
 	case "borrow":
+		if text, err := g.willTypeText(id); err == nil {
+			if base, kind := borrowText(text); kind == "mutview" {
+				if typ, ok := g.typeLLVMOf(base); ok {
+					return typ, nil
+				}
+			}
+		}
 		return "ptr", nil
 	case "field":
 		if info, ok := g.importMember(r); ok {
@@ -1220,6 +1236,9 @@ func (g *generator) place(id int) (string, string, error) {
 	case "await":
 		return g.place(refField(r, "expr"))
 	case "borrow":
+		if v, ok := g.recs[refField(r, "expr")]; ok && v.Kind == "slice" && fieldText(r, "mut") == "true" {
+			return g.place(refField(r, "expr"))
+		}
 		return "", "", g.errf(id, "cannot translate node #%d: a borrow is a value, not a place", id)
 	case "lit":
 		kind := fieldText(r, "kind")
@@ -1350,6 +1369,16 @@ func (g *generator) place(id int) (string, string, error) {
 			base, typ, err = g.place(recvID)
 			if err != nil {
 				return "", "", err
+			}
+			if recv, ok := g.recs[recvID]; ok && recv.Kind == "field" {
+				if fieldText, err := g.willTypeText(recvID); err == nil {
+					if b, kind := borrowText(fieldText); kind == "ref" || kind == "mut" {
+						base = g.load("ptr", base)
+						if t, ok := g.typeLLVMOf(b); ok {
+							typ = t
+						}
+					}
+				}
 			}
 		}
 		info := g.structInfoByLLVM(typ)
@@ -1535,6 +1564,14 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 		g.tmp++
 		ptr := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", ptr, info.llvm, slot, i)
+		if isSingleBorrow(info.texts[i]) {
+			v, err := g.referenceValue(valueID)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", v, ptr)
+			continue
+		}
 		if isAggregateType(info.types[i]) {
 			if iface, ok := g.ifaceOfText(info.texts[i]); ok {
 				valueText, err := g.willTypeText(valueID)

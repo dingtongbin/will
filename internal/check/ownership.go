@@ -94,6 +94,9 @@ func (o *Ownership) hasView(t *ast.Type, bindings map[string]*ast.Type, active m
 	if t == nil {
 		return false
 	}
+	if t.Borrow != ast.OwnedBorrow {
+		return true
+	}
 	switch t.Kind {
 	case ast.ViewType:
 		return true
@@ -288,6 +291,9 @@ func substituteType(t *ast.Type, bindings map[string]*ast.Type) *ast.Type {
 // false positive only asks for a Clone the program may not need.
 func (o *Ownership) owns(t *ast.Type, bindings map[string]*ast.Type, active map[string]bool) bool {
 	if t == nil {
+		return false
+	}
+	if t.Borrow != ast.OwnedBorrow || t.Kind == ast.ViewType {
 		return false
 	}
 	switch t.Kind {

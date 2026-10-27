@@ -259,7 +259,7 @@ func (g *generator) emitSelectMachineStep(info *selectMachineInfo) error {
 			return err
 		}
 		if byPtr {
-			if fieldText(p, "mut") == "true" {
+			if isMutText(fieldText(p, "type")) {
 				g.scope[p.ID] = g.load("ptr", field)
 			} else {
 				g.scope[p.ID] = field

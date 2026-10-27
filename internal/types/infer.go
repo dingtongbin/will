@@ -174,7 +174,9 @@ func (c *checker) inferFunc(decl *ast.FuncDecl) {
 	s.async = decl.Async
 	s.result = c.buildType(decl.Result, tp)
 	if decl.Recv != nil {
-		s.vars[decl.Recv.Name] = c.buildType(decl.Recv.Type, tp)
+		recvType := c.buildType(decl.Recv.Type, tp)
+		s.vars[decl.Recv.Name] = recvType
+		s.vars["self"] = recvType
 	}
 	for _, pm := range decl.Params {
 		t := c.buildType(pm.Type, tp)
@@ -215,6 +217,7 @@ func (c *checker) checkFrom(decl *ast.FuncDecl, s *inferScope) {
 	names := map[string]bool{}
 	if decl.Recv != nil {
 		names[decl.Recv.Name] = true
+		names["self"] = true
 		if c.borrowsType(c.buildType(decl.Recv.Type, s.tp), map[*Type]bool{}) {
 			eligible++
 		}
@@ -260,14 +263,9 @@ func (c *checker) checkFrom(decl *ast.FuncDecl, s *inferScope) {
 				"name a parameter or self")
 			continue
 		}
-		got := c.inferExpr(s, src)
-		if got != nil && (result.IsRef() || result.IsMutRef() || result.Kind() == ViewKind) {
-			if !Equal(got.Unref(), result.Unref()) {
-				c.bag.Error(src.Pos(), diag.CodeBorrowOutlives,
-					"from source has type "+got.String()+", want "+result.Unref().String(),
-					"name a source of the returned borrow type")
-			}
-		}
+		// The source names the owner, not necessarily a value of the result
+		// type: from self may return a field view or reference.
+		_ = c.inferExpr(s, src)
 	}
 }
 
@@ -648,9 +646,22 @@ func (c *checker) checkValue(s *inferScope, e ast.Expr, want *Type) {
 			"a guard cannot be copied",
 			"keep it in the local that lock returned")
 	}
-	if !Equal(got, want) {
-		c.mismatch(e.Pos(), got, want, false, "", 0)
+	if Equal(got, want) || derefScalar(got, want) {
+		return
 	}
+	c.mismatch(e.Pos(), got, want, false, "", 0)
+}
+
+// derefScalar reads a scalar out of a reference. Aggregates and owning values
+// stay borrowed: moving out of a ref needs clone.
+func derefScalar(got, want *Type) bool {
+	if got == nil || want == nil || !got.IsRef() && !got.IsMutRef() {
+		return false
+	}
+	if want.Borrow() != ast.OwnedBorrow || want.Kind() != ScalarKind {
+		return false
+	}
+	return Equal(got.Unref(), want)
 }
 
 // checkNegativeLiteral checks a negated integer literal against a signed
@@ -824,7 +835,7 @@ func (c *checker) checkArg(s *inferScope, e ast.Expr, want *Type, callee string,
 			"a guard cannot be copied",
 			"keep it in the local that lock returned")
 	}
-	if Equal(got, want) || c.borrowArg(got, want, e) {
+	if Equal(got, want) || c.borrowArg(got, want, e) || derefScalar(got, want) {
 		return
 	}
 	c.mismatch(e.Pos(), got, want, true, callee, n)

@@ -143,13 +143,13 @@ func (g *generator) asyncParamABI(p willc.Record) (string, bool, error) {
 		return "ptr", false, nil
 	}
 	if typ, _, ok := llvmScalar(text); ok {
-		if fieldText(p, "mut") == "true" {
+		if isMutText(fieldText(p, "type")) {
 			return "ptr", true, nil
 		}
 		return typ, false, nil
 	}
 	if text == "Duration" {
-		if fieldText(p, "mut") == "true" {
+		if isMutText(fieldText(p, "type")) {
 			return "ptr", true, nil
 		}
 		return "i64", false, nil
@@ -158,7 +158,7 @@ func (g *generator) asyncParamABI(p willc.Record) (string, bool, error) {
 	if err != nil || typ == "" {
 		return "", false, g.errf(p.ID, "cannot translate node #%d: parameter %s is not lowered", p.ID, text)
 	}
-	if fieldText(p, "mut") == "true" {
+	if isMutText(fieldText(p, "type")) {
 		// A mutable aggregate is a pointer into the caller's place, so the
 		// frame reserves one pointer, not a second copy of the aggregate.
 		return "ptr", true, nil

@@ -24,7 +24,7 @@
 #24 return parent=#23 pos="program.will:20:5" value=#25
 #25 name parent=#24 pos="program.will:20:12" text="n" to=#20
 #26 func parent=#1 pos="program.will:23:1" text="move"
-#27 receiver parent=#26 pos="program.will:23:5" text="p" type="mut Point" mut=true
+#27 receiver parent=#26 pos="program.will:23:5" text="p" type="mut Point"
 #28 type parent=#27 pos="program.will:23:9" text="mut Point" kind=mutref to=#6
 #29 param parent=#26 pos="program.will:23:25" text="dx" type="i32"
 #30 type parent=#29 pos="program.will:23:29" text="i32" kind=scalar

@@ -10,8 +10,8 @@ var kindSpecs = map[string]KindSpec{
 	"var":       {Required: []string{"text", "type"}},
 	"typealias": {Required: []string{"text", "to"}},
 	"func":      {Required: []string{"text"}, Optional: []string{"type", "async"}, Repeatable: []string{"from"}},
-	"receiver":  {Required: []string{"text", "type"}, Optional: []string{"mut"}},
-	"param":     {Required: []string{"text", "type"}, Optional: []string{"mut", "variadic"}},
+	"receiver":  {Required: []string{"text", "type"}},
+	"param":     {Required: []string{"text", "type"}, Optional: []string{"variadic"}},
 	"struct":    {Required: []string{"text"}},
 	"field": {
 		RequiredAny: [][]string{{"text", "type"}, {"recv", "text"}},

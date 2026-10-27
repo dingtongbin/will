@@ -81,7 +81,7 @@ func (g *generator) generalFrameParamOwners(fnID int, offsets map[string]int,
 	params []willc.Record) []generalFrameOwner {
 	var out []generalFrameOwner
 	for _, p := range params {
-		if p.Kind != "param" || fieldText(p, "mut") == "true" {
+		if p.Kind != "param" || isMutText(fieldText(p, "type")) {
 			continue
 		}
 		text := fieldText(p, "type")

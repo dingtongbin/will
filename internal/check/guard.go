@@ -155,6 +155,8 @@ func (g *guardWalker) expr(e ast.Expr) {
 		g.expr(x.Recv)
 		g.expr(x.Lo)
 		g.expr(x.Hi)
+	case *ast.BorrowExpr:
+		g.expr(x.X)
 	case *ast.AggregateExpr:
 		for _, field := range x.Fields {
 			g.expr(field.Value)

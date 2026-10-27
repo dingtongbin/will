@@ -6,7 +6,7 @@
 #6 type text="i32" kind="scalar"
 #7 name text="1000"
 #8 func text="Move"
-#9 receiver text="p" type="Point" mut=true
+#9 receiver text="p" type="mut Point"
 #10 param text="dx" type="i32"
 #11 type text="i32" kind="scalar"
 #12 block

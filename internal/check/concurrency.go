@@ -174,6 +174,8 @@ func (e *escapeWalker) use(expr ast.Expr, region int) {
 		e.use(x.Recv, region)
 		e.use(x.Lo, region)
 		e.use(x.Hi, region)
+	case *ast.BorrowExpr:
+		e.use(x.X, region)
 	case *ast.AggregateExpr:
 		for _, f := range x.Fields {
 			e.use(f.Value, region)
