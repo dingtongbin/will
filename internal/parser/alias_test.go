@@ -21,6 +21,13 @@ func TestParseTypeAlias(t *testing.T) {
 	}
 }
 
+func TestImportAlias(t *testing.T) {
+	f := parse(t, "import h \"std/net/http\"\n\ndef f() {\n}\n")
+	if len(f.Imports) != 1 || f.Imports[0].Alias != "h" || f.Imports[0].Path != "std/net/http" {
+		t.Fatalf("import = %+v, want alias h", f.Imports)
+	}
+}
+
 func TestTypeAliasIsTopLevelOnly(t *testing.T) {
 	_, ds := Parse("test.will", []byte("def f() {\n    type UserId = i64\n}\n"))
 	if len(ds) != 1 || ds[0].Code != diag.CodeUnexpectedToken {

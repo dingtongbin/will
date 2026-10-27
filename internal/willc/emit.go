@@ -379,6 +379,9 @@ func (e *emitter) emitImport(imp *ast.Import) {
 	}
 	rec := e.add(kind, imp)
 	e.text(rec, "path", imp.Path)
+	if imp.Alias != "" {
+		e.text(rec, "alias", imp.Alias)
+	}
 	if imp.SideEffect {
 		e.boolean(rec, "unused", true)
 	}

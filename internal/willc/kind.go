@@ -3,7 +3,7 @@ package willc
 // kindSpecs is the single owner of the record kinds and their fields.
 var kindSpecs = map[string]KindSpec{
 	"module":    {Required: []string{"path"}},
-	"import":    {Required: []string{"path"}, Optional: []string{"unused"}},
+	"import":    {Required: []string{"path"}, Optional: []string{"alias", "unused"}},
 	"cimport":   {Required: []string{"path"}},
 	"link":      {Required: []string{"text"}, Optional: []string{"fast", "blocking", "typed", "type", "param", "variadic"}, Repeatable: []string{"param"}},
 	"const":     {Required: []string{"text", "type"}},

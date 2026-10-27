@@ -22,6 +22,20 @@ def save(id: i64) -> UserId {
 	}
 }
 
+func TestVarAndConstInference(t *testing.T) {
+	src := `const limit = 10i64
+var count = limit
+
+def f() -> i64 {
+    var n = 1i64
+    return n + count
+}
+`
+	if ds := checkWithResolve(t, src); len(ds) != 0 {
+		t.Fatalf("inferred declarations were rejected:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestTypeAliasCycle(t *testing.T) {
 	src := `type A = B
 type B = A

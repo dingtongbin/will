@@ -39,6 +39,7 @@ func ResolveIn(f *ast.File, packageNames Exported, imports Imports) (*Result, []
 		derives:           map[string]bool{},
 		unknownQualifiers: map[string]bool{},
 	}
+	r.fileScope = newScope(r.pkg)
 	r.addPredeclared()
 	r.addPackageNames(packageNames)
 	r.addImports()
@@ -50,18 +51,19 @@ func ResolveIn(f *ast.File, packageNames Exported, imports Imports) (*Result, []
 }
 
 type resolver struct {
-	file     *ast.File
-	pkg      *scope
-	stack    []*scope
-	bag      diag.Bag
-	refs     map[ast.Node]*Symbol
-	symbols  []*Symbol
-	imports  []*importRec
-	methods  map[string]*Symbol
-	packages Imports
-	tables   map[string]Exported
-	derives  map[string]bool
-	cImport  *Symbol
+	file      *ast.File
+	pkg       *scope
+	fileScope *scope
+	stack     []*scope
+	bag       diag.Bag
+	refs      map[ast.Node]*Symbol
+	symbols   []*Symbol
+	imports   []*importRec
+	methods   map[string]*Symbol
+	packages  Imports
+	tables    map[string]Exported
+	derives   map[string]bool
+	cImport   *Symbol
 	// unknownQualifiers holds the package names whose import path matched no
 	// package, so their members are not checked.
 	unknownQualifiers map[string]bool
@@ -166,7 +168,12 @@ func (r *resolver) addImports() {
 			// block binds one name, c, whatever headers it names.
 			if r.cImport == nil {
 				sym := &Symbol{Name: "c", Kind: ImportKind, Pos: imp.Span.Start, Node: imp}
-				r.defineTop(sym)
+				if prev := r.fileScope.names["c"]; prev != nil {
+					r.duplicate(sym.Pos, "c")
+				} else {
+					r.fileScope.define(sym)
+					r.symbols = append(r.symbols, sym)
+				}
 				r.cImport = sym
 				r.tables["c"] = Exported{}
 				rec.sym = sym
@@ -187,19 +194,20 @@ func (r *resolver) addImports() {
 				rec.links = append(rec.links, sym)
 			}
 		default:
-			name := packageName(imp.Path)
+			name := imp.Alias
+			if name == "" {
+				name = packageName(imp.Path)
+			}
 			if name == "" {
 				break
 			}
 			table, known := r.packages[imp.Path]
 			sym := &Symbol{Name: name, Kind: ImportKind, Pos: imp.Span.Start, Node: imp}
-			if prev := r.pkg.names[name]; prev != nil && prev.Predeclared {
-				// An import is a namespace; it does not make a predeclared
-				// name unusable, and there is no alias syntax to avoid the
-				// collision. Install it without the shadow warning.
-				r.pkg.define(sym)
+			if prev := r.fileScope.names[name]; prev != nil {
+				r.duplicate(sym.Pos, name)
 			} else {
-				r.defineTop(sym)
+				r.fileScope.define(sym)
+				r.symbols = append(r.symbols, sym)
 			}
 			rec.sym = sym
 			if known {
@@ -471,7 +479,7 @@ func (r *resolver) pop() {
 
 func (r *resolver) current() *scope {
 	if len(r.stack) == 0 {
-		return r.pkg
+		return r.fileScope
 	}
 	return r.stack[len(r.stack)-1]
 }
@@ -555,6 +563,9 @@ func (r *resolver) visibleNames() []string {
 		}
 	}
 	for _, sym := range r.pkg.order {
+		out = append(out, sym.Name)
+	}
+	for _, sym := range r.fileScope.order {
 		out = append(out, sym.Name)
 	}
 	return out

@@ -58,6 +58,9 @@ func (p *Parser) parseImport() *ast.Import {
 		if p.at(token.LBrace) {
 			imp.Links = p.parseLinks()
 		}
+	case p.at(token.Ident):
+		imp.Alias = p.next().Text
+		imp.Path = p.expect(token.String, "an import path").Value
 	default:
 		p.unexpected("an import path")
 	}
@@ -117,22 +120,23 @@ func (p *Parser) parseDecl(doc string) ast.Decl {
 func (p *Parser) parseValueDecl(doc string, allowZero bool) ast.Decl {
 	start := p.next()
 	name, nameTok := p.expectName("a name")
-	p.expect(token.Colon, ":")
-	p.skipNL()
-	typ := p.parseType()
+	var typ *ast.Type
+	if p.at(token.Colon) {
+		p.next()
+		p.skipNL()
+		typ = p.parseType()
+	}
 	var value ast.Expr
 	if start.Kind == token.KwConst {
 		p.expect(token.Assign, "=")
 		p.skipNL()
 		value = p.parseExpr(0, true)
-	} else if allowZero && p.at(token.Assign) {
+	} else if p.at(token.Assign) {
 		p.next()
 		p.skipNL()
 		value = p.parseExpr(0, true)
-	} else if !allowZero {
-		p.expect(token.Assign, "=")
-		p.skipNL()
-		value = p.parseExpr(0, true)
+	} else if typ == nil {
+		p.unexpected("= or :")
 	}
 	span := p.spanFrom(start)
 	if start.Kind == token.KwConst {

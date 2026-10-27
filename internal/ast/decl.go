@@ -7,6 +7,7 @@ import "github.com/will-lang/will/internal/source"
 type Import struct {
 	Span
 	Path       string
+	Alias      string
 	SideEffect bool
 	C          bool
 	Links      []*Link

@@ -48,6 +48,7 @@ func (s *inferScope) lookup(name string) (*Type, bool) {
 
 func (c *checker) inferFile(f *ast.File) {
 	global := newInferScope(nil)
+	c.inferGlobals(global, f)
 	for _, d := range f.Decls {
 		switch decl := d.(type) {
 		case *ast.ConstDecl:
@@ -68,6 +69,35 @@ func (c *checker) inferFile(f *ast.File) {
 		case *ast.LaneDecl:
 			if decl.Decl != nil {
 				c.inferFile(&ast.File{Decls: []ast.Decl{decl.Decl}})
+			}
+		}
+	}
+}
+
+// inferGlobals resolves top-level var and const initializers before any
+// function body is checked, so an inferred global has a type at every use.
+func (c *checker) inferGlobals(global *inferScope, f *ast.File) {
+	for _, d := range f.Decls {
+		switch decl := d.(type) {
+		case *ast.ConstDecl:
+			t := c.buildType(decl.Type, nil)
+			if t == nil && decl.Value != nil {
+				t = c.inferExpr(global, decl.Value)
+			}
+			c.env.vars[decl.Name] = t
+			global.vars[decl.Name] = t
+			if decl.Value != nil {
+				c.checkValue(global, decl.Value, t)
+			}
+		case *ast.VarDecl:
+			t := c.buildType(decl.Type, nil)
+			if t == nil && decl.Value != nil {
+				t = c.inferExpr(global, decl.Value)
+			}
+			c.env.vars[decl.Name] = t
+			global.vars[decl.Name] = t
+			if decl.Value != nil {
+				c.checkValue(global, decl.Value, t)
 			}
 		}
 	}
@@ -142,10 +172,19 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 		switch d := x.Decl.(type) {
 		case *ast.ConstDecl:
 			want := c.buildType(d.Type, s.tp)
+			if want == nil && d.Value != nil {
+				want = c.inferExpr(s, d.Value)
+			}
 			c.checkValue(s, d.Value, want)
 			s.vars[d.Name] = want
 		case *ast.VarDecl:
 			want := c.buildType(d.Type, s.tp)
+			if want == nil && d.Value != nil {
+				want = c.inferExpr(s, d.Value)
+				c.rejectRawAddress(d.Value)
+				s.vars[d.Name] = want
+				return
+			}
 			c.rejectRawAddress(d.Value)
 			if d.Value == nil {
 				if isGuardType(want) {
