@@ -91,6 +91,34 @@ func TestEmitCharLiteralIsU32(t *testing.T) {
 	}
 }
 
+func TestEmitDefaultsAndNamedArgsRoundTrip(t *testing.T) {
+	src := `def add(a: i32, b: i32 = 2) -> i32 {
+    return a + b
+}
+
+def use() -> i32 {
+    return add(b = 3, a = 4)
+}
+`
+	data := emitCheckedSourceIn(t, "args.will", src, "example.com/app", nil)
+	for _, want := range []string{
+		`default=#`,
+		`name="b"`,
+		`name="a"`,
+	} {
+		if !strings.Contains(string(data), want) {
+			t.Fatalf("willc lacks %q:\n%s", want, data)
+		}
+	}
+	doc, err := Read(data)
+	if err != nil {
+		t.Fatalf("read emitted: %v\n%s", err, data)
+	}
+	if again := Write(doc); !bytes.Equal(again, data) {
+		t.Fatalf("round trip differs:\n--- want\n%s\n--- got\n%s", data, again)
+	}
+}
+
 func TestEmitRefAndFromRoundTrip(t *testing.T) {
 	src := `struct User {
     score: i32

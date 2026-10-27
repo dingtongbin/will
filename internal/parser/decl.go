@@ -227,6 +227,11 @@ func (p *Parser) parseParam() *ast.Param {
 	}
 	param.Type = p.parseType()
 	param.Mut = param.Type.IsMutRef() || param.Type.ViewMut
+	if p.at(token.Assign) {
+		p.next()
+		p.skipNL()
+		param.Default = p.parseExpr(0, true)
+	}
 	param.Span = p.spanFrom(start)
 	return param
 }

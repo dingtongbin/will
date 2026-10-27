@@ -98,6 +98,7 @@ type Param struct {
 	Type     *Type
 	Mut      bool
 	Variadic bool
+	Default  Expr
 }
 
 // TypeParam is one type parameter with its interface constraints.

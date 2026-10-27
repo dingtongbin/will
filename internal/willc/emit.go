@@ -583,6 +583,10 @@ func (e *emitter) emitParams(params []*ast.Param) {
 		}
 		e.push(id)
 		e.emitType(pm.Type)
+		if pm.Default != nil {
+			did := e.emitExpr(pm.Default)
+			e.field(id, "default", Ref(did))
+		}
 		e.pop()
 	}
 }

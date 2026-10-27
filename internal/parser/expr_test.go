@@ -28,6 +28,29 @@ const exprProgram = `def f(n: i32) {
 }
 `
 
+func TestLowercaseRangeExpression(t *testing.T) {
+	src := `def f() {
+    for i in range(3) {
+        _ = i
+    }
+    for j in range(1, 4) {
+        _ = j
+    }
+}
+`
+	f := parse(t, src)
+	fn := firstFunc(t, f)
+	for i, st := range fn.Body.Stmts {
+		loop, ok := st.(*ast.ForStmt)
+		if !ok {
+			t.Fatalf("statement %d = %T, want for", i, st)
+		}
+		if _, ok := loop.Iter.(*ast.RangeExpr); !ok {
+			t.Errorf("statement %d iter = %T, want range", i, loop.Iter)
+		}
+	}
+}
+
 func TestParseFixedArrayLiteral(t *testing.T) {
 	f := parse(t, "def f() -> i32 {\n    var xs: [3]i32 = [3]i32 { 1, 2, 3 }\n    return xs[0]\n}\n")
 	lit, ok := varValue(t, f, "xs").(*ast.ArrayLitExpr)

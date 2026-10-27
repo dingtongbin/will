@@ -1016,6 +1016,8 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 			}
 		case "SizeOf", "AlignOf", "OffsetOf":
 			return "usize", nil
+		case "len":
+			return "usize", nil
 		}
 	}
 	if text, known := g.rcCallResult(r); known {

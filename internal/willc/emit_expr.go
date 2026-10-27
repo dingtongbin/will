@@ -230,6 +230,14 @@ func literalText(v *ast.LiteralExpr) string {
 	return v.Text
 }
 
+func (e *emitter) emitCallArg(rec int, a *ast.CallArg) {
+	if a.Name != "" {
+		e.text(rec, "name", a.Name)
+	}
+	aid := e.emitExpr(a.Expr)
+	e.field(rec, "arg", Ref(aid))
+}
+
 func (e *emitter) emitCall(c *ast.CallExpr) int {
 	if name, ok := c.Callee.(*ast.NameExpr); ok {
 		sym := e.refs[name]
@@ -270,8 +278,7 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 		}
 		e.emitTypeArgsField(rec, c.TypeArgs)
 		for _, a := range c.Args {
-			aid := e.emitExpr(a.Expr)
-			e.field(rec, "arg", Ref(aid))
+			e.emitCallArg(rec, a)
 		}
 		e.pop()
 		return rec
@@ -282,8 +289,7 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 	e.field(rec, "to", Ref(cid))
 	e.emitTypeArgsField(rec, c.TypeArgs)
 	for _, a := range c.Args {
-		aid := e.emitExpr(a.Expr)
-		e.field(rec, "arg", Ref(aid))
+		e.emitCallArg(rec, a)
 	}
 	e.pop()
 	return rec
@@ -338,8 +344,7 @@ func (e *emitter) emitMethodCall(v *ast.MethodCallExpr) int {
 	e.field(rec, "recv", Ref(rid))
 	e.emitTypeArgsField(rec, v.TypeArgs)
 	for _, a := range v.Args {
-		aid := e.emitExpr(a.Expr)
-		e.field(rec, "arg", Ref(aid))
+		e.emitCallArg(rec, a)
 	}
 	e.pop()
 	return rec
@@ -421,8 +426,7 @@ func (e *emitter) emitNew(v *ast.NewExpr) int {
 	e.text(rec, "type", typeText(v.Type))
 	e.push(rec)
 	for _, a := range v.Args {
-		aid := e.emitExpr(a.Expr)
-		e.field(rec, "arg", Ref(aid))
+		e.emitCallArg(rec, a)
 	}
 	e.pop()
 	return rec

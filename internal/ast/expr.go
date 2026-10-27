@@ -37,6 +37,7 @@ func (*LiteralExpr) exprNode() {}
 // CallArg is one call argument. Spread marks trailing variadic expansion.
 type CallArg struct {
 	Span
+	Name   string
 	Expr   Expr
 	Spread bool
 }

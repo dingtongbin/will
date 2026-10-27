@@ -414,6 +414,8 @@ func (g *generator) collectSignatures() {
 	g.methodsQualified = map[string]string{}
 	g.methodSymbols = map[string]bool{}
 	g.paramTypes = map[string][]string{}
+	g.paramNames = map[string][]string{}
+	g.paramDefaults = map[string][]int{}
 	g.paramMut = map[string][]bool{}
 	g.varargs = map[string]bool{}
 	g.ifaceDecls = map[string]*ifaceInfo{}
@@ -506,10 +508,14 @@ func (g *generator) collectSignatures() {
 			}
 			sortByID(paramRecs)
 			var params []string
+			var names []string
+			var defaults []int
 			var muts []bool
 			variadic := false
 			for _, c := range paramRecs {
 				params = append(params, g.qualifyTypeText(d.path, fieldText(c, "type")))
+				names = append(names, fieldText(c, "text"))
+				defaults = append(defaults, refField(c, "default"))
 				muts = append(muts, isMutText(fieldText(c, "type")))
 				if fieldText(c, "variadic") == "true" {
 					variadic = true
@@ -526,6 +532,8 @@ func (g *generator) collectSignatures() {
 			}
 			d.symbols[r.ID] = sym
 			g.paramTypes[sym] = params
+			g.paramNames[sym] = names
+			g.paramDefaults[sym] = defaults
 			g.paramMut[sym] = muts
 			if variadic {
 				g.varargs[sym] = true
@@ -791,6 +799,8 @@ type generator struct {
 	typeIDs        map[string]string
 	emittedTypeIDs map[string]bool
 	paramTypes     map[string][]string
+	paramNames     map[string][]string
+	paramDefaults  map[string][]int
 	varargs        map[string]bool
 	// errorIface is the predeclared Error interface, and errorEmitted records
 	// that its module-wide type definition is already written.
@@ -4328,6 +4338,13 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		}
 		return value, "usize", nil
 	}
+	if name, ok := g.predeclaredCallName(r); ok && name == "len" {
+		value, err := g.lowerLen(r)
+		if err != nil {
+			return "", "", err
+		}
+		return value, "usize", nil
+	}
 	if name, ok := g.predeclaredCallName(r); ok && (name == "take_c" || name == "take_c_rc") {
 		value, err := g.lowerTakeC(r, name)
 		if err != nil {
@@ -4516,6 +4533,13 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 		g.noteExternalFunc(name)
 	}
 	args := g.callArgs(r)
+	if !link {
+		ordered, oerr := g.orderedCallArgs(r, name, args)
+		if oerr != nil {
+			return "", "", oerr
+		}
+		args = ordered
+	}
 	parts := make([]string, 0, len(args))
 	// A method call passes its receiver first, as the borrow pointer the
 	// method's hidden first parameter takes.
@@ -4648,6 +4672,61 @@ func i32Types(n int) string {
 
 // callArgs lists the argument records of a call in id order. A method call
 // also has a receiver child, which is not an argument.
+// orderedCallArgs applies named binding and trailing defaults to one local
+// call. A call whose parameter metadata is unavailable keeps its written order;
+// the type checker has already rejected bad arity there.
+func (g *generator) orderedCallArgs(r willc.Record, name string, args []int) ([]int, error) {
+	params := g.paramTypes[name]
+	names := g.paramNames[name]
+	defaults := g.paramDefaults[name]
+	if len(params) == 0 || g.varargs[name] {
+		return args, nil
+	}
+	var given []string
+	for _, f := range r.Fields {
+		if f.Name == "name" {
+			given = append(given, f.Value.Text)
+		}
+	}
+	if len(given) > len(args) {
+		return nil, g.errf(r.ID, "cannot translate node #%d: named argument metadata is malformed", r.ID)
+	}
+	ordered := make([]int, len(params))
+	positional := len(args) - len(given)
+	for i := 0; i < positional; i++ {
+		if i >= len(params) {
+			return nil, g.errf(r.ID, "cannot translate node #%d: %s takes %d arguments", r.ID, name, len(params))
+		}
+		ordered[i] = args[i]
+	}
+	for i, argName := range given {
+		idx := -1
+		for j, p := range names {
+			if p == argName {
+				idx = j
+				break
+			}
+		}
+		if idx < 0 {
+			return nil, g.errf(r.ID, "cannot translate node #%d: unknown named argument %s", r.ID, argName)
+		}
+		if ordered[idx] != 0 {
+			return nil, g.errf(r.ID, "cannot translate node #%d: duplicate argument %s", r.ID, argName)
+		}
+		ordered[idx] = args[positional+i]
+	}
+	for i, id := range ordered {
+		if id != 0 {
+			continue
+		}
+		if i >= len(defaults) || defaults[i] == 0 {
+			return nil, g.errf(r.ID, "cannot translate node #%d: missing argument %s", r.ID, params[i])
+		}
+		ordered[i] = defaults[i]
+	}
+	return ordered, nil
+}
+
 func (g *generator) callArgs(r willc.Record) []int {
 	skip := 0
 	if r.Kind == "mcall" {

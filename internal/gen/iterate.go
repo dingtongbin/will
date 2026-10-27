@@ -200,21 +200,6 @@ func (g *generator) sliceValue(r willc.Record) (string, error) {
 		return "", g.errf(r.ID, "cannot translate node #%d: view element %s is not lowered yet", r.ID, elem)
 	}
 	loID, hiID := refField(r, "lo"), refField(r, "hi")
-	for _, id := range []int{loID, hiID} {
-		if t, err := g.typeOf(id); err != nil {
-			return "", err
-		} else if t != "i64" {
-			return "", g.errf(r.ID, "cannot translate node #%d: a slice bound must be a usize", r.ID)
-		}
-	}
-	lo, err := g.value(loID)
-	if err != nil {
-		return "", err
-	}
-	hi, err := g.value(hiID)
-	if err != nil {
-		return "", err
-	}
 	base, baseType, err := g.place(refField(r, "recv"))
 	if err != nil {
 		return "", err
@@ -222,6 +207,37 @@ func (g *generator) sliceValue(r willc.Record) (string, error) {
 	text, err := g.willTypeText(refField(r, "recv"))
 	if err != nil {
 		return "", err
+	}
+	lo := "0"
+	if loID != 0 {
+		if t, err := g.typeOf(loID); err != nil {
+			return "", err
+		} else if t != "i64" {
+			return "", g.errf(r.ID, "cannot translate node #%d: a slice bound must be a usize", r.ID)
+		}
+		lo, err = g.value(loID)
+		if err != nil {
+			return "", err
+		}
+	}
+	hi := ""
+	if hiID != 0 {
+		if t, err := g.typeOf(hiID); err != nil {
+			return "", err
+		} else if t != "i64" {
+			return "", g.errf(r.ID, "cannot translate node #%d: a slice bound must be a usize", r.ID)
+		}
+		hi, err = g.value(hiID)
+		if err != nil {
+			return "", err
+		}
+	} else if n, _, ok := arrayTypeText(text); ok {
+		hi = strconv.Itoa(n)
+	} else {
+		g.tmp++
+		lenField := "%t" + strconv.Itoa(g.tmp)
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", lenField, baseType, base)
+		hi = g.load("i64", lenField)
 	}
 	badOrder := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp ugt i64 %s, %s\n", badOrder, lo, hi)

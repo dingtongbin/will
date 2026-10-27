@@ -188,6 +188,61 @@ func TestFromSourceRules(t *testing.T) {
 	}
 }
 
+func TestDefaultAndNamedArgumentTypes(t *testing.T) {
+	base := `def add(a: i32, b: i32 = 2) -> i32 {
+    return a + b
+}
+`
+	ok := []string{
+		"def f() -> i32 { return add(1) }\n",
+		"def f() -> i32 { return add(b = 3, a = 4) }\n",
+	}
+	for _, body := range ok {
+		if ds := checkWithResolve(t, base+body); len(ds) != 0 {
+			t.Fatalf("valid call diagnostics:\n%s", diag.FormatAll(ds))
+		}
+	}
+	bad := []string{
+		"def f() -> i32 { return add() }\n",
+		"def f() -> i32 { return add(c = 1) }\n",
+		"def f() -> i32 { return add(a = 1, a = 2) }\n",
+		"def f() -> i32 { return add(a = 1, 2) }\n",
+	}
+	for _, body := range bad {
+		if ds := checkWithResolve(t, base+body); len(ds) == 0 {
+			t.Errorf("invalid call accepted:\n%s", body)
+		}
+	}
+	if ds := checkTypes(t, "def f(a: i32 = b, b: i32 = 2) -> i32 { return a + b }\n"); len(ds) == 0 {
+		t.Fatal("a default referring to a later parameter was accepted")
+	}
+}
+
+func TestSliceAndLenTypes(t *testing.T) {
+	src := `
+def read(xs: []i32) -> []i32 from xs {
+    return xs[1:]
+}
+
+def write(xs: mut []i32) {
+    var part: mut []i32 = mut xs[1:2]
+    part[0] = 1
+}
+
+def count(xs: []i32) -> usize {
+    return len(xs)
+}
+`
+	ds := checkTypes(t, src)
+	if len(ds) != 0 {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+	ds = checkTypes(t, "def f(xs: []i32) { var v: []i32 = xs[-1:2] }\n")
+	if len(ds) == 0 {
+		t.Fatal("negative slice bound was accepted")
+	}
+}
+
 func TestSpawnMustBeAwaitedThroughANamedHandle(t *testing.T) {
 	base := "def work() -> i32 {\n    return 1\n}\n\n"
 	cases := []struct {

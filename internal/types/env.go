@@ -12,6 +12,8 @@ import (
 type signature struct {
 	name       string
 	params     []*Type
+	paramNames []string
+	hasDefault []bool
 	variadic   bool
 	result     *Type
 	typeParams int
@@ -176,6 +178,8 @@ func (b *envBuilder) decl(d ast.Decl) {
 		for _, m := range decl.Methods {
 			sig := &signature{name: m.Name, async: m.Async}
 			for _, pm := range m.Params {
+				sig.paramNames = append(sig.paramNames, pm.Name)
+				sig.hasDefault = append(sig.hasDefault, pm.Default != nil)
 				sig.params = append(sig.params, c.buildType(pm.Type, tp))
 			}
 			sig.result = c.buildType(m.Result, tp)
@@ -282,10 +286,12 @@ func (c *checker) buildSig(decl *ast.FuncDecl) *signature {
 		}
 	}
 	for i, pm := range decl.Params {
+		_ = i
+		sig.paramNames = append(sig.paramNames, pm.Name)
+		sig.hasDefault = append(sig.hasDefault, pm.Default != nil)
 		if pm.Variadic {
 			sig.variadic = true
 			sig.params = append(sig.params, c.in.view(c.buildType(pm.Type, tp)))
-			_ = i
 			continue
 		}
 		sig.params = append(sig.params, c.buildType(pm.Type, tp))

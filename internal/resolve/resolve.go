@@ -392,6 +392,9 @@ func (r *resolver) walkDecl(d ast.Decl) {
 				r.declareLocal(&Symbol{Name: pm.Name, Kind: ParamKind, Pos: pm.NamePos, Node: pm, Exported: isExported(pm.Name)})
 				r.walkType(pm.Type)
 			}
+			for _, pm := range m.Params {
+				r.walkExpr(pm.Default, true)
+			}
 			r.walkType(m.Result)
 			for _, src := range m.From {
 				r.walkExpr(src, true)
@@ -441,6 +444,9 @@ func (r *resolver) walkFunc(decl *ast.FuncDecl) {
 	for _, pm := range decl.Params {
 		r.declareLocal(&Symbol{Name: pm.Name, Kind: ParamKind, Pos: pm.NamePos, Node: pm, Exported: isExported(pm.Name)})
 		r.walkType(pm.Type)
+	}
+	for _, pm := range decl.Params {
+		r.walkExpr(pm.Default, true)
 	}
 	r.walkType(decl.Result)
 	for _, src := range decl.From {

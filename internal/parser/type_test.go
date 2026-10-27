@@ -48,6 +48,43 @@ func TestNestedTypeArguments(t *testing.T) {
 	}
 }
 
+func TestSliceSyntax(t *testing.T) {
+	src := `def f(xs: []i32) {
+    var a: []i32 = xs[1:3]
+    var b: []i32 = xs[:2]
+    var c: []i32 = xs[1:]
+    var d: []i32 = xs[:]
+}
+`
+	f := parse(t, src)
+	fn := firstFunc(t, f)
+	want := []string{"a", "b", "c", "d"}
+	for i, name := range want {
+		vs, ok := fn.Body.Stmts[i].(*ast.VarStmt)
+		if !ok {
+			t.Fatalf("statement %d = %T, want var", i, fn.Body.Stmts[i])
+		}
+		d, ok := vs.Decl.(*ast.VarDecl)
+		if !ok || d.Name != name {
+			t.Fatalf("statement %d decl = %+v, want %s", i, vs.Decl, name)
+		}
+		sl, ok := d.Value.(*ast.SliceExpr)
+		if !ok {
+			t.Fatalf("%s value = %T, want slice", name, d.Value)
+		}
+		if sl.Lo == nil || sl.Hi == nil {
+			t.Errorf("%s bounds = %+v, want both filled", name, sl)
+		}
+	}
+}
+
+func TestSliceRejectsStep(t *testing.T) {
+	_, ds := Parse("test.will", []byte("def f(xs: []i32) { var v = xs[1:2:3] }\n"))
+	if len(ds) == 0 {
+		t.Fatal("a slice with a step parsed")
+	}
+}
+
 func TestBorrowAndFromSyntax(t *testing.T) {
 	src := `def (r: ref Reader) read(buf: mut []u8) -> ref Item from r {
     var shared: ref Item = ref r.item

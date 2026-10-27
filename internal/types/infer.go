@@ -185,6 +185,32 @@ func (c *checker) inferFunc(decl *ast.FuncDecl) {
 		}
 		s.vars[pm.Name] = t
 	}
+	for i, pm := range decl.Params {
+		if pm.Default == nil {
+			continue
+		}
+		if pm.Variadic {
+			c.bag.Error(pm.Default.Pos(), diag.CodeBadArgument,
+				"a variadic parameter has no default",
+				"remove the default value")
+			continue
+		}
+		if !simpleDefault(pm.Default) {
+			c.bag.Error(pm.Default.Pos(), diag.CodeBadArgument,
+				"a default value must be a constant expression",
+				"use a literal or a simple constant")
+		}
+		for name := range defaultNames(pm.Default) {
+			for j := i + 1; j < len(decl.Params); j++ {
+				if decl.Params[j].Name == name {
+					c.bag.Error(pm.Default.Pos(), diag.CodeBadArgument,
+						"a default value cannot refer to a later parameter",
+						"move "+name+" before this parameter")
+				}
+			}
+		}
+		c.checkValue(s, pm.Default, c.buildType(pm.Type, tp))
+	}
 	body := c.inferBlock(s, decl.Body)
 	c.checkFrom(decl, s)
 	if s.result == nil && body != nil && body.Kind() == NamedKind && body.Name() == "Result" {
@@ -194,6 +220,38 @@ func (c *checker) inferFunc(decl *ast.FuncDecl) {
 				"use ?, !, match, or discard it with _ =")
 		}
 	}
+}
+
+// simpleDefault accepts the expression shapes a default value may use. The
+// value is evaluated at the call site, so it must not observe call-local state.
+func defaultNames(e ast.Expr) map[string]bool {
+	out := map[string]bool{}
+	var walk func(ast.Expr)
+	walk = func(e ast.Expr) {
+		switch x := e.(type) {
+		case *ast.NameExpr:
+			out[x.Name] = true
+		case *ast.UnaryExpr:
+			walk(x.X)
+		case *ast.BinaryExpr:
+			walk(x.L)
+			walk(x.R)
+		}
+	}
+	walk(e)
+	return out
+}
+
+func simpleDefault(e ast.Expr) bool {
+	switch x := e.(type) {
+	case *ast.LiteralExpr, *ast.NameExpr:
+		return true
+	case *ast.UnaryExpr:
+		return simpleDefault(x.X)
+	case *ast.BinaryExpr:
+		return simpleDefault(x.L) && simpleDefault(x.R)
+	}
+	return false
 }
 
 // checkFrom enforces the return-borrow source rule. A result that contains a
@@ -1037,6 +1095,22 @@ func sameSignature(a, b *signature) bool {
 
 func (c *checker) checkCallArgs(s *inferScope, sig *signature, args []*ast.CallArg, pos source.Pos) {
 	name := sig.name
+	named := false
+	for _, a := range args {
+		if a.Name != "" {
+			named = true
+			break
+		}
+	}
+	if sig.variadic && named {
+		c.bag.Error(pos, diag.CodeBadArgument,
+			"named arguments are not allowed for a variadic call",
+			"pass the variadic tail positionally")
+		for _, a := range args {
+			c.inferExpr(s, a.Expr)
+		}
+		return
+	}
 	if sig.variadic {
 		fixed := len(sig.params) - 1
 		if len(args) < fixed {
@@ -1053,11 +1127,58 @@ func (c *checker) checkCallArgs(s *inferScope, sig *signature, args []*ast.CallA
 		}
 		return
 	}
-	if len(args) != len(sig.params) {
-		c.badArity(pos, name)
-		return
+	slots := make([]*ast.CallArg, len(sig.params))
+	positional := 0
+	seenNamed := false
+	tooMany := false
+	for _, a := range args {
+		if a.Name == "" {
+			if seenNamed {
+				c.bag.Error(a.Pos(), diag.CodeBadArgument,
+					"positional argument after a named argument",
+					"move positional arguments before named ones")
+			}
+			if positional >= len(sig.params) {
+				tooMany = true
+				continue
+			}
+			slots[positional] = a
+			positional++
+			continue
+		}
+		seenNamed = true
+		idx := -1
+		for i, p := range sig.paramNames {
+			if p == a.Name {
+				idx = i
+				break
+			}
+		}
+		if idx < 0 {
+			c.bag.Error(a.Pos(), diag.CodeBadArgument,
+				"unknown named argument "+a.Name,
+				"see the declaration of "+name)
+			continue
+		}
+		if slots[idx] != nil {
+			c.bag.Error(a.Pos(), diag.CodeBadArgument,
+				"duplicate named argument "+a.Name,
+				"pass it once")
+			continue
+		}
+		slots[idx] = a
 	}
-	for i, a := range args {
+	if tooMany {
+		c.badArity(pos, name)
+	}
+	for i, a := range slots {
+		if a == nil {
+			if i >= len(sig.hasDefault) || !sig.hasDefault[i] {
+				c.badArity(pos, name)
+				return
+			}
+			continue
+		}
 		c.checkArg(s, a.Expr, sig.params[i], name, i+1)
 	}
 }
@@ -1400,6 +1521,14 @@ func (c *checker) predeclaredCall(s *inferScope, name string, call *ast.CallExpr
 		}
 		c.inferExpr(s, call.Args[0].Expr)
 		return nil
+	case "len":
+		if len(call.Args) != 1 {
+			c.bag.Error(call.Pos(), diag.CodeBadArgument,
+				"wrong number of arguments", "len takes one value")
+			return c.in.scalar("usize")
+		}
+		c.inferExpr(s, call.Args[0].Expr)
+		return c.in.scalar("usize")
 	case "Some":
 		return c.in.named("Option", []*Type{c.oneArg(s, call)})
 	case "None":
