@@ -153,34 +153,7 @@ func (g *generator) releaseIfaceValue(ptr string, iface *ifaceInfo) error {
 	return nil
 }
 
-// shareIfaceValue promotes every rc handle inside a boxed interface payload.
-// A null data word is the empty interface and owns nothing.
-func (g *generator) shareIfaceValue(ptr string, iface *ifaceInfo) error {
-	dataPtr, tablePtr := g.ifaceWords(ptr, iface)
-	data := g.load("ptr", dataPtr)
-	table := g.load("ptr", tablePtr)
-	null := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = icmp eq ptr %s, null\n", null, data)
-	g.labels++
-	n := g.labels
-	empty := fmt.Sprintf("iface.share.empty.%d", n)
-	have := fmt.Sprintf("iface.share.have.%d", n)
-	done := fmt.Sprintf("iface.share.done.%d", n)
-	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", null, empty, have)
-	g.out.WriteString(empty + ":\n")
-	fmt.Fprintf(g.out, "  br label %%%s\n", done)
-	g.out.WriteString(have + ":\n")
-	fnPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i64 0, i64 %d\n",
-		fnPtr, ifaceTableSize(iface), table, ifaceShareIndex(iface))
-	fn := g.load("ptr", fnPtr)
-	fmt.Fprintf(g.out, "  call void %s(ptr %s)\n", fn, data)
-	fmt.Fprintf(g.out, "  br label %%%s\n", done)
-	g.out.WriteString(done + ":\n")
-	return nil
-}
-
-// emitIfaceThunks drains the clone/drop/share triples queued by vtable
+// emitIfaceThunks drains the clone/drop pairs queued by vtable
 // construction.
 func (g *generator) emitIfaceThunks() error {
 	if len(g.ifaceThunks) == 0 {
@@ -252,16 +225,5 @@ func (g *generator) emitIfaceThunk(t ifaceThunk) error {
 	fmt.Fprintf(g.out, "  br label %%%s\n", done)
 	g.out.WriteString(done + ":\n  ret void\n}\n")
 
-	// Share: promotes every rc handle in the concrete payload. The call site
-	// records one crossing and invokes this thunk once per boxed value.
-	fmt.Fprintf(g.out, "define internal void @%s(ptr %%data) {\nentry:\n", llvmSymbol(t.share))
-	saved := g.quietShare
-	g.quietShare = true
-	if err := g.shareValueDepth("%data", t.concrete, 0); err != nil {
-		g.quietShare = saved
-		return err
-	}
-	g.quietShare = saved
-	g.out.WriteString("  ret void\n}\n")
 	return nil
 }

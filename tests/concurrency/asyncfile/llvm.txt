@@ -10,7 +10,7 @@ entry:
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 1
   %t4 = load ptr, ptr %t3
-  %t5 = getelementptr inbounds [6 x ptr], ptr %t4, i64 0, i64 1
+  %t5 = getelementptr inbounds [5 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
   %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t7)
@@ -1355,10 +1355,6 @@ iface.drop.have.3:
 iface.drop.done.3:
   ret void
 }
-define internal void @"std/os/fs.iface.share.Error.fsError"(ptr %data) {
-entry:
-  ret void
-}
 define internal ptr @"std/os/fs.iface.clone.Error.std/errors.Fault"(ptr %data) {
 entry:
   %t586 = alloca ptr
@@ -1404,10 +1400,6 @@ iface.drop.have.5:
   call void @willrt_free_str(ptr %t605)
   br label %iface.drop.done.5
 iface.drop.done.5:
-  ret void
-}
-define internal void @"std/os/fs.iface.share.Error.std/errors.Fault"(ptr %data) {
-entry:
   ret void
 }
 define internal i32 @"std/os/fs.File.async_read.sm"(ptr %frame) {
@@ -3796,7 +3788,7 @@ deep.rel.adt.5.1:
 iface.rel.empty.6:
   br label %iface.rel.done.6
 iface.rel.have.6:
-  %t40 = getelementptr inbounds [6 x ptr], ptr %t38, i64 0, i64 3
+  %t40 = getelementptr inbounds [5 x ptr], ptr %t38, i64 0, i64 3
   %t41 = load ptr, ptr %t40
   call void %t41(ptr %t37)
   call void @willrt_free(ptr %t37)
@@ -4006,7 +3998,7 @@ deep.rel.adt.15.1:
 iface.rel.empty.16:
   br label %iface.rel.done.16
 iface.rel.have.16:
-  %t133 = getelementptr inbounds [6 x ptr], ptr %t131, i64 0, i64 3
+  %t133 = getelementptr inbounds [5 x ptr], ptr %t131, i64 0, i64 3
   %t134 = load ptr, ptr %t133
   call void %t134(ptr %t130)
   call void @willrt_free(ptr %t130)
@@ -4105,7 +4097,7 @@ deep.rel.adt.21.1:
 iface.rel.empty.22:
   br label %iface.rel.done.22
 iface.rel.have.22:
-  %t175 = getelementptr inbounds [6 x ptr], ptr %t173, i64 0, i64 3
+  %t175 = getelementptr inbounds [5 x ptr], ptr %t173, i64 0, i64 3
   %t176 = load ptr, ptr %t175
   call void %t176(ptr %t172)
   call void @willrt_free(ptr %t172)
@@ -4224,7 +4216,7 @@ deep.rel.adt.5.1:
 iface.rel.empty.6:
   br label %iface.rel.done.6
 iface.rel.have.6:
-  %t226 = getelementptr inbounds [6 x ptr], ptr %t224, i64 0, i64 3
+  %t226 = getelementptr inbounds [5 x ptr], ptr %t224, i64 0, i64 3
   %t227 = load ptr, ptr %t226
   call void %t227(ptr %t223)
   call void @willrt_free(ptr %t223)
@@ -4309,7 +4301,7 @@ deep.rel.adt.9.1:
 iface.rel.empty.10:
   br label %iface.rel.done.10
 iface.rel.have.10:
-  %t261 = getelementptr inbounds [6 x ptr], ptr %t259, i64 0, i64 3
+  %t261 = getelementptr inbounds [5 x ptr], ptr %t259, i64 0, i64 3
   %t262 = load ptr, ptr %t261
   call void %t262(ptr %t258)
   call void @willrt_free(ptr %t258)
@@ -4351,7 +4343,7 @@ deep.rel.adt.12.1:
 iface.rel.empty.13:
   br label %iface.rel.done.13
 iface.rel.have.13:
-  %t277 = getelementptr inbounds [6 x ptr], ptr %t275, i64 0, i64 3
+  %t277 = getelementptr inbounds [5 x ptr], ptr %t275, i64 0, i64 3
   %t278 = load ptr, ptr %t277
   call void %t278(ptr %t274)
   call void @willrt_free(ptr %t274)
@@ -4661,7 +4653,7 @@ deep.rel.adt.14.1:
 iface.rel.empty.15:
   br label %iface.rel.done.15
 iface.rel.have.15:
-  %t380 = getelementptr inbounds [6 x ptr], ptr %t378, i64 0, i64 3
+  %t380 = getelementptr inbounds [5 x ptr], ptr %t378, i64 0, i64 3
   %t381 = load ptr, ptr %t380
   call void %t381(ptr %t377)
   call void @willrt_free(ptr %t377)
@@ -4951,7 +4943,7 @@ deep.rel.adt.26.1:
 iface.rel.empty.27:
   br label %iface.rel.done.27
 iface.rel.have.27:
-  %t527 = getelementptr inbounds [6 x ptr], ptr %t525, i64 0, i64 3
+  %t527 = getelementptr inbounds [5 x ptr], ptr %t525, i64 0, i64 3
   %t528 = load ptr, ptr %t527
   call void %t528(ptr %t524)
   call void @willrt_free(ptr %t524)
@@ -4978,7 +4970,7 @@ deep.rel.adt.28.1:
 iface.rel.empty.29:
   br label %iface.rel.done.29
 iface.rel.have.29:
-  %t536 = getelementptr inbounds [6 x ptr], ptr %t534, i64 0, i64 3
+  %t536 = getelementptr inbounds [5 x ptr], ptr %t534, i64 0, i64 3
   %t537 = load ptr, ptr %t536
   call void %t537(ptr %t533)
   call void @willrt_free(ptr %t533)
@@ -5012,7 +5004,7 @@ deep.rel.adt.31.1:
 iface.rel.empty.32:
   br label %iface.rel.done.32
 iface.rel.have.32:
-  %t548 = getelementptr inbounds [6 x ptr], ptr %t546, i64 0, i64 3
+  %t548 = getelementptr inbounds [5 x ptr], ptr %t546, i64 0, i64 3
   %t549 = load ptr, ptr %t548
   call void %t549(ptr %t545)
   call void @willrt_free(ptr %t545)
@@ -5051,7 +5043,7 @@ deep.rel.adt.35.1:
 iface.rel.empty.36:
   br label %iface.rel.done.36
 iface.rel.have.36:
-  %t563 = getelementptr inbounds [6 x ptr], ptr %t561, i64 0, i64 3
+  %t563 = getelementptr inbounds [5 x ptr], ptr %t561, i64 0, i64 3
   %t564 = load ptr, ptr %t563
   call void %t564(ptr %t560)
   call void @willrt_free(ptr %t560)
@@ -5078,7 +5070,7 @@ deep.rel.adt.37.1:
 iface.rel.empty.38:
   br label %iface.rel.done.38
 iface.rel.have.38:
-  %t572 = getelementptr inbounds [6 x ptr], ptr %t570, i64 0, i64 3
+  %t572 = getelementptr inbounds [5 x ptr], ptr %t570, i64 0, i64 3
   %t573 = load ptr, ptr %t572
   call void %t573(ptr %t569)
   call void @willrt_free(ptr %t569)
@@ -5112,7 +5104,7 @@ deep.rel.adt.40.1:
 iface.rel.empty.41:
   br label %iface.rel.done.41
 iface.rel.have.41:
-  %t584 = getelementptr inbounds [6 x ptr], ptr %t582, i64 0, i64 3
+  %t584 = getelementptr inbounds [5 x ptr], ptr %t582, i64 0, i64 3
   %t585 = load ptr, ptr %t584
   call void %t585(ptr %t581)
   call void @willrt_free(ptr %t581)
@@ -5146,7 +5138,7 @@ deep.rel.adt.43.1:
 iface.rel.empty.44:
   br label %iface.rel.done.44
 iface.rel.have.44:
-  %t596 = getelementptr inbounds [6 x ptr], ptr %t594, i64 0, i64 3
+  %t596 = getelementptr inbounds [5 x ptr], ptr %t594, i64 0, i64 3
   %t597 = load ptr, ptr %t596
   call void %t597(ptr %t593)
   call void @willrt_free(ptr %t593)
@@ -5179,7 +5171,7 @@ deep.rel.adt.46.1:
 iface.rel.empty.47:
   br label %iface.rel.done.47
 iface.rel.have.47:
-  %t608 = getelementptr inbounds [6 x ptr], ptr %t606, i64 0, i64 3
+  %t608 = getelementptr inbounds [5 x ptr], ptr %t606, i64 0, i64 3
   %t609 = load ptr, ptr %t608
   call void %t609(ptr %t605)
   call void @willrt_free(ptr %t605)
@@ -5211,7 +5203,7 @@ deep.rel.adt.49.1:
 iface.rel.empty.50:
   br label %iface.rel.done.50
 iface.rel.have.50:
-  %t620 = getelementptr inbounds [6 x ptr], ptr %t618, i64 0, i64 3
+  %t620 = getelementptr inbounds [5 x ptr], ptr %t618, i64 0, i64 3
   %t621 = load ptr, ptr %t620
   call void %t621(ptr %t617)
   call void @willrt_free(ptr %t617)
@@ -5293,7 +5285,7 @@ deep.rel.adt.54.1:
 iface.rel.empty.55:
   br label %iface.rel.done.55
 iface.rel.have.55:
-  %t656 = getelementptr inbounds [6 x ptr], ptr %t654, i64 0, i64 3
+  %t656 = getelementptr inbounds [5 x ptr], ptr %t654, i64 0, i64 3
   %t657 = load ptr, ptr %t656
   call void %t657(ptr %t653)
   call void @willrt_free(ptr %t653)
@@ -5326,7 +5318,7 @@ deep.rel.adt.57.1:
 iface.rel.empty.58:
   br label %iface.rel.done.58
 iface.rel.have.58:
-  %t668 = getelementptr inbounds [6 x ptr], ptr %t666, i64 0, i64 3
+  %t668 = getelementptr inbounds [5 x ptr], ptr %t666, i64 0, i64 3
   %t669 = load ptr, ptr %t668
   call void %t669(ptr %t665)
   call void @willrt_free(ptr %t665)
@@ -5358,7 +5350,7 @@ deep.rel.adt.60.1:
 iface.rel.empty.61:
   br label %iface.rel.done.61
 iface.rel.have.61:
-  %t680 = getelementptr inbounds [6 x ptr], ptr %t678, i64 0, i64 3
+  %t680 = getelementptr inbounds [5 x ptr], ptr %t678, i64 0, i64 3
   %t681 = load ptr, ptr %t680
   call void %t681(ptr %t677)
   call void @willrt_free(ptr %t677)
@@ -5422,7 +5414,7 @@ deep.rel.adt.64.1:
 iface.rel.empty.65:
   br label %iface.rel.done.65
 iface.rel.have.65:
-  %t706 = getelementptr inbounds [6 x ptr], ptr %t704, i64 0, i64 3
+  %t706 = getelementptr inbounds [5 x ptr], ptr %t704, i64 0, i64 3
   %t707 = load ptr, ptr %t706
   call void %t707(ptr %t703)
   call void @willrt_free(ptr %t703)
@@ -5455,7 +5447,7 @@ deep.rel.adt.67.1:
 iface.rel.empty.68:
   br label %iface.rel.done.68
 iface.rel.have.68:
-  %t718 = getelementptr inbounds [6 x ptr], ptr %t716, i64 0, i64 3
+  %t718 = getelementptr inbounds [5 x ptr], ptr %t716, i64 0, i64 3
   %t719 = load ptr, ptr %t718
   call void %t719(ptr %t715)
   call void @willrt_free(ptr %t715)
@@ -5508,7 +5500,7 @@ deep.rel.adt.71.1:
 iface.rel.empty.72:
   br label %iface.rel.done.72
 iface.rel.have.72:
-  %t740 = getelementptr inbounds [6 x ptr], ptr %t738, i64 0, i64 3
+  %t740 = getelementptr inbounds [5 x ptr], ptr %t738, i64 0, i64 3
   %t741 = load ptr, ptr %t740
   call void %t741(ptr %t737)
   call void @willrt_free(ptr %t737)
@@ -5688,7 +5680,7 @@ deep.rel.adt.79.1:
 iface.rel.empty.80:
   br label %iface.rel.done.80
 iface.rel.have.80:
-  %t828 = getelementptr inbounds [6 x ptr], ptr %t826, i64 0, i64 3
+  %t828 = getelementptr inbounds [5 x ptr], ptr %t826, i64 0, i64 3
   %t829 = load ptr, ptr %t828
   call void %t829(ptr %t825)
   call void @willrt_free(ptr %t825)
@@ -5715,7 +5707,7 @@ deep.rel.adt.81.1:
 iface.rel.empty.82:
   br label %iface.rel.done.82
 iface.rel.have.82:
-  %t837 = getelementptr inbounds [6 x ptr], ptr %t835, i64 0, i64 3
+  %t837 = getelementptr inbounds [5 x ptr], ptr %t835, i64 0, i64 3
   %t838 = load ptr, ptr %t837
   call void %t838(ptr %t834)
   call void @willrt_free(ptr %t834)
@@ -5748,7 +5740,7 @@ deep.rel.adt.84.1:
 iface.rel.empty.85:
   br label %iface.rel.done.85
 iface.rel.have.85:
-  %t849 = getelementptr inbounds [6 x ptr], ptr %t847, i64 0, i64 3
+  %t849 = getelementptr inbounds [5 x ptr], ptr %t847, i64 0, i64 3
   %t850 = load ptr, ptr %t849
   call void %t850(ptr %t846)
   call void @willrt_free(ptr %t846)
@@ -5789,7 +5781,7 @@ deep.rel.adt.88.1:
 iface.rel.empty.89:
   br label %iface.rel.done.89
 iface.rel.have.89:
-  %t866 = getelementptr inbounds [6 x ptr], ptr %t864, i64 0, i64 3
+  %t866 = getelementptr inbounds [5 x ptr], ptr %t864, i64 0, i64 3
   %t867 = load ptr, ptr %t866
   call void %t867(ptr %t863)
   call void @willrt_free(ptr %t863)
@@ -5821,7 +5813,7 @@ deep.rel.adt.91.1:
 iface.rel.empty.92:
   br label %iface.rel.done.92
 iface.rel.have.92:
-  %t878 = getelementptr inbounds [6 x ptr], ptr %t876, i64 0, i64 3
+  %t878 = getelementptr inbounds [5 x ptr], ptr %t876, i64 0, i64 3
   %t879 = load ptr, ptr %t878
   call void %t879(ptr %t875)
   call void @willrt_free(ptr %t875)
@@ -5933,7 +5925,7 @@ deep.rel.adt.99.1:
 iface.rel.empty.100:
   br label %iface.rel.done.100
 iface.rel.have.100:
-  %t927 = getelementptr inbounds [6 x ptr], ptr %t925, i64 0, i64 3
+  %t927 = getelementptr inbounds [5 x ptr], ptr %t925, i64 0, i64 3
   %t928 = load ptr, ptr %t927
   call void %t928(ptr %t924)
   call void @willrt_free(ptr %t924)
@@ -5965,7 +5957,7 @@ deep.rel.adt.102.1:
 iface.rel.empty.103:
   br label %iface.rel.done.103
 iface.rel.have.103:
-  %t939 = getelementptr inbounds [6 x ptr], ptr %t937, i64 0, i64 3
+  %t939 = getelementptr inbounds [5 x ptr], ptr %t937, i64 0, i64 3
   %t940 = load ptr, ptr %t939
   call void %t940(ptr %t936)
   call void @willrt_free(ptr %t936)
@@ -5997,7 +5989,7 @@ deep.rel.adt.105.1:
 iface.rel.empty.106:
   br label %iface.rel.done.106
 iface.rel.have.106:
-  %t951 = getelementptr inbounds [6 x ptr], ptr %t949, i64 0, i64 3
+  %t951 = getelementptr inbounds [5 x ptr], ptr %t949, i64 0, i64 3
   %t952 = load ptr, ptr %t951
   call void %t952(ptr %t948)
   call void @willrt_free(ptr %t948)
@@ -6180,7 +6172,7 @@ deep.rel.adt.122.1:
 iface.rel.empty.123:
   br label %iface.rel.done.123
 iface.rel.have.123:
-  %t1031 = getelementptr inbounds [6 x ptr], ptr %t1029, i64 0, i64 3
+  %t1031 = getelementptr inbounds [5 x ptr], ptr %t1029, i64 0, i64 3
   %t1032 = load ptr, ptr %t1031
   call void %t1032(ptr %t1028)
   call void @willrt_free(ptr %t1028)
@@ -6212,7 +6204,7 @@ deep.rel.adt.125.1:
 iface.rel.empty.126:
   br label %iface.rel.done.126
 iface.rel.have.126:
-  %t1043 = getelementptr inbounds [6 x ptr], ptr %t1041, i64 0, i64 3
+  %t1043 = getelementptr inbounds [5 x ptr], ptr %t1041, i64 0, i64 3
   %t1044 = load ptr, ptr %t1043
   call void %t1044(ptr %t1040)
   call void @willrt_free(ptr %t1040)
@@ -6244,7 +6236,7 @@ deep.rel.adt.128.1:
 iface.rel.empty.129:
   br label %iface.rel.done.129
 iface.rel.have.129:
-  %t1055 = getelementptr inbounds [6 x ptr], ptr %t1053, i64 0, i64 3
+  %t1055 = getelementptr inbounds [5 x ptr], ptr %t1053, i64 0, i64 3
   %t1056 = load ptr, ptr %t1055
   call void %t1056(ptr %t1052)
   call void @willrt_free(ptr %t1052)
@@ -6334,7 +6326,7 @@ deep.rel.adt.133.1:
 iface.rel.empty.134:
   br label %iface.rel.done.134
 iface.rel.have.134:
-  %t1095 = getelementptr inbounds [6 x ptr], ptr %t1093, i64 0, i64 3
+  %t1095 = getelementptr inbounds [5 x ptr], ptr %t1093, i64 0, i64 3
   %t1096 = load ptr, ptr %t1095
   call void %t1096(ptr %t1092)
   call void @willrt_free(ptr %t1092)
@@ -6366,7 +6358,7 @@ deep.rel.adt.136.1:
 iface.rel.empty.137:
   br label %iface.rel.done.137
 iface.rel.have.137:
-  %t1107 = getelementptr inbounds [6 x ptr], ptr %t1105, i64 0, i64 3
+  %t1107 = getelementptr inbounds [5 x ptr], ptr %t1105, i64 0, i64 3
   %t1108 = load ptr, ptr %t1107
   call void %t1108(ptr %t1104)
   call void @willrt_free(ptr %t1104)
@@ -6398,7 +6390,7 @@ deep.rel.adt.139.1:
 iface.rel.empty.140:
   br label %iface.rel.done.140
 iface.rel.have.140:
-  %t1119 = getelementptr inbounds [6 x ptr], ptr %t1117, i64 0, i64 3
+  %t1119 = getelementptr inbounds [5 x ptr], ptr %t1117, i64 0, i64 3
   %t1120 = load ptr, ptr %t1119
   call void %t1120(ptr %t1116)
   call void @willrt_free(ptr %t1116)
@@ -6482,7 +6474,7 @@ deep.rel.adt.144.1:
 iface.rel.empty.145:
   br label %iface.rel.done.145
 iface.rel.have.145:
-  %t1155 = getelementptr inbounds [6 x ptr], ptr %t1153, i64 0, i64 3
+  %t1155 = getelementptr inbounds [5 x ptr], ptr %t1153, i64 0, i64 3
   %t1156 = load ptr, ptr %t1155
   call void %t1156(ptr %t1152)
   call void @willrt_free(ptr %t1152)
@@ -6514,7 +6506,7 @@ deep.rel.adt.147.1:
 iface.rel.empty.148:
   br label %iface.rel.done.148
 iface.rel.have.148:
-  %t1167 = getelementptr inbounds [6 x ptr], ptr %t1165, i64 0, i64 3
+  %t1167 = getelementptr inbounds [5 x ptr], ptr %t1165, i64 0, i64 3
   %t1168 = load ptr, ptr %t1167
   call void %t1168(ptr %t1164)
   call void @willrt_free(ptr %t1164)
@@ -6546,7 +6538,7 @@ deep.rel.adt.150.1:
 iface.rel.empty.151:
   br label %iface.rel.done.151
 iface.rel.have.151:
-  %t1179 = getelementptr inbounds [6 x ptr], ptr %t1177, i64 0, i64 3
+  %t1179 = getelementptr inbounds [5 x ptr], ptr %t1177, i64 0, i64 3
   %t1180 = load ptr, ptr %t1179
   call void %t1180(ptr %t1176)
   call void @willrt_free(ptr %t1176)
@@ -6681,7 +6673,7 @@ deep.rel.adt.156.1:
 iface.rel.empty.157:
   br label %iface.rel.done.157
 iface.rel.have.157:
-  %t1236 = getelementptr inbounds [6 x ptr], ptr %t1234, i64 0, i64 3
+  %t1236 = getelementptr inbounds [5 x ptr], ptr %t1234, i64 0, i64 3
   %t1237 = load ptr, ptr %t1236
   call void %t1237(ptr %t1233)
   call void @willrt_free(ptr %t1233)
@@ -6714,7 +6706,7 @@ deep.rel.adt.159.1:
 iface.rel.empty.160:
   br label %iface.rel.done.160
 iface.rel.have.160:
-  %t1249 = getelementptr inbounds [6 x ptr], ptr %t1247, i64 0, i64 3
+  %t1249 = getelementptr inbounds [5 x ptr], ptr %t1247, i64 0, i64 3
   %t1250 = load ptr, ptr %t1249
   call void %t1250(ptr %t1246)
   call void @willrt_free(ptr %t1246)
@@ -6748,7 +6740,7 @@ deep.rel.adt.162.1:
 iface.rel.empty.163:
   br label %iface.rel.done.163
 iface.rel.have.163:
-  %t1262 = getelementptr inbounds [6 x ptr], ptr %t1260, i64 0, i64 3
+  %t1262 = getelementptr inbounds [5 x ptr], ptr %t1260, i64 0, i64 3
   %t1263 = load ptr, ptr %t1262
   call void %t1263(ptr %t1259)
   call void @willrt_free(ptr %t1259)
@@ -6782,7 +6774,7 @@ deep.rel.adt.165.1:
 iface.rel.empty.166:
   br label %iface.rel.done.166
 iface.rel.have.166:
-  %t1275 = getelementptr inbounds [6 x ptr], ptr %t1273, i64 0, i64 3
+  %t1275 = getelementptr inbounds [5 x ptr], ptr %t1273, i64 0, i64 3
   %t1276 = load ptr, ptr %t1275
   call void %t1276(ptr %t1272)
   call void @willrt_free(ptr %t1272)
@@ -6815,7 +6807,7 @@ deep.rel.adt.168.1:
 iface.rel.empty.169:
   br label %iface.rel.done.169
 iface.rel.have.169:
-  %t1288 = getelementptr inbounds [6 x ptr], ptr %t1286, i64 0, i64 3
+  %t1288 = getelementptr inbounds [5 x ptr], ptr %t1286, i64 0, i64 3
   %t1289 = load ptr, ptr %t1288
   call void %t1289(ptr %t1285)
   call void @willrt_free(ptr %t1285)
@@ -6880,7 +6872,7 @@ deep.rel.adt.173.1:
 iface.rel.empty.174:
   br label %iface.rel.done.174
 iface.rel.have.174:
-  %t1317 = getelementptr inbounds [6 x ptr], ptr %t1315, i64 0, i64 3
+  %t1317 = getelementptr inbounds [5 x ptr], ptr %t1315, i64 0, i64 3
   %t1318 = load ptr, ptr %t1317
   call void %t1318(ptr %t1314)
   call void @willrt_free(ptr %t1314)
@@ -6907,7 +6899,7 @@ deep.rel.adt.175.1:
 iface.rel.empty.176:
   br label %iface.rel.done.176
 iface.rel.have.176:
-  %t1326 = getelementptr inbounds [6 x ptr], ptr %t1324, i64 0, i64 3
+  %t1326 = getelementptr inbounds [5 x ptr], ptr %t1324, i64 0, i64 3
   %t1327 = load ptr, ptr %t1326
   call void %t1327(ptr %t1323)
   call void @willrt_free(ptr %t1323)
@@ -6941,7 +6933,7 @@ deep.rel.adt.178.1:
 iface.rel.empty.179:
   br label %iface.rel.done.179
 iface.rel.have.179:
-  %t1339 = getelementptr inbounds [6 x ptr], ptr %t1337, i64 0, i64 3
+  %t1339 = getelementptr inbounds [5 x ptr], ptr %t1337, i64 0, i64 3
   %t1340 = load ptr, ptr %t1339
   call void %t1340(ptr %t1336)
   call void @willrt_free(ptr %t1336)
@@ -6980,7 +6972,7 @@ deep.rel.adt.182.1:
 iface.rel.empty.183:
   br label %iface.rel.done.183
 iface.rel.have.183:
-  %t1355 = getelementptr inbounds [6 x ptr], ptr %t1353, i64 0, i64 3
+  %t1355 = getelementptr inbounds [5 x ptr], ptr %t1353, i64 0, i64 3
   %t1356 = load ptr, ptr %t1355
   call void %t1356(ptr %t1352)
   call void @willrt_free(ptr %t1352)
@@ -7007,7 +6999,7 @@ deep.rel.adt.184.1:
 iface.rel.empty.185:
   br label %iface.rel.done.185
 iface.rel.have.185:
-  %t1364 = getelementptr inbounds [6 x ptr], ptr %t1362, i64 0, i64 3
+  %t1364 = getelementptr inbounds [5 x ptr], ptr %t1362, i64 0, i64 3
   %t1365 = load ptr, ptr %t1364
   call void %t1365(ptr %t1361)
   call void @willrt_free(ptr %t1361)
@@ -7041,7 +7033,7 @@ deep.rel.adt.187.1:
 iface.rel.empty.188:
   br label %iface.rel.done.188
 iface.rel.have.188:
-  %t1377 = getelementptr inbounds [6 x ptr], ptr %t1375, i64 0, i64 3
+  %t1377 = getelementptr inbounds [5 x ptr], ptr %t1375, i64 0, i64 3
   %t1378 = load ptr, ptr %t1377
   call void %t1378(ptr %t1374)
   call void @willrt_free(ptr %t1374)
@@ -7079,7 +7071,7 @@ deep.rel.adt.191.1:
 iface.rel.empty.192:
   br label %iface.rel.done.192
 iface.rel.have.192:
-  %t1393 = getelementptr inbounds [6 x ptr], ptr %t1391, i64 0, i64 3
+  %t1393 = getelementptr inbounds [5 x ptr], ptr %t1391, i64 0, i64 3
   %t1394 = load ptr, ptr %t1393
   call void %t1394(ptr %t1390)
   call void @willrt_free(ptr %t1390)
@@ -7106,7 +7098,7 @@ deep.rel.adt.193.1:
 iface.rel.empty.194:
   br label %iface.rel.done.194
 iface.rel.have.194:
-  %t1402 = getelementptr inbounds [6 x ptr], ptr %t1400, i64 0, i64 3
+  %t1402 = getelementptr inbounds [5 x ptr], ptr %t1400, i64 0, i64 3
   %t1403 = load ptr, ptr %t1402
   call void %t1403(ptr %t1399)
   call void @willrt_free(ptr %t1399)
@@ -7139,7 +7131,7 @@ deep.rel.adt.196.1:
 iface.rel.empty.197:
   br label %iface.rel.done.197
 iface.rel.have.197:
-  %t1415 = getelementptr inbounds [6 x ptr], ptr %t1413, i64 0, i64 3
+  %t1415 = getelementptr inbounds [5 x ptr], ptr %t1413, i64 0, i64 3
   %t1416 = load ptr, ptr %t1415
   call void %t1416(ptr %t1412)
   call void @willrt_free(ptr %t1412)
@@ -7225,12 +7217,8 @@ entry:
   store ptr null, ptr %t1442
   ret void
 }
-define internal void @will.task.error.share(ptr %data) {
-entry:
-  ret void
-}
 @will.task.error.id = private constant i8 0
-@will.task.error.table = private constant [6 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.share, ptr @will.task.error.id]
+@will.task.error.table = private constant [5 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.id]
 declare i32 @willrt_fs_read_file(i32, i32)
 declare i32 @willrt_fs_write_file(i32, i32)
 declare i32 @willrt_fs_append_file(i32, i32)
@@ -7260,11 +7248,11 @@ declare i32 @willrt_fs_temp_dir(ptr, ptr, ptr)
 @.bytes.7 = private unnamed_addr constant [9 x i8] c"i/o error", align 1
 @.bytes.8 = private unnamed_addr constant [20 x i8] c"fs: cannot read file", align 1
 @"will.type.std/os/fs.fsError" = linkonce_odr constant i8 0, align 1
-@"std/os/fs.vtable.Error.fsError" = internal constant [6 x ptr] [ptr @"std/os/fs.fsError.message", ptr @"std/os/fs.fsError.status", ptr @"std/os/fs.iface.clone.Error.fsError", ptr @"std/os/fs.iface.drop.Error.fsError", ptr @"std/os/fs.iface.share.Error.fsError", ptr @"will.type.std/os/fs.fsError"], align 8
+@"std/os/fs.vtable.Error.fsError" = internal constant [5 x ptr] [ptr @"std/os/fs.fsError.message", ptr @"std/os/fs.fsError.status", ptr @"std/os/fs.iface.clone.Error.fsError", ptr @"std/os/fs.iface.drop.Error.fsError", ptr @"will.type.std/os/fs.fsError"], align 8
 @.bytes.9 = private unnamed_addr constant [21 x i8] c"fs: cannot write file", align 1
 @.bytes.10 = private unnamed_addr constant [22 x i8] c"fs: cannot append file", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/os/fs.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/os/fs.iface.clone.Error.std/errors.Fault", ptr @"std/os/fs.iface.drop.Error.std/errors.Fault", ptr @"std/os/fs.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@"std/os/fs.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/os/fs.iface.clone.Error.std/errors.Fault", ptr @"std/os/fs.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.bytes.11 = private unnamed_addr constant [0 x i8] zeroinitializer
 @.str.15 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.16 = private unnamed_addr constant [14 x i8] c"main.will:9:9\00", align 1

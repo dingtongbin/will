@@ -10,7 +10,7 @@ entry:
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 1
   %t4 = load ptr, ptr %t3
-  %t5 = getelementptr inbounds [6 x ptr], ptr %t4, i64 0, i64 1
+  %t5 = getelementptr inbounds [5 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
   %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t7)
@@ -1427,10 +1427,6 @@ iface.drop.have.4:
   call void @willrt_free_str(ptr %t83)
   br label %iface.drop.done.4
 iface.drop.done.4:
-  ret void
-}
-define internal void @"std/time.iface.share.Error.clockError"(ptr %data) {
-entry:
   ret void
 }
 define hidden { ptr, i64 } @"std/time.pad2"(i64 %v) alwaysinline {
@@ -6098,10 +6094,6 @@ iface.drop.have.23:
 iface.drop.done.23:
   ret void
 }
-define internal void @"std/time.iface.share.Error.std/time.timeError"(ptr %data) {
-entry:
-  ret void
-}
 %"struct.std/time.Instant" = type { i64, %"struct.std/time.Timezone" }
 define hidden %"struct.std/time.Instant" @"std/time.now"() inlinehint {
 entry:
@@ -6385,10 +6377,6 @@ iface.drop.have.2:
   call void @willrt_free_str(ptr %t96)
   br label %iface.drop.done.2
 iface.drop.done.2:
-  ret void
-}
-define internal void @"std/time.iface.share.Error.std/errors.Fault"(ptr %data) {
-entry:
   ret void
 }
 define i32 @"example.com/stdtest/system/timeformat.will$main"() {
@@ -6882,7 +6870,7 @@ declare i64 @willtime_wall_ns()
 @.str.67 = private unnamed_addr constant [27 x i8] c"std/time.Stopwatch.elapsed\00", align 1
 @.bytes.8 = private unnamed_addr constant [20 x i8] c"time: negative sleep", align 1
 @"will.type.std/time.clockError" = linkonce_odr constant i8 0, align 1
-@"std/time.vtable.Error.clockError" = internal constant [6 x ptr] [ptr @"std/time.clockError.message", ptr @"std/time.clockError.status", ptr @"std/time.iface.clone.Error.clockError", ptr @"std/time.iface.drop.Error.clockError", ptr @"std/time.iface.share.Error.clockError", ptr @"will.type.std/time.clockError"], align 8
+@"std/time.vtable.Error.clockError" = internal constant [5 x ptr] [ptr @"std/time.clockError.message", ptr @"std/time.clockError.status", ptr @"std/time.iface.clone.Error.clockError", ptr @"std/time.iface.drop.Error.clockError", ptr @"will.type.std/time.clockError"], align 8
 @.bytes.9 = private unnamed_addr constant [1 x i8] c"0", align 1
 @.bytes.10 = private unnamed_addr constant [3 x i8] c"000", align 1
 @.bytes.11 = private unnamed_addr constant [2 x i8] c"00", align 1
@@ -6954,7 +6942,7 @@ declare i64 @willtime_wall_ns()
 @.str.139 = private unnamed_addr constant [22 x i8] c"time/parse.will:98:18\00", align 1
 @.bytes.41 = private unnamed_addr constant [41 x i8] c"rfc3339: text is shorter than a timestamp", align 1
 @"will.type.std/time.timeError" = linkonce_odr constant i8 0, align 1
-@"std/time.vtable.Error.std/time.timeError" = internal constant [6 x ptr] [ptr @"std/time.timeError.message", ptr @"std/time.timeError.status", ptr @"std/time.iface.clone.Error.std/time.timeError", ptr @"std/time.iface.drop.Error.std/time.timeError", ptr @"std/time.iface.share.Error.std/time.timeError", ptr @"will.type.std/time.timeError"], align 8
+@"std/time.vtable.Error.std/time.timeError" = internal constant [5 x ptr] [ptr @"std/time.timeError.message", ptr @"std/time.timeError.status", ptr @"std/time.iface.clone.Error.std/time.timeError", ptr @"std/time.iface.drop.Error.std/time.timeError", ptr @"will.type.std/time.timeError"], align 8
 @.bytes.42 = private unnamed_addr constant [39 x i8] c"rfc3339: a numeric field is not a digit", align 1
 @.bytes.43 = private unnamed_addr constant [38 x i8] c"rfc3339: the date separators are wrong", align 1
 @.bytes.44 = private unnamed_addr constant [47 x i8] c"rfc3339: the date and time separator is missing", align 1
@@ -7014,7 +7002,7 @@ declare i64 @willtime_wall_ns()
 @.str.199 = private unnamed_addr constant [21 x i8] c"time/zone.will:55:51\00", align 1
 @.str.200 = private unnamed_addr constant [14 x i8] c"std/time.load\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/time.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/time.iface.clone.Error.std/errors.Fault", ptr @"std/time.iface.drop.Error.std/errors.Fault", ptr @"std/time.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@"std/time.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/time.iface.clone.Error.std/errors.Fault", ptr @"std/time.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.bytes.63 = private unnamed_addr constant [20 x i8] c"2023-11-14T22:13:20Z", align 1
 @.bytes.64 = private unnamed_addr constant [29 x i8] c"Tue, 14 Nov 2023 22:13:20 GMT", align 1
 @.bytes.65 = private unnamed_addr constant [10 x i8] c"2023-11-14", align 1

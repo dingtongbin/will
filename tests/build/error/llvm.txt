@@ -90,7 +90,7 @@ match.arm.1.1:
   %t45 = load ptr, ptr %t44
   %t46 = getelementptr inbounds %interface.Error, ptr %t43, i32 0, i32 1
   %t47 = load ptr, ptr %t46
-  %t48 = getelementptr inbounds [6 x ptr], ptr %t47, i64 0, i64 1
+  %t48 = getelementptr inbounds [5 x ptr], ptr %t47, i64 0, i64 1
   %t49 = load ptr, ptr %t48
   %t50 = call i32 %t49(ptr %t45)
   store i32 %t50, ptr %v.match.38
@@ -119,7 +119,7 @@ deep.rel.adt.3.1:
 iface.rel.empty.4:
   br label %iface.rel.done.4
 iface.rel.have.4:
-  %t62 = getelementptr inbounds [6 x ptr], ptr %t60, i64 0, i64 3
+  %t62 = getelementptr inbounds [5 x ptr], ptr %t60, i64 0, i64 3
   %t63 = load ptr, ptr %t62
   call void %t63(ptr %t59)
   call void @willrt_free(ptr %t59)
@@ -187,10 +187,6 @@ iface.drop.have.2:
 iface.drop.done.2:
   ret void
 }
-define internal void @"example.com/error.iface.share.Error.E"(ptr %data) {
-entry:
-  ret void
-}
 declare void @willrt_init()
 declare void @willrt_shutdown()
 define i32 @main() {
@@ -202,7 +198,7 @@ entry:
 }
 @.bytes.1 = private unnamed_addr constant [3 x i8] c"bad", align 1
 @"will.type.example.com/error.E" = linkonce_odr constant i8 0, align 1
-@"example.com/error.vtable.Error.E" = internal constant [6 x ptr] [ptr @"example.com/error.E.message", ptr @"example.com/error.E.status", ptr @"example.com/error.iface.clone.Error.E", ptr @"example.com/error.iface.drop.Error.E", ptr @"example.com/error.iface.share.Error.E", ptr @"will.type.example.com/error.E"], align 8
+@"example.com/error.vtable.Error.E" = internal constant [5 x ptr] [ptr @"example.com/error.E.message", ptr @"example.com/error.E.status", ptr @"example.com/error.iface.clone.Error.E", ptr @"example.com/error.iface.drop.Error.E", ptr @"will.type.example.com/error.E"], align 8
 declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
 declare void @willrt_free_str(ptr)

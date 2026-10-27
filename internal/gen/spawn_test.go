@@ -7,9 +7,9 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// TestSpawnLowersToAutoTask checks the only spawn surface: one call, one task,
-// runtime-selected placement.
-func TestSpawnLowersToAutoTask(t *testing.T) {
+// TestSpawnSyncCallLowersToJob checks the only spawn surface: a sync call is
+// one CPU job on the submitting lane's deque, and await joins its handle.
+func TestSpawnSyncCallLowersToJob(t *testing.T) {
 	src := `def work() -> i32 {
     return 1
 }
@@ -30,8 +30,8 @@ def main() -> i32 {
 	}
 	text := string(ir)
 	for _, want := range []string{
-		"call void @willrt_task_run_auto(",
-		"declare void @willrt_task_run_auto(",
+		"call ptr @willrt_job_new(",
+		"declare ptr @willrt_job_new(",
 		"call i32 @willrt_join(",
 	} {
 		if !strings.Contains(text, want) {

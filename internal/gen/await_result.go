@@ -95,25 +95,29 @@ func (g *generator) awaitTaskValue(id int) (string, string, error) {
 
 // lowerAwaitResult joins one Task and turns its outcome into a Result value.
 func (g *generator) lowerAwaitResult(r willc.Record) (string, error) {
-	taskID := refField(r, "expr")
-	task, elem, err := g.awaitTaskValue(taskID)
+	task, elem, err := g.awaitTaskValue(refField(r, "expr"))
 	if err != nil {
 		return "", err
 	}
+	return g.lowerTaskResult(task, elem, r.ID)
+}
+
+// lowerTaskResult joins one task handle and builds Result<T, TaskError>.
+func (g *generator) lowerTaskResult(task, elem string, nodeID int) (string, error) {
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok {
-		return "", g.errf(r.ID, "cannot translate node #%d: task value %s is not lowered yet", r.ID, elem)
+		return "", g.errf(nodeID, "cannot translate node #%d: task value %s is not lowered yet", nodeID, elem)
 	}
 	info, ok := g.adtType("Result<" + elem + ",TaskError>")
 	if !ok {
-		return "", g.errf(r.ID, "cannot translate node #%d: Result<%s, TaskError> is not lowered", r.ID, elem)
+		return "", g.errf(nodeID, "cannot translate node #%d: Result<%s, TaskError> is not lowered", nodeID, elem)
 	}
 	g.needTaskDecl = true
 	out := ""
 	if elemLLVM != "" {
-		out = g.allocSlot(g.joinOutSlots, "await.out", r.ID, elemLLVM)
+		out = g.allocSlot(g.joinOutSlots, "await.out", nodeID, elemLLVM)
 	}
-	errSlot := g.allocSlot(g.joinErrSlots, "await.err", r.ID, "%willrt.task_error")
+	errSlot := g.allocSlot(g.joinErrSlots, "await.err", nodeID, "%willrt.task_error")
 	status := ""
 	if g.smGeneral {
 		status = g.smTryJoin(task, out, errSlot)
@@ -128,7 +132,7 @@ func (g *generator) lowerAwaitResult(r willc.Record) (string, error) {
 	statusCopy := g.newTmp()
 	g.out.WriteString("  " + statusCopy + " = getelementptr inbounds %willrt.task_error, ptr " + errSlot + ", i32 0, i32 1\n")
 	g.out.WriteString("  store i32 " + status + ", ptr " + statusCopy + "\n")
-	slot := g.allocSlot(g.adtSlots, "await.result", r.ID, info.llvm)
+	slot := g.allocSlot(g.adtSlots, "await.result", nodeID, info.llvm)
 	resultText := "Result<" + elem + ",TaskError>"
 	if ownsReleaseText(g, resultText) {
 		g.addSyntheticTemp(slot, resultText, info.llvm)

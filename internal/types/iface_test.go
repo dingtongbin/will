@@ -6,6 +6,51 @@ import (
 	"github.com/will-lang/will/internal/diag"
 )
 
+func TestAsyncInterfaceRequiresAnAsyncImplementation(t *testing.T) {
+	base := `interface Handler {
+    async def handle() -> i32
+}
+
+struct S {
+    n: i32
+}
+
+def use(h: Handler) -> i32 {
+    return 0
+}
+`
+	syncImpl := base + `
+def (s: ref S) handle() -> i32 {
+    return s.n
+}
+
+def f() {
+    var s: S = S { n: 1 }
+    var h: Handler = s
+    _ = use(h)
+}
+`
+	ds := checkTypes(t, syncImpl)
+	if len(ds) != 1 || ds[0].Code != diag.CodeInterfaceUnsatisfied {
+		t.Fatalf("sync implementation diagnostics:\n%s", diag.FormatAll(ds))
+	}
+	asyncImpl := base + `
+async def (s: ref S) handle() -> i32 {
+    return s.n
+}
+
+def f() {
+    var s: S = S { n: 1 }
+    var h: Handler = s
+    _ = use(h)
+}
+`
+	ds = checkTypes(t, asyncImpl)
+	if len(ds) != 0 {
+		t.Fatalf("async implementation diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
 const ifaceProgram = `interface Shape {
     def area() -> i32
 }

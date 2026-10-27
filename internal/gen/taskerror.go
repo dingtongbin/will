@@ -115,7 +115,6 @@ func (g *generator) emitTaskError() {
 	fmt.Fprintf(g.out, "  call void @willrt_free_str(ptr %s)\n", msg)
 	fmt.Fprintf(g.out, "  store ptr null, ptr %s\n", msgPtr)
 	g.out.WriteString("  ret void\n}\n")
-	g.out.WriteString("define internal void @will.task.error.share(ptr %data) {\nentry:\n  ret void\n}\n")
 	g.out.WriteString("@will.task.error.id = private constant i8 0\n")
-	g.out.WriteString("@will.task.error.table = private constant [6 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.share, ptr @will.task.error.id]\n")
+	g.out.WriteString("@will.task.error.table = private constant [5 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.id]\n")
 }

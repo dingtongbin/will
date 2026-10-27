@@ -566,6 +566,13 @@ static void willrt_task_run_step(struct willrt_task* task) {
     task->wait_requested = 0;
     task->io_wait = 0;
     willrt_task_disarm_timer(task);
+    /* A canceled job that has not begun is skipped. A running job has no safe
+       interruption point, so it runs to completion once started. */
+    if (task->is_job && __atomic_load_n(&task->canceled, __ATOMIC_ACQUIRE) != 0) {
+        willrt_task_finish(task);
+        task->state = WILLRT_TASK_DONE;
+        return;
+    }
     willrt_task_self = task;
     willrt_mem_set_lane(task->lane);
     /* A panic is a defect, not an exception: it discards the task and jumps
@@ -1602,7 +1609,7 @@ int32_t willrt_task_canceled(void) {
     if (task == NULL) {
         return 0;
     }
-    if (task->canceled) {
+    if (__atomic_load_n(&task->canceled, __ATOMIC_ACQUIRE) != 0) {
         return 1;
     }
     if (task->cancel_flag != NULL) {
@@ -1622,8 +1629,8 @@ void willrt_task_cancel(willrt_task* task) {
         return;
     }
     willrt_os_mutex_lock(&task->lock);
-    if (!task->finished) {
-        task->canceled = 1;
+    if (!task->finished && !(task->is_job && task->started)) {
+        __atomic_store_n(&task->canceled, 1, __ATOMIC_RELEASE);
     }
     willrt_os_mutex_unlock(&task->lock);
     willrt_task_wake_chan(task);

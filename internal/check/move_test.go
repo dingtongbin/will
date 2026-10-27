@@ -513,6 +513,23 @@ func TestSharedBorrowCopies(t *testing.T) {
 	}
 }
 
+func TestAwaitConsumesTaskOnce(t *testing.T) {
+	src := `def work() -> i32 {
+    return 1
+}
+
+async def f() {
+    var task = spawn work()
+    _ = await task
+    _ = await task
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMoved {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestMovePassingIsABorrow(t *testing.T) {
 	src := `def g(s: str) {
 }

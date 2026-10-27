@@ -10,7 +10,7 @@ entry:
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 1
   %t4 = load ptr, ptr %t3
-  %t5 = getelementptr inbounds [6 x ptr], ptr %t4, i64 0, i64 1
+  %t5 = getelementptr inbounds [5 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
   %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t7)
@@ -1355,10 +1355,6 @@ iface.drop.have.3:
 iface.drop.done.3:
   ret void
 }
-define internal void @"std/os/fs.iface.share.Error.fsError"(ptr %data) {
-entry:
-  ret void
-}
 define internal ptr @"std/os/fs.iface.clone.Error.std/errors.Fault"(ptr %data) {
 entry:
   %t586 = alloca ptr
@@ -1404,10 +1400,6 @@ iface.drop.have.5:
   call void @willrt_free_str(ptr %t605)
   br label %iface.drop.done.5
 iface.drop.done.5:
-  ret void
-}
-define internal void @"std/os/fs.iface.share.Error.std/errors.Fault"(ptr %data) {
-entry:
   ret void
 }
 define internal i32 @"std/os/fs.File.async_read.sm"(ptr %frame) {
@@ -3794,7 +3786,7 @@ deep.rel.adt.5.1:
 iface.rel.empty.6:
   br label %iface.rel.done.6
 iface.rel.have.6:
-  %t40 = getelementptr inbounds [6 x ptr], ptr %t38, i64 0, i64 3
+  %t40 = getelementptr inbounds [5 x ptr], ptr %t38, i64 0, i64 3
   %t41 = load ptr, ptr %t40
   call void %t41(ptr %t37)
   call void @willrt_free(ptr %t37)
@@ -3973,7 +3965,7 @@ deep.rel.adt.13.1:
 iface.rel.empty.14:
   br label %iface.rel.done.14
 iface.rel.have.14:
-  %t119 = getelementptr inbounds [6 x ptr], ptr %t117, i64 0, i64 3
+  %t119 = getelementptr inbounds [5 x ptr], ptr %t117, i64 0, i64 3
   %t120 = load ptr, ptr %t119
   call void %t120(ptr %t116)
   call void @willrt_free(ptr %t116)
@@ -4072,7 +4064,7 @@ deep.rel.adt.19.1:
 iface.rel.empty.20:
   br label %iface.rel.done.20
 iface.rel.have.20:
-  %t161 = getelementptr inbounds [6 x ptr], ptr %t159, i64 0, i64 3
+  %t161 = getelementptr inbounds [5 x ptr], ptr %t159, i64 0, i64 3
   %t162 = load ptr, ptr %t161
   call void %t162(ptr %t158)
   call void @willrt_free(ptr %t158)
@@ -4204,7 +4196,7 @@ deep.rel.adt.5.1:
 iface.rel.empty.6:
   br label %iface.rel.done.6
 iface.rel.have.6:
-  %t208 = getelementptr inbounds [6 x ptr], ptr %t206, i64 0, i64 3
+  %t208 = getelementptr inbounds [5 x ptr], ptr %t206, i64 0, i64 3
   %t209 = load ptr, ptr %t208
   call void %t209(ptr %t205)
   call void @willrt_free(ptr %t205)
@@ -4395,7 +4387,7 @@ deep.rel.adt.13.1:
 iface.rel.empty.14:
   br label %iface.rel.done.14
 iface.rel.have.14:
-  %t301 = getelementptr inbounds [6 x ptr], ptr %t299, i64 0, i64 3
+  %t301 = getelementptr inbounds [5 x ptr], ptr %t299, i64 0, i64 3
   %t302 = load ptr, ptr %t301
   call void %t302(ptr %t298)
   call void @willrt_free(ptr %t298)
@@ -4422,7 +4414,7 @@ deep.rel.adt.15.1:
 iface.rel.empty.16:
   br label %iface.rel.done.16
 iface.rel.have.16:
-  %t310 = getelementptr inbounds [6 x ptr], ptr %t308, i64 0, i64 3
+  %t310 = getelementptr inbounds [5 x ptr], ptr %t308, i64 0, i64 3
   %t311 = load ptr, ptr %t310
   call void %t311(ptr %t307)
   call void @willrt_free(ptr %t307)
@@ -4456,7 +4448,7 @@ deep.rel.adt.18.1:
 iface.rel.empty.19:
   br label %iface.rel.done.19
 iface.rel.have.19:
-  %t322 = getelementptr inbounds [6 x ptr], ptr %t320, i64 0, i64 3
+  %t322 = getelementptr inbounds [5 x ptr], ptr %t320, i64 0, i64 3
   %t323 = load ptr, ptr %t322
   call void %t323(ptr %t319)
   call void @willrt_free(ptr %t319)
@@ -4497,7 +4489,7 @@ deep.rel.adt.22.1:
 iface.rel.empty.23:
   br label %iface.rel.done.23
 iface.rel.have.23:
-  %t337 = getelementptr inbounds [6 x ptr], ptr %t335, i64 0, i64 3
+  %t337 = getelementptr inbounds [5 x ptr], ptr %t335, i64 0, i64 3
   %t338 = load ptr, ptr %t337
   call void %t338(ptr %t334)
   call void @willrt_free(ptr %t334)
@@ -4543,7 +4535,7 @@ deep.rel.adt.25.1:
 iface.rel.empty.26:
   br label %iface.rel.done.26
 iface.rel.have.26:
-  %t356 = getelementptr inbounds [6 x ptr], ptr %t354, i64 0, i64 3
+  %t356 = getelementptr inbounds [5 x ptr], ptr %t354, i64 0, i64 3
   %t357 = load ptr, ptr %t356
   call void %t357(ptr %t353)
   call void @willrt_free(ptr %t353)
@@ -4629,7 +4621,7 @@ deep.rel.adt.29.1:
 iface.rel.empty.30:
   br label %iface.rel.done.30
 iface.rel.have.30:
-  %t390 = getelementptr inbounds [6 x ptr], ptr %t388, i64 0, i64 3
+  %t390 = getelementptr inbounds [5 x ptr], ptr %t388, i64 0, i64 3
   %t391 = load ptr, ptr %t390
   call void %t391(ptr %t387)
   call void @willrt_free(ptr %t387)
@@ -4678,7 +4670,7 @@ deep.rel.adt.33.1:
 iface.rel.empty.34:
   br label %iface.rel.done.34
 iface.rel.have.34:
-  %t412 = getelementptr inbounds [6 x ptr], ptr %t410, i64 0, i64 3
+  %t412 = getelementptr inbounds [5 x ptr], ptr %t410, i64 0, i64 3
   %t413 = load ptr, ptr %t412
   call void %t413(ptr %t409)
   call void @willrt_free(ptr %t409)
@@ -4705,7 +4697,7 @@ deep.rel.adt.35.1:
 iface.rel.empty.36:
   br label %iface.rel.done.36
 iface.rel.have.36:
-  %t421 = getelementptr inbounds [6 x ptr], ptr %t419, i64 0, i64 3
+  %t421 = getelementptr inbounds [5 x ptr], ptr %t419, i64 0, i64 3
   %t422 = load ptr, ptr %t421
   call void %t422(ptr %t418)
   call void @willrt_free(ptr %t418)
@@ -4739,7 +4731,7 @@ deep.rel.adt.38.1:
 iface.rel.empty.39:
   br label %iface.rel.done.39
 iface.rel.have.39:
-  %t434 = getelementptr inbounds [6 x ptr], ptr %t432, i64 0, i64 3
+  %t434 = getelementptr inbounds [5 x ptr], ptr %t432, i64 0, i64 3
   %t435 = load ptr, ptr %t434
   call void %t435(ptr %t431)
   call void @willrt_free(ptr %t431)
@@ -4827,12 +4819,8 @@ entry:
   store ptr null, ptr %t462
   ret void
 }
-define internal void @will.task.error.share(ptr %data) {
-entry:
-  ret void
-}
 @will.task.error.id = private constant i8 0
-@will.task.error.table = private constant [6 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.share, ptr @will.task.error.id]
+@will.task.error.table = private constant [5 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.id]
 declare i32 @willrt_fs_read_file(i32, i32)
 declare i32 @willrt_fs_write_file(i32, i32)
 declare i32 @willrt_fs_append_file(i32, i32)
@@ -4862,11 +4850,11 @@ declare i32 @willrt_fs_temp_dir(ptr, ptr, ptr)
 @.bytes.7 = private unnamed_addr constant [9 x i8] c"i/o error", align 1
 @.bytes.8 = private unnamed_addr constant [20 x i8] c"fs: cannot read file", align 1
 @"will.type.std/os/fs.fsError" = linkonce_odr constant i8 0, align 1
-@"std/os/fs.vtable.Error.fsError" = internal constant [6 x ptr] [ptr @"std/os/fs.fsError.message", ptr @"std/os/fs.fsError.status", ptr @"std/os/fs.iface.clone.Error.fsError", ptr @"std/os/fs.iface.drop.Error.fsError", ptr @"std/os/fs.iface.share.Error.fsError", ptr @"will.type.std/os/fs.fsError"], align 8
+@"std/os/fs.vtable.Error.fsError" = internal constant [5 x ptr] [ptr @"std/os/fs.fsError.message", ptr @"std/os/fs.fsError.status", ptr @"std/os/fs.iface.clone.Error.fsError", ptr @"std/os/fs.iface.drop.Error.fsError", ptr @"will.type.std/os/fs.fsError"], align 8
 @.bytes.9 = private unnamed_addr constant [21 x i8] c"fs: cannot write file", align 1
 @.bytes.10 = private unnamed_addr constant [22 x i8] c"fs: cannot append file", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/os/fs.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/os/fs.iface.clone.Error.std/errors.Fault", ptr @"std/os/fs.iface.drop.Error.std/errors.Fault", ptr @"std/os/fs.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@"std/os/fs.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/os/fs.iface.clone.Error.std/errors.Fault", ptr @"std/os/fs.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.bytes.11 = private unnamed_addr constant [0 x i8] zeroinitializer
 @.bytes.12 = private unnamed_addr constant [26 x i8] c"will-concurrency-async.tmp", align 1
 @.bytes.13 = private unnamed_addr constant [6 x i8] c"worker", align 1

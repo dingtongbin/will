@@ -82,18 +82,16 @@ sm.init:
   %t21 = call ptr @willrt_alloc(i64 %t20)
   %t22 = getelementptr { i32 }, ptr %t21, i32 0, i32 0
   store i32 20, ptr %t22
-  %t23 = call ptr @willrt_task_new(ptr @"example.com/task.spawn.1", ptr %t21, i64 %t20, i32 0, i32 0)
+  %t23 = call ptr @willrt_job_new(ptr @"example.com/task.spawn.1", ptr %t21, i64 %t20, i32 0)
   call void @willrt_task_own_frame(ptr %t23)
-  call void @willrt_task_run_auto(ptr %t23)
   store ptr %t23, ptr %v.a
   %t24 = getelementptr { i32 }, ptr null, i32 1
   %t25 = ptrtoint ptr %t24 to i64
   %t26 = call ptr @willrt_alloc(i64 %t25)
   %t27 = getelementptr { i32 }, ptr %t26, i32 0, i32 0
   store i32 21, ptr %t27
-  %t28 = call ptr @willrt_task_new(ptr @"example.com/task.spawn.2", ptr %t26, i64 %t25, i32 0, i32 0)
+  %t28 = call ptr @willrt_job_new(ptr @"example.com/task.spawn.2", ptr %t26, i64 %t25, i32 0)
   call void @willrt_task_own_frame(ptr %t28)
-  call void @willrt_task_run_auto(ptr %t28)
   store ptr %t28, ptr %v.b
   %t29 = load ptr, ptr %v.a
   store ptr %t29, ptr %v.sm.join.task.30
@@ -305,7 +303,7 @@ deep.rel.adt.9.1:
 iface.rel.empty.10:
   br label %iface.rel.done.10
 iface.rel.have.10:
-  %t136 = getelementptr inbounds [6 x ptr], ptr %t134, i64 0, i64 3
+  %t136 = getelementptr inbounds [5 x ptr], ptr %t134, i64 0, i64 3
   %t137 = load ptr, ptr %t136
   call void %t137(ptr %t133)
   call void @willrt_free(ptr %t133)
@@ -341,7 +339,7 @@ deep.rel.adt.12.1:
 iface.rel.empty.13:
   br label %iface.rel.done.13
 iface.rel.have.13:
-  %t148 = getelementptr inbounds [6 x ptr], ptr %t146, i64 0, i64 3
+  %t148 = getelementptr inbounds [5 x ptr], ptr %t146, i64 0, i64 3
   %t149 = load ptr, ptr %t148
   call void %t149(ptr %t145)
   call void @willrt_free(ptr %t145)
@@ -369,9 +367,8 @@ deep.rel.adt.done.12.1:
   %t156 = getelementptr { i32 }, ptr %t155, i32 0, i32 0
   %t157 = load i32, ptr %v.sum
   store i32 %t157, ptr %t156
-  %t158 = call ptr @willrt_task_new(ptr @"example.com/task.spawn.3", ptr %t155, i64 %t154, i32 0, i32 0)
+  %t158 = call ptr @willrt_job_new(ptr @"example.com/task.spawn.3", ptr %t155, i64 %t154, i32 0)
   call void @willrt_task_own_frame(ptr %t158)
-  call void @willrt_task_run_auto(ptr %t158)
   store ptr %t158, ptr %v.t
   %t159 = load ptr, ptr %v.t
   store ptr %t159, ptr %v.sm.join.task.160
@@ -491,7 +488,7 @@ deep.rel.adt.18.1:
 iface.rel.empty.19:
   br label %iface.rel.done.19
 iface.rel.have.19:
-  %t218 = getelementptr inbounds [6 x ptr], ptr %t216, i64 0, i64 3
+  %t218 = getelementptr inbounds [5 x ptr], ptr %t216, i64 0, i64 3
   %t219 = load ptr, ptr %t218
   call void %t219(ptr %t215)
   call void @willrt_free(ptr %t215)
@@ -619,7 +616,7 @@ deep.rel.adt.24.1:
 iface.rel.empty.25:
   br label %iface.rel.done.25
 iface.rel.have.25:
-  %t274 = getelementptr inbounds [6 x ptr], ptr %t272, i64 0, i64 3
+  %t274 = getelementptr inbounds [5 x ptr], ptr %t272, i64 0, i64 3
   %t275 = load ptr, ptr %t274
   call void %t275(ptr %t271)
   call void @willrt_free(ptr %t271)
@@ -655,7 +652,7 @@ deep.rel.adt.27.1:
 iface.rel.empty.28:
   br label %iface.rel.done.28
 iface.rel.have.28:
-  %t288 = getelementptr inbounds [6 x ptr], ptr %t286, i64 0, i64 3
+  %t288 = getelementptr inbounds [5 x ptr], ptr %t286, i64 0, i64 3
   %t289 = load ptr, ptr %t288
   call void %t289(ptr %t285)
   call void @willrt_free(ptr %t285)
@@ -694,7 +691,7 @@ deep.rel.adt.30.1:
 iface.rel.empty.31:
   br label %iface.rel.done.31
 iface.rel.have.31:
-  %t304 = getelementptr inbounds [6 x ptr], ptr %t302, i64 0, i64 3
+  %t304 = getelementptr inbounds [5 x ptr], ptr %t302, i64 0, i64 3
   %t305 = load ptr, ptr %t304
   call void %t305(ptr %t301)
   call void @willrt_free(ptr %t301)
@@ -820,12 +817,8 @@ entry:
   store ptr null, ptr %t352
   ret void
 }
-define internal void @will.task.error.share(ptr %data) {
-entry:
-  ret void
-}
 @will.task.error.id = private constant i8 0
-@will.task.error.table = private constant [6 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.share, ptr @will.task.error.id]
+@will.task.error.table = private constant [5 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.id]
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:2:12\00", align 1
 @.str.2 = private unnamed_addr constant [25 x i8] c"example.com/task.compute\00", align 1
@@ -870,6 +863,8 @@ declare void @willrt_region_enter()
 declare i32 @willrt_region_exit()
 declare i32 @willrt_region_exit_try()
 declare i32 @willrt_lane_here()
+declare ptr @willrt_job_new(ptr, ptr, i64, i32)
+declare ptr @willrt_job_new_drop(ptr, ptr, i64, i32, ptr)
 declare void @willrt_task_mark_wait()
 declare void @willrt_task_own_frame(ptr)
 declare i64 @willrt_fmt_i64_len(i64)

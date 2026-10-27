@@ -1789,10 +1789,6 @@ iface.drop.have.16:
 iface.drop.done.16:
   ret void
 }
-define internal void @"std/os/exec.iface.share.Error.execError"(ptr %data) {
-entry:
-  ret void
-}
 %"struct.std/os/exec.ExitStatus" = type { i32, i1 }
 %"struct.std/os/exec.Output" = type { { ptr, i64, i64 }, { ptr, i64, i64 }, %"struct.std/os/exec.ExitStatus" }
 define internal i32 @"example.com/stdtest/exec.will$main.sm"(ptr %frame) {
@@ -1958,7 +1954,7 @@ deep.rel.adt.5.1:
 iface.rel.empty.6:
   br label %iface.rel.done.6
 iface.rel.have.6:
-  %t60 = getelementptr inbounds [6 x ptr], ptr %t58, i64 0, i64 3
+  %t60 = getelementptr inbounds [5 x ptr], ptr %t58, i64 0, i64 3
   %t61 = load ptr, ptr %t60
   call void %t61(ptr %t57)
   call void @willrt_free(ptr %t57)
@@ -2044,7 +2040,7 @@ deep.rel.adt.12.1:
 iface.rel.empty.13:
   br label %iface.rel.done.13
 iface.rel.have.13:
-  %t100 = getelementptr inbounds [6 x ptr], ptr %t98, i64 0, i64 3
+  %t100 = getelementptr inbounds [5 x ptr], ptr %t98, i64 0, i64 3
   %t101 = load ptr, ptr %t100
   call void %t101(ptr %t97)
   call void @willrt_free(ptr %t97)
@@ -2169,7 +2165,7 @@ deep.rel.adt.19.1:
 iface.rel.empty.20:
   br label %iface.rel.done.20
 iface.rel.have.20:
-  %t161 = getelementptr inbounds [6 x ptr], ptr %t159, i64 0, i64 3
+  %t161 = getelementptr inbounds [5 x ptr], ptr %t159, i64 0, i64 3
   %t162 = load ptr, ptr %t161
   call void %t162(ptr %t158)
   call void @willrt_free(ptr %t158)
@@ -2296,7 +2292,7 @@ deep.rel.adt.25.1:
 iface.rel.empty.26:
   br label %iface.rel.done.26
 iface.rel.have.26:
-  %t222 = getelementptr inbounds [6 x ptr], ptr %t220, i64 0, i64 3
+  %t222 = getelementptr inbounds [5 x ptr], ptr %t220, i64 0, i64 3
   %t223 = load ptr, ptr %t222
   call void %t223(ptr %t219)
   call void @willrt_free(ptr %t219)
@@ -2424,7 +2420,7 @@ deep.rel.adt.30.1:
 iface.rel.empty.31:
   br label %iface.rel.done.31
 iface.rel.have.31:
-  %t288 = getelementptr inbounds [6 x ptr], ptr %t286, i64 0, i64 3
+  %t288 = getelementptr inbounds [5 x ptr], ptr %t286, i64 0, i64 3
   %t289 = load ptr, ptr %t288
   call void %t289(ptr %t285)
   call void @willrt_free(ptr %t285)
@@ -2469,7 +2465,7 @@ deep.rel.adt.35.1:
 iface.rel.empty.36:
   br label %iface.rel.done.36
 iface.rel.have.36:
-  %t307 = getelementptr inbounds [6 x ptr], ptr %t305, i64 0, i64 3
+  %t307 = getelementptr inbounds [5 x ptr], ptr %t305, i64 0, i64 3
   %t308 = load ptr, ptr %t307
   call void %t308(ptr %t304)
   call void @willrt_free(ptr %t304)
@@ -2582,7 +2578,7 @@ deep.rel.adt.41.1:
 iface.rel.empty.42:
   br label %iface.rel.done.42
 iface.rel.have.42:
-  %t361 = getelementptr inbounds [6 x ptr], ptr %t359, i64 0, i64 3
+  %t361 = getelementptr inbounds [5 x ptr], ptr %t359, i64 0, i64 3
   %t362 = load ptr, ptr %t361
   call void %t362(ptr %t358)
   call void @willrt_free(ptr %t358)
@@ -2669,7 +2665,7 @@ deep.rel.adt.45.1:
 iface.rel.empty.46:
   br label %iface.rel.done.46
 iface.rel.have.46:
-  %t402 = getelementptr inbounds [6 x ptr], ptr %t400, i64 0, i64 3
+  %t402 = getelementptr inbounds [5 x ptr], ptr %t400, i64 0, i64 3
   %t403 = load ptr, ptr %t402
   call void %t403(ptr %t399)
   call void @willrt_free(ptr %t399)
@@ -2782,7 +2778,7 @@ deep.rel.adt.51.1:
 iface.rel.empty.52:
   br label %iface.rel.done.52
 iface.rel.have.52:
-  %t456 = getelementptr inbounds [6 x ptr], ptr %t454, i64 0, i64 3
+  %t456 = getelementptr inbounds [5 x ptr], ptr %t454, i64 0, i64 3
   %t457 = load ptr, ptr %t456
   call void %t457(ptr %t453)
   call void @willrt_free(ptr %t453)
@@ -2863,7 +2859,7 @@ deep.rel.adt.55.1:
 iface.rel.empty.56:
   br label %iface.rel.done.56
 iface.rel.have.56:
-  %t493 = getelementptr inbounds [6 x ptr], ptr %t491, i64 0, i64 3
+  %t493 = getelementptr inbounds [5 x ptr], ptr %t491, i64 0, i64 3
   %t494 = load ptr, ptr %t493
   call void %t494(ptr %t490)
   call void @willrt_free(ptr %t490)
@@ -2976,7 +2972,7 @@ deep.rel.adt.61.1:
 iface.rel.empty.62:
   br label %iface.rel.done.62
 iface.rel.have.62:
-  %t547 = getelementptr inbounds [6 x ptr], ptr %t545, i64 0, i64 3
+  %t547 = getelementptr inbounds [5 x ptr], ptr %t545, i64 0, i64 3
   %t548 = load ptr, ptr %t547
   call void %t548(ptr %t544)
   call void @willrt_free(ptr %t544)
@@ -3095,7 +3091,7 @@ deep.rel.adt.66.1:
 iface.rel.empty.67:
   br label %iface.rel.done.67
 iface.rel.have.67:
-  %t599 = getelementptr inbounds [6 x ptr], ptr %t597, i64 0, i64 3
+  %t599 = getelementptr inbounds [5 x ptr], ptr %t597, i64 0, i64 3
   %t600 = load ptr, ptr %t599
   call void %t600(ptr %t596)
   call void @willrt_free(ptr %t596)
@@ -3213,7 +3209,7 @@ deep.rel.adt.72.1:
 iface.rel.empty.73:
   br label %iface.rel.done.73
 iface.rel.have.73:
-  %t655 = getelementptr inbounds [6 x ptr], ptr %t653, i64 0, i64 3
+  %t655 = getelementptr inbounds [5 x ptr], ptr %t653, i64 0, i64 3
   %t656 = load ptr, ptr %t655
   call void %t656(ptr %t652)
   call void @willrt_free(ptr %t652)
@@ -3331,7 +3327,7 @@ deep.rel.adt.78.1:
 iface.rel.empty.79:
   br label %iface.rel.done.79
 iface.rel.have.79:
-  %t711 = getelementptr inbounds [6 x ptr], ptr %t709, i64 0, i64 3
+  %t711 = getelementptr inbounds [5 x ptr], ptr %t709, i64 0, i64 3
   %t712 = load ptr, ptr %t711
   call void %t712(ptr %t708)
   call void @willrt_free(ptr %t708)
@@ -3365,7 +3361,7 @@ deep.rel.adt.81.1:
 iface.rel.empty.82:
   br label %iface.rel.done.82
 iface.rel.have.82:
-  %t724 = getelementptr inbounds [6 x ptr], ptr %t722, i64 0, i64 3
+  %t724 = getelementptr inbounds [5 x ptr], ptr %t722, i64 0, i64 3
   %t725 = load ptr, ptr %t724
   call void %t725(ptr %t721)
   call void @willrt_free(ptr %t721)
@@ -3411,7 +3407,7 @@ main.async.ok.83:
 @.str.11 = private unnamed_addr constant [22 x i8] c"os/exec/cmd.will:37:9\00", align 1
 @.bytes.3 = private unnamed_addr constant [16 x i8] c"exec: cannot run", align 1
 @"will.type.std/os/exec.execError" = linkonce_odr constant i8 0, align 1
-@"std/os/exec.vtable.Error.execError" = internal constant [6 x ptr] [ptr @"std/os/exec.execError.message", ptr @"std/os/exec.execError.status", ptr @"std/os/exec.iface.clone.Error.execError", ptr @"std/os/exec.iface.drop.Error.execError", ptr @"std/os/exec.iface.share.Error.execError", ptr @"will.type.std/os/exec.execError"], align 8
+@"std/os/exec.vtable.Error.execError" = internal constant [5 x ptr] [ptr @"std/os/exec.execError.message", ptr @"std/os/exec.execError.status", ptr @"std/os/exec.iface.clone.Error.execError", ptr @"std/os/exec.iface.drop.Error.execError", ptr @"will.type.std/os/exec.execError"], align 8
 @.bytes.4 = private unnamed_addr constant [27 x i8] c"exec: cannot capture output", align 1
 @.bytes.5 = private unnamed_addr constant [3 x i8] c"cmd", align 1
 @.bytes.6 = private unnamed_addr constant [2 x i8] c"/C", align 1

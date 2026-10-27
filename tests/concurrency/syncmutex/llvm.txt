@@ -10,7 +10,7 @@ entry:
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 1
   %t4 = load ptr, ptr %t3
-  %t5 = getelementptr inbounds [6 x ptr], ptr %t4, i64 0, i64 1
+  %t5 = getelementptr inbounds [5 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
   %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t7)
@@ -462,10 +462,6 @@ iface.drop.have.8:
   call void @willrt_free_str(ptr %t99)
   br label %iface.drop.done.8
 iface.drop.done.8:
-  ret void
-}
-define internal void @"std/sync.iface.share.Error.std/errors.Fault"(ptr %data) {
-entry:
   ret void
 }
 %"struct.std/sync.Guard$T" = type { i64, i1, i32 }
@@ -1376,7 +1372,7 @@ deep.rel.adt.8.1:
 iface.rel.empty.9:
   br label %iface.rel.done.9
 iface.rel.have.9:
-  %t289 = getelementptr inbounds [6 x ptr], ptr %t287, i64 0, i64 3
+  %t289 = getelementptr inbounds [5 x ptr], ptr %t287, i64 0, i64 3
   %t290 = load ptr, ptr %t289
   call void %t290(ptr %t286)
   call void @willrt_free(ptr %t286)
@@ -1412,7 +1408,7 @@ deep.rel.adt.11.1:
 iface.rel.empty.12:
   br label %iface.rel.done.12
 iface.rel.have.12:
-  %t301 = getelementptr inbounds [6 x ptr], ptr %t299, i64 0, i64 3
+  %t301 = getelementptr inbounds [5 x ptr], ptr %t299, i64 0, i64 3
   %t302 = load ptr, ptr %t301
   call void %t302(ptr %t298)
   call void @willrt_free(ptr %t298)
@@ -1753,7 +1749,7 @@ deep.rel.adt.29.1:
 iface.rel.empty.30:
   br label %iface.rel.done.30
 iface.rel.have.30:
-  %t456 = getelementptr inbounds [6 x ptr], ptr %t454, i64 0, i64 3
+  %t456 = getelementptr inbounds [5 x ptr], ptr %t454, i64 0, i64 3
   %t457 = load ptr, ptr %t456
   call void %t457(ptr %t453)
   call void @willrt_free(ptr %t453)
@@ -2425,7 +2421,7 @@ deep.rel.adt.61.1:
 iface.rel.empty.62:
   br label %iface.rel.done.62
 iface.rel.have.62:
-  %t768 = getelementptr inbounds [6 x ptr], ptr %t766, i64 0, i64 3
+  %t768 = getelementptr inbounds [5 x ptr], ptr %t766, i64 0, i64 3
   %t769 = load ptr, ptr %t768
   call void %t769(ptr %t765)
   call void @willrt_free(ptr %t765)
@@ -2459,7 +2455,7 @@ deep.rel.adt.64.1:
 iface.rel.empty.65:
   br label %iface.rel.done.65
 iface.rel.have.65:
-  %t781 = getelementptr inbounds [6 x ptr], ptr %t779, i64 0, i64 3
+  %t781 = getelementptr inbounds [5 x ptr], ptr %t779, i64 0, i64 3
   %t782 = load ptr, ptr %t781
   call void %t782(ptr %t778)
   call void @willrt_free(ptr %t778)
@@ -2493,7 +2489,7 @@ deep.rel.adt.67.1:
 iface.rel.empty.68:
   br label %iface.rel.done.68
 iface.rel.have.68:
-  %t794 = getelementptr inbounds [6 x ptr], ptr %t792, i64 0, i64 3
+  %t794 = getelementptr inbounds [5 x ptr], ptr %t792, i64 0, i64 3
   %t795 = load ptr, ptr %t794
   call void %t795(ptr %t791)
   call void @willrt_free(ptr %t791)
@@ -2873,11 +2869,7 @@ entry:
   call void @willrt_free_str(ptr %t26)
   ret void
 }
-define internal void @will.error.share.4(ptr %data) {
-entry:
-  ret void
-}
-@will.error.table.4 = private constant [6 x ptr] [ptr @will.error.message.4, ptr @will.error.status.4, ptr @will.error.clone.4, ptr @will.error.drop.4, ptr @will.error.share.4, ptr @"will.type.std/errors.Fault"]
+@will.error.table.4 = private constant [5 x ptr] [ptr @will.error.message.4, ptr @will.error.status.4, ptr @will.error.clone.4, ptr @will.error.drop.4, ptr @"will.type.std/errors.Fault"]
 @will.error.value.4 = private constant %interface.Error { ptr @will.error.data.4, ptr @will.error.table.4 }
 @will.error.data.8 = private constant { ptr, i64, i32 } { ptr @.str.42, i64 8, i32 8 }
 define internal { ptr, i64 } @will.error.message.8(ptr %data) {
@@ -2909,11 +2901,7 @@ entry:
   call void @willrt_free_str(ptr %t37)
   ret void
 }
-define internal void @will.error.share.8(ptr %data) {
-entry:
-  ret void
-}
-@will.error.table.8 = private constant [6 x ptr] [ptr @will.error.message.8, ptr @will.error.status.8, ptr @will.error.clone.8, ptr @will.error.drop.8, ptr @will.error.share.8, ptr @"will.type.std/errors.Fault"]
+@will.error.table.8 = private constant [5 x ptr] [ptr @will.error.message.8, ptr @will.error.status.8, ptr @will.error.clone.8, ptr @will.error.drop.8, ptr @"will.type.std/errors.Fault"]
 @will.error.value.8 = private constant %interface.Error { ptr @will.error.data.8, ptr @will.error.table.8 }
 @will.error.data.9 = private constant { ptr, i64, i32 } { ptr @.str.43, i64 8, i32 9 }
 define internal { ptr, i64 } @will.error.message.9(ptr %data) {
@@ -2945,11 +2933,7 @@ entry:
   call void @willrt_free_str(ptr %t48)
   ret void
 }
-define internal void @will.error.share.9(ptr %data) {
-entry:
-  ret void
-}
-@will.error.table.9 = private constant [6 x ptr] [ptr @will.error.message.9, ptr @will.error.status.9, ptr @will.error.clone.9, ptr @will.error.drop.9, ptr @will.error.share.9, ptr @"will.type.std/errors.Fault"]
+@will.error.table.9 = private constant [5 x ptr] [ptr @will.error.message.9, ptr @will.error.status.9, ptr @will.error.clone.9, ptr @will.error.drop.9, ptr @"will.type.std/errors.Fault"]
 @will.error.value.9 = private constant %interface.Error { ptr @will.error.data.9, ptr @will.error.table.9 }
 declare void @willrt_task_error_message(ptr, ptr, ptr)
 declare i32 @willrt_task_error_status(ptr)
@@ -3004,12 +2988,8 @@ entry:
   store ptr null, ptr %t69
   ret void
 }
-define internal void @will.task.error.share(ptr %data) {
-entry:
-  ret void
-}
 @will.task.error.id = private constant i8 0
-@will.task.error.table = private constant [6 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.share, ptr @will.task.error.id]
+@will.task.error.table = private constant [5 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.id]
 declare ptr @willrt_sync_count_new(i64)
 declare void @willrt_sync_count_add(ptr, i64)
 declare ptr @willrt_sync_count_wait_async_start(ptr)
@@ -3037,7 +3017,7 @@ declare ptr @willrt_sync_lock_new()
 @.str.9 = private unnamed_addr constant [20 x i8] c"std/sync.Count.wait\00", align 1
 @.str.10 = private unnamed_addr constant [22 x i8] c"sync/count.will:33:18\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/sync.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/sync.iface.clone.Error.std/errors.Fault", ptr @"std/sync.iface.drop.Error.std/errors.Fault", ptr @"std/sync.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@"std/sync.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/sync.iface.clone.Error.std/errors.Fault", ptr @"std/sync.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.str.13 = private unnamed_addr constant [26 x i8] c"sync/semaphore.will:37:18\00", align 1
 @.str.14 = private unnamed_addr constant [27 x i8] c"std/sync.Semaphore.acquire\00", align 1
 @.str.15 = private unnamed_addr constant [26 x i8] c"sync/semaphore.will:40:18\00", align 1

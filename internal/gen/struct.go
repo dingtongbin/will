@@ -1239,6 +1239,27 @@ func (g *generator) place(id int) (string, string, error) {
 		if op, ok := g.recs[exprID]; ok && (op.Kind == "recv" || op.Kind == "send") {
 			return g.place(exprID)
 		}
+		if call, ok := g.recs[exprID]; ok && call.Kind == "mcall" {
+			if recvText, err := g.willTypeText(refField(call, "recv")); err == nil {
+				if iface, ok := g.ifaceOfText(recvText); ok {
+					if idx, ok := iface.byName[fieldText(call, "text")]; ok && iface.methods[idx].async {
+						task, err := g.interfaceAsyncTask(call, iface)
+						if err != nil {
+							return "", "", err
+						}
+						elem, err := g.callResultText(call)
+						if err != nil {
+							return "", "", err
+						}
+						out, llvm, err := g.lowerAwaitedTask(task, elem, r.ID)
+						if err != nil {
+							return "", "", err
+						}
+						return out, llvm, nil
+					}
+				}
+			}
+		}
 		if call, ok := g.recs[exprID]; ok && (call.Kind == "call" || call.Kind == "mcall") {
 			text, err := g.callResultText(call)
 			if err != nil {

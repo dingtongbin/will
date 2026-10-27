@@ -44,6 +44,18 @@ static int32_t job_step(void* raw) {
     return WILLRT_DONE;
 }
 
+static atomic_int block_started;
+static atomic_int block_gate;
+
+static int32_t blocked_job(void* raw) {
+    (void)raw;
+    atomic_store(&block_started, 1);
+    while (atomic_load(&block_gate) == 0) {
+        willrt_os_thread_yield();
+    }
+    return WILLRT_DONE;
+}
+
 static int32_t lane_count_seen(void) {
     uint32_t bits = atomic_load(&lane_bits);
     int32_t count = 0;
@@ -83,6 +95,18 @@ int main(void) {
         assert(lane_count_seen() >= 2);
     }
     assert(atomic_load(&started) == JOB_COUNT);
+
+    {
+        willrt_task* running = willrt_job_new((void*)blocked_job, NULL, 0, 0);
+
+        assert(running != NULL);
+        while (atomic_load(&block_started) == 0) {
+            willrt_os_thread_yield();
+        }
+        willrt_task_cancel(running);
+        atomic_store(&block_gate, 1);
+        assert(willrt_join(running, NULL, NULL) == WILLRT_OK);
+    }
 
     willrt_shutdown();
     willrt_shutdown();

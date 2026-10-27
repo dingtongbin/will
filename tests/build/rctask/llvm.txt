@@ -30,9 +30,8 @@ sm.init:
   %t5 = getelementptr {}, ptr null, i32 1
   %t6 = ptrtoint ptr %t5 to i64
   %t7 = call ptr @willrt_alloc(i64 %t6)
-  %t8 = call ptr @willrt_task_new(ptr @"example.com/rctask.spawn.1", ptr %t7, i64 %t6, i32 0, i32 0)
+  %t8 = call ptr @willrt_job_new(ptr @"example.com/rctask.spawn.1", ptr %t7, i64 %t6, i32 0)
   call void @willrt_task_own_frame(ptr %t8)
-  call void @willrt_task_run_auto(ptr %t8)
   store ptr %t8, ptr %v.t
   %t9 = load ptr, ptr %v.t
   store ptr %t9, ptr %v.sm.join.task.10
@@ -142,7 +141,7 @@ deep.rel.adt.5.1:
 iface.rel.empty.6:
   br label %iface.rel.done.6
 iface.rel.have.6:
-  %t65 = getelementptr inbounds [6 x ptr], ptr %t63, i64 0, i64 3
+  %t65 = getelementptr inbounds [5 x ptr], ptr %t63, i64 0, i64 3
   %t66 = load ptr, ptr %t65
   call void %t66(ptr %t62)
   call void @willrt_free(ptr %t62)
@@ -241,7 +240,7 @@ deep.rel.adt.10.1:
 iface.rel.empty.11:
   br label %iface.rel.done.11
 iface.rel.have.11:
-  %t104 = getelementptr inbounds [6 x ptr], ptr %t102, i64 0, i64 3
+  %t104 = getelementptr inbounds [5 x ptr], ptr %t102, i64 0, i64 3
   %t105 = load ptr, ptr %t104
   call void %t105(ptr %t101)
   call void @willrt_free(ptr %t101)
@@ -340,12 +339,8 @@ entry:
   store ptr null, ptr %t137
   ret void
 }
-define internal void @will.task.error.share(ptr %data) {
-entry:
-  ret void
-}
 @will.task.error.id = private constant i8 0
-@will.task.error.table = private constant [6 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.share, ptr @will.task.error.id]
+@will.task.error.table = private constant [5 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.id]
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [16 x i8] c"main.will:12:12\00", align 1
 @.str.2 = private unnamed_addr constant [29 x i8] c"example.com/rctask.will$main\00", align 1
@@ -376,6 +371,8 @@ declare i64 @willrt_now_ns()
 declare void @willrt_region_enter()
 declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
+declare ptr @willrt_job_new(ptr, ptr, i64, i32)
+declare ptr @willrt_job_new_drop(ptr, ptr, i64, i32, ptr)
 declare void @willrt_task_mark_wait()
 declare void @willrt_task_own_frame(ptr)
 declare i64 @willrt_rc_new(ptr, i64)

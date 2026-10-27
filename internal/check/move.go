@@ -59,6 +59,7 @@ type mover struct {
 	own        *Ownership
 	owns       func(*ast.Type) bool
 	types      map[string]*ast.Type
+	taskVars   map[string]bool
 	params     map[string]bool
 	variadic   map[string]bool
 	locals     map[string]bool
@@ -243,7 +244,7 @@ func linearType(t *ast.Type) bool {
 	if t == nil {
 		return false
 	}
-	return t.Borrow == ast.MutBorrow || (t.Kind == ast.ViewType && t.ViewMut)
+	return isTaskType(t) || t.Borrow == ast.MutBorrow || (t.Kind == ast.ViewType && t.ViewMut)
 }
 
 func (m *mover) funcDecl(fn *ast.FuncDecl) {
@@ -251,6 +252,7 @@ func (m *mover) funcDecl(fn *ast.FuncDecl) {
 		return
 	}
 	m.types = map[string]*ast.Type{}
+	m.taskVars = map[string]bool{}
 	m.params = map[string]bool{}
 	m.variadic = map[string]bool{}
 	m.locals = map[string]bool{}
@@ -267,6 +269,9 @@ func (m *mover) funcDecl(fn *ast.FuncDecl) {
 	}
 	for _, p := range fn.Params {
 		m.types[p.Name] = p.Type
+		if isTaskType(p.Type) {
+			m.taskVars[p.Name] = true
+		}
 		m.params[p.Name] = true
 		if p.Variadic {
 			m.variadic[p.Name] = true
@@ -346,6 +351,9 @@ func (m *mover) block(b *ast.Block, inLoop bool, inherited map[string]bool) bloc
 				if m.types != nil && vd.Name != "" && vd.Name != "_" {
 					m.types[vd.Name] = vd.Type
 				}
+				if vd.Name != "" && vd.Name != "_" && (isTaskType(vd.Type) || isSpawn(vd.Value)) {
+					m.taskVars[vd.Name] = true
+				}
 				if vd.Name != "" && vd.Name != "_" {
 					m.locals[vd.Name] = true
 					if m.lambdaDepth > 0 && len(m.lambdaLocals) > 0 {
@@ -355,7 +363,7 @@ func (m *mover) block(b *ast.Block, inLoop bool, inherited map[string]bool) bloc
 						m.loopLocals[len(m.loopLocals)-1][vd.Name] = true
 					}
 				}
-				if (m.owns(vd.Type) || linearType(vd.Type)) && vd.Name != "" && vd.Name != "_" {
+				if (m.owns(vd.Type) || linearType(vd.Type) || m.taskVars[vd.Name]) && vd.Name != "" && vd.Name != "_" {
 					live[vd.Name] = true
 				}
 			}
@@ -786,6 +794,14 @@ func (m *mover) exprEventsIn(e ast.Expr, live map[string]bool, ev *events, trans
 	case *ast.TryExpr:
 		m.exprEventsIn(x.X, live, ev, false)
 	case *ast.AwaitExpr:
+		if name, ok := x.X.(*ast.NameExpr); ok && live[name.Name] && m.taskVars[name.Name] {
+			if ev.hasTransfer(name.Name) {
+				ev.uses = append(ev.uses, nameUse{name: name.Name, pos: name.Pos()})
+				return
+			}
+			ev.transfers = append(ev.transfers, nameUse{name: name.Name, pos: name.Pos()})
+			return
+		}
 		m.exprEventsIn(x.X, live, ev, false)
 	case *ast.UnwrapExpr:
 		m.exprEventsIn(x.X, live, ev, false)

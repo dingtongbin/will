@@ -729,7 +729,7 @@ func TestEmitBuiltinError(t *testing.T) {
 	for _, want := range []string{
 		`%interface.Error = type { ptr, ptr }`,
 		"vtable.Error.E",
-		"[6 x ptr]",
+		"[5 x ptr]",
 		"call i32 %t",
 	} {
 		if !strings.Contains(text, want) {
@@ -775,7 +775,7 @@ func TestEmitInterfaceValueAndCall(t *testing.T) {
 	for _, want := range []string{
 		`%"interface.example.com/app.Counter" = type { ptr, ptr }`,
 		`define i32 @"example.com/app.use"(ptr %x) {`,
-		"getelementptr inbounds [5 x ptr], ptr",
+		"getelementptr inbounds [4 x ptr], ptr",
 		"call i32 %t",
 		"store ptr @",
 		"vtable.example.com/app.Counter.C",
@@ -1848,7 +1848,7 @@ func TestSpawnFrameDropReleasesCapturedArray(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		"call ptr @willrt_task_new_drop(ptr @",
+		"call ptr @willrt_job_new_drop(ptr @",
 		"@\"example.com/app.spawn.1.drop\"(ptr %frame)",
 		"call void @willrt_free_str(ptr",
 		"call void @willrt_free(ptr",

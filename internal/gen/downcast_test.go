@@ -31,7 +31,7 @@ func TestEmitInterfaceDowncasts(t *testing.T) {
 		`cast.check.`,
 		`cast.hit.`,
 		`is.check.`,
-		`getelementptr inbounds [5 x ptr], ptr`,
+		`getelementptr inbounds [4 x ptr], ptr`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)

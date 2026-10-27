@@ -131,7 +131,7 @@ deep.rel.adt.5.1:
 iface.rel.empty.6:
   br label %iface.rel.done.6
 iface.rel.have.6:
-  %t63 = getelementptr inbounds [6 x ptr], ptr %t61, i64 0, i64 3
+  %t63 = getelementptr inbounds [5 x ptr], ptr %t61, i64 0, i64 3
   %t64 = load ptr, ptr %t63
   call void %t64(ptr %t60)
   call void @willrt_free(ptr %t60)
@@ -206,7 +206,7 @@ deep.rel.adt.9.1:
 iface.rel.empty.10:
   br label %iface.rel.done.10
 iface.rel.have.10:
-  %t89 = getelementptr inbounds [6 x ptr], ptr %t87, i64 0, i64 3
+  %t89 = getelementptr inbounds [5 x ptr], ptr %t87, i64 0, i64 3
   %t90 = load ptr, ptr %t89
   call void %t90(ptr %t86)
   call void @willrt_free(ptr %t86)
@@ -312,12 +312,8 @@ entry:
   store ptr null, ptr %t125
   ret void
 }
-define internal void @will.task.error.share(ptr %data) {
-entry:
-  ret void
-}
 @will.task.error.id = private constant i8 0
-@will.task.error.table = private constant [6 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.share, ptr @will.task.error.id]
+@will.task.error.table = private constant [5 x ptr] [ptr @will.task.error.message, ptr @will.task.error.status, ptr @will.task.error.clone, ptr @will.task.error.drop, ptr @will.task.error.id]
 declare i32 @add(i32, i32)
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

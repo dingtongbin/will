@@ -53,13 +53,6 @@ func (g *generator) shareValueDepth(ptr, text string, depth int) error {
 		g.recordCrossing()
 		return nil
 	}
-	if iface, ok := g.ifaceOfText(text); ok {
-		if err := g.shareIfaceValue(ptr, iface); err != nil {
-			return err
-		}
-		g.recordCrossing()
-		return nil
-	}
 	if elem, ok := arrayElemText(text); ok {
 		return g.eachElementShare(ptr, elem, depth)
 	}

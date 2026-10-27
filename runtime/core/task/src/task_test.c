@@ -356,6 +356,31 @@ static void io_wake(void* arg) {
     willrt_sched_wake_io();
 }
 
+static int32_t step_cancel_at_wait(void* raw) {
+    int32_t* calls = (int32_t*)raw;
+
+    *calls += 1;
+    if (willrt_task_canceled()) {
+        return WILLRT_CANCELED;
+    }
+    willrt_task_mark_wait();
+    return WILLRT_SUSPEND;
+}
+
+static void test_task_cancel_at_wait(void) {
+    int32_t calls = 0;
+    willrt_task* task = willrt_task_new((void*)step_cancel_at_wait, &calls,
+                                        sizeof(calls), 0, 0);
+
+    assert(task != NULL);
+    willrt_task_run(task);
+    willrt_os_sleep_ns(INT64_C(1000000));
+    willrt_task_cancel(task);
+    willrt_task_cancel(task);
+    assert(willrt_join(task, NULL, NULL) == WILLRT_CANCELED);
+    assert(calls >= 2);
+}
+
 static int32_t step_io_wait(void* raw) {
     int32_t* calls = (int32_t*)raw;
 
@@ -1186,6 +1211,7 @@ int main(void) {
     test_channel_send_wait();
     test_channel_wait_deadline();
     test_channel_wait_cancel();
+    test_task_cancel_at_wait();
     test_io_wait_is_not_deadlock();
     test_select_hands_off_from_task();
     test_select_order();

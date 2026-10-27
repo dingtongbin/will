@@ -73,7 +73,7 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	if !ok {
 		return "", g.errf(r.ID, "cannot translate node #%d: the spawned call is missing", r.ID)
 	}
-	if call.Kind != "call" {
+	if call.Kind != "call" && call.Kind != "mcall" {
 		return "", g.errf(r.ID, "cannot translate node #%d: spawn takes a direct call", r.ID)
 	}
 	target, hasTarget := g.recs[refField(call, "to")]
@@ -139,6 +139,14 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	if indirect {
 		frameTypes = append(frameTypes, "{ ptr, ptr }")
 	}
+	recvOffset := 0
+	if call.Kind == "mcall" {
+		// The receiver is the hidden first parameter of a method. Keep it as a
+		// pointer in the job frame; the method body reads through it.
+		frameTypes = append(frameTypes, "ptr")
+		argTexts = append(argTexts, "")
+		recvOffset = 1
+	}
 	for _, a := range args {
 		typ, err := g.typeOf(a)
 		if err != nil {
@@ -161,6 +169,15 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	g.needTaskDecl = true
 	frame := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", frame, size)
+	if call.Kind == "mcall" {
+		recv, _, err := g.place(refField(call, "recv"))
+		if err != nil {
+			return "", err
+		}
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 0\n", field, frameType, frame)
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", recv, field)
+	}
 	if indirect {
 		code, env, err := g.closureCode(target)
 		if err != nil {
@@ -177,7 +194,7 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	}
 	for i, a := range args {
 		field := g.newTmp()
-		fieldIndex := i
+		fieldIndex := i + recvOffset
 		if indirect {
 			fieldIndex++
 		}
@@ -244,17 +261,18 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		})
 	}
 	task := g.newTmp()
-	g.needAutoTaskDecl = true
+	// A sync call is a CPU job: it enters the submitting lane's deque and may
+	// be stolen, but it never suspends. Async calls returned above as tasks.
+	g.needJobDecl = true
 	if dropSym != "" {
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr @%s)\n",
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, ptr @%s)\n",
 			task, llvmSymbol(step), frame, size, llvmSymbol(dropSym))
 	} else {
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 0, i32 0)\n",
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new(ptr @%s, ptr %s, i64 %s, i32 0)\n",
 			task, llvmSymbol(step), frame, size)
 	}
 	g.needOwnFrameDecl = true
 	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
-	fmt.Fprintf(g.out, "  call void @willrt_task_run_auto(ptr %s)\n", task)
 	return task, nil
 }
 
@@ -425,6 +443,11 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	}
 	args := g.callArgs(call)
 	var frameTypes []string
+	recvOffset := 0
+	if call.Kind == "mcall" {
+		frameTypes = append(frameTypes, "ptr")
+		recvOffset = 1
+	}
 	for _, a := range args {
 		typ, err := g.typeOf(a)
 		if err != nil {
@@ -457,15 +480,21 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	}
 	fmt.Fprintf(g.out, "define i32 @%s(ptr %%frame) {\nentry:\n", llvmSymbol(req.sym))
 	var callArgs []string
-	for i := range args {
+	if recvOffset != 0 {
 		field := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n", field, frameType, i)
-		if isAggregateType(frameTypes[i]) {
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 0\n", field, frameType)
+		callArgs = append(callArgs, "ptr "+g.load("ptr", field))
+	}
+	for i := range args {
+		index := i + recvOffset
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n", field, frameType, index)
+		if isAggregateType(frameTypes[index]) {
 			callArgs = append(callArgs, "ptr "+field)
 			continue
 		}
-		value := g.load(frameTypes[i], field)
-		callArgs = append(callArgs, frameTypes[i]+" "+value)
+		value := g.load(frameTypes[index], field)
+		callArgs = append(callArgs, frameTypes[index]+" "+value)
 	}
 	retLLVM := ""
 	if result != "" {

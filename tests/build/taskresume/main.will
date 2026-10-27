@@ -19,19 +19,21 @@ async def work_pure(t: Task<i32>) -> i32 {
 }
 
 async def main() -> i32 {
-    var inner: Task<i32> = spawn inner()
-    var work: Task<i32> = spawn work(inner)
-    var got: i32 = await work!
+    var first: Task<i32> = spawn inner()
+    var workTask: Task<i32> = spawn work(first)
+    var got: i32 = await workTask!
     if got != 7 {
         return 1
     }
-    var local: Task<i32> = spawn work_local(inner)
-    var gotLocal: i32 = await local!
+    var second: Task<i32> = spawn inner()
+    var localTask: Task<i32> = spawn work_local(second)
+    var gotLocal: i32 = await localTask!
     if gotLocal != 8 {
         return 2
     }
-    var pure: Task<i32> = spawn work_pure(inner)
-    var gotPure: i32 = await pure!
+    var third: Task<i32> = spawn inner()
+    var pureTask: Task<i32> = spawn work_pure(third)
+    var gotPure: i32 = await pureTask!
     if gotPure != 16 {
         return 3
     }

@@ -1,7 +1,9 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/iface.C" = type { i32 }
+%"struct.example.com/iface.A" = type { i32 }
 %"interface.example.com/iface.Counter" = type { ptr, ptr }
+%"interface.example.com/iface.Actor" = type { ptr, ptr }
 define hidden i32 @"example.com/iface.C.get"(ptr %c) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/iface.C", ptr %c, i32 0, i32 0
@@ -31,14 +33,14 @@ entry:
   %t11 = load ptr, ptr %t10
   %t12 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %x, i32 0, i32 1
   %t13 = load ptr, ptr %t12
-  %t14 = getelementptr inbounds [6 x ptr], ptr %t13, i64 0, i64 0
+  %t14 = getelementptr inbounds [5 x ptr], ptr %t13, i64 0, i64 0
   %t15 = load ptr, ptr %t14
   %t16 = call i32 %t15(ptr %t11)
   %t17 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %x, i32 0, i32 0
   %t18 = load ptr, ptr %t17
   %t19 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %x, i32 0, i32 1
   %t20 = load ptr, ptr %t19
-  %t21 = getelementptr inbounds [6 x ptr], ptr %t20, i64 0, i64 1
+  %t21 = getelementptr inbounds [5 x ptr], ptr %t20, i64 0, i64 1
   %t22 = load ptr, ptr %t21
   %t23 = call i32 %t22(ptr %t18, i32 2)
   %t24 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t16, i32 %t23)
@@ -55,11 +57,11 @@ define i32 @"example.com/iface.will$main"() {
 entry:
   %v.c = alloca %"struct.example.com/iface.C"
   %v.x = alloca %"interface.example.com/iface.Counter"
-  %v.agg.51 = alloca %"struct.example.com/iface.C"
-  %v.iface.60.0 = alloca %"interface.example.com/iface.Counter"
-  %t27 = getelementptr inbounds %"struct.example.com/iface.C", ptr %v.agg.51, i32 0, i32 0
+  %v.agg.88 = alloca %"struct.example.com/iface.C"
+  %v.iface.97.0 = alloca %"interface.example.com/iface.Counter"
+  %t27 = getelementptr inbounds %"struct.example.com/iface.C", ptr %v.agg.88, i32 0, i32 0
   store i32 3, ptr %t27
-  %t28 = load %"struct.example.com/iface.C", ptr %v.agg.51
+  %t28 = load %"struct.example.com/iface.C", ptr %v.agg.88
   store %"struct.example.com/iface.C" %t28, ptr %v.c
   %t30 = getelementptr %"struct.example.com/iface.C", ptr null, i32 1
   %t31 = ptrtoint ptr %t30 to i64
@@ -70,16 +72,16 @@ entry:
   %t34 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 1
   store ptr %t29, ptr %t33
   store ptr @"example.com/iface.vtable.Counter.C", ptr %t34
-  %t35 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.60.0, i32 0, i32 0
+  %t35 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.97.0, i32 0, i32 0
   store ptr %v.c, ptr %t35
-  %t36 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.60.0, i32 0, i32 1
+  %t36 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.iface.97.0, i32 0, i32 1
   store ptr @"example.com/iface.vtable.Counter.C", ptr %t36
-  %t37 = call i32 @"example.com/iface.use"(ptr %v.iface.60.0)
+  %t37 = call i32 @"example.com/iface.use"(ptr %v.iface.97.0)
   %t38 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 0
   %t39 = load ptr, ptr %t38
   %t40 = getelementptr inbounds %"interface.example.com/iface.Counter", ptr %v.x, i32 0, i32 1
   %t41 = load ptr, ptr %t40
-  %t42 = getelementptr inbounds [6 x ptr], ptr %t41, i64 0, i64 0
+  %t42 = getelementptr inbounds [5 x ptr], ptr %t41, i64 0, i64 0
   %t43 = load ptr, ptr %t42
   %t44 = call i32 %t43(ptr %t39)
   %t45 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t37, i32 %t44)
@@ -99,7 +101,7 @@ panic.ok.1:
 iface.rel.empty.2:
   br label %iface.rel.done.2
 iface.rel.have.2:
-  %t53 = getelementptr inbounds [6 x ptr], ptr %t51, i64 0, i64 3
+  %t53 = getelementptr inbounds [5 x ptr], ptr %t51, i64 0, i64 3
   %t54 = load ptr, ptr %t53
   call void %t54(ptr %t50)
   call void @willrt_free(ptr %t50)
@@ -140,8 +142,213 @@ iface.drop.have.4:
 iface.drop.done.4:
   ret void
 }
-define internal void @"example.com/iface.iface.share.Counter.C"(ptr %data) {
+define internal i32 @"example.com/iface.A.step.sm"(ptr %frame) {
 entry:
+  %v.sm.state = getelementptr i8, ptr %frame, i64 0
+  %v.sm.param.55.63 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.57.65 = getelementptr i8, ptr %frame, i64 16
+  %t71 = getelementptr i8, ptr %frame, i64 20
+  %t64 = load ptr, ptr %v.sm.param.55.63
+  %v.sm.pval.57 = load i32, ptr %v.sm.param.57.65
+  %v.sm.statev = load i32, ptr %v.sm.state
+  br label %sm.init
+sm.init:
+  %t66 = getelementptr inbounds %"struct.example.com/iface.A", ptr %t64, i32 0, i32 0
+  %t67 = load i32, ptr %t66
+  %t68 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t67, i32 %v.sm.pval.57)
+  %t69 = extractvalue {i32, i1} %t68, 0
+  %t70 = extractvalue {i32, i1} %t68, 1
+  br i1 %t70, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.9, ptr @.str.10)
+  unreachable
+panic.ok.1:
+  store i32 %t69, ptr %t71
+  %t72 = getelementptr i32, ptr null, i32 1
+  %t73 = ptrtoint ptr %t72 to i64
+  call i32 @willrt_task_store_result(ptr %t71, i64 %t73)
+  ret i32 1
+
+}
+define hidden ptr @"example.com/iface.A.step.task"(ptr %arg0, i32 %arg1, i32 %start, i32 %owns) {
+entry:
+  %v.sm.frame = call ptr @willrt_alloc(i64 32)
+  %t74 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t74
+  %t75 = getelementptr i8, ptr %v.sm.frame, i64 8
+  store ptr %arg0, ptr %t75
+  %t76 = getelementptr i8, ptr %v.sm.frame, i64 16
+  store i32 %arg1, ptr %t76
+  %t77 = call i32 @willrt_lane_here()
+  %t78 = icmp eq i32 %start, -1
+  %t79 = icmp eq i32 %start, -2
+  %t80 = select i1 %t79, i32 %t77, i32 %start
+  br i1 %t78, label %sm.start.auto.2, label %sm.start.lane.2
+sm.start.auto.2:
+  %t81 = call ptr @willrt_task_new(ptr @"example.com/iface.A.step.sm", ptr %v.sm.frame, i64 32, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t81)
+  call void @willrt_task_run_auto(ptr %t81)
+  br label %sm.start.done.2
+sm.start.lane.2:
+  %t82 = call ptr @willrt_task_new(ptr @"example.com/iface.A.step.sm", ptr %v.sm.frame, i64 32, i32 %t80, i32 0)
+  call void @willrt_task_own_frame(ptr %t82)
+  call void @willrt_task_run(ptr %t82)
+  br label %sm.start.done.2
+sm.start.done.2:
+  %t83 = phi ptr [ %t81, %sm.start.auto.2 ], [ %t82, %sm.start.lane.2 ]
+  ret ptr %t83
+}
+define internal i32 @"example.com/iface.actor_value.sm"(ptr %frame) {
+entry:
+  %v.sm.state = getelementptr i8, ptr %frame, i64 0
+  %v.a = getelementptr i8, ptr %frame, i64 4
+  %v.x = getelementptr i8, ptr %frame, i64 8
+  %v.agg.71 = getelementptr i8, ptr %frame, i64 24
+  %v.await.out.79 = getelementptr i8, ptr %frame, i64 28
+  %v.await.err.79 = getelementptr i8, ptr %frame, i64 32
+  %t117 = getelementptr i8, ptr %frame, i64 64
+  %v.sm.statev = load i32, ptr %v.sm.state
+  br label %sm.init
+sm.init:
+  %t84 = getelementptr inbounds %"struct.example.com/iface.A", ptr %v.agg.71, i32 0, i32 0
+  store i32 1, ptr %t84
+  %t85 = load %"struct.example.com/iface.A", ptr %v.agg.71
+  store %"struct.example.com/iface.A" %t85, ptr %v.a
+  %t87 = getelementptr %"struct.example.com/iface.A", ptr null, i32 1
+  %t88 = ptrtoint ptr %t87 to i64
+  %t86 = call ptr @willrt_alloc(i64 %t88)
+  %t89 = load %"struct.example.com/iface.A", ptr %v.a
+  store %"struct.example.com/iface.A" %t89, ptr %t86
+  %t90 = getelementptr inbounds %"interface.example.com/iface.Actor", ptr %v.x, i32 0, i32 0
+  %t91 = getelementptr inbounds %"interface.example.com/iface.Actor", ptr %v.x, i32 0, i32 1
+  store ptr %t86, ptr %t90
+  store ptr @"example.com/iface.vtable.Actor.A", ptr %t91
+  %t92 = getelementptr inbounds %"interface.example.com/iface.Actor", ptr %v.x, i32 0, i32 0
+  %t93 = load ptr, ptr %t92
+  %t94 = getelementptr inbounds %"interface.example.com/iface.Actor", ptr %v.x, i32 0, i32 1
+  %t95 = load ptr, ptr %t94
+  %t96 = getelementptr inbounds [4 x ptr], ptr %t95, i64 0, i64 0
+  %t97 = load ptr, ptr %t96
+  %t98 = call ptr %t97(ptr %t93, i32 2, i32 -1, i32 0)
+  %t99 = call i32 @willrt_join(ptr %t98, ptr %v.await.out.79, ptr %v.await.err.79)
+  %t100 = icmp eq i32 %t99, 0
+  br i1 %t100, label %await.ok.1, label %await.fail.1
+await.fail.1:
+  %t101 = getelementptr inbounds %willrt_error, ptr %v.await.err.79, i32 0, i32 0
+  %t102 = load ptr, ptr %t101
+  %t103 = getelementptr inbounds %willrt_error, ptr %v.await.err.79, i32 0, i32 1
+  %t104 = load i64, ptr %t103
+  %t105 = getelementptr inbounds %willrt_error, ptr %v.await.err.79, i32 0, i32 2
+  %t106 = load ptr, ptr %t105
+  %t107 = getelementptr inbounds %willrt_error, ptr %v.await.err.79, i32 0, i32 3
+  %t108 = load ptr, ptr %t107
+  call void @willrt_panic_n(ptr %t102, i64 %t104, ptr %t106, ptr %t108)
+  unreachable
+await.ok.1:
+  %t109 = load i32, ptr %v.await.out.79
+  %t110 = getelementptr inbounds %"interface.example.com/iface.Actor", ptr %v.x, i32 0, i32 0
+  %t111 = getelementptr inbounds %"interface.example.com/iface.Actor", ptr %v.x, i32 0, i32 1
+  %t112 = load ptr, ptr %t110
+  %t113 = load ptr, ptr %t111
+  %t114 = icmp eq ptr %t112, null
+  br i1 %t114, label %iface.rel.empty.2, label %iface.rel.have.2
+iface.rel.empty.2:
+  br label %iface.rel.done.2
+iface.rel.have.2:
+  %t115 = getelementptr inbounds [4 x ptr], ptr %t113, i64 0, i64 2
+  %t116 = load ptr, ptr %t115
+  call void %t116(ptr %t112)
+  call void @willrt_free(ptr %t112)
+  store ptr null, ptr %t110
+  store ptr null, ptr %t111
+  br label %iface.rel.done.2
+iface.rel.done.2:
+  store %"interface.example.com/iface.Actor" zeroinitializer, ptr %v.x
+  store i32 %t109, ptr %t117
+  %t118 = getelementptr i32, ptr null, i32 1
+  %t119 = ptrtoint ptr %t118 to i64
+  call i32 @willrt_task_store_result(ptr %t117, i64 %t119)
+  ret i32 1
+
+}
+define hidden ptr @"example.com/iface.actor_value.task"(i32 %start, i32 %owns) {
+entry:
+  %v.sm.frame = call ptr @willrt_alloc(i64 80)
+  %t120 = getelementptr i8, ptr %v.sm.frame, i64 8
+  store %"interface.example.com/iface.Actor" zeroinitializer, ptr %t120
+  %t121 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t121
+  %t122 = call i32 @willrt_lane_here()
+  %t123 = icmp eq i32 %start, -1
+  %t124 = icmp eq i32 %start, -2
+  %t125 = select i1 %t124, i32 %t122, i32 %start
+  br i1 %t123, label %sm.start.auto.3, label %sm.start.lane.3
+sm.start.auto.3:
+  %t126 = call ptr @willrt_task_new_drop(ptr @"example.com/iface.actor_value.sm", ptr %v.sm.frame, i64 80, i32 0, i32 0, ptr @"example.com/iface.actor_value.drop")
+  call void @willrt_task_own_frame(ptr %t126)
+  call void @willrt_task_run_auto(ptr %t126)
+  br label %sm.start.done.3
+sm.start.lane.3:
+  %t127 = call ptr @willrt_task_new_drop(ptr @"example.com/iface.actor_value.sm", ptr %v.sm.frame, i64 80, i32 %t125, i32 0, ptr @"example.com/iface.actor_value.drop")
+  call void @willrt_task_own_frame(ptr %t127)
+  call void @willrt_task_run(ptr %t127)
+  br label %sm.start.done.3
+sm.start.done.3:
+  %t128 = phi ptr [ %t126, %sm.start.auto.3 ], [ %t127, %sm.start.lane.3 ]
+  ret ptr %t128
+}
+define internal void @"example.com/iface.actor_value.drop"(ptr %frame) {
+entry:
+  %t129 = getelementptr i8, ptr %frame, i64 8
+  %t130 = getelementptr inbounds %"interface.example.com/iface.Actor", ptr %t129, i32 0, i32 0
+  %t131 = getelementptr inbounds %"interface.example.com/iface.Actor", ptr %t129, i32 0, i32 1
+  %t132 = load ptr, ptr %t130
+  %t133 = load ptr, ptr %t131
+  %t134 = icmp eq ptr %t132, null
+  br i1 %t134, label %iface.rel.empty.4, label %iface.rel.have.4
+iface.rel.empty.4:
+  br label %iface.rel.done.4
+iface.rel.have.4:
+  %t135 = getelementptr inbounds [4 x ptr], ptr %t133, i64 0, i64 2
+  %t136 = load ptr, ptr %t135
+  call void %t136(ptr %t132)
+  call void @willrt_free(ptr %t132)
+  store ptr null, ptr %t130
+  store ptr null, ptr %t131
+  br label %iface.rel.done.4
+iface.rel.done.4:
+  store %"interface.example.com/iface.Actor" zeroinitializer, ptr %t129
+  ret void
+}
+define internal ptr @"example.com/iface.iface.clone.Actor.A"(ptr %data) {
+entry:
+  %t137 = alloca ptr
+  store ptr null, ptr %t137
+  %t138 = icmp eq ptr %data, null
+  br i1 %t138, label %iface.clone.null.5, label %iface.clone.have.5
+iface.clone.null.5:
+  br label %iface.clone.ret.5
+iface.clone.have.5:
+  %t140 = getelementptr %"struct.example.com/iface.A", ptr null, i32 1
+  %t141 = ptrtoint ptr %t140 to i64
+  %t139 = call ptr @willrt_alloc(i64 %t141)
+  %t142 = load %"struct.example.com/iface.A", ptr %data
+  store %"struct.example.com/iface.A" %t142, ptr %t139
+  store ptr %t139, ptr %t137
+  br label %iface.clone.ret.5
+iface.clone.ret.5:
+  %t143 = load ptr, ptr %t137
+  ret ptr %t143
+}
+define internal void @"example.com/iface.iface.drop.Actor.A"(ptr %data) {
+entry:
+  %t144 = icmp eq ptr %data, null
+  br i1 %t144, label %iface.drop.null.6, label %iface.drop.have.6
+iface.drop.null.6:
+  br label %iface.drop.done.6
+iface.drop.have.6:
+  br label %iface.drop.done.6
+iface.drop.done.6:
   ret void
 }
 declare void @willrt_init()
@@ -159,10 +366,36 @@ entry:
 @.str.3 = private unnamed_addr constant [16 x i8] c"main.will:20:12\00", align 1
 @.str.4 = private unnamed_addr constant [22 x i8] c"example.com/iface.use\00", align 1
 @"will.type.example.com/iface.C" = linkonce_odr constant i8 0, align 1
-@"example.com/iface.vtable.Counter.C" = internal constant [6 x ptr] [ptr @"example.com/iface.C.get", ptr @"example.com/iface.C.add", ptr @"example.com/iface.iface.clone.Counter.C", ptr @"example.com/iface.iface.drop.Counter.C", ptr @"example.com/iface.iface.share.Counter.C", ptr @"will.type.example.com/iface.C"], align 8
-@.str.7 = private unnamed_addr constant [16 x i8] c"main.will:26:12\00", align 1
+@"example.com/iface.vtable.Counter.C" = internal constant [5 x ptr] [ptr @"example.com/iface.C.get", ptr @"example.com/iface.C.add", ptr @"example.com/iface.iface.clone.Counter.C", ptr @"example.com/iface.iface.drop.Counter.C", ptr @"will.type.example.com/iface.C"], align 8
+@.str.7 = private unnamed_addr constant [16 x i8] c"main.will:44:12\00", align 1
 @.str.8 = private unnamed_addr constant [28 x i8] c"example.com/iface.will$main\00", align 1
+@.str.9 = private unnamed_addr constant [16 x i8] c"main.will:32:12\00", align 1
+@.str.10 = private unnamed_addr constant [25 x i8] c"example.com/iface.A.step\00", align 1
+@"will.type.example.com/iface.A" = linkonce_odr constant i8 0, align 1
+@"example.com/iface.vtable.Actor.A" = internal constant [4 x ptr] [ptr @"example.com/iface.A.step.task", ptr @"example.com/iface.iface.clone.Actor.A", ptr @"example.com/iface.iface.drop.Actor.A", ptr @"will.type.example.com/iface.A"], align 8
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
+declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)
+declare ptr @willrt_task_new_drop(ptr, ptr, i64, i32, i32, ptr)
+declare void @willrt_task_run(ptr)
+declare void @willrt_task_run_auto(ptr)
+declare i32 @willrt_join(ptr, ptr, ptr)
+declare void @willrt_task_cancel(ptr)
+declare i32 @willrt_task_try_join(ptr, ptr, ptr)
+declare ptr @willrt_task_current()
+declare i32 @willrt_task_store_result(ptr, i64)
+declare ptr @willrt_chan_new(i64, i64, i32)
+declare i32 @willrt_chan_send(ptr, ptr)
+declare i32 @willrt_chan_try_send(ptr, ptr)
+declare i32 @willrt_chan_recv(ptr, ptr)
+declare i32 @willrt_chan_try_recv(ptr, ptr)
+declare void @willrt_chan_close(ptr)
+declare i32 @willrt_select(ptr, i64)
+declare i32 @willrt_select_status()
+declare i64 @willrt_now_ns()
+declare void @willrt_region_enter()
+declare i32 @willrt_region_exit()
+declare i32 @willrt_lane_here()
+declare void @willrt_task_own_frame(ptr)
