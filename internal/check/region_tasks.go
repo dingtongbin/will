@@ -123,11 +123,6 @@ func (c *concurrencyChecker) consumeTasks(st ast.Stmt, tasks map[string]bool, po
 			c.consumeTasks(inner, tasks, positions)
 		}
 	case *ast.ExprStmt:
-		if spawn, ok := s.Expr.(*ast.SpawnExpr); ok {
-			c.bag.Error(spawn.Pos(), diag.CodeTaskNotAwaited,
-				"spawn result is not awaited",
-				"bind it to a Task, then await it")
-		}
 		c.consumeExpr(s.Expr, tasks)
 	case *ast.AssignStmt:
 		c.consumeExpr(s.Value, tasks)

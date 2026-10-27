@@ -438,6 +438,11 @@ func (c *checker) inferBlock(s *inferScope, b *ast.Block) *Type {
 	for i, st := range b.Stmts {
 		if i == len(b.Stmts)-1 {
 			if es, ok := st.(*ast.ExprStmt); ok {
+				if _, spawn := es.Expr.(*ast.SpawnExpr); spawn {
+					c.bag.Error(es.Expr.Pos(), diag.CodeTaskNotAwaited,
+						"spawn result is not awaited",
+						"bind it to a Task, then await it")
+				}
 				return c.inferExpr(inner, es.Expr)
 			}
 		}
@@ -455,6 +460,11 @@ func (c *checker) blockWant(s *inferScope, b *ast.Block, want *Type) {
 	for i, st := range b.Stmts {
 		if i == len(b.Stmts)-1 {
 			if es, ok := st.(*ast.ExprStmt); ok {
+				if _, spawn := es.Expr.(*ast.SpawnExpr); spawn {
+					c.bag.Error(es.Expr.Pos(), diag.CodeTaskNotAwaited,
+						"spawn result is not awaited",
+						"bind it to a Task, then await it")
+				}
 				c.checkValue(inner, es.Expr, want)
 				return
 			}
@@ -502,6 +512,11 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 		}
 	case *ast.AssignStmt:
 		c.rejectRawAddress(x.Value)
+		if c.discardedSpawn(x.Target, x.Value) {
+			c.bag.Error(x.Value.Pos(), diag.CodeTaskNotAwaited,
+				"spawn result is not awaited",
+				"bind it to a Task, then await it")
+		}
 		if c.readGuardWrite(s, x.Target) {
 			c.bag.Error(x.Target.Pos(), diag.CodeReadGuardWrite,
 				"a read guard is read-only",
@@ -514,6 +529,11 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 		c.checkValue(s, x.Value, want)
 	case *ast.ExprStmt:
 		c.rejectRawAddress(x.Expr)
+		if _, ok := x.Expr.(*ast.SpawnExpr); ok {
+			c.bag.Error(x.Expr.Pos(), diag.CodeTaskNotAwaited,
+				"spawn result is not awaited",
+				"bind it to a Task, then await it")
+		}
 		if t := c.inferExpr(s, x.Expr); t != nil && t.Kind() == NamedKind && t.Name() == "Result" {
 			c.bag.Error(x.Expr.Pos(), diag.CodeResultDropped,
 				"this Result is not handled",
@@ -678,6 +698,17 @@ func derefScalar(got, want *Type) bool {
 		return false
 	}
 	return Equal(got.Unref(), want)
+}
+
+// discardedSpawn reports _ = spawn call. A task handle must stay named until
+// its region awaits it; the blank target would lose the only handle.
+func (c *checker) discardedSpawn(target, value ast.Expr) bool {
+	name, ok := target.(*ast.NameExpr)
+	if !ok || name.Name != "_" {
+		return false
+	}
+	_, spawn := value.(*ast.SpawnExpr)
+	return spawn
 }
 
 // checkNegativeLiteral checks a negated integer literal against a signed

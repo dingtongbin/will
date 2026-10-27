@@ -188,6 +188,29 @@ func TestFromSourceRules(t *testing.T) {
 	}
 }
 
+func TestSpawnMustBeAwaitedThroughANamedHandle(t *testing.T) {
+	base := "def work() -> i32 {\n    return 1\n}\n\n"
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"statement", "def f() {\n    spawn work()\n}\n"},
+		{"discard", "def f() {\n    _ = spawn work()\n}\n"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ds := checkTypes(t, base+c.body)
+			if len(ds) != 1 || ds[0].Code != diag.CodeTaskNotAwaited {
+				t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+			}
+		})
+	}
+	ds := checkTypes(t, base+"async def f() {\n    region {\n        var task: Task<i32> = spawn work()\n        _ = await task\n    }\n}\n")
+	if len(ds) != 0 {
+		t.Fatalf("named awaited task was rejected:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestConstantShiftAmount(t *testing.T) {
 	src := `def f(n: i32, m: i64, b: u8) {
     _ = n << 32
