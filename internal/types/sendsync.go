@@ -131,7 +131,13 @@ func (r *Result) namedSync(t *Type, active map[string]bool) bool {
 		return true
 	}
 	if isLockType(t.Name()) {
-		return len(t.Args()) == 1 && r.sync(t.Args()[0], active)
+		if len(t.Args()) != 1 {
+			return false
+		}
+		if shortNamed(t.Name()) == "Mutex" {
+			return r.send(t.Args()[0], active)
+		}
+		return r.send(t.Args()[0], active) && r.sync(t.Args()[0], active)
 	}
 	switch t.Name() {
 	case "rc", "weak_rc", "Task", "raw":
