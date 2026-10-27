@@ -33,8 +33,8 @@ def (s: ref Stopwatch) elapsed() -> Duration {
     return Duration(c.willrt_now_ns() - s.start)
 }
 
-# Sleep suspends the current task for d. A synchronous caller reaches it
-# through wait(...); a spawned caller awaits it inside the task.
+# Sleep suspends the current task for d. Callers await it inside an async
+# function or spawn it as a task.
 async def sleep(d: Duration) -> Result<(), Error> {
     var ns: i64 = i64(d)
     var status: i32 = await c.willrt_task_sleep_async(ns)

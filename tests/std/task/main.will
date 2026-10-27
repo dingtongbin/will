@@ -1,6 +1,6 @@
 import "std/task"
 
-def main() -> i32 {
+async def main() -> i32 {
     var values: Array<i32> = new Array<i32>(4)
     values.push(1)
     values.push(2)
@@ -8,7 +8,7 @@ def main() -> i32 {
     values.push(4)
 
     var view: []i32 = values[Range(0, values.len())]
-    var doubled: Array<i32> = task.parallel_map(view, func(x: i32) -> i32 {
+    var doubled: Array<i32> = await task.parallel_map(view, func(x: i32) -> i32 {
         return x * 2
     })
     if doubled.len() != 4usize {
@@ -18,7 +18,7 @@ def main() -> i32 {
         return 2
     }
 
-    task.parallel_for(4usize, func(i: usize) {
+    await task.parallel_for(4usize, func(i: usize) {
         _ = i
     })
 

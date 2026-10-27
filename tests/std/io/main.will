@@ -24,7 +24,7 @@ def check_read_all() -> i32 {
     return 0
 }
 
-def main() -> i32 {
+async def main() -> i32 {
     var readCode: i32 = check_read_all()
     if readCode != 0 {
         return readCode
@@ -43,7 +43,7 @@ def main() -> i32 {
         }
     }
 
-    var asyncNext: Result<usize, Error> = wait(poller.async_next(0ns, out))
+    var asyncNext: Result<usize, Error> = await poller.async_next(0ns, out)
     match asyncNext {
         Ok(count) => {
             if count != 0usize {

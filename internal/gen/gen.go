@@ -233,6 +233,7 @@ func (g *generator) emitAux() {
 			g.out.WriteString("declare void @willrt_task_run_auto(ptr)\n")
 		}
 		g.out.WriteString("declare i32 @willrt_join(ptr, ptr, ptr)\n")
+		g.out.WriteString("declare void @willrt_task_cancel(ptr)\n")
 		g.out.WriteString("declare i32 @willrt_task_try_join(ptr, ptr, ptr)\n")
 		g.out.WriteString("declare ptr @willrt_task_current()\n")
 		g.out.WriteString("declare i32 @willrt_task_store_result(ptr, i64)\n")
@@ -3959,9 +3960,6 @@ func (g *generator) value(id int) (string, error) {
 	case "bin":
 		return g.binary(r)
 	case "call", "mcall":
-		if arg, ok := g.waitArg(r); ok {
-			return g.value(arg)
-		}
 		if d, ok := g.downcastOf(r); ok {
 			if d.isAs {
 				return "", g.errf(id, "cannot translate node #%d: an Option value is a place, not a scalar", id)
@@ -4287,6 +4285,15 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 // callExpr lowers one call or method call and returns the value and its result
 // type text. A void call returns an empty name and an empty text.
 func (g *generator) callExpr(r willc.Record) (string, string, error) {
+	if r.Kind == "mcall" && fieldText(r, "text") == "cancel" {
+		recv, err := g.value(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		g.needTaskDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_task_cancel(ptr %s)\n", recv)
+		return "", "", nil
+	}
 	if g.smGeneral && !isAsyncCRecord(r) {
 		if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendableFor(sym) {
 			value, err := g.generalCallWait(r)

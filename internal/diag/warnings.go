@@ -3,7 +3,7 @@ package diag
 // WarningFamilies lists the warning families the build volume fixes. Every
 // warning belongs to exactly one family; a warning outside them cannot be
 // switched off.
-var WarningFamilies = []string{"shadow", "leak", "wait"}
+var WarningFamilies = []string{"shadow", "leak"}
 
 // Family returns the warning family of a code, or "" when the code has none.
 func Family(code string) string {
@@ -12,8 +12,6 @@ func Family(code string) string {
 		return "shadow"
 	case CodeExplicitLeak:
 		return "leak"
-	case CodeWaitInAsync:
-		return "wait"
 	}
 	return ""
 }

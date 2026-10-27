@@ -146,9 +146,9 @@ func TestOperatorsAndIdentifiers(t *testing.T) {
 }
 
 func TestStrictKeywords(t *testing.T) {
-	src := "def func type async await struct enum interface const var import derive lane " +
+	src := "def func type async await struct enum interface const var import derive " +
 		"if else while for in match return break continue defer " +
-		"region spawn parallel deadline select and or not True False None"
+		"region spawn deadline select and or not True False None"
 	expected := []wantToken{}
 	for _, word := range strings.Fields(src) {
 		kind, ok := token.Keywords[word]

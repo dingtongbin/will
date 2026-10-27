@@ -6391,28 +6391,34 @@ define internal void @"std/time.iface.share.Error.std/errors.Fault"(ptr %data) {
 entry:
   ret void
 }
-define i32 @"example.com/stdtest/time.will$main"() {
+define internal i32 @"example.com/stdtest/time.will$main.sm"(ptr %frame) {
 entry:
-  %v.sec = alloca i64
-  %v.negative = alloca i64
-  %v.zero = alloca i64
-  %v.t = alloca %"struct.std/time.Instant"
-  %v.shifted = alloca %"struct.std/time.Instant"
-  %v.plain = alloca %"struct.std/time.Instant"
-  %v.ok = alloca i32
-  %v.sw = alloca %"struct.std/time.Stopwatch"
-  %v.slept = alloca { i32, [4 x i8], %interface.Error }
-  %v.ret.18 = alloca %"struct.std/time.Instant"
-  %v.ret.23 = alloca %"struct.std/time.Instant"
-  %v.ret.26 = alloca %"struct.std/time.Timezone"
-  %v.ret.31 = alloca %"struct.std/time.Instant"
-  %v.ret.34 = alloca %"struct.std/time.Timezone"
-  %v.ret.73 = alloca %"struct.std/time.Instant"
-  %v.ret.86 = alloca %"struct.std/time.Instant"
-  %v.ret.103 = alloca { i32, [4 x i8], %interface.Error }
-  %v.new.96 = alloca %"struct.std/time.Stopwatch"
-  %v.await.out.103 = alloca { i32, [4 x i8], %interface.Error }
-  %v.await.err.103 = alloca %willrt.task_error
+  %v.sm.state = getelementptr i8, ptr %frame, i64 0
+  %v.sec = getelementptr i8, ptr %frame, i64 8
+  %v.negative = getelementptr i8, ptr %frame, i64 16
+  %v.zero = getelementptr i8, ptr %frame, i64 24
+  %v.t = getelementptr i8, ptr %frame, i64 32
+  %v.shifted = getelementptr i8, ptr %frame, i64 56
+  %v.plain = getelementptr i8, ptr %frame, i64 80
+  %v.ok = getelementptr i8, ptr %frame, i64 104
+  %v.sw = getelementptr i8, ptr %frame, i64 112
+  %v.slept = getelementptr i8, ptr %frame, i64 120
+  %v.ret.18 = getelementptr i8, ptr %frame, i64 144
+  %v.ret.23 = getelementptr i8, ptr %frame, i64 168
+  %v.ret.26 = getelementptr i8, ptr %frame, i64 192
+  %v.ret.31 = getelementptr i8, ptr %frame, i64 208
+  %v.ret.34 = getelementptr i8, ptr %frame, i64 232
+  %v.ret.73 = getelementptr i8, ptr %frame, i64 248
+  %v.ret.86 = getelementptr i8, ptr %frame, i64 272
+  %v.ret.102 = getelementptr i8, ptr %frame, i64 296
+  %v.new.96 = getelementptr i8, ptr %frame, i64 320
+  %v.await.out.102 = getelementptr i8, ptr %frame, i64 328
+  %v.await.err.102 = getelementptr i8, ptr %frame, i64 352
+  %t93 = getelementptr i8, ptr %frame, i64 384
+  %t108 = getelementptr i8, ptr %frame, i64 388
+  %v.sm.statev = load i32, ptr %v.sm.state
+  br label %sm.init
+sm.init:
   store i64 1000, ptr %v.sec
   %t2 = icmp eq i64 5, -9223372036854775808
   br i1 %t2, label %panic.1, label %panic.ok.1
@@ -6539,34 +6545,34 @@ if.end.11:
   %t48 = load %"struct.std/time.Stopwatch", ptr %v.new.96
   store %"struct.std/time.Stopwatch" %t48, ptr %v.sw
   %t49 = call ptr @"std/time.sleep.task"(i64 1000000, i32 -2, i32 0)
-  %t50 = call i32 @willrt_join(ptr %t49, ptr %v.await.out.103, ptr %v.await.err.103)
+  %t50 = call i32 @willrt_join(ptr %t49, ptr %v.await.out.102, ptr %v.await.err.102)
   %t51 = icmp eq i32 %t50, 0
   br i1 %t51, label %await.ok.13, label %await.fail.13
 await.fail.13:
-  %t52 = getelementptr inbounds %willrt_error, ptr %v.await.err.103, i32 0, i32 0
+  %t52 = getelementptr inbounds %willrt_error, ptr %v.await.err.102, i32 0, i32 0
   %t53 = load ptr, ptr %t52
-  %t54 = getelementptr inbounds %willrt_error, ptr %v.await.err.103, i32 0, i32 1
+  %t54 = getelementptr inbounds %willrt_error, ptr %v.await.err.102, i32 0, i32 1
   %t55 = load i64, ptr %t54
-  %t56 = getelementptr inbounds %willrt_error, ptr %v.await.err.103, i32 0, i32 2
+  %t56 = getelementptr inbounds %willrt_error, ptr %v.await.err.102, i32 0, i32 2
   %t57 = load ptr, ptr %t56
-  %t58 = getelementptr inbounds %willrt_error, ptr %v.await.err.103, i32 0, i32 3
+  %t58 = getelementptr inbounds %willrt_error, ptr %v.await.err.102, i32 0, i32 3
   %t59 = load ptr, ptr %t58
   call void @willrt_panic_n(ptr %t53, i64 %t55, ptr %t57, ptr %t59)
   unreachable
 await.ok.13:
-  %t60 = load { i32, [4 x i8], %interface.Error }, ptr %v.await.out.103
+  %t60 = load { i32, [4 x i8], %interface.Error }, ptr %v.await.out.102
   store { i32, [4 x i8], %interface.Error } %t60, ptr %v.slept
-  %t61 = load i32, ptr %v.await.out.103
+  %t61 = load i32, ptr %v.await.out.102
   %t62 = icmp eq i32 %t61, 0
   br i1 %t62, label %deep.rel.adt.14.0, label %deep.rel.adt.done.14.0
 deep.rel.adt.14.0:
-  %t63 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.await.out.103, i32 0, i32 2
+  %t63 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.await.out.102, i32 0, i32 2
   br label %deep.rel.adt.done.14.0
 deep.rel.adt.done.14.0:
   %t64 = icmp eq i32 %t61, 1
   br i1 %t64, label %deep.rel.adt.15.1, label %deep.rel.adt.done.15.1
 deep.rel.adt.15.1:
-  %t65 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.await.out.103, i32 0, i32 2
+  %t65 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.await.out.102, i32 0, i32 2
   %t66 = getelementptr inbounds %interface.Error, ptr %t65, i32 0, i32 0
   %t67 = getelementptr inbounds %interface.Error, ptr %t65, i32 0, i32 1
   %t68 = load ptr, ptr %t66
@@ -6584,9 +6590,11 @@ iface.rel.have.16:
   store ptr null, ptr %t67
   br label %iface.rel.done.16
 iface.rel.done.16:
+  store %interface.Error zeroinitializer, ptr %t65
   br label %deep.rel.adt.done.15.1
 deep.rel.adt.done.15.1:
-  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.await.out.103
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.await.out.102
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.await.out.102
   %t73 = call i64 @"std/time.Stopwatch.elapsed"(ptr %v.sw)
   %t74 = icmp sgt i64 %t73, 0
   br i1 %t74, label %if.then.17, label %if.end.17
@@ -6635,482 +6643,151 @@ iface.rel.have.22:
   store ptr null, ptr %t87
   br label %iface.rel.done.22
 iface.rel.done.22:
+  store %interface.Error zeroinitializer, ptr %t85
   br label %deep.rel.adt.done.21.1
 deep.rel.adt.done.21.1:
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.slept
+  store i32 1, ptr %t93
+  %t94 = getelementptr i32, ptr null, i32 1
+  %t95 = ptrtoint ptr %t94 to i64
+  call i32 @willrt_task_store_result(ptr %t93, i64 %t95)
   ret i32 1
 if.end.19:
-  %t93 = load i32, ptr %v.slept
-  %t94 = icmp eq i32 %t93, 0
-  br i1 %t94, label %deep.rel.adt.23.0, label %deep.rel.adt.done.23.0
+  %t96 = load i32, ptr %v.slept
+  %t97 = icmp eq i32 %t96, 0
+  br i1 %t97, label %deep.rel.adt.23.0, label %deep.rel.adt.done.23.0
 deep.rel.adt.23.0:
-  %t95 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.slept, i32 0, i32 2
+  %t98 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.slept, i32 0, i32 2
   br label %deep.rel.adt.done.23.0
 deep.rel.adt.done.23.0:
-  %t96 = icmp eq i32 %t93, 1
-  br i1 %t96, label %deep.rel.adt.24.1, label %deep.rel.adt.done.24.1
+  %t99 = icmp eq i32 %t96, 1
+  br i1 %t99, label %deep.rel.adt.24.1, label %deep.rel.adt.done.24.1
 deep.rel.adt.24.1:
-  %t97 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.slept, i32 0, i32 2
-  %t98 = getelementptr inbounds %interface.Error, ptr %t97, i32 0, i32 0
-  %t99 = getelementptr inbounds %interface.Error, ptr %t97, i32 0, i32 1
-  %t100 = load ptr, ptr %t98
-  %t101 = load ptr, ptr %t99
-  %t102 = icmp eq ptr %t100, null
-  br i1 %t102, label %iface.rel.empty.25, label %iface.rel.have.25
+  %t100 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.slept, i32 0, i32 2
+  %t101 = getelementptr inbounds %interface.Error, ptr %t100, i32 0, i32 0
+  %t102 = getelementptr inbounds %interface.Error, ptr %t100, i32 0, i32 1
+  %t103 = load ptr, ptr %t101
+  %t104 = load ptr, ptr %t102
+  %t105 = icmp eq ptr %t103, null
+  br i1 %t105, label %iface.rel.empty.25, label %iface.rel.have.25
 iface.rel.empty.25:
   br label %iface.rel.done.25
 iface.rel.have.25:
-  %t103 = getelementptr inbounds [6 x ptr], ptr %t101, i64 0, i64 3
-  %t104 = load ptr, ptr %t103
-  call void %t104(ptr %t100)
-  call void @willrt_free(ptr %t100)
-  store ptr null, ptr %t98
-  store ptr null, ptr %t99
+  %t106 = getelementptr inbounds [6 x ptr], ptr %t104, i64 0, i64 3
+  %t107 = load ptr, ptr %t106
+  call void %t107(ptr %t103)
+  call void @willrt_free(ptr %t103)
+  store ptr null, ptr %t101
+  store ptr null, ptr %t102
   br label %iface.rel.done.25
 iface.rel.done.25:
+  store %interface.Error zeroinitializer, ptr %t100
   br label %deep.rel.adt.done.24.1
 deep.rel.adt.done.24.1:
-  ret i32 0
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %v.slept
+  store i32 0, ptr %t108
+  %t109 = getelementptr i32, ptr null, i32 1
+  %t110 = ptrtoint ptr %t109 to i64
+  call i32 @willrt_task_store_result(ptr %t108, i64 %t110)
+  ret i32 1
+
 }
 define hidden ptr @"example.com/stdtest/time.will$main.task"(i32 %start, i32 %owns) {
 entry:
-  %t105 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr null, i32 1
-  %t106 = ptrtoint ptr %t105 to i64
-  %t107 = call ptr @willrt_alloc(i64 %t106)
-  %t108 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %t107, i32 0, i32 0
-  store i32 0, ptr %t108
-  %t109 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %t107, i32 0, i32 1
-  store ptr null, ptr %t109
-  %t110 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %t107, i32 0, i32 2
-  store i64 0, ptr %t110
-  %t111 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %t107, i32 0, i32 3
-  store i64 0, ptr %t111
-  %t112 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %t107, i32 0, i32 4
-  store i64 0, ptr %t112
-  %t113 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %t107, i32 0, i32 5
-  store %"struct.std/time.Instant" zeroinitializer, ptr %t113
-  %t114 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %t107, i32 0, i32 6
-  store %"struct.std/time.Instant" zeroinitializer, ptr %t114
-  %t115 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %t107, i32 0, i32 7
-  store %"struct.std/time.Instant" zeroinitializer, ptr %t115
-  %t116 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %t107, i32 0, i32 8
-  store i32 0, ptr %t116
-  %t117 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %t107, i32 0, i32 9
-  store %"struct.std/time.Stopwatch" zeroinitializer, ptr %t117
-  %t118 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %t107, i32 0, i32 10
-  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t118
-  %t119 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %t107, i32 0, i32 11
-  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t119
-  %t120 = call i32 @willrt_lane_here()
-  %t121 = icmp eq i32 %start, -1
-  %t122 = icmp eq i32 %start, -2
-  %t123 = select i1 %t122, i32 %t120, i32 %start
-  br i1 %t121, label %sm.start.auto.1, label %sm.start.lane.1
-sm.start.auto.1:
-  %t124 = call ptr @willrt_task_new_drop(ptr @"example.com/stdtest/time.will$main.sm", ptr %t107, i64 %t106, i32 0, i32 0, ptr @"example.com/stdtest/time.will$main.sm.drop")
-  call void @willrt_task_own_frame(ptr %t124)
-  call void @willrt_task_run_auto(ptr %t124)
-  br label %sm.start.done.1
-sm.start.lane.1:
-  %t125 = call ptr @willrt_task_new_drop(ptr @"example.com/stdtest/time.will$main.sm", ptr %t107, i64 %t106, i32 %t123, i32 0, ptr @"example.com/stdtest/time.will$main.sm.drop")
-  call void @willrt_task_own_frame(ptr %t125)
-  call void @willrt_task_run(ptr %t125)
-  br label %sm.start.done.1
-sm.start.done.1:
-  %t126 = phi ptr [ %t124, %sm.start.auto.1 ], [ %t125, %sm.start.lane.1 ]
-  ret ptr %t126
+  %v.sm.frame = call ptr @willrt_alloc(i64 400)
+  %t111 = getelementptr i8, ptr %v.sm.frame, i64 120
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t111
+  %t112 = getelementptr i8, ptr %v.sm.frame, i64 328
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t112
+  %t113 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t113
+  %t114 = call i32 @willrt_lane_here()
+  %t115 = icmp eq i32 %start, -1
+  %t116 = icmp eq i32 %start, -2
+  %t117 = select i1 %t116, i32 %t114, i32 %start
+  br i1 %t115, label %sm.start.auto.26, label %sm.start.lane.26
+sm.start.auto.26:
+  %t118 = call ptr @willrt_task_new_drop(ptr @"example.com/stdtest/time.will$main.sm", ptr %v.sm.frame, i64 400, i32 0, i32 0, ptr @"example.com/stdtest/time.will$main.drop")
+  call void @willrt_task_own_frame(ptr %t118)
+  call void @willrt_task_run_auto(ptr %t118)
+  br label %sm.start.done.26
+sm.start.lane.26:
+  %t119 = call ptr @willrt_task_new_drop(ptr @"example.com/stdtest/time.will$main.sm", ptr %v.sm.frame, i64 400, i32 %t117, i32 0, ptr @"example.com/stdtest/time.will$main.drop")
+  call void @willrt_task_own_frame(ptr %t119)
+  call void @willrt_task_run(ptr %t119)
+  br label %sm.start.done.26
+sm.start.done.26:
+  %t120 = phi ptr [ %t118, %sm.start.auto.26 ], [ %t119, %sm.start.lane.26 ]
+  ret ptr %t120
 }
-define internal i32 @"example.com/stdtest/time.will$main.sm"(ptr %frame) {
+define internal void @"example.com/stdtest/time.will$main.drop"(ptr %frame) {
 entry:
-  %v.sec = alloca i64
-  %v.negative = alloca i64
-  %v.zero = alloca i64
-  %v.t = alloca %"struct.std/time.Instant"
-  %v.shifted = alloca %"struct.std/time.Instant"
-  %v.plain = alloca %"struct.std/time.Instant"
-  %v.ok = alloca i32
-  %v.sw = alloca %"struct.std/time.Stopwatch"
-  %v.slept = alloca { i32, [4 x i8], %interface.Error }
-  %v.ret.18 = alloca %"struct.std/time.Instant"
-  %v.ret.23 = alloca %"struct.std/time.Instant"
-  %v.ret.26 = alloca %"struct.std/time.Timezone"
-  %v.ret.31 = alloca %"struct.std/time.Instant"
-  %v.ret.34 = alloca %"struct.std/time.Timezone"
-  %v.ret.73 = alloca %"struct.std/time.Instant"
-  %v.ret.86 = alloca %"struct.std/time.Instant"
-  %v.ret.103 = alloca { i32, [4 x i8], %interface.Error }
-  %v.new.96 = alloca %"struct.std/time.Stopwatch"
-  %v.await.out.103 = alloca { i32, [4 x i8], %interface.Error }
-  %v.await.err.103 = alloca %willrt.task_error
-  %t127 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 0
-  %t128 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 1
-  %t129 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 11
-  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t129
-  %t130 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 2
-  %t131 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 3
-  %t132 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 4
-  %t133 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 5
-  %t134 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 6
-  %t135 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 7
-  %t136 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 8
-  %t137 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 9
-  %t138 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 10
-  %t139 = load i32, ptr %t127
-  switch i32 %t139, label %sm.init [ i32 1, label %sm.wait.0 ]
-sm.init:
-  store i64 1000, ptr %t130
-  %t140 = load i32, ptr %t129
-  %t141 = icmp eq i32 %t140, 0
-  br i1 %t141, label %deep.rel.adt.2.0, label %deep.rel.adt.done.2.0
-deep.rel.adt.2.0:
-  %t142 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t129, i32 0, i32 2
-  br label %deep.rel.adt.done.2.0
-deep.rel.adt.done.2.0:
-  %t143 = icmp eq i32 %t140, 1
-  br i1 %t143, label %deep.rel.adt.3.1, label %deep.rel.adt.done.3.1
-deep.rel.adt.3.1:
-  %t144 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t129, i32 0, i32 2
-  %t145 = getelementptr inbounds %interface.Error, ptr %t144, i32 0, i32 0
-  %t146 = getelementptr inbounds %interface.Error, ptr %t144, i32 0, i32 1
-  %t147 = load ptr, ptr %t145
-  %t148 = load ptr, ptr %t146
-  %t149 = icmp eq ptr %t147, null
-  br i1 %t149, label %iface.rel.empty.4, label %iface.rel.have.4
-iface.rel.empty.4:
-  br label %iface.rel.done.4
-iface.rel.have.4:
-  %t150 = getelementptr inbounds [6 x ptr], ptr %t148, i64 0, i64 3
-  %t151 = load ptr, ptr %t150
-  call void %t151(ptr %t147)
-  call void @willrt_free(ptr %t147)
-  store ptr null, ptr %t145
-  store ptr null, ptr %t146
-  br label %iface.rel.done.4
-iface.rel.done.4:
-  store %interface.Error zeroinitializer, ptr %t144
-  br label %deep.rel.adt.done.3.1
-deep.rel.adt.done.3.1:
-  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t129
-  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t129
-  %t153 = icmp eq i64 5, -9223372036854775808
-  br i1 %t153, label %panic.5, label %panic.ok.5
-panic.5:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.203, ptr @.str.212)
-  unreachable
-panic.ok.5:
-  %t152 = sub i64 0, 5
-  store i64 %t152, ptr %t131
-  store i64 0, ptr %t132
-  %t154 = load i64, ptr %t130
-  %t155 = call %"struct.std/time.Instant" @"std/time.from_unix"(i64 %t154)
-  store %"struct.std/time.Instant" %t155, ptr %v.ret.18
-  %t156 = load %"struct.std/time.Instant", ptr %v.ret.18
-  store %"struct.std/time.Instant" %t156, ptr %t133
-  %t157 = call %"struct.std/time.Timezone" @"std/time.fixed"(i32 3600)
-  store %"struct.std/time.Timezone" %t157, ptr %v.ret.26
-  %t158 = call %"struct.std/time.Instant" @"std/time.in_zone"(ptr %t133, ptr %v.ret.26)
-  store %"struct.std/time.Instant" %t158, ptr %v.ret.23
-  %t159 = load %"struct.std/time.Instant", ptr %v.ret.23
-  store %"struct.std/time.Instant" %t159, ptr %t134
-  %t160 = call %"struct.std/time.Timezone" @"std/time.utc"()
-  store %"struct.std/time.Timezone" %t160, ptr %v.ret.34
-  %t161 = call %"struct.std/time.Instant" @"std/time.in_zone"(ptr %t133, ptr %v.ret.34)
-  store %"struct.std/time.Instant" %t161, ptr %v.ret.31
-  %t162 = load %"struct.std/time.Instant", ptr %v.ret.31
-  store %"struct.std/time.Instant" %t162, ptr %t135
-  store i32 0, ptr %t136
-  %t163 = call i64 @"std/time.unix"(ptr %t133)
-  %t164 = icmp eq i64 %t163, 1000
-  br i1 %t164, label %if.then.6, label %if.end.6
-if.then.6:
-  %t165 = load i32, ptr %t136
-  %t166 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t165, i32 1)
-  %t167 = extractvalue {i32, i1} %t166, 0
-  %t168 = extractvalue {i32, i1} %t166, 1
-  br i1 %t168, label %panic.7, label %panic.ok.7
-panic.7:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.205, ptr @.str.212)
-  unreachable
-panic.ok.7:
-  store i32 %t167, ptr %t136
-  br label %if.end.6
-if.end.6:
-  %t169 = call i64 @"std/time.unix"(ptr %t134)
-  %t170 = icmp eq i64 %t169, 1000
-  br i1 %t170, label %if.then.8, label %if.end.8
-if.then.8:
-  %t171 = load i32, ptr %t136
-  %t172 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t171, i32 1)
-  %t173 = extractvalue {i32, i1} %t172, 0
-  %t174 = extractvalue {i32, i1} %t172, 1
-  br i1 %t174, label %panic.9, label %panic.ok.9
-panic.9:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.206, ptr @.str.212)
-  unreachable
-panic.ok.9:
-  store i32 %t173, ptr %t136
-  br label %if.end.8
-if.end.8:
-  %t175 = call i64 @"std/time.unix"(ptr %t135)
-  %t176 = icmp eq i64 %t175, 1000
-  br i1 %t176, label %if.then.10, label %if.end.10
-if.then.10:
-  %t177 = load i32, ptr %t136
-  %t178 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t177, i32 1)
-  %t179 = extractvalue {i32, i1} %t178, 0
-  %t180 = extractvalue {i32, i1} %t178, 1
-  br i1 %t180, label %panic.11, label %panic.ok.11
-panic.11:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.207, ptr @.str.212)
-  unreachable
-panic.ok.11:
-  store i32 %t179, ptr %t136
-  br label %if.end.10
-if.end.10:
-  %t181 = load i64, ptr %t131
-  %t182 = call %"struct.std/time.Instant" @"std/time.from_unix"(i64 %t181)
-  store %"struct.std/time.Instant" %t182, ptr %v.ret.73
-  %t183 = call i64 @"std/time.unix"(ptr %v.ret.73)
-  %t185 = icmp eq i64 5, -9223372036854775808
-  br i1 %t185, label %panic.13, label %panic.ok.13
-panic.13:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.208, ptr @.str.212)
-  unreachable
-panic.ok.13:
-  %t184 = sub i64 0, 5
-  %t186 = icmp eq i64 %t183, %t184
-  br i1 %t186, label %if.then.12, label %if.end.12
-if.then.12:
-  %t187 = load i32, ptr %t136
-  %t188 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t187, i32 1)
-  %t189 = extractvalue {i32, i1} %t188, 0
-  %t190 = extractvalue {i32, i1} %t188, 1
-  br i1 %t190, label %panic.14, label %panic.ok.14
-panic.14:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.209, ptr @.str.212)
-  unreachable
-panic.ok.14:
-  store i32 %t189, ptr %t136
-  br label %if.end.12
-if.end.12:
-  %t191 = load i64, ptr %t132
-  %t192 = call %"struct.std/time.Instant" @"std/time.from_unix"(i64 %t191)
-  store %"struct.std/time.Instant" %t192, ptr %v.ret.86
-  %t193 = call i64 @"std/time.unix"(ptr %v.ret.86)
-  %t194 = icmp eq i64 %t193, 0
-  br i1 %t194, label %if.then.15, label %if.end.15
-if.then.15:
-  %t195 = load i32, ptr %t136
-  %t196 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t195, i32 1)
-  %t197 = extractvalue {i32, i1} %t196, 0
-  %t198 = extractvalue {i32, i1} %t196, 1
-  br i1 %t198, label %panic.16, label %panic.ok.16
-panic.16:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.210, ptr @.str.212)
-  unreachable
-panic.ok.16:
-  store i32 %t197, ptr %t136
-  br label %if.end.15
-if.end.15:
-  store %"struct.std/time.Stopwatch" zeroinitializer, ptr %v.new.96
-  call void @"std/time.Stopwatch.init"(ptr %v.new.96)
-  %t199 = load %"struct.std/time.Stopwatch", ptr %v.new.96
-  store %"struct.std/time.Stopwatch" %t199, ptr %t137
-  br label %sm.start.0
-sm.start.0:
-  %t200 = call ptr @"std/time.sleep.task"(i64 1000000, i32 -2, i32 0)
-  store ptr %t200, ptr %t128
-  store i32 1, ptr %t127
-  call void @willrt_task_mark_io()
-  call void @willrt_task_mark_wait()
-  ret i32 -1
-sm.wait.0:
-  %t201 = alloca %willrt_error
-  %t203 = load ptr, ptr %t128
-  %t202 = call i32 @willrt_task_try_join(ptr %t203, ptr %t129, ptr %t201)
-  %t204 = icmp eq i32 %t202, -1
-  br i1 %t204, label %sm.park.0, label %sm.child.done.0
-sm.park.0:
-  call void @willrt_task_mark_wait()
-  ret i32 -1
-sm.child.done.0:
-  %t205 = icmp eq i32 %t202, 0
-  br i1 %t205, label %sm.after.0, label %sm.child.fail.0
-sm.child.fail.0:
-  %t206 = icmp eq i32 %t202, -5
-  %t207 = icmp eq i32 %t202, -6
-  %t208 = or i1 %t206, %t207
-  br i1 %t208, label %deadline.hit.17, label %deadline.panic.17
-deadline.panic.17:
-  %t209 = getelementptr inbounds %willrt_error, ptr %t201, i32 0, i32 0
-  %t210 = load ptr, ptr %t209
-  %t211 = getelementptr inbounds %willrt_error, ptr %t201, i32 0, i32 1
-  %t212 = load i64, ptr %t211
-  %t213 = getelementptr inbounds %willrt_error, ptr %t201, i32 0, i32 2
-  %t214 = load ptr, ptr %t213
-  %t215 = getelementptr inbounds %willrt_error, ptr %t201, i32 0, i32 3
-  %t216 = load ptr, ptr %t215
-  call void @willrt_panic_n(ptr %t210, i64 %t212, ptr %t214, ptr %t216)
-  unreachable
-deadline.hit.17:
-  br i1 %t206, label %deadline.canceled.18, label %deadline.timeout.18
-deadline.canceled.18:
-  %t217 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t129, i32 0, i32 0
-  store i32 1, ptr %t217
-  %t218 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t129, i32 0, i32 2
-  %t219 = call ptr @willrt_alloc(i64 24)
-  call void @memcpy(ptr %t219, ptr @will.error.data.8, i64 24)
-  %t220 = getelementptr inbounds %interface.Error, ptr %t218, i32 0, i32 0
-  store ptr %t219, ptr %t220
-  %t221 = getelementptr inbounds %interface.Error, ptr %t218, i32 0, i32 1
-  store ptr @will.error.table.8, ptr %t221
-  br label %sm.after.0
-deadline.timeout.18:
-  %t222 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t129, i32 0, i32 0
-  store i32 1, ptr %t222
-  %t223 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t129, i32 0, i32 2
-  %t224 = call ptr @willrt_alloc(i64 24)
-  call void @memcpy(ptr %t224, ptr @will.error.data.9, i64 24)
-  %t225 = getelementptr inbounds %interface.Error, ptr %t223, i32 0, i32 0
-  store ptr %t224, ptr %t225
-  %t226 = getelementptr inbounds %interface.Error, ptr %t223, i32 0, i32 1
-  store ptr @will.error.table.9, ptr %t226
-  br label %sm.after.0
-sm.after.0:
-  %t227 = load { i32, [4 x i8], %interface.Error }, ptr %t129
-  store { i32, [4 x i8], %interface.Error } %t227, ptr %t138
-  %t228 = call i64 @"std/time.Stopwatch.elapsed"(ptr %t137)
-  %t229 = icmp sgt i64 %t228, 0
-  br i1 %t229, label %if.then.19, label %if.end.19
-if.then.19:
-  %t230 = load i32, ptr %t136
-  %t231 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t230, i32 1)
-  %t232 = extractvalue {i32, i1} %t231, 0
-  %t233 = extractvalue {i32, i1} %t231, 1
-  br i1 %t233, label %panic.20, label %panic.ok.20
-panic.20:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.211, ptr @.str.212)
-  unreachable
-panic.ok.20:
-  store i32 %t232, ptr %t136
-  br label %if.end.19
-if.end.19:
-  %t234 = load i32, ptr %t136
-  %t235 = icmp ne i32 %t234, 6
-  br i1 %t235, label %if.then.21, label %if.end.21
-if.then.21:
-  %t236 = load i32, ptr %t138
-  %t237 = icmp eq i32 %t236, 0
-  br i1 %t237, label %deep.rel.adt.22.0, label %deep.rel.adt.done.22.0
-deep.rel.adt.22.0:
-  %t238 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t138, i32 0, i32 2
-  br label %deep.rel.adt.done.22.0
-deep.rel.adt.done.22.0:
-  %t239 = icmp eq i32 %t236, 1
-  br i1 %t239, label %deep.rel.adt.23.1, label %deep.rel.adt.done.23.1
-deep.rel.adt.23.1:
-  %t240 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t138, i32 0, i32 2
-  %t241 = getelementptr inbounds %interface.Error, ptr %t240, i32 0, i32 0
-  %t242 = getelementptr inbounds %interface.Error, ptr %t240, i32 0, i32 1
-  %t243 = load ptr, ptr %t241
-  %t244 = load ptr, ptr %t242
-  %t245 = icmp eq ptr %t243, null
-  br i1 %t245, label %iface.rel.empty.24, label %iface.rel.have.24
-iface.rel.empty.24:
-  br label %iface.rel.done.24
-iface.rel.have.24:
-  %t246 = getelementptr inbounds [6 x ptr], ptr %t244, i64 0, i64 3
-  %t247 = load ptr, ptr %t246
-  call void %t247(ptr %t243)
-  call void @willrt_free(ptr %t243)
-  store ptr null, ptr %t241
-  store ptr null, ptr %t242
-  br label %iface.rel.done.24
-iface.rel.done.24:
-  store %interface.Error zeroinitializer, ptr %t240
-  br label %deep.rel.adt.done.23.1
-deep.rel.adt.done.23.1:
-  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t138
-  %t248 = alloca i32
-  store i32 1, ptr %t248
-  %t249 = getelementptr i32, ptr null, i32 1
-  %t250 = ptrtoint ptr %t249 to i64
-  call i32 @willrt_task_store_result(ptr %t248, i64 %t250)
-  ret i32 1
-if.end.21:
-  %t251 = load i32, ptr %t138
-  %t252 = icmp eq i32 %t251, 0
-  br i1 %t252, label %deep.rel.adt.25.0, label %deep.rel.adt.done.25.0
-deep.rel.adt.25.0:
-  %t253 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t138, i32 0, i32 2
-  br label %deep.rel.adt.done.25.0
-deep.rel.adt.done.25.0:
-  %t254 = icmp eq i32 %t251, 1
-  br i1 %t254, label %deep.rel.adt.26.1, label %deep.rel.adt.done.26.1
-deep.rel.adt.26.1:
-  %t255 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t138, i32 0, i32 2
-  %t256 = getelementptr inbounds %interface.Error, ptr %t255, i32 0, i32 0
-  %t257 = getelementptr inbounds %interface.Error, ptr %t255, i32 0, i32 1
-  %t258 = load ptr, ptr %t256
-  %t259 = load ptr, ptr %t257
-  %t260 = icmp eq ptr %t258, null
-  br i1 %t260, label %iface.rel.empty.27, label %iface.rel.have.27
-iface.rel.empty.27:
-  br label %iface.rel.done.27
-iface.rel.have.27:
-  %t261 = getelementptr inbounds [6 x ptr], ptr %t259, i64 0, i64 3
-  %t262 = load ptr, ptr %t261
-  call void %t262(ptr %t258)
-  call void @willrt_free(ptr %t258)
-  store ptr null, ptr %t256
-  store ptr null, ptr %t257
-  br label %iface.rel.done.27
-iface.rel.done.27:
-  store %interface.Error zeroinitializer, ptr %t255
-  br label %deep.rel.adt.done.26.1
-deep.rel.adt.done.26.1:
-  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t138
-  %t263 = alloca i32
-  store i32 0, ptr %t263
-  %t264 = getelementptr i32, ptr null, i32 1
-  %t265 = ptrtoint ptr %t264 to i64
-  call i32 @willrt_task_store_result(ptr %t263, i64 %t265)
-  ret i32 1
-}
-define internal void @"example.com/stdtest/time.will$main.sm.drop"(ptr %frame) {
-entry:
-  %t266 = getelementptr { i32, ptr, i64, i64, i64, %"struct.std/time.Instant", %"struct.std/time.Instant", %"struct.std/time.Instant", i32, %"struct.std/time.Stopwatch", { i32, [4 x i8], %interface.Error }, { i32, [4 x i8], %interface.Error } }, ptr %frame, i32 0, i32 11
-  %t267 = load i32, ptr %t266
-  %t268 = icmp eq i32 %t267, 0
-  br i1 %t268, label %deep.rel.adt.28.0, label %deep.rel.adt.done.28.0
-deep.rel.adt.28.0:
-  %t269 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t266, i32 0, i32 2
-  br label %deep.rel.adt.done.28.0
-deep.rel.adt.done.28.0:
-  %t270 = icmp eq i32 %t267, 1
-  br i1 %t270, label %deep.rel.adt.29.1, label %deep.rel.adt.done.29.1
-deep.rel.adt.29.1:
-  %t271 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t266, i32 0, i32 2
-  %t272 = getelementptr inbounds %interface.Error, ptr %t271, i32 0, i32 0
-  %t273 = getelementptr inbounds %interface.Error, ptr %t271, i32 0, i32 1
-  %t274 = load ptr, ptr %t272
-  %t275 = load ptr, ptr %t273
-  %t276 = icmp eq ptr %t274, null
-  br i1 %t276, label %iface.rel.empty.30, label %iface.rel.have.30
-iface.rel.empty.30:
-  br label %iface.rel.done.30
-iface.rel.have.30:
-  %t277 = getelementptr inbounds [6 x ptr], ptr %t275, i64 0, i64 3
-  %t278 = load ptr, ptr %t277
-  call void %t278(ptr %t274)
-  call void @willrt_free(ptr %t274)
-  store ptr null, ptr %t272
-  store ptr null, ptr %t273
-  br label %iface.rel.done.30
-iface.rel.done.30:
-  store %interface.Error zeroinitializer, ptr %t271
-  br label %deep.rel.adt.done.29.1
-deep.rel.adt.done.29.1:
-  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t266
+  %t121 = getelementptr i8, ptr %frame, i64 120
+  %t122 = load i32, ptr %t121
+  %t123 = icmp eq i32 %t122, 0
+  br i1 %t123, label %deep.rel.adt.27.0, label %deep.rel.adt.done.27.0
+deep.rel.adt.27.0:
+  %t124 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t121, i32 0, i32 2
+  br label %deep.rel.adt.done.27.0
+deep.rel.adt.done.27.0:
+  %t125 = icmp eq i32 %t122, 1
+  br i1 %t125, label %deep.rel.adt.28.1, label %deep.rel.adt.done.28.1
+deep.rel.adt.28.1:
+  %t126 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t121, i32 0, i32 2
+  %t127 = getelementptr inbounds %interface.Error, ptr %t126, i32 0, i32 0
+  %t128 = getelementptr inbounds %interface.Error, ptr %t126, i32 0, i32 1
+  %t129 = load ptr, ptr %t127
+  %t130 = load ptr, ptr %t128
+  %t131 = icmp eq ptr %t129, null
+  br i1 %t131, label %iface.rel.empty.29, label %iface.rel.have.29
+iface.rel.empty.29:
+  br label %iface.rel.done.29
+iface.rel.have.29:
+  %t132 = getelementptr inbounds [6 x ptr], ptr %t130, i64 0, i64 3
+  %t133 = load ptr, ptr %t132
+  call void %t133(ptr %t129)
+  call void @willrt_free(ptr %t129)
+  store ptr null, ptr %t127
+  store ptr null, ptr %t128
+  br label %iface.rel.done.29
+iface.rel.done.29:
+  store %interface.Error zeroinitializer, ptr %t126
+  br label %deep.rel.adt.done.28.1
+deep.rel.adt.done.28.1:
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t121
+  %t134 = getelementptr i8, ptr %frame, i64 328
+  %t135 = load i32, ptr %t134
+  %t136 = icmp eq i32 %t135, 0
+  br i1 %t136, label %deep.rel.adt.30.0, label %deep.rel.adt.done.30.0
+deep.rel.adt.30.0:
+  %t137 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t134, i32 0, i32 2
+  br label %deep.rel.adt.done.30.0
+deep.rel.adt.done.30.0:
+  %t138 = icmp eq i32 %t135, 1
+  br i1 %t138, label %deep.rel.adt.31.1, label %deep.rel.adt.done.31.1
+deep.rel.adt.31.1:
+  %t139 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %t134, i32 0, i32 2
+  %t140 = getelementptr inbounds %interface.Error, ptr %t139, i32 0, i32 0
+  %t141 = getelementptr inbounds %interface.Error, ptr %t139, i32 0, i32 1
+  %t142 = load ptr, ptr %t140
+  %t143 = load ptr, ptr %t141
+  %t144 = icmp eq ptr %t142, null
+  br i1 %t144, label %iface.rel.empty.32, label %iface.rel.have.32
+iface.rel.empty.32:
+  br label %iface.rel.done.32
+iface.rel.have.32:
+  %t145 = getelementptr inbounds [6 x ptr], ptr %t143, i64 0, i64 3
+  %t146 = load ptr, ptr %t145
+  call void %t146(ptr %t142)
+  call void @willrt_free(ptr %t142)
+  store ptr null, ptr %t140
+  store ptr null, ptr %t141
+  br label %iface.rel.done.32
+iface.rel.done.32:
+  store %interface.Error zeroinitializer, ptr %t139
+  br label %deep.rel.adt.done.31.1
+deep.rel.adt.done.31.1:
+  store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t134
   ret void
 }
 declare void @willrt_init()
@@ -7119,82 +6796,19 @@ define i32 @main() {
 entry:
   call void @willrt_init()
   call void @"std/errors.will$init"()
-  %r = call i32 @"example.com/stdtest/time.will$main"()
+  %t147 = call ptr @"example.com/stdtest/time.will$main.task"(i32 -2, i32 0)
+  %t149 = alloca i32
+  %t148 = call i32 @willrt_join(ptr %t147, ptr %t149, ptr null)
+  %t150 = icmp ne i32 %t148, 0
+  br i1 %t150, label %main.async.fail.33, label %main.async.ok.33
+main.async.fail.33:
   call void @willrt_shutdown()
-  ret i32 %r
+  ret i32 1
+main.async.ok.33:
+  %t151 = load i32, ptr %t149
+  call void @willrt_shutdown()
+  ret i32 %t151
 }
-@will.error.data.8 = private constant { ptr, i64, i32 } { ptr @.str.213, i64 8, i32 8 }
-define internal { ptr, i64 } @will.error.message.8(ptr %data) {
-entry:
-  %t279 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t280 = load ptr, ptr %t279
-  %t281 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
-  %t282 = load i64, ptr %t281
-  %t283 = insertvalue { ptr, i64 } undef, ptr %t280, 0
-  %t284 = insertvalue { ptr, i64 } %t283, i64 %t282, 1
-  ret { ptr, i64 } %t284
-}
-define internal i32 @will.error.status.8(ptr %data) {
-entry:
-  %t285 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
-  %t286 = load i32, ptr %t285
-  ret i32 %t286
-}
-define internal ptr @will.error.clone.8(ptr %data) {
-entry:
-  %t287 = call ptr @willrt_alloc(i64 24)
-  call void @memcpy(ptr %t287, ptr %data, i64 24)
-  ret ptr %t287
-}
-define internal void @will.error.drop.8(ptr %data) {
-entry:
-  %t288 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t289 = load ptr, ptr %t288
-  call void @willrt_free_str(ptr %t289)
-  ret void
-}
-define internal void @will.error.share.8(ptr %data) {
-entry:
-  ret void
-}
-@will.error.table.8 = private constant [6 x ptr] [ptr @will.error.message.8, ptr @will.error.status.8, ptr @will.error.clone.8, ptr @will.error.drop.8, ptr @will.error.share.8, ptr @"will.type.std/errors.Fault"]
-@will.error.value.8 = private constant %interface.Error { ptr @will.error.data.8, ptr @will.error.table.8 }
-@will.error.data.9 = private constant { ptr, i64, i32 } { ptr @.str.214, i64 8, i32 9 }
-define internal { ptr, i64 } @will.error.message.9(ptr %data) {
-entry:
-  %t290 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t291 = load ptr, ptr %t290
-  %t292 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 1
-  %t293 = load i64, ptr %t292
-  %t294 = insertvalue { ptr, i64 } undef, ptr %t291, 0
-  %t295 = insertvalue { ptr, i64 } %t294, i64 %t293, 1
-  ret { ptr, i64 } %t295
-}
-define internal i32 @will.error.status.9(ptr %data) {
-entry:
-  %t296 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 2
-  %t297 = load i32, ptr %t296
-  ret i32 %t297
-}
-define internal ptr @will.error.clone.9(ptr %data) {
-entry:
-  %t298 = call ptr @willrt_alloc(i64 24)
-  call void @memcpy(ptr %t298, ptr %data, i64 24)
-  ret ptr %t298
-}
-define internal void @will.error.drop.9(ptr %data) {
-entry:
-  %t299 = getelementptr inbounds { ptr, i64, i32 }, ptr %data, i32 0, i32 0
-  %t300 = load ptr, ptr %t299
-  call void @willrt_free_str(ptr %t300)
-  ret void
-}
-define internal void @will.error.share.9(ptr %data) {
-entry:
-  ret void
-}
-@will.error.table.9 = private constant [6 x ptr] [ptr @will.error.message.9, ptr @will.error.status.9, ptr @will.error.clone.9, ptr @will.error.drop.9, ptr @will.error.share.9, ptr @"will.type.std/errors.Fault"]
-@will.error.value.9 = private constant %interface.Error { ptr @will.error.data.9, ptr @will.error.table.9 }
 declare i64 @willrt_now_ns()
 declare i32 @willtime_local_zone()
 declare i32 @willtime_zone_find(ptr, i64)
@@ -7413,9 +7027,6 @@ declare i64 @willtime_wall_ns()
 @.str.209 = private unnamed_addr constant [15 x i8] c"main.will:21:9\00", align 1
 @.str.210 = private unnamed_addr constant [15 x i8] c"main.will:24:9\00", align 1
 @.str.211 = private unnamed_addr constant [15 x i8] c"main.will:30:9\00", align 1
-@.str.212 = private unnamed_addr constant [38 x i8] c"example.com/stdtest/time.will$main.sm\00", align 1
-@.str.213 = private unnamed_addr constant [9 x i8] c"canceled\00", align 1
-@.str.214 = private unnamed_addr constant [9 x i8] c"deadline\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare i32 @willrt_utf8_decode(ptr, i64, ptr)
@@ -7428,6 +7039,7 @@ declare ptr @willrt_task_new_drop(ptr, ptr, i64, i32, i32, ptr)
 declare void @willrt_task_run(ptr)
 declare void @willrt_task_run_auto(ptr)
 declare i32 @willrt_join(ptr, ptr, ptr)
+declare void @willrt_task_cancel(ptr)
 declare i32 @willrt_task_try_join(ptr, ptr, ptr)
 declare ptr @willrt_task_current()
 declare i32 @willrt_task_store_result(ptr, i64)
@@ -7442,8 +7054,6 @@ declare i32 @willrt_select_status()
 declare void @willrt_region_enter()
 declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
-declare void @willrt_task_mark_wait()
-declare void @willrt_task_mark_io()
 declare void @willrt_task_own_frame(ptr)
 declare i32 @willrt_utf8_valid(ptr, i64)
 declare i32 @willrt_utf8_encode(i32, ptr)

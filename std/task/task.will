@@ -1,7 +1,7 @@
 # CPU helpers submit ordinary calls through spawn. The runtime decides where a
 # job runs; the surface has no parallel block or lane selector.
 
-def parallel_for(n: usize, f: func(usize)) {
+async def parallel_for(n: usize, f: func(usize)) {
     region {
         var i: usize = 0
         while i < n {
@@ -12,7 +12,7 @@ def parallel_for(n: usize, f: func(usize)) {
     }
 }
 
-def parallel_map<T, U>(xs: []T, f: func(T) -> U) -> Array<U> {
+async def parallel_map<T, U>(xs: []T, f: func(T) -> U) -> Array<U> {
     var out: Array<U> = new Array<U>(xs.len())
     region {
         var i: usize = 0

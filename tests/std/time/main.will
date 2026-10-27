@@ -1,6 +1,6 @@
 import "std/time"
 
-def main() -> i32 {
+async def main() -> i32 {
     var sec: i64 = 1000
     var negative: i64 = -5i64
     var zero: i64 = 0
@@ -24,7 +24,7 @@ def main() -> i32 {
         ok += 1
     }
     var sw: time.Stopwatch = new time.Stopwatch()
-    var slept: Result<(), Error> = wait(time.sleep(1ms))
+    var slept: Result<(), Error> = await time.sleep(1ms)
     _ = slept
     if sw.elapsed() > 0ns {
         ok += 1

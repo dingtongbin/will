@@ -521,6 +521,8 @@ int32_t willrt_runtime_threaded(void);
 void willrt_yield(void);
 int32_t willrt_task_canceled(void);
 void willrt_task_bind_cancel(willrt_task* task, void* flag);
+/* willrt_task_cancel sets the task's cancel bit and wakes a parked wait. */
+void willrt_task_cancel(willrt_task* task);
 /* A step that is not ready marks the current task as waiting before returning
    WILLRT_SUSPEND. A bare suspend without this mark is retried immediately. */
 void willrt_task_mark_wait(void);

@@ -316,9 +316,6 @@ func (g *generator) isCopySource(id int) bool {
 	case "await":
 		return g.isCopySource(refField(r, "expr"))
 	case "call":
-		if arg, ok := g.waitArg(r); ok {
-			return g.isCopySource(arg)
-		}
 		return false
 	case "mcall":
 		// Array.Get and view Get return a borrow of the element. The array

@@ -679,9 +679,6 @@ func (g *generator) typeOf(id int) (string, error) {
 		}
 		return g.typeOf(refField(r, "expr"))
 	case "call", "mcall":
-		if arg, ok := g.waitArg(r); ok {
-			return g.typeOf(arg)
-		}
 		if r.Kind == "mcall" {
 			if llvm, _, known := g.strCallResult(r); known {
 				if llvm == "" {
@@ -944,9 +941,6 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		return g.willTypeText(refField(r, "expr"))
 	case "call", "mcall":
-		if arg, ok := g.waitArg(r); ok {
-			return g.willTypeText(arg)
-		}
 		if text, ok := g.downcastTypeText(r); ok {
 			return text, nil
 		}
@@ -1528,9 +1522,6 @@ func (g *generator) place(id int) (string, string, error) {
 	case "new":
 		return g.constructNew(r)
 	case "call", "mcall":
-		if arg, ok := g.waitArg(r); ok {
-			return g.place(arg)
-		}
 		if d, ok := g.downcastOf(r); ok {
 			if !d.isAs {
 				return "", "", g.errf(r.ID, "cannot translate node #%d: a bool is not a place", r.ID)

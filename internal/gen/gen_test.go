@@ -1805,10 +1805,10 @@ func TestDeferCapturesArgumentsBeforeBlockExit(t *testing.T) {
 }
 
 func TestChannelDropReleasesQueuedOwnedValue(t *testing.T) {
-	src := `def main() -> i32 {
+	src := `async def main() -> i32 {
     var ch: chan<str> = new chan<str>(1)
     var ch2: chan<str> = ch
-    _ = wait(ch2.send("x"))
+    _ = await ch2.send("x")
     ch.close()
     return 0
 }

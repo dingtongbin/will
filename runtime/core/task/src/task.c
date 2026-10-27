@@ -1617,6 +1617,18 @@ void willrt_task_bind_cancel(willrt_task* task, void* value) {
     }
 }
 
+void willrt_task_cancel(willrt_task* task) {
+    if (task == NULL) {
+        return;
+    }
+    willrt_os_mutex_lock(&task->lock);
+    if (!task->finished) {
+        task->canceled = 1;
+    }
+    willrt_os_mutex_unlock(&task->lock);
+    willrt_task_wake_chan(task);
+}
+
 int64_t willrt_task_deadline(void) {
     struct willrt_task* task = willrt_task_self;
 

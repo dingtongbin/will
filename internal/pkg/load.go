@@ -464,7 +464,6 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 					bag.AddAll(check.Leaks(f.AST))
 					bag.AddAll(check.CrossTask(f.AST, checkedByFile[f.AST]))
 					bag.AddAll(check.Concurrency(f.AST))
-					bag.AddAll(check.SuspendInParallel(f.AST))
 				}
 			}
 		}

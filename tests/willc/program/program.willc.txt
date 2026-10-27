@@ -132,7 +132,7 @@
 #132 type parent=#131 pos="program.will:52:13" text="chan<i32>" kind=chan arg=#133
 #133 type parent=#132 pos="program.will:52:18" text="i32" kind=scalar
 #134 channew parent=#131 pos="program.will:52:25" type="chan<i32>" cap=#135
-#135 lit parent=#134 pos="program.will:52:39" kind=int text="8" type="i32"
+#135 lit parent=#134 pos="program.will:52:39" kind=int text="8" type="usize"
 #136 var parent=#64 pos="program.will:53:5" text="t" type="Task<i32>"
 #137 type parent=#136 pos="program.will:53:12" text="Task<i32>" kind=task arg=#138
 #138 type parent=#137 pos="program.will:53:17" text="i32" kind=scalar

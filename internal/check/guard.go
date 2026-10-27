@@ -127,9 +127,6 @@ func (g *guardWalker) expr(e ast.Expr) {
 	}
 	switch x := e.(type) {
 	case *ast.CallExpr:
-		if name, ok := x.Callee.(*ast.NameExpr); ok && name.Name == "wait" {
-			g.suspend(x.Pos())
-		}
 		if field, ok := x.Callee.(*ast.FieldExpr); ok && field.Name == "sleep" {
 			g.suspend(x.Pos())
 		}

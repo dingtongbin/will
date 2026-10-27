@@ -48,7 +48,7 @@
 #48 type parent=#47 pos="nodes.will:23:13" text="chan<i64>" kind=chan arg=#49
 #49 type parent=#48 pos="nodes.will:23:18" text="i64" kind=scalar
 #50 channew parent=#47 pos="nodes.will:23:25" type="chan<i64>" cap=#51
-#51 lit parent=#50 pos="nodes.will:23:39" kind=int text="4" type="i32"
+#51 lit parent=#50 pos="nodes.will:23:39" kind=int text="4" type="usize"
 #52 var parent=#31 pos="nodes.will:24:5" text="kind" type="i64"
 #53 type parent=#52 pos="nodes.will:24:15" text="i64" kind=scalar
 #54 match parent=#52 pos="nodes.will:24:21" subject=#55

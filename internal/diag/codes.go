@@ -131,12 +131,11 @@ const (
 	CodeExplicitLeak = "M0004"
 
 	// Concurrency codes.
-	CodeSuspendInParallel  = "K0001"
+
 	CodeGuardAcrossSuspend = "K0002"
 	CodeTaskEscapesRegion  = "K0003"
 	// CodeTaskNotAwaited reports a task handle still live when its region exits.
 	CodeTaskNotAwaited     = "K0015"
-	CodeWrongLane          = "K0004"
 	CodeSpawnNotCall       = "K0005"
 	CodeDeadlock           = "K0006"
 	CodeGuardCopied        = "K0007"
@@ -156,8 +155,6 @@ const (
 
 	// Input, output, and blocking codes.
 	CodeBlockingNotAwaited = "I0001"
-	CodeWaitInSync         = "I0002"
-	CodeWaitInAsync        = "I0003"
 	CodeBlocksThreadInTask = "I0004"
 
 	// CodeCannotTranslate reports a willc node the mechanical translation
@@ -185,13 +182,13 @@ var Codes = []string{
 	CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
 	CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
 	CodeExplicitLeak,
-	CodeSuspendInParallel, CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeWrongLane, CodeTaskNotAwaited,
+	CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeTaskNotAwaited,
 	CodeSpawnNotCall, CodeDeadlock,
 	CodeGuardCopied, CodeReadGuardWrite,
 	CodeAwaitOutsideAsync, CodeAsyncNotAwaited, CodeAwaitNotAsync, CodeAsyncAsValue,
 	CodeSelectOutsideAsync, CodeDeferSuspend,
 	CodeResultDropped, CodeUnwrapType, CodePanicContained,
-	CodeBlockingNotAwaited, CodeWaitInSync, CodeWaitInAsync, CodeBlocksThreadInTask,
+	CodeBlockingNotAwaited, CodeBlocksThreadInTask,
 	CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,
 	CodeUnsupportedTarget, CodeNoEntry, CodeFreestanding, CodeUnknownImportPath,
 	CodePackageTwoPaths, CodeImportCycle,

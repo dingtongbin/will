@@ -8,17 +8,14 @@ package check
 import (
 	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
-	"github.com/will-lang/will/internal/marks"
 )
 
 // Concurrency reports the task-boundary diagnostics for one file.
 func Concurrency(f *ast.File) []diag.Diagnostic {
 	c := &concurrencyChecker{bag: diag.Bag{}}
-	m := marks.Analyze(f)
 	c.regionEscapes(f)
 	c.regionTasks(f)
 	c.guardAcrossSuspend(f)
-	c.waitBridges(m)
 	return c.bag.Diagnostics()
 }
 
@@ -221,27 +218,6 @@ func (e *escapeWalker) use(expr ast.Expr, region int) {
 	case *ast.InterpExpr:
 		for _, part := range x.Parts {
 			e.use(part.Expr, region)
-		}
-	}
-}
-
-// waitBridges reports I0003 for a wait inside a function that has its own
-// suspension points: the bridge turns an async call back into a blocking
-// one, which inside an async function is a mistake the caller should not
-// pay for. A function whose only suspensions are its waits is a synchronous
-// function using the bridge as intended.
-func (c *concurrencyChecker) waitBridges(m *marks.File) {
-	for _, fn := range m.Funcs {
-		if !fn.Async {
-			continue
-		}
-		if len(fn.Suspends) <= len(fn.Waits) {
-			continue
-		}
-		for _, w := range fn.Waits {
-			c.bag.Warning(w.Pos(), diag.CodeWaitInAsync,
-				"wait in an async function",
-				"call the async function directly")
 		}
 	}
 }

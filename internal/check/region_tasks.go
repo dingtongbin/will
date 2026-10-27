@@ -60,92 +60,108 @@ func (c *concurrencyChecker) regionStmt(st ast.Stmt) {
 
 func (c *concurrencyChecker) checkRegion(body *ast.Block) {
 	tasks := map[string]bool{}
-	c.collectTasks(body, tasks)
-	c.consumeTasks(body, tasks)
+	positions := map[string]ast.Span{}
+	c.collectTasks(body, tasks, positions)
+	c.consumeTasks(body, tasks, positions)
+	c.reportPending(tasks, positions, body.EndPos().Offset)
+}
+
+func (c *concurrencyChecker) reportPending(tasks map[string]bool, positions map[string]ast.Span, at int) {
 	for name, done := range tasks {
 		if done {
 			continue
 		}
-		c.bag.Error(body.Pos(), diag.CodeTaskNotAwaited,
+		pos, known := positions[name]
+		if known && pos.Pos().Offset >= at {
+			continue
+		}
+		c.bag.Error(pos.Pos(), diag.CodeTaskNotAwaited,
 			"task handle "+name+" is not awaited before region exit",
 			"await it, or write _ = await "+name+" to discard the result")
 	}
 }
 
-func (c *concurrencyChecker) collectTasks(st ast.Stmt, tasks map[string]bool) {
+func (c *concurrencyChecker) collectTasks(st ast.Stmt, tasks map[string]bool, positions map[string]ast.Span) {
 	switch s := st.(type) {
 	case *ast.Block:
 		for _, inner := range s.Stmts {
-			c.collectTasks(inner, tasks)
+			c.collectTasks(inner, tasks, positions)
 		}
 	case *ast.VarStmt:
 		if d, ok := s.Decl.(*ast.VarDecl); ok && d.Name != "" && d.Name != "_" {
 			if isTaskType(d.Type) || isSpawn(d.Value) {
 				tasks[d.Name] = false
+				positions[d.Name] = d.Span
 			}
 		}
 	case *ast.IfExpr:
-		c.collectTasks(s.Then, tasks)
+		c.collectTasks(s.Then, tasks, positions)
 		if s.Else != nil {
-			c.collectTasks(s.Else, tasks)
+			c.collectTasks(s.Else, tasks, positions)
 		}
 	case *ast.MatchExpr:
 		for _, arm := range s.Arms {
-			c.collectTasks(arm.Body, tasks)
+			c.collectTasks(arm.Body, tasks, positions)
 		}
 	case *ast.ForStmt:
-		c.collectTasks(s.Body, tasks)
+		c.collectTasks(s.Body, tasks, positions)
 	case *ast.RegionStmt:
 		// A nested region owns its own handles.
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {
-			c.collectTasks(arm.Body, tasks)
+			c.collectTasks(arm.Body, tasks, positions)
 		}
 	case *ast.DeadlineExpr:
-		c.collectTasks(s.Body, tasks)
+		c.collectTasks(s.Body, tasks, positions)
 	}
 }
 
-func (c *concurrencyChecker) consumeTasks(st ast.Stmt, tasks map[string]bool) {
+func (c *concurrencyChecker) consumeTasks(st ast.Stmt, tasks map[string]bool, positions map[string]ast.Span) {
 	switch s := st.(type) {
 	case *ast.Block:
 		for _, inner := range s.Stmts {
-			c.consumeTasks(inner, tasks)
+			c.consumeTasks(inner, tasks, positions)
 		}
 	case *ast.ExprStmt:
+		if spawn, ok := s.Expr.(*ast.SpawnExpr); ok {
+			c.bag.Error(spawn.Pos(), diag.CodeTaskNotAwaited,
+				"spawn result is not awaited",
+				"bind it to a Task, then await it")
+		}
 		c.consumeExpr(s.Expr, tasks)
 	case *ast.AssignStmt:
 		c.consumeExpr(s.Value, tasks)
 	case *ast.ReturnStmt:
 		c.consumeExpr(s.Value, tasks)
+		c.reportPending(tasks, positions, s.Pos().Offset)
 	case *ast.VarStmt:
 		if d, ok := s.Decl.(*ast.VarDecl); ok {
 			c.consumeExpr(d.Value, tasks)
 		}
 	case *ast.IfExpr:
 		c.consumeExpr(s.Cond, tasks)
-		c.consumeTasks(s.Then, tasks)
+		c.consumeTasks(s.Then, tasks, positions)
 		if s.Else != nil {
-			c.consumeTasks(s.Else, tasks)
+			c.consumeTasks(s.Else, tasks, positions)
 		}
 	case *ast.MatchExpr:
 		c.consumeExpr(s.Subject, tasks)
 		for _, arm := range s.Arms {
 			c.consumeExpr(arm.Guard, tasks)
-			c.consumeTasks(arm.Body, tasks)
+			c.consumeTasks(arm.Body, tasks, positions)
 		}
 	case *ast.ForStmt:
 		c.consumeExpr(s.Iter, tasks)
-		c.consumeTasks(s.Body, tasks)
+		c.consumeTasks(s.Body, tasks, positions)
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {
 			c.consumeExpr(arm.Chan, tasks)
 			c.consumeExpr(arm.Timeout, tasks)
-			c.consumeTasks(arm.Body, tasks)
+			c.consumeTasks(arm.Body, tasks, positions)
 		}
 	case *ast.DeadlineExpr:
 		c.consumeExpr(s.Duration, tasks)
-		c.consumeTasks(s.Body, tasks)
+		c.consumeTasks(s.Body, tasks, positions)
 	}
 }
 

@@ -178,18 +178,18 @@ def check_dir() -> i32 {
     return 0
 }
 
-def check_async() -> i32 {
+async def check_async() -> i32 {
     var path: str = "will-fs-async.tmp"
     var text: str = "async"
     var data: []u8 = text[Range(0, 5)]
-    var written: Result<(), Error> = wait(fs.async_write_file(path, data))
+    var written: Result<(), Error> = await fs.async_write_file(path, data)
     match written {
         Err(_) => {
             return 30
         }
         _ => {}
     }
-    var loaded: Result<Array<u8>, Error> = wait(fs.async_read_file(path))
+    var loaded: Result<Array<u8>, Error> = await fs.async_read_file(path)
     match loaded {
         Ok(bytes) => {
             if bytes.len() != 5usize or bytes.get(0) != 97u8 {
@@ -205,7 +205,7 @@ def check_async() -> i32 {
     return 0
 }
 
-def main() -> i32 {
+async def main() -> i32 {
     var code: i32 = check_file()
     if code != 0 {
         return code
@@ -214,5 +214,5 @@ def main() -> i32 {
     if code != 0 {
         return code
     }
-    return check_async()
+    return await check_async()
 }

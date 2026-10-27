@@ -1648,7 +1648,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		if sig.async && !s.allowAsyncCall {
 			c.bag.Error(call.Pos(), diag.CodeAsyncNotAwaited,
 				"this async call is not awaited",
-				"write await, wait(...), or spawn")
+				"write await, or spawn")
 		}
 		return sig.result
 	}
@@ -1670,12 +1670,6 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "Task" {
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.unit()
-		}
-		return nil
-	case "join":
-		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "Task" && len(recv.Args()) == 1 {
-			c.requireWait(s, call.Pos())
-			return c.in.named("Result", []*Type{recv.Args()[0], c.in.named("TaskError", nil)})
 		}
 		return nil
 	case "close":
@@ -1767,7 +1761,7 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 		if sig.async && !s.allowAsyncCall {
 			c.bag.Error(call.Pos(), diag.CodeAsyncNotAwaited,
 				"this async call is not awaited",
-				"write await, wait(...), or spawn")
+				"write await, or spawn")
 		}
 		return sig.result
 	}
@@ -2304,6 +2298,17 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 		for i, a := range n.Args {
 			c.checkArg(s, a.Expr, capacity, name, i+1)
 		}
+		return t
+	}
+	if name == "chan" {
+		if len(n.Args) != 1 {
+			c.badArity(n.Pos(), name)
+			for _, a := range n.Args {
+				c.inferExpr(s, a.Expr)
+			}
+			return t
+		}
+		c.checkArg(s, n.Args[0].Expr, c.in.scalar("usize"), name, 1)
 		return t
 	}
 	for _, a := range n.Args {

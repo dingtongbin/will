@@ -69,6 +69,27 @@ async def f() {
 	}
 }
 
+func TestRegionRejectsEarlyReturnWithTask(t *testing.T) {
+	ds := runConcurrency(t, `async def zero() -> i32 {
+    return 0
+}
+
+async def f() -> i32 {
+    region {
+        var task: Task<i32> = spawn zero()
+        if True {
+            return 1
+        }
+        _ = await task
+    }
+    return 0
+}
+`)
+	if !hasCode(ds, diag.CodeTaskNotAwaited) {
+		t.Fatalf("expected K0015 for early return, got:\n%s", diag.FormatAll(ds))
+	}
+}
+
 func TestRegionAcceptsAwaitedTask(t *testing.T) {
 	ds := runConcurrency(t, `async def zero() -> i32 {
     return 0
@@ -119,33 +140,5 @@ def work(x: i32) -> i32 { return x }
 `)
 	if hasCode(ds, "K0003") {
 		t.Fatalf("a handle joined inside its region is fine: %v", ds)
-	}
-}
-
-func TestWaitInsideSuspendingFunctionWarns(t *testing.T) {
-	ds := runConcurrency(t, `async def load(ch: chan<i32>) -> Result<i32, Error> {
-    var x: Option<i32> = ch.recv()
-    var v: Result<i32, Error> = wait(ParseAsync(x!))?
-    return Ok(v)
-}
-`)
-	if !hasCode(ds, "I0003") {
-		t.Fatalf("expected I0003 for wait in a suspending function, got %v", ds)
-	}
-	for _, d := range ds {
-		if d.Code == "I0003" && d.Severity != diag.Warning {
-			t.Fatalf("I0003 is a warning, got %v", d.Severity)
-		}
-	}
-}
-
-func TestWaitInSyncFunctionIsTheBridge(t *testing.T) {
-	ds := runConcurrency(t, `def load(raw: []u8) -> Result<i32, Error> {
-    var v: Result<i32, Error> = wait(ParseAsync(raw))?
-    return Ok(v)
-}
-`)
-	if hasCode(ds, "I0003") {
-		t.Fatalf("wait is the bridge in a function with no other suspension: %v", ds)
 	}
 }
