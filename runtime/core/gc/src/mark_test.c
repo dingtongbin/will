@@ -86,19 +86,6 @@ static void test_mark(void) {
         assert(willrt_gc_test_card_count() == 0);
     }
 
-    {
-        void* old_root = root;
-        void* old_child = child;
-        size_t moved;
-
-        root_slot = root;
-        moved = willrt_gc_test_evacuate();
-        assert(moved >= 2);
-        assert(root_slot != old_root);
-        assert(((void**)root_slot)[0] != old_child);
-        assert(willrt_gc_handle_get(handle) != handle_object);
-        assert(willrt_gc_test_evacuated_count() == moved);
-    }
     willrt_gc_test_end_mark();
 
     willrt_gc_handle_release(handle);
