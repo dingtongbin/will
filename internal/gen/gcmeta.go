@@ -59,30 +59,41 @@ func (g *generator) emitGCMetadata() error {
 		}
 		g.gcProgram = program
 	}
-	text, err := gcmeta.DescriptorBlock(program.Types())
-	if err != nil {
-		return err
-	}
-	g.out.WriteString(text)
-	if len(g.gcInlineTypes) != 0 {
-		names := make([]string, 0, len(g.gcInlineTypes))
-		for name := range g.gcInlineTypes {
-			names = append(names, name)
-		}
-		sort.Strings(names)
-		for _, name := range names {
-			inline, err := gcmeta.DescriptorText(g.gcInlineTypes[name])
-			if err != nil {
-				return err
-			}
-			g.out.WriteString(inline)
-		}
-	}
 	var classes []*gcmeta.Type
 	for _, t := range program.Types() {
 		if t.Kind == gcmeta.KindClass {
 			classes = append(classes, t)
 		}
+	}
+	inlineNames := make([]string, 0, len(g.gcInlineTypes))
+	for name := range g.gcInlineTypes {
+		inlineNames = append(inlineNames, name)
+	}
+	sort.Strings(inlineNames)
+	nextID := uint32(len(classes) + 1)
+	var inlineTypes []*gcmeta.Type
+	for _, name := range inlineNames {
+		inline := g.gcInlineTypes[name]
+		if len(inline.Refs) != 0 || len(inline.Weaks) != 0 {
+			if nextID > gcmeta.TypeIDMax {
+				return fmt.Errorf("GC type id table exceeds %d", gcmeta.TypeIDMax)
+			}
+			inline.ID = nextID
+			nextID++
+			inlineTypes = append(inlineTypes, inline)
+		}
+	}
+	text, err := gcmeta.DescriptorBlock(program.Types())
+	if err != nil {
+		return err
+	}
+	g.out.WriteString(text)
+	for _, inline := range inlineTypes {
+		inlineText, err := gcmeta.DescriptorText(inline)
+		if err != nil {
+			return err
+		}
+		g.out.WriteString(inlineText)
 	}
 	if len(g.gcGlobalRoots) != 0 {
 		g.out.WriteString("define internal void @willrt.gc.scan_globals(ptr %context, ptr %visit, ptr %visit_context) {\nentry:\n")
@@ -92,10 +103,11 @@ func (g *generator) emitGCMetadata() error {
 		}
 		g.out.WriteString("  ret void\n}\n")
 	}
-	if len(classes) != 0 {
+	registered := append(append([]*gcmeta.Type(nil), classes...), inlineTypes...)
+	if len(registered) != 0 {
 		g.out.WriteString("declare i32 @willrt_gc_register_type(ptr)\n")
 		g.out.WriteString("define internal void @willrt.gc.register_types() {\nentry:\n")
-		for _, t := range classes {
+		for _, t := range registered {
 			fmt.Fprintf(g.out, "  call i32 @willrt_gc_register_type(ptr %s)\n",
 				gcmeta.DescriptorSymbol(t.Name))
 		}
