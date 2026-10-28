@@ -47,10 +47,16 @@ func (g *generator) collectGlobals() {
 			g.globalSymbols[info.sym] = info
 			if g.isClassText(text) {
 				g.needGCDecl = true
-				g.gcGlobalRoots = append(g.gcGlobalRoots, info.sym)
+				g.gcGlobalRoots = append(g.gcGlobalRoots,
+					gcGlobalRoot{sym: info.sym})
 			} else if _, ok := g.ifaceOfText(text); ok {
 				g.needGCDecl = true
-				g.gcGlobalRoots = append(g.gcGlobalRoots, info.sym)
+				g.gcGlobalRoots = append(g.gcGlobalRoots,
+					gcGlobalRoot{sym: info.sym})
+			} else if isFuncText(text) {
+				g.needGCDecl = true
+				g.gcGlobalRoots = append(g.gcGlobalRoots,
+					gcGlobalRoot{sym: info.sym, offset: 8})
 			}
 		}
 		for _, r := range d.recs {
@@ -156,6 +162,15 @@ func (g *generator) emitInit(d *docState) error {
 				return g.errf(r.ID, "cannot translate node #%d: the initializer needs %s", r.ID, info.typ)
 			}
 			g.copyValue(src, ptr, info.typ)
+			if g.gcProgram != nil && isFuncText(info.text) {
+				g.needGCDecl = true
+				envPtr := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %s, i64 8\n",
+					envPtr, ptr)
+				env := g.load("ptr", envPtr)
+				fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+					envPtr, env)
+			}
 			continue
 		}
 		value, err := g.value(child)

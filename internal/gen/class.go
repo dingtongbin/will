@@ -9,6 +9,14 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
+// gcGlobalRoot is one top-level reference slot. A class or interface stores
+// its data word at offset zero; a closure stores its environment at offset
+// eight.
+type gcGlobalRoot struct {
+	sym    string
+	offset int
+}
+
 // gcFrameInfo is the compiler-side map of one function's class roots. The
 // offsets are from the root array, not from the C stack.
 type gcFrameInfo struct {
@@ -164,9 +172,6 @@ func (g *generator) generalGCSlots(fnID int, offsets map[string]int) ([]int, []s
 			continue
 		}
 		text := fieldText(r, "type")
-		if !g.isClassText(text) {
-			continue
-		}
 		slot := g.slots[r.ID]
 		if slot == "" {
 			slot = g.smParamSlot[r.ID]
@@ -175,12 +180,20 @@ func (g *generator) generalGCSlots(fnID int, offsets map[string]int) ([]int, []s
 		if !ok {
 			continue
 		}
-		t, ok := g.classTypeOfText(text)
-		if !ok {
+		if t, ok := g.classTypeOfText(text); ok {
+			slots = append(slots, offset)
+			texts = append(texts, t.Name)
 			continue
 		}
-		slots = append(slots, offset)
-		texts = append(texts, t.Name)
+		if _, ok := g.ifaceOfText(text); ok {
+			slots = append(slots, offset)
+			texts = append(texts, "")
+			continue
+		}
+		if isFuncText(text) {
+			slots = append(slots, offset+8)
+			texts = append(texts, "")
+		}
 	}
 	return slots, texts
 }
@@ -352,6 +365,12 @@ func (g *generator) asyncGCSlots(fields []asyncField) ([]int, []string) {
 		if t, ok := g.classTypeOfText(f.willText); ok {
 			slots = append(slots, offset)
 			texts = append(texts, t.Name)
+		} else if _, ok := g.ifaceOfText(f.willText); ok {
+			slots = append(slots, offset)
+			texts = append(texts, "")
+		} else if isFuncText(f.willText) && size >= 16 {
+			slots = append(slots, offset+8)
+			texts = append(texts, "")
 		}
 		offset += size
 	}

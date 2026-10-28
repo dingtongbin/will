@@ -1022,7 +1022,7 @@ type generator struct {
 	gcFrames       []gcFrameInfo
 	gcTaskFrames   []gcFrameInfo
 	gcDecisions    []decisions.Record
-	gcGlobalRoots  []string
+	gcGlobalRoots  []gcGlobalRoot
 	gcRootSlots    map[int]string
 	gcInlineTypes  map[string]*gcmeta.Type
 	gcFrameSlot    string
