@@ -8,6 +8,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "willrt_gc.h"
+
 /* Status values for willrt_ functions that report int32_t. Negative values
    mean the operation did not complete, except WILLRT_SUSPEND, which means the
    caller is expected to try again after the task runs. */
