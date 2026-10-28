@@ -110,7 +110,7 @@ func (g *generator) ifaceCloneValue(dst string, valueID int, iface *ifaceInfo) (
 // cloneIfaceAt copies one two-word interface value from src into dst.
 func (g *generator) cloneIfaceAt(src, dst string, iface *ifaceInfo) (string, error) {
 	dataPtr, tablePtr := g.ifaceWords(src, iface)
-	data := g.load("ptr", dataPtr)
+	data := g.ifaceData(dataPtr)
 	table := g.load("ptr", tablePtr)
 	null := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp eq ptr %s, null\n", null, data)
@@ -146,6 +146,19 @@ func (g *generator) storeIfaceBox(dst string, iface *ifaceInfo, data, concrete s
 	return dst, nil
 }
 
+// ifaceData reads the interface data word. In a GC module the word is a root
+// and may have been self-healed or moved, so it goes through the load barrier.
+func (g *generator) ifaceData(dataField string) string {
+	if g.gcProgram == nil {
+		return g.load("ptr", dataField)
+	}
+	g.needGCDecl = true
+	out := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier_slot(ptr %s)\n",
+		out, dataField)
+	return out
+}
+
 func (g *generator) ifaceWords(base string, iface *ifaceInfo) (string, string) {
 	data := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", data, iface.llvm, base)
@@ -164,7 +177,7 @@ func (g *generator) storeIfaceWords(dst string, iface *ifaceInfo, data, table st
 // the empty interface and owns nothing.
 func (g *generator) releaseIfaceValue(ptr string, iface *ifaceInfo) error {
 	dataPtr, tablePtr := g.ifaceWords(ptr, iface)
-	data := g.load("ptr", dataPtr)
+	data := g.ifaceData(dataPtr)
 	table := g.load("ptr", tablePtr)
 	null := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp eq ptr %s, null\n", null, data)

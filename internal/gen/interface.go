@@ -458,7 +458,7 @@ func (g *generator) interfaceAsyncTask(r willc.Record, iface *ifaceInfo) (string
 	}
 	dataField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", dataField, iface.llvm, base)
-	data := g.load("ptr", dataField)
+	data := g.ifaceData(dataField)
 	tableField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", tableField, iface.llvm, base)
 	table := g.load("ptr", tableField)
@@ -502,7 +502,7 @@ func (g *generator) interfaceCall(r willc.Record, iface *ifaceInfo) (string, str
 	}
 	dataField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", dataField, iface.llvm, base)
-	data := g.load("ptr", dataField)
+	data := g.ifaceData(dataField)
 	tableField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", tableField, iface.llvm, base)
 	table := g.load("ptr", tableField)
