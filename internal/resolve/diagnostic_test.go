@@ -186,11 +186,11 @@ func TestDuplicateVariant(t *testing.T) {
 }
 
 func TestDeriveNameIsOneOfTwo(t *testing.T) {
-	src := "struct P {\n    x: i32\n}\n\nderive Foo for P\n"
+	src := "@derive(Foo)\nstruct P {\n    x: i32\n}\n"
 	ds := resolveSource(t, src)
 	d := find(t, ds, diag.CodeBadDeriveName)
-	if d.Pos.Line != 5 {
-		t.Errorf("position line = %d, want 5", d.Pos.Line)
+	if d.Pos.Line != 2 {
+		t.Errorf("position line = %d, want 2", d.Pos.Line)
 	}
 	if d.Message != "cannot derive Foo for P" || d.Help != "derive takes Json or Show" {
 		t.Errorf("diagnostic = %+v", d)
@@ -198,7 +198,7 @@ func TestDeriveNameIsOneOfTwo(t *testing.T) {
 }
 
 func TestDeriveBuiltinConstraintIsNotAGenerator(t *testing.T) {
-	src := "struct P {\n    x: i32\n}\n\nderive equal for P\n"
+	src := "@derive(equal)\nstruct P {\n    x: i32\n}\n"
 	ds := resolveSource(t, src)
 	d := find(t, ds, diag.CodeBadDeriveName)
 	if d.Message != "cannot derive equal for P" || d.Help != "derive takes Json or Show" {
@@ -250,14 +250,14 @@ func TestUnknownImportSuppressesItsMembers(t *testing.T) {
 }
 
 func TestDuplicateDerive(t *testing.T) {
-	src := "struct P {\n    x: i32\n}\n\nderive Show for P\nderive Show for P\n"
+	src := "@derive(Show)\n@derive(Show)\nstruct P {\n    x: i32\n}\n"
 	ds := resolveSource(t, src)
 	d := find(t, ds, diag.CodeDuplicateDerive)
 	if d.Message != "duplicate derive for P" || d.Help != "remove the earlier one" {
 		t.Errorf("diagnostic = %+v", d)
 	}
-	if d.Pos.Line != 6 {
-		t.Errorf("position line = %d, want 6", d.Pos.Line)
+	if d.Pos.Line != 3 {
+		t.Errorf("position line = %d, want 3", d.Pos.Line)
 	}
 }
 

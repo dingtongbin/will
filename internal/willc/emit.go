@@ -523,6 +523,9 @@ func (e *emitter) emitFunc(fn *ast.FuncDecl) {
 	if fn.Async {
 		e.boolean(rec, "async", true)
 	}
+	if fn.Test {
+		e.boolean(rec, "test", true)
+	}
 	e.push(rec)
 	if fn.Recv != nil {
 		rid := e.add("receiver", fn.Recv)

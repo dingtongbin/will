@@ -146,7 +146,7 @@ func TestOperatorsAndIdentifiers(t *testing.T) {
 }
 
 func TestStrictKeywords(t *testing.T) {
-	src := "def func type async await struct enum interface const var import derive " +
+	src := "def func type async await struct enum interface const var import " +
 		"if else while for in match return break continue defer " +
 		"region spawn deadline select and or not True False None"
 	expected := []wantToken{}
@@ -231,7 +231,6 @@ func TestForbiddenSymbols(t *testing.T) {
 		col int
 	}{
 		{";", 1},
-		{"@", 1},
 		{"$", 1},
 		{"`", 1},
 		{"a::b", 2},

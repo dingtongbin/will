@@ -101,6 +101,8 @@ const (
 	// KwNot is the prefix logical negation operator.
 	KwNot
 
+	// At starts a decorator.
+	At
 	// Plus is +.
 	Plus
 	// Minus is -.
@@ -274,6 +276,7 @@ var names = map[Kind]string{
 	KwFalse:         "False",
 	KwNone:          "None",
 	KwNot:           "not",
+	At:              "@",
 	Plus:            "+",
 	Minus:           "-",
 	Star:            "*",
@@ -359,7 +362,6 @@ var Keywords = map[string]Kind{
 	"var":       KwVar,
 	"type":      KwType,
 	"import":    KwImport,
-	"derive":    KwDerive,
 	"return":    KwReturn,
 	"if":        KwIf,
 	"else":      KwElse,

@@ -77,6 +77,7 @@ type FuncDecl struct {
 	From       []Expr
 	Body       *Block
 	Async      bool
+	Test       bool
 }
 
 func (*FuncDecl) declNode() {}

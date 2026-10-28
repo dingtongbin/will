@@ -29,6 +29,7 @@ import c "stdio.h" {
 const Limit: i32 = 1_000
 var counter: i64 = 0
 
+@derive(Show)
 struct Point {
     x: i32
     y: i32 = 0
@@ -42,8 +43,6 @@ enum Shape {
 interface Showable {
     def show() -> str
 }
-
-derive Show for Point
 
 def (p: mut Point) move(dx: i32, dy: i32) {
     p.x += dx
@@ -163,17 +162,17 @@ func TestParseProgram(t *testing.T) {
 	if !ok || point.Name != "Point" || len(point.Fields) != 2 || point.Fields[1].Default == nil {
 		t.Fatalf("decl 2 = %+v, want Point with a default", f.Decls[2])
 	}
-	shape, ok := f.Decls[3].(*ast.EnumDecl)
-	if !ok || len(shape.Variants) != 2 || len(shape.Variants[0].Args) != 1 {
-		t.Fatalf("decl 3 = %+v, want Shape", f.Decls[3])
-	}
-	iface, ok := f.Decls[4].(*ast.InterfaceDecl)
-	if !ok || len(iface.Methods) != 1 || iface.Methods[0].Name != "show" {
-		t.Fatalf("decl 4 = %+v, want Showable", f.Decls[4])
-	}
-	derive, ok := f.Decls[5].(*ast.DeriveDecl)
+	derive, ok := f.Decls[3].(*ast.DeriveDecl)
 	if !ok || derive.Name != "Show" {
-		t.Fatalf("decl 5 = %+v, want derive Show", f.Decls[5])
+		t.Fatalf("decl 3 = %+v, want derive Show", f.Decls[3])
+	}
+	shape, ok := f.Decls[4].(*ast.EnumDecl)
+	if !ok || len(shape.Variants) != 2 || len(shape.Variants[0].Args) != 1 {
+		t.Fatalf("decl 4 = %+v, want Shape", f.Decls[4])
+	}
+	iface, ok := f.Decls[5].(*ast.InterfaceDecl)
+	if !ok || len(iface.Methods) != 1 || iface.Methods[0].Name != "show" {
+		t.Fatalf("decl 5 = %+v, want Showable", f.Decls[5])
 	}
 	move, ok := f.Decls[6].(*ast.FuncDecl)
 	if !ok || move.Recv == nil || !move.Recv.Mut || move.Name != "move" {

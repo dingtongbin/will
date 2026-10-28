@@ -9,7 +9,7 @@ var kindSpecs = map[string]KindSpec{
 	"const":     {Required: []string{"text", "type"}},
 	"var":       {Required: []string{"text", "type"}},
 	"typealias": {Required: []string{"text", "to"}},
-	"func":      {Required: []string{"text"}, Optional: []string{"type", "async"}, Repeatable: []string{"from"}},
+	"func":      {Required: []string{"text"}, Optional: []string{"type", "async", "test"}, Repeatable: []string{"from"}},
 	"receiver":  {Required: []string{"text", "type"}},
 	"param":     {Required: []string{"text", "type"}, Optional: []string{"variadic", "default"}},
 	"struct":    {Required: []string{"text"}},

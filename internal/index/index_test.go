@@ -88,7 +88,7 @@ func TestIndexLines(t *testing.T) {
 func TestIndexDerivedShow(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	write(t, filepath.Join(root, "api.will"), "struct P {\n    x: i32\n}\n\nderive Show for P\n")
+	write(t, filepath.Join(root, "api.will"), "@derive(Show)\nstruct P {\n    x: i32\n}\n")
 	text := string(Build(pkg.Load(root)))
 	if !strings.Contains(text, `satisfies type="example.com/app.P" interface="Show"`) {
 		t.Fatalf("index lacks the derived Show satisfaction:\n%s", text)

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/token"
 )
 
@@ -18,7 +19,11 @@ func (p *Parser) parseFile() *ast.File {
 	}
 	for !p.at(token.EOF) && !p.failed {
 		doc := p.takeDoc()
-		f.Decls = append(f.Decls, p.parseDecl(doc))
+		if p.at(token.At) {
+			f.Decls = append(f.Decls, p.parseDecorated(doc)...)
+		} else {
+			f.Decls = append(f.Decls, p.parseDecl(doc))
+		}
 		p.endStatement()
 		p.skipNL()
 	}
@@ -92,6 +97,90 @@ func (p *Parser) parseLinks() []*ast.Link {
 	return links
 }
 
+type decorators struct {
+	derive []string
+	test   bool
+}
+
+// parseDecorated reads one or more @decorator lines and applies them to the
+// declaration that follows. Only @derive(...) and @test exist.
+func (p *Parser) parseDecorated(doc string) []ast.Decl {
+	var d decorators
+	for p.at(token.At) {
+		start := p.next()
+		name, nameTok := p.expectName("a decorator name")
+		switch name {
+		case "derive":
+			if !p.at(token.LParen) {
+				p.unexpected("(")
+				return nil
+			}
+			p.next()
+			for {
+				p.skipNL()
+				item, _ := p.expectName("a derived interface name")
+				d.derive = append(d.derive, item)
+				if !p.at(token.Comma) {
+					break
+				}
+				p.next()
+			}
+			p.expect(token.RParen, ")")
+		case "test":
+			d.test = true
+			if p.at(token.LParen) {
+				p.bag.Error(nameTok.Pos, diag.CodeUnexpectedToken, "@test takes no arguments", "remove the parentheses")
+			}
+		default:
+			p.bag.Error(nameTok.Pos, diag.CodeUnexpectedToken, "unknown decorator "+name,
+				"use @derive or @test")
+		}
+		_ = start
+		p.skipNL()
+	}
+	decl := p.parseDecl(doc)
+	var out []ast.Decl
+	out = append(out, decl)
+	switch target := decl.(type) {
+	case *ast.FuncDecl:
+		target.Test = d.test
+		if len(d.derive) != 0 {
+			p.bag.Error(decl.Pos(), diag.CodeUnexpectedToken, "@derive needs a struct or enum",
+				"move the decorator to the type declaration")
+		}
+	case *ast.StructDecl:
+		for _, name := range d.derive {
+			out = append(out, &ast.DeriveDecl{
+				Span: ast.Span{Start: target.Start, End: target.End},
+				Doc:  doc, Name: name, NamePos: target.NamePos,
+				Type: &ast.Type{Span: ast.Span{Start: target.NamePos, End: target.NamePos},
+					Kind: ast.NamedType, Name: target.Name},
+			})
+		}
+		if d.test {
+			p.bag.Error(decl.Pos(), diag.CodeUnexpectedToken, "@test needs a function",
+				"move the decorator to the test function")
+		}
+	case *ast.EnumDecl:
+		for _, name := range d.derive {
+			out = append(out, &ast.DeriveDecl{
+				Span: ast.Span{Start: target.Start, End: target.End},
+				Doc:  doc, Name: name, NamePos: target.NamePos,
+				Type: &ast.Type{Span: ast.Span{Start: target.NamePos, End: target.NamePos},
+					Kind: ast.NamedType, Name: target.Name},
+			})
+		}
+		if d.test {
+			p.bag.Error(decl.Pos(), diag.CodeUnexpectedToken, "@test needs a function",
+				"move the decorator to the test function")
+		}
+	default:
+		p.bag.Error(decl.Pos(), diag.CodeUnexpectedToken, "decorator needs a declaration",
+			"use @derive on a struct or enum, or @test on a function")
+	}
+	return out
+}
+
 func (p *Parser) parseDecl(doc string) ast.Decl {
 	switch p.cur().Kind {
 	case token.KwConst, token.KwVar:
@@ -108,8 +197,6 @@ func (p *Parser) parseDecl(doc string) ast.Decl {
 		return p.parseEnumDecl(doc)
 	case token.KwInterface:
 		return p.parseInterfaceDecl(doc)
-	case token.KwDerive:
-		return p.parseDeriveDecl(doc)
 	}
 	p.unexpected("a declaration")
 	return &ast.VarDecl{Span: p.emptySpan(p.cur())}

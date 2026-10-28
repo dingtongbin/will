@@ -242,11 +242,10 @@ def use(x: Shape) -> i32 {
 }
 
 func TestDerivedShowSatisfiesShow(t *testing.T) {
-	src := `struct P {
+	src := `@derive(Show)
+struct P {
     x: i32
 }
-
-derive Show for P
 
 def f() {
     var s: Show = P { x: 1 }

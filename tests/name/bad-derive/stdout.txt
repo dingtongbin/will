@@ -1,2 +1,2 @@
-bad.will:5:8: N0013 cannot derive Equal for P
+bad.will:2:8: N0013 cannot derive Equal for P
     help: derive takes Json or Show

@@ -48,6 +48,35 @@ func TestNestedTypeArguments(t *testing.T) {
 	}
 }
 
+func TestDecorators(t *testing.T) {
+	src := `@derive(Json, Show)
+struct P {
+    x: i32
+}
+
+@test
+def test_one() {
+}
+`
+	f := parse(t, src)
+	if len(f.Decls) != 4 {
+		t.Fatalf("declarations = %d, want 4", len(f.Decls))
+	}
+	if _, ok := f.Decls[0].(*ast.StructDecl); !ok {
+		t.Fatalf("decl 0 = %T, want struct", f.Decls[0])
+	}
+	if d, ok := f.Decls[1].(*ast.DeriveDecl); !ok || d.Name != "Json" {
+		t.Fatalf("decl 1 = %+v, want derive Json", f.Decls[1])
+	}
+	if d, ok := f.Decls[2].(*ast.DeriveDecl); !ok || d.Name != "Show" {
+		t.Fatalf("decl 2 = %+v, want derive Show", f.Decls[2])
+	}
+	fn, ok := f.Decls[3].(*ast.FuncDecl)
+	if !ok || !fn.Test {
+		t.Fatalf("decl 3 = %+v, want test function", f.Decls[3])
+	}
+}
+
 func TestSliceSyntax(t *testing.T) {
 	src := `def f(xs: []i32) {
     var a: []i32 = xs[1:3]

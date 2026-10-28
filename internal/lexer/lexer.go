@@ -310,6 +310,7 @@ var fixedOps = []fixedOp{
 }
 
 var oneChar = map[byte]token.Kind{
+	'@': token.At,
 	'+': token.Plus,
 	'-': token.Minus,
 	'*': token.Star,
