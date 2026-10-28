@@ -50,11 +50,20 @@ func (g *generator) setupGCFrame(fn int) error {
 			locals = append(locals, r)
 		} else if _, ok := g.ifaceOfText(text); ok {
 			locals = append(locals, r)
+		} else if isFuncText(text) {
+			locals = append(locals, r)
 		}
 	}
 	sortByID(locals)
 	for _, r := range locals {
 		roots = append(roots, rootDecl{id: r.ID, text: fieldText(r, "type")})
+	}
+	for _, r := range g.recs {
+		if r.Kind != "func" || g.enclosingFunc(r.ID) != fn ||
+			g.lambdas[r.ID] == nil {
+			continue
+		}
+		roots = append(roots, rootDecl{id: r.ID, text: "func"})
 	}
 	var news []willc.Record
 	for _, r := range g.recs {
@@ -173,6 +182,43 @@ func (g *generator) generalGCSlots(fnID int, offsets map[string]int) ([]int, []s
 		texts = append(texts, t.Name)
 	}
 	return slots, texts
+}
+
+// closureEnvType builds the GC descriptor for one lambda environment. The
+// first two words are the old closure header; captures start at offset 16.
+func (g *generator) closureEnvType(info *lambdaInfo) (*gcmeta.Type, error) {
+	t := &gcmeta.Type{Name: "closure." + info.name, Kind: gcmeta.KindStruct}
+	offset := 16
+	align := 8
+	var fields []gcmeta.Field
+	var refs, weaks []uint32
+	for _, cap := range info.captures {
+		inline, ok := g.inlineGCType(cap.text)
+		if !ok {
+			return nil, fmt.Errorf("closure capture %s has no GC descriptor", cap.text)
+		}
+		offset = alignUp(offset, inline.Align)
+		entry := gcmeta.Field{Name: cap.name, Type: cap.text,
+			Offset: offset, Size: inline.Size}
+		fields = append(fields, entry)
+		for _, ref := range inline.Refs {
+			refs = append(refs, uint32(offset)+ref)
+		}
+		for _, weak := range inline.Weaks {
+			weaks = append(weaks, uint32(offset)+weak)
+		}
+		offset += inline.Size
+		if inline.Align > align {
+			align = inline.Align
+		}
+	}
+	t.Size = alignUp(offset, align)
+	t.Align = align
+	t.Refs = refs
+	t.Weaks = weaks
+	t.Fields = fields
+	g.gcInlineTypes[t.Name] = t
+	return t, nil
 }
 
 // taskGCMap records one async frame's class roots and returns the map symbol

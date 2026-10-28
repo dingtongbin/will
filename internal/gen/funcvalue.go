@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/will-lang/will/internal/gcmeta"
 	"github.com/will-lang/will/internal/willc"
 )
 
@@ -169,7 +170,13 @@ func (g *generator) closureCode(decl willc.Record) (string, string, error) {
 	code := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = load ptr, ptr %s\n", code, codePtr)
 	env := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = load ptr, ptr %s\n", env, envPtr)
+	if g.gcProgram != nil {
+		g.needGCDecl = true
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier_slot(ptr %s)\n",
+			env, envPtr)
+	} else {
+		fmt.Fprintf(g.out, "  %s = load ptr, ptr %s\n", env, envPtr)
+	}
 	return code, env, nil
 }
 
@@ -413,6 +420,9 @@ func (g *generator) closurePlace(lam willc.Record) (string, string, error) {
 	envField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envField, slot)
 	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", env, envField)
+	if g.gcProgram != nil && env != "null" {
+		g.storeClassRoot(lam.ID, env)
+	}
 	return slot, "{ ptr, ptr }", nil
 }
 
@@ -425,13 +435,23 @@ func (g *generator) buildEnvironment(lam willc.Record, info *lambdaInfo) (string
 	size := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = ptrtoint ptr %s to i64\n", size, end)
 	env := g.newTmp()
-	g.needClosureDecl = true
-	share := "null"
-	if info.share != "" {
-		share = "@" + llvmSymbol(info.share)
+	if g.gcProgram != nil {
+		desc, err := g.closureEnvType(info)
+		if err != nil {
+			return "", err
+		}
+		g.needGCDecl = true
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_alloc(i64 %d, ptr %s)\n",
+			env, desc.Size, gcmeta.DescriptorSymbol(desc.Name))
+	} else {
+		g.needClosureDecl = true
+		share := "null"
+		if info.share != "" {
+			share = "@" + llvmSymbol(info.share)
+		}
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_closure_new(i64 %s, ptr @%s, ptr %s)\n",
+			env, size, llvmSymbol(info.drop), share)
 	}
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_closure_new(i64 %s, ptr @%s, ptr %s)\n",
-		env, size, llvmSymbol(info.drop), share)
 	for i, cap := range info.captures {
 		field := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.envType, env, i+2)
@@ -459,7 +479,13 @@ func (g *generator) buildEnvironment(lam willc.Record, info *lambdaInfo) (string
 			continue
 		}
 		value := g.load(typ, src)
-		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, field)
+		if g.gcProgram != nil && g.isClassText(cap.text) {
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				field, value)
+		} else {
+			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, field)
+		}
 	}
 	return env, nil
 }

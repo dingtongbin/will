@@ -607,6 +607,9 @@ func (g *generator) releaseOwnedValueInner(ptr, text string) error {
 	if isFuncText(text) {
 		envPtr := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envPtr, ptr)
+		if g.gcProgram != nil {
+			return nil
+		}
 		env := g.load("ptr", envPtr)
 		g.needClosureDecl = true
 		fmt.Fprintf(g.out, "  call void @willrt_closure_release(ptr %s)\n", env)

@@ -2936,6 +2936,14 @@ func (g *generator) assignStmt(r willc.Record) error {
 			}
 		}
 		g.copyValue(src, ptr, typ)
+		if textErr == nil && isFuncText(targetText) {
+			if targetRec, ok := g.recs[target]; ok && targetRec.Kind == "name" {
+				envPtr := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n",
+					envPtr, ptr)
+				g.storeClassRoot(refField(targetRec, "to"), g.load("ptr", envPtr))
+			}
+		}
 		if move {
 			if err := g.zeroMovedSource(valueID, ptr); err != nil {
 				return err
@@ -3218,6 +3226,12 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 			}
 		}
 		g.copyValue(src, slot, typ)
+		if isFuncText(fieldText(r, "type")) {
+			envPtr := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n",
+				envPtr, slot)
+			g.storeClassRoot(r.ID, g.load("ptr", envPtr))
+		}
 		if move {
 			if err := g.zeroMovedSource(valueID, slot); err != nil {
 				return false, err
