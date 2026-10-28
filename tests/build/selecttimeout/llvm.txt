@@ -1,87 +1,180 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 %willrt_arm = type { ptr, ptr, ptr, i32, i64 }
-define i32 @"example.com/selecttimeout.will$main"() {
+define internal i32 @"example.com/selecttimeout.will$main.sm"(ptr %frame) {
 entry:
-  %v.a = alloca ptr
-  %v.v = alloca i32
-  %v.select.13 = alloca [2 x %willrt_arm]
-  %v.select.out.14 = alloca i32
-  %v.select.bind.14 = alloca { i32, i32 }
-  %v.recv.out.15 = alloca i32
-  %v.recv.15 = alloca { i32, i32 }
+  %v.sm.state = getelementptr i8, ptr %frame, i64 0
+  %v.a = getelementptr i8, ptr %frame, i64 8
+  %v.v = getelementptr i8, ptr %frame, i64 16
+  %v.select.13 = getelementptr i8, ptr %frame, i64 24
+  %v.select.out.14 = getelementptr i8, ptr %frame, i64 104
+  %v.select.bind.14 = getelementptr i8, ptr %frame, i64 108
+  %v.recv.out.15 = getelementptr i8, ptr %frame, i64 116
+  %v.recv.15 = getelementptr i8, ptr %frame, i64 120
+  %v.sm.select.arms.5 = getelementptr i8, ptr %frame, i64 128
+  %v.sm.select.ctx.6 = getelementptr i8, ptr %frame, i64 208
+  %v.sm.select.index.7 = getelementptr i8, ptr %frame, i64 216
+  %v.sm.select.out.14.8 = getelementptr i8, ptr %frame, i64 220
+  %t38 = getelementptr i8, ptr %frame, i64 224
+  %v.sm.statev = load i32, ptr %v.sm.state
+  switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
+  store i32 0, ptr %v.select.out.14
+sm.init:
   %t1 = sext i32 1 to i64
   %t2 = getelementptr i32, ptr null, i32 1
   %t3 = ptrtoint ptr %t2 to i64
   %t4 = call ptr @willrt_chan_new(i64 %t3, i64 %t1, i32 0)
   store ptr %t4, ptr %v.a
   store i32 0, ptr %v.v
-  %t5 = getelementptr inbounds [2 x %willrt_arm], ptr %v.select.13, i32 0, i32 0
-  %t6 = getelementptr inbounds %willrt_arm, ptr %t5, i32 0, i32 0
-  %t7 = getelementptr inbounds %willrt_arm, ptr %t5, i32 0, i32 1
-  %t8 = getelementptr inbounds %willrt_arm, ptr %t5, i32 0, i32 2
-  %t9 = getelementptr inbounds %willrt_arm, ptr %t5, i32 0, i32 3
-  %t10 = getelementptr inbounds %willrt_arm, ptr %t5, i32 0, i32 4
-  store ptr null, ptr %t6
-  store ptr null, ptr %t7
-  store ptr null, ptr %t8
-  store i64 0, ptr %t10
-  %t11 = load ptr, ptr %v.a
-  store ptr %t11, ptr %t6
-  store ptr %v.select.out.14, ptr %t7
-  store i32 0, ptr %t9
-  %t12 = getelementptr inbounds [2 x %willrt_arm], ptr %v.select.13, i32 0, i32 1
-  %t13 = getelementptr inbounds %willrt_arm, ptr %t12, i32 0, i32 0
-  %t14 = getelementptr inbounds %willrt_arm, ptr %t12, i32 0, i32 1
-  %t15 = getelementptr inbounds %willrt_arm, ptr %t12, i32 0, i32 2
-  %t16 = getelementptr inbounds %willrt_arm, ptr %t12, i32 0, i32 3
-  %t17 = getelementptr inbounds %willrt_arm, ptr %t12, i32 0, i32 4
-  store ptr null, ptr %t13
-  store ptr null, ptr %t14
-  store ptr null, ptr %t15
-  store i64 0, ptr %t17
-  %t18 = call i64 @willrt_now_ns()
-  %t19 = add i64 %t18, 5000000
-  store i64 %t19, ptr %t17
-  store i32 2, ptr %t16
-  %t20 = call i32 @willrt_select(ptr %v.select.13, i64 2)
-  %t21 = icmp slt i32 %t20, 0
-  br i1 %t21, label %select.end.1, label %select.dispatch.1
-select.dispatch.1:
-  switch i32 %t20, label %select.end.1 [ i32 0, label %select.arm.1.0 i32 1, label %select.arm.1.1 ]
-select.arm.1.0:
-  %t22 = getelementptr inbounds { i32, i32 }, ptr %v.select.bind.14, i32 0, i32 0
-  store i32 0, ptr %t22
-  %t23 = call i32 @willrt_select_status()
-  %t24 = icmp eq i32 %t23, 0
-  br i1 %t24, label %select.some.2, label %select.merge.2
-select.some.2:
-  store i32 1, ptr %t22
-  %t25 = getelementptr inbounds { i32, i32 }, ptr %v.select.bind.14, i32 0, i32 1
-  %t26 = load i32, ptr %v.select.out.14
-  store i32 %t26, ptr %t25
-  br label %select.merge.2
-select.merge.2:
+  store i32 0, ptr %v.sm.select.out.14.8
+  %t9 = getelementptr inbounds [2 x %willrt_arm], ptr %v.sm.select.arms.5, i32 0, i32 0
+  %t10 = getelementptr inbounds %willrt_arm, ptr %t9, i32 0, i32 0
+  %t11 = getelementptr inbounds %willrt_arm, ptr %t9, i32 0, i32 1
+  %t12 = getelementptr inbounds %willrt_arm, ptr %t9, i32 0, i32 2
+  %t13 = getelementptr inbounds %willrt_arm, ptr %t9, i32 0, i32 3
+  %t14 = getelementptr inbounds %willrt_arm, ptr %t9, i32 0, i32 4
+  store ptr null, ptr %t10
+  store ptr null, ptr %t11
+  store ptr null, ptr %t12
+  store i64 0, ptr %t14
+  %t15 = load ptr, ptr %v.a
+  store ptr %t15, ptr %t10
+  store ptr %v.sm.select.out.14.8, ptr %t11
+  store i32 0, ptr %t13
+  %t16 = getelementptr inbounds [2 x %willrt_arm], ptr %v.sm.select.arms.5, i32 0, i32 1
+  %t17 = getelementptr inbounds %willrt_arm, ptr %t16, i32 0, i32 0
+  %t18 = getelementptr inbounds %willrt_arm, ptr %t16, i32 0, i32 1
+  %t19 = getelementptr inbounds %willrt_arm, ptr %t16, i32 0, i32 2
+  %t20 = getelementptr inbounds %willrt_arm, ptr %t16, i32 0, i32 3
+  %t21 = getelementptr inbounds %willrt_arm, ptr %t16, i32 0, i32 4
+  store ptr null, ptr %t17
+  store ptr null, ptr %t18
+  store ptr null, ptr %t19
+  store i64 0, ptr %t21
+  %t22 = call i64 @willrt_now_ns()
+  %t23 = add i64 %t22, 5000000
+  store i64 %t23, ptr %t21
+  store i32 2, ptr %t20
+  %t24 = call ptr @willrt_select_start(ptr %v.sm.select.arms.5, i64 2)
+  store ptr %t24, ptr %v.sm.select.ctx.6
+  store i32 1, ptr %v.sm.state
+  br label %sm.op.call.1
+sm.op.call.1:
+  %t25 = load ptr, ptr %v.sm.select.ctx.6
+  %t26 = icmp eq ptr %t25, null
+  br i1 %t26, label %sm.select.fail.1, label %sm.select.poll.1
+sm.select.poll.1:
+  %t27 = call i32 @willrt_select_poll(ptr %t25)
+  store i32 %t27, ptr %v.sm.select.index.7
+  %t28 = icmp eq i32 %t27, -1
+  br i1 %t28, label %sm.select.park.1, label %sm.select.ready.1
+sm.select.park.1:
+  call void @willrt_task_mark_wait()
+  ret i32 -1
+sm.select.fail.1:
+  store i32 -7, ptr %v.sm.select.index.7
+  br label %sm.select.after.1
+sm.select.ready.1:
+  call void @willrt_select_finish(ptr %t25)
+  %t29 = load i32, ptr %v.sm.select.index.7
+  %t30 = icmp slt i32 %t29, 0
+  br i1 %t30, label %sm.select.after.1, label %sm.select.dispatch.1
+sm.select.dispatch.1:
+  switch i32 %t29, label %sm.select.after.1 [ i32 0, label %sm.select.arm.1.0 i32 1, label %sm.select.arm.1.1 ]
+sm.select.arm.1.0:
+  %t31 = getelementptr inbounds { i32, i32 }, ptr %v.select.bind.14, i32 0, i32 0
+  store i32 0, ptr %t31
+  %t32 = call i32 @willrt_select_status()
+  %t33 = icmp eq i32 %t32, 0
+  br i1 %t33, label %select.some.1, label %select.merge.1
+select.some.1:
+  store i32 1, ptr %t31
+  %t34 = getelementptr inbounds { i32, i32 }, ptr %v.select.bind.14, i32 0, i32 1
+  %t35 = load i32, ptr %v.sm.select.out.14.8
+  store i32 %t35, ptr %t34
+  store i32 0, ptr %v.sm.select.out.14.8
+  br label %select.merge.1
+select.merge.1:
   store i32 1, ptr %v.v
-  br label %select.end.1
-select.arm.1.1:
+  br label %sm.select.after.1
+sm.select.arm.1.1:
   store i32 2, ptr %v.v
-  br label %select.end.1
-select.end.1:
-  %t27 = load i32, ptr %v.v
-  ret i32 0
+  br label %sm.select.after.1
+sm.select.after.1:
+  %t36 = load i32, ptr %v.v
+  %t37 = load ptr, ptr %v.a
+  call void @willrt_chan_release(ptr %t37)
+  store ptr zeroinitializer, ptr %v.a
+  store i32 0, ptr %t38
+  %t39 = getelementptr i32, ptr null, i32 1
+  %t40 = ptrtoint ptr %t39 to i64
+  call i32 @willrt_task_store_result(ptr %t38, i64 %t40)
+  ret i32 1
+
+}
+define hidden ptr @"example.com/selecttimeout.will$main.task"(i32 %start, i32 %owns) {
+entry:
+  %v.sm.frame = call ptr @willrt_alloc(i64 240)
+  %t41 = getelementptr i8, ptr %v.sm.frame, i64 8
+  store ptr zeroinitializer, ptr %t41
+  %t42 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t42
+  %t43 = call i32 @willrt_lane_here()
+  %t44 = icmp eq i32 %start, -1
+  %t45 = icmp eq i32 %start, -2
+  %t46 = select i1 %t45, i32 %t43, i32 %start
+  br i1 %t44, label %sm.start.auto.2, label %sm.start.lane.2
+sm.start.auto.2:
+  %t47 = call ptr @willrt_task_new_drop(ptr @"example.com/selecttimeout.will$main.sm", ptr %v.sm.frame, i64 240, i32 0, i32 0, ptr @"example.com/selecttimeout.will$main.drop")
+  call void @willrt_task_own_frame(ptr %t47)
+  call void @willrt_task_run_auto(ptr %t47)
+  br label %sm.start.done.2
+sm.start.lane.2:
+  %t48 = call ptr @willrt_task_new_drop(ptr @"example.com/selecttimeout.will$main.sm", ptr %v.sm.frame, i64 240, i32 %t46, i32 0, ptr @"example.com/selecttimeout.will$main.drop")
+  call void @willrt_task_own_frame(ptr %t48)
+  call void @willrt_task_run(ptr %t48)
+  br label %sm.start.done.2
+sm.start.done.2:
+  %t49 = phi ptr [ %t47, %sm.start.auto.2 ], [ %t48, %sm.start.lane.2 ]
+  ret ptr %t49
+}
+define internal void @"example.com/selecttimeout.will$main.drop"(ptr %frame) {
+entry:
+  %t50 = getelementptr i8, ptr %frame, i64 8
+  %t51 = load ptr, ptr %t50
+  call void @willrt_chan_release(ptr %t51)
+  store ptr zeroinitializer, ptr %t50
+  ret void
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
 define i32 @main() {
 entry:
   call void @willrt_init()
-  %r = call i32 @"example.com/selecttimeout.will$main"()
+  %t52 = call ptr @"example.com/selecttimeout.will$main.task"(i32 -2, i32 0)
+  %t54 = alloca i32
+  %t53 = call i32 @willrt_join(ptr %t52, ptr %t54, ptr null)
+  %t55 = icmp ne i32 %t53, 0
+  br i1 %t55, label %main.async.fail.3, label %main.async.ok.3
+main.async.fail.3:
   call void @willrt_shutdown()
-  ret i32 %r
+  ret i32 1
+main.async.ok.3:
+  %t56 = load i32, ptr %t54
+  call void @willrt_shutdown()
+  ret i32 %t56
 }
+declare ptr @willrt_select_start(ptr, i64)
+declare i32 @willrt_select_poll(ptr)
+declare void @willrt_select_finish(ptr)
+declare ptr @willrt_alloc(i64)
+declare void @willrt_free(ptr)
 declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)
+declare ptr @willrt_task_new_drop(ptr, ptr, i64, i32, i32, ptr)
 declare void @willrt_task_run(ptr)
+declare void @willrt_task_run_auto(ptr)
 declare i32 @willrt_join(ptr, ptr, ptr)
+declare void @willrt_task_cancel(ptr)
 declare i32 @willrt_task_try_join(ptr, ptr, ptr)
 declare ptr @willrt_task_current()
 declare i32 @willrt_task_store_result(ptr, i64)
@@ -97,3 +190,8 @@ declare i64 @willrt_now_ns()
 declare void @willrt_region_enter()
 declare i32 @willrt_region_exit()
 declare i32 @willrt_lane_here()
+declare void @willrt_chan_retain(ptr)
+declare void @willrt_chan_release(ptr)
+declare ptr @willrt_chan_new_drop(i64, i64, i32, ptr)
+declare void @willrt_task_mark_wait()
+declare void @willrt_task_own_frame(ptr)

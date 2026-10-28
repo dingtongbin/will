@@ -1,0 +1,63 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_rss_bytes
+    bench_sink
+    bench_latency_start
+    bench_latency_end
+    bench_latency
+}
+import "example.com/bench/conc/spawntail/will/bench"
+
+# count is the number of tasks in one measured burst.
+const count: i32 = 10000
+
+# repetitions is the number of measured bursts.
+const repetitions: i32 = 5
+
+# Work runs the same integer loop as the spawn scenario and records the end of
+# its own latency window in the shared C cells.
+def work(index: i32, slot: i32) -> i32 {
+    var acc: i32 = 0
+    for i in Range(0, 100) {
+        acc += i
+    }
+    c.bench_latency_end(slot)
+    return acc + index
+}
+
+def main() -> i32 {
+    var samples: Array<u64> = new Array<u64>(0)
+    var rounds: Array<u64> = new Array<u64>(0)
+    var checksum: i64 = 0i64
+    for r in Range(0, repetitions) {
+        var startIndex: i32 = r * count
+        var roundStart: u64 = c.bench_now_ns()
+        region {
+            for i in Range(0, count) {
+                var slot: i32 = startIndex + i
+                c.bench_latency_start(slot)
+                spawn work(i, slot)
+            }
+        }
+        var roundStop: u64 = c.bench_now_ns()
+        for i in Range(0, count) {
+            var latency: u64 = c.bench_latency(startIndex + i)
+            samples.push(latency)
+            checksum += i64(latency)
+        }
+        rounds.push(roundStop - roundStart)
+        c.bench_sink(u64(checksum))
+    }
+
+    bench.sort_samples(samples)
+    bench.sort_samples(rounds)
+    print("bench metric p50 ", bench.percentile(samples, 50i64, 100i64), " ns\n")
+    print("bench metric p95 ", bench.percentile(samples, 95i64, 100i64), " ns\n")
+    print("bench metric p99 ", bench.percentile(samples, 99i64, 100i64), " ns\n")
+    print("bench metric p999 ", bench.percentile(samples, 999i64, 1000i64), " ns\n")
+    print("bench metric max ", bench.max(samples), " ns\n")
+    print("bench metric round_p50 ", bench.percentile(rounds, 50i64, 100i64), " ns\n")
+    print("bench metric tasks ", u64(count * repetitions), " tasks\n")
+    print("bench checksum ", u64(checksum), "\n")
+    return 0
+}

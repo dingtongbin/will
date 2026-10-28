@@ -2,12 +2,12 @@ struct Handler {
     f: func(i32) -> i32
 }
 
-func Inc(x: i32) -> i32 {
+def inc(x: i32) -> i32 {
     return x + 1
 }
 
-func main() -> i32 {
-    var h: Handler = Handler { f: Inc}
+def main() -> i32 {
+    var h: Handler = Handler { f: inc}
     var f: func(i32) -> i32 = h.f
     return f(1) - 2
 }

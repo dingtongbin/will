@@ -45,6 +45,8 @@ func (p *Parser) parseStmt() ast.Stmt {
 		return p.parseIf()
 	case token.KwFor:
 		return p.parseFor()
+	case token.KwWhile:
+		return p.parseWhile()
 	case token.KwMatch:
 		return p.parseMatch()
 	case token.KwSelect:
@@ -53,10 +55,6 @@ func (p *Parser) parseStmt() ast.Stmt {
 		start := p.next()
 		body := p.parseBlock("a region body")
 		return &ast.RegionStmt{Span: p.spanFrom(start), Body: body}
-	case token.KwParallel:
-		start := p.next()
-		body := p.parseBlock("a parallel body")
-		return &ast.ParallelStmt{Span: p.spanFrom(start), Body: body}
 	case token.KwReturn:
 		return p.parseReturn()
 	case token.KwBreak:
@@ -127,8 +125,24 @@ func (p *Parser) checkWritable(x ast.Expr, op string) {
 }
 
 func isCallLike(x ast.Expr) bool {
-	switch x.(type) {
+	switch x := x.(type) {
 	case *ast.CallExpr, *ast.MethodCallExpr, *ast.SpawnExpr:
+		return true
+	case *ast.TryExpr:
+		return isCallLike(x.X)
+	case *ast.AwaitExpr:
+		return isCallLike(x.X)
+	case *ast.UnwrapExpr:
+		return isCallLike(x.X)
+	}
+	return false
+}
+
+// isCall reports whether x is a plain call. defer and spawn take a call, not a
+// call with a suffix; only expression statements may add ? or !.
+func isCall(x ast.Expr) bool {
+	switch x.(type) {
+	case *ast.CallExpr, *ast.MethodCallExpr:
 		return true
 	}
 	return false
@@ -148,6 +162,10 @@ func assignOp(k token.Kind) (string, bool) {
 		return "/=", true
 	case token.ModAssign:
 		return "%=", true
+	case token.FloorDivAssign:
+		return "//=", true
+	case token.PowAssign:
+		return "**=", true
 	case token.AndAssign:
 		return "&=", true
 	case token.OrAssign:
@@ -179,24 +197,38 @@ func assignOp(k token.Kind) (string, bool) {
 func (p *Parser) parseFor() *ast.ForStmt {
 	start := p.next()
 	f := &ast.ForStmt{}
-	if !p.at(token.LBrace) {
-		p.skipNL()
-		for {
-			name, _ := p.expectName("a loop binding")
-			f.Names = append(f.Names, name)
-			if !p.at(token.Comma) {
-				break
-			}
-			p.next()
-			p.skipNL()
-		}
-		p.expect(token.KwIn, "in")
-		p.skipNL()
-		f.Iter = p.parseExpr(0, false)
+	if p.at(token.LBrace) {
+		p.unexpected("in")
+		return f
 	}
+	p.skipNL()
+	for {
+		name, _ := p.expectName("a loop binding")
+		f.Names = append(f.Names, name)
+		if !p.at(token.Comma) {
+			break
+		}
+		p.next()
+		p.skipNL()
+	}
+	p.expect(token.KwIn, "in")
+	p.skipNL()
+	f.Iter = p.parseExpr(0, false)
 	f.Body = p.parseBlock("a loop body")
 	f.Span = p.spanFrom(start)
 	return f
+}
+
+func (p *Parser) parseWhile() *ast.ForStmt {
+	start := p.next()
+	p.skipNL()
+	cond := p.parseExpr(0, false)
+	body := p.parseBlock("a while body")
+	return &ast.ForStmt{
+		Span: ast.Span{Start: start.Pos, End: p.prev().End},
+		Cond: cond,
+		Body: body,
+	}
 }
 
 func (p *Parser) parseReturn() *ast.ReturnStmt {
@@ -215,7 +247,7 @@ func (p *Parser) parseDefer() *ast.DeferStmt {
 	start := p.next()
 	p.skipNL()
 	call := p.parseExpr(0, true)
-	if !isCallLike(call) {
+	if !isCall(call) {
 		p.bag.Error(call.Pos(), diag.CodeUnexpectedToken, "unexpected token", "expected a call")
 		p.failed = true
 	}

@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/cache"
 	"github.com/will-lang/will/internal/check"
 	"github.com/will-lang/will/internal/diag"
@@ -326,12 +327,19 @@ func checkFile(bag *diag.Bag, file string, data []byte, freestanding bool) {
 	}
 	res, rds := resolve.ResolveIn(f, names, imps)
 	own.AddAll(rds)
-	_, tds := types.CheckWithFull(f, res, others)
+	checked, tds := types.CheckWithFull(f, res, others)
 	own.AddAll(tds)
 	if !own.HasErrors() {
-		own.AddAll(check.Moves(f))
-		own.AddAll(check.Borrows(f))
-		own.AddAll(check.Cycles(f))
+		files := append([]*ast.File{}, others...)
+		files = append(files, f)
+		ownership := check.NewOwnership(files)
+		effects := check.NewMutEffects(files)
+		own.AddAll(check.MovesWithOwnership(f, ownership))
+		own.AddAll(check.BorrowsWithEffects(f, ownership, effects))
+		own.AddAll(check.TopLevelWritesWithEffects(f, effects))
+		own.AddAll(check.Leaks(f))
+		own.AddAll(check.CrossTask(f, checked))
+		own.AddAll(check.Concurrency(f))
 	}
 	bag.AddAll(own.Diagnostics())
 }
@@ -365,7 +373,7 @@ func targetTriple() string {
 	case "darwin/arm64":
 		return "aarch64-mac-darwin"
 	case "windows/amd64":
-		return "x86_64-win-msvc"
+		return "x86_64-win-gnu"
 	case "android/arm64":
 		return "aarch64-android"
 	case "ios/arm64":

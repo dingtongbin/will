@@ -50,7 +50,7 @@ func (r *resolver) walkStmt(s ast.Stmt) {
 	case *ast.BreakStmt, *ast.ContinueStmt:
 	case *ast.ForStmt:
 		r.push()
-		r.walkExpr(st.Iter, true)
+		r.walkExpr(st.LoopExpr(), true)
 		for _, name := range st.Names {
 			r.declareLocal(&Symbol{Name: name, Kind: LocalKind, Pos: st.Pos(), Node: st, Exported: isExported(name)})
 		}
@@ -178,7 +178,7 @@ func (r *resolver) walkType(t *ast.Type) {
 	}
 	switch t.Kind {
 	case ast.ScalarType, ast.NamedType:
-		if t.Name == "" {
+		if t.Name == "" || t.Name == "interface {}" {
 			return
 		}
 		if sym, ok := r.qualifier(t.Name); ok {
@@ -235,6 +235,8 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 			sym.Used = true
 		}
 	case *ast.LiteralExpr, *ast.LaneHereExpr, *ast.UnitExpr:
+	case *ast.BorrowExpr:
+		r.walkExpr(x.X, true)
 	case *ast.CallExpr:
 		r.walkCallee(x.Callee)
 		r.walkTypes(x.TypeArgs)
@@ -269,6 +271,11 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 		for _, f := range x.Fields {
 			r.walkExpr(f.Value, true)
 		}
+	case *ast.ArrayLitExpr:
+		r.walkType(x.Type)
+		for _, e := range x.Elems {
+			r.walkExpr(e, true)
+		}
 	case *ast.NewExpr:
 		r.walkType(x.Type)
 		r.walkArgs(x.Args)
@@ -291,17 +298,11 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 		r.pop()
 	case *ast.TryExpr:
 		r.walkExpr(x.X, true)
+	case *ast.AwaitExpr:
+		r.walkExpr(x.X, true)
 	case *ast.UnwrapExpr:
 		r.walkExpr(x.X, true)
 	case *ast.SpawnExpr:
-		if x.Lane != "" {
-			if sym, ok := r.current().lookup(x.Lane); ok && sym.Kind == LaneKind {
-				r.refs[x] = sym
-				sym.Used = true
-			} else {
-				r.undefined(x.Pos(), x.Lane)
-			}
-		}
 		r.walkExpr(x.Call, true)
 	case *ast.DeadlineExpr:
 		r.walkExpr(x.Duration, true)
@@ -367,8 +368,8 @@ func (r *resolver) cLink(recv ast.Expr, name string) *ast.Link {
 	return nil
 }
 
-// checkImportedMember reports N0002 when a package-qualified member starts
-// with a lowercase letter, so it is private to its own package.
+// checkImportedMember reports N0002 when a package-qualified member carries
+// the __ prefix, so it is private to its own package.
 func (r *resolver) checkImportedMember(recv ast.Expr, name string, pos source.Pos) {
 	if name == "" {
 		return
@@ -395,7 +396,7 @@ func (r *resolver) checkImportedMember(recv ast.Expr, name string, pos source.Po
 	}
 	if !isExported(name) {
 		r.bag.Error(pos, diag.CodePrivateName, "private name used outside its package",
-			"it starts with a lowercase letter, so it is private")
+			"names starting with __ are private")
 		return
 	}
 	if !loaded {

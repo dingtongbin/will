@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/will-lang/will/internal/willc"
 )
@@ -16,6 +17,21 @@ func (g *generator) panicStmt(r willc.Record) (bool, error) {
 	data, length, err := g.strParts(args[0])
 	if err != nil {
 		return false, err
+	}
+	ids := make([]int, 0, len(g.liveValues))
+	for id := range g.liveValues {
+		ids = append(ids, id)
+	}
+	sort.Ints(ids)
+	for _, id := range ids {
+		slot := g.slots[id]
+		text := g.liveValues[id]
+		if slot == "" || !g.needsReleaseText(text) {
+			continue
+		}
+		if err := g.releaseSlot(slot, text); err != nil {
+			return false, err
+		}
 	}
 	g.needPanicDecl = true
 	fmt.Fprintf(g.out, "  call void @willrt_panic_n(ptr %s, i64 %s, ptr %s, ptr %s)\n",

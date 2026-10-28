@@ -261,4 +261,3 @@ func (g *generator) forStr(r willc.Record, void bool, label int) (bool, error) {
 	g.out.WriteString(endLabel + ":\n")
 	return false, nil
 }
-

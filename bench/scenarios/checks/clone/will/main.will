@@ -1,0 +1,87 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_rss_bytes
+    bench_sink
+}
+import "example.com/bench/checks/clone/will/bench"
+
+# workload is the number of copies of one measurement.
+const workload: i32 = 5000000
+
+# repetitions is the number of measured repetitions of the workload.
+const repetitions: i32 = 5
+
+# Big is the value the scenario copies. It is 64 bytes wide, so a copy does
+# not fit into a register.
+struct Big {
+    words: [8]i64
+}
+
+# CopyByValue copies the value and returns two of its words.
+def copy_by_value(value: Big) -> i64 {
+    var copy: Big = value
+    return copy.words[0usize] + copy.words[7usize]
+}
+
+# CopyFromView copies the value word by word through a borrowed view, which is
+# the spelling will has for the pointer form of the C side: the caller lends
+# the words and the callee copies them out.
+def copy_from_view(view: []i64) -> i64 {
+    var copy: [8]i64
+    for i in Range(0, 8) {
+        copy[usize(i)] = view[usize(i)]
+    }
+    return copy[0usize] + copy[7usize]
+}
+
+def main() -> i32 {
+    var value: Big
+    for i in Range(0, 8) {
+        value.words[usize(i)] = i64(i)
+    }
+
+    var samples: Array<u64> = new Array<u64>(0)
+    # The warm up pays for the first touch of the pages and of the caches.
+    var warm: i64 = copy_by_value(value)
+    _ = warm
+
+    var checksum: i64 = 0i64
+    for r in Range(0, repetitions) {
+        _ = r
+        var start: u64 = c.bench_now_ns()
+        for i in Range(0, workload) {
+            value.words[0usize] = i64(i)
+            checksum += copy_by_value(value)
+        }
+        var stop: u64 = c.bench_now_ns()
+        samples.push(stop - start)
+        c.bench_sink(u64(checksum))
+    }
+
+    var pointerSamples: Array<u64> = new Array<u64>(0)
+    var pointerChecksum: i64 = 0i64
+    for r in Range(0, repetitions) {
+        _ = r
+        var start: u64 = c.bench_now_ns()
+        for i in Range(0, workload) {
+            value.words[0usize] = i64(i)
+            pointerChecksum += copy_from_view(value.words[Range(0, 8)])
+        }
+        var stop: u64 = c.bench_now_ns()
+        pointerSamples.push(stop - start)
+        c.bench_sink(u64(pointerChecksum))
+    }
+
+    bench.sort_samples(samples)
+    bench.sort_samples(pointerSamples)
+    var byValue: u64 = bench.percentile(samples, 50i64, 100i64)
+    var byPointer: u64 = bench.percentile(pointerSamples, 50i64, 100i64)
+
+    print("bench metric by_value_p50 ", byValue, " ns\n")
+    print("bench metric by_pointer_p50 ", byPointer, " ns\n")
+    print("bench metric copies ", u64(workload), " copies\n")
+    print("bench check by_value ", u64(checksum), "\n")
+    print("bench check by_pointer ", u64(pointerChecksum), "\n")
+    print("bench checksum ", u64(checksum + pointerChecksum), "\n")
+    return 0
+}

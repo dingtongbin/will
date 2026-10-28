@@ -1,4 +1,6 @@
-define hidden i64 @"example.com/scalars.Sum"(i64 %a, i64 %b) alwaysinline {
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
+define hidden i64 @"example.com/scalars.sum"(i64 %a, i64 %b) alwaysinline {
 entry:
   %t1 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %a, i64 %b)
   %t2 = extractvalue {i64, i1} %t1, 0
@@ -10,17 +12,17 @@ panic.1:
 panic.ok.1:
   ret i64 %t2
 }
-define hidden i1 @"example.com/scalars.Below"(i64 %a, i64 %b) alwaysinline {
+define hidden i1 @"example.com/scalars.below"(i64 %a, i64 %b) alwaysinline {
 entry:
   %t4 = icmp ult i64 %a, %b
   ret i1 %t4
 }
-define hidden i64 @"example.com/scalars.Half"(i64 %n) alwaysinline {
+define hidden i64 @"example.com/scalars.half"(i64 %n) alwaysinline {
 entry:
   %t5 = lshr i64 %n, 1
   ret i64 %t5
 }
-define hidden double @"example.com/scalars.Mid"(double %a, double %b) alwaysinline {
+define hidden double @"example.com/scalars.mid"(double %a, double %b) alwaysinline {
 entry:
   %t6 = fadd double %a, %b
   %t7 = fdiv double %t6, 2.0
@@ -28,7 +30,7 @@ entry:
 }
 define i32 @"example.com/scalars.will$main"() {
 entry:
-  %t8 = call i1 @"example.com/scalars.Below"(i64 1, i64 2)
+  %t8 = call i1 @"example.com/scalars.below"(i64 1, i64 2)
   br i1 %t8, label %if.then.1, label %if.end.1
 if.then.1:
   ret i32 0
@@ -46,6 +48,6 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:2:12\00", align 1
-@.str.2 = private unnamed_addr constant [24 x i8] c"example.com/scalars.Sum\00", align 1
+@.str.2 = private unnamed_addr constant [24 x i8] c"example.com/scalars.sum\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

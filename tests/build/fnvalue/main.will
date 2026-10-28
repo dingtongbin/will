@@ -1,22 +1,22 @@
-func Apply(f: func(i32) -> i32, x: i32) -> i32 {
+def apply(f: func(i32) -> i32, x: i32) -> i32 {
     return f(x)
 }
 
-func Twice(f: func(i32) -> i32, x: i32) -> i32 {
+def twice(f: func(i32) -> i32, x: i32) -> i32 {
     return f(f(x))
 }
 
-func Inc(x: i32) -> i32 {
+def inc(x: i32) -> i32 {
     return x + 1
 }
 
-func MakeAdder(n: i32) -> func(i32) -> i32 {
+def make_adder(n: i32) -> func(i32) -> i32 {
     return func(x: i32) -> i32 {
         return x + n
     }
 }
 
-func Counter() -> func() -> i32 {
+def counter() -> func() -> i32 {
     var n: i32 = 0
     return func() -> i32 {
         n += 1
@@ -24,11 +24,11 @@ func Counter() -> func() -> i32 {
     }
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var inc: func(i32) -> i32 = func(x: i32) -> i32 { return x + 1 }
     var dbl: func(i32) -> i32 = func(x: i32) -> i32 { return x * 2 }
-    var add: func(i32) -> i32 = MakeAdder(3)
-    var c: func() -> i32 = Counter()
+    var add: func(i32) -> i32 = make_adder(3)
+    var c: func() -> i32 = counter()
     var a: i32 = c()
-    return Apply(inc, 1) + Twice(dbl, 2) + add(4) + a + Apply(Inc, 1)
+    return apply(inc, 1) + twice(dbl, 2) + add(4) + a + apply(inc, 1)
 }

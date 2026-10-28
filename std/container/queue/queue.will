@@ -1,63 +1,63 @@
-// Queue is a FIFO backed by two stacks. Push and Pop are amortized constant
-// time; Peek copies the front value without removing it.
+# Queue is a FIFO backed by two stacks. Push and Pop are amortized constant
+# time; Peek copies the front value without removing it.
 struct Queue<T> {
     front: Array<T>
     back: Array<T>
 }
 
-// init starts both stacks empty. A later Push grows the back stack.
-func (mut q: Queue<T>) init() {
+# init starts both stacks empty. A later Push grows the back stack.
+def (q: mut Queue<T>) init() {
     q.front = new Array<T>(0)
     q.back = new Array<T>(0)
 }
 
-// Push adds one value at the back.
-func (mut q: Queue<T>) Push(v: T) {
-    q.back.Push(v)
+# Push adds one value at the back.
+def (q: mut Queue<T>) push(v: T) {
+    q.back.push(v)
 }
 
-// Pop removes and returns the front value, or None when the queue is empty.
-func (mut q: Queue<T>) Pop() -> Option<T> {
-    if q.front.Len() > 0 {
-        return q.front.Pop()
+# Pop removes and returns the front value, or None when the queue is empty.
+def (q: mut Queue<T>) pop() -> Option<T> {
+    if q.front.len() > 0 {
+        return q.front.pop()
     }
-    if q.back.Len() == 0 {
+    if q.back.len() == 0 {
         return None
     }
-    for {
-        if q.back.Len() == 0 {
+    while True {
+        if q.back.len() == 0 {
             break
         }
-        match q.back.Pop() {
+        match q.back.pop() {
             Some(v) => {
-                q.front.Push(v)
+                q.front.push(v)
             }
             None => {
                 break
             }
         }
     }
-    return q.front.Pop()
+    return q.front.pop()
 }
 
-// Peek returns a copy of the front value without removing it.
-func (q: Queue<T>) Peek() -> Option<T> {
-    if q.front.Len() > 0 {
-        return Some(q.front.Get(q.front.Len() - 1))
+# Peek returns a copy of the front value without removing it.
+def (q: ref Queue<T>) peek() -> Option<T> {
+    if q.front.len() > 0 {
+        return Some(q.front.get(q.front.len() - 1))
     }
-    if q.back.Len() == 0 {
+    if q.back.len() == 0 {
         return None
     }
-    return Some(q.back.Get(0))
+    return Some(q.back.get(0))
 }
 
-// Len reports the number of stored values.
-func (q: Queue<T>) Len() -> usize {
-    return q.front.Len() + q.back.Len()
+# Len reports the number of stored values.
+def (q: ref Queue<T>) len() -> usize {
+    return q.front.len() + q.back.len()
 }
 
-// Clear releases every value.
-func (mut q: Queue<T>) Clear() {
-    q.front.Clear()
-    q.back.Clear()
+# Clear releases every value.
+def (q: mut Queue<T>) clear() {
+    q.front.clear()
+    q.back.clear()
 }

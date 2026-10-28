@@ -1,16 +1,16 @@
-func Sum() -> i32 {
+def sum() -> i32 {
     var a: Array<i32> = new Array<i32>(0)
-    a.Push(1)
-    a.Push(2)
-    a.Push(3)
-    a.Set(1, 7)
+    a.push(1)
+    a.push(2)
+    a.push(3)
+    a.set(1, 7)
     var s: i32 = 0
     for v in a {
         s += v
     }
-    return s + a.Get(0) + i32(a.Len())
+    return s + a.get(0) + i32(a.len())
 }
 
-func main() -> i32 {
-    return Sum()
+def main() -> i32 {
+    return sum()
 }

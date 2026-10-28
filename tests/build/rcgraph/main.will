@@ -1,19 +1,19 @@
 struct Node {
     value: i32
-    next: weak<Node>
+    next: weak_rc<Node>
 }
 
-func (mut n: Node) init(value: i32) {
+def (n: mut Node) init(value: i32) {
     n.value = value
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var a: rc<Node> = new rc<Node>(1)
     var b: rc<Node> = new rc<Node>(2)
-    a.next = b.Weak()
-    b.next = a.Weak()
+    a.next = b.weak()
+    b.next = a.weak()
     var v: i32 = 0
-    match a.next.Upgrade() {
+    match a.next.upgrade() {
         Some(x) => {
             v = x.value
         }

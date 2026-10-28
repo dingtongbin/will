@@ -1,0 +1,65 @@
+}
+}
+}
+}
+}
+}
+
+async def produce(ch: chan<i32>, n: i32) {
+    for i in Range(0, n) {
+        _ = await ch.send(i)
+    }
+}
+
+async def stage(inp: chan<i32>, out: chan<i32>) {
+    while True {
+        var item: Option<i32> = await inp.recv()
+        match item {
+            Some(value) => {
+                _ = await out.send(value * 2)
+            }
+            None => {
+                break
+            }
+        }
+    }
+    out.close()
+}
+
+async def consume(ch: chan<i32>) -> i32 {
+    var sum: i32 = 0
+    while True {
+        var item: Option<i32> = await ch.recv()
+        match item {
+            Some(value) => {
+                sum += value
+            }
+            None => {
+                break
+            }
+        }
+    }
+    return sum
+}
+
+async def main() -> i32 {
+    var first: chan<i32> = new chan<i32>(64)
+    var second: chan<i32> = new chan<i32>(64)
+    var total: i32 = 0
+    region {
+        var p0: Task<()> = spawn produce(first, 10000)
+        var p1: Task<()> = spawn produce(first, 10000)
+        var p2: Task<()> = spawn produce(first, 10000)
+        var p3: Task<()> = spawn produce(first, 10000)
+        var stage: Task<()> = spawn stage(first, second)
+        var sink: Task<i32> = spawn consume(second)
+        _ = await p0!
+        _ = await p1!
+        _ = await p2!
+        _ = await p3!
+        first.close()
+        _ = await stage!
+        total = await sink!
+    }
+    return total - 399960000
+}

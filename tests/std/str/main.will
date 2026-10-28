@@ -1,65 +1,65 @@
 import "std/str"
 
-func main() -> i32 {
+def main() -> i32 {
     var total: i32 = 0
 
-    var small: Result<i64, Error> = str.ParseI64("-123", 10)
+    var small: Result<i64, Error> = str.parse_i64("-123", 10)
     match small {
         Ok(v) => {
             total += i32(v)
         }
         Err(e) => {
-            total += e.Status()
+            total += e.status()
         }
     }
 
-    var lowest: Result<i64, Error> = str.ParseI64("-9223372036854775808", 10)
+    var lowest: Result<i64, Error> = str.parse_i64("-9223372036854775808", 10)
     match lowest {
         Ok(v) => {
             total += i32(v % 100i64)
         }
         Err(e) => {
-            total += e.Status()
+            total += e.status()
         }
     }
 
-    var hex: Result<u64, Error> = str.ParseU64("ff", 16)
+    var hex: Result<u64, Error> = str.parse_u64("ff", 16)
     match hex {
         Ok(v) => {
             total += i32(v % 100u64)
         }
         Err(e) => {
-            total += e.Status()
+            total += e.status()
         }
     }
 
-    var highest: Result<u64, Error> = str.ParseU64("18446744073709551615", 10)
+    var highest: Result<u64, Error> = str.parse_u64("18446744073709551615", 10)
     match highest {
         Ok(v) => {
             total += i32(v % 100u64)
         }
         Err(e) => {
-            total += e.Status()
+            total += e.status()
         }
     }
 
-    var real: Result<f64, Error> = str.ParseF64("1.5e3")
+    var real: Result<f64, Error> = str.parse_f64("1.5e3")
     match real {
         Ok(v) => {
             total += i32(v)
         }
         Err(e) => {
-            total += e.Status()
+            total += e.status()
         }
     }
 
-    var bad: Result<i64, Error> = str.ParseI64("12x", 10)
+    var bad: Result<i64, Error> = str.parse_i64("12x", 10)
     match bad {
         Ok(v) => {
             total += i32(v)
         }
         Err(e) => {
-            total += e.Status()
+            total += e.status()
         }
     }
 

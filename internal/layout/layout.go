@@ -38,6 +38,8 @@ const (
 	ArrayKind
 	// SliceKind is a read-only view []T.
 	SliceKind
+	// RefKind is a ref T or mut T pointer.
+	RefKind
 	// GenericKind is a predeclared generic type with arguments.
 	GenericKind
 	// FuncKind is a function value: a code pointer and an environment.
@@ -207,6 +209,8 @@ func (r *Resolver) Size(s *Spec) (Type, error) {
 		return Type{Size: s.Len * stride, Align: elem.Align}, nil
 	case SliceKind:
 		return Type{Size: 2 * r.word, Align: r.word}, nil
+	case RefKind:
+		return Type{Size: r.word, Align: r.word}, nil
 	case GenericKind:
 		return r.generic(s)
 	case FuncKind:
@@ -350,7 +354,7 @@ func (r *Resolver) generic(s *Spec) (Type, error) {
 			return Type{}, fmt.Errorf("Map needs two type arguments")
 		}
 		return Type{Size: 3 * r.word, Align: r.word}, nil
-	case "rc", "weak":
+	case "rc", "arc", "weak_rc", "weak_arc":
 		if len(s.Args) != 1 {
 			return Type{}, fmt.Errorf("%s needs one type argument", s.Name)
 		}

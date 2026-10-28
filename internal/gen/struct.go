@@ -44,7 +44,7 @@ func packageOfQualified(q string) string {
 // declared in another file or package. The field types are lowered on demand,
 // so a foreign struct does not need a declaration in the current document.
 func (g *generator) structInfoByLLVM(typ string) *structInfo {
-	if info := g.byType[typ]; info != nil {
+	if info := g.byType[typ]; info != nil && info.ok {
 		return info
 	}
 	q := g.structByLLVM[typ]
@@ -60,9 +60,30 @@ func (g *generator) structInfoByLLVM(typ string) *structInfo {
 		raw = strings.TrimPrefix(raw, "struct.")
 		if _, ok := g.structDecls[raw]; ok {
 			q = raw
+		} else if raw != "" && !strings.Contains(raw, ".") {
+			// A field type recorded without its package prefix still names one
+			// struct in the module. Accept it only when the suffix is unique.
+			for key := range g.structDecls {
+				if strings.HasSuffix(key, "."+raw) {
+					if q != "" {
+						q = ""
+						break
+					}
+					q = key
+				}
+			}
 		}
 	}
-	if q == "" {
+	if q != "" {
+		if _, exists := g.structDecls[q]; !exists && !strings.Contains(q, ".") {
+			for key := range g.structDecls {
+				if strings.HasSuffix(key, "."+q) {
+					q = key
+				}
+			}
+		}
+	}
+	if _, exists := g.structDecls[q]; !exists {
 		return nil
 	}
 	decl, ok := g.structDecls[q]
@@ -79,6 +100,15 @@ func (g *generator) structInfoByLLVM(typ string) *structInfo {
 		field, ok := g.typeLLVMOf(qualified)
 		if !ok && qualified != text {
 			field, ok = g.typeLLVMOf(text)
+		}
+		if !ok {
+			if _, isStruct := g.structDecls[qualified]; isStruct {
+				nested := g.structInfoByLLVM(qualifiedTypeName(qualified))
+				if nested != nil && nested.ok {
+					field = nested.llvm
+					ok = true
+				}
+			}
 		}
 		if !ok {
 			info.ok = false
@@ -201,6 +231,15 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 		info.names = append(info.names, fieldText(f, "text"))
 		info.texts = append(info.texts, fieldText(f, "type"))
 		t := fieldText(f, "type")
+		if base, kind := borrowText(t); kind == "ref" || kind == "mut" {
+			info.types = append(info.types, "ptr")
+			continue
+		} else if kind == "mutview" {
+			if typ, ok := g.typeLLVMOf(base); ok {
+				info.types = append(info.types, typ)
+				continue
+			}
+		}
 		if typ, _, ok := llvmScalar(t); ok {
 			info.types = append(info.types, typ)
 			continue
@@ -208,6 +247,13 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 		if typ, ok := llvmTypeText(t); ok {
 			info.types = append(info.types, typ)
 			continue
+		}
+		if n, elem, ok := arrayTypeText(t); ok {
+			elemLLVM, elemOK := g.typeLLVMOf(elem)
+			if elemOK && elemLLVM != "" {
+				info.types = append(info.types, "["+strconv.Itoa(n)+" x "+elemLLVM+"]")
+				continue
+			}
 		}
 		if adt, ok := g.adtType(t); ok {
 			info.types = append(info.types, adt.llvm)
@@ -220,6 +266,9 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 		}
 		sub := g.typeRef(f.ID)
 		if sub == 0 {
+			// A field names its type through an import alias; the declaration
+			// index is keyed by the canonical package path.
+			t = g.canonicalTypeText(t)
 			qualified := t
 			if !strings.Contains(qualified, ".") {
 				qualified = qualify(g.pkg, qualified)
@@ -323,17 +372,41 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 			return t, nil
 		}
 	}
-	if typ, ok := llvmTypeText(fieldText(r, "type")); ok {
+	text := fieldText(r, "type")
+	base, kind := borrowText(text)
+	if kind == "ref" || kind == "mut" {
+		// A borrowed parameter is stored as a pointer in the ABI, but its
+		// expression type is the underlying value so field and method lowering
+		// sees the real type. A local ref value owns a pointer slot instead.
+		if r.Kind != "param" && r.Kind != "receiver" {
+			return "ptr", nil
+		}
+		text = base
+	} else {
+		text = base
+	}
+	if text == "interface {}" {
+		return "%interface.empty", nil
+	}
+	if typ, ok := llvmTypeText(text); ok {
 		return typ, nil
 	}
-	if strings.HasPrefix(fieldText(r, "type"), "func(") {
+	if n, elem, ok := arrayTypeText(text); ok {
+		if elemLLVM, ok := g.typeLLVMOf(elem); ok && elemLLVM != "" {
+			return "[" + strconv.Itoa(n) + " x " + elemLLVM + "]", nil
+		}
+	}
+	if strings.HasPrefix(text, "func(") {
 		return "{ ptr, ptr }", nil
 	}
-	if typ, ok := g.structInstanceFromText(fieldText(r, "type")); ok {
+	if typ, ok := g.structInstanceFromText(text); ok {
 		return typ, nil
 	}
-	if adt, ok := g.adtType(fieldText(r, "type")); ok {
+	if adt, ok := g.adtType(text); ok {
 		return adt.llvm, nil
+	}
+	if typ, ok := g.fieldLLVMType(text); ok {
+		return typ, nil
 	}
 	if id := g.typeRef(decl); id != 0 {
 		if r, ok := g.recs[id]; ok && r.Kind == "enum" {
@@ -376,6 +449,10 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 		g.usedError = true
 		return "%interface.Error", nil
 	}
+	if fieldText(r, "type") == "Show" {
+		g.showUsed = true
+		return "%interface.show", nil
+	}
 	return "", g.errf(decl, "cannot translate node #%d: type %s is not lowered yet", decl, fieldText(r, "type"))
 }
 
@@ -388,6 +465,18 @@ func (g *generator) typeOf(id int) (string, error) {
 		return "", g.errf(id, "cannot translate node #%d: no such node", id)
 	}
 	switch r.Kind {
+	case "await":
+		text, err := g.awaitResultText(refField(r, "expr"))
+		if err != nil {
+			return "", err
+		}
+		if adt, ok := g.adtType(text); ok {
+			return adt.llvm, nil
+		}
+		if typ, ok := g.typeLLVMOf(text); ok {
+			return typ, nil
+		}
+		return "", g.errf(id, "cannot translate node #%d: await result %s is not lowered", id, text)
 	case "lit":
 		typ, ok := llvmTypeText(fieldText(r, "type"))
 		if !ok {
@@ -397,6 +486,9 @@ func (g *generator) typeOf(id int) (string, error) {
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
+		if name == "Canceled" || name == "Deadline" {
+			return "%interface.Error", nil
+		}
 		if c, ok := g.recs[decl]; ok && c.Kind == "func" {
 			return "{ ptr, ptr }", nil
 		}
@@ -425,10 +517,43 @@ func (g *generator) typeOf(id int) (string, error) {
 			}
 			return typ, nil
 		}
+		if d, ok := g.recs[decl]; ok && d.Kind == "var" {
+			if base, kind := borrowText(fieldText(d, "type")); kind == "ref" || kind == "mut" {
+				if typ, ok := g.typeLLVMOf(base); ok {
+					return typ, nil
+				}
+			}
+		}
 		return g.declLLVMType(decl)
+	case "borrow":
+		if text, err := g.willTypeText(id); err == nil {
+			if base, kind := borrowText(text); kind == "mutview" {
+				if typ, ok := g.typeLLVMOf(base); ok {
+					return typ, nil
+				}
+			}
+		}
+		return "ptr", nil
 	case "field":
 		if info, ok := g.importMember(r); ok {
 			return info.typ, nil
+		}
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if elem, ok := g.guardElemText(recvText); ok {
+				elemLLVM, ok := g.fieldLLVMType(elem)
+				if !ok {
+					return "", g.errf(id, "cannot translate node #%d: guard value %s is not lowered yet", id, elem)
+				}
+				info := g.structInfoByLLVM(elemLLVM)
+				if info == nil || !info.ok {
+					return "", g.errf(id, "cannot translate node #%d: %s has no fields", id, elemLLVM)
+				}
+				index, ok := info.index[fieldText(r, "text")]
+				if !ok {
+					return "", g.errf(id, "cannot translate node #%d: struct %s has no field %s", id, info.name, fieldText(r, "text"))
+				}
+				return info.types[index], nil
+			}
 		}
 		base, err := g.typeOf(refField(r, "recv"))
 		if err != nil {
@@ -456,13 +581,25 @@ func (g *generator) typeOf(id int) (string, error) {
 			return "", g.errf(id, "cannot translate node #%d: the aggregate type is not lowered yet", id)
 		}
 		return info.llvm, nil
+	case "arrlit":
+		typ, ok := g.typeLLVMOf(fieldText(r, "type"))
+		if !ok || typ == "" {
+			return "", g.errf(id, "cannot translate node #%d: fixed array type %s is not lowered yet", id, fieldText(r, "type"))
+		}
+		return typ, nil
 	case "interp":
 		return "{ ptr, i64 }", nil
 	case "spawn", "channew":
 		return "ptr", nil
 	case "lanehere":
 		return "i64", nil
-	case "send", "close":
+	case "send":
+		info, ok := g.adtType("Result<(), Error>")
+		if !ok {
+			return "", g.errf(id, "cannot translate node #%d: Result<(), Error> is not lowered", id)
+		}
+		return info.llvm, nil
+	case "close":
 		return "", nil
 	case "recv", "tryrecv", "join":
 		text, err := g.willTypeText(id)
@@ -635,9 +772,24 @@ func (g *generator) willTypeText(id int) (string, error) {
 		return "", g.errf(id, "cannot translate node #%d: no such node", id)
 	}
 	switch r.Kind {
+	case "await":
+		return g.awaitResultText(refField(r, "expr"))
+	case "borrow":
+		base, err := g.willTypeText(refField(r, "expr"))
+		if err != nil {
+			return "", err
+		}
+		if fieldText(r, "mut") == "true" {
+			return "mut " + base, nil
+		}
+		return "ref " + base, nil
 	case "lit":
 		return fieldText(r, "type"), nil
 	case "name":
+		name := fieldText(r, "text")
+		if name == "Canceled" || name == "Deadline" {
+			return "Error", nil
+		}
 		decl, ok := g.recs[refField(r, "to")]
 		if !ok {
 			if info := g.globalRef(r); info != nil {
@@ -650,6 +802,14 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		if text, ok := g.selectBindTypes[decl.ID]; ok {
 			return text, nil
+		}
+		if info, _ := g.enumVariantCall(r); info != nil {
+			return info.text, nil
+		}
+		if decl.Kind == "param" || decl.Kind == "receiver" {
+			if base, kind := borrowText(fieldText(decl, "type")); kind != "" {
+				return base, nil
+			}
 		}
 		if fieldText(decl, "variadic") == "true" {
 			return "[]" + fieldText(decl, "type"), nil
@@ -668,6 +828,23 @@ func (g *generator) willTypeText(id int) (string, error) {
 		if info, ok := g.importMember(r); ok {
 			return info.text, nil
 		}
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if elem, ok := g.guardElemText(recvText); ok {
+				elemLLVM, ok := g.fieldLLVMType(elem)
+				if !ok {
+					return "", g.errf(id, "cannot translate node #%d: guard value %s is not lowered yet", id, elem)
+				}
+				info := g.structInfoByLLVM(elemLLVM)
+				if info == nil || !info.ok {
+					return "", g.errf(id, "cannot translate node #%d: %s has no fields", id, elemLLVM)
+				}
+				index, ok := info.index[fieldText(r, "text")]
+				if !ok {
+					return "", g.errf(id, "cannot translate node #%d: struct %s has no field %s", id, info.name, fieldText(r, "text"))
+				}
+				return info.texts[index], nil
+			}
+		}
 		base, err := g.willTypeText(refField(r, "recv"))
 		if err != nil {
 			return "", err
@@ -680,6 +857,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 			if t, ok := g.typeLLVMOf(base); ok {
 				info = g.structInfoByLLVM(t)
 			}
+		}
+		if info == nil {
+			info = g.structInfoByLLVM(base)
 		}
 		if info == nil || !info.ok {
 			return "", g.errf(id, "cannot translate node #%d: %s has no fields", id, base)
@@ -696,6 +876,8 @@ func (g *generator) willTypeText(id int) (string, error) {
 			}
 		}
 		return "", nil
+	case "arrlit":
+		return fieldText(r, "type"), nil
 	case "interp":
 		return "str", nil
 	case "spawn":
@@ -715,7 +897,7 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		elem, ok := chanElemText(chanText)
 		if !ok {
-			return "", g.errf(id, "cannot translate node #%d: Recv needs a channel", id)
+			return "", g.errf(id, "cannot translate node #%d: recv needs a channel", id)
 		}
 		return "Option<" + elem + ">", nil
 	case "trysend":
@@ -727,10 +909,12 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		elem, ok := taskElemText(taskText)
 		if !ok {
-			return "", g.errf(id, "cannot translate node #%d: Join needs a Task", id)
+			return "", g.errf(id, "cannot translate node #%d: join needs a Task", id)
 		}
-		return "Result<" + elem + ",Error>", nil
-	case "send", "close":
+		return "Result<" + elem + ",TaskError>", nil
+	case "send":
+		return "Result<(),Error>", nil
+	case "close":
 		return "", nil
 	case "slice":
 		elem, err := g.sliceElem(r)
@@ -760,6 +944,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		return g.willTypeText(refField(r, "expr"))
 	case "call", "mcall":
+		if text, ok := g.downcastTypeText(r); ok {
+			return text, nil
+		}
 		if r.Kind == "mcall" {
 			if _, _, fnText, ok := g.functionField(r); ok {
 				_, result, ok := funcTypeParts(fnText)
@@ -808,6 +995,22 @@ func (g *generator) willTypeText(id int) (string, error) {
 // callResultText returns the result type text of one call. A call names its
 // callee by a document reference or by the module-wide symbol.
 func (g *generator) callResultText(r willc.Record) (string, error) {
+	if r.Kind == "mcall" && fieldText(r, "text") == "clone" {
+		recvText, err := g.willTypeText(refField(r, "recv"))
+		if err != nil {
+			return "", err
+		}
+		if elem, ok := viewElemText(stripPredeclaredPackage(recvText)); ok {
+			return "Array<" + elem + ">", nil
+		}
+		return recvText, nil
+	}
+	if text, ok := g.downcastTypeText(r); ok {
+		return text, nil
+	}
+	if info, _ := g.enumVariantCall(r); info != nil {
+		return info.text, nil
+	}
 	if name, ok := g.predeclaredCallName(r); ok {
 		switch name {
 		case "take_c", "take_c_rc":
@@ -815,6 +1018,8 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 				return "rc<" + args[0] + ">", nil
 			}
 		case "SizeOf", "AlignOf", "OffsetOf":
+			return "usize", nil
+		case "len":
 			return "usize", nil
 		}
 	}
@@ -828,6 +1033,13 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 		return text, nil
 	}
 	if r.Kind == "mcall" {
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if iface, ok := g.ifaceOfText(recvText); ok {
+				if idx, ok := iface.byName[fieldText(r, "text")]; ok {
+					return iface.methods[idx].result, nil
+				}
+			}
+		}
 		if sym := g.genericMethodName(r); sym != "" {
 			if text, ok := g.sigs[sym]; ok {
 				return text, nil
@@ -882,6 +1094,13 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 		return "", nil
 	}
 	if r.Kind == "mcall" {
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if iface, ok := g.ifaceOfText(recvText); ok {
+				if idx, ok := iface.byName[fieldText(r, "text")]; ok {
+					return iface.methods[idx].result, nil
+				}
+			}
+		}
 		if typ, err := g.typeOf(refField(r, "recv")); err == nil {
 			if iface, ok := g.ifaceOfType(typ); ok {
 				if idx, ok := iface.byName[fieldText(r, "text")]; ok {
@@ -893,7 +1112,7 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 			recvText = stripPredeclaredPackage(recvText)
 			if kind, args, ok := parseADT(recvText); ok {
 				switch fieldText(r, "text") {
-				case "IsSome", "IsNone", "IsOk", "IsErr":
+				case "is_some", "is_none", "is_ok", "is_err":
 					return "bool", nil
 				case "Or":
 					if len(args) != 0 {
@@ -940,11 +1159,23 @@ func (g *generator) isCLink(r willc.Record) bool {
 // method is emitted under. A receiver whose type is declared in another
 // document resolves through the module-wide qualified type index.
 func (g *generator) methodSymbol(r willc.Record) (string, error) {
+	name := fieldText(r, "text")
+	if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+		if elem, ok := g.guardElemText(recvText); ok {
+			if sym := g.methodForType(elem, name); sym != "" {
+				return sym, nil
+			}
+		}
+	}
 	typ, err := g.receiverTypeName(refField(r, "recv"))
 	if err != nil {
 		return "", err
 	}
-	name := fieldText(r, "text")
+	if elem, ok := g.guardElemText(typ); ok {
+		if sym := g.methodForType(elem, name); sym != "" {
+			return sym, nil
+		}
+	}
 	if sym, ok := g.methodsQualified[typ+"."+name]; ok {
 		return sym, nil
 	}
@@ -1004,16 +1235,137 @@ func (g *generator) place(id int) (string, string, error) {
 	if snap, ok := g.deferSnapshots[id]; ok {
 		return g.deferFieldPtr(snap), snap.llvm, nil
 	}
+	if p, ok := g.smPlaces[id]; ok {
+		return p.ptr, p.typ, nil
+	}
 	switch r.Kind {
+	case "await":
+		exprID := refField(r, "expr")
+		if op, ok := g.recs[exprID]; ok && (op.Kind == "recv" || op.Kind == "send") {
+			ptr, typ, err := g.place(exprID)
+			if err != nil {
+				return "", "", err
+			}
+			g.smPlaces[r.ID] = smPlace{ptr: ptr, typ: typ}
+			return ptr, typ, nil
+		}
+		if call, ok := g.recs[exprID]; ok && call.Kind == "mcall" {
+			if recvText, err := g.willTypeText(refField(call, "recv")); err == nil {
+				if iface, ok := g.ifaceOfText(recvText); ok {
+					if idx, ok := iface.byName[fieldText(call, "text")]; ok && iface.methods[idx].async {
+						task, err := g.interfaceAsyncTask(call, iface)
+						if err != nil {
+							return "", "", err
+						}
+						elem, err := g.callResultText(call)
+						if err != nil {
+							return "", "", err
+						}
+						out, llvm, err := g.lowerAwaitedTask(task, elem, r.ID)
+						if err != nil {
+							return "", "", err
+						}
+						return out, llvm, nil
+					}
+				}
+			}
+		}
+		if call, ok := g.recs[exprID]; ok && (call.Kind == "call" || call.Kind == "mcall") {
+			text, err := g.callResultText(call)
+			if err != nil {
+				return "", "", err
+			}
+			if _, isTask := taskElemText(text); !isTask {
+				if sym := g.awaitTargetSymbol(call); sym != "" && g.suspendableFor(sym) {
+					if g.smGeneral {
+						out, typ, err := g.generalCallWaitPlace(call)
+						if err != nil {
+							return "", "", err
+						}
+						g.smPlaces[r.ID] = smPlace{ptr: out, typ: typ}
+						return out, typ, nil
+					}
+					out, llvm, _, _, err := g.awaitCallJoin(call)
+					if err != nil {
+						return "", "", err
+					}
+					return out, llvm, nil
+				}
+				text, err := g.callResultText(call)
+				if err != nil {
+					return "", "", err
+				}
+				llvm := g.resultLLVM(text)
+				if llvm == "" {
+					return "", "", nil
+				}
+				if isAggregateType(llvm) {
+					return g.place(exprID)
+				}
+				slot := g.allocSlot(g.awaitOutSlots, "await.scalar", r.ID, llvm)
+				value, err := g.value(exprID)
+				if err != nil {
+					return "", "", err
+				}
+				g.out.WriteString("  store " + llvm + " " + value + ", ptr " + slot + "\n")
+				return slot, llvm, nil
+			}
+		}
+		text, err := g.awaitResultText(exprID)
+		if err != nil {
+			return "", "", err
+		}
+		slot, err := g.lowerAwaitResult(r)
+		if err != nil {
+			return "", "", err
+		}
+		info, ok := g.adtType(text)
+		if !ok {
+			return "", "", g.errf(id, "cannot translate node #%d: await result %s is not lowered", id, text)
+		}
+		g.smPlaces[r.ID] = smPlace{ptr: slot, typ: info.llvm}
+		return slot, info.llvm, nil
+	case "borrow":
+		if v, ok := g.recs[refField(r, "expr")]; ok && v.Kind == "slice" && fieldText(r, "mut") == "true" {
+			return g.place(refField(r, "expr"))
+		}
+		return "", "", g.errf(id, "cannot translate node #%d: a borrow is a value, not a place", id)
 	case "lit":
 		kind := fieldText(r, "kind")
 		if kind == "str" || kind == "bytes" {
 			return g.stringPlace(r)
 		}
 		return "", "", g.errf(id, "cannot translate node #%d: a %s literal is a value, not a place", id, kind)
+	case "send":
+		slot, err := g.lowerSendResult(r)
+		if err != nil {
+			return "", "", err
+		}
+		info, ok := g.adtType("Result<(), Error>")
+		if !ok {
+			return "", "", g.errf(id, "cannot translate node #%d: Result<(), Error> is not lowered", id)
+		}
+		return slot, info.llvm, nil
+	case "join":
+		slot, err := g.lowerJoinResult(r)
+		if err != nil {
+			return "", "", err
+		}
+		text, err := g.willTypeText(id)
+		if err != nil {
+			return "", "", err
+		}
+		info, ok := g.adtType(text)
+		if !ok {
+			return "", "", g.errf(id, "cannot translate node #%d: %s is not lowered", id, text)
+		}
+		return slot, info.llvm, nil
 	case "name":
 		decl := refField(r, "to")
 		name := fieldText(r, "text")
+		if name == "Canceled" || name == "Deadline" {
+			return g.builtinErrorPlace(r, name)
+		}
 		if c, ok := g.recs[decl]; ok && c.Kind == "func" {
 			return g.placeNamedFunction(r, c)
 		}
@@ -1025,6 +1377,9 @@ func (g *generator) place(id int) (string, string, error) {
 		}
 		if adt, variant, arg, ok := g.adtConstructor(r); ok {
 			return g.adtConstruct(r, adt, variant, arg)
+		}
+		if info, v := g.enumVariantCall(r); info != nil {
+			return g.enumConstruct(r, info, v)
 		}
 		if ptr, ok := g.patternPlaces[decl]; ok {
 			return ptr, g.patternTypes[decl], nil
@@ -1045,6 +1400,15 @@ func (g *generator) place(id int) (string, string, error) {
 		if slot, typ, ok := g.nameSlot(r); ok {
 			if typ == "" {
 				return "", "", g.errf(id, "cannot translate node #%d: the local has no type", id)
+			}
+			if d, ok := g.recs[decl]; ok {
+				if base, kind := borrowText(fieldText(d, "type")); (kind == "ref" || kind == "mut") && d.Kind != "param" && d.Kind != "receiver" {
+					baseLLVM, ok := g.typeLLVMOf(base)
+					if !ok || baseLLVM == "" {
+						return "", "", g.errf(id, "cannot translate node #%d: borrowed type %s is not lowered", id, base)
+					}
+					return g.load("ptr", slot), baseLLVM, nil
+				}
 			}
 			return slot, typ, nil
 		}
@@ -1068,6 +1432,13 @@ func (g *generator) place(id int) (string, string, error) {
 		recvID := refField(r, "recv")
 		recvText, rcErr := g.willTypeText(recvID)
 		if rcErr == nil {
+			if _, ok := g.guardElemText(recvText); ok {
+				ptr, fieldType, _, err := g.guardFieldPlace(recvID, fieldText(r, "text"), r)
+				if err != nil {
+					return "", "", err
+				}
+				return ptr, fieldType, nil
+			}
 			if elem, ok := rcElemText(recvText); ok && isRcText(recvText) {
 				handle, err := g.value(recvID)
 				if err != nil {
@@ -1088,6 +1459,16 @@ func (g *generator) place(id int) (string, string, error) {
 			base, typ, err = g.place(recvID)
 			if err != nil {
 				return "", "", err
+			}
+			if recv, ok := g.recs[recvID]; ok && recv.Kind == "field" {
+				if fieldText, err := g.willTypeText(recvID); err == nil {
+					if b, kind := borrowText(fieldText); kind == "ref" || kind == "mut" {
+						base = g.load("ptr", base)
+						if t, ok := g.typeLLVMOf(b); ok {
+							typ = t
+						}
+					}
+				}
 			}
 		}
 		info := g.structInfoByLLVM(typ)
@@ -1117,6 +1498,19 @@ func (g *generator) place(id int) (string, string, error) {
 			return "", "", err
 		}
 		return slot, info.llvm, nil
+	case "arrlit":
+		typ, ok := g.typeLLVMOf(fieldText(r, "type"))
+		if !ok || typ == "" {
+			return "", "", g.errf(id, "cannot translate node #%d: fixed array type %s is not lowered yet", id, fieldText(r, "type"))
+		}
+		if err := g.storeArrayLiteral(r); err != nil {
+			return "", "", err
+		}
+		slot := g.arrayLitSlots[r.ID]
+		if slot == "" {
+			return "", "", g.errf(id, "cannot translate node #%d: fixed array literal has no slot", id)
+		}
+		return slot, typ, nil
 	case "slice":
 		slot, err := g.sliceValue(r)
 		if err != nil {
@@ -1147,8 +1541,6 @@ func (g *generator) place(id int) (string, string, error) {
 		return g.lowerRecvPlace(r)
 	case "tryrecv":
 		return g.lowerTryRecv(r)
-	case "join":
-		return "", "", g.errf(id, "cannot translate node #%d: a Join result is only lowered as Join()!", id)
 	case "try":
 		return g.tryPlace(r)
 	case "unwrap":
@@ -1170,7 +1562,20 @@ func (g *generator) place(id int) (string, string, error) {
 	case "new":
 		return g.constructNew(r)
 	case "call", "mcall":
-		if r.Kind == "mcall" && fieldText(r, "text") == "Get" {
+		if d, ok := g.downcastOf(r); ok {
+			if !d.isAs {
+				return "", "", g.errf(r.ID, "cannot translate node #%d: a bool is not a place", r.ID)
+			}
+			return g.ifaceDowncastAs(r)
+		}
+		if g.smGeneral {
+			if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendableFor(sym) {
+				return g.generalCallWaitPlace(r)
+			}
+		} else if sym := g.awaitTargetSymbol(r); sym != "" && g.suspendableFor(sym) {
+			return g.awaitCallPlace(r)
+		}
+		if r.Kind == "mcall" && fieldText(r, "text") == "get" {
 			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
 				if elem, ok := viewElemText(recvText); ok {
 					if typ, ok := g.typeLLVMOf(elem); ok && isAggregateType(typ) {
@@ -1179,7 +1584,7 @@ func (g *generator) place(id int) (string, string, error) {
 				}
 			}
 		}
-		if r.Kind == "mcall" && fieldText(r, "text") == "Index" {
+		if r.Kind == "mcall" && fieldText(r, "text") == "index" {
 			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
 				if elem, ok := viewElemText(recvText); ok && elem == "u8" {
 					return g.viewIndexPlace(r)
@@ -1246,18 +1651,24 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 		g.tmp++
 		ptr := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", ptr, info.llvm, slot, i)
+		if isSingleBorrow(info.texts[i]) {
+			v, err := g.referenceValue(valueID)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", v, ptr)
+			continue
+		}
 		if isAggregateType(info.types[i]) {
 			if iface, ok := g.ifaceOfText(info.texts[i]); ok {
 				valueText, err := g.willTypeText(valueID)
 				if err != nil {
 					return err
 				}
-				if _, same := g.ifaceOfText(valueText); !same {
-					if _, err := g.ifaceValue(ptr, valueID, iface, valueText); err != nil {
-						return err
-					}
-					continue
+				if _, err := g.ifaceStoreValue(ptr, valueID, iface, valueText); err != nil {
+					return err
 				}
+				continue
 			}
 			src, typ, err := g.place(valueID)
 			if err != nil {
@@ -1266,12 +1677,18 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 			if typ != info.types[i] {
 				return g.errf(valueID, "cannot translate node #%d: field %s needs %s", valueID, name, info.types[i])
 			}
-			if g.needsReleaseText(info.texts[i]) && g.isCopySource(valueID) {
+			move, _ := g.moveSource(valueID)
+			if !move && g.needsReleaseText(info.texts[i]) && g.isCopySource(valueID) {
 				if err := g.retainValue(src, info.texts[i]); err != nil {
 					return err
 				}
 			}
 			g.copyValue(src, ptr, typ)
+			if move {
+				if err := g.zeroMovedSource(valueID, ptr); err != nil {
+					return err
+				}
+			}
 			continue
 		}
 		v, err := g.value(valueID)
@@ -1281,6 +1698,11 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 		if isRcText(info.texts[i]) && g.isCopySource(valueID) {
 			g.needRcDecl = true
 			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", v)
+		}
+		if isChanText(info.texts[i]) && g.isCopySource(valueID) {
+			g.needTaskDecl = true
+			g.needChanDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", v)
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.types[i], v, ptr)
 	}

@@ -1,0 +1,45 @@
+# Semaphore caps how many holders may pass at the same time. A release moves
+# the permit to the next waiter directly, so a canceled waiter never spends a
+# permit it did not get.
+import "std/errors"
+
+import c "sync.h" {
+    fast willrt_sync_sema_new
+    fast willrt_sync_sema_acquire_async
+    fast willrt_sync_sema_release
+}
+
+# Permit is one held permit. Release returns it to the semaphore.
+struct Permit {
+    handle: raw
+}
+
+def (p: mut Permit) release() {
+    _ = c.willrt_sync_sema_release(p.handle)
+}
+
+struct Semaphore {
+    handle: raw
+}
+
+def (s: mut Semaphore) init(permits: i64) {
+    s.handle = c.willrt_sync_sema_new(permits)
+}
+
+# Acquire waits until one permit is free. A canceled or expired wait returns
+# the matching predeclared error and leaves the permit count unchanged.
+async def (s: ref Semaphore) acquire() -> Result<Permit, Error> {
+    var status: i32 = await c.willrt_sync_sema_acquire_async(s.handle)
+    if status == 0 {
+        return Ok(Permit { handle: s.handle })
+    }
+    if status == -5 {
+        return Err(Canceled)
+    }
+    if status == -6 {
+        return Err(Deadline)
+    }
+    return Err(errors.Io)
+}
+
+

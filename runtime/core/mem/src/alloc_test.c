@@ -331,6 +331,28 @@ static void test_alloc_raw_thread(void) {
     assert(willrt_mem_page_calls() == calls_before);
 }
 
+/* The registry must grow with the live chunk count: a server holding more
+   chunks than the first table fits still allocates. 4200 concurrent 64 KiB
+   blocks span 4200 chunks, past the original fixed table. */
+static void test_alloc_registry_grows(void) {
+    enum { kBlocks = 4200 };
+    unsigned char* blocks[kBlocks];
+    int i;
+
+    willrt_mem_set_shared();
+    for (i = 0; i < kBlocks; i++) {
+        blocks[i] = (unsigned char*)willrt_alloc(64 * 1024);
+        assert(blocks[i] != NULL);
+        blocks[i][0] = (unsigned char)i;
+        blocks[i][63 * 1024] = (unsigned char)(i >> 8);
+    }
+    for (i = 0; i < kBlocks; i++) {
+        assert(blocks[i][0] == (unsigned char)i);
+        assert(blocks[i][63 * 1024] == (unsigned char)(i >> 8));
+        willrt_free(blocks[i]);
+    }
+}
+
 int main(void) {
     test_alloc_raw_thread();
     test_alloc_round_trip();
@@ -348,5 +370,6 @@ int main(void) {
     test_plate_foreign();
     test_alloc_lanes();
     test_alloc_cross_lane();
+    test_alloc_registry_grows();
     return 0;
 }

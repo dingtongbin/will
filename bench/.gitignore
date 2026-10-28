@@ -1,0 +1,3 @@
+# Benchmark output: csv files written by -out, and build trees left by -keep.
+results/
+build/

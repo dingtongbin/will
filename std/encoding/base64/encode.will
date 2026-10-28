@@ -1,64 +1,64 @@
-// padByte is the ASCII code of the padding character '='.
+# padByte is the ASCII code of the padding character '='.
 const padByte: u8 = 61
 
-// Encode returns the standard base64 text of b, padded to a whole group. Any
-// byte value is accepted and the result is ASCII, so the call cannot fail.
-func Encode(b: []u8) -> str {
-    var out: Array<u8> = encodeBytes(b, false)
+# Encode returns the standard base64 text of b, padded to a whole group. Any
+# byte value is accepted and the result is ASCII, so the call cannot fail.
+def encode(b: []u8) -> str {
+    var out: Array<u8> = encode_bytes(b, False)
     return str(out)
 }
 
-// EncodeUrl returns the URL- and filename-safe base64 text of b: '-' and '_'
-// replace '+' and '/', so the text needs no escaping in a URL or a file name.
-func EncodeUrl(b: []u8) -> str {
-    var out: Array<u8> = encodeBytes(b, true)
+# EncodeUrl returns the URL- and filename-safe base64 text of b: '-' and '_'
+# replace '+' and '/', so the text needs no escaping in a URL or a file name.
+def encode_url(b: []u8) -> str {
+    var out: Array<u8> = encode_bytes(b, True)
     return str(out)
 }
 
-// encodeBytes writes the padded base64 text of b into a byte array. Every group
-// of three bytes becomes four characters; one or two leftover bytes become two
-// or three characters and the rest of the group is padding. Push doubles the
-// array when it is full, so the whole encode stays linear in the input length.
-func encodeBytes(b: []u8, url: bool) -> Array<u8> {
-    var n: usize = b.Len()
+# encodeBytes writes the padded base64 text of b into a byte array. Every group
+# of three bytes becomes four characters; one or two leftover bytes become two
+# or three characters and the rest of the group is padding. Push doubles the
+# array when it is full, so the whole encode stays linear in the input length.
+def encode_bytes(b: []u8, url: bool) -> Array<u8> {
+    var n: usize = b.len()
     var groups: usize = n / 3
     var out: Array<u8> = new Array<u8>(0)
     var i: usize = 0
     var whole: usize = groups * 3
-    for {
+    while True {
         if i >= whole {
             break
         }
-        var b0: u8 = b.Get(i)
-        var b1: u8 = b.Get(i + 1)
-        var b2: u8 = b.Get(i + 2)
-        out.Push(sixBitChar(b0 >> 2, url))
-        out.Push(sixBitChar(((b0 & 3u8) << 4) | (b1 >> 4), url))
-        out.Push(sixBitChar(((b1 & 15u8) << 2) | (b2 >> 6), url))
-        out.Push(sixBitChar(b2 & 63u8, url))
+        var b0: u8 = b.get(i)
+        var b1: u8 = b.get(i + 1)
+        var b2: u8 = b.get(i + 2)
+        out.push(six_bit_char(b0 >> 2, url))
+        out.push(six_bit_char(((b0 & 3u8) << 4) | (b1 >> 4), url))
+        out.push(six_bit_char(((b1 & 15u8) << 2) | (b2 >> 6), url))
+        out.push(six_bit_char(b2 & 63u8, url))
         i += 3
     }
     var rest: usize = n - whole
     if rest == 1 {
-        var b0: u8 = b.Get(whole)
-        out.Push(sixBitChar(b0 >> 2, url))
-        out.Push(sixBitChar((b0 & 3u8) << 4, url))
-        out.Push(padByte)
-        out.Push(padByte)
+        var b0: u8 = b.get(whole)
+        out.push(six_bit_char(b0 >> 2, url))
+        out.push(six_bit_char((b0 & 3u8) << 4, url))
+        out.push(padByte)
+        out.push(padByte)
     } else if rest == 2 {
-        var b0: u8 = b.Get(whole)
-        var b1: u8 = b.Get(whole + 1)
-        out.Push(sixBitChar(b0 >> 2, url))
-        out.Push(sixBitChar(((b0 & 3u8) << 4) | (b1 >> 4), url))
-        out.Push(sixBitChar((b1 & 15u8) << 2, url))
-        out.Push(padByte)
+        var b0: u8 = b.get(whole)
+        var b1: u8 = b.get(whole + 1)
+        out.push(six_bit_char(b0 >> 2, url))
+        out.push(six_bit_char(((b0 & 3u8) << 4) | (b1 >> 4), url))
+        out.push(six_bit_char((b1 & 15u8) << 2, url))
+        out.push(padByte)
     }
     return out
 }
 
-// sixBitChar maps one six-bit value to its character. The alphabet is A-Z,
-// a-z, 0-9, then the two characters the selected variant spells last.
-func sixBitChar(v: u8, url: bool) -> u8 {
+# sixBitChar maps one six-bit value to its character. The alphabet is A-Z,
+# a-z, 0-9, then the two characters the selected variant spells last.
+def six_bit_char(v: u8, url: bool) -> u8 {
     if v < 26u8 {
         return 65u8 + v
     }

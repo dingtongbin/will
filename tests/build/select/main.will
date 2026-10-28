@@ -1,10 +1,10 @@
-func main() -> i32 {
+async def main() -> i32 {
     var a: chan<i32> = new chan<i32>(1)
     var b: chan<i32> = new chan<i32>(1)
-    a.Send(5)
+    _ = await a.send(5)
     var v: i32 = 0
     select {
-        x = a.Recv() => {
+        x = a.recv() => {
             match x {
                 Some(y) => {
                     v = y
@@ -13,7 +13,7 @@ func main() -> i32 {
                 }
             }
         }
-        y = b.Recv() => {
+        y = b.recv() => {
             match y {
                 Some(z) => {
                     v = z

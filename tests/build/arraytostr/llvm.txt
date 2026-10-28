@@ -1,3 +1,5 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 define i32 @"example.com/arraytostr.will$main"() {
 entry:
   %v.bytes = alloca { ptr, i64, i64 }
@@ -14,75 +16,94 @@ entry:
   store i64 2, ptr %t4
   %t5 = load { ptr, i64, i64 }, ptr %v.new.8
   store { ptr, i64, i64 } %t5, ptr %v.bytes
-  %t6 = sext i32 0 to i64
-  %t7 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
-  %t8 = load ptr, ptr %t7
-  %t9 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
-  %t10 = load i64, ptr %t9
-  %t11 = icmp uge i64 %t6, %t10
-  br i1 %t11, label %panic.1, label %panic.ok.1
+  %t6 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
+  %t7 = load ptr, ptr %t6
+  %t8 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
+  %t9 = load i64, ptr %t8
+  %t10 = icmp uge i64 0, %t9
+  br i1 %t10, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
   unreachable
 panic.ok.1:
-  %t12 = getelementptr inbounds i8, ptr %t8, i64 %t6
-  store i8 65, ptr %t12
-  %t13 = sext i32 1 to i64
-  %t14 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
-  %t15 = load ptr, ptr %t14
-  %t16 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
-  %t17 = load i64, ptr %t16
-  %t18 = icmp uge i64 %t13, %t17
-  br i1 %t18, label %panic.2, label %panic.ok.2
+  %t11 = getelementptr inbounds i8, ptr %t7, i64 0
+  store i8 65, ptr %t11
+  %t12 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
+  %t13 = load ptr, ptr %t12
+  %t14 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
+  %t15 = load i64, ptr %t14
+  %t16 = icmp uge i64 1, %t15
+  br i1 %t16, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.0, ptr @.str.3, ptr @.str.2)
   unreachable
 panic.ok.2:
-  %t19 = getelementptr inbounds i8, ptr %t15, i64 %t13
-  store i8 66, ptr %t19
-  %t20 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
-  %t21 = load ptr, ptr %t20
-  %t22 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
-  %t23 = load i64, ptr %t22
-  %t24 = call i32 @willrt_utf8_valid(ptr %t21, i64 %t23)
-  %t25 = icmp eq i32 %t24, 0
-  br i1 %t25, label %utf8.bad.3, label %utf8.ok.3
+  %t17 = getelementptr inbounds i8, ptr %t13, i64 1
+  store i8 66, ptr %t17
+  %t18 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
+  %t19 = load ptr, ptr %t18
+  %t20 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
+  %t21 = load i64, ptr %t20
+  %t22 = call i32 @willrt_utf8_valid(ptr %t19, i64 %t21)
+  %t23 = icmp eq i32 %t22, 0
+  br i1 %t23, label %utf8.bad.3, label %utf8.ok.3
 utf8.bad.3:
   call void @willrt_panic_n(ptr @.str.4, i64 13, ptr @.str.5, ptr @.str.2)
   unreachable
 utf8.ok.3:
-  %t26 = call ptr @willrt_alloc(i64 %t23)
-  call void @memcpy(ptr %t26, ptr %t21, i64 %t23)
-  %t27 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.22, i32 0, i32 0
-  store ptr %t26, ptr %t27
-  %t28 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.22, i32 0, i32 1
-  store i64 %t23, ptr %t28
-  %t29 = load { ptr, i64 }, ptr %v.cast.22
-  store { ptr, i64 } %t29, ptr %v.text
-  %t30 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
-  %t31 = load ptr, ptr %t30
-  %t32 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 1
-  %t33 = load i64, ptr %t32
-  call void @willrt_write_stdout(ptr %t31, i64 %t33)
+  %t24 = call ptr @willrt_alloc(i64 %t21)
+  call void @memcpy(ptr %t24, ptr %t19, i64 %t21)
+  %t25 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.22, i32 0, i32 0
+  store ptr %t24, ptr %t25
+  %t26 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.22, i32 0, i32 1
+  store i64 %t21, ptr %t26
+  %t27 = load { ptr, i64 }, ptr %v.cast.22
+  store { ptr, i64 } %t27, ptr %v.text
+  %t28 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
+  %t29 = load ptr, ptr %t28
+  %t30 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 1
+  %t31 = load i64, ptr %t30
+  call void @willrt_write_stdout(ptr %t29, i64 %t31)
+  %t32 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 0
+  store ptr @.bytes.1, ptr %t32
+  %t33 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 1
+  store i64 1, ptr %t33
   %t34 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 0
-  store ptr @.bytes.1, ptr %t34
-  %t35 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 1
-  store i64 1, ptr %t35
-  %t36 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 0
-  %t37 = load ptr, ptr %t36
-  %t38 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 1
+  %t35 = load ptr, ptr %t34
+  %t36 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 1
+  %t37 = load i64, ptr %t36
+  call void @willrt_write_stdout(ptr %t35, i64 %t37)
+  %t38 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 1
   %t39 = load i64, ptr %t38
-  call void @willrt_write_stdout(ptr %t37, i64 %t39)
-  %t40 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 1
-  %t41 = load i64, ptr %t40
-  %t42 = icmp ugt i64 %t41, 2147483647
-  br i1 %t42, label %panic.4, label %panic.ok.4
+  %t40 = icmp ugt i64 %t39, 2147483647
+  br i1 %t40, label %panic.4, label %panic.ok.4
 panic.4:
   call void @willrt_panic(ptr @.str.7, ptr @.str.8, ptr @.str.2)
   unreachable
 panic.ok.4:
-  %t43 = trunc i64 %t41 to i32
-  ret i32 %t43
+  %t41 = trunc i64 %t39 to i32
+  %t42 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
+  %t43 = load ptr, ptr %t42
+  call void @willrt_free_str(ptr %t43)
+  %t44 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
+  %t45 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
+  %t46 = load ptr, ptr %t44
+  %t47 = load i64, ptr %t45
+  %t48 = alloca i64
+  store i64 0, ptr %t48
+  br label %deep.rel.arr.cond.5
+deep.rel.arr.cond.5:
+  %t49 = load i64, ptr %t48
+  %t50 = icmp ult i64 %t49, %t47
+  br i1 %t50, label %deep.rel.arr.body.5, label %deep.rel.arr.done.5
+deep.rel.arr.body.5:
+  %t51 = getelementptr inbounds i8, ptr %t46, i64 %t49
+  %t52 = add i64 %t49, 1
+  store i64 %t52, ptr %t48
+  br label %deep.rel.arr.cond.5
+deep.rel.arr.done.5:
+  call void @willrt_free(ptr %t46)
+  ret i32 %t41
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -106,6 +127,7 @@ declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare ptr @willrt_alloc(i64)
 declare void @willrt_free(ptr)
+declare void @willrt_free_str(ptr)
 declare void @memcpy(ptr, ptr, i64)
 declare void @willrt_write_stdout(ptr, i64)
 declare void @willrt_print_i64(i64)

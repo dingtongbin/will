@@ -1,0 +1,55 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_sink
+    bench_step
+}
+
+# calls is the number of calls one measurement makes.
+const calls: i32 = 10000000
+
+# Empty is a function of the same module. A call to it is inlined, so it
+# shows the cost of the loop alone.
+def empty(value: i64) -> i64 {
+    return value
+}
+
+def main() -> i32 {
+    var sink: u64 = 0u64
+    var clockSink: u64 = 0u64
+    var acc: i64 = 0i64
+
+    # The clock call on its own. It is the resolution the other two
+    # measurements are read with.
+    var t0: u64 = c.bench_now_ns()
+    for i in Range(0, calls) {
+        _ = i
+        clockSink = c.bench_now_ns()
+    }
+    var t1: u64 = c.bench_now_ns()
+    _ = clockSink
+
+    # A call into a C function.
+    var t2: u64 = c.bench_now_ns()
+    for i in Range(0, calls) {
+        _ = i
+        sink = c.bench_step(sink)
+    }
+    var t3: u64 = c.bench_now_ns()
+
+    # A call into a function of the same module.
+    var t4: u64 = c.bench_now_ns()
+    for i in Range(0, calls) {
+        _ = i
+        acc = empty(acc)
+    }
+    var t5: u64 = c.bench_now_ns()
+
+    print("bench metric clock_call_ns ", u64((t1 - t0) / u64(calls)), " ns\n")
+    print("bench metric c_call_ns ", u64((t3 - t2) / u64(calls)), " ns\n")
+    print("bench metric inlined_call_ns ", u64((t5 - t4) / u64(calls)), " ns\n")
+    print("bench metric calls ", u64(calls), " calls\n")
+    print("bench check calls_made ", sink, "\n")
+    print("bench check acc ", u64(acc), "\n")
+    print("bench checksum ", sink + u64(acc), "\n")
+    return 0
+}

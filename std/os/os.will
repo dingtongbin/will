@@ -1,0 +1,90 @@
+# Process state and environment. The host shim fills will str and view
+# headers; the public API keeps the ownership and error rules in will.
+import "std/errors"
+
+import c "os.c" {
+    fast willrt_os_args
+    fast willrt_os_getenv
+    fast willrt_os_environ
+    fast willrt_os_setenv
+    fast willrt_os_cwd
+    fast willrt_os_chdir
+    fast willrt_os_exit
+}
+
+# Args returns the process arguments for the lifetime of the process. The
+# returned view is borrowed; callers must not free it.
+def args() -> []str {
+    var out: []str
+    _ = c.willrt_os_args(raw(out))
+    return out
+}
+
+# Getenv reads one environment variable. A missing value and a value that is
+# not valid UTF-8 both become None.
+def getenv(name: str) -> Option<str> {
+    var value: str = ""
+    var found: i32 = c.willrt_os_getenv(raw(name), raw(value))
+    if found != 1 {
+        return None
+    }
+    return Some(value)
+}
+
+# Setenv sets one environment variable and replaces an existing value.
+def setenv(name: str, value: str) -> Result<(), Error> {
+    var status: i32 = c.willrt_os_setenv(raw(name), raw(value))
+    if status == -2 {
+        return Err(errors.Invalid)
+    }
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# Environ returns every environment entry whose key and value are valid UTF-8.
+def environ() -> Map<str, str> {
+    var out: Map<str, str> = new Map<str, str>(0)
+    var pairs: []str
+    var status: i32 = c.willrt_os_environ(raw(pairs))
+    if status != 0 {
+        return out
+    }
+    var key: str = ""
+    var haveKey: bool = False
+    for part in pairs {
+        if haveKey {
+            out.set(key, part)
+            haveKey = False
+        } else {
+            key = part
+            haveKey = True
+        }
+    }
+    return out
+}
+
+# Cwd returns the current working directory.
+def cwd() -> Result<str, Error> {
+    var path: str = ""
+    var status: i32 = c.willrt_os_cwd(raw(path))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(path)
+}
+
+# Chdir changes the current working directory.
+def chdir(path: str) -> Result<(), Error> {
+    var status: i32 = c.willrt_os_chdir(raw(path))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# Exit ends the process and does not return.
+def exit(code: i32) {
+    c.willrt_os_exit(code)
+}

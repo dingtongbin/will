@@ -1,4 +1,6 @@
-define hidden { i32, i32 } @"example.com/adt.Find"(i32 %x) inlinehint {
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
+define hidden { i32, i32 } @"example.com/adt.find"(i32 %x) inlinehint {
 entry:
   %v.adt.14 = alloca { i32, i32 }
   %v.adt.18 = alloca { i32, i32 }
@@ -17,11 +19,11 @@ if.end.1:
   %t6 = load { i32, i32 }, ptr %v.adt.18
   ret { i32, i32 } %t6
 }
-define hidden i32 @"example.com/adt.UseOpt"(i32 %x) inlinehint {
+define hidden i32 @"example.com/adt.use_opt"(i32 %x) inlinehint {
 entry:
   %v.ret.26 = alloca { i32, i32 }
   %v.match.25 = alloca i32
-  %t7 = call { i32, i32 } @"example.com/adt.Find"(i32 %x)
+  %t7 = call { i32, i32 } @"example.com/adt.find"(i32 %x)
   store { i32, i32 } %t7, ptr %v.ret.26
   %t8 = getelementptr inbounds { i32, i32 }, ptr %v.ret.26, i32 0, i32 0
   %t9 = load i32, ptr %t8
@@ -46,7 +48,7 @@ match.end.1:
   %t16 = load i32, ptr %v.match.25
   ret i32 %t16
 }
-define hidden { i32, i32 } @"example.com/adt.Divide"(i32 %x) inlinehint {
+define hidden { i32, i32 } @"example.com/adt.divide"(i32 %x) inlinehint {
 entry:
   %v.adt.50 = alloca { i32, i32 }
   %v.adt.54 = alloca { i32, i32 }
@@ -82,13 +84,13 @@ panic.ok.3:
   %t28 = load { i32, i32 }, ptr %v.adt.54
   ret { i32, i32 } %t28
 }
-define hidden { i32, i32 } @"example.com/adt.UseRes"(i32 %x) inlinehint {
+define hidden { i32, i32 } @"example.com/adt.use_res"(i32 %x) inlinehint {
 entry:
   %v.v = alloca i32
   %v.ret.69 = alloca { i32, i32 }
   %v.adt.72 = alloca { i32, i32 }
   %v.try.68 = alloca { i32, i32 }
-  %t29 = call { i32, i32 } @"example.com/adt.Divide"(i32 %x)
+  %t29 = call { i32, i32 } @"example.com/adt.divide"(i32 %x)
   store { i32, i32 } %t29, ptr %v.ret.69
   %t30 = getelementptr inbounds { i32, i32 }, ptr %v.ret.69, i32 0, i32 0
   %t31 = load i32, ptr %t30
@@ -106,68 +108,74 @@ try.err.1:
   unreachable
 try.ok.1:
   %t38 = getelementptr inbounds { i32, i32 }, ptr %v.ret.69, i32 0, i32 1
+  %v.try.out.68 = alloca i32
+  store i32 0, ptr %v.try.out.68
   %t39 = load i32, ptr %t38
-  store i32 %t39, ptr %v.v
-  %t40 = getelementptr inbounds { i32, i32 }, ptr %v.adt.72, i32 0, i32 0
-  store i32 0, ptr %t40
-  %t41 = getelementptr inbounds { i32, i32 }, ptr %v.adt.72, i32 0, i32 1
-  %t42 = load i32, ptr %v.v
-  %t43 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t42, i32 1)
-  %t44 = extractvalue {i32, i1} %t43, 0
-  %t45 = extractvalue {i32, i1} %t43, 1
-  br i1 %t45, label %panic.2, label %panic.ok.2
+  store i32 %t39, ptr %v.try.out.68
+  %t40 = load i32, ptr %v.try.out.68
+  store i32 0, ptr %v.try.out.68
+  store i32 %t40, ptr %v.v
+  store i32 0, ptr %v.try.out.68
+  %t41 = getelementptr inbounds { i32, i32 }, ptr %v.adt.72, i32 0, i32 0
+  store i32 0, ptr %t41
+  %t42 = getelementptr inbounds { i32, i32 }, ptr %v.adt.72, i32 0, i32 1
+  %t43 = load i32, ptr %v.v
+  %t44 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t43, i32 1)
+  %t45 = extractvalue {i32, i1} %t44, 0
+  %t46 = extractvalue {i32, i1} %t44, 1
+  br i1 %t46, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.3, ptr @.str.4, ptr @.str.5)
   unreachable
 panic.ok.2:
-  store i32 %t44, ptr %t41
-  %t46 = load { i32, i32 }, ptr %v.adt.72
-  ret { i32, i32 } %t46
+  store i32 %t45, ptr %t42
+  %t47 = load { i32, i32 }, ptr %v.adt.72
+  ret { i32, i32 } %t47
 }
-define hidden i32 @"example.com/adt.Pick"(ptr %r) alwaysinline {
+define hidden i32 @"example.com/adt.pick"(ptr %r) alwaysinline {
 entry:
   %v.match.85 = alloca i32
-  %t47 = getelementptr inbounds { i32, i32 }, ptr %r, i32 0, i32 0
-  %t48 = load i32, ptr %t47
-  %t49 = icmp eq i32 %t48, 0
-  br i1 %t49, label %match.arm.1.0, label %match.next.1.0
+  %t48 = getelementptr inbounds { i32, i32 }, ptr %r, i32 0, i32 0
+  %t49 = load i32, ptr %t48
+  %t50 = icmp eq i32 %t49, 0
+  br i1 %t50, label %match.arm.1.0, label %match.next.1.0
 match.arm.1.0:
-  %t50 = getelementptr inbounds { i32, i32 }, ptr %r, i32 0, i32 1
-  %t51 = load i32, ptr %t50
-  store i32 %t51, ptr %v.match.85
+  %t51 = getelementptr inbounds { i32, i32 }, ptr %r, i32 0, i32 1
+  %t52 = load i32, ptr %t51
+  store i32 %t52, ptr %v.match.85
   br label %match.end.1
 match.next.1.0:
-  %t52 = getelementptr inbounds { i32, i32 }, ptr %r, i32 0, i32 0
-  %t53 = load i32, ptr %t52
-  %t54 = icmp eq i32 %t53, 1
-  br i1 %t54, label %match.arm.1.1, label %match.next.1.1
+  %t53 = getelementptr inbounds { i32, i32 }, ptr %r, i32 0, i32 0
+  %t54 = load i32, ptr %t53
+  %t55 = icmp eq i32 %t54, 1
+  br i1 %t55, label %match.arm.1.1, label %match.next.1.1
 match.arm.1.1:
-  %t55 = getelementptr inbounds { i32, i32 }, ptr %r, i32 0, i32 1
-  %t56 = load i32, ptr %t55
-  store i32 %t56, ptr %v.match.85
+  %t56 = getelementptr inbounds { i32, i32 }, ptr %r, i32 0, i32 1
+  %t57 = load i32, ptr %t56
+  store i32 %t57, ptr %v.match.85
   br label %match.end.1
 match.next.1.1:
   unreachable
 match.end.1:
-  %t57 = load i32, ptr %v.match.85
-  ret i32 %t57
+  %t58 = load i32, ptr %v.match.85
+  ret i32 %t58
 }
 define i32 @"example.com/adt.will$main"() {
 entry:
   %v.ret.105 = alloca { i32, i32 }
-  %t58 = call i32 @"example.com/adt.UseOpt"(i32 3)
-  %t59 = call { i32, i32 } @"example.com/adt.UseRes"(i32 4)
-  store { i32, i32 } %t59, ptr %v.ret.105
-  %t60 = call i32 @"example.com/adt.Pick"(ptr %v.ret.105)
-  %t61 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t58, i32 %t60)
-  %t62 = extractvalue {i32, i1} %t61, 0
-  %t63 = extractvalue {i32, i1} %t61, 1
-  br i1 %t63, label %panic.1, label %panic.ok.1
+  %t59 = call i32 @"example.com/adt.use_opt"(i32 3)
+  %t60 = call { i32, i32 } @"example.com/adt.use_res"(i32 4)
+  store { i32, i32 } %t60, ptr %v.ret.105
+  %t61 = call i32 @"example.com/adt.pick"(ptr %v.ret.105)
+  %t62 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t59, i32 %t61)
+  %t63 = extractvalue {i32, i1} %t62, 0
+  %t64 = extractvalue {i32, i1} %t62, 1
+  br i1 %t64, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.3, ptr @.str.6, ptr @.str.7)
   unreachable
 panic.ok.1:
-  ret i32 %t62
+  ret i32 %t63
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -180,10 +188,10 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"division by zero\00", align 1
 @.str.1 = private unnamed_addr constant [16 x i8] c"main.will:19:15\00", align 1
-@.str.2 = private unnamed_addr constant [23 x i8] c"example.com/adt.Divide\00", align 1
+@.str.2 = private unnamed_addr constant [23 x i8] c"example.com/adt.divide\00", align 1
 @.str.3 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.4 = private unnamed_addr constant [16 x i8] c"main.will:24:15\00", align 1
-@.str.5 = private unnamed_addr constant [23 x i8] c"example.com/adt.UseRes\00", align 1
+@.str.5 = private unnamed_addr constant [24 x i8] c"example.com/adt.use_res\00", align 1
 @.str.6 = private unnamed_addr constant [16 x i8] c"main.will:35:12\00", align 1
 @.str.7 = private unnamed_addr constant [26 x i8] c"example.com/adt.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)

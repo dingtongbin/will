@@ -8,6 +8,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "willrt_gc.h"
+
 /* Status values for willrt_ functions that report int32_t. Negative values
    mean the operation did not complete, except WILLRT_SUSPEND, which means the
    caller is expected to try again after the task runs. */
@@ -32,6 +34,33 @@ void* willrt_os_alloc_pages(size_t size);
    the value passed to that call. NULL is accepted. */
 void willrt_os_free_pages(void* ptr, size_t size);
 
+/* willrt_os_reserve_pages reserves a page-aligned address range without
+   committing it. willrt_os_commit_pages makes a page-aligned subrange
+   readable and writable; it returns 0 on success and -1 on failure.
+   willrt_os_release_pages releases a whole reservation. */
+void* willrt_os_reserve_pages(size_t size);
+int32_t willrt_os_commit_pages(void* ptr, size_t size);
+void willrt_os_release_pages(void* ptr, size_t size);
+
+/* willrt_os_page_size returns the target's page size, never below 4096. */
+size_t willrt_os_page_size(void);
+
+/* willrt_os_gc_views maps the same size-byte backing store at four addresses
+   separated by stride. base is the view-0 address and must have the color bits
+   clear; view k is base + k*stride. The caller passes a stride large enough for
+   one heap and aligned to the color range. Opening fails instead of falling
+   back to one view. */
+typedef struct willrt_os_gc_views {
+    void* base;
+    size_t size;
+    size_t stride;
+    _Alignas(16) unsigned char state[128];
+} willrt_os_gc_views;
+
+int32_t willrt_os_gc_views_open(willrt_os_gc_views* views, size_t size,
+                                size_t stride);
+void willrt_os_gc_views_close(willrt_os_gc_views* views);
+
 /* willrt_os_now_ns returns the platform's monotonic clock in nanoseconds. It
    never goes backwards. Zero is returned when the platform call fails. */
 int64_t willrt_os_now_ns(void);
@@ -39,14 +68,6 @@ int64_t willrt_os_now_ns(void);
 /* willrt_os_cpu_count returns the number of processors available to the
    process, or 1 when the platform cannot report a positive count. */
 int32_t willrt_os_cpu_count(void);
-
-/* willrt_os_random_bytes fills out with size bytes from the platform's
-   cryptographically secure source. It returns 0 on success and -1 when the
-   source is unavailable; a partial fill is never reported as success. */
-int32_t willrt_os_random_bytes(void* out, size_t size);
-
-/* willrt_random_bytes is the core-facing form of the platform random source. */
-int32_t willrt_random_bytes(void* out, size_t size);
 
 /* Platform threads, locks, and waits. The storage is opaque to the scheduler;
    the platform implementation casts it to its own handle. A timeout below zero
@@ -90,8 +111,8 @@ void willrt_os_cond_broadcast(willrt_os_cond* cond);
    a native primitive may poll; the comment in that platform file says so. */
 int32_t willrt_os_wait_on_address(void* addr, uint32_t expected, int64_t timeout_ns);
 void willrt_os_wake_address(void* addr, int32_t count);
-/* willrt_os_thread_exit ends the calling thread without returning. The task
-   engine uses it to contain a panic at the task boundary. */
+/* willrt_os_thread_exit ends the calling thread without returning. It is a
+   platform primitive; the task engine does not use it to contain a panic. */
 void willrt_os_thread_exit(void);
 
 /* willrt_alloc returns a block aligned for any type, or NULL on failure. A
@@ -103,6 +124,30 @@ void* willrt_alloc(size_t size);
    that willrt_alloc did not return is rejected with one line on standard
    error, and its memory is left alone. */
 void willrt_free(void* ptr);
+
+/* willrt_free_str releases a heap-backed str. A str literal points into the
+   object file's read-only data, so a pointer outside the arena is ignored;
+   passing it to willrt_free would report a false error for every literal. */
+void willrt_free_str(void* ptr);
+
+/* A closure environment starts with share and drop callbacks and an atomic
+   reference count; the captured fields follow. retain/release may run on a
+   lane other than the one that built the closure. */
+void* willrt_closure_new(size_t bytes, void (*drop)(void*),
+                         void (*share)(void*));
+void willrt_closure_retain(void* env);
+void willrt_closure_release(void* env);
+/* willrt_closure_share promotes every rc handle captured by the environment.
+   A null environment or a closure without captures does nothing. */
+void willrt_closure_share(void* env);
+
+/* willrt_alloc_count reports how many allocations were counted. Counting is
+   off unless WILLRT_COUNT_ALLOC=1 was set before the first allocation; the
+   zero-allocation acceptance runs use it. */
+int64_t willrt_alloc_count(void);
+/* willrt_alloc_live reports how many counted blocks are outstanding. It moves
+   only while counting is on, and a recycling path reaches a steady value. */
+int64_t willrt_alloc_live(void);
 
 /* willrt_mem_set_shared tells the allocator that a second thread may now
    allocate or free. Until this is called the lane locks are skipped, which is
@@ -200,10 +245,11 @@ int64_t willrt_now_ns(void);
 /* -------------------------------------------------------------------------
    Poller and blocking pool.
 
-   A poller registration names one descriptor, the events it waits for, and one
-   callback. The poller calls the callback with the ready subset; the callback
-   may add or delete registrations. Windows accepts sockets only, because
-   WSAPoll has no file-handle form; POSIX accepts any pollable descriptor.
+   A poll request carries the descriptor array, the event masks, and the caller's
+   user tags for one readiness scan. The task parks with the request; the poller
+   waits for the whole batch and appends the ready tags into the caller's out
+   array before waking the task. Windows accepts sockets only, because WSAPoll
+   has no file-handle form; POSIX accepts any pollable descriptor.
    ------------------------------------------------------------------------- */
 
 enum {
@@ -212,16 +258,157 @@ enum {
     WILLRT_POLL_ERR = 4
 };
 
-/* willrt_poll_fn is called on the poller thread. It must not block for long;
-   a task wake or a short handoff belongs here, a request handler does not. */
-typedef void (*willrt_poll_fn)(int64_t fd, uint32_t events, void* arg);
-
-/* willrt_poll_init starts the poller once. willrt_poll_add calls it lazily;
-   willrt_shutdown calls willrt_poll_shutdown after all tasks have joined. */
+/* willrt_poll_init starts the poller once; willrt_shutdown calls
+   willrt_poll_shutdown after all tasks have joined. */
 void willrt_poll_init(void);
 void willrt_poll_shutdown(void);
-int32_t willrt_poll_add(int64_t fd, uint32_t events, void* cb, void* arg);
-int32_t willrt_poll_del(int64_t fd);
+
+/* willrt_poll_request is the task-embedded wait for one readiness scan. The
+   task parks with the request linked into the poller's pending list; the
+   poller copies the descriptor set into its own buffer, waits once for the
+   whole batch, and appends ready tags straight into the waiting task's out
+   array. state moves under the poller lock: PENDING is delivered as DONE by
+   the poller or retired as DONE by this task when the deadline passed. gen
+   guards a reused node against a snapshot taken before the reuse. The struct
+   is complete here because the task owns one by value. */
+enum {
+    WILLRT_POLL_REQUEST_IDLE = 0,
+    WILLRT_POLL_REQUEST_PENDING = 1,
+    WILLRT_POLL_REQUEST_DONE = 2
+};
+
+typedef struct willrt_poll_request willrt_poll_request;
+
+struct willrt_poll_request {
+    int32_t state;
+    int32_t linked;
+    int32_t status;
+    int64_t deadline;
+    uint64_t gen;
+    const void* fds;
+    const void* events;
+    const void* users;
+    int64_t count;
+    void* out;
+    struct willrt_poll_request* next;
+    void* waiter;
+};
+
+/* willrt_poll_wait performs one blocking readiness scan over parallel arrays of
+   descriptors, event masks, and user tags, and appends the ready tags into out
+   in input order. It is the synchronous spelling of a scan; the descriptor set
+   belongs to the caller, so the cost is one pass over it per call. */
+int32_t willrt_poll_wait(const void* fds, const void* events, const void* users,
+                         int64_t count, int64_t timeout_ns, void* out);
+
+/* willrt_poll_wait_async is the machine-declined fallback: one synchronous
+   readiness scan that blocks the calling thread. Generated state machines use
+   the start/poll/finish trio below instead. */
+int32_t willrt_poll_wait_async(const void* fds, const void* events,
+                               const void* users, int64_t count,
+                               int64_t timeout_ns, void* out);
+/* willrt_poll_wait_async_start registers one readiness scan on the current
+   task and returns its embedded request. A caller outside a task runs the
+   scan synchronously on a detached request; a zero timeout does the same. */
+willrt_poll_request* willrt_poll_wait_async_start(const void* fds,
+                                                  const void* events,
+                                                  const void* users,
+                                                  int64_t count,
+                                                  int64_t timeout_ns,
+                                                  void* out);
+/* willrt_poll_wait_async_poll reports 1 when the scan is done and 0 while the
+   task should keep waiting. It retires the request when the request deadline
+   or the enclosing block deadline has passed; the block deadline reports
+   WILLRT_TIMEDOUT through finish. */
+int32_t willrt_poll_wait_async_poll(willrt_poll_request* req);
+/* willrt_poll_wait_async_finish returns the scan status and resets the
+   request to idle. The caller must have observed a finished poll. */
+int32_t willrt_poll_wait_async_finish(willrt_poll_request* req);
+/* willrt_poll_wait_async_deadline returns the absolute deadline the next park
+   should arm, or zero for an unbounded wait. */
+int64_t willrt_poll_wait_async_deadline(willrt_poll_request* req);
+/* willrt_poll_request_abandon retires a still-pending request without
+   delivering. A task that leaves its frame while parked must call it, so the
+   poller stops carrying the descriptors. */
+void willrt_poll_request_abandon(willrt_poll_request* req);
+
+/* -------------------------------------------------------------------------
+   Sync primitives. One primitive serves Mutex and RwLock: exclusive and
+   shared acquisition share one FIFO waiter chain, so a later writer waits
+   behind queued readers instead of barging. Semaphore counts permits, Count
+   waits for a counter to reach zero, and Gate signals one generation flip.
+   Each acquire waits as a state-machine operation whose node embeds in the
+   task, so a contended wait allocates nothing. Cancellation and the scoped
+   deadline unlink the waiter without taking the resource, which keeps the
+   cancel-safety contract: permits, counts, and tokens never change on a
+   canceled wait. Like a channel, the object lives as long as the value that
+   owns it and is not freed.
+   ------------------------------------------------------------------------- */
+
+typedef struct willrt_sync_wait willrt_sync_wait;
+
+struct willrt_sync_wait {
+    int32_t active;
+    int32_t linked;
+    int32_t status;
+    int32_t mode;
+    void* owner;
+    struct willrt_task* task;
+    willrt_sync_wait* prev;
+    willrt_sync_wait* next;
+};
+
+/* Mode of one acquisition: 0 takes the resource exclusively, 1 shares it. */
+#define WILLRT_SYNC_EXCLUSIVE 0
+#define WILLRT_SYNC_SHARED 1
+
+void* willrt_sync_lock_new(void);
+void* willrt_sync_sema_new(int64_t permits);
+void* willrt_sync_count_new(int64_t count);
+void* willrt_sync_gate_new(void);
+/* willrt_sync_unlock releases one held acquisition. A null handle is a no-op,
+   which is how an empty guard releases nothing. */
+void willrt_sync_unlock(void* s, int32_t mode);
+int64_t willrt_sync_sema_release(void* s);
+/* willrt_sync_sema_try_acquire takes one permit without waiting and reports
+   1 when it did. */
+int32_t willrt_sync_sema_try_acquire(void* s);
+/* willrt_sync_count_add moves the counter and wakes every waiter when it
+   reaches zero. A later add that raises the count re-arms future waits. */
+void willrt_sync_count_add(void* s, int64_t delta);
+int64_t willrt_sync_count_load(void* s);
+/* willrt_sync_gate_signal wakes every current and future waiter of this
+   generation; willrt_sync_gate_reset arms the next one. */
+void willrt_sync_gate_signal(void* s);
+void willrt_sync_gate_reset(void* s);
+
+/* willrt_sync_lock_async is the machine-declined fallback: it blocks the
+   calling thread until the acquisition is granted or the caller's deadline
+   passes. Generated state machines use the start form below. */
+int32_t willrt_sync_lock_async(void* s, int32_t mode);
+int32_t willrt_sync_sema_acquire_async(void* s);
+int32_t willrt_sync_count_wait_async(void* s);
+int32_t willrt_sync_gate_wait_async(void* s);
+/* The start forms register the current task's embedded node and return it. A
+   caller outside a task blocks in the start form and returns a granted or
+   timed-out node. */
+willrt_sync_wait* willrt_sync_lock_async_start(void* s, int32_t mode);
+willrt_sync_wait* willrt_sync_sema_acquire_async_start(void* s);
+willrt_sync_wait* willrt_sync_count_wait_async_start(void* s);
+willrt_sync_wait* willrt_sync_gate_wait_async_start(void* s);
+/* poll reports 1 when the wait resolved and 0 while the task should keep
+   waiting. It observes cancellation and the scoped deadline on every re-run
+   and unlinks the node before reporting either. */
+int32_t willrt_sync_wait_poll(willrt_sync_wait* wait);
+/* finish returns the resolved status and resets the node to idle. */
+int32_t willrt_sync_wait_finish(willrt_sync_wait* wait);
+/* deadline returns zero: these waits have no deadline of their own, the
+   enclosing scope governs. */
+int64_t willrt_sync_wait_deadline(willrt_sync_wait* wait);
+/* willrt_sync_wait_abandon unlinks a still-pending node from its primitive. A
+   task that leaves its frame while parked must call it, so a granted
+   acquisition is never handed to a dead task. */
+void willrt_sync_wait_abandon(willrt_sync_wait* wait);
 
 /* willrt_blocking_fn is one job for the blocking pool. It may block; the pool
    owns the thread, and the caller waits for the job's result. out is the same
@@ -231,6 +418,26 @@ typedef int32_t (*willrt_blocking_fn)(void* arg, void* out);
 /* willrt_blocking_call runs one function on a pool thread and waits for it.
    The pool starts lazily and has WILL_BLOCKING_MAX threads (default 128). */
 int32_t willrt_blocking_call(void* fn, void* arg, void* out);
+/* willrt_blocking_submit queues one job and returns a handle. Waiting on the
+   handle parks the current task (or the main thread) until the worker finishes;
+   the handle is released by willrt_blocking_wait. */
+typedef struct willrt_blocking_op willrt_blocking_op;
+willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out);
+/* willrt_blocking_submit_copy copies size bytes of arg into the handle, so a
+   state machine can return to its caller while the worker still reads the
+   arguments. The handle owns the copy. */
+willrt_blocking_op* willrt_blocking_submit_copy(void* fn, const void* arg,
+                                                size_t size, void* out);
+/* willrt_blocking_poll reports 1 when the worker finished and 0 otherwise. It
+   never waits. */
+int32_t willrt_blocking_poll(willrt_blocking_op* op);
+/* willrt_blocking_finish returns the worker status and releases the handle.
+   The caller must have observed a finished poll. */
+int32_t willrt_blocking_finish(willrt_blocking_op* op);
+int32_t willrt_blocking_wait(willrt_blocking_op* op);
+/* willrt_blocking_submitted counts the jobs the pool has accepted. It is the
+   test and diagnostics view of who still leans on the pool. */
+int64_t willrt_blocking_submitted(void);
 void willrt_blocking_shutdown(void);
 
 /* -------------------------------------------------------------------------
@@ -256,14 +463,62 @@ typedef struct willrt_error {
     const char* symbol;
 } willrt_error;
 
+/* willrt_task_error is the copy a joining task keeps in its own frame: the
+   joined task's error with the status that join returned. The message bytes
+   stay owned by the joined task; the region barrier that recycles the joined
+   task joins the joiner first, so no copy is read after the barrier. */
+typedef struct willrt_task_error {
+    willrt_error error;
+    int32_t status;
+} willrt_task_error;
+
 willrt_task* willrt_task_new(void* step, void* frame, size_t size,
                              int32_t lane, int32_t prio);
-/* willrt_job_new queues a task on the global job queue. The caller only uses
-   it from a parallel block; the block body must not suspend. The returned
-   handle is joined like a task handle. */
+/* willrt_task_new_drop is willrt_task_new with a callback that releases the
+   owned values in the frame before the frame itself is freed. */
+willrt_task* willrt_task_new_drop(void* step, void* frame, size_t size,
+                                  int32_t lane, int32_t prio,
+                                  void (*frame_drop)(void*));
+/* willrt_task_own_frame marks the frame as allocated on the heap, so the
+   region barrier frees it with the task. A frame that lives anywhere else
+   must not be marked. */
+void willrt_task_own_frame(willrt_task* task);
+/* willrt_job_new queues a task on the current or least-loaded non-reserved
+   lane. The caller only uses it from a parallel block; the block body must not
+   suspend. The returned handle is joined like a task handle. */
 willrt_task* willrt_job_new(void* step, void* frame, size_t size,
                             int32_t prio);
+/* willrt_job_new_drop is willrt_job_new with the frame drop callback. */
+willrt_task* willrt_job_new_drop(void* step, void* frame, size_t size,
+                                 int32_t prio, void (*frame_drop)(void*));
+/* willrt_job_pop removes the oldest job from one lane's local queue. The lane
+   worker calls it while it holds that lane's lock, so a concurrent enqueue
+   cannot lose the wake. */
+willrt_task* willrt_job_pop(int32_t lane);
+/* willrt_job_steal removes the oldest job from another non-reserved lane. */
+willrt_task* willrt_job_steal(int32_t lane);
+/* willrt_job_count returns the queued jobs on one lane. Auto placement uses it
+   to keep async tasks off lanes that already have CPU work queued. */
+int32_t willrt_job_count(int32_t lane);
+/* willrt_jobs_pending reports whether any lane still holds a queued job. */
+int32_t willrt_jobs_pending(void);
+/* willrt_jobs_shutdown is the shutdown hook for the job queues. */
+void willrt_jobs_shutdown(void);
+/* willrt_task_mark_job marks a task as a CPU job: it may not suspend and it may
+   move to the lane that runs it. */
+void willrt_task_mark_job(willrt_task* task);
+/* willrt_task_run_job runs one job on the caller thread when no lane could be
+   started. */
+void willrt_task_run_job(willrt_task* task);
+/* willrt_task_job_next and willrt_task_set_job_next expose the intrusive job
+   queue link. Only a job task uses this field. */
+willrt_task* willrt_task_job_next(willrt_task* task);
+void willrt_task_set_job_next(willrt_task* task, willrt_task* next);
 void willrt_task_run(willrt_task* task);
+/* willrt_task_run_auto submits a task through the auto placement batch. The
+   batch is flushed before any wait point and at the end of the submitting
+   task, so a task never waits behind an unsubmitted batch. */
+void willrt_task_run_auto(willrt_task* task);
 int32_t willrt_join(willrt_task* task, void* out, willrt_error* err);
 /* willrt_task_try_join is the step-facing form of a join: it returns
    WILLRT_SUSPEND instead of waiting when the dependency is not finished. */
@@ -276,10 +531,92 @@ int32_t willrt_task_store_result(const void* value, size_t size);
 
 void willrt_region_enter(void);
 int32_t willrt_region_exit(void);
+/* willrt_region_exit_try is the parked region barrier: it returns
+   WILLRT_SUSPEND until every member is joined, then the failure count. */
+int32_t willrt_region_exit_try(void);
 int32_t willrt_lane_here(void);
+/* willrt_lane_choose returns the least-loaded live lane for spawn auto. The
+   score counts live tasks; a lane running a CPU job is penalized. */
+int32_t willrt_lane_choose(void);
+/* willrt_lane_ensure starts the lane pool if needed and returns its size. */
+int32_t willrt_lane_ensure(void);
+/* willrt_lane_is_reserved reports whether a lane is kept for async tasks. */
+int32_t willrt_lane_is_reserved(int32_t lane);
+/* willrt_lane_wake_jobs wakes every non-reserved lane after a job enqueue. */
+void willrt_lane_wake_jobs(void);
+/* willrt_runtime_threaded reports whether any task lane has started. A channel
+   on a single-threaded program can take its uncontended path without a lock. */
+int32_t willrt_runtime_threaded(void);
 void willrt_yield(void);
 int32_t willrt_task_canceled(void);
+void willrt_task_bind_cancel(willrt_task* task, void* flag);
+/* willrt_task_cancel sets the task's cancel bit and wakes a parked wait. */
+void willrt_task_cancel(willrt_task* task);
+/* A step that is not ready marks the current task as waiting before returning
+   WILLRT_SUSPEND. A bare suspend without this mark is retried immediately. */
+void willrt_task_mark_wait(void);
+/* A step that parked on an external operation sets the IO marker; checkdead
+   counts it as pending work instead of reporting a deadlock. */
+void willrt_task_mark_io(void);
 int64_t willrt_task_deadline(void);
+/* willrt_task_sleep_ns sleeps the calling thread. A generated step uses the
+   async spelling and parks its frame instead. */
+void willrt_task_sleep_ns(int64_t ns);
+/* The async sleep handle records one deadline. poll never waits; finish frees
+   the handle and returns zero for a valid sleep. */
+typedef struct willrt_sleep_op willrt_sleep_op;
+int32_t willrt_task_sleep_async(int64_t ns);
+willrt_sleep_op* willrt_task_sleep_async_start(int64_t ns);
+int32_t willrt_task_sleep_poll(willrt_sleep_op* op);
+int32_t willrt_task_sleep_finish(willrt_sleep_op* op);
+int64_t willrt_task_sleep_deadline(willrt_sleep_op* op);
+/* willrt_task_wait_until names the deadline of the next park. The scheduler
+   arms its timer and clears the field after the park. */
+void willrt_task_wait_until(int64_t deadline);
+/* willrt_sched_wake_io wakes the parked tasks that marked themselves as
+   waiting on an external operation. It exists for a completer that holds no
+   task handle; a dependency that knows its waiter wakes it directly. */
+void willrt_sched_wake_io(void);
+/* Wake every parked task. Cancellation uses this because a credential can be
+   observed by a waiter parked on anything. */
+void willrt_sched_wake_all(void);
+
+/* -------------------------------------------------------------------------
+   Async file IO. An operation is one whole-file read, overwrite, or append.
+   Start copies the path and the write bytes, submits the OS call, and returns
+   a handle the generated step polls. The buffer of a successful read becomes
+   the data of the caller's Array<u8>; every other buffer belongs to the
+   operation and is released by finish. poll never blocks. A task that is
+   canceled or past its scoped deadline leaves the kernel completion to retire
+   the operation, so the frame can unwind without waiting for the disk.
+   ------------------------------------------------------------------------- */
+typedef struct willrt_io_op willrt_io_op;
+willrt_io_op* willrt_io_read_file(const void* path, int64_t path_len,
+                                  void* out_array);
+willrt_io_op* willrt_io_write_file(const void* path, int64_t path_len,
+                                   const void* data, int64_t len,
+                                   int32_t append);
+int32_t willrt_io_poll(willrt_io_op* op);
+int32_t willrt_io_finish(willrt_io_op* op);
+int64_t willrt_io_deadline(willrt_io_op* op);
+/* willrt_io_wait runs the blocking form for a caller outside the task engine
+   and releases the operation. */
+int32_t willrt_io_wait(willrt_io_op* op);
+/* willrt_io_abandon detaches the task from an operation that is still in
+   flight; the completion thread then owns the operation and frees it. */
+void willrt_io_abandon(void* op);
+void willrt_io_shutdown(void);
+/* The generated step records the one operation of the current task so a task
+   that finishes while the disk is busy abandons it instead of leaving the
+   completion to wake a dead frame. */
+void willrt_task_set_io(void* op);
+void willrt_task_clear_io(void* op);
+
+/* willrt_task_enter_deadline starts one scoped deadline and returns the
+   previous absolute deadline. willrt_task_exit_deadline restores it. A zero
+   duration means the block has no deadline. */
+int64_t willrt_task_enter_deadline(int64_t duration_ns);
+void willrt_task_exit_deadline(int64_t previous);
 void willrt_activity(int32_t delta);
 
 /* -------------------------------------------------------------------------
@@ -289,12 +626,59 @@ void willrt_activity(int32_t delta);
    ------------------------------------------------------------------------- */
 
 typedef struct willrt_chan willrt_chan;
+typedef struct willrt_select_state willrt_select_state;
+
+/* One linked wait. A blocking caller owns a stack node; a task owns its node in
+   the task object. A select points select at its state and keeps one node per
+   arm. value points at storage that stays alive until the node completes. */
+typedef struct willrt_chan_wait {
+    struct willrt_chan_wait* next;
+    willrt_os_mutex wait_lock;
+    willrt_os_cond cond;
+    willrt_select_state* select;
+    willrt_task* task;
+    size_t arm;
+    int32_t linked;
+    int32_t ready;
+    int32_t status;
+    int32_t kind;
+    void* out;
+    const void* value;
+} willrt_chan_wait;
 
 willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio);
+/* willrt_chan_new_drop installs the callback that releases one buffered
+   element when the last channel handle is released. */
+willrt_chan* willrt_chan_new_drop(size_t elem, size_t cap, int32_t prio,
+                                  void (*drop)(void*));
+/* Channel handles are reference counted. */
+void willrt_chan_retain(willrt_chan* chan);
+void willrt_chan_release(willrt_chan* chan);
 int32_t willrt_chan_send(willrt_chan* chan, const void* value);
 int32_t willrt_chan_try_send(willrt_chan* chan, const void* value);
 int32_t willrt_chan_recv(willrt_chan* chan, void* out);
 int32_t willrt_chan_try_recv(willrt_chan* chan, void* out);
+/* willrt_chan_recv_wait registers the current task on recvq and returns
+   WILLRT_SUSPEND; a matching send writes the task's out slot directly. On a
+   resume it returns the completed status, or CANCELED/TIMEDOUT after it
+   unlinks the node. */
+int32_t willrt_chan_recv_wait(willrt_chan* chan, void* out);
+/* willrt_chan_send_wait is the send-side counterpart. It completes directly
+   into a waiting receiver or into the ring when there is room, and otherwise
+   registers the current task on sendq. */
+int32_t willrt_chan_send_wait(willrt_chan* chan, const void* value);
+willrt_chan_wait* willrt_task_chan_wait_node(void);
+/* willrt_task_poll_node returns the current task's embedded poll request, or
+   NULL outside a task. The poller API stores the waiter in it. */
+willrt_poll_request* willrt_task_poll_node(void);
+/* willrt_task_sync_node returns the current task's embedded sync wait node,
+   or NULL outside a task. The sync primitives park through it. */
+willrt_sync_wait* willrt_task_sync_node(void);
+void willrt_task_wake_chan(willrt_task* task);
+/* willrt_task_wake_batch moves parked tasks to their lanes' ready queues,
+   locking each lane once for the whole batch. The poller delivers one pass of
+   ready tasks through it. */
+void willrt_task_wake_batch(void* const* tasks, int64_t count);
 void willrt_chan_close(willrt_chan* chan);
 
 /* One select arm. kind 0 receives into out, 1 sends value, 2 waits until ns,
@@ -309,23 +693,70 @@ typedef struct willrt_arm {
 
 int32_t willrt_select(willrt_arm* arms, size_t n);
 
+/* A compiler-generated select step builds the arms in its frame, starts one
+   context, and polls it after each wake. poll returns the arm index or
+   WILLRT_SUSPEND; finish unlinks the remaining waits and releases the context. */
+typedef struct willrt_select_ctx willrt_select_ctx;
+willrt_select_ctx* willrt_select_start(willrt_arm* arms, size_t n);
+int32_t willrt_select_poll(willrt_select_ctx* ctx);
+void willrt_select_finish(willrt_select_ctx* ctx);
+
 /* willrt_select_status reports the runtime status of the arm the last select on
    this thread chose. It is WILLRT_OK for a successful receive or send and
    WILLRT_CLOSED when a receive selected a closed channel. */
 int32_t willrt_select_status(void);
+/* The compiler's no-wait default path records the chosen arm status before it
+   dispatches the body. */
+void willrt_select_set_status(int32_t status);
 
-/* willrt_timer is a one-shot timer. The node is owned by the runtime. */
-typedef struct willrt_timer willrt_timer;
+/* willrt_timer is a one-shot timer node. The wheel owns heap nodes from
+   willrt_timer_new; willrt_timer_arm_try reuses caller storage instead, so a
+   task parks through a small ring of slots and never allocates. A slot
+   returns to WILLRT_TIMER_IDLE once the wheel has fully released it. */
+typedef struct willrt_timer {
+    int64_t deadline;
+    uint64_t seq;
+    void* fn;
+    void* arg;
+    struct willrt_timer* prev;
+    struct willrt_timer* next;
+    struct willrt_timer* retire_next;
+    _Atomic(uint32_t) state;
+    int slot;
+    int owned;
+} willrt_timer;
 
-/* willrt_timer_new inserts a timer for the absolute monotonic deadline
-   deadline_ns. fn is a void (*)(void*) that runs with arg after the deadline
-   passes. Insertion is O(1) and returns NULL when node allocation fails. */
+enum {
+    WILLRT_TIMER_IDLE = 0,
+    WILLRT_TIMER_ARMED = 1,
+    WILLRT_TIMER_DUE = 2,
+    WILLRT_TIMER_FIRED = 3,
+    WILLRT_TIMER_CANCELLED = 4
+};
+
+/* willrt_timer_new inserts one heap-owned timer for the absolute monotonic
+   deadline deadline_ns. fn is a void (*)(void*) that runs with arg after the
+   deadline passes. Insertion is O(1) and returns NULL when node allocation
+   fails. */
 willrt_timer* willrt_timer_new(int64_t deadline_ns, void* fn, void* arg);
+
+/* willrt_timer_arm_try arms caller storage (zero-initialized willrt_timer
+   state). It returns 0 when the storage is armed and -1 when the wheel still
+   owns it from an earlier fire; the caller tries another storage. A task
+   parks through a small ring of these and never allocates. */
+int32_t willrt_timer_arm_try(willrt_timer* storage, int64_t deadline_ns,
+                             void* fn, void* arg);
 
 /* willrt_timer_cancel removes an armed timer in O(1). NULL and a timer that
    already fired are harmless. A cancelled or fired node stays valid until the
    next advance reclaims it; callers must not use the pointer after that. */
 void willrt_timer_cancel(willrt_timer* timer);
+/* willrt_timer_pending reports how many timers are armed right now. Deadlock
+   detection reads it: a wait that a timer will end is not a deadlock. */
+int32_t willrt_timer_pending(void);
+/* willrt_timer_shutdown stops the timer run loop after all task deadlines have
+   been observed. */
+void willrt_timer_shutdown(void);
 
 /* The compiler's entry wrapper calls willrt_init once, before the program
    entry, and willrt_shutdown once after it returns. Both are safe to call more
@@ -334,18 +765,23 @@ void willrt_init(void);
 void willrt_shutdown(void);
 
 /* willrt_panic writes "panic: <message>" and, when site is nonempty, one
-   "  at <site> <symbol>" line, then terminates the process with exit code 101.
-   Task containment is not implemented yet, so every panic ends the process.
+   "  at <site> <symbol>" line. Inside a task it fails that task and returns to
+   the lane's step boundary; outside a task it exits the process with 101.
    site and symbol are static strings supplied by the compiler. */
 void willrt_panic(const char* message, const char* site, const char* symbol);
 
 /* willrt_panic_n is willrt_panic for a message that is bytes and a length, so
-   a will str does not have to be copied or terminated. Task containment is not
-   implemented yet, so it also ends the process. */
+   a will str does not have to be copied or terminated. */
 void willrt_panic_n(const char* message, size_t size, const char* site, const char* symbol);
 
 /* willrt_report_write_n writes bytes that need not be NUL-terminated. */
 void willrt_report_write_n(const char* text, size_t size);
+
+/* TaskError reads the failure text and status from the willrt_task_error copy
+   the joining task keeps in its own frame. */
+void willrt_task_error_message(void* copy, const char** data, size_t* size);
+int32_t willrt_task_error_status(void* copy);
+
 
 /* print writes its parts to standard output without buffering. A str part is
    bytes and a length; the scalar parts are formatted by the runtime. */
@@ -355,6 +791,21 @@ void willrt_print_u64(uint64_t value);
 void willrt_print_f64(double value);
 void willrt_print_bool(int32_t value);
 void willrt_print_char(uint32_t value);
+
+/* willrt_str is the two-word will str: the bytes and their length. */
+typedef struct willrt_str {
+    const char* data;
+    int64_t size;
+} willrt_str;
+
+/* The Show thunks format one predeclared value into an owning str. The
+   compiler emits one small thunk per scalar type; these functions do the
+   formatting and write the result through out. */
+void willrt_show_i64(int64_t value, willrt_str* out);
+void willrt_show_u64(uint64_t value, willrt_str* out);
+void willrt_show_f64(double value, willrt_str* out);
+void willrt_show_bool(int32_t value, willrt_str* out);
+void willrt_show_str(const char* data, int64_t size, willrt_str* out);
 
 /* The interpolation helpers measure a formatted scalar and then write it into
    a buffer the caller allocates, so one interpolation allocates once. */

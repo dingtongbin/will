@@ -122,6 +122,16 @@ func (g *generator) emitInit(d *docState) error {
 		info := d.globals[r.ID]
 		child := g.children(r.ID)[0].ID
 		ptr := "@" + llvmSymbol(info.sym)
+		if iface, ok := g.ifaceOfType(info.typ); ok {
+			sourceText, err := g.willTypeText(child)
+			if err != nil {
+				return err
+			}
+			if _, err := g.ifaceStoreValue(ptr, child, iface, sourceText); err != nil {
+				return err
+			}
+			continue
+		}
 		if isAggregateType(info.typ) {
 			src, srcType, err := g.place(child)
 			if err != nil {
@@ -197,7 +207,7 @@ func (g *generator) constValueOf(id int) (string, bool) {
 	case "float":
 		return literalFloatText(fieldText(lit, "text")), true
 	case "bool":
-		return fieldText(lit, "text"), true
+		return literalBoolText(fieldText(lit, "text")), true
 	}
 	return "", false
 }

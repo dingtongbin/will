@@ -29,6 +29,7 @@ import c "stdio.h" {
 const Limit: i32 = 1_000
 var counter: i64 = 0
 
+@derive(Show)
 struct Point {
     x: i32
     y: i32 = 0
@@ -40,28 +41,22 @@ enum Shape {
 }
 
 interface Showable {
-    func Show() -> str
+    def show() -> str
 }
 
-derive Show for Point
-
-lane Ui struct Job {
-    id: u32
-}
-
-func (mut p: Point) Move(dx: i32, dy: i32) {
+def (p: mut Point) move(dx: i32, dy: i32) {
     p.x += dx
     p.y += dy
 }
 
-func Max<T: Ord>(a: T, b: T) -> T {
+def max<T: Ord>(a: T, b: T) -> T {
     if a > b {
         return a
     }
     return b
 }
 
-func Run(n: i32) -> Result<i32, Error> {
+def run(n: i32) -> Result<i32, Error> {
     var total: i32 = 0
     var p: Point = Point { x: 1, y: n }
     var text: str = f"value {n} {{ok}}"
@@ -84,22 +79,19 @@ func Run(n: i32) -> Result<i32, Error> {
         _ => { total = 4 }
     }
     region {
-        var t: Task<i32> = spawn Fetch(n)
-        _ = t.Join()
+        var t: Task<i32> = spawn fetch(n)
+        _ = await t
     }
     select {
-        v = ch.Recv() => { total = v }
+        v = ch.recv() => { total = v }
         timeout 5ms => { total = -1 }
         default => { total = 0 }
     }
-    parallel {
-        total += 1
-    }
     deadline 3ms {
-        Work()
+        work()
     }
     defer Cleanup()
-    func() { Work() }()
+    func() { work() }()
     return Ok(total)
 }
 `
@@ -157,8 +149,8 @@ func TestParseProgram(t *testing.T) {
 	if !f.Imports[2].Links[1].Blocking || f.Imports[2].Links[1].Name != "read" {
 		t.Errorf("second link = %+v", f.Imports[2].Links[1])
 	}
-	if len(f.Decls) != 10 {
-		t.Fatalf("declarations = %d, want 10", len(f.Decls))
+	if len(f.Decls) != 9 {
+		t.Fatalf("declarations = %d, want 9", len(f.Decls))
 	}
 	if _, ok := f.Decls[0].(*ast.ConstDecl); !ok {
 		t.Errorf("decl 0 = %T, want const", f.Decls[0])
@@ -170,28 +162,50 @@ func TestParseProgram(t *testing.T) {
 	if !ok || point.Name != "Point" || len(point.Fields) != 2 || point.Fields[1].Default == nil {
 		t.Fatalf("decl 2 = %+v, want Point with a default", f.Decls[2])
 	}
-	shape, ok := f.Decls[3].(*ast.EnumDecl)
-	if !ok || len(shape.Variants) != 2 || len(shape.Variants[0].Args) != 1 {
-		t.Fatalf("decl 3 = %+v, want Shape", f.Decls[3])
-	}
-	iface, ok := f.Decls[4].(*ast.InterfaceDecl)
-	if !ok || len(iface.Methods) != 1 || iface.Methods[0].Name != "Show" {
-		t.Fatalf("decl 4 = %+v, want Showable", f.Decls[4])
-	}
-	derive, ok := f.Decls[5].(*ast.DeriveDecl)
+	derive, ok := f.Decls[3].(*ast.DeriveDecl)
 	if !ok || derive.Name != "Show" {
-		t.Fatalf("decl 5 = %+v, want derive Show", f.Decls[5])
+		t.Fatalf("decl 3 = %+v, want derive Show", f.Decls[3])
 	}
-	lane, ok := f.Decls[6].(*ast.LaneDecl)
-	if !ok || lane.Name != "Ui" {
-		t.Fatalf("decl 6 = %+v, want lane Ui", f.Decls[6])
+	shape, ok := f.Decls[4].(*ast.EnumDecl)
+	if !ok || len(shape.Variants) != 2 || len(shape.Variants[0].Args) != 1 {
+		t.Fatalf("decl 4 = %+v, want Shape", f.Decls[4])
 	}
-	move, ok := f.Decls[7].(*ast.FuncDecl)
-	if !ok || move.Recv == nil || !move.Recv.Mut || move.Name != "Move" {
-		t.Fatalf("decl 7 = %+v, want method Move", f.Decls[7])
+	iface, ok := f.Decls[5].(*ast.InterfaceDecl)
+	if !ok || len(iface.Methods) != 1 || iface.Methods[0].Name != "show" {
+		t.Fatalf("decl 5 = %+v, want Showable", f.Decls[5])
 	}
-	max, ok := f.Decls[8].(*ast.FuncDecl)
+	move, ok := f.Decls[6].(*ast.FuncDecl)
+	if !ok || move.Recv == nil || !move.Recv.Mut || move.Name != "move" {
+		t.Fatalf("decl 6 = %+v, want method move", f.Decls[6])
+	}
+	max, ok := f.Decls[7].(*ast.FuncDecl)
 	if !ok || len(max.TypeParams) != 1 || len(max.TypeParams[0].Constraints) != 1 {
-		t.Fatalf("decl 8 = %+v, want generic Max", f.Decls[8])
+		t.Fatalf("decl 7 = %+v, want generic Max", f.Decls[7])
+	}
+	if _, ok := f.Decls[8].(*ast.FuncDecl); !ok {
+		t.Fatalf("decl 8 = %+v, want run", f.Decls[8])
+	}
+}
+
+func TestAsyncFunctionAndAwait(t *testing.T) {
+	f := parse(t, "async def load() -> i32 {\n    return await read()?\n}\n")
+	fn, ok := f.Decls[0].(*ast.FuncDecl)
+	if !ok || !fn.Async {
+		t.Fatalf("decl 0 = %+v, want async Load", f.Decls[0])
+	}
+	ret, ok := fn.Body.Stmts[0].(*ast.ReturnStmt)
+	if !ok {
+		t.Fatalf("statement = %T, want return", fn.Body.Stmts[0])
+	}
+	try, ok := ret.Value.(*ast.TryExpr)
+	if !ok {
+		t.Fatalf("return value = %T, want ? around await", ret.Value)
+	}
+	await, ok := try.X.(*ast.AwaitExpr)
+	if !ok {
+		t.Fatalf("? operand = %T, want await", try.X)
+	}
+	if _, ok := await.X.(*ast.CallExpr); !ok {
+		t.Fatalf("await operand = %T, want call", await.X)
 	}
 }

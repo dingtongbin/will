@@ -1,9 +1,9 @@
-func main() -> i32 {
+def main() -> i32 {
     var s: str = "alpha beta gamma"
-    var at: Option<usize> = s.Index("beta")
+    var at: Option<usize> = s.index("beta")
     var pos: usize = at!
-    var words: []str = s.Fields()
-    var n: usize = words.Len()
+    var words: []str = s.fields()
+    var n: usize = words.len()
     print(pos, " ", n, "\n")
     return i32(pos) + i32(n)
 }

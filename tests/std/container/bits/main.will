@@ -1,125 +1,137 @@
 import "std/bits"
 
-// Set, Clear, Flip, and Has must cross word boundaries, Count must count the
-// set bits, Clone must be independent, and the four bitwise operations must
-// combine two sets of one width.
-func main() -> i32 {
+# Set, Clear, Flip, and Has must cross word boundaries, Count must count the
+# set bits, Clone must be independent, and the four bitwise operations must
+# combine two sets of one width.
+def main() -> i32 {
     var b: bits.Bits = new bits.Bits(130usize)
-    if b.Len() != usize(130) {
+    if b.len() != usize(130) {
         return 1
     }
-    if b.Count() != usize(0) {
+    if b.count() != usize(0) {
         return 2
     }
-    b.Set(0usize)
-    b.Set(63usize)
-    b.Set(64usize)
-    b.Set(129usize)
-    if !b.Has(0usize) {
+    b.set(0usize)
+    b.set(63usize)
+    b.set(64usize)
+    b.set(129usize)
+    if not b.has(0usize) {
         return 3
     }
-    if !b.Has(63usize) {
+    if not b.has(63usize) {
         return 4
     }
-    if !b.Has(64usize) {
+    if not b.has(64usize) {
         return 5
     }
-    if !b.Has(129usize) {
+    if not b.has(129usize) {
         return 6
     }
-    if b.Has(65usize) {
+    if b.has(65usize) {
         return 7
     }
-    if b.Count() != usize(4) {
+    if b.count() != usize(4) {
         return 8
     }
-    b.Clear(63usize)
-    if b.Has(63usize) {
+    b.clear(63usize)
+    if b.has(63usize) {
         return 9
     }
-    if b.Count() != usize(3) {
+    if b.count() != usize(3) {
         return 10
     }
-    b.Flip(65usize)
-    if !b.Has(65usize) {
+    b.flip(65usize)
+    if not b.has(65usize) {
         return 11
     }
-    b.Flip(65usize)
-    if b.Has(65usize) {
+    b.flip(65usize)
+    if b.has(65usize) {
         return 12
     }
-    if b.Count() != usize(3) {
+    if b.count() != usize(3) {
         return 13
     }
-    var copy: bits.Bits = b.Clone()
-    copy.Set(1usize)
-    if copy.Count() != usize(4) {
+    var copy: bits.Bits = b.clone()
+    copy.set(1usize)
+    if copy.count() != usize(4) {
         return 14
     }
-    if b.Count() != usize(3) {
+    if b.count() != usize(3) {
         return 15
     }
-    if b.Has(1usize) {
+    if b.has(1usize) {
         return 16
     }
     var left: bits.Bits = new bits.Bits(8usize)
-    left.Set(0usize)
-    left.Set(1usize)
-    left.Set(2usize)
-    left.Set(3usize)
+    left.set(0usize)
+    left.set(1usize)
+    left.set(2usize)
+    left.set(3usize)
     var right: bits.Bits = new bits.Bits(8usize)
-    right.Set(2usize)
-    right.Set(3usize)
-    right.Set(4usize)
-    right.Set(5usize)
-    var both: bits.Bits = left.Clone()
-    both.And(right)
-    if both.Count() != usize(2) {
+    right.set(2usize)
+    right.set(3usize)
+    right.set(4usize)
+    right.set(5usize)
+    var both: bits.Bits = left.clone()
+    both.and(right)
+    if both.count() != usize(2) {
         return 17
     }
-    if !both.Has(2usize) {
+    if not both.has(2usize) {
         return 18
     }
-    var either: bits.Bits = left.Clone()
-    either.Or(right)
-    if either.Count() != usize(6) {
+    var either: bits.Bits = left.clone()
+    either.or(right)
+    if either.count() != usize(6) {
         return 19
     }
-    if !either.Has(5usize) {
+    if not either.has(5usize) {
         return 20
     }
-    var differing: bits.Bits = left.Clone()
-    differing.Xor(right)
-    if differing.Count() != usize(4) {
+    var differing: bits.Bits = left.clone()
+    differing.xor(right)
+    if differing.count() != usize(4) {
         return 21
     }
-    if differing.Has(2usize) {
+    if differing.has(2usize) {
         return 22
     }
-    if !differing.Has(0usize) {
+    if not differing.has(0usize) {
         return 23
     }
-    var only: bits.Bits = left.Clone()
-    only.AndNot(right)
-    if only.Count() != usize(2) {
+    var only: bits.Bits = left.clone()
+    only.and_not(right)
+    if only.count() != usize(2) {
         return 24
     }
-    if !only.Has(1usize) {
+    if not only.has(1usize) {
         return 25
     }
-    if only.Has(3usize) {
+    if only.has(3usize) {
         return 26
     }
     var none: bits.Bits = new bits.Bits(0usize)
-    if none.Len() != usize(0) {
+    if none.len() != usize(0) {
         return 27
     }
-    if none.Count() != usize(0) {
+    if none.count() != usize(0) {
         return 28
     }
-    var emptyCopy: bits.Bits = none.Clone()
-    if emptyCopy.Len() != usize(0) {
+    var emptyCopy: bits.Bits = none.clone()
+    if emptyCopy.len() != usize(0) {
         return 29
+    }
+    var shrunk: bits.Bits = new bits.Bits(200usize)
+    shrunk.set(199usize)
+    shrunk.shrink()
+    if shrunk.len() != usize(200) {
+        return 30
+    }
+    if not shrunk.has(199usize) {
+        return 31
+    }
+    if shrunk.count() != usize(1) {
+        return 32
     }
     return 0
 }

@@ -1,0 +1,42 @@
+# PooledBuffer is a buffer guard. It owns its backing Array; Release drops the
+# contents so a long-lived guard can be reused. The compiler does not yet run a
+# static release sequence for user guard types, and an Array returned by
+# Array() copies the header, so this form owns its storage instead of returning
+# it to a lane-local pool. Pooled keeps the documented acquisition shape.
+
+struct PooledBuffer {
+    data: Array<u8>
+}
+
+# Pooled returns a buffer with room for size bytes. Its live length starts at
+# zero; the capacity is the acquired room.
+def pooled(size: usize) -> PooledBuffer {
+    return PooledBuffer { data: new Array<u8>(size) }
+}
+
+# Bytes returns a read-only view of the pooled contents.
+def (p: ref PooledBuffer) bytes() -> []u8 {
+    return p.data[Range(0, p.data.len())]
+}
+
+# Array returns an independent copy of the backing array. A header copy would
+# give two owners one buffer; the language requires Clone for that boundary.
+def (p: ref PooledBuffer) array() -> Array<u8> {
+    return p.data.clone()
+}
+
+# Len returns the number of live bytes.
+def (p: ref PooledBuffer) len() -> usize {
+    return p.data.len()
+}
+
+# Clear drops every live byte without releasing the pooled storage.
+def (p: mut PooledBuffer) clear() {
+    p.data.clear()
+}
+
+# Release drops the contents and keeps the capacity for reuse. Repeating it is
+# safe because the array becomes empty after the first call.
+def (p: mut PooledBuffer) release() {
+    p.data.clear()
+}

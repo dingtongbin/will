@@ -38,7 +38,7 @@ func find(t *testing.T, ds []diag.Diagnostic, code string) diag.Diagnostic {
 }
 
 func TestUndefinedName(t *testing.T) {
-	ds := resolveSource(t, "func F() {\n    var total: i32 = 0\n    _ = total + tota\n}\n")
+	ds := resolveSource(t, "def f() {\n    var total: i32 = 0\n    _ = total + tota\n}\n")
 	d := find(t, ds, diag.CodeUndefinedName)
 	if d.Message != "undefined name" {
 		t.Errorf("message = %q", d.Message)
@@ -52,7 +52,7 @@ func TestUndefinedName(t *testing.T) {
 }
 
 func TestShadowWarning(t *testing.T) {
-	ds := resolveSource(t, "func F() {\n    var i32: i32 = 0\n    _ = i32\n}\n")
+	ds := resolveSource(t, "def f() {\n    var i32: i32 = 0\n    _ = i32\n}\n")
 	d := find(t, ds, diag.CodeShadow)
 	if d.Severity != diag.Warning {
 		t.Errorf("severity = %v, want warning", d.Severity)
@@ -68,7 +68,7 @@ func TestShadowWarning(t *testing.T) {
 func TestUnusedImport(t *testing.T) {
 	src := `import "std/net/http"
 import _ "std/bytes"
-func F() {}
+def f() {}
 `
 	ds := resolveSourceWith(t, src, map[string][]string{"std/net/http": {}, "std/bytes": {}})
 	d := find(t, ds, diag.CodeUnusedImport)
@@ -85,17 +85,17 @@ func F() {}
 
 func TestPrivateNameOutsidePackage(t *testing.T) {
 	src := `import "std/net/http"
-func F() {
-    _ = http.get
-    _ = http.Get
+def f() {
+    _ = http.__hidden
+    _ = http.visible
 }
 `
-	ds := resolveSourceWith(t, src, map[string][]string{"std/net/http": {}})
+	ds := resolveSourceWith(t, src, map[string][]string{"std/net/http": {"visible"}})
 	d := find(t, ds, diag.CodePrivateName)
 	if d.Message != "private name used outside its package" {
 		t.Errorf("message = %q", d.Message)
 	}
-	if d.Help != "it starts with a lowercase letter, so it is private" {
+	if d.Help != "names starting with __ are private" {
 		t.Errorf("help = %q", d.Help)
 	}
 	if d.Pos.Line != 3 || d.Pos.Col != 14 {
@@ -116,14 +116,14 @@ func TestUnusedCLink(t *testing.T) {
 	src := `import c "stdio.h" {
     fast puts
 }
-func F() {}
+def f() {}
 `
 	ds := resolveSource(t, src)
 	find(t, ds, diag.CodeUnusedImport)
 }
 
 func TestUnusedLocal(t *testing.T) {
-	src := `func F(a: i32) {
+	src := `def f(a: i32) {
     var x: i32 = 1
     var y: i32 = 2
     _ = y
@@ -146,7 +146,7 @@ func TestUnusedLocal(t *testing.T) {
 }
 
 func TestUnusedLoopBinding(t *testing.T) {
-	src := `func F() {
+	src := `def f() {
     var xs: Array<i32> = new Array<i32>(0)
     for i, x in xs {
         _ = x
@@ -161,18 +161,18 @@ func TestUnusedLoopBinding(t *testing.T) {
 }
 
 func TestDuplicateTopLevelName(t *testing.T) {
-	ds := resolveSource(t, "func F() {}\nfunc F() {}\n")
+	ds := resolveSource(t, "def f() {}\ndef f() {}\n")
 	d := find(t, ds, diag.CodeDuplicateName)
-	if d.Message != "duplicate top-level name F" {
+	if d.Message != "duplicate top-level name f" {
 		t.Errorf("message = %q", d.Message)
 	}
-	if d.Pos.Line != 2 || d.Pos.Col != 6 {
-		t.Errorf("position = %d:%d, want 2:6", d.Pos.Line, d.Pos.Col)
+	if d.Pos.Line != 2 || d.Pos.Col != 5 {
+		t.Errorf("position = %d:%d, want 2:5", d.Pos.Line, d.Pos.Col)
 	}
 }
 
 func TestDuplicateImportName(t *testing.T) {
-	src := "import \"a/http\"\nimport \"b/http\"\nfunc F() {}\n"
+	src := "import \"a/http\"\nimport \"b/http\"\ndef f() {}\n"
 	ds := resolveSource(t, src)
 	d := find(t, ds, diag.CodeDuplicateName)
 	if d.Message != "duplicate top-level name http" {
@@ -186,11 +186,11 @@ func TestDuplicateVariant(t *testing.T) {
 }
 
 func TestDeriveNameIsOneOfTwo(t *testing.T) {
-	src := "struct P {\n    x: i32\n}\n\nderive Foo for P\n"
+	src := "@derive(Foo)\nstruct P {\n    x: i32\n}\n"
 	ds := resolveSource(t, src)
 	d := find(t, ds, diag.CodeBadDeriveName)
-	if d.Pos.Line != 5 {
-		t.Errorf("position line = %d, want 5", d.Pos.Line)
+	if d.Pos.Line != 2 {
+		t.Errorf("position line = %d, want 2", d.Pos.Line)
 	}
 	if d.Message != "cannot derive Foo for P" || d.Help != "derive takes Json or Show" {
 		t.Errorf("diagnostic = %+v", d)
@@ -198,16 +198,16 @@ func TestDeriveNameIsOneOfTwo(t *testing.T) {
 }
 
 func TestDeriveBuiltinConstraintIsNotAGenerator(t *testing.T) {
-	src := "struct P {\n    x: i32\n}\n\nderive Equal for P\n"
+	src := "@derive(equal)\nstruct P {\n    x: i32\n}\n"
 	ds := resolveSource(t, src)
 	d := find(t, ds, diag.CodeBadDeriveName)
-	if d.Message != "cannot derive Equal for P" || d.Help != "derive takes Json or Show" {
+	if d.Message != "cannot derive equal for P" || d.Help != "derive takes Json or Show" {
 		t.Errorf("diagnostic = %+v", d)
 	}
 }
 
 func TestUnknownImportPath(t *testing.T) {
-	src := "import \"std/net/http\"\n\nfunc F() {}\n"
+	src := "import \"std/net/http\"\n\ndef f() {}\n"
 	ds := resolveSource(t, src)
 	d := find(t, ds, diag.CodeUnknownImportPath)
 	if d.Message != "unknown import path std/net/http" {
@@ -222,7 +222,7 @@ func TestUnknownImportPath(t *testing.T) {
 }
 
 func TestUnknownImportPathSuggestsTheClosest(t *testing.T) {
-	src := "import \"std/net/httpx\"\n\nfunc F() {}\n"
+	src := "import \"std/net/httpx\"\n\ndef f() {}\n"
 	ds := resolveSourceWith(t, src, map[string][]string{"std/net/http": {}})
 	d := find(t, ds, diag.CodeUnknownImportPath)
 	if d.Help != "did you mean std/net/http?" {
@@ -233,7 +233,7 @@ func TestUnknownImportPathSuggestsTheClosest(t *testing.T) {
 // TestUnknownImportSuppressesItsMembers checks cascade suppression: the root
 // cause is reported and the member diagnostics inside that import are not.
 func TestUnknownImportSuppressesItsMembers(t *testing.T) {
-	src := "import \"std/net/http\"\n\nfunc F() {\n    _ = http.get\n    _ = http.Status\n}\n"
+	src := "import \"std/net/http\"\n\ndef f() {\n    _ = http.get\n    _ = http.status\n}\n"
 	ds := resolveSource(t, src)
 	roots := 0
 	for _, d := range ds {
@@ -250,19 +250,19 @@ func TestUnknownImportSuppressesItsMembers(t *testing.T) {
 }
 
 func TestDuplicateDerive(t *testing.T) {
-	src := "struct P {\n    x: i32\n}\n\nderive Show for P\nderive Show for P\n"
+	src := "@derive(Show)\n@derive(Show)\nstruct P {\n    x: i32\n}\n"
 	ds := resolveSource(t, src)
 	d := find(t, ds, diag.CodeDuplicateDerive)
 	if d.Message != "duplicate derive for P" || d.Help != "remove the earlier one" {
 		t.Errorf("diagnostic = %+v", d)
 	}
-	if d.Pos.Line != 6 {
-		t.Errorf("position line = %d, want 6", d.Pos.Line)
+	if d.Pos.Line != 3 {
+		t.Errorf("position line = %d, want 3", d.Pos.Line)
 	}
 }
 
 func TestDuplicateImportLine(t *testing.T) {
-	src := "import \"std/net/http\"\nimport \"std/net/http\"\nfunc F() {}\n"
+	src := "import \"std/net/http\"\nimport \"std/net/http\"\ndef f() {}\n"
 	ds := resolveSource(t, src)
 	d := find(t, ds, diag.CodeDuplicateImport)
 	if d.Message != "duplicate import" || d.Help != "remove the earlier one" {
@@ -288,7 +288,7 @@ func TestCLinkNeedsTheQualifier(t *testing.T) {
 	src := `import c "stdio.h" {
     fast puts
 }
-func F() {
+def f() {
     puts("hi")
 }
 `
@@ -303,7 +303,7 @@ func TestCLinkThroughQualifier(t *testing.T) {
 	src := `import c "stdio.h" {
     fast puts
 }
-func F() {
+def f() {
     c.puts("hi")
 }
 `

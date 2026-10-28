@@ -1,17 +1,17 @@
-// parseError is the error value of a rejected text. 2 is the stable status of
-// Invalid, so a caller classifies a parse failure without knowing this type.
+# parseError is the error value of a rejected text. 2 is the stable status of
+# Invalid, so a caller classifies a parse failure without knowing this type.
 struct parseError {
     message: str
 }
 
-func (e: parseError) Message() -> str {
-    return e.message
+def (e: ref parseError) message() -> str {
+    return e.message.clone()
 }
 
-func (e: parseError) Status() -> i32 {
+def (e: ref parseError) status() -> i32 {
     return 2
 }
 
-func fail(message: str) -> parseError {
-    return parseError { message: message }
+def fail(message: str) -> parseError {
+    return parseError { message: message.clone() }
 }

@@ -1,0 +1,79 @@
+import "std/str"
+
+# Valid builds one byte sequence and asks IsValid about it. The cases cover
+# the boundary scalars and every rejected shape: stray continuation, overlong
+# form, surrogate, truncated sequence, and a value past U+10FFFF.
+def valid(values: ...u8) -> bool {
+    var data: Array<u8> = new Array<u8>(0)
+    for v in values {
+        data.push(v)
+    }
+    return str.is_valid(data[Range(0, data.len())])
+}
+
+def main() -> i32 {
+    if not valid() {
+        return 1
+    }
+    if not valid(0u8) or not valid(127u8) {
+        return 2
+    }
+    if not valid(0xc3u8, 0xa9u8) {
+        return 3
+    }
+    if not valid(0xe2u8, 0x82u8, 0xacu8) {
+        return 4
+    }
+    if not valid(0xf0u8, 0x9fu8, 0x98u8, 0x80u8) {
+        return 5
+    }
+    if not valid(0xe0u8, 0xa0u8, 0x80u8) {
+        return 6
+    }
+    if not valid(0xedu8, 0x9fu8, 0xbfu8) {
+        return 7
+    }
+    if not valid(0xeeu8, 0x80u8, 0x80u8) {
+        return 8
+    }
+    if not valid(0xf0u8, 0x90u8, 0x80u8, 0x80u8) {
+        return 9
+    }
+    if not valid(0xf4u8, 0x8fu8, 0xbfu8, 0xbfu8) {
+        return 10
+    }
+    if valid(0x80u8) {
+        return 11
+    }
+    if valid(0xc0u8, 0xafu8) {
+        return 12
+    }
+    if valid(0xc1u8, 0xbfu8) {
+        return 13
+    }
+    if valid(0xe0u8, 0x80u8, 0x80u8) {
+        return 14
+    }
+    if valid(0xedu8, 0xa0u8, 0x80u8) {
+        return 15
+    }
+    if valid(0xf4u8, 0x90u8, 0x80u8, 0x80u8) {
+        return 16
+    }
+    if valid(0xf5u8, 0x80u8, 0x80u8, 0x80u8) {
+        return 17
+    }
+    if valid(0xe2u8, 0x82u8) {
+        return 18
+    }
+    if valid(0xf0u8, 0x9fu8, 0x98u8) {
+        return 19
+    }
+    if valid(0xc3u8, 0x28u8) {
+        return 20
+    }
+    if valid(0xfeu8) {
+        return 21
+    }
+    return 0
+}

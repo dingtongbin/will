@@ -1,6 +1,6 @@
-// scalarWidth returns the number of bytes a valid UTF-8 scalar occupies. A str
-// holds only valid UTF-8, so these four ranges cover every scalar.
-func scalarWidth(c: u32) -> usize {
+# scalarWidth returns the number of bytes a valid UTF-8 scalar occupies. A str
+# holds only valid UTF-8, so these four ranges cover every scalar.
+def scalar_width(c: u32) -> usize {
     if c <= 127u32 {
         return 1usize
     }
@@ -13,31 +13,41 @@ func scalarWidth(c: u32) -> usize {
     return 4usize
 }
 
-// Base returns the last element of the path after trailing separators are
-// dropped. An empty path has base ".", and a path of only separators has base
-// "/", because the root has no element to name.
-func Base(p: str) -> str {
-    if p.Len() == 0usize {
+# Base returns the last element of the path after trailing separators are
+# dropped. An empty path has base ".", and a path of only separators has the
+# platform separator as its base, because the root has no element to name.
+def base(p: str) -> str {
+    if p.len() == 0usize {
         return "."
     }
-    var start: usize = 0
-    var end: usize = 0
-    var seen: bool = false
-    var fresh: bool = true
+    var volumeEnd: usize = 0usize
+    if has_drive(p) {
+        volumeEnd = 2usize
+    }
+    var start: usize = 0usize
+    var end: usize = 0usize
+    var seen: bool = False
+    var fresh: bool = True
     for i, c in p {
-        if isSlash(c) {
-            fresh = true
+        if i < volumeEnd {
+            continue
+        }
+        if is_separator(c) {
+            fresh = True
         } else {
             if fresh {
                 start = i
-                fresh = false
+                fresh = False
             }
-            end = i + scalarWidth(c)
-            seen = true
+            end = i + scalar_width(c)
+            seen = True
         }
     }
-    if !seen {
-        return "/"
+    if not seen {
+        if volumeEnd > 0usize and not is_drive_abs(p) {
+            return "."
+        }
+        return separator_string()
     }
     var tail: str = str(p[Range(start, end)])
     return tail

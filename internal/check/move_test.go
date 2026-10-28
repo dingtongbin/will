@@ -3,6 +3,7 @@ package check
 import (
 	"testing"
 
+	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
 )
@@ -16,8 +17,247 @@ func moves(t *testing.T, src string) []diag.Diagnostic {
 	return Moves(f)
 }
 
+func movesOwned(t *testing.T, src string) []diag.Diagnostic {
+	t.Helper()
+	f, ds := parser.Parse("test.will", []byte(src))
+	if len(ds) != 0 {
+		t.Fatalf("parse: %s", diag.FormatAll(ds))
+	}
+	own := NewOwnership([]*ast.File{f})
+	return MovesWithOwnership(f, own)
+}
+
+func TestMoveFixedArrayElementNeedsClone(t *testing.T) {
+	src := `def f() -> i32 {
+    var a: str = "x"
+    var xs: [1]str = [1]str { a }
+    return i32(a.len())
+}
+`
+	ds := movesOwned(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+}
+
+func TestMoveFixedArrayElementCanMove(t *testing.T) {
+	src := `def f() -> i32 {
+    var a: str = "x"
+    var xs: [1]str = [1]str { a }
+    return i32(xs[0].len())
+}
+`
+	if ds := movesOwned(t, src); len(ds) != 0 {
+		t.Fatalf("a dead local element did not move:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestMovePatternBindingIsABorrow(t *testing.T) {
+	src := `enum E {
+    text(str)
+    Empty
+}
+
+def f(e: E) -> str {
+    return match e {
+        text(s) => s
+        Empty => ""
+    }
+}
+`
+	ds := movesOwned(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+	if ds[0].Message != "a copy is required here and cannot be proven" {
+		t.Fatalf("message = %q", ds[0].Message)
+	}
+}
+
+func TestMoveOwningParameterNeedsClone(t *testing.T) {
+	src := `def f(s: str) -> str {
+    return s
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+	if ds[0].Message != "a copy is required here and cannot be proven" {
+		t.Fatalf("message = %q", ds[0].Message)
+	}
+	if ds[0].Pos.Line != 2 || ds[0].Pos.Col != 12 {
+		t.Fatalf("position = %d:%d, want the parameter use at 2:12", ds[0].Pos.Line, ds[0].Pos.Col)
+	}
+}
+
+func TestMoveOwningParameterIntoContainerNeedsClone(t *testing.T) {
+	src := `def f(s: str, xs: Array<str>) {
+    xs.push(s)
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+}
+
+func TestMoveRcParameterIsACopy(t *testing.T) {
+	src := `struct Box {
+    n: i32
+}
+
+def f(r: rc<Box>) -> rc<Box> {
+    return r
+}
+`
+	if ds := moves(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
+func TestMoveOwnedFieldOutOfADeadLocal(t *testing.T) {
+	src := `struct Box {
+    items: Array<i32>
+}
+
+def f() {
+    var b: Box = Box { items: new Array<i32>(0) }
+    var items: Array<i32> = b.items
+    _ = items
+}
+`
+	if ds := movesOwned(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
+func TestMoveOwnedFieldWithLaterRootUseRequiresClone(t *testing.T) {
+	src := `struct Box {
+    items: Array<i32>
+}
+
+def f() {
+    var b: Box = Box { items: new Array<i32>(0) }
+    var items: Array<i32> = b.items
+    _ = b
+    _ = items
+}
+`
+	ds := movesOwned(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+}
+
+func TestMoveOwnedFieldRequiresClone(t *testing.T) {
+	src := `struct Box {
+    items: Array<i32>
+}
+
+def f(b: Box) {
+    var items: Array<i32> = b.items
+    _ = b
+    _ = items
+}
+`
+	ds := movesOwned(t, src)
+	if len(ds) != 1 {
+		t.Fatalf("diagnostics = %d, want one:\n%s", len(ds), diag.FormatAll(ds))
+	}
+	d := ds[0]
+	if d.Code != diag.CodeMissingClone || d.Message != "a copy is required here and cannot be proven" {
+		t.Fatalf("diagnostic = %+v, want O0002", d)
+	}
+	if d.Help != "call clone()" {
+		t.Fatalf("help = %q", d.Help)
+	}
+	if d.Pos.Line != 6 || d.Pos.Col != 29 {
+		t.Fatalf("position = %d:%d, want the field transfer at 6:29", d.Pos.Line, d.Pos.Col)
+	}
+}
+
+func TestMoveOwnedIndexOutOfADeadLocal(t *testing.T) {
+	src := `struct Box {
+    items: Array<i32>
+}
+
+def f() {
+    var xs: Array<Box> = new Array<Box>(1)
+    var box: Box = xs[0]
+    _ = box
+}
+`
+	if ds := movesOwned(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
+func TestMoveOwnedIndexRequiresClone(t *testing.T) {
+	src := `struct Box {
+    items: Array<i32>
+}
+
+def f(xs: Array<Box>) {
+    var box: Box = xs[0]
+    _ = xs
+    _ = box
+}
+`
+	ds := movesOwned(t, src)
+	if len(ds) != 1 {
+		t.Fatalf("diagnostics = %d, want one:\n%s", len(ds), diag.FormatAll(ds))
+	}
+	d := ds[0]
+	if d.Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostic = %+v, want O0002", d)
+	}
+	if d.Pos.Line != 6 || d.Pos.Col != 20 {
+		t.Fatalf("position = %d:%d, want the index transfer at 6:20", d.Pos.Line, d.Pos.Col)
+	}
+}
+
+func TestMoveScalarFieldAndRcFieldAreCopies(t *testing.T) {
+	src := `struct Box {
+    n: i32
+}
+
+struct Holder {
+    item: rc<Box>
+}
+
+def f(b: Box, h: Holder) {
+    var n: i32 = b.n
+    var r: rc<Box> = h.item
+    _ = b
+    _ = h
+    _ = n
+    _ = r
+}
+`
+	if ds := movesOwned(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
+func TestMoveClonedFieldIsNotACopyError(t *testing.T) {
+	src := `struct Box {
+    items: Array<i32>
+}
+
+def f(b: Box) {
+    var items: Array<i32> = b.items.clone()
+    _ = b
+    _ = items
+}
+`
+	if ds := movesOwned(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
 func TestMoveRequiresACopyWhenTheSourceIsStillLive(t *testing.T) {
-	src := `func F() {
+	src := `def f() {
     var s: str = "a"
     var t: str = s
     _ = s
@@ -35,7 +275,7 @@ func TestMoveRequiresACopyWhenTheSourceIsStillLive(t *testing.T) {
 	if d.Message != "a copy is required here and cannot be proven" {
 		t.Errorf("message = %q", d.Message)
 	}
-	if d.Help != "call Clone()" {
+	if d.Help != "call clone()" {
 		t.Errorf("help = %q", d.Help)
 	}
 	if d.Pos.Line != 3 || d.Pos.Col != 18 {
@@ -52,7 +292,7 @@ func TestMoveRequiresACopyWhenTheSourceIsStillLive(t *testing.T) {
 }
 
 func TestMoveLastUseIsAccepted(t *testing.T) {
-	src := `func F() {
+	src := `def f() {
     var s: str = "a"
     var t: str = s
     _ = t
@@ -64,10 +304,10 @@ func TestMoveLastUseIsAccepted(t *testing.T) {
 }
 
 func TestMoveLoopCarriedUse(t *testing.T) {
-	src := `func G(s: str) {
+	src := `def g(s: str) {
 }
 
-func F(xs: []i32) {
+def f(xs: []i32) {
     var s: str = "a"
     for i in xs {
         _ = i
@@ -85,7 +325,7 @@ func F(xs: []i32) {
 	if d.Code != diag.CodeMoved || d.Message != "this value has been moved" {
 		t.Errorf("diagnostic = %+v", d)
 	}
-	if d.Help != "call Clone() to keep a copy, or take a borrow" {
+	if d.Help != "call clone() to keep a copy, or take a borrow" {
 		t.Errorf("help = %q", d.Help)
 	}
 	if d.Pos.Line != 8 || d.Pos.Col != 13 {
@@ -100,7 +340,7 @@ func F(xs: []i32) {
 }
 
 func TestMoveIgnoresCopiedValues(t *testing.T) {
-	src := `func F() {
+	src := `def f() {
     var n: i32 = 1
     var m: i32 = n
     _ = n
@@ -118,7 +358,7 @@ func TestMoveTwoUsesInOneAggregate(t *testing.T) {
     b: str
 }
 
-func F() {
+def f() {
     var s: str = "a"
     var p: Pair = Pair { a: s, b: s }
     _ = p
@@ -139,14 +379,165 @@ func F() {
 
 // TestMovePassingIsABorrow checks the settled convention: a parameter borrows
 // its value, so passing it on is not a move and cannot require a copy.
-func TestMovePassingIsABorrow(t *testing.T) {
-	src := `func G(s: str) {
+func TestMoveAcrossAConditionalBranch(t *testing.T) {
+	src := `def f(flag: bool) {
+    var s: str = "a"
+    if flag {
+        var t: str = s
+        _ = t
+    }
+    _ = s
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMoved {
+		t.Fatalf("diagnostics = %s, want one O0001", diag.FormatAll(ds))
+	}
+	if ds[0].Pos.Line != 7 {
+		t.Fatalf("position = %d, want the use after the branch", ds[0].Pos.Line)
+	}
 }
 
-func F() {
+func TestMoveIntoContainerAndOption(t *testing.T) {
+	src := `def f() {
+    var a: str = "a"
+    var xs: Array<str> = new Array<str>(0)
+    xs.push(a)
+    _ = xs
+    _ = a
+    var b: str = "b"
+    var opt: Option<str> = Some(b)
+    _ = opt
+    _ = b
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 2 {
+		t.Fatalf("diagnostics = %s, want two transfers that need a copy", diag.FormatAll(ds))
+	}
+	for _, d := range ds {
+		if d.Code != diag.CodeMissingClone {
+			t.Fatalf("diagnostic = %+v, want O0002", d)
+		}
+	}
+}
+
+func TestMoveAssignmentTransfersTheSource(t *testing.T) {
+	src := `def f() {
+    var a: str = "a"
+    var b: str = "b"
+    a = b
+    _ = a
+    _ = b
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+}
+
+func TestMoveOwnershipFollowsStructFields(t *testing.T) {
+	src := `struct Box {
+    xs: Array<i32>
+}
+
+def f() {
+    var a: Box = Box { xs: new Array<i32>(0) }
+    var b: Box = a
+    _ = a
+    _ = b
+}
+`
+	f, ds := parser.Parse("test.will", []byte(src))
+	if len(ds) != 0 {
+		t.Fatalf("parse: %s", diag.FormatAll(ds))
+	}
+	ds = MovesWithOwnership(f, NewOwnership([]*ast.File{f}))
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+}
+
+func TestMoveOwnershipSubstitutesGenericFields(t *testing.T) {
+	src := `struct Box<T> {
+    value: T
+}
+
+def f() {
+    var a: Box<Array<i32>> = Box { value: new Array<i32>(0) }
+    var b: Box<Array<i32>> = a
+    _ = a
+    _ = b
+}
+`
+	f, ds := parser.Parse("test.will", []byte(src))
+	if len(ds) != 0 {
+		t.Fatalf("parse: %s", diag.FormatAll(ds))
+	}
+	ds = MovesWithOwnership(f, NewOwnership([]*ast.File{f}))
+	if len(ds) != 1 || ds[0].Code != diag.CodeMissingClone {
+		t.Fatalf("diagnostics = %s, want one O0002", diag.FormatAll(ds))
+	}
+}
+
+func TestExclusiveBorrowMovesOnce(t *testing.T) {
+	src := `def f() {
+    var x: i32 = 1
+    var a: mut i32 = mut x
+    var b: mut i32 = a
+    var c: mut i32 = a
+    _ = b
+    _ = c
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMoved {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestSharedBorrowCopies(t *testing.T) {
+	src := `def f() {
+    var x: i32 = 1
+    var a: ref i32 = ref x
+    var b: ref i32 = a
+    var c: ref i32 = a
+    _ = b
+    _ = c
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 0 {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestAwaitConsumesTaskOnce(t *testing.T) {
+	src := `def work() -> i32 {
+    return 1
+}
+
+async def f() {
+    var task = spawn work()
+    _ = await task
+    _ = await task
+}
+`
+	ds := moves(t, src)
+	if len(ds) != 1 || ds[0].Code != diag.CodeMoved {
+		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestMovePassingIsABorrow(t *testing.T) {
+	src := `def g(s: str) {
+}
+
+def f() {
     var s: str = "a"
-    G(s)
-    G(s)
+    g(s)
+    g(s)
 }
 `
 	if ds := moves(t, src); len(ds) != 0 {
@@ -155,7 +546,7 @@ func F() {
 }
 
 func TestMoveReturnIsAccepted(t *testing.T) {
-	src := `func Take() -> str {
+	src := `def take() -> str {
     var s: str = "a"
     return s
 }

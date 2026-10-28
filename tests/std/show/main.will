@@ -1,0 +1,37 @@
+import "std/fmt"
+
+# take boxes any value that shows itself.
+def take(x: Show) -> str {
+    return x.show()
+}
+
+# joinAll walks the view a variadic Show parameter packs.
+def join_all(parts: ...Show) -> str {
+    var out: str = ""
+    var n: i32 = i32(parts.len())
+    for i in Range(0, n) {
+        out = out + parts[i].show()
+    }
+    return out
+}
+
+def main() -> i32 {
+    var a: str = take(42)
+    var b: str = take("hi")
+    var c: str = take(fmt.int(7i64, 10, 0, 48u8))
+    if a != "42" or b != "hi" or c != "7" {
+        print("take: ", a, " ", b, " ", c, "\n")
+        return 1
+    }
+    var joined: str = join_all(1, "-", 2)
+    if joined != "1-2" {
+        print("view: ", joined, "\n")
+        return 2
+    }
+    var text: str = fmt.str(42, "|", "hi", "|", fmt.int(7i64, 10, 0, 48u8))
+    if text != "42|hi|7" {
+        print("str: ", text, "\n")
+        return 3
+    }
+    return 0
+}

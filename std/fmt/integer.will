@@ -1,0 +1,103 @@
+# Int formats a signed value in the given base. The digits are lowercase and
+# the magnitude is the value without its sign, so the i64 minimum formats too.
+# A width larger than the result fills the gap with pad bytes between the sign
+# and the digits; a width at or below the result adds nothing.
+def int(v: i64, base: i32, width: i32, fill: u8) -> Format {
+    check_base(base)
+    var magnitude: u64 = 0u64
+    var negative: bool = False
+    if v < 0 {
+        negative = True
+        # Negating the i64 minimum overflows, so take one step first and add
+        # it back in u64, where 2^63 is representable.
+        magnitude = u64(-(v + 1i64)) + 1u64
+    } else {
+        magnitude = u64(v)
+    }
+    return Format {
+        kind: formatNumber,
+        value: magnitude,
+        negative: negative,
+        base: u32(base),
+        width: width,
+        pad: fill,
+        left: False,
+        text: ""
+    }
+}
+
+# Uint formats an unsigned value in the given base. Digits and width behave as
+# in Int; there is no sign to place.
+def uint(v: u64, base: i32, width: i32, fill: u8) -> Format {
+    check_base(base)
+    return Format {
+        kind: formatNumber,
+        value: v,
+        negative: False,
+        base: u32(base),
+        width: width,
+        pad: fill,
+        left: False,
+        text: ""
+    }
+}
+
+# checkBase rejects a base outside 2 through 36. The digit table covers exactly
+# that range, and Format has no error channel, so misuse is a panic.
+def check_base(base: i32) {
+    if base < 2 or base > 36 {
+        panic("fmt: base must be between 2 and 36")
+    }
+}
+
+# numberText renders an integer field with its sign and fill bytes.
+def number_text(f: ref Format) -> str {
+    return signed_text(f.negative, digits_of(f.value, f.base), f.width, f.pad)
+}
+
+# signedText renders a numeric body with its sign and fill bytes. The sign
+# comes first and the fill bytes sit between it and the body, so a zero-filled
+# field keeps the sign at the edge.
+def signed_text(negative: bool, body: str, width: i32, fill: u8) -> str {
+    var sign: str = ""
+    if negative {
+        sign = "-"
+    }
+    var used: i32 = i32(sign.len() + body.len())
+    if width <= used {
+        return sign + body
+    }
+    var filler: str = filled(usize(width - used), fill)
+    return sign + filler + body
+}
+
+# digitsOf writes v in base, most significant digit first. Zero is one digit.
+def digits_of(v: u64, base: u32) -> str {
+    if v == 0u64 {
+        return "0"
+    }
+    var reversed: Array<u8> = new Array<u8>(0)
+    var rest: u64 = v
+    while True {
+        if rest == 0u64 {
+            break
+        }
+        var digit: u32 = u32(rest % u64(base))
+        if digit < 10u32 {
+            reversed.push(u8(48u32 + digit))
+        } else {
+            reversed.push(u8(87u32 + digit))
+        }
+        rest = rest / u64(base)
+    }
+    var out: Array<u8> = new Array<u8>(reversed.len())
+    var i: usize = reversed.len()
+    while True {
+        if i == 0usize {
+            break
+        }
+        i -= 1usize
+        out.push(reversed.get(i))
+    }
+    return str(out)
+}

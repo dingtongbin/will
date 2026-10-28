@@ -1,195 +1,247 @@
-/* Global job queue and its fixed worker pool.
+/* Job objects on per-lane queues.
  *
- * A job is a task object created by willrt_task_new. The object and the step
- * contract are shared with tasks; only the delivery path differs. willrt_job_new
- * appends the object to one global FIFO and workers advance it on their own
- * threads. A worker spins briefly before docking on the queue condition, so an
- * empty queue is a normal sleeping pool, not a deadlock.
- *
- * The worker count is fixed for the life of the pool at the platform's
- * available processor count. Workers do not steal, so a job stays on the queue
- * until one of them takes it. willrt_shutdown reaches willrt_jobs_shutdown
- * through the optional hook in task.c after the live task count reaches zero.
+ * A job is a task with no suspension point. The submitting lane pushes it on
+ * its own queue; an external thread picks the non-reserved lane with the
+ * shortest queue. A lane pops its local queue head and steals from the head of
+ * another lane when its own queues are empty. The lane worker holds its lane
+ * lock while it probes the local job queue, so an enqueue cannot land between
+ * the probe and the wait without delivering the wake.
  */
 
 #include "../../../include/willrt.h"
 
+#include <limits.h>
 #include <stdatomic.h>
+#include <stdint.h>
+#include <string.h>
 
-typedef struct job_entry {
-    willrt_task* task;
-    struct job_entry* next;
-} job_entry;
-
-typedef struct job_worker {
-    willrt_os_thread thread;
-    int32_t id;
-} job_worker;
-
-enum {
-    JOB_STATE_EMPTY = 0,
-    JOB_STATE_STARTING = 1,
-    JOB_STATE_READY = 2,
-    JOB_STATE_STOPPED = 3,
-    JOB_SPINS = 64
-};
+typedef struct job_queue {
+    willrt_os_mutex lock;
+    willrt_task* head;
+    willrt_task* tail;
+    int32_t count;
+    _Atomic(int32_t) pending;
+} job_queue;
 
 static atomic_int job_state;
-static willrt_os_mutex job_lock;
-static willrt_os_cond job_cond;
-static job_entry* job_head;
-static job_entry* job_tail;
-static job_worker* job_workers;
-static int32_t job_workers_started;
-static int32_t job_stopping;
+static job_queue* job_queues;
+static int32_t job_queue_count;
 
-extern void willrt_task_run_job(willrt_task* task);
-
-/* job_pop removes the oldest entry. The caller holds job_lock. */
-static job_entry* job_pop(void) {
-    job_entry* entry = job_head;
-
-    if (entry == NULL) {
-        return NULL;
-    }
-    job_head = entry->next;
-    if (job_head == NULL) {
-        job_tail = NULL;
-    }
-    entry->next = NULL;
-    return entry;
-}
-
-/* job_worker_main takes jobs until shutdown sees an empty queue. */
-static void job_worker_main(void* raw) {
-    job_worker* worker = (job_worker*)raw;
-
-    willrt_mem_set_lane(worker->id);
-    for (;;) {
-        job_entry* entry = NULL;
-        int spin;
-
-        for (spin = 0; spin < JOB_SPINS; spin++) {
-            willrt_os_mutex_lock(&job_lock);
-            entry = job_pop();
-            if (entry != NULL || job_stopping) {
-                willrt_os_mutex_unlock(&job_lock);
-                break;
-            }
-            willrt_os_mutex_unlock(&job_lock);
-            willrt_os_thread_yield();
-        }
-        if (entry == NULL) {
-            willrt_os_mutex_lock(&job_lock);
-            while (job_head == NULL && !job_stopping) {
-                willrt_os_cond_wait(&job_cond, &job_lock);
-            }
-            entry = job_pop();
-            if (entry == NULL && job_stopping) {
-                willrt_os_mutex_unlock(&job_lock);
-                break;
-            }
-            willrt_os_mutex_unlock(&job_lock);
-        }
-        if (entry != NULL) {
-            willrt_task_run_job(entry->task);
-            willrt_free(entry);
-        }
-    }
-    willrt_mem_thread_flush();
-}
-
-/* job_start creates the fixed pool once. A failure to start any worker leaves
-   the pool empty; job submission then runs the task on the caller thread so a
-   queued handle still finishes. */
-static int32_t job_start(void) {
-    int expected = JOB_STATE_EMPTY;
+/* job_ensure starts the lane pool and allocates one queue per lane. A failed
+   allocation leaves the queues empty; job submission then runs on the caller
+   thread so a handle still completes. */
+static int32_t job_ensure(void) {
+    int expected = 0;
     int32_t count;
     int32_t i;
 
-    if (atomic_load(&job_state) == JOB_STATE_READY) {
+    if (atomic_load(&job_state) == 2) {
         return 1;
     }
-    if (atomic_compare_exchange_strong(&job_state, &expected,
-                                       JOB_STATE_STARTING)) {
-        willrt_os_mutex_init(&job_lock);
-        willrt_os_cond_init(&job_cond);
-        count = willrt_os_cpu_count();
-        if (count < 1) {
-            count = 1;
-        }
-        job_workers = (job_worker*)willrt_alloc(sizeof(*job_workers) *
-                                                (size_t)count);
-        if (job_workers != NULL) {
-            willrt_mem_set_shared();
-            willrt_rc_set_threaded();
-            for (i = 0; i < count; i++) {
-                job_workers[i].id = i;
-                if (willrt_os_thread_start(&job_workers[i].thread,
-                                           job_worker_main,
-                                           &job_workers[i]) != 0) {
-                    break;
-                }
-                job_workers_started++;
-            }
-        }
-        atomic_store(&job_state, JOB_STATE_READY);
-        return job_workers_started != 0;
+    if (atomic_load(&job_state) == 3) {
+        return 0;
     }
-    while (atomic_load(&job_state) == JOB_STATE_STARTING) {
+    if (atomic_compare_exchange_strong(&job_state, &expected, 1)) {
+        job_queue* queues;
+
+        count = willrt_lane_ensure();
+        if (count < 1) {
+            atomic_store(&job_state, 3);
+            return 0;
+        }
+        queues = (job_queue*)willrt_alloc(sizeof(*queues) * (size_t)count);
+        if (queues == NULL) {
+            atomic_store(&job_state, 3);
+            return 0;
+        }
+        memset(queues, 0, sizeof(*queues) * (size_t)count);
+        for (i = 0; i < count; i++) {
+            willrt_os_mutex_init(&queues[i].lock);
+        }
+        job_queues = queues;
+        job_queue_count = count;
+        atomic_store(&job_state, 2);
+        return 1;
+    }
+    while (atomic_load(&job_state) == 1) {
         willrt_os_thread_yield();
     }
-    return atomic_load(&job_state) == JOB_STATE_READY &&
-           job_workers_started != 0;
+    return atomic_load(&job_state) == 2;
+}
+
+/* job_pick keeps a job on the submitting lane when that lane can run it.
+   Otherwise it picks the non-reserved lane with the shortest local queue. */
+static int32_t job_pick(void) {
+    int32_t skip = -1;
+    int32_t best = -1;
+    int32_t best_count = INT32_MAX;
+    int32_t i;
+
+    if (willrt_task_current() != NULL) {
+        int32_t here = willrt_lane_here();
+
+        /* The submitting task blocks in region_exit while the jobs run. It must
+           not leave the jobs on its own lane: that lane cannot run them until
+           the task returns. Pick another job-capable lane. */
+        if (here >= 0 && here < job_queue_count &&
+            !willrt_lane_is_reserved(here)) {
+            skip = here;
+        }
+    }
+    for (i = 0; i < job_queue_count; i++) {
+        int32_t count;
+
+        if (i == skip || willrt_lane_is_reserved(i)) {
+            continue;
+        }
+        willrt_os_mutex_lock(&job_queues[i].lock);
+        count = job_queues[i].count;
+        willrt_os_mutex_unlock(&job_queues[i].lock);
+        if (count < best_count) {
+            best_count = count;
+            best = i;
+        }
+    }
+    return best;
+}
+
+static void job_push(int32_t lane, willrt_task* task) {
+    job_queue* queue = &job_queues[lane];
+
+    willrt_task_set_job_next(task, NULL);
+    willrt_os_mutex_lock(&queue->lock);
+    if (queue->tail == NULL) {
+        queue->head = task;
+    } else {
+        willrt_task_set_job_next(queue->tail, task);
+    }
+    queue->tail = task;
+    queue->count++;
+    atomic_fetch_add(&queue->pending, 1);
+    willrt_os_mutex_unlock(&queue->lock);
+    willrt_lane_wake_jobs();
+}
+
+/* job_take_head removes the oldest job from one queue. The caller holds the
+   queue lock. */
+static willrt_task* job_take_head(job_queue* queue) {
+    willrt_task* task = queue->head;
+
+    if (task == NULL) {
+        return NULL;
+    }
+    queue->head = willrt_task_job_next(task);
+    if (queue->head == NULL) {
+        queue->tail = NULL;
+    }
+    willrt_task_set_job_next(task, NULL);
+    queue->count--;
+    atomic_fetch_sub(&queue->pending, 1);
+    return task;
+}
+
+willrt_task* willrt_job_pop(int32_t lane) {
+    willrt_task* task;
+
+    if (atomic_load(&job_state) != 2 || lane < 0 || lane >= job_queue_count) {
+        return NULL;
+    }
+    willrt_os_mutex_lock(&job_queues[lane].lock);
+    task = job_take_head(&job_queues[lane]);
+    willrt_os_mutex_unlock(&job_queues[lane].lock);
+    return task;
+}
+
+willrt_task* willrt_job_steal(int32_t lane) {
+    int32_t offset;
+
+    if (atomic_load(&job_state) != 2 || lane < 0 || lane >= job_queue_count) {
+        return NULL;
+    }
+    for (offset = 1; offset < job_queue_count; offset++) {
+        int32_t victim = (lane + offset) % job_queue_count;
+        willrt_task* task;
+
+        if (willrt_lane_is_reserved(victim)) {
+            continue;
+        }
+        willrt_os_mutex_lock(&job_queues[victim].lock);
+        task = job_take_head(&job_queues[victim]);
+        willrt_os_mutex_unlock(&job_queues[victim].lock);
+        if (task != NULL) {
+            return task;
+        }
+    }
+    return NULL;
+}
+
+int32_t willrt_job_count(int32_t lane) {
+    if (atomic_load(&job_state) != 2 || lane < 0 || lane >= job_queue_count) {
+        return 0;
+    }
+    return atomic_load(&job_queues[lane].pending);
+}
+
+int32_t willrt_jobs_pending(void) {
+    int32_t pending = 0;
+    int32_t i;
+
+    if (atomic_load(&job_state) != 2) {
+        return 0;
+    }
+    for (i = 0; i < job_queue_count; i++) {
+        willrt_os_mutex_lock(&job_queues[i].lock);
+        pending += job_queues[i].count;
+        willrt_os_mutex_unlock(&job_queues[i].lock);
+    }
+    return pending;
+}
+
+void willrt_jobs_shutdown(void) {
+    /* The lane pool owns execution. Shutdown has already joined every live
+       task, so there is no worker thread to stop here. */
+    if (atomic_load(&job_state) == 2) {
+        atomic_store(&job_state, 3);
+    }
 }
 
 willrt_task* willrt_job_new(void* step, void* frame, size_t size,
                             int32_t prio) {
-    willrt_task* task;
-    job_entry* entry;
+    return willrt_job_new_drop(step, frame, size, prio, NULL);
+}
 
-    task = willrt_task_new(step, frame, size, 0, prio);
+willrt_task* willrt_job_new_drop(void* step, void* frame, size_t size,
+                                 int32_t prio, void (*frame_drop)(void*)) {
+    willrt_task* task;
+
+    task = willrt_task_new_drop(step, frame, size, 0, prio, frame_drop);
     if (task == NULL) {
         return NULL;
     }
-    if (!job_start()) {
+    willrt_task_mark_job(task);
+    if (!job_ensure()) {
         willrt_task_run_job(task);
         return task;
     }
-    entry = (job_entry*)willrt_alloc(sizeof(*entry));
-    if (entry == NULL) {
-        willrt_task_run_job(task);
-        return task;
+    {
+        int32_t lane = job_pick();
+
+        if (lane < 0) {
+            if (willrt_task_current() != NULL) {
+                /* A single lane cannot skip itself. Queue the job on the
+                   current lane and let the caller's region barrier park; the
+                   lane runs the job after the current step returns. Running it
+                   inline would overwrite the caller's task and panic boundary. */
+                lane = willrt_lane_here();
+                if (lane < 0) {
+                    lane = 0;
+                }
+            } else {
+                willrt_task_run_job(task);
+                return task;
+            }
+        }
+        job_push(lane, task);
     }
-    entry->task = task;
-    entry->next = NULL;
-    willrt_os_mutex_lock(&job_lock);
-    if (job_tail == NULL) {
-        job_head = entry;
-    } else {
-        job_tail->next = entry;
-    }
-    job_tail = entry;
-    willrt_os_cond_signal(&job_cond);
-    willrt_os_mutex_unlock(&job_lock);
     return task;
-}
-
-/* willrt_jobs_shutdown stops the pool after the live task count reaches zero.
-   Workers drain any entry that is already queued before they observe the stop
-   flag. Repeated shutdown calls are harmless. */
-void willrt_jobs_shutdown(void) {
-    int32_t i;
-
-    if (atomic_load(&job_state) != JOB_STATE_READY) {
-        return;
-    }
-    willrt_os_mutex_lock(&job_lock);
-    job_stopping = 1;
-    willrt_os_cond_broadcast(&job_cond);
-    willrt_os_mutex_unlock(&job_lock);
-    for (i = 0; i < job_workers_started; i++) {
-        willrt_os_thread_join(&job_workers[i].thread);
-    }
-    atomic_store(&job_state, JOB_STATE_STOPPED);
 }

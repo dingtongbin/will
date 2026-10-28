@@ -77,28 +77,13 @@ func (g *generator) planInstances() {
 func (g *generator) planCallInstances(base int, seen map[string]bool) {
 	for i := 0; i < base; i++ {
 		d := g.docs[i]
+		g.use(d)
 		for _, r := range sortedRecords(d.recs) {
-			if (r.Kind != "call" && r.Kind != "mcall") || len(refsOf(r, "typearg")) == 0 {
+			if r.Kind != "call" && r.Kind != "mcall" {
 				continue
 			}
-			calleeDoc := d
-			var fn willc.Record
-			if target := refField(r, "to"); target != 0 {
-				fn = d.recs[target]
-			} else if sym := textField(r, "to"); sym != "" {
-				foundDoc, found, ok := g.findGenericFunc(sym)
-				if !ok {
-					continue
-				}
-				calleeDoc, fn = foundDoc, found
-			} else {
-				continue
-			}
-			if fn.Kind != "func" || !g.hasTypeParamsIn(calleeDoc, fn) {
-				continue
-			}
-			args := typeArgTextsIn(d, r)
-			if len(args) == 0 {
+			calleeDoc, fn, args, ok := g.genericTarget(r)
+			if !ok {
 				continue
 			}
 			key := calleeDoc.path + "|" + fieldText(fn, "text") + "|" + strings.Join(args, ",")
@@ -249,9 +234,12 @@ func (g *generator) cloneInstance(d *docState, fn willc.Record, args []string) (
 }
 
 // cloneFuncInstance copies one function subtree into a fresh document with
-// every type parameter replaced. A non-empty mangled name renames the function;
-// a method instance keeps its declared name because its receiver type text
-// already tells the two instantiations apart.
+// every type parameter replaced. Records keep their original ids: the subtree
+// is a subset of one document, so its ids are already unique, and references
+// that reach outside the subtree stay valid once those records are pulled in.
+// A non-empty mangled name renames the function; a method instance keeps its
+// declared name because its receiver type text already tells the two
+// instantiations apart.
 func (g *generator) cloneFuncInstance(d *docState, fn willc.Record, names, args []string, mangled string) (*willc.Doc, bool) {
 	included := map[int]bool{fn.ID: true}
 	changed := true
@@ -276,20 +264,30 @@ func (g *generator) cloneFuncInstance(d *docState, fn willc.Record, names, args 
 				changed = true
 			}
 		}
+		// Names the body qualifies through a package reach their import, and
+		// a cimport is the only way to reach its link table, so both travel
+		// with the instance.
+		for _, r := range d.recs {
+			if !included[r.ID] {
+				continue
+			}
+			if r.Kind != "name" {
+				continue
+			}
+			to := refField(r, "to")
+			if to == 0 || included[to] {
+				continue
+			}
+			if target, ok := d.recs[to]; ok &&
+				(target.Kind == "import" || target.Kind == "cimport") {
+				included[to] = true
+				changed = true
+			}
+		}
 	}
-	ids := make([]int, 0, len(included))
-	for id := range included {
-		ids = append(ids, id)
-	}
-	sort.Ints(ids)
 	remap := map[int]int{}
-	doc := &willc.Doc{}
-	module := willc.Record{ID: 1, Kind: "module", Fields: []willc.Field{
-		{Name: "path", Value: willc.Text(d.path)},
-	}}
-	doc.Records = append(doc.Records, module)
-	for i, id := range ids {
-		remap[id] = i + 2
+	for id := range included {
+		remap[id] = id
 	}
 	subst := make(map[string]string, len(names))
 	for i, name := range names {
@@ -297,6 +295,14 @@ func (g *generator) cloneFuncInstance(d *docState, fn willc.Record, names, args 
 			subst[name] = args[i]
 		}
 	}
+	doc := &willc.Doc{}
+	module := d.recs[d.moduleID]
+	doc.Records = append(doc.Records, module)
+	ids := make([]int, 0, len(included))
+	for id := range included {
+		ids = append(ids, id)
+	}
+	sort.Ints(ids)
 	for _, id := range ids {
 		src := d.recs[id]
 		if src.Kind == "typeparam" {
@@ -305,27 +311,37 @@ func (g *generator) cloneFuncInstance(d *docState, fn willc.Record, names, args 
 				continue
 			}
 		}
-		rec := willc.Record{ID: remap[id], Kind: src.Kind}
+		rec := willc.Record{ID: id, Kind: src.Kind}
+		// A type the signature spells as a type parameter becomes a scalar of
+		// the concrete argument; its declaration (the typeparam) does not
+		// travel with the instance.
 		isParamType := src.Kind == "type" && contains(names, fieldText(src, "text"))
+		if isParamType {
+			rec.Fields = append(rec.Fields,
+				willc.Field{Name: "parent", Value: willc.Ref(refField(src, "parent"))},
+				willc.Field{Name: "pos", Value: willc.Text(fieldText(src, "pos"))},
+				willc.Field{Name: "text", Value: willc.Text(substituteTypeText(fieldText(src, "text"), subst))},
+				willc.Field{Name: "kind", Value: willc.Word("scalar")},
+			)
+			doc.Records = append(doc.Records, rec)
+			continue
+		}
 		for _, f := range src.Fields {
 			v := f.Value
-			if f.Name == "parent" && v.Kind == willc.RefValue {
-				if v.Ref == d.moduleID {
-					v.Ref = 1
-				} else if next, ok := remap[v.Ref]; ok {
-					v.Ref = next
-				} else {
+			if v.Kind == willc.RefValue && f.Name == "to" && remap[v.Ref] == 0 {
+				// A call may name a function outside the subtree; the text
+				// spelling resolves it through the symbol table instead. A
+				// type text is substituted, so its stale ref simply drops.
+				if src.Kind == "call" {
+					if target, ok := d.recs[v.Ref]; ok && target.Kind == "func" {
+						v = willc.Text(qualify(d.path, fieldText(target, "text")))
+					} else {
+						return nil, false
+					}
+				} else if src.Kind != "type" {
 					return nil, false
-				}
-			} else if v.Kind == willc.RefValue {
-				if next, ok := remap[v.Ref]; ok {
-					v.Ref = next
-				} else if src.Kind == "type" && f.Name == "to" {
-					// The type text is substituted, so the declaration of the
-					// generic type itself does not have to be copied.
-					v.Ref = 0
 				} else {
-					return nil, false
+					continue
 				}
 			}
 			isTypeText := f.Name == "type" || (f.Name == "text" && src.Kind == "type")
@@ -334,13 +350,9 @@ func (g *generator) cloneFuncInstance(d *docState, fn willc.Record, names, args 
 			}
 			if f.Name == "field" && v.Kind == willc.TextValue {
 				// Aggregate literals keep their field value as name=#id inside
-				// one text field. The id must follow the cloned records.
+				// one text field; the id names a record of the same document.
 				if fieldName, id, ok := splitAggregateField(v.Text); ok {
-					next, found := remap[id]
-					if !found {
-						return nil, false
-					}
-					v.Text = fieldName + "=#" + strconv.Itoa(next)
+					v.Text = fieldName + "=#" + strconv.Itoa(id)
 				}
 			}
 			rec.Fields = append(rec.Fields, willc.Field{Name: f.Name, Value: v})
@@ -351,15 +363,6 @@ func (g *generator) cloneFuncInstance(d *docState, fn willc.Record, names, args 
 					rec.Fields[i].Value = willc.Text(mangled)
 				}
 			}
-		}
-		if isParamType {
-			rec.Fields = rec.Fields[:0]
-			rec.Fields = append(rec.Fields,
-				willc.Field{Name: "parent", Value: willc.Ref(remap[refField(src, "parent")])},
-				willc.Field{Name: "pos", Value: willc.Text(fieldText(src, "pos"))},
-				willc.Field{Name: "text", Value: willc.Text(substituteTypeText(fieldText(src, "text"), subst))},
-				willc.Field{Name: "kind", Value: willc.Word("scalar")},
-			)
 		}
 		doc.Records = append(doc.Records, rec)
 	}
@@ -453,7 +456,7 @@ func (g *generator) genericMethodIn(d *docState, recs map[int]willc.Record, recv
 		if recv == nil {
 			continue
 		}
-		declName, declArgs, ok := splitGenericType(fieldText(*recv, "type"))
+		declName, declArgs, ok := splitGenericType(baseBorrowText(fieldText(*recv, "type")))
 		if !ok || declName != recvName || len(declArgs) != len(params) {
 			continue
 		}
@@ -520,7 +523,7 @@ func (g *generator) genericMethodDecl(fn willc.Record) bool {
 	if recv == nil {
 		return false
 	}
-	name, args, ok := splitGenericType(fieldText(*recv, "type"))
+	name, args, ok := splitGenericType(baseBorrowText(fieldText(*recv, "type")))
 	if !ok {
 		return false
 	}
@@ -585,12 +588,15 @@ func (g *generator) planMethodInstances(base int, seen map[string]bool) {
 // another one.
 func (g *generator) genericTarget(r willc.Record) (*docState, willc.Record, []string, bool) {
 	args := g.typeArgTexts(r)
-	if len(args) == 0 {
-		return nil, willc.Record{}, nil, false
-	}
 	if id := refField(r, "to"); id != 0 {
 		fn, ok := g.recs[id]
 		if ok && fn.Kind == "func" && g.hasTypeParams(fn) {
+			if len(args) == 0 {
+				args = g.inferGenericArgs(g.cur, fn, r)
+			}
+			if len(args) == 0 {
+				return nil, willc.Record{}, nil, false
+			}
 			return g.cur, fn, args, true
 		}
 		return nil, willc.Record{}, nil, false
@@ -605,11 +611,128 @@ func (g *generator) genericTarget(r willc.Record) (*docState, willc.Record, []st
 				continue
 			}
 			if qualify(d.path, fieldText(f, "text")) == sym && g.hasTypeParamsIn(d, f) {
+				if len(args) == 0 {
+					args = g.inferGenericArgs(d, f, r)
+				}
+				if len(args) == 0 {
+					return nil, willc.Record{}, nil, false
+				}
 				return d, f, args, true
 			}
 		}
 	}
 	return nil, willc.Record{}, nil, false
+}
+
+// inferGenericArgs derives the type arguments of a call from the argument
+// types. It only accepts direct, syntactic matches; an ambiguous call keeps
+// the explicit type arguments requirement and is reported by the checker.
+func (g *generator) inferGenericArgs(d *docState, fn willc.Record, call willc.Record) []string {
+	names := typeParamNamesIn(d, fn)
+	if len(names) == 0 {
+		return nil
+	}
+	var params []willc.Record
+	for _, r := range d.recs {
+		if r.Kind == "param" && refField(r, "parent") == fn.ID {
+			params = append(params, r)
+		}
+	}
+	sortByID(params)
+	args := g.callArgs(call)
+	if len(args) > len(params) {
+		return nil
+	}
+	subst := map[string]string{}
+	for i, arg := range args {
+		actual := ""
+		if r, ok := g.recs[arg]; ok && (r.Kind == "func" || r.Kind == "lambda") {
+			actual = g.lambdaTypeText(r)
+		}
+		if actual == "" {
+			actual, _ = g.willTypeText(arg)
+		}
+		if actual == "" {
+			return nil
+		}
+		if !unifyTypeText(fieldText(params[i], "type"), actual, names, subst) {
+			return nil
+		}
+	}
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		value := subst[name]
+		if value == "" {
+			return nil
+		}
+		out = append(out, value)
+	}
+	return out
+}
+
+// unifyTypeText binds generic type parameter names in want from one argument
+// type text. It is deliberately small: it understands the container and
+// function shapes the language spells in a signature and nothing else.
+func unifyTypeText(want, actual string, names []string, subst map[string]string) bool {
+	want = strings.TrimSpace(want)
+	actual = strings.TrimSpace(actual)
+	if want == "" || actual == "" {
+		return true
+	}
+	for _, name := range names {
+		if want == name {
+			if prev, ok := subst[name]; ok {
+				return prev == actual
+			}
+			subst[name] = actual
+			return true
+		}
+	}
+	if strings.HasPrefix(want, "[]") {
+		if !strings.HasPrefix(actual, "[]") {
+			return false
+		}
+		return unifyTypeText(want[2:], actual[2:], names, subst)
+	}
+	if strings.HasPrefix(want, "func(") {
+		wp, wr, ok := funcTypeParts(want)
+		if !ok {
+			return false
+		}
+		ap, ar, ok := funcTypeParts(actual)
+		if !ok || len(wp) != len(ap) {
+			return false
+		}
+		for i := range wp {
+			if !unifyTypeText(wp[i], ap[i], names, subst) {
+				return false
+			}
+		}
+		return unifyTypeText(wr, ar, names, subst)
+	}
+	if name, wargs, ok := splitGenericType(want); ok {
+		aname, aargs, ok := splitGenericType(actual)
+		if !ok || name != aname || len(wargs) != len(aargs) {
+			return false
+		}
+		for i := range wargs {
+			if !unifyTypeText(wargs[i], aargs[i], names, subst) {
+				return false
+			}
+		}
+		return true
+	}
+	return true
+}
+
+// isGenericCallee reports whether a call names a generic function or a method
+// on an instantiated generic receiver. Such a call resolves to an instance
+// document, never to the declaration the records name.
+func (g *generator) isGenericCallee(call willc.Record) bool {
+	if g.genericCallName(call) != "" {
+		return true
+	}
+	return call.Kind == "mcall" && g.genericMethodName(call) != ""
 }
 
 // genericCallName returns the mangled symbol of a generic call, or "" when the

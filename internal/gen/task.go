@@ -11,12 +11,22 @@ import (
 // spawnRequest is one step function the document still has to write. The step
 // evaluates the spawned call on the task thread and stores its result.
 type spawnRequest struct {
-	node int
-	call int
-	sym  string
+	node      int
+	call      int
+	sym       string
+	frameType string
+	argTexts  []string
+	indirect  bool
+	closure   string
+	dropSym   string
 }
 
 // taskElemText returns the value type of Task<T>.
+func isChanText(text string) bool {
+	_, ok := chanElemText(text)
+	return ok
+}
+
 func taskElemText(text string) (string, bool) {
 	if strings.HasPrefix(text, "Task<") && strings.HasSuffix(text, ">") {
 		return strings.TrimSpace(text[len("Task<") : len(text)-1]), true
@@ -37,6 +47,14 @@ func (g *generator) spawnStepSymbol(node int) string {
 	if name := g.spawnNames[node]; name != "" {
 		return name
 	}
+	if fn := g.outerFunc(node); fn != 0 {
+		if sym := g.cur.funcs[fn]; sym != "" && strings.Contains(sym, "$") &&
+			!strings.Contains(sym, ".will$") {
+			name := sym + ".spawn." + strconv.Itoa(node)
+			g.spawnNames[node] = name
+			return name
+		}
+	}
 	g.spawnSeq++
 	name := qualify(g.pkg, "spawn."+strconv.Itoa(g.spawnSeq))
 	g.spawnNames[node] = name
@@ -47,30 +65,88 @@ func (g *generator) spawnStepSymbol(node int) string {
 // frame, and starts one task. The args are captured by value, matching the move
 // rule the source checker enforces for spawn.
 func (g *generator) lowerSpawn(r willc.Record) (string, error) {
-	laneValue := ""
-	if lane := fieldText(r, "lane"); lane != "" {
-		index, ok := g.laneIndex[qualify(g.pkg, lane)]
-		if !ok {
-			return "", g.errf(r.ID, "cannot translate node #%d: lane %s is not declared", r.ID, lane)
-		}
-		laneValue = strconv.Itoa(int(index))
-	}
+	// Every spawn is one task. The runtime chooses a lane; the surface no
+	// longer exposes placement or lane selection.
+	start := "-1"
 	callID := refField(r, "call")
 	call, ok := g.recs[callID]
 	if !ok {
 		return "", g.errf(r.ID, "cannot translate node #%d: the spawned call is missing", r.ID)
 	}
-	if call.Kind != "call" {
+	if call.Kind != "call" && call.Kind != "mcall" {
 		return "", g.errf(r.ID, "cannot translate node #%d: spawn takes a direct call", r.ID)
 	}
-	sym := g.callTargetSymbol(call)
-	if sym == "" {
-		return "", g.errf(r.ID, "cannot translate node #%d: the spawned call has no function", r.ID)
+	target, hasTarget := g.recs[refField(call, "to")]
+	indirect := hasTarget && g.isFuncValue(target)
+	// A generic callee lowers through its instance document: the machine shape
+	// is decided and enqueued there, with the substituted body. Deciding from
+	// the declaration would emit the declaration's own records with type
+	// parameters still in place.
+	if hasTarget && !indirect && !g.isGenericCallee(call) {
+		if g.generalMachine(target.ID) {
+			sym := g.cur.funcs[target.ID]
+			if sym == "" {
+				return "", g.errf(r.ID, "cannot translate node #%d: the spawned function has no symbol", r.ID)
+			}
+			g.enqueueGeneral(target.ID)
+			task, err := g.emitConstructorCall(call, sym, start, true)
+			if err != nil {
+				return "", err
+			}
+			if err := g.finishAsyncSpawnArgs(call, sym); err != nil {
+				return "", err
+			}
+			return task, nil
+		}
+		if info, ok := g.selectMachine(target.ID); ok {
+			g.pendingSelect = append(g.pendingSelect, info)
+			task, err := g.emitConstructorCall(call, g.cur.funcs[target.ID], start, true)
+			if err != nil {
+				return "", err
+			}
+			if err := g.finishAsyncSpawnArgs(call, g.cur.funcs[target.ID]); err != nil {
+				return "", err
+			}
+			return task, nil
+		}
+	}
+	sym := ""
+	if !indirect {
+		// A generic call names its instance: the constructor and the mark both
+		// hang off the mangled name, never off the declaration.
+		sym = g.awaitTargetSymbol(call)
+		if sym == "" {
+			return "", g.errf(r.ID, "cannot translate node #%d: the spawned call has no function", r.ID)
+		}
+		if g.suspendableFor(sym) {
+			task, err := g.emitConstructorCall(call, sym, start, true)
+			if err != nil {
+				return "", err
+			}
+			if err := g.finishAsyncSpawnArgs(call, sym); err != nil {
+				return "", err
+			}
+			return task, nil
+		}
 	}
 	args := g.callArgs(call)
+	// The spawn expression is the crossing: every captured rc handle gets its
+	// promotion recorded under this position.
+	g.crossingPos = fieldText(r, "pos")
 	var frameTypes []string
 	var argTypes []string
 	var argTexts []string
+	if indirect {
+		frameTypes = append(frameTypes, "{ ptr, ptr }")
+	}
+	recvOffset := 0
+	if call.Kind == "mcall" {
+		// The receiver is the hidden first parameter of a method. Keep it as a
+		// pointer in the job frame; the method body reads through it.
+		frameTypes = append(frameTypes, "ptr")
+		argTexts = append(argTexts, "")
+		recvOffset = 1
+	}
 	for _, a := range args {
 		typ, err := g.typeOf(a)
 		if err != nil {
@@ -93,9 +169,36 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	g.needTaskDecl = true
 	frame := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", frame, size)
+	if call.Kind == "mcall" {
+		recv, _, err := g.place(refField(call, "recv"))
+		if err != nil {
+			return "", err
+		}
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 0\n", field, frameType, frame)
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", recv, field)
+	}
+	if indirect {
+		code, env, err := g.closureCode(target)
+		if err != nil {
+			return "", err
+		}
+		closure := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 0\n", closure, frameType, frame)
+		codeField := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 0\n", codeField, closure)
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", code, codeField)
+		envField := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envField, closure)
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", env, envField)
+	}
 	for i, a := range args {
 		field := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 %d\n", field, frameType, frame, i)
+		fieldIndex := i + recvOffset
+		if indirect {
+			fieldIndex++
+		}
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 %d\n", field, frameType, frame, fieldIndex)
 		if isAggregateType(argTypes[i]) {
 			src, _, err := g.place(a)
 			if err != nil {
@@ -104,6 +207,9 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			value := g.load(argTypes[i], src)
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argTypes[i], value, field)
 			if err := g.shareValue(field, argTexts[i]); err != nil {
+				return "", err
+			}
+			if err := g.zeroTransferredSource(a, field); err != nil {
 				return "", err
 			}
 			continue
@@ -116,22 +222,57 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		if err := g.shareValue(field, argTexts[i]); err != nil {
 			return "", err
 		}
+		// An rc handle is a copyable handle, not an owning value. The task keeps
+		// its own reference and the source stays usable.
+		if isRcText(argTexts[i]) {
+			if err := g.retainValue(field, argTexts[i]); err != nil {
+				return "", err
+			}
+			continue
+		}
+		if isChanText(argTexts[i]) {
+			if g.isCopySource(a) {
+				if err := g.retainValue(field, argTexts[i]); err != nil {
+					return "", err
+				}
+			}
+			continue
+		}
+		if err := g.zeroTransferredSource(a, field); err != nil {
+			return "", err
+		}
 	}
 	step := g.spawnStepSymbol(r.ID)
+	closure := ""
+	if indirect {
+		closure = g.functionValueType(target)
+	}
+	dropSym := ""
+	if g.spawnFrameNeedsDrop(indirect, closure, argTexts) {
+		dropSym = step + ".drop"
+		g.needFrameDropDecl = true
+	}
 	if !g.spawnEmitted[step] {
 		g.spawnEmitted[step] = true
-		g.pendingSpawns = append(g.pendingSpawns, spawnRequest{node: r.ID, call: callID, sym: step})
-	}
-	lane := laneValue
-	if lane == "" {
-		here := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = call i32 @willrt_lane_here()\n", here)
-		lane = here
+		g.pendingSpawns = append(g.pendingSpawns, spawnRequest{
+			node: r.ID, call: callID, sym: step, frameType: frameType,
+			argTexts: append([]string(nil), argTexts...), indirect: indirect,
+			closure: closure, dropSym: dropSym,
+		})
 	}
 	task := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
-		task, llvmSymbol(step), frame, size, lane)
-	fmt.Fprintf(g.out, "  call void @willrt_task_run(ptr %s)\n", task)
+	// A sync call is a CPU job: it enters the submitting lane's deque and may
+	// be stolen, but it never suspends. Async calls returned above as tasks.
+	g.needJobDecl = true
+	if dropSym != "" {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, ptr @%s)\n",
+			task, llvmSymbol(step), frame, size, llvmSymbol(dropSym))
+	} else {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new(ptr @%s, ptr %s, i64 %s, i32 0)\n",
+			task, llvmSymbol(step), frame, size)
+	}
+	g.needOwnFrameDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_task_own_frame(ptr %s)\n", task)
 	return task, nil
 }
 
@@ -147,12 +288,139 @@ func (g *generator) callTargetSymbol(call willc.Record) string {
 
 // emitSpawns writes every step function queued by this document.
 func (g *generator) emitSpawns() error {
-	for _, req := range g.pendingSpawns {
-		if err := g.emitSpawnStep(req); err != nil {
+	for pass := 0; pass < 64; pass++ {
+		spawns := g.pendingSpawns
+		generals := g.pendingGeneral
+		asyncs := g.pendingAsync
+		selects := g.pendingSelect
+		g.pendingSpawns = nil
+		g.pendingGeneral = nil
+		g.pendingAsync = nil
+		g.pendingSelect = nil
+		if len(spawns)+len(generals)+len(asyncs)+len(selects) == 0 {
+			return nil
+		}
+		for _, req := range spawns {
+			if err := g.emitFrameDrop(req); err != nil {
+				return err
+			}
+			if err := g.emitSpawnStep(req); err != nil {
+				return err
+			}
+		}
+		for _, fn := range generals {
+			if err := g.emitGeneralStep(fn); err != nil {
+				return err
+			}
+		}
+		for _, info := range asyncs {
+			if err := g.emitAsyncSequenceStep(info); err != nil {
+				return err
+			}
+		}
+		for _, info := range selects {
+			if err := g.emitSelectMachineStep(info); err != nil {
+				return err
+			}
+		}
+	}
+	return fmt.Errorf("spawn lowering did not drain")
+}
+
+// argIsParameter reports whether an argument expression names a parameter or
+// receiver. Such a value is borrowed; an async spawn clones it into its frame
+// instead of clearing the caller's place.
+func (g *generator) argIsParameter(id int) bool {
+	r, ok := g.recs[id]
+	if !ok || r.Kind != "name" {
+		return false
+	}
+	decl, ok := g.recs[refField(r, "to")]
+	if !ok {
+		return false
+	}
+	return decl.Kind == "param" || decl.Kind == "receiver"
+}
+
+// finishAsyncSpawnArgs transfers the arguments that an async constructor copied
+// into its frame. rc and channel handles stay copyable, so their source keeps a
+// reference; owned values are cleared after the constructor took the shallow
+// copy. Parameters were cloned by emitConstructorCall and stay with the caller.
+func (g *generator) finishAsyncSpawnArgs(call willc.Record, targetSym string) error {
+	args := g.callArgs(call)
+	muts := g.paramMut[targetSym]
+	for i, a := range args {
+		if i < len(muts) && muts[i] || g.argIsParameter(a) {
+			continue
+		}
+		text, err := g.willTypeText(a)
+		if err != nil || !ownsReleaseText(g, text) {
+			continue
+		}
+		if isRcText(text) || isChanText(text) {
+			if !g.isCopySource(a) {
+				continue
+			}
+			src, _, err := g.place(a)
+			if err != nil {
+				return err
+			}
+			if err := g.retainValue(src, text); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := g.zeroTransferredSource(a, ""); err != nil {
 			return err
 		}
 	}
-	g.pendingSpawns = nil
+	return nil
+}
+
+func (g *generator) spawnFrameNeedsDrop(indirect bool, closure string, argTexts []string) bool {
+	if indirect && ownsReleaseText(g, closure) {
+		return true
+	}
+	for _, text := range argTexts {
+		if ownsReleaseText(g, text) {
+			return true
+		}
+	}
+	return false
+}
+
+// emitFrameDrop writes the callback that releases captured values before the
+// runtime frees the heap frame. The task still owns these values after its step
+// returns; the result is a separate copy.
+func (g *generator) emitFrameDrop(req spawnRequest) error {
+	if req.dropSym == "" || g.spawnDropped[req.dropSym] {
+		return nil
+	}
+	g.spawnDropped[req.dropSym] = true
+	fmt.Fprintf(g.out, "define internal void @%s(ptr %%frame) {\nentry:\n", llvmSymbol(req.dropSym))
+	if req.indirect {
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 0\n", field, req.frameType)
+		if err := g.releaseOwnedValue(field, req.closure); err != nil {
+			return err
+		}
+	}
+	for i, text := range req.argTexts {
+		if !ownsReleaseText(g, text) {
+			continue
+		}
+		index := i
+		if req.indirect {
+			index++
+		}
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n",
+			field, req.frameType, index)
+		if err := g.releaseOwnedValue(field, text); err != nil {
+			return err
+		}
+	}
+	g.out.WriteString("  ret void\n}\n")
 	return nil
 }
 
@@ -163,12 +431,23 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	if !ok {
 		return g.errf(req.node, "cannot translate node #%d: the spawned call is missing", req.node)
 	}
-	sym := g.callTargetSymbol(call)
+	target, hasTarget := g.recs[refField(call, "to")]
+	if hasTarget && g.isFuncValue(target) {
+		return g.emitIndirectSpawnStep(req, call, target)
+	}
+	// A generic call names its instance, whose body carries the substituted
+	// result type the step stores on the task.
+	sym := g.awaitTargetSymbol(call)
 	if sym == "" {
 		return g.errf(req.node, "cannot translate node #%d: the spawned call has no function", req.node)
 	}
 	args := g.callArgs(call)
 	var frameTypes []string
+	recvOffset := 0
+	if call.Kind == "mcall" {
+		frameTypes = append(frameTypes, "ptr")
+		recvOffset = 1
+	}
 	for _, a := range args {
 		typ, err := g.typeOf(a)
 		if err != nil {
@@ -201,15 +480,21 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	}
 	fmt.Fprintf(g.out, "define i32 @%s(ptr %%frame) {\nentry:\n", llvmSymbol(req.sym))
 	var callArgs []string
-	for i := range args {
+	if recvOffset != 0 {
 		field := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n", field, frameType, i)
-		if isAggregateType(frameTypes[i]) {
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 0\n", field, frameType)
+		callArgs = append(callArgs, "ptr "+g.load("ptr", field))
+	}
+	for i := range args {
+		index := i + recvOffset
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n", field, frameType, index)
+		if isAggregateType(frameTypes[index]) {
 			callArgs = append(callArgs, "ptr "+field)
 			continue
 		}
-		value := g.load(frameTypes[i], field)
-		callArgs = append(callArgs, frameTypes[i]+" "+value)
+		value := g.load(frameTypes[index], field)
+		callArgs = append(callArgs, frameTypes[index]+" "+value)
 	}
 	retLLVM := ""
 	if result != "" {
@@ -225,6 +510,75 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	}
 	value := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call %s @%s(%s)\n", value, retLLVM, llvmSymbol(sym), strings.Join(callArgs, ", "))
+	slot := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
+	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)
+	if err := g.shareValue(slot, result); err != nil {
+		return err
+	}
+	size := g.sizeOf(retLLVM)
+	g.needTaskDecl = true
+	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, size)
+	g.out.WriteString("  ret i32 1\n}\n")
+	return nil
+}
+
+// emitIndirectSpawnStep writes a job step for a call through a function value.
+// The frame starts with the closure, so the step loads the code and environment
+// pointers before forwarding the captured arguments.
+func (g *generator) emitIndirectSpawnStep(req spawnRequest, call willc.Record, target willc.Record) error {
+	params, result, ok := funcTypeParts(g.functionValueType(target))
+	if !ok {
+		return g.errf(req.node, "cannot translate node #%d: the spawned target is not a function value", req.node)
+	}
+	args := g.callArgs(call)
+	if len(args) != len(params) {
+		return g.errf(req.node, "cannot translate node #%d: the spawned function takes %d arguments", req.node, len(params))
+	}
+	frameTypes := []string{"{ ptr, ptr }"}
+	var argTypes []string
+	for _, a := range args {
+		typ, err := g.typeOf(a)
+		if err != nil {
+			return err
+		}
+		argTypes = append(argTypes, typ)
+		frameTypes = append(frameTypes, typ)
+	}
+	frameType := "{ " + strings.Join(frameTypes, ", ") + " }"
+	fmt.Fprintf(g.out, "define i32 @%s(ptr %%frame) {\nentry:\n", llvmSymbol(req.sym))
+	closure := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 0\n", closure, frameType)
+	codePtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 0\n", codePtr, closure)
+	code := g.load("ptr", codePtr)
+	envPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envPtr, closure)
+	env := g.load("ptr", envPtr)
+	callArgs := []string{"ptr " + env}
+	for i := range args {
+		field := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n", field, frameType, i+1)
+		if isAggregateType(argTypes[i]) {
+			callArgs = append(callArgs, "ptr "+field)
+			continue
+		}
+		callArgs = append(callArgs, argTypes[i]+" "+g.load(argTypes[i], field))
+	}
+	retLLVM := ""
+	if result != "" {
+		retLLVM = g.resultLLVM(result)
+		if retLLVM == "" {
+			return g.errf(req.node, "cannot translate node #%d: result type %s is not lowered yet", req.node, result)
+		}
+	}
+	if retLLVM == "" {
+		fmt.Fprintf(g.out, "  call void %s(%s)\n", code, strings.Join(callArgs, ", "))
+		g.out.WriteString("  ret i32 1\n}\n")
+		return nil
+	}
+	value := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call %s %s(%s)\n", value, retLLVM, code, strings.Join(callArgs, ", "))
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)
@@ -333,18 +687,25 @@ func (g *generator) firstJoinParam(fnID int) (int, bool) {
 	if len(children) < 2 || children[0].Kind != "var" {
 		return 0, false
 	}
-	var unwrap willc.Record
+	var join willc.Record
 	for _, r := range g.recs {
-		if refField(r, "parent") == children[0].ID && r.Kind == "unwrap" {
-			unwrap = r
-			break
+		if refField(r, "parent") != children[0].ID {
+			continue
+		}
+		switch r.Kind {
+		case "join":
+			join = r
+		case "unwrap":
+			if inner, ok := g.recs[refField(r, "expr")]; ok && inner.Kind == "join" {
+				join = inner
+			}
+		case "try":
+			if inner, ok := g.recs[refField(r, "expr")]; ok && inner.Kind == "join" {
+				join = inner
+			}
 		}
 	}
-	if unwrap.ID == 0 {
-		return 0, false
-	}
-	join, ok := g.recs[refField(unwrap, "expr")]
-	if !ok || join.Kind != "join" {
+	if join.ID == 0 {
 		return 0, false
 	}
 	name, ok := g.recs[refField(join, "task")]
@@ -714,7 +1075,7 @@ func (g *generator) joinUnwrap(r willc.Record) (string, string, string, error) {
 	}
 	elem, ok := taskElemText(taskText)
 	if !ok {
-		return "", "", "", g.errf(r.ID, "cannot translate node #%d: Join needs a Task", r.ID)
+		return "", "", "", g.errf(r.ID, "cannot translate node #%d: join needs a Task", r.ID)
 	}
 	if elem == "" || elem == "()" {
 		task, err := g.value(taskID)
@@ -722,10 +1083,18 @@ func (g *generator) joinUnwrap(r willc.Record) (string, string, string, error) {
 			return "", "", "", err
 		}
 		g.needTaskDecl = true
-		errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt_error")
+		errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt.task_error")
 		g.needPanicDecl = true
-		status := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr null, ptr %s)\n", status, task, errSlot)
+		status := ""
+		if g.smGeneral {
+			status = g.smTryJoin(task, "", errSlot)
+		} else {
+			status = g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr null, ptr %s)\n", status, task, errSlot)
+		}
+		statusCopy := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt.task_error, ptr %s, i32 0, i32 1\n", statusCopy, errSlot)
+		fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", status, statusCopy)
 		isOK := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", isOK, status)
 		g.labels++
@@ -761,10 +1130,18 @@ func (g *generator) joinUnwrap(r willc.Record) (string, string, string, error) {
 	}
 	g.needTaskDecl = true
 	out := g.allocSlot(g.joinOutSlots, "join.out", r.ID, elemLLVM)
-	errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt_error")
+	errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt.task_error")
 	g.needPanicDecl = true
-	status := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr %s, ptr %s)\n", status, task, out, errSlot)
+	status := ""
+	if g.smGeneral {
+		status = g.smTryJoin(task, out, errSlot)
+	} else {
+		status = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr %s, ptr %s)\n", status, task, out, errSlot)
+	}
+	statusCopy := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt.task_error, ptr %s, i32 0, i32 1\n", statusCopy, errSlot)
+	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", status, statusCopy)
 	isOK := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", isOK, status)
 	g.labels++
@@ -811,14 +1188,28 @@ func (g *generator) lowerChanNew(r willc.Record) (string, error) {
 	fmt.Fprintf(g.out, "  %s = sext i32 %s to i64\n", cap64, capValue)
 	size := g.sizeOf(elemLLVM)
 	g.needTaskDecl = true
+	g.needChanDecl = true
 	chanPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_chan_new(i64 %s, i64 %s, i32 0)\n", chanPtr, size, cap64)
+	if ownsReleaseText(g, elem) {
+		drop := g.channelDrop(elem)
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_chan_new_drop(i64 %s, i64 %s, i32 0, ptr @%s)\n",
+			chanPtr, size, cap64, llvmSymbol(drop))
+	} else {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_chan_new(i64 %s, i64 %s, i32 0)\n", chanPtr, size, cap64)
+	}
 	return chanPtr, nil
 }
 
 // lowerSend copies one value into a channel. A scalar value needs a slot to
 // pass its address; an aggregate already has one.
 func (g *generator) lowerSend(r willc.Record) error {
+	if g.smGeneral {
+		_, err := g.lowerSendResult(r)
+		return err
+	}
+	// The send is the crossing: the ring's copy and the sender's binding
+	// reach the count from two lanes.
+	g.crossingPos = fieldText(r, "pos")
 	chanPtr, err := g.value(refField(r, "chan"))
 	if err != nil {
 		return err
@@ -849,9 +1240,219 @@ func (g *generator) lowerSend(r willc.Record) error {
 	if err := g.shareValue(ptr, valueText); err != nil {
 		return err
 	}
+	keep := isChanText(valueText) && g.isCopySource(valueID)
+	if keep {
+		g.needTaskDecl = true
+		if err := g.retainValue(ptr, valueText); err != nil {
+			return err
+		}
+	}
 	g.needTaskDecl = true
 	fmt.Fprintf(g.out, "  call i32 @willrt_chan_send(ptr %s, ptr %s)\n", chanPtr, ptr)
+	if !keep {
+		if err := g.zeroTransferredSource(valueID, ""); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// lowerSendResult builds Result<(), Error> around one send. A closed channel
+// stores the built-in Closed fault in the error payload.
+func (g *generator) lowerSendResult(r willc.Record) (string, error) {
+	// The send is the crossing: the ring's copy and the sender's binding
+	// reach the count from two lanes.
+	g.crossingPos = fieldText(r, "pos")
+	chanPtr, err := g.value(refField(r, "chan"))
+	if err != nil {
+		return "", err
+	}
+	valueID := refField(r, "value")
+	typ, err := g.typeOf(valueID)
+	if err != nil {
+		return "", err
+	}
+	valueText, err := g.willTypeText(valueID)
+	if err != nil {
+		return "", err
+	}
+	ptr := ""
+	if isAggregateType(typ) {
+		ptr, _, err = g.place(valueID)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		ptr = g.allocSlot(g.sendValueSlots, "send", r.ID, typ)
+		value, err := g.value(valueID)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
+	}
+	if err := g.shareValue(ptr, valueText); err != nil {
+		return "", err
+	}
+	keep := isChanText(valueText) && g.isCopySource(valueID)
+	if keep {
+		g.needTaskDecl = true
+		if err := g.retainValue(ptr, valueText); err != nil {
+			return "", err
+		}
+	}
+	info, ok := g.adtType("Result<(), Error>")
+	if !ok {
+		return "", g.errf(r.ID, "cannot translate node #%d: Result<(), Error> is not lowered", r.ID)
+	}
+	g.needTaskDecl = true
+	slot := g.allocSlot(g.adtSlots, "send.result", r.ID, info.llvm)
+	status := ""
+	if g.smGeneral {
+		chanSlot := g.smAlloca("ptr", "send.chan")
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", chanPtr, chanSlot)
+		valueSlot := g.smAlloca("ptr", "send.value")
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", ptr, valueSlot)
+		statusSlot := g.smAlloca("i32", "send.status")
+		tryStatus := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_chan_try_send(ptr %s, ptr %s)\n",
+			tryStatus, g.load("ptr", chanSlot), g.load("ptr", valueSlot))
+		fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", tryStatus, statusSlot)
+		ready := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", ready, tryStatus)
+		n := r.ID
+		slowCheck := fmt.Sprintf("send.slowcheck.%d", n)
+		slow := fmt.Sprintf("send.slow.%d", n)
+		result := fmt.Sprintf("send.result.%d", n)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", ready, result, slowCheck)
+		g.out.WriteString(slowCheck + ":\n")
+		closed := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, -4\n", closed, tryStatus)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", closed, result, slow)
+		g.out.WriteString(slow + ":\n")
+		id := g.smReserve()
+		g.smStoreState(id)
+		waitStatus := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_chan_send_wait(ptr %s, ptr %s)\n",
+			waitStatus, g.load("ptr", chanSlot), g.load("ptr", valueSlot))
+		fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", waitStatus, statusSlot)
+		g.needChanWaitDecl = true
+		g.smCheckPark(waitStatus, id)
+		fmt.Fprintf(g.out, "  br label %%%s\n", result)
+		g.out.WriteString(result + ":\n")
+		status = g.load("i32", statusSlot)
+	} else {
+		status = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_chan_send(ptr %s, ptr %s)\n", status, chanPtr, ptr)
+	}
+	okStatus := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", okStatus, status)
+	g.labels++
+	n := g.labels
+	okLabel := fmt.Sprintf("send.ok.%d", n)
+	errLabel := fmt.Sprintf("send.err.%d", n)
+	endLabel := fmt.Sprintf("send.end.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", okStatus, okLabel, errLabel)
+	g.out.WriteString(okLabel + ":\n")
+	if !keep {
+		if err := g.zeroTransferredSource(valueID, ""); err != nil {
+			return "", err
+		}
+	}
+	tagPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
+	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", info.tags["Ok"], tagPtr)
+	fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
+	g.out.WriteString(errLabel + ":\n")
+	if keep {
+		if err := g.releaseOwnedValue(ptr, valueText); err != nil {
+			return "", err
+		}
+	}
+	tagPtr = g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
+	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", info.tags["Err"], tagPtr)
+	payload := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
+	g.builtinErrorInto(payload, 4)
+	fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
+	g.out.WriteString(endLabel + ":\n")
+	return slot, nil
+}
+
+// lowerJoinResult builds Result<T, TaskError> from a blocking join. Join()!
+// keeps its own panic path; this form is used when the caller wants the error
+// as a value.
+func (g *generator) lowerJoinResult(r willc.Record) (string, error) {
+	taskID := refField(r, "task")
+	taskText, err := g.willTypeText(taskID)
+	if err != nil {
+		return "", err
+	}
+	elem, ok := taskElemText(taskText)
+	if !ok {
+		return "", g.errf(r.ID, "cannot translate node #%d: join needs a Task", r.ID)
+	}
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok {
+		return "", g.errf(r.ID, "cannot translate node #%d: task value %s is not lowered yet", r.ID, elem)
+	}
+	info, ok := g.adtType("Result<" + elem + ",TaskError>")
+	if !ok {
+		return "", g.errf(r.ID, "cannot translate node #%d: Result<%s, TaskError> is not lowered", r.ID, elem)
+	}
+	task, err := g.value(taskID)
+	if err != nil {
+		return "", err
+	}
+	g.needTaskDecl = true
+	out := ""
+	if elemLLVM != "" {
+		out = g.allocSlot(g.joinOutSlots, "join.out", r.ID, elemLLVM)
+	}
+	errSlot := g.allocSlot(g.joinErrSlots, "join.err", r.ID, "%willrt.task_error")
+	status := ""
+	if g.smGeneral {
+		status = g.smTryJoin(task, out, errSlot)
+	} else {
+		status = g.newTmp()
+		if out == "" {
+			fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr null, ptr %s)\n", status, task, errSlot)
+		} else {
+			fmt.Fprintf(g.out, "  %s = call i32 @willrt_join(ptr %s, ptr %s, ptr %s)\n", status, task, out, errSlot)
+		}
+	}
+	statusCopy := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%willrt.task_error, ptr %s, i32 0, i32 1\n", statusCopy, errSlot)
+	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", status, statusCopy)
+	slot := g.allocSlot(g.adtSlots, "join.result", r.ID, info.llvm)
+	okStatus := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", okStatus, status)
+	g.labels++
+	n := g.labels
+	okLabel := fmt.Sprintf("join.ok.%d", n)
+	errLabel := fmt.Sprintf("join.err.%d", n)
+	endLabel := fmt.Sprintf("join.end.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", okStatus, okLabel, errLabel)
+	g.out.WriteString(okLabel + ":\n")
+	tagPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
+	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", info.tags["Ok"], tagPtr)
+	if out != "" {
+		payload := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
+		g.copyValue(out, payload, elemLLVM)
+	}
+	fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
+	g.out.WriteString(errLabel + ":\n")
+	tagPtr = g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
+	fmt.Fprintf(g.out, "  store i32 %d, ptr %s\n", info.tags["Err"], tagPtr)
+	payload := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
+	g.taskErrorInto(payload, errSlot)
+	fmt.Fprintf(g.out, "  br label %%%s\n", endLabel)
+	g.out.WriteString(endLabel + ":\n")
+	return slot, nil
 }
 
 // lowerClose closes one channel.
@@ -927,7 +1528,7 @@ func (g *generator) lowerRecv(r willc.Record, try bool) (string, string, error) 
 	}
 	elem, ok := chanElemText(chanText)
 	if !ok {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Recv needs a channel", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: recv needs a channel", r.ID)
 	}
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok || elemLLVM == "" {
@@ -947,8 +1548,42 @@ func (g *generator) lowerRecv(r willc.Record, try bool) (string, string, error) 
 	if try {
 		fn = "willrt_chan_try_recv"
 	}
-	status := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call i32 @%s(ptr %s, ptr %s)\n", status, fn, chanPtr, out)
+	status := ""
+	if g.smGeneral && !try {
+		chanSlot := g.smAlloca("ptr", "recv.chan")
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", chanPtr, chanSlot)
+		statusSlot := g.smAlloca("i32", "recv.status")
+		tryStatus := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_chan_try_recv(ptr %s, ptr %s)\n",
+			tryStatus, g.load("ptr", chanSlot), out)
+		fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", tryStatus, statusSlot)
+		ready := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", ready, tryStatus)
+		n := r.ID
+		slowCheck := fmt.Sprintf("recv.slowcheck.%d", n)
+		slow := fmt.Sprintf("recv.slow.%d", n)
+		result := fmt.Sprintf("recv.result.%d", n)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", ready, result, slowCheck)
+		g.out.WriteString(slowCheck + ":\n")
+		closed := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, -4\n", closed, tryStatus)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", closed, result, slow)
+		g.out.WriteString(slow + ":\n")
+		id := g.smReserve()
+		g.smStoreState(id)
+		waitStatus := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @willrt_chan_recv_wait(ptr %s, ptr %s)\n",
+			waitStatus, g.load("ptr", chanSlot), out)
+		fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", waitStatus, statusSlot)
+		g.needChanWaitDecl = true
+		g.smCheckPark(waitStatus, id)
+		fmt.Fprintf(g.out, "  br label %%%s\n", result)
+		g.out.WriteString(result + ":\n")
+		status = g.load("i32", statusSlot)
+	} else {
+		status = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call i32 @%s(ptr %s, ptr %s)\n", status, fn, chanPtr, out)
+	}
 	slot := g.allocSlot(g.recvOptSlots, "recv", r.ID, info.llvm)
 	tagPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)

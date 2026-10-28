@@ -1,22 +1,22 @@
 import "std/container/ring"
 
-// A ring must stop at its capacity, preserve FIFO order, and free a slot when
-// Pop removes a value so a later Push can use it again.
-func main() -> i32 {
+# A ring must stop at its capacity, preserve FIFO order, and free a slot when
+# Pop removes a value so a later Push can use it again.
+def main() -> i32 {
     var r: ring.Ring<i32> = new ring.Ring<i32>(3usize)!
-    if r.Len() != 0usize || r.Full() {
+    if r.len() != 0usize or r.full() {
         return 1
     }
-    if !r.Push(1) || !r.Push(2) || !r.Push(3) {
+    if not r.push(1) or not r.push(2) or not r.push(3) {
         return 2
     }
-    if !r.Full() || r.Len() != 3usize {
+    if not r.full() or r.len() != 3usize {
         return 3
     }
-    if r.Push(4) {
+    if r.push(4) {
         return 4
     }
-    match r.Pop() {
+    match r.pop() {
         Some(v) => {
             if v != 1 {
                 return 5
@@ -26,10 +26,10 @@ func main() -> i32 {
             return 6
         }
     }
-    if !r.Push(4) || r.Len() != 3usize {
+    if not r.push(4) or r.len() != 3usize {
         return 7
     }
-    match r.Peek() {
+    match r.peek() {
         Some(v) => {
             if v != 2 {
                 return 8
@@ -39,7 +39,7 @@ func main() -> i32 {
             return 9
         }
     }
-    match r.Pop() {
+    match r.pop() {
         Some(v) => {
             if v != 2 {
                 return 10
@@ -49,7 +49,7 @@ func main() -> i32 {
             return 11
         }
     }
-    match r.Pop() {
+    match r.pop() {
         Some(v) => {
             if v != 3 {
                 return 12
@@ -59,7 +59,7 @@ func main() -> i32 {
             return 13
         }
     }
-    match r.Pop() {
+    match r.pop() {
         Some(v) => {
             if v != 4 {
                 return 14
@@ -69,7 +69,7 @@ func main() -> i32 {
             return 15
         }
     }
-    match r.Pop() {
+    match r.pop() {
         Some(v) => {
             _ = v
             return 16
@@ -77,11 +77,11 @@ func main() -> i32 {
         None => {
         }
     }
-    if !r.Push(5) || !r.Push(6) {
+    if not r.push(5) or not r.push(6) {
         return 17
     }
-    r.Clear()
-    if r.Len() != 0usize || r.Full() {
+    r.clear()
+    if r.len() != 0usize or r.full() {
         return 18
     }
     match new ring.Ring<i32>(0usize) {
@@ -90,7 +90,7 @@ func main() -> i32 {
             return 19
         }
         Err(e) => {
-            if e.Status() != 2 {
+            if e.status() != 2 {
                 return 20
             }
         }

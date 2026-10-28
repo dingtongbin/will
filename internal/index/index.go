@@ -37,8 +37,8 @@ func (x *builder) run() {
 
 	methods := map[string]map[string]string{}
 	sigs := map[string]map[string]string{
-		"Show":  {"Show": "func()->str"},
-		"Error": {"Message": "func()->str", "Status": "func()->i32"},
+		"Show":  {"show": "func()->str"},
+		"Error": {"message": "func()->str", "status": "func()->i32"},
 	}
 	ifaces := []string{"Show", "Error"}
 	derived := map[string]bool{}
@@ -104,13 +104,20 @@ func (x *builder) emitFile(p *pkg.Package, f *pkg.File) {
 			x.decl(f.Path, decl.Pos(), "const", decl.Name)
 		case *ast.VarDecl:
 			x.decl(f.Path, decl.Pos(), "var", decl.Name)
+		case *ast.TypeAliasDecl:
+			x.decl(f.Path, decl.Pos(), "typealias", decl.Name)
+			if decl.Type != nil {
+				x.line("alias", quote("file", f.Path), "line="+strconv.Itoa(decl.NamePos.Line),
+					"col="+strconv.Itoa(decl.NamePos.Col), quote("name", decl.Name),
+					quote("target", typeText(decl.Type)))
+			}
 		case *ast.FuncDecl:
 			x.decl(f.Path, decl.Pos(), "func", decl.Name)
 			if decl.Recv != nil {
 				pos := decl.Pos()
 				x.line("method", quote("file", f.Path), "line="+strconv.Itoa(pos.Line),
 					"col="+strconv.Itoa(pos.Col), quote("type", receiver(decl.Recv.Type)),
-					quote("name", decl.Name), quote("recv", recvKind(decl.Recv.Mut)))
+					quote("name", decl.Name), quote("recv", recvKind(decl.Recv.Type)))
 			}
 		case *ast.StructDecl:
 			x.decl(f.Path, decl.Pos(), "struct", decl.Name)
@@ -211,37 +218,7 @@ func sigText(params []*ast.Param, result *ast.Type) string {
 }
 
 func typeText(t *ast.Type) string {
-	if t == nil {
-		return ""
-	}
-	switch t.Kind {
-	case ast.ScalarType, ast.NamedType:
-		if len(t.Args) == 0 {
-			return t.Name
-		}
-		parts := make([]string, len(t.Args))
-		for i, a := range t.Args {
-			parts[i] = typeText(a)
-		}
-		return t.Name + "<" + strings.Join(parts, ",") + ">"
-	case ast.ArrayType:
-		return "[" + t.Len + "]" + typeText(t.Elem)
-	case ast.ViewType:
-		return "[]" + typeText(t.Elem)
-	case ast.FuncType:
-		parts := make([]string, len(t.Params))
-		for i, p := range t.Params {
-			parts[i] = typeText(p)
-		}
-		out := "func(" + strings.Join(parts, ",") + ")"
-		if t.Result != nil {
-			out += "->" + typeText(t.Result)
-		}
-		return out
-	case ast.UnitType:
-		return "()"
-	}
-	return ""
+	return ast.TypeText(t)
 }
 
 func receiver(t *ast.Type) string {
@@ -251,8 +228,14 @@ func receiver(t *ast.Type) string {
 	return t.Name
 }
 
-func recvKind(mut bool) string {
-	if mut {
+func recvKind(t *ast.Type) string {
+	if t == nil {
+		return "value"
+	}
+	if t.IsRef() {
+		return "ref"
+	}
+	if t.IsMutRef() || t.ViewMut {
 		return "mut"
 	}
 	return "value"
@@ -269,10 +252,10 @@ func linkage(link *ast.Link) string {
 }
 
 func visibility(name string) string {
-	if name != "" && name[0] >= 'A' && name[0] <= 'Z' {
-		return "public"
+	if name == "" || strings.HasPrefix(name, "__") {
+		return "private"
 	}
-	return "private"
+	return "public"
 }
 
 func qualified(pkgPath, name string) string {

@@ -1,20 +1,20 @@
 import "std/container/deque"
 
-// The deque must preserve logical order across both rebalancing directions,
-// including alternation between the front and the back.
-func main() -> i32 {
+# The deque must preserve logical order across both rebalancing directions,
+# including alternation between the front and the back.
+def main() -> i32 {
     var d: deque.Deque<i32> = new deque.Deque<i32>()
-    if d.Len() != 0usize {
+    if d.len() != 0usize {
         return 1
     }
-    d.PushBack(3)
-    d.PushBack(4)
-    d.PushFront(2)
-    d.PushFront(1)
-    if d.Len() != 4usize {
+    d.push_back(3)
+    d.push_back(4)
+    d.push_front(2)
+    d.push_front(1)
+    if d.len() != 4usize {
         return 2
     }
-    match d.PeekFront() {
+    match d.peek_front() {
         Some(v) => {
             if v != 1 {
                 return 3
@@ -24,7 +24,7 @@ func main() -> i32 {
             return 4
         }
     }
-    match d.PeekBack() {
+    match d.peek_back() {
         Some(v) => {
             if v != 4 {
                 return 5
@@ -34,7 +34,7 @@ func main() -> i32 {
             return 6
         }
     }
-    match d.PopBack() {
+    match d.pop_back() {
         Some(v) => {
             if v != 4 {
                 return 7
@@ -44,7 +44,7 @@ func main() -> i32 {
             return 8
         }
     }
-    match d.PopFront() {
+    match d.pop_front() {
         Some(v) => {
             if v != 1 {
                 return 9
@@ -54,12 +54,12 @@ func main() -> i32 {
             return 10
         }
     }
-    d.PushBack(5)
-    d.PushFront(0)
-    if d.Len() != 4usize {
+    d.push_back(5)
+    d.push_front(0)
+    if d.len() != 4usize {
         return 11
     }
-    match d.PopFront() {
+    match d.pop_front() {
         Some(v) => {
             if v != 0 {
                 return 12
@@ -69,7 +69,7 @@ func main() -> i32 {
             return 13
         }
     }
-    match d.PopFront() {
+    match d.pop_front() {
         Some(v) => {
             if v != 2 {
                 return 14
@@ -79,7 +79,7 @@ func main() -> i32 {
             return 15
         }
     }
-    match d.PopFront() {
+    match d.pop_front() {
         Some(v) => {
             if v != 3 {
                 return 16
@@ -89,7 +89,7 @@ func main() -> i32 {
             return 17
         }
     }
-    match d.PopFront() {
+    match d.pop_front() {
         Some(v) => {
             if v != 5 {
                 return 18
@@ -99,7 +99,7 @@ func main() -> i32 {
             return 19
         }
     }
-    match d.PopFront() {
+    match d.pop_front() {
         Some(v) => {
             _ = v
             return 14
@@ -107,14 +107,14 @@ func main() -> i32 {
         None => {
         }
     }
-    d.PushFront(9)
-    var copy: deque.Deque<i32> = d.Clone()
-    d.PushBack(10)
-    if copy.Len() != 1usize || d.Len() != 2usize {
+    d.push_front(9)
+    var copy: deque.Deque<i32> = d.clone()
+    d.push_back(10)
+    if copy.len() != 1usize or d.len() != 2usize {
         return 15
     }
-    copy.Clear()
-    if copy.Len() != 0usize {
+    copy.clear()
+    if copy.len() != 0usize {
         return 16
     }
     return 0

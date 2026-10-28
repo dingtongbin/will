@@ -1,4 +1,6 @@
-define hidden i32 @"example.com/map.Lookup"(ptr %m, i32 %k) inlinehint {
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
+define hidden i32 @"example.com/map.lookup"(ptr %m, i32 %k) inlinehint {
 entry:
   %v.ret.13 = alloca { i32, i32 }
   %v.match.12 = alloca i32
@@ -364,9 +366,9 @@ res.ready.13:
   store i64 %t151, ptr %t115
   br label %set.done.12
 set.done.12:
-  %t152 = call i32 @"example.com/map.Lookup"(ptr %v.m, i32 2)
+  %t152 = call i32 @"example.com/map.lookup"(ptr %v.m, i32 2)
   store i32 %t152, ptr %v.s
-  %t153 = call i32 @"example.com/map.Lookup"(ptr %v.m, i32 3)
+  %t153 = call i32 @"example.com/map.lookup"(ptr %v.m, i32 3)
   store i32 %t153, ptr %v.t
   %t154 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.m, i32 0, i32 0
   %t155 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.m, i32 0, i32 1
@@ -638,6 +640,62 @@ panic.32:
   call void @willrt_panic(ptr @.str.0, ptr @.str.8, ptr @.str.4)
   unreachable
 panic.ok.32:
+  %t277 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.values, i32 0, i32 0
+  %t278 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.values, i32 0, i32 1
+  %t279 = load ptr, ptr %t277
+  %t280 = load i64, ptr %t278
+  %t281 = alloca i64
+  store i64 0, ptr %t281
+  br label %deep.rel.arr.cond.33
+deep.rel.arr.cond.33:
+  %t282 = load i64, ptr %t281
+  %t283 = icmp ult i64 %t282, %t280
+  br i1 %t283, label %deep.rel.arr.body.33, label %deep.rel.arr.done.33
+deep.rel.arr.body.33:
+  %t284 = getelementptr inbounds i32, ptr %t279, i64 %t282
+  %t285 = add i64 %t282, 1
+  store i64 %t285, ptr %t281
+  br label %deep.rel.arr.cond.33
+deep.rel.arr.done.33:
+  call void @willrt_free(ptr %t279)
+  %t286 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.keys, i32 0, i32 0
+  %t287 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.keys, i32 0, i32 1
+  %t288 = load ptr, ptr %t286
+  %t289 = load i64, ptr %t287
+  %t290 = alloca i64
+  store i64 0, ptr %t290
+  br label %deep.rel.arr.cond.34
+deep.rel.arr.cond.34:
+  %t291 = load i64, ptr %t290
+  %t292 = icmp ult i64 %t291, %t289
+  br i1 %t292, label %deep.rel.arr.body.34, label %deep.rel.arr.done.34
+deep.rel.arr.body.34:
+  %t293 = getelementptr inbounds i32, ptr %t288, i64 %t291
+  %t294 = add i64 %t291, 1
+  store i64 %t294, ptr %t290
+  br label %deep.rel.arr.cond.34
+deep.rel.arr.done.34:
+  call void @willrt_free(ptr %t288)
+  %t295 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.m, i32 0, i32 0
+  %t296 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.m, i32 0, i32 1
+  %t297 = load ptr, ptr %t295
+  %t298 = load i64, ptr %t296
+  %t299 = alloca i64
+  store i64 0, ptr %t299
+  br label %deep.rel.map.cond.35
+deep.rel.map.cond.35:
+  %t300 = load i64, ptr %t299
+  %t301 = icmp ult i64 %t300, %t298
+  br i1 %t301, label %deep.rel.map.body.35, label %deep.rel.map.done.35
+deep.rel.map.body.35:
+  %t302 = getelementptr inbounds { i32, i32 }, ptr %t297, i64 %t300
+  %t303 = getelementptr inbounds { i32, i32 }, ptr %t302, i32 0, i32 0
+  %t304 = getelementptr inbounds { i32, i32 }, ptr %t302, i32 0, i32 1
+  %t305 = add i64 %t300, 1
+  store i64 %t305, ptr %t299
+  br label %deep.rel.map.cond.35
+deep.rel.map.done.35:
+  call void @willrt_free(ptr %t297)
   ret i32 %t275
 }
 declare void @willrt_init()
@@ -651,7 +709,7 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:4:17\00", align 1
-@.str.2 = private unnamed_addr constant [23 x i8] c"example.com/map.Lookup\00", align 1
+@.str.2 = private unnamed_addr constant [23 x i8] c"example.com/map.lookup\00", align 1
 @.str.3 = private unnamed_addr constant [16 x i8] c"main.will:19:13\00", align 1
 @.str.4 = private unnamed_addr constant [26 x i8] c"example.com/map.will$main\00", align 1
 @.str.5 = private unnamed_addr constant [16 x i8] c"main.will:22:13\00", align 1

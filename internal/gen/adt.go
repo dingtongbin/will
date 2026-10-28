@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/will-lang/will/internal/willc"
@@ -47,19 +48,44 @@ func parseADT(text string) (string, []string, bool) {
 // typeLLVMOf maps a type text used as an Option or Result argument to its LLVM
 // type. The unit type has no value and returns "".
 func (g *generator) typeLLVMOf(text string) (string, bool) {
-	text = g.canonicalTypeText(text)
+	base, borrowKind := borrowText(text)
+	if borrowKind == "ref" || borrowKind == "mut" {
+		return "ptr", true
+	}
+	text = g.canonicalTypeText(base)
+	if text == "interface {}" {
+		if g.emptyIface == nil {
+			g.emptyIface = &ifaceInfo{name: "interface {}", llvm: "%interface.empty", byName: map[string]int{}}
+		}
+		return "%interface.empty", true
+	}
+	if _, ok := chanElemText(text); ok {
+		return "ptr", true
+	}
+	if _, ok := taskElemText(text); ok {
+		return "ptr", true
+	}
 	if typ, _, ok := llvmScalar(text); ok {
 		return typ, true
 	}
 	if typ, ok := llvmTypeText(text); ok {
 		return typ, true
 	}
+	if n, elem, ok := arrayTypeText(text); ok {
+		if elemLLVM, ok := g.typeLLVMOf(elem); ok && elemLLVM != "" {
+			return "[" + strconv.Itoa(n) + " x " + elemLLVM + "]", true
+		}
+	}
 	if text == "()" {
 		return "", true
 	}
-	if text == "Error" {
+	if text == "Error" || text == "TaskError" {
 		g.usedError = true
 		return "%interface.Error", true
+	}
+	if text == "Show" {
+		g.showUsed = true
+		return "%interface.show", true
 	}
 	if strings.HasPrefix(text, "func(") {
 		return "{ ptr, ptr }", true
@@ -256,7 +282,7 @@ func (g *generator) adtConstruct(r willc.Record, info *adtInfo, variant string, 
 			if err != nil {
 				return "", "", err
 			}
-			if _, err := g.ifaceValue(payload, argID, iface, argText); err != nil {
+			if _, err := g.ifaceStoreValue(payload, argID, iface, argText); err != nil {
 				return "", "", err
 			}
 			return slot, info.llvm, nil
@@ -270,12 +296,34 @@ func (g *generator) adtConstruct(r willc.Record, info *adtInfo, variant string, 
 		if srcType != argType {
 			return "", "", g.errf(argID, "cannot translate node #%d: the argument needs %s", argID, argType)
 		}
+		move, _ := g.moveSource(argID)
+		if !move {
+			if text, err := g.willTypeText(argID); err == nil && isFuncText(text) && g.isCopySource(argID) {
+				if err := g.retainValue(src, text); err != nil {
+					return "", "", err
+				}
+			}
+		}
 		g.copyValue(src, payload, argType)
+		if move {
+			if err := g.zeroMovedSource(argID, payload); err != nil {
+				return "", "", err
+			}
+		}
 		return slot, info.llvm, nil
 	}
 	value, err := g.value(argID)
 	if err != nil {
 		return "", "", err
+	}
+	if text, err := g.willTypeText(argID); err == nil && isRcText(text) && g.isCopySource(argID) {
+		g.needRcDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
+	}
+	if text, err := g.willTypeText(argID); err == nil && isChanText(text) && g.isCopySource(argID) {
+		g.needTaskDecl = true
+		g.needChanDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
 	}
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argType, value, payload)
 	return slot, info.llvm, nil

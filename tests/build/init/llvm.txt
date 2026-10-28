@@ -1,5 +1,7 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 @"example.com/init/lib.seed" = internal global i32 zeroinitializer
-define hidden i32 @"example.com/init/lib.Next"() alwaysinline {
+define hidden i32 @"example.com/init/lib.next"() alwaysinline {
 entry:
   %t1 = load i32, ptr @"example.com/init/lib.seed"
   %t2 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t1, i32 1)
@@ -10,9 +12,7 @@ panic.1:
   call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
   unreachable
 panic.ok.1:
-  store i32 %t3, ptr @"example.com/init/lib.seed"
-  %t5 = load i32, ptr @"example.com/init/lib.seed"
-  ret i32 %t5
+  ret i32 %t3
 }
 define void @"example.com/init/lib.will$init"() {
 entry:
@@ -23,7 +23,7 @@ entry:
 define i32 @"example.com/init.will$main"() {
 entry:
   %t1 = load i32, ptr @"example.com/init.start"
-  %t2 = call i32 @"example.com/init/lib.Next"()
+  %t2 = call i32 @"example.com/init/lib.next"()
   %t3 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t1, i32 %t2)
   %t4 = extractvalue {i32, i1} %t3, 0
   %t5 = extractvalue {i32, i1} %t3, 1
@@ -51,8 +51,8 @@ entry:
   ret i32 %r
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
-@.str.1 = private unnamed_addr constant [17 x i8] c"lib/lib.will:4:5\00", align 1
-@.str.2 = private unnamed_addr constant [26 x i8] c"example.com/init/lib.Next\00", align 1
+@.str.1 = private unnamed_addr constant [18 x i8] c"lib/lib.will:4:12\00", align 1
+@.str.2 = private unnamed_addr constant [26 x i8] c"example.com/init/lib.next\00", align 1
 @.str.3 = private unnamed_addr constant [15 x i8] c"main.will:6:12\00", align 1
 @.str.4 = private unnamed_addr constant [27 x i8] c"example.com/init.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)

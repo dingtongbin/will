@@ -35,6 +35,20 @@ func (g *generator) packVariadic(r willc.Record, name string, tail []int) (strin
 		if err != nil {
 			return "", err
 		}
+		if iface, ok := g.ifaceOfText(elemText); ok {
+			argText, err := g.willTypeText(id)
+			if err != nil {
+				return "", err
+			}
+			if _, already := g.ifaceOfText(argText); !already {
+				// A variadic interface element carries the data word and the
+				// method table, so a concrete argument is boxed here.
+				if _, err := g.ifaceValue(ptr, id, iface, argText); err != nil {
+					return "", err
+				}
+				continue
+			}
+		}
 		if isAggregateType(typ) {
 			src, srcType, err := g.place(id)
 			if err != nil {

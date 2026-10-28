@@ -1,0 +1,59 @@
+}
+}
+}
+}
+}
+}
+}
+}
+
+async def produce(ch: chan<i32>, n: i32) {
+    for i in Range(0, n) {
+        _ = await ch.send(i)
+    }
+}
+
+async def consume(ch: chan<i32>) -> i64 {
+    var sum: i64 = 0
+    while True {
+        var item: Option<i32> = await ch.recv()
+        match item {
+            Some(value) => {
+                sum += i64(value)
+            }
+            None => {
+                break
+            }
+        }
+    }
+    return sum
+}
+
+async def main() -> i32 {
+    var ch: chan<i32> = new chan<i32>(1024)
+    var total: i64 = 0
+    region {
+        var p1: Task<()> = spawn produce(ch, 200000)
+        var p2: Task<()> = spawn produce(ch, 200000)
+        var p3: Task<()> = spawn produce(ch, 200000)
+        var p4: Task<()> = spawn produce(ch, 200000)
+        var c1: Task<i64> = spawn consume(ch)
+        var c2: Task<i64> = spawn consume(ch)
+        var c3: Task<i64> = spawn consume(ch)
+        var c4: Task<i64> = spawn consume(ch)
+        _ = await p1!
+        _ = await p2!
+        _ = await p3!
+        _ = await p4!
+        ch.close()
+        var s1: i64 = await c1!
+        var s2: i64 = await c2!
+        var s3: i64 = await c3!
+        var s4: i64 = await c4!
+        total = s1 + s2 + s3 + s4
+    }
+    if total != 79999600000 {
+        return 1
+    }
+    return 0
+}

@@ -1,0 +1,2 @@
+main.will:10:34: K0010 this async call is not awaited
+    help: write await, or spawn

@@ -29,22 +29,22 @@ func (g *generator) prepareContainerLoop(r willc.Record, text string) bool {
 		idx := g.newSlot(hiddenIndex)
 		g.loopBinds[r.ID][hiddenIndex] = idx
 		g.loopTypes[r.ID][hiddenIndex] = "usize"
-		fmt.Fprintf(g.out, "  %s = alloca i64\n", idx)
+		g.entryAlloca(fmt.Sprintf("  %s = alloca i64", idx))
 		if len(names) == 2 {
 			kSlot := g.newSlot(names[0])
 			g.loopBinds[r.ID][names[0]] = kSlot
 			g.loopTypes[r.ID][names[0]] = k
-			fmt.Fprintf(g.out, "  %s = alloca %s\n", kSlot, kt)
+			g.entryAlloca(fmt.Sprintf("  %s = alloca %s", kSlot, kt))
 			vSlot := g.newSlot(names[1])
 			g.loopBinds[r.ID][names[1]] = vSlot
 			g.loopTypes[r.ID][names[1]] = v
-			fmt.Fprintf(g.out, "  %s = alloca %s\n", vSlot, vt)
+			g.entryAlloca(fmt.Sprintf("  %s = alloca %s", vSlot, vt))
 			return true
 		}
 		vSlot := g.newSlot(names[0])
 		g.loopBinds[r.ID][names[0]] = vSlot
 		g.loopTypes[r.ID][names[0]] = v
-		fmt.Fprintf(g.out, "  %s = alloca %s\n", vSlot, vt)
+		g.entryAlloca(fmt.Sprintf("  %s = alloca %s", vSlot, vt))
 		return true
 	}
 	if elem, ok := setTypeText(text); ok {
@@ -63,12 +63,12 @@ func (g *generator) prepareContainerLoop(r willc.Record, text string) bool {
 		idx := g.newSlot(hiddenIndex)
 		g.loopBinds[r.ID][hiddenIndex] = idx
 		g.loopTypes[r.ID][hiddenIndex] = "usize"
-		fmt.Fprintf(g.out, "  %s = alloca i64\n", idx)
+		g.entryAlloca(fmt.Sprintf("  %s = alloca i64", idx))
 		elemName := names[len(names)-1]
 		elemSlot := g.newSlot(elemName)
 		g.loopBinds[r.ID][elemName] = elemSlot
 		g.loopTypes[r.ID][elemName] = elem
-		fmt.Fprintf(g.out, "  %s = alloca %s\n", elemSlot, et)
+		g.entryAlloca(fmt.Sprintf("  %s = alloca %s", elemSlot, et))
 		if len(names) == 2 {
 			g.loopBinds[r.ID][names[0]] = idx
 			g.loopTypes[r.ID][names[0]] = "usize"

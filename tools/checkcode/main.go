@@ -35,6 +35,8 @@ var skipDirs = map[string]bool{
 	"desc":        true,
 	".opencode":   true,
 	".will-cache": true,
+	// A Rust benchmark checkout keeps compiler artifacts with raw CR bytes.
+	"target": true,
 }
 
 // codeExts are the file kinds that must be ASCII and carry no noise comments.

@@ -1,4 +1,4 @@
-func Sum(n: i32) -> i32 {
+def sum(n: i32) -> i32 {
     var total: i32 = 0
     for i in Range(0, n) {
         total += i
@@ -6,6 +6,6 @@ func Sum(n: i32) -> i32 {
     return total
 }
 
-func main() -> i32 {
-    return Sum(4)
+def main() -> i32 {
+    return sum(4)
 }

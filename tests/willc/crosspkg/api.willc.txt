@@ -1,9 +1,9 @@
 #1 module pos="api.will:1:1" path="example.com/crosspkg"
 #2 import parent=#1 pos="api.will:1:1" path="example.com/crosspkg/lib"
-#3 func parent=#1 pos="api.will:3:1" text="Use" type="i64"
-#4 type parent=#3 pos="api.will:3:15" text="i64" kind=scalar
-#5 block parent=#3 pos="api.will:3:19"
+#3 func parent=#1 pos="api.will:3:1" text="use" type="i64"
+#4 type parent=#3 pos="api.will:3:14" text="i64" kind=scalar
+#5 block parent=#3 pos="api.will:3:18"
 #6 return parent=#5 pos="api.will:4:5" value=#7
-#7 mcall parent=#6 pos="api.will:4:12" text="Util" to="example.com/crosspkg/lib.Util" recv=#8
+#7 mcall parent=#6 pos="api.will:4:12" text="util" to="example.com/crosspkg/lib.util" recv=#8
 #8 name parent=#7 pos="api.will:4:12" text="lib" to=#2
 #9 end

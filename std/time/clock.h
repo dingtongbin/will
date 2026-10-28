@@ -5,5 +5,7 @@
 
 int64_t willrt_now_ns(void);
 void willrt_os_sleep_ns(int64_t ns);
+void willrt_task_sleep_ns(int64_t ns);
+int32_t willrt_task_sleep_async(int64_t ns);
 
 #endif

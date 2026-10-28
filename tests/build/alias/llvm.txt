@@ -1,4 +1,6 @@
-define hidden i32 @"example.com/shared.Double"(i32 %n) alwaysinline {
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
+define hidden i32 @"example.com/shared.double"(i32 %n) alwaysinline {
 entry:
   %t1 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %n, i32 %n)
   %t2 = extractvalue {i32, i1} %t1, 0
@@ -12,7 +14,7 @@ panic.ok.1:
 }
 define i32 @"example.com/alias.will$main"() {
 entry:
-  %t1 = call i32 @"example.com/shared.Double"(i32 2)
+  %t1 = call i32 @"example.com/shared.double"(i32 2)
   ret i32 %t1
 }
 declare void @willrt_init()
@@ -26,6 +28,6 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [17 x i8] c"shared.will:2:12\00", align 1
-@.str.2 = private unnamed_addr constant [26 x i8] c"example.com/shared.Double\00", align 1
+@.str.2 = private unnamed_addr constant [26 x i8] c"example.com/shared.double\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

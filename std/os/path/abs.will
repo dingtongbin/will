@@ -1,0 +1,12 @@
+# Abs resolves a relative path against the process working directory. A path
+# that is already rooted is only cleaned; the working directory is read once
+# through std/os for every relative call.
+import "std/os"
+
+def abs(p: str) -> Result<str, Error> {
+    if is_abs(p) {
+        return Ok(clean(p))
+    }
+    var cwd: str = os.cwd()?
+    return Ok(clean(join(cwd, p)))
+}

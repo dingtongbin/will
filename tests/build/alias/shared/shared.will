@@ -1,3 +1,3 @@
-func Double(n: i32) -> i32 {
+def double(n: i32) -> i32 {
     return n + n
 }

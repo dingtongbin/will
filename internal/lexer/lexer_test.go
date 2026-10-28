@@ -126,13 +126,12 @@ func TestOperatorsAndIdentifiers(t *testing.T) {
 		},
 		{
 			name: "comments and documentation comments",
-			src:  "// plain\n/// one\n/* block */\n/** two */\nx",
+			src:  "# plain\n## one\n\"\"\" block \"\"\"\n\"\"\" two \"\"\"\nx",
 			want: []wantToken{
 				want(token.Newline, "\n", ""),
-				want(token.DocComment, "/// one", " one"),
+				want(token.DocComment, "## one", " one"),
 				want(token.Newline, "\n", ""),
 				want(token.Newline, "\n", ""),
-				want(token.DocComment, "/** two */", " two "),
 				want(token.Newline, "\n", ""),
 				want(token.Ident, "x", "x"),
 				want(token.EOF, "", ""),
@@ -147,9 +146,9 @@ func TestOperatorsAndIdentifiers(t *testing.T) {
 }
 
 func TestStrictKeywords(t *testing.T) {
-	src := "func struct enum interface const var import derive lane " +
-		"if else for in match return break continue defer " +
-		"region spawn parallel deadline select true false"
+	src := "def func type async await struct enum interface const var import " +
+		"if else while for in match return break continue defer " +
+		"region spawn deadline select and or not True False None"
 	expected := []wantToken{}
 	for _, word := range strings.Fields(src) {
 		kind, ok := token.Keywords[word]
@@ -165,7 +164,7 @@ func TestStrictKeywords(t *testing.T) {
 func TestContextualAndPredeclaredNamesAreIdentifiers(t *testing.T) {
 	words := []string{
 		"on", "timeout", "default", "fast", "blocking", "mut", "new",
-		"while", "loop", "as", "let", "unreachable", "export",
+		"loop", "as", "let", "unreachable", "export",
 		"print", "panic", "assert", "c", "send", "recv", "is", "init",
 	}
 	src := strings.Join(words, " ")
@@ -178,7 +177,7 @@ func TestContextualAndPredeclaredNamesAreIdentifiers(t *testing.T) {
 }
 
 func TestScanAllKeepsComments(t *testing.T) {
-	toks, ds := ScanAll("test.will", []byte("// line\n/* block */ x\n"))
+	toks, ds := ScanAll("test.will", []byte("# line\n\"\"\" block \"\"\" x\n"))
 	if len(ds) != 0 {
 		t.Fatalf("unexpected diagnostics:\n%s", diag.FormatAll(ds))
 	}
@@ -195,16 +194,16 @@ func TestScanAllKeepsComments(t *testing.T) {
 			t.Fatalf("token %d = %s, want %s", i, kinds[i], want[i])
 		}
 	}
-	if toks[0].Text != "// line" || toks[0].Value != " line" {
+	if toks[0].Text != "# line" || toks[0].Value != " line" {
 		t.Errorf("line comment = %q %q", toks[0].Text, toks[0].Value)
 	}
-	if toks[2].Text != "/* block */" || toks[2].Value != " block " {
+	if toks[2].Text != "\"\"\" block \"\"\"" || toks[2].Value != " block " {
 		t.Errorf("block comment = %q %q", toks[2].Text, toks[2].Value)
 	}
 }
 
 func TestPositions(t *testing.T) {
-	src := "/*\n*/x\ny\n"
+	src := "\"\"\"\n\"\"\"x\ny\n"
 	toks, ds := scan(t, src)
 	if len(ds) != 0 {
 		t.Fatalf("unexpected diagnostics:\n%s", diag.FormatAll(ds))
@@ -218,8 +217,8 @@ func TestPositions(t *testing.T) {
 	if len(idents) != 2 {
 		t.Fatalf("identifiers = %d, want 2", len(idents))
 	}
-	if idents[0].Text != "x" || idents[0].Pos.Line != 2 || idents[0].Pos.Col != 3 {
-		t.Errorf("x is at %d:%d, want 2:3", idents[0].Pos.Line, idents[0].Pos.Col)
+	if idents[0].Text != "x" || idents[0].Pos.Line != 2 || idents[0].Pos.Col != 4 {
+		t.Errorf("x is at %d:%d, want 2:4", idents[0].Pos.Line, idents[0].Pos.Col)
 	}
 	if idents[1].Text != "y" || idents[1].Pos.Line != 3 || idents[1].Pos.Col != 1 {
 		t.Errorf("y is at %d:%d, want 3:1", idents[1].Pos.Line, idents[1].Pos.Col)
@@ -232,10 +231,8 @@ func TestForbiddenSymbols(t *testing.T) {
 		col int
 	}{
 		{";", 1},
-		{"@", 1},
 		{"$", 1},
 		{"`", 1},
-		{"#", 1},
 		{"a::b", 2},
 		{"a..b", 2},
 		{"\\", 1},

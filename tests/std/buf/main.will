@@ -1,0 +1,116 @@
+import "std/io/buf"
+
+# Stats counts the writes the sink is handed so the checks can tell a buffered
+# write from a passed-through one. The sink shares the counters through rc
+# because a package-level name is published read-only.
+struct Stats {
+    writes: i32
+    total: usize
+    last: usize
+}
+
+struct Sink {
+    stats: rc<Stats>
+}
+
+async def (s: ref Sink) write(bytes: []u8) -> Result<(), Error> {
+    s.stats.writes += 1
+    s.stats.total += bytes.len()
+    s.stats.last = bytes.len()
+    return Ok(())
+}
+
+async def (s: ref Sink) sync() -> Result<(), Error> {
+    return Ok(())
+}
+
+async def main() -> i32 {
+    var text: str = "hello"
+    var stats: rc<Stats> = new rc<Stats>(Stats { writes: 0, total: 0usize, last: 0usize })
+    var writer: buf.WriterBuf = new buf.WriterBuf(Sink { stats: stats }, 8usize)
+
+    # A write shorter than the buffer stays in memory.
+    match await writer.write(text[Range(0, 5)]) {
+        Err(_) => {
+            return 1
+        }
+        _ => {}
+    }
+    if stats.writes != 0 {
+        return 2
+    }
+
+    # Flushing hands the buffered bytes over in one write.
+    match await writer.flush() {
+        Err(_) => {
+            return 3
+        }
+        _ => {}
+    }
+    if stats.writes != 1 or stats.total != 5usize or stats.last != 5usize {
+        return 4
+    }
+
+    # A second small write buffers again instead of passing through.
+    match await writer.write(text[Range(0, 5)]) {
+        Err(_) => {
+            return 5
+        }
+        _ => {}
+    }
+    if stats.writes != 1 {
+        return 6
+    }
+
+    # Filling the buffer exactly flushes it.
+    match await writer.write(text[Range(0, 3)]) {
+        Err(_) => {
+            return 7
+        }
+        _ => {}
+    }
+    if stats.writes != 2 or stats.total != 13usize or stats.last != 8usize {
+        return 8
+    }
+
+    # A write that does not fit flushes first, then waits in the buffer.
+    match await writer.write(text[Range(0, 5)]) {
+        Err(_) => {
+            return 9
+        }
+        _ => {}
+    }
+    if stats.writes != 2 {
+        return 10
+    }
+    match await writer.write(text[Range(0, 1)]) {
+        Err(_) => {
+            return 11
+        }
+        _ => {}
+    }
+    if stats.writes != 2 {
+        return 12
+    }
+    match await writer.write(text[Range(0, 5)]) {
+        Err(_) => {
+            return 13
+        }
+        _ => {}
+    }
+    if stats.writes != 3 or stats.last != 6usize {
+        return 14
+    }
+
+    # The final flush writes what is left.
+    match await writer.flush() {
+        Err(_) => {
+            return 15
+        }
+        _ => {}
+    }
+    if stats.writes != 4 or stats.last != 5usize or stats.total != 24usize {
+        return 16
+    }
+    return 0
+}

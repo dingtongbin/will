@@ -17,8 +17,11 @@
    on IO does not link them, so every hook is weak. */
 extern void willrt_tasks_wait_all(void) __attribute__((weak));
 extern void willrt_poll_shutdown(void) __attribute__((weak));
+extern void willrt_io_shutdown(void) __attribute__((weak));
 extern void willrt_blocking_shutdown(void) __attribute__((weak));
+extern void willrt_timer_shutdown(void) __attribute__((weak));
 extern void willrt_mem_thread_flush(void) __attribute__((weak));
+extern void willrt_gc_shutdown(void) __attribute__((weak));
 #endif
 
 static atomic_int willrt_started;
@@ -38,8 +41,17 @@ void willrt_shutdown(void) {
     if (willrt_poll_shutdown != NULL) {
         willrt_poll_shutdown();
     }
+    if (willrt_io_shutdown != NULL) {
+        willrt_io_shutdown();
+    }
+    if (willrt_timer_shutdown != NULL) {
+        willrt_timer_shutdown();
+    }
     if (willrt_mem_thread_flush != NULL) {
         willrt_mem_thread_flush();
+    }
+    if (willrt_gc_shutdown != NULL) {
+        willrt_gc_shutdown();
     }
     atomic_store(&willrt_started, 0);
 }

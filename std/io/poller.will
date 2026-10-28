@@ -1,0 +1,77 @@
+# Poller is the readiness source for std/io. Each instance owns its descriptor
+# set and passes it to the runtime for one scan at a time; there is no registry
+# to fill up, and the cost of a scan is one pass over this instance's entries.
+import "std/errors"
+
+import c "../../runtime/core/poll/src/poll.c" {
+    fast willrt_poll_wait
+    fast willrt_poll_wait_async
+}
+
+# Poller holds one registration per descriptor, so the wait can rebuild the
+# runtime's parallel arrays from it. Remove is a linear scan because the
+# descriptors are kept in registration order for a stable report.
+struct Poller {
+    fds: Array<i64>
+    events: Array<u32>
+    users: Array<usize>
+}
+
+# NewPoller returns an empty poller.
+def new_poller() -> Poller {
+    return Poller {
+        fds: new Array<i64>(0),
+        events: new Array<u32>(0),
+        users: new Array<usize>(0)
+    }
+}
+
+# Add waits for input readiness on fd and reports user when it is ready.
+def (p: mut Poller) add(fd: i64, user: usize) -> Result<(), Error> {
+    if fd < 0 {
+        return Err(errors.Invalid)
+    }
+    p.fds.push(fd)
+    p.events.push(1u32)
+    p.users.push(user)
+    return Ok(())
+}
+
+# Remove drops the registration for fd. Removing an absent descriptor is a
+# no-op.
+def (p: mut Poller) remove(fd: i64) -> Result<(), Error> {
+    for i in Range(0, i32(p.fds.len())) {
+        if p.fds.get(usize(i)) == fd {
+            _ = p.fds.remove(usize(i))
+            _ = p.events.remove(usize(i))
+            _ = p.users.remove(usize(i))
+            return Ok(())
+        }
+    }
+    return Ok(())
+}
+
+# Next waits up to timeout for ready descriptors and appends their user tags to
+# out in registration order. Zero means the timeout expired.
+def (p: ref Poller) next_blocking(timeout: Duration, out: mut Array<usize>) -> Result<usize, Error> {
+    var before: usize = out.len()
+    var status: i32 = c.willrt_poll_wait(raw(p.fds), raw(p.events), raw(p.users),
+                                          i64(p.fds.len()), i64(timeout), raw(out))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(out.len() - before)
+}
+
+# Next parks the calling task while the runtime poller scans the descriptors;
+# the poller delivers ready tags into out and wakes the task's lane directly.
+async def (p: ref Poller) next(timeout: Duration, out: mut Array<usize>) -> Result<usize, Error> {
+    var before: usize = out.len()
+    var status: i32 = await c.willrt_poll_wait_async(raw(p.fds), raw(p.events),
+                                                 raw(p.users), i64(p.fds.len()),
+                                                 i64(timeout), raw(out))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(out.len() - before)
+}

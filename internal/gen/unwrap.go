@@ -11,6 +11,7 @@ import (
 // Error interface returns.
 func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 	exprID := refField(r, "expr")
+
 	if inner, ok := g.recs[exprID]; ok && inner.Kind == "join" {
 		return g.joinUnwrap(inner)
 	}
@@ -29,8 +30,10 @@ func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 	if typ != info.llvm {
 		return "", "", "", g.errf(r.ID, "cannot translate node #%d: the operand needs %s", r.ID, info.llvm)
 	}
-	if info.payloadIndex == 0 || len(info.argLLVM) == 0 {
-		return "", "", "", g.errf(r.ID, "cannot translate node #%d: the value has no payload", r.ID)
+	unit := info.payloadIndex == 0 || len(info.argLLVM) == 0 || info.argLLVM[0] == ""
+	if unit {
+		// The unit payload still needs the tag check above; after it there is
+		// no address to return.
 	}
 	tagPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", tagPtr, info.llvm, slot)
@@ -48,7 +51,7 @@ func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 		okLabel := fmt.Sprintf("unwrap.ok.%d", n)
 		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", failed, failLabel, okLabel)
 		g.out.WriteString(failLabel + ":\n")
-		if info.args[1] != "Error" {
+		if info.args[1] != "Error" && info.args[1] != "TaskError" {
 			return "", "", "", g.errf(r.ID, "cannot translate node #%d: unwrapping a Result with error %s is not lowered yet", r.ID, info.args[1])
 		}
 		iface, ok := g.ifaceOfText("Error")
@@ -56,9 +59,9 @@ func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 			return "", "", "", g.errf(r.ID, "cannot translate node #%d: the Error interface is not lowered yet", r.ID)
 		}
 		errData, errTable := g.ifaceSlotValue(info, slot)
-		index, ok := iface.byName["Message"]
+		index, ok := iface.byName["message"]
 		if !ok {
-			return "", "", "", g.errf(r.ID, "cannot translate node #%d: Error has no Message method", r.ID)
+			return "", "", "", g.errf(r.ID, "cannot translate node #%d: Error has no message method", r.ID)
 		}
 		method := g.ifaceMethod(errTable, index)
 		message := g.newTmp()
@@ -72,9 +75,30 @@ func (g *generator) unwrapAddr(r willc.Record) (string, string, string, error) {
 		g.out.WriteString("  unreachable\n")
 		g.out.WriteString(okLabel + ":\n")
 	}
-	addr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", addr, info.llvm, slot, info.payloadIndex)
-	return addr, info.argLLVM[0], info.args[0], nil
+	if unit {
+		if err := g.zeroTransferredSource(exprID, ""); err != nil {
+			return "", "", "", err
+		}
+		return "", "", "", nil
+	}
+	payload := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
+	out := g.allocSlot(g.callSlots, "unwrap.out", r.ID, info.argLLVM[0])
+	if _, seen := g.smPlaces[r.ID]; !seen {
+		g.storeZero(out, info.argLLVM[0])
+		g.smPlaces[r.ID] = smPlace{ptr: out, typ: info.argLLVM[0]}
+		g.addSyntheticTemp(out, info.args[0], info.argLLVM[0])
+	}
+	if isAggregateType(info.argLLVM[0]) {
+		g.copyValue(payload, out, info.argLLVM[0])
+	} else {
+		value := g.load(info.argLLVM[0], payload)
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.argLLVM[0], value, out)
+	}
+	if err := g.zeroTransferredSource(exprID, ""); err != nil {
+		return "", "", "", err
+	}
+	return out, info.argLLVM[0], info.args[0], nil
 }
 
 // ifaceSlotValue reads the data and method-table words of an interface stored
@@ -105,18 +129,13 @@ func (g *generator) unwrapValue(r willc.Record) (string, error) {
 		return "", err
 	}
 	if typ == "" {
-		return "", g.errf(r.ID, "cannot translate node #%d: unwrapping a unit payload is not supported yet", r.ID)
+		return "", nil
 	}
 	if isAggregateType(typ) {
 		return "", g.errf(r.ID, "cannot translate node #%d: the payload is an aggregate place", r.ID)
 	}
 	value := g.load(typ, addr)
-	if _, text, err := g.unwrapType(r); err == nil && isRcText(text) {
-		// The Option still owns its reference, so the copy this ! yields owns
-		// one of its own.
-		g.needRcDecl = true
-		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-	}
+	g.clearSyntheticCallSource(r.ID)
 	return value, nil
 }
 
@@ -142,7 +161,7 @@ func (g *generator) unwrapType(r willc.Record) (string, string, error) {
 		}
 		elem, ok := taskElemText(taskText)
 		if !ok {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: Join needs a Task", r.ID)
+			return "", "", g.errf(r.ID, "cannot translate node #%d: join needs a Task", r.ID)
 		}
 		typ, ok := g.typeLLVMOf(elem)
 		if !ok {

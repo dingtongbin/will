@@ -11,17 +11,29 @@ import (
 // captureInfo is one outer declaration a lambda reads. The environment stores
 // the value itself, so a closure keeps working after its creating frame ends.
 type captureInfo struct {
-	decl int
-	name string
-	typ  string
+	decl  int
+	name  string
+	typ   string
+	text  string
+	local bool
+	param bool
 }
 
 // lambdaInfo is the lowered shape of one lambda: its function symbol, the
 // declarations it captures, and the literal struct type of its environment.
 type lambdaInfo struct {
 	name     string
+	drop     string
+	share    string
 	captures []captureInfo
 	envType  string
+}
+
+type lambdaDropRequest struct {
+	name     string
+	share    string
+	envType  string
+	captures []captureInfo
 }
 
 // thunkRequest is a named function that has to be wrapped in the closure
@@ -208,7 +220,7 @@ func (g *generator) indirectCall(r willc.Record, decl willc.Record) (string, str
 	}
 	sig := []string{"ptr " + env}
 	for i, id := range args {
-		sig, err = g.callArgParts(sig, r, i, id, params[i], false)
+		sig, err = g.callArgParts(sig, r, i, id, params[i], false, false)
 		if err != nil {
 			return "", "", err
 		}
@@ -233,15 +245,32 @@ func (g *generator) indirectCall(r willc.Record, decl willc.Record) (string, str
 // records what it captures. A capture is stored by value in a heap
 // environment, so a closure that escapes its creating frame still reads it.
 func (g *generator) planLambdas() error {
+	if g.lambdaDropEmitted == nil {
+		g.lambdaDropEmitted = map[string]bool{}
+	}
+	if g.lambdaDropPending == nil {
+		g.lambdaDropPending = map[string]bool{}
+	}
 	var lambdas []willc.Record
 	for _, r := range g.recs {
 		if r.Kind == "lambda" {
+			lambdas = append(lambdas, r)
+			continue
+		}
+		// A package-mode pre-pass already turned this lambda into a function.
+		// Reuse its plan so the drop and share thunks are queued for the
+		// document that emits the lambda.
+		if r.Kind == "func" && g.lambdas[r.ID] != nil {
 			lambdas = append(lambdas, r)
 		}
 	}
 	sortByID(lambdas)
 	infos := make(map[int]*lambdaInfo, len(lambdas))
 	for _, lam := range lambdas {
+		if info := g.lambdas[lam.ID]; info != nil {
+			infos[lam.ID] = info
+			continue
+		}
 		info, err := g.lambdaCaptureInfo(lam)
 		if err != nil {
 			return err
@@ -250,22 +279,36 @@ func (g *generator) planLambdas() error {
 	}
 	for _, lam := range lambdas {
 		info := infos[lam.ID]
-		g.lambdaSeq++
-		info.name = "lambda." + strconv.Itoa(g.lambdaSeq)
-		lam.Kind = "func"
-		found := false
-		for i := range lam.Fields {
-			if lam.Fields[i].Name == "text" {
-				lam.Fields[i].Value = willc.Text(info.name)
-				found = true
+		if info.name == "" {
+			g.lambdaSeq++
+			info.name = "lambda." + strconv.Itoa(g.lambdaSeq)
+			if len(info.captures) != 0 {
+				g.lambdaDropSeq++
+				info.drop = qualify(g.pkg, "lambda.drop."+strconv.Itoa(g.lambdaDropSeq))
+				info.share = qualify(g.pkg, "lambda.share."+strconv.Itoa(g.lambdaDropSeq))
 			}
+			lam.Kind = "func"
+			found := false
+			for i := range lam.Fields {
+				if lam.Fields[i].Name == "text" {
+					lam.Fields[i].Value = willc.Text(info.name)
+					found = true
+				}
+			}
+			if !found {
+				lam.Fields = append(lam.Fields, willc.Field{Name: "text", Value: willc.Text(info.name)})
+			}
+			g.recs[lam.ID] = lam
+			g.lambdaNames[lam.ID] = info.name
+			g.lambdas[lam.ID] = info
 		}
-		if !found {
-			lam.Fields = append(lam.Fields, willc.Field{Name: "text", Value: willc.Text(info.name)})
+		if info.drop != "" && !g.lambdaDropEmitted[info.drop] && !g.lambdaDropPending[info.drop] {
+			g.lambdaDropPending[info.drop] = true
+			g.pendingLambdaDrops = append(g.pendingLambdaDrops, lambdaDropRequest{
+				name: info.drop, share: info.share, envType: info.envType,
+				captures: append([]captureInfo(nil), info.captures...),
+			})
 		}
-		g.recs[lam.ID] = lam
-		g.lambdaNames[lam.ID] = info.name
-		g.lambdas[lam.ID] = info
 	}
 	return nil
 }
@@ -324,10 +367,22 @@ func (g *generator) lambdaCaptureInfo(lam willc.Record) (*lambdaInfo, error) {
 			return nil, err
 		}
 		seen[key] = true
-		info.captures = append(info.captures, captureInfo{decl: decl.ID, name: fieldText(r, "text"), typ: typ})
+		text := fieldText(decl, "type")
+		if decl.Kind == "receiver" {
+			text = fieldText(decl, "type")
+		}
+		info.captures = append(info.captures, captureInfo{
+			decl:  decl.ID,
+			name:  fieldText(r, "text"),
+			typ:   typ,
+			text:  text,
+			local: decl.Kind == "var" && g.slots[decl.ID] != "",
+			param: decl.Kind == "param" || decl.Kind == "receiver",
+		})
 	}
 	if len(info.captures) != 0 {
-		types := make([]string, 0, len(info.captures))
+		types := make([]string, 0, len(info.captures)+2)
+		types = append(types, "ptr", "i64")
 		for _, cap := range info.captures {
 			types = append(types, cap.typ)
 		}
@@ -370,11 +425,16 @@ func (g *generator) buildEnvironment(lam willc.Record, info *lambdaInfo) (string
 	size := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = ptrtoint ptr %s to i64\n", size, end)
 	env := g.newTmp()
-	g.needAllocDecl = true
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", env, size)
+	g.needClosureDecl = true
+	share := "null"
+	if info.share != "" {
+		share = "@" + llvmSymbol(info.share)
+	}
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_closure_new(i64 %s, ptr @%s, ptr %s)\n",
+		env, size, llvmSymbol(info.drop), share)
 	for i, cap := range info.captures {
 		field := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.envType, env, i)
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.envType, env, i+2)
 		src, typ, err := g.captureSource(cap)
 		if err != nil {
 			return "", err
@@ -382,10 +442,95 @@ func (g *generator) buildEnvironment(lam willc.Record, info *lambdaInfo) (string
 		if typ != cap.typ {
 			return "", g.errf(lam.ID, "cannot translate node #%d: capture %s has type %s, want %s", lam.ID, cap.name, typ, cap.typ)
 		}
+		if g.captureMoves(cap) {
+			// A direct local of the function being lowered is moved into the
+			// environment. The source is cleared so a later use is O0001 and
+			// the frame drop cannot release the same owner twice.
+			g.copyValue(src, field, cap.typ)
+			g.zeroOwnedSlot(src, cap.text)
+			continue
+		}
+		if ownsReleaseText(g, cap.text) {
+			// A parameter, global, or outer environment is borrowed or shared;
+			// the closure owns an independent value instead.
+			if err := g.cloneOwnedValue(src, field, cap.text); err != nil {
+				return "", err
+			}
+			continue
+		}
 		value := g.load(typ, src)
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, field)
 	}
 	return env, nil
+}
+
+// captureMoves reports whether a capture is a direct local of the function
+// currently being lowered. Parameters, globals, and captures from an outer
+// closure environment are borrowed or shared and keep the clone path.
+func (g *generator) captureMoves(cap captureInfo) bool {
+	if g.deferThunk || cap.param {
+		return false
+	}
+	if g.captureFields[cap.decl] != "" || g.slots[cap.decl] == "" {
+		return false
+	}
+	if g.enclosingFunc(cap.decl) != g.currentFunc {
+		return false
+	}
+	if isRcText(cap.text) || isWeakText(cap.text) || isChanText(cap.text) {
+		// Copyable handles keep their source; the environment retains a handle.
+		return false
+	}
+	return ownsReleaseText(g, cap.text)
+}
+
+// emitLambdaDrops writes one drop function per captured environment. The
+// runtime calls it once, after the reference count reaches zero, and then frees
+// the environment itself.
+func (g *generator) emitLambdaDrops() error {
+	for _, req := range g.pendingLambdaDrops {
+		fmt.Fprintf(g.out, "define void @%s(ptr %%env) {\nentry:\n", llvmSymbol(req.name))
+		for i, cap := range req.captures {
+			if !ownsReleaseText(g, cap.text) {
+				continue
+			}
+			field := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %%env, i32 0, i32 %d\n",
+				field, req.envType, i+2)
+			if err := g.releaseOwnedValue(field, cap.text); err != nil {
+				return err
+			}
+		}
+		g.out.WriteString("  ret void\n}\n")
+		if g.lambdaDropEmitted == nil {
+			g.lambdaDropEmitted = map[string]bool{}
+		}
+		g.lambdaDropEmitted[req.name] = true
+		if g.lambdaDropPending != nil {
+			delete(g.lambdaDropPending, req.name)
+		}
+		if req.share != "" {
+			fmt.Fprintf(g.out, "define void @%s(ptr %%env) {\nentry:\n", llvmSymbol(req.share))
+			saved := g.quietShare
+			g.quietShare = true
+			for i, cap := range req.captures {
+				if !g.needsShareText(cap.text) {
+					continue
+				}
+				field := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %%env, i32 0, i32 %d\n",
+					field, req.envType, i+2)
+				if err := g.shareValueDepth(field, cap.text, 0); err != nil {
+					g.quietShare = saved
+					return err
+				}
+			}
+			g.quietShare = saved
+			g.out.WriteString("  ret void\n}\n")
+		}
+	}
+	g.pendingLambdaDrops = nil
+	return nil
 }
 
 // captureSource returns the storage a captured value is copied from in the
@@ -439,7 +584,7 @@ func (g *generator) setupCaptures(fn int) error {
 	}
 	for i, cap := range info.captures {
 		ptr := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %%closure.env, i32 0, i32 %d\n", ptr, info.envType, i)
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %%closure.env, i32 0, i32 %d\n", ptr, info.envType, i+2)
 		g.captureFields[cap.decl] = ptr
 	}
 	return nil
@@ -455,6 +600,11 @@ func (g *generator) placeNamedFunction(r willc.Record, decl willc.Record) (strin
 	sym := g.cur.funcs[decl.ID]
 	if sym == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: a function of another document used as a value is not lowered yet", r.ID)
+	}
+	for _, mut := range g.paramMut[sym] {
+		if mut {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: a function with mutable parameters has no function value yet", r.ID)
+		}
 	}
 	thunk := qualify(g.pkg, "thunk."+fieldText(decl, "text"))
 	if !g.thunkEmitted[thunk] {

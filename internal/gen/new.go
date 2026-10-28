@@ -13,7 +13,7 @@ import (
 func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	text := fieldText(r, "type")
 	if elem, ok := rcElemText(text); ok && isRcText(text) {
-		return g.constructRc(r, elem)
+		return g.constructRc(r, elem, strongName(text))
 	}
 	if elem, ok := arrayElemText(text); ok {
 		return g.constructArray(r, elem)
@@ -101,19 +101,51 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	return slot, info.llvm, nil
 }
 
+// newInitParams returns the parameter types of the init a new expression calls.
+// Interface arguments need this before the new expression itself is lowered, so
+// their conversion slots are allocated in the function entry block.
+func (g *generator) newInitParams(r willc.Record) []string {
+	text := fieldText(r, "type")
+	if g.byName[text] != nil {
+		initSym := g.cur.methods[text+".init"]
+		if initSym == "" {
+			initSym = g.methodsQualified[text+".init"]
+		}
+		if initSym != "" {
+			return g.paramTypes[initSym]
+		}
+	}
+	q := g.canonicalTypeText(text)
+	if !strings.Contains(q, ".") {
+		q = qualify(g.pkg, text)
+	}
+	if g.declKinds[q] == "struct" {
+		initSym := g.methodsQualified[q+".init"]
+		if initSym != "" {
+			return g.paramTypes[initSym]
+		}
+	}
+	if _, params, _, ok := g.initForNew(g.cur, r); ok {
+		return params
+	}
+	return nil
+}
+
 // callNewInit passes the storage and the evaluated constructor arguments to one
 // init method. A non-empty result text means the call returns a Result value
 // that the caller must turn into the new expression's value.
 func (g *generator) callNewInit(r willc.Record, slot, initSym string, params []string, initResult string) (string, string, error) {
 	g.noteExternalFunc(initSym)
+	muts := g.paramMut[initSym]
 	parts := []string{"ptr " + slot}
 	for i, a := range g.callArgs(r) {
 		paramType := ""
 		if i < len(params) {
 			paramType = params[i]
 		}
+		mut := i < len(muts) && muts[i]
 		var err error
-		parts, err = g.callArgParts(parts, r, i, a, paramType, false)
+		parts, err = g.callArgParts(parts, r, i, a, paramType, mut, false)
 		if err != nil {
 			return "", "", err
 		}
@@ -240,13 +272,15 @@ func (g *generator) constructImportedNew(r willc.Record, q string) (string, stri
 	}
 	args := g.callArgs(r)
 	params := g.paramTypes[initSym]
+	muts := g.paramMut[initSym]
 	if len(args) != len(params) {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: %s.init takes %d arguments", r.ID, q, len(params))
 	}
 	parts := []string{"ptr " + slot}
 	for i, a := range args {
+		mut := i < len(muts) && muts[i]
 		var err error
-		parts, err = g.callArgParts(parts, r, i, a, params[i], false)
+		parts, err = g.callArgParts(parts, r, i, a, params[i], mut, false)
 		if err != nil {
 			return "", "", err
 		}

@@ -5,6 +5,6 @@ struct P {
 var Origin: P = P { n: 1 }
 var Greeting: str = "hi"
 
-func main() -> i32 {
-    return Origin.n + i32(Greeting.Len())
+def main() -> i32 {
+    return Origin.n + i32(Greeting.len())
 }

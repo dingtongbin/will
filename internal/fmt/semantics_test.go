@@ -13,7 +13,7 @@ import (
 // semantics: the willc of the original and of the formatted text must be
 // byte-identical once positions are dropped, because formatting moves them.
 func TestFormatKeepsSemantics(t *testing.T) {
-	src := "func F( a : i32 ) -> i32{\n" +
+	src := "def f( a : i32 ) -> i32{\n" +
 		" var x:i32= a+1\n" +
 		" _=x\n" +
 		" return   a\n" +

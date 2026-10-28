@@ -1,5 +1,5 @@
 import _ "example.com/duplicateimport/lib"
 import _ "example.com/duplicateimport/lib"
 
-func F() {
+def f() {
 }

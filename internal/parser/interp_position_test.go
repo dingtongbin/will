@@ -16,9 +16,9 @@ func TestInterpExpressionPositions(t *testing.T) {
 		src  string
 		want source.Pos
 	}{
-		{"next to the brace", "func F(n: i32) -> str {\n    return f\"v={n}\"\n}\n", source.Pos{Line: 2, Col: 17}},
-		{"space after the brace", "func F(n: i32) -> str {\n    return f\"v={ n }\"\n}\n", source.Pos{Line: 2, Col: 18}},
-		{"escaped braces stick to the source", "func F(n: i32) -> str {\n    return f\"{{ {n}\"\n}\n", source.Pos{Line: 2, Col: 18}},
+		{"next to the brace", "def f(n: i32) -> str {\n    return f\"v={n}\"\n}\n", source.Pos{Line: 2, Col: 17}},
+		{"space after the brace", "def f(n: i32) -> str {\n    return f\"v={ n }\"\n}\n", source.Pos{Line: 2, Col: 18}},
+		{"escaped braces stick to the source", "def f(n: i32) -> str {\n    return f\"{{ {n}\"\n}\n", source.Pos{Line: 2, Col: 18}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

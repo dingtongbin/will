@@ -342,9 +342,43 @@ func (g *generator) argLLVM(t willc.Record) (string, bool) {
 	return "", false
 }
 
-// enumVariantCall returns the enum and variant an mcall constructs, or nil when
-// the call is an ordinary method call.
+// enumVariantCall returns the enum and variant a call, name, or method call
+// constructs, or nil when the expression is not a variant constructor.
+// enumInfoForText finds an enum by its short, qualified, or LLVM type text.
+// A release record carries the source spelling, while the type table may key
+// the declaration by its bare name.
+func (g *generator) enumInfoForText(text string) *enumInfo {
+	if info := g.enumByName[text]; info != nil {
+		return info
+	}
+	if info := g.enumByLLVM[text]; info != nil {
+		return info
+	}
+	if i := strings.LastIndexByte(text, '.'); i >= 0 {
+		if info := g.enumByName[text[i+1:]]; info != nil {
+			return info
+		}
+	}
+	return nil
+}
+
 func (g *generator) enumVariantCall(r willc.Record) (*enumInfo, *variantInfo) {
+	if r.Kind == "call" || r.Kind == "name" {
+		decl, ok := g.recs[refField(r, "to")]
+		if !ok || decl.Kind != "variant" {
+			return nil, nil
+		}
+		info := g.enums[refField(decl, "parent")]
+		if info == nil {
+			return nil, nil
+		}
+		name := fieldText(decl, "text")
+		i, ok := info.byName[name]
+		if !ok {
+			return nil, nil
+		}
+		return info, &info.variants[i]
+	}
 	if r.Kind != "mcall" {
 		return nil, nil
 	}
@@ -420,6 +454,66 @@ func (g *generator) syntheticVariant(ext *externalEnum, name string) (*enumInfo,
 	return info, &variantInfo{name: name, tag: tag}
 }
 
+// enumAllUnit reports whether a type is an enum whose every variant has no
+// payload. Equality of such an enum is equality of the tag word.
+func (g *generator) enumAllUnit(text string) bool {
+	text = g.canonicalTypeText(text)
+	inspect := func(info *enumInfo) bool {
+		for _, v := range info.variants {
+			if len(v.args) != 0 {
+				return false
+			}
+		}
+		return true
+	}
+	if info := g.enumByName[text]; info != nil {
+		return inspect(info)
+	}
+	unit := func(ext *externalEnum) bool {
+		for _, payload := range ext.payload {
+			if payload {
+				return false
+			}
+		}
+		return true
+	}
+	if ext := g.externalEnums[text]; ext != nil {
+		return unit(ext)
+	}
+	if typ, ok := g.typeLLVMOf(text); ok {
+		if info := g.enumByLLVM[typ]; info != nil {
+			return inspect(info)
+		}
+		for _, ext := range g.externalEnums {
+			if ext.llvm == typ {
+				return unit(ext)
+			}
+		}
+	}
+	return false
+}
+
+// enumEqual compares the tag words of two unit-only enum values.
+func (g *generator) enumEqual(lID, rID int, op string) (string, error) {
+	left, _, err := g.place(lID)
+	if err != nil {
+		return "", err
+	}
+	right, _, err := g.place(rID)
+	if err != nil {
+		return "", err
+	}
+	l := g.load("i32", left)
+	r := g.load("i32", right)
+	out := g.newTmp()
+	instr := "eq"
+	if op == "!=" {
+		instr = "ne"
+	}
+	fmt.Fprintf(g.out, "  %s = icmp %s i32 %s, %s\n", out, instr, l, r)
+	return out, nil
+}
+
 // enumConstruct stores one constructed variant in the slot reserved for it and
 // returns the slot with the enum type.
 func (g *generator) enumConstruct(r willc.Record, info *enumInfo, v *variantInfo) (string, string, error) {
@@ -477,6 +571,19 @@ func (g *generator) sizeAlign(typ string) (int, int, bool) {
 	}
 	if typ == "double" {
 		return 8, 8, true
+	}
+	if typ == "%willrt_error" {
+		return 32, 8, true
+	}
+	// The join keeps the error copy and the status word after it.
+	if typ == "%willrt.task_error" {
+		return 40, 8, true
+	}
+	if typ == "%willrt_arm" {
+		return 40, 8, true
+	}
+	if strings.HasPrefix(typ, "%interface.") || strings.HasPrefix(typ, `%"interface.`) {
+		return 16, 8, true
 	}
 	if strings.HasPrefix(typ, "i") {
 		w := intWidth(typ)

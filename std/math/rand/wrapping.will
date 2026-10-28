@@ -1,6 +1,6 @@
-// addU64 returns a + b modulo 2^64. The language add is checked, so the sum is
-// computed from the distance to the maximum instead of letting it overflow.
-func addU64(a: u64, b: u64) -> u64 {
+# addU64 returns a + b modulo 2^64. The language add is checked, so the sum is
+# computed from the distance to the maximum instead of letting it overflow.
+def add_u64(a: u64, b: u64) -> u64 {
     var max: u64 = 18446744073709551615u64
     if a > max - b {
         return a - (max - b) - 1u64
@@ -8,10 +8,10 @@ func addU64(a: u64, b: u64) -> u64 {
     return a + b
 }
 
-// mulU64 returns a * b modulo 2^64. Sixteen-bit limbs keep every intermediate
-// product below 2^32, so the checked multiply never trips. The limbs past the
-// fourth are dropped, which is what modulo 2^64 means.
-func mulU64(a: u64, b: u64) -> u64 {
+# mulU64 returns a * b modulo 2^64. Sixteen-bit limbs keep every intermediate
+# product below 2^32, so the checked multiply never trips. The limbs past the
+# fourth are dropped, which is what modulo 2^64 means.
+def mul_u64(a: u64, b: u64) -> u64 {
     var a0: u64 = a & 65535u64
     var a1: u64 = (a >> 16) & 65535u64
     var a2: u64 = (a >> 32) & 65535u64

@@ -1,15 +1,55 @@
-// The IO capability interfaces. They name the asynchronous form only; a
-// synchronous caller uses wait(...) once the scheduler exposes that bridge.
+# The IO capability interfaces. Every operation is an async method; an
+# implementation returns a task result that the caller consumes with await.
 
 interface Reader {
-    func AsyncRead(mut buf: Array<u8>) -> Result<usize, Error>
+    async def read(buf: mut Array<u8>) -> Result<usize, Error>
 }
 
 interface Writer {
-    func AsyncWrite(buf: []u8) -> Result<(), Error>
-    func AsyncFlush() -> Result<(), Error>
+    async def write(buf: []u8) -> Result<(), Error>
+    async def sync() -> Result<(), Error>
 }
 
 interface Seeker {
-    func AsyncSeek(offset: i64, whence: i32) -> Result<i64, Error>
+    async def seek(offset: i64, whence: i32) -> Result<i64, Error>
+}
+
+# ReadAll appends every byte from r until end of stream. It returns the number
+# of bytes appended.
+async def read_all(r: Reader, buf: mut Array<u8>) -> Result<usize, Error> {
+    var before: usize = buf.len()
+    var chunk: Array<u8> = new Array<u8>(32768)
+    while True {
+        chunk.clear()
+        var n: usize = (await r.read(chunk))?
+        if n == 0usize {
+            break
+        }
+        var i: usize = 0
+        while True {
+            if i >= n {
+                break
+            }
+            buf.push(chunk.get(i))
+            i += 1
+        }
+    }
+    return Ok(buf.len() - before)
+}
+
+# Copy copies r to dst until end of stream and syncs dst.
+async def copy(dst: Writer, src: Reader) -> Result<u64, Error> {
+    var total: u64 = 0
+    var chunk: Array<u8> = new Array<u8>(32768)
+    while True {
+        chunk.clear()
+        var n: usize = (await src.read(chunk))?
+        if n == 0usize {
+            break
+        }
+        _ = (await dst.write(chunk[Range(0, n)]))?
+        total += u64(n)
+    }
+    _ = (await dst.sync())?
+    return Ok(total)
 }

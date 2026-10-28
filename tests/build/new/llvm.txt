@@ -1,11 +1,13 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/new.P" = type { i32, i32 }
-define internal void @"example.com/new.P.init"(ptr %p, i32 %y) alwaysinline {
+define hidden void @"example.com/new.P.init"(ptr %p, i32 %y) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/new.P", ptr %p, i32 0, i32 1
   store i32 %y, ptr %t1
   ret void
 }
-define hidden %"struct.example.com/new.P" @"example.com/new.Make"() alwaysinline {
+define hidden %"struct.example.com/new.P" @"example.com/new.make"() alwaysinline {
 entry:
   %v.new.22 = alloca %"struct.example.com/new.P"
   store %"struct.example.com/new.P" zeroinitializer, ptr %v.new.22
@@ -19,7 +21,7 @@ define i32 @"example.com/new.will$main"() {
 entry:
   %v.p = alloca %"struct.example.com/new.P"
   %v.ret.29 = alloca %"struct.example.com/new.P"
-  %t4 = call %"struct.example.com/new.P" @"example.com/new.Make"()
+  %t4 = call %"struct.example.com/new.P" @"example.com/new.make"()
   store %"struct.example.com/new.P" %t4, ptr %v.ret.29
   %t5 = load %"struct.example.com/new.P", ptr %v.ret.29
   store %"struct.example.com/new.P" %t5, ptr %v.p

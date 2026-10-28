@@ -16,6 +16,15 @@ type DispatchPoint struct {
 }
 
 // Result carries what the checker learned beyond diagnostics.
+// TypeOf returns the checked type of one expression, or nil when the checker
+// did not visit it.
+func (r *Result) TypeOf(e ast.Expr) *Type {
+	if r == nil || e == nil {
+		return nil
+	}
+	return r.ExprTypes[e]
+}
+
 type Result struct {
 	Dispatch []DispatchPoint
 	// LiteralTypes is the resolved type text of every literal, by node. The
@@ -27,6 +36,10 @@ type Result struct {
 	CallTypes map[*ast.CallExpr]string
 	// NameTypes is the resolved type text of a predeclared value such as None.
 	NameTypes map[*ast.NameExpr]string
+	// ExprTypes is the checked type of every expression the checker visited.
+	// The ownership and task-boundary passes use it to ask Send/Sync.
+	ExprTypes map[ast.Expr]*Type
+	env       *env
 }
 
 // Check checks one resolved file and returns its diagnostics.
@@ -84,8 +97,10 @@ func CheckPackageWithImported(files []*ast.File, results []*resolve.Result, init
 // CheckPackageFullWithImported returns the checker result as well, so the
 // front end can emit the literal types it resolved across packages.
 func CheckPackageFullWithImported(files []*ast.File, results []*resolve.Result, inits, funcs map[string]map[string]*ast.FuncDecl) (*Result, []diag.Diagnostic) {
-	c := &checker{in: newInterner(), foreignInits: inits, foreignFuncs: funcs}
+	c := &checker{in: newInterner(), foreignInits: inits, foreignFuncs: funcs,
+		exprTypes: map[ast.Expr]*Type{}}
 	c.env = buildEnvAll(c, files)
+	c.checkGuardDecls(files)
 	c.checkPackage(files, results)
 	return c.result(), c.bag.Diagnostics()
 }
@@ -93,14 +108,17 @@ func CheckPackageFullWithImported(files []*ast.File, results []*resolve.Result, 
 // CheckPackageFullWithForeign is CheckPackageFull plus imported init
 // declarations keyed by package name and type name.
 func CheckPackageFullWithForeign(files []*ast.File, results []*resolve.Result, foreign map[string]map[string]*ast.FuncDecl) (*Result, []diag.Diagnostic) {
-	c := &checker{in: newInterner(), foreignInits: foreign}
+	c := &checker{in: newInterner(), foreignInits: foreign,
+		exprTypes: map[ast.Expr]*Type{}}
 	c.env = buildEnvAll(c, files)
+	c.checkGuardDecls(files)
 	c.checkPackage(files, results)
 	return c.result(), c.bag.Diagnostics()
 }
 
 // checkPackage walks every file after the environment is built.
 func (c *checker) checkPackage(files []*ast.File, results []*resolve.Result) {
+	c.checkCrossTypes(files)
 	for i, f := range files {
 		if f == nil || i >= len(results) || results[i] == nil {
 			continue
@@ -113,15 +131,19 @@ func (c *checker) checkPackage(files []*ast.File, results []*resolve.Result) {
 
 // result packages what the checker recorded.
 func (c *checker) result() *Result {
-	return &Result{Dispatch: c.dispatch, LiteralTypes: c.litTypes, CallTypes: c.callTypes, NameTypes: c.nameTypes}
+	return &Result{Dispatch: c.dispatch, LiteralTypes: c.litTypes, CallTypes: c.callTypes,
+		NameTypes: c.nameTypes, ExprTypes: c.exprTypes, env: c.env}
 }
 
 func checkWithResult(f *ast.File, res *resolve.Result, others []*ast.File) (*Result, []diag.Diagnostic) {
-	c := &checker{res: res, in: newInterner()}
+	c := &checker{res: res, in: newInterner(),
+		exprTypes: map[ast.Expr]*Type{}}
 	files := make([]*ast.File, 0, len(others)+1)
 	files = append(files, others...)
 	files = append(files, f)
 	c.env = buildEnvAll(c, files)
+	c.checkGuardDecls(files)
+	c.checkCrossTypes(files)
 	c.walkFile(f)
 	c.inferFile(f)
 	return c.result(), c.bag.Diagnostics()
@@ -146,6 +168,15 @@ type checker struct {
 	// foreignFuncs holds imported free functions by package name and function
 	// name, so a call checks its arguments against the declaring signature.
 	foreignFuncs map[string]map[string]*ast.FuncDecl
+	// exprTypes caches the inferred type of each expression for post-passes.
+	// inferExpr fills it.
+	exprTypes map[ast.Expr]*Type
+	// aliasResolved caches expanded aliases. aliasActive and aliasStack detect
+	// a cycle while aliases are expanded.
+	aliasResolved map[string]*Type
+	aliasActive   map[string]bool
+	aliasStack    []string
+	aliasReported map[string]bool
 }
 
 func (c *checker) walkFile(f *ast.File) {
@@ -203,7 +234,7 @@ func (c *checker) walkStmt(s ast.Stmt) {
 	case *ast.ReturnStmt:
 		c.walkExpr(st.Value)
 	case *ast.ForStmt:
-		c.walkExpr(st.Iter)
+		c.walkExpr(st.LoopExpr())
 		c.walkBlock(st.Body)
 	case *ast.RegionStmt:
 		c.walkBlock(st.Body)
@@ -266,6 +297,10 @@ func (c *checker) walkExpr(e ast.Expr) {
 		for _, f := range x.Fields {
 			c.walkExpr(f.Value)
 		}
+	case *ast.ArrayLitExpr:
+		for _, e := range x.Elems {
+			c.walkExpr(e)
+		}
 	case *ast.NewExpr:
 		c.walkArgs(x.Args)
 	case *ast.UnaryExpr:
@@ -280,6 +315,8 @@ func (c *checker) walkExpr(e ast.Expr) {
 	case *ast.LambdaExpr:
 		c.walkBlock(x.Body)
 	case *ast.TryExpr:
+		c.walkExpr(x.X)
+	case *ast.AwaitExpr:
 		c.walkExpr(x.X)
 	case *ast.UnwrapExpr:
 		c.walkExpr(x.X)

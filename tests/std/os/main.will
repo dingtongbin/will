@@ -1,0 +1,97 @@
+import "std/os"
+
+def check_env() -> i32 {
+    var set: Result<(), Error> = os.setenv("WILL_OS_PROBE", "value")
+    match set {
+        Err(e) => {
+            if e.status() != 7 {
+                return 1
+            }
+            return 2
+        }
+        _ => {}
+    }
+
+    var got: Option<str> = os.getenv("WILL_OS_PROBE")
+    match got {
+        Some(value) => {
+            if value != "value" {
+                return 3
+            }
+        }
+        None => {
+            return 4
+        }
+    }
+
+    var environ: Map<str, str> = os.environ()
+    if not environ.has("WILL_OS_PROBE") {
+        return 5
+    }
+
+    var invalid: Result<(), Error> = os.setenv("A\0B", "x")
+    match invalid {
+        Err(e) => {
+            if e.status() != 2 {
+                return 7
+            }
+        }
+        _ => {
+            return 6
+        }
+    }
+    return 0
+}
+
+def check_cwd() -> i32 {
+    var cwd: Result<str, Error> = os.cwd()
+    match cwd {
+        Ok(path) => {
+            if path.len() == 0usize {
+                return 8
+            }
+        }
+        Err(e) => {
+            if e.status() != 7 {
+                return 9
+            }
+            return 10
+        }
+    }
+
+    var here: Result<(), Error> = os.chdir(".")
+    match here {
+        Err(e) => {
+            if e.status() != 7 {
+                return 11
+            }
+            return 12
+        }
+        _ => {}
+    }
+
+    var missing: Result<(), Error> = os.chdir("will-no-such-directory")
+    match missing {
+        Err(e) => {
+            if e.status() != 7 {
+                return 14
+            }
+        }
+        _ => {
+            return 13
+        }
+    }
+    return 0
+}
+
+def main() -> i32 {
+    var args: []str = os.args()
+    if args.len() == 0usize {
+        return 15
+    }
+    var code: i32 = check_env()
+    if code != 0 {
+        return code
+    }
+    return check_cwd()
+}

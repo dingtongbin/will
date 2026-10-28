@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/token"
 )
 
@@ -18,7 +19,11 @@ func (p *Parser) parseFile() *ast.File {
 	}
 	for !p.at(token.EOF) && !p.failed {
 		doc := p.takeDoc()
-		f.Decls = append(f.Decls, p.parseDecl(doc))
+		if p.at(token.At) {
+			f.Decls = append(f.Decls, p.parseDecorated(doc)...)
+		} else {
+			f.Decls = append(f.Decls, p.parseDecl(doc))
+		}
 		p.endStatement()
 		p.skipNL()
 	}
@@ -58,6 +63,9 @@ func (p *Parser) parseImport() *ast.Import {
 		if p.at(token.LBrace) {
 			imp.Links = p.parseLinks()
 		}
+	case p.at(token.Ident):
+		imp.Alias = p.next().Text
+		imp.Path = p.expect(token.String, "an import path").Value
 	default:
 		p.unexpected("an import path")
 	}
@@ -89,22 +97,106 @@ func (p *Parser) parseLinks() []*ast.Link {
 	return links
 }
 
+type decorators struct {
+	derive []string
+	test   bool
+}
+
+// parseDecorated reads one or more @decorator lines and applies them to the
+// declaration that follows. Only @derive(...) and @test exist.
+func (p *Parser) parseDecorated(doc string) []ast.Decl {
+	var d decorators
+	for p.at(token.At) {
+		start := p.next()
+		name, nameTok := p.expectName("a decorator name")
+		switch name {
+		case "derive":
+			if !p.at(token.LParen) {
+				p.unexpected("(")
+				return nil
+			}
+			p.next()
+			for {
+				p.skipNL()
+				item, _ := p.expectName("a derived interface name")
+				d.derive = append(d.derive, item)
+				if !p.at(token.Comma) {
+					break
+				}
+				p.next()
+			}
+			p.expect(token.RParen, ")")
+		case "test":
+			d.test = true
+			if p.at(token.LParen) {
+				p.bag.Error(nameTok.Pos, diag.CodeUnexpectedToken, "@test takes no arguments", "remove the parentheses")
+			}
+		default:
+			p.bag.Error(nameTok.Pos, diag.CodeUnexpectedToken, "unknown decorator "+name,
+				"use @derive or @test")
+		}
+		_ = start
+		p.skipNL()
+	}
+	decl := p.parseDecl(doc)
+	var out []ast.Decl
+	out = append(out, decl)
+	switch target := decl.(type) {
+	case *ast.FuncDecl:
+		target.Test = d.test
+		if len(d.derive) != 0 {
+			p.bag.Error(decl.Pos(), diag.CodeUnexpectedToken, "@derive needs a struct or enum",
+				"move the decorator to the type declaration")
+		}
+	case *ast.StructDecl:
+		for _, name := range d.derive {
+			out = append(out, &ast.DeriveDecl{
+				Span: ast.Span{Start: target.Start, End: target.End},
+				Doc:  doc, Name: name, NamePos: target.NamePos,
+				Type: &ast.Type{Span: ast.Span{Start: target.NamePos, End: target.NamePos},
+					Kind: ast.NamedType, Name: target.Name},
+			})
+		}
+		if d.test {
+			p.bag.Error(decl.Pos(), diag.CodeUnexpectedToken, "@test needs a function",
+				"move the decorator to the test function")
+		}
+	case *ast.EnumDecl:
+		for _, name := range d.derive {
+			out = append(out, &ast.DeriveDecl{
+				Span: ast.Span{Start: target.Start, End: target.End},
+				Doc:  doc, Name: name, NamePos: target.NamePos,
+				Type: &ast.Type{Span: ast.Span{Start: target.NamePos, End: target.NamePos},
+					Kind: ast.NamedType, Name: target.Name},
+			})
+		}
+		if d.test {
+			p.bag.Error(decl.Pos(), diag.CodeUnexpectedToken, "@test needs a function",
+				"move the decorator to the test function")
+		}
+	default:
+		p.bag.Error(decl.Pos(), diag.CodeUnexpectedToken, "decorator needs a declaration",
+			"use @derive on a struct or enum, or @test on a function")
+	}
+	return out
+}
+
 func (p *Parser) parseDecl(doc string) ast.Decl {
 	switch p.cur().Kind {
 	case token.KwConst, token.KwVar:
 		return p.parseValueDecl(doc, false)
-	case token.KwFunc:
+	case token.KwDef:
 		return p.parseFuncDecl(doc)
+	case token.KwAsync:
+		return p.parseAsyncFuncDecl(doc)
+	case token.KwType:
+		return p.parseTypeAliasDecl(doc)
 	case token.KwStruct:
 		return p.parseStructDecl(doc)
 	case token.KwEnum:
 		return p.parseEnumDecl(doc)
 	case token.KwInterface:
 		return p.parseInterfaceDecl(doc)
-	case token.KwDerive:
-		return p.parseDeriveDecl(doc)
-	case token.KwLane:
-		return p.parseLaneDecl()
 	}
 	p.unexpected("a declaration")
 	return &ast.VarDecl{Span: p.emptySpan(p.cur())}
@@ -113,22 +205,23 @@ func (p *Parser) parseDecl(doc string) ast.Decl {
 func (p *Parser) parseValueDecl(doc string, allowZero bool) ast.Decl {
 	start := p.next()
 	name, nameTok := p.expectName("a name")
-	p.expect(token.Colon, ":")
-	p.skipNL()
-	typ := p.parseType()
+	var typ *ast.Type
+	if p.at(token.Colon) {
+		p.next()
+		p.skipNL()
+		typ = p.parseType()
+	}
 	var value ast.Expr
 	if start.Kind == token.KwConst {
 		p.expect(token.Assign, "=")
 		p.skipNL()
 		value = p.parseExpr(0, true)
-	} else if allowZero && p.at(token.Assign) {
+	} else if p.at(token.Assign) {
 		p.next()
 		p.skipNL()
 		value = p.parseExpr(0, true)
-	} else if !allowZero {
-		p.expect(token.Assign, "=")
-		p.skipNL()
-		value = p.parseExpr(0, true)
+	} else if typ == nil {
+		p.unexpected("= or :")
 	}
 	span := p.spanFrom(start)
 	if start.Kind == token.KwConst {
@@ -138,8 +231,17 @@ func (p *Parser) parseValueDecl(doc string, allowZero bool) ast.Decl {
 }
 
 func (p *Parser) parseFuncDecl(doc string) *ast.FuncDecl {
-	start := p.expect(token.KwFunc, "func")
-	fn := &ast.FuncDecl{Doc: doc}
+	return p.parseFuncDeclFrom(doc, p.cur(), false)
+}
+
+func (p *Parser) parseAsyncFuncDecl(doc string) *ast.FuncDecl {
+	start := p.next()
+	return p.parseFuncDeclFrom(doc, start, true)
+}
+
+func (p *Parser) parseFuncDeclFrom(doc string, start token.Token, async bool) *ast.FuncDecl {
+	p.expect(token.KwDef, "def")
+	fn := &ast.FuncDecl{Doc: doc, Async: async}
 	if p.at(token.LParen) {
 		fn.Recv = p.parseReceiver()
 	}
@@ -153,6 +255,7 @@ func (p *Parser) parseFuncDecl(doc string) *ast.FuncDecl {
 		p.skipNL()
 		fn.Result = p.parseType()
 	}
+	fn.From = p.parseFromSources()
 	fn.Body = p.parseBlock("a function body")
 	fn.Span = p.spanFrom(start)
 	return fn
@@ -163,15 +266,12 @@ func (p *Parser) parseReceiver() *ast.Receiver {
 	p.enterGroup()
 	p.skipNL()
 	recv := &ast.Receiver{}
-	if p.atText("mut") {
-		recv.Mut = true
-		p.next()
-	}
 	name, nameTok := p.expectName("a receiver name")
 	recv.Name = name
 	recv.NamePos = nameTok.Pos
 	p.expect(token.Colon, ":")
 	recv.Type = p.parseType()
+	recv.Mut = recv.Type.IsMutRef() || recv.Type.ViewMut
 	p.expect(token.RParen, ")")
 	p.leaveGroup()
 	recv.Span = p.spanFrom(start)
@@ -204,10 +304,6 @@ func (p *Parser) parseParams() []*ast.Param {
 func (p *Parser) parseParam() *ast.Param {
 	start := p.cur()
 	param := &ast.Param{}
-	if p.atText("mut") {
-		param.Mut = true
-		p.next()
-	}
 	name, nameTok := p.expectName("a parameter name")
 	param.Name = name
 	param.NamePos = nameTok.Pos
@@ -217,8 +313,29 @@ func (p *Parser) parseParam() *ast.Param {
 		p.next()
 	}
 	param.Type = p.parseType()
+	param.Mut = param.Type.IsMutRef() || param.Type.ViewMut
+	if p.at(token.Assign) {
+		p.next()
+		p.skipNL()
+		param.Default = p.parseExpr(0, true)
+	}
 	param.Span = p.spanFrom(start)
 	return param
+}
+
+func (p *Parser) parseTypeAliasDecl(doc string) *ast.TypeAliasDecl {
+	start := p.expect(token.KwType, "type")
+	name, nameTok := p.expectName("a type alias name")
+	p.expect(token.Assign, "=")
+	p.skipNL()
+	typ := p.parseType()
+	return &ast.TypeAliasDecl{
+		Span:    p.spanFrom(start),
+		Doc:     doc,
+		Name:    name,
+		NamePos: nameTok.Pos,
+		Type:    typ,
+	}
 }
 
 func (p *Parser) parseTypeParams() []*ast.TypeParam {
@@ -372,8 +489,14 @@ func (p *Parser) parseInterfaceDecl(doc string) *ast.InterfaceDecl {
 }
 
 func (p *Parser) parseMethodSig() *ast.MethodSig {
-	start := p.expect(token.KwFunc, "func")
-	sig := &ast.MethodSig{}
+	start := p.cur()
+	async := false
+	if p.at(token.KwAsync) {
+		p.next()
+		async = true
+	}
+	p.expect(token.KwDef, "def")
+	sig := &ast.MethodSig{Async: async}
 	name, nameTok := p.expectName("a method name")
 	sig.Name = name
 	sig.NamePos = nameTok.Pos
@@ -383,8 +506,28 @@ func (p *Parser) parseMethodSig() *ast.MethodSig {
 		p.skipNL()
 		sig.Result = p.parseType()
 	}
+	sig.From = p.parseFromSources()
 	sig.Span = p.spanFrom(start)
 	return sig
+}
+
+// parseFromSources reads the optional from clause after a return type. Each
+// source is a place expression, so a field path stays attached to its root.
+func (p *Parser) parseFromSources() []ast.Expr {
+	if !p.atText("from") {
+		return nil
+	}
+	p.next()
+	var out []ast.Expr
+	for {
+		p.skipNL()
+		out = append(out, p.parseExpr(0, false))
+		if !p.at(token.Comma) {
+			break
+		}
+		p.next()
+	}
+	return out
 }
 
 func (p *Parser) parseDeriveDecl(doc string) *ast.DeriveDecl {

@@ -18,7 +18,7 @@ func (g *generator) isPrintCall(r willc.Record) bool {
 // printCall writes each argument to standard output. A str is written as its
 // bytes; a scalar is formatted by the runtime, so no temporary str is built.
 func (g *generator) printCall(r willc.Record) (string, string, error) {
-	for _, arg := range refsOf(r, "arg") {
+	for index, arg := range refsOf(r, "arg") {
 		text, err := g.willTypeText(arg)
 		if err != nil {
 			return "", "", err
@@ -34,7 +34,12 @@ func (g *generator) printCall(r willc.Record) (string, string, error) {
 		}
 		typ, signed, ok := llvmScalar(text)
 		if !ok {
-			return "", "", g.errf(arg, "cannot translate node #%d: print of %s is not lowered yet", arg, text)
+			// Every other value shows itself; print writes the text Show
+			// returns.
+			if err := g.printShow(r, index, arg); err != nil {
+				return "", "", err
+			}
+			continue
 		}
 		value, err := g.value(arg)
 		if err != nil {
@@ -62,6 +67,47 @@ func (g *generator) printCall(r willc.Record) (string, string, error) {
 		}
 	}
 	return "", "", nil
+}
+
+// printShow boxes one value as Show, calls its Show method, and writes the
+// text. The interface value lives in a slot the entry block reserves.
+func (g *generator) printShow(call willc.Record, index, arg int) error {
+	text, err := g.willTypeText(arg)
+	if err != nil {
+		return err
+	}
+	iface := g.showIface
+	if iface == nil {
+		return g.errf(arg, "cannot translate node #%d: Show is not lowered yet", arg)
+	}
+	slot := g.ifaceSlots[fmt.Sprintf("print.%d.%d", call.ID, index)]
+	if slot == "" {
+		slot = g.newTmp()
+		fmt.Fprintf(g.out, "  %s = alloca %%interface.show\n", slot)
+	}
+	if _, already := g.ifaceOfText(text); !already {
+		if _, err := g.ifaceValue(slot, arg, iface, text); err != nil {
+			return err
+		}
+	}
+	t := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%interface.show, ptr %s, i32 0, i32 0\n", t, slot)
+	data := g.load("ptr", t)
+	tt := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%interface.show, ptr %s, i32 0, i32 1\n", tt, slot)
+	table := g.load("ptr", tt)
+	fnField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds [1 x ptr], ptr %s, i64 0, i64 0\n", fnField, table)
+	fn := g.load("ptr", fnField)
+	shown := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call { ptr, i64 } %s(ptr %s)\n", shown, fn, data)
+	shownData := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = extractvalue { ptr, i64 } %s, 0\n", shownData, shown)
+	shownLen := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = extractvalue { ptr, i64 } %s, 1\n", shownLen, shown)
+	g.needPrintDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_write_stdout(ptr %s, i64 %s)\n", shownData, shownLen)
+	return nil
 }
 
 // toI64 widens or narrows an integer value to the i64 the print helper takes.

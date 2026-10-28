@@ -1,6 +1,8 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/rc.Counter" = type { i32 }
 %"struct.example.com/rc.Holder" = type { i64, i64 }
-define hidden void @"example.com/rc.Counter.Add"(ptr %c, i32 %d) alwaysinline {
+define hidden void @"example.com/rc.Counter.add"(ptr %c, i32 %d) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/rc.Counter", ptr %c, i32 0, i32 0
   %t2 = load i32, ptr %t1
@@ -15,7 +17,7 @@ panic.ok.1:
   store i32 %t4, ptr %t1
   ret void
 }
-define hidden i64 @"example.com/rc.Identity"(i64 %c) alwaysinline {
+define hidden i64 @"example.com/rc.identity"(i64 %c) alwaysinline {
 entry:
   call void @willrt_rc_retain(i64 %c)
   ret i64 %c
@@ -41,7 +43,7 @@ entry:
   store i64 %t9, ptr %v.c
   %t10 = load i64, ptr %v.c
   %t11 = call ptr @willrt_rc_deref(i64 %t10)
-  call void @"example.com/rc.Counter.Add"(ptr %t11, i32 4)
+  call void @"example.com/rc.Counter.add"(ptr %t11, i32 4)
   %t12 = load i64, ptr %v.c
   %t13 = call ptr @willrt_rc_deref(i64 %t12)
   %t14 = getelementptr inbounds %"struct.example.com/rc.Counter", ptr %t13, i32 0, i32 0
@@ -79,7 +81,7 @@ upgrade.end.2:
   %t29 = load { i32, [4 x i8], i64 }, ptr %v.ret.61
   store { i32, [4 x i8], i64 } %t29, ptr %v.u
   %t30 = load i64, ptr %v.d
-  %t31 = call i64 @"example.com/rc.Identity"(i64 %t30)
+  %t31 = call i64 @"example.com/rc.identity"(i64 %t30)
   store i64 %t31, ptr %v.e
   %t32 = getelementptr inbounds %"struct.example.com/rc.Holder", ptr %v.agg.70, i32 0, i32 0
   %t33 = load i64, ptr %v.e
@@ -131,21 +133,22 @@ panic.ok.4:
   %t58 = getelementptr inbounds %"struct.example.com/rc.Holder", ptr %v.h, i32 0, i32 0
   %t59 = load i64, ptr %t58
   call void @willrt_rc_release(i64 %t59)
-  %t60 = load i64, ptr %v.e
-  call void @willrt_rc_release(i64 %t60)
-  %t61 = load i32, ptr %v.u
-  %t62 = icmp eq i32 %t61, 0
-  br i1 %t62, label %release.done.5, label %release.keep.5
-release.keep.5:
-  %t63 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.u, i32 0, i32 2
-  %t64 = load i64, ptr %t63
-  call void @willrt_rc_release(i64 %t64)
-  br label %release.done.5
-release.done.5:
-  %t65 = load i64, ptr %v.d
+  %t60 = getelementptr inbounds %"struct.example.com/rc.Holder", ptr %v.h, i32 0, i32 1
+  %t61 = load i64, ptr %v.e
+  call void @willrt_rc_release(i64 %t61)
+  %t62 = load i32, ptr %v.u
+  %t63 = icmp eq i32 %t62, 1
+  br i1 %t63, label %deep.rel.adt.5.1, label %deep.rel.adt.done.5.1
+deep.rel.adt.5.1:
+  %t64 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.u, i32 0, i32 2
+  %t65 = load i64, ptr %t64
   call void @willrt_rc_release(i64 %t65)
-  %t66 = load i64, ptr %v.c
+  br label %deep.rel.adt.done.5.1
+deep.rel.adt.done.5.1:
+  %t66 = load i64, ptr %v.d
   call void @willrt_rc_release(i64 %t66)
+  %t67 = load i64, ptr %v.c
+  call void @willrt_rc_release(i64 %t67)
   ret i32 %t56
 }
 declare void @willrt_init()
@@ -159,7 +162,7 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:11:5\00", align 1
-@.str.2 = private unnamed_addr constant [27 x i8] c"example.com/rc.Counter.Add\00", align 1
+@.str.2 = private unnamed_addr constant [27 x i8] c"example.com/rc.Counter.add\00", align 1
 @.str.3 = private unnamed_addr constant [15 x i8] c"main.will:21:5\00", align 1
 @.str.4 = private unnamed_addr constant [25 x i8] c"example.com/rc.will$main\00", align 1
 @.str.5 = private unnamed_addr constant [16 x i8] c"main.will:36:12\00", align 1

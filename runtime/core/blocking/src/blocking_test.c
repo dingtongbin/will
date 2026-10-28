@@ -17,6 +17,7 @@ int main(void) {
     int32_t input = 41;
     int32_t output = 0;
     int32_t status;
+    willrt_blocking_op* op;
 
     status = willrt_blocking_call((void*)add_one, &input, &output);
     assert(status == WILLRT_OK);
@@ -27,6 +28,19 @@ int main(void) {
     status = willrt_blocking_call((void*)add_one, &input, &output);
     assert(status == WILLRT_OK);
     assert(output == 0);
+
+    input = 9;
+    output = 0;
+    op = willrt_blocking_submit_copy((void*)add_one, &input, sizeof(input),
+                                     &output);
+    assert(op != NULL);
+    input = 100;
+    while (!willrt_blocking_poll(op)) {
+        willrt_os_thread_yield();
+    }
+    status = willrt_blocking_finish(op);
+    assert(status == WILLRT_OK);
+    assert(output == 10);
 
     willrt_blocking_shutdown();
     return 0;

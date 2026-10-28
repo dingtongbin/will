@@ -1,4 +1,4 @@
-func F() {
+def f() {
     var x: i8 = 300
     _ = x
 }

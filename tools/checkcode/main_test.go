@@ -37,7 +37,7 @@ func has(findings []Finding, rule string) bool {
 func TestCleanTree(t *testing.T) {
 	root := t.TempDir()
 	write(t, root, "main.go", []byte("// Package main is a program.\npackage main\n"))
-	write(t, root, "a.will", []byte("func main() {\n}\n"))
+	write(t, root, "a.will", []byte("def main() {\n}\n"))
 	findings, err := Check(root)
 	if err != nil {
 		t.Fatalf("check: %v", err)

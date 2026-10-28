@@ -1,25 +1,43 @@
 import "std/math/rand"
 
-func main() -> i32 {
-    var r: rand.Rand = rand.New(42u64)
-    var a: u64 = r.NextU64()
-    var b: u64 = r.NextU64()
-    var f: f64 = r.NextF64()
-    var ok: i32 = 0
-    if a == 13679457532755275413u64 {
-        ok += 1
+# Two streams with one seed must stay identical, different seeds must diverge,
+# and NextF64 must stay in [0, 1). The published SplitMix64 values pin the
+# state update and the three wrapping multiplies.
+def main() -> i32 {
+    var r: rand.Rand = new rand.Rand(42u64)
+    var a: u64 = r.next_u64()
+    var b: u64 = r.next_u64()
+    var f: f64 = r.next_f64()
+    if a != 13679457532755275413u64 {
+        return 1
     }
-    if b == 2949826092126892291u64 {
-        ok += 1
+    if b != 2949826092126892291u64 {
+        return 2
     }
-    if a != b {
-        ok += 1
+    if a == b {
+        return 3
     }
-    if f >= 0.0 {
-        ok += 1
+    if f < 0.0 or f >= 1.0 {
+        return 4
     }
-    if f < 1.0 {
-        ok += 1
+
+    var same: rand.Rand = new rand.Rand(42u64)
+    if same.next_u64() != a {
+        return 5
     }
-    return ok
+    if same.next_u64() != b {
+        return 6
+    }
+
+    var other: rand.Rand = new rand.Rand(43u64)
+    if other.next_u64() == a {
+        return 7
+    }
+
+    var zero: rand.Rand = new rand.Rand(0u64)
+    var zeroAgain: rand.Rand = new rand.Rand(0u64)
+    if zero.next_u64() != zeroAgain.next_u64() {
+        return 8
+    }
+    return 0
 }

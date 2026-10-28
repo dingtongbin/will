@@ -14,7 +14,7 @@ var supportedTargets = []string{
 	"aarch64-linux-gnu",
 	"x86_64-mac-darwin",
 	"aarch64-mac-darwin",
-	"x86_64-win-msvc",
+	"x86_64-win-gnu",
 	"aarch64-android",
 	"aarch64-ios",
 }

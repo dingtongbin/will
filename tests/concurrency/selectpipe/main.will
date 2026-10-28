@@ -1,0 +1,59 @@
+async def produce(ch: chan<i32>, n: i32) {
+    for i in Range(0, n) {
+        _ = await ch.send(i)
+    }
+}
+
+async def stage(inp: chan<i32>, out: chan<i32>) {
+    while True {
+        select {
+            item = inp.recv() => {
+                match item {
+                    Some(value) => {
+                        _ = await out.send(value + 1)
+                    }
+                    None => {
+                        out.close()
+                        return
+                    }
+                }
+            }
+            timeout 100ms => {
+                out.close()
+                return
+            }
+        }
+    }
+}
+
+async def consume(ch: chan<i32>) -> i32 {
+    var sum: i32 = 0
+    while True {
+        var item: Option<i32> = await ch.recv()
+        match item {
+            Some(value) => {
+                sum += value
+            }
+            None => {
+                break
+            }
+        }
+    }
+    return sum
+}
+
+async def main() -> i32 {
+    var first: chan<i32> = new chan<i32>(64)
+    var second: chan<i32> = new chan<i32>(64)
+    var total: i32 = 0
+    region {
+        var producer: Task<()> = spawn produce(first, 100)
+        var stage: Task<()> = spawn stage(first, second)
+        var sink: Task<i32> = spawn consume(second)
+        _ = await producer!
+        first.close()
+        _ = await stage!
+        total = await sink!
+    }
+    return total - 5050
+}

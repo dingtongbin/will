@@ -1,4 +1,4 @@
 import "example.com/unusedimport/lib"
 
-func F() {
+def f() {
 }

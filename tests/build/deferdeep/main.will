@@ -3,39 +3,39 @@ struct Packet {
     values: Array<i32>
 }
 
-func ShowPacket(p: Packet) {
-    print(p.name, " ", p.values.Len(), " ", p.values.Get(0usize), "\n")
+def show_packet(p: Packet) {
+    print(p.name, " ", p.values.len(), " ", p.values.get(0usize), "\n")
 }
 
-func ShowMap(m: Map<str, i32>) {
-    print(m.Len(), "\n")
+def show_map(m: Map<str, i32>) {
+    print(m.len(), "\n")
 }
 
-func ShowNested(xs: Array<Array<i32>>) {
-    print(xs.Len(), " ", xs.Get(0usize).Len(), "\n")
+def show_nested(xs: Array<Array<i32>>) {
+    print(xs.len(), " ", xs.get(0usize).len(), "\n")
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var p: Packet = Packet {
         name: "old" + "!",
         values: new Array<i32>(1usize),
     }
-    p.values.Push(1)
-    defer ShowPacket(p)
+    p.values.push(1)
+    defer show_packet(p)
     p.name = "new" + "?"
-    p.values.Push(2)
+    p.values.push(2)
 
     var m: Map<str, i32> = new Map<str, i32>(0usize)
-    m.Set("first", 1)
-    defer ShowMap(m)
-    m.Set("second", 2)
+    m.set("first", 1)
+    defer show_map(m)
+    m.set("second", 2)
 
     var inner: Array<i32> = new Array<i32>(0usize)
-    inner.Push(7)
+    inner.push(7)
     var xs: Array<Array<i32>> = new Array<Array<i32>>(0usize)
-    xs.Push(inner)
-    defer ShowNested(xs)
-    inner.Push(8)
+    xs.push(inner)
+    defer show_nested(xs)
+    inner.push(8)
 
     return 0
 }

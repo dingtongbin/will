@@ -1,0 +1,42 @@
+# Pad formats s in a field of width characters. A left field puts the fill
+# bytes before s; otherwise they follow it. A width at or below the length of s
+# adds nothing.
+def pad(s: str, width: i32, fill: u8, left: bool) -> Format {
+    return Format {
+        kind: formatText,
+        value: 0u64,
+        negative: False,
+        base: 10u32,
+        width: width,
+        pad: fill,
+        left: left,
+        text: s.clone()
+    }
+}
+
+# padText returns s surrounded by fill bytes on the requested side.
+def pad_text(s: str, width: i32, fill: u8, left: bool) -> str {
+    if width <= 0 or i32(s.len()) >= width {
+        return s.clone()
+    }
+    var filler: str = filled(usize(width) - s.len(), fill)
+    if left {
+        return filler + s
+    }
+    return s + filler
+}
+
+# filled returns n copies of byte as text. The loop appends one byte at a time,
+# so the result is linear in n and no intermediate text is built.
+def filled(n: usize, byte: u8) -> str {
+    var out: Array<u8> = new Array<u8>(n)
+    var i: usize = 0usize
+    while True {
+        if i >= n {
+            break
+        }
+        out.push(byte)
+        i += 1usize
+    }
+    return str(out)
+}

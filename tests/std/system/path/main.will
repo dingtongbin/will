@@ -1,236 +1,234 @@
 import "std/os/path"
 
-// Clean must drop empty and dot elements, resolve dot-dot where it can, keep a
-// leading dot-dot on a relative path, and name the empty result "." or "/".
-func main() -> i32 {
-    if path.Clean("") != "." {
+# Clean must drop empty and dot elements, resolve dot-dot where it can, keep a
+# leading dot-dot on a relative path, and name the empty result "." or "/".
+def main() -> i32 {
+    if path.clean("") != "." {
         return 1
     }
-    if path.Clean(".") != "." {
+    if path.clean(".") != "." {
         return 2
     }
-    if path.Clean("..") != ".." {
+    if path.clean("..") != ".." {
         return 3
     }
-    if path.Clean("a/./b") != "a/b" {
+    if path.clean("a/./b") != "a/b" {
         return 4
     }
-    if path.Clean("a//b") != "a/b" {
+    if path.clean("a//b") != "a/b" {
         return 5
     }
-    if path.Clean("a/../b") != "b" {
+    if path.clean("a/../b") != "b" {
         return 6
     }
-    if path.Clean("a/..") != "." {
+    if path.clean("a/..") != "." {
         return 7
     }
-    if path.Clean("../a") != "../a" {
+    if path.clean("../a") != "../a" {
         return 8
     }
-    if path.Clean("/") != "/" {
+    if path.clean("/") != "/" {
         return 9
     }
-    if path.Clean("//") != "/" {
+    if path.clean("//") != "/" {
         return 10
     }
-    if path.Clean("/..") != "/" {
+    if path.clean("/..") != "/" {
         return 11
     }
-    if path.Clean("/../a") != "/a" {
+    if path.clean("/../a") != "/a" {
         return 12
     }
-    if path.Clean("a/") != "a" {
+    if path.clean("a/") != "a" {
         return 13
     }
-    if path.Clean("/a/b/../c/") != "/a/c" {
+    if path.clean("/a/b/../c/") != "/a/c" {
         return 14
     }
-    if path.Clean("/h\xc3\xa9llo/") != "/h\xc3\xa9llo" {
+    if path.clean("/h\xc3\xa9llo/") != "/h\xc3\xa9llo" {
         return 15
     }
-    // A zero-part Join would be path.Join(), but the compiler reads a Join call
-    // with no arguments as the task join, so an all-empty call is written as
-    // Join("", ""), which also returns "".
-    if path.Join("", "") != "" {
+    # A zero-part path join is written as Join("", ""), which also returns "".
+    if path.join("", "") != "" {
         return 16
     }
-    if path.Join("a") != "a" {
+    if path.join("a") != "a" {
         return 17
     }
-    if path.Join("a", "b") != "a/b" {
+    if path.join("a", "b") != "a/b" {
         return 18
     }
-    if path.Join("a/", "/b") != "a/b" {
+    if path.join("a/", "/b") != "a/b" {
         return 19
     }
-    if path.Join("a", "..") != "." {
+    if path.join("a", "..") != "." {
         return 20
     }
-    if path.Join("/", "a") != "/a" {
+    if path.join("/", "a") != "/a" {
         return 21
     }
-    if path.Join("", "a", "") != "a" {
+    if path.join("", "a", "") != "a" {
         return 22
     }
-    // Dir keeps everything before the last separator and cleans it.
-    if path.Dir("") != "." {
+    # Dir keeps everything before the last separator and cleans it.
+    if path.dir("") != "." {
         return 23
     }
-    if path.Dir("/") != "/" {
+    if path.dir("/") != "/" {
         return 24
     }
-    if path.Dir("/a") != "/" {
+    if path.dir("/a") != "/" {
         return 25
     }
-    if path.Dir("a") != "." {
+    if path.dir("a") != "." {
         return 26
     }
-    if path.Dir("a/b") != "a" {
+    if path.dir("a/b") != "a" {
         return 27
     }
-    if path.Dir("a/b/") != "a/b" {
+    if path.dir("a/b/") != "a/b" {
         return 28
     }
-    if path.Dir("//a") != "/" {
+    if path.dir("//a") != "/" {
         return 29
     }
-    if path.Dir("/h\xc3\xa9llo/x") != "/h\xc3\xa9llo" {
+    if path.dir("/h\xc3\xa9llo/x") != "/h\xc3\xa9llo" {
         return 30
     }
-    // Base is the last element after trailing separators are dropped.
-    if path.Base("") != "." {
+    # Base is the last element after trailing separators are dropped.
+    if path.base("") != "." {
         return 31
     }
-    if path.Base("/") != "/" {
+    if path.base("/") != "/" {
         return 32
     }
-    if path.Base("//") != "/" {
+    if path.base("//") != "/" {
         return 33
     }
-    if path.Base("a/") != "a" {
+    if path.base("a/") != "a" {
         return 34
     }
-    if path.Base("/a") != "a" {
+    if path.base("/a") != "a" {
         return 35
     }
-    if path.Base("a/b/") != "b" {
+    if path.base("a/b/") != "b" {
         return 36
     }
-    if path.Base("/h\xc3\xa9llo") != "h\xc3\xa9llo" {
+    if path.base("/h\xc3\xa9llo") != "h\xc3\xa9llo" {
         return 37
     }
-    // Ext starts at the final dot of the last element; a dotfile has one.
-    if path.Ext("") != "" {
+    # Ext starts at the final dot of the last element; a dotfile has one.
+    if path.ext("") != "" {
         return 38
     }
-    if path.Ext("a") != "" {
+    if path.ext("a") != "" {
         return 39
     }
-    if path.Ext("a.") != "." {
+    if path.ext("a.") != "." {
         return 40
     }
-    if path.Ext(".txt") != ".txt" {
+    if path.ext(".txt") != ".txt" {
         return 41
     }
-    if path.Ext("a.txt") != ".txt" {
+    if path.ext("a.txt") != ".txt" {
         return 42
     }
-    if path.Ext("a.b/c") != "" {
+    if path.ext("a.b/c") != "" {
         return 43
     }
-    if path.Ext("a/b.c") != ".c" {
+    if path.ext("a/b.c") != ".c" {
         return 44
     }
-    if path.Ext("/h\xc3\xa9llo/x.txt") != ".txt" {
+    if path.ext("/h\xc3\xa9llo/x.txt") != ".txt" {
         return 45
     }
-    if path.IsAbs("") {
+    if path.is_abs("") {
         return 46
     }
-    if !path.IsAbs("/") {
+    if not path.is_abs("/") {
         return 47
     }
-    if !path.IsAbs("/a") {
+    if not path.is_abs("/a") {
         return 48
     }
-    if path.IsAbs("a") {
+    if path.is_abs("a") {
         return 49
     }
-    if path.IsAbs("./a") {
+    if path.is_abs("./a") {
         return 50
     }
-    // Match is anchored, and neither wildcard crosses the separator.
-    if !path.Match("*.txt", "a.txt") {
+    # Match is anchored, and neither wildcard crosses the separator.
+    if not path.glob("*.txt", "a.txt") {
         return 51
     }
-    if path.Match("*.txt", "a.txt.bak") {
+    if path.glob("*.txt", "a.txt.bak") {
         return 52
     }
-    if !path.Match("a?c", "abc") {
+    if not path.glob("a?c", "abc") {
         return 53
     }
-    if path.Match("a?c", "ac") {
+    if path.glob("a?c", "ac") {
         return 54
     }
-    if !path.Match("*", "abc") {
+    if not path.glob("*", "abc") {
         return 55
     }
-    if !path.Match("*", "") {
+    if not path.glob("*", "") {
         return 56
     }
-    if path.Match("*", "a/b") {
+    if path.glob("*", "a/b") {
         return 57
     }
-    if !path.Match("a/*", "a/b") {
+    if not path.glob("a/*", "a/b") {
         return 58
     }
-    if path.Match("a/*", "a/b/c") {
+    if path.glob("a/*", "a/b/c") {
         return 59
     }
-    if !path.Match("", "") {
+    if not path.glob("", "") {
         return 60
     }
-    if path.Match("", "a") {
+    if path.glob("", "a") {
         return 61
     }
-    if !path.Match("a*b*c", "aXbYc") {
+    if not path.glob("a*b*c", "aXbYc") {
         return 62
     }
-    if path.Match("a*b*c", "aXbY") {
+    if path.glob("a*b*c", "aXbY") {
         return 63
     }
-    if path.Match("a?b", "a/b") {
+    if path.glob("a?b", "a/b") {
         return 64
     }
-    if !path.Match("/a/*", "/a/b") {
+    if not path.glob("/a/*", "/a/b") {
         return 65
     }
-    if !path.Match("src-?-main.will", "src-a-main.will") {
+    if not path.glob("src-?-main.will", "src-a-main.will") {
         return 66
     }
-    if path.Ext("a.tar.gz") != ".gz" {
+    if path.ext("a.tar.gz") != ".gz" {
         return 67
     }
-    if path.Clean("./..") != ".." {
+    if path.clean("./..") != ".." {
         return 68
     }
-    if path.Base("...") != "..." {
+    if path.base("...") != "..." {
         return 69
     }
-    if !path.Match("*", ".") {
+    if not path.glob("*", ".") {
         return 70
     }
-    if !path.IsAbs("//a") {
+    if not path.is_abs("//a") {
         return 71
     }
-    if path.Clean("a/./") != "a" {
+    if path.clean("a/./") != "a" {
         return 72
     }
-    // A long name exercises the star loop without recursion.
-    if !path.Match("*", "a".Repeat(1000usize)) {
+    # A long name exercises the star loop without recursion.
+    if not path.glob("*", "a".repeat(1000usize)) {
         return 73
     }
-    if path.Match("*", "a".Repeat(1000usize) + "/b") {
+    if path.glob("*", "a".repeat(1000usize) + "/b") {
         return 74
     }
     return 0

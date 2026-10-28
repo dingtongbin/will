@@ -1,5 +1,7 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/crossfile.Point" = type { i32, i32 }
-define hidden i32 @"example.com/crossfile.Sum"(ptr %p) alwaysinline {
+define hidden i32 @"example.com/crossfile.sum"(ptr %p) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/crossfile.Point", ptr %p, i32 0, i32 0
   %t2 = load i32, ptr %t1
@@ -15,7 +17,7 @@ panic.1:
 panic.ok.1:
   ret i32 %t6
 }
-define hidden %"struct.example.com/crossfile.Point" @"example.com/crossfile.Make"(i32 %x) alwaysinline {
+define hidden %"struct.example.com/crossfile.Point" @"example.com/crossfile.make"(i32 %x) alwaysinline {
 entry:
   %v.agg.19 = alloca %"struct.example.com/crossfile.Point"
   %t8 = getelementptr inbounds %"struct.example.com/crossfile.Point", ptr %v.agg.19, i32 0, i32 0
@@ -29,11 +31,11 @@ define i32 @"example.com/crossfile.will$main"() {
 entry:
   %v.p = alloca %"struct.example.com/crossfile.Point"
   %v.ret.27 = alloca %"struct.example.com/crossfile.Point"
-  %t11 = call %"struct.example.com/crossfile.Point" @"example.com/crossfile.Make"(i32 3)
+  %t11 = call %"struct.example.com/crossfile.Point" @"example.com/crossfile.make"(i32 3)
   store %"struct.example.com/crossfile.Point" %t11, ptr %v.ret.27
   %t12 = load %"struct.example.com/crossfile.Point", ptr %v.ret.27
   store %"struct.example.com/crossfile.Point" %t12, ptr %v.p
-  %t13 = call i32 @"example.com/crossfile.Sum"(ptr %v.p)
+  %t13 = call i32 @"example.com/crossfile.sum"(ptr %v.p)
   ret i32 %t13
 }
 declare void @willrt_init()
@@ -47,6 +49,6 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [12 x i8] c"b.will:2:12\00", align 1
-@.str.2 = private unnamed_addr constant [26 x i8] c"example.com/crossfile.Sum\00", align 1
+@.str.2 = private unnamed_addr constant [26 x i8] c"example.com/crossfile.sum\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

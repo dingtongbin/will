@@ -1,4 +1,6 @@
-define hidden i32 @"example.com/control.Sign"(i32 %n) alwaysinline {
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
+define hidden i32 @"example.com/control.sign"(i32 %n) alwaysinline {
 entry:
   %t1 = icmp slt i32 %n, 0
   br i1 %t1, label %if.then.1, label %if.else.1
@@ -24,7 +26,7 @@ if.end.1:
 }
 define i32 @"example.com/control.will$main"() {
 entry:
-  %t6 = call i32 @"example.com/control.Sign"(i32 7)
+  %t6 = call i32 @"example.com/control.sign"(i32 7)
   ret i32 %t6
 }
 declare void @willrt_init()
@@ -38,6 +40,6 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:3:16\00", align 1
-@.str.2 = private unnamed_addr constant [25 x i8] c"example.com/control.Sign\00", align 1
+@.str.2 = private unnamed_addr constant [25 x i8] c"example.com/control.sign\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

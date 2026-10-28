@@ -12,9 +12,9 @@ import (
 
 const (
 	fixtureWillMod    = "module example.com/app\nwill 1\n"
-	fixtureMainWill   = "func main() {}\n"
-	fixtureSecondWill = "func Second() {}\n"
-	fixtureLibWill    = "func Helper() -> i32 {\n    return 1\n}\n"
+	fixtureMainWill   = "def main() {}\n"
+	fixtureSecondWill = "def second() {}\n"
+	fixtureLibWill    = "def helper() -> i32 {\n    return 1\n}\n"
 	fixtureHeader     = "#define WILL_NATIVE 1\n"
 	fixtureCSource    = "int will_lib_native(void) { return 1; }\n"
 	fixtureSum        = "example.com/dep sha256:0000000000000000000000000000000000000000000000000000000000000000\n"
@@ -147,8 +147,8 @@ func TestFileCacheKeyInvariants(t *testing.T) {
 	dir := t.TempDir()
 	first := filepath.Join(dir, "first.will")
 	second := filepath.Join(dir, "second.will")
-	writeCacheFixture(t, first, "func First() {}\n")
-	writeCacheFixture(t, second, "func Second() {}\n")
+	writeCacheFixture(t, first, "def first() {}\n")
+	writeCacheFixture(t, second, "def second() {}\n")
 	files := []string{first, second}
 	flags := baseCheckFlags()
 
@@ -159,8 +159,8 @@ func TestFileCacheKeyInvariants(t *testing.T) {
 	}
 
 	t.Run("source bytes", func(t *testing.T) {
-		writeCacheFixture(t, first, "func First() -> i32 { return 1 }\n")
-		t.Cleanup(func() { writeCacheFixture(t, first, "func First() {}\n") })
+		writeCacheFixture(t, first, "def first() -> i32 { return 1 }\n")
+		t.Cleanup(func() { writeCacheFixture(t, first, "def first() {}\n") })
 		assertKeyChanged(t, base, fileCacheKeyForTest(t, files, flags), "source bytes")
 	})
 	t.Run("argument order", func(t *testing.T) {
@@ -169,13 +169,13 @@ func TestFileCacheKeyInvariants(t *testing.T) {
 	})
 	t.Run("file path", func(t *testing.T) {
 		renamed := filepath.Join(dir, "renamed.will")
-		writeCacheFixture(t, renamed, "func First() {}\n")
+		writeCacheFixture(t, renamed, "def first() {}\n")
 		t.Cleanup(func() { _ = os.Remove(renamed) })
 		assertKeyChanged(t, base, fileCacheKeyForTest(t, []string{renamed, second}, flags), "file path")
 	})
 	t.Run("added file", func(t *testing.T) {
 		third := filepath.Join(dir, "third.will")
-		writeCacheFixture(t, third, "func Third() {}\n")
+		writeCacheFixture(t, third, "def third() {}\n")
 		t.Cleanup(func() { _ = os.Remove(third) })
 		assertKeyChanged(t, base, fileCacheKeyForTest(t, []string{first, second, third}, flags), "an added file")
 	})
@@ -236,7 +236,7 @@ func TestDirectoryCacheKeyInvariants(t *testing.T) {
 	})
 	t.Run("source bytes", func(t *testing.T) {
 		changed := newModuleFixture(t, func(root string) {
-			writeCacheFixture(t, filepath.Join(root, "main.will"), "func main() -> i32 {\n    return 0\n}\n")
+			writeCacheFixture(t, filepath.Join(root, "main.will"), "def main() -> i32 {\n    return 0\n}\n")
 		})
 		assertKeyChanged(t, base, dirCacheKeyForTest(t, changed.build, flags), "source bytes")
 	})

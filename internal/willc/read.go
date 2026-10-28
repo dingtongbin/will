@@ -151,11 +151,11 @@ func parseValue(line string, i, id int) (Value, int, error) {
 // is not part of the language.
 var wordVocab = map[string]map[string][]string{
 	"pattern": {"kind": {"wild", "bind", "literal", "variant", "or"}},
-	"type": {"kind": {"scalar", "named", "array", "view", "func", "unit",
-		"result", "option", "rc", "weak", "chan", "task"}},
+	"type": {"kind": {"scalar", "named", "array", "view", "ref", "mutref", "func", "unit",
+		"result", "option", "rc", "arc", "weak_rc", "weak_arc", "chan", "task"}},
 	"lit":        {"kind": {"int", "float", "char", "str", "bytes", "bool", "duration", "unit"}},
 	"release":    {"kind": {"value", "rc", "guard", "frame"}},
-	"count":      {"name": {"values", "releases", "merges", "refs", "diagnostics"}},
+	"count":      {"name": {"values", "releases", "refs", "diagnostics"}},
 	"diagnostic": {"severity": {"error", "warning"}},
 }
 

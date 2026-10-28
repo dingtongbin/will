@@ -42,7 +42,7 @@ func (g *generator) initDeclForNew(d *docState, r willc.Record) (*docState, will
 		if recv == nil {
 			continue
 		}
-		recvName, recvArgs, ok := splitGenericType(fieldText(*recv, "type"))
+		recvName, recvArgs, ok := splitGenericType(baseBorrowText(fieldText(*recv, "type")))
 		if !ok || recvName != local || len(recvArgs) != len(params) {
 			continue
 		}

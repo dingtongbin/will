@@ -1,25 +1,25 @@
 import "std/container/heap"
 
-func Less(a: i32, b: i32) -> bool {
+def less(a: i32, b: i32) -> bool {
     return a < b
 }
 
-// Heap must keep the root smallest through every Push and Pop, including the
-// sift-down path with two children.
-func main() -> i32 {
-    var h: heap.Heap<i32> = new heap.Heap<i32>(Less)
-    if h.Len() != 0usize {
+# Heap must keep the root smallest through every Push and Pop, including the
+# sift-down path with two children.
+def main() -> i32 {
+    var h: heap.Heap<i32> = new heap.Heap<i32>(less)
+    if h.len() != 0usize {
         return 1
     }
-    h.Push(7)
-    h.Push(3)
-    h.Push(9)
-    h.Push(1)
-    h.Push(5)
-    if h.Len() != 5usize {
+    h.push(7)
+    h.push(3)
+    h.push(9)
+    h.push(1)
+    h.push(5)
+    if h.len() != 5usize {
         return 2
     }
-    match h.Peek() {
+    match h.peek() {
         Some(v) => {
             if v != 1 {
                 return 3
@@ -30,19 +30,19 @@ func main() -> i32 {
         }
     }
     var expected: Array<i32> = new Array<i32>(0)
-    expected.Push(1)
-    expected.Push(3)
-    expected.Push(5)
-    expected.Push(7)
-    expected.Push(9)
+    expected.push(1)
+    expected.push(3)
+    expected.push(5)
+    expected.push(7)
+    expected.push(9)
     var i: usize = 0usize
-    for {
+    while True {
         if i >= 5usize {
             break
         }
-        match h.Pop() {
+        match h.pop() {
             Some(v) => {
-                if v != expected.Get(i) {
+                if v != expected.get(i) {
                     return 5
                 }
             }
@@ -52,7 +52,7 @@ func main() -> i32 {
         }
         i += 1usize
     }
-    match h.Pop() {
+    match h.pop() {
         Some(v) => {
             _ = v
             return 7

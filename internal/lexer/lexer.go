@@ -101,10 +101,10 @@ func (l *Lexer) run() {
 			start := l.pos()
 			l.advance()
 			l.toks = append(l.toks, token.Token{Kind: token.Newline, Text: "\n", Pos: start, End: l.pos()})
-		case b == '/' && l.peek(1) == '/':
-			l.scanLineComment()
-		case b == '/' && l.peek(1) == '*':
-			l.scanBlockComment()
+		case b == '#':
+			l.scanHashComment()
+		case b == '"' && l.peek(1) == '"' && l.peek(2) == '"':
+			l.scanTripleComment()
 		case b == 'b' && l.peek(1) == '"':
 			l.scanQuoted(token.Bytes, 1)
 		case b == 'f' && l.peek(1) == '"':
@@ -270,6 +270,8 @@ type fixedOp struct {
 
 var fixedOps = []fixedOp{
 	{"<<%=", token.ShlWrapAssign},
+	{"//=", token.FloorDivAssign},
+	{"**=", token.PowAssign},
 	{"+%=", token.PlusWrapAssign},
 	{"-%=", token.MinusWrapAssign},
 	{"*%=", token.StarWrapAssign},
@@ -285,6 +287,8 @@ var fixedOps = []fixedOp{
 	{"+|", token.PlusSat},
 	{"-|", token.MinusSat},
 	{"*|", token.StarSat},
+	{"//", token.FloorDiv},
+	{"**", token.Pow},
 	{"<<", token.Shl},
 	{">>", token.Shr},
 	{"&&", token.AndAnd},
@@ -306,6 +310,7 @@ var fixedOps = []fixedOp{
 }
 
 var oneChar = map[byte]token.Kind{
+	'@': token.At,
 	'+': token.Plus,
 	'-': token.Minus,
 	'*': token.Star,

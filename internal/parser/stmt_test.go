@@ -20,9 +20,9 @@ func findFunc(t *testing.T, f *ast.File, name string) *ast.FuncDecl {
 
 func TestParseStatements(t *testing.T) {
 	f := parse(t, program)
-	run := findFunc(t, f, "Run")
-	if len(run.Body.Stmts) != 16 {
-		t.Fatalf("statements = %d, want 16", len(run.Body.Stmts))
+	run := findFunc(t, f, "run")
+	if len(run.Body.Stmts) != 15 {
+		t.Fatalf("statements = %d, want 15", len(run.Body.Stmts))
 	}
 	loop, ok := run.Body.Stmts[6].(*ast.ForStmt)
 	if !ok || len(loop.Names) != 2 || loop.Names[0] != "i" || loop.Names[1] != "x" || loop.Iter == nil {
@@ -77,43 +77,40 @@ func TestParseStatements(t *testing.T) {
 	if !sel.Arms[2].Default {
 		t.Errorf("select arm 2 = %+v, want default", sel.Arms[2])
 	}
-	if _, ok := run.Body.Stmts[11].(*ast.ParallelStmt); !ok {
-		t.Errorf("statement 11 = %T, want parallel", run.Body.Stmts[11])
-	}
-	dl, ok := run.Body.Stmts[12].(*ast.DeadlineExpr)
+	dl, ok := run.Body.Stmts[11].(*ast.DeadlineExpr)
 	if !ok || dl.Body == nil {
-		t.Fatalf("statement 12 = %T, want deadline", run.Body.Stmts[12])
+		t.Fatalf("statement 11 = %T, want deadline", run.Body.Stmts[11])
 	}
-	deferStmt, ok := run.Body.Stmts[13].(*ast.DeferStmt)
+	deferStmt, ok := run.Body.Stmts[12].(*ast.DeferStmt)
 	if !ok || !isCallLike(deferStmt.Call) {
-		t.Fatalf("statement 13 = %+v, want defer call", run.Body.Stmts[13])
+		t.Fatalf("statement 12 = %+v, want defer call", run.Body.Stmts[12])
 	}
-	exprStmt, ok := run.Body.Stmts[14].(*ast.ExprStmt)
+	exprStmt, ok := run.Body.Stmts[13].(*ast.ExprStmt)
 	if !ok {
-		t.Fatalf("statement 14 = %T, want expression statement", run.Body.Stmts[14])
+		t.Fatalf("statement 13 = %T, want expression statement", run.Body.Stmts[13])
 	}
 	if call, ok := exprStmt.Expr.(*ast.CallExpr); !ok {
-		t.Errorf("statement 14 expression = %T, want call", exprStmt.Expr)
+		t.Errorf("statement 13 expression = %T, want call", exprStmt.Expr)
 	} else if _, ok := call.Callee.(*ast.LambdaExpr); !ok {
-		t.Errorf("statement 14 callee = %T, want lambda", call.Callee)
+		t.Errorf("statement 13 callee = %T, want lambda", call.Callee)
 	}
-	if _, ok := run.Body.Stmts[15].(*ast.ReturnStmt); !ok {
-		t.Errorf("statement 15 = %T, want return", run.Body.Stmts[15])
+	if _, ok := run.Body.Stmts[14].(*ast.ReturnStmt); !ok {
+		t.Errorf("statement 14 = %T, want return", run.Body.Stmts[14])
 	}
 }
 
 func TestBlockValueAndNewlineRules(t *testing.T) {
-	src := `func F(n: i32) {
-    var a: i32 = Add(1,
+	src := `def f(n: i32) {
+    var a: i32 = add(1,
         2)
     var b: i32 = 1 +
         2
     var c: i32 = if n > 0 { 1 } else { 2 }
     if (Point { x: 1 }) == p {
-        Work()
+        work()
     }
     if n > 0 {
-        Work()
+        work()
     } else {
         Stop()
     }
@@ -130,48 +127,121 @@ func TestBlockValueAndNewlineRules(t *testing.T) {
 }
 
 func TestMoreStatements(t *testing.T) {
-	src := `func F() {
-    var t: Task<i32> = spawn on Ui Fetch(1)
-    var l: usize = lane.Here()
-    _ = t.Join()
+	src := `def f() {
+    var t: Task<i32> = spawn fetch(1)
+    _ = t
     p.x += 1
     p.x <<= 2
 }
 `
 	f := parse(t, src)
 	fn := firstFunc(t, f)
-	if len(fn.Body.Stmts) != 5 {
-		t.Fatalf("statements = %d, want 5", len(fn.Body.Stmts))
+	if len(fn.Body.Stmts) != 4 {
+		t.Fatalf("statements = %d, want 4", len(fn.Body.Stmts))
 	}
 	spawn, ok := varDecl(t, f, "t").Value.(*ast.SpawnExpr)
-	if !ok || spawn.Lane != "Ui" {
-		t.Fatalf("t = %+v, want spawn on Ui", varDecl(t, f, "t").Value)
-	}
-	if _, ok := varDecl(t, f, "l").Value.(*ast.LaneHereExpr); !ok {
-		t.Errorf("l = %T, want lane.Here()", varDecl(t, f, "l").Value)
-	}
-	discard, ok := fn.Body.Stmts[2].(*ast.AssignStmt)
 	if !ok {
-		t.Fatalf("statement 2 = %T, want assignment", fn.Body.Stmts[2])
+		t.Fatalf("t = %+v, want spawn call", varDecl(t, f, "t").Value)
+	}
+	if call, ok := spawn.Call.(*ast.CallExpr); !ok || call == nil {
+		t.Fatalf("spawn call = %T, want call", spawn.Call)
+	}
+	discard, ok := fn.Body.Stmts[1].(*ast.AssignStmt)
+	if !ok {
+		t.Fatalf("statement 1 = %T, want assignment", fn.Body.Stmts[1])
 	}
 	if name, ok := discard.Target.(*ast.NameExpr); !ok || name.Name != "_" {
 		t.Errorf("discard target = %T, want _", discard.Target)
 	}
-	compound, ok := fn.Body.Stmts[3].(*ast.AssignStmt)
+	compound, ok := fn.Body.Stmts[2].(*ast.AssignStmt)
 	if !ok || compound.Op != "+=" {
-		t.Fatalf("statement 3 = %+v, want +=", fn.Body.Stmts[3])
+		t.Fatalf("statement 2 = %+v, want +=", fn.Body.Stmts[2])
 	}
 	if _, ok := compound.Target.(*ast.FieldExpr); !ok {
 		t.Errorf("compound target = %T, want field", compound.Target)
 	}
-	shift, ok := fn.Body.Stmts[4].(*ast.AssignStmt)
+	shift, ok := fn.Body.Stmts[3].(*ast.AssignStmt)
 	if !ok || shift.Op != "<<=" {
-		t.Fatalf("statement 4 = %+v, want <<=", fn.Body.Stmts[4])
+		t.Fatalf("statement 3 = %+v, want <<=", fn.Body.Stmts[3])
+	}
+}
+
+func TestSpawnIsADirectCall(t *testing.T) {
+	src := `def g() {
+}
+
+def f() {
+    var a: Task<()> = spawn g()
+}
+`
+	f := parse(t, src)
+	spawn, ok := varDecl(t, f, "a").Value.(*ast.SpawnExpr)
+	if !ok {
+		t.Fatalf("a = %+v, want spawn", varDecl(t, f, "a").Value)
+	}
+	if _, ok := spawn.Call.(*ast.CallExpr); !ok {
+		t.Fatalf("spawn call = %T, want call", spawn.Call)
+	}
+}
+
+func TestRemovedConcurrencySurfaceIsRejected(t *testing.T) {
+	cases := []string{
+		"def f() { parallel { work() } }\n",
+		"lane Ui struct Marker { id: i32 }\n",
+		"def f() { var t: Task<()> = spawn on Ui work() }\n",
+		"def f() { var t: Task<()> = spawn here work() }\n",
+	}
+	for _, src := range cases {
+		_, ds := Parse("test.will", []byte(src))
+		if len(ds) == 0 {
+			t.Errorf("source parsed without diagnostics:\n%s", src)
+		}
+	}
+}
+
+func TestCallTryAndUnwrapAsStatements(t *testing.T) {
+	src := `def f() -> Result<(), Error> {
+    check()?
+    check()!
+    return Ok(())
+}
+`
+	f := parse(t, src)
+	fn := firstFunc(t, f)
+	if len(fn.Body.Stmts) != 3 {
+		t.Fatalf("statements = %d, want 3", len(fn.Body.Stmts))
+	}
+	first, ok := fn.Body.Stmts[0].(*ast.ExprStmt)
+	if !ok {
+		t.Fatalf("statement 0 = %T, want expression statement", fn.Body.Stmts[0])
+	}
+	if _, ok := first.Expr.(*ast.TryExpr); !ok {
+		t.Errorf("statement 0 expression = %T, want try", first.Expr)
+	}
+	second, ok := fn.Body.Stmts[1].(*ast.ExprStmt)
+	if !ok {
+		t.Fatalf("statement 1 = %T, want expression statement", fn.Body.Stmts[1])
+	}
+	if _, ok := second.Expr.(*ast.UnwrapExpr); !ok {
+		t.Errorf("statement 1 expression = %T, want unwrap", second.Expr)
+	}
+}
+
+func TestSuffixDoesNotExtendDeferOrSpawn(t *testing.T) {
+	// A defer still reports the generic shape; a spawn operand rule has its
+	// own code (K0005) because the concurrency volume fixes it.
+	_, ds := Parse("test.will", []byte("def f() {\n    defer g()?\n}\n"))
+	if len(ds) != 1 || ds[0].Help != "expected a call" {
+		t.Fatalf("defer diagnostics = %+v, want one expected-call error", ds)
+	}
+	_, ds = Parse("test.will", []byte("def f() {\n    spawn g()?\n}\n"))
+	if len(ds) != 1 || ds[0].Code != diag.CodeSpawnNotCall {
+		t.Fatalf("spawn diagnostics = %+v, want one K0005", ds)
 	}
 }
 
 func TestNewlineBeforeDotEndsStatement(t *testing.T) {
-	src := `func F() {
+	src := `def f() {
     p
     .x
 }

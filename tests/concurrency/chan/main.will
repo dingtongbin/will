@@ -1,0 +1,23 @@
+async def producer(ch: chan<i32>) {
+    _ = await ch.send(7)
+    ch.close()
+}
+
+async def main() -> i32 {
+    var ch: chan<i32> = new chan<i32>(1)
+    var value: i32 = 0
+    region {
+        var task: Task<()> = spawn producer(ch)
+        var item: Option<i32> = await ch.recv()
+        match item {
+            Some(v) => {
+                value = v
+            }
+            None => {
+                return 1
+            }
+        }
+        _ = await task!
+    }
+    return value - 7
+}

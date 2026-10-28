@@ -28,7 +28,7 @@ func count(ds []diag.Diagnostic, message string) int {
 }
 
 func TestFreestandingRuntimeUses(t *testing.T) {
-	src := "func F() {\n" +
+	src := "def f() {\n" +
 		"    var xs: Array<i64> = new Array<i64>(0)\n" +
 		"    var ch: chan<i64> = new chan<i64>(1)\n" +
 		"    _ = ch\n" +
@@ -49,22 +49,22 @@ func TestFreestandingRuntimeUses(t *testing.T) {
 }
 
 func TestFreestandingTasksAndChannels(t *testing.T) {
-	src := "func F(ch: chan<i64>) {\n" +
+	src := "def f(ch: chan<i64>) {\n" +
 		"    region {\n" +
 		"        var t: Task<i64> = spawn G()\n" +
-		"        _ = t.Join()\n" +
+		"        _ = await t\n" +
 		"    }\n" +
-		"    _ = ch.Recv()\n" +
-		"    ch.Send(1)\n" +
+		"    _ = ch.recv()\n" +
+		"    ch.send(1)\n" +
 		"}\n"
 	ds := freestanding(t, src)
-	if got := count(ds, runtimeMessage); got != 5 {
-		t.Fatalf("runtime uses = %d, want 5 (region, spawn, Join, Recv, Send):\n%s", got, diag.FormatAll(ds))
+	if got := count(ds, runtimeMessage); got != 4 {
+		t.Fatalf("runtime uses = %d, want 4 (region, spawn, await, channel):\n%s", got, diag.FormatAll(ds))
 	}
 }
 
 func TestFreestandingImports(t *testing.T) {
-	src := "import \"std/math\"\nimport \"std/net\"\n\nfunc F() -> f64 {\n    return 0\n}\n"
+	src := "import \"std/math\"\nimport \"std/net\"\n\ndef f() -> f64 {\n    return 0\n}\n"
 	ds := freestanding(t, src)
 	if got := count(ds, "package std/net is not available with --freestanding"); got != 1 {
 		t.Fatalf("package uses = %d, want 1:\n%s", got, diag.FormatAll(ds))
@@ -77,7 +77,7 @@ func TestFreestandingImports(t *testing.T) {
 }
 
 func TestFreestandingAllowsPureCode(t *testing.T) {
-	src := "import \"std/math\"\n\nstruct P {\n    x: i32\n}\n\nfunc F(p: P) -> i32 {\n    return p.x + 1\n}\n"
+	src := "import \"std/math\"\n\nstruct P {\n    x: i32\n}\n\ndef f(p: P) -> i32 {\n    return p.x + 1\n}\n"
 	if ds := freestanding(t, src); len(ds) != 0 {
 		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
 	}

@@ -14,15 +14,27 @@ import (
 //
 // The emitter assigns ids in the same preorder it writes, so a reference to a
 // node that has not been written yet is patched after the walk.
-func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diagnostic, litTypes map[*ast.LiteralExpr]string, callTypes map[*ast.CallExpr]string, nameTypes map[*ast.NameExpr]string, aliases map[string]string) ([]byte, error) {
+func Emit(f *ast.File, res *resolve.Result, modulePath string, diags []diag.Diagnostic, litTypes map[*ast.LiteralExpr]string, callTypes map[*ast.CallExpr]string, nameTypes map[*ast.NameExpr]string, aliases map[string]string, external ...map[string]*ast.StructDecl) ([]byte, error) {
+	var externalStructs map[string]*ast.StructDecl
+	if len(external) != 0 {
+		externalStructs = external[0]
+	}
 	e := &emitter{
-		ids:        map[ast.Node]int{},
-		refs:       res.Refs,
-		modulePath: modulePath,
-		litTypes:   litTypes,
-		callTypes:  callTypes,
-		nameTypes:  nameTypes,
-		aliases:    aliases,
+		ids:         map[ast.Node]int{},
+		refs:        res.Refs,
+		modulePath:  modulePath,
+		litTypes:    litTypes,
+		callTypes:   callTypes,
+		nameTypes:   nameTypes,
+		aliases:     aliases,
+		released:    map[ast.Node]bool{},
+		moved:       map[ast.Node]bool{},
+		leaked:      map[ast.Node]bool{},
+		structs:     collectStructs(f),
+		external:    externalStructs,
+		funcs:       collectFuncs(f),
+		viewReturns: collectViewReturns(f),
+		localTypes:  map[string]*ast.Type{},
 	}
 	root := e.add("module", f)
 	e.text(root, "path", modulePath)
@@ -61,8 +73,119 @@ type emitter struct {
 	aliases map[string]string
 	// scopes stacks the heap-owning locals declared so far in each open block;
 	// loops records the scope depth of every enclosing loop body.
-	scopes [][]ast.Node
-	loops  []int
+	scopes   [][]ast.Node
+	loops    []int
+	released map[ast.Node]bool
+	moved    map[ast.Node]bool
+	leaked   map[ast.Node]bool
+	// structs holds the local struct declarations, so a field read can be
+	// classified as a scalar/rc copy, a view, or an owning value.
+	structs map[string]*ast.StructDecl
+	// external holds struct declarations from other files or packages, keyed by
+	// their short and package-qualified names. Imported fields need the same
+	// ownership classification as local ones.
+	external map[string]*ast.StructDecl
+	// funcs holds the local free functions. A scalar-returning local call with
+	// no callback parameter cannot hand back a borrow of its argument.
+	funcs map[string]*ast.FuncDecl
+	// viewReturns maps a local function to the parameter index whose slice it
+	// returns as a view. It lets a call result participate in the same view
+	// lifetime as a direct slice.
+	viewReturns map[string]int
+	// localTypes is the type of every local and parameter currently visible.
+	localTypes map[string]*ast.Type
+}
+
+// collectViewReturns records local functions that return a view of one named
+// parameter. A function with a return from a local owner, an unknown
+// expression, or a different parameter stays out of the table and therefore
+// keeps the caller's owner pinned.
+func collectViewReturns(f *ast.File) map[string]int {
+	out := map[string]int{}
+	if f == nil {
+		return out
+	}
+	for _, d := range f.Decls {
+		fn, ok := d.(*ast.FuncDecl)
+		if !ok || fn.Recv != nil || fn.Body == nil || fn.Result == nil || fn.Result.Kind != ast.ViewType {
+			continue
+		}
+		index := map[string]int{}
+		for i, p := range fn.Params {
+			index[p.Name] = i
+		}
+		owner := -1
+		good := true
+		var walkStmt func(ast.Stmt)
+		walkStmt = func(st ast.Stmt) {
+			switch s := st.(type) {
+			case *ast.Block:
+				for _, inner := range s.Stmts {
+					walkStmt(inner)
+				}
+			case *ast.ReturnStmt:
+				root := viewRootOwner(s.Value)
+				i, ok := index[root]
+				if !ok || (owner != -1 && owner != i) {
+					good = false
+					return
+				}
+				owner = i
+			case *ast.ForStmt:
+				walkStmt(s.Body)
+			case *ast.RegionStmt:
+				walkStmt(s.Body)
+			case *ast.ParallelStmt:
+				walkStmt(s.Body)
+			case *ast.IfExpr:
+				walkStmt(s.Then)
+				if s.Else != nil {
+					walkStmt(s.Else)
+				}
+			case *ast.MatchExpr:
+				for _, arm := range s.Arms {
+					walkStmt(arm.Body)
+				}
+			case *ast.SelectStmt:
+				for _, arm := range s.Arms {
+					walkStmt(arm.Body)
+				}
+			case *ast.DeadlineExpr:
+				walkStmt(s.Body)
+			}
+		}
+		walkStmt(fn.Body)
+		if good && owner >= 0 {
+			out[fn.Name] = owner
+		}
+	}
+	return out
+}
+
+func collectFuncs(f *ast.File) map[string]*ast.FuncDecl {
+	out := map[string]*ast.FuncDecl{}
+	if f == nil {
+		return out
+	}
+	for _, d := range f.Decls {
+		if fn, ok := d.(*ast.FuncDecl); ok && fn.Recv == nil {
+			out[fn.Name] = fn
+		}
+	}
+	return out
+}
+
+func collectStructs(f *ast.File) map[string]*ast.StructDecl {
+	out := map[string]*ast.StructDecl{}
+	if f == nil {
+		return out
+	}
+	for _, d := range f.Decls {
+		if s, ok := d.(*ast.StructDecl); ok {
+			out[s.Name] = s
+		}
+	}
+	return out
 }
 
 type pendingRef struct {
@@ -256,6 +379,9 @@ func (e *emitter) emitImport(imp *ast.Import) {
 	}
 	rec := e.add(kind, imp)
 	e.text(rec, "path", imp.Path)
+	if imp.Alias != "" {
+		e.text(rec, "alias", imp.Alias)
+	}
 	if imp.SideEffect {
 		e.boolean(rec, "unused", true)
 	}
@@ -304,6 +430,13 @@ func (e *emitter) emitDecl(d ast.Decl) {
 		e.emitType(decl.Type)
 		e.emitExpr(decl.Value)
 		e.pop()
+	case *ast.TypeAliasDecl:
+		rec := e.add("typealias", decl)
+		e.text(rec, "text", decl.Name)
+		e.ref(rec, "to", decl.Type)
+		e.push(rec)
+		e.emitType(decl.Type)
+		e.pop()
 	case *ast.FuncDecl:
 		e.emitFunc(decl)
 	case *ast.StructDecl:
@@ -349,9 +482,16 @@ func (e *emitter) emitDecl(d ast.Decl) {
 			mid := e.add("method-sig", m)
 			e.text(mid, "text", m.Name)
 			e.text(mid, "type", typeText(m.Result))
+			if m.Async {
+				e.boolean(mid, "async", true)
+			}
 			e.push(mid)
 			e.emitParams(m.Params)
 			e.emitType(m.Result)
+			for _, src := range m.From {
+				id := e.emitExpr(src)
+				e.field(mid, "from", Ref(id))
+			}
 			e.pop()
 		}
 		e.pop()
@@ -362,34 +502,35 @@ func (e *emitter) emitDecl(d ast.Decl) {
 		e.push(rec)
 		e.emitType(decl.Type)
 		e.pop()
-	case *ast.LaneDecl:
-		rec := e.add("lane", decl)
-		e.text(rec, "text", decl.Name)
-		if decl.Decl != nil {
-			e.ref(rec, "to", decl.Decl)
-		}
-		e.push(rec)
-		if decl.Decl != nil {
-			e.emitDecl(decl.Decl)
-		}
-		e.pop()
 	}
 }
 
 func (e *emitter) emitFunc(fn *ast.FuncDecl) {
+	oldTypes := e.localTypes
+	e.localTypes = map[string]*ast.Type{}
+	if fn.Recv != nil {
+		e.localTypes[fn.Recv.Name] = fn.Recv.Type
+	}
+	for _, p := range fn.Params {
+		e.localTypes[p.Name] = p.Type
+	}
+	defer func() { e.localTypes = oldTypes }()
 	rec := e.add("func", fn)
 	e.text(rec, "text", fn.Name)
 	if fn.Result != nil {
 		e.text(rec, "type", typeText(fn.Result))
+	}
+	if fn.Async {
+		e.boolean(rec, "async", true)
+	}
+	if fn.Test {
+		e.boolean(rec, "test", true)
 	}
 	e.push(rec)
 	if fn.Recv != nil {
 		rid := e.add("receiver", fn.Recv)
 		e.text(rid, "text", fn.Recv.Name)
 		e.text(rid, "type", typeText(fn.Recv.Type))
-		if fn.Recv.Mut {
-			e.boolean(rid, "mut", true)
-		}
 		e.push(rid)
 		e.emitType(fn.Recv.Type)
 		e.pop()
@@ -397,6 +538,10 @@ func (e *emitter) emitFunc(fn *ast.FuncDecl) {
 	e.emitTypeParams(fn.TypeParams)
 	e.emitParams(fn.Params)
 	e.emitType(fn.Result)
+	for _, src := range fn.From {
+		id := e.emitExpr(src)
+		e.field(rec, "from", Ref(id))
+	}
 	e.emitBlock(fn.Body)
 	e.pop()
 }
@@ -425,14 +570,15 @@ func (e *emitter) emitParams(params []*ast.Param) {
 		id := e.add("param", pm)
 		e.text(id, "text", pm.Name)
 		e.text(id, "type", typeText(pm.Type))
-		if pm.Mut {
-			e.boolean(id, "mut", true)
-		}
 		if pm.Variadic {
 			e.boolean(id, "variadic", true)
 		}
 		e.push(id)
 		e.emitType(pm.Type)
+		if pm.Default != nil {
+			did := e.emitExpr(pm.Default)
+			e.field(id, "default", Ref(did))
+		}
 		e.pop()
 	}
 }
@@ -444,6 +590,9 @@ func (e *emitter) emitType(t *ast.Type) int {
 	rec := e.add("type", t)
 	e.text(rec, "text", typeText(t))
 	e.word(rec, "kind", typeKind(t))
+	if t.Kind == ast.ViewType && t.ViewMut {
+		e.boolean(rec, "mut", true)
+	}
 	e.typeRef(rec, t)
 	e.push(rec)
 	switch t.Kind {
@@ -496,6 +645,12 @@ func typeText(t *ast.Type) string {
 }
 
 func typeKind(t *ast.Type) string {
+	switch t.Borrow {
+	case ast.RefBorrow:
+		return "ref"
+	case ast.MutBorrow:
+		return "mutref"
+	}
 	switch t.Kind {
 	case ast.ScalarType:
 		return "scalar"
@@ -515,8 +670,12 @@ func typeKind(t *ast.Type) string {
 		return "result"
 	case "rc":
 		return "rc"
-	case "weak":
-		return "weak"
+	case "arc":
+		return "arc"
+	case "weak_rc":
+		return "weak_rc"
+	case "weak_arc":
+		return "weak_arc"
 	case "chan":
 		return "chan"
 	case "Task":

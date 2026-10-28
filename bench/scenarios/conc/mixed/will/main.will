@@ -1,0 +1,148 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_sink
+    bench_latency_start
+    bench_latency_end
+    bench_latency
+}
+import "std/os/fs"
+import "example.com/bench/conc/mixed/will/bench"
+
+# ioWorkers is the number of concurrent readers.
+const ioWorkers: i32 = 64
+
+# ioPerWorker is the number of sequential reads each reader performs.
+const ioPerWorker: i32 = 100
+
+# ioCount is the number of asynchronous file reads in one burst.
+const ioCount: i32 = 6400
+
+# cpuCount is the number of CPU jobs in one burst, about 30 percent of the
+# combined operation count.
+const cpuCount: i32 = 2743
+
+# repetitions is the number of measured bursts.
+const repetitions: i32 = 3
+
+# fileSize is the number of bytes each read consumes.
+const fileSize: i32 = 65536
+
+# Cpu is one 30 percent job. It records its own completion time.
+def cpu(slot: i32) -> i32 {
+    var acc: i32 = 0
+    for i in Range(0, 1000) {
+        acc += i
+    }
+    c.bench_latency_end(slot)
+    return acc
+}
+
+# CpuBatch submits the CPU half of the workload as jobs and awaits each handle
+# inside one region.
+async def cpu_batch(base: i32) -> i32 {
+    region {
+        var tasks: Array<Task<i32>> = new Array<Task<i32>>(cpuCount)
+        for i in Range(0, cpuCount) {
+            var slot: i32 = base + i
+            c.bench_latency_start(slot)
+            tasks.push(spawn cpu(slot))
+        }
+        for i in Range(0, cpuCount) {
+            _ = await tasks.get(i)!
+        }
+    }
+    return 0
+}
+
+# IoWorker performs one stream of 70 percent operations. Keeping only
+# ioWorkers readers in flight measures service latency instead of the length of
+# a ten-thousand-task queue.
+async def io_worker(path: str, base: i32) -> i32 {
+    var sum: i32 = 0
+    for i in Range(0, ioPerWorker) {
+        var slot: i32 = base + i
+        c.bench_latency_start(slot)
+        var bytes: Array<u8> = await fs.read_file(path)!
+        for b in bytes {
+            sum += i32(b)
+        }
+        c.bench_latency_end(slot)
+    }
+    return sum
+}
+
+# Fill writes the read buffer once, outside the measured region.
+def fill(path: str) -> bool {
+    var data: Array<u8> = new Array<u8>(usize(fileSize))
+    for i in Range(0, fileSize) {
+        data.push(u8(i % 251))
+    }
+    var written: Result<(), Error> = await fs.write_file(path, data[Range(0, usize(fileSize))])
+    match written {
+        Err(_) => {
+            return False
+        }
+        _ => {
+            return True
+        }
+    }
+}
+
+async def main() -> i32 {
+    var path: str = "will-mixed-bench.tmp"
+    if not fill(path) {
+        return 1
+    }
+    var io: Array<u64> = new Array<u64>(0)
+    var cpu: Array<u64> = new Array<u64>(0)
+    var all: Array<u64> = new Array<u64>(0)
+    var rounds: Array<u64> = new Array<u64>(0)
+    var checksum: i64 = 0i64
+    for r in Range(0, repetitions) {
+        _ = r
+        var roundStart: u64 = c.bench_now_ns()
+        region {
+            var cpuTask: Task<i32> = spawn cpu_batch(ioCount)
+            var ioTasks: Array<Task<i32>> = new Array<Task<i32>>(ioWorkers)
+            for i in Range(0, ioWorkers) {
+                var base: i32 = i * ioPerWorker
+                ioTasks.push(spawn io_worker(path, base))
+            }
+            for i in Range(0, ioWorkers) {
+                _ = await ioTasks.get(i)!
+            }
+            var cpuResult: i32 = await cpuTask!
+            checksum += i64(cpuResult)
+        }
+        var roundStop: u64 = c.bench_now_ns()
+        for i in Range(0, ioCount) {
+            var value: u64 = c.bench_latency(i)
+            io.push(value)
+            all.push(value)
+        }
+        for i in Range(0, cpuCount) {
+            var value: u64 = c.bench_latency(ioCount + i)
+            cpu.push(value)
+            all.push(value)
+        }
+        rounds.push(roundStop - roundStart)
+        c.bench_sink(u64(checksum))
+    }
+    _ = await fs.remove(path)
+
+    bench.sort_samples(io)
+    bench.sort_samples(cpu)
+    bench.sort_samples(all)
+    bench.sort_samples(rounds)
+    print("bench metric io_p999 ", bench.percentile(io, 999i64, 1000i64), " ns\n")
+    print("bench metric cpu_p999 ", bench.percentile(cpu, 999i64, 1000i64), " ns\n")
+    print("bench metric p999 ", bench.percentile(all, 999i64, 1000i64), " ns\n")
+    print("bench metric p99 ", bench.percentile(all, 99i64, 100i64), " ns\n")
+    print("bench metric io_p99 ", bench.percentile(io, 99i64, 100i64), " ns\n")
+    print("bench metric cpu_p99 ", bench.percentile(cpu, 99i64, 100i64), " ns\n")
+    print("bench metric round_p50 ", bench.percentile(rounds, 50i64, 100i64), " ns\n")
+    print("bench metric io ", u64(ioCount), " tasks\n")
+    print("bench metric cpu ", u64(cpuCount), " jobs\n")
+    print("bench checksum ", u64(checksum), "\n")
+    return 0
+}

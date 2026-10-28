@@ -1,6 +1,6 @@
-// Package pkg loads one module graph: the root module, every module a local
-// replace points at, and the bundled standard library when it is used. It
-// groups source files by package, checks the package names, and reports
+// Package pkg loads one module graph: the root module and every module a local
+// replace points at. It groups source files by package, checks the package
+// names, and reports
 // methods that leave their type's package, one package reached through two
 // import paths, and import cycles.
 package pkg
@@ -58,7 +58,7 @@ type Build struct {
 	// for the same package, so the table has more entries than Packages.
 	byPath map[string]*Package
 	// LocalModules lists every module loaded through a local replace, in path
-	// order. The root module and the bundled standard library are not included.
+	// order. The root module and the standard library module are not included.
 	LocalModules []LocalModule
 	// Links are the external libraries the root module asks the linker to
 	// include, in declaration order.
@@ -108,13 +108,16 @@ func load(root string, skipSums bool) *Build {
 
 	g := resolveModules(&moduleNode{Dir: root, Path: m.Path, Mod: m})
 	bag.AddAll(g.diags)
-	if g.stdErr != nil {
-		// A missing bundled standard library is a broken toolchain. The
-		// command line reports it as a startup error, not as a source error.
-		b.Err = g.stdErr
-		return b
-	}
 	pkgs, table, pds := g.packages()
+	stdDir := ""
+	for _, key := range g.order {
+		if n := g.nodes[key]; n != nil && n.Path == "std" {
+			stdDir = n.Dir
+			break
+		}
+	}
+	pkgs, pds = keepLoadedPackages(pkgs, table, b.Root, stdDir, pds)
+	pds = append(pds, applyLoadedHeaders(pkgs)...)
 	bag.AddAll(pds)
 	if !skipSums {
 		bag.AddAll(g.checkSums())
@@ -122,7 +125,7 @@ func load(root string, skipSums bool) *Build {
 	b.byPath = table
 	for _, key := range g.order {
 		n := g.nodes[key]
-		if n == nil || n == g.root || n.Std || !n.Local {
+		if n == nil || n == g.root || n.Path == "std" || !n.Local {
 			continue
 		}
 		for _, k := range n.Keys {
@@ -347,6 +350,8 @@ func buildNames(p *Package) (resolve.Exported, []diag.Diagnostic) {
 				add(decl.Name, resolve.ConstKind, decl.NamePos, decl)
 			case *ast.VarDecl:
 				add(decl.Name, resolve.VarKind, decl.NamePos, decl)
+			case *ast.TypeAliasDecl:
+				add(decl.Name, resolve.TypeAliasKind, decl.NamePos, decl)
 			case *ast.FuncDecl:
 				if decl.Recv == nil {
 					add(decl.Name, resolve.FuncKind, decl.NamePos, decl)
@@ -369,7 +374,7 @@ func buildNames(p *Package) (resolve.Exported, []diag.Diagnostic) {
 }
 
 func isExported(name string) bool {
-	return name != "" && name[0] >= 'A' && name[0] <= 'Z'
+	return name != "" && !strings.HasPrefix(name, "__")
 }
 
 // Dispatch is one interface call site.
@@ -418,6 +423,7 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 	foreign := b.foreignInits()
 	foreignFuncs := b.foreignFuncs()
 	imps := b.Imports()
+	checkedByFile := map[*ast.File]*types.Result{}
 	for _, p := range b.Packages {
 		var files []*ast.File
 		var results []*resolve.Result
@@ -431,16 +437,33 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 			results = append(results, res)
 		}
 		if len(files) > 0 {
-			bag.AddAll(types.CheckPackageWithImported(files, results, foreign, foreignFuncs))
+			checked, tds := types.CheckPackageFullWithImported(files, results, foreign, foreignFuncs)
+			bag.AddAll(tds)
+			for _, f := range files {
+				checkedByFile[f] = checked
+			}
 		}
 	}
 	if !bag.HasErrors() {
+		var ownershipFiles []*ast.File
 		for _, p := range b.Packages {
 			for _, f := range p.Files {
 				if f.AST != nil {
-					bag.AddAll(check.Moves(f.AST))
-					bag.AddAll(check.Borrows(f.AST))
-					bag.AddAll(check.Cycles(f.AST))
+					ownershipFiles = append(ownershipFiles, f.AST)
+				}
+			}
+		}
+		ownership := check.NewOwnership(ownershipFiles)
+		effects := check.NewMutEffects(ownershipFiles)
+		for _, p := range b.Packages {
+			for _, f := range p.Files {
+				if f.AST != nil {
+					bag.AddAll(check.MovesWithOwnership(f.AST, ownership))
+					bag.AddAll(check.BorrowsWithEffects(f.AST, ownership, effects))
+					bag.AddAll(check.TopLevelWritesWithEffects(f.AST, effects))
+					bag.AddAll(check.Leaks(f.AST))
+					bag.AddAll(check.CrossTask(f.AST, checkedByFile[f.AST]))
+					bag.AddAll(check.Concurrency(f.AST))
 				}
 			}
 		}
@@ -484,8 +507,9 @@ func (b *Build) foreignInits() map[string]map[string]*ast.FuncDecl {
 	return out
 }
 
-// foreignFuncs collects exported free functions by package name and function
-// name. A cross-package call needs the declaring signature for its arguments.
+// foreignFuncs collects exported free functions and methods by package name
+// and function name. A method is keyed as "Type.Method"; a cross-package call
+// needs the declaring signature for its arguments and its async bit.
 func (b *Build) foreignFuncs() map[string]map[string]*ast.FuncDecl {
 	out := map[string]map[string]*ast.FuncDecl{}
 	for _, p := range b.Packages {
@@ -495,13 +519,20 @@ func (b *Build) foreignFuncs() map[string]map[string]*ast.FuncDecl {
 			}
 			for _, d := range f.AST.Decls {
 				fn, ok := d.(*ast.FuncDecl)
-				if !ok || fn.Recv != nil {
+				if !ok {
 					continue
+				}
+				key := fn.Name
+				if fn.Recv != nil {
+					if fn.Recv.Type == nil || fn.Recv.Type.Name == "" {
+						continue
+					}
+					key = fn.Recv.Type.Name + "." + fn.Name
 				}
 				if out[p.Name] == nil {
 					out[p.Name] = map[string]*ast.FuncDecl{}
 				}
-				out[p.Name][fn.Name] = fn
+				out[p.Name][key] = fn
 			}
 		}
 	}
@@ -511,6 +542,89 @@ func (b *Build) foreignFuncs() map[string]map[string]*ast.FuncDecl {
 // suppressFeatureCascade drops the name error that follows a Feature call left
 // outside an if: T0010 is the root cause, and the removed std/meta import would
 // otherwise also report meta as undefined at the same position.
+// keepLoadedPackages drops standard-library packages that the root module
+// cannot reach. The std tree is scanned before this point so a package path
+// still resolves; parsing and checking an unused std package must not make a
+// build fail. Diagnostics whose source belongs to a dropped package are dropped
+// with it.
+func keepLoadedPackages(pkgs []*Package, table map[string]*Package, root, stdDir string, ds []diag.Diagnostic) ([]*Package, []diag.Diagnostic) {
+	if stdDir == "" {
+		return pkgs, ds
+	}
+	reachable := map[*Package]bool{}
+	var queue []*Package
+	for _, p := range pkgs {
+		if p.Root == root {
+			reachable[p] = true
+			queue = append(queue, p)
+		}
+	}
+	for len(queue) != 0 {
+		p := queue[0]
+		queue = queue[1:]
+		for _, f := range p.Files {
+			if f.AST == nil {
+				continue
+			}
+			for _, imp := range f.AST.Imports {
+				if imp.C {
+					continue
+				}
+				next := table[imp.Path]
+				if next != nil && !reachable[next] {
+					reachable[next] = true
+					queue = append(queue, next)
+				}
+			}
+		}
+	}
+	var kept []*Package
+	var dropped []*Package
+	for _, p := range pkgs {
+		if p.Root == stdDir && !reachable[p] {
+			dropped = append(dropped, p)
+			continue
+		}
+		kept = append(kept, p)
+	}
+	if len(dropped) == 0 {
+		return kept, ds
+	}
+	out := ds[:0]
+	rootName := filepath.ToSlash(filepath.Base(stdDir))
+	for _, d := range ds {
+		if filepath.ToSlash(d.Pos.File) == rootName || droppedDiagnostic(d, dropped) {
+			continue
+		}
+		out = append(out, d)
+	}
+	return kept, out
+}
+
+// droppedDiagnostic reports whether a diagnostic belongs to one of the dropped
+// standard-library packages. A root package's package-name diagnostic names
+// the directory itself, while a file diagnostic names a relative file path.
+func droppedDiagnostic(d diag.Diagnostic, dropped []*Package) bool {
+	file := filepath.ToSlash(d.Pos.File)
+	for _, p := range dropped {
+		rel, err := filepath.Rel(p.Root, p.Dir)
+		if err != nil {
+			continue
+		}
+		rel = filepath.ToSlash(rel)
+		if rel == "." {
+			if file == filepath.Base(p.Dir) {
+				return true
+			}
+			continue
+		}
+		if file == rel || strings.HasPrefix(file, rel+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 func suppressFeatureCascade(ds []diag.Diagnostic) []diag.Diagnostic {
 	root := map[source.Pos]bool{}
 	for _, d := range ds {

@@ -1,20 +1,20 @@
-// Map is insertion ordered in this implementation. Set replaces a value,
-// Delete removes one entry, and Keys/Values copy the live entries.
-func main() -> i32 {
+# Map is insertion ordered in this implementation. Set replaces a value,
+# Delete removes one entry, and Keys/Values copy the live entries.
+def main() -> i32 {
     var m: Map<str, i32> = new Map<str, i32>(0usize)
-    if m.Len() != 0usize {
+    if m.len() != 0usize {
         return 1
     }
-    m.Set("a", 1)
-    m.Set("b", 2)
-    m.Set("a", 3)
-    if m.Len() != 2usize {
+    m.set("a", 1)
+    m.set("b", 2)
+    m.set("a", 3)
+    if m.len() != 2usize {
         return 2
     }
-    if !m.Has("a") || m.Has("c") {
+    if not m.has("a") or m.has("c") {
         return 3
     }
-    match m.Get("a") {
+    match m.get("a") {
         Some(v) => {
             if v != 3 {
                 return 4
@@ -24,7 +24,7 @@ func main() -> i32 {
             return 5
         }
     }
-    match m.Get("c") {
+    match m.get("c") {
         Some(v) => {
             _ = v
             return 6
@@ -32,33 +32,33 @@ func main() -> i32 {
         None => {
         }
     }
-    var keys: Array<str> = m.Keys()
-    if keys.Len() != 2usize || keys.Get(0usize) != "a" || keys.Get(1usize) != "b" {
+    var keys: Array<str> = m.keys()
+    if keys.len() != 2usize or keys.get(0usize) != "a" or keys.get(1usize) != "b" {
         return 7
     }
-    var values: Array<i32> = m.Values()
-    if values.Len() != 2usize || values.Get(0usize) != 3 || values.Get(1usize) != 2 {
+    var values: Array<i32> = m.values()
+    if values.len() != 2usize or values.get(0usize) != 3 or values.get(1usize) != 2 {
         return 8
     }
-    if !m.Delete("a") || m.Len() != 1usize {
+    if not m.delete("a") or m.len() != 1usize {
         return 9
     }
-    if m.Delete("a") {
+    if m.delete("a") {
         return 10
     }
-    m.Set("c", 4)
-    m.Clear()
-    if m.Len() != 0usize || m.Has("c") {
+    m.set("c", 4)
+    m.clear()
+    if m.len() != 0usize or m.has("c") {
         return 11
     }
     var nested: Map<str, Array<i32>> = new Map<str, Array<i32>>(0usize)
     var nestedValues: Array<i32> = new Array<i32>(0usize)
-    nestedValues.Push(1)
-    nested.Set("a", nestedValues)
-    nestedValues.Push(2)
-    match nested.Get("a") {
+    nestedValues.push(1)
+    nested.set("a", nestedValues)
+    nestedValues.push(2)
+    match nested.get("a") {
         Some(copy) => {
-            if copy.Len() != 1usize || copy.Get(0usize) != 1 {
+            if copy.len() != 1usize or copy.get(0usize) != 1 {
                 return 12
             }
         }
@@ -66,6 +66,6 @@ func main() -> i32 {
             return 13
         }
     }
-    nested.Clear()
+    nested.clear()
     return 0
 }

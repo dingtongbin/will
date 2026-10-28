@@ -1,0 +1,112 @@
+struct Box {
+    ch: chan<i32>
+}
+
+async def (b: ref Box) take() -> i32 {
+    var item: Option<i32> = await b.ch.recv()
+    match item {
+        Some(value) => {
+            return value
+        }
+        None => {
+            return -1
+        }
+    }
+}
+
+async def worker(ch: chan<i32>) -> i32 {
+    var item: Option<i32> = await ch.recv()
+    match item {
+        Some(value) => {
+            return value
+        }
+        None => {
+            return -1
+        }
+    }
+}
+
+# Driver calls a waiting function, so it waits as well.
+async def driver(ch: chan<i32>) -> i32 {
+    return await worker(ch)
+}
+
+# Fetch returns an aggregate, so the caller reads it from a place.
+async def fetch(ch: chan<i32>) -> Option<i32> {
+    return await ch.recv()
+}
+
+# UseFetch awaits a waiting function whose result is an aggregate.
+async def use_fetch(ch: chan<i32>) -> i32 {
+    var item: Option<i32> = await fetch(ch)
+    match item {
+        Some(value) => {
+            return value
+        }
+        None => {
+            return -1
+        }
+    }
+}
+
+# UseBox calls a waiting method, so it waits as well.
+async def use_box(b: Box) -> i32 {
+    return await b.take()
+}
+
+# Drain calls a waiting function on every loop iteration. The await slots
+# stay in the entry block, so a long loop does not grow the stack.
+async def drain(ch: chan<i32>, n: i32) -> i32 {
+    var sum: i32 = 0
+    for _ in Range(0, n) {
+        sum += await worker(ch)
+    }
+    return sum
+}
+
+async def main() -> i32 {
+    var ch: chan<i32> = new chan<i32>(1)
+    var other: chan<i32> = new chan<i32>(1)
+    var third: chan<i32> = new chan<i32>(1)
+    var fourth: chan<i32> = new chan<i32>(4)
+    var box: Box = Box{ch: other}
+    region {
+        var producer: Task<()> = spawn produce(ch, 42)
+        var second: Task<()> = spawn produce(other, 7)
+        var thirdProducer: Task<()> = spawn produce(third, 9)
+        var fourthProducer: Task<()> = spawn fill(fourth, 4)
+        var value: i32 = await driver(ch)
+        if value != 42 {
+            return 1
+        }
+        var boxed: i32 = await use_box(box)
+        if boxed != 7 {
+            return 2
+        }
+        var fetched: i32 = await use_fetch(third)
+        if fetched != 9 {
+            return 3
+        }
+        var drained: i32 = await drain(fourth, 4)
+        if drained != 6 {
+            return 4
+        }
+        _ = await producer!
+        _ = await second!
+        _ = await thirdProducer!
+        _ = await fourthProducer!
+    }
+    return 0
+}
+
+# Produce is declared after its use, so the call names it by symbol.
+async def produce(ch: chan<i32>, value: i32) {
+    _ = await ch.send(value)
+}
+
+# Fill sends 0..n-1 into the channel.
+async def fill(ch: chan<i32>, n: i32) {
+    for i in Range(0, n) {
+        _ = await ch.send(i)
+    }
+}

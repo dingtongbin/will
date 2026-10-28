@@ -1,3 +1,5 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/genericimport/lib.Box$i32" = type { i32 }
 define i32 @"example.com/genericimport.will$main"() {
 entry:
@@ -6,8 +8,8 @@ entry:
   store %"struct.example.com/genericimport/lib.Box$i32" zeroinitializer, ptr %v.new.9
   %t1 = load %"struct.example.com/genericimport/lib.Box$i32", ptr %v.new.9
   store %"struct.example.com/genericimport/lib.Box$i32" %t1, ptr %v.b
-  call void @"example.com/genericimport/lib.Box<i32>.Set"(ptr %v.b, i32 7)
-  %t2 = call i32 @"example.com/genericimport/lib.Box<i32>.Get"(ptr %v.b)
+  call void @"example.com/genericimport/lib.Box<i32>.set"(ptr %v.b, i32 7)
+  %t2 = call i32 @"example.com/genericimport/lib.Box<i32>.get"(ptr %v.b)
   %t3 = call {i32, i1} @llvm.ssub.with.overflow.i32(i32 %t2, i32 7)
   %t4 = extractvalue {i32, i1} %t3, 0
   %t5 = extractvalue {i32, i1} %t3, 1
@@ -18,13 +20,13 @@ panic.1:
 panic.ok.1:
   ret i32 %t4
 }
-define hidden void @"example.com/genericimport/lib.Box<i32>.Set"(ptr %b, i32 %v) alwaysinline {
+define hidden void @"example.com/genericimport/lib.Box<i32>.set"(ptr %b, i32 %v) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/genericimport/lib.Box$i32", ptr %b, i32 0, i32 0
   store i32 %v, ptr %t1
   ret void
 }
-define hidden i32 @"example.com/genericimport/lib.Box<i32>.Get"(ptr %b) alwaysinline {
+define hidden i32 @"example.com/genericimport/lib.Box<i32>.get"(ptr %b) inlinehint {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/genericimport/lib.Box$i32", ptr %b, i32 0, i32 0
   %t2 = load i32, ptr %t1

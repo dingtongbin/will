@@ -16,7 +16,7 @@ func onlyDiagnostic(t *testing.T, ds []diag.Diagnostic) diag.Diagnostic {
 }
 
 func TestKeywordAsNameDiagnostic(t *testing.T) {
-	_, ds := Parse("test.will", []byte("func f() {\n    var if: i32 = 1\n}\n"))
+	_, ds := Parse("test.will", []byte("def f() {\n    var if: i32 = 1\n}\n"))
 	d := onlyDiagnostic(t, ds)
 	if d.Code != diag.CodeKeywordName || d.Message != diag.KeywordName.Text || d.Help != diag.KeywordName.Help {
 		t.Fatalf("diagnostic = %+v", d)
@@ -27,7 +27,7 @@ func TestKeywordAsNameDiagnostic(t *testing.T) {
 }
 
 func TestMissingBraceDiagnostic(t *testing.T) {
-	_, ds := Parse("test.will", []byte("func f() {\n"))
+	_, ds := Parse("test.will", []byte("def f() {\n"))
 	d := onlyDiagnostic(t, ds)
 	if d.Code != diag.CodeUnexpectedToken || d.Message != "unexpected token" || d.Help != "expected }" {
 		t.Fatalf("diagnostic = %+v", d)
@@ -35,7 +35,7 @@ func TestMissingBraceDiagnostic(t *testing.T) {
 }
 
 func TestExpressionStatementDiagnostic(t *testing.T) {
-	_, ds := Parse("test.will", []byte("func f() {\n    1 + 2\n    Work()\n}\n"))
+	_, ds := Parse("test.will", []byte("def f() {\n    1 + 2\n    work()\n}\n"))
 	d := onlyDiagnostic(t, ds)
 	if d.Code != diag.CodeUnexpectedToken || d.Help != "expected a call or spawn" {
 		t.Fatalf("diagnostic = %+v", d)
@@ -46,7 +46,7 @@ func TestExpressionStatementDiagnostic(t *testing.T) {
 }
 
 func TestTypeArgumentDiagnostic(t *testing.T) {
-	_, ds := Parse("test.will", []byte("func f() {\n    var x: i32 = call<,>(1)\n}\n"))
+	_, ds := Parse("test.will", []byte("def f() {\n    var x: i32 = call<,>(1)\n}\n"))
 	d := onlyDiagnostic(t, ds)
 	if d.Code != diag.CodeTypeArgs || d.Message != diag.TypeArguments.Text || d.Help != diag.TypeArguments.Help {
 		t.Fatalf("diagnostic = %+v", d)
@@ -65,7 +65,7 @@ func TestLexicalErrorsSkipParsing(t *testing.T) {
 }
 
 func TestDeferNeedsCall(t *testing.T) {
-	_, ds := Parse("test.will", []byte("func f() {\n    defer 1\n}\n"))
+	_, ds := Parse("test.will", []byte("def f() {\n    defer 1\n}\n"))
 	d := onlyDiagnostic(t, ds)
 	if d.Code != diag.CodeUnexpectedToken || d.Help != "expected a call" {
 		t.Fatalf("diagnostic = %+v", d)
@@ -73,7 +73,7 @@ func TestDeferNeedsCall(t *testing.T) {
 }
 
 func TestImportAfterDeclaration(t *testing.T) {
-	_, ds := Parse("test.will", []byte("func f() {}\nimport \"std/bytes\"\n"))
+	_, ds := Parse("test.will", []byte("def f() {}\nimport \"std/bytes\"\n"))
 	d := onlyDiagnostic(t, ds)
 	if d.Code != diag.CodeUnexpectedToken || d.Help != "expected a declaration" {
 		t.Fatalf("diagnostic = %+v", d)
@@ -91,7 +91,7 @@ func TestEmptyFile(t *testing.T) {
 }
 
 func TestDocCommentBindsToDeclaration(t *testing.T) {
-	f := parse(t, "/// first\n/// second\nfunc F() {}\n")
+	f := parse(t, "## first\n## second\ndef f() {}\n")
 	fn, ok := f.Decls[0].(*ast.FuncDecl)
 	if !ok {
 		t.Fatalf("declaration = %T, want func", f.Decls[0])

@@ -2,23 +2,23 @@ struct E {
     msg: str
 }
 
-func (e: E) Message() -> str {
-    return e.msg
+def (e: ref E) message() -> str {
+    return e.msg.clone()
 }
 
-func (e: E) Status() -> i32 {
+def (e: ref E) status() -> i32 {
     return 7
 }
 
-func Use() -> i32 {
+def use() -> i32 {
     var e: E = E { msg: "bad" }
     var r: Result<i32, Error> = Err(e)
     return match r {
         Ok(v) => v
-        Err(x) => x.Status()
+        Err(x) => x.status()
     }
 }
 
-func main() -> i32 {
-    return Use()
+def main() -> i32 {
+    return use()
 }

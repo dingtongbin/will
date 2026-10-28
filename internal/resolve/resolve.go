@@ -39,6 +39,7 @@ func ResolveIn(f *ast.File, packageNames Exported, imports Imports) (*Result, []
 		derives:           map[string]bool{},
 		unknownQualifiers: map[string]bool{},
 	}
+	r.fileScope = newScope(r.pkg)
 	r.addPredeclared()
 	r.addPackageNames(packageNames)
 	r.addImports()
@@ -50,18 +51,19 @@ func ResolveIn(f *ast.File, packageNames Exported, imports Imports) (*Result, []
 }
 
 type resolver struct {
-	file     *ast.File
-	pkg      *scope
-	stack    []*scope
-	bag      diag.Bag
-	refs     map[ast.Node]*Symbol
-	symbols  []*Symbol
-	imports  []*importRec
-	methods  map[string]*Symbol
-	packages Imports
-	tables   map[string]Exported
-	derives  map[string]bool
-	cImport  *Symbol
+	file      *ast.File
+	pkg       *scope
+	fileScope *scope
+	stack     []*scope
+	bag       diag.Bag
+	refs      map[ast.Node]*Symbol
+	symbols   []*Symbol
+	imports   []*importRec
+	methods   map[string]*Symbol
+	packages  Imports
+	tables    map[string]Exported
+	derives   map[string]bool
+	cImport   *Symbol
 	// unknownQualifiers holds the package names whose import path matched no
 	// package, so their members are not checked.
 	unknownQualifiers map[string]bool
@@ -82,13 +84,13 @@ var predeclaredTypes = []string{
 	"u8", "u16", "u32", "u64", "usize",
 	"f32", "f64",
 	"Array", "Map", "Set",
-	"chan", "rc", "weak", "Task",
+	"chan", "rc", "arc", "weak_rc", "weak_arc", "Task",
 	"Option", "Result", "Value", "Duration",
-	"Show", "Error",
+	"Show", "Error", "TaskError",
 	// Equal and Ord are built-in constraints: they name a property the
 	// compiler implements for each type, and they are only usable as type
 	// parameter constraints.
-	"Equal", "Ord",
+	"equal", "Ord",
 }
 
 // isPredeclaredType reports whether a name is one of the type names every
@@ -103,8 +105,9 @@ func isPredeclaredType(name string) bool {
 }
 
 var predeclaredValues = []string{
-	"Some", "None", "Ok", "Err",
-	"print", "panic", "assert",
+	"Some", "None", "Ok", "Err", "wait",
+	"Canceled", "Deadline",
+	"print", "panic", "assert", "leak",
 	"take_c", "take_c_rc",
 	"SizeOf", "AlignOf", "OffsetOf",
 	"Cancel", "Priority",
@@ -165,7 +168,12 @@ func (r *resolver) addImports() {
 			// block binds one name, c, whatever headers it names.
 			if r.cImport == nil {
 				sym := &Symbol{Name: "c", Kind: ImportKind, Pos: imp.Span.Start, Node: imp}
-				r.defineTop(sym)
+				if prev := r.fileScope.names["c"]; prev != nil {
+					r.duplicate(sym.Pos, "c")
+				} else {
+					r.fileScope.define(sym)
+					r.symbols = append(r.symbols, sym)
+				}
 				r.cImport = sym
 				r.tables["c"] = Exported{}
 				rec.sym = sym
@@ -177,7 +185,7 @@ func (r *resolver) addImports() {
 					Kind:     CLinkKind,
 					Pos:      link.Span.Start,
 					Node:     link,
-					Exported: isExported(link.Name),
+					Exported: true,
 				}
 				r.symbols = append(r.symbols, sym)
 				if table != nil {
@@ -186,19 +194,20 @@ func (r *resolver) addImports() {
 				rec.links = append(rec.links, sym)
 			}
 		default:
-			name := packageName(imp.Path)
+			name := imp.Alias
+			if name == "" {
+				name = packageName(imp.Path)
+			}
 			if name == "" {
 				break
 			}
 			table, known := r.packages[imp.Path]
 			sym := &Symbol{Name: name, Kind: ImportKind, Pos: imp.Span.Start, Node: imp}
-			if prev := r.pkg.names[name]; prev != nil && prev.Predeclared {
-				// An import is a namespace; it does not make a predeclared
-				// name unusable, and there is no alias syntax to avoid the
-				// collision. Install it without the shadow warning.
-				r.pkg.define(sym)
+			if prev := r.fileScope.names[name]; prev != nil {
+				r.duplicate(sym.Pos, name)
 			} else {
-				r.defineTop(sym)
+				r.fileScope.define(sym)
+				r.symbols = append(r.symbols, sym)
 			}
 			rec.sym = sym
 			if known {
@@ -250,6 +259,8 @@ func (r *resolver) addTopLevel() {
 			r.defineTop(&Symbol{Name: decl.Name, Kind: ConstKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
 		case *ast.VarDecl:
 			r.defineTop(&Symbol{Name: decl.Name, Kind: VarKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
+		case *ast.TypeAliasDecl:
+			r.defineTop(&Symbol{Name: decl.Name, Kind: TypeAliasKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
 		case *ast.FuncDecl:
 			if decl.Recv != nil {
 				r.addMethod(decl)
@@ -281,6 +292,14 @@ func (r *resolver) addTopLevel() {
 			r.defineTop(&Symbol{Name: decl.Name, Kind: InterfaceKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
 		case *ast.LaneDecl:
 			r.defineTop(&Symbol{Name: decl.Name, Kind: LaneKind, Pos: decl.NamePos, Node: decl, Exported: isExported(decl.Name)})
+			switch inner := decl.Decl.(type) {
+			case *ast.StructDecl:
+				r.defineTop(&Symbol{Name: inner.Name, Kind: StructKind, Pos: inner.NamePos, Node: inner, Exported: isExported(inner.Name)})
+			case *ast.EnumDecl:
+				r.defineTop(&Symbol{Name: inner.Name, Kind: EnumKind, Pos: inner.NamePos, Node: inner, Exported: isExported(inner.Name)})
+			case *ast.InterfaceDecl:
+				r.defineTop(&Symbol{Name: inner.Name, Kind: InterfaceKind, Pos: inner.NamePos, Node: inner, Exported: isExported(inner.Name)})
+			}
 		}
 	}
 }
@@ -341,6 +360,8 @@ func (r *resolver) walkDecl(d ast.Decl) {
 	case *ast.VarDecl:
 		r.walkType(decl.Type)
 		r.walkExpr(decl.Value, true)
+	case *ast.TypeAliasDecl:
+		r.walkType(decl.Type)
 	case *ast.FuncDecl:
 		r.walkFunc(decl)
 	case *ast.StructDecl:
@@ -371,7 +392,13 @@ func (r *resolver) walkDecl(d ast.Decl) {
 				r.declareLocal(&Symbol{Name: pm.Name, Kind: ParamKind, Pos: pm.NamePos, Node: pm, Exported: isExported(pm.Name)})
 				r.walkType(pm.Type)
 			}
+			for _, pm := range m.Params {
+				r.walkExpr(pm.Default, true)
+			}
 			r.walkType(m.Result)
+			for _, src := range m.From {
+				r.walkExpr(src, true)
+			}
 			r.pop()
 		}
 		r.pop()
@@ -409,13 +436,22 @@ func (r *resolver) walkFunc(decl *ast.FuncDecl) {
 		r.declareReceiverTypeParams(decl.Recv.Type)
 		r.walkType(decl.Recv.Type)
 		r.declareLocal(&Symbol{Name: decl.Recv.Name, Kind: ReceiverKind, Pos: decl.Recv.NamePos, Node: decl.Recv, Exported: isExported(decl.Recv.Name)})
+		if decl.Recv.Name != "self" {
+			r.declareLocal(&Symbol{Name: "self", Kind: ReceiverKind, Pos: decl.Recv.NamePos, Node: decl.Recv, Exported: false})
+		}
 	}
 	r.declareTypeParams(decl.TypeParams)
 	for _, pm := range decl.Params {
 		r.declareLocal(&Symbol{Name: pm.Name, Kind: ParamKind, Pos: pm.NamePos, Node: pm, Exported: isExported(pm.Name)})
 		r.walkType(pm.Type)
 	}
+	for _, pm := range decl.Params {
+		r.walkExpr(pm.Default, true)
+	}
 	r.walkType(decl.Result)
+	for _, src := range decl.From {
+		r.walkExpr(src, true)
+	}
 	r.walkBlock(decl.Body)
 	r.pop()
 }
@@ -458,7 +494,7 @@ func (r *resolver) pop() {
 
 func (r *resolver) current() *scope {
 	if len(r.stack) == 0 {
-		return r.pkg
+		return r.fileScope
 	}
 	return r.stack[len(r.stack)-1]
 }
@@ -469,6 +505,9 @@ func (r *resolver) declareLocal(sym *Symbol) {
 	if sym.Name == "" || sym.Name == "_" {
 		return
 	}
+	// Visibility is a property of package-level declarations. A local binding
+	// never becomes exported merely because it has no __ prefix.
+	sym.Exported = false
 	scope := r.current()
 	if _, ok := scope.lookup(sym.Name); ok {
 		r.shadow(sym.Pos, sym.Name)
@@ -541,6 +580,9 @@ func (r *resolver) visibleNames() []string {
 	for _, sym := range r.pkg.order {
 		out = append(out, sym.Name)
 	}
+	for _, sym := range r.fileScope.order {
+		out = append(out, sym.Name)
+	}
 	return out
 }
 
@@ -554,10 +596,7 @@ func (r *resolver) duplicate(pos source.Pos, name string) {
 }
 
 func isExported(name string) bool {
-	if name == "" {
-		return false
-	}
-	return name[0] >= 'A' && name[0] <= 'Z'
+	return name != "" && !strings.HasPrefix(name, "__")
 }
 
 // typeName returns the simple name of a named type, or "" for any other shape.

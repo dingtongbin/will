@@ -1,6 +1,6 @@
-// The ASCII scalars the text parsers compare against. They are named here
-// because a character literal is not lowered yet; the values are the code
-// points the language fixes for these characters.
+# The ASCII scalars the text parsers compare against. They are named here
+# because a character literal is not lowered yet; the values are the code
+# points the language fixes for these characters.
 const asciiPlus: u32 = 43
 const asciiMinus: u32 = 45
 const asciiDot: u32 = 46

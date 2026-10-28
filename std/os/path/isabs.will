@@ -1,9 +1,13 @@
-// IsAbs reports whether the path starts with the portable separator. A path
-// that starts with "." or a name is relative.
-func IsAbs(p: str) -> bool {
-    if p.Len() == 0usize {
-        return false
+# IsAbs reports whether the path is rooted. On Windows that includes a drive
+# root such as "C:\"; on every target a leading separator is rooted.
+def is_abs(p: str) -> bool {
+    if p.len() == 0usize {
+        return False
     }
-    var first: u32 = p[0]
-    return isSlash(first)
+    var s: str = p.clone()
+    var first: u32 = s[0]
+    if is_separator(first) {
+        return True
+    }
+    return is_drive_abs(s)
 }

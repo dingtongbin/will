@@ -1,23 +1,25 @@
-func Compute(x: i32) -> i32 {
+def compute(x: i32) -> i32 {
     return x + 1
 }
 
-func MakeText(n: i32) -> str {
+def make_text(n: i32) -> str {
     return f"value={n}"
 }
 
-func main() -> i32 {
+async def main() -> i32 {
     var sum: i32 = 0
     region {
-        var a: Task<i32> = spawn Compute(20)
-        var b: Task<i32> = spawn Compute(21)
-        sum = a.Join()! + b.Join()!
+        var a: Task<i32> = spawn compute(20)
+        var b: Task<i32> = spawn compute(21)
+        var first: i32 = await a!
+        var second: i32 = await b!
+        sum = first + second
     }
     var text: str = ""
     region {
-        var t: Task<str> = spawn MakeText(sum)
-        text = t.Join()!
+        var t: Task<str> = spawn make_text(sum)
+        text = await t!
     }
     print(text, "\n")
-    return sum + i32(text.Len())
+    return sum + i32(text.len())
 }

@@ -7,6 +7,7 @@ import "github.com/will-lang/will/internal/source"
 type Import struct {
 	Span
 	Path       string
+	Alias      string
 	SideEffect bool
 	C          bool
 	Links      []*Link
@@ -51,6 +52,18 @@ type VarDecl struct {
 
 func (*VarDecl) declNode() {}
 
+// TypeAliasDecl declares a source-level name for another type. The alias has
+// no type identity of its own.
+type TypeAliasDecl struct {
+	Span
+	Doc     string
+	Name    string
+	NamePos source.Pos
+	Type    *Type
+}
+
+func (*TypeAliasDecl) declNode() {}
+
 // FuncDecl declares a function or, when Recv is set, a method.
 type FuncDecl struct {
 	Span
@@ -61,7 +74,10 @@ type FuncDecl struct {
 	TypeParams []*TypeParam
 	Params     []*Param
 	Result     *Type
+	From       []Expr
 	Body       *Block
+	Async      bool
+	Test       bool
 }
 
 func (*FuncDecl) declNode() {}
@@ -83,6 +99,7 @@ type Param struct {
 	Type     *Type
 	Mut      bool
 	Variadic bool
+	Default  Expr
 }
 
 // TypeParam is one type parameter with its interface constraints.
@@ -153,6 +170,8 @@ type MethodSig struct {
 	NamePos source.Pos
 	Params  []*Param
 	Result  *Type
+	From    []Expr
+	Async   bool
 }
 
 // DeriveDecl asks the compiler to generate Json, Show, or Equal for a type.

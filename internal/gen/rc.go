@@ -8,9 +8,9 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// rcElemText returns T from rc<T> or weak<T>.
+// rcElemText returns T from a strong or weak handle type.
 func rcElemText(text string) (string, bool) {
-	for _, prefix := range []string{"rc<", "weak<"} {
+	for _, prefix := range []string{"rc<", "arc<", "weak_rc<", "weak_arc<"} {
 		if strings.HasPrefix(text, prefix) && strings.HasSuffix(text, ">") {
 			return strings.TrimSpace(text[len(prefix) : len(text)-1]), true
 		}
@@ -18,19 +18,41 @@ func rcElemText(text string) (string, bool) {
 	return "", false
 }
 
-// isRcText reports whether a type text is rc<T>.
+// isRcText reports whether a type text is a strong handle.
 func isRcText(text string) bool {
-	return strings.HasPrefix(text, "rc<") && strings.HasSuffix(text, ">")
+	return (strings.HasPrefix(text, "rc<") || strings.HasPrefix(text, "arc<")) &&
+		strings.HasSuffix(text, ">")
 }
 
-// isWeakText reports whether a type text is weak<T>.
+// isWeakText reports whether a type text is a weak handle.
 func isWeakText(text string) bool {
-	return strings.HasPrefix(text, "weak<") && strings.HasSuffix(text, ">")
+	return (strings.HasPrefix(text, "weak_rc<") || strings.HasPrefix(text, "weak_arc<")) &&
+		strings.HasSuffix(text, ">")
 }
 
-// constructRc builds new rc<T>(value): the value is copied into the handle
-// table's object storage and the u64 handle is returned.
-func (g *generator) constructRc(r willc.Record, elem string) (string, string, error) {
+// strongName returns the strong handle name behind a strong or weak type.
+func strongName(text string) string {
+	if strings.HasPrefix(text, "arc<") || strings.HasPrefix(text, "weak_arc<") {
+		return "arc"
+	}
+	return "rc"
+}
+
+// weakName returns the weak handle name paired with a strong type.
+func weakName(text string) string {
+	if strings.HasPrefix(text, "arc<") {
+		return "weak_arc"
+	}
+	return "weak_rc"
+}
+
+func isFuncText(text string) bool {
+	return strings.HasPrefix(text, "func(")
+}
+
+// constructRc builds new rc<T>(value) or new arc<T>(value): the value is
+// copied into the handle table's object storage and the u64 handle is returned.
+func (g *generator) constructRc(r willc.Record, elem, wrapper string) (string, string, error) {
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok || elemLLVM == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: rc value %s is not lowered yet", r.ID, elem)
@@ -91,7 +113,10 @@ func (g *generator) constructRc(r willc.Record, elem string) (string, string, er
 	}
 	handle := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call i64 @%s(%s)\n", handle, fn, callArgs)
-	return handle, "rc<" + elem + ">", nil
+	if wrapper == "arc" {
+		fmt.Fprintf(g.out, "  call void @willrt_rc_share(i64 %s)\n", handle)
+	}
+	return handle, wrapper + "<" + elem + ">", nil
 }
 
 // hasInit reports whether T has an init method in this or another document.
@@ -164,12 +189,12 @@ func (g *generator) rcMethodCall(r willc.Record, recvText string) (string, strin
 		return "", "", err
 	}
 	switch fieldText(r, "text") {
-	case "Weak":
+	case "weak":
 		g.needRcDecl = true
 		weak := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = call i64 @willrt_weak_new(i64 %s)\n", weak, handle)
-		return weak, "weak<" + elem + ">", nil
-	case "Clone":
+		return weak, weakName(recvText) + "<" + elem + ">", nil
+	case "clone":
 		g.needRcDecl = true
 		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", handle)
 		return handle, recvText, nil
@@ -184,17 +209,18 @@ func (g *generator) rcMethodCall(r willc.Record, recvText string) (string, strin
 	return g.emitCallFrom(r, symbol, false, object)
 }
 
-// upgradeCall lowers weak<T>.Upgrade() to Option<rc<T>>.
+// upgradeCall lowers weak_rc<T>.Upgrade() or weak_arc<T>.Upgrade() to an
+// Option of the matching strong handle.
 func (g *generator) upgradeCall(r willc.Record, weakText string) (string, string, error) {
 	elem, ok := rcElemText(weakText)
 	if !ok {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Upgrade needs a weak handle", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: upgrade needs a weak handle", r.ID)
 	}
 	weak, err := g.value(refField(r, "recv"))
 	if err != nil {
 		return "", "", err
 	}
-	text := "Option<rc<" + elem + ">>"
+	text := "Option<" + strongName(weakText) + "<" + elem + ">>"
 	info, ok := g.adtType(text)
 	if !ok {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, text)
@@ -252,9 +278,9 @@ func (g *generator) rcCallResult(r willc.Record) (string, bool) {
 		return "", false
 	}
 	if isWeakText(recvText) {
-		if fieldText(r, "text") == "Upgrade" {
+		if fieldText(r, "text") == "upgrade" {
 			elem, _ := rcElemText(recvText)
-			return "Option<rc<" + elem + ">>", true
+			return "Option<" + strongName(recvText) + "<" + elem + ">>", true
 		}
 		return "", false
 	}
@@ -263,9 +289,9 @@ func (g *generator) rcCallResult(r willc.Record) (string, bool) {
 		return "", false
 	}
 	switch fieldText(r, "text") {
-	case "Weak":
-		return "weak<" + elem + ">", true
-	case "Clone":
+	case "weak":
+		return weakName(recvText) + "<" + elem + ">", true
+	case "clone":
 		return recvText, true
 	}
 	sym := g.methodForType(elem, fieldText(r, "text"))
@@ -287,10 +313,14 @@ func (g *generator) isCopySource(id int) bool {
 	case "name", "field", "index":
 		text, err := g.willTypeText(id)
 		return err == nil && g.needsReleaseText(text)
+	case "await":
+		return g.isCopySource(refField(r, "expr"))
+	case "call":
+		return false
 	case "mcall":
 		// Array.Get and view Get return a borrow of the element. The array
 		// still owns its reference, so storing the result adds one.
-		if fieldText(r, "text") != "Get" {
+		if fieldText(r, "text") != "get" {
 			return false
 		}
 		recvText, err := g.willTypeText(refField(r, "recv"))
@@ -325,6 +355,21 @@ func (g *generator) retainValueDepth(ptr, text string, depth int) error {
 		g.needRcDecl = true
 		handle := g.load("i64", ptr)
 		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", handle)
+		return nil
+	}
+	if isFuncText(text) {
+		envPtr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envPtr, ptr)
+		env := g.load("ptr", envPtr)
+		g.needClosureDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_closure_retain(ptr %s)\n", env)
+		return nil
+	}
+	if isChanText(text) {
+		g.needTaskDecl = true
+		g.needChanDecl = true
+		handle := g.load("ptr", ptr)
+		fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", handle)
 		return nil
 	}
 	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
@@ -443,89 +488,80 @@ func (g *generator) releaseValue(slot, text string, depth int) error {
 	if isWeakText(text) {
 		return nil
 	}
-	if isRcText(text) {
-		// The object's own fields are released by its drop glue, not here.
-		g.needRcDecl = true
-		handle := g.load("i64", slot)
-		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", handle)
-		return nil
-	}
-	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
-		elem := strings.TrimSpace(text[len("Array<") : len(text)-1])
-		if needsReleaseText(g, elem) {
-			if err := g.eachElement(slot, elem, false, 0); err != nil {
-				return err
-			}
-		}
-		dataPtr := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, slot)
-		data := g.load("ptr", dataPtr)
-		notNull := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = icmp ne ptr %s, null\n", notNull, data)
-		g.labels++
-		n := g.labels
-		freeLabel := fmt.Sprintf("array.free.%d", n)
-		doneLabel := fmt.Sprintf("array.freed.%d", n)
-		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", notNull, freeLabel, doneLabel)
-		g.out.WriteString(freeLabel + ":\n")
-		g.needAllocDecl = true
-		fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
-		fmt.Fprintf(g.out, "  br label %%%s\n", doneLabel)
-		g.out.WriteString(doneLabel + ":\n")
-		return nil
-	}
-	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
-		tag := g.load("i32", slot)
-		emptyTag := 0
-		if kind == "result" {
-			emptyTag = 1
-		}
-		_ = emptyTag
-		g.labels++
-		n := g.labels
-		keep := fmt.Sprintf("release.keep.%d", n)
-		done := fmt.Sprintf("release.done.%d", n)
-		if kind == "option" {
-			// None has tag 0; Some has tag 1.
-			isNone := g.newTmp()
-			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", isNone, tag)
-			fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", isNone, done, keep)
-		} else {
-			// Only Ok carries the first payload.
-			isOk := g.newTmp()
-			fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, 0\n", isOk, tag)
-			fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", isOk, keep, done)
-		}
-		g.out.WriteString(keep + ":\n")
-		info, _ := g.adtType(text)
-		payload := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, info.llvm, slot, info.payloadIndex)
-		if err := g.releaseValue(payload, args[0], depth+1); err != nil {
+	if _, ok := g.guardElemText(text); ok {
+		if err := g.guardUnlock(slot, text); err != nil {
 			return err
 		}
-		fmt.Fprintf(g.out, "  br label %%%s\n", done)
-		g.out.WriteString(done + ":\n")
-		return nil
+	}
+	return g.releaseOwnedValue(slot, text)
+}
+
+// ownsReleaseText reports whether a value can own a buffer or handle that the
+// scope must release. It is wider than needsReleaseText: the latter tracks only
+// reference-counted fields, while an Array<i32> still owns its data buffer.
+func enumNeedsRelease(g *generator, info *enumInfo) bool {
+	if info == nil {
+		return false
+	}
+	for i := range info.variants {
+		for _, arg := range info.variants[i].args {
+			if ownsReleaseText(g, arg) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func ownsReleaseText(g *generator, text string) bool {
+	text = g.qualifyTypeText(g.pkg, text)
+	if text == "" || isWeakText(text) {
+		return false
+	}
+	if info := g.enumInfoForText(text); info != nil {
+		return enumNeedsRelease(g, info)
+	}
+	if info := g.enumInfoForText(qualify(g.pkg, text)); info != nil {
+		return enumNeedsRelease(g, info)
+	}
+	if text == "str" || isRcText(text) || isFuncText(text) || isChanText(text) {
+		return true
+	}
+	if _, ok := g.ifaceOfText(text); ok {
+		return true
+	}
+	if _, ok := arrayElemText(text); ok {
+		return true
+	}
+	if _, elem, ok := arrayTypeText(text); ok {
+		return ownsReleaseText(g, elem)
+	}
+	if _, _, ok := mapTypeText(text); ok {
+		return true
+	}
+	if _, ok := setTypeText(text); ok {
+		return true
+	}
+	if _, args, ok := parseADT(text); ok {
+		return len(args) != 0
+	}
+	if _, ok := g.guardElemText(text); ok {
+		return true
 	}
 	typ, ok := g.typeLLVMOf(text)
 	if !ok || !isStructType(typ) {
-		return nil
+		return false
 	}
 	info := g.structInfoByLLVM(typ)
 	if info == nil || !info.ok {
-		return nil
+		return false
 	}
-	for i, ft := range info.texts {
-		if !needsReleaseText(g, ft) {
-			continue
-		}
-		field := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.llvm, slot, i)
-		if err := g.releaseValue(field, ft, depth+1); err != nil {
-			return err
+	for _, field := range info.texts {
+		if g.fieldNeedsClone(field) {
+			return true
 		}
 	}
-	return nil
+	return false
 }
 
 // needsReleaseText is the method form used by the call sites.
@@ -541,6 +577,12 @@ func needsReleaseText(g *generator, text string) bool {
 	}
 	if isWeakText(text) {
 		return false
+	}
+	if isFuncText(text) || isChanText(text) {
+		return true
+	}
+	if _, ok := g.ifaceOfText(text); ok {
+		return true
 	}
 	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
 		return needsReleaseText(g, strings.TrimSpace(text[len("Array<"):len(text)-1]))

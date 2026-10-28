@@ -32,8 +32,8 @@ func TestFeaturePrunesDeadBranch(t *testing.T) {
 
 	dir := writeFeatureModule(t, `import "std/meta"
 
-func F() -> i32 {
-    if meta.Feature("tls") {
+def f() -> i32 {
+    if meta.feature("tls") {
         return Missing()
     }
     return 0
@@ -72,8 +72,8 @@ func TestFeatureOutsideIfReportsT0010(t *testing.T) {
 
 	dir := writeFeatureModule(t, `import "std/meta"
 
-func F() -> bool {
-    var on: bool = meta.Feature("tls")
+def f() -> bool {
+    var on: bool = meta.feature("tls")
     return on
 }
 `)
@@ -106,8 +106,8 @@ func TestFeatureNotDeclaredReportsB0004(t *testing.T) {
 
 	dir := writeFeatureModule(t, `import "std/meta"
 
-func F() -> i32 {
-    if meta.Feature("nope") {
+def f() -> i32 {
+    if meta.feature("nope") {
         return 1
     }
     return 0

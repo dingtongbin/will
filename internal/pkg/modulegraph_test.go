@@ -52,10 +52,10 @@ func TestTwoModulesWithOnePathAreReported(t *testing.T) {
 	one := filepath.Join(parent, "one")
 	two := filepath.Join(parent, "two")
 	writeModule(t, one, "example.com/same", map[string]string{
-		"one.will": "func One() -> i32 {\n    return 1\n}\n",
+		"one.will": "def one() -> i32 {\n    return 1\n}\n",
 	})
 	writeModule(t, two, "example.com/same", map[string]string{
-		"two.will": "func Two() -> i32 {\n    return 2\n}\n",
+		"two.will": "def two() -> i32 {\n    return 2\n}\n",
 	})
 	writeModule(t, app, "example.com/app", nil)
 	write(t, filepath.Join(app, "will.mod"),
@@ -64,7 +64,7 @@ func TestTwoModulesWithOnePathAreReported(t *testing.T) {
 			"replace example.com/one@v1.0.0 => ../one\n"+
 			"require example.com/two@v1.0.0\n"+
 			"replace example.com/two@v1.0.0 => ../two\n")
-	write(t, filepath.Join(app, "main.will"), "func F() {\n}\n")
+	write(t, filepath.Join(app, "main.will"), "def f() {\n}\n")
 
 	b := Load(app)
 	found := false
@@ -86,7 +86,7 @@ func TestAbsoluteReplaceTarget(t *testing.T) {
 	app := filepath.Join(parent, "app")
 	lib := filepath.Join(parent, "lib")
 	writeModule(t, lib, "example.com/lib", map[string]string{
-		"lib.will": "func Double(x: i32) -> i32 {\n    return x * 2\n}\n",
+		"lib.will": "def double(x: i32) -> i32 {\n    return x * 2\n}\n",
 	})
 	writeModule(t, app, "example.com/app", nil)
 	write(t, filepath.Join(app, "will.mod"),
@@ -94,7 +94,7 @@ func TestAbsoluteReplaceTarget(t *testing.T) {
 			"require example.com/lib@v1.0.0\n"+
 			"replace example.com/lib@v1.0.0 => "+filepath.ToSlash(lib)+"\n")
 	write(t, filepath.Join(app, "main.will"),
-		"import \"example.com/lib\"\n\nfunc F() -> i32 {\n    return lib.Double(2)\n}\n")
+		"import \"example.com/lib\"\n\ndef f() -> i32 {\n    return lib.double(2)\n}\n")
 	b := Load(app)
 	if b.Err != nil {
 		t.Fatalf("load: %v", b.Err)
@@ -114,7 +114,7 @@ func TestReplaceChainCycleIsReported(t *testing.T) {
 			"require example.com/a@v1.0.0\n"+
 			"replace example.com/a@v1.0.0 => example.com/b@v1.0.0\n"+
 			"replace example.com/b@v1.0.0 => example.com/a@v1.0.0\n")
-	write(t, filepath.Join(app, "app.will"), "func F() {\n}\n")
+	write(t, filepath.Join(app, "app.will"), "def f() {\n}\n")
 	b := Load(app)
 	for _, d := range b.Diags {
 		if d.Code == diag.CodeInvalidWillMod && strings.Contains(d.Message, "replace chain for example.com/a") {
@@ -132,12 +132,12 @@ func TestLocalReplaceLoadsDependency(t *testing.T) {
 	app := filepath.Join(parent, "app")
 	lib := filepath.Join(parent, "lib")
 	writeModule(t, lib, "example.com/lib", map[string]string{
-		"lib.will": "func Double(x: i32) -> i32 {\n    return x * 2\n}\n",
+		"lib.will": "def double(x: i32) -> i32 {\n    return x * 2\n}\n",
 	})
 	writeModule(t, app, "example.com/app", nil)
 	requireReplace(t, app, "example.com/lib", "v1.0.0", "../lib")
 	write(t, filepath.Join(app, "main.will"),
-		"import \"example.com/lib\"\n\nfunc F() -> i32 {\n    return lib.Double(2)\n}\n")
+		"import \"example.com/lib\"\n\ndef f() -> i32 {\n    return lib.double(2)\n}\n")
 
 	b := Load(app)
 	if b.Err != nil {
@@ -167,14 +167,14 @@ func TestTransitiveReplaceLoadsWholeGraph(t *testing.T) {
 	a := filepath.Join(parent, "a")
 	b := filepath.Join(parent, "b")
 	writeModule(t, b, "example.com/b", map[string]string{
-		"b.will": "func Value() -> i32 {\n    return 3\n}\n",
+		"b.will": "def value() -> i32 {\n    return 3\n}\n",
 	})
 	writeModule(t, a, "example.com/a", map[string]string{
-		"a.will": "import \"example.com/b\"\n\nfunc Value() -> i32 {\n    return b.Value()\n}\n",
+		"a.will": "import \"example.com/b\"\n\ndef value() -> i32 {\n    return b.value()\n}\n",
 	})
 	requireReplace(t, a, "example.com/b", "v1.0.0", "../b")
 	writeModule(t, app, "example.com/app", map[string]string{
-		"main.will": "import \"example.com/a\"\n\nfunc F() -> i32 {\n    return a.Value()\n}\n",
+		"main.will": "import \"example.com/a\"\n\ndef f() -> i32 {\n    return a.value()\n}\n",
 	})
 	requireReplace(t, app, "example.com/a", "v1.0.0", "../a")
 
@@ -207,15 +207,15 @@ func TestHighestVersionWins(t *testing.T) {
 	a := filepath.Join(parent, "a")
 	lib := filepath.Join(parent, "lib")
 	writeModule(t, lib, "example.com/lib", map[string]string{
-		"lib.will": "func Value() -> i32 {\n    return 7\n}\n",
+		"lib.will": "def value() -> i32 {\n    return 7\n}\n",
 	})
 	writeModule(t, a, "example.com/a", map[string]string{
-		"a.will": "import \"example.com/lib\"\n\nfunc Value() -> i32 {\n    return lib.Value()\n}\n",
+		"a.will": "import \"example.com/lib\"\n\ndef value() -> i32 {\n    return lib.value()\n}\n",
 	})
 	write(t, filepath.Join(a, "will.mod"),
 		"module example.com/a\nwill 1\nrequire example.com/lib@v1.2.0\nreplace example.com/lib@v1.2.0 => ../lib\n")
 	writeModule(t, app, "example.com/app", map[string]string{
-		"main.will": "import \"example.com/a\"\n\nfunc F() -> i32 {\n    return a.Value()\n}\n",
+		"main.will": "import \"example.com/a\"\n\ndef f() -> i32 {\n    return a.value()\n}\n",
 	})
 	write(t, filepath.Join(app, "will.mod"),
 		"module example.com/app\nwill 1\n"+
@@ -246,8 +246,8 @@ func TestHighestVersionWins(t *testing.T) {
 func TestSameTypeNameInTwoPackages(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	writeModule(t, root, "example.com/app", map[string]string{
-		"a.will":     "struct T {\n    v: i32\n}\n\nfunc (t: T) Value() -> i32 {\n    return t.v\n}\n",
-		"sub/b.will": "struct T {\n    v: i32\n}\n\nfunc (t: T) Value() -> i32 {\n    return t.v\n}\n",
+		"a.will":     "struct T {\n    v: i32\n}\n\ndef (t: ref T) value() -> i32 {\n    return t.v\n}\n",
+		"sub/b.will": "struct T {\n    v: i32\n}\n\ndef (t: ref T) value() -> i32 {\n    return t.v\n}\n",
 	})
 	b := Load(root)
 	for _, d := range b.Diags {
@@ -264,10 +264,10 @@ func TestSameTypeNameInTwoModules(t *testing.T) {
 	app := filepath.Join(parent, "app")
 	lib := filepath.Join(parent, "lib")
 	writeModule(t, lib, "example.com/lib", map[string]string{
-		"lib.will": "struct T {\n    v: i32\n}\n\nfunc (t: T) Value() -> i32 {\n    return t.v\n}\n",
+		"lib.will": "struct T {\n    v: i32\n}\n\ndef (t: ref T) value() -> i32 {\n    return t.v\n}\n",
 	})
 	writeModule(t, app, "example.com/app", map[string]string{
-		"main.will": "struct T {\n    v: i32\n}\n\nfunc (t: T) Value() -> i32 {\n    return t.v\n}\n",
+		"main.will": "struct T {\n    v: i32\n}\n\ndef (t: ref T) value() -> i32 {\n    return t.v\n}\n",
 	})
 	requireReplace(t, app, "example.com/lib", "v1.0.0", "../lib")
 
@@ -286,7 +286,7 @@ func TestSamePackageTwoPaths(t *testing.T) {
 	app := filepath.Join(parent, "app")
 	shared := filepath.Join(parent, "shared")
 	writeModule(t, shared, "example.com/shared", map[string]string{
-		"shared.will": "func Value() -> i32 {\n    return 1\n}\n",
+		"shared.will": "def value() -> i32 {\n    return 1\n}\n",
 	})
 	writeModule(t, app, "example.com/app", nil)
 	write(t, filepath.Join(app, "will.mod"),
@@ -294,9 +294,9 @@ func TestSamePackageTwoPaths(t *testing.T) {
 			"require example.com/a@v1.0.0\nreplace example.com/a@v1.0.0 => ../shared\n"+
 			"require example.com/b@v1.0.0\nreplace example.com/b@v1.0.0 => ../shared\n")
 	write(t, filepath.Join(app, "a.will"),
-		"import \"example.com/a\"\n\nfunc A() -> i32 {\n    return a.Value()\n}\n")
+		"import \"example.com/a\"\n\ndef a() -> i32 {\n    return a.value()\n}\n")
 	write(t, filepath.Join(app, "b.will"),
-		"import \"example.com/b\"\n\nfunc B() -> i32 {\n    return b.Value()\n}\n")
+		"import \"example.com/b\"\n\ndef b() -> i32 {\n    return b.value()\n}\n")
 
 	b := Load(app)
 	if b.Err != nil {
@@ -321,11 +321,11 @@ func TestImportCycle(t *testing.T) {
 	app := filepath.Join(parent, "app")
 	dep := filepath.Join(parent, "dep")
 	writeModule(t, app, "example.com/app", map[string]string{
-		"main.will": "import \"example.com/dep\"\n\nfunc F() {\n    dep.G()\n}\n",
+		"main.will": "import \"example.com/dep\"\n\ndef f() {\n    dep.g()\n}\n",
 	})
 	requireReplace(t, app, "example.com/dep", "v1.0.0", "../dep")
 	writeModule(t, dep, "example.com/dep", map[string]string{
-		"dep.will": "import \"example.com/app\"\n\nfunc G() {\n    app.F()\n}\n",
+		"dep.will": "import \"example.com/app\"\n\ndef g() {\n    app.f()\n}\n",
 	})
 	requireReplace(t, dep, "example.com/app", "v1.0.0", "../app")
 
@@ -353,15 +353,15 @@ func TestThreePackageImportCycle(t *testing.T) {
 	b := filepath.Join(parent, "b")
 	c := filepath.Join(parent, "c")
 	writeModule(t, a, "example.com/a", map[string]string{
-		"a.will": "import \"example.com/b\"\n\nfunc A() {\n    b.B()\n}\n",
+		"a.will": "import \"example.com/b\"\n\ndef a() {\n    b.b()\n}\n",
 	})
 	requireReplace(t, a, "example.com/b", "v1.0.0", "../b")
 	writeModule(t, b, "example.com/b", map[string]string{
-		"b.will": "import \"example.com/c\"\n\nfunc B() {\n    c.C()\n}\n",
+		"b.will": "import \"example.com/c\"\n\ndef b() {\n    c.c()\n}\n",
 	})
 	requireReplace(t, b, "example.com/c", "v1.0.0", "../c")
 	writeModule(t, c, "example.com/c", map[string]string{
-		"c.will": "import \"example.com/a\"\n\nfunc C() {\n    a.A()\n}\n",
+		"c.will": "import \"example.com/a\"\n\ndef c() {\n    a.a()\n}\n",
 	})
 	requireReplace(t, c, "example.com/a", "v1.0.0", "../a")
 
@@ -386,10 +386,10 @@ func TestSumMismatchOnLocalReplace(t *testing.T) {
 	app := filepath.Join(parent, "app")
 	lib := filepath.Join(parent, "lib")
 	writeModule(t, lib, "example.com/lib", map[string]string{
-		"lib.will": "func Value() {\n}\n",
+		"lib.will": "def value() {\n}\n",
 	})
 	writeModule(t, app, "example.com/app", map[string]string{
-		"main.will": "import \"example.com/lib\"\n\nfunc F() {\n    lib.Value()\n}\n",
+		"main.will": "import \"example.com/lib\"\n\ndef f() {\n    lib.value()\n}\n",
 	})
 	requireReplace(t, app, "example.com/lib", "v1.0.0", "../lib")
 	write(t, filepath.Join(app, "will.sum"),
@@ -430,10 +430,10 @@ func TestSumWithoutLineIsAccepted(t *testing.T) {
 	app := filepath.Join(parent, "app")
 	lib := filepath.Join(parent, "lib")
 	writeModule(t, lib, "example.com/lib", map[string]string{
-		"lib.will": "func Value() {\n}\n",
+		"lib.will": "def value() {\n}\n",
 	})
 	writeModule(t, app, "example.com/app", map[string]string{
-		"main.will": "import \"example.com/lib\"\n\nfunc F() {\n    lib.Value()\n}\n",
+		"main.will": "import \"example.com/lib\"\n\ndef f() {\n    lib.value()\n}\n",
 	})
 	requireReplace(t, app, "example.com/lib", "v1.0.0", "../lib")
 

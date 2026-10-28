@@ -1,0 +1,32 @@
+import "std/os/fs"
+
+async def write(path: str) -> Result<(), Error> {
+    var text: str = "worker"
+    return await fs.write_file(path, text[Range(0, 6)])
+}
+
+async def main() -> i32 {
+    var path: str = "will-concurrency-asyncwrite.tmp"
+    var result: Result<(), Error> = Ok(())
+    region {
+        var task: Task<Result<(), Error>> = spawn write(path.clone())
+        result = await task!
+    }
+    if result.is_err() {
+        _ = await fs.remove(path)
+        return 1
+    }
+    var loaded: Result<Array<u8>, Error> = await fs.read_file(path)
+    _ = await fs.remove(path)
+    match loaded {
+        Ok(bytes) => {
+            if bytes.len() != 6usize {
+                return 2
+            }
+        }
+        Err(_) => {
+            return 3
+        }
+    }
+    return 0
+}

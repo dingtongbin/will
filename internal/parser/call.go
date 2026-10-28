@@ -10,12 +10,24 @@ import (
 // stays a call.
 func (p *Parser) parseCall(callee ast.Expr, typeArgs []*ast.Type) ast.Expr {
 	args := p.parseCallArgs()
-	if len(typeArgs) == 0 && len(args) == 2 && !args[0].Spread && !args[1].Spread {
-		if name, ok := callee.(*ast.NameExpr); ok && name.Name == "Range" {
+	if len(typeArgs) == 0 && len(args) >= 1 && len(args) <= 2 &&
+		!args[0].Spread && (len(args) == 1 || !args[1].Spread) {
+		if name, ok := callee.(*ast.NameExpr); ok && (name.Name == "Range" || name.Name == "range") {
+			lo := args[0].Expr
+			hi := lo
+			if len(args) == 2 {
+				hi = args[1].Expr
+			} else {
+				lo = &ast.LiteralExpr{
+					Span: ast.Span{Start: callee.Pos(), End: callee.Pos()},
+					Kind: token.Int,
+					Text: "0",
+				}
+			}
 			return &ast.RangeExpr{
 				Span: ast.Span{Start: callee.Pos(), End: p.prev().End},
-				Lo:   args[0].Expr,
-				Hi:   args[1].Expr,
+				Lo:   lo,
+				Hi:   hi,
 			}
 		}
 	}
@@ -35,8 +47,14 @@ func (p *Parser) parseCallArgs() []*ast.CallArg {
 	if !p.at(token.RParen) {
 		for {
 			start := p.cur()
+			name := ""
+			if p.at(token.Ident) && p.peekRaw(1).Kind == token.Assign {
+				name = p.next().Text
+				p.next()
+				p.skipNL()
+			}
 			x := p.parseExpr(0, true)
-			arg := &ast.CallArg{Expr: x}
+			arg := &ast.CallArg{Name: name, Expr: x}
 			if p.at(token.DotDotDot) {
 				p.next()
 				arg.Spread = true
@@ -64,12 +82,37 @@ func (p *Parser) parseIndex(x ast.Expr) ast.Expr {
 	p.expect(token.LBracket, "[")
 	p.enterGroup()
 	p.skipNL()
-	index := p.parseExpr(0, true)
+	var lo ast.Expr
+	if !p.at(token.Colon) {
+		lo = p.parseExpr(0, true)
+	}
+	if p.at(token.Colon) {
+		p.next()
+		p.skipNL()
+		var hi ast.Expr
+		if !p.at(token.RBracket) {
+			hi = p.parseExpr(0, true)
+		}
+		p.expect(token.RBracket, "]")
+		p.leaveGroup()
+		span := ast.Span{Start: x.Pos(), End: p.prev().End}
+		if lo == nil {
+			lo = &ast.LiteralExpr{Span: span, Kind: token.Int, Text: "0"}
+		}
+		if hi == nil {
+			hi = &ast.CallExpr{
+				Span:   span,
+				Callee: &ast.NameExpr{Span: span, Name: "len"},
+				Args:   []*ast.CallArg{{Span: span, Expr: x}},
+			}
+		}
+		return &ast.SliceExpr{Span: span, Recv: x, Lo: lo, Hi: hi}
+	}
 	p.expect(token.RBracket, "]")
 	p.leaveGroup()
 	span := ast.Span{Start: x.Pos(), End: p.prev().End}
-	if r, ok := index.(*ast.RangeExpr); ok {
+	if r, ok := lo.(*ast.RangeExpr); ok {
 		return &ast.SliceExpr{Span: span, Recv: x, Lo: r.Lo, Hi: r.Hi}
 	}
-	return &ast.IndexExpr{Span: span, Recv: x, Index: index}
+	return &ast.IndexExpr{Span: span, Recv: x, Index: lo}
 }

@@ -56,6 +56,9 @@ const (
 
 	// CodeTypeMismatch reports a value of the wrong type.
 	CodeTypeMismatch = "T0001"
+	// CodeCrossTask reports a value whose Send or Sync rule forbids moving it
+	// to another task.
+	CodeCrossTask = "T0016"
 	// CodeInterfaceUnsatisfied reports a type that does not satisfy an interface.
 	CodeInterfaceUnsatisfied = "T0002"
 	// CodeBadArgument reports an argument count or type error.
@@ -81,6 +84,8 @@ const (
 	// CodeVariadicWiden reports a C variadic argument that needs an explicit
 	// widening cast.
 	CodeVariadicWiden = "T0012"
+	// CodeTypeAliasCycle reports a type alias that expands to itself.
+	CodeTypeAliasCycle = "T0013"
 
 	// CodePackageNameMismatch reports a package name that differs from its directory.
 	CodePackageNameMismatch = "B0001"
@@ -120,21 +125,28 @@ const (
 	CodeMoveWhileBorrowed = "O0006"
 	CodeContainerChanged  = "O0007"
 	CodeCopyNotBorrow     = "O0008"
+	CodeTopLevelWrite     = "O0009"
 
 	// Memory and release codes.
-	CodeUnreleasableCycle = "M0001"
-	CodePossibleCycle     = "M0002"
-	CodeRcSlotUnguarded   = "M0003"
-	CodeExplicitLeak      = "M0004"
-	CodeSmallPlate        = "M0005"
+	CodeExplicitLeak = "M0004"
 
 	// Concurrency codes.
-	CodeSuspendInParallel  = "K0001"
+
 	CodeGuardAcrossSuspend = "K0002"
 	CodeTaskEscapesRegion  = "K0003"
-	CodeWrongLane          = "K0004"
+	// CodeTaskNotAwaited reports a task handle still live when its region exits.
+	CodeTaskNotAwaited     = "K0015"
 	CodeSpawnNotCall       = "K0005"
 	CodeDeadlock           = "K0006"
+	CodeGuardCopied        = "K0007"
+	CodeReadGuardWrite     = "K0008"
+	CodeAwaitOutsideAsync  = "K0009"
+	CodeAsyncNotAwaited    = "K0010"
+	CodeAwaitNotAsync      = "K0011"
+	CodeAsyncAsValue       = "K0012"
+	CodeSelectOutsideAsync = "K0013"
+	// CodeDeferSuspend reports an await or async call in a defer.
+	CodeDeferSuspend = "K0016"
 
 	// Error propagation codes.
 	CodeResultDropped  = "R0001"
@@ -143,8 +155,6 @@ const (
 
 	// Input, output, and blocking codes.
 	CodeBlockingNotAwaited = "I0001"
-	CodeWaitInSync         = "I0002"
-	CodeWaitInAsync        = "I0003"
 	CodeBlocksThreadInTask = "I0004"
 
 	// CodeCannotTranslate reports a willc node the mechanical translation
@@ -168,14 +178,17 @@ var Codes = []string{
 	CodeShiftAmount,
 	CodeFeatureOutsideIf,
 	CodeNoZero,
-	CodeVariadicWiden,
+	CodeVariadicWiden, CodeTypeAliasCycle, CodeCrossTask,
 	CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
 	CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
-	CodeUnreleasableCycle, CodePossibleCycle, CodeRcSlotUnguarded, CodeExplicitLeak, CodeSmallPlate,
-	CodeSuspendInParallel, CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeWrongLane,
+	CodeExplicitLeak,
+	CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeTaskNotAwaited,
 	CodeSpawnNotCall, CodeDeadlock,
+	CodeGuardCopied, CodeReadGuardWrite,
+	CodeAwaitOutsideAsync, CodeAsyncNotAwaited, CodeAwaitNotAsync, CodeAsyncAsValue,
+	CodeSelectOutsideAsync, CodeDeferSuspend,
 	CodeResultDropped, CodeUnwrapType, CodePanicContained,
-	CodeBlockingNotAwaited, CodeWaitInSync, CodeWaitInAsync, CodeBlocksThreadInTask,
+	CodeBlockingNotAwaited, CodeBlocksThreadInTask,
 	CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,
 	CodeUnsupportedTarget, CodeNoEntry, CodeFreestanding, CodeUnknownImportPath,
 	CodePackageTwoPaths, CodeImportCycle,

@@ -55,26 +55,6 @@ int64_t willrt_os_now_ns(void) {
                      + (rest * UINT64_C(1000000000)) / freq);
 }
 
-int32_t willrt_os_random_bytes(void* out, size_t size) {
-    unsigned char* cursor = (unsigned char*)out;
-
-    if (out == NULL && size != 0) {
-        return -1;
-    }
-    while (size != 0) {
-        unsigned int value;
-        size_t take = size < sizeof(value) ? size : sizeof(value);
-
-        if (rand_s(&value) != 0) {
-            return -1;
-        }
-        memcpy(cursor, &value, take);
-        cursor += take;
-        size -= take;
-    }
-    return 0;
-}
-
 void* willrt_os_alloc_pages(size_t size) {
     if (size == 0) {
         size = 1;
@@ -88,6 +68,115 @@ void willrt_os_free_pages(void* ptr, size_t size) {
         return;
     }
     VirtualFree(ptr, 0, MEM_RELEASE);
+}
+
+void* willrt_os_reserve_pages(size_t size) {
+    if (size == 0) {
+        size = 1;
+    }
+    return VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_NOACCESS);
+}
+
+int32_t willrt_os_commit_pages(void* ptr, size_t size) {
+    if (ptr == NULL || size == 0) {
+        return -1;
+    }
+    return VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE) == NULL ? -1 : 0;
+}
+
+void willrt_os_release_pages(void* ptr, size_t size) {
+    (void)size;
+    if (ptr != NULL) {
+        VirtualFree(ptr, 0, MEM_RELEASE);
+    }
+}
+
+size_t willrt_os_page_size(void) {
+    SYSTEM_INFO info;
+
+    GetSystemInfo(&info);
+    return info.dwPageSize == 0 ? 4096u : (size_t)info.dwPageSize;
+}
+
+typedef struct willrt_win_gc_views {
+    HANDLE mapping;
+    void* views[WILLRT_GC_VIEW_COUNT];
+} willrt_win_gc_views;
+
+int32_t willrt_os_gc_views_open(willrt_os_gc_views* views, size_t size,
+                                size_t stride) {
+    willrt_win_gc_views* state;
+    ULARGE_INTEGER mapping_size;
+    uintptr_t candidate;
+    int32_t color;
+
+    if (views == NULL || size == 0 || stride < size ||
+        (stride & (stride - 1u)) != 0) {
+        return -1;
+    }
+    state = (willrt_win_gc_views*)views->state;
+    memset(state, 0, sizeof(*state));
+    mapping_size.QuadPart = size;
+    state->mapping = CreateFileMappingW(
+        INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, mapping_size.HighPart,
+        mapping_size.LowPart, NULL);
+    if (state->mapping == NULL) {
+        return -1;
+    }
+    for (candidate = UINT64_C(0x10000000000);
+         candidate < UINT64_C(0x700000000000);
+         candidate += (uintptr_t)stride * WILLRT_GC_VIEW_COUNT) {
+        for (color = 0; color < (int32_t)WILLRT_GC_VIEW_COUNT; color++) {
+            void* wanted =
+                (void*)(candidate + (uintptr_t)color * stride);
+            void* mapped = MapViewOfFileEx(state->mapping, FILE_MAP_ALL_ACCESS,
+                                           0, 0, size, wanted);
+
+            if (mapped != wanted) {
+                if (mapped != NULL) {
+                    UnmapViewOfFile(mapped);
+                }
+                break;
+            }
+            state->views[color] = mapped;
+        }
+        if (color == (int32_t)WILLRT_GC_VIEW_COUNT) {
+            views->base = (void*)candidate;
+            views->size = size;
+            views->stride = stride;
+            return 0;
+        }
+        while (--color >= 0) {
+            UnmapViewOfFile(state->views[color]);
+            state->views[color] = NULL;
+        }
+    }
+    CloseHandle(state->mapping);
+    state->mapping = NULL;
+    return -1;
+}
+
+void willrt_os_gc_views_close(willrt_os_gc_views* views) {
+    willrt_win_gc_views* state;
+    int32_t color;
+
+    if (views == NULL) {
+        return;
+    }
+    state = (willrt_win_gc_views*)views->state;
+    for (color = 0; color < (int32_t)WILLRT_GC_VIEW_COUNT; color++) {
+        if (state->views[color] != NULL) {
+            UnmapViewOfFile(state->views[color]);
+            state->views[color] = NULL;
+        }
+    }
+    if (state->mapping != NULL) {
+        CloseHandle(state->mapping);
+        state->mapping = NULL;
+    }
+    views->base = NULL;
+    views->size = 0;
+    views->stride = 0;
 }
 
 typedef struct willrt_win_thread {

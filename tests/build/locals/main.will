@@ -1,4 +1,4 @@
-func Max(a: i32, b: i32) -> i32 {
+def max(a: i32, b: i32) -> i32 {
     var m: i32 = a
     if b > m {
         m = b
@@ -6,6 +6,6 @@ func Max(a: i32, b: i32) -> i32 {
     return m
 }
 
-func main() -> i32 {
-    return Max(3, 7)
+def main() -> i32 {
+    return max(3, 7)
 }

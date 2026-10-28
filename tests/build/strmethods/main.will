@@ -1,14 +1,14 @@
-func main() -> i32 {
+def main() -> i32 {
     var s: str = "  hello,world  "
-    var t: str = s.Trim()
-    if t.Contains("world") && t.HasPrefix("hello") && t.HasSuffix("world") {
-        var parts: []str = t.Split(",")
+    var t: str = s.trim()
+    if t.contains("world") and t.has_prefix("hello") and t.has_suffix("world") {
+        var parts: []str = t.split(",")
         var total: usize = 0
         for p in parts {
-            total += p.Len()
+            total += p.len()
         }
-        var r: str = "a".Repeat(3)
-        var x: str = t.Replace("world", "will")
+        var r: str = "a".repeat(3)
+        var x: str = t.replace("world", "will")
         print(x, " ", r, "\n")
         return i32(total)
     }

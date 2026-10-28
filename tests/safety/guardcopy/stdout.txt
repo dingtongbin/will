@@ -1,0 +1,2 @@
+main.will:9:34: K0007 a guard cannot be copied
+    help: keep it in the local that lock returned

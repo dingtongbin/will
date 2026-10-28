@@ -83,9 +83,16 @@ func runEmitWillc(args []string, stdout, stderr io.Writer) int {
 	checked, tds := types.CheckWithFull(f, res, others)
 	bag.AddAll(tds)
 	if !bag.HasErrors() {
-		bag.AddAll(check.Moves(f))
-		bag.AddAll(check.Borrows(f))
-		bag.AddAll(check.Cycles(f))
+		files := append([]*ast.File{}, others...)
+		files = append(files, f)
+		ownership := check.NewOwnership(files)
+		effects := check.NewMutEffects(files)
+		bag.AddAll(check.MovesWithOwnership(f, ownership))
+		bag.AddAll(check.BorrowsWithEffects(f, ownership, effects))
+		bag.AddAll(check.TopLevelWritesWithEffects(f, effects))
+		bag.AddAll(check.Leaks(f))
+		bag.AddAll(check.CrossTask(f, checked))
+		bag.AddAll(check.Concurrency(f))
 	}
 
 	all := bag.Diagnostics()

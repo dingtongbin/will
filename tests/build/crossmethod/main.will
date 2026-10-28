@@ -1,6 +1,6 @@
 import "example.com/crossmethod/lib"
 
-func main() -> i32 {
-    var c: lib.Counter = lib.New(7)
-    return c.Get()
+def main() -> i32 {
+    var c: lib.Counter = lib.new(7)
+    return c.get()
 }

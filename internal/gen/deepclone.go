@@ -2,7 +2,10 @@ package gen
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
+
+	"github.com/will-lang/will/internal/willc"
 )
 
 // cloneOwnedValue copies one value into fresh storage deep enough that the
@@ -24,6 +27,14 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
 		return nil
 	}
+	if isChanText(text) {
+		value := g.load("ptr", src)
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", value, dst)
+		g.needTaskDecl = true
+		g.needChanDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
+		return nil
+	}
 	if text == "str" {
 		return g.cloneStrValue(src, dst)
 	}
@@ -36,8 +47,21 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 	if elem, ok := setTypeText(text); ok {
 		return g.cloneSetValue(src, dst, elem)
 	}
+	if iface, ok := g.ifaceOfText(text); ok {
+		_, err := g.cloneIfaceAt(src, dst, iface)
+		return err
+	}
+	if info := g.enumInfoForText(text); info != nil {
+		return g.cloneEnumValue(src, dst, info)
+	}
 	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
 		return g.cloneADTValue(src, dst, kind, args)
+	}
+	if n, elem, ok := arrayTypeText(text); ok {
+		return g.cloneFixedArray(src, dst, elem, n)
+	}
+	if isFuncText(text) {
+		return g.cloneClosureValue(src, dst)
 	}
 	typ, ok := g.typeLLVMOf(text)
 	if !ok || typ == "" {
@@ -52,7 +76,7 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 		return nil
 	}
 	for i, fieldText := range info.texts {
-		if !fieldTextNeedsClone(fieldText) {
+		if !g.fieldNeedsClone(fieldText) {
 			continue
 		}
 		from := g.newTmp()
@@ -66,7 +90,23 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 	return nil
 }
 
-// fieldTextNeedsClone reports whether a field can own a buffer or a handle.
+// fieldNeedsClone reports whether a field needs the deep copy and release
+// paths. It widens the syntax-only check with the lowered declaration tables,
+// because an enum or a fixed array can own a payload that the field spelling
+// alone does not reveal.
+func (g *generator) fieldNeedsClone(text string) bool {
+	if fieldTextNeedsClone(text) {
+		return true
+	}
+	if _, ok := g.ifaceOfText(text); ok {
+		return true
+	}
+	return ownsReleaseText(g, text)
+}
+
+// fieldTextNeedsClone reports whether a field can own a buffer or a handle from
+// the field spelling alone. The generator calls fieldNeedsClone so nested
+// structs, enums, and fixed arrays are included.
 func fieldTextNeedsClone(text string) bool {
 	if text == "str" || isRcText(text) || isWeakText(text) {
 		return true
@@ -84,6 +124,25 @@ func fieldTextNeedsClone(text string) bool {
 		return len(args) != 0
 	}
 	return strings.HasPrefix(text, "func(") || strings.HasPrefix(text, "%")
+}
+
+// cloneClosureValue copies a closure value and retains its environment.
+func (g *generator) cloneClosureValue(src, dst string) error {
+	codePtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 0\n", codePtr, src)
+	envPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envPtr, src)
+	code := g.load("ptr", codePtr)
+	env := g.load("ptr", envPtr)
+	toCode := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 0\n", toCode, dst)
+	toEnv := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", toEnv, dst)
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", code, toCode)
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", env, toEnv)
+	g.needClosureDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_closure_retain(ptr %s)\n", env)
+	return nil
 }
 
 // cloneStrValue duplicates the bytes of one str.
@@ -239,6 +298,97 @@ func (g *generator) cloneEntries(src, dst, entry string, entrySize int, fields [
 	return g.storeContainerHeader(dst, newData, length)
 }
 
+// cloneFixedArray deep-copies every element of one inline [N]T. The array has
+// no buffer of its own, so the destination receives independent element
+// storage and the same length.
+func (g *generator) cloneFixedArray(src, dst, elem string, n int) error {
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
+		return fmt.Errorf("fixed array element %s is not lowered yet", elem)
+	}
+	typ := "[" + strconv.Itoa(n) + " x " + elemLLVM + "]"
+	g.copyValue(src, dst, typ)
+	if n == 0 || !ownsReleaseText(g, elem) {
+		return nil
+	}
+	for i := 0; i < n; i++ {
+		from := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+			from, typ, src, i)
+		to := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+			to, typ, dst, i)
+		if err := g.cloneOwnedValue(from, to, elem); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// cloneEnumValue copies the active variant and deep-copies its owning payload.
+// Only the active branch is visited, matching releaseEnumValue.
+func (g *generator) cloneEnumValue(src, dst string, info *enumInfo) error {
+	if info == nil {
+		return fmt.Errorf("enum is not lowered yet")
+	}
+	g.copyValue(src, dst, info.llvm)
+	if info.payloadIndex == 0 || len(info.variants) == 0 {
+		return nil
+	}
+	tag := g.load("i32", src)
+	for i := range info.variants {
+		v := &info.variants[i]
+		if len(v.args) == 0 || len(v.argLLVM) != len(v.args) {
+			continue
+		}
+		owning := false
+		for _, arg := range v.args {
+			if ownsReleaseText(g, arg) {
+				owning = true
+				break
+			}
+		}
+		if !owning {
+			continue
+		}
+		g.labels++
+		n := g.labels
+		keep := fmt.Sprintf("enum.clone.%d.%d", n, v.tag)
+		done := fmt.Sprintf("enum.clone.done.%d.%d", n, v.tag)
+		cond := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, %d\n", cond, tag, v.tag)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, keep, done)
+		g.out.WriteString(keep + ":\n")
+		from := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+			from, info.llvm, src, info.payloadIndex)
+		to := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+			to, info.llvm, dst, info.payloadIndex)
+		for j, arg := range v.args {
+			if !ownsReleaseText(g, arg) {
+				continue
+			}
+			argFrom := from
+			argTo := to
+			if len(v.args) > 1 {
+				argFrom = g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+					argFrom, v.payload, from, j)
+				argTo = g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+					argTo, v.payload, to, j)
+			}
+			if err := g.cloneOwnedValue(argFrom, argTo, arg); err != nil {
+				return err
+			}
+		}
+		fmt.Fprintf(g.out, "  br label %%%s\n", done)
+		g.out.WriteString(done + ":\n")
+	}
+	return nil
+}
+
 // storeContainerHeader writes a cloned container's three-word header.
 func (g *generator) storeContainerHeader(dst, data, length string) error {
 	dataField := g.newTmp()
@@ -318,13 +468,128 @@ func kindTypeText(kind string, args []string) string {
 	return "Result<" + args[0] + ">"
 }
 
+// cloneValueCall lowers the universal Clone method for a value type that has
+// no predeclared method: structs, Option/Result, and scalars. The result is a
+// fresh owner in a call slot, so the caller can bind or return it independently.
+func (g *generator) cloneValueCall(r willc.Record, text string) (string, string, error) {
+	if iface, ok := g.ifaceOfText(text); ok {
+		src, _, err := g.place(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		slot := g.allocSlot(g.callSlots, "clone", r.ID, iface.llvm)
+		if _, err := g.cloneIfaceAt(src, slot, iface); err != nil {
+			return "", "", err
+		}
+		return g.load(iface.llvm, slot), text, nil
+	}
+	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
+		src, _, err := g.place(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		info, ok := g.adtType(kindTypeText(kind, args))
+		if !ok {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, text)
+		}
+		slot := g.allocSlot(g.callSlots, "clone", r.ID, info.llvm)
+		if err := g.cloneOwnedValue(src, slot, text); err != nil {
+			return "", "", err
+		}
+		return g.load(info.llvm, slot), text, nil
+	}
+	typ, ok := g.typeLLVMOf(text)
+	if !ok || typ == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: type %s is not lowered yet", r.ID, text)
+	}
+	if !isAggregateType(typ) {
+		value, err := g.value(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		return value, text, nil
+	}
+	if info := g.enumInfoForText(text); info != nil {
+		src, _, err := g.place(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		slot := g.allocSlot(g.callSlots, "clone", r.ID, info.llvm)
+		if err := g.cloneOwnedValue(src, slot, text); err != nil {
+			return "", "", err
+		}
+		return g.load(info.llvm, slot), text, nil
+	}
+	if n, elem, ok := arrayTypeText(text); ok {
+		src, _, err := g.place(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		slot := g.allocSlot(g.callSlots, "clone", r.ID, typ)
+		if err := g.cloneFixedArray(src, slot, elem, n); err != nil {
+			return "", "", err
+		}
+		return g.load(typ, slot), text, nil
+	}
+	if !isStructType(typ) {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: clone of %s is not lowered yet", r.ID, text)
+	}
+	src, _, err := g.place(refField(r, "recv"))
+	if err != nil {
+		return "", "", err
+	}
+	slot := g.allocSlot(g.callSlots, "clone", r.ID, typ)
+	if err := g.cloneOwnedValue(src, slot, text); err != nil {
+		return "", "", err
+	}
+	return g.load(typ, slot), text, nil
+}
+
 // releaseOwnedValue is the release half of cloneOwnedValue. It frees storage
 // the clone owns, including nested buffers that plain releaseValue does not
-// visit.
+// visit. The slot is cleared after the release so a later frame cleanup sees a
+// null owner instead of releasing the same value twice.
 func (g *generator) releaseOwnedValue(ptr, text string) error {
 	text = g.qualifyTypeText(g.pkg, text)
 	if isWeakText(text) {
 		return nil
+	}
+	if err := g.releaseOwnedValueInner(ptr, text); err != nil {
+		return err
+	}
+	if g.zeroReleases {
+		g.zeroOwnedSlot(ptr, text)
+	}
+	return nil
+}
+
+// zeroOwnedSlot writes the zero value for one owned type. It is used after a
+// release and as the constructor state of a frame that may be dropped early.
+func (g *generator) zeroOwnedSlot(ptr, text string) {
+	if ptr == "" || text == "" || isWeakText(text) {
+		return
+	}
+	typ, ok := g.typeLLVMOf(text)
+	if !ok || typ == "" {
+		return
+	}
+	fmt.Fprintf(g.out, "  store %s zeroinitializer, ptr %s\n", typ, ptr)
+}
+
+func (g *generator) releaseOwnedValueInner(ptr, text string) error {
+	if isWeakText(text) {
+		return nil
+	}
+	// An enum has a tag in front of every variant payload; walking it as a
+	// plain struct would release the wrong variant.
+	if iface, ok := g.ifaceOfText(text); ok {
+		return g.releaseIfaceValue(ptr, iface)
+	}
+	if info := g.enumInfoForText(text); info != nil {
+		return g.releaseEnumValue(ptr, info)
+	}
+	if info := g.enumInfoForText(qualify(g.pkg, text)); info != nil {
+		return g.releaseEnumValue(ptr, info)
 	}
 	if isRcText(text) {
 		g.needRcDecl = true
@@ -332,16 +597,34 @@ func (g *generator) releaseOwnedValue(ptr, text string) error {
 		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", value)
 		return nil
 	}
+	if isChanText(text) {
+		g.needTaskDecl = true
+		g.needChanDecl = true
+		value := g.load("ptr", ptr)
+		fmt.Fprintf(g.out, "  call void @willrt_chan_release(ptr %s)\n", value)
+		return nil
+	}
+	if isFuncText(text) {
+		envPtr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n", envPtr, ptr)
+		env := g.load("ptr", envPtr)
+		g.needClosureDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_closure_release(ptr %s)\n", env)
+		return nil
+	}
 	if text == "str" {
-		g.needAllocDecl = true
+		g.needFreeStrDecl = true
 		dataPtr := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, ptr)
 		data := g.load("ptr", dataPtr)
-		fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
+		fmt.Fprintf(g.out, "  call void @willrt_free_str(ptr %s)\n", data)
 		return nil
 	}
 	if elem, ok := arrayElemText(text); ok {
 		return g.releaseArrayValue(ptr, elem)
+	}
+	if n, elem, ok := arrayTypeText(text); ok {
+		return g.releaseFixedArray(ptr, elem, n)
 	}
 	if k, v, ok := mapTypeText(text); ok {
 		return g.releaseEntries(ptr, k, v, true)
@@ -361,12 +644,76 @@ func (g *generator) releaseOwnedValue(ptr, text string) error {
 		return nil
 	}
 	for i, fieldText := range info.texts {
-		if !fieldTextNeedsClone(fieldText) {
+		if !g.fieldNeedsClone(fieldText) {
 			continue
 		}
 		field := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, info.llvm, ptr, i)
 		if err := g.releaseOwnedValue(field, fieldText); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// releaseEnumValue releases the payload of the active variant. The tag is read
+// once and each variant with an owning argument gets its own branch.
+func (g *generator) releaseEnumValue(ptr string, info *enumInfo) error {
+	if info == nil || info.payloadIndex == 0 || len(info.variants) == 0 {
+		return nil
+	}
+	tag := g.load("i32", ptr)
+	for i := range info.variants {
+		v := &info.variants[i]
+		if len(v.args) == 0 || len(v.argLLVM) != len(v.args) {
+			continue
+		}
+		g.labels++
+		n := g.labels
+		keep := fmt.Sprintf("enum.rel.%d.%d", n, v.tag)
+		done := fmt.Sprintf("enum.rel.done.%d.%d", n, v.tag)
+		cond := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp eq i32 %s, %d\n", cond, tag, v.tag)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, keep, done)
+		g.out.WriteString(keep + ":\n")
+		payload := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+			payload, info.llvm, ptr, info.payloadIndex)
+		for j, arg := range v.args {
+			if !ownsReleaseText(g, arg) {
+				continue
+			}
+			at := payload
+			if len(v.args) > 1 {
+				at = g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+					at, v.payload, payload, j)
+			}
+			if err := g.releaseOwnedValue(at, arg); err != nil {
+				return err
+			}
+		}
+		fmt.Fprintf(g.out, "  br label %%%s\n", done)
+		g.out.WriteString(done + ":\n")
+	}
+	return nil
+}
+
+// releaseFixedArray releases every element of an inline [N]T. The array itself
+// has no buffer to free.
+func (g *generator) releaseFixedArray(ptr, elem string, n int) error {
+	if n == 0 || !ownsReleaseText(g, elem) {
+		return nil
+	}
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
+		return fmt.Errorf("fixed array element %s is not lowered yet", elem)
+	}
+	for i := 0; i < n; i++ {
+		at := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x %s], ptr %s, i32 0, i32 %d\n",
+			at, n, elemLLVM, ptr, i)
+		if err := g.releaseOwnedValue(at, elem); err != nil {
 			return err
 		}
 	}

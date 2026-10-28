@@ -36,8 +36,14 @@ const (
 	// BlockComment is a /* */ comment; only the formatter keeps it.
 	BlockComment
 
-	// KwFunc introduces a function or method declaration.
+	// KwDef introduces a function or method declaration.
+	KwDef
+	// KwFunc introduces a function type or a function literal.
 	KwFunc
+	// KwAsync marks a function declaration whose body may await.
+	KwAsync
+	// KwAwait starts one explicit wait.
+	KwAwait
 	// KwStruct introduces a struct declaration.
 	KwStruct
 	// KwEnum introduces an enum declaration.
@@ -48,6 +54,8 @@ const (
 	KwConst
 	// KwVar introduces a variable declaration.
 	KwVar
+	// KwType introduces a type alias.
+	KwType
 	// KwImport introduces an import declaration.
 	KwImport
 	// KwDerive introduces a derive declaration.
@@ -62,6 +70,8 @@ const (
 	KwElse
 	// KwFor introduces a loop.
 	KwFor
+	// KwWhile introduces a condition loop.
+	KwWhile
 	// KwIn separates the binding from the iterable in a for loop.
 	KwIn
 	// KwMatch introduces a match expression.
@@ -82,11 +92,17 @@ const (
 	KwBreak
 	// KwContinue starts the next iteration of the nearest loop.
 	KwContinue
-	// KwTrue is the boolean true literal.
+	// KwTrue is the boolean True literal.
 	KwTrue
-	// KwFalse is the boolean false literal.
+	// KwFalse is the boolean False literal.
 	KwFalse
+	// KwNone is the Option None literal.
+	KwNone
+	// KwNot is the prefix logical negation operator.
+	KwNot
 
+	// At starts a decorator.
+	At
 	// Plus is +.
 	Plus
 	// Minus is -.
@@ -97,6 +113,10 @@ const (
 	Slash
 	// Percent is %.
 	Percent
+	// FloorDiv is //.
+	FloorDiv
+	// Pow is **.
+	Pow
 	// PlusWrap is +%.
 	PlusWrap
 	// MinusWrap is -%.
@@ -141,6 +161,10 @@ const (
 	DivAssign
 	// ModAssign is %=.
 	ModAssign
+	// FloorDivAssign is //=.
+	FloorDivAssign
+	// PowAssign is **=.
+	PowAssign
 	// AndAssign is &=.
 	AndAssign
 	// OrAssign is |=.
@@ -220,12 +244,16 @@ var names = map[Kind]string{
 	DocComment:      "documentation comment",
 	LineComment:     "line comment",
 	BlockComment:    "block comment",
+	KwDef:           "def",
 	KwFunc:          "func",
+	KwAsync:         "async",
+	KwAwait:         "await",
 	KwStruct:        "struct",
 	KwEnum:          "enum",
 	KwInterface:     "interface",
 	KwConst:         "const",
 	KwVar:           "var",
+	KwType:          "type",
 	KwImport:        "import",
 	KwDerive:        "derive",
 	KwLane:          "lane",
@@ -233,6 +261,7 @@ var names = map[Kind]string{
 	KwIf:            "if",
 	KwElse:          "else",
 	KwFor:           "for",
+	KwWhile:         "while",
 	KwIn:            "in",
 	KwMatch:         "match",
 	KwSpawn:         "spawn",
@@ -243,13 +272,18 @@ var names = map[Kind]string{
 	KwDefer:         "defer",
 	KwBreak:         "break",
 	KwContinue:      "continue",
-	KwTrue:          "true",
-	KwFalse:         "false",
+	KwTrue:          "True",
+	KwFalse:         "False",
+	KwNone:          "None",
+	KwNot:           "not",
+	At:              "@",
 	Plus:            "+",
 	Minus:           "-",
 	Star:            "*",
 	Slash:           "/",
 	Percent:         "%",
+	FloorDiv:        "//",
+	Pow:             "**",
 	PlusWrap:        "+%",
 	MinusWrap:       "-%",
 	StarWrap:        "*%",
@@ -272,6 +306,8 @@ var names = map[Kind]string{
 	MulAssign:       "*=",
 	DivAssign:       "/=",
 	ModAssign:       "%=",
+	FloorDivAssign:  "//=",
+	PowAssign:       "**=",
 	AndAssign:       "&=",
 	OrAssign:        "|=",
 	XorAssign:       "^=",
@@ -315,31 +351,37 @@ func (k Kind) String() string {
 
 // Keywords maps reserved words to their token kind.
 var Keywords = map[string]Kind{
+	"def":       KwDef,
 	"func":      KwFunc,
+	"async":     KwAsync,
+	"await":     KwAwait,
 	"struct":    KwStruct,
 	"enum":      KwEnum,
 	"interface": KwInterface,
 	"const":     KwConst,
 	"var":       KwVar,
+	"type":      KwType,
 	"import":    KwImport,
-	"derive":    KwDerive,
-	"lane":      KwLane,
 	"return":    KwReturn,
 	"if":        KwIf,
 	"else":      KwElse,
 	"for":       KwFor,
+	"while":     KwWhile,
 	"in":        KwIn,
 	"match":     KwMatch,
 	"spawn":     KwSpawn,
 	"region":    KwRegion,
-	"parallel":  KwParallel,
 	"deadline":  KwDeadline,
 	"select":    KwSelect,
 	"defer":     KwDefer,
 	"break":     KwBreak,
 	"continue":  KwContinue,
-	"true":      KwTrue,
-	"false":     KwFalse,
+	"True":      KwTrue,
+	"False":     KwFalse,
+	"None":      KwNone,
+	"not":       KwNot,
+	"and":       AndAnd,
+	"or":        OrOr,
 }
 
 // Token is one lexical token with its original spelling and decoded value.
@@ -358,7 +400,7 @@ func (t Token) Is(k Kind) bool {
 
 // IsKeyword reports whether k is a strict keyword.
 func (k Kind) IsKeyword() bool {
-	return k >= KwFunc && k <= KwFalse
+	return k >= KwDef && k <= KwNot
 }
 
 // IsComment reports whether k is any comment kind.

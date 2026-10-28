@@ -91,6 +91,18 @@ func willIntDecimal(text string) (string, bool) {
 	return strconv.FormatUint(value, 10), true
 }
 
+// literalBoolText returns a boolean literal in the spelling LLVM accepts.
+// The parser keeps the source capitalization, while LLVM requires lowercase.
+func literalBoolText(text string) string {
+	switch text {
+	case "True", "true":
+		return "true"
+	case "False", "false":
+		return "false"
+	}
+	return text
+}
+
 // literalFloatText returns a floating-point literal in a spelling LLVM
 // accepts: the source text without its f32 or f64 suffix.
 func literalFloatText(text string) string {

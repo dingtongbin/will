@@ -13,6 +13,16 @@ type NameExpr struct {
 
 func (*NameExpr) exprNode() {}
 
+// BorrowExpr takes an explicit borrow of one place. Mut distinguishes ref x
+// from mut x.
+type BorrowExpr struct {
+	Span
+	Mut bool
+	X   Expr
+}
+
+func (*BorrowExpr) exprNode() {}
+
 // LiteralExpr is a literal. Text is the source spelling and Value is the
 // decoded value for quoted literals.
 type LiteralExpr struct {
@@ -27,6 +37,7 @@ func (*LiteralExpr) exprNode() {}
 // CallArg is one call argument. Spread marks trailing variadic expansion.
 type CallArg struct {
 	Span
+	Name   string
 	Expr   Expr
 	Spread bool
 }
@@ -102,6 +113,16 @@ type AggregateExpr struct {
 
 func (*AggregateExpr) exprNode() {}
 
+// ArrayLitExpr constructs one fixed-length array with an explicit element
+// type. The type's length must equal the number of elements.
+type ArrayLitExpr struct {
+	Span
+	Type  *Type
+	Elems []Expr
+}
+
+func (*ArrayLitExpr) exprNode() {}
+
 // NewExpr constructs a heap value.
 type NewExpr struct {
 	Span
@@ -165,10 +186,17 @@ type UnwrapExpr struct {
 
 func (*UnwrapExpr) exprNode() {}
 
-// SpawnExpr starts one task. Lane is empty unless spawn on is written.
+// AwaitExpr explicitly waits for one async call or built-in wait operation.
+type AwaitExpr struct {
+	Span
+	X Expr
+}
+
+func (*AwaitExpr) exprNode() {}
+
+// SpawnExpr starts one task from one call.
 type SpawnExpr struct {
 	Span
-	Lane string
 	Call Expr
 }
 

@@ -40,12 +40,16 @@ func EmitPackageModule(docs []*willc.Doc, pkg, entry, entryPkg string, aliases m
 	}
 	ownsInstances := pkg == instanceOwner
 	g.collectSignatures()
+	g.collectSuspendable()
 	g.collectExternalEnums()
 	g.collectGlobals()
 	if ownsInstances {
 		g.planInstances()
-		// Cloned generic instances were added after the first signature pass.
+		// Cloned generic instances were added after the first passes: an
+		// instance of a waiting generic is waiting too, so the mark must see
+		// the clones before any caller is lowered.
 		g.collectSignatures()
+		g.collectSuspendable()
 		g.collectExternalEnums()
 		g.collectGlobals()
 	}
@@ -55,9 +59,10 @@ func EmitPackageModule(docs []*willc.Doc, pkg, entry, entryPkg string, aliases m
 			g.externalFuncs[name] = true
 		}
 	}
-	if g.usesTaskRuntime() {
-		g.out.WriteString("%willrt_error = type { ptr, i64, ptr, ptr }\n")
-	}
+	// These layouts are emitted before lowering because a TaskError result can
+	// be introduced by a join that is discovered after the type block.
+	g.out.WriteString("%willrt_error = type { ptr, i64, ptr, ptr }\n")
+	g.out.WriteString("%willrt.task_error = type { %willrt_error, i32 }\n")
 	if g.usesSelect() {
 		g.out.WriteString("%willrt_arm = type { ptr, ptr, ptr, i32, i64 }\n")
 	}
@@ -71,6 +76,10 @@ func EmitPackageModule(docs []*willc.Doc, pkg, entry, entryPkg string, aliases m
 		}
 		return d.path == pkg || (d.clone && pkg == instanceOwner)
 	}
+	// The constructors of the functions this object defines are known here, so
+	// a call to a function of another package declares the constructor it
+	// needs instead of defining it twice.
+	g.collectTaskCtors(emits)
 	// Collect declarations of every document so imported names resolve, but
 	// emit concrete type layouts only for documents this object lowers. A
 	// package that does not own a generic instance must not pay for every
@@ -132,12 +141,25 @@ func newGenerator(lib bool, aliases map[string]string) *generator {
 		byteGlobals:    map[string]string{},
 		emittedTypes:   map[string]bool{},
 		emittedVtables: map[string]bool{},
+		typeIDs:        map[string]string{},
+		emittedTypeIDs: map[string]bool{},
 		thunkEmitted:   map[string]bool{},
 		spawnEmitted:   map[string]bool{},
+		spawnDropped:   map[string]bool{},
+		ifaceThunkSeen: map[string]bool{},
+		chanDropDone:   map[string]bool{},
 		dropEmitted:    map[string]bool{},
 		out:            &strings.Builder{},
 		aliases:        aliases,
 		declSet:        map[string]bool{},
+		suspendable:    map[string]bool{},
+		taskCtors:      map[string]bool{},
+		showEmitted:    map[string]bool{},
+		ifaceSlots:     map[string]string{},
+		ifaceRetSlots:  map[int]string{},
+		ifaceDataSlots: map[int]string{},
+		builtinErrors:  map[int]bool{},
+		liveValues:     map[int]string{},
 	}
 }
 

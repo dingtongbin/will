@@ -22,8 +22,23 @@ func (e *emitter) emitBlock(b *ast.Block) int {
 	e.push(rec)
 	e.scopes = append(e.scopes, nil)
 	scope := len(e.scopes) - 1
+	oldTypes := e.localTypes
+	e.localTypes = cloneTypes(oldTypes)
+	for _, st := range b.Stmts {
+		if vs, ok := st.(*ast.VarStmt); ok {
+			if vd, ok := vs.Decl.(*ast.VarDecl); ok && vd.Name != "" && vd.Name != "_" {
+				e.localTypes[vd.Name] = vd.Type
+			}
+		}
+	}
+	early := earlyReleases(b)
+	for owner, point := range e.nonRcReleases(b, e.localTypes) {
+		early[owner] = point
+	}
 	var last ast.Stmt
-	for _, s := range b.Stmts {
+	for i, s := range b.Stmts {
+		e.markMoves(s)
+		e.markLeaks(s)
 		switch {
 		case isEarlyExit(s):
 			owned := e.liveOwned(exitFloor(e, s))
@@ -40,14 +55,58 @@ func (e *emitter) emitBlock(b *ast.Block) int {
 				e.scopes[scope] = append(e.scopes[scope], vd)
 			}
 		}
+		for owner, point := range early {
+			if point.after == i {
+				e.emitRelease(owner, point.node)
+			}
+		}
 		last = s
 	}
 	if !unconditionalExit(last) {
 		e.emitReleases(e.scopes[scope], b)
 	}
 	e.scopes = e.scopes[:scope]
+	e.localTypes = oldTypes
 	e.pop()
 	return rec
+}
+
+func cloneTypes(in map[string]*ast.Type) map[string]*ast.Type {
+	out := make(map[string]*ast.Type, len(in)+1)
+	for name, t := range in {
+		out[name] = t
+	}
+	return out
+}
+
+// markLeaks records the owner of leak(name). The release records for that
+// owner are suppressed everywhere, so the value is handed to the process.
+func (e *emitter) markLeaks(st ast.Stmt) {
+	es, ok := st.(*ast.ExprStmt)
+	if !ok {
+		return
+	}
+	call, ok := es.Expr.(*ast.CallExpr)
+	if !ok || len(call.Args) != 1 {
+		return
+	}
+	name, ok := call.Callee.(*ast.NameExpr)
+	if !ok || name.Name != "leak" {
+		return
+	}
+	arg, ok := call.Args[0].Expr.(*ast.NameExpr)
+	if !ok {
+		return
+	}
+	for i := len(e.scopes) - 1; i >= 0; i-- {
+		for j := len(e.scopes[i]) - 1; j >= 0; j-- {
+			vd, ok := e.scopes[i][j].(*ast.VarDecl)
+			if ok && vd.Name == arg.Name {
+				e.leaked[vd] = true
+				return
+			}
+		}
+	}
 }
 
 // exitFloor returns the first scope a break or continue leaves; everything
@@ -83,10 +142,28 @@ func withoutReturnedName(owned []ast.Node, value ast.Expr) []ast.Node {
 // position, the block as parent.
 func (e *emitter) emitReleases(owned []ast.Node, pos ast.Node) {
 	for i := len(owned) - 1; i >= 0; i-- {
-		release := e.addPos("release", pos)
-		e.ref(release, "owner", owned[i])
-		e.text(release, "kind", "value")
+		if e.released[owned[i]] || e.moved[owned[i]] || e.leaked[owned[i]] {
+			continue
+		}
+		e.writeRelease(owned[i], pos)
 	}
+}
+
+// emitRelease writes one early release and remembers that the owner has
+// already been released. Multiple exits may still release a live owner; only
+// this early point is remembered permanently.
+func (e *emitter) emitRelease(owner ast.Node, pos ast.Node) {
+	if e.released[owner] || e.moved[owner] || e.leaked[owner] {
+		return
+	}
+	e.writeRelease(owner, pos)
+	e.released[owner] = true
+}
+
+func (e *emitter) writeRelease(owner ast.Node, pos ast.Node) {
+	release := e.addPos("release", pos)
+	e.ref(release, "owner", owner)
+	e.text(release, "kind", "value")
 }
 
 // liveOwned lists the owners in scope from one scope depth outward, in
@@ -198,6 +275,10 @@ func (e *emitter) emitStmt(s ast.Stmt) int {
 			e.ref(rec, "iter", st.Iter)
 			e.emitExpr(st.Iter)
 		}
+		if st.Cond != nil {
+			e.ref(rec, "cond", st.Cond)
+			e.emitExpr(st.Cond)
+		}
 		e.ref(rec, "body", st.Body)
 		e.loops = append(e.loops, len(e.scopes))
 		e.emitBlock(st.Body)
@@ -206,13 +287,6 @@ func (e *emitter) emitStmt(s ast.Stmt) int {
 		return rec
 	case *ast.RegionStmt:
 		rec := e.add("region", st)
-		e.push(rec)
-		e.ref(rec, "body", st.Body)
-		e.emitBlock(st.Body)
-		e.pop()
-		return rec
-	case *ast.ParallelStmt:
-		rec := e.add("parallel", st)
 		e.push(rec)
 		e.ref(rec, "body", st.Body)
 		e.emitBlock(st.Body)

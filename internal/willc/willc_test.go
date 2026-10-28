@@ -64,7 +64,7 @@ func TestReadErrors(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := Read([]byte(c.src))
 			if err == nil {
-				t.Fatalf("Read(%q) succeeded, want failure", c.src)
+				t.Fatalf("read(%q) succeeded, want failure", c.src)
 			}
 			if !strings.Contains(err.Error(), c.msg) {
 				t.Fatalf("error = %q, want it to contain %q", err, c.msg)

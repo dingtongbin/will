@@ -16,7 +16,7 @@
  * over them is cheaper than a merged index that registration would have to
  * rebuild.
  *
- * willrt_panic writes the report and then ends the current task when the task
+ * willrt_panic writes the report and then fails the current task when the task
  * engine is linked in; outside a task, it exits the process with 101.
  */
 
@@ -37,7 +37,7 @@
 
 #if defined(__GNUC__) || defined(__clang__)
 /* Defined by the task engine. It records the failure on the current task and
-   ends that thread, so it never returns. */
+   transfers control out of the failed step, so it never returns on that path. */
 extern int32_t willrt_task_fail(const char* message, size_t size,
                                 const char* site, const char* symbol)
     __attribute__((weak));
@@ -175,6 +175,65 @@ void willrt_print_char(uint32_t value) {
         return;
     }
     willrt_print_text((const char*)bytes, size);
+}
+
+/* A Show thunk formats one predeclared value into an owning str. The compiler
+   builds one thunk per scalar type and points the method table at it, so a
+   value passed as Show keeps its text after the call. The result is written
+   through out, so the call needs no struct-return convention. */
+static void willrt_show_bytes(const char* text, size_t size, willrt_str* out) {
+    char* copy = (char*)willrt_alloc(size == 0 ? 1 : size);
+
+    if (copy != NULL && size != 0) {
+        memcpy(copy, text, size);
+    }
+    out->data = copy;
+    out->size = (int64_t)size;
+}
+
+void willrt_show_i64(int64_t value, willrt_str* out) {
+    char buffer[32];
+    int size = snprintf(buffer, sizeof(buffer), "%" PRId64, value);
+    size_t used = size > 0 ? (size_t)size : 0;
+
+    if (used > sizeof(buffer)) {
+        used = sizeof(buffer);
+    }
+    willrt_show_bytes(buffer, used, out);
+}
+
+void willrt_show_u64(uint64_t value, willrt_str* out) {
+    char buffer[32];
+    int size = snprintf(buffer, sizeof(buffer), "%" PRIu64, value);
+    size_t used = size > 0 ? (size_t)size : 0;
+
+    if (used > sizeof(buffer)) {
+        used = sizeof(buffer);
+    }
+    willrt_show_bytes(buffer, used, out);
+}
+
+void willrt_show_f64(double value, willrt_str* out) {
+    char buffer[64];
+    int size = snprintf(buffer, sizeof(buffer), "%.17g", value);
+    size_t used = size > 0 ? (size_t)size : 0;
+
+    if (used > sizeof(buffer)) {
+        used = sizeof(buffer);
+    }
+    willrt_show_bytes(buffer, used, out);
+}
+
+void willrt_show_bool(int32_t value, willrt_str* out) {
+    if (value != 0) {
+        willrt_show_bytes("true", 4, out);
+        return;
+    }
+    willrt_show_bytes("false", 5, out);
+}
+
+void willrt_show_str(const char* data, int64_t size, willrt_str* out) {
+    willrt_show_bytes(data, size < 0 ? 0 : (size_t)size, out);
 }
 
 static size_t willrt_fmt_write(char* buffer, size_t capacity, const char* text, size_t size) {

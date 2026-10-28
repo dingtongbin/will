@@ -1,5 +1,5 @@
-// Row is one decoded CSV record. Its fields are copies, so a row stays valid
-// after the decoder reuses its input buffer.
+# Row is one decoded CSV record. Its fields are copies, so a row stays valid
+# after the decoder reuses its input buffer.
 struct Row {
     fields: Array<str>
 }

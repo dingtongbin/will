@@ -1,0 +1,49 @@
+# Capture redirects the current case's standard output and standard error into
+# a temporary file. It is process-wide by nature, so a parallel case must not
+# capture while another case is running.
+import c "capture.h" {
+    fast willtest_capture_begin
+    fast willtest_capture_end
+    fast willtest_capture_read
+    fast willtest_capture_close
+}
+
+struct Capture {
+    active: bool
+    text: str
+}
+
+# Capture starts capturing the current case's output.
+def (t: mut T) capture() -> Capture {
+    var status: i32 = c.willtest_capture_begin()
+    return Capture { active: status == 0, text: ""}
+}
+
+# Text returns the bytes captured so far. After Release it returns the final
+# bytes that were read when capture stopped.
+def (cap: ref Capture) text() -> str {
+    if not cap.active {
+        return cap.text.clone()
+    }
+    var text: str = ""
+    var status: i32 = c.willtest_capture_read(raw(text))
+    if status != 0 {
+        return ""
+    }
+    return text
+}
+
+# Release stops capturing, stores the final bytes, and restores direct output.
+def (cap: mut Capture) release() {
+    if not cap.active {
+        return
+    }
+    _ = c.willtest_capture_end()
+    var text: str = ""
+    var status: i32 = c.willtest_capture_read(raw(text))
+    if status == 0 {
+        cap.text = text
+    }
+    c.willtest_capture_close()
+    cap.active = False
+}

@@ -1,11 +1,13 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 %"struct.example.com/methods.Counter" = type { i32 }
-define hidden i32 @"example.com/methods.Counter.Get"(ptr %c) alwaysinline {
+define hidden i32 @"example.com/methods.Counter.get"(ptr %c) alwaysinline {
 entry:
   %t1 = getelementptr inbounds %"struct.example.com/methods.Counter", ptr %c, i32 0, i32 0
   %t2 = load i32, ptr %t1
   ret i32 %t2
 }
-define hidden void @"example.com/methods.Counter.Add"(ptr %c, i32 %d) alwaysinline {
+define hidden void @"example.com/methods.Counter.add"(ptr %c, i32 %d) alwaysinline {
 entry:
   %t3 = getelementptr inbounds %"struct.example.com/methods.Counter", ptr %c, i32 0, i32 0
   %t4 = load i32, ptr %t3
@@ -28,8 +30,8 @@ entry:
   store i32 7, ptr %t8
   %t9 = load %"struct.example.com/methods.Counter", ptr %v.agg.28
   store %"struct.example.com/methods.Counter" %t9, ptr %v.c
-  call void @"example.com/methods.Counter.Add"(ptr %v.c, i32 3)
-  %t10 = call i32 @"example.com/methods.Counter.Get"(ptr %v.c)
+  call void @"example.com/methods.Counter.add"(ptr %v.c, i32 3)
+  %t10 = call i32 @"example.com/methods.Counter.get"(ptr %v.c)
   ret i32 %t10
 }
 declare void @willrt_init()
@@ -43,6 +45,6 @@ entry:
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.1 = private unnamed_addr constant [15 x i8] c"main.will:10:5\00", align 1
-@.str.2 = private unnamed_addr constant [32 x i8] c"example.com/methods.Counter.Add\00", align 1
+@.str.2 = private unnamed_addr constant [32 x i8] c"example.com/methods.Counter.add\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

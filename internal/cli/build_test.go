@@ -3,7 +3,6 @@ package cli
 import (
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -16,24 +15,33 @@ const entrySource = `import c "stdio.h" {
     fast putchar
 }
 
-func main() -> i32 {
+def main() -> i32 {
     return c.putchar(65)
 }
 `
 
+// hasClang reports whether a clang the build will accept is reachable. The
+// lookup goes through the build's own resolution so WILL_CLANG points the
+// tests at the same driver the build uses.
 func hasClang() bool {
-	_, err := exec.LookPath("clang")
-	return err == nil
+	clang, err := toolchain.FindClang()
+	if err != nil {
+		return false
+	}
+	if _, err := os.Stat(clang.Path); err != nil {
+		return false
+	}
+	return true
 }
 
 // buildWarningSource has one warning and an entry function, so it can be both
 // checked and built.
-const buildWarningSource = `func F() {
+const buildWarningSource = `def f() {
     var i32: i32 = 0
     _ = i32
 }
 
-func main() {
+def main() {
 }
 `
 
@@ -59,8 +67,8 @@ func TestEmitLLVMCrossPackage(t *testing.T) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	writeFile(t, root, "will.mod", "module example.com/crosspkg\nwill 1\n")
-	writeFile(t, root, "main.will", "import \"example.com/crosspkg/lib\"\n\nfunc main() -> i32 {\n    return lib.Util()\n}\n")
-	writeFile(t, filepath.Join(root, "lib"), "lib.will", "func Util() -> i32 {\n    return 7\n}\n")
+	writeFile(t, root, "main.will", "import \"example.com/crosspkg/lib\"\n\ndef main() -> i32 {\n    return lib.util()\n}\n")
+	writeFile(t, filepath.Join(root, "lib"), "lib.will", "def util() -> i32 {\n    return 7\n}\n")
 
 	code, out, errOut := runCLI("emit-llvm", root)
 	if code != 0 {
@@ -68,8 +76,8 @@ func TestEmitLLVMCrossPackage(t *testing.T) {
 	}
 	for _, want := range []string{
 		"define i32 @main() {",
-		`call i32 @"example.com/crosspkg/lib.Util"()`,
-		`define hidden i32 @"example.com/crosspkg/lib.Util"() alwaysinline {`,
+		`call i32 @"example.com/crosspkg/lib.util"()`,
+		`define hidden i32 @"example.com/crosspkg/lib.util"() alwaysinline {`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("IR lacks %q:\n%s", want, out)
@@ -95,7 +103,7 @@ func TestEmitDecisionsUsesPackageQualifiedTypes(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "dec")
 	writeTree(t, root, map[string]string{
 		"will.mod":  "module example.com/dec\nwill 1\n",
-		"main.will": "struct Point {\n    x: i32\n}\n\nfunc main() -> i32 {\n    return 0\n}\n",
+		"main.will": "struct Point {\n    x: i32\n}\n\ndef main() -> i32 {\n    return 0\n}\n",
 	})
 	code, out, errOut := runCLI("emit-decisions", root)
 	if code != 0 {
@@ -115,7 +123,7 @@ func TestEmitDecisionsUsage(t *testing.T) {
 }
 
 func TestEmitDecisionsNestedAndEnum(t *testing.T) {
-	src := "struct Inner {\n    v: i32\n}\n\nstruct Outer {\n    tag: u8\n    inner: Inner\n}\n\nenum Value {\n    None\n    Number(i64)\n}\n"
+	src := "struct Inner {\n    v: i32\n}\n\nstruct Outer {\n    tag: u8\n    inner: Inner\n}\n\nenum Value {\n    Empty\n    Number(i64)\n}\n"
 	path := writeFile(t, t.TempDir(), "a.will", src)
 	code, out, errOut := runCLI("emit-decisions", path)
 	if code != 0 {
@@ -128,7 +136,7 @@ func TestEmitDecisionsNestedAndEnum(t *testing.T) {
 		"field type=\"Outer\" name=\"inner\" offset=4 size=4\n" +
 		"layout type=\"Value\" size=16 align=8\n" +
 		"field type=\"Value\" name=\"tag\" offset=0 size=4\n" +
-		"field type=\"Value\" name=\"None\" offset=8 size=0\n" +
+		"field type=\"Value\" name=\"Empty\" offset=8 size=0\n" +
 		"field type=\"Value\" name=\"Number\" offset=8 size=8\n"
 	if out != want {
 		t.Fatalf("stdout = %q, want %q", out, want)
@@ -139,7 +147,7 @@ func TestEmitDecisionsObligations(t *testing.T) {
 	// A container loop proves its index check; a Range loop is its own index
 	// sequence and records nothing. The nested loop inside the if must be
 	// found too.
-	src := "func F(xs: [2]i32) -> i32 {\n" +
+	src := "def f(xs: [2]i32) -> i32 {\n" +
 		"    var n: i32 = 0\n" +
 		"    for x in xs {\n        n += x\n    }\n" +
 		"    for i in Range(0, 3) {\n        n += i\n    }\n" +
@@ -161,7 +169,7 @@ func TestEmitDecisionsObligations(t *testing.T) {
 }
 
 func TestEmitDecisionsRangeHasNoObligation(t *testing.T) {
-	src := "func F() -> i32 {\n    var n: i32 = 0\n    for i in Range(0, 3) {\n        n += i\n    }\n    return n\n}\n"
+	src := "def f() -> i32 {\n    var n: i32 = 0\n    for i in Range(0, 3) {\n        n += i\n    }\n    return n\n}\n"
 	path := writeFile(t, t.TempDir(), "a.will", src)
 	code, out, errOut := runCLI("emit-decisions", path)
 	if code != 0 {
@@ -220,7 +228,7 @@ func TestBuildSharedLibraryWithClang(t *testing.T) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	writeFile(t, root, "will.mod", "module example.com/lib\nwill 1\n")
-	writeFile(t, root, "lib.will", "func Add(a: i32, b: i32) -> i32 {\n    return a + b\n}\n")
+	writeFile(t, root, "lib.will", "def add(a: i32, b: i32) -> i32 {\n    return a + b\n}\n")
 	suffix := ".so"
 	if runtime.GOOS == "windows" {
 		suffix = ".dll"
@@ -337,7 +345,7 @@ func TestBuildMissingClang(t *testing.T) {
 }
 
 func TestBuildEntryNotFound(t *testing.T) {
-	path := writeFile(t, t.TempDir(), "main.will", "func other() {\n}\n")
+	path := writeFile(t, t.TempDir(), "main.will", "def other() {\n}\n")
 	code, out, _ := runCLI("build", "--entry", "main", path)
 	if code != 1 {
 		t.Fatalf("code = %d, want 1", code)
@@ -367,7 +375,7 @@ func TestUnsupportedTarget(t *testing.T) {
 func TestLoweringFailureIsG0001(t *testing.T) {
 	// A local whose type is not lowered yet is a translation failure, not a
 	// front-end error.
-	src := "struct P {\n    n: i32\n}\n\nfunc F(xs: [2]P) -> i32 {\n    return 0\n}\n\nfunc main() -> i32 {\n    return 0\n}\n"
+	src := "struct P {\n    n: i32\n}\n\ndef f(xs: [2]P, ys: [2]P) -> i32 {\n    if xs == ys {\n        return 1\n    }\n    return 0\n}\n\ndef main() -> i32 {\n    return 0\n}\n"
 	path := writeFile(t, t.TempDir(), "main.will", src)
 	code, out, errOut := runCLI("emit-llvm", path)
 	if code != 1 {

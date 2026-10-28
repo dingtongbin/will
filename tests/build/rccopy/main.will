@@ -6,7 +6,7 @@ struct Holder {
     inner: rc<Inner>
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var a: Holder = Holder { inner: new rc<Inner>(Inner { n: 3 }) }
     var b: Holder = a
     var c: rc<Inner> = b.inner

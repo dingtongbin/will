@@ -1,27 +1,45 @@
 interface Counter {
-    func Get() -> i32
-    func Add(n: i32) -> i32
+    def get() -> i32
+    def add(n: i32) -> i32
 }
 
 struct C {
     n: i32
 }
 
-func (c: C) Get() -> i32 {
+def (c: ref C) get() -> i32 {
     return c.n
 }
 
-func (mut c: C) Add(n: i32) -> i32 {
+def (c: mut C) add(n: i32) -> i32 {
     c.n += n
     return c.n
 }
 
-func Use(x: Counter) -> i32 {
-    return x.Get() + x.Add(2)
+def use(x: Counter) -> i32 {
+    return x.get() + x.add(2)
 }
 
-func main() -> i32 {
+interface Actor {
+    async def step(n: i32) -> i32
+}
+
+struct A {
+    n: i32
+}
+
+async def (a: ref A) step(n: i32) -> i32 {
+    return a.n + n
+}
+
+async def actor_value() -> i32 {
+    var a: A = A { n: 1 }
+    var x: Actor = a
+    return await x.step(2)
+}
+
+def main() -> i32 {
     var c: C = C { n: 3 }
     var x: Counter = c
-    return Use(c) + x.Get()
+    return use(c) + x.get()
 }

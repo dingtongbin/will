@@ -9,8 +9,9 @@ import (
 
 const example = `module   example.com/myapp
 will     1
-require  std@bundled
+require  std@v0.1.0
 require  example.com/lib@v1.4.2
+replace  std@v0.1.0 => ../std
 replace  example.com/lib@v1.4.2 => ../lib
 feature  tls
 `
@@ -36,13 +37,13 @@ func TestParseExample(t *testing.T) {
 	if len(m.Requires) != 2 {
 		t.Fatalf("requires = %d, want 2", len(m.Requires))
 	}
-	if !m.Requires[0].Bundled || m.Requires[0].Path != "std" {
+	if m.Requires[0].Path != "std" || m.Requires[0].Version != (Version{0, 1, 0}) {
 		t.Errorf("require 0 = %+v", m.Requires[0])
 	}
 	if m.Requires[1].Version != (Version{1, 4, 2}) {
 		t.Errorf("require 1 = %+v", m.Requires[1])
 	}
-	if len(m.Replaces) != 1 || m.Replaces[0].Target != "../lib" || m.Replaces[0].IsVersioned {
+	if len(m.Replaces) != 2 || m.Replaces[0].Target != "../std" || m.Replaces[0].IsVersioned {
 		t.Fatalf("replaces = %+v", m.Replaces)
 	}
 	if len(m.Features) != 1 || m.Features[0] != "tls" {
@@ -56,7 +57,7 @@ func TestParseExample(t *testing.T) {
 	if deps[0].Path != "example.com/lib" || deps[0].Local != "../lib" || deps[0].Version != (Version{1, 4, 2}) {
 		t.Errorf("dep 0 = %+v", deps[0])
 	}
-	if deps[1].Path != "std" || !deps[1].Bundled {
+	if deps[1].Path != "std" || deps[1].Local != "../std" || deps[1].Version != (Version{0, 1, 0}) {
 		t.Errorf("dep 1 = %+v", deps[1])
 	}
 }
@@ -114,7 +115,7 @@ func TestParseErrors(t *testing.T) {
 		{"missing module", "will 1\n", "module <import path>"},
 		{"missing will", "module m\n", "will <integer>"},
 		{"unknown field", "module m\nwill 1\nnope x\n", "unknown field nope"},
-		{"bad require", "module m\nwill 1\nrequire a\n", "require <path>@<version>"},
+		{"bad require", "module m\nwill 1\nrequire a\n", "require <path>@v<major>.<minor>.<patch>"},
 		{"bad version", "module m\nwill 1\nrequire a@1.2\n", "v<major>.<minor>.<patch>"},
 		{"bad replace", "module m\nwill 1\nreplace a@v1.0.0 ../lib\n", "replace is path@version => target"},
 		{"duplicate module", "module a\nmodule b\nwill 1\n", "module appears once"},

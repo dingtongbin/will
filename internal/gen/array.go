@@ -46,29 +46,29 @@ func (g *generator) viewCallResult(r willc.Record) (llvm, text string, known boo
 		return "", "", false
 	}
 	switch fieldText(r, "text") {
-	case "Len":
+	case "len":
 		return "i64", "usize", true
-	case "Get":
+	case "get":
 		elemLLVM, ok := g.typeLLVMOf(elem)
 		if !ok || elemLLVM == "" {
 			return "", "", false
 		}
 		return elemLLVM, elem, true
-	case "Equal", "HasPrefix", "HasSuffix":
+	case "equal", "has_prefix", "has_suffix":
 		if elem == "u8" {
 			return "i1", "bool", true
 		}
-	case "Compare":
+	case "compare":
 		if elem == "u8" {
 			return "i32", "i32", true
 		}
-	case "Index":
+	case "index":
 		if elem == "u8" {
 			if info, ok := g.adtType("Option<usize>"); ok {
 				return info.llvm, "Option<usize>", true
 			}
 		}
-	case "Clone":
+	case "clone":
 		if elem == "u8" {
 			if typ, ok := llvmTypeText("Array<u8>"); ok {
 				return typ, "Array<u8>", true
@@ -94,18 +94,18 @@ func (g *generator) viewMethod(r willc.Record, elem string) (string, string, err
 	lenField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n", lenField, base)
 	name := fieldText(r, "text")
-	if name == "Len" {
+	if name == "len" {
 		return g.load("i64", lenField), "usize", nil
 	}
 	if elem == "u8" {
 		switch name {
-		case "Equal", "Compare", "HasPrefix", "HasSuffix", "Clone":
+		case "equal", "compare", "has_prefix", "has_suffix", "clone":
 			return g.byteViewMethod(r, base, lenField, name)
 		}
 	}
 	args := g.callArgs(r)
 	if len(args) == 0 {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Get needs an index", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: get needs an index", r.ID)
 	}
 	idx, err := g.indexValue(args[0], r)
 	if err != nil {
@@ -131,7 +131,7 @@ func (g *generator) viewGetPlace(r willc.Record, elem string) (string, string, e
 		return "", "", err
 	}
 	if baseType != "{ ptr, i64 }" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Get needs a view", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: get needs a view", r.ID)
 	}
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok || elemLLVM == "" {
@@ -145,7 +145,7 @@ func (g *generator) viewGetPlace(r willc.Record, elem string) (string, string, e
 	length := g.load("i64", lenField)
 	args := g.callArgs(r)
 	if len(args) != 1 {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Get takes one index", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: get takes one index", r.ID)
 	}
 	idx, err := g.indexValue(args[0], r)
 	if err != nil {
@@ -269,11 +269,11 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 		return p
 	}
 	switch fieldText(r, "text") {
-	case "Len":
+	case "len":
 		return g.load("i64", field(1)), "usize", nil
-	case "Cap":
+	case "cap":
 		return g.load("i64", field(2)), "usize", nil
-	case "Get", "Set":
+	case "get", "set":
 		args := g.callArgs(r)
 		if len(args) == 0 {
 			return "", "", g.errf(r.ID, "cannot translate node #%d: %s needs an index", r.ID, fieldText(r, "text"))
@@ -282,11 +282,11 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 		if err != nil {
 			return "", "", err
 		}
-		if fieldText(r, "text") == "Get" {
+		if fieldText(r, "text") == "get" {
 			return g.load(elemLLVM, ptr), elem, nil
 		}
 		if len(args) < 2 {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: Set needs a value", r.ID)
+			return "", "", g.errf(r.ID, "cannot translate node #%d: set needs a value", r.ID)
 		}
 		if isAggregateType(elemLLVM) {
 			if iface, ok := g.ifaceOfText(elem); ok {
@@ -294,12 +294,16 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 				if err != nil {
 					return "", "", err
 				}
-				if _, same := g.ifaceOfText(valueText); !same {
-					if _, err := g.ifaceValue(ptr, args[1], iface, valueText); err != nil {
-						return "", "", err
-					}
-					return "", "", nil
+				tmp := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = alloca %s\n", tmp, iface.llvm)
+				if _, err := g.ifaceStoreValue(tmp, args[1], iface, valueText); err != nil {
+					return "", "", err
 				}
+				if err := g.releaseIfaceValue(ptr, iface); err != nil {
+					return "", "", err
+				}
+				g.copyValue(tmp, ptr, iface.llvm)
+				return "", "", nil
 			}
 			src, srcType, err := g.place(args[1])
 			if err != nil {
@@ -308,17 +312,23 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 			if srcType != elemLLVM {
 				return "", "", g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
 			}
+			move, _ := g.moveSource(args[1])
 			if g.needsReleaseText(elem) {
 				if err := g.releaseSlot(ptr, elem); err != nil {
 					return "", "", err
 				}
-				if g.isCopySource(args[1]) {
+				if !move && g.isCopySource(args[1]) {
 					if err := g.retainValue(src, elem); err != nil {
 						return "", "", err
 					}
 				}
 			}
 			g.copyValue(src, ptr, elemLLVM)
+			if move {
+				if err := g.zeroMovedSource(args[1], ptr); err != nil {
+					return "", "", err
+				}
+			}
 			return "", "", nil
 		}
 		v, err := g.value(args[1])
@@ -333,12 +343,21 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 				fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", v)
 			}
 		}
+		if isChanText(elem) {
+			old := g.load("ptr", ptr)
+			g.needTaskDecl = true
+			g.needChanDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_chan_release(ptr %s)\n", old)
+			if g.isCopySource(args[1]) {
+				fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", v)
+			}
+		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, v, ptr)
 		return "", "", nil
-	case "Push":
+	case "push":
 		args := g.callArgs(r)
 		if len(args) != 1 {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: Push takes one value", r.ID)
+			return "", "", g.errf(r.ID, "cannot translate node #%d: push takes one value", r.ID)
 		}
 		elemSize, _, ok := g.sizeAlign(elemLLVM)
 		if !ok {
@@ -348,10 +367,10 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 			return "", "", err
 		}
 		return "", "", nil
-	case "Append":
+	case "append":
 		args := g.callArgs(r)
 		if len(args) != 1 {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: Append takes one view", r.ID)
+			return "", "", g.errf(r.ID, "cannot translate node #%d: append takes one view", r.ID)
 		}
 		elemSize, _, ok := g.sizeAlign(elemLLVM)
 		if !ok {
@@ -361,19 +380,19 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 			return "", "", err
 		}
 		return "", "", nil
-	case "Pop":
+	case "pop":
 		return g.arrayPop(r, base, elem, elemLLVM)
-	case "Insert":
+	case "insert":
 		return g.arrayInsert(r, base, elem, elemLLVM)
-	case "Remove":
+	case "remove":
 		return g.arrayRemove(r, base, elem, elemLLVM)
-	case "Slice":
+	case "slice":
 		return g.arraySlice(r, base, elem, elemLLVM)
-	case "ShrinkToFit":
+	case "shrink_to_fit":
 		return g.arrayShrink(r, base, elemLLVM)
-	case "Clone":
+	case "clone":
 		return g.arrayClone(r, base, elem, elemLLVM)
-	case "Clear":
+	case "clear":
 		if g.needsReleaseText(elem) {
 			if err := g.eachElement(base, elem, false, 0); err != nil {
 				return "", "", err
@@ -402,20 +421,20 @@ func (g *generator) arrayCallResult(r willc.Record) (llvm, text string, known bo
 		return "", "", false
 	}
 	switch fieldText(r, "text") {
-	case "Len", "Cap":
+	case "len", "cap":
 		return "i64", "usize", true
-	case "Get", "Remove":
+	case "get", "remove":
 		return elemLLVM, elem, true
-	case "Pop":
+	case "pop":
 		if info, ok := g.adtType("Option<" + elem + ">"); ok {
 			return info.llvm, info.text, true
 		}
 		return "", "", false
-	case "Push", "Append", "Set", "Insert", "Clear", "ShrinkToFit":
+	case "push", "append", "set", "insert", "clear", "shrink_to_fit":
 		return "", "", true
-	case "Slice":
+	case "slice":
 		return "{ ptr, i64 }", "[]" + elem, true
-	case "Clone":
+	case "clone":
 		if llvm, ok := llvmTypeText("Array<" + elem + ">"); ok {
 			return llvm, "Array<" + elem + ">", true
 		}
@@ -542,12 +561,10 @@ func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemS
 			if err != nil {
 				return err
 			}
-			if _, same := g.ifaceOfText(valueText); !same {
-				if _, err := g.ifaceValue(slot, valueID, iface, valueText); err != nil {
-					return err
-				}
-				converted = true
+			if _, err := g.ifaceStoreValue(slot, valueID, iface, valueText); err != nil {
+				return err
 			}
+			converted = true
 		}
 		if !converted {
 			src, srcType, err := g.place(valueID)
@@ -557,12 +574,18 @@ func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemS
 			if srcType != elemLLVM {
 				return g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
 			}
-			if g.needsReleaseText(elem) && g.isCopySource(valueID) {
+			move, _ := g.moveSource(valueID)
+			if !move && g.needsReleaseText(elem) && g.isCopySource(valueID) {
 				if err := g.retainValue(src, elem); err != nil {
 					return err
 				}
 			}
 			g.copyValue(src, slot, elemLLVM)
+			if move {
+				if err := g.zeroMovedSource(valueID, slot); err != nil {
+					return err
+				}
+			}
 		}
 	} else {
 		value, err := g.value(valueID)
@@ -572,6 +595,11 @@ func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemS
 		if isRcText(elem) && g.isCopySource(valueID) {
 			g.needRcDecl = true
 			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
+		}
+		if isChanText(elem) && g.isCopySource(valueID) {
+			g.needTaskDecl = true
+			g.needChanDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, slot)
 	}

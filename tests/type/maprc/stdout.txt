@@ -1,4 +1,4 @@
-main.will:2:17: T0001 Map key type does not support Equal
+main.will:2:17: T0001 Map key type does not support equal
     help: use a type with a stable equality, such as an integer, str, struct, or enum
-main.will:2:41: T0001 Map key type does not support Equal
+main.will:2:41: T0001 Map key type does not support equal
     help: use a type with a stable equality, such as an integer, str, struct, or enum

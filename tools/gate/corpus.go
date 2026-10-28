@@ -277,6 +277,26 @@ func runCase(c corpusCase, update bool) ([]string, error) {
 		}
 	}
 	if _, ok := recorded(c.dir, "decisions.txt"); ok {
+		code, got, _, err := inDir(c.dir, "emit-decisions", ".")
+		if err := commandOK(c.name, "emit-decisions", code, err); err != nil {
+			return rewritten, err
+		}
+		if update {
+			changed, err := updateRecording(c.dir, "decisions.txt", got)
+			if err != nil {
+				return rewritten, err
+			}
+			if changed {
+				rewritten = append(rewritten, c.name+"/decisions.txt")
+			}
+		} else {
+			want, _ := recorded(c.dir, "decisions.txt")
+			if !bytes.Equal(got, want) {
+				return rewritten, mismatch(c.name, "decisions.txt", want, got)
+			}
+		}
+	}
+	if _, ok := recorded(c.dir, "decisions.txt"); ok {
 		_, got, _, err := inDir(c.dir, "emit-decisions", target)
 		if err != nil {
 			return rewritten, fmt.Errorf("%s: %v", c.name, err)

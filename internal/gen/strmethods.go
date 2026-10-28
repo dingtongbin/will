@@ -17,7 +17,7 @@ func (g *generator) strMethodValue(r willc.Record) (string, string, error) {
 	}
 	args := g.callArgs(r)
 	switch name {
-	case "Contains":
+	case "contains":
 		needle, needleLen, err := g.strArg(args, 0)
 		if err != nil {
 			return "", "", err
@@ -28,7 +28,7 @@ func (g *generator) strMethodValue(r willc.Record) (string, string, error) {
 		value := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = xor i1 %s, true\n", value, bad)
 		return value, "bool", nil
-	case "HasPrefix":
+	case "has_prefix":
 		needle, needleLen, err := g.strArg(args, 0)
 		if err != nil {
 			return "", "", err
@@ -37,34 +37,34 @@ func (g *generator) strMethodValue(r willc.Record) (string, string, error) {
 		value := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = icmp eq i64 %s, 0\n", value, found)
 		return value, "bool", nil
-	case "HasSuffix":
+	case "has_suffix":
 		needle, needleLen, err := g.strArg(args, 0)
 		if err != nil {
 			return "", "", err
 		}
 		return g.strHasSuffix(r, data, length, needle, needleLen)
-	case "Index":
+	case "index":
 		needle, needleLen, err := g.strArg(args, 0)
 		if err != nil {
 			return "", "", err
 		}
 		found := g.bytesSearch(data, length, needle, needleLen)
 		return g.optionUSizeValue(r, found)
-	case "Trim", "TrimLeft", "TrimRight":
+	case "trim", "trim_left", "trim_right":
 		left, right := 1, 1
-		if name == "TrimLeft" {
+		if name == "trim_left" {
 			right = 0
-		} else if name == "TrimRight" {
+		} else if name == "trim_right" {
 			left = 0
 		}
 		return g.strTrim(r, data, length, left, right)
-	case "Repeat":
+	case "repeat":
 		count, err := g.value(args[0])
 		if err != nil {
 			return "", "", err
 		}
 		return g.strRepeat(r, data, length, count)
-	case "Replace":
+	case "replace":
 		oldData, oldLen, err := g.strArg(args, 0)
 		if err != nil {
 			return "", "", err
@@ -74,9 +74,9 @@ func (g *generator) strMethodValue(r willc.Record) (string, string, error) {
 			return "", "", err
 		}
 		return g.strReplace(r, data, length, oldData, oldLen, newData, newLen)
-	case "Split", "Fields":
-		return g.strSplit(r, data, length, args, name == "Fields")
-	case "Clone":
+	case "split", "fields":
+		return g.strSplit(r, data, length, args, name == "fields")
+	case "clone":
 		return g.strClone(r, data, length)
 	case "Chars":
 		return g.strChars(r, data, length)

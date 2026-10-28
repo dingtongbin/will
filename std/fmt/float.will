@@ -1,0 +1,36 @@
+import c "format.c" {
+    fast willfmt_f64_fixed
+}
+
+# Float formats v in fixed notation with prec digits after the decimal point.
+# The text is exactly rounded, with an exact half rounded to the even digit.
+# NaN formats as nan; infinities format as inf and -inf. A width larger than
+# the result fills the gap with pad bytes between the sign and the digits; a
+# width at or below the result adds nothing. A negative precision is a
+# programming error and panics.
+def float(v: f64, prec: i32, width: i32, fill: u8) -> Format {
+    if prec < 0 {
+        panic("fmt: precision must not be negative")
+    }
+    var text: str = ""
+    var kind: i32 = c.willfmt_f64_fixed(v, prec, raw(text))
+    if kind == 3 {
+        panic("fmt: float formatting failed")
+    }
+    var negative: bool = v < 0.0
+    if kind != 1 and v == 0.0 {
+        # The comparison above treats -0.0 as zero, so inspect the reciprocal
+        # sign to keep the sign bit source-compatible with the C formatter.
+        negative = (1.0 / v) < 0.0
+    }
+    return Format {
+        kind: formatFloat,
+        value: 0u64,
+        negative: negative,
+        base: 10u32,
+        width: width,
+        pad: fill,
+        left: False,
+        text: text
+    }
+}

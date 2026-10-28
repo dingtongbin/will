@@ -1,0 +1,10 @@
+# The host path separator is the one byte Join and Clean write between
+# elements. Both '/' and '\' are accepted as input on every target.
+import c "sep.h" {
+    fast willpath_separator
+}
+
+# Separator returns the platform path separator: '\' on Windows, '/' elsewhere.
+def separator() -> u8 {
+    return c.willpath_separator()
+}

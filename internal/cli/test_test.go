@@ -9,10 +9,10 @@ func TestTestEntryRunsCasesSerially(t *testing.T) {
 	src := testEntry("example.com/app", []string{"TestAlpha", "TestBeta"}, []string{"BenchmarkOne"})
 	for _, want := range []string{
 		"import \"std/test\"",
-		"func WillTestMain() -> i32",
-		"test.NewT(\"example.com/app/TestAlpha\")",
+		"def will_test_main() -> i32",
+		"test.new_t(\"example.com/app/TestAlpha\")",
 		"TestBeta(t_Beta)",
-		"test.NewB(\"example.com/app/BenchmarkOne\")",
+		"test.new_b(\"example.com/app/BenchmarkOne\")",
 		"var total: i32 = 3",
 	} {
 		if !strings.Contains(src, want) {

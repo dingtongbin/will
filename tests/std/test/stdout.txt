@@ -1,0 +1,2 @@
+test/test.will:199:39: T0016 this value cannot cross a task boundary
+    help: keep it in this task, or move it into an arc<T>

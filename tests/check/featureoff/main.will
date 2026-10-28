@@ -1,12 +1,12 @@
 import "std/meta"
 
-func F() -> i32 {
-    if meta.Feature("tls") {
+def f() -> i32 {
+    if meta.feature("tls") {
         return Missing()
     }
     return 0
 }
 
-func main() -> i32 {
-    return F()
+def main() -> i32 {
+    return f()
 }

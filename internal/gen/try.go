@@ -75,7 +75,13 @@ func (g *generator) tryCore(r willc.Record) (string, string, string, error) {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", srcErr, v, dstPayload)
 		}
 	}
+	if err := g.zeroTransferredSource(exprID, ""); err != nil {
+		return "", "", "", err
+	}
 	returned := g.load(dst.llvm, slot)
+	if err := g.releaseSyntheticTemps(); err != nil {
+		return "", "", "", err
+	}
 	if err := g.runDefers(0); err != nil {
 		return "", "", "", err
 	}
@@ -85,16 +91,38 @@ func (g *generator) tryCore(r willc.Record) (string, string, string, error) {
 	if err := g.flushReleases(); err != nil {
 		return "", "", "", err
 	}
-	fmt.Fprintf(g.out, "  ret %s %s\n", dst.llvm, returned)
+	if g.smMode {
+		g.storeTaskResult(dst.llvm, returned)
+	} else {
+		fmt.Fprintf(g.out, "  ret %s %s\n", dst.llvm, returned)
+	}
 	g.out.WriteString("  unreachable\n")
 	g.out.WriteString(okLabel + ":\n")
 
-	if src.payloadIndex == 0 {
-		return "", "", "", g.errf(r.ID, "cannot translate node #%d: the success value has no payload", r.ID)
+	if src.payloadIndex == 0 || len(src.argLLVM) == 0 || src.argLLVM[0] == "" {
+		if err := g.zeroTransferredSource(exprID, ""); err != nil {
+			return "", "", "", err
+		}
+		return "", "", "", nil
 	}
-	addr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", addr, src.llvm, srcSlot, src.payloadIndex)
-	return addr, src.argLLVM[0], src.args[0], nil
+	payload := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", payload, src.llvm, srcSlot, src.payloadIndex)
+	out := g.allocSlot(g.callSlots, "try.out", r.ID, src.argLLVM[0])
+	if _, seen := g.smPlaces[r.ID]; !seen {
+		g.storeZero(out, src.argLLVM[0])
+		g.smPlaces[r.ID] = smPlace{ptr: out, typ: src.argLLVM[0]}
+		g.addSyntheticTemp(out, src.args[0], src.argLLVM[0])
+	}
+	if isAggregateType(src.argLLVM[0]) {
+		g.copyValue(payload, out, src.argLLVM[0])
+	} else {
+		value := g.load(src.argLLVM[0], payload)
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", src.argLLVM[0], value, out)
+	}
+	if err := g.zeroTransferredSource(exprID, ""); err != nil {
+		return "", "", "", err
+	}
+	return out, src.argLLVM[0], src.args[0], nil
 }
 
 // tryValue lowers `expr?` in a value position.
@@ -104,12 +132,14 @@ func (g *generator) tryValue(r willc.Record) (string, error) {
 		return "", err
 	}
 	if typ == "" {
-		return "", g.errf(r.ID, "cannot translate node #%d: ? on a unit value is not supported yet", r.ID)
+		return "", nil
 	}
 	if isAggregateType(typ) {
 		return "", g.errf(r.ID, "cannot translate node #%d: the success value is an aggregate place", r.ID)
 	}
-	return g.load(typ, addr), nil
+	value := g.load(typ, addr)
+	g.clearSyntheticCallSource(r.ID)
+	return value, nil
 }
 
 // tryPlace lowers `expr?` in a place position, for an aggregate payload.

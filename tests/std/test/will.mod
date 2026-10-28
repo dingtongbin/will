@@ -1,4 +1,5 @@
 module example.com/stdtest/test
 will 1
 
-require std@bundled
+require std@v0.1.0
+replace std@v0.1.0 => ../../../std

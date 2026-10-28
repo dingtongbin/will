@@ -1,23 +1,23 @@
-// Fault is the concrete error value shared by the standard library: a stable
-// message for people and a stable status code for classification.
+# Fault is the concrete error value shared by the standard library: a stable
+# message for people and a stable status code for classification.
 struct Fault {
     message: str
     status: i32
 }
 
-func (mut f: Fault) init(message: str, status: i32) {
-    f.message = message
+def (f: mut Fault) init(message: str, status: i32) {
+    f.message = message.clone()
     f.status = status
 }
 
-func (f: Fault) Message() -> str {
-    return f.message
+def (f: ref Fault) message() -> str {
+    return f.message.clone()
 }
 
-func (f: Fault) Status() -> i32 {
+def (f: ref Fault) status() -> i32 {
     return f.status
 }
 
-func (f: Fault) Class() -> ErrorClass {
-    return classOfStatus(f.status)
+def (f: ref Fault) class() -> ErrorClass {
+    return class_of_status(f.status)
 }

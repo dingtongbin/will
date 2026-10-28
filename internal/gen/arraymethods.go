@@ -12,7 +12,7 @@ func (g *generator) arrayAppend(r willc.Record, base, elem, elemLLVM string, ele
 		return err
 	}
 	if typ != "{ ptr, i64 }" {
-		return g.errf(r.ID, "cannot translate node #%d: Append needs a view", r.ID)
+		return g.errf(r.ID, "cannot translate node #%d: append needs a view", r.ID)
 	}
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, view)
@@ -162,7 +162,7 @@ func (g *generator) arrayPop(r willc.Record, base, elem, elemLLVM string) (strin
 func (g *generator) arrayInsert(r willc.Record, base, elem, elemLLVM string) (string, string, error) {
 	args := g.callArgs(r)
 	if len(args) != 2 {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Insert takes an index and a value", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: insert takes an index and a value", r.ID)
 	}
 	elemSize, _, ok := g.sizeAlign(elemLLVM)
 	if !ok {
@@ -189,12 +189,18 @@ func (g *generator) arrayInsert(r willc.Record, base, elem, elemLLVM string) (st
 		if srcType != elemLLVM {
 			return "", "", g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
 		}
-		if g.needsReleaseText(elem) && g.isCopySource(args[1]) {
+		move, _ := g.moveSource(args[1])
+		if !move && g.needsReleaseText(elem) && g.isCopySource(args[1]) {
 			if err := g.retainValue(src, elem); err != nil {
 				return "", "", err
 			}
 		}
 		g.copyValue(src, temp, elemLLVM)
+		if move {
+			if err := g.zeroMovedSource(args[1], temp); err != nil {
+				return "", "", err
+			}
+		}
 	} else {
 		value, err := g.value(args[1])
 		if err != nil {
@@ -416,20 +422,8 @@ func (g *generator) arrayClone(r willc.Record, base, elem, elemLLVM string) (str
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", src, elemLLVM, data, at)
 	dst := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", dst, elemLLVM, newData, at)
-	if isAggregateType(elemLLVM) {
-		if g.needsReleaseText(elem) {
-			if err := g.retainValue(src, elem); err != nil {
-				return "", "", err
-			}
-		}
-		g.copyValue(src, dst, elemLLVM)
-	} else {
-		value := g.load(elemLLVM, src)
-		if isRcText(elem) {
-			g.needRcDecl = true
-			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-		}
-		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, dst)
+	if err := g.cloneOwnedValue(src, dst, elem); err != nil {
+		return "", "", err
 	}
 	next := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", next, at)
@@ -456,7 +450,7 @@ func (g *generator) arrayClone(r willc.Record, base, elem, elemLLVM string) (str
 func (g *generator) arrayRemove(r willc.Record, base, elem, elemLLVM string) (string, string, error) {
 	args := g.callArgs(r)
 	if len(args) != 1 {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Remove takes one index", r.ID)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: remove takes one index", r.ID)
 	}
 	idx, err := g.indexValue(args[0], r)
 	if err != nil {

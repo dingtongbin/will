@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/will-lang/will/internal/ast"
 	"github.com/will-lang/will/internal/check"
 	"github.com/will-lang/will/internal/diag"
 	"github.com/will-lang/will/internal/parser"
@@ -52,11 +53,16 @@ func analyzeStandalone(path, text string) []diag.Diagnostic {
 	if f != nil {
 		res, rds := resolve.Resolve(f)
 		bag.AddAll(rds)
-		bag.AddAll(types.CheckWith(f, res, nil))
+		checked, ds := types.CheckWithFull(f, res, nil)
+		bag.AddAll(ds)
 		if !bag.HasErrors() {
-			bag.AddAll(check.Moves(f))
-			bag.AddAll(check.Borrows(f))
-			bag.AddAll(check.Cycles(f))
+			ownership := check.NewOwnership([]*ast.File{f})
+			effects := check.NewMutEffects([]*ast.File{f})
+			bag.AddAll(check.MovesWithOwnership(f, ownership))
+			bag.AddAll(check.BorrowsWithEffects(f, ownership, effects))
+			bag.AddAll(check.TopLevelWrites(f))
+			bag.AddAll(check.Leaks(f))
+			bag.AddAll(check.CrossTask(f, checked))
 		}
 	}
 	return onlyFile(bag.Diagnostics(), name)

@@ -1,2 +1,2 @@
-main.will:4:20: T0010 meta.Feature is only allowed in an if condition
-    help: write if meta.Feature("x") { ... }
+main.will:4:20: T0010 meta.feature is only allowed in an if condition
+    help: write if meta.feature("x") { ... }

@@ -1,6 +1,6 @@
 import "std/encoding/base64"
 
-func Sum(b: Array<u8>) -> i32 {
+def sum(b: Array<u8>) -> i32 {
     var total: i32 = 0
     var i: usize = 0
     for v in b {
@@ -10,33 +10,33 @@ func Sum(b: Array<u8>) -> i32 {
     return total
 }
 
-func main() -> i32 {
+def main() -> i32 {
     var total: i32 = 0
-    var plain: Result<Array<u8>, Error> = base64.Decode("SGVsbG8=")
+    var plain: Result<Array<u8>, Error> = base64.decode("SGVsbG8=")
     match plain {
         Ok(v) => {
-            total += Sum(v)
+            total += sum(v)
         }
         Err(e) => {
-            total += e.Status()
+            total += e.status()
         }
     }
-    var url: Result<Array<u8>, Error> = base64.DecodeUrl("_-8=")
+    var url: Result<Array<u8>, Error> = base64.decode_url("_-8=")
     match url {
         Ok(v) => {
-            total += Sum(v)
+            total += sum(v)
         }
         Err(e) => {
-            total += e.Status()
+            total += e.status()
         }
     }
-    var bad: Result<Array<u8>, Error> = base64.Decode("SGVsbG8")
+    var bad: Result<Array<u8>, Error> = base64.decode("SGVsbG8")
     match bad {
         Ok(v) => {
-            total += Sum(v)
+            total += sum(v)
         }
         Err(e) => {
-            total += e.Status()
+            total += e.status()
         }
     }
     return total

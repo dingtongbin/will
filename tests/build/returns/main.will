@@ -3,15 +3,15 @@ struct Pair {
     b: i32
 }
 
-func Make(n: i32) -> Pair {
+def make(n: i32) -> Pair {
     return Pair { a: n, b: n + 1 }
 }
 
-func First() -> i32 {
-    return Make(7).a
+def first() -> i32 {
+    return make(7).a
 }
 
-func main() -> i32 {
-    var p: Pair = Make(3)
-    return First() + p.b
+def main() -> i32 {
+    var p: Pair = make(3)
+    return first() + p.b
 }

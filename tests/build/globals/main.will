@@ -1,6 +1,5 @@
 import "example.com/globals/lib"
 
-func main() -> i32 {
-    lib.Seed += 2
-    return lib.Seed + lib.Next()
+def main() -> i32 {
+    return lib.Seed + lib.next()
 }

@@ -1,0 +1,33 @@
+async def worker(ch: chan<i32>) -> i32 {
+    var item: Option<i32> = await ch.recv()
+    match item {
+        Some(_) => {
+            return 1
+        }
+        None => {
+            return 2
+        }
+    }
+    return 3
+}
+
+async def main() -> i32 {
+    var ch: chan<i32> = new chan<i32>(1)
+    var value: i32 = 0
+    region {
+        var task: Task<i32> = spawn worker(ch)
+        task.cancel()
+        match await task {
+            Ok(v) => {
+                value = v
+            }
+            Err(_) => {
+                value = 7
+            }
+        }
+    }
+    if value != 7 {
+        return 1
+    }
+    return 0
+}

@@ -1,26 +1,98 @@
-// The synchronous file operations are the blocking half of std/os/fs. The
-// asynchronous half needs the scheduler's file suspension and is not exposed
-// until that path exists.
-import c "file.h" {
+# File paths and handles for std/os/fs. The plain names are async operations
+# lowered to task frames; the _blocking suffix is the synchronous boundary.
+import "std/errors"
+
+import c "fs.c" {
     fast willrt_fs_read_file
     fast willrt_fs_write_file
     fast willrt_fs_append_file
+    fast willrt_fs_open
+    fast willrt_fs_create
+    fast willrt_fs_file_read
+    fast willrt_fs_file_write
+    fast willrt_fs_file_seek
+    fast willrt_fs_file_sync
+    fast willrt_fs_file_close
+    fast willrt_fs_file_stat
+    fast willrt_fs_stat
+    fast willrt_fs_read_dir
+    fast willrt_fs_rename
+    fast willrt_fs_remove
+    fast willrt_fs_temp_file
+    fast willrt_fs_mkdir
+    fast willrt_fs_mkdir_all
+    fast willrt_fs_remove_all
+    fast willrt_fs_symlink
+    fast willrt_fs_temp_dir
+    fast willrt_fs_async_read_file
+    fast willrt_fs_async_write_file
+    fast willrt_fs_async_append
+    fast willrt_fs_async_open
+    fast willrt_fs_async_create
+    fast willrt_fs_async_file_read
+    fast willrt_fs_async_file_write
+    fast willrt_fs_async_file_seek
+    fast willrt_fs_async_file_sync
+    fast willrt_fs_async_file_stat
+    fast willrt_fs_async_stat
+    fast willrt_fs_async_read_dir
+    fast willrt_fs_async_rename
+    fast willrt_fs_async_remove
+    fast willrt_fs_async_temp_file
+    fast willrt_fs_async_mkdir
+    fast willrt_fs_async_mkdir_all
+    fast willrt_fs_async_remove_all
+    fast willrt_fs_async_symlink
+    fast willrt_fs_async_temp_dir
+}
+
+# OpenFlags selects the access mode for Open.
+struct OpenFlags {
+    read: bool
+    write: bool
+    create_blocking: bool
+    append_blocking: bool
+    truncate: bool
+    exclusive: bool
+}
+
+# File is one open file handle. Close releases it.
+struct File {
+    handle: raw
+}
+
+# StatInfo is the metadata of one path. mtime is seconds since the Unix epoch.
+# The type and the Stat function need distinct names in will's package
+# namespace.
+struct StatInfo {
+    size: i64
+    mode: u32
+    mtime: i64
+    isDir: bool
+    isSymlink: bool
+}
+
+# DirEntry is one name returned by ReadDir.
+struct DirEntry {
+    name: str
+    isDir: bool
+    size: i64
 }
 
 struct fsError {
     message: str
 }
 
-func (e: fsError) Message() -> str {
-    return e.message
+def (e: ref fsError) message() -> str {
+    return e.message.clone()
 }
 
-func (e: fsError) Status() -> i32 {
-    return 2
+def (e: ref fsError) status() -> i32 {
+    return 7
 }
 
-// ReadFile returns every byte of path.
-func ReadFile(path: str) -> Result<Array<u8>, Error> {
+# ReadFile returns every byte of path.
+def read_file_blocking(path: str) -> Result<Array<u8>, Error> {
     var out: Array<u8> = new Array<u8>(0)
     var status: i32 = c.willrt_fs_read_file(raw(path), raw(out))
     if status != 0 {
@@ -29,8 +101,8 @@ func ReadFile(path: str) -> Result<Array<u8>, Error> {
     return Ok(out)
 }
 
-// WriteFile replaces path with data.
-func WriteFile(path: str, data: []u8) -> Result<(), Error> {
+# WriteFile replaces path with data.
+def write_file_blocking(path: str, data: []u8) -> Result<(), Error> {
     var status: i32 = c.willrt_fs_write_file(raw(path), raw(data))
     if status != 0 {
         return Err(fsError { message: "fs: cannot write file"})
@@ -38,11 +110,363 @@ func WriteFile(path: str, data: []u8) -> Result<(), Error> {
     return Ok(())
 }
 
-// Append writes data at the end of path.
-func Append(path: str, data: []u8) -> Result<(), Error> {
+# Append writes data at the end of path.
+def append_blocking(path: str, data: []u8) -> Result<(), Error> {
     var status: i32 = c.willrt_fs_append_file(raw(path), raw(data))
     if status != 0 {
-        return Err(fsError { message: "fs: cannot append file"})
+        return Err(fsError { message: "fs: cannot append_blocking file"})
     }
     return Ok(())
+}
+
+# Open opens path with flags.
+def open_blocking(path: str, flags: OpenFlags) -> Result<File, Error> {
+    var file: File
+    var status: i32 = c.willrt_fs_open(raw(path), raw(flags), raw(file))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(file)
+}
+
+# Create truncates or creates path and opens it for reading and writing.
+def create_blocking(path: str, mode: u32) -> Result<File, Error> {
+    var file: File
+    var status: i32 = c.willrt_fs_create(raw(path), mode, raw(file))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(file)
+}
+
+# Read appends bytes into buf. It returns the number read; zero means EOF.
+def (f: ref File) read_blocking(buf: mut Array<u8>) -> Result<usize, Error> {
+    var count: usize = 0
+    var status: i32 = c.willrt_fs_file_read(raw(f), raw(count), raw(buf))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(count)
+}
+
+# Write writes every byte of buf.
+def (f: ref File) write_blocking(buf: []u8) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_file_write(raw(f), raw(buf))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# Seek moves the file position and returns the new offset.
+def (f: ref File) seek_blocking(offset: i64, whence: i32) -> Result<i64, Error> {
+    var at: i64 = 0
+    var status: i32 = c.willrt_fs_file_seek(raw(f), offset, whence, raw(at))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(at)
+}
+
+# Read parks the task frame until the blocking pool finishes the host read.
+async def (f: ref File) read(buf: mut Array<u8>) -> Result<usize, Error> {
+    var count: usize = 0
+    var status: i32 = await c.willrt_fs_async_file_read(raw(f), raw(count), raw(buf))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(count)
+}
+
+# Write parks the task frame until the host write finishes.
+async def (f: ref File) write(buf: []u8) -> Result<(), Error> {
+    var status: i32 = await c.willrt_fs_async_file_write(raw(f), raw(buf))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# Seek parks the task frame until the host seek finishes.
+async def (f: ref File) seek(offset: i64, whence: i32) -> Result<i64, Error> {
+    var at: i64 = 0
+    var status: i32 = await c.willrt_fs_async_file_seek(raw(f), offset, whence, raw(at))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(at)
+}
+
+# Sync parks the task frame until the host sync finishes.
+async def (f: ref File) sync() -> Result<(), Error> {
+    var status: i32 = await c.willrt_fs_async_file_sync(raw(f))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# Stat returns the metadata of the open file.
+async def (f: ref File) stat() -> Result<StatInfo, Error> {
+    var info: StatInfo
+    var status: i32 = await c.willrt_fs_async_file_stat(raw(f), raw(info))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(info)
+}
+
+# Sync flushes buffered writes to the host.
+def (f: ref File) sync_blocking() -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_file_sync(raw(f))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# Close releases the file handle. A closed handle is safe to close again.
+def (f: mut File) close() -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_file_close(raw(f))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# Stat returns the metadata of path.
+def stat_blocking(path: str) -> Result<StatInfo, Error> {
+    var info: StatInfo
+    var status: i32 = c.willrt_fs_stat(raw(path), raw(info))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(info)
+}
+
+# ReadDir returns the directory entries sorted by name.
+def read_dir_blocking(path: str) -> Result<Array<DirEntry>, Error> {
+    var entries: Array<DirEntry>
+    var status: i32 = c.willrt_fs_read_dir(raw(path), raw(entries))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(entries)
+}
+
+# Rename moves old to new.
+def rename_blocking(old: str, new: str) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_rename(raw(old), raw(new))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# Remove deletes one file or empty directory.
+def remove_blocking(path: str) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_remove(raw(path))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# TempFile creates a temporary file under dir. The handle is open for reading
+# and writing.
+def temp_file_blocking(dir: str, pattern: str) -> Result<File, Error> {
+    var file: File
+    var status: i32 = c.willrt_fs_temp_file(raw(dir), raw(pattern), raw(file))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(file)
+}
+
+# Mkdir creates one directory.
+def mkdir_blocking(path: str, mode: u32) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_mkdir(raw(path), mode)
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# MkdirAll creates path and every missing parent.
+def mkdir_all_blocking(path: str, mode: u32) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_mkdir_all(raw(path), mode)
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# RemoveAll removes path and everything below it.
+def remove_all_blocking(path: str) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_remove_all(raw(path))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# Symlink creates a symbolic link at link that names target.
+def symlink_blocking(target: str, link: str) -> Result<(), Error> {
+    var status: i32 = c.willrt_fs_symlink(raw(target), raw(link))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# TempDir creates a directory under dir and returns its path.
+def temp_dir_blocking(dir: str, pattern: str) -> Result<str, Error> {
+    var out: str = ""
+    var status: i32 = c.willrt_fs_temp_dir(raw(dir), raw(pattern), raw(out))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(out)
+}
+
+# AsyncMkdir is the async spelling of Mkdir.
+async def mkdir(path: str, mode: u32) -> Result<(), Error> {
+    var status: i32 = await c.willrt_fs_async_mkdir(raw(path), mode)
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# AsyncMkdirAll is the async spelling of MkdirAll.
+async def mkdir_all(path: str, mode: u32) -> Result<(), Error> {
+    var status: i32 = await c.willrt_fs_async_mkdir_all(raw(path), mode)
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# AsyncRemoveAll is the async spelling of RemoveAll.
+async def remove_all(path: str) -> Result<(), Error> {
+    var status: i32 = await c.willrt_fs_async_remove_all(raw(path))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# AsyncSymlink is the async spelling of Symlink.
+async def symlink(target: str, link: str) -> Result<(), Error> {
+    var status: i32 = await c.willrt_fs_async_symlink(raw(target), raw(link))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# AsyncTempDir is the async spelling of TempDir.
+async def temp_dir(dir: str, pattern: str) -> Result<str, Error> {
+    var out: str = ""
+    var status: i32 = await c.willrt_fs_async_temp_dir(raw(dir), raw(pattern), raw(out))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(out)
+}
+
+# AsyncReadFile is the async spelling of ReadFile.
+async def read_file(path: str) -> Result<Array<u8>, Error> {
+    var out: Array<u8>
+    var status: i32 = await c.willrt_fs_async_read_file(raw(path), raw(out))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(out)
+}
+
+# AsyncWriteFile is the async spelling of WriteFile.
+async def write_file(path: str, data: []u8) -> Result<(), Error> {
+    var status: i32 = await c.willrt_fs_async_write_file(raw(path), raw(data))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# AsyncAppend is the async spelling of Append.
+async def append(path: str, data: []u8) -> Result<(), Error> {
+    var status: i32 = await c.willrt_fs_async_append(raw(path), raw(data))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# AsyncOpen is the async spelling of Open.
+async def open(path: str, flags: OpenFlags) -> Result<File, Error> {
+    var file: File
+    var status: i32 = await c.willrt_fs_async_open(raw(path), raw(flags), raw(file))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(file)
+}
+
+# AsyncCreate is the async spelling of Create.
+async def create(path: str, mode: u32) -> Result<File, Error> {
+    var file: File
+    var status: i32 = await c.willrt_fs_async_create(raw(path), mode, raw(file))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(file)
+}
+
+# AsyncStat is the async spelling of Stat.
+async def stat(path: str) -> Result<StatInfo, Error> {
+    var info: StatInfo
+    var status: i32 = await c.willrt_fs_async_stat(raw(path), raw(info))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(info)
+}
+
+# AsyncReadDir is the async spelling of ReadDir.
+async def read_dir(path: str) -> Result<Array<DirEntry>, Error> {
+    var entries: Array<DirEntry>
+    var status: i32 = await c.willrt_fs_async_read_dir(raw(path), raw(entries))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(entries)
+}
+
+# AsyncRename is the async spelling of Rename.
+async def rename(old: str, new: str) -> Result<(), Error> {
+    var status: i32 = await c.willrt_fs_async_rename(raw(old), raw(new))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# AsyncRemove is the async spelling of Remove.
+async def remove(path: str) -> Result<(), Error> {
+    var status: i32 = await c.willrt_fs_async_remove(raw(path))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(())
+}
+
+# AsyncTempFile is the async spelling of TempFile.
+async def temp_file(dir: str, pattern: str) -> Result<File, Error> {
+    var file: File
+    var status: i32 = await c.willrt_fs_async_temp_file(raw(dir), raw(pattern), raw(file))
+    if status != 0 {
+        return Err(errors.Io)
+    }
+    return Ok(file)
 }

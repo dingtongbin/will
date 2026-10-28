@@ -12,8 +12,8 @@ import (
 // runtimeMethodNames are the built-in methods that reach the runtime: channels,
 // tasks, and the calls that release them.
 var runtimeMethodNames = map[string]bool{
-	"Join": true, "Send": true, "TrySend": true,
-	"Recv": true, "TryRecv": true, "Close": true,
+	"join": true, "send": true, "try_send": true,
+	"recv": true, "try_recv": true, "close": true,
 }
 
 // runtimeBuiltinNames are the predefined functions that reach the runtime.
@@ -181,6 +181,10 @@ func (c *checker) expr(e ast.Expr) {
 		for _, f := range x.Fields {
 			c.expr(f.Value)
 		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			c.expr(elem)
+		}
 	case *ast.UnaryExpr:
 		c.expr(x.X)
 	case *ast.BinaryExpr:
@@ -192,6 +196,8 @@ func (c *checker) expr(e ast.Expr) {
 	case *ast.LambdaExpr:
 		c.block(x.Body)
 	case *ast.TryExpr:
+		c.expr(x.X)
+	case *ast.AwaitExpr:
 		c.expr(x.X)
 	case *ast.UnwrapExpr:
 		c.expr(x.X)

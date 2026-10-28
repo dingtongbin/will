@@ -1,0 +1,104 @@
+import "std/fmt"
+import "std/io"
+
+# NullWriter counts the bytes it is asked to write and discards them.
+struct NullWriter {
+    n: usize
+}
+
+async def (w: ref NullWriter) write(buf: []u8) -> Result<(), Error> {
+    return Ok(())
+}
+
+async def (w: ref NullWriter) sync() -> Result<(), Error> {
+    return Ok(())
+}
+
+# Wrap holds a Writer as a field and forwards both methods, so the method set
+# of the field type is reached from another package.
+struct Wrap {
+    inner: io.Writer
+}
+
+async def (w: ref Wrap) write(buf: []u8) -> Result<(), Error> {
+    return await w.inner.write(buf)
+}
+
+async def (w: ref Wrap) sync() -> Result<(), Error> {
+    return await w.inner.sync()
+}
+
+# sink takes the interface and calls a method whose result is an enum.
+async def sink(w: io.Writer) -> Result<(), Error> {
+    var storage: Array<u8> = new Array<u8>(0)
+    var bytes: []u8 = storage[Range(0, storage.len())]
+    _ = (await w.write(bytes))?
+    _ = (await w.sync())?
+    return Ok(())
+}
+
+# Recorder notes the first and last byte it was handed and how many there
+# were, so a formatted write can be checked without keeping the bytes.
+var written: usize = 0
+var first: u8 = 0u8
+var last: u8 = 0u8
+
+struct Recorder {
+    pad: usize
+}
+
+async def (w: ref Recorder) write(buf: []u8) -> Result<(), Error> {
+    var i: usize = 0
+    while True {
+        if i >= buf.len() {
+            break
+        }
+        if written == 0usize and i == 0usize {
+            first = buf[i]
+        }
+        last = buf[i]
+        i += 1
+    }
+    written += buf.len()
+    return Ok(())
+}
+
+async def (w: ref Recorder) sync() -> Result<(), Error> {
+    return Ok(())
+}
+
+async def check_printf() -> i32 {
+    written = 0usize
+    first = 0u8
+    last = 0u8
+    match await fmt.printf(Recorder{pad: 0usize}, "ab", 42i32) {
+        Ok(_) => {}
+        Err(_) => {
+            return 3
+        }
+    }
+    if written != 4usize {
+        return 4
+    }
+    if first != 97u8 or last != 50u8 {
+        return 5
+    }
+    return 0
+}
+
+async def main() -> i32 {
+    fmt.println("writer", 1i32)
+    var null: NullWriter = NullWriter{n: 0}
+    var wrapped: Wrap = Wrap{inner: null}
+    match await sink(wrapped) {
+        Ok(_) => {}
+        Err(_) => {
+            return 1
+        }
+    }
+    var code: i32 = await check_printf()
+    if code != 0 {
+        return code
+    }
+    return 0
+}

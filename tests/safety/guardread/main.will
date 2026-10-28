@@ -1,0 +1,14 @@
+import "std/sync"
+
+struct Counter {
+    n: i32
+}
+
+async def bad(rw: sync.RwLock<Counter>) {
+    var r: sync.ReadGuard<Counter> = await rw.r_lock()
+    r.n = 1
+}
+
+def main() -> i32 {
+    return 0
+}

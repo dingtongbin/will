@@ -94,7 +94,6 @@ git clone https://github.com/dingtongbin/will.git
 cd will
 go build -o bin/will ./cmd/will
 
-export WILL_ROOT="$PWD/std"
 export WILL_RUNTIME="$PWD/runtime"
 export WILL_CLANG="$(command -v clang)"
 
@@ -104,7 +103,6 @@ export WILL_CLANG="$(command -v clang)"
 Windows PowerShell:
 
 ```powershell
-$env:WILL_ROOT = "$PWD\std"
 $env:WILL_RUNTIME = "$PWD\runtime"
 $env:WILL_CLANG = (Get-Command clang).Source
 
@@ -149,4 +147,4 @@ tools/          门禁、检查器与索引工具
 
 ## 许可
 
-MIT License。见 [LICENSE](LICENSE)。
+Apache License 2.0。见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。

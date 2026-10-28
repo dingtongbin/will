@@ -1,19 +1,19 @@
-// Assertion helpers for the test package. Each one reports a failure by
-// panicking with the caller's message, so the report carries the source
-// position of the assertion.
+# Assertion helpers for the test package. Each one reports a failure by
+# panicking with the caller's message, so the report carries the source
+# position of the assertion.
 
-func Assert(cond: bool, message: str) {
-    if !cond {
+def assert(cond: bool, message: str) {
+    if not cond {
         panic(message)
     }
 }
 
-func AssertEqual<V>(got: V, want: V, message: str) {
-    if !(got == want) {
+def assert_equal<V>(got: V, want: V, message: str) {
+    if not(got == want) {
         panic(message)
     }
 }
 
-func Fatal(message: str) {
+def fatal(message: str) {
     panic(message)
 }

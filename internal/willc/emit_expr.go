@@ -50,8 +50,20 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 		e.field(rec, "hi", Ref(hid))
 		e.pop()
 		return rec
+	case *ast.BorrowExpr:
+		rec := e.add("borrow", v)
+		if v.Mut {
+			e.boolean(rec, "mut", true)
+		}
+		e.push(rec)
+		xid := e.emitExpr(v.X)
+		e.field(rec, "expr", Ref(xid))
+		e.pop()
+		return rec
 	case *ast.AggregateExpr:
 		return e.emitAggregate(v)
+	case *ast.ArrayLitExpr:
+		return e.emitArrayLiteral(v)
 	case *ast.NewExpr:
 		return e.emitNew(v)
 	case *ast.UnaryExpr:
@@ -97,11 +109,15 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 		e.field(rec, "expr", Ref(xid))
 		e.pop()
 		return rec
+	case *ast.AwaitExpr:
+		rec := e.add("await", v)
+		e.push(rec)
+		xid := e.emitExpr(v.X)
+		e.field(rec, "expr", Ref(xid))
+		e.pop()
+		return rec
 	case *ast.SpawnExpr:
 		rec := e.add("spawn", v)
-		if v.Lane != "" {
-			e.text(rec, "lane", v.Lane)
-		}
 		e.push(rec)
 		cid := e.emitExpr(v.Call)
 		e.field(rec, "call", Ref(cid))
@@ -115,10 +131,6 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 		return e.emitMatch(v)
 	case *ast.InterpExpr:
 		return e.emitInterp(v)
-	case *ast.LaneHereExpr:
-		// lane.Here() is a built-in expression with no fields; it is not a
-		// name, so it can never be confused with a user name.
-		return e.add("lanehere", v)
 	case *ast.UnitExpr:
 		rec := e.add("lit", v)
 		e.word(rec, "kind", "unit")
@@ -214,6 +226,14 @@ func literalText(v *ast.LiteralExpr) string {
 	return v.Text
 }
 
+func (e *emitter) emitCallArg(rec int, a *ast.CallArg) {
+	if a.Name != "" {
+		e.text(rec, "name", a.Name)
+	}
+	aid := e.emitExpr(a.Expr)
+	e.field(rec, "arg", Ref(aid))
+}
+
 func (e *emitter) emitCall(c *ast.CallExpr) int {
 	if name, ok := c.Callee.(*ast.NameExpr); ok {
 		sym := e.refs[name]
@@ -254,8 +274,7 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 		}
 		e.emitTypeArgsField(rec, c.TypeArgs)
 		for _, a := range c.Args {
-			aid := e.emitExpr(a.Expr)
-			e.field(rec, "arg", Ref(aid))
+			e.emitCallArg(rec, a)
 		}
 		e.pop()
 		return rec
@@ -266,8 +285,7 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 	e.field(rec, "to", Ref(cid))
 	e.emitTypeArgsField(rec, c.TypeArgs)
 	for _, a := range c.Args {
-		aid := e.emitExpr(a.Expr)
-		e.field(rec, "arg", Ref(aid))
+		e.emitCallArg(rec, a)
 	}
 	e.pop()
 	return rec
@@ -293,9 +311,7 @@ func (e *emitter) emitMethodCall(v *ast.MethodCallExpr) int {
 		e.push(rec)
 		rid := e.emitExpr(v.Recv)
 		switch special {
-		case "join":
-			e.field(rec, "task", Ref(rid))
-		case "send", "trysend":
+		case "send":
 			e.field(rec, "chan", Ref(rid))
 			aid := e.emitExpr(v.Args[0].Expr)
 			e.field(rec, "value", Ref(aid))
@@ -322,8 +338,7 @@ func (e *emitter) emitMethodCall(v *ast.MethodCallExpr) int {
 	e.field(rec, "recv", Ref(rid))
 	e.emitTypeArgsField(rec, v.TypeArgs)
 	for _, a := range v.Args {
-		aid := e.emitExpr(a.Expr)
-		e.field(rec, "arg", Ref(aid))
+		e.emitCallArg(rec, a)
 	}
 	e.pop()
 	return rec
@@ -331,16 +346,10 @@ func (e *emitter) emitMethodCall(v *ast.MethodCallExpr) int {
 
 func specialCall(name string, args int) (string, bool) {
 	switch {
-	case name == "Join" && args == 0:
-		return "join", true
-	case name == "Send" && args == 1:
+	case name == "send" && args == 1:
 		return "send", true
-	case name == "TrySend" && args == 1:
-		return "trysend", true
-	case name == "Recv" && args == 0:
+	case name == "recv" && args == 0:
 		return "recv", true
-	case name == "TryRecv" && args == 0:
-		return "tryrecv", true
 	}
 	return "", false
 }
@@ -368,6 +377,18 @@ func (e *emitter) emitAggregate(v *ast.AggregateExpr) int {
 	return rec
 }
 
+func (e *emitter) emitArrayLiteral(v *ast.ArrayLitExpr) int {
+	rec := e.add("arrlit", v)
+	e.text(rec, "type", typeText(v.Type))
+	e.push(rec)
+	for _, elem := range v.Elems {
+		id := e.emitExpr(elem)
+		e.field(rec, "elem", Ref(id))
+	}
+	e.pop()
+	return rec
+}
+
 func (e *emitter) emitNew(v *ast.NewExpr) int {
 	if v.Type != nil && v.Type.Kind == ast.NamedType && v.Type.Name == "chan" {
 		rec := e.add("channew", v)
@@ -377,15 +398,6 @@ func (e *emitter) emitNew(v *ast.NewExpr) int {
 			aid := e.emitExpr(v.Args[0].Expr)
 			e.field(rec, "cap", Ref(aid))
 		}
-		if len(v.Args) > 1 {
-			if name, ok := priorityArg(v.Args[1].Expr); ok {
-				// The channel priority is written as its name.
-				e.text(rec, "prio", name)
-			} else {
-				pid := e.emitExpr(v.Args[1].Expr)
-				e.field(rec, "prio", Ref(pid))
-			}
-		}
 		e.pop()
 		return rec
 	}
@@ -393,25 +405,10 @@ func (e *emitter) emitNew(v *ast.NewExpr) int {
 	e.text(rec, "type", typeText(v.Type))
 	e.push(rec)
 	for _, a := range v.Args {
-		aid := e.emitExpr(a.Expr)
-		e.field(rec, "arg", Ref(aid))
+		e.emitCallArg(rec, a)
 	}
 	e.pop()
 	return rec
-}
-
-// priorityArg returns the name of a Priority.X argument, which the willc
-// channel record writes as text.
-func priorityArg(x ast.Expr) (string, bool) {
-	f, ok := x.(*ast.FieldExpr)
-	if !ok {
-		return "", false
-	}
-	recv, ok := f.Recv.(*ast.NameExpr)
-	if !ok || recv.Name != "Priority" {
-		return "", false
-	}
-	return f.Name, true
 }
 
 func (e *emitter) emitLambda(v *ast.LambdaExpr) int {
@@ -423,7 +420,18 @@ func (e *emitter) emitLambda(v *ast.LambdaExpr) int {
 	e.emitParams(v.Params)
 	e.emitType(v.Result)
 	e.ref(rec, "body", v.Body)
+	// A closure body runs later and owns a copy of every capture. It must not
+	// release an outer owner at its own block end.
+	oldScopes, oldLoops := e.scopes, e.loops
+	oldTypes := e.localTypes
+	e.scopes = [][]ast.Node{{}}
+	e.loops = nil
+	e.localTypes = map[string]*ast.Type{}
+	for _, p := range v.Params {
+		e.localTypes[p.Name] = p.Type
+	}
 	e.emitBlock(v.Body)
+	e.scopes, e.loops, e.localTypes = oldScopes, oldLoops, oldTypes
 	e.pop()
 	return rec
 }

@@ -37,7 +37,7 @@ func TestCRLineEnding(t *testing.T) {
 }
 
 func TestUnterminatedBlockComment(t *testing.T) {
-	_, ds := scan(t, "/* open\n")
+	_, ds := scan(t, "\"\"\" open\n")
 	d := findDiagnostic(t, ds, diag.CodeUnterminated, diag.UnterminatedBlockComment.Text)
 	if d.Pos.Line != 1 || d.Pos.Col != 1 {
 		t.Errorf("position = %d:%d, want 1:1", d.Pos.Line, d.Pos.Col)

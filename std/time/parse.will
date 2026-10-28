@@ -1,0 +1,234 @@
+# Parsers for the named time formats. They read text into an Instant and keep
+# the offset the text names as the zone of the result.
+
+# The parsers accept whole seconds in this range; the exact i64 endpoints add
+# a fractional part, which the per-field checks handle.
+const minUnixSecond: i64 = -9223372036
+const maxUnixSecond: i64 = 9223372036
+
+# timeError is the error value of rejected time text. Its status 2 is the
+# stable status of Invalid, so a caller classifies a parse failure without
+# knowing this type.
+struct timeError {
+    message: str
+}
+
+def (e: ref timeError) message() -> str {
+    return e.message.clone()
+}
+
+def (e: ref timeError) status() -> i32 {
+    return 2
+}
+
+def fail(message: str) -> timeError {
+    return timeError { message: message.clone()}
+}
+
+# The ASCII scalars the parsers compare against. A character literal is not
+# lowered yet, so the code points are named here.
+const charPlus: u32 = 43
+const charDash: u32 = 45
+const charDot: u32 = 46
+const charZero: u32 = 48
+const charNine: u32 = 57
+const charColon: u32 = 58
+const charUpperT: u32 = 84
+const charUpperZ: u32 = 90
+const charLowerT: u32 = 116
+const charLowerZ: u32 = 122
+
+# charsOf copies the scalars of s. The parsers look at fixed positions, and a
+# byte offset inside a multi-byte scalar would not be a valid index into s.
+def chars_of(s: str) -> Array<u32> {
+    var out: Array<u32> = new Array<u32>(0)
+    for c in s {
+        out.push(c)
+    }
+    return out
+}
+
+def digit_value(c: u32) -> i32 {
+    if c >= charZero and c <= charNine {
+        return i32(c - charZero)
+    }
+    return -1
+}
+
+def has_at(cs: []u32, at: i32, want: u32) -> bool {
+    if at < 0 or at >= i32(cs.len()) {
+        return False
+    }
+    return cs[usize(at)] == want
+}
+
+# readDigits reads count decimal digits at at, or returns -1 when any of them
+# is missing or not a digit.
+def read_digits(cs: []u32, at: i32, count: i32) -> i32 {
+    if at < 0 or count <= 0 or at + count > i32(cs.len()) {
+        return -1
+    }
+    var value: i32 = 0
+    var k: i32 = 0
+    while True {
+        if k >= count {
+            break
+        }
+        var d: i32 = digit_value(cs[usize(at + k)])
+        if d < 0 {
+            return -1
+        }
+        value = value * 10 + d
+        k += 1
+    }
+    return value
+}
+
+# secondInRange rejects a Unix second that the Instant count cannot represent.
+def second_in_range(sec: i64) -> bool {
+    return sec >= minUnixSecond and sec <= maxUnixSecond
+}
+
+# ParseRfc3339 reads the RFC 3339 timestamp format and keeps the offset the
+# text names as the zone of the result. Up to nine fractional digits are
+# kept; any further digits are accepted and dropped.
+def parse_rfc3339(s: str) -> Result<Instant, Error> {
+    var cs: Array<u32> = chars_of(s)
+    var c: []u32 = cs[Range(0, cs.len())]
+    var n: i32 = i32(c.len())
+    if n < 20 {
+        return Err(fail("rfc3339: text is shorter than a timestamp"))
+    }
+    var year: i32 = read_digits(c, 0, 4)
+    var month: i32 = read_digits(c, 5, 2)
+    var day: i32 = read_digits(c, 8, 2)
+    var hour: i32 = read_digits(c, 11, 2)
+    var minute: i32 = read_digits(c, 14, 2)
+    var second: i32 = read_digits(c, 17, 2)
+    if year < 0 or month < 0 or day < 0 or hour < 0 or minute < 0 or second < 0 {
+        return Err(fail("rfc3339: a numeric field is not a digit"))
+    }
+    if not has_at(c, 4, charDash) or not has_at(c, 7, charDash) {
+        return Err(fail("rfc3339: the date separators are wrong"))
+    }
+    if not has_at(c, 10, charUpperT) and not has_at(c, 10, charLowerT) {
+        return Err(fail("rfc3339: the date and time separator is missing"))
+    }
+    if not has_at(c, 13, charColon) or not has_at(c, 16, charColon) {
+        return Err(fail("rfc3339: the time separators are wrong"))
+    }
+    if month < 1 or month > 12 {
+        return Err(fail("rfc3339: the month is out of range"))
+    }
+    if day < 1 or day > days_in_month(year, month) {
+        return Err(fail("rfc3339: the day is out of range"))
+    }
+    if hour > 23 or minute > 59 or second > 59 {
+        return Err(fail("rfc3339: the time of day is out of range"))
+    }
+    var at: i32 = 19
+    var frac: i64 = 0
+    if has_at(c, at, charDot) {
+        at += 1
+        var digits: i32 = 0
+        while True {
+            if at >= n {
+                break
+            }
+            var d: i32 = digit_value(c[usize(at)])
+            if d < 0 {
+                break
+            }
+            if digits < 9 {
+                frac = frac * 10i64 + i64(d)
+            }
+            digits += 1
+            at += 1
+        }
+        if digits == 0 {
+            return Err(fail("rfc3339: the fractional part has no digits"))
+        }
+        while True {
+            if digits >= 9 {
+                break
+            }
+            frac = frac * 10i64
+            digits += 1
+        }
+    }
+    var offset: i32 = 0
+    if at >= n {
+        return Err(fail("rfc3339: the offset is missing"))
+    }
+    if has_at(c, at, charUpperZ) or has_at(c, at, charLowerZ) {
+        at += 1
+    } else if has_at(c, at, charPlus) or has_at(c, at, charDash) {
+        var offsetHour: i32 = read_digits(c, at + 1, 2)
+        var offsetMinute: i32 = read_digits(c, at + 4, 2)
+        if offsetHour < 0 or offsetMinute < 0 or not has_at(c, at + 3, charColon) {
+            return Err(fail("rfc3339: the offset is not +HH:MM"))
+        }
+        if offsetHour > 23 or offsetMinute > 59 {
+            return Err(fail("rfc3339: the offset is out of range"))
+        }
+        offset = offsetHour * 3600 + offsetMinute * 60
+        if has_at(c, at, charDash) {
+            offset = -offset
+        }
+        at += 6
+    } else {
+        return Err(fail("rfc3339: the offset is not Z or +HH:MM"))
+    }
+    if at != n {
+        return Err(fail("rfc3339: text follows the timestamp"))
+    }
+    var local_at: i64 = days_from_civil(year, month, day) * secondsPerDay
+    local_at += i64(hour * 3600 + minute * 60 + second)
+    var utc_at: i64 = local_at - i64(offset)
+    if not second_in_range(utc_at) {
+        return Err(fail("rfc3339: the year is outside the Instant range"))
+    }
+    # The largest whole second still leaves room for 0.854775807 s.
+    if utc_at == maxUnixSecond and frac > 854775807i64 {
+        return Err(fail("rfc3339: the fraction is outside the Instant range"))
+    }
+    return Ok(Instant { nanos: utc_at * nanosPerSecond + frac, zone: fixed(offset)})
+}
+
+# ParseDate reads a calendar date as midnight in tz.
+def parse_date(s: str, tz: Timezone) -> Result<Instant, Error> {
+    var cs: Array<u32> = chars_of(s)
+    var c: []u32 = cs[Range(0, cs.len())]
+    var n: i32 = i32(c.len())
+    if n != 10 {
+        return Err(fail("date: text is not a calendar date"))
+    }
+    var year: i32 = read_digits(c, 0, 4)
+    var month: i32 = read_digits(c, 5, 2)
+    var day: i32 = read_digits(c, 8, 2)
+    if year < 0 or month < 0 or day < 0 {
+        return Err(fail("date: a numeric field is not a digit"))
+    }
+    if not has_at(c, 4, charDash) or not has_at(c, 7, charDash) {
+        return Err(fail("date: the separators are wrong"))
+    }
+    if month < 1 or month > 12 {
+        return Err(fail("date: the month is out of range"))
+    }
+    if day < 1 or day > days_in_month(year, month) {
+        return Err(fail("date: the day is out of range"))
+    }
+    var local_at: i64 = days_from_civil(year, month, day) * secondsPerDay
+    # The offset that applies at the local midnight is the one to subtract.
+    # A second lookup corrects the guess on a day whose offset changes.
+    var offset: i32 = offset_at(tz, local_at)
+    var utc_at: i64 = local_at - i64(offset)
+    var corrected: i32 = offset_at(tz, utc_at)
+    if corrected != offset {
+        utc_at = local_at - i64(corrected)
+    }
+    if not second_in_range(utc_at) {
+        return Err(fail("date: the year is outside the Instant range"))
+    }
+    return Ok(Instant { nanos: utc_at * nanosPerSecond, zone: tz})
+}

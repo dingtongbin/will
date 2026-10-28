@@ -1,5 +1,5 @@
-func F() {
+def f() {
 }
 
-func F() {
+def f() {
 }

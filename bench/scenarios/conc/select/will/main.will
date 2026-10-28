@@ -1,0 +1,119 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_rss_bytes
+    bench_sink
+}
+import "example.com/bench/conc/select/will/bench"
+
+# queues is the number of channels the select waits on.
+const queues: i32 = 4
+
+# count is the number of times the workload waits.
+const count: i32 = 500000
+
+# repetitions is the number of measured repetitions of the workload.
+const repetitions: i32 = 5
+
+async def main() -> i32 {
+    var samples: Array<u64> = new Array<u64>(0)
+    var first: chan<i64> = new chan<i64>(1)
+    var second: chan<i64> = new chan<i64>(1)
+    var third: chan<i64> = new chan<i64>(1)
+    var fourth: chan<i64> = new chan<i64>(1)
+    # The warm up pays for the first touch of the pages and of the caches.
+    for i in Range(0, 1000) {
+        _ = i
+        _ = await first.send(1i64)
+        select {
+            a = first.recv() => {
+                match a {
+                    Some(v) => {
+                        _ = v
+                    }
+                    None => {
+                    }
+                }
+            }
+            b = second.recv() => {
+                match b {
+                    Some(v) => {
+                        _ = v
+                    }
+                    None => {
+                    }
+                }
+            }
+            default => {
+            }
+        }
+    }
+
+    var checksum: i64 = 0i64
+    for r in Range(0, repetitions) {
+        _ = r
+        var start: u64 = c.bench_now_ns()
+        var total: i64 = 0i64
+        for i in Range(0, count) {
+            _ = await first.send(i64(i))
+            select {
+                a = first.recv() => {
+                    match a {
+                        Some(v) => {
+                            total += v
+                        }
+                        None => {
+                        }
+                    }
+                }
+                b = second.recv() => {
+                    match b {
+                        Some(v) => {
+                            total += v
+                        }
+                        None => {
+                        }
+                    }
+                }
+                d = third.recv() => {
+                    match d {
+                        Some(v) => {
+                            total += v
+                        }
+                        None => {
+                        }
+                    }
+                }
+                e = fourth.recv() => {
+                    match e {
+                        Some(v) => {
+                            total += v
+                        }
+                        None => {
+                        }
+                    }
+                }
+                default => {
+                }
+            }
+        }
+        var stop: u64 = c.bench_now_ns()
+        samples.push(stop - start)
+        checksum += total
+        c.bench_sink(u64(checksum))
+    }
+
+    bench.sort_samples(samples)
+    var p50: u64 = bench.percentile(samples, 50i64, 100i64)
+    var p95: u64 = bench.percentile(samples, 95i64, 100i64)
+    var p99: u64 = bench.percentile(samples, 99i64, 100i64)
+    var worst: u64 = bench.max(samples)
+
+    print("bench metric p50 ", p50, " ns\n")
+    print("bench metric p95 ", p95, " ns\n")
+    print("bench metric p99 ", p99, " ns\n")
+    print("bench metric max ", worst, " ns\n")
+    print("bench metric waits ", u64(count), " waits\n")
+    print("bench metric queues ", u64(queues), " queues\n")
+    print("bench checksum ", u64(checksum), "\n")
+    return 0
+}

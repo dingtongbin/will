@@ -1,3 +1,5 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
 define i32 @"example.com/set.will$main"() {
 entry:
   %v.s = alloca { ptr, i64, i64 }
@@ -281,134 +283,188 @@ add.result.15:
   %t110 = phi i1 [ false, %add.hit.15 ], [ true, %add.end.15 ]
   br i1 %t110, label %if.then.13, label %if.end.13
 if.then.13:
-  ret i32 0
-if.end.13:
   %t111 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 0
   %t112 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 1
-  %t113 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 2
-  %t114 = load ptr, ptr %t111
-  %t115 = load i64, ptr %t112
-  br label %find.pre.20
-find.pre.20:
-  br label %find.cond.20
-find.cond.20:
-  %t116 = phi i64 [ 0, %find.pre.20 ], [ %next.20, %find.next.20 ]
-  %t117 = icmp ult i64 %t116, %t115
-  br i1 %t117, label %find.body.20, label %find.miss.20
-find.body.20:
-  %t118 = getelementptr inbounds i32, ptr %t114, i64 %t116
-  %t119 = load i32, ptr %t118
-  %t120 = icmp eq i32 %t119, 2
-  br i1 %t120, label %find.hit.20, label %find.next.20
-find.next.20:
-  %next.20 = add i64 %t116, 1
-  br label %find.cond.20
-find.hit.20:
-  br label %find.done.20
-find.miss.20:
-  br label %find.done.20
-find.done.20:
-  %t121 = phi i64 [ %t116, %find.hit.20 ], [ %t115, %find.miss.20 ]
-  %t122 = phi i1 [ true, %find.hit.20 ], [ false, %find.miss.20 ]
-  %t123 = xor i1 %t122, true
-  br i1 %t123, label %if.then.19, label %if.end.19
-if.then.19:
+  %t113 = load ptr, ptr %t111
+  %t114 = load i64, ptr %t112
+  %t115 = alloca i64
+  store i64 0, ptr %t115
+  br label %deep.rel.map.cond.19
+deep.rel.map.cond.19:
+  %t116 = load i64, ptr %t115
+  %t117 = icmp ult i64 %t116, %t114
+  br i1 %t117, label %deep.rel.map.body.19, label %deep.rel.map.done.19
+deep.rel.map.body.19:
+  %t118 = getelementptr inbounds i32, ptr %t113, i64 %t116
+  %t119 = add i64 %t116, 1
+  store i64 %t119, ptr %t115
+  br label %deep.rel.map.cond.19
+deep.rel.map.done.19:
+  call void @willrt_free(ptr %t113)
   ret i32 0
-if.end.19:
+if.end.13:
+  %t120 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 0
+  %t121 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 1
+  %t122 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 2
+  %t123 = load ptr, ptr %t120
+  %t124 = load i64, ptr %t121
+  br label %find.pre.21
+find.pre.21:
+  br label %find.cond.21
+find.cond.21:
+  %t125 = phi i64 [ 0, %find.pre.21 ], [ %next.21, %find.next.21 ]
+  %t126 = icmp ult i64 %t125, %t124
+  br i1 %t126, label %find.body.21, label %find.miss.21
+find.body.21:
+  %t127 = getelementptr inbounds i32, ptr %t123, i64 %t125
+  %t128 = load i32, ptr %t127
+  %t129 = icmp eq i32 %t128, 2
+  br i1 %t129, label %find.hit.21, label %find.next.21
+find.next.21:
+  %next.21 = add i64 %t125, 1
+  br label %find.cond.21
+find.hit.21:
+  br label %find.done.21
+find.miss.21:
+  br label %find.done.21
+find.done.21:
+  %t130 = phi i64 [ %t125, %find.hit.21 ], [ %t124, %find.miss.21 ]
+  %t131 = phi i1 [ true, %find.hit.21 ], [ false, %find.miss.21 ]
+  %t132 = xor i1 %t131, true
+  br i1 %t132, label %if.then.20, label %if.end.20
+if.then.20:
+  %t133 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 0
+  %t134 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 1
+  %t135 = load ptr, ptr %t133
+  %t136 = load i64, ptr %t134
+  %t137 = alloca i64
+  store i64 0, ptr %t137
+  br label %deep.rel.map.cond.22
+deep.rel.map.cond.22:
+  %t138 = load i64, ptr %t137
+  %t139 = icmp ult i64 %t138, %t136
+  br i1 %t139, label %deep.rel.map.body.22, label %deep.rel.map.done.22
+deep.rel.map.body.22:
+  %t140 = getelementptr inbounds i32, ptr %t135, i64 %t138
+  %t141 = add i64 %t138, 1
+  store i64 %t141, ptr %t137
+  br label %deep.rel.map.cond.22
+deep.rel.map.done.22:
+  call void @willrt_free(ptr %t135)
+  ret i32 0
+if.end.20:
   store i32 0, ptr %v.sum
-  %t124 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 0
-  %t125 = load ptr, ptr %t124
-  %t126 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 1
-  %t127 = load i64, ptr %t126
+  %t142 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 0
+  %t143 = load ptr, ptr %t142
+  %t144 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 1
+  %t145 = load i64, ptr %t144
   store i64 0, ptr %v.$idx
-  br label %for.cond.21
-for.cond.21:
-  %t128 = load i64, ptr %v.$idx
-  %t129 = icmp ult i64 %t128, %t127
-  br i1 %t129, label %for.body.21, label %for.end.21
-for.body.21:
-  %t130 = getelementptr inbounds i32, ptr %t125, i64 %t128
-  %t131 = load i32, ptr %t130
-  store i32 %t131, ptr %v.v
-  %t132 = load i32, ptr %v.sum
-  %t133 = load i32, ptr %v.v
-  %t134 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t132, i32 %t133)
-  %t135 = extractvalue {i32, i1} %t134, 0
-  %t136 = extractvalue {i32, i1} %t134, 1
-  br i1 %t136, label %panic.22, label %panic.ok.22
-panic.22:
+  br label %for.cond.23
+for.cond.23:
+  %t146 = load i64, ptr %v.$idx
+  %t147 = icmp ult i64 %t146, %t145
+  br i1 %t147, label %for.body.23, label %for.end.23
+for.body.23:
+  %t148 = getelementptr inbounds i32, ptr %t143, i64 %t146
+  %t149 = load i32, ptr %t148
+  store i32 %t149, ptr %v.v
+  %t150 = load i32, ptr %v.sum
+  %t151 = load i32, ptr %v.v
+  %t152 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t150, i32 %t151)
+  %t153 = extractvalue {i32, i1} %t152, 0
+  %t154 = extractvalue {i32, i1} %t152, 1
+  br i1 %t154, label %panic.24, label %panic.ok.24
+panic.24:
   call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
   unreachable
-panic.ok.22:
-  store i32 %t135, ptr %v.sum
-  br label %for.step.21
-for.step.21:
-  %t137 = load i64, ptr %v.$idx
-  %t138 = add i64 %t137, 1
-  store i64 %t138, ptr %v.$idx
-  br label %for.cond.21
-for.end.21:
-  %t139 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 0
-  %t140 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 1
-  %t141 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 2
-  %t142 = load ptr, ptr %t139
-  %t143 = load i64, ptr %t140
-  %t144 = load ptr, ptr %t139
-  %t145 = load i64, ptr %t140
-  br label %find.pre.24
-find.pre.24:
-  br label %find.cond.24
-find.cond.24:
-  %t146 = phi i64 [ 0, %find.pre.24 ], [ %next.24, %find.next.24 ]
-  %t147 = icmp ult i64 %t146, %t145
-  br i1 %t147, label %find.body.24, label %find.miss.24
-find.body.24:
-  %t148 = getelementptr inbounds i32, ptr %t144, i64 %t146
-  %t149 = load i32, ptr %t148
-  %t150 = icmp eq i32 %t149, 1
-  br i1 %t150, label %find.hit.24, label %find.next.24
-find.next.24:
-  %next.24 = add i64 %t146, 1
-  br label %find.cond.24
-find.hit.24:
-  br label %find.done.24
-find.miss.24:
-  br label %find.done.24
-find.done.24:
-  %t151 = phi i64 [ %t146, %find.hit.24 ], [ %t145, %find.miss.24 ]
-  %t152 = phi i1 [ true, %find.hit.24 ], [ false, %find.miss.24 ]
-  br i1 %t152, label %del.yes.25, label %del.no.25
-del.yes.25:
-  %t153 = getelementptr inbounds i32, ptr %t144, i64 %t151
-  %t154 = add i64 %t151, 1
-  %t155 = sub i64 %t145, %t154
-  %t156 = mul i64 %t155, 4
-  %t157 = getelementptr inbounds i32, ptr %t144, i64 %t151
-  %t158 = getelementptr inbounds i32, ptr %t144, i64 %t154
-  call void @memmove(ptr %t157, ptr %t158, i64 %t156)
-  %t159 = sub i64 %t145, 1
-  store i64 %t159, ptr %t140
-  br label %del.done.25
-del.no.25:
-  br label %del.done.25
-del.done.25:
-  %t160 = phi i1 [ true, %del.yes.25 ], [ false, %del.no.25 ]
-  br i1 %t160, label %if.then.23, label %if.end.23
-if.then.23:
-  %t161 = load i32, ptr %v.sum
-  %t162 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t161, i32 10)
-  %t163 = extractvalue {i32, i1} %t162, 0
-  %t164 = extractvalue {i32, i1} %t162, 1
-  br i1 %t164, label %panic.26, label %panic.ok.26
-panic.26:
+panic.ok.24:
+  store i32 %t153, ptr %v.sum
+  br label %for.step.23
+for.step.23:
+  %t155 = load i64, ptr %v.$idx
+  %t156 = add i64 %t155, 1
+  store i64 %t156, ptr %v.$idx
+  br label %for.cond.23
+for.end.23:
+  %t157 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 0
+  %t158 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 1
+  %t159 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 2
+  %t160 = load ptr, ptr %t157
+  %t161 = load i64, ptr %t158
+  %t162 = load ptr, ptr %t157
+  %t163 = load i64, ptr %t158
+  br label %find.pre.26
+find.pre.26:
+  br label %find.cond.26
+find.cond.26:
+  %t164 = phi i64 [ 0, %find.pre.26 ], [ %next.26, %find.next.26 ]
+  %t165 = icmp ult i64 %t164, %t163
+  br i1 %t165, label %find.body.26, label %find.miss.26
+find.body.26:
+  %t166 = getelementptr inbounds i32, ptr %t162, i64 %t164
+  %t167 = load i32, ptr %t166
+  %t168 = icmp eq i32 %t167, 1
+  br i1 %t168, label %find.hit.26, label %find.next.26
+find.next.26:
+  %next.26 = add i64 %t164, 1
+  br label %find.cond.26
+find.hit.26:
+  br label %find.done.26
+find.miss.26:
+  br label %find.done.26
+find.done.26:
+  %t169 = phi i64 [ %t164, %find.hit.26 ], [ %t163, %find.miss.26 ]
+  %t170 = phi i1 [ true, %find.hit.26 ], [ false, %find.miss.26 ]
+  br i1 %t170, label %del.yes.27, label %del.no.27
+del.yes.27:
+  %t171 = getelementptr inbounds i32, ptr %t162, i64 %t169
+  %t172 = add i64 %t169, 1
+  %t173 = sub i64 %t163, %t172
+  %t174 = mul i64 %t173, 4
+  %t175 = getelementptr inbounds i32, ptr %t162, i64 %t169
+  %t176 = getelementptr inbounds i32, ptr %t162, i64 %t172
+  call void @memmove(ptr %t175, ptr %t176, i64 %t174)
+  %t177 = sub i64 %t163, 1
+  store i64 %t177, ptr %t158
+  br label %del.done.27
+del.no.27:
+  br label %del.done.27
+del.done.27:
+  %t178 = phi i1 [ true, %del.yes.27 ], [ false, %del.no.27 ]
+  br i1 %t178, label %if.then.25, label %if.end.25
+if.then.25:
+  %t179 = load i32, ptr %v.sum
+  %t180 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t179, i32 10)
+  %t181 = extractvalue {i32, i1} %t180, 0
+  %t182 = extractvalue {i32, i1} %t180, 1
+  br i1 %t182, label %panic.28, label %panic.ok.28
+panic.28:
   call void @willrt_panic(ptr @.str.0, ptr @.str.3, ptr @.str.2)
   unreachable
-panic.ok.26:
-  store i32 %t163, ptr %v.sum
-  br label %if.end.23
-if.end.23:
-  %t165 = load i32, ptr %v.sum
-  ret i32 %t165
+panic.ok.28:
+  store i32 %t181, ptr %v.sum
+  br label %if.end.25
+if.end.25:
+  %t183 = load i32, ptr %v.sum
+  %t184 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 0
+  %t185 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 1
+  %t186 = load ptr, ptr %t184
+  %t187 = load i64, ptr %t185
+  %t188 = alloca i64
+  store i64 0, ptr %t188
+  br label %deep.rel.map.cond.29
+deep.rel.map.cond.29:
+  %t189 = load i64, ptr %t188
+  %t190 = icmp ult i64 %t189, %t187
+  br i1 %t190, label %deep.rel.map.body.29, label %deep.rel.map.done.29
+deep.rel.map.body.29:
+  %t191 = getelementptr inbounds i32, ptr %t186, i64 %t189
+  %t192 = add i64 %t189, 1
+  store i64 %t192, ptr %t188
+  br label %deep.rel.map.cond.29
+deep.rel.map.done.29:
+  call void @willrt_free(ptr %t186)
+  ret i32 %t183
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()

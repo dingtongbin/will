@@ -1,0 +1,78 @@
+import c "bench_clock.h" {
+    bench_now_ns
+    bench_rss_bytes
+    bench_sink
+}
+import "example.com/bench/mem/steady/will/bench"
+
+# count is the number of values the loop walks.
+const count: i32 = 1000000
+
+# repetitions is the number of measured repetitions of the workload.
+const repetitions: i32 = 5
+
+# seed is the seed of the input generator.
+const seed: u64 = 0x2545F4914F6CDD1D
+
+# Fill fills the array with the values of the generator. The C side writes
+# the same generator, so both sides walk the same values.
+#
+# The array is created with the capacity of the fill, so the pushes never
+# grow it.
+def fill(values: mut Array<i64>) {
+    var state: u64 = seed
+    for i in Range(0, count) {
+        _ = i
+        state = state *% 6364136223846793005 +% 1442695040888963407
+        values.push(i64(state >> 1))
+    }
+}
+
+def main() -> i32 {
+    var samples: Array<u64> = new Array<u64>(0)
+    var values: Array<i64> = new Array<i64>(usize(count))
+    fill(values)
+    # The warm up pays for the first touch of the pages and of the caches.
+    var warm: u64 = 0u64
+    for v in values {
+        warm = warm +% u64(v)
+    }
+    _ = warm
+
+    var rssBefore: u64 = c.bench_rss_bytes()
+    var checksum: u64 = 0u64
+    for r in Range(0, repetitions) {
+        _ = r
+        var start: u64 = c.bench_now_ns()
+        var total: u64 = 0u64
+        for v in values {
+            total = total +% (u64(v) ^ u64(r))
+        }
+        var stop: u64 = c.bench_now_ns()
+        samples.push(stop - start)
+        checksum = checksum +% total
+        c.bench_sink(checksum)
+    }
+    var rssAfter: u64 = c.bench_rss_bytes()
+
+    bench.sort_samples(samples)
+    var p50: u64 = bench.percentile(samples, 50i64, 100i64)
+    var p95: u64 = bench.percentile(samples, 95i64, 100i64)
+    var p99: u64 = bench.percentile(samples, 99i64, 100i64)
+    var worst: u64 = bench.max(samples)
+
+    print("bench metric p50 ", p50, " ns\n")
+    print("bench metric p95 ", p95, " ns\n")
+    print("bench metric p99 ", p99, " ns\n")
+    print("bench metric max ", worst, " ns\n")
+    print("bench metric rss_before ", rssBefore, " bytes\n")
+    print("bench metric rss_after ", rssAfter, " bytes\n")
+    var delta: u64 = 0u64
+    if rssAfter > rssBefore {
+        delta = rssAfter - rssBefore
+    }
+    print("bench metric rss_delta ", delta, " bytes\n")
+    print("bench metric values ", u64(count), " values\n")
+    print("bench checksum ", checksum, "\n")
+    return 0
+}

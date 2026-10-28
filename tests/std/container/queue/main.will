@@ -1,19 +1,19 @@
 import "std/container/queue"
 
-// Push must fill the back stack, Pop must drain it in FIFO order, and a new
-// Push after a partial drain must still go behind the older values.
-func main() -> i32 {
+# Push must fill the back stack, Pop must drain it in FIFO order, and a new
+# Push after a partial drain must still go behind the older values.
+def main() -> i32 {
     var q: queue.Queue<i32> = new queue.Queue<i32>()
-    if q.Len() != 0usize {
+    if q.len() != 0usize {
         return 1
     }
-    q.Push(1)
-    q.Push(2)
-    q.Push(3)
-    if q.Len() != 3usize {
+    q.push(1)
+    q.push(2)
+    q.push(3)
+    if q.len() != 3usize {
         return 2
     }
-    match q.Peek() {
+    match q.peek() {
         Some(v) => {
             if v != 1 {
                 return 3
@@ -23,7 +23,7 @@ func main() -> i32 {
             return 4
         }
     }
-    match q.Pop() {
+    match q.pop() {
         Some(v) => {
             if v != 1 {
                 return 5
@@ -33,8 +33,8 @@ func main() -> i32 {
             return 6
         }
     }
-    q.Push(4)
-    match q.Pop() {
+    q.push(4)
+    match q.pop() {
         Some(v) => {
             if v != 2 {
                 return 7
@@ -44,7 +44,7 @@ func main() -> i32 {
             return 8
         }
     }
-    match q.Pop() {
+    match q.pop() {
         Some(v) => {
             if v != 3 {
                 return 9
@@ -54,7 +54,7 @@ func main() -> i32 {
             return 10
         }
     }
-    match q.Pop() {
+    match q.pop() {
         Some(v) => {
             if v != 4 {
                 return 11
@@ -64,7 +64,7 @@ func main() -> i32 {
             return 12
         }
     }
-    match q.Pop() {
+    match q.pop() {
         Some(v) => {
             _ = v
             return 13
@@ -72,12 +72,12 @@ func main() -> i32 {
         None => {
         }
     }
-    if q.Len() != 0usize {
+    if q.len() != 0usize {
         return 14
     }
-    q.Push(5)
-    q.Clear()
-    if q.Len() != 0usize {
+    q.push(5)
+    q.clear()
+    if q.len() != 0usize {
         return 15
     }
     return 0

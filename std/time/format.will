@@ -1,0 +1,183 @@
+# The named time formats. Each one is a function, not a layout language; the
+# zone of the Instant decides the wall clock fields.
+
+# pad2 writes a two-digit field. The caller passes a value in 0..99, so two
+# digits are enough.
+def pad2(v: i64) -> str {
+    if v >= 0 and v < 10 {
+        return f"0{v}"
+    }
+    return f"{v}"
+}
+
+# padYear writes the four-digit year the named formats use. An instant accepts
+# a wide range, so a year outside 0000..9999 is written as its decimal value
+# rather than clipped to the four digits RFC 3339 defines.
+def pad_year(year: i32) -> str {
+    if year >= 0 and year < 10 {
+        return f"000{year}"
+    }
+    if year >= 10 and year < 100 {
+        return f"00{year}"
+    }
+    if year >= 100 and year < 1000 {
+        return f"0{year}"
+    }
+    return f"{year}"
+}
+
+# offsetSuffix writes the zone offset as RFC 3339 does: Z for zero, otherwise
+# the signed hour and minute offset. RFC 3339 has no seconds in an offset, so
+# a sub-minute part of a fixed offset is not written.
+def offset_suffix(offsetSec: i32) -> str {
+    var total: i64 = i64(offsetSec)
+    if total == 0 {
+        return "Z"
+    }
+    var sign: str = "+"
+    if total < 0 {
+        sign = "-"
+        total = -total
+    }
+    var hours: i64 = total / 3600i64
+    var minutes: i64 = (total % 3600i64) / 60i64
+    return sign + pad2(hours) + ":" + pad2(minutes)
+}
+
+# fractionText writes the nanosecond part with trailing zeros removed. The
+# input is in 1..999999999; zero has no fractional text at all.
+def fraction_text(frac: i64) -> str {
+    if frac == 0 {
+        return ""
+    }
+    var digits: str = f"{frac}"
+    var zeros: i32 = 9 - i32(digits.len())
+    var out: Array<u8> = new Array<u8>(9)
+    for _ in Range(0, zeros) {
+        out.push(48u8)
+    }
+    out.append(digits[Range(0, digits.len())])
+    var end: usize = out.len()
+    while True {
+        if end == 0usize {
+            break
+        }
+        if out.get(end - usize(1)) != 48u8 {
+            break
+        }
+        end -= usize(1)
+    }
+    var trimmed: Array<u8> = new Array<u8>(end)
+    trimmed.append(out[Range(0, end)])
+    return str(trimmed)
+}
+
+def weekday_name(weekday: i64) -> str {
+    if weekday == 0 {
+        return "Sun"
+    }
+    if weekday == 1 {
+        return "Mon"
+    }
+    if weekday == 2 {
+        return "Tue"
+    }
+    if weekday == 3 {
+        return "Wed"
+    }
+    if weekday == 4 {
+        return "Thu"
+    }
+    if weekday == 5 {
+        return "Fri"
+    }
+    return "Sat"
+}
+
+def month_name(month: i32) -> str {
+    if month == 1 {
+        return "Jan"
+    }
+    if month == 2 {
+        return "Feb"
+    }
+    if month == 3 {
+        return "Mar"
+    }
+    if month == 4 {
+        return "Apr"
+    }
+    if month == 5 {
+        return "May"
+    }
+    if month == 6 {
+        return "Jun"
+    }
+    if month == 7 {
+        return "Jul"
+    }
+    if month == 8 {
+        return "Aug"
+    }
+    if month == 9 {
+        return "Sep"
+    }
+    if month == 10 {
+        return "Oct"
+    }
+    if month == 11 {
+        return "Nov"
+    }
+    return "Dec"
+}
+
+# rfc3339Body writes the date, time, and optional fraction without the offset.
+def rfc3339_body(t: Instant, frac: i64) -> str {
+    var local: i64 = local_seconds(t)
+    var date: civilDate = civil_from_days(days_of(local))
+    var tod: clockTime = time_of_day(local)
+    var left: str = pad_year(date.year) + "-" + pad2(i64(date.month)) + "-" + pad2(i64(date.day))
+    var right: str = pad2(i64(tod.hour)) + ":" + pad2(i64(tod.minute)) + ":" + pad2(i64(tod.second))
+    if frac != 0 {
+        right = right + "." + fraction_text(frac)
+    }
+    return left + "T" + right
+}
+
+# Rfc3339 formats t as 2006-01-02T15:04:05Z07:00 in the zone t carries. The
+# fractional part is left out; Rfc3339Nano is the form that keeps it.
+def rfc3339(t: Instant) -> str {
+    var at: i64 = seconds_of(t.nanos)
+    return rfc3339_body(t, 0i64) + offset_suffix(offset_at(t.zone, at))
+}
+
+# Rfc3339Nano formats t like Rfc3339 and adds the fractional second with
+# trailing zeros removed. A whole second has no fractional part.
+def rfc3339_nano(t: Instant) -> str {
+    var at: i64 = seconds_of(t.nanos)
+    return rfc3339_body(t, fraction_of(t.nanos)) + offset_suffix(offset_at(t.zone, at))
+}
+
+# Rfc1123 formats t as an HTTP date in GMT: Sun, 06 Nov 1994 08:49:37 GMT.
+# The header format is always UTC, so the zone of t does not show.
+def rfc1123(t: Instant) -> str {
+    var secs: i64 = seconds_of(t.nanos)
+    var date: civilDate = civil_from_days(days_of(secs))
+    var tod: clockTime = time_of_day(secs)
+    var left: str = weekday_name(weekday_of(days_of(secs))) + ", " + pad2(i64(date.day))
+    var middle: str = month_name(date.month) + " " + pad_year(date.year)
+    var right: str = pad2(i64(tod.hour)) + ":" + pad2(i64(tod.minute)) + ":" + pad2(i64(tod.second))
+    return left + " " + middle + " " + right + " GMT"
+}
+
+# Date formats the calendar date of t in its zone as 2006-01-02.
+def date(t: Instant) -> str {
+    var date: civilDate = civil_from_days(days_of(local_seconds(t)))
+    return pad_year(date.year) + "-" + pad2(i64(date.month)) + "-" + pad2(i64(date.day))
+}
+
+# Clock formats the time of day of t in its zone as 15:04:05.
+def clock(t: Instant) -> str {
+    var tod: clockTime = time_of_day(local_seconds(t))
+    return pad2(i64(tod.hour)) + ":" + pad2(i64(tod.minute)) + ":" + pad2(i64(tod.second))
+}

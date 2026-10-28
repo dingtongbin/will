@@ -1,0 +1,3 @@
+interface Bad {
+    async def f() -> i32
+}

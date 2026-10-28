@@ -1,5 +1,4 @@
+@derive(Equal)
 struct P {
     x: i32
 }
-
-derive Equal for P

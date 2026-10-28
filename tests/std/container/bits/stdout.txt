@@ -1,0 +1,12 @@
+bits/bits.will:33:7: N0012 no method require on Bits
+    help: check the method name and the receiver
+bits/bits.will:41:7: N0012 no method require on Bits
+    help: check the method name and the receiver
+bits/bits.will:49:7: N0012 no method require on Bits
+    help: check the method name and the receiver
+bits/bits.will:57:7: N0012 no method require on Bits
+    help: check the method name and the receiver
+bits/bits.will:78:19: S0001 unexpected token
+    help: expected a function name
+main.will:76:10: S0001 unexpected token
+    help: expected a field name

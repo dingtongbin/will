@@ -43,6 +43,9 @@ func (p *Parser) parsePatternPrimary() *ast.Pattern {
 			}
 		}
 		return &ast.Pattern{Span: p.emptySpan(start), Kind: ast.BindPattern, Name: start.Text}
+	case token.KwNone:
+		p.next()
+		return &ast.Pattern{Span: p.emptySpan(start), Kind: ast.VariantPattern, Name: "None"}
 	case token.Int, token.Float, token.Duration, token.Char, token.String, token.Bytes,
 		token.KwTrue, token.KwFalse:
 		lit := p.parsePatternLiteral()

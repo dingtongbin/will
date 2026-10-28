@@ -17,6 +17,7 @@ const (
 	precShift = 7
 	precAdd   = 8
 	precMul   = 9
+	precPow   = 10
 )
 
 func binaryPrec(k token.Kind) int {
@@ -37,8 +38,10 @@ func binaryPrec(k token.Kind) int {
 		return precShift
 	case token.Plus, token.Minus, token.PlusWrap, token.MinusWrap, token.PlusSat, token.MinusSat:
 		return precAdd
-	case token.Star, token.Slash, token.Percent, token.StarWrap, token.StarSat:
+	case token.Star, token.Slash, token.FloorDiv, token.Percent, token.StarWrap, token.StarSat:
 		return precMul
+	case token.Pow:
+		return precPow
 	}
 	return 0
 }
@@ -52,7 +55,11 @@ func (p *Parser) parseExpr(minPrec int, allowBrace bool) ast.Expr {
 		}
 		op := p.next()
 		p.skipNL()
-		right := p.parseExpr(prec+1, allowBrace)
+		nextPrec := prec + 1
+		if op.Kind == token.Pow {
+			nextPrec = prec
+		}
+		right := p.parseExpr(nextPrec, allowBrace)
 		span := ast.Span{Start: left.Pos(), End: right.EndPos()}
 		left = &ast.BinaryExpr{Span: span, Op: op.Kind, L: left, R: right}
 	}
@@ -60,8 +67,18 @@ func (p *Parser) parseExpr(minPrec int, allowBrace bool) ast.Expr {
 }
 
 func (p *Parser) parseUnary(allowBrace bool) ast.Expr {
+	if p.atText("ref") || p.atText("mut") {
+		tok := p.next()
+		p.skipNL()
+		x := p.parseUnary(allowBrace)
+		return &ast.BorrowExpr{
+			Span: ast.Span{Start: tok.Pos, End: x.EndPos()},
+			Mut:  tok.Text == "mut",
+			X:    x,
+		}
+	}
 	switch p.cur().Kind {
-	case token.Minus, token.Bang, token.Tilde:
+	case token.Minus, token.KwNot, token.Tilde:
 		op := p.next()
 		p.skipNL()
 		x := p.parseUnary(allowBrace)
@@ -75,6 +92,17 @@ func (p *Parser) parseUnary(allowBrace bool) ast.Expr {
 }
 
 func (p *Parser) parsePostfix(allowBrace bool) ast.Expr {
+	return p.parsePostfixUntil(allowBrace, false)
+}
+
+// parseAwaitOperand parses the operand of await. It accepts calls, fields,
+// indexes, and type arguments, but stops before ? and ! so the suffix applies
+// to the awaited value, not to the call inside await.
+func (p *Parser) parseAwaitOperand(allowBrace bool) ast.Expr {
+	return p.parsePostfixUntil(allowBrace, true)
+}
+
+func (p *Parser) parsePostfixUntil(allowBrace, stopWaitSuffix bool) ast.Expr {
 	x := p.parsePrimary(allowBrace)
 	for !p.failed {
 		if allowBrace && p.at(token.LBrace) {
@@ -93,9 +121,15 @@ func (p *Parser) parsePostfix(allowBrace bool) ast.Expr {
 		case token.Dot:
 			x = p.parseFieldOrMethod(x)
 		case token.Question:
+			if stopWaitSuffix {
+				return x
+			}
 			tok := p.next()
 			x = &ast.TryExpr{Span: ast.Span{Start: x.Pos(), End: tok.End}, X: x}
 		case token.Bang:
+			if stopWaitSuffix {
+				return x
+			}
 			tok := p.next()
 			x = &ast.UnwrapExpr{Span: ast.Span{Start: x.Pos(), End: tok.End}, X: x}
 		case token.Lt:
@@ -222,14 +256,22 @@ func (p *Parser) parsePrimary(allowBrace bool) ast.Expr {
 	case token.KwTrue, token.KwFalse:
 		p.next()
 		return &ast.LiteralExpr{Span: p.emptySpan(tok), Kind: tok.Kind, Text: tok.Text}
+	case token.KwNone:
+		p.next()
+		return &ast.NameExpr{Span: p.emptySpan(tok), Name: "None"}
+	case token.KwAwait:
+		p.next()
+		inner := p.parseAwaitOperand(allowBrace)
+		return &ast.AwaitExpr{
+			Span: ast.Span{Start: tok.Pos, End: inner.Pos()},
+			X:    inner,
+		}
 	case token.Ident:
 		p.next()
 		if tok.Text == "new" && startsType(p.cur().Kind) {
 			return p.parseNew(tok)
 		}
 		return &ast.NameExpr{Span: p.emptySpan(tok), Name: tok.Text}
-	case token.KwLane:
-		return p.parseLaneHere()
 	case token.KwIf:
 		return p.parseIf()
 	case token.KwMatch:
@@ -240,6 +282,8 @@ func (p *Parser) parsePrimary(allowBrace bool) ast.Expr {
 		return p.parseDeadline()
 	case token.KwFunc:
 		return p.parseLambda()
+	case token.LBracket:
+		return p.parseArrayLiteral()
 	case token.LParen:
 		if p.peekRaw(1).Kind == token.RParen {
 			open := p.next()
@@ -256,6 +300,33 @@ func (p *Parser) parsePrimary(allowBrace bool) ast.Expr {
 	}
 	p.unexpected("an expression")
 	return &ast.NameExpr{Span: p.emptySpan(tok)}
+}
+
+// parseArrayLiteral parses one fixed-array literal. The explicit element type
+// before the brace makes the element type and the literal length unambiguous.
+func (p *Parser) parseArrayLiteral() ast.Expr {
+	start := p.cur()
+	typ := p.parseArrayType()
+	if typ.Kind != ast.ArrayType {
+		p.unexpected("a fixed array literal")
+		return &ast.ArrayLitExpr{Span: p.spanFrom(start), Type: typ}
+	}
+	p.expect(token.LBrace, "{")
+	p.enterGroup()
+	p.skipNL()
+	lit := &ast.ArrayLitExpr{Type: typ}
+	for !p.at(token.RBrace) && !p.at(token.EOF) && !p.failed {
+		lit.Elems = append(lit.Elems, p.parseExpr(0, true))
+		if !p.at(token.Comma) {
+			break
+		}
+		p.next()
+		p.skipNL()
+	}
+	p.expect(token.RBrace, "}")
+	p.leaveGroup()
+	lit.Span = p.spanFrom(start)
+	return lit
 }
 
 func startsType(k token.Kind) bool {
@@ -276,8 +347,8 @@ func (p *Parser) parseLaneHere() ast.Expr {
 	start := p.next()
 	p.expect(token.Dot, ".")
 	name := p.cur()
-	if name.Kind != token.Ident || name.Text != "Here" {
-		p.unexpected("lane.Here()")
+	if name.Kind != token.Ident || name.Text != "here" {
+		p.unexpected("lane.here()")
 		return &ast.LaneHereExpr{Span: p.spanFrom(start)}
 	}
 	p.next()
@@ -348,20 +419,18 @@ func (p *Parser) parseMatchArm() *ast.MatchArm {
 
 func (p *Parser) parseSpawn() ast.Expr {
 	start := p.next()
-	lane := ""
-	if p.atText("on") {
-		p.next()
-		p.skipNL()
-		lane, _ = p.expectName("a lane name")
-	}
 	call := p.parsePostfix(true)
-	if !isCallLike(call) {
-		p.bag.Error(call.Pos(), diag.CodeUnexpectedToken, "unexpected token", "expected a call")
+	if !isCall(call) {
+		/* The concurrency volume fixes this shape as K0005: the operand of a
+		   spawn is one call, and anything else is reported here, at the
+		   spawn, not as a generic syntax error. */
+		p.bag.Error(call.Pos(), diag.CodeSpawnNotCall,
+			"spawn takes a single call",
+			"write spawn F(x), or spawn (func() { ... })()")
 		p.failed = true
 	}
 	return &ast.SpawnExpr{
 		Span: ast.Span{Start: start.Pos, End: call.EndPos()},
-		Lane: lane,
 		Call: call,
 	}
 }

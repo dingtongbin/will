@@ -1,4 +1,4 @@
-func F() {
+def f() {
     var n: i32 = "text"
     _ = n
 }

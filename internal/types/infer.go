@@ -17,6 +17,12 @@ type inferScope struct {
 	vars   map[string]*Type
 	result *Type
 	tp     map[string]bool
+	// async is set by an async function body. allowAsyncCall is raised while
+	// an await, wait, or spawn operand is inferred, so the async call itself
+	// is consumed instead of reported.
+	async          bool
+	allowAsyncCall bool
+	parallel       bool
 }
 
 func newInferScope(parent *inferScope) *inferScope {
@@ -24,6 +30,9 @@ func newInferScope(parent *inferScope) *inferScope {
 	if parent != nil {
 		s.result = parent.result
 		s.tp = parent.tp
+		s.async = parent.async
+		s.allowAsyncCall = parent.allowAsyncCall
+		s.parallel = parent.parallel
 	}
 	return s
 }
@@ -39,6 +48,7 @@ func (s *inferScope) lookup(name string) (*Type, bool) {
 
 func (c *checker) inferFile(f *ast.File) {
 	global := newInferScope(nil)
+	c.inferGlobals(global, f)
 	for _, d := range f.Decls {
 		switch decl := d.(type) {
 		case *ast.ConstDecl:
@@ -64,13 +74,109 @@ func (c *checker) inferFile(f *ast.File) {
 	}
 }
 
+// deferSuspends reports whether a defer body contains await or calls an async
+// function. A defer runs on the normal return path, so it cannot become a
+// suspension point.
+func (c *checker) deferSuspends(s *inferScope, e ast.Expr) bool {
+	var hasAwait func(ast.Expr) bool
+	hasAwait = func(e ast.Expr) bool {
+		switch x := e.(type) {
+		case nil:
+			return false
+		case *ast.AwaitExpr:
+			return true
+		case *ast.CallExpr:
+			if hasAwait(x.Callee) {
+				return true
+			}
+			for _, a := range x.Args {
+				if hasAwait(a.Expr) {
+					return true
+				}
+			}
+		case *ast.MethodCallExpr:
+			if hasAwait(x.Recv) {
+				return true
+			}
+			for _, a := range x.Args {
+				if hasAwait(a.Expr) {
+					return true
+				}
+			}
+		case *ast.UnaryExpr:
+			return hasAwait(x.X)
+		case *ast.BinaryExpr:
+			return hasAwait(x.L) || hasAwait(x.R)
+		}
+		return false
+	}
+	if hasAwait(e) {
+		return true
+	}
+	switch call := e.(type) {
+	case *ast.CallExpr:
+		name, ok := call.Callee.(*ast.NameExpr)
+		if !ok {
+			return false
+		}
+		sig := c.env.funcs[name.Name]
+		return sig != nil && sig.async
+	case *ast.MethodCallExpr:
+		recv := c.inferExpr(s, call.Recv)
+		if recv == nil || recv.Kind() != NamedKind {
+			return false
+		}
+		if sig := c.env.methods[recv.Name()+"."+call.Name]; sig != nil {
+			return sig.async
+		}
+		for _, m := range c.env.ifaces[recv.Name()] {
+			if m.name == call.Name {
+				return m.sig != nil && m.sig.async
+			}
+		}
+	}
+	return false
+}
+
+// inferGlobals resolves top-level var and const initializers before any
+// function body is checked, so an inferred global has a type at every use.
+func (c *checker) inferGlobals(global *inferScope, f *ast.File) {
+	for _, d := range f.Decls {
+		switch decl := d.(type) {
+		case *ast.ConstDecl:
+			t := c.buildType(decl.Type, nil)
+			if t == nil && decl.Value != nil {
+				t = c.inferExpr(global, decl.Value)
+			}
+			c.env.vars[decl.Name] = t
+			global.vars[decl.Name] = t
+			if decl.Value != nil {
+				c.checkValue(global, decl.Value, t)
+			}
+		case *ast.VarDecl:
+			t := c.buildType(decl.Type, nil)
+			if t == nil && decl.Value != nil {
+				t = c.inferExpr(global, decl.Value)
+			}
+			c.env.vars[decl.Name] = t
+			global.vars[decl.Name] = t
+			if decl.Value != nil {
+				c.checkValue(global, decl.Value, t)
+			}
+		}
+	}
+}
+
 func (c *checker) inferFunc(decl *ast.FuncDecl) {
 	tp := typeParamSet(decl.TypeParams)
 	s := newInferScope(nil)
 	s.tp = tp
+	s.async = decl.Async
 	s.result = c.buildType(decl.Result, tp)
 	if decl.Recv != nil {
-		s.vars[decl.Recv.Name] = c.buildType(decl.Recv.Type, tp)
+		recvType := c.buildType(decl.Recv.Type, tp)
+		s.vars[decl.Recv.Name] = recvType
+		s.vars["self"] = recvType
 	}
 	for _, pm := range decl.Params {
 		t := c.buildType(pm.Type, tp)
@@ -79,7 +185,305 @@ func (c *checker) inferFunc(decl *ast.FuncDecl) {
 		}
 		s.vars[pm.Name] = t
 	}
-	c.inferBlock(s, decl.Body)
+	for i, pm := range decl.Params {
+		if pm.Default == nil {
+			continue
+		}
+		if pm.Variadic {
+			c.bag.Error(pm.Default.Pos(), diag.CodeBadArgument,
+				"a variadic parameter has no default",
+				"remove the default value")
+			continue
+		}
+		if !simpleDefault(pm.Default) {
+			c.bag.Error(pm.Default.Pos(), diag.CodeBadArgument,
+				"a default value must be a constant expression",
+				"use a literal or a simple constant")
+		}
+		for name := range defaultNames(pm.Default) {
+			for j := i + 1; j < len(decl.Params); j++ {
+				if decl.Params[j].Name == name {
+					c.bag.Error(pm.Default.Pos(), diag.CodeBadArgument,
+						"a default value cannot refer to a later parameter",
+						"move "+name+" before this parameter")
+				}
+			}
+		}
+		c.checkValue(s, pm.Default, c.buildType(pm.Type, tp))
+	}
+	body := c.inferBlock(s, decl.Body)
+	c.checkFrom(decl, s)
+	if s.result == nil && body != nil && body.Kind() == NamedKind && body.Name() == "Result" {
+		if n := len(decl.Body.Stmts); n != 0 {
+			c.bag.Error(decl.Body.Stmts[n-1].Pos(), diag.CodeResultDropped,
+				"this Result is not handled",
+				"use ?, !, match, or discard it with _ =")
+		}
+	}
+}
+
+// simpleDefault accepts the expression shapes a default value may use. The
+// value is evaluated at the call site, so it must not observe call-local state.
+func defaultNames(e ast.Expr) map[string]bool {
+	out := map[string]bool{}
+	var walk func(ast.Expr)
+	walk = func(e ast.Expr) {
+		switch x := e.(type) {
+		case *ast.NameExpr:
+			out[x.Name] = true
+		case *ast.UnaryExpr:
+			walk(x.X)
+		case *ast.BinaryExpr:
+			walk(x.L)
+			walk(x.R)
+		}
+	}
+	walk(e)
+	return out
+}
+
+func simpleDefault(e ast.Expr) bool {
+	switch x := e.(type) {
+	case *ast.LiteralExpr, *ast.NameExpr:
+		return true
+	case *ast.UnaryExpr:
+		return simpleDefault(x.X)
+	case *ast.BinaryExpr:
+		return simpleDefault(x.L) && simpleDefault(x.R)
+	}
+	return false
+}
+
+// checkFrom enforces the return-borrow source rule. A result that contains a
+// borrow needs exactly one source parameter or an explicit from list. The
+// checker does not guess a source when several inputs could own the data.
+func (c *checker) checkFrom(decl *ast.FuncDecl, s *inferScope) {
+	result := c.buildType(decl.Result, s.tp)
+	if result == nil {
+		return
+	}
+	borrows := c.borrowsType(result, map[*Type]bool{})
+	if !borrows {
+		if len(decl.From) != 0 {
+			c.bag.Error(decl.From[0].Pos(), diag.CodeBorrowOutlives,
+				"from is only valid on a function that returns a borrow",
+				"remove from, or return a ref/view")
+		}
+		return
+	}
+	eligible := 0
+	names := map[string]bool{}
+	if decl.Recv != nil {
+		names[decl.Recv.Name] = true
+		names["self"] = true
+		if c.borrowsType(c.buildType(decl.Recv.Type, s.tp), map[*Type]bool{}) {
+			eligible++
+		}
+	}
+	for _, pm := range decl.Params {
+		names[pm.Name] = true
+		pt := c.buildType(pm.Type, s.tp)
+		if pm.Variadic && pt != nil {
+			pt = c.in.view(pt)
+		}
+		if c.borrowsType(pt, map[*Type]bool{}) {
+			eligible++
+		}
+	}
+	roots := make(map[string]bool)
+	c.collectReturnRoots(decl.Body, s, names, roots)
+	if len(decl.From) == 0 {
+		direct := result.IsRef() || result.IsMutRef() || result.Kind() == ViewKind
+		if direct && eligible > 1 {
+			pos := decl.Result.Pos()
+			c.bag.Error(pos, diag.CodeBorrowOutlives,
+				"this returned borrow needs an explicit from source",
+				"write from <parameter>, or return an owned value")
+			return
+		}
+		if len(roots) == 1 {
+			return
+		}
+		if len(roots) == 0 && eligible == 0 {
+			return
+		}
+		pos := decl.Result.Pos()
+		c.bag.Error(pos, diag.CodeBorrowOutlives,
+			"this returned borrow needs an explicit from source",
+			"write from <parameter>, or return an owned value")
+		return
+	}
+	fromRoots := map[string]bool{}
+	validFrom := true
+	for _, src := range decl.From {
+		root := sourceRoot(src)
+		if root == "" || !names[root] {
+			c.bag.Error(src.Pos(), diag.CodeBorrowOutlives,
+				"from source is not a parameter or receiver",
+				"name a parameter or self")
+			validFrom = false
+			continue
+		}
+		fromRoots[root] = true
+		// The source names the owner, not necessarily a value of the result
+		// type: from self may return a field view or reference.
+		_ = c.inferExpr(s, src)
+	}
+	if decl.Recv != nil && fromRoots["self"] {
+		fromRoots[decl.Recv.Name] = true
+	}
+	if validFrom {
+		for root := range roots {
+			if !fromRoots[root] {
+				c.bag.Error(decl.Result.Pos(), diag.CodeBorrowOutlives,
+					"this returned borrow comes from "+root+", which is not in from",
+					"add it to the from list, or return an owned value")
+			}
+		}
+	}
+}
+
+// borrowsType reports whether a checked type contains an explicit borrow or a
+// slice view. Struct fields are followed so a returned page with a view field
+// still requires a source.
+func (c *checker) borrowsType(t *Type, seen map[*Type]bool) bool {
+	if t == nil || seen[t] {
+		return false
+	}
+	seen[t] = true
+	if t.Borrow() != ast.OwnedBorrow || t.Kind() == ViewKind {
+		return true
+	}
+	if t.Kind() == NamedKind {
+		if fields, ok := c.env.fields[t.Name()]; ok {
+			for _, f := range fields {
+				if c.borrowsType(f.typ, seen) {
+					return true
+				}
+			}
+		}
+	}
+	for _, a := range t.Args() {
+		if c.borrowsType(a, seen) {
+			return true
+		}
+	}
+	return false
+}
+
+// collectReturnRoots records which parameters appear in return values. A view
+// or ref built from two parameters needs from; a function that returns only a
+// page built from one receiver does not.
+func (c *checker) collectReturnRoots(st ast.Stmt, scope *inferScope, names, out map[string]bool) {
+	switch s := st.(type) {
+	case *ast.Block:
+		for _, inner := range s.Stmts {
+			c.collectReturnRoots(inner, scope, names, out)
+		}
+	case *ast.ReturnStmt:
+		c.collectExprRoots(s.Value, scope, names, out)
+	case *ast.IfExpr:
+		c.collectReturnRoots(s.Then, scope, names, out)
+		if s.Else != nil {
+			c.collectReturnRoots(s.Else, scope, names, out)
+		}
+	case *ast.MatchExpr:
+		for _, arm := range s.Arms {
+			c.collectReturnRoots(arm.Body, scope, names, out)
+		}
+	case *ast.ForStmt:
+		c.collectReturnRoots(s.Body, scope, names, out)
+	case *ast.RegionStmt:
+		c.collectReturnRoots(s.Body, scope, names, out)
+	case *ast.ParallelStmt:
+		c.collectReturnRoots(s.Body, scope, names, out)
+	case *ast.DeadlineExpr:
+		c.collectReturnRoots(s.Body, scope, names, out)
+	case *ast.SelectStmt:
+		for _, arm := range s.Arms {
+			c.collectReturnRoots(arm.Body, scope, names, out)
+		}
+	}
+}
+
+func (c *checker) collectExprRoots(e ast.Expr, scope *inferScope, names, out map[string]bool) {
+	if e == nil {
+		return
+	}
+	add := func(root string) {
+		if root != "" && names[root] {
+			out[root] = true
+		}
+	}
+	switch x := e.(type) {
+	case *ast.BorrowExpr:
+		add(sourceRoot(x.X))
+		c.collectExprRoots(x.X, scope, names, out)
+	case *ast.SliceExpr:
+		add(sourceRoot(x.Recv))
+		c.collectExprRoots(x.Recv, scope, names, out)
+		c.collectExprRoots(x.Lo, scope, names, out)
+		c.collectExprRoots(x.Hi, scope, names, out)
+	case *ast.CallExpr:
+		for _, a := range x.Args {
+			c.collectExprRoots(a.Expr, scope, names, out)
+		}
+	case *ast.MethodCallExpr:
+		c.collectExprRoots(x.Recv, scope, names, out)
+		for _, a := range x.Args {
+			c.collectExprRoots(a.Expr, scope, names, out)
+		}
+	case *ast.FieldExpr:
+		root := sourceRoot(x)
+		if t, ok := scope.lookup(sourceRoot(x)); ok && c.borrowsType(t, map[*Type]bool{}) {
+			add(root)
+		}
+		c.collectExprRoots(x.Recv, scope, names, out)
+	case *ast.IndexExpr:
+		root := sourceRoot(x)
+		if t, ok := scope.lookup(sourceRoot(x)); ok && c.borrowsType(t, map[*Type]bool{}) {
+			add(root)
+		}
+		c.collectExprRoots(x.Recv, scope, names, out)
+		c.collectExprRoots(x.Index, scope, names, out)
+	case *ast.NameExpr:
+		if t, ok := scope.lookup(x.Name); ok && c.borrowsType(t, map[*Type]bool{}) {
+			add(x.Name)
+		}
+	case *ast.AggregateExpr:
+		for _, f := range x.Fields {
+			c.collectExprRoots(f.Value, scope, names, out)
+		}
+	case *ast.ArrayLitExpr:
+		for _, elem := range x.Elems {
+			c.collectExprRoots(elem, scope, names, out)
+		}
+	case *ast.TryExpr:
+		c.collectExprRoots(x.X, scope, names, out)
+	case *ast.AwaitExpr:
+		c.collectExprRoots(x.X, scope, names, out)
+	case *ast.UnwrapExpr:
+		c.collectExprRoots(x.X, scope, names, out)
+	case *ast.UnaryExpr:
+		c.collectExprRoots(x.X, scope, names, out)
+	case *ast.BinaryExpr:
+		c.collectExprRoots(x.L, scope, names, out)
+		c.collectExprRoots(x.R, scope, names, out)
+	}
+}
+
+func sourceRoot(e ast.Expr) string {
+	switch x := e.(type) {
+	case *ast.NameExpr:
+		return x.Name
+	case *ast.FieldExpr:
+		return sourceRoot(x.Recv)
+	case *ast.IndexExpr:
+		return sourceRoot(x.Recv)
+	case *ast.SliceExpr:
+		return sourceRoot(x.Recv)
+	}
+	return ""
 }
 
 // inferBlock checks a block and returns the type of its last statement when
@@ -92,6 +496,11 @@ func (c *checker) inferBlock(s *inferScope, b *ast.Block) *Type {
 	for i, st := range b.Stmts {
 		if i == len(b.Stmts)-1 {
 			if es, ok := st.(*ast.ExprStmt); ok {
+				if _, spawn := es.Expr.(*ast.SpawnExpr); spawn {
+					c.bag.Error(es.Expr.Pos(), diag.CodeTaskNotAwaited,
+						"spawn result is not awaited",
+						"bind it to a Task, then await it")
+				}
 				return c.inferExpr(inner, es.Expr)
 			}
 		}
@@ -109,6 +518,11 @@ func (c *checker) blockWant(s *inferScope, b *ast.Block, want *Type) {
 	for i, st := range b.Stmts {
 		if i == len(b.Stmts)-1 {
 			if es, ok := st.(*ast.ExprStmt); ok {
+				if _, spawn := es.Expr.(*ast.SpawnExpr); spawn {
+					c.bag.Error(es.Expr.Pos(), diag.CodeTaskNotAwaited,
+						"spawn result is not awaited",
+						"bind it to a Task, then await it")
+				}
 				c.checkValue(inner, es.Expr, want)
 				return
 			}
@@ -125,13 +539,26 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 		switch d := x.Decl.(type) {
 		case *ast.ConstDecl:
 			want := c.buildType(d.Type, s.tp)
+			if want == nil && d.Value != nil {
+				want = c.inferExpr(s, d.Value)
+			}
 			c.checkValue(s, d.Value, want)
 			s.vars[d.Name] = want
 		case *ast.VarDecl:
 			want := c.buildType(d.Type, s.tp)
+			if want == nil && d.Value != nil {
+				want = c.inferExpr(s, d.Value)
+				c.rejectRawAddress(d.Value)
+				s.vars[d.Name] = want
+				return
+			}
 			c.rejectRawAddress(d.Value)
 			if d.Value == nil {
-				if !c.hasZero(want) {
+				if isGuardType(want) {
+					c.bag.Error(d.Pos(), diag.CodeGuardCopied,
+						"a guard must be created by lock",
+						"let the lock call initialize it")
+				} else if !c.hasZero(want) {
 					c.bag.Error(d.Pos(), diag.CodeNoZero,
 						"type "+want.String()+" has no zero value",
 						"initialize it: var "+d.Name+": "+want.String()+" = ...")
@@ -143,6 +570,16 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 		}
 	case *ast.AssignStmt:
 		c.rejectRawAddress(x.Value)
+		if c.discardedSpawn(x.Target, x.Value) {
+			c.bag.Error(x.Value.Pos(), diag.CodeTaskNotAwaited,
+				"spawn result is not awaited",
+				"bind it to a Task, then await it")
+		}
+		if c.readGuardWrite(s, x.Target) {
+			c.bag.Error(x.Target.Pos(), diag.CodeReadGuardWrite,
+				"a read guard is read-only",
+				"take the write guard with w_lock")
+		}
 		want := c.inferPlace(s, x.Target)
 		if x.Op != "=" && want != nil && !want.IsNumeric() {
 			c.typeMismatch(x.Target.Pos(), want, nil)
@@ -150,9 +587,28 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 		c.checkValue(s, x.Value, want)
 	case *ast.ExprStmt:
 		c.rejectRawAddress(x.Expr)
-		c.inferExpr(s, x.Expr)
+		if _, ok := x.Expr.(*ast.SpawnExpr); ok {
+			c.bag.Error(x.Expr.Pos(), diag.CodeTaskNotAwaited,
+				"spawn result is not awaited",
+				"bind it to a Task, then await it")
+		}
+		if t := c.inferExpr(s, x.Expr); t != nil && t.Kind() == NamedKind && t.Name() == "Result" {
+			c.bag.Error(x.Expr.Pos(), diag.CodeResultDropped,
+				"this Result is not handled",
+				"use ?, !, match, or discard it with _ =")
+		}
 	case *ast.DeferStmt:
-		c.inferExpr(s, x.Call)
+		if c.deferSuspends(s, x.Call) {
+			c.bag.Error(x.Call.Pos(), diag.CodeDeferSuspend,
+				"defer cannot suspend",
+				"run the async cleanup before the suspension point")
+			previous := s.allowAsyncCall
+			s.allowAsyncCall = true
+			c.inferExpr(s, x.Call)
+			s.allowAsyncCall = previous
+		} else {
+			c.inferExpr(s, x.Call)
+		}
 	case *ast.ReturnStmt:
 		c.rejectRawAddress(x.Value)
 		if s.result == nil {
@@ -171,11 +627,22 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 	case *ast.RegionStmt:
 		c.inferBlock(s, x.Body)
 	case *ast.ParallelStmt:
-		c.inferBlock(s, x.Body)
+		inner := newInferScope(s)
+		inner.parallel = true
+		c.inferBlock(inner, x.Body)
 	case *ast.SelectStmt:
+		if !s.async {
+			c.bag.Error(x.Pos(), diag.CodeSelectOutsideAsync,
+				"select is only allowed inside an async function",
+				"mark the function async, or move the select into an async helper")
+		}
 		for _, arm := range x.Arms {
 			inner := newInferScope(s)
-			if t := c.inferExpr(s, arm.Chan); arm.Bind != "" {
+			previous := s.allowAsyncCall
+			s.allowAsyncCall = true
+			t := c.inferExpr(s, arm.Chan)
+			s.allowAsyncCall = previous
+			if arm.Bind != "" {
 				inner.vars[arm.Bind] = elemOf(c.in, t)
 			}
 			c.inferExpr(s, arm.Timeout)
@@ -201,6 +668,11 @@ func (c *checker) inferStmt(s *inferScope, st ast.Stmt) {
 }
 
 func (c *checker) inferFor(s *inferScope, st *ast.ForStmt) {
+	if st.Cond != nil {
+		c.checkValue(s, st.Cond, c.in.scalar("bool"))
+		c.inferBlock(s, st.Body)
+		return
+	}
 	names := len(st.Names)
 	nameTypes := make([]*Type, names)
 	if st.Iter != nil {
@@ -263,9 +735,38 @@ func (c *checker) checkValue(s *inferScope, e ast.Expr, want *Type) {
 		return
 	}
 	got := c.exprWithWant(s, e, want)
-	if !Equal(got, want) {
-		c.mismatch(e.Pos(), got, want, false, "", 0)
+	if isGuardType(got) && !guardProducer(e) {
+		c.bag.Error(e.Pos(), diag.CodeGuardCopied,
+			"a guard cannot be copied",
+			"keep it in the local that lock returned")
 	}
+	if Equal(got, want) || derefScalar(got, want) {
+		return
+	}
+	c.mismatch(e.Pos(), got, want, false, "", 0)
+}
+
+// derefScalar reads a scalar out of a reference. Aggregates and owning values
+// stay borrowed: moving out of a ref needs clone.
+func derefScalar(got, want *Type) bool {
+	if got == nil || want == nil || !got.IsRef() && !got.IsMutRef() {
+		return false
+	}
+	if want.Borrow() != ast.OwnedBorrow || want.Kind() != ScalarKind {
+		return false
+	}
+	return Equal(got.Unref(), want)
+}
+
+// discardedSpawn reports _ = spawn call. A task handle must stay named until
+// its region awaits it; the blank target would lose the only handle.
+func (c *checker) discardedSpawn(target, value ast.Expr) bool {
+	name, ok := target.(*ast.NameExpr)
+	if !ok || name.Name != "_" {
+		return false
+	}
+	_, spawn := value.(*ast.SpawnExpr)
+	return spawn
 }
 
 // checkNegativeLiteral checks a negated integer literal against a signed
@@ -362,7 +863,7 @@ func (c *checker) recordWant(e ast.Expr, want *Type) {
 			c.callTypes[x] = want.String()
 		}
 	case *ast.NameExpr:
-		if x.Name != "None" {
+		if x.Name != "None" && x.Name != "Canceled" && x.Name != "Deadline" {
 			return
 		}
 		if c.nameTypes == nil {
@@ -434,9 +935,40 @@ func (c *checker) checkArg(s *inferScope, e ast.Expr, want *Type, callee string,
 		return
 	}
 	got := c.exprWithWant(s, e, want)
-	if !Equal(got, want) {
-		c.mismatch(e.Pos(), got, want, true, callee, n)
+	if isGuardType(got) && !guardProducer(e) {
+		c.bag.Error(e.Pos(), diag.CodeGuardCopied,
+			"a guard cannot be copied",
+			"keep it in the local that lock returned")
 	}
+	if Equal(got, want) || c.borrowArg(got, want, e) || derefScalar(got, want) {
+		return
+	}
+	c.mismatch(e.Pos(), got, want, true, callee, n)
+}
+
+// borrowArg accepts a place where a parameter asks for a borrow. The borrow
+// stays implicit at the call boundary because the parameter type already spells
+// the access; an explicit ref or mut expression is still accepted.
+func (c *checker) borrowArg(got, want *Type, e ast.Expr) bool {
+	if got == nil || want == nil {
+		return false
+	}
+	if want.IsRef() {
+		if got.IsRef() {
+			return Equal(got.Unref(), want.Unref())
+		}
+		return got.Borrow() == ast.OwnedBorrow && isPlaceExpr(e) && Equal(got, want.Unref())
+	}
+	if want.IsMutRef() {
+		if got.IsMutRef() {
+			return Equal(got.Unref(), want.Unref())
+		}
+		return got.Borrow() == ast.OwnedBorrow && isPlaceExpr(e) && Equal(got, want.Unref())
+	}
+	if want.Kind() == ViewKind && want.ViewMut() {
+		return got.Kind() == ViewKind && got.ViewMut() && Equal(got.Elem(), want.Elem())
+	}
+	return false
 }
 
 // mismatch reports a value that does not fit a required type. A concrete type
@@ -450,11 +982,26 @@ func (c *checker) mismatch(pos source.Pos, got, want *Type, isArg bool, callee s
 			return
 		}
 	}
+	if want.Kind() == NamedKind && want.Name() == "interface {}" {
+		// The empty interface has no required method, so every value
+		// satisfies it. Only Is/As can recover the concrete type.
+		return
+	}
 	if methods, ok := c.env.ifaces[want.Name()]; ok {
 		if got != nil && got.Kind() == NamedKind && strings.Contains(got.Name(), ".") {
 			// The concrete type belongs to another package, whose declarations
 			// this environment does not hold. The vtable built during lowering
 			// checks that every method exists.
+			return
+		}
+		if want.Name() == "Show" && showsItself(got) {
+			return
+		}
+		if got != nil && got.Kind() == NamedKind && c.env.types[got.Name()] == nil &&
+			!c.env.userTypes[got.Name()] {
+			// A named type this environment does not declare comes from
+			// another package. The vtable built during lowering resolves the
+			// method set there.
 			return
 		}
 		if got != nil && c.env.derives[got.Name()][want.Name()] {
@@ -499,6 +1046,20 @@ func (c *checker) missingMethod(got *Type, methods []*methodInfo) string {
 	return ""
 }
 
+// showsItself reports whether a value shows itself without a declared method.
+// Every predeclared scalar does; Show is the one interface that accepts them.
+func showsItself(t *Type) bool {
+	if t == nil || t.Kind() != ScalarKind {
+		return false
+	}
+	switch t.Name() {
+	case "bool", "str", "i8", "i16", "i32", "i64", "isize",
+		"u8", "u16", "u32", "u64", "usize", "f32", "f64":
+		return true
+	}
+	return false
+}
+
 // missingFromMethods reports the first required method that the interface
 // have does not declare with the same signature.
 func missingFromMethods(have, want []*methodInfo) string {
@@ -521,7 +1082,7 @@ func sameSignature(a, b *signature) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	if len(a.params) != len(b.params) || a.variadic != b.variadic {
+	if len(a.params) != len(b.params) || a.variadic != b.variadic || a.async != b.async {
 		return false
 	}
 	for i := range a.params {
@@ -534,6 +1095,22 @@ func sameSignature(a, b *signature) bool {
 
 func (c *checker) checkCallArgs(s *inferScope, sig *signature, args []*ast.CallArg, pos source.Pos) {
 	name := sig.name
+	named := false
+	for _, a := range args {
+		if a.Name != "" {
+			named = true
+			break
+		}
+	}
+	if sig.variadic && named {
+		c.bag.Error(pos, diag.CodeBadArgument,
+			"named arguments are not allowed for a variadic call",
+			"pass the variadic tail positionally")
+		for _, a := range args {
+			c.inferExpr(s, a.Expr)
+		}
+		return
+	}
 	if sig.variadic {
 		fixed := len(sig.params) - 1
 		if len(args) < fixed {
@@ -550,11 +1127,58 @@ func (c *checker) checkCallArgs(s *inferScope, sig *signature, args []*ast.CallA
 		}
 		return
 	}
-	if len(args) != len(sig.params) {
-		c.badArity(pos, name)
-		return
+	slots := make([]*ast.CallArg, len(sig.params))
+	positional := 0
+	seenNamed := false
+	tooMany := false
+	for _, a := range args {
+		if a.Name == "" {
+			if seenNamed {
+				c.bag.Error(a.Pos(), diag.CodeBadArgument,
+					"positional argument after a named argument",
+					"move positional arguments before named ones")
+			}
+			if positional >= len(sig.params) {
+				tooMany = true
+				continue
+			}
+			slots[positional] = a
+			positional++
+			continue
+		}
+		seenNamed = true
+		idx := -1
+		for i, p := range sig.paramNames {
+			if p == a.Name {
+				idx = i
+				break
+			}
+		}
+		if idx < 0 {
+			c.bag.Error(a.Pos(), diag.CodeBadArgument,
+				"unknown named argument "+a.Name,
+				"see the declaration of "+name)
+			continue
+		}
+		if slots[idx] != nil {
+			c.bag.Error(a.Pos(), diag.CodeBadArgument,
+				"duplicate named argument "+a.Name,
+				"pass it once")
+			continue
+		}
+		slots[idx] = a
 	}
-	for i, a := range args {
+	if tooMany {
+		c.badArity(pos, name)
+	}
+	for i, a := range slots {
+		if a == nil {
+			if i >= len(sig.hasDefault) || !sig.hasDefault[i] {
+				c.badArity(pos, name)
+				return
+			}
+			continue
+		}
 		c.checkArg(s, a.Expr, sig.params[i], name, i+1)
 	}
 }
@@ -564,14 +1188,50 @@ func (c *checker) badArity(pos source.Pos, callee string) {
 }
 
 func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
+	t := c.inferExprInner(s, e)
+	if e != nil && c.exprTypes != nil {
+		c.exprTypes[e] = t
+	}
+	return t
+}
+
+func (c *checker) inferExprInner(s *inferScope, e ast.Expr) *Type {
 	switch x := e.(type) {
 	case nil:
 		return nil
 	case *ast.LiteralExpr:
 		return c.literalType(x, nil)
+	case *ast.BorrowExpr:
+		base := c.inferExpr(s, x.X)
+		if base == nil {
+			return nil
+		}
+		if !isPlaceExpr(x.X) {
+			c.bag.Error(x.Pos(), diag.CodeTypeMismatch,
+				"a borrow needs a place", "borrow a name, field, index, or slice")
+			return base
+		}
+		if base.Borrow() != ast.OwnedBorrow {
+			c.bag.Error(x.Pos(), diag.CodeTypeMismatch,
+				"cannot borrow a borrow", "copy the ref value instead")
+			return base
+		}
+		if x.Mut && base.Kind() == ViewKind {
+			if base.ViewMut() {
+				return base
+			}
+			return c.in.view(base.Elem(), true)
+		}
+		if x.Mut {
+			return c.in.borrowed(base, ast.MutBorrow)
+		}
+		return c.in.borrowed(base, ast.RefBorrow)
 	case *ast.NameExpr:
 		if x.Name == "_" {
 			return nil
+		}
+		if x.Name == "Canceled" || x.Name == "Deadline" {
+			return c.in.named("Error", nil)
 		}
 		if t, ok := s.lookup(x.Name); ok {
 			return t
@@ -587,7 +1247,14 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 	case *ast.FieldExpr:
 		return c.fieldType(c.inferExpr(s, x.Recv), x.Name, x.Pos())
 	case *ast.IndexExpr:
-		return elemOf(c.in, c.inferExpr(s, x.Recv))
+		recv := c.inferExpr(s, x.Recv)
+		// A container index is a usize, and saying so is what gives a literal
+		// its width; the backend refuses a mismatched pair instead of
+		// guessing. A str index is a byte offset and keeps its own type.
+		if !isStrType(recv) {
+			c.checkValue(s, x.Index, c.in.scalar("usize"))
+		}
+		return elemOf(c.in, recv)
 	case *ast.SliceExpr:
 		recv := c.inferExpr(s, x.Recv)
 		c.checkValue(s, x.Lo, c.in.scalar("usize"))
@@ -595,6 +1262,8 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 		return c.sliceOf(recv)
 	case *ast.AggregateExpr:
 		return c.aggregateType(s, x)
+	case *ast.ArrayLitExpr:
+		return c.arrayLitType(s, x)
 	case *ast.NewExpr:
 		return c.newType(s, x)
 	case *ast.UnaryExpr:
@@ -624,11 +1293,34 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 	case *ast.TryExpr:
 		c.inferExpr(s, x.X)
 		return nil
+	case *ast.AwaitExpr:
+		if !s.async {
+			c.bag.Error(x.Pos(), diag.CodeAwaitOutsideAsync,
+				"await is only allowed inside an async function",
+				"mark the function async")
+		}
+		previous := s.allowAsyncCall
+		s.allowAsyncCall = true
+		t := c.inferExpr(s, x.X)
+		s.allowAsyncCall = previous
+		if t != nil && t.Kind() == NamedKind && t.Name() == "Task" && len(t.Args()) == 1 {
+			return c.in.named("Result", []*Type{t.Args()[0], c.in.named("TaskError", nil)})
+		}
+		if !awaitOperand(x.X) {
+			c.bag.Error(x.Pos(), diag.CodeAwaitNotAsync,
+				"await needs a Task or an async call",
+				"remove await or call an async function")
+		}
+		return t
 	case *ast.UnwrapExpr:
 		c.inferExpr(s, x.X)
 		return nil
 	case *ast.SpawnExpr:
-		return c.in.named("Task", []*Type{c.inferExpr(s, x.Call)})
+		previous := s.allowAsyncCall
+		s.allowAsyncCall = true
+		t := c.inferExpr(s, x.Call)
+		s.allowAsyncCall = previous
+		return c.in.named("Task", []*Type{t})
 	case *ast.DeadlineExpr:
 		c.inferExpr(s, x.Duration)
 		c.inferBlock(s, x.Body)
@@ -648,6 +1340,14 @@ func (c *checker) inferExpr(s *inferScope, e ast.Expr) *Type {
 		return c.in.unit()
 	}
 	return nil
+}
+
+func isPlaceExpr(e ast.Expr) bool {
+	switch e.(type) {
+	case *ast.NameExpr, *ast.FieldExpr, *ast.IndexExpr, *ast.SliceExpr:
+		return true
+	}
+	return false
 }
 
 func (c *checker) literalType(lit *ast.LiteralExpr, want *Type) *Type {
@@ -715,7 +1415,8 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 	if field, ok := call.Callee.(*ast.FieldExpr); ok {
 		if recv, ok := field.Recv.(*ast.NameExpr); ok {
 			if decl := c.foreignFuncs[recv.Name][field.Name]; decl != nil {
-				sig := c.buildSig(decl)
+				sig := c.buildForeignSig(decl, recv.Name)
+				sig = c.inferCallTypeArgs(s, call.Args, call.TypeArgs, sig)
 				c.checkTypeArgs(call, sig)
 				inst := sig
 				if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
@@ -743,10 +1444,18 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 		return nil
 	}
 	sym := c.symbolOf(name)
+	if name.Name == "wait" && len(call.Args) == 1 {
+		previous := s.allowAsyncCall
+		s.allowAsyncCall = true
+		t := c.inferExpr(s, call.Args[0].Expr)
+		s.allowAsyncCall = previous
+		return t
+	}
 	switch {
 	case sym != nil && sym.Kind == resolve.FuncKind:
 		sig := c.env.funcs[name.Name]
 		if sig != nil {
+			sig = c.inferCallTypeArgs(s, call.Args, call.TypeArgs, sig)
 			c.checkTypeArgs(call, sig)
 			inst := sig
 			if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
@@ -757,6 +1466,9 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 				inst = c.instantiate(sig, subst)
 			}
 			c.checkCallArgs(s, inst, call.Args, call.Pos())
+			if inst.async {
+				c.requireWait(s, call.Pos())
+			}
 			return inst.result
 		}
 	case sym != nil && sym.Kind == resolve.VariantKind:
@@ -801,6 +1513,22 @@ func (c *checker) predeclaredCall(s *inferScope, name string, call *ast.CallExpr
 			c.inferExpr(s, a.Expr)
 		}
 		return nil
+	case "leak":
+		if len(call.Args) != 1 {
+			c.bag.Error(call.Pos(), diag.CodeBadArgument,
+				"wrong number of arguments", "leak takes one value")
+			return nil
+		}
+		c.inferExpr(s, call.Args[0].Expr)
+		return nil
+	case "len":
+		if len(call.Args) != 1 {
+			c.bag.Error(call.Pos(), diag.CodeBadArgument,
+				"wrong number of arguments", "len takes one value")
+			return c.in.scalar("usize")
+		}
+		c.inferExpr(s, call.Args[0].Expr)
+		return c.in.scalar("usize")
 	case "Some":
 		return c.in.named("Option", []*Type{c.oneArg(s, call)})
 	case "None":
@@ -841,7 +1569,7 @@ func (c *checker) takeCType(s *inferScope, call *ast.CallExpr, name string) *Typ
 	if elem == nil {
 		return nil
 	}
-	return c.in.named("rc", []*Type{elem})
+	return c.in.named("arc", []*Type{elem})
 }
 
 // layoutCall checks the three compile-time layout queries. Each takes one type
@@ -890,6 +1618,15 @@ func (c *checker) castType(s *inferScope, name *ast.NameExpr, call *ast.CallExpr
 }
 
 func (c *checker) typeByName(name string) *Type {
+	if name == "int" {
+		return c.in.scalar("i64")
+	}
+	if name == "float" {
+		return c.in.scalar("f64")
+	}
+	if decl, ok := c.env.aliases[name]; ok {
+		return c.resolveAlias(decl)
+	}
 	if t, ok := c.env.types[name]; ok {
 		return t
 	}
@@ -916,12 +1653,15 @@ func (c *checker) substFor(name string, args []*Type) map[string]*Type {
 // instantiateReceiver specializes the signature of a method or init on a
 // generic receiver for one receiver type.
 func (c *checker) instantiateReceiver(sig *signature, recv *Type) *signature {
-	if sig == nil || len(sig.recvParams) == 0 {
+	if sig == nil || recv == nil || len(sig.recvParams) == 0 {
 		return nil
 	}
-	subst := c.substFor(recv.Name(), recv.Args())
-	if subst == nil {
+	if len(sig.recvParams) != len(recv.Args()) {
 		return nil
+	}
+	subst := make(map[string]*Type, len(sig.recvParams))
+	for i, param := range sig.recvParams {
+		subst[param] = recv.Args()[i]
 	}
 	return c.instantiate(sig, subst)
 }
@@ -993,7 +1733,8 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	}
 	if recv, ok := call.Recv.(*ast.NameExpr); ok {
 		if decl := c.foreignFuncs[recv.Name][call.Name]; decl != nil {
-			sig := c.buildSig(decl)
+			sig := c.buildForeignSig(decl, recv.Name)
+			sig = c.inferCallTypeArgs(s, call.Args, call.TypeArgs, sig)
 			if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
 				subst := make(map[string]*Type, sig.typeParams)
 				for i, ta := range call.TypeArgs {
@@ -1002,6 +1743,9 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 				sig = c.instantiate(sig, subst)
 			}
 			c.checkCallArgs(s, sig, call.Args, call.Pos())
+			if sig.async {
+				c.requireWait(s, call.Pos())
+			}
 			return sig.result
 		}
 	}
@@ -1009,30 +1753,86 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	for _, a := range call.Args {
 		c.inferExpr(s, a.Expr)
 	}
-	if recv != nil && recv.Kind() == NamedKind && recv.Name() == "rc" && len(recv.Args()) == 1 {
+	if recv != nil && recv.Kind() == NamedKind && (recv.Name() == "rc" || recv.Name() == "arc") && len(recv.Args()) == 1 {
 		switch call.Name {
-		case "Weak":
+		case "weak":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
-			return c.in.named("weak", []*Type{recv.Args()[0]})
-		case "Clone":
+			weak := "weak_rc"
+			if recv.Name() == "arc" {
+				weak = "weak_arc"
+			}
+			return c.in.named(weak, []*Type{recv.Args()[0]})
+		case "clone":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return recv
 		}
 		recv = recv.Args()[0]
 	}
-	if recv != nil && recv.Kind() == NamedKind && recv.Name() == "weak" && len(recv.Args()) == 1 {
-		if call.Name == "Upgrade" {
+	if isGuardType(recv) {
+		readOnly := isReadGuardType(recv)
+		recv = recv.Args()[0]
+		if readOnly && recv != nil && recv.Kind() == NamedKind {
+			if sig, ok := c.env.methods[recv.Name()+"."+call.Name]; ok && sig.recvMut {
+				c.bag.Error(call.Pos(), diag.CodeReadGuardWrite,
+					"a read guard is read-only",
+					"take the write guard with w_lock")
+			}
+		}
+	}
+	if recv != nil && recv.Kind() == NamedKind && (recv.Name() == "weak_rc" || recv.Name() == "weak_arc") && len(recv.Args()) == 1 {
+		if call.Name == "upgrade" {
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
-			return c.in.named("Option", []*Type{c.in.named("rc", []*Type{recv.Args()[0]})})
+			strong := "rc"
+			if recv.Name() == "weak_arc" {
+				strong = "arc"
+			}
+			return c.in.named("Option", []*Type{c.in.named(strong, []*Type{recv.Args()[0]})})
 		}
 		return nil
 	}
+	if decl := c.foreignMethod(recv, call.Name); decl != nil {
+		pkg, _ := packageAndType(recv.Name())
+		sig := c.buildForeignSig(decl, pkg)
+		sig = c.inferCallTypeArgs(s, call.Args, call.TypeArgs, sig)
+		if sig.typeParams > 0 && len(call.TypeArgs) == sig.typeParams && len(sig.typeNames) == sig.typeParams {
+			subst := make(map[string]*Type, sig.typeParams)
+			for i, ta := range call.TypeArgs {
+				subst[sig.typeNames[i]] = c.buildType(ta, nil)
+			}
+			sig = c.instantiate(sig, subst)
+		}
+		if inst := c.instantiateReceiver(sig, recv); inst != nil {
+			sig = inst
+		}
+		c.checkCallArgs(s, sig, call.Args, call.Pos())
+		if sig.async && !s.allowAsyncCall {
+			c.bag.Error(call.Pos(), diag.CodeAsyncNotAwaited,
+				"this async call is not awaited",
+				"write await, or spawn")
+		}
+		return sig.result
+	}
 	switch call.Name {
-	case "Recv":
+	case "recv":
+		c.requireWait(s, call.Pos())
 		return elemOf(c.in, recv)
-	case "Join":
+	case "send":
+		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "chan" {
+			c.requireWait(s, call.Pos())
+			var elem *Type
+			if len(recv.Args()) == 1 {
+				elem = recv.Args()[0]
+			}
+			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
+			return c.in.named("Result", []*Type{c.in.unit(), c.in.named("Error", nil)})
+		}
+	case "cancel":
+		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "Task" {
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.unit()
+		}
 		return nil
-	case "Close":
+	case "close":
 		if recv != nil && recv.Kind() == NamedKind && recv.Name() == "chan" {
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.unit()
@@ -1040,6 +1840,24 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	}
 	if recv == nil {
 		return nil
+	}
+	if call.Name == "clone" && len(call.Args) == 0 && !isGuardType(recv) {
+		if recv.Kind() == ViewKind {
+			return nil
+		}
+		if recv.Kind() == NamedKind {
+			switch recv.Name() {
+			case "chan", "Task":
+				return nil
+			case "str", "Array", "Map", "Set":
+				return nil
+			}
+		}
+		c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+		return recv
+	}
+	if strings.HasPrefix(call.Name, "Async") {
+		c.requireWait(s, call.Pos())
 	}
 	if recv.Kind() == ScalarKind && recv.Name() == "raw" {
 		return c.rawMethod(s, call)
@@ -1050,7 +1868,27 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	if recv.Kind() != NamedKind {
 		return nil
 	}
-	if methods, ok := c.env.ifaces[recv.Name()]; ok {
+	methods, isIface := c.env.ifaces[recv.Name()]
+	if recv.Name() == "interface {}" {
+		methods, isIface = nil, true
+	}
+	if isIface {
+		if call.Name == "is" || call.Name == "as" {
+			if len(call.TypeArgs) != 1 {
+				c.bag.Error(call.Pos(), diag.CodeTypeArgCount, "wrong number of type arguments",
+					"a downcast takes one target type")
+				return nil
+			}
+			target := c.buildType(call.TypeArgs[0], nil)
+			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			if call.Name == "is" {
+				return c.in.scalar("bool")
+			}
+			if target == nil {
+				return nil
+			}
+			return c.in.named("Option", []*Type{target})
+		}
 		c.dispatch = append(c.dispatch, DispatchPoint{Pos: call.Pos(), Interface: recv.Name()})
 		for _, m := range methods {
 			if m.name == call.Name {
@@ -1079,6 +1917,11 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 			c.checkCallArgs(s, sig, call.Args, call.Pos())
 		} else {
 			c.checkPayload(s, sig.params, call.Args, call.Name, call.Pos())
+		}
+		if sig.async && !s.allowAsyncCall {
+			c.bag.Error(call.Pos(), diag.CodeAsyncNotAwaited,
+				"this async call is not awaited",
+				"write await, or spawn")
 		}
 		return sig.result
 	}
@@ -1195,31 +2038,31 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 	if recv.Kind() == ScalarKind && recv.Name() == "str" {
 		strT := c.in.scalar("str")
 		switch call.Name {
-		case "Len":
+		case "len":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return usize, true
-		case "Contains", "HasPrefix", "HasSuffix":
+		case "contains", "has_prefix", "has_suffix":
 			c.checkPayload(s, []*Type{strT}, call.Args, call.Name, call.Pos())
 			return boolean, true
-		case "Index":
+		case "index":
 			c.checkPayload(s, []*Type{strT}, call.Args, call.Name, call.Pos())
 			return c.in.named("Option", []*Type{usize}), true
-		case "Trim", "TrimLeft", "TrimRight", "Upper", "Lower", "Clone":
+		case "trim", "trim_left", "trim_right", "upper", "lower", "clone":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return strT, true
-		case "Repeat":
+		case "repeat":
 			c.checkPayload(s, []*Type{usize}, call.Args, call.Name, call.Pos())
 			return strT, true
-		case "Replace":
+		case "replace":
 			c.checkPayload(s, []*Type{strT, strT}, call.Args, call.Name, call.Pos())
 			return strT, true
-		case "Split":
+		case "split":
 			c.checkPayload(s, []*Type{strT}, call.Args, call.Name, call.Pos())
 			return c.in.view(strT), true
-		case "SplitN":
+		case "split_n":
 			c.checkPayload(s, []*Type{strT, c.in.scalar("i32")}, call.Args, call.Name, call.Pos())
 			return c.in.view(strT), true
-		case "Fields":
+		case "fields":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.view(strT), true
 		case "Chars":
@@ -1229,7 +2072,7 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 		return nil, false
 	}
 	if recv.Kind() == ViewKind {
-		if call.Name == "Len" {
+		if call.Name == "len" {
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return usize, true
 		}
@@ -1238,37 +2081,37 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 	if recv.Kind() == NamedKind && recv.Name() == "Array" {
 		elem := argAt(recv, 0)
 		switch call.Name {
-		case "Len", "Cap":
+		case "len", "cap":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return usize, true
-		case "Get":
+		case "get":
 			c.checkPayload(s, []*Type{usize}, call.Args, call.Name, call.Pos())
 			return elem, true
-		case "Set":
+		case "set":
 			c.checkPayload(s, []*Type{usize, elem}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Push":
+		case "push":
 			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Append":
+		case "append":
 			c.checkPayload(s, []*Type{c.in.view(elem)}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Pop":
+		case "pop":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.named("Option", []*Type{elem}), true
-		case "Insert":
+		case "insert":
 			c.checkPayload(s, []*Type{usize, elem}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Remove":
+		case "remove":
 			c.checkPayload(s, []*Type{usize}, call.Args, call.Name, call.Pos())
 			return elem, true
-		case "Clear", "ShrinkToFit":
+		case "clear", "shrink_to_fit":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Slice":
+		case "slice":
 			c.checkPayload(s, []*Type{usize, usize}, call.Args, call.Name, call.Pos())
 			return c.in.view(elem), true
-		case "Clone":
+		case "clone":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.named("Array", []*Type{elem}), true
 		}
@@ -1281,34 +2124,34 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 	case "Map":
 		k, v := argAt(recv, 0), argAt(recv, 1)
 		switch call.Name {
-		case "Len":
+		case "len":
 			return usize, true
-		case "Get":
+		case "get":
 			c.checkPayload(s, []*Type{k}, call.Args, call.Name, call.Pos())
 			return c.in.named("Option", []*Type{v}), true
-		case "Set":
+		case "set":
 			c.checkPayload(s, []*Type{k, v}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Has", "Delete":
+		case "has", "delete":
 			c.checkPayload(s, []*Type{k}, call.Args, call.Name, call.Pos())
 			return boolean, true
-		case "Clear":
+		case "clear":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
-		case "Keys":
+		case "keys":
 			return c.in.named("Array", []*Type{k}), true
-		case "Values":
+		case "values":
 			return c.in.named("Array", []*Type{v}), true
 		}
 	case "Set":
 		elem := argAt(recv, 0)
 		switch call.Name {
-		case "Len":
+		case "len":
 			return usize, true
-		case "Add", "Has", "Delete":
+		case "add", "has", "delete":
 			c.checkPayload(s, []*Type{elem}, call.Args, call.Name, call.Pos())
 			return boolean, true
-		case "Clear":
+		case "clear":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
 		}
@@ -1327,16 +2170,140 @@ func (c *checker) fieldType(recv *Type, name string, pos source.Pos) *Type {
 	if recv == nil || recv.Kind() != NamedKind {
 		return nil
 	}
-	if recv.Name() == "rc" && len(recv.Args()) == 1 {
+	if (recv.Name() == "rc" || recv.Name() == "arc") && len(recv.Args()) == 1 {
 		recv = recv.Args()[0]
 		if recv == nil || recv.Kind() != NamedKind {
 			return nil
 		}
 	}
-	fields, known := c.env.fields[recv.Name()]
-	if !known {
+	if fields, known := c.env.fields[recv.Name()]; known {
+		return c.fieldOf(recv, fields, name, pos)
+	}
+	// A guard forwards every field to the value it guards. A foreign value has
+	// no field table here; the lowering resolves that one.
+	if isGuardType(recv) && len(recv.Args()) == 1 {
+		elem := recv.Args()[0]
+		if elem != nil && elem.Kind() == NamedKind {
+			if fields, known := c.env.fields[elem.Name()]; known {
+				return c.fieldOf(elem, fields, name, pos)
+			}
+		}
+	}
+	return nil
+}
+
+// isGuardType reports whether a type is the transparent guard of std/sync.
+// The name test accepts the qualified spelling the checker uses for an
+// imported type and the bare spelling inside std/sync itself.
+func isGuardType(t *Type) bool {
+	if t == nil || t.Kind() != NamedKind || len(t.Args()) != 1 {
+		return false
+	}
+	name := t.Name()
+	return name == "Guard" || name == "ReadGuard" ||
+		strings.HasSuffix(name, "sync.Guard") || strings.HasSuffix(name, "sync.ReadGuard")
+}
+
+// isReadGuardType reports whether the type is the read side only.
+func isReadGuardType(t *Type) bool {
+	if t == nil || t.Kind() != NamedKind {
+		return false
+	}
+	name := t.Name()
+	return name == "ReadGuard" || strings.HasSuffix(name, "sync.ReadGuard")
+}
+
+// packageAndType splits a qualified type name into its package name and its
+// bare type name. It returns empty strings for an unqualified name, which is a
+// type of the current package.
+func packageAndType(name string) (string, string) {
+	dot := strings.LastIndexByte(name, '.')
+	if dot <= 0 || dot+1 >= len(name) {
+		return "", ""
+	}
+	path, typ := name[:dot], name[dot+1:]
+	if slash := strings.LastIndexByte(path, '/'); slash >= 0 {
+		path = path[slash+1:]
+	}
+	return path, typ
+}
+
+// foreignMethod returns the declaration of a method declared by an imported
+// package. The receiver type name carries the package qualifier, so the lookup
+// key is Type.Method under the package's short name.
+func (c *checker) foreignMethod(recv *Type, name string) *ast.FuncDecl {
+	if recv == nil || recv.Kind() != NamedKind {
 		return nil
 	}
+	pkg, typ := packageAndType(recv.Name())
+	if pkg == "" || typ == "" {
+		return nil
+	}
+	methods := c.foreignFuncs[pkg]
+	if methods == nil {
+		return nil
+	}
+	return methods[typ+"."+name]
+}
+
+// requireWait rejects a wait operation outside await, wait, or spawn.
+func (c *checker) requireWait(s *inferScope, pos source.Pos) {
+	if s.async || s.allowAsyncCall || s.parallel {
+		return
+	}
+	c.bag.Error(pos, diag.CodeAsyncNotAwaited,
+		"this async call is not awaited",
+		"write await, wait(...), or spawn")
+}
+
+// awaitOperand accepts the shapes await may wait on: an async call, a method
+// wait operation, or a ?/! wrapper around one.
+func awaitOperand(e ast.Expr) bool {
+	switch x := e.(type) {
+	case *ast.CallExpr, *ast.MethodCallExpr, *ast.DeadlineExpr:
+		return true
+	case *ast.TryExpr:
+		return awaitOperand(x.X)
+	case *ast.UnwrapExpr:
+		return awaitOperand(x.X)
+	}
+	return false
+}
+
+// guardProducer reports whether an expression creates a guard rather than
+// copying one. A call creates it; unwrapping an Option<Guard<T>> still does.
+func guardProducer(e ast.Expr) bool {
+	switch x := e.(type) {
+	case *ast.CallExpr, *ast.MethodCallExpr, *ast.AggregateExpr:
+		return true
+	case *ast.UnwrapExpr:
+		return guardProducer(x.X)
+	case *ast.AwaitExpr:
+		return guardProducer(x.X)
+	case *ast.TryExpr:
+		return guardProducer(x.X)
+	}
+	return false
+}
+
+// readGuardWrite reports whether a place is reached through a read guard. A
+// field or an index through the guard is a write to the guarded value; a name
+// is a rebinding of the guard itself.
+func (c *checker) readGuardWrite(s *inferScope, e ast.Expr) bool {
+	switch x := e.(type) {
+	case *ast.NameExpr:
+		return isReadGuardType(c.inferExpr(s, x))
+	case *ast.FieldExpr:
+		return isReadGuardType(c.inferExpr(s, x.Recv))
+	case *ast.IndexExpr:
+		return c.readGuardWrite(s, x.Recv)
+	}
+	return false
+}
+
+// fieldOf looks one name up in a known field list and substitutes the type
+// arguments of the receiver.
+func (c *checker) fieldOf(recv *Type, fields []*fieldInfo, name string, pos source.Pos) *Type {
 	subst := c.substFor(recv.Name(), recv.Args())
 	for _, f := range fields {
 		if f.name == name {
@@ -1348,6 +2315,25 @@ func (c *checker) fieldType(recv *Type, name string, pos source.Pos) *Type {
 	}
 	c.bag.Error(pos, diag.CodeNoField, "no field "+name+" on "+recv.Name(), "check the field name or the type")
 	return nil
+}
+
+// arrayLitType checks one fixed-array literal. The explicit type supplies the
+// element type, and the written length must match the number of elements.
+func (c *checker) arrayLitType(s *inferScope, lit *ast.ArrayLitExpr) *Type {
+	t := c.buildType(lit.Type, nil)
+	if t == nil || t.Kind() != ArrayKind {
+		return t
+	}
+	for _, elem := range lit.Elems {
+		c.checkValue(s, elem, t.Elem())
+	}
+	n, err := strconv.Atoi(t.Length())
+	if err == nil && n != len(lit.Elems) {
+		c.bag.Error(lit.Pos(), diag.CodeBadArgument,
+			"wrong number of array elements",
+			"write exactly "+strconv.Itoa(n)+" elements")
+	}
+	return t
 }
 
 func (c *checker) aggregateType(s *inferScope, agg *ast.AggregateExpr) *Type {
@@ -1393,7 +2379,7 @@ func (c *checker) foreignInitSig(name string, recv *Type) *signature {
 	if decl == nil || decl.Recv == nil || len(decl.Recv.Type.Args) != len(recv.Args()) {
 		return nil
 	}
-	sig := c.buildSig(decl)
+	sig := c.buildForeignSig(decl, name[:dot])
 	subst := make(map[string]*Type, len(recv.Args()))
 	for i, a := range decl.Recv.Type.Args {
 		if a.Kind == ast.NamedType && len(a.Args) == 0 {
@@ -1409,7 +2395,7 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 	if t != nil {
 		name = t.Name()
 	}
-	if name == "rc" && t != nil && len(t.Args()) == 1 {
+	if (name == "rc" || name == "arc") && t != nil && len(t.Args()) == 1 {
 		elem := t.Args()[0]
 		if sig, ok := c.env.inits[elem.Name()]; ok {
 			if inst := c.instantiateReceiver(sig, elem); inst != nil {
@@ -1474,6 +2460,17 @@ func (c *checker) newType(s *inferScope, n *ast.NewExpr) *Type {
 		}
 		return t
 	}
+	if name == "chan" {
+		if len(n.Args) != 1 {
+			c.badArity(n.Pos(), name)
+			for _, a := range n.Args {
+				c.inferExpr(s, a.Expr)
+			}
+			return t
+		}
+		c.checkArg(s, n.Args[0].Expr, c.in.scalar("usize"), name, 1)
+		return t
+	}
 	for _, a := range n.Args {
 		c.checkArg(s, a.Expr, c.in.scalar("i32"), name, 1)
 	}
@@ -1503,7 +2500,7 @@ func (c *checker) unaryType(s *inferScope, u *ast.UnaryExpr) *Type {
 		if t != nil && !t.IsNumeric() {
 			c.typeMismatch(u.Pos(), t, nil)
 		}
-	case token.Bang:
+	case token.Bang, token.KwNot:
 		if t != nil && !isBool(t) {
 			c.typeMismatch(u.Pos(), t, c.in.scalar("bool"))
 		}
@@ -1543,6 +2540,17 @@ func (c *checker) binaryType(s *inferScope, b *ast.BinaryExpr) *Type {
 		return c.in.scalar("bool")
 	}
 	lt := c.inferExpr(s, b.L)
+	if b.Op == token.Pow {
+		rt := c.inferExpr(s, b.R)
+		if lt != nil && !lt.IsNumeric() {
+			c.typeMismatch(b.Pos(), lt, nil)
+			return lt
+		}
+		if lt != nil && lt.IsInteger() && (rt == nil || !rt.IsInteger()) {
+			c.typeMismatch(b.R.Pos(), rt, c.in.scalar("u32"))
+		}
+		return lt
+	}
 	if b.Op == token.Plus && lt != nil && lt.Kind() == ScalarKind && lt.Name() == "raw" {
 		c.checkValue(s, b.R, c.in.scalar("usize"))
 		return lt
@@ -1674,6 +2682,11 @@ func elemOf(in *interner, t *Type) *Type {
 		return in.scalar("u32")
 	}
 	return nil
+}
+
+// isStrType reports whether t is the predeclared str type.
+func isStrType(t *Type) bool {
+	return t != nil && t.Kind() == ScalarKind && t.Name() == "str"
 }
 
 // sliceOf returns the type of a slice. Slicing a fixed array yields a view of

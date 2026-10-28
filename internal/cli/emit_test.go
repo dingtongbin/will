@@ -16,7 +16,7 @@ func TestEmitWillc(t *testing.T) {
 	if !strings.HasPrefix(out, "#1 module ") {
 		t.Fatalf("output does not start with the module record:\n%s", out)
 	}
-	if !strings.Contains(out, `text="Add"`) {
+	if !strings.Contains(out, `text="add"`) {
 		t.Fatalf("output lacks the function record:\n%s", out)
 	}
 	if !strings.HasSuffix(out, "end\n") {

@@ -1,28 +1,28 @@
 import "std/container/tree"
 
-func Less(a: i32, b: i32) -> bool {
+def less(a: i32, b: i32) -> bool {
     return a < b
 }
 
-// Tree must keep ordered lookups correct through rotations and through both
-// one-child and two-child deletion.
-func main() -> i32 {
-    var t: tree.Tree<i32, i32> = new tree.Tree<i32, i32>(Less)
-    if t.Len() != 0usize {
+# Tree must keep ordered lookups correct through rotations and through both
+# one-child and two-child deletion.
+def main() -> i32 {
+    var t: tree.Tree<i32, i32> = new tree.Tree<i32, i32>(less)
+    if t.len() != 0usize {
         return 1
     }
-    t.Set(5, 50)
-    t.Set(2, 20)
-    t.Set(8, 80)
-    t.Set(1, 10)
-    t.Set(3, 30)
-    t.Set(7, 70)
-    t.Set(9, 90)
-    t.Set(2, 21)
-    if t.Len() != 7usize {
+    t.set(5, 50)
+    t.set(2, 20)
+    t.set(8, 80)
+    t.set(1, 10)
+    t.set(3, 30)
+    t.set(7, 70)
+    t.set(9, 90)
+    t.set(2, 21)
+    if t.len() != 7usize {
         return 2
     }
-    match t.Get(2) {
+    match t.get(2) {
         Some(v) => {
             if v != 21 {
                 return 3
@@ -32,7 +32,7 @@ func main() -> i32 {
             return 4
         }
     }
-    match t.Get(4) {
+    match t.get(4) {
         Some(v) => {
             _ = v
             return 5
@@ -40,9 +40,9 @@ func main() -> i32 {
         None => {
         }
     }
-    match t.Min() {
+    match t.min() {
         Some(p) => {
-            if p.first != 1 || p.second != 10 {
+            if p.first != 1 or p.second != 10 {
                 return 6
             }
         }
@@ -50,9 +50,9 @@ func main() -> i32 {
             return 7
         }
     }
-    match t.Max() {
+    match t.max() {
         Some(p) => {
-            if p.first != 9 || p.second != 90 {
+            if p.first != 9 or p.second != 90 {
                 return 8
             }
         }
@@ -60,7 +60,7 @@ func main() -> i32 {
             return 9
         }
     }
-    match t.Floor(6) {
+    match t.floor(6) {
         Some(p) => {
             if p.first != 5 {
                 return 10
@@ -70,7 +70,7 @@ func main() -> i32 {
             return 11
         }
     }
-    match t.Ceil(6) {
+    match t.ceil(6) {
         Some(p) => {
             if p.first != 7 {
                 return 12
@@ -80,13 +80,13 @@ func main() -> i32 {
             return 13
         }
     }
-    if !t.Delete(8) || t.Len() != 6usize {
+    if not t.delete(8) or t.len() != 6usize {
         return 14
     }
-    if t.Delete(8) {
+    if t.delete(8) {
         return 15
     }
-    match t.Get(8) {
+    match t.get(8) {
         Some(v) => {
             _ = v
             return 16
@@ -94,10 +94,10 @@ func main() -> i32 {
         None => {
         }
     }
-    if !t.Delete(5) || t.Len() != 5usize {
+    if not t.delete(5) or t.len() != 5usize {
         return 17
     }
-    match t.Min() {
+    match t.min() {
         Some(p) => {
             if p.first != 1 {
                 return 18

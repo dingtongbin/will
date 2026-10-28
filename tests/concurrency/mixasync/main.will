@@ -1,0 +1,37 @@
+import "std/os/fs"
+
+async def mix(ch: chan<i32>, path: str) -> Result<(), Error> {
+    var one: str = "m"
+    _ = await fs.append(path, one[Range(0, 1)])?
+    _ = await ch.send(7)
+    return Ok(())
+}
+
+async def main() -> i32 {
+    var path: str = "will-concurrency-mixasync.tmp"
+    _ = fs.remove(path)
+    var ch: chan<i32> = new chan<i32>(1)
+    var result: Result<(), Error> = Ok(())
+    var value: i32 = 0
+    region {
+        var task: Task<Result<(), Error>> = spawn mix(ch, path)
+        var item: Option<i32> = await ch.recv()
+        match item {
+            Some(v) => {
+                value = v
+            }
+            None => {
+                return 1
+            }
+        }
+        result = await task!
+    }
+    _ = fs.remove(path)
+    if value != 7 {
+        return 2
+    }
+    if result.is_err() {
+        return 3
+    }
+    return 0
+}

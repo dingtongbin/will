@@ -1,10 +1,12 @@
 
 #include <errno.h>
-#include <sys/random.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include "../include/willrt.h"
+
+#include "views_posix.h"
 
 int32_t willrt_os_cpu_count(void) {
     long count = sysconf(_SC_NPROCESSORS_ONLN);
@@ -12,25 +14,59 @@ int32_t willrt_os_cpu_count(void) {
     return count < 1 ? 1 : (int32_t)count;
 }
 
-int32_t willrt_os_random_bytes(void* out, size_t size) {
-    unsigned char* cursor = (unsigned char*)out;
-    size_t left = size;
+void* willrt_os_alloc_pages(size_t size) {
+    void* memory;
 
-    if (out == NULL && size != 0) {
+    if (size == 0) {
+        size = 1;
+    }
+    memory = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                  MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    return memory == MAP_FAILED ? NULL : memory;
+}
+
+void willrt_os_free_pages(void* ptr, size_t size) {
+    if (ptr != NULL) {
+        munmap(ptr, size == 0 ? 1 : size);
+    }
+}
+
+void* willrt_os_reserve_pages(size_t size) {
+    void* memory;
+
+    if (size == 0) {
+        size = 1;
+    }
+    memory = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    return memory == MAP_FAILED ? NULL : memory;
+}
+
+int32_t willrt_os_commit_pages(void* ptr, size_t size) {
+    if (ptr == NULL || size == 0) {
         return -1;
     }
-    while (left != 0) {
-        ssize_t got = getrandom(cursor, left, 0);
-        if (got < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
-            return -1;
-        }
-        cursor += (size_t)got;
-        left -= (size_t)got;
+    return mprotect(ptr, size, PROT_READ | PROT_WRITE) == 0 ? 0 : -1;
+}
+
+void willrt_os_release_pages(void* ptr, size_t size) {
+    if (ptr != NULL) {
+        munmap(ptr, size == 0 ? 1 : size);
     }
-    return 0;
+}
+
+size_t willrt_os_page_size(void) {
+    long size = sysconf(_SC_PAGESIZE);
+
+    return size < 4096 ? 4096u : (size_t)size;
+}
+
+int32_t willrt_os_gc_views_open(willrt_os_gc_views* views, size_t size,
+                                size_t stride) {
+    return willrt_posix_views_open(views, size, stride);
+}
+
+void willrt_os_gc_views_close(willrt_os_gc_views* views) {
+    willrt_posix_views_close(views);
 }
 
 typedef struct willrt_posix_thread {

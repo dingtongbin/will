@@ -1,6 +1,6 @@
-// Cmd is one program and the arguments and environment it runs with. An empty
-// env means the child inherits this process's environment; an empty dir means
-// it inherits the working directory. No field is a live process.
+# Cmd is one program and the arguments and environment it runs with. An empty
+# env means the child inherits this process's environment; an empty dir means
+# it inherits the working directory. No field is a live process.
 struct Cmd {
     path: str
     args: []str
@@ -8,39 +8,48 @@ struct Cmd {
     dir: str
 }
 
-// Command builds a command for path with args. The environment and the working
-// directory are inherited until WithEnv or WithDir sets them.
-func Command(path: str, args: ...str) -> Cmd {
-    return Cmd { path: path, args: args, env: new Map<str, str>(0), dir: ""}
+# Command builds a command for path with args. The environment and the working
+# directory are inherited until WithEnv or WithDir sets them.
+def command(path: str, args: ...str) -> Cmd {
+    return Cmd { path: path.clone(), args: args, env: new Map<str, str>(0), dir: ""}
 }
 
-// WithEnv returns a command whose environment is c's environment plus the
-// key-value pairs in kv. A later pair with the same key wins. The receiver is
-// left unchanged, so the copy owns its map.
-//
-// kv must hold pairs: an odd count is a programming error, not a runtime
-// condition a caller can recover from.
-func (c: Cmd) WithEnv(kv: ...str) -> Cmd {
-    if kv.Len() % 2usize != 0usize {
+# WithEnv returns a command whose environment is c's environment plus the
+# key-value pairs in kv. A later pair with the same key wins. The receiver is
+# left unchanged, so the copy owns its map.
+#
+# kv must hold pairs: an odd count is a programming error, not a runtime
+# condition a caller can recover from.
+def (c: ref Cmd) with_env(kv: ...str) -> Cmd {
+    if kv.len() % 2usize != 0usize {
         panic("exec: WithEnv takes key and value pairs")
     }
     var env: Map<str, str> = new Map<str, str>(0)
     for key, value in c.env {
-        env.Set(key, value)
+        env.set(key, value)
     }
     var i: usize = 0
-    for {
-        if i >= kv.Len() {
+    while True {
+        if i >= kv.len() {
             break
         }
-        env.Set(kv.Get(i), kv.Get(i + 1))
+        env.set(kv.get(i).clone(), kv.get(i + 1).clone())
         i += 2
     }
-    return Cmd { path: c.path, args: c.args, env: env, dir: c.dir}
+    return Cmd { path: c.path.clone(), args: c.args, env: env, dir: c.dir.clone()}
 }
 
-// WithDir returns a command that runs in dir. The environment and arguments
-// are the same values c carries.
-func (c: Cmd) WithDir(dir: str) -> Cmd {
-    return Cmd { path: c.path, args: c.args, env: c.env, dir: dir}
+# WithDir returns a command that runs in dir. The environment and arguments
+# are the same values c carries.
+def (c: ref Cmd) with_dir(dir: str) -> Cmd {
+    return Cmd { path: c.path.clone(), args: c.args, env: copy_env(c.env), dir: dir.clone()}
+}
+
+# copyEnv makes an independent map so changing the copy cannot alter c.
+def copy_env(src: Map<str, str>) -> Map<str, str> {
+    var out: Map<str, str> = new Map<str, str>(src.len())
+    for key, value in src {
+        out.set(key.clone(), value.clone())
+    }
+    return out
 }

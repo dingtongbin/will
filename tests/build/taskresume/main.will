@@ -1,37 +1,39 @@
-func Inner() -> i32 {
+def inner() -> i32 {
     return 7
 }
 
-func Work(t: Task<i32>) -> i32 {
-    return t.Join()!
+async def work(t: Task<i32>) -> i32 {
+    return await t!
 }
 
-func WorkLocal(t: Task<i32>) -> i32 {
-    var x: i32 = t.Join()!
+async def work_local(t: Task<i32>) -> i32 {
+    var x: i32 = await t!
     return x + 1
 }
 
-func WorkPure(t: Task<i32>) -> i32 {
+async def work_pure(t: Task<i32>) -> i32 {
     var a: i32 = 1 + 2
     var b: i32 = a + 3
-    var x: i32 = t.Join()!
+    var x: i32 = await t!
     return a + b + x
 }
 
-func main() -> i32 {
-    var inner: Task<i32> = spawn Inner()
-    var work: Task<i32> = spawn Work(inner)
-    var got: i32 = work.Join()!
+async def main() -> i32 {
+    var first: Task<i32> = spawn inner()
+    var workTask: Task<i32> = spawn work(first)
+    var got: i32 = await workTask!
     if got != 7 {
         return 1
     }
-    var local: Task<i32> = spawn WorkLocal(inner)
-    var gotLocal: i32 = local.Join()!
+    var second: Task<i32> = spawn inner()
+    var localTask: Task<i32> = spawn work_local(second)
+    var gotLocal: i32 = await localTask!
     if gotLocal != 8 {
         return 2
     }
-    var pure: Task<i32> = spawn WorkPure(inner)
-    var gotPure: i32 = pure.Join()!
+    var third: Task<i32> = spawn inner()
+    var pureTask: Task<i32> = spawn work_pure(third)
+    var gotPure: i32 = await pureTask!
     if gotPure != 16 {
         return 3
     }

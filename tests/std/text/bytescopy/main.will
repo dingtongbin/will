@@ -1,42 +1,42 @@
 import "std/bytes"
 
-// Copy writes into the initialized prefix of the destination: a longer source
-// is cut at the destination length, a shorter one leaves the rest alone, and an
-// empty source writes nothing.
-func main() -> i32 {
+# Copy writes into the initialized prefix of the destination: a longer source
+# is cut at the destination length, a shorter one leaves the rest alone, and an
+# empty source writes nothing.
+def main() -> i32 {
     var src: str = "abcdef"
     var dst: Array<u8> = new Array<u8>(3)
-    dst.Push(u8(0))
-    dst.Push(u8(0))
-    dst.Push(u8(0))
-    var n: usize = bytes.Copy(dst, src[Range(0, 3)])
+    dst.push(u8(0))
+    dst.push(u8(0))
+    dst.push(u8(0))
+    var n: usize = bytes.copy(dst, src[Range(0, 3)])
     if n != usize(3) {
         return 1
     }
-    if dst.Get(0) != u8(97) {
+    if dst.get(0) != u8(97) {
         return 2
     }
-    if dst.Get(1) != u8(98) {
+    if dst.get(1) != u8(98) {
         return 3
     }
-    if dst.Get(2) != u8(99) {
+    if dst.get(2) != u8(99) {
         return 4
     }
     var short: Array<u8> = new Array<u8>(2)
-    short.Push(u8(0))
-    short.Push(u8(0))
-    var cut: usize = bytes.Copy(short, src[Range(0, 4)])
+    short.push(u8(0))
+    short.push(u8(0))
+    var cut: usize = bytes.copy(short, src[Range(0, 4)])
     if cut != usize(2) {
         return 5
     }
-    if short.Get(1) != u8(98) {
+    if short.get(1) != u8(98) {
         return 6
     }
-    var kept: usize = bytes.Copy(short, src[Range(0, 0)])
+    var kept: usize = bytes.copy(short, src[Range(0, 0)])
     if kept != usize(0) {
         return 7
     }
-    if short.Get(0) != u8(97) {
+    if short.get(0) != u8(97) {
         return 8
     }
     return 0

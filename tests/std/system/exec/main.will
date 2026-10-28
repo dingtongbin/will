@@ -1,48 +1,48 @@
 import "std/os/exec"
 
-// The constructors are pure: they only move strings and maps into a value, so
-// a corpus can inspect every field without starting a process.
-func main() -> i32 {
-    var c: exec.Cmd = exec.Command("/bin/echo", "hello", "world")
+# The constructors are pure: they only move strings and maps into a value, so
+# a corpus can inspect every field without starting a process.
+def main() -> i32 {
+    var c: exec.Cmd = exec.command("/bin/echo", "hello", "world")
     if c.path != "/bin/echo" {
         return 1
     }
     if c.dir != "" {
         return 2
     }
-    if c.args.Len() != 2usize {
+    if c.args.len() != 2usize {
         return 3
     }
-    if c.args.Get(0) != "hello" {
+    if c.args.get(0) != "hello" {
         return 4
     }
-    if c.args.Get(1) != "world" {
+    if c.args.get(1) != "world" {
         return 5
     }
-    // An empty environment means the child inherits ours.
-    if c.env.Len() != 0usize {
+    # An empty environment means the child inherits ours.
+    if c.env.len() != 0usize {
         return 6
     }
 
-    var d: exec.Cmd = c.WithDir("/tmp")
+    var d: exec.Cmd = c.with_dir("/tmp")
     if d.dir != "/tmp" {
         return 7
     }
     if d.path != c.path {
         return 8
     }
-    if d.args.Len() != 2usize {
+    if d.args.len() != 2usize {
         return 9
     }
-    if d.env.Len() != 0usize {
+    if d.env.len() != 0usize {
         return 10
     }
 
-    var e: exec.Cmd = d.WithEnv("A", "1", "B", "2")
-    if e.env.Len() != 2usize {
+    var e: exec.Cmd = d.with_env("A", "1", "B", "2")
+    if e.env.len() != 2usize {
         return 11
     }
-    match e.env.Get("A") {
+    match e.env.get("A") {
         Some(v) => {
             if v != "1" {
                 return 12
@@ -52,7 +52,7 @@ func main() -> i32 {
             return 13
         }
     }
-    match e.env.Get("B") {
+    match e.env.get("B") {
         Some(v) => {
             if v != "2" {
                 return 14
@@ -65,18 +65,18 @@ func main() -> i32 {
     if e.dir != "/tmp" {
         return 16
     }
-    // The receiver keeps its own map, so setting a variable in a copy does not
-    // leak back into the command it came from.
-    if d.env.Len() != 0usize {
+    # The receiver keeps its own map, so setting a variable in a copy does not
+    # leak back into the command it came from.
+    if d.env.len() != 0usize {
         return 17
     }
 
-    // A second WithEnv keeps the pairs of the first and lets a later pair win.
-    var f: exec.Cmd = e.WithEnv("A", "9", "C", "3")
-    if f.env.Len() != 3usize {
+    # A second WithEnv keeps the pairs of the first and lets a later pair win.
+    var f: exec.Cmd = e.with_env("A", "9", "C", "3")
+    if f.env.len() != 3usize {
         return 18
     }
-    match f.env.Get("A") {
+    match f.env.get("A") {
         Some(v) => {
             if v != "9" {
                 return 19
@@ -86,7 +86,7 @@ func main() -> i32 {
             return 20
         }
     }
-    match f.env.Get("C") {
+    match f.env.get("C") {
         Some(v) => {
             if v != "3" {
                 return 21
@@ -97,40 +97,40 @@ func main() -> i32 {
         }
     }
 
-    // The same call shape through a chained expression.
-    var g: exec.Cmd = exec.Command("ls", "-l").WithDir("/").WithEnv("LANG", "C")
-    if g.path != "ls" || g.dir != "/" || g.args.Len() != 1usize {
+    # The same call shape through a chained expression.
+    var g: exec.Cmd = exec.command("ls", "-l").with_dir("/").with_env("LANG", "C")
+    if g.path != "ls" or g.dir != "/" or g.args.len() != 1usize {
         return 23
     }
-    if g.env.Len() != 1usize {
+    if g.env.len() != 1usize {
         return 24
     }
 
-    // The result types are plain values too. A field of an imported struct is
-    // read through a local because a chained read of a nested imported field is
-    // not lowered yet.
-    var status: exec.ExitStatus = exec.ExitStatus { code: 2, signaled: false}
+    # The result types are plain values too. A field of an imported struct is
+    # read through a local because a chained read of a nested imported field is
+    # not lowered yet.
+    var status: exec.ExitStatus = exec.ExitStatus { code: 2, signaled: False}
     var out: exec.Output = exec.Output {
         stdout: new Array<u8>(0),
         stderr: new Array<u8>(0),
         status: status,
     }
     var got: exec.ExitStatus = out.status
-    if got.code != 2 || got.signaled {
+    if got.code != 2 or got.signaled {
         return 25
     }
-    if out.stdout.Len() != 0usize {
+    if out.stdout.len() != 0usize {
         return 26
     }
 
-    // A pair-less WithEnv only copies the environment, and a command with no
-    // arguments carries an empty view.
-    var h: exec.Cmd = c.WithEnv()
-    if h.env.Len() != 0usize || h.path != c.path {
+    # A pair-less WithEnv only copies the environment, and a command with no
+    # arguments carries an empty view.
+    var h: exec.Cmd = c.with_env()
+    if h.env.len() != 0usize or h.path != c.path {
         return 27
     }
-    var bare: exec.Cmd = exec.Command("true")
-    if bare.args.Len() != 0usize {
+    var bare: exec.Cmd = exec.command("true")
+    if bare.args.len() != 0usize {
         return 28
     }
     return 0

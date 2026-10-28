@@ -1,0 +1,27 @@
+# CPU helpers submit ordinary calls through spawn. The runtime decides where a
+# job runs; the surface has no parallel block or lane selector.
+
+async def parallel_for(n: usize, f: func(usize)) {
+    region {
+        var i: usize = 0
+        while i < n {
+            var task: Task<()> = spawn f(i)
+            _ = await task!
+            i += 1
+        }
+    }
+}
+
+async def parallel_map<T, U>(xs: []T, f: func(T) -> U) -> Array<U> {
+    var out: Array<U> = new Array<U>(xs.len())
+    region {
+        var i: usize = 0
+        while i < xs.len() {
+            var value: T = xs[i]
+            var task: Task<U> = spawn f(value)
+            out.push(await task!)
+            i += 1
+        }
+    }
+    return out
+}
