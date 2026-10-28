@@ -209,6 +209,87 @@ func TestClassGlobalRoot(t *testing.T) {
 	}
 }
 
+const classCycleDoc = "#1 module path=\"m\"\n" +
+	"#2 class parent=#1 text=\"Node\"\n" +
+	"#3 field parent=#2 text=\"next\" type=\"Node\"\n" +
+	"#4 field parent=#2 text=\"value\" type=\"i32\"\n" +
+	"#5 func parent=#1 text=\"main\" type=\"i32\"\n" +
+	"#6 type parent=#5 text=\"i32\" kind=scalar\n" +
+	"#7 block parent=#5\n" +
+	"#8 var parent=#7 text=\"n\" type=\"Node\"\n" +
+	"#9 type parent=#8 text=\"Node\" kind=class to=#2\n" +
+	"#10 new parent=#8 type=\"Node\"\n" +
+	"#11 assign parent=#7 op=\"=\" target=#12 value=#15\n" +
+	"#12 field parent=#11 text=\"value\" recv=#13\n" +
+	"#13 name parent=#12 text=\"n\" to=#8\n" +
+	"#14 type parent=#13 text=\"Node\" kind=class to=#2\n" +
+	"#15 lit parent=#11 kind=int text=\"42\" type=\"i32\"\n" +
+	"#16 assign parent=#7 op=\"=\" target=#17 value=#20\n" +
+	"#17 field parent=#16 text=\"next\" recv=#18\n" +
+	"#18 name parent=#17 text=\"n\" to=#8\n" +
+	"#19 type parent=#18 text=\"Node\" kind=class to=#2\n" +
+	"#20 name parent=#16 text=\"n\" to=#8\n" +
+	"#21 type parent=#20 text=\"Node\" kind=class to=#2\n" +
+	"#22 var parent=#7 text=\"m\" type=\"Node\"\n" +
+	"#23 type parent=#22 text=\"Node\" kind=class to=#2\n" +
+	"#24 new parent=#22 type=\"Node\"\n" +
+	"#25 return parent=#7 value=#26\n" +
+	"#26 field parent=#25 text=\"value\" recv=#27\n" +
+	"#27 name parent=#26 text=\"n\" to=#8\n" +
+	"#28 type parent=#27 text=\"Node\" kind=class to=#2\n" +
+	"#29 end\n"
+
+func TestClassCycleFieldRuns(t *testing.T) {
+	doc, err := willc.Read([]byte(classCycleDoc))
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	ir, err := EmitModule([]*willc.Doc{doc}, "main")
+	if err != nil {
+		t.Fatalf("emit: %v", err)
+	}
+	clang, err := exec.LookPath("clang")
+	if err != nil {
+		t.Skip("clang is not on PATH")
+	}
+	dir := t.TempDir()
+	irPath := filepath.Join(dir, "cycle.ll")
+	if err := os.WriteFile(irPath, ir, 0o644); err != nil {
+		t.Fatalf("write IR: %v", err)
+	}
+	exe := filepath.Join(dir, "cycle")
+	if runtime.GOOS == "windows" {
+		exe += ".exe"
+	}
+	args := []string{"-std=c11", "-O2", "-I", filepath.Join("..", "..", "runtime", "include"),
+		"-I", filepath.Join("..", "..", "runtime", "core", "gc", "src"),
+		"-o", exe, irPath}
+	for _, name := range []string{"types.c", "region.c", "chunks.c", "heap.c", "object.c",
+		"roots.c", "safepoint.c", "barrier.c", "mark.c", "evac.c", "cycle.c", "pacer.c"} {
+		args = append(args, filepath.Join("..", "..", "runtime", "core", "gc", "src", name))
+	}
+	args = append(args,
+		filepath.Join("..", "..", "runtime", "core", "mem", "src", "alloc.c"),
+		filepath.Join("..", "..", "runtime", "core", "startup", "src", "startup.c"),
+		filepath.Join("..", "..", "runtime", "platform", "win.c"))
+	if runtime.GOOS == "windows" {
+		args = append(args, "-lws2_32")
+	}
+	out, err := exec.Command(clang, args...).CombinedOutput()
+	if err != nil {
+		t.Fatalf("link: %v\n%s\n%s", err, out, ir)
+	}
+	run := exec.Command(exe)
+	run.Env = append(os.Environ(), "WILL_GC_MEMLIMIT=1")
+	out, err = run.CombinedOutput()
+	if err == nil {
+		t.Fatalf("cycle program exited zero, want 42:\n%s", out)
+	}
+	if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 42 {
+		t.Fatalf("cycle program: %v\n%s", err, out)
+	}
+}
+
 func TestClassProgramRuns(t *testing.T) {
 	doc, err := willc.Read([]byte(classMainDoc))
 	if err != nil {
