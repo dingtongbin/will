@@ -91,11 +91,11 @@ match.end.1:
   ret %"enum.std/errors.ErrorClass" %t29
 }
 %"struct.std/errors.Fault" = type { { ptr, i64 }, i32 }
-define hidden void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
+define hidden void @"std/errors.Fault.init"(ptr %self, ptr %message, i32 %status) inlinehint {
 entry:
   %v.ret.18 = alloca { ptr, i64 }
   %v.strm.18 = alloca { ptr, i64 }
-  %t1 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.std/errors.Fault", ptr %self, i32 0, i32 0
   %t2 = getelementptr inbounds { ptr, i64 }, ptr %message, i32 0, i32 0
   %t3 = load ptr, ptr %t2
   %t4 = getelementptr inbounds { ptr, i64 }, ptr %message, i32 0, i32 1
@@ -110,16 +110,16 @@ entry:
   store { ptr, i64 } %t9, ptr %v.ret.18
   %t10 = load { ptr, i64 }, ptr %v.ret.18
   store { ptr, i64 } %t10, ptr %t1
-  %t11 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
+  %t11 = getelementptr inbounds %"struct.std/errors.Fault", ptr %self, i32 0, i32 1
   store i32 %status, ptr %t11
   ret void
 }
-define hidden { ptr, i64 } @"std/errors.Fault.message"(ptr %f) inlinehint {
+define hidden { ptr, i64 } @"std/errors.Fault.message"(ptr %self) inlinehint {
 entry:
   %v.ret.30 = alloca { ptr, i64 }
   %v.strm.30 = alloca { ptr, i64 }
-  %t12 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 0
-  %t13 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 0
+  %t12 = getelementptr inbounds %"struct.std/errors.Fault", ptr %self, i32 0, i32 0
+  %t13 = getelementptr inbounds %"struct.std/errors.Fault", ptr %self, i32 0, i32 0
   %t14 = getelementptr inbounds { ptr, i64 }, ptr %t13, i32 0, i32 0
   %t15 = load ptr, ptr %t14
   %t16 = getelementptr inbounds { ptr, i64 }, ptr %t13, i32 0, i32 1
@@ -135,16 +135,16 @@ entry:
   %t22 = load { ptr, i64 }, ptr %v.ret.30
   ret { ptr, i64 } %t22
 }
-define hidden i32 @"std/errors.Fault.status"(ptr %f) alwaysinline {
+define hidden i32 @"std/errors.Fault.status"(ptr %self) alwaysinline {
 entry:
-  %t23 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
+  %t23 = getelementptr inbounds %"struct.std/errors.Fault", ptr %self, i32 0, i32 1
   %t24 = load i32, ptr %t23
   ret i32 %t24
 }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.error_class"(ptr %f) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.error_class"(ptr %self) inlinehint {
 entry:
   %v.ret.47 = alloca %"enum.std/errors.ErrorClass"
-  %t25 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
+  %t25 = getelementptr inbounds %"struct.std/errors.Fault", ptr %self, i32 0, i32 1
   %t26 = load i32, ptr %t25
   %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t26)
   store %"enum.std/errors.ErrorClass" %t27, ptr %v.ret.47
@@ -237,12 +237,12 @@ entry:
 %"struct.std/os/fs.StatInfo" = type { i64, i32, i64, i1, i1 }
 %"struct.std/os/fs.DirEntry" = type { { ptr, i64 }, i1, i64 }
 %"struct.std/os/fs.fsError" = type { { ptr, i64 } }
-define hidden { ptr, i64 } @"std/os/fs.fsError.message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"std/os/fs.fsError.message"(ptr %self) inlinehint {
 entry:
   %v.ret.68 = alloca { ptr, i64 }
   %v.strm.68 = alloca { ptr, i64 }
-  %t1 = getelementptr inbounds %"struct.std/os/fs.fsError", ptr %e, i32 0, i32 0
-  %t2 = getelementptr inbounds %"struct.std/os/fs.fsError", ptr %e, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.std/os/fs.fsError", ptr %self, i32 0, i32 0
+  %t2 = getelementptr inbounds %"struct.std/os/fs.fsError", ptr %self, i32 0, i32 0
   %t3 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 0
   %t4 = load ptr, ptr %t3
   %t5 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 1
@@ -258,7 +258,7 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.68
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"std/os/fs.fsError.status"(ptr %e) alwaysinline {
+define hidden i32 @"std/os/fs.fsError.status"(ptr %self) alwaysinline {
 entry:
   ret i32 7
 }

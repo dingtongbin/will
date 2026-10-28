@@ -105,7 +105,11 @@ func (p *Program) layoutValue(pkg, text string, seen map[string]bool) (valueLayo
 			refs: []uint32{0}}, nil
 	case "ref", "mut":
 		return valueLayout{size: WordSize, align: WordSize}, nil
-	case "Array", "list", "dict", "set":
+	case "Array", "Map", "Set":
+		// These containers are three-word handles: data, length, capacity.
+		// The data pointer is the only GC reference in the handle.
+		return valueLayout{size: 3 * WordSize, align: WordSize, refs: []uint32{0}}, nil
+	case "list", "dict", "set":
 		return valueLayout{size: WordSize, align: WordSize, reference: true}, nil
 	case "chan", "Task":
 		if len(node.args) != 1 {

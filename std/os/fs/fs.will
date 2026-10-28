@@ -61,14 +61,14 @@ struct DirEntry {
 
 struct fsError {
     message: str
-}
 
-def (e: ref fsError) message() -> str {
-    return e.message.clone()
-}
+    def message(self) -> str {
+        return self.message.clone()
+    }
 
-def (e: ref fsError) status() -> i32 {
-    return 7
+    def status(self) -> i32 {
+        return 7
+    }
 }
 
 # Read parks the task frame until the blocking pool finishes the host read.

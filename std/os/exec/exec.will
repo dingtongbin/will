@@ -8,14 +8,14 @@ import c "exec.c" {
 
 struct execError {
     message: str
-}
 
-def (e: ref execError) message() -> str {
-    return e.message.clone()
-}
+    def message(self) -> str {
+        return self.message.clone()
+    }
 
-def (e: ref execError) status() -> i32 {
-    return 7
+    def status(self) -> i32 {
+        return 7
+    }
 }
 
 # AsyncRun runs c and returns its exit status.

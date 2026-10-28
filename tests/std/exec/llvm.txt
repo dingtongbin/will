@@ -949,12 +949,12 @@ for.end.2:
 }
 %interface.Error = type { ptr, ptr }
 %"struct.std/os/exec.execError" = type { { ptr, i64 } }
-define hidden { ptr, i64 } @"std/os/exec.execError.message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"std/os/exec.execError.message"(ptr %self) inlinehint {
 entry:
   %v.ret.14 = alloca { ptr, i64 }
   %v.strm.14 = alloca { ptr, i64 }
-  %t1 = getelementptr inbounds %"struct.std/os/exec.execError", ptr %e, i32 0, i32 0
-  %t2 = getelementptr inbounds %"struct.std/os/exec.execError", ptr %e, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.std/os/exec.execError", ptr %self, i32 0, i32 0
+  %t2 = getelementptr inbounds %"struct.std/os/exec.execError", ptr %self, i32 0, i32 0
   %t3 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 0
   %t4 = load ptr, ptr %t3
   %t5 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 1
@@ -970,7 +970,7 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.14
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"std/os/exec.execError.status"(ptr %e) alwaysinline {
+define hidden i32 @"std/os/exec.execError.status"(ptr %self) alwaysinline {
 entry:
   ret i32 7
 }

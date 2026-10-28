@@ -48,7 +48,8 @@ func (g *generator) emitShowThunk(concrete string) {
 	case "Array<u8>":
 		g.queueCDecl("willrt_show_str", "void", []string{"ptr", "i64", "ptr"})
 		fmt.Fprintf(g.out, "  %%d = load ptr, ptr %%data\n")
-		fmt.Fprintf(g.out, "  %%n = load i64, ptr %%data, i64 8\n")
+		fmt.Fprintf(g.out, "  %%lenp = getelementptr i8, ptr %%data, i64 8\n")
+		fmt.Fprintf(g.out, "  %%n = load i64, ptr %%lenp\n")
 		call = "  call void @willrt_show_str(ptr %d, i64 %n, ptr %out)\n"
 	case "str":
 		g.queueCDecl("willrt_show_str", "void", []string{"ptr", "i64", "ptr"})

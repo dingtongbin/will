@@ -18,6 +18,13 @@ recorded machine conditions from `desc/语言/性能.md`.
 Current Windows x86_64 probe:
 
 ```text
-alloc_ns p50=100 p99=300 p999=2500
-safepoint_ns p50=0 p99=100 p999=600
+alloc_ns p50=100 p99=400 p999=1800
+safepoint_ns p50=0 p99=100 p999=100
+wake_ns p50=300 p99=800 p999=46200
+```
+
+The wake probe is a separate opt-in test:
+
+```text
+go test -tags p999 -run TestWakeP999 ./bench/p999 -count=1 -v
 ```

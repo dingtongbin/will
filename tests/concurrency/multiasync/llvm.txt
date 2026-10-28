@@ -91,11 +91,11 @@ match.end.1:
   ret %"enum.std/errors.ErrorClass" %t29
 }
 %"struct.std/errors.Fault" = type { { ptr, i64 }, i32 }
-define hidden void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
+define hidden void @"std/errors.Fault.init"(ptr %self, ptr %message, i32 %status) inlinehint {
 entry:
   %v.ret.18 = alloca { ptr, i64 }
   %v.strm.18 = alloca { ptr, i64 }
-  %t1 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.std/errors.Fault", ptr %self, i32 0, i32 0
   %t2 = getelementptr inbounds { ptr, i64 }, ptr %message, i32 0, i32 0
   %t3 = load ptr, ptr %t2
   %t4 = getelementptr inbounds { ptr, i64 }, ptr %message, i32 0, i32 1
@@ -110,16 +110,16 @@ entry:
   store { ptr, i64 } %t9, ptr %v.ret.18
   %t10 = load { ptr, i64 }, ptr %v.ret.18
   store { ptr, i64 } %t10, ptr %t1
-  %t11 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
+  %t11 = getelementptr inbounds %"struct.std/errors.Fault", ptr %self, i32 0, i32 1
   store i32 %status, ptr %t11
   ret void
 }
-define hidden { ptr, i64 } @"std/errors.Fault.message"(ptr %f) inlinehint {
+define hidden { ptr, i64 } @"std/errors.Fault.message"(ptr %self) inlinehint {
 entry:
   %v.ret.30 = alloca { ptr, i64 }
   %v.strm.30 = alloca { ptr, i64 }
-  %t12 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 0
-  %t13 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 0
+  %t12 = getelementptr inbounds %"struct.std/errors.Fault", ptr %self, i32 0, i32 0
+  %t13 = getelementptr inbounds %"struct.std/errors.Fault", ptr %self, i32 0, i32 0
   %t14 = getelementptr inbounds { ptr, i64 }, ptr %t13, i32 0, i32 0
   %t15 = load ptr, ptr %t14
   %t16 = getelementptr inbounds { ptr, i64 }, ptr %t13, i32 0, i32 1
@@ -135,16 +135,16 @@ entry:
   %t22 = load { ptr, i64 }, ptr %v.ret.30
   ret { ptr, i64 } %t22
 }
-define hidden i32 @"std/errors.Fault.status"(ptr %f) alwaysinline {
+define hidden i32 @"std/errors.Fault.status"(ptr %self) alwaysinline {
 entry:
-  %t23 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
+  %t23 = getelementptr inbounds %"struct.std/errors.Fault", ptr %self, i32 0, i32 1
   %t24 = load i32, ptr %t23
   ret i32 %t24
 }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.error_class"(ptr %f) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.error_class"(ptr %self) inlinehint {
 entry:
   %v.ret.47 = alloca %"enum.std/errors.ErrorClass"
-  %t25 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
+  %t25 = getelementptr inbounds %"struct.std/errors.Fault", ptr %self, i32 0, i32 1
   %t26 = load i32, ptr %t25
   %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t26)
   store %"enum.std/errors.ErrorClass" %t27, ptr %v.ret.47
@@ -237,12 +237,12 @@ entry:
 %"struct.std/os/fs.StatInfo" = type { i64, i32, i64, i1, i1 }
 %"struct.std/os/fs.DirEntry" = type { { ptr, i64 }, i1, i64 }
 %"struct.std/os/fs.fsError" = type { { ptr, i64 } }
-define hidden { ptr, i64 } @"std/os/fs.fsError.message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"std/os/fs.fsError.message"(ptr %self) inlinehint {
 entry:
   %v.ret.68 = alloca { ptr, i64 }
   %v.strm.68 = alloca { ptr, i64 }
-  %t1 = getelementptr inbounds %"struct.std/os/fs.fsError", ptr %e, i32 0, i32 0
-  %t2 = getelementptr inbounds %"struct.std/os/fs.fsError", ptr %e, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.std/os/fs.fsError", ptr %self, i32 0, i32 0
+  %t2 = getelementptr inbounds %"struct.std/os/fs.fsError", ptr %self, i32 0, i32 0
   %t3 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 0
   %t4 = load ptr, ptr %t3
   %t5 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 1
@@ -258,7 +258,7 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.68
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"std/os/fs.fsError.status"(ptr %e) alwaysinline {
+define hidden i32 @"std/os/fs.fsError.status"(ptr %self) alwaysinline {
 entry:
   ret i32 7
 }
@@ -4242,12 +4242,12 @@ if.end.3:
 }
 %"struct.std/time.clockError" = type { { ptr, i64 } }
 %"struct.std/time.Stopwatch" = type { i64 }
-define hidden { ptr, i64 } @"std/time.clockError.message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"std/time.clockError.message"(ptr %self) inlinehint {
 entry:
   %v.ret.16 = alloca { ptr, i64 }
   %v.strm.16 = alloca { ptr, i64 }
-  %t1 = getelementptr inbounds %"struct.std/time.clockError", ptr %e, i32 0, i32 0
-  %t2 = getelementptr inbounds %"struct.std/time.clockError", ptr %e, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.std/time.clockError", ptr %self, i32 0, i32 0
+  %t2 = getelementptr inbounds %"struct.std/time.clockError", ptr %self, i32 0, i32 0
   %t3 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 0
   %t4 = load ptr, ptr %t3
   %t5 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 1
@@ -4263,21 +4263,21 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.16
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"std/time.clockError.status"(ptr %e) alwaysinline {
+define hidden i32 @"std/time.clockError.status"(ptr %self) alwaysinline {
 entry:
   ret i32 2
 }
-define hidden void @"std/time.Stopwatch.init"(ptr %s) inlinehint {
+define hidden void @"std/time.Stopwatch.init"(ptr %self) inlinehint {
 entry:
-  %t12 = getelementptr inbounds %"struct.std/time.Stopwatch", ptr %s, i32 0, i32 0
+  %t12 = getelementptr inbounds %"struct.std/time.Stopwatch", ptr %self, i32 0, i32 0
   %t13 = call i64 @willrt_now_ns()
   store i64 %t13, ptr %t12
   ret void
 }
-define hidden i64 @"std/time.Stopwatch.elapsed"(ptr %s) inlinehint {
+define hidden i64 @"std/time.Stopwatch.elapsed"(ptr %self) inlinehint {
 entry:
   %t14 = call i64 @willrt_now_ns()
-  %t15 = getelementptr inbounds %"struct.std/time.Stopwatch", ptr %s, i32 0, i32 0
+  %t15 = getelementptr inbounds %"struct.std/time.Stopwatch", ptr %self, i32 0, i32 0
   %t16 = load i64, ptr %t15
   %t17 = call {i64, i1} @llvm.ssub.with.overflow.i64(i64 %t14, i64 %t16)
   %t18 = extractvalue {i64, i1} %t17, 0
@@ -6799,12 +6799,12 @@ cat.ready.4:
   ret { ptr, i64 } %t1186
 }
 %"struct.std/time.timeError" = type { { ptr, i64 } }
-define hidden { ptr, i64 } @"std/time.timeError.message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"std/time.timeError.message"(ptr %self) inlinehint {
 entry:
   %v.ret.18 = alloca { ptr, i64 }
   %v.strm.18 = alloca { ptr, i64 }
-  %t1 = getelementptr inbounds %"struct.std/time.timeError", ptr %e, i32 0, i32 0
-  %t2 = getelementptr inbounds %"struct.std/time.timeError", ptr %e, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.std/time.timeError", ptr %self, i32 0, i32 0
+  %t2 = getelementptr inbounds %"struct.std/time.timeError", ptr %self, i32 0, i32 0
   %t3 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 0
   %t4 = load ptr, ptr %t3
   %t5 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 1
@@ -6820,7 +6820,7 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.18
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"std/time.timeError.status"(ptr %e) alwaysinline {
+define hidden i32 @"std/time.timeError.status"(ptr %self) alwaysinline {
 entry:
   ret i32 2
 }
@@ -11604,7 +11604,7 @@ declare i64 @willtime_wall_ns()
 @.str.66 = private unnamed_addr constant [22 x i8] c"std/time.is_leap_year\00", align 1
 @.str.67 = private unnamed_addr constant [22 x i8] c"time/civil.will:123:8\00", align 1
 @.str.68 = private unnamed_addr constant [23 x i8] c"time/civil.will:126:12\00", align 1
-@.str.69 = private unnamed_addr constant [22 x i8] c"time/clock.will:33:21\00", align 1
+@.str.69 = private unnamed_addr constant [22 x i8] c"time/clock.will:32:25\00", align 1
 @.str.70 = private unnamed_addr constant [27 x i8] c"std/time.Stopwatch.elapsed\00", align 1
 @.bytes.9 = private unnamed_addr constant [20 x i8] c"time: negative sleep", align 1
 @"will.type.std/time.clockError" = linkonce_odr constant i8 0, align 1

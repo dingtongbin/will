@@ -11,14 +11,14 @@ const maxUnixSecond: i64 = 9223372036
 # knowing this type.
 struct timeError {
     message: str
-}
 
-def (e: ref timeError) message() -> str {
-    return e.message.clone()
-}
+    def message(self) -> str {
+        return self.message.clone()
+    }
 
-def (e: ref timeError) status() -> i32 {
-    return 2
+    def status(self) -> i32 {
+        return 2
+    }
 }
 
 def fail(message: str) -> timeError {

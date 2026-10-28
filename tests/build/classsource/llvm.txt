@@ -67,7 +67,7 @@ entry:
   %v.class.43 = alloca ptr
   %t18 = call ptr @willrt_gc_alloc(i64 16, ptr @"willrt.gc.type.example.com/classsource.Node")
   store ptr %t18, ptr %v.class.43
-  call void @willrt_gc_write_barrier(ptr %t16, ptr %t18)
+  call void @willrt_gc_write_barrier(ptr %t14, ptr %t18)
   call void @"example.com/classsource.Node.init"(ptr %t18, i32 3)
   call void @willrt_gc_safepoint(i32 0)
   %t19 = load ptr, ptr %v.class.43
@@ -76,12 +76,12 @@ entry:
   %v.class.47 = alloca ptr
   %t20 = call ptr @willrt_gc_alloc(i64 16, ptr @"willrt.gc.type.example.com/classsource.Node")
   store ptr %t20, ptr %v.class.47
-  call void @willrt_gc_write_barrier(ptr %t17, ptr %t20)
+  call void @willrt_gc_write_barrier(ptr %t16, ptr %t20)
   call void @"example.com/classsource.Node.init"(ptr %t20, i32 4)
   call void @willrt_gc_safepoint(i32 0)
   %t21 = load ptr, ptr %v.class.47
   call void @willrt_gc_write_barrier(ptr %v.second, ptr %t21)
-  call void @willrt_gc_write_barrier(ptr %t14, ptr %t21)
+  call void @willrt_gc_write_barrier(ptr %t15, ptr %t21)
   %t22 = call ptr @willrt_gc_read_barrier_slot(ptr %v.first)
   %t23 = call ptr @willrt_gc_read_barrier_slot(ptr %v.second)
   call void @willrt_gc_safepoint(i32 3)
@@ -94,7 +94,7 @@ entry:
   %t27 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 0
   %t28 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 1
   %t29 = load ptr, ptr %t27
-  call void @willrt_gc_write_barrier(ptr %t15, ptr %t29)
+  call void @willrt_gc_write_barrier(ptr %t17, ptr %t29)
   %t30 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 0
   %t31 = call ptr @willrt_gc_read_barrier_slot(ptr %t30)
   %t32 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 1
@@ -166,5 +166,5 @@ entry:
 @"willrt.gc.stack.example.com/classsource.Node.get" = private constant %willrt_gc_stack_map_data { ptr @"example.com/classsource.Node.get", ptr @"willrt.gc.stack.slots.example.com/classsource.Node.get", i64 1 }
 @"willrt.gc.stack.slots.example.com/classsource.Node.link" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 1, ptr @"willrt.gc.type.example.com/classsource.Node" }, %willrt_gc_stack_slot { i32 8, i32 1, ptr @"willrt.gc.type.example.com/classsource.Node" }]
 @"willrt.gc.stack.example.com/classsource.Node.link" = private constant %willrt_gc_stack_map_data { ptr @"example.com/classsource.Node.link", ptr @"willrt.gc.stack.slots.example.com/classsource.Node.link", i64 2 }
-@"willrt.gc.stack.slots.example.com/classsource.will$main" = private constant [5 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 1, ptr @"willrt.gc.type.example.com/classsource.Node" }, %willrt_gc_stack_slot { i32 8, i32 1, ptr @"willrt.gc.type.example.com/classsource.Node" }, %willrt_gc_stack_slot { i32 16, i32 1, ptr null }, %willrt_gc_stack_slot { i32 24, i32 1, ptr @"willrt.gc.type.example.com/classsource.Node" }, %willrt_gc_stack_slot { i32 32, i32 1, ptr @"willrt.gc.type.example.com/classsource.Node" }]
+@"willrt.gc.stack.slots.example.com/classsource.will$main" = private constant [5 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 1, ptr @"willrt.gc.type.example.com/classsource.Node" }, %willrt_gc_stack_slot { i32 8, i32 1, ptr @"willrt.gc.type.example.com/classsource.Node" }, %willrt_gc_stack_slot { i32 16, i32 1, ptr @"willrt.gc.type.example.com/classsource.Node" }, %willrt_gc_stack_slot { i32 24, i32 1, ptr @"willrt.gc.type.example.com/classsource.Node" }, %willrt_gc_stack_slot { i32 32, i32 1, ptr null }]
 @"willrt.gc.stack.example.com/classsource.will$main" = private constant %willrt_gc_stack_map_data { ptr @"example.com/classsource.will$main", ptr @"willrt.gc.stack.slots.example.com/classsource.will$main", i64 5 }

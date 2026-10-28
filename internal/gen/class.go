@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/will-lang/will/internal/decisions"
@@ -166,6 +167,8 @@ func (g *generator) setupGCFrame(fn int) error {
 				text: fieldText(dependent, "type")})
 		}
 	}
+	sort.SliceStable(roots, func(i, j int) bool { return roots[i].id < roots[j].id })
+	sort.SliceStable(inline, func(i, j int) bool { return inline[i].decl < inline[j].decl })
 	inlineCount := 0
 	for _, plan := range inline {
 		inlineCount += len(plan.offsets)
