@@ -1197,6 +1197,7 @@ func (g *generator) lowerChanNew(r willc.Record) (string, error) {
 	if inline, ok := g.inlineGCType(elem); ok && (len(inline.Refs) != 0 ||
 		len(inline.Weaks) != 0 || g.isClassText(elem)) {
 		g.needGCDecl = true
+		g.needChanGCDecl = true
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_chan_new_gc(i64 %s, i64 %s, i32 0, ptr null, ptr %s)\n",
 			chanPtr, size, cap64, gcmeta.DescriptorSymbol(inline.Name))
 	} else if ownsReleaseText(g, elem) {

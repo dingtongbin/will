@@ -98,7 +98,7 @@ type declaration struct {
 }
 
 // Build computes every declared type from a batch of willc documents. IDs are
-// assigned in sorted qualified-name order so a rebuild of unchanged input has
+// assigned in sorted qualified-name order, so the same input always produces
 // the same descriptor bytes.
 func Build(docs []*willc.Doc) (*Program, error) {
 	p := &Program{

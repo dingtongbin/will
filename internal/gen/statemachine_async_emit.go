@@ -72,6 +72,10 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", arg, field)
 		} else if pab[i].byPtr {
 			g.copyValue(arg, field, pab[i].typ)
+		} else if g.isClassText(pab[i].text) {
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				field, arg)
 		} else {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", pab[i].typ, arg, field)
 		}
@@ -129,6 +133,7 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 			dropValue = "@" + llvmSymbol(dropPtr)
 		}
 		if g.gcProgram != nil {
+			g.needTaskGCDecl = true
 			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop_gc(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr %s, ptr %s, ptr %s)\n",
 				autoTask, llvmSymbol(info.symbol), frame, size, dropValue, gcMap, resultType)
 		} else {
@@ -136,6 +141,7 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 				autoTask, llvmSymbol(info.symbol), frame, size, dropValue)
 		}
 	} else if g.gcProgram != nil {
+		g.needTaskGCDecl = true
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_gc(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr %s, ptr %s)\n",
 			autoTask, llvmSymbol(info.symbol), frame, size, gcMap, resultType)
 	} else {
@@ -155,6 +161,7 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 			dropValue = "@" + llvmSymbol(dropPtr)
 		}
 		if g.gcProgram != nil {
+			g.needTaskGCDecl = true
 			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop_gc(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr %s, ptr %s, ptr %s)\n",
 				laneTask, llvmSymbol(info.symbol), frame, size, laneValue, dropValue, gcMap, resultType)
 		} else {
@@ -162,6 +169,7 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 				laneTask, llvmSymbol(info.symbol), frame, size, laneValue, dropValue)
 		}
 	} else if g.gcProgram != nil {
+		g.needTaskGCDecl = true
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_gc(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr %s, ptr %s)\n",
 			laneTask, llvmSymbol(info.symbol), frame, size, laneValue, gcMap, resultType)
 	} else {

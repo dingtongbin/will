@@ -238,10 +238,14 @@ func (g *generator) emitAux() {
 	}
 	if g.needTaskDecl {
 		g.out.WriteString("declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)\n")
-		g.out.WriteString("declare ptr @willrt_task_new_gc(ptr, ptr, i64, i32, i32, ptr, ptr)\n")
+		if g.needTaskGCDecl {
+			g.out.WriteString("declare ptr @willrt_task_new_gc(ptr, ptr, i64, i32, i32, ptr, ptr)\n")
+		}
 		if g.needFrameDropDecl {
 			g.out.WriteString("declare ptr @willrt_task_new_drop(ptr, ptr, i64, i32, i32, ptr)\n")
-			g.out.WriteString("declare ptr @willrt_task_new_drop_gc(ptr, ptr, i64, i32, i32, ptr, ptr, ptr)\n")
+			if g.needTaskGCDecl {
+				g.out.WriteString("declare ptr @willrt_task_new_drop_gc(ptr, ptr, i64, i32, i32, ptr, ptr, ptr)\n")
+			}
 		}
 		g.out.WriteString("declare void @willrt_task_run(ptr)\n")
 		if g.needAutoTaskDecl {
@@ -277,7 +281,9 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_chan_retain(ptr)\n")
 		g.out.WriteString("declare void @willrt_chan_release(ptr)\n")
 		g.out.WriteString("declare ptr @willrt_chan_new_drop(i64, i64, i32, ptr)\n")
-		g.out.WriteString("declare ptr @willrt_chan_new_gc(i64, i64, i32, ptr, ptr)\n")
+		if g.needChanGCDecl {
+			g.out.WriteString("declare ptr @willrt_chan_new_gc(i64, i64, i32, ptr, ptr)\n")
+		}
 	}
 	if g.needJobDecl {
 		g.out.WriteString("declare ptr @willrt_job_new(ptr, ptr, i64, i32)\n")
@@ -891,6 +897,8 @@ type generator struct {
 	lateAllowed bool
 	// needTaskDecl records that the lowering calls the task or channel engine.
 	needTaskDecl bool
+	// needTaskGCDecl records that a task constructor carries a GC frame map.
+	needTaskGCDecl bool
 	// needJobDecl records that a parallel block submitted a job.
 	needJobDecl bool
 	// needAutoTaskDecl records that an auto spawn submits through the grouped
@@ -915,7 +923,8 @@ type generator struct {
 	// generated drop callback.
 	needFrameDropDecl bool
 	// needChanDecl records a channel retain, release, or drop constructor.
-	needChanDecl bool
+	needChanDecl   bool
+	needChanGCDecl bool
 	// zeroReleases clears each released slot while a state-machine frame may
 	// still be visited by its drop callback.
 	zeroReleases bool
