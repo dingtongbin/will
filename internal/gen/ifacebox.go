@@ -169,7 +169,13 @@ func (g *generator) ifaceWords(base string, iface *ifaceInfo) (string, string) {
 
 func (g *generator) storeIfaceWords(dst string, iface *ifaceInfo, data, table string) {
 	dataPtr, tablePtr := g.ifaceWords(dst, iface)
-	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", data, dataPtr)
+	if g.gcProgram != nil {
+		g.needGCDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+			dataPtr, data)
+	} else {
+		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", data, dataPtr)
+	}
 	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", table, tablePtr)
 }
 
