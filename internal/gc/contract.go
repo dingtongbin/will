@@ -32,7 +32,7 @@ const (
 const ViewCount = 4
 
 // ColorShift is the address bit where a colored reference selects its view.
-const ColorShift = 34
+const ColorShift = 36
 
 // ViewStride is the address distance between two color views.
 const ViewStride uint64 = 1 << ColorShift

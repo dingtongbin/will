@@ -13,14 +13,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define WILLRT_GC_HEAP_DEFAULT (UINT64_C(1024) * 1024u * 1024u)
+#define WILLRT_GC_HEAP_MAX WILLRT_GC_VIEW_STRIDE
+#define WILLRT_GC_HEAP_MIN (UINT64_C(64) * 1024u * 1024u)
 #define WILLRT_GC_GRANULE_SIZE (UINT64_C(1024) * 1024u)
 #define WILLRT_GC_TLAB_SIZE (UINT64_C(64) * 1024u)
 #define WILLRT_GC_LARGE_THRESHOLD (UINT64_C(32) * 1024u)
 #define WILLRT_GC_CARD_SIZE 512u
 #define WILLRT_GC_GRANULE_SHIFT 20u
-#define WILLRT_GC_GRANULE_MASK (WILLRT_GC_GRANULE_SIZE - 1u)
-#define WILLRT_GC_GRANULE_MAX 65535u
 #define WILLRT_GC_REGION_ORDER_MIN 0u
 #define WILLRT_GC_REGION_ORDER_MAX 16u
 #define WILLRT_GC_WORK_CHUNK 1024u
@@ -220,5 +219,6 @@ void gc_pacer_init(void);
 void gc_pacer_shutdown(void);
 void gc_pacer_on_alloc(size_t bytes);
 void gc_pacer_cycle_started(void);
+size_t gc_heap_used_bytes(void);
 
 #endif

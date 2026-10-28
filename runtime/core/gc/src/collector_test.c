@@ -314,7 +314,13 @@ static void test_concurrent_allocation(void) {
 }
 
 int main(void) {
+    uint64_t previous_limit;
+
     willrt_gc_lane_enter(0);
+    previous_limit = willrt_gc_set_memory_limit(32u * 1024u * 1024u);
+    assert(willrt_gc_memory_limit() == 32u * 1024u * 1024u);
+    assert(willrt_gc_set_memory_limit(previous_limit) ==
+           32u * 1024u * 1024u);
     assert(willrt_gc_register_type(&node_type) == 0);
     assert(willrt_gc_register_type(&weak_type) == 0);
     assert(willrt_gc_register_type(&large_type) == 0);

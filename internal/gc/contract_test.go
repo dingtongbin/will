@@ -37,10 +37,10 @@ func TestSharedHeaderMatchesCompilerConstants(t *testing.T) {
 		"WILLRT_GC_OBJECT_HEADER_SIZE":    "8u",
 		"WILLRT_GC_OBJECT_PAYLOAD_OFFSET": "8u",
 		"WILLRT_GC_OBJECT_ALIGN":          "8u",
-		"WILLRT_GC_COLOR_MASK":            "0xC00000000ull",
-		"WILLRT_GC_COLOR_SHIFT":           "34u",
+		"WILLRT_GC_COLOR_MASK":            "0x3000000000ull",
+		"WILLRT_GC_COLOR_SHIFT":           "36u",
 		"WILLRT_GC_VIEW_COUNT":            "4u",
-		"WILLRT_GC_VIEW_STRIDE":           "0x400000000ull",
+		"WILLRT_GC_VIEW_STRIDE":           "0x1000000000ull",
 		"WILLRT_GC_TYPE_ID_MAX":           "0x7fffffu",
 		"WILLRT_GC_STATE_TYPE_MAX":        "WILLRT_GC_TYPE_ID_MAX",
 	}

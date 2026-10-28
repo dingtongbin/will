@@ -21,6 +21,10 @@
 #define MAP_FIXED_NOREPLACE 0
 #endif
 
+#ifndef WILLRT_POSIX_VIEW_BASE
+#define WILLRT_POSIX_VIEW_BASE UINT64_C(0x10000000000)
+#endif
+
 typedef struct willrt_posix_gc_views {
     int fd;
     void* views[WILLRT_GC_VIEW_COUNT];
@@ -58,7 +62,7 @@ static int32_t willrt_posix_views_open(willrt_os_gc_views* views, size_t size,
         state->fd = -1;
         return -1;
     }
-    for (candidate = UINT64_C(0x10000000000);
+    for (candidate = (uintptr_t)WILLRT_POSIX_VIEW_BASE;
          candidate < UINT64_C(0x700000000000);
          candidate += (uintptr_t)stride * WILLRT_GC_VIEW_COUNT) {
         for (color = 0; color < (int32_t)WILLRT_GC_VIEW_COUNT; color++) {

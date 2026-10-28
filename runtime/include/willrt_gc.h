@@ -38,9 +38,9 @@ _Static_assert(_Alignof(willrt_gc_header) == WILLRT_GC_OBJECT_ALIGN,
    relocation publishes a forwarding address and the load barrier self-heals
    the reference view. */
 #define WILLRT_GC_VIEW_COUNT 4u
-#define WILLRT_GC_COLOR_SHIFT 34u
-#define WILLRT_GC_VIEW_STRIDE 0x400000000ull
-#define WILLRT_GC_COLOR_MASK 0xC00000000ull
+#define WILLRT_GC_COLOR_SHIFT 36u
+#define WILLRT_GC_VIEW_STRIDE 0x1000000000ull
+#define WILLRT_GC_COLOR_MASK 0x3000000000ull
 #define WILLRT_GC_POINTER_MASK (~(uintptr_t)WILLRT_GC_COLOR_MASK)
 
 enum willrt_gc_color {
@@ -190,6 +190,13 @@ int32_t willrt_gc_register_type(const willrt_gc_type* type);
    view required by the current barrier state. A null type means the object has
    no references. */
 void* willrt_gc_alloc(size_t size, const willrt_gc_type* type);
+
+/* A zero memory limit means no explicit limit. A nonzero limit is a soft GC
+   target: the pacer starts a cycle before the runtime reaches it. Setting the
+   limit returns the previous value; it never changes the reserved address
+   space. WILL_GC_MEMLIMIT supplies the startup value. */
+uint64_t willrt_gc_set_memory_limit(uint64_t bytes);
+uint64_t willrt_gc_memory_limit(void);
 
 /* willrt_gc_shutdown stops the GC worker and releases the view mapping. It is
    called by willrt_shutdown after tasks have joined. */
