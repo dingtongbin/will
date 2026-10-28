@@ -464,6 +464,7 @@ void gc_reclaim_nonmoving(void) {
         if (region == NULL ||
             (region->kind != GC_REGION_LARGE &&
              region->kind != GC_REGION_PINNED) ||
+            (region->flags & GC_REGION_RETIRED) != 0 ||
             atomic_load_explicit(&region->pin_count, memory_order_acquire) !=
                 0) {
             continue;

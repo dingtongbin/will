@@ -239,7 +239,8 @@ static void* gc_alloc_large(size_t payload_size, uint32_t type_id,
     if (region == NULL) {
         gc_oom();
     }
-    region->flags = kind == GC_REGION_LARGE ? GC_REGION_LARGE_FLAG : 0u;
+    region->flags = (kind == GC_REGION_LARGE ? GC_REGION_LARGE_FLAG : 0u) |
+                    GC_REGION_RETIRED;
     atomic_store_explicit(&region->top, total, memory_order_release);
     atomic_fetch_add_explicit(&region->active_allocs, 1,
                               memory_order_acq_rel);

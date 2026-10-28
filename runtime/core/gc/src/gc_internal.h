@@ -128,6 +128,7 @@ void gc_region_note_card(gc_region* region, size_t offset);
 void gc_region_scan_objects(gc_region* region, void (*visit)(void*, void*),
                             void* context);
 void gc_region_add_live(gc_region* region, size_t bytes);
+void gc_region_clear_nonmoving_retired(void);
 int gc_region_mark(gc_region* region, size_t offset);
 int gc_region_is_marked(gc_region* region, size_t offset);
 void gc_object_publish(gc_region* region, size_t offset, size_t total,
@@ -205,6 +206,7 @@ void gc_mark_init(void);
 void gc_mark_shutdown(void);
 void gc_mark_begin(uint32_t color);
 void gc_mark_end(void);
+void gc_mark_pinned_objects(void);
 void gc_mark_object(void* object);
 void gc_mark_stack(const willrt_gc_stack_map_data* map, void* frame);
 int gc_mark_active(void);

@@ -85,6 +85,7 @@ static void gc_scan_mark_roots(void) {
     gc_roots_scan(gc_mark_visit, NULL);
     gc_handles_scan(gc_mark_visit, NULL);
     gc_lanes_scan(gc_mark_visit, NULL);
+    gc_mark_pinned_objects();
     gc_mark_drain();
     gc_card_scan(gc_mark_visit, NULL, 1);
     gc_satb_scan(gc_mark_visit, NULL);
@@ -208,6 +209,7 @@ static void gc_run_full(void) {
                         ? WILLRT_GC_COLOR_MARKED1
                         : WILLRT_GC_COLOR_MARKED0;
     atomic_store_explicit(&gc_good_color, color, memory_order_release);
+    gc_region_clear_nonmoving_retired();
     gc_copy_reset();
     gc_alloc_freeze();
     gc_select_young();

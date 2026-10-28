@@ -198,6 +198,39 @@ void gc_satb_scan(willrt_gc_root_visit visit, void* context) {
     }
 }
 
+static int gc_card_object_has_young_ref(void* object) {
+    willrt_gc_header* header;
+    uint64_t state;
+    const willrt_gc_type* type;
+    uint32_t i;
+
+    header = gc_header_of(object);
+    state = atomic_load_explicit(&header->state, memory_order_acquire);
+    if ((state & WILLRT_GC_STATE_FORWARDED) != 0) {
+        object = WILLRT_GC_STATE_FORWARD_ADDRESS(state);
+        header = gc_header_of(object);
+        state = atomic_load_explicit(&header->state, memory_order_acquire);
+    }
+    type = gc_type_get(WILLRT_GC_STATE_TYPE(state));
+    if (type == NULL) {
+        return 0;
+    }
+    for (i = 0; i < type->reference_count; i++) {
+        void** slot = (void**)((uint8_t*)object +
+                               type->reference_offsets[i]);
+        gc_region* target;
+
+        if (*slot == NULL) {
+            continue;
+        }
+        target = gc_region_by_address(WILLRT_GC_UNTAG(*slot));
+        if (target != NULL && target->kind == GC_REGION_YOUNG) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 void gc_card_scan(willrt_gc_root_visit visit, void* context, int only_live) {
     size_t granule;
 
@@ -228,12 +261,20 @@ void gc_card_scan(willrt_gc_root_visit visit, void* context, int only_live) {
             object = region->base + object_offset +
                      WILLRT_GC_OBJECT_PAYLOAD_OFFSET;
             if (only_live && !gc_object_marked(object)) {
+                atomic_fetch_and_explicit(
+                    &region->card_bits[card >> 6],
+                    ~(UINT64_C(1) << (card & 63u)), memory_order_release);
                 continue;
             }
             gc_scan_object_fields(object, visit, context);
             if (atomic_load_explicit(&gc_evacuating, memory_order_acquire) !=
                 0) {
                 gc_scan_object_weak(object, gc_weak_slot, NULL);
+            }
+            if (!gc_card_object_has_young_ref(object)) {
+                atomic_fetch_and_explicit(
+                    &region->card_bits[card >> 6],
+                    ~(UINT64_C(1) << (card & 63u)), memory_order_release);
             }
         }
     }

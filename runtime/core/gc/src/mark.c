@@ -88,6 +88,36 @@ static void gc_mark_scan(void* object) {
     gc_scan_object_fields(object, gc_mark_visit, NULL);
 }
 
+static void gc_mark_pinned_object(void* context, void* object) {
+    willrt_gc_header* header;
+    uint64_t state;
+
+    (void)context;
+    header = gc_header_of(object);
+    state = atomic_load_explicit(&header->state, memory_order_acquire);
+    if ((state & WILLRT_GC_STATE_FORWARDED) != 0) {
+        object = WILLRT_GC_STATE_FORWARD_ADDRESS(state);
+        header = gc_header_of(object);
+        state = atomic_load_explicit(&header->state, memory_order_acquire);
+    }
+    if (WILLRT_GC_STATE_PIN(state) != 0) {
+        gc_mark_object(object);
+    }
+}
+
+void gc_mark_pinned_objects(void) {
+    size_t granule;
+
+    for (granule = 0; granule < gc_heap_granule_count; granule++) {
+        gc_region* region = gc_region_table[granule];
+
+        if (region == NULL || region->kind == GC_REGION_FREE) {
+            continue;
+        }
+        gc_region_scan_objects(region, gc_mark_pinned_object, NULL);
+    }
+}
+
 void gc_mark_drain(void) {
     for (;;) {
         gc_mark_chunk* chunk;

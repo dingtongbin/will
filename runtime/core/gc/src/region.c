@@ -481,6 +481,20 @@ void gc_region_add_live(gc_region* region, size_t bytes) {
     atomic_fetch_add_explicit(&region->live_bytes, bytes, memory_order_relaxed);
 }
 
+void gc_region_clear_nonmoving_retired(void) {
+    size_t granule;
+
+    for (granule = 0; granule < gc_heap_granule_count; granule++) {
+        gc_region* region = gc_region_table[granule];
+
+        if (region != NULL &&
+            (region->kind == GC_REGION_LARGE ||
+             region->kind == GC_REGION_PINNED)) {
+            region->flags &= ~GC_REGION_RETIRED;
+        }
+    }
+}
+
 int gc_region_is_marked(gc_region* region, size_t offset) {
     uint32_t epoch = atomic_load_explicit(&gc_mark_epoch, memory_order_acquire);
     size_t bit;
