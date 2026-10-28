@@ -12,6 +12,7 @@ var kindSpecs = map[string]KindSpec{
 	"func":      {Required: []string{"text"}, Optional: []string{"type", "async", "test"}, Repeatable: []string{"from"}},
 	"receiver":  {Required: []string{"text", "type"}},
 	"param":     {Required: []string{"text", "type"}, Optional: []string{"variadic", "default"}},
+	"class":     {Required: []string{"text"}},
 	"struct":    {Required: []string{"text"}},
 	"field": {
 		RequiredAny: [][]string{{"text", "type"}, {"recv", "text"}},
@@ -83,6 +84,11 @@ var kindSpecs = map[string]KindSpec{
 		Required: []string{"owner"},
 		Optional: []string{"kind"},
 	},
+
+	"safepoint": {Required: []string{"pos"}, Optional: []string{"kind"}},
+	"stackmap":  {Required: []string{"func", "slot", "type"}},
+	"barrier":   {Required: []string{"pos", "kind"}, Optional: []string{"type"}},
+	"alloc":     {Required: []string{"pos", "type"}, Optional: []string{"site"}},
 	"diagnostic": {
 		Required:   []string{"code", "severity", "message"},
 		Optional:   []string{"pos", "end", "help"},

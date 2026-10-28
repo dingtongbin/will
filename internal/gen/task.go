@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/will-lang/will/internal/gcmeta"
 	"github.com/will-lang/will/internal/willc"
 )
 
@@ -1186,11 +1187,19 @@ func (g *generator) lowerChanNew(r willc.Record) (string, error) {
 	}
 	cap64 := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = sext i32 %s to i64\n", cap64, capValue)
-	size := g.sizeOf(elemLLVM)
+	size := "8"
+	if !g.isClassText(elem) {
+		size = g.sizeOf(elemLLVM)
+	}
 	g.needTaskDecl = true
 	g.needChanDecl = true
 	chanPtr := g.newTmp()
-	if ownsReleaseText(g, elem) {
+	if inline, ok := g.inlineGCType(elem); ok && (len(inline.Refs) != 0 ||
+		len(inline.Weaks) != 0 || g.isClassText(elem)) {
+		g.needGCDecl = true
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_chan_new_gc(i64 %s, i64 %s, i32 0, ptr null, ptr %s)\n",
+			chanPtr, size, cap64, gcmeta.DescriptorSymbol(inline.Name))
+	} else if ownsReleaseText(g, elem) {
 		drop := g.channelDrop(elem)
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_chan_new_drop(i64 %s, i64 %s, i32 0, ptr @%s)\n",
 			chanPtr, size, cap64, llvmSymbol(drop))

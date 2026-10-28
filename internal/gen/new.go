@@ -12,6 +12,9 @@ import (
 // is the storage itself, which the caller copies or returns.
 func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	text := fieldText(r, "type")
+	if g.isClassText(text) {
+		return g.classNew(r)
+	}
 	if elem, ok := rcElemText(text); ok && isRcText(text) {
 		return g.constructRc(r, elem, strongName(text))
 	}

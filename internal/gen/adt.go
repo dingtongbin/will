@@ -59,6 +59,9 @@ func (g *generator) typeLLVMOf(text string) (string, bool) {
 		}
 		return "%interface.empty", true
 	}
+	if g.isClassText(text) {
+		return "ptr", true
+	}
 	if _, ok := chanElemText(text); ok {
 		return "ptr", true
 	}

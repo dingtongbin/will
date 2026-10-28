@@ -388,6 +388,9 @@ func (g *generator) declLLVMType(decl int) (string, error) {
 	if text == "interface {}" {
 		return "%interface.empty", nil
 	}
+	if g.isClassText(text) {
+		return "ptr", nil
+	}
 	if typ, ok := llvmTypeText(text); ok {
 		return typ, nil
 	}
@@ -539,6 +542,13 @@ func (g *generator) typeOf(id int) (string, error) {
 			return info.typ, nil
 		}
 		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if class, ok := g.classTypeOfText(recvText); ok {
+				if _, _, llvm, _, err := g.classField(class, fieldText(r, "text")); err != nil {
+					return "", err
+				} else if llvm != "" {
+					return llvm, nil
+				}
+			}
 			if elem, ok := g.guardElemText(recvText); ok {
 				elemLLVM, ok := g.fieldLLVMType(elem)
 				if !ok {
@@ -553,6 +563,15 @@ func (g *generator) typeOf(id int) (string, error) {
 					return "", g.errf(id, "cannot translate node #%d: struct %s has no field %s", id, info.name, fieldText(r, "text"))
 				}
 				return info.types[index], nil
+			}
+		}
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			if class, ok := g.classTypeOfText(recvText); ok {
+				if _, _, llvm, _, err := g.classField(class, fieldText(r, "text")); err != nil {
+					return "", err
+				} else if llvm != "" {
+					return llvm, nil
+				}
 			}
 		}
 		base, err := g.typeOf(refField(r, "recv"))
@@ -848,6 +867,13 @@ func (g *generator) willTypeText(id int) (string, error) {
 		base, err := g.willTypeText(refField(r, "recv"))
 		if err != nil {
 			return "", err
+		}
+		if class, ok := g.classTypeOfText(base); ok {
+			if _, text, _, _, err := g.classField(class, fieldText(r, "text")); err != nil {
+				return "", err
+			} else if text != "" {
+				return text, nil
+			}
 		}
 		if elem, ok := rcElemText(base); ok && isRcText(base) {
 			base = elem
@@ -1430,6 +1456,12 @@ func (g *generator) place(id int) (string, string, error) {
 		}
 		var base, typ string
 		recvID := refField(r, "recv")
+		if addr, fieldType, _, classErr := g.classFieldAddress(recvID,
+			fieldText(r, "text"), id); classErr != nil {
+			return "", "", classErr
+		} else if addr != "" {
+			return addr, fieldType, nil
+		}
 		recvText, rcErr := g.willTypeText(recvID)
 		if rcErr == nil {
 			if _, ok := g.guardElemText(recvText); ok {
