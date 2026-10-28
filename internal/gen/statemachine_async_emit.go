@@ -121,13 +121,23 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", auto, autoLabel, laneLabel)
 	fmt.Fprintf(g.out, "%s:\n", autoLabel)
 	autoTask := g.newTmp()
+	gcMap := g.taskGCMap(info.symbol, info.gcSlots, info.gcTypes)
+	resultType := g.taskResultDescriptor(info.resultText)
 	if dropPtr != "" {
 		dropValue := dropPtr
 		if dropPtr == ownDrop || dropPtr == borrowDrop {
 			dropValue = "@" + llvmSymbol(dropPtr)
 		}
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr %s)\n",
-			autoTask, llvmSymbol(info.symbol), frame, size, dropValue)
+		if g.gcProgram != nil {
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop_gc(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr %s, ptr %s, ptr %s)\n",
+				autoTask, llvmSymbol(info.symbol), frame, size, dropValue, gcMap, resultType)
+		} else {
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr %s)\n",
+				autoTask, llvmSymbol(info.symbol), frame, size, dropValue)
+		}
+	} else if g.gcProgram != nil {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_gc(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr %s, ptr %s)\n",
+			autoTask, llvmSymbol(info.symbol), frame, size, gcMap, resultType)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 0, i32 0)\n",
 			autoTask, llvmSymbol(info.symbol), frame, size)
@@ -144,8 +154,16 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 		if dropPtr == ownDrop || dropPtr == borrowDrop {
 			dropValue = "@" + llvmSymbol(dropPtr)
 		}
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr %s)\n",
-			laneTask, llvmSymbol(info.symbol), frame, size, laneValue, dropValue)
+		if g.gcProgram != nil {
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop_gc(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr %s, ptr %s, ptr %s)\n",
+				laneTask, llvmSymbol(info.symbol), frame, size, laneValue, dropValue, gcMap, resultType)
+		} else {
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr %s)\n",
+				laneTask, llvmSymbol(info.symbol), frame, size, laneValue, dropValue)
+		}
+	} else if g.gcProgram != nil {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_gc(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr %s, ptr %s)\n",
+			laneTask, llvmSymbol(info.symbol), frame, size, laneValue, gcMap, resultType)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
 			laneTask, llvmSymbol(info.symbol), frame, size, laneValue)

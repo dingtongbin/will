@@ -139,7 +139,7 @@ func (g *generator) emitGCMetadata() error {
 		fmt.Fprintf(g.out, "%s = private constant %%willrt_gc_stack_map_data { ptr @%s, ptr %s, i64 %d }\n",
 			mapName, llvmSymbol(fn), slotName, len(records))
 	}
-	for _, frame := range g.gcFrames {
+	for _, frame := range append(append([]gcFrameInfo(nil), g.gcFrames...), g.gcTaskFrames...) {
 		if _, exists := maps[frame.Func]; exists {
 			continue
 		}

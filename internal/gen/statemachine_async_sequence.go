@@ -139,6 +139,7 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 		fieldTypes = append(fieldTypes, f.llvm)
 	}
 	frameType := "{ i32, ptr, " + strings.Join(fieldTypes, ", ") + " }"
+	gcSlots, gcTypes := g.asyncGCSlots(fields)
 	resultText := fieldText(fn, "type")
 	resultLLVM := ""
 	if resultText != "" {
@@ -160,6 +161,8 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 		constructor: sym + ".task",
 		frameType:   frameType,
 		fields:      fields,
+		gcSlots:     gcSlots,
+		gcTypes:     gcTypes,
 		resultText:  resultText,
 		resultLLVM:  resultLLVM,
 	}

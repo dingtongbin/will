@@ -238,8 +238,10 @@ func (g *generator) emitAux() {
 	}
 	if g.needTaskDecl {
 		g.out.WriteString("declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)\n")
+		g.out.WriteString("declare ptr @willrt_task_new_gc(ptr, ptr, i64, i32, i32, ptr, ptr)\n")
 		if g.needFrameDropDecl {
 			g.out.WriteString("declare ptr @willrt_task_new_drop(ptr, ptr, i64, i32, i32, ptr)\n")
+			g.out.WriteString("declare ptr @willrt_task_new_drop_gc(ptr, ptr, i64, i32, i32, ptr, ptr, ptr)\n")
 		}
 		g.out.WriteString("declare void @willrt_task_run(ptr)\n")
 		if g.needAutoTaskDecl {
@@ -991,6 +993,7 @@ type generator struct {
 	spawnDropped   map[string]bool
 	gcProgram      *gcmeta.Program
 	gcFrames       []gcFrameInfo
+	gcTaskFrames   []gcFrameInfo
 	gcRootSlots    map[int]string
 	gcInlineTypes  map[string]*gcmeta.Type
 	gcFrameSlot    string

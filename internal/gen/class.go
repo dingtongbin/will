@@ -114,6 +114,35 @@ func (g *generator) storeClassRoot(decl int, value string) {
 		root, value)
 }
 
+// taskGCMap records one async frame's class roots and returns the map symbol
+// the task constructor passes to the runtime.
+func (g *generator) taskGCMap(symbol string, slots []int, texts []string) string {
+	if len(slots) == 0 {
+		return "null"
+	}
+	for _, frame := range g.gcTaskFrames {
+		if frame.Func == symbol {
+			return gcStackMapSymbol(symbol)
+		}
+	}
+	g.gcTaskFrames = append(g.gcTaskFrames, gcFrameInfo{
+		Func: symbol, Slots: append([]int(nil), slots...),
+		Types: append([]string(nil), texts...),
+	})
+	return gcStackMapSymbol(symbol)
+}
+
+func (g *generator) taskResultDescriptor(text string) string {
+	if text == "" || text == "()" {
+		return "null"
+	}
+	if t, ok := g.inlineGCType(text); ok &&
+		(len(t.Refs) != 0 || len(t.Weaks) != 0) {
+		return gcmeta.DescriptorSymbol(t.Name)
+	}
+	return "null"
+}
+
 // gcSafepoint emits one poll at an allocation, wait, back edge, or call. The
 // runtime keeps this to one atomic load on the fast path.
 func (g *generator) gcSafepoint(kind int) {
@@ -152,6 +181,28 @@ func (g *generator) classTypeOfText(text string) (*gcmeta.Type, bool) {
 		return nil, false
 	}
 	return t, true
+}
+
+// asyncGCSlots computes the byte offsets of class references in a sequence
+// frame. The frame starts with the state word, padding, and the wait node
+// pointer; the fields follow in declaration order.
+func (g *generator) asyncGCSlots(fields []asyncField) ([]int, []string) {
+	offset := 16
+	var slots []int
+	var texts []string
+	for _, f := range fields {
+		size, align, ok := g.sizeAlign(f.llvm)
+		if !ok {
+			continue
+		}
+		offset = alignUp(offset, align)
+		if t, ok := g.classTypeOfText(f.willText); ok {
+			slots = append(slots, offset)
+			texts = append(texts, t.Name)
+		}
+		offset += size
+	}
+	return slots, texts
 }
 
 func (g *generator) isClassText(text string) bool {

@@ -42,6 +42,8 @@ type asyncMachineInfo struct {
 	constructor string
 	frameType   string
 	fields      []asyncField
+	gcSlots     []int
+	gcTypes     []string
 	resultText  string
 	resultLLVM  string
 	segments    []asyncSegment
