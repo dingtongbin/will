@@ -13,7 +13,7 @@ import (
 // coordination, pacing, roots, and the platform layer.
 func gcSources(dir string) []string {
 	names := []string{
-		"types.c", "region.c", "heap.c", "object.c", "roots.c",
+		"types.c", "region.c", "chunks.c", "heap.c", "object.c", "roots.c",
 		"safepoint.c", "barrier.c", "mark.c", "evac.c", "cycle.c",
 		"pacer.c",
 	}

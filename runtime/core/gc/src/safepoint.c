@@ -125,14 +125,13 @@ void gc_lane_shutdown(void) {
     willrt_os_mutex_lock(&gc_lane_lock);
     for (i = 0; i < gc_lane_capacity; i++) {
         if (gc_lanes[i] != NULL) {
-            willrt_os_cond_destroy(&gc_lanes[i]->cond);
-            willrt_free(gc_lanes[i]);
-            gc_lanes[i] = NULL;
+            atomic_store_explicit(&gc_lanes[i]->state, GC_LANE_FREE,
+                                  memory_order_release);
+            atomic_store_explicit(&gc_lanes[i]->stop, 0, memory_order_release);
+            atomic_store_explicit(&gc_lanes[i]->ack, 0, memory_order_release);
+            gc_lanes[i]->frame = NULL;
         }
     }
-    willrt_free(gc_lanes);
-    gc_lanes = NULL;
-    gc_lane_capacity = 0;
     gc_registered_lanes = 0;
     gc_tls_lane = NULL;
     willrt_os_mutex_unlock(&gc_lane_lock);
@@ -176,6 +175,7 @@ void willrt_gc_lane_leave(void) {
     atomic_store_explicit(&gc_tls_lane->stop, 0, memory_order_release);
     atomic_store_explicit(&gc_tls_lane->ack, 0, memory_order_release);
     gc_tls_lane->frame = NULL;
+    willrt_os_cond_signal(&gc_tls_lane->cond);
     gc_registered_lanes--;
     gc_tls_lane = NULL;
     willrt_os_mutex_unlock(&gc_lane_lock);

@@ -15,9 +15,9 @@ static willrt_os_mutex gc_cycle_lock;
 static willrt_os_cond gc_cycle_cond;
 static atomic_int gc_cycle_started;
 static int gc_cycle_stop;
-static int gc_cycle_requested;
+static atomic_int gc_cycle_requested;
 static int gc_cycle_full;
-static int gc_cycle_running;
+static atomic_int gc_cycle_running;
 static uint32_t gc_next_color = WILLRT_GC_COLOR_MARKED0;
 
 static gc_region** gc_sources;
@@ -85,7 +85,8 @@ static void gc_scan_mark_roots(void) {
     gc_roots_scan(gc_mark_visit, NULL);
     gc_handles_scan(gc_mark_visit, NULL);
     gc_lanes_scan(gc_mark_visit, NULL);
-    gc_card_scan(gc_mark_visit, NULL);
+    gc_mark_drain();
+    gc_card_scan(gc_mark_visit, NULL, 1);
     gc_satb_scan(gc_mark_visit, NULL);
     gc_mark_drain();
 }
@@ -94,7 +95,8 @@ static void gc_scan_evac_roots(void) {
     gc_roots_scan(gc_evac_slot, NULL);
     gc_handles_scan(gc_evac_slot, NULL);
     gc_lanes_scan(gc_evac_slot, NULL);
-    gc_card_scan(gc_evac_slot, NULL);
+    gc_card_scan(gc_evac_slot, NULL,
+                 atomic_load_explicit(&gc_marking, memory_order_acquire));
     gc_satb_scan(gc_evac_slot, NULL);
     gc_copy_drain();
 }
@@ -134,12 +136,29 @@ static void gc_select_old(void) {
     }
 }
 
-static void gc_free_sources(void) {
+static void gc_wait_sources(void) {
     size_t i;
 
     for (i = 0; i < gc_source_count; i++) {
+        while (atomic_load_explicit(&gc_sources[i]->active_allocs,
+                                    memory_order_acquire) != 0) {
+            willrt_os_thread_yield();
+        }
+    }
+}
+
+static void gc_free_sources(void) {
+    size_t i;
+
+    gc_wait_sources();
+    for (i = 0; i < gc_source_count; i++) {
         gc_region* region = gc_sources[i];
 
+        if ((region->flags & GC_REGION_RETIRED) == 0) {
+            region->flags &= ~GC_REGION_EVACUATING;
+            region->flags |= GC_REGION_RETIRED;
+            continue;
+        }
         region->flags &= ~GC_REGION_EVACUATING;
         if (atomic_load_explicit(&region->pin_count, memory_order_acquire) ==
             0) {
@@ -150,16 +169,25 @@ static void gc_free_sources(void) {
 }
 
 static void gc_run_young(void) {
-    uint32_t color = WILLRT_GC_COLOR_REMAPPED;
+    uint32_t color = gc_next_color;
 
+    gc_next_color = color == WILLRT_GC_COLOR_MARKED0
+                        ? WILLRT_GC_COLOR_MARKED1
+                        : WILLRT_GC_COLOR_MARKED0;
     atomic_store_explicit(&gc_good_color, color, memory_order_release);
-    gc_satb_scan(gc_evac_slot, NULL);
     gc_copy_reset();
+    gc_alloc_freeze();
     gc_select_young();
+    gc_heap_epoch_bump();
+    gc_alloc_thaw();
     if (gc_source_count == 0) {
         return;
     }
-    gc_heap_epoch_bump();
+    gc_mark_begin(color);
+    gc_scan_mark_roots();
+    gc_scan_mark_roots();
+    gc_weak_clear();
+    gc_wait_sources();
     atomic_store_explicit(&gc_evacuating, 1, memory_order_release);
     gc_scan_evac_roots();
     gc_scan_evac_roots();
@@ -170,6 +198,7 @@ static void gc_run_young(void) {
     gc_copy_drain();
     gc_free_sources();
     atomic_store_explicit(&gc_evacuating, 0, memory_order_release);
+    gc_mark_end();
 }
 
 static void gc_run_full(void) {
@@ -179,19 +208,24 @@ static void gc_run_full(void) {
                         ? WILLRT_GC_COLOR_MARKED1
                         : WILLRT_GC_COLOR_MARKED0;
     atomic_store_explicit(&gc_good_color, color, memory_order_release);
+    gc_copy_reset();
+    gc_alloc_freeze();
+    gc_select_young();
+    gc_heap_epoch_bump();
+    gc_alloc_thaw();
     gc_mark_begin(color);
     gc_scan_mark_roots();
     gc_scan_mark_roots();
     gc_weak_clear();
+    gc_alloc_freeze();
     gc_reclaim_nonmoving();
-    gc_select_young();
+    gc_alloc_thaw();
     gc_select_old();
     if (gc_source_count == 0) {
         gc_mark_end();
         return;
     }
-    gc_copy_reset();
-    gc_heap_epoch_bump();
+    gc_wait_sources();
     atomic_store_explicit(&gc_evacuating, 1, memory_order_release);
     gc_scan_evac_roots();
     gc_scan_evac_roots();
@@ -220,7 +254,9 @@ static void gc_cycle_thread(void* argument) {
         int full;
 
         willrt_os_mutex_lock(&gc_cycle_lock);
-        while (!gc_cycle_stop && !gc_cycle_requested) {
+        while (!gc_cycle_stop &&
+               atomic_load_explicit(&gc_cycle_requested,
+                                    memory_order_acquire) == 0) {
             willrt_os_cond_wait(&gc_cycle_cond, &gc_cycle_lock);
         }
         if (gc_cycle_stop) {
@@ -229,12 +265,12 @@ static void gc_cycle_thread(void* argument) {
         }
         full = gc_cycle_full;
         gc_cycle_full = 0;
-        gc_cycle_requested = 0;
-        gc_cycle_running = 1;
+        atomic_store_explicit(&gc_cycle_running, 1, memory_order_release);
+        atomic_store_explicit(&gc_cycle_requested, 0, memory_order_release);
         willrt_os_mutex_unlock(&gc_cycle_lock);
         gc_run_cycle(full);
         willrt_os_mutex_lock(&gc_cycle_lock);
-        gc_cycle_running = 0;
+        atomic_store_explicit(&gc_cycle_running, 0, memory_order_release);
         willrt_os_cond_broadcast(&gc_cycle_cond);
         willrt_os_mutex_unlock(&gc_cycle_lock);
     }
@@ -258,9 +294,9 @@ void gc_cycle_init(void) {
     willrt_os_mutex_init(&gc_cycle_lock);
     willrt_os_cond_init(&gc_cycle_cond);
     gc_cycle_stop = 0;
-    gc_cycle_requested = 0;
+    atomic_store_explicit(&gc_cycle_requested, 0, memory_order_release);
     gc_cycle_full = 0;
-    gc_cycle_running = 0;
+    atomic_store_explicit(&gc_cycle_running, 0, memory_order_release);
     if (willrt_os_thread_start(&gc_thread, gc_cycle_thread, NULL) != 0) {
         abort();
     }
@@ -288,7 +324,7 @@ void gc_cycle_shutdown(void) {
 void gc_cycle_kick(void) {
     gc_cycle_init();
     willrt_os_mutex_lock(&gc_cycle_lock);
-    gc_cycle_requested = 1;
+    atomic_store_explicit(&gc_cycle_requested, 1, memory_order_release);
     willrt_os_cond_signal(&gc_cycle_cond);
     willrt_os_mutex_unlock(&gc_cycle_lock);
 }
@@ -296,18 +332,15 @@ void gc_cycle_kick(void) {
 void gc_cycle_request_full(void) {
     gc_cycle_init();
     willrt_os_mutex_lock(&gc_cycle_lock);
-    gc_cycle_requested = 1;
+    atomic_store_explicit(&gc_cycle_requested, 1, memory_order_release);
     gc_cycle_full = 1;
     willrt_os_cond_signal(&gc_cycle_cond);
     willrt_os_mutex_unlock(&gc_cycle_lock);
 }
 
 int gc_cycle_idle(void) {
-    int idle;
-
     gc_cycle_init();
-    willrt_os_mutex_lock(&gc_cycle_lock);
-    idle = !gc_cycle_requested && !gc_cycle_running;
-    willrt_os_mutex_unlock(&gc_cycle_lock);
-    return idle;
+    return atomic_load_explicit(&gc_cycle_requested, memory_order_acquire) ==
+               0 &&
+           atomic_load_explicit(&gc_cycle_running, memory_order_acquire) == 0;
 }

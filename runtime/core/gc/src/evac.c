@@ -12,12 +12,6 @@
 
 #define GC_PROMOTE_AGE 2u
 
-typedef struct gc_copy_chunk {
-    _Atomic(struct gc_copy_chunk*) next;
-    size_t count;
-    void* objects[WILLRT_GC_WORK_CHUNK];
-} gc_copy_chunk;
-
 static _Atomic(gc_copy_chunk*) gc_copy_active;
 static _Thread_local gc_copy_chunk* gc_copy_local;
 static willrt_os_mutex gc_copy_lock;
@@ -88,12 +82,7 @@ void gc_copy_enqueue(void* object) {
         if (chunk != NULL) {
             gc_copy_push_chunk(chunk);
         }
-        chunk = (gc_copy_chunk*)willrt_alloc(sizeof(*chunk));
-        if (chunk == NULL) {
-            abort();
-        }
-        atomic_init(&chunk->next, NULL);
-        chunk->count = 0;
+        chunk = gc_chunk_acquire();
         gc_copy_local = chunk;
     }
     chunk->objects[chunk->count++] = object;
@@ -110,7 +99,7 @@ void gc_copy_reset(void) {
         gc_copy_chunk* next =
             atomic_load_explicit(&chunk->next, memory_order_relaxed);
 
-        willrt_free(chunk);
+        gc_chunk_release(chunk);
         chunk = next;
     }
     willrt_os_mutex_lock(&gc_copy_lock);
@@ -317,6 +306,40 @@ void gc_evac_slot(void* context, void** slot) {
                           memory_order_release);
 }
 
+static void gc_mark_object_cards(void* object) {
+    gc_region* owner = gc_region_by_address(object);
+    willrt_gc_header* header;
+    uint64_t state;
+    const willrt_gc_type* type;
+    uint32_t i;
+
+    if (owner == NULL ||
+        (owner->kind == GC_REGION_YOUNG &&
+         atomic_load_explicit(&owner->pin_count, memory_order_acquire) == 0)) {
+        return;
+    }
+    header = gc_header_of(object);
+    state = atomic_load_explicit(&header->state, memory_order_acquire);
+    type = gc_type_get(WILLRT_GC_STATE_TYPE(state));
+    if (type == NULL) {
+        return;
+    }
+    for (i = 0; i < type->reference_count; i++) {
+        void** slot = (void**)((uint8_t*)object +
+                               type->reference_offsets[i]);
+        gc_region* target;
+
+        if (*slot == NULL) {
+            continue;
+        }
+        target = gc_region_by_address(WILLRT_GC_UNTAG(*slot));
+        if (target != NULL && target->kind == GC_REGION_YOUNG) {
+            gc_region_note_card(
+                owner, (size_t)((uint8_t*)slot - owner->base));
+        }
+    }
+}
+
 void gc_copy_drain(void) {
     for (;;) {
         gc_copy_chunk* chunk;
@@ -334,14 +357,16 @@ void gc_copy_drain(void) {
 
             for (i = 0; i < chunk->count; i++) {
                 gc_scan_object_fields(chunk->objects[i], gc_evac_slot, NULL);
+                gc_scan_object_weak(chunk->objects[i], gc_weak_slot, NULL);
+                gc_mark_object_cards(chunk->objects[i]);
             }
-            willrt_free(chunk);
+            gc_chunk_release(chunk);
             chunk = next;
         }
     }
 }
 
-static void gc_weak_visit(void* context, void** slot) {
+void gc_weak_slot(void* context, void** slot) {
     void* ref;
     void* target;
 
@@ -383,7 +408,10 @@ static void gc_weak_visit(void* context, void** slot) {
 
 static void gc_weak_object(void* context, void* object) {
     (void)context;
-    gc_scan_object_weak(object, gc_weak_visit, NULL);
+    if (!gc_object_marked(object)) {
+        return;
+    }
+    gc_scan_object_weak(object, gc_weak_slot, NULL);
 }
 
 void gc_weak_clear(void) {
@@ -410,12 +438,17 @@ static void gc_remap_object(void* context, void* object) {
     if ((state & WILLRT_GC_STATE_FORWARDED) != 0) {
         return;
     }
+    if (atomic_load_explicit(&gc_marking, memory_order_acquire) != 0 &&
+        !gc_object_marked(object)) {
+        return;
+    }
     region = gc_region_by_address(object);
     if (region == NULL || (region->flags & GC_REGION_EVACUATING) != 0) {
         return;
     }
     gc_scan_object_fields(object, gc_evac_slot, NULL);
-    gc_scan_object_weak(object, gc_weak_visit, NULL);
+    gc_scan_object_weak(object, gc_weak_slot, NULL);
+    gc_mark_object_cards(object);
 }
 
 void gc_reclaim_nonmoving(void) {

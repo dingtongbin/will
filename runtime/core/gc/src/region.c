@@ -90,6 +90,7 @@ static gc_region* gc_region_new(uint32_t id, size_t order, uint32_t kind) {
     region->kind = kind;
     atomic_init(&region->top, 0);
     atomic_init(&region->pin_count, 0);
+    atomic_init(&region->active_allocs, 0);
     atomic_init(&region->evac_state, 0);
     atomic_init(&region->live_bytes, 0);
     region->free_next = UINT32_MAX;
@@ -312,6 +313,7 @@ gc_region* gc_region_alloc(size_t order, uint32_t kind) {
     region->kind = kind;
     atomic_store_explicit(&region->top, 0, memory_order_relaxed);
     atomic_store_explicit(&region->pin_count, 0, memory_order_relaxed);
+    atomic_store_explicit(&region->active_allocs, 0, memory_order_relaxed);
     atomic_store_explicit(&region->evac_state, 0, memory_order_relaxed);
     atomic_store_explicit(&region->live_bytes, 0, memory_order_relaxed);
     region->age = 0;
@@ -334,6 +336,10 @@ void gc_region_free(gc_region* region) {
 
     if (region == NULL || region->kind == GC_REGION_FREE) {
         return;
+    }
+    while (atomic_load_explicit(&region->active_allocs,
+                                memory_order_acquire) != 0) {
+        willrt_os_thread_yield();
     }
     willrt_os_mutex_lock(&gc_region_lock);
     if (region->start_bits != NULL) {
@@ -469,30 +475,6 @@ void gc_region_scan_objects(gc_region* region, void (*visit)(void*, void*),
         visit(context, object);
         bit = found + 1u;
     }
-}
-
-void gc_region_clear_metadata(gc_region* region) {
-    if (region->start_bits != NULL) {
-        gc_bitmap_clear(region->start_bits, region->bitmap_words);
-    }
-    if (region->end_bits != NULL) {
-        gc_bitmap_clear(region->end_bits, region->bitmap_words);
-    }
-    if (region->mark_bits != NULL) {
-        gc_bitmap_clear(region->mark_bits, region->bitmap_words);
-    }
-    if (region->card_bits != NULL) {
-        gc_bitmap_clear(region->card_bits, gc_card_words(region->size));
-    }
-    if (region->card_objects != NULL) {
-        memset(region->card_objects, 0,
-               region->card_count * sizeof(*region->card_objects));
-    }
-    atomic_store_explicit(&region->top, 0, memory_order_release);
-    atomic_store_explicit(&region->live_bytes, 0, memory_order_release);
-    atomic_store_explicit(&region->evac_state, 0, memory_order_release);
-    region->age = 0;
-    region->flags = 0;
 }
 
 void gc_region_add_live(gc_region* region, size_t bytes) {

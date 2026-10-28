@@ -45,12 +45,7 @@ static void gc_mark_push(void* object) {
         if (chunk != NULL) {
             gc_mark_push_chunk(chunk);
         }
-        chunk = (gc_mark_chunk*)willrt_alloc(sizeof(*chunk));
-        if (chunk == NULL) {
-            abort();
-        }
-        atomic_init(&chunk->next, NULL);
-        chunk->count = 0;
+        chunk = gc_chunk_acquire();
         gc_mark_local = chunk;
     }
     chunk->objects[chunk->count++] = object;
@@ -111,7 +106,7 @@ void gc_mark_drain(void) {
             for (i = 0; i < chunk->count; i++) {
                 gc_mark_scan(chunk->objects[i]);
             }
-            willrt_free(chunk);
+            gc_chunk_release(chunk);
             chunk = next;
         }
     }
@@ -170,7 +165,7 @@ void gc_mark_init(void) {
 void gc_mark_shutdown(void) {
     gc_mark_end();
     if (gc_mark_local != NULL) {
-        willrt_free(gc_mark_local);
+        gc_chunk_release(gc_mark_local);
         gc_mark_local = NULL;
     }
 }

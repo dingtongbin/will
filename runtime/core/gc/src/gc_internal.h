@@ -41,7 +41,8 @@ enum gc_region_flags {
     GC_REGION_SURVIVOR = 1u << 0,
     GC_REGION_EVACUATING = 1u << 1,
     GC_REGION_REMAPPED = 1u << 2,
-    GC_REGION_LARGE_FLAG = 1u << 3
+    GC_REGION_RETIRED = 1u << 3,
+    GC_REGION_LARGE_FLAG = 1u << 4
 };
 
 typedef struct gc_region {
@@ -50,10 +51,11 @@ typedef struct gc_region {
     size_t order;
     _Atomic size_t top;
     uint32_t id;
-    uint32_t kind;
+    _Atomic uint32_t kind;
     uint32_t age;
-    uint32_t flags;
+    _Atomic uint32_t flags;
     _Atomic uint32_t pin_count;
+    _Atomic uint32_t active_allocs;
     _Atomic uint32_t evac_state;
     _Atomic size_t live_bytes;
     _Atomic uint64_t* start_bits;
@@ -76,17 +78,19 @@ typedef struct gc_tlab {
     uint32_t epoch;
 } gc_tlab;
 
-typedef struct gc_mark_chunk {
-    _Atomic(struct gc_mark_chunk*) next;
+typedef struct gc_work_chunk {
+    _Atomic(struct gc_work_chunk*) next;
     size_t count;
     void* objects[WILLRT_GC_WORK_CHUNK];
-} gc_mark_chunk;
+} gc_work_chunk;
 
-typedef struct gc_satb_chunk {
-    _Atomic(struct gc_satb_chunk*) next;
-    size_t count;
-    void* objects[WILLRT_GC_WORK_CHUNK];
-} gc_satb_chunk;
+typedef gc_work_chunk gc_mark_chunk;
+typedef gc_work_chunk gc_satb_chunk;
+typedef gc_work_chunk gc_copy_chunk;
+
+gc_work_chunk* gc_chunk_acquire(void);
+void gc_chunk_release(gc_work_chunk* chunk);
+void gc_chunk_shutdown(void);
 
 typedef struct gc_lane_record gc_lane_record;
 
@@ -105,6 +109,8 @@ extern size_t gc_heap_granule_count;
 void gc_region_init(void);
 void gc_region_shutdown(void);
 _Noreturn void gc_oom(void);
+void gc_alloc_freeze(void);
+void gc_alloc_thaw(void);
 void gc_heap_init(void);
 void gc_heap_shutdown(void);
 void gc_heap_epoch_bump(void);
@@ -121,7 +127,6 @@ int gc_region_object_bounds(gc_region* region, size_t offset, size_t* start,
 void gc_region_note_card(gc_region* region, size_t offset);
 void gc_region_scan_objects(gc_region* region, void (*visit)(void*, void*),
                             void* context);
-void gc_region_clear_metadata(gc_region* region);
 void gc_region_add_live(gc_region* region, size_t bytes);
 int gc_region_mark(gc_region* region, size_t offset);
 int gc_region_is_marked(gc_region* region, size_t offset);
@@ -152,6 +157,7 @@ void gc_copy_drain(void);
 void gc_copy_reset(void);
 void gc_copy_flush_local(void);
 void gc_evac_slot(void* context, void** slot);
+void gc_weak_slot(void* context, void** slot);
 void gc_weak_clear(void);
 void gc_remap_heap(void);
 void gc_reclaim_nonmoving(void);
@@ -192,7 +198,7 @@ void* gc_read_barrier(const void* ref);
 void* gc_read_barrier_slot(void** slot);
 void gc_satb_flush_local(void);
 void gc_satb_scan(willrt_gc_root_visit visit, void* context);
-void gc_card_scan(willrt_gc_root_visit visit, void* context);
+void gc_card_scan(willrt_gc_root_visit visit, void* context, int only_live);
 void gc_post_write(void** slot, void* value);
 
 void gc_mark_init(void);

@@ -16,6 +16,8 @@ static willrt_os_mutex gc_heap_lock;
 static willrt_os_gc_views gc_views;
 static gc_region* gc_current_young;
 static _Atomic uint32_t gc_tlab_epoch;
+static _Atomic int gc_alloc_freeze_flag;
+static _Atomic size_t gc_active_allocs;
 static _Thread_local gc_tlab gc_tlab_current;
 
 static size_t gc_round_up(size_t value, size_t align) {
@@ -97,6 +99,18 @@ _Noreturn void gc_oom(void) {
     abort();
 }
 
+void gc_alloc_freeze(void) {
+    atomic_store_explicit(&gc_alloc_freeze_flag, 1, memory_order_release);
+    while (atomic_load_explicit(&gc_active_allocs, memory_order_acquire) !=
+           0) {
+        willrt_os_thread_yield();
+    }
+}
+
+void gc_alloc_thaw(void) {
+    atomic_store_explicit(&gc_alloc_freeze_flag, 0, memory_order_release);
+}
+
 void gc_heap_init(void) {
     gc_heap_setup();
 }
@@ -110,6 +124,7 @@ void gc_heap_shutdown(void) {
     gc_barrier_shutdown();
     gc_mark_shutdown();
     gc_safepoint_shutdown();
+    gc_chunk_shutdown();
     gc_region_shutdown();
     willrt_os_gc_views_close(&gc_views);
     gc_heap_base = NULL;
@@ -124,14 +139,14 @@ void gc_heap_shutdown(void) {
 }
 
 void gc_heap_epoch_bump(void) {
-    uint32_t epoch = atomic_load_explicit(&gc_tlab_epoch,
-                                          memory_order_acquire) + 1u;
+    uint32_t epoch;
 
+    willrt_os_mutex_lock(&gc_heap_lock);
+    epoch = atomic_load_explicit(&gc_tlab_epoch, memory_order_acquire) + 1u;
     if (epoch == 0u) {
         epoch = 1u;
     }
     atomic_store_explicit(&gc_tlab_epoch, epoch, memory_order_release);
-    willrt_os_mutex_lock(&gc_heap_lock);
     gc_current_young = NULL;
     willrt_os_mutex_unlock(&gc_heap_lock);
 }
@@ -143,7 +158,8 @@ static gc_region* gc_tlab_refill(void) {
 
     willrt_os_mutex_lock(&gc_heap_lock);
     region = gc_current_young;
-    if (region == NULL ||
+    if (region == NULL || region->kind != GC_REGION_YOUNG ||
+        region->start_bits == NULL ||
         atomic_load_explicit(&region->pin_count, memory_order_acquire) != 0 ||
         (region->flags & GC_REGION_EVACUATING) != 0) {
         region = gc_region_alloc(0, GC_REGION_YOUNG);
@@ -225,19 +241,21 @@ static void* gc_alloc_large(size_t payload_size, uint32_t type_id,
     }
     region->flags = kind == GC_REGION_LARGE ? GC_REGION_LARGE_FLAG : 0u;
     atomic_store_explicit(&region->top, total, memory_order_release);
+    atomic_fetch_add_explicit(&region->active_allocs, 1,
+                              memory_order_acq_rel);
     gc_object_publish(region, base_offset, object_size, type_id,
                       flags | (kind == GC_REGION_LARGE
                                    ? WILLRT_GC_STATE_LARGE
                                    : WILLRT_GC_STATE_PINNED_REGION));
     payload = region->base + base_offset + WILLRT_GC_OBJECT_PAYLOAD_OFFSET;
-    if (atomic_load_explicit(&gc_marking, memory_order_acquire) != 0) {
-        gc_mark_object(payload);
-    }
+    memset(payload, 0, payload_size);
+    atomic_fetch_sub_explicit(&region->active_allocs, 1,
+                              memory_order_acq_rel);
     gc_pacer_on_alloc(total);
     return payload;
 }
 
-void* gc_alloc(size_t size, const willrt_gc_type* type) {
+static void* gc_alloc_inner(size_t size, const willrt_gc_type* type) {
     size_t payload_size;
     size_t object_size;
     size_t align;
@@ -277,13 +295,27 @@ void* gc_alloc(size_t size, const willrt_gc_type* type) {
             gc_tlab_current.epoch != atomic_load_explicit(
                                         &gc_tlab_epoch,
                                         memory_order_acquire) ||
-            (gc_tlab_current.region->flags & GC_REGION_EVACUATING) != 0) {
-            region = gc_tlab_refill();
-            if (region == NULL) {
+            gc_tlab_current.region->kind != GC_REGION_YOUNG ||
+            gc_tlab_current.region->start_bits == NULL) {
+            if (gc_tlab_refill() == NULL) {
                 gc_oom();
             }
-        } else {
-            region = gc_tlab_current.region;
+            continue;
+        }
+        region = gc_tlab_current.region;
+        atomic_fetch_add_explicit(&region->active_allocs, 1,
+                                  memory_order_acq_rel);
+        if (region->kind != GC_REGION_YOUNG || region->start_bits == NULL ||
+            gc_tlab_current.epoch != atomic_load_explicit(
+                                        &gc_tlab_epoch,
+                                        memory_order_acquire) ||
+            (region->flags & GC_REGION_EVACUATING) != 0) {
+            atomic_fetch_sub_explicit(&region->active_allocs, 1,
+                                      memory_order_acq_rel);
+            if (gc_tlab_refill() == NULL) {
+                gc_oom();
+            }
+            continue;
         }
         base = (uint8_t*)(gc_round_up(
                               (uintptr_t)gc_tlab_current.cur +
@@ -294,6 +326,8 @@ void* gc_alloc(size_t size, const willrt_gc_type* type) {
             object_size <= (size_t)(gc_tlab_current.limit - base)) {
             break;
         }
+        atomic_fetch_sub_explicit(&region->active_allocs, 1,
+                                  memory_order_acq_rel);
         if (gc_tlab_refill() == NULL) {
             gc_oom();
         }
@@ -304,12 +338,44 @@ void* gc_alloc(size_t size, const willrt_gc_type* type) {
     offset = (size_t)(base - region->base);
     gc_object_publish(region, offset, object_size, type_id, state_flags);
     payload = base + WILLRT_GC_OBJECT_PAYLOAD_OFFSET;
+    memset(payload, 0, payload_size);
     gc_tlab_current.cur = base + object_size;
-    if (atomic_load_explicit(&gc_marking, memory_order_acquire) != 0) {
-        gc_mark_object(payload);
+    if ((region->flags & GC_REGION_EVACUATING) != 0 ||
+        gc_tlab_current.epoch != atomic_load_explicit(&gc_tlab_epoch,
+                                                      memory_order_acquire)) {
+        void* forwarded = gc_object_forward(payload);
+
+        if (forwarded == NULL) {
+            gc_oom();
+        }
+        payload = forwarded;
     }
+    atomic_fetch_sub_explicit(&region->active_allocs, 1,
+                              memory_order_acq_rel);
     gc_pacer_on_alloc(object_size);
     return payload;
+}
+
+void* gc_alloc(size_t size, const willrt_gc_type* type) {
+    void* result;
+
+    for (;;) {
+        while (atomic_load_explicit(&gc_alloc_freeze_flag,
+                                    memory_order_acquire) != 0) {
+            willrt_os_thread_yield();
+        }
+        atomic_fetch_add_explicit(&gc_active_allocs, 1,
+                                  memory_order_acq_rel);
+        if (atomic_load_explicit(&gc_alloc_freeze_flag,
+                                 memory_order_acquire) == 0) {
+            break;
+        }
+        atomic_fetch_sub_explicit(&gc_active_allocs, 1,
+                                  memory_order_acq_rel);
+    }
+    result = gc_alloc_inner(size, type);
+    atomic_fetch_sub_explicit(&gc_active_allocs, 1, memory_order_acq_rel);
+    return result;
 }
 
 void* willrt_gc_alloc(size_t size, const willrt_gc_type* type) {
@@ -317,6 +383,9 @@ void* willrt_gc_alloc(size_t size, const willrt_gc_type* type) {
 }
 
 void willrt_gc_shutdown(void) {
+    if (gc_lane_current() >= 0) {
+        willrt_gc_lane_leave();
+    }
     gc_heap_shutdown();
 }
 

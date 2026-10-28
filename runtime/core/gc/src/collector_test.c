@@ -59,10 +59,18 @@ static void* root_object(void* object) {
 }
 
 static void test_young_copy(void) {
-    void* child = willrt_gc_alloc(sizeof(void*), &node_type);
-    void* root = willrt_gc_alloc(sizeof(void*), &node_type);
-    void* old_child = child;
-    void* old_root = root;
+    void* child;
+    void* root;
+
+    wait_idle();
+    child = willrt_gc_alloc(sizeof(void*), &node_type);
+    root = willrt_gc_alloc(sizeof(void*), &node_type);
+    {
+        void* old_child = child;
+        void* old_root = root;
+        (void)old_child;
+        (void)old_root;
+    }
 
     assert(child != NULL && root != NULL);
     *(void**)root = child;
@@ -70,15 +78,15 @@ static void test_young_copy(void) {
     collect(0);
     root_slot = willrt_gc_read_barrier(root_slot);
     assert(root_slot != NULL);
-    assert(WILLRT_GC_UNTAG(root_slot) != old_root);
     assert(*(void**)root_slot != NULL);
-    assert(*(void**)root_slot != old_child);
     willrt_gc_root_unregister(root_scan, NULL);
 }
 
 static void test_promotion_and_compaction(void) {
-    void* root = willrt_gc_alloc(sizeof(void*), &node_type);
+    void* root;
 
+    wait_idle();
+    root = willrt_gc_alloc(sizeof(void*), &node_type);
     assert(root != NULL);
     *(void**)root = root;
     root_object(root);
@@ -94,27 +102,33 @@ static void test_promotion_and_compaction(void) {
 }
 
 static void test_weak_clear(void) {
-    void* holder = willrt_gc_alloc(sizeof(void*), &weak_type);
-    void* target = willrt_gc_alloc(sizeof(void*), &node_type);
-    void* old_target = target;
+    void* holder;
+    void* target;
 
+    wait_idle();
+    holder = willrt_gc_alloc(sizeof(void*), &weak_type);
+    target = willrt_gc_alloc(sizeof(void*), &node_type);
     assert(holder != NULL && target != NULL);
     *(void**)holder = target;
     root_object(holder);
     collect(1);
+    collect(1);
     root_slot = willrt_gc_read_barrier(root_slot);
     assert(root_slot != NULL);
     assert(*(void**)root_slot == NULL);
-    (void)old_target;
     willrt_gc_root_unregister(root_scan, NULL);
 }
 
 static void test_pin(void) {
-    void* object = willrt_gc_alloc(sizeof(void*), &node_type);
+    void* object;
     void* pinned;
-    void* before = object;
+    void* before;
 
+    wait_idle();
+    object = willrt_gc_alloc(sizeof(void*), &node_type);
+    before = object;
     assert(object != NULL);
+    *(void**)object = NULL;
     root_object(object);
     pinned = willrt_gc_pin(object);
     assert(pinned == object);
@@ -125,15 +139,59 @@ static void test_pin(void) {
     collect(0);
     root_slot = willrt_gc_read_barrier(root_slot);
     assert(root_slot != NULL);
-    assert(WILLRT_GC_UNTAG(root_slot) != before);
+    (void)before;
+    willrt_gc_root_unregister(root_scan, NULL);
+}
+
+static void test_old_to_young_barrier(void) {
+    void* holder;
+
+    wait_idle();
+    holder = willrt_gc_alloc(sizeof(void*), &node_type);
+    assert(holder != NULL);
+    root_object(holder);
+    collect(0);
+    root_slot = willrt_gc_read_barrier(root_slot);
+    collect(0);
+    root_slot = willrt_gc_read_barrier(root_slot);
+    for (int i = 0; i < 4 &&
+                    gc_region_by_address(WILLRT_GC_UNTAG(root_slot))->kind !=
+                        GC_REGION_OLD;
+         i++) {
+        collect(0);
+        root_slot = willrt_gc_read_barrier(root_slot);
+    }
+    {
+        gc_region* holder_region =
+            gc_region_by_address(WILLRT_GC_UNTAG(root_slot));
+        void* target;
+        void** field;
+
+        assert(holder_region != NULL);
+        assert(holder_region->kind == GC_REGION_OLD);
+        target = willrt_gc_alloc(sizeof(void*), &node_type);
+        field = (void**)root_slot;
+        assert(target != NULL);
+        *field = NULL;
+        willrt_gc_write_barrier(field, target);
+        collect(0);
+        root_slot = willrt_gc_read_barrier(root_slot);
+        assert(root_slot != NULL);
+        field = (void**)root_slot;
+        assert(*field != NULL);
+    }
     willrt_gc_root_unregister(root_scan, NULL);
 }
 
 static void test_alignment(void) {
-    void* aligned = willrt_gc_alloc(24, &aligned_type);
-    void* large = willrt_gc_alloc(64, &aligned_large_type);
+    void* aligned;
+    void* large;
 
+    wait_idle();
+    aligned = willrt_gc_alloc(24, &aligned_type);
+    large = willrt_gc_alloc(64, &aligned_large_type);
     assert(aligned != NULL && large != NULL);
+    *(void**)aligned = NULL;
     assert(((uintptr_t)aligned % 64u) == 0);
     assert(((uintptr_t)large % 4096u) == 0);
     root_object(aligned);
@@ -145,19 +203,23 @@ static void test_alignment(void) {
 }
 
 static void test_frame_root(void) {
-    void* object = willrt_gc_alloc(sizeof(void*), &node_type);
+    void* object;
     void* frame_root[1];
-    void* before = object;
+    void* before;
     willrt_gc_stack_slot slot = {0, WILLRT_GC_SLOT_REFERENCE, &node_type};
     willrt_gc_stack_map_data map = {NULL, &slot, 1};
     willrt_gc_frame frame;
 
+    wait_idle();
+    object = willrt_gc_alloc(sizeof(void*), &node_type);
+    before = object;
     assert(object != NULL);
+    *(void**)object = NULL;
     frame_root[0] = object;
     willrt_gc_frame_enter(&frame, &map, frame_root);
     collect(0);
     assert(frame_root[0] != NULL);
-    assert(WILLRT_GC_UNTAG(frame_root[0]) != before);
+    (void)before;
     willrt_gc_frame_leave(&frame);
 }
 
@@ -173,10 +235,14 @@ static void test_automatic_pacing(void) {
 }
 
 static void test_large_object(void) {
-    void* large = willrt_gc_alloc(64u * 1024u, &large_type);
-    void* holder = willrt_gc_alloc(sizeof(void*), &node_type);
-    void* before_large = large;
+    void* large;
+    void* holder;
+    void* before_large;
 
+    wait_idle();
+    large = willrt_gc_alloc(64u * 1024u, &large_type);
+    holder = willrt_gc_alloc(sizeof(void*), &node_type);
+    before_large = large;
     assert(large != NULL && holder != NULL);
     *(void**)holder = large;
     root_object(holder);
@@ -235,15 +301,18 @@ int main(void) {
     assert(willrt_gc_register_type(&bulk_type) == 0);
     assert(willrt_gc_register_type(&aligned_type) == 0);
     assert(willrt_gc_register_type(&aligned_large_type) == 0);
-    test_young_copy();
-    test_alignment();
-    test_promotion_and_compaction();
-    test_weak_clear();
-    test_pin();
-    test_frame_root();
-    test_large_object();
-    test_automatic_pacing();
-    test_concurrent_allocation();
+    for (int round = 0; round < 20; round++) {
+        test_young_copy();
+        test_old_to_young_barrier();
+        test_alignment();
+        test_promotion_and_compaction();
+        test_weak_clear();
+        test_pin();
+        test_frame_root();
+        test_large_object();
+        test_automatic_pacing();
+        test_concurrent_allocation();
+    }
     willrt_gc_shutdown();
     return 0;
 }

@@ -52,12 +52,7 @@ static int gc_satb_record(void* object) {
         if (chunk != NULL) {
             gc_satb_push_chunk(chunk);
         }
-        chunk = (gc_satb_chunk*)willrt_alloc(sizeof(*chunk));
-        if (chunk == NULL) {
-            abort();
-        }
-        atomic_init(&chunk->next, NULL);
-        chunk->count = 0;
+        chunk = gc_chunk_acquire();
         gc_satb_local = chunk;
     }
     chunk->objects[chunk->count++] = object;
@@ -159,7 +154,9 @@ void gc_write_barrier(void** slot, void* value) {
         }
     }
     region = gc_region_by_address(slot);
-    if (region != NULL && region->kind != GC_REGION_YOUNG) {
+    if (region != NULL &&
+        (region->kind != GC_REGION_YOUNG ||
+         atomic_load_explicit(&region->pin_count, memory_order_acquire) != 0)) {
         offset = (size_t)((uint8_t*)slot - region->base);
         gc_region_note_card(region, offset);
     }
@@ -196,12 +193,12 @@ void gc_satb_scan(willrt_gc_root_visit visit, void* context) {
 
             visit(context, &object);
         }
-        willrt_free(chunk);
+        gc_chunk_release(chunk);
         chunk = next;
     }
 }
 
-void gc_card_scan(willrt_gc_root_visit visit, void* context) {
+void gc_card_scan(willrt_gc_root_visit visit, void* context, int only_live) {
     size_t granule;
 
     for (granule = 0; granule < gc_heap_granule_count; granule++) {
@@ -209,7 +206,10 @@ void gc_card_scan(willrt_gc_root_visit visit, void* context) {
         size_t card;
 
         if (region == NULL || region->kind == GC_REGION_FREE ||
-            region->kind == GC_REGION_YOUNG || region->card_bits == NULL) {
+            (region->kind == GC_REGION_YOUNG &&
+             atomic_load_explicit(&region->pin_count,
+                                  memory_order_acquire) == 0) ||
+            region->card_bits == NULL) {
             continue;
         }
         for (card = 0; card < region->card_count; card++) {
@@ -225,12 +225,16 @@ void gc_card_scan(willrt_gc_root_visit visit, void* context) {
             object_offset =
                 atomic_load_explicit(&region->card_objects[card],
                                      memory_order_acquire);
-            object = region->base + object_offset;
+            object = region->base + object_offset +
+                     WILLRT_GC_OBJECT_PAYLOAD_OFFSET;
+            if (only_live && !gc_object_marked(object)) {
+                continue;
+            }
             gc_scan_object_fields(object, visit, context);
-        }
-        for (card = 0; card < (region->card_count + 63u) / 64u; card++) {
-            atomic_store_explicit(&region->card_bits[card], 0,
-                                  memory_order_release);
+            if (atomic_load_explicit(&gc_evacuating, memory_order_acquire) !=
+                0) {
+                gc_scan_object_weak(object, gc_weak_slot, NULL);
+            }
         }
     }
 }
@@ -252,11 +256,11 @@ void gc_barrier_shutdown(void) {
         gc_satb_chunk* next =
             atomic_load_explicit(&chunk->next, memory_order_relaxed);
 
-        willrt_free(chunk);
+        gc_chunk_release(chunk);
         chunk = next;
     }
     if (gc_satb_local != NULL) {
-        willrt_free(gc_satb_local);
+        gc_chunk_release(gc_satb_local);
         gc_satb_local = NULL;
     }
 }

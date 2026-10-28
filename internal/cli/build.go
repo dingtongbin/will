@@ -808,6 +808,7 @@ func runtimeSources(root, target string) []string {
 		filepath.Join("core", "sync", "src", "sync.c"),
 		filepath.Join("core", "mem", "src", "alloc.c"),
 		filepath.Join("core", "gc", "src", "heap.c"),
+		filepath.Join("core", "gc", "src", "chunks.c"),
 		filepath.Join("core", "gc", "src", "region.c"),
 		filepath.Join("core", "gc", "src", "object.c"),
 		filepath.Join("core", "gc", "src", "types.c"),
