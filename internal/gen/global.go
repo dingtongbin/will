@@ -45,6 +45,10 @@ func (g *generator) collectGlobals() {
 			}
 			d.globals[r.ID] = info
 			g.globalSymbols[info.sym] = info
+			if g.isClassText(text) {
+				g.needGCDecl = true
+				g.gcGlobalRoots = append(g.gcGlobalRoots, info.sym)
+			}
 		}
 		for _, r := range d.recs {
 			if r.Kind != "const" || refField(r, "parent") != d.moduleID {
@@ -146,6 +150,12 @@ func (g *generator) emitInit(d *docState) error {
 		value, err := g.value(child)
 		if err != nil {
 			return err
+		}
+		if g.isClassText(info.text) {
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				ptr, value)
+			continue
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.typ, value, ptr)
 	}

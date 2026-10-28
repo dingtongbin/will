@@ -84,12 +84,23 @@ func (g *generator) emitGCMetadata() error {
 			classes = append(classes, t)
 		}
 	}
+	if len(g.gcGlobalRoots) != 0 {
+		g.out.WriteString("define internal void @willrt.gc.scan_globals(ptr %context, ptr %visit, ptr %visit_context) {\nentry:\n")
+		for _, sym := range g.gcGlobalRoots {
+			fmt.Fprintf(g.out, "  call void %%visit(ptr %%visit_context, ptr @%s)\n",
+				llvmSymbol(sym))
+		}
+		g.out.WriteString("  ret void\n}\n")
+	}
 	if len(classes) != 0 {
 		g.out.WriteString("declare i32 @willrt_gc_register_type(ptr)\n")
 		g.out.WriteString("define internal void @willrt.gc.register_types() {\nentry:\n")
 		for _, t := range classes {
 			fmt.Fprintf(g.out, "  call i32 @willrt_gc_register_type(ptr %s)\n",
 				gcmeta.DescriptorSymbol(t.Name))
+		}
+		if len(g.gcGlobalRoots) != 0 {
+			g.out.WriteString("  call void @willrt_gc_root_register(ptr @willrt.gc.scan_globals, ptr null)\n")
 		}
 		g.out.WriteString("  ret void\n}\n")
 		g.out.WriteString("@llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] " +

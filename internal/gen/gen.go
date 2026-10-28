@@ -322,6 +322,7 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_gc_frame_enter(ptr, ptr, ptr)\n")
 		g.out.WriteString("declare void @willrt_gc_frame_leave(ptr)\n")
 		g.out.WriteString("declare void @willrt_gc_safepoint(i32)\n")
+		g.out.WriteString("declare void @willrt_gc_root_register(ptr, ptr)\n")
 	}
 	if g.needRcDecl {
 		g.out.WriteString("declare i64 @willrt_rc_new(ptr, i64)\n")
@@ -1003,6 +1004,7 @@ type generator struct {
 	gcProgram      *gcmeta.Program
 	gcFrames       []gcFrameInfo
 	gcTaskFrames   []gcFrameInfo
+	gcGlobalRoots  []string
 	gcRootSlots    map[int]string
 	gcInlineTypes  map[string]*gcmeta.Type
 	gcFrameSlot    string
