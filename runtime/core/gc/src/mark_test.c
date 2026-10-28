@@ -12,6 +12,10 @@ static const willrt_gc_type root_type = {
     sizeof(void*), sizeof(void*), WILLRT_GC_TYPE_REFERENCES, 1,
     root_reference_offsets
 };
+static const willrt_gc_type holder_type = {
+    sizeof(void*), sizeof(void*), WILLRT_GC_TYPE_REFERENCES, 1,
+    root_reference_offsets
+};
 
 static void* root_slot;
 
@@ -66,6 +70,21 @@ static void test_mark(void) {
     willrt_gc_test_mark();
     assert(willrt_gc_test_marked(old_value) == 1);
     assert(willrt_gc_test_marked(new_value) == 0);
+
+    {
+        void* young = willrt_gc_alloc(8, NULL);
+        void* holder = willrt_gc_alloc(sizeof(void*), &holder_type);
+        void** holder_slot = (void**)holder;
+
+        assert(young != NULL && holder != NULL);
+        *holder_slot = NULL;
+        root_slot = holder;
+        willrt_gc_write_barrier(holder_slot, young);
+        willrt_gc_test_mark();
+        assert(willrt_gc_test_marked(holder) == 1);
+        assert(willrt_gc_test_marked(young) == 1);
+        assert(willrt_gc_test_card_count() == 0);
+    }
     willrt_gc_test_end_mark();
 
     willrt_gc_handle_release(handle);

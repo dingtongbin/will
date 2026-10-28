@@ -10,6 +10,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef struct gc_object {
+    uint8_t* base;
+    size_t size;
+} gc_object;
+
 willrt_os_mutex willrt_gc_heap_lock;
 gc_region gc_regions[WILLRT_GC_REGION_MAX];
 size_t gc_region_count;
@@ -19,6 +24,8 @@ static atomic_int willrt_gc_heap_state;
 static uint8_t* willrt_gc_arena;
 static size_t willrt_gc_arena_size;
 static atomic_size_t willrt_gc_allocated;
+static atomic_size_t willrt_gc_object_total;
+static gc_object gc_objects[65536u];
 static size_t willrt_gc_refills;
 static size_t willrt_gc_large_count;
 static size_t willrt_gc_pinned_count;
@@ -215,6 +222,15 @@ void* willrt_gc_alloc(size_t size, const willrt_gc_type* type) {
     atomic_store_explicit(&header->state,
                           willrt_gc_state_make(region, type_id, state_flags),
                           memory_order_relaxed);
+    {
+        size_t index = atomic_fetch_add_explicit(&willrt_gc_object_total, 1,
+                                                 memory_order_relaxed);
+        if (index >= 65536u) {
+            gc_abort("GC object table is full");
+        }
+        gc_objects[index].base = base;
+        gc_objects[index].size = total;
+    }
     atomic_fetch_add_explicit(&willrt_gc_allocated, total, memory_order_relaxed);
     return base + WILLRT_GC_OBJECT_PAYLOAD_OFFSET;
 }
@@ -280,6 +296,27 @@ int willrt_gc_heap_offset(const void* ptr, size_t* offset) {
         *offset = (size_t)(address - willrt_gc_arena);
     }
     return 1;
+}
+
+size_t willrt_gc_object_count(void) {
+    return atomic_load_explicit(&willrt_gc_object_total, memory_order_acquire);
+}
+
+int willrt_gc_object_at(size_t index, void** base, size_t* size) {
+    if (index >= willrt_gc_object_count()) {
+        return 0;
+    }
+    if (base != NULL) {
+        *base = gc_objects[index].base;
+    }
+    if (size != NULL) {
+        *size = gc_objects[index].size;
+    }
+    return 1;
+}
+
+size_t willrt_gc_test_object_count(void) {
+    return willrt_gc_object_count();
 }
 
 size_t willrt_gc_test_region_count(void) {

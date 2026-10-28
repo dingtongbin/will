@@ -104,6 +104,54 @@ size_t willrt_gc_test_card_count(void) {
     return atomic_load_explicit(&gc_card_count, memory_order_relaxed);
 }
 
+void willrt_gc_card_scan_all(willrt_gc_root_visit visit, void* context) {
+    size_t objects = willrt_gc_object_count();
+    size_t i;
+
+    if (atomic_load_explicit(&gc_card_count, memory_order_relaxed) == 0) {
+        return;
+    }
+    for (i = 0; i < objects; i++) {
+        void* base = NULL;
+        size_t size = 0;
+        willrt_gc_header* header;
+        uint64_t state;
+        const willrt_gc_type* type;
+        uint32_t type_id;
+        uint32_t field;
+
+        if (!willrt_gc_object_at(i, &base, &size) ||
+            size <= WILLRT_GC_OBJECT_PAYLOAD_OFFSET) {
+            continue;
+        }
+        header = (willrt_gc_header*)base;
+        state = atomic_load_explicit(&header->state, memory_order_relaxed);
+        type_id = willrt_gc_state_type(state);
+        type = gc_type_get(type_id);
+        if (type == NULL) {
+            continue;
+        }
+        for (field = 0; field < type->reference_count; field++) {
+            uint32_t offset = type->reference_offsets[field];
+            void** slot;
+
+            if (offset > type->size ||
+                sizeof(void*) > (size_t)type->size - (size_t)offset) {
+                continue;
+            }
+            slot = (void**)((uint8_t*)base +
+                            WILLRT_GC_OBJECT_PAYLOAD_OFFSET + offset);
+            if (willrt_gc_test_card_marked(slot)) {
+                visit(context, slot);
+            }
+        }
+    }
+    for (i = 0; i < WILLRT_GC_CARD_COUNT; i++) {
+        atomic_store_explicit(&gc_cards[i], 0, memory_order_relaxed);
+    }
+    atomic_store_explicit(&gc_card_count, 0, memory_order_relaxed);
+}
+
 size_t willrt_gc_test_satb_count(void) {
     return gc_satb_count;
 }

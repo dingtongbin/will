@@ -117,6 +117,7 @@ void willrt_gc_test_mark(void) {
     willrt_gc_root_scan_all(gc_mark_visit, NULL);
     willrt_gc_handle_scan_all(gc_mark_visit, NULL);
     willrt_gc_satb_drain(gc_mark_visit, NULL);
+    willrt_gc_card_scan_all(gc_mark_visit, NULL);
     gc_drain_mark_stack();
 }
 
