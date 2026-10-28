@@ -367,7 +367,10 @@ func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 		if method == "" {
 			return "", g.errf(iface.id, "cannot translate node #%d: %s has no method %s", iface.id, concrete, m.name)
 		}
-		if m.async {
+		// An imported interface may be read from a document whose method
+		// metadata was collected before the task-constructor table was built.
+		// The constructor is the authoritative ABI for an async method.
+		if m.async || g.sigs[method+".task"] != "" || g.taskCtors[method+".task"] {
 			method += ".task"
 		}
 		entries = append(entries, "ptr @"+llvmSymbol(method))

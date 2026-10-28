@@ -361,7 +361,7 @@ func (g *generator) bindPattern(pat willc.Record, subjLLVM, subjText, subjPtr, s
 				return nil
 			}
 			if isAggregateType(subjLLVM) {
-				g.patternPlaces[pat.ID] = subjPtr
+				g.patternPlaces[pat.ID] = g.stablePatternPlace(subjLLVM, subjPtr)
 			} else {
 				g.patternVals[pat.ID] = subjVal
 			}
@@ -394,7 +394,7 @@ func (g *generator) bindPattern(pat willc.Record, subjLLVM, subjText, subjPtr, s
 		return nil
 	case "bind":
 		if isAggregateType(subjLLVM) {
-			g.patternPlaces[pat.ID] = subjPtr
+			g.patternPlaces[pat.ID] = g.stablePatternPlace(subjLLVM, subjPtr)
 		} else {
 			g.patternVals[pat.ID] = subjVal
 		}
@@ -442,6 +442,19 @@ func (g *generator) bindPattern(pat willc.Record, subjLLVM, subjText, subjPtr, s
 		return nil
 	}
 	return g.errf(pat.ID, "cannot translate node #%d: pattern kind %s is not lowered yet", pat.ID, fieldText(pat, "kind"))
+}
+
+// stablePatternPlace copies an aggregate pattern binding into a general
+// state-machine frame slot. A GEP into the subject is not valid after a resume:
+// the subject may only be initialized on the first entry, while the binding is
+// read from a later dispatch state.
+func (g *generator) stablePatternPlace(typ, src string) string {
+	if !g.smGeneral || typ == "" || src == "" {
+		return src
+	}
+	slot := g.smAlloca(typ, "bind")
+	g.copyValue(src, slot, typ)
+	return slot
 }
 
 // lowerArmBody lowers the body of one arm and reports whether it ended in a

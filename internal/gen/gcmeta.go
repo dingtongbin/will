@@ -62,9 +62,13 @@ func (g *generator) emitGCMetadata() error {
 	}
 	var classes []*gcmeta.Type
 	for _, t := range program.Types() {
-		if t.Kind == gcmeta.KindClass {
-			classes = append(classes, t)
+		if t.Kind != gcmeta.KindClass {
+			continue
 		}
+		if g.packageMode && packageOfQualified(t.Name) != g.pkg {
+			continue
+		}
+		classes = append(classes, t)
 	}
 	inlineNames := make([]string, 0, len(g.gcInlineTypes))
 	for name := range g.gcInlineTypes {
@@ -75,18 +79,29 @@ func (g *generator) emitGCMetadata() error {
 	var inlineTypes []*gcmeta.Type
 	for _, name := range inlineNames {
 		inline := g.gcInlineTypes[name]
-		if len(inline.Refs) != 0 || len(inline.Weaks) != 0 {
-			if nextID > gcmeta.TypeIDMax {
-				return fmt.Errorf("GC type id table exceeds %d", gcmeta.TypeIDMax)
-			}
-			inline.ID = nextID
-			nextID++
-			inlineTypes = append(inlineTypes, inline)
+		// An interface box or task result still needs a descriptor when the
+		// inline value has no references: the allocator validates size and
+		// alignment even though the scanner has nothing to visit.
+		if nextID > gcmeta.TypeIDMax {
+			return fmt.Errorf("GC type id table exceeds %d", gcmeta.TypeIDMax)
 		}
+		inline.ID = nextID
+		nextID++
+		inlineTypes = append(inlineTypes, inline)
 	}
-	text, err := gcmeta.DescriptorBlock(program.Types())
+	var descriptors []*gcmeta.Type
+	for _, t := range program.Types() {
+		// Every package object may name a class declared in another package in
+		// a stack map. Emit the descriptor as linkonce_odr so the linker keeps
+		// one definition while each object can refer to it.
+		descriptors = append(descriptors, t)
+	}
+	text, err := gcmeta.DescriptorBlock(descriptors)
 	if err != nil {
 		return err
+	}
+	if g.packageMode {
+		text = strings.ReplaceAll(text, "private constant", "linkonce_odr constant")
 	}
 	g.out.WriteString(text)
 	for _, inline := range inlineTypes {
@@ -138,6 +153,9 @@ func (g *generator) emitGCMetadata() error {
 			if fn == "" {
 				return fmt.Errorf("stackmap #%d has no function", r.ID)
 			}
+			if g.packageMode && packageOfQualified(fn) != g.pkg {
+				continue
+			}
 			maps[fn] = append(maps[fn], r)
 		}
 	}
@@ -165,7 +183,7 @@ func (g *generator) emitGCMetadata() error {
 			if ok {
 				typeSym = gcmeta.DescriptorSymbol(qualified)
 			}
-			fmt.Fprintf(g.out, "{ i32 %d, i32 1, ptr %s }", slot, typeSym)
+			fmt.Fprintf(g.out, "%%willrt_gc_stack_slot { i32 %d, i32 1, ptr %s }", slot, typeSym)
 		}
 		g.out.WriteString("]\n")
 		fmt.Fprintf(g.out, "%s = private constant %%willrt_gc_stack_map_data { ptr @%s, ptr %s, i64 %d }\n",
@@ -197,7 +215,7 @@ func (g *generator) emitGCMetadata() error {
 					typeSym = gcmeta.DescriptorSymbol(t.Name)
 				}
 			}
-			fmt.Fprintf(g.out, "{ i32 %d, i32 1, ptr %s }", offset, typeSym)
+			fmt.Fprintf(g.out, "%%willrt_gc_stack_slot { i32 %d, i32 1, ptr %s }", offset, typeSym)
 		}
 		g.out.WriteString("]\n")
 		fmt.Fprintf(g.out, "%s = private constant %%willrt_gc_stack_map_data { ptr @%s, ptr %s, i64 %d }\n",

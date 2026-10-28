@@ -508,6 +508,7 @@ func loweringCacheKey(texts []string, record []byte, opts buildOptions) (*cache.
 		h.Add("willc", []byte(text))
 	}
 	h.Add("decisions", record)
+	h.AddStrings("gc-policy", "layout-v1", "barrier-v1", "stackmap-v1", "typeid-v1")
 	h.AddStrings("entry", opts.entry)
 	build := buildIdentityWith(opts.opt, opts.target)
 	h.AddStrings("compiler", compilerIdentity(), build.Target, build.Opt)

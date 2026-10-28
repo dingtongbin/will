@@ -40,6 +40,7 @@ type Type struct {
 	kind    Kind
 	borrow  ast.BorrowKind
 	viewMut bool
+	class   bool
 	name    string
 	args    []*Type
 	elem    *Type
@@ -70,6 +71,11 @@ func (t *Type) Kind() Kind {
 		return InvalidKind
 	}
 	return t.kind
+}
+
+// IsClass reports whether the named type is a GC class reference.
+func (t *Type) IsClass() bool {
+	return t != nil && t.class
 }
 
 // Name returns the scalar or named type name.
@@ -237,6 +243,14 @@ func (in *interner) scalar(name string) *Type {
 }
 
 func (in *interner) named(name string, args []*Type) *Type {
+	return in.namedWithClass(name, args, false)
+}
+
+func (in *interner) namedClass(name string, args []*Type) *Type {
+	return in.namedWithClass(name, args, true)
+}
+
+func (in *interner) namedWithClass(name string, args []*Type, class bool) *Type {
 	text := name
 	if len(args) > 0 {
 		parts := make([]string, len(args))
@@ -245,7 +259,7 @@ func (in *interner) named(name string, args []*Type) *Type {
 		}
 		text = name + "<" + strings.Join(parts, ",") + ">"
 	}
-	return in.intern(&Type{text: text, kind: NamedKind, name: name, args: args})
+	return in.intern(&Type{text: text, kind: NamedKind, class: class, name: name, args: args})
 }
 
 func (in *interner) array(length string, elem *Type) *Type {
@@ -273,6 +287,7 @@ func (in *interner) borrowed(t *Type, kind ast.BorrowKind) *Type {
 		text:   prefix + t.text,
 		kind:   t.kind,
 		borrow: kind,
+		class:  t.class,
 		name:   t.name,
 		args:   t.args,
 		elem:   t.elem,

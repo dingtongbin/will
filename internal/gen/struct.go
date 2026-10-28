@@ -240,6 +240,10 @@ func (g *generator) ensureStruct(id int) (*structInfo, bool) {
 				continue
 			}
 		}
+		if g.isClassText(t) {
+			info.types = append(info.types, "ptr")
+			continue
+		}
 		if typ, _, ok := llvmScalar(t); ok {
 			info.types = append(info.types, typ)
 			continue

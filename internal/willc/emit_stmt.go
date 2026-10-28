@@ -51,7 +51,7 @@ func (e *emitter) emitBlock(b *ast.Block) int {
 		}
 		e.emitStmt(s)
 		if vs, ok := s.(*ast.VarStmt); ok {
-			if vd, ok := vs.Decl.(*ast.VarDecl); ok && ast.NeedsRelease(vd.Type) && vd.Name != "_" {
+			if vd, ok := vs.Decl.(*ast.VarDecl); ok && e.needsRelease(vd.Type) && vd.Name != "_" {
 				e.scopes[scope] = append(e.scopes[scope], vd)
 			}
 		}

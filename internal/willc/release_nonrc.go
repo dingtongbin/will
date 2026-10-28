@@ -17,7 +17,7 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 			continue
 		}
 		vd, ok := vs.Decl.(*ast.VarDecl)
-		if !ok || vd.Type == nil || vd.Name == "" || vd.Name == "_" || rcType(vd.Type) || !ast.NeedsRelease(vd.Type) {
+		if !ok || vd.Type == nil || vd.Name == "" || vd.Name == "_" || rcType(vd.Type) || !em.needsRelease(vd.Type) {
 			continue
 		}
 		if !em.releaseType(vd.Type) {
@@ -87,7 +87,7 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 // releaseType allows a predeclared container or a local struct. An imported
 // struct has no field table here, so its reads stay pinned.
 func (em *emitter) releaseType(t *ast.Type) bool {
-	if t == nil {
+	if t == nil || em.isClassType(t) {
 		return false
 	}
 	switch t.Kind {

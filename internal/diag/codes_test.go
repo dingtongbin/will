@@ -39,7 +39,7 @@ func TestCodesMatchConstants(t *testing.T) {
 		CodeMethodsTwoPackages, CodeDuplicateName, CodeDuplicateDerive, CodeDuplicateImport,
 		CodeTopLevelDiscard, CodeNoField, CodeNoMethod, CodeBadDeriveName,
 		CodeTypeMismatch, CodeInterfaceUnsatisfied, CodeBadArgument, CodeTypeArgCount,
-		CodeConstantRange, CodeChainedComparison, CodeNewWithoutInit,
+		CodeConstantRange, CodeChainedComparison, CodeNewWithoutInit, CodeInitReturn,
 		CodeBuiltinConstraintAsInterface,
 		CodeShiftAmount,
 		CodeFeatureOutsideIf,

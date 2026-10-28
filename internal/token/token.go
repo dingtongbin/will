@@ -44,6 +44,8 @@ const (
 	KwAsync
 	// KwAwait starts one explicit wait.
 	KwAwait
+	// KwClass introduces a GC reference type declaration.
+	KwClass
 	// KwStruct introduces a struct declaration.
 	KwStruct
 	// KwEnum introduces an enum declaration.
@@ -248,6 +250,7 @@ var names = map[Kind]string{
 	KwFunc:          "func",
 	KwAsync:         "async",
 	KwAwait:         "await",
+	KwClass:         "class",
 	KwStruct:        "struct",
 	KwEnum:          "enum",
 	KwInterface:     "interface",
@@ -355,6 +358,7 @@ var Keywords = map[string]Kind{
 	"func":      KwFunc,
 	"async":     KwAsync,
 	"await":     KwAwait,
+	"class":     KwClass,
 	"struct":    KwStruct,
 	"enum":      KwEnum,
 	"interface": KwInterface,

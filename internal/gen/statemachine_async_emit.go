@@ -249,9 +249,20 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
 	}
 	declParams := make([]string, 0, len(args)+1)
 	if g.methodSymbols[targetSym] {
-		recv, _, err := g.place(refField(call, "recv"))
-		if err != nil {
-			return "", err
+		recvID := refField(call, "recv")
+		recv := ""
+		if text, err := g.willTypeText(recvID); err == nil && g.isClassText(text) {
+			object, err := g.classPointerValue(recvID)
+			if err != nil {
+				return "", err
+			}
+			recv = object
+		} else {
+			ptr, _, err := g.place(recvID)
+			if err != nil {
+				return "", err
+			}
+			recv = ptr
 		}
 		parts = append(parts, "ptr "+recv)
 		declParams = append(declParams, "ptr")
@@ -263,6 +274,23 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
 		}
 		mut := i < len(paramMuts) && paramMuts[i]
 		text, textErr := g.willTypeText(a)
+		if textErr == nil && i < len(paramTypes) {
+			if iface, ok := g.ifaceOfText(paramTypes[i]); ok {
+				if _, already := g.ifaceOfText(text); !already {
+					key := fmt.Sprintf("%d.%d", call.ID, i)
+					slot := g.ifaceSlots[key]
+					if slot == "" {
+						return "", g.errf(call.ID, "cannot translate node #%d: the interface argument has no slot", call.ID)
+					}
+					if _, err := g.ifaceStoreValue(slot, a, iface, text); err != nil {
+						return "", err
+					}
+					parts = append(parts, "ptr "+slot)
+					declParams = append(declParams, "ptr")
+					continue
+				}
+			}
+		}
 		if owns && !mut && textErr == nil && g.argIsParameter(a) && ownsReleaseText(g, text) {
 			// A borrowed parameter cannot be handed to the frame by clearing the
 			// caller's place. Give the spawned frame its own copy instead.

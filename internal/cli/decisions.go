@@ -159,6 +159,12 @@ func registerTypes(res *layout.Resolver, u sourceUnit) error {
 			if len(decl.TypeParams) > 0 {
 				continue
 			}
+			if decl.Class {
+				if err := res.AddClass(qualifiedName(u.prefix, decl.Name)); err != nil {
+					return err
+				}
+				continue
+			}
 			fields := make([]layout.Field, len(decl.Fields))
 			for i, fd := range decl.Fields {
 				spec, err := layoutSpec(fd.Type, u.prefix)

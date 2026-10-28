@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/will-lang/will/internal/willc"
@@ -103,6 +104,20 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 		}
 		indexes[l.ID] = len(fields)
 		fields = append(fields, f)
+	}
+	// A class allocation is a root before init or a nested default can
+	// allocate. The frame reserves its own pointer field so the collector can
+	// find the half-built object across those safepoints.
+	for _, r := range g.recs {
+		if r.Kind != "new" {
+			continue
+		}
+		text := fieldText(r, "type")
+		if !g.isClassText(text) {
+			continue
+		}
+		fields = append(fields, asyncField{id: r.ID, text: "class." + strconv.Itoa(r.ID),
+			willText: text, llvm: "ptr"})
 	}
 	for i := range sites {
 		if sites[i].kind == "c" {

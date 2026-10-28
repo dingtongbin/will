@@ -531,7 +531,9 @@ func (g *generator) collectSignatures() {
 			}
 			sortByID(sigs)
 			for _, s := range sigs {
-				m := ifaceMethod{name: fieldText(s, "text"), result: g.qualifyTypeText(d.path, fieldText(s, "type"))}
+				m := ifaceMethod{name: fieldText(s, "text"),
+					result: g.qualifyTypeText(d.path, fieldText(s, "type")),
+					async:  fieldText(s, "async") == "true"}
 				var ps []willc.Record
 				for _, c := range d.recs {
 					if c.Kind == "param" && refField(c, "parent") == s.ID {
@@ -1024,6 +1026,8 @@ type generator struct {
 	gcDecisions    []decisions.Record
 	gcGlobalRoots  []gcGlobalRoot
 	gcRootSlots    map[int]string
+	gcInlineRoots  map[int][]string
+	gcInlineReady  map[int]bool
 	gcInlineTypes  map[string]*gcmeta.Type
 	gcFrameSlot    string
 	gcFrameMap     string
@@ -3304,6 +3308,12 @@ func (g *generator) bodyStmts(stmts []willc.Record, void bool) (bool, error) {
 			if err != nil {
 				return false, err
 			}
+			if st.Kind == "var" && g.gcInlineReady != nil {
+				g.gcInlineReady[st.ID] = true
+			}
+			if !done && (st.Kind == "var" || st.Kind == "assign") {
+				g.refreshInlineRoots()
+			}
 			terminated = done
 			continue
 		}
@@ -3323,6 +3333,12 @@ func (g *generator) bodyStmts(stmts []willc.Record, void bool) (bool, error) {
 		g.stmtDepth--
 		if err != nil {
 			return false, err
+		}
+		if st.Kind == "var" && g.gcInlineReady != nil {
+			g.gcInlineReady[st.ID] = true
+		}
+		if !done && (st.Kind == "var" || st.Kind == "assign") {
+			g.refreshInlineRoots()
 		}
 		g.pendingTryReleases = nil
 		terminated = done
@@ -4458,7 +4474,8 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 	}
 	_, taskScalar := taskElemText(text)
 	_, chanScalar := chanElemText(text)
-	if _, _, ok := llvmScalar(text); !ok && !isSingleBorrow(text) && text != "Duration" && !isRcText(text) && !isWeakText(text) && !taskScalar && !chanScalar {
+	if _, _, ok := llvmScalar(text); !ok && !g.isClassText(text) && !isSingleBorrow(text) &&
+		text != "Duration" && !isRcText(text) && !isWeakText(text) && !taskScalar && !chanScalar {
 		return "", g.errf(r.ID, "cannot translate node #%d: an aggregate result is a place, not a scalar value", r.ID)
 	}
 	return name, nil

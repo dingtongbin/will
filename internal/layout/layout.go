@@ -87,6 +87,7 @@ type Resolver struct {
 	structs    map[string][]Field
 	enums      map[string][]Variant
 	interfaces map[string]bool
+	classes    map[string]bool
 	order      []string
 	computed   map[string]Named
 	busy       map[string]bool
@@ -103,6 +104,7 @@ func New(t Target) *Resolver {
 		structs:    make(map[string][]Field),
 		enums:      make(map[string][]Variant),
 		interfaces: make(map[string]bool),
+		classes:    make(map[string]bool),
 		computed:   make(map[string]Named),
 		busy:       make(map[string]bool),
 	}
@@ -114,6 +116,17 @@ func (r *Resolver) AddStruct(name string, fields []Field) error {
 		return fmt.Errorf("type %s is declared twice", name)
 	}
 	r.structs[name] = fields
+	r.order = append(r.order, name)
+	return nil
+}
+
+// AddClass registers one GC class. A class value is one reference word, so its
+// inline layout never depends on its payload and recursive fields are legal.
+func (r *Resolver) AddClass(name string) error {
+	if r.known(name) {
+		return fmt.Errorf("type %s is declared twice", name)
+	}
+	r.classes[name] = true
 	r.order = append(r.order, name)
 	return nil
 }
@@ -148,7 +161,7 @@ func (r *Resolver) Names() []string {
 func (r *Resolver) known(name string) bool {
 	_, isStruct := r.structs[name]
 	_, isEnum := r.enums[name]
-	return isStruct || isEnum || r.interfaces[name]
+	return isStruct || isEnum || r.interfaces[name] || r.classes[name]
 }
 
 // Layout returns the layout of one named type and the place of each of its
@@ -169,6 +182,8 @@ func (r *Resolver) Layout(name string) (Named, error) {
 		got, err = r.structLayout(name, fields)
 	} else if variants, ok := r.enums[name]; ok {
 		got, err = r.enumLayout(name, variants)
+	} else if r.classes[name] {
+		got = Named{Name: name, Type: Type{Size: r.word, Align: r.word}}
 	} else if r.interfaces[name] {
 		got = Named{Name: name, Type: Type{Size: 2 * r.word, Align: r.word}}
 	} else if name == "Error" {

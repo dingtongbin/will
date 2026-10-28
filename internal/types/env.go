@@ -25,8 +25,9 @@ type signature struct {
 
 // fieldInfo is one struct field.
 type fieldInfo struct {
-	name string
-	typ  *Type
+	name       string
+	typ        *Type
+	hasDefault bool
 }
 
 // variantInfo is one enum variant.
@@ -63,6 +64,7 @@ type env struct {
 	// them that no declaration provides is an error; built-in types have
 	// methods the checker does not model, so they are not in this set.
 	userTypes  map[string]bool
+	classes    map[string]bool
 	typeParams map[string]bool
 }
 
@@ -82,6 +84,7 @@ func newEnv() *env {
 		derives:    map[string]map[string]bool{},
 		aliases:    map[string]*ast.TypeAliasDecl{},
 		userTypes:  map[string]bool{},
+		classes:    map[string]bool{},
 		typeParams: map[string]bool{},
 	}
 }
@@ -136,7 +139,13 @@ func (b *envBuilder) decl(d ast.Decl) {
 		}
 	case *ast.StructDecl:
 		tp := typeParamSet(decl.TypeParams)
-		t := c.in.named(decl.Name, nil)
+		var t *Type
+		if decl.Class {
+			t = c.in.namedClass(decl.Name, nil)
+			e.classes[decl.Name] = true
+		} else {
+			t = c.in.named(decl.Name, nil)
+		}
 		e.types[decl.Name] = t
 		e.arity[decl.Name] = len(decl.TypeParams)
 		e.params[decl.Name] = typeParamNames(decl.TypeParams)
@@ -146,7 +155,8 @@ func (b *envBuilder) decl(d ast.Decl) {
 		}
 		var fields []*fieldInfo
 		for _, fd := range decl.Fields {
-			fields = append(fields, &fieldInfo{name: fd.Name, typ: c.buildType(fd.Type, tp)})
+			fields = append(fields, &fieldInfo{name: fd.Name, typ: c.buildType(fd.Type, tp),
+				hasDefault: fd.Default != nil})
 		}
 		e.fields[decl.Name] = fields
 	case *ast.EnumDecl:
@@ -190,6 +200,10 @@ func (b *envBuilder) decl(d ast.Decl) {
 			e.typeParams[p.Name] = true
 		}
 		sig := c.buildSig(decl)
+		if decl.Name == "init" && decl.Result != nil {
+			c.bag.Error(decl.Result.Pos(), diag.CodeInitReturn,
+				"init must return nothing", "use try_new for a fallible constructor")
+		}
 		switch {
 		case decl.Recv == nil:
 			e.funcs[decl.Name] = sig
@@ -441,7 +455,11 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 				c.bag.Error(t.Pos(), diag.CodeTypeArgCount, "wrong number of type arguments",
 					"the declaration takes "+strconv.Itoa(want))
 			}
-			out = c.in.named(t.Name, args)
+			if c.env.classes[t.Name] {
+				out = c.in.namedClass(t.Name, args)
+			} else {
+				out = c.in.named(t.Name, args)
+			}
 			break
 		}
 		if bt := c.in.builtin(t.Name); bt != nil {

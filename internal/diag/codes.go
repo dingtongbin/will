@@ -86,6 +86,8 @@ const (
 	CodeVariadicWiden = "T0012"
 	// CodeTypeAliasCycle reports a type alias that expands to itself.
 	CodeTypeAliasCycle = "T0013"
+	// CodeInitReturn reports an init method with a return type.
+	CodeInitReturn = "T0018"
 
 	// CodePackageNameMismatch reports a package name that differs from its directory.
 	CodePackageNameMismatch = "B0001"
@@ -172,7 +174,7 @@ var Codes = []string{
 	CodeMethodsTwoPackages, CodeDuplicateName, CodeDuplicateDerive, CodeDuplicateImport,
 	CodeTopLevelDiscard, CodeNoField, CodeNoMethod, CodeBadDeriveName,
 	CodeTypeMismatch, CodeInterfaceUnsatisfied, CodeBadArgument, CodeTypeArgCount,
-	CodeConstantRange, CodeChainedComparison, CodeNewWithoutInit,
+	CodeConstantRange, CodeChainedComparison, CodeNewWithoutInit, CodeInitReturn,
 	CodeBuiltinConstraintAsInterface,
 	CodeShiftAmount,
 	CodeFeatureOutsideIf,

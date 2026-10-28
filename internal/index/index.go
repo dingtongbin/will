@@ -120,7 +120,11 @@ func (x *builder) emitFile(p *pkg.Package, f *pkg.File) {
 					quote("name", decl.Name), quote("recv", recvKind(decl.Recv.Type)))
 			}
 		case *ast.StructDecl:
-			x.decl(f.Path, decl.Pos(), "struct", decl.Name)
+			kind := "struct"
+			if decl.Class {
+				kind = "class"
+			}
+			x.decl(f.Path, decl.Pos(), kind, decl.Name)
 		case *ast.EnumDecl:
 			x.decl(f.Path, decl.Pos(), "enum", decl.Name)
 		case *ast.InterfaceDecl:

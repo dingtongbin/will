@@ -18,6 +18,6 @@ def (f: ref Fault) status() -> i32 {
     return f.status
 }
 
-def (f: ref Fault) class() -> ErrorClass {
+def (f: ref Fault) error_class() -> ErrorClass {
     return class_of_status(f.status)
 }

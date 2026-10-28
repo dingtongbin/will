@@ -2,6 +2,7 @@ package gen
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/will-lang/will/internal/willc"
@@ -111,6 +112,13 @@ func (g *generator) selectMachine(fnID int) (*selectMachineInfo, bool) {
 			return nil, false
 		}
 		fields = append(fields, f)
+	}
+	for _, r := range g.recs {
+		if r.Kind != "new" || !g.isClassText(fieldText(r, "type")) {
+			continue
+		}
+		fields = append(fields, asyncField{id: r.ID, text: "class." + strconv.Itoa(r.ID),
+			willText: fieldText(r, "type"), llvm: "ptr"})
 	}
 	outIndex := map[int]int{}
 	valueIndex := map[int]int{}

@@ -13,6 +13,7 @@ import (
 type Ownership struct {
 	structs    map[string][]*ast.StructDecl
 	enums      map[string][]*ast.EnumDecl
+	classes    map[string]bool
 	interfaces map[string]bool
 	// typeParams holds every declared type-parameter name. A bare T has no
 	// concrete ownership until instantiation, so the transfer check defers it
@@ -27,6 +28,7 @@ func NewOwnership(files []*ast.File) *Ownership {
 	o := &Ownership{
 		structs:    map[string][]*ast.StructDecl{},
 		enums:      map[string][]*ast.EnumDecl{},
+		classes:    map[string]bool{},
 		interfaces: map[string]bool{},
 		typeParams: map[string]bool{},
 	}
@@ -38,6 +40,9 @@ func NewOwnership(files []*ast.File) *Ownership {
 			switch decl := d.(type) {
 			case *ast.StructDecl:
 				o.structs[decl.Name] = append(o.structs[decl.Name], decl)
+				if decl.Class {
+					o.classes[decl.Name] = true
+				}
 				for _, p := range decl.TypeParams {
 					o.typeParams[p.Name] = true
 				}
@@ -117,7 +122,7 @@ func (o *Ownership) hasView(t *ast.Type, bindings map[string]*ast.Type, active m
 			return false
 		}
 		short := shortTypeName(t.Name)
-		if active[short] {
+		if active[short] || o.classes[short] {
 			return false
 		}
 		if structs := o.structs[short]; len(structs) == 1 {
@@ -338,7 +343,7 @@ func (o *Ownership) ownsNamed(t *ast.Type, bindings map[string]*ast.Type, active
 	if i := strings.LastIndexByte(short, '.'); i >= 0 {
 		short = short[i+1:]
 	}
-	if active[short] {
+	if active[short] || o.classes[short] {
 		return false
 	}
 	if structs := o.structs[short]; len(structs) == 1 {

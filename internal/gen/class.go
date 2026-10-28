@@ -28,15 +28,79 @@ type gcFrameInfo struct {
 // setupGCFrame reserves one root array for the class locals and class
 // parameters of the current function. The array is the frame base the runtime
 // scans; every write to it goes through the write barrier.
+// classDefaultNews returns the class allocation sites reachable from one
+// class's field defaults. The frame root map must cover them even though they
+// are not lexical locals of the function that constructs the outer object.
+func (g *generator) classDefaultNews(typeText string) []willc.Record {
+	var out []willc.Record
+	seenClass := map[string]bool{}
+	var visit func(string)
+	visit = func(text string) {
+		q := g.canonicalTypeText(text)
+		if !strings.Contains(q, ".") {
+			q = qualify(g.pkg, q)
+		}
+		if seenClass[q] {
+			return
+		}
+		seenClass[q] = true
+		classID := g.classDecl[q]
+		if classID == 0 {
+			classID = g.classDecl[text]
+		}
+		if classID == 0 {
+			return
+		}
+		for _, f := range g.recs {
+			if f.Kind != "field" || refField(f, "parent") != classID {
+				continue
+			}
+			defaultID := refField(f, "default")
+			if defaultID == 0 {
+				continue
+			}
+			d, ok := g.recs[defaultID]
+			if !ok || d.Kind != "new" || !g.isClassText(fieldText(d, "type")) {
+				continue
+			}
+			out = append(out, d)
+			visit(fieldText(d, "type"))
+		}
+	}
+	visit(typeText)
+	return out
+}
+
 func (g *generator) setupGCFrame(fn int) error {
 	if g.gcProgram == nil || g.smGeneral || g.smMode {
 		return nil
 	}
+	g.gcInlineRoots = nil
+	g.gcInlineReady = map[int]bool{}
 	type rootDecl struct {
 		id   int
 		text string
 	}
+	type inlinePlan struct {
+		decl    int
+		offsets []uint32
+	}
 	var roots []rootDecl
+	var inline []inlinePlan
+	addInline := func(decl int, text string) bool {
+		value, ok := g.inlineGCType(text)
+		if !ok || (len(value.Refs) == 0 && len(value.Weaks) == 0) {
+			return false
+		}
+		switch value.Kind {
+		case gcmeta.KindContainer, gcmeta.KindTask, gcmeta.KindChan,
+			gcmeta.KindWeak, gcmeta.KindPinned:
+			roots = append(roots, rootDecl{id: decl, text: text})
+			return true
+		}
+		inline = append(inline, inlinePlan{decl: decl, offsets: append([]uint32(nil), value.Refs...)})
+		return true
+	}
 	for _, r := range g.recs {
 		if (r.Kind != "param" && r.Kind != "receiver") ||
 			refField(r, "parent") != fn {
@@ -47,6 +111,8 @@ func (g *generator) setupGCFrame(fn int) error {
 			roots = append(roots, rootDecl{id: r.ID, text: text})
 		} else if _, ok := g.ifaceOfText(text); ok {
 			roots = append(roots, rootDecl{id: r.ID, text: text})
+		} else if addInline(r.ID, text) {
+			g.gcInlineReady[r.ID] = true
 		}
 	}
 	var locals []willc.Record
@@ -61,6 +127,8 @@ func (g *generator) setupGCFrame(fn int) error {
 			locals = append(locals, r)
 		} else if isFuncText(text) {
 			locals = append(locals, r)
+		} else {
+			addInline(r.ID, text)
 		}
 	}
 	sortByID(locals)
@@ -82,19 +150,37 @@ func (g *generator) setupGCFrame(fn int) error {
 		}
 	}
 	sortByID(news)
+	seenNews := map[int]bool{}
 	for _, r := range news {
+		if seenNews[r.ID] {
+			continue
+		}
+		seenNews[r.ID] = true
 		roots = append(roots, rootDecl{id: r.ID, text: fieldText(r, "type")})
+		for _, dependent := range g.classDefaultNews(fieldText(r, "type")) {
+			if seenNews[dependent.ID] {
+				continue
+			}
+			seenNews[dependent.ID] = true
+			roots = append(roots, rootDecl{id: dependent.ID,
+				text: fieldText(dependent, "type")})
+		}
 	}
-	if len(roots) == 0 {
+	inlineCount := 0
+	for _, plan := range inline {
+		inlineCount += len(plan.offsets)
+	}
+	n := len(roots) + inlineCount
+	if n == 0 {
 		return nil
 	}
-	n := len(roots)
 	rootsSlot := "%v.gcroots"
 	frameSlot := "%v.gcframe"
 	g.gcFrameSlot = frameSlot
 	g.gcFrameMap = gcStackMapSymbol(g.fnSymbol)
 	g.gcFrameActive = true
 	g.needGCDecl = true
+	g.gcInlineRoots = map[int][]string{}
 	fmt.Fprintf(g.out, "  %s = alloca [%d x ptr]\n", rootsSlot, n)
 	fmt.Fprintf(g.out, "  store [%d x ptr] zeroinitializer, ptr %s\n", n, rootsSlot)
 	fmt.Fprintf(g.out, "  %s = alloca %%willrt_gc_frame\n", frameSlot)
@@ -110,6 +196,20 @@ func (g *generator) setupGCFrame(fn int) error {
 		} else {
 			info.Types = append(info.Types, "")
 		}
+	}
+	next := len(roots)
+	for _, plan := range inline {
+		slots := make([]string, 0, len(plan.offsets))
+		for range plan.offsets {
+			addr := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i32 0, i32 %d\n",
+				addr, n, rootsSlot, next)
+			slots = append(slots, addr)
+			info.Slots = append(info.Slots, next*8)
+			info.Types = append(info.Types, "")
+			next++
+		}
+		g.gcInlineRoots[plan.decl] = slots
 	}
 	// A parameter or receiver already owns a root in its caller. Mirror it into
 	// this frame so a nested cycle sees it even before the first assignment.
@@ -159,22 +259,68 @@ func (g *generator) storeClassRoot(decl int, value string) {
 		root, value)
 }
 
+// refreshInlineRoots mirrors every reference field of an inline local or
+// parameter into its shadow root slot. The frame scan sees only direct pointer
+// slots, so a struct, array, or enum root cannot be scanned in place.
+func (g *generator) refreshInlineRoots() {
+	if g.gcProgram == nil || len(g.gcInlineRoots) == 0 {
+		return
+	}
+	for decl, slots := range g.gcInlineRoots {
+		r, ok := g.recs[decl]
+		if !ok {
+			continue
+		}
+		if r.Kind == "var" && !g.gcInlineReady[decl] {
+			continue
+		}
+		base := g.slots[decl]
+		if base == "" {
+			base = g.smParamSlot[decl]
+		}
+		if base == "" {
+			continue
+		}
+		inline, ok := g.inlineGCType(fieldText(r, "type"))
+		if !ok || len(inline.Refs) == 0 {
+			continue
+		}
+		for i, offset := range inline.Refs {
+			if i >= len(slots) {
+				break
+			}
+			addr := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %s, i64 %d\n",
+				addr, base, offset)
+			value := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier_slot(ptr %s)\n",
+				value, addr)
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				slots[i], value)
+		}
+	}
+}
+
 // generalGCSlots maps class parameters, receivers, and locals at the byte
 // offsets relocateGeneralAllocas assigned to their frame slots.
 func (g *generator) generalGCSlots(fnID int, offsets map[string]int) ([]int, []string) {
 	var slots []int
 	var texts []string
 	for _, r := range g.recs {
-		if r.Kind != "param" && r.Kind != "receiver" && r.Kind != "var" {
+		if r.Kind != "param" && r.Kind != "receiver" && r.Kind != "var" && r.Kind != "new" {
 			continue
 		}
-		if g.enclosingFunc(r.ID) != fnID {
+		if r.Kind != "new" && g.enclosingFunc(r.ID) != fnID {
 			continue
 		}
 		text := fieldText(r, "type")
 		slot := g.slots[r.ID]
 		if slot == "" {
 			slot = g.smParamSlot[r.ID]
+		}
+		if slot == "" {
+			slot = g.newSlots[r.ID]
 		}
 		offset, ok := offsets[slot]
 		if !ok {
@@ -517,7 +663,11 @@ func (g *generator) classNew(r willc.Record) (string, string, error) {
 	g.needGCDecl = true
 	g.gcDecisions = append(g.gcDecisions, decisions.Alloc(g.fnSymbol,
 		fieldText(r, "pos"), t.Name, "tlab"))
-	slot := g.allocSlot(g.newSlots, "class", r.ID, "ptr")
+	slot := g.slots[r.ID]
+	if slot == "" {
+		slot = g.allocSlot(g.newSlots, "class", r.ID, "ptr")
+	}
+	g.newSlots[r.ID] = slot
 	descriptor := gcmeta.DescriptorSymbol(t.Name)
 	object := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_alloc(i64 %d, ptr %s)\n",
@@ -536,6 +686,19 @@ func (g *generator) classNew(r willc.Record) (string, string, error) {
 	initSym := g.classInitSymbol(t.Name)
 	args := g.callArgs(r)
 	if initSym != "" {
+		g.noteExternalFunc(initSym)
+		if g.packageMode && !g.emittedFuncs[initSym] &&
+			!strings.HasPrefix(initSym, g.pkg+".") {
+			g.externalSigs[initSym] = externalSignature{
+				recv:   true,
+				params: append([]string(nil), g.paramTypes[initSym]...),
+			}
+		}
+		ordered, err := g.orderedCallArgs(r, initSym, args)
+		if err != nil {
+			return "", "", err
+		}
+		args = ordered
 		params := g.paramTypes[initSym]
 		muts := g.paramMut[initSym]
 		parts := []string{"ptr " + object}
@@ -557,8 +720,9 @@ func (g *generator) classNew(r willc.Record) (string, string, error) {
 		fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(initSym),
 			strings.Join(parts, ", "))
 	} else if len(args) != 0 {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: class %s has no init for its arguments",
-			r.ID, t.Name)
+		if err := g.classFieldArgs(r, t, object); err != nil {
+			return "", "", err
+		}
 	}
 	if !g.gcGlobalInit {
 		g.gcSafepoint(0)
@@ -638,6 +802,108 @@ func (g *generator) classDefaults(r willc.Record, t *gcmeta.Type, object string)
 	return nil
 }
 
+// classFieldArgs writes the supplied constructor fields of a class that has
+// no init. Positional arguments fill the declaration order; a named argument
+// selects its field. Omitted fields keep the default already written by
+// classDefaults.
+func (g *generator) classFieldArgs(r willc.Record, t *gcmeta.Type, object string) error {
+	args := g.callArgs(r)
+	var names []string
+	for _, f := range r.Fields {
+		if f.Name == "name" {
+			names = append(names, f.Value.Text)
+		}
+	}
+	payload, err := g.ensureClassPayload(t)
+	if err != nil {
+		return err
+	}
+	used := map[int]bool{}
+	positional := 0
+	for i, arg := range args {
+		index := -1
+		argName := ""
+		if i < len(names) {
+			argName = names[i]
+		}
+		if argName != "" {
+			for j, f := range t.Fields {
+				if f.Name == argName {
+					index = j
+					break
+				}
+			}
+			if index < 0 {
+				return g.errf(arg, "cannot translate node #%d: class %s has no field %s",
+					arg, t.Name, argName)
+			}
+		} else {
+			for positional < len(t.Fields) && used[positional] {
+				positional++
+			}
+			if positional >= len(t.Fields) {
+				return g.errf(arg, "cannot translate node #%d: class %s has too many arguments",
+					arg, t.Name)
+			}
+			index = positional
+			positional++
+		}
+		if used[index] {
+			return g.errf(arg, "cannot translate node #%d: duplicate constructor field %s",
+				arg, t.Fields[index].Name)
+		}
+		used[index] = true
+		field := t.Fields[index]
+		addr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+			addr, payload, object, index)
+		fieldText := g.qualifyTypeText(packageOfQualified(t.Name), field.Type)
+		if g.isClassText(fieldText) {
+			value, err := g.value(arg)
+			if err != nil {
+				return err
+			}
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				addr, value)
+			continue
+		}
+		argType, err := g.typeOf(arg)
+		if err != nil {
+			return err
+		}
+		want, ok := g.typeLLVMOf(fieldText)
+		if !ok || want == "" {
+			return g.errf(arg, "cannot translate node #%d: field %s type %s is not lowered",
+				arg, field.Name, field.Type)
+		}
+		if isAggregateType(argType) {
+			ptr, _, err := g.place(arg)
+			if err != nil {
+				return err
+			}
+			if argType != want {
+				return g.errf(arg, "cannot translate node #%d: field %s needs %s, got %s",
+					arg, field.Name, want, argType)
+			}
+			g.needMemcpyDecl = true
+			fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %d)\n",
+				addr, ptr, field.Size)
+			continue
+		}
+		if argType != want {
+			return g.errf(arg, "cannot translate node #%d: field %s needs %s, got %s",
+				arg, field.Name, want, argType)
+		}
+		value, err := g.value(arg)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", want, value, addr)
+	}
+	return nil
+}
+
 // classPointerValue reads a class local, parameter, or field through the load
 // barrier. A local and a field slot self-heal; a parameter has no slot of its
 // own, so the value barrier returns the untagged pointer.
@@ -649,6 +915,11 @@ func (g *generator) classPointerValue(id int) (string, error) {
 	g.needGCDecl = true
 	if r.Kind == "name" {
 		decl := refField(r, "to")
+		if slot := g.captureFields[decl]; slot != "" {
+			out := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier_slot(ptr %s)\n", out, slot)
+			return out, nil
+		}
 		if slot, ok := g.slots[decl]; ok {
 			out := g.newTmp()
 			fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier_slot(ptr %s)\n", out, slot)

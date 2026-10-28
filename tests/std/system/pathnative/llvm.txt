@@ -141,7 +141,7 @@ entry:
   %t24 = load i32, ptr %t23
   ret i32 %t24
 }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.class"(ptr %f) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.error_class"(ptr %f) inlinehint {
 entry:
   %v.ret.47 = alloca %"enum.std/errors.ErrorClass"
   %t25 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1

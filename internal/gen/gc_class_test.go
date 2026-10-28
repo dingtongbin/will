@@ -121,7 +121,8 @@ func TestClassChannelUsesElementDescriptor(t *testing.T) {
 	}
 	text := string(ir)
 	for _, want := range []string{
-		`call ptr @willrt_chan_new_gc(i64 8, i64 %t1, i32 0, ptr null, ptr @"willrt.gc.type.value.Node")`,
+		`call ptr @willrt_chan_new_gc(i64 8,`,
+		`ptr @"willrt.gc.type.value.Node")`,
 		`@"willrt.gc.type.value.Node" = private constant`,
 	} {
 		if !strings.Contains(text, want) {

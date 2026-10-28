@@ -237,6 +237,14 @@ func (e *emitter) emitCallArg(rec int, a *ast.CallArg) {
 func (e *emitter) emitCall(c *ast.CallExpr) int {
 	if name, ok := c.Callee.(*ast.NameExpr); ok {
 		sym := e.refs[name]
+		if sym != nil && sym.Kind == resolve.StructKind {
+			if decl, ok := sym.Node.(*ast.StructDecl); ok {
+				if decl.Class {
+					return e.emitClassNew(c, decl.Name)
+				}
+				return e.emitStructNew(c, decl.Name)
+			}
+		}
 		if sym != nil && sym.Predeclared && (name.Name == "panic" || name.Name == "assert") {
 			rec := e.add(name.Name, c)
 			e.push(rec)
@@ -291,6 +299,45 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 	return rec
 }
 
+// emitClassNew writes a class constructor call. T(...) allocates one GC
+// object; init, when present, is invoked by the class lowering after field
+// defaults are written.
+func (e *emitter) emitClassNew(c *ast.CallExpr, name string) int {
+	return e.emitNewArgs(c, c.Args, name)
+}
+
+func (e *emitter) emitNewArgs(node ast.Node, args []*ast.CallArg, name string) int {
+	rec := e.add("new", node)
+	e.text(rec, "type", name)
+	e.push(rec)
+	for _, a := range args {
+		if a.Name != "" {
+			e.text(rec, "name", a.Name)
+		}
+		aid := e.emitExpr(a.Expr)
+		e.field(rec, "arg", Ref(aid))
+	}
+	e.pop()
+	return rec
+}
+
+// emitStructNew writes a value-type constructor call. The backend builds the
+// value in a slot, applies defaults, and runs init when the type declares one.
+func (e *emitter) emitStructNew(c *ast.CallExpr, name string) int {
+	rec := e.add("new", c)
+	e.text(rec, "type", name)
+	e.push(rec)
+	for _, a := range c.Args {
+		if a.Name != "" {
+			e.text(rec, "name", a.Name)
+		}
+		aid := e.emitExpr(a.Expr)
+		e.field(rec, "arg", Ref(aid))
+	}
+	e.pop()
+	return rec
+}
+
 // emitNameChild writes the callee name as a child node and returns its id.
 func (e *emitter) emitNameChild(rec int, name *ast.NameExpr) int {
 	id := e.add("name", name)
@@ -306,6 +353,20 @@ func (e *emitter) emitTypeArgsField(rec int, types []*ast.Type) {
 }
 
 func (e *emitter) emitMethodCall(v *ast.MethodCallExpr) int {
+	if recv, ok := v.Recv.(*ast.NameExpr); ok {
+		if sym := e.refs[recv]; sym != nil && sym.Kind == resolve.ImportKind {
+			imp, _ := sym.Node.(*ast.Import)
+			if imp != nil {
+				path := imp.Path
+				if canonical := e.aliases[path]; canonical != "" {
+					path = canonical
+				}
+				if decl := e.external[path+"."+v.Name]; decl != nil && decl.Class {
+					return e.emitNewArgs(v, v.Args, path+"."+v.Name)
+				}
+			}
+		}
+	}
 	if special, ok := specialCall(v.Name, len(v.Args)); ok {
 		rec := e.add(special, v)
 		e.push(rec)

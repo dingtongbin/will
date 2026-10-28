@@ -7,6 +7,206 @@ import (
 	"testing"
 )
 
+// TestRunClassSourceSurface checks the final class syntax end to end: fields,
+// init, a method, a no-init constructor, and the GC lowering behind them.
+func TestRunClassSourceSurface(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `class Node {
+    value: i32
+
+    def init(self, value: i32) {
+        self.value = value
+    }
+
+    def get(self) -> i32 {
+        return self.value + 1
+    }
+}
+
+class Point {
+    x: i32
+    y: i32 = 2
+}
+
+def main() -> i32 {
+    var p: Point = Point(x=4)
+    var n: Node = Node(6)
+    if p.x != 4 or p.y != 2 {
+        return 11
+    }
+    return n.get()
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 7 {
+		t.Fatalf("code = %d, want 7, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+// TestRunClassReferencesInterfaceClosureAndAsync checks the root graph around
+// class references: a self-referential class field, an interface box, a
+// closure capture, and a class allocation inside an async function.
+func TestRunClassReferencesInterfaceClosureAndAsync(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `interface Value {
+    def get(self) -> i32
+}
+
+class Node {
+    value: i32
+    next: Node
+
+    def init(self, value: i32) {
+        self.value = value
+    }
+
+    def get(self) -> i32 {
+        return self.value
+    }
+
+    def link(self, other: Node) {
+        self.next = other
+    }
+}
+
+class Holder {
+    node: Node
+}
+
+def capture(n: Node) -> i32 {
+    var f: func() -> i32 = func() -> i32 {
+        return n.get()
+    }
+    return f()
+}
+
+async def make(value: i32) -> i32 {
+    var n: Node = Node(value)
+    return n.get()
+}
+
+async def main() -> i32 {
+    var first: Node = Node(4)
+    var second: Node = Node(5)
+    first.link(second)
+    if first.next.get() != 5 {
+        return 1
+    }
+    var holder: Holder = Holder(node=first)
+    if holder.node.get() != 4 {
+        return 2
+    }
+    var iface: Value = second
+    if iface.get() != 5 {
+        return 3
+    }
+    if capture(first) != 4 {
+        return 4
+    }
+    if await make(9) != 9 {
+        return 5
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+// TestRunClassAsyncDefaultRoots checks a class constructor whose field default
+// allocates another class inside an async frame. Both half-built objects must
+// stay in the state-machine root map across the default's safepoint.
+func TestRunClassAsyncDefaultRoots(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class Inner {
+    value: i32
+}
+
+class Outer {
+    inner: Inner = Inner(value=1)
+    value: i32 = 2
+}
+
+async def make() -> i32 {
+    var o: Outer = Outer()
+    return o.inner.value + o.value
+}
+
+async def main() -> i32 {
+    var total: i32 = 0
+    for _ in Range(0, 64) {
+        total += await make()
+    }
+    if total != 192 {
+        return 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+// TestRunStructFieldRoot checks that a class reference inside an inline struct
+// local is mirrored into the exact GC frame root. A full cycle must not collect
+// the object the struct field still names.
+func TestRunStructFieldRoot(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class Node {
+    value: i32
+}
+
+struct Holder {
+    node: Node
+}
+
+def main() -> i32 {
+    var h: Holder = Holder(node=Node(value=77))
+    var i: i32 = 0
+    while i < 2000 {
+        var junk: Node = Node(value=i)
+        _ = junk
+        i += 1
+    }
+    return h.node.value
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 77 {
+		t.Fatalf("code = %d, want 77, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
 // TestRunEarlyRcRelease checks that releasing a copy-only rc handle at its
 // last use leaves the retained copy alive.
 func TestRunEarlyRcRelease(t *testing.T) {

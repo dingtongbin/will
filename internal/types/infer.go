@@ -1480,6 +1480,12 @@ func (c *checker) callType(s *inferScope, call *ast.CallExpr) *Type {
 	case sym != nil && sym.Predeclared:
 		return c.predeclaredCall(s, name.Name, call)
 	case sym != nil && sym.IsType():
+		if decl, ok := sym.Node.(*ast.StructDecl); ok {
+			if decl.Class {
+				return c.classConstruct(s, name, call)
+			}
+			return c.structConstruct(s, name, call)
+		}
 		return c.castType(s, name, call)
 	case sym != nil && sym.Kind == resolve.ImportKind:
 		for _, a := range call.Args {
@@ -1600,6 +1606,122 @@ func (c *checker) checkPayload(s *inferScope, params []*Type, args []*ast.CallAr
 	c.checkCallArgs(s, sig, args, pos)
 }
 
+// classConstruct checks T(...) for a class. An init method supplies the
+// parameter contract; without init the written fields supply it positionally or
+// by name, in declaration order.
+func (c *checker) classConstruct(s *inferScope, name *ast.NameExpr, call *ast.CallExpr) *Type {
+	t := c.typeByName(name.Name)
+	if sig := c.env.inits[name.Name]; sig != nil {
+		if t != nil {
+			if inst := c.instantiateReceiver(sig, t); inst != nil {
+				sig = inst
+			}
+		}
+		c.checkCallArgs(s, sig, call.Args, call.Pos())
+		return t
+	}
+	fields := c.env.fields[name.Name]
+	if len(fields) == 0 {
+		for _, a := range call.Args {
+			c.inferExpr(s, a.Expr)
+		}
+		if len(call.Args) != 0 {
+			c.badArity(call.Pos(), name.Name)
+		}
+		return t
+	}
+	used := map[int]bool{}
+	for i, a := range call.Args {
+		var want *Type
+		index := -1
+		if a.Name != "" {
+			for j, f := range fields {
+				if f.name == a.Name {
+					want = f.typ
+					index = j
+					break
+				}
+			}
+			if want == nil {
+				c.bag.Error(a.Pos(), diag.CodeNoField, "no field "+a.Name+" on "+name.Name,
+					"check the field name or the type")
+				c.inferExpr(s, a.Expr)
+				continue
+			}
+		} else if i < len(fields) {
+			want = fields[i].typ
+			index = i
+		} else {
+			c.badArity(call.Pos(), name.Name)
+			c.inferExpr(s, a.Expr)
+			continue
+		}
+		used[index] = true
+		c.checkValue(s, a.Expr, want)
+	}
+	for i, f := range fields {
+		if used[i] || f.hasDefault {
+			continue
+		}
+		c.bag.Error(call.Pos(), diag.CodeNoZero,
+			"type "+name.Name+" has no value for field "+f.name,
+			"initialize it in "+name.Name+"(...) or give it a default")
+	}
+	return t
+}
+
+// structConstruct checks T(...) for a value type. It has the same init or
+// field-default contract as a class constructor, but the result is an inline
+// value.
+func (c *checker) structConstruct(s *inferScope, name *ast.NameExpr, call *ast.CallExpr) *Type {
+	t := c.typeByName(name.Name)
+	if sig := c.env.inits[name.Name]; sig != nil {
+		if t != nil {
+			if inst := c.instantiateReceiver(sig, t); inst != nil {
+				sig = inst
+			}
+		}
+		c.checkCallArgs(s, sig, call.Args, call.Pos())
+		return t
+	}
+	fields := c.env.fields[name.Name]
+	used := map[int]bool{}
+	for i, a := range call.Args {
+		index := -1
+		if a.Name != "" {
+			for j, f := range fields {
+				if f.name == a.Name {
+					index = j
+					break
+				}
+			}
+			if index < 0 {
+				c.bag.Error(a.Pos(), diag.CodeNoField, "no field "+a.Name+" on "+name.Name,
+					"check the field name or the type")
+				c.inferExpr(s, a.Expr)
+				continue
+			}
+		} else if i < len(fields) {
+			index = i
+		} else {
+			c.badArity(call.Pos(), name.Name)
+			c.inferExpr(s, a.Expr)
+			continue
+		}
+		used[index] = true
+		c.checkValue(s, a.Expr, fields[index].typ)
+	}
+	for i, f := range fields {
+		if used[i] || f.hasDefault {
+			continue
+		}
+		c.bag.Error(call.Pos(), diag.CodeNoZero,
+			"type "+name.Name+" has no value for field "+f.name,
+			"initialize it in "+name.Name+"(...) or give it a default")
+	}
+	return t
+}
+
 func (c *checker) castType(s *inferScope, name *ast.NameExpr, call *ast.CallExpr) *Type {
 	if len(call.Args) != 1 {
 		c.badArity(call.Pos(), name.Name)
@@ -1707,6 +1829,9 @@ func (c *checker) substitute(t *Type, subst map[string]*Type) *Type {
 			for i, a := range t.Args() {
 				args[i] = c.substitute(a, subst)
 			}
+			if c.env.classes[t.Name()] {
+				return c.in.namedClass(t.Name(), args)
+			}
 			return c.in.named(t.Name(), args)
 		}
 	}
@@ -1730,6 +1855,15 @@ func (c *checker) checkTypeArgs(call *ast.CallExpr, sig *signature) {
 func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	if call.Link != nil {
 		return c.cLinkType(s, call)
+	}
+	if recv, ok := call.Recv.(*ast.NameExpr); ok && call.Name != "" {
+		if sym := c.symbolOf(recv); sym != nil && sym.Kind == resolve.ImportKind &&
+			call.Name[0] >= 'A' && call.Name[0] <= 'Z' {
+			for _, a := range call.Args {
+				c.inferExpr(s, a.Expr)
+			}
+			return c.in.named(recv.Name+"."+call.Name, nil)
+		}
 	}
 	if recv, ok := call.Recv.(*ast.NameExpr); ok {
 		if decl := c.foreignFuncs[recv.Name][call.Name]; decl != nil {
