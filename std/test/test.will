@@ -32,7 +32,7 @@ struct Case {
     run: func(T)
 }
 
-# caseResult carries one finished parallel case back to its caller.
+# caseResult carries one finished case back to its caller.
 struct caseResult {
     name: str
     state: arc<TestState>
@@ -87,8 +87,8 @@ def (t: ref T) failed() -> bool {
     return t.state.failed
 }
 
-# Parallel records that the case can run beside other cases. The runner decides
-# whether the surrounding call actually runs cases in parallel; the marker is
+# AllowParallel records that the case can run beside other cases. The runner
+# decides whether the surrounding call runs cases concurrently; the marker is
 # never a request to change shared mutable state.
 def (t: mut T) allow_parallel() {
     t.state.parallelizable = True
@@ -185,7 +185,7 @@ def sort_results(results: Array<caseResult>) {
     }
 }
 
-# Parallel runs every entry in its own task and reports failures in name order,
+# RunCases runs every entry in its own task and reports failures in name order,
 # so scheduling never changes the output. Cases must not share mutable state.
 async def run_cases(cases: ...Case) {
     var n: usize = cases.len()

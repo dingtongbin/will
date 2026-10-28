@@ -37,8 +37,8 @@ def cpu(slot: i32) -> i32 {
     return acc
 }
 
-# CpuBatch submits the CPU half of the workload as jobs. The parallel block
-# joins its jobs through the parked barrier.
+# CpuBatch submits the CPU half of the workload as jobs and awaits each handle
+# inside one region.
 async def cpu_batch(base: i32) -> i32 {
     region {
         var tasks: Array<Task<i32>> = new Array<Task<i32>>(cpuCount)
