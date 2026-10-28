@@ -323,6 +323,8 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_gc_frame_leave(ptr)\n")
 		g.out.WriteString("declare void @willrt_gc_safepoint(i32)\n")
 		g.out.WriteString("declare void @willrt_gc_root_register(ptr, ptr)\n")
+		g.out.WriteString("declare ptr @willrt_gc_pin(ptr)\n")
+		g.out.WriteString("declare void @willrt_gc_unpin(ptr)\n")
 	}
 	if g.needRcDecl {
 		g.out.WriteString("declare i64 @willrt_rc_new(ptr, i64)\n")
@@ -4706,6 +4708,7 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 		}
 	}
 	muts := g.callParamMut(r)
+	var pinned []string
 	for i := 0; i < fixed; i++ {
 		a := args[i]
 		paramType := ""
@@ -4715,6 +4718,22 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 		}
 		if i < len(muts) {
 			mut = muts[i]
+		}
+		if link {
+			if argText, err := g.willTypeText(a); err == nil &&
+				g.isClassText(argText) {
+				value, err := g.value(a)
+				if err != nil {
+					return "", "", err
+				}
+				g.needGCDecl = true
+				pinnedValue := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_pin(ptr %s)\n",
+					pinnedValue, value)
+				parts = append(parts, "ptr "+pinnedValue)
+				pinned = append(pinned, pinnedValue)
+				continue
+			}
 		}
 		var err error
 		parts, err = g.callArgParts(parts, r, i, a, paramType, mut, link)
@@ -4763,8 +4782,14 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 		}
 		g.declare(name, len(parts))
 	}
+	if !link {
+		g.gcSafepoint(3)
+	}
 	if resultText == "" {
 		fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(name), strings.Join(parts, ", "))
+		for _, value := range pinned {
+			fmt.Fprintf(g.out, "  call void @willrt_gc_unpin(ptr %s)\n", value)
+		}
 		return "", "", nil
 	}
 	result, scalar := llvmTypeText(resultText)
@@ -4792,6 +4817,9 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 	g.tmp++
 	tmp := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = call %s @%s(%s)\n", tmp, result, llvmSymbol(name), strings.Join(parts, ", "))
+	for _, value := range pinned {
+		fmt.Fprintf(g.out, "  call void @willrt_gc_unpin(ptr %s)\n", value)
+	}
 	return tmp, resultText, nil
 }
 

@@ -114,6 +114,40 @@ func (g *generator) storeClassRoot(decl int, value string) {
 		root, value)
 }
 
+// generalGCSlots maps class parameters, receivers, and locals at the byte
+// offsets relocateGeneralAllocas assigned to their frame slots.
+func (g *generator) generalGCSlots(fnID int, offsets map[string]int) ([]int, []string) {
+	var slots []int
+	var texts []string
+	for _, r := range g.recs {
+		if r.Kind != "param" && r.Kind != "receiver" && r.Kind != "var" {
+			continue
+		}
+		if g.enclosingFunc(r.ID) != fnID {
+			continue
+		}
+		text := fieldText(r, "type")
+		if !g.isClassText(text) {
+			continue
+		}
+		slot := g.slots[r.ID]
+		if slot == "" {
+			slot = g.smParamSlot[r.ID]
+		}
+		offset, ok := offsets[slot]
+		if !ok {
+			continue
+		}
+		t, ok := g.classTypeOfText(text)
+		if !ok {
+			continue
+		}
+		slots = append(slots, offset)
+		texts = append(texts, t.Name)
+	}
+	return slots, texts
+}
+
 // taskGCMap records one async frame's class roots and returns the map symbol
 // the task constructor passes to the runtime.
 func (g *generator) taskGCMap(symbol string, slots []int, texts []string) string {

@@ -309,6 +309,15 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	fmt.Fprintf(g.out, "define hidden ptr @%s(%s) {\nentry:\n", llvmSymbol(sym+".task"), strings.Join(parts, ", "))
 	fmt.Fprintf(g.out, "  %%v.sm.frame = call ptr @willrt_alloc(i64 %d)\n", size)
 	g.emitGeneralFrameZero("%v.sm.frame", owners)
+	gcSlots, gcTypes := g.generalGCSlots(fnID, offsets)
+	for _, offset := range gcSlots {
+		ptr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %%v.sm.frame, i64 %d\n",
+			ptr, offset)
+		fmt.Fprintf(g.out, "  store ptr null, ptr %s\n", ptr)
+	}
+	gcMap := g.taskGCMap(sym+".sm", gcSlots, gcTypes)
+	resultType := g.taskResultDescriptor(fieldText(g.recs[fnID], "type"))
 	stateOffset := offsets[g.smStateSlot]
 	statePtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %%v.sm.frame, i64 %d\n", statePtr, stateOffset)
@@ -326,6 +335,10 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", arg, ptr)
 		} else if a.byPtr {
 			g.copyValue(arg, ptr, a.typ)
+		} else if g.isClassText(a.text) {
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				ptr, arg)
 		} else {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", a.typ, arg, ptr)
 		}
@@ -376,8 +389,18 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 		if dropPtr == ownDrop || dropPtr == borrowDrop {
 			dropValue = "@" + llvmSymbol(dropPtr)
 		}
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 0, i32 0, ptr %s)\n",
-			autoTask, llvmSymbol(sym+".sm"), size, dropValue)
+		if g.gcProgram != nil {
+			g.needTaskGCDecl = true
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop_gc(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 0, i32 0, ptr %s, ptr %s, ptr %s)\n",
+				autoTask, llvmSymbol(sym+".sm"), size, dropValue, gcMap, resultType)
+		} else {
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 0, i32 0, ptr %s)\n",
+				autoTask, llvmSymbol(sym+".sm"), size, dropValue)
+		}
+	} else if g.gcProgram != nil {
+		g.needTaskGCDecl = true
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_gc(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 0, i32 0, ptr %s, ptr %s)\n",
+			autoTask, llvmSymbol(sym+".sm"), size, gcMap, resultType)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 0, i32 0)\n",
 			autoTask, llvmSymbol(sym+".sm"), size)
@@ -398,8 +421,18 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 		if dropPtr == ownDrop || dropPtr == borrowDrop {
 			dropValue = "@" + llvmSymbol(dropPtr)
 		}
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0, ptr %s)\n",
-			laneTask, llvmSymbol(sym+".sm"), size, laneValue, dropValue)
+		if g.gcProgram != nil {
+			g.needTaskGCDecl = true
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop_gc(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0, ptr %s, ptr %s, ptr %s)\n",
+				laneTask, llvmSymbol(sym+".sm"), size, laneValue, dropValue, gcMap, resultType)
+		} else {
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0, ptr %s)\n",
+				laneTask, llvmSymbol(sym+".sm"), size, laneValue, dropValue)
+		}
+	} else if g.gcProgram != nil {
+		g.needTaskGCDecl = true
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_gc(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0, ptr %s, ptr %s)\n",
+			laneTask, llvmSymbol(sym+".sm"), size, laneValue, gcMap, resultType)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %%v.sm.frame, i64 %d, i32 %s, i32 0)\n",
 			laneTask, llvmSymbol(sym+".sm"), size, laneValue)
