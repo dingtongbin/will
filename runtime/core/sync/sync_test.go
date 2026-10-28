@@ -67,6 +67,12 @@ func TestSyncContract(t *testing.T) {
 		filepath.Join(dir, "..", "blocking", "src", "blocking.c"),
 		filepath.Join(dir, "..", "poll", "src", "poll.c"),
 		filepath.Join(root, "platform", platform))
+	for _, source := range []string{
+		"types.c", "region.c", "chunks.c", "heap.c", "object.c", "roots.c",
+		"safepoint.c", "barrier.c", "mark.c", "evac.c", "cycle.c", "pacer.c",
+	} {
+		args = append(args, filepath.Join(root, "core", "gc", "src", source))
+	}
 	if runtime.GOOS == "windows" {
 		args = append(args, "-lws2_32")
 	}
