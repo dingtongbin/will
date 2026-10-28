@@ -2866,6 +2866,11 @@ func (g *generator) moveSource(id int) (bool, string) {
 		return false, ""
 	}
 	if r.Kind == "await" {
+		// The join result is a fresh owner even when the awaited operand is a
+		// Task value: the task holds the child frame, not the result value.
+		if text, err := g.willTypeText(id); err == nil && ownsReleaseText(g, text) {
+			return true, text
+		}
 		return g.moveSource(refField(r, "expr"))
 	}
 	text, err := g.willTypeText(id)
@@ -3781,7 +3786,7 @@ func (g *generator) value(id int) (string, error) {
 		case "float":
 			return literalFloatText(fieldText(r, "text")), nil
 		case "bool":
-			return fieldText(r, "text"), nil
+			return literalBoolText(fieldText(r, "text")), nil
 		case "char":
 			return literalIntText(fieldText(r, "text")), nil
 		case "duration":

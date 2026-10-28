@@ -511,17 +511,17 @@ func TestRunChannelHandleCopies(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `def main() -> i32 {
+	src := `async def main() -> i32 {
     var ch: chan<str> = new chan<str>(2)
     var ch2: chan<str> = ch
-    var sent: Result<(), Error> = wait(ch2.send("hello"))
+    var sent: Result<(), Error> = await ch2.send("hello")
     match sent {
         Ok(_) => {}
         Err(_) => {
             return 1
         }
     }
-    var got: Option<str> = wait(ch.recv())
+    var got: Option<str> = await ch.recv()
     var n: i32 = match got {
         Some(v) => i32(v.len())
         None => 0
@@ -612,7 +612,7 @@ func TestRunSpawnDropsArrayCapture(t *testing.T) {
     return i32(xs.len())
 }
 
-def main() -> i32 {
+async def main() -> i32 {
     var xs: Array<str> = new Array<str>(2)
     xs.push("a")
     xs.push("b")
@@ -969,7 +969,7 @@ async def main() -> i32 {
             }
         }
     }
-    if notsaw {
+    if not saw {
         return 3
     }
     var none: bool = False
@@ -984,7 +984,7 @@ async def main() -> i32 {
             }
         }
     }
-    if notnone {
+    if not none {
         return 5
     }
     return 0
@@ -1152,7 +1152,7 @@ def (s: ref Square) label() -> str {
 
 def main() -> i32 {
     var shape: Shape = Square { n: 12 }
-    if notshape.is<Square>() {
+    if not shape.is<Square>() {
         return 1
     }
     var square: Option<Square> = shape.as<Square>()
@@ -1247,28 +1247,28 @@ func TestRunEmptyInterface(t *testing.T) {
 }
 
 def main() -> i32 {
-    var number: interface {} = 42
-    if notnumber.is<i32>() {
+    var boxed: interface {} = 42
+    if not boxed.is<i32>() {
         return 1
     }
-    if Number(number) != 42 {
+    if number(boxed) != 42 {
         return 2
     }
-    if number.is<str>() {
+    if boxed.is<str>() {
         return 3
     }
     var text: interface {} = "will"
-    if nottext.is<str>() {
+    if not text.is<str>() {
         return 4
     }
     var empty: interface {}
     if empty.is<i32>() {
         return 5
     }
-    var same: Option<interface {}> = number.as<interface {}>()
+    var same: Option<interface {}> = boxed.as<interface {}>()
     match same {
         Some(value) => {
-            if notvalue.is<i32>() {
+            if not value.is<i32>() {
                 return 6
             }
         }
@@ -1373,19 +1373,7 @@ func TestRunMPMCCountsEveryMessage(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `lane L0 struct L0Marker {
-}
-
-lane L1 struct L1Marker {
-}
-
-lane L2 struct L2Marker {
-}
-
-lane L3 struct L3Marker {
-}
-
-async def produce(ch: chan<i32>, n: i32) {
+	src := `async def produce(ch: chan<i32>, n: i32) {
     for i in Range(0, n) {
         _ = await ch.send(i)
     }
@@ -1411,10 +1399,10 @@ async def main() -> i32 {
     var ch: chan<i32> = new chan<i32>(64)
     var total: i64 = 0
     region {
-        var p1: Task<()> = spawn on L0 produce(ch, 20000)
-        var p2: Task<()> = spawn on L1 produce(ch, 20000)
-        var c1: Task<i64> = spawn on L2 consume(ch)
-        var c2: Task<i64> = spawn on L3 consume(ch)
+        var p1: Task<()> = spawn produce(ch, 20000)
+        var p2: Task<()> = spawn produce(ch, 20000)
+        var c1: Task<i64> = spawn consume(ch)
+        var c2: Task<i64> = spawn consume(ch)
         _ = await p1!
         _ = await p2!
         ch.close()

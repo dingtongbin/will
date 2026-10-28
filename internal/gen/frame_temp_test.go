@@ -36,7 +36,7 @@ async def parent() -> i32 {
 		`define i32 @"example.com/app.parent.sm"(ptr %frame)`,
 		`define void @"example.com/app.parent.drop"(ptr %frame)`,
 		`call void @willrt_free_str(ptr`,
-		`store { ptr, i64 } zeroinitializer, ptr %v.await.out.`,
+		`store { ptr, i64 } zeroinitializer, ptr %v.sm.call.out.`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)

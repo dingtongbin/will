@@ -14,12 +14,12 @@ def chars_of(s: str) -> Array<u32> {
     return out
 }
 
-# Match reports whether name matches pattern as a whole. The volume fixes the
+# Glob reports whether name matches pattern as a whole. The volume fixes the
 # signature but not the grammar; this implementation supports '*' for any run
 # of non-separator scalars and '?' for one non-separator scalar, and every
 # other scalar matches itself. Neither wildcard matches the separator, so one
 # wildcard never spans a directory boundary.
-def match(pattern: str, name: str) -> bool {
+def glob(pattern: str, name: str) -> bool {
     var pat: Array<u32> = chars_of(pattern)
     var text: Array<u32> = chars_of(name)
     var pi: usize = 0

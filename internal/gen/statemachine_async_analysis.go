@@ -125,7 +125,9 @@ func (g *generator) asyncCallRecs(fnID int) []willc.Record {
 func (g *generator) asyncParamABI(p willc.Record) (string, bool, error) {
 	text := fieldText(p, "type")
 	if fieldText(p, "variadic") == "true" {
-		return "", false, g.errf(p.ID, "cannot translate node #%d: a state machine takes no variadic parameter", p.ID)
+		// The call packs the tail into the same view descriptor a sync
+		// variadic call uses.
+		return "{ ptr, i64 }", true, nil
 	}
 	if isSingleBorrow(text) {
 		return "ptr", true, nil

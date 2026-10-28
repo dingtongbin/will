@@ -10,7 +10,7 @@ entry:
   %v.str.22 = alloca { ptr, i64 }
   %v.interp.26 = alloca { ptr, i64 }
   store i32 3, ptr %v.n
-  store i1 True, ptr %v.ok
+  store i1 true, ptr %v.ok
   store double 1.5, ptr %v.x
   store i32 7, ptr %v.u
   %t1 = getelementptr inbounds { ptr, i64 }, ptr %v.str.20, i32 0, i32 0

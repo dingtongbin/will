@@ -473,6 +473,9 @@ func (g *generator) typeOf(id int) (string, error) {
 		if adt, ok := g.adtType(text); ok {
 			return adt.llvm, nil
 		}
+		if typ, ok := g.typeLLVMOf(text); ok {
+			return typ, nil
+		}
 		return "", g.errf(id, "cannot translate node #%d: await result %s is not lowered", id, text)
 	case "lit":
 		typ, ok := llvmTypeText(fieldText(r, "type"))
@@ -1239,7 +1242,12 @@ func (g *generator) place(id int) (string, string, error) {
 	case "await":
 		exprID := refField(r, "expr")
 		if op, ok := g.recs[exprID]; ok && (op.Kind == "recv" || op.Kind == "send") {
-			return g.place(exprID)
+			ptr, typ, err := g.place(exprID)
+			if err != nil {
+				return "", "", err
+			}
+			g.smPlaces[r.ID] = smPlace{ptr: ptr, typ: typ}
+			return ptr, typ, nil
 		}
 		if call, ok := g.recs[exprID]; ok && call.Kind == "mcall" {
 			if recvText, err := g.willTypeText(refField(call, "recv")); err == nil {
@@ -1269,6 +1277,14 @@ func (g *generator) place(id int) (string, string, error) {
 			}
 			if _, isTask := taskElemText(text); !isTask {
 				if sym := g.awaitTargetSymbol(call); sym != "" && g.suspendableFor(sym) {
+					if g.smGeneral {
+						out, typ, err := g.generalCallWaitPlace(call)
+						if err != nil {
+							return "", "", err
+						}
+						g.smPlaces[r.ID] = smPlace{ptr: out, typ: typ}
+						return out, typ, nil
+					}
 					out, llvm, _, _, err := g.awaitCallJoin(call)
 					if err != nil {
 						return "", "", err
@@ -1307,6 +1323,7 @@ func (g *generator) place(id int) (string, string, error) {
 		if !ok {
 			return "", "", g.errf(id, "cannot translate node #%d: await result %s is not lowered", id, text)
 		}
+		g.smPlaces[r.ID] = smPlace{ptr: slot, typ: info.llvm}
 		return slot, info.llvm, nil
 	case "borrow":
 		if v, ok := g.recs[refField(r, "expr")]; ok && v.Kind == "slice" && fieldText(r, "mut") == "true" {

@@ -15,12 +15,6 @@ typedef struct fmt_str {
     int64_t len;
 } fmt_str;
 
-// willfmt_f64_signbit reports the sign bit, including the one on a negative
-// zero. The caller needs it because the magnitude conversion drops the sign.
-uint32_t willfmt_f64_signbit(double value) {
-    return signbit(value) != 0 ? 1u : 0u;
-}
-
 // willfmt_f64_fixed writes the magnitude of value in fixed notation with prec
 // digits after the decimal point and returns 0 for a finite value, 1 for nan,
 // 2 for an infinity, and 3 when no text could be produced. The returned text

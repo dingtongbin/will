@@ -208,7 +208,17 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
 	parts := make([]string, 0, len(args)+1)
 	paramTypes := append([]string(nil), g.paramTypes[targetSym]...)
 	paramMuts := g.paramMut[targetSym]
-	if len(paramTypes) != len(args) {
+	fixed := len(paramTypes)
+	variadic := g.varargs[targetSym]
+	if variadic {
+		fixed--
+		if fixed < 0 {
+			fixed = 0
+		}
+		if len(args) < fixed {
+			return "", g.errf(call.ID, "cannot translate node #%d: %s needs %d arguments", call.ID, targetSym, fixed)
+		}
+	} else if len(paramTypes) != len(args) {
 		return "", g.errf(call.ID, "cannot translate node #%d: %s needs %d arguments", call.ID, targetSym, len(paramTypes))
 	}
 	declParams := make([]string, 0, len(args)+1)
@@ -220,7 +230,7 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
 		parts = append(parts, "ptr "+recv)
 		declParams = append(declParams, "ptr")
 	}
-	for i, a := range args {
+	for i, a := range args[:fixed] {
 		typ, err := g.typeOf(a)
 		if err != nil {
 			return "", err
@@ -269,6 +279,14 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
 		}
 		parts = append(parts, typ+" "+value)
 		declParams = append(declParams, typ)
+	}
+	if variadic {
+		slot, err := g.packVariadic(call, targetSym, args[fixed:])
+		if err != nil {
+			return "", err
+		}
+		parts = append(parts, "ptr "+slot)
+		declParams = append(declParams, "ptr")
 	}
 	parts = append(parts, "i32 "+start)
 	declParams = append(declParams, "i32")

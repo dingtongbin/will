@@ -158,52 +158,52 @@ def main() -> i32 {
         return 50
     }
     # Match is anchored, and neither wildcard crosses the separator.
-    if not path.match("*.txt", "a.txt") {
+    if not path.glob("*.txt", "a.txt") {
         return 51
     }
-    if path.match("*.txt", "a.txt.bak") {
+    if path.glob("*.txt", "a.txt.bak") {
         return 52
     }
-    if not path.match("a?c", "abc") {
+    if not path.glob("a?c", "abc") {
         return 53
     }
-    if path.match("a?c", "ac") {
+    if path.glob("a?c", "ac") {
         return 54
     }
-    if not path.match("*", "abc") {
+    if not path.glob("*", "abc") {
         return 55
     }
-    if not path.match("*", "") {
+    if not path.glob("*", "") {
         return 56
     }
-    if path.match("*", "a/b") {
+    if path.glob("*", "a/b") {
         return 57
     }
-    if not path.match("a/*", "a/b") {
+    if not path.glob("a/*", "a/b") {
         return 58
     }
-    if path.match("a/*", "a/b/c") {
+    if path.glob("a/*", "a/b/c") {
         return 59
     }
-    if not path.match("", "") {
+    if not path.glob("", "") {
         return 60
     }
-    if path.match("", "a") {
+    if path.glob("", "a") {
         return 61
     }
-    if not path.match("a*b*c", "aXbYc") {
+    if not path.glob("a*b*c", "aXbYc") {
         return 62
     }
-    if path.match("a*b*c", "aXbY") {
+    if path.glob("a*b*c", "aXbY") {
         return 63
     }
-    if path.match("a?b", "a/b") {
+    if path.glob("a?b", "a/b") {
         return 64
     }
-    if not path.match("/a/*", "/a/b") {
+    if not path.glob("/a/*", "/a/b") {
         return 65
     }
-    if not path.match("src-?-main.will", "src-a-main.will") {
+    if not path.glob("src-?-main.will", "src-a-main.will") {
         return 66
     }
     if path.ext("a.tar.gz") != ".gz" {
@@ -215,7 +215,7 @@ def main() -> i32 {
     if path.base("...") != "..." {
         return 69
     }
-    if not path.match("*", ".") {
+    if not path.glob("*", ".") {
         return 70
     }
     if not path.is_abs("//a") {
@@ -225,10 +225,10 @@ def main() -> i32 {
         return 72
     }
     # A long name exercises the star loop without recursion.
-    if not path.match("*", "a".repeat(1000usize)) {
+    if not path.glob("*", "a".repeat(1000usize)) {
         return 73
     }
-    if path.match("*", "a".repeat(1000usize) + "/b") {
+    if path.glob("*", "a".repeat(1000usize) + "/b") {
         return 74
     }
     return 0

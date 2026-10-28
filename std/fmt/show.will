@@ -14,6 +14,6 @@ def text_of(parts: []Show) -> str {
 
 # Str joins the shown text of its parts. It builds the result in memory and
 # never writes to standard output; Println is the writer.
-def show_str(parts: ...Show) -> str {
+def str(parts: ...Show) -> str {
     return text_of(parts)
 }

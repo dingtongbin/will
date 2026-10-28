@@ -3,22 +3,22 @@
 %interface.Error = type { ptr, ptr }
 %"enum.std/errors.ErrorClass" = type { i32 }
 %"interface.std/errors.Classified" = type { ptr, ptr }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.ClassOf"(ptr %e) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.class_of"(ptr %e) inlinehint {
 entry:
   %v.ret.18 = alloca %"enum.std/errors.ErrorClass"
   %t1 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 0
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds %interface.Error, ptr %e, i32 0, i32 1
   %t4 = load ptr, ptr %t3
-  %t5 = getelementptr inbounds [6 x ptr], ptr %t4, i64 0, i64 1
+  %t5 = getelementptr inbounds [5 x ptr], ptr %t4, i64 0, i64 1
   %t6 = load ptr, ptr %t5
   %t7 = call i32 %t6(ptr %t2)
-  %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t7)
+  %t8 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t7)
   store %"enum.std/errors.ErrorClass" %t8, ptr %v.ret.18
   %t9 = load %"enum.std/errors.ErrorClass", ptr %v.ret.18
   ret %"enum.std/errors.ErrorClass" %t9
 }
-define internal %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %status) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %status) inlinehint {
 entry:
   %v.c = alloca %"enum.std/errors.ErrorClass"
   %v.enum.28 = alloca %"enum.std/errors.ErrorClass"
@@ -91,7 +91,7 @@ match.end.1:
   ret %"enum.std/errors.ErrorClass" %t29
 }
 %"struct.std/errors.Fault" = type { { ptr, i64 }, i32 }
-define internal void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
+define hidden void @"std/errors.Fault.init"(ptr %f, ptr %message, i32 %status) inlinehint {
 entry:
   %v.ret.18 = alloca { ptr, i64 }
   %v.strm.18 = alloca { ptr, i64 }
@@ -114,7 +114,7 @@ entry:
   store i32 %status, ptr %t11
   ret void
 }
-define hidden { ptr, i64 } @"std/errors.Fault.Message"(ptr %f) inlinehint {
+define hidden { ptr, i64 } @"std/errors.Fault.message"(ptr %f) inlinehint {
 entry:
   %v.ret.30 = alloca { ptr, i64 }
   %v.strm.30 = alloca { ptr, i64 }
@@ -135,18 +135,18 @@ entry:
   %t22 = load { ptr, i64 }, ptr %v.ret.30
   ret { ptr, i64 } %t22
 }
-define hidden i32 @"std/errors.Fault.Status"(ptr %f) alwaysinline {
+define hidden i32 @"std/errors.Fault.status"(ptr %f) alwaysinline {
 entry:
   %t23 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
   %t24 = load i32, ptr %t23
   ret i32 %t24
 }
-define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.Class"(ptr %f) inlinehint {
+define hidden %"enum.std/errors.ErrorClass" @"std/errors.Fault.class"(ptr %f) inlinehint {
 entry:
   %v.ret.47 = alloca %"enum.std/errors.ErrorClass"
   %t25 = getelementptr inbounds %"struct.std/errors.Fault", ptr %f, i32 0, i32 1
   %t26 = load i32, ptr %t25
-  %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.classOfStatus"(i32 %t26)
+  %t27 = call %"enum.std/errors.ErrorClass" @"std/errors.class_of_status"(i32 %t26)
   store %"enum.std/errors.ErrorClass" %t27, ptr %v.ret.47
   %t28 = load %"enum.std/errors.ErrorClass", ptr %v.ret.47
   ret %"enum.std/errors.ErrorClass" %t28
@@ -232,15 +232,15 @@ entry:
   store %"struct.std/errors.Fault" %t21, ptr @"std/errors.Io"
   ret void
 }
-define hidden { ptr, i64 } @"std/os.Args"() inlinehint {
+define hidden { ptr, i64 } @"std/os.args"() inlinehint {
 entry:
-  %v.args = alloca { ptr, i64 }
-  store { ptr, i64 } zeroinitializer, ptr %v.args
-  %t1 = call i32 @willrt_os_args(ptr %v.args)
-  %t2 = load { ptr, i64 }, ptr %v.args
+  %v.out = alloca { ptr, i64 }
+  store { ptr, i64 } zeroinitializer, ptr %v.out
+  %t1 = call i32 @willrt_os_args(ptr %v.out)
+  %t2 = load { ptr, i64 }, ptr %v.out
   ret { ptr, i64 } %t2
 }
-define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os.Getenv"(ptr %name) inlinehint {
+define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os.getenv"(ptr %name) inlinehint {
 entry:
   %v.value = alloca { ptr, i64 }
   %v.found = alloca i32
@@ -279,7 +279,7 @@ if.end.1:
   call void @willrt_free_str(ptr %t18)
   ret { i32, [4 x i8], { ptr, i64 } } %t16
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os.Setenv"(ptr %name, ptr %value) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os.setenv"(ptr %name, ptr %value) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.85 = alloca { i32, [4 x i8], %interface.Error }
@@ -362,7 +362,7 @@ if.end.3:
   %t64 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.100
   ret { i32, [4 x i8], %interface.Error } %t64
 }
-define hidden { ptr, i64, i64 } @"std/os.Environ"() inlinehint {
+define hidden { ptr, i64, i64 } @"std/os.environ"() inlinehint {
 entry:
   %v.out = alloca { ptr, i64, i64 }
   %v.pairs = alloca { ptr, i64 }
@@ -563,7 +563,7 @@ for.end.2:
   call void @willrt_free_str(ptr %t162)
   ret { ptr, i64, i64 } %t160
 }
-define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os.Cwd"() inlinehint {
+define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os.cwd"() inlinehint {
 entry:
   %v.path = alloca { ptr, i64 }
   %v.status = alloca i32
@@ -624,7 +624,7 @@ if.end.1:
   call void @willrt_free_str(ptr %t194)
   ret { i32, [4 x i8], { ptr, i64 } } %t192
 }
-define hidden { i32, [4 x i8], %interface.Error } @"std/os.Chdir"(ptr %path) inlinehint {
+define hidden { i32, [4 x i8], %interface.Error } @"std/os.chdir"(ptr %path) inlinehint {
 entry:
   %v.status = alloca i32
   %v.adt.212 = alloca { i32, [4 x i8], %interface.Error }
@@ -668,7 +668,7 @@ if.end.1:
   %t218 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.217
   ret { i32, [4 x i8], %interface.Error } %t218
 }
-define hidden void @"std/os.Exit"(i32 %code) inlinehint {
+define hidden void @"std/os.exit"(i32 %code) inlinehint {
 entry:
   call void @willrt_os_exit(i32 %code)
   ret void
@@ -720,13 +720,9 @@ iface.drop.have.2:
 iface.drop.done.2:
   ret void
 }
-define internal void @"std/os.iface.share.Error.std/errors.Fault"(ptr %data) {
-entry:
-  ret void
-}
 %"struct.std/os.User" = type { { ptr, i64 }, i32, i32, { ptr, i64 } }
 %"struct.std/os.Group" = type { { ptr, i64 }, i32 }
-define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os/path.Abs"(ptr %p) inlinehint {
+define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os/path.abs"(ptr %p) inlinehint {
 entry:
   %v.cwd = alloca { ptr, i64 }
   %v.ret.17 = alloca { ptr, i64 }
@@ -736,20 +732,20 @@ entry:
   %v.adt.15 = alloca { i32, [4 x i8], { ptr, i64 } }
   %v.adt.26 = alloca { i32, [4 x i8], { ptr, i64 } }
   %v.try.21 = alloca { i32, [4 x i8], { ptr, i64 } }
-  %t1 = call i1 @"std/os/path.IsAbs"(ptr %p)
+  %t1 = call i1 @"std/os/path.is_abs"(ptr %p)
   br i1 %t1, label %if.then.1, label %if.end.1
 if.then.1:
   %t2 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.15, i32 0, i32 0
   store i32 0, ptr %t2
   %t3 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.15, i32 0, i32 2
-  %t4 = call { ptr, i64 } @"std/os/path.Clean"(ptr %p)
+  %t4 = call { ptr, i64 } @"std/os/path.clean"(ptr %p)
   store { ptr, i64 } %t4, ptr %v.ret.17
   %t5 = load { ptr, i64 }, ptr %v.ret.17
   store { ptr, i64 } %t5, ptr %t3
   %t6 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.15
   ret { i32, [4 x i8], { ptr, i64 } } %t6
 if.end.1:
-  %t7 = call { i32, [4 x i8], { ptr, i64 } } @"std/os.Cwd"()
+  %t7 = call { i32, [4 x i8], { ptr, i64 } } @"std/os.cwd"()
   store { i32, [4 x i8], { ptr, i64 } } %t7, ptr %v.ret.22
   %t8 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.22, i32 0, i32 0
   %t9 = load i32, ptr %t8
@@ -795,9 +791,9 @@ try.ok.2:
   store ptr %t25, ptr %t30
   %t31 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.29, i32 0, i32 1
   store i64 2, ptr %t31
-  %t32 = call { ptr, i64 } @"std/os/path.Join"(ptr %v.varargs.29)
+  %t32 = call { ptr, i64 } @"std/os/path.join"(ptr %v.varargs.29)
   store { ptr, i64 } %t32, ptr %v.ret.29
-  %t33 = call { ptr, i64 } @"std/os/path.Clean"(ptr %v.ret.29)
+  %t33 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.ret.29)
   store { ptr, i64 } %t33, ptr %v.ret.28
   %t34 = load { ptr, i64 }, ptr %v.ret.28
   store { ptr, i64 } %t34, ptr %t22
@@ -807,7 +803,7 @@ try.ok.2:
   call void @willrt_free_str(ptr %t37)
   ret { i32, [4 x i8], { ptr, i64 } } %t35
 }
-define internal i64 @"std/os/path.scalarWidth"(i32 %c) alwaysinline {
+define hidden i64 @"std/os/path.scalar_width"(i32 %c) alwaysinline {
 entry:
   %t1 = icmp ule i32 %c, 127
   br i1 %t1, label %if.then.1, label %if.end.1
@@ -826,7 +822,7 @@ if.then.3:
 if.end.3:
   ret i64 4
 }
-define hidden { ptr, i64 } @"std/os/path.Base"(ptr %p) inlinehint {
+define hidden { ptr, i64 } @"std/os/path.base"(ptr %p) inlinehint {
 entry:
   %v.volumeEnd = alloca i64
   %v.start = alloca i64
@@ -856,7 +852,7 @@ if.then.1:
   ret { ptr, i64 } %t9
 if.end.1:
   store i64 0, ptr %v.volumeEnd
-  %t10 = call i1 @"std/os/path.hasDrive"(ptr %p)
+  %t10 = call i1 @"std/os/path.has_drive"(ptr %p)
   br i1 %t10, label %if.then.2, label %if.end.2
 if.then.2:
   store i64 2, ptr %v.volumeEnd
@@ -898,7 +894,7 @@ if.then.5:
   br label %for.step.3
 if.end.5:
   %t26 = load i32, ptr %v.c
-  %t27 = call i1 @"std/os/path.isSeparator"(i32 %t26)
+  %t27 = call i1 @"std/os/path.is_separator"(i32 %t26)
   br i1 %t27, label %if.then.6, label %if.else.6
 if.then.6:
   store i1 true, ptr %v.fresh
@@ -914,7 +910,7 @@ if.then.7:
 if.end.7:
   %t30 = load i64, ptr %v.i
   %t31 = load i32, ptr %v.c
-  %t32 = call i64 @"std/os/path.scalarWidth"(i32 %t31)
+  %t32 = call i64 @"std/os/path.scalar_width"(i32 %t31)
   %t33 = call {i64, i1} @llvm.uadd.with.overflow.i64(i64 %t30, i64 %t32)
   %t34 = extractvalue {i64, i1} %t33, 0
   %t35 = extractvalue {i64, i1} %t33, 1
@@ -941,7 +937,7 @@ for.end.3:
 if.then.9:
   %t41 = load i64, ptr %v.volumeEnd
   %t42 = icmp ugt i64 %t41, 0
-  %t43 = call i1 @"std/os/path.isDriveAbs"(ptr %p)
+  %t43 = call i1 @"std/os/path.is_drive_abs"(ptr %p)
   %t44 = xor i1 %t43, true
   %t45 = and i1 %t42, %t44
   br i1 %t45, label %if.then.10, label %if.end.10
@@ -953,7 +949,7 @@ if.then.10:
   %t48 = load { ptr, i64 }, ptr %v.str.114
   ret { ptr, i64 } %t48
 if.end.10:
-  %t49 = call { ptr, i64 } @"std/os/path.separatorString"()
+  %t49 = call { ptr, i64 } @"std/os/path.separator_string"()
   store { ptr, i64 } %t49, ptr %v.ret.116
   %t50 = load { ptr, i64 }, ptr %v.ret.116
   ret { ptr, i64 } %t50
@@ -1004,7 +1000,7 @@ utf8.ok.13:
   %t73 = load { ptr, i64 }, ptr %v.tail
   ret { ptr, i64 } %t73
 }
-define internal i1 @"std/os/path.isDotElement"(ptr %p, i64 %a, i64 %b) inlinehint {
+define hidden i1 @"std/os/path.is_dot_element"(ptr %p, i64 %a, i64 %b) inlinehint {
 entry:
   %v.s = alloca { ptr, i64 }
   %v.c = alloca i32
@@ -1060,13 +1056,13 @@ panic.ok.4:
   %t23 = load i32, ptr %v.utf8.26
   store i32 %t23, ptr %v.c
   %t24 = load i32, ptr %v.c
-  %t25 = call i1 @"std/os/path.isDot"(i32 %t24)
+  %t25 = call i1 @"std/os/path.is_dot"(i32 %t24)
   %t26 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
   %t27 = load ptr, ptr %t26
   call void @willrt_free_str(ptr %t27)
   ret i1 %t25
 }
-define internal i1 @"std/os/path.isDotDotElement"(ptr %p, i64 %a, i64 %b) inlinehint {
+define hidden i1 @"std/os/path.is_dot_dot_element"(ptr %p, i64 %a, i64 %b) inlinehint {
 entry:
   %v.second = alloca i64
   %v.s = alloca { ptr, i64 }
@@ -1156,26 +1152,26 @@ panic.ok.7:
   %t64 = load i32, ptr %v.utf8.67
   store i32 %t64, ptr %v.secondChar
   %t65 = load i32, ptr %v.firstChar
-  %t66 = call i1 @"std/os/path.isDot"(i32 %t65)
+  %t66 = call i1 @"std/os/path.is_dot"(i32 %t65)
   %t67 = load i32, ptr %v.secondChar
-  %t68 = call i1 @"std/os/path.isDot"(i32 %t67)
+  %t68 = call i1 @"std/os/path.is_dot"(i32 %t67)
   %t69 = and i1 %t66, %t68
   %t70 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
   %t71 = load ptr, ptr %t70
   call void @willrt_free_str(ptr %t71)
   ret i1 %t69
 }
-define internal i64 @"std/os/path.pushElement"(ptr %p, i64 %a, i64 %b, i1 %rooted, ptr %starts, ptr %ends, i64 %count) inlinehint {
+define hidden i64 @"std/os/path.push_element"(ptr %p, i64 %a, i64 %b, i1 %rooted, ptr %starts, ptr %ends, i64 %count) inlinehint {
 entry:
   %v.top = alloca i64
   %v.topA = alloca i64
   %v.topB = alloca i64
-  %t72 = call i1 @"std/os/path.isDotElement"(ptr %p, i64 %a, i64 %b)
+  %t72 = call i1 @"std/os/path.is_dot_element"(ptr %p, i64 %a, i64 %b)
   br i1 %t72, label %if.then.1, label %if.end.1
 if.then.1:
   ret i64 %count
 if.end.1:
-  %t73 = call i1 @"std/os/path.isDotDotElement"(ptr %p, i64 %a, i64 %b)
+  %t73 = call i1 @"std/os/path.is_dot_dot_element"(ptr %p, i64 %a, i64 %b)
   br i1 %t73, label %if.then.2, label %if.end.2
 if.then.2:
   br i1 %rooted, label %if.then.3, label %if.end.3
@@ -1237,7 +1233,7 @@ panic.ok.9:
   store i64 %t97, ptr %v.topB
   %t98 = load i64, ptr %v.topA
   %t99 = load i64, ptr %v.topB
-  %t100 = call i1 @"std/os/path.isDotDotElement"(ptr %p, i64 %t98, i64 %t99)
+  %t100 = call i1 @"std/os/path.is_dot_dot_element"(ptr %p, i64 %t98, i64 %t99)
   %t101 = xor i1 %t100, true
   br i1 %t101, label %if.then.10, label %if.end.10
 if.then.10:
@@ -1403,7 +1399,7 @@ panic.18:
 panic.ok.18:
   ret i64 %t172
 }
-define hidden { ptr, i64 } @"std/os/path.Clean"(ptr %p) inlinehint {
+define hidden { ptr, i64 } @"std/os/path.clean"(ptr %p) inlinehint {
 entry:
   %v.s = alloca { ptr, i64 }
   %v.n = alloca i64
@@ -1428,8 +1424,8 @@ entry:
   %v.new.266 = alloca { ptr, i64, i64 }
   %v.new.271 = alloca { ptr, i64, i64 }
   %v.new.340 = alloca { ptr, i64, i64 }
-  %v.str.438 = alloca { ptr, i64 }
-  %v.str.450 = alloca { ptr, i64 }
+  %v.str.439 = alloca { ptr, i64 }
+  %v.str.451 = alloca { ptr, i64 }
   %v.utf8.233 = alloca i32
   %v.utf8.253 = alloca i32
   %v.utf8.282 = alloca i32
@@ -1437,10 +1433,10 @@ entry:
   %v.utf8.349 = alloca i32
   %v.utf8.354 = alloca i32
   %v.strm.198 = alloca { ptr, i64 }
-  %v.cast.435 = alloca { ptr, i64 }
-  %v.cast.456 = alloca { ptr, i64 }
-  %v.slice.409 = alloca { ptr, i64 }
-  %v.cat.434 = alloca { ptr, i64 }
+  %v.cast.436 = alloca { ptr, i64 }
+  %v.cast.457 = alloca { ptr, i64 }
+  %v.slice.410 = alloca { ptr, i64 }
+  %v.cat.435 = alloca { ptr, i64 }
   %v.i = alloca i64
   %v.c = alloca i32
   %t174 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 0
@@ -1463,7 +1459,7 @@ entry:
   store i64 0, ptr %v.volumeEnd
   store i64 0, ptr %v.scan
   store i1 false, ptr %v.rooted
-  %t185 = call i1 @"std/os/path.hasDrive"(ptr %v.s)
+  %t185 = call i1 @"std/os/path.has_drive"(ptr %v.s)
   br i1 %t185, label %if.then.1, label %if.else.1
 if.then.1:
   store i64 2, ptr %v.volumeEnd
@@ -1498,7 +1494,7 @@ panic.ok.4:
   br label %if.end.2
 if.end.2:
   %t199 = load i32, ptr %v.third
-  %t200 = call i1 @"std/os/path.isSeparator"(i32 %t199)
+  %t200 = call i1 @"std/os/path.is_separator"(i32 %t199)
   br i1 %t200, label %if.then.5, label %if.end.5
 if.then.5:
   store i1 true, ptr %v.rooted
@@ -1534,7 +1530,7 @@ panic.ok.8:
   %t213 = load i32, ptr %v.utf8.253
   store i32 %t213, ptr %v.first
   %t214 = load i32, ptr %v.first
-  %t215 = call i1 @"std/os/path.isSeparator"(i32 %t214)
+  %t215 = call i1 @"std/os/path.is_separator"(i32 %t214)
   br i1 %t215, label %if.then.9, label %if.end.9
 if.then.9:
   store i1 true, ptr %v.rooted
@@ -1595,7 +1591,7 @@ if.then.12:
   br label %for.step.10
 if.end.12:
   %t239 = load i32, ptr %v.c
-  %t240 = call i1 @"std/os/path.isSeparator"(i32 %t239)
+  %t240 = call i1 @"std/os/path.is_separator"(i32 %t239)
   br i1 %t240, label %if.then.13, label %if.else.13
 if.then.13:
   %t241 = load i1, ptr %v.inElement
@@ -1605,7 +1601,7 @@ if.then.14:
   %t243 = load i64, ptr %v.i
   %t244 = load i1, ptr %v.rooted
   %t245 = load i64, ptr %v.count
-  %t246 = call i64 @"std/os/path.pushElement"(ptr %v.s, i64 %t242, i64 %t243, i1 %t244, ptr %v.starts, ptr %v.ends, i64 %t245)
+  %t246 = call i64 @"std/os/path.push_element"(ptr %v.s, i64 %t242, i64 %t243, i1 %t244, ptr %v.starts, ptr %v.ends, i64 %t245)
   store i64 %t246, ptr %v.count
   store i1 false, ptr %v.inElement
   br label %if.end.14
@@ -1638,11 +1634,11 @@ if.then.16:
   %t255 = load i64, ptr %v.n
   %t256 = load i1, ptr %v.rooted
   %t257 = load i64, ptr %v.count
-  %t258 = call i64 @"std/os/path.pushElement"(ptr %v.s, i64 %t254, i64 %t255, i1 %t256, ptr %v.starts, ptr %v.ends, i64 %t257)
+  %t258 = call i64 @"std/os/path.push_element"(ptr %v.s, i64 %t254, i64 %t255, i1 %t256, ptr %v.starts, ptr %v.ends, i64 %t257)
   store i64 %t258, ptr %v.count
   br label %if.end.16
 if.end.16:
-  %t259 = call i8 @"std/os/path.Separator"()
+  %t259 = call i8 @"std/os/path.separator"()
   store i8 %t259, ptr %v.sep
   %t260 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.340, i32 0, i32 0
   store ptr null, ptr %t260
@@ -1869,7 +1865,9 @@ arr.ready.27:
   br label %if.end.26
 if.end.26:
   store i64 0, ptr %v.k
-  br label %for.body.28
+  br label %while.cond.28
+while.cond.28:
+  br i1 true, label %for.body.28, label %for.end.28
 for.body.28:
   %t368 = load i64, ptr %v.k
   %t369 = load i64, ptr %v.count
@@ -1981,13 +1979,13 @@ panic.35:
 panic.ok.35:
   %t422 = getelementptr inbounds i8, ptr %t418, i64 %t414
   %t423 = sub i64 %t415, %t414
-  %t424 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.409, i32 0, i32 0
+  %t424 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.410, i32 0, i32 0
   store ptr %t422, ptr %t424
-  %t425 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.409, i32 0, i32 1
+  %t425 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.410, i32 0, i32 1
   store i64 %t423, ptr %t425
-  %t426 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.409, i32 0, i32 0
+  %t426 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.410, i32 0, i32 0
   %t427 = load ptr, ptr %t426
-  %t428 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.409, i32 0, i32 1
+  %t428 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.410, i32 0, i32 1
   %t429 = load i64, ptr %t428
   %t430 = mul i64 %t429, 1
   %t431 = call ptr @willrt_alloc(i64 %t430)
@@ -2079,7 +2077,7 @@ panic.38:
   unreachable
 panic.ok.38:
   store i64 %t470, ptr %v.k
-  br label %for.body.28
+  br label %while.cond.28
 for.end.28:
   %t472 = load i64, ptr %v.count
   %t473 = icmp eq i64 %t472, 0
@@ -2105,21 +2103,21 @@ utf8.bad.41:
 utf8.ok.41:
   %t485 = call ptr @willrt_alloc(i64 %t482)
   call void @memcpy(ptr %t485, ptr %t480, i64 %t482)
-  %t486 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.435, i32 0, i32 0
+  %t486 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.436, i32 0, i32 0
   store ptr %t485, ptr %t486
-  %t487 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.435, i32 0, i32 1
+  %t487 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.436, i32 0, i32 1
   store i64 %t482, ptr %t487
-  %t488 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.435, i32 0, i32 0
+  %t488 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.436, i32 0, i32 0
   %t489 = load ptr, ptr %t488
-  %t490 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.435, i32 0, i32 1
+  %t490 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.436, i32 0, i32 1
   %t491 = load i64, ptr %t490
-  %t492 = getelementptr inbounds { ptr, i64 }, ptr %v.str.438, i32 0, i32 0
+  %t492 = getelementptr inbounds { ptr, i64 }, ptr %v.str.439, i32 0, i32 0
   store ptr @.bytes.9, ptr %t492
-  %t493 = getelementptr inbounds { ptr, i64 }, ptr %v.str.438, i32 0, i32 1
+  %t493 = getelementptr inbounds { ptr, i64 }, ptr %v.str.439, i32 0, i32 1
   store i64 1, ptr %t493
-  %t494 = getelementptr inbounds { ptr, i64 }, ptr %v.str.438, i32 0, i32 0
+  %t494 = getelementptr inbounds { ptr, i64 }, ptr %v.str.439, i32 0, i32 0
   %t495 = load ptr, ptr %t494
-  %t496 = getelementptr inbounds { ptr, i64 }, ptr %v.str.438, i32 0, i32 1
+  %t496 = getelementptr inbounds { ptr, i64 }, ptr %v.str.439, i32 0, i32 1
   %t497 = load i64, ptr %t496
   %t498 = add i64 %t491, %t497
   %t499 = icmp eq i64 %t498, 0
@@ -2134,11 +2132,11 @@ cat.zero.42:
   br label %cat.ready.42
 cat.ready.42:
   %t502 = phi ptr [ null, %cat.zero.42 ], [ %t500, %cat.alloc.42 ]
-  %t503 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.434, i32 0, i32 0
+  %t503 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.435, i32 0, i32 0
   store ptr %t502, ptr %t503
-  %t504 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.434, i32 0, i32 1
+  %t504 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.435, i32 0, i32 1
   store i64 %t498, ptr %t504
-  %t505 = load { ptr, i64 }, ptr %v.cat.434
+  %t505 = load { ptr, i64 }, ptr %v.cat.435
   %t506 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 0
   %t507 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
   %t508 = load ptr, ptr %t506
@@ -2203,11 +2201,11 @@ if.end.40:
   %t537 = icmp eq i64 %t536, 0
   br i1 %t537, label %if.then.46, label %if.end.46
 if.then.46:
-  %t538 = getelementptr inbounds { ptr, i64 }, ptr %v.str.450, i32 0, i32 0
+  %t538 = getelementptr inbounds { ptr, i64 }, ptr %v.str.451, i32 0, i32 0
   store ptr @.bytes.9, ptr %t538
-  %t539 = getelementptr inbounds { ptr, i64 }, ptr %v.str.450, i32 0, i32 1
+  %t539 = getelementptr inbounds { ptr, i64 }, ptr %v.str.451, i32 0, i32 1
   store i64 1, ptr %t539
-  %t540 = load { ptr, i64 }, ptr %v.str.450
+  %t540 = load { ptr, i64 }, ptr %v.str.451
   %t541 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 0
   %t542 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
   %t543 = load ptr, ptr %t541
@@ -2282,11 +2280,11 @@ utf8.bad.50:
 utf8.ok.50:
   %t576 = call ptr @willrt_alloc(i64 %t573)
   call void @memcpy(ptr %t576, ptr %t571, i64 %t573)
-  %t577 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.456, i32 0, i32 0
+  %t577 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.457, i32 0, i32 0
   store ptr %t576, ptr %t577
-  %t578 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.456, i32 0, i32 1
+  %t578 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.457, i32 0, i32 1
   store i64 %t573, ptr %t578
-  %t579 = load { ptr, i64 }, ptr %v.cast.456
+  %t579 = load { ptr, i64 }, ptr %v.cast.457
   %t580 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 0
   %t581 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
   %t582 = load ptr, ptr %t580
@@ -2346,7 +2344,7 @@ deep.rel.arr.done.53:
   call void @willrt_free_str(ptr %t608)
   ret { ptr, i64 } %t579
 }
-define hidden { ptr, i64 } @"std/os/path.Dir"(ptr %p) inlinehint {
+define hidden { ptr, i64 } @"std/os/path.dir"(ptr %p) inlinehint {
 entry:
   %v.last = alloca i64
   %v.found = alloca i1
@@ -2387,7 +2385,7 @@ panic.ok.2:
   %t12 = load i32, ptr %v.utf8.13
   store i32 %t12, ptr %v.c
   %t13 = load i32, ptr %v.c
-  %t14 = call i1 @"std/os/path.isSeparator"(i32 %t13)
+  %t14 = call i1 @"std/os/path.is_separator"(i32 %t13)
   br i1 %t14, label %if.then.3, label %if.end.3
 if.then.3:
   %t15 = load i64, ptr %v.i
@@ -2466,7 +2464,7 @@ utf8.ok.8:
   store i64 %t42, ptr %t47
   %t48 = load { ptr, i64 }, ptr %v.cast.39
   store { ptr, i64 } %t48, ptr %v.head
-  %t49 = call { ptr, i64 } @"std/os/path.Clean"(ptr %v.head)
+  %t49 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.head)
   store { ptr, i64 } %t49, ptr %v.ret.47
   %t50 = load { ptr, i64 }, ptr %v.ret.47
   %t51 = getelementptr inbounds { ptr, i64 }, ptr %v.head, i32 0, i32 0
@@ -2474,7 +2472,7 @@ utf8.ok.8:
   call void @willrt_free_str(ptr %t52)
   ret { ptr, i64 } %t50
 }
-define hidden { ptr, i64 } @"std/os/path.Ext"(ptr %p) inlinehint {
+define hidden { ptr, i64 } @"std/os/path.ext"(ptr %p) inlinehint {
 entry:
   %v.at = alloca i64
   %v.found = alloca i1
@@ -2513,14 +2511,14 @@ panic.ok.2:
   %t12 = load i32, ptr %v.utf8.13
   store i32 %t12, ptr %v.c
   %t13 = load i32, ptr %v.c
-  %t14 = call i1 @"std/os/path.isSeparator"(i32 %t13)
+  %t14 = call i1 @"std/os/path.is_separator"(i32 %t13)
   br i1 %t14, label %if.then.3, label %if.else.3
 if.then.3:
   store i1 false, ptr %v.found
   br label %if.end.3
 if.else.3:
   %t15 = load i32, ptr %v.c
-  %t16 = call i1 @"std/os/path.isDot"(i32 %t15)
+  %t16 = call i1 @"std/os/path.is_dot"(i32 %t15)
   br i1 %t16, label %if.then.4, label %if.end.4
 if.then.4:
   %t17 = load i64, ptr %v.i
@@ -2596,7 +2594,7 @@ utf8.ok.8:
   %t49 = load { ptr, i64 }, ptr %v.suffix
   ret { ptr, i64 } %t49
 }
-define hidden i1 @"std/os/path.IsAbs"(ptr %p) inlinehint {
+define hidden i1 @"std/os/path.is_abs"(ptr %p) inlinehint {
 entry:
   %v.s = alloca { ptr, i64 }
   %v.first = alloca i32
@@ -2647,7 +2645,7 @@ panic.ok.3:
   %t23 = load i32, ptr %v.utf8.21
   store i32 %t23, ptr %v.first
   %t24 = load i32, ptr %v.first
-  %t25 = call i1 @"std/os/path.isSeparator"(i32 %t24)
+  %t25 = call i1 @"std/os/path.is_separator"(i32 %t24)
   br i1 %t25, label %if.then.4, label %if.end.4
 if.then.4:
   %t26 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
@@ -2655,13 +2653,13 @@ if.then.4:
   call void @willrt_free_str(ptr %t27)
   ret i1 true
 if.end.4:
-  %t28 = call i1 @"std/os/path.isDriveAbs"(ptr %v.s)
+  %t28 = call i1 @"std/os/path.is_drive_abs"(ptr %v.s)
   %t29 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
   %t30 = load ptr, ptr %t29
   call void @willrt_free_str(ptr %t30)
   ret i1 %t28
 }
-define hidden { ptr, i64 } @"std/os/path.Join"(ptr %parts) inlinehint {
+define hidden { ptr, i64 } @"std/os/path.join"(ptr %parts) inlinehint {
 entry:
   %v.sep = alloca i8
   %v.out = alloca { ptr, i64, i64 }
@@ -2673,7 +2671,7 @@ entry:
   %v.cast.55 = alloca { ptr, i64 }
   %v.slice.38 = alloca { ptr, i64 }
   %v.$idx = alloca i64
-  %t1 = call i8 @"std/os/path.Separator"()
+  %t1 = call i8 @"std/os/path.separator"()
   store i8 %t1, ptr %v.sep
   %t2 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.13, i32 0, i32 0
   store ptr null, ptr %t2
@@ -2921,7 +2919,7 @@ utf8.ok.11:
   store i64 %t115, ptr %t120
   %t121 = load { ptr, i64 }, ptr %v.cast.55
   store { ptr, i64 } %t121, ptr %v.joined
-  %t122 = call { ptr, i64 } @"std/os/path.Clean"(ptr %v.joined)
+  %t122 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.joined)
   store { ptr, i64 } %t122, ptr %v.ret.61
   %t123 = load { ptr, i64 }, ptr %v.ret.61
   %t124 = getelementptr inbounds { ptr, i64 }, ptr %v.joined, i32 0, i32 0
@@ -2947,7 +2945,7 @@ deep.rel.arr.done.12:
   call void @willrt_free(ptr %t128)
   ret { ptr, i64 } %t123
 }
-define internal { ptr, i64, i64 } @"std/os/path.charsOf"(ptr %s) inlinehint {
+define hidden { ptr, i64, i64 } @"std/os/path.chars_of"(ptr %s) inlinehint {
 entry:
   %v.out = alloca { ptr, i64, i64 }
   %v.new.17 = alloca { ptr, i64, i64 }
@@ -3047,7 +3045,7 @@ for.end.1:
   %t45 = load { ptr, i64, i64 }, ptr %v.out
   ret { ptr, i64, i64 } %t45
 }
-define hidden i1 @"std/os/path.Match"(ptr %pattern, ptr %name) inlinehint {
+define hidden i1 @"std/os/path.glob"(ptr %pattern, ptr %name) inlinehint {
 entry:
   %v.pat = alloca { ptr, i64, i64 }
   %v.text = alloca { ptr, i64, i64 }
@@ -3063,11 +3061,11 @@ entry:
   %v.pc.1 = alloca i32
   %v.ret.38 = alloca { ptr, i64, i64 }
   %v.ret.43 = alloca { ptr, i64, i64 }
-  %t46 = call { ptr, i64, i64 } @"std/os/path.charsOf"(ptr %pattern)
+  %t46 = call { ptr, i64, i64 } @"std/os/path.chars_of"(ptr %pattern)
   store { ptr, i64, i64 } %t46, ptr %v.ret.38
   %t47 = load { ptr, i64, i64 }, ptr %v.ret.38
   store { ptr, i64, i64 } %t47, ptr %v.pat
-  %t48 = call { ptr, i64, i64 } @"std/os/path.charsOf"(ptr %name)
+  %t48 = call { ptr, i64, i64 } @"std/os/path.chars_of"(ptr %name)
   store { ptr, i64, i64 } %t48, ptr %v.ret.43
   %t49 = load { ptr, i64, i64 }, ptr %v.ret.43
   store { ptr, i64, i64 } %t49, ptr %v.text
@@ -3076,7 +3074,9 @@ entry:
   store i64 0, ptr %v.star
   store i64 0, ptr %v.mark
   store i1 false, ptr %v.hasStar
-  br label %for.body.1
+  br label %while.cond.1
+while.cond.1:
+  br i1 true, label %for.body.1, label %for.end.1
 for.body.1:
   %t50 = load i64, ptr %v.si
   %t51 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.text, i32 0, i32 1
@@ -3133,7 +3133,7 @@ panic.7:
   unreachable
 panic.ok.7:
   store i64 %t75, ptr %v.pi
-  br label %for.body.1
+  br label %while.cond.1
 if.end.5:
   %t77 = load i64, ptr %v.si
   %t78 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.text, i32 0, i32 0
@@ -3155,7 +3155,7 @@ panic.ok.8:
   br i1 %t86, label %if.then.9, label %if.else.9
 if.then.9:
   %t87 = load i32, ptr %v.tc
-  %t88 = call i1 @"std/os/path.isSlash"(i32 %t87)
+  %t88 = call i1 @"std/os/path.is_slash"(i32 %t87)
   %t89 = xor i1 %t88, true
   store i1 %t89, ptr %v.matched
   br label %if.end.9
@@ -3189,7 +3189,7 @@ panic.12:
   unreachable
 panic.ok.12:
   store i64 %t100, ptr %v.si
-  br label %for.body.1
+  br label %while.cond.1
 if.end.10:
   br label %if.end.3
 if.end.3:
@@ -3250,7 +3250,7 @@ panic.ok.16:
   %t129 = load i32, ptr %t128
   store i32 %t129, ptr %v.extend
   %t130 = load i32, ptr %v.extend
-  %t131 = call i1 @"std/os/path.isSlash"(i32 %t130)
+  %t131 = call i1 @"std/os/path.is_slash"(i32 %t130)
   br i1 %t131, label %if.then.17, label %if.end.17
 if.then.17:
   %t132 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.text, i32 0, i32 0
@@ -3305,9 +3305,11 @@ panic.ok.20:
   store i64 %t154, ptr %v.si
   %t155 = load i64, ptr %v.star
   store i64 %t155, ptr %v.pi
-  br label %for.body.1
+  br label %while.cond.1
 for.end.1:
-  br label %for.body.21
+  br label %while.cond.21
+while.cond.21:
+  br i1 true, label %for.body.21, label %for.end.21
 for.body.21:
   %t156 = load i64, ptr %v.pi
   %t157 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.pat, i32 0, i32 1
@@ -3383,7 +3385,7 @@ panic.27:
   unreachable
 panic.ok.27:
   store i64 %t190, ptr %v.pi
-  br label %for.body.21
+  br label %while.cond.21
 for.end.21:
   %t192 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.text, i32 0, i32 0
   %t193 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.text, i32 0, i32 1
@@ -3423,24 +3425,24 @@ deep.rel.arr.done.29:
   call void @willrt_free(ptr %t203)
   ret i1 true
 }
-define internal i1 @"std/os/path.isSlash"(i32 %c) alwaysinline {
+define hidden i1 @"std/os/path.is_slash"(i32 %c) alwaysinline {
 entry:
   %t1 = icmp eq i32 %c, 47
   ret i1 %t1
 }
-define internal i1 @"std/os/path.isSeparator"(i32 %c) alwaysinline {
+define hidden i1 @"std/os/path.is_separator"(i32 %c) alwaysinline {
 entry:
   %t2 = icmp eq i32 %c, 47
   %t3 = icmp eq i32 %c, 92
   %t4 = or i1 %t2, %t3
   ret i1 %t4
 }
-define internal i1 @"std/os/path.isDot"(i32 %c) alwaysinline {
+define hidden i1 @"std/os/path.is_dot"(i32 %c) alwaysinline {
 entry:
   %t5 = icmp eq i32 %c, 46
   ret i1 %t5
 }
-define internal i1 @"std/os/path.isDriveLetter"(i32 %c) alwaysinline {
+define hidden i1 @"std/os/path.is_drive_letter"(i32 %c) alwaysinline {
 entry:
   %t6 = icmp uge i32 %c, 65
   %t7 = icmp ule i32 %c, 90
@@ -3451,7 +3453,7 @@ entry:
   %t12 = or i1 %t8, %t11
   ret i1 %t12
 }
-define internal i1 @"std/os/path.hasDrive"(ptr %p) inlinehint {
+define hidden i1 @"std/os/path.has_drive"(ptr %p) inlinehint {
 entry:
   %v.s = alloca { ptr, i64 }
   %v.first = alloca i32
@@ -3460,7 +3462,7 @@ entry:
   %v.utf8.89 = alloca i32
   %v.utf8.94 = alloca i32
   %v.strm.85 = alloca { ptr, i64 }
-  %t13 = call i8 @"std/os/path.Separator"()
+  %t13 = call i8 @"std/os/path.separator"()
   %t14 = icmp ne i8 %t13, 92
   %t15 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
   %t16 = load i64, ptr %t15
@@ -3529,7 +3531,7 @@ panic.ok.5:
   %t49 = load i32, ptr %v.utf8.94
   store i32 %t49, ptr %v.second
   %t50 = load i32, ptr %v.first
-  %t51 = call i1 @"std/os/path.isDriveLetter"(i32 %t50)
+  %t51 = call i1 @"std/os/path.is_drive_letter"(i32 %t50)
   %t52 = load i32, ptr %v.second
   %t53 = icmp eq i32 %t52, 58
   %t54 = and i1 %t51, %t53
@@ -3538,14 +3540,14 @@ panic.ok.5:
   call void @willrt_free_str(ptr %t56)
   ret i1 %t54
 }
-define internal i1 @"std/os/path.isDriveAbs"(ptr %p) inlinehint {
+define hidden i1 @"std/os/path.is_drive_abs"(ptr %p) inlinehint {
 entry:
   %v.s = alloca { ptr, i64 }
   %v.third = alloca i32
   %v.ret.124 = alloca { ptr, i64 }
   %v.utf8.128 = alloca i32
   %v.strm.124 = alloca { ptr, i64 }
-  %t57 = call i1 @"std/os/path.hasDrive"(ptr %p)
+  %t57 = call i1 @"std/os/path.has_drive"(ptr %p)
   %t58 = xor i1 %t57, true
   %t59 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
   %t60 = load i64, ptr %t59
@@ -3592,16 +3594,16 @@ panic.ok.3:
   %t82 = load i32, ptr %v.utf8.128
   store i32 %t82, ptr %v.third
   %t83 = load i32, ptr %v.third
-  %t84 = call i1 @"std/os/path.isSeparator"(i32 %t83)
+  %t84 = call i1 @"std/os/path.is_separator"(i32 %t83)
   %t85 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
   %t86 = load ptr, ptr %t85
   call void @willrt_free_str(ptr %t86)
   ret i1 %t84
 }
-define internal { ptr, i64 } @"std/os/path.separatorString"() inlinehint {
+define hidden { ptr, i64 } @"std/os/path.separator_string"() inlinehint {
 entry:
   %v.cast.139 = alloca { ptr, i64 }
-  %t87 = call i8 @"std/os/path.Separator"()
+  %t87 = call i8 @"std/os/path.separator"()
   %t88 = zext i8 %t87 to i32
   %t89 = call ptr @willrt_alloc(i64 4)
   %t90 = call i32 @willrt_utf8_encode(i32 %t88, ptr %t89)
@@ -3619,7 +3621,7 @@ utf8.ok.1:
   %t95 = load { ptr, i64 }, ptr %v.cast.139
   ret { ptr, i64 } %t95
 }
-define hidden i8 @"std/os/path.Separator"() inlinehint {
+define hidden i8 @"std/os/path.separator"() inlinehint {
 entry:
   %t1 = call i8 @willpath_separator()
   ret i8 %t1
@@ -3688,7 +3690,7 @@ entry:
   %v.cat.170 = alloca { ptr, i64 }
   %v.cat.195 = alloca { ptr, i64 }
   %v.cat.196 = alloca { ptr, i64 }
-  %t1 = call i8 @"std/os/path.Separator"()
+  %t1 = call i8 @"std/os/path.separator"()
   %t2 = zext i8 %t1 to i32
   %t3 = call ptr @willrt_alloc(i64 4)
   %t4 = call i32 @willrt_utf8_encode(i32 %t2, ptr %t3)
@@ -3709,7 +3711,7 @@ utf8.ok.1:
   store ptr @.bytes.10, ptr %t10
   %t11 = getelementptr inbounds { ptr, i64 }, ptr %v.str.18, i32 0, i32 1
   store i64 5, ptr %t11
-  %t12 = call { ptr, i64 } @"std/os/path.Clean"(ptr %v.str.18)
+  %t12 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.str.18)
   store { ptr, i64 } %t12, ptr %v.ret.16
   %t13 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.16, i32 0, i32 0
   %t14 = load ptr, ptr %t13
@@ -3795,7 +3797,7 @@ if.end.2:
   store ptr @.bytes.13, ptr %t64
   %t65 = getelementptr inbounds { ptr, i64 }, ptr %v.str.32, i32 0, i32 1
   store i64 3, ptr %t65
-  %t66 = call { ptr, i64 } @"std/os/path.Clean"(ptr %v.str.32)
+  %t66 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.str.32)
   store { ptr, i64 } %t66, ptr %v.ret.30
   %t67 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.30, i32 0, i32 0
   %t68 = load ptr, ptr %t67
@@ -3881,7 +3883,7 @@ if.end.5:
   store ptr @.bytes.14, ptr %t118
   %t119 = getelementptr inbounds { ptr, i64 }, ptr %v.str.46, i32 0, i32 1
   store i64 6, ptr %t119
-  %t120 = call { ptr, i64 } @"std/os/path.Clean"(ptr %v.str.46)
+  %t120 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.str.46)
   store { ptr, i64 } %t120, ptr %v.ret.44
   %t121 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.44, i32 0, i32 0
   %t122 = load ptr, ptr %t121
@@ -3931,7 +3933,7 @@ if.end.8:
   store ptr %t142, ptr %t151
   %t152 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.54, i32 0, i32 1
   store i64 2, ptr %t152
-  %t153 = call { ptr, i64 } @"std/os/path.Join"(ptr %v.varargs.54)
+  %t153 = call { ptr, i64 } @"std/os/path.join"(ptr %v.varargs.54)
   store { ptr, i64 } %t153, ptr %v.ret.54
   %t154 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.54, i32 0, i32 0
   %t155 = load ptr, ptr %t154
@@ -4035,7 +4037,7 @@ if.end.9:
   store ptr %t207, ptr %t216
   %t217 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.69, i32 0, i32 1
   store i64 2, ptr %t217
-  %t218 = call { ptr, i64 } @"std/os/path.Join"(ptr %v.varargs.69)
+  %t218 = call { ptr, i64 } @"std/os/path.join"(ptr %v.varargs.69)
   store { ptr, i64 } %t218, ptr %v.ret.69
   %t219 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.69, i32 0, i32 0
   %t220 = load ptr, ptr %t219
@@ -4067,7 +4069,7 @@ if.end.12:
   store ptr @.bytes.15, ptr %t238
   %t239 = getelementptr inbounds { ptr, i64 }, ptr %v.str.82, i32 0, i32 1
   store i64 4, ptr %t239
-  %t240 = call { ptr, i64 } @"std/os/path.Base"(ptr %v.str.82)
+  %t240 = call { ptr, i64 } @"std/os/path.base"(ptr %v.str.82)
   store { ptr, i64 } %t240, ptr %v.ret.80
   %t241 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.80, i32 0, i32 0
   %t242 = load ptr, ptr %t241
@@ -4099,7 +4101,7 @@ if.end.13:
   store ptr @.bytes.16, ptr %t260
   %t261 = getelementptr inbounds { ptr, i64 }, ptr %v.str.92, i32 0, i32 1
   store i64 7, ptr %t261
-  %t262 = call { ptr, i64 } @"std/os/path.Ext"(ptr %v.str.92)
+  %t262 = call { ptr, i64 } @"std/os/path.ext"(ptr %v.str.92)
   store { ptr, i64 } %t262, ptr %v.ret.90
   %t263 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.90, i32 0, i32 0
   %t264 = load ptr, ptr %t263
@@ -4156,7 +4158,7 @@ cat.ready.16:
   store ptr %t296, ptr %t297
   %t298 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.102, i32 0, i32 1
   store i64 %t292, ptr %t298
-  %t299 = call i1 @"std/os/path.IsAbs"(ptr %v.cat.102)
+  %t299 = call i1 @"std/os/path.is_abs"(ptr %v.cat.102)
   %t300 = xor i1 %t299, true
   br i1 %t300, label %if.then.15, label %if.end.15
 if.then.15:
@@ -4223,7 +4225,7 @@ cat.ready.19:
   store ptr %t334, ptr %t335
   %t336 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.112, i32 0, i32 1
   store i64 %t330, ptr %t336
-  %t337 = call i1 @"std/os/path.IsAbs"(ptr %v.cat.112)
+  %t337 = call i1 @"std/os/path.is_abs"(ptr %v.cat.112)
   br i1 %t337, label %if.then.17, label %if.end.17
 if.then.17:
   %t338 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
@@ -4235,7 +4237,7 @@ if.end.17:
   store ptr @.bytes.11, ptr %t340
   %t341 = getelementptr inbounds { ptr, i64 }, ptr %v.str.126, i32 0, i32 1
   store i64 1, ptr %t341
-  %t342 = call { i32, [4 x i8], { ptr, i64 } } @"std/os/path.Abs"(ptr %v.str.126)
+  %t342 = call { i32, [4 x i8], { ptr, i64 } } @"std/os/path.abs"(ptr %v.str.126)
   store { i32, [4 x i8], { ptr, i64 } } %t342, ptr %v.ret.124
   %t343 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.124, i32 0, i32 0
   %t344 = load i32, ptr %t343
@@ -4267,7 +4269,7 @@ unwrap.ok.20:
   %t360 = load ptr, ptr %t359
   call void @willrt_free_str(ptr %t360)
   store { ptr, i64 } zeroinitializer, ptr %v.unwrap.out.123
-  %t361 = call i1 @"std/os/path.IsAbs"(ptr %v.abs)
+  %t361 = call i1 @"std/os/path.is_abs"(ptr %v.abs)
   %t362 = xor i1 %t361, true
   br i1 %t362, label %if.then.21, label %if.end.21
 if.then.21:
@@ -4287,7 +4289,7 @@ if.end.21:
   store ptr @.bytes.19, ptr %t369
   %t370 = getelementptr inbounds { ptr, i64 }, ptr %v.str.142, i32 0, i32 1
   store i64 5, ptr %t370
-  %t371 = call i1 @"std/os/path.Match"(ptr %v.str.141, ptr %v.str.142)
+  %t371 = call i1 @"std/os/path.glob"(ptr %v.str.141, ptr %v.str.142)
   %t372 = xor i1 %t371, true
   br i1 %t372, label %if.then.22, label %if.end.22
 if.then.22:
@@ -4307,7 +4309,7 @@ if.end.22:
   store ptr @.bytes.16, ptr %t379
   %t380 = getelementptr inbounds { ptr, i64 }, ptr %v.str.152, i32 0, i32 1
   store i64 7, ptr %t380
-  %t381 = call i1 @"std/os/path.Match"(ptr %v.str.151, ptr %v.str.152)
+  %t381 = call i1 @"std/os/path.glob"(ptr %v.str.151, ptr %v.str.152)
   br i1 %t381, label %if.then.23, label %if.end.23
 if.then.23:
   %t382 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
@@ -4318,7 +4320,7 @@ if.then.23:
   call void @willrt_free_str(ptr %t385)
   ret i32 12
 if.end.23:
-  %t386 = call i8 @"std/os/path.Separator"()
+  %t386 = call i8 @"std/os/path.separator"()
   %t387 = icmp eq i8 %t386, 92
   br i1 %t387, label %if.then.24, label %if.end.24
 if.then.24:
@@ -4326,7 +4328,7 @@ if.then.24:
   store ptr @.bytes.20, ptr %t388
   %t389 = getelementptr inbounds { ptr, i64 }, ptr %v.str.168, i32 0, i32 1
   store i64 9, ptr %t389
-  %t390 = call { ptr, i64 } @"std/os/path.Clean"(ptr %v.str.168)
+  %t390 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.str.168)
   store { ptr, i64 } %t390, ptr %v.ret.166
   %t391 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.166, i32 0, i32 0
   %t392 = load ptr, ptr %t391
@@ -4415,7 +4417,7 @@ if.end.25:
   store ptr @.bytes.22, ptr %t444
   %t445 = getelementptr inbounds { ptr, i64 }, ptr %v.str.183, i32 0, i32 1
   store i64 3, ptr %t445
-  %t446 = call { ptr, i64 } @"std/os/path.Base"(ptr %v.str.183)
+  %t446 = call { ptr, i64 } @"std/os/path.base"(ptr %v.str.183)
   store { ptr, i64 } %t446, ptr %v.ret.181
   %t447 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.181, i32 0, i32 0
   %t448 = load ptr, ptr %t447
@@ -4446,7 +4448,7 @@ if.end.28:
   store ptr @.bytes.23, ptr %t466
   %t467 = getelementptr inbounds { ptr, i64 }, ptr %v.str.194, i32 0, i32 1
   store i64 6, ptr %t467
-  %t468 = call { ptr, i64 } @"std/os/path.Dir"(ptr %v.str.194)
+  %t468 = call { ptr, i64 } @"std/os/path.dir"(ptr %v.str.194)
   store { ptr, i64 } %t468, ptr %v.ret.192
   %t469 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.192, i32 0, i32 0
   %t470 = load ptr, ptr %t469
@@ -4535,7 +4537,7 @@ if.end.29:
   store ptr @.bytes.24, ptr %t522
   %t523 = getelementptr inbounds { ptr, i64 }, ptr %v.str.209, i32 0, i32 1
   store i64 4, ptr %t523
-  %t524 = call i1 @"std/os/path.IsAbs"(ptr %v.str.209)
+  %t524 = call i1 @"std/os/path.is_abs"(ptr %v.str.209)
   %t525 = xor i1 %t524, true
   br i1 %t525, label %if.then.32, label %if.end.32
 if.then.32:
@@ -4585,28 +4587,28 @@ declare i8 @willpath_separator()
 @.bytes.8 = private unnamed_addr constant [0 x i8] zeroinitializer
 @.str.8 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
 @.str.9 = private unnamed_addr constant [17 x i8] c"os/os.will:37:18\00", align 1
-@.str.10 = private unnamed_addr constant [14 x i8] c"std/os.Setenv\00", align 1
+@.str.10 = private unnamed_addr constant [14 x i8] c"std/os.setenv\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
-@"std/os.vtable.Error.std/errors.Fault" = internal constant [6 x ptr] [ptr @"std/errors.Fault.Message", ptr @"std/errors.Fault.Status", ptr @"std/os.iface.clone.Error.std/errors.Fault", ptr @"std/os.iface.drop.Error.std/errors.Fault", ptr @"std/os.iface.share.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@"std/os.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/os.iface.clone.Error.std/errors.Fault", ptr @"std/os.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.bytes.9 = private unnamed_addr constant [1 x i8] c".", align 1
 @.str.14 = private unnamed_addr constant [14 x i8] c"invalid UTF-8\00", align 1
 @.str.15 = private unnamed_addr constant [23 x i8] c"os/path/base.will:31:5\00", align 1
-@.str.16 = private unnamed_addr constant [17 x i8] c"std/os/path.Base\00", align 1
+@.str.16 = private unnamed_addr constant [17 x i8] c"std/os/path.base\00", align 1
 @.str.17 = private unnamed_addr constant [24 x i8] c"os/path/base.will:42:19\00", align 1
 @.str.18 = private unnamed_addr constant [26 x i8] c"slice bounds out of range\00", align 1
 @.str.19 = private unnamed_addr constant [24 x i8] c"os/path/base.will:52:25\00", align 1
 @.str.20 = private unnamed_addr constant [24 x i8] c"os/path/base.will:52:21\00", align 1
 @.str.21 = private unnamed_addr constant [23 x i8] c"os/path/clean.will:3:8\00", align 1
-@.str.22 = private unnamed_addr constant [25 x i8] c"std/os/path.isDotElement\00", align 1
+@.str.22 = private unnamed_addr constant [27 x i8] c"std/os/path.is_dot_element\00", align 1
 @.str.23 = private unnamed_addr constant [20 x i8] c"index out of bounds\00", align 1
 @.str.24 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:7:18\00", align 1
 @.str.25 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:13:8\00", align 1
-@.str.26 = private unnamed_addr constant [28 x i8] c"std/os/path.isDotDotElement\00", align 1
+@.str.26 = private unnamed_addr constant [31 x i8] c"std/os/path.is_dot_dot_element\00", align 1
 @.str.27 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:16:25\00", align 1
 @.str.28 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:18:26\00", align 1
 @.str.29 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:19:27\00", align 1
 @.str.30 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:33:24\00", align 1
-@.str.31 = private unnamed_addr constant [24 x i8] c"std/os/path.pushElement\00", align 1
+@.str.31 = private unnamed_addr constant [25 x i8] c"std/os/path.push_element\00", align 1
 @.str.32 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:38:30\00", align 1
 @.str.33 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:39:31\00", align 1
 @.str.34 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:40:31\00", align 1
@@ -4615,7 +4617,7 @@ declare i8 @willpath_separator()
 @.str.37 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:52:9\00", align 1
 @.str.38 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:56:12\00", align 1
 @.str.39 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:75:21\00", align 1
-@.str.40 = private unnamed_addr constant [18 x i8] c"std/os/path.Clean\00", align 1
+@.str.40 = private unnamed_addr constant [18 x i8] c"std/os/path.clean\00", align 1
 @.str.41 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:82:26\00", align 1
 @.str.42 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:92:5\00", align 1
 @.str.43 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:112:32\00", align 1
@@ -4630,23 +4632,23 @@ declare i8 @willpath_separator()
 @.str.52 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:135:20\00", align 1
 @.str.53 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:141:12\00", align 1
 @.str.54 = private unnamed_addr constant [21 x i8] c"os/path/dir.will:6:5\00", align 1
-@.str.55 = private unnamed_addr constant [16 x i8] c"std/os/path.Dir\00", align 1
+@.str.55 = private unnamed_addr constant [16 x i8] c"std/os/path.dir\00", align 1
 @.str.56 = private unnamed_addr constant [23 x i8] c"os/path/dir.will:15:24\00", align 1
 @.str.57 = private unnamed_addr constant [23 x i8] c"os/path/dir.will:16:25\00", align 1
 @.str.58 = private unnamed_addr constant [23 x i8] c"os/path/dir.will:16:21\00", align 1
 @.str.59 = private unnamed_addr constant [21 x i8] c"os/path/ext.will:8:5\00", align 1
-@.str.60 = private unnamed_addr constant [16 x i8] c"std/os/path.Ext\00", align 1
+@.str.60 = private unnamed_addr constant [16 x i8] c"std/os/path.ext\00", align 1
 @.str.61 = private unnamed_addr constant [23 x i8] c"os/path/ext.will:19:27\00", align 1
 @.str.62 = private unnamed_addr constant [23 x i8] c"os/path/ext.will:19:23\00", align 1
 @.str.63 = private unnamed_addr constant [24 x i8] c"os/path/isabs.will:8:22\00", align 1
-@.str.64 = private unnamed_addr constant [18 x i8] c"std/os/path.IsAbs\00", align 1
+@.str.64 = private unnamed_addr constant [19 x i8] c"std/os/path.is_abs\00", align 1
 @.str.65 = private unnamed_addr constant [24 x i8] c"os/path/join.will:15:20\00", align 1
-@.str.66 = private unnamed_addr constant [17 x i8] c"std/os/path.Join\00", align 1
+@.str.66 = private unnamed_addr constant [17 x i8] c"std/os/path.join\00", align 1
 @.str.67 = private unnamed_addr constant [24 x i8] c"os/path/join.will:21:23\00", align 1
 @.str.68 = private unnamed_addr constant [24 x i8] c"os/path/match.will:11:5\00", align 1
-@.str.69 = private unnamed_addr constant [20 x i8] c"std/os/path.charsOf\00", align 1
+@.str.69 = private unnamed_addr constant [21 x i8] c"std/os/path.chars_of\00", align 1
 @.str.70 = private unnamed_addr constant [25 x i8] c"os/path/match.will:35:27\00", align 1
-@.str.71 = private unnamed_addr constant [18 x i8] c"std/os/path.Match\00", align 1
+@.str.71 = private unnamed_addr constant [17 x i8] c"std/os/path.glob\00", align 1
 @.str.72 = private unnamed_addr constant [25 x i8] c"os/path/match.will:39:24\00", align 1
 @.str.73 = private unnamed_addr constant [25 x i8] c"os/path/match.will:42:17\00", align 1
 @.str.74 = private unnamed_addr constant [25 x i8] c"os/path/match.will:45:27\00", align 1
@@ -4657,12 +4659,12 @@ declare i8 @willpath_separator()
 @.str.79 = private unnamed_addr constant [25 x i8] c"os/path/match.will:75:23\00", align 1
 @.str.80 = private unnamed_addr constant [24 x i8] c"os/path/match.will:79:9\00", align 1
 @.str.81 = private unnamed_addr constant [24 x i8] c"os/path/path.will:46:22\00", align 1
-@.str.82 = private unnamed_addr constant [21 x i8] c"std/os/path.hasDrive\00", align 1
+@.str.82 = private unnamed_addr constant [22 x i8] c"std/os/path.has_drive\00", align 1
 @.str.83 = private unnamed_addr constant [24 x i8] c"os/path/path.will:47:23\00", align 1
 @.str.84 = private unnamed_addr constant [24 x i8] c"os/path/path.will:57:22\00", align 1
-@.str.85 = private unnamed_addr constant [23 x i8] c"std/os/path.isDriveAbs\00", align 1
+@.str.85 = private unnamed_addr constant [25 x i8] c"std/os/path.is_drive_abs\00", align 1
 @.str.86 = private unnamed_addr constant [24 x i8] c"os/path/path.will:63:12\00", align 1
-@.str.87 = private unnamed_addr constant [28 x i8] c"std/os/path.separatorString\00", align 1
+@.str.87 = private unnamed_addr constant [29 x i8] c"std/os/path.separator_string\00", align 1
 @.str.88 = private unnamed_addr constant [15 x i8] c"main.will:6:20\00", align 1
 @.str.89 = private unnamed_addr constant [48 x i8] c"example.com/stdtest/system/pathnative.will$main\00", align 1
 @.bytes.10 = private unnamed_addr constant [5 x i8] c"a/./b", align 1

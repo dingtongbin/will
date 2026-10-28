@@ -207,7 +207,7 @@ func (g *generator) constValueOf(id int) (string, bool) {
 	case "float":
 		return literalFloatText(fieldText(lit, "text")), true
 	case "bool":
-		return fieldText(lit, "text"), true
+		return literalBoolText(fieldText(lit, "text")), true
 	}
 	return "", false
 }

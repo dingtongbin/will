@@ -328,7 +328,7 @@ func (g *generator) patternCond(pat willc.Record, subjLLVM, subjText, subjPtr, s
 			return cond, nil
 		}
 		if subjLLVM == "i1" {
-			fmt.Fprintf(g.out, "  %s = icmp eq i1 %s, %s\n", cond, subjVal, text)
+			fmt.Fprintf(g.out, "  %s = icmp eq i1 %s, %s\n", cond, subjVal, literalBoolText(text))
 			return cond, nil
 		}
 		fmt.Fprintf(g.out, "  %s = icmp eq %s %s, %s\n", cond, subjLLVM, subjVal, literalIntText(text))

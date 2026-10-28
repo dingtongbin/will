@@ -17,7 +17,7 @@ func showScalar(text string) bool {
 // showThunkName returns the Show method of one predeclared scalar and queues
 // the thunk that implements it. The thunk is defined once per module.
 func (g *generator) showThunkName(concrete string) (string, bool) {
-	if !showScalar(concrete) {
+	if concrete != "Array<u8>" && !showScalar(concrete) {
 		return "", false
 	}
 	sym := "will.show." + concrete
@@ -45,6 +45,11 @@ func (g *generator) emitShowThunk(concrete string) {
 	fmt.Fprintf(g.out, "  %%out = alloca { ptr, i64 }\n")
 	call := ""
 	switch concrete {
+	case "Array<u8>":
+		g.queueCDecl("willrt_show_str", "void", []string{"ptr", "i64", "ptr"})
+		fmt.Fprintf(g.out, "  %%d = load ptr, ptr %%data\n")
+		fmt.Fprintf(g.out, "  %%n = load i64, ptr %%data, i64 8\n")
+		call = "  call void @willrt_show_str(ptr %d, i64 %n, ptr %out)\n"
 	case "str":
 		g.queueCDecl("willrt_show_str", "void", []string{"ptr", "i64", "ptr"})
 		fmt.Fprintf(g.out, "  %%v = load { ptr, i64 }, ptr %%data\n")

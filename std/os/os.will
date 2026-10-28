@@ -15,9 +15,9 @@ import c "os.c" {
 # Args returns the process arguments for the lifetime of the process. The
 # returned view is borrowed; callers must not free it.
 def args() -> []str {
-    var args: []str
-    _ = c.willrt_os_args(raw(args))
-    return args
+    var out: []str
+    _ = c.willrt_os_args(raw(out))
+    return out
 }
 
 # Getenv reads one environment variable. A missing value and a value that is
