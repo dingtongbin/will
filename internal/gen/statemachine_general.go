@@ -309,15 +309,19 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 	fmt.Fprintf(g.out, "define hidden ptr @%s(%s) {\nentry:\n", llvmSymbol(sym+".task"), strings.Join(parts, ", "))
 	fmt.Fprintf(g.out, "  %%v.sm.frame = call ptr @willrt_alloc(i64 %d)\n", size)
 	g.emitGeneralFrameZero("%v.sm.frame", owners)
-	gcSlots, gcTypes := g.generalGCSlots(fnID, offsets)
-	for _, offset := range gcSlots {
-		ptr := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %%v.sm.frame, i64 %d\n",
-			ptr, offset)
-		fmt.Fprintf(g.out, "  store ptr null, ptr %s\n", ptr)
+	gcMap := "null"
+	resultType := "null"
+	if g.gcProgram != nil {
+		gcSlots, gcTypes := g.generalGCSlots(fnID, offsets)
+		for _, offset := range gcSlots {
+			ptr := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %%v.sm.frame, i64 %d\n",
+				ptr, offset)
+			fmt.Fprintf(g.out, "  store ptr null, ptr %s\n", ptr)
+		}
+		gcMap = g.taskGCMap(sym+".sm", gcSlots, gcTypes)
+		resultType = g.taskResultDescriptor(fieldText(g.recs[fnID], "type"))
 	}
-	gcMap := g.taskGCMap(sym+".sm", gcSlots, gcTypes)
-	resultType := g.taskResultDescriptor(fieldText(g.recs[fnID], "type"))
 	stateOffset := offsets[g.smStateSlot]
 	statePtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %%v.sm.frame, i64 %d\n", statePtr, stateOffset)
