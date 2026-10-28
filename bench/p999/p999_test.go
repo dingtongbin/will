@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -64,4 +65,30 @@ func TestP999(t *testing.T) {
 	if !strings.Contains(text, "safepoint_ns") {
 		t.Fatalf("missing measurement:\n%s", text)
 	}
+	checkP999(t, text, "alloc_ns", 200000)
+	checkP999(t, text, "safepoint_ns", 100000)
+}
+
+// checkP999 reads the p999 field of one probe line and enforces the documented
+// ceiling. The probe prints nanoseconds.
+func checkP999(t *testing.T, text, prefix string, ceiling int) {
+	t.Helper()
+	for _, line := range strings.Split(text, "\n") {
+		if !strings.HasPrefix(line, prefix) {
+			continue
+		}
+		index := strings.LastIndex(line, "p999=")
+		if index < 0 {
+			t.Fatalf("%s has no p999: %s", prefix, line)
+		}
+		value, err := strconv.Atoi(strings.TrimSpace(line[index+len("p999="):]))
+		if err != nil {
+			t.Fatalf("%s p999: %v", prefix, err)
+		}
+		if value > ceiling {
+			t.Fatalf("%s p999 = %dns, ceiling %dns", prefix, value, ceiling)
+		}
+		return
+	}
+	t.Fatalf("missing %s", prefix)
 }
