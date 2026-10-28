@@ -974,7 +974,7 @@ define hidden i32 @"std/os/exec.execError.status"(ptr %e) alwaysinline {
 entry:
   ret i32 7
 }
-define internal i32 @"std/os/exec.Cmd.async_run.sm"(ptr %frame) {
+define internal i32 @"std/os/exec.Cmd.run.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.27.12 = getelementptr i8, ptr %frame, i64 8
@@ -1231,7 +1231,7 @@ deep.rel.arr.done.6:
   ret i32 1
 
 }
-define hidden ptr @"std/os/exec.Cmd.async_run.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/exec.Cmd.run.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 288)
   %t139 = getelementptr i8, ptr %v.sm.frame, i64 16
@@ -1246,12 +1246,12 @@ entry:
   %t145 = select i1 %t144, i32 %t142, i32 %start
   br i1 %t143, label %sm.start.auto.7, label %sm.start.lane.7
 sm.start.auto.7:
-  %t146 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.async_run.sm", ptr %v.sm.frame, i64 288, i32 0, i32 0, ptr @"std/os/exec.Cmd.async_run.drop")
+  %t146 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.run.sm", ptr %v.sm.frame, i64 288, i32 0, i32 0, ptr @"std/os/exec.Cmd.run.drop")
   call void @willrt_task_own_frame(ptr %t146)
   call void @willrt_task_run_auto(ptr %t146)
   br label %sm.start.done.7
 sm.start.lane.7:
-  %t147 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.async_run.sm", ptr %v.sm.frame, i64 288, i32 %t145, i32 0, ptr @"std/os/exec.Cmd.async_run.drop")
+  %t147 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.run.sm", ptr %v.sm.frame, i64 288, i32 %t145, i32 0, ptr @"std/os/exec.Cmd.run.drop")
   call void @willrt_task_own_frame(ptr %t147)
   call void @willrt_task_run(ptr %t147)
   br label %sm.start.done.7
@@ -1259,7 +1259,7 @@ sm.start.done.7:
   %t148 = phi ptr [ %t146, %sm.start.auto.7 ], [ %t147, %sm.start.lane.7 ]
   ret ptr %t148
 }
-define internal void @"std/os/exec.Cmd.async_run.drop"(ptr %frame) {
+define internal void @"std/os/exec.Cmd.run.drop"(ptr %frame) {
 entry:
   %t149 = getelementptr i8, ptr %frame, i64 16
   %t150 = getelementptr inbounds { ptr, i64, i64 }, ptr %t149, i32 0, i32 0
@@ -1287,7 +1287,7 @@ deep.rel.arr.done.8:
   store { ptr, i64, i64 } zeroinitializer, ptr %t149
   ret void
 }
-define internal i32 @"std/os/exec.Cmd.async_output.sm"(ptr %frame) {
+define internal i32 @"std/os/exec.Cmd.output.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
   %v.sm.param.94.161 = getelementptr i8, ptr %frame, i64 8
@@ -1640,7 +1640,7 @@ deep.rel.arr.done.10:
   ret i32 1
 
 }
-define hidden ptr @"std/os/exec.Cmd.async_output.task"(ptr %arg0, i32 %start, i32 %owns) {
+define hidden ptr @"std/os/exec.Cmd.output.task"(ptr %arg0, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 576)
   %t330 = getelementptr i8, ptr %v.sm.frame, i64 64
@@ -1659,12 +1659,12 @@ entry:
   %t338 = select i1 %t337, i32 %t335, i32 %start
   br i1 %t336, label %sm.start.auto.11, label %sm.start.lane.11
 sm.start.auto.11:
-  %t339 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.async_output.sm", ptr %v.sm.frame, i64 576, i32 0, i32 0, ptr @"std/os/exec.Cmd.async_output.drop")
+  %t339 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.output.sm", ptr %v.sm.frame, i64 576, i32 0, i32 0, ptr @"std/os/exec.Cmd.output.drop")
   call void @willrt_task_own_frame(ptr %t339)
   call void @willrt_task_run_auto(ptr %t339)
   br label %sm.start.done.11
 sm.start.lane.11:
-  %t340 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.async_output.sm", ptr %v.sm.frame, i64 576, i32 %t338, i32 0, ptr @"std/os/exec.Cmd.async_output.drop")
+  %t340 = call ptr @willrt_task_new_drop(ptr @"std/os/exec.Cmd.output.sm", ptr %v.sm.frame, i64 576, i32 %t338, i32 0, ptr @"std/os/exec.Cmd.output.drop")
   call void @willrt_task_own_frame(ptr %t340)
   call void @willrt_task_run(ptr %t340)
   br label %sm.start.done.11
@@ -1672,7 +1672,7 @@ sm.start.done.11:
   %t341 = phi ptr [ %t339, %sm.start.auto.11 ], [ %t340, %sm.start.lane.11 ]
   ret ptr %t341
 }
-define internal void @"std/os/exec.Cmd.async_output.drop"(ptr %frame) {
+define internal void @"std/os/exec.Cmd.output.drop"(ptr %frame) {
 entry:
   %t342 = getelementptr i8, ptr %frame, i64 64
   %t343 = getelementptr inbounds { ptr, i64, i64 }, ptr %t342, i32 0, i32 0
@@ -1875,7 +1875,7 @@ sm.init:
   store %"struct.std/os/exec.Cmd" %t16, ptr %v.ret.8
   %t17 = load %"struct.std/os/exec.Cmd", ptr %v.ret.8
   store %"struct.std/os/exec.Cmd" %t17, ptr %v.command
-  %t18 = call ptr @"std/os/exec.Cmd.async_output.task"(ptr %v.command, i32 -2, i32 0)
+  %t18 = call ptr @"std/os/exec.Cmd.output.task"(ptr %v.command, i32 -2, i32 0)
   %t19 = call i32 @willrt_join(ptr %t18, ptr %v.await.out.18, ptr %v.await.err.18)
   %t20 = icmp eq i32 %t19, 0
   br i1 %t20, label %await.ok.1, label %await.fail.1
@@ -2381,7 +2381,7 @@ match.end.7:
   store %"struct.std/os/exec.Cmd" %t264, ptr %v.ret.58
   %t265 = load %"struct.std/os/exec.Cmd", ptr %v.ret.58
   store %"struct.std/os/exec.Cmd" %t265, ptr %v.failing
-  %t266 = call ptr @"std/os/exec.Cmd.async_run.task"(ptr %v.failing, i32 -2, i32 0)
+  %t266 = call ptr @"std/os/exec.Cmd.run.task"(ptr %v.failing, i32 -2, i32 0)
   %t267 = call i32 @willrt_join(ptr %t266, ptr %v.await.out.68, ptr %v.await.err.68)
   %t268 = icmp eq i32 %t267, 0
   br i1 %t268, label %await.ok.28, label %await.fail.28

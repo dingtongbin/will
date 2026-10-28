@@ -13,9 +13,9 @@ def (w: mut Writer) init(dst: byteWriter, sep: u8) {
     w.sep = sep
 }
 
-# AsyncEncode writes every row to the destination. The write is one call so a
+# Encode writes every row to the destination. The write is one call so a
 # Writer never sees a half-encoded record.
-async def (w: mut Writer) async_encode(rows: []Row) -> Result<(), Error> {
+async def (w: mut Writer) encode(rows: []Row) -> Result<(), Error> {
     var out: Array<u8> = new Array<u8>(0)
     for row in rows {
         var first: bool = True
@@ -34,9 +34,9 @@ async def (w: mut Writer) async_encode(rows: []Row) -> Result<(), Error> {
     return w.dst.write(out[Range(0, out.len())])
 }
 
-# AsyncFlush syncs the destination. Encode itself does not sync, so a caller
+# Flush syncs the destination. Encode itself does not sync, so a caller
 # that writes many batches pays for one flush.
-async def (w: ref Writer) async_flush() -> Result<(), Error> {
+async def (w: ref Writer) flush() -> Result<(), Error> {
     return w.dst.sync()
 }
 

@@ -53,7 +53,7 @@ def (p: mut Poller) remove(fd: i64) -> Result<(), Error> {
 
 # Next waits up to timeout for ready descriptors and appends their user tags to
 # out in registration order. Zero means the timeout expired.
-def (p: ref Poller) next(timeout: Duration, out: mut Array<usize>) -> Result<usize, Error> {
+def (p: ref Poller) next_blocking(timeout: Duration, out: mut Array<usize>) -> Result<usize, Error> {
     var before: usize = out.len()
     var status: i32 = c.willrt_poll_wait(raw(p.fds), raw(p.events), raw(p.users),
                                           i64(p.fds.len()), i64(timeout), raw(out))
@@ -63,10 +63,9 @@ def (p: ref Poller) next(timeout: Duration, out: mut Array<usize>) -> Result<usi
     return Ok(out.len() - before)
 }
 
-# AsyncNext parks the calling task while the runtime poller scans the
-# descriptors; the poller delivers ready tags into out and wakes the task's
-# lane directly.
-async def (p: ref Poller) async_next(timeout: Duration, out: mut Array<usize>) -> Result<usize, Error> {
+# Next parks the calling task while the runtime poller scans the descriptors;
+# the poller delivers ready tags into out and wakes the task's lane directly.
+async def (p: ref Poller) next(timeout: Duration, out: mut Array<usize>) -> Result<usize, Error> {
     var before: usize = out.len()
     var status: i32 = await c.willrt_poll_wait_async(raw(p.fds), raw(p.events),
                                                  raw(p.users), i64(p.fds.len()),

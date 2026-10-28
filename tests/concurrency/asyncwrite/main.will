@@ -2,7 +2,7 @@ import "std/os/fs"
 
 async def write(path: str) -> Result<(), Error> {
     var text: str = "worker"
-    return await fs.async_write_file(path, text[Range(0, 6)])
+    return await fs.write_file(path, text[Range(0, 6)])
 }
 
 async def main() -> i32 {
@@ -13,11 +13,11 @@ async def main() -> i32 {
         result = await task!
     }
     if result.is_err() {
-        _ = fs.remove(path)
+        _ = await fs.remove(path)
         return 1
     }
-    var loaded: Result<Array<u8>, Error> = fs.read_file(path)
-    _ = fs.remove(path)
+    var loaded: Result<Array<u8>, Error> = await fs.read_file(path)
+    _ = await fs.remove(path)
     match loaded {
         Ok(bytes) => {
             if bytes.len() != 6usize {

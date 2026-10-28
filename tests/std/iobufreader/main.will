@@ -7,7 +7,7 @@ struct source {
     pos: usize
 }
 
-def (s: mut source) read(out: mut Array<u8>) -> Result<usize, Error> {
+async def (s: mut source) read(out: mut Array<u8>) -> Result<usize, Error> {
     if s.pos >= s.data.len() {
         return Ok(0usize)
     }
@@ -20,7 +20,7 @@ def (s: mut source) read(out: mut Array<u8>) -> Result<usize, Error> {
     return Ok(2usize)
 }
 
-def main() -> i32 {
+async def main() -> i32 {
     var src: source = source { data: new Array<u8>(0), pos: 0usize }
     src.data.push(104u8)
     src.data.push(101u8)
@@ -29,28 +29,28 @@ def main() -> i32 {
     src.data.push(111u8)
     var reader: buf.ReaderBuf = new buf.ReaderBuf(src, 3usize)
     var first: Array<u8> = new Array<u8>(0)
-    if reader.read(first)! != 2usize {
+    if await reader.read(first)! != 2usize {
         return 1
     }
     if first.get(0) != 104u8 or first.get(1) != 101u8 {
         return 2
     }
     var second: Array<u8> = new Array<u8>(0)
-    if reader.read(second)! != 2usize {
+    if await reader.read(second)! != 2usize {
         return 3
     }
     if second.get(0) != 108u8 or second.get(1) != 108u8 {
         return 4
     }
     var third: Array<u8> = new Array<u8>(0)
-    if reader.read(third)! != 1usize {
+    if await reader.read(third)! != 1usize {
         return 5
     }
     if third.get(0) != 111u8 {
         return 6
     }
     var end: Array<u8> = new Array<u8>(0)
-    if reader.read(end)! != 0usize {
+    if await reader.read(end)! != 0usize {
         return 7
     }
     return 0

@@ -21,14 +21,14 @@ def (b: mut ReaderBuf) init(r: io.Reader, size: usize) {
 
 # Read appends the next buffered bytes to out. It returns the count appended;
 # zero means the wrapped Reader has no more bytes.
-def (b: mut ReaderBuf) read(out: mut Array<u8>) -> Result<usize, Error> {
+async def (b: mut ReaderBuf) read(out: mut Array<u8>) -> Result<usize, Error> {
     if b.limit == 0usize {
-        return b.src.read(out)
+        return await b.src.read(out)
     }
     if b.pos >= b.data.len() {
         b.data.clear()
         b.pos = 0usize
-        var n: usize = b.src.read(b.data)?
+        var n: usize = (await b.src.read(b.data))?
         if n == 0usize {
             return Ok(0usize)
         }

@@ -21,10 +21,10 @@ def (r: mut Reader) init(src: byteReader, sep: u8) {
     r.eof = False
 }
 
-# AsyncDecode appends the records that are available and returns how many it
+# Decode appends the records that are available and returns how many it
 # appended. It parses every complete record the last read filled, and 0 means
 # the stream has no more records.
-async def (r: mut Reader) async_decode(rows: mut Array<Row>) -> Result<usize, Error> {
+async def (r: mut Reader) decode(rows: mut Array<Row>) -> Result<usize, Error> {
     var added: usize = 0usize
     while True {
         var record: Option<Array<str>> = r.read_record()?

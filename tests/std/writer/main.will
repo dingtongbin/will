@@ -6,11 +6,11 @@ struct NullWriter {
     n: usize
 }
 
-def (w: ref NullWriter) write(buf: []u8) -> Result<(), Error> {
+async def (w: ref NullWriter) write(buf: []u8) -> Result<(), Error> {
     return Ok(())
 }
 
-def (w: ref NullWriter) sync() -> Result<(), Error> {
+async def (w: ref NullWriter) sync() -> Result<(), Error> {
     return Ok(())
 }
 
@@ -20,20 +20,20 @@ struct Wrap {
     inner: io.Writer
 }
 
-def (w: ref Wrap) write(buf: []u8) -> Result<(), Error> {
-    return w.inner.write(buf)
+async def (w: ref Wrap) write(buf: []u8) -> Result<(), Error> {
+    return await w.inner.write(buf)
 }
 
-def (w: ref Wrap) sync() -> Result<(), Error> {
-    return w.inner.sync()
+async def (w: ref Wrap) sync() -> Result<(), Error> {
+    return await w.inner.sync()
 }
 
 # sink takes the interface and calls a method whose result is an enum.
-def sink(w: io.Writer) -> Result<(), Error> {
+async def sink(w: io.Writer) -> Result<(), Error> {
     var storage: Array<u8> = new Array<u8>(0)
     var bytes: []u8 = storage[Range(0, storage.len())]
-    _ = w.write(bytes)?
-    _ = w.sync()?
+    _ = (await w.write(bytes))?
+    _ = (await w.sync())?
     return Ok(())
 }
 
@@ -47,7 +47,7 @@ struct Recorder {
     pad: usize
 }
 
-def (w: ref Recorder) write(buf: []u8) -> Result<(), Error> {
+async def (w: ref Recorder) write(buf: []u8) -> Result<(), Error> {
     var i: usize = 0
     while True {
         if i >= buf.len() {
@@ -63,15 +63,15 @@ def (w: ref Recorder) write(buf: []u8) -> Result<(), Error> {
     return Ok(())
 }
 
-def (w: ref Recorder) sync() -> Result<(), Error> {
+async def (w: ref Recorder) sync() -> Result<(), Error> {
     return Ok(())
 }
 
-def check_printf() -> i32 {
+async def check_printf() -> i32 {
     written = 0usize
     first = 0u8
     last = 0u8
-    match fmt.printf(Recorder{pad: 0usize}, "ab", 42i32) {
+    match await fmt.printf(Recorder{pad: 0usize}, "ab", 42i32) {
         Ok(_) => {}
         Err(_) => {
             return 3
@@ -86,17 +86,17 @@ def check_printf() -> i32 {
     return 0
 }
 
-def main() -> i32 {
+async def main() -> i32 {
     fmt.println("writer", 1i32)
     var null: NullWriter = NullWriter{n: 0}
     var wrapped: Wrap = Wrap{inner: null}
-    match sink(wrapped) {
+    match await sink(wrapped) {
         Ok(_) => {}
         Err(_) => {
             return 1
         }
     }
-    var code: i32 = check_printf()
+    var code: i32 = await check_printf()
     if code != 0 {
         return code
     }

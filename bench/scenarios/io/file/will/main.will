@@ -63,7 +63,7 @@ def percentile(xs: Array<u64>, num: i64, den: i64) -> u64 {
 }
 
 def open_read() -> Result<fs.File, Error> {
-    return fs.open(path, fs.OpenFlags { read: True, write: False, create: False, append: False, truncate: False, exclusive: False })
+    return fs.open_blocking(path, fs.OpenFlags { read: True, write: False, create: False, append: False, truncate: False, exclusive: False })
 }
 
 def main() -> i32 {
@@ -76,11 +76,11 @@ def main() -> i32 {
     var view: []u8 = block[Range(0, block.len())]
 
 
-    var created: Result<fs.File, Error> = fs.create(path, 420u32)
+    var created: Result<fs.File, Error> = fs.create_blocking(path, 420u32)
     match created {
         Ok(file) => {
             for _ in Range(0, i32(fileSize / blockSize)) {
-                _ = file.write(view)
+                _ = file.write_blocking(view)
             }
             _ = file.close()
         }
@@ -103,7 +103,7 @@ def main() -> i32 {
             Ok(file) => {
                 for _ in Range(0, reads) {
                     block.clear()
-                    var count: usize = file.read(block)!
+                    var count: usize = file.read_blocking(block)!
                     if block.len() > 0usize {
                         last0 = block[0]
                     }
@@ -130,9 +130,9 @@ def main() -> i32 {
                 for _ in Range(0, reads) {
                     state = lcg(state)
                     var at: usize = usize(state % 1024u64) * blockSize
-                    _ = file.seek(i64(at), 0)
+                    _ = file.seek_blocking(i64(at), 0)
                     block.clear()
-                    var count: usize = file.read(block)!
+                    var count: usize = file.read_blocking(block)!
                     if block.len() > 1usize {
                         last1 = block[1]
                     }
@@ -151,11 +151,11 @@ def main() -> i32 {
 
     for _ in Range(0, repetitions) {
         var start: i64 = i64(clock.elapsed())
-        var made: Result<fs.File, Error> = fs.create(path, 420u32)
+        var made: Result<fs.File, Error> = fs.create_blocking(path, 420u32)
         match made {
             Ok(file) => {
                 for _ in Range(0, i32(fileSize / blockSize)) {
-                    _ = file.write(view)
+                    _ = file.write_blocking(view)
                 }
                 _ = file.close()
             }
@@ -166,7 +166,7 @@ def main() -> i32 {
         var stop: i64 = i64(clock.elapsed())
         writes.push(u64(stop - start))
     }
-    _ = fs.remove(path)
+    _ = fs.remove_blocking(path)
 
     sort(sequential)
     sort(random)

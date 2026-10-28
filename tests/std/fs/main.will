@@ -4,10 +4,10 @@ def check_file() -> i32 {
     var path: str = "will-fs-probe.tmp"
     var data: str = "hello"
     var bytes: []u8 = data[Range(0, 5)]
-    var created: Result<fs.File, Error> = fs.create(path, 420u32)
+    var created: Result<fs.File, Error> = fs.create_blocking(path, 420u32)
     match created {
         Ok(file) => {
-            var wrote: Result<(), Error> = file.write(bytes)
+            var wrote: Result<(), Error> = file.write_blocking(bytes)
             match wrote {
                 Err(e) => {
                     if e.status() != 7 {
@@ -17,7 +17,7 @@ def check_file() -> i32 {
                 }
                 _ => {}
             }
-            var synced: Result<(), Error> = file.sync()
+            var synced: Result<(), Error> = file.sync_blocking()
             match synced {
                 Err(e) => {
                     if e.status() != 7 {
@@ -27,7 +27,7 @@ def check_file() -> i32 {
                 }
                 _ => {}
             }
-            var seeked: Result<i64, Error> = file.seek(0i64, 0)
+            var seeked: Result<i64, Error> = file.seek_blocking(0i64, 0)
             match seeked {
                 Err(e) => {
                     if e.status() != 7 {
@@ -38,7 +38,7 @@ def check_file() -> i32 {
                 _ => {}
             }
             var buf: Array<u8> = new Array<u8>(16)
-            var read: Result<usize, Error> = file.read(buf)
+            var read: Result<usize, Error> = file.read_blocking(buf)
             match read {
                 Ok(count) => {
                     if count != 5usize or buf.len() != 5usize {
@@ -75,7 +75,7 @@ def check_file() -> i32 {
     }
 
     var flags: fs.OpenFlags = fs.OpenFlags { read: True, write: False, create: False, append: False, truncate: False, exclusive: False }
-    var opened: Result<fs.File, Error> = fs.open(path, flags)
+    var opened: Result<fs.File, Error> = fs.open_blocking(path, flags)
     match opened {
         Ok(file) => {
             _ = file.close()
@@ -85,7 +85,7 @@ def check_file() -> i32 {
         }
     }
 
-    var info: Result<fs.StatInfo, Error> = fs.stat(path)
+    var info: Result<fs.StatInfo, Error> = fs.stat_blocking(path)
     match info {
         Ok(stat) => {
             if stat.size != 5i64 or stat.isDir {
@@ -100,7 +100,7 @@ def check_file() -> i32 {
         }
     }
 
-    var renamed: Result<(), Error> = fs.rename(path, "will-fs-probe2.tmp")
+    var renamed: Result<(), Error> = fs.rename_blocking(path, "will-fs-probe2.tmp")
     match renamed {
         Err(e) => {
             if e.status() != 7 {
@@ -110,7 +110,7 @@ def check_file() -> i32 {
         }
         _ => {}
     }
-    var removed: Result<(), Error> = fs.remove("will-fs-probe2.tmp")
+    var removed: Result<(), Error> = fs.remove_blocking("will-fs-probe2.tmp")
     match removed {
         Err(e) => {
             if e.status() != 7 {
@@ -126,7 +126,7 @@ def check_file() -> i32 {
 def check_dir() -> i32 {
     var first: str = "will-fs-a.tmp"
     var second: str = "will-fs-b.tmp"
-    var a: Result<fs.File, Error> = fs.create(first, 420u32)
+    var a: Result<fs.File, Error> = fs.create_blocking(first, 420u32)
     match a {
         Ok(file) => {
             _ = file.close()
@@ -135,18 +135,18 @@ def check_dir() -> i32 {
             return 26
         }
     }
-    var b: Result<fs.File, Error> = fs.create(second, 420u32)
+    var b: Result<fs.File, Error> = fs.create_blocking(second, 420u32)
     match b {
         Ok(file) => {
             _ = file.close()
         }
         Err(_) => {
-            _ = fs.remove(first)
+            _ = fs.remove_blocking(first)
             return 27
         }
     }
 
-    var dir: Result<Array<fs.DirEntry>, Error> = fs.read_dir(".")
+    var dir: Result<Array<fs.DirEntry>, Error> = fs.read_dir_blocking(".")
     match dir {
         Ok(entries) => {
             var aPos: i32 = -1
@@ -160,15 +160,15 @@ def check_dir() -> i32 {
                     bPos = i
                 }
             }
-            _ = fs.remove(first)
-            _ = fs.remove(second)
+            _ = fs.remove_blocking(first)
+            _ = fs.remove_blocking(second)
             if aPos < 0 or bPos < 0 or aPos > bPos {
                 return 23
             }
         }
         Err(e) => {
-            _ = fs.remove(first)
-            _ = fs.remove(second)
+            _ = fs.remove_blocking(first)
+            _ = fs.remove_blocking(second)
             if e.status() != 7 {
                 return 24
             }
@@ -182,21 +182,21 @@ async def check_async() -> i32 {
     var path: str = "will-fs-async.tmp"
     var text: str = "async"
     var data: []u8 = text[Range(0, 5)]
-    var written: Result<(), Error> = await fs.async_write_file(path, data)
+    var written: Result<(), Error> = await fs.write_file(path, data)
     match written {
         Err(_) => {
             return 30
         }
         _ => {}
     }
-    var loaded: Result<Array<u8>, Error> = await fs.async_read_file(path)
+    var loaded: Result<Array<u8>, Error> = await fs.read_file(path)
     match loaded {
         Ok(bytes) => {
             if bytes.len() != 5usize or bytes.get(0) != 97u8 {
-                _ = fs.remove(path)
+                _ = fs.remove_blocking(path)
                 return 31
             }
-            _ = fs.remove(path)
+            _ = fs.remove_blocking(path)
         }
         Err(_) => {
             return 32

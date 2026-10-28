@@ -1,7 +1,7 @@
 import "std/os/exec"
 
 async def run(cmd: exec.Cmd) -> Result<exec.ExitStatus, Error> {
-    var status: Result<exec.ExitStatus, Error> = await cmd.async_run()
+    var status: Result<exec.ExitStatus, Error> = await cmd.run()
     return status
 }
 

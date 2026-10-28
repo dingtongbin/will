@@ -2,7 +2,7 @@ import "std/os/fs"
 
 async def mix(ch: chan<i32>, path: str) -> Result<(), Error> {
     var one: str = "m"
-    _ = await fs.async_append(path, one[Range(0, 1)])?
+    _ = await fs.append(path, one[Range(0, 1)])?
     _ = await ch.send(7)
     return Ok(())
 }

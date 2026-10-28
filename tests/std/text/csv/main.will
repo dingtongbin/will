@@ -128,7 +128,7 @@ def fields_equal(row: csv.Row, expected: ...str) -> bool {
 async def decode_all(reader: mut csv.Reader, rows: mut Array<csv.Row>) -> Result<usize, Error> {
     var total: usize = 0usize
     while True {
-        var batch: Result<usize, Error> = await reader.async_decode(rows)
+        var batch: Result<usize, Error> = await reader.decode(rows)
         match batch {
             Ok(n) => {
                 if n == 0usize {
@@ -267,14 +267,14 @@ async def main() -> i32 {
     outRows.push(row_of("x\ny", "z", ""))
     var shared: rc<Buffer> = new rc<Buffer>(Buffer { data: new Array<u8>(0) })
     var writer: csv.Writer = new csv.Writer(Sink { data: shared }, 44u8)
-    match await writer.async_encode(outRows[Range(0, outRows.len())]) {
+    match await writer.encode(outRows[Range(0, outRows.len())]) {
         Ok(_) => {
         }
         Err(_) => {
             return 17
         }
     }
-    match await writer.async_flush() {
+    match await writer.flush() {
         Ok(_) => {
         }
         Err(_) => {
@@ -321,7 +321,7 @@ async def main() -> i32 {
         chunk: 4usize,
     }
     var badReader: csv.Reader = new csv.Reader(badSource, 44u8)
-    if not failed(await badReader.async_decode(badRows)) {
+    if not failed(await badReader.decode(badRows)) {
         return 23
     }
 
@@ -332,7 +332,7 @@ async def main() -> i32 {
         chunk: 2usize,
     }
     var openReader: csv.Reader = new csv.Reader(openSource, 44u8)
-    if not failed(await openReader.async_decode(openRows)) {
+    if not failed(await openReader.decode(openRows)) {
         return 24
     }
 
@@ -343,7 +343,7 @@ async def main() -> i32 {
         chunk: 2usize,
     }
     var utfReader: csv.Reader = new csv.Reader(utfSource, 44u8)
-    if not failed(await utfReader.async_decode(utfRows)) {
+    if not failed(await utfReader.decode(utfRows)) {
         return 25
     }
     return 0

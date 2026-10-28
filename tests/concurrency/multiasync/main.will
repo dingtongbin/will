@@ -3,9 +3,9 @@ import "std/time"
 
 async def fill(path: str) -> Result<(), Error> {
     var one: str = "a"
-    _ = await fs.async_write_file(path, one[Range(0, 1)])?
+    _ = await fs.write_file(path, one[Range(0, 1)])?
     _ = await time.sleep(1ms)!
-    _ = await fs.async_append(path, one[Range(0, 1)])?
+    _ = await fs.append(path, one[Range(0, 1)])?
     return Ok(())
 }
 
@@ -17,11 +17,11 @@ async def main() -> i32 {
         result = await task!
     }
     if result.is_err() {
-        _ = fs.remove(path)
+        _ = await fs.remove(path)
         return 1
     }
-    var loaded: Result<Array<u8>, Error> = fs.read_file(path)
-    _ = fs.remove(path)
+    var loaded: Result<Array<u8>, Error> = await fs.read_file(path)
+    _ = await fs.remove(path)
     match loaded {
         Ok(bytes) => {
             if bytes.len() != 2usize {

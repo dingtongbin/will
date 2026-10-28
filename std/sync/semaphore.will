@@ -6,7 +6,6 @@ import "std/errors"
 import c "sync.h" {
     fast willrt_sync_sema_new
     fast willrt_sync_sema_acquire_async
-    fast willrt_sync_sema_try_acquire
     fast willrt_sync_sema_release
 }
 
@@ -43,10 +42,4 @@ async def (s: ref Semaphore) acquire() -> Result<Permit, Error> {
     return Err(errors.Io)
 }
 
-# TryAcquire takes one permit without waiting.
-def (s: ref Semaphore) try_acquire() -> Option<Permit> {
-    if c.willrt_sync_sema_try_acquire(s.handle) != 0 {
-        return Some(Permit { handle: s.handle })
-    }
-    return None
-}
+

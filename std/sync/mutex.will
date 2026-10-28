@@ -4,7 +4,6 @@
 import c "lock.h" {
     fast willrt_sync_lock_new
     fast willrt_sync_lock_async
-    fast willrt_sync_lock_try
     fast willrt_sync_unlock
 }
 
@@ -16,7 +15,7 @@ struct MutexState<T> {
 }
 
 # Mutex serializes access to one value. Lock parks the caller until the write
-# side is free; TryLock takes it only when it is free now.
+# side is free.
 struct Mutex<T> {
     state: arc<MutexState<T>>
 }
@@ -44,14 +43,6 @@ async def (m: ref Mutex<T>) lock() -> Guard<T> {
         return Guard<T> { state: m.state, held: True, mode: 0 }
     }
     return Guard<T> { state: m.state, held: False, mode: 0 }
-}
-
-# TryLock takes the write side without waiting.
-def (m: ref Mutex<T>) try_lock() -> Option<Guard<T>> {
-    if c.willrt_sync_lock_try(m.state.lock, 0) != 0 {
-        return Some(Guard<T> { state: m.state, held: True, mode: 0 })
-    }
-    return None
 }
 
 # RwLock allows several readers or one writer.
@@ -84,14 +75,6 @@ async def (r: ref RwLock<T>) r_lock() -> ReadGuard<T> {
     return ReadGuard<T> { state: r.state, held: False, mode: 1 }
 }
 
-# TryRLock joins the reader side without waiting.
-def (r: ref RwLock<T>) try_rlock() -> Option<ReadGuard<T>> {
-    if c.willrt_sync_lock_try(r.state.lock, 1) != 0 {
-        return Some(ReadGuard<T> { state: r.state, held: True, mode: 1 })
-    }
-    return None
-}
-
 # WLock waits for every holder to leave and returns the write side.
 async def (r: ref RwLock<T>) w_lock() -> Guard<T> {
     var status: i32 = await c.willrt_sync_lock_async(r.state.lock, 0)
@@ -101,10 +84,4 @@ async def (r: ref RwLock<T>) w_lock() -> Guard<T> {
     return Guard<T> { state: r.state, held: False, mode: 0 }
 }
 
-# TryWLock takes the write side without waiting.
-def (r: ref RwLock<T>) try_wlock() -> Option<Guard<T>> {
-    if c.willrt_sync_lock_try(r.state.lock, 0) != 0 {
-        return Some(Guard<T> { state: r.state, held: True, mode: 0 })
-    }
-    return None
-}
+

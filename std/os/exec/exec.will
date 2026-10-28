@@ -21,7 +21,7 @@ def (e: ref execError) status() -> i32 {
 }
 
 # AsyncRun runs c and returns its exit status.
-async def (cmd: ref Cmd) async_run() -> Result<ExitStatus, Error> {
+async def (cmd: ref Cmd) run() -> Result<ExitStatus, Error> {
     var envpairs: Array<str> = new Array<str>(0)
     for key, value in cmd.env {
         envpairs.push(key)
@@ -37,7 +37,7 @@ async def (cmd: ref Cmd) async_run() -> Result<ExitStatus, Error> {
 }
 
 # AsyncOutput runs c and captures both output streams.
-async def (cmd: ref Cmd) async_output() -> Result<Output, Error> {
+async def (cmd: ref Cmd) output() -> Result<Output, Error> {
     var envpairs: Array<str> = new Array<str>(0)
     for key, value in cmd.env {
         envpairs.push(key)

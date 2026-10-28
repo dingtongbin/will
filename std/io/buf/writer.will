@@ -19,40 +19,40 @@ def (b: mut WriterBuf) init(w: io.Writer, size: usize) {
 }
 
 # Write appends bytes, flushing first when they would not fit.
-def (b: mut WriterBuf) write(bytes: []u8) -> Result<(), Error> {
+async def (b: mut WriterBuf) write(bytes: []u8) -> Result<(), Error> {
     if b.limit == 0usize {
-        return b.dst.write(bytes)
+        return await b.dst.write(bytes)
     }
     if b.data.len() == 0usize and bytes.len() >= b.limit {
-        return b.dst.write(bytes)
+        return await b.dst.write(bytes)
     }
     if b.data.len() + bytes.len() > b.limit {
-        _ = b.flush()?
+        _ = (await b.flush())?
     }
     if bytes.len() >= b.limit {
-        return b.dst.write(bytes)
+        return await b.dst.write(bytes)
     }
     b.data.append(bytes)
     if b.data.len() >= b.limit {
-        _ = b.flush()?
+        _ = (await b.flush())?
     }
     return Ok(())
 }
 
 # Flush writes the buffered bytes. The buffer is copied first so the write does
 # not alias the array it clears.
-def (b: mut WriterBuf) flush() -> Result<(), Error> {
+async def (b: mut WriterBuf) flush() -> Result<(), Error> {
     if b.data.len() != 0usize {
         var out: Array<u8> = b.data.clone()
         var n: usize = out.len()
         b.data.clear()
-        _ = b.dst.write(out[Range(0, n)])?
+        _ = (await b.dst.write(out[Range(0, n)]))?
     }
     return Ok(())
 }
 
 # Sync flushes the buffer and syncs the wrapped Writer.
-def (b: mut WriterBuf) sync() -> Result<(), Error> {
-    _ = b.flush()?
-    return b.dst.sync()
+async def (b: mut WriterBuf) sync() -> Result<(), Error> {
+    _ = (await b.flush())?
+    return await b.dst.sync()
 }

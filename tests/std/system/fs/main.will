@@ -5,9 +5,9 @@ def main() -> i32 {
     var data: Array<u8> = new Array<u8>(0)
     data.push(65u8)
     data.push(66u8)
-    var wrote: Result<(), Error> = fs.write_file(path, data[Range(0, data.len())])
+    var wrote: Result<(), Error> = fs.write_file_blocking(path, data[Range(0, data.len())])
     _ = wrote
-    var read: Result<Array<u8>, Error> = fs.read_file(path)
+    var read: Result<Array<u8>, Error> = fs.read_file_blocking(path)
     var got: Array<u8> = new Array<u8>(0)
     match read {
         Ok(v) => { got = v }

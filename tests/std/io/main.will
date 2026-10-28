@@ -1,18 +1,18 @@
 import "std/io"
 import "std/os/fs"
 
-def check_read_all() -> i32 {
+async def check_read_all() -> i32 {
     var path: str = "will-io-probe.tmp"
-    var made: Result<fs.File, Error> = fs.create(path, 420u32)
+    var made: Result<fs.File, Error> = await fs.create(path, 420u32)
     match made {
         Ok(file) => {
             var text: str = "abc"
-            _ = file.write(text[Range(0, 3)])
-            _ = file.seek(0i64, 0)
+            _ = await file.write(text[Range(0, 3)])
+            _ = await file.seek(0i64, 0)
             var buf: Array<u8> = new Array<u8>(0)
-            var count: usize = io.read_all(file, buf)!
+            var count: usize = (await io.read_all(file, buf))!
             _ = file.close()
-            _ = fs.remove(path)
+            _ = await fs.remove(path)
             if count != 3usize or buf.len() != 3usize {
                 return 5
             }
@@ -25,13 +25,13 @@ def check_read_all() -> i32 {
 }
 
 async def main() -> i32 {
-    var readCode: i32 = check_read_all()
+    var readCode: i32 = await check_read_all()
     if readCode != 0 {
         return readCode
     }
     var poller: io.Poller = io.new_poller()
     var out: Array<usize> = new Array<usize>(0)
-    var next: Result<usize, Error> = poller.next(0ns, out)
+    var next: Result<usize, Error> = poller.next_blocking(0ns, out)
     match next {
         Ok(count) => {
             if count != 0usize {
@@ -43,7 +43,7 @@ async def main() -> i32 {
         }
     }
 
-    var asyncNext: Result<usize, Error> = await poller.async_next(0ns, out)
+    var asyncNext: Result<usize, Error> = await poller.next(0ns, out)
     match asyncNext {
         Ok(count) => {
             if count != 0usize {

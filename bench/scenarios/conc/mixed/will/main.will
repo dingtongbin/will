@@ -62,7 +62,7 @@ async def io_worker(path: str, base: i32) -> i32 {
     for i in Range(0, ioPerWorker) {
         var slot: i32 = base + i
         c.bench_latency_start(slot)
-        var bytes: Array<u8> = await fs.async_read_file(path)!
+        var bytes: Array<u8> = await fs.read_file(path)!
         for b in bytes {
             sum += i32(b)
         }
@@ -77,7 +77,7 @@ def fill(path: str) -> bool {
     for i in Range(0, fileSize) {
         data.push(u8(i % 251))
     }
-    var written: Result<(), Error> = fs.write_file(path, data[Range(0, usize(fileSize))])
+    var written: Result<(), Error> = await fs.write_file(path, data[Range(0, usize(fileSize))])
     match written {
         Err(_) => {
             return False
@@ -128,7 +128,7 @@ async def main() -> i32 {
         rounds.push(roundStop - roundStart)
         c.bench_sink(u64(checksum))
     }
-    _ = fs.remove(path)
+    _ = await fs.remove(path)
 
     bench.sort_samples(io)
     bench.sort_samples(cpu)

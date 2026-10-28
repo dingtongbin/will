@@ -10,8 +10,8 @@ def println(parts: ...Show) {
 }
 
 # Printf writes the shown parts to w and reports the first write error.
-def printf(w: io.Writer, parts: ...Show) -> Result<(), Error> {
+async def printf(w: io.Writer, parts: ...Show) -> Result<(), Error> {
     var text: str = text_of(parts)
     var n: usize = text.len()
-    return w.write(text[Range(0, n)])
+    return await w.write(text[Range(0, n)])
 }
