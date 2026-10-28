@@ -70,6 +70,34 @@ void willrt_os_free_pages(void* ptr, size_t size) {
     VirtualFree(ptr, 0, MEM_RELEASE);
 }
 
+void* willrt_os_reserve_pages(size_t size) {
+    if (size == 0) {
+        size = 1;
+    }
+    return VirtualAlloc(NULL, size, MEM_RESERVE, PAGE_NOACCESS);
+}
+
+int32_t willrt_os_commit_pages(void* ptr, size_t size) {
+    if (ptr == NULL || size == 0) {
+        return -1;
+    }
+    return VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE) == NULL ? -1 : 0;
+}
+
+void willrt_os_release_pages(void* ptr, size_t size) {
+    (void)size;
+    if (ptr != NULL) {
+        VirtualFree(ptr, 0, MEM_RELEASE);
+    }
+}
+
+size_t willrt_os_page_size(void) {
+    SYSTEM_INFO info;
+
+    GetSystemInfo(&info);
+    return info.dwPageSize == 0 ? 4096u : (size_t)info.dwPageSize;
+}
+
 typedef struct willrt_win_thread {
     HANDLE handle;
     void (*fn)(void*);

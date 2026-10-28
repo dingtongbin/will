@@ -34,6 +34,17 @@ void* willrt_os_alloc_pages(size_t size);
    the value passed to that call. NULL is accepted. */
 void willrt_os_free_pages(void* ptr, size_t size);
 
+/* willrt_os_reserve_pages reserves a page-aligned address range without
+   committing it. willrt_os_commit_pages makes a page-aligned subrange
+   readable and writable; it returns 0 on success and -1 on failure.
+   willrt_os_release_pages releases a whole reservation. */
+void* willrt_os_reserve_pages(size_t size);
+int32_t willrt_os_commit_pages(void* ptr, size_t size);
+void willrt_os_release_pages(void* ptr, size_t size);
+
+/* willrt_os_page_size returns the target's page size, never below 4096. */
+size_t willrt_os_page_size(void);
+
 /* willrt_os_now_ns returns the platform's monotonic clock in nanoseconds. It
    never goes backwards. Zero is returned when the platform call fails. */
 int64_t willrt_os_now_ns(void);

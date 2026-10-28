@@ -8,6 +8,7 @@
 #ifndef WILLRT_WILLRT_GC_H
 #define WILLRT_WILLRT_GC_H
 
+#include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -23,7 +24,7 @@
 #define WILLRT_GC_OBJECT_ALIGN 8u
 
 typedef struct willrt_gc_header {
-    uint64_t state;
+    _Atomic uint64_t state;
 } willrt_gc_header;
 
 _Static_assert(sizeof(willrt_gc_header) == WILLRT_GC_OBJECT_HEADER_SIZE,

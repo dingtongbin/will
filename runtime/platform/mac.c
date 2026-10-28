@@ -1,5 +1,6 @@
 
 #include <stdlib.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include "../include/willrt.h"
@@ -8,6 +9,52 @@ int32_t willrt_os_cpu_count(void) {
     long count = sysconf(_SC_NPROCESSORS_ONLN);
 
     return count < 1 ? 1 : (int32_t)count;
+}
+
+void* willrt_os_alloc_pages(size_t size) {
+    void* memory;
+
+    if (size == 0) {
+        size = 1;
+    }
+    memory = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                  MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    return memory == MAP_FAILED ? NULL : memory;
+}
+
+void willrt_os_free_pages(void* ptr, size_t size) {
+    if (ptr != NULL) {
+        munmap(ptr, size == 0 ? 1 : size);
+    }
+}
+
+void* willrt_os_reserve_pages(size_t size) {
+    void* memory;
+
+    if (size == 0) {
+        size = 1;
+    }
+    memory = mmap(NULL, size, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    return memory == MAP_FAILED ? NULL : memory;
+}
+
+int32_t willrt_os_commit_pages(void* ptr, size_t size) {
+    if (ptr == NULL || size == 0) {
+        return -1;
+    }
+    return mprotect(ptr, size, PROT_READ | PROT_WRITE) == 0 ? 0 : -1;
+}
+
+void willrt_os_release_pages(void* ptr, size_t size) {
+    if (ptr != NULL) {
+        munmap(ptr, size == 0 ? 1 : size);
+    }
+}
+
+size_t willrt_os_page_size(void) {
+    long size = sysconf(_SC_PAGESIZE);
+
+    return size < 4096 ? 4096u : (size_t)size;
 }
 
 typedef struct willrt_posix_thread {
