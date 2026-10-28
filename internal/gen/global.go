@@ -48,6 +48,9 @@ func (g *generator) collectGlobals() {
 			if g.isClassText(text) {
 				g.needGCDecl = true
 				g.gcGlobalRoots = append(g.gcGlobalRoots, info.sym)
+			} else if _, ok := g.ifaceOfText(text); ok {
+				g.needGCDecl = true
+				g.gcGlobalRoots = append(g.gcGlobalRoots, info.sym)
 			}
 		}
 		for _, r := range d.recs {
@@ -133,6 +136,13 @@ func (g *generator) emitInit(d *docState) error {
 			}
 			if _, err := g.ifaceStoreValue(ptr, child, iface, sourceText); err != nil {
 				return err
+			}
+			if g.gcProgram != nil {
+				dataPtr, _ := g.ifaceWords(ptr, iface)
+				data := g.load("ptr", dataPtr)
+				g.needGCDecl = true
+				fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+					ptr, data)
 			}
 			continue
 		}

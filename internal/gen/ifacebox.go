@@ -2,6 +2,8 @@ package gen
 
 import (
 	"fmt"
+
+	"github.com/will-lang/will/internal/gcmeta"
 )
 
 // ifaceStoreValue writes an owned interface value: it deep-copies the source
@@ -18,41 +20,77 @@ func (g *generator) ifaceStoreValue(dst string, valueID int, iface *ifaceInfo, s
 // source keeps its own owner and can be released independently.
 func (g *generator) ifaceOwnedValue(dst string, valueID int, iface *ifaceInfo, concrete string) (string, error) {
 	concrete = g.canonicalTypeText(concrete)
-	expected, ok := g.typeLLVMOf(concrete)
-	if !ok || expected == "" {
+	if g.gcProgram != nil {
+		if g.isClassText(concrete) {
+			value, err := g.value(valueID)
+			if err != nil {
+				return "", err
+			}
+			return g.storeIfaceBox(dst, iface, value, concrete)
+		}
+		if expected, ok := g.typeLLVMOf(concrete); ok && expected != "" {
+			inline, ok := g.inlineGCType(concrete)
+			if !ok {
+				return "", g.errf(valueID, "cannot lower interface box for %s", concrete)
+			}
+			g.needGCDecl = true
+			box := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_alloc(i64 %d, ptr %s)\n",
+				box, inline.Size, gcmeta.DescriptorSymbol(inline.Name))
+			if isAggregateType(expected) {
+				src, srcType, err := g.place(valueID)
+				if err != nil {
+					return "", err
+				}
+				if srcType != expected {
+					return "", g.errf(valueID, "cannot translate node #%d: the value needs %s", valueID, expected)
+				}
+				g.copyValue(src, box, expected)
+			} else {
+				value, err := g.value(valueID)
+				if err != nil {
+					return "", err
+				}
+				fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", expected, value, box)
+			}
+			return g.storeIfaceBox(dst, iface, box, concrete)
+		}
+	}
+	if expected, ok := g.typeLLVMOf(concrete); !ok || expected == "" {
 		return "", g.errf(valueID, "cannot translate node #%d: %s is not lowered yet", valueID, concrete)
-	}
-	g.needAllocDecl = true
-	box := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", box, g.sizeOf(expected))
-	if isAggregateType(expected) {
-		src, srcType, err := g.place(valueID)
-		if err != nil {
-			return "", err
-		}
-		if srcType != expected {
-			return "", g.errf(valueID, "cannot translate node #%d: the value needs %s", valueID, expected)
-		}
-		if err := g.cloneOwnedValue(src, box, concrete); err != nil {
-			return "", err
-		}
 	} else {
-		value, err := g.value(valueID)
-		if err != nil {
-			return "", err
+		g.needAllocDecl = true
+		box := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", box, g.sizeOf(expected))
+		if isAggregateType(expected) {
+			src, srcType, err := g.place(valueID)
+			if err != nil {
+				return "", err
+			}
+			if srcType != expected {
+				return "", g.errf(valueID, "cannot translate node #%d: the value needs %s", valueID, expected)
+			}
+			if err := g.cloneOwnedValue(src, box, concrete); err != nil {
+				return "", err
+			}
+		} else {
+			value, err := g.value(valueID)
+			if err != nil {
+				return "", err
+			}
+			if isRcText(concrete) {
+				g.needRcDecl = true
+				fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
+			}
+			if isChanText(concrete) {
+				g.needTaskDecl = true
+				g.needChanDecl = true
+				fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
+			}
+			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", expected, value, box)
 		}
-		if isRcText(concrete) {
-			g.needRcDecl = true
-			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-		}
-		if isChanText(concrete) {
-			g.needTaskDecl = true
-			g.needChanDecl = true
-			fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
-		}
-		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", expected, value, box)
+		return g.storeIfaceBox(dst, iface, box, concrete)
 	}
-	return g.storeIfaceBox(dst, iface, box, concrete)
 }
 
 // ifaceCloneValue copies an interface value by calling the concrete clone
@@ -144,8 +182,10 @@ func (g *generator) releaseIfaceValue(ptr string, iface *ifaceInfo) error {
 		fnPtr, ifaceTableSize(iface), table, ifaceDropIndex(iface))
 	fn := g.load("ptr", fnPtr)
 	fmt.Fprintf(g.out, "  call void %s(ptr %s)\n", fn, data)
-	g.needAllocDecl = true
-	fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
+	if g.gcProgram == nil {
+		g.needAllocDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
+	}
 	fmt.Fprintf(g.out, "  store ptr null, ptr %s\n", dataPtr)
 	fmt.Fprintf(g.out, "  store ptr null, ptr %s\n", tablePtr)
 	fmt.Fprintf(g.out, "  br label %%%s\n", done)
@@ -169,9 +209,53 @@ func (g *generator) emitIfaceThunks() error {
 	return nil
 }
 
+// emitGCIfaceThunk writes the clone and drop pair for a class-bearing module.
+// A class interface points directly at the class payload, so cloning shares
+// the reference and dropping does nothing. A struct payload lives in a GC box,
+// so cloning copies the inline value into a new box and dropping leaves the box
+// to the collector.
+func (g *generator) emitGCIfaceThunk(t ifaceThunk) error {
+	if t.iface == nil || t.concrete == "" {
+		return nil
+	}
+	typ, ok := g.typeLLVMOf(t.concrete)
+	if !ok || typ == "" {
+		return fmt.Errorf("interface concrete type %s is not lowered", t.concrete)
+	}
+	if g.isClassText(t.concrete) {
+		fmt.Fprintf(g.out, "define internal ptr @%s(ptr %%data) {\nentry:\n  ret ptr %%data\n}\n",
+			llvmSymbol(t.clone))
+		fmt.Fprintf(g.out, "define internal void @%s(ptr %%data) {\nentry:\n  ret void\n}\n",
+			llvmSymbol(t.drop))
+		return nil
+	}
+	inline, ok := g.inlineGCType(t.concrete)
+	if !ok {
+		return fmt.Errorf("interface box type %s has no inline descriptor", t.concrete)
+	}
+	g.needGCDecl = true
+	fmt.Fprintf(g.out, "define internal ptr @%s(ptr %%data) {\nentry:\n", llvmSymbol(t.clone))
+	box := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_alloc(i64 %d, ptr %s)\n",
+		box, inline.Size, gcmeta.DescriptorSymbol(inline.Name))
+	if isAggregateType(typ) {
+		g.copyValue("%data", box, typ)
+	} else {
+		value := g.load(typ, "%data")
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, box)
+	}
+	fmt.Fprintf(g.out, "  ret ptr %s\n}\n", box)
+	fmt.Fprintf(g.out, "define internal void @%s(ptr %%data) {\nentry:\n  ret void\n}\n",
+		llvmSymbol(t.drop))
+	return nil
+}
+
 func (g *generator) emitIfaceThunk(t ifaceThunk) error {
 	if t.iface == nil || t.concrete == "" {
 		return nil
+	}
+	if g.gcProgram != nil {
+		return g.emitGCIfaceThunk(t)
 	}
 	typ, ok := g.typeLLVMOf(t.concrete)
 	if !ok || typ == "" {

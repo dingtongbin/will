@@ -20,6 +20,9 @@ type gcFrameInfo struct {
 // parameters of the current function. The array is the frame base the runtime
 // scans; every write to it goes through the write barrier.
 func (g *generator) setupGCFrame(fn int) error {
+	if g.gcProgram == nil || g.smGeneral || g.smMode {
+		return nil
+	}
 	type rootDecl struct {
 		id   int
 		text string
@@ -33,6 +36,8 @@ func (g *generator) setupGCFrame(fn int) error {
 		text := fieldText(r, "type")
 		if g.isClassText(text) {
 			roots = append(roots, rootDecl{id: r.ID, text: text})
+		} else if _, ok := g.ifaceOfText(text); ok {
+			roots = append(roots, rootDecl{id: r.ID, text: text})
 		}
 	}
 	var locals []willc.Record
@@ -40,7 +45,10 @@ func (g *generator) setupGCFrame(fn int) error {
 		if r.Kind != "var" || g.enclosingFunc(r.ID) != fn {
 			continue
 		}
-		if g.isClassText(fieldText(r, "type")) {
+		text := fieldText(r, "type")
+		if g.isClassText(text) {
+			locals = append(locals, r)
+		} else if _, ok := g.ifaceOfText(text); ok {
 			locals = append(locals, r)
 		}
 	}
@@ -82,7 +90,7 @@ func (g *generator) setupGCFrame(fn int) error {
 		if t, ok := g.classTypeOfText(root.text); ok {
 			info.Types = append(info.Types, t.Name)
 		} else {
-			info.Types = append(info.Types, root.text)
+			info.Types = append(info.Types, "")
 		}
 	}
 	// A parameter or receiver already owns a root in its caller. Mirror it into
@@ -92,6 +100,10 @@ func (g *generator) setupGCFrame(fn int) error {
 		if !ok {
 			continue
 		}
+		if iface, ok := g.ifaceOfText(root.text); ok {
+			dataPtr, _ := g.ifaceWords(value, iface)
+			value = g.load("ptr", dataPtr)
+		}
 		fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
 			g.gcRootSlots[root.id], value)
 	}
@@ -99,6 +111,21 @@ func (g *generator) setupGCFrame(fn int) error {
 		frameSlot, g.gcFrameMap, rootsSlot)
 	g.gcFrames = append(g.gcFrames, info)
 	return nil
+}
+
+// storeIfaceRoot mirrors the data word of one interface local into the GC
+// frame. The vtable word is static metadata and never a root.
+func (g *generator) storeIfaceRoot(decl int, slot string, iface *ifaceInfo) {
+	if decl == 0 || g.gcRootSlots == nil || iface == nil {
+		return
+	}
+	root := g.gcRootSlots[decl]
+	if root == "" {
+		return
+	}
+	dataPtr, _ := g.ifaceWords(slot, iface)
+	data := g.load("ptr", dataPtr)
+	g.storeClassRoot(decl, data)
 }
 
 func (g *generator) storeClassRoot(decl int, value string) {

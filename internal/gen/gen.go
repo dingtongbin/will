@@ -2911,6 +2911,9 @@ func (g *generator) assignStmt(r willc.Record) error {
 			return err
 		}
 		g.copyValue(tmp, ptr, iface.llvm)
+		if targetRec, ok := g.recs[target]; ok && targetRec.Kind == "name" {
+			g.storeIfaceRoot(refField(targetRec, "to"), ptr, iface)
+		}
 		return nil
 	}
 	if isAggregateType(typ) {
@@ -3196,6 +3199,7 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 		if _, err := g.ifaceStoreValue(slot, valueID, iface, valueText); err != nil {
 			return false, err
 		}
+		g.storeIfaceRoot(r.ID, slot, iface)
 		return false, nil
 	}
 	if isAggregateType(typ) {

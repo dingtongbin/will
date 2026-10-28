@@ -290,6 +290,55 @@ func TestClassCycleFieldRuns(t *testing.T) {
 	}
 }
 
+func TestClassInterfaceUsesDirectReference(t *testing.T) {
+	doc, err := willc.Read([]byte("#1 module path=\"m\"\n" +
+		"#2 interface parent=#1 text=\"Any\"\n" +
+		"#3 class parent=#1 text=\"Node\"\n" +
+		"#4 field parent=#3 text=\"value\" type=\"i32\"\n" +
+		"#5 func parent=#1 text=\"run\" type=\"i32\"\n" +
+		"#6 type parent=#5 text=\"i32\" kind=scalar\n" +
+		"#7 block parent=#5\n" +
+		"#8 var parent=#7 text=\"x\" type=\"Any\"\n" +
+		"#9 type parent=#8 text=\"Any\" kind=named to=#2\n" +
+		"#10 var parent=#7 text=\"n\" type=\"Node\"\n" +
+		"#11 type parent=#10 text=\"Node\" kind=class to=#3\n" +
+		"#12 new parent=#10 type=\"Node\"\n" +
+		"#13 assign parent=#7 op=\"=\" target=#14 value=#16\n" +
+		"#14 name parent=#13 text=\"x\" to=#8\n" +
+		"#15 type parent=#14 text=\"Any\" kind=named to=#2\n" +
+		"#16 name parent=#13 text=\"n\" to=#10\n" +
+		"#17 type parent=#16 text=\"Node\" kind=class to=#3\n" +
+		"#18 return parent=#7 value=#19\n" +
+		"#19 lit parent=#18 kind=int text=\"7\" type=\"i32\"\n" +
+		"#20 end\n"))
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	ir, err := EmitModule([]*willc.Doc{doc}, "")
+	if err != nil {
+		t.Fatalf("emit: %v", err)
+	}
+	text := string(ir)
+	if !strings.Contains(text, `@"willrt.gc.stack.m.run"`) {
+		t.Fatalf("class interface root map is missing:\n%s", text)
+	}
+	if strings.Contains(text, `call void @willrt_free(ptr %data)`) {
+		t.Fatalf("class interface drop still frees a collector object:\n%s", text)
+	}
+	clang, err := exec.LookPath("clang")
+	if err != nil {
+		t.Skip("clang is not on PATH")
+	}
+	path := filepath.Join(t.TempDir(), "iface.ll")
+	if err := os.WriteFile(path, ir, 0o644); err != nil {
+		t.Fatalf("write IR: %v", err)
+	}
+	if out, err := exec.Command(clang, "-x", "ir", "-c", "-o",
+		filepath.Join(t.TempDir(), "iface.o"), path).CombinedOutput(); err != nil {
+		t.Fatalf("clang: %v\n%s\n%s", err, out, text)
+	}
+}
+
 func TestClassProgramRuns(t *testing.T) {
 	doc, err := willc.Read([]byte(classMainDoc))
 	if err != nil {
