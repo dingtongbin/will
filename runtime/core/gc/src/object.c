@@ -77,6 +77,24 @@ int gc_object_mark(void* object, uint32_t mark_color) {
                                       WILLRT_GC_OBJECT_PAYLOAD_OFFSET);
 }
 
+void willrt_gc_scan_value(void* base, const willrt_gc_type* type,
+                          willrt_gc_root_visit visit, void* visit_context) {
+    uint32_t i;
+
+    if (base == NULL || type == NULL || visit == NULL) {
+        return;
+    }
+    for (i = 0; i < type->reference_count; i++) {
+        uint32_t offset = type->reference_offsets[i];
+
+        if (offset > type->size ||
+            sizeof(void*) > (size_t)type->size - (size_t)offset) {
+            abort();
+        }
+        visit(visit_context, (void**)((uint8_t*)base + offset));
+    }
+}
+
 void gc_scan_object_fields(void* object,
                            void (*visit)(void* context, void** slot),
                            void* context) {

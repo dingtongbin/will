@@ -42,7 +42,8 @@ func buildDriver(t *testing.T, gcc, dir, root, platform, name string, sources ..
 	if runtime.GOOS == "windows" {
 		args = append(args, "-static")
 	}
-	args = append(args, "-o", exe)
+	args = append(args, "-I", filepath.Join(root, "core", "gc", "src"),
+		"-o", exe)
 	for _, source := range sources {
 		args = append(args, filepath.Join(dir, "src", source))
 	}
@@ -56,6 +57,12 @@ func buildDriver(t *testing.T, gcc, dir, root, platform, name string, sources ..
 		filepath.Join(dir, "..", "blocking", "src", "blocking.c"),
 		filepath.Join(dir, "..", "poll", "src", "poll.c"),
 		filepath.Join(root, "platform", platform))
+	for _, source := range []string{
+		"types.c", "region.c", "chunks.c", "heap.c", "object.c", "roots.c",
+		"safepoint.c", "barrier.c", "mark.c", "evac.c", "cycle.c", "pacer.c",
+	} {
+		args = append(args, filepath.Join(root, "core", "gc", "src", source))
+	}
 	if runtime.GOOS == "windows" {
 		args = append(args, "-lws2_32")
 	}

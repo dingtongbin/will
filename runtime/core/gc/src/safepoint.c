@@ -367,6 +367,10 @@ int32_t gc_lane_current(void) {
     return gc_tls_lane == NULL ? -1 : gc_tls_lane->lane;
 }
 
+int gc_lane_has_current(void) {
+    return gc_tls_lane != NULL;
+}
+
 int gc_lane_count(void) {
     return (int)gc_registered_lanes;
 }

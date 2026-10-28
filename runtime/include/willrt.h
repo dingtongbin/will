@@ -479,6 +479,18 @@ willrt_task* willrt_task_new(void* step, void* frame, size_t size,
 willrt_task* willrt_task_new_drop(void* step, void* frame, size_t size,
                                   int32_t lane, int32_t prio,
                                   void (*frame_drop)(void*));
+/* willrt_task_new_gc declares the frame's exact reference slots and the result
+   type before the task becomes reachable to another lane or to the cycle
+   thread. The frame map belongs to compiler static storage. */
+willrt_task* willrt_task_new_gc(void* step, void* frame, size_t size,
+                                int32_t lane, int32_t prio,
+                                const willrt_gc_stack_map_data* frame_map,
+                                const willrt_gc_type* result_type);
+willrt_task* willrt_task_new_drop_gc(void* step, void* frame, size_t size,
+                                     int32_t lane, int32_t prio,
+                                     void (*frame_drop)(void*),
+                                     const willrt_gc_stack_map_data* frame_map,
+                                     const willrt_gc_type* result_type);
 /* willrt_task_own_frame marks the frame as allocated on the heap, so the
    region barrier frees it with the task. A frame that lives anywhere else
    must not be marked. */
@@ -491,6 +503,16 @@ willrt_task* willrt_job_new(void* step, void* frame, size_t size,
 /* willrt_job_new_drop is willrt_job_new with the frame drop callback. */
 willrt_task* willrt_job_new_drop(void* step, void* frame, size_t size,
                                  int32_t prio, void (*frame_drop)(void*));
+/* The GC-aware job constructors take the frame map and result type for the
+   same reason as willrt_task_new_gc. */
+willrt_task* willrt_job_new_gc(void* step, void* frame, size_t size,
+                               int32_t prio,
+                               const willrt_gc_stack_map_data* frame_map,
+                               const willrt_gc_type* result_type);
+willrt_task* willrt_job_new_drop_gc(void* step, void* frame, size_t size,
+                                    int32_t prio, void (*frame_drop)(void*),
+                                    const willrt_gc_stack_map_data* frame_map,
+                                    const willrt_gc_type* result_type);
 /* willrt_job_pop removes the oldest job from one lane's local queue. The lane
    worker calls it while it holds that lane's lock, so a concurrent enqueue
    cannot lose the wake. */
@@ -651,6 +673,12 @@ willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio);
    element when the last channel handle is released. */
 willrt_chan* willrt_chan_new_drop(size_t elem, size_t cap, int32_t prio,
                                   void (*drop)(void*));
+/* willrt_chan_new_gc also declares the element's reference layout. The channel
+   is a GC root while it is live, so buffered values stay reachable and direct
+   handoffs use the write barrier. */
+willrt_chan* willrt_chan_new_gc(size_t elem, size_t cap, int32_t prio,
+                                void (*drop)(void*),
+                                const willrt_gc_type* elem_type);
 /* Channel handles are reference counted. */
 void willrt_chan_retain(willrt_chan* chan);
 void willrt_chan_release(willrt_chan* chan);

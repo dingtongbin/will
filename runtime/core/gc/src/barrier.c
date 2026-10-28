@@ -135,6 +135,13 @@ void gc_write_barrier(void** slot, void* value) {
          atomic_load_explicit(&gc_evacuating, memory_order_acquire) != 0)) {
         (void)gc_satb_record(old);
     }
+    if (value != NULL &&
+        atomic_load_explicit(&gc_marking, memory_order_acquire) != 0) {
+        /* A root slot can be filled after its snapshot was taken. Marking the
+           inserted value is the second half of the barrier; the SATB record
+           above keeps the overwritten value alive. */
+        gc_mark_object(value);
+    }
     if (atomic_load_explicit(&gc_evacuating, memory_order_acquire) != 0) {
         gc_region* target;
 

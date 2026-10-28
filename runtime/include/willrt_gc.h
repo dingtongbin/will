@@ -181,6 +181,13 @@ typedef void (*willrt_gc_root_scan)(void* context,
                                     willrt_gc_root_visit visit,
                                     void* visit_context);
 
+/* willrt_gc_scan_value reports every reference field of one inline value. The
+   type descriptor describes the value itself, not an object with a header, so
+   base points at the first payload byte. This is the scan used for task frames,
+   task results, and channel elements. */
+void willrt_gc_scan_value(void* base, const willrt_gc_type* type,
+                          willrt_gc_root_visit visit, void* visit_context);
+
 /* Registration is once per compiler-emitted type, before any allocation of
    that type. It returns 0 on success and -1 when the descriptor is invalid or
    two descriptors claim the same id. */

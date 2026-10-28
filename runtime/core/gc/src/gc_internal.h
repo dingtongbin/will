@@ -189,6 +189,7 @@ void gc_lane_resume(int32_t lane);
 void gc_lane_scan(int32_t lane, willrt_gc_root_visit visit, void* context);
 void gc_lanes_scan(willrt_gc_root_visit visit, void* context);
 int32_t gc_lane_current(void);
+int gc_lane_has_current(void);
 int gc_lane_count(void);
 
 void gc_barrier_init(void);

@@ -384,9 +384,7 @@ void gc_weak_slot(void* context, void** slot) {
 
         if (region == NULL ||
             (atomic_load_explicit(&gc_marking, memory_order_acquire) != 0 &&
-             !gc_object_marked(target)) ||
-            (region->kind == GC_REGION_YOUNG &&
-             (region->flags & GC_REGION_EVACUATING) != 0)) {
+             !gc_object_marked(target))) {
             atomic_store_explicit((_Atomic(void*)*)slot, NULL,
                                   memory_order_release);
             return;

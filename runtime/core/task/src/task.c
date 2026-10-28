@@ -49,6 +49,8 @@ struct willrt_task {
     willrt_step step;
     void* frame;
     size_t frame_size;
+    const willrt_gc_stack_map_data* gc_frame_map;
+    const willrt_gc_type* gc_result_type;
     void (*frame_drop)(void*);
     int32_t frame_owned;
     int32_t lane;
@@ -193,6 +195,50 @@ extern void willrt_io_abandon(void* op) __attribute__((weak));
 static void willrt_lane_init(void);
 static void willrt_task_check_dead(void);
 
+/* Every live task frame and result is a precise root. The compiler supplies
+   the frame map and result type at construction. Frames of a running task are
+   still scanned here: all reference writes in a frame use the write barrier,
+   so the snapshot and the insertion barrier together keep the graph closed. */
+static void willrt_task_scan_gc(void* context, willrt_gc_root_visit visit,
+                                void* visit_context) {
+    struct willrt_task* task;
+
+    (void)context;
+    willrt_os_mutex_lock(&willrt_tasks_lock);
+    for (task = willrt_all_tasks; task != NULL; task = task->all_next) {
+        const willrt_gc_stack_map_data* map = task->gc_frame_map;
+        size_t i;
+
+        if (map != NULL && task->frame != NULL) {
+            for (i = 0; i < map->slot_count; i++) {
+                const willrt_gc_stack_slot* slot = &map->slots[i];
+
+                if ((slot->flags & WILLRT_GC_SLOT_REFERENCE) == 0) {
+                    continue;
+                }
+                if (slot->slot > task->frame_size ||
+                    sizeof(void*) > task->frame_size - (size_t)slot->slot) {
+                    abort();
+                }
+                visit(visit_context,
+                      (void**)((uint8_t*)task->frame + slot->slot));
+            }
+        }
+        if (task->gc_result_type != NULL) {
+            willrt_os_mutex_lock(&task->lock);
+            if (task->result != NULL) {
+                if ((size_t)task->gc_result_type->size > task->result_size) {
+                    abort();
+                }
+                willrt_gc_scan_value(task->result, task->gc_result_type, visit,
+                                     visit_context);
+            }
+            willrt_os_mutex_unlock(&task->lock);
+        }
+    }
+    willrt_os_mutex_unlock(&willrt_tasks_lock);
+}
+
 /* The park timer runs on the timer thread and wakes exactly the task that
    parked with this deadline. */
 static void willrt_task_timer_wake(void* arg) {
@@ -205,6 +251,7 @@ static void willrt_task_globals(void) {
     if (atomic_compare_exchange_strong(&willrt_task_globals_state, &expected, 1)) {
         willrt_os_mutex_init(&willrt_tasks_lock);
         willrt_os_cond_init(&willrt_tasks_cond);
+        willrt_gc_root_register(willrt_task_scan_gc, NULL);
         atomic_store(&willrt_task_globals_state, 2);
         return;
     }
@@ -627,11 +674,19 @@ static void willrt_lane_worker(void* raw) {
 
     willrt_mem_set_lane(worker->id);
     willrt_lane_self = worker->id;
+    /* Lane 0 belongs to the entry thread, which allocates before the lane
+       pool starts. Give every worker a distinct GC lane so safepoints never
+       collide and the entry frame keeps its own handshake. */
+    willrt_gc_lane_enter(worker->id + 1);
     for (;;) {
         struct willrt_task* task;
         int32_t stopping;
         int32_t ran_job = 0;
 
+        /* An idle lane has no task frame and no C caller frame in will. Park it
+           as native for the collector; when a task arrives, the lane becomes a
+           normal precise frame source again before the step runs. */
+        willrt_gc_native_enter();
         willrt_os_mutex_lock(&worker->lock);
         for (;;) {
             task = willrt_lane_pop_locked(worker);
@@ -659,6 +714,7 @@ static void willrt_lane_worker(void* raw) {
         willrt_os_mutex_unlock(&worker->lock);
         if (task == NULL) {
             if (stopping) {
+                willrt_gc_native_leave();
                 break;
             }
             if (!willrt_lane_is_reserved(worker->id) &&
@@ -666,6 +722,7 @@ static void willrt_lane_worker(void* raw) {
                 task = willrt_job_steal(worker->id);
             }
             if (task == NULL) {
+                willrt_gc_native_leave();
                 continue;
             }
             if (task->is_job) {
@@ -675,11 +732,13 @@ static void willrt_lane_worker(void* raw) {
                 atomic_store(&worker->job_running, 1);
             }
         }
+        willrt_gc_native_leave();
         willrt_task_run_step(task);
         if (ran_job) {
             atomic_store(&worker->job_running, 0);
         }
     }
+    willrt_gc_lane_leave();
     willrt_mem_thread_flush();
 }
 
@@ -811,14 +870,11 @@ static void willrt_lane_shutdown(void) {
     willrt_lane_state = 3;
 }
 
-willrt_task* willrt_task_new(void* step, void* frame, size_t size, int32_t lane,
-                             int32_t prio) {
-    return willrt_task_new_drop(step, frame, size, lane, prio, NULL);
-}
-
-willrt_task* willrt_task_new_drop(void* step, void* frame, size_t size,
-                                  int32_t lane, int32_t prio,
-                                  void (*frame_drop)(void*)) {
+static willrt_task* willrt_task_new_impl(void* step, void* frame, size_t size,
+                                         int32_t lane, int32_t prio,
+                                         void (*frame_drop)(void*),
+                                         const willrt_gc_stack_map_data* map,
+                                         const willrt_gc_type* result_type) {
     struct willrt_task* task;
     struct willrt_region* region;
 
@@ -831,6 +887,8 @@ willrt_task* willrt_task_new_drop(void* step, void* frame, size_t size,
     task->step = (willrt_step)step;
     task->frame = frame;
     task->frame_size = size;
+    task->gc_frame_map = map;
+    task->gc_result_type = result_type;
     task->frame_drop = frame_drop;
     task->lane = lane < 0 ? 0 : lane;
     task->prio = prio;
@@ -855,6 +913,36 @@ willrt_task* willrt_task_new_drop(void* step, void* frame, size_t size,
         region->head = task;
     }
     return task;
+}
+
+willrt_task* willrt_task_new(void* step, void* frame, size_t size, int32_t lane,
+                             int32_t prio) {
+    return willrt_task_new_impl(step, frame, size, lane, prio, NULL, NULL,
+                                NULL);
+}
+
+willrt_task* willrt_task_new_drop(void* step, void* frame, size_t size,
+                                  int32_t lane, int32_t prio,
+                                  void (*frame_drop)(void*)) {
+    return willrt_task_new_impl(step, frame, size, lane, prio, frame_drop, NULL,
+                                NULL);
+}
+
+willrt_task* willrt_task_new_gc(void* step, void* frame, size_t size,
+                                int32_t lane, int32_t prio,
+                                const willrt_gc_stack_map_data* frame_map,
+                                const willrt_gc_type* result_type) {
+    return willrt_task_new_impl(step, frame, size, lane, prio, NULL, frame_map,
+                                result_type);
+}
+
+willrt_task* willrt_task_new_drop_gc(void* step, void* frame, size_t size,
+                                     int32_t lane, int32_t prio,
+                                     void (*frame_drop)(void*),
+                                     const willrt_gc_stack_map_data* frame_map,
+                                     const willrt_gc_type* result_type) {
+    return willrt_task_new_impl(step, frame, size, lane, prio, frame_drop,
+                                frame_map, result_type);
 }
 
 void willrt_task_run(willrt_task* task) {
@@ -1063,6 +1151,43 @@ int32_t willrt_task_error_status(void* raw) {
     return copy->status == WILLRT_CANCELED ? 8 : 0;
 }
 
+/* willrt_task_copy_result copies one result into storage that may already hold
+   references. Reference fields go through the insertion/SATB barrier; scalar
+   spans are copied directly. The destination starts zeroed for a fresh result
+   buffer. */
+static void willrt_task_copy_result(const willrt_gc_type* type, void* dst,
+                                    const void* src, size_t size) {
+    size_t at = 0;
+    uint32_t i;
+
+    if (type == NULL || type->reference_count == 0) {
+        memcpy(dst, src, size);
+        return;
+    }
+    for (i = 0; i < type->reference_count; i++) {
+        uint32_t offset = type->reference_offsets[i];
+
+        if (offset > size || sizeof(void*) > size - (size_t)offset) {
+            abort();
+        }
+        if ((size_t)offset > at) {
+            memcpy((uint8_t*)dst + at, (const uint8_t*)src + at,
+                   (size_t)offset - at);
+        }
+        {
+            void* reference;
+
+            memcpy(&reference, (const uint8_t*)src + offset, sizeof(reference));
+            willrt_gc_write_barrier((void**)((uint8_t*)dst + offset),
+                                    reference);
+        }
+        at = (size_t)offset + sizeof(void*);
+    }
+    if (at < size) {
+        memcpy((uint8_t*)dst + at, (const uint8_t*)src + at, size - at);
+    }
+}
+
 int32_t willrt_task_store_result(const void* value, size_t size) {
     struct willrt_task* task = willrt_task_self;
     unsigned char* copy;
@@ -1070,10 +1195,16 @@ int32_t willrt_task_store_result(const void* value, size_t size) {
     if (task == NULL || value == NULL || size == 0) {
         return WILLRT_OK;
     }
+    if (task->gc_result_type != NULL &&
+        (size_t)task->gc_result_type->size > size) {
+        abort();
+    }
     if (size <= sizeof(task->inline_result)) {
         willrt_os_mutex_lock(&task->lock);
         if (task->result == NULL) {
-            memcpy(task->inline_result, value, size);
+            memset(task->inline_result, 0, sizeof(task->inline_result));
+            willrt_task_copy_result(task->gc_result_type, task->inline_result,
+                                    value, size);
             task->result = task->inline_result;
             task->result_size = size;
         }
@@ -1084,7 +1215,8 @@ int32_t willrt_task_store_result(const void* value, size_t size) {
     if (copy == NULL) {
         return WILLRT_FAILED;
     }
-    memcpy(copy, value, size);
+    memset(copy, 0, size);
+    willrt_task_copy_result(task->gc_result_type, copy, value, size);
     willrt_os_mutex_lock(&task->lock);
     if (task->result == NULL) {
         task->result = copy;

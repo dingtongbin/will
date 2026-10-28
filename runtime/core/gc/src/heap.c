@@ -279,7 +279,7 @@ static void* gc_alloc_inner(size_t size, const willrt_gc_type* type) {
     uint8_t* base;
 
     gc_heap_setup();
-    if (gc_lane_current() < 0) {
+    if (!gc_lane_has_current()) {
         willrt_gc_lane_enter(0);
     }
     if (type != NULL && type->size > size) {
@@ -394,7 +394,7 @@ void* willrt_gc_alloc(size_t size, const willrt_gc_type* type) {
 }
 
 void willrt_gc_shutdown(void) {
-    if (gc_lane_current() >= 0) {
+    if (gc_lane_has_current()) {
         willrt_gc_lane_leave();
     }
     gc_heap_shutdown();

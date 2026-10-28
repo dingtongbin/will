@@ -212,9 +212,26 @@ willrt_task* willrt_job_new(void* step, void* frame, size_t size,
 
 willrt_task* willrt_job_new_drop(void* step, void* frame, size_t size,
                                  int32_t prio, void (*frame_drop)(void*)) {
+    return willrt_job_new_drop_gc(step, frame, size, prio, frame_drop, NULL,
+                                  NULL);
+}
+
+willrt_task* willrt_job_new_gc(void* step, void* frame, size_t size,
+                               int32_t prio,
+                               const willrt_gc_stack_map_data* frame_map,
+                               const willrt_gc_type* result_type) {
+    return willrt_job_new_drop_gc(step, frame, size, prio, NULL, frame_map,
+                                  result_type);
+}
+
+willrt_task* willrt_job_new_drop_gc(void* step, void* frame, size_t size,
+                                    int32_t prio, void (*frame_drop)(void*),
+                                    const willrt_gc_stack_map_data* frame_map,
+                                    const willrt_gc_type* result_type) {
     willrt_task* task;
 
-    task = willrt_task_new_drop(step, frame, size, 0, prio, frame_drop);
+    task = willrt_task_new_drop_gc(step, frame, size, 0, prio, frame_drop,
+                                   frame_map, result_type);
     if (task == NULL) {
         return NULL;
     }
