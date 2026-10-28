@@ -1,8 +1,10 @@
 package gcmeta
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/will-lang/will/internal/decisions"
 	"github.com/will-lang/will/internal/willc"
 )
 
@@ -107,6 +109,28 @@ func TestClassIDsAreSorted(t *testing.T) {
 	if program.Lookup("m.Alpha").ID != 1 || program.Lookup("m.Zed").ID != 2 {
 		t.Fatalf("ids = Alpha:%d Zed:%d, want 1/2",
 			program.Lookup("m.Alpha").ID, program.Lookup("m.Zed").ID)
+	}
+}
+
+func TestDecisionRecordsCarryClassLayout(t *testing.T) {
+	doc := readDoc(t, "#1 module path=\"m\"\n"+
+		"#2 class text=\"Node\"\n"+
+		"#3 field parent=#2 text=\"next\" type=\"Node\"\n"+
+		"#4 field parent=#2 text=\"value\" type=\"i64\"\n"+
+		"#5 end\n")
+	records, err := DecisionRecords([]*willc.Doc{doc})
+	if err != nil {
+		t.Fatalf("decision records: %v", err)
+	}
+	text := string(decisions.Write(records))
+	for _, want := range []string{
+		"layout type=\"m.Node\" size=16 align=8",
+		"field type=\"m.Node\" name=\"next\" offset=0 size=8",
+		"field type=\"m.Node\" name=\"value\" offset=8 size=8",
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("record lacks %q:\n%s", want, text)
+		}
 	}
 }
 

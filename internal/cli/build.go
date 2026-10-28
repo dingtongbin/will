@@ -13,6 +13,7 @@ import (
 	"github.com/will-lang/will/internal/check"
 	"github.com/will-lang/will/internal/decisions"
 	"github.com/will-lang/will/internal/diag"
+	"github.com/will-lang/will/internal/gcmeta"
 	"github.com/will-lang/will/internal/gen"
 	"github.com/will-lang/will/internal/parser"
 	"github.com/will-lang/will/internal/pkg"
@@ -422,6 +423,12 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, []byte, str
 		reportTranslate(diagOut, &willc.Error{Message: err.Error()})
 		return nil, nil, "", 1
 	}
+	gcRecords, err := gcmeta.DecisionRecords(docs)
+	if err != nil {
+		reportTranslate(diagOut, err)
+		return nil, nil, "", 1
+	}
+	astRecords = append(astRecords, gcRecords...)
 	record := decisions.Write(astRecords)
 	store, key := loweringCacheKey(texts, record, opts)
 	if store != nil {

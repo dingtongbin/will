@@ -177,6 +177,38 @@ func TestClassInitConstructor(t *testing.T) {
 	}
 }
 
+func TestClassGlobalRoot(t *testing.T) {
+	doc, err := willc.Read([]byte("#1 module path=\"m\"\n" +
+		"#2 class parent=#1 text=\"Node\"\n" +
+		"#3 field parent=#2 text=\"value\" type=\"i32\"\n" +
+		"#4 var parent=#1 text=\"g\" type=\"Node\"\n" +
+		"#5 type parent=#4 text=\"Node\" kind=class to=#2\n" +
+		"#6 new parent=#4 type=\"Node\"\n" +
+		"#7 func parent=#1 text=\"main\" type=\"i32\"\n" +
+		"#8 type parent=#7 text=\"i32\" kind=scalar\n" +
+		"#9 block parent=#7\n" +
+		"#10 return parent=#9 value=#11\n" +
+		"#11 lit parent=#10 kind=int text=\"0\" type=\"i32\"\n" +
+		"#12 end\n"))
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	ir, err := EmitModule([]*willc.Doc{doc}, "main")
+	if err != nil {
+		t.Fatalf("emit: %v", err)
+	}
+	text := string(ir)
+	for _, want := range []string{
+		`define internal void @willrt.gc.scan_globals`,
+		`call void @willrt_gc_root_register(ptr @willrt.gc.scan_globals, ptr null)`,
+		`call void @willrt_gc_write_barrier(ptr @m.g, ptr`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("IR lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestClassProgramRuns(t *testing.T) {
 	doc, err := willc.Read([]byte(classMainDoc))
 	if err != nil {
