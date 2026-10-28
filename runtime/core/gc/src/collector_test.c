@@ -202,6 +202,26 @@ static void test_alignment(void) {
     willrt_gc_root_unregister(root_scan, NULL);
 }
 
+static void test_pinned_root(void) {
+    void* parent;
+    void* child;
+    void** field;
+
+    wait_idle();
+    parent = willrt_gc_alloc(sizeof(void*), &node_type);
+    child = willrt_gc_alloc(sizeof(void*), &node_type);
+    assert(parent != NULL && child != NULL);
+    *(void**)parent = child;
+    *(void**)child = NULL;
+    assert(willrt_gc_pin(parent) == parent);
+    collect(0);
+    parent = willrt_gc_read_barrier(parent);
+    assert(parent != NULL);
+    field = (void**)parent;
+    assert(*field != NULL);
+    willrt_gc_unpin(parent);
+}
+
 static void test_frame_root(void) {
     void* object;
     void* frame_root[1];
@@ -308,6 +328,7 @@ int main(void) {
         test_promotion_and_compaction();
         test_weak_clear();
         test_pin();
+        test_pinned_root();
         test_frame_root();
         test_large_object();
         test_automatic_pacing();

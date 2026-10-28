@@ -260,10 +260,10 @@ void gc_card_scan(willrt_gc_root_visit visit, void* context, int only_live) {
                                      memory_order_acquire);
             object = region->base + object_offset +
                      WILLRT_GC_OBJECT_PAYLOAD_OFFSET;
+            atomic_fetch_and_explicit(
+                &region->card_bits[card >> 6],
+                ~(UINT64_C(1) << (card & 63u)), memory_order_acq_rel);
             if (only_live && !gc_object_marked(object)) {
-                atomic_fetch_and_explicit(
-                    &region->card_bits[card >> 6],
-                    ~(UINT64_C(1) << (card & 63u)), memory_order_release);
                 continue;
             }
             gc_scan_object_fields(object, visit, context);
@@ -271,10 +271,10 @@ void gc_card_scan(willrt_gc_root_visit visit, void* context, int only_live) {
                 0) {
                 gc_scan_object_weak(object, gc_weak_slot, NULL);
             }
-            if (!gc_card_object_has_young_ref(object)) {
-                atomic_fetch_and_explicit(
+            if (gc_card_object_has_young_ref(object)) {
+                atomic_fetch_or_explicit(
                     &region->card_bits[card >> 6],
-                    ~(UINT64_C(1) << (card & 63u)), memory_order_release);
+                    UINT64_C(1) << (card & 63u), memory_order_release);
             }
         }
     }
