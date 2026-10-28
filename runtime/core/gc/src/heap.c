@@ -137,13 +137,20 @@ static gc_region* gc_tlab_refill(size_t total) {
     return gc_local_tlab.region;
 }
 
-uint64_t willrt_gc_state_make(uint32_t region, uint32_t flags) {
-    return ((uint64_t)region << WILLRT_GC_STATE_REGION_SHIFT) | flags;
+uint64_t willrt_gc_state_make(uint32_t region, uint32_t type,
+                              uint32_t flags) {
+    return ((uint64_t)type << WILLRT_GC_STATE_TYPE_SHIFT) |
+           ((uint64_t)region << WILLRT_GC_STATE_REGION_SHIFT) | flags;
 }
 
 uint32_t willrt_gc_state_region(uint64_t state) {
     return (uint32_t)((state & WILLRT_GC_STATE_REGION_MASK) >>
                       WILLRT_GC_STATE_REGION_SHIFT);
+}
+
+uint32_t willrt_gc_state_type(uint64_t state) {
+    return (uint32_t)((state & WILLRT_GC_STATE_TYPE_MASK) >>
+                      WILLRT_GC_STATE_TYPE_SHIFT);
 }
 
 uint32_t willrt_gc_state_pin(uint64_t state) {
@@ -160,6 +167,7 @@ void* willrt_gc_alloc(size_t size, const willrt_gc_type* type) {
     willrt_gc_header* header;
     gc_region* owner;
     uint64_t state_flags = 0;
+    uint32_t type_id = gc_type_id(type);
 
     if (size > SIZE_MAX - WILLRT_GC_OBJECT_PAYLOAD_OFFSET) {
         gc_abort("GC allocation size overflow");
@@ -205,7 +213,7 @@ void* willrt_gc_alloc(size_t size, const willrt_gc_type* type) {
     }
     header = (willrt_gc_header*)base;
     atomic_store_explicit(&header->state,
-                          willrt_gc_state_make(region, state_flags),
+                          willrt_gc_state_make(region, type_id, state_flags),
                           memory_order_relaxed);
     atomic_fetch_add_explicit(&willrt_gc_allocated, total, memory_order_relaxed);
     return base + WILLRT_GC_OBJECT_PAYLOAD_OFFSET;

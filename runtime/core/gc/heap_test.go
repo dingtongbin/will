@@ -53,6 +53,7 @@ func TestGCHeap(t *testing.T) {
 	args = append(args, "-I", filepath.Join(dir, "..", "..", "include"),
 		"-o", exe,
 		filepath.Join(dir, "src", "heap.c"),
+		filepath.Join(dir, "src", "types.c"),
 		filepath.Join(dir, "src", "heap_test.c"),
 		filepath.Join(dir, "..", "..", "platform", platform))
 	build := exec.Command(gcc, args...)

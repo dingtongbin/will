@@ -57,6 +57,18 @@ void willrt_gc_write_barrier(void** slot, void* value) {
     *slot = value;
 }
 
+void willrt_gc_satb_drain(willrt_gc_root_visit visit, void* context) {
+    size_t i;
+
+    gc_satb_init();
+    willrt_os_mutex_lock(&gc_satb_lock);
+    for (i = 0; i < gc_satb_count; i++) {
+        visit(context, &gc_satb[i]);
+    }
+    gc_satb_count = 0;
+    willrt_os_mutex_unlock(&gc_satb_lock);
+}
+
 size_t willrt_gc_test_satb_count(void) {
     return gc_satb_count;
 }

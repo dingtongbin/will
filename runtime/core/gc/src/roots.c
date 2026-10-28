@@ -187,6 +187,32 @@ void willrt_gc_handle_release(willrt_gc_handle handle) {
     willrt_os_mutex_unlock(&gc_handle_lock);
 }
 
+void willrt_gc_root_scan_all(willrt_gc_root_visit visit, void* context) {
+    size_t i;
+
+    gc_roots_init();
+    willrt_os_mutex_lock(&gc_root_lock);
+    for (i = 0; i < WILLRT_GC_ROOT_MAX; i++) {
+        if (gc_roots[i].active) {
+            gc_roots[i].scan(gc_roots[i].context, visit, context);
+        }
+    }
+    willrt_os_mutex_unlock(&gc_root_lock);
+}
+
+void willrt_gc_handle_scan_all(willrt_gc_root_visit visit, void* context) {
+    size_t i;
+
+    gc_handles_init();
+    willrt_os_mutex_lock(&gc_handle_lock);
+    for (i = 0; i < WILLRT_GC_HANDLE_MAX; i++) {
+        if (gc_handles[i].active) {
+            visit(context, &gc_handles[i].object);
+        }
+    }
+    willrt_os_mutex_unlock(&gc_handle_lock);
+}
+
 size_t willrt_gc_test_root_count(void) {
     return gc_root_count;
 }

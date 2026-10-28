@@ -34,6 +34,7 @@ func TestGCRuntime(t *testing.T) {
 	args = append(args, "-I", filepath.Join(dir, "..", "..", "include"),
 		"-o", exe,
 		filepath.Join(dir, "src", "heap.c"),
+		filepath.Join(dir, "src", "types.c"),
 		filepath.Join(dir, "src", "roots.c"),
 		filepath.Join(dir, "src", "barrier.c"),
 		filepath.Join(dir, "src", "runtime_test.c"),
