@@ -2944,7 +2944,7 @@ func (g *generator) assignStmt(r willc.Record) error {
 			}
 		}
 		g.copyValue(src, ptr, typ)
-		if textErr == nil && isFuncText(targetText) {
+		if g.gcProgram != nil && textErr == nil && isFuncText(targetText) {
 			if targetRec, ok := g.recs[target]; ok && targetRec.Kind == "name" {
 				envPtr := g.newTmp()
 				fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n",
@@ -3234,7 +3234,7 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 			}
 		}
 		g.copyValue(src, slot, typ)
-		if isFuncText(fieldText(r, "type")) {
+		if g.gcProgram != nil && isFuncText(fieldText(r, "type")) {
 			envPtr := g.newTmp()
 			fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, ptr }, ptr %s, i32 0, i32 1\n",
 				envPtr, slot)
