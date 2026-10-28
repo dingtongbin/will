@@ -47,7 +47,7 @@ static void test_barriers(void) {
     void* first = willrt_gc_alloc(16, NULL);
     void* second = willrt_gc_alloc(16, NULL);
     void* slot = first;
-    void* tagged = (void*)((uintptr_t)second | WILLRT_GC_COLOR_MARKED0);
+    void* tagged = WILLRT_GC_TAG(second, WILLRT_GC_COLOR_MARKED0);
 
     assert(willrt_gc_read_barrier(tagged) == second);
     willrt_gc_write_barrier(&slot, tagged);

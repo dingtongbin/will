@@ -32,11 +32,15 @@ _Static_assert(sizeof(willrt_gc_header) == WILLRT_GC_OBJECT_HEADER_SIZE,
 _Static_assert(_Alignof(willrt_gc_header) == WILLRT_GC_OBJECT_ALIGN,
                "the GC object header must be 8-byte aligned");
 
-/* References carry the collection color in their low two bits. Object
-   addresses are 8-byte aligned, so those bits are free, and every barrier
-   removes them before an object is dereferenced. */
-#define WILLRT_GC_COLOR_MASK 3u
-#define WILLRT_GC_COLOR_SHIFT 0u
+/* References select one of four virtual-memory views in bits 34 and 35.
+   Each view maps the same physical pages; the view address, not a tag stored
+   beside the object, is the color. Object addresses therefore stay naturally
+   aligned and page remapping can change a color without rewriting every
+   reference. */
+#define WILLRT_GC_VIEW_COUNT 4u
+#define WILLRT_GC_COLOR_SHIFT 34u
+#define WILLRT_GC_VIEW_STRIDE 0x400000000ull
+#define WILLRT_GC_COLOR_MASK 0xC00000000ull
 #define WILLRT_GC_POINTER_MASK (~(uintptr_t)WILLRT_GC_COLOR_MASK)
 
 enum willrt_gc_color {
@@ -47,7 +51,11 @@ enum willrt_gc_color {
 };
 
 #define WILLRT_GC_COLOR_OF(ptr) \
-    ((uint32_t)(((uintptr_t)(ptr)) & WILLRT_GC_COLOR_MASK))
+    ((uint32_t)((((uintptr_t)(ptr)) & WILLRT_GC_COLOR_MASK) >> \
+                WILLRT_GC_COLOR_SHIFT))
+#define WILLRT_GC_TAG(ptr, color) \
+    ((void*)(((uintptr_t)(ptr)) | \
+             ((uintptr_t)(color) << WILLRT_GC_COLOR_SHIFT)))
 #define WILLRT_GC_UNTAG(ptr) \
     ((void*)(((uintptr_t)(ptr)) & WILLRT_GC_POINTER_MASK))
 

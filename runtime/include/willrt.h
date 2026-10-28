@@ -45,6 +45,22 @@ void willrt_os_release_pages(void* ptr, size_t size);
 /* willrt_os_page_size returns the target's page size, never below 4096. */
 size_t willrt_os_page_size(void);
 
+/* willrt_os_gc_views maps the same size-byte backing store at four addresses
+   separated by stride. base is the view-0 address and must have the color bits
+   clear; view k is base + k*stride. The caller passes a stride large enough for
+   one heap and aligned to the color range. Opening fails instead of falling
+   back to one view. */
+typedef struct willrt_os_gc_views {
+    void* base;
+    size_t size;
+    size_t stride;
+    _Alignas(16) unsigned char state[128];
+} willrt_os_gc_views;
+
+int32_t willrt_os_gc_views_open(willrt_os_gc_views* views, size_t size,
+                                size_t stride);
+void willrt_os_gc_views_close(willrt_os_gc_views* views);
+
 /* willrt_os_now_ns returns the platform's monotonic clock in nanoseconds. It
    never goes backwards. Zero is returned when the platform call fails. */
 int64_t willrt_os_now_ns(void);

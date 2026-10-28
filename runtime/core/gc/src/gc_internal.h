@@ -11,11 +11,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define WILLRT_GC_ARENA_SIZE (UINT64_C(64) * 1024u * 1024u)
+#define WILLRT_GC_ARENA_SIZE (UINT64_C(256) * 1024u * 1024u)
 #define WILLRT_GC_REGION_SIZE (UINT64_C(1024) * 1024u)
 #define WILLRT_GC_TLAB_SIZE (UINT64_C(64) * 1024u)
 #define WILLRT_GC_LARGE_THRESHOLD (UINT64_C(32) * 1024u)
-#define WILLRT_GC_REGION_MAX 256u
+#define WILLRT_GC_REGION_MAX 1024u
 
 /* The state word is runtime-owned. The low bits hold age and mark state; the
    pin count sits above the flags; the region id occupies the upper half. */

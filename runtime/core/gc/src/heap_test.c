@@ -65,7 +65,7 @@ static void test_pinned_region_and_pin_count(void) {
 
 static void test_colored_pointer_mask(void) {
     uintptr_t raw = (uintptr_t)0x4000u;
-    void* colored = (void*)(raw | WILLRT_GC_COLOR_REMAPPED);
+    void* colored = WILLRT_GC_TAG((void*)raw, WILLRT_GC_COLOR_REMAPPED);
 
     assert(WILLRT_GC_COLOR_OF(colored) == WILLRT_GC_COLOR_REMAPPED);
     assert((uintptr_t)WILLRT_GC_UNTAG(colored) == raw);

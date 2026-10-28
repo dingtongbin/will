@@ -98,6 +98,87 @@ size_t willrt_os_page_size(void) {
     return info.dwPageSize == 0 ? 4096u : (size_t)info.dwPageSize;
 }
 
+typedef struct willrt_win_gc_views {
+    HANDLE mapping;
+    void* views[WILLRT_GC_VIEW_COUNT];
+} willrt_win_gc_views;
+
+int32_t willrt_os_gc_views_open(willrt_os_gc_views* views, size_t size,
+                                size_t stride) {
+    willrt_win_gc_views* state;
+    ULARGE_INTEGER mapping_size;
+    uintptr_t candidate;
+    int32_t color;
+
+    if (views == NULL || size == 0 || stride < size ||
+        (stride & (stride - 1u)) != 0) {
+        return -1;
+    }
+    state = (willrt_win_gc_views*)views->state;
+    memset(state, 0, sizeof(*state));
+    mapping_size.QuadPart = size;
+    state->mapping = CreateFileMappingW(
+        INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, mapping_size.HighPart,
+        mapping_size.LowPart, NULL);
+    if (state->mapping == NULL) {
+        return -1;
+    }
+    for (candidate = UINT64_C(0x10000000000);
+         candidate < UINT64_C(0x700000000000);
+         candidate += (uintptr_t)stride * WILLRT_GC_VIEW_COUNT) {
+        for (color = 0; color < (int32_t)WILLRT_GC_VIEW_COUNT; color++) {
+            void* wanted =
+                (void*)(candidate + (uintptr_t)color * stride);
+            void* mapped = MapViewOfFileEx(state->mapping, FILE_MAP_ALL_ACCESS,
+                                           0, 0, size, wanted);
+
+            if (mapped != wanted) {
+                if (mapped != NULL) {
+                    UnmapViewOfFile(mapped);
+                }
+                break;
+            }
+            state->views[color] = mapped;
+        }
+        if (color == (int32_t)WILLRT_GC_VIEW_COUNT) {
+            views->base = (void*)candidate;
+            views->size = size;
+            views->stride = stride;
+            return 0;
+        }
+        while (--color >= 0) {
+            UnmapViewOfFile(state->views[color]);
+            state->views[color] = NULL;
+        }
+    }
+    CloseHandle(state->mapping);
+    state->mapping = NULL;
+    return -1;
+}
+
+void willrt_os_gc_views_close(willrt_os_gc_views* views) {
+    willrt_win_gc_views* state;
+    int32_t color;
+
+    if (views == NULL) {
+        return;
+    }
+    state = (willrt_win_gc_views*)views->state;
+    for (color = 0; color < (int32_t)WILLRT_GC_VIEW_COUNT; color++) {
+        if (state->views[color] != NULL) {
+            UnmapViewOfFile(state->views[color]);
+            state->views[color] = NULL;
+        }
+    }
+    if (state->mapping != NULL) {
+        CloseHandle(state->mapping);
+        state->mapping = NULL;
+    }
+    views->base = NULL;
+    views->size = 0;
+    views->stride = 0;
+}
+
 typedef struct willrt_win_thread {
     HANDLE handle;
     void (*fn)(void*);

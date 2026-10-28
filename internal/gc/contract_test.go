@@ -37,8 +37,10 @@ func TestSharedHeaderMatchesCompilerConstants(t *testing.T) {
 		"WILLRT_GC_OBJECT_HEADER_SIZE":    "8u",
 		"WILLRT_GC_OBJECT_PAYLOAD_OFFSET": "8u",
 		"WILLRT_GC_OBJECT_ALIGN":          "8u",
-		"WILLRT_GC_COLOR_MASK":            "3u",
-		"WILLRT_GC_COLOR_SHIFT":           "0u",
+		"WILLRT_GC_COLOR_MASK":            "0xC00000000ull",
+		"WILLRT_GC_COLOR_SHIFT":           "34u",
+		"WILLRT_GC_VIEW_COUNT":            "4u",
+		"WILLRT_GC_VIEW_STRIDE":           "0x400000000ull",
 	}
 	for name, value := range want {
 		got, ok := macros[name]
@@ -54,8 +56,11 @@ func TestSharedHeaderMatchesCompilerConstants(t *testing.T) {
 		t.Fatalf("compiler object layout = %d/%d/%d", ObjectHeaderSize,
 			ObjectPayloadOffset, ObjectAlign)
 	}
-	if ColorMask != 3 {
-		t.Fatalf("compiler color mask = %d", ColorMask)
+	if ColorMask != 3<<ColorShift {
+		t.Fatalf("compiler color mask = %#x", ColorMask)
+	}
+	if ViewStride != 1<<ColorShift || ViewCount != 4 {
+		t.Fatalf("compiler view layout = %d/%d", ViewStride, ViewCount)
 	}
 	if ColorYoung != 0 || ColorMarked0 != 1 || ColorMarked1 != 2 || ColorRemapped != 3 {
 		t.Fatalf("compiler color order = %d/%d/%d/%d", ColorYoung,

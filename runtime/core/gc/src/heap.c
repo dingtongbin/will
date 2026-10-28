@@ -21,6 +21,7 @@ size_t gc_region_count;
 size_t willrt_gc_arena_used;
 
 static atomic_int willrt_gc_heap_state;
+static willrt_os_gc_views willrt_gc_views;
 static uint8_t* willrt_gc_arena;
 static size_t willrt_gc_arena_size;
 static atomic_size_t willrt_gc_allocated;
@@ -59,11 +60,12 @@ static void gc_heap_init(void) {
 
         willrt_os_mutex_init(&willrt_gc_heap_lock);
         willrt_gc_arena_size = gc_round_up(WILLRT_GC_ARENA_SIZE, page);
-        willrt_gc_arena =
-            (uint8_t*)willrt_os_reserve_pages(willrt_gc_arena_size);
-        if (willrt_gc_arena == NULL) {
-            gc_abort("GC arena reservation failed");
+        if (willrt_os_gc_views_open(
+                &willrt_gc_views, willrt_gc_arena_size,
+                (size_t)WILLRT_GC_VIEW_STRIDE) != 0) {
+            gc_abort("GC multi-view mapping failed");
         }
+        willrt_gc_arena = (uint8_t*)willrt_gc_views.base;
         atomic_store_explicit(&willrt_gc_heap_state, 2, memory_order_release);
         return;
     }
@@ -90,22 +92,12 @@ static size_t gc_region_new_locked(uint32_t kind, size_t size) {
     if (id == WILLRT_GC_REGION_MAX) {
         gc_abort("GC region table is full");
     }
-    if (kind == WILLRT_GC_REGION_YOUNG || kind == WILLRT_GC_REGION_OLD) {
-        if (willrt_gc_arena_used > willrt_gc_arena_size ||
-            region_size > willrt_gc_arena_size - willrt_gc_arena_used) {
-            gc_abort("GC arena is full");
-        }
-        base = willrt_gc_arena + willrt_gc_arena_used;
-        willrt_gc_arena_used += region_size;
-    } else {
-        base = (uint8_t*)willrt_os_reserve_pages(region_size);
-        if (base == NULL) {
-            gc_abort("GC large region reservation failed");
-        }
+    if (willrt_gc_arena_used > willrt_gc_arena_size ||
+        region_size > willrt_gc_arena_size - willrt_gc_arena_used) {
+        gc_abort("GC arena is full");
     }
-    if (willrt_os_commit_pages(base, region_size) != 0) {
-        gc_abort("GC region commit failed");
-    }
+    base = willrt_gc_arena + willrt_gc_arena_used;
+    willrt_gc_arena_used += region_size;
     gc_regions[id].base = base;
     gc_regions[id].size = region_size;
     gc_regions[id].top = region_size;

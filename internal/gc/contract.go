@@ -28,8 +28,17 @@ const (
 	ColorRemapped
 )
 
+// ViewCount is the number of virtual-memory color views.
+const ViewCount = 4
+
+// ColorShift is the address bit where a colored reference selects its view.
+const ColorShift = 34
+
+// ViewStride is the address distance between two color views.
+const ViewStride uint64 = 1 << ColorShift
+
 // ColorMask selects the color bits of a tagged reference.
-const ColorMask = 3
+const ColorMask uint64 = 3 << ColorShift
 
 // Region selects the collector area that owns an object.
 type Region uint8

@@ -5,6 +5,8 @@
 
 #include "../include/willrt.h"
 
+#include "views_posix.h"
+
 int32_t willrt_os_cpu_count(void) {
     long count = sysconf(_SC_NPROCESSORS_ONLN);
 
@@ -55,6 +57,15 @@ size_t willrt_os_page_size(void) {
     long size = sysconf(_SC_PAGESIZE);
 
     return size < 4096 ? 4096u : (size_t)size;
+}
+
+int32_t willrt_os_gc_views_open(willrt_os_gc_views* views, size_t size,
+                                size_t stride) {
+    return willrt_posix_views_open(views, size, stride);
+}
+
+void willrt_os_gc_views_close(willrt_os_gc_views* views) {
+    willrt_posix_views_close(views);
 }
 
 typedef struct willrt_posix_thread {
