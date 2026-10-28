@@ -1,13 +1,13 @@
 import "std/os/fs"
 
-def check_file() -> i32 {
+async def check_file() -> i32 {
     var path: str = "will-fs-probe.tmp"
     var data: str = "hello"
     var bytes: []u8 = data[Range(0, 5)]
-    var created: Result<fs.File, Error> = fs.create_blocking(path, 420u32)
+    var created: Result<fs.File, Error> = await fs.create(path, 420u32)
     match created {
         Ok(file) => {
-            var wrote: Result<(), Error> = file.write_blocking(bytes)
+            var wrote: Result<(), Error> = await file.write(bytes)
             match wrote {
                 Err(e) => {
                     if e.status() != 7 {
@@ -17,7 +17,7 @@ def check_file() -> i32 {
                 }
                 _ => {}
             }
-            var synced: Result<(), Error> = file.sync_blocking()
+            var synced: Result<(), Error> = await file.sync()
             match synced {
                 Err(e) => {
                     if e.status() != 7 {
@@ -27,7 +27,7 @@ def check_file() -> i32 {
                 }
                 _ => {}
             }
-            var seeked: Result<i64, Error> = file.seek_blocking(0i64, 0)
+            var seeked: Result<i64, Error> = await file.seek(0i64, 0)
             match seeked {
                 Err(e) => {
                     if e.status() != 7 {
@@ -38,7 +38,7 @@ def check_file() -> i32 {
                 _ => {}
             }
             var buf: Array<u8> = new Array<u8>(16)
-            var read: Result<usize, Error> = file.read_blocking(buf)
+            var read: Result<usize, Error> = await file.read(buf)
             match read {
                 Ok(count) => {
                     if count != 5usize or buf.len() != 5usize {
@@ -75,7 +75,7 @@ def check_file() -> i32 {
     }
 
     var flags: fs.OpenFlags = fs.OpenFlags { read: True, write: False, create: False, append: False, truncate: False, exclusive: False }
-    var opened: Result<fs.File, Error> = fs.open_blocking(path, flags)
+    var opened: Result<fs.File, Error> = await fs.open(path, flags)
     match opened {
         Ok(file) => {
             _ = file.close()
@@ -85,7 +85,7 @@ def check_file() -> i32 {
         }
     }
 
-    var info: Result<fs.StatInfo, Error> = fs.stat_blocking(path)
+    var info: Result<fs.StatInfo, Error> = await fs.stat(path)
     match info {
         Ok(stat) => {
             if stat.size != 5i64 or stat.isDir {
@@ -100,7 +100,7 @@ def check_file() -> i32 {
         }
     }
 
-    var renamed: Result<(), Error> = fs.rename_blocking(path, "will-fs-probe2.tmp")
+    var renamed: Result<(), Error> = await fs.rename(path, "will-fs-probe2.tmp")
     match renamed {
         Err(e) => {
             if e.status() != 7 {
@@ -110,7 +110,7 @@ def check_file() -> i32 {
         }
         _ => {}
     }
-    var removed: Result<(), Error> = fs.remove_blocking("will-fs-probe2.tmp")
+    var removed: Result<(), Error> = await fs.remove("will-fs-probe2.tmp")
     match removed {
         Err(e) => {
             if e.status() != 7 {
@@ -123,10 +123,10 @@ def check_file() -> i32 {
     return 0
 }
 
-def check_dir() -> i32 {
+async def check_dir() -> i32 {
     var first: str = "will-fs-a.tmp"
     var second: str = "will-fs-b.tmp"
-    var a: Result<fs.File, Error> = fs.create_blocking(first, 420u32)
+    var a: Result<fs.File, Error> = await fs.create(first, 420u32)
     match a {
         Ok(file) => {
             _ = file.close()
@@ -135,24 +135,24 @@ def check_dir() -> i32 {
             return 26
         }
     }
-    var b: Result<fs.File, Error> = fs.create_blocking(second, 420u32)
+    var b: Result<fs.File, Error> = await fs.create(second, 420u32)
     match b {
         Ok(file) => {
             _ = file.close()
         }
         Err(_) => {
-            _ = fs.remove_blocking(first)
+            _ = await fs.remove(first)
             return 27
         }
     }
 
-    var dir: Result<Array<fs.DirEntry>, Error> = fs.read_dir_blocking(".")
+    var dir: Result<Array<fs.DirEntry>, Error> = await fs.read_dir(".")
     match dir {
         Ok(entries) => {
             var aPos: i32 = -1
             var bPos: i32 = -1
             for i in Range(0, i32(entries.len())) {
-                var entry: fs.DirEntry = entries.get(usize(i))
+                var entry: fs.DirEntry = entries.get(usize(i)).clone()
                 if entry.name == first {
                     aPos = i
                 }
@@ -160,15 +160,15 @@ def check_dir() -> i32 {
                     bPos = i
                 }
             }
-            _ = fs.remove_blocking(first)
-            _ = fs.remove_blocking(second)
+            _ = await fs.remove(first)
+            _ = await fs.remove(second)
             if aPos < 0 or bPos < 0 or aPos > bPos {
                 return 23
             }
         }
         Err(e) => {
-            _ = fs.remove_blocking(first)
-            _ = fs.remove_blocking(second)
+            _ = await fs.remove(first)
+            _ = await fs.remove(second)
             if e.status() != 7 {
                 return 24
             }
@@ -193,10 +193,10 @@ async def check_async() -> i32 {
     match loaded {
         Ok(bytes) => {
             if bytes.len() != 5usize or bytes.get(0) != 97u8 {
-                _ = fs.remove_blocking(path)
+                _ = await fs.remove(path)
                 return 31
             }
-            _ = fs.remove_blocking(path)
+            _ = await fs.remove(path)
         }
         Err(_) => {
             return 32
@@ -206,11 +206,11 @@ async def check_async() -> i32 {
 }
 
 async def main() -> i32 {
-    var code: i32 = check_file()
+    var code: i32 = await check_file()
     if code != 0 {
         return code
     }
-    code = check_dir()
+    code = await check_dir()
     if code != 0 {
         return code
     }

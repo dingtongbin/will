@@ -2474,50 +2474,50 @@ iface.rel.done.47:
 %"struct.std/io.Poller" = type { { ptr, i64, i64 }, { ptr, i64, i64 }, { ptr, i64, i64 } }
 define hidden %"struct.std/io.Poller" @"std/io.new_poller"() alwaysinline {
 entry:
-  %v.agg.20 = alloca %"struct.std/io.Poller"
-  %v.new.21 = alloca { ptr, i64, i64 }
-  %v.new.23 = alloca { ptr, i64, i64 }
-  %v.new.25 = alloca { ptr, i64, i64 }
-  %t1 = getelementptr inbounds %"struct.std/io.Poller", ptr %v.agg.20, i32 0, i32 0
-  %t2 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.21, i32 0, i32 0
+  %v.agg.19 = alloca %"struct.std/io.Poller"
+  %v.new.20 = alloca { ptr, i64, i64 }
+  %v.new.22 = alloca { ptr, i64, i64 }
+  %v.new.24 = alloca { ptr, i64, i64 }
+  %t1 = getelementptr inbounds %"struct.std/io.Poller", ptr %v.agg.19, i32 0, i32 0
+  %t2 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.20, i32 0, i32 0
   store ptr null, ptr %t2
-  %t3 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.21, i32 0, i32 1
+  %t3 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.20, i32 0, i32 1
   store i64 0, ptr %t3
-  %t4 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.21, i32 0, i32 2
+  %t4 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.20, i32 0, i32 2
   store i64 0, ptr %t4
-  %t5 = load { ptr, i64, i64 }, ptr %v.new.21
+  %t5 = load { ptr, i64, i64 }, ptr %v.new.20
   store { ptr, i64, i64 } %t5, ptr %t1
-  %t6 = getelementptr inbounds %"struct.std/io.Poller", ptr %v.agg.20, i32 0, i32 1
-  %t7 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.23, i32 0, i32 0
+  %t6 = getelementptr inbounds %"struct.std/io.Poller", ptr %v.agg.19, i32 0, i32 1
+  %t7 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.22, i32 0, i32 0
   store ptr null, ptr %t7
-  %t8 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.23, i32 0, i32 1
+  %t8 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.22, i32 0, i32 1
   store i64 0, ptr %t8
-  %t9 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.23, i32 0, i32 2
+  %t9 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.22, i32 0, i32 2
   store i64 0, ptr %t9
-  %t10 = load { ptr, i64, i64 }, ptr %v.new.23
+  %t10 = load { ptr, i64, i64 }, ptr %v.new.22
   store { ptr, i64, i64 } %t10, ptr %t6
-  %t11 = getelementptr inbounds %"struct.std/io.Poller", ptr %v.agg.20, i32 0, i32 2
-  %t12 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.25, i32 0, i32 0
+  %t11 = getelementptr inbounds %"struct.std/io.Poller", ptr %v.agg.19, i32 0, i32 2
+  %t12 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.24, i32 0, i32 0
   store ptr null, ptr %t12
-  %t13 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.25, i32 0, i32 1
+  %t13 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.24, i32 0, i32 1
   store i64 0, ptr %t13
-  %t14 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.25, i32 0, i32 2
+  %t14 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.24, i32 0, i32 2
   store i64 0, ptr %t14
-  %t15 = load { ptr, i64, i64 }, ptr %v.new.25
+  %t15 = load { ptr, i64, i64 }, ptr %v.new.24
   store { ptr, i64, i64 } %t15, ptr %t11
-  %t16 = load %"struct.std/io.Poller", ptr %v.agg.20
+  %t16 = load %"struct.std/io.Poller", ptr %v.agg.19
   ret %"struct.std/io.Poller" %t16
 }
 define hidden { i32, [4 x i8], %interface.Error } @"std/io.Poller.add"(ptr %p, i64 %fd, i64 %user) inlinehint {
 entry:
-  %v.adt.44 = alloca { i32, [4 x i8], %interface.Error }
-  %v.adt.64 = alloca { i32, [4 x i8], %interface.Error }
+  %v.adt.43 = alloca { i32, [4 x i8], %interface.Error }
+  %v.adt.63 = alloca { i32, [4 x i8], %interface.Error }
   %t17 = icmp slt i64 %fd, 0
   br i1 %t17, label %if.then.1, label %if.end.1
 if.then.1:
-  %t18 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.44, i32 0, i32 0
+  %t18 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.43, i32 0, i32 0
   store i32 1, ptr %t18
-  %t19 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.44, i32 0, i32 2
+  %t19 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.43, i32 0, i32 2
   %t21 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
   %t22 = ptrtoint ptr %t21 to i64
   %t20 = call ptr @willrt_alloc(i64 %t22)
@@ -2539,7 +2539,7 @@ if.then.1:
   %t34 = getelementptr inbounds %interface.Error, ptr %t19, i32 0, i32 1
   store ptr %t20, ptr %t33
   store ptr @"std/io.vtable.Error.std/errors.Fault", ptr %t34
-  %t35 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.44
+  %t35 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.43
   ret { i32, [4 x i8], %interface.Error } %t35
 if.end.1:
   %t36 = getelementptr inbounds %"struct.std/io.Poller", ptr %p, i32 0, i32 0
@@ -2689,16 +2689,16 @@ arr.ready.4:
   store i64 %user, ptr %t109
   %t110 = add i64 %t108, 1
   store i64 %t110, ptr %t89
-  %t111 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.64, i32 0, i32 0
+  %t111 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.63, i32 0, i32 0
   store i32 0, ptr %t111
-  %t112 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.64, i32 0, i32 2
-  %t113 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.64
+  %t112 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.63, i32 0, i32 2
+  %t113 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.63
   ret { i32, [4 x i8], %interface.Error } %t113
 }
 define hidden { i32, [4 x i8], %interface.Error } @"std/io.Poller.remove"(ptr %p, i64 %fd) inlinehint {
 entry:
-  %v.adt.120 = alloca { i32, [4 x i8], %interface.Error }
-  %v.adt.124 = alloca { i32, [4 x i8], %interface.Error }
+  %v.adt.119 = alloca { i32, [4 x i8], %interface.Error }
+  %v.adt.123 = alloca { i32, [4 x i8], %interface.Error }
   %v.i = alloca i32
   %t114 = getelementptr inbounds %"struct.std/io.Poller", ptr %p, i32 0, i32 0
   %t115 = getelementptr inbounds { ptr, i64, i64 }, ptr %t114, i32 0, i32 1
@@ -2843,10 +2843,10 @@ remove.done.10:
   %t190 = sub i64 %t178, 1
   store i64 %t190, ptr %t177
   %t191 = load i64, ptr %t180
-  %t192 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.120, i32 0, i32 0
+  %t192 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.119, i32 0, i32 0
   store i32 0, ptr %t192
-  %t193 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.120, i32 0, i32 2
-  %t194 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.120
+  %t193 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.119, i32 0, i32 2
+  %t194 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.119
   ret { i32, [4 x i8], %interface.Error } %t194
 if.end.3:
   br label %for.step.1
@@ -2856,284 +2856,212 @@ for.step.1:
   store i32 %t196, ptr %v.i
   br label %for.cond.1
 for.end.1:
-  %t197 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.124, i32 0, i32 0
+  %t197 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.123, i32 0, i32 0
   store i32 0, ptr %t197
-  %t198 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.124, i32 0, i32 2
-  %t199 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.124
+  %t198 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.123, i32 0, i32 2
+  %t199 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.123
   ret { i32, [4 x i8], %interface.Error } %t199
-}
-define hidden { i32, [4 x i8], %interface.Error } @"std/io.Poller.next_blocking"(ptr %p, i64 %timeout, ptr %out) inlinehint {
-entry:
-  %v.before = alloca i64
-  %v.status = alloca i32
-  %v.adt.176 = alloca { i32, [4 x i8], %interface.Error }
-  %v.adt.181 = alloca { i32, [4 x i8], %interface.Error }
-  %t200 = getelementptr inbounds { ptr, i64, i64 }, ptr %out, i32 0, i32 1
-  %t201 = load i64, ptr %t200
-  store i64 %t201, ptr %v.before
-  %t202 = getelementptr inbounds %"struct.std/io.Poller", ptr %p, i32 0, i32 0
-  %t203 = getelementptr inbounds %"struct.std/io.Poller", ptr %p, i32 0, i32 1
-  %t204 = getelementptr inbounds %"struct.std/io.Poller", ptr %p, i32 0, i32 2
-  %t205 = getelementptr inbounds %"struct.std/io.Poller", ptr %p, i32 0, i32 0
-  %t206 = getelementptr inbounds { ptr, i64, i64 }, ptr %t205, i32 0, i32 1
-  %t207 = load i64, ptr %t206
-  %t208 = icmp ugt i64 %t207, 9223372036854775807
-  br i1 %t208, label %panic.1, label %panic.ok.1
-panic.1:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.65, ptr @.str.66)
-  unreachable
-panic.ok.1:
-  %t209 = call i32 @willrt_poll_wait(ptr %t202, ptr %t203, ptr %t204, i64 %t207, i64 %timeout, ptr %out)
-  store i32 %t209, ptr %v.status
-  %t210 = load i32, ptr %v.status
-  %t211 = icmp ne i32 %t210, 0
-  br i1 %t211, label %if.then.2, label %if.end.2
-if.then.2:
-  %t212 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.176, i32 0, i32 0
-  store i32 1, ptr %t212
-  %t213 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.176, i32 0, i32 2
-  %t215 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
-  %t216 = ptrtoint ptr %t215 to i64
-  %t214 = call ptr @willrt_alloc(i64 %t216)
-  %t217 = load %"struct.std/errors.Fault", ptr @"std/errors.Io"
-  store %"struct.std/errors.Fault" %t217, ptr %t214
-  %t218 = getelementptr inbounds %"struct.std/errors.Fault", ptr @"std/errors.Io", i32 0, i32 0
-  %t219 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t214, i32 0, i32 0
-  %t220 = getelementptr inbounds { ptr, i64 }, ptr %t218, i32 0, i32 0
-  %t221 = getelementptr inbounds { ptr, i64 }, ptr %t218, i32 0, i32 1
-  %t222 = load ptr, ptr %t220
-  %t223 = load i64, ptr %t221
-  %t224 = call ptr @willrt_alloc(i64 %t223)
-  call void @memcpy(ptr %t224, ptr %t222, i64 %t223)
-  %t225 = getelementptr inbounds { ptr, i64 }, ptr %t219, i32 0, i32 0
-  store ptr %t224, ptr %t225
-  %t226 = getelementptr inbounds { ptr, i64 }, ptr %t219, i32 0, i32 1
-  store i64 %t223, ptr %t226
-  %t227 = getelementptr inbounds %interface.Error, ptr %t213, i32 0, i32 0
-  %t228 = getelementptr inbounds %interface.Error, ptr %t213, i32 0, i32 1
-  store ptr %t214, ptr %t227
-  store ptr @"std/io.vtable.Error.std/errors.Fault", ptr %t228
-  %t229 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.176
-  ret { i32, [4 x i8], %interface.Error } %t229
-if.end.2:
-  %t230 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.181, i32 0, i32 0
-  store i32 0, ptr %t230
-  %t231 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.181, i32 0, i32 2
-  %t232 = getelementptr inbounds { ptr, i64, i64 }, ptr %out, i32 0, i32 1
-  %t233 = load i64, ptr %t232
-  %t234 = load i64, ptr %v.before
-  %t235 = call {i64, i1} @llvm.usub.with.overflow.i64(i64 %t233, i64 %t234)
-  %t236 = extractvalue {i64, i1} %t235, 0
-  %t237 = extractvalue {i64, i1} %t235, 1
-  br i1 %t237, label %panic.3, label %panic.ok.3
-panic.3:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.67, ptr @.str.66)
-  unreachable
-panic.ok.3:
-  store i64 %t236, ptr %t231
-  %t238 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.181
-  ret { i32, [4 x i8], %interface.Error } %t238
 }
 define internal ptr @"std/io.iface.clone.Error.std/errors.Fault"(ptr %data) {
 entry:
-  %t239 = alloca ptr
-  store ptr null, ptr %t239
-  %t240 = icmp eq ptr %data, null
-  br i1 %t240, label %iface.clone.null.4, label %iface.clone.have.4
-iface.clone.null.4:
-  br label %iface.clone.ret.4
-iface.clone.have.4:
-  %t242 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
-  %t243 = ptrtoint ptr %t242 to i64
-  %t241 = call ptr @willrt_alloc(i64 %t243)
-  %t244 = load %"struct.std/errors.Fault", ptr %data
-  store %"struct.std/errors.Fault" %t244, ptr %t241
-  %t245 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
-  %t246 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t241, i32 0, i32 0
-  %t247 = getelementptr inbounds { ptr, i64 }, ptr %t245, i32 0, i32 0
-  %t248 = getelementptr inbounds { ptr, i64 }, ptr %t245, i32 0, i32 1
-  %t249 = load ptr, ptr %t247
-  %t250 = load i64, ptr %t248
-  %t251 = call ptr @willrt_alloc(i64 %t250)
-  call void @memcpy(ptr %t251, ptr %t249, i64 %t250)
-  %t252 = getelementptr inbounds { ptr, i64 }, ptr %t246, i32 0, i32 0
-  store ptr %t251, ptr %t252
-  %t253 = getelementptr inbounds { ptr, i64 }, ptr %t246, i32 0, i32 1
-  store i64 %t250, ptr %t253
-  store ptr %t241, ptr %t239
-  br label %iface.clone.ret.4
-iface.clone.ret.4:
-  %t254 = load ptr, ptr %t239
-  ret ptr %t254
+  %t200 = alloca ptr
+  store ptr null, ptr %t200
+  %t201 = icmp eq ptr %data, null
+  br i1 %t201, label %iface.clone.null.11, label %iface.clone.have.11
+iface.clone.null.11:
+  br label %iface.clone.ret.11
+iface.clone.have.11:
+  %t203 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t204 = ptrtoint ptr %t203 to i64
+  %t202 = call ptr @willrt_alloc(i64 %t204)
+  %t205 = load %"struct.std/errors.Fault", ptr %data
+  store %"struct.std/errors.Fault" %t205, ptr %t202
+  %t206 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
+  %t207 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t202, i32 0, i32 0
+  %t208 = getelementptr inbounds { ptr, i64 }, ptr %t206, i32 0, i32 0
+  %t209 = getelementptr inbounds { ptr, i64 }, ptr %t206, i32 0, i32 1
+  %t210 = load ptr, ptr %t208
+  %t211 = load i64, ptr %t209
+  %t212 = call ptr @willrt_alloc(i64 %t211)
+  call void @memcpy(ptr %t212, ptr %t210, i64 %t211)
+  %t213 = getelementptr inbounds { ptr, i64 }, ptr %t207, i32 0, i32 0
+  store ptr %t212, ptr %t213
+  %t214 = getelementptr inbounds { ptr, i64 }, ptr %t207, i32 0, i32 1
+  store i64 %t211, ptr %t214
+  store ptr %t202, ptr %t200
+  br label %iface.clone.ret.11
+iface.clone.ret.11:
+  %t215 = load ptr, ptr %t200
+  ret ptr %t215
 }
 define internal void @"std/io.iface.drop.Error.std/errors.Fault"(ptr %data) {
 entry:
-  %t255 = icmp eq ptr %data, null
-  br i1 %t255, label %iface.drop.null.5, label %iface.drop.have.5
-iface.drop.null.5:
-  br label %iface.drop.done.5
-iface.drop.have.5:
-  %t256 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
-  %t257 = getelementptr inbounds { ptr, i64 }, ptr %t256, i32 0, i32 0
-  %t258 = load ptr, ptr %t257
-  call void @willrt_free_str(ptr %t258)
-  br label %iface.drop.done.5
-iface.drop.done.5:
+  %t216 = icmp eq ptr %data, null
+  br i1 %t216, label %iface.drop.null.12, label %iface.drop.have.12
+iface.drop.null.12:
+  br label %iface.drop.done.12
+iface.drop.have.12:
+  %t217 = getelementptr inbounds %"struct.std/errors.Fault", ptr %data, i32 0, i32 0
+  %t218 = getelementptr inbounds { ptr, i64 }, ptr %t217, i32 0, i32 0
+  %t219 = load ptr, ptr %t218
+  call void @willrt_free_str(ptr %t219)
+  br label %iface.drop.done.12
+iface.drop.done.12:
   ret void
 }
 define internal i32 @"std/io.Poller.next.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
-  %v.sm.param.188.259 = getelementptr i8, ptr %frame, i64 8
-  %v.sm.param.190.261 = getelementptr i8, ptr %frame, i64 16
-  %v.sm.param.192.262 = getelementptr i8, ptr %frame, i64 24
+  %v.sm.param.127.220 = getelementptr i8, ptr %frame, i64 8
+  %v.sm.param.129.222 = getelementptr i8, ptr %frame, i64 16
+  %v.sm.param.131.223 = getelementptr i8, ptr %frame, i64 24
   %v.before = getelementptr i8, ptr %frame, i64 32
   %v.status = getelementptr i8, ptr %frame, i64 40
-  %v.adt.237 = getelementptr i8, ptr %frame, i64 48
-  %v.adt.242 = getelementptr i8, ptr %frame, i64 72
-  %v.await.scalar.205 = getelementptr i8, ptr %frame, i64 96
-  %v.sm.async.op.273 = getelementptr i8, ptr %frame, i64 104
-  %v.sm.async.status.274 = getelementptr i8, ptr %frame, i64 112
-  %t304 = getelementptr i8, ptr %frame, i64 120
-  %t316 = getelementptr i8, ptr %frame, i64 144
-  %t260 = load ptr, ptr %v.sm.param.188.259
-  %t263 = load ptr, ptr %v.sm.param.192.262
-  %v.sm.pval.190 = load i64, ptr %v.sm.param.190.261
+  %v.adt.176 = getelementptr i8, ptr %frame, i64 48
+  %v.adt.181 = getelementptr i8, ptr %frame, i64 72
+  %v.await.scalar.144 = getelementptr i8, ptr %frame, i64 96
+  %v.sm.async.op.234 = getelementptr i8, ptr %frame, i64 104
+  %v.sm.async.status.235 = getelementptr i8, ptr %frame, i64 112
+  %t265 = getelementptr i8, ptr %frame, i64 120
+  %t277 = getelementptr i8, ptr %frame, i64 144
+  %t221 = load ptr, ptr %v.sm.param.127.220
+  %t224 = load ptr, ptr %v.sm.param.131.223
+  %v.sm.pval.129 = load i64, ptr %v.sm.param.129.222
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
-  %t264 = getelementptr inbounds { ptr, i64, i64 }, ptr %t263, i32 0, i32 1
-  %t265 = load i64, ptr %t264
-  store i64 %t265, ptr %v.before
-  %t266 = getelementptr inbounds %"struct.std/io.Poller", ptr %t260, i32 0, i32 0
-  %t267 = getelementptr inbounds %"struct.std/io.Poller", ptr %t260, i32 0, i32 1
-  %t268 = getelementptr inbounds %"struct.std/io.Poller", ptr %t260, i32 0, i32 2
-  %t269 = getelementptr inbounds %"struct.std/io.Poller", ptr %t260, i32 0, i32 0
-  %t270 = getelementptr inbounds { ptr, i64, i64 }, ptr %t269, i32 0, i32 1
-  %t271 = load i64, ptr %t270
-  %t272 = icmp ugt i64 %t271, 9223372036854775807
-  br i1 %t272, label %panic.1, label %panic.ok.1
+  %t225 = getelementptr inbounds { ptr, i64, i64 }, ptr %t224, i32 0, i32 1
+  %t226 = load i64, ptr %t225
+  store i64 %t226, ptr %v.before
+  %t227 = getelementptr inbounds %"struct.std/io.Poller", ptr %t221, i32 0, i32 0
+  %t228 = getelementptr inbounds %"struct.std/io.Poller", ptr %t221, i32 0, i32 1
+  %t229 = getelementptr inbounds %"struct.std/io.Poller", ptr %t221, i32 0, i32 2
+  %t230 = getelementptr inbounds %"struct.std/io.Poller", ptr %t221, i32 0, i32 0
+  %t231 = getelementptr inbounds { ptr, i64, i64 }, ptr %t230, i32 0, i32 1
+  %t232 = load i64, ptr %t231
+  %t233 = icmp ugt i64 %t232, 9223372036854775807
+  br i1 %t233, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.68, ptr @.str.69)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.65, ptr @.str.66)
   unreachable
 panic.ok.1:
-  %t275 = call ptr @willrt_poll_wait_async_start(ptr %t266, ptr %t267, ptr %t268, i64 %t271, i64 %v.sm.pval.190, ptr %t263)
-  store ptr %t275, ptr %v.sm.async.op.273
-  %t276 = icmp ne ptr %t275, null
-  br i1 %t276, label %sm.async.have.1, label %sm.async.fail.1
+  %t236 = call ptr @willrt_poll_wait_async_start(ptr %t227, ptr %t228, ptr %t229, i64 %t232, i64 %v.sm.pval.129, ptr %t224)
+  store ptr %t236, ptr %v.sm.async.op.234
+  %t237 = icmp ne ptr %t236, null
+  br i1 %t237, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.274
+  store i32 1, ptr %v.sm.async.status.235
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t277 = load ptr, ptr %v.sm.async.op.273
-  %t278 = call i32 @willrt_poll_wait_async_poll(ptr %t277)
-  %t279 = icmp eq i32 %t278, 0
-  br i1 %t279, label %sm.async.park.1, label %sm.async.done.1
+  %t238 = load ptr, ptr %v.sm.async.op.234
+  %t239 = call i32 @willrt_poll_wait_async_poll(ptr %t238)
+  %t240 = icmp eq i32 %t239, 0
+  br i1 %t240, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
-  %t280 = call i64 @willrt_poll_wait_async_deadline(ptr %t277)
-  call void @willrt_task_wait_until(i64 %t280)
+  %t241 = call i64 @willrt_poll_wait_async_deadline(ptr %t238)
+  call void @willrt_task_wait_until(i64 %t241)
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t281 = call i32 @willrt_poll_wait_async_finish(ptr %t277)
-  store i32 %t281, ptr %v.sm.async.status.274
+  %t242 = call i32 @willrt_poll_wait_async_finish(ptr %t238)
+  store i32 %t242, ptr %v.sm.async.status.235
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t282 = load i32, ptr %v.sm.async.status.274
-  store i32 %t282, ptr %v.await.scalar.205
-  %t283 = load i32, ptr %v.await.scalar.205
-  store i32 %t283, ptr %v.status
-  %t284 = load i32, ptr %v.status
-  %t285 = icmp ne i32 %t284, 0
-  br i1 %t285, label %if.then.2, label %if.end.2
+  %t243 = load i32, ptr %v.sm.async.status.235
+  store i32 %t243, ptr %v.await.scalar.144
+  %t244 = load i32, ptr %v.await.scalar.144
+  store i32 %t244, ptr %v.status
+  %t245 = load i32, ptr %v.status
+  %t246 = icmp ne i32 %t245, 0
+  br i1 %t246, label %if.then.2, label %if.end.2
 if.then.2:
-  %t286 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.237, i32 0, i32 0
-  store i32 1, ptr %t286
-  %t287 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.237, i32 0, i32 2
-  %t289 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
-  %t290 = ptrtoint ptr %t289 to i64
-  %t288 = call ptr @willrt_alloc(i64 %t290)
-  %t291 = load %"struct.std/errors.Fault", ptr @"std/errors.Io"
-  store %"struct.std/errors.Fault" %t291, ptr %t288
-  %t292 = getelementptr inbounds %"struct.std/errors.Fault", ptr @"std/errors.Io", i32 0, i32 0
-  %t293 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t288, i32 0, i32 0
-  %t294 = getelementptr inbounds { ptr, i64 }, ptr %t292, i32 0, i32 0
-  %t295 = getelementptr inbounds { ptr, i64 }, ptr %t292, i32 0, i32 1
-  %t296 = load ptr, ptr %t294
-  %t297 = load i64, ptr %t295
-  %t298 = call ptr @willrt_alloc(i64 %t297)
-  call void @memcpy(ptr %t298, ptr %t296, i64 %t297)
-  %t299 = getelementptr inbounds { ptr, i64 }, ptr %t293, i32 0, i32 0
-  store ptr %t298, ptr %t299
-  %t300 = getelementptr inbounds { ptr, i64 }, ptr %t293, i32 0, i32 1
-  store i64 %t297, ptr %t300
-  %t301 = getelementptr inbounds %interface.Error, ptr %t287, i32 0, i32 0
-  %t302 = getelementptr inbounds %interface.Error, ptr %t287, i32 0, i32 1
-  store ptr %t288, ptr %t301
-  store ptr @"std/io.vtable.Error.std/errors.Fault", ptr %t302
-  %t303 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.237
-  store { i32, [4 x i8], %interface.Error } %t303, ptr %t304
-  %t305 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t306 = ptrtoint ptr %t305 to i64
-  call i32 @willrt_task_store_result(ptr %t304, i64 %t306)
+  %t247 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.176, i32 0, i32 0
+  store i32 1, ptr %t247
+  %t248 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.176, i32 0, i32 2
+  %t250 = getelementptr %"struct.std/errors.Fault", ptr null, i32 1
+  %t251 = ptrtoint ptr %t250 to i64
+  %t249 = call ptr @willrt_alloc(i64 %t251)
+  %t252 = load %"struct.std/errors.Fault", ptr @"std/errors.Io"
+  store %"struct.std/errors.Fault" %t252, ptr %t249
+  %t253 = getelementptr inbounds %"struct.std/errors.Fault", ptr @"std/errors.Io", i32 0, i32 0
+  %t254 = getelementptr inbounds %"struct.std/errors.Fault", ptr %t249, i32 0, i32 0
+  %t255 = getelementptr inbounds { ptr, i64 }, ptr %t253, i32 0, i32 0
+  %t256 = getelementptr inbounds { ptr, i64 }, ptr %t253, i32 0, i32 1
+  %t257 = load ptr, ptr %t255
+  %t258 = load i64, ptr %t256
+  %t259 = call ptr @willrt_alloc(i64 %t258)
+  call void @memcpy(ptr %t259, ptr %t257, i64 %t258)
+  %t260 = getelementptr inbounds { ptr, i64 }, ptr %t254, i32 0, i32 0
+  store ptr %t259, ptr %t260
+  %t261 = getelementptr inbounds { ptr, i64 }, ptr %t254, i32 0, i32 1
+  store i64 %t258, ptr %t261
+  %t262 = getelementptr inbounds %interface.Error, ptr %t248, i32 0, i32 0
+  %t263 = getelementptr inbounds %interface.Error, ptr %t248, i32 0, i32 1
+  store ptr %t249, ptr %t262
+  store ptr @"std/io.vtable.Error.std/errors.Fault", ptr %t263
+  %t264 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.176
+  store { i32, [4 x i8], %interface.Error } %t264, ptr %t265
+  %t266 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t267 = ptrtoint ptr %t266 to i64
+  call i32 @willrt_task_store_result(ptr %t265, i64 %t267)
   ret i32 1
 if.end.2:
-  %t307 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.242, i32 0, i32 0
-  store i32 0, ptr %t307
-  %t308 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.242, i32 0, i32 2
-  %t309 = getelementptr inbounds { ptr, i64, i64 }, ptr %t263, i32 0, i32 1
-  %t310 = load i64, ptr %t309
-  %t311 = load i64, ptr %v.before
-  %t312 = call {i64, i1} @llvm.usub.with.overflow.i64(i64 %t310, i64 %t311)
-  %t313 = extractvalue {i64, i1} %t312, 0
-  %t314 = extractvalue {i64, i1} %t312, 1
-  br i1 %t314, label %panic.3, label %panic.ok.3
+  %t268 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.181, i32 0, i32 0
+  store i32 0, ptr %t268
+  %t269 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.181, i32 0, i32 2
+  %t270 = getelementptr inbounds { ptr, i64, i64 }, ptr %t224, i32 0, i32 1
+  %t271 = load i64, ptr %t270
+  %t272 = load i64, ptr %v.before
+  %t273 = call {i64, i1} @llvm.usub.with.overflow.i64(i64 %t271, i64 %t272)
+  %t274 = extractvalue {i64, i1} %t273, 0
+  %t275 = extractvalue {i64, i1} %t273, 1
+  br i1 %t275, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.70, ptr @.str.69)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.67, ptr @.str.66)
   unreachable
 panic.ok.3:
-  store i64 %t313, ptr %t308
-  %t315 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.242
-  store { i32, [4 x i8], %interface.Error } %t315, ptr %t316
-  %t317 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t318 = ptrtoint ptr %t317 to i64
-  call i32 @willrt_task_store_result(ptr %t316, i64 %t318)
+  store i64 %t274, ptr %t269
+  %t276 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.181
+  store { i32, [4 x i8], %interface.Error } %t276, ptr %t277
+  %t278 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t279 = ptrtoint ptr %t278 to i64
+  call i32 @willrt_task_store_result(ptr %t277, i64 %t279)
   ret i32 1
 
 }
 define hidden ptr @"std/io.Poller.next.task"(ptr %arg0, i64 %arg1, ptr %arg2, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 176)
-  %t319 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t319
-  %t320 = getelementptr i8, ptr %v.sm.frame, i64 8
-  store ptr %arg0, ptr %t320
-  %t321 = getelementptr i8, ptr %v.sm.frame, i64 16
-  store i64 %arg1, ptr %t321
-  %t322 = getelementptr i8, ptr %v.sm.frame, i64 24
-  store ptr %arg2, ptr %t322
-  %t323 = call i32 @willrt_lane_here()
-  %t324 = icmp eq i32 %start, -1
-  %t325 = icmp eq i32 %start, -2
-  %t326 = select i1 %t325, i32 %t323, i32 %start
-  br i1 %t324, label %sm.start.auto.4, label %sm.start.lane.4
+  %t280 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t280
+  %t281 = getelementptr i8, ptr %v.sm.frame, i64 8
+  store ptr %arg0, ptr %t281
+  %t282 = getelementptr i8, ptr %v.sm.frame, i64 16
+  store i64 %arg1, ptr %t282
+  %t283 = getelementptr i8, ptr %v.sm.frame, i64 24
+  store ptr %arg2, ptr %t283
+  %t284 = call i32 @willrt_lane_here()
+  %t285 = icmp eq i32 %start, -1
+  %t286 = icmp eq i32 %start, -2
+  %t287 = select i1 %t286, i32 %t284, i32 %start
+  br i1 %t285, label %sm.start.auto.4, label %sm.start.lane.4
 sm.start.auto.4:
-  %t327 = call ptr @willrt_task_new(ptr @"std/io.Poller.next.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0)
-  call void @willrt_task_own_frame(ptr %t327)
-  call void @willrt_task_run_auto(ptr %t327)
+  %t288 = call ptr @willrt_task_new(ptr @"std/io.Poller.next.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0)
+  call void @willrt_task_own_frame(ptr %t288)
+  call void @willrt_task_run_auto(ptr %t288)
   br label %sm.start.done.4
 sm.start.lane.4:
-  %t328 = call ptr @willrt_task_new(ptr @"std/io.Poller.next.sm", ptr %v.sm.frame, i64 176, i32 %t326, i32 0)
-  call void @willrt_task_own_frame(ptr %t328)
-  call void @willrt_task_run(ptr %t328)
+  %t289 = call ptr @willrt_task_new(ptr @"std/io.Poller.next.sm", ptr %v.sm.frame, i64 176, i32 %t287, i32 0)
+  call void @willrt_task_own_frame(ptr %t289)
+  call void @willrt_task_run(ptr %t289)
   br label %sm.start.done.4
 sm.start.done.4:
-  %t329 = phi ptr [ %t327, %sm.start.auto.4 ], [ %t328, %sm.start.lane.4 ]
-  ret ptr %t329
+  %t290 = phi ptr [ %t288, %sm.start.auto.4 ], [ %t289, %sm.start.lane.4 ]
+  ret ptr %t290
 }
 define hidden %"struct.std/fmt.Format" @"std/fmt.float"(double %v, i32 %prec, i32 %width, i8 %fill) inlinehint {
 entry:
@@ -3155,7 +3083,7 @@ if.then.1:
   %t5 = load ptr, ptr %t4
   %t6 = getelementptr inbounds { ptr, i64 }, ptr %v.str.22, i32 0, i32 1
   %t7 = load i64, ptr %t6
-  call void @willrt_panic_n(ptr %t5, i64 %t7, ptr @.str.72, ptr @.str.73)
+  call void @willrt_panic_n(ptr %t5, i64 %t7, ptr @.str.69, ptr @.str.70)
   unreachable
 if.end.1:
   %t8 = getelementptr inbounds { ptr, i64 }, ptr %v.str.25, i32 0, i32 0
@@ -3178,7 +3106,7 @@ if.then.2:
   %t17 = load ptr, ptr %t16
   %t18 = getelementptr inbounds { ptr, i64 }, ptr %v.str.42, i32 0, i32 1
   %t19 = load i64, ptr %t18
-  call void @willrt_panic_n(ptr %t17, i64 %t19, ptr @.str.76, ptr @.str.73)
+  call void @willrt_panic_n(ptr %t17, i64 %t19, ptr @.str.73, ptr @.str.70)
   unreachable
 if.end.2:
   %t20 = fcmp olt double %v, 0.0
@@ -3290,20 +3218,20 @@ if.then.1:
   %t4 = extractvalue {i64, i1} %t2, 1
   br i1 %t4, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.77, ptr @.str.78)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.74, ptr @.str.75)
   unreachable
 panic.ok.2:
   %t6 = icmp eq i64 %t3, -9223372036854775808
   br i1 %t6, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.79, ptr @.str.78)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.76, ptr @.str.75)
   unreachable
 panic.ok.3:
   %t5 = sub i64 0, %t3
   %t7 = icmp slt i64 %t5, 0
   br i1 %t7, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.80, ptr @.str.78)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.77, ptr @.str.75)
   unreachable
 panic.ok.4:
   %t8 = call {i64, i1} @llvm.uadd.with.overflow.i64(i64 %t5, i64 1)
@@ -3311,7 +3239,7 @@ panic.ok.4:
   %t10 = extractvalue {i64, i1} %t8, 1
   br i1 %t10, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.80, ptr @.str.78)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.77, ptr @.str.75)
   unreachable
 panic.ok.5:
   store i64 %t9, ptr %v.magnitude
@@ -3320,7 +3248,7 @@ if.else.1:
   %t11 = icmp slt i64 %v, 0
   br i1 %t11, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.81, ptr @.str.78)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.78, ptr @.str.75)
   unreachable
 panic.ok.6:
   store i64 %v, ptr %v.magnitude
@@ -3338,7 +3266,7 @@ if.end.1:
   %t18 = icmp slt i32 %base, 0
   br i1 %t18, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.82, ptr @.str.78)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.79, ptr @.str.75)
   unreachable
 panic.ok.7:
   store i32 %base, ptr %t17
@@ -3373,7 +3301,7 @@ entry:
   %t31 = icmp slt i32 %base, 0
   br i1 %t31, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.83, ptr @.str.84)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.80, ptr @.str.81)
   unreachable
 panic.ok.1:
   store i32 %base, ptr %t30
@@ -3409,7 +3337,7 @@ if.then.1:
   %t46 = load ptr, ptr %t45
   %t47 = getelementptr inbounds { ptr, i64 }, ptr %v.str.99, i32 0, i32 1
   %t48 = load i64, ptr %t47
-  call void @willrt_panic_n(ptr %t46, i64 %t48, ptr @.str.86, ptr @.str.87)
+  call void @willrt_panic_n(ptr %t46, i64 %t48, ptr @.str.83, ptr @.str.84)
   unreachable
 if.end.1:
   ret void
@@ -3471,13 +3399,13 @@ if.end.1:
   %t74 = extractvalue {i64, i1} %t72, 1
   br i1 %t74, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.89, ptr @.str.90)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.86, ptr @.str.87)
   unreachable
 panic.ok.2:
   %t75 = icmp ugt i64 %t73, 2147483647
   br i1 %t75, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.91, ptr @.str.90)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.88, ptr @.str.87)
   unreachable
 panic.ok.3:
   %t76 = trunc i64 %t73 to i32
@@ -3523,7 +3451,7 @@ if.end.4:
   %t100 = extractvalue {i32, i1} %t98, 1
   br i1 %t100, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.92, ptr @.str.90)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.89, ptr @.str.87)
   unreachable
 panic.ok.6:
   %t101 = sext i32 %t99 to i64
@@ -3636,14 +3564,14 @@ if.end.3:
   %t151 = icmp eq i64 %t150, 0
   br i1 %t151, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.16, ptr @.str.94, ptr @.str.95)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.91, ptr @.str.92)
   unreachable
 panic.ok.4:
   %t152 = urem i64 %t149, %t150
   %t153 = icmp ugt i64 %t152, 4294967295
   br i1 %t153, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.96, ptr @.str.95)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.93, ptr @.str.92)
   unreachable
 panic.ok.5:
   %t154 = trunc i64 %t152 to i32
@@ -3703,13 +3631,13 @@ arr.ready.7:
   %t183 = extractvalue {i32, i1} %t181, 1
   br i1 %t183, label %panic.8, label %panic.ok.8
 panic.8:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.97, ptr @.str.95)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.94, ptr @.str.92)
   unreachable
 panic.ok.8:
   %t184 = icmp ugt i32 %t182, 255
   br i1 %t184, label %panic.9, label %panic.ok.9
 panic.9:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.98, ptr @.str.95)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.95, ptr @.str.92)
   unreachable
 panic.ok.9:
   %t185 = trunc i32 %t182 to i8
@@ -3769,13 +3697,13 @@ arr.ready.10:
   %t213 = extractvalue {i32, i1} %t211, 1
   br i1 %t213, label %panic.11, label %panic.ok.11
 panic.11:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.99, ptr @.str.95)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.96, ptr @.str.92)
   unreachable
 panic.ok.11:
   %t214 = icmp ugt i32 %t212, 255
   br i1 %t214, label %panic.12, label %panic.ok.12
 panic.12:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.100, ptr @.str.95)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.97, ptr @.str.92)
   unreachable
 panic.ok.12:
   %t215 = trunc i32 %t212 to i8
@@ -3789,7 +3717,7 @@ if.end.6:
   %t219 = icmp eq i64 %t218, 0
   br i1 %t219, label %panic.13, label %panic.ok.13
 panic.13:
-  call void @willrt_panic(ptr @.str.16, ptr @.str.101, ptr @.str.95)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.98, ptr @.str.92)
   unreachable
 panic.ok.13:
   %t220 = udiv i64 %t217, %t218
@@ -3835,7 +3763,7 @@ if.end.16:
   %t238 = extractvalue {i64, i1} %t236, 1
   br i1 %t238, label %panic.17, label %panic.ok.17
 panic.17:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.102, ptr @.str.95)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.99, ptr @.str.92)
   unreachable
 panic.ok.17:
   store i64 %t237, ptr %v.i
@@ -3892,7 +3820,7 @@ arr.ready.18:
   %t267 = icmp uge i64 %t262, %t266
   br i1 %t267, label %panic.19, label %panic.ok.19
 panic.19:
-  call void @willrt_panic(ptr @.str.48, ptr @.str.103, ptr @.str.95)
+  call void @willrt_panic(ptr @.str.48, ptr @.str.100, ptr @.str.92)
   unreachable
 panic.ok.19:
   %t268 = getelementptr inbounds i8, ptr %t264, i64 %t262
@@ -4083,7 +4011,7 @@ entry:
   %t22 = icmp ugt i64 %t21, 2147483647
   br i1 %t22, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.106, ptr @.str.107)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.103, ptr @.str.104)
   unreachable
 panic.ok.2:
   %t23 = trunc i64 %t21 to i32
@@ -4114,7 +4042,7 @@ if.end.1:
   %t40 = extractvalue {i64, i1} %t38, 1
   br i1 %t40, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.108, ptr @.str.107)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.105, ptr @.str.104)
   unreachable
 panic.ok.3:
   %t41 = call { ptr, i64 } @"std/fmt.filled"(i64 %t39, i8 %fill)
@@ -4275,7 +4203,7 @@ arr.ready.4:
   %t116 = extractvalue {i64, i1} %t114, 1
   br i1 %t116, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.109, ptr @.str.110)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.106, ptr @.str.107)
   unreachable
 panic.ok.5:
   store i64 %t115, ptr %v.i
@@ -4370,7 +4298,7 @@ sm.init:
   %t25 = icmp ugt i64 0, %t24
   br i1 %t25, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.53, ptr @.str.112, ptr @.str.113)
+  call void @willrt_panic(ptr @.str.53, ptr @.str.109, ptr @.str.110)
   unreachable
 panic.ok.1:
   %t26 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
@@ -4380,7 +4308,7 @@ panic.ok.1:
   %t30 = icmp ugt i64 %t24, %t29
   br i1 %t30, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.53, ptr @.str.112, ptr @.str.113)
+  call void @willrt_panic(ptr @.str.53, ptr @.str.109, ptr @.str.110)
   unreachable
 panic.ok.2:
   %t31 = getelementptr inbounds i8, ptr %t27, i64 0
@@ -4517,7 +4445,7 @@ entry:
   %t7 = icmp ugt i64 %t6, 2147483647
   br i1 %t7, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.7, ptr @.str.114, ptr @.str.115)
+  call void @willrt_panic(ptr @.str.7, ptr @.str.111, ptr @.str.112)
   unreachable
 panic.ok.1:
   %t8 = trunc i64 %t6 to i32
@@ -4534,7 +4462,7 @@ for.body.2:
   %t13 = icmp slt i32 %t12, 0
   br i1 %t13, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.48, ptr @.str.116, ptr @.str.115)
+  call void @willrt_panic(ptr @.str.48, ptr @.str.113, ptr @.str.112)
   unreachable
 panic.ok.3:
   %t14 = sext i32 %t12 to i64
@@ -4545,7 +4473,7 @@ panic.ok.3:
   %t19 = icmp uge i64 %t14, %t18
   br i1 %t19, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.48, ptr @.str.116, ptr @.str.115)
+  call void @willrt_panic(ptr @.str.48, ptr @.str.113, ptr @.str.112)
   unreachable
 panic.ok.4:
   %t20 = getelementptr inbounds %interface.show, ptr %t16, i64 %t14
@@ -4564,7 +4492,7 @@ panic.ok.4:
   %t31 = icmp ugt i64 0, %t30
   br i1 %t31, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.53, ptr @.str.117, ptr @.str.115)
+  call void @willrt_panic(ptr @.str.53, ptr @.str.114, ptr @.str.112)
   unreachable
 panic.ok.5:
   %t32 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
@@ -4574,7 +4502,7 @@ panic.ok.5:
   %t36 = icmp ugt i64 %t30, %t35
   br i1 %t36, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.53, ptr @.str.117, ptr @.str.115)
+  call void @willrt_panic(ptr @.str.53, ptr @.str.114, ptr @.str.112)
   unreachable
 panic.ok.6:
   %t37 = getelementptr inbounds i8, ptr %t33, i64 0
@@ -4967,7 +4895,7 @@ entry:
   %t49 = extractvalue {i32, i1} %t47, 1
   br i1 %t49, label %panic.1, label %panic.ok.1
 panic.1:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.121, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.118, ptr @.str.119)
   unreachable
 panic.ok.1:
   store i32 %t48, ptr %v.passed
@@ -4975,7 +4903,7 @@ panic.ok.1:
   %t52 = icmp eq i64 5, -9223372036854775808
   br i1 %t52, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.123, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.120, ptr @.str.119)
   unreachable
 panic.ok.2:
   %t51 = sub i64 0, 5
@@ -4993,7 +4921,7 @@ panic.ok.2:
   %t60 = extractvalue {i32, i1} %t58, 1
   br i1 %t60, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.125, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.122, ptr @.str.119)
   unreachable
 panic.ok.3:
   store i32 %t59, ptr %v.passed
@@ -5012,7 +4940,7 @@ panic.ok.3:
   %t69 = extractvalue {i32, i1} %t67, 1
   br i1 %t69, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.127, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.124, ptr @.str.119)
   unreachable
 panic.ok.4:
   store i32 %t68, ptr %v.passed
@@ -5020,7 +4948,7 @@ panic.ok.4:
   %t72 = icmp eq i64 3, -9223372036854775808
   br i1 %t72, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.128, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.125, ptr @.str.119)
   unreachable
 panic.ok.5:
   %t71 = sub i64 0, 3
@@ -5038,7 +4966,7 @@ panic.ok.5:
   %t80 = extractvalue {i32, i1} %t78, 1
   br i1 %t80, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.130, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.127, ptr @.str.119)
   unreachable
 panic.ok.6:
   store i32 %t79, ptr %v.passed
@@ -5046,7 +4974,7 @@ panic.ok.6:
   %t83 = icmp eq i32 3, -2147483648
   br i1 %t83, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.131, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.128, ptr @.str.119)
   unreachable
 panic.ok.7:
   %t82 = sub i32 0, 3
@@ -5064,7 +4992,7 @@ panic.ok.7:
   %t91 = extractvalue {i32, i1} %t89, 1
   br i1 %t91, label %panic.8, label %panic.ok.8
 panic.8:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.133, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.130, ptr @.str.119)
   unreachable
 panic.ok.8:
   store i32 %t90, ptr %v.passed
@@ -5083,7 +5011,7 @@ panic.ok.8:
   %t100 = extractvalue {i32, i1} %t98, 1
   br i1 %t100, label %panic.9, label %panic.ok.9
 panic.9:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.135, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.132, ptr @.str.119)
   unreachable
 panic.ok.9:
   store i32 %t99, ptr %v.passed
@@ -5091,7 +5019,7 @@ panic.ok.9:
   %t103 = icmp eq i64 9223372036854775807, -9223372036854775808
   br i1 %t103, label %panic.10, label %panic.ok.10
 panic.10:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.136, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.133, ptr @.str.119)
   unreachable
 panic.ok.10:
   %t102 = sub i64 0, 9223372036854775807
@@ -5100,7 +5028,7 @@ panic.ok.10:
   %t106 = extractvalue {i64, i1} %t104, 1
   br i1 %t106, label %panic.11, label %panic.ok.11
 panic.11:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.136, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.133, ptr @.str.119)
   unreachable
 panic.ok.11:
   %t107 = call %"struct.std/fmt.Format" @"std/fmt.int"(i64 %t105, i32 10, i32 0, i8 48)
@@ -5117,7 +5045,7 @@ panic.ok.11:
   %t114 = extractvalue {i32, i1} %t112, 1
   br i1 %t114, label %panic.12, label %panic.ok.12
 panic.12:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.138, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.135, ptr @.str.119)
   unreachable
 panic.ok.12:
   store i32 %t113, ptr %v.passed
@@ -5136,7 +5064,7 @@ panic.ok.12:
   %t123 = extractvalue {i32, i1} %t121, 1
   br i1 %t123, label %panic.13, label %panic.ok.13
 panic.13:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.140, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.137, ptr @.str.119)
   unreachable
 panic.ok.13:
   store i32 %t122, ptr %v.passed
@@ -5144,7 +5072,7 @@ panic.ok.13:
   %t126 = icmp eq i64 255, -9223372036854775808
   br i1 %t126, label %panic.14, label %panic.ok.14
 panic.14:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.141, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.138, ptr @.str.119)
   unreachable
 panic.ok.14:
   %t125 = sub i64 0, 255
@@ -5162,7 +5090,7 @@ panic.ok.14:
   %t134 = extractvalue {i32, i1} %t132, 1
   br i1 %t134, label %panic.15, label %panic.ok.15
 panic.15:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.143, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.140, ptr @.str.119)
   unreachable
 panic.ok.15:
   store i32 %t133, ptr %v.passed
@@ -5181,7 +5109,7 @@ panic.ok.15:
   %t143 = extractvalue {i32, i1} %t141, 1
   br i1 %t143, label %panic.16, label %panic.ok.16
 panic.16:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.145, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.142, ptr @.str.119)
   unreachable
 panic.ok.16:
   store i32 %t142, ptr %v.passed
@@ -5200,7 +5128,7 @@ panic.ok.16:
   %t152 = extractvalue {i32, i1} %t150, 1
   br i1 %t152, label %panic.17, label %panic.ok.17
 panic.17:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.147, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.144, ptr @.str.119)
   unreachable
 panic.ok.17:
   store i32 %t151, ptr %v.passed
@@ -5219,7 +5147,7 @@ panic.ok.17:
   %t161 = extractvalue {i32, i1} %t159, 1
   br i1 %t161, label %panic.18, label %panic.ok.18
 panic.18:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.149, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.146, ptr @.str.119)
   unreachable
 panic.ok.18:
   store i32 %t160, ptr %v.passed
@@ -5238,7 +5166,7 @@ panic.ok.18:
   %t170 = extractvalue {i32, i1} %t168, 1
   br i1 %t170, label %panic.19, label %panic.ok.19
 panic.19:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.151, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.148, ptr @.str.119)
   unreachable
 panic.ok.19:
   store i32 %t169, ptr %v.passed
@@ -5257,7 +5185,7 @@ panic.ok.19:
   %t179 = extractvalue {i32, i1} %t177, 1
   br i1 %t179, label %panic.20, label %panic.ok.20
 panic.20:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.153, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.150, ptr @.str.119)
   unreachable
 panic.ok.20:
   store i32 %t178, ptr %v.passed
@@ -5276,7 +5204,7 @@ panic.ok.20:
   %t188 = extractvalue {i32, i1} %t186, 1
   br i1 %t188, label %panic.21, label %panic.ok.21
 panic.21:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.155, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.152, ptr @.str.119)
   unreachable
 panic.ok.21:
   store i32 %t187, ptr %v.passed
@@ -5295,7 +5223,7 @@ panic.ok.21:
   %t197 = extractvalue {i32, i1} %t195, 1
   br i1 %t197, label %panic.22, label %panic.ok.22
 panic.22:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.156, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.153, ptr @.str.119)
   unreachable
 panic.ok.22:
   store i32 %t196, ptr %v.passed
@@ -5318,7 +5246,7 @@ panic.ok.22:
   %t208 = extractvalue {i32, i1} %t206, 1
   br i1 %t208, label %panic.23, label %panic.ok.23
 panic.23:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.159, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.156, ptr @.str.119)
   unreachable
 panic.ok.23:
   store i32 %t207, ptr %v.passed
@@ -5341,7 +5269,7 @@ panic.ok.23:
   %t219 = extractvalue {i32, i1} %t217, 1
   br i1 %t219, label %panic.24, label %panic.ok.24
 panic.24:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.161, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.158, ptr @.str.119)
   unreachable
 panic.ok.24:
   store i32 %t218, ptr %v.passed
@@ -5364,7 +5292,7 @@ panic.ok.24:
   %t230 = extractvalue {i32, i1} %t228, 1
   br i1 %t230, label %panic.25, label %panic.ok.25
 panic.25:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.163, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.160, ptr @.str.119)
   unreachable
 panic.ok.25:
   store i32 %t229, ptr %v.passed
@@ -5387,7 +5315,7 @@ panic.ok.25:
   %t241 = extractvalue {i32, i1} %t239, 1
   br i1 %t241, label %panic.26, label %panic.ok.26
 panic.26:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.165, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.162, ptr @.str.119)
   unreachable
 panic.ok.26:
   store i32 %t240, ptr %v.passed
@@ -5406,7 +5334,7 @@ panic.ok.26:
   %t250 = extractvalue {i32, i1} %t248, 1
   br i1 %t250, label %panic.27, label %panic.ok.27
 panic.27:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.167, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.164, ptr @.str.119)
   unreachable
 panic.ok.27:
   store i32 %t249, ptr %v.passed
@@ -5414,7 +5342,7 @@ panic.ok.27:
   %t253 = icmp eq i64 1, -9223372036854775808
   br i1 %t253, label %panic.28, label %panic.ok.28
 panic.28:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.168, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.165, ptr @.str.119)
   unreachable
 panic.ok.28:
   %t252 = sub i64 0, 1
@@ -5432,7 +5360,7 @@ panic.ok.28:
   %t261 = extractvalue {i32, i1} %t259, 1
   br i1 %t261, label %panic.29, label %panic.ok.29
 panic.29:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.170, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.167, ptr @.str.119)
   unreachable
 panic.ok.29:
   store i32 %t260, ptr %v.passed
@@ -5451,7 +5379,7 @@ panic.ok.29:
   %t270 = extractvalue {i32, i1} %t268, 1
   br i1 %t270, label %panic.30, label %panic.ok.30
 panic.30:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.172, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.169, ptr @.str.119)
   unreachable
 panic.ok.30:
   store i32 %t269, ptr %v.passed
@@ -5470,7 +5398,7 @@ panic.ok.30:
   %t279 = extractvalue {i32, i1} %t277, 1
   br i1 %t279, label %panic.31, label %panic.ok.31
 panic.31:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.174, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.171, ptr @.str.119)
   unreachable
 panic.ok.31:
   store i32 %t278, ptr %v.passed
@@ -5489,7 +5417,7 @@ panic.ok.31:
   %t288 = extractvalue {i32, i1} %t286, 1
   br i1 %t288, label %panic.32, label %panic.ok.32
 panic.32:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.176, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.173, ptr @.str.119)
   unreachable
 panic.ok.32:
   store i32 %t287, ptr %v.passed
@@ -5509,7 +5437,7 @@ panic.ok.32:
   %t298 = extractvalue {i32, i1} %t296, 1
   br i1 %t298, label %panic.33, label %panic.ok.33
 panic.33:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.178, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.175, ptr @.str.119)
   unreachable
 panic.ok.33:
   store i32 %t297, ptr %v.passed
@@ -5528,7 +5456,7 @@ panic.ok.33:
   %t307 = extractvalue {i32, i1} %t305, 1
   br i1 %t307, label %panic.34, label %panic.ok.34
 panic.34:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.180, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.177, ptr @.str.119)
   unreachable
 panic.ok.34:
   store i32 %t306, ptr %v.passed
@@ -5548,7 +5476,7 @@ panic.ok.34:
   %t317 = extractvalue {i32, i1} %t315, 1
   br i1 %t317, label %panic.35, label %panic.ok.35
 panic.35:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.182, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.179, ptr @.str.119)
   unreachable
 panic.ok.35:
   store i32 %t316, ptr %v.passed
@@ -5567,7 +5495,7 @@ panic.ok.35:
   %t326 = extractvalue {i32, i1} %t324, 1
   br i1 %t326, label %panic.36, label %panic.ok.36
 panic.36:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.184, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.181, ptr @.str.119)
   unreachable
 panic.ok.36:
   store i32 %t325, ptr %v.passed
@@ -5586,7 +5514,7 @@ panic.ok.36:
   %t335 = extractvalue {i32, i1} %t333, 1
   br i1 %t335, label %panic.37, label %panic.ok.37
 panic.37:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.186, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.183, ptr @.str.119)
   unreachable
 panic.ok.37:
   store i32 %t334, ptr %v.passed
@@ -5605,7 +5533,7 @@ panic.ok.37:
   %t344 = extractvalue {i32, i1} %t342, 1
   br i1 %t344, label %panic.38, label %panic.ok.38
 panic.38:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.188, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.185, ptr @.str.119)
   unreachable
 panic.ok.38:
   store i32 %t343, ptr %v.passed
@@ -5624,7 +5552,7 @@ panic.ok.38:
   %t353 = extractvalue {i32, i1} %t351, 1
   br i1 %t353, label %panic.39, label %panic.ok.39
 panic.39:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.190, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.187, ptr @.str.119)
   unreachable
 panic.ok.39:
   store i32 %t352, ptr %v.passed
@@ -5643,7 +5571,7 @@ panic.ok.39:
   %t362 = extractvalue {i32, i1} %t360, 1
   br i1 %t362, label %panic.40, label %panic.ok.40
 panic.40:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.191, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.188, ptr @.str.119)
   unreachable
 panic.ok.40:
   store i32 %t361, ptr %v.passed
@@ -5662,7 +5590,7 @@ panic.ok.40:
   %t371 = extractvalue {i32, i1} %t369, 1
   br i1 %t371, label %panic.41, label %panic.ok.41
 panic.41:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.192, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.189, ptr @.str.119)
   unreachable
 panic.ok.41:
   store i32 %t370, ptr %v.passed
@@ -5682,7 +5610,7 @@ panic.ok.41:
   %t381 = extractvalue {i32, i1} %t379, 1
   br i1 %t381, label %panic.42, label %panic.ok.42
 panic.42:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.194, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.191, ptr @.str.119)
   unreachable
 panic.ok.42:
   store i32 %t380, ptr %v.passed
@@ -5701,7 +5629,7 @@ panic.ok.42:
   %t390 = extractvalue {i32, i1} %t388, 1
   br i1 %t390, label %panic.43, label %panic.ok.43
 panic.43:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.196, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.193, ptr @.str.119)
   unreachable
 panic.ok.43:
   store i32 %t389, ptr %v.passed
@@ -5720,7 +5648,7 @@ panic.ok.43:
   %t399 = extractvalue {i32, i1} %t397, 1
   br i1 %t399, label %panic.44, label %panic.ok.44
 panic.44:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.198, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.195, ptr @.str.119)
   unreachable
 panic.ok.44:
   store i32 %t398, ptr %v.passed
@@ -5739,7 +5667,7 @@ panic.ok.44:
   %t408 = extractvalue {i32, i1} %t406, 1
   br i1 %t408, label %panic.45, label %panic.ok.45
 panic.45:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.199, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.196, ptr @.str.119)
   unreachable
 panic.ok.45:
   store i32 %t407, ptr %v.passed
@@ -5759,7 +5687,7 @@ panic.ok.45:
   %t418 = extractvalue {i32, i1} %t416, 1
   br i1 %t418, label %panic.46, label %panic.ok.46
 panic.46:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.201, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.198, ptr @.str.119)
   unreachable
 panic.ok.46:
   store i32 %t417, ptr %v.passed
@@ -5778,7 +5706,7 @@ panic.ok.46:
   %t427 = extractvalue {i32, i1} %t425, 1
   br i1 %t427, label %panic.47, label %panic.ok.47
 panic.47:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.203, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.200, ptr @.str.119)
   unreachable
 panic.ok.47:
   store i32 %t426, ptr %v.passed
@@ -5797,7 +5725,7 @@ panic.ok.47:
   %t436 = extractvalue {i32, i1} %t434, 1
   br i1 %t436, label %panic.48, label %panic.ok.48
 panic.48:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.205, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.202, ptr @.str.119)
   unreachable
 panic.ok.48:
   store i32 %t435, ptr %v.passed
@@ -5816,7 +5744,7 @@ panic.ok.48:
   %t445 = extractvalue {i32, i1} %t443, 1
   br i1 %t445, label %panic.49, label %panic.ok.49
 panic.49:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.207, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.204, ptr @.str.119)
   unreachable
 panic.ok.49:
   store i32 %t444, ptr %v.passed
@@ -5835,7 +5763,7 @@ panic.ok.49:
   %t454 = extractvalue {i32, i1} %t452, 1
   br i1 %t454, label %panic.50, label %panic.ok.50
 panic.50:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.209, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.206, ptr @.str.119)
   unreachable
 panic.ok.50:
   store i32 %t453, ptr %v.passed
@@ -5855,7 +5783,7 @@ panic.ok.50:
   %t464 = extractvalue {i32, i1} %t462, 1
   br i1 %t464, label %panic.51, label %panic.ok.51
 panic.51:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.211, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.208, ptr @.str.119)
   unreachable
 panic.ok.51:
   store i32 %t463, ptr %v.passed
@@ -5874,7 +5802,7 @@ panic.ok.51:
   %t473 = extractvalue {i32, i1} %t471, 1
   br i1 %t473, label %panic.52, label %panic.ok.52
 panic.52:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.213, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.210, ptr @.str.119)
   unreachable
 panic.ok.52:
   store i32 %t472, ptr %v.passed
@@ -5894,7 +5822,7 @@ panic.ok.52:
   %t483 = extractvalue {i32, i1} %t481, 1
   br i1 %t483, label %panic.53, label %panic.ok.53
 panic.53:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.215, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.212, ptr @.str.119)
   unreachable
 panic.ok.53:
   store i32 %t482, ptr %v.passed
@@ -5914,7 +5842,7 @@ panic.ok.53:
   %t493 = extractvalue {i32, i1} %t491, 1
   br i1 %t493, label %panic.54, label %panic.ok.54
 panic.54:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.217, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.214, ptr @.str.119)
   unreachable
 panic.ok.54:
   store i32 %t492, ptr %v.passed
@@ -5934,7 +5862,7 @@ panic.ok.54:
   %t503 = extractvalue {i32, i1} %t501, 1
   br i1 %t503, label %panic.55, label %panic.ok.55
 panic.55:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.219, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.216, ptr @.str.119)
   unreachable
 panic.ok.55:
   store i32 %t502, ptr %v.passed
@@ -5954,7 +5882,7 @@ panic.ok.55:
   %t513 = extractvalue {i32, i1} %t511, 1
   br i1 %t513, label %panic.56, label %panic.ok.56
 panic.56:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.220, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.217, ptr @.str.119)
   unreachable
 panic.ok.56:
   store i32 %t512, ptr %v.passed
@@ -5973,7 +5901,7 @@ panic.ok.56:
   %t522 = extractvalue {i32, i1} %t520, 1
   br i1 %t522, label %panic.57, label %panic.ok.57
 panic.57:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.222, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.219, ptr @.str.119)
   unreachable
 panic.ok.57:
   store i32 %t521, ptr %v.passed
@@ -5993,7 +5921,7 @@ panic.ok.57:
   %t532 = extractvalue {i32, i1} %t530, 1
   br i1 %t532, label %panic.58, label %panic.ok.58
 panic.58:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.224, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.221, ptr @.str.119)
   unreachable
 panic.ok.58:
   store i32 %t531, ptr %v.passed
@@ -6012,7 +5940,7 @@ panic.ok.58:
   %t541 = extractvalue {i32, i1} %t539, 1
   br i1 %t541, label %panic.59, label %panic.ok.59
 panic.59:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.226, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.223, ptr @.str.119)
   unreachable
 panic.ok.59:
   store i32 %t540, ptr %v.passed
@@ -6031,7 +5959,7 @@ panic.ok.59:
   %t550 = extractvalue {i32, i1} %t548, 1
   br i1 %t550, label %panic.60, label %panic.ok.60
 panic.60:
-  call void @willrt_panic(ptr @.str.10, ptr @.str.228, ptr @.str.122)
+  call void @willrt_panic(ptr @.str.10, ptr @.str.225, ptr @.str.119)
   unreachable
 panic.ok.60:
   store i32 %t549, ptr %v.passed
@@ -6087,7 +6015,6 @@ declare i64 @willrt_f64_bits(double)
 declare double @willrt_f64_from_bits(i64)
 declare i32 @willrt_f32_bits(float)
 declare float @willrt_f32_from_bits(i32)
-declare i32 @willrt_poll_wait(ptr, ptr, ptr, i64, i64, ptr)
 declare ptr @willrt_poll_wait_async_start(ptr, ptr, ptr, i64, i64, ptr)
 declare i32 @willrt_poll_wait_async_poll(ptr)
 declare i32 @willrt_poll_wait_async_finish(ptr)
@@ -6154,176 +6081,173 @@ declare void @willrt_show_str(ptr, i64, ptr)
 @.str.56 = private unnamed_addr constant [16 x i8] c"io/io.will:51:9\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
 @"std/io.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/io.iface.clone.Error.std/errors.Fault", ptr @"std/io.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
-@.str.59 = private unnamed_addr constant [21 x i8] c"io/poller.will:43:23\00", align 1
+@.str.59 = private unnamed_addr constant [21 x i8] c"io/poller.will:42:23\00", align 1
 @.str.60 = private unnamed_addr constant [21 x i8] c"std/io.Poller.remove\00", align 1
-@.str.61 = private unnamed_addr constant [21 x i8] c"io/poller.will:44:12\00", align 1
-@.str.62 = private unnamed_addr constant [21 x i8] c"io/poller.will:45:17\00", align 1
-@.str.63 = private unnamed_addr constant [21 x i8] c"io/poller.will:46:17\00", align 1
-@.str.64 = private unnamed_addr constant [21 x i8] c"io/poller.will:47:17\00", align 1
-@.str.65 = private unnamed_addr constant [21 x i8] c"io/poller.will:59:43\00", align 1
-@.str.66 = private unnamed_addr constant [28 x i8] c"std/io.Poller.next_blocking\00", align 1
+@.str.61 = private unnamed_addr constant [21 x i8] c"io/poller.will:43:12\00", align 1
+@.str.62 = private unnamed_addr constant [21 x i8] c"io/poller.will:44:17\00", align 1
+@.str.63 = private unnamed_addr constant [21 x i8] c"io/poller.will:45:17\00", align 1
+@.str.64 = private unnamed_addr constant [21 x i8] c"io/poller.will:46:17\00", align 1
+@.str.65 = private unnamed_addr constant [21 x i8] c"io/poller.will:58:64\00", align 1
+@.str.66 = private unnamed_addr constant [19 x i8] c"std/io.Poller.next\00", align 1
 @.str.67 = private unnamed_addr constant [21 x i8] c"io/poller.will:63:15\00", align 1
-@.str.68 = private unnamed_addr constant [21 x i8] c"io/poller.will:71:64\00", align 1
-@.str.69 = private unnamed_addr constant [19 x i8] c"std/io.Poller.next\00", align 1
-@.str.70 = private unnamed_addr constant [21 x i8] c"io/poller.will:76:15\00", align 1
 @.bytes.8 = private unnamed_addr constant [35 x i8] c"fmt: precision must not be negative", align 1
-@.str.72 = private unnamed_addr constant [20 x i8] c"fmt/float.will:13:9\00", align 1
-@.str.73 = private unnamed_addr constant [14 x i8] c"std/fmt.float\00", align 1
+@.str.69 = private unnamed_addr constant [20 x i8] c"fmt/float.will:13:9\00", align 1
+@.str.70 = private unnamed_addr constant [14 x i8] c"std/fmt.float\00", align 1
 @.bytes.9 = private unnamed_addr constant [0 x i8] zeroinitializer
 @.bytes.10 = private unnamed_addr constant [28 x i8] c"fmt: float formatting failed", align 1
-@.str.76 = private unnamed_addr constant [20 x i8] c"fmt/float.will:18:9\00", align 1
-@.str.77 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:13:27\00", align 1
-@.str.78 = private unnamed_addr constant [12 x i8] c"std/fmt.int\00", align 1
-@.str.79 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:13:25\00", align 1
-@.str.80 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:13:21\00", align 1
-@.str.81 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:15:21\00", align 1
-@.str.82 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:21:15\00", align 1
-@.str.83 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:37:15\00", align 1
-@.str.84 = private unnamed_addr constant [13 x i8] c"std/fmt.uint\00", align 1
+@.str.73 = private unnamed_addr constant [20 x i8] c"fmt/float.will:18:9\00", align 1
+@.str.74 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:13:27\00", align 1
+@.str.75 = private unnamed_addr constant [12 x i8] c"std/fmt.int\00", align 1
+@.str.76 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:13:25\00", align 1
+@.str.77 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:13:21\00", align 1
+@.str.78 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:15:21\00", align 1
+@.str.79 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:21:15\00", align 1
+@.str.80 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:37:15\00", align 1
+@.str.81 = private unnamed_addr constant [13 x i8] c"std/fmt.uint\00", align 1
 @.bytes.11 = private unnamed_addr constant [34 x i8] c"fmt: base must be between 2 and 36", align 1
-@.str.86 = private unnamed_addr constant [22 x i8] c"fmt/integer.will:49:9\00", align 1
-@.str.87 = private unnamed_addr constant [19 x i8] c"std/fmt.check_base\00", align 1
+@.str.83 = private unnamed_addr constant [22 x i8] c"fmt/integer.will:49:9\00", align 1
+@.str.84 = private unnamed_addr constant [19 x i8] c"std/fmt.check_base\00", align 1
 @.bytes.12 = private unnamed_addr constant [1 x i8] c"-", align 1
-@.str.89 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:66:25\00", align 1
-@.str.90 = private unnamed_addr constant [20 x i8] c"std/fmt.signed_text\00", align 1
-@.str.91 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:66:21\00", align 1
-@.str.92 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:70:36\00", align 1
+@.str.86 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:66:25\00", align 1
+@.str.87 = private unnamed_addr constant [20 x i8] c"std/fmt.signed_text\00", align 1
+@.str.88 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:66:21\00", align 1
+@.str.89 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:70:36\00", align 1
 @.bytes.13 = private unnamed_addr constant [1 x i8] c"0", align 1
-@.str.94 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:85:30\00", align 1
-@.str.95 = private unnamed_addr constant [18 x i8] c"std/fmt.digits_of\00", align 1
-@.str.96 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:85:26\00", align 1
-@.str.97 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:87:30\00", align 1
-@.str.98 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:87:27\00", align 1
-@.str.99 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:89:30\00", align 1
-@.str.100 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:89:27\00", align 1
-@.str.101 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:91:16\00", align 1
-@.str.102 = private unnamed_addr constant [22 x i8] c"fmt/integer.will:99:9\00", align 1
-@.str.103 = private unnamed_addr constant [24 x i8] c"fmt/integer.will:100:18\00", align 1
+@.str.91 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:85:30\00", align 1
+@.str.92 = private unnamed_addr constant [18 x i8] c"std/fmt.digits_of\00", align 1
+@.str.93 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:85:26\00", align 1
+@.str.94 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:87:30\00", align 1
+@.str.95 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:87:27\00", align 1
+@.str.96 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:89:30\00", align 1
+@.str.97 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:89:27\00", align 1
+@.str.98 = private unnamed_addr constant [23 x i8] c"fmt/integer.will:91:16\00", align 1
+@.str.99 = private unnamed_addr constant [22 x i8] c"fmt/integer.will:99:9\00", align 1
+@.str.100 = private unnamed_addr constant [24 x i8] c"fmt/integer.will:100:18\00", align 1
 @"will.type.Array<u8>" = linkonce_odr constant i8 0, align 1
 @"std/fmt.vtable.Show.Array<u8>" = internal constant [4 x ptr] [ptr @"will.show.Array<u8>", ptr @"std/fmt.iface.clone.Show.Array<u8>", ptr @"std/fmt.iface.drop.Show.Array<u8>", ptr @"will.type.Array<u8>"], align 8
-@.str.106 = private unnamed_addr constant [19 x i8] c"fmt/pad.will:19:22\00", align 1
-@.str.107 = private unnamed_addr constant [17 x i8] c"std/fmt.pad_text\00", align 1
-@.str.108 = private unnamed_addr constant [19 x i8] c"fmt/pad.will:22:30\00", align 1
-@.str.109 = private unnamed_addr constant [18 x i8] c"fmt/pad.will:39:9\00", align 1
-@.str.110 = private unnamed_addr constant [15 x i8] c"std/fmt.filled\00", align 1
+@.str.103 = private unnamed_addr constant [19 x i8] c"fmt/pad.will:19:22\00", align 1
+@.str.104 = private unnamed_addr constant [17 x i8] c"std/fmt.pad_text\00", align 1
+@.str.105 = private unnamed_addr constant [19 x i8] c"fmt/pad.will:22:30\00", align 1
+@.str.106 = private unnamed_addr constant [18 x i8] c"fmt/pad.will:39:9\00", align 1
+@.str.107 = private unnamed_addr constant [15 x i8] c"std/fmt.filled\00", align 1
 @.bytes.14 = private unnamed_addr constant [1 x i8] c"\0A", align 1
-@.str.112 = private unnamed_addr constant [21 x i8] c"fmt/print.will:16:26\00", align 1
-@.str.113 = private unnamed_addr constant [15 x i8] c"std/fmt.printf\00", align 1
-@.str.114 = private unnamed_addr constant [19 x i8] c"fmt/show.will:7:18\00", align 1
-@.str.115 = private unnamed_addr constant [16 x i8] c"std/fmt.text_of\00", align 1
-@.str.116 = private unnamed_addr constant [19 x i8] c"fmt/show.will:9:25\00", align 1
-@.str.117 = private unnamed_addr constant [20 x i8] c"fmt/show.will:10:20\00", align 1
+@.str.109 = private unnamed_addr constant [21 x i8] c"fmt/print.will:16:26\00", align 1
+@.str.110 = private unnamed_addr constant [15 x i8] c"std/fmt.printf\00", align 1
+@.str.111 = private unnamed_addr constant [19 x i8] c"fmt/show.will:7:18\00", align 1
+@.str.112 = private unnamed_addr constant [16 x i8] c"std/fmt.text_of\00", align 1
+@.str.113 = private unnamed_addr constant [19 x i8] c"fmt/show.will:9:25\00", align 1
+@.str.114 = private unnamed_addr constant [20 x i8] c"fmt/show.will:10:20\00", align 1
 @.bytes.15 = private unnamed_addr constant [5 x i8] c"got [", align 1
 @.bytes.16 = private unnamed_addr constant [8 x i8] c"] want [", align 1
 @.bytes.17 = private unnamed_addr constant [2 x i8] c"]\0A", align 1
-@.str.121 = private unnamed_addr constant [15 x i8] c"main.will:17:5\00", align 1
-@.str.122 = private unnamed_addr constant [34 x i8] c"example.com/stdtest/fmt.will$main\00", align 1
-@.str.123 = private unnamed_addr constant [16 x i8] c"main.will:18:26\00", align 1
+@.str.118 = private unnamed_addr constant [15 x i8] c"main.will:17:5\00", align 1
+@.str.119 = private unnamed_addr constant [34 x i8] c"example.com/stdtest/fmt.will$main\00", align 1
+@.str.120 = private unnamed_addr constant [16 x i8] c"main.will:18:26\00", align 1
 @.bytes.18 = private unnamed_addr constant [4 x i8] c"-005", align 1
-@.str.125 = private unnamed_addr constant [15 x i8] c"main.will:18:5\00", align 1
+@.str.122 = private unnamed_addr constant [15 x i8] c"main.will:18:5\00", align 1
 @.bytes.19 = private unnamed_addr constant [5 x i8] c"   42", align 1
-@.str.127 = private unnamed_addr constant [15 x i8] c"main.will:19:5\00", align 1
-@.str.128 = private unnamed_addr constant [16 x i8] c"main.will:20:26\00", align 1
+@.str.124 = private unnamed_addr constant [15 x i8] c"main.will:19:5\00", align 1
+@.str.125 = private unnamed_addr constant [16 x i8] c"main.will:20:26\00", align 1
 @.bytes.20 = private unnamed_addr constant [2 x i8] c"-3", align 1
-@.str.130 = private unnamed_addr constant [15 x i8] c"main.will:20:5\00", align 1
-@.str.131 = private unnamed_addr constant [16 x i8] c"main.will:21:36\00", align 1
+@.str.127 = private unnamed_addr constant [15 x i8] c"main.will:20:5\00", align 1
+@.str.128 = private unnamed_addr constant [16 x i8] c"main.will:21:36\00", align 1
 @.bytes.21 = private unnamed_addr constant [1 x i8] c"7", align 1
-@.str.133 = private unnamed_addr constant [15 x i8] c"main.will:21:5\00", align 1
+@.str.130 = private unnamed_addr constant [15 x i8] c"main.will:21:5\00", align 1
 @.bytes.22 = private unnamed_addr constant [19 x i8] c"9223372036854775807", align 1
-@.str.135 = private unnamed_addr constant [15 x i8] c"main.will:22:5\00", align 1
-@.str.136 = private unnamed_addr constant [16 x i8] c"main.will:23:26\00", align 1
+@.str.132 = private unnamed_addr constant [15 x i8] c"main.will:22:5\00", align 1
+@.str.133 = private unnamed_addr constant [16 x i8] c"main.will:23:26\00", align 1
 @.bytes.23 = private unnamed_addr constant [20 x i8] c"-9223372036854775808", align 1
-@.str.138 = private unnamed_addr constant [15 x i8] c"main.will:23:5\00", align 1
+@.str.135 = private unnamed_addr constant [15 x i8] c"main.will:23:5\00", align 1
 @.bytes.24 = private unnamed_addr constant [10 x i8] c"0011111111", align 1
-@.str.140 = private unnamed_addr constant [15 x i8] c"main.will:24:5\00", align 1
-@.str.141 = private unnamed_addr constant [16 x i8] c"main.will:25:26\00", align 1
+@.str.137 = private unnamed_addr constant [15 x i8] c"main.will:24:5\00", align 1
+@.str.138 = private unnamed_addr constant [16 x i8] c"main.will:25:26\00", align 1
 @.bytes.25 = private unnamed_addr constant [3 x i8] c"-ff", align 1
-@.str.143 = private unnamed_addr constant [15 x i8] c"main.will:25:5\00", align 1
+@.str.140 = private unnamed_addr constant [15 x i8] c"main.will:25:5\00", align 1
 @.bytes.26 = private unnamed_addr constant [4 x i8] c"00ff", align 1
-@.str.145 = private unnamed_addr constant [15 x i8] c"main.will:26:5\00", align 1
+@.str.142 = private unnamed_addr constant [15 x i8] c"main.will:26:5\00", align 1
 @.bytes.27 = private unnamed_addr constant [8 x i8] c"00000101", align 1
-@.str.147 = private unnamed_addr constant [15 x i8] c"main.will:27:5\00", align 1
+@.str.144 = private unnamed_addr constant [15 x i8] c"main.will:27:5\00", align 1
 @.bytes.28 = private unnamed_addr constant [1 x i8] c"z", align 1
-@.str.149 = private unnamed_addr constant [15 x i8] c"main.will:28:5\00", align 1
+@.str.146 = private unnamed_addr constant [15 x i8] c"main.will:28:5\00", align 1
 @.bytes.29 = private unnamed_addr constant [3 x i8] c"  0", align 1
-@.str.151 = private unnamed_addr constant [15 x i8] c"main.will:29:5\00", align 1
+@.str.148 = private unnamed_addr constant [15 x i8] c"main.will:29:5\00", align 1
 @.bytes.30 = private unnamed_addr constant [20 x i8] c"18446744073709551615", align 1
-@.str.153 = private unnamed_addr constant [15 x i8] c"main.will:30:5\00", align 1
+@.str.150 = private unnamed_addr constant [15 x i8] c"main.will:30:5\00", align 1
 @.bytes.31 = private unnamed_addr constant [2 x i8] c"ff", align 1
-@.str.155 = private unnamed_addr constant [15 x i8] c"main.will:31:5\00", align 1
-@.str.156 = private unnamed_addr constant [15 x i8] c"main.will:32:5\00", align 1
+@.str.152 = private unnamed_addr constant [15 x i8] c"main.will:31:5\00", align 1
+@.str.153 = private unnamed_addr constant [15 x i8] c"main.will:32:5\00", align 1
 @.bytes.32 = private unnamed_addr constant [2 x i8] c"ab", align 1
 @.bytes.33 = private unnamed_addr constant [4 x i8] c"ab..", align 1
-@.str.159 = private unnamed_addr constant [15 x i8] c"main.will:33:5\00", align 1
+@.str.156 = private unnamed_addr constant [15 x i8] c"main.will:33:5\00", align 1
 @.bytes.34 = private unnamed_addr constant [4 x i8] c"..ab", align 1
-@.str.161 = private unnamed_addr constant [15 x i8] c"main.will:34:5\00", align 1
+@.str.158 = private unnamed_addr constant [15 x i8] c"main.will:34:5\00", align 1
 @.bytes.35 = private unnamed_addr constant [4 x i8] c"abcd", align 1
-@.str.163 = private unnamed_addr constant [15 x i8] c"main.will:35:5\00", align 1
+@.str.160 = private unnamed_addr constant [15 x i8] c"main.will:35:5\00", align 1
 @.bytes.36 = private unnamed_addr constant [3 x i8] c"xxx", align 1
-@.str.165 = private unnamed_addr constant [15 x i8] c"main.will:36:5\00", align 1
+@.str.162 = private unnamed_addr constant [15 x i8] c"main.will:36:5\00", align 1
 @.bytes.37 = private unnamed_addr constant [6 x i8] c"0000ff", align 1
-@.str.167 = private unnamed_addr constant [15 x i8] c"main.will:37:5\00", align 1
-@.str.168 = private unnamed_addr constant [16 x i8] c"main.will:38:26\00", align 1
+@.str.164 = private unnamed_addr constant [15 x i8] c"main.will:37:5\00", align 1
+@.str.165 = private unnamed_addr constant [16 x i8] c"main.will:38:26\00", align 1
 @.bytes.38 = private unnamed_addr constant [2 x i8] c"-1", align 1
-@.str.170 = private unnamed_addr constant [15 x i8] c"main.will:38:5\00", align 1
+@.str.167 = private unnamed_addr constant [15 x i8] c"main.will:38:5\00", align 1
 @.bytes.39 = private unnamed_addr constant [2 x i8] c"10", align 1
-@.str.172 = private unnamed_addr constant [15 x i8] c"main.will:39:5\00", align 1
+@.str.169 = private unnamed_addr constant [15 x i8] c"main.will:39:5\00", align 1
 @.bytes.40 = private unnamed_addr constant [8 x i8] c"deadbeef", align 1
-@.str.174 = private unnamed_addr constant [15 x i8] c"main.will:40:5\00", align 1
+@.str.171 = private unnamed_addr constant [15 x i8] c"main.will:40:5\00", align 1
 @.bytes.41 = private unnamed_addr constant [4 x i8] c"3.14", align 1
-@.str.176 = private unnamed_addr constant [15 x i8] c"main.will:41:5\00", align 1
+@.str.173 = private unnamed_addr constant [15 x i8] c"main.will:41:5\00", align 1
 @.bytes.42 = private unnamed_addr constant [5 x i8] c"-3.14", align 1
-@.str.178 = private unnamed_addr constant [15 x i8] c"main.will:42:5\00", align 1
+@.str.175 = private unnamed_addr constant [15 x i8] c"main.will:42:5\00", align 1
 @.bytes.43 = private unnamed_addr constant [4 x i8] c"0.00", align 1
-@.str.180 = private unnamed_addr constant [15 x i8] c"main.will:43:5\00", align 1
+@.str.177 = private unnamed_addr constant [15 x i8] c"main.will:43:5\00", align 1
 @.bytes.44 = private unnamed_addr constant [5 x i8] c"-0.00", align 1
-@.str.182 = private unnamed_addr constant [15 x i8] c"main.will:44:5\00", align 1
+@.str.179 = private unnamed_addr constant [15 x i8] c"main.will:44:5\00", align 1
 @.bytes.45 = private unnamed_addr constant [4 x i8] c"2.67", align 1
-@.str.184 = private unnamed_addr constant [15 x i8] c"main.will:45:5\00", align 1
+@.str.181 = private unnamed_addr constant [15 x i8] c"main.will:45:5\00", align 1
 @.bytes.46 = private unnamed_addr constant [4 x i8] c"1.00", align 1
-@.str.186 = private unnamed_addr constant [15 x i8] c"main.will:46:5\00", align 1
+@.str.183 = private unnamed_addr constant [15 x i8] c"main.will:46:5\00", align 1
 @.bytes.47 = private unnamed_addr constant [1 x i8] c"2", align 1
-@.str.188 = private unnamed_addr constant [15 x i8] c"main.will:47:5\00", align 1
+@.str.185 = private unnamed_addr constant [15 x i8] c"main.will:47:5\00", align 1
 @.bytes.48 = private unnamed_addr constant [1 x i8] c"4", align 1
-@.str.190 = private unnamed_addr constant [15 x i8] c"main.will:48:5\00", align 1
-@.str.191 = private unnamed_addr constant [15 x i8] c"main.will:49:5\00", align 1
-@.str.192 = private unnamed_addr constant [15 x i8] c"main.will:50:5\00", align 1
+@.str.187 = private unnamed_addr constant [15 x i8] c"main.will:48:5\00", align 1
+@.str.188 = private unnamed_addr constant [15 x i8] c"main.will:49:5\00", align 1
+@.str.189 = private unnamed_addr constant [15 x i8] c"main.will:50:5\00", align 1
 @.bytes.49 = private unnamed_addr constant [2 x i8] c"-2", align 1
-@.str.194 = private unnamed_addr constant [15 x i8] c"main.will:51:5\00", align 1
+@.str.191 = private unnamed_addr constant [15 x i8] c"main.will:51:5\00", align 1
 @.bytes.50 = private unnamed_addr constant [4 x i8] c"10.0", align 1
-@.str.196 = private unnamed_addr constant [15 x i8] c"main.will:52:5\00", align 1
+@.str.193 = private unnamed_addr constant [15 x i8] c"main.will:52:5\00", align 1
 @.bytes.51 = private unnamed_addr constant [4 x i8] c"0.01", align 1
-@.str.198 = private unnamed_addr constant [15 x i8] c"main.will:53:5\00", align 1
-@.str.199 = private unnamed_addr constant [15 x i8] c"main.will:54:5\00", align 1
+@.str.195 = private unnamed_addr constant [15 x i8] c"main.will:53:5\00", align 1
+@.str.196 = private unnamed_addr constant [15 x i8] c"main.will:54:5\00", align 1
 @.bytes.52 = private unnamed_addr constant [5 x i8] c"0.333", align 1
-@.str.201 = private unnamed_addr constant [15 x i8] c"main.will:55:5\00", align 1
+@.str.198 = private unnamed_addr constant [15 x i8] c"main.will:55:5\00", align 1
 @.bytes.53 = private unnamed_addr constant [21 x i8] c"100000000000000000000", align 1
-@.str.203 = private unnamed_addr constant [15 x i8] c"main.will:56:5\00", align 1
+@.str.200 = private unnamed_addr constant [15 x i8] c"main.will:56:5\00", align 1
 @.bytes.54 = private unnamed_addr constant [11 x i8] c"0.000000100", align 1
-@.str.205 = private unnamed_addr constant [15 x i8] c"main.will:57:5\00", align 1
+@.str.202 = private unnamed_addr constant [15 x i8] c"main.will:57:5\00", align 1
 @.bytes.55 = private unnamed_addr constant [19 x i8] c"1152921504606846976", align 1
-@.str.207 = private unnamed_addr constant [15 x i8] c"main.will:58:5\00", align 1
+@.str.204 = private unnamed_addr constant [15 x i8] c"main.will:58:5\00", align 1
 @.bytes.56 = private unnamed_addr constant [2 x i8] c"42", align 1
-@.str.209 = private unnamed_addr constant [15 x i8] c"main.will:59:5\00", align 1
+@.str.206 = private unnamed_addr constant [15 x i8] c"main.will:59:5\00", align 1
 @.bytes.57 = private unnamed_addr constant [7 x i8] c"-0003.5", align 1
-@.str.211 = private unnamed_addr constant [15 x i8] c"main.will:60:5\00", align 1
+@.str.208 = private unnamed_addr constant [15 x i8] c"main.will:60:5\00", align 1
 @.bytes.58 = private unnamed_addr constant [6 x i8] c"   3.5", align 1
-@.str.213 = private unnamed_addr constant [15 x i8] c"main.will:61:5\00", align 1
+@.str.210 = private unnamed_addr constant [15 x i8] c"main.will:61:5\00", align 1
 @.bytes.59 = private unnamed_addr constant [3 x i8] c"inf", align 1
-@.str.215 = private unnamed_addr constant [15 x i8] c"main.will:62:5\00", align 1
+@.str.212 = private unnamed_addr constant [15 x i8] c"main.will:62:5\00", align 1
 @.bytes.60 = private unnamed_addr constant [4 x i8] c"-inf", align 1
-@.str.217 = private unnamed_addr constant [15 x i8] c"main.will:63:5\00", align 1
+@.str.214 = private unnamed_addr constant [15 x i8] c"main.will:63:5\00", align 1
 @.bytes.61 = private unnamed_addr constant [3 x i8] c"nan", align 1
-@.str.219 = private unnamed_addr constant [15 x i8] c"main.will:64:5\00", align 1
-@.str.220 = private unnamed_addr constant [15 x i8] c"main.will:65:5\00", align 1
+@.str.216 = private unnamed_addr constant [15 x i8] c"main.will:64:5\00", align 1
+@.str.217 = private unnamed_addr constant [15 x i8] c"main.will:65:5\00", align 1
 @.bytes.62 = private unnamed_addr constant [4 x i8] c"0.12", align 1
-@.str.222 = private unnamed_addr constant [15 x i8] c"main.will:66:5\00", align 1
+@.str.219 = private unnamed_addr constant [15 x i8] c"main.will:66:5\00", align 1
 @.bytes.63 = private unnamed_addr constant [2 x i8] c"-0", align 1
-@.str.224 = private unnamed_addr constant [15 x i8] c"main.will:67:5\00", align 1
+@.str.221 = private unnamed_addr constant [15 x i8] c"main.will:67:5\00", align 1
 @.bytes.64 = private unnamed_addr constant [7 x i8] c"1.25000", align 1
-@.str.226 = private unnamed_addr constant [15 x i8] c"main.will:68:5\00", align 1
+@.str.223 = private unnamed_addr constant [15 x i8] c"main.will:68:5\00", align 1
 @.bytes.65 = private unnamed_addr constant [5 x i8] c"1.000", align 1
-@.str.228 = private unnamed_addr constant [15 x i8] c"main.will:69:5\00", align 1
+@.str.225 = private unnamed_addr constant [15 x i8] c"main.will:69:5\00", align 1
 @.bytes.66 = private unnamed_addr constant [7 x i8] c"passed=", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

@@ -155,7 +155,6 @@ const (
 
 	// Input, output, and blocking codes.
 	CodeBlockingNotAwaited = "I0001"
-	CodeBlocksThreadInTask = "I0004"
 
 	// CodeCannotTranslate reports a willc node the mechanical translation
 	// cannot handle. It is a compiler bug, not a program error.
@@ -188,7 +187,7 @@ var Codes = []string{
 	CodeAwaitOutsideAsync, CodeAsyncNotAwaited, CodeAwaitNotAsync, CodeAsyncAsValue,
 	CodeSelectOutsideAsync, CodeDeferSuspend,
 	CodeResultDropped, CodeUnwrapType, CodePanicContained,
-	CodeBlockingNotAwaited, CodeBlocksThreadInTask,
+	CodeBlockingNotAwaited,
 	CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,
 	CodeUnsupportedTarget, CodeNoEntry, CodeFreestanding, CodeUnknownImportPath,
 	CodePackageTwoPaths, CodeImportCycle,

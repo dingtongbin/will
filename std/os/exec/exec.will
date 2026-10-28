@@ -2,8 +2,6 @@
 # through the host shell and returns the exit status; Output captures stdout
 # and stderr in separate arrays.
 import c "exec.c" {
-    fast willrt_exec_run
-    fast willrt_exec_output
     fast willrt_exec_run_async
     fast willrt_exec_output_async
 }

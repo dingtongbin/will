@@ -4,7 +4,6 @@
 import "std/errors"
 
 import c "../../runtime/core/poll/src/poll.c" {
-    fast willrt_poll_wait
     fast willrt_poll_wait_async
 }
 
@@ -49,18 +48,6 @@ def (p: mut Poller) remove(fd: i64) -> Result<(), Error> {
         }
     }
     return Ok(())
-}
-
-# Next waits up to timeout for ready descriptors and appends their user tags to
-# out in registration order. Zero means the timeout expired.
-def (p: ref Poller) next_blocking(timeout: Duration, out: mut Array<usize>) -> Result<usize, Error> {
-    var before: usize = out.len()
-    var status: i32 = c.willrt_poll_wait(raw(p.fds), raw(p.events), raw(p.users),
-                                          i64(p.fds.len()), i64(timeout), raw(out))
-    if status != 0 {
-        return Err(errors.Io)
-    }
-    return Ok(out.len() - before)
 }
 
 # Next parks the calling task while the runtime poller scans the descriptors;

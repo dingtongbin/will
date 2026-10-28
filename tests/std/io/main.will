@@ -31,7 +31,7 @@ async def main() -> i32 {
     }
     var poller: io.Poller = io.new_poller()
     var out: Array<usize> = new Array<usize>(0)
-    var next: Result<usize, Error> = poller.next_blocking(0ns, out)
+    var next: Result<usize, Error> = await poller.next(0ns, out)
     match next {
         Ok(count) => {
             if count != 0usize {
@@ -40,18 +40,6 @@ async def main() -> i32 {
         }
         Err(_) => {
             return 2
-        }
-    }
-
-    var asyncNext: Result<usize, Error> = await poller.next(0ns, out)
-    match asyncNext {
-        Ok(count) => {
-            if count != 0usize {
-                return 7
-            }
-        }
-        Err(_) => {
-            return 8
         }
     }
 
