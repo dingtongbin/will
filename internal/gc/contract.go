@@ -14,7 +14,7 @@ const (
 	ObjectAlign = 8
 )
 
-// Color is the low-bit state carried by a GC reference.
+// Color is the address-view state carried by a GC reference.
 type Color uint8
 
 const (
@@ -39,6 +39,9 @@ const ViewStride uint64 = 1 << ColorShift
 
 // ColorMask selects the color bits of a tagged reference.
 const ColorMask uint64 = 3 << ColorShift
+
+// TypeIDMax is the largest compiler-assigned type id carried by an object.
+const TypeIDMax = 0x7fffff
 
 // Region selects the collector area that owns an object.
 type Region uint8

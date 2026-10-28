@@ -21,6 +21,7 @@ extern void willrt_io_shutdown(void) __attribute__((weak));
 extern void willrt_blocking_shutdown(void) __attribute__((weak));
 extern void willrt_timer_shutdown(void) __attribute__((weak));
 extern void willrt_mem_thread_flush(void) __attribute__((weak));
+extern void willrt_gc_shutdown(void) __attribute__((weak));
 #endif
 
 static atomic_int willrt_started;
@@ -48,6 +49,9 @@ void willrt_shutdown(void) {
     }
     if (willrt_mem_thread_flush != NULL) {
         willrt_mem_thread_flush();
+    }
+    if (willrt_gc_shutdown != NULL) {
+        willrt_gc_shutdown();
     }
     atomic_store(&willrt_started, 0);
 }

@@ -1,161 +1,262 @@
-/* Read and write barriers. The fast path removes the color bits; the write
-   barrier publishes the new reference and records the old one for SATB. The
-   marker consumes the SATB buffer in its own module. */
+/* Colored load/store barriers plus SATB and card work queues. The load path
+   checks forwarding; the store path publishes a good-colored value and records
+   old values and card dirt without taking a global lock. */
 
 #include "gc_internal.h"
 
 #include <stdatomic.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
 
-#define WILLRT_GC_SATB_CAP 1024u
-#define WILLRT_GC_CARD_SIZE 512u
-#define WILLRT_GC_CARD_COUNT (WILLRT_GC_ARENA_SIZE / WILLRT_GC_CARD_SIZE)
+_Atomic uint32_t gc_good_color;
+_Atomic uint32_t gc_mark_color;
+_Atomic int gc_marking;
+_Atomic int gc_evacuating;
 
-static _Atomic unsigned char gc_cards[WILLRT_GC_CARD_COUNT];
-static atomic_size_t gc_card_count;
-static willrt_os_mutex gc_satb_lock;
-static atomic_int gc_satb_state;
-static void* gc_satb[WILLRT_GC_SATB_CAP];
-static size_t gc_satb_count;
-static size_t gc_satb_overflow;
+static _Atomic(gc_satb_chunk*) gc_satb_active;
+static _Thread_local gc_satb_chunk* gc_satb_local;
 
-static void gc_satb_init(void) {
-    int expected = 0;
+static void gc_satb_push_chunk(gc_satb_chunk* chunk) {
+    gc_satb_chunk* head;
 
-    if (atomic_load_explicit(&gc_satb_state, memory_order_acquire) == 2) {
+    if (chunk == NULL || chunk->count == 0) {
         return;
     }
-    if (atomic_compare_exchange_strong_explicit(&gc_satb_state, &expected, 1,
-                                                memory_order_acq_rel,
-                                                memory_order_acquire)) {
-        willrt_os_mutex_init(&gc_satb_lock);
-        atomic_store_explicit(&gc_satb_state, 2, memory_order_release);
-        return;
-    }
-    while (atomic_load_explicit(&gc_satb_state, memory_order_acquire) != 2) {
-        willrt_os_thread_yield();
+    head = atomic_load_explicit(&gc_satb_active, memory_order_relaxed);
+    do {
+        atomic_store_explicit(&chunk->next, head, memory_order_relaxed);
+    } while (!atomic_compare_exchange_weak_explicit(
+        &gc_satb_active, &head, chunk, memory_order_release,
+        memory_order_relaxed));
+}
+
+void gc_satb_flush_local(void) {
+    if (gc_satb_local != NULL && gc_satb_local->count != 0) {
+        gc_satb_chunk* chunk = gc_satb_local;
+
+        gc_satb_local = NULL;
+        gc_satb_push_chunk(chunk);
     }
 }
 
-void* willrt_gc_read_barrier(const void* ref) {
-    return WILLRT_GC_UNTAG(ref);
+static int gc_satb_record(void* object) {
+    gc_satb_chunk* chunk;
+
+    if (object == NULL) {
+        return 0;
+    }
+    object = WILLRT_GC_UNTAG(object);
+    chunk = gc_satb_local;
+    if (chunk == NULL || chunk->count == WILLRT_GC_WORK_CHUNK) {
+        if (chunk != NULL) {
+            gc_satb_push_chunk(chunk);
+        }
+        chunk = (gc_satb_chunk*)willrt_alloc(sizeof(*chunk));
+        if (chunk == NULL) {
+            abort();
+        }
+        atomic_init(&chunk->next, NULL);
+        chunk->count = 0;
+        gc_satb_local = chunk;
+    }
+    chunk->objects[chunk->count++] = object;
+    return 1;
 }
 
-void willrt_gc_card_mark(void* slot) {
-    size_t offset;
+void* gc_read_barrier(const void* ref) {
+    void* object;
+    willrt_gc_header* header;
+    uint64_t state;
+    uint32_t color;
+    gc_region* region;
 
-    if (!willrt_gc_heap_offset(slot, &offset)) {
-        return;
+    if (ref == NULL) {
+        return NULL;
     }
-    offset /= WILLRT_GC_CARD_SIZE;
-    if (offset < WILLRT_GC_CARD_COUNT &&
-        atomic_exchange_explicit(&gc_cards[offset], 1,
-                                 memory_order_relaxed) == 0) {
-        atomic_fetch_add_explicit(&gc_card_count, 1, memory_order_relaxed);
+    object = WILLRT_GC_UNTAG(ref);
+    color = WILLRT_GC_COLOR_OF(ref);
+    header = gc_header_of(object);
+    state = atomic_load_explicit(&header->state, memory_order_acquire);
+    if ((state & WILLRT_GC_STATE_FORWARDED) == 0 &&
+        color == atomic_load_explicit(&gc_good_color, memory_order_acquire)) {
+        return object;
     }
+    if ((state & WILLRT_GC_STATE_FORWARDED) != 0) {
+        return WILLRT_GC_STATE_FORWARD_ADDRESS(state);
+    }
+    if (atomic_load_explicit(&gc_marking, memory_order_acquire) != 0) {
+        gc_mark_object(object);
+    }
+    if (atomic_load_explicit(&gc_evacuating, memory_order_acquire) != 0) {
+        region = gc_region_by_address(object);
+        if (region != NULL && region->kind == GC_REGION_YOUNG &&
+            (region->flags & GC_REGION_EVACUATING) != 0) {
+            void* forwarded = gc_object_forward(object);
+
+            if (forwarded != NULL) {
+                return forwarded;
+            }
+        }
+    }
+    return object;
 }
 
-void willrt_gc_write_barrier(void** slot, void* value) {
+void* gc_read_barrier_slot(void** slot) {
+    void* ref;
+    void* object;
+    void* current;
+    uint32_t good;
+
+    if (slot == NULL) {
+        return NULL;
+    }
+    ref = atomic_load_explicit((_Atomic(void*)*)slot, memory_order_acquire);
+    object = gc_read_barrier(ref);
+    if (object == NULL) {
+        return NULL;
+    }
+    good = atomic_load_explicit(&gc_good_color, memory_order_acquire);
+    current = WILLRT_GC_TAG(object, good);
+    atomic_compare_exchange_strong_explicit((_Atomic(void*)*)slot, &ref,
+                                            current, memory_order_acq_rel,
+                                            memory_order_acquire);
+    return object;
+}
+
+void gc_write_barrier(void** slot, void* value) {
     void* old;
+    void* stored;
+    gc_region* region;
+    size_t offset;
+    uint32_t good;
 
     if (slot == NULL) {
         return;
     }
-    old = *slot;
-    if (old != NULL && old != value) {
-        gc_satb_init();
-        willrt_os_mutex_lock(&gc_satb_lock);
-        if (gc_satb_count < WILLRT_GC_SATB_CAP) {
-            gc_satb[gc_satb_count++] = old;
-        } else {
-            gc_satb_overflow++;
+    old = atomic_load_explicit((_Atomic(void*)*)slot, memory_order_acquire);
+    if (old != NULL && old != value &&
+        (atomic_load_explicit(&gc_marking, memory_order_acquire) != 0 ||
+         atomic_load_explicit(&gc_evacuating, memory_order_acquire) != 0)) {
+        (void)gc_satb_record(old);
+    }
+    if (atomic_load_explicit(&gc_evacuating, memory_order_acquire) != 0) {
+        gc_region* target;
+
+        if (value != NULL) {
+            target = gc_region_by_address(WILLRT_GC_UNTAG(value));
+            if (target != NULL && target->kind == GC_REGION_YOUNG &&
+                (target->flags & GC_REGION_EVACUATING) != 0) {
+                void* forwarded = gc_object_forward(value);
+
+                if (forwarded != NULL) {
+                    value = WILLRT_GC_TAG(forwarded,
+                                          atomic_load_explicit(
+                                              &gc_good_color,
+                                              memory_order_acquire));
+                }
+            }
         }
-        willrt_os_mutex_unlock(&gc_satb_lock);
     }
-    willrt_gc_card_mark(slot);
-    *slot = value;
+    region = gc_region_by_address(slot);
+    if (region != NULL && region->kind != GC_REGION_YOUNG) {
+        offset = (size_t)((uint8_t*)slot - region->base);
+        gc_region_note_card(region, offset);
+    }
+    good = atomic_load_explicit(&gc_good_color, memory_order_acquire);
+    stored = value == NULL ? NULL : WILLRT_GC_TAG(WILLRT_GC_UNTAG(value), good);
+    atomic_store_explicit((_Atomic(void*)*)slot, stored, memory_order_release);
 }
 
-void willrt_gc_satb_drain(willrt_gc_root_visit visit, void* context) {
-    size_t i;
-
-    gc_satb_init();
-    willrt_os_mutex_lock(&gc_satb_lock);
-    for (i = 0; i < gc_satb_count; i++) {
-        visit(context, &gc_satb[i]);
-    }
-    gc_satb_count = 0;
-    willrt_os_mutex_unlock(&gc_satb_lock);
+void* willrt_gc_read_barrier(const void* ref) {
+    return gc_read_barrier(ref);
 }
 
-int willrt_gc_test_card_marked(void* slot) {
-    size_t offset;
-
-    if (!willrt_gc_heap_offset(slot, &offset)) {
-        return 0;
-    }
-    offset /= WILLRT_GC_CARD_SIZE;
-    return offset < WILLRT_GC_CARD_COUNT
-               ? atomic_load_explicit(&gc_cards[offset], memory_order_relaxed)
-               : 0;
+void* willrt_gc_read_barrier_slot(void** slot) {
+    return gc_read_barrier_slot(slot);
 }
 
-size_t willrt_gc_test_card_count(void) {
-    return atomic_load_explicit(&gc_card_count, memory_order_relaxed);
+void willrt_gc_write_barrier(void** slot, void* value) {
+    gc_write_barrier(slot, value);
 }
 
-void willrt_gc_card_scan_all(willrt_gc_root_visit visit, void* context) {
-    size_t objects = willrt_gc_object_count();
-    size_t i;
+void gc_satb_scan(willrt_gc_root_visit visit, void* context) {
+    gc_satb_chunk* chunk;
 
-    if (atomic_load_explicit(&gc_card_count, memory_order_relaxed) == 0) {
-        return;
+    gc_satb_flush_local();
+    chunk = atomic_exchange_explicit(&gc_satb_active, NULL,
+                                     memory_order_acquire);
+    while (chunk != NULL) {
+        gc_satb_chunk* next =
+            atomic_load_explicit(&chunk->next, memory_order_relaxed);
+        size_t i;
+
+        for (i = 0; i < chunk->count; i++) {
+            void* object = chunk->objects[i];
+
+            visit(context, &object);
+        }
+        willrt_free(chunk);
+        chunk = next;
     }
-    for (i = 0; i < objects; i++) {
-        void* base = NULL;
-        size_t size = 0;
-        willrt_gc_header* header;
-        uint64_t state;
-        const willrt_gc_type* type;
-        uint32_t type_id;
-        uint32_t field;
+}
 
-        if (!willrt_gc_object_at(i, &base, &size) ||
-            size <= WILLRT_GC_OBJECT_PAYLOAD_OFFSET) {
+void gc_card_scan(willrt_gc_root_visit visit, void* context) {
+    size_t granule;
+
+    for (granule = 0; granule < gc_heap_granule_count; granule++) {
+        gc_region* region = gc_region_table[granule];
+        size_t card;
+
+        if (region == NULL || region->kind == GC_REGION_FREE ||
+            region->kind == GC_REGION_YOUNG || region->card_bits == NULL) {
             continue;
         }
-        header = (willrt_gc_header*)base;
-        state = atomic_load_explicit(&header->state, memory_order_relaxed);
-        type_id = willrt_gc_state_type(state);
-        type = gc_type_get(type_id);
-        if (type == NULL) {
-            continue;
-        }
-        for (field = 0; field < type->reference_count; field++) {
-            uint32_t offset = type->reference_offsets[field];
-            void** slot;
+        for (card = 0; card < region->card_count; card++) {
+            uint64_t word =
+                atomic_load_explicit(&region->card_bits[card >> 6],
+                                     memory_order_acquire);
+            uint32_t object_offset;
+            void* object;
 
-            if (offset > type->size ||
-                sizeof(void*) > (size_t)type->size - (size_t)offset) {
+            if ((word & (UINT64_C(1) << (card & 63u))) == 0) {
                 continue;
             }
-            slot = (void**)((uint8_t*)base +
-                            WILLRT_GC_OBJECT_PAYLOAD_OFFSET + offset);
-            if (willrt_gc_test_card_marked(slot)) {
-                visit(context, slot);
-            }
+            object_offset =
+                atomic_load_explicit(&region->card_objects[card],
+                                     memory_order_acquire);
+            object = region->base + object_offset;
+            gc_scan_object_fields(object, visit, context);
+        }
+        for (card = 0; card < (region->card_count + 63u) / 64u; card++) {
+            atomic_store_explicit(&region->card_bits[card], 0,
+                                  memory_order_release);
         }
     }
-    for (i = 0; i < WILLRT_GC_CARD_COUNT; i++) {
-        atomic_store_explicit(&gc_cards[i], 0, memory_order_relaxed);
+}
+
+void gc_barrier_init(void) {
+    atomic_store_explicit(&gc_good_color, WILLRT_GC_COLOR_YOUNG,
+                          memory_order_release);
+    atomic_store_explicit(&gc_mark_color, WILLRT_GC_MARK_UNMARKED,
+                          memory_order_release);
+    atomic_store_explicit(&gc_marking, 0, memory_order_release);
+    atomic_store_explicit(&gc_evacuating, 0, memory_order_release);
+}
+
+void gc_barrier_shutdown(void) {
+    gc_satb_chunk* chunk = atomic_exchange_explicit(
+        &gc_satb_active, NULL, memory_order_acquire);
+
+    while (chunk != NULL) {
+        gc_satb_chunk* next =
+            atomic_load_explicit(&chunk->next, memory_order_relaxed);
+
+        willrt_free(chunk);
+        chunk = next;
     }
-    atomic_store_explicit(&gc_card_count, 0, memory_order_relaxed);
-}
-
-size_t willrt_gc_test_satb_count(void) {
-    return gc_satb_count;
-}
-
-size_t willrt_gc_test_satb_overflow(void) {
-    return gc_satb_overflow;
+    if (gc_satb_local != NULL) {
+        willrt_free(gc_satb_local);
+        gc_satb_local = NULL;
+    }
 }

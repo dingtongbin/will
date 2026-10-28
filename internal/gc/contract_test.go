@@ -41,6 +41,8 @@ func TestSharedHeaderMatchesCompilerConstants(t *testing.T) {
 		"WILLRT_GC_COLOR_SHIFT":           "34u",
 		"WILLRT_GC_VIEW_COUNT":            "4u",
 		"WILLRT_GC_VIEW_STRIDE":           "0x400000000ull",
+		"WILLRT_GC_TYPE_ID_MAX":           "0x7fffffu",
+		"WILLRT_GC_STATE_TYPE_MAX":        "WILLRT_GC_TYPE_ID_MAX",
 	}
 	for name, value := range want {
 		got, ok := macros[name]
@@ -61,6 +63,9 @@ func TestSharedHeaderMatchesCompilerConstants(t *testing.T) {
 	}
 	if ViewStride != 1<<ColorShift || ViewCount != 4 {
 		t.Fatalf("compiler view layout = %d/%d", ViewStride, ViewCount)
+	}
+	if TypeIDMax != 0x7fffff {
+		t.Fatalf("compiler type id max = %#x", TypeIDMax)
 	}
 	if ColorYoung != 0 || ColorMarked0 != 1 || ColorMarked1 != 2 || ColorRemapped != 3 {
 		t.Fatalf("compiler color order = %d/%d/%d/%d", ColorYoung,
@@ -108,7 +113,8 @@ func TestSharedHeaderNamesContractStates(t *testing.T) {
 		"WILLRT_GC_BARRIER_SATB",
 		"WILLRT_GC_BARRIER_CARD",
 		"willrt_gc_stack_map_data",
-		"willrt_gc_frame_map_data",
+		"willrt_gc_frame",
+		"willrt_gc_type",
 		"willrt_gc_handle",
 	} {
 		if !strings.Contains(text, name) {

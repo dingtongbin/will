@@ -35,6 +35,19 @@ _Static_assert(WILLRT_GC_BARRIER_READ == 0, "read barrier");
 _Static_assert(WILLRT_GC_BARRIER_WRITE == 1, "write barrier");
 _Static_assert(WILLRT_GC_BARRIER_SATB == 2, "SATB barrier");
 _Static_assert(WILLRT_GC_BARRIER_CARD == 3, "card barrier");
+_Static_assert(WILLRT_GC_STATE_FORWARDED == (UINT64_C(1) << 63),
+               "forwarded bit");
+_Static_assert(WILLRT_GC_STATE_TYPE_MAX == WILLRT_GC_TYPE_ID_MAX,
+               "type id range");
+_Static_assert(WILLRT_GC_STATE_REGION((uint64_t)0x1234u
+                                      << WILLRT_GC_STATE_REGION_SHIFT) ==
+                   0x1234u,
+               "region extraction");
+_Static_assert(WILLRT_GC_STATE_TYPE((uint64_t)0xabu
+                                    << WILLRT_GC_STATE_TYPE_SHIFT) == 0xabu,
+               "type extraction");
+_Static_assert(offsetof(willrt_gc_frame, parent) == 16,
+               "frame parent offset");
 
 int main(void) {
     uintptr_t raw = (uintptr_t)0x1000u;

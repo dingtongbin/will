@@ -1,7 +1,7 @@
-/* Precise marking. The marker starts from exact roots and handles, consumes
-   the SATB buffer, and walks reference offsets from the static type table.
-   Sweeping and copying are separate modules, so this file never frees or
-   moves an object. */
+/* Concurrent marking work. Mark bits live in the object header; work is held in
+   dynamic chunks so neither a deep graph nor a wide graph can overflow a fixed
+   stack. Mutators may mark from a read barrier; the GC worker drains the same
+   lock-free queue. */
 
 #include "gc_internal.h"
 
@@ -10,80 +10,140 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define WILLRT_GC_MARK_STACK_MAX 65536u
+static _Atomic(gc_mark_chunk*) gc_mark_work_stack;
+static _Thread_local gc_mark_chunk* gc_mark_local;
+_Atomic uint32_t gc_mark_epoch;
+static uint32_t gc_current_mark;
 
-static void* gc_mark_stack[WILLRT_GC_MARK_STACK_MAX];
-static size_t gc_mark_top;
-static size_t gc_mark_count;
-static atomic_int gc_marking;
+static void gc_mark_push_chunk(gc_mark_chunk* chunk) {
+    gc_mark_chunk* head;
 
-static void gc_mark_visit(void* context, void** slot) {
-    (void)context;
-    if (slot != NULL) {
-        willrt_gc_mark_object(*slot);
-    }
-}
-
-static void gc_scan_object(void* object) {
-    willrt_gc_header* header;
-    uint64_t state;
-    const willrt_gc_type* type;
-    uint32_t type_id;
-    uint32_t i;
-
-    header = (willrt_gc_header*)((uint8_t*)object -
-                                 WILLRT_GC_OBJECT_PAYLOAD_OFFSET);
-    state = atomic_load_explicit(&header->state, memory_order_relaxed);
-    type_id = willrt_gc_state_type(state);
-    type = gc_type_get(type_id);
-    if (type == NULL || (type->flags & WILLRT_GC_TYPE_REFERENCES) == 0) {
+    if (chunk == NULL || chunk->count == 0) {
         return;
     }
-    for (i = 0; i < type->reference_count; i++) {
-        uint32_t offset = type->reference_offsets[i];
-        void** slot;
+    head = atomic_load_explicit(&gc_mark_work_stack, memory_order_relaxed);
+    do {
+        atomic_store_explicit(&chunk->next, head, memory_order_relaxed);
+    } while (!atomic_compare_exchange_weak_explicit(
+        &gc_mark_work_stack, &head, chunk, memory_order_release,
+        memory_order_relaxed));
+}
 
-        if (offset > type->size ||
-            sizeof(void*) > (size_t)type->size - (size_t)offset) {
+void gc_mark_flush_local(void) {
+    if (gc_mark_local != NULL && gc_mark_local->count != 0) {
+        gc_mark_chunk* chunk = gc_mark_local;
+
+        gc_mark_local = NULL;
+        gc_mark_push_chunk(chunk);
+    }
+}
+
+static void gc_mark_push(void* object) {
+    gc_mark_chunk* chunk = gc_mark_local;
+
+    if (chunk == NULL || chunk->count == WILLRT_GC_WORK_CHUNK) {
+        if (chunk != NULL) {
+            gc_mark_push_chunk(chunk);
+        }
+        chunk = (gc_mark_chunk*)willrt_alloc(sizeof(*chunk));
+        if (chunk == NULL) {
             abort();
         }
-        slot = (void**)((uint8_t*)object + offset);
-        willrt_gc_mark_object(*slot);
+        atomic_init(&chunk->next, NULL);
+        chunk->count = 0;
+        gc_mark_local = chunk;
     }
+    chunk->objects[chunk->count++] = object;
 }
 
-static void gc_drain_mark_stack(void) {
-    while (gc_mark_top > 0) {
-        void* object = gc_mark_stack[--gc_mark_top];
-
-        gc_scan_object(object);
-    }
-}
-
-void willrt_gc_mark_object(void* object) {
-    willrt_gc_header* header;
-    uint64_t old;
-
+void gc_mark_object(void* object) {
     if (object == NULL) {
         return;
     }
     object = WILLRT_GC_UNTAG(object);
-    header = (willrt_gc_header*)((uint8_t*)object -
-                                 WILLRT_GC_OBJECT_PAYLOAD_OFFSET);
-    old = atomic_fetch_or_explicit(&header->state,
-                                   (uint64_t)1 << WILLRT_GC_STATE_MARK_SHIFT,
-                                   memory_order_acq_rel);
-    if ((old & WILLRT_GC_STATE_MARK_MASK) != 0) {
+    for (;;) {
+        willrt_gc_header* header = gc_header_of(object);
+        uint64_t state = atomic_load_explicit(&header->state,
+                                              memory_order_acquire);
+
+        if ((state & WILLRT_GC_STATE_FORWARDED) != 0) {
+            object = WILLRT_GC_STATE_FORWARD_ADDRESS(state);
+            continue;
+        }
+        if (gc_object_mark(object, gc_current_mark)) {
+            gc_mark_push(object);
+        }
         return;
     }
-    if (gc_mark_top >= WILLRT_GC_MARK_STACK_MAX) {
-        abort();
-    }
-    gc_mark_stack[gc_mark_top++] = object;
-    gc_mark_count++;
 }
 
-void willrt_gc_mark_stack(const willrt_gc_stack_map_data* map, void* frame) {
+void gc_mark_slot(void** slot) {
+    if (slot != NULL) {
+        gc_mark_object(atomic_load_explicit((_Atomic(void*)*)slot,
+                                            memory_order_acquire));
+    }
+}
+
+static void gc_mark_visit(void* context, void** slot) {
+    (void)context;
+    gc_mark_slot(slot);
+}
+
+static void gc_mark_scan(void* object) {
+    gc_scan_object_fields(object, gc_mark_visit, NULL);
+}
+
+void gc_mark_drain(void) {
+    for (;;) {
+        gc_mark_chunk* chunk;
+
+        gc_mark_flush_local();
+        chunk = atomic_exchange_explicit(&gc_mark_work_stack, NULL,
+                                         memory_order_acquire);
+        if (chunk == NULL) {
+            return;
+        }
+        while (chunk != NULL) {
+            gc_mark_chunk* next =
+                atomic_load_explicit(&chunk->next, memory_order_relaxed);
+            size_t i;
+
+            for (i = 0; i < chunk->count; i++) {
+                gc_mark_scan(chunk->objects[i]);
+            }
+            willrt_free(chunk);
+            chunk = next;
+        }
+    }
+}
+
+void gc_mark_begin(uint32_t color) {
+    uint32_t epoch = atomic_load_explicit(&gc_mark_epoch,
+                                          memory_order_acquire) + 1u;
+
+    if (epoch == 0u || (epoch & UINT32_C(0x80000000)) != 0) {
+        epoch = 1u;
+    }
+    atomic_store_explicit(&gc_mark_epoch, epoch, memory_order_release);
+    gc_current_mark = color & WILLRT_GC_STATE_MARK_MASK;
+    atomic_store_explicit(&gc_mark_color, gc_current_mark,
+                          memory_order_release);
+    atomic_store_explicit(&gc_marking, 1, memory_order_release);
+}
+
+void gc_mark_end(void) {
+    gc_mark_drain();
+    atomic_store_explicit(&gc_marking, 0, memory_order_release);
+    gc_current_mark = WILLRT_GC_MARK_UNMARKED;
+    atomic_store_explicit(&gc_mark_color, gc_current_mark,
+                          memory_order_release);
+}
+
+int gc_mark_active(void) {
+    return atomic_load_explicit(&gc_marking, memory_order_acquire);
+}
+
+void gc_mark_stack(const willrt_gc_stack_map_data* map, void* frame) {
     size_t i;
 
     if (map == NULL || frame == NULL) {
@@ -94,47 +154,23 @@ void willrt_gc_mark_stack(const willrt_gc_stack_map_data* map, void* frame) {
 
         if ((slot->flags & WILLRT_GC_SLOT_REFERENCE) != 0) {
             void** address = (void**)((uint8_t*)frame + slot->slot);
-            willrt_gc_mark_object(*address);
+
+            gc_mark_object(atomic_load_explicit((_Atomic(void*)*)address,
+                                                memory_order_acquire));
         }
     }
 }
 
-int willrt_gc_marking_active(void) {
-    return atomic_load_explicit(&gc_marking, memory_order_acquire);
+void gc_mark_init(void) {
+    atomic_store_explicit(&gc_mark_work_stack, NULL, memory_order_release);
+    atomic_store_explicit(&gc_mark_epoch, 1, memory_order_release);
+    gc_current_mark = WILLRT_GC_MARK_UNMARKED;
 }
 
-void willrt_gc_test_begin_mark(void) {
-    gc_mark_top = 0;
-    gc_mark_count = 0;
-    atomic_store_explicit(&gc_marking, 1, memory_order_release);
-}
-
-void willrt_gc_test_end_mark(void) {
-    atomic_store_explicit(&gc_marking, 0, memory_order_release);
-}
-
-void willrt_gc_test_mark(void) {
-    willrt_gc_root_scan_all(gc_mark_visit, NULL);
-    willrt_gc_handle_scan_all(gc_mark_visit, NULL);
-    willrt_gc_satb_drain(gc_mark_visit, NULL);
-    willrt_gc_card_scan_all(gc_mark_visit, NULL);
-    gc_drain_mark_stack();
-}
-
-int willrt_gc_test_marked(void* object) {
-    willrt_gc_header* header;
-    uint64_t state;
-
-    if (object == NULL) {
-        return 0;
+void gc_mark_shutdown(void) {
+    gc_mark_end();
+    if (gc_mark_local != NULL) {
+        willrt_free(gc_mark_local);
+        gc_mark_local = NULL;
     }
-    object = WILLRT_GC_UNTAG(object);
-    header = (willrt_gc_header*)((uint8_t*)object -
-                                 WILLRT_GC_OBJECT_PAYLOAD_OFFSET);
-    state = atomic_load_explicit(&header->state, memory_order_relaxed);
-    return (state & WILLRT_GC_STATE_MARK_MASK) != 0;
-}
-
-size_t willrt_gc_test_mark_count(void) {
-    return gc_mark_count;
 }
