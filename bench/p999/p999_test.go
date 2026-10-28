@@ -52,6 +52,8 @@ func TestP999(t *testing.T) {
 		filepath.Join(root, "platform", platform))
 	if runtime.GOOS == "windows" {
 		args = append(args, "-static", "-lws2_32")
+	} else {
+		args = append(args, "-pthread")
 	}
 	if out, err := exec.Command(gcc, args...).CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, out)
