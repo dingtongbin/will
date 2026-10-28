@@ -2891,8 +2891,13 @@ func (g *generator) assignStmt(r willc.Record) error {
 		g.needGCDecl = true
 		fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
 			ptr, value)
-		if targetRec, ok := g.recs[target]; ok && targetRec.Kind == "name" {
-			g.storeClassRoot(refField(targetRec, "to"), value)
+		if targetRec, ok := g.recs[target]; ok {
+			if targetRec.Kind == "name" {
+				g.storeClassRoot(refField(targetRec, "to"), value)
+			} else if targetRec.Kind == "field" {
+				g.gcDecisions = append(g.gcDecisions,
+					decisions.Barrier(g.fnSymbol, fieldText(targetRec, "pos"), "write"))
+			}
 		}
 		return nil
 	}

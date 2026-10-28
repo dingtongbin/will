@@ -660,6 +660,10 @@ func (g *generator) classPointerValue(id int) (string, error) {
 			return out, nil
 		}
 	}
+	if r.Kind == "field" {
+		g.gcDecisions = append(g.gcDecisions,
+			decisions.Barrier(g.fnSymbol, fieldText(r, "pos"), "read"))
+	}
 	addr, typ, err := g.place(id)
 	if err != nil {
 		return "", err
