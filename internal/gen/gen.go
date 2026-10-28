@@ -287,8 +287,14 @@ func (g *generator) emitAux() {
 	}
 	if g.needJobDecl {
 		g.out.WriteString("declare ptr @willrt_job_new(ptr, ptr, i64, i32)\n")
+		if g.needJobGCDecl {
+			g.out.WriteString("declare ptr @willrt_job_new_gc(ptr, ptr, i64, i32, ptr, ptr)\n")
+		}
 		if g.needFrameDropDecl {
 			g.out.WriteString("declare ptr @willrt_job_new_drop(ptr, ptr, i64, i32, ptr)\n")
+			if g.needJobGCDecl {
+				g.out.WriteString("declare ptr @willrt_job_new_drop_gc(ptr, ptr, i64, i32, ptr, ptr, ptr)\n")
+			}
 		}
 	}
 	if g.needWaitDecl {
@@ -903,7 +909,8 @@ type generator struct {
 	// needTaskGCDecl records that a task constructor carries a GC frame map.
 	needTaskGCDecl bool
 	// needJobDecl records that a parallel block submitted a job.
-	needJobDecl bool
+	needJobDecl   bool
+	needJobGCDecl bool
 	// needAutoTaskDecl records that an auto spawn submits through the grouped
 	// auto placement entry.
 	needAutoTaskDecl bool
@@ -1012,6 +1019,7 @@ type generator struct {
 	gcFrameSlot    string
 	gcFrameMap     string
 	gcFrameActive  bool
+	gcGlobalInit   bool
 	ifaceThunks    []ifaceThunk
 	ifaceThunkSeen map[string]bool
 	chanDrops      []chanDrop
@@ -4800,7 +4808,7 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 		}
 		g.declare(name, len(parts))
 	}
-	if !link {
+	if !link && !g.gcGlobalInit {
 		g.gcSafepoint(3)
 	}
 	if resultText == "" {

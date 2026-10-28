@@ -184,12 +184,15 @@ func (g *generator) selectMachine(fnID int) (*selectMachineInfo, bool) {
 		resultText:  resultText,
 		resultLLVM:  resultLLVM,
 	}
+	gcSlots, gcTypes := g.asyncGCSlots(info.fields)
 	info.base = &asyncMachineInfo{
 		fn:          fn,
 		symbol:      info.symbol,
 		constructor: info.constructor,
 		frameType:   info.frameType,
 		fields:      info.fields,
+		gcSlots:     gcSlots,
+		gcTypes:     gcTypes,
 		resultText:  info.resultText,
 		resultLLVM:  info.resultLLVM,
 	}

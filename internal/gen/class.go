@@ -221,6 +221,51 @@ func (g *generator) closureEnvType(info *lambdaInfo) (*gcmeta.Type, error) {
 	return t, nil
 }
 
+// spawnGCSlots maps class arguments in a CPU job frame. frameTypes and
+// argTexts are in storage order; indirect adds the closure cell first and a
+// method adds the receiver before the written arguments.
+func (g *generator) spawnGCSlots(frameTypes, argTexts []string, recvClass, indirect bool, recvText string) ([]int, []string) {
+	var slots []int
+	var texts []string
+	offset := 0
+	frameBase := 0
+	if indirect {
+		frameBase++
+	}
+	recvIndex := -1
+	if recvClass {
+		recvIndex = frameBase
+		frameBase++
+	}
+	textBase := 0
+	if recvClass {
+		textBase = 1
+	}
+	for i, typ := range frameTypes {
+		size, align, ok := g.sizeAlign(typ)
+		if !ok {
+			continue
+		}
+		offset = alignUp(offset, align)
+		if i == recvIndex {
+			if t, ok := g.classTypeOfText(recvText); ok {
+				slots = append(slots, offset)
+				texts = append(texts, t.Name)
+			}
+		} else if i >= frameBase {
+			textIndex := i - frameBase + textBase
+			if textIndex >= 0 && textIndex < len(argTexts) {
+				if t, ok := g.classTypeOfText(argTexts[textIndex]); ok {
+					slots = append(slots, offset)
+					texts = append(texts, t.Name)
+				}
+			}
+		}
+		offset += size
+	}
+	return slots, texts
+}
+
 // taskGCMap records one async frame's class roots and returns the map symbol
 // the task constructor passes to the runtime.
 func (g *generator) taskGCMap(symbol string, slots []int, texts []string) string {
@@ -493,7 +538,9 @@ func (g *generator) classNew(r willc.Record) (string, string, error) {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: class %s has no init for its arguments",
 			r.ID, t.Name)
 	}
-	g.gcSafepoint(0)
+	if !g.gcGlobalInit {
+		g.gcSafepoint(0)
+	}
 	return slot, "ptr", nil
 }
 

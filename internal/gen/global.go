@@ -125,6 +125,7 @@ func (g *generator) emitInit(d *docState) error {
 	g.loops = nil
 	g.scope = map[int]string{}
 	fmt.Fprintf(g.out, "define void @%s() {\nentry:\n", llvmSymbol(sym))
+	g.gcGlobalInit = true
 	for _, r := range vars {
 		info := d.globals[r.ID]
 		child := g.children(r.ID)[0].ID
@@ -165,10 +166,12 @@ func (g *generator) emitInit(d *docState) error {
 			g.needGCDecl = true
 			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
 				ptr, value)
+			g.gcSafepoint(0)
 			continue
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.typ, value, ptr)
 	}
+	g.gcGlobalInit = false
 	g.out.WriteString("  ret void\n}\n")
 	return nil
 }

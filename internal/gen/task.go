@@ -141,12 +141,18 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		frameTypes = append(frameTypes, "{ ptr, ptr }")
 	}
 	recvOffset := 0
+	recvText := ""
+	recvClass := false
 	if call.Kind == "mcall" {
 		// The receiver is the hidden first parameter of a method. Keep it as a
 		// pointer in the job frame; the method body reads through it.
 		frameTypes = append(frameTypes, "ptr")
 		argTexts = append(argTexts, "")
 		recvOffset = 1
+		if text, err := g.willTypeText(refField(call, "recv")); err == nil {
+			recvText = text
+			recvClass = g.isClassText(text)
+		}
 	}
 	for _, a := range args {
 		typ, err := g.typeOf(a)
@@ -177,7 +183,13 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		}
 		field := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 0\n", field, frameType, frame)
-		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", recv, field)
+		if g.gcProgram != nil && recvClass {
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				field, recv)
+		} else {
+			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", recv, field)
+		}
 	}
 	if indirect {
 		code, env, err := g.closureCode(target)
@@ -219,7 +231,13 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argTypes[i], value, field)
+		if g.gcProgram != nil && g.isClassText(argTexts[i]) {
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				field, value)
+		} else {
+			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argTypes[i], value, field)
+		}
 		if err := g.shareValue(field, argTexts[i]); err != nil {
 			return "", err
 		}
@@ -265,9 +283,27 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	// A sync call is a CPU job: it enters the submitting lane's deque and may
 	// be stolen, but it never suspends. Async calls returned above as tasks.
 	g.needJobDecl = true
-	if dropSym != "" {
+	gcSlots, gcTypes := g.spawnGCSlots(frameTypes, argTexts, recvClass, indirect, recvText)
+	gcMap := "null"
+	resultType := "null"
+	if len(gcSlots) != 0 || g.gcProgram != nil {
+		gcMap = g.taskGCMap(step, gcSlots, gcTypes)
+		if text, err := g.callResultText(call); err == nil {
+			resultType = g.taskResultDescriptor(text)
+		}
+	}
+	if g.gcProgram != nil {
+		g.needJobGCDecl = true
+	}
+	if dropSym != "" && g.gcProgram != nil {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new_drop_gc(ptr @%s, ptr %s, i64 %s, i32 0, ptr @%s, ptr %s, ptr %s)\n",
+			task, llvmSymbol(step), frame, size, llvmSymbol(dropSym), gcMap, resultType)
+	} else if dropSym != "" {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, ptr @%s)\n",
 			task, llvmSymbol(step), frame, size, llvmSymbol(dropSym))
+	} else if g.gcProgram != nil {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new_gc(ptr @%s, ptr %s, i64 %s, i32 0, ptr %s, ptr %s)\n",
+			task, llvmSymbol(step), frame, size, gcMap, resultType)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new(ptr @%s, ptr %s, i64 %s, i32 0)\n",
 			task, llvmSymbol(step), frame, size)
