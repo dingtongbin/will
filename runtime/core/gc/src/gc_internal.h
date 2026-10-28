@@ -70,6 +70,9 @@ int willrt_gc_marking_active(void);
 
 size_t willrt_gc_object_count(void);
 int willrt_gc_object_at(size_t index, void** base, size_t* size);
+void willrt_gc_tlab_new_young(void);
+size_t willrt_gc_test_evacuate(void);
+size_t willrt_gc_test_evacuated_count(void);
 
 int willrt_gc_heap_offset(const void* ptr, size_t* offset);
 void willrt_gc_card_mark(void* slot);

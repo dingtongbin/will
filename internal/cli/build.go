@@ -813,6 +813,7 @@ func runtimeSources(root, target string) []string {
 		filepath.Join("core", "gc", "src", "barrier.c"),
 		filepath.Join("core", "gc", "src", "mark.c"),
 		filepath.Join("core", "gc", "src", "safepoint.c"),
+		filepath.Join("core", "gc", "src", "evacuate.c"),
 		filepath.Join("core", "rc", "src", "rc.c"),
 		filepath.Join("core", "report", "src", "report.c"),
 		filepath.Join("core", "startup", "src", "startup.c"),

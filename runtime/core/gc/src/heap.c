@@ -284,6 +284,18 @@ void willrt_gc_unpin(void* object) {
     }
 }
 
+void willrt_gc_tlab_new_young(void) {
+    size_t id;
+
+    gc_heap_init();
+    willrt_os_mutex_lock(&willrt_gc_heap_lock);
+    id = gc_region_new_locked(WILLRT_GC_REGION_YOUNG, WILLRT_GC_REGION_SIZE);
+    willrt_os_mutex_unlock(&willrt_gc_heap_lock);
+    gc_local_tlab.region = &gc_regions[id];
+    gc_local_tlab.cur = gc_local_tlab.region->base;
+    gc_local_tlab.limit = gc_local_tlab.region->base + WILLRT_GC_REGION_SIZE;
+}
+
 int willrt_gc_heap_offset(const void* ptr, size_t* offset) {
     const uint8_t* address = (const uint8_t*)ptr;
 

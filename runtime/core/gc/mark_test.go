@@ -39,6 +39,7 @@ func TestGCMark(t *testing.T) {
 		filepath.Join(dir, "src", "barrier.c"),
 		filepath.Join(dir, "src", "mark.c"),
 		filepath.Join(dir, "src", "safepoint.c"),
+		filepath.Join(dir, "src", "evacuate.c"),
 		filepath.Join(dir, "src", "mark_test.c"),
 		filepath.Join(dir, "..", "..", "platform", platform))
 	build := exec.Command(gcc, args...)
