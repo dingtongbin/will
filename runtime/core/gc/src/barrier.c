@@ -8,7 +8,11 @@
 #include <stddef.h>
 
 #define WILLRT_GC_SATB_CAP 1024u
+#define WILLRT_GC_CARD_SIZE 512u
+#define WILLRT_GC_CARD_COUNT (WILLRT_GC_ARENA_SIZE / WILLRT_GC_CARD_SIZE)
 
+static _Atomic unsigned char gc_cards[WILLRT_GC_CARD_COUNT];
+static atomic_size_t gc_card_count;
 static willrt_os_mutex gc_satb_lock;
 static atomic_int gc_satb_state;
 static void* gc_satb[WILLRT_GC_SATB_CAP];
@@ -37,6 +41,20 @@ void* willrt_gc_read_barrier(const void* ref) {
     return WILLRT_GC_UNTAG(ref);
 }
 
+void willrt_gc_card_mark(void* slot) {
+    size_t offset;
+
+    if (!willrt_gc_heap_offset(slot, &offset)) {
+        return;
+    }
+    offset /= WILLRT_GC_CARD_SIZE;
+    if (offset < WILLRT_GC_CARD_COUNT &&
+        atomic_exchange_explicit(&gc_cards[offset], 1,
+                                 memory_order_relaxed) == 0) {
+        atomic_fetch_add_explicit(&gc_card_count, 1, memory_order_relaxed);
+    }
+}
+
 void willrt_gc_write_barrier(void** slot, void* value) {
     void* old;
 
@@ -54,6 +72,7 @@ void willrt_gc_write_barrier(void** slot, void* value) {
         }
         willrt_os_mutex_unlock(&gc_satb_lock);
     }
+    willrt_gc_card_mark(slot);
     *slot = value;
 }
 
@@ -67,6 +86,22 @@ void willrt_gc_satb_drain(willrt_gc_root_visit visit, void* context) {
     }
     gc_satb_count = 0;
     willrt_os_mutex_unlock(&gc_satb_lock);
+}
+
+int willrt_gc_test_card_marked(void* slot) {
+    size_t offset;
+
+    if (!willrt_gc_heap_offset(slot, &offset)) {
+        return 0;
+    }
+    offset /= WILLRT_GC_CARD_SIZE;
+    return offset < WILLRT_GC_CARD_COUNT
+               ? atomic_load_explicit(&gc_cards[offset], memory_order_relaxed)
+               : 0;
+}
+
+size_t willrt_gc_test_card_count(void) {
+    return atomic_load_explicit(&gc_card_count, memory_order_relaxed);
 }
 
 size_t willrt_gc_test_satb_count(void) {

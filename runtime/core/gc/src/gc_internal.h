@@ -67,6 +67,11 @@ void willrt_gc_handle_scan_all(willrt_gc_root_visit visit, void* context);
 void willrt_gc_satb_drain(willrt_gc_root_visit visit, void* context);
 int willrt_gc_marking_active(void);
 
+int willrt_gc_heap_offset(const void* ptr, size_t* offset);
+void willrt_gc_card_mark(void* slot);
+int willrt_gc_test_card_marked(void* slot);
+size_t willrt_gc_test_card_count(void);
+
 /* Test hooks. They expose counters the stress tests need without adding public
    ABI surface. */
 size_t willrt_gc_test_region_count(void);

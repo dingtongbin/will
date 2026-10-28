@@ -268,6 +268,20 @@ void willrt_gc_unpin(void* object) {
     }
 }
 
+int willrt_gc_heap_offset(const void* ptr, size_t* offset) {
+    const uint8_t* address = (const uint8_t*)ptr;
+
+    if (atomic_load_explicit(&willrt_gc_heap_state, memory_order_acquire) != 2 ||
+        address == NULL || address < willrt_gc_arena ||
+        address >= willrt_gc_arena + willrt_gc_arena_size) {
+        return 0;
+    }
+    if (offset != NULL) {
+        *offset = (size_t)(address - willrt_gc_arena);
+    }
+    return 1;
+}
+
 size_t willrt_gc_test_region_count(void) {
     return gc_region_count;
 }

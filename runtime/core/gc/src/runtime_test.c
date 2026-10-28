@@ -56,6 +56,17 @@ static void test_barriers(void) {
     assert(willrt_gc_test_satb_overflow() == 0);
     willrt_gc_write_barrier(&slot, tagged);
     assert(willrt_gc_test_satb_count() == 1);
+
+    {
+        void* object = willrt_gc_alloc(sizeof(void*), NULL);
+        void** field = (void**)object;
+
+        *field = NULL;
+        willrt_gc_write_barrier(field, second);
+        assert(*field == second);
+        assert(willrt_gc_test_card_marked(field) == 1);
+        assert(willrt_gc_test_card_count() >= 1);
+    }
 }
 
 int main(void) {
