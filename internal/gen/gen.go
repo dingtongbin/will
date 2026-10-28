@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/will-lang/will/internal/decisions"
 	"github.com/will-lang/will/internal/gcmeta"
 	"github.com/will-lang/will/internal/willc"
 )
@@ -67,6 +68,13 @@ func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases ma
 // promotion the lowering emitted, so the decision record can carry one
 // obligation per crossing.
 func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string, lib bool) ([]byte, []Crossing, error) {
+	ir, crossings, _, err := EmitModuleWithDecisions(docs, entry, entryPkg, aliases, lib)
+	return ir, crossings, err
+}
+
+// EmitModuleWithDecisions also reports the GC layout, stack-map, and allocation
+// decisions that the lowering emitted.
+func EmitModuleWithDecisions(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string, lib bool) ([]byte, []Crossing, []decisions.Record, error) {
 	g := &generator{
 		lib:            lib,
 		scope:          map[int]string{},
@@ -100,7 +108,7 @@ func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases ma
 	if g.hasGCMeta() {
 		program, err := gcmeta.Build(g.rawDocs())
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		g.gcProgram = program
 	}
@@ -134,17 +142,17 @@ func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases ma
 	for _, d := range g.docs {
 		g.use(d)
 		if err := g.emitDoc(); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 	if g.entryFound && !g.lib {
 		if err := g.emitWrapper(); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 	g.emitAux()
 	if err := g.emitGCMetadata(); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	text := g.out.String()
 	// A synthesized Result<(), Error> can mention the predeclared interface
@@ -176,7 +184,7 @@ func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases ma
 		}
 		text = text[:offset] + errorType + text[offset:]
 	}
-	return []byte(text), g.crossings, nil
+	return []byte(text), g.crossings, g.gcDecisions, nil
 }
 
 // emitAux writes the module-level values the functions produced while they
@@ -1013,6 +1021,7 @@ type generator struct {
 	gcProgram      *gcmeta.Program
 	gcFrames       []gcFrameInfo
 	gcTaskFrames   []gcFrameInfo
+	gcDecisions    []decisions.Record
 	gcGlobalRoots  []string
 	gcRootSlots    map[int]string
 	gcInlineTypes  map[string]*gcmeta.Type

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/will-lang/will/internal/decisions"
 	"github.com/will-lang/will/internal/gcmeta"
 	"github.com/will-lang/will/internal/willc"
 )
@@ -495,6 +496,8 @@ func (g *generator) classNew(r willc.Record) (string, string, error) {
 		return "", "", err
 	}
 	g.needGCDecl = true
+	g.gcDecisions = append(g.gcDecisions, decisions.Alloc(g.fnSymbol,
+		fieldText(r, "pos"), t.Name, "tlab"))
 	slot := g.allocSlot(g.newSlots, "class", r.ID, "ptr")
 	descriptor := gcmeta.DescriptorSymbol(t.Name)
 	object := g.newTmp()

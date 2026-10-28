@@ -436,7 +436,7 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, []byte, str
 			return got[cache.ModuleLL], got[cache.Decisions], fe.modulePath, 0
 		}
 	}
-	ir, crossings, err := gen.EmitModuleWithRecords(docs, opts.entry, fe.modulePath, fe.aliases, opts.lib)
+	ir, crossings, gcDecisions, err := gen.EmitModuleWithDecisions(docs, opts.entry, fe.modulePath, fe.aliases, opts.lib)
 	if err != nil {
 		reportTranslate(diagOut, err)
 		return nil, nil, "", 1
@@ -444,7 +444,10 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, []byte, str
 	// The record the build keeps carries one share obligation per promotion
 	// the lowering emitted; the cache key stays on the front-end record so
 	// the key remains a function of the inputs.
-	record = decisions.Write(append(astRecords, crossingRecords(crossings)...))
+	finalRecords := append([]decisions.Record(nil), astRecords...)
+	finalRecords = append(finalRecords, crossingRecords(crossings)...)
+	finalRecords = append(finalRecords, gcDecisions...)
+	record = decisions.Write(finalRecords)
 	if store != nil {
 		_ = store.Put(key, map[string][]byte{cache.ModuleLL: ir, cache.Decisions: record})
 		_ = store.TrimIfNeeded()

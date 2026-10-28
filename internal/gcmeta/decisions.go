@@ -43,52 +43,5 @@ func DecisionRecords(docs []*willc.Doc) ([]decisions.Record, error) {
 				f.Size))
 		}
 	}
-	for _, doc := range docs {
-		byID := map[int]willc.Record{}
-		for _, r := range doc.Records {
-			byID[r.ID] = r
-		}
-		pkg := modulePath(doc)
-		for _, r := range doc.Records {
-			if r.Kind != "new" || !program.Declared(pkg, fieldText(r, "type")) {
-				continue
-			}
-			t := program.Lookup(fieldText(r, "type"))
-			if t == nil || t.Kind != KindClass {
-				if q, ok := program.TypeText(pkg, fieldText(r, "type")); ok {
-					t = program.Lookup(q)
-				}
-			}
-			if t == nil || t.Kind != KindClass {
-				continue
-			}
-			fn := enclosingFuncName(byID, r.ID, pkg)
-			out = append(out, decisions.Alloc(fn, fieldText(r, "pos"),
-				t.Name, "tlab"))
-		}
-	}
 	return out, nil
-}
-
-// enclosingFuncName walks the parent chain of one node and renders the
-// qualified function or method symbol.
-func enclosingFuncName(byID map[int]willc.Record, id int, pkg string) string {
-	for id != 0 {
-		r, ok := byID[id]
-		if !ok {
-			return ""
-		}
-		if r.Kind == "func" {
-			name := fieldText(r, "text")
-			for _, child := range byID {
-				if child.Kind == "receiver" && refField(child, "parent") == r.ID {
-					name = fieldText(child, "type") + "." + name
-					break
-				}
-			}
-			return qualify(pkg, name)
-		}
-		id = refField(r, "parent")
-	}
-	return ""
 }

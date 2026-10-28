@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/will-lang/will/internal/decisions"
 	"github.com/will-lang/will/internal/gcmeta"
 	"github.com/will-lang/will/internal/willc"
 )
@@ -163,6 +164,14 @@ func (g *generator) emitGCMetadata() error {
 			mapName, llvmSymbol(fn), slotName, len(records))
 	}
 	for _, frame := range append(append([]gcFrameInfo(nil), g.gcFrames...), g.gcTaskFrames...) {
+		for i, offset := range frame.Slots {
+			typ := "raw"
+			if i < len(frame.Types) && frame.Types[i] != "" {
+				typ = frame.Types[i]
+			}
+			g.gcDecisions = append(g.gcDecisions,
+				decisions.StackMap(frame.Func, offset, typ))
+		}
 		if _, exists := maps[frame.Func]; exists {
 			continue
 		}
