@@ -188,3 +188,35 @@ func TestGenericClassInstanceLayout(t *testing.T) {
 		t.Fatalf("TypeText(Box<Node>) = %q, %v", name, ok)
 	}
 }
+
+func TestContainerPayloadType(t *testing.T) {
+	doc := readDoc(t, "#1 module path=\"m\"\n"+
+		"#2 func parent=#1 text=\"main\" type=\"i32\"\n"+
+		"#3 var parent=#2 text=\"xs\" type=\"list[i32]\"\n"+
+		"#4 type parent=#3 text=\"list[i32]\" kind=named arg=#5\n"+
+		"#5 type parent=#4 text=\"i32\" kind=scalar\n"+
+		"#6 var parent=#2 text=\"ys\" type=\"dict[str,i32]\"\n"+
+		"#7 type parent=#6 text=\"dict[str,i32]\" kind=named arg=#8 arg=#9\n"+
+		"#8 type parent=#7 text=\"str\" kind=scalar\n"+
+		"#9 type parent=#7 text=\"i32\" kind=scalar\n"+
+		"#10 end\n")
+	program, err := Build([]*willc.Doc{doc})
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	for _, want := range []string{"list[i32]", "dict[str,i32]"} {
+		container := program.Lookup(want)
+		if container == nil || container.Kind != KindClass {
+			t.Fatalf("%s type = %#v", want, container)
+		}
+		if container.Size != 24 || len(container.Refs) != 1 || container.Refs[0] != 0 {
+			t.Fatalf("%s layout = size %d refs %v", want, container.Size, container.Refs)
+		}
+		if container.ID == 0 {
+			t.Fatalf("%s has no class id", want)
+		}
+		if name, ok := program.TypeText("m", want); !ok || name != want {
+			t.Fatalf("TypeText(%s) = %q, %v", want, name, ok)
+		}
+	}
+}

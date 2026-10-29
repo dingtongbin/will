@@ -233,13 +233,25 @@ Evidence commands:
   and memcpy), `get`, `len` work end to end: a probe returns 3 with
   `get0=1 get1=2 len=2`. The growth path pins the old data and allocates
   `cap * size` bytes.
-- Still missing before it can be committed: set/insert/remove/clear/pop/clone/
-  append/slice/reserve/shrink_to_fit, `for` iteration, `xs[i]`, builtin
-  `len(xs)`, run/build differential, corpus, and the migration that deletes
-  `Array` in the same series. Do not commit the half-migration.
-- Working now: constructor, push (growth + memcpy), get, set, len, insert,
-  remove, clear, clone, `for v in xs`, and `xs[i]`. Probes return the expected
-  values (`get0=1 get1=2 len=2`; insert/remove 13; clone xs=2 ys=3).
+- Tests added: `TestRunListMethods` (returns 54; the whole specified surface,
+  including `map`/`filter`/`fold`/`find`/`any`/`all`) and
+  `TestRunListForcedCycles` (2500 forced cycles, returns 3) in
+  `internal/cli/run_list_test.go`; both pass. A gate run is in flight before
+  the list surface is committed as its own feature; deleting `Array` follows
+  in the next commits.
+- Working now: the full specified list method set: push, get, set, len,
+  insert, remove, clear, clone, reserve, shrink_to_fit, append, slice, pop,
+  any, all, filter, find, map, fold; builtin `len(xs)`, `for v in xs`,
+  `xs[i]`. Probes: 9 cases pass, including `map`/`fold`/`find`
+  (`sum=12 total=6 found=2 missing=100`, exit 20) and the forced-cycle
+  2500-round case (`first=1 second=2 len=2`).
+- `list.go` (414 lines), `listmethods.go` (444), `listfuncs.go` (503) are
+  split by responsibility to stay under the 800-line rule; the nine probes
+  pass after the split.
+- Callback ABI: a function value is `{ ptr code, ptr env }`; the lowering
+  calls `code(env, ...)` and reads the callback result type from the lambda
+  record (its `type` field), not from a call type argument.
+- Probes live in `build/probelist*` (gitignored); cold `WILL_CACHE`.
 - FIXED (P0, GC type registry): forced GC ran 4/4 clean after two changes in
   `internal/gen/gcmeta.go`. (1) Package mode filtered synthesised container
   types out of the registration list because `packageOfQualified("list[i32]")`

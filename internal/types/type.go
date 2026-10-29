@@ -200,6 +200,7 @@ func isBool(t *Type) bool {
 // builtinArity maps the predeclared generic type names to their arity.
 var builtinArity = map[string]int{
 	"Array": 1, "Set": 1, "Map": 2,
+	"list": 1,
 	"chan": 1, "rc": 1, "arc": 1, "weak_rc": 1, "weak_arc": 1, "Task": 1,
 	"Option": 1, "Result": 2,
 }
@@ -257,7 +258,11 @@ func (in *interner) namedWithClass(name string, args []*Type, class bool) *Type 
 		for i, a := range args {
 			parts[i] = a.String()
 		}
-		text = name + "<" + strings.Join(parts, ",") + ">"
+		if name == "list" || name == "dict" || name == "set" {
+			text = name + "[" + strings.Join(parts, ",") + "]"
+		} else {
+			text = name + "<" + strings.Join(parts, ",") + ">"
+		}
 	}
 	return in.intern(&Type{text: text, kind: NamedKind, class: class, name: name, args: args})
 }

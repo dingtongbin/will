@@ -82,7 +82,11 @@ func (p *Program) canonicalNode(pkg, text string, node *typeNode, depth int) (st
 		if err != nil {
 			return "", err
 		}
-		return name + "<" + strings.Join(args, ",") + ">", nil
+		text := instanceText(name, args)
+		if name == "list" || name == "dict" || name == "set" {
+			return p.ensureContainerType(text), nil
+		}
+		return text, nil
 	}
 	if builtinValueNames[name] {
 		return name, nil
@@ -361,4 +365,41 @@ func (p *Program) aliasName(pkg, name string) string {
 		return name
 	}
 	return path + name[dot:]
+}
+
+// instanceText spells one generic instance. The three final containers use
+// brackets; every other generic type uses angle brackets.
+func instanceText(name string, args []string) string {
+	joined := strings.Join(args, ",")
+	if name == "list" || name == "dict" || name == "set" {
+		return name + "[" + joined + "]"
+	}
+	return name + "<" + joined + ">"
+}
+
+// ensureContainerType records the GC payload type of one final container
+// instance. The payload is data/len/cap and the data word is the only
+// reference. A sealed program does not create new types; the discovery pass
+// covers every type text in the batch.
+func (p *Program) ensureContainerType(text string) string {
+	if _, ok := p.containers[text]; ok {
+		return text
+	}
+	if _, ok := p.types[text]; ok {
+		return text
+	}
+	if p.sealed {
+		return text
+	}
+	word := WordSize
+	p.containers[text] = &Type{
+		Name: text, Kind: KindClass, Size: 3 * word, Align: word,
+		Refs: []uint32{0},
+		Fields: []Field{
+			{Name: "data", Type: "raw", Offset: 0, Size: word},
+			{Name: "len", Type: "i64", Offset: word, Size: 8},
+			{Name: "cap", Type: "i64", Offset: 2 * word, Size: 8},
+		},
+	}
+	return text
 }

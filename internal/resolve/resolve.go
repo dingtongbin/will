@@ -84,6 +84,7 @@ var predeclaredTypes = []string{
 	"u8", "u16", "u32", "u64", "usize",
 	"f32", "f64",
 	"Array", "Map", "Set",
+	"list",
 	"chan", "rc", "arc", "weak_rc", "weak_arc", "Task",
 	"Option", "Result", "Value", "Duration",
 	"Show", "Error", "TaskError",
@@ -107,7 +108,7 @@ func isPredeclaredType(name string) bool {
 var predeclaredValues = []string{
 	"Some", "None", "Ok", "Err", "wait",
 	"Canceled", "Deadline",
-	"print", "panic", "assert", "leak",
+	"print", "panic", "assert", "leak", "len",
 	"take_c", "take_c_rc",
 	"SizeOf", "AlignOf", "OffsetOf",
 	"Cancel", "Priority",

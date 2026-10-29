@@ -117,6 +117,14 @@ func (p *Parser) parsePostfixUntil(allowBrace, stopWaitSuffix bool) ast.Expr {
 		case token.LParen:
 			x = p.parseCall(x, nil)
 		case token.LBracket:
+			if name, ok := x.(*ast.NameExpr); ok && isContainerCtor(name.Name) {
+				if end, ok := p.bracketArgsEnd(p.pos); ok &&
+					end+1 < len(p.toks) && p.toks[end+1].Kind == token.LParen {
+					typeArgs := p.parseBracketTypeArgs()
+					x = p.parseCall(x, typeArgs)
+					continue
+				}
+			}
 			x = p.parseIndex(x)
 		case token.Dot:
 			x = p.parseFieldOrMethod(x)

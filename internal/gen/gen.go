@@ -1626,7 +1626,8 @@ func qualify(pkg, name string) string {
 // user type keeps its qualified name.
 func stripPredeclaredPackage(text string) string {
 	for _, name := range []string{"Array<", "Map<", "Set<", "Option<", "Result<",
-		"rc<", "arc<", "weak_rc<", "weak_arc<", "chan<", "Task<"} {
+		"rc<", "arc<", "weak_rc<", "weak_arc<", "chan<", "Task<",
+		"list[", "dict[", "set["} {
 		if i := strings.Index(text, name); i > 0 && text[i-1] == '.' {
 			return text[i:]
 		}
@@ -2714,6 +2715,11 @@ func (g *generator) allocas(fn int) error {
 			continue
 		}
 		n, elem, ok := arrayTypeText(iterText)
+		if !ok {
+			if e, lok := listElemText(iterText); lok {
+				n, elem, ok = 0, e, true
+			}
+		}
 		if !ok {
 			e, cok := containerElem(iterText)
 			if !cok {
@@ -3841,6 +3847,9 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 		if an, elem, ok := arrayTypeText(iterText); ok {
 			return g.forArray(r, an, elem, void, n)
 		}
+		if elem, ok := listElemText(iterText); ok {
+			return g.forList(r, elem, iterText, void, n)
+		}
 		if k, v, ok := mapTypeText(iterText); ok {
 			return g.forMap(r, k, v, void, n)
 		}
@@ -4666,9 +4675,11 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		if err == nil {
 			recvText = stripPredeclaredPackage(recvText)
 			if recvText != "str" && recvText != "[]u8" {
-				if _, ok := arrayElemText(recvText); !ok {
-					if _, ok := viewElemText(recvText); !ok {
-						return g.cloneValueCall(r, recvText)
+				if _, ok := listElemText(recvText); !ok {
+					if _, ok := arrayElemText(recvText); !ok {
+						if _, ok := viewElemText(recvText); !ok {
+							return g.cloneValueCall(r, recvText)
+						}
 					}
 				}
 			}
@@ -4691,6 +4702,12 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		return g.emitCall(r, qualified, false)
 	}
 	if r.Kind == "mcall" {
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			recvText = stripPredeclaredPackage(recvText)
+			if elem, ok := listElemText(recvText); ok {
+				return g.listMethod(r, elem, recvText)
+			}
+		}
 		if name := g.genericMethodName(r); name != "" {
 			return g.emitCall(r, name, false)
 		}

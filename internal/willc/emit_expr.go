@@ -237,6 +237,10 @@ func (e *emitter) emitCallArg(rec int, a *ast.CallArg) {
 func (e *emitter) emitCall(c *ast.CallExpr) int {
 	if name, ok := c.Callee.(*ast.NameExpr); ok {
 		sym := e.refs[name]
+		if sym != nil && sym.Predeclared && sym.Kind == resolve.PredeclaredTypeKind &&
+			name.Name == "list" {
+			return e.emitContainerNew(c, name.Name)
+		}
 		if sym != nil && sym.Kind == resolve.StructKind {
 			if decl, ok := sym.Node.(*ast.StructDecl); ok {
 				if decl.Class {
@@ -303,6 +307,24 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 // object; init, when present, is invoked by the class lowering after field
 // defaults are written. A generic constructor carries its concrete type
 // arguments in the new record, which has no separate argument field.
+// emitContainerNew writes a list constructor. It is the same allocation a new
+// expression performs; the type arguments come from the call's bracket list.
+func (e *emitter) emitContainerNew(c *ast.CallExpr, name string) int {
+	rec := e.add("new", c)
+	args := make([]string, len(c.TypeArgs))
+	for i, t := range c.TypeArgs {
+		args[i] = typeText(t)
+	}
+	e.text(rec, "type", name+"["+strings.Join(args, ",")+"]")
+	e.push(rec)
+	for _, a := range c.Args {
+		aid := e.emitExpr(a.Expr)
+		e.field(rec, "arg", Ref(aid))
+	}
+	e.pop()
+	return rec
+}
+
 func (e *emitter) emitClassNew(c *ast.CallExpr, name string) int {
 	return e.emitNewArgs(c, c.Args, constructorTypeText(name, c.TypeArgs))
 }

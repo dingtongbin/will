@@ -62,6 +62,9 @@ func parseTypeText(text string) (*typeNode, error) {
 	if strings.HasPrefix(text, "ref ") || strings.HasPrefix(text, "mut ") {
 		return &typeNode{kind: typeName, name: strings.TrimSpace(text)}, nil
 	}
+	if containerBracketText(text) {
+		return parseContainerText(text)
+	}
 	if lt := strings.IndexByte(text, '<'); lt > 0 && strings.HasSuffix(text, ">") {
 		args, err := splitArgs(text[lt+1 : len(text)-1])
 		if err != nil {
@@ -78,6 +81,35 @@ func parseTypeText(text string) (*typeNode, error) {
 		return node, nil
 	}
 	return &typeNode{kind: typeName, name: text}, nil
+}
+
+// containerBracketText reports whether text is a list, dict, or set type
+// written with brackets.
+func containerBracketText(text string) bool {
+	for _, name := range []string{"list[", "dict[", "set["} {
+		if strings.HasPrefix(text, name) && strings.HasSuffix(text, "]") {
+			return true
+		}
+	}
+	return false
+}
+
+// parseContainerText parses list[T], dict[K,V], or set[T].
+func parseContainerText(text string) (*typeNode, error) {
+	open := strings.IndexByte(text, '[')
+	args, err := splitArgs(text[open+1 : len(text)-1])
+	if err != nil {
+		return nil, err
+	}
+	node := &typeNode{kind: typeName, name: text[:open]}
+	for _, arg := range args {
+		child, err := parseTypeText(arg)
+		if err != nil {
+			return nil, err
+		}
+		node.args = append(node.args, child)
+	}
+	return node, nil
 }
 
 func splitArgs(text string) ([]string, error) {

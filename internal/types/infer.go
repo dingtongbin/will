@@ -1518,6 +1518,33 @@ func (c *checker) symbolOf(name *ast.NameExpr) *resolve.Symbol {
 	return c.res.Refs[name]
 }
 
+// containerConstruct checks one predeclared container constructor. The
+// constructor takes its type arguments in brackets and accepts either no
+// capacity or one usize capacity.
+func (c *checker) containerConstruct(s *inferScope, name string, call *ast.CallExpr) *Type {
+	arity := builtinArity[name]
+	if len(call.TypeArgs) != arity {
+		c.bag.Error(call.Pos(), diag.CodeTypeArgCount, "wrong number of type arguments",
+			"the declaration takes "+strconv.Itoa(arity))
+		for _, a := range call.Args {
+			c.inferExpr(s, a.Expr)
+		}
+		return c.in.named(name, nil)
+	}
+	args := make([]*Type, arity)
+	for i, ta := range call.TypeArgs {
+		args[i] = c.buildType(ta, s.tp)
+	}
+	if len(call.Args) > 1 {
+		c.badArity(call.Pos(), name)
+	}
+	for _, a := range call.Args {
+		c.checkValue(s, a.Expr, c.in.scalar("usize"))
+	}
+	return c.in.named(name, args)
+}
+
+// predeclaredCall checks one call to a predeclared value.
 func (c *checker) predeclaredCall(s *inferScope, name string, call *ast.CallExpr) *Type {
 	switch name {
 	case "panic":
@@ -1555,6 +1582,8 @@ func (c *checker) predeclaredCall(s *inferScope, name string, call *ast.CallExpr
 		return c.in.named("Result", []*Type{c.oneArg(s, call), nil})
 	case "Err":
 		return c.in.named("Result", []*Type{nil, c.oneArg(s, call)})
+	case "list":
+		return c.containerConstruct(s, name, call)
 	case "take_c", "take_c_rc":
 		return c.takeCType(s, call, name)
 	case "SizeOf", "AlignOf", "OffsetOf":
@@ -2281,7 +2310,7 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 		}
 		return nil, false
 	}
-	if recv.Kind() == NamedKind && recv.Name() == "Array" {
+	if recv.Kind() == NamedKind && (recv.Name() == "Array" || recv.Name() == "list") {
 		elem := argAt(recv, 0)
 		switch call.Name {
 		case "len", "cap":
@@ -2316,7 +2345,7 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 			return c.in.view(elem), true
 		case "clone":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
-			return c.in.named("Array", []*Type{elem}), true
+			return c.in.named(recv.Name(), []*Type{elem}), true
 		}
 		return nil, false
 	}

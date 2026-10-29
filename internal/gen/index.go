@@ -17,6 +17,9 @@ func elementText(text string) (string, bool) {
 	if elem, ok := containerElem(text); ok {
 		return elem, true
 	}
+	if elem, ok := listElemText(text); ok {
+		return elem, true
+	}
 	if text == "str" {
 		return "u32", true
 	}
@@ -85,6 +88,36 @@ func (g *generator) indexAddr(r willc.Record) (string, string, error) {
 	text, err := g.willTypeText(recvID)
 	if err != nil {
 		return "", "", err
+	}
+	if elem, ok := listElemText(text); ok {
+		payload, pok := g.listPayloadText(text)
+		if !pok {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: no payload for %s", r.ID, text)
+		}
+		object, err := g.classPointerValue(recvID)
+		if err != nil {
+			return "", "", err
+		}
+		object = g.pinObjectValue(object)
+		defer g.unpinContainer(object)
+		elemType, ok := g.typeLLVMOf(elem)
+		if !ok || elemType == "" {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: element type %s is not lowered yet", r.ID, elem)
+		}
+		idx, err := g.indexValue(refField(r, "i"), r)
+		if err != nil {
+			return "", "", err
+		}
+		lenField := g.listField(object, payload, 1)
+		length := g.load("i64", lenField)
+		bad := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = icmp uge i64 %s, %s\n", bad, idx, length)
+		g.panicCheck(bad, panicIndex, r)
+		dataField := g.listField(object, payload, 0)
+		data := g.loadContainerData(dataField)
+		addr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", addr, elemType, data, idx)
+		return addr, elemType, nil
 	}
 	elem, ok := elementText(text)
 	if !ok {

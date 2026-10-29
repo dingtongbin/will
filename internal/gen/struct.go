@@ -1161,6 +1161,41 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 				_ = kind
 			}
 		}
+		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+			recvText = stripPredeclaredPackage(recvText)
+			if elem, ok := listElemText(recvText); ok {
+				switch fieldText(r, "text") {
+				case "len":
+					return "usize", nil
+				case "get", "remove":
+					return elem, nil
+				case "pop", "find":
+					return "Option<" + elem + ">", nil
+				case "slice":
+					return "[]" + elem, nil
+				case "clone", "filter":
+					return "list[" + elem + "]", nil
+				case "any", "all":
+					return "bool", nil
+				case "map":
+					if callArgs := g.callArgs(r); len(callArgs) > 0 {
+						if out := g.callbackResultText(callArgs[0]); out != "" {
+							return "list[" + out + "]", nil
+						}
+					}
+					return "list[" + elem + "]", nil
+				case "fold":
+					if args := g.callArgs(r); len(args) > 0 {
+						if text, err := g.willTypeText(args[0]); err == nil {
+							return text, nil
+						}
+					}
+					return "", nil
+				default:
+					return "()", nil
+				}
+			}
+		}
 		symbol, err := g.methodSymbol(r)
 		if err != nil {
 			return "", err

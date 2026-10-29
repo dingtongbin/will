@@ -25,6 +25,19 @@ func (g *generator) lowerLen(r willc.Record) (string, error) {
 	if n, _, ok := arrayTypeText(text); ok {
 		return strconv.Itoa(n), nil
 	}
+	if _, ok := listElemText(text); ok {
+		object, err := g.classPointerValue(id)
+		if err != nil {
+			return "", err
+		}
+		payload, ok := g.listPayloadText(text)
+		if !ok {
+			return "", g.errf(r.ID, "cannot translate node #%d: no payload for %s", r.ID, text)
+		}
+		object = g.pinObjectValue(object)
+		defer g.unpinContainer(object)
+		return g.load("i64", g.listField(object, payload, 1)), nil
+	}
 	base, typ, err := g.place(id)
 	if err != nil {
 		return "", err

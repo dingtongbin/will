@@ -129,6 +129,9 @@ type Program struct {
 	// imports maps one package to its import aliases. A type text in that
 	// package can spell another package's type as alias.Name.
 	imports map[string]map[string]string
+	// containers holds the synthesised payload type of each final list, dict,
+	// or set instance. They are GC objects with a data/len/cap payload.
+	containers map[string]*Type
 	// sealed closes the instance set after Build. A later lookup that would
 	// need a new instance is a compiler bug, not a new type.
 	sealed bool
@@ -159,6 +162,7 @@ func Build(docs []*willc.Doc) (*Program, error) {
 		templates:  map[string]*declaration{},
 		typeParams: map[string]bool{},
 		imports:    map[string]map[string]string{},
+		containers: map[string]*Type{},
 	}
 	decls := map[string]*declaration{}
 	for _, doc := range docs {
@@ -230,12 +234,20 @@ func Build(docs []*willc.Doc) (*Program, error) {
 		return nil, err
 	}
 	p.sealed = true
-	names := make([]string, 0, len(decls))
+	names := make([]string, 0, len(decls)+len(p.containers))
 	for name := range decls {
+		names = append(names, name)
+	}
+	for name := range p.containers {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 	for _, name := range names {
+		if t := p.containers[name]; t != nil {
+			p.types[name] = t
+			p.order = append(p.order, name)
+			continue
+		}
 		t, err := p.buildDecl(decls, decls[name])
 		if err != nil {
 			return nil, err
@@ -286,7 +298,8 @@ func (p *Program) discoverInstances(docs []*willc.Doc) error {
 			if r.Kind == "type" {
 				text = fieldText(*r, "text")
 			}
-			if text == "" || !strings.Contains(text, "<") {
+			if text == "" ||
+				(!strings.Contains(text, "<") && !containerBracketText(text)) {
 				continue
 			}
 			if _, err := p.canonicalText(pkg, text, 0); err != nil {

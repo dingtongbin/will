@@ -96,6 +96,9 @@ func typeBaseText(t *Type) string {
 		for i, a := range t.Args {
 			parts[i] = TypeText(a)
 		}
+		if t.Name == "list" || t.Name == "dict" || t.Name == "set" {
+			return t.Name + "[" + strings.Join(parts, ",") + "]"
+		}
 		return t.Name + "<" + strings.Join(parts, ",") + ">"
 	case ArrayType:
 		return "[" + t.Len + "]" + TypeText(t.Elem)

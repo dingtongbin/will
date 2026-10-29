@@ -71,12 +71,41 @@ func (p *Parser) parseType() *ast.Type {
 		}
 		if p.at(token.Lt) {
 			t.Args = p.parseTypeArgs()
+		} else if isContainerCtor(name) && p.at(token.LBracket) {
+			t.Args = p.parseBracketTypeArgs()
 		}
 		t.Span = p.spanFrom(start)
 		return t
 	}
 	p.typeUnexpected("a type")
 	return &ast.Type{Span: p.emptySpan(start)}
+}
+
+// isContainerCtor reports whether name is one of the three predeclared
+// container constructors, which write their type arguments in brackets.
+func isContainerCtor(name string) bool {
+	return name == "list" || name == "dict" || name == "set"
+}
+
+// parseBracketTypeArgs parses the bracketed type arguments of list, dict, and
+// set. The angle form stays reserved for user generics.
+func (p *Parser) parseBracketTypeArgs() []*ast.Type {
+	p.expect(token.LBracket, "[")
+	p.enterGroup()
+	p.skipNL()
+	var args []*ast.Type
+	for {
+		args = append(args, p.parseType())
+		p.skipNL()
+		if !p.at(token.Comma) {
+			break
+		}
+		p.next()
+		p.skipNL()
+	}
+	p.expect(token.RBracket, "]")
+	p.leaveGroup()
+	return args
 }
 
 // parseTypeArgsInExpr parses type arguments written at a call site. A failure
@@ -222,6 +251,30 @@ func (p *Parser) typeArgsEnd(start int) (int, bool) {
 		case token.Shr:
 			depth -= 2
 		case token.Newline, token.EOF:
+			return 0, false
+		default:
+			continue
+		}
+		if depth == 0 {
+			return i, true
+		}
+		if depth < 0 {
+			return 0, false
+		}
+	}
+	return 0, false
+}
+
+// bracketArgsEnd returns the index of the ']' that closes the '[' at start.
+func (p *Parser) bracketArgsEnd(start int) (int, bool) {
+	depth := 0
+	for i := start; i < len(p.toks); i++ {
+		switch p.toks[i].Kind {
+		case token.LBracket:
+			depth++
+		case token.RBracket:
+			depth--
+		case token.EOF:
 			return 0, false
 		default:
 			continue
