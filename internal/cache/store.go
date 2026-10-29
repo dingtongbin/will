@@ -146,25 +146,30 @@ func (s *Store) Trim() error {
 	return nil
 }
 
+// dirSize returns the bytes below one entry and the entry's last-use time.
+// Put and Get touch the entry directory, so its mtime is the LRU clock; file
+// mtimes only record when one artifact was written and would never move on a
+// cache hit.
 func dirSize(dir string) (int64, time.Time) {
 	var total int64
-	var mod time.Time
-	entries, err := os.ReadDir(dir)
+	info, err := os.Stat(dir)
 	if err != nil {
 		return 0, time.Time{}
+	}
+	mod := info.ModTime()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0, mod
 	}
 	for _, d := range entries {
 		if d.IsDir() {
 			continue
 		}
-		info, err := d.Info()
+		file, err := d.Info()
 		if err != nil {
 			continue
 		}
-		total += info.Size()
-		if info.ModTime().After(mod) {
-			mod = info.ModTime()
-		}
+		total += file.Size()
 	}
 	return total, mod
 }
