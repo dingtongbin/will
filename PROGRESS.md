@@ -121,7 +121,14 @@ P3: allocation fast path inline, barriers, p999, soak, platform matrix.
   `command(...).output()` program. The same crash reproduces with the `3041a5e`
   compiler, so it is a pre-existing std/exec defect, not a regression from
   this round. The `tests/std/exec` corpus only records IR and never ran the
-  program, which hid it. This is now a P0 item.
+  program, which hid it. The old `Cmd`/`Output` surface also contradicts the
+  specification (`run`/`start`/`Child`), so migration belongs to P1-11 and is
+  blocked on `std/io` pipes.
+- Forced-cycle stress: `go test ./internal/gen -run
+  'GC|Class|Async|Select|Container' -count=3` PASS.
+- P2 replay determinism: two cold caches produce identical
+  `emit-decisions` and `index` output for async, std/io and cross-package
+  generic corpora. `TestEmitDecisionsAndIndexAreDeterministic` covers both.
 - C full-cycle probe: median throughput 0.40 M/s, p50 111.6 ms;
   allocation-only 13.8 M/s. Not release acceptance.
 - Crash recovery: the session was interrupted after the alloca rewrite. All
@@ -181,13 +188,23 @@ Evidence commands:
 
 ## Next three
 
-1. Fix the pre-existing `std/os/exec` access violation on the async
-   `output()`/`run()` path; add a running corpus so the gate compiles and
-   executes it.
-2. Generic enum instance corpus (template + class/struct argument), including a
-   cross-package case.
-3. P1-4/P1-5: `Weak<T>` source surface, then `Pinned<T>`/`Handle<T>` lowering
-   and lifetime checks.
+1. Migrate `std/sync` to the final class surface (`Mutex<T>`/`RwLock<T>`/
+   `Guard<T>`), then `std/parallel`; the generic class dependency is done.
+2. Run the async/select/interface forced-cycle stress in `internal/gen` for
+   several rounds against the new root-read path.
+3. Delete the old flat receiver and `new` source surface (P1-2), migrating all
+   corpus and std sources, then re-record.
+
+## Spec gaps (do not invent)
+
+- `Weak<T>` has no defined construction syntax and no defined atomic upgrade
+  contract; `Pinned<T>`/`Handle<T>` have no defined source entry. Recorded in
+  `desc/理由/缺口清单.md`; P1-4/P1-5 are blocked on that decision.
+- Generic enum construction syntax is undefined (`Enum<Variant>` placement and
+  inference). gcmeta instance layout exists, but no front-end surface is added.
+- `std/os/exec` is still the old `Cmd`/`Output` surface while
+  `desc/标准库/进程与文件.md` specifies `run`/`start`/`Child`; migration waits
+  for `std/io` Reader/Writer and pipe support.
 
 ## Unverified risks
 

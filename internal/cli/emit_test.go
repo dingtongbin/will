@@ -60,11 +60,9 @@ func TestEmitWillcUsage(t *testing.T) {
 	}
 }
 
-// TestEmitLLVMIsDeterministic checks that two cold caches produce the same
-// lowering. State-machine frame layout is the part that used to follow map
-// iteration order and change between identical builds.
-func TestEmitLLVMIsDeterministic(t *testing.T) {
-	src := `class Node {
+// deterministicSource has an async state machine, a class field and a
+// container, so the lowering decisions exercise frame layout and roots.
+const deterministicSource = `class Node {
     value: i32
 }
 
@@ -87,6 +85,12 @@ async def main() -> i32 {
     return await load(3)
 }
 `
+
+// TestEmitLLVMIsDeterministic checks that two cold caches produce the same
+// lowering. State-machine frame layout is the part that used to follow map
+// iteration order and change between identical builds.
+func TestEmitLLVMIsDeterministic(t *testing.T) {
+	src := deterministicSource
 	dir := t.TempDir()
 	path := writeFile(t, dir, "main.will", src)
 	t.Setenv("WILL_CACHE", filepath.Join(dir, "cache-a"))
@@ -101,5 +105,33 @@ async def main() -> i32 {
 	}
 	if first != second {
 		t.Fatalf("two identical builds differ:\n--- first\n%s\n--- second\n%s", first, second)
+	}
+}
+
+// TestEmitDecisionsAndIndexAreDeterministic checks the two replay products the
+// gate compares byte for byte. They must not depend on cache state or map
+// iteration order.
+func TestEmitDecisionsAndIndexAreDeterministic(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "app")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir app: %v", err)
+	}
+	writeFile(t, root, "will.mod", "module example.com/app\nwill 1\n")
+	writeFile(t, root, "main.will", deterministicSource)
+	for _, command := range []string{"emit-decisions", "index"} {
+		t.Setenv("WILL_CACHE", filepath.Join(root, command+"-a"))
+		code, first, errOut := runCLI(command, root)
+		if code != 0 {
+			t.Fatalf("%s first: code = %d, stderr = %q", command, code, errOut)
+		}
+		t.Setenv("WILL_CACHE", filepath.Join(root, command+"-b"))
+		code, second, errOut := runCLI(command, root)
+		if code != 0 {
+			t.Fatalf("%s second: code = %d, stderr = %q", command, code, errOut)
+		}
+		if first != second {
+			t.Fatalf("%s differs between two cold caches:\n--- first\n%s\n--- second\n%s",
+				command, first, second)
+		}
 	}
 }
