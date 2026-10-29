@@ -255,6 +255,17 @@ Evidence commands:
   `local`/`date` (N0003 warnings no longer leak into run output). Corpora
   were re-recorded, including genericasync/multiasync because container
   descriptor ids changed.
+- Layout fix (commit `e9c7922`): `internal/layout` now treats `list`/`dict`/
+  `set` as predeclared generic types with a one-word reference layout, and
+  `fieldLLVMType` resolves a class-like field text to `ptr` before struct
+  lookup. Replaying the retype tool on top of this fix makes `tests/std/io`
+  compile (it previously failed with `the layout of type std/io.list`).
+  The current migration diff is saved as `build/array-migration-v2.patch`
+  (281 KB) and the tree was restored to the non-migrated surface.
+- Still open for the Array migration: `tests/std/exec` now fails with
+  `key is an aggregate, not a scalar` (node #43), `str(list[u8])` is not
+  lowered, `view.clone()` still returns `Array<u8>`, and the C boundary
+  protocol (poller/exec) is unchanged.
 - Still open for the Array migration: the C boundary protocol (view buffer
   instead of the three-word handle for `std/io/poller` and `std/os/exec`),
   builtin `str(list[u8])` / `bytes(list[u8])`, and `view.clone()` returning
