@@ -7,14 +7,18 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// elementText returns the element type text of a fixed array, a view, or an
-// Array.
+// elementText returns the element type text of a fixed array, a view, an
+// Array, or one UTF-8 scalar of a str. A str index yields a u32 scalar; the
+// index lowering reads and decodes it.
 func elementText(text string) (string, bool) {
 	if _, elem, ok := arrayTypeText(text); ok {
 		return elem, true
 	}
 	if elem, ok := containerElem(text); ok {
 		return elem, true
+	}
+	if text == "str" {
+		return "u32", true
 	}
 	return "", false
 }
