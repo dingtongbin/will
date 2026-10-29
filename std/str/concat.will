@@ -10,3 +10,10 @@ def concat(parts: ...str) -> str {
     }
     return str(out)
 }
+
+# FromBytes converts a byte array into immutable text. The formatter lives in
+# its own package because fmt exports a function also named str, which shadows
+# the conversion inside that package.
+def from_bytes(data: []u8) -> str {
+    return str(data)
+}

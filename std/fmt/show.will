@@ -1,3 +1,5 @@
+import strpkg "std/str"
+
 # textOf joins the shown text of parts. It appends into one byte array so the
 # result costs linear time even when many parts are joined. Str and the
 # printers share it because a variadic argument cannot be forwarded as one
@@ -9,7 +11,7 @@ def text_of(parts: []Show) -> str {
         var text: str = parts[i].show()
         out.append(text[Range(0, text.len())])
     }
-    return str(out)
+    return strpkg.from_bytes(out[Range(0, out.len())])
 }
 
 # Str joins the shown text of its parts. It builds the result in memory and

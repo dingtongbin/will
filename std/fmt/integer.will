@@ -1,3 +1,5 @@
+import strpkg "std/str"
+
 # Int formats a signed value in the given base. The digits are lowercase and
 # the magnitude is the value without its sign, so the i64 minimum formats too.
 # A width larger than the result fills the gap with pad bytes between the sign
@@ -99,5 +101,5 @@ def digits_of(v: u64, base: u32) -> str {
         i -= 1usize
         out.push(reversed.get(i))
     }
-    return str(out)
+    return strpkg.from_bytes(out[Range(0, out.len())])
 }
