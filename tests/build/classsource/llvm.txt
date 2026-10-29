@@ -14,8 +14,10 @@ entry:
   call void @willrt_gc_write_barrier(ptr %t1, ptr %self)
   call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.example.com/classsource.Node.init", ptr %v.gcroots)
   %t2 = call ptr @willrt_gc_read_barrier(ptr %self)
-  %t3 = getelementptr inbounds %"class.example.com/classsource.Node", ptr %t2, i32 0, i32 0
-  store i32 %value, ptr %t3
+  %t3 = call ptr @willrt_gc_pin(ptr %t2)
+  %t4 = getelementptr inbounds %"class.example.com/classsource.Node", ptr %t3, i32 0, i32 0
+  store i32 %value, ptr %t4
+  call void @willrt_gc_unpin(ptr %t3)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret void
 }
@@ -24,29 +26,31 @@ entry:
   %v.gcroots = alloca [1 x ptr]
   store [1 x ptr] zeroinitializer, ptr %v.gcroots
   %v.gcframe = alloca %willrt_gc_frame
-  %t4 = getelementptr inbounds [1 x ptr], ptr %v.gcroots, i32 0, i32 0
-  call void @willrt_gc_write_barrier(ptr %t4, ptr %self)
+  %t5 = getelementptr inbounds [1 x ptr], ptr %v.gcroots, i32 0, i32 0
+  call void @willrt_gc_write_barrier(ptr %t5, ptr %self)
   call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.example.com/classsource.Node.get", ptr %v.gcroots)
-  %t5 = call ptr @willrt_gc_read_barrier(ptr %self)
-  %t6 = getelementptr inbounds %"class.example.com/classsource.Node", ptr %t5, i32 0, i32 0
-  %t7 = load i32, ptr %t6
+  %t6 = call ptr @willrt_gc_read_barrier(ptr %self)
+  %t7 = getelementptr inbounds %"class.example.com/classsource.Node", ptr %t6, i32 0, i32 0
+  %t8 = load i32, ptr %t7
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i32 %t7
+  ret i32 %t8
 }
 define hidden void @"example.com/classsource.Node.link"(ptr %self, ptr %other) alwaysinline {
 entry:
   %v.gcroots = alloca [2 x ptr]
   store [2 x ptr] zeroinitializer, ptr %v.gcroots
   %v.gcframe = alloca %willrt_gc_frame
-  %t8 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 0
-  %t9 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 1
-  call void @willrt_gc_write_barrier(ptr %t8, ptr %self)
-  call void @willrt_gc_write_barrier(ptr %t9, ptr %other)
+  %t9 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 0
+  %t10 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 1
+  call void @willrt_gc_write_barrier(ptr %t9, ptr %self)
+  call void @willrt_gc_write_barrier(ptr %t10, ptr %other)
   call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.example.com/classsource.Node.link", ptr %v.gcroots)
-  %t10 = call ptr @willrt_gc_read_barrier(ptr %self)
-  %t11 = getelementptr inbounds %"class.example.com/classsource.Node", ptr %t10, i32 0, i32 1
-  %t12 = call ptr @willrt_gc_read_barrier(ptr %other)
-  call void @willrt_gc_write_barrier(ptr %t11, ptr %t12)
+  %t11 = call ptr @willrt_gc_read_barrier(ptr %self)
+  %t12 = call ptr @willrt_gc_pin(ptr %t11)
+  %t13 = getelementptr inbounds %"class.example.com/classsource.Node", ptr %t12, i32 0, i32 1
+  %t14 = call ptr @willrt_gc_read_barrier(ptr %other)
+  call void @willrt_gc_write_barrier(ptr %t13, ptr %t14)
+  call void @willrt_gc_unpin(ptr %t12)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret void
 }
@@ -58,59 +62,67 @@ entry:
   %v.gcroots = alloca [5 x ptr]
   store [5 x ptr] zeroinitializer, ptr %v.gcroots
   %v.gcframe = alloca %willrt_gc_frame
-  %t13 = getelementptr inbounds [5 x ptr], ptr %v.gcroots, i32 0, i32 0
-  %t14 = getelementptr inbounds [5 x ptr], ptr %v.gcroots, i32 0, i32 1
-  %t15 = getelementptr inbounds [5 x ptr], ptr %v.gcroots, i32 0, i32 2
-  %t16 = getelementptr inbounds [5 x ptr], ptr %v.gcroots, i32 0, i32 3
-  %t17 = getelementptr inbounds [5 x ptr], ptr %v.gcroots, i32 0, i32 4
+  %t15 = getelementptr inbounds [5 x ptr], ptr %v.gcroots, i32 0, i32 0
+  %t16 = getelementptr inbounds [5 x ptr], ptr %v.gcroots, i32 0, i32 1
+  %t17 = getelementptr inbounds [5 x ptr], ptr %v.gcroots, i32 0, i32 2
+  %t18 = getelementptr inbounds [5 x ptr], ptr %v.gcroots, i32 0, i32 3
+  %t19 = getelementptr inbounds [5 x ptr], ptr %v.gcroots, i32 0, i32 4
   call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.example.com/classsource.will$main", ptr %v.gcroots)
   %v.class.43 = alloca ptr
-  %t18 = call ptr @willrt_gc_alloc(i64 16, ptr @"willrt.gc.type.example.com/classsource.Node")
-  store ptr %t18, ptr %v.class.43
-  call void @willrt_gc_write_barrier(ptr %t14, ptr %t18)
-  call void @"example.com/classsource.Node.init"(ptr %t18, i32 3)
-  call void @willrt_gc_safepoint(i32 0)
-  %t19 = load ptr, ptr %v.class.43
-  call void @willrt_gc_write_barrier(ptr %v.first, ptr %t19)
-  call void @willrt_gc_write_barrier(ptr %t13, ptr %t19)
-  %v.class.47 = alloca ptr
   %t20 = call ptr @willrt_gc_alloc(i64 16, ptr @"willrt.gc.type.example.com/classsource.Node")
-  store ptr %t20, ptr %v.class.47
+  store ptr %t20, ptr %v.class.43
   call void @willrt_gc_write_barrier(ptr %t16, ptr %t20)
-  call void @"example.com/classsource.Node.init"(ptr %t20, i32 4)
+  %t21 = call ptr @willrt_gc_pin(ptr %t20)
+  call void @"example.com/classsource.Node.init"(ptr %t21, i32 3)
   call void @willrt_gc_safepoint(i32 0)
-  %t21 = load ptr, ptr %v.class.47
-  call void @willrt_gc_write_barrier(ptr %v.second, ptr %t21)
-  call void @willrt_gc_write_barrier(ptr %t15, ptr %t21)
-  %t22 = call ptr @willrt_gc_read_barrier_slot(ptr %v.first)
-  %t23 = call ptr @willrt_gc_read_barrier_slot(ptr %v.second)
+  call void @willrt_gc_unpin(ptr %t21)
+  %t22 = load ptr, ptr %v.class.43
+  call void @willrt_gc_write_barrier(ptr %v.first, ptr %t22)
+  call void @willrt_gc_write_barrier(ptr %t15, ptr %t22)
+  %v.class.47 = alloca ptr
+  %t23 = call ptr @willrt_gc_alloc(i64 16, ptr @"willrt.gc.type.example.com/classsource.Node")
+  store ptr %t23, ptr %v.class.47
+  call void @willrt_gc_write_barrier(ptr %t18, ptr %t23)
+  %t24 = call ptr @willrt_gc_pin(ptr %t23)
+  call void @"example.com/classsource.Node.init"(ptr %t24, i32 4)
+  call void @willrt_gc_safepoint(i32 0)
+  call void @willrt_gc_unpin(ptr %t24)
+  %t25 = load ptr, ptr %v.class.47
+  call void @willrt_gc_write_barrier(ptr %v.second, ptr %t25)
+  call void @willrt_gc_write_barrier(ptr %t17, ptr %t25)
+  %t26 = call ptr @willrt_gc_read_barrier_slot(ptr %v.first)
+  %t27 = call ptr @willrt_gc_pin(ptr %t26)
+  %t28 = call ptr @willrt_gc_read_barrier_slot(ptr %v.second)
   call void @willrt_gc_safepoint(i32 3)
-  call void @"example.com/classsource.Node.link"(ptr %t22, ptr %t23)
-  %t24 = call ptr @willrt_gc_read_barrier_slot(ptr %v.first)
-  %t25 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 0
-  %t26 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 1
-  call void @willrt_gc_write_barrier(ptr %t25, ptr %t24)
-  store ptr @"example.com/classsource.vtable.Value.Node", ptr %t26
-  %t27 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 0
-  %t28 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 1
-  %t29 = load ptr, ptr %t27
-  call void @willrt_gc_write_barrier(ptr %t17, ptr %t29)
+  call void @"example.com/classsource.Node.link"(ptr %t27, ptr %t28)
+  call void @willrt_gc_unpin(ptr %t27)
+  %t29 = call ptr @willrt_gc_read_barrier_slot(ptr %v.first)
   %t30 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 0
-  %t31 = call ptr @willrt_gc_read_barrier_slot(ptr %t30)
-  %t32 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 1
-  %t33 = load ptr, ptr %t32
-  %t34 = getelementptr inbounds [4 x ptr], ptr %t33, i64 0, i64 0
-  %t35 = load ptr, ptr %t34
-  %t36 = call i32 %t35(ptr %t31)
-  %t37 = icmp ne i32 %t36, 3
-  %t38 = call ptr @willrt_gc_read_barrier_slot(ptr %v.first)
-  %t39 = getelementptr inbounds %"class.example.com/classsource.Node", ptr %t38, i32 0, i32 1
-  %t40 = call ptr @willrt_gc_read_barrier_slot(ptr %t39)
+  %t31 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 1
+  call void @willrt_gc_write_barrier(ptr %t30, ptr %t29)
+  store ptr @"example.com/classsource.vtable.Value.Node", ptr %t31
+  %t32 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 0
+  %t33 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 1
+  %t34 = load ptr, ptr %t32
+  call void @willrt_gc_write_barrier(ptr %t19, ptr %t34)
+  %t35 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 0
+  %t36 = call ptr @willrt_gc_read_barrier_slot(ptr %t35)
+  %t37 = getelementptr inbounds %"interface.example.com/classsource.Value", ptr %v.iface, i32 0, i32 1
+  %t38 = load ptr, ptr %t37
+  %t39 = getelementptr inbounds [4 x ptr], ptr %t38, i64 0, i64 0
+  %t40 = load ptr, ptr %t39
+  %t41 = call i32 %t40(ptr %t36)
+  %t42 = icmp ne i32 %t41, 3
+  %t43 = call ptr @willrt_gc_read_barrier_slot(ptr %v.first)
+  %t44 = getelementptr inbounds %"class.example.com/classsource.Node", ptr %t43, i32 0, i32 1
+  %t45 = call ptr @willrt_gc_read_barrier_slot(ptr %t44)
+  %t46 = call ptr @willrt_gc_pin(ptr %t45)
   call void @willrt_gc_safepoint(i32 3)
-  %t41 = call i32 @"example.com/classsource.Node.get"(ptr %t40)
-  %t42 = icmp ne i32 %t41, 4
-  %t43 = or i1 %t37, %t42
-  br i1 %t43, label %if.then.1, label %if.end.1
+  %t47 = call i32 @"example.com/classsource.Node.get"(ptr %t46)
+  call void @willrt_gc_unpin(ptr %t46)
+  %t48 = icmp ne i32 %t47, 4
+  %t49 = or i1 %t42, %t48
+  br i1 %t49, label %if.then.1, label %if.end.1
 if.then.1:
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 1
@@ -141,6 +153,7 @@ declare ptr @willrt_gc_alloc(i64, ptr)
 declare ptr @willrt_gc_read_barrier(ptr)
 declare ptr @willrt_gc_read_barrier_slot(ptr)
 declare void @willrt_gc_write_barrier(ptr, ptr)
+declare void @willrt_gc_write_barrier_untagged(ptr, ptr)
 declare void @willrt_gc_frame_enter(ptr, ptr, ptr)
 declare void @willrt_gc_frame_leave(ptr)
 declare void @willrt_gc_safepoint(i32)
@@ -148,14 +161,17 @@ declare void @willrt_gc_root_register(ptr, ptr)
 declare ptr @willrt_gc_pin(ptr)
 declare void @willrt_gc_unpin(ptr)
 @"willrt.gc.refs.example.com/classsource.Node" = private constant [1 x i32] [i32 8]
-@"willrt.gc.type.example.com/classsource.Node" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr } { i32 1, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.example.com/classsource.Node", i32 0, ptr null }
+@"willrt.gc.type.example.com/classsource.Node" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 1, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.example.com/classsource.Node", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.example.com/classsource.Value" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.example.com/classsource.Value" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr } { i32 0, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.example.com/classsource.Value", i32 0, ptr null }
-@"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr } { i32 2, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.example.com/classsource.Value" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 0, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.example.com/classsource.Value", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.refs.value.Node" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.value.Node" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 2, i32 8, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Node", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 3, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 declare i32 @willrt_gc_register_type(ptr)
 define internal void @willrt.gc.register_types() {
 entry:
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.example.com/classsource.Node")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Node")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
   ret void
 }

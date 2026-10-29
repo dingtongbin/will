@@ -106,6 +106,9 @@ func (r *Result) namedSend(t *Type, active map[string]bool) bool {
 	if isGuardType(t) {
 		return false
 	}
+	if isSyncHandleType(t.Name()) {
+		return true
+	}
 	short := shortNamed(t.Name())
 	if _, ok := r.env.ifaces[short]; ok {
 		return false
@@ -168,6 +171,9 @@ func (r *Result) namedSync(t *Type, active map[string]bool) bool {
 	}
 	if isGuardType(t) {
 		return false
+	}
+	if isSyncHandleType(t.Name()) {
+		return true
 	}
 	short := shortNamed(t.Name())
 	if _, ok := r.env.ifaces[short]; ok {
@@ -265,6 +271,16 @@ func substitute(t *Type, bind map[string]*Type) *Type {
 func isLockType(name string) bool {
 	short := shortNamed(name)
 	return short == "Mutex" || short == "RwLock"
+}
+
+// isSyncHandleType reports the std/sync primitive handles whose raw state is
+// protected by the runtime lock protocol. Their state is shared, not copied.
+func isSyncHandleType(name string) bool {
+	switch shortNamed(name) {
+	case "Semaphore", "Count", "Barrier", "Once":
+		return true
+	}
+	return false
 }
 
 func shortNamed(name string) string {

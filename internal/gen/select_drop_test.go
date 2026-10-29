@@ -27,7 +27,7 @@ func TestSelectDiscardReleasesReceiveOut(t *testing.T) {
 	for _, want := range []string{
 		`call i32 @willrt_select`,
 		`call void @willrt_free_str(ptr`,
-		`store { ptr, i64 } zeroinitializer, ptr %v.select.out.`,
+		`store { ptr, i64 } zeroinitializer, ptr %v.sm.select.out.`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -59,7 +59,7 @@ func TestSelectBindClearsReceiveOut(t *testing.T) {
 		t.Fatalf("gen: %v", err)
 	}
 	text := normalizeIR(string(ir))
-	if !strings.Contains(text, `store { ptr, i64 } zeroinitializer, ptr %v.select.out.`) {
+	if !strings.Contains(text, `store { ptr, i64 } zeroinitializer, ptr %v.sm.select.out.`) {
 		t.Errorf("the receive bind left the arm buffer live:\n%s", text)
 	}
 }

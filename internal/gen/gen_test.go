@@ -546,7 +546,7 @@ func TestEmitPrintAndInterpolation(t *testing.T) {
 		`call i64 @willrt_fmt_f64_len(double`,
 		`call i64 @willrt_fmt_i64_into(ptr`,
 		`call void @willrt_write_stdout(ptr`,
-		`call ptr @willrt_alloc(i64`,
+		`call ptr @willrt_gc_alloc(i64`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -569,7 +569,7 @@ func TestEmitStrConcatAndSlice(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`call ptr @willrt_alloc(i64 %t`,
+		`call ptr @willrt_gc_alloc(i64 %t`,
 		`call void @memcpy(ptr`,
 		`declare void @memcpy(ptr, ptr, i64)`,
 	} {
@@ -597,7 +597,7 @@ func TestEmitMapContainer(t *testing.T) {
 	for _, want := range []string{
 		`alloca { ptr, i64, i64 }`,
 		`getelementptr inbounds { i32, i32 }`,
-		`call ptr @willrt_alloc(i64`,
+		`call ptr @willrt_gc_alloc(i64`,
 		`phi i64 [ %t`,
 	} {
 		if !strings.Contains(text, want) {
@@ -702,11 +702,10 @@ func TestEmitArrayNewPushAndLen(t *testing.T) {
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
 		"alloca { ptr, i64, i64 }",
-		"call ptr @willrt_alloc(i64",
+		"call ptr @willrt_gc_alloc(i64",
 		"arr.full.",
-		"call void @willrt_free(ptr",
-		"declare ptr @willrt_alloc(i64)",
-		"declare void @willrt_free(ptr)",
+		"declare ptr @willrt_gc_alloc(i64, ptr)",
+		"declare void @willrt_gc_write_barrier_untagged(ptr, ptr)",
 		"icmp uge i64",
 	} {
 		if !strings.Contains(text, want) {
@@ -1848,10 +1847,9 @@ func TestSpawnFrameDropReleasesCapturedArray(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		"call ptr @willrt_job_new_drop(ptr @",
+		"call ptr @willrt_job_new_drop_gc(ptr @",
 		"@\"example.com/app.spawn.1.drop\"(ptr %frame)",
 		"call void @willrt_free_str(ptr",
-		"call void @willrt_free(ptr",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -1907,8 +1905,7 @@ func TestArrayMethodsLower(t *testing.T) {
 		"remove.cond.",
 		"shrink.alloc.",
 		"clone.cond.",
-		"call ptr @willrt_alloc(i64",
-		"call void @willrt_free(ptr",
+		"call ptr @willrt_gc_alloc(i64",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)

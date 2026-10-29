@@ -1852,6 +1852,34 @@ func (c *checker) checkTypeArgs(call *ast.CallExpr, sig *signature) {
 	}
 }
 
+// blockingSyncMethod reports whether one method is a CPU blocking entry of
+// std/sync. They park a real worker thread and are only valid from a normal def
+// (CPU job), never from an async state machine.
+func blockingSyncMethod(recv *Type, name string) bool {
+	if recv == nil {
+		return false
+	}
+	base := recv.Name()
+	if i := strings.LastIndexByte(base, '.'); i >= 0 {
+		base = base[i+1:]
+	}
+	switch base {
+	case "Mutex":
+		return name == "lock_blocking"
+	case "RwLock":
+		return name == "r_lock_blocking" || name == "w_lock_blocking"
+	case "Semaphore":
+		return name == "acquire_blocking"
+	case "Count":
+		return name == "wait_blocking"
+	case "Barrier":
+		return name == "wait_blocking"
+	case "Once":
+		return name == "do_blocking"
+	}
+	return false
+}
+
 func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 	if call.Link != nil {
 		return c.cLinkType(s, call)
@@ -1912,6 +1940,11 @@ func (c *checker) methodType(s *inferScope, call *ast.MethodCallExpr) *Type {
 					"take the write guard with w_lock")
 			}
 		}
+	}
+	if s.async && blockingSyncMethod(recv, call.Name) {
+		c.bag.Error(call.Pos(), diag.CodeBlockingSyncInAsync,
+			"a blocking CPU sync call cannot run in an async function",
+			"use the awaitable form, or move the CPU work to a normal def")
 	}
 	if recv != nil && recv.Kind() == NamedKind && (recv.Name() == "weak_rc" || recv.Name() == "weak_arc") && len(recv.Args()) == 1 {
 		if call.Name == "upgrade" {
@@ -2310,18 +2343,22 @@ func (c *checker) fieldType(recv *Type, name string, pos source.Pos) *Type {
 			return nil
 		}
 	}
-	if fields, known := c.env.fields[recv.Name()]; known {
-		return c.fieldOf(recv, fields, name, pos)
-	}
-	// A guard forwards every field to the value it guards. A foreign value has
-	// no field table here; the lowering resolves that one.
+	// A guard forwards every field to the value it guards. "value" names that
+	// value itself; a field of the guarded type is forwarded as well.
 	if isGuardType(recv) && len(recv.Args()) == 1 {
 		elem := recv.Args()[0]
+		if name == "value" {
+			return elem
+		}
 		if elem != nil && elem.Kind() == NamedKind {
 			if fields, known := c.env.fields[elem.Name()]; known {
 				return c.fieldOf(elem, fields, name, pos)
 			}
 		}
+		return nil
+	}
+	if fields, known := c.env.fields[recv.Name()]; known {
+		return c.fieldOf(recv, fields, name, pos)
 	}
 	return nil
 }

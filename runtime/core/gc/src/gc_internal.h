@@ -41,7 +41,11 @@ enum gc_region_flags {
     GC_REGION_EVACUATING = 1u << 1,
     GC_REGION_REMAPPED = 1u << 2,
     GC_REGION_RETIRED = 1u << 3,
-    GC_REGION_LARGE_FLAG = 1u << 4
+    GC_REGION_LARGE_FLAG = 1u << 4,
+    /* A source region had a pinned object while this evacuation ran. It must
+       survive this cycle even if the pin was released before the source
+       sweep. */
+    GC_REGION_PINNED_SURVIVOR = 1u << 5
 };
 
 typedef struct gc_region {
@@ -80,6 +84,7 @@ typedef struct gc_tlab {
 typedef struct gc_work_chunk {
     _Atomic(struct gc_work_chunk*) next;
     size_t count;
+    uint32_t epoch;
     void* objects[WILLRT_GC_WORK_CHUNK];
 } gc_work_chunk;
 
@@ -141,6 +146,7 @@ uint64_t gc_state_make(uint32_t region, uint32_t type);
 uint32_t gc_state_region(uint64_t state);
 uint32_t gc_state_type(uint64_t state);
 uint32_t gc_state_pin(uint64_t state);
+size_t gc_object_payload_size(void* object);
 
 willrt_gc_header* gc_header_of(const void* object);
 void* gc_payload_of(const willrt_gc_header* header);
@@ -157,6 +163,7 @@ void gc_copy_drain(void);
 void gc_copy_reset(void);
 void gc_copy_flush_local(void);
 void gc_evac_slot(void* context, void** slot);
+void gc_evac_pinned_objects(void);
 void gc_weak_slot(void* context, void** slot);
 void gc_weak_clear(void);
 void gc_remap_heap(void);
@@ -167,6 +174,7 @@ void gc_scan_object_fields(void* object,
 void gc_scan_object_weak(void* object,
                          void (*visit)(void* context, void** slot),
                          void* context);
+int gc_scan_in_sequence(void);
 
 void gc_roots_scan(willrt_gc_root_visit visit, void* context);
 void gc_handles_scan(willrt_gc_root_visit visit, void* context);
@@ -195,9 +203,11 @@ int gc_lane_count(void);
 void gc_barrier_init(void);
 void gc_barrier_shutdown(void);
 void gc_write_barrier(void** slot, void* value);
+void gc_write_barrier_untagged(void** slot, void* value);
 void* gc_read_barrier(const void* ref);
 void* gc_read_barrier_slot(void** slot);
 void gc_satb_flush_local(void);
+void gc_satb_cycle_begin(void);
 void gc_satb_scan(willrt_gc_root_visit visit, void* context);
 void gc_card_scan(willrt_gc_root_visit visit, void* context, int only_live);
 void gc_post_write(void** slot, void* value);
@@ -219,6 +229,7 @@ int gc_cycle_idle(void);
 void gc_pacer_init(void);
 void gc_pacer_shutdown(void);
 void gc_pacer_on_alloc(size_t bytes);
+void gc_pacer_poll(void);
 void gc_pacer_cycle_started(void);
 size_t gc_heap_used_bytes(void);
 

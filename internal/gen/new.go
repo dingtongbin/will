@@ -26,14 +26,22 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 		if !ok {
 			return "", "", g.errf(r.ID, "cannot translate node #%d: the Map entry is not lowered yet", r.ID)
 		}
-		return g.constructMapSet(r, entry)
+		descriptor, err := g.mapEntryDescriptor(k, v)
+		if err != nil {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: %v", r.ID, err)
+		}
+		return g.constructMapSet(r, entry, descriptor)
 	}
 	if elem, ok := setTypeText(text); ok {
 		entry, ok := g.containerValueType(elem)
 		if !ok {
 			return "", "", g.errf(r.ID, "cannot translate node #%d: the Set element is not lowered yet", r.ID)
 		}
-		return g.constructMapSet(r, entry)
+		descriptor, err := g.sequenceDescriptor(elem)
+		if err != nil {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: %v", r.ID, err)
+		}
+		return g.constructMapSet(r, entry, descriptor)
 	}
 	info := g.byName[text]
 	if info == nil {

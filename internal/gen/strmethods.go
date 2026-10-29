@@ -177,9 +177,10 @@ func (g *generator) strTrim(r willc.Record, data, length string, left, right int
 func (g *generator) strRepeat(r willc.Record, data, length, count string) (string, string, error) {
 	total := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = mul i64 %s, %s\n", total, length, count)
-	g.needAllocDecl = true
 	buf := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buf, total)
+	if err := g.gcAllocText(buf, total); err != nil {
+		return "", "", err
+	}
 	g.needBytesDecl = true
 	fmt.Fprintf(g.out, "  call void @willrt_bytes_repeat(ptr %s, ptr %s, i64 %s, i64 %s)\n",
 		buf, data, length, count)
@@ -199,9 +200,10 @@ func (g *generator) strReplace(r willc.Record, data, length, oldData, oldLen, ne
 	fmt.Fprintf(g.out, "  %s = mul i64 %s, %s\n", growth, count, delta)
 	total := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = add i64 %s, %s\n", total, length, growth)
-	g.needAllocDecl = true
 	buf := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buf, total)
+	if err := g.gcAllocText(buf, total); err != nil {
+		return "", "", err
+	}
 	fmt.Fprintf(g.out, "  call i64 @willrt_bytes_replace_into(ptr %s, i64 %s, ptr %s, i64 %s, ptr %s, i64 %s, ptr %s, i64 %s)\n",
 		buf, total, data, length, oldData, oldLen, newData, newLen)
 	return g.storeStrValue(r, buf, total)
@@ -210,12 +212,15 @@ func (g *generator) strReplace(r willc.Record, data, length, oldData, oldLen, ne
 // strChars decodes one str into an Array<u32> of Unicode scalars. Invalid UTF-8
 // raises the same panic as str iteration.
 func (g *generator) strChars(r willc.Record, data, length string) (string, string, error) {
-	g.needAllocDecl = true
 	g.needUTF8Decl = true
 	bytes := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = mul i64 %s, 4\n", bytes, length)
+	descriptor, err := g.sequenceDescriptor("u32")
+	if err != nil {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: %v", r.ID, err)
+	}
 	buffer := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buffer, bytes)
+	g.gcAllocSequence(buffer, bytes, descriptor)
 	offset := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca i64\n", offset)
 	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", offset)
@@ -320,10 +325,11 @@ func (g *generator) strSplit(r willc.Record, data, length string, args []int, fi
 
 // strClone copies the receiver into a fresh str.
 func (g *generator) strClone(r willc.Record, data, length string) (string, string, error) {
-	g.needAllocDecl = true
 	g.needMemcpyDecl = true
 	buf := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buf, length)
+	if err := g.gcAllocText(buf, length); err != nil {
+		return "", "", err
+	}
 	fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %s)\n", buf, data, length)
 	return g.storeStrValue(r, buf, length)
 }

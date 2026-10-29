@@ -22,9 +22,15 @@ func (g *generator) arrayAppend(r willc.Record, base, elem, elemLLVM string, ele
 	viewLen := g.load("i64", lenPtr)
 	bytes := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, viewLen, elemSize)
+	descriptor, err := g.sequenceDescriptor(elem)
+	if err != nil {
+		return err
+	}
 	copyData := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", copyData, bytes)
-	g.needAllocDecl = true
+	g.gcAllocSequence(copyData, bytes, descriptor)
+	copyPin := g.pinContainerData(copyData)
+	copyData = copyPin
+	defer g.unpinContainer(copyPin)
 
 	g.labels++
 	n := g.labels
@@ -79,7 +85,7 @@ func (g *generator) arrayAppend(r willc.Record, base, elem, elemLLVM string, ele
 	g.out.WriteString(appendBody + ":\n")
 	src = g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", src, elemLLVM, copyData, at)
-	_, arrayLenPtr, arrayLen, slot, err := g.arrayGrow(r, base, elemLLVM, elemSize)
+	_, arrayLenPtr, arrayLen, slot, newPin, err := g.arrayGrow(r, base, elem, elemLLVM, elemSize)
 	if err != nil {
 		return err
 	}
@@ -89,6 +95,7 @@ func (g *generator) arrayAppend(r willc.Record, base, elem, elemLLVM string, ele
 		value := g.load(elemLLVM, src)
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, slot)
 	}
+	g.unpinContainer(newPin)
 	nextLen := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", nextLen, arrayLen)
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", nextLen, arrayLenPtr)
@@ -97,7 +104,6 @@ func (g *generator) arrayAppend(r willc.Record, base, elem, elemLLVM string, ele
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", next, index)
 	fmt.Fprintf(g.out, "  br label %%%s\n", appendCond)
 	g.out.WriteString(appendDone + ":\n")
-	fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", copyData)
 	return nil
 }
 
@@ -135,7 +141,7 @@ func (g *generator) arrayPop(r willc.Record, base, elem, elemLLVM string) (strin
 	newLen := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = sub i64 %s, 1\n", newLen, length)
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", newLen, lenPtr)
-	data := g.load("ptr", dataPtr)
+	data := g.loadContainerData(dataPtr)
 	elemPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", elemPtr, elemLLVM, data, newLen)
 	tag = g.newTmp()
@@ -213,11 +219,14 @@ func (g *generator) arrayInsert(r willc.Record, base, elem, elemLLVM string) (st
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, temp)
 	}
 
-	dataPtr, arrayLenPtr, arrayLen, _, err := g.arrayGrow(r, base, elemLLVM, elemSize)
+	dataPtr, arrayLenPtr, arrayLen, _, newPin, err := g.arrayGrow(r, base, elem, elemLLVM, elemSize)
 	if err != nil {
 		return "", "", err
 	}
-	data := g.load("ptr", dataPtr)
+	if newPin != "" {
+		defer g.unpinContainer(newPin)
+	}
+	data := g.loadContainerData(dataPtr)
 	dest := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", dest, elemLLVM, data, idx)
 
@@ -291,7 +300,7 @@ func (g *generator) arraySlice(r willc.Record, base, elem, elemLLVM string) (str
 	g.panicCheck(badHi, panicIndex, r)
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
-	data := g.load("ptr", dataPtr)
+	data := g.loadContainerData(dataPtr)
 	start := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", start, elemLLVM, data, lo)
 	span := g.newTmp()
@@ -310,10 +319,10 @@ func (g *generator) arraySlice(r willc.Record, base, elem, elemLLVM string) (str
 }
 
 // arrayShrink reallocates the backing block to the live length.
-func (g *generator) arrayShrink(r willc.Record, base, elemLLVM string) (string, string, error) {
+func (g *generator) arrayShrink(r willc.Record, base, elem, elemLLVM string) (string, string, error) {
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
-	data := g.load("ptr", dataPtr)
+	data := g.loadContainerData(dataPtr)
 	lenPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, base)
 	length := g.load("i64", lenPtr)
@@ -334,9 +343,14 @@ func (g *generator) arrayShrink(r willc.Record, base, elemLLVM string) (string, 
 	}
 	bytes := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, length, elemSize)
+	descriptor, err := g.sequenceDescriptor(elem)
+	if err != nil {
+		return "", "", err
+	}
 	newData := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", newData, bytes)
-	g.needAllocDecl = true
+	g.gcAllocSequence(newData, bytes, descriptor)
+	newPin := g.pinContainerData(newData)
+	newData = newPin
 	copyCond := fmt.Sprintf("shrink.copy.cond.%d", n)
 	copyBody := fmt.Sprintf("shrink.copy.body.%d", n)
 	copyDone := fmt.Sprintf("shrink.copy.done.%d", n)
@@ -365,21 +379,11 @@ func (g *generator) arrayShrink(r willc.Record, base, elemLLVM string) (string, 
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", next, index)
 	fmt.Fprintf(g.out, "  br label %%%s\n", copyCond)
 	g.out.WriteString(copyDone + ":\n")
-	isNull := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = icmp eq ptr %s, null\n", isNull, data)
-	freeDone := fmt.Sprintf("shrink.freed.%d", n)
-	free := fmt.Sprintf("shrink.free.%d", n)
-	noFree := fmt.Sprintf("shrink.nofree.%d", n)
-	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", isNull, noFree, free)
-	g.out.WriteString(free + ":\n")
-	fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
-	g.needAllocDecl = true
-	fmt.Fprintf(g.out, "  br label %%%s\n", freeDone)
-	g.out.WriteString(noFree + ":\n")
-	fmt.Fprintf(g.out, "  br label %%%s\n", freeDone)
-	g.out.WriteString(freeDone + ":\n")
-	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", newData, dataPtr)
+	g.needGCDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier_untagged(ptr %s, ptr %s)\n",
+		dataPtr, newData)
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, capPtr)
+	g.unpinContainer(newPin)
 	fmt.Fprintf(g.out, "  br label %%%s\n", done)
 	g.out.WriteString(done + ":\n")
 	return "", "", nil
@@ -394,15 +398,21 @@ func (g *generator) arrayClone(r willc.Record, base, elem, elemLLVM string) (str
 	}
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
-	data := g.load("ptr", dataPtr)
+	data := g.loadContainerData(dataPtr)
 	lenPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, base)
 	length := g.load("i64", lenPtr)
 	bytes := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, length, elemSize)
+	descriptor, err := g.sequenceDescriptor(elem)
+	if err != nil {
+		return "", "", err
+	}
 	newData := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", newData, bytes)
-	g.needAllocDecl = true
+	g.gcAllocSequence(newData, bytes, descriptor)
+	newPin := g.pinContainerData(newData)
+	newData = newPin
+	defer g.unpinContainer(newPin)
 	g.labels++
 	n := g.labels
 	cond := fmt.Sprintf("clone.cond.%d", n)
@@ -458,7 +468,7 @@ func (g *generator) arrayRemove(r willc.Record, base, elem, elemLLVM string) (st
 	}
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
-	data := g.load("ptr", dataPtr)
+	data := g.loadContainerData(dataPtr)
 	lenPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, base)
 	length := g.load("i64", lenPtr)

@@ -23,7 +23,7 @@ func TestClosureMovesOwnedLocalCapture(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`call ptr @willrt_closure_new(i64`,
+		`call ptr @willrt_gc_alloc(i64`,
 		`define void @"example.com/app.lambda.share.1"(ptr %env)`,
 		`store { ptr, i64 } zeroinitializer, ptr %v.text`,
 	} {

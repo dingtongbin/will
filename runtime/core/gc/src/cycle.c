@@ -81,24 +81,71 @@ static void gc_count_live(gc_region* region) {
     gc_region_scan_objects(region, gc_count_object, region);
 }
 
+static void gc_mark_pinned_region_object(void* context, void* object) {
+    (void)context;
+    if (object != NULL && gc_object_marked(object)) {
+        gc_scan_object_fields(object, gc_mark_visit, NULL);
+    }
+}
+
+static void gc_mark_young_pinned_regions(void) {
+    size_t granule;
+
+    for (granule = 0; granule < gc_heap_granule_count; granule++) {
+        gc_region* region = gc_region_table[granule];
+
+        if (region == NULL || region->kind != GC_REGION_YOUNG ||
+            atomic_load_explicit(&region->pin_count, memory_order_acquire) ==
+                0) {
+            continue;
+        }
+        gc_region_scan_objects(region, gc_mark_pinned_region_object, NULL);
+    }
+}
+
 static void gc_scan_mark_roots(void) {
     gc_roots_scan(gc_mark_visit, NULL);
     gc_handles_scan(gc_mark_visit, NULL);
     gc_lanes_scan(gc_mark_visit, NULL);
     gc_mark_pinned_objects();
+    gc_mark_young_pinned_regions();
     gc_mark_drain();
     gc_card_scan(gc_mark_visit, NULL, 1);
+    gc_mark_drain();
     gc_satb_scan(gc_mark_visit, NULL);
     gc_mark_drain();
+}
+
+static void gc_evac_pinned_region_object(void* context, void* object) {
+    (void)context;
+    if (object != NULL && gc_object_marked(object)) {
+        gc_scan_object_fields(object, gc_evac_slot, NULL);
+    }
+}
+
+static void gc_evac_young_pinned_regions(void) {
+    size_t granule;
+
+    for (granule = 0; granule < gc_heap_granule_count; granule++) {
+        gc_region* region = gc_region_table[granule];
+
+        if (region == NULL || region->kind != GC_REGION_YOUNG ||
+            atomic_load_explicit(&region->pin_count, memory_order_acquire) ==
+                0) {
+            continue;
+        }
+        gc_region_scan_objects(region, gc_evac_pinned_region_object, NULL);
+    }
 }
 
 static void gc_scan_evac_roots(void) {
     gc_roots_scan(gc_evac_slot, NULL);
     gc_handles_scan(gc_evac_slot, NULL);
     gc_lanes_scan(gc_evac_slot, NULL);
-    gc_card_scan(gc_evac_slot, NULL,
-                 atomic_load_explicit(&gc_marking, memory_order_acquire));
+    gc_card_scan(gc_evac_slot, NULL, 1);
     gc_satb_scan(gc_evac_slot, NULL);
+    gc_evac_pinned_objects();
+    gc_evac_young_pinned_regions();
     gc_copy_drain();
 }
 
@@ -155,6 +202,13 @@ static void gc_free_sources(void) {
     for (i = 0; i < gc_source_count; i++) {
         gc_region* region = gc_sources[i];
 
+        if ((region->flags & GC_REGION_PINNED_SURVIVOR) != 0) {
+            /* A pinned object was intentionally left in place. Keep the
+               whole source region until a later cycle can evacuate it. */
+            region->flags &= ~(GC_REGION_EVACUATING |
+                               GC_REGION_PINNED_SURVIVOR);
+            continue;
+        }
         if ((region->flags & GC_REGION_RETIRED) == 0) {
             region->flags &= ~GC_REGION_EVACUATING;
             region->flags |= GC_REGION_RETIRED;
@@ -243,6 +297,7 @@ static void gc_run_full(void) {
 
 static void gc_run_cycle(int full) {
     gc_pacer_cycle_started();
+    gc_satb_cycle_begin();
     if (full) {
         gc_run_full();
     } else {

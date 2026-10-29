@@ -31,6 +31,29 @@ func TestDescriptorTextCarriesReferenceOffsets(t *testing.T) {
 	}
 }
 
+func TestDescriptorTextForSequence(t *testing.T) {
+	sequence := &Type{
+		Name:     "container.sequence.test",
+		Kind:     KindStruct,
+		ID:       9,
+		Align:    8,
+		Sequence: true,
+		ElemType: "value.Node",
+		ElemSize: 16,
+	}
+	text, err := DescriptorText(sequence)
+	if err != nil {
+		t.Fatalf("descriptor: %v", err)
+	}
+	for _, want := range []string{
+		`i32 9, i32 0, i32 8, i32 8, i32 0, ptr null, i32 0, ptr null, i32 16, ptr @"willrt.gc.type.value.Node"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("sequence descriptor lacks %q:\n%s", want, text)
+		}
+	}
+}
+
 func TestDescriptorSymbolQuotesPackageNames(t *testing.T) {
 	got := DescriptorSymbol(`example.com/app.Node`)
 	want := `@"willrt.gc.type.example.com/app.Node"`

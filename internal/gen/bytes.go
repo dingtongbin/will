@@ -21,9 +21,12 @@ func (g *generator) viewDataLen(base, lenField string) (string, string) {
 func (g *generator) byteViewMethod(r willc.Record, base, lenField, name string) (string, string, error) {
 	data, length := g.viewDataLen(base, lenField)
 	if name == "clone" {
-		g.needAllocDecl = true
+		descriptor, err := g.sequenceDescriptor("u8")
+		if err != nil {
+			return "", "", g.errf(r.ID, "cannot translate node #%d: %v", r.ID, err)
+		}
 		buffer := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buffer, length)
+		g.gcAllocSequence(buffer, length, descriptor)
 		g.needMemcpyDecl = true
 		fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %s)\n", buffer, data, length)
 		slot := g.allocSlot(g.callSlots, "ret", r.ID, "{ ptr, i64, i64 }")

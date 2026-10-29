@@ -1,5 +1,8 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
+%willrt_gc_stack_slot = type { i32, i32, ptr }
+%willrt_gc_stack_map_data = type { ptr, ptr, i64 }
+%willrt_gc_frame = type { ptr, ptr, ptr }
 %interface.Error = type { ptr, ptr }
 define hidden i32 @"example.com/taskresume.inner"() alwaysinline {
 entry:

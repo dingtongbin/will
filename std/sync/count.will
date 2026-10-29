@@ -5,7 +5,9 @@ import "std/errors"
 import c "sync.h" {
     fast willrt_sync_count_new
     fast willrt_sync_count_add
+    fast willrt_sync_count_load
     fast willrt_sync_count_wait_async
+    fast willrt_sync_count_wait_blocking
 }
 
 struct Count {
@@ -34,4 +36,24 @@ async def (counter: ref Count) wait() -> Result<(), Error> {
         return Err(Deadline)
     }
     return Err(errors.Io)
+}
+
+# WaitBlocking is the CPU-job form of wait.
+def (counter: ref Count) wait_blocking() -> Result<(), Error> {
+    var status: i32 = c.willrt_sync_count_wait_blocking(counter.handle)
+    if status == 0 {
+        return Ok(())
+    }
+    if status == -5 {
+        return Err(Canceled)
+    }
+    if status == -6 {
+        return Err(Deadline)
+    }
+    return Err(errors.Io)
+}
+
+# Load reads the counter without waiting.
+def (counter: ref Count) load() -> i64 {
+    return c.willrt_sync_count_load(counter.handle)
 }

@@ -333,6 +333,7 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare ptr @willrt_gc_read_barrier(ptr)\n")
 		g.out.WriteString("declare ptr @willrt_gc_read_barrier_slot(ptr)\n")
 		g.out.WriteString("declare void @willrt_gc_write_barrier(ptr, ptr)\n")
+		g.out.WriteString("declare void @willrt_gc_write_barrier_untagged(ptr, ptr)\n")
 		g.out.WriteString("declare void @willrt_gc_frame_enter(ptr, ptr, ptr)\n")
 		g.out.WriteString("declare void @willrt_gc_frame_leave(ptr)\n")
 		g.out.WriteString("declare void @willrt_gc_safepoint(i32)\n")
@@ -819,7 +820,7 @@ type generator struct {
 	adtSlots map[int]string
 	// newSlots maps a new expression to the slot of the value it returns, and
 	// newStoreSlots holds the object storage when init returns a Result.
-	newSlots      map[int]string
+	newSlots map[int]string
 	newStoreSlots map[int]string
 	// strSlots maps a str or bytes literal to the two-word value built for it,
 	// and byteGlobals shares identical literal data.
@@ -1025,14 +1026,18 @@ type generator struct {
 	gcTaskFrames   []gcFrameInfo
 	gcDecisions    []decisions.Record
 	gcGlobalRoots  []gcGlobalRoot
-	gcRootSlots    map[int]string
-	gcInlineRoots  map[int][]string
-	gcInlineReady  map[int]bool
+	gcRootSlots     map[int]string
+	gcInlineRoots     map[int][]string
+	gcIndirectRoots   map[int][]string
+	gcInlineRootTypes map[int]string
+	gcInlineReady     map[int]bool
 	gcInlineTypes  map[string]*gcmeta.Type
 	gcFrameSlot    string
 	gcFrameMap     string
 	gcFrameActive  bool
 	gcGlobalInit   bool
+	needGCMeta     bool
+	allowVoidValue bool
 	ifaceThunks    []ifaceThunk
 	ifaceThunkSeen map[string]bool
 	chanDrops      []chanDrop
@@ -2260,6 +2265,7 @@ func (g *generator) allocas(fn int) error {
 			fmt.Fprintf(g.out, "  %s = alloca %s\n", store, baseType)
 		}
 	}
+	g.initIndirectRoots()
 	// A str or bytes literal is a two-word value, built in a slot.
 	var strs []willc.Record
 	for _, r := range g.recs {
@@ -2813,7 +2819,38 @@ func (g *generator) load(typ, slot string) string {
 // the assignment names one.
 func (g *generator) assignStmt(r willc.Record) error {
 	target := refField(r, "target")
-	ptr, typ, err := g.place(target)
+	valueID := refField(r, "value")
+	if tr, ok := g.recs[target]; ok && tr.Kind == "discard" {
+		previous := g.allowVoidValue
+		g.allowVoidValue = true
+		_, err := g.value(refField(r, "value"))
+		g.allowVoidValue = previous
+		return err
+	}
+	ownerPin, owner, err := g.pinClassFieldOwner(target)
+	if err != nil {
+		return err
+	}
+	if ownerPin != "" {
+		defer g.unpinContainer(ownerPin)
+	}
+	var ptr, typ string
+	if owner != "" {
+		direct := false
+		if recvText, recvErr := g.willTypeText(refField(g.recs[target], "recv")); recvErr == nil {
+			direct = g.isClassText(recvText)
+		}
+		if direct {
+			ptr, typ, _, err = g.classFieldAddressFrom(target, owner, target)
+		} else {
+			ptr, typ, err = g.place(target)
+		}
+	} else {
+		ptr, typ, err = g.place(target)
+	}
+	if err != nil {
+		return err
+	}
 	if err != nil {
 		return err
 	}
@@ -2830,7 +2867,6 @@ func (g *generator) assignStmt(r willc.Record) error {
 			}
 		}
 	}
-	valueID := refField(r, "value")
 	if op != "=" {
 		text, err := g.willTypeText(target)
 		if err != nil {
@@ -2905,6 +2941,18 @@ func (g *generator) assignStmt(r willc.Record) error {
 		}
 		return nil
 	}
+	if textErr == nil && isContainerTypeText(targetText) {
+		src, srcType, err := g.place(valueID)
+		if err != nil {
+			return err
+		}
+		if srcType != typ {
+			return g.errf(valueID, "cannot translate node #%d: the value needs %s", valueID, typ)
+		}
+		g.gcPublishContainerRefs(ptr, src, targetText)
+		g.copyValue(src, ptr, typ)
+		return nil
+	}
 	if textErr == nil && isRcText(targetText) {
 		value, err := g.value(valueID)
 		if err != nil {
@@ -2960,6 +3008,9 @@ func (g *generator) assignStmt(r willc.Record) error {
 					return err
 				}
 			}
+		}
+		if textErr == nil && (targetText == "str" || targetText == "bytes") {
+			g.gcPublishContainerRefs(ptr, src, targetText)
 		}
 		g.copyValue(src, ptr, typ)
 		if g.gcProgram != nil && textErr == nil && isFuncText(targetText) {
@@ -3250,6 +3301,12 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 			if err := g.retainValue(src, text); err != nil {
 				return false, err
 			}
+		}
+		// A container local's data word is itself an indirect frame root.
+		// Publish the new handle through the barrier before the copy so SATB
+		// keeps the old sequence and marking sees the new one.
+		if isContainerTypeText(text) || text == "str" || text == "bytes" {
+			g.gcPublishContainerRefs(slot, src, text)
 		}
 		g.copyValue(src, slot, typ)
 		if g.gcProgram != nil && isFuncText(fieldText(r, "type")) {
@@ -4259,9 +4316,22 @@ func (g *generator) exprStmt(st willc.Record) error {
 				}
 			}
 		}
+		if u, ok := g.recs[inner]; ok && u.Kind == "unwrap" {
+			if _, payload, err := g.unwrapType(u); err == nil &&
+				(payload == "" || payload == "()") {
+				_, _, _, err := g.unwrapAddr(u)
+				return err
+			}
+		}
+		previous := g.allowVoidValue
+		g.allowVoidValue = true
 		typ, err := g.typeOf(inner)
+		g.allowVoidValue = previous
 		if err != nil {
 			return err
+		}
+		if typ == "" {
+			return nil
 		}
 		if isAggregateType(typ) {
 			_, _, err = g.place(inner)
@@ -4570,6 +4640,9 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 			if isRcText(recvText) {
 				return g.rcMethodCall(r, recvText)
 			}
+			if elem, ok := g.atomicElemText(recvText); ok {
+				return g.atomicMethod(r, elem, recvText)
+			}
 			if kind, args, ok := parseADT(recvText); ok {
 				switch fieldText(r, "text") {
 				case "is_some", "is_none", "is_ok", "is_err", "Or":
@@ -4745,7 +4818,9 @@ func (g *generator) emitCallFrom(r willc.Record, name string, link bool, recv st
 			if err != nil {
 				return "", "", err
 			}
-			parts = append(parts, "ptr "+object)
+			pinned := g.pinObjectValue(object)
+			defer g.unpinContainer(pinned)
+			parts = append(parts, "ptr "+pinned)
 		} else {
 			ptr, _, err := g.place(recvID)
 			if err != nil {

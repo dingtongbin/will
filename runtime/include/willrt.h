@@ -389,6 +389,25 @@ int32_t willrt_sync_lock_async(void* s, int32_t mode);
 int32_t willrt_sync_sema_acquire_async(void* s);
 int32_t willrt_sync_count_wait_async(void* s);
 int32_t willrt_sync_gate_wait_async(void* s);
+/* The blocking forms run entirely on the calling thread and never create or
+   resume a task state machine. CPU jobs use these forms; async tasks use the
+   awaitable forms above. */
+int32_t willrt_sync_lock_blocking(void* s, int32_t mode);
+int32_t willrt_sync_sema_acquire_blocking(void* s);
+int32_t willrt_sync_count_wait_blocking(void* s);
+int32_t willrt_sync_gate_wait_blocking(void* s);
+
+/* A reusable barrier has a blocking CPU form and an awaitable task form. The
+   task form follows the sync wait protocol: start, poll, finish, deadline,
+   abandon. */
+void* willrt_sync_barrier_new(int64_t parties);
+int32_t willrt_sync_barrier_wait_blocking(void* barrier);
+int32_t willrt_sync_barrier_wait_async(void* barrier);
+willrt_sync_wait* willrt_sync_barrier_wait_async_start(void* barrier);
+int32_t willrt_sync_barrier_wait_poll(willrt_sync_wait* wait);
+int32_t willrt_sync_barrier_wait_finish(willrt_sync_wait* wait);
+int64_t willrt_sync_barrier_wait_deadline(willrt_sync_wait* wait);
+void willrt_sync_barrier_wait_abandon(willrt_sync_wait* wait);
 /* The start forms register the current task's embedded node and return it. A
    caller outside a task blocks in the start form and returns a granted or
    timed-out node. */

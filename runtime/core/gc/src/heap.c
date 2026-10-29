@@ -427,6 +427,14 @@ void* willrt_gc_pin(void* object) {
             header = gc_header_from_object(object);
             continue;
         }
+        /* A collector that set BUSY owns the header while it copies the
+           object. Pinning the old header would lose the pin when the copy
+           publishes the forwarding address. Wait for the forwarding decision
+           before changing the pin count. */
+        if ((old & WILLRT_GC_STATE_BUSY) != 0) {
+            willrt_os_thread_yield();
+            continue;
+        }
         count = (uint32_t)((old & WILLRT_GC_STATE_PIN_MASK) >>
                            WILLRT_GC_STATE_PIN_SHIFT);
         if (count == 0xffffu) {
@@ -465,6 +473,10 @@ void willrt_gc_unpin(void* object) {
         if ((old & WILLRT_GC_STATE_FORWARDED) != 0) {
             object = WILLRT_GC_STATE_FORWARD_ADDRESS(old);
             header = gc_header_from_object(object);
+            continue;
+        }
+        if ((old & WILLRT_GC_STATE_BUSY) != 0) {
+            willrt_os_thread_yield();
             continue;
         }
         count = (uint32_t)((old & WILLRT_GC_STATE_PIN_MASK) >>

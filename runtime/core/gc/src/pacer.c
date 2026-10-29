@@ -63,15 +63,22 @@ void gc_pacer_init(void) {
 }
 
 void gc_pacer_on_alloc(size_t bytes) {
-    size_t debt;
-
     if (atomic_load_explicit(&gc_pacer_state, memory_order_acquire) != 2) {
         return;
     }
-    debt = atomic_fetch_add_explicit(&gc_pacer_debt, bytes,
-                                     memory_order_relaxed) +
-           bytes;
-    if (!gc_cycle_idle()) {
+    atomic_fetch_add_explicit(&gc_pacer_debt, bytes, memory_order_relaxed);
+}
+
+/* A cycle may only start at a safepoint. An allocation returns an object
+   before the caller has rooted it; requesting a cycle from the allocation slow
+   path lets the collector select the still-unrooted object and reclaim or move
+   it. The pacer accumulates debt during allocation and asks for the cycle at
+   the next published root set. */
+void gc_pacer_poll(void) {
+    size_t debt;
+
+    if (atomic_load_explicit(&gc_pacer_state, memory_order_acquire) != 2 ||
+        !gc_cycle_idle()) {
         return;
     }
     {
@@ -84,6 +91,7 @@ void gc_pacer_on_alloc(size_t bytes) {
             return;
         }
     }
+    debt = atomic_load_explicit(&gc_pacer_debt, memory_order_acquire);
     if (debt >= GC_PACER_FULL_BYTES) {
         atomic_store_explicit(&gc_pacer_debt, 0, memory_order_release);
         gc_cycle_request_full();

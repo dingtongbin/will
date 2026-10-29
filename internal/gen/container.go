@@ -51,7 +51,7 @@ func (g *generator) containerValueType(text string) (string, bool) {
 
 // constructMapSet builds `new Map<K,V>(cap)` or `new Set<T>(cap)`: the
 // three-word value (data, length, capacity), with room for cap entries.
-func (g *generator) constructMapSet(r willc.Record, entryLLVM string) (string, string, error) {
+func (g *generator) constructMapSet(r willc.Record, entryLLVM, descriptor string) (string, string, error) {
 	slot := g.allocSlot(g.newSlots, "new", r.ID, "{ ptr, i64, i64 }")
 	size, _, ok := g.sizeAlign(entryLLVM)
 	if !ok {
@@ -69,11 +69,13 @@ func (g *generator) constructMapSet(r willc.Record, entryLLVM string) (string, s
 	ptr := "null"
 	if lit := intLitValue(args, g); lit > 0 {
 		ptr = g.newTmp()
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %d)\n", ptr, lit*size)
-		g.needAllocDecl = true
+		g.gcAllocSequence(ptr, fmt.Sprintf("%d", lit*size), descriptor)
 	} else if lit < 0 {
-		g.emitGuardedAlloc(&ptr, capValue, size)
+		g.emitGuardedAlloc(&ptr, capValue, size, descriptor)
 	}
+	dataPin := g.pinContainerData(ptr)
+	ptr = dataPin
+	defer g.unpinContainer(dataPin)
 	dataField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataField, slot)
 	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", ptr, dataField)
@@ -83,12 +85,16 @@ func (g *generator) constructMapSet(r willc.Record, entryLLVM string) (string, s
 	capField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 2\n", capField, slot)
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", capValue, capField)
+	// The new handle is not a root by itself. Publish its data word into the
+	// frame root before the construction pin is released.
+	g.gcInlineReady[r.ID] = true
+	g.refreshInlineRoot(r.ID)
 	return slot, "{ ptr, i64, i64 }", nil
 }
 
 // emitGuardedAlloc allocates cap*size bytes, skipping the allocation when the
 // capacity is zero.
-func (g *generator) emitGuardedAlloc(ptr *string, capValue string, size int) {
+func (g *generator) emitGuardedAlloc(ptr *string, capValue string, size int, descriptor string) {
 	g.labels++
 	n := g.labels
 	zero := fmt.Sprintf("seq.zero.%d", n)
@@ -103,8 +109,7 @@ func (g *generator) emitGuardedAlloc(ptr *string, capValue string, size int) {
 	bytes := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, capValue, size)
 	allocated := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", allocated, bytes)
-	g.needAllocDecl = true
+	g.gcAllocSequence(allocated, bytes, descriptor)
 	fmt.Fprintf(g.out, "  br label %%%s\n", done)
 	g.out.WriteString(done + ":\n")
 	*ptr = g.newTmp()
@@ -166,7 +171,20 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 
 // containerMethod lowers a method call on Map<K,V> or Set<T>.
 func (g *generator) containerMethod(r willc.Record, recvText string) (string, string, error) {
-	base, baseType, err := g.place(refField(r, "recv"))
+	ownerPin, owner, err := g.pinContainerReceiver(refField(r, "recv"))
+	if err != nil {
+		return "", "", err
+	}
+	if ownerPin != "" {
+		defer g.unpinContainer(ownerPin)
+	}
+	var base, baseType string
+	if owner != "" {
+		base, baseType, _, err = g.classFieldAddressFrom(
+			refField(r, "recv"), owner, r.ID)
+	} else {
+		base, baseType, err = g.place(refField(r, "recv"))
+	}
 	if err != nil {
 		return "", "", err
 	}
@@ -179,7 +197,13 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, base)
 	capPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 2\n", capPtr, base)
-	data := g.load("ptr", dataPtr)
+	data := g.loadContainerData(dataPtr)
+	// The data sequence can move while a read-only scan runs. Pin it once for
+	// the whole method so every lookup sees one stable element array.
+	dataPin := g.pinContainerData(data)
+	defer g.unpinContainer(dataPin)
+	data = dataPin
+	g.publishContainerData(dataPtr, data)
 	length := g.load("i64", lenPtr)
 	name := fieldText(r, "text")
 	if k, v, ok := mapTypeText(recvText); ok {
@@ -192,6 +216,10 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 		entrySize, _, ok := g.sizeAlign(entry)
 		if !ok {
 			return "", "", g.errf(r.ID, "cannot translate node %d: the Map entry has no layout", r.ID)
+		}
+		descriptor, err := g.mapEntryDescriptor(k, v)
+		if err != nil {
+			return "", "", g.errf(r.ID, "cannot translate node %d: %v", r.ID, err)
 		}
 		args := g.callArgs(r)
 		switch name {
@@ -221,7 +249,7 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 			if len(args) != 2 {
 				return "", "", g.errf(r.ID, "cannot translate node #%d: Set takes a key and a value", r.ID)
 			}
-			if err := g.mapSet(r, entry, entrySize, kt, v, dataPtr, lenPtr, capPtr, args[0], args[1]); err != nil {
+			if err := g.mapSet(r, entry, entrySize, descriptor, kt, v, dataPtr, lenPtr, capPtr, args[0], args[1]); err != nil {
 				return "", "", err
 			}
 			return "", "", nil
@@ -247,6 +275,10 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 		if !ok {
 			return "", "", g.errf(r.ID, "cannot translate node %d: the Set element has no layout", r.ID)
 		}
+		descriptor, err := g.sequenceDescriptor(elem)
+		if err != nil {
+			return "", "", g.errf(r.ID, "cannot translate node %d: %v", r.ID, err)
+		}
 		args := g.callArgs(r)
 		switch name {
 		case "len":
@@ -270,7 +302,7 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 			if len(args) != 1 {
 				return "", "", g.errf(r.ID, "cannot translate node #%d: add takes one value", r.ID)
 			}
-			return g.setAdd(r, et, entrySize, dataPtr, lenPtr, capPtr, args[0])
+			return g.setAdd(r, et, entrySize, descriptor, dataPtr, lenPtr, capPtr, args[0])
 		case "delete":
 			if len(args) != 1 {
 				return "", "", g.errf(r.ID, "cannot translate node #%d: delete takes one value", r.ID)
@@ -406,8 +438,14 @@ func (g *generator) storeContainerValue(dst string, id int, text string) error {
 		if err != nil {
 			return err
 		}
-		_, err = g.ifaceStoreValue(dst, id, iface, sourceText)
-		return err
+		if _, err := g.ifaceStoreValue(dst, id, iface, sourceText); err != nil {
+			return err
+		}
+		value := g.load("ptr", dst)
+		g.needGCDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier_untagged(ptr %s, ptr %s)\n",
+			dst, value)
+		return nil
 	}
 	if isChanText(text) {
 		if g.isCopySource(id) {
@@ -441,15 +479,21 @@ func (g *generator) storeValueAt(dst string, id int) error {
 		if err != nil {
 			return err
 		}
+		g.gcPublishContainerRefs(dst, src, text)
 		return g.cloneOwnedValue(src, dst, text)
 	}
 	value, err := g.value(id)
 	if err != nil {
 		return err
 	}
-	if text, err := g.willTypeText(id); err == nil && isRcText(text) && !isWeakText(text) {
+	text, textErr := g.willTypeText(id)
+	if textErr == nil && isRcText(text) && !isWeakText(text) {
 		g.needRcDecl = true
 		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
+	}
+	if textErr == nil {
+		g.gcStoreContainerScalar(dst, value, typ, text)
+		return nil
 	}
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, dst)
 	return nil
@@ -457,8 +501,12 @@ func (g *generator) storeValueAt(dst string, id int) error {
 
 // reserveEntries makes room for one more entry and returns the data pointer and
 // length in the block after the growth.
-func (g *generator) reserveEntries(entry string, entrySize int, dataPtr, lenPtr, capPtr string) (string, string, error) {
-	data := g.load("ptr", dataPtr)
+func (g *generator) reserveEntries(entry string, entrySize int, descriptor string, dataPtr, lenPtr, capPtr string) (string, string, error) {
+	data := g.loadContainerData(dataPtr)
+	dataPin := g.pinContainerData(data)
+	defer g.unpinContainer(dataPin)
+	data = dataPin
+	g.publishContainerData(dataPtr, data)
 	length := g.load("i64", lenPtr)
 	capacity := g.load("i64", capPtr)
 	g.labels++
@@ -478,29 +526,21 @@ func (g *generator) reserveEntries(entry string, entrySize int, dataPtr, lenPtr,
 	bytes := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, newCap, entrySize)
 	newData := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", newData, bytes)
-	g.needAllocDecl = true
+	g.gcAllocSequence(newData, bytes, descriptor)
+	// The fresh sequence has no root until the handle is published. Pin it
+	// across the copy and the barrier store so a concurrent collection cannot
+	// reclaim it while its bytes are being filled.
+	newPinned := g.pinContainerData(newData)
+	newData = newPinned
 	g.emitEntryCopy(entry, data, newData, length)
-	g.labels++
-	m := g.labels
-	noFree := fmt.Sprintf("res.nofree.%d", m)
-	doFree := fmt.Sprintf("res.free.%d", m)
-	afterFree := fmt.Sprintf("res.freed.%d", m)
-	isNull := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = icmp eq ptr %s, null\n", isNull, data)
-	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", isNull, noFree, doFree)
-	g.out.WriteString(doFree + ":\n")
-	fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
-	g.needAllocDecl = true
-	fmt.Fprintf(g.out, "  br label %%%s\n", afterFree)
-	g.out.WriteString(noFree + ":\n")
-	fmt.Fprintf(g.out, "  br label %%%s\n", afterFree)
-	g.out.WriteString(afterFree + ":\n")
-	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", newData, dataPtr)
+	g.needGCDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier_untagged(ptr %s, ptr %s)\n",
+		dataPtr, newData)
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", newCap, capPtr)
+	g.unpinContainer(newPinned)
 	fmt.Fprintf(g.out, "  br label %%%s\n", ready)
 	g.out.WriteString(ready + ":\n")
-	return g.load("ptr", dataPtr), g.load("i64", lenPtr), nil
+	return g.loadContainerData(dataPtr), g.load("i64", lenPtr), nil
 }
 
 // emitEntryCopy copies length entries from src to dst with a small loop.
@@ -537,8 +577,12 @@ func (g *generator) emitEntryCopy(entry, src, dst, length string) {
 }
 
 // mapSet stores a value under a key, replacing an existing entry.
-func (g *generator) mapSet(r willc.Record, entry string, entrySize int, keyLLVM, valueText, dataPtr, lenPtr, capPtr string, keyID, valueID int) error {
-	data := g.load("ptr", dataPtr)
+func (g *generator) mapSet(r willc.Record, entry string, entrySize int, descriptor, keyLLVM, valueText, dataPtr, lenPtr, capPtr string, keyID, valueID int) error {
+	data := g.loadContainerData(dataPtr)
+	pinned := g.pinContainerData(data)
+	defer g.unpinContainer(pinned)
+	data = pinned
+	g.publishContainerData(dataPtr, data)
 	length := g.load("i64", lenPtr)
 	found, idx, err := g.findMapKey(entry, keyLLVM, data, length, keyID)
 	if err != nil {
@@ -563,10 +607,12 @@ func (g *generator) mapSet(r willc.Record, entry string, entrySize int, keyLLVM,
 	}
 	fmt.Fprintf(g.out, "  br label %%%s\n", done)
 	g.out.WriteString(appendLabel + ":\n")
-	newData, newLen, err := g.reserveEntries(entry, entrySize, dataPtr, lenPtr, capPtr)
+	newData, newLen, err := g.reserveEntries(entry, entrySize, descriptor, dataPtr, lenPtr, capPtr)
 	if err != nil {
 		return err
 	}
+	newPinned := g.pinContainerData(newData)
+	newData = newPinned
 	newEntry := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", newEntry, entry, newData, newLen)
 	kPtr := g.newTmp()
@@ -579,6 +625,7 @@ func (g *generator) mapSet(r willc.Record, entry string, entrySize int, keyLLVM,
 	if err := g.storeContainerValue(vPtr, valueID, valueText); err != nil {
 		return err
 	}
+	g.unpinContainer(newPinned)
 	nextLen := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", nextLen, newLen)
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", nextLen, lenPtr)
@@ -589,7 +636,11 @@ func (g *generator) mapSet(r willc.Record, entry string, entrySize int, keyLLVM,
 
 // mapDelete removes one entry and reports whether it existed.
 func (g *generator) mapDelete(r willc.Record, entry string, entrySize int, keyLLVM, keyText, valueText, dataPtr, lenPtr string, keyID int) (string, string, error) {
-	data := g.load("ptr", dataPtr)
+	data := g.loadContainerData(dataPtr)
+	dataPin := g.pinContainerData(data)
+	defer g.unpinContainer(dataPin)
+	data = dataPin
+	g.publishContainerData(dataPtr, data)
 	length := g.load("i64", lenPtr)
 	found, idx, err := g.findMapKey(entry, keyLLVM, data, length, keyID)
 	if err != nil {
@@ -604,8 +655,12 @@ func (g *generator) mapDelete(r willc.Record, entry string, entrySize int, keyLL
 }
 
 // setAdd adds one value and reports whether it was new.
-func (g *generator) setAdd(r willc.Record, elem string, entrySize int, dataPtr, lenPtr, capPtr string, valueID int) (string, string, error) {
-	data := g.load("ptr", dataPtr)
+func (g *generator) setAdd(r willc.Record, elem string, entrySize int, descriptor string, dataPtr, lenPtr, capPtr string, valueID int) (string, string, error) {
+	data := g.loadContainerData(dataPtr)
+	pinned := g.pinContainerData(data)
+	defer g.unpinContainer(pinned)
+	data = pinned
+	g.publishContainerData(dataPtr, data)
 	length := g.load("i64", lenPtr)
 	found, _, err := g.findSetValue(elem, data, length, valueID)
 	if err != nil {
@@ -621,15 +676,18 @@ func (g *generator) setAdd(r willc.Record, elem string, entrySize int, dataPtr, 
 	g.out.WriteString(hit + ":\n")
 	fmt.Fprintf(g.out, "  br label %%%s\n", result)
 	g.out.WriteString(appendLabel + ":\n")
-	newData, newLen, err := g.reserveEntries(elem, entrySize, dataPtr, lenPtr, capPtr)
+	newData, newLen, err := g.reserveEntries(elem, entrySize, descriptor, dataPtr, lenPtr, capPtr)
 	if err != nil {
 		return "", "", err
 	}
+	newPinned := g.pinContainerData(newData)
+	newData = newPinned
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", slot, elem, newData, newLen)
 	if err := g.storeValueAt(slot, valueID); err != nil {
 		return "", "", err
 	}
+	g.unpinContainer(newPinned)
 	nextLen := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", nextLen, newLen)
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", nextLen, lenPtr)
@@ -644,7 +702,11 @@ func (g *generator) setAdd(r willc.Record, elem string, entrySize int, dataPtr, 
 
 // setDelete removes one value and reports whether it existed.
 func (g *generator) setDelete(r willc.Record, elem, elemText string, entrySize int, dataPtr, lenPtr string, valueID int) (string, string, error) {
-	data := g.load("ptr", dataPtr)
+	data := g.loadContainerData(dataPtr)
+	dataPin := g.pinContainerData(data)
+	defer g.unpinContainer(dataPin)
+	data = dataPin
+	g.publishContainerData(dataPtr, data)
 	length := g.load("i64", lenPtr)
 	found, idx, err := g.findSetValue(elem, data, length, valueID)
 	if err != nil {
@@ -752,6 +814,8 @@ func (g *generator) mapArray(r willc.Record, entry string, entrySize int, data, 
 	if slot == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the Array result has no slot", r.ID)
 	}
+	pinned := g.pinContainerData(data)
+	defer g.unpinContainer(pinned)
 	newData := "null"
 	g.labels++
 	n := g.labels
@@ -764,9 +828,12 @@ func (g *generator) mapArray(r willc.Record, entry string, entrySize int, data, 
 	g.out.WriteString(alloc + ":\n")
 	bytes := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, length, elemSize)
+	descriptor, err := g.sequenceDescriptor(elemText)
+	if err != nil {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: %v", r.ID, err)
+	}
 	allocated := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", allocated, bytes)
-	g.needAllocDecl = true
+	g.gcAllocSequence(allocated, bytes, descriptor)
 	fmt.Fprintf(g.out, "  br label %%%s\n", ready)
 	g.out.WriteString(zero + ":\n")
 	fmt.Fprintf(g.out, "  br label %%%s\n", ready)

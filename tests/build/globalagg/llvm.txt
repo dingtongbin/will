@@ -1,5 +1,8 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
+%willrt_gc_stack_slot = type { i32, i32, ptr }
+%willrt_gc_stack_map_data = type { ptr, ptr, i64 }
+%willrt_gc_frame = type { ptr, ptr, ptr }
 %"struct.example.com/globalagg.P" = type { i32 }
 @"example.com/globalagg.Origin" = internal global %"struct.example.com/globalagg.P" zeroinitializer
 @"example.com/globalagg.Greeting" = internal global { ptr, i64 } zeroinitializer

@@ -58,6 +58,23 @@ type Field struct {
 	Size   int
 }
 
+// NestedField is one field of an inline value whose field type needs a
+// descriptor scan. Weak marks a field whose type is a weak reference.
+type NestedField struct {
+	Offset uint32
+	Type   string
+	Weak   bool
+}
+
+// NestedVariant is one active enum variant. Tag is the payload tag; Offset is
+// the payload start; Type names the inline payload descriptor, or is empty for
+// a unit payload.
+type NestedVariant struct {
+	Tag    int32
+	Offset uint32
+	Type   string
+}
+
 // Type is one compiler-side GC type. A class type describes the payload, not
 // the header; a struct type describes the inline value.
 type Type struct {
@@ -76,6 +93,19 @@ type Type struct {
 	Elem string
 	// Len is the element count of a fixed array.
 	Len int
+	// Sequence marks a variable-length object whose payload is an array of
+	// ElemSize-byte elements. ElemType names the descriptor for one element;
+	// an empty name means the elements hold no references.
+	Sequence bool
+	ElemType string
+	ElemSize int
+	// Nested describes an inline value's fields when they need recursive
+	// scanning, such as an enum or a struct containing an enum.
+	Nested []NestedField
+	// TagOffset is the byte offset of an enum tag; Variants describes the
+	// active payload for each tag. Both are empty for non-enum values.
+	TagOffset int
+	Variants  []NestedVariant
 }
 
 // Program is the type graph of one compilation batch. Types contains only
@@ -86,6 +116,7 @@ type Program struct {
 	ids     map[string]uint32
 	decls   map[string]*declaration
 	records map[int]willc.Record
+	inline  map[string]*Type
 }
 
 type declaration struct {
@@ -105,6 +136,7 @@ func Build(docs []*willc.Doc) (*Program, error) {
 		types:   map[string]*Type{},
 		ids:     map[string]uint32{},
 		records: map[int]willc.Record{},
+		inline:  map[string]*Type{},
 	}
 	decls := map[string]*declaration{}
 	for _, doc := range docs {
@@ -134,6 +166,7 @@ func Build(docs []*willc.Doc) (*Program, error) {
 				return nil, fmt.Errorf("type %s is declared twice", q)
 			}
 			decl := &declaration{name: q, kind: kind, pkg: pkg}
+			generic := false
 			for _, child := range doc.Records {
 				if refField(child, "parent") != r.ID {
 					continue
@@ -143,7 +176,15 @@ func Build(docs []*willc.Doc) (*Program, error) {
 					decl.fields = append(decl.fields, child)
 				case "variant":
 					decl.variants = append(decl.variants, child)
+				case "typeparam":
+					generic = true
 				}
+			}
+			// A generic declaration is a template, not a runtime layout. Its
+			// monomorphized instances carry concrete fields and are registered
+			// separately.
+			if generic {
+				continue
 			}
 			sortByID(decl.fields)
 			sortByID(decl.variants)
@@ -163,6 +204,11 @@ func Build(docs []*willc.Doc) (*Program, error) {
 		}
 		p.types[name] = t
 		p.order = append(p.order, name)
+	}
+	for _, name := range names {
+		if err := p.ensureNested(name); err != nil {
+			return nil, err
+		}
 	}
 	// IDs are part of the object header. Only classes are allocated with a
 	// header; struct and enum descriptors are static scan metadata.
@@ -197,6 +243,21 @@ func (p *Program) Types() []*Type {
 	out := make([]*Type, 0, len(p.order))
 	for _, name := range p.order {
 		out = append(out, p.types[name])
+	}
+	return out
+}
+
+// InlineTypes returns the nested or anonymous descriptors created on demand.
+// They have no declaration ID until the caller assigns one.
+func (p *Program) InlineTypes() []*Type {
+	names := make([]string, 0, len(p.inline))
+	for name := range p.inline {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	out := make([]*Type, 0, len(names))
+	for _, name := range names {
+		out = append(out, p.inline[name])
 	}
 	return out
 }
@@ -294,25 +355,7 @@ const WordSize = 8
 // header: an array element, a channel element, or a task frame slot. A class
 // value is an eight-byte reference; a struct value carries its nested offsets.
 func (p *Program) InlineType(pkg, text string) (*Type, error) {
-	value, err := p.layoutValue(pkg, text, map[string]bool{})
-	if err != nil {
-		return nil, err
-	}
-	t := &Type{
-		Name:  "value." + text,
-		Kind:  KindStruct,
-		Size:  value.size,
-		Align: value.align,
-	}
-	if value.reference {
-		t.Refs = []uint32{0}
-	} else if value.weak {
-		t.Weaks = []uint32{0}
-	} else {
-		t.Refs = value.refs
-		t.Weaks = value.weaks
-	}
-	return t, nil
+	return p.nestedType(pkg, text, map[string]bool{})
 }
 
 func modulePath(doc *willc.Doc) string {

@@ -62,8 +62,10 @@ func (p *Program) layoutValue(pkg, text string, seen map[string]bool) (valueLayo
 		if _, err := p.layoutValue(pkg, typeTextOf(node.elem), seen); err != nil {
 			return valueLayout{}, err
 		}
-		return valueLayout{size: 3 * WordSize, align: WordSize,
-			refs: []uint32{0}}, nil
+		// A view borrows its source. The source handle owns the storage for the
+		// whole borrow, so the view itself is not a GC root; treating an
+		// interior pointer as an object reference would corrupt relocation.
+		return valueLayout{size: 2 * WordSize, align: WordSize}, nil
 	case typeArray:
 		elem, err := p.layoutValue(pkg, typeTextOf(node.elem), seen)
 		if err != nil {
@@ -98,6 +100,8 @@ func (p *Program) layoutValue(pkg, text string, seen map[string]bool) (valueLayo
 	case "i64", "u64", "f64", "usize", "isize", "raw":
 		return valueLayout{size: 8, align: 8}, nil
 	case "str", "bytes":
+		// Text storage is an immutable GC byte sequence. The data word is a
+		// reference; the length stays a plain word.
 		return valueLayout{size: 2 * WordSize, align: WordSize,
 			refs: []uint32{0}}, nil
 	case "Error", "Value", "Show", "interface {}":
@@ -149,7 +153,10 @@ func (p *Program) layoutValue(pkg, text string, seen map[string]bool) (valueLayo
 		}
 		return taggedLayout(ok, fail)
 	case "rc", "arc", "weak_rc", "weak_arc":
-		return valueLayout{}, fmt.Errorf("%s is not part of the final GC type surface", name)
+		// Legacy reference-counted handles are integers, not GC references.
+		// The final surface removes them; the layout keeps old corpus programs
+		// translating while their migration is still in progress.
+		return valueLayout{size: WordSize, align: WordSize}, nil
 	}
 	if stringsHasBorrowPrefix(text) {
 		return valueLayout{size: WordSize, align: WordSize}, nil
@@ -228,11 +235,11 @@ func taggedOffsets(first, second valueLayout) ([]uint32, []uint32, error) {
 	}
 	refs, err := commonOffsets([][]uint32{firstRefs, secondRefs})
 	if err != nil {
-		return nil, nil, fmt.Errorf("the two payloads have different GC reference offsets")
+		refs = nil
 	}
 	weaks, err := commonOffsets([][]uint32{firstWeaks, secondWeaks})
 	if err != nil {
-		return nil, nil, fmt.Errorf("the two payloads have different weak offsets")
+		weaks = nil
 	}
 	return refs, weaks, nil
 }
@@ -280,11 +287,13 @@ func (p *Program) layoutEnum(decl *declaration, seen map[string]bool) (int, int,
 	}
 	refs, err := commonOffsets(refGroups)
 	if err != nil {
-		return 0, 0, nil, nil, fmt.Errorf("variant-dependent reference offsets need a tagged descriptor")
+		// The nested descriptor carries the variant table; the flat list is
+		// only an optimization for enums whose variants share offsets.
+		refs = nil
 	}
 	weaks, err := commonOffsets(weakGroups)
 	if err != nil {
-		return 0, 0, nil, nil, fmt.Errorf("variant-dependent weak offsets need a tagged descriptor")
+		weaks = nil
 	}
 	return alignUp(offset+payloadSize, align), align, shiftOffsets(refs, offset),
 		shiftOffsets(weaks, offset), nil

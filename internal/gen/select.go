@@ -54,7 +54,9 @@ func (g *generator) prepareSelect(r willc.Record) error {
 			g.selectOutText[arm.ID] = elem
 			g.selectOutLLVM[arm.ID] = elemLLVM
 			fmt.Fprintf(g.out, "  %s = alloca %s\n", out, elemLLVM)
-			g.storeZero(out, elemLLVM)
+			if !g.smGeneral {
+				g.storeZero(out, elemLLVM)
+			}
 			if bind := fieldText(arm, "bind"); bind != "" && bind != "_" {
 				info, ok := g.adtType("Option<" + elem + ">")
 				if !ok {
@@ -81,6 +83,17 @@ func (g *generator) prepareSelect(r willc.Record) error {
 	return nil
 }
 
+// resetSelectOut clears one receive buffer before a select attempt. The
+// general state machine reserves the buffer before sm.init, so its zero store
+// cannot live there; it must run in the select body.
+func (g *generator) resetSelectOut(arm willc.Record) {
+	out := g.selectOutSlots[arm.ID]
+	typ := g.selectOutLLVM[arm.ID]
+	if out != "" && typ != "" {
+		g.storeZero(out, typ)
+	}
+}
+
 // selectStmt evaluates every channel and send value once, waits in the runtime
 // in arm order, and runs the chosen body.
 func (g *generator) selectStmt(r willc.Record, void bool) (bool, error) {
@@ -95,6 +108,11 @@ func (g *generator) selectStmt(r willc.Record, void bool) (bool, error) {
 	}
 	slot := g.allocSlot(g.selectSlots, "select", r.ID, fmt.Sprintf("[%d x %%willrt_arm]", len(arms)))
 	g.needTaskDecl = true
+	if g.smGeneral {
+		for _, arm := range arms {
+			g.resetSelectOut(arm)
+		}
+	}
 	for i, arm := range arms {
 		base := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x %%willrt_arm], ptr %s, i32 0, i32 %d\n", base, len(arms), slot, i)
@@ -263,6 +281,14 @@ func (g *generator) selectFastStmt(r willc.Record, arms []willc.Record, void boo
 
 	g.needTaskDecl = true
 	g.needSelectSetDecl = true
+	if g.smGeneral {
+		for _, arm := range arms {
+			chanNode, ok := g.recs[refField(arm, "chan")]
+			if ok && chanNode.Kind == "recv" {
+				g.resetSelectOut(arm)
+			}
+		}
+	}
 	for i, arm := range arms {
 		if fieldText(arm, "default") == "true" {
 			defaultIndex = i

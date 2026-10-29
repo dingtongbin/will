@@ -60,9 +60,10 @@ func (g *generator) displayToStr(r willc.Record, exprID int, fromText string) (s
 	g.needInterpDecl = true
 	length := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call i64 @willrt_fmt_%s_len(%s %s)\n", length, kind, llvm, wide)
-	g.needAllocDecl = true
 	buffer := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buffer, length)
+	if err := g.gcAllocText(buffer, length); err != nil {
+		return "", "", err
+	}
 	fmt.Fprintf(g.out, "  call i64 @willrt_fmt_%s_into(ptr %s, i64 %s, %s %s)\n", kind, buffer, length, llvm, wide)
 	return g.storeStr(r, buffer, length)
 }
@@ -122,9 +123,10 @@ func (g *generator) copyBytesToStr(r willc.Record, data, length string) (string,
 		message, g.globalString(fieldText(r, "pos")), g.globalString(g.fnSymbol))
 	g.out.WriteString("  unreachable\n")
 	g.out.WriteString(okLabel + ":\n")
-	g.needAllocDecl = true
 	dst := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", dst, length)
+	if err := g.gcAllocText(dst, length); err != nil {
+		return "", "", err
+	}
 	g.needMemcpyDecl = true
 	fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %s)\n", dst, data, length)
 	return g.storeStr(r, dst, length)
@@ -145,9 +147,10 @@ func (g *generator) scalarToStr(r willc.Record, exprID int) (string, string, err
 		wide = g.newTmp()
 		fmt.Fprintf(g.out, "  %s = zext %s %s to i32\n", wide, typ, value)
 	}
-	g.needAllocDecl = true
 	buffer := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 4)\n", buffer)
+	if err := g.gcAllocText(buffer, "4"); err != nil {
+		return "", "", err
+	}
 	g.needUtf8Decl = true
 	size := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call i32 @willrt_utf8_encode(i32 %s, ptr %s)\n", size, wide, buffer)

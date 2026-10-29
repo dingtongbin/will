@@ -12,7 +12,8 @@ import (
 // not treated as the built-in guard.
 func (g *generator) guardElemText(text string) (string, bool) {
 	text = g.canonicalTypeText(text)
-	for _, prefix := range []string{"std/sync.Guard<", "std/sync.ReadGuard<"} {
+	for _, prefix := range []string{"std/sync.Guard<", "std/sync.ReadGuard<",
+		"sync.Guard<", "sync.ReadGuard<", "Guard<", "ReadGuard<"} {
 		if strings.HasPrefix(text, prefix) && strings.HasSuffix(text, ">") {
 			inner := strings.TrimSpace(text[len(prefix) : len(text)-1])
 			if inner != "" {
@@ -26,7 +27,9 @@ func (g *generator) guardElemText(text string) (string, bool) {
 // guardReadOnly reports whether the guard type is the read side.
 func (g *generator) guardReadOnly(text string) bool {
 	text = g.canonicalTypeText(text)
-	return strings.HasPrefix(text, "std/sync.ReadGuard<") &&
+	return (strings.HasPrefix(text, "std/sync.ReadGuard<") ||
+		strings.HasPrefix(text, "sync.ReadGuard<") ||
+		strings.HasPrefix(text, "ReadGuard<")) &&
 		strings.HasSuffix(text, ">")
 }
 
@@ -110,7 +113,8 @@ func (g *generator) guardValue(recvID int, recvText string, r willc.Record) (str
 }
 
 // guardFieldPlace forwards one field access to the guarded value. It reports
-// false when the receiver is not a guard.
+// false when the receiver is not a guard. The name "value" denotes the guarded
+// value itself; every other name is a field of that value.
 func (g *generator) guardFieldPlace(recvID int, field string, r willc.Record) (string, string, bool, error) {
 	recvText, err := g.willTypeText(recvID)
 	if err != nil {
@@ -122,6 +126,9 @@ func (g *generator) guardFieldPlace(recvID int, field string, r willc.Record) (s
 	valuePtr, elemLLVM, _, err := g.guardValue(recvID, recvText, r)
 	if err != nil {
 		return "", "", true, err
+	}
+	if field == "value" {
+		return valuePtr, elemLLVM, true, nil
 	}
 	info := g.structInfoByLLVM(elemLLVM)
 	if info == nil || !info.ok {

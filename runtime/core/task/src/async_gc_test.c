@@ -14,10 +14,10 @@ static const uint32_t weak_refs[] = {0};
 
 static const willrt_gc_type node_type = {
     100, sizeof(void*), sizeof(void*), WILLRT_GC_TYPE_REFERENCES, 1,
-    node_refs, 0, NULL
+    node_refs, 0, NULL, 0, NULL
 };
 static const willrt_gc_type weak_type = {
-    101, sizeof(void*), sizeof(void*), 0, 0, NULL, 1, weak_refs
+    101, sizeof(void*), sizeof(void*), 0, 0, NULL, 1, weak_refs, 0, NULL
 };
 
 static const willrt_gc_stack_slot task_slots[] = {

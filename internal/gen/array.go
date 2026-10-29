@@ -171,6 +171,10 @@ func (g *generator) constructArray(r willc.Record, elem string) (string, string,
 	if !ok {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s has no layout", r.ID, elem)
 	}
+	descriptor, err := g.sequenceDescriptor(elem)
+	if err != nil {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: %v", r.ID, err)
+	}
 	capValue := "0"
 	args := g.callArgs(r)
 	if len(args) != 0 {
@@ -186,8 +190,7 @@ func (g *generator) constructArray(r willc.Record, elem string) (string, string,
 			ptr = "null"
 		} else {
 			ptr = g.newTmp()
-			fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %d)\n", ptr, lit*size)
-			g.needAllocDecl = true
+			g.gcAllocSequence(ptr, fmt.Sprintf("%d", lit*size), descriptor)
 		}
 	} else {
 		// The size is only known at run time; a zero capacity still allocates
@@ -206,14 +209,16 @@ func (g *generator) constructArray(r willc.Record, elem string) (string, string,
 		bytes := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, capValue, size)
 		allocated := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", allocated, bytes)
-		g.needAllocDecl = true
+		g.gcAllocSequence(allocated, bytes, descriptor)
 		fmt.Fprintf(g.out, "  br label %%%s\n", done)
 		g.out.WriteString(done + ":\n")
 		ptr = g.newTmp()
 		fmt.Fprintf(g.out, "  %s = phi ptr [ null, %%%s ], [ %s, %%%s ]\n", ptr, zero, allocated, alloc)
 	}
 	_ = align
+	dataPin := g.pinContainerData(ptr)
+	ptr = dataPin
+	defer g.unpinContainer(dataPin)
 	dataField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataField, slot)
 	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", ptr, dataField)
@@ -223,6 +228,10 @@ func (g *generator) constructArray(r willc.Record, elem string) (string, string,
 	capField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 2\n", capField, slot)
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", capValue, capField)
+	// The new handle is not a root by itself. Publish its data word into the
+	// frame root before the construction pin is released.
+	g.gcInlineReady[r.ID] = true
+	g.refreshInlineRoot(r.ID)
 	return slot, "{ ptr, i64, i64 }", nil
 }
 
@@ -252,13 +261,36 @@ func intLitValue(args []int, g *generator) int {
 
 // arrayMethod lowers a method call on Array<T>.
 func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, error) {
-	base, typ, err := g.place(refField(r, "recv"))
+	ownerPin, owner, err := g.pinContainerReceiver(refField(r, "recv"))
+	if err != nil {
+		return "", "", err
+	}
+	if ownerPin != "" {
+		defer g.unpinContainer(ownerPin)
+	}
+	var base, typ string
+	if owner != "" {
+		base, typ, _, err = g.classFieldAddressFrom(
+			refField(r, "recv"), owner, r.ID)
+	} else {
+		base, typ, err = g.place(refField(r, "recv"))
+	}
 	if err != nil {
 		return "", "", err
 	}
 	if typ != "{ ptr, i64, i64 }" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the receiver is not an Array", r.ID)
 	}
+	// Every Array method reads or writes element storage through a raw
+	// pointer. Pin the backing sequence for the whole call, before an argument
+	// or value expression can reach an allocation.
+	arrayDataPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n",
+		arrayDataPtr, base)
+	arrayData := g.loadContainerData(arrayDataPtr)
+	arrayDataPin := g.pinContainerData(arrayData)
+	defer g.unpinContainer(arrayDataPin)
+	g.publishContainerData(arrayDataPtr, arrayDataPin)
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok || elemLLVM == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: array element %s is not lowered yet", r.ID, elem)
@@ -288,6 +320,11 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 		if len(args) < 2 {
 			return "", "", g.errf(r.ID, "cannot translate node #%d: set needs a value", r.ID)
 		}
+		dataPtr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
+		data := g.loadContainerData(dataPtr)
+		pinned := g.pinContainerData(data)
+		defer g.unpinContainer(pinned)
 		if isAggregateType(elemLLVM) {
 			if iface, ok := g.ifaceOfText(elem); ok {
 				valueText, err := g.willTypeText(args[1])
@@ -302,7 +339,7 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 				if err := g.releaseIfaceValue(ptr, iface); err != nil {
 					return "", "", err
 				}
-				g.copyValue(tmp, ptr, iface.llvm)
+				g.gcStoreContainerAggregate(ptr, tmp, iface.llvm, elem)
 				return "", "", nil
 			}
 			src, srcType, err := g.place(args[1])
@@ -323,7 +360,7 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 					}
 				}
 			}
-			g.copyValue(src, ptr, elemLLVM)
+			g.gcStoreContainerAggregate(ptr, src, elemLLVM, elem)
 			if move {
 				if err := g.zeroMovedSource(args[1], ptr); err != nil {
 					return "", "", err
@@ -352,7 +389,7 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 				fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", v)
 			}
 		}
-		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, v, ptr)
+		g.gcStoreContainerScalar(ptr, v, elemLLVM, elem)
 		return "", "", nil
 	case "push":
 		args := g.callArgs(r)
@@ -389,7 +426,7 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 	case "slice":
 		return g.arraySlice(r, base, elem, elemLLVM)
 	case "shrink_to_fit":
-		return g.arrayShrink(r, base, elemLLVM)
+		return g.arrayShrink(r, base, elem, elemLLVM)
 	case "clone":
 		return g.arrayClone(r, base, elem, elemLLVM)
 	case "clear":
@@ -451,7 +488,7 @@ func (g *generator) arrayElemAddr(r willc.Record, base, elemLLVM string, indexID
 	}
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
-	data := g.load("ptr", dataPtr)
+	data := g.loadContainerData(dataPtr)
 	lenPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, base)
 	length := g.load("i64", lenPtr)
@@ -465,10 +502,14 @@ func (g *generator) arrayElemAddr(r willc.Record, base, elemLLVM string, indexID
 
 // arrayGrow makes room for one more element and returns the new element's
 // address together with the header fields. The length is not changed here.
-func (g *generator) arrayGrow(r willc.Record, base, elemLLVM string, elemSize int) (dataPtr, lenPtr, length, slot string, err error) {
+func (g *generator) arrayGrow(r willc.Record, base, elem, elemLLVM string, elemSize int) (dataPtr, lenPtr, length, slot, newPin string, err error) {
+	descriptor, err := g.sequenceDescriptor(elem)
+	if err != nil {
+		return "", "", "", "", "", g.errf(r.ID, "cannot translate node #%d: %v", r.ID, err)
+	}
 	dataPtr = g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
-	data := g.load("ptr", dataPtr)
+	data := g.loadContainerData(dataPtr)
 	lenPtr = g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, base)
 	length = g.load("i64", lenPtr)
@@ -478,8 +519,11 @@ func (g *generator) arrayGrow(r willc.Record, base, elemLLVM string, elemSize in
 
 	g.labels++
 	n := g.labels
+	start := fmt.Sprintf("arr.start.%d", n)
 	full := fmt.Sprintf("arr.full.%d", n)
 	ready := fmt.Sprintf("arr.ready.%d", n)
+	fmt.Fprintf(g.out, "  br label %%%s\n", start)
+	g.out.WriteString(start + ":\n")
 	cond := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp eq i64 %s, %s\n", cond, length, capacity)
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, full, ready)
@@ -495,8 +539,12 @@ func (g *generator) arrayGrow(r willc.Record, base, elemLLVM string, elemSize in
 	bytes := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, newCap, elemSize)
 	newData := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", newData, bytes)
-	g.needAllocDecl = true
+	g.gcAllocSequence(newData, bytes, descriptor)
+	// The old sequence is pinned by the enclosing Array method. Pin the new
+	// sequence before the copy so a concurrent cycle cannot move it while the
+	// destination is still being filled.
+	newPinned := g.pinContainerData(newData)
+	newData = newPinned
 
 	// Copy the live elements with a small loop.
 	copyCond := fmt.Sprintf("arr.copy.cond.%d", n)
@@ -523,36 +571,31 @@ func (g *generator) arrayGrow(r willc.Record, base, elemLLVM string, elemSize in
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", next, copySlot)
 	fmt.Fprintf(g.out, "  br label %%%s\n", copyCond)
 	g.out.WriteString(copyEnd + ":\n")
-	isNull := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = icmp eq ptr %s, null\n", isNull, data)
-	noFree := fmt.Sprintf("arr.nofree.%d", n)
-	doFree := fmt.Sprintf("arr.free.%d", n)
-	freed := fmt.Sprintf("arr.freed.%d", n)
-	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", isNull, noFree, doFree)
-	g.out.WriteString(doFree + ":\n")
-	fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
-	g.needAllocDecl = true
-	fmt.Fprintf(g.out, "  br label %%%s\n", freed)
-	g.out.WriteString(noFree + ":\n")
-	fmt.Fprintf(g.out, "  br label %%%s\n", freed)
-	g.out.WriteString(freed + ":\n")
-	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", newData, dataPtr)
+	g.needGCDecl = true
+	fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier_untagged(ptr %s, ptr %s)\n",
+		dataPtr, newData)
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", newCap, capPtr)
 	fmt.Fprintf(g.out, "  br label %%%s\n", ready)
 	g.out.WriteString(ready + ":\n")
 
-	data = g.load("ptr", dataPtr)
+	newPin = g.newTmp()
+	fmt.Fprintf(g.out, "  %s = phi ptr [ null, %%%s ], [ %s, %%%s ]\n",
+		newPin, start, newPinned, copyEnd)
+	data = g.loadContainerData(dataPtr)
 	length = g.load("i64", lenPtr)
 	slot = g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", slot, elemLLVM, data, length)
-	return dataPtr, lenPtr, length, slot, nil
+	return dataPtr, lenPtr, length, slot, newPin, nil
 }
 
 // arrayPush stores one value at the length and grows the block when it is full.
 func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemSize int, valueID int) error {
-	_, lenPtr, length, slot, err := g.arrayGrow(r, base, elemLLVM, elemSize)
+	_, lenPtr, length, slot, newPin, err := g.arrayGrow(r, base, elem, elemLLVM, elemSize)
 	if err != nil {
 		return err
+	}
+	if newPin != "" {
+		defer g.unpinContainer(newPin)
 	}
 	if isAggregateType(elemLLVM) {
 		converted := false
@@ -580,7 +623,7 @@ func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemS
 					return err
 				}
 			}
-			g.copyValue(src, slot, elemLLVM)
+			g.gcStoreContainerAggregate(slot, src, elemLLVM, elem)
 			if move {
 				if err := g.zeroMovedSource(valueID, slot); err != nil {
 					return err
@@ -601,7 +644,7 @@ func (g *generator) arrayPush(r willc.Record, base, elem, elemLLVM string, elemS
 			g.needChanDecl = true
 			fmt.Fprintf(g.out, "  call void @willrt_chan_retain(ptr %s)\n", value)
 		}
-		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", elemLLVM, value, slot)
+		g.gcStoreContainerScalar(slot, value, elemLLVM, elem)
 	}
 	nextLen := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", nextLen, length)

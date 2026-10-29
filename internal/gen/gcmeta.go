@@ -16,20 +16,41 @@ import (
 // emitGCTypes writes the runtime frame and stack-map shapes before any
 // function uses them.
 func (g *generator) emitGCTypes() {
-	if g.gcProgram == nil {
-		return
-	}
+	// These shapes are compiler ABI, not per-program metadata. Emit them
+	// unconditionally: a program can build its GC graph lazily while lowering
+	// a later function, after this header has already been written.
 	g.out.WriteString("%willrt_gc_stack_slot = type { i32, i32, ptr }\n")
 	g.out.WriteString("%willrt_gc_stack_map_data = type { ptr, ptr, i64 }\n")
 	g.out.WriteString("%willrt_gc_frame = type { ptr, ptr, ptr }\n")
 }
 
 func (g *generator) hasGCMeta() bool {
+	if g.needGCMeta || g.usesGCContainers() {
+		return true
+	}
 	for _, d := range g.docs {
 		for _, r := range d.recs {
 			switch r.Kind {
 			case "class", "stackmap", "barrier", "alloc", "safepoint":
 				return true
+			}
+		}
+	}
+	return false
+}
+
+func (g *generator) usesGCContainers() bool {
+	for _, d := range g.docs {
+		for _, r := range d.recs {
+			for _, f := range r.Fields {
+				if f.Value.Kind != willc.TextValue {
+					continue
+				}
+				if strings.Contains(f.Value.Text, "Array<") ||
+					strings.Contains(f.Value.Text, "Map<") ||
+					strings.Contains(f.Value.Text, "Set<") {
+					return true
+				}
 			}
 		}
 	}
@@ -70,6 +91,11 @@ func (g *generator) emitGCMetadata() error {
 		}
 		classes = append(classes, t)
 	}
+	for _, t := range program.InlineTypes() {
+		if g.gcInlineTypes[t.Name] == nil {
+			g.gcInlineTypes[t.Name] = t
+		}
+	}
 	inlineNames := make([]string, 0, len(g.gcInlineTypes))
 	for name := range g.gcInlineTypes {
 		inlineNames = append(inlineNames, name)
@@ -79,6 +105,10 @@ func (g *generator) emitGCMetadata() error {
 	var inlineTypes []*gcmeta.Type
 	for _, name := range inlineNames {
 		inline := g.gcInlineTypes[name]
+		// A named declaration already owns its descriptor and ID assignment.
+		if program.Lookup(name) != nil {
+			continue
+		}
 		// An interface box or task result still needs a descriptor when the
 		// inline value has no references: the allocator validates size and
 		// alignment even though the scanner has nothing to visit.
@@ -210,12 +240,15 @@ func (g *generator) emitGCMetadata() error {
 				g.out.WriteString(", ")
 			}
 			typeSym := "null"
-			if i < len(frame.Types) {
-				if t := program.Lookup(frame.Types[i]); t != nil {
-					typeSym = gcmeta.DescriptorSymbol(t.Name)
-				}
+			if i < len(frame.Types) && frame.Types[i] != "" {
+				typeSym = gcmeta.DescriptorSymbol(frame.Types[i])
 			}
-			fmt.Fprintf(g.out, "%%willrt_gc_stack_slot { i32 %d, i32 1, ptr %s }", offset, typeSym)
+			flags := uint32(1)
+			if i < len(frame.Flags) {
+				flags = frame.Flags[i]
+			}
+			fmt.Fprintf(g.out, "%%willrt_gc_stack_slot { i32 %d, i32 %d, ptr %s }",
+				offset, flags, typeSym)
 		}
 		g.out.WriteString("]\n")
 		fmt.Fprintf(g.out, "%s = private constant %%willrt_gc_stack_map_data { ptr @%s, ptr %s, i64 %d }\n",

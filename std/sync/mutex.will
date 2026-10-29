@@ -4,6 +4,8 @@
 import c "lock.h" {
     fast willrt_sync_lock_new
     fast willrt_sync_lock_async
+    fast willrt_sync_lock_blocking
+    fast willrt_sync_lock_try
     fast willrt_sync_unlock
 }
 
@@ -36,6 +38,12 @@ def (m: mut Mutex<T>) init(value: T) {
     m.state = new arc<MutexState<T>>(state)
 }
 
+# Share returns another handle to the same lock state. This is the old struct
+# surface's explicit share; the final class surface will make assignment share.
+def (m: ref Mutex<T>) share() -> Mutex<T> {
+    return Mutex<T> { state: m.state.clone() }
+}
+
 # Lock waits for the write side and returns its guard.
 async def (m: ref Mutex<T>) lock() -> Guard<T> {
     var status: i32 = await c.willrt_sync_lock_async(m.state.lock, 0)
@@ -43,6 +51,24 @@ async def (m: ref Mutex<T>) lock() -> Guard<T> {
         return Guard<T> { state: m.state, held: True, mode: 0 }
     }
     return Guard<T> { state: m.state, held: False, mode: 0 }
+}
+
+# LockBlocking is the CPU-job form: it parks the calling worker until the
+# write side is free and never enters an async state machine.
+def (m: ref Mutex<T>) lock_blocking() -> Guard<T> {
+    var status: i32 = c.willrt_sync_lock_blocking(m.state.lock, 0)
+    if status == 0 {
+        return Guard<T> { state: m.state, held: True, mode: 0 }
+    }
+    return Guard<T> { state: m.state, held: False, mode: 0 }
+}
+
+# TryLock takes the write side once without waiting.
+def (m: ref Mutex<T>) try_lock() -> Option<Guard<T>> {
+    if c.willrt_sync_lock_try(m.state.lock, 0) == 1 {
+        return Some(Guard<T> { state: m.state, held: True, mode: 0 })
+    }
+    return None
 }
 
 # RwLock allows several readers or one writer.
@@ -66,6 +92,11 @@ def (r: mut RwLock<T>) init(value: T) {
     r.state = new arc<MutexState<T>>(state)
 }
 
+# Share returns another handle to the same lock state.
+def (r: ref RwLock<T>) share() -> RwLock<T> {
+    return RwLock<T> { state: r.state.clone() }
+}
+
 # RLock waits for exclusive holders to leave and joins the reader side.
 async def (r: ref RwLock<T>) r_lock() -> ReadGuard<T> {
     var status: i32 = await c.willrt_sync_lock_async(r.state.lock, 1)
@@ -75,6 +106,23 @@ async def (r: ref RwLock<T>) r_lock() -> ReadGuard<T> {
     return ReadGuard<T> { state: r.state, held: False, mode: 1 }
 }
 
+# RLockBlocking is the CPU-job form of r_lock.
+def (r: ref RwLock<T>) r_lock_blocking() -> ReadGuard<T> {
+    var status: i32 = c.willrt_sync_lock_blocking(r.state.lock, 1)
+    if status == 0 {
+        return ReadGuard<T> { state: r.state, held: True, mode: 1 }
+    }
+    return ReadGuard<T> { state: r.state, held: False, mode: 1 }
+}
+
+# TryRLock joins the reader side once without waiting.
+def (r: ref RwLock<T>) try_r_lock() -> Option<ReadGuard<T>> {
+    if c.willrt_sync_lock_try(r.state.lock, 1) == 1 {
+        return Some(ReadGuard<T> { state: r.state, held: True, mode: 1 })
+    }
+    return None
+}
+
 # WLock waits for every holder to leave and returns the write side.
 async def (r: ref RwLock<T>) w_lock() -> Guard<T> {
     var status: i32 = await c.willrt_sync_lock_async(r.state.lock, 0)
@@ -82,6 +130,23 @@ async def (r: ref RwLock<T>) w_lock() -> Guard<T> {
         return Guard<T> { state: r.state, held: True, mode: 0 }
     }
     return Guard<T> { state: r.state, held: False, mode: 0 }
+}
+
+# WLockBlocking is the CPU-job form of w_lock.
+def (r: ref RwLock<T>) w_lock_blocking() -> Guard<T> {
+    var status: i32 = c.willrt_sync_lock_blocking(r.state.lock, 0)
+    if status == 0 {
+        return Guard<T> { state: r.state, held: True, mode: 0 }
+    }
+    return Guard<T> { state: r.state, held: False, mode: 0 }
+}
+
+# TryWLock takes the write side once without waiting.
+def (r: ref RwLock<T>) try_w_lock() -> Option<Guard<T>> {
+    if c.willrt_sync_lock_try(r.state.lock, 0) == 1 {
+        return Some(Guard<T> { state: r.state, held: True, mode: 0 })
+    }
+    return None
 }
 
 

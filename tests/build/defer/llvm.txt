@@ -1,5 +1,8 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
+%willrt_gc_stack_slot = type { i32, i32, ptr }
+%willrt_gc_stack_map_data = type { ptr, ptr, i64 }
+%willrt_gc_frame = type { ptr, ptr, ptr }
 %"struct.example.com/defer.C" = type { i32 }
 %"struct.example.com/defer.E" = type { { ptr, i64 } }
 define hidden { ptr, i64 } @"example.com/defer.E.message"(ptr %e) inlinehint {
@@ -12,7 +15,7 @@ entry:
   %t4 = load ptr, ptr %t3
   %t5 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 1
   %t6 = load i64, ptr %t5
-  %t7 = call ptr @willrt_alloc(i64 %t6)
+  %t7 = call ptr @willrt_gc_alloc(i64 %t6, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   call void @memcpy(ptr %t7, ptr %t4, i64 %t6)
   %t8 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.14, i32 0, i32 0
   store ptr %t7, ptr %t8
@@ -128,6 +131,7 @@ entry:
   store i32 0, ptr %v.i
   br label %for.cond.1
 for.cond.1:
+  call void @willrt_gc_safepoint(i32 2)
   %t50 = load i32, ptr %v.i
   %t51 = icmp slt i32 %t50, 4
   br i1 %t51, label %for.body.1, label %for.end.1
@@ -203,6 +207,7 @@ entry:
   store i64 5, ptr %t80
   %t81 = load { ptr, i64 }, ptr %v.str.122
   store { ptr, i64 } %t81, ptr %t78
+  call void @willrt_gc_safepoint(i32 3)
   %t82 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.maybe"(i1 %c)
   store { i32, [4 x i8], %"struct.example.com/defer.E" } %t82, ptr %v.ret.127
   %t83 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.127, i32 0, i32 0
@@ -284,6 +289,7 @@ entry:
   %t118 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.156, i32 0, i32 0
   store i32 0, ptr %t118
   %t119 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.156, i32 0, i32 2
+  call void @willrt_gc_safepoint(i32 3)
   %t120 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.maybe"(i1 %c)
   store { i32, [4 x i8], %"struct.example.com/defer.E" } %t120, ptr %v.ret.160
   %t121 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.160, i32 0, i32 0
@@ -336,9 +342,13 @@ entry:
   %v.ret.178 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
   %v.ret.195 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
   %v.ret.212 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
+  call void @willrt_gc_safepoint(i32 3)
   %t141 = call i32 @"example.com/defer.order"()
+  call void @willrt_gc_safepoint(i32 3)
   %t142 = call i32 @"example.com/defer.early"(i1 false)
+  call void @willrt_gc_safepoint(i32 3)
   %t143 = call i32 @"example.com/defer.loop"()
+  call void @willrt_gc_safepoint(i32 3)
   %t144 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 true)
   store { i32, [4 x i8], %"struct.example.com/defer.E" } %t144, ptr %v.ret.178
   %t145 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.178, i32 0, i32 0
@@ -360,6 +370,7 @@ match.arm.1.1:
 match.next.1.1:
   unreachable
 match.end.1:
+  call void @willrt_gc_safepoint(i32 3)
   %t154 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 false)
   store { i32, [4 x i8], %"struct.example.com/defer.E" } %t154, ptr %v.ret.195
   %t155 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.195, i32 0, i32 0
@@ -381,6 +392,7 @@ match.arm.2.1:
 match.next.2.1:
   unreachable
 match.end.2:
+  call void @willrt_gc_safepoint(i32 3)
   %t164 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.tail"(i1 false)
   store { i32, [4 x i8], %"struct.example.com/defer.E" } %t164, ptr %v.ret.212
   %t165 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.212, i32 0, i32 0
@@ -496,6 +508,17 @@ declare void @willrt_print_i64(i64)
 declare void @willrt_print_u64(i64)
 declare void @willrt_print_f64(double)
 declare void @willrt_print_bool(i32)
+declare ptr @willrt_gc_alloc(i64, ptr)
+declare ptr @willrt_gc_read_barrier(ptr)
+declare ptr @willrt_gc_read_barrier_slot(ptr)
+declare void @willrt_gc_write_barrier(ptr, ptr)
+declare void @willrt_gc_write_barrier_untagged(ptr, ptr)
+declare void @willrt_gc_frame_enter(ptr, ptr, ptr)
+declare void @willrt_gc_frame_leave(ptr)
+declare void @willrt_gc_safepoint(i32)
+declare void @willrt_gc_root_register(ptr, ptr)
+declare ptr @willrt_gc_pin(ptr)
+declare void @willrt_gc_unpin(ptr)
 declare i64 @willrt_rc_new(ptr, i64)
 declare i64 @willrt_rc_new_drop(ptr, i64, ptr)
 declare void @willrt_rc_retain(i64)
@@ -504,3 +527,25 @@ declare void @willrt_rc_release(i64)
 declare ptr @willrt_rc_deref(i64)
 declare i64 @willrt_weak_new(i64)
 declare i32 @willrt_weak_upgrade(i64, ptr)
+@"willrt.gc.type.example.com/defer.C" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 0, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.refs.example.com/defer.E" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.example.com/defer.E" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 0, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.example.com/defer.E", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 1, i32 0, i32 8, i32 8, i32 0, ptr null, i32 0, ptr null, i32 1, ptr null }
+@"willrt.gc.type.value.bool" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 2, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 3, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.rc<C>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 4, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.refs.value.str" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 5, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 6, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+declare i32 @willrt_gc_register_type(ptr)
+define internal void @willrt.gc.register_types() {
+entry:
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.bool")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.rc<C>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.str")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.u8")
+  ret void
+}
+@llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @willrt.gc.register_types, ptr null }]

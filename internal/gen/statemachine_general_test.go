@@ -35,10 +35,9 @@ async def main() -> i32 {
 	text := string(ir)
 	for _, want := range []string{
 		`define internal i32 @"example.com/app.worker.sm"(ptr %frame)`,
-		`call ptr @willrt_task_new_drop(ptr @"example.com/app.worker.sm"`,
+		`call ptr @willrt_task_new_drop_gc(ptr @"example.com/app.worker.sm"`,
 		`define internal void @"example.com/app.worker.drop"(ptr %frame) {`,
 		`call void @willrt_free_str(ptr`,
-		`call void @willrt_free(ptr`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)

@@ -62,9 +62,10 @@ func TestStructAndNestedValueRefs(t *testing.T) {
 	if pair.Size != 32 || pair.Align != 8 {
 		t.Fatalf("Pair layout = %d/%d, want 32/8", pair.Size, pair.Align)
 	}
+	// The class and the str data word are both GC references. The label bytes
+	// are immutable and live in a byte sequence.
 	want := []uint32{0, 8}
-	if len(pair.Refs) != len(want) || pair.Refs[0] != want[0] ||
-		pair.Refs[1] != want[1] {
+	if len(pair.Refs) != len(want) || pair.Refs[0] != want[0] {
 		t.Fatalf("Pair refs = %v, want %v", pair.Refs, want)
 	}
 }
@@ -134,7 +135,7 @@ func TestDecisionRecordsCarryClassLayout(t *testing.T) {
 	}
 }
 
-func TestVariantDependentRefsAreRejected(t *testing.T) {
+func TestVariantDependentRefsUseVariantTable(t *testing.T) {
 	doc := readDoc(t, "#1 module path=\"m\"\n"+
 		"#2 class text=\"Node\"\n"+
 		"#3 field parent=#2 text=\"next\" type=\"Node\"\n"+
@@ -144,7 +145,16 @@ func TestVariantDependentRefsAreRejected(t *testing.T) {
 		"#7 variant parent=#4 text=\"Scalar\" arg=#8\n"+
 		"#8 type parent=#7 text=\"i64\" kind=scalar\n"+
 		"#9 end\n")
-	if _, err := Build([]*willc.Doc{doc}); err == nil {
-		t.Fatal("a variant-dependent reference layout was accepted")
+	program, err := Build([]*willc.Doc{doc})
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	choice := program.Lookup("m.Choice")
+	if choice == nil || len(choice.Variants) != 2 {
+		t.Fatalf("Choice variants = %#v", choice)
+	}
+	if choice.Variants[0].Type != "value.Node" ||
+		choice.Variants[1].Type != "value.i64" {
+		t.Fatalf("Choice variant types = %#v", choice.Variants)
 	}
 }

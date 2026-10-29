@@ -1,0 +1,53 @@
+# Once runs one closure exactly once. The lock is held only for the state
+# transition; the closure runs while the lock is held so a second entrant
+# cannot pass before the first run completes.
+import c "lock.h" {
+    fast willrt_sync_lock_new
+    fast willrt_sync_lock_async
+    fast willrt_sync_lock_blocking
+    fast willrt_sync_unlock
+}
+
+struct Once {
+    lock: raw
+    done_flag: bool
+}
+
+def (o: mut Once) init() {
+    o.lock = c.willrt_sync_lock_new()
+    o.done_flag = False
+}
+
+def (o: ref Once) do_blocking(f: func()) {
+    var status: i32 = c.willrt_sync_lock_blocking(o.lock, 0)
+    if status != 0 {
+        return
+    }
+    if o.done_flag == False {
+        o.done_flag = True
+        f()
+    }
+    c.willrt_sync_unlock(o.lock, 0)
+}
+
+async def (o: ref Once) do(f: func()) {
+    var status: i32 = await c.willrt_sync_lock_async(o.lock, 0)
+    if status != 0 {
+        return
+    }
+    if o.done_flag == False {
+        o.done_flag = True
+        f()
+    }
+    c.willrt_sync_unlock(o.lock, 0)
+}
+
+def (o: ref Once) done() -> bool {
+    var status: i32 = c.willrt_sync_lock_blocking(o.lock, 0)
+    if status != 0 {
+        return False
+    }
+    var value: bool = o.done_flag
+    c.willrt_sync_unlock(o.lock, 0)
+    return value
+}

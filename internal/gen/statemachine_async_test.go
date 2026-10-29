@@ -63,10 +63,9 @@ func TestAsyncFrameDropReleasesOwnedLocals(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`call ptr @willrt_task_new_drop(ptr @"example.com/app.read.sm"`,
+		`call ptr @willrt_task_new_drop_gc(ptr @"example.com/app.read.sm"`,
 		`define void @"example.com/app.read.drop"(ptr %frame) {`,
 		`call void @willrt_free_str(ptr`,
-		`call void @willrt_free(ptr`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)

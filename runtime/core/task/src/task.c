@@ -226,8 +226,13 @@ static void willrt_task_scan_gc(void* context, willrt_gc_root_visit visit,
                     sizeof(void*) > task->frame_size - (size_t)slot->slot) {
                     abort();
                 }
-                visit(visit_context,
-                      (void**)((uint8_t*)task->frame + slot->slot));
+                if ((slot->flags & WILLRT_GC_SLOT_INLINE) != 0) {
+                    willrt_gc_scan_value((uint8_t*)task->frame + slot->slot,
+                                         slot->type, visit, visit_context);
+                } else {
+                    visit(visit_context,
+                          (void**)((uint8_t*)task->frame + slot->slot));
+                }
             }
         }
         if (task->gc_result_type != NULL) {

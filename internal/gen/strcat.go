@@ -85,8 +85,9 @@ func (g *generator) strConcat(r willc.Record) (string, string, error) {
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", empty, zero, alloc)
 	g.out.WriteString(alloc + ":\n")
 	buf := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buf, total)
-	g.needAllocDecl = true
+	if err := g.gcAllocText(buf, total); err != nil {
+		return "", "", err
+	}
 	g.needMemcpyDecl = true
 	fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %s)\n", buf, aData, aLen)
 	tail := g.newTmp()

@@ -1,6 +1,9 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
 %willrt_arm = type { ptr, ptr, ptr, i32, i64 }
+%willrt_gc_stack_slot = type { i32, i32, ptr }
+%willrt_gc_stack_map_data = type { ptr, ptr, i64 }
+%willrt_gc_frame = type { ptr, ptr, ptr }
 define internal i32 @"example.com/selecttimeout.will$main.sm"(ptr %frame) {
 entry:
   %v.sm.state = getelementptr i8, ptr %frame, i64 0
@@ -18,7 +21,6 @@ entry:
   %t38 = getelementptr i8, ptr %frame, i64 224
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
-  store i32 0, ptr %v.select.out.14
 sm.init:
   %t1 = sext i32 1 to i64
   %t2 = getelementptr i32, ptr null, i32 1

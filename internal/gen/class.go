@@ -24,7 +24,14 @@ type gcFrameInfo struct {
 	Func  string
 	Slots []int
 	Types []string
+	Flags []uint32
 }
+
+const (
+	gcSlotReference = 1 << 0
+	gcSlotIndirect  = 1 << 2
+	gcSlotInline    = 1 << 3
+)
 
 // setupGCFrame reserves one root array for the class locals and class
 // parameters of the current function. The array is the frame base the runtime
@@ -77,14 +84,18 @@ func (g *generator) setupGCFrame(fn int) error {
 		return nil
 	}
 	g.gcInlineRoots = nil
+	g.gcIndirectRoots = nil
+	g.gcInlineRootTypes = map[int]string{}
 	g.gcInlineReady = map[int]bool{}
 	type rootDecl struct {
 		id   int
 		text string
 	}
 	type inlinePlan struct {
-		decl    int
-		offsets []uint32
+		decl     int
+		offsets  []uint32
+		inline   bool
+		typeName string
 	}
 	var roots []rootDecl
 	var inline []inlinePlan
@@ -97,6 +108,11 @@ func (g *generator) setupGCFrame(fn int) error {
 		case gcmeta.KindContainer, gcmeta.KindTask, gcmeta.KindChan,
 			gcmeta.KindWeak, gcmeta.KindPinned:
 			roots = append(roots, rootDecl{id: decl, text: text})
+			return true
+		}
+		if len(value.Variants) != 0 || len(value.Nested) != 0 {
+			inline = append(inline, inlinePlan{
+				decl: decl, inline: true, typeName: value.Name})
 			return true
 		}
 		inline = append(inline, inlinePlan{decl: decl, offsets: append([]uint32(nil), value.Refs...)})
@@ -145,10 +161,18 @@ func (g *generator) setupGCFrame(fn int) error {
 	}
 	var news []willc.Record
 	for _, r := range g.recs {
-		if r.Kind == "new" && g.enclosingFunc(r.ID) == fn &&
-			g.isClassText(fieldText(r, "type")) {
-			news = append(news, r)
+		if r.Kind != "new" || g.enclosingFunc(r.ID) != fn {
+			continue
 		}
+		text := fieldText(r, "type")
+		if g.isClassText(text) {
+			news = append(news, r)
+			continue
+		}
+		// A container new expression returns a handle whose data word is a
+		// GC reference. The result slot is live across the constructor call,
+		// so it needs the same exact root treatment as a local handle.
+		addInline(r.ID, text)
 	}
 	sortByID(news)
 	seenNews := map[int]bool{}
@@ -171,7 +195,11 @@ func (g *generator) setupGCFrame(fn int) error {
 	sort.SliceStable(inline, func(i, j int) bool { return inline[i].decl < inline[j].decl })
 	inlineCount := 0
 	for _, plan := range inline {
-		inlineCount += len(plan.offsets)
+		if plan.inline {
+			inlineCount++
+		} else {
+			inlineCount += len(plan.offsets)
+		}
 	}
 	n := len(roots) + inlineCount
 	if n == 0 {
@@ -184,6 +212,7 @@ func (g *generator) setupGCFrame(fn int) error {
 	g.gcFrameActive = true
 	g.needGCDecl = true
 	g.gcInlineRoots = map[int][]string{}
+	g.gcIndirectRoots = map[int][]string{}
 	fmt.Fprintf(g.out, "  %s = alloca [%d x ptr]\n", rootsSlot, n)
 	fmt.Fprintf(g.out, "  store [%d x ptr] zeroinitializer, ptr %s\n", n, rootsSlot)
 	fmt.Fprintf(g.out, "  %s = alloca %%willrt_gc_frame\n", frameSlot)
@@ -194,6 +223,7 @@ func (g *generator) setupGCFrame(fn int) error {
 			addr, n, rootsSlot, i)
 		g.gcRootSlots[root.id] = addr
 		info.Slots = append(info.Slots, i*8)
+		info.Flags = append(info.Flags, gcSlotReference)
 		if t, ok := g.classTypeOfText(root.text); ok {
 			info.Types = append(info.Types, t.Name)
 		} else {
@@ -202,17 +232,33 @@ func (g *generator) setupGCFrame(fn int) error {
 	}
 	next := len(roots)
 	for _, plan := range inline {
-		slots := make([]string, 0, len(plan.offsets))
-		for range plan.offsets {
+		count := len(plan.offsets)
+		if plan.inline {
+			count = 1
+		}
+		slots := make([]string, 0, count)
+		for i := 0; i < count; i++ {
 			addr := g.newTmp()
 			fmt.Fprintf(g.out, "  %s = getelementptr inbounds [%d x ptr], ptr %s, i32 0, i32 %d\n",
 				addr, n, rootsSlot, next)
 			slots = append(slots, addr)
 			info.Slots = append(info.Slots, next*8)
-			info.Types = append(info.Types, "")
+			typeName := ""
+			if plan.inline {
+				typeName = plan.typeName
+			}
+			info.Types = append(info.Types, typeName)
+			flag := uint32(gcSlotReference | gcSlotIndirect)
+			if plan.inline {
+				flag |= gcSlotInline
+			}
+			info.Flags = append(info.Flags, flag)
 			next++
 		}
-		g.gcInlineRoots[plan.decl] = slots
+		g.gcIndirectRoots[plan.decl] = slots
+		if plan.inline {
+			g.gcInlineRootTypes[plan.decl] = plan.typeName
+		}
 	}
 	// A parameter or receiver already owns a root in its caller. Mirror it into
 	// this frame so a nested cycle sees it even before the first assignment.
@@ -265,16 +311,73 @@ func (g *generator) storeClassRoot(decl int, value string) {
 // refreshInlineRoots mirrors every reference field of an inline local or
 // parameter into its shadow root slot. The frame scan sees only direct pointer
 // slots, so a struct, array, or enum root cannot be scanned in place.
+func (g *generator) refreshInlineRoot(decl int) {
+	slots := g.gcInlineRoots[decl]
+	r, ok := g.recs[decl]
+	if !ok || len(slots) == 0 || len(g.gcIndirectRoots[decl]) != 0 {
+		return
+	}
+	if (r.Kind == "var" || r.Kind == "new") && !g.gcInlineReady[decl] {
+		return
+	}
+	base := g.slots[decl]
+	if base == "" {
+		base = g.smParamSlot[decl]
+	}
+	if base == "" {
+		base = g.newSlots[decl]
+	}
+	if base == "" {
+		return
+	}
+	inline, ok := g.inlineGCType(fieldText(r, "type"))
+	if !ok || len(inline.Refs) == 0 {
+		return
+	}
+	for i, offset := range inline.Refs {
+		if i >= len(slots) {
+			break
+		}
+		addr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %s, i64 %d\n",
+			addr, base, offset)
+		value := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier_slot(ptr %s)\n",
+			value, addr)
+		g.needGCDecl = true
+		fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+			slots[i], value)
+	}
+}
+
 func (g *generator) refreshInlineRoots() {
 	if g.gcProgram == nil || len(g.gcInlineRoots) == 0 {
 		return
 	}
-	for decl, slots := range g.gcInlineRoots {
+	for decl := range g.gcInlineRoots {
+		g.refreshInlineRoot(decl)
+	}
+}
+
+// initIndirectRoots points each inline root entry at the actual reference
+// field in the frame. The collector then updates the field in place instead of
+// updating a shadow copy, so a container handle cannot retain a stale data
+// word after a concurrent evacuation.
+func (g *generator) initIndirectRoots() {
+	if len(g.gcIndirectRoots) == 0 {
+		return
+	}
+	decls := make([]int, 0, len(g.gcIndirectRoots))
+	for decl := range g.gcIndirectRoots {
+		decls = append(decls, decl)
+	}
+	sort.Ints(decls)
+	for _, decl := range decls {
 		r, ok := g.recs[decl]
 		if !ok {
 			continue
 		}
-		if r.Kind == "var" && !g.gcInlineReady[decl] {
+		if r.Kind == "new" && g.newResultText(r) != fieldText(r, "type") {
 			continue
 		}
 		base := g.slots[decl]
@@ -282,6 +385,14 @@ func (g *generator) refreshInlineRoots() {
 			base = g.smParamSlot[decl]
 		}
 		if base == "" {
+			base = g.newSlots[decl]
+		}
+		if base == "" {
+			continue
+		}
+		roots := g.gcIndirectRoots[decl]
+		if len(roots) != 0 && g.gcInlineRootTypes[decl] != "" {
+			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", base, roots[0])
 			continue
 		}
 		inline, ok := g.inlineGCType(fieldText(r, "type"))
@@ -289,18 +400,13 @@ func (g *generator) refreshInlineRoots() {
 			continue
 		}
 		for i, offset := range inline.Refs {
-			if i >= len(slots) {
+			if i >= len(roots) {
 				break
 			}
 			addr := g.newTmp()
 			fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %s, i64 %d\n",
 				addr, base, offset)
-			value := g.newTmp()
-			fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier_slot(ptr %s)\n",
-				value, addr)
-			g.needGCDecl = true
-			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
-				slots[i], value)
+			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", addr, roots[i])
 		}
 	}
 }
@@ -740,6 +846,9 @@ func (g *generator) classNew(r willc.Record) (string, string, error) {
 		fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
 			root, object)
 	}
+	objectPin := g.pinObjectValue(object)
+	object = objectPin
+	defer g.unpinContainer(objectPin)
 	if err := g.classDefaults(r, t, object); err != nil {
 		return "", "", err
 	}
@@ -844,6 +953,21 @@ func (g *generator) classDefaults(r willc.Record, t *gcmeta.Type, object string)
 		if !ok {
 			continue
 		}
+		if isAggregateType(typ) {
+			src, srcType, err := g.place(defaultID)
+			if err != nil {
+				return err
+			}
+			if srcType != typ {
+				return g.errf(defaultID, "cannot translate node #%d: field %s needs %s", defaultID, field.Name, typ)
+			}
+			addr := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+				addr, payload, object, i)
+			g.gcPublishContainerRefs(addr, src, text)
+			g.copyValue(src, addr, typ)
+			continue
+		}
 		value, err := g.value(defaultID)
 		if err != nil {
 			return err
@@ -946,6 +1070,7 @@ func (g *generator) classFieldArgs(r willc.Record, t *gcmeta.Type, object string
 				return g.errf(arg, "cannot translate node #%d: field %s needs %s, got %s",
 					arg, field.Name, want, argType)
 			}
+			g.gcPublishContainerRefs(addr, ptr, fieldText)
 			g.needMemcpyDecl = true
 			fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %d)\n",
 				addr, ptr, field.Size)

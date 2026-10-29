@@ -558,6 +558,9 @@ func (g *generator) typeOf(id int) (string, error) {
 				if !ok {
 					return "", g.errf(id, "cannot translate node #%d: guard value %s is not lowered yet", id, elem)
 				}
+				if fieldText(r, "text") == "value" {
+					return elemLLVM, nil
+				}
 				info := g.structInfoByLLVM(elemLLVM)
 				if info == nil || !info.ok {
 					return "", g.errf(id, "cannot translate node #%d: %s has no fields", id, elemLLVM)
@@ -754,6 +757,9 @@ func (g *generator) typeOf(id int) (string, error) {
 			return "", err
 		}
 		if text == "" {
+			if g.allowVoidValue {
+				return "", nil
+			}
 			return "", g.errf(id, "cannot translate node #%d: the call returns no value", id)
 		}
 		typ, ok := llvmTypeText(text)
@@ -853,6 +859,9 @@ func (g *generator) willTypeText(id int) (string, error) {
 		}
 		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
 			if elem, ok := g.guardElemText(recvText); ok {
+				if fieldText(r, "text") == "value" {
+					return elem, nil
+				}
 				elemLLVM, ok := g.fieldLLVMType(elem)
 				if !ok {
 					return "", g.errf(id, "cannot translate node #%d: guard value %s is not lowered yet", id, elem)

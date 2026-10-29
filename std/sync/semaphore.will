@@ -6,6 +6,8 @@ import "std/errors"
 import c "sync.h" {
     fast willrt_sync_sema_new
     fast willrt_sync_sema_acquire_async
+    fast willrt_sync_sema_acquire_blocking
+    fast willrt_sync_sema_try_acquire
     fast willrt_sync_sema_release
 }
 
@@ -40,6 +42,30 @@ async def (s: ref Semaphore) acquire() -> Result<Permit, Error> {
         return Err(Deadline)
     }
     return Err(errors.Io)
+}
+
+# AcquireBlocking is the CPU-job form: it parks the calling worker until a
+# permit is free. It is not an IO wait and never enters an async state machine.
+def (s: ref Semaphore) acquire_blocking() -> Result<Permit, Error> {
+    var status: i32 = c.willrt_sync_sema_acquire_blocking(s.handle)
+    if status == 0 {
+        return Ok(Permit { handle: s.handle })
+    }
+    if status == -5 {
+        return Err(Canceled)
+    }
+    if status == -6 {
+        return Err(Deadline)
+    }
+    return Err(errors.Io)
+}
+
+# TryAcquire takes one permit once without waiting.
+def (s: ref Semaphore) try_acquire() -> Option<Permit> {
+    if c.willrt_sync_sema_try_acquire(s.handle) == 1 {
+        return Some(Permit { handle: s.handle })
+    }
+    return None
 }
 
 

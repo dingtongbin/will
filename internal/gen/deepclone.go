@@ -156,7 +156,9 @@ func (g *generator) cloneStrValue(src, dst string) error {
 	data := g.load("ptr", dataPtr)
 	length := g.load("i64", lengthPtr)
 	buf := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buf, length)
+	if err := g.gcAllocText(buf, length); err != nil {
+		return err
+	}
 	fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %s)\n", buf, data, length)
 	outData := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", outData, dst)
@@ -181,13 +183,16 @@ func (g *generator) cloneArrayValue(src, dst, elem string) error {
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", srcDataPtr, src)
 	srcLenPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", srcLenPtr, src)
-	srcData := g.load("ptr", srcDataPtr)
+	srcData := g.loadContainerData(srcDataPtr)
 	length := g.load("i64", srcLenPtr)
 	bytes := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, length, elemSize)
+	descriptor, err := g.sequenceDescriptor(elem)
+	if err != nil {
+		return err
+	}
 	newData := g.newTmp()
-	g.needAllocDecl = true
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", newData, bytes)
+	g.gcAllocSequence(newData, bytes, descriptor)
 	g.labels++
 	n := g.labels
 	cond := fmt.Sprintf("deep.arr.cond.%d", n)
@@ -251,13 +256,24 @@ func (g *generator) cloneEntries(src, dst, entry string, entrySize int, fields [
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", srcDataPtr, src)
 	srcLenPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", srcLenPtr, src)
-	srcData := g.load("ptr", srcDataPtr)
+	srcData := g.loadContainerData(srcDataPtr)
 	length := g.load("i64", srcLenPtr)
 	bytes := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, length, entrySize)
+	descriptor := ""
+	var err error
+	if len(fields) == 2 {
+		descriptor, err = g.mapEntryDescriptor(fields[0], fields[1])
+	} else if len(fields) == 1 {
+		descriptor, err = g.sequenceDescriptor(fields[0])
+	} else {
+		return fmt.Errorf("container entry has %d fields", len(fields))
+	}
+	if err != nil {
+		return err
+	}
 	newData := g.newTmp()
-	g.needAllocDecl = true
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", newData, bytes)
+	g.gcAllocSequence(newData, bytes, descriptor)
 	g.labels++
 	n := g.labels
 	cond := fmt.Sprintf("deep.map.cond.%d", n)
@@ -619,7 +635,7 @@ func (g *generator) releaseOwnedValueInner(ptr, text string) error {
 		g.needFreeStrDecl = true
 		dataPtr := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, ptr)
-		data := g.load("ptr", dataPtr)
+		data := g.loadContainerData(dataPtr)
 		fmt.Fprintf(g.out, "  call void @willrt_free_str(ptr %s)\n", data)
 		return nil
 	}
@@ -733,15 +749,13 @@ func (g *generator) releaseArrayValue(ptr, elem string) error {
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, ptr)
 	lenPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, ptr)
-	data := g.load("ptr", dataPtr)
+	data := g.loadContainerData(dataPtr)
 	length := g.load("i64", lenPtr)
 	if err := g.emitElementLoop("deep.rel.arr", data, elemLLVM, length, func(element string) error {
 		return g.releaseOwnedValue(element, elem)
 	}); err != nil {
 		return err
 	}
-	g.needAllocDecl = true
-	fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
 	return nil
 }
 
@@ -793,7 +807,7 @@ func (g *generator) releaseEntries(ptr, k, v string, isMap bool) error {
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, ptr)
 	lenPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, ptr)
-	data := g.load("ptr", dataPtr)
+	data := g.loadContainerData(dataPtr)
 	length := g.load("i64", lenPtr)
 	if err := g.emitElementLoop("deep.rel.map", data, entry, length, func(element string) error {
 		for i, fieldText := range fields {
@@ -810,8 +824,6 @@ func (g *generator) releaseEntries(ptr, k, v string, isMap bool) error {
 	}); err != nil {
 		return err
 	}
-	g.needAllocDecl = true
-	fmt.Fprintf(g.out, "  call void @willrt_free(ptr %s)\n", data)
 	return nil
 }
 

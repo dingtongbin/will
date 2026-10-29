@@ -157,6 +157,9 @@ const (
 
 	// Input, output, and blocking codes.
 	CodeBlockingNotAwaited = "I0001"
+	// CodeBlockingSyncInAsync reports a CPU blocking sync call in an async
+	// function body, where it would stall the lane instead of parking a task.
+	CodeBlockingSyncInAsync = "I0006"
 
 	// CodeCannotTranslate reports a willc node the mechanical translation
 	// cannot handle. It is a compiler bug, not a program error.
@@ -189,7 +192,7 @@ var Codes = []string{
 	CodeAwaitOutsideAsync, CodeAsyncNotAwaited, CodeAwaitNotAsync, CodeAsyncAsValue,
 	CodeSelectOutsideAsync, CodeDeferSuspend,
 	CodeResultDropped, CodeUnwrapType, CodePanicContained,
-	CodeBlockingNotAwaited,
+	CodeBlockingNotAwaited, CodeBlockingSyncInAsync,
 	CodePackageNameMismatch, CodeInvalidWillMod, CodeChecksumMismatch, CodeFeatureNotDeclared,
 	CodeUnsupportedTarget, CodeNoEntry, CodeFreestanding, CodeUnknownImportPath,
 	CodePackageTwoPaths, CodeImportCycle,

@@ -111,6 +111,18 @@ static int gc_type_validate(const willrt_gc_type* type) {
     if (type->weak_count != 0 && type->weak_offsets == NULL) {
         return -1;
     }
+    if ((type->flags & WILLRT_GC_TYPE_SEQUENCE) != 0) {
+        if (type->element_size == 0) {
+            return -1;
+        }
+        return 0;
+    }
+    if ((type->flags & (WILLRT_GC_TYPE_NESTED | WILLRT_GC_TYPE_ENUM)) != 0) {
+        if (type->reference_offsets == NULL) {
+            return -1;
+        }
+        return 0;
+    }
     for (i = 0; i < type->reference_count; i++) {
         uint32_t offset = type->reference_offsets[i];
 
@@ -185,5 +197,8 @@ const willrt_gc_type* gc_type_get(uint32_t id) {
 }
 
 size_t gc_type_payload_size(const willrt_gc_type* type) {
-    return type == NULL ? 0u : (size_t)type->size;
+    if (type == NULL || (type->flags & WILLRT_GC_TYPE_SEQUENCE) != 0) {
+        return 0u;
+    }
+    return (size_t)type->size;
 }

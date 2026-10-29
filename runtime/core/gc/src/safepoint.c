@@ -215,14 +215,15 @@ static void gc_lane_park(gc_lane_record* record) {
         willrt_os_cond_signal(&record->cond);
         willrt_os_cond_wait(&record->cond, &gc_lane_lock);
     }
-    atomic_store_explicit(&record->state, GC_LANE_RUNNING, memory_order_release);
     atomic_store_explicit(&record->ack, 0, memory_order_release);
+    atomic_store_explicit(&record->state, GC_LANE_RUNNING, memory_order_release);
     willrt_os_mutex_unlock(&gc_lane_lock);
 }
 
 void gc_safepoint_poll(void) {
     gc_lane_record* record = gc_tls_lane;
 
+    gc_pacer_poll();
     if (record == NULL) {
         return;
     }
@@ -316,7 +317,19 @@ void gc_lane_scan(int32_t lane, willrt_gc_root_visit visit, void* context) {
                 if ((slot->flags & WILLRT_GC_SLOT_REFERENCE) != 0) {
                     void** address = (void**)((uint8_t*)frame->base +
                                               slot->slot);
-                    visit(context, address);
+
+                    if ((slot->flags & WILLRT_GC_SLOT_INDIRECT) != 0) {
+                        address = *(void***)address;
+                    }
+                    if (address == NULL) {
+                        continue;
+                    }
+                    if ((slot->flags & WILLRT_GC_SLOT_INLINE) != 0) {
+                        willrt_gc_scan_value(address, slot->type, visit,
+                                             context);
+                    } else {
+                        visit(context, address);
+                    }
                 }
             }
         }
