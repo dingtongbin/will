@@ -508,14 +508,33 @@ func loweringCacheKey(texts []string, record []byte, opts buildOptions) (*cache.
 		h.Add("willc", []byte(text))
 	}
 	h.Add("decisions", record)
-	h.AddStrings("gc-policy", "layout-v1", "barrier-v1", "stackmap-v1", "typeid-v1")
+	h.AddStrings("gc-policy", gcmeta.ABIVersion, "barrier-v1", "stackmap-v1", "typeid-v1")
 	h.AddStrings("entry", opts.entry)
 	build := buildIdentityWith(opts.opt, opts.target)
 	h.AddStrings("compiler", compilerIdentity(), build.Target, build.Opt)
 	h.AddStrings("flags", fmt.Sprintf("lib=%v", opts.lib), fmt.Sprintf("debug=%v", opts.debug),
 		fmt.Sprintf("freestanding=%v", opts.freestanding), "features="+opts.features,
-		"disabled="+disabledList(opts.disabled))
+		"disabled="+disabledList(opts.disabled), fmt.Sprintf("lto=%v", opts.lto))
+	loweringToolchainKey(h)
 	return cache.New(root, limit), h.Key()
+}
+
+// loweringToolchainKey adds the LLVM version and runtime ABI headers of the
+// lowered module. The IR names runtime entry points and descriptor layouts, so
+// either can invalidate a cached module without changing its willc input.
+func loweringToolchainKey(h *cache.Hasher) {
+	if clang, err := toolchain.FindClang(); err == nil {
+		h.AddStrings("llvm", clang.Path, clangVersion(clang))
+	}
+	root, err := runtimeRoot()
+	if err != nil {
+		return
+	}
+	for _, name := range []string{"willrt.h", "willrt_gc.h"} {
+		if data, err := os.ReadFile(filepath.Join(root, "include", name)); err == nil {
+			h.Add("runtime/"+name, data)
+		}
+	}
 }
 
 func declaresEntry(d ast.Decl, entry string) bool {

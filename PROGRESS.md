@@ -129,6 +129,14 @@ P3: allocation fast path inline, barriers, p999, soak, platform matrix.
 - P2 replay determinism: two cold caches produce identical
   `emit-decisions` and `index` output for async, std/io and cross-package
   generic corpora. `TestEmitDecisionsAndIndexAreDeterministic` covers both.
+- Cache LRU fixed: `Trim` aggregated file mtimes, which a cache hit never
+  moved, so tied timestamps dropped an arbitrary entry. The entry directory
+  mtime is the last-use clock now; `go test ./internal/cache -count=20`
+  PASS.
+- Lowering cache key completed: it now includes LTO, `gcmeta.ABIVersion`, the
+  clang path/version, and the bytes of `willrt.h`/`willrt_gc.h`.
+  `TestLoweringKeyCoversLinkStrategy` failed before the change;
+  `TestLoweringKeyCoversRuntimeABIHeaders` covers the runtime side.
 - C full-cycle probe: median throughput 0.40 M/s, p50 111.6 ms;
   allocation-only 13.8 M/s. Not release acceptance.
 - Crash recovery: the session was interrupted after the alloca rewrite. All

@@ -464,3 +464,40 @@ func TestCacheKeysUseTheDefaultRootWithoutWILLCache(t *testing.T) {
 		t.Fatalf("loweringCacheKey without WILL_CACHE = (%v, %q)", store, key)
 	}
 }
+
+// TestLoweringKeyCoversLinkStrategy pins that the lowering key changes when
+// LTO changes. The key must describe the module the linker will see.
+func TestLoweringKeyCoversLinkStrategy(t *testing.T) {
+	t.Setenv("WILL_CACHE", t.TempDir())
+	opts := buildOptions{entry: "main", opt: "-O2", disabled: map[string]bool{}}
+	base := loweringCacheKeyForTest(t, []string{"willc"}, opts)
+	opts.lto = true
+	if got := loweringCacheKeyForTest(t, []string{"willc"}, opts); got == base {
+		t.Fatal("the lowering key ignores the link strategy")
+	}
+}
+
+// TestLoweringKeyCoversRuntimeABIHeaders pins that the runtime headers are part
+// of the lowering key. The IR names runtime entry points and descriptor
+// fields, so a header edit can invalidate a cached module alone.
+func TestLoweringKeyCoversRuntimeABIHeaders(t *testing.T) {
+	t.Setenv("WILL_CACHE", t.TempDir())
+	root := t.TempDir()
+	include := filepath.Join(root, "include")
+	if err := os.MkdirAll(include, 0o755); err != nil {
+		t.Fatalf("mkdir include: %v", err)
+	}
+	header := filepath.Join(include, "willrt.h")
+	if err := os.WriteFile(header, []byte("/* v1 */\n"), 0o644); err != nil {
+		t.Fatalf("write header: %v", err)
+	}
+	t.Setenv("WILL_RUNTIME", root)
+	opts := buildOptions{entry: "main", opt: "-O2", disabled: map[string]bool{}}
+	base := loweringCacheKeyForTest(t, []string{"willc"}, opts)
+	if err := os.WriteFile(header, []byte("/* v2 */\n"), 0o644); err != nil {
+		t.Fatalf("rewrite header: %v", err)
+	}
+	if got := loweringCacheKeyForTest(t, []string{"willc"}, opts); got == base {
+		t.Fatal("the lowering key ignores the runtime headers")
+	}
+}

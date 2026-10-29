@@ -300,6 +300,10 @@ func (p *Program) discoverInstances(docs []*willc.Doc) error {
 // TypeIDMax is the largest id the eight-byte object header can carry.
 const TypeIDMax = 0x7fffff
 
+// ABIVersion names the object-header, descriptor, and stackmap generation that
+// lowering depends on. Bump it with any incompatible ABI change.
+const ABIVersion = "gc-abi-1"
+
 // Lookup returns one declared type.
 func (p *Program) Lookup(name string) *Type {
 	return p.types[name]
