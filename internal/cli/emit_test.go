@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -105,6 +106,44 @@ func TestEmitLLVMIsDeterministic(t *testing.T) {
 	}
 	if first != second {
 		t.Fatalf("two identical builds differ:\n--- first\n%s\n--- second\n%s", first, second)
+	}
+}
+
+// TestReplayEightTimesIsByteIdentical pins the build determinism rule: the
+// same input run eight times, each with a cold cache, must produce the same
+// willc, LLVM, decisions, and index bytes.
+func TestReplayEightTimesIsByteIdentical(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "app")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir app: %v", err)
+	}
+	writeFile(t, root, "will.mod", "module example.com/app\nwill 1\n")
+	mainPath := writeFile(t, root, "main.will", deterministicSource)
+	commands := []struct {
+		name string
+		arg  string
+	}{
+		{"emit-willc", mainPath},
+		{"emit-llvm", root},
+		{"emit-decisions", root},
+		{"index", root},
+	}
+	for _, c := range commands {
+		var first string
+		for i := 0; i < 8; i++ {
+			t.Setenv("WILL_CACHE", filepath.Join(root, fmt.Sprintf("%s-%d", c.name, i)))
+			code, out, errOut := runCLI(c.name, c.arg)
+			if code != 0 {
+				t.Fatalf("%s run %d: code = %d, stderr = %q", c.name, i, code, errOut)
+			}
+			if i == 0 {
+				first = out
+				continue
+			}
+			if out != first {
+				t.Fatalf("%s run %d differs from run 0", c.name, i)
+			}
+		}
 	}
 }
 

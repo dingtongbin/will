@@ -6,7 +6,7 @@ import c "bench_clock.h" {
 import "example.com/bench/conc/tail/will/bench"
 
 # capacity is the number of slots of the channel.
-const capacity: i32 = 64
+const capacity: usize = 64
 
 # count is the number of round trips the workload measures.
 const count: i32 = 100000
