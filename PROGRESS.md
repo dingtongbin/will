@@ -5,9 +5,8 @@ Single progress and task-queue file. Facts and evidence only; the specification 
 
 ## State
 
-- Branch: `feature/package-mechanism`; HEAD `4e0afa8`; ahead 34 commits.
-- Worktree has `README.md` modified; `PROGRESS.md` is this file; no staged
-  changes.
+- Branch: `feature/package-mechanism`; HEAD `5e48039`; ahead 39 commits.
+- Worktree has `README.md` modified; no staged changes.
 - Toolchain: go1.25.9 windows/amd64; clang 22.1.8 at
   `C:\msys64\clang64\bin\clang.exe`.
 - Fixed env: `WILL_RUNTIME=D:\githubproject\will\runtime`,
@@ -137,6 +136,14 @@ P3: allocation fast path inline, barriers, p999, soak, platform matrix.
   clang path/version, and the bytes of `willrt.h`/`willrt_gc.h`.
   `TestLoweringKeyCoversLinkStrategy` failed before the change;
   `TestLoweringKeyCoversRuntimeABIHeaders` covers the runtime side.
+- Build determinism pinned at eight cold-cache runs for `emit-willc`,
+  `emit-llvm`, `emit-decisions`, and `index`
+  (`TestReplayEightTimesIsByteIdentical`, 1.16s).
+- Benchmark probe (not release acceptance, one machine): `conc/tail`
+  p999 1200-1500 ns, p50 100 ns, max 715 us, round_p50 29.3 ms with
+  `will 0.0.0-dev 6cdc08268730`; the C comparator p999 is 100 ns. The tail
+  moved from the old `342c24f` 200 ns number; re-measure on an idle host
+  before treating it as a regression.
 - C full-cycle probe: median throughput 0.40 M/s, p50 111.6 ms;
   allocation-only 13.8 M/s. Not release acceptance.
 - Crash recovery: the session was interrupted after the alloca rewrite. All
