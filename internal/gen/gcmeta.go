@@ -57,9 +57,15 @@ func (g *generator) usesGCContainers() bool {
 	return false
 }
 
+// rawDocs returns the declaration documents of the batch. A generic instance
+// document is a copy of a function and the declarations it names; its records
+// would duplicate the declaring document and must not enter the type graph.
 func (g *generator) rawDocs() []*willc.Doc {
 	out := make([]*willc.Doc, 0, len(g.docs))
 	for _, d := range g.docs {
+		if d.clone {
+			continue
+		}
 		out = append(out, d.raw)
 	}
 	return out

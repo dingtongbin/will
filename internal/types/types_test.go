@@ -479,3 +479,37 @@ async def use() -> i32 { return await load() }
 		t.Fatalf("diagnostics = %d, want 0:\n%s", len(ds), diag.FormatAll(ds))
 	}
 }
+
+func TestGenericClassConstructorSubstitutesFields(t *testing.T) {
+	src := `class Box<T> {
+    value: T
+    tag: i32
+
+    def get(self) -> T {
+        return self.value.clone()
+    }
+}
+
+def main() -> i32 {
+    var b: Box<i32> = Box<i32>(value=7, tag=1)
+    return b.get() + b.tag
+}
+`
+	if ds := checkWithResolve(t, src); len(ds) != 0 {
+		t.Fatalf("diagnostics = %d, want 0:\n%s", len(ds), diag.FormatAll(ds))
+	}
+}
+
+func TestGenericClassConstructorRejectsWrongFieldType(t *testing.T) {
+	src := `class Box<T> {
+    value: T
+}
+
+def main() -> i32 {
+    var b: Box<i32> = Box<i32>(value="wrong")
+    return b.value
+}
+`
+	ds := checkWithResolve(t, src)
+	findCode(t, ds, diag.CodeTypeMismatch)
+}

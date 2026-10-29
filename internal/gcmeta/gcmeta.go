@@ -109,14 +109,26 @@ type Type struct {
 }
 
 // Program is the type graph of one compilation batch. Types contains only
-// declarations; built-in value shapes are computed on demand.
+// declarations and their monomorphized generic instances; built-in value
+// shapes are computed on demand.
 type Program struct {
-	types   map[string]*Type
-	order   []string
-	ids     map[string]uint32
-	decls   map[string]*declaration
-	records map[int]willc.Record
-	inline  map[string]*Type
+	types map[string]*Type
+	order []string
+	ids   map[string]uint32
+	decls map[string]*declaration
+	// templates holds generic declarations. A template is not a runtime
+	// layout; every concrete use creates an entry in decls.
+	templates map[string]*declaration
+	records   map[int]willc.Record
+	inline    map[string]*Type
+	// nextRecordID allocates ids for substituted enum variant arguments.
+	nextRecordID int
+	// typeParams is every declared type-parameter name. A type text that
+	// mentions one belongs to a template, not to a concrete instance.
+	typeParams map[string]bool
+	// sealed closes the instance set after Build. A later lookup that would
+	// need a new instance is a compiler bug, not a new type.
+	sealed bool
 }
 
 type declaration struct {
@@ -126,17 +138,23 @@ type declaration struct {
 	fields []willc.Record
 	// variants is set for an enum declaration.
 	variants []willc.Record
+	// params lists the type parameters of a generic template.
+	params []string
 }
 
-// Build computes every declared type from a batch of willc documents. IDs are
-// assigned in sorted qualified-name order, so the same input always produces
-// the same descriptor bytes.
+// Build computes every declared type from a batch of willc documents. Generic
+// declarations are templates; each concrete use creates a monomorphized
+// instance whose name is the canonical type text. IDs are assigned in sorted
+// qualified-name order, so the same input always produces the same descriptor
+// bytes.
 func Build(docs []*willc.Doc) (*Program, error) {
 	p := &Program{
-		types:   map[string]*Type{},
-		ids:     map[string]uint32{},
-		records: map[int]willc.Record{},
-		inline:  map[string]*Type{},
+		types:      map[string]*Type{},
+		ids:        map[string]uint32{},
+		records:    map[int]willc.Record{},
+		inline:     map[string]*Type{},
+		templates:  map[string]*declaration{},
+		typeParams: map[string]bool{},
 	}
 	decls := map[string]*declaration{}
 	for _, doc := range docs {
@@ -144,6 +162,12 @@ func Build(docs []*willc.Doc) (*Program, error) {
 		for i := range doc.Records {
 			r := &doc.Records[i]
 			p.records[r.ID] = *r
+			if r.ID >= p.nextRecordID {
+				p.nextRecordID = r.ID + 1
+			}
+			if r.Kind == "typeparam" {
+				p.typeParams[fieldText(*r, "text")] = true
+			}
 			var kind Kind
 			switch r.Kind {
 			case "class":
@@ -165,8 +189,10 @@ func Build(docs []*willc.Doc) (*Program, error) {
 			if _, exists := decls[q]; exists {
 				return nil, fmt.Errorf("type %s is declared twice", q)
 			}
+			if _, exists := p.templates[q]; exists {
+				return nil, fmt.Errorf("type %s is declared twice", q)
+			}
 			decl := &declaration{name: q, kind: kind, pkg: pkg}
-			generic := false
 			for _, child := range doc.Records {
 				if refField(child, "parent") != r.ID {
 					continue
@@ -177,21 +203,26 @@ func Build(docs []*willc.Doc) (*Program, error) {
 				case "variant":
 					decl.variants = append(decl.variants, child)
 				case "typeparam":
-					generic = true
+					decl.params = append(decl.params, fieldText(child, "text"))
 				}
-			}
-			// A generic declaration is a template, not a runtime layout. Its
-			// monomorphized instances carry concrete fields and are registered
-			// separately.
-			if generic {
-				continue
 			}
 			sortByID(decl.fields)
 			sortByID(decl.variants)
+			// A generic declaration is a template, not a runtime layout. Its
+			// monomorphized instances carry concrete fields and are registered
+			// separately.
+			if len(decl.params) > 0 {
+				p.templates[q] = decl
+				continue
+			}
 			decls[q] = decl
 		}
 	}
 	p.decls = decls
+	if err := p.discoverInstances(docs); err != nil {
+		return nil, err
+	}
+	p.sealed = true
 	names := make([]string, 0, len(decls))
 	for name := range decls {
 		names = append(names, name)
@@ -228,6 +259,35 @@ func Build(docs []*willc.Doc) (*Program, error) {
 		p.types[name].ID = id
 	}
 	return p, nil
+}
+
+// discoverInstances creates the layout of every generic instance named by a
+// type text in the batch. Instances created while instantiating a field are
+// handled by the same call chain, so no separate work queue is needed.
+func (p *Program) discoverInstances(docs []*willc.Doc) error {
+	for _, doc := range docs {
+		pkg := modulePath(doc)
+		for i := range doc.Records {
+			r := &doc.Records[i]
+			switch r.Kind {
+			case "type", "field", "param", "var", "const", "receiver", "func",
+				"new", "channew", "arrlit", "call", "mcall":
+			default:
+				continue
+			}
+			text := fieldText(*r, "type")
+			if r.Kind == "type" {
+				text = fieldText(*r, "text")
+			}
+			if text == "" || !strings.Contains(text, "<") {
+				continue
+			}
+			if _, err := p.canonicalText(pkg, text, 0); err != nil {
+				return fmt.Errorf("%s: %w", text, err)
+			}
+		}
+	}
+	return nil
 }
 
 // TypeIDMax is the largest id the eight-byte object header can carry.
@@ -269,9 +329,15 @@ func (p *Program) Declared(pkg, text string) bool {
 	return ok
 }
 
-// TypeText resolves a short type name to its qualified declaration name. It is
-// used by the emitter before it writes a descriptor symbol.
+// TypeText resolves a short type name to its qualified declaration name,
+// including a monomorphized generic instance. It is used by the emitter before
+// it writes a descriptor symbol.
 func (p *Program) TypeText(pkg, text string) (string, bool) {
+	if canon, err := p.canonicalText(pkg, text, 0); err == nil {
+		if _, ok := p.types[canon]; ok {
+			return canon, true
+		}
+	}
 	name, ok := p.resolve(pkg, text)
 	return name, ok
 }

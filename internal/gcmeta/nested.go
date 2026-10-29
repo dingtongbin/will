@@ -53,7 +53,7 @@ func (p *Program) ensureNested(name string) error {
 				t.Nested = append(t.Nested, NestedField{
 					Offset: uint32(t.Fields[plan.index].Offset),
 					Type:   ft.Name,
-					Weak:   len(ft.Weaks) != 0 && len(ft.Refs) == 0 &&
+					Weak: len(ft.Weaks) != 0 && len(ft.Refs) == 0 &&
 						len(ft.Nested) == 0 && len(ft.Variants) == 0,
 				})
 			}
@@ -152,7 +152,7 @@ func (p *Program) variantPayload(decl *declaration, index int, variant willc.Rec
 				t.Nested = append(t.Nested, NestedField{
 					Offset: uint32(plan.offset),
 					Type:   ft.Name,
-					Weak:   len(ft.Weaks) != 0 && len(ft.Refs) == 0 &&
+					Weak: len(ft.Weaks) != 0 && len(ft.Refs) == 0 &&
 						len(ft.Nested) == 0 && len(ft.Variants) == 0,
 				})
 			}
@@ -172,6 +172,11 @@ func (p *Program) variantPayload(decl *declaration, index int, variant willc.Rec
 // inline descriptor.
 func (p *Program) nestedType(pkg, text string, seen map[string]bool) (*Type, error) {
 	text = strings.TrimSpace(text)
+	canon, err := p.canonicalText(pkg, text, 0)
+	if err != nil {
+		return nil, err
+	}
+	text = canon
 	node, err := parseTypeText(text)
 	if err != nil {
 		return nil, err
@@ -197,7 +202,7 @@ func (p *Program) nestedType(pkg, text string, seen map[string]bool) (*Type, err
 				t.Nested = append(t.Nested, NestedField{
 					Offset: uint32(i * stride),
 					Type:   elem.Name,
-					Weak:   len(elem.Weaks) != 0 && len(elem.Refs) == 0 &&
+					Weak: len(elem.Weaks) != 0 && len(elem.Refs) == 0 &&
 						len(elem.Nested) == 0 && len(elem.Variants) == 0,
 				})
 			}
@@ -206,6 +211,24 @@ func (p *Program) nestedType(pkg, text string, seen map[string]bool) (*Type, err
 		return t, nil
 	case typeFunc:
 		return p.inlineValue("value."+text, 2*WordSize, WordSize, []uint32{WordSize}, nil), nil
+	}
+	// A canonical generic instance names one declaration in the table; its
+	// descriptor is the declaration descriptor, except for a class, whose
+	// value is one reference.
+	if decl, ok := p.decls[text]; ok {
+		if decl.kind == KindClass {
+			return p.inlineValue("value."+text, WordSize, WordSize, []uint32{0}, nil), nil
+		}
+		if decl.kind == KindInterface {
+			return p.inlineValue("value."+text, 2*WordSize, WordSize, []uint32{0}, nil), nil
+		}
+		if err := p.ensureNested(decl.name); err != nil {
+			return nil, err
+		}
+		if t := p.types[decl.name]; t != nil {
+			return t, nil
+		}
+		return nil, fmt.Errorf("type %s has no GC layout", text)
 	}
 	name := node.name
 	switch name {

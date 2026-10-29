@@ -428,7 +428,7 @@ func (p *Parser) parseTypeDecl(doc string, class bool) *ast.StructDecl {
 	p.skipNL()
 	for !p.at(token.RBrace) && !p.at(token.EOF) && !p.failed {
 		if p.at(token.KwDef) || p.at(token.KwAsync) {
-			s.Methods = append(s.Methods, p.parseTypeMethod(s.Name, class))
+			s.Methods = append(s.Methods, p.parseTypeMethod(s.Name, class, s.TypeParams))
 			p.endStatement()
 			p.skipNL()
 			continue
@@ -459,7 +459,7 @@ func (p *Parser) parseTypeDecl(doc string, class bool) *ast.StructDecl {
 // parseTypeMethod parses a method written inside a type body. The receiver is
 // the explicit self parameter; it carries the declared type identity and is
 // not repeated in the callable parameter list.
-func (p *Parser) parseTypeMethod(typeName string, class bool) *ast.FuncDecl {
+func (p *Parser) parseTypeMethod(typeName string, class bool, typeParams []*ast.TypeParam) *ast.FuncDecl {
 	start := p.cur()
 	async := false
 	if p.at(token.KwAsync) {
@@ -485,6 +485,14 @@ func (p *Parser) parseTypeMethod(typeName string, class bool) *ast.FuncDecl {
 	} else {
 		recv.Type = &ast.Type{Span: ast.Span{Start: recvStart.Pos, End: recvTok.End},
 			Kind: ast.NamedType, Name: typeName}
+		// A method of a generic type carries the type parameters in its
+		// receiver type, so the checker and the emitter specialize the
+		// receiver exactly like a written Box<T>.
+		for _, tp := range typeParams {
+			recv.Type.Args = append(recv.Type.Args, &ast.Type{
+				Span: ast.Span{Start: tp.NamePos, End: tp.NamePos},
+				Kind: ast.NamedType, Name: tp.Name})
+		}
 		if !class {
 			recv.Type.Borrow = ast.MutBorrow
 			recv.Mut = true

@@ -22,7 +22,7 @@ func (g *generator) initDeclForNew(d *docState, r willc.Record) (*docState, will
 	}
 	var decl willc.Record
 	for _, rec := range def.recs {
-		if rec.Kind == "struct" && fieldText(rec, "text") == local {
+		if (rec.Kind == "struct" || rec.Kind == "class") && fieldText(rec, "text") == local {
 			decl = rec
 			break
 		}
@@ -59,12 +59,12 @@ func (g *generator) initDeclForNew(d *docState, r willc.Record) (*docState, will
 	return nil, willc.Record{}, "", nil, nil, false
 }
 
-// structDeclDoc finds the document that declares a struct by a type text that
-// may be local or package-qualified.
+// structDeclDoc finds the document that declares a struct or class by a type
+// text that may be local or package-qualified.
 func (g *generator) structDeclDoc(d *docState, name string) (*docState, string, bool) {
 	if !strings.Contains(name, ".") {
 		for _, rec := range d.recs {
-			if rec.Kind == "struct" && fieldText(rec, "text") == name {
+			if (rec.Kind == "struct" || rec.Kind == "class") && fieldText(rec, "text") == name {
 				return d, name, true
 			}
 		}

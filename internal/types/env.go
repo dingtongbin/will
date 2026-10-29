@@ -289,6 +289,18 @@ func (c *checker) keyType(t *Type) bool {
 
 func (c *checker) buildSig(decl *ast.FuncDecl) *signature {
 	tp := typeParamSet(decl.TypeParams)
+	if decl.Recv != nil && len(decl.Recv.Type.Args) != 0 {
+		// The receiver of a generic method writes the type parameters it uses,
+		// so its signature mentions them as free type parameters.
+		if tp == nil {
+			tp = map[string]bool{}
+		}
+		for _, a := range decl.Recv.Type.Args {
+			if a.Kind == ast.NamedType && len(a.Args) == 0 {
+				tp[a.Name] = true
+			}
+		}
+	}
 	sig := &signature{name: decl.Name, typeParams: len(decl.TypeParams), async: decl.Async}
 	for _, p := range decl.TypeParams {
 		sig.typeNames = append(sig.typeNames, p.Name)

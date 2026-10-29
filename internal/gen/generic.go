@@ -404,8 +404,8 @@ func (g *generator) methodInstance(r willc.Record) (genericMethodCall, bool) {
 	if !ok {
 		return genericMethodCall{}, false
 	}
-	if id, ok := g.structDecl[recvName]; ok {
-		params := g.typeParamNames(g.recs[id])
+	if decl, ok := typeDeclIn(g.recs, recvName); ok {
+		params := g.typeParamNames(decl)
 		if len(params) != len(recvArgs) {
 			return genericMethodCall{}, false
 		}
@@ -425,7 +425,7 @@ func (g *generator) methodInstance(r willc.Record) (genericMethodCall, bool) {
 	}
 	var decl willc.Record
 	for _, rec := range doc.recs {
-		if rec.Kind == "struct" && fieldText(rec, "text") == local {
+		if (rec.Kind == "struct" || rec.Kind == "class") && fieldText(rec, "text") == local {
 			decl = rec
 			break
 		}
@@ -527,11 +527,11 @@ func (g *generator) genericMethodDecl(fn willc.Record) bool {
 	if !ok {
 		return false
 	}
-	id, ok := g.structDecl[name]
+	id, ok := typeDeclIn(g.recs, name)
 	if !ok {
 		return false
 	}
-	params := g.typeParamNames(g.recs[id])
+	params := g.typeParamNames(id)
 	for _, a := range args {
 		if contains(params, a) {
 			return true

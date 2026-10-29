@@ -689,3 +689,19 @@ func TestEmitEmptyFile(t *testing.T) {
 		t.Fatalf("read emitted empty file: %v\n%s", err, data)
 	}
 }
+
+func TestEmitGenericClassNewCarriesInstance(t *testing.T) {
+	src := "class Box<T> {\n    value: T\n}\n\n" +
+		"def main() -> i32 {\n    var b: Box<i32> = Box<i32>(value=7)\n    return b.value\n}\n"
+	data := emitSource(t, "test.will", src, "example.com/app")
+	text := string(data)
+	if !strings.Contains(text, `type="Box<i32>"`) {
+		t.Fatalf("generic constructor does not carry its instance type:\n%s", text)
+	}
+	if !strings.Contains(text, `text="Box<i32>" kind=class`) {
+		t.Fatalf("generic variable type is not the instance text:\n%s", text)
+	}
+	if _, err := Read(data); err != nil {
+		t.Fatalf("read emitted: %v\n%s", err, data)
+	}
+}

@@ -153,8 +153,38 @@ func TestVariantDependentRefsUseVariantTable(t *testing.T) {
 	if choice == nil || len(choice.Variants) != 2 {
 		t.Fatalf("Choice variants = %#v", choice)
 	}
-	if choice.Variants[0].Type != "value.Node" ||
+	if choice.Variants[0].Type != "value.m.Node" ||
 		choice.Variants[1].Type != "value.i64" {
 		t.Fatalf("Choice variant types = %#v", choice.Variants)
+	}
+}
+
+func TestGenericClassInstanceLayout(t *testing.T) {
+	doc := readDoc(t, "#1 module path=\"m\"\n"+
+		"#2 class parent=#1 text=\"Box\"\n"+
+		"#3 typeparam parent=#2 text=\"T\"\n"+
+		"#4 field parent=#2 text=\"value\" type=\"T\"\n"+
+		"#5 class parent=#1 text=\"Node\"\n"+
+		"#6 field parent=#5 text=\"value\" type=\"i32\"\n"+
+		"#7 func parent=#1 text=\"main\" type=\"i32\"\n"+
+		"#8 type parent=#7 text=\"Box<Node>\" kind=class to=#2 arg=#9\n"+
+		"#9 type parent=#8 text=\"Node\" kind=named to=#5\n"+
+		"#10 end\n")
+	program, err := Build([]*willc.Doc{doc})
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	if program.Lookup("m.Box") != nil {
+		t.Fatalf("generic template was registered as a runtime layout")
+	}
+	box := program.Lookup("m.Box<m.Node>")
+	if box == nil || box.Kind != KindClass {
+		t.Fatalf("Box<Node> instance = %#v", box)
+	}
+	if box.Size != 8 || len(box.Refs) != 1 || box.Refs[0] != 0 {
+		t.Fatalf("Box<Node> layout = size %d refs %v", box.Size, box.Refs)
+	}
+	if name, ok := program.TypeText("m", "Box<Node>"); !ok || name != "m.Box<m.Node>" {
+		t.Fatalf("TypeText(Box<Node>) = %q, %v", name, ok)
 	}
 }

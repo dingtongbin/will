@@ -169,6 +169,18 @@ func (c *checker) inferGlobals(global *inferScope, f *ast.File) {
 
 func (c *checker) inferFunc(decl *ast.FuncDecl) {
 	tp := typeParamSet(decl.TypeParams)
+	if decl.Recv != nil && len(decl.Recv.Type.Args) != 0 {
+		// A method of a generic type names the type parameters in its
+		// receiver. They are free in the body like the method's own.
+		if tp == nil {
+			tp = map[string]bool{}
+		}
+		for _, a := range decl.Recv.Type.Args {
+			if a.Kind == ast.NamedType && len(a.Args) == 0 {
+				tp[a.Name] = true
+			}
+		}
+	}
 	s := newInferScope(nil)
 	s.tp = tp
 	s.async = decl.Async
@@ -1610,7 +1622,7 @@ func (c *checker) checkPayload(s *inferScope, params []*Type, args []*ast.CallAr
 // parameter contract; without init the written fields supply it positionally or
 // by name, in declaration order.
 func (c *checker) classConstruct(s *inferScope, name *ast.NameExpr, call *ast.CallExpr) *Type {
-	t := c.typeByName(name.Name)
+	t := c.instantiateNamed(s, name.Name, call.TypeArgs, true)
 	if sig := c.env.inits[name.Name]; sig != nil {
 		if t != nil {
 			if inst := c.instantiateReceiver(sig, t); inst != nil {
@@ -1631,13 +1643,14 @@ func (c *checker) classConstruct(s *inferScope, name *ast.NameExpr, call *ast.Ca
 		return t
 	}
 	used := map[int]bool{}
+	subst := c.substFor(name.Name, t.Args())
 	for i, a := range call.Args {
 		var want *Type
 		index := -1
 		if a.Name != "" {
 			for j, f := range fields {
 				if f.name == a.Name {
-					want = f.typ
+					want = c.substitute(f.typ, subst)
 					index = j
 					break
 				}
@@ -1649,7 +1662,7 @@ func (c *checker) classConstruct(s *inferScope, name *ast.NameExpr, call *ast.Ca
 				continue
 			}
 		} else if i < len(fields) {
-			want = fields[i].typ
+			want = c.substitute(fields[i].typ, subst)
 			index = i
 		} else {
 			c.badArity(call.Pos(), name.Name)
@@ -1674,7 +1687,7 @@ func (c *checker) classConstruct(s *inferScope, name *ast.NameExpr, call *ast.Ca
 // field-default contract as a class constructor, but the result is an inline
 // value.
 func (c *checker) structConstruct(s *inferScope, name *ast.NameExpr, call *ast.CallExpr) *Type {
-	t := c.typeByName(name.Name)
+	t := c.instantiateNamed(s, name.Name, call.TypeArgs, false)
 	if sig := c.env.inits[name.Name]; sig != nil {
 		if t != nil {
 			if inst := c.instantiateReceiver(sig, t); inst != nil {
@@ -1686,6 +1699,7 @@ func (c *checker) structConstruct(s *inferScope, name *ast.NameExpr, call *ast.C
 	}
 	fields := c.env.fields[name.Name]
 	used := map[int]bool{}
+	subst := c.substFor(name.Name, t.Args())
 	for i, a := range call.Args {
 		index := -1
 		if a.Name != "" {
@@ -1709,7 +1723,7 @@ func (c *checker) structConstruct(s *inferScope, name *ast.NameExpr, call *ast.C
 			continue
 		}
 		used[index] = true
-		c.checkValue(s, a.Expr, fields[index].typ)
+		c.checkValue(s, a.Expr, c.substitute(fields[index].typ, subst))
 	}
 	for i, f := range fields {
 		if used[i] || f.hasDefault {
@@ -1756,6 +1770,28 @@ func (c *checker) typeByName(name string) *Type {
 		return t
 	}
 	return c.in.named(name, nil)
+}
+
+// instantiateNamed builds the type a constructor call names. A generic class or
+// struct writes its arguments on the constructor, as in Box<i32>(...), so the
+// field and init contract must be specialized before the arguments are checked.
+func (c *checker) instantiateNamed(s *inferScope, name string, typeArgs []*ast.Type, class bool) *Type {
+	if len(typeArgs) == 0 {
+		return c.typeByName(name)
+	}
+	args := make([]*Type, len(typeArgs))
+	for i, a := range typeArgs {
+		args[i] = c.buildType(a, s.tp)
+	}
+	if want, ok := c.env.arity[name]; ok && len(args) != want {
+		c.bag.Error(typeArgs[0].Pos(), diag.CodeTypeArgCount, "wrong number of type arguments",
+			"the declaration takes "+strconv.Itoa(want))
+		return c.typeByName(name)
+	}
+	if class {
+		return c.in.namedClass(name, args)
+	}
+	return c.in.named(name, args)
 }
 
 // substFor pairs the declared type parameters of a named type with the type

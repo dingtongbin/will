@@ -301,9 +301,21 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 
 // emitClassNew writes a class constructor call. T(...) allocates one GC
 // object; init, when present, is invoked by the class lowering after field
-// defaults are written.
+// defaults are written. A generic constructor carries its concrete type
+// arguments in the new record, which has no separate argument field.
 func (e *emitter) emitClassNew(c *ast.CallExpr, name string) int {
-	return e.emitNewArgs(c, c.Args, name)
+	return e.emitNewArgs(c, c.Args, constructorTypeText(name, c.TypeArgs))
+}
+
+func constructorTypeText(name string, typeArgs []*ast.Type) string {
+	if len(typeArgs) == 0 {
+		return name
+	}
+	args := make([]string, len(typeArgs))
+	for i, a := range typeArgs {
+		args[i] = typeText(a)
+	}
+	return name + "<" + strings.Join(args, ",") + ">"
 }
 
 func (e *emitter) emitNewArgs(node ast.Node, args []*ast.CallArg, name string) int {
@@ -325,7 +337,7 @@ func (e *emitter) emitNewArgs(node ast.Node, args []*ast.CallArg, name string) i
 // value in a slot, applies defaults, and runs init when the type declares one.
 func (e *emitter) emitStructNew(c *ast.CallExpr, name string) int {
 	rec := e.add("new", c)
-	e.text(rec, "type", name)
+	e.text(rec, "type", constructorTypeText(name, c.TypeArgs))
 	e.push(rec)
 	for _, a := range c.Args {
 		if a.Name != "" {
@@ -362,7 +374,7 @@ func (e *emitter) emitMethodCall(v *ast.MethodCallExpr) int {
 					path = canonical
 				}
 				if decl := e.external[path+"."+v.Name]; decl != nil && decl.Class {
-					return e.emitNewArgs(v, v.Args, path+"."+v.Name)
+					return e.emitNewArgs(v, v.Args, constructorTypeText(path+"."+v.Name, v.TypeArgs))
 				}
 			}
 		}

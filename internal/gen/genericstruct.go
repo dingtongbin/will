@@ -128,7 +128,7 @@ func (g *generator) structInstanceFromText(text string) (string, bool) {
 }
 
 // genericStructDoc finds the document and unqualified name of a generic
-// struct named by a canonical qualified type name.
+// struct or class named by a canonical qualified type name.
 func (g *generator) genericStructDoc(name string) (*docState, string, bool) {
 	dot := strings.LastIndexByte(name, '.')
 	if dot <= 0 {
@@ -140,12 +140,22 @@ func (g *generator) genericStructDoc(name string) (*docState, string, bool) {
 			continue
 		}
 		for _, r := range d.recs {
-			if r.Kind == "struct" && fieldText(r, "text") == local {
+			if (r.Kind == "struct" || r.Kind == "class") && fieldText(r, "text") == local {
 				return d, local, true
 			}
 		}
 	}
 	return nil, "", false
+}
+
+// typeDeclIn returns one struct or class declaration by its bare name.
+func typeDeclIn(recs map[int]willc.Record, name string) (willc.Record, bool) {
+	for _, r := range recs {
+		if (r.Kind == "struct" || r.Kind == "class") && fieldText(r, "text") == name {
+			return r, true
+		}
+	}
+	return willc.Record{}, false
 }
 
 // ensureImportedStructInstance lowers the field layout of a generic struct

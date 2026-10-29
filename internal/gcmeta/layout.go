@@ -51,6 +51,14 @@ func (p *Program) layoutFields(pkg string, fields []willc.Record, seen map[strin
 }
 
 func (p *Program) layoutValue(pkg, text string, seen map[string]bool) (valueLayout, error) {
+	canon, err := p.canonicalText(pkg, text, 0)
+	if err != nil {
+		return valueLayout{}, err
+	}
+	text = canon
+	if decl, ok := p.decls[text]; ok {
+		return p.declLayout(decl, seen)
+	}
 	node, err := parseTypeText(text)
 	if err != nil {
 		return valueLayout{}, err
@@ -161,14 +169,16 @@ func (p *Program) layoutValue(pkg, text string, seen map[string]bool) (valueLayo
 	if stringsHasBorrowPrefix(text) {
 		return valueLayout{size: WordSize, align: WordSize}, nil
 	}
-	resolved, ok := p.resolveDecl(pkg, name)
-	if !ok {
-		return valueLayout{}, fmt.Errorf("type %s is not declared", text)
+	if decl, ok := p.resolveDeclExact(pkg, name); ok {
+		return p.declLayout(decl, seen)
 	}
-	decl := p.decls[resolved]
-	if decl == nil {
-		return valueLayout{}, fmt.Errorf("type %s has no declaration", resolved)
-	}
+	return valueLayout{}, fmt.Errorf("type %s has no GC layout", text)
+}
+
+// declLayout returns the storage shape of one declaration. A class is a GC
+// reference; structs and enums are inline values whose fields are scanned
+// recursively.
+func (p *Program) declLayout(decl *declaration, seen map[string]bool) (valueLayout, error) {
 	switch decl.kind {
 	case KindClass:
 		return valueLayout{size: WordSize, align: WordSize, reference: true}, nil
@@ -176,11 +186,11 @@ func (p *Program) layoutValue(pkg, text string, seen map[string]bool) (valueLayo
 		return valueLayout{size: 2 * WordSize, align: WordSize,
 			refs: []uint32{0}}, nil
 	case KindStruct, KindEnum:
-		if seen[resolved] {
-			return valueLayout{}, fmt.Errorf("inline type %s contains itself", resolved)
+		if seen[decl.name] {
+			return valueLayout{}, fmt.Errorf("inline type %s contains itself", decl.name)
 		}
-		seen[resolved] = true
-		defer delete(seen, resolved)
+		seen[decl.name] = true
+		defer delete(seen, decl.name)
 		var size, align int
 		var refs, weaks []uint32
 		if decl.kind == KindStruct {
@@ -198,7 +208,7 @@ func (p *Program) layoutValue(pkg, text string, seen map[string]bool) (valueLayo
 		}
 		return valueLayout{size: size, align: align, refs: refs, weaks: weaks}, nil
 	}
-	return valueLayout{}, fmt.Errorf("type %s has no GC layout", text)
+	return valueLayout{}, fmt.Errorf("type %s has no GC layout", decl.name)
 }
 
 // taggedLayout lays out a tag word followed by the union of two payloads. A
