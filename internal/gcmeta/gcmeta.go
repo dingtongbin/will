@@ -126,6 +126,9 @@ type Program struct {
 	// typeParams is every declared type-parameter name. A type text that
 	// mentions one belongs to a template, not to a concrete instance.
 	typeParams map[string]bool
+	// imports maps one package to its import aliases. A type text in that
+	// package can spell another package's type as alias.Name.
+	imports map[string]map[string]string
 	// sealed closes the instance set after Build. A later lookup that would
 	// need a new instance is a compiler bug, not a new type.
 	sealed bool
@@ -155,6 +158,7 @@ func Build(docs []*willc.Doc) (*Program, error) {
 		inline:     map[string]*Type{},
 		templates:  map[string]*declaration{},
 		typeParams: map[string]bool{},
+		imports:    map[string]map[string]string{},
 	}
 	decls := map[string]*declaration{}
 	for _, doc := range docs {
@@ -167,6 +171,9 @@ func Build(docs []*willc.Doc) (*Program, error) {
 			}
 			if r.Kind == "typeparam" {
 				p.typeParams[fieldText(*r, "text")] = true
+			}
+			if r.Kind == "import" {
+				p.addImport(pkg, fieldText(*r, "path"), fieldText(*r, "alias"))
 			}
 			var kind Kind
 			switch r.Kind {

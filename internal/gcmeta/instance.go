@@ -87,6 +87,7 @@ func (p *Program) canonicalNode(pkg, text string, node *typeNode, depth int) (st
 	if builtinValueNames[name] {
 		return name, nil
 	}
+	name = p.aliasName(pkg, name)
 	if tmpl, ok := p.resolveTemplate(pkg, name); ok {
 		if len(node.args) == 0 {
 			return "", fmt.Errorf("generic type %s needs type arguments", name)
@@ -321,4 +322,43 @@ func (p *Program) mentionsTypeParam(text string) bool {
 		i = j
 	}
 	return false
+}
+
+// addImport records one package alias for type-text canonicalization. The
+// default alias of a path is its last segment.
+func (p *Program) addImport(pkg, path, alias string) {
+	if pkg == "" || path == "" {
+		return
+	}
+	if alias == "" {
+		if i := strings.LastIndexByte(path, '/'); i >= 0 {
+			alias = path[i+1:]
+		} else {
+			alias = path
+		}
+	}
+	aliases := p.imports[pkg]
+	if aliases == nil {
+		aliases = map[string]string{}
+		p.imports[pkg] = aliases
+	}
+	aliases[alias] = path
+}
+
+// aliasName rewrites one type name written as alias.Name into the imported
+// package path. A name without a matching import alias stays unchanged.
+func (p *Program) aliasName(pkg, name string) string {
+	dot := strings.IndexByte(name, '.')
+	if dot <= 0 {
+		return name
+	}
+	aliases := p.imports[pkg]
+	if aliases == nil {
+		return name
+	}
+	path, ok := aliases[name[:dot]]
+	if !ok {
+		return name
+	}
+	return path + name[dot:]
 }

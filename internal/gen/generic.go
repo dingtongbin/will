@@ -29,15 +29,26 @@ func (g *generator) typeParamNames(fn willc.Record) []string {
 	return names
 }
 
-// typeArgTexts returns the type argument texts a call writes.
+// typeArgTexts returns the type argument texts a call writes. A cross-package
+// type record carries its qualified name in to; the short spelling is not
+// resolvable from the defining package.
 func (g *generator) typeArgTexts(r willc.Record) []string {
 	var texts []string
 	for _, id := range refsOf(r, "typearg") {
 		if t, ok := g.recs[id]; ok {
-			texts = append(texts, fieldText(t, "text"))
+			texts = append(texts, typeRecordText(t))
 		}
 	}
 	return texts
+}
+
+// typeRecordText is the canonical text of one type record: the qualified to
+// spelling when the record has one, otherwise the source text.
+func typeRecordText(t willc.Record) string {
+	if to := textField(t, "to"); to != "" {
+		return to
+	}
+	return fieldText(t, "text")
 }
 
 // instanceName mangles a generic function with its type arguments.
@@ -212,7 +223,7 @@ func typeArgTextsIn(d *docState, r willc.Record) []string {
 	var texts []string
 	for _, id := range refsOf(r, "typearg") {
 		if t, ok := d.recs[id]; ok {
-			texts = append(texts, fieldText(t, "text"))
+			texts = append(texts, typeRecordText(t))
 		}
 	}
 	return texts
@@ -404,6 +415,7 @@ func (g *generator) methodInstance(r willc.Record) (genericMethodCall, bool) {
 	if !ok {
 		return genericMethodCall{}, false
 	}
+	recvArgs = g.canonicalTypeArgs(recvArgs)
 	if decl, ok := typeDeclIn(g.recs, recvName); ok {
 		params := g.typeParamNames(decl)
 		if len(params) != len(recvArgs) {

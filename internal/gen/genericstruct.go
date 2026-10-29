@@ -85,10 +85,26 @@ func (g *generator) typeRecordArgs(r willc.Record) []string {
 	var texts []string
 	for _, id := range refsOf(r, "arg") {
 		if t, ok := g.recs[id]; ok {
-			texts = append(texts, fieldText(t, "text"))
+			texts = append(texts, typeRecordText(t))
 		}
 	}
 	return texts
+}
+
+// canonicalTypeArgs rewrites import-alias prefixes in type arguments, including
+// arguments of a nested generic. A method instance is cloned into the defining
+// package, which cannot resolve the caller's alias.
+func (g *generator) canonicalTypeArgs(args []string) []string {
+	out := make([]string, len(args))
+	for i, arg := range args {
+		arg = g.canonicalTypeText(arg)
+		if name, inner, ok := splitGenericType(arg); ok {
+			out[i] = name + "<" + strings.Join(g.canonicalTypeArgs(inner), ",") + ">"
+			continue
+		}
+		out[i] = arg
+	}
+	return out
 }
 
 // structInstanceFromText instantiates a generic struct named by a type text.

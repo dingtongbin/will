@@ -99,6 +99,18 @@ P3: allocation fast path inline, barriers, p999, soak, platform matrix.
   GC type graph the cloned generic-instance documents, so `std/sync.MutexState`
   was declared twice. Clone documents are now excluded from the type graph;
   `emit-llvm` on that case exits 0.
+- Cross-package generic class now works: `lib.Box<lib.Node>(...)` in an
+  importing package. Two defects were fixed:
+  1. gcmeta could not resolve `alias.Name`; the type graph now records each
+     package's imports and canonicalizes the alias to the module path.
+  2. gen cloned a method instance into the defining package but kept the
+     caller's `lib.Node` spelling; type arguments now use the qualified `to`
+     text of the type record and are canonicalized recursively.
+  `tests/build/genericclassimport` and `TestRunGenericClassAcrossPackages`
+  cover the path; the run exits 41.
+- P0 forced-cycle matrix re-run against the new root-read path:
+  `go test ./internal/cli -run 'TestRunClass|TestRunDeadline|TestRunSelect|TestRunAsync' -count=2`
+  PASS (75.7s).
 - C full-cycle probe: median throughput 0.40 M/s, p50 111.6 ms;
   allocation-only 13.8 M/s. Not release acceptance.
 - Crash recovery: the session was interrupted after the alloca rewrite. All
@@ -126,7 +138,6 @@ Implemented:
 
 Remaining for P1-1:
 
-- Cross-package generic class instance and generic init corpus.
 - Generic enum instances are implemented in gcmeta but have no corpus yet.
 - `Weak`/`Pinned`/`Handle` and the final container surface stay P1.
 
@@ -136,17 +147,17 @@ Final verification this round:
   corpus; `go vet ./...` PASS; `gofmt -l .` empty; `checkcode` clean.
 - `will run tests/build/genericclass` exits 42; `will build` then running
   `build/x86_64-win-gnu/genericclass.exe` exits 42 with identical stdout and
-  stderr.
+  stderr. `tests/build/genericclassimport` behaves the same with exit 41.
 - `will build build/probestack` and the release binary exit 0 for the 200k
   array/clone loop.
+- P0 matrix (class/deadline/select/async, two rounds) PASS.
 - Commits: `6f64783` (deterministic, loop-safe lowering), `4e0afa8` (generic
-  class monomorphization).
+  class monomorphization), plus the cross-package generic class fix.
 
 Evidence commands:
 
-- `go run ./cmd/will run build/probeclass` (gitignored probe)
-- `go test ./internal/types ./internal/gcmeta ./internal/gen`
-
+- `go run ./cmd/will run tests/build/genericclassimport`
+- `go test ./internal/types ./internal/gcmeta ./internal/gen ./internal/cli`
 
 ## Known failures / blockers
 
@@ -159,12 +170,11 @@ Evidence commands:
 
 ## Next three
 
-1. Cross-package generic class instance and generic init corpus; then generic
-   enum instance corpus.
-2. Re-run the P0 forced-cycle matrix (class fields, containers, async Error,
-   select class local, inline aggregates) against the new root-read path.
-3. Start P1-4/P1-5: `Weak<T>` source surface, then `Pinned<T>`/`Handle<T>`
-   lowering and lifetime checks.
+1. Generic enum instance corpus (template + class/struct argument), including a
+   cross-package case.
+2. P1-4: `Weak<T>` source surface, `upgrade()`, and concurrent weak clearing.
+3. P1-5: `Pinned<T>`/`Handle<T>` lowering and lifetime checks across the C
+   boundary.
 
 ## Unverified risks
 

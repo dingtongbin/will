@@ -16,6 +16,7 @@ func (g *generator) initDeclForNew(d *docState, r willc.Record) (*docState, will
 	if !ok {
 		return nil, willc.Record{}, "", nil, nil, false
 	}
+	args = g.canonicalTypeArgs(args)
 	def, local, ok := g.structDeclDoc(d, name)
 	if !ok {
 		return nil, willc.Record{}, "", nil, nil, false
