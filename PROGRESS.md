@@ -220,6 +220,43 @@ Evidence commands:
 - Half-finished container lowering must not be committed; the probe was
   reverted and this note is the handoff.
 
+## In progress: final list container
+
+- HEAD `36746a3`; the worktree also carries the uncommitted list work below.
+  `README.md` stays user-modified.
+- Surface: `list[T]` with bracketed type arguments and constructor; the parser,
+  resolve, types, willc and gcmeta bracket paths are in place.
+- gcmeta synthesises a GC payload type per instance (`list[i32]`): KindClass,
+  24 bytes, refs [0], fields data/len/cap. A `TestContainerPayloadType` unit
+  test pins the layout and class id.
+- gen lowers list as a GC payload pointer. Construction, `push` (with growth
+  and memcpy), `get`, `len` work end to end: a probe returns 3 with
+  `get0=1 get1=2 len=2`. The growth path pins the old data and allocates
+  `cap * size` bytes.
+- Still missing before it can be committed: set/insert/remove/clear/pop/clone/
+  append/slice/reserve/shrink_to_fit, `for` iteration, `xs[i]`, builtin
+  `len(xs)`, run/build differential, corpus, and the migration that deletes
+  `Array` in the same series. Do not commit the half-migration.
+- Working now: constructor, push (growth + memcpy), get, set, len, insert,
+  remove, clear, clone, `for v in xs`, and `xs[i]`. Probes return the expected
+  values (`get0=1 get1=2 len=2`; insert/remove 13; clone xs=2 ys=3).
+- FIXED (P0, GC type registry): forced GC ran 4/4 clean after two changes in
+  `internal/gen/gcmeta.go`. (1) Package mode filtered synthesised container
+  types out of the registration list because `packageOfQualified("list[i32]")`
+  is empty; a type without a package prefix now belongs to the emitting
+  package and is registered. (2) Container/inline descriptor ids now start
+  after the module-wide maximum class id instead of the package's class
+  count, so a sequence descriptor can no longer take the list payload's id.
+  Before the fix the runtime resolved id 1 to the sequence descriptor
+  (`size=0 refs=0 flags=8`) while the payload header carried id 1; the
+  collector scanned the payload as a sequence, never marked its data word, and
+  the data was reused. Probe evidence: `first=1 second=2 len=2` for four
+  consecutive 2500-cycle runs; `go test ./internal/gen ./internal/gcmeta`
+  PASS. A gate run is in flight.
+- Probe: `build/probelist`, `build/probelist2`, `build/probelistclone`,
+  `build/probelistgc`, `build/probeclassgc` (all gitignored), cold
+  `WILL_CACHE`.
+
 ## Known failures / blockers
 
 1. Standard library is not complete: many P1 packages and APIs are still on the

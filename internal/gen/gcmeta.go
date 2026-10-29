@@ -48,7 +48,10 @@ func (g *generator) usesGCContainers() bool {
 				}
 				if strings.Contains(f.Value.Text, "Array<") ||
 					strings.Contains(f.Value.Text, "Map<") ||
-					strings.Contains(f.Value.Text, "Set<") {
+					strings.Contains(f.Value.Text, "Set<") ||
+					strings.Contains(f.Value.Text, "list[") ||
+					strings.Contains(f.Value.Text, "dict[") ||
+					strings.Contains(f.Value.Text, "set[") {
 					return true
 				}
 			}
@@ -87,15 +90,29 @@ func (g *generator) emitGCMetadata() error {
 		}
 		g.gcProgram = program
 	}
+	// Container and inline descriptors take ids after every class id in the
+	// program, not after this package's class count: package mode emits one
+	// object per package, and a per-package count would collide with class ids
+	// assigned by the module-wide graph.
 	var classes []*gcmeta.Type
 	for _, t := range program.Types() {
 		if t.Kind != gcmeta.KindClass {
 			continue
 		}
-		if g.packageMode && packageOfQualified(t.Name) != g.pkg {
-			continue
+		if g.packageMode {
+			// A synthesised container type (list, dict, set) carries no
+			// package prefix and belongs to the package that emitted it.
+			if pkg := packageOfQualified(t.Name); pkg != "" && pkg != g.pkg {
+				continue
+			}
 		}
 		classes = append(classes, t)
+	}
+	maxID := uint32(0)
+	for _, t := range program.Types() {
+		if t.ID > maxID {
+			maxID = t.ID
+		}
 	}
 	for _, t := range program.InlineTypes() {
 		if g.gcInlineTypes[t.Name] == nil {
@@ -107,7 +124,7 @@ func (g *generator) emitGCMetadata() error {
 		inlineNames = append(inlineNames, name)
 	}
 	sort.Strings(inlineNames)
-	nextID := uint32(len(classes) + 1)
+	nextID := maxID + 1
 	var inlineTypes []*gcmeta.Type
 	for _, name := range inlineNames {
 		inline := g.gcInlineTypes[name]
