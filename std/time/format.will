@@ -133,10 +133,10 @@ def month_name(month: i32) -> str {
 
 # rfc3339Body writes the date, time, and optional fraction without the offset.
 def rfc3339_body(t: Instant, frac: i64) -> str {
-    var local: i64 = local_seconds(t)
-    var date: civilDate = civil_from_days(days_of(local))
-    var tod: clockTime = time_of_day(local)
-    var left: str = pad_year(date.year) + "-" + pad2(i64(date.month)) + "-" + pad2(i64(date.day))
+    var localSecs: i64 = local_seconds(t)
+    var civil: civilDate = civil_from_days(days_of(localSecs))
+    var tod: clockTime = time_of_day(localSecs)
+    var left: str = pad_year(civil.year) + "-" + pad2(i64(civil.month)) + "-" + pad2(i64(civil.day))
     var right: str = pad2(i64(tod.hour)) + ":" + pad2(i64(tod.minute)) + ":" + pad2(i64(tod.second))
     if frac != 0 {
         right = right + "." + fraction_text(frac)
@@ -162,18 +162,18 @@ def rfc3339_nano(t: Instant) -> str {
 # The header format is always UTC, so the zone of t does not show.
 def rfc1123(t: Instant) -> str {
     var secs: i64 = seconds_of(t.nanos)
-    var date: civilDate = civil_from_days(days_of(secs))
+    var civil: civilDate = civil_from_days(days_of(secs))
     var tod: clockTime = time_of_day(secs)
-    var left: str = weekday_name(weekday_of(days_of(secs))) + ", " + pad2(i64(date.day))
-    var middle: str = month_name(date.month) + " " + pad_year(date.year)
+    var left: str = weekday_name(weekday_of(days_of(secs))) + ", " + pad2(i64(civil.day))
+    var middle: str = month_name(civil.month) + " " + pad_year(civil.year)
     var right: str = pad2(i64(tod.hour)) + ":" + pad2(i64(tod.minute)) + ":" + pad2(i64(tod.second))
     return left + " " + middle + " " + right + " GMT"
 }
 
 # Date formats the calendar date of t in its zone as 2006-01-02.
 def date(t: Instant) -> str {
-    var date: civilDate = civil_from_days(days_of(local_seconds(t)))
-    return pad_year(date.year) + "-" + pad2(i64(date.month)) + "-" + pad2(i64(date.day))
+    var civil: civilDate = civil_from_days(days_of(local_seconds(t)))
+    return pad_year(civil.year) + "-" + pad2(i64(civil.month)) + "-" + pad2(i64(civil.day))
 }
 
 # Clock formats the time of day of t in its zone as 15:04:05.
