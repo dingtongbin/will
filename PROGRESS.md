@@ -222,6 +222,45 @@ Evidence commands:
 
 ## In progress: final list container
 
+- LIST SURFACE COMMITTED: `b0980b6 feat: add the final list container` adds
+  list[T] with the full specified method set, the callback ABI, `for`,
+  indexing, builtin `len`, the package-mode type registration and descriptor
+  id fixes, and two CLI tests. HEAD is `b0980b6`; the worktree had only the
+  user's `README.md` change after that commit.
+- Array migration attempt (round 15): a temporary tool
+  (`build/retype/main.go`) rewrote 121 `.will` files, replacing `Array<T>`
+  with `list[T]` and `new Array<T>(n)` with `list[T](n)`, and the corpus was
+  re-recorded. It does not build yet, so the diff was saved to
+  `build/array-migration.patch` (921 KB) and the tree was restored with
+  `git checkout -- std tests bench`. The failure classes, all reproducible
+  from the patch:
+  1. C shims still expect the three-word Array handle: `raw(self.fds)` in
+     `std/io/poller.will` and the exec output arrays pass a list payload
+     pointer where C reads data/len/cap. The C boundary needs a view-based or
+     pinned-buffer protocol before this migration can proceed.
+  2. `list` field layout fails for `list[rc<Inner>]` and similar old rc
+     element types: the layout error names `...list` without arguments. The
+     rc corpora (`build/rcarray*`) are deprecated and should be deleted rather
+     than kept working.
+  3. Builtin conversions `str(list[u8])` / `bytes(list[u8])` are not lowered
+     (`tests/build/arraytostr`, `tests/build/strbytes`).
+  4. `xs[a:b]` slice syntax has no list lowering; only the `slice` method is
+     implemented (std/time path hits it).
+  5. `std/time/format.will` shadow warnings (N0003) are now visible on a cold
+     cache and break run tests that expect empty stdout; rename the locals.
+- Migration blockers closed this round (commits `b820c46`, `1d0c63e`,
+  `c86e7c2`): `list[lo:hi]` / `list[lo:]` slice syntax is lowered with
+  bounds checks and covered by `TestRunListSliceSyntax`; the rc container
+  corpora were deleted; `std/time/format.will` no longer shadows
+  `local`/`date` (N0003 warnings no longer leak into run output). Corpora
+  were re-recorded, including genericasync/multiasync because container
+  descriptor ids changed.
+- Still open for the Array migration: the C boundary protocol (view buffer
+  instead of the three-word handle for `std/io/poller` and `std/os/exec`),
+  builtin `str(list[u8])` / `bytes(list[u8])`, and `view.clone()` returning
+  `Array<u8>` instead of `list[u8]`. The saved migration diff is
+  `build/array-migration.patch`.
+
 - HEAD `36746a3`; the worktree also carries the uncommitted list work below.
   `README.md` stays user-modified.
 - Surface: `list[T]` with bracketed type arguments and constructor; the parser,
