@@ -746,321 +746,165 @@ entry:
 %"struct.std/os.Group" = type { { ptr, i64 }, i32 }
 define hidden { i32, [4 x i8], { ptr, i64 } } @"std/os/path.abs"(ptr %p) inlinehint {
 entry:
+  %v.s = alloca { ptr, i64 }
   %v.cwd = alloca { ptr, i64 }
-  %v.gcroots = alloca [2 x ptr]
-  store [2 x ptr] zeroinitializer, ptr %v.gcroots
+  %v.gcroots = alloca [3 x ptr]
+  store [3 x ptr] zeroinitializer, ptr %v.gcroots
   %v.gcframe = alloca %willrt_gc_frame
-  %t1 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 0
-  %t2 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 1
+  %t1 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 0
+  %t2 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 1
+  %t3 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 2
   call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.abs", ptr %v.gcroots)
-  %v.ret.17 = alloca { ptr, i64 }
-  %v.ret.22 = alloca { i32, [4 x i8], { ptr, i64 } }
-  %v.ret.28 = alloca { ptr, i64 }
-  %v.ret.29 = alloca { ptr, i64 }
-  %t3 = getelementptr i8, ptr %v.cwd, i64 0
-  store ptr %t3, ptr %t2
-  %v.adt.15 = alloca { i32, [4 x i8], { ptr, i64 } }
-  %v.adt.26 = alloca { i32, [4 x i8], { ptr, i64 } }
-  %v.try.21 = alloca { i32, [4 x i8], { ptr, i64 } }
-  %v.try.out.21 = alloca { ptr, i64 }
-  %v.varargs.29 = alloca { ptr, i64 }
-  call void @willrt_gc_safepoint(i32 3)
-  %t4 = call i1 @"std/os/path.is_abs"(ptr %p)
-  br i1 %t4, label %if.then.1, label %if.end.1
+  %v.ret.18 = alloca { ptr, i64 }
+  %v.ret.33 = alloca { ptr, i64 }
+  %v.ret.39 = alloca { i32, [4 x i8], { ptr, i64 } }
+  %v.ret.45 = alloca { ptr, i64 }
+  %v.ret.46 = alloca { ptr, i64 }
+  %t4 = getelementptr i8, ptr %v.s, i64 0
+  store ptr %t4, ptr %t2
+  %t5 = getelementptr i8, ptr %v.cwd, i64 0
+  store ptr %t5, ptr %t3
+  %v.utf8.23 = alloca i32
+  %v.adt.31 = alloca { i32, [4 x i8], { ptr, i64 } }
+  %v.adt.43 = alloca { i32, [4 x i8], { ptr, i64 } }
+  %v.strm.18 = alloca { ptr, i64 }
+  %v.try.38 = alloca { i32, [4 x i8], { ptr, i64 } }
+  %v.try.out.38 = alloca { ptr, i64 }
+  %v.varargs.46 = alloca { ptr, i64 }
+  %t6 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
+  %t7 = load i64, ptr %t6
+  %t8 = icmp ne i64 %t7, 0
+  br i1 %t8, label %if.then.1, label %if.end.1
 if.then.1:
-  %t5 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.15, i32 0, i32 0
-  store i32 0, ptr %t5
-  %t6 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.15, i32 0, i32 2
-  call void @willrt_gc_safepoint(i32 3)
-  %t7 = call { ptr, i64 } @"std/os/path.clean"(ptr %p)
-  store { ptr, i64 } %t7, ptr %v.ret.17
-  %t8 = load { ptr, i64 }, ptr %v.ret.17
-  store { ptr, i64 } %t8, ptr %t6
-  %t9 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.15
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret { i32, [4 x i8], { ptr, i64 } } %t9
-if.end.1:
-  call void @willrt_gc_safepoint(i32 3)
-  %t10 = call { i32, [4 x i8], { ptr, i64 } } @"std/os.cwd"()
-  store { i32, [4 x i8], { ptr, i64 } } %t10, ptr %v.ret.22
-  %t11 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.22, i32 0, i32 0
-  %t12 = load i32, ptr %t11
-  %t13 = icmp eq i32 %t12, 1
-  br i1 %t13, label %try.err.2, label %try.ok.2
-try.err.2:
-  %t14 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.try.21, i32 0, i32 0
-  store i32 1, ptr %t14
-  %t15 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.22, i32 0, i32 2
-  %t16 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.try.21, i32 0, i32 2
-  %t17 = load %interface.Error, ptr %t15
-  store %interface.Error %t17, ptr %t16
-  %t18 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.try.21
-  ret { i32, [4 x i8], { ptr, i64 } } %t18
+  %t9 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 0
+  %t10 = load ptr, ptr %t9
+  %t11 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
+  %t12 = load i64, ptr %t11
+  %t13 = call ptr @willrt_gc_alloc(i64 %t12, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call void @memcpy(ptr %t13, ptr %t10, i64 %t12)
+  %t14 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.18, i32 0, i32 0
+  store ptr %t13, ptr %t14
+  %t15 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.18, i32 0, i32 1
+  store i64 %t12, ptr %t15
+  %t16 = load { ptr, i64 }, ptr %v.strm.18
+  store { ptr, i64 } %t16, ptr %v.ret.18
+  %t17 = getelementptr inbounds i8, ptr %v.s, i64 0
+  %t18 = getelementptr inbounds i8, ptr %v.ret.18, i64 0
+  %t19 = load ptr, ptr %t18
+  call void @willrt_gc_write_barrier_untagged(ptr %t17, ptr %t19)
+  %t20 = load { ptr, i64 }, ptr %v.ret.18
+  store { ptr, i64 } %t20, ptr %v.s
+  %t21 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
+  %t22 = load ptr, ptr %t21
+  %t23 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 1
+  %t24 = load i64, ptr %t23
+  %t25 = sext i32 0 to i64
+  %t26 = icmp uge i64 %t25, %t24
+  br i1 %t26, label %panic.3, label %panic.ok.3
+panic.3:
+  call void @willrt_panic(ptr @.str.13, ptr @.str.14, ptr @.str.15)
   unreachable
-try.ok.2:
-  %t19 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.22, i32 0, i32 2
-  store { ptr, i64 } zeroinitializer, ptr %v.try.out.21
-  %t20 = load { ptr, i64 }, ptr %t19
-  store { ptr, i64 } %t20, ptr %v.try.out.21
-  %t21 = getelementptr inbounds i8, ptr %v.cwd, i64 0
-  %t22 = getelementptr inbounds i8, ptr %v.try.out.21, i64 0
-  %t23 = load ptr, ptr %t22
-  call void @willrt_gc_write_barrier_untagged(ptr %t21, ptr %t23)
-  %t24 = load { ptr, i64 }, ptr %v.try.out.21
-  store { ptr, i64 } %t24, ptr %v.cwd
-  store { ptr, i64 } zeroinitializer, ptr %v.try.out.21
-  %t25 = getelementptr inbounds { ptr, i64 }, ptr %v.try.out.21, i32 0, i32 0
-  %t26 = call ptr @willrt_gc_read_barrier_slot(ptr %t25)
-  call void @willrt_free_str(ptr %t26)
-  store { ptr, i64 } zeroinitializer, ptr %v.try.out.21
-  %t27 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.26, i32 0, i32 0
-  store i32 0, ptr %t27
-  %t28 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.26, i32 0, i32 2
-  %t29 = getelementptr { ptr, i64 }, ptr null, i32 1
-  %t30 = ptrtoint ptr %t29 to i64
-  %t31 = call ptr @willrt_plate_new(i64 2, i64 %t30)
-  %t32 = getelementptr { ptr, i64 }, ptr %t31, i64 0
-  %t33 = load { ptr, i64 }, ptr %v.cwd
-  store { ptr, i64 } %t33, ptr %t32
-  %t34 = getelementptr { ptr, i64 }, ptr %t31, i64 1
-  %t35 = load { ptr, i64 }, ptr %p
-  store { ptr, i64 } %t35, ptr %t34
-  %t36 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.29, i32 0, i32 0
-  store ptr %t31, ptr %t36
-  %t37 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.29, i32 0, i32 1
-  store i64 2, ptr %t37
-  call void @willrt_gc_safepoint(i32 3)
-  %t38 = call { ptr, i64 } @"std/os/path.join"(ptr %v.varargs.29)
-  store { ptr, i64 } %t38, ptr %v.ret.29
-  call void @willrt_gc_safepoint(i32 3)
-  %t39 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.ret.29)
-  store { ptr, i64 } %t39, ptr %v.ret.28
-  %t40 = load { ptr, i64 }, ptr %v.ret.28
-  store { ptr, i64 } %t40, ptr %t28
-  %t41 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.26
-  %t42 = getelementptr inbounds { ptr, i64 }, ptr %v.cwd, i32 0, i32 0
-  %t43 = call ptr @willrt_gc_read_barrier_slot(ptr %t42)
-  call void @willrt_free_str(ptr %t43)
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret { i32, [4 x i8], { ptr, i64 } } %t41
-}
-define hidden i64 @"std/os/path.scalar_width"(i32 %c) alwaysinline {
-entry:
-  %t1 = icmp ule i32 %c, 127
-  br i1 %t1, label %if.then.1, label %if.end.1
-if.then.1:
-  ret i64 1
-if.end.1:
-  %t2 = icmp ule i32 %c, 2047
-  br i1 %t2, label %if.then.2, label %if.end.2
-if.then.2:
-  ret i64 2
-if.end.2:
-  %t3 = icmp ule i32 %c, 65535
-  br i1 %t3, label %if.then.3, label %if.end.3
-if.then.3:
-  ret i64 3
-if.end.3:
-  ret i64 4
-}
-define hidden { ptr, i64 } @"std/os/path.base"(ptr %p) inlinehint {
-entry:
-  %v.volumeEnd = alloca i64
-  %v.start = alloca i64
-  %v.end = alloca i64
-  %v.seen = alloca i1
-  %v.fresh = alloca i1
-  %v.tail = alloca { ptr, i64 }
-  %v.gcroots = alloca [2 x ptr]
-  store [2 x ptr] zeroinitializer, ptr %v.gcroots
-  %v.gcframe = alloca %willrt_gc_frame
-  %t4 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 0
-  %t5 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 1
-  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.base", ptr %v.gcroots)
-  %v.ret.116 = alloca { ptr, i64 }
-  %t6 = getelementptr i8, ptr %v.tail, i64 0
-  store ptr %t6, ptr %t5
-  %v.str.42 = alloca { ptr, i64 }
-  %v.str.114 = alloca { ptr, i64 }
-  %v.utf8.65 = alloca i32
-  %v.utf8n.65 = alloca i64
-  %v.cast.119 = alloca { ptr, i64 }
-  %v.slice.121 = alloca { ptr, i64 }
-  %v.i = alloca i64
-  %v.c = alloca i32
-  %t7 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
-  %t8 = load i64, ptr %t7
-  %t9 = icmp eq i64 %t8, 0
-  br i1 %t9, label %if.then.1, label %if.end.1
-if.then.1:
-  %t10 = getelementptr inbounds { ptr, i64 }, ptr %v.str.42, i32 0, i32 0
-  store ptr @.bytes.9, ptr %t10
-  %t11 = getelementptr inbounds { ptr, i64 }, ptr %v.str.42, i32 0, i32 1
-  store i64 1, ptr %t11
-  %t12 = load { ptr, i64 }, ptr %v.str.42
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret { ptr, i64 } %t12
-if.end.1:
-  store i64 0, ptr %v.volumeEnd
-  call void @willrt_gc_safepoint(i32 3)
-  %t13 = call i1 @"std/os/path.has_drive"(ptr %p)
-  br i1 %t13, label %if.then.2, label %if.end.2
-if.then.2:
-  store i64 2, ptr %v.volumeEnd
-  br label %if.end.2
-if.end.2:
-  store i64 0, ptr %v.start
-  store i64 0, ptr %v.end
-  store i1 false, ptr %v.seen
-  store i1 true, ptr %v.fresh
-  %t14 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 0
-  %t15 = load ptr, ptr %t14
-  %t16 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
-  %t17 = load i64, ptr %t16
-  store i64 0, ptr %v.i
-  br label %for.cond.3
-for.cond.3:
-  %t18 = load i64, ptr %v.i
-  %t19 = icmp ult i64 %t18, %t17
-  br i1 %t19, label %for.body.3, label %for.end.3
-for.body.3:
-  %t20 = getelementptr inbounds i8, ptr %t15, i64 %t18
-  %t21 = sub i64 %t17, %t18
-  %t22 = call i32 @willrt_utf8_decode(ptr %t20, i64 %t21, ptr %v.utf8.65)
-  %t23 = icmp sle i32 %t22, 0
-  br i1 %t23, label %panic.4, label %panic.ok.4
+panic.ok.3:
+  %t27 = getelementptr inbounds i8, ptr %t22, i64 %t25
+  %t28 = sub i64 %t24, %t25
+  %t29 = call i32 @willrt_utf8_decode(ptr %t27, i64 %t28, ptr %v.utf8.23)
+  %t30 = icmp sle i32 %t29, 0
+  br i1 %t30, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.15, ptr @.str.16)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.14, ptr @.str.15)
   unreachable
 panic.ok.4:
-  %t24 = sext i32 %t22 to i64
-  store i64 %t24, ptr %v.utf8n.65
-  %t25 = load i32, ptr %v.utf8.65
-  store i32 %t25, ptr %v.c
-  %t26 = load i64, ptr %v.i
-  %t27 = load i64, ptr %v.volumeEnd
-  %t28 = icmp ult i64 %t26, %t27
-  br i1 %t28, label %if.then.5, label %if.end.5
-if.then.5:
-  br label %for.step.3
-if.end.5:
-  %t29 = load i32, ptr %v.c
+  %t31 = load i32, ptr %v.utf8.23
   call void @willrt_gc_safepoint(i32 3)
-  %t30 = call i1 @"std/os/path.is_separator"(i32 %t29)
-  br i1 %t30, label %if.then.6, label %if.else.6
-if.then.6:
-  store i1 true, ptr %v.fresh
-  br label %if.end.6
-if.else.6:
-  %t31 = load i1, ptr %v.fresh
-  br i1 %t31, label %if.then.7, label %if.end.7
-if.then.7:
-  %t32 = load i64, ptr %v.i
-  store i64 %t32, ptr %v.start
-  store i1 false, ptr %v.fresh
-  br label %if.end.7
-if.end.7:
-  %t33 = load i64, ptr %v.i
-  %t34 = load i32, ptr %v.c
+  %t32 = call i1 @"std/os/path.is_separator"(i32 %t31)
   call void @willrt_gc_safepoint(i32 3)
-  %t35 = call i64 @"std/os/path.scalar_width"(i32 %t34)
-  %t36 = call {i64, i1} @llvm.uadd.with.overflow.i64(i64 %t33, i64 %t35)
-  %t37 = extractvalue {i64, i1} %t36, 0
-  %t38 = extractvalue {i64, i1} %t36, 1
-  br i1 %t38, label %panic.8, label %panic.ok.8
-panic.8:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.17, ptr @.str.16)
-  unreachable
-panic.ok.8:
-  store i64 %t37, ptr %v.end
-  store i1 true, ptr %v.seen
-  br label %if.end.6
-if.end.6:
-  br label %for.step.3
-for.step.3:
-  %t39 = load i64, ptr %v.i
-  %t40 = load i64, ptr %v.utf8n.65
-  %t41 = add i64 %t39, %t40
-  store i64 %t41, ptr %v.i
-  br label %for.cond.3
-for.end.3:
-  %t42 = load i1, ptr %v.seen
-  %t43 = xor i1 %t42, true
-  br i1 %t43, label %if.then.9, label %if.end.9
-if.then.9:
-  %t44 = load i64, ptr %v.volumeEnd
-  %t45 = icmp ugt i64 %t44, 0
+  %t33 = call i1 @"std/os/path.is_drive_abs"(ptr %v.s)
+  %t34 = or i1 %t32, %t33
+  br i1 %t34, label %if.then.2, label %if.end.2
+if.then.2:
+  %t35 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.31, i32 0, i32 0
+  store i32 0, ptr %t35
+  %t36 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.31, i32 0, i32 2
   call void @willrt_gc_safepoint(i32 3)
-  %t46 = call i1 @"std/os/path.is_drive_abs"(ptr %p)
-  %t47 = xor i1 %t46, true
-  %t48 = and i1 %t45, %t47
-  br i1 %t48, label %if.then.10, label %if.end.10
-if.then.10:
-  %t49 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 0
-  store ptr @.bytes.9, ptr %t49
-  %t50 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 1
-  store i64 1, ptr %t50
-  %t51 = load { ptr, i64 }, ptr %v.str.114
+  %t37 = call { ptr, i64 } @"std/os/path.clean"(ptr %p)
+  store { ptr, i64 } %t37, ptr %v.ret.33
+  %t38 = load { ptr, i64 }, ptr %v.ret.33
+  store { ptr, i64 } %t38, ptr %t36
+  %t39 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.31
+  %t40 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
+  %t41 = call ptr @willrt_gc_read_barrier_slot(ptr %t40)
+  call void @willrt_free_str(ptr %t41)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret { ptr, i64 } %t51
-if.end.10:
+  ret { i32, [4 x i8], { ptr, i64 } } %t39
+if.end.2:
+  %t42 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
+  %t43 = call ptr @willrt_gc_read_barrier_slot(ptr %t42)
+  call void @willrt_free_str(ptr %t43)
+  br label %if.end.1
+if.end.1:
   call void @willrt_gc_safepoint(i32 3)
-  %t52 = call { ptr, i64 } @"std/os/path.separator_string"()
-  store { ptr, i64 } %t52, ptr %v.ret.116
-  %t53 = load { ptr, i64 }, ptr %v.ret.116
+  %t44 = call { i32, [4 x i8], { ptr, i64 } } @"std/os.cwd"()
+  store { i32, [4 x i8], { ptr, i64 } } %t44, ptr %v.ret.39
+  %t45 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.39, i32 0, i32 0
+  %t46 = load i32, ptr %t45
+  %t47 = icmp eq i32 %t46, 1
+  br i1 %t47, label %try.err.5, label %try.ok.5
+try.err.5:
+  %t48 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.try.38, i32 0, i32 0
+  store i32 1, ptr %t48
+  %t49 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.39, i32 0, i32 2
+  %t50 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.try.38, i32 0, i32 2
+  %t51 = load %interface.Error, ptr %t49
+  store %interface.Error %t51, ptr %t50
+  %t52 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.try.38
+  ret { i32, [4 x i8], { ptr, i64 } } %t52
+  unreachable
+try.ok.5:
+  %t53 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.39, i32 0, i32 2
+  store { ptr, i64 } zeroinitializer, ptr %v.try.out.38
+  %t54 = load { ptr, i64 }, ptr %t53
+  store { ptr, i64 } %t54, ptr %v.try.out.38
+  %t55 = getelementptr inbounds i8, ptr %v.cwd, i64 0
+  %t56 = getelementptr inbounds i8, ptr %v.try.out.38, i64 0
+  %t57 = load ptr, ptr %t56
+  call void @willrt_gc_write_barrier_untagged(ptr %t55, ptr %t57)
+  %t58 = load { ptr, i64 }, ptr %v.try.out.38
+  store { ptr, i64 } %t58, ptr %v.cwd
+  store { ptr, i64 } zeroinitializer, ptr %v.try.out.38
+  %t59 = getelementptr inbounds { ptr, i64 }, ptr %v.try.out.38, i32 0, i32 0
+  %t60 = call ptr @willrt_gc_read_barrier_slot(ptr %t59)
+  call void @willrt_free_str(ptr %t60)
+  store { ptr, i64 } zeroinitializer, ptr %v.try.out.38
+  %t61 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.43, i32 0, i32 0
+  store i32 0, ptr %t61
+  %t62 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.43, i32 0, i32 2
+  %t63 = getelementptr { ptr, i64 }, ptr null, i32 1
+  %t64 = ptrtoint ptr %t63 to i64
+  %t65 = call ptr @willrt_plate_new(i64 2, i64 %t64)
+  %t66 = getelementptr { ptr, i64 }, ptr %t65, i64 0
+  %t67 = load { ptr, i64 }, ptr %v.cwd
+  store { ptr, i64 } %t67, ptr %t66
+  %t68 = getelementptr { ptr, i64 }, ptr %t65, i64 1
+  %t69 = load { ptr, i64 }, ptr %p
+  store { ptr, i64 } %t69, ptr %t68
+  %t70 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.46, i32 0, i32 0
+  store ptr %t65, ptr %t70
+  %t71 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.46, i32 0, i32 1
+  store i64 2, ptr %t71
+  call void @willrt_gc_safepoint(i32 3)
+  %t72 = call { ptr, i64 } @"std/os/path.join"(ptr %v.varargs.46)
+  store { ptr, i64 } %t72, ptr %v.ret.46
+  call void @willrt_gc_safepoint(i32 3)
+  %t73 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.ret.46)
+  store { ptr, i64 } %t73, ptr %v.ret.45
+  %t74 = load { ptr, i64 }, ptr %v.ret.45
+  store { ptr, i64 } %t74, ptr %t62
+  %t75 = load { i32, [4 x i8], { ptr, i64 } }, ptr %v.adt.43
+  %t76 = getelementptr inbounds { ptr, i64 }, ptr %v.cwd, i32 0, i32 0
+  %t77 = call ptr @willrt_gc_read_barrier_slot(ptr %t76)
+  call void @willrt_free_str(ptr %t77)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret { ptr, i64 } %t53
-if.end.9:
-  %t54 = load i64, ptr %v.start
-  %t55 = load i64, ptr %v.end
-  %t56 = icmp ugt i64 %t54, %t55
-  br i1 %t56, label %panic.11, label %panic.ok.11
-panic.11:
-  call void @willrt_panic(ptr @.str.18, ptr @.str.19, ptr @.str.16)
-  unreachable
-panic.ok.11:
-  %t57 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 0
-  %t58 = load ptr, ptr %t57
-  %t59 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
-  %t60 = load i64, ptr %t59
-  %t61 = icmp ugt i64 %t55, %t60
-  br i1 %t61, label %panic.12, label %panic.ok.12
-panic.12:
-  call void @willrt_panic(ptr @.str.18, ptr @.str.19, ptr @.str.16)
-  unreachable
-panic.ok.12:
-  %t62 = getelementptr inbounds i8, ptr %t58, i64 %t54
-  %t63 = sub i64 %t55, %t54
-  %t64 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.121, i32 0, i32 0
-  store ptr %t62, ptr %t64
-  %t65 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.121, i32 0, i32 1
-  store i64 %t63, ptr %t65
-  %t66 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.121, i32 0, i32 0
-  %t67 = load ptr, ptr %t66
-  %t68 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.121, i32 0, i32 1
-  %t69 = load i64, ptr %t68
-  %t70 = call i32 @willrt_utf8_valid(ptr %t67, i64 %t69)
-  %t71 = icmp eq i32 %t70, 0
-  br i1 %t71, label %utf8.bad.13, label %utf8.ok.13
-utf8.bad.13:
-  call void @willrt_panic_n(ptr @.str.14, i64 13, ptr @.str.20, ptr @.str.16)
-  unreachable
-utf8.ok.13:
-  %t72 = call ptr @willrt_gc_alloc(i64 %t69, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t72, ptr %t67, i64 %t69)
-  %t73 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.119, i32 0, i32 0
-  store ptr %t72, ptr %t73
-  %t74 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.119, i32 0, i32 1
-  store i64 %t69, ptr %t74
-  %t75 = getelementptr inbounds i8, ptr %v.tail, i64 0
-  %t76 = getelementptr inbounds i8, ptr %v.cast.119, i64 0
-  %t77 = load ptr, ptr %t76
-  call void @willrt_gc_write_barrier_untagged(ptr %t75, ptr %t77)
-  %t78 = load { ptr, i64 }, ptr %v.cast.119
-  store { ptr, i64 } %t78, ptr %v.tail
-  %t79 = load { ptr, i64 }, ptr %v.tail
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret { ptr, i64 } %t79
+  ret { i32, [4 x i8], { ptr, i64 } } %t75
 }
 define hidden i1 @"std/os/path.is_dot_element"(ptr %p, i64 %a, i64 %b) inlinehint {
 entry:
@@ -1082,7 +926,7 @@ entry:
   %t6 = extractvalue {i64, i1} %t4, 1
   br i1 %t6, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.21, ptr @.str.22)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.17, ptr @.str.18)
   unreachable
 panic.ok.2:
   %t7 = icmp ne i64 %t5, 1
@@ -1116,7 +960,7 @@ if.end.1:
   %t24 = icmp uge i64 %a, %t23
   br i1 %t24, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.24, ptr @.str.22)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.19, ptr @.str.18)
   unreachable
 panic.ok.3:
   %t25 = getelementptr inbounds i8, ptr %t21, i64 %a
@@ -1125,7 +969,7 @@ panic.ok.3:
   %t28 = icmp sle i32 %t27, 0
   br i1 %t28, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.24, ptr @.str.22)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.19, ptr @.str.18)
   unreachable
 panic.ok.4:
   %t29 = load i32, ptr %v.utf8.26
@@ -1162,7 +1006,7 @@ entry:
   %t39 = extractvalue {i64, i1} %t37, 1
   br i1 %t39, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.25, ptr @.str.26)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.20, ptr @.str.21)
   unreachable
 panic.ok.2:
   %t40 = icmp ne i64 %t38, 2
@@ -1176,7 +1020,7 @@ if.end.1:
   %t43 = extractvalue {i64, i1} %t41, 1
   br i1 %t43, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.27, ptr @.str.26)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.22, ptr @.str.21)
   unreachable
 panic.ok.3:
   store i64 %t42, ptr %v.second
@@ -1205,7 +1049,7 @@ panic.ok.3:
   %t60 = icmp uge i64 %a, %t59
   br i1 %t60, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.28, ptr @.str.26)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.23, ptr @.str.21)
   unreachable
 panic.ok.4:
   %t61 = getelementptr inbounds i8, ptr %t57, i64 %a
@@ -1214,7 +1058,7 @@ panic.ok.4:
   %t64 = icmp sle i32 %t63, 0
   br i1 %t64, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.28, ptr @.str.26)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.23, ptr @.str.21)
   unreachable
 panic.ok.5:
   %t65 = load i32, ptr %v.utf8.62
@@ -1227,7 +1071,7 @@ panic.ok.5:
   %t71 = icmp uge i64 %t70, %t69
   br i1 %t71, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.29, ptr @.str.26)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.24, ptr @.str.21)
   unreachable
 panic.ok.6:
   %t72 = getelementptr inbounds i8, ptr %t67, i64 %t70
@@ -1236,7 +1080,7 @@ panic.ok.6:
   %t75 = icmp sle i32 %t74, 0
   br i1 %t75, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.29, ptr @.str.26)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.24, ptr @.str.21)
   unreachable
 panic.ok.7:
   %t76 = load i32, ptr %v.utf8.67
@@ -1289,7 +1133,7 @@ if.then.4:
   %t92 = extractvalue {i64, i1} %t90, 1
   br i1 %t92, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.30, ptr @.str.31)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.25, ptr @.str.26)
   unreachable
 panic.ok.5:
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
@@ -1306,7 +1150,7 @@ if.then.6:
   %t96 = extractvalue {i64, i1} %t94, 1
   br i1 %t96, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.32, ptr @.str.31)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.27, ptr @.str.26)
   unreachable
 panic.ok.7:
   store i64 %t95, ptr %v.top
@@ -1322,7 +1166,7 @@ panic.ok.7:
   %t105 = icmp uge i64 %t100, %t104
   br i1 %t105, label %panic.8, label %panic.ok.8
 panic.8:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.33, ptr @.str.31)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.28, ptr @.str.26)
   unreachable
 panic.ok.8:
   %t106 = getelementptr inbounds i64, ptr %t102, i64 %t100
@@ -1341,7 +1185,7 @@ panic.ok.8:
   %t116 = icmp uge i64 %t111, %t115
   br i1 %t116, label %panic.9, label %panic.ok.9
 panic.9:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.34, ptr @.str.31)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.29, ptr @.str.26)
   unreachable
 panic.ok.9:
   %t117 = getelementptr inbounds i64, ptr %t113, i64 %t111
@@ -1360,7 +1204,7 @@ if.then.10:
   %t125 = extractvalue {i64, i1} %t123, 1
   br i1 %t125, label %panic.11, label %panic.ok.11
 panic.11:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.35, ptr @.str.31)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.30, ptr @.str.26)
   unreachable
 panic.ok.11:
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
@@ -1391,7 +1235,7 @@ if.then.12:
   %t139 = icmp uge i64 %count, %t138
   br i1 %t139, label %panic.13, label %panic.ok.13
 panic.13:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.36, ptr @.str.31)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.31, ptr @.str.26)
   unreachable
 panic.ok.13:
   %t140 = getelementptr inbounds i64, ptr %t136, i64 %count
@@ -1475,7 +1319,7 @@ if.then.15:
   %t185 = icmp uge i64 %count, %t184
   br i1 %t185, label %panic.16, label %panic.ok.16
 panic.16:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.37, ptr @.str.31)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.32, ptr @.str.26)
   unreachable
 panic.ok.16:
   %t186 = getelementptr inbounds i64, ptr %t182, i64 %count
@@ -1543,7 +1387,7 @@ if.end.15:
   %t220 = extractvalue {i64, i1} %t218, 1
   br i1 %t220, label %panic.18, label %panic.ok.18
 panic.18:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.38, ptr @.str.31)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.33, ptr @.str.26)
   unreachable
 panic.ok.18:
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
@@ -1673,7 +1517,7 @@ if.then.2:
   %t258 = icmp uge i64 %t257, %t256
   br i1 %t258, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.39, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.34, ptr @.str.35)
   unreachable
 panic.ok.3:
   %t259 = getelementptr inbounds i8, ptr %t254, i64 %t257
@@ -1682,7 +1526,7 @@ panic.ok.3:
   %t262 = icmp sle i32 %t261, 0
   br i1 %t262, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.39, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.34, ptr @.str.35)
   unreachable
 panic.ok.4:
   %t263 = load i32, ptr %v.utf8.233
@@ -1712,7 +1556,7 @@ if.then.6:
   %t273 = icmp uge i64 %t272, %t271
   br i1 %t273, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.41, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.36, ptr @.str.35)
   unreachable
 panic.ok.7:
   %t274 = getelementptr inbounds i8, ptr %t269, i64 %t272
@@ -1721,7 +1565,7 @@ panic.ok.7:
   %t277 = icmp sle i32 %t276, 0
   br i1 %t277, label %panic.8, label %panic.ok.8
 panic.8:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.41, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.36, ptr @.str.35)
   unreachable
 panic.ok.8:
   %t278 = load i32, ptr %v.utf8.253
@@ -1786,7 +1630,7 @@ for.body.10:
   %t306 = icmp sle i32 %t305, 0
   br i1 %t306, label %panic.11, label %panic.ok.11
 panic.11:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.42, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.37, ptr @.str.35)
   unreachable
 panic.ok.11:
   %t307 = sext i32 %t305 to i64
@@ -1880,7 +1724,7 @@ if.then.17:
   %t348 = icmp uge i64 %t347, %t346
   br i1 %t348, label %panic.18, label %panic.ok.18
 panic.18:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.43, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.38, ptr @.str.35)
   unreachable
 panic.ok.18:
   %t349 = getelementptr inbounds i8, ptr %t344, i64 %t347
@@ -1889,7 +1733,7 @@ panic.ok.18:
   %t352 = icmp sle i32 %t351, 0
   br i1 %t352, label %panic.19, label %panic.ok.19
 panic.19:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.43, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.38, ptr @.str.35)
   unreachable
 panic.ok.19:
   %t353 = load i32, ptr %v.utf8.349
@@ -1902,7 +1746,7 @@ panic.ok.19:
   %t359 = icmp uge i64 %t358, %t357
   br i1 %t359, label %panic.20, label %panic.ok.20
 panic.20:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.44, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.39, ptr @.str.35)
   unreachable
 panic.ok.20:
   %t360 = getelementptr inbounds i8, ptr %t355, i64 %t358
@@ -1911,7 +1755,7 @@ panic.ok.20:
   %t363 = icmp sle i32 %t362, 0
   br i1 %t363, label %panic.21, label %panic.ok.21
 panic.21:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.44, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.39, ptr @.str.35)
   unreachable
 panic.ok.21:
   %t364 = load i32, ptr %v.utf8.354
@@ -1964,7 +1808,7 @@ arr.ready.22:
   %t393 = icmp ugt i32 %t392, 255
   br i1 %t393, label %panic.23, label %panic.ok.23
 panic.23:
-  call void @willrt_panic(ptr @.str.45, ptr @.str.46, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.40, ptr @.str.41, ptr @.str.35)
   unreachable
 panic.ok.23:
   %t394 = trunc i32 %t392 to i8
@@ -2021,7 +1865,7 @@ arr.ready.24:
   %t424 = icmp ugt i32 %t423, 255
   br i1 %t424, label %panic.25, label %panic.ok.25
 panic.25:
-  call void @willrt_panic(ptr @.str.45, ptr @.str.47, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.40, ptr @.str.42, ptr @.str.35)
   unreachable
 panic.ok.25:
   %t425 = trunc i32 %t423 to i8
@@ -2168,7 +2012,7 @@ if.end.30:
   %t499 = icmp uge i64 %t494, %t498
   br i1 %t499, label %panic.32, label %panic.ok.32
 panic.32:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.48, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.43, ptr @.str.35)
   unreachable
 panic.ok.32:
   %t500 = getelementptr inbounds i64, ptr %t496, i64 %t494
@@ -2187,7 +2031,7 @@ panic.ok.32:
   %t510 = icmp uge i64 %t505, %t509
   br i1 %t510, label %panic.33, label %panic.ok.33
 panic.33:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.49, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.44, ptr @.str.35)
   unreachable
 panic.ok.33:
   %t511 = getelementptr inbounds i64, ptr %t507, i64 %t505
@@ -2203,7 +2047,7 @@ panic.ok.33:
   %t518 = icmp ugt i64 %t516, %t517
   br i1 %t518, label %panic.34, label %panic.ok.34
 panic.34:
-  call void @willrt_panic(ptr @.str.18, ptr @.str.50, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.46, ptr @.str.35)
   unreachable
 panic.ok.34:
   %t519 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
@@ -2213,7 +2057,7 @@ panic.ok.34:
   %t523 = icmp ugt i64 %t517, %t522
   br i1 %t523, label %panic.35, label %panic.ok.35
 panic.35:
-  call void @willrt_panic(ptr @.str.18, ptr @.str.50, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.46, ptr @.str.35)
   unreachable
 panic.ok.35:
   %t524 = getelementptr inbounds i8, ptr %t520, i64 %t516
@@ -2309,7 +2153,7 @@ append.done.36:
   %t575 = extractvalue {i64, i1} %t573, 1
   br i1 %t575, label %panic.38, label %panic.ok.38
 panic.38:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.51, ptr @.str.40)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.47, ptr @.str.35)
   unreachable
 panic.ok.38:
   store i64 %t574, ptr %v.k
@@ -2334,7 +2178,7 @@ if.then.40:
   %t588 = icmp eq i32 %t587, 0
   br i1 %t588, label %utf8.bad.41, label %utf8.ok.41
 utf8.bad.41:
-  call void @willrt_panic_n(ptr @.str.14, i64 13, ptr @.str.52, ptr @.str.40)
+  call void @willrt_panic_n(ptr @.str.16, i64 13, ptr @.str.48, ptr @.str.35)
   unreachable
 utf8.ok.41:
   %t589 = call ptr @willrt_gc_alloc(i64 %t586, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
@@ -2506,7 +2350,7 @@ if.end.39:
   %t682 = icmp eq i32 %t681, 0
   br i1 %t682, label %utf8.bad.50, label %utf8.ok.50
 utf8.bad.50:
-  call void @willrt_panic_n(ptr @.str.14, i64 13, ptr @.str.53, ptr @.str.40)
+  call void @willrt_panic_n(ptr @.str.16, i64 13, ptr @.str.50, ptr @.str.35)
   unreachable
 utf8.ok.50:
   %t683 = call ptr @willrt_gc_alloc(i64 %t680, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
@@ -2569,370 +2413,6 @@ deep.rel.arr.done.53:
   call void @willrt_free_str(ptr %t715)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret { ptr, i64 } %t686
-}
-define hidden { ptr, i64 } @"std/os/path.dir"(ptr %p) inlinehint {
-entry:
-  %v.last = alloca i64
-  %v.found = alloca i1
-  %v.after = alloca i64
-  %v.head = alloca { ptr, i64 }
-  %v.gcroots = alloca [2 x ptr]
-  store [2 x ptr] zeroinitializer, ptr %v.gcroots
-  %v.gcframe = alloca %willrt_gc_frame
-  %t1 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 0
-  %t2 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 1
-  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.dir", ptr %v.gcroots)
-  %v.ret.47 = alloca { ptr, i64 }
-  %t3 = getelementptr i8, ptr %v.head, i64 0
-  store ptr %t3, ptr %t2
-  %v.str.31 = alloca { ptr, i64 }
-  %v.utf8.13 = alloca i32
-  %v.utf8n.13 = alloca i64
-  %v.cast.39 = alloca { ptr, i64 }
-  %v.slice.41 = alloca { ptr, i64 }
-  %v.i = alloca i64
-  %v.c = alloca i32
-  store i64 0, ptr %v.last
-  store i1 false, ptr %v.found
-  %t4 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 0
-  %t5 = load ptr, ptr %t4
-  %t6 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
-  %t7 = load i64, ptr %t6
-  store i64 0, ptr %v.i
-  br label %for.cond.1
-for.cond.1:
-  %t8 = load i64, ptr %v.i
-  %t9 = icmp ult i64 %t8, %t7
-  br i1 %t9, label %for.body.1, label %for.end.1
-for.body.1:
-  %t10 = getelementptr inbounds i8, ptr %t5, i64 %t8
-  %t11 = sub i64 %t7, %t8
-  %t12 = call i32 @willrt_utf8_decode(ptr %t10, i64 %t11, ptr %v.utf8.13)
-  %t13 = icmp sle i32 %t12, 0
-  br i1 %t13, label %panic.2, label %panic.ok.2
-panic.2:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.54, ptr @.str.55)
-  unreachable
-panic.ok.2:
-  %t14 = sext i32 %t12 to i64
-  store i64 %t14, ptr %v.utf8n.13
-  %t15 = load i32, ptr %v.utf8.13
-  store i32 %t15, ptr %v.c
-  %t16 = load i32, ptr %v.c
-  call void @willrt_gc_safepoint(i32 3)
-  %t17 = call i1 @"std/os/path.is_separator"(i32 %t16)
-  br i1 %t17, label %if.then.3, label %if.end.3
-if.then.3:
-  %t18 = load i64, ptr %v.i
-  store i64 %t18, ptr %v.last
-  store i1 true, ptr %v.found
-  br label %if.end.3
-if.end.3:
-  br label %for.step.1
-for.step.1:
-  %t19 = load i64, ptr %v.i
-  %t20 = load i64, ptr %v.utf8n.13
-  %t21 = add i64 %t19, %t20
-  store i64 %t21, ptr %v.i
-  br label %for.cond.1
-for.end.1:
-  %t22 = load i1, ptr %v.found
-  %t23 = xor i1 %t22, true
-  br i1 %t23, label %if.then.4, label %if.end.4
-if.then.4:
-  %t24 = getelementptr inbounds { ptr, i64 }, ptr %v.str.31, i32 0, i32 0
-  store ptr @.bytes.9, ptr %t24
-  %t25 = getelementptr inbounds { ptr, i64 }, ptr %v.str.31, i32 0, i32 1
-  store i64 1, ptr %t25
-  %t26 = load { ptr, i64 }, ptr %v.str.31
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret { ptr, i64 } %t26
-if.end.4:
-  %t27 = load i64, ptr %v.last
-  %t28 = call {i64, i1} @llvm.uadd.with.overflow.i64(i64 %t27, i64 1)
-  %t29 = extractvalue {i64, i1} %t28, 0
-  %t30 = extractvalue {i64, i1} %t28, 1
-  br i1 %t30, label %panic.5, label %panic.ok.5
-panic.5:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.56, ptr @.str.55)
-  unreachable
-panic.ok.5:
-  store i64 %t29, ptr %v.after
-  %t31 = load i64, ptr %v.after
-  %t32 = icmp ugt i64 0, %t31
-  br i1 %t32, label %panic.6, label %panic.ok.6
-panic.6:
-  call void @willrt_panic(ptr @.str.18, ptr @.str.57, ptr @.str.55)
-  unreachable
-panic.ok.6:
-  %t33 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 0
-  %t34 = load ptr, ptr %t33
-  %t35 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
-  %t36 = load i64, ptr %t35
-  %t37 = icmp ugt i64 %t31, %t36
-  br i1 %t37, label %panic.7, label %panic.ok.7
-panic.7:
-  call void @willrt_panic(ptr @.str.18, ptr @.str.57, ptr @.str.55)
-  unreachable
-panic.ok.7:
-  %t38 = getelementptr inbounds i8, ptr %t34, i64 0
-  %t39 = sub i64 %t31, 0
-  %t40 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.41, i32 0, i32 0
-  store ptr %t38, ptr %t40
-  %t41 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.41, i32 0, i32 1
-  store i64 %t39, ptr %t41
-  %t42 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.41, i32 0, i32 0
-  %t43 = load ptr, ptr %t42
-  %t44 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.41, i32 0, i32 1
-  %t45 = load i64, ptr %t44
-  %t46 = call i32 @willrt_utf8_valid(ptr %t43, i64 %t45)
-  %t47 = icmp eq i32 %t46, 0
-  br i1 %t47, label %utf8.bad.8, label %utf8.ok.8
-utf8.bad.8:
-  call void @willrt_panic_n(ptr @.str.14, i64 13, ptr @.str.58, ptr @.str.55)
-  unreachable
-utf8.ok.8:
-  %t48 = call ptr @willrt_gc_alloc(i64 %t45, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t48, ptr %t43, i64 %t45)
-  %t49 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.39, i32 0, i32 0
-  store ptr %t48, ptr %t49
-  %t50 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.39, i32 0, i32 1
-  store i64 %t45, ptr %t50
-  %t51 = getelementptr inbounds i8, ptr %v.head, i64 0
-  %t52 = getelementptr inbounds i8, ptr %v.cast.39, i64 0
-  %t53 = load ptr, ptr %t52
-  call void @willrt_gc_write_barrier_untagged(ptr %t51, ptr %t53)
-  %t54 = load { ptr, i64 }, ptr %v.cast.39
-  store { ptr, i64 } %t54, ptr %v.head
-  call void @willrt_gc_safepoint(i32 3)
-  %t55 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.head)
-  store { ptr, i64 } %t55, ptr %v.ret.47
-  %t56 = load { ptr, i64 }, ptr %v.ret.47
-  %t57 = getelementptr inbounds { ptr, i64 }, ptr %v.head, i32 0, i32 0
-  %t58 = call ptr @willrt_gc_read_barrier_slot(ptr %t57)
-  call void @willrt_free_str(ptr %t58)
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret { ptr, i64 } %t56
-}
-define hidden { ptr, i64 } @"std/os/path.ext"(ptr %p) inlinehint {
-entry:
-  %v.at = alloca i64
-  %v.found = alloca i1
-  %v.suffix = alloca { ptr, i64 }
-  %v.gcroots = alloca [2 x ptr]
-  store [2 x ptr] zeroinitializer, ptr %v.gcroots
-  %v.gcframe = alloca %willrt_gc_frame
-  %t1 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 0
-  %t2 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 1
-  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.ext", ptr %v.gcroots)
-  %t3 = getelementptr i8, ptr %v.suffix, i64 0
-  store ptr %t3, ptr %t2
-  %v.str.38 = alloca { ptr, i64 }
-  %v.utf8.13 = alloca i32
-  %v.utf8n.13 = alloca i64
-  %v.cast.41 = alloca { ptr, i64 }
-  %v.slice.43 = alloca { ptr, i64 }
-  %v.i = alloca i64
-  %v.c = alloca i32
-  store i64 0, ptr %v.at
-  store i1 false, ptr %v.found
-  %t4 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 0
-  %t5 = load ptr, ptr %t4
-  %t6 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
-  %t7 = load i64, ptr %t6
-  store i64 0, ptr %v.i
-  br label %for.cond.1
-for.cond.1:
-  %t8 = load i64, ptr %v.i
-  %t9 = icmp ult i64 %t8, %t7
-  br i1 %t9, label %for.body.1, label %for.end.1
-for.body.1:
-  %t10 = getelementptr inbounds i8, ptr %t5, i64 %t8
-  %t11 = sub i64 %t7, %t8
-  %t12 = call i32 @willrt_utf8_decode(ptr %t10, i64 %t11, ptr %v.utf8.13)
-  %t13 = icmp sle i32 %t12, 0
-  br i1 %t13, label %panic.2, label %panic.ok.2
-panic.2:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.59, ptr @.str.60)
-  unreachable
-panic.ok.2:
-  %t14 = sext i32 %t12 to i64
-  store i64 %t14, ptr %v.utf8n.13
-  %t15 = load i32, ptr %v.utf8.13
-  store i32 %t15, ptr %v.c
-  %t16 = load i32, ptr %v.c
-  call void @willrt_gc_safepoint(i32 3)
-  %t17 = call i1 @"std/os/path.is_separator"(i32 %t16)
-  br i1 %t17, label %if.then.3, label %if.else.3
-if.then.3:
-  store i1 false, ptr %v.found
-  br label %if.end.3
-if.else.3:
-  %t18 = load i32, ptr %v.c
-  call void @willrt_gc_safepoint(i32 3)
-  %t19 = call i1 @"std/os/path.is_dot"(i32 %t18)
-  br i1 %t19, label %if.then.4, label %if.end.4
-if.then.4:
-  %t20 = load i64, ptr %v.i
-  store i64 %t20, ptr %v.at
-  store i1 true, ptr %v.found
-  br label %if.end.4
-if.end.4:
-  br label %if.end.3
-if.end.3:
-  br label %for.step.1
-for.step.1:
-  %t21 = load i64, ptr %v.i
-  %t22 = load i64, ptr %v.utf8n.13
-  %t23 = add i64 %t21, %t22
-  store i64 %t23, ptr %v.i
-  br label %for.cond.1
-for.end.1:
-  %t24 = load i1, ptr %v.found
-  %t25 = xor i1 %t24, true
-  br i1 %t25, label %if.then.5, label %if.end.5
-if.then.5:
-  %t26 = getelementptr inbounds { ptr, i64 }, ptr %v.str.38, i32 0, i32 0
-  store ptr @.bytes.8, ptr %t26
-  %t27 = getelementptr inbounds { ptr, i64 }, ptr %v.str.38, i32 0, i32 1
-  store i64 0, ptr %t27
-  %t28 = load { ptr, i64 }, ptr %v.str.38
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret { ptr, i64 } %t28
-if.end.5:
-  %t29 = load i64, ptr %v.at
-  %t30 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
-  %t31 = load i64, ptr %t30
-  %t32 = icmp ugt i64 %t29, %t31
-  br i1 %t32, label %panic.6, label %panic.ok.6
-panic.6:
-  call void @willrt_panic(ptr @.str.18, ptr @.str.61, ptr @.str.60)
-  unreachable
-panic.ok.6:
-  %t33 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 0
-  %t34 = load ptr, ptr %t33
-  %t35 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
-  %t36 = load i64, ptr %t35
-  %t37 = icmp ugt i64 %t31, %t36
-  br i1 %t37, label %panic.7, label %panic.ok.7
-panic.7:
-  call void @willrt_panic(ptr @.str.18, ptr @.str.61, ptr @.str.60)
-  unreachable
-panic.ok.7:
-  %t38 = getelementptr inbounds i8, ptr %t34, i64 %t29
-  %t39 = sub i64 %t31, %t29
-  %t40 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.43, i32 0, i32 0
-  store ptr %t38, ptr %t40
-  %t41 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.43, i32 0, i32 1
-  store i64 %t39, ptr %t41
-  %t42 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.43, i32 0, i32 0
-  %t43 = load ptr, ptr %t42
-  %t44 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.43, i32 0, i32 1
-  %t45 = load i64, ptr %t44
-  %t46 = call i32 @willrt_utf8_valid(ptr %t43, i64 %t45)
-  %t47 = icmp eq i32 %t46, 0
-  br i1 %t47, label %utf8.bad.8, label %utf8.ok.8
-utf8.bad.8:
-  call void @willrt_panic_n(ptr @.str.14, i64 13, ptr @.str.62, ptr @.str.60)
-  unreachable
-utf8.ok.8:
-  %t48 = call ptr @willrt_gc_alloc(i64 %t45, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t48, ptr %t43, i64 %t45)
-  %t49 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.41, i32 0, i32 0
-  store ptr %t48, ptr %t49
-  %t50 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.41, i32 0, i32 1
-  store i64 %t45, ptr %t50
-  %t51 = getelementptr inbounds i8, ptr %v.suffix, i64 0
-  %t52 = getelementptr inbounds i8, ptr %v.cast.41, i64 0
-  %t53 = load ptr, ptr %t52
-  call void @willrt_gc_write_barrier_untagged(ptr %t51, ptr %t53)
-  %t54 = load { ptr, i64 }, ptr %v.cast.41
-  store { ptr, i64 } %t54, ptr %v.suffix
-  %t55 = load { ptr, i64 }, ptr %v.suffix
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret { ptr, i64 } %t55
-}
-define hidden i1 @"std/os/path.is_abs"(ptr %p) inlinehint {
-entry:
-  %v.s = alloca { ptr, i64 }
-  %v.first = alloca i32
-  %v.gcroots = alloca [2 x ptr]
-  store [2 x ptr] zeroinitializer, ptr %v.gcroots
-  %v.gcframe = alloca %willrt_gc_frame
-  %t1 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 0
-  %t2 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 1
-  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.is_abs", ptr %v.gcroots)
-  %v.ret.17 = alloca { ptr, i64 }
-  %t3 = getelementptr i8, ptr %v.s, i64 0
-  store ptr %t3, ptr %t2
-  %v.utf8.21 = alloca i32
-  %v.strm.17 = alloca { ptr, i64 }
-  %t4 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
-  %t5 = load i64, ptr %t4
-  %t6 = icmp eq i64 %t5, 0
-  br i1 %t6, label %if.then.1, label %if.end.1
-if.then.1:
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i1 false
-if.end.1:
-  %t7 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 0
-  %t8 = load ptr, ptr %t7
-  %t9 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
-  %t10 = load i64, ptr %t9
-  %t11 = call ptr @willrt_gc_alloc(i64 %t10, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t11, ptr %t8, i64 %t10)
-  %t12 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.17, i32 0, i32 0
-  store ptr %t11, ptr %t12
-  %t13 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.17, i32 0, i32 1
-  store i64 %t10, ptr %t13
-  %t14 = load { ptr, i64 }, ptr %v.strm.17
-  store { ptr, i64 } %t14, ptr %v.ret.17
-  %t15 = getelementptr inbounds i8, ptr %v.s, i64 0
-  %t16 = getelementptr inbounds i8, ptr %v.ret.17, i64 0
-  %t17 = load ptr, ptr %t16
-  call void @willrt_gc_write_barrier_untagged(ptr %t15, ptr %t17)
-  %t18 = load { ptr, i64 }, ptr %v.ret.17
-  store { ptr, i64 } %t18, ptr %v.s
-  %t19 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
-  %t20 = load ptr, ptr %t19
-  %t21 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 1
-  %t22 = load i64, ptr %t21
-  %t23 = sext i32 0 to i64
-  %t24 = icmp uge i64 %t23, %t22
-  br i1 %t24, label %panic.2, label %panic.ok.2
-panic.2:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.63, ptr @.str.64)
-  unreachable
-panic.ok.2:
-  %t25 = getelementptr inbounds i8, ptr %t20, i64 %t23
-  %t26 = sub i64 %t22, %t23
-  %t27 = call i32 @willrt_utf8_decode(ptr %t25, i64 %t26, ptr %v.utf8.21)
-  %t28 = icmp sle i32 %t27, 0
-  br i1 %t28, label %panic.3, label %panic.ok.3
-panic.3:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.63, ptr @.str.64)
-  unreachable
-panic.ok.3:
-  %t29 = load i32, ptr %v.utf8.21
-  store i32 %t29, ptr %v.first
-  %t30 = load i32, ptr %v.first
-  call void @willrt_gc_safepoint(i32 3)
-  %t31 = call i1 @"std/os/path.is_separator"(i32 %t30)
-  br i1 %t31, label %if.then.4, label %if.end.4
-if.then.4:
-  %t32 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
-  %t33 = call ptr @willrt_gc_read_barrier_slot(ptr %t32)
-  call void @willrt_free_str(ptr %t33)
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i1 true
-if.end.4:
-  call void @willrt_gc_safepoint(i32 3)
-  %t34 = call i1 @"std/os/path.is_drive_abs"(ptr %v.s)
-  %t35 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
-  %t36 = call ptr @willrt_gc_read_barrier_slot(ptr %t35)
-  call void @willrt_free_str(ptr %t36)
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i1 %t34
 }
 define hidden { ptr, i64 } @"std/os/path.join"(ptr %parts) inlinehint {
 entry:
@@ -3066,7 +2546,7 @@ if.end.3:
   %t62 = icmp ugt i64 0, %t61
   br i1 %t62, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.18, ptr @.str.65, ptr @.str.66)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.51, ptr @.str.52)
   unreachable
 panic.ok.5:
   %t63 = getelementptr inbounds { ptr, i64 }, ptr %t23, i32 0, i32 0
@@ -3076,7 +2556,7 @@ panic.ok.5:
   %t67 = icmp ugt i64 %t61, %t66
   br i1 %t67, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.18, ptr @.str.65, ptr @.str.66)
+  call void @willrt_panic(ptr @.str.45, ptr @.str.51, ptr @.str.52)
   unreachable
 panic.ok.6:
   %t68 = getelementptr inbounds i8, ptr %t64, i64 0
@@ -3210,7 +2690,7 @@ if.end.9:
   %t137 = icmp eq i32 %t136, 0
   br i1 %t137, label %utf8.bad.11, label %utf8.ok.11
 utf8.bad.11:
-  call void @willrt_panic_n(ptr @.str.14, i64 13, ptr @.str.67, ptr @.str.66)
+  call void @willrt_panic_n(ptr @.str.16, i64 13, ptr @.str.53, ptr @.str.52)
   unreachable
 utf8.ok.11:
   %t138 = call ptr @willrt_gc_alloc(i64 %t135, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
@@ -3302,7 +2782,7 @@ for.body.1:
   %t23 = icmp sle i32 %t22, 0
   br i1 %t23, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.68, ptr @.str.69)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.54, ptr @.str.55)
   unreachable
 panic.ok.2:
   %t24 = sext i32 %t22 to i64
@@ -3471,7 +2951,7 @@ if.then.3:
   %t97 = icmp uge i64 %t92, %t96
   br i1 %t97, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.70, ptr @.str.71)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.56, ptr @.str.57)
   unreachable
 panic.ok.4:
   %t98 = getelementptr inbounds i32, ptr %t94, i64 %t92
@@ -3488,7 +2968,7 @@ if.then.5:
   %t105 = extractvalue {i64, i1} %t103, 1
   br i1 %t105, label %panic.6, label %panic.ok.6
 panic.6:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.72, ptr @.str.71)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.58, ptr @.str.57)
   unreachable
 panic.ok.6:
   store i64 %t104, ptr %v.star
@@ -3501,7 +2981,7 @@ panic.ok.6:
   %t110 = extractvalue {i64, i1} %t108, 1
   br i1 %t110, label %panic.7, label %panic.ok.7
 panic.7:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.73, ptr @.str.71)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.59, ptr @.str.57)
   unreachable
 panic.ok.7:
   store i64 %t109, ptr %v.pi
@@ -3519,7 +2999,7 @@ if.end.5:
   %t119 = icmp uge i64 %t114, %t118
   br i1 %t119, label %panic.8, label %panic.ok.8
 panic.8:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.74, ptr @.str.71)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.60, ptr @.str.57)
   unreachable
 panic.ok.8:
   %t120 = getelementptr inbounds i32, ptr %t116, i64 %t114
@@ -3553,7 +3033,7 @@ if.then.10:
   %t134 = extractvalue {i64, i1} %t132, 1
   br i1 %t134, label %panic.11, label %panic.ok.11
 panic.11:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.75, ptr @.str.71)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.61, ptr @.str.57)
   unreachable
 panic.ok.11:
   store i64 %t133, ptr %v.pi
@@ -3563,7 +3043,7 @@ panic.ok.11:
   %t138 = extractvalue {i64, i1} %t136, 1
   br i1 %t138, label %panic.12, label %panic.ok.12
 panic.12:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.76, ptr @.str.71)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.62, ptr @.str.57)
   unreachable
 panic.ok.12:
   store i64 %t137, ptr %v.si
@@ -3622,7 +3102,7 @@ if.end.13:
   %t167 = icmp uge i64 %t162, %t166
   br i1 %t167, label %panic.16, label %panic.ok.16
 panic.16:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.77, ptr @.str.71)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.63, ptr @.str.57)
   unreachable
 panic.ok.16:
   %t168 = getelementptr inbounds i32, ptr %t164, i64 %t162
@@ -3675,7 +3155,7 @@ if.end.17:
   %t193 = extractvalue {i64, i1} %t191, 1
   br i1 %t193, label %panic.20, label %panic.ok.20
 panic.20:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.78, ptr @.str.71)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.64, ptr @.str.57)
   unreachable
 panic.ok.20:
   store i64 %t192, ptr %v.mark
@@ -3715,7 +3195,7 @@ if.end.22:
   %t211 = icmp uge i64 %t206, %t210
   br i1 %t211, label %panic.23, label %panic.ok.23
 panic.23:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.79, ptr @.str.71)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.65, ptr @.str.57)
   unreachable
 panic.ok.23:
   %t212 = getelementptr inbounds i32, ptr %t208, i64 %t206
@@ -3767,7 +3247,7 @@ if.end.24:
   %t237 = extractvalue {i64, i1} %t235, 1
   br i1 %t237, label %panic.27, label %panic.ok.27
 panic.27:
-  call void @willrt_panic(ptr @.str.8, ptr @.str.80, ptr @.str.71)
+  call void @willrt_panic(ptr @.str.8, ptr @.str.66, ptr @.str.57)
   unreachable
 panic.ok.27:
   store i64 %t236, ptr %v.pi
@@ -3891,7 +3371,7 @@ if.end.1:
   %t39 = icmp uge i64 %t38, %t37
   br i1 %t39, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.81, ptr @.str.82)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.67, ptr @.str.68)
   unreachable
 panic.ok.2:
   %t40 = getelementptr inbounds i8, ptr %t35, i64 %t38
@@ -3900,7 +3380,7 @@ panic.ok.2:
   %t43 = icmp sle i32 %t42, 0
   br i1 %t43, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.81, ptr @.str.82)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.67, ptr @.str.68)
   unreachable
 panic.ok.3:
   %t44 = load i32, ptr %v.utf8.89
@@ -3913,7 +3393,7 @@ panic.ok.3:
   %t50 = icmp uge i64 %t49, %t48
   br i1 %t50, label %panic.4, label %panic.ok.4
 panic.4:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.83, ptr @.str.82)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.69, ptr @.str.68)
   unreachable
 panic.ok.4:
   %t51 = getelementptr inbounds i8, ptr %t46, i64 %t49
@@ -3922,7 +3402,7 @@ panic.ok.4:
   %t54 = icmp sle i32 %t53, 0
   br i1 %t54, label %panic.5, label %panic.ok.5
 panic.5:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.83, ptr @.str.82)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.69, ptr @.str.68)
   unreachable
 panic.ok.5:
   %t55 = load i32, ptr %v.utf8.94
@@ -3992,7 +3472,7 @@ if.end.1:
   %t89 = icmp uge i64 %t88, %t87
   br i1 %t89, label %panic.2, label %panic.ok.2
 panic.2:
-  call void @willrt_panic(ptr @.str.23, ptr @.str.84, ptr @.str.85)
+  call void @willrt_panic(ptr @.str.13, ptr @.str.70, ptr @.str.71)
   unreachable
 panic.ok.2:
   %t90 = getelementptr inbounds i8, ptr %t85, i64 %t88
@@ -4001,7 +3481,7 @@ panic.ok.2:
   %t93 = icmp sle i32 %t92, 0
   br i1 %t93, label %panic.3, label %panic.ok.3
 panic.3:
-  call void @willrt_panic(ptr @.str.14, ptr @.str.84, ptr @.str.85)
+  call void @willrt_panic(ptr @.str.16, ptr @.str.70, ptr @.str.71)
   unreachable
 panic.ok.3:
   %t94 = load i32, ptr %v.utf8.128
@@ -4026,7 +3506,7 @@ entry:
   %t103 = icmp eq i32 %t102, 0
   br i1 %t103, label %utf8.bad.1, label %utf8.ok.1
 utf8.bad.1:
-  call void @willrt_panic_n(ptr @.str.14, i64 13, ptr @.str.86, ptr @.str.87)
+  call void @willrt_panic_n(ptr @.str.16, i64 13, ptr @.str.72, ptr @.str.73)
   unreachable
 utf8.ok.1:
   %t104 = sext i32 %t102 to i64
@@ -4046,27 +3526,28 @@ define i32 @"example.com/stdtest/system/pathnative.will$main"() {
 entry:
   %v.sep = alloca { ptr, i64 }
   %v.abs = alloca { ptr, i64 }
-  %v.gcroots = alloca [2 x ptr]
-  store [2 x ptr] zeroinitializer, ptr %v.gcroots
+  %v.again = alloca { ptr, i64 }
+  %v.gcroots = alloca [3 x ptr]
+  store [3 x ptr] zeroinitializer, ptr %v.gcroots
   %v.gcframe = alloca %willrt_gc_frame
-  %t1 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 0
-  %t2 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 1
+  %t1 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 0
+  %t2 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 1
+  %t3 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 2
   call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.example.com/stdtest/system/pathnative.will$main", ptr %v.gcroots)
   %v.ret.16 = alloca { ptr, i64 }
   %v.ret.30 = alloca { ptr, i64 }
   %v.ret.44 = alloca { ptr, i64 }
   %v.ret.54 = alloca { ptr, i64 }
   %v.ret.69 = alloca { ptr, i64 }
-  %v.ret.80 = alloca { ptr, i64 }
-  %v.ret.90 = alloca { ptr, i64 }
-  %v.ret.124 = alloca { i32, [4 x i8], { ptr, i64 } }
-  %v.ret.166 = alloca { ptr, i64 }
-  %v.ret.181 = alloca { ptr, i64 }
-  %v.ret.192 = alloca { ptr, i64 }
-  %t3 = getelementptr i8, ptr %v.sep, i64 0
-  store ptr %t3, ptr %t1
-  %t4 = getelementptr i8, ptr %v.abs, i64 0
-  store ptr %t4, ptr %t2
+  %v.ret.81 = alloca { i32, [4 x i8], { ptr, i64 } }
+  %v.ret.87 = alloca { i32, [4 x i8], { ptr, i64 } }
+  %v.ret.131 = alloca { ptr, i64 }
+  %t4 = getelementptr i8, ptr %v.sep, i64 0
+  store ptr %t4, ptr %t1
+  %t5 = getelementptr i8, ptr %v.abs, i64 0
+  store ptr %t5, ptr %t2
+  %t6 = getelementptr i8, ptr %v.again, i64 0
+  store ptr %t6, ptr %t3
   %v.str.18 = alloca { ptr, i64 }
   %v.str.21 = alloca { ptr, i64 }
   %v.str.23 = alloca { ptr, i64 }
@@ -4082,26 +3563,14 @@ entry:
   %v.str.71 = alloca { ptr, i64 }
   %v.str.72 = alloca { ptr, i64 }
   %v.str.73 = alloca { ptr, i64 }
-  %v.str.82 = alloca { ptr, i64 }
   %v.str.83 = alloca { ptr, i64 }
-  %v.str.92 = alloca { ptr, i64 }
-  %v.str.93 = alloca { ptr, i64 }
   %v.str.104 = alloca { ptr, i64 }
-  %v.str.114 = alloca { ptr, i64 }
+  %v.str.105 = alloca { ptr, i64 }
+  %v.str.115 = alloca { ptr, i64 }
   %v.str.116 = alloca { ptr, i64 }
-  %v.str.126 = alloca { ptr, i64 }
-  %v.str.141 = alloca { ptr, i64 }
-  %v.str.142 = alloca { ptr, i64 }
-  %v.str.151 = alloca { ptr, i64 }
-  %v.str.152 = alloca { ptr, i64 }
-  %v.str.168 = alloca { ptr, i64 }
-  %v.str.171 = alloca { ptr, i64 }
-  %v.str.173 = alloca { ptr, i64 }
-  %v.str.183 = alloca { ptr, i64 }
-  %v.str.194 = alloca { ptr, i64 }
-  %v.str.197 = alloca { ptr, i64 }
-  %v.str.199 = alloca { ptr, i64 }
-  %v.str.209 = alloca { ptr, i64 }
+  %v.str.133 = alloca { ptr, i64 }
+  %v.str.136 = alloca { ptr, i64 }
+  %v.str.138 = alloca { ptr, i64 }
   %v.cast.8 = alloca { ptr, i64 }
   %v.cat.19 = alloca { ptr, i64 }
   %v.cat.20 = alloca { ptr, i64 }
@@ -4109,923 +3578,664 @@ entry:
   %v.cat.34 = alloca { ptr, i64 }
   %v.cat.58 = alloca { ptr, i64 }
   %v.cat.59 = alloca { ptr, i64 }
-  %v.cat.102 = alloca { ptr, i64 }
-  %v.cat.112 = alloca { ptr, i64 }
-  %v.cat.113 = alloca { ptr, i64 }
-  %v.cat.169 = alloca { ptr, i64 }
-  %v.cat.170 = alloca { ptr, i64 }
-  %v.cat.195 = alloca { ptr, i64 }
-  %v.cat.196 = alloca { ptr, i64 }
+  %v.cat.134 = alloca { ptr, i64 }
+  %v.cat.135 = alloca { ptr, i64 }
   %v.varargs.54 = alloca { ptr, i64 }
   %v.varargs.69 = alloca { ptr, i64 }
-  %v.unwrap.out.123 = alloca { ptr, i64 }
+  %v.unwrap.out.80 = alloca { ptr, i64 }
+  %v.unwrap.out.86 = alloca { ptr, i64 }
   call void @willrt_gc_safepoint(i32 3)
-  %t5 = call i8 @"std/os/path.separator"()
-  %t6 = zext i8 %t5 to i32
-  %t7 = call ptr @willrt_gc_alloc(i64 4, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  %t8 = call i32 @willrt_utf8_encode(i32 %t6, ptr %t7)
-  %t9 = icmp eq i32 %t8, 0
-  br i1 %t9, label %utf8.bad.1, label %utf8.ok.1
+  %t7 = call i8 @"std/os/path.separator"()
+  %t8 = zext i8 %t7 to i32
+  %t9 = call ptr @willrt_gc_alloc(i64 4, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  %t10 = call i32 @willrt_utf8_encode(i32 %t8, ptr %t9)
+  %t11 = icmp eq i32 %t10, 0
+  br i1 %t11, label %utf8.bad.1, label %utf8.ok.1
 utf8.bad.1:
-  call void @willrt_panic_n(ptr @.str.14, i64 13, ptr @.str.88, ptr @.str.89)
+  call void @willrt_panic_n(ptr @.str.16, i64 13, ptr @.str.74, ptr @.str.75)
   unreachable
 utf8.ok.1:
-  %t10 = sext i32 %t8 to i64
-  %t11 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.8, i32 0, i32 0
-  store ptr %t7, ptr %t11
-  %t12 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.8, i32 0, i32 1
-  store i64 %t10, ptr %t12
-  %t13 = getelementptr inbounds i8, ptr %v.sep, i64 0
-  %t14 = getelementptr inbounds i8, ptr %v.cast.8, i64 0
-  %t15 = load ptr, ptr %t14
-  call void @willrt_gc_write_barrier_untagged(ptr %t13, ptr %t15)
-  %t16 = load { ptr, i64 }, ptr %v.cast.8
-  store { ptr, i64 } %t16, ptr %v.sep
-  %t17 = getelementptr inbounds { ptr, i64 }, ptr %v.str.18, i32 0, i32 0
-  store ptr @.bytes.10, ptr %t17
-  %t18 = getelementptr inbounds { ptr, i64 }, ptr %v.str.18, i32 0, i32 1
-  store i64 5, ptr %t18
+  %t12 = sext i32 %t10 to i64
+  %t13 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.8, i32 0, i32 0
+  store ptr %t9, ptr %t13
+  %t14 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.8, i32 0, i32 1
+  store i64 %t12, ptr %t14
+  %t15 = getelementptr inbounds i8, ptr %v.sep, i64 0
+  %t16 = getelementptr inbounds i8, ptr %v.cast.8, i64 0
+  %t17 = load ptr, ptr %t16
+  call void @willrt_gc_write_barrier_untagged(ptr %t15, ptr %t17)
+  %t18 = load { ptr, i64 }, ptr %v.cast.8
+  store { ptr, i64 } %t18, ptr %v.sep
+  %t19 = getelementptr inbounds { ptr, i64 }, ptr %v.str.18, i32 0, i32 0
+  store ptr @.bytes.10, ptr %t19
+  %t20 = getelementptr inbounds { ptr, i64 }, ptr %v.str.18, i32 0, i32 1
+  store i64 5, ptr %t20
   call void @willrt_gc_safepoint(i32 3)
-  %t19 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.str.18)
-  store { ptr, i64 } %t19, ptr %v.ret.16
-  %t20 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.16, i32 0, i32 0
-  %t21 = load ptr, ptr %t20
-  %t22 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.16, i32 0, i32 1
-  %t23 = load i64, ptr %t22
-  %t24 = getelementptr inbounds { ptr, i64 }, ptr %v.str.21, i32 0, i32 0
-  store ptr @.bytes.11, ptr %t24
-  %t25 = getelementptr inbounds { ptr, i64 }, ptr %v.str.21, i32 0, i32 1
-  store i64 1, ptr %t25
+  %t21 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.str.18)
+  store { ptr, i64 } %t21, ptr %v.ret.16
+  %t22 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.16, i32 0, i32 0
+  %t23 = load ptr, ptr %t22
+  %t24 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.16, i32 0, i32 1
+  %t25 = load i64, ptr %t24
   %t26 = getelementptr inbounds { ptr, i64 }, ptr %v.str.21, i32 0, i32 0
-  %t27 = load ptr, ptr %t26
-  %t28 = getelementptr inbounds { ptr, i64 }, ptr %v.str.21, i32 0, i32 1
-  %t29 = load i64, ptr %t28
-  %t30 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t31 = load ptr, ptr %t30
-  %t32 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 1
-  %t33 = load i64, ptr %t32
-  %t34 = add i64 %t29, %t33
-  %t35 = icmp eq i64 %t34, 0
-  br i1 %t35, label %cat.zero.3, label %cat.alloc.3
+  store ptr @.bytes.11, ptr %t26
+  %t27 = getelementptr inbounds { ptr, i64 }, ptr %v.str.21, i32 0, i32 1
+  store i64 1, ptr %t27
+  %t28 = getelementptr inbounds { ptr, i64 }, ptr %v.str.21, i32 0, i32 0
+  %t29 = load ptr, ptr %t28
+  %t30 = getelementptr inbounds { ptr, i64 }, ptr %v.str.21, i32 0, i32 1
+  %t31 = load i64, ptr %t30
+  %t32 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t33 = load ptr, ptr %t32
+  %t34 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 1
+  %t35 = load i64, ptr %t34
+  %t36 = add i64 %t31, %t35
+  %t37 = icmp eq i64 %t36, 0
+  br i1 %t37, label %cat.zero.3, label %cat.alloc.3
 cat.alloc.3:
-  %t36 = call ptr @willrt_gc_alloc(i64 %t34, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t36, ptr %t27, i64 %t29)
-  %t37 = getelementptr inbounds i8, ptr %t36, i64 %t29
-  call void @memcpy(ptr %t37, ptr %t31, i64 %t33)
+  %t38 = call ptr @willrt_gc_alloc(i64 %t36, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call void @memcpy(ptr %t38, ptr %t29, i64 %t31)
+  %t39 = getelementptr inbounds i8, ptr %t38, i64 %t31
+  call void @memcpy(ptr %t39, ptr %t33, i64 %t35)
   br label %cat.ready.3
 cat.zero.3:
   br label %cat.ready.3
 cat.ready.3:
-  %t38 = phi ptr [ null, %cat.zero.3 ], [ %t36, %cat.alloc.3 ]
-  %t39 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.20, i32 0, i32 0
-  store ptr %t38, ptr %t39
-  %t40 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.20, i32 0, i32 1
-  store i64 %t34, ptr %t40
+  %t40 = phi ptr [ null, %cat.zero.3 ], [ %t38, %cat.alloc.3 ]
   %t41 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.20, i32 0, i32 0
-  %t42 = load ptr, ptr %t41
-  %t43 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.20, i32 0, i32 1
-  %t44 = load i64, ptr %t43
-  %t45 = getelementptr inbounds { ptr, i64 }, ptr %v.str.23, i32 0, i32 0
-  store ptr @.bytes.12, ptr %t45
-  %t46 = getelementptr inbounds { ptr, i64 }, ptr %v.str.23, i32 0, i32 1
-  store i64 1, ptr %t46
+  store ptr %t40, ptr %t41
+  %t42 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.20, i32 0, i32 1
+  store i64 %t36, ptr %t42
+  %t43 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.20, i32 0, i32 0
+  %t44 = load ptr, ptr %t43
+  %t45 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.20, i32 0, i32 1
+  %t46 = load i64, ptr %t45
   %t47 = getelementptr inbounds { ptr, i64 }, ptr %v.str.23, i32 0, i32 0
-  %t48 = load ptr, ptr %t47
-  %t49 = getelementptr inbounds { ptr, i64 }, ptr %v.str.23, i32 0, i32 1
-  %t50 = load i64, ptr %t49
-  %t51 = add i64 %t44, %t50
-  %t52 = icmp eq i64 %t51, 0
-  br i1 %t52, label %cat.zero.4, label %cat.alloc.4
+  store ptr @.bytes.12, ptr %t47
+  %t48 = getelementptr inbounds { ptr, i64 }, ptr %v.str.23, i32 0, i32 1
+  store i64 1, ptr %t48
+  %t49 = getelementptr inbounds { ptr, i64 }, ptr %v.str.23, i32 0, i32 0
+  %t50 = load ptr, ptr %t49
+  %t51 = getelementptr inbounds { ptr, i64 }, ptr %v.str.23, i32 0, i32 1
+  %t52 = load i64, ptr %t51
+  %t53 = add i64 %t46, %t52
+  %t54 = icmp eq i64 %t53, 0
+  br i1 %t54, label %cat.zero.4, label %cat.alloc.4
 cat.alloc.4:
-  %t53 = call ptr @willrt_gc_alloc(i64 %t51, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t53, ptr %t42, i64 %t44)
-  %t54 = getelementptr inbounds i8, ptr %t53, i64 %t44
-  call void @memcpy(ptr %t54, ptr %t48, i64 %t50)
+  %t55 = call ptr @willrt_gc_alloc(i64 %t53, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call void @memcpy(ptr %t55, ptr %t44, i64 %t46)
+  %t56 = getelementptr inbounds i8, ptr %t55, i64 %t46
+  call void @memcpy(ptr %t56, ptr %t50, i64 %t52)
   br label %cat.ready.4
 cat.zero.4:
   br label %cat.ready.4
 cat.ready.4:
-  %t55 = phi ptr [ null, %cat.zero.4 ], [ %t53, %cat.alloc.4 ]
-  %t56 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.19, i32 0, i32 0
-  store ptr %t55, ptr %t56
-  %t57 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.19, i32 0, i32 1
-  store i64 %t51, ptr %t57
+  %t57 = phi ptr [ null, %cat.zero.4 ], [ %t55, %cat.alloc.4 ]
   %t58 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.19, i32 0, i32 0
-  %t59 = load ptr, ptr %t58
-  %t60 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.19, i32 0, i32 1
-  %t61 = load i64, ptr %t60
-  %t62 = icmp ult i64 %t23, %t61
-  %t63 = select i1 %t62, i64 %t23, i64 %t61
-  %t64 = call i32 @memcmp(ptr %t21, ptr %t59, i64 %t63)
-  %t65 = icmp eq i32 %t64, 0
-  %t66 = icmp eq i64 %t23, %t61
-  %t67 = and i1 %t65, %t66
-  %t68 = xor i1 %t67, true
-  br i1 %t68, label %if.then.2, label %if.end.2
+  store ptr %t57, ptr %t58
+  %t59 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.19, i32 0, i32 1
+  store i64 %t53, ptr %t59
+  %t60 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.19, i32 0, i32 0
+  %t61 = load ptr, ptr %t60
+  %t62 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.19, i32 0, i32 1
+  %t63 = load i64, ptr %t62
+  %t64 = icmp ult i64 %t25, %t63
+  %t65 = select i1 %t64, i64 %t25, i64 %t63
+  %t66 = call i32 @memcmp(ptr %t23, ptr %t61, i64 %t65)
+  %t67 = icmp eq i32 %t66, 0
+  %t68 = icmp eq i64 %t25, %t63
+  %t69 = and i1 %t67, %t68
+  %t70 = xor i1 %t69, true
+  br i1 %t70, label %if.then.2, label %if.end.2
 if.then.2:
-  %t69 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t70 = call ptr @willrt_gc_read_barrier_slot(ptr %t69)
-  call void @willrt_free_str(ptr %t70)
+  %t71 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t72 = call ptr @willrt_gc_read_barrier_slot(ptr %t71)
+  call void @willrt_free_str(ptr %t72)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 1
 if.end.2:
-  %t71 = getelementptr inbounds { ptr, i64 }, ptr %v.str.32, i32 0, i32 0
-  store ptr @.bytes.13, ptr %t71
-  %t72 = getelementptr inbounds { ptr, i64 }, ptr %v.str.32, i32 0, i32 1
-  store i64 3, ptr %t72
+  %t73 = getelementptr inbounds { ptr, i64 }, ptr %v.str.32, i32 0, i32 0
+  store ptr @.bytes.13, ptr %t73
+  %t74 = getelementptr inbounds { ptr, i64 }, ptr %v.str.32, i32 0, i32 1
+  store i64 3, ptr %t74
   call void @willrt_gc_safepoint(i32 3)
-  %t73 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.str.32)
-  store { ptr, i64 } %t73, ptr %v.ret.30
-  %t74 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.30, i32 0, i32 0
-  %t75 = load ptr, ptr %t74
-  %t76 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.30, i32 0, i32 1
-  %t77 = load i64, ptr %t76
-  %t78 = getelementptr inbounds { ptr, i64 }, ptr %v.str.35, i32 0, i32 0
-  store ptr @.bytes.11, ptr %t78
-  %t79 = getelementptr inbounds { ptr, i64 }, ptr %v.str.35, i32 0, i32 1
-  store i64 1, ptr %t79
+  %t75 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.str.32)
+  store { ptr, i64 } %t75, ptr %v.ret.30
+  %t76 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.30, i32 0, i32 0
+  %t77 = load ptr, ptr %t76
+  %t78 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.30, i32 0, i32 1
+  %t79 = load i64, ptr %t78
   %t80 = getelementptr inbounds { ptr, i64 }, ptr %v.str.35, i32 0, i32 0
-  %t81 = load ptr, ptr %t80
-  %t82 = getelementptr inbounds { ptr, i64 }, ptr %v.str.35, i32 0, i32 1
-  %t83 = load i64, ptr %t82
-  %t84 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t85 = load ptr, ptr %t84
-  %t86 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 1
-  %t87 = load i64, ptr %t86
-  %t88 = add i64 %t83, %t87
-  %t89 = icmp eq i64 %t88, 0
-  br i1 %t89, label %cat.zero.6, label %cat.alloc.6
+  store ptr @.bytes.11, ptr %t80
+  %t81 = getelementptr inbounds { ptr, i64 }, ptr %v.str.35, i32 0, i32 1
+  store i64 1, ptr %t81
+  %t82 = getelementptr inbounds { ptr, i64 }, ptr %v.str.35, i32 0, i32 0
+  %t83 = load ptr, ptr %t82
+  %t84 = getelementptr inbounds { ptr, i64 }, ptr %v.str.35, i32 0, i32 1
+  %t85 = load i64, ptr %t84
+  %t86 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t87 = load ptr, ptr %t86
+  %t88 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 1
+  %t89 = load i64, ptr %t88
+  %t90 = add i64 %t85, %t89
+  %t91 = icmp eq i64 %t90, 0
+  br i1 %t91, label %cat.zero.6, label %cat.alloc.6
 cat.alloc.6:
-  %t90 = call ptr @willrt_gc_alloc(i64 %t88, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t90, ptr %t81, i64 %t83)
-  %t91 = getelementptr inbounds i8, ptr %t90, i64 %t83
-  call void @memcpy(ptr %t91, ptr %t85, i64 %t87)
+  %t92 = call ptr @willrt_gc_alloc(i64 %t90, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call void @memcpy(ptr %t92, ptr %t83, i64 %t85)
+  %t93 = getelementptr inbounds i8, ptr %t92, i64 %t85
+  call void @memcpy(ptr %t93, ptr %t87, i64 %t89)
   br label %cat.ready.6
 cat.zero.6:
   br label %cat.ready.6
 cat.ready.6:
-  %t92 = phi ptr [ null, %cat.zero.6 ], [ %t90, %cat.alloc.6 ]
-  %t93 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.34, i32 0, i32 0
-  store ptr %t92, ptr %t93
-  %t94 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.34, i32 0, i32 1
-  store i64 %t88, ptr %t94
+  %t94 = phi ptr [ null, %cat.zero.6 ], [ %t92, %cat.alloc.6 ]
   %t95 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.34, i32 0, i32 0
-  %t96 = load ptr, ptr %t95
-  %t97 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.34, i32 0, i32 1
-  %t98 = load i64, ptr %t97
-  %t99 = getelementptr inbounds { ptr, i64 }, ptr %v.str.37, i32 0, i32 0
-  store ptr @.bytes.12, ptr %t99
-  %t100 = getelementptr inbounds { ptr, i64 }, ptr %v.str.37, i32 0, i32 1
-  store i64 1, ptr %t100
+  store ptr %t94, ptr %t95
+  %t96 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.34, i32 0, i32 1
+  store i64 %t90, ptr %t96
+  %t97 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.34, i32 0, i32 0
+  %t98 = load ptr, ptr %t97
+  %t99 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.34, i32 0, i32 1
+  %t100 = load i64, ptr %t99
   %t101 = getelementptr inbounds { ptr, i64 }, ptr %v.str.37, i32 0, i32 0
-  %t102 = load ptr, ptr %t101
-  %t103 = getelementptr inbounds { ptr, i64 }, ptr %v.str.37, i32 0, i32 1
-  %t104 = load i64, ptr %t103
-  %t105 = add i64 %t98, %t104
-  %t106 = icmp eq i64 %t105, 0
-  br i1 %t106, label %cat.zero.7, label %cat.alloc.7
+  store ptr @.bytes.12, ptr %t101
+  %t102 = getelementptr inbounds { ptr, i64 }, ptr %v.str.37, i32 0, i32 1
+  store i64 1, ptr %t102
+  %t103 = getelementptr inbounds { ptr, i64 }, ptr %v.str.37, i32 0, i32 0
+  %t104 = load ptr, ptr %t103
+  %t105 = getelementptr inbounds { ptr, i64 }, ptr %v.str.37, i32 0, i32 1
+  %t106 = load i64, ptr %t105
+  %t107 = add i64 %t100, %t106
+  %t108 = icmp eq i64 %t107, 0
+  br i1 %t108, label %cat.zero.7, label %cat.alloc.7
 cat.alloc.7:
-  %t107 = call ptr @willrt_gc_alloc(i64 %t105, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t107, ptr %t96, i64 %t98)
-  %t108 = getelementptr inbounds i8, ptr %t107, i64 %t98
-  call void @memcpy(ptr %t108, ptr %t102, i64 %t104)
+  %t109 = call ptr @willrt_gc_alloc(i64 %t107, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call void @memcpy(ptr %t109, ptr %t98, i64 %t100)
+  %t110 = getelementptr inbounds i8, ptr %t109, i64 %t100
+  call void @memcpy(ptr %t110, ptr %t104, i64 %t106)
   br label %cat.ready.7
 cat.zero.7:
   br label %cat.ready.7
 cat.ready.7:
-  %t109 = phi ptr [ null, %cat.zero.7 ], [ %t107, %cat.alloc.7 ]
-  %t110 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.33, i32 0, i32 0
-  store ptr %t109, ptr %t110
-  %t111 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.33, i32 0, i32 1
-  store i64 %t105, ptr %t111
+  %t111 = phi ptr [ null, %cat.zero.7 ], [ %t109, %cat.alloc.7 ]
   %t112 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.33, i32 0, i32 0
-  %t113 = load ptr, ptr %t112
-  %t114 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.33, i32 0, i32 1
-  %t115 = load i64, ptr %t114
-  %t116 = icmp ult i64 %t77, %t115
-  %t117 = select i1 %t116, i64 %t77, i64 %t115
-  %t118 = call i32 @memcmp(ptr %t75, ptr %t113, i64 %t117)
-  %t119 = icmp eq i32 %t118, 0
-  %t120 = icmp eq i64 %t77, %t115
-  %t121 = and i1 %t119, %t120
-  %t122 = xor i1 %t121, true
-  br i1 %t122, label %if.then.5, label %if.end.5
+  store ptr %t111, ptr %t112
+  %t113 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.33, i32 0, i32 1
+  store i64 %t107, ptr %t113
+  %t114 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.33, i32 0, i32 0
+  %t115 = load ptr, ptr %t114
+  %t116 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.33, i32 0, i32 1
+  %t117 = load i64, ptr %t116
+  %t118 = icmp ult i64 %t79, %t117
+  %t119 = select i1 %t118, i64 %t79, i64 %t117
+  %t120 = call i32 @memcmp(ptr %t77, ptr %t115, i64 %t119)
+  %t121 = icmp eq i32 %t120, 0
+  %t122 = icmp eq i64 %t79, %t117
+  %t123 = and i1 %t121, %t122
+  %t124 = xor i1 %t123, true
+  br i1 %t124, label %if.then.5, label %if.end.5
 if.then.5:
-  %t123 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t124 = call ptr @willrt_gc_read_barrier_slot(ptr %t123)
-  call void @willrt_free_str(ptr %t124)
+  %t125 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t126 = call ptr @willrt_gc_read_barrier_slot(ptr %t125)
+  call void @willrt_free_str(ptr %t126)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 2
 if.end.5:
-  %t125 = getelementptr inbounds { ptr, i64 }, ptr %v.str.46, i32 0, i32 0
-  store ptr @.bytes.14, ptr %t125
-  %t126 = getelementptr inbounds { ptr, i64 }, ptr %v.str.46, i32 0, i32 1
-  store i64 6, ptr %t126
+  %t127 = getelementptr inbounds { ptr, i64 }, ptr %v.str.46, i32 0, i32 0
+  store ptr @.bytes.14, ptr %t127
+  %t128 = getelementptr inbounds { ptr, i64 }, ptr %v.str.46, i32 0, i32 1
+  store i64 6, ptr %t128
   call void @willrt_gc_safepoint(i32 3)
-  %t127 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.str.46)
-  store { ptr, i64 } %t127, ptr %v.ret.44
-  %t128 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.44, i32 0, i32 0
-  %t129 = load ptr, ptr %t128
-  %t130 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.44, i32 0, i32 1
-  %t131 = load i64, ptr %t130
-  %t132 = getelementptr inbounds { ptr, i64 }, ptr %v.str.47, i32 0, i32 0
-  store ptr @.bytes.12, ptr %t132
-  %t133 = getelementptr inbounds { ptr, i64 }, ptr %v.str.47, i32 0, i32 1
-  store i64 1, ptr %t133
+  %t129 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.str.46)
+  store { ptr, i64 } %t129, ptr %v.ret.44
+  %t130 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.44, i32 0, i32 0
+  %t131 = load ptr, ptr %t130
+  %t132 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.44, i32 0, i32 1
+  %t133 = load i64, ptr %t132
   %t134 = getelementptr inbounds { ptr, i64 }, ptr %v.str.47, i32 0, i32 0
-  %t135 = load ptr, ptr %t134
-  %t136 = getelementptr inbounds { ptr, i64 }, ptr %v.str.47, i32 0, i32 1
-  %t137 = load i64, ptr %t136
-  %t138 = icmp ult i64 %t131, %t137
-  %t139 = select i1 %t138, i64 %t131, i64 %t137
-  %t140 = call i32 @memcmp(ptr %t129, ptr %t135, i64 %t139)
-  %t141 = icmp eq i32 %t140, 0
-  %t142 = icmp eq i64 %t131, %t137
-  %t143 = and i1 %t141, %t142
-  %t144 = xor i1 %t143, true
-  br i1 %t144, label %if.then.8, label %if.end.8
+  store ptr @.bytes.12, ptr %t134
+  %t135 = getelementptr inbounds { ptr, i64 }, ptr %v.str.47, i32 0, i32 1
+  store i64 1, ptr %t135
+  %t136 = getelementptr inbounds { ptr, i64 }, ptr %v.str.47, i32 0, i32 0
+  %t137 = load ptr, ptr %t136
+  %t138 = getelementptr inbounds { ptr, i64 }, ptr %v.str.47, i32 0, i32 1
+  %t139 = load i64, ptr %t138
+  %t140 = icmp ult i64 %t133, %t139
+  %t141 = select i1 %t140, i64 %t133, i64 %t139
+  %t142 = call i32 @memcmp(ptr %t131, ptr %t137, i64 %t141)
+  %t143 = icmp eq i32 %t142, 0
+  %t144 = icmp eq i64 %t133, %t139
+  %t145 = and i1 %t143, %t144
+  %t146 = xor i1 %t145, true
+  br i1 %t146, label %if.then.8, label %if.end.8
 if.then.8:
-  %t145 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t146 = call ptr @willrt_gc_read_barrier_slot(ptr %t145)
-  call void @willrt_free_str(ptr %t146)
+  %t147 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t148 = call ptr @willrt_gc_read_barrier_slot(ptr %t147)
+  call void @willrt_free_str(ptr %t148)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 3
 if.end.8:
-  %t147 = getelementptr { ptr, i64 }, ptr null, i32 1
-  %t148 = ptrtoint ptr %t147 to i64
-  %t149 = call ptr @willrt_plate_new(i64 2, i64 %t148)
-  %t150 = getelementptr { ptr, i64 }, ptr %t149, i64 0
-  %t151 = getelementptr inbounds { ptr, i64 }, ptr %v.str.56, i32 0, i32 0
-  store ptr @.bytes.11, ptr %t151
-  %t152 = getelementptr inbounds { ptr, i64 }, ptr %v.str.56, i32 0, i32 1
-  store i64 1, ptr %t152
-  %t153 = load { ptr, i64 }, ptr %v.str.56
-  store { ptr, i64 } %t153, ptr %t150
-  %t154 = getelementptr { ptr, i64 }, ptr %t149, i64 1
-  %t155 = getelementptr inbounds { ptr, i64 }, ptr %v.str.57, i32 0, i32 0
-  store ptr @.bytes.12, ptr %t155
-  %t156 = getelementptr inbounds { ptr, i64 }, ptr %v.str.57, i32 0, i32 1
-  store i64 1, ptr %t156
-  %t157 = load { ptr, i64 }, ptr %v.str.57
-  store { ptr, i64 } %t157, ptr %t154
-  %t158 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.54, i32 0, i32 0
-  store ptr %t149, ptr %t158
-  %t159 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.54, i32 0, i32 1
-  store i64 2, ptr %t159
+  %t149 = getelementptr { ptr, i64 }, ptr null, i32 1
+  %t150 = ptrtoint ptr %t149 to i64
+  %t151 = call ptr @willrt_plate_new(i64 2, i64 %t150)
+  %t152 = getelementptr { ptr, i64 }, ptr %t151, i64 0
+  %t153 = getelementptr inbounds { ptr, i64 }, ptr %v.str.56, i32 0, i32 0
+  store ptr @.bytes.11, ptr %t153
+  %t154 = getelementptr inbounds { ptr, i64 }, ptr %v.str.56, i32 0, i32 1
+  store i64 1, ptr %t154
+  %t155 = load { ptr, i64 }, ptr %v.str.56
+  store { ptr, i64 } %t155, ptr %t152
+  %t156 = getelementptr { ptr, i64 }, ptr %t151, i64 1
+  %t157 = getelementptr inbounds { ptr, i64 }, ptr %v.str.57, i32 0, i32 0
+  store ptr @.bytes.12, ptr %t157
+  %t158 = getelementptr inbounds { ptr, i64 }, ptr %v.str.57, i32 0, i32 1
+  store i64 1, ptr %t158
+  %t159 = load { ptr, i64 }, ptr %v.str.57
+  store { ptr, i64 } %t159, ptr %t156
+  %t160 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.54, i32 0, i32 0
+  store ptr %t151, ptr %t160
+  %t161 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.54, i32 0, i32 1
+  store i64 2, ptr %t161
   call void @willrt_gc_safepoint(i32 3)
-  %t160 = call { ptr, i64 } @"std/os/path.join"(ptr %v.varargs.54)
-  store { ptr, i64 } %t160, ptr %v.ret.54
-  %t161 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.54, i32 0, i32 0
-  %t162 = load ptr, ptr %t161
-  %t163 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.54, i32 0, i32 1
-  %t164 = load i64, ptr %t163
-  %t165 = getelementptr inbounds { ptr, i64 }, ptr %v.str.60, i32 0, i32 0
-  store ptr @.bytes.11, ptr %t165
-  %t166 = getelementptr inbounds { ptr, i64 }, ptr %v.str.60, i32 0, i32 1
-  store i64 1, ptr %t166
+  %t162 = call { ptr, i64 } @"std/os/path.join"(ptr %v.varargs.54)
+  store { ptr, i64 } %t162, ptr %v.ret.54
+  %t163 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.54, i32 0, i32 0
+  %t164 = load ptr, ptr %t163
+  %t165 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.54, i32 0, i32 1
+  %t166 = load i64, ptr %t165
   %t167 = getelementptr inbounds { ptr, i64 }, ptr %v.str.60, i32 0, i32 0
-  %t168 = load ptr, ptr %t167
-  %t169 = getelementptr inbounds { ptr, i64 }, ptr %v.str.60, i32 0, i32 1
-  %t170 = load i64, ptr %t169
-  %t171 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t172 = load ptr, ptr %t171
-  %t173 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 1
-  %t174 = load i64, ptr %t173
-  %t175 = add i64 %t170, %t174
-  %t176 = icmp eq i64 %t175, 0
-  br i1 %t176, label %cat.zero.10, label %cat.alloc.10
+  store ptr @.bytes.11, ptr %t167
+  %t168 = getelementptr inbounds { ptr, i64 }, ptr %v.str.60, i32 0, i32 1
+  store i64 1, ptr %t168
+  %t169 = getelementptr inbounds { ptr, i64 }, ptr %v.str.60, i32 0, i32 0
+  %t170 = load ptr, ptr %t169
+  %t171 = getelementptr inbounds { ptr, i64 }, ptr %v.str.60, i32 0, i32 1
+  %t172 = load i64, ptr %t171
+  %t173 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t174 = load ptr, ptr %t173
+  %t175 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 1
+  %t176 = load i64, ptr %t175
+  %t177 = add i64 %t172, %t176
+  %t178 = icmp eq i64 %t177, 0
+  br i1 %t178, label %cat.zero.10, label %cat.alloc.10
 cat.alloc.10:
-  %t177 = call ptr @willrt_gc_alloc(i64 %t175, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t177, ptr %t168, i64 %t170)
-  %t178 = getelementptr inbounds i8, ptr %t177, i64 %t170
-  call void @memcpy(ptr %t178, ptr %t172, i64 %t174)
+  %t179 = call ptr @willrt_gc_alloc(i64 %t177, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call void @memcpy(ptr %t179, ptr %t170, i64 %t172)
+  %t180 = getelementptr inbounds i8, ptr %t179, i64 %t172
+  call void @memcpy(ptr %t180, ptr %t174, i64 %t176)
   br label %cat.ready.10
 cat.zero.10:
   br label %cat.ready.10
 cat.ready.10:
-  %t179 = phi ptr [ null, %cat.zero.10 ], [ %t177, %cat.alloc.10 ]
-  %t180 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.59, i32 0, i32 0
-  store ptr %t179, ptr %t180
-  %t181 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.59, i32 0, i32 1
-  store i64 %t175, ptr %t181
+  %t181 = phi ptr [ null, %cat.zero.10 ], [ %t179, %cat.alloc.10 ]
   %t182 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.59, i32 0, i32 0
-  %t183 = load ptr, ptr %t182
-  %t184 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.59, i32 0, i32 1
-  %t185 = load i64, ptr %t184
-  %t186 = getelementptr inbounds { ptr, i64 }, ptr %v.str.62, i32 0, i32 0
-  store ptr @.bytes.12, ptr %t186
-  %t187 = getelementptr inbounds { ptr, i64 }, ptr %v.str.62, i32 0, i32 1
-  store i64 1, ptr %t187
+  store ptr %t181, ptr %t182
+  %t183 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.59, i32 0, i32 1
+  store i64 %t177, ptr %t183
+  %t184 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.59, i32 0, i32 0
+  %t185 = load ptr, ptr %t184
+  %t186 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.59, i32 0, i32 1
+  %t187 = load i64, ptr %t186
   %t188 = getelementptr inbounds { ptr, i64 }, ptr %v.str.62, i32 0, i32 0
-  %t189 = load ptr, ptr %t188
-  %t190 = getelementptr inbounds { ptr, i64 }, ptr %v.str.62, i32 0, i32 1
-  %t191 = load i64, ptr %t190
-  %t192 = add i64 %t185, %t191
-  %t193 = icmp eq i64 %t192, 0
-  br i1 %t193, label %cat.zero.11, label %cat.alloc.11
+  store ptr @.bytes.12, ptr %t188
+  %t189 = getelementptr inbounds { ptr, i64 }, ptr %v.str.62, i32 0, i32 1
+  store i64 1, ptr %t189
+  %t190 = getelementptr inbounds { ptr, i64 }, ptr %v.str.62, i32 0, i32 0
+  %t191 = load ptr, ptr %t190
+  %t192 = getelementptr inbounds { ptr, i64 }, ptr %v.str.62, i32 0, i32 1
+  %t193 = load i64, ptr %t192
+  %t194 = add i64 %t187, %t193
+  %t195 = icmp eq i64 %t194, 0
+  br i1 %t195, label %cat.zero.11, label %cat.alloc.11
 cat.alloc.11:
-  %t194 = call ptr @willrt_gc_alloc(i64 %t192, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t194, ptr %t183, i64 %t185)
-  %t195 = getelementptr inbounds i8, ptr %t194, i64 %t185
-  call void @memcpy(ptr %t195, ptr %t189, i64 %t191)
+  %t196 = call ptr @willrt_gc_alloc(i64 %t194, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call void @memcpy(ptr %t196, ptr %t185, i64 %t187)
+  %t197 = getelementptr inbounds i8, ptr %t196, i64 %t187
+  call void @memcpy(ptr %t197, ptr %t191, i64 %t193)
   br label %cat.ready.11
 cat.zero.11:
   br label %cat.ready.11
 cat.ready.11:
-  %t196 = phi ptr [ null, %cat.zero.11 ], [ %t194, %cat.alloc.11 ]
-  %t197 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.58, i32 0, i32 0
-  store ptr %t196, ptr %t197
-  %t198 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.58, i32 0, i32 1
-  store i64 %t192, ptr %t198
+  %t198 = phi ptr [ null, %cat.zero.11 ], [ %t196, %cat.alloc.11 ]
   %t199 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.58, i32 0, i32 0
-  %t200 = load ptr, ptr %t199
-  %t201 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.58, i32 0, i32 1
-  %t202 = load i64, ptr %t201
-  %t203 = icmp ult i64 %t164, %t202
-  %t204 = select i1 %t203, i64 %t164, i64 %t202
-  %t205 = call i32 @memcmp(ptr %t162, ptr %t200, i64 %t204)
-  %t206 = icmp eq i32 %t205, 0
-  %t207 = icmp eq i64 %t164, %t202
-  %t208 = and i1 %t206, %t207
-  %t209 = xor i1 %t208, true
-  br i1 %t209, label %if.then.9, label %if.end.9
+  store ptr %t198, ptr %t199
+  %t200 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.58, i32 0, i32 1
+  store i64 %t194, ptr %t200
+  %t201 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.58, i32 0, i32 0
+  %t202 = load ptr, ptr %t201
+  %t203 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.58, i32 0, i32 1
+  %t204 = load i64, ptr %t203
+  %t205 = icmp ult i64 %t166, %t204
+  %t206 = select i1 %t205, i64 %t166, i64 %t204
+  %t207 = call i32 @memcmp(ptr %t164, ptr %t202, i64 %t206)
+  %t208 = icmp eq i32 %t207, 0
+  %t209 = icmp eq i64 %t166, %t204
+  %t210 = and i1 %t208, %t209
+  %t211 = xor i1 %t210, true
+  br i1 %t211, label %if.then.9, label %if.end.9
 if.then.9:
-  %t210 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t211 = call ptr @willrt_gc_read_barrier_slot(ptr %t210)
-  call void @willrt_free_str(ptr %t211)
+  %t212 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t213 = call ptr @willrt_gc_read_barrier_slot(ptr %t212)
+  call void @willrt_free_str(ptr %t213)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 4
 if.end.9:
-  %t212 = getelementptr { ptr, i64 }, ptr null, i32 1
-  %t213 = ptrtoint ptr %t212 to i64
-  %t214 = call ptr @willrt_plate_new(i64 2, i64 %t213)
-  %t215 = getelementptr { ptr, i64 }, ptr %t214, i64 0
-  %t216 = getelementptr inbounds { ptr, i64 }, ptr %v.str.71, i32 0, i32 0
-  store ptr @.bytes.8, ptr %t216
-  %t217 = getelementptr inbounds { ptr, i64 }, ptr %v.str.71, i32 0, i32 1
-  store i64 0, ptr %t217
-  %t218 = load { ptr, i64 }, ptr %v.str.71
-  store { ptr, i64 } %t218, ptr %t215
-  %t219 = getelementptr { ptr, i64 }, ptr %t214, i64 1
-  %t220 = getelementptr inbounds { ptr, i64 }, ptr %v.str.72, i32 0, i32 0
-  store ptr @.bytes.8, ptr %t220
-  %t221 = getelementptr inbounds { ptr, i64 }, ptr %v.str.72, i32 0, i32 1
-  store i64 0, ptr %t221
-  %t222 = load { ptr, i64 }, ptr %v.str.72
-  store { ptr, i64 } %t222, ptr %t219
-  %t223 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.69, i32 0, i32 0
-  store ptr %t214, ptr %t223
-  %t224 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.69, i32 0, i32 1
-  store i64 2, ptr %t224
+  %t214 = getelementptr { ptr, i64 }, ptr null, i32 1
+  %t215 = ptrtoint ptr %t214 to i64
+  %t216 = call ptr @willrt_plate_new(i64 2, i64 %t215)
+  %t217 = getelementptr { ptr, i64 }, ptr %t216, i64 0
+  %t218 = getelementptr inbounds { ptr, i64 }, ptr %v.str.71, i32 0, i32 0
+  store ptr @.bytes.8, ptr %t218
+  %t219 = getelementptr inbounds { ptr, i64 }, ptr %v.str.71, i32 0, i32 1
+  store i64 0, ptr %t219
+  %t220 = load { ptr, i64 }, ptr %v.str.71
+  store { ptr, i64 } %t220, ptr %t217
+  %t221 = getelementptr { ptr, i64 }, ptr %t216, i64 1
+  %t222 = getelementptr inbounds { ptr, i64 }, ptr %v.str.72, i32 0, i32 0
+  store ptr @.bytes.8, ptr %t222
+  %t223 = getelementptr inbounds { ptr, i64 }, ptr %v.str.72, i32 0, i32 1
+  store i64 0, ptr %t223
+  %t224 = load { ptr, i64 }, ptr %v.str.72
+  store { ptr, i64 } %t224, ptr %t221
+  %t225 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.69, i32 0, i32 0
+  store ptr %t216, ptr %t225
+  %t226 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.69, i32 0, i32 1
+  store i64 2, ptr %t226
   call void @willrt_gc_safepoint(i32 3)
-  %t225 = call { ptr, i64 } @"std/os/path.join"(ptr %v.varargs.69)
-  store { ptr, i64 } %t225, ptr %v.ret.69
-  %t226 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.69, i32 0, i32 0
-  %t227 = load ptr, ptr %t226
-  %t228 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.69, i32 0, i32 1
-  %t229 = load i64, ptr %t228
-  %t230 = getelementptr inbounds { ptr, i64 }, ptr %v.str.73, i32 0, i32 0
-  store ptr @.bytes.8, ptr %t230
-  %t231 = getelementptr inbounds { ptr, i64 }, ptr %v.str.73, i32 0, i32 1
-  store i64 0, ptr %t231
+  %t227 = call { ptr, i64 } @"std/os/path.join"(ptr %v.varargs.69)
+  store { ptr, i64 } %t227, ptr %v.ret.69
+  %t228 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.69, i32 0, i32 0
+  %t229 = load ptr, ptr %t228
+  %t230 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.69, i32 0, i32 1
+  %t231 = load i64, ptr %t230
   %t232 = getelementptr inbounds { ptr, i64 }, ptr %v.str.73, i32 0, i32 0
-  %t233 = load ptr, ptr %t232
-  %t234 = getelementptr inbounds { ptr, i64 }, ptr %v.str.73, i32 0, i32 1
-  %t235 = load i64, ptr %t234
-  %t236 = icmp ult i64 %t229, %t235
-  %t237 = select i1 %t236, i64 %t229, i64 %t235
-  %t238 = call i32 @memcmp(ptr %t227, ptr %t233, i64 %t237)
-  %t239 = icmp eq i32 %t238, 0
-  %t240 = icmp eq i64 %t229, %t235
-  %t241 = and i1 %t239, %t240
-  %t242 = xor i1 %t241, true
-  br i1 %t242, label %if.then.12, label %if.end.12
+  store ptr @.bytes.8, ptr %t232
+  %t233 = getelementptr inbounds { ptr, i64 }, ptr %v.str.73, i32 0, i32 1
+  store i64 0, ptr %t233
+  %t234 = getelementptr inbounds { ptr, i64 }, ptr %v.str.73, i32 0, i32 0
+  %t235 = load ptr, ptr %t234
+  %t236 = getelementptr inbounds { ptr, i64 }, ptr %v.str.73, i32 0, i32 1
+  %t237 = load i64, ptr %t236
+  %t238 = icmp ult i64 %t231, %t237
+  %t239 = select i1 %t238, i64 %t231, i64 %t237
+  %t240 = call i32 @memcmp(ptr %t229, ptr %t235, i64 %t239)
+  %t241 = icmp eq i32 %t240, 0
+  %t242 = icmp eq i64 %t231, %t237
+  %t243 = and i1 %t241, %t242
+  %t244 = xor i1 %t243, true
+  br i1 %t244, label %if.then.12, label %if.end.12
 if.then.12:
-  %t243 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t244 = call ptr @willrt_gc_read_barrier_slot(ptr %t243)
-  call void @willrt_free_str(ptr %t244)
+  %t245 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t246 = call ptr @willrt_gc_read_barrier_slot(ptr %t245)
+  call void @willrt_free_str(ptr %t246)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 5
 if.end.12:
-  %t245 = getelementptr inbounds { ptr, i64 }, ptr %v.str.82, i32 0, i32 0
-  store ptr @.bytes.15, ptr %t245
-  %t246 = getelementptr inbounds { ptr, i64 }, ptr %v.str.82, i32 0, i32 1
-  store i64 4, ptr %t246
+  %t247 = getelementptr inbounds { ptr, i64 }, ptr %v.str.83, i32 0, i32 0
+  store ptr @.bytes.11, ptr %t247
+  %t248 = getelementptr inbounds { ptr, i64 }, ptr %v.str.83, i32 0, i32 1
+  store i64 1, ptr %t248
   call void @willrt_gc_safepoint(i32 3)
-  %t247 = call { ptr, i64 } @"std/os/path.base"(ptr %v.str.82)
-  store { ptr, i64 } %t247, ptr %v.ret.80
-  %t248 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.80, i32 0, i32 0
-  %t249 = load ptr, ptr %t248
-  %t250 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.80, i32 0, i32 1
-  %t251 = load i64, ptr %t250
-  %t252 = getelementptr inbounds { ptr, i64 }, ptr %v.str.83, i32 0, i32 0
-  store ptr @.bytes.12, ptr %t252
-  %t253 = getelementptr inbounds { ptr, i64 }, ptr %v.str.83, i32 0, i32 1
-  store i64 1, ptr %t253
-  %t254 = getelementptr inbounds { ptr, i64 }, ptr %v.str.83, i32 0, i32 0
-  %t255 = load ptr, ptr %t254
-  %t256 = getelementptr inbounds { ptr, i64 }, ptr %v.str.83, i32 0, i32 1
-  %t257 = load i64, ptr %t256
-  %t258 = icmp ult i64 %t251, %t257
-  %t259 = select i1 %t258, i64 %t251, i64 %t257
-  %t260 = call i32 @memcmp(ptr %t249, ptr %t255, i64 %t259)
-  %t261 = icmp eq i32 %t260, 0
-  %t262 = icmp eq i64 %t251, %t257
-  %t263 = and i1 %t261, %t262
-  %t264 = xor i1 %t263, true
-  br i1 %t264, label %if.then.13, label %if.end.13
-if.then.13:
-  %t265 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t266 = call ptr @willrt_gc_read_barrier_slot(ptr %t265)
-  call void @willrt_free_str(ptr %t266)
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i32 6
-if.end.13:
-  %t267 = getelementptr inbounds { ptr, i64 }, ptr %v.str.92, i32 0, i32 0
-  store ptr @.bytes.16, ptr %t267
-  %t268 = getelementptr inbounds { ptr, i64 }, ptr %v.str.92, i32 0, i32 1
-  store i64 7, ptr %t268
+  %t249 = call { i32, [4 x i8], { ptr, i64 } } @"std/os/path.abs"(ptr %v.str.83)
+  store { i32, [4 x i8], { ptr, i64 } } %t249, ptr %v.ret.81
+  %t250 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.81, i32 0, i32 0
+  %t251 = load i32, ptr %t250
+  %t252 = icmp eq i32 %t251, 1
+  br i1 %t252, label %unwrap.err.13, label %unwrap.ok.13
+unwrap.err.13:
+  %t253 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.81, i32 0, i32 2
+  %t254 = getelementptr inbounds %interface.Error, ptr %t253, i32 0, i32 0
+  %t255 = getelementptr inbounds %interface.Error, ptr %t253, i32 0, i32 1
+  %t256 = load ptr, ptr %t254
+  %t257 = load ptr, ptr %t255
+  %t258 = getelementptr inbounds ptr, ptr %t257, i32 0
+  %t259 = load ptr, ptr %t258
+  %t260 = call { ptr, i64 } %t259(ptr %t256)
+  %t261 = extractvalue { ptr, i64 } %t260, 0
+  %t262 = extractvalue { ptr, i64 } %t260, 1
+  call void @willrt_panic_n(ptr %t261, i64 %t262, ptr null, ptr null)
+  unreachable
+unwrap.ok.13:
+  %t263 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.81, i32 0, i32 2
+  store { ptr, i64 } zeroinitializer, ptr %v.unwrap.out.80
+  %t264 = load { ptr, i64 }, ptr %t263
+  store { ptr, i64 } %t264, ptr %v.unwrap.out.80
+  %t265 = getelementptr inbounds i8, ptr %v.abs, i64 0
+  %t266 = getelementptr inbounds i8, ptr %v.unwrap.out.80, i64 0
+  %t267 = load ptr, ptr %t266
+  call void @willrt_gc_write_barrier_untagged(ptr %t265, ptr %t267)
+  %t268 = load { ptr, i64 }, ptr %v.unwrap.out.80
+  store { ptr, i64 } %t268, ptr %v.abs
+  store { ptr, i64 } zeroinitializer, ptr %v.unwrap.out.80
+  %t269 = getelementptr inbounds { ptr, i64 }, ptr %v.unwrap.out.80, i32 0, i32 0
+  %t270 = call ptr @willrt_gc_read_barrier_slot(ptr %t269)
+  call void @willrt_free_str(ptr %t270)
+  store { ptr, i64 } zeroinitializer, ptr %v.unwrap.out.80
   call void @willrt_gc_safepoint(i32 3)
-  %t269 = call { ptr, i64 } @"std/os/path.ext"(ptr %v.str.92)
-  store { ptr, i64 } %t269, ptr %v.ret.90
-  %t270 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.90, i32 0, i32 0
-  %t271 = load ptr, ptr %t270
-  %t272 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.90, i32 0, i32 1
-  %t273 = load i64, ptr %t272
-  %t274 = getelementptr inbounds { ptr, i64 }, ptr %v.str.93, i32 0, i32 0
-  store ptr @.bytes.17, ptr %t274
-  %t275 = getelementptr inbounds { ptr, i64 }, ptr %v.str.93, i32 0, i32 1
-  store i64 4, ptr %t275
-  %t276 = getelementptr inbounds { ptr, i64 }, ptr %v.str.93, i32 0, i32 0
-  %t277 = load ptr, ptr %t276
-  %t278 = getelementptr inbounds { ptr, i64 }, ptr %v.str.93, i32 0, i32 1
-  %t279 = load i64, ptr %t278
-  %t280 = icmp ult i64 %t273, %t279
-  %t281 = select i1 %t280, i64 %t273, i64 %t279
-  %t282 = call i32 @memcmp(ptr %t271, ptr %t277, i64 %t281)
-  %t283 = icmp eq i32 %t282, 0
-  %t284 = icmp eq i64 %t273, %t279
-  %t285 = and i1 %t283, %t284
-  %t286 = xor i1 %t285, true
-  br i1 %t286, label %if.then.14, label %if.end.14
-if.then.14:
-  %t287 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t288 = call ptr @willrt_gc_read_barrier_slot(ptr %t287)
-  call void @willrt_free_str(ptr %t288)
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i32 7
-if.end.14:
-  %t289 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t290 = load ptr, ptr %t289
-  %t291 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 1
-  %t292 = load i64, ptr %t291
-  %t293 = getelementptr inbounds { ptr, i64 }, ptr %v.str.104, i32 0, i32 0
-  store ptr @.bytes.11, ptr %t293
-  %t294 = getelementptr inbounds { ptr, i64 }, ptr %v.str.104, i32 0, i32 1
-  store i64 1, ptr %t294
-  %t295 = getelementptr inbounds { ptr, i64 }, ptr %v.str.104, i32 0, i32 0
-  %t296 = load ptr, ptr %t295
-  %t297 = getelementptr inbounds { ptr, i64 }, ptr %v.str.104, i32 0, i32 1
-  %t298 = load i64, ptr %t297
-  %t299 = add i64 %t292, %t298
-  %t300 = icmp eq i64 %t299, 0
-  br i1 %t300, label %cat.zero.16, label %cat.alloc.16
-cat.alloc.16:
-  %t301 = call ptr @willrt_gc_alloc(i64 %t299, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t301, ptr %t290, i64 %t292)
-  %t302 = getelementptr inbounds i8, ptr %t301, i64 %t292
-  call void @memcpy(ptr %t302, ptr %t296, i64 %t298)
-  br label %cat.ready.16
-cat.zero.16:
-  br label %cat.ready.16
-cat.ready.16:
-  %t303 = phi ptr [ null, %cat.zero.16 ], [ %t301, %cat.alloc.16 ]
-  %t304 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.102, i32 0, i32 0
-  store ptr %t303, ptr %t304
-  %t305 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.102, i32 0, i32 1
-  store i64 %t299, ptr %t305
-  call void @willrt_gc_safepoint(i32 3)
-  %t306 = call i1 @"std/os/path.is_abs"(ptr %v.cat.102)
+  %t271 = call { i32, [4 x i8], { ptr, i64 } } @"std/os/path.abs"(ptr %v.abs)
+  store { i32, [4 x i8], { ptr, i64 } } %t271, ptr %v.ret.87
+  %t272 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.87, i32 0, i32 0
+  %t273 = load i32, ptr %t272
+  %t274 = icmp eq i32 %t273, 1
+  br i1 %t274, label %unwrap.err.14, label %unwrap.ok.14
+unwrap.err.14:
+  %t275 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.87, i32 0, i32 2
+  %t276 = getelementptr inbounds %interface.Error, ptr %t275, i32 0, i32 0
+  %t277 = getelementptr inbounds %interface.Error, ptr %t275, i32 0, i32 1
+  %t278 = load ptr, ptr %t276
+  %t279 = load ptr, ptr %t277
+  %t280 = getelementptr inbounds ptr, ptr %t279, i32 0
+  %t281 = load ptr, ptr %t280
+  %t282 = call { ptr, i64 } %t281(ptr %t278)
+  %t283 = extractvalue { ptr, i64 } %t282, 0
+  %t284 = extractvalue { ptr, i64 } %t282, 1
+  call void @willrt_panic_n(ptr %t283, i64 %t284, ptr null, ptr null)
+  unreachable
+unwrap.ok.14:
+  %t285 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.87, i32 0, i32 2
+  store { ptr, i64 } zeroinitializer, ptr %v.unwrap.out.86
+  %t286 = load { ptr, i64 }, ptr %t285
+  store { ptr, i64 } %t286, ptr %v.unwrap.out.86
+  %t287 = getelementptr inbounds i8, ptr %v.again, i64 0
+  %t288 = getelementptr inbounds i8, ptr %v.unwrap.out.86, i64 0
+  %t289 = load ptr, ptr %t288
+  call void @willrt_gc_write_barrier_untagged(ptr %t287, ptr %t289)
+  %t290 = load { ptr, i64 }, ptr %v.unwrap.out.86
+  store { ptr, i64 } %t290, ptr %v.again
+  store { ptr, i64 } zeroinitializer, ptr %v.unwrap.out.86
+  %t291 = getelementptr inbounds { ptr, i64 }, ptr %v.unwrap.out.86, i32 0, i32 0
+  %t292 = call ptr @willrt_gc_read_barrier_slot(ptr %t291)
+  call void @willrt_free_str(ptr %t292)
+  store { ptr, i64 } zeroinitializer, ptr %v.unwrap.out.86
+  %t293 = getelementptr inbounds { ptr, i64 }, ptr %v.again, i32 0, i32 0
+  %t294 = load ptr, ptr %t293
+  %t295 = getelementptr inbounds { ptr, i64 }, ptr %v.again, i32 0, i32 1
+  %t296 = load i64, ptr %t295
+  %t297 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
+  %t298 = load ptr, ptr %t297
+  %t299 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 1
+  %t300 = load i64, ptr %t299
+  %t301 = icmp ult i64 %t296, %t300
+  %t302 = select i1 %t301, i64 %t296, i64 %t300
+  %t303 = call i32 @memcmp(ptr %t294, ptr %t298, i64 %t302)
+  %t304 = icmp eq i32 %t303, 0
+  %t305 = icmp eq i64 %t296, %t300
+  %t306 = and i1 %t304, %t305
   %t307 = xor i1 %t306, true
   br i1 %t307, label %if.then.15, label %if.end.15
 if.then.15:
-  %t308 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t308 = getelementptr inbounds { ptr, i64 }, ptr %v.again, i32 0, i32 0
   %t309 = call ptr @willrt_gc_read_barrier_slot(ptr %t308)
   call void @willrt_free_str(ptr %t309)
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i32 8
-if.end.15:
-  %t310 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 0
-  store ptr @.bytes.11, ptr %t310
-  %t311 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 1
-  store i64 1, ptr %t311
-  %t312 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 0
-  %t313 = load ptr, ptr %t312
-  %t314 = getelementptr inbounds { ptr, i64 }, ptr %v.str.114, i32 0, i32 1
-  %t315 = load i64, ptr %t314
-  %t316 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t317 = load ptr, ptr %t316
-  %t318 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 1
-  %t319 = load i64, ptr %t318
-  %t320 = add i64 %t315, %t319
-  %t321 = icmp eq i64 %t320, 0
-  br i1 %t321, label %cat.zero.18, label %cat.alloc.18
-cat.alloc.18:
-  %t322 = call ptr @willrt_gc_alloc(i64 %t320, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t322, ptr %t313, i64 %t315)
-  %t323 = getelementptr inbounds i8, ptr %t322, i64 %t315
-  call void @memcpy(ptr %t323, ptr %t317, i64 %t319)
-  br label %cat.ready.18
-cat.zero.18:
-  br label %cat.ready.18
-cat.ready.18:
-  %t324 = phi ptr [ null, %cat.zero.18 ], [ %t322, %cat.alloc.18 ]
-  %t325 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.113, i32 0, i32 0
-  store ptr %t324, ptr %t325
-  %t326 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.113, i32 0, i32 1
-  store i64 %t320, ptr %t326
-  %t327 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.113, i32 0, i32 0
-  %t328 = load ptr, ptr %t327
-  %t329 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.113, i32 0, i32 1
-  %t330 = load i64, ptr %t329
-  %t331 = getelementptr inbounds { ptr, i64 }, ptr %v.str.116, i32 0, i32 0
-  store ptr @.bytes.12, ptr %t331
-  %t332 = getelementptr inbounds { ptr, i64 }, ptr %v.str.116, i32 0, i32 1
-  store i64 1, ptr %t332
-  %t333 = getelementptr inbounds { ptr, i64 }, ptr %v.str.116, i32 0, i32 0
-  %t334 = load ptr, ptr %t333
-  %t335 = getelementptr inbounds { ptr, i64 }, ptr %v.str.116, i32 0, i32 1
-  %t336 = load i64, ptr %t335
-  %t337 = add i64 %t330, %t336
-  %t338 = icmp eq i64 %t337, 0
-  br i1 %t338, label %cat.zero.19, label %cat.alloc.19
-cat.alloc.19:
-  %t339 = call ptr @willrt_gc_alloc(i64 %t337, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t339, ptr %t328, i64 %t330)
-  %t340 = getelementptr inbounds i8, ptr %t339, i64 %t330
-  call void @memcpy(ptr %t340, ptr %t334, i64 %t336)
-  br label %cat.ready.19
-cat.zero.19:
-  br label %cat.ready.19
-cat.ready.19:
-  %t341 = phi ptr [ null, %cat.zero.19 ], [ %t339, %cat.alloc.19 ]
-  %t342 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.112, i32 0, i32 0
-  store ptr %t341, ptr %t342
-  %t343 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.112, i32 0, i32 1
-  store i64 %t337, ptr %t343
-  call void @willrt_gc_safepoint(i32 3)
-  %t344 = call i1 @"std/os/path.is_abs"(ptr %v.cat.112)
-  br i1 %t344, label %if.then.17, label %if.end.17
-if.then.17:
-  %t345 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t346 = call ptr @willrt_gc_read_barrier_slot(ptr %t345)
-  call void @willrt_free_str(ptr %t346)
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i32 9
-if.end.17:
-  %t347 = getelementptr inbounds { ptr, i64 }, ptr %v.str.126, i32 0, i32 0
-  store ptr @.bytes.11, ptr %t347
-  %t348 = getelementptr inbounds { ptr, i64 }, ptr %v.str.126, i32 0, i32 1
-  store i64 1, ptr %t348
-  call void @willrt_gc_safepoint(i32 3)
-  %t349 = call { i32, [4 x i8], { ptr, i64 } } @"std/os/path.abs"(ptr %v.str.126)
-  store { i32, [4 x i8], { ptr, i64 } } %t349, ptr %v.ret.124
-  %t350 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.124, i32 0, i32 0
-  %t351 = load i32, ptr %t350
-  %t352 = icmp eq i32 %t351, 1
-  br i1 %t352, label %unwrap.err.20, label %unwrap.ok.20
-unwrap.err.20:
-  %t353 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.124, i32 0, i32 2
-  %t354 = getelementptr inbounds %interface.Error, ptr %t353, i32 0, i32 0
-  %t355 = getelementptr inbounds %interface.Error, ptr %t353, i32 0, i32 1
-  %t356 = load ptr, ptr %t354
-  %t357 = load ptr, ptr %t355
-  %t358 = getelementptr inbounds ptr, ptr %t357, i32 0
-  %t359 = load ptr, ptr %t358
-  %t360 = call { ptr, i64 } %t359(ptr %t356)
-  %t361 = extractvalue { ptr, i64 } %t360, 0
-  %t362 = extractvalue { ptr, i64 } %t360, 1
-  call void @willrt_panic_n(ptr %t361, i64 %t362, ptr null, ptr null)
-  unreachable
-unwrap.ok.20:
-  %t363 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.124, i32 0, i32 2
-  store { ptr, i64 } zeroinitializer, ptr %v.unwrap.out.123
-  %t364 = load { ptr, i64 }, ptr %t363
-  store { ptr, i64 } %t364, ptr %v.unwrap.out.123
-  %t365 = getelementptr inbounds i8, ptr %v.abs, i64 0
-  %t366 = getelementptr inbounds i8, ptr %v.unwrap.out.123, i64 0
-  %t367 = load ptr, ptr %t366
-  call void @willrt_gc_write_barrier_untagged(ptr %t365, ptr %t367)
-  %t368 = load { ptr, i64 }, ptr %v.unwrap.out.123
-  store { ptr, i64 } %t368, ptr %v.abs
-  store { ptr, i64 } zeroinitializer, ptr %v.unwrap.out.123
-  %t369 = getelementptr inbounds { ptr, i64 }, ptr %v.unwrap.out.123, i32 0, i32 0
-  %t370 = call ptr @willrt_gc_read_barrier_slot(ptr %t369)
-  call void @willrt_free_str(ptr %t370)
-  store { ptr, i64 } zeroinitializer, ptr %v.unwrap.out.123
-  call void @willrt_gc_safepoint(i32 3)
-  %t371 = call i1 @"std/os/path.is_abs"(ptr %v.abs)
-  %t372 = xor i1 %t371, true
-  br i1 %t372, label %if.then.21, label %if.end.21
-if.then.21:
-  %t373 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
-  %t374 = call ptr @willrt_gc_read_barrier_slot(ptr %t373)
-  call void @willrt_free_str(ptr %t374)
-  %t375 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t376 = call ptr @willrt_gc_read_barrier_slot(ptr %t375)
-  call void @willrt_free_str(ptr %t376)
+  %t310 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
+  %t311 = call ptr @willrt_gc_read_barrier_slot(ptr %t310)
+  call void @willrt_free_str(ptr %t311)
+  %t312 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t313 = call ptr @willrt_gc_read_barrier_slot(ptr %t312)
+  call void @willrt_free_str(ptr %t313)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 10
-if.end.21:
-  %t377 = getelementptr inbounds { ptr, i64 }, ptr %v.str.141, i32 0, i32 0
-  store ptr @.bytes.18, ptr %t377
-  %t378 = getelementptr inbounds { ptr, i64 }, ptr %v.str.141, i32 0, i32 1
-  store i64 5, ptr %t378
-  %t379 = getelementptr inbounds { ptr, i64 }, ptr %v.str.142, i32 0, i32 0
-  store ptr @.bytes.19, ptr %t379
-  %t380 = getelementptr inbounds { ptr, i64 }, ptr %v.str.142, i32 0, i32 1
-  store i64 5, ptr %t380
+if.end.15:
+  %t314 = getelementptr inbounds { ptr, i64 }, ptr %v.str.104, i32 0, i32 0
+  store ptr @.bytes.15, ptr %t314
+  %t315 = getelementptr inbounds { ptr, i64 }, ptr %v.str.104, i32 0, i32 1
+  store i64 5, ptr %t315
+  %t316 = getelementptr inbounds { ptr, i64 }, ptr %v.str.105, i32 0, i32 0
+  store ptr @.bytes.16, ptr %t316
+  %t317 = getelementptr inbounds { ptr, i64 }, ptr %v.str.105, i32 0, i32 1
+  store i64 5, ptr %t317
   call void @willrt_gc_safepoint(i32 3)
-  %t381 = call i1 @"std/os/path.glob"(ptr %v.str.141, ptr %v.str.142)
-  %t382 = xor i1 %t381, true
-  br i1 %t382, label %if.then.22, label %if.end.22
-if.then.22:
-  %t383 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
-  %t384 = call ptr @willrt_gc_read_barrier_slot(ptr %t383)
-  call void @willrt_free_str(ptr %t384)
-  %t385 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t386 = call ptr @willrt_gc_read_barrier_slot(ptr %t385)
-  call void @willrt_free_str(ptr %t386)
+  %t318 = call i1 @"std/os/path.glob"(ptr %v.str.104, ptr %v.str.105)
+  %t319 = xor i1 %t318, true
+  br i1 %t319, label %if.then.16, label %if.end.16
+if.then.16:
+  %t320 = getelementptr inbounds { ptr, i64 }, ptr %v.again, i32 0, i32 0
+  %t321 = call ptr @willrt_gc_read_barrier_slot(ptr %t320)
+  call void @willrt_free_str(ptr %t321)
+  %t322 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
+  %t323 = call ptr @willrt_gc_read_barrier_slot(ptr %t322)
+  call void @willrt_free_str(ptr %t323)
+  %t324 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t325 = call ptr @willrt_gc_read_barrier_slot(ptr %t324)
+  call void @willrt_free_str(ptr %t325)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 11
-if.end.22:
-  %t387 = getelementptr inbounds { ptr, i64 }, ptr %v.str.151, i32 0, i32 0
-  store ptr @.bytes.18, ptr %t387
-  %t388 = getelementptr inbounds { ptr, i64 }, ptr %v.str.151, i32 0, i32 1
-  store i64 5, ptr %t388
-  %t389 = getelementptr inbounds { ptr, i64 }, ptr %v.str.152, i32 0, i32 0
-  store ptr @.bytes.16, ptr %t389
-  %t390 = getelementptr inbounds { ptr, i64 }, ptr %v.str.152, i32 0, i32 1
-  store i64 7, ptr %t390
+if.end.16:
+  %t326 = getelementptr inbounds { ptr, i64 }, ptr %v.str.115, i32 0, i32 0
+  store ptr @.bytes.15, ptr %t326
+  %t327 = getelementptr inbounds { ptr, i64 }, ptr %v.str.115, i32 0, i32 1
+  store i64 5, ptr %t327
+  %t328 = getelementptr inbounds { ptr, i64 }, ptr %v.str.116, i32 0, i32 0
+  store ptr @.bytes.17, ptr %t328
+  %t329 = getelementptr inbounds { ptr, i64 }, ptr %v.str.116, i32 0, i32 1
+  store i64 7, ptr %t329
   call void @willrt_gc_safepoint(i32 3)
-  %t391 = call i1 @"std/os/path.glob"(ptr %v.str.151, ptr %v.str.152)
-  br i1 %t391, label %if.then.23, label %if.end.23
-if.then.23:
-  %t392 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
-  %t393 = call ptr @willrt_gc_read_barrier_slot(ptr %t392)
-  call void @willrt_free_str(ptr %t393)
-  %t394 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t395 = call ptr @willrt_gc_read_barrier_slot(ptr %t394)
-  call void @willrt_free_str(ptr %t395)
+  %t330 = call i1 @"std/os/path.glob"(ptr %v.str.115, ptr %v.str.116)
+  br i1 %t330, label %if.then.17, label %if.end.17
+if.then.17:
+  %t331 = getelementptr inbounds { ptr, i64 }, ptr %v.again, i32 0, i32 0
+  %t332 = call ptr @willrt_gc_read_barrier_slot(ptr %t331)
+  call void @willrt_free_str(ptr %t332)
+  %t333 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
+  %t334 = call ptr @willrt_gc_read_barrier_slot(ptr %t333)
+  call void @willrt_free_str(ptr %t334)
+  %t335 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t336 = call ptr @willrt_gc_read_barrier_slot(ptr %t335)
+  call void @willrt_free_str(ptr %t336)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 12
-if.end.23:
+if.end.17:
   call void @willrt_gc_safepoint(i32 3)
-  %t396 = call i8 @"std/os/path.separator"()
-  %t397 = icmp eq i8 %t396, 92
-  br i1 %t397, label %if.then.24, label %if.end.24
-if.then.24:
-  %t398 = getelementptr inbounds { ptr, i64 }, ptr %v.str.168, i32 0, i32 0
-  store ptr @.bytes.20, ptr %t398
-  %t399 = getelementptr inbounds { ptr, i64 }, ptr %v.str.168, i32 0, i32 1
-  store i64 9, ptr %t399
+  %t337 = call i8 @"std/os/path.separator"()
+  %t338 = icmp eq i8 %t337, 92
+  br i1 %t338, label %if.then.18, label %if.end.18
+if.then.18:
+  %t339 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 0
+  store ptr @.bytes.18, ptr %t339
+  %t340 = getelementptr inbounds { ptr, i64 }, ptr %v.str.133, i32 0, i32 1
+  store i64 9, ptr %t340
   call void @willrt_gc_safepoint(i32 3)
-  %t400 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.str.168)
-  store { ptr, i64 } %t400, ptr %v.ret.166
-  %t401 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.166, i32 0, i32 0
-  %t402 = load ptr, ptr %t401
-  %t403 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.166, i32 0, i32 1
-  %t404 = load i64, ptr %t403
-  %t405 = getelementptr inbounds { ptr, i64 }, ptr %v.str.171, i32 0, i32 0
-  store ptr @.bytes.21, ptr %t405
-  %t406 = getelementptr inbounds { ptr, i64 }, ptr %v.str.171, i32 0, i32 1
-  store i64 2, ptr %t406
-  %t407 = getelementptr inbounds { ptr, i64 }, ptr %v.str.171, i32 0, i32 0
-  %t408 = load ptr, ptr %t407
-  %t409 = getelementptr inbounds { ptr, i64 }, ptr %v.str.171, i32 0, i32 1
-  %t410 = load i64, ptr %t409
-  %t411 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t412 = load ptr, ptr %t411
-  %t413 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 1
-  %t414 = load i64, ptr %t413
-  %t415 = add i64 %t410, %t414
-  %t416 = icmp eq i64 %t415, 0
-  br i1 %t416, label %cat.zero.26, label %cat.alloc.26
-cat.alloc.26:
-  %t417 = call ptr @willrt_gc_alloc(i64 %t415, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t417, ptr %t408, i64 %t410)
-  %t418 = getelementptr inbounds i8, ptr %t417, i64 %t410
-  call void @memcpy(ptr %t418, ptr %t412, i64 %t414)
-  br label %cat.ready.26
-cat.zero.26:
-  br label %cat.ready.26
-cat.ready.26:
-  %t419 = phi ptr [ null, %cat.zero.26 ], [ %t417, %cat.alloc.26 ]
-  %t420 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.170, i32 0, i32 0
-  store ptr %t419, ptr %t420
-  %t421 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.170, i32 0, i32 1
-  store i64 %t415, ptr %t421
-  %t422 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.170, i32 0, i32 0
-  %t423 = load ptr, ptr %t422
-  %t424 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.170, i32 0, i32 1
-  %t425 = load i64, ptr %t424
-  %t426 = getelementptr inbounds { ptr, i64 }, ptr %v.str.173, i32 0, i32 0
-  store ptr @.bytes.12, ptr %t426
-  %t427 = getelementptr inbounds { ptr, i64 }, ptr %v.str.173, i32 0, i32 1
-  store i64 1, ptr %t427
-  %t428 = getelementptr inbounds { ptr, i64 }, ptr %v.str.173, i32 0, i32 0
-  %t429 = load ptr, ptr %t428
-  %t430 = getelementptr inbounds { ptr, i64 }, ptr %v.str.173, i32 0, i32 1
-  %t431 = load i64, ptr %t430
-  %t432 = add i64 %t425, %t431
-  %t433 = icmp eq i64 %t432, 0
-  br i1 %t433, label %cat.zero.27, label %cat.alloc.27
-cat.alloc.27:
-  %t434 = call ptr @willrt_gc_alloc(i64 %t432, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t434, ptr %t423, i64 %t425)
-  %t435 = getelementptr inbounds i8, ptr %t434, i64 %t425
-  call void @memcpy(ptr %t435, ptr %t429, i64 %t431)
-  br label %cat.ready.27
-cat.zero.27:
-  br label %cat.ready.27
-cat.ready.27:
-  %t436 = phi ptr [ null, %cat.zero.27 ], [ %t434, %cat.alloc.27 ]
-  %t437 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.169, i32 0, i32 0
-  store ptr %t436, ptr %t437
-  %t438 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.169, i32 0, i32 1
-  store i64 %t432, ptr %t438
-  %t439 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.169, i32 0, i32 0
-  %t440 = load ptr, ptr %t439
-  %t441 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.169, i32 0, i32 1
-  %t442 = load i64, ptr %t441
-  %t443 = icmp ult i64 %t404, %t442
-  %t444 = select i1 %t443, i64 %t404, i64 %t442
-  %t445 = call i32 @memcmp(ptr %t402, ptr %t440, i64 %t444)
-  %t446 = icmp eq i32 %t445, 0
-  %t447 = icmp eq i64 %t404, %t442
-  %t448 = and i1 %t446, %t447
-  %t449 = xor i1 %t448, true
-  br i1 %t449, label %if.then.25, label %if.end.25
-if.then.25:
-  %t450 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
-  %t451 = call ptr @willrt_gc_read_barrier_slot(ptr %t450)
-  call void @willrt_free_str(ptr %t451)
-  %t452 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t453 = call ptr @willrt_gc_read_barrier_slot(ptr %t452)
-  call void @willrt_free_str(ptr %t453)
+  %t341 = call { ptr, i64 } @"std/os/path.clean"(ptr %v.str.133)
+  store { ptr, i64 } %t341, ptr %v.ret.131
+  %t342 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.131, i32 0, i32 0
+  %t343 = load ptr, ptr %t342
+  %t344 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.131, i32 0, i32 1
+  %t345 = load i64, ptr %t344
+  %t346 = getelementptr inbounds { ptr, i64 }, ptr %v.str.136, i32 0, i32 0
+  store ptr @.bytes.19, ptr %t346
+  %t347 = getelementptr inbounds { ptr, i64 }, ptr %v.str.136, i32 0, i32 1
+  store i64 2, ptr %t347
+  %t348 = getelementptr inbounds { ptr, i64 }, ptr %v.str.136, i32 0, i32 0
+  %t349 = load ptr, ptr %t348
+  %t350 = getelementptr inbounds { ptr, i64 }, ptr %v.str.136, i32 0, i32 1
+  %t351 = load i64, ptr %t350
+  %t352 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t353 = load ptr, ptr %t352
+  %t354 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 1
+  %t355 = load i64, ptr %t354
+  %t356 = add i64 %t351, %t355
+  %t357 = icmp eq i64 %t356, 0
+  br i1 %t357, label %cat.zero.20, label %cat.alloc.20
+cat.alloc.20:
+  %t358 = call ptr @willrt_gc_alloc(i64 %t356, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call void @memcpy(ptr %t358, ptr %t349, i64 %t351)
+  %t359 = getelementptr inbounds i8, ptr %t358, i64 %t351
+  call void @memcpy(ptr %t359, ptr %t353, i64 %t355)
+  br label %cat.ready.20
+cat.zero.20:
+  br label %cat.ready.20
+cat.ready.20:
+  %t360 = phi ptr [ null, %cat.zero.20 ], [ %t358, %cat.alloc.20 ]
+  %t361 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.135, i32 0, i32 0
+  store ptr %t360, ptr %t361
+  %t362 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.135, i32 0, i32 1
+  store i64 %t356, ptr %t362
+  %t363 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.135, i32 0, i32 0
+  %t364 = load ptr, ptr %t363
+  %t365 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.135, i32 0, i32 1
+  %t366 = load i64, ptr %t365
+  %t367 = getelementptr inbounds { ptr, i64 }, ptr %v.str.138, i32 0, i32 0
+  store ptr @.bytes.12, ptr %t367
+  %t368 = getelementptr inbounds { ptr, i64 }, ptr %v.str.138, i32 0, i32 1
+  store i64 1, ptr %t368
+  %t369 = getelementptr inbounds { ptr, i64 }, ptr %v.str.138, i32 0, i32 0
+  %t370 = load ptr, ptr %t369
+  %t371 = getelementptr inbounds { ptr, i64 }, ptr %v.str.138, i32 0, i32 1
+  %t372 = load i64, ptr %t371
+  %t373 = add i64 %t366, %t372
+  %t374 = icmp eq i64 %t373, 0
+  br i1 %t374, label %cat.zero.21, label %cat.alloc.21
+cat.alloc.21:
+  %t375 = call ptr @willrt_gc_alloc(i64 %t373, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call void @memcpy(ptr %t375, ptr %t364, i64 %t366)
+  %t376 = getelementptr inbounds i8, ptr %t375, i64 %t366
+  call void @memcpy(ptr %t376, ptr %t370, i64 %t372)
+  br label %cat.ready.21
+cat.zero.21:
+  br label %cat.ready.21
+cat.ready.21:
+  %t377 = phi ptr [ null, %cat.zero.21 ], [ %t375, %cat.alloc.21 ]
+  %t378 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.134, i32 0, i32 0
+  store ptr %t377, ptr %t378
+  %t379 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.134, i32 0, i32 1
+  store i64 %t373, ptr %t379
+  %t380 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.134, i32 0, i32 0
+  %t381 = load ptr, ptr %t380
+  %t382 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.134, i32 0, i32 1
+  %t383 = load i64, ptr %t382
+  %t384 = icmp ult i64 %t345, %t383
+  %t385 = select i1 %t384, i64 %t345, i64 %t383
+  %t386 = call i32 @memcmp(ptr %t343, ptr %t381, i64 %t385)
+  %t387 = icmp eq i32 %t386, 0
+  %t388 = icmp eq i64 %t345, %t383
+  %t389 = and i1 %t387, %t388
+  %t390 = xor i1 %t389, true
+  br i1 %t390, label %if.then.19, label %if.end.19
+if.then.19:
+  %t391 = getelementptr inbounds { ptr, i64 }, ptr %v.again, i32 0, i32 0
+  %t392 = call ptr @willrt_gc_read_barrier_slot(ptr %t391)
+  call void @willrt_free_str(ptr %t392)
+  %t393 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
+  %t394 = call ptr @willrt_gc_read_barrier_slot(ptr %t393)
+  call void @willrt_free_str(ptr %t394)
+  %t395 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t396 = call ptr @willrt_gc_read_barrier_slot(ptr %t395)
+  call void @willrt_free_str(ptr %t396)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 13
-if.end.25:
-  %t454 = getelementptr inbounds { ptr, i64 }, ptr %v.str.183, i32 0, i32 0
-  store ptr @.bytes.22, ptr %t454
-  %t455 = getelementptr inbounds { ptr, i64 }, ptr %v.str.183, i32 0, i32 1
-  store i64 3, ptr %t455
-  call void @willrt_gc_safepoint(i32 3)
-  %t456 = call { ptr, i64 } @"std/os/path.base"(ptr %v.str.183)
-  store { ptr, i64 } %t456, ptr %v.ret.181
-  %t457 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.181, i32 0, i32 0
-  %t458 = load ptr, ptr %t457
-  %t459 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.181, i32 0, i32 1
-  %t460 = load i64, ptr %t459
-  %t461 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t462 = load ptr, ptr %t461
-  %t463 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 1
-  %t464 = load i64, ptr %t463
-  %t465 = icmp ult i64 %t460, %t464
-  %t466 = select i1 %t465, i64 %t460, i64 %t464
-  %t467 = call i32 @memcmp(ptr %t458, ptr %t462, i64 %t466)
-  %t468 = icmp eq i32 %t467, 0
-  %t469 = icmp eq i64 %t460, %t464
-  %t470 = and i1 %t468, %t469
-  %t471 = xor i1 %t470, true
-  br i1 %t471, label %if.then.28, label %if.end.28
-if.then.28:
-  %t472 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
-  %t473 = call ptr @willrt_gc_read_barrier_slot(ptr %t472)
-  call void @willrt_free_str(ptr %t473)
-  %t474 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t475 = call ptr @willrt_gc_read_barrier_slot(ptr %t474)
-  call void @willrt_free_str(ptr %t475)
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i32 14
-if.end.28:
-  %t476 = getelementptr inbounds { ptr, i64 }, ptr %v.str.194, i32 0, i32 0
-  store ptr @.bytes.23, ptr %t476
-  %t477 = getelementptr inbounds { ptr, i64 }, ptr %v.str.194, i32 0, i32 1
-  store i64 6, ptr %t477
-  call void @willrt_gc_safepoint(i32 3)
-  %t478 = call { ptr, i64 } @"std/os/path.dir"(ptr %v.str.194)
-  store { ptr, i64 } %t478, ptr %v.ret.192
-  %t479 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.192, i32 0, i32 0
-  %t480 = load ptr, ptr %t479
-  %t481 = getelementptr inbounds { ptr, i64 }, ptr %v.ret.192, i32 0, i32 1
-  %t482 = load i64, ptr %t481
-  %t483 = getelementptr inbounds { ptr, i64 }, ptr %v.str.197, i32 0, i32 0
-  store ptr @.bytes.21, ptr %t483
-  %t484 = getelementptr inbounds { ptr, i64 }, ptr %v.str.197, i32 0, i32 1
-  store i64 2, ptr %t484
-  %t485 = getelementptr inbounds { ptr, i64 }, ptr %v.str.197, i32 0, i32 0
-  %t486 = load ptr, ptr %t485
-  %t487 = getelementptr inbounds { ptr, i64 }, ptr %v.str.197, i32 0, i32 1
-  %t488 = load i64, ptr %t487
-  %t489 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t490 = load ptr, ptr %t489
-  %t491 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 1
-  %t492 = load i64, ptr %t491
-  %t493 = add i64 %t488, %t492
-  %t494 = icmp eq i64 %t493, 0
-  br i1 %t494, label %cat.zero.30, label %cat.alloc.30
-cat.alloc.30:
-  %t495 = call ptr @willrt_gc_alloc(i64 %t493, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t495, ptr %t486, i64 %t488)
-  %t496 = getelementptr inbounds i8, ptr %t495, i64 %t488
-  call void @memcpy(ptr %t496, ptr %t490, i64 %t492)
-  br label %cat.ready.30
-cat.zero.30:
-  br label %cat.ready.30
-cat.ready.30:
-  %t497 = phi ptr [ null, %cat.zero.30 ], [ %t495, %cat.alloc.30 ]
-  %t498 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.196, i32 0, i32 0
-  store ptr %t497, ptr %t498
-  %t499 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.196, i32 0, i32 1
-  store i64 %t493, ptr %t499
-  %t500 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.196, i32 0, i32 0
-  %t501 = load ptr, ptr %t500
-  %t502 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.196, i32 0, i32 1
-  %t503 = load i64, ptr %t502
-  %t504 = getelementptr inbounds { ptr, i64 }, ptr %v.str.199, i32 0, i32 0
-  store ptr @.bytes.11, ptr %t504
-  %t505 = getelementptr inbounds { ptr, i64 }, ptr %v.str.199, i32 0, i32 1
-  store i64 1, ptr %t505
-  %t506 = getelementptr inbounds { ptr, i64 }, ptr %v.str.199, i32 0, i32 0
-  %t507 = load ptr, ptr %t506
-  %t508 = getelementptr inbounds { ptr, i64 }, ptr %v.str.199, i32 0, i32 1
-  %t509 = load i64, ptr %t508
-  %t510 = add i64 %t503, %t509
-  %t511 = icmp eq i64 %t510, 0
-  br i1 %t511, label %cat.zero.31, label %cat.alloc.31
-cat.alloc.31:
-  %t512 = call ptr @willrt_gc_alloc(i64 %t510, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t512, ptr %t501, i64 %t503)
-  %t513 = getelementptr inbounds i8, ptr %t512, i64 %t503
-  call void @memcpy(ptr %t513, ptr %t507, i64 %t509)
-  br label %cat.ready.31
-cat.zero.31:
-  br label %cat.ready.31
-cat.ready.31:
-  %t514 = phi ptr [ null, %cat.zero.31 ], [ %t512, %cat.alloc.31 ]
-  %t515 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.195, i32 0, i32 0
-  store ptr %t514, ptr %t515
-  %t516 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.195, i32 0, i32 1
-  store i64 %t510, ptr %t516
-  %t517 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.195, i32 0, i32 0
-  %t518 = load ptr, ptr %t517
-  %t519 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.195, i32 0, i32 1
-  %t520 = load i64, ptr %t519
-  %t521 = icmp ult i64 %t482, %t520
-  %t522 = select i1 %t521, i64 %t482, i64 %t520
-  %t523 = call i32 @memcmp(ptr %t480, ptr %t518, i64 %t522)
-  %t524 = icmp eq i32 %t523, 0
-  %t525 = icmp eq i64 %t482, %t520
-  %t526 = and i1 %t524, %t525
-  %t527 = xor i1 %t526, true
-  br i1 %t527, label %if.then.29, label %if.end.29
-if.then.29:
-  %t528 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
-  %t529 = call ptr @willrt_gc_read_barrier_slot(ptr %t528)
-  call void @willrt_free_str(ptr %t529)
-  %t530 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t531 = call ptr @willrt_gc_read_barrier_slot(ptr %t530)
-  call void @willrt_free_str(ptr %t531)
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i32 15
-if.end.29:
-  %t532 = getelementptr inbounds { ptr, i64 }, ptr %v.str.209, i32 0, i32 0
-  store ptr @.bytes.24, ptr %t532
-  %t533 = getelementptr inbounds { ptr, i64 }, ptr %v.str.209, i32 0, i32 1
-  store i64 4, ptr %t533
-  call void @willrt_gc_safepoint(i32 3)
-  %t534 = call i1 @"std/os/path.is_abs"(ptr %v.str.209)
-  %t535 = xor i1 %t534, true
-  br i1 %t535, label %if.then.32, label %if.end.32
-if.then.32:
-  %t536 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
-  %t537 = call ptr @willrt_gc_read_barrier_slot(ptr %t536)
-  call void @willrt_free_str(ptr %t537)
-  %t538 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t539 = call ptr @willrt_gc_read_barrier_slot(ptr %t538)
-  call void @willrt_free_str(ptr %t539)
-  call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i32 16
-if.end.32:
-  br label %if.end.24
-if.end.24:
-  %t540 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
-  %t541 = call ptr @willrt_gc_read_barrier_slot(ptr %t540)
-  call void @willrt_free_str(ptr %t541)
-  %t542 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
-  %t543 = call ptr @willrt_gc_read_barrier_slot(ptr %t542)
-  call void @willrt_free_str(ptr %t543)
+if.end.19:
+  br label %if.end.18
+if.end.18:
+  %t397 = getelementptr inbounds { ptr, i64 }, ptr %v.again, i32 0, i32 0
+  %t398 = call ptr @willrt_gc_read_barrier_slot(ptr %t397)
+  call void @willrt_free_str(ptr %t398)
+  %t399 = getelementptr inbounds { ptr, i64 }, ptr %v.abs, i32 0, i32 0
+  %t400 = call ptr @willrt_gc_read_barrier_slot(ptr %t399)
+  call void @willrt_free_str(ptr %t400)
+  %t401 = getelementptr inbounds { ptr, i64 }, ptr %v.sep, i32 0, i32 0
+  %t402 = call ptr @willrt_gc_read_barrier_slot(ptr %t401)
+  call void @willrt_free_str(ptr %t402)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 0
 }
@@ -5060,98 +4270,79 @@ declare i8 @willpath_separator()
 @.str.10 = private unnamed_addr constant [14 x i8] c"std/os.setenv\00", align 1
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
 @"std/os.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/os.iface.clone.Error.std/errors.Fault", ptr @"std/os.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
+@.str.13 = private unnamed_addr constant [20 x i8] c"index out of bounds\00", align 1
+@.str.14 = private unnamed_addr constant [22 x i8] c"os/path/abs.will:9:25\00", align 1
+@.str.15 = private unnamed_addr constant [16 x i8] c"std/os/path.abs\00", align 1
+@.str.16 = private unnamed_addr constant [14 x i8] c"invalid UTF-8\00", align 1
+@.str.17 = private unnamed_addr constant [23 x i8] c"os/path/clean.will:3:8\00", align 1
+@.str.18 = private unnamed_addr constant [27 x i8] c"std/os/path.is_dot_element\00", align 1
+@.str.19 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:7:18\00", align 1
+@.str.20 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:13:8\00", align 1
+@.str.21 = private unnamed_addr constant [31 x i8] c"std/os/path.is_dot_dot_element\00", align 1
+@.str.22 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:16:25\00", align 1
+@.str.23 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:18:26\00", align 1
+@.str.24 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:19:27\00", align 1
+@.str.25 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:33:24\00", align 1
+@.str.26 = private unnamed_addr constant [25 x i8] c"std/os/path.push_element\00", align 1
+@.str.27 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:38:30\00", align 1
+@.str.28 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:39:31\00", align 1
+@.str.29 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:40:31\00", align 1
+@.str.30 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:42:24\00", align 1
+@.str.31 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:47:9\00", align 1
+@.str.32 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:52:9\00", align 1
+@.str.33 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:56:12\00", align 1
+@.str.34 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:75:21\00", align 1
+@.str.35 = private unnamed_addr constant [18 x i8] c"std/os/path.clean\00", align 1
+@.str.36 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:82:26\00", align 1
+@.str.37 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:92:5\00", align 1
+@.str.38 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:112:32\00", align 1
+@.str.39 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:113:31\00", align 1
+@.str.40 = private unnamed_addr constant [24 x i8] c"conversion out of range\00", align 1
+@.str.41 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:114:18\00", align 1
+@.str.42 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:115:18\00", align 1
+@.str.43 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:128:24\00", align 1
+@.str.44 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:129:24\00", align 1
+@.str.45 = private unnamed_addr constant [26 x i8] c"slice bounds out of range\00", align 1
+@.str.46 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:130:20\00", align 1
+@.str.47 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:131:9\00", align 1
+@.str.48 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:135:20\00", align 1
 @.bytes.9 = private unnamed_addr constant [1 x i8] c".", align 1
-@.str.14 = private unnamed_addr constant [14 x i8] c"invalid UTF-8\00", align 1
-@.str.15 = private unnamed_addr constant [23 x i8] c"os/path/base.will:31:5\00", align 1
-@.str.16 = private unnamed_addr constant [17 x i8] c"std/os/path.base\00", align 1
-@.str.17 = private unnamed_addr constant [24 x i8] c"os/path/base.will:42:19\00", align 1
-@.str.18 = private unnamed_addr constant [26 x i8] c"slice bounds out of range\00", align 1
-@.str.19 = private unnamed_addr constant [24 x i8] c"os/path/base.will:52:25\00", align 1
-@.str.20 = private unnamed_addr constant [24 x i8] c"os/path/base.will:52:21\00", align 1
-@.str.21 = private unnamed_addr constant [23 x i8] c"os/path/clean.will:3:8\00", align 1
-@.str.22 = private unnamed_addr constant [27 x i8] c"std/os/path.is_dot_element\00", align 1
-@.str.23 = private unnamed_addr constant [20 x i8] c"index out of bounds\00", align 1
-@.str.24 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:7:18\00", align 1
-@.str.25 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:13:8\00", align 1
-@.str.26 = private unnamed_addr constant [31 x i8] c"std/os/path.is_dot_dot_element\00", align 1
-@.str.27 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:16:25\00", align 1
-@.str.28 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:18:26\00", align 1
-@.str.29 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:19:27\00", align 1
-@.str.30 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:33:24\00", align 1
-@.str.31 = private unnamed_addr constant [25 x i8] c"std/os/path.push_element\00", align 1
-@.str.32 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:38:30\00", align 1
-@.str.33 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:39:31\00", align 1
-@.str.34 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:40:31\00", align 1
-@.str.35 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:42:24\00", align 1
-@.str.36 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:47:9\00", align 1
-@.str.37 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:52:9\00", align 1
-@.str.38 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:56:12\00", align 1
-@.str.39 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:75:21\00", align 1
-@.str.40 = private unnamed_addr constant [18 x i8] c"std/os/path.clean\00", align 1
-@.str.41 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:82:26\00", align 1
-@.str.42 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:92:5\00", align 1
-@.str.43 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:112:32\00", align 1
-@.str.44 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:113:31\00", align 1
-@.str.45 = private unnamed_addr constant [24 x i8] c"conversion out of range\00", align 1
-@.str.46 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:114:18\00", align 1
-@.str.47 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:115:18\00", align 1
-@.str.48 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:128:24\00", align 1
-@.str.49 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:129:24\00", align 1
-@.str.50 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:130:20\00", align 1
-@.str.51 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:131:9\00", align 1
-@.str.52 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:135:20\00", align 1
-@.str.53 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:141:12\00", align 1
-@.str.54 = private unnamed_addr constant [21 x i8] c"os/path/dir.will:6:5\00", align 1
-@.str.55 = private unnamed_addr constant [16 x i8] c"std/os/path.dir\00", align 1
-@.str.56 = private unnamed_addr constant [23 x i8] c"os/path/dir.will:15:24\00", align 1
-@.str.57 = private unnamed_addr constant [23 x i8] c"os/path/dir.will:16:25\00", align 1
-@.str.58 = private unnamed_addr constant [23 x i8] c"os/path/dir.will:16:21\00", align 1
-@.str.59 = private unnamed_addr constant [21 x i8] c"os/path/ext.will:8:5\00", align 1
-@.str.60 = private unnamed_addr constant [16 x i8] c"std/os/path.ext\00", align 1
-@.str.61 = private unnamed_addr constant [23 x i8] c"os/path/ext.will:19:27\00", align 1
-@.str.62 = private unnamed_addr constant [23 x i8] c"os/path/ext.will:19:23\00", align 1
-@.str.63 = private unnamed_addr constant [24 x i8] c"os/path/isabs.will:8:22\00", align 1
-@.str.64 = private unnamed_addr constant [19 x i8] c"std/os/path.is_abs\00", align 1
-@.str.65 = private unnamed_addr constant [24 x i8] c"os/path/join.will:15:20\00", align 1
-@.str.66 = private unnamed_addr constant [17 x i8] c"std/os/path.join\00", align 1
-@.str.67 = private unnamed_addr constant [24 x i8] c"os/path/join.will:21:23\00", align 1
-@.str.68 = private unnamed_addr constant [24 x i8] c"os/path/match.will:11:5\00", align 1
-@.str.69 = private unnamed_addr constant [21 x i8] c"std/os/path.chars_of\00", align 1
-@.str.70 = private unnamed_addr constant [25 x i8] c"os/path/match.will:35:27\00", align 1
-@.str.71 = private unnamed_addr constant [17 x i8] c"std/os/path.glob\00", align 1
-@.str.72 = private unnamed_addr constant [25 x i8] c"os/path/match.will:39:24\00", align 1
-@.str.73 = private unnamed_addr constant [25 x i8] c"os/path/match.will:42:17\00", align 1
-@.str.74 = private unnamed_addr constant [25 x i8] c"os/path/match.will:45:27\00", align 1
-@.str.75 = private unnamed_addr constant [25 x i8] c"os/path/match.will:53:17\00", align 1
-@.str.76 = private unnamed_addr constant [25 x i8] c"os/path/match.will:54:17\00", align 1
-@.str.77 = private unnamed_addr constant [25 x i8] c"os/path/match.will:63:27\00", align 1
-@.str.78 = private unnamed_addr constant [24 x i8] c"os/path/match.will:67:9\00", align 1
-@.str.79 = private unnamed_addr constant [25 x i8] c"os/path/match.will:75:23\00", align 1
-@.str.80 = private unnamed_addr constant [24 x i8] c"os/path/match.will:79:9\00", align 1
-@.str.81 = private unnamed_addr constant [24 x i8] c"os/path/path.will:46:22\00", align 1
-@.str.82 = private unnamed_addr constant [22 x i8] c"std/os/path.has_drive\00", align 1
-@.str.83 = private unnamed_addr constant [24 x i8] c"os/path/path.will:47:23\00", align 1
-@.str.84 = private unnamed_addr constant [24 x i8] c"os/path/path.will:57:22\00", align 1
-@.str.85 = private unnamed_addr constant [25 x i8] c"std/os/path.is_drive_abs\00", align 1
-@.str.86 = private unnamed_addr constant [24 x i8] c"os/path/path.will:63:12\00", align 1
-@.str.87 = private unnamed_addr constant [29 x i8] c"std/os/path.separator_string\00", align 1
-@.str.88 = private unnamed_addr constant [15 x i8] c"main.will:6:20\00", align 1
-@.str.89 = private unnamed_addr constant [48 x i8] c"example.com/stdtest/system/pathnative.will$main\00", align 1
+@.str.50 = private unnamed_addr constant [26 x i8] c"os/path/clean.will:141:12\00", align 1
+@.str.51 = private unnamed_addr constant [24 x i8] c"os/path/join.will:15:20\00", align 1
+@.str.52 = private unnamed_addr constant [17 x i8] c"std/os/path.join\00", align 1
+@.str.53 = private unnamed_addr constant [24 x i8] c"os/path/join.will:21:23\00", align 1
+@.str.54 = private unnamed_addr constant [24 x i8] c"os/path/match.will:11:5\00", align 1
+@.str.55 = private unnamed_addr constant [21 x i8] c"std/os/path.chars_of\00", align 1
+@.str.56 = private unnamed_addr constant [25 x i8] c"os/path/match.will:35:27\00", align 1
+@.str.57 = private unnamed_addr constant [17 x i8] c"std/os/path.glob\00", align 1
+@.str.58 = private unnamed_addr constant [25 x i8] c"os/path/match.will:39:24\00", align 1
+@.str.59 = private unnamed_addr constant [25 x i8] c"os/path/match.will:42:17\00", align 1
+@.str.60 = private unnamed_addr constant [25 x i8] c"os/path/match.will:45:27\00", align 1
+@.str.61 = private unnamed_addr constant [25 x i8] c"os/path/match.will:53:17\00", align 1
+@.str.62 = private unnamed_addr constant [25 x i8] c"os/path/match.will:54:17\00", align 1
+@.str.63 = private unnamed_addr constant [25 x i8] c"os/path/match.will:63:27\00", align 1
+@.str.64 = private unnamed_addr constant [24 x i8] c"os/path/match.will:67:9\00", align 1
+@.str.65 = private unnamed_addr constant [25 x i8] c"os/path/match.will:75:23\00", align 1
+@.str.66 = private unnamed_addr constant [24 x i8] c"os/path/match.will:79:9\00", align 1
+@.str.67 = private unnamed_addr constant [24 x i8] c"os/path/path.will:46:22\00", align 1
+@.str.68 = private unnamed_addr constant [22 x i8] c"std/os/path.has_drive\00", align 1
+@.str.69 = private unnamed_addr constant [24 x i8] c"os/path/path.will:47:23\00", align 1
+@.str.70 = private unnamed_addr constant [24 x i8] c"os/path/path.will:57:22\00", align 1
+@.str.71 = private unnamed_addr constant [25 x i8] c"std/os/path.is_drive_abs\00", align 1
+@.str.72 = private unnamed_addr constant [24 x i8] c"os/path/path.will:63:12\00", align 1
+@.str.73 = private unnamed_addr constant [29 x i8] c"std/os/path.separator_string\00", align 1
+@.str.74 = private unnamed_addr constant [15 x i8] c"main.will:6:20\00", align 1
+@.str.75 = private unnamed_addr constant [48 x i8] c"example.com/stdtest/system/pathnative.will$main\00", align 1
 @.bytes.10 = private unnamed_addr constant [5 x i8] c"a/./b", align 1
 @.bytes.11 = private unnamed_addr constant [1 x i8] c"a", align 1
 @.bytes.12 = private unnamed_addr constant [1 x i8] c"b", align 1
 @.bytes.13 = private unnamed_addr constant [3 x i8] c"a\\b", align 1
 @.bytes.14 = private unnamed_addr constant [6 x i8] c"a/../b", align 1
-@.bytes.15 = private unnamed_addr constant [4 x i8] c"a/b/", align 1
-@.bytes.16 = private unnamed_addr constant [7 x i8] c"a/b.txt", align 1
-@.bytes.17 = private unnamed_addr constant [4 x i8] c".txt", align 1
-@.bytes.18 = private unnamed_addr constant [5 x i8] c"*.txt", align 1
-@.bytes.19 = private unnamed_addr constant [5 x i8] c"a.txt", align 1
-@.bytes.20 = private unnamed_addr constant [9 x i8] c"C:\\a\\..\\b", align 1
-@.bytes.21 = private unnamed_addr constant [2 x i8] c"C:", align 1
-@.bytes.22 = private unnamed_addr constant [3 x i8] c"C:\\", align 1
-@.bytes.23 = private unnamed_addr constant [6 x i8] c"C:\\a\\b", align 1
-@.bytes.24 = private unnamed_addr constant [4 x i8] c"C:\\a", align 1
+@.bytes.15 = private unnamed_addr constant [5 x i8] c"*.txt", align 1
+@.bytes.16 = private unnamed_addr constant [5 x i8] c"a.txt", align 1
+@.bytes.17 = private unnamed_addr constant [7 x i8] c"a/b.txt", align 1
+@.bytes.18 = private unnamed_addr constant [9 x i8] c"C:\\a\\..\\b", align 1
+@.bytes.19 = private unnamed_addr constant [2 x i8] c"C:", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
 declare i32 @willrt_utf8_decode(ptr, i64, ptr)
@@ -5242,10 +4433,8 @@ entry:
 @"willrt.gc.stack.std/os.cwd" = private constant %willrt_gc_stack_map_data { ptr @"std/os.cwd", ptr @"willrt.gc.stack.slots.std/os.cwd", i64 1 }
 @"willrt.gc.stack.slots.std/os.chdir" = private constant [1 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }]
 @"willrt.gc.stack.std/os.chdir" = private constant %willrt_gc_stack_map_data { ptr @"std/os.chdir", ptr @"willrt.gc.stack.slots.std/os.chdir", i64 1 }
-@"willrt.gc.stack.slots.std/os/path.abs" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
-@"willrt.gc.stack.std/os/path.abs" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.abs", ptr @"willrt.gc.stack.slots.std/os/path.abs", i64 2 }
-@"willrt.gc.stack.slots.std/os/path.base" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
-@"willrt.gc.stack.std/os/path.base" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.base", ptr @"willrt.gc.stack.slots.std/os/path.base", i64 2 }
+@"willrt.gc.stack.slots.std/os/path.abs" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }]
+@"willrt.gc.stack.std/os/path.abs" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.abs", ptr @"willrt.gc.stack.slots.std/os/path.abs", i64 3 }
 @"willrt.gc.stack.slots.std/os/path.is_dot_element" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
 @"willrt.gc.stack.std/os/path.is_dot_element" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.is_dot_element", ptr @"willrt.gc.stack.slots.std/os/path.is_dot_element", i64 2 }
 @"willrt.gc.stack.slots.std/os/path.is_dot_dot_element" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
@@ -5254,12 +4443,6 @@ entry:
 @"willrt.gc.stack.std/os/path.push_element" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.push_element", ptr @"willrt.gc.stack.slots.std/os/path.push_element", i64 3 }
 @"willrt.gc.stack.slots.std/os/path.clean" = private constant [8 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }, %willrt_gc_stack_slot { i32 24, i32 5, ptr null }, %willrt_gc_stack_slot { i32 32, i32 5, ptr null }, %willrt_gc_stack_slot { i32 40, i32 5, ptr null }, %willrt_gc_stack_slot { i32 48, i32 5, ptr null }, %willrt_gc_stack_slot { i32 56, i32 5, ptr null }]
 @"willrt.gc.stack.std/os/path.clean" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.clean", ptr @"willrt.gc.stack.slots.std/os/path.clean", i64 8 }
-@"willrt.gc.stack.slots.std/os/path.dir" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
-@"willrt.gc.stack.std/os/path.dir" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.dir", ptr @"willrt.gc.stack.slots.std/os/path.dir", i64 2 }
-@"willrt.gc.stack.slots.std/os/path.ext" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
-@"willrt.gc.stack.std/os/path.ext" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.ext", ptr @"willrt.gc.stack.slots.std/os/path.ext", i64 2 }
-@"willrt.gc.stack.slots.std/os/path.is_abs" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
-@"willrt.gc.stack.std/os/path.is_abs" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.is_abs", ptr @"willrt.gc.stack.slots.std/os/path.is_abs", i64 2 }
 @"willrt.gc.stack.slots.std/os/path.join" = private constant [4 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }, %willrt_gc_stack_slot { i32 24, i32 5, ptr null }]
 @"willrt.gc.stack.std/os/path.join" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.join", ptr @"willrt.gc.stack.slots.std/os/path.join", i64 4 }
 @"willrt.gc.stack.slots.std/os/path.chars_of" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }]
@@ -5270,5 +4453,5 @@ entry:
 @"willrt.gc.stack.std/os/path.has_drive" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.has_drive", ptr @"willrt.gc.stack.slots.std/os/path.has_drive", i64 2 }
 @"willrt.gc.stack.slots.std/os/path.is_drive_abs" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
 @"willrt.gc.stack.std/os/path.is_drive_abs" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.is_drive_abs", ptr @"willrt.gc.stack.slots.std/os/path.is_drive_abs", i64 2 }
-@"willrt.gc.stack.slots.example.com/stdtest/system/pathnative.will$main" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
-@"willrt.gc.stack.example.com/stdtest/system/pathnative.will$main" = private constant %willrt_gc_stack_map_data { ptr @"example.com/stdtest/system/pathnative.will$main", ptr @"willrt.gc.stack.slots.example.com/stdtest/system/pathnative.will$main", i64 2 }
+@"willrt.gc.stack.slots.example.com/stdtest/system/pathnative.will$main" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }]
+@"willrt.gc.stack.example.com/stdtest/system/pathnative.will$main" = private constant %willrt_gc_stack_map_data { ptr @"example.com/stdtest/system/pathnative.will$main", ptr @"willrt.gc.stack.slots.example.com/stdtest/system/pathnative.will$main", i64 3 }

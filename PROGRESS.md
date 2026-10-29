@@ -139,6 +139,13 @@ P3: allocation fast path inline, barriers, p999, soak, platform matrix.
 - Build determinism pinned at eight cold-cache runs for `emit-willc`,
   `emit-llvm`, `emit-decisions`, and `index`
   (`TestReplayEightTimesIsByteIdentical`, 1.16s).
+- `std/os/path` now matches the specified surface: `separator`, `join`,
+  `clean`, `glob`, `abs`. The unsupported `base`, `dir`, `ext`, and `is_abs`
+  functions and their corpus are deleted; `abs` inlines the rooted check.
+  While doing this, `elementText` was found to reject a `str` index when the
+  expression type record was not consulted (inside a short-circuit `or`);
+  a `str` index is one `u32` scalar and now types correctly. `pathnative`
+  emits IR and runs with exit 0.
 - Benchmark probe (not release acceptance, one machine): `conc/tail`
   p999 1200-1500 ns, p50 100 ns, max 715 us, round_p50 29.3 ms with
   `will 0.0.0-dev 6cdc08268730`; the C comparator p999 is 100 ns. The tail
