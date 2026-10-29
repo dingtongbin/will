@@ -304,6 +304,9 @@ func (g *generator) fieldLLVMType(text string) (string, bool) {
 	if typ, _, ok := llvmScalar(text); ok {
 		return typ, true
 	}
+	if g.isClassText(text) {
+		return "ptr", true
+	}
 	if typ, ok := llvmTypeText(text); ok {
 		return typ, true
 	}

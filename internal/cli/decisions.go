@@ -216,10 +216,17 @@ func registerTypes(res *layout.Resolver, u sourceUnit) error {
 // without a declaration in the package.
 func predeclaredLayoutType(name string) bool {
 	switch name {
-	case "Array", "Map", "Set", "chan", "Task", "rc", "arc", "weak_rc", "weak_arc", "Option", "Result", "Range":
+	case "Array", "Map", "Set", "chan", "Task", "rc", "arc", "weak_rc", "weak_arc", "Option", "Result", "Range",
+		"list", "dict", "set":
 		return true
 	}
 	return false
+}
+
+// isContainerLayoutName reports a final container type, whose layout is one
+// word reference rather than an inline value.
+func isContainerLayoutName(name string) bool {
+	return name == "list" || name == "dict" || name == "set"
 }
 
 func layoutSpec(t *ast.Type, prefix string) (*layout.Spec, error) {
@@ -238,6 +245,9 @@ func layoutSpec(t *ast.Type, prefix string) (*layout.Spec, error) {
 			name = qualifiedName(prefix, name)
 		}
 		if len(t.Args) == 0 {
+			if isContainerLayoutName(name) {
+				return &layout.Spec{Kind: layout.GenericKind, Name: name}, nil
+			}
 			return &layout.Spec{Kind: layout.NamedKind, Name: name}, nil
 		}
 		args := make([]*layout.Spec, len(t.Args))
