@@ -5,7 +5,7 @@ Single progress and task-queue file. Facts and evidence only; the specification 
 
 ## State
 
-- Branch: `feature/package-mechanism`; HEAD `5e48039`; ahead 39 commits.
+- Branch: `feature/package-mechanism`; HEAD `dbc376a`; ahead 42 commits.
 - Worktree has `README.md` modified; no staged changes.
 - Toolchain: go1.25.9 windows/amd64; clang 22.1.8 at
   `C:\msys64\clang64\bin\clang.exe`.
@@ -142,10 +142,11 @@ P3: allocation fast path inline, barriers, p999, soak, platform matrix.
 - `std/os/path` now matches the specified surface: `separator`, `join`,
   `clean`, `glob`, `abs`. The unsupported `base`, `dir`, `ext`, and `is_abs`
   functions and their corpus are deleted; `abs` inlines the rooted check.
-  While doing this, `elementText` was found to reject a `str` index when the
-  expression type record was not consulted (inside a short-circuit `or`);
-  a `str` index is one `u32` scalar and now types correctly. `pathnative`
+  The eleven helpers and six scalar constants are `__`-private. `pathnative`
   emits IR and runs with exit 0.
+- While doing this, `elementText` was found to reject a `str` index when the
+  expression type record was not consulted (inside a short-circuit `or`);
+  a `str` index is one `u32` scalar and now types correctly.
 - Benchmark probe (not release acceptance, one machine): `conc/tail`
   p999 1200-1500 ns, p50 100 ns, max 715 us, round_p50 29.3 ms with
   `will 0.0.0-dev 6cdc08268730`; the C comparator p999 is 100 ns. The tail
@@ -183,21 +184,41 @@ Remaining for P1-1:
 
 Final verification this round:
 
-- `gate -full` PASS (`gate: ok`, exit 0) after re-recording the lowering
-  corpus; `go vet ./...` PASS; `gofmt -l .` empty; `checkcode` clean.
+- `gate -full` PASS (`gate: ok`, exit 0) at `dbc376a`; `go vet ./...` PASS;
+  `gofmt -l .` empty; `checkcode` clean.
 - `will run tests/build/genericclass` exits 42; `will build` then running
   `build/x86_64-win-gnu/genericclass.exe` exits 42 with identical stdout and
   stderr. `tests/build/genericclassimport` behaves the same with exit 41.
 - `will build build/probestack` and the release binary exit 0 for the 200k
   array/clone loop.
 - P0 matrix (class/deadline/select/async, two rounds) PASS.
-- Commits: `6f64783` (deterministic, loop-safe lowering), `4e0afa8` (generic
-  class monomorphization), plus the cross-package generic class fix.
+- `TestReplayEightTimesIsByteIdentical`; `TestLoweringKeyCoversLinkStrategy`
+  and `TestLoweringKeyCoversRuntimeABIHeaders`; cache trim passes 20 rounds.
+- Commits this round: `6f64783`, `4e0afa8`, `5fc21e9`, `0c9c918`, `193c9b4`,
+  `a300078`, `6aa910a`, `5e48039`, `dd8f252`, `dce2004`, `d8b2567`,
+  `dbc376a`.
 
 Evidence commands:
 
 - `go run ./cmd/will run tests/build/genericclassimport`
 - `go test ./internal/types ./internal/gcmeta ./internal/gen ./internal/cli`
+
+## P1-3 design notes (final containers)
+
+- The specified surface is `list[T]`/`dict[K,V]`/`set[T]` with bracketed type
+  arguments. The parser currently accepts only `<...>` for user generics.
+  A probe established the needed parser path (bracket type arguments in type
+  and constructor positions); it was reverted because lowering is not ready.
+- `gcmeta.layoutValue` already models `list`/`dict`/`set` as one-word GC
+  references. `gen` still lowers them like the old three-word `Array` value.
+  Implementing the final containers therefore means a GC container object
+  (class-style allocation, descriptor, roots, barriers) with a payload that
+  holds data/len/cap, not aliasing `Array`.
+- Completion needs: constructor, every specified method, `for`, builtin `len`,
+  nesting (`list[list[i32]]`), class fields, forced cycles, cross-package;
+  then delete `Array`/`Map`/`Set` and migrate std/corpus in the same series.
+- Half-finished container lowering must not be committed; the probe was
+  reverted and this note is the handoff.
 
 ## Known failures / blockers
 
@@ -210,12 +231,13 @@ Evidence commands:
 
 ## Next three
 
-1. Migrate `std/sync` to the final class surface (`Mutex<T>`/`RwLock<T>`/
-   `Guard<T>`), then `std/parallel`; the generic class dependency is done.
-2. Run the async/select/interface forced-cycle stress in `internal/gen` for
-   several rounds against the new root-read path.
-3. Delete the old flat receiver and `new` source surface (P1-2), migrating all
-   corpus and std sources, then re-record.
+1. Implement the final `list[T]`/`dict[K,V]`/`set[T]` GC containers and remove
+   `Array`/`Map`/`Set` per the design note above.
+2. Migrate `std/sync` to the final class surface once containers exist
+   (`Mutex<T>`/`RwLock<T>`/`Guard<T>`), then `std/parallel`.
+3. Re-run the full run/build differential and release-build performance probe
+   after the container migration; re-measure the `conc/tail` p999 on an idle
+   host.
 
 ## Spec gaps (do not invent)
 
