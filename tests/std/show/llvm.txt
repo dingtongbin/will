@@ -3789,155 +3789,149 @@ entry:
   %v.adt.165 = getelementptr i8, ptr %frame, i64 48
   %v.adt.170 = getelementptr i8, ptr %frame, i64 72
   %v.await.scalar.133 = getelementptr i8, ptr %frame, i64 96
-  %v.sm.async.op.250 = getelementptr i8, ptr %frame, i64 104
-  %v.sm.async.status.251 = getelementptr i8, ptr %frame, i64 112
-  %t270 = getelementptr i8, ptr %frame, i64 120
-  %t285 = getelementptr i8, ptr %frame, i64 144
+  %v.sm.async.op.247 = getelementptr i8, ptr %frame, i64 104
+  %v.sm.async.status.248 = getelementptr i8, ptr %frame, i64 112
+  %t267 = getelementptr i8, ptr %frame, i64 120
+  %t282 = getelementptr i8, ptr %frame, i64 144
   %t228 = load ptr, ptr %v.sm.param.116.227
   %t231 = load ptr, ptr %v.sm.param.120.230
   %v.sm.pval.118 = load i64, ptr %v.sm.param.118.229
   %v.sm.statev = load i32, ptr %v.sm.state
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
-  %t232 = getelementptr i8, ptr %v.new.181, i64 0
-  store ptr %t232, ptr %t200
-  %t233 = getelementptr i8, ptr %v.new.183, i64 0
-  store ptr %t233, ptr %t201
-  %t234 = getelementptr i8, ptr %v.new.185, i64 0
-  store ptr %t234, ptr %t202
 sm.init:
-  %t235 = getelementptr inbounds { ptr, i64, i64 }, ptr %t231, i32 0, i32 0
-  %t236 = call ptr @willrt_gc_read_barrier_slot(ptr %t235)
-  %t237 = call ptr @willrt_gc_pin(ptr %t236)
-  call void @willrt_gc_write_barrier_untagged(ptr %t235, ptr %t237)
-  %t238 = getelementptr inbounds { ptr, i64, i64 }, ptr %t231, i32 0, i32 1
-  %t239 = load i64, ptr %t238
-  call void @willrt_gc_unpin(ptr %t237)
-  store i64 %t239, ptr %v.before
+  %t232 = getelementptr inbounds { ptr, i64, i64 }, ptr %t231, i32 0, i32 0
+  %t233 = call ptr @willrt_gc_read_barrier_slot(ptr %t232)
+  %t234 = call ptr @willrt_gc_pin(ptr %t233)
+  call void @willrt_gc_write_barrier_untagged(ptr %t232, ptr %t234)
+  %t235 = getelementptr inbounds { ptr, i64, i64 }, ptr %t231, i32 0, i32 1
+  %t236 = load i64, ptr %t235
+  call void @willrt_gc_unpin(ptr %t234)
+  store i64 %t236, ptr %v.before
+  %t237 = getelementptr inbounds %"struct.std/io.Poller", ptr %t228, i32 0, i32 0
+  %t238 = getelementptr inbounds %"struct.std/io.Poller", ptr %t228, i32 0, i32 1
+  %t239 = getelementptr inbounds %"struct.std/io.Poller", ptr %t228, i32 0, i32 2
   %t240 = getelementptr inbounds %"struct.std/io.Poller", ptr %t228, i32 0, i32 0
-  %t241 = getelementptr inbounds %"struct.std/io.Poller", ptr %t228, i32 0, i32 1
-  %t242 = getelementptr inbounds %"struct.std/io.Poller", ptr %t228, i32 0, i32 2
-  %t243 = getelementptr inbounds %"struct.std/io.Poller", ptr %t228, i32 0, i32 0
-  %t244 = getelementptr inbounds { ptr, i64, i64 }, ptr %t243, i32 0, i32 0
-  %t245 = call ptr @willrt_gc_read_barrier_slot(ptr %t244)
-  %t246 = call ptr @willrt_gc_pin(ptr %t245)
-  call void @willrt_gc_write_barrier_untagged(ptr %t244, ptr %t246)
-  %t247 = getelementptr inbounds { ptr, i64, i64 }, ptr %t243, i32 0, i32 1
-  %t248 = load i64, ptr %t247
-  call void @willrt_gc_unpin(ptr %t246)
-  %t249 = icmp ugt i64 %t248, 9223372036854775807
-  br i1 %t249, label %panic.1, label %panic.ok.1
+  %t241 = getelementptr inbounds { ptr, i64, i64 }, ptr %t240, i32 0, i32 0
+  %t242 = call ptr @willrt_gc_read_barrier_slot(ptr %t241)
+  %t243 = call ptr @willrt_gc_pin(ptr %t242)
+  call void @willrt_gc_write_barrier_untagged(ptr %t241, ptr %t243)
+  %t244 = getelementptr inbounds { ptr, i64, i64 }, ptr %t240, i32 0, i32 1
+  %t245 = load i64, ptr %t244
+  call void @willrt_gc_unpin(ptr %t243)
+  %t246 = icmp ugt i64 %t245, 9223372036854775807
+  br i1 %t246, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.54, ptr @.str.96, ptr @.str.97)
   unreachable
 panic.ok.1:
-  %t252 = call ptr @willrt_poll_wait_async_start(ptr %t240, ptr %t241, ptr %t242, i64 %t248, i64 %v.sm.pval.118, ptr %t231)
-  store ptr %t252, ptr %v.sm.async.op.250
-  %t253 = icmp ne ptr %t252, null
-  br i1 %t253, label %sm.async.have.1, label %sm.async.fail.1
+  %t249 = call ptr @willrt_poll_wait_async_start(ptr %t237, ptr %t238, ptr %t239, i64 %t245, i64 %v.sm.pval.118, ptr %t231)
+  store ptr %t249, ptr %v.sm.async.op.247
+  %t250 = icmp ne ptr %t249, null
+  br i1 %t250, label %sm.async.have.1, label %sm.async.fail.1
 sm.async.fail.1:
-  store i32 1, ptr %v.sm.async.status.251
+  store i32 1, ptr %v.sm.async.status.248
   br label %sm.async.cont.1
 sm.async.have.1:
   store i32 1, ptr %v.sm.state
   br label %sm.op.call.1
 sm.op.call.1:
-  %t254 = load ptr, ptr %v.sm.async.op.250
-  %t255 = call i32 @willrt_poll_wait_async_poll(ptr %t254)
-  %t256 = icmp eq i32 %t255, 0
-  br i1 %t256, label %sm.async.park.1, label %sm.async.done.1
+  %t251 = load ptr, ptr %v.sm.async.op.247
+  %t252 = call i32 @willrt_poll_wait_async_poll(ptr %t251)
+  %t253 = icmp eq i32 %t252, 0
+  br i1 %t253, label %sm.async.park.1, label %sm.async.done.1
 sm.async.park.1:
-  %t257 = call i64 @willrt_poll_wait_async_deadline(ptr %t254)
-  call void @willrt_task_wait_until(i64 %t257)
+  %t254 = call i64 @willrt_poll_wait_async_deadline(ptr %t251)
+  call void @willrt_task_wait_until(i64 %t254)
   call void @willrt_task_mark_io()
   call void @willrt_task_mark_wait()
   ret i32 -1
 sm.async.done.1:
-  %t258 = call i32 @willrt_poll_wait_async_finish(ptr %t254)
-  store i32 %t258, ptr %v.sm.async.status.251
+  %t255 = call i32 @willrt_poll_wait_async_finish(ptr %t251)
+  store i32 %t255, ptr %v.sm.async.status.248
   br label %sm.async.cont.1
 sm.async.cont.1:
-  %t259 = load i32, ptr %v.sm.async.status.251
-  store i32 %t259, ptr %v.await.scalar.133
-  %t260 = load i32, ptr %v.await.scalar.133
-  store i32 %t260, ptr %v.status
-  %t261 = load i32, ptr %v.status
-  %t262 = icmp ne i32 %t261, 0
-  br i1 %t262, label %if.then.2, label %if.end.2
+  %t256 = load i32, ptr %v.sm.async.status.248
+  store i32 %t256, ptr %v.await.scalar.133
+  %t257 = load i32, ptr %v.await.scalar.133
+  store i32 %t257, ptr %v.status
+  %t258 = load i32, ptr %v.status
+  %t259 = icmp ne i32 %t258, 0
+  br i1 %t259, label %if.then.2, label %if.end.2
 if.then.2:
-  %t263 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.165, i32 0, i32 0
-  store i32 1, ptr %t263
-  %t264 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.165, i32 0, i32 2
-  %t265 = call ptr @willrt_gc_alloc(i64 24, ptr @"willrt.gc.type.std/errors.Fault")
-  %t266 = load %"struct.std/errors.Fault", ptr @"std/errors.Io"
-  store %"struct.std/errors.Fault" %t266, ptr %t265
-  %t267 = getelementptr inbounds %interface.Error, ptr %t264, i32 0, i32 0
-  %t268 = getelementptr inbounds %interface.Error, ptr %t264, i32 0, i32 1
-  call void @willrt_gc_write_barrier(ptr %t267, ptr %t265)
-  store ptr @"std/io.vtable.Error.std/errors.Fault", ptr %t268
-  %t269 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.165
-  store { i32, [4 x i8], %interface.Error } %t269, ptr %t270
-  %t271 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t272 = ptrtoint ptr %t271 to i64
-  call i32 @willrt_task_store_result(ptr %t270, i64 %t272)
+  %t260 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.165, i32 0, i32 0
+  store i32 1, ptr %t260
+  %t261 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.165, i32 0, i32 2
+  %t262 = call ptr @willrt_gc_alloc(i64 24, ptr @"willrt.gc.type.std/errors.Fault")
+  %t263 = load %"struct.std/errors.Fault", ptr @"std/errors.Io"
+  store %"struct.std/errors.Fault" %t263, ptr %t262
+  %t264 = getelementptr inbounds %interface.Error, ptr %t261, i32 0, i32 0
+  %t265 = getelementptr inbounds %interface.Error, ptr %t261, i32 0, i32 1
+  call void @willrt_gc_write_barrier(ptr %t264, ptr %t262)
+  store ptr @"std/io.vtable.Error.std/errors.Fault", ptr %t265
+  %t266 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.165
+  store { i32, [4 x i8], %interface.Error } %t266, ptr %t267
+  %t268 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t269 = ptrtoint ptr %t268 to i64
+  call i32 @willrt_task_store_result(ptr %t267, i64 %t269)
   ret i32 1
 if.end.2:
-  %t273 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.170, i32 0, i32 0
-  store i32 0, ptr %t273
-  %t274 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.170, i32 0, i32 2
-  %t275 = getelementptr inbounds { ptr, i64, i64 }, ptr %t231, i32 0, i32 0
-  %t276 = call ptr @willrt_gc_read_barrier_slot(ptr %t275)
-  %t277 = call ptr @willrt_gc_pin(ptr %t276)
-  call void @willrt_gc_write_barrier_untagged(ptr %t275, ptr %t277)
-  %t278 = getelementptr inbounds { ptr, i64, i64 }, ptr %t231, i32 0, i32 1
-  %t279 = load i64, ptr %t278
-  call void @willrt_gc_unpin(ptr %t277)
-  %t280 = load i64, ptr %v.before
-  %t281 = call {i64, i1} @llvm.usub.with.overflow.i64(i64 %t279, i64 %t280)
-  %t282 = extractvalue {i64, i1} %t281, 0
-  %t283 = extractvalue {i64, i1} %t281, 1
-  br i1 %t283, label %panic.3, label %panic.ok.3
+  %t270 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.170, i32 0, i32 0
+  store i32 0, ptr %t270
+  %t271 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.170, i32 0, i32 2
+  %t272 = getelementptr inbounds { ptr, i64, i64 }, ptr %t231, i32 0, i32 0
+  %t273 = call ptr @willrt_gc_read_barrier_slot(ptr %t272)
+  %t274 = call ptr @willrt_gc_pin(ptr %t273)
+  call void @willrt_gc_write_barrier_untagged(ptr %t272, ptr %t274)
+  %t275 = getelementptr inbounds { ptr, i64, i64 }, ptr %t231, i32 0, i32 1
+  %t276 = load i64, ptr %t275
+  call void @willrt_gc_unpin(ptr %t274)
+  %t277 = load i64, ptr %v.before
+  %t278 = call {i64, i1} @llvm.usub.with.overflow.i64(i64 %t276, i64 %t277)
+  %t279 = extractvalue {i64, i1} %t278, 0
+  %t280 = extractvalue {i64, i1} %t278, 1
+  br i1 %t280, label %panic.3, label %panic.ok.3
 panic.3:
   call void @willrt_panic(ptr @.str.17, ptr @.str.98, ptr @.str.97)
   unreachable
 panic.ok.3:
-  store i64 %t282, ptr %t274
-  %t284 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.170
-  store { i32, [4 x i8], %interface.Error } %t284, ptr %t285
-  %t286 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
-  %t287 = ptrtoint ptr %t286 to i64
-  call i32 @willrt_task_store_result(ptr %t285, i64 %t287)
+  store i64 %t279, ptr %t271
+  %t281 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.170
+  store { i32, [4 x i8], %interface.Error } %t281, ptr %t282
+  %t283 = getelementptr { i32, [4 x i8], %interface.Error }, ptr null, i32 1
+  %t284 = ptrtoint ptr %t283 to i64
+  call i32 @willrt_task_store_result(ptr %t282, i64 %t284)
   ret i32 1
 
 }
 define hidden ptr @"std/io.Poller.next.task"(ptr %arg0, i64 %arg1, ptr %arg2, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 176)
-  %t288 = getelementptr i8, ptr %v.sm.frame, i64 0
-  store i32 0, ptr %t288
-  %t289 = getelementptr i8, ptr %v.sm.frame, i64 8
-  store ptr %arg0, ptr %t289
-  %t290 = getelementptr i8, ptr %v.sm.frame, i64 16
-  store i64 %arg1, ptr %t290
-  %t291 = getelementptr i8, ptr %v.sm.frame, i64 24
-  store ptr %arg2, ptr %t291
-  %t292 = call i32 @willrt_lane_here()
-  %t293 = icmp eq i32 %start, -1
-  %t294 = icmp eq i32 %start, -2
-  %t295 = select i1 %t294, i32 %t292, i32 %start
-  br i1 %t293, label %sm.start.auto.4, label %sm.start.lane.4
+  %t285 = getelementptr i8, ptr %v.sm.frame, i64 0
+  store i32 0, ptr %t285
+  %t286 = getelementptr i8, ptr %v.sm.frame, i64 8
+  store ptr %arg0, ptr %t286
+  %t287 = getelementptr i8, ptr %v.sm.frame, i64 16
+  store i64 %arg1, ptr %t287
+  %t288 = getelementptr i8, ptr %v.sm.frame, i64 24
+  store ptr %arg2, ptr %t288
+  %t289 = call i32 @willrt_lane_here()
+  %t290 = icmp eq i32 %start, -1
+  %t291 = icmp eq i32 %start, -2
+  %t292 = select i1 %t291, i32 %t289, i32 %start
+  br i1 %t290, label %sm.start.auto.4, label %sm.start.lane.4
 sm.start.auto.4:
-  %t296 = call ptr @willrt_task_new_gc(ptr @"std/io.Poller.next.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0, ptr null, ptr null)
-  call void @willrt_task_own_frame(ptr %t296)
-  call void @willrt_task_run_auto(ptr %t296)
+  %t293 = call ptr @willrt_task_new_gc(ptr @"std/io.Poller.next.sm", ptr %v.sm.frame, i64 176, i32 0, i32 0, ptr null, ptr null)
+  call void @willrt_task_own_frame(ptr %t293)
+  call void @willrt_task_run_auto(ptr %t293)
   br label %sm.start.done.4
 sm.start.lane.4:
-  %t297 = call ptr @willrt_task_new_gc(ptr @"std/io.Poller.next.sm", ptr %v.sm.frame, i64 176, i32 %t295, i32 0, ptr null, ptr null)
-  call void @willrt_task_own_frame(ptr %t297)
-  call void @willrt_task_run(ptr %t297)
+  %t294 = call ptr @willrt_task_new_gc(ptr @"std/io.Poller.next.sm", ptr %v.sm.frame, i64 176, i32 %t292, i32 0, ptr null, ptr null)
+  call void @willrt_task_own_frame(ptr %t294)
+  call void @willrt_task_run(ptr %t294)
   br label %sm.start.done.4
 sm.start.done.4:
-  %t298 = phi ptr [ %t296, %sm.start.auto.4 ], [ %t297, %sm.start.lane.4 ]
-  ret ptr %t298
+  %t295 = phi ptr [ %t293, %sm.start.auto.4 ], [ %t294, %sm.start.lane.4 ]
+  ret ptr %t295
 }
 define hidden %"struct.std/fmt.Format" @"std/fmt.float"(double %v, i32 %prec, i32 %width, i8 %fill) inlinehint {
 entry:

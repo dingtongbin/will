@@ -2265,7 +2265,12 @@ func (g *generator) allocas(fn int) error {
 			fmt.Fprintf(g.out, "  %s = alloca %s\n", store, baseType)
 		}
 	}
-	g.initIndirectRoots()
+	// A general state-machine frame has no root array: inline roots are frame
+	// slots allocated by prepareGeneralInlineRoots. Writing indirect-root
+	// pointers here would put stores after the dispatch terminator.
+	if !g.smGeneral {
+		g.initIndirectRoots()
+	}
 	// A str or bytes literal is a two-word value, built in a slot.
 	var strs []willc.Record
 	for _, r := range g.recs {

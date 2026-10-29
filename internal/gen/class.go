@@ -423,6 +423,8 @@ func (g *generator) initIndirectRoots() {
 func (g *generator) prepareGeneralInlineRoots(fnID int) {
 	g.gcInlineRoots = map[int][]string{}
 	g.gcInlineReady = map[int]bool{}
+	g.gcIndirectRoots = map[int][]string{}
+	g.gcInlineRootTypes = map[int]string{}
 	for _, r := range sortedRecords(g.recs) {
 		if r.Kind != "param" && r.Kind != "receiver" && r.Kind != "var" {
 			continue

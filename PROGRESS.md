@@ -111,6 +111,17 @@ P3: allocation fast path inline, barriers, p999, soak, platform matrix.
 - P0 forced-cycle matrix re-run against the new root-read path:
   `go test ./internal/cli -run 'TestRunClass|TestRunDeadline|TestRunSelect|TestRunAsync' -count=2`
   PASS (75.7s).
+- Running the re-recorded std corpora found an invalid-IR regression: a general
+  state-machine entry block could contain indirect-root stores after its
+  `switch`, so clang rejected `std/fmt`, `std/io` and `std/show` with
+  `expected instruction opcode` at `sm.init:`. `allocas` no longer emits
+  indirect roots for a general machine, and the machine clears its root maps.
+  Those three programs now run with exit 0 and the IR compiles.
+- `std/os/exec` crashes with `0xC0000005` on about 55-80% of runs on a simple
+  `command(...).output()` program. The same crash reproduces with the `3041a5e`
+  compiler, so it is a pre-existing std/exec defect, not a regression from
+  this round. The `tests/std/exec` corpus only records IR and never ran the
+  program, which hid it. This is now a P0 item.
 - C full-cycle probe: median throughput 0.40 M/s, p50 111.6 ms;
   allocation-only 13.8 M/s. Not release acceptance.
 - Crash recovery: the session was interrupted after the alloca rewrite. All
@@ -170,11 +181,13 @@ Evidence commands:
 
 ## Next three
 
-1. Generic enum instance corpus (template + class/struct argument), including a
+1. Fix the pre-existing `std/os/exec` access violation on the async
+   `output()`/`run()` path; add a running corpus so the gate compiles and
+   executes it.
+2. Generic enum instance corpus (template + class/struct argument), including a
    cross-package case.
-2. P1-4: `Weak<T>` source surface, `upgrade()`, and concurrent weak clearing.
-3. P1-5: `Pinned<T>`/`Handle<T>` lowering and lifetime checks across the C
-   boundary.
+3. P1-4/P1-5: `Weak<T>` source surface, then `Pinned<T>`/`Handle<T>` lowering
+   and lifetime checks.
 
 ## Unverified risks
 
