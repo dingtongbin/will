@@ -816,9 +816,9 @@ panic.4:
 panic.ok.4:
   %t31 = load i32, ptr %v.utf8.23
   call void @willrt_gc_safepoint(i32 3)
-  %t32 = call i1 @"std/os/path.is_separator"(i32 %t31)
+  %t32 = call i1 @"std/os/path.__is_separator"(i32 %t31)
   call void @willrt_gc_safepoint(i32 3)
-  %t33 = call i1 @"std/os/path.is_drive_abs"(ptr %v.s)
+  %t33 = call i1 @"std/os/path.__is_drive_abs"(ptr %v.s)
   %t34 = or i1 %t32, %t33
   br i1 %t34, label %if.then.2, label %if.end.2
 if.then.2:
@@ -906,7 +906,7 @@ try.ok.5:
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret { i32, [4 x i8], { ptr, i64 } } %t75
 }
-define hidden i1 @"std/os/path.is_dot_element"(ptr %p, i64 %a, i64 %b) inlinehint {
+define internal i1 @"std/os/path.__is_dot_element"(ptr %p, i64 %a, i64 %b) inlinehint {
 entry:
   %v.s = alloca { ptr, i64 }
   %v.c = alloca i32
@@ -915,7 +915,7 @@ entry:
   %v.gcframe = alloca %willrt_gc_frame
   %t1 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 0
   %t2 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 1
-  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.is_dot_element", ptr %v.gcroots)
+  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.__is_dot_element", ptr %v.gcroots)
   %v.ret.22 = alloca { ptr, i64 }
   %t3 = getelementptr i8, ptr %v.s, i64 0
   store ptr %t3, ptr %t2
@@ -976,14 +976,14 @@ panic.ok.4:
   store i32 %t29, ptr %v.c
   %t30 = load i32, ptr %v.c
   call void @willrt_gc_safepoint(i32 3)
-  %t31 = call i1 @"std/os/path.is_dot"(i32 %t30)
+  %t31 = call i1 @"std/os/path.__is_dot"(i32 %t30)
   %t32 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
   %t33 = call ptr @willrt_gc_read_barrier_slot(ptr %t32)
   call void @willrt_free_str(ptr %t33)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i1 %t31
 }
-define hidden i1 @"std/os/path.is_dot_dot_element"(ptr %p, i64 %a, i64 %b) inlinehint {
+define internal i1 @"std/os/path.__is_dot_dot_element"(ptr %p, i64 %a, i64 %b) inlinehint {
 entry:
   %v.second = alloca i64
   %v.s = alloca { ptr, i64 }
@@ -994,7 +994,7 @@ entry:
   %v.gcframe = alloca %willrt_gc_frame
   %t34 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 0
   %t35 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 1
-  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.is_dot_dot_element", ptr %v.gcroots)
+  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.__is_dot_dot_element", ptr %v.gcroots)
   %v.ret.58 = alloca { ptr, i64 }
   %t36 = getelementptr i8, ptr %v.s, i64 0
   store ptr %t36, ptr %t35
@@ -1087,10 +1087,10 @@ panic.ok.7:
   store i32 %t76, ptr %v.secondChar
   %t77 = load i32, ptr %v.firstChar
   call void @willrt_gc_safepoint(i32 3)
-  %t78 = call i1 @"std/os/path.is_dot"(i32 %t77)
+  %t78 = call i1 @"std/os/path.__is_dot"(i32 %t77)
   %t79 = load i32, ptr %v.secondChar
   call void @willrt_gc_safepoint(i32 3)
-  %t80 = call i1 @"std/os/path.is_dot"(i32 %t79)
+  %t80 = call i1 @"std/os/path.__is_dot"(i32 %t79)
   %t81 = and i1 %t78, %t80
   %t82 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
   %t83 = call ptr @willrt_gc_read_barrier_slot(ptr %t82)
@@ -1098,7 +1098,7 @@ panic.ok.7:
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i1 %t81
 }
-define hidden i64 @"std/os/path.push_element"(ptr %p, i64 %a, i64 %b, i1 %rooted, ptr %starts, ptr %ends, i64 %count) inlinehint {
+define internal i64 @"std/os/path.__push_element"(ptr %p, i64 %a, i64 %b, i1 %rooted, ptr %starts, ptr %ends, i64 %count) inlinehint {
 entry:
   %v.top = alloca i64
   %v.topA = alloca i64
@@ -1109,18 +1109,18 @@ entry:
   %t84 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 0
   %t85 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 1
   %t86 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 2
-  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.push_element", ptr %v.gcroots)
+  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.__push_element", ptr %v.gcroots)
   %t160 = alloca i64
   %t206 = alloca i64
   call void @willrt_gc_safepoint(i32 3)
-  %t87 = call i1 @"std/os/path.is_dot_element"(ptr %p, i64 %a, i64 %b)
+  %t87 = call i1 @"std/os/path.__is_dot_element"(ptr %p, i64 %a, i64 %b)
   br i1 %t87, label %if.then.1, label %if.end.1
 if.then.1:
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i64 %count
 if.end.1:
   call void @willrt_gc_safepoint(i32 3)
-  %t88 = call i1 @"std/os/path.is_dot_dot_element"(ptr %p, i64 %a, i64 %b)
+  %t88 = call i1 @"std/os/path.__is_dot_dot_element"(ptr %p, i64 %a, i64 %b)
   br i1 %t88, label %if.then.2, label %if.end.2
 if.then.2:
   br i1 %rooted, label %if.then.3, label %if.end.3
@@ -1195,7 +1195,7 @@ panic.ok.9:
   %t119 = load i64, ptr %v.topA
   %t120 = load i64, ptr %v.topB
   call void @willrt_gc_safepoint(i32 3)
-  %t121 = call i1 @"std/os/path.is_dot_dot_element"(ptr %p, i64 %t119, i64 %t120)
+  %t121 = call i1 @"std/os/path.__is_dot_dot_element"(ptr %p, i64 %t119, i64 %t120)
   %t122 = xor i1 %t121, true
   br i1 %t122, label %if.then.10, label %if.end.10
 if.then.10:
@@ -1499,7 +1499,7 @@ entry:
   store i64 0, ptr %v.scan
   store i1 false, ptr %v.rooted
   call void @willrt_gc_safepoint(i32 3)
-  %t250 = call i1 @"std/os/path.has_drive"(ptr %v.s)
+  %t250 = call i1 @"std/os/path.__has_drive"(ptr %v.s)
   br i1 %t250, label %if.then.1, label %if.else.1
 if.then.1:
   store i64 2, ptr %v.volumeEnd
@@ -1535,7 +1535,7 @@ panic.ok.4:
 if.end.2:
   %t264 = load i32, ptr %v.third
   call void @willrt_gc_safepoint(i32 3)
-  %t265 = call i1 @"std/os/path.is_separator"(i32 %t264)
+  %t265 = call i1 @"std/os/path.__is_separator"(i32 %t264)
   br i1 %t265, label %if.then.5, label %if.end.5
 if.then.5:
   store i1 true, ptr %v.rooted
@@ -1572,7 +1572,7 @@ panic.ok.8:
   store i32 %t278, ptr %v.first
   %t279 = load i32, ptr %v.first
   call void @willrt_gc_safepoint(i32 3)
-  %t280 = call i1 @"std/os/path.is_separator"(i32 %t279)
+  %t280 = call i1 @"std/os/path.__is_separator"(i32 %t279)
   br i1 %t280, label %if.then.9, label %if.end.9
 if.then.9:
   store i1 true, ptr %v.rooted
@@ -1646,7 +1646,7 @@ if.then.12:
 if.end.12:
   %t312 = load i32, ptr %v.c
   call void @willrt_gc_safepoint(i32 3)
-  %t313 = call i1 @"std/os/path.is_separator"(i32 %t312)
+  %t313 = call i1 @"std/os/path.__is_separator"(i32 %t312)
   br i1 %t313, label %if.then.13, label %if.else.13
 if.then.13:
   %t314 = load i1, ptr %v.inElement
@@ -1657,7 +1657,7 @@ if.then.14:
   %t317 = load i1, ptr %v.rooted
   %t318 = load i64, ptr %v.count
   call void @willrt_gc_safepoint(i32 3)
-  %t319 = call i64 @"std/os/path.push_element"(ptr %v.s, i64 %t315, i64 %t316, i1 %t317, ptr %v.starts, ptr %v.ends, i64 %t318)
+  %t319 = call i64 @"std/os/path.__push_element"(ptr %v.s, i64 %t315, i64 %t316, i1 %t317, ptr %v.starts, ptr %v.ends, i64 %t318)
   store i64 %t319, ptr %v.count
   store i1 false, ptr %v.inElement
   br label %if.end.14
@@ -1691,7 +1691,7 @@ if.then.16:
   %t329 = load i1, ptr %v.rooted
   %t330 = load i64, ptr %v.count
   call void @willrt_gc_safepoint(i32 3)
-  %t331 = call i64 @"std/os/path.push_element"(ptr %v.s, i64 %t327, i64 %t328, i1 %t329, ptr %v.starts, ptr %v.ends, i64 %t330)
+  %t331 = call i64 @"std/os/path.__push_element"(ptr %v.s, i64 %t327, i64 %t328, i1 %t329, ptr %v.starts, ptr %v.ends, i64 %t330)
   store i64 %t331, ptr %v.count
   br label %if.end.16
 if.end.16:
@@ -2731,7 +2731,7 @@ deep.rel.arr.done.12:
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret { ptr, i64 } %t146
 }
-define hidden { ptr, i64, i64 } @"std/os/path.chars_of"(ptr %s) inlinehint {
+define internal { ptr, i64, i64 } @"std/os/path.__chars_of"(ptr %s) inlinehint {
 entry:
   %v.out = alloca { ptr, i64, i64 }
   %v.gcroots = alloca [3 x ptr]
@@ -2740,7 +2740,7 @@ entry:
   %t1 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 0
   %t2 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 1
   %t3 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 2
-  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.chars_of", ptr %v.gcroots)
+  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.__chars_of", ptr %v.gcroots)
   %v.new.17 = alloca { ptr, i64, i64 }
   %t4 = getelementptr i8, ptr %v.out, i64 0
   store ptr %t4, ptr %t2
@@ -2888,7 +2888,7 @@ entry:
   %t242 = alloca i64
   %t251 = alloca i64
   call void @willrt_gc_safepoint(i32 3)
-  %t65 = call { ptr, i64, i64 } @"std/os/path.chars_of"(ptr %pattern)
+  %t65 = call { ptr, i64, i64 } @"std/os/path.__chars_of"(ptr %pattern)
   store { ptr, i64, i64 } %t65, ptr %v.ret.38
   %t66 = getelementptr inbounds i8, ptr %v.pat, i64 0
   %t67 = getelementptr inbounds i8, ptr %v.ret.38, i64 0
@@ -2897,7 +2897,7 @@ entry:
   %t69 = load { ptr, i64, i64 }, ptr %v.ret.38
   store { ptr, i64, i64 } %t69, ptr %v.pat
   call void @willrt_gc_safepoint(i32 3)
-  %t70 = call { ptr, i64, i64 } @"std/os/path.chars_of"(ptr %name)
+  %t70 = call { ptr, i64, i64 } @"std/os/path.__chars_of"(ptr %name)
   store { ptr, i64, i64 } %t70, ptr %v.ret.43
   %t71 = getelementptr inbounds i8, ptr %v.text, i64 0
   %t72 = getelementptr inbounds i8, ptr %v.ret.43, i64 0
@@ -3013,7 +3013,7 @@ panic.ok.8:
 if.then.9:
   %t124 = load i32, ptr %v.tc
   call void @willrt_gc_safepoint(i32 3)
-  %t125 = call i1 @"std/os/path.is_slash"(i32 %t124)
+  %t125 = call i1 @"std/os/path.__is_slash"(i32 %t124)
   %t126 = xor i1 %t125, true
   store i1 %t126, ptr %v.matched
   br label %if.end.9
@@ -3111,7 +3111,7 @@ panic.ok.16:
   store i32 %t169, ptr %v.extend
   %t170 = load i32, ptr %v.extend
   call void @willrt_gc_safepoint(i32 3)
-  %t171 = call i1 @"std/os/path.is_slash"(i32 %t170)
+  %t171 = call i1 @"std/os/path.__is_slash"(i32 %t170)
   br i1 %t171, label %if.then.17, label %if.end.17
 if.then.17:
   %t172 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.text, i32 0, i32 0
@@ -3288,24 +3288,24 @@ deep.rel.arr.done.29:
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i1 true
 }
-define hidden i1 @"std/os/path.is_slash"(i32 %c) alwaysinline {
+define internal i1 @"std/os/path.__is_slash"(i32 %c) alwaysinline {
 entry:
   %t1 = icmp eq i32 %c, 47
   ret i1 %t1
 }
-define hidden i1 @"std/os/path.is_separator"(i32 %c) alwaysinline {
+define internal i1 @"std/os/path.__is_separator"(i32 %c) alwaysinline {
 entry:
   %t2 = icmp eq i32 %c, 47
   %t3 = icmp eq i32 %c, 92
   %t4 = or i1 %t2, %t3
   ret i1 %t4
 }
-define hidden i1 @"std/os/path.is_dot"(i32 %c) alwaysinline {
+define internal i1 @"std/os/path.__is_dot"(i32 %c) alwaysinline {
 entry:
   %t5 = icmp eq i32 %c, 46
   ret i1 %t5
 }
-define hidden i1 @"std/os/path.is_drive_letter"(i32 %c) alwaysinline {
+define internal i1 @"std/os/path.__is_drive_letter"(i32 %c) alwaysinline {
 entry:
   %t6 = icmp uge i32 %c, 65
   %t7 = icmp ule i32 %c, 90
@@ -3316,7 +3316,7 @@ entry:
   %t12 = or i1 %t8, %t11
   ret i1 %t12
 }
-define hidden i1 @"std/os/path.has_drive"(ptr %p) inlinehint {
+define internal i1 @"std/os/path.__has_drive"(ptr %p) inlinehint {
 entry:
   %v.s = alloca { ptr, i64 }
   %v.first = alloca i32
@@ -3326,7 +3326,7 @@ entry:
   %v.gcframe = alloca %willrt_gc_frame
   %t13 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 0
   %t14 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 1
-  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.has_drive", ptr %v.gcroots)
+  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.__has_drive", ptr %v.gcroots)
   %v.ret.85 = alloca { ptr, i64 }
   %t15 = getelementptr i8, ptr %v.s, i64 0
   store ptr %t15, ptr %t14
@@ -3409,7 +3409,7 @@ panic.ok.5:
   store i32 %t55, ptr %v.second
   %t56 = load i32, ptr %v.first
   call void @willrt_gc_safepoint(i32 3)
-  %t57 = call i1 @"std/os/path.is_drive_letter"(i32 %t56)
+  %t57 = call i1 @"std/os/path.__is_drive_letter"(i32 %t56)
   %t58 = load i32, ptr %v.second
   %t59 = icmp eq i32 %t58, 58
   %t60 = and i1 %t57, %t59
@@ -3419,7 +3419,7 @@ panic.ok.5:
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i1 %t60
 }
-define hidden i1 @"std/os/path.is_drive_abs"(ptr %p) inlinehint {
+define internal i1 @"std/os/path.__is_drive_abs"(ptr %p) inlinehint {
 entry:
   %v.s = alloca { ptr, i64 }
   %v.third = alloca i32
@@ -3428,14 +3428,14 @@ entry:
   %v.gcframe = alloca %willrt_gc_frame
   %t63 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 0
   %t64 = getelementptr inbounds [2 x ptr], ptr %v.gcroots, i32 0, i32 1
-  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.is_drive_abs", ptr %v.gcroots)
+  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.__is_drive_abs", ptr %v.gcroots)
   %v.ret.124 = alloca { ptr, i64 }
   %t65 = getelementptr i8, ptr %v.s, i64 0
   store ptr %t65, ptr %t64
   %v.utf8.128 = alloca i32
   %v.strm.124 = alloca { ptr, i64 }
   call void @willrt_gc_safepoint(i32 3)
-  %t66 = call i1 @"std/os/path.has_drive"(ptr %p)
+  %t66 = call i1 @"std/os/path.__has_drive"(ptr %p)
   %t67 = xor i1 %t66, true
   %t68 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
   %t69 = load i64, ptr %t68
@@ -3488,14 +3488,14 @@ panic.ok.3:
   store i32 %t94, ptr %v.third
   %t95 = load i32, ptr %v.third
   call void @willrt_gc_safepoint(i32 3)
-  %t96 = call i1 @"std/os/path.is_separator"(i32 %t95)
+  %t96 = call i1 @"std/os/path.__is_separator"(i32 %t95)
   %t97 = getelementptr inbounds { ptr, i64 }, ptr %v.s, i32 0, i32 0
   %t98 = call ptr @willrt_gc_read_barrier_slot(ptr %t97)
   call void @willrt_free_str(ptr %t98)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i1 %t96
 }
-define hidden { ptr, i64 } @"std/os/path.separator_string"() inlinehint {
+define internal { ptr, i64 } @"std/os/path.__separator_string"() inlinehint {
 entry:
   %v.cast.139 = alloca { ptr, i64 }
   call void @willrt_gc_safepoint(i32 3)
@@ -4271,19 +4271,19 @@ declare i8 @willpath_separator()
 @"will.type.std/errors.Fault" = linkonce_odr constant i8 0, align 1
 @"std/os.vtable.Error.std/errors.Fault" = internal constant [5 x ptr] [ptr @"std/errors.Fault.message", ptr @"std/errors.Fault.status", ptr @"std/os.iface.clone.Error.std/errors.Fault", ptr @"std/os.iface.drop.Error.std/errors.Fault", ptr @"will.type.std/errors.Fault"], align 8
 @.str.13 = private unnamed_addr constant [20 x i8] c"index out of bounds\00", align 1
-@.str.14 = private unnamed_addr constant [22 x i8] c"os/path/abs.will:9:25\00", align 1
+@.str.14 = private unnamed_addr constant [22 x i8] c"os/path/abs.will:9:27\00", align 1
 @.str.15 = private unnamed_addr constant [16 x i8] c"std/os/path.abs\00", align 1
 @.str.16 = private unnamed_addr constant [14 x i8] c"invalid UTF-8\00", align 1
 @.str.17 = private unnamed_addr constant [23 x i8] c"os/path/clean.will:3:8\00", align 1
-@.str.18 = private unnamed_addr constant [27 x i8] c"std/os/path.is_dot_element\00", align 1
+@.str.18 = private unnamed_addr constant [29 x i8] c"std/os/path.__is_dot_element\00", align 1
 @.str.19 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:7:18\00", align 1
 @.str.20 = private unnamed_addr constant [24 x i8] c"os/path/clean.will:13:8\00", align 1
-@.str.21 = private unnamed_addr constant [31 x i8] c"std/os/path.is_dot_dot_element\00", align 1
+@.str.21 = private unnamed_addr constant [33 x i8] c"std/os/path.__is_dot_dot_element\00", align 1
 @.str.22 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:16:25\00", align 1
 @.str.23 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:18:26\00", align 1
 @.str.24 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:19:27\00", align 1
 @.str.25 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:33:24\00", align 1
-@.str.26 = private unnamed_addr constant [25 x i8] c"std/os/path.push_element\00", align 1
+@.str.26 = private unnamed_addr constant [27 x i8] c"std/os/path.__push_element\00", align 1
 @.str.27 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:38:30\00", align 1
 @.str.28 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:39:31\00", align 1
 @.str.29 = private unnamed_addr constant [25 x i8] c"os/path/clean.will:40:31\00", align 1
@@ -4312,7 +4312,7 @@ declare i8 @willpath_separator()
 @.str.52 = private unnamed_addr constant [17 x i8] c"std/os/path.join\00", align 1
 @.str.53 = private unnamed_addr constant [24 x i8] c"os/path/join.will:21:23\00", align 1
 @.str.54 = private unnamed_addr constant [24 x i8] c"os/path/match.will:11:5\00", align 1
-@.str.55 = private unnamed_addr constant [21 x i8] c"std/os/path.chars_of\00", align 1
+@.str.55 = private unnamed_addr constant [23 x i8] c"std/os/path.__chars_of\00", align 1
 @.str.56 = private unnamed_addr constant [25 x i8] c"os/path/match.will:35:27\00", align 1
 @.str.57 = private unnamed_addr constant [17 x i8] c"std/os/path.glob\00", align 1
 @.str.58 = private unnamed_addr constant [25 x i8] c"os/path/match.will:39:24\00", align 1
@@ -4325,12 +4325,12 @@ declare i8 @willpath_separator()
 @.str.65 = private unnamed_addr constant [25 x i8] c"os/path/match.will:75:23\00", align 1
 @.str.66 = private unnamed_addr constant [24 x i8] c"os/path/match.will:79:9\00", align 1
 @.str.67 = private unnamed_addr constant [24 x i8] c"os/path/path.will:46:22\00", align 1
-@.str.68 = private unnamed_addr constant [22 x i8] c"std/os/path.has_drive\00", align 1
+@.str.68 = private unnamed_addr constant [24 x i8] c"std/os/path.__has_drive\00", align 1
 @.str.69 = private unnamed_addr constant [24 x i8] c"os/path/path.will:47:23\00", align 1
 @.str.70 = private unnamed_addr constant [24 x i8] c"os/path/path.will:57:22\00", align 1
-@.str.71 = private unnamed_addr constant [25 x i8] c"std/os/path.is_drive_abs\00", align 1
+@.str.71 = private unnamed_addr constant [27 x i8] c"std/os/path.__is_drive_abs\00", align 1
 @.str.72 = private unnamed_addr constant [24 x i8] c"os/path/path.will:63:12\00", align 1
-@.str.73 = private unnamed_addr constant [29 x i8] c"std/os/path.separator_string\00", align 1
+@.str.73 = private unnamed_addr constant [31 x i8] c"std/os/path.__separator_string\00", align 1
 @.str.74 = private unnamed_addr constant [15 x i8] c"main.will:6:20\00", align 1
 @.str.75 = private unnamed_addr constant [48 x i8] c"example.com/stdtest/system/pathnative.will$main\00", align 1
 @.bytes.10 = private unnamed_addr constant [5 x i8] c"a/./b", align 1
@@ -4435,23 +4435,23 @@ entry:
 @"willrt.gc.stack.std/os.chdir" = private constant %willrt_gc_stack_map_data { ptr @"std/os.chdir", ptr @"willrt.gc.stack.slots.std/os.chdir", i64 1 }
 @"willrt.gc.stack.slots.std/os/path.abs" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }]
 @"willrt.gc.stack.std/os/path.abs" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.abs", ptr @"willrt.gc.stack.slots.std/os/path.abs", i64 3 }
-@"willrt.gc.stack.slots.std/os/path.is_dot_element" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
-@"willrt.gc.stack.std/os/path.is_dot_element" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.is_dot_element", ptr @"willrt.gc.stack.slots.std/os/path.is_dot_element", i64 2 }
-@"willrt.gc.stack.slots.std/os/path.is_dot_dot_element" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
-@"willrt.gc.stack.std/os/path.is_dot_dot_element" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.is_dot_dot_element", ptr @"willrt.gc.stack.slots.std/os/path.is_dot_dot_element", i64 2 }
-@"willrt.gc.stack.slots.std/os/path.push_element" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }]
-@"willrt.gc.stack.std/os/path.push_element" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.push_element", ptr @"willrt.gc.stack.slots.std/os/path.push_element", i64 3 }
+@"willrt.gc.stack.slots.std/os/path.__is_dot_element" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
+@"willrt.gc.stack.std/os/path.__is_dot_element" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.__is_dot_element", ptr @"willrt.gc.stack.slots.std/os/path.__is_dot_element", i64 2 }
+@"willrt.gc.stack.slots.std/os/path.__is_dot_dot_element" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
+@"willrt.gc.stack.std/os/path.__is_dot_dot_element" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.__is_dot_dot_element", ptr @"willrt.gc.stack.slots.std/os/path.__is_dot_dot_element", i64 2 }
+@"willrt.gc.stack.slots.std/os/path.__push_element" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }]
+@"willrt.gc.stack.std/os/path.__push_element" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.__push_element", ptr @"willrt.gc.stack.slots.std/os/path.__push_element", i64 3 }
 @"willrt.gc.stack.slots.std/os/path.clean" = private constant [8 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }, %willrt_gc_stack_slot { i32 24, i32 5, ptr null }, %willrt_gc_stack_slot { i32 32, i32 5, ptr null }, %willrt_gc_stack_slot { i32 40, i32 5, ptr null }, %willrt_gc_stack_slot { i32 48, i32 5, ptr null }, %willrt_gc_stack_slot { i32 56, i32 5, ptr null }]
 @"willrt.gc.stack.std/os/path.clean" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.clean", ptr @"willrt.gc.stack.slots.std/os/path.clean", i64 8 }
 @"willrt.gc.stack.slots.std/os/path.join" = private constant [4 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }, %willrt_gc_stack_slot { i32 24, i32 5, ptr null }]
 @"willrt.gc.stack.std/os/path.join" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.join", ptr @"willrt.gc.stack.slots.std/os/path.join", i64 4 }
-@"willrt.gc.stack.slots.std/os/path.chars_of" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }]
-@"willrt.gc.stack.std/os/path.chars_of" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.chars_of", ptr @"willrt.gc.stack.slots.std/os/path.chars_of", i64 3 }
+@"willrt.gc.stack.slots.std/os/path.__chars_of" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }]
+@"willrt.gc.stack.std/os/path.__chars_of" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.__chars_of", ptr @"willrt.gc.stack.slots.std/os/path.__chars_of", i64 3 }
 @"willrt.gc.stack.slots.std/os/path.glob" = private constant [4 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }, %willrt_gc_stack_slot { i32 24, i32 5, ptr null }]
 @"willrt.gc.stack.std/os/path.glob" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.glob", ptr @"willrt.gc.stack.slots.std/os/path.glob", i64 4 }
-@"willrt.gc.stack.slots.std/os/path.has_drive" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
-@"willrt.gc.stack.std/os/path.has_drive" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.has_drive", ptr @"willrt.gc.stack.slots.std/os/path.has_drive", i64 2 }
-@"willrt.gc.stack.slots.std/os/path.is_drive_abs" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
-@"willrt.gc.stack.std/os/path.is_drive_abs" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.is_drive_abs", ptr @"willrt.gc.stack.slots.std/os/path.is_drive_abs", i64 2 }
+@"willrt.gc.stack.slots.std/os/path.__has_drive" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
+@"willrt.gc.stack.std/os/path.__has_drive" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.__has_drive", ptr @"willrt.gc.stack.slots.std/os/path.__has_drive", i64 2 }
+@"willrt.gc.stack.slots.std/os/path.__is_drive_abs" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }]
+@"willrt.gc.stack.std/os/path.__is_drive_abs" = private constant %willrt_gc_stack_map_data { ptr @"std/os/path.__is_drive_abs", ptr @"willrt.gc.stack.slots.std/os/path.__is_drive_abs", i64 2 }
 @"willrt.gc.stack.slots.example.com/stdtest/system/pathnative.will$main" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }]
 @"willrt.gc.stack.example.com/stdtest/system/pathnative.will$main" = private constant %willrt_gc_stack_map_data { ptr @"example.com/stdtest/system/pathnative.will$main", ptr @"willrt.gc.stack.slots.example.com/stdtest/system/pathnative.will$main", i64 3 }

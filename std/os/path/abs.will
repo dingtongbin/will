@@ -6,7 +6,7 @@ import "std/os"
 def abs(p: str) -> Result<str, Error> {
     if p.len() != 0usize {
         var s: str = p.clone()
-        if is_separator(s[0]) or is_drive_abs(s) {
+        if __is_separator(s[0]) or __is_drive_abs(s) {
             return Ok(clean(p))
         }
     }

@@ -1,15 +1,15 @@
 # isDotElement reports whether p[a:b] is the single-dot element.
-def is_dot_element(p: str, a: usize, b: usize) -> bool {
+def __is_dot_element(p: str, a: usize, b: usize) -> bool {
     if b - a != 1usize {
         return False
     }
     var s: str = p.clone()
     var c: u32 = s[a]
-    return is_dot(c)
+    return __is_dot(c)
 }
 
 # isDotDotElement reports whether p[a:b] is the two-dot element.
-def is_dot_dot_element(p: str, a: usize, b: usize) -> bool {
+def __is_dot_dot_element(p: str, a: usize, b: usize) -> bool {
     if b - a != 2usize {
         return False
     }
@@ -17,17 +17,17 @@ def is_dot_dot_element(p: str, a: usize, b: usize) -> bool {
     var s: str = p.clone()
     var firstChar: u32 = s[a]
     var secondChar: u32 = s[second]
-    return is_dot(firstChar) and is_dot(secondChar)
+    return __is_dot(firstChar) and __is_dot(secondChar)
 }
 
 # pushElement adds one element to the cleaned path or resolves a dot-dot. It
 # returns the new element count; a dot-dot removes the previous element unless
 # that would leave a relative path, in which case the dot-dot itself is kept.
-def push_element(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>, ends: Array<usize>, count: usize) -> usize {
-    if is_dot_element(p, a, b) {
+def __push_element(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>, ends: Array<usize>, count: usize) -> usize {
+    if __is_dot_element(p, a, b) {
         return count
     }
-    if is_dot_dot_element(p, a, b) {
+    if __is_dot_dot_element(p, a, b) {
         if rooted {
             if count > 0usize {
                 return count - 1usize
@@ -38,7 +38,7 @@ def push_element(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>,
             var top: usize = count - 1usize
             var topA: usize = starts.get(top)
             var topB: usize = ends.get(top)
-            if not is_dot_dot_element(p, topA, topB) {
+            if not __is_dot_dot_element(p, topA, topB) {
                 return count - 1usize
             }
         }
@@ -67,20 +67,20 @@ def clean(p: str) -> str {
     var volumeEnd: usize = 0usize
     var scan: usize = 0usize
     var rooted: bool = False
-    if has_drive(s) {
+    if __has_drive(s) {
         volumeEnd = 2usize
         scan = 2usize
         var third: u32 = 0u32
         if n > 2usize {
             third = s[2]
         }
-        if is_separator(third) {
+        if __is_separator(third) {
             rooted = True
             scan = 3usize
         }
     } else if n > 0usize {
         var first: u32 = s[0]
-        if is_separator(first) {
+        if __is_separator(first) {
             rooted = True
         }
     }
@@ -93,9 +93,9 @@ def clean(p: str) -> str {
         if i < scan {
             continue
         }
-        if is_separator(c) {
+        if __is_separator(c) {
             if inElement {
-                count = push_element(s, start, i, rooted, starts, ends, count)
+                count = __push_element(s, start, i, rooted, starts, ends, count)
                 inElement = False
             }
         } else if not inElement {
@@ -104,7 +104,7 @@ def clean(p: str) -> str {
         }
     }
     if inElement {
-        count = push_element(s, start, n, rooted, starts, ends, count)
+        count = __push_element(s, start, n, rooted, starts, ends, count)
     }
     var sep: u8 = separator()
     var out: Array<u8> = new Array<u8>(0)
