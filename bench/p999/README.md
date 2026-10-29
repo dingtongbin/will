@@ -20,7 +20,7 @@ Current Windows x86_64 probe:
 ```text
 alloc_ns p50=100 p99=400 p999=1800
 safepoint_ns p50=0 p99=100 p999=100
-wake_ns p50=300 p99=800 p999=46200
+wake_ns p50=300 p99=500 p999=13100
 ```
 
 The wake probe is a separate opt-in test:

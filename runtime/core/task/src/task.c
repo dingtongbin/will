@@ -174,6 +174,12 @@ static atomic_int willrt_lane_ready;
    the whole group. The lane count is small and pick_lanes runs once per group,
    not once per task. */
 enum { WILLRT_AUTO_GROUP = 8, WILLRT_AUTO_LANES = 3 };
+
+/* A lane that has just gone idle spins briefly before blocking on its
+   condition variable. The spin is bounded: an idle process still reaches the
+   sleep state, while a producer that is already on the way avoids a scheduler
+   round trip on the wake tail. */
+enum { WILLRT_LANE_SPIN = 512 };
 static _Thread_local int32_t willrt_auto_group_lanes[WILLRT_AUTO_LANES];
 static _Thread_local int32_t willrt_auto_group_used;
 static _Thread_local int32_t willrt_auto_group_next;
@@ -688,21 +694,33 @@ static void willrt_lane_worker(void* raw) {
            normal precise frame source again before the step runs. */
         willrt_gc_native_enter();
         willrt_os_mutex_lock(&worker->lock);
-        for (;;) {
-            task = willrt_lane_pop_locked(worker);
-            if (task == NULL && !willrt_lane_is_reserved(worker->id) &&
-                willrt_job_pop != NULL) {
-                /* The lane lock stays held across the local job probe. A job
-                   enqueue takes the job lock and then this lane lock to signal,
-                   so a job cannot land after the probe and miss the wake. */
-                task = willrt_job_pop(worker->id);
+        {
+            int32_t spin = 0;
+            for (;;) {
+                task = willrt_lane_pop_locked(worker);
+                if (task == NULL && !willrt_lane_is_reserved(worker->id) &&
+                    willrt_job_pop != NULL) {
+                    /* The lane lock stays held across the local job probe. A
+                       job enqueue takes the job lock and then this lane lock to
+                       signal, so a job cannot land after the probe and miss the
+                       wake. */
+                    task = willrt_job_pop(worker->id);
+                }
+                if (task != NULL || worker->stopping) {
+                    break;
+                }
+                if (spin < WILLRT_LANE_SPIN) {
+                    spin++;
+                    willrt_os_mutex_unlock(&worker->lock);
+                    willrt_os_thread_yield();
+                    willrt_os_mutex_lock(&worker->lock);
+                    continue;
+                }
+                worker->sleeping = 1;
+                willrt_os_cond_wait(&worker->cond, &worker->lock);
+                worker->sleeping = 0;
+                spin = 0;
             }
-            if (task != NULL || worker->stopping) {
-                break;
-            }
-            worker->sleeping = 1;
-            willrt_os_cond_wait(&worker->cond, &worker->lock);
-            worker->sleeping = 0;
         }
         stopping = worker->stopping;
         if (task != NULL && task->is_job) {
