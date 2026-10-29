@@ -39,8 +39,64 @@ struct OpenFlags {
 # File is one open file handle. Close releases it.
 struct File {
     handle: raw
-}
 
+    # read parks the task frame until the blocking pool finishes the host read.
+    async def read(self, buf: mut Array<u8>) -> Result<usize, Error> {
+        var count: usize = 0
+        var status: i32 = await c.willrt_fs_async_file_read(raw(self), raw(count), raw(buf))
+        if status != 0 {
+            return Err(errors.Io)
+        }
+        return Ok(count)
+    }
+
+    # write parks the task frame until the host write finishes.
+    async def write(self, buf: []u8) -> Result<(), Error> {
+        var status: i32 = await c.willrt_fs_async_file_write(raw(self), raw(buf))
+        if status != 0 {
+            return Err(errors.Io)
+        }
+        return Ok(())
+    }
+
+    # seek parks the task frame until the host seek finishes.
+    async def seek(self, offset: i64, whence: i32) -> Result<i64, Error> {
+        var at: i64 = 0
+        var status: i32 = await c.willrt_fs_async_file_seek(raw(self), offset, whence, raw(at))
+        if status != 0 {
+            return Err(errors.Io)
+        }
+        return Ok(at)
+    }
+
+    # sync parks the task frame until the host sync finishes.
+    async def sync(self) -> Result<(), Error> {
+        var status: i32 = await c.willrt_fs_async_file_sync(raw(self))
+        if status != 0 {
+            return Err(errors.Io)
+        }
+        return Ok(())
+    }
+
+    # stat returns the metadata of the open file.
+    async def stat(self) -> Result<StatInfo, Error> {
+        var info: StatInfo
+        var status: i32 = await c.willrt_fs_async_file_stat(raw(self), raw(info))
+        if status != 0 {
+            return Err(errors.Io)
+        }
+        return Ok(info)
+    }
+
+    # close releases the file handle. A closed handle is safe to close again.
+    def close(self) -> Result<(), Error> {
+        var status: i32 = c.willrt_fs_file_close(raw(self))
+        if status != 0 {
+            return Err(errors.Io)
+        }
+        return Ok(())
+    }
+}
 # StatInfo is the metadata of one path. mtime is seconds since the Unix epoch.
 # The type and the Stat function need distinct names in will's package
 # namespace.
@@ -69,63 +125,6 @@ struct fsError {
     def status(self) -> i32 {
         return 7
     }
-}
-
-# Read parks the task frame until the blocking pool finishes the host read.
-async def (f: ref File) read(buf: mut Array<u8>) -> Result<usize, Error> {
-    var count: usize = 0
-    var status: i32 = await c.willrt_fs_async_file_read(raw(f), raw(count), raw(buf))
-    if status != 0 {
-        return Err(errors.Io)
-    }
-    return Ok(count)
-}
-
-# Write parks the task frame until the host write finishes.
-async def (f: ref File) write(buf: []u8) -> Result<(), Error> {
-    var status: i32 = await c.willrt_fs_async_file_write(raw(f), raw(buf))
-    if status != 0 {
-        return Err(errors.Io)
-    }
-    return Ok(())
-}
-
-# Seek parks the task frame until the host seek finishes.
-async def (f: ref File) seek(offset: i64, whence: i32) -> Result<i64, Error> {
-    var at: i64 = 0
-    var status: i32 = await c.willrt_fs_async_file_seek(raw(f), offset, whence, raw(at))
-    if status != 0 {
-        return Err(errors.Io)
-    }
-    return Ok(at)
-}
-
-# Sync parks the task frame until the host sync finishes.
-async def (f: ref File) sync() -> Result<(), Error> {
-    var status: i32 = await c.willrt_fs_async_file_sync(raw(f))
-    if status != 0 {
-        return Err(errors.Io)
-    }
-    return Ok(())
-}
-
-# Stat returns the metadata of the open file.
-async def (f: ref File) stat() -> Result<StatInfo, Error> {
-    var info: StatInfo
-    var status: i32 = await c.willrt_fs_async_file_stat(raw(f), raw(info))
-    if status != 0 {
-        return Err(errors.Io)
-    }
-    return Ok(info)
-}
-
-# Close releases the file handle. A closed handle is safe to close again.
-def (f: mut File) close() -> Result<(), Error> {
-    var status: i32 = c.willrt_fs_file_close(raw(f))
-    if status != 0 {
-        return Err(errors.Io)
-    }
-    return Ok(())
 }
 
 # AsyncMkdir is the async spelling of Mkdir.
