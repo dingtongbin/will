@@ -120,6 +120,34 @@ func (g *generator) selectMachine(fnID int) (*selectMachineInfo, bool) {
 		fields = append(fields, asyncField{id: r.ID, text: "class." + strconv.Itoa(r.ID),
 			willText: fieldText(r, "type"), llvm: "ptr"})
 	}
+	inlineRoots := map[int][]int{}
+	appendInlineRoots := func(decl int, text string) {
+		if g.isClassText(text) {
+			return
+		}
+		if _, ok := g.ifaceOfText(text); ok {
+			return
+		}
+		if isFuncText(text) {
+			return
+		}
+		inline, ok := g.inlineGCType(text)
+		if !ok || len(inline.Refs) == 0 {
+			return
+		}
+		for range inline.Refs {
+			inlineRoots[decl] = append(inlineRoots[decl], len(fields))
+			fields = append(fields, asyncField{
+				id: -decl*16 - len(inlineRoots[decl]), gcRoot: true, llvm: "ptr",
+			})
+		}
+	}
+	for _, r := range append(append([]willc.Record(nil), locals...), params...) {
+		appendInlineRoots(r.ID, fieldText(r, "type"))
+	}
+	if recv := receiverOfIn(g.cur, fnID); recv != nil {
+		appendInlineRoots(recv.ID, fieldText(*recv, "type"))
+	}
 	outIndex := map[int]int{}
 	valueIndex := map[int]int{}
 	for _, arm := range arms {
@@ -201,6 +229,7 @@ func (g *generator) selectMachine(fnID int) (*selectMachineInfo, bool) {
 		fields:      info.fields,
 		gcSlots:     gcSlots,
 		gcTypes:     gcTypes,
+		inlineRoots: inlineRoots,
 		resultText:  info.resultText,
 		resultLLVM:  info.resultLLVM,
 	}
@@ -233,6 +262,9 @@ func (g *generator) emitSelectMachineStep(info *selectMachineInfo) error {
 	g.lateAllocas = nil
 	g.lateAllowed = true
 	g.smPlaces = map[int]smPlace{}
+	g.gcInlineRoots = map[int][]string{}
+	g.gcInlineReady = map[int]bool{}
+	g.smParamSlot = map[int]string{}
 	g.resetSyntheticTemps()
 	g.resultType = info.resultLLVM
 	g.fnResultText = info.resultText
@@ -265,6 +297,7 @@ func (g *generator) emitSelectMachineStep(info *selectMachineInfo) error {
 		field := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n",
 			field, info.frameType, i+2)
+		g.smParamSlot[p.ID] = field
 		typ, byPtr, err := g.asyncParamABI(p)
 		if err != nil {
 			return err
@@ -280,18 +313,28 @@ func (g *generator) emitSelectMachineStep(info *selectMachineInfo) error {
 			g.scope[p.ID] = g.load(typ, field)
 		}
 	}
+	fieldPtrs := make([]string, len(info.fields))
 	for i := len(paramRecs); i < len(info.fields); i++ {
 		f := info.fields[i]
-		if f.id == 0 {
-			continue
-		}
 		field := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n",
 			field, info.frameType, i+2)
+		fieldPtrs[i] = field
+		if f.id == 0 {
+			continue
+		}
 		if f.id > 0 {
 			g.slots[f.id] = field
 			g.slotTypes[f.id] = f.llvm
 		}
+	}
+	for decl, indices := range info.base.inlineRoots {
+		for _, index := range indices {
+			if index < len(fieldPtrs) && fieldPtrs[index] != "" {
+				g.gcInlineRoots[decl] = append(g.gcInlineRoots[decl], fieldPtrs[index])
+			}
+		}
+		g.gcInlineReady[decl] = true
 	}
 	for armID, index := range info.outIndex {
 		field := g.newTmp()

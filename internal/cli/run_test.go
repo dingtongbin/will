@@ -170,6 +170,51 @@ async def main() -> i32 {
 	}
 }
 
+// TestRunAsyncStructFieldRoot checks the same shadow-root rule in a general
+// async frame: the struct local lives in the byte frame, not a C alloca, so its
+// class field needs an explicit pointer slot in the task map.
+func TestRunAsyncStructFieldRoot(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class Node {
+    value: i32
+}
+
+struct Holder {
+    node: Node
+}
+
+async def wait() -> i32 {
+    return 1
+}
+
+async def main() -> i32 {
+    var h: Holder = Holder(node=Node(value=77))
+    _ = await wait()
+    var i: i32 = 0
+    while i < 5000 {
+        var junk: Node = Node(value=i)
+        _ = junk
+        i += 1
+    }
+    if h.node.value != 77 {
+        return 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
 // TestRunStructFieldRoot checks that a class reference inside an inline struct
 // local is mirrored into the exact GC frame root. A full cycle must not collect
 // the object the struct field still names.

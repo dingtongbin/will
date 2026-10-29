@@ -189,6 +189,7 @@ func (g *generator) emitGeneralStep(fnID int) error {
 	if err := g.allocas(fnID); err != nil {
 		return err
 	}
+	g.prepareGeneralInlineRoots(fnID)
 	g.out.WriteString("sm.init:\n")
 	g.smMode = true
 	stmts := g.children(bodyRec.ID)

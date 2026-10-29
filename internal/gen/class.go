@@ -305,6 +305,42 @@ func (g *generator) refreshInlineRoots() {
 	}
 }
 
+// prepareGeneralInlineRoots reserves a shadow pointer slot in the general
+// state-machine frame for every reference field of an inline local or
+// parameter. The slots are ordinary frame allocas, so relocation gives them a
+// stable byte offset that the task map can publish.
+func (g *generator) prepareGeneralInlineRoots(fnID int) {
+	g.gcInlineRoots = map[int][]string{}
+	g.gcInlineReady = map[int]bool{}
+	for _, r := range g.recs {
+		if r.Kind != "param" && r.Kind != "receiver" && r.Kind != "var" {
+			continue
+		}
+		if r.Kind == "var" && g.enclosingFunc(r.ID) != fnID {
+			continue
+		}
+		if r.Kind != "var" && refField(r, "parent") != fnID {
+			continue
+		}
+		text := fieldText(r, "type")
+		if g.isClassText(text) {
+			continue
+		}
+		inline, ok := g.inlineGCType(text)
+		if !ok || len(inline.Refs) == 0 {
+			continue
+		}
+		slots := make([]string, 0, len(inline.Refs))
+		for range inline.Refs {
+			slots = append(slots, g.smAlloca("ptr", "gcroot"))
+		}
+		g.gcInlineRoots[r.ID] = slots
+		if r.Kind != "var" {
+			g.gcInlineReady[r.ID] = true
+		}
+	}
+}
+
 // generalGCSlots maps class parameters, receivers, and locals at the byte
 // offsets relocateGeneralAllocas assigned to their frame slots.
 func (g *generator) generalGCSlots(fnID int, offsets map[string]int) ([]int, []string) {
@@ -341,6 +377,21 @@ func (g *generator) generalGCSlots(fnID int, offsets map[string]int) ([]int, []s
 		}
 		if isFuncText(text) {
 			slots = append(slots, offset+8)
+			texts = append(texts, "")
+		}
+	}
+	var inlineDecls []int
+	for decl := range g.gcInlineRoots {
+		inlineDecls = append(inlineDecls, decl)
+	}
+	sort.Ints(inlineDecls)
+	for _, decl := range inlineDecls {
+		for _, slot := range g.gcInlineRoots[decl] {
+			offset, ok := offsets[slot]
+			if !ok {
+				continue
+			}
+			slots = append(slots, offset)
 			texts = append(texts, "")
 		}
 	}
@@ -511,6 +562,12 @@ func (g *generator) asyncGCSlots(fields []asyncField) ([]int, []string) {
 			continue
 		}
 		offset = alignUp(offset, align)
+		if f.gcRoot {
+			slots = append(slots, offset)
+			texts = append(texts, "")
+			offset += size
+			continue
+		}
 		if t, ok := g.classTypeOfText(f.willText); ok {
 			slots = append(slots, offset)
 			texts = append(texts, t.Name)

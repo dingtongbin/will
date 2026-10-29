@@ -119,6 +119,34 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 		fields = append(fields, asyncField{id: r.ID, text: "class." + strconv.Itoa(r.ID),
 			willText: text, llvm: "ptr"})
 	}
+	inlineRoots := map[int][]int{}
+	appendInlineRoots := func(decl int, text string) {
+		if g.isClassText(text) {
+			return
+		}
+		if _, ok := g.ifaceOfText(text); ok {
+			return
+		}
+		if isFuncText(text) {
+			return
+		}
+		inline, ok := g.inlineGCType(text)
+		if !ok || len(inline.Refs) == 0 {
+			return
+		}
+		for range inline.Refs {
+			inlineRoots[decl] = append(inlineRoots[decl], len(fields))
+			fields = append(fields, asyncField{
+				id: -decl*16 - len(inlineRoots[decl]), gcRoot: true, llvm: "ptr",
+			})
+		}
+	}
+	for _, r := range append(append([]willc.Record(nil), locals...), params...) {
+		appendInlineRoots(r.ID, fieldText(r, "type"))
+	}
+	if recv := receiverOfIn(g.cur, fnID); recv != nil {
+		appendInlineRoots(recv.ID, fieldText(*recv, "type"))
+	}
 	for i := range sites {
 		if sites[i].kind == "c" {
 			parent := refField(sites[i].call, "parent")
@@ -178,6 +206,7 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 		fields:      fields,
 		gcSlots:     gcSlots,
 		gcTypes:     gcTypes,
+		inlineRoots: inlineRoots,
 		resultText:  resultText,
 		resultLLVM:  resultLLVM,
 	}

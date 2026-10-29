@@ -13,6 +13,9 @@ type asyncField struct {
 	aggregate bool
 	param     bool
 	paramMut  bool
+	// gcRoot marks a synthetic pointer field that mirrors one reference inside
+	// an inline aggregate. Its field offset is published in the task map.
+	gcRoot bool
 }
 
 // asyncMachineInfo describes one function whose only wait is a direct async C
@@ -44,6 +47,7 @@ type asyncMachineInfo struct {
 	fields      []asyncField
 	gcSlots     []int
 	gcTypes     []string
+	inlineRoots map[int][]int
 	resultText  string
 	resultLLVM  string
 	segments    []asyncSegment

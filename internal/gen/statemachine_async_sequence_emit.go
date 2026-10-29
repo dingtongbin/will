@@ -45,6 +45,9 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 	g.lateAllocas = nil
 	g.lateAllowed = true
 	g.smPlaces = map[int]smPlace{}
+	g.gcInlineRoots = map[int][]string{}
+	g.gcInlineReady = map[int]bool{}
+	g.smParamSlot = map[int]string{}
 	g.resetSyntheticTemps()
 	g.resultType = info.resultLLVM
 	g.fnResultText = info.resultText
@@ -96,6 +99,7 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 		if err != nil {
 			return err
 		}
+		g.smParamSlot[p.ID] = field
 		if byPtr {
 			if isMutText(fieldText(p, "type")) {
 				g.scope[p.ID] = g.load("ptr", field)
@@ -107,16 +111,26 @@ func (g *generator) emitAsyncSequenceStep(info *asyncMachineInfo) error {
 			g.scope[p.ID] = g.load(typ, field)
 		}
 	}
+	fieldPtrs := make([]string, len(info.fields))
 	for i := len(paramRecs); i < len(info.fields); i++ {
 		f := info.fields[i]
-		if f.id == 0 {
-			continue
-		}
 		field := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %%frame, i32 0, i32 %d\n",
 			field, info.frameType, i+2)
+		fieldPtrs[i] = field
+		if f.id == 0 {
+			continue
+		}
 		g.slots[f.id] = field
 		g.slotTypes[f.id] = f.llvm
+	}
+	for decl, indices := range info.inlineRoots {
+		for _, index := range indices {
+			if index < len(fieldPtrs) && fieldPtrs[index] != "" {
+				g.gcInlineRoots[decl] = append(g.gcInlineRoots[decl], fieldPtrs[index])
+			}
+		}
+		g.gcInlineReady[decl] = true
 	}
 	current := g.load("i32", state)
 	var cases strings.Builder
