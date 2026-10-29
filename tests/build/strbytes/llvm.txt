@@ -41,6 +41,8 @@ entry:
   %v.slice.11 = alloca { ptr, i64 }
   %v.slice.18 = alloca { ptr, i64 }
   %v.slice.57 = alloca { ptr, i64 }
+  %t197 = alloca i64
+  %t211 = alloca i64
   %t9 = getelementptr inbounds { ptr, i64 }, ptr %v.str.7, i32 0, i32 0
   store ptr @.bytes.1, ptr %t9
   %t10 = getelementptr inbounds { ptr, i64 }, ptr %v.str.7, i32 0, i32 1
@@ -320,7 +322,6 @@ if.then.10:
   %t194 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.copy, i32 0, i32 1
   %t195 = call ptr @willrt_gc_read_barrier_slot(ptr %t193)
   %t196 = load i64, ptr %t194
-  %t197 = alloca i64
   store i64 0, ptr %t197
   br label %deep.rel.arr.cond.11
 deep.rel.arr.cond.11:
@@ -350,7 +351,6 @@ if.end.10:
   %t208 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.copy, i32 0, i32 1
   %t209 = call ptr @willrt_gc_read_barrier_slot(ptr %t207)
   %t210 = load i64, ptr %t208
-  %t211 = alloca i64
   store i64 0, ptr %t211
   br label %deep.rel.arr.cond.13
 deep.rel.arr.cond.13:

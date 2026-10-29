@@ -91,6 +91,7 @@ entry:
   %v.$idx = alloca i64
   %v.key = alloca { ptr, i64 }
   %v.value = alloca { ptr, i64 }
+  %t380 = alloca i64
   %t33 = getelementptr inbounds { ptr, i64 }, ptr %kv, i32 0, i32 1
   %t34 = load i64, ptr %t33
   %t35 = icmp eq i64 2, 0
@@ -697,7 +698,6 @@ for.end.8:
   %t377 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.env, i32 0, i32 1
   %t378 = call ptr @willrt_gc_read_barrier_slot(ptr %t376)
   %t379 = load i64, ptr %t377
-  %t380 = alloca i64
   store i64 0, ptr %t380
   br label %deep.rel.map.cond.27
 deep.rel.map.cond.27:
@@ -1498,7 +1498,7 @@ sm.init:
   store { ptr, i64, i64 } %t200, ptr %v.envpairs
   %t201 = getelementptr i8, ptr %v.envpairs, i64 0
   %t202 = call ptr @willrt_gc_read_barrier_slot(ptr %t201)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.192, ptr %t202)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.190, ptr %t202)
   %t203 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %t189, i32 0, i32 2
   %t204 = getelementptr inbounds { ptr, i64, i64 }, ptr %t203, i32 0, i32 0
   %t205 = load ptr, ptr %t204
@@ -1636,28 +1636,28 @@ for.end.1:
   store { ptr, i64, i64 } zeroinitializer, ptr %v.out
   %t281 = getelementptr i8, ptr %v.envpairs, i64 0
   %t282 = call ptr @willrt_gc_read_barrier_slot(ptr %t281)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.192, ptr %t282)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.190, ptr %t282)
   %t283 = getelementptr i8, ptr %v.out, i64 0
   %t284 = call ptr @willrt_gc_read_barrier_slot(ptr %t283)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.191, ptr %t284)
   store { ptr, i64, i64 } zeroinitializer, ptr %v.err
-  %t285 = getelementptr i8, ptr %v.err, i64 0
+  %t285 = getelementptr i8, ptr %v.envpairs, i64 0
   %t286 = call ptr @willrt_gc_read_barrier_slot(ptr %t285)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.190, ptr %t286)
   %t287 = getelementptr i8, ptr %v.out, i64 0
   %t288 = call ptr @willrt_gc_read_barrier_slot(ptr %t287)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.191, ptr %t288)
-  %t289 = getelementptr i8, ptr %v.envpairs, i64 0
+  %t289 = getelementptr i8, ptr %v.err, i64 0
   %t290 = call ptr @willrt_gc_read_barrier_slot(ptr %t289)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.192, ptr %t290)
   store %"struct.std/os/exec.ExitStatus" zeroinitializer, ptr %v.status
-  %t291 = getelementptr i8, ptr %v.err, i64 0
+  %t291 = getelementptr i8, ptr %v.envpairs, i64 0
   %t292 = call ptr @willrt_gc_read_barrier_slot(ptr %t291)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.190, ptr %t292)
   %t293 = getelementptr i8, ptr %v.out, i64 0
   %t294 = call ptr @willrt_gc_read_barrier_slot(ptr %t293)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.191, ptr %t294)
-  %t295 = getelementptr i8, ptr %v.envpairs, i64 0
+  %t295 = getelementptr i8, ptr %v.err, i64 0
   %t296 = call ptr @willrt_gc_read_barrier_slot(ptr %t295)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.192, ptr %t296)
   %t297 = getelementptr inbounds %"struct.std/os/exec.Cmd", ptr %t189, i32 0, i32 0
@@ -1691,15 +1691,15 @@ sm.async.cont.1:
   store i32 %t308, ptr %v.await.scalar.125
   %t309 = load i32, ptr %v.await.scalar.125
   store i32 %t309, ptr %v.code
-  %t310 = getelementptr i8, ptr %v.out, i64 0
+  %t310 = getelementptr i8, ptr %v.envpairs, i64 0
   %t311 = call ptr @willrt_gc_read_barrier_slot(ptr %t310)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.191, ptr %t311)
-  %t312 = getelementptr i8, ptr %v.envpairs, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.190, ptr %t311)
+  %t312 = getelementptr i8, ptr %v.out, i64 0
   %t313 = call ptr @willrt_gc_read_barrier_slot(ptr %t312)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.192, ptr %t313)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.191, ptr %t313)
   %t314 = getelementptr i8, ptr %v.err, i64 0
   %t315 = call ptr @willrt_gc_read_barrier_slot(ptr %t314)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.190, ptr %t315)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.192, ptr %t315)
   %t316 = load i32, ptr %v.code
   %t317 = icmp ne i32 %t316, 0
   br i1 %t317, label %if.then.4, label %if.end.4
@@ -1875,11 +1875,11 @@ entry:
   store { ptr, i64, i64 } zeroinitializer, ptr %t404
   %t405 = getelementptr i8, ptr %v.sm.frame, i64 16
   store { ptr, i64, i64 } zeroinitializer, ptr %t405
-  %t406 = getelementptr i8, ptr %v.sm.frame, i64 400
+  %t406 = getelementptr i8, ptr %v.sm.frame, i64 384
   store ptr null, ptr %t406
   %t407 = getelementptr i8, ptr %v.sm.frame, i64 392
   store ptr null, ptr %t407
-  %t408 = getelementptr i8, ptr %v.sm.frame, i64 384
+  %t408 = getelementptr i8, ptr %v.sm.frame, i64 400
   store ptr null, ptr %t408
   %t409 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t409
@@ -3779,10 +3779,10 @@ declare ptr @willrt_plate_new(i64, i64)
 @"willrt.gc.type.value.Error" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 7, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Error", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.Map<str,str>" = private constant [1 x i32] [i32 0]
 @"willrt.gc.type.value.Map<str,str>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 8, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Map<str,str>", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.variants.value.Result<ExitStatus,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.std/os/exec.ExitStatus" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
-@"willrt.gc.type.value.Result<ExitStatus,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 9, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<ExitStatus,Error>", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.variants.value.Result<Output,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.std/os/exec.Output" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
-@"willrt.gc.type.value.Result<Output,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 10, i32 64, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<Output,Error>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.variants.value.Result<std/os/exec.ExitStatus,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.std/os/exec.ExitStatus" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
+@"willrt.gc.type.value.Result<std/os/exec.ExitStatus,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 9, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<std/os/exec.ExitStatus,Error>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.variants.value.Result<std/os/exec.Output,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.std/os/exec.Output" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
+@"willrt.gc.type.value.Result<std/os/exec.Output,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 10, i32 64, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<std/os/exec.Output,Error>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.[]str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 11, i32 16, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.bool" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 12, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 13, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
@@ -3801,8 +3801,8 @@ entry:
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Array<u8>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Error")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Map<str,str>")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<ExitStatus,Error>")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<Output,Error>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<std/os/exec.ExitStatus,Error>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<std/os/exec.Output,Error>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.[]str")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.bool")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
@@ -3822,5 +3822,5 @@ entry:
 @"willrt.gc.stack.std/os/exec.copy_env" = private constant %willrt_gc_stack_map_data { ptr @"std/os/exec.copy_env", ptr @"willrt.gc.stack.slots.std/os/exec.copy_env", i64 3 }
 @"willrt.gc.stack.slots.std/os/exec.Cmd.run.sm" = private constant [1 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 200, i32 1, ptr null }]
 @"willrt.gc.stack.std/os/exec.Cmd.run.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/os/exec.Cmd.run.sm", ptr @"willrt.gc.stack.slots.std/os/exec.Cmd.run.sm", i64 1 }
-@"willrt.gc.stack.slots.std/os/exec.Cmd.output.sm" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 400, i32 1, ptr null }, %willrt_gc_stack_slot { i32 392, i32 1, ptr null }, %willrt_gc_stack_slot { i32 384, i32 1, ptr null }]
+@"willrt.gc.stack.slots.std/os/exec.Cmd.output.sm" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 384, i32 1, ptr null }, %willrt_gc_stack_slot { i32 392, i32 1, ptr null }, %willrt_gc_stack_slot { i32 400, i32 1, ptr null }]
 @"willrt.gc.stack.std/os/exec.Cmd.output.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/os/exec.Cmd.output.sm", ptr @"willrt.gc.stack.slots.std/os/exec.Cmd.output.sm", i64 3 }

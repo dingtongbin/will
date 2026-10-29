@@ -121,6 +121,9 @@ entry:
   store ptr %t42, ptr %t38
   %v.$idx = alloca i64
   %v.$idx.1 = alloca i64
+  %t320 = alloca i64
+  %t329 = alloca i64
+  %t338 = alloca i64
   %t43 = call ptr @willrt_gc_alloc(i64 16, ptr @"willrt.gc.type.container.sequence.8fcaad500dfe453811e16a67")
   %t44 = call ptr @willrt_gc_pin(ptr %t43)
   %t45 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.34, i32 0, i32 0
@@ -722,7 +725,6 @@ panic.ok.29:
   %t317 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.values, i32 0, i32 1
   %t318 = call ptr @willrt_gc_read_barrier_slot(ptr %t316)
   %t319 = load i64, ptr %t317
-  %t320 = alloca i64
   store i64 0, ptr %t320
   br label %deep.rel.arr.cond.30
 deep.rel.arr.cond.30:
@@ -739,7 +741,6 @@ deep.rel.arr.done.30:
   %t326 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.keys, i32 0, i32 1
   %t327 = call ptr @willrt_gc_read_barrier_slot(ptr %t325)
   %t328 = load i64, ptr %t326
-  %t329 = alloca i64
   store i64 0, ptr %t329
   br label %deep.rel.arr.cond.31
 deep.rel.arr.cond.31:
@@ -756,7 +757,6 @@ deep.rel.arr.done.31:
   %t335 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.m, i32 0, i32 1
   %t336 = call ptr @willrt_gc_read_barrier_slot(ptr %t334)
   %t337 = load i64, ptr %t335
-  %t338 = alloca i64
   store i64 0, ptr %t338
   br label %deep.rel.map.cond.32
 deep.rel.map.cond.32:

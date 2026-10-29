@@ -68,6 +68,8 @@ entry:
   store ptr %t24, ptr %t22
   %t25 = getelementptr i8, ptr %v.new.24, i64 0
   store ptr %t25, ptr %t23
+  %t54 = alloca i64
+  %t128 = alloca i64
   %t26 = call ptr @willrt_gc_pin(ptr null)
   %t27 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.24, i32 0, i32 0
   store ptr %t26, ptr %t27
@@ -107,9 +109,8 @@ arr.full.1:
   %t49 = icmp eq i64 %t46, 0
   %t50 = select i1 %t49, i64 4, i64 %t48
   %t51 = mul i64 %t50, 8
-  %t52 = call ptr @willrt_gc_alloc(i64 %t51, ptr @"willrt.gc.type.container.sequence.cc8839983d2b79fc2b812635")
+  %t52 = call ptr @willrt_gc_alloc(i64 %t51, ptr @"willrt.gc.type.container.sequence.44c60a580fe2659aad9d61ba")
   %t53 = call ptr @willrt_gc_pin(ptr %t52)
-  %t54 = alloca i64
   store i64 0, ptr %t54
   br label %arr.copy.cond.1
 arr.copy.cond.1:
@@ -244,7 +245,6 @@ panic.ok.6:
   %t125 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.xs, i32 0, i32 1
   %t126 = call ptr @willrt_gc_read_barrier_slot(ptr %t124)
   %t127 = load i64, ptr %t125
-  %t128 = alloca i64
   store i64 0, ptr %t128
   br label %deep.rel.arr.cond.7
 deep.rel.arr.cond.7:
@@ -302,18 +302,18 @@ declare ptr @willrt_rc_deref(i64)
 declare i64 @willrt_weak_new(i64)
 declare i32 @willrt_weak_upgrade(i64, ptr)
 @"willrt.gc.type.example.com/rcarray.C" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 0, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.container.sequence.cc8839983d2b79fc2b812635" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 1, i32 0, i32 8, i32 8, i32 0, ptr null, i32 0, ptr null, i32 8, ptr null }
-@"willrt.gc.refs.value.Array<rc<C>>" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.Array<rc<C>>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 2, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Array<rc<C>>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.container.sequence.44c60a580fe2659aad9d61ba" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 1, i32 0, i32 8, i32 8, i32 0, ptr null, i32 0, ptr null, i32 8, ptr null }
+@"willrt.gc.refs.value.Array<rc<example.com/rcarray.C>>" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.value.Array<rc<example.com/rcarray.C>>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 2, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Array<rc<example.com/rcarray.C>>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 3, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.rc<C>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 4, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.rc<example.com/rcarray.C>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 4, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 declare i32 @willrt_gc_register_type(ptr)
 define internal void @willrt.gc.register_types() {
 entry:
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.container.sequence.cc8839983d2b79fc2b812635")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Array<rc<C>>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.container.sequence.44c60a580fe2659aad9d61ba")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Array<rc<example.com/rcarray.C>>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.rc<C>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.rc<example.com/rcarray.C>")
   ret void
 }
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @willrt.gc.register_types, ptr null }]

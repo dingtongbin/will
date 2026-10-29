@@ -2391,3 +2391,33 @@ async def main() -> i32 {
 		t.Fatalf("stdout = %q", out)
 	}
 }
+
+// TestRunLoopAllocaDoesNotGrowStack checks that array temporaries created in a
+// loop stay in the entry block. An alloca executed per iteration overflows the
+// default thread stack at 65536 iterations; this loop is above that bound.
+func TestRunLoopAllocaDoesNotGrowStack(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `def main() -> i32 {
+    var i: i32 = 0
+    while i < 70000 {
+        var a: Array<i32> = new Array<i32>(4)
+        a.push(i)
+        var c: Array<i32> = a.clone()
+        var n: usize = c.len()
+        _ = n
+        i += 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}

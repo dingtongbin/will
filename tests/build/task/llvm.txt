@@ -108,7 +108,7 @@ sm.init:
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.19, ptr %t36)
   %t37 = getelementptr i8, ptr %v.b, i64 0
   %t38 = call ptr @willrt_gc_read_barrier_slot(ptr %t37)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.21, ptr %t38)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.20, ptr %t38)
   %t39 = load ptr, ptr %v.a
   store ptr %t39, ptr %v.sm.join.task.40
   store i32 1, ptr %v.sm.state
@@ -198,7 +198,7 @@ unwrap.ok.3:
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.19, ptr %t85)
   %t86 = getelementptr i8, ptr %v.b, i64 0
   %t87 = call ptr @willrt_gc_read_barrier_slot(ptr %t86)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.21, ptr %t87)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.20, ptr %t87)
   %t88 = load ptr, ptr %v.b
   store ptr %t88, ptr %v.sm.join.task.89
   store i32 2, ptr %v.sm.state
@@ -288,7 +288,7 @@ unwrap.ok.6:
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.19, ptr %t134)
   %t135 = getelementptr i8, ptr %v.b, i64 0
   %t136 = call ptr @willrt_gc_read_barrier_slot(ptr %t135)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.21, ptr %t136)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.20, ptr %t136)
   %t137 = load i32, ptr %v.first
   %t138 = load i32, ptr %v.second
   %t139 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t137, i32 %t138)
@@ -305,7 +305,7 @@ panic.ok.7:
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.19, ptr %t143)
   %t144 = getelementptr i8, ptr %v.b, i64 0
   %t145 = call ptr @willrt_gc_read_barrier_slot(ptr %t144)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.21, ptr %t145)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.20, ptr %t145)
   store i32 3, ptr %v.sm.state
   br label %sm.op.call.3
 sm.op.call.3:
@@ -401,10 +401,10 @@ deep.rel.adt.done.12.1:
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.19, ptr %t179)
   %t180 = getelementptr i8, ptr %v.b, i64 0
   %t181 = call ptr @willrt_gc_read_barrier_slot(ptr %t180)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.21, ptr %t181)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.20, ptr %t181)
   %t182 = getelementptr i8, ptr %v.text, i64 0
   %t183 = call ptr @willrt_gc_read_barrier_slot(ptr %t182)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.22, ptr %t183)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.21, ptr %t183)
   call void @willrt_region_enter()
   %t184 = getelementptr { i32 }, ptr null, i32 1
   %t185 = ptrtoint ptr %t184 to i64
@@ -415,18 +415,18 @@ deep.rel.adt.done.12.1:
   %t189 = call ptr @willrt_job_new_gc(ptr @"example.com/task.spawn.3", ptr %t186, i64 %t185, i32 0, ptr null, ptr @"willrt.gc.type.value.str")
   call void @willrt_task_own_frame(ptr %t189)
   store ptr %t189, ptr %v.t
-  %t190 = getelementptr i8, ptr %v.text, i64 0
+  %t190 = getelementptr i8, ptr %v.a, i64 0
   %t191 = call ptr @willrt_gc_read_barrier_slot(ptr %t190)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.22, ptr %t191)
-  %t192 = getelementptr i8, ptr %v.a, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.19, ptr %t191)
+  %t192 = getelementptr i8, ptr %v.b, i64 0
   %t193 = call ptr @willrt_gc_read_barrier_slot(ptr %t192)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.19, ptr %t193)
-  %t194 = getelementptr i8, ptr %v.t, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.20, ptr %t193)
+  %t194 = getelementptr i8, ptr %v.text, i64 0
   %t195 = call ptr @willrt_gc_read_barrier_slot(ptr %t194)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.20, ptr %t195)
-  %t196 = getelementptr i8, ptr %v.b, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.21, ptr %t195)
+  %t196 = getelementptr i8, ptr %v.t, i64 0
   %t197 = call ptr @willrt_gc_read_barrier_slot(ptr %t196)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.21, ptr %t197)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.22, ptr %t197)
   %t198 = load ptr, ptr %v.t
   store ptr %t198, ptr %v.sm.join.task.199
   store i32 4, ptr %v.sm.state
@@ -518,13 +518,13 @@ unwrap.ok.16:
   %t246 = getelementptr i8, ptr %v.a, i64 0
   %t247 = call ptr @willrt_gc_read_barrier_slot(ptr %t246)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.19, ptr %t247)
-  %t248 = getelementptr i8, ptr %v.t, i64 0
+  %t248 = getelementptr i8, ptr %v.b, i64 0
   %t249 = call ptr @willrt_gc_read_barrier_slot(ptr %t248)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.20, ptr %t249)
-  %t250 = getelementptr i8, ptr %v.b, i64 0
+  %t250 = getelementptr i8, ptr %v.text, i64 0
   %t251 = call ptr @willrt_gc_read_barrier_slot(ptr %t250)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.21, ptr %t251)
-  %t252 = getelementptr i8, ptr %v.text, i64 0
+  %t252 = getelementptr i8, ptr %v.t, i64 0
   %t253 = call ptr @willrt_gc_read_barrier_slot(ptr %t252)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.22, ptr %t253)
   store i32 5, ptr %v.sm.state
@@ -640,11 +640,11 @@ entry:
   store { ptr, i64 } zeroinitializer, ptr %t301
   %t302 = getelementptr i8, ptr %v.sm.frame, i64 104
   store ptr null, ptr %t302
-  %t303 = getelementptr i8, ptr %v.sm.frame, i64 120
+  %t303 = getelementptr i8, ptr %v.sm.frame, i64 112
   store ptr null, ptr %t303
-  %t304 = getelementptr i8, ptr %v.sm.frame, i64 128
+  %t304 = getelementptr i8, ptr %v.sm.frame, i64 120
   store ptr null, ptr %t304
-  %t305 = getelementptr i8, ptr %v.sm.frame, i64 112
+  %t305 = getelementptr i8, ptr %v.sm.frame, i64 128
   store ptr null, ptr %t305
   %t306 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t306
@@ -988,5 +988,5 @@ entry:
   ret void
 }
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @willrt.gc.register_types, ptr null }]
-@"willrt.gc.stack.slots.example.com/task.will$main.sm" = private constant [4 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 104, i32 1, ptr null }, %willrt_gc_stack_slot { i32 120, i32 1, ptr null }, %willrt_gc_stack_slot { i32 128, i32 1, ptr null }, %willrt_gc_stack_slot { i32 112, i32 1, ptr null }]
+@"willrt.gc.stack.slots.example.com/task.will$main.sm" = private constant [4 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 104, i32 1, ptr null }, %willrt_gc_stack_slot { i32 112, i32 1, ptr null }, %willrt_gc_stack_slot { i32 120, i32 1, ptr null }, %willrt_gc_stack_slot { i32 128, i32 1, ptr null }]
 @"willrt.gc.stack.example.com/task.will$main.sm" = private constant %willrt_gc_stack_map_data { ptr @"example.com/task.will$main.sm", ptr @"willrt.gc.stack.slots.example.com/task.will$main.sm", i64 4 }

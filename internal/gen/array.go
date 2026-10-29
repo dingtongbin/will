@@ -332,7 +332,7 @@ func (g *generator) arrayMethod(r willc.Record, elem string) (string, string, er
 					return "", "", err
 				}
 				tmp := g.newTmp()
-				fmt.Fprintf(g.out, "  %s = alloca %s\n", tmp, iface.llvm)
+				g.tempAlloca(tmp, iface.llvm)
 				if _, err := g.ifaceStoreValue(tmp, args[1], iface, valueText); err != nil {
 					return "", "", err
 				}
@@ -551,7 +551,7 @@ func (g *generator) arrayGrow(r willc.Record, base, elem, elemLLVM string, elemS
 	copyBody := fmt.Sprintf("arr.copy.body.%d", n)
 	copyEnd := fmt.Sprintf("arr.copy.end.%d", n)
 	copySlot := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = alloca i64\n", copySlot)
+	g.tempAlloca(copySlot, "i64")
 	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", copySlot)
 	fmt.Fprintf(g.out, "  br label %%%s\n", copyCond)
 	g.out.WriteString(copyCond + ":\n")

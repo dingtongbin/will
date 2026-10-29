@@ -90,11 +90,16 @@ func TestClassMethodCall(t *testing.T) {
 	for _, want := range []string{
 		`define hidden i32 @m.Node.get(ptr %self)`,
 		`call i32 @m.Node.get(ptr`,
-		`call ptr @willrt_gc_read_barrier_slot(ptr %v.n`,
+		// The frame root is authoritative after a cycle, so the call receiver
+		// comes from the root array, not from the duplicate local slot.
+		`call ptr @willrt_gc_read_barrier_slot(ptr %t5`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("IR lacks %q:\n%s", want, text)
 		}
+	}
+	if strings.Contains(text, `load ptr, ptr %v.n`) {
+		t.Fatalf("IR reads the stale local copy instead of the frame root:\n%s", text)
 	}
 }
 
@@ -122,8 +127,8 @@ func TestClassChannelUsesElementDescriptor(t *testing.T) {
 	text := string(ir)
 	for _, want := range []string{
 		`call ptr @willrt_chan_new_gc(i64 8,`,
-		`ptr @"willrt.gc.type.value.Node")`,
-		`@"willrt.gc.type.value.Node" = private constant`,
+		`ptr @"willrt.gc.type.value.m.Node")`,
+		`@"willrt.gc.type.value.m.Node" = private constant`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("IR lacks %q:\n%s", want, text)
@@ -490,7 +495,7 @@ func TestClassAllocationAndFieldBarriers(t *testing.T) {
 		"%class.m.Node = type { ptr, i64 }",
 		"call ptr @willrt_gc_alloc(i64 16, ptr @\"willrt.gc.type.m.Node\")",
 		"call void @willrt_gc_write_barrier(ptr %v.n",
-		"call ptr @willrt_gc_read_barrier_slot(ptr %v.n",
+		"call ptr @willrt_gc_read_barrier_slot(ptr %t1",
 		"call void @willrt_gc_frame_enter",
 		"call void @willrt_gc_frame_leave",
 		"@\"willrt.gc.stack.m.run\" = private constant %willrt_gc_stack_map_data",

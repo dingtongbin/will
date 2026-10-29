@@ -18,13 +18,13 @@ entry:
   %v.ret.45 = alloca { i32, [4 x i8], i64 }
   %v.weakout.45 = alloca i64
   %v.new.24 = alloca %"struct.example.com/rcgraph.Node"
+  %v.new.29 = alloca %"struct.example.com/rcgraph.Node"
   store %"struct.example.com/rcgraph.Node" zeroinitializer, ptr %v.new.24
   call void @"example.com/rcgraph.Node.init"(ptr %v.new.24, i32 1)
   %t2 = getelementptr %"struct.example.com/rcgraph.Node", ptr null, i32 1
   %t3 = ptrtoint ptr %t2 to i64
   %t4 = call i64 @willrt_rc_new(ptr %v.new.24, i64 %t3)
   store i64 %t4, ptr %v.a
-  %v.new.29 = alloca %"struct.example.com/rcgraph.Node"
   store %"struct.example.com/rcgraph.Node" zeroinitializer, ptr %v.new.29
   call void @"example.com/rcgraph.Node.init"(ptr %v.new.29, i32 2)
   %t5 = getelementptr %"struct.example.com/rcgraph.Node", ptr null, i32 1

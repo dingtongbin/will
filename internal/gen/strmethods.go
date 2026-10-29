@@ -222,13 +222,13 @@ func (g *generator) strChars(r willc.Record, data, length string) (string, strin
 	buffer := g.newTmp()
 	g.gcAllocSequence(buffer, bytes, descriptor)
 	offset := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = alloca i64\n", offset)
+	g.tempAlloca(offset, "i64")
 	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", offset)
 	count := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = alloca i64\n", count)
+	g.tempAlloca(count, "i64")
 	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", count)
 	scalar := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = alloca i32\n", scalar)
+	g.tempAlloca(scalar, "i32")
 	g.labels++
 	n := g.labels
 	cond := fmt.Sprintf("chars.cond.%d", n)

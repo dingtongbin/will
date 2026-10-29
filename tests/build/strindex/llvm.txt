@@ -18,6 +18,7 @@ entry:
   %v.str.33 = alloca { ptr, i64 }
   %v.strm.11 = alloca { i32, [4 x i8], i64 }
   %v.strm.21 = alloca { ptr, i64 }
+  %v.unwrap.out.16 = alloca i64
   %t1 = getelementptr inbounds { ptr, i64 }, ptr %v.str.7, i32 0, i32 0
   store ptr @.bytes.1, ptr %t1
   %t2 = getelementptr inbounds { ptr, i64 }, ptr %v.str.7, i32 0, i32 1
@@ -64,7 +65,6 @@ panic.2:
   unreachable
 panic.ok.2:
   %t26 = getelementptr inbounds { i32, [4 x i8], i64 }, ptr %v.at, i32 0, i32 2
-  %v.unwrap.out.16 = alloca i64
   store i64 0, ptr %v.unwrap.out.16
   %t27 = load i64, ptr %t26
   store i64 %t27, ptr %v.unwrap.out.16

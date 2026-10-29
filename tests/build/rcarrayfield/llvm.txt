@@ -18,6 +18,7 @@ entry:
   %v.new.18 = alloca { ptr, i64, i64 }
   %t2 = getelementptr i8, ptr %v.new.18, i64 0
   store ptr %t2, ptr %t1
+  %t31 = alloca i64
   %t3 = getelementptr inbounds %"struct.example.com/rcarrayfield.Outer", ptr %v.agg.17, i32 0, i32 0
   %t4 = call ptr @willrt_gc_pin(ptr null)
   %t5 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.18, i32 0, i32 0
@@ -55,9 +56,8 @@ arr.full.1:
   %t26 = icmp eq i64 %t23, 0
   %t27 = select i1 %t26, i64 4, i64 %t25
   %t28 = mul i64 %t27, 8
-  %t29 = call ptr @willrt_gc_alloc(i64 %t28, ptr @"willrt.gc.type.container.sequence.8798c7acaa8eda0fcf8ca6b9")
+  %t29 = call ptr @willrt_gc_alloc(i64 %t28, ptr @"willrt.gc.type.container.sequence.a08a03fc1bdf36b79231e84b")
   %t30 = call ptr @willrt_gc_pin(ptr %t29)
-  %t31 = alloca i64
   store i64 0, ptr %t31
   br label %arr.copy.cond.1
 arr.copy.cond.1:
@@ -179,20 +179,20 @@ declare i32 @willrt_weak_upgrade(i64, ptr)
 @"willrt.gc.type.example.com/rcarrayfield.Inner" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 0, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.example.com/rcarrayfield.Outer" = private constant [1 x i32] [i32 0]
 @"willrt.gc.type.example.com/rcarrayfield.Outer" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 0, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.example.com/rcarrayfield.Outer", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.container.sequence.8798c7acaa8eda0fcf8ca6b9" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 1, i32 0, i32 8, i32 8, i32 0, ptr null, i32 0, ptr null, i32 8, ptr null }
-@"willrt.gc.refs.value.Array<rc<Inner>>" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.Array<rc<Inner>>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 2, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Array<rc<Inner>>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.container.sequence.a08a03fc1bdf36b79231e84b" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 1, i32 0, i32 8, i32 8, i32 0, ptr null, i32 0, ptr null, i32 8, ptr null }
+@"willrt.gc.refs.value.Array<rc<example.com/rcarrayfield.Inner>>" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.value.Array<rc<example.com/rcarrayfield.Inner>>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 2, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Array<rc<example.com/rcarrayfield.Inner>>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 3, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.rc<Inner>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 4, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.rc<Outer>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 5, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.rc<example.com/rcarrayfield.Inner>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 4, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.rc<example.com/rcarrayfield.Outer>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 5, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 declare i32 @willrt_gc_register_type(ptr)
 define internal void @willrt.gc.register_types() {
 entry:
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.container.sequence.8798c7acaa8eda0fcf8ca6b9")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Array<rc<Inner>>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.container.sequence.a08a03fc1bdf36b79231e84b")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Array<rc<example.com/rcarrayfield.Inner>>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.rc<Inner>")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.rc<Outer>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.rc<example.com/rcarrayfield.Inner>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.rc<example.com/rcarrayfield.Outer>")
   ret void
 }
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @willrt.gc.register_types, ptr null }]

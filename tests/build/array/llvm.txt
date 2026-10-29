@@ -19,6 +19,10 @@ entry:
   %t4 = getelementptr i8, ptr %v.new.8, i64 0
   store ptr %t4, ptr %t2
   %v.$idx = alloca i64
+  %t29 = alloca i64
+  %t57 = alloca i64
+  %t85 = alloca i64
+  %t151 = alloca i64
   %t5 = call ptr @willrt_gc_pin(ptr null)
   %t6 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 0
   store ptr %t5, ptr %t6
@@ -54,7 +58,6 @@ arr.full.1:
   %t26 = mul i64 %t25, 4
   %t27 = call ptr @willrt_gc_alloc(i64 %t26, ptr @"willrt.gc.type.container.sequence.6a9e9997664d243e1ee052af")
   %t28 = call ptr @willrt_gc_pin(ptr %t27)
-  %t29 = alloca i64
   store i64 0, ptr %t29
   br label %arr.copy.cond.1
 arr.copy.cond.1:
@@ -104,7 +107,6 @@ arr.full.2:
   %t54 = mul i64 %t53, 4
   %t55 = call ptr @willrt_gc_alloc(i64 %t54, ptr @"willrt.gc.type.container.sequence.6a9e9997664d243e1ee052af")
   %t56 = call ptr @willrt_gc_pin(ptr %t55)
-  %t57 = alloca i64
   store i64 0, ptr %t57
   br label %arr.copy.cond.2
 arr.copy.cond.2:
@@ -154,7 +156,6 @@ arr.full.3:
   %t82 = mul i64 %t81, 4
   %t83 = call ptr @willrt_gc_alloc(i64 %t82, ptr @"willrt.gc.type.container.sequence.6a9e9997664d243e1ee052af")
   %t84 = call ptr @willrt_gc_pin(ptr %t83)
-  %t85 = alloca i64
   store i64 0, ptr %t85
   br label %arr.copy.cond.3
 arr.copy.cond.3:
@@ -287,7 +288,6 @@ panic.ok.10:
   %t148 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
   %t149 = call ptr @willrt_gc_read_barrier_slot(ptr %t147)
   %t150 = load i64, ptr %t148
-  %t151 = alloca i64
   store i64 0, ptr %t151
   br label %deep.rel.arr.cond.11
 deep.rel.arr.cond.11:

@@ -59,3 +59,47 @@ func TestEmitWillcUsage(t *testing.T) {
 		t.Fatalf("code = %d, want 2", code)
 	}
 }
+
+// TestEmitLLVMIsDeterministic checks that two cold caches produce the same
+// lowering. State-machine frame layout is the part that used to follow map
+// iteration order and change between identical builds.
+func TestEmitLLVMIsDeterministic(t *testing.T) {
+	src := `class Node {
+    value: i32
+}
+
+class Holder {
+    node: Node
+    items: Array<i32>
+}
+
+async def pause(n: i32) -> i32 {
+    return n
+}
+
+async def load(n: i32) -> i32 {
+    var h: Holder = Holder(node=Node(value=n), items=new Array<i32>(4))
+    var x: i32 = await pause(n)
+    return h.node.value + x
+}
+
+async def main() -> i32 {
+    return await load(3)
+}
+`
+	dir := t.TempDir()
+	path := writeFile(t, dir, "main.will", src)
+	t.Setenv("WILL_CACHE", filepath.Join(dir, "cache-a"))
+	code, first, errOut := runCLI("emit-llvm", path)
+	if code != 0 {
+		t.Fatalf("first emit: code = %d, stderr = %q", code, errOut)
+	}
+	t.Setenv("WILL_CACHE", filepath.Join(dir, "cache-b"))
+	code, second, errOut := runCLI("emit-llvm", path)
+	if code != 0 {
+		t.Fatalf("second emit: code = %d, stderr = %q", code, errOut)
+	}
+	if first != second {
+		t.Fatalf("two identical builds differ:\n--- first\n%s\n--- second\n%s", first, second)
+	}
+}

@@ -31,7 +31,7 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 	stmts := g.children(body.ID)
 	sortByID(stmts)
 	var sites []asyncCallSite
-	for _, r := range g.recs {
+	for _, r := range sortedRecords(g.recs) {
 		if !g.insideBlock(r.ID, body.ID) {
 			continue
 		}
@@ -64,7 +64,7 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 	sortAsyncSites(sites)
 	var params []willc.Record
 	var locals []willc.Record
-	for _, r := range g.recs {
+	for _, r := range sortedRecords(g.recs) {
 		if g.enclosingFunc(r.ID) != fnID {
 			continue
 		}
@@ -108,7 +108,7 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 	// A class allocation is a root before init or a nested default can
 	// allocate. The frame reserves its own pointer field so the collector can
 	// find the half-built object across those safepoints.
-	for _, r := range g.recs {
+	for _, r := range sortedRecords(g.recs) {
 		if r.Kind != "new" {
 			continue
 		}

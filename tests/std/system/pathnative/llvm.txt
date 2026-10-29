@@ -762,6 +762,8 @@ entry:
   %v.adt.15 = alloca { i32, [4 x i8], { ptr, i64 } }
   %v.adt.26 = alloca { i32, [4 x i8], { ptr, i64 } }
   %v.try.21 = alloca { i32, [4 x i8], { ptr, i64 } }
+  %v.try.out.21 = alloca { ptr, i64 }
+  %v.varargs.29 = alloca { ptr, i64 }
   call void @willrt_gc_safepoint(i32 3)
   %t4 = call i1 @"std/os/path.is_abs"(ptr %p)
   br i1 %t4, label %if.then.1, label %if.end.1
@@ -797,7 +799,6 @@ try.err.2:
   unreachable
 try.ok.2:
   %t19 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.22, i32 0, i32 2
-  %v.try.out.21 = alloca { ptr, i64 }
   store { ptr, i64 } zeroinitializer, ptr %v.try.out.21
   %t20 = load { ptr, i64 }, ptr %t19
   store { ptr, i64 } %t20, ptr %v.try.out.21
@@ -824,7 +825,6 @@ try.ok.2:
   %t34 = getelementptr { ptr, i64 }, ptr %t31, i64 1
   %t35 = load { ptr, i64 }, ptr %p
   store { ptr, i64 } %t35, ptr %t34
-  %v.varargs.29 = alloca { ptr, i64 }
   %t36 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.29, i32 0, i32 0
   store ptr %t31, ptr %t36
   %t37 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.29, i32 0, i32 1
@@ -1266,6 +1266,8 @@ entry:
   %t85 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 1
   %t86 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 2
   call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.std/os/path.push_element", ptr %v.gcroots)
+  %t160 = alloca i64
+  %t206 = alloca i64
   call void @willrt_gc_safepoint(i32 3)
   %t87 = call i1 @"std/os/path.is_dot_element"(ptr %p, i64 %a, i64 %b)
   br i1 %t87, label %if.then.1, label %if.end.1
@@ -1422,7 +1424,6 @@ arr.full.14:
   %t157 = mul i64 %t156, 8
   %t158 = call ptr @willrt_gc_alloc(i64 %t157, ptr @"willrt.gc.type.container.sequence.220e86b8b143d96f9818e9b1")
   %t159 = call ptr @willrt_gc_pin(ptr %t158)
-  %t160 = alloca i64
   store i64 0, ptr %t160
   br label %arr.copy.cond.14
 arr.copy.cond.14:
@@ -1507,7 +1508,6 @@ arr.full.17:
   %t203 = mul i64 %t202, 8
   %t204 = call ptr @willrt_gc_alloc(i64 %t203, ptr @"willrt.gc.type.container.sequence.220e86b8b143d96f9818e9b1")
   %t205 = call ptr @willrt_gc_pin(ptr %t204)
-  %t206 = alloca i64
   store i64 0, ptr %t206
   br label %arr.copy.cond.17
 arr.copy.cond.17:
@@ -1615,6 +1615,21 @@ entry:
   %v.cat.435 = alloca { ptr, i64 }
   %v.i = alloca i64
   %v.c = alloca i32
+  %t381 = alloca i64
+  %t412 = alloca i64
+  %t444 = alloca i64
+  %t478 = alloca i64
+  %t535 = alloca i64
+  %t558 = alloca i64
+  %t614 = alloca i64
+  %t623 = alloca i64
+  %t632 = alloca i64
+  %t652 = alloca i64
+  %t661 = alloca i64
+  %t670 = alloca i64
+  %t691 = alloca i64
+  %t700 = alloca i64
+  %t709 = alloca i64
   %t236 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 0
   %t237 = load ptr, ptr %t236
   %t238 = getelementptr inbounds { ptr, i64 }, ptr %p, i32 0, i32 1
@@ -1922,7 +1937,6 @@ arr.full.22:
   %t378 = mul i64 %t377, 1
   %t379 = call ptr @willrt_gc_alloc(i64 %t378, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   %t380 = call ptr @willrt_gc_pin(ptr %t379)
-  %t381 = alloca i64
   store i64 0, ptr %t381
   br label %arr.copy.cond.22
 arr.copy.cond.22:
@@ -1980,7 +1994,6 @@ arr.full.24:
   %t409 = mul i64 %t408, 1
   %t410 = call ptr @willrt_gc_alloc(i64 %t409, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   %t411 = call ptr @willrt_gc_pin(ptr %t410)
-  %t412 = alloca i64
   store i64 0, ptr %t412
   br label %arr.copy.cond.24
 arr.copy.cond.24:
@@ -2043,7 +2056,6 @@ arr.full.27:
   %t441 = mul i64 %t440, 1
   %t442 = call ptr @willrt_gc_alloc(i64 %t441, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   %t443 = call ptr @willrt_gc_pin(ptr %t442)
-  %t444 = alloca i64
   store i64 0, ptr %t444
   br label %arr.copy.cond.27
 arr.copy.cond.27:
@@ -2113,7 +2125,6 @@ arr.full.31:
   %t475 = mul i64 %t474, 1
   %t476 = call ptr @willrt_gc_alloc(i64 %t475, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   %t477 = call ptr @willrt_gc_pin(ptr %t476)
-  %t478 = alloca i64
   store i64 0, ptr %t478
   br label %arr.copy.cond.31
 arr.copy.cond.31:
@@ -2218,7 +2229,6 @@ panic.ok.35:
   %t532 = mul i64 %t531, 1
   %t533 = call ptr @willrt_gc_alloc(i64 %t532, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   %t534 = call ptr @willrt_gc_pin(ptr %t533)
-  %t535 = alloca i64
   store i64 0, ptr %t535
   br label %append.copy.cond.36
 append.copy.cond.36:
@@ -2259,7 +2269,6 @@ arr.full.37:
   %t555 = mul i64 %t554, 1
   %t556 = call ptr @willrt_gc_alloc(i64 %t555, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   %t557 = call ptr @willrt_gc_pin(ptr %t556)
-  %t558 = alloca i64
   store i64 0, ptr %t558
   br label %arr.copy.cond.37
 arr.copy.cond.37:
@@ -2368,7 +2377,6 @@ cat.ready.42:
   %t611 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
   %t612 = call ptr @willrt_gc_read_barrier_slot(ptr %t610)
   %t613 = load i64, ptr %t611
-  %t614 = alloca i64
   store i64 0, ptr %t614
   br label %deep.rel.arr.cond.43
 deep.rel.arr.cond.43:
@@ -2385,7 +2393,6 @@ deep.rel.arr.done.43:
   %t620 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.ends, i32 0, i32 1
   %t621 = call ptr @willrt_gc_read_barrier_slot(ptr %t619)
   %t622 = load i64, ptr %t620
-  %t623 = alloca i64
   store i64 0, ptr %t623
   br label %deep.rel.arr.cond.44
 deep.rel.arr.cond.44:
@@ -2402,7 +2409,6 @@ deep.rel.arr.done.44:
   %t629 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.starts, i32 0, i32 1
   %t630 = call ptr @willrt_gc_read_barrier_slot(ptr %t628)
   %t631 = load i64, ptr %t629
-  %t632 = alloca i64
   store i64 0, ptr %t632
   br label %deep.rel.arr.cond.45
 deep.rel.arr.cond.45:
@@ -2440,7 +2446,6 @@ if.then.46:
   %t649 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
   %t650 = call ptr @willrt_gc_read_barrier_slot(ptr %t648)
   %t651 = load i64, ptr %t649
-  %t652 = alloca i64
   store i64 0, ptr %t652
   br label %deep.rel.arr.cond.47
 deep.rel.arr.cond.47:
@@ -2457,7 +2462,6 @@ deep.rel.arr.done.47:
   %t658 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.ends, i32 0, i32 1
   %t659 = call ptr @willrt_gc_read_barrier_slot(ptr %t657)
   %t660 = load i64, ptr %t658
-  %t661 = alloca i64
   store i64 0, ptr %t661
   br label %deep.rel.arr.cond.48
 deep.rel.arr.cond.48:
@@ -2474,7 +2478,6 @@ deep.rel.arr.done.48:
   %t667 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.starts, i32 0, i32 1
   %t668 = call ptr @willrt_gc_read_barrier_slot(ptr %t666)
   %t669 = load i64, ptr %t667
-  %t670 = alloca i64
   store i64 0, ptr %t670
   br label %deep.rel.arr.cond.49
 deep.rel.arr.cond.49:
@@ -2517,7 +2520,6 @@ utf8.ok.50:
   %t688 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
   %t689 = call ptr @willrt_gc_read_barrier_slot(ptr %t687)
   %t690 = load i64, ptr %t688
-  %t691 = alloca i64
   store i64 0, ptr %t691
   br label %deep.rel.arr.cond.51
 deep.rel.arr.cond.51:
@@ -2534,7 +2536,6 @@ deep.rel.arr.done.51:
   %t697 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.ends, i32 0, i32 1
   %t698 = call ptr @willrt_gc_read_barrier_slot(ptr %t696)
   %t699 = load i64, ptr %t697
-  %t700 = alloca i64
   store i64 0, ptr %t700
   br label %deep.rel.arr.cond.52
 deep.rel.arr.cond.52:
@@ -2551,7 +2552,6 @@ deep.rel.arr.done.52:
   %t706 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.starts, i32 0, i32 1
   %t707 = call ptr @willrt_gc_read_barrier_slot(ptr %t705)
   %t708 = load i64, ptr %t706
-  %t709 = alloca i64
   store i64 0, ptr %t709
   br label %deep.rel.arr.cond.53
 deep.rel.arr.cond.53:
@@ -2960,6 +2960,11 @@ entry:
   %v.cast.55 = alloca { ptr, i64 }
   %v.slice.38 = alloca { ptr, i64 }
   %v.$idx = alloca i64
+  %t44 = alloca i64
+  %t79 = alloca i64
+  %t102 = alloca i64
+  %t127 = alloca i64
+  %t153 = alloca i64
   call void @willrt_gc_safepoint(i32 3)
   %t8 = call i8 @"std/os/path.separator"()
   store i8 %t8, ptr %v.sep
@@ -3021,7 +3026,6 @@ arr.full.4:
   %t41 = mul i64 %t40, 1
   %t42 = call ptr @willrt_gc_alloc(i64 %t41, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   %t43 = call ptr @willrt_gc_pin(ptr %t42)
-  %t44 = alloca i64
   store i64 0, ptr %t44
   br label %arr.copy.cond.4
 arr.copy.cond.4:
@@ -3088,7 +3092,6 @@ panic.ok.6:
   %t76 = mul i64 %t75, 1
   %t77 = call ptr @willrt_gc_alloc(i64 %t76, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   %t78 = call ptr @willrt_gc_pin(ptr %t77)
-  %t79 = alloca i64
   store i64 0, ptr %t79
   br label %append.copy.cond.7
 append.copy.cond.7:
@@ -3129,7 +3132,6 @@ arr.full.8:
   %t99 = mul i64 %t98, 1
   %t100 = call ptr @willrt_gc_alloc(i64 %t99, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   %t101 = call ptr @willrt_gc_pin(ptr %t100)
-  %t102 = alloca i64
   store i64 0, ptr %t102
   br label %arr.copy.cond.8
 arr.copy.cond.8:
@@ -3185,7 +3187,6 @@ if.then.9:
   %t124 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
   %t125 = call ptr @willrt_gc_read_barrier_slot(ptr %t123)
   %t126 = load i64, ptr %t124
-  %t127 = alloca i64
   store i64 0, ptr %t127
   br label %deep.rel.arr.cond.10
 deep.rel.arr.cond.10:
@@ -3235,7 +3236,6 @@ utf8.ok.11:
   %t150 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.out, i32 0, i32 1
   %t151 = call ptr @willrt_gc_read_barrier_slot(ptr %t149)
   %t152 = load i64, ptr %t150
-  %t153 = alloca i64
   store i64 0, ptr %t153
   br label %deep.rel.arr.cond.12
 deep.rel.arr.cond.12:
@@ -3270,6 +3270,7 @@ entry:
   %v.utf8n.19 = alloca i64
   %v.$idx = alloca i64
   %v.c = alloca i32
+  %t42 = alloca i64
   %t6 = call ptr @willrt_gc_pin(ptr null)
   %t7 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.17, i32 0, i32 0
   store ptr %t6, ptr %t7
@@ -3329,7 +3330,6 @@ arr.full.3:
   %t39 = mul i64 %t38, 4
   %t40 = call ptr @willrt_gc_alloc(i64 %t39, ptr @"willrt.gc.type.container.sequence.17efe6a0d9cd612039e3d42b")
   %t41 = call ptr @willrt_gc_pin(ptr %t40)
-  %t42 = alloca i64
   store i64 0, ptr %t42
   br label %arr.copy.cond.3
 arr.copy.cond.3:
@@ -3399,6 +3399,14 @@ entry:
   store ptr %t63, ptr %t61
   %t64 = getelementptr i8, ptr %v.text, i64 0
   store ptr %t64, ptr %t62
+  %t145 = alloca i64
+  %t154 = alloca i64
+  %t176 = alloca i64
+  %t185 = alloca i64
+  %t220 = alloca i64
+  %t229 = alloca i64
+  %t242 = alloca i64
+  %t251 = alloca i64
   call void @willrt_gc_safepoint(i32 3)
   %t65 = call { ptr, i64, i64 } @"std/os/path.chars_of"(ptr %pattern)
   store { ptr, i64, i64 } %t65, ptr %v.ret.38
@@ -3571,7 +3579,6 @@ if.then.13:
   %t142 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.text, i32 0, i32 1
   %t143 = call ptr @willrt_gc_read_barrier_slot(ptr %t141)
   %t144 = load i64, ptr %t142
-  %t145 = alloca i64
   store i64 0, ptr %t145
   br label %deep.rel.arr.cond.14
 deep.rel.arr.cond.14:
@@ -3588,7 +3595,6 @@ deep.rel.arr.done.14:
   %t151 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.pat, i32 0, i32 1
   %t152 = call ptr @willrt_gc_read_barrier_slot(ptr %t150)
   %t153 = load i64, ptr %t151
-  %t154 = alloca i64
   store i64 0, ptr %t154
   br label %deep.rel.arr.cond.15
 deep.rel.arr.cond.15:
@@ -3632,7 +3638,6 @@ if.then.17:
   %t173 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.text, i32 0, i32 1
   %t174 = call ptr @willrt_gc_read_barrier_slot(ptr %t172)
   %t175 = load i64, ptr %t173
-  %t176 = alloca i64
   store i64 0, ptr %t176
   br label %deep.rel.arr.cond.18
 deep.rel.arr.cond.18:
@@ -3649,7 +3654,6 @@ deep.rel.arr.done.18:
   %t182 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.pat, i32 0, i32 1
   %t183 = call ptr @willrt_gc_read_barrier_slot(ptr %t181)
   %t184 = load i64, ptr %t182
-  %t185 = alloca i64
   store i64 0, ptr %t185
   br label %deep.rel.arr.cond.19
 deep.rel.arr.cond.19:
@@ -3726,7 +3730,6 @@ if.then.24:
   %t217 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.text, i32 0, i32 1
   %t218 = call ptr @willrt_gc_read_barrier_slot(ptr %t216)
   %t219 = load i64, ptr %t217
-  %t220 = alloca i64
   store i64 0, ptr %t220
   br label %deep.rel.arr.cond.25
 deep.rel.arr.cond.25:
@@ -3743,7 +3746,6 @@ deep.rel.arr.done.25:
   %t226 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.pat, i32 0, i32 1
   %t227 = call ptr @willrt_gc_read_barrier_slot(ptr %t225)
   %t228 = load i64, ptr %t226
-  %t229 = alloca i64
   store i64 0, ptr %t229
   br label %deep.rel.arr.cond.26
 deep.rel.arr.cond.26:
@@ -3775,7 +3777,6 @@ for.end.21:
   %t239 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.text, i32 0, i32 1
   %t240 = call ptr @willrt_gc_read_barrier_slot(ptr %t238)
   %t241 = load i64, ptr %t239
-  %t242 = alloca i64
   store i64 0, ptr %t242
   br label %deep.rel.arr.cond.28
 deep.rel.arr.cond.28:
@@ -3792,7 +3793,6 @@ deep.rel.arr.done.28:
   %t248 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.pat, i32 0, i32 1
   %t249 = call ptr @willrt_gc_read_barrier_slot(ptr %t247)
   %t250 = load i64, ptr %t248
-  %t251 = alloca i64
   store i64 0, ptr %t251
   br label %deep.rel.arr.cond.29
 deep.rel.arr.cond.29:
@@ -4116,6 +4116,9 @@ entry:
   %v.cat.170 = alloca { ptr, i64 }
   %v.cat.195 = alloca { ptr, i64 }
   %v.cat.196 = alloca { ptr, i64 }
+  %v.varargs.54 = alloca { ptr, i64 }
+  %v.varargs.69 = alloca { ptr, i64 }
+  %v.unwrap.out.123 = alloca { ptr, i64 }
   call void @willrt_gc_safepoint(i32 3)
   %t5 = call i8 @"std/os/path.separator"()
   %t6 = zext i8 %t5 to i32
@@ -4365,7 +4368,6 @@ if.end.8:
   store i64 1, ptr %t156
   %t157 = load { ptr, i64 }, ptr %v.str.57
   store { ptr, i64 } %t157, ptr %t154
-  %v.varargs.54 = alloca { ptr, i64 }
   %t158 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.54, i32 0, i32 0
   store ptr %t149, ptr %t158
   %t159 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.54, i32 0, i32 1
@@ -4471,7 +4473,6 @@ if.end.9:
   store i64 0, ptr %t221
   %t222 = load { ptr, i64 }, ptr %v.str.72
   store { ptr, i64 } %t222, ptr %t219
-  %v.varargs.69 = alloca { ptr, i64 }
   %t223 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.69, i32 0, i32 0
   store ptr %t214, ptr %t223
   %t224 = getelementptr inbounds { ptr, i64 }, ptr %v.varargs.69, i32 0, i32 1
@@ -4708,7 +4709,6 @@ unwrap.err.20:
   unreachable
 unwrap.ok.20:
   %t363 = getelementptr inbounds { i32, [4 x i8], { ptr, i64 } }, ptr %v.ret.124, i32 0, i32 2
-  %v.unwrap.out.123 = alloca { ptr, i64 }
   store { ptr, i64 } zeroinitializer, ptr %v.unwrap.out.123
   %t364 = load { ptr, i64 }, ptr %t363
   store { ptr, i64 } %t364, ptr %v.unwrap.out.123

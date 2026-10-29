@@ -297,7 +297,7 @@ sm.init:
   store i64 %t10, ptr %v.before
   %t11 = getelementptr i8, ptr %v.sm.param.32.1, i64 0
   %t12 = call ptr @willrt_gc_read_barrier_slot(ptr %t11)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.5, ptr %t12)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.4, ptr %t12)
   %t13 = call ptr @willrt_gc_alloc(i64 32768, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   %t14 = call ptr @willrt_gc_pin(ptr %t13)
   %t15 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.48, i32 0, i32 0
@@ -313,10 +313,10 @@ sm.init:
   call void @willrt_gc_write_barrier_untagged(ptr %t18, ptr %t20)
   %t21 = load { ptr, i64, i64 }, ptr %v.new.48
   store { ptr, i64, i64 } %t21, ptr %v.chunk
-  %t22 = getelementptr i8, ptr %v.chunk, i64 0
+  %t22 = getelementptr i8, ptr %v.sm.param.32.1, i64 0
   %t23 = call ptr @willrt_gc_read_barrier_slot(ptr %t22)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.4, ptr %t23)
-  %t24 = getelementptr i8, ptr %v.sm.param.32.1, i64 0
+  %t24 = getelementptr i8, ptr %v.chunk, i64 0
   %t25 = call ptr @willrt_gc_read_barrier_slot(ptr %t24)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.5, ptr %t25)
   br label %while.cond.1
@@ -430,10 +430,10 @@ try.ok.3:
   %t81 = load i64, ptr %v.try.out.59
   store i64 0, ptr %v.try.out.59
   store i64 %t81, ptr %v.n
-  %t82 = getelementptr i8, ptr %v.chunk, i64 0
+  %t82 = getelementptr i8, ptr %v.sm.param.32.1, i64 0
   %t83 = call ptr @willrt_gc_read_barrier_slot(ptr %t82)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.4, ptr %t83)
-  %t84 = getelementptr i8, ptr %v.sm.param.32.1, i64 0
+  %t84 = getelementptr i8, ptr %v.chunk, i64 0
   %t85 = call ptr @willrt_gc_read_barrier_slot(ptr %t84)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.5, ptr %t85)
   %t86 = load i64, ptr %v.n
@@ -445,10 +445,10 @@ if.then.8:
   br label %for.end.1
 if.end.8:
   store i64 0, ptr %v.i
-  %t88 = getelementptr i8, ptr %v.chunk, i64 0
+  %t88 = getelementptr i8, ptr %v.sm.param.32.1, i64 0
   %t89 = call ptr @willrt_gc_read_barrier_slot(ptr %t88)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.4, ptr %t89)
-  %t90 = getelementptr i8, ptr %v.sm.param.32.1, i64 0
+  %t90 = getelementptr i8, ptr %v.chunk, i64 0
   %t91 = call ptr @willrt_gc_read_barrier_slot(ptr %t90)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.5, ptr %t91)
   br label %while.cond.9
@@ -540,10 +540,10 @@ panic.13:
   unreachable
 panic.ok.13:
   store i64 %t136, ptr %v.i
-  %t138 = getelementptr i8, ptr %v.chunk, i64 0
+  %t138 = getelementptr i8, ptr %v.sm.param.32.1, i64 0
   %t139 = call ptr @willrt_gc_read_barrier_slot(ptr %t138)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.4, ptr %t139)
-  %t140 = getelementptr i8, ptr %v.sm.param.32.1, i64 0
+  %t140 = getelementptr i8, ptr %v.chunk, i64 0
   %t141 = call ptr @willrt_gc_read_barrier_slot(ptr %t140)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.5, ptr %t141)
   br label %while.cond.9
@@ -607,9 +607,9 @@ entry:
   store i64 zeroinitializer, ptr %t168
   %t169 = getelementptr i8, ptr %v.sm.frame, i64 8
   store ptr null, ptr %t169
-  %t170 = getelementptr i8, ptr %v.sm.frame, i64 184
+  %t170 = getelementptr i8, ptr %v.sm.frame, i64 176
   store ptr null, ptr %t170
-  %t171 = getelementptr i8, ptr %v.sm.frame, i64 176
+  %t171 = getelementptr i8, ptr %v.sm.frame, i64 184
   store ptr null, ptr %t171
   %t172 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t172
@@ -806,12 +806,12 @@ entry:
   br label %sm.init
 sm.init:
   store i64 0, ptr %v.total
-  %t246 = getelementptr i8, ptr %v.sm.param.102.242, i64 0
+  %t246 = getelementptr i8, ptr %v.sm.param.100.241, i64 0
   %t247 = call ptr @willrt_gc_read_barrier_slot(ptr %t246)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.243, ptr %t247)
-  %t248 = getelementptr i8, ptr %v.sm.param.100.241, i64 0
+  %t248 = getelementptr i8, ptr %v.sm.param.102.242, i64 0
   %t249 = call ptr @willrt_gc_read_barrier_slot(ptr %t248)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.245, ptr %t249)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.244, ptr %t249)
   %t250 = call ptr @willrt_gc_alloc(i64 32768, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   %t251 = call ptr @willrt_gc_pin(ptr %t250)
   %t252 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.114, i32 0, i32 0
@@ -827,13 +827,13 @@ sm.init:
   call void @willrt_gc_write_barrier_untagged(ptr %t255, ptr %t257)
   %t258 = load { ptr, i64, i64 }, ptr %v.new.114
   store { ptr, i64, i64 } %t258, ptr %v.chunk
-  %t259 = getelementptr i8, ptr %v.sm.param.102.242, i64 0
+  %t259 = getelementptr i8, ptr %v.sm.param.100.241, i64 0
   %t260 = call ptr @willrt_gc_read_barrier_slot(ptr %t259)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.243, ptr %t260)
-  %t261 = getelementptr i8, ptr %v.chunk, i64 0
+  %t261 = getelementptr i8, ptr %v.sm.param.102.242, i64 0
   %t262 = call ptr @willrt_gc_read_barrier_slot(ptr %t261)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.244, ptr %t262)
-  %t263 = getelementptr i8, ptr %v.sm.param.100.241, i64 0
+  %t263 = getelementptr i8, ptr %v.chunk, i64 0
   %t264 = call ptr @willrt_gc_read_barrier_slot(ptr %t263)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.245, ptr %t264)
   br label %while.cond.1
@@ -947,13 +947,13 @@ try.ok.3:
   %t320 = load i64, ptr %v.try.out.125
   store i64 0, ptr %v.try.out.125
   store i64 %t320, ptr %v.n
-  %t321 = getelementptr i8, ptr %v.sm.param.102.242, i64 0
+  %t321 = getelementptr i8, ptr %v.sm.param.100.241, i64 0
   %t322 = call ptr @willrt_gc_read_barrier_slot(ptr %t321)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.243, ptr %t322)
-  %t323 = getelementptr i8, ptr %v.chunk, i64 0
+  %t323 = getelementptr i8, ptr %v.sm.param.102.242, i64 0
   %t324 = call ptr @willrt_gc_read_barrier_slot(ptr %t323)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.244, ptr %t324)
-  %t325 = getelementptr i8, ptr %v.sm.param.100.241, i64 0
+  %t325 = getelementptr i8, ptr %v.chunk, i64 0
   %t326 = call ptr @willrt_gc_read_barrier_slot(ptr %t325)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.245, ptr %t326)
   %t327 = load i64, ptr %v.n
@@ -975,13 +975,13 @@ panic.9:
   unreachable
 panic.ok.9:
   store i64 %t332, ptr %v.total
-  %t334 = getelementptr i8, ptr %v.sm.param.102.242, i64 0
+  %t334 = getelementptr i8, ptr %v.sm.param.100.241, i64 0
   %t335 = call ptr @willrt_gc_read_barrier_slot(ptr %t334)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.243, ptr %t335)
-  %t336 = getelementptr i8, ptr %v.chunk, i64 0
+  %t336 = getelementptr i8, ptr %v.sm.param.102.242, i64 0
   %t337 = call ptr @willrt_gc_read_barrier_slot(ptr %t336)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.244, ptr %t337)
-  %t338 = getelementptr i8, ptr %v.sm.param.100.241, i64 0
+  %t338 = getelementptr i8, ptr %v.chunk, i64 0
   %t339 = call ptr @willrt_gc_read_barrier_slot(ptr %t338)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.245, ptr %t339)
   br label %while.cond.1
@@ -1030,11 +1030,11 @@ entry:
   store ptr null, ptr %t359
   %t360 = getelementptr i8, ptr %v.sm.frame, i64 24
   store ptr null, ptr %t360
-  %t361 = getelementptr i8, ptr %v.sm.frame, i64 304
+  %t361 = getelementptr i8, ptr %v.sm.frame, i64 288
   store ptr null, ptr %t361
-  %t362 = getelementptr i8, ptr %v.sm.frame, i64 288
+  %t362 = getelementptr i8, ptr %v.sm.frame, i64 296
   store ptr null, ptr %t362
-  %t363 = getelementptr i8, ptr %v.sm.frame, i64 296
+  %t363 = getelementptr i8, ptr %v.sm.frame, i64 304
   store ptr null, ptr %t363
   %t364 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t364
@@ -1224,6 +1224,9 @@ define hidden { i32, [4 x i8], %interface.Error } @"std/io.Poller.add"(ptr %self
 entry:
   %v.adt.32 = alloca { i32, [4 x i8], %interface.Error }
   %v.adt.52 = alloca { i32, [4 x i8], %interface.Error }
+  %t26 = alloca i64
+  %t55 = alloca i64
+  %t84 = alloca i64
   %t1 = icmp slt i64 %fd, 0
   br i1 %t1, label %if.then.1, label %if.end.1
 if.then.1:
@@ -1262,7 +1265,6 @@ arr.full.2:
   %t23 = mul i64 %t22, 8
   %t24 = call ptr @willrt_gc_alloc(i64 %t23, ptr @"willrt.gc.type.container.sequence.20dd873b7348878435a59b2e")
   %t25 = call ptr @willrt_gc_pin(ptr %t24)
-  %t26 = alloca i64
   store i64 0, ptr %t26
   br label %arr.copy.cond.2
 arr.copy.cond.2:
@@ -1313,7 +1315,6 @@ arr.full.3:
   %t52 = mul i64 %t51, 4
   %t53 = call ptr @willrt_gc_alloc(i64 %t52, ptr @"willrt.gc.type.container.sequence.17efe6a0d9cd612039e3d42b")
   %t54 = call ptr @willrt_gc_pin(ptr %t53)
-  %t55 = alloca i64
   store i64 0, ptr %t55
   br label %arr.copy.cond.3
 arr.copy.cond.3:
@@ -1364,7 +1365,6 @@ arr.full.4:
   %t81 = mul i64 %t80, 8
   %t82 = call ptr @willrt_gc_alloc(i64 %t81, ptr @"willrt.gc.type.container.sequence.220e86b8b143d96f9818e9b1")
   %t83 = call ptr @willrt_gc_pin(ptr %t82)
-  %t84 = alloca i64
   store i64 0, ptr %t84
   br label %arr.copy.cond.4
 arr.copy.cond.4:
@@ -1404,6 +1404,12 @@ entry:
   %v.adt.108 = alloca { i32, [4 x i8], %interface.Error }
   %v.adt.112 = alloca { i32, [4 x i8], %interface.Error }
   %v.i = alloca i32
+  %t134 = alloca i64
+  %t137 = alloca i64
+  %t157 = alloca i32
+  %t160 = alloca i64
+  %t180 = alloca i64
+  %t183 = alloca i64
   %t99 = getelementptr inbounds %"struct.std/io.Poller", ptr %self, i32 0, i32 0
   %t100 = getelementptr inbounds { ptr, i64, i64 }, ptr %t99, i32 0, i32 0
   %t101 = call ptr @willrt_gc_read_barrier_slot(ptr %t100)
@@ -1467,11 +1473,9 @@ panic.5:
   call void @willrt_panic(ptr @.str.7, ptr @.str.21, ptr @.str.19)
   unreachable
 panic.ok.5:
-  %t134 = alloca i64
   %t135 = getelementptr inbounds i64, ptr %t130, i64 %t128
   %t136 = load i64, ptr %t135
   store i64 %t136, ptr %t134
-  %t137 = alloca i64
   store i64 %t128, ptr %t137
   br label %remove.cond.6
 remove.cond.6:
@@ -1508,11 +1512,9 @@ panic.7:
   call void @willrt_panic(ptr @.str.7, ptr @.str.22, ptr @.str.19)
   unreachable
 panic.ok.7:
-  %t157 = alloca i32
   %t158 = getelementptr inbounds i32, ptr %t153, i64 %t151
   %t159 = load i32, ptr %t158
   store i32 %t159, ptr %t157
-  %t160 = alloca i64
   store i64 %t151, ptr %t160
   br label %remove.cond.8
 remove.cond.8:
@@ -1549,11 +1551,9 @@ panic.9:
   call void @willrt_panic(ptr @.str.7, ptr @.str.23, ptr @.str.19)
   unreachable
 panic.ok.9:
-  %t180 = alloca i64
   %t181 = getelementptr inbounds i64, ptr %t176, i64 %t174
   %t182 = load i64, ptr %t181
   store i64 %t182, ptr %t180
-  %t183 = alloca i64
   store i64 %t174, ptr %t183
   br label %remove.cond.10
 remove.cond.10:
@@ -2852,10 +2852,10 @@ sm.async.cont.1:
   store i32 %t395, ptr %v.await.scalar.392
   %t396 = load i32, ptr %v.await.scalar.392
   store i32 %t396, ptr %v.status
-  %t397 = getelementptr i8, ptr %v.sm.param.384.384, i64 0
+  %t397 = getelementptr i8, ptr %v.sm.param.382.383, i64 0
   %t398 = call ptr @willrt_gc_read_barrier_slot(ptr %t397)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.385, ptr %t398)
-  %t399 = getelementptr i8, ptr %v.sm.param.382.383, i64 0
+  %t399 = getelementptr i8, ptr %v.sm.param.384.384, i64 0
   %t400 = call ptr @willrt_gc_read_barrier_slot(ptr %t399)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.386, ptr %t400)
   %t401 = load i32, ptr %v.status
@@ -2893,9 +2893,9 @@ if.end.1:
 define hidden ptr @"std/os/fs.symlink.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 192)
-  %t419 = getelementptr i8, ptr %v.sm.frame, i64 104
+  %t419 = getelementptr i8, ptr %v.sm.frame, i64 96
   store ptr null, ptr %t419
-  %t420 = getelementptr i8, ptr %v.sm.frame, i64 96
+  %t420 = getelementptr i8, ptr %v.sm.frame, i64 104
   store ptr null, ptr %t420
   %t421 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t421
@@ -2975,10 +2975,10 @@ sm.init:
   call void @willrt_gc_write_barrier_untagged(ptr %t448, ptr %t450)
   %t451 = load { ptr, i64 }, ptr %v.str.426
   store { ptr, i64 } %t451, ptr %v.out
-  %t452 = getelementptr i8, ptr %v.sm.param.418.442, i64 0
+  %t452 = getelementptr i8, ptr %v.sm.param.416.441, i64 0
   %t453 = call ptr @willrt_gc_read_barrier_slot(ptr %t452)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.443, ptr %t453)
-  %t454 = getelementptr i8, ptr %v.sm.param.416.441, i64 0
+  %t454 = getelementptr i8, ptr %v.sm.param.418.442, i64 0
   %t455 = call ptr @willrt_gc_read_barrier_slot(ptr %t454)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.444, ptr %t455)
   %t456 = getelementptr i8, ptr %v.out, i64 0
@@ -3012,10 +3012,10 @@ sm.async.cont.1:
   store i32 %t466, ptr %v.await.scalar.429
   %t467 = load i32, ptr %v.await.scalar.429
   store i32 %t467, ptr %v.status
-  %t468 = getelementptr i8, ptr %v.sm.param.418.442, i64 0
+  %t468 = getelementptr i8, ptr %v.sm.param.416.441, i64 0
   %t469 = call ptr @willrt_gc_read_barrier_slot(ptr %t468)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.443, ptr %t469)
-  %t470 = getelementptr i8, ptr %v.sm.param.416.441, i64 0
+  %t470 = getelementptr i8, ptr %v.sm.param.418.442, i64 0
   %t471 = call ptr @willrt_gc_read_barrier_slot(ptr %t470)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.444, ptr %t471)
   %t472 = getelementptr i8, ptr %v.out, i64 0
@@ -3069,9 +3069,9 @@ entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 224)
   %t497 = getelementptr i8, ptr %v.sm.frame, i64 40
   store { ptr, i64 } zeroinitializer, ptr %t497
-  %t498 = getelementptr i8, ptr %v.sm.frame, i64 136
+  %t498 = getelementptr i8, ptr %v.sm.frame, i64 128
   store ptr null, ptr %t498
-  %t499 = getelementptr i8, ptr %v.sm.frame, i64 128
+  %t499 = getelementptr i8, ptr %v.sm.frame, i64 136
   store ptr null, ptr %t499
   %t500 = getelementptr i8, ptr %v.sm.frame, i64 144
   store ptr null, ptr %t500
@@ -3153,10 +3153,10 @@ entry:
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
   store { ptr, i64, i64 } zeroinitializer, ptr %v.out
-  %t530 = getelementptr i8, ptr %v.out, i64 0
+  %t530 = getelementptr i8, ptr %v.sm.param.458.527, i64 0
   %t531 = call ptr @willrt_gc_read_barrier_slot(ptr %t530)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.528, ptr %t531)
-  %t532 = getelementptr i8, ptr %v.sm.param.458.527, i64 0
+  %t532 = getelementptr i8, ptr %v.out, i64 0
   %t533 = call ptr @willrt_gc_read_barrier_slot(ptr %t532)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.529, ptr %t533)
   %t536 = call ptr @willrt_fs_async_read_file_start(ptr %v.sm.param.458.527, ptr %v.out)
@@ -3191,10 +3191,10 @@ sm.async.cont.1:
   store i32 %t544, ptr %v.status
   %t545 = getelementptr i8, ptr %v.sm.param.458.527, i64 0
   %t546 = call ptr @willrt_gc_read_barrier_slot(ptr %t545)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.529, ptr %t546)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.528, ptr %t546)
   %t547 = getelementptr i8, ptr %v.out, i64 0
   %t548 = call ptr @willrt_gc_read_barrier_slot(ptr %t547)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.528, ptr %t548)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.529, ptr %t548)
   %t549 = load i32, ptr %v.status
   %t550 = icmp ne i32 %t549, 0
   br i1 %t550, label %if.then.1, label %if.end.1
@@ -3271,9 +3271,9 @@ entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 240)
   %t586 = getelementptr i8, ptr %v.sm.frame, i64 24
   store { ptr, i64, i64 } zeroinitializer, ptr %t586
-  %t587 = getelementptr i8, ptr %v.sm.frame, i64 128
+  %t587 = getelementptr i8, ptr %v.sm.frame, i64 120
   store ptr null, ptr %t587
-  %t588 = getelementptr i8, ptr %v.sm.frame, i64 120
+  %t588 = getelementptr i8, ptr %v.sm.frame, i64 128
   store ptr null, ptr %t588
   %t589 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t589
@@ -4531,10 +4531,10 @@ entry:
   switch i32 %v.sm.statev, label %sm.init [ i32 1, label %sm.op.call.1 ]
 sm.init:
   store %"struct.std/os/fs.File" zeroinitializer, ptr %v.file
-  %t1104 = getelementptr i8, ptr %v.sm.param.785.1101, i64 0
+  %t1104 = getelementptr i8, ptr %v.sm.param.783.1100, i64 0
   %t1105 = call ptr @willrt_gc_read_barrier_slot(ptr %t1104)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.1102, ptr %t1105)
-  %t1106 = getelementptr i8, ptr %v.sm.param.783.1100, i64 0
+  %t1106 = getelementptr i8, ptr %v.sm.param.785.1101, i64 0
   %t1107 = call ptr @willrt_gc_read_barrier_slot(ptr %t1106)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.1103, ptr %t1107)
   %t1110 = call ptr @willrt_fs_async_temp_file_start(ptr %v.sm.param.783.1100, ptr %v.sm.param.785.1101, ptr %v.file)
@@ -4565,10 +4565,10 @@ sm.async.cont.1:
   store i32 %t1116, ptr %v.await.scalar.795
   %t1117 = load i32, ptr %v.await.scalar.795
   store i32 %t1117, ptr %v.status
-  %t1118 = getelementptr i8, ptr %v.sm.param.785.1101, i64 0
+  %t1118 = getelementptr i8, ptr %v.sm.param.783.1100, i64 0
   %t1119 = call ptr @willrt_gc_read_barrier_slot(ptr %t1118)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.1102, ptr %t1119)
-  %t1120 = getelementptr i8, ptr %v.sm.param.783.1100, i64 0
+  %t1120 = getelementptr i8, ptr %v.sm.param.785.1101, i64 0
   %t1121 = call ptr @willrt_gc_read_barrier_slot(ptr %t1120)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.1103, ptr %t1121)
   %t1122 = load i32, ptr %v.status
@@ -4608,9 +4608,9 @@ if.end.1:
 define hidden ptr @"std/os/fs.temp_file.task"(ptr %arg0, ptr %arg1, i32 %start, i32 %owns) {
 entry:
   %v.sm.frame = call ptr @willrt_alloc(i64 192)
-  %t1141 = getelementptr i8, ptr %v.sm.frame, i64 112
+  %t1141 = getelementptr i8, ptr %v.sm.frame, i64 104
   store ptr null, ptr %t1141
-  %t1142 = getelementptr i8, ptr %v.sm.frame, i64 104
+  %t1142 = getelementptr i8, ptr %v.sm.frame, i64 112
   store ptr null, ptr %t1142
   %t1143 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t1143
@@ -4832,7 +4832,7 @@ match.arm.7.0:
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.1, ptr %t67)
   %t68 = getelementptr i8, ptr %v.text, i64 0
   %t69 = call ptr @willrt_gc_read_barrier_slot(ptr %t68)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.3, ptr %t69)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.2, ptr %t69)
   %t70 = icmp ugt i64 0, 3
   br i1 %t70, label %panic.8, label %panic.ok.8
 panic.8:
@@ -4975,15 +4975,15 @@ sm.call.ok.13:
   call void @willrt_gc_write_barrier_untagged(ptr %t138, ptr %t140)
   %t141 = load { ptr, i64, i64 }, ptr %v.new.47
   store { ptr, i64, i64 } %t141, ptr %v.buf
-  %t142 = getelementptr i8, ptr %v.text, i64 0
+  %t142 = getelementptr i8, ptr %v.path, i64 0
   %t143 = call ptr @willrt_gc_read_barrier_slot(ptr %t142)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.3, ptr %t143)
-  %t144 = getelementptr i8, ptr %v.path, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.1, ptr %t143)
+  %t144 = getelementptr i8, ptr %v.text, i64 0
   %t145 = call ptr @willrt_gc_read_barrier_slot(ptr %t144)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.1, ptr %t145)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.2, ptr %t145)
   %t146 = getelementptr i8, ptr %v.buf, i64 0
   %t147 = call ptr @willrt_gc_read_barrier_slot(ptr %t146)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.2, ptr %t147)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.3, ptr %t147)
   %t148 = call ptr @willrt_gc_alloc(i64 8, ptr @"willrt.gc.type.std/os/fs.File")
   %t149 = load %"struct.std/os/fs.File", ptr %v.sm.bind.58
   store %"struct.std/os/fs.File" %t149, ptr %t148
@@ -5073,10 +5073,10 @@ unwrap.ok.19:
   %t195 = getelementptr i8, ptr %v.path, i64 0
   %t196 = call ptr @willrt_gc_read_barrier_slot(ptr %t195)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.1, ptr %t196)
-  %t197 = getelementptr i8, ptr %v.buf, i64 0
+  %t197 = getelementptr i8, ptr %v.text, i64 0
   %t198 = call ptr @willrt_gc_read_barrier_slot(ptr %t197)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.2, ptr %t198)
-  %t199 = getelementptr i8, ptr %v.text, i64 0
+  %t199 = getelementptr i8, ptr %v.buf, i64 0
   %t200 = call ptr @willrt_gc_read_barrier_slot(ptr %t199)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.3, ptr %t200)
   call void @willrt_gc_safepoint(i32 3)
@@ -5486,9 +5486,9 @@ entry:
   store { i32, [4 x i8], %interface.Error } zeroinitializer, ptr %t372
   %t373 = getelementptr i8, ptr %v.sm.frame, i64 256
   store ptr null, ptr %t373
-  %t374 = getelementptr i8, ptr %v.sm.frame, i64 272
+  %t374 = getelementptr i8, ptr %v.sm.frame, i64 264
   store ptr null, ptr %t374
-  %t375 = getelementptr i8, ptr %v.sm.frame, i64 264
+  %t375 = getelementptr i8, ptr %v.sm.frame, i64 272
   store ptr null, ptr %t375
   %t376 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t376
@@ -7120,10 +7120,10 @@ declare void @willrt_gc_unpin(ptr)
 @"willrt.gc.type.container.sequence.220e86b8b143d96f9818e9b1" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 3, i32 0, i32 8, i32 8, i32 0, ptr null, i32 0, ptr null, i32 8, ptr null }
 @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 4, i32 0, i32 8, i32 8, i32 0, ptr null, i32 0, ptr null, i32 1, ptr null }
 @"willrt.gc.type.value.()" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 5, i32 0, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.refs.value.Array<DirEntry>" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.Array<DirEntry>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 6, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Array<DirEntry>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.Array<i64>" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.Array<i64>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 7, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Array<i64>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.Array<i64>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 6, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Array<i64>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.refs.value.Array<std/os/fs.DirEntry>" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.value.Array<std/os/fs.DirEntry>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 7, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Array<std/os/fs.DirEntry>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.Array<u32>" = private constant [1 x i32] [i32 0]
 @"willrt.gc.type.value.Array<u32>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 8, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Array<u32>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.Array<u8>" = private constant [1 x i32] [i32 0]
@@ -7134,16 +7134,16 @@ declare void @willrt_gc_unpin(ptr)
 @"willrt.gc.type.value.Error" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 11, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Error", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.variants.value.Result<(),Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.value.()" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
 @"willrt.gc.type.value.Result<(),Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 12, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<(),Error>", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.variants.value.Result<Array<DirEntry>,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.value.Array<DirEntry>" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
-@"willrt.gc.type.value.Result<Array<DirEntry>,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 13, i32 32, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<Array<DirEntry>,Error>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.variants.value.Result<Array<std/os/fs.DirEntry>,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.value.Array<std/os/fs.DirEntry>" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
+@"willrt.gc.type.value.Result<Array<std/os/fs.DirEntry>,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 13, i32 32, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<Array<std/os/fs.DirEntry>,Error>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.variants.value.Result<Array<u8>,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.value.Array<u8>" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
 @"willrt.gc.type.value.Result<Array<u8>,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 14, i32 32, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<Array<u8>,Error>", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.variants.value.Result<File,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.std/os/fs.File" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
-@"willrt.gc.type.value.Result<File,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 15, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<File,Error>", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.variants.value.Result<StatInfo,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.std/os/fs.StatInfo" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
-@"willrt.gc.type.value.Result<StatInfo,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 16, i32 40, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<StatInfo,Error>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.variants.value.Result<i64,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.value.i64" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
-@"willrt.gc.type.value.Result<i64,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 17, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<i64,Error>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.Result<i64,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 15, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<i64,Error>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.variants.value.Result<std/os/fs.File,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.std/os/fs.File" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
+@"willrt.gc.type.value.Result<std/os/fs.File,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 16, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<std/os/fs.File,Error>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.variants.value.Result<std/os/fs.StatInfo,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.std/os/fs.StatInfo" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
+@"willrt.gc.type.value.Result<std/os/fs.StatInfo,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 17, i32 40, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<std/os/fs.StatInfo,Error>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.variants.value.Result<str,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.value.str" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
 @"willrt.gc.type.value.Result<str,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 18, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<str,Error>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.variants.value.Result<u64,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.value.u64" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
@@ -7155,12 +7155,16 @@ declare void @willrt_gc_unpin(ptr)
 @"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 23, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.i64" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 24, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.raw" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 25, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.refs.value.std/io.Reader" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.value.std/io.Reader" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 26, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.std/io.Reader", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.refs.value.std/io.Writer" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.value.std/io.Writer" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 27, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.std/io.Writer", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.str" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 26, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.u32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 27, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.u64" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 28, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 29, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.usize" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 30, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 28, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 29, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u64" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 30, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 31, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.usize" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 32, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 declare i32 @willrt_gc_register_type(ptr)
 define internal void @willrt.gc.register_types() {
 entry:
@@ -7169,18 +7173,18 @@ entry:
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.container.sequence.220e86b8b143d96f9818e9b1")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.()")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Array<DirEntry>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Array<i64>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Array<std/os/fs.DirEntry>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Array<u32>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Array<u8>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Array<usize>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Error")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<(),Error>")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<Array<DirEntry>,Error>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<Array<std/os/fs.DirEntry>,Error>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<Array<u8>,Error>")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<File,Error>")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<StatInfo,Error>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<i64,Error>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<std/os/fs.File,Error>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<std/os/fs.StatInfo,Error>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<str,Error>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<u64,Error>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<usize,Error>")
@@ -7189,6 +7193,8 @@ entry:
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i64")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.raw")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.std/io.Reader")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.std/io.Writer")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.str")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.u32")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.u64")
@@ -7203,9 +7209,9 @@ entry:
 @"willrt.gc.stack.std/errors.Fault.init" = private constant %willrt_gc_stack_map_data { ptr @"std/errors.Fault.init", ptr @"willrt.gc.stack.slots.std/errors.Fault.init", i64 1 }
 @"willrt.gc.stack.slots.std/io.new_poller" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }]
 @"willrt.gc.stack.std/io.new_poller" = private constant %willrt_gc_stack_map_data { ptr @"std/io.new_poller", ptr @"willrt.gc.stack.slots.std/io.new_poller", i64 3 }
-@"willrt.gc.stack.slots.std/io.read_all.sm" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 8, i32 1, ptr null }, %willrt_gc_stack_slot { i32 184, i32 1, ptr null }, %willrt_gc_stack_slot { i32 176, i32 1, ptr null }]
+@"willrt.gc.stack.slots.std/io.read_all.sm" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 8, i32 1, ptr null }, %willrt_gc_stack_slot { i32 176, i32 1, ptr null }, %willrt_gc_stack_slot { i32 184, i32 1, ptr null }]
 @"willrt.gc.stack.std/io.read_all.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/io.read_all.sm", ptr @"willrt.gc.stack.slots.std/io.read_all.sm", i64 3 }
-@"willrt.gc.stack.slots.std/io.copy.sm" = private constant [5 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 8, i32 1, ptr null }, %willrt_gc_stack_slot { i32 24, i32 1, ptr null }, %willrt_gc_stack_slot { i32 304, i32 1, ptr null }, %willrt_gc_stack_slot { i32 288, i32 1, ptr null }, %willrt_gc_stack_slot { i32 296, i32 1, ptr null }]
+@"willrt.gc.stack.slots.std/io.copy.sm" = private constant [5 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 8, i32 1, ptr null }, %willrt_gc_stack_slot { i32 24, i32 1, ptr null }, %willrt_gc_stack_slot { i32 288, i32 1, ptr null }, %willrt_gc_stack_slot { i32 296, i32 1, ptr null }, %willrt_gc_stack_slot { i32 304, i32 1, ptr null }]
 @"willrt.gc.stack.std/io.copy.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/io.copy.sm", ptr @"willrt.gc.stack.slots.std/io.copy.sm", i64 5 }
 @"willrt.gc.stack.slots.std/os/fs.mkdir.sm" = private constant [1 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 80, i32 1, ptr null }]
 @"willrt.gc.stack.std/os/fs.mkdir.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/os/fs.mkdir.sm", ptr @"willrt.gc.stack.slots.std/os/fs.mkdir.sm", i64 1 }
@@ -7213,11 +7219,11 @@ entry:
 @"willrt.gc.stack.std/os/fs.mkdir_all.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/os/fs.mkdir_all.sm", ptr @"willrt.gc.stack.slots.std/os/fs.mkdir_all.sm", i64 1 }
 @"willrt.gc.stack.slots.std/os/fs.remove_all.sm" = private constant [1 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 80, i32 1, ptr null }]
 @"willrt.gc.stack.std/os/fs.remove_all.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/os/fs.remove_all.sm", ptr @"willrt.gc.stack.slots.std/os/fs.remove_all.sm", i64 1 }
-@"willrt.gc.stack.slots.std/os/fs.symlink.sm" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 104, i32 1, ptr null }, %willrt_gc_stack_slot { i32 96, i32 1, ptr null }]
+@"willrt.gc.stack.slots.std/os/fs.symlink.sm" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 96, i32 1, ptr null }, %willrt_gc_stack_slot { i32 104, i32 1, ptr null }]
 @"willrt.gc.stack.std/os/fs.symlink.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/os/fs.symlink.sm", ptr @"willrt.gc.stack.slots.std/os/fs.symlink.sm", i64 2 }
-@"willrt.gc.stack.slots.std/os/fs.temp_dir.sm" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 136, i32 1, ptr null }, %willrt_gc_stack_slot { i32 128, i32 1, ptr null }, %willrt_gc_stack_slot { i32 144, i32 1, ptr null }]
+@"willrt.gc.stack.slots.std/os/fs.temp_dir.sm" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 128, i32 1, ptr null }, %willrt_gc_stack_slot { i32 136, i32 1, ptr null }, %willrt_gc_stack_slot { i32 144, i32 1, ptr null }]
 @"willrt.gc.stack.std/os/fs.temp_dir.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/os/fs.temp_dir.sm", ptr @"willrt.gc.stack.slots.std/os/fs.temp_dir.sm", i64 3 }
-@"willrt.gc.stack.slots.std/os/fs.read_file.sm" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 128, i32 1, ptr null }, %willrt_gc_stack_slot { i32 120, i32 1, ptr null }]
+@"willrt.gc.stack.slots.std/os/fs.read_file.sm" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 120, i32 1, ptr null }, %willrt_gc_stack_slot { i32 128, i32 1, ptr null }]
 @"willrt.gc.stack.std/os/fs.read_file.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/os/fs.read_file.sm", ptr @"willrt.gc.stack.slots.std/os/fs.read_file.sm", i64 2 }
 @"willrt.gc.stack.slots.std/os/fs.write_file.sm" = private constant [1 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 96, i32 1, ptr null }]
 @"willrt.gc.stack.std/os/fs.write_file.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/os/fs.write_file.sm", ptr @"willrt.gc.stack.slots.std/os/fs.write_file.sm", i64 1 }
@@ -7235,9 +7241,9 @@ entry:
 @"willrt.gc.stack.std/os/fs.rename.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/os/fs.rename.sm", ptr @"willrt.gc.stack.slots.std/os/fs.rename.sm", i64 2 }
 @"willrt.gc.stack.slots.std/os/fs.remove.sm" = private constant [1 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 80, i32 1, ptr null }]
 @"willrt.gc.stack.std/os/fs.remove.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/os/fs.remove.sm", ptr @"willrt.gc.stack.slots.std/os/fs.remove.sm", i64 1 }
-@"willrt.gc.stack.slots.std/os/fs.temp_file.sm" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 112, i32 1, ptr null }, %willrt_gc_stack_slot { i32 104, i32 1, ptr null }]
+@"willrt.gc.stack.slots.std/os/fs.temp_file.sm" = private constant [2 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 104, i32 1, ptr null }, %willrt_gc_stack_slot { i32 112, i32 1, ptr null }]
 @"willrt.gc.stack.std/os/fs.temp_file.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/os/fs.temp_file.sm", ptr @"willrt.gc.stack.slots.std/os/fs.temp_file.sm", i64 2 }
-@"willrt.gc.stack.slots.example.com/stdtest/io.check_read_all.sm" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 256, i32 1, ptr null }, %willrt_gc_stack_slot { i32 272, i32 1, ptr null }, %willrt_gc_stack_slot { i32 264, i32 1, ptr null }]
+@"willrt.gc.stack.slots.example.com/stdtest/io.check_read_all.sm" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 256, i32 1, ptr null }, %willrt_gc_stack_slot { i32 264, i32 1, ptr null }, %willrt_gc_stack_slot { i32 272, i32 1, ptr null }]
 @"willrt.gc.stack.example.com/stdtest/io.check_read_all.sm" = private constant %willrt_gc_stack_map_data { ptr @"example.com/stdtest/io.check_read_all.sm", ptr @"willrt.gc.stack.slots.example.com/stdtest/io.check_read_all.sm", i64 3 }
 @"willrt.gc.stack.slots.example.com/stdtest/io.will$main.sm" = private constant [1 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 296, i32 1, ptr null }]
 @"willrt.gc.stack.example.com/stdtest/io.will$main.sm" = private constant %willrt_gc_stack_map_data { ptr @"example.com/stdtest/io.will$main.sm", ptr @"willrt.gc.stack.slots.example.com/stdtest/io.will$main.sm", i64 1 }

@@ -446,7 +446,7 @@ func (g *generator) eachElement(ptr, elem string, retain bool, depth int) error 
 	body := fmt.Sprintf("elem.body.%d", n)
 	done := fmt.Sprintf("elem.done.%d", n)
 	index := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = alloca i64\n", index)
+	g.tempAlloca(index, "i64")
 	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", index)
 	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
 	g.out.WriteString(cond + ":\n")

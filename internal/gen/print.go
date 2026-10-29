@@ -83,7 +83,7 @@ func (g *generator) printShow(call willc.Record, index, arg int) error {
 	slot := g.ifaceSlots[fmt.Sprintf("print.%d.%d", call.ID, index)]
 	if slot == "" {
 		slot = g.newTmp()
-		fmt.Fprintf(g.out, "  %s = alloca %%interface.show\n", slot)
+		g.tempAlloca(slot, "%interface.show")
 	}
 	if _, already := g.ifaceOfText(text); !already {
 		if _, err := g.ifaceValue(slot, arg, iface, text); err != nil {

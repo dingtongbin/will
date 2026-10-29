@@ -38,7 +38,7 @@ func (g *generator) arrayAppend(r willc.Record, base, elem, elemLLVM string, ele
 	copyBody := fmt.Sprintf("append.copy.body.%d", n)
 	copyDone := fmt.Sprintf("append.copy.done.%d", n)
 	index := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = alloca i64\n", index)
+	g.tempAlloca(index, "i64")
 	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", index)
 	fmt.Fprintf(g.out, "  br label %%%s\n", copyCond)
 	g.out.WriteString(copyCond + ":\n")
@@ -186,7 +186,7 @@ func (g *generator) arrayInsert(r willc.Record, base, elem, elemLLVM string) (st
 	g.panicCheck(bad, panicIndex, r)
 
 	temp := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = alloca %s\n", temp, elemLLVM)
+	g.tempAlloca(temp, elemLLVM)
 	if isAggregateType(elemLLVM) {
 		src, srcType, err := g.place(args[1])
 		if err != nil {
@@ -236,7 +236,7 @@ func (g *generator) arrayInsert(r willc.Record, base, elem, elemLLVM string) (st
 	body := fmt.Sprintf("insert.body.%d", n)
 	done := fmt.Sprintf("insert.done.%d", n)
 	cursor := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = alloca i64\n", cursor)
+	g.tempAlloca(cursor, "i64")
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", arrayLen, cursor)
 	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
 	g.out.WriteString(cond + ":\n")
@@ -355,7 +355,7 @@ func (g *generator) arrayShrink(r willc.Record, base, elem, elemLLVM string) (st
 	copyBody := fmt.Sprintf("shrink.copy.body.%d", n)
 	copyDone := fmt.Sprintf("shrink.copy.done.%d", n)
 	index := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = alloca i64\n", index)
+	g.tempAlloca(index, "i64")
 	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", index)
 	fmt.Fprintf(g.out, "  br label %%%s\n", copyCond)
 	g.out.WriteString(copyCond + ":\n")
@@ -419,7 +419,7 @@ func (g *generator) arrayClone(r willc.Record, base, elem, elemLLVM string) (str
 	body := fmt.Sprintf("clone.body.%d", n)
 	done := fmt.Sprintf("clone.done.%d", n)
 	index := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = alloca i64\n", index)
+	g.tempAlloca(index, "i64")
 	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", index)
 	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
 	g.out.WriteString(cond + ":\n")
@@ -477,7 +477,7 @@ func (g *generator) arrayRemove(r willc.Record, base, elem, elemLLVM string) (st
 	g.panicCheck(bad, panicIndex, r)
 
 	temp := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = alloca %s\n", temp, elemLLVM)
+	g.tempAlloca(temp, elemLLVM)
 	src := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", src, elemLLVM, data, idx)
 	if isAggregateType(elemLLVM) {
@@ -493,7 +493,7 @@ func (g *generator) arrayRemove(r willc.Record, base, elem, elemLLVM string) (st
 	body := fmt.Sprintf("remove.body.%d", n)
 	done := fmt.Sprintf("remove.done.%d", n)
 	cursor := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = alloca i64\n", cursor)
+	g.tempAlloca(cursor, "i64")
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", idx, cursor)
 	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
 	g.out.WriteString(cond + ":\n")

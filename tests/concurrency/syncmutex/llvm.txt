@@ -1718,14 +1718,14 @@ sm.init:
   store ptr %t204, ptr %v.t1
   %t205 = getelementptr i8, ptr %v.t1, i64 0
   %t206 = call ptr @willrt_gc_read_barrier_slot(ptr %t205)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t206)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t206)
   %t207 = call ptr @"example.com/concurrency/syncmutex.bump.task"(ptr %v.m, i32 -1, i32 1)
   store %"struct.std/sync.Mutex$Counter" zeroinitializer, ptr %v.m
   store ptr %t207, ptr %v.t2
-  %t208 = getelementptr i8, ptr %v.t2, i64 0
+  %t208 = getelementptr i8, ptr %v.t1, i64 0
   %t209 = call ptr @willrt_gc_read_barrier_slot(ptr %t208)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t209)
-  %t210 = getelementptr i8, ptr %v.t1, i64 0
+  %t210 = getelementptr i8, ptr %v.t2, i64 0
   %t211 = call ptr @willrt_gc_read_barrier_slot(ptr %t210)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t211)
   %t212 = load ptr, ptr %v.t1
@@ -1975,10 +1975,10 @@ deep.rel.adt.done.11.1:
   store i32 zeroinitializer, ptr %v.unwrap.out.85
   store i32 0, ptr %v.unwrap.out.85
   store i32 0, ptr %v.two
-  %t328 = getelementptr i8, ptr %v.t2, i64 0
+  %t328 = getelementptr i8, ptr %v.t1, i64 0
   %t329 = call ptr @willrt_gc_read_barrier_slot(ptr %t328)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t329)
-  %t330 = getelementptr i8, ptr %v.t1, i64 0
+  %t330 = getelementptr i8, ptr %v.t2, i64 0
   %t331 = call ptr @willrt_gc_read_barrier_slot(ptr %t330)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t331)
   br i1 true, label %if.then.13, label %if.end.13
@@ -2014,10 +2014,10 @@ sm.call.ok.14:
   %t348 = load %"struct.std/sync.Guard$Counter", ptr %v.sm.call.out.333
   store %"struct.std/sync.Guard$Counter" %t348, ptr %v.g
   store %"struct.std/sync.Guard$Counter" zeroinitializer, ptr %v.sm.call.out.333
-  %t349 = getelementptr i8, ptr %v.t2, i64 0
+  %t349 = getelementptr i8, ptr %v.t1, i64 0
   %t350 = call ptr @willrt_gc_read_barrier_slot(ptr %t349)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t350)
-  %t351 = getelementptr i8, ptr %v.t1, i64 0
+  %t351 = getelementptr i8, ptr %v.t2, i64 0
   %t352 = call ptr @willrt_gc_read_barrier_slot(ptr %t351)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t352)
   %t353 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g, i32 0, i32 1
@@ -2035,10 +2035,10 @@ panic.ok.15:
   %t360 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t359, i32 0, i32 0
   %t361 = load i32, ptr %t360
   store i32 %t361, ptr %v.two
-  %t362 = getelementptr i8, ptr %v.t2, i64 0
+  %t362 = getelementptr i8, ptr %v.t1, i64 0
   %t363 = call ptr @willrt_gc_read_barrier_slot(ptr %t362)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t363)
-  %t364 = getelementptr i8, ptr %v.t1, i64 0
+  %t364 = getelementptr i8, ptr %v.t2, i64 0
   %t365 = call ptr @willrt_gc_read_barrier_slot(ptr %t364)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t365)
   %t366 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g, i32 0, i32 1
@@ -2088,29 +2088,29 @@ if.end.17:
   %t388 = ptrtoint ptr %t387 to i64
   %t389 = call ptr @willrt_chan_new(i64 %t388, i64 %t386, i32 0)
   store ptr %t389, ptr %v.entered
-  %t390 = getelementptr i8, ptr %v.t2, i64 0
+  %t390 = getelementptr i8, ptr %v.t1, i64 0
   %t391 = call ptr @willrt_gc_read_barrier_slot(ptr %t390)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t391)
-  %t392 = getelementptr i8, ptr %v.t1, i64 0
+  %t392 = getelementptr i8, ptr %v.t2, i64 0
   %t393 = call ptr @willrt_gc_read_barrier_slot(ptr %t392)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t393)
   %t394 = getelementptr i8, ptr %v.entered, i64 0
   %t395 = call ptr @willrt_gc_read_barrier_slot(ptr %t394)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t395)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t395)
   call void @willrt_region_enter()
   store ptr null, ptr %v.waiter
-  %t396 = getelementptr i8, ptr %v.entered, i64 0
+  %t396 = getelementptr i8, ptr %v.t1, i64 0
   %t397 = call ptr @willrt_gc_read_barrier_slot(ptr %t396)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t397)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t397)
   %t398 = getelementptr i8, ptr %v.t2, i64 0
   %t399 = call ptr @willrt_gc_read_barrier_slot(ptr %t398)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t399)
-  %t400 = getelementptr i8, ptr %v.t1, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t399)
+  %t400 = getelementptr i8, ptr %v.entered, i64 0
   %t401 = call ptr @willrt_gc_read_barrier_slot(ptr %t400)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t401)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t401)
   %t402 = getelementptr i8, ptr %v.waiter, i64 0
   %t403 = call ptr @willrt_gc_read_barrier_slot(ptr %t402)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t403)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t403)
   br i1 true, label %if.then.18, label %if.end.18
 if.then.18:
   %t404 = call ptr @"std/sync.Mutex<Counter>.lock.task"(ptr %v.m, i32 -2, i32 0)
@@ -2144,16 +2144,16 @@ sm.call.ok.19:
   %t420 = load %"struct.std/sync.Guard$Counter", ptr %v.sm.call.out.405
   store %"struct.std/sync.Guard$Counter" %t420, ptr %v.g.1
   store %"struct.std/sync.Guard$Counter" zeroinitializer, ptr %v.sm.call.out.405
-  %t421 = getelementptr i8, ptr %v.t2, i64 0
+  %t421 = getelementptr i8, ptr %v.t1, i64 0
   %t422 = call ptr @willrt_gc_read_barrier_slot(ptr %t421)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t422)
-  %t423 = getelementptr i8, ptr %v.t1, i64 0
+  %t423 = getelementptr i8, ptr %v.t2, i64 0
   %t424 = call ptr @willrt_gc_read_barrier_slot(ptr %t423)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t424)
-  %t425 = getelementptr i8, ptr %v.waiter, i64 0
+  %t425 = getelementptr i8, ptr %v.entered, i64 0
   %t426 = call ptr @willrt_gc_read_barrier_slot(ptr %t425)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t426)
-  %t427 = getelementptr i8, ptr %v.entered, i64 0
+  %t427 = getelementptr i8, ptr %v.waiter, i64 0
   %t428 = call ptr @willrt_gc_read_barrier_slot(ptr %t427)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t428)
   %t429 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 1
@@ -2179,36 +2179,36 @@ panic.21:
   unreachable
 panic.ok.21:
   store i32 %t439, ptr %t436
-  %t441 = getelementptr i8, ptr %v.entered, i64 0
+  %t441 = getelementptr i8, ptr %v.t1, i64 0
   %t442 = call ptr @willrt_gc_read_barrier_slot(ptr %t441)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t442)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t442)
   %t443 = getelementptr i8, ptr %v.t2, i64 0
   %t444 = call ptr @willrt_gc_read_barrier_slot(ptr %t443)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t444)
-  %t445 = getelementptr i8, ptr %v.t1, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t444)
+  %t445 = getelementptr i8, ptr %v.entered, i64 0
   %t446 = call ptr @willrt_gc_read_barrier_slot(ptr %t445)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t446)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t446)
   %t447 = getelementptr i8, ptr %v.waiter, i64 0
   %t448 = call ptr @willrt_gc_read_barrier_slot(ptr %t447)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t448)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t448)
   %t449 = load ptr, ptr %v.entered
   %t450 = call ptr @"example.com/concurrency/syncmutex.wait_for.task"(ptr %v.m, ptr %t449, i32 -1, i32 1)
   store %"struct.std/sync.Mutex$Counter" zeroinitializer, ptr %v.m
   %t451 = load ptr, ptr %v.entered
   call void @willrt_chan_retain(ptr %t451)
   store ptr %t450, ptr %v.waiter
-  %t452 = getelementptr i8, ptr %v.entered, i64 0
+  %t452 = getelementptr i8, ptr %v.t1, i64 0
   %t453 = call ptr @willrt_gc_read_barrier_slot(ptr %t452)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t453)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t453)
   %t454 = getelementptr i8, ptr %v.t2, i64 0
   %t455 = call ptr @willrt_gc_read_barrier_slot(ptr %t454)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t455)
-  %t456 = getelementptr i8, ptr %v.t1, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t455)
+  %t456 = getelementptr i8, ptr %v.entered, i64 0
   %t457 = call ptr @willrt_gc_read_barrier_slot(ptr %t456)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t457)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t457)
   %t458 = getelementptr i8, ptr %v.waiter, i64 0
   %t459 = call ptr @willrt_gc_read_barrier_slot(ptr %t458)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t459)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t459)
   %t460 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.1, i32 0, i32 1
   %t461 = load i1, ptr %t460
   br i1 %t461, label %guard.unlock.22, label %guard.done.22
@@ -2418,16 +2418,16 @@ deep.rel.adt.done.29.1:
   store i32 zeroinitializer, ptr %v.unwrap.out.151
   store i32 0, ptr %v.unwrap.out.151
   store i32 0, ptr %v.after
-  %t553 = getelementptr i8, ptr %v.t2, i64 0
+  %t553 = getelementptr i8, ptr %v.t1, i64 0
   %t554 = call ptr @willrt_gc_read_barrier_slot(ptr %t553)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t554)
-  %t555 = getelementptr i8, ptr %v.t1, i64 0
+  %t555 = getelementptr i8, ptr %v.t2, i64 0
   %t556 = call ptr @willrt_gc_read_barrier_slot(ptr %t555)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t556)
-  %t557 = getelementptr i8, ptr %v.waiter, i64 0
+  %t557 = getelementptr i8, ptr %v.entered, i64 0
   %t558 = call ptr @willrt_gc_read_barrier_slot(ptr %t557)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t558)
-  %t559 = getelementptr i8, ptr %v.entered, i64 0
+  %t559 = getelementptr i8, ptr %v.waiter, i64 0
   %t560 = call ptr @willrt_gc_read_barrier_slot(ptr %t559)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t560)
   br i1 true, label %if.then.31, label %if.end.31
@@ -2463,16 +2463,16 @@ sm.call.ok.32:
   %t577 = load %"struct.std/sync.Guard$Counter", ptr %v.sm.call.out.562
   store %"struct.std/sync.Guard$Counter" %t577, ptr %v.g.2
   store %"struct.std/sync.Guard$Counter" zeroinitializer, ptr %v.sm.call.out.562
-  %t578 = getelementptr i8, ptr %v.t2, i64 0
+  %t578 = getelementptr i8, ptr %v.t1, i64 0
   %t579 = call ptr @willrt_gc_read_barrier_slot(ptr %t578)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t579)
-  %t580 = getelementptr i8, ptr %v.t1, i64 0
+  %t580 = getelementptr i8, ptr %v.t2, i64 0
   %t581 = call ptr @willrt_gc_read_barrier_slot(ptr %t580)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t581)
-  %t582 = getelementptr i8, ptr %v.waiter, i64 0
+  %t582 = getelementptr i8, ptr %v.entered, i64 0
   %t583 = call ptr @willrt_gc_read_barrier_slot(ptr %t582)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t583)
-  %t584 = getelementptr i8, ptr %v.entered, i64 0
+  %t584 = getelementptr i8, ptr %v.waiter, i64 0
   %t585 = call ptr @willrt_gc_read_barrier_slot(ptr %t584)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t585)
   %t586 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 1
@@ -2492,16 +2492,16 @@ panic.ok.33:
   store i32 %t594, ptr %v.after
   %t595 = getelementptr i8, ptr %v.t1, i64 0
   %t596 = call ptr @willrt_gc_read_barrier_slot(ptr %t595)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t596)
-  %t597 = getelementptr i8, ptr %v.waiter, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t596)
+  %t597 = getelementptr i8, ptr %v.t2, i64 0
   %t598 = call ptr @willrt_gc_read_barrier_slot(ptr %t597)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t598)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t598)
   %t599 = getelementptr i8, ptr %v.entered, i64 0
   %t600 = call ptr @willrt_gc_read_barrier_slot(ptr %t599)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t600)
-  %t601 = getelementptr i8, ptr %v.t2, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t600)
+  %t601 = getelementptr i8, ptr %v.waiter, i64 0
   %t602 = call ptr @willrt_gc_read_barrier_slot(ptr %t601)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t602)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t602)
   %t603 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.g.2, i32 0, i32 1
   %t604 = load i1, ptr %t603
   br i1 %t604, label %guard.unlock.34, label %guard.done.34
@@ -2553,31 +2553,31 @@ if.end.35:
   call void @"std/sync.RwLock<Counter>.init"(ptr %v.new.183, ptr %v.agg.184)
   %t625 = load %"struct.std/sync.RwLock$Counter", ptr %v.new.183
   store %"struct.std/sync.RwLock$Counter" %t625, ptr %v.rw
-  %t626 = getelementptr i8, ptr %v.t2, i64 0
+  %t626 = getelementptr i8, ptr %v.t1, i64 0
   %t627 = call ptr @willrt_gc_read_barrier_slot(ptr %t626)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t627)
-  %t628 = getelementptr i8, ptr %v.t1, i64 0
+  %t628 = getelementptr i8, ptr %v.t2, i64 0
   %t629 = call ptr @willrt_gc_read_barrier_slot(ptr %t628)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t629)
-  %t630 = getelementptr i8, ptr %v.waiter, i64 0
+  %t630 = getelementptr i8, ptr %v.entered, i64 0
   %t631 = call ptr @willrt_gc_read_barrier_slot(ptr %t630)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t631)
-  %t632 = getelementptr i8, ptr %v.entered, i64 0
+  %t632 = getelementptr i8, ptr %v.waiter, i64 0
   %t633 = call ptr @willrt_gc_read_barrier_slot(ptr %t632)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t633)
   store i32 0, ptr %v.shared
   %t634 = getelementptr i8, ptr %v.t1, i64 0
   %t635 = call ptr @willrt_gc_read_barrier_slot(ptr %t634)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t635)
-  %t636 = getelementptr i8, ptr %v.waiter, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t635)
+  %t636 = getelementptr i8, ptr %v.t2, i64 0
   %t637 = call ptr @willrt_gc_read_barrier_slot(ptr %t636)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t637)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t637)
   %t638 = getelementptr i8, ptr %v.entered, i64 0
   %t639 = call ptr @willrt_gc_read_barrier_slot(ptr %t638)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t639)
-  %t640 = getelementptr i8, ptr %v.t2, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t639)
+  %t640 = getelementptr i8, ptr %v.waiter, i64 0
   %t641 = call ptr @willrt_gc_read_barrier_slot(ptr %t640)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t641)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t641)
   br i1 true, label %if.then.36, label %if.end.36
 if.then.36:
   %t642 = call ptr @"std/sync.RwLock<Counter>.r_lock.task"(ptr %v.rw, i32 -2, i32 0)
@@ -2611,16 +2611,16 @@ sm.call.ok.37:
   %t658 = load %"struct.std/sync.ReadGuard$Counter", ptr %v.sm.call.out.643
   store %"struct.std/sync.ReadGuard$Counter" %t658, ptr %v.r1
   store %"struct.std/sync.ReadGuard$Counter" zeroinitializer, ptr %v.sm.call.out.643
-  %t659 = getelementptr i8, ptr %v.t2, i64 0
+  %t659 = getelementptr i8, ptr %v.t1, i64 0
   %t660 = call ptr @willrt_gc_read_barrier_slot(ptr %t659)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t660)
-  %t661 = getelementptr i8, ptr %v.t1, i64 0
+  %t661 = getelementptr i8, ptr %v.t2, i64 0
   %t662 = call ptr @willrt_gc_read_barrier_slot(ptr %t661)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t662)
-  %t663 = getelementptr i8, ptr %v.waiter, i64 0
+  %t663 = getelementptr i8, ptr %v.entered, i64 0
   %t664 = call ptr @willrt_gc_read_barrier_slot(ptr %t663)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t664)
-  %t665 = getelementptr i8, ptr %v.entered, i64 0
+  %t665 = getelementptr i8, ptr %v.waiter, i64 0
   %t666 = call ptr @willrt_gc_read_barrier_slot(ptr %t665)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t666)
   %t667 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 1
@@ -2638,16 +2638,16 @@ panic.ok.38:
   %t674 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t673, i32 0, i32 0
   %t675 = load i32, ptr %t674
   store i32 %t675, ptr %v.shared
-  %t676 = getelementptr i8, ptr %v.t2, i64 0
+  %t676 = getelementptr i8, ptr %v.t1, i64 0
   %t677 = call ptr @willrt_gc_read_barrier_slot(ptr %t676)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t677)
-  %t678 = getelementptr i8, ptr %v.t1, i64 0
+  %t678 = getelementptr i8, ptr %v.t2, i64 0
   %t679 = call ptr @willrt_gc_read_barrier_slot(ptr %t678)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t679)
-  %t680 = getelementptr i8, ptr %v.waiter, i64 0
+  %t680 = getelementptr i8, ptr %v.entered, i64 0
   %t681 = call ptr @willrt_gc_read_barrier_slot(ptr %t680)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t681)
-  %t682 = getelementptr i8, ptr %v.entered, i64 0
+  %t682 = getelementptr i8, ptr %v.waiter, i64 0
   %t683 = call ptr @willrt_gc_read_barrier_slot(ptr %t682)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t683)
   %t684 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r1, i32 0, i32 1
@@ -2710,16 +2710,16 @@ sm.call.ok.41:
   %t713 = load %"struct.std/sync.ReadGuard$Counter", ptr %v.sm.call.out.698
   store %"struct.std/sync.ReadGuard$Counter" %t713, ptr %v.r2
   store %"struct.std/sync.ReadGuard$Counter" zeroinitializer, ptr %v.sm.call.out.698
-  %t714 = getelementptr i8, ptr %v.t2, i64 0
+  %t714 = getelementptr i8, ptr %v.t1, i64 0
   %t715 = call ptr @willrt_gc_read_barrier_slot(ptr %t714)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t715)
-  %t716 = getelementptr i8, ptr %v.t1, i64 0
+  %t716 = getelementptr i8, ptr %v.t2, i64 0
   %t717 = call ptr @willrt_gc_read_barrier_slot(ptr %t716)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t717)
-  %t718 = getelementptr i8, ptr %v.waiter, i64 0
+  %t718 = getelementptr i8, ptr %v.entered, i64 0
   %t719 = call ptr @willrt_gc_read_barrier_slot(ptr %t718)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t719)
-  %t720 = getelementptr i8, ptr %v.entered, i64 0
+  %t720 = getelementptr i8, ptr %v.waiter, i64 0
   %t721 = call ptr @willrt_gc_read_barrier_slot(ptr %t720)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t721)
   %t722 = load i32, ptr %v.shared
@@ -2746,16 +2746,16 @@ panic.43:
   unreachable
 panic.ok.43:
   store i32 %t733, ptr %v.shared
-  %t735 = getelementptr i8, ptr %v.t2, i64 0
+  %t735 = getelementptr i8, ptr %v.t1, i64 0
   %t736 = call ptr @willrt_gc_read_barrier_slot(ptr %t735)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t736)
-  %t737 = getelementptr i8, ptr %v.t1, i64 0
+  %t737 = getelementptr i8, ptr %v.t2, i64 0
   %t738 = call ptr @willrt_gc_read_barrier_slot(ptr %t737)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t738)
-  %t739 = getelementptr i8, ptr %v.waiter, i64 0
+  %t739 = getelementptr i8, ptr %v.entered, i64 0
   %t740 = call ptr @willrt_gc_read_barrier_slot(ptr %t739)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t740)
-  %t741 = getelementptr i8, ptr %v.entered, i64 0
+  %t741 = getelementptr i8, ptr %v.waiter, i64 0
   %t742 = call ptr @willrt_gc_read_barrier_slot(ptr %t741)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t742)
   %t743 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r2, i32 0, i32 1
@@ -2809,16 +2809,16 @@ if.then.45:
   ret i32 1
 if.end.45:
   store i32 0, ptr %v.exclusive
-  %t766 = getelementptr i8, ptr %v.t2, i64 0
+  %t766 = getelementptr i8, ptr %v.t1, i64 0
   %t767 = call ptr @willrt_gc_read_barrier_slot(ptr %t766)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t767)
-  %t768 = getelementptr i8, ptr %v.t1, i64 0
+  %t768 = getelementptr i8, ptr %v.t2, i64 0
   %t769 = call ptr @willrt_gc_read_barrier_slot(ptr %t768)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t769)
-  %t770 = getelementptr i8, ptr %v.waiter, i64 0
+  %t770 = getelementptr i8, ptr %v.entered, i64 0
   %t771 = call ptr @willrt_gc_read_barrier_slot(ptr %t770)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t771)
-  %t772 = getelementptr i8, ptr %v.entered, i64 0
+  %t772 = getelementptr i8, ptr %v.waiter, i64 0
   %t773 = call ptr @willrt_gc_read_barrier_slot(ptr %t772)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t773)
   br i1 true, label %if.then.46, label %if.end.46
@@ -2854,16 +2854,16 @@ sm.call.ok.47:
   %t790 = load %"struct.std/sync.Guard$Counter", ptr %v.sm.call.out.775
   store %"struct.std/sync.Guard$Counter" %t790, ptr %v.w
   store %"struct.std/sync.Guard$Counter" zeroinitializer, ptr %v.sm.call.out.775
-  %t791 = getelementptr i8, ptr %v.t2, i64 0
+  %t791 = getelementptr i8, ptr %v.t1, i64 0
   %t792 = call ptr @willrt_gc_read_barrier_slot(ptr %t791)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t792)
-  %t793 = getelementptr i8, ptr %v.t1, i64 0
+  %t793 = getelementptr i8, ptr %v.t2, i64 0
   %t794 = call ptr @willrt_gc_read_barrier_slot(ptr %t793)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t794)
-  %t795 = getelementptr i8, ptr %v.waiter, i64 0
+  %t795 = getelementptr i8, ptr %v.entered, i64 0
   %t796 = call ptr @willrt_gc_read_barrier_slot(ptr %t795)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t796)
-  %t797 = getelementptr i8, ptr %v.entered, i64 0
+  %t797 = getelementptr i8, ptr %v.waiter, i64 0
   %t798 = call ptr @willrt_gc_read_barrier_slot(ptr %t797)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t798)
   %t799 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 1
@@ -2880,16 +2880,16 @@ panic.ok.48:
   %t805 = getelementptr inbounds %"struct.std/sync.MutexState$Counter", ptr %t804, i32 0, i32 1
   %t806 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t805, i32 0, i32 0
   store i32 7, ptr %t806
-  %t807 = getelementptr i8, ptr %v.t2, i64 0
+  %t807 = getelementptr i8, ptr %v.t1, i64 0
   %t808 = call ptr @willrt_gc_read_barrier_slot(ptr %t807)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t808)
-  %t809 = getelementptr i8, ptr %v.t1, i64 0
+  %t809 = getelementptr i8, ptr %v.t2, i64 0
   %t810 = call ptr @willrt_gc_read_barrier_slot(ptr %t809)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t810)
-  %t811 = getelementptr i8, ptr %v.waiter, i64 0
+  %t811 = getelementptr i8, ptr %v.entered, i64 0
   %t812 = call ptr @willrt_gc_read_barrier_slot(ptr %t811)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t812)
-  %t813 = getelementptr i8, ptr %v.entered, i64 0
+  %t813 = getelementptr i8, ptr %v.waiter, i64 0
   %t814 = call ptr @willrt_gc_read_barrier_slot(ptr %t813)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t814)
   %t815 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 1
@@ -2909,16 +2909,16 @@ panic.ok.49:
   store i32 %t823, ptr %v.exclusive
   %t824 = getelementptr i8, ptr %v.t1, i64 0
   %t825 = call ptr @willrt_gc_read_barrier_slot(ptr %t824)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t825)
-  %t826 = getelementptr i8, ptr %v.waiter, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t825)
+  %t826 = getelementptr i8, ptr %v.t2, i64 0
   %t827 = call ptr @willrt_gc_read_barrier_slot(ptr %t826)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t827)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t827)
   %t828 = getelementptr i8, ptr %v.entered, i64 0
   %t829 = call ptr @willrt_gc_read_barrier_slot(ptr %t828)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t829)
-  %t830 = getelementptr i8, ptr %v.t2, i64 0
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t829)
+  %t830 = getelementptr i8, ptr %v.waiter, i64 0
   %t831 = call ptr @willrt_gc_read_barrier_slot(ptr %t830)
-  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t831)
+  call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t831)
   %t832 = getelementptr inbounds %"struct.std/sync.Guard$Counter", ptr %v.w, i32 0, i32 1
   %t833 = load i1, ptr %t832
   br i1 %t833, label %guard.unlock.50, label %guard.done.50
@@ -2970,16 +2970,16 @@ if.then.51:
   ret i32 1
 if.end.51:
   store i32 0, ptr %v.final
-  %t855 = getelementptr i8, ptr %v.t2, i64 0
+  %t855 = getelementptr i8, ptr %v.t1, i64 0
   %t856 = call ptr @willrt_gc_read_barrier_slot(ptr %t855)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t856)
-  %t857 = getelementptr i8, ptr %v.t1, i64 0
+  %t857 = getelementptr i8, ptr %v.t2, i64 0
   %t858 = call ptr @willrt_gc_read_barrier_slot(ptr %t857)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t858)
-  %t859 = getelementptr i8, ptr %v.waiter, i64 0
+  %t859 = getelementptr i8, ptr %v.entered, i64 0
   %t860 = call ptr @willrt_gc_read_barrier_slot(ptr %t859)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t860)
-  %t861 = getelementptr i8, ptr %v.entered, i64 0
+  %t861 = getelementptr i8, ptr %v.waiter, i64 0
   %t862 = call ptr @willrt_gc_read_barrier_slot(ptr %t861)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t862)
   br i1 true, label %if.then.52, label %if.end.52
@@ -3015,16 +3015,16 @@ sm.call.ok.53:
   %t879 = load %"struct.std/sync.ReadGuard$Counter", ptr %v.sm.call.out.864
   store %"struct.std/sync.ReadGuard$Counter" %t879, ptr %v.r
   store %"struct.std/sync.ReadGuard$Counter" zeroinitializer, ptr %v.sm.call.out.864
-  %t880 = getelementptr i8, ptr %v.t2, i64 0
+  %t880 = getelementptr i8, ptr %v.t1, i64 0
   %t881 = call ptr @willrt_gc_read_barrier_slot(ptr %t880)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t881)
-  %t882 = getelementptr i8, ptr %v.t1, i64 0
+  %t882 = getelementptr i8, ptr %v.t2, i64 0
   %t883 = call ptr @willrt_gc_read_barrier_slot(ptr %t882)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t883)
-  %t884 = getelementptr i8, ptr %v.waiter, i64 0
+  %t884 = getelementptr i8, ptr %v.entered, i64 0
   %t885 = call ptr @willrt_gc_read_barrier_slot(ptr %t884)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t885)
-  %t886 = getelementptr i8, ptr %v.entered, i64 0
+  %t886 = getelementptr i8, ptr %v.waiter, i64 0
   %t887 = call ptr @willrt_gc_read_barrier_slot(ptr %t886)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t887)
   %t888 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 1
@@ -3042,16 +3042,16 @@ panic.ok.54:
   %t895 = getelementptr inbounds %"struct.example.com/concurrency/syncmutex.Counter", ptr %t894, i32 0, i32 0
   %t896 = load i32, ptr %t895
   store i32 %t896, ptr %v.final
-  %t897 = getelementptr i8, ptr %v.t2, i64 0
+  %t897 = getelementptr i8, ptr %v.t1, i64 0
   %t898 = call ptr @willrt_gc_read_barrier_slot(ptr %t897)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.198, ptr %t898)
-  %t899 = getelementptr i8, ptr %v.t1, i64 0
+  %t899 = getelementptr i8, ptr %v.t2, i64 0
   %t900 = call ptr @willrt_gc_read_barrier_slot(ptr %t899)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.199, ptr %t900)
-  %t901 = getelementptr i8, ptr %v.waiter, i64 0
+  %t901 = getelementptr i8, ptr %v.entered, i64 0
   %t902 = call ptr @willrt_gc_read_barrier_slot(ptr %t901)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.200, ptr %t902)
-  %t903 = getelementptr i8, ptr %v.entered, i64 0
+  %t903 = getelementptr i8, ptr %v.waiter, i64 0
   %t904 = call ptr @willrt_gc_read_barrier_slot(ptr %t903)
   call void @willrt_gc_write_barrier(ptr %v.sm.gcroot.201, ptr %t904)
   %t905 = getelementptr inbounds %"struct.std/sync.ReadGuard$Counter", ptr %v.r, i32 0, i32 1
@@ -3175,13 +3175,13 @@ entry:
   store %"struct.std/sync.Guard$Counter" zeroinitializer, ptr %t958
   %t959 = getelementptr i8, ptr %v.sm.frame, i64 920
   store %"struct.std/sync.ReadGuard$Counter" zeroinitializer, ptr %t959
-  %t960 = getelementptr i8, ptr %v.sm.frame, i64 256
+  %t960 = getelementptr i8, ptr %v.sm.frame, i64 248
   store ptr null, ptr %t960
-  %t961 = getelementptr i8, ptr %v.sm.frame, i64 248
+  %t961 = getelementptr i8, ptr %v.sm.frame, i64 256
   store ptr null, ptr %t961
-  %t962 = getelementptr i8, ptr %v.sm.frame, i64 272
+  %t962 = getelementptr i8, ptr %v.sm.frame, i64 264
   store ptr null, ptr %t962
-  %t963 = getelementptr i8, ptr %v.sm.frame, i64 264
+  %t963 = getelementptr i8, ptr %v.sm.frame, i64 272
   store ptr null, ptr %t963
   %t964 = getelementptr i8, ptr %v.sm.frame, i64 0
   store i32 0, ptr %t964
@@ -4106,23 +4106,22 @@ declare i32 @willrt_weak_upgrade(i64, ptr)
 @"willrt.gc.type.value.Error" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 3, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Error", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.variants.value.Result<(),Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.value.()" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
 @"willrt.gc.type.value.Result<(),Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 4, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<(),Error>", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.variants.value.Result<Permit,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.std/sync.Permit" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
-@"willrt.gc.type.value.Result<Permit,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 5, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<Permit,Error>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.variants.value.Result<std/sync.Permit,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.std/sync.Permit" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
+@"willrt.gc.type.value.Result<std/sync.Permit,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 5, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<std/sync.Permit,Error>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.Task<i32>" = private constant [1 x i32] [i32 0]
 @"willrt.gc.type.value.Task<i32>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 6, i32 8, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Task<i32>", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.arc<MutexState<Counter>>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 7, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.bool" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 8, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.bool" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 7, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.chan<i32>" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.chan<i32>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 9, i32 8, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.chan<i32>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.chan<i32>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 8, i32 8, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.chan<i32>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.func()" = private constant [1 x i32] [i32 8]
-@"willrt.gc.type.value.func()" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 10, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.func()", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 11, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.i64" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 12, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.raw" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 13, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.func()" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 9, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.func()", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 10, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.i64" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 11, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.raw" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 12, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.str" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 14, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 15, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.usize" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 16, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 13, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 14, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.usize" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 15, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 declare i32 @willrt_gc_register_type(ptr)
 define internal void @willrt.gc.register_types() {
 entry:
@@ -4130,9 +4129,8 @@ entry:
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.()")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Error")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<(),Error>")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<Permit,Error>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<std/sync.Permit,Error>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Task<i32>")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.arc<MutexState<Counter>>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.bool")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.chan<i32>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.func()")
@@ -4151,5 +4149,5 @@ entry:
 @"willrt.gc.stack.std/sync.Once.do.sm" = private constant %willrt_gc_stack_map_data { ptr @"std/sync.Once.do.sm", ptr @"willrt.gc.stack.slots.std/sync.Once.do.sm", i64 2 }
 @"willrt.gc.stack.slots.example.com/concurrency/syncmutex.wait_for.sm" = private constant [1 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 48, i32 1, ptr null }]
 @"willrt.gc.stack.example.com/concurrency/syncmutex.wait_for.sm" = private constant %willrt_gc_stack_map_data { ptr @"example.com/concurrency/syncmutex.wait_for.sm", ptr @"willrt.gc.stack.slots.example.com/concurrency/syncmutex.wait_for.sm", i64 1 }
-@"willrt.gc.stack.slots.example.com/concurrency/syncmutex.will$main.sm" = private constant [4 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 256, i32 1, ptr null }, %willrt_gc_stack_slot { i32 248, i32 1, ptr null }, %willrt_gc_stack_slot { i32 272, i32 1, ptr null }, %willrt_gc_stack_slot { i32 264, i32 1, ptr null }]
+@"willrt.gc.stack.slots.example.com/concurrency/syncmutex.will$main.sm" = private constant [4 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 248, i32 1, ptr null }, %willrt_gc_stack_slot { i32 256, i32 1, ptr null }, %willrt_gc_stack_slot { i32 264, i32 1, ptr null }, %willrt_gc_stack_slot { i32 272, i32 1, ptr null }]
 @"willrt.gc.stack.example.com/concurrency/syncmutex.will$main.sm" = private constant %willrt_gc_stack_map_data { ptr @"example.com/concurrency/syncmutex.will$main.sm", ptr @"willrt.gc.stack.slots.example.com/concurrency/syncmutex.will$main.sm", i64 4 }

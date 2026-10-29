@@ -354,7 +354,12 @@ func (g *generator) refreshInlineRoots() {
 	if g.gcProgram == nil || len(g.gcInlineRoots) == 0 {
 		return
 	}
+	decls := make([]int, 0, len(g.gcInlineRoots))
 	for decl := range g.gcInlineRoots {
+		decls = append(decls, decl)
+	}
+	sort.Ints(decls)
+	for _, decl := range decls {
 		g.refreshInlineRoot(decl)
 	}
 }
@@ -418,7 +423,7 @@ func (g *generator) initIndirectRoots() {
 func (g *generator) prepareGeneralInlineRoots(fnID int) {
 	g.gcInlineRoots = map[int][]string{}
 	g.gcInlineReady = map[int]bool{}
-	for _, r := range g.recs {
+	for _, r := range sortedRecords(g.recs) {
 		if r.Kind != "param" && r.Kind != "receiver" && r.Kind != "var" {
 			continue
 		}
@@ -452,7 +457,7 @@ func (g *generator) prepareGeneralInlineRoots(fnID int) {
 func (g *generator) generalGCSlots(fnID int, offsets map[string]int) ([]int, []string) {
 	var slots []int
 	var texts []string
-	for _, r := range g.recs {
+	for _, r := range sortedRecords(g.recs) {
 		if r.Kind != "param" && r.Kind != "receiver" && r.Kind != "var" && r.Kind != "new" {
 			continue
 		}
@@ -1100,6 +1105,14 @@ func (g *generator) classPointerValue(id int) (string, error) {
 	g.needGCDecl = true
 	if r.Kind == "name" {
 		decl := refField(r, "to")
+		// The frame root is the authoritative copy: a collection updates the
+		// root array but not the duplicate local or SSA parameter. Reading the
+		// root keeps a class value valid after every cycle.
+		if root := g.gcRootSlots[decl]; root != "" {
+			out := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier_slot(ptr %s)\n", out, root)
+			return out, nil
+		}
 		if slot := g.captureFields[decl]; slot != "" {
 			out := g.newTmp()
 			fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier_slot(ptr %s)\n", out, slot)

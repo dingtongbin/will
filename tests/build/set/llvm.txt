@@ -20,6 +20,9 @@ entry:
   store ptr %t4, ptr %t2
   %v.$idx = alloca i64
   %v.v = alloca i32
+  %t135 = alloca i64
+  %t158 = alloca i64
+  %t211 = alloca i64
   %t5 = icmp eq i64 0, 0
   br i1 %t5, label %seq.zero.1, label %seq.alloc.1
 seq.zero.1:
@@ -321,7 +324,6 @@ if.then.11:
   %t132 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 1
   %t133 = call ptr @willrt_gc_read_barrier_slot(ptr %t131)
   %t134 = load i64, ptr %t132
-  %t135 = alloca i64
   store i64 0, ptr %t135
   br label %deep.rel.map.cond.16
 deep.rel.map.cond.16:
@@ -374,7 +376,6 @@ if.then.17:
   %t155 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 1
   %t156 = call ptr @willrt_gc_read_barrier_slot(ptr %t154)
   %t157 = load i64, ptr %t155
-  %t158 = alloca i64
   store i64 0, ptr %t158
   br label %deep.rel.map.cond.19
 deep.rel.map.cond.19:
@@ -493,7 +494,6 @@ if.end.22:
   %t208 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.s, i32 0, i32 1
   %t209 = call ptr @willrt_gc_read_barrier_slot(ptr %t207)
   %t210 = load i64, ptr %t208
-  %t211 = alloca i64
   store i64 0, ptr %t211
   br label %deep.rel.map.cond.26
 deep.rel.map.cond.26:

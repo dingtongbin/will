@@ -93,6 +93,7 @@ entry:
   %v.ret.69 = alloca { i32, i32 }
   %v.adt.72 = alloca { i32, i32 }
   %v.try.68 = alloca { i32, i32 }
+  %v.try.out.68 = alloca i32
   %t29 = call { i32, i32 } @"example.com/adt.divide"(i32 %x)
   store { i32, i32 } %t29, ptr %v.ret.69
   %t30 = getelementptr inbounds { i32, i32 }, ptr %v.ret.69, i32 0, i32 0
@@ -111,7 +112,6 @@ try.err.1:
   unreachable
 try.ok.1:
   %t38 = getelementptr inbounds { i32, i32 }, ptr %v.ret.69, i32 0, i32 1
-  %v.try.out.68 = alloca i32
   store i32 0, ptr %v.try.out.68
   %t39 = load i32, ptr %t38
   store i32 %t39, ptr %v.try.out.68

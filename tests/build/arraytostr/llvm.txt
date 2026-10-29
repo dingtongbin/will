@@ -23,6 +23,7 @@ entry:
   store ptr %t6, ptr %t3
   %v.str.29 = alloca { ptr, i64 }
   %v.cast.22 = alloca { ptr, i64 }
+  %t61 = alloca i64
   %t7 = call ptr @willrt_gc_alloc(i64 2, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   %t8 = call ptr @willrt_gc_pin(ptr %t7)
   %t9 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 0
@@ -115,7 +116,6 @@ panic.ok.4:
   %t58 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
   %t59 = call ptr @willrt_gc_read_barrier_slot(ptr %t57)
   %t60 = load i64, ptr %t58
-  %t61 = alloca i64
   store i64 0, ptr %t61
   br label %deep.rel.arr.cond.5
 deep.rel.arr.cond.5:

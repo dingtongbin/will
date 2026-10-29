@@ -113,7 +113,7 @@ func (g *generator) selectMachine(fnID int) (*selectMachineInfo, bool) {
 		}
 		fields = append(fields, f)
 	}
-	for _, r := range g.recs {
+	for _, r := range sortedRecords(g.recs) {
 		if r.Kind != "new" || !g.isClassText(fieldText(r, "type")) {
 			continue
 		}

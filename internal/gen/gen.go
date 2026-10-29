@@ -820,7 +820,7 @@ type generator struct {
 	adtSlots map[int]string
 	// newSlots maps a new expression to the slot of the value it returns, and
 	// newStoreSlots holds the object storage when init returns a Result.
-	newSlots map[int]string
+	newSlots      map[int]string
 	newStoreSlots map[int]string
 	// strSlots maps a str or bytes literal to the two-word value built for it,
 	// and byteGlobals shares identical literal data.
@@ -1013,35 +1013,35 @@ type generator struct {
 	laneIndex    map[string]int32
 	// spawnNames names the step function of every spawn expression, and
 	// pendingSpawns holds the steps this document still has to write.
-	spawnNames     map[int]string
-	spawnSeq       int
-	pendingSpawns  []spawnRequest
-	pendingGeneral []int
-	pendingAsync   []*asyncMachineInfo
-	pendingSelect  []*selectMachineInfo
-	spawnEmitted   map[string]bool
-	spawnDropped   map[string]bool
-	gcProgram      *gcmeta.Program
-	gcFrames       []gcFrameInfo
-	gcTaskFrames   []gcFrameInfo
-	gcDecisions    []decisions.Record
-	gcGlobalRoots  []gcGlobalRoot
-	gcRootSlots     map[int]string
+	spawnNames        map[int]string
+	spawnSeq          int
+	pendingSpawns     []spawnRequest
+	pendingGeneral    []int
+	pendingAsync      []*asyncMachineInfo
+	pendingSelect     []*selectMachineInfo
+	spawnEmitted      map[string]bool
+	spawnDropped      map[string]bool
+	gcProgram         *gcmeta.Program
+	gcFrames          []gcFrameInfo
+	gcTaskFrames      []gcFrameInfo
+	gcDecisions       []decisions.Record
+	gcGlobalRoots     []gcGlobalRoot
+	gcRootSlots       map[int]string
 	gcInlineRoots     map[int][]string
 	gcIndirectRoots   map[int][]string
 	gcInlineRootTypes map[int]string
 	gcInlineReady     map[int]bool
-	gcInlineTypes  map[string]*gcmeta.Type
-	gcFrameSlot    string
-	gcFrameMap     string
-	gcFrameActive  bool
-	gcGlobalInit   bool
-	needGCMeta     bool
-	allowVoidValue bool
-	ifaceThunks    []ifaceThunk
-	ifaceThunkSeen map[string]bool
-	chanDrops      []chanDrop
-	chanDropDone   map[string]bool
+	gcInlineTypes     map[string]*gcmeta.Type
+	gcFrameSlot       string
+	gcFrameMap        string
+	gcFrameActive     bool
+	gcGlobalInit      bool
+	needGCMeta        bool
+	allowVoidValue    bool
+	ifaceThunks       []ifaceThunk
+	ifaceThunkSeen    map[string]bool
+	chanDrops         []chanDrop
+	chanDropDone      map[string]bool
 	// The slots below keep a loop from growing the stack on every evaluation
 	// of a join, receive, or send.
 	joinOutSlots map[int]string
@@ -2977,7 +2977,7 @@ func (g *generator) assignStmt(r willc.Record) error {
 			return err
 		}
 		tmp := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = alloca %s\n", tmp, iface.llvm)
+		g.tempAlloca(tmp, iface.llvm)
 		if _, err := g.ifaceStoreValue(tmp, valueID, iface, valueText); err != nil {
 			return err
 		}
@@ -4234,11 +4234,12 @@ func (g *generator) value(id int) (string, error) {
 
 const entryAllocaMarker = ";__will_entry_allocas__"
 
-// allocSlot returns the slot of one record, allocating it in the current block
+// allocSlot returns the slot of one record, allocating it in the entry block
 // when the function prepass did not run for it. The prepass covers the records
 // inside a function; a top-level initializer is lowered outside one, so its
 // slots are made at the point of use. Inside a function the late line is held
-// for the entry marker, so a loop never executes an alloca.
+// for the entry marker, so a loop never executes an alloca and the entry block
+// dominates every use.
 func (g *generator) allocSlot(slots map[int]string, prefix string, id int, llvm string) string {
 	if slot := slots[id]; slot != "" {
 		return slot
@@ -4246,10 +4247,7 @@ func (g *generator) allocSlot(slots map[int]string, prefix string, id int, llvm 
 	slot := "%v." + prefix + "." + strconv.Itoa(id)
 	slots[id] = slot
 	line := fmt.Sprintf("  %s = alloca %s", slot, llvm)
-	// A string result slot can be discovered while lowering a container
-	// operation inside a branch. Moving it to the entry block keeps a later use
-	// dominated by the allocation.
-	if g.lateAllowed && (prefix == "ret" || prefix == "strm") {
+	if g.lateAllowed {
 		g.lateAllocas = append(g.lateAllocas, line)
 	} else {
 		g.out.WriteString(line + "\n")
@@ -4267,6 +4265,13 @@ func (g *generator) entryAlloca(line string) {
 		return
 	}
 	g.out.WriteString(line + "\n")
+}
+
+// tempAlloca emits one temporary slot of the expression being lowered. It uses
+// the entry-block path so an expression evaluated in a loop does not grow the
+// stack on every iteration.
+func (g *generator) tempAlloca(name, typ string) {
+	g.entryAlloca(fmt.Sprintf("  %s = alloca %s", name, typ))
 }
 
 // flushLateAllocas replaces the entry marker with the slots requested while
