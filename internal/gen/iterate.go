@@ -191,6 +191,11 @@ func (g *generator) sliceElem(r willc.Record) (string, error) {
 // bounds are the usize values the index expression yields; a bound check needs
 // the runtime panic and is not emitted yet.
 func (g *generator) sliceValue(r willc.Record) (string, error) {
+	if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+		if elem, ok := listElemText(stripPredeclaredPackage(recvText)); ok {
+			return g.listSliceSlot(r, elem)
+		}
+	}
 	elem, err := g.sliceElem(r)
 	if err != nil {
 		return "", err

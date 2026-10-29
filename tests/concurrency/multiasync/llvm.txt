@@ -5435,8 +5435,8 @@ if.end.11:
 }
 define hidden { ptr, i64 } @"std/time.rfc3339_body"(ptr %t, i64 %frac) inlinehint {
 entry:
-  %v.local = alloca i64
-  %v.date = alloca %"struct.std/time.civilDate"
+  %v.localSecs = alloca i64
+  %v.civil = alloca %"struct.std/time.civilDate"
   %v.tod = alloca %"struct.std/time.clockTime"
   %v.left = alloca { ptr, i64 }
   %v.right = alloca { ptr, i64 }
@@ -5479,22 +5479,22 @@ entry:
   %v.cat.432 = alloca { ptr, i64 }
   call void @willrt_gc_safepoint(i32 3)
   %t541 = call i64 @"std/time.local_seconds"(ptr %t)
-  store i64 %t541, ptr %v.local
-  %t542 = load i64, ptr %v.local
+  store i64 %t541, ptr %v.localSecs
+  %t542 = load i64, ptr %v.localSecs
   call void @willrt_gc_safepoint(i32 3)
   %t543 = call i64 @"std/time.days_of"(i64 %t542)
   call void @willrt_gc_safepoint(i32 3)
   %t544 = call %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %t543)
   store %"struct.std/time.civilDate" %t544, ptr %v.ret.362
   %t545 = load %"struct.std/time.civilDate", ptr %v.ret.362
-  store %"struct.std/time.civilDate" %t545, ptr %v.date
-  %t546 = load i64, ptr %v.local
+  store %"struct.std/time.civilDate" %t545, ptr %v.civil
+  %t546 = load i64, ptr %v.localSecs
   call void @willrt_gc_safepoint(i32 3)
   %t547 = call %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %t546)
   store %"struct.std/time.clockTime" %t547, ptr %v.ret.367
   %t548 = load %"struct.std/time.clockTime", ptr %v.ret.367
   store %"struct.std/time.clockTime" %t548, ptr %v.tod
-  %t549 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 0
+  %t549 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.civil, i32 0, i32 0
   %t550 = load i32, ptr %t549
   call void @willrt_gc_safepoint(i32 3)
   %t551 = call { ptr, i64 } @"std/time.pad_year"(i32 %t550)
@@ -5532,7 +5532,7 @@ cat.ready.1:
   %t570 = load ptr, ptr %t569
   %t571 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.374, i32 0, i32 1
   %t572 = load i64, ptr %t571
-  %t573 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 1
+  %t573 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.civil, i32 0, i32 1
   %t574 = load i32, ptr %t573
   %t575 = sext i32 %t574 to i64
   call void @willrt_gc_safepoint(i32 3)
@@ -5592,7 +5592,7 @@ cat.ready.3:
   %t606 = load ptr, ptr %t605
   %t607 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.372, i32 0, i32 1
   %t608 = load i64, ptr %t607
-  %t609 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 2
+  %t609 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.civil, i32 0, i32 2
   %t610 = load i32, ptr %t609
   %t611 = sext i32 %t610 to i64
   call void @willrt_gc_safepoint(i32 3)
@@ -5994,7 +5994,7 @@ cat.ready.1:
 define hidden { ptr, i64 } @"std/time.rfc1123"(ptr %t) inlinehint {
 entry:
   %v.secs = alloca i64
-  %v.date = alloca %"struct.std/time.civilDate"
+  %v.civil = alloca %"struct.std/time.civilDate"
   %v.tod = alloca %"struct.std/time.clockTime"
   %v.left = alloca { ptr, i64 }
   %v.middle = alloca { ptr, i64 }
@@ -6053,7 +6053,7 @@ entry:
   %t845 = call %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %t844)
   store %"struct.std/time.civilDate" %t845, ptr %v.ret.490
   %t846 = load %"struct.std/time.civilDate", ptr %v.ret.490
-  store %"struct.std/time.civilDate" %t846, ptr %v.date
+  store %"struct.std/time.civilDate" %t846, ptr %v.civil
   %t847 = load i64, ptr %v.secs
   call void @willrt_gc_safepoint(i32 3)
   %t848 = call %"struct.std/time.clockTime" @"std/time.time_of_day"(i64 %t847)
@@ -6101,7 +6101,7 @@ cat.ready.1:
   %t872 = load ptr, ptr %t871
   %t873 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.500, i32 0, i32 1
   %t874 = load i64, ptr %t873
-  %t875 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 2
+  %t875 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.civil, i32 0, i32 2
   %t876 = load i32, ptr %t875
   %t877 = sext i32 %t876 to i64
   call void @willrt_gc_safepoint(i32 3)
@@ -6134,7 +6134,7 @@ cat.ready.2:
   call void @willrt_gc_write_barrier_untagged(ptr %t890, ptr %t892)
   %t893 = load { ptr, i64 }, ptr %v.cat.499
   store { ptr, i64 } %t893, ptr %v.left
-  %t894 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 1
+  %t894 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.civil, i32 0, i32 1
   %t895 = load i32, ptr %t894
   call void @willrt_gc_safepoint(i32 3)
   %t896 = call { ptr, i64 } @"std/time.month_name"(i32 %t895)
@@ -6172,7 +6172,7 @@ cat.ready.3:
   %t915 = load ptr, ptr %t914
   %t916 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.514, i32 0, i32 1
   %t917 = load i64, ptr %t916
-  %t918 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 0
+  %t918 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.civil, i32 0, i32 0
   %t919 = load i32, ptr %t918
   call void @willrt_gc_safepoint(i32 3)
   %t920 = call { ptr, i64 } @"std/time.pad_year"(i32 %t919)
@@ -6488,7 +6488,7 @@ cat.ready.13:
 }
 define hidden { ptr, i64 } @"std/time.date"(ptr %t) inlinehint {
 entry:
-  %v.date = alloca %"struct.std/time.civilDate"
+  %v.civil = alloca %"struct.std/time.civilDate"
   %v.ret.569 = alloca %"struct.std/time.civilDate"
   %v.ret.579 = alloca { ptr, i64 }
   %v.ret.583 = alloca { ptr, i64 }
@@ -6507,8 +6507,8 @@ entry:
   %t1106 = call %"struct.std/time.civilDate" @"std/time.civil_from_days"(i64 %t1105)
   store %"struct.std/time.civilDate" %t1106, ptr %v.ret.569
   %t1107 = load %"struct.std/time.civilDate", ptr %v.ret.569
-  store %"struct.std/time.civilDate" %t1107, ptr %v.date
-  %t1108 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 0
+  store %"struct.std/time.civilDate" %t1107, ptr %v.civil
+  %t1108 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.civil, i32 0, i32 0
   %t1109 = load i32, ptr %t1108
   call void @willrt_gc_safepoint(i32 3)
   %t1110 = call { ptr, i64 } @"std/time.pad_year"(i32 %t1109)
@@ -6546,7 +6546,7 @@ cat.ready.1:
   %t1129 = load ptr, ptr %t1128
   %t1130 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.578, i32 0, i32 1
   %t1131 = load i64, ptr %t1130
-  %t1132 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 1
+  %t1132 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.civil, i32 0, i32 1
   %t1133 = load i32, ptr %t1132
   %t1134 = sext i32 %t1133 to i64
   call void @willrt_gc_safepoint(i32 3)
@@ -6606,7 +6606,7 @@ cat.ready.3:
   %t1165 = load ptr, ptr %t1164
   %t1166 = getelementptr inbounds { ptr, i64 }, ptr %v.cat.576, i32 0, i32 1
   %t1167 = load i64, ptr %t1166
-  %t1168 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.date, i32 0, i32 2
+  %t1168 = getelementptr inbounds %"struct.std/time.civilDate", ptr %v.civil, i32 0, i32 2
   %t1169 = load i32, ptr %t1168
   %t1170 = sext i32 %t1169 to i64
   call void @willrt_gc_safepoint(i32 3)

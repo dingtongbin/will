@@ -442,3 +442,75 @@ func (g *generator) listPop(r willc.Record, elem, recvText string) (string, stri
 }
 
 // listPushValue appends one lowered value, growing the sequence when full.
+
+// listSliceSlot lowers xs[lo:hi] for a list into its two-word view slot.
+func (g *generator) listSliceSlot(r willc.Record, elem string) (string, error) {
+	recvID := refField(r, "recv")
+	recvText, err := g.willTypeText(recvID)
+	if err != nil {
+		return "", err
+	}
+	recvText = stripPredeclaredPackage(recvText)
+	object, err := g.classPointerValue(recvID)
+	if err != nil {
+		return "", err
+	}
+	payload, ok := g.listPayloadText(recvText)
+	if !ok {
+		return "", g.errf(r.ID, "cannot translate node #%d: no payload for %s", r.ID, recvText)
+	}
+	object = g.pinObjectValue(object)
+	defer g.unpinContainer(object)
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
+		return "", g.errf(r.ID, "cannot translate node #%d: list element %s is not lowered yet", r.ID, elem)
+	}
+	length := g.load("i64", g.listField(object, payload, 1))
+	loID, hiID := refField(r, "lo"), refField(r, "hi")
+	lo := "0"
+	if loID != 0 {
+		if t, err := g.typeOf(loID); err != nil {
+			return "", err
+		} else if t != "i64" {
+			return "", g.errf(r.ID, "cannot translate node #%d: a slice bound must be a usize", r.ID)
+		}
+		lo, err = g.value(loID)
+		if err != nil {
+			return "", err
+		}
+	}
+	hi := length
+	if hiID != 0 {
+		if t, err := g.typeOf(hiID); err != nil {
+			return "", err
+		} else if t != "i64" {
+			return "", g.errf(r.ID, "cannot translate node #%d: a slice bound must be a usize", r.ID)
+		}
+		hi, err = g.value(hiID)
+		if err != nil {
+			return "", err
+		}
+	}
+	badOrder := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ugt i64 %s, %s\n", badOrder, lo, hi)
+	g.panicCheck(badOrder, panicSlice, r)
+	badHi := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ugt i64 %s, %s\n", badHi, hi, length)
+	g.panicCheck(badHi, panicSlice, r)
+	data := g.loadContainerData(g.listField(object, payload, 0))
+	viewData := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n",
+		viewData, elemLLVM, data, lo)
+	viewLen := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = sub i64 %s, %s\n", viewLen, hi, lo)
+	slot := g.allocSlot(g.sliceSlots, "slice", r.ID, "{ ptr, i64 }")
+	dataField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 0\n",
+		dataField, slot)
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", viewData, dataField)
+	lenField := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n",
+		lenField, slot)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", viewLen, lenField)
+	return slot, nil
+}

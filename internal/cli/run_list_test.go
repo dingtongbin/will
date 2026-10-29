@@ -72,3 +72,26 @@ func TestRunListForcedCycles(t *testing.T) {
 		t.Fatalf("run: code = %d, stdout = %q, stderr = %q", code, out, errOut)
 	}
 }
+
+// TestRunListSliceSyntax checks the xs[lo:hi] and xs[lo:] forms.
+func TestRunListSliceSyntax(t *testing.T) {
+	src := `def main() -> i32 {
+    var xs: list[i32] = list[i32](4)
+    xs.push(1)
+    xs.push(2)
+    xs.push(3)
+    xs.push(4)
+    var mid: []i32 = xs[1usize:3usize]
+    var tail: []i32 = xs[2usize:]
+    if len(mid) != 2 || len(tail) != 2 {
+        return 1
+    }
+    return mid[0usize] + tail[0usize]
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 5 {
+		t.Fatalf("run: code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+}
