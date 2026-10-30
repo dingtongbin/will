@@ -9,6 +9,7 @@ import (
 // prepareContainerLoop allocates the index and binding slots of a loop over a
 // Map or a Set. It reports whether the iterator is such a container.
 func (g *generator) prepareContainerLoop(r willc.Record, text string) bool {
+	text = normalizeContainerText(text)
 	if k, v, ok := mapTypeText(text); ok {
 		kt, ok := g.typeLLVMOf(k)
 		if !ok {
@@ -80,9 +81,24 @@ func (g *generator) prepareContainerLoop(r willc.Record, text string) bool {
 
 // forMap lowers `for k, v in m` and `for v in m`.
 func (g *generator) forMap(r willc.Record, k, v string, void bool, label int) (bool, error) {
-	base, baseType, err := g.place(refField(r, "iter"))
+	iterText, err := g.willTypeText(refField(r, "iter"))
 	if err != nil {
 		return false, err
+	}
+	var base, baseType string
+	if isFinalContainerText(stripPredeclaredPackage(iterText)) {
+		object, err := g.classPointerValue(refField(r, "iter"))
+		if err != nil {
+			return false, err
+		}
+		object = g.pinObjectValue(object)
+		defer g.unpinContainer(object)
+		base, baseType = object, "{ ptr, i64, i64 }"
+	} else {
+		base, baseType, err = g.place(refField(r, "iter"))
+		if err != nil {
+			return false, err
+		}
 	}
 	if baseType != "{ ptr, i64, i64 }" {
 		return false, g.errf(r.ID, "cannot translate node #%d: the loop needs a Map", r.ID)
@@ -155,9 +171,24 @@ func (g *generator) forMap(r willc.Record, k, v string, void bool, label int) (b
 
 // forSet lowers `for v in s` and `for i, v in s`.
 func (g *generator) forSet(r willc.Record, elem string, void bool, label int) (bool, error) {
-	base, baseType, err := g.place(refField(r, "iter"))
+	iterText, err := g.willTypeText(refField(r, "iter"))
 	if err != nil {
 		return false, err
+	}
+	var base, baseType string
+	if isFinalContainerText(stripPredeclaredPackage(iterText)) {
+		object, err := g.classPointerValue(refField(r, "iter"))
+		if err != nil {
+			return false, err
+		}
+		object = g.pinObjectValue(object)
+		defer g.unpinContainer(object)
+		base, baseType = object, "{ ptr, i64, i64 }"
+	} else {
+		base, baseType, err = g.place(refField(r, "iter"))
+		if err != nil {
+			return false, err
+		}
 	}
 	if baseType != "{ ptr, i64, i64 }" {
 		return false, g.errf(r.ID, "cannot translate node #%d: the loop needs a Set", r.ID)

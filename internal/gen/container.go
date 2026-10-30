@@ -15,38 +15,52 @@ func isFinalContainerText(text string) bool {
 		strings.HasPrefix(text, "set[")
 }
 
-// mapTypeText splits Map<K,V> or dict[K,V] into its key and value types.
+// mapTypeText splits the old Map<K,V> handle into its key and value types.
 func mapTypeText(text string) (k, v string, ok bool) {
 	name, args, ok := splitGenericType(text)
-	if !ok || (name != "Map" && name != "dict") || len(args) != 2 {
+	if !ok || name != "Map" || len(args) != 2 {
 		return "", "", false
 	}
 	return args[0], args[1], true
 }
 
-// setTypeText splits Set<T> or set[T] into its element type.
+// setTypeText splits the old Set<T> handle into its element type.
 func setTypeText(text string) (elem string, ok bool) {
 	name, args, ok := splitGenericType(text)
-	if !ok || (name != "Set" && name != "set") || len(args) != 1 {
+	if !ok || name != "Set" || len(args) != 1 {
 		return "", false
 	}
 	return args[0], true
 }
 
-// dictTypeText reports the key and value of a final dict type.
+// dictTypeText splits dict[K,V] into its key and value types.
 func dictTypeText(text string) (k, v string, ok bool) {
-	if !strings.HasPrefix(text, "dict[") {
+	name, args, ok := splitGenericType(text)
+	if !ok || name != "dict" || len(args) != 2 {
 		return "", "", false
 	}
-	return mapTypeText(text)
+	return args[0], args[1], true
 }
 
-// finalSetTypeText reports the element of a final set type.
+// finalSetTypeText splits set[T] into its element type.
 func finalSetTypeText(text string) (elem string, ok bool) {
-	if !strings.HasPrefix(text, "set[") {
+	name, args, ok := splitGenericType(text)
+	if !ok || name != "set" || len(args) != 1 {
 		return "", false
 	}
-	return setTypeText(text)
+	return args[0], true
+}
+
+// normalizeContainerText maps a final container type to the old handle
+// spelling, which the shared entry logic understands.
+func normalizeContainerText(text string) string {
+	if k, v, ok := dictTypeText(text); ok {
+		return "Map<" + k + "," + v + ">"
+	}
+	if elem, ok := finalSetTypeText(text); ok {
+		return "Set<" + elem + ">"
+	}
+	return text
 }
 
 // mapEntryLLVM is the LLVM type of one Map entry.
@@ -146,6 +160,13 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 		return "", "", false
 	}
 	recvText = stripPredeclaredPackage(recvText)
+	isDictRecv := false
+	if k, v, ok := dictTypeText(recvText); ok {
+		recvText = "Map<" + k + "," + v + ">"
+		isDictRecv = true
+	} else if elem, ok := finalSetTypeText(recvText); ok {
+		recvText = "Set<" + elem + ">"
+	}
 	name := fieldText(r, "text")
 	if k, v, ok := mapTypeText(recvText); ok {
 		switch name {
@@ -162,7 +183,7 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 		case "set", "clear", "each":
 			return "", "", true
 		case "keys":
-			if _, _, isDict := dictTypeText(recvText); isDict {
+			if isDictRecv {
 				return "ptr", "list[" + k + "]", true
 			}
 			if _, ok := g.containerValueType(k); !ok {
@@ -170,7 +191,7 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 			}
 			return "{ ptr, i64, i64 }", "Array<" + k + ">", true
 		case "values":
-			if _, _, isDict := dictTypeText(recvText); isDict {
+			if isDictRecv {
 				return "ptr", "list[" + v + "]", true
 			}
 			if _, ok := g.containerValueType(v); !ok {
@@ -227,6 +248,13 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 	}
 	if err != nil {
 		return "", "", err
+	}
+	isDictRecv := false
+	if k, v, ok := dictTypeText(recvText); ok {
+		recvText = "Map<" + k + "," + v + ">"
+		isDictRecv = true
+	} else if elem, ok := finalSetTypeText(recvText); ok {
+		recvText = "Set<" + elem + ">"
 	}
 	if baseType != "{ ptr, i64, i64 }" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the receiver is not a container", r.ID)
@@ -305,7 +333,7 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 				field = 1
 				elemText = v
 			}
-			if _, _, isDict := dictTypeText(recvText); isDict {
+			if isDictRecv {
 				return g.mapList(r, entry, data, length, field, elemText)
 			}
 			return g.mapArray(r, entry, entrySize, data, length, field, elemText)
