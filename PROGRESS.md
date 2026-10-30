@@ -638,3 +638,25 @@ Evidence commands:
   instances do not substitute type parameters inside nested generic
   constructions. This is P1-1's remaining half before std/sync can move to
   class Mutex.
+## Generic class init prototype lowered (round 38 finding)
+
+- `emit-willc build/probegenclass2/main.will` shows the `new` record as
+  `type="Box<T>"`; `initDeclForNew` correctly collects the class type
+  parameters and `planInitInstances` clones an init instance with them.
+- The error `type T is not lowered` therefore means the **prototype**
+  `Holder<T>.init` is being lowered as well: `hasTypeParams(init)` is false
+  because the type parameter belongs to the class, and `genericMethodDecl`
+  apparently does not recognize the `mut Holder<T>` receiver. The skip in
+  `funcDecl` (gen.go:1274) must treat a method of a generic class as
+  prototype-only.
+- Next: fix that recognition, then re-run the probe and the cold gate.
+## Generic class nested construction fixed (round 39)
+
+- `planInitInstances` cloned an init instance for `new Box<T>(value)` inside
+  the generic declaration (type argument still T), which failed with
+  `type T is not lowered`. Constructions whose argument is a declaration type
+  parameter are skipped; the concrete Holder<i32>.init instance still clones.
+- Probe `build/probegenclass2` returns 9; cold-cache `gate -full` is green.
+- The generic-class surface (`class Box<T>`, borrowed generic fields, nested
+  generic construction) is now usable, which unblocks migrating std/sync from
+  struct+arc to class Mutex/RwLock (P1-9).
