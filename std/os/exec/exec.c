@@ -323,6 +323,102 @@ static int32_t exec_status_code(int status, exec_status* out) {
     return 0;
 }
 
+typedef struct exec_owned {
+    exec_str path;
+    exec_str dir;
+    exec_str* args;
+    int64_t nargs;
+    exec_str* env;
+    int64_t nenv;
+    void* out;
+    void* err;
+    void* status;
+} exec_owned;
+
+static void exec_owned_free(exec_owned* owned) {
+    int64_t i;
+
+    willrt_free((void*)owned->path.data);
+    willrt_free((void*)owned->dir.data);
+    for (i = 0; i < owned->nargs; i++) {
+        willrt_free((void*)owned->args[i].data);
+    }
+    for (i = 0; i < owned->nenv; i++) {
+        willrt_free((void*)owned->env[i].data);
+    }
+    willrt_free(owned->args);
+    willrt_free(owned->env);
+    memset(owned, 0, sizeof(*owned));
+}
+
+static exec_str exec_owned_str(const exec_str* src) {
+    exec_str out = {NULL, 0};
+    char* text;
+
+    if (src == NULL || src->len < 0) {
+        return out;
+    }
+    text = exec_copy(src);
+    if (text == NULL) {
+        return out;
+    }
+    out.data = (const unsigned char*)text;
+    out.len = src->len;
+    return out;
+}
+
+/* exec_owned_copy moves the argument and environment vectors into C memory
+   before the blocking thread reads them. The will side may release or move a
+   GC object once the call returns, so the worker must not touch will memory. */
+static int exec_owned_copy(const exec_str* path, const exec_view* args,
+                           const exec_view* env, const exec_str* dir,
+                           exec_owned* out) {
+    int64_t i;
+
+    memset(out, 0, sizeof(*out));
+    out->path = exec_owned_str(path);
+    if (path != NULL && path->len >= 0 && out->path.data == NULL) {
+        exec_owned_free(out);
+        return 1;
+    }
+    out->dir = exec_owned_str(dir);
+    if (dir != NULL && dir->len > 0 && out->dir.data == NULL) {
+        exec_owned_free(out);
+        return 1;
+    }
+    if (args != NULL && args->len > 0) {
+        out->args = (exec_str*)willrt_alloc(sizeof(exec_str) * (size_t)args->len);
+        if (out->args == NULL) {
+            exec_owned_free(out);
+            return 1;
+        }
+        out->nargs = args->len;
+        for (i = 0; i < args->len; i++) {
+            out->args[i] = exec_owned_str(&args->data[i]);
+            if (out->args[i].data == NULL && args->data[i].len != 0) {
+                exec_owned_free(out);
+                return 1;
+            }
+        }
+    }
+    if (env != NULL && env->len > 0) {
+        out->env = (exec_str*)willrt_alloc(sizeof(exec_str) * (size_t)env->len);
+        if (out->env == NULL) {
+            exec_owned_free(out);
+            return 1;
+        }
+        out->nenv = env->len;
+        for (i = 0; i < env->len; i++) {
+            out->env[i] = exec_owned_str(&env->data[i]);
+            if (out->env[i].data == NULL && env->data[i].len != 0) {
+                exec_owned_free(out);
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 typedef struct exec_async_run {
     const void* path;
     const void* args;
@@ -350,17 +446,29 @@ int32_t willrt_exec_output(const void* path_raw, const void* args_raw,
                            void* out_raw, void* err_raw, void* status_raw);
 
 static int32_t exec_async_run_worker(void* raw, void* ignored) {
-    exec_async_run* arg = (exec_async_run*)raw;
+    exec_owned* owned = (exec_owned*)raw;
+    exec_view args = {owned->args, owned->nargs, owned->nargs};
+    exec_view env = {owned->env, owned->nenv, owned->nenv};
+    int32_t result;
+
     (void)ignored;
-    return willrt_exec_run(arg->path, arg->args, arg->env, arg->dir,
-                           arg->status);
+    result = willrt_exec_run(&owned->path, &args, &env, &owned->dir,
+                             owned->status);
+    exec_owned_free(owned);
+    return result;
 }
 
 static int32_t exec_async_output_worker(void* raw, void* ignored) {
-    exec_async_output* arg = (exec_async_output*)raw;
+    exec_owned* owned = (exec_owned*)raw;
+    exec_view args = {owned->args, owned->nargs, owned->nargs};
+    exec_view env = {owned->env, owned->nenv, owned->nenv};
+    int32_t result;
+
     (void)ignored;
-    return willrt_exec_output(arg->path, arg->args, arg->env, arg->dir,
-                              arg->out, arg->err, arg->status);
+    result = willrt_exec_output(&owned->path, &args, &env, &owned->dir,
+                                owned->out, owned->err, owned->status);
+    exec_owned_free(owned);
+    return result;
 }
 
 /* exec_async_wait is the machine-declined fallback: a call the async lowering
@@ -378,34 +486,78 @@ static int32_t exec_async_wait(void* fn, void* arg) {
 int32_t willrt_exec_run_async(const void* path_raw, const void* args_raw,
                               const void* env_raw, const void* dir_raw,
                               void* status_raw) {
-    exec_async_run arg = {path_raw, args_raw, env_raw, dir_raw, status_raw};
-    return exec_async_wait(exec_async_run_worker, &arg);
+    exec_owned owned;
+    willrt_blocking_op* op;
+
+    if (exec_owned_copy((const exec_str*)path_raw, (const exec_view*)args_raw,
+                        (const exec_view*)env_raw, (const exec_str*)dir_raw,
+                        &owned) != 0) {
+        return 1;
+    }
+    owned.status = status_raw;
+    op = willrt_blocking_submit_copy(exec_async_run_worker, &owned,
+                                     sizeof(owned), NULL);
+    if (op == NULL) {
+        exec_owned_free(&owned);
+        return 1;
+    }
+    return willrt_blocking_wait(op);
 }
 
 int32_t willrt_exec_output_async(const void* path_raw, const void* args_raw,
                                  const void* env_raw, const void* dir_raw,
                                  void* out_raw, void* err_raw,
                                  void* status_raw) {
-    exec_async_output arg = {path_raw, args_raw, env_raw, dir_raw, out_raw,
-                             err_raw, status_raw};
-    return exec_async_wait(exec_async_output_worker, &arg);
+    exec_owned owned;
+    willrt_blocking_op* op;
+
+    if (exec_owned_copy((const exec_str*)path_raw, (const exec_view*)args_raw,
+                        (const exec_view*)env_raw, (const exec_str*)dir_raw,
+                        &owned) != 0) {
+        return 1;
+    }
+    owned.out = out_raw;
+    owned.err = err_raw;
+    owned.status = status_raw;
+    op = willrt_blocking_submit_copy(exec_async_output_worker, &owned,
+                                     sizeof(owned), NULL);
+    if (op == NULL) {
+        exec_owned_free(&owned);
+        return 1;
+    }
+    return willrt_blocking_wait(op);
 }
 
 willrt_blocking_op* willrt_exec_run_async_start(
     const void* path_raw, const void* args_raw, const void* env_raw,
     const void* dir_raw, void* status_raw) {
-    exec_async_run arg = {path_raw, args_raw, env_raw, dir_raw, status_raw};
-    return willrt_blocking_submit_copy(exec_async_run_worker, &arg, sizeof(arg),
-                                       NULL);
+    exec_owned owned;
+
+    if (exec_owned_copy((const exec_str*)path_raw, (const exec_view*)args_raw,
+                        (const exec_view*)env_raw, (const exec_str*)dir_raw,
+                        &owned) != 0) {
+        return NULL;
+    }
+    owned.status = status_raw;
+    return willrt_blocking_submit_copy(exec_async_run_worker, &owned,
+                                       sizeof(owned), NULL);
 }
 
 willrt_blocking_op* willrt_exec_output_async_start(
     const void* path_raw, const void* args_raw, const void* env_raw,
     const void* dir_raw, void* out_raw, void* err_raw, void* status_raw) {
-    exec_async_output arg = {path_raw, args_raw, env_raw, dir_raw, out_raw,
-                             err_raw, status_raw};
-    return willrt_blocking_submit_copy(exec_async_output_worker, &arg,
-                                       sizeof(arg), NULL);
+    exec_owned owned;
+
+    if (exec_owned_copy((const exec_str*)path_raw, (const exec_view*)args_raw,
+                        (const exec_view*)env_raw, (const exec_str*)dir_raw,
+                        &owned) != 0) {
+        return NULL;
+    }
+    owned.out = out_raw;
+    owned.err = err_raw;
+    owned.status = status_raw;
+    return willrt_blocking_submit_copy(exec_async_output_worker, &owned,
+                                       sizeof(owned), NULL);
 }
 
 int32_t willrt_exec_run(const void* path_raw, const void* args_raw,
