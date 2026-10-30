@@ -26,45 +26,6 @@ func crossDiagnostics(t *testing.T, src string) []diag.Diagnostic {
 	return CrossTask(f, checked)
 }
 
-func TestSpawnRejectsRcCapture(t *testing.T) {
-	src := `struct C { n: i32 }
-
-def use(c: rc<C>) -> i32 {
-    return c.n
-}
-
-def f(c: rc<C>) {
-    region {
-        var t: Task<i32> = spawn use(c)
-        _ = t
-    }
-}
-`
-	ds := crossDiagnostics(t, src)
-	if len(ds) != 1 || ds[0].Code != diag.CodeCrossTask {
-		t.Fatalf("diagnostics = %s, want one T0016", diag.FormatAll(ds))
-	}
-}
-
-func TestSpawnRejectsClosureWithRcCapture(t *testing.T) {
-	src := `struct C { n: i32 }
-
-def f(c: rc<C>) {
-    region {
-        var work = func() -> i32 {
-            return c.n
-        }
-        var t: Task<i32> = spawn work()
-        _ = t
-    }
-}
-`
-	ds := crossDiagnostics(t, src)
-	if len(ds) != 1 || ds[0].Code != diag.CodeCrossTask {
-		t.Fatalf("diagnostics = %s, want one T0016", diag.FormatAll(ds))
-	}
-}
-
 func TestSpawnRejectsRefCapture(t *testing.T) {
 	src := `def read(x: ref i32) -> i32 {
     return x
@@ -81,24 +42,5 @@ def f() {
 	ds := crossDiagnostics(t, src)
 	if len(ds) != 1 || ds[0].Code != diag.CodeCrossTask {
 		t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
-	}
-}
-
-func TestSpawnAllowsArcCapture(t *testing.T) {
-	src := `struct C { n: i32 }
-
-def use(c: arc<C>) -> i32 {
-    return c.n
-}
-
-def f(c: arc<C>) {
-    region {
-        var t: Task<i32> = spawn use(c)
-        _ = t
-    }
-}
-`
-	if ds := crossDiagnostics(t, src); len(ds) != 0 {
-		t.Fatalf("arc capture was rejected:\n%s", diag.FormatAll(ds))
 	}
 }

@@ -901,27 +901,6 @@ def main() -> i32 {
 
 // TestRunEarlyRcRelease checks that releasing a copy-only rc handle at its
 // last use leaves the retained copy alive.
-func TestRunEarlyRcRelease(t *testing.T) {
-	if !hasClang() {
-		t.Skip("clang is not installed")
-	}
-	src := `struct Counter {
-    n: i32
-}
-
-def main() -> i32 {
-    var first: rc<Counter> = new rc<Counter>(Counter { n: 7 })
-    var second: rc<Counter> = first
-    _ = second
-    return 0
-}
-`
-	path := writeFile(t, t.TempDir(), "main.will", src)
-	code, out, errOut := runCLI("run", path)
-	if code != 0 {
-		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
-	}
-}
 
 // TestRunEscapingClosureOwnsItsCapture checks that a closure returned from a
 // frame moves an owning capture; the source release must not free the value
@@ -1692,28 +1671,6 @@ def main() -> i32 {
 
 // TestEmitSomeRcRetainsTheHandle checks that storing an rc handle in an Option
 // copy retains it; the source owner may still be released later.
-func TestEmitSomeRcRetainsTheHandle(t *testing.T) {
-	src := `struct C {
-    n: i32
-}
-
-def main() -> i32 {
-    var r: rc<C> = new rc<C>(C { n: 7 })
-    var o: Option<rc<C>> = Some(r)
-    _ = o
-    _ = r
-    return 0
-}
-`
-	path := writeFile(t, t.TempDir(), "main.will", src)
-	code, out, errOut := runCLI("emit-llvm", path)
-	if code != 0 {
-		t.Fatalf("code = %d, stderr = %q", code, errOut)
-	}
-	if !strings.Contains(out, "willrt_rc_retain") {
-		t.Fatalf("Some(rc) did not retain the handle:\n%s", out)
-	}
-}
 
 // TestEmitEnumReleaseBranches checks that the active enum payload is released,
 // not the tag or an inactive variant.

@@ -44,23 +44,18 @@ func checkedExpr(t *testing.T, src, name string) (*Result, *ast.NameExpr) {
 
 func TestSendSyncIsStructural(t *testing.T) {
 	src := `struct Plain { n: i64 }
-struct Local { n: rc<Plain> }
-struct Shared { n: arc<Plain> }
-struct Mixed { n: arc<rc<Plain>> }
+class SharedBox { n: Plain }
+struct Shared { n: SharedBox }
 struct Open { f: func() -> i32 }
 
-def f(a: Plain, b: Local, c: Shared, d: Mixed, e: Open, task: Task<Plain>, ch: chan<Plain>) {
+def f(a: Plain, c: Shared, e: Open, task: Task<Plain>, ch: chan<Plain>) {
     var plain = a
-    var local = b
     var shared = c
-    var mixed = d
     var open = e
     var taskCopy = task
     var chCopy = ch
     _ = plain
-    _ = local
     _ = shared
-    _ = mixed
     _ = open
     _ = taskCopy
     _ = chCopy
@@ -70,17 +65,9 @@ def f(a: Plain, b: Local, c: Shared, d: Mixed, e: Open, task: Task<Plain>, ch: c
 	if !got.Send(got.TypeOf(plain)) || !got.Sync(got.TypeOf(plain)) {
 		t.Fatalf("Plain must be Send and Sync")
 	}
-	got, local := checkedExpr(t, src, "local")
-	if got.Send(got.TypeOf(local)) || got.Sync(got.TypeOf(local)) {
-		t.Fatalf("Local holds rc and must not cross a task")
-	}
 	got, shared := checkedExpr(t, src, "shared")
 	if !got.Send(got.TypeOf(shared)) || !got.Sync(got.TypeOf(shared)) {
-		t.Fatalf("Shared holds arc<Plain> and must cross a task")
-	}
-	got, mixed := checkedExpr(t, src, "mixed")
-	if got.Send(got.TypeOf(mixed)) || got.Sync(got.TypeOf(mixed)) {
-		t.Fatalf("Mixed holds arc<rc<Plain>> and must not cross a task")
+		t.Fatalf("Shared holds a class reference and must cross a task")
 	}
 	got, task := checkedExpr(t, src, "taskCopy")
 	if !got.Send(got.TypeOf(task)) || got.Sync(got.TypeOf(task)) {

@@ -201,7 +201,7 @@ func isBool(t *Type) bool {
 var builtinArity = map[string]int{
 	"Array": 1,
 	"list":  1, "dict": 2, "set": 1,
-	"chan": 1, "rc": 1, "arc": 1, "weak_rc": 1, "weak_arc": 1, "Task": 1,
+	"chan": 1, "Task": 1,
 	"Option": 1, "Result": 2,
 }
 
