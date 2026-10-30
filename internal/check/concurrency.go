@@ -21,6 +21,9 @@ func Concurrency(f *ast.File) []diag.Diagnostic {
 
 type concurrencyChecker struct {
 	bag diag.Bag
+	// k15Scope names where the pending task report points at: a region or
+	// the enclosing function.
+	k15Scope string
 }
 
 /*

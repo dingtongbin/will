@@ -16,6 +16,7 @@ func (c *concurrencyChecker) regionTasks(f *ast.File) {
 			continue
 		}
 		c.regionBlock(fn.Body)
+		c.checkRegion(fn.Body, "function")
 	}
 }
 
@@ -26,7 +27,7 @@ func (c *concurrencyChecker) regionBlock(b *ast.Block) {
 	for _, st := range b.Stmts {
 		switch s := st.(type) {
 		case *ast.RegionStmt:
-			c.checkRegion(s.Body)
+			c.checkRegion(s.Body, "region")
 			c.regionBlock(s.Body)
 		case *ast.IfExpr:
 			c.regionBlock(s.Then)
@@ -58,15 +59,18 @@ func (c *concurrencyChecker) regionStmt(st ast.Stmt) {
 	c.regionBlock(&ast.Block{Stmts: []ast.Stmt{st}})
 }
 
-func (c *concurrencyChecker) checkRegion(body *ast.Block) {
+func (c *concurrencyChecker) checkRegion(body *ast.Block, scope string) {
+	prev := c.k15Scope
+	c.k15Scope = scope
+	defer func() { c.k15Scope = prev }()
 	tasks := map[string]bool{}
 	positions := map[string]ast.Span{}
 	c.collectTasks(body, tasks, positions)
 	c.consumeTasks(body, tasks, positions)
-	c.reportPending(tasks, positions, body.EndPos().Offset)
+	c.reportPending(tasks, positions, body.EndPos().Offset, scope)
 }
 
-func (c *concurrencyChecker) reportPending(tasks map[string]bool, positions map[string]ast.Span, at int) {
+func (c *concurrencyChecker) reportPending(tasks map[string]bool, positions map[string]ast.Span, at int, scope string) {
 	for name, done := range tasks {
 		if done {
 			continue
@@ -76,7 +80,7 @@ func (c *concurrencyChecker) reportPending(tasks map[string]bool, positions map[
 			continue
 		}
 		c.bag.Error(pos.Pos(), diag.CodeTaskNotAwaited,
-			"task handle "+name+" is not awaited before region exit",
+			"task handle "+name+" is not awaited before "+scope+" exit",
 			"await it, or write _ = await "+name+" to discard the result")
 	}
 }
@@ -128,7 +132,7 @@ func (c *concurrencyChecker) consumeTasks(st ast.Stmt, tasks map[string]bool, po
 		c.consumeExpr(s.Value, tasks)
 	case *ast.ReturnStmt:
 		c.consumeExpr(s.Value, tasks)
-		c.reportPending(tasks, positions, s.Pos().Offset)
+		c.reportPending(tasks, positions, s.Pos().Offset, c.k15Scope)
 	case *ast.VarStmt:
 		if d, ok := s.Decl.(*ast.VarDecl); ok {
 			c.consumeExpr(d.Value, tasks)
@@ -163,7 +167,7 @@ func (c *concurrencyChecker) consumeTasks(st ast.Stmt, tasks map[string]bool, po
 func (c *concurrencyChecker) consumeExpr(e ast.Expr, tasks map[string]bool) {
 	switch x := e.(type) {
 	case *ast.AwaitExpr:
-		if name, ok := x.X.(*ast.NameExpr); ok {
+		if name := awaitedName(x.X); name != nil {
 			if _, tracked := tasks[name.Name]; tracked {
 				tasks[name.Name] = true
 			}
@@ -195,14 +199,16 @@ func (c *concurrencyChecker) consumeExpr(e ast.Expr, tasks map[string]bool) {
 		for _, elem := range x.Elems {
 			c.consumeExpr(elem, tasks)
 		}
+	case *ast.SpawnExpr:
+		c.consumeExpr(x.Call, tasks)
 	case *ast.CallExpr:
 		for _, a := range x.Args {
-			c.consumeExpr(a.Expr, tasks)
+			c.consumeArg(a.Expr, tasks)
 		}
 	case *ast.MethodCallExpr:
 		c.consumeExpr(x.Recv, tasks)
 		for _, a := range x.Args {
-			c.consumeExpr(a.Expr, tasks)
+			c.consumeArg(a.Expr, tasks)
 		}
 	}
 }
@@ -214,4 +220,42 @@ func isTaskType(t *ast.Type) bool {
 func isSpawn(e ast.Expr) bool {
 	_, ok := e.(*ast.SpawnExpr)
 	return ok
+}
+
+// awaitedName returns the task handle an await consumes. The operand may be
+// wrapped in ! or ? because unwrapping is part of the same await.
+func awaitedName(e ast.Expr) *ast.NameExpr {
+	for {
+		switch x := e.(type) {
+		case *ast.NameExpr:
+			return x
+		case *ast.UnwrapExpr:
+			e = x.X
+		case *ast.TryExpr:
+			e = x.X
+		default:
+			return nil
+		}
+	}
+}
+
+// consumeArg marks a task handle handed to a call: the callee now owns the
+// handle, so the caller no longer has to await it.
+func (c *concurrencyChecker) consumeArg(e ast.Expr, tasks map[string]bool) {
+	for {
+		switch x := e.(type) {
+		case *ast.NameExpr:
+			if _, tracked := tasks[x.Name]; tracked {
+				tasks[x.Name] = true
+			}
+			return
+		case *ast.UnwrapExpr:
+			e = x.X
+		case *ast.TryExpr:
+			e = x.X
+		default:
+			c.consumeExpr(e, tasks)
+			return
+		}
+	}
 }
