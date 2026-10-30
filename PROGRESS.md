@@ -866,3 +866,14 @@ Evidence commands:
 - Next: delete the compiler rc surface (internal/gen/rc.go, checker/type rc
   branches, take_c predeclared values, rc diagnostics) and the rc runtime
   objects if unreferenced, re-recording corpora and re-running the gate.
+## Internal rc branches removed (round 58)
+
+- Commit ada5313 removed rc/arc/weak_rc/weak_arc/take_c from the predeclared
+  surface (resolve/types) and deleted the dedicated tests; the Send/Sync
+  structural test now uses a class reference.
+- This round removed the rc/arc branches in gcmeta nested layout, layout
+  resolver, ownership, and move checks, plus the layout/move tests that
+  exercised rc. Cold-cache gate -full is green.
+- Remaining rc dead code is concentrated in internal/gen (rc.go and rc
+  branches of the owned/release/clone helpers); removing it needs the helpers
+  refactored, which is the next cleanup item.
