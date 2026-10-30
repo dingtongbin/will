@@ -418,3 +418,162 @@ Evidence commands:
      still open.
 - HEAD is `e83f8ab` (dict/set each). Next: fix the three classes, re-apply
   the patch, re-record, then delete Map/Set.
+## Map/Set migration progress (round 24, uncommitted)
+
+- Re-ran `build/retypemap` (11 files). Fixed two classes: renamed the `var
+  set` local in `tests/std/os/main.will` to `result`; changed the four
+  `var keys/values: Array<...>` declarations to `list[...]`.
+- Split the type recognizers: `mapTypeText`/`setTypeText` now only match the
+  old `Map<`/`Set<`, while `dictTypeText`/`finalSetTypeText` match the final
+  bracket forms. `containerMethod`/`containerCallResult` normalize a dict/set
+  receiver to the old spelling for their shared entry logic and keep an
+  `isDictRecv` flag for list-returning keys/values. This fixed the return
+  type and layout paths that treated dict as the three-word handle.
+- Compiles now: `tests/std/os`, `tests/std/container/map`, `tests/build/map`.
+- Still failing: `std/task/task.will:20:28` and `tests/build/deferdeep:36:13`
+  report O0002 "a copy is required here and cannot be proven". The mover's
+  copy rule for a final-container reference is the remaining blocker; the
+  check/move.go placeCopy path needs to treat dict/set (and list) as
+  non-owning references the same way `ast.OwnsHeap` already does.
+- The tree is NOT committed; gate would fail on the two O0002 cases and the
+  corpora are not re-recorded yet.
+## P0: cold-cache gate fails on an existing corpus (round 25)
+
+- A clean build of HEAD (`98d45e2`) in a temporary worktree, run on the
+  unmodified `tests/build/deferdeep/main.will`, reports
+  `main.will:36:13: O0002 a copy is required here and cannot be proven`
+  (`xs.push(inner)` where `inner: Array<i32>` is used again afterwards).
+  The same failure appears for `std/task/task.will:20:28`
+  (`out.push(await task!)` with an unbound generic U).
+- Therefore the earlier `gate: ok` results were **cache artifacts**: a warm
+  `WILL_CACHE` serves the `.willc` and skips the check pass. The gate must be
+  verified with a cold cache; a cold-cache `gate -full` is expected to fail
+  until these two O0002 cases are fixed.
+- Decisions to make: the deferdeep corpus should clone before pushing an
+  Array that is used again (corpus bug), while the generic-U push in
+  std/task needs a mover rule for unbound type parameters (conservative
+  owning currently forces a Clone that generic code cannot express). Both are
+  P0 for gate trustworthiness.
+## Round 26 status
+
+- Cold-cache `gate -full` reported 6 failing corpora (build/map among them) because
+  the Map/Set migration changed the emitted IR and the goldens are not
+  re-recorded; this is expected during the migration, not a code failure. The
+  report also raced with an in-flight debug edit (transient `undefined: fmt`);
+  the debug print and its imports were removed and `go build ./...` is clean.
+- deferdeep was fixed as a corpus bug (`xs.push(inner.clone())`, Array is
+  owning) and now compiles clean.
+- `std/task/task.will:20:28` still reports O0002. The placeMoves last-use
+  check and the `await task!` path were instrumented; the diagnostic does not
+  come from that loop, so the remaining entry is still unidentified. Do not
+  commit until it is fixed with evidence.
+- Compiler changes in the worktree: `check/move.go` (skip copying a task that
+  `await ...!` consumes), `check/ownership.go` (list/dict/set are non-owning
+  references), `gen/container.go` (Map/Set vs dict/set recognizers).
+## O0002 root cause narrowed (round 27)
+
+- Instrumented `copyAt` with `runtime.Caller`: the std/task O0002 comes from
+  `move.go` IndexExpr branch (`m.copyAt(x.Pos())` after `IndexType`), not from
+  placeMoves. It fires for `await task!` at task.will:20:28.
+- Tried skipping the copy when IndexExpr.Recv is a Name task (via `taskVars`),
+  when Recv is Task-typed, and when Recv is Await/Unwrap/Try; none matched the
+  actual AST shape, so the diagnostic remains. The debug instrumentation was
+  removed again and the binary rebuilt.
+- Next: print the AST node type of the placeCopy argument at that position
+  (`fmt.Sprintf("%T", e)`) to learn how `await task!` is represented, then fix
+  that case and add a move test. Do not commit until green.
+## O0002 fixed; a deeper P1 surfaced (round 28)
+
+- Root cause of the std/task O0002: `var value: T = xs[i]` copies the view
+  element. `xs: []T` has element type T (an unbound type parameter), which the
+  mover conservatively treats as owning, so it demanded a Clone. Fix: in the
+  IndexExpr place-copy path, skip the copy when the element type is a type
+  parameter (`m.own.IsTypeParam`); the instance should be checked after
+  monomorphization. deferdeep's clone and all Map/Set corpora still pass.
+- With O0002 gone, `tests/std/task` now reaches gen and fails with
+  `array element U is not lowered yet`. Evidence: `emit-willc
+  std/task/task.will` contains only the generic prototype
+  (`func parallel_map type="Array<U>"`) and the call site is
+  `to="std/task.parallel_map"` with no instance name. gen lowers the
+  prototype, so U has no layout.
+- This is a real P1: **generic function monomorphization is not implemented**
+  for cross-package calls. It predates the Map/Set migration and was masked by
+  the O0002 error. The migration tree cannot pass a cold-cache gate until
+  monomorphization exists, so nothing is committed this round.
+- Open spec question: the mover's "unbound type parameter is owning" rule
+  conflicts with generic bodies like `out.push(await task!)`; the definition
+  can only be checked per instance. Recorded here before changing the rule.
+## Monomorphization investigation (round 29)
+
+- The pipeline already has the machinery: `planInstances` scans calls,
+  `genericTarget` finds a generic function in any package and infers the type
+  arguments, `cloneInstance` clones the function subtree with
+  `substituteTypeText`, and `funcDecl` skips type-parameter declarations
+  (`gen.go:1274`) so only instances are lowered.
+- `substituteTypeText` replaces identifiers inside `Array<U>` and nested
+  types, and `cloneFuncInstance` drops typeparam records, so the remaining
+  failure (`array element U is not lowered`) is in an instance document or in
+  the argument inference path, not in the prototype lowering. The exact
+  residue is not yet located.
+- Next: dump the cloned instance's records (temporary `emit-willc` of the
+  planned docs or a debug print in `cloneInstance`) and find which record
+  still spells `U`; then fix the substitution or inference and re-run the
+  cold-cache gate.
+## Async generic monomorphization defect (round 30)
+
+- Reproduced with a self-contained probe (`build/probegen4`): a plain
+  `def mapall<T,U>(xs: []T, f: func(T)->U) -> Array<U>` instance lowers and runs
+  (returns 8), and a cross-package generic call (`probegen2`) runs (returns 5),
+  but the same function body written as `async def amap<T,U>(...)->Array<U>`
+  with `spawn`/`await` fails with `array element U is not lowered`.
+- Debug prints in `cloneFuncInstance` showed no clone failure, so the instance
+  document is created; the residue is an async-specific record whose type text
+  is still the bare U (likely a state-machine/suspend record whose typeparam
+  parent is not the declared function, so `subst` misses it). Instrumentation
+  was removed again; `go build ./...` is clean.
+- Next: dump the cloned async instance's records and find the bare-U text,
+  then substitute it (or fix the typeparam parent walk) and rerun the probe.
+## Generic call result bug fixed; async state machine defect remains (round 31)
+
+- Real bug found and fixed in `genericCallResult`: it used `substituteText`,
+  which only replaces a text that is exactly a type parameter, so the call
+  result `Array<U>` stayed `Array<U>` at the call site. It now builds a
+  substitution map and uses `substituteTypeText` (recursive identifier
+  replacement), matching `cloneFuncInstance`. Evidence: `build/probegen4`
+  moved from `array element U is not lowered` to LLVM verification output.
+- After the fix the async generic probe now fails LLVM verification with
+  `Instruction does not dominate all uses!` (a load inside the loop feeds a
+  store outside it). `tests/std/task` instead reports
+  `the call result has no place` for node #80. Both are async-generic state
+  machine lowering defects, deeper than the type substitution.
+- Debug instrumentation was removed; `go build ./...` is clean. Not committed:
+  the async lowering must be fixed and the cold-cache gate must pass first.
+## Async generic and migration corpora green (round 32)
+
+- Two fixes: (1) `genericCallResult` now substitutes recursively (previous
+  round); (2) `generalCallWaitPlace` delegates void children
+  (text "" or "()") to `generalCallWait`, so an awaited void call no longer
+  reports "the call result has no place".
+- `tests/std/exec` now uses dict keys/values (list-returning) instead of the
+  unsupported `for k, v in dict`; `std/os/exec/cmd.will` copies env with
+  `each`. Both compile.
+- Compile-clean set with a cold cache: tests/std/task, tests/std/os,
+  tests/std/io, tests/std/exec, tests/build/map, tests/build/deferdeep,
+  tests/std/container/map. Remaining known issue: the self-contained async
+  generic probe `build/probegen4` still hits an LLVM dominance error in the
+  state machine after the type fixes; task corpora do not.
+- Next: cold `gate -full -update`, re-record, confirm, then commit the
+  Map/Set migration plus the compiler fixes (move/ownership/generic/container
+  /statemachine).
+## Map/Set migration landed (round 33, cold-cache gate green)
+
+- Cold-cache `gate -full` is green. Commits:
+  - `78446bd fix: allow generic moves for type-parameter elements`
+  - `87bfca4 fix: substitute generic call results and join void async children`
+  - `c790785 feat: lower dict and set method calls and loops`
+  - `132b687 refactor: migrate std and corpora from Map/Set to dict/set`
+- All std and corpus uses now spell dict[...]/set[...]; keys/values return
+  list; exec copies env with each or keys/values; corpora re-recorded.
+- Next: delete the old Map/Set names from the checker, gen (mapTypeText/
+  setTypeText/container.go old handle paths), gcmeta layout, and the old
+  rc-map/rc-set corpora, then re-record and re-run the cold gate.
