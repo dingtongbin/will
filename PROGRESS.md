@@ -974,3 +974,95 @@ std/parallel, then json.
 - Cold-cache gate -full is green.
 - Next: std/parallel, then std/encoding/json; the await/place-cache note for
   pipe is resolved by the slot reloads.
+## std/parallel written, blocked by generic inference (round 65, uncommitted)
+
+- std/parallel/parallel.will: map/for_each/reduce as spec'd (four-chunk
+  spawns, list[U] results, reduce combine), plus map_part/each_part/
+  reduce_part/chunk_size helpers.
+- tests/std/parallel: map with double and reduce with add over a list slice.
+- Blocked:
+  1. checker inference does not infer T from a []T parameter: "argument 1 has
+     type []i32, want []T";
+  2. explicit multi-parameter generic call syntax `f<i32, i32>` parses the
+     second argument as a comparison/name (N0001 undefined name), so the two
+     type parameters cannot be passed explicitly.
+- sendsync now treats list/dict/set as shareable (element Send checks kept);
+  that cleared the Task<list[U]> boundary error.
+- Next: fix generic inference for view parameters and multi-parameter generic
+  arguments, then re-run the parallel corpus and gate.
+## Generic calls into imported packages cannot instantiate (round 66)
+
+- `c.env.funcs` only registers functions declared in the current file
+  (env.go:209 `e.funcs[decl.Name]`). A call through an imported package
+  (parallel.map(...)) reaches the FieldExpr fallback in callType
+  (infer.go:1448): it infers the callee type and calls checkPayload directly,
+  so no inference and no instantiation happen. The FuncKind type built for an
+  imported member also carries no type parameter names, so unifyType has
+  nothing to bind.
+- That is why parallel.map(view, double) reports "want []T" and
+  reduce<i32, i32> cannot pass both arguments: the generic information is
+  lost at the import boundary.
+- Fix direction: register imported function signatures (with typeNames) in the
+  checker env under their qualified member name, and route FieldExpr calls
+  through the same inferCallTypeArgs/instantiate path as local functions.
+- Worktree: std/parallel, tests/std/parallel, sendsync list/dict/set rule,
+  PROGRESS (uncommitted).
+## Imported generic call path added, still not effective (round 67)
+
+- Added a FieldExpr branch in callType (infer.go): when the resolved symbol is
+  a FuncKind declared by an imported FuncDecl, buildForeignSig +
+  inferCallTypeArgs + checkCallArgs/instantiate run as for local functions,
+  plus a symbolOfNode helper.
+- parallel.map(view, double) still reports `want []T`, so the branch is not
+  reached: resolve may not record a symbol for the FieldExpr of an imported
+  member (symbolOfNode returns nil).
+- parallel.will Task[...] was corrected to Task<...>; the remaining parallel
+  errors are `K0011 await needs a Task` at await t! where t is an element of
+  list[Task<...>] (element type lost/unsupported await of an unmarshaled
+  task), and the map argument mismatch above.
+- Worktree uncommitted: parallel.will, tests/std/parallel, sendsync rule,
+  infer.go/symbolOfNode, PROGRESS.
+## Imported generic member still unresolved (round 68)
+
+- Tried two paths: callType's FieldExpr branch and methodType's import branch
+  (parallel.map parses as a MethodCallExpr). resolve now records the imported
+  member symbol on both FieldExpr and MethodCallExpr via importedMember, and
+  methodType instantiates an imported FuncDecl through buildForeignSig +
+  inferCallTypeArgs.
+- parallel.map(view, double) still reports `want []T`, so symbolOfNode(call)
+  is nil or the member Kind is not FuncKind at that point; a temporary
+  println in the FieldExpr branch never fired, confirming the call goes
+  through methodType.
+- Two K0011 errors remain for `await t!` where t is a list[Task<...>]
+  element.
+- Debug println is still in infer.go; worktree uncommitted.
+## Imported generic inference works, duplicate prototype check remains (round 69)
+
+- Printed proof: inferCallTypeArgs unifies map's parameters successfully
+  (`unify 0 true 1 2`, `unify 1 true 2 2`), so the imported generic call is
+  instantiated; function-name arguments are now resolved to their signatures
+  before unify (genericinfer.go), and resolve records imported member symbols
+  for FieldExpr and MethodCallExpr.
+- parallel.map still gets a T0003 `want []T` from a second check path that
+  runs with the prototype signature (likely the outer expression walker
+  re-checks the call). The await-of-list-element K0011 errors also remain.
+- Debug println removed from genericinfer.go/infer.go; worktree uncommitted
+  (walk.go, infer.go, genericinfer.go, sendsync.go, std/parallel,
+  tests/std/parallel).
+## Imported generic call: attempted, reverted (round 70)
+
+- Tried recording imported member symbols in resolve (FieldExpr and
+  MethodCallExpr), instantiating imported FuncDecls in methodType and
+  callType, resolving function-name arguments to signatures before unify, and
+  printing the instantiated signature. Proof that unify binds both map
+  parameters exists, but the T0003 `want []T` still came from checkArg, and
+  the methodType branch stopped firing after later edits, so the change never
+  converged. The checker/resolve edits were reverted to keep the tree honest.
+- Kept and committed: sendsync treats list/dict/set as shareable (element
+  Send checks kept), which clears Task<list[U]> boundaries. Cold gate green.
+- std/parallel and tests/std/parallel stay uncommitted: the generic call into
+  an imported package is still unresolved, and `await t!` on a list element
+  reports K0011.
+- Next: approach the imported generic call from the resolver side (register
+  the imported function signature with its typeNames in the checker env when
+  the package is loaded), rather than reconstructing it per call site.
