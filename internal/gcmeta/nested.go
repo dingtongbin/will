@@ -172,6 +172,11 @@ func (p *Program) variantPayload(decl *declaration, index int, variant willc.Rec
 // inline descriptor.
 func (p *Program) nestedType(pkg, text string, seen map[string]bool) (*Type, error) {
 	text = strings.TrimSpace(text)
+	if strings.HasPrefix(text, "mut ") || strings.HasPrefix(text, "ref ") {
+		// A borrowed field is one word: the reference itself, never an inline
+		// copy of the pointee.
+		return p.inlineValue("value."+text, WordSize, WordSize, nil, nil), nil
+	}
 	canon, err := p.canonicalText(pkg, text, 0)
 	if err != nil {
 		return nil, err
