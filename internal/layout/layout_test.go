@@ -171,7 +171,6 @@ func TestPredeclaredLayout(t *testing.T) {
 		{"array", &Spec{Kind: GenericKind, Name: "Array", Args: []*Spec{scalar("i32")}}, 24, 8},
 		{"map", &Spec{Kind: GenericKind, Name: "Map", Args: []*Spec{scalar("str"), scalar("i32")}}, 24, 8},
 		{"set", &Spec{Kind: GenericKind, Name: "Set", Args: []*Spec{scalar("str")}}, 24, 8},
-		{"rc", &Spec{Kind: GenericKind, Name: "rc", Args: []*Spec{scalar("i64")}}, 8, 8},
 		{"chan", &Spec{Kind: GenericKind, Name: "chan", Args: []*Spec{scalar("i32")}}, 8, 8},
 		{"option", &Spec{Kind: GenericKind, Name: "Option", Args: []*Spec{scalar("i64")}}, 16, 8},
 		{"result", &Spec{Kind: GenericKind, Name: "Result", Args: []*Spec{scalar("i32"), scalar("u64")}}, 16, 8},

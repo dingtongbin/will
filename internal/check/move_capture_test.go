@@ -114,23 +114,6 @@ func TestSecondClosureCaptureNeedsClone(t *testing.T) {
 
 // TestClosureCopiesRcHandle checks that an rc handle stays copyable: the
 // closure retains it and the source remains usable.
-func TestClosureCopiesRcHandle(t *testing.T) {
-	src := `struct C {
-    n: i32
-}
-
-def f() -> i32 {
-    var c: rc<C> = new rc<C>(C { n: 1 })
-    var f: func() -> i32 = func() -> i32 {
-        return c.n
-    }
-    return f() + c.n
-}
-`
-	if ds := movesOwned(t, src); len(ds) != 0 {
-		t.Fatalf("an rc handle was moved:\n%s", diag.FormatAll(ds))
-	}
-}
 
 // TestClosureCaptureInLoopNeedsFreshOwner checks that a capture inside a loop
 // cannot move a local declared outside it: the next iteration would see an

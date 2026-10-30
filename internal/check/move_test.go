@@ -217,29 +217,6 @@ def f(xs: Array<Box>) {
 	}
 }
 
-func TestMoveScalarFieldAndRcFieldAreCopies(t *testing.T) {
-	src := `struct Box {
-    n: i32
-}
-
-struct Holder {
-    item: rc<Box>
-}
-
-def f(b: Box, h: Holder) {
-    var n: i32 = b.n
-    var r: rc<Box> = h.item
-    _ = b
-    _ = h
-    _ = n
-    _ = r
-}
-`
-	if ds := movesOwned(t, src); len(ds) != 0 {
-		t.Fatalf("diagnostics = %d, want none:\n%s", len(ds), diag.FormatAll(ds))
-	}
-}
-
 func TestMoveClonedFieldIsNotACopyError(t *testing.T) {
 	src := `struct Box {
     items: Array<i32>

@@ -333,7 +333,7 @@ func (o *Ownership) ownsNamed(t *ast.Type, bindings map[string]*ast.Type, active
 		return false
 	case "str", "Array", "Map", "Set":
 		return true
-	case "rc", "arc", "weak_rc", "weak_arc", "chan", "Task", "Duration", "Value", "Show", "Error", "TaskError":
+	case "chan", "Task", "Duration", "Value", "Show", "Error", "TaskError":
 		return false
 	case "Option", "Result":
 		for _, arg := range t.Args {

@@ -263,8 +263,6 @@ func (p *Program) nestedType(pkg, text string, seen map[string]bool) (*Type, err
 		return p.inlineValue("value."+text, WordSize, WordSize, nil, nil), nil
 	case "Option", "Result":
 		return p.taggedNested(pkg, text, node, seen)
-	case "rc", "arc", "weak_rc", "weak_arc":
-		return p.inlineValue("value."+text, WordSize, WordSize, nil, nil), nil
 	}
 	if strings.HasPrefix(text, "[]") {
 		return p.inlineValue("value."+text, 2*WordSize, WordSize, nil, nil), nil

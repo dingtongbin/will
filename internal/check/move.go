@@ -200,9 +200,6 @@ func (m *mover) canMovePlace(root string) bool {
 	if t == nil || t.Kind == ast.ViewType && !t.ViewMut {
 		return false
 	}
-	if t.Kind == ast.NamedType && (t.Name == "rc" || t.Name == "arc" || t.Name == "weak_rc" || t.Name == "weak_arc") {
-		return false
-	}
 	return true
 }
 
