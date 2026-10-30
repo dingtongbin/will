@@ -660,3 +660,105 @@ Evidence commands:
 - The generic-class surface (`class Box<T>`, borrowed generic fields, nested
   generic construction) is now usable, which unblocks migrating std/sync from
   struct+arc to class Mutex/RwLock (P1-9).
+## std/sync class migration in progress (round 40, uncommitted)
+
+- `std/sync/mutex.will` was rewritten: `class MutexState<T>` with init, `class
+  Mutex<T>`/`class RwLock<T>` holding a class reference, `struct Guard<T>`/
+  `struct ReadGuard<T>` with a `MutexState<T>` reference field; the arc and
+  share() surface is gone.
+- `gen/guard.go` now resolves the guard state through `classTypeOfText` +
+  `ensureClassPayload` (class reference) instead of the rc handle, in both
+  guardValue and guardUnlock.
+- The probe `tests/std/sync` (new module with require std) still fails:
+  `the guard state is not lowered yet` for the `g.value` forwarding path.
+  Debug prints from the earlier generic investigation are still visible in
+  the output (clone-fn ...), so generic.go still needs a cleanup check.
+- Not committed: the probe must pass, then the cold gate and the sync corpus
+  recording.
+## std/sync class migration works (round 41, uncommitted)
+
+- Probe `tests/std/sync` returns 7: `class Mutex<i32>` construction, a
+  blocking guard, `g.value = 7` write-through, and read-back all work.
+- Fixes this round: `ensureClassPayload` now registers the class payload
+  structInfo (classPayloadInfo) so guard field lookup finds `lock`/`value`;
+  `guardStateInfo` resolves a class reference instead of an rc handle.
+- Guard debug prints and the os import are still in guard.go (removal failed
+  in the shell); the next step is to remove them, run the full tests and cold
+  gate, record the sync corpus, and commit class.go/guard.go/mutex.will/
+  tests/std/sync.
+## std/sync class migration blocked on Guard return (round 42)
+
+- Probe tests/std/sync returns 7, but the existing `concurrency/syncmutex`
+  corpus now fails with `an aggregate is a place, not a scalar value`
+  (node #62): a `return Guard<T> { state: ..., held: ..., mode: ... }` inside
+  the class-method instance reaches `g.value` for the aggregate literal.
+  The rc version of Mutex took the place path; the class-method instance
+  substitution changed which path runs.
+- `TestRunCpuSyncAcrossJobs` used the removed `share()`; it now passes `mu`
+  directly and the test is green. `TestRunInterfaceBoxAndClone` passes when
+  run alone.
+- guard.go debug prints/import and classPayloadInfo registration are in the
+  worktree (uncommitted). Cold gate currently fails on the syncmutex corpus.
+## Class constructor aggregate argument (round 43)
+
+- The syncmutex failure is now pinpointed: node #62 is
+  `new sync.Mutex<Counter>(Counter { n: 0 })` at main.will:24:58. `classNew`
+  lowers init arguments through `callArgParts` with
+  `g.paramTypes[initSym]`; for the generic class instance the init symbol
+  resolves to the prototype signature (`T`), so the aggregate argument is
+  sent through `g.value` and trips "an aggregate is a place".
+- Next: resolve the init signature of the concrete class instance (replace T
+  with Counter) so the aggregate argument goes through the place path.
+- Debug prints were added in gen.go (ret/agg-value) and must be removed
+  before committing; the worktree is not committed and the cold gate is red
+  on the syncmutex corpus.
+## Class constructor aggregate argument still open (round 44)
+
+- The debug prints in gen.go/class.go were removed and the tree builds.
+- classNew now tries to fill the init parameter types from the class
+  declaration (searching every document and substituting the instance type
+  arguments) when `g.paramTypes[initSym]` is empty. The syncmutex probe still
+  reports `an aggregate is a place` at `new Mutex<Counter>(Counter { n: 0 })`,
+  so the filled types do not reach `callArgParts` (or the lookup still
+  resolves the prototype).
+- Next: print the params actually passed to `callArgParts` for that call and
+  whether initDeclForNew succeeds for the std/sync document, then fix the
+  type substitution. Not committed; cold gate red on syncmutex.
+## Class init instance symbol (round 45)
+
+- classNew now resolves the concrete init through `initForNew` over every
+  document and passes its substituted params; planInitInstances mangles an
+  init instance as `MutexState<Counter>.init` and searches all documents for
+  the declaration. The aggregate argument error is gone (the call now has the
+  right shape).
+- Remaining: LLVM reports `use of undefined value
+  '@std/sync.MutexState<Counter>.init'`, so the instance document is not
+  emitted (or its symbol differs). Same-file nested generic construction
+  (probegenclass2) works, so this is specific to a cloned instance whose new
+  record lives in another document; the next check is the clone doc path and
+  hex type text when initDeclForNew runs on the cloned new.
+## Init instance cloned but not emitted (round 46)
+
+- planInitInstances now clones all three instances (Mutex<Counter>.init,
+  RwLock<Counter>.init, MutexState<Counter>.init, path=std/sync) as shown by
+  temporary prints.
+- The module still reports `use of undefined value
+  '@std/sync.MutexState<Counter>.init'`: entry owns instances
+  (`emits` allows `d.clone` documents in the instance owner), yet the init
+  definition is missing from the entry module. The likely skip is funcDecl's
+  prototype guard or emitDoc's func list for a cloned document whose class
+  declaration lives elsewhere.
+- Debug prints (init-clone/fail in generic.go) are in the worktree and must be
+  removed before committing.
+## std/sync class surface landed (round 47)
+
+- Commit bb71b16: `class Mutex<T>`/`class RwLock<T>` with a shared
+  `class MutexState<T>`, `struct Guard<T>`/`ReadGuard<T>` holding the state
+  reference; guard lowering resolves the state via the class payload; class
+  constructions with aggregate arguments use place values; generic class
+  inits resolve through initForNew across documents; a cloned init instance
+  keeps its declared name (the earlier mangling duplicated the receiver).
+- tests/std/sync returns 7, concurrency/syncmutex passes, corpus re-recorded,
+  cold-cache gate -full is green.
+- Next: migrate std/test (arc<TestState>) the same way, then the remaining
+  rc/arc corpora and the rc/arc compiler surface.
