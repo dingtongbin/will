@@ -612,3 +612,29 @@ Evidence commands:
 - rc/arc still appear in 55/15 will files (std/sync, std/test, corpora);
   replacing them with GC references is the next large deprecated-surface
   migration.
+## Borrowed generic class fields (round 37)
+
+- Fixed `gcmeta/nested.go`: a field spelled `mut Box<T>` reached the nested
+  layout resolver with the borrow prefix and was qualified as a package type
+  (`type mut pkg.Box<i32> is not declared`). A borrowed field is now laid out
+  as one word before canonicalizing the pointee; probe `build/probegenclass2`
+  advanced to the next error.
+- The fix changes the GC layout of borrowed fields, so 16 corpus IR files
+  differ; `gate -full -update` is re-recording them in the background and the
+  result is not yet confirmed. HEAD already contains the nested.go fix.
+- Next: field access still uses the `mut pkg.Box<i32>` text when looking up
+  the class fields (`has no fields`), so the checker/gen must strip the
+  borrow prefix in field access. Then re-run the generic-class probe, confirm
+  the cold gate, and continue the std/sync class migration (P1-9).
+## Borrowed class field lookup fixed (round 38)
+
+- `classTypeOfText` no longer rejects a borrowed text: it resolves the
+  pointee after stripping the borrow prefix. This cleared `has no fields`
+  for `self.box` where the field is `mut Box<T>`; corpora were re-recorded
+  and the cold-cache gate is green.
+- The generic-class probe (`build/probegenclass2`) now fails at
+  `Holder<T>.init` instantiating `new Box<T>(value)`: the instance still
+  spells Box<T> with T unbound. Root cause: generic class method/init
+  instances do not substitute type parameters inside nested generic
+  constructions. This is P1-1's remaining half before std/sync can move to
+  class Mutex.
