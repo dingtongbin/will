@@ -113,6 +113,9 @@ func (r *Result) namedSend(t *Type, active map[string]bool) bool {
 	if _, ok := r.env.ifaces[short]; ok {
 		return false
 	}
+	if r.env.classes[short] {
+		return true
+	}
 	if fields, ok := r.env.fields[short]; ok {
 		bind := r.bindings(short, t.Args())
 		for _, f := range fields {
@@ -178,6 +181,9 @@ func (r *Result) namedSync(t *Type, active map[string]bool) bool {
 	short := shortNamed(t.Name())
 	if _, ok := r.env.ifaces[short]; ok {
 		return false
+	}
+	if r.env.classes[short] {
+		return true
 	}
 	if fields, ok := r.env.fields[short]; ok {
 		bind := r.bindings(short, t.Args())
