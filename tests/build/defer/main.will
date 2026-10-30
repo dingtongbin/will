@@ -51,14 +51,14 @@ def loop() -> i32 {
 }
 
 def held(c: bool) -> Result<i32, E> {
-    var x: rc<C> = new rc<C>(C { n: 7 })
+    var x: C = C { n: 7 }
     defer print("held\n")
     var v: i32 = maybe(c)?
     return Ok(v + x.n)
 }
 
 def tail(c: bool) -> Result<i32, E> {
-    var x: rc<C> = new rc<C>(C { n: 9 })
+    var x: C = C { n: 9 }
     defer print("tail\n")
     return Ok(maybe(c)? + x.n)
 }

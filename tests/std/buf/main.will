@@ -3,14 +3,20 @@ import "std/io/buf"
 # Stats counts the writes the sink is handed so the checks can tell a buffered
 # write from a passed-through one. The sink shares the counters through rc
 # because a package-level name is published read-only.
-struct Stats {
+class Stats {
     writes: i32
     total: usize
     last: usize
+
+    def init(self, writes: i32, total: usize, last: usize) {
+        self.writes = writes
+        self.total = total
+        self.last = last
+    }
 }
 
 struct Sink {
-    stats: rc<Stats>
+    stats: Stats
 }
 
 async def (s: ref Sink) write(bytes: []u8) -> Result<(), Error> {
@@ -26,7 +32,7 @@ async def (s: ref Sink) sync() -> Result<(), Error> {
 
 async def main() -> i32 {
     var text: str = "hello"
-    var stats: rc<Stats> = new rc<Stats>(Stats { writes: 0, total: 0usize, last: 0usize })
+    var stats: Stats = new Stats(0, 0usize, 0usize)
     var writer: buf.WriterBuf = new buf.WriterBuf(Sink { stats: stats }, 8usize)
 
     # A write shorter than the buffer stays in memory.

@@ -25,8 +25,12 @@ def (s: mut Source) read(buf: mut Array<u8>) -> Result<usize, Error> {
 # value so the test can read the output after the interface takes its boxed
 # copy. Push is a declared method because a predeclared Array method is not
 # reached through an rc handle.
-struct Buffer {
+class Buffer {
     data: Array<u8>
+
+    def init(self, data: Array<u8>) {
+        self.data = data.clone()
+    }
 }
 
 def (b: mut Buffer) push(v: u8) {
@@ -54,7 +58,7 @@ def (b: ref Buffer) same_as(values: ...u8) -> bool {
 # Sink shares its buffer through rc so the test can read what the writer
 # wrote after the interface value has taken its own boxed copy.
 struct Sink {
-    data: rc<Buffer>
+    data: Buffer
 }
 
 def (s: mut Sink) write(buf: []u8) -> Result<(), Error> {
@@ -265,7 +269,7 @@ async def main() -> i32 {
     outRows.push(row_of("a", "b,c", text_bytes(100u8, 34u8, 101u8)))
     outRows.push(row_of("1", "2", "3"))
     outRows.push(row_of("x\ny", "z", ""))
-    var shared: rc<Buffer> = new rc<Buffer>(Buffer { data: new Array<u8>(0) })
+    var shared: Buffer = new Buffer(new Array<u8>(0))
     var writer: csv.Writer = new csv.Writer(Sink { data: shared }, 44u8)
     match await writer.encode(outRows[Range(0, outRows.len())]) {
         Ok(_) => {
