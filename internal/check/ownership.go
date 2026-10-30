@@ -327,6 +327,10 @@ func (o *Ownership) ownsNamed(t *ast.Type, bindings map[string]*ast.Type, active
 		return o.owns(bound, bindings, active)
 	}
 	switch name {
+	case "list", "dict", "set":
+		// Final containers are GC references: a copy is a shared handle, so a
+		// move needs no Clone at the transfer.
+		return false
 	case "str", "Array", "Map", "Set":
 		return true
 	case "rc", "arc", "weak_rc", "weak_arc", "chan", "Task", "Duration", "Value", "Show", "Error", "TaskError":

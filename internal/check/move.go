@@ -136,6 +136,12 @@ func (m *mover) placeCopy(e ast.Expr, allowMove bool) {
 		m.placeCopy(x.X, false)
 		return
 	case *ast.AwaitExpr:
+		switch x.X.(type) {
+		case *ast.TryExpr, *ast.UnwrapExpr:
+			// `await task!` moves the task at the `!`; the await operand is
+			// not a place that needs a copy.
+			return
+		}
 		m.placeCopy(x.X, false)
 		return
 	case *ast.UnwrapExpr:
@@ -154,11 +160,27 @@ func (m *mover) placeCopy(e ast.Expr, allowMove bool) {
 			m.copyAt(x.Pos())
 		}
 	case *ast.IndexExpr:
+		switch x.Recv.(type) {
+		case *ast.AwaitExpr, *ast.UnwrapExpr, *ast.TryExpr:
+			return
+		}
+		if root := rootName(x.Recv); root != "" && m.taskVars[root] {
+			// `task!` unwraps a task: it moves the task value, it does not
+			// copy the task result.
+			return
+		}
+		if isTaskType(m.exprType(x.Recv)) {
+			return
+		}
 		root := rootName(x.Recv)
 		if root == "" || m.types[root] == nil || m.variadic[root] {
 			return
 		}
-		if it := m.own.IndexType(m.exprType(x.Recv)); m.owns(it) || linearType(it) {
+		if it := m.own.IndexType(m.exprType(x.Recv)); it != nil && m.own.IsTypeParam(it) {
+			// A type parameter has no concrete ownership before instantiation;
+			// the element is moved out of the borrowed view.
+			return
+		} else if m.owns(it) || linearType(it) {
 			if allowMove && m.canMovePlace(root) {
 				m.placeMoves = append(m.placeMoves, placeMove{root: root, pos: x.Pos()})
 				return
