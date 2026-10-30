@@ -3234,3 +3234,26 @@ Verification:
   `tests/std/container/stack`, `tests/std/container/map`, and
   `tests/build/strbytes`: identical stdout/stderr and exit 0 for both modes.
 
+## Specified containers and remaining std gaps (round 242)
+
+- Rewrote every `std/container` package to the documented surface:
+  - `Stack`, `Queue`, `Deque`, `Ring`, `Heap`, and `Tree` are classes.
+  - Constructors take the documented capacity or no argument.
+  - `Ring.push` returns the overwritten oldest value.
+  - `Heap` is a max heap over `T: Ord` with no comparator closure.
+  - `Tree.set`/`delete` return `Option[V]`; `keys`/`values` return ordered
+    lists. Tree keeps parallel key/value lists so no nested generic element
+    leaks into the class layout.
+- Fixed generic class method discovery for package-qualified receivers and
+  stopped parameter-for-parameter method instances from being lowered as
+  concrete instances.
+- Rewrote the six container corpora to the documented surface; all exit 0.
+- `will check std` exits 0; cold `gate -full` is green after re-recording.
+- Commits: `ec82247 feat: complete the specified container surfaces`.
+- Recorded two specification gaps that block the next std packages:
+  - `std/task.snapshot` needs a source-level `TaskError` construction surface.
+  - `std/parallel` chunk jobs need a CPU-job join surface; an ordinary `def`
+    cannot await child CPU jobs, while making the API `async def` would change
+    the documented signature.
+
+
