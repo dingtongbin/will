@@ -145,8 +145,13 @@ func (g *generator) emitGeneralStep(fnID int) error {
 	g.smPlaces = map[int]smPlace{}
 	g.resetSyntheticTemps()
 	g.liveValues = map[int]string{}
-	g.resultType = g.resultLLVM(fieldText(fn, "type"))
 	g.fnResultText = fieldText(fn, "type")
+	g.resultType = g.resultLLVM(g.fnResultText)
+	if g.resultType == "" && g.fnResultText != "" {
+		if typ, ok := g.typeLLVMOf(g.fnResultText); ok {
+			g.resultType = typ
+		}
+	}
 	g.fnSymbol = sym
 	g.fnPos = fieldText(fn, "pos")
 	g.crossingPos = g.fnPos

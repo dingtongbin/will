@@ -821,3 +821,24 @@ func typeParamNamesIn(d *docState, fn willc.Record) []string {
 	}
 	return names
 }
+
+// awaitTaskJoin joins one Task value and returns its result slot as a place.
+func (g *generator) awaitTaskJoin(r willc.Record) (string, string, error) {
+	if p, ok := g.smPlaces[r.ID]; ok {
+		return p.ptr, p.typ, nil
+	}
+	task, elem, err := g.awaitTaskValue(refField(r, "expr"))
+	if err != nil {
+		return "", "", err
+	}
+	slot, err := g.lowerTaskResult(task, elem, r.ID)
+	if err != nil {
+		return "", "", err
+	}
+	info, ok := g.adtType("Result<" + elem + ",TaskError>")
+	if !ok {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: Result<%s, TaskError> is not lowered", r.ID, elem)
+	}
+	g.smPlaces[r.ID] = smPlace{ptr: slot, typ: info.llvm}
+	return slot, info.llvm, nil
+}

@@ -1323,6 +1323,9 @@ func (g *generator) place(id int) (string, string, error) {
 			g.smPlaces[r.ID] = smPlace{ptr: ptr, typ: typ}
 			return ptr, typ, nil
 		}
+		if op, ok := g.recs[exprID]; ok && op.Kind == "name" {
+			return g.awaitTaskJoin(r)
+		}
 		if call, ok := g.recs[exprID]; ok && call.Kind == "mcall" {
 			if recvText, err := g.willTypeText(refField(call, "recv")); err == nil {
 				if iface, ok := g.ifaceOfText(recvText); ok {

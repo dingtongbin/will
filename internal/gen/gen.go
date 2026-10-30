@@ -4005,9 +4005,6 @@ func (g *generator) value(id int) (string, error) {
 		return g.load(snap.llvm, g.deferFieldPtr(snap)), nil
 	}
 	if p, ok := g.smPlaces[id]; ok {
-		if isAggregateType(p.typ) {
-			return "", g.errf(id, "cannot translate node #%d: a state-machine result is a place", id)
-		}
 		return g.load(p.typ, p.ptr), nil
 	}
 	if text, err := g.willTypeText(id); err == nil && g.isClassText(text) &&
@@ -4019,9 +4016,6 @@ func (g *generator) value(id int) (string, error) {
 		slot, typ, err := g.place(id)
 		if err != nil {
 			return "", err
-		}
-		if isAggregateType(typ) {
-			return "", g.errf(id, "cannot translate node #%d: an await result is a place", id)
 		}
 		return g.load(typ, slot), nil
 	case "borrow":
