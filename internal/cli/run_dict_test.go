@@ -1,6 +1,9 @@
 package cli
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // TestRunDictScalarKeys covers dict construction, set, get, has, delete, len,
 // keys, and values with scalar keys.
@@ -93,5 +96,35 @@ func TestRunSetAddHasDelete(t *testing.T) {
 	code, out, errOut := runCLI("run", path)
 	if code != 0 {
 		t.Fatalf("run: code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+}
+
+// TestRunDictSetEach checks both each callbacks visit every live entry.
+func TestRunDictSetEach(t *testing.T) {
+	src := `def main() -> i32 {
+    var d: dict[i32, i32] = dict[i32, i32](4)
+    d.set(1, 10)
+    d.set(2, 20)
+    d.each(func(k: i32, v: i32) {
+        print(k, "=", v, "\n")
+    })
+    var s: set[i32] = set[i32](4)
+    s.add(3)
+    s.add(4)
+    s.each(func(v: i32) {
+        print("v=", v, "\n")
+    })
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("run: code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	for _, want := range []string{"1=10", "2=20", "v=3", "v=4"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("stdout = %q, missing %q", out, want)
+		}
 	}
 }

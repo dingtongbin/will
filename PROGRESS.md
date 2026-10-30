@@ -337,10 +337,11 @@ Evidence commands:
   returns 1. `dict[str,i32]` works too (set overwrite, has, delete, len).
   `keys()`/`values()` now build a fresh `list` for dict and are tested.
 - New CLI tests `TestRunDictScalarKeys` (38), `TestRunDictStrKeys` (14),
-  `TestRunSetAddHasDelete` (0) all pass with a cold cache. Not committed yet:
-  the next step is `gate -full`, then one commit for dict/set; `each` and
-  `for` iteration are still missing (each is specified; iteration order is
-  unspecified).
+  `TestRunSetAddHasDelete` (0) and `TestRunDictSetEach` (prints 1=10, 2=20,
+  v=3, v=4) all pass with a cold cache. The dict/set core is committed as
+  `cc2bd62`; the `each` callbacks (dict f(K,V) and set f(T)) are implemented
+  and tested but still uncommitted. `for` over a dict/set is not specified
+  (iteration order is unspecified; each is the specified way).
 - Uncommitted files: `internal/gen/{dictset.go,container.go,gen.go,
   genericstruct.go,len.go,list.go,new.go}`, `internal/{resolve,types,willc}`
   changes.

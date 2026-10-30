@@ -2378,6 +2378,9 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 			return c.in.named(listName, []*Type{k}), true
 		case "values":
 			return c.in.named(listName, []*Type{v}), true
+		case "each":
+			c.checkPayload(s, []*Type{c.in.funcT([]*Type{k, v}, nil)}, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
 		}
 	case "Set", "set":
 		elem := argAt(recv, 0)
@@ -2389,6 +2392,9 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 			return boolean, true
 		case "clear":
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
+			return c.in.unit(), true
+		case "each":
+			c.checkPayload(s, []*Type{c.in.funcT([]*Type{elem}, nil)}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
 		}
 	}

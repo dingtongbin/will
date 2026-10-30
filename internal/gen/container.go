@@ -159,7 +159,7 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 			return adt.llvm, "Option<" + v + ">", true
 		case "has", "delete":
 			return "i1", "bool", true
-		case "set", "clear":
+		case "set", "clear", "each":
 			return "", "", true
 		case "keys":
 			if _, _, isDict := dictTypeText(recvText); isDict {
@@ -186,7 +186,7 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 			return "i64", "usize", true
 		case "add", "has", "delete":
 			return "i1", "bool", true
-		case "clear":
+		case "clear", "each":
 			return "", "", true
 		}
 	}
@@ -309,6 +309,8 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 				return g.mapList(r, entry, data, length, field, elemText)
 			}
 			return g.mapArray(r, entry, entrySize, data, length, field, elemText)
+		case "each":
+			return g.dictEach(r, entry, data, length, kt, vt)
 		}
 		return "", "", g.errf(r.ID, "cannot translate node #%d: Map.%s is not lowered yet", r.ID, name)
 	}
@@ -351,6 +353,8 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 				return "", "", g.errf(r.ID, "cannot translate node #%d: delete takes one value", r.ID)
 			}
 			return g.setDelete(r, et, elem, entrySize, dataPtr, lenPtr, args[0])
+		case "each":
+			return g.setEach(r, et, data, length)
 		}
 		return "", "", g.errf(r.ID, "cannot translate node #%d: Set.%s is not lowered yet", r.ID, name)
 	}
@@ -1009,4 +1013,83 @@ func (g *generator) mapList(r willc.Record, entry string, data, length string, f
 	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
 	g.out.WriteString(done + ":\n")
 	return g.load("ptr", slot), outText, nil
+}
+
+// dictEach calls the callback for every live entry.
+func (g *generator) dictEach(r willc.Record, entry, data, length, kt, vt string) (string, string, error) {
+	args := g.callArgs(r)
+	if len(args) != 1 {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: each takes one callback", r.ID)
+	}
+	code, env, err := g.listFuncValue(args[0])
+	if err != nil {
+		return "", "", err
+	}
+	g.labels++
+	n := g.labels
+	cond := fmt.Sprintf("each.cond.%d", n)
+	body := fmt.Sprintf("each.body.%d", n)
+	done := fmt.Sprintf("each.done.%d", n)
+	index := g.newTmp()
+	g.tempAlloca(index, "i64")
+	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", index)
+	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
+	g.out.WriteString(cond + ":\n")
+	current := g.load("i64", index)
+	more := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", more, current, length)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", more, body, done)
+	g.out.WriteString(body + ":\n")
+	src := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", src, entry, data, current)
+	kp := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", kp, entry, src)
+	k := g.load(kt, kp)
+	vp := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", vp, entry, src)
+	v := g.load(vt, vp)
+	fmt.Fprintf(g.out, "  call void %s(ptr %s, %s %s, %s %s)\n", code, env, kt, k, vt, v)
+	next := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", next, current)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", next, index)
+	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
+	g.out.WriteString(done + ":\n")
+	return "", "", nil
+}
+
+// setEach calls the callback for every live value.
+func (g *generator) setEach(r willc.Record, et, data, length string) (string, string, error) {
+	args := g.callArgs(r)
+	if len(args) != 1 {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: each takes one callback", r.ID)
+	}
+	code, env, err := g.listFuncValue(args[0])
+	if err != nil {
+		return "", "", err
+	}
+	g.labels++
+	n := g.labels
+	cond := fmt.Sprintf("seteach.cond.%d", n)
+	body := fmt.Sprintf("seteach.body.%d", n)
+	done := fmt.Sprintf("seteach.done.%d", n)
+	index := g.newTmp()
+	g.tempAlloca(index, "i64")
+	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", index)
+	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
+	g.out.WriteString(cond + ":\n")
+	current := g.load("i64", index)
+	more := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", more, current, length)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", more, body, done)
+	g.out.WriteString(body + ":\n")
+	slot := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", slot, et, data, current)
+	v := g.load(et, slot)
+	fmt.Fprintf(g.out, "  call void %s(ptr %s, %s %s)\n", code, env, et, v)
+	next := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", next, current)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", next, index)
+	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
+	g.out.WriteString(done + ":\n")
+	return "", "", nil
 }
