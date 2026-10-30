@@ -1,0 +1,27 @@
+import "std/io/pipe"
+
+async def main() -> i32 {
+    var p: pipe.Pipe = pipe.pipe(16usize)
+    var w: pipe.PipeWriter = p.writer
+    var r: pipe.PipeReader = p.reader
+    var text: str = "hello"
+    _ = await w.write(text[Range(0, 5)])
+    w.close()
+    var out: Array<u8> = new Array<u8>(0)
+    var n: usize = 0
+    while True {
+        var res: Result<usize, Error> = await r.read(out)
+        match res {
+            Ok(got) => {
+                if got == 0usize {
+                    break
+                }
+                n += got
+            }
+            Err(_) => {
+                return 1
+            }
+        }
+    }
+    return i32(n)
+}

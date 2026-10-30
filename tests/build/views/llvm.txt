@@ -7,45 +7,51 @@ define hidden i32 @"example.com/views.sum"(ptr %xs) inlinehint {
 entry:
   %v.total = alloca i32
   %v.i = alloca i64
+  %t5 = alloca ptr
+  %t6 = alloca i64
   store i32 0, ptr %v.total
   %t1 = getelementptr inbounds { ptr, i64 }, ptr %xs, i32 0, i32 0
   %t2 = load ptr, ptr %t1
   %t3 = getelementptr inbounds { ptr, i64 }, ptr %xs, i32 0, i32 1
   %t4 = load i64, ptr %t3
+  store ptr %t2, ptr %t5
+  store i64 %t4, ptr %t6
   store i64 0, ptr %v.i
   br label %for.cond.1
 for.cond.1:
-  %t5 = load i64, ptr %v.i
-  %t6 = icmp ult i64 %t5, %t4
-  br i1 %t6, label %for.body.1, label %for.end.1
+  %t7 = load i64, ptr %v.i
+  %t8 = load i64, ptr %t6
+  %t9 = icmp ult i64 %t7, %t8
+  br i1 %t9, label %for.body.1, label %for.end.1
 for.body.1:
-  %t7 = getelementptr inbounds i32, ptr %t2, i64 %t5
-  %t8 = load i32, ptr %v.total
-  %t9 = load i32, ptr %t7
-  %t10 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t8, i32 %t9)
-  %t11 = extractvalue {i32, i1} %t10, 0
-  %t12 = extractvalue {i32, i1} %t10, 1
-  br i1 %t12, label %panic.2, label %panic.ok.2
+  %t10 = load ptr, ptr %t5
+  %t11 = getelementptr inbounds i32, ptr %t10, i64 %t7
+  %t12 = load i32, ptr %v.total
+  %t13 = load i32, ptr %t11
+  %t14 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t12, i32 %t13)
+  %t15 = extractvalue {i32, i1} %t14, 0
+  %t16 = extractvalue {i32, i1} %t14, 1
+  br i1 %t16, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
   unreachable
 panic.ok.2:
-  store i32 %t11, ptr %v.total
-  %t13 = load i64, ptr %v.i
-  %t14 = icmp ugt i64 %t13, 100
-  br i1 %t14, label %if.then.3, label %if.end.3
+  store i32 %t15, ptr %v.total
+  %t17 = load i64, ptr %v.i
+  %t18 = icmp ugt i64 %t17, 100
+  br i1 %t18, label %if.then.3, label %if.end.3
 if.then.3:
   br label %for.end.1
 if.end.3:
   br label %for.step.1
 for.step.1:
-  %t15 = load i64, ptr %v.i
-  %t16 = add i64 %t15, 1
-  store i64 %t16, ptr %v.i
+  %t19 = load i64, ptr %v.i
+  %t20 = add i64 %t19, 1
+  store i64 %t20, ptr %v.i
   br label %for.cond.1
 for.end.1:
-  %t17 = load i32, ptr %v.total
-  ret i32 %t17
+  %t21 = load i32, ptr %v.total
+  ret i32 %t21
 }
 define hidden i64 @"example.com/views.count"(ptr %xs) inlinehint {
 entry:
@@ -53,105 +59,111 @@ entry:
   %v.gcroots = alloca [1 x ptr]
   store [1 x ptr] zeroinitializer, ptr %v.gcroots
   %v.gcframe = alloca %willrt_gc_frame
-  %t18 = getelementptr inbounds [1 x ptr], ptr %v.gcroots, i32 0, i32 0
+  %t22 = getelementptr inbounds [1 x ptr], ptr %v.gcroots, i32 0, i32 0
   call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.example.com/views.count", ptr %v.gcroots)
   %v.$idx = alloca i64
+  %t27 = alloca ptr
+  %t28 = alloca i64
   store i64 0, ptr %v.n
-  %t19 = getelementptr inbounds { ptr, i64, i64 }, ptr %xs, i32 0, i32 0
-  %t20 = load ptr, ptr %t19
-  %t21 = getelementptr inbounds { ptr, i64, i64 }, ptr %xs, i32 0, i32 1
-  %t22 = load i64, ptr %t21
+  %t23 = getelementptr inbounds { ptr, i64, i64 }, ptr %xs, i32 0, i32 0
+  %t24 = load ptr, ptr %t23
+  %t25 = getelementptr inbounds { ptr, i64, i64 }, ptr %xs, i32 0, i32 1
+  %t26 = load i64, ptr %t25
+  store ptr %t24, ptr %t27
+  store i64 %t26, ptr %t28
   store i64 0, ptr %v.$idx
   br label %for.cond.1
 for.cond.1:
-  %t23 = load i64, ptr %v.$idx
-  %t24 = icmp ult i64 %t23, %t22
-  br i1 %t24, label %for.body.1, label %for.end.1
+  %t29 = load i64, ptr %v.$idx
+  %t30 = load i64, ptr %t28
+  %t31 = icmp ult i64 %t29, %t30
+  br i1 %t31, label %for.body.1, label %for.end.1
 for.body.1:
-  %t25 = getelementptr inbounds i32, ptr %t20, i64 %t23
-  %t26 = load i32, ptr %t25
-  %t27 = icmp sgt i32 %t26, 0
-  br i1 %t27, label %if.then.2, label %if.end.2
+  %t32 = load ptr, ptr %t27
+  %t33 = getelementptr inbounds i32, ptr %t32, i64 %t29
+  %t34 = load i32, ptr %t33
+  %t35 = icmp sgt i32 %t34, 0
+  br i1 %t35, label %if.then.2, label %if.end.2
 if.then.2:
-  %t28 = load i64, ptr %v.n
-  %t29 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t28, i64 1)
-  %t30 = extractvalue {i64, i1} %t29, 0
-  %t31 = extractvalue {i64, i1} %t29, 1
-  br i1 %t31, label %panic.3, label %panic.ok.3
+  %t36 = load i64, ptr %v.n
+  %t37 = call {i64, i1} @llvm.sadd.with.overflow.i64(i64 %t36, i64 1)
+  %t38 = extractvalue {i64, i1} %t37, 0
+  %t39 = extractvalue {i64, i1} %t37, 1
+  br i1 %t39, label %panic.3, label %panic.ok.3
 panic.3:
   call void @willrt_panic(ptr @.str.0, ptr @.str.3, ptr @.str.4)
   unreachable
 panic.ok.3:
-  store i64 %t30, ptr %v.n
+  store i64 %t38, ptr %v.n
   br label %if.end.2
 if.end.2:
   br label %for.step.1
 for.step.1:
-  %t32 = load i64, ptr %v.$idx
-  %t33 = add i64 %t32, 1
-  store i64 %t33, ptr %v.$idx
+  %t40 = load i64, ptr %v.$idx
+  %t41 = add i64 %t40, 1
+  store i64 %t41, ptr %v.$idx
   br label %for.cond.1
 for.end.1:
-  %t34 = load i64, ptr %v.n
+  %t42 = load i64, ptr %v.n
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i64 %t34
+  ret i64 %t42
 }
 define hidden i32 @"example.com/views.mid"(ptr %xs) inlinehint {
 entry:
   %v.v = alloca { ptr, i64 }
   %v.slice.56 = alloca { ptr, i64 }
   %v.slice.65 = alloca { ptr, i64 }
-  %t35 = icmp ugt i64 1, 3
-  br i1 %t35, label %panic.1, label %panic.ok.1
+  %t43 = icmp ugt i64 1, 3
+  br i1 %t43, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.5, ptr @.str.6, ptr @.str.7)
   unreachable
 panic.ok.1:
-  %t36 = icmp ugt i64 3, 4
-  br i1 %t36, label %panic.2, label %panic.ok.2
+  %t44 = icmp ugt i64 3, 4
+  br i1 %t44, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.5, ptr @.str.6, ptr @.str.7)
   unreachable
 panic.ok.2:
-  %t37 = getelementptr inbounds [4 x i32], ptr %xs, i64 0, i64 1
-  %t38 = sub i64 3, 1
-  %t39 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.56, i32 0, i32 0
-  store ptr %t37, ptr %t39
-  %t40 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.56, i32 0, i32 1
-  store i64 %t38, ptr %t40
-  %t41 = load { ptr, i64 }, ptr %v.slice.56
-  store { ptr, i64 } %t41, ptr %v.v
+  %t45 = getelementptr inbounds [4 x i32], ptr %xs, i64 0, i64 1
+  %t46 = sub i64 3, 1
+  %t47 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.56, i32 0, i32 0
+  store ptr %t45, ptr %t47
+  %t48 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.56, i32 0, i32 1
+  store i64 %t46, ptr %t48
+  %t49 = load { ptr, i64 }, ptr %v.slice.56
+  store { ptr, i64 } %t49, ptr %v.v
   call void @willrt_gc_safepoint(i32 3)
-  %t42 = call i32 @"example.com/views.sum"(ptr %v.v)
-  %t43 = icmp ugt i64 0, 2
-  br i1 %t43, label %panic.3, label %panic.ok.3
+  %t50 = call i32 @"example.com/views.sum"(ptr %v.v)
+  %t51 = icmp ugt i64 0, 2
+  br i1 %t51, label %panic.3, label %panic.ok.3
 panic.3:
   call void @willrt_panic(ptr @.str.5, ptr @.str.8, ptr @.str.7)
   unreachable
 panic.ok.3:
-  %t44 = icmp ugt i64 2, 4
-  br i1 %t44, label %panic.4, label %panic.ok.4
+  %t52 = icmp ugt i64 2, 4
+  br i1 %t52, label %panic.4, label %panic.ok.4
 panic.4:
   call void @willrt_panic(ptr @.str.5, ptr @.str.8, ptr @.str.7)
   unreachable
 panic.ok.4:
-  %t45 = getelementptr inbounds [4 x i32], ptr %xs, i64 0, i64 0
-  %t46 = sub i64 2, 0
-  %t47 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.65, i32 0, i32 0
-  store ptr %t45, ptr %t47
-  %t48 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.65, i32 0, i32 1
-  store i64 %t46, ptr %t48
+  %t53 = getelementptr inbounds [4 x i32], ptr %xs, i64 0, i64 0
+  %t54 = sub i64 2, 0
+  %t55 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.65, i32 0, i32 0
+  store ptr %t53, ptr %t55
+  %t56 = getelementptr inbounds { ptr, i64 }, ptr %v.slice.65, i32 0, i32 1
+  store i64 %t54, ptr %t56
   call void @willrt_gc_safepoint(i32 3)
-  %t49 = call i32 @"example.com/views.sum"(ptr %v.slice.65)
-  %t50 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t42, i32 %t49)
-  %t51 = extractvalue {i32, i1} %t50, 0
-  %t52 = extractvalue {i32, i1} %t50, 1
-  br i1 %t52, label %panic.5, label %panic.ok.5
+  %t57 = call i32 @"example.com/views.sum"(ptr %v.slice.65)
+  %t58 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t50, i32 %t57)
+  %t59 = extractvalue {i32, i1} %t58, 0
+  %t60 = extractvalue {i32, i1} %t58, 1
+  br i1 %t60, label %panic.5, label %panic.ok.5
 panic.5:
   call void @willrt_panic(ptr @.str.0, ptr @.str.9, ptr @.str.7)
   unreachable
 panic.ok.5:
-  ret i32 %t51
+  ret i32 %t59
 }
 define i32 @"example.com/views.will$main"() {
 entry:

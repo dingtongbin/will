@@ -316,6 +316,8 @@ func (g *generator) forContainer(r willc.Record, elem string, void bool, label i
 	elemName := names[len(names)-1]
 
 	// The data pointer and the length are the first two words of both shapes.
+	// The back edge reaches the condition without passing this block, so both
+	// values live in slots and are reloaded where they are used.
 	g.tmp++
 	dataField := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", dataField, baseType, base)
@@ -324,6 +326,12 @@ func (g *generator) forContainer(r willc.Record, elem string, void bool, label i
 	lenField := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", lenField, baseType, base)
 	length := g.load("i64", lenField)
+	dataSlot := g.newTmp()
+	g.tempAlloca(dataSlot, "ptr")
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", data, dataSlot)
+	lenSlot := g.newTmp()
+	g.tempAlloca(lenSlot, "i64")
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, lenSlot)
 
 	condLabel := fmt.Sprintf("for.cond.%d", label)
 	bodyLabel := fmt.Sprintf("for.body.%d", label)
@@ -334,11 +342,13 @@ func (g *generator) forContainer(r willc.Record, elem string, void bool, label i
 	fmt.Fprintf(g.out, "  br label %%%s\n", condLabel)
 	g.out.WriteString(condLabel + ":\n")
 	current := g.load("i64", idx)
+	bound := g.load("i64", lenSlot)
 	g.tmp++
 	cond := "%t" + strconv.Itoa(g.tmp)
-	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", cond, current, length)
+	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", cond, current, bound)
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, bodyLabel, endLabel)
 	g.out.WriteString(bodyLabel + ":\n")
+	data = g.load("ptr", dataSlot)
 	g.tmp++
 	ptr := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", ptr, elemType, data, current)

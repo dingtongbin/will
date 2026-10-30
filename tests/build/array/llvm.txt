@@ -22,7 +22,9 @@ entry:
   %t29 = alloca i64
   %t57 = alloca i64
   %t85 = alloca i64
-  %t151 = alloca i64
+  %t113 = alloca ptr
+  %t114 = alloca i64
+  %t155 = alloca i64
   %t5 = call ptr @willrt_gc_pin(ptr null)
   %t6 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 0
   store ptr %t5, ptr %t6
@@ -210,104 +212,108 @@ panic.ok.4:
   %t110 = load ptr, ptr %t109
   %t111 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
   %t112 = load i64, ptr %t111
+  store ptr %t110, ptr %t113
+  store i64 %t112, ptr %t114
   store i64 0, ptr %v.$idx
   br label %for.cond.5
 for.cond.5:
-  %t113 = load i64, ptr %v.$idx
-  %t114 = icmp ult i64 %t113, %t112
-  br i1 %t114, label %for.body.5, label %for.end.5
+  %t115 = load i64, ptr %v.$idx
+  %t116 = load i64, ptr %t114
+  %t117 = icmp ult i64 %t115, %t116
+  br i1 %t117, label %for.body.5, label %for.end.5
 for.body.5:
-  %t115 = getelementptr inbounds i32, ptr %t110, i64 %t113
-  %t116 = load i32, ptr %v.s
-  %t117 = load i32, ptr %t115
-  %t118 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t116, i32 %t117)
-  %t119 = extractvalue {i32, i1} %t118, 0
-  %t120 = extractvalue {i32, i1} %t118, 1
-  br i1 %t120, label %panic.6, label %panic.ok.6
+  %t118 = load ptr, ptr %t113
+  %t119 = getelementptr inbounds i32, ptr %t118, i64 %t115
+  %t120 = load i32, ptr %v.s
+  %t121 = load i32, ptr %t119
+  %t122 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t120, i32 %t121)
+  %t123 = extractvalue {i32, i1} %t122, 0
+  %t124 = extractvalue {i32, i1} %t122, 1
+  br i1 %t124, label %panic.6, label %panic.ok.6
 panic.6:
   call void @willrt_panic(ptr @.str.3, ptr @.str.4, ptr @.str.2)
   unreachable
 panic.ok.6:
-  store i32 %t119, ptr %v.s
+  store i32 %t123, ptr %v.s
   br label %for.step.5
 for.step.5:
-  %t121 = load i64, ptr %v.$idx
-  %t122 = add i64 %t121, 1
-  store i64 %t122, ptr %v.$idx
+  %t125 = load i64, ptr %v.$idx
+  %t126 = add i64 %t125, 1
+  store i64 %t126, ptr %v.$idx
   br label %for.cond.5
 for.end.5:
-  %t123 = load i32, ptr %v.s
-  %t124 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
-  %t125 = call ptr @willrt_gc_read_barrier_slot(ptr %t124)
-  %t126 = call ptr @willrt_gc_pin(ptr %t125)
-  call void @willrt_gc_write_barrier_untagged(ptr %t124, ptr %t126)
-  %t127 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
-  %t128 = call ptr @willrt_gc_read_barrier_slot(ptr %t127)
-  %t129 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
-  %t130 = load i64, ptr %t129
-  %t131 = icmp uge i64 0, %t130
-  br i1 %t131, label %panic.7, label %panic.ok.7
+  %t127 = load i32, ptr %v.s
+  %t128 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
+  %t129 = call ptr @willrt_gc_read_barrier_slot(ptr %t128)
+  %t130 = call ptr @willrt_gc_pin(ptr %t129)
+  call void @willrt_gc_write_barrier_untagged(ptr %t128, ptr %t130)
+  %t131 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
+  %t132 = call ptr @willrt_gc_read_barrier_slot(ptr %t131)
+  %t133 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
+  %t134 = load i64, ptr %t133
+  %t135 = icmp uge i64 0, %t134
+  br i1 %t135, label %panic.7, label %panic.ok.7
 panic.7:
   call void @willrt_panic(ptr @.str.0, ptr @.str.5, ptr @.str.2)
   unreachable
 panic.ok.7:
-  %t132 = getelementptr inbounds i32, ptr %t128, i64 0
-  %t133 = load i32, ptr %t132
-  call void @willrt_gc_unpin(ptr %t126)
-  %t134 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t123, i32 %t133)
-  %t135 = extractvalue {i32, i1} %t134, 0
-  %t136 = extractvalue {i32, i1} %t134, 1
-  br i1 %t136, label %panic.8, label %panic.ok.8
+  %t136 = getelementptr inbounds i32, ptr %t132, i64 0
+  %t137 = load i32, ptr %t136
+  call void @willrt_gc_unpin(ptr %t130)
+  %t138 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t127, i32 %t137)
+  %t139 = extractvalue {i32, i1} %t138, 0
+  %t140 = extractvalue {i32, i1} %t138, 1
+  br i1 %t140, label %panic.8, label %panic.ok.8
 panic.8:
   call void @willrt_panic(ptr @.str.3, ptr @.str.6, ptr @.str.2)
   unreachable
 panic.ok.8:
-  %t137 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
-  %t138 = call ptr @willrt_gc_read_barrier_slot(ptr %t137)
-  %t139 = call ptr @willrt_gc_pin(ptr %t138)
-  call void @willrt_gc_write_barrier_untagged(ptr %t137, ptr %t139)
-  %t140 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
-  %t141 = load i64, ptr %t140
-  call void @willrt_gc_unpin(ptr %t139)
-  %t142 = icmp ugt i64 %t141, 2147483647
-  br i1 %t142, label %panic.9, label %panic.ok.9
+  %t141 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
+  %t142 = call ptr @willrt_gc_read_barrier_slot(ptr %t141)
+  %t143 = call ptr @willrt_gc_pin(ptr %t142)
+  call void @willrt_gc_write_barrier_untagged(ptr %t141, ptr %t143)
+  %t144 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
+  %t145 = load i64, ptr %t144
+  call void @willrt_gc_unpin(ptr %t143)
+  %t146 = icmp ugt i64 %t145, 2147483647
+  br i1 %t146, label %panic.9, label %panic.ok.9
 panic.9:
   call void @willrt_panic(ptr @.str.7, ptr @.str.8, ptr @.str.2)
   unreachable
 panic.ok.9:
-  %t143 = trunc i64 %t141 to i32
-  %t144 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t135, i32 %t143)
-  %t145 = extractvalue {i32, i1} %t144, 0
-  %t146 = extractvalue {i32, i1} %t144, 1
-  br i1 %t146, label %panic.10, label %panic.ok.10
+  %t147 = trunc i64 %t145 to i32
+  %t148 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t139, i32 %t147)
+  %t149 = extractvalue {i32, i1} %t148, 0
+  %t150 = extractvalue {i32, i1} %t148, 1
+  br i1 %t150, label %panic.10, label %panic.ok.10
 panic.10:
   call void @willrt_panic(ptr @.str.3, ptr @.str.6, ptr @.str.2)
   unreachable
 panic.ok.10:
-  %t147 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
-  %t148 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
-  %t149 = call ptr @willrt_gc_read_barrier_slot(ptr %t147)
-  %t150 = load i64, ptr %t148
-  store i64 0, ptr %t151
+  %t151 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 0
+  %t152 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.a, i32 0, i32 1
+  %t153 = call ptr @willrt_gc_read_barrier_slot(ptr %t151)
+  %t154 = load i64, ptr %t152
+  store i64 0, ptr %t155
   br label %deep.rel.arr.cond.11
 deep.rel.arr.cond.11:
-  %t152 = load i64, ptr %t151
-  %t153 = icmp ult i64 %t152, %t150
-  br i1 %t153, label %deep.rel.arr.body.11, label %deep.rel.arr.done.11
+  %t156 = load i64, ptr %t155
+  %t157 = icmp ult i64 %t156, %t154
+  br i1 %t157, label %deep.rel.arr.body.11, label %deep.rel.arr.done.11
 deep.rel.arr.body.11:
-  %t154 = getelementptr inbounds i32, ptr %t149, i64 %t152
-  %t155 = add i64 %t152, 1
-  store i64 %t155, ptr %t151
+  %t158 = getelementptr inbounds i32, ptr %t153, i64 %t156
+  %t159 = add i64 %t156, 1
+  store i64 %t159, ptr %t155
   br label %deep.rel.arr.cond.11
 deep.rel.arr.done.11:
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i32 %t145
+  ret i32 %t149
 }
 define i32 @"example.com/array.will$main"() {
 entry:
   call void @willrt_gc_safepoint(i32 3)
-  %t156 = call i32 @"example.com/array.sum"()
-  ret i32 %t156
+  %t160 = call i32 @"example.com/array.sum"()
+  ret i32 %t160
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
