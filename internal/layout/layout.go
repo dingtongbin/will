@@ -167,6 +167,16 @@ func (r *Resolver) known(name string) bool {
 // Layout returns the layout of one named type and the place of each of its
 // fields or variants.
 func (r *Resolver) Layout(name string) (Named, error) {
+	if !r.known(name) {
+		// A field may spell another package's type through its import alias
+		// (io.Reader); declarations are registered under their qualified name,
+		// so retry with the registered name that ends in the bare segment.
+		if i := lastDot(name); i >= 0 {
+			if q := r.findBare(name[i+1:]); q != "" {
+				name = q
+			}
+		}
+	}
 	if got, ok := r.computed[name]; ok {
 		return got, nil
 	}
@@ -428,4 +438,43 @@ func roundUp(n, align int) int {
 		n += align - rest
 	}
 	return n
+}
+
+func lastDot(s string) int {
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] == '.' {
+			return i
+		}
+	}
+	return -1
+}
+
+// findBare returns the registered name whose last segment is bare, or "" when
+// none or more than one matches.
+func (r *Resolver) findBare(bare string) string {
+	found := ""
+	check := func(name string) {
+		if len(name) <= len(bare) || name[len(name)-len(bare)-1] != '.' ||
+			name[len(name)-len(bare):] != bare {
+			return
+		}
+		if found != "" && found != name {
+			found = ""
+			return
+		}
+		found = name
+	}
+	for name := range r.structs {
+		check(name)
+	}
+	for name := range r.enums {
+		check(name)
+	}
+	for name := range r.interfaces {
+		check(name)
+	}
+	for name := range r.classes {
+		check(name)
+	}
+	return found
 }

@@ -1,2 +1,0 @@
-crosstaskrcmethod:1:1: B0001 package name does not match the directory name
-    help: rename one of them

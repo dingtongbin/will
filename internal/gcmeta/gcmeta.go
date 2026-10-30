@@ -371,6 +371,9 @@ func (p *Program) resolve(pkg, text string) (string, bool) {
 }
 
 func (p *Program) resolveDecl(pkg, text string) (string, bool) {
+	// A type text may spell another package through its import alias
+	// (io.Reader); expand the alias before the name lookup.
+	text = p.aliasName(pkg, text)
 	return resolveName(p.decls, pkg, text)
 }
 
