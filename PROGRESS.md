@@ -401,3 +401,20 @@ Evidence commands:
   post-core task.
 - Long design, build, test, gate, benchmark, fuzz, and soak work runs in the
   background while foreground coding continues.
+
+## Map/Set migration attempt (round 23, uncommitted)
+
+- Tool `build/retypemap/main.go` rewrote 11 files (`Map<` -> `dict[`,
+  `Set<` -> `set[`, removing `new`). Three failure classes; tree restored and
+  the diff saved as `build/mapset-migration.patch` (25 KB).
+  1. `tests/std/os/main.will` declares `var set: Result<(), Error>`, which now
+     shadows the predeclared `set` type (N0003); rename the variable.
+  2. `var keys: Array<i32> = m.keys()` must become `list[...]` because dict
+     keys/values return list; the stale Array declaration makes gen report
+     "the call result is not an aggregate".
+  3. `std/task/task.will:20:28` and `tests/build/deferdeep` report O0002
+     "a copy is required here and cannot be proven" on `out.push(await
+     task!)`; the mover/generic instance rule for the final containers is
+     still open.
+- HEAD is `e83f8ab` (dict/set each). Next: fix the three classes, re-apply
+  the patch, re-record, then delete Map/Set.
