@@ -2,18 +2,24 @@ import c "capture.h" {
     fast willtest_now_ns
 }
 
-# TestState is the mutable part of a case. It lives behind arc so a case can be
-# moved into a task while the runner keeps a handle for the verdict.
-struct TestState {
+# TestState is the mutable part of a case. It is a class, so a case can be
+# moved into a task while the runner keeps a reference for the verdict.
+class TestState {
     failed: bool
     parallelizable: bool
     logs: Array<str>
+
+    def init(self, failed: bool, parallelizable: bool, logs: Array<str>) {
+        self.failed = failed
+        self.parallelizable = parallelizable
+        self.logs = logs.clone()
+    }
 }
 
 # T is the handle a test function receives.
 struct T {
     name: str
-    state: arc<TestState>
+    state: TestState
 }
 
 # B is the handle a benchmark function receives. The runner owns the timing
@@ -35,14 +41,14 @@ struct Case {
 # caseResult carries one finished case back to its caller.
 struct caseResult {
     name: str
-    state: arc<TestState>
+    state: TestState
 }
 
 # NewT returns a case handle with no failures and no log lines.
 def new_t(name: str) -> T {
     return T {
         name: name.clone(),
-        state: new arc<TestState>(TestState { failed: False, parallelizable: False, logs: new Array<str>(0)})
+        state: new TestState(False, False, new Array<str>(0))
     }
 }
 
@@ -113,7 +119,7 @@ def (t: mut T) bench(name: str, f: func(B)) {
 # runCase runs one table entry and returns its name and final state.
 def run_case(spec: Case) -> caseResult {
     var t: T = new_t(spec.name)
-    var state: arc<TestState> = t.state
+    var state: TestState = t.state
     spec.run(t)
     return caseResult { name: spec.name.clone(), state: state}
 }
@@ -196,11 +202,13 @@ async def run_cases(cases: ...Case) {
     region {
         var tasks: Array<Task<caseResult>> = new Array<Task<caseResult>>(n)
         for i in Range(0, i32(n)) {
-            tasks.push(spawn run_case(cases.get(usize(i))))
+            var spec: Case = cases.get(usize(i))
+            tasks.push(spawn run_case(spec))
         }
         for i in Range(0, i32(n)) {
             var task: Task<caseResult> = tasks.get(usize(i))
-            results.push(await task!)
+            var value: caseResult = await task!
+            results.push(value)
         }
     }
     sort_results(results)
