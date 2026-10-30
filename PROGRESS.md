@@ -595,3 +595,9 @@ Evidence commands:
 - Cold-cache `gate -full` is green again.
 - Next: delete gen's old Map/Set handle paths, gcmeta layout branches, and
   rc-map/rc-set corpora.
+## Dead Map/Set code removed (round 35)
+
+- `deepclone.go` lost the old handle clone (cloneMapValue, cloneSetValue,
+  cloneEntries) and releaseEntries; final containers are shared references
+  in the value clone, the field clone check, and the release path. Cold-cache
+  `gate -full` is green after the removal.
