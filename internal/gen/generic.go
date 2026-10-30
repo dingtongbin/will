@@ -767,7 +767,14 @@ func (g *generator) genericCallResult(r willc.Record) string {
 	if !ok {
 		return ""
 	}
-	return substituteText(fieldText(fn, "type"), typeParamNamesIn(d, fn), args)
+	names := typeParamNamesIn(d, fn)
+	subst := make(map[string]string, len(names))
+	for i, name := range names {
+		if i < len(args) {
+			subst[name] = args[i]
+		}
+	}
+	return substituteTypeText(fieldText(fn, "type"), subst)
 }
 
 // receiverOfIn returns the receiver record of a function in one document.

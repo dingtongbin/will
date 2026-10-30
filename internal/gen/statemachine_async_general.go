@@ -146,6 +146,13 @@ func (g *generator) generalCallWaitPlace(r willc.Record) (string, string, error)
 	if err != nil {
 		return "", "", err
 	}
+	if text == "" || text == "()" {
+		// A void child has no result slot: reuse the scalar join path.
+		if _, err := g.generalCallWait(r); err != nil {
+			return "", "", err
+		}
+		return "", "", nil
+	}
 	llvm := g.resultLLVM(text)
 	if llvm == "" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the call result has no place", r.ID)
