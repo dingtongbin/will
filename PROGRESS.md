@@ -601,3 +601,14 @@ Evidence commands:
   cloneEntries) and releaseEntries; final containers are shared references
   in the value clone, the field clone check, and the release path. Cold-cache
   `gate -full` is green after the removal.
+## Remaining old Map/Set code paths removed (round 36)
+
+- share.go, rc.go, gc_container.go, and iterate.go no longer recognize the
+  removed Map/Set spellings; shareEntries was dead and is deleted; the GC
+  container test uses dict/set. Cold-cache `gate -full` is green.
+- New spec gap recorded: the C boundary for containers/views (std/io
+  poller and std/os/exec pass handle addresses to C). Until the spec defines
+  the supported form, those packages are not touched by the Array migration.
+- rc/arc still appear in 55/15 will files (std/sync, std/test, corpora);
+  replacing them with GC references is the next large deprecated-surface
+  migration.
