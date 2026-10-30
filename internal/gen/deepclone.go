@@ -41,11 +41,10 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 	if elem, ok := arrayElemText(text); ok {
 		return g.cloneArrayValue(src, dst, elem)
 	}
-	if k, v, ok := mapTypeText(text); ok {
-		return g.cloneMapValue(src, dst, k, v)
-	}
-	if elem, ok := setTypeText(text); ok {
-		return g.cloneSetValue(src, dst, elem)
+	if isFinalContainerText(text) {
+		// Final containers are shared references; a value copy keeps the same
+		// payload, so no deep clone happens here.
+		return nil
 	}
 	if iface, ok := g.ifaceOfText(text); ok {
 		_, err := g.cloneIfaceAt(src, dst, iface)
@@ -114,11 +113,8 @@ func fieldTextNeedsClone(text string) bool {
 	if _, ok := arrayElemText(text); ok {
 		return true
 	}
-	if _, _, ok := mapTypeText(text); ok {
-		return true
-	}
-	if _, ok := setTypeText(text); ok {
-		return true
+	if isFinalContainerText(text) {
+		return false
 	}
 	if _, args, ok := parseADT(text); ok {
 		return len(args) != 0
@@ -214,97 +210,6 @@ func (g *generator) cloneArrayValue(src, dst, elem string) error {
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", to, elemLLVM, newData, at)
 	if err := g.cloneOwnedValue(from, to, elem); err != nil {
 		return err
-	}
-	next := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", next, at)
-	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", next, index)
-	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
-	g.out.WriteString(done + ":\n")
-	return g.storeContainerHeader(dst, newData, length)
-}
-
-// cloneMapValue duplicates the entries of a Map and clones each key and value.
-func (g *generator) cloneMapValue(src, dst, k, v string) error {
-	entry, ok := g.mapEntryLLVM(k, v)
-	if !ok {
-		return fmt.Errorf("map entry is not lowered yet")
-	}
-	entrySize, _, ok := g.sizeAlign(entry)
-	if !ok {
-		return fmt.Errorf("map entry has no layout")
-	}
-	return g.cloneEntries(src, dst, entry, entrySize, []string{k, v})
-}
-
-// cloneSetValue duplicates the entries of a Set and clones each element.
-func (g *generator) cloneSetValue(src, dst, elem string) error {
-	entry, ok := g.containerValueType(elem)
-	if !ok || entry == "" {
-		return fmt.Errorf("set element %s is not lowered yet", elem)
-	}
-	entrySize, _, ok := g.sizeAlign(entry)
-	if !ok {
-		return fmt.Errorf("set element has no layout")
-	}
-	return g.cloneEntries(src, dst, entry, entrySize, []string{elem})
-}
-
-// cloneEntries copies a Map or Set buffer and recursively clones the fields of
-// each entry. Fields is one type for a Set and key/value for a Map.
-func (g *generator) cloneEntries(src, dst, entry string, entrySize int, fields []string) error {
-	srcDataPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", srcDataPtr, src)
-	srcLenPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", srcLenPtr, src)
-	srcData := g.loadContainerData(srcDataPtr)
-	length := g.load("i64", srcLenPtr)
-	bytes := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, length, entrySize)
-	descriptor := ""
-	var err error
-	if len(fields) == 2 {
-		descriptor, err = g.mapEntryDescriptor(fields[0], fields[1])
-	} else if len(fields) == 1 {
-		descriptor, err = g.sequenceDescriptor(fields[0])
-	} else {
-		return fmt.Errorf("container entry has %d fields", len(fields))
-	}
-	if err != nil {
-		return err
-	}
-	newData := g.newTmp()
-	g.gcAllocSequence(newData, bytes, descriptor)
-	g.labels++
-	n := g.labels
-	cond := fmt.Sprintf("deep.map.cond.%d", n)
-	body := fmt.Sprintf("deep.map.body.%d", n)
-	done := fmt.Sprintf("deep.map.done.%d", n)
-	index := g.newTmp()
-	g.tempAlloca(index, "i64")
-	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", index)
-	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
-	g.out.WriteString(cond + ":\n")
-	at := g.load("i64", index)
-	more := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", more, at, length)
-	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", more, body, done)
-	g.out.WriteString(body + ":\n")
-	from := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", from, entry, srcData, at)
-	to := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", to, entry, newData, at)
-	for i, fieldText := range fields {
-		fieldFrom := from
-		fieldTo := to
-		if len(fields) > 1 {
-			fieldFrom = g.newTmp()
-			fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", fieldFrom, entry, from, i)
-			fieldTo = g.newTmp()
-			fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", fieldTo, entry, to, i)
-		}
-		if err := g.cloneOwnedValue(fieldFrom, fieldTo, fieldText); err != nil {
-			return err
-		}
 	}
 	next := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", next, at)
@@ -648,12 +553,6 @@ func (g *generator) releaseOwnedValueInner(ptr, text string) error {
 	if isFinalContainerText(text) {
 		return nil
 	}
-	if k, v, ok := mapTypeText(text); ok {
-		return g.releaseEntries(ptr, k, v, true)
-	}
-	if elem, ok := setTypeText(text); ok {
-		return g.releaseEntries(ptr, elem, "", false)
-	}
 	if kind, args, ok := parseADT(text); ok && len(args) != 0 {
 		return g.releaseADTValue(ptr, kind, args)
 	}
@@ -785,49 +684,6 @@ func (g *generator) releaseContainerEntries(data, length, entry string, fields [
 		}
 		return nil
 	})
-}
-
-// releaseEntries releases a Map or Set buffer and its fields.
-func (g *generator) releaseEntries(ptr, k, v string, isMap bool) error {
-	var entry string
-	var fields []string
-	if isMap {
-		llvm, ok := g.mapEntryLLVM(k, v)
-		if !ok {
-			return fmt.Errorf("map entry is not lowered yet")
-		}
-		entry = llvm
-		fields = []string{k, v}
-	} else {
-		llvm, ok := g.containerValueType(k)
-		if !ok || llvm == "" {
-			return fmt.Errorf("set element %s is not lowered yet", k)
-		}
-		entry = llvm
-		fields = []string{k}
-	}
-	dataPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, ptr)
-	lenPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, ptr)
-	data := g.loadContainerData(dataPtr)
-	length := g.load("i64", lenPtr)
-	if err := g.emitElementLoop("deep.rel.map", data, entry, length, func(element string) error {
-		for i, fieldText := range fields {
-			field := element
-			if len(fields) > 1 {
-				field = g.newTmp()
-				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", field, entry, element, i)
-			}
-			if err := g.releaseOwnedValue(field, fieldText); err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	return nil
 }
 
 // releaseADTValue releases the live payload of an Option or Result.
