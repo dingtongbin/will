@@ -7,39 +7,42 @@ define hidden i32 @"example.com/loops.sum"(i32 %n) inlinehint {
 entry:
   %v.total = alloca i32
   %v.i = alloca i32
+  %t1 = alloca i32
   store i32 0, ptr %v.total
   store i32 0, ptr %v.i
+  store i32 %n, ptr %t1
   br label %for.cond.1
 for.cond.1:
-  %t1 = load i32, ptr %v.i
-  %t2 = icmp slt i32 %t1, %n
-  br i1 %t2, label %for.body.1, label %for.end.1
+  %t2 = load i32, ptr %v.i
+  %t3 = load i32, ptr %t1
+  %t4 = icmp slt i32 %t2, %t3
+  br i1 %t4, label %for.body.1, label %for.end.1
 for.body.1:
-  %t3 = load i32, ptr %v.total
-  %t4 = load i32, ptr %v.i
-  %t5 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t3, i32 %t4)
-  %t6 = extractvalue {i32, i1} %t5, 0
-  %t7 = extractvalue {i32, i1} %t5, 1
-  br i1 %t7, label %panic.2, label %panic.ok.2
+  %t5 = load i32, ptr %v.total
+  %t6 = load i32, ptr %v.i
+  %t7 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t5, i32 %t6)
+  %t8 = extractvalue {i32, i1} %t7, 0
+  %t9 = extractvalue {i32, i1} %t7, 1
+  br i1 %t9, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
   unreachable
 panic.ok.2:
-  store i32 %t6, ptr %v.total
+  store i32 %t8, ptr %v.total
   br label %for.step.1
 for.step.1:
-  %t8 = load i32, ptr %v.i
-  %t9 = add i32 %t8, 1
-  store i32 %t9, ptr %v.i
+  %t10 = load i32, ptr %v.i
+  %t11 = add i32 %t10, 1
+  store i32 %t11, ptr %v.i
   br label %for.cond.1
 for.end.1:
-  %t10 = load i32, ptr %v.total
-  ret i32 %t10
+  %t12 = load i32, ptr %v.total
+  ret i32 %t12
 }
 define i32 @"example.com/loops.will$main"() {
 entry:
-  %t11 = call i32 @"example.com/loops.sum"(i32 4)
-  ret i32 %t11
+  %t13 = call i32 @"example.com/loops.sum"(i32 4)
+  ret i32 %t13
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()

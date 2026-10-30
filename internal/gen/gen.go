@@ -3887,14 +3887,21 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 		}
 	}
 	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", lo, slot)
+	// The end bound is evaluated once before the loop and kept in a slot: the
+	// back edge reaches the condition without passing through the preheader,
+	// so a bare SSA value would not dominate every condition entry.
+	hiSlot := g.newTmp()
+	g.tempAlloca(hiSlot, "i32")
+	fmt.Fprintf(g.out, "  store i32 %s, ptr %s\n", hi, hiSlot)
 	condLabel := fmt.Sprintf("for.cond.%d", n)
 	fmt.Fprintf(g.out, "  br label %%%s\n", condLabel)
 	g.out.WriteString(condLabel + ":\n")
 	g.gcSafepoint(2)
 	current := g.load("i32", slot)
+	bound := g.load("i32", hiSlot)
 	g.tmp++
 	cond := "%t" + strconv.Itoa(g.tmp)
-	fmt.Fprintf(g.out, "  %s = icmp slt i32 %s, %s\n", cond, current, hi)
+	fmt.Fprintf(g.out, "  %s = icmp slt i32 %s, %s\n", cond, current, bound)
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, bodyLabel, endLabel)
 	g.out.WriteString(bodyLabel + ":\n")
 	g.loops = append(g.loops, loopLabels{step: stepLabel, end: endLabel, deferDepth: len(g.defers)})
