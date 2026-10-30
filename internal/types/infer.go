@@ -2353,7 +2353,7 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 		return nil, false
 	}
 	switch recv.Name() {
-	case "Map", "dict":
+	case "dict":
 		k, v := argAt(recv, 0), argAt(recv, 1)
 		listName := "Array"
 		if recv.Name() == "dict" {
@@ -2382,7 +2382,7 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 			c.checkPayload(s, []*Type{c.in.funcT([]*Type{k, v}, nil)}, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
 		}
-	case "Set", "set":
+	case "set":
 		elem := argAt(recv, 0)
 		switch call.Name {
 		case "len":

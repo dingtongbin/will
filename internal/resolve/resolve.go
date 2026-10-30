@@ -83,7 +83,7 @@ var predeclaredTypes = []string{
 	"i8", "i16", "i32", "i64", "isize",
 	"u8", "u16", "u32", "u64", "usize",
 	"f32", "f64",
-	"Array", "Map", "Set",
+	"Array",
 	"list", "dict", "set",
 	"chan", "rc", "arc", "weak_rc", "weak_arc", "Task",
 	"Option", "Result", "Value", "Duration",

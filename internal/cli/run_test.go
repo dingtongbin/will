@@ -110,12 +110,12 @@ func TestRunClassFieldContainers(t *testing.T) {
 	}
 	t.Setenv("WILL_GC_MEMLIMIT", "1")
 	src := `class Box {
-    values: Map<i32, i32>
-    seen: Set<i32>
+    values: dict[i32, i32]
+    seen: set[i32]
 
     def init(self) {
-        self.values = new Map<i32, i32>(8)
-        self.seen = new Set<i32>(8)
+        self.values = dict[i32, i32](8)
+        self.seen = set[i32](8)
     }
 }
 
@@ -222,12 +222,12 @@ func TestRunClassContainerMillion(t *testing.T) {
 	}
 	t.Setenv("WILL_GC_MEMLIMIT", "1")
 	src := `class Box {
-    values: Map<i32, i32>
-    seen: Set<i32>
+    values: dict[i32, i32]
+    seen: set[i32]
 
     def init(self) {
-        self.values = new Map<i32, i32>(8)
-        self.seen = new Set<i32>(8)
+        self.values = dict[i32, i32](8)
+        self.seen = set[i32](8)
     }
 }
 

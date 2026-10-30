@@ -577,3 +577,21 @@ Evidence commands:
 - Next: delete the old Map/Set names from the checker, gen (mapTypeText/
   setTypeText/container.go old handle paths), gcmeta layout, and the old
   rc-map/rc-set corpora, then re-record and re-run the cold gate.
+## Old Map/Set names removed from the front end (round 33, uncommitted)
+
+- resolve predeclared types, types builtin arity, and the infer container
+  branches no longer accept `Map`/`Set`; only `list`/`dict`/`set` remain.
+  `go build ./...` is clean.
+- `go test ./internal/resolve` now fails: its fixture source still spells the
+  removed names at test.will:15 (N0001). The fixture must be updated to
+  dict/set before this lands; the cold gate currently fails on it.
+- Remaining cleanup after that: gen's old Map/Set handle paths, gcmeta layout
+  branches, and the rc-map/rc-set corpora.
+## Old Map/Set names removed (round 34, gate green)
+
+- resolve predeclared types, types builtin arity, and infer container
+  branches now accept only list/dict/set; Array stays (migration blocked).
+  CLI container tests were updated to dict/set.
+- Cold-cache `gate -full` is green again.
+- Next: delete gen's old Map/Set handle paths, gcmeta layout branches, and
+  rc-map/rc-set corpora.
