@@ -1251,6 +1251,11 @@ func (c *checker) inferExprInner(s *inferScope, e ast.Expr) *Type {
 		if t, ok := c.env.vars[x.Name]; ok {
 			return t
 		}
+		// A function name used as a value has its signature type; without it
+		// a func(T) -> U parameter cannot unify with the argument.
+		if fn := c.env.funcs[x.Name]; fn != nil && fn.typeParams == 0 {
+			return c.in.funcT(fn.params, fn.result)
+		}
 		return nil
 	case *ast.CallExpr:
 		return c.callType(s, x)
