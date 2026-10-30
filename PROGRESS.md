@@ -827,3 +827,42 @@ Evidence commands:
 - std/sync and std/test are now on the final class surface. Remaining rc/arc
   text lives in ~55/15 corpus files and in the compiler rc surface; that is
   the next deprecation batch.
+## rc/arc corpus cleanup (round 54, uncommitted)
+
+- Deleted the pure rc-surface corpora: build/{rc,rccopy,rcdrop,rcgraph,rctask,
+  takec,weakzero} and check/{crosstaskrc,crosstaskrcmethod} (9 directories,
+  staged with git rm).
+- defer corpus: `rc<C>` replaced by the plain C value.
+- csv corpus: Buffer is a class with an init that clones the data buffer;
+  Sink holds a Buffer reference; compiles.
+- buf corpus: Stats is a class with an init; `new Stats(0, 0usize, 0usize)`.
+  It now fails with `layout of type io.Reader is not known` for
+  `ReaderBuf.src` (an interface field). That error was not present before the
+  Stats class change; next is to check whether the class payload info
+  registration interferes with interface field layout, or whether the
+  interface field needs its own gcmeta layout path.
+- Not committed: buf still red, so the cold gate would fail.
+## buf interface layout still open (round 55)
+
+- The buf failure is a real cross-package interface layout gap: layout.Layout
+  gets `io.Reader` from ReaderBuf.src and does not know it. Added a bare-name
+  fallback in layout.Layout and import-alias expansion in gcmeta.resolveDecl;
+  buf still fails, so the interface declaration itself is not registered in
+  the layout resolver (the test module's decisions likely only collect its own
+  interfaces, not std/io's Reader).
+- Corpora moved so far: defer (C value), csv (Buffer class with clone). The
+  nine pure rc corpora were deleted with git rm.
+- Next: register imported interfaces in the layout resolver (or give an
+  interface field the two-word layout from gcmeta), then rerun buf, defer,
+  csv, the cold gate, and commit the rc cleanup.
+## rc corpora cleared; alias layout fixed (round 56)
+
+- Commit 073bbee: layout resolves an import-alias type text by matching the
+  registered qualified name suffix; gcmeta expands import aliases before a
+  declaration lookup. std/io/buf (io.Reader field) now compiles.
+- Commit 868702f: the nine pure rc corpora are deleted; defer uses a plain C
+  value, csv Buffer and buf Stats are classes; defer IR re-recorded.
+- Cold-cache gate -full is green; no will source uses rc/arc/weak_rc/take_c.
+- Next: delete the compiler rc surface (internal/gen/rc.go, checker/type rc
+  branches, take_c predeclared values, rc diagnostics) and the rc runtime
+  objects if unreferenced, re-recording corpora and re-running the gate.
