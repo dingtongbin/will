@@ -1066,3 +1066,270 @@ std/parallel, then json.
 - Next: approach the imported generic call from the resolver side (register
   the imported function signature with its typeNames in the checker env when
   the package is loaded), rather than reconstructing it per call site.
+## parallel.map inference: function-name argument is NamedKind (round 71)
+
+- The foreign-call path (methodType's foreignFuncs branch) does fire for
+  parallel.map: printed `foreign-call parallel map` and `after-infer
+  typeParams 2`, so inference fails and the prototype sig is used (T0003).
+  parallel.reduce infers fine (typeParams 0).
+- Printed argument kinds: map's second argument (double) is NamedKind, not
+  FuncKind, so unifyType's func(T)->U branch cannot bind U. The attempt to
+  resolve a named function argument through c.env.funcs did not bind either,
+  so env.funcs likely keys functions differently than the short name; that
+  experiment was reverted again to keep the tree clean.
+- Next: resolve a named function argument to its declaration signature with
+  the same lookup the callee path uses (symbolOf on the NameExpr), not
+  env.funcs by short name.
+## parallel.map: function argument never reaches unify (round 72)
+
+- The symbol-based resolution of a named function argument printed only
+  `func-arg identity true false`: the reduce argument named identity reaches
+  inferCallTypeArgs as NamedKind with a non-Func symbol, while map's `double`
+  argument never appears as a NameExpr in that loop at all.
+- Both the env.funcs and symbolOf attempts were reverted again; the
+  foreignFuncs call path stays as it was (it does fire, but inference still
+  leaves typeParams=2 for map).
+- Next: inspect the AST shape of the map argument list (the callee and the
+  function argument) before another attempt; the double argument may be
+  wrapped (method value or parenthesized call form), and identity's named
+  type may be the generic parameter A rather than the argument value.
+## std/encoding/json dependency chain (round 72)
+
+- Spec API: encode<T>(v: T) -> bytes, decode<T>(data: []u8) -> Result[T, Error>,
+  decode_value/encode_value, class Encoder (async write_value<T>/write_raw/
+  flush), class Decoder (async next_value), and @derive(Json) for structs.
+- Three prerequisites are not ready:
+  1. imported generic calls (json.encode is reached through a package
+     qualifier; parallel.map already fails on this);
+  2. @derive(Json) generation, which has no compiler/library support yet;
+  3. bytes<->str conversion, which is a recorded spec gap (desc/理由/缺口
+     清单.md) and is how JSON bytes are produced and consumed.
+- Implementing json now would be a placeholder over unimplemented foundations,
+  so it stays unfilled and the chain is recorded; parallel stays blocked on
+  the imported generic inference as well.
+## Function name as a value fixed (round 73)
+
+- Root cause found: inferExpr returned nil for a bare function name in value
+  position (it only checked variables), so func(T) -> U parameters could not
+  unify and generic inference failed (T0004 for apply, T0003 for
+  parallel.map). inferExpr now returns the FuncKind signature of a
+  non-generic function name; commit 327dcb2.
+- parallel traces now show both type parameters unified; the T0003/T0004 are
+  gone. Remaining: K0011 on `await t` where t is an element of
+  list[Task<...>] (the for-binding element type is not seen as a Task).
+- Worktree: std/parallel, tests/std/parallel, PROGRESS (uncommitted).
+## elemOf/function-name fixes reverted (round 74)
+
+- elemOf now knew list/dict/set and inferExpr returned a function name's
+  signature, which cleared K0011 and the map inference errors, but
+  TestRunEmptyInterface regressed: `show` shadows a number and its call
+  infered as func(interface {})->i32 against i32. Both edits were reverted
+  to keep the suite green; parallel stays uncommitted.
+- Next: narrow the function-name change so it only applies in value position
+  (argument of a func-typed parameter), not in shadowing/call contexts.
+## Function-name fix limited to inference; parallel rewritten (round 75)
+
+- Reverted the global inferExpr function-name change (it broke
+  TestRunEmptyInterface) and instead resolved a nil-typed bare function name
+  inside inferCallTypeArgs via symbolOf; EmptyInterface stays green and
+  elemOf again knows list/dict/set (K0011 cleared).
+- parallel.map still hit T0016 because []T is a borrow crossing a task; the
+  package now copies the view into owned lists and copies each chunk before
+  spawn (copy_chunk), with workers taking list[T].
+- New errors after the rewrite: N0001 undefined name at parallel.will:21/31
+  (the `list[T]()` construction inside the generic def), N0005 size never
+  read in each_all. The worktree holds the rewrite uncommitted.
+- Next: check why the `list[T]()` construction is undefined in these generic
+  defs (the same spelling works in std/io/pipe), then rerun parallel.
+## parallel N0001 has mismatched positions (round 76)
+
+- A minimal probe (generic def with []T parameter, list[T]() construction,
+  copy loop) compiles and runs, so list[T]() in a generic def is fine.
+- std/parallel still reports N0001 at 21:18 and 31:18 while the current file
+  has `var owned` at 6/16/26 and N0005 at 84 (`var size`), i.e. the reported
+  positions do not match the source for the N0001s. Clearing the user cache
+  (%LOCALAPPDATA%\will) did not change it.
+- Next: check whether the parallel.will .willc/package cache inside the std
+  module or the diagnostic position mapping (line/column of a generic def) is
+  off; then rerun parallel.
+- Worktree: genericinfer.go (limited function-name resolution), infer.go
+  (elemOf list/dict/set), std/parallel rewrite, tests/std/parallel, PROGRESS
+  (uncommitted).
+## Two distinct blockers found (round 77)
+
+- A minimal probe of the parallel map shape (def map with []T, list[T](),
+  spawn map_all, async map_all, await t) compiles and resolves; it then
+  fails in gen with `G0001 an await result is a place` (node #107). An
+  awaited list result is a place, and the var initializer asks for a value;
+  gen needs the place path for await results the way state machines already
+  do for smPlaces.
+- std/parallel's N0001 at 21:18/31:18 still does not match the current
+  source (var owned is at 6/16/26). No .willc or user cache remains, so the
+  position is either recorded from a stale in-memory doc or from a different
+  file of the std module; next step is `will check` on the test module with
+  only the map def present to see if the diagnostic follows the def.
+- Worktree: genericinfer.go, infer.go, std/parallel, tests/std/parallel,
+  build/probepar, PROGRESS (uncommitted).
+## await on a Task variable is not lowered (round 78)
+
+- Probe record #107 is `await t` at main.will:28:26 with expr=#108, a name.
+  place(await) only handles recv/send/mcall expressions (struct.go); a plain
+  Task variable falls through to the default place (the variable's slot,
+  typed Task<...>), so g.value sees an aggregate and reports
+  `an await result is a place`.
+- This is a gen gap: awaiting a Task variable in a normal function has no
+  lowering (the state machine path is separate). It is independent of
+  list/parallel.
+- Next: implement the Task-variable await path (load the task result slot) or
+  route it through the existing task-wait helper; then rerun the probe and
+  parallel.
+## await place ordering (round 79)
+
+- generalCallWait registers smPlaces for the record it is handed, and
+  gen.go:4594 calls it from the await value path. The probe fails because
+  place(#107) runs before that value path (var initialization asks for the
+  place of the await result), so smPlaces has no entry yet.
+- Fix direction: register the await place when lowering the await itself
+  (or make the var initializer go through value first for an await operand),
+  and handle the Task-variable operand in place(await) instead of falling to
+  the default slot typed Task<...>.
+- Worktree unchanged and uncommitted: genericinfer.go, infer.go,
+  std/parallel, tests/std/parallel, build/probepar, PROGRESS.
+## await place: needs a dedicated join (round 80)
+
+- Attempted registering the await place by calling generalCallWait from
+  place(await) for a Task-variable operand; it fails with "the called
+  function has no symbol" because generalCallWait expects a call record, not
+  an await record. Reverted.
+- The Task-variable await needs its own lowering shared by the value and
+  place paths (join + result slot + deadline/failure handling), likely
+  built on awaitTaskValue/smTryJoin; lowerAwaitResult wraps the outcome in
+  Result<T,TaskError>, which is not the plain await result.
+- Worktree: genericinfer.go, infer.go, std/parallel, tests/std/parallel,
+  build/probepar, PROGRESS (uncommitted).
+## await Task join works; nested generic substitution blocks (round 81)
+
+- Added awaitTaskJoin (await_result.go): joins a Task value once into a
+  result slot, registers smPlaces, and returns the slot; place(await) routes a
+  Task-variable operand there. The probe now passes the await stage.
+- New error: `list element U is not lowered yet` (node #63) inside the
+  instantiated map_all: the awaited Task's result text still contains the
+  type parameter (list[U] instead of list[i32]), so generic instance
+  substitution does not rewrite a type parameter nested inside Task<...>.
+- Next: make substituteTypeText (and the clone substitution) walk nested
+  generic arguments such as Task<list[U]>, then rerun the probe and
+  std/parallel.
+- Worktree: struct.go, await_result.go, genericinfer.go, infer.go,
+  std/parallel, tests/std/parallel, build/probepar, PROGRESS (uncommitted).
+## Clone substitution leaves new list[U] (round 82)
+
+- Traced cloneFuncInstance: it does run substituteTypeText over the copied
+  records, but the printed result for the new record is still `list[U]`
+  (`clone-type new list[U]`), so either the substitution map lacks U for the
+  map_all instance or the token scanner does not treat the bracket form the
+  way expected.
+- Next: print the subst map keys at clone time for map_all and check
+  typeParamNamesIn(def, fn) returns both T and U; then fix the replacement.
+- Worktree: await_result.go, struct.go, genericinfer.go, infer.go,
+  std/parallel, tests/std/parallel, build/probepar, PROGRESS (uncommitted).
+## Clone args stay as prototype params (round 83)
+
+- Printed proof: clone map_all names 2 args 2 with subst {T:T, U:U}. The map
+  instance's `spawn map_all(owned, f)` is planned through
+  planCallInstances/cloneInstance (the older path), where inferGenericArgs
+  derives args from the callee's argument types. Inside map's instance the
+  argument type is the substituted list[i32], but the planned instance still
+  received the prototype names (T,U), so map_all's clone kept list[U].
+- planCallInstances (cloneInstance) and planInitInstances/planMethodInstances
+  (cloneFuncInstance) use different substitution paths; they must agree, and
+  the call arguments in a cloned document must be substituted before
+  inferGenericArgs runs.
+- Worktree: await_result.go, struct.go, genericinfer.go, infer.go,
+  std/parallel, tests/std/parallel, build/probepar, PROGRESS (uncommitted).
+## planCallInstances switching broke map emission (round 84)
+
+- Replacing cloneInstance with cloneFuncInstance in planCallInstances, then
+  skipping calls whose args still name type parameters, produced
+  `use of undefined value '@probepar.map'`: the map instance is planned but
+  not emitted (or the skip removed it). Reverted generic.go to HEAD.
+- Conclusion: the call-instance planner needs the same substitution and skip
+  rules as init/method instances, but changing the clone alone is not enough;
+  the emitted-instance set and the mangle name must agree.
+- Worktree: await_result.go, struct.go, genericinfer.go, infer.go,
+  std/parallel, tests/std/parallel, build/probepar, PROGRESS (uncommitted).
+## Instance planning advanced (round 85)
+
+- inferGenericArgs now rejects a binding that is still a type parameter name
+  (an internal call inside a generic declaration becomes an instance only
+  after its caller is instantiated), and resolves a function-name argument
+  through its func declaration (lambdaTypeText), so main's map(view, double)
+  instantiates again and probepar.map is defined.
+- The probe now fails in gen with `a void function returns no value`
+  (node #72), likely the instantiated map_all's return type still carrying U
+  or an empty result text; next is to trace that node and the instance's
+  result type.
+- Worktree: generic.go (inferGenericArgs), await_result.go, struct.go,
+  genericinfer.go, infer.go, std/parallel, tests/std/parallel,
+  build/probepar, PROGRESS (uncommitted).
+## map_all instance signature is empty (round 86)
+
+- Node #72 is `return out` inside map_all (main.will:19:5); gen reports
+  "a void function returns no value", so the instantiated map_all function
+  record has an empty result type. The instance comes from the old
+  cloneInstance path (planCallInstances), which does not substitute the
+  signature the way cloneFuncInstance does; the debug print in the
+  cloneFuncInstance branch never fired, confirming this.
+- Fix: route planCallInstances through the same substitution as
+  cloneFuncInstance (with the unbound-argument skip already added in
+  inferGenericArgs), and keep emission consistent.
+- Worktree: generic.go, await_result.go, struct.go, genericinfer.go,
+  infer.go, std/parallel, tests/std/parallel, build/probepar, PROGRESS.
+## Instance signatures are correct (round 87)
+
+- Printed proof: planCallInstances creates map$i32$i32 (Task<list[i32]>) and
+  map_all$i32$i32 (list[i32]); cloneInstance already delegates to
+  cloneFuncInstance and substitutes correctly.
+- The remaining `a void function returns no value` at map_all's `return out`
+  therefore comes later than cloning: likely the signature registered for the
+  instance symbol in the emit pass (g.resultType empty for that instance) or
+  the var type of out, not the clone.
+- Debug prints removed; worktree: generic.go (inferGenericArgs unbound +
+  function-name resolution), await_result.go, struct.go, genericinfer.go,
+  infer.go, std/parallel, tests/std/parallel, build/probepar, PROGRESS.
+## map_all instance has no state machine (round 88)
+
+- The error comes from returnStmt(st, void=true): funcDecl lowers an async
+  body with void=true (gen.go:2005) because the return value belongs to the
+  state machine, but the map_all$i32$i32 instance is being lowered through
+  the plain path, so its `return out` is rejected.
+- So the remaining gap is the async state-machine recognition for a cloned
+  instance (asyncSequenceMachine/generalMachine on the instance doc), not the
+  signature or the clone substitution (both verified correct).
+- Worktree: generic.go, await_result.go, struct.go, genericinfer.go, infer.go,
+  std/parallel, tests/std/parallel, build/probepar, PROGRESS (uncommitted).
+## map_all's await is an await record, not a call (round 89)
+
+- Added markAsyncFuncs (emitDoc + package collect) marking every async
+  function of the current document suspendable; the void error persists.
+- Cause: asyncSequenceMachine only collects `call`/`mcall` records. map_all
+  awaits a Task variable (`await t`), which is an `await` record whose expr
+  is a name, so the planner finds no site, builds no state machine, and the
+  instance is lowered on the plain path where a value return is rejected.
+- Next: teach asyncSequenceMachine (and the await join path) about
+  `await name`, or lower the Task-variable await through the general machine;
+  then rerun the probe and std/parallel.
+- Worktree: gen.go (markAsyncFuncs), package.go, generic.go,
+  await_result.go, struct.go, genericinfer.go, infer.go, std/parallel,
+  tests/std/parallel, build/probepar, PROGRESS (uncommitted).
+## Workspace batch verified (round 90)
+
+- Reverted: markAsyncFuncs (no effect on the void error), awaitTaskJoin +
+  place(await) name branch (broke build/task with "operand needs Result"),
+  elemOf list/dict/set (broke TestRunGenericClassSourceSurface).
+- Committed: inferCallTypeArgs function-name resolution and inferGenericArgs
+  named-function/argument handling (types/check/cli tests green).
+- std/parallel and tests/std/parallel remain uncommitted: the Task-variable
+  await in an async loop still needs state-machine support
+  (asyncSequenceMachine only collects call/mcall records).
+- Lesson: every one of these gen changes must be gate-checked in isolation;
+  three of five broke async corpora or a CLI test.
