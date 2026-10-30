@@ -93,7 +93,7 @@ func (r *Result) namedSend(t *Type, active map[string]bool) bool {
 		return len(t.Args()) == 1 && r.send(t.Args()[0], active)
 	case "chan":
 		return len(t.Args()) == 1 && r.send(t.Args()[0], active)
-	case "Option", "Array", "Map", "Set", "Result":
+	case "Option", "Array", "Map", "Set", "Result", "list", "dict", "set":
 		for _, arg := range t.Args() {
 			if !r.send(arg, active) {
 				return false
@@ -162,7 +162,7 @@ func (r *Result) namedSync(t *Type, active map[string]bool) bool {
 		return len(t.Args()) == 1 && r.send(t.Args()[0], active) && r.sync(t.Args()[0], active)
 	case "chan":
 		return len(t.Args()) == 1 && r.send(t.Args()[0], active)
-	case "Option", "Array", "Map", "Set", "Result":
+	case "Option", "Array", "Map", "Set", "Result", "list", "dict", "set":
 		for _, arg := range t.Args() {
 			if !r.sync(arg, active) {
 				return false
