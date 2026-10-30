@@ -671,8 +671,16 @@ func (g *generator) inferGenericArgs(d *docState, fn willc.Record, call willc.Re
 	subst := map[string]string{}
 	for i, arg := range args {
 		actual := ""
-		if r, ok := g.recs[arg]; ok && (r.Kind == "func" || r.Kind == "lambda") {
-			actual = g.lambdaTypeText(r)
+		if r, ok := g.recs[arg]; ok {
+			switch r.Kind {
+			case "func", "lambda":
+				actual = g.lambdaTypeText(r)
+			case "name":
+				// A function name used as an argument names its declaration.
+				if target, ok := g.recs[refField(r, "to")]; ok && target.Kind == "func" {
+					actual = g.lambdaTypeText(target)
+				}
+			}
 		}
 		if actual == "" {
 			actual, _ = g.willTypeText(arg)
@@ -687,7 +695,9 @@ func (g *generator) inferGenericArgs(d *docState, fn willc.Record, call willc.Re
 	out := make([]string, 0, len(names))
 	for _, name := range names {
 		value := subst[name]
-		if value == "" {
+		if value == "" || contains(names, value) {
+			// A still-unbound parameter means the call lives inside a generic
+			// declaration; it is instantiated when its caller is.
 			return nil
 		}
 		out = append(out, value)
