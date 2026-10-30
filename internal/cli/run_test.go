@@ -674,10 +674,10 @@ def worker(mu: sync.Mutex<i32>, count: i32) -> i32 {
 
 async def main() -> i32 {
     var mu: sync.Mutex<i32> = new sync.Mutex<i32>(0)
-    var a: Task<i32> = spawn worker(mu.share(), 1000)
-    var b: Task<i32> = spawn worker(mu.share(), 1000)
-    var c: Task<i32> = spawn worker(mu.share(), 1000)
-    var d: Task<i32> = spawn worker(mu.share(), 1000)
+    var a: Task<i32> = spawn worker(mu, 1000)
+    var b: Task<i32> = spawn worker(mu, 1000)
+    var c: Task<i32> = spawn worker(mu, 1000)
+    var d: Task<i32> = spawn worker(mu, 1000)
     _ = await a!
     _ = await b!
     _ = await c!

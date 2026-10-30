@@ -9,144 +9,111 @@ import c "lock.h" {
     fast willrt_sync_unlock
 }
 
-# MutexState is the shared box: one lock word and the value it guards. Every
-# guard keeps a reference to the box, so the value cannot outlive its lock.
-struct MutexState<T> {
+# MutexState is the shared box: one lock word and the value it guards. The box
+# is a class, so every guard and every Mutex that refers to it shares one GC
+# object; the value cannot outlive its lock.
+class MutexState<T> {
     lock: raw
     value: T
-}
 
-# Mutex serializes access to one value. Lock parks the caller until the write
-# side is free.
-struct Mutex<T> {
-    state: arc<MutexState<T>>
+    def init(self, lock: raw, value: T) {
+        self.lock = lock
+        self.value = value
+    }
 }
 
 # Guard is the write permission of one Mutex. held is false when a waiting
 # Lock was canceled; such a guard panics on first use and releases nothing.
 struct Guard<T> {
-    state: arc<MutexState<T>>
+    state: MutexState<T>
     held: bool
     mode: i32
 }
 
-def (m: mut Mutex<T>) init(value: T) {
-    var state: MutexState<T> = MutexState<T> {
-        lock: c.willrt_sync_lock_new(),
-        value: value
+# Mutex serializes access to one value. Lock parks the caller until the write
+# side is free.
+class Mutex<T> {
+    state: MutexState<T>
+
+    def init(self, value: T) {
+        self.state = new MutexState<T>(c.willrt_sync_lock_new(), value)
     }
-    m.state = new arc<MutexState<T>>(state)
-}
 
-# Share returns another handle to the same lock state. This is the old struct
-# surface's explicit share; the final class surface will make assignment share.
-def (m: ref Mutex<T>) share() -> Mutex<T> {
-    return Mutex<T> { state: m.state.clone() }
-}
-
-# Lock waits for the write side and returns its guard.
-async def (m: ref Mutex<T>) lock() -> Guard<T> {
-    var status: i32 = await c.willrt_sync_lock_async(m.state.lock, 0)
-    if status == 0 {
-        return Guard<T> { state: m.state, held: True, mode: 0 }
+    # Lock waits for the write side and returns its guard.
+    async def lock(self) -> Guard<T> {
+        var status: i32 = await c.willrt_sync_lock_async(self.state.lock, 0)
+        return Guard<T> { state: self.state, held: status == 0, mode: 0 }
     }
-    return Guard<T> { state: m.state, held: False, mode: 0 }
-}
 
-# LockBlocking is the CPU-job form: it parks the calling worker until the
-# write side is free and never enters an async state machine.
-def (m: ref Mutex<T>) lock_blocking() -> Guard<T> {
-    var status: i32 = c.willrt_sync_lock_blocking(m.state.lock, 0)
-    if status == 0 {
-        return Guard<T> { state: m.state, held: True, mode: 0 }
+    # LockBlocking is the CPU-job form: it parks the calling worker until the
+    # write side is free and never enters an async state machine.
+    def lock_blocking(self) -> Guard<T> {
+        var status: i32 = c.willrt_sync_lock_blocking(self.state.lock, 0)
+        return Guard<T> { state: self.state, held: status == 0, mode: 0 }
     }
-    return Guard<T> { state: m.state, held: False, mode: 0 }
-}
 
-# TryLock takes the write side once without waiting.
-def (m: ref Mutex<T>) try_lock() -> Option<Guard<T>> {
-    if c.willrt_sync_lock_try(m.state.lock, 0) == 1 {
-        return Some(Guard<T> { state: m.state, held: True, mode: 0 })
+    # TryLock takes the write side once without waiting.
+    def try_lock(self) -> Option<Guard<T>> {
+        if c.willrt_sync_lock_try(self.state.lock, 0) == 1 {
+            return Some(Guard<T> { state: self.state, held: True, mode: 0 })
+        }
+        return None
     }
-    return None
-}
-
-# RwLock allows several readers or one writer.
-struct RwLock<T> {
-    state: arc<MutexState<T>>
 }
 
 # ReadGuard is the read permission of one RwLock. It forwards fields and
 # methods but the checker rejects a write through it.
 struct ReadGuard<T> {
-    state: arc<MutexState<T>>
+    state: MutexState<T>
     held: bool
     mode: i32
 }
 
-def (r: mut RwLock<T>) init(value: T) {
-    var state: MutexState<T> = MutexState<T> {
-        lock: c.willrt_sync_lock_new(),
-        value: value
+# RwLock allows several readers or one writer.
+class RwLock<T> {
+    state: MutexState<T>
+
+    def init(self, value: T) {
+        self.state = new MutexState<T>(c.willrt_sync_lock_new(), value)
     }
-    r.state = new arc<MutexState<T>>(state)
-}
 
-# Share returns another handle to the same lock state.
-def (r: ref RwLock<T>) share() -> RwLock<T> {
-    return RwLock<T> { state: r.state.clone() }
-}
-
-# RLock waits for exclusive holders to leave and joins the reader side.
-async def (r: ref RwLock<T>) r_lock() -> ReadGuard<T> {
-    var status: i32 = await c.willrt_sync_lock_async(r.state.lock, 1)
-    if status == 0 {
-        return ReadGuard<T> { state: r.state, held: True, mode: 1 }
+    # RLock waits for exclusive holders to leave and joins the reader side.
+    async def r_lock(self) -> ReadGuard<T> {
+        var status: i32 = await c.willrt_sync_lock_async(self.state.lock, 1)
+        return ReadGuard<T> { state: self.state, held: status == 0, mode: 1 }
     }
-    return ReadGuard<T> { state: r.state, held: False, mode: 1 }
-}
 
-# RLockBlocking is the CPU-job form of r_lock.
-def (r: ref RwLock<T>) r_lock_blocking() -> ReadGuard<T> {
-    var status: i32 = c.willrt_sync_lock_blocking(r.state.lock, 1)
-    if status == 0 {
-        return ReadGuard<T> { state: r.state, held: True, mode: 1 }
+    # RLockBlocking is the CPU-job form of r_lock.
+    def r_lock_blocking(self) -> ReadGuard<T> {
+        var status: i32 = c.willrt_sync_lock_blocking(self.state.lock, 1)
+        return ReadGuard<T> { state: self.state, held: status == 0, mode: 1 }
     }
-    return ReadGuard<T> { state: r.state, held: False, mode: 1 }
-}
 
-# TryRLock joins the reader side once without waiting.
-def (r: ref RwLock<T>) try_r_lock() -> Option<ReadGuard<T>> {
-    if c.willrt_sync_lock_try(r.state.lock, 1) == 1 {
-        return Some(ReadGuard<T> { state: r.state, held: True, mode: 1 })
+    # TryRLock joins the reader side once without waiting.
+    def try_r_lock(self) -> Option<ReadGuard<T>> {
+        if c.willrt_sync_lock_try(self.state.lock, 1) == 1 {
+            return Some(ReadGuard<T> { state: self.state, held: True, mode: 1 })
+        }
+        return None
     }
-    return None
-}
 
-# WLock waits for every holder to leave and returns the write side.
-async def (r: ref RwLock<T>) w_lock() -> Guard<T> {
-    var status: i32 = await c.willrt_sync_lock_async(r.state.lock, 0)
-    if status == 0 {
-        return Guard<T> { state: r.state, held: True, mode: 0 }
+    # WLock waits for every holder to leave and returns the write side.
+    async def w_lock(self) -> Guard<T> {
+        var status: i32 = await c.willrt_sync_lock_async(self.state.lock, 0)
+        return Guard<T> { state: self.state, held: status == 0, mode: 0 }
     }
-    return Guard<T> { state: r.state, held: False, mode: 0 }
-}
 
-# WLockBlocking is the CPU-job form of w_lock.
-def (r: ref RwLock<T>) w_lock_blocking() -> Guard<T> {
-    var status: i32 = c.willrt_sync_lock_blocking(r.state.lock, 0)
-    if status == 0 {
-        return Guard<T> { state: r.state, held: True, mode: 0 }
+    # WLockBlocking is the CPU-job form of w_lock.
+    def w_lock_blocking(self) -> Guard<T> {
+        var status: i32 = c.willrt_sync_lock_blocking(self.state.lock, 0)
+        return Guard<T> { state: self.state, held: status == 0, mode: 0 }
     }
-    return Guard<T> { state: r.state, held: False, mode: 0 }
-}
 
-# TryWLock takes the write side once without waiting.
-def (r: ref RwLock<T>) try_w_lock() -> Option<Guard<T>> {
-    if c.willrt_sync_lock_try(r.state.lock, 0) == 1 {
-        return Some(Guard<T> { state: r.state, held: True, mode: 0 })
+    # TryWLock takes the write side once without waiting.
+    def try_w_lock(self) -> Option<Guard<T>> {
+        if c.willrt_sync_lock_try(self.state.lock, 0) == 1 {
+            return Some(Guard<T> { state: self.state, held: True, mode: 0 })
+        }
+        return None
     }
-    return None
 }
-
-

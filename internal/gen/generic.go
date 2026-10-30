@@ -135,8 +135,18 @@ func (g *generator) planInitInstances(base int, seen map[string]bool) {
 					g.ifaceDecl[fieldText(decl, "text")] = decl.ID
 				}
 			}
-			def, fn, local, names, args, ok := g.initDeclForNew(d, r)
-			if !ok {
+			var def *docState
+			var fn willc.Record
+			var local string
+			var names, args []string
+			found := false
+			for _, cand := range g.docs {
+				def, fn, local, names, args, found = g.initDeclForNew(cand, r)
+				if found {
+					break
+				}
+			}
+			if !found {
 				continue
 			}
 			key := def.path + "|" + local + "|init|" + strings.Join(args, ",")
@@ -144,6 +154,9 @@ func (g *generator) planInitInstances(base int, seen map[string]bool) {
 				continue
 			}
 			seen[key] = true
+			// The receiver text carries the instance (MutexState<Counter>), so
+			// the init keeps its declared name and the symbol is generated from
+			// the receiver; mangling the text here would repeat the receiver.
 			doc, ok := g.cloneFuncInstance(def, fn, names, args, "")
 			if !ok {
 				continue

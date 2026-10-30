@@ -722,26 +722,46 @@ func classPayloadLLVM(name string) string {
 // ensureClassPayload emits the payload type once. Its fields are the same
 // declaration order as gcmeta.Fields, so field indices and descriptor offsets
 // cannot drift apart.
-func (g *generator) ensureClassPayload(t *gcmeta.Type) (string, error) {
-	if t == nil || t.Kind != gcmeta.KindClass {
-		return "", fmt.Errorf("not a class type")
-	}
-	name := classPayloadLLVM(t.Name)
-	if g.emittedTypes[name] {
-		return name, nil
-	}
-	g.emittedTypes[name] = true
+// classPayloadInfo builds the field layout of one class payload and registers
+// it for later field lookups. It does not emit the LLVM type.
+func (g *generator) classPayloadInfo(t *gcmeta.Type) (*structInfo, []string, error) {
 	pkg := packageOfQualified(t.Name)
+	info := &structInfo{name: t.Name, llvm: classPayloadLLVM(t.Name), ok: true,
+		index: map[string]int{}}
 	var fields []string
 	for _, f := range t.Fields {
 		text := g.qualifyTypeText(pkg, f.Type)
 		llvm, ok := g.typeLLVMOf(text)
 		if !ok || llvm == "" {
-			return "", g.errf(0, "cannot lower class %s field %s type %s", t.Name,
-				f.Name, f.Type)
+			return nil, nil, g.errf(0, "cannot lower class %s field %s type %s",
+				t.Name, f.Name, f.Type)
 		}
 		fields = append(fields, llvm)
+		info.index[f.Name] = len(info.names)
+		info.names = append(info.names, f.Name)
+		info.texts = append(info.texts, text)
+		info.types = append(info.types, llvm)
 	}
+	if g.byType == nil {
+		g.byType = map[string]*structInfo{}
+	}
+	g.byType[info.llvm] = info
+	return info, fields, nil
+}
+
+func (g *generator) ensureClassPayload(t *gcmeta.Type) (string, error) {
+	if t == nil || t.Kind != gcmeta.KindClass {
+		return "", fmt.Errorf("not a class type")
+	}
+	name := classPayloadLLVM(t.Name)
+	_, fields, err := g.classPayloadInfo(t)
+	if err != nil {
+		return "", err
+	}
+	if g.emittedTypes[name] {
+		return name, nil
+	}
+	g.emittedTypes[name] = true
 	if len(fields) == 0 {
 		fmt.Fprintf(g.out, "%s = type {}\n", name)
 		return name, nil
@@ -857,6 +877,14 @@ func (g *generator) classNew(r willc.Record) (string, string, error) {
 		return "", "", err
 	}
 	initSym := g.classInitSymbol(t.Name)
+	var initParams []string
+	for _, d := range g.docs {
+		if sym, params, _, ok := g.initForNew(d, r); ok {
+			initSym = sym
+			initParams = params
+			break
+		}
+	}
 	args := g.callArgs(r)
 	if initSym != "" {
 		g.noteExternalFunc(initSym)
@@ -874,6 +902,9 @@ func (g *generator) classNew(r willc.Record) (string, string, error) {
 		args = ordered
 		params := g.paramTypes[initSym]
 		muts := g.paramMut[initSym]
+		if len(initParams) != 0 {
+			params = initParams
+		}
 		parts := []string{"ptr " + object}
 		for i, arg := range args {
 			paramType := ""
