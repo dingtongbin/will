@@ -4,31 +4,49 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/will-lang/will/internal/gcmeta"
 	"github.com/will-lang/will/internal/willc"
 )
 
-// mapTypeText splits Map<K,V> into its key and value types.
+// isFinalContainerText reports whether text is one of the final GC container
+// types. Their release is empty: the collector owns the payload.
+func isFinalContainerText(text string) bool {
+	return strings.HasPrefix(text, "list[") || strings.HasPrefix(text, "dict[") ||
+		strings.HasPrefix(text, "set[")
+}
+
+// mapTypeText splits Map<K,V> or dict[K,V] into its key and value types.
 func mapTypeText(text string) (k, v string, ok bool) {
-	if !strings.HasPrefix(text, "Map<") || !strings.HasSuffix(text, ">") {
-		return "", "", false
-	}
 	name, args, ok := splitGenericType(text)
-	if !ok || name != "Map" || len(args) != 2 {
+	if !ok || (name != "Map" && name != "dict") || len(args) != 2 {
 		return "", "", false
 	}
 	return args[0], args[1], true
 }
 
-// setTypeText splits Set<T> into its element type.
+// setTypeText splits Set<T> or set[T] into its element type.
 func setTypeText(text string) (elem string, ok bool) {
-	if !strings.HasPrefix(text, "Set<") || !strings.HasSuffix(text, ">") {
-		return "", false
-	}
 	name, args, ok := splitGenericType(text)
-	if !ok || name != "Set" || len(args) != 1 {
+	if !ok || (name != "Set" && name != "set") || len(args) != 1 {
 		return "", false
 	}
 	return args[0], true
+}
+
+// dictTypeText reports the key and value of a final dict type.
+func dictTypeText(text string) (k, v string, ok bool) {
+	if !strings.HasPrefix(text, "dict[") {
+		return "", "", false
+	}
+	return mapTypeText(text)
+}
+
+// finalSetTypeText reports the element of a final set type.
+func finalSetTypeText(text string) (elem string, ok bool) {
+	if !strings.HasPrefix(text, "set[") {
+		return "", false
+	}
+	return setTypeText(text)
 }
 
 // mapEntryLLVM is the LLVM type of one Map entry.
@@ -144,11 +162,17 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 		case "set", "clear":
 			return "", "", true
 		case "keys":
+			if _, _, isDict := dictTypeText(recvText); isDict {
+				return "ptr", "list[" + k + "]", true
+			}
 			if _, ok := g.containerValueType(k); !ok {
 				return "", "", false
 			}
 			return "{ ptr, i64, i64 }", "Array<" + k + ">", true
 		case "values":
+			if _, _, isDict := dictTypeText(recvText); isDict {
+				return "ptr", "list[" + v + "]", true
+			}
 			if _, ok := g.containerValueType(v); !ok {
 				return "", "", false
 			}
@@ -179,7 +203,23 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 		defer g.unpinContainer(ownerPin)
 	}
 	var base, baseType string
-	if owner != "" {
+	if _, _, ok := dictTypeText(recvText); ok {
+		object, err := g.classPointerValue(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		object = g.pinObjectValue(object)
+		defer g.unpinContainer(object)
+		base, baseType = object, "{ ptr, i64, i64 }"
+	} else if _, ok := finalSetTypeText(recvText); ok {
+		object, err := g.classPointerValue(refField(r, "recv"))
+		if err != nil {
+			return "", "", err
+		}
+		object = g.pinObjectValue(object)
+		defer g.unpinContainer(object)
+		base, baseType = object, "{ ptr, i64, i64 }"
+	} else if owner != "" {
 		base, baseType, _, err = g.classFieldAddressFrom(
 			refField(r, "recv"), owner, r.ID)
 	} else {
@@ -264,6 +304,9 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 			if name == "values" {
 				field = 1
 				elemText = v
+			}
+			if _, _, isDict := dictTypeText(recvText); isDict {
+				return g.mapList(r, entry, data, length, field, elemText)
 			}
 			return g.mapArray(r, entry, entrySize, data, length, field, elemText)
 		}
@@ -893,4 +936,77 @@ func (g *generator) emitFieldCopy(entry, elem, elemText, src, dst, length string
 	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
 	g.out.WriteString(done + ":\n")
 	return nil
+}
+
+// mapList copies one entry field of every live entry into a fresh list.
+func (g *generator) mapList(r willc.Record, entry string, data, length string, field int, elemText string) (string, string, error) {
+	outText := "list[" + elemText + "]"
+	outLLVM, ok := g.typeLLVMOf(elemText)
+	if !ok || outLLVM == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: list element %s is not lowered yet", r.ID, elemText)
+	}
+	size, _, ok := g.sizeAlign(outLLVM)
+	if !ok {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: list element %s has no layout", r.ID, elemText)
+	}
+	descriptor, err := g.sequenceDescriptor(elemText)
+	if err != nil {
+		return "", "", err
+	}
+	t, ok := g.classTypeOfText(outText)
+	if !ok {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: no GC layout for %s", r.ID, outText)
+	}
+	payload, err := g.ensureClassPayload(t)
+	if err != nil {
+		return "", "", err
+	}
+	slot := g.allocSlot(g.callSlots, "list", r.ID, "ptr")
+	g.needGCDecl = true
+	object := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_alloc(i64 %d, ptr %s)\n",
+		object, t.Size, gcmeta.DescriptorSymbol(t.Name))
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", object, slot)
+	if root := g.gcRootSlots[r.ID]; root != "" {
+		fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+			root, object)
+	}
+	object = g.pinObjectValue(object)
+	defer g.unpinContainer(object)
+	bytes := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, length, size)
+	outData := g.newTmp()
+	g.gcAllocSequence(outData, bytes, descriptor)
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", outData, g.listField(object, payload, 0))
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, g.listField(object, payload, 1))
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, g.listField(object, payload, 2))
+	g.labels++
+	n := g.labels
+	cond := fmt.Sprintf("listcopy.cond.%d", n)
+	body := fmt.Sprintf("listcopy.body.%d", n)
+	done := fmt.Sprintf("listcopy.done.%d", n)
+	index := g.newTmp()
+	g.tempAlloca(index, "i64")
+	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", index)
+	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
+	g.out.WriteString(cond + ":\n")
+	current := g.load("i64", index)
+	more := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", more, current, length)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", more, body, done)
+	g.out.WriteString(body + ":\n")
+	src := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", src, entry, data, current)
+	fieldPtr := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+		fieldPtr, entry, src, field)
+	dst := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", dst, outLLVM, outData, current)
+	g.gcStoreContainerAggregate(dst, fieldPtr, outLLVM, elemText)
+	next := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", next, current)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", next, index)
+	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
+	g.out.WriteString(done + ":\n")
+	return g.load("ptr", slot), outText, nil
 }

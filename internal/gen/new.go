@@ -15,6 +15,12 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	if _, ok := listElemText(text); ok {
 		return g.constructList(r)
 	}
+	if _, _, ok := dictTypeText(text); ok {
+		return g.constructDictSet(r)
+	}
+	if _, ok := finalSetTypeText(text); ok {
+		return g.constructDictSet(r)
+	}
 	if g.isClassText(text) {
 		return g.classNew(r)
 	}

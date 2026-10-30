@@ -13,8 +13,15 @@ func structInstanceKey(name string, args []string) string {
 
 // splitGenericType splits Name<A,B> into its name and its top-level arguments.
 func splitGenericType(text string) (string, []string, bool) {
-	open := strings.IndexByte(text, '<')
-	if open <= 0 || !strings.HasSuffix(text, ">") {
+	open := strings.IndexAny(text, "<[")
+	if open <= 0 || len(text) < open+2 {
+		return "", nil, false
+	}
+	last := text[len(text)-1]
+	if text[open] == '<' && last != '>' {
+		return "", nil, false
+	}
+	if text[open] == '[' && last != ']' {
 		return "", nil, false
 	}
 	inner := text[open+1 : len(text)-1]

@@ -4707,6 +4707,12 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 			if elem, ok := listElemText(recvText); ok {
 				return g.listMethod(r, elem, recvText)
 			}
+			if _, _, ok := dictTypeText(recvText); ok {
+				return g.containerMethod(r, recvText)
+			}
+			if _, ok := finalSetTypeText(recvText); ok {
+				return g.containerMethod(r, recvText)
+			}
 		}
 		if name := g.genericMethodName(r); name != "" {
 			return g.emitCall(r, name, false)

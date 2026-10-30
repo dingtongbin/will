@@ -238,7 +238,7 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 	if name, ok := c.Callee.(*ast.NameExpr); ok {
 		sym := e.refs[name]
 		if sym != nil && sym.Predeclared && sym.Kind == resolve.PredeclaredTypeKind &&
-			name.Name == "list" {
+			(name.Name == "list" || name.Name == "dict" || name.Name == "set") {
 			return e.emitContainerNew(c, name.Name)
 		}
 		if sym != nil && sym.Kind == resolve.StructKind {

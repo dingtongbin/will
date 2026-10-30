@@ -645,6 +645,9 @@ func (g *generator) releaseOwnedValueInner(ptr, text string) error {
 	if n, elem, ok := arrayTypeText(text); ok {
 		return g.releaseFixedArray(ptr, elem, n)
 	}
+	if isFinalContainerText(text) {
+		return nil
+	}
 	if k, v, ok := mapTypeText(text); ok {
 		return g.releaseEntries(ptr, k, v, true)
 	}

@@ -319,6 +319,36 @@ Evidence commands:
   `build/probelistgc`, `build/probeclassgc` (all gitignored), cold
   `WILL_CACHE`.
 
+## In progress: dict and set (uncommitted)
+
+- Spec gap recorded first: `desc/理由/缺口清单.md` now has the bytes/view to
+  `str` conversion gap, because the Array-to-list migration of std/time and
+  the arraytostr corpus depends on the old `str(Array<u8>)` builtin. That
+  migration stays paused until the conversion is specified.
+- Front end is in place: `dict[K,V]` / `set[T]` are predeclared types with
+  arity 2/1, bracket constructors, and checker methods (get/set/has/delete/
+  clear/keys/values/add). `will check` passes on a dict+set probe.
+- FIXED (uncommitted): the exit hang was a deep-release loop, not GC. The
+  `_ = d` path sent `dict[i32,i32]` through `releaseOwnedValue` ->
+  `releaseEntries`, which treated the pointer variable slot as the old
+  three-word Map handle and looped over a garbage length. `isFinalContainerText`
+  now skips list/dict/set in that release path. With a cold cache, the traced
+  dict probe exits 0, `dict[i32,i32](4)` returns 10, and `set[i32](4)`
+  returns 1. `dict[str,i32]` works too (set overwrite, has, delete, len).
+  `keys()`/`values()` now build a fresh `list` for dict and are tested.
+- New CLI tests `TestRunDictScalarKeys` (38), `TestRunDictStrKeys` (14),
+  `TestRunSetAddHasDelete` (0) all pass with a cold cache. Not committed yet:
+  the next step is `gate -full`, then one commit for dict/set; `each` and
+  `for` iteration are still missing (each is specified; iteration order is
+  unspecified).
+- Uncommitted files: `internal/gen/{dictset.go,container.go,gen.go,
+  genericstruct.go,len.go,list.go,new.go}`, `internal/{resolve,types,willc}`
+  changes.
+- Next: debug the exit hang (print-free run of the dict probe under a job
+  timeout, then instrument `willrt_gc_pin`/`unpin` balance or the shutdown
+  join), then str-key hashing, then `for`/`each`/keys/values, tests and
+  corpus.
+
 ## Known failures / blockers
 
 1. Standard library is not complete: many P1 packages and APIs are still on the

@@ -183,10 +183,13 @@ func (g *generator) listReceiver(r willc.Record, recvText string) (string, strin
 	return object, payload, done, nil
 }
 
-// listPayloadText resolves the payload type of one list value.
+// listPayloadText resolves the payload type of one final container value.
 func (g *generator) listPayloadText(text string) (string, bool) {
 	base := stripPredeclaredPackage(text)
-	if _, ok := listElemText(base); !ok {
+	_, isList := listElemText(base)
+	_, _, isDict := dictTypeText(base)
+	_, isSet := finalSetTypeText(base)
+	if !isList && !isDict && !isSet {
 		return "", false
 	}
 	t, ok := g.classTypeOfText(base)

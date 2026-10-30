@@ -1582,7 +1582,7 @@ func (c *checker) predeclaredCall(s *inferScope, name string, call *ast.CallExpr
 		return c.in.named("Result", []*Type{c.oneArg(s, call), nil})
 	case "Err":
 		return c.in.named("Result", []*Type{nil, c.oneArg(s, call)})
-	case "list":
+	case "list", "dict", "set":
 		return c.containerConstruct(s, name, call)
 	case "take_c", "take_c_rc":
 		return c.takeCType(s, call, name)
@@ -2353,8 +2353,12 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 		return nil, false
 	}
 	switch recv.Name() {
-	case "Map":
+	case "Map", "dict":
 		k, v := argAt(recv, 0), argAt(recv, 1)
+		listName := "Array"
+		if recv.Name() == "dict" {
+			listName = "list"
+		}
 		switch call.Name {
 		case "len":
 			return usize, true
@@ -2371,11 +2375,11 @@ func (c *checker) builtinContainerMethod(s *inferScope, recv *Type, call *ast.Me
 			c.checkPayload(s, nil, call.Args, call.Name, call.Pos())
 			return c.in.unit(), true
 		case "keys":
-			return c.in.named("Array", []*Type{k}), true
+			return c.in.named(listName, []*Type{k}), true
 		case "values":
-			return c.in.named("Array", []*Type{v}), true
+			return c.in.named(listName, []*Type{v}), true
 		}
-	case "Set":
+	case "Set", "set":
 		elem := argAt(recv, 0)
 		switch call.Name {
 		case "len":

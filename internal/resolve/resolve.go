@@ -84,7 +84,7 @@ var predeclaredTypes = []string{
 	"u8", "u16", "u32", "u64", "usize",
 	"f32", "f64",
 	"Array", "Map", "Set",
-	"list",
+	"list", "dict", "set",
 	"chan", "rc", "arc", "weak_rc", "weak_arc", "Task",
 	"Option", "Result", "Value", "Duration",
 	"Show", "Error", "TaskError",

@@ -38,6 +38,32 @@ func (g *generator) lowerLen(r willc.Record) (string, error) {
 		defer g.unpinContainer(object)
 		return g.load("i64", g.listField(object, payload, 1)), nil
 	}
+	if _, _, ok := dictTypeText(text); ok {
+		object, err := g.classPointerValue(id)
+		if err != nil {
+			return "", err
+		}
+		payload, ok := g.listPayloadText(text)
+		if !ok {
+			return "", g.errf(r.ID, "cannot translate node #%d: no payload for %s", r.ID, text)
+		}
+		object = g.pinObjectValue(object)
+		defer g.unpinContainer(object)
+		return g.load("i64", g.listField(object, payload, 1)), nil
+	}
+	if _, ok := finalSetTypeText(text); ok {
+		object, err := g.classPointerValue(id)
+		if err != nil {
+			return "", err
+		}
+		payload, ok := g.listPayloadText(text)
+		if !ok {
+			return "", g.errf(r.ID, "cannot translate node #%d: no payload for %s", r.ID, text)
+		}
+		object = g.pinObjectValue(object)
+		defer g.unpinContainer(object)
+		return g.load("i64", g.listField(object, payload, 1)), nil
+	}
 	base, typ, err := g.place(id)
 	if err != nil {
 		return "", err
