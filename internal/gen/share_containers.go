@@ -24,50 +24,6 @@ func (g *generator) shareFixedArray(ptr, elem string, n, depth int) error {
 	return nil
 }
 
-// shareEntries promotes the owning fields of every live Map or Set entry.
-func (g *generator) shareEntries(ptr, k, v string, isMap bool, depth int) error {
-	var entry string
-	var fields []string
-	if isMap {
-		llvm, ok := g.mapEntryLLVM(k, v)
-		if !ok {
-			return fmt.Errorf("map entry is not lowered yet")
-		}
-		entry = llvm
-		fields = []string{k, v}
-	} else {
-		llvm, ok := g.containerValueType(k)
-		if !ok || llvm == "" {
-			return fmt.Errorf("set element %s is not lowered yet", k)
-		}
-		entry = llvm
-		fields = []string{k}
-	}
-	dataPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, ptr)
-	lenPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, ptr)
-	data := g.load("ptr", dataPtr)
-	length := g.load("i64", lenPtr)
-	return g.emitElementLoop("share.entries", data, entry, length, func(element string) error {
-		for i, fieldText := range fields {
-			if !g.needsShareText(fieldText) {
-				continue
-			}
-			field := element
-			if len(fields) > 1 {
-				field = g.newTmp()
-				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
-					field, entry, element, i)
-			}
-			if err := g.shareValueDepth(field, fieldText, depth+1); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
 // shareADTValue promotes the payload of the active Option or Result variant.
 func (g *generator) shareADTValue(ptr, kind string, args []string, depth int) error {
 	info, ok := g.adtType(kindTypeText(kind, args))

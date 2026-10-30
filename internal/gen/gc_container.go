@@ -297,12 +297,6 @@ func isContainerTypeText(text string) bool {
 	if _, ok := arrayElemText(text); ok {
 		return true
 	}
-	if _, _, ok := mapTypeText(text); ok {
-		return true
-	}
-	if _, ok := setTypeText(text); ok {
-		return true
-	}
 	return false
 }
 

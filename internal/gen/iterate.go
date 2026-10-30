@@ -96,12 +96,6 @@ func llvmTypeText(text string) (string, bool) {
 		// A closure without captures carries a null environment.
 		return "{ ptr, ptr }", true
 	}
-	if _, _, ok := mapTypeText(text); ok {
-		return "{ ptr, i64, i64 }", true
-	}
-	if _, ok := setTypeText(text); ok {
-		return "{ ptr, i64, i64 }", true
-	}
 	if typ, ok := containerLLVM(text); ok {
 		return typ, true
 	}

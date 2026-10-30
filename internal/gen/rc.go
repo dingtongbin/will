@@ -536,12 +536,6 @@ func ownsReleaseText(g *generator, text string) bool {
 	if _, elem, ok := arrayTypeText(text); ok {
 		return ownsReleaseText(g, elem)
 	}
-	if _, _, ok := mapTypeText(text); ok {
-		return true
-	}
-	if _, ok := setTypeText(text); ok {
-		return true
-	}
 	if _, args, ok := parseADT(text); ok {
 		return len(args) != 0
 	}

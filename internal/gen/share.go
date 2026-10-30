@@ -62,12 +62,6 @@ func (g *generator) shareValueDepth(ptr, text string, depth int) error {
 	if n, elem, ok := arrayTypeText(text); ok {
 		return g.shareFixedArray(ptr, elem, n, depth)
 	}
-	if k, v, ok := mapTypeText(text); ok {
-		return g.shareEntries(ptr, k, v, true, depth)
-	}
-	if elem, ok := setTypeText(text); ok {
-		return g.shareEntries(ptr, elem, "", false, depth)
-	}
 	if info := g.enumInfoForText(text); info != nil {
 		return g.shareEnumValue(ptr, info, depth)
 	}
@@ -124,12 +118,6 @@ func (g *generator) needsShareText(text string) bool {
 	}
 	if n, elem, ok := arrayTypeText(text); ok {
 		return n > 0 && g.needsShareText(elem)
-	}
-	if k, v, ok := mapTypeText(text); ok {
-		return g.needsShareText(k) || g.needsShareText(v)
-	}
-	if elem, ok := setTypeText(text); ok {
-		return g.needsShareText(elem)
 	}
 	if info := g.enumInfoForText(text); info != nil {
 		for i := range info.variants {

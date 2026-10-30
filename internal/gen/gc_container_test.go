@@ -8,8 +8,8 @@ import (
 func TestContainersAllocateThroughTheCollector(t *testing.T) {
 	src := `def main() -> i32 {
     var a: Array<i32> = new Array<i32>(2)
-    var m: Map<str, i32> = new Map<str, i32>(2)
-    var s: Set<i32> = new Set<i32>(2)
+    var m: dict[str, i32] = dict[str, i32](2)
+    var s: set[i32] = set[i32](2)
     a.push(1)
     m.set("k", 1)
     s.add(1)
