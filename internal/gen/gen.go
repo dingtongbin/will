@@ -13,13 +13,6 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// Crossing is one share promotion the lowering emitted at a task boundary.
-// The position is the source position of the function that carries the
-// crossing, or of the call itself when the lowering knows it.
-type Crossing struct {
-	Pos string
-}
-
 // Emit translates one willc document into LLVM text. Only the node subset
 // needed by the first lowering experiment is implemented: integer functions
 // with parameters, return, integer literals, names, and + - *.
@@ -60,21 +53,18 @@ func EmitModuleWithAliases(docs []*willc.Doc, entry, entryPkg string, aliases ma
 // In lib mode an exported top-level function keeps its plain C name and no
 // program entry wrapper is emitted.
 func EmitModuleWithOptions(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string, lib bool) ([]byte, error) {
-	ir, _, err := EmitModuleWithRecords(docs, entry, entryPkg, aliases, lib)
-	return ir, err
+	return EmitModuleWithRecords(docs, entry, entryPkg, aliases, lib)
 }
 
-// EmitModuleWithRecords is EmitModuleWithOptions and also reports every share
-// promotion the lowering emitted, so the decision record can carry one
-// obligation per crossing.
-func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string, lib bool) ([]byte, []Crossing, error) {
-	ir, crossings, _, err := EmitModuleWithDecisions(docs, entry, entryPkg, aliases, lib)
-	return ir, crossings, err
+// EmitModuleWithRecords emits one module with its GC decisions.
+func EmitModuleWithRecords(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string, lib bool) ([]byte, error) {
+	ir, _, err := EmitModuleWithDecisions(docs, entry, entryPkg, aliases, lib)
+	return ir, err
 }
 
 // EmitModuleWithDecisions also reports the GC layout, stack-map, and allocation
 // decisions that the lowering emitted.
-func EmitModuleWithDecisions(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string, lib bool) ([]byte, []Crossing, []decisions.Record, error) {
+func EmitModuleWithDecisions(docs []*willc.Doc, entry, entryPkg string, aliases map[string]string, lib bool) ([]byte, []decisions.Record, error) {
 	g := &generator{
 		lib:            lib,
 		scope:          map[int]string{},
@@ -108,7 +98,7 @@ func EmitModuleWithDecisions(docs []*willc.Doc, entry, entryPkg string, aliases 
 	if g.hasGCMeta() {
 		program, err := gcmeta.Build(g.rawDocs())
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 		g.gcProgram = program
 	}
@@ -142,17 +132,17 @@ func EmitModuleWithDecisions(docs []*willc.Doc, entry, entryPkg string, aliases 
 	for _, d := range g.docs {
 		g.use(d)
 		if err := g.emitDoc(); err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 	}
 	if g.entryFound && !g.lib {
 		if err := g.emitWrapper(); err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 	}
 	g.emitAux()
 	if err := g.emitGCMetadata(); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	text := g.out.String()
 	// A synthesized Result<(), Error> can mention the predeclared interface
@@ -184,7 +174,7 @@ func EmitModuleWithDecisions(docs []*willc.Doc, entry, entryPkg string, aliases 
 		}
 		text = text[:offset] + errorType + text[offset:]
 	}
-	return []byte(text), g.crossings, g.gcDecisions, nil
+	return []byte(text), g.gcDecisions, nil
 }
 
 // emitAux writes the module-level values the functions produced while they
@@ -217,10 +207,9 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_free_str(ptr)\n")
 	}
 	if g.needClosureDecl {
-		g.out.WriteString("declare ptr @willrt_closure_new(i64, ptr, ptr)\n")
+		g.out.WriteString("declare ptr @willrt_closure_new(i64, ptr)\n")
 		g.out.WriteString("declare void @willrt_closure_retain(ptr)\n")
 		g.out.WriteString("declare void @willrt_closure_release(ptr)\n")
-		g.out.WriteString("declare void @willrt_closure_share(ptr)\n")
 	}
 	if g.needMemcmpDecl {
 		g.out.WriteString("declare i32 @memcmp(ptr, ptr, i64)\n")
@@ -240,9 +229,6 @@ func (g *generator) emitAux() {
 	}
 	if g.needBlockDecl {
 		g.out.WriteString("declare i32 @willrt_blocking_call(ptr, ptr, ptr)\n")
-	}
-	if g.needTakeCDecl {
-		g.out.WriteString("declare i64 @willrt_take_c(ptr, ptr, ptr, ptr, ptr)\n")
 	}
 	if g.needTaskDecl {
 		g.out.WriteString("declare ptr @willrt_task_new(ptr, ptr, i64, i32, i32)\n")
@@ -340,16 +326,6 @@ func (g *generator) emitAux() {
 		g.out.WriteString("declare void @willrt_gc_root_register(ptr, ptr)\n")
 		g.out.WriteString("declare ptr @willrt_gc_pin(ptr)\n")
 		g.out.WriteString("declare void @willrt_gc_unpin(ptr)\n")
-	}
-	if g.needRcDecl {
-		g.out.WriteString("declare i64 @willrt_rc_new(ptr, i64)\n")
-		g.out.WriteString("declare i64 @willrt_rc_new_drop(ptr, i64, ptr)\n")
-		g.out.WriteString("declare void @willrt_rc_retain(i64)\n")
-		g.out.WriteString("declare void @willrt_rc_share(i64)\n")
-		g.out.WriteString("declare void @willrt_rc_release(i64)\n")
-		g.out.WriteString("declare ptr @willrt_rc_deref(i64)\n")
-		g.out.WriteString("declare i64 @willrt_weak_new(i64)\n")
-		g.out.WriteString("declare i32 @willrt_weak_upgrade(i64, ptr)\n")
 	}
 	if g.needUtf8Decl {
 		g.out.WriteString("declare i32 @willrt_utf8_valid(ptr, i64)\n")
@@ -719,7 +695,6 @@ func (g *generator) use(d *docState) {
 	g.recvOutSlots = map[int]string{}
 	g.recvOptSlots = map[int]string{}
 	g.sendValueSlots = map[int]string{}
-	g.weakOutSlots = map[int]string{}
 	g.dropNames = map[string]string{}
 	g.pendingDrops = nil
 	g.pendingLambdaDrops = nil
@@ -919,7 +894,7 @@ type generator struct {
 	needTaskDecl bool
 	// needTaskGCDecl records that a task constructor carries a GC frame map.
 	needTaskGCDecl bool
-	// needJobDecl records that a parallel block submitted a job.
+	// needJobDecl records that a CPU job was submitted.
 	needJobDecl   bool
 	needJobGCDecl bool
 	// needAutoTaskDecl records that an auto spawn submits through the grouped
@@ -955,14 +930,6 @@ type generator struct {
 	needTaskErrorDecl bool
 	// needDeadlineDecl records that the lowering scopes a deadline.
 	needDeadlineDecl bool
-	// parallelDepth is nonzero while lowering a parallel block. A spawn inside
-	// that block is a job, so it goes to the global job queue instead of
-	// starting a task thread.
-	parallelDepth int
-	// needTakeCDecl records that the lowering adopts a foreign C pointer.
-	needTakeCDecl bool
-	// needRcDecl records that the lowering calls the handle table.
-	needRcDecl bool
 	// needGCDecl records that the lowering calls the collector ABI.
 	needGCDecl bool
 	// needUtf8Decl records a call to the UTF-8 validator or encoder,
@@ -1053,7 +1020,6 @@ type generator struct {
 	recvOutSlots    map[int]string
 	recvOptSlots    map[int]string
 	sendValueSlots  map[int]string
-	weakOutSlots    map[int]string
 	variadicSlots   map[int]string
 	strMethodSlots  map[int]string
 	trimStartSlots  map[int]string
@@ -1179,17 +1145,8 @@ type generator struct {
 	// fnSymbol is the stable symbol of the function being lowered; a runtime
 	// check names it in the report. strings holds the module-level string
 	// constants the checks use, and stringsByText shares equal texts.
-	fnSymbol string
-	fnPos    string
-	// crossingPos names the source position the current crossing site
-	// reports; a share promotion under it lands in the crossing list.
-	crossingPos string
-	// crossings is one entry per share promotion this module emitted, in
-	// emission order.
-	crossings []Crossing
-	// quietShare suppresses crossing records while a generated share thunk is
-	// emitted. The call site that invokes the thunk records the one crossing.
-	quietShare    bool
+	fnSymbol      string
+	fnPos         string
 	strings       []string
 	stringsByText map[string]string
 	// syntheticTemps are owned child-result slots created by the current
@@ -1622,12 +1579,11 @@ func qualify(pkg, name string) string {
 }
 
 // stripPredeclaredPackage removes the package prefix that qualification adds
-// to a predeclared generic. Array<F> stays Array<F> in every document, while a
+// to a predeclared generic. list[F] stays list[F] in every document, while a
 // user type keeps its qualified name.
 func stripPredeclaredPackage(text string) string {
-	for _, name := range []string{"Array<", "Map<", "Set<", "Option<", "Result<",
-		"rc<", "arc<", "weak_rc<", "weak_arc<", "chan<", "Task<",
-		"list[", "dict[", "set["} {
+	for _, name := range []string{"Option<", "Result<",
+		"chan<", "Task<", "list[", "dict[", "set["} {
 		if i := strings.Index(text, name); i > 0 && text[i-1] == '.' {
 			return text[i:]
 		}
@@ -1668,7 +1624,7 @@ func (g *generator) qualifyTypeText(pkg, text string) string {
 	if strings.HasPrefix(text, "[]") {
 		return "[]" + g.qualifyTypeText(pkg, text[2:])
 	}
-	generics := []string{"Array<", "Option<", "Result<", "Map<", "Set<", "chan<", "Task<", "rc<", "arc<", "weak_rc<", "weak_arc<"}
+	generics := []string{"Option<", "Result<", "chan<", "Task<"}
 	for _, prefix := range generics {
 		if strings.HasPrefix(text, prefix) && strings.HasSuffix(text, ">") {
 			args := splitTypeList(text[len(prefix) : len(text)-1])
@@ -1821,11 +1777,6 @@ func (g *generator) funcDecl(fn willc.Record) error {
 				sig = append(sig, "ptr %"+pname)
 				continue
 			}
-		}
-		if isRcText(ptype) || isWeakText(ptype) {
-			g.scope[p.ID] = "%" + pname
-			sig = append(sig, "i64 %"+pname)
-			continue
 		}
 		if _, ok := taskElemText(ptype); ok {
 			g.scope[p.ID] = "%" + pname
@@ -2238,10 +2189,6 @@ func (g *generator) allocas(fn int) error {
 	}
 	sortByID(news)
 	for _, r := range news {
-		if isRcText(fieldText(r, "type")) {
-			// An rc is one handle built by the table; it needs no slot here.
-			continue
-		}
 		if g.isClassText(fieldText(r, "type")) {
 			// A class new allocates its payload at the expression and only
 			// needs the pointer slot the expression lowering reserves.
@@ -2542,13 +2489,6 @@ func (g *generator) allocas(fn int) error {
 					g.castSlots[r.ID] = name
 					fmt.Fprintf(g.out, "  %s = alloca { ptr, i64 }\n", name)
 				}
-			}
-		case "mcall":
-			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil &&
-				isWeakText(recvText) && fieldText(r, "text") == "upgrade" {
-				name := "%v.weakout." + strconv.Itoa(r.ID)
-				g.weakOutSlots[r.ID] = name
-				fmt.Fprintf(g.out, "  %s = alloca i64\n", name)
 			}
 		}
 	}
@@ -2964,21 +2904,6 @@ func (g *generator) assignStmt(r willc.Record) error {
 		g.copyValue(src, ptr, typ)
 		return nil
 	}
-	if textErr == nil && isRcText(targetText) {
-		value, err := g.value(valueID)
-		if err != nil {
-			return err
-		}
-		g.needRcDecl = true
-		if g.isCopySource(valueID) {
-			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-		}
-		old := g.load("i64", ptr)
-		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", old)
-		fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", value, ptr)
-		g.clearSyntheticCallSource(valueID)
-		return nil
-	}
 	if iface, ok := g.ifaceOfType(typ); ok {
 		if refField(r, "target") == valueID {
 			return nil
@@ -3053,8 +2978,8 @@ func (g *generator) assignStmt(r willc.Record) error {
 }
 
 // moveSource reports whether one expression names a local value owner that a
-// transfer consumes. An rc handle is copied, and a parameter or receiver is a
-// borrow; neither may be zeroed here.
+// transfer consumes. A parameter or receiver is a borrow; neither may be
+// zeroed here.
 func (g *generator) moveSource(id int) (bool, string) {
 	r, ok := g.recs[id]
 	if !ok {
@@ -3069,7 +2994,7 @@ func (g *generator) moveSource(id int) (bool, string) {
 		return g.moveSource(refField(r, "expr"))
 	}
 	text, err := g.willTypeText(id)
-	if err != nil || text == "" || isWeakText(text) || !ownsReleaseText(g, text) {
+	if err != nil || text == "" || !ownsReleaseText(g, text) {
 		return false, ""
 	}
 	if r.Kind == "call" || r.Kind == "mcall" || r.Kind == "try" || r.Kind == "unwrap" {
@@ -3077,7 +3002,7 @@ func (g *generator) moveSource(id int) (bool, string) {
 			return true, text
 		}
 	}
-	if isRcText(text) || isFuncText(text) {
+	if isFuncText(text) {
 		return false, ""
 	}
 	switch r.Kind {
@@ -3093,8 +3018,7 @@ func (g *generator) moveSource(id int) (bool, string) {
 			return false, ""
 		}
 		root := g.placeRootText(id)
-		if root == "" || root == "str" || isRcText(root) || isWeakText(root) ||
-			strings.HasPrefix(root, "[]") {
+		if root == "" || root == "str" || strings.HasPrefix(root, "[]") {
 			return false, ""
 		}
 		return true, text
@@ -3163,7 +3087,7 @@ func (g *generator) zeroMovedSource(id int, dst string) error {
 }
 
 // zeroTransferredSource clears a local whose value was handed to a task or a
-// channel without a retain. It also accepts rc handles, unlike zeroMovedSource.
+// channel without a retain.
 func (g *generator) zeroTransferredSource(id int, dst string) error {
 	r, ok := g.recs[id]
 	if !ok {
@@ -3193,7 +3117,7 @@ func (g *generator) zeroTransferredSource(id int, dst string) error {
 		return nil
 	}
 	text, err := g.willTypeText(id)
-	if err != nil || !ownsReleaseText(g, text) || isWeakText(text) {
+	if err != nil || !ownsReleaseText(g, text) {
 		return nil
 	}
 	src, typ, err := g.place(id)
@@ -3234,7 +3158,7 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 	}
 	if valueID == 0 {
 		// A var without an initializer keeps the zero value of its type.
-		if isRcText(fieldText(r, "type")) || typ == "i64" {
+		if typ == "i64" {
 			fmt.Fprintf(g.out, "  store %s 0, ptr %s\n", typ, slot)
 		} else {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, zeroValueText(typ), slot)
@@ -3272,19 +3196,6 @@ func (g *generator) declStmt(r willc.Record) (bool, error) {
 		fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
 			slot, value)
 		g.storeClassRoot(r.ID, value)
-		return false, nil
-	}
-	if isRcText(fieldText(r, "type")) {
-		value, err := g.value(valueID)
-		if err != nil {
-			return false, err
-		}
-		if g.isCopySource(valueID) {
-			g.needRcDecl = true
-			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-		}
-		fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", value, slot)
-		g.clearSyntheticCallSource(valueID)
 		return false, nil
 	}
 	if iface, ok := g.ifaceOfType(typ); ok {
@@ -3542,20 +3453,14 @@ func (g *generator) stmt(st willc.Record, void bool) (bool, error) {
 			return g.generalSelectStmt(st, void)
 		}
 		return g.selectStmt(st, void)
-	case "region", "parallel":
+	case "region":
 		g.needTaskDecl = true
 		g.out.WriteString("  call void @willrt_region_enter()\n")
 		body, ok := g.recs[refField(st, "body")]
 		if !ok {
 			return false, g.errf(st.ID, "cannot translate node #%d: the block is missing", st.ID)
 		}
-		if st.Kind == "parallel" {
-			g.parallelDepth++
-		}
 		_, err := g.body(body, void)
-		if st.Kind == "parallel" {
-			g.parallelDepth--
-		}
 		if err != nil {
 			return false, err
 		}
@@ -3610,21 +3515,12 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 			}
 		}
 		if !movedLocal {
-			if isRcText(g.fnResultText) {
-				handle, err := g.value(valueID)
-				if err != nil {
-					return false, err
-				}
-				g.needRcDecl = true
-				fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", handle)
-			} else {
-				src, _, err := g.place(valueID)
-				if err != nil {
-					return false, err
-				}
-				if err := g.retainValue(src, g.fnResultText); err != nil {
-					return false, err
-				}
+			src, _, err := g.place(valueID)
+			if err != nil {
+				return false, err
+			}
+			if err := g.retainValue(src, g.fnResultText); err != nil {
+				return false, err
 			}
 		}
 	}
@@ -3739,16 +3635,12 @@ func (g *generator) returnStmt(st willc.Record, void bool) (bool, error) {
 }
 
 // storeTaskResult copies one completed return value into the task result and
-// ends the step. The temporary is safe: a step returns exactly once. The
-// result crosses to the joiner's lane, so every rc handle in it is shared.
+// ends the step. The temporary is safe: a step returns exactly once.
 func (g *generator) storeTaskResult(typ, value string) error {
 	g.needTaskDecl = true
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, typ)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, slot)
-	if err := g.shareValue(slot, g.fnResultText); err != nil {
-		return err
-	}
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n",
 		slot, g.sizeOf(typ))
 	g.out.WriteString("  ret i32 1\n")
@@ -4140,6 +4032,11 @@ func (g *generator) value(id int) (string, error) {
 				if !ok || typ == "" {
 					return "", g.errf(id, "cannot translate node #%d: borrowed type %s is not lowered", id, base)
 				}
+				if d.Kind == "receiver" && typ == "ptr" {
+					// A class receiver is already the object pointer; loading
+					// it would read the first field instead.
+					return name, nil
+				}
 				return g.load(typ, name), nil
 			}
 			if g.borrows[decl] {
@@ -4209,11 +4106,6 @@ func (g *generator) value(id int) (string, error) {
 	case "unwrap":
 		return g.unwrapValue(r)
 	case "new":
-		if text := fieldText(r, "type"); isRcText(text) {
-			elem, _ := rcElemText(text)
-			handle, _, err := g.constructRc(r, elem, strongName(text))
-			return handle, err
-		}
 		if g.isClassText(fieldText(r, "type")) {
 			slot, typ, err := g.place(id)
 			if err != nil {
@@ -4564,8 +4456,8 @@ func (g *generator) callScalar(r willc.Record) (string, error) {
 	}
 	_, taskScalar := taskElemText(text)
 	_, chanScalar := chanElemText(text)
-	if _, _, ok := llvmScalar(text); !ok && !g.isClassText(text) && !isSingleBorrow(text) &&
-		text != "Duration" && !isRcText(text) && !isWeakText(text) && !taskScalar && !chanScalar {
+	if _, _, ok := llvmScalar(text); !ok && !g.isClassText(text) && !isFinalContainerText(text) &&
+		!isSingleBorrow(text) && text != "Duration" && !taskScalar && !chanScalar {
 		return "", g.errf(r.ID, "cannot translate node #%d: an aggregate result is a place, not a scalar value", r.ID)
 	}
 	return name, nil
@@ -4624,23 +4516,6 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		}
 		return value, "usize", nil
 	}
-	if name, ok := g.predeclaredCallName(r); ok && (name == "take_c" || name == "take_c_rc") {
-		value, err := g.lowerTakeC(r, name)
-		if err != nil {
-			return "", "", err
-		}
-		result := ""
-		if args := g.typeArgTexts(r); len(args) == 1 {
-			result = "rc<" + args[0] + ">"
-		}
-		if result == "" {
-			result, err = g.willTypeText(r.ID)
-			if err != nil {
-				return "", "", err
-			}
-		}
-		return value, result, nil
-	}
 	if r.Kind == "mcall" && g.isCLink(r) {
 		name := fieldText(r, "text")
 		if g.linkBlock[name] {
@@ -4650,15 +4525,9 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 	if r.Kind == "mcall" {
 		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
 			recvText = stripPredeclaredPackage(recvText)
-			if isWeakText(recvText) && fieldText(r, "text") == "upgrade" {
-				return g.upgradeCall(r, recvText)
-			}
 			if _, ok := g.guardElemText(recvText); ok {
 				value, text, _, err := g.guardMethodCall(r)
 				return value, text, err
-			}
-			if isRcText(recvText) {
-				return g.rcMethodCall(r, recvText)
 			}
 			if elem, ok := g.atomicElemText(recvText); ok {
 				return g.atomicMethod(r, elem, recvText)
@@ -4667,21 +4536,6 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 				switch fieldText(r, "text") {
 				case "is_some", "is_none", "is_ok", "is_err", "Or":
 					return g.adtMethod(r, kind, args)
-				}
-			}
-		}
-	}
-	if r.Kind == "mcall" && fieldText(r, "text") == "clone" {
-		recvText, err := g.willTypeText(refField(r, "recv"))
-		if err == nil {
-			recvText = stripPredeclaredPackage(recvText)
-			if recvText != "str" && recvText != "[]u8" {
-				if _, ok := listElemText(recvText); !ok {
-					if _, ok := arrayElemText(recvText); !ok {
-						if _, ok := viewElemText(recvText); !ok {
-							return g.cloneValueCall(r, recvText)
-						}
-					}
 				}
 			}
 		}
@@ -4741,9 +4595,6 @@ func (g *generator) callExpr(r willc.Record) (string, string, error) {
 		}
 		if elem, ok := viewElemText(recvText); ok {
 			return g.viewMethod(r, elem)
-		}
-		if elem, ok := arrayElemText(recvText); ok {
-			return g.arrayMethod(r, elem)
 		}
 		if fieldText(r, "text") == "clone" {
 			return g.cloneValueCall(r, recvText)

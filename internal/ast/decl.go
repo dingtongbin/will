@@ -74,7 +74,6 @@ type FuncDecl struct {
 	TypeParams []*TypeParam
 	Params     []*Param
 	Result     *Type
-	From       []Expr
 	Body       *Block
 	Async      bool
 	Test       bool
@@ -88,7 +87,6 @@ type Receiver struct {
 	Name    string
 	NamePos source.Pos
 	Type    *Type
-	Mut     bool
 }
 
 // Param is one function parameter.
@@ -97,7 +95,6 @@ type Param struct {
 	Name     string
 	NamePos  source.Pos
 	Type     *Type
-	Mut      bool
 	Variadic bool
 	Default  Expr
 }
@@ -174,7 +171,6 @@ type MethodSig struct {
 	NamePos source.Pos
 	Params  []*Param
 	Result  *Type
-	From    []Expr
 	Async   bool
 }
 

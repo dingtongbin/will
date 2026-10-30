@@ -103,8 +103,6 @@ func (m *mover) exprType(e ast.Expr) *ast.Type {
 	switch x := e.(type) {
 	case *ast.NameExpr:
 		return m.types[x.Name]
-	case *ast.BorrowExpr:
-		return m.exprType(x.X)
 	case *ast.FieldExpr:
 		recv := m.exprType(x.Recv)
 		if m.own == nil {
@@ -197,7 +195,7 @@ func (m *mover) canMovePlace(root string) bool {
 		return false
 	}
 	t := m.types[root]
-	if t == nil || t.Kind == ast.ViewType && !t.ViewMut {
+	if t == nil || t.Kind == ast.ViewType {
 		return false
 	}
 	return true
@@ -219,12 +217,7 @@ func (m *mover) containerGetCopy(call *ast.MethodCallExpr) {
 	case ast.ArrayType, ast.ViewType:
 		elem = m.own.IndexType(recv)
 	case ast.NamedType:
-		switch recv.Name {
-		case "Array", "Map", "Set":
-			elem = m.own.ElementType(recv)
-		default:
-			return
-		}
+		return
 	default:
 		return
 	}
@@ -246,24 +239,24 @@ func (m *mover) borrowTransfer(name string, pos source.Pos) bool {
 		// not require cloning the underlying object.
 		return false
 	}
-	if (!m.params[name] && !m.borrowed[name]) || m.variadic[name] {
-		return false
-	}
 	if m.own != nil && m.own.IsTypeParam(m.types[name]) {
 		// A bare type parameter has no concrete ownership until the generic
 		// instance is checked. Treating it as always owning would reject every
 		// constructor that stores its argument through a generic field.
 		return false
 	}
-	m.copyAt(pos)
-	return true
+	if m.borrowed[name] {
+		m.copyAt(pos)
+		return true
+	}
+	return false
 }
 
 func linearType(t *ast.Type) bool {
 	if t == nil {
 		return false
 	}
-	return isTaskType(t) || t.Borrow == ast.MutBorrow || (t.Kind == ast.ViewType && t.ViewMut)
+	return isTaskType(t)
 }
 
 func (m *mover) funcDecl(fn *ast.FuncDecl) {
@@ -553,8 +546,6 @@ func (m *mover) stmt(st ast.Stmt, live map[string]bool) (events, blockFlow) {
 		}
 	case *ast.RegionStmt:
 		return ev, m.block(s.Body, false, live)
-	case *ast.ParallelStmt:
-		return ev, m.block(s.Body, false, live)
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {
 			m.exprEvents(arm.Chan, live, &ev)
@@ -730,14 +721,14 @@ func (m *mover) containerTransfer(call *ast.MethodCallExpr) bool {
 		return false
 	}
 	switch t.Name {
-	case "Array":
+	case "list":
 		switch call.Name {
 		case "push", "append", "set", "insert":
 			return true
 		}
-	case "Map":
+	case "dict":
 		return call.Name == "set"
-	case "Set":
+	case "set":
 		return call.Name == "add"
 	}
 	return false
@@ -758,8 +749,6 @@ func (m *mover) exprEventsIn(e ast.Expr, live map[string]bool, ev *events, trans
 		if x.Name != "_" {
 			ev.uses = append(ev.uses, nameUse{name: x.Name, pos: x.Pos()})
 		}
-	case *ast.BorrowExpr:
-		m.exprEventsIn(x.X, live, ev, false)
 	case *ast.CallExpr:
 		m.exprEventsIn(x.Callee, live, ev, false)
 		transfer := transferArgs
@@ -795,10 +784,6 @@ func (m *mover) exprEventsIn(e ast.Expr, live map[string]bool, ev *events, trans
 		for _, elem := range x.Elems {
 			// A fixed-array element takes its value into the literal.
 			m.args([]*ast.CallArg{{Expr: elem}}, live, ev, true)
-		}
-	case *ast.NewExpr:
-		for _, a := range x.Args {
-			m.exprEventsIn(a.Expr, live, ev, false)
 		}
 	case *ast.UnaryExpr:
 		m.exprEventsIn(x.X, live, ev, false)

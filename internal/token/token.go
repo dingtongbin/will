@@ -82,8 +82,6 @@ const (
 	KwSpawn
 	// KwRegion opens a structured task region.
 	KwRegion
-	// KwParallel opens a CPU-parallel block.
-	KwParallel
 	// KwDeadline opens a scoped deadline.
 	KwDeadline
 	// KwSelect waits on several channel operations.
@@ -269,7 +267,6 @@ var names = map[Kind]string{
 	KwMatch:         "match",
 	KwSpawn:         "spawn",
 	KwRegion:        "region",
-	KwParallel:      "parallel",
 	KwDeadline:      "deadline",
 	KwSelect:        "select",
 	KwDefer:         "defer",

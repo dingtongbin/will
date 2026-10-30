@@ -48,7 +48,7 @@
 #endif
 #endif
 
-/* The caller's Array<u8> header. The layout is fixed by the runtime ABI. */
+/* The caller's list[u8] payload. The layout is fixed by the runtime ABI. */
 typedef struct willrt_io_array {
     void* data;
     int64_t len;
@@ -545,7 +545,6 @@ static void willrt_io_init(void) {
 
     willrt_io_lock_init();
     if (atomic_compare_exchange_strong(&willrt_io_state, &expected, 1)) {
-        willrt_rc_set_threaded();
         willrt_mem_set_shared();
         willrt_io_head = NULL;
         willrt_io_tail = NULL;

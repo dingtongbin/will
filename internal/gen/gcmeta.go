@@ -11,8 +11,7 @@ import (
 )
 
 // hasGCMeta reports whether this batch carries the IR records that need the
-// compiler-side GC graph. A legacy document without classes or GC decisions
-// stays on the old lowering until the surface migration removes it.
+// compiler-side GC graph.
 // emitGCTypes writes the runtime frame and stack-map shapes before any
 // function uses them.
 func (g *generator) emitGCTypes() {
@@ -46,10 +45,7 @@ func (g *generator) usesGCContainers() bool {
 				if f.Value.Kind != willc.TextValue {
 					continue
 				}
-				if strings.Contains(f.Value.Text, "Array<") ||
-					strings.Contains(f.Value.Text, "Map<") ||
-					strings.Contains(f.Value.Text, "Set<") ||
-					strings.Contains(f.Value.Text, "list[") ||
+				if strings.Contains(f.Value.Text, "list[") ||
 					strings.Contains(f.Value.Text, "dict[") ||
 					strings.Contains(f.Value.Text, "set[") {
 					return true

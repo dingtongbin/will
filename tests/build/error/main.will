@@ -1,14 +1,18 @@
 struct E {
     msg: str
+
+    def message(self) -> str {
+        return self.msg.clone()
+    }
+
+    def status(self) -> i32 {
+        return 7
+    }
 }
 
-def (e: ref E) message() -> str {
-    return e.msg.clone()
-}
 
-def (e: ref E) status() -> i32 {
-    return 7
-}
+
+
 
 def use() -> i32 {
     var e: E = E { msg: "bad" }

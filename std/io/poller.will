@@ -11,9 +11,9 @@ import c "../../runtime/core/poll/src/poll.c" {
 # runtime's parallel arrays from it. Remove is a linear scan because the
 # descriptors are kept in registration order for a stable report.
 struct Poller {
-    fds: Array<i64>
-    events: Array<u32>
-    users: Array<usize>
+    fds: list[i64]
+    events: list[u32]
+    users: list[usize]
 
     # Add waits for input readiness on fd and reports user when it is ready.
     def add(self, fd: i64, user: usize) -> Result<(), Error> {
@@ -43,7 +43,7 @@ struct Poller {
     # Next parks the calling task while the runtime poller scans the
     # descriptors; the poller delivers ready tags into out and wakes the task's
     # lane directly.
-    async def next(self, timeout: Duration, out: mut Array<usize>) -> Result<usize, Error> {
+    async def next(self, timeout: Duration, out: list[usize]) -> Result<usize, Error> {
         var before: usize = out.len()
         var status: i32 = await c.willrt_poll_wait_async(raw(self.fds), raw(self.events),
                                                      raw(self.users), i64(self.fds.len()),
@@ -58,8 +58,8 @@ struct Poller {
 # NewPoller returns an empty poller.
 def new_poller() -> Poller {
     return Poller {
-        fds: new Array<i64>(0),
-        events: new Array<u32>(0),
-        users: new Array<usize>(0)
+        fds: list[i64](0),
+        events: list[u32](0),
+        users: list[usize](0)
     }
 }

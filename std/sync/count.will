@@ -12,48 +12,54 @@ import c "sync.h" {
 
 struct Count {
     handle: raw
+
+    def init(self, n: i64) {
+        self.handle = c.willrt_sync_count_new(n)
+    }
+
+    def add(self, d: i64) {
+        c.willrt_sync_count_add(self.handle, d)
+    }
+
+    async def wait(self) -> Result<(), Error> {
+        var status: i32 = await c.willrt_sync_count_wait_async(self.handle)
+        if status == 0 {
+            return Ok(())
+        }
+        if status == -5 {
+            return Err(Canceled)
+        }
+        if status == -6 {
+            return Err(Deadline)
+        }
+        return Err(errors.Io)
+    }
+
+    def wait_blocking(self) -> Result<(), Error> {
+        var status: i32 = c.willrt_sync_count_wait_blocking(self.handle)
+        if status == 0 {
+            return Ok(())
+        }
+        if status == -5 {
+            return Err(Canceled)
+        }
+        if status == -6 {
+            return Err(Deadline)
+        }
+        return Err(errors.Io)
+    }
+
+    def load(self) -> i64 {
+        return c.willrt_sync_count_load(self.handle)
+    }
 }
 
-def (counter: mut Count) init(n: i64) {
-    counter.handle = c.willrt_sync_count_new(n)
-}
 
-def (counter: ref Count) add(d: i64) {
-    c.willrt_sync_count_add(counter.handle, d)
-}
 
-# Wait blocks until the counter reaches zero. A canceled or expired wait
-# leaves the count unchanged.
-async def (counter: ref Count) wait() -> Result<(), Error> {
-    var status: i32 = await c.willrt_sync_count_wait_async(counter.handle)
-    if status == 0 {
-        return Ok(())
-    }
-    if status == -5 {
-        return Err(Canceled)
-    }
-    if status == -6 {
-        return Err(Deadline)
-    }
-    return Err(errors.Io)
-}
 
-# WaitBlocking is the CPU-job form of wait.
-def (counter: ref Count) wait_blocking() -> Result<(), Error> {
-    var status: i32 = c.willrt_sync_count_wait_blocking(counter.handle)
-    if status == 0 {
-        return Ok(())
-    }
-    if status == -5 {
-        return Err(Canceled)
-    }
-    if status == -6 {
-        return Err(Deadline)
-    }
-    return Err(errors.Io)
-}
 
-# Load reads the counter without waiting.
-def (counter: ref Count) load() -> i64 {
-    return c.willrt_sync_count_load(counter.handle)
-}
+
+
+
+
+

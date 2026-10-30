@@ -7,7 +7,7 @@ async def main() -> i32 {
     var text: str = "hello"
     _ = await w.write(text[Range(0, 5)])
     w.close()
-    var out: Array<u8> = new Array<u8>(0)
+    var out: list[u8] = list[u8](0)
     var n: usize = 0
     while True {
         var res: Result<usize, Error> = await r.read(out)

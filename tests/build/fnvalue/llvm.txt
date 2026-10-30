@@ -43,7 +43,7 @@ entry:
   %v.closure.44 = alloca { ptr, ptr }
   %t19 = getelementptr { ptr, i64, i32 }, ptr null, i32 1
   %t20 = ptrtoint ptr %t19 to i64
-  %t21 = call ptr @willrt_closure_new(i64 %t20, ptr @"example.com/fnvalue.lambda.drop.1", ptr @"example.com/fnvalue.lambda.share.1")
+  %t21 = call ptr @willrt_closure_new(i64 %t20, ptr @"example.com/fnvalue.lambda.drop.1")
   %t22 = getelementptr inbounds { ptr, i64, i32 }, ptr %t21, i32 0, i32 2
   %v.capture.37 = alloca i32
   store i32 %n, ptr %v.capture.37
@@ -77,7 +77,7 @@ entry:
   store i32 0, ptr %v.n
   %t32 = getelementptr { ptr, i64, i32 }, ptr null, i32 1
   %t33 = ptrtoint ptr %t32 to i64
-  %t34 = call ptr @willrt_closure_new(i64 %t33, ptr @"example.com/fnvalue.lambda.drop.2", ptr @"example.com/fnvalue.lambda.share.2")
+  %t34 = call ptr @willrt_closure_new(i64 %t33, ptr @"example.com/fnvalue.lambda.drop.2")
   %t35 = getelementptr inbounds { ptr, i64, i32 }, ptr %t34, i32 0, i32 2
   %t36 = load i32, ptr %v.n
   store i32 %t36, ptr %t35
@@ -224,15 +224,7 @@ define void @"example.com/fnvalue.lambda.drop.1"(ptr %env) {
 entry:
   ret void
 }
-define void @"example.com/fnvalue.lambda.share.1"(ptr %env) {
-entry:
-  ret void
-}
 define void @"example.com/fnvalue.lambda.drop.2"(ptr %env) {
-entry:
-  ret void
-}
-define void @"example.com/fnvalue.lambda.share.2"(ptr %env) {
 entry:
   ret void
 }
@@ -260,7 +252,6 @@ entry:
 @.str.12 = private unnamed_addr constant [29 x i8] c"example.com/fnvalue.lambda.4\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
-declare ptr @willrt_closure_new(i64, ptr, ptr)
+declare ptr @willrt_closure_new(i64, ptr)
 declare void @willrt_closure_retain(ptr)
 declare void @willrt_closure_release(ptr)
-declare void @willrt_closure_share(ptr)

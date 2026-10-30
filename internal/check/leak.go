@@ -63,10 +63,6 @@ func walkLeaks(st ast.Stmt, visit func(*ast.CallExpr)) {
 		case *ast.BinaryExpr:
 			expr(x.L)
 			expr(x.R)
-		case *ast.NewExpr:
-			for _, a := range x.Args {
-				expr(a.Expr)
-			}
 		case *ast.AggregateExpr:
 			for _, f := range x.Fields {
 				expr(f.Value)
@@ -127,8 +123,6 @@ func walkLeaks(st ast.Stmt, visit func(*ast.CallExpr)) {
 		expr(s.Iter)
 		walkLeaks(s.Body, visit)
 	case *ast.RegionStmt:
-		walkLeaks(s.Body, visit)
-	case *ast.ParallelStmt:
 		walkLeaks(s.Body, visit)
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {

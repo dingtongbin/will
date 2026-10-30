@@ -136,8 +136,6 @@ func (e *escapeWalker) stmt(st ast.Stmt, region int) {
 		e.block(s.Body, region)
 	case *ast.RegionStmt:
 		e.block(s.Body, region+1)
-	case *ast.ParallelStmt:
-		e.block(s.Body, region)
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {
 			e.use(arm.Chan, region)
@@ -175,8 +173,6 @@ func (e *escapeWalker) use(expr ast.Expr, region int) {
 		e.use(x.Recv, region)
 		e.use(x.Lo, region)
 		e.use(x.Hi, region)
-	case *ast.BorrowExpr:
-		e.use(x.X, region)
 	case *ast.AggregateExpr:
 		for _, f := range x.Fields {
 			e.use(f.Value, region)
@@ -184,10 +180,6 @@ func (e *escapeWalker) use(expr ast.Expr, region int) {
 	case *ast.ArrayLitExpr:
 		for _, elem := range x.Elems {
 			e.use(elem, region)
-		}
-	case *ast.NewExpr:
-		for _, a := range x.Args {
-			e.use(a.Expr, region)
 		}
 	case *ast.UnaryExpr:
 		e.use(x.X, region)

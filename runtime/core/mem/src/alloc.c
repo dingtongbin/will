@@ -760,12 +760,10 @@ void willrt_free_str(void* ptr) {
 
 struct willrt_closure_header {
     void (*drop)(void*);
-    void (*share)(void*);
     _Atomic int64_t refs;
 };
 
-void* willrt_closure_new(size_t bytes, void (*drop)(void*),
-                         void (*share)(void*)) {
+void* willrt_closure_new(size_t bytes, void (*drop)(void*)) {
     struct willrt_closure_header* env;
 
     if (drop == NULL) {
@@ -776,7 +774,6 @@ void* willrt_closure_new(size_t bytes, void (*drop)(void*),
         return NULL;
     }
     env->drop = drop;
-    env->share = share;
     atomic_init(&env->refs, 1);
     return env;
 }
@@ -805,15 +802,6 @@ void willrt_closure_release(void* env) {
         drop(env);
     }
     willrt_free(env);
-}
-
-void willrt_closure_share(void* env) {
-    struct willrt_closure_header* header = (struct willrt_closure_header*)env;
-
-    if (header == NULL || header->share == NULL) {
-        return;
-    }
-    header->share(env);
 }
 
 void* willrt_plate_new(size_t count, size_t elem) {

@@ -25,14 +25,12 @@ type captureInfo struct {
 type lambdaInfo struct {
 	name     string
 	drop     string
-	share    string
 	captures []captureInfo
 	envType  string
 }
 
 type lambdaDropRequest struct {
 	name     string
-	share    string
 	envType  string
 	captures []captureInfo
 }
@@ -292,7 +290,6 @@ func (g *generator) planLambdas() error {
 			if len(info.captures) != 0 {
 				g.lambdaDropSeq++
 				info.drop = qualify(g.pkg, "lambda.drop."+strconv.Itoa(g.lambdaDropSeq))
-				info.share = qualify(g.pkg, "lambda.share."+strconv.Itoa(g.lambdaDropSeq))
 			}
 			lam.Kind = "func"
 			found := false
@@ -312,7 +309,7 @@ func (g *generator) planLambdas() error {
 		if info.drop != "" && !g.lambdaDropEmitted[info.drop] && !g.lambdaDropPending[info.drop] {
 			g.lambdaDropPending[info.drop] = true
 			g.pendingLambdaDrops = append(g.pendingLambdaDrops, lambdaDropRequest{
-				name: info.drop, share: info.share, envType: info.envType,
+				name: info.drop, envType: info.envType,
 				captures: append([]captureInfo(nil), info.captures...),
 			})
 		}
@@ -445,12 +442,8 @@ func (g *generator) buildEnvironment(lam willc.Record, info *lambdaInfo) (string
 			env, desc.Size, gcmeta.DescriptorSymbol(desc.Name))
 	} else {
 		g.needClosureDecl = true
-		share := "null"
-		if info.share != "" {
-			share = "@" + llvmSymbol(info.share)
-		}
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_closure_new(i64 %s, ptr @%s, ptr %s)\n",
-			env, size, llvmSymbol(info.drop), share)
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_closure_new(i64 %s, ptr @%s)\n",
+			env, size, llvmSymbol(info.drop))
 	}
 	for i, cap := range info.captures {
 		field := g.newTmp()
@@ -503,8 +496,8 @@ func (g *generator) captureMoves(cap captureInfo) bool {
 	if g.enclosingFunc(cap.decl) != g.currentFunc {
 		return false
 	}
-	if isRcText(cap.text) || isWeakText(cap.text) || isChanText(cap.text) {
-		// Copyable handles keep their source; the environment retains a handle.
+	if isChanText(cap.text) {
+		// A channel handle keeps its source; the environment retains it.
 		return false
 	}
 	return ownsReleaseText(g, cap.text)
@@ -534,25 +527,6 @@ func (g *generator) emitLambdaDrops() error {
 		g.lambdaDropEmitted[req.name] = true
 		if g.lambdaDropPending != nil {
 			delete(g.lambdaDropPending, req.name)
-		}
-		if req.share != "" {
-			fmt.Fprintf(g.out, "define void @%s(ptr %%env) {\nentry:\n", llvmSymbol(req.share))
-			saved := g.quietShare
-			g.quietShare = true
-			for i, cap := range req.captures {
-				if !g.needsShareText(cap.text) {
-					continue
-				}
-				field := g.newTmp()
-				fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %%env, i32 0, i32 %d\n",
-					field, req.envType, i+2)
-				if err := g.shareValueDepth(field, cap.text, 0); err != nil {
-					g.quietShare = saved
-					return err
-				}
-			}
-			g.quietShare = saved
-			g.out.WriteString("  ret void\n}\n")
 		}
 	}
 	g.pendingLambdaDrops = nil

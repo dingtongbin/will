@@ -4,44 +4,44 @@
 struct Writer {
     dst: byteWriter
     sep: u8
-}
 
-# init stores the destination and separator. Construction itself writes
-# nothing.
-def (w: mut Writer) init(dst: byteWriter, sep: u8) {
-    w.dst = dst.clone()
-    w.sep = sep
-}
+    def init(self, dst: byteWriter, sep: u8) {
+        self.dst = dst.clone()
+        self.sep = sep
+    }
 
-# Encode writes every row to the destination. The write is one call so a
-# Writer never sees a half-encoded record.
-async def (w: mut Writer) encode(rows: []Row) -> Result<(), Error> {
-    var out: Array<u8> = new Array<u8>(0)
-    for row in rows {
-        var first: bool = True
-        for field in row.fields {
-            if not first {
-                out.push(w.sep)
+    async def encode(self, rows: []Row) -> Result<(), Error> {
+        var out: list[u8] = list[u8](0)
+        for row in rows {
+            var first: bool = True
+            for field in row.fields {
+                if not first {
+                    out.push(self.sep)
+                }
+                append_field(out, field, self.sep)
+                first = False
             }
-            append_field(out, field, w.sep)
-            first = False
+            out.push(lineFeed)
         }
-        out.push(lineFeed)
+        if out.len() == 0usize {
+            return Ok(())
+        }
+        return self.dst.write(out[Range(0, out.len())])
     }
-    if out.len() == 0usize {
-        return Ok(())
+
+    async def flush(self) -> Result<(), Error> {
+        return self.dst.sync()
     }
-    return w.dst.write(out[Range(0, out.len())])
 }
 
-# Flush syncs the destination. Encode itself does not sync, so a caller
-# that writes many batches pays for one flush.
-async def (w: ref Writer) flush() -> Result<(), Error> {
-    return w.dst.sync()
-}
+
+
+
+
+
 
 # appendField writes one field, quoting it when a syntax byte appears.
-def append_field(out: mut Array<u8>, field: str, sep: u8) {
+def append_field(out: list[u8], field: str, sep: u8) {
     var data: []u8 = field[Range(0, field.len())]
     if not needs_quote(data, sep) {
         for b in data {

@@ -13,11 +13,12 @@ const indexModule = `interface Shape {
 
 struct Square {
     s: i32
+
+    def area(self) -> i32 {
+        return self.s * self.s
+    }
 }
 
-def (q: ref Square) area() -> i32 {
-    return q.s * q.s
-}
 `
 
 func TestIndexCommand(t *testing.T) {

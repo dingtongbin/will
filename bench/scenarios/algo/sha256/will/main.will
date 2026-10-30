@@ -17,7 +17,7 @@ def ror(value: u32, amount: u32) -> u32 {
 }
 
 # FillConstants puts the round constants of SHA-256 into the array.
-def fill_constants(k: Array<u32>) {
+def fill_constants(k: list[u32]) {
     k.push(0x428a2f98u32)
     k.push(0x71374491u32)
     k.push(0xb5c0fbcfu32)
@@ -85,7 +85,7 @@ def fill_constants(k: Array<u32>) {
 }
 
 # Compress runs the compression of one block into the state.
-def compress(state: mut Array<u32>, words: mut Array<u32>, block: Array<u8>, at: i32, k: Array<u32>) {
+def compress(state: list[u32], words: list[u32], block: list[u8], at: i32, k: list[u32]) {
     for i in Range(0, 16) {
         var p: i32 = at + i * 4
         var b0: u8 = 0u8
@@ -155,8 +155,8 @@ def compress(state: mut Array<u32>, words: mut Array<u32>, block: Array<u8>, at:
 }
 
 # InitialState returns the state of a fresh hash.
-def initial_state() -> Array<u32> {
-    var state: Array<u32> = new Array<u32>(8)
+def initial_state() -> list[u32] {
+    var state: list[u32] = list[u32](8)
     state.push(0x6a09e667u32)
     state.push(0xbb67ae85u32)
     state.push(0x3c6ef372u32)
@@ -169,8 +169,8 @@ def initial_state() -> Array<u32> {
 }
 
 # EmptyWords returns the array the schedule of the compression uses.
-def empty_words() -> Array<u32> {
-    var words: Array<u32> = new Array<u32>(64)
+def empty_words() -> list[u32] {
+    var words: list[u32] = list[u32](64)
     for i in Range(0, 64) {
         _ = i
         words.push(0u32)
@@ -179,8 +179,8 @@ def empty_words() -> Array<u32> {
 }
 
 # Message returns the padded message the workload hashes.
-def message() -> Array<u8> {
-    var message: Array<u8> = new Array<u8>(128)
+def message() -> list[u8] {
+    var message: list[u8] = list[u8](128)
     var state: u64 = 0xA5A5
     var whole: i32 = messageSize / 8
     for i in Range(0, whole) {
@@ -215,23 +215,23 @@ def message() -> Array<u8> {
 }
 
 def main() -> i32 {
-    var samples: Array<u64> = new Array<u64>(0)
-    var k: Array<u32> = new Array<u32>(64)
+    var samples: list[u64] = list[u64](0)
+    var k: list[u32] = list[u32](64)
     fill_constants(k)
-    var message: Array<u8> = message()
-    var words: Array<u32> = empty_words()
+    var message: list[u8] = message()
+    var words: list[u32] = empty_words()
     # The warm up pays for the first touch of the pages and of the caches.
-    var warmState: Array<u32> = initial_state()
+    var warmState: list[u32] = initial_state()
     compress(warmState, words, message, 0, k)
 
-    var digest: Array<u32> = new Array<u32>(8)
+    var digest: list[u32] = list[u32](8)
     for i in Range(0, 8) {
         _ = i
         digest.push(0u32)
     }
     for r in Range(0, repetitions) {
         _ = r
-        var state: Array<u32> = initial_state()
+        var state: list[u32] = initial_state()
         var start: u64 = c.bench_now_ns()
         compress(state, words, message, 0, k)
         compress(state, words, message, 64, k)

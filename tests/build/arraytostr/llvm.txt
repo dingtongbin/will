@@ -3,9 +3,10 @@
 %willrt_gc_stack_slot = type { i32, i32, ptr }
 %willrt_gc_stack_map_data = type { ptr, ptr, i64 }
 %willrt_gc_frame = type { ptr, ptr, ptr }
+%"class.list[u8]" = type { ptr, i64, i64 }
 define i32 @"example.com/arraytostr.will$main"() {
 entry:
-  %v.bytes = alloca { ptr, i64, i64 }
+  %v.bytes = alloca ptr
   %v.text = alloca { ptr, i64 }
   %v.gcroots = alloca [3 x ptr]
   store [3 x ptr] zeroinitializer, ptr %v.gcroots
@@ -14,122 +15,109 @@ entry:
   %t2 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 1
   %t3 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 2
   call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.example.com/arraytostr.will$main", ptr %v.gcroots)
-  %v.new.8 = alloca { ptr, i64, i64 }
-  %t4 = getelementptr i8, ptr %v.bytes, i64 0
-  store ptr %t4, ptr %t1
-  %t5 = getelementptr i8, ptr %v.new.8, i64 0
-  store ptr %t5, ptr %t2
-  %t6 = getelementptr i8, ptr %v.text, i64 0
-  store ptr %t6, ptr %t3
+  %t4 = getelementptr i8, ptr %v.text, i64 0
+  store ptr %t4, ptr %t3
   %v.str.29 = alloca { ptr, i64 }
   %v.cast.22 = alloca { ptr, i64 }
-  %t61 = alloca i64
+  %v.list.8 = alloca ptr
+  %t5 = call ptr @willrt_gc_alloc(i64 24, ptr @"willrt.gc.type.list[u8]")
+  store ptr %t5, ptr %v.list.8
+  call void @willrt_gc_write_barrier(ptr %t2, ptr %t5)
+  %t6 = call ptr @willrt_gc_pin(ptr %t5)
   %t7 = call ptr @willrt_gc_alloc(i64 2, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  %t8 = call ptr @willrt_gc_pin(ptr %t7)
-  %t9 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 0
-  store ptr %t8, ptr %t9
-  %t10 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 1
-  store i64 0, ptr %t10
-  %t11 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.new.8, i32 0, i32 2
-  store i64 2, ptr %t11
-  call void @willrt_gc_unpin(ptr %t8)
-  %t12 = getelementptr inbounds i8, ptr %v.bytes, i64 0
-  %t13 = getelementptr inbounds i8, ptr %v.new.8, i64 0
-  %t14 = load ptr, ptr %t13
-  call void @willrt_gc_write_barrier_untagged(ptr %t12, ptr %t14)
-  %t15 = load { ptr, i64, i64 }, ptr %v.new.8
-  store { ptr, i64, i64 } %t15, ptr %v.bytes
-  %t16 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
-  %t17 = load ptr, ptr %t16
-  %t18 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
-  %t19 = load i64, ptr %t18
-  %t20 = icmp uge i64 0, %t19
-  br i1 %t20, label %panic.1, label %panic.ok.1
+  %t8 = getelementptr inbounds %"class.list[u8]", ptr %t6, i32 0, i32 0
+  call void @willrt_gc_write_barrier_untagged(ptr %t8, ptr %t7)
+  %t9 = getelementptr inbounds %"class.list[u8]", ptr %t6, i32 0, i32 1
+  store i64 0, ptr %t9
+  %t10 = getelementptr inbounds %"class.list[u8]", ptr %t6, i32 0, i32 2
+  store i64 2, ptr %t10
+  call void @willrt_gc_safepoint(i32 0)
+  call void @willrt_gc_unpin(ptr %t6)
+  %t11 = load ptr, ptr %v.list.8
+  call void @willrt_gc_write_barrier(ptr %v.bytes, ptr %t11)
+  call void @willrt_gc_write_barrier(ptr %t1, ptr %t11)
+  %t12 = call ptr @willrt_gc_read_barrier_slot(ptr %t1)
+  %t13 = call ptr @willrt_gc_pin(ptr %t12)
+  %t14 = getelementptr inbounds %"class.list[u8]", ptr %t13, i32 0, i32 1
+  %t15 = load i64, ptr %t14
+  %t16 = icmp uge i64 0, %t15
+  br i1 %t16, label %panic.1, label %panic.ok.1
 panic.1:
   call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
   unreachable
 panic.ok.1:
-  %t21 = getelementptr inbounds i8, ptr %t17, i64 0
-  store i8 65, ptr %t21
-  %t22 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
-  %t23 = load ptr, ptr %t22
-  %t24 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
-  %t25 = load i64, ptr %t24
-  %t26 = icmp uge i64 1, %t25
-  br i1 %t26, label %panic.2, label %panic.ok.2
+  %t17 = getelementptr inbounds %"class.list[u8]", ptr %t13, i32 0, i32 0
+  %t18 = call ptr @willrt_gc_read_barrier_slot(ptr %t17)
+  %t19 = getelementptr inbounds i8, ptr %t18, i64 0
+  call void @willrt_gc_unpin(ptr %t13)
+  store i8 65, ptr %t19
+  %t20 = call ptr @willrt_gc_read_barrier_slot(ptr %t1)
+  %t21 = call ptr @willrt_gc_pin(ptr %t20)
+  %t22 = getelementptr inbounds %"class.list[u8]", ptr %t21, i32 0, i32 1
+  %t23 = load i64, ptr %t22
+  %t24 = icmp uge i64 1, %t23
+  br i1 %t24, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.0, ptr @.str.3, ptr @.str.2)
   unreachable
 panic.ok.2:
-  %t27 = getelementptr inbounds i8, ptr %t23, i64 1
+  %t25 = getelementptr inbounds %"class.list[u8]", ptr %t21, i32 0, i32 0
+  %t26 = call ptr @willrt_gc_read_barrier_slot(ptr %t25)
+  %t27 = getelementptr inbounds i8, ptr %t26, i64 1
+  call void @willrt_gc_unpin(ptr %t21)
   store i8 66, ptr %t27
-  %t28 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
-  %t29 = load ptr, ptr %t28
-  %t30 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
-  %t31 = load i64, ptr %t30
-  %t32 = call i32 @willrt_utf8_valid(ptr %t29, i64 %t31)
-  %t33 = icmp eq i32 %t32, 0
-  br i1 %t33, label %utf8.bad.3, label %utf8.ok.3
+  %t28 = load ptr, ptr %v.bytes
+  %t29 = getelementptr inbounds %"class.list[u8]", ptr %t28, i32 0, i32 0
+  %t30 = load ptr, ptr %t29
+  %t31 = getelementptr inbounds %"class.list[u8]", ptr %t28, i32 0, i32 1
+  %t32 = load i64, ptr %t31
+  %t33 = call i32 @willrt_utf8_valid(ptr %t30, i64 %t32)
+  %t34 = icmp eq i32 %t33, 0
+  br i1 %t34, label %utf8.bad.3, label %utf8.ok.3
 utf8.bad.3:
   call void @willrt_panic_n(ptr @.str.4, i64 13, ptr @.str.5, ptr @.str.2)
   unreachable
 utf8.ok.3:
-  %t34 = call ptr @willrt_gc_alloc(i64 %t31, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call void @memcpy(ptr %t34, ptr %t29, i64 %t31)
-  %t35 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.22, i32 0, i32 0
-  store ptr %t34, ptr %t35
-  %t36 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.22, i32 0, i32 1
-  store i64 %t31, ptr %t36
-  %t37 = getelementptr inbounds i8, ptr %v.text, i64 0
-  %t38 = getelementptr inbounds i8, ptr %v.cast.22, i64 0
-  %t39 = load ptr, ptr %t38
-  call void @willrt_gc_write_barrier_untagged(ptr %t37, ptr %t39)
-  %t40 = load { ptr, i64 }, ptr %v.cast.22
-  store { ptr, i64 } %t40, ptr %v.text
-  %t41 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
-  %t42 = load ptr, ptr %t41
-  %t43 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 1
-  %t44 = load i64, ptr %t43
-  call void @willrt_write_stdout(ptr %t42, i64 %t44)
-  %t45 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 0
-  store ptr @.bytes.1, ptr %t45
-  %t46 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 1
-  store i64 1, ptr %t46
-  %t47 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 0
-  %t48 = load ptr, ptr %t47
-  %t49 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 1
-  %t50 = load i64, ptr %t49
-  call void @willrt_write_stdout(ptr %t48, i64 %t50)
-  %t51 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 1
-  %t52 = load i64, ptr %t51
-  %t53 = icmp ugt i64 %t52, 2147483647
-  br i1 %t53, label %panic.4, label %panic.ok.4
+  %t35 = call ptr @willrt_gc_alloc(i64 %t32, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call void @memcpy(ptr %t35, ptr %t30, i64 %t32)
+  %t36 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.22, i32 0, i32 0
+  store ptr %t35, ptr %t36
+  %t37 = getelementptr inbounds { ptr, i64 }, ptr %v.cast.22, i32 0, i32 1
+  store i64 %t32, ptr %t37
+  %t38 = getelementptr inbounds i8, ptr %v.text, i64 0
+  %t39 = getelementptr inbounds i8, ptr %v.cast.22, i64 0
+  %t40 = load ptr, ptr %t39
+  call void @willrt_gc_write_barrier_untagged(ptr %t38, ptr %t40)
+  %t41 = load { ptr, i64 }, ptr %v.cast.22
+  store { ptr, i64 } %t41, ptr %v.text
+  %t42 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
+  %t43 = load ptr, ptr %t42
+  %t44 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 1
+  %t45 = load i64, ptr %t44
+  call void @willrt_write_stdout(ptr %t43, i64 %t45)
+  %t46 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 0
+  store ptr @.bytes.1, ptr %t46
+  %t47 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 1
+  store i64 1, ptr %t47
+  %t48 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 0
+  %t49 = load ptr, ptr %t48
+  %t50 = getelementptr inbounds { ptr, i64 }, ptr %v.str.29, i32 0, i32 1
+  %t51 = load i64, ptr %t50
+  call void @willrt_write_stdout(ptr %t49, i64 %t51)
+  %t52 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 1
+  %t53 = load i64, ptr %t52
+  %t54 = icmp ugt i64 %t53, 2147483647
+  br i1 %t54, label %panic.4, label %panic.ok.4
 panic.4:
   call void @willrt_panic(ptr @.str.7, ptr @.str.8, ptr @.str.2)
   unreachable
 panic.ok.4:
-  %t54 = trunc i64 %t52 to i32
-  %t55 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
-  %t56 = call ptr @willrt_gc_read_barrier_slot(ptr %t55)
-  call void @willrt_free_str(ptr %t56)
-  %t57 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 0
-  %t58 = getelementptr inbounds { ptr, i64, i64 }, ptr %v.bytes, i32 0, i32 1
-  %t59 = call ptr @willrt_gc_read_barrier_slot(ptr %t57)
-  %t60 = load i64, ptr %t58
-  store i64 0, ptr %t61
-  br label %deep.rel.arr.cond.5
-deep.rel.arr.cond.5:
-  %t62 = load i64, ptr %t61
-  %t63 = icmp ult i64 %t62, %t60
-  br i1 %t63, label %deep.rel.arr.body.5, label %deep.rel.arr.done.5
-deep.rel.arr.body.5:
-  %t64 = getelementptr inbounds i8, ptr %t59, i64 %t62
-  %t65 = add i64 %t62, 1
-  store i64 %t65, ptr %t61
-  br label %deep.rel.arr.cond.5
-deep.rel.arr.done.5:
+  %t55 = trunc i64 %t53 to i32
+  %t56 = getelementptr inbounds { ptr, i64 }, ptr %v.text, i32 0, i32 0
+  %t57 = call ptr @willrt_gc_read_barrier_slot(ptr %t56)
+  call void @willrt_free_str(ptr %t57)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i32 %t54
+  ret i32 %t55
 }
 declare void @willrt_init()
 declare void @willrt_shutdown()
@@ -171,21 +159,21 @@ declare ptr @willrt_gc_pin(ptr)
 declare void @willrt_gc_unpin(ptr)
 declare i32 @willrt_utf8_valid(ptr, i64)
 declare i32 @willrt_utf8_encode(i32, ptr)
-@"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 1, i32 0, i32 8, i32 8, i32 0, ptr null, i32 0, ptr null, i32 1, ptr null }
-@"willrt.gc.refs.value.Array<u8>" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.Array<u8>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 2, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.Array<u8>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.refs.list[u8]" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.list[u8]" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 1, i32 24, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.list[u8]", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 2, i32 0, i32 8, i32 8, i32 0, ptr null, i32 0, ptr null, i32 1, ptr null }
 @"willrt.gc.refs.value.str" = private constant [1 x i32] [i32 0]
 @"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 3, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 4, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 declare i32 @willrt_gc_register_type(ptr)
 define internal void @willrt.gc.register_types() {
 entry:
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.list[u8]")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Array<u8>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.str")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.u8")
   ret void
 }
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @willrt.gc.register_types, ptr null }]
-@"willrt.gc.stack.slots.example.com/arraytostr.will$main" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }, %willrt_gc_stack_slot { i32 8, i32 5, ptr null }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }]
+@"willrt.gc.stack.slots.example.com/arraytostr.will$main" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 1, ptr @"willrt.gc.type.list[u8]" }, %willrt_gc_stack_slot { i32 8, i32 1, ptr @"willrt.gc.type.list[u8]" }, %willrt_gc_stack_slot { i32 16, i32 5, ptr null }]
 @"willrt.gc.stack.example.com/arraytostr.will$main" = private constant %willrt_gc_stack_map_data { ptr @"example.com/arraytostr.will$main", ptr @"willrt.gc.stack.slots.example.com/arraytostr.will$main", i64 3 }

@@ -41,7 +41,7 @@ struct File {
     handle: raw
 
     # read parks the task frame until the blocking pool finishes the host read.
-    async def read(self, buf: mut Array<u8>) -> Result<usize, Error> {
+    async def read(self, buf: list[u8]) -> Result<usize, Error> {
         var count: usize = 0
         var status: i32 = await c.willrt_fs_async_file_read(raw(self), raw(count), raw(buf))
         if status != 0 {
@@ -174,8 +174,8 @@ async def temp_dir(dir: str, pattern: str) -> Result<str, Error> {
 }
 
 # AsyncReadFile is the async spelling of ReadFile.
-async def read_file(path: str) -> Result<Array<u8>, Error> {
-    var out: Array<u8>
+async def read_file(path: str) -> Result<list[u8], Error> {
+    var out: list[u8]
     var status: i32 = await c.willrt_fs_async_read_file(raw(path), raw(out))
     if status != 0 {
         return Err(errors.Io)
@@ -232,8 +232,8 @@ async def stat(path: str) -> Result<StatInfo, Error> {
 }
 
 # AsyncReadDir is the async spelling of ReadDir.
-async def read_dir(path: str) -> Result<Array<DirEntry>, Error> {
-    var entries: Array<DirEntry>
+async def read_dir(path: str) -> Result<list[DirEntry], Error> {
+    var entries: list[DirEntry]
     var status: i32 = await c.willrt_fs_async_read_dir(raw(path), raw(entries))
     if status != 0 {
         return Err(errors.Io)

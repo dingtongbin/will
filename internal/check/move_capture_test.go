@@ -9,12 +9,12 @@ import (
 )
 
 func TestLambdaCapturesNames(t *testing.T) {
-	src := `struct C {
+	src := `class C {
     n: i32
 }
 
 def f() -> i32 {
-    var c: rc<C> = new rc<C>(C { n: 1 })
+    var c: C = C(1)
     var f: func() -> i32 = func() -> i32 {
         return c.n
     }
@@ -112,9 +112,6 @@ func TestSecondClosureCaptureNeedsClone(t *testing.T) {
 	}
 }
 
-// TestClosureCopiesRcHandle checks that an rc handle stays copyable: the
-// closure retains it and the source remains usable.
-
 // TestClosureCaptureInLoopNeedsFreshOwner checks that a capture inside a loop
 // cannot move a local declared outside it: the next iteration would see an
 // empty slot.
@@ -183,11 +180,11 @@ func TestNestedClosureMovesItsOwnLocal(t *testing.T) {
 // TestClosureCapturesParameterByCopy checks that a borrowed parameter is not
 // moved out of the caller; the closure keeps the clone path.
 func TestClosureCapturesParameterByCopy(t *testing.T) {
-	src := `struct C {
+	src := `class C {
     n: i32
 }
 
-def make(c: rc<C>) -> func() -> i32 {
+def make(c: C) -> func() -> i32 {
     return func() -> i32 {
         return c.n
     }

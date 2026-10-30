@@ -1,10 +1,12 @@
 struct Box {
     v: i64
+
+    def value(self) -> i64 {
+        return self.v
+    }
 }
 
-def (b: ref Box) value() -> i64 {
-    return b.v
-}
+
 
 enum Shape {
     Dot
@@ -20,7 +22,7 @@ def use(b: Box, s: Shape) -> i64 {
     var text: str = f"v={b.v} end"
     var p: Box = b
     var n: i64 = p.value()
-    var ch: chan<i64> = new chan<i64>(4)
+    var ch: chan<i64> = chan<i64>(4)
     var kind: i64 = match s {
         Dot | Line => n
     }

@@ -12,7 +12,7 @@ const (
 	NamedType
 	// ArrayType is a fixed-length array [N]T.
 	ArrayType
-	// ViewType is a view []T; ViewMut distinguishes mut []T.
+	// ViewType is a view []T.
 	ViewType
 	// FuncType is a function type func(T, U) -> V.
 	FuncType
@@ -20,52 +20,16 @@ const (
 	UnitType
 )
 
-// BorrowKind records the explicit borrow wrapper of a type.
-type BorrowKind uint8
-
-const (
-	// OwnedBorrow is a value that carries its own storage.
-	OwnedBorrow BorrowKind = iota
-	// RefBorrow is a shared borrow ref T.
-	RefBorrow
-	// MutBorrow is an exclusive borrow mut T.
-	MutBorrow
-)
-
-// Type is a type expression. Borrow wraps the underlying Kind: ref T and
-// mut T keep the kind of T and record the borrow in Borrow.
+// Type is a type expression.
 type Type struct {
 	Span
-	Kind    TypeKind
-	Borrow  BorrowKind
-	ViewMut bool
-	Name    string
-	Args    []*Type
-	Elem    *Type
-	Len     string
-	Params  []*Type
-	Result  *Type
-}
-
-// IsRef reports whether the type is ref T.
-func (t *Type) IsRef() bool {
-	return t != nil && t.Borrow == RefBorrow
-}
-
-// IsMutRef reports whether the type is mut T.
-func (t *Type) IsMutRef() bool {
-	return t != nil && t.Borrow == MutBorrow
-}
-
-// Unref returns the type without its borrow wrapper. The borrow itself stays
-// in the returned type's ViewMut flag when the wrapped type is a view.
-func Unref(t *Type) *Type {
-	if t == nil || t.Borrow == OwnedBorrow {
-		return t
-	}
-	u := *t
-	u.Borrow = OwnedBorrow
-	return &u
+	Kind   TypeKind
+	Name   string
+	Args   []*Type
+	Elem   *Type
+	Len    string
+	Params []*Type
+	Result *Type
 }
 
 // TypeText renders a type in the canonical spelling the intermediate format
@@ -74,14 +38,7 @@ func TypeText(t *Type) string {
 	if t == nil {
 		return ""
 	}
-	base := typeBaseText(t)
-	switch t.Borrow {
-	case RefBorrow:
-		return "ref " + base
-	case MutBorrow:
-		return "mut " + base
-	}
-	return base
+	return typeBaseText(t)
 }
 
 func typeBaseText(t *Type) string {
@@ -103,9 +60,6 @@ func typeBaseText(t *Type) string {
 	case ArrayType:
 		return "[" + t.Len + "]" + TypeText(t.Elem)
 	case ViewType:
-		if t.ViewMut {
-			return "mut []" + TypeText(t.Elem)
-		}
 		return "[]" + TypeText(t.Elem)
 	case FuncType:
 		parts := make([]string, len(t.Params))
@@ -124,16 +78,16 @@ func typeBaseText(t *Type) string {
 }
 
 // OwnsHeap reports whether a declared type carries a heap buffer that its owner
-// must release: str, Array, Map, and Set. A struct or enum type is not included
-// yet; that needs the field layout.
+// must release. A struct or enum type is not included yet; that needs the field
+// layout.
 // NeedsRelease reports whether a declared type owns something the compiler must
-// release at the end of its scope. An rc handle owns one reference; a weak
-// handle owns nothing.
+// release at the end of its scope. Final containers are GC references and own
+// no scope-local release.
 func NeedsRelease(t *Type) bool {
 	if t == nil {
 		return false
 	}
-	if t.Borrow != OwnedBorrow || t.Kind == ViewType {
+	if t.Kind == ViewType {
 		return false
 	}
 	if OwnsHeap(t) {
@@ -148,26 +102,21 @@ func NeedsRelease(t *Type) bool {
 		return false
 	}
 	switch t.Name {
-	case "weak_rc", "weak_arc", "Duration", "Value", "Show", "Task":
+	case "Duration", "Value", "Show", "Task":
 		return false
 	}
-	// A named struct, enum, Option, Result, or rc may hold an rc field; the
-	// release lowering walks the value and ignores the ones that hold none.
+	// A named struct, enum, Option, or Result may own a buffer; the release
+	// lowering walks the value and ignores the ones that own none.
 	return true
 }
 
 func OwnsHeap(t *Type) bool {
-	if t == nil || t.Borrow != OwnedBorrow || t.Kind == ViewType {
+	if t == nil || t.Kind == ViewType {
 		return false
 	}
 	switch t.Kind {
 	case ScalarType:
 		return t.Name == "str"
-	case NamedType:
-		switch t.Name {
-		case "Array", "Map", "Set":
-			return true
-		}
 	}
 	return false
 }

@@ -65,7 +65,7 @@ func unifyType(want, actual *Type, names map[string]bool, subst map[string]*Type
 		if actual.Kind() == ViewKind {
 			return unifyType(want.Elem(), actual.Elem(), names, subst)
 		}
-		if actual.Kind() == NamedKind && actual.Name() == "Array" && len(actual.Args()) == 1 {
+		if actual.Kind() == NamedKind && actual.Name() == "list" && len(actual.Args()) == 1 {
 			return unifyType(want.Elem(), actual.Args()[0], names, subst)
 		}
 	}

@@ -9,13 +9,14 @@ import (
 func TestAsyncRejectsBlockingCpuSync(t *testing.T) {
 	src := `struct Mutex {
     value: i32
+
+    def lock_blocking(self) -> i32 {
+        return self.value
+    }
 }
 
-def (m: ref Mutex) lock_blocking() -> i32 {
-    return m.value
-}
 
-async def f(m: ref Mutex) {
+async def f(m: Mutex) {
     var v: i32 = m.lock_blocking()
     _ = v
 }
@@ -30,13 +31,14 @@ async def f(m: ref Mutex) {
 func TestCpuDefAcceptsBlockingCpuSync(t *testing.T) {
 	src := `struct Mutex {
     value: i32
+
+    def lock_blocking(self) -> i32 {
+        return self.value
+    }
 }
 
-def (m: ref Mutex) lock_blocking() -> i32 {
-    return m.value
-}
 
-def f(m: ref Mutex) -> i32 {
+def f(m: Mutex) -> i32 {
     return m.lock_blocking()
 }
 `

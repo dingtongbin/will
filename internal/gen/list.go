@@ -8,19 +8,10 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// listElemText returns the element type of one final list value. The
-// specification writes list[T]; the angle form stays accepted while the old
-// corpus is migrated.
+// listElemText returns the element type of one list value.
 func listElemText(text string) (string, bool) {
 	if strings.HasPrefix(text, "list[") && strings.HasSuffix(text, "]") {
 		elem := strings.TrimSpace(text[len("list[") : len(text)-1])
-		if elem == "" {
-			return "", false
-		}
-		return elem, true
-	}
-	if strings.HasPrefix(text, "list<") && strings.HasSuffix(text, ">") {
-		elem := strings.TrimSpace(text[len("list<") : len(text)-1])
 		if elem == "" {
 			return "", false
 		}
@@ -106,6 +97,75 @@ func (g *generator) constructList(r willc.Record) (string, string, error) {
 		g.gcSafepoint(0)
 	}
 	return slot, "ptr", nil
+}
+
+// listFromSequence builds a fresh list holding a copy of src's length elements.
+// The caller owns the returned GC payload; the source may alias the new data.
+func (g *generator) listFromSequence(src, length, elem string, r willc.Record) (string, string, error) {
+	text := "list[" + elem + "]"
+	t, ok := g.classTypeOfText(text)
+	if !ok {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: no GC layout for %s", r.ID, text)
+	}
+	payload, err := g.ensureClassPayload(t)
+	if err != nil {
+		return "", "", err
+	}
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: list element %s is not lowered yet", r.ID, elem)
+	}
+	size, _, ok := g.sizeAlign(elemLLVM)
+	if !ok {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: list element %s has no layout", r.ID, elem)
+	}
+	descriptor, err := g.sequenceDescriptor(elem)
+	if err != nil {
+		return "", "", err
+	}
+	slot := g.allocSlot(g.callSlots, "list", r.ID, "ptr")
+	g.needGCDecl = true
+	object := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_alloc(i64 %d, ptr %s)\n",
+		object, t.Size, gcmeta.DescriptorSymbol(t.Name))
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", object, slot)
+	if root := g.gcRootSlots[r.ID]; root != "" {
+		fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n", root, object)
+	}
+	object = g.pinObjectValue(object)
+	defer g.unpinContainer(object)
+	data := g.newTmp()
+	g.emitGuardedAlloc(&data, length, size, descriptor)
+	if err := g.copySequence(src, data, length, elemLLVM, size); err != nil {
+		return "", "", err
+	}
+	dataField := g.listField(object, payload, 0)
+	fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier_untagged(ptr %s, ptr %s)\n", dataField, data)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, g.listField(object, payload, 1))
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, g.listField(object, payload, 2))
+	return g.load("ptr", slot), text, nil
+}
+
+// copySequence copies length elements of elemLLVM from src to dst.
+func (g *generator) copySequence(src, dst, length, elemLLVM string, size int) error {
+	g.needMemcpyDecl = true
+	zeros := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp eq i64 %s, 0\n", zeros, length)
+	g.labels++
+	n := g.labels
+	zero := fmt.Sprintf("seqcopy.zero.%d", n)
+	copyLabel := fmt.Sprintf("seqcopy.copy.%d", n)
+	done := fmt.Sprintf("seqcopy.done.%d", n)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", zeros, zero, copyLabel)
+	g.out.WriteString(copyLabel + ":\n")
+	bytes := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, length, size)
+	fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %s)\n", dst, src, bytes)
+	fmt.Fprintf(g.out, "  br label %%%s\n", done)
+	g.out.WriteString(zero + ":\n")
+	fmt.Fprintf(g.out, "  br label %%%s\n", done)
+	g.out.WriteString(done + ":\n")
+	return nil
 }
 
 // listMethod lowers one method call on list[T]. The receiver is a GC payload
@@ -203,8 +263,8 @@ func (g *generator) listPayloadText(text string) (string, bool) {
 	return payload, true
 }
 
-// listGet reads one element after a bounds check.
-func (g *generator) listGet(r willc.Record, elem, recvText string) (string, string, error) {
+// listGetPlace returns the address of one list element after a bounds check.
+func (g *generator) listGetPlace(r willc.Record, elem, recvText string) (string, string, error) {
 	object, payload, done, err := g.listReceiver(r, recvText)
 	if err != nil {
 		return "", "", err
@@ -233,6 +293,15 @@ func (g *generator) listGet(r willc.Record, elem, recvText string) (string, stri
 	cell := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n",
 		cell, elemLLVM, data, index)
+	return cell, elemLLVM, nil
+}
+
+// listGet reads one element after a bounds check.
+func (g *generator) listGet(r willc.Record, elem, recvText string) (string, string, error) {
+	cell, elemLLVM, err := g.listGetPlace(r, elem, recvText)
+	if err != nil {
+		return "", "", err
+	}
 	return g.load(elemLLVM, cell), elem, nil
 }
 
@@ -261,15 +330,26 @@ func (g *generator) listSet(r willc.Record, elem, recvText string) error {
 	bad := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = icmp uge i64 %s, %s\n", bad, index, length)
 	g.panicCheck(bad, panicIndex, r)
-	value, err := g.value(args[1])
-	if err != nil {
-		return err
-	}
 	dataField := g.listField(object, payload, 0)
 	data := g.loadContainerData(dataField)
 	cell := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n",
 		cell, elemLLVM, data, index)
+	if isAggregateType(elemLLVM) {
+		src, srcType, err := g.place(args[1])
+		if err != nil {
+			return err
+		}
+		if srcType != elemLLVM {
+			return g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
+		}
+		g.gcStoreContainerAggregate(cell, src, elemLLVM, elem)
+		return nil
+	}
+	value, err := g.value(args[1])
+	if err != nil {
+		return err
+	}
 	g.gcStoreContainerScalar(cell, value, elemLLVM, elem)
 	return nil
 }
@@ -285,11 +365,101 @@ func (g *generator) listPush(r willc.Record, elem, recvText string) error {
 	if len(args) != 1 {
 		return g.errf(r.ID, "cannot translate node #%d: list push takes one value", r.ID)
 	}
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
+		return g.errf(r.ID, "cannot translate node #%d: list element %s is not lowered yet", r.ID, elem)
+	}
+	if isAggregateType(elemLLVM) {
+		src, srcType, err := g.place(args[0])
+		if err != nil {
+			return err
+		}
+		if srcType != elemLLVM {
+			return g.errf(r.ID, "cannot translate node #%d: the value needs %s", r.ID, elemLLVM)
+		}
+		tmp := g.newTmp()
+		g.tempAlloca(tmp, elemLLVM)
+		g.copyValue(src, tmp, elemLLVM)
+		return g.listPushAggregate(object, payload, elem, tmp)
+	}
 	value, err := g.value(args[0])
 	if err != nil {
 		return err
 	}
 	return g.listPushValue(object, payload, elem, value)
+}
+
+// listPushAggregate appends one aggregate element from a stable source slot.
+func (g *generator) listPushAggregate(object, payload, elem, src string) error {
+	elemLLVM, ok := g.typeLLVMOf(elem)
+	if !ok || elemLLVM == "" {
+		return g.errf(0, "cannot translate a list element: %s is not lowered yet", elem)
+	}
+	size, _, ok := g.sizeAlign(elemLLVM)
+	if !ok {
+		return g.errf(0, "cannot translate a list element: %s has no layout", elem)
+	}
+	descriptor, err := g.sequenceDescriptor(elem)
+	if err != nil {
+		return err
+	}
+	lenField := g.listField(object, payload, 1)
+	capField := g.listField(object, payload, 2)
+	dataField := g.listField(object, payload, 0)
+	length := g.load("i64", lenField)
+	capacity := g.load("i64", capField)
+	g.labels++
+	n := g.labels
+	grow := fmt.Sprintf("list.grow.%d", n)
+	appendLabel := fmt.Sprintf("list.append.%d", n)
+	doneLabel := fmt.Sprintf("list.done.%d", n)
+	full := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp uge i64 %s, %s\n", full, length, capacity)
+	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", full, grow, appendLabel)
+	g.out.WriteString(grow + ":\n")
+	doubled := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = mul i64 %s, 2\n", doubled, capacity)
+	small := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, 1\n", small, doubled)
+	newCap := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = select i1 %s, i64 1, i64 %s\n", newCap, small, doubled)
+	oldData := g.loadContainerData(dataField)
+	oldData = g.pinContainerData(oldData)
+	allocBytes := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", allocBytes, newCap, size)
+	newData := g.newTmp()
+	g.gcAllocSequence(newData, allocBytes, descriptor)
+	if length != "0" {
+		g.needMemcpyDecl = true
+		copyBytes := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", copyBytes, length, size)
+		empty := g.newTmp()
+		afterCopy := fmt.Sprintf("list.copied.%d", n)
+		copyLabel := fmt.Sprintf("list.copy.%d", n)
+		fmt.Fprintf(g.out, "  %s = icmp eq i64 %s, 0\n", empty, length)
+		fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", empty, afterCopy, copyLabel)
+		g.out.WriteString(copyLabel + ":\n")
+		fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %s)\n", newData, oldData, copyBytes)
+		fmt.Fprintf(g.out, "  br label %%%s\n", afterCopy)
+		g.out.WriteString(afterCopy + ":\n")
+	}
+	fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier_untagged(ptr %s, ptr %s)\n",
+		dataField, newData)
+	g.unpinContainer(oldData)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", newCap, capField)
+	fmt.Fprintf(g.out, "  br label %%%s\n", appendLabel)
+	g.out.WriteString(appendLabel + ":\n")
+	data := g.loadContainerData(dataField)
+	cell := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n",
+		cell, elemLLVM, data, length)
+	g.gcStoreContainerAggregate(cell, src, elemLLVM, elem)
+	next := g.newTmp()
+	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", next, length)
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", next, lenField)
+	fmt.Fprintf(g.out, "  br label %%%s\n", doneLabel)
+	g.out.WriteString(doneLabel + ":\n")
+	return nil
 }
 
 // listGrowTo makes room for need elements and returns the data pointer. The old

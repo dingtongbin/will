@@ -252,14 +252,14 @@ func typeParamSet(params []*ast.TypeParam) map[string]bool {
 	return set
 }
 
-// keyType reports whether a type can be a Map key or Set element. The language
+// keyType reports whether a type can be a dict key or set element. The language
 // gives Equal only to values with stable equality, so handles, raw addresses,
 // floats, and structs holding one of them are rejected here.
 func (c *checker) keyType(t *Type) bool {
 	if t == nil {
 		return true
 	}
-	if t.Borrow() != ast.OwnedBorrow || t.Kind() == ViewKind {
+	if t.Kind() == ViewKind {
 		return false
 	}
 	switch t.Kind() {
@@ -268,7 +268,7 @@ func (c *checker) keyType(t *Type) bool {
 		return name != "raw" && name != "f32" && name != "f64"
 	case NamedKind:
 		switch t.Name() {
-		case "raw", "rc", "arc", "weak_rc", "weak_arc", "chan", "Task", "f32", "f64":
+		case "raw", "chan", "Task", "f32", "f64":
 			return false
 		}
 		if fields, ok := c.env.fields[t.Name()]; ok {
@@ -306,7 +306,6 @@ func (c *checker) buildSig(decl *ast.FuncDecl) *signature {
 		sig.typeNames = append(sig.typeNames, p.Name)
 	}
 	if decl.Recv != nil {
-		sig.recvMut = decl.Recv.Mut
 		for _, a := range decl.Recv.Type.Args {
 			sig.recvParams = append(sig.recvParams, a.Name)
 		}
@@ -356,12 +355,6 @@ func (c *checker) qualifyForeignType(t *Type, pkg string, params map[string]bool
 	if t == nil {
 		return nil
 	}
-	if t.borrow != ast.OwnedBorrow {
-		base := *t
-		base.borrow = ast.OwnedBorrow
-		base.text = strings.TrimPrefix(strings.TrimPrefix(t.text, "ref "), "mut ")
-		return c.in.borrowed(c.qualifyForeignType(&base, pkg, params), t.borrow)
-	}
 	args := func() []*Type {
 		if len(t.Args()) == 0 {
 			return nil
@@ -387,7 +380,7 @@ func (c *checker) qualifyForeignType(t *Type, pkg string, params map[string]bool
 		}
 		return c.in.named(pkg+"."+name, a)
 	case ViewKind:
-		return c.in.view(c.qualifyForeignType(t.Elem(), pkg, params), t.viewMut)
+		return c.in.view(c.qualifyForeignType(t.Elem(), pkg, params))
 	case ArrayKind:
 		return c.in.array(t.length, c.qualifyForeignType(t.Elem(), pkg, params))
 	case FuncKind:
@@ -454,12 +447,12 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 		for i, a := range t.Args {
 			args[i] = c.buildType(a, tp)
 		}
-		if t.Name == "Set" && len(args) == 1 && !c.keyType(args[0]) {
-			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "Set element type does not support equal",
+		if t.Name == "set" && len(args) == 1 && !c.keyType(args[0]) {
+			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "set element type does not support equal",
 				"use a type with a stable equality, such as an integer, str, struct, or enum")
 		}
-		if t.Name == "Map" && len(args) == 2 && !c.keyType(args[0]) {
-			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "Map key type does not support equal",
+		if t.Name == "dict" && len(args) == 2 && !c.keyType(args[0]) {
+			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "dict key type does not support equal",
 				"use a type with a stable equality, such as an integer, str, struct, or enum")
 		}
 		if want, ok := c.env.arity[t.Name]; ok {
@@ -493,7 +486,7 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 	case ast.ArrayType:
 		out = c.in.array(t.Len, c.buildType(t.Elem, tp))
 	case ast.ViewType:
-		out = c.in.view(c.buildType(t.Elem, tp), t.ViewMut)
+		out = c.in.view(c.buildType(t.Elem, tp))
 	case ast.FuncType:
 		params := make([]*Type, len(t.Params))
 		for i, p := range t.Params {
@@ -506,5 +499,5 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 	if out == nil {
 		return nil
 	}
-	return c.in.borrowed(out, t.Borrow)
+	return out
 }

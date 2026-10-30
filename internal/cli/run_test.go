@@ -67,10 +67,10 @@ func TestRunClassContainerRoots(t *testing.T) {
 }
 
 class Box {
-    items: Array<Node>
+    items: list[Node]
 
     def init(self) {
-        self.items = new Array<Node>(0)
+        self.items = list[Node](0)
     }
 }
 
@@ -163,16 +163,16 @@ def main() -> i32 {
 	}
 }
 
-func TestRunClassArrayAppendAndMutate(t *testing.T) {
+func TestRunClassListAppendAndMutate(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
 	t.Setenv("WILL_GC_MEMLIMIT", "1")
 	src := `class Box {
-    items: Array<i32>
+    items: list[i32]
 
     def init(self) {
-        self.items = new Array<i32>(2)
+        self.items = list[i32](2)
     }
 }
 
@@ -395,7 +395,7 @@ func TestRunArrayOfStrRoot(t *testing.T) {
 	src := `def main() -> i32 {
     var round: i32 = 0
     while round < 120 {
-        var xs: Array<str> = new Array<str>(2)
+        var xs: list[str] = list[str](2)
         var i: i32 = 0
         while i < 80 {
             xs.push("v=" + str(i))
@@ -410,78 +410,6 @@ func TestRunArrayOfStrRoot(t *testing.T) {
                 return 2000 + round
             }
             j += 1
-        }
-        round += 1
-    }
-    return 0
-}
-`
-	path := writeFile(t, t.TempDir(), "main.will", src)
-	code, out, errOut := runCLI("run", path)
-	if code != 0 {
-		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
-	}
-	if errOut != "" {
-		t.Fatalf("stderr = %q, want no diagnostics", errOut)
-	}
-}
-
-func TestRunClassArrayStress(t *testing.T) {
-	if !hasClang() {
-		t.Skip("clang is not installed")
-	}
-	t.Setenv("WILL_GC_MEMLIMIT", "1")
-	src := `class Box {
-    items: Array<i32>
-
-    def init(self) {
-        self.items = new Array<i32>(2)
-    }
-}
-
-def main() -> i32 {
-    var round: i32 = 0
-    while round < 30 {
-        var box: Box = Box()
-        var i: i32 = 0
-        while i < 500 {
-            box.items.push(i * 3 + 1)
-            i += 1
-        }
-        if box.items.len() != 500 {
-            return 3000 + round
-        }
-        var j: i32 = 0
-        while j < 500 {
-            if box.items.get(usize(j)) != j * 3 + 1 {
-                return 4000 + round
-            }
-            box.items.set(usize(j), j * 5 + 2)
-            j += 1
-        }
-        j = 0
-        while j < 500 {
-            if box.items.get(usize(j)) != j * 5 + 2 {
-                return 5000 + round
-            }
-            j += 1
-        }
-        var k: i32 = 0
-        while k < 100 {
-            match box.items.pop() {
-                Some(value) => {
-                    if value != (499 - k) * 5 + 2 {
-                        return 6000 + round
-                    }
-                }
-                None => {
-                    return 7000 + round
-                }
-            }
-            k += 1
-        }
-        if box.items.len() != 400 {
-            return 8000 + round
         }
         round += 1
     }
@@ -541,7 +469,7 @@ async def pick(ch: chan<i32>) -> i32 {
 }
 
 async def main() -> i32 {
-    var ch: chan<i32> = new chan<i32>(1)
+    var ch: chan<i32> = chan<i32>(1)
     var first: i32 = await pick(ch)
     if first != 11 {
         return 1
@@ -581,7 +509,7 @@ func TestRunCpuSyncPrimitives(t *testing.T) {
 	src := `import "std/sync"
 
 def main() -> i32 {
-    var mu: sync.Mutex<i32> = new sync.Mutex<i32>(0)
+    var mu: sync.Mutex<i32> = sync.Mutex<i32>(0)
     var g: sync.Guard<i32> = mu.lock_blocking()
     g.value = 7
     var taken: Option<sync.Guard<i32>> = mu.try_lock()
@@ -592,7 +520,7 @@ def main() -> i32 {
         None => {}
     }
     var total: i32 = g.value
-    var sem: sync.Semaphore = new sync.Semaphore(1)
+    var sem: sync.Semaphore = sync.Semaphore(1)
     match sem.acquire_blocking() {
         Ok(p) => {
             p.release()
@@ -601,7 +529,7 @@ def main() -> i32 {
             return 2
         }
     }
-    var count: sync.Count = new sync.Count(1)
+    var count: sync.Count = sync.Count(1)
     count.add(-1)
     match count.wait_blocking() {
         Ok(_) => {}
@@ -609,13 +537,13 @@ def main() -> i32 {
             return 3
         }
     }
-    var atom: sync.Atomic<i32> = new sync.Atomic<i32>(1)
+    var atom: sync.Atomic<i32> = sync.Atomic<i32>(1)
     _ = atom.add(2)
     atom.store(4)
     if atom.load() != 4 or atom.cas(4, 9) == False {
         return 4
     }
-    var once: sync.Once = new sync.Once()
+    var once: sync.Once = sync.Once()
     if once.done() {
         return 5
     }
@@ -626,7 +554,7 @@ def main() -> i32 {
     if once.done() == False {
         return 6
     }
-    var barrier: sync.Barrier = new sync.Barrier(1)
+    var barrier: sync.Barrier = sync.Barrier(1)
     match barrier.wait_blocking() {
         Ok(_) => {}
         Err(_) => {
@@ -673,7 +601,7 @@ def worker(mu: sync.Mutex<i32>, count: i32) -> i32 {
 }
 
 async def main() -> i32 {
-    var mu: sync.Mutex<i32> = new sync.Mutex<i32>(0)
+    var mu: sync.Mutex<i32> = sync.Mutex<i32>(0)
     var a: Task<i32> = spawn worker(mu, 1000)
     var b: Task<i32> = spawn worker(mu, 1000)
     var c: Task<i32> = spawn worker(mu, 1000)
@@ -1227,13 +1155,13 @@ func TestRunFieldMoveZeroesTheSourceField(t *testing.T) {
 		t.Skip("clang is not installed")
 	}
 	src := `struct Box {
-    items: Array<i32>
+    items: list[i32]
 }
 
 def main() -> i32 {
-    var b: Box = Box { items: new Array<i32>(4) }
+    var b: Box = Box { items: list[i32](4) }
     b.items.push(7)
-    var items: Array<i32> = b.items
+    var items: list[i32] = b.items
     items.push(8)
     return i32(items.len())
 }
@@ -1280,15 +1208,17 @@ func TestRunInterfaceFieldAndArray(t *testing.T) {
 	}
 	src := `struct P {
     s: str
+
+    def message(self) -> str {
+        return self.s.clone()
+    }
+
+    def status(self) -> i32 {
+        return 1
+    }
 }
 
-def (p: ref P) message() -> str {
-    return p.s.clone()
-}
 
-def (p: ref P) status() -> i32 {
-    return 1
-}
 
 struct H {
     e: Error
@@ -1297,7 +1227,7 @@ struct H {
 def main() -> i32 {
     var e: Error = P { s: "hello" }
     var h: H = H { e: e }
-    var xs: Array<Error> = new Array<Error>(2)
+    var xs: list[Error] = list[Error](2)
     xs.push(e)
     return i32(h.e.message().len()) + i32(xs.get(0).message().len())
 }
@@ -1328,15 +1258,17 @@ interface Labeled {
 
 struct Square {
     n: i32
+
+    def area(self) -> i32 {
+        return self.n
+    }
+
+    def label(self) -> str {
+        return "square"
+    }
 }
 
-def (s: ref Square) area() -> i32 {
-    return s.n
-}
 
-def (s: ref Square) label() -> str {
-    return "square"
-}
 
 def main() -> i32 {
     var s: Shape = Square { n: 3 }
@@ -1383,7 +1315,7 @@ func TestRunChannelHandleCopies(t *testing.T) {
 		t.Skip("clang is not installed")
 	}
 	src := `async def main() -> i32 {
-    var ch: chan<str> = new chan<str>(2)
+    var ch: chan<str> = chan<str>(2)
     var ch2: chan<str> = ch
     var sent: Result<(), Error> = await ch2.send("hello")
     match sent {
@@ -1446,15 +1378,17 @@ func TestRunInterfaceBoxAndClone(t *testing.T) {
 	}
 	src := `struct P {
     s: str
+
+    def message(self) -> str {
+        return self.s.clone()
+    }
+
+    def status(self) -> i32 {
+        return 1
+    }
 }
 
-def (p: ref P) message() -> str {
-    return p.s.clone()
-}
 
-def (p: ref P) status() -> i32 {
-    return 1
-}
 
 def main() -> i32 {
     var e: Error = P { s: "hello" }
@@ -1479,12 +1413,12 @@ func TestRunSpawnDropsArrayCapture(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `def count(xs: Array<str>) -> i32 {
+	src := `def count(xs: list[str]) -> i32 {
     return i32(xs.len())
 }
 
 async def main() -> i32 {
-    var xs: Array<str> = new Array<str>(2)
+    var xs: list[str] = list[str](2)
     xs.push("a")
     xs.push("b")
     var t: Task<i32> = spawn count(xs)
@@ -1517,7 +1451,7 @@ def main() -> i32 {
 		t.Fatalf("code = %d, stdout = %q", code, out)
 	}
 	if !strings.Contains(out, "O0009 top-level counter is published and read-only") ||
-		!strings.Contains(out, "help: put the mutable state behind an rc and a guard") {
+		!strings.Contains(out, "help: put the mutable state behind a Mutex or a channel") {
 		t.Fatalf("stdout = %q", out)
 	}
 }
@@ -1543,7 +1477,7 @@ def field_return() -> str {
 }
 
 def index_return() -> str {
-    var xs: Array<str> = new Array<str>(2)
+    var xs: list[str] = list[str](2)
     xs.push("wxyz")
     return xs[0]
 }
@@ -1645,10 +1579,10 @@ func TestRunBranchMoveReleasesThePathThatStillOwnsTheValue(t *testing.T) {
 		t.Skip("clang is not installed")
 	}
 	src := `def take(flag: bool) -> i32 {
-    var a: Array<i32> = new Array<i32>(4)
+    var a: list[i32] = list[i32](4)
     a.push(7)
     if flag {
-        var b: Array<i32> = a
+        var b: list[i32] = a
         b.push(8)
         return i32(b.len())
     }
@@ -1777,9 +1711,9 @@ func TestRunMovedArrayIsReleasedOnce(t *testing.T) {
 		t.Skip("clang is not installed")
 	}
 	src := `def main() -> i32 {
-    var first: Array<i32> = new Array<i32>(4)
+    var first: list[i32] = list[i32](4)
     first.push(7)
-    var second: Array<i32> = first
+    var second: list[i32] = first
     second.push(8)
     return i32(second.len())
 }
@@ -1802,7 +1736,7 @@ func TestRunContainerPushMovesTheElement(t *testing.T) {
 	}
 	src := `def main() -> i32 {
     var text: str = "abc".clone()
-    var xs: Array<str> = new Array<str>(0)
+    var xs: list[str] = list[str](0)
     xs.push(text)
     return i32(xs.get(0).len())
 }
@@ -1824,7 +1758,7 @@ func TestRunArrayReleaseAtLastSafeUse(t *testing.T) {
 		t.Skip("clang is not installed")
 	}
 	src := `def main() -> i32 {
-    var xs: Array<i32> = new Array<i32>(4)
+    var xs: list[i32] = list[i32](4)
     xs.push(7)
     var n: usize = xs.len()
     var later: i32 = 1
@@ -1983,7 +1917,7 @@ func TestRunAsyncFrameDropsOwnedLocalsOnPanic(t *testing.T) {
 
 async def worker() -> i32 {
     var text: str = "hello"
-    var items: Array<i32> = new Array<i32>(2)
+    var items: list[i32] = list[i32](2)
     _ = await time.sleep(1ms)!
     panic("stop")
     return i32(text.len()) + i32(items.len())
@@ -2062,15 +1996,17 @@ interface Labeled {
 
 struct Square {
     n: i32
+
+    def area(self) -> i32 {
+        return self.n
+    }
+
+    def label(self) -> str {
+        return "square"
+    }
 }
 
-def (s: ref Square) area() -> i32 {
-    return s.n
-}
 
-def (s: ref Square) label() -> str {
-    return "square"
-}
 
 def main() -> i32 {
     var shape: Shape = Square { n: 12 }
@@ -2210,84 +2146,6 @@ def main() -> i32 {
 
 // TestRunMutableScalarParameters checks that a mutable scalar is a pointer in
 // both the ordinary call ABI and the async task ABI.
-func TestRunMutableScalarParameters(t *testing.T) {
-	if !hasClang() {
-		t.Skip("clang is not installed")
-	}
-	src := `def inc(value: mut i32) -> i32 {
-    value += 1
-    return value
-}
-
-async def add(value: mut i32) -> i32 {
-    value += 2
-    return value
-}
-
-async def main() -> i32 {
-    var first: i32 = 1
-    var inc: i32 = inc(first)
-    var second: i32 = 4
-    var add: i32 = await add(second)
-    print(first, " ", inc, " ", second, " ", add, "\n")
-    if first != 2 or inc != 2 or second != 6 or add != 6 {
-        return 1
-    }
-    return 0
-}
-`
-	path := writeFile(t, t.TempDir(), "main.will", src)
-	code, out, errOut := runCLI("run", path)
-	if code != 0 {
-		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
-	}
-	if !strings.Contains(out, "2 2 6 6\n") {
-		t.Fatalf("stdout = %q", out)
-	}
-}
-
-// TestRunAsyncMutParameters checks that a task frame keeps the caller's
-// pointer for a mutable receiver and a mutable Array parameter.
-func TestRunAsyncMutParameters(t *testing.T) {
-	if !hasClang() {
-		t.Skip("clang is not installed")
-	}
-	src := `struct Counter {
-    n: i32
-}
-
-async def (c: mut Counter) add(value: i32) -> i32 {
-    c.n += value
-    return c.n
-}
-
-async def grow(values: mut Array<i32>) -> i32 {
-    values.push(7)
-    return i32(values.len())
-}
-
-async def main() -> i32 {
-    var counter: Counter = Counter { n: 1 }
-    var added: i32 = await counter.add(4)
-    var values: Array<i32> = new Array<i32>(0)
-    var grown: i32 = await grow(values)
-    print(counter.n, " ", values.len(), "\n")
-    if counter.n != 5 or added != 5 or grown != 1 or values.len() != 1 {
-        return 1
-    }
-    return 0
-}
-`
-	path := writeFile(t, t.TempDir(), "main.will", src)
-	code, out, errOut := runCLI("run", path)
-	if code != 0 {
-		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
-	}
-	if !strings.Contains(out, "5 1\n") {
-		t.Fatalf("stdout = %q", out)
-	}
-}
-
 // TestRunMPMCCountsEveryMessage moves values across lanes through one channel
 // with two producers and two consumers. The result crosses two task boundaries,
 // so a truncated or duplicated join value changes the sum.
@@ -2318,7 +2176,7 @@ async def consume(ch: chan<i32>) -> i64 {
 }
 
 async def main() -> i32 {
-    var ch: chan<i32> = new chan<i32>(64)
+    var ch: chan<i32> = chan<i32>(64)
     var total: i64 = 0
     region {
         var p1: Task<()> = spawn produce(ch, 20000)
@@ -2359,9 +2217,9 @@ func TestRunLoopAllocaDoesNotGrowStack(t *testing.T) {
 	src := `def main() -> i32 {
     var i: i32 = 0
     while i < 70000 {
-        var a: Array<i32> = new Array<i32>(4)
+        var a: list[i32] = list[i32](4)
         a.push(i)
-        var c: Array<i32> = a.clone()
+        var c: list[i32] = a.clone()
         var n: usize = c.len()
         _ = n
         i += 1

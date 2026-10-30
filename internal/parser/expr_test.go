@@ -23,7 +23,7 @@ const exprProgram = `def f(n: i32) {
         0 => 1
         _ => 2
     }
-    var o: chan<i32> = new chan<i32>(8)
+    var o: chan<i32> = chan<i32>(8)
     var q: i32 = if n > 0 { 1 } else if n < 0 { -1 } else { 0 }
 }
 `
@@ -139,9 +139,9 @@ func TestParseExpressions(t *testing.T) {
 	if !ok || len(m.Arms) != 2 {
 		t.Fatalf("m = %T, want match with two arms", varValue(t, f, "m"))
 	}
-	o, ok := varValue(t, f, "o").(*ast.NewExpr)
-	if !ok || o.Type.Name != "chan" || len(o.Type.Args) != 1 {
-		t.Fatalf("o = %T, want new chan<i32>", varValue(t, f, "o"))
+	o, ok := varValue(t, f, "o").(*ast.CallExpr)
+	if !ok || len(o.TypeArgs) != 1 || o.TypeArgs[0].Name != "i32" {
+		t.Fatalf("o = %T, want chan<i32> constructor", varValue(t, f, "o"))
 	}
 	q, ok := varValue(t, f, "q").(*ast.IfExpr)
 	if !ok {

@@ -1,10 +1,10 @@
-# A deferred str and a deferred Array must keep the value they had at the
+# A deferred str and a deferred list must keep the value they had at the
 # defer statement even when the local is reassigned or grows afterwards.
 def show(s: str) {
     print(s, "\n")
 }
 
-def show_array(a: Array<i32>) {
+def show_array(a: list[i32]) {
     print(a.len(), " ", a.get(0usize), "\n")
 }
 
@@ -13,7 +13,7 @@ def main() -> i32 {
     defer Show(s)
     s = "new" + "?"
 
-    var a: Array<i32> = new Array<i32>(1usize)
+    var a: list[i32] = list[i32](1usize)
     a.push(7)
     defer show_array(a)
     a.push(8)

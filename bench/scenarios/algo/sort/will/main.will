@@ -27,7 +27,7 @@ const seed: u64 = 0x9E3779B97F4A7C15
 # The values read from the array are assigned to variables that are declared
 # first, because a declaration that reads an index borrows the array until
 # the end of the block.
-def partition(xs: mut Array<i64>, lo: i32, hi: i32) -> i32 {
+def partition(xs: list[i64], lo: i32, hi: i32) -> i32 {
     var pivot: i64 = 0i64
     pivot = xs[usize(hi)]
     var i: i32 = lo
@@ -48,7 +48,7 @@ def partition(xs: mut Array<i64>, lo: i32, hi: i32) -> i32 {
 }
 
 # Quicksort sorts the range of the array.
-def quicksort(xs: mut Array<i64>, lo: i32, hi: i32) {
+def quicksort(xs: list[i64], lo: i32, hi: i32) {
     if lo >= hi {
         return
     }
@@ -62,7 +62,7 @@ def quicksort(xs: mut Array<i64>, lo: i32, hi: i32) {
 #
 # The array is created with the capacity of the fill, so the pushes never
 # grow it.
-def fill(xs: mut Array<i64>, size: i32) {
+def fill(xs: list[i64], size: i32) {
     var state: u64 = seed
     for i in Range(0, size) {
         _ = i
@@ -72,7 +72,7 @@ def fill(xs: mut Array<i64>, size: i32) {
 }
 
 # Sum adds the values of the array, so the checksum covers every element.
-def sum(xs: Array<i64>) -> u64 {
+def sum(xs: list[i64]) -> u64 {
     var total: u64 = 0u64
     for x in xs {
         total = total +% u64(x)
@@ -81,10 +81,10 @@ def sum(xs: Array<i64>) -> u64 {
 }
 
 def main() -> i32 {
-    var smallSamples: Array<u64> = new Array<u64>(0)
-    var largeSamples: Array<u64> = new Array<u64>(0)
-    var small: Array<i64> = new Array<i64>(usize(smallSize))
-    var large: Array<i64> = new Array<i64>(usize(largeSize))
+    var smallSamples: list[u64] = list[u64](0)
+    var largeSamples: list[u64] = list[u64](0)
+    var small: list[i64] = list[i64](usize(smallSize))
+    var large: list[i64] = list[i64](usize(largeSize))
     fill(small, smallSize)
     fill(large, largeSize)
 
@@ -97,7 +97,7 @@ def main() -> i32 {
         _ = r
         # Every repetition sorts a fresh array, because an array that was
         # sorted before is the worst case of the quicksort.
-        var work: Array<i64> = new Array<i64>(usize(smallSize))
+        var work: list[i64] = list[i64](usize(smallSize))
         fill(work, smallSize)
         var start: u64 = c.bench_now_ns()
         quicksort(work, 0, smallSize - 1)
@@ -108,7 +108,7 @@ def main() -> i32 {
     }
     for r in Range(0, largeRepetitions) {
         _ = r
-        var work: Array<i64> = new Array<i64>(usize(largeSize))
+        var work: list[i64] = list[i64](usize(largeSize))
         fill(work, largeSize)
         var start: u64 = c.bench_now_ns()
         quicksort(work, 0, largeSize - 1)

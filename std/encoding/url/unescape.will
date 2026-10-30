@@ -5,7 +5,7 @@
 import "std/errors"
 
 def unescape(s: str) -> Result<str, Error> {
-    var out: Array<u8> = new Array<u8>(0)
+    var out: list[u8] = list[u8](0)
     var data: []u8 = s[Range(0, s.len())]
     var i: usize = 0usize
     while True {

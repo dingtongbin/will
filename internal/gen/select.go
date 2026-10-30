@@ -171,10 +171,6 @@ func (g *generator) selectStmt(r willc.Record, void bool) (bool, error) {
 			if err != nil {
 				return false, err
 			}
-			valueText, err := g.willTypeText(valueID)
-			if err != nil {
-				return false, err
-			}
 			valuePtr := ""
 			if isAggregateType(typ) {
 				valuePtr, _, err = g.place(valueID)
@@ -188,9 +184,6 @@ func (g *generator) selectStmt(r willc.Record, void bool) (bool, error) {
 					return false, err
 				}
 				fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, valuePtr)
-			}
-			if err := g.shareValue(valuePtr, valueText); err != nil {
-				return false, err
 			}
 			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", valuePtr, valueField)
 			fmt.Fprintf(g.out, "  store i32 1, ptr %s\n", kindField)
@@ -331,9 +324,6 @@ func (g *generator) selectFastStmt(r willc.Record, arms []willc.Record, void boo
 			}
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, slot)
 			valueVals[i] = slot
-		}
-		if err := g.shareValue(valueVals[i], text); err != nil {
-			return false, err
 		}
 	}
 

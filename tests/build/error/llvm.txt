@@ -5,12 +5,12 @@
 %willrt_gc_frame = type { ptr, ptr, ptr }
 %interface.Error = type { ptr, ptr }
 %"struct.example.com/error.E" = type { { ptr, i64 } }
-define hidden { ptr, i64 } @"example.com/error.E.message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"example.com/error.E.message"(ptr %self) inlinehint {
 entry:
   %v.ret.11 = alloca { ptr, i64 }
   %v.strm.11 = alloca { ptr, i64 }
-  %t1 = getelementptr inbounds %"struct.example.com/error.E", ptr %e, i32 0, i32 0
-  %t2 = getelementptr inbounds %"struct.example.com/error.E", ptr %e, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.example.com/error.E", ptr %self, i32 0, i32 0
+  %t2 = getelementptr inbounds %"struct.example.com/error.E", ptr %self, i32 0, i32 0
   %t3 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 0
   %t4 = load ptr, ptr %t3
   %t5 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 1
@@ -26,8 +26,14 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.11
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"example.com/error.E.status"(ptr %e) alwaysinline {
+define hidden i32 @"example.com/error.E.status"(ptr %self) alwaysinline {
 entry:
+  %v.gcroots = alloca [1 x ptr]
+  store [1 x ptr] zeroinitializer, ptr %v.gcroots
+  %v.gcframe = alloca %willrt_gc_frame
+  %t12 = getelementptr inbounds [1 x ptr], ptr %v.gcroots, i32 0, i32 0
+  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.example.com/error.E.status", ptr %v.gcroots)
+  call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 7
 }
 define hidden i32 @"example.com/error.use"() inlinehint {
@@ -37,112 +43,112 @@ entry:
   %v.gcroots = alloca [1 x ptr]
   store [1 x ptr] zeroinitializer, ptr %v.gcroots
   %v.gcframe = alloca %willrt_gc_frame
-  %t12 = getelementptr inbounds [1 x ptr], ptr %v.gcroots, i32 0, i32 0
+  %t13 = getelementptr inbounds [1 x ptr], ptr %v.gcroots, i32 0, i32 0
   call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.example.com/error.use", ptr %v.gcroots)
   %v.agg.26 = alloca %"struct.example.com/error.E"
-  %t13 = getelementptr i8, ptr %v.e, i64 0
-  store ptr %t13, ptr %t12
+  %t14 = getelementptr i8, ptr %v.e, i64 0
+  store ptr %t14, ptr %t13
   %v.str.27 = alloca { ptr, i64 }
   %v.adt.32 = alloca { i32, [4 x i8], %interface.Error }
   %v.match.38 = alloca i32
-  %t14 = getelementptr inbounds %"struct.example.com/error.E", ptr %v.agg.26, i32 0, i32 0
-  %t15 = getelementptr inbounds { ptr, i64 }, ptr %v.str.27, i32 0, i32 0
-  store ptr @.bytes.1, ptr %t15
-  %t16 = getelementptr inbounds { ptr, i64 }, ptr %v.str.27, i32 0, i32 1
-  store i64 3, ptr %t16
-  %t17 = load { ptr, i64 }, ptr %v.str.27
-  store { ptr, i64 } %t17, ptr %t14
-  %t18 = load %"struct.example.com/error.E", ptr %v.agg.26
-  store %"struct.example.com/error.E" %t18, ptr %v.e
-  %t19 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.32, i32 0, i32 0
-  store i32 1, ptr %t19
-  %t20 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.32, i32 0, i32 2
-  %t21 = call ptr @willrt_gc_alloc(i64 16, ptr @"willrt.gc.type.example.com/error.E")
-  %t22 = load %"struct.example.com/error.E", ptr %v.e
-  store %"struct.example.com/error.E" %t22, ptr %t21
-  %t23 = getelementptr inbounds %interface.Error, ptr %t20, i32 0, i32 0
-  %t24 = getelementptr inbounds %interface.Error, ptr %t20, i32 0, i32 1
-  call void @willrt_gc_write_barrier(ptr %t23, ptr %t21)
-  store ptr @"example.com/error.vtable.Error.E", ptr %t24
-  %t25 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.32
-  store { i32, [4 x i8], %interface.Error } %t25, ptr %v.r
-  %t26 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 0
-  %t27 = load i32, ptr %t26
-  %t28 = icmp eq i32 %t27, 0
-  br i1 %t28, label %match.arm.1.0, label %match.next.1.0
+  %t15 = getelementptr inbounds %"struct.example.com/error.E", ptr %v.agg.26, i32 0, i32 0
+  %t16 = getelementptr inbounds { ptr, i64 }, ptr %v.str.27, i32 0, i32 0
+  store ptr @.bytes.1, ptr %t16
+  %t17 = getelementptr inbounds { ptr, i64 }, ptr %v.str.27, i32 0, i32 1
+  store i64 3, ptr %t17
+  %t18 = load { ptr, i64 }, ptr %v.str.27
+  store { ptr, i64 } %t18, ptr %t15
+  %t19 = load %"struct.example.com/error.E", ptr %v.agg.26
+  store %"struct.example.com/error.E" %t19, ptr %v.e
+  %t20 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.32, i32 0, i32 0
+  store i32 1, ptr %t20
+  %t21 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.adt.32, i32 0, i32 2
+  %t22 = call ptr @willrt_gc_alloc(i64 16, ptr @"willrt.gc.type.example.com/error.E")
+  %t23 = load %"struct.example.com/error.E", ptr %v.e
+  store %"struct.example.com/error.E" %t23, ptr %t22
+  %t24 = getelementptr inbounds %interface.Error, ptr %t21, i32 0, i32 0
+  %t25 = getelementptr inbounds %interface.Error, ptr %t21, i32 0, i32 1
+  call void @willrt_gc_write_barrier(ptr %t24, ptr %t22)
+  store ptr @"example.com/error.vtable.Error.E", ptr %t25
+  %t26 = load { i32, [4 x i8], %interface.Error }, ptr %v.adt.32
+  store { i32, [4 x i8], %interface.Error } %t26, ptr %v.r
+  %t27 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 0
+  %t28 = load i32, ptr %t27
+  %t29 = icmp eq i32 %t28, 0
+  br i1 %t29, label %match.arm.1.0, label %match.next.1.0
 match.arm.1.0:
-  %t29 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 2
-  %t30 = load i32, ptr %t29
-  store i32 %t30, ptr %v.match.38
+  %t30 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 2
+  %t31 = load i32, ptr %t30
+  store i32 %t31, ptr %v.match.38
   br label %match.end.1
 match.next.1.0:
-  %t31 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 0
-  %t32 = load i32, ptr %t31
-  %t33 = icmp eq i32 %t32, 1
-  br i1 %t33, label %match.arm.1.1, label %match.next.1.1
+  %t32 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 0
+  %t33 = load i32, ptr %t32
+  %t34 = icmp eq i32 %t33, 1
+  br i1 %t34, label %match.arm.1.1, label %match.next.1.1
 match.arm.1.1:
-  %t34 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 2
-  %t35 = getelementptr inbounds %interface.Error, ptr %t34, i32 0, i32 0
-  %t36 = call ptr @willrt_gc_read_barrier_slot(ptr %t35)
-  %t37 = getelementptr inbounds %interface.Error, ptr %t34, i32 0, i32 1
-  %t38 = load ptr, ptr %t37
-  %t39 = getelementptr inbounds [5 x ptr], ptr %t38, i64 0, i64 1
-  %t40 = load ptr, ptr %t39
-  %t41 = call i32 %t40(ptr %t36)
-  store i32 %t41, ptr %v.match.38
+  %t35 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 2
+  %t36 = getelementptr inbounds %interface.Error, ptr %t35, i32 0, i32 0
+  %t37 = call ptr @willrt_gc_read_barrier_slot(ptr %t36)
+  %t38 = getelementptr inbounds %interface.Error, ptr %t35, i32 0, i32 1
+  %t39 = load ptr, ptr %t38
+  %t40 = getelementptr inbounds [5 x ptr], ptr %t39, i64 0, i64 1
+  %t41 = load ptr, ptr %t40
+  %t42 = call i32 %t41(ptr %t37)
+  store i32 %t42, ptr %v.match.38
   br label %match.end.1
 match.next.1.1:
   unreachable
 match.end.1:
-  %t42 = load i32, ptr %v.match.38
-  %t43 = load i32, ptr %v.r
-  %t44 = icmp eq i32 %t43, 0
-  br i1 %t44, label %deep.rel.adt.2.0, label %deep.rel.adt.done.2.0
+  %t43 = load i32, ptr %v.match.38
+  %t44 = load i32, ptr %v.r
+  %t45 = icmp eq i32 %t44, 0
+  br i1 %t45, label %deep.rel.adt.2.0, label %deep.rel.adt.done.2.0
 deep.rel.adt.2.0:
-  %t45 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 2
+  %t46 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 2
   br label %deep.rel.adt.done.2.0
 deep.rel.adt.done.2.0:
-  %t46 = icmp eq i32 %t43, 1
-  br i1 %t46, label %deep.rel.adt.3.1, label %deep.rel.adt.done.3.1
+  %t47 = icmp eq i32 %t44, 1
+  br i1 %t47, label %deep.rel.adt.3.1, label %deep.rel.adt.done.3.1
 deep.rel.adt.3.1:
-  %t47 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 2
-  %t48 = getelementptr inbounds %interface.Error, ptr %t47, i32 0, i32 0
-  %t49 = getelementptr inbounds %interface.Error, ptr %t47, i32 0, i32 1
-  %t50 = call ptr @willrt_gc_read_barrier_slot(ptr %t48)
-  %t51 = load ptr, ptr %t49
-  %t52 = icmp eq ptr %t50, null
-  br i1 %t52, label %iface.rel.empty.4, label %iface.rel.have.4
+  %t48 = getelementptr inbounds { i32, [4 x i8], %interface.Error }, ptr %v.r, i32 0, i32 2
+  %t49 = getelementptr inbounds %interface.Error, ptr %t48, i32 0, i32 0
+  %t50 = getelementptr inbounds %interface.Error, ptr %t48, i32 0, i32 1
+  %t51 = call ptr @willrt_gc_read_barrier_slot(ptr %t49)
+  %t52 = load ptr, ptr %t50
+  %t53 = icmp eq ptr %t51, null
+  br i1 %t53, label %iface.rel.empty.4, label %iface.rel.have.4
 iface.rel.empty.4:
   br label %iface.rel.done.4
 iface.rel.have.4:
-  %t53 = getelementptr inbounds [5 x ptr], ptr %t51, i64 0, i64 3
-  %t54 = load ptr, ptr %t53
-  call void %t54(ptr %t50)
-  store ptr null, ptr %t48
+  %t54 = getelementptr inbounds [5 x ptr], ptr %t52, i64 0, i64 3
+  %t55 = load ptr, ptr %t54
+  call void %t55(ptr %t51)
   store ptr null, ptr %t49
+  store ptr null, ptr %t50
   br label %iface.rel.done.4
 iface.rel.done.4:
   br label %deep.rel.adt.done.3.1
 deep.rel.adt.done.3.1:
-  %t55 = getelementptr inbounds %"struct.example.com/error.E", ptr %v.e, i32 0, i32 0
-  %t56 = getelementptr inbounds { ptr, i64 }, ptr %t55, i32 0, i32 0
-  %t57 = call ptr @willrt_gc_read_barrier_slot(ptr %t56)
-  call void @willrt_free_str(ptr %t57)
+  %t56 = getelementptr inbounds %"struct.example.com/error.E", ptr %v.e, i32 0, i32 0
+  %t57 = getelementptr inbounds { ptr, i64 }, ptr %t56, i32 0, i32 0
+  %t58 = call ptr @willrt_gc_read_barrier_slot(ptr %t57)
+  call void @willrt_free_str(ptr %t58)
   call void @willrt_gc_frame_leave(ptr %v.gcframe)
-  ret i32 %t42
+  ret i32 %t43
 }
 define i32 @"example.com/error.will$main"() {
 entry:
   call void @willrt_gc_safepoint(i32 3)
-  %t58 = call i32 @"example.com/error.use"()
-  ret i32 %t58
+  %t59 = call i32 @"example.com/error.use"()
+  ret i32 %t59
 }
 define internal ptr @"example.com/error.iface.clone.Error.E"(ptr %data) {
 entry:
-  %t59 = call ptr @willrt_gc_alloc(i64 16, ptr @"willrt.gc.type.example.com/error.E")
-  %t60 = load %"struct.example.com/error.E", ptr %data
-  store %"struct.example.com/error.E" %t60, ptr %t59
-  ret ptr %t59
+  %t60 = call ptr @willrt_gc_alloc(i64 16, ptr @"willrt.gc.type.example.com/error.E")
+  %t61 = load %"struct.example.com/error.E", ptr %data
+  store %"struct.example.com/error.E" %t61, ptr %t60
+  ret ptr %t60
 }
 define internal void @"example.com/error.iface.drop.Error.E"(ptr %data) {
 entry:
@@ -181,10 +187,9 @@ declare void @willrt_gc_unpin(ptr)
 @"willrt.gc.variants.value.Result<i32,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.value.i32" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
 @"willrt.gc.type.value.Result<i32,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 3, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<i32,Error>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 4, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.ref E" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 5, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.str" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 6, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 7, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 5, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 6, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 declare i32 @willrt_gc_register_type(ptr)
 define internal void @willrt.gc.register_types() {
 entry:
@@ -192,11 +197,12 @@ entry:
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Error")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<i32,Error>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
-  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.ref E")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.str")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.u8")
   ret void
 }
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @willrt.gc.register_types, ptr null }]
+@"willrt.gc.stack.slots.example.com/error.E.status" = private constant [1 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }]
+@"willrt.gc.stack.example.com/error.E.status" = private constant %willrt_gc_stack_map_data { ptr @"example.com/error.E.status", ptr @"willrt.gc.stack.slots.example.com/error.E.status", i64 1 }
 @"willrt.gc.stack.slots.example.com/error.use" = private constant [1 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }]
 @"willrt.gc.stack.example.com/error.use" = private constant %willrt_gc_stack_map_data { ptr @"example.com/error.use", ptr @"willrt.gc.stack.slots.example.com/error.use", i64 1 }

@@ -17,23 +17,23 @@ func TestInterningMakesEqualityIdentity(t *testing.T) {
 	if a != b || a.ID() != b.ID() {
 		t.Fatalf("scalar i32 is not interned: %p %p", a, b)
 	}
-	arr1 := in.named("Array", []*Type{a})
-	arr2 := in.named("Array", []*Type{in.scalar("i32")})
+	arr1 := in.named("list", []*Type{a})
+	arr2 := in.named("list", []*Type{in.scalar("i32")})
 	if arr1 != arr2 {
-		t.Fatalf("Array<i32> is not interned")
+		t.Fatalf("list[i32] is not interned")
 	}
-	if arr1.String() != "Array<i32>" {
-		t.Errorf("text = %q, want Array<i32>", arr1.String())
+	if arr1.String() != "list[i32]" {
+		t.Errorf("text = %q, want list[i32]", arr1.String())
 	}
-	if Equal(arr1, in.named("Array", []*Type{in.scalar("i64")})) {
-		t.Errorf("Array<i32> equals Array<i64>")
+	if Equal(arr1, in.named("list", []*Type{in.scalar("i64")})) {
+		t.Errorf("list[i32] equals list[i64]")
 	}
 	if !Equal(arr1, nil) {
 		t.Errorf("an unknown type must match anything")
 	}
-	m := in.named("Map", []*Type{in.scalar("str"), in.named("Value", nil)})
-	if m.String() != "Map<str,Value>" {
-		t.Errorf("text = %q, want Map<str,Value>", m.String())
+	m := in.named("dict", []*Type{in.scalar("str"), in.named("Value", nil)})
+	if m.String() != "dict[str,Value]" {
+		t.Errorf("text = %q, want dict[str,Value]", m.String())
 	}
 	fn := in.funcT([]*Type{in.scalar("i64")}, in.scalar("bool"))
 	if fn.String() != "func(i64)->bool" {
@@ -111,83 +111,6 @@ func checkTypes(t *testing.T, src string) []diag.Diagnostic {
 	return Check(f, nil)
 }
 
-func TestBorrowTypeInterningAndText(t *testing.T) {
-	in := newInterner()
-	x := in.named("User", nil)
-	ref := in.borrowed(x, ast.RefBorrow)
-	ref2 := in.borrowed(in.named("User", nil), ast.RefBorrow)
-	if ref != ref2 || ref.String() != "ref User" {
-		t.Fatalf("ref User = %p %q", ref, ref.String())
-	}
-	mut := in.borrowed(x, ast.MutBorrow)
-	if mut.String() != "mut User" || Equal(ref, mut) {
-		t.Fatalf("mut User = %q, equal %v", mut.String(), Equal(ref, mut))
-	}
-	view := in.view(x, true)
-	if view.String() != "mut []User" || !view.ViewMut() {
-		t.Fatalf("mutable view = %q", view.String())
-	}
-}
-
-func TestFromSourceRules(t *testing.T) {
-	structSrc := "struct User { n: i32 }\n"
-	cases := []struct {
-		name string
-		body string
-		code string
-	}{
-		{
-			"two sources need from",
-			"def better(a: ref User, b: ref User) -> ref User { return a }\n",
-			diag.CodeBorrowOutlives,
-		},
-		{
-			"explicit from is accepted",
-			"def better(a: ref User, b: ref User) -> ref User from a, b { return a }\n",
-			"",
-		},
-		{
-			"single source is elided",
-			"def first(a: ref User) -> ref User { return a }\n",
-			"",
-		},
-		{
-			"one view among owned parameters is elided",
-			"struct Page { users: []User }\ndef page_of(users: []User, n: i32) -> Page { return Page { users: users } }\n",
-			"",
-		},
-		{
-			"from must cover every returned source",
-			"def better(a: ref User, b: ref User) -> ref User from a { return b }\n",
-			diag.CodeBorrowOutlives,
-		},
-		{
-			"from self names the receiver",
-			"struct Box { n: i32 }\ndef (b: ref Box) number() -> ref i32 from self { return ref b.n }\n",
-			"",
-		},
-		{
-			"from must name a parameter",
-			"def first(a: ref User) -> ref User from tmp {\n    var tmp: User = User { n: 1 }\n    return a\n}\n",
-			diag.CodeBorrowOutlives,
-		},
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			ds := checkTypes(t, structSrc+c.body)
-			if c.code == "" {
-				if len(ds) != 0 {
-					t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
-				}
-				return
-			}
-			if len(ds) != 1 || ds[0].Code != c.code {
-				t.Fatalf("diagnostics:\n%s", diag.FormatAll(ds))
-			}
-		})
-	}
-}
-
 func TestDefaultAndNamedArgumentTypes(t *testing.T) {
 	base := `def add(a: i32, b: i32 = 2) -> i32 {
     return a + b
@@ -220,13 +143,8 @@ func TestDefaultAndNamedArgumentTypes(t *testing.T) {
 
 func TestSliceAndLenTypes(t *testing.T) {
 	src := `
-def read(xs: []i32) -> []i32 from xs {
+def read(xs: []i32) -> []i32 {
     return xs[1:]
-}
-
-def write(xs: mut []i32) {
-    var part: mut []i32 = mut xs[1:2]
-    part[0] = 1
 }
 
 def count(xs: []i32) -> usize {

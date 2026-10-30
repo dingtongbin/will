@@ -7,7 +7,7 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// constructNew builds `new T(args)`: zero the storage, apply the field
+// constructNew builds `T(args)`: zero the storage, apply the field
 // defaults, then call T.init with a mutable borrow of the storage. The value
 // is the storage itself, which the caller copies or returns.
 func (g *generator) constructNew(r willc.Record) (string, string, error) {
@@ -23,34 +23,6 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	}
 	if g.isClassText(text) {
 		return g.classNew(r)
-	}
-	if elem, ok := rcElemText(text); ok && isRcText(text) {
-		return g.constructRc(r, elem, strongName(text))
-	}
-	if elem, ok := arrayElemText(text); ok {
-		return g.constructArray(r, elem)
-	}
-	if k, v, ok := mapTypeText(text); ok {
-		entry, ok := g.mapEntryLLVM(k, v)
-		if !ok {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: the Map entry is not lowered yet", r.ID)
-		}
-		descriptor, err := g.mapEntryDescriptor(k, v)
-		if err != nil {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: %v", r.ID, err)
-		}
-		return g.constructMapSet(r, entry, descriptor)
-	}
-	if elem, ok := setTypeText(text); ok {
-		entry, ok := g.containerValueType(elem)
-		if !ok {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: the Set element is not lowered yet", r.ID)
-		}
-		descriptor, err := g.sequenceDescriptor(elem)
-		if err != nil {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: %v", r.ID, err)
-		}
-		return g.constructMapSet(r, entry, descriptor)
 	}
 	info := g.byName[text]
 	if info == nil {

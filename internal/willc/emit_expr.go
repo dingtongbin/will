@@ -50,22 +50,10 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 		e.field(rec, "hi", Ref(hid))
 		e.pop()
 		return rec
-	case *ast.BorrowExpr:
-		rec := e.add("borrow", v)
-		if v.Mut {
-			e.boolean(rec, "mut", true)
-		}
-		e.push(rec)
-		xid := e.emitExpr(v.X)
-		e.field(rec, "expr", Ref(xid))
-		e.pop()
-		return rec
 	case *ast.AggregateExpr:
 		return e.emitAggregate(v)
 	case *ast.ArrayLitExpr:
 		return e.emitArrayLiteral(v)
-	case *ast.NewExpr:
-		return e.emitNew(v)
 	case *ast.UnaryExpr:
 		rec := e.add("un", v)
 		e.text(rec, "op", v.Op.String())
@@ -241,6 +229,17 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 			(name.Name == "list" || name.Name == "dict" || name.Name == "set") {
 			return e.emitContainerNew(c, name.Name)
 		}
+		if sym != nil && sym.Predeclared && sym.Kind == resolve.PredeclaredTypeKind && name.Name == "chan" {
+			rec := e.add("channew", c)
+			e.text(rec, "type", constructorTypeText("chan", c.TypeArgs))
+			e.push(rec)
+			if len(c.Args) > 0 {
+				aid := e.emitExpr(c.Args[0].Expr)
+				e.field(rec, "cap", Ref(aid))
+			}
+			e.pop()
+			return rec
+		}
 		if sym != nil && sym.Kind == resolve.StructKind {
 			if decl, ok := sym.Node.(*ast.StructDecl); ok {
 				if decl.Class {
@@ -291,6 +290,18 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 		e.pop()
 		return rec
 	}
+	if field, ok := c.Callee.(*ast.FieldExpr); ok {
+		if sym := e.refs[field]; sym != nil && sym.Kind == resolve.StructKind {
+			if decl, ok := sym.Node.(*ast.StructDecl); ok {
+				if name, ok := e.importedTypeName(field); ok {
+					if decl.Class {
+						return e.emitClassNew(c, name)
+					}
+					return e.emitStructNew(c, name)
+				}
+			}
+		}
+	}
 	rec := e.add("call", c)
 	e.push(rec)
 	cid := e.emitExpr(c.Callee)
@@ -301,6 +312,28 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 	}
 	e.pop()
 	return rec
+}
+
+// importedTypeName returns the canonical package-qualified name behind one
+// package-qualified type expression.
+func (e *emitter) importedTypeName(field *ast.FieldExpr) (string, bool) {
+	recv, ok := field.Recv.(*ast.NameExpr)
+	if !ok {
+		return "", false
+	}
+	sym := e.refs[recv]
+	if sym == nil || sym.Kind != resolve.ImportKind {
+		return "", false
+	}
+	imp, ok := sym.Node.(*ast.Import)
+	if !ok {
+		return "", false
+	}
+	path := imp.Path
+	if canonical := e.aliases[path]; canonical != "" {
+		path = canonical
+	}
+	return path + "." + field.Name, true
 }
 
 // emitClassNew writes a class constructor call. T(...) allocates one GC
@@ -395,7 +428,10 @@ func (e *emitter) emitMethodCall(v *ast.MethodCallExpr) int {
 				if canonical := e.aliases[path]; canonical != "" {
 					path = canonical
 				}
-				if decl := e.external[path+"."+v.Name]; decl != nil && decl.Class {
+				if member := e.refs[v]; member != nil && member.IsType() {
+					return e.emitNewArgs(v, v.Args, constructorTypeText(path+"."+v.Name, v.TypeArgs))
+				}
+				if decl := e.external[path+"."+v.Name]; decl != nil {
 					return e.emitNewArgs(v, v.Args, constructorTypeText(path+"."+v.Name, v.TypeArgs))
 				}
 			}
@@ -479,28 +515,6 @@ func (e *emitter) emitArrayLiteral(v *ast.ArrayLitExpr) int {
 	for _, elem := range v.Elems {
 		id := e.emitExpr(elem)
 		e.field(rec, "elem", Ref(id))
-	}
-	e.pop()
-	return rec
-}
-
-func (e *emitter) emitNew(v *ast.NewExpr) int {
-	if v.Type != nil && v.Type.Kind == ast.NamedType && v.Type.Name == "chan" {
-		rec := e.add("channew", v)
-		e.text(rec, "type", typeText(v.Type))
-		e.push(rec)
-		if len(v.Args) > 0 {
-			aid := e.emitExpr(v.Args[0].Expr)
-			e.field(rec, "cap", Ref(aid))
-		}
-		e.pop()
-		return rec
-	}
-	rec := e.add("new", v)
-	e.text(rec, "type", typeText(v.Type))
-	e.push(rec)
-	for _, a := range v.Args {
-		e.emitCallArg(rec, a)
 	}
 	e.pop()
 	return rec

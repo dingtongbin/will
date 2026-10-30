@@ -1,4 +1,4 @@
-import c "capture.h" {
+import c "clock.h" {
     fast willtest_now_ns
 }
 
@@ -7,9 +7,9 @@ import c "capture.h" {
 class TestState {
     failed: bool
     parallelizable: bool
-    logs: Array<str>
+    logs: list[str]
 
-    def init(self, failed: bool, parallelizable: bool, logs: Array<str>) {
+    def init(self, failed: bool, parallelizable: bool, logs: list[str]) {
         self.failed = failed
         self.parallelizable = parallelizable
         self.logs = logs.clone()
@@ -20,6 +20,52 @@ class TestState {
 struct T {
     name: str
     state: TestState
+
+    def name(self) -> str {
+        return self.name.clone()
+    }
+
+    def log(self, msg: str) {
+        self.state.logs.push(msg)
+        if self.state.failed {
+            print(msg, "\n")
+        }
+    }
+
+    def fail(self) {
+        if not self.state.failed {
+            self.state.failed = True
+            for msg in self.state.logs {
+                print(msg, "\n")
+            }
+        }
+    }
+
+    def fail_now(self) {
+        self.fail()
+        fatal("test failed: " + self.name)
+    }
+
+    def failed(self) -> bool {
+        return self.state.failed
+    }
+
+    def allow_parallel(self) {
+        self.state.parallelizable = True
+    }
+
+    def run(self, name: str, f: func(T)) {
+        var child: T = new_t(self.name + "/" + name)
+        f(child)
+        if child.failed() {
+            self.fail()
+        }
+    }
+
+    def bench(self, name: str, f: func(B)) {
+        var b: B = new_b(self.name + "/" + name)
+        f(b)
+    }
 }
 
 # B is the handle a benchmark function receives. The runner owns the timing
@@ -29,7 +75,46 @@ struct B {
     n: u64
     bytes: u64
     nsPerOp: f64
-    logs: Array<str>
+    logs: list[str]
+
+    def name(self) -> str {
+        return self.name.clone()
+    }
+
+    def n(self) -> u64 {
+        return self.n
+    }
+
+    def set_bytes(self, n: u64) {
+        self.bytes = n
+    }
+
+    def ns_per_op(self) -> f64 {
+        return self.nsPerOp
+    }
+
+    def run(self, f: func()) -> Result<(), Error> {
+        var count: u64 = self.n
+        if count == 0u64 {
+            count = 1u64
+        }
+        var start: i64 = c.willtest_now_ns()
+        var i: u64 = 0u64
+        while True {
+            if i >= count {
+                break
+            }
+            f()
+            i += 1u64
+        }
+        var elapsed: i64 = c.willtest_now_ns() - start
+        self.nsPerOp = f64(elapsed) / f64(count)
+        return Ok(())
+    }
+
+    def log(self, msg: str) {
+        self.logs.push(msg)
+    }
 }
 
 # Case is one table entry: a name and the body that receives its T.
@@ -48,73 +133,30 @@ struct caseResult {
 def new_t(name: str) -> T {
     return T {
         name: name.clone(),
-        state: new TestState(False, False, new Array<str>(0))
+        state: TestState(False, False, list[str](0))
     }
 }
 
 # NewB returns a benchmark handle with one iteration by default.
 def new_b(name: str) -> B {
-    return B { name: name.clone(), n: 1u64, bytes: 0u64, nsPerOp: 0.0, logs: new Array<str>(0)}
+    return B { name: name.clone(), n: 1u64, bytes: 0u64, nsPerOp: 0.0, logs: list[str](0)}
 }
 
-# Name returns the test name.
-def (t: ref T) name() -> str {
-    return t.name.clone()
-}
 
-# Log records one message. Once the case has failed, the message is also
-# written through so a failure report does not lose its context.
-def (t: mut T) log(msg: str) {
-    t.state.logs.push(msg)
-    if t.state.failed {
-        print(msg, "\n")
-    }
-}
 
-# Fail marks the case as failed without stopping it and writes the lines
-# recorded so far, once.
-def (t: mut T) fail() {
-    if not t.state.failed {
-        t.state.failed = True
-        for msg in t.state.logs {
-            print(msg, "\n")
-        }
-    }
-}
 
-# FailNow marks the case and ends it through the shared fatal path.
-def (t: mut T) fail_now() {
-    t.fail()
-    fatal("test failed: " + t.name)
-}
 
-# Failed reports whether the case failed.
-def (t: ref T) failed() -> bool {
-    return t.state.failed
-}
 
-# AllowParallel records that the case can run beside other cases. The runner
-# decides whether the surrounding call runs cases concurrently; the marker is
-# never a request to change shared mutable state.
-def (t: mut T) allow_parallel() {
-    t.state.parallelizable = True
-}
 
-# Run runs one nested case. A failure in the child marks the parent.
-def (t: mut T) run(name: str, f: func(T)) {
-    var child: T = new_t(t.name + "/" + name)
-    f(child)
-    if child.failed() {
-        t.fail()
-    }
-}
 
-# Bench runs one benchmark body once. The body owns its timing loop through
-# B.Run; T.Bench only constructs the handle.
-def (t: mut T) bench(name: str, f: func(B)) {
-    var b: B = new_b(t.name + "/" + name)
-    f(b)
-}
+
+
+
+
+
+
+
+
 
 # runCase runs one table entry and returns its name and final state.
 def run_case(spec: Case) -> caseResult {
@@ -136,8 +178,8 @@ def table(cases: ...Case) {
 
 # charsOf returns the scalars of s so two names can be compared by code point
 # without a str ordering operator.
-def chars_of(s: str) -> Array<u32> {
-    var out: Array<u32> = new Array<u32>(0)
+def chars_of(s: str) -> list[u32] {
+    var out: list[u32] = list[u32](0)
     for ch in s {
         out.push(ch)
     }
@@ -146,8 +188,8 @@ def chars_of(s: str) -> Array<u32> {
 
 # nameLess reports whether a sorts before b by code point order.
 def name_less(a: str, b: str) -> bool {
-    var left: Array<u32> = chars_of(a)
-    var right: Array<u32> = chars_of(b)
+    var left: list[u32] = chars_of(a)
+    var right: list[u32] = chars_of(b)
     var n: usize = left.len()
     if right.len() < n {
         n = right.len()
@@ -166,8 +208,8 @@ def name_less(a: str, b: str) -> bool {
 }
 
 # sortResults orders finished cases by name. Insertion sort keeps the helper
-# independent of Array.Sort, which the lowering does not provide yet.
-def sort_results(results: Array<caseResult>) {
+# independent of any container sort method the lowering does not provide yet.
+def sort_results(results: list[caseResult]) {
     var i: usize = 1usize
     while True {
         if i >= results.len() {
@@ -198,9 +240,9 @@ async def run_cases(cases: ...Case) {
     if n == 0usize {
         return
     }
-    var results: Array<caseResult> = new Array<caseResult>(n)
+    var results: list[caseResult] = list[caseResult](n)
     region {
-        var tasks: Array<Task<caseResult>> = new Array<Task<caseResult>>(n)
+        var tasks: list[Task<caseResult>] = list[Task<caseResult>](n)
         for i in Range(0, i32(n)) {
             var spec: Case = cases.get(usize(i))
             tasks.push(spawn run_case(spec))
@@ -219,48 +261,14 @@ async def run_cases(cases: ...Case) {
     }
 }
 
-# Name returns the benchmark name.
-def (b: ref B) name() -> str {
-    return b.name.clone()
-}
 
-# N returns the iteration count the runner asked for.
-def (b: ref B) n() -> u64 {
-    return b.n
-}
 
-# SetBytes records the payload size for a throughput report.
-def (b: mut B) set_bytes(n: u64) {
-    b.bytes = n
-}
 
-# NsPerOp returns the last measured time in nanoseconds per iteration.
-def (b: ref B) ns_per_op() -> f64 {
-    return b.nsPerOp
-}
 
-# Run times f over b.N() iterations. A zero count is treated as one so the
-# measurement is always defined.
-def (b: mut B) run(f: func()) -> Result<(), Error> {
-    var count: u64 = b.n
-    if count == 0u64 {
-        count = 1u64
-    }
-    var start: i64 = c.willtest_now_ns()
-    var i: u64 = 0u64
-    while True {
-        if i >= count {
-            break
-        }
-        f()
-        i += 1u64
-    }
-    var elapsed: i64 = c.willtest_now_ns() - start
-    b.nsPerOp = f64(elapsed) / f64(count)
-    return Ok(())
-}
 
-# Log records one benchmark message.
-def (b: mut B) log(msg: str) {
-    b.logs.push(msg)
-}
+
+
+
+
+
+

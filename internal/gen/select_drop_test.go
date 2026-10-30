@@ -9,7 +9,7 @@ import (
 // drops the received value and clears its frame slot before the arm body runs.
 func TestSelectDiscardReleasesReceiveOut(t *testing.T) {
 	src := `async def main() -> i32 {
-    var ch: chan<str> = new chan<str>(1)
+    var ch: chan<str> = chan<str>(1)
     _ = await ch.send("hello".clone())
     select {
         _ = ch.recv() => {
@@ -39,7 +39,7 @@ func TestSelectDiscardReleasesReceiveOut(t *testing.T) {
 // into its Option and zeroes the arm buffer instead of leaving a second owner.
 func TestSelectBindClearsReceiveOut(t *testing.T) {
 	src := `async def main() -> i32 {
-    var ch: chan<str> = new chan<str>(1)
+    var ch: chan<str> = chan<str>(1)
     _ = await ch.send("hello".clone())
     var got: Option<str> = None
     select {

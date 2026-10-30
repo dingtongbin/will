@@ -585,13 +585,6 @@ func (g *generator) typeOf(id int) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
-			if elem, ok := rcElemText(recvText); ok && isRcText(recvText) {
-				if t, ok := g.typeLLVMOf(elem); ok {
-					base = t
-				}
-			}
-		}
 		info := g.structInfoByLLVM(base)
 		if info == nil || !info.ok {
 			return "", g.errf(id, "cannot translate node #%d: %s has no fields", id, base)
@@ -724,7 +717,7 @@ func (g *generator) typeOf(id int) (string, error) {
 			if llvm, _, known := g.viewCallResult(r); known {
 				return llvm, nil
 			}
-			if llvm, _, known := g.arrayCallResult(r); known {
+			if llvm, _, known := g.listCallResult(r); known {
 				if llvm == "" {
 					return "", g.errf(id, "cannot translate node #%d: the call returns no value", id)
 				}
@@ -888,9 +881,6 @@ func (g *generator) willTypeText(id int) (string, error) {
 				return text, nil
 			}
 		}
-		if elem, ok := rcElemText(base); ok && isRcText(base) {
-			base = elem
-		}
 		info := g.byName[base]
 		if info == nil {
 			if t, ok := g.typeLLVMOf(base); ok {
@@ -993,7 +983,7 @@ func (g *generator) willTypeText(id int) (string, error) {
 					return result, nil
 				}
 			}
-			if _, text, known := g.arrayCallResult(r); known {
+			if _, text, known := g.listCallResult(r); known {
 				return text, nil
 			}
 			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
@@ -1040,7 +1030,7 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 			return "", err
 		}
 		if elem, ok := viewElemText(stripPredeclaredPackage(recvText)); ok {
-			return "Array<" + elem + ">", nil
+			return "list[" + elem + "]", nil
 		}
 		return recvText, nil
 	}
@@ -1052,18 +1042,9 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 	}
 	if name, ok := g.predeclaredCallName(r); ok {
 		switch name {
-		case "take_c", "take_c_rc":
-			if args := g.typeArgTexts(r); len(args) == 1 {
-				return "rc<" + args[0] + ">", nil
-			}
-		case "SizeOf", "AlignOf", "OffsetOf":
-			return "usize", nil
-		case "len":
+		case "SizeOf", "AlignOf", "OffsetOf", "len":
 			return "usize", nil
 		}
-	}
-	if text, known := g.rcCallResult(r); known {
-		return text, nil
 	}
 	if text := g.genericCallResult(r); text != "" {
 		return text, nil
@@ -1097,7 +1078,7 @@ func (g *generator) callResultText(r willc.Record) (string, error) {
 	if _, text, known := g.viewCallResult(r); known {
 		return text, nil
 	}
-	if _, text, known := g.arrayCallResult(r); known {
+	if _, text, known := g.listCallResult(r); known {
 		return text, nil
 	}
 	if _, text, known := g.rawCallResult(r); known {
@@ -1461,6 +1442,13 @@ func (g *generator) place(id int) (string, string, error) {
 		if ptr, ok := g.patternPlaces[decl]; ok {
 			return ptr, g.patternTypes[decl], nil
 		}
+		if value, ok := g.patternVals[decl]; ok {
+			typ := g.patternTypes[decl]
+			slot := g.newTmp()
+			g.tempAlloca(slot, typ)
+			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, slot)
+			return slot, typ, nil
+		}
 		if ptrs, ok := g.loopPtrs[decl]; ok {
 			if ptr, ok := ptrs[name]; ok {
 				text, ok := g.loopBindType(decl, name)
@@ -1521,20 +1509,6 @@ func (g *generator) place(id int) (string, string, error) {
 					return "", "", err
 				}
 				return ptr, fieldType, nil
-			}
-			if elem, ok := rcElemText(recvText); ok && isRcText(recvText) {
-				handle, err := g.value(recvID)
-				if err != nil {
-					return "", "", err
-				}
-				g.needRcDecl = true
-				object := g.newTmp()
-				fmt.Fprintf(g.out, "  %s = call ptr @willrt_rc_deref(i64 %s)\n", object, handle)
-				typ, ok = g.typeLLVMOf(elem)
-				if !ok {
-					return "", "", g.errf(id, "cannot translate node #%d: rc value %s is not lowered yet", id, elem)
-				}
-				base = object
 			}
 		}
 		if base == "" {
@@ -1660,6 +1634,12 @@ func (g *generator) place(id int) (string, string, error) {
 		}
 		if r.Kind == "mcall" && fieldText(r, "text") == "get" {
 			if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+				recvText = stripPredeclaredPackage(recvText)
+				if elem, ok := listElemText(recvText); ok {
+					if typ, ok := g.typeLLVMOf(elem); ok && isAggregateType(typ) {
+						return g.listGetPlace(r, elem, recvText)
+					}
+				}
 				if elem, ok := viewElemText(recvText); ok {
 					if typ, ok := g.typeLLVMOf(elem); ok && isAggregateType(typ) {
 						return g.viewGetPlace(r, elem)
@@ -1777,10 +1757,6 @@ func (g *generator) storeAggregate(r willc.Record, info *structInfo, slot string
 		v, err := g.value(valueID)
 		if err != nil {
 			return err
-		}
-		if isRcText(info.texts[i]) && g.isCopySource(valueID) {
-			g.needRcDecl = true
-			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", v)
 		}
 		if isChanText(info.texts[i]) && g.isCopySource(valueID) {
 			g.needTaskDecl = true

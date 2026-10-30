@@ -52,24 +52,22 @@ def fraction_text(frac: i64) -> str {
     }
     var digits: str = f"{frac}"
     var zeros: i32 = 9 - i32(digits.len())
-    var out: Array<u8> = new Array<u8>(9)
+    var text: str = ""
     for _ in Range(0, zeros) {
-        out.push(48u8)
+        text = text + "0"
     }
-    out.append(digits[Range(0, digits.len())])
-    var end: usize = out.len()
+    text = text + digits
+    var end: usize = text.len()
     while True {
         if end == 0usize {
             break
         }
-        if out.get(end - usize(1)) != 48u8 {
+        if text[end - usize(1)] != 48u32 {
             break
         }
         end -= usize(1)
     }
-    var trimmed: Array<u8> = new Array<u8>(end)
-    trimmed.append(out[Range(0, end)])
-    return str(trimmed)
+    return str(text[Range(0, end)])
 }
 
 def weekday_name(weekday: i64) -> str {

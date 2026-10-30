@@ -270,6 +270,16 @@ func (g *generator) setupGCFrame(fn int) error {
 		if iface, ok := g.ifaceOfText(root.text); ok {
 			dataPtr, _ := g.ifaceWords(value, iface)
 			value = g.load("ptr", dataPtr)
+		} else if rec, ok := g.recs[root.id]; ok && rec.Kind == "receiver" {
+			// A receiver arrives as the object pointer itself, not as the
+			// caller's slot address.
+		} else if isSingleBorrow(root.text) {
+			// A single-value borrow is the caller's slot address, so the
+			// mirror must read the pointer through the slot.
+			loaded := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier_slot(ptr %s)\n",
+				loaded, value)
+			value = loaded
 		}
 		fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
 			g.gcRootSlots[root.id], value)
@@ -1155,7 +1165,19 @@ func (g *generator) classPointerValue(id int) (string, error) {
 		}
 		if value, ok := g.scope[decl]; ok {
 			out := g.newTmp()
-			fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier(ptr %s)\n", out, value)
+			rec, known := g.recs[decl]
+			if g.borrows[decl] && (!known || rec.Kind != "receiver") {
+				// A borrowed parameter is the caller's slot address, so the
+				// pointer must be read through the slot barrier.
+				fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier_slot(ptr %s)\n", out, value)
+			} else {
+				fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier(ptr %s)\n", out, value)
+			}
+			return out, nil
+		}
+		if ptr, ok := g.patternPlaces[decl]; ok {
+			out := g.newTmp()
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_gc_read_barrier_slot(ptr %s)\n", out, ptr)
 			return out, nil
 		}
 	}

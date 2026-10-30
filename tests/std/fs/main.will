@@ -37,7 +37,7 @@ async def check_file() -> i32 {
                 }
                 _ => {}
             }
-            var buf: Array<u8> = new Array<u8>(16)
+            var buf: list[u8] = list[u8](16)
             var read: Result<usize, Error> = await file.read(buf)
             match read {
                 Ok(count) => {
@@ -146,7 +146,7 @@ async def check_dir() -> i32 {
         }
     }
 
-    var dir: Result<Array<fs.DirEntry>, Error> = await fs.read_dir(".")
+    var dir: Result<list[fs.DirEntry], Error> = await fs.read_dir(".")
     match dir {
         Ok(entries) => {
             var aPos: i32 = -1
@@ -189,7 +189,7 @@ async def check_async() -> i32 {
         }
         _ => {}
     }
-    var loaded: Result<Array<u8>, Error> = await fs.read_file(path)
+    var loaded: Result<list[u8], Error> = await fs.read_file(path)
     match loaded {
         Ok(bytes) => {
             if bytes.len() != 5usize or bytes.get(0) != 97u8 {

@@ -15,12 +15,12 @@ const count: i32 = 100000
 const repetitions: i32 = 5
 
 async def main() -> i32 {
-    var samples: Array<u64> = new Array<u64>(0)
-    var rounds: Array<u64> = new Array<u64>(0)
-    var first: chan<i64> = new chan<i64>(1)
-    var second: chan<i64> = new chan<i64>(1)
-    var third: chan<i64> = new chan<i64>(1)
-    var fourth: chan<i64> = new chan<i64>(1)
+    var samples: list[u64] = list[u64](0)
+    var rounds: list[u64] = list[u64](0)
+    var first: chan<i64> = chan<i64>(1)
+    var second: chan<i64> = chan<i64>(1)
+    var third: chan<i64> = chan<i64>(1)
+    var fourth: chan<i64> = chan<i64>(1)
     # The warm up pays for the first touch of the pages and of the caches.
     for i in Range(0, 1000) {
         _ = i

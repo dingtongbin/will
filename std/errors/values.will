@@ -1,9 +1,9 @@
 # The stable error values. Their status codes are the ones the core volume
 # fixes; the messages are for people and never reach classification.
-var NotFound: Fault = new Fault("not found", 1)
-var Invalid: Fault = new Fault("invalid", 2)
-var Busy: Fault = new Fault("busy", 3)
-var Closed: Fault = new Fault("closed", 4)
-var Upstream: Fault = new Fault("upstream", 5)
-var Unsupported: Fault = new Fault("unsupported", 6)
-var Io: Fault = new Fault("i/o error", 7)
+var NotFound: Fault = Fault("not found", 1)
+var Invalid: Fault = Fault("invalid", 2)
+var Busy: Fault = Fault("busy", 3)
+var Closed: Fault = Fault("closed", 4)
+var Upstream: Fault = Fault("upstream", 5)
+var Unsupported: Fault = Fault("unsupported", 6)
+var Io: Fault = Fault("i/o error", 7)

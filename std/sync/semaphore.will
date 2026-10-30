@@ -14,58 +14,63 @@ import c "sync.h" {
 # Permit is one held permit. Release returns it to the semaphore.
 struct Permit {
     handle: raw
+
+    def release(self) {
+        _ = c.willrt_sync_sema_release(self.handle)
+    }
 }
 
-def (p: mut Permit) release() {
-    _ = c.willrt_sync_sema_release(p.handle)
-}
+
 
 struct Semaphore {
     handle: raw
+
+    def init(self, permits: i64) {
+        self.handle = c.willrt_sync_sema_new(permits)
+    }
+
+    async def acquire(self) -> Result<Permit, Error> {
+        var status: i32 = await c.willrt_sync_sema_acquire_async(self.handle)
+        if status == 0 {
+            return Ok(Permit { handle: self.handle })
+        }
+        if status == -5 {
+            return Err(Canceled)
+        }
+        if status == -6 {
+            return Err(Deadline)
+        }
+        return Err(errors.Io)
+    }
+
+    def acquire_blocking(self) -> Result<Permit, Error> {
+        var status: i32 = c.willrt_sync_sema_acquire_blocking(self.handle)
+        if status == 0 {
+            return Ok(Permit { handle: self.handle })
+        }
+        if status == -5 {
+            return Err(Canceled)
+        }
+        if status == -6 {
+            return Err(Deadline)
+        }
+        return Err(errors.Io)
+    }
+
+    def try_acquire(self) -> Option<Permit> {
+        if c.willrt_sync_sema_try_acquire(self.handle) == 1 {
+            return Some(Permit { handle: self.handle })
+        }
+        return None
+    }
 }
 
-def (s: mut Semaphore) init(permits: i64) {
-    s.handle = c.willrt_sync_sema_new(permits)
-}
 
-# Acquire waits until one permit is free. A canceled or expired wait returns
-# the matching predeclared error and leaves the permit count unchanged.
-async def (s: ref Semaphore) acquire() -> Result<Permit, Error> {
-    var status: i32 = await c.willrt_sync_sema_acquire_async(s.handle)
-    if status == 0 {
-        return Ok(Permit { handle: s.handle })
-    }
-    if status == -5 {
-        return Err(Canceled)
-    }
-    if status == -6 {
-        return Err(Deadline)
-    }
-    return Err(errors.Io)
-}
 
-# AcquireBlocking is the CPU-job form: it parks the calling worker until a
-# permit is free. It is not an IO wait and never enters an async state machine.
-def (s: ref Semaphore) acquire_blocking() -> Result<Permit, Error> {
-    var status: i32 = c.willrt_sync_sema_acquire_blocking(s.handle)
-    if status == 0 {
-        return Ok(Permit { handle: s.handle })
-    }
-    if status == -5 {
-        return Err(Canceled)
-    }
-    if status == -6 {
-        return Err(Deadline)
-    }
-    return Err(errors.Io)
-}
 
-# TryAcquire takes one permit once without waiting.
-def (s: ref Semaphore) try_acquire() -> Option<Permit> {
-    if c.willrt_sync_sema_try_acquire(s.handle) == 1 {
-        return Some(Permit { handle: s.handle })
-    }
-    return None
-}
+
+
+
+
 
 

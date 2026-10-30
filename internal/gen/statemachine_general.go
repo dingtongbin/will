@@ -154,7 +154,6 @@ func (g *generator) emitGeneralStep(fnID int) error {
 	}
 	g.fnSymbol = sym
 	g.fnPos = fieldText(fn, "pos")
-	g.crossingPos = g.fnPos
 	g.currentLambda = 0
 	g.currentFunc = fnID
 
@@ -351,15 +350,6 @@ func (g *generator) emitGeneralConstructor(fnID int, sym string, params []willc.
 				ptr, arg)
 		} else {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", a.typ, arg, ptr)
-		}
-		// The capture is the crossing whether the parameter moves by value
-		// or by pointer: an rc handle lands in a frame another lane runs.
-		share := ptr
-		if a.byPtr && isSingleBorrow(a.text) {
-			share = arg
-		}
-		if err := g.shareValue(share, a.text); err != nil {
-			return err
 		}
 		if a.text == "task.Cancel" || strings.HasSuffix(a.text, ".Cancel") {
 			cancelPtrs = append(cancelPtrs, ptr)

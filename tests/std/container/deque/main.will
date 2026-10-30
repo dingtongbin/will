@@ -3,7 +3,7 @@ import "std/container/deque"
 # The deque must preserve logical order across both rebalancing directions,
 # including alternation between the front and the back.
 def main() -> i32 {
-    var d: deque.Deque<i32> = new deque.Deque<i32>()
+    var d: deque.Deque<i32> = deque.Deque<i32>()
     if d.len() != 0usize {
         return 1
     }

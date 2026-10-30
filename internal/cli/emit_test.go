@@ -69,7 +69,7 @@ const deterministicSource = `class Node {
 
 class Holder {
     node: Node
-    items: Array<i32>
+    items: list[i32]
 }
 
 async def pause(n: i32) -> i32 {
@@ -77,7 +77,7 @@ async def pause(n: i32) -> i32 {
 }
 
 async def load(n: i32) -> i32 {
-    var h: Holder = Holder(node=Node(value=n), items=new Array<i32>(4))
+    var h: Holder = Holder(node=Node(value=n), items=list[i32](4))
     var x: i32 = await pause(n)
     return h.node.value + x
 }

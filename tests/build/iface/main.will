@@ -5,16 +5,20 @@ interface Counter {
 
 struct C {
     n: i32
+
+    def get(self) -> i32 {
+        return self.n
+    }
+
+    def add(self, n: i32) -> i32 {
+        self.n += n
+        return self.n
+    }
 }
 
-def (c: ref C) get() -> i32 {
-    return c.n
-}
 
-def (c: mut C) add(n: i32) -> i32 {
-    c.n += n
-    return c.n
-}
+
+
 
 def use(x: Counter) -> i32 {
     return x.get() + x.add(2)
@@ -26,11 +30,13 @@ interface Actor {
 
 struct A {
     n: i32
+
+    async def step(self, n: i32) -> i32 {
+        return self.n + n
+    }
 }
 
-async def (a: ref A) step(n: i32) -> i32 {
-    return a.n + n
-}
+
 
 async def actor_value() -> i32 {
     var a: A = A { n: 1 }

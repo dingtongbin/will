@@ -35,18 +35,16 @@ const (
 // have the same id, so equality is a pointer-sized comparison and the
 // canonical text is computed once.
 type Type struct {
-	id      int
-	text    string
-	kind    Kind
-	borrow  ast.BorrowKind
-	viewMut bool
-	class   bool
-	name    string
-	args    []*Type
-	elem    *Type
-	length  string
-	params  []*Type
-	result  *Type
+	id     int
+	text   string
+	kind   Kind
+	class  bool
+	name   string
+	args   []*Type
+	elem   *Type
+	length string
+	params []*Type
+	result *Type
 }
 
 // ID returns the interning id.
@@ -86,40 +84,6 @@ func (t *Type) Name() string {
 	return t.name
 }
 
-// Borrow returns the explicit borrow wrapper of the type.
-func (t *Type) Borrow() ast.BorrowKind {
-	if t == nil {
-		return ast.OwnedBorrow
-	}
-	return t.borrow
-}
-
-// IsRef reports whether the type is ref T.
-func (t *Type) IsRef() bool {
-	return t != nil && t.borrow == ast.RefBorrow
-}
-
-// IsMutRef reports whether the type is mut T.
-func (t *Type) IsMutRef() bool {
-	return t != nil && t.borrow == ast.MutBorrow
-}
-
-// ViewMut reports whether a view type is mut []T.
-func (t *Type) ViewMut() bool {
-	return t != nil && t.kind == ViewKind && t.viewMut
-}
-
-// Unref returns the type without a ref or mut wrapper.
-func (t *Type) Unref() *Type {
-	if t == nil || t.borrow == ast.OwnedBorrow {
-		return t
-	}
-	u := *t
-	u.borrow = ast.OwnedBorrow
-	u.text = strings.TrimPrefix(strings.TrimPrefix(t.text, "ref "), "mut ")
-	return &u
-}
-
 // Args returns the type arguments.
 func (t *Type) Args() []*Type { return t.args }
 
@@ -146,8 +110,7 @@ func Equal(a, b *Type) bool {
 	if a == b {
 		return true
 	}
-	if a.kind != b.kind || a.borrow != b.borrow || a.viewMut != b.viewMut ||
-		a.name != b.name || a.length != b.length {
+	if a.kind != b.kind || a.name != b.name || a.length != b.length {
 		return false
 	}
 	if len(a.args) > 0 && len(b.args) > 0 {
@@ -199,8 +162,7 @@ func isBool(t *Type) bool {
 
 // builtinArity maps the predeclared generic type names to their arity.
 var builtinArity = map[string]int{
-	"Array": 1,
-	"list":  1, "dict": 2, "set": 1,
+	"list": 1, "dict": 2, "set": 1,
 	"chan": 1, "Task": 1,
 	"Option": 1, "Result": 2,
 }
@@ -271,35 +233,8 @@ func (in *interner) array(length string, elem *Type) *Type {
 	return in.intern(&Type{text: "[" + length + "]" + elem.String(), kind: ArrayKind, elem: elem, length: length})
 }
 
-func (in *interner) view(elem *Type, mut ...bool) *Type {
-	isMut := len(mut) > 0 && mut[0]
-	text := "[]" + elem.String()
-	if isMut {
-		text = "mut " + text
-	}
-	return in.intern(&Type{text: text, kind: ViewKind, viewMut: isMut, elem: elem})
-}
-
-func (in *interner) borrowed(t *Type, kind ast.BorrowKind) *Type {
-	if t == nil || kind == ast.OwnedBorrow {
-		return t
-	}
-	prefix := "ref "
-	if kind == ast.MutBorrow {
-		prefix = "mut "
-	}
-	return in.intern(&Type{
-		text:   prefix + t.text,
-		kind:   t.kind,
-		borrow: kind,
-		class:  t.class,
-		name:   t.name,
-		args:   t.args,
-		elem:   t.elem,
-		length: t.length,
-		params: t.params,
-		result: t.result,
-	})
+func (in *interner) view(elem *Type) *Type {
+	return in.intern(&Type{text: "[]" + elem.String(), kind: ViewKind, elem: elem})
 }
 
 func (in *interner) funcT(params []*Type, result *Type) *Type {

@@ -15,10 +15,9 @@ const maxGenericDepth = 64
 // builtinGenericArity is the set of predeclared generic types. Their names stay
 // unqualified and their instances are not declaration templates.
 var builtinGenericArity = map[string]int{
-	"Array": 1, "Map": 2, "Set": 1, "Option": 1, "Result": 2,
+	"Option": 1, "Result": 2,
 	"list": 1, "dict": 2, "set": 1, "chan": 1, "Task": 1,
 	"Weak": 1, "Pinned": 1, "Handle": 1,
-	"rc": 1, "arc": 1, "weak_rc": 1, "weak_arc": 1,
 }
 
 // builtinValueNames are predeclared value types that never take a package

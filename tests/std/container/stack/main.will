@@ -1,7 +1,7 @@
 import "std/container/stack"
 
 def main() -> i32 {
-    var s: stack.Stack<i32> = new stack.Stack<i32>()
+    var s: stack.Stack<i32> = stack.Stack<i32>()
     s.push(1)
     s.push(2)
     s.push(3)

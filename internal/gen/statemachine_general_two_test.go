@@ -23,8 +23,8 @@ func TestGeneralMachineSplitsTwoChannelOps(t *testing.T) {
 }
 
 def main() -> i32 {
-    var first: chan<i32> = new chan<i32>(1)
-    var second: chan<i32> = new chan<i32>(1)
+    var first: chan<i32> = chan<i32>(1)
+    var second: chan<i32> = chan<i32>(1)
     region {
         var task: Task<()> = spawn stage(first, second)
         _ = await task!

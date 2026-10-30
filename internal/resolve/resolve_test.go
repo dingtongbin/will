@@ -52,14 +52,15 @@ const Limit: i32 = 100
 
 struct Point {
     x: i32
+
+    def move(self, dx: i32) {
+        self.x += dx
+    }
 }
 
-def (p: mut Point) move(dx: i32) {
-    p.x += dx
-}
 
 def run(n: i32) -> i32 {
-    var xs: Array<i32> = new Array<i32>(0)
+    var xs: list[i32] = list[i32](0)
     var total: i32 = 0
     for i, x in xs {
         total += i + x

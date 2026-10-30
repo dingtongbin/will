@@ -48,7 +48,6 @@ func TestWakeP999(t *testing.T) {
 		filepath.Join(root, "core", "task", "src", "task.c"),
 		filepath.Join(root, "core", "chan", "src", "chan.c"),
 		filepath.Join(root, "core", "mem", "src", "alloc.c"),
-		filepath.Join(root, "core", "rc", "src", "rc.c"),
 		filepath.Join(root, "core", "report", "src", "report.c"),
 		filepath.Join(root, "core", "startup", "src", "startup.c"),
 		filepath.Join(root, "core", "timer", "src", "timer.c"),

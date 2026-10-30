@@ -27,9 +27,9 @@ panic.1:
 panic.ok.1:
   ret i32 %t8
 }
-define hidden i32 @"example.com/genericstruct.Box<i32>.get"(ptr %b) inlinehint {
+define hidden i32 @"example.com/genericstruct.Box<i32>.get"(ptr %self) inlinehint {
 entry:
-  %t1 = getelementptr inbounds %"struct.example.com/genericstruct.Box$i32", ptr %b, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.example.com/genericstruct.Box$i32", ptr %self, i32 0, i32 0
   %t2 = load i32, ptr %t1
   ret i32 %t2
 }
@@ -43,7 +43,7 @@ entry:
   ret i32 %r
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
-@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:12:12\00", align 1
+@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:14:12\00", align 1
 @.str.2 = private unnamed_addr constant [36 x i8] c"example.com/genericstruct.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

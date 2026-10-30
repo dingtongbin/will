@@ -38,7 +38,7 @@ def baseline(n: i32) -> i64 {
 }
 
 def main() -> i32 {
-    var samples: Array<u64> = new Array<u64>(0)
+    var samples: list[u64] = list[u64](0)
     # The warm up pays for the first touch of the pages and of the caches.
     var warm: i64 = work(1000, 0)
     _ = warm

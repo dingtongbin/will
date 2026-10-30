@@ -272,9 +272,6 @@ func (p *Parser) parseAsyncFuncDecl(doc string) *ast.FuncDecl {
 func (p *Parser) parseFuncDeclFrom(doc string, start token.Token, async bool) *ast.FuncDecl {
 	p.expect(token.KwDef, "def")
 	fn := &ast.FuncDecl{Doc: doc, Async: async}
-	if p.at(token.LParen) {
-		fn.Recv = p.parseReceiver()
-	}
 	name, nameTok := p.expectName("a function name")
 	fn.Name = name
 	fn.NamePos = nameTok.Pos
@@ -285,27 +282,9 @@ func (p *Parser) parseFuncDeclFrom(doc string, start token.Token, async bool) *a
 		p.skipNL()
 		fn.Result = p.parseType()
 	}
-	fn.From = p.parseFromSources()
 	fn.Body = p.parseBlock("a function body")
 	fn.Span = p.spanFrom(start)
 	return fn
-}
-
-func (p *Parser) parseReceiver() *ast.Receiver {
-	start := p.expect(token.LParen, "(")
-	p.enterGroup()
-	p.skipNL()
-	recv := &ast.Receiver{}
-	name, nameTok := p.expectName("a receiver name")
-	recv.Name = name
-	recv.NamePos = nameTok.Pos
-	p.expect(token.Colon, ":")
-	recv.Type = p.parseType()
-	recv.Mut = recv.Type.IsMutRef() || recv.Type.ViewMut
-	p.expect(token.RParen, ")")
-	p.leaveGroup()
-	recv.Span = p.spanFrom(start)
-	return recv
 }
 
 func (p *Parser) parseParams() []*ast.Param {
@@ -343,7 +322,6 @@ func (p *Parser) parseParam() *ast.Param {
 		p.next()
 	}
 	param.Type = p.parseType()
-	param.Mut = param.Type.IsMutRef() || param.Type.ViewMut
 	if p.at(token.Assign) {
 		p.next()
 		p.skipNL()
@@ -481,7 +459,6 @@ func (p *Parser) parseTypeMethod(typeName string, class bool, typeParams []*ast.
 	if p.at(token.Colon) {
 		p.next()
 		recv.Type = p.parseType()
-		recv.Mut = recv.Type.IsMutRef() || recv.Type.ViewMut
 	} else {
 		recv.Type = &ast.Type{Span: ast.Span{Start: recvStart.Pos, End: recvTok.End},
 			Kind: ast.NamedType, Name: typeName}
@@ -492,10 +469,6 @@ func (p *Parser) parseTypeMethod(typeName string, class bool, typeParams []*ast.
 			recv.Type.Args = append(recv.Type.Args, &ast.Type{
 				Span: ast.Span{Start: tp.NamePos, End: tp.NamePos},
 				Kind: ast.NamedType, Name: tp.Name})
-		}
-		if !class {
-			recv.Type.Borrow = ast.MutBorrow
-			recv.Mut = true
 		}
 	}
 	if recvName != "self" {
@@ -527,7 +500,6 @@ func (p *Parser) parseTypeMethod(typeName string, class bool, typeParams []*ast.
 		p.skipNL()
 		fn.Result = p.parseType()
 	}
-	fn.From = p.parseFromSources()
 	fn.Body = p.parseBlock("a method body")
 	fn.Span = p.spanFrom(start)
 	return fn
@@ -625,7 +597,6 @@ func (p *Parser) parseMethodSig() *ast.MethodSig {
 		p.skipNL()
 		sig.Result = p.parseType()
 	}
-	sig.From = p.parseFromSources()
 	sig.Span = p.spanFrom(start)
 	return sig
 }
@@ -658,23 +629,6 @@ func (p *Parser) parseSignatureParams() []*ast.Param {
 	p.expect(token.RParen, ")")
 	p.leaveGroup()
 	return params
-}
-
-func (p *Parser) parseFromSources() []ast.Expr {
-	if !p.atText("from") {
-		return nil
-	}
-	p.next()
-	var out []ast.Expr
-	for {
-		p.skipNL()
-		out = append(out, p.parseExpr(0, false))
-		if !p.at(token.Comma) {
-			break
-		}
-		p.next()
-	}
-	return out
 }
 
 func (p *Parser) parseDeriveDecl(doc string) *ast.DeriveDecl {

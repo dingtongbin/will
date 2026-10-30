@@ -117,7 +117,7 @@ func (x *builder) emitFile(p *pkg.Package, f *pkg.File) {
 				pos := decl.Pos()
 				x.line("method", quote("file", f.Path), "line="+strconv.Itoa(pos.Line),
 					"col="+strconv.Itoa(pos.Col), quote("type", receiver(decl.Recv.Type)),
-					quote("name", decl.Name), quote("recv", recvKind(decl.Recv.Type)))
+					quote("name", decl.Name))
 			}
 		case *ast.StructDecl:
 			kind := "struct"
@@ -230,19 +230,6 @@ func receiver(t *ast.Type) string {
 		return ""
 	}
 	return t.Name
-}
-
-func recvKind(t *ast.Type) string {
-	if t == nil {
-		return "value"
-	}
-	if t.IsRef() {
-		return "ref"
-	}
-	if t.IsMutRef() || t.ViewMut {
-		return "mut"
-	}
-	return "value"
 }
 
 func linkage(link *ast.Link) string {

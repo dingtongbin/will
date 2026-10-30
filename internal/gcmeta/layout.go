@@ -117,10 +117,6 @@ func (p *Program) layoutValue(pkg, text string, seen map[string]bool) (valueLayo
 			refs: []uint32{0}}, nil
 	case "ref", "mut":
 		return valueLayout{size: WordSize, align: WordSize}, nil
-	case "Array", "Map", "Set":
-		// These containers are three-word handles: data, length, capacity.
-		// The data pointer is the only GC reference in the handle.
-		return valueLayout{size: 3 * WordSize, align: WordSize, refs: []uint32{0}}, nil
 	case "list", "dict", "set":
 		return valueLayout{size: WordSize, align: WordSize, reference: true}, nil
 	case "chan", "Task":
@@ -160,11 +156,6 @@ func (p *Program) layoutValue(pkg, text string, seen map[string]bool) (valueLayo
 			return valueLayout{}, err
 		}
 		return taggedLayout(ok, fail)
-	case "rc", "arc", "weak_rc", "weak_arc":
-		// Legacy reference-counted handles are integers, not GC references.
-		// The final surface removes them; the layout keeps old corpus programs
-		// translating while their migration is still in progress.
-		return valueLayout{size: WordSize, align: WordSize}, nil
 	}
 	if stringsHasBorrowPrefix(text) {
 		return valueLayout{size: WordSize, align: WordSize}, nil

@@ -18,9 +18,9 @@ entry:
   %t3 = load i32, ptr %t2
   ret i32 %t3
 }
-define hidden void @"example.com/genericvoid.Box<i64>.bump"(ptr %b) alwaysinline {
+define hidden void @"example.com/genericvoid.Box<i64>.bump"(ptr %self) alwaysinline {
 entry:
-  %t1 = getelementptr inbounds %"struct.example.com/genericvoid.Box$i64", ptr %b, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.example.com/genericvoid.Box$i64", ptr %self, i32 0, i32 0
   %t2 = load i32, ptr %t1
   %t3 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t2, i32 1)
   %t4 = extractvalue {i32, i1} %t3, 0
@@ -33,9 +33,9 @@ panic.ok.1:
   store i32 %t4, ptr %t1
   ret void
 }
-define hidden void @"example.com/genericvoid.Box<i64>.init"(ptr %b) alwaysinline {
+define hidden void @"example.com/genericvoid.Box<i64>.init"(ptr %self) alwaysinline {
 entry:
-  %t1 = getelementptr inbounds %"struct.example.com/genericvoid.Box$i64", ptr %b, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.example.com/genericvoid.Box$i64", ptr %self, i32 0, i32 0
   store i32 0, ptr %t1
   ret void
 }
@@ -49,7 +49,7 @@ entry:
   ret i32 %r
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
-@.str.1 = private unnamed_addr constant [15 x i8] c"main.will:10:5\00", align 1
+@.str.1 = private unnamed_addr constant [14 x i8] c"main.will:9:9\00", align 1
 @.str.2 = private unnamed_addr constant [38 x i8] c"example.com/genericvoid.Box<i64>.bump\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

@@ -36,7 +36,7 @@ class Mutex<T> {
     state: MutexState<T>
 
     def init(self, value: T) {
-        self.state = new MutexState<T>(c.willrt_sync_lock_new(), value)
+        self.state = MutexState<T>(c.willrt_sync_lock_new(), value)
     }
 
     # Lock waits for the write side and returns its guard.
@@ -74,7 +74,7 @@ class RwLock<T> {
     state: MutexState<T>
 
     def init(self, value: T) {
-        self.state = new MutexState<T>(c.willrt_sync_lock_new(), value)
+        self.state = MutexState<T>(c.willrt_sync_lock_new(), value)
     }
 
     # RLock waits for exclusive holders to leave and joins the reader side.

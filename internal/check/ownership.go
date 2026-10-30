@@ -99,9 +99,6 @@ func (o *Ownership) hasView(t *ast.Type, bindings map[string]*ast.Type, active m
 	if t == nil {
 		return false
 	}
-	if t.Borrow != ast.OwnedBorrow {
-		return true
-	}
 	switch t.Kind {
 	case ast.ViewType:
 		return true
@@ -113,7 +110,7 @@ func (o *Ownership) hasView(t *ast.Type, bindings map[string]*ast.Type, active m
 		if bound := bindings[t.Name]; bound != nil && len(t.Args) == 0 {
 			return o.hasView(bound, bindings, active)
 		}
-		if t.Name == "Array" || t.Name == "Option" || t.Name == "Result" {
+		if t.Name == "Option" || t.Name == "Result" {
 			for _, arg := range t.Args {
 				if o.hasView(arg, bindings, active) {
 					return true
@@ -160,14 +157,12 @@ func (o *Ownership) hasView(t *ast.Type, bindings map[string]*ast.Type, active m
 }
 
 // FieldType returns the declared type of one field after substituting the type
-// arguments of a generic instance. A field of an rc<T> receiver is reached
-// through the handle, so the receiver is unwrapped first. An unknown field or
-// receiver returns nil; the caller must not guess at ownership in that case.
+// arguments of a generic instance. An unknown field or receiver returns nil;
+// the caller must not guess at ownership in that case.
 func (o *Ownership) FieldType(recv *ast.Type, name string) *ast.Type {
 	if o == nil || recv == nil {
 		return nil
 	}
-	recv = o.unwrapRc(recv)
 	if recv.Kind != ast.NamedType {
 		return nil
 	}
@@ -187,8 +182,8 @@ func (o *Ownership) FieldType(recv *ast.Type, name string) *ast.Type {
 }
 
 // IndexType returns the element type of one index expression. Only the types
-// that support indexing in the language answer: []T, [N]T, Array<T>, and str.
-// Map and Set are not indexable and return nil.
+// that support indexing in the language answer: []T, [N]T, list[T], and str.
+// dict and set are not indexable and return nil.
 func (o *Ownership) IndexType(recv *ast.Type) *ast.Type {
 	if recv == nil {
 		return nil
@@ -202,7 +197,7 @@ func (o *Ownership) IndexType(recv *ast.Type) *ast.Type {
 		}
 	case ast.NamedType:
 		switch recv.Name {
-		case "Array":
+		case "list":
 			if len(recv.Args) == 1 {
 				return recv.Args[0]
 			}
@@ -213,31 +208,24 @@ func (o *Ownership) IndexType(recv *ast.Type) *ast.Type {
 	return nil
 }
 
-// ElementType and ValueType expose the payload of the predeclared containers
-// that hold one value. They are used where a field or index is not enough, such
-// as a Map value in a Get result.
+// ElementType exposes the payload of the predeclared containers that hold one
+// value. They are used where a field or index is not enough, such as a dict
+// value in a Get result.
 func (o *Ownership) ElementType(t *ast.Type) *ast.Type {
 	if t == nil || t.Kind != ast.NamedType {
 		return nil
 	}
 	switch t.Name {
-	case "Array", "Set", "Option":
+	case "list", "set", "Option":
 		if len(t.Args) == 1 {
 			return t.Args[0]
 		}
-	case "Map":
+	case "dict":
 		if len(t.Args) == 2 {
 			return t.Args[1]
 		}
 	}
 	return nil
-}
-
-func (o *Ownership) unwrapRc(t *ast.Type) *ast.Type {
-	for t != nil && t.Kind == ast.NamedType && (t.Name == "rc" || t.Name == "arc") && len(t.Args) == 1 {
-		t = t.Args[0]
-	}
-	return t
 }
 
 func shortTypeName(name string) string {
@@ -298,7 +286,7 @@ func (o *Ownership) owns(t *ast.Type, bindings map[string]*ast.Type, active map[
 	if t == nil {
 		return false
 	}
-	if t.Borrow != ast.OwnedBorrow || t.Kind == ast.ViewType {
+	if t.Kind == ast.ViewType {
 		return false
 	}
 	switch t.Kind {
@@ -331,7 +319,7 @@ func (o *Ownership) ownsNamed(t *ast.Type, bindings map[string]*ast.Type, active
 		// Final containers are GC references: a copy is a shared handle, so a
 		// move needs no Clone at the transfer.
 		return false
-	case "str", "Array", "Map", "Set":
+	case "str":
 		return true
 	case "chan", "Task", "Duration", "Value", "Show", "Error", "TaskError":
 		return false

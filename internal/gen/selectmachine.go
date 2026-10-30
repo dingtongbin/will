@@ -270,7 +270,6 @@ func (g *generator) emitSelectMachineStep(info *selectMachineInfo) error {
 	g.fnResultText = info.resultText
 	g.fnSymbol = info.symbol
 	g.fnPos = fieldText(info.fn, "pos")
-	g.crossingPos = g.fnPos
 	g.currentLambda = 0
 	g.currentFunc = info.fn.ID
 	if err := g.emitAsyncConstructor(info.base); err != nil {
@@ -534,10 +533,6 @@ func (g *generator) emitSelectArmsTo(info *selectMachineInfo, armsPtr string) er
 		if err != nil {
 			return err
 		}
-		valueText, err := g.willTypeText(valueID)
-		if err != nil {
-			return err
-		}
 		valuePtr := ""
 		if isAggregateType(typ) {
 			valuePtr, _, err = g.place(valueID)
@@ -551,9 +546,6 @@ func (g *generator) emitSelectArmsTo(info *selectMachineInfo, armsPtr string) er
 				return err
 			}
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, valuePtr)
-		}
-		if err := g.shareValue(valuePtr, valueText); err != nil {
-			return err
 		}
 		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", valuePtr, valueField)
 		fmt.Fprintf(g.out, "  store i32 1, ptr %s\n", kindField)

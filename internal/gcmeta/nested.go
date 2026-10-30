@@ -251,8 +251,6 @@ func (p *Program) nestedType(pkg, text string, seen map[string]bool) (*Type, err
 		return p.inlineValue("value."+text, 2*WordSize, WordSize, []uint32{0}, nil), nil
 	case "ref", "mut":
 		return p.inlineValue("value."+text, WordSize, WordSize, nil, nil), nil
-	case "Array", "Map", "Set":
-		return p.inlineValue("value."+text, 3*WordSize, WordSize, []uint32{0}, nil), nil
 	case "list", "dict", "set":
 		return p.inlineValue("value."+text, WordSize, WordSize, []uint32{0}, nil), nil
 	case "chan", "Task":

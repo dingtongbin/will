@@ -3,7 +3,7 @@ import "std/container/ring"
 # A ring must stop at its capacity, preserve FIFO order, and free a slot when
 # Pop removes a value so a later Push can use it again.
 def main() -> i32 {
-    var r: ring.Ring<i32> = new ring.Ring<i32>(3usize)!
+    var r: ring.Ring<i32> = ring.Ring<i32>(3usize)!
     if r.len() != 0usize or r.full() {
         return 1
     }
@@ -84,7 +84,7 @@ def main() -> i32 {
     if r.len() != 0usize or r.full() {
         return 18
     }
-    match new ring.Ring<i32>(0usize) {
+    match ring.Ring<i32>(0usize) {
         Ok(bad) => {
             _ = bad
             return 19

@@ -3,5 +3,5 @@ struct P {
 }
 
 def f() -> P {
-    return new P()
+    return P()
 }

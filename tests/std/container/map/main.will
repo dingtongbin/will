@@ -51,14 +51,14 @@ def main() -> i32 {
     if m.len() != 0usize or m.has("c") {
         return 11
     }
-    var nested: dict[str, Array<i32>] = dict[str, Array<i32>](0usize)
-    var nestedValues: Array<i32> = new Array<i32>(0usize)
+    var nested: dict[str, list[i32]] = dict[str, list[i32]](0usize)
+    var nestedValues: list[i32] = list[i32](0usize)
     nestedValues.push(1)
     nested.set("a", nestedValues)
     nestedValues.push(2)
     match nested.get("a") {
         Some(copy) => {
-            if copy.len() != 1usize or copy.get(0usize) != 1 {
+            if copy.len() != 2usize or copy.get(0usize) != 1 or copy.get(1usize) != 2 {
                 return 12
             }
         }

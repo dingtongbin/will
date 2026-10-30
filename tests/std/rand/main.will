@@ -4,7 +4,7 @@ import "std/math/rand"
 # and NextF64 must stay in [0, 1). The published SplitMix64 values pin the
 # state update and the three wrapping multiplies.
 def main() -> i32 {
-    var r: rand.Rand = new rand.Rand(42u64)
+    var r: rand.Rand = rand.Rand(42u64)
     var a: u64 = r.next_u64()
     var b: u64 = r.next_u64()
     var f: f64 = r.next_f64()
@@ -21,7 +21,7 @@ def main() -> i32 {
         return 4
     }
 
-    var same: rand.Rand = new rand.Rand(42u64)
+    var same: rand.Rand = rand.Rand(42u64)
     if same.next_u64() != a {
         return 5
     }
@@ -29,13 +29,13 @@ def main() -> i32 {
         return 6
     }
 
-    var other: rand.Rand = new rand.Rand(43u64)
+    var other: rand.Rand = rand.Rand(43u64)
     if other.next_u64() == a {
         return 7
     }
 
-    var zero: rand.Rand = new rand.Rand(0u64)
-    var zeroAgain: rand.Rand = new rand.Rand(0u64)
+    var zero: rand.Rand = rand.Rand(0u64)
+    var zeroAgain: rand.Rand = rand.Rand(0u64)
     if zero.next_u64() != zeroAgain.next_u64() {
         return 8
     }

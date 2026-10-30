@@ -4,7 +4,7 @@ import "std/math"
 # i%64 of word i/64, so the low bits of the first word are the first bits of
 # the set and no bit outside [0, n) is ever stored.
 struct Bits {
-    words: Array<u64>
+    words: list[u64]
     n: usize
 
     # init sizes the word array to ceil(n/64) zero words. The constructor is
@@ -132,7 +132,7 @@ struct Bits {
 
     # clone returns an independent copy of the set.
     def clone(self) -> Bits {
-        var words: Array<u64> = new Array<u64>(0)
+        var words: list[u64] = list[u64](0)
         var i: usize = 0
         while True {
             if i >= self.words.len() {

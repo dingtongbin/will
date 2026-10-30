@@ -67,8 +67,6 @@ func (c *crossTaskChecker) stmt(st ast.Stmt) {
 		c.block(s.Body)
 	case *ast.RegionStmt:
 		c.block(s.Body)
-	case *ast.ParallelStmt:
-		c.block(s.Body)
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {
 			c.expr(arm.Chan)
@@ -127,17 +125,11 @@ func (c *crossTaskChecker) expr(e ast.Expr) {
 		c.expr(x.Recv)
 		c.expr(x.Lo)
 		c.expr(x.Hi)
-	case *ast.BorrowExpr:
-		c.expr(x.X)
 	case *ast.UnaryExpr:
 		c.expr(x.X)
 	case *ast.BinaryExpr:
 		c.expr(x.L)
 		c.expr(x.R)
-	case *ast.NewExpr:
-		for _, a := range x.Args {
-			c.expr(a.Expr)
-		}
 	case *ast.AggregateExpr:
 		for _, f := range x.Fields {
 			c.expr(f.Value)
@@ -192,7 +184,7 @@ func (c *crossTaskChecker) spawn(x *ast.SpawnExpr) {
 		}
 		c.bag.Error(name.Pos(), diag.CodeCrossTask,
 			"this value cannot cross a task boundary",
-			"keep it in this task, or move it into an arc<T>")
+			"keep it in this task, or pass only the data the task needs")
 	}
 	if call, ok := x.Call.(*ast.CallExpr); ok {
 		switch callee := call.Callee.(type) {
@@ -208,15 +200,6 @@ func (c *crossTaskChecker) spawn(x *ast.SpawnExpr) {
 
 func (c *crossTaskChecker) rejectBorrowArgs(e ast.Expr) {
 	if e == nil {
-		return
-	}
-	if b, ok := e.(*ast.BorrowExpr); ok {
-		if t := c.types.TypeOf(b); t != nil && !c.types.Send(t) {
-			c.bag.Error(b.Pos(), diag.CodeCrossTask,
-				"this borrow cannot cross a task boundary",
-				"move an owned value into the task instead")
-		}
-		c.rejectBorrowArgs(b.X)
 		return
 	}
 	switch x := e.(type) {
@@ -263,7 +246,7 @@ func (c *crossTaskChecker) lambda(lam *ast.LambdaExpr) {
 			seen[x.Name] = true
 			c.bag.Error(x.Pos(), diag.CodeCrossTask,
 				"this value cannot cross a task boundary",
-				"keep it in this task, or move it into an arc<T>")
+				"keep it in this task, or pass only the data the task needs")
 		case *ast.CallExpr:
 			walk(x.Callee)
 			for _, a := range x.Args {
@@ -283,17 +266,11 @@ func (c *crossTaskChecker) lambda(lam *ast.LambdaExpr) {
 			walk(x.Recv)
 			walk(x.Lo)
 			walk(x.Hi)
-		case *ast.BorrowExpr:
-			walk(x.X)
 		case *ast.UnaryExpr:
 			walk(x.X)
 		case *ast.BinaryExpr:
 			walk(x.L)
 			walk(x.R)
-		case *ast.NewExpr:
-			for _, a := range x.Args {
-				walk(a.Expr)
-			}
 		case *ast.AggregateExpr:
 			for _, f := range x.Fields {
 				walk(f.Value)
@@ -349,8 +326,6 @@ func (c *crossTaskChecker) lambda(lam *ast.LambdaExpr) {
 			walkBlock(s)
 		case *ast.RegionStmt:
 			walkBlock(s.Body)
-		case *ast.ParallelStmt:
-			walkBlock(s.Body)
 		case *ast.SelectStmt:
 			for _, arm := range s.Arms {
 				walk(arm.Chan)
@@ -405,8 +380,6 @@ func collectLambdas(b *ast.Block, out map[string]*ast.LambdaExpr) {
 		case *ast.ForStmt:
 			collectLambdas(s.Body, out)
 		case *ast.RegionStmt:
-			collectLambdas(s.Body, out)
-		case *ast.ParallelStmt:
 			collectLambdas(s.Body, out)
 		case *ast.DeadlineExpr:
 			collectLambdas(s.Body, out)
@@ -470,7 +443,7 @@ func (c *crossTaskChecker) sendArg(e ast.Expr) {
 	}
 	c.bag.Error(e.Pos(), diag.CodeCrossTask,
 		"this value cannot cross a task boundary",
-		"keep it in this task, or move it into an arc<T>")
+		"keep it in this task, or pass only the data the task needs")
 }
 
 // spawnNames lists the names read by a spawn call. A method receiver and every
@@ -495,8 +468,6 @@ func spawnNames(e ast.Expr) []*ast.NameExpr {
 			walk(x.Recv, false)
 			walk(x.Lo, false)
 			walk(x.Hi, false)
-		case *ast.BorrowExpr:
-			walk(x.X, false)
 		case *ast.CallExpr:
 			walk(x.Callee, true)
 			for _, a := range x.Args {
@@ -512,10 +483,6 @@ func spawnNames(e ast.Expr) []*ast.NameExpr {
 		case *ast.BinaryExpr:
 			walk(x.L, false)
 			walk(x.R, false)
-		case *ast.NewExpr:
-			for _, a := range x.Args {
-				walk(a.Expr, false)
-			}
 		case *ast.AggregateExpr:
 			for _, f := range x.Fields {
 				walk(f.Value, false)

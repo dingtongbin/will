@@ -38,6 +38,11 @@ func (g *generator) forList(r willc.Record, elem, iterText string, void bool, la
 	lenField := g.listField(object, payload, 1)
 	length := g.load("i64", lenField)
 	dataField := g.listField(object, payload, 0)
+	data := g.loadContainerData(dataField)
+	// The element address escapes into the loop body, which may reach a
+	// safepoint, so the data sequence stays pinned until the loop ends.
+	data = g.pinContainerData(data)
+	defer g.unpinContainer(data)
 	condLabel := fmt.Sprintf("for.cond.%d", label)
 	bodyLabel := fmt.Sprintf("for.body.%d", label)
 	stepLabel := fmt.Sprintf("for.step.%d", label)
@@ -50,7 +55,6 @@ func (g *generator) forList(r willc.Record, elem, iterText string, void bool, la
 	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", cond, current, length)
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, bodyLabel, endLabel)
 	g.out.WriteString(bodyLabel + ":\n")
-	data := g.loadContainerData(dataField)
 	elemPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n",
 		elemPtr, elemLLVM, data, current)

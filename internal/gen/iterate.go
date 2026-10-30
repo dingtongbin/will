@@ -33,32 +33,23 @@ func arrayTypeText(text string) (int, string, bool) {
 	return n, elem, true
 }
 
-// containerElem returns the element text of a view or Array type. Only a
-// scalar element is lowered so far.
+// containerElem returns the element text of a view. List elements are read
+// through the container lowering, not this view helper.
 func containerElem(text string) (string, bool) {
-	var elem string
-	switch {
-	case strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">"):
-		elem = text[len("Array<") : len(text)-1]
-	case strings.HasPrefix(text, "[]"):
-		elem = text[2:]
-	default:
+	if !strings.HasPrefix(text, "[]") {
 		return "", false
 	}
+	elem := text[2:]
 	if elem == "" {
 		return "", false
 	}
 	return elem, true
 }
 
-// containerLLVM maps a view or Array type to its literal struct. A view is two
-// words and an Array is three, as the layout volume fixes.
+// containerLLVM maps a view type to its two-word literal struct.
 func containerLLVM(text string) (string, bool) {
 	if _, ok := containerElem(text); !ok {
 		return "", false
-	}
-	if strings.HasPrefix(text, "Array<") {
-		return "{ ptr, i64, i64 }", true
 	}
 	return "{ ptr, i64 }", true
 }
@@ -76,11 +67,6 @@ func llvmTypeText(text string) (string, bool) {
 		// A duration is a signed count of nanoseconds.
 		return "i64", true
 	}
-	if strings.HasPrefix(text, "rc<") || strings.HasPrefix(text, "arc<") ||
-		strings.HasPrefix(text, "weak_rc<") || strings.HasPrefix(text, "weak_arc<") {
-		// A handle packs the slot and the generation in one u64.
-		return "i64", true
-	}
 	if strings.HasPrefix(text, "Task<") || strings.HasPrefix(text, "chan<") {
 		// A task handle and a channel handle are opaque pointers.
 		return "ptr", true
@@ -88,8 +74,8 @@ func llvmTypeText(text string) (string, bool) {
 	if strings.HasPrefix(text, "[]") && len(text) > 2 {
 		return "{ ptr, i64 }", true
 	}
-	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
-		return "{ ptr, i64, i64 }", true
+	if strings.HasPrefix(text, "list[") && strings.HasSuffix(text, "]") {
+		return "ptr", true
 	}
 	if strings.HasPrefix(text, "func(") {
 		// A function value is a code pointer and the environment it reads.
@@ -173,6 +159,9 @@ func (g *generator) sliceElem(r willc.Record) (string, error) {
 	if text == "str" {
 		// A str slice is a byte view, as the text volume fixes.
 		return "u8", nil
+	}
+	if elem, ok := listElemText(stripPredeclaredPackage(text)); ok {
+		return elem, nil
 	}
 	if elem, ok := containerElem(text); ok {
 		return elem, nil

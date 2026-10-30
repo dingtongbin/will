@@ -294,9 +294,6 @@ func (g *generator) loadContainerData(dataPtr string) string {
 // isContainerTypeText reports whether a type text names a mutable container
 // handle whose data pointer needs a write barrier.
 func isContainerTypeText(text string) bool {
-	if _, ok := arrayElemText(text); ok {
-		return true
-	}
 	return false
 }
 

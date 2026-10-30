@@ -2,221 +2,229 @@
 # constant time; a pop that finds one stack empty moves half of the other
 # stack, so every element moves amortized constant time.
 struct Deque<T> {
-    front: Array<T>
-    back: Array<T>
-}
+    front: list[T]
+    back: list[T]
 
-# init starts both stacks empty.
-def (d: mut Deque<T>) init() {
-    d.front = new Array<T>(0)
-    d.back = new Array<T>(0)
-}
-
-# PushFront adds one value at the front.
-def (d: mut Deque<T>) push_front(v: T) {
-    d.front.push(v)
-}
-
-# PushBack adds one value at the back.
-def (d: mut Deque<T>) push_back(v: T) {
-    d.back.push(v)
-}
-
-# PopFront removes and returns the front value, or None when the deque is
-# empty.
-def (d: mut Deque<T>) pop_front() -> Option<T> {
-    if d.front.len() > 0 {
-        return d.front.pop()
+    def init(self) {
+        self.front = list[T](0)
+        self.back = list[T](0)
     }
-    if d.back.len() == 0 {
-        return None
+
+    def push_front(self, v: T) {
+        self.front.push(v)
     }
-    var tmp: Array<T> = new Array<T>(0)
-    while True {
-        if d.back.len() == 0 {
-            break
+
+    def push_back(self, v: T) {
+        self.back.push(v)
+    }
+
+    def pop_front(self) -> Option<T> {
+        if self.front.len() > 0 {
+            return self.front.pop()
         }
-        match d.back.pop() {
-            Some(v) => {
-                tmp.push(v)
-            }
-            None => {
+        if self.back.len() == 0 {
+            return None
+        }
+        var tmp: list[T] = list[T](0)
+        while True {
+            if self.back.len() == 0 {
                 break
             }
-        }
-    }
-    var half: usize = tmp.len() / 2usize
-    if half == 0usize {
-        half = 1usize
-    }
-    var rev: Array<T> = new Array<T>(0)
-    var i: usize = 0usize
-    while True {
-        if i >= half {
-            break
-        }
-        match tmp.pop() {
-            Some(v) => {
-                rev.push(v)
+            match self.back.pop() {
+                Some(v) => {
+                    tmp.push(v)
+                }
+                None => {
+                    break
+                }
             }
-            None => {
+        }
+        var half: usize = tmp.len() / 2usize
+        if half == 0usize {
+            half = 1usize
+        }
+        var rev: list[T] = list[T](0)
+        var i: usize = 0usize
+        while True {
+            if i >= half {
                 break
             }
-        }
-        i += 1usize
-    }
-    while True {
-        if rev.len() == 0 {
-            break
-        }
-        match rev.pop() {
-            Some(v) => {
-                d.front.push(v)
+            match tmp.pop() {
+                Some(v) => {
+                    rev.push(v)
+                }
+                None => {
+                    break
+                }
             }
-            None => {
+            i += 1usize
+        }
+        while True {
+            if rev.len() == 0 {
                 break
             }
-        }
-    }
-    while True {
-        if tmp.len() == 0 {
-            break
-        }
-        match tmp.pop() {
-            Some(v) => {
-                d.back.push(v)
+            match rev.pop() {
+                Some(v) => {
+                    self.front.push(v)
+                }
+                None => {
+                    break
+                }
             }
-            None => {
+        }
+        while True {
+            if tmp.len() == 0 {
                 break
             }
+            match tmp.pop() {
+                Some(v) => {
+                    self.back.push(v)
+                }
+                None => {
+                    break
+                }
+            }
         }
+        return self.front.pop()
     }
-    return d.front.pop()
+
+    def pop_back(self) -> Option<T> {
+        if self.back.len() > 0 {
+            return self.back.pop()
+        }
+        if self.front.len() == 0 {
+            return None
+        }
+        var tmp: list[T] = list[T](0)
+        while True {
+            if self.front.len() == 0 {
+                break
+            }
+            match self.front.pop() {
+                Some(v) => {
+                    tmp.push(v)
+                }
+                None => {
+                    break
+                }
+            }
+        }
+        var half: usize = tmp.len() / 2usize
+        if half == 0usize {
+            half = 1usize
+        }
+        var rev: list[T] = list[T](0)
+        var i: usize = 0usize
+        while True {
+            if i >= half {
+                break
+            }
+            match tmp.pop() {
+                Some(v) => {
+                    rev.push(v)
+                }
+                None => {
+                    break
+                }
+            }
+            i += 1usize
+        }
+        while True {
+            if tmp.len() == 0 {
+                break
+            }
+            match tmp.pop() {
+                Some(v) => {
+                    self.front.push(v)
+                }
+                None => {
+                    break
+                }
+            }
+        }
+        var rev2: list[T] = list[T](0)
+        while True {
+            if rev.len() == 0 {
+                break
+            }
+            match rev.pop() {
+                Some(v) => {
+                    rev2.push(v)
+                }
+                None => {
+                    break
+                }
+            }
+        }
+        while True {
+            if rev2.len() == 0 {
+                break
+            }
+            match rev2.pop() {
+                Some(v) => {
+                    self.back.push(v)
+                }
+                None => {
+                    break
+                }
+            }
+        }
+        return self.back.pop()
+    }
+
+    def peek_front(self) -> Option<T> {
+        if self.front.len() > 0 {
+            return Some(self.front.get(self.front.len() - 1usize))
+        }
+        if self.back.len() == 0 {
+            return None
+        }
+        return Some(self.back.get(0usize))
+    }
+
+    def peek_back(self) -> Option<T> {
+        if self.back.len() > 0 {
+            return Some(self.back.get(self.back.len() - 1usize))
+        }
+        if self.front.len() == 0 {
+            return None
+        }
+        return Some(self.front.get(0usize))
+    }
+
+    def len(self) -> usize {
+        return self.front.len() + self.back.len()
+    }
+
+    def clear(self) {
+        self.front.clear()
+        self.back.clear()
+    }
+
+    def clone(self) -> Deque<T> {
+        var out: Deque<T>
+        out.front = self.front.clone()
+        out.back = self.back.clone()
+        return out
+    }
 }
 
-# PopBack removes and returns the back value, or None when the deque is empty.
-def (d: mut Deque<T>) pop_back() -> Option<T> {
-    if d.back.len() > 0 {
-        return d.back.pop()
-    }
-    if d.front.len() == 0 {
-        return None
-    }
-    var tmp: Array<T> = new Array<T>(0)
-    while True {
-        if d.front.len() == 0 {
-            break
-        }
-        match d.front.pop() {
-            Some(v) => {
-                tmp.push(v)
-            }
-            None => {
-                break
-            }
-        }
-    }
-    var half: usize = tmp.len() / 2usize
-    if half == 0usize {
-        half = 1usize
-    }
-    var rev: Array<T> = new Array<T>(0)
-    var i: usize = 0usize
-    while True {
-        if i >= half {
-            break
-        }
-        match tmp.pop() {
-            Some(v) => {
-                rev.push(v)
-            }
-            None => {
-                break
-            }
-        }
-        i += 1usize
-    }
-    while True {
-        if tmp.len() == 0 {
-            break
-        }
-        match tmp.pop() {
-            Some(v) => {
-                d.front.push(v)
-            }
-            None => {
-                break
-            }
-        }
-    }
-    var rev2: Array<T> = new Array<T>(0)
-    while True {
-        if rev.len() == 0 {
-            break
-        }
-        match rev.pop() {
-            Some(v) => {
-                rev2.push(v)
-            }
-            None => {
-                break
-            }
-        }
-    }
-    while True {
-        if rev2.len() == 0 {
-            break
-        }
-        match rev2.pop() {
-            Some(v) => {
-                d.back.push(v)
-            }
-            None => {
-                break
-            }
-        }
-    }
-    return d.back.pop()
-}
 
-# PeekFront returns a copy of the front value without removing it.
-def (d: ref Deque<T>) peek_front() -> Option<T> {
-    if d.front.len() > 0 {
-        return Some(d.front.get(d.front.len() - 1usize))
-    }
-    if d.back.len() == 0 {
-        return None
-    }
-    return Some(d.back.get(0usize))
-}
 
-# PeekBack returns a copy of the back value without removing it.
-def (d: ref Deque<T>) peek_back() -> Option<T> {
-    if d.back.len() > 0 {
-        return Some(d.back.get(d.back.len() - 1usize))
-    }
-    if d.front.len() == 0 {
-        return None
-    }
-    return Some(d.front.get(0usize))
-}
 
-# Len reports the number of stored values.
-def (d: ref Deque<T>) len() -> usize {
-    return d.front.len() + d.back.len()
-}
 
-# Clear releases every value.
-def (d: mut Deque<T>) clear() {
-    d.front.clear()
-    d.back.clear()
-}
 
-# Clone copies both stacks. Array.Clone gives each stored value its own
-# reference according to the container rule.
-def (d: ref Deque<T>) clone() -> Deque<T> {
-    var out: Deque<T>
-    out.front = d.front.clone()
-    out.back = d.back.clone()
-    return out
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

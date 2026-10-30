@@ -58,8 +58,6 @@ func (r *resolver) walkStmt(s ast.Stmt) {
 		r.pop()
 	case *ast.RegionStmt:
 		r.walkBlock(st.Body)
-	case *ast.ParallelStmt:
-		r.walkBlock(st.Body)
 	case *ast.SelectStmt:
 		r.walkSelect(st)
 	case *ast.IfExpr:
@@ -235,8 +233,6 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 			sym.Used = true
 		}
 	case *ast.LiteralExpr, *ast.LaneHereExpr, *ast.UnitExpr:
-	case *ast.BorrowExpr:
-		r.walkExpr(x.X, true)
 	case *ast.CallExpr:
 		r.walkCallee(x.Callee)
 		r.walkTypes(x.TypeArgs)
@@ -245,11 +241,13 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 		r.walkQualifier(x.Recv)
 		x.Link = r.cLink(x.Recv, x.Name)
 		r.checkImportedMember(x.Recv, x.Name, x.NamePos)
+		r.recordImportedNode(x.Recv, x.Name, x)
 		r.walkTypes(x.TypeArgs)
 		r.walkArgs(x.Args)
 	case *ast.FieldExpr:
 		r.walkQualifier(x.Recv)
 		r.checkImportedMember(x.Recv, x.Name, x.NamePos)
+		r.recordImportedMember(x)
 	case *ast.IndexExpr:
 		r.walkExpr(x.Recv, true)
 		r.walkExpr(x.Index, true)
@@ -276,9 +274,6 @@ func (r *resolver) walkExpr(e ast.Expr, markUsed bool) {
 		for _, e := range x.Elems {
 			r.walkExpr(e, true)
 		}
-	case *ast.NewExpr:
-		r.walkType(x.Type)
-		r.walkArgs(x.Args)
 	case *ast.UnaryExpr:
 		r.walkExpr(x.X, true)
 	case *ast.BinaryExpr:
@@ -405,6 +400,33 @@ func (r *resolver) checkImportedMember(recv ast.Expr, name string, pos source.Po
 	if _, exists := table[name]; !exists {
 		r.undefinedIn(pos, name, exportNames(table))
 	}
+}
+
+// recordImportedMember binds a package-qualified member to its declaration so
+// the checker and the emitter can recognize an imported type constructor.
+func (r *resolver) recordImportedMember(x *ast.FieldExpr) {
+	r.recordImportedNode(x.Recv, x.Name, x)
+}
+
+func (r *resolver) recordImportedNode(recv ast.Expr, name string, node ast.Node) {
+	qual, ok := recv.(*ast.NameExpr)
+	if !ok {
+		return
+	}
+	sym, found := r.current().lookup(qual.Name)
+	if !found || sym.Kind != ImportKind {
+		return
+	}
+	table, loaded := r.tables[qual.Name]
+	if !loaded {
+		return
+	}
+	member, exists := table[name]
+	if !exists || member.Kind == CLinkKind {
+		return
+	}
+	member.Used = true
+	r.refs[node] = member
 }
 
 func exportNames(table Exported) []string {

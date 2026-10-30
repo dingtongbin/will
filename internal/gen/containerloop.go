@@ -7,10 +7,9 @@ import (
 )
 
 // prepareContainerLoop allocates the index and binding slots of a loop over a
-// Map or a Set. It reports whether the iterator is such a container.
+// dict or a set. It reports whether the iterator is such a container.
 func (g *generator) prepareContainerLoop(r willc.Record, text string) bool {
-	text = normalizeContainerText(text)
-	if k, v, ok := mapTypeText(text); ok {
+	if k, v, ok := dictTypeText(text); ok {
 		kt, ok := g.typeLLVMOf(k)
 		if !ok {
 			return false
@@ -48,7 +47,7 @@ func (g *generator) prepareContainerLoop(r willc.Record, text string) bool {
 		g.entryAlloca(fmt.Sprintf("  %s = alloca %s", vSlot, vt))
 		return true
 	}
-	if elem, ok := setTypeText(text); ok {
+	if elem, ok := finalSetTypeText(text); ok {
 		et, ok := g.typeLLVMOf(elem)
 		if !ok {
 			return false
@@ -101,11 +100,11 @@ func (g *generator) forMap(r willc.Record, k, v string, void bool, label int) (b
 		}
 	}
 	if baseType != "{ ptr, i64, i64 }" {
-		return false, g.errf(r.ID, "cannot translate node #%d: the loop needs a Map", r.ID)
+		return false, g.errf(r.ID, "cannot translate node #%d: the loop needs a dict", r.ID)
 	}
 	entry, ok := g.mapEntryLLVM(k, v)
 	if !ok {
-		return false, g.errf(r.ID, "cannot translate node #%d: the Map entry is not lowered yet", r.ID)
+		return false, g.errf(r.ID, "cannot translate node #%d: the dict entry is not lowered yet", r.ID)
 	}
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
@@ -191,11 +190,11 @@ func (g *generator) forSet(r willc.Record, elem string, void bool, label int) (b
 		}
 	}
 	if baseType != "{ ptr, i64, i64 }" {
-		return false, g.errf(r.ID, "cannot translate node #%d: the loop needs a Set", r.ID)
+		return false, g.errf(r.ID, "cannot translate node #%d: the loop needs a set", r.ID)
 	}
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok {
-		return false, g.errf(r.ID, "cannot translate node #%d: the Set element is not lowered yet", r.ID)
+		return false, g.errf(r.ID, "cannot translate node #%d: the set element is not lowered yet", r.ID)
 	}
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)

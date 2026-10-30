@@ -1,18 +1,20 @@
 struct Box {
     ch: chan<i32>
-}
 
-async def (b: ref Box) take() -> i32 {
-    var item: Option<i32> = await b.ch.recv()
-    match item {
-        Some(value) => {
-            return value
-        }
-        None => {
-            return -1
+    async def take(self) -> i32 {
+        var item: Option<i32> = await self.ch.recv()
+        match item {
+            Some(value) => {
+                return value
+            }
+            None => {
+                return -1
+            }
         }
     }
 }
+
+
 
 async def worker(ch: chan<i32>) -> i32 {
     var item: Option<i32> = await ch.recv()
@@ -65,10 +67,10 @@ async def drain(ch: chan<i32>, n: i32) -> i32 {
 }
 
 async def main() -> i32 {
-    var ch: chan<i32> = new chan<i32>(1)
-    var other: chan<i32> = new chan<i32>(1)
-    var third: chan<i32> = new chan<i32>(1)
-    var fourth: chan<i32> = new chan<i32>(4)
+    var ch: chan<i32> = chan<i32>(1)
+    var other: chan<i32> = chan<i32>(1)
+    var third: chan<i32> = chan<i32>(1)
+    var fourth: chan<i32> = chan<i32>(4)
     var box: Box = Box{ch: other}
     region {
         var producer: Task<()> = spawn produce(ch, 42)

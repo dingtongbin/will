@@ -4,15 +4,19 @@ struct C {
 
 struct E {
     m: str
+
+    def message(self) -> str {
+        return self.m.clone()
+    }
+
+    def status(self) -> i32 {
+        return 1
+    }
 }
 
-def (e: ref E) message() -> str {
-    return e.m.clone()
-}
 
-def (e: ref E) status() -> i32 {
-    return 1
-}
+
+
 
 def maybe(ok: bool) -> Result<i32, E> {
     if ok {

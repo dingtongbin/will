@@ -79,15 +79,6 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 		} else {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", pab[i].typ, arg, field)
 		}
-		// The capture is the crossing whether the parameter moves by value
-		// or by pointer: an rc handle lands in a frame another lane runs.
-		share := field
-		if pab[i].byPtr && isSingleBorrow(pab[i].text) {
-			share = arg
-		}
-		if err := g.shareValue(share, pab[i].text); err != nil {
-			return err
-		}
 	}
 	for i := len(paramRecs); i < len(info.fields); i++ {
 		f := info.fields[i]

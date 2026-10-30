@@ -59,7 +59,6 @@ func TestPollerContract(t *testing.T) {
 		filepath.Join(dir, "..", "task", "src", "task.c"),
 		filepath.Join(dir, "..", "timer", "src", "timer.c"),
 		filepath.Join(dir, "..", "mem", "src", "alloc.c"),
-		filepath.Join(dir, "..", "rc", "src", "rc.c"),
 		filepath.Join(dir, "..", "report", "src", "report.c"),
 		filepath.Join(root, "platform", platform))
 	for _, source := range []string{

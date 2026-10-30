@@ -255,7 +255,7 @@ func separate(prev, cur token.Token, prevUnary, curUnary, origGap bool) bool {
 	case token.Dot, token.DotDotDot, token.LParen, token.LBracket:
 		return false
 	case token.RBracket:
-		if cur.Kind == token.Ident || cur.Kind == token.LBracket {
+		if cur.Kind == token.Ident || cur.Kind == token.LBracket || cur.Kind == token.RParen {
 			return false
 		}
 		return true

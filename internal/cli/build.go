@@ -141,10 +141,8 @@ func fileFrontEnd(opts buildOptions, stdout, stderr io.Writer) (frontEnd, int) {
 		files := append([]*ast.File{}, others...)
 		files = append(files, f)
 		ownership := check.NewOwnership(files)
-		effects := check.NewMutEffects(files)
 		bag.AddAll(check.MovesWithOwnership(f, ownership))
-		bag.AddAll(check.BorrowsWithEffects(f, ownership, effects))
-		bag.AddAll(check.TopLevelWritesWithEffects(f, effects))
+		bag.AddAll(check.TopLevelWrites(f))
 		bag.AddAll(check.Leaks(f))
 		bag.AddAll(check.CrossTask(f, checked))
 		bag.AddAll(check.Concurrency(f))
@@ -429,6 +427,7 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, []byte, str
 		return nil, nil, "", 1
 	}
 	astRecords = append(astRecords, gcRecords...)
+	astRecords = dedupeRecords(astRecords)
 	record := decisions.Write(astRecords)
 	store, key := loweringCacheKey(texts, record, opts)
 	if store != nil {
@@ -436,23 +435,37 @@ func compileIR(opts buildOptions, stdout, stderr io.Writer) ([]byte, []byte, str
 			return got[cache.ModuleLL], got[cache.Decisions], fe.modulePath, 0
 		}
 	}
-	ir, crossings, gcDecisions, err := gen.EmitModuleWithDecisions(docs, opts.entry, fe.modulePath, fe.aliases, opts.lib)
+	ir, gcDecisions, err := gen.EmitModuleWithDecisions(docs, opts.entry, fe.modulePath, fe.aliases, opts.lib)
 	if err != nil {
 		reportTranslate(diagOut, err)
 		return nil, nil, "", 1
 	}
-	// The record the build keeps carries one share obligation per promotion
-	// the lowering emitted; the cache key stays on the front-end record so
-	// the key remains a function of the inputs.
 	finalRecords := append([]decisions.Record(nil), astRecords...)
-	finalRecords = append(finalRecords, crossingRecords(crossings)...)
 	finalRecords = append(finalRecords, gcDecisions...)
+	finalRecords = dedupeRecords(finalRecords)
 	record = decisions.Write(finalRecords)
 	if store != nil {
 		_ = store.Put(key, map[string][]byte{cache.ModuleLL: ir, cache.Decisions: record})
 		_ = store.TrimIfNeeded()
 	}
 	return ir, record, fe.modulePath, 0
+}
+
+// dedupeRecords keeps the first copy of each rendered decision line. The
+// front-end layout pass and the GC type graph both describe a struct layout, so
+// their overlap must not reach the record twice.
+func dedupeRecords(records []decisions.Record) []decisions.Record {
+	seen := make(map[string]bool, len(records))
+	out := records[:0]
+	for _, rec := range records {
+		key := string(decisions.Write([]decisions.Record{rec}))
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, rec)
+	}
+	return out
 }
 
 // moduleDecisionText is the decision record of the batch a build lowers. The
@@ -480,17 +493,6 @@ func moduleDecisionRecords(fe frontEnd, target string) ([]decisions.Record, erro
 		return nil, err
 	}
 	return records, nil
-}
-
-// crossingRecords turns the lowering's share promotions into one obligation
-// each. verdict is emitted, not proved: the record documents that the
-// promotion happened, which is the share discipline's whole point.
-func crossingRecords(crossings []gen.Crossing) []decisions.Record {
-	records := make([]decisions.Record, 0, len(crossings))
-	for _, c := range crossings {
-		records = append(records, decisions.Obligation(c.Pos, "share", "emitted", "crossing"))
-	}
-	return records
 }
 
 // loweringCacheKey keys the lowering stage on every willc text it reads, in
@@ -849,7 +851,6 @@ func runtimeSources(root, target string) []string {
 		filepath.Join("core", "gc", "src", "cycle.c"),
 		filepath.Join("core", "gc", "src", "pacer.c"),
 		filepath.Join("core", "gc", "src", "safepoint.c"),
-		filepath.Join("core", "rc", "src", "rc.c"),
 		filepath.Join("core", "report", "src", "report.c"),
 		filepath.Join("core", "startup", "src", "startup.c"),
 		filepath.Join("core", "timer", "src", "timer.c"),

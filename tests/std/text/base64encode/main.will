@@ -19,7 +19,7 @@ def main() -> i32 {
     if base64.encode(utf8[Range(0, 6)]) != "5L2g5aW9" {
         return 4
     }
-    var bytesIn: Array<u8> = new Array<u8>(2)
+    var bytesIn: list[u8] = list[u8](2)
     bytesIn.push(u8(251))
     bytesIn.push(u8(255))
     if base64.encode(bytesIn[Range(0, 2)]) != "+/8=" {
@@ -28,7 +28,7 @@ def main() -> i32 {
     if base64.encode_url(bytesIn[Range(0, 2)]) != "-_8=" {
         return 6
     }
-    var back: Result<Array<u8>, Error> = base64.decode(base64.encode(utf8[Range(0, 6)]))
+    var back: Result<list[u8], Error> = base64.decode(base64.encode(utf8[Range(0, 6)]))
     match back {
         Ok(v) => {
             if v.len() != usize(6) {

@@ -6,7 +6,7 @@ import (
 )
 
 const freestandingSource = `def f() {
-    var xs: Array<i64> = new Array<i64>(0)
+    var xs: list[i64] = list[i64](0)
     _ = xs
 }
 `

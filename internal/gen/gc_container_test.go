@@ -7,7 +7,7 @@ import (
 
 func TestContainersAllocateThroughTheCollector(t *testing.T) {
 	src := `def main() -> i32 {
-    var a: Array<i32> = new Array<i32>(2)
+    var a: list[i32] = list[i32](2)
     var m: dict[str, i32] = dict[str, i32](2)
     var s: set[i32] = set[i32](2)
     a.push(1)

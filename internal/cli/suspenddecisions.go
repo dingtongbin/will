@@ -54,8 +54,6 @@ func hasRecvStmt(st ast.Stmt) bool {
 		}
 	case *ast.RegionStmt:
 		return hasRecvLoop(s.Body)
-	case *ast.ParallelStmt:
-		return hasRecvLoop(s.Body)
 	}
 	return false
 }

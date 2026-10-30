@@ -7,7 +7,7 @@ def less(a: i32, b: i32) -> bool {
 # Heap must keep the root smallest through every Push and Pop, including the
 # sift-down path with two children.
 def main() -> i32 {
-    var h: heap.Heap<i32> = new heap.Heap<i32>(less)
+    var h: heap.Heap<i32> = heap.Heap<i32>(less)
     if h.len() != 0usize {
         return 1
     }
@@ -29,7 +29,7 @@ def main() -> i32 {
             return 4
         }
     }
-    var expected: Array<i32> = new Array<i32>(0)
+    var expected: list[i32] = list[i32](0)
     expected.push(1)
     expected.push(3)
     expected.push(5)

@@ -69,8 +69,7 @@ func (g *generator) lowerLen(r willc.Record) (string, error) {
 		return "", err
 	}
 	if text == "str" || text == "[]u8" || strings.HasPrefix(text, "[]") ||
-		strings.HasPrefix(text, "mut []") || strings.HasPrefix(text, "Array<") ||
-		strings.HasPrefix(text, "Map<") || strings.HasPrefix(text, "Set<") {
+		strings.HasPrefix(text, "mut []") {
 		g.tmp++
 		field := "%t" + strconv.Itoa(g.tmp)
 		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", field, typ, base)

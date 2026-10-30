@@ -854,7 +854,6 @@ static void willrt_lane_init(void) {
     if (willrt_lane_workers != NULL) {
         atomic_store(&willrt_threads_live, 1);
         willrt_mem_set_shared();
-        willrt_rc_set_threaded();
         for (i = 0; i < count; i++) {
             memset(&willrt_lane_workers[i], 0, sizeof(willrt_lane_workers[i]));
             willrt_lane_workers[i].id = i;
@@ -976,7 +975,6 @@ void willrt_task_run(willrt_task* task) {
     willrt_lane_init();
     if (willrt_lane_started == 0) {
         atomic_store(&willrt_threads_live, 1);
-        willrt_rc_set_threaded();
         willrt_mem_set_shared();
         willrt_task_run_step(task);
         return;
@@ -1001,7 +999,6 @@ void willrt_task_run_auto(willrt_task* task) {
     willrt_lane_init();
     if (willrt_lane_started == 0) {
         atomic_store(&willrt_threads_live, 1);
-        willrt_rc_set_threaded();
         willrt_mem_set_shared();
         willrt_task_run_step(task);
         return;

@@ -15,24 +15,6 @@ func isFinalContainerText(text string) bool {
 		strings.HasPrefix(text, "set[")
 }
 
-// mapTypeText splits the old Map<K,V> handle into its key and value types.
-func mapTypeText(text string) (k, v string, ok bool) {
-	name, args, ok := splitGenericType(text)
-	if !ok || name != "Map" || len(args) != 2 {
-		return "", "", false
-	}
-	return args[0], args[1], true
-}
-
-// setTypeText splits the old Set<T> handle into its element type.
-func setTypeText(text string) (elem string, ok bool) {
-	name, args, ok := splitGenericType(text)
-	if !ok || name != "Set" || len(args) != 1 {
-		return "", false
-	}
-	return args[0], true
-}
-
 // dictTypeText splits dict[K,V] into its key and value types.
 func dictTypeText(text string) (k, v string, ok bool) {
 	name, args, ok := splitGenericType(text)
@@ -51,18 +33,6 @@ func finalSetTypeText(text string) (elem string, ok bool) {
 	return args[0], true
 }
 
-// normalizeContainerText maps a final container type to the old handle
-// spelling, which the shared entry logic understands.
-func normalizeContainerText(text string) string {
-	if k, v, ok := dictTypeText(text); ok {
-		return "Map<" + k + "," + v + ">"
-	}
-	if elem, ok := finalSetTypeText(text); ok {
-		return "Set<" + elem + ">"
-	}
-	return text
-}
-
 // mapEntryLLVM is the LLVM type of one Map entry.
 func (g *generator) mapEntryLLVM(k, v string) (string, bool) {
 	kt, ok := g.typeLLVMOf(k)
@@ -79,49 +49,6 @@ func (g *generator) mapEntryLLVM(k, v string) (string, bool) {
 // containerValueType is the LLVM type of a Set element or Map key/value.
 func (g *generator) containerValueType(text string) (string, bool) {
 	return g.typeLLVMOf(text)
-}
-
-// constructMapSet builds `new Map<K,V>(cap)` or `new Set<T>(cap)`: the
-// three-word value (data, length, capacity), with room for cap entries.
-func (g *generator) constructMapSet(r willc.Record, entryLLVM, descriptor string) (string, string, error) {
-	slot := g.allocSlot(g.newSlots, "new", r.ID, "{ ptr, i64, i64 }")
-	size, _, ok := g.sizeAlign(entryLLVM)
-	if !ok {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: the entry has no layout", r.ID)
-	}
-	capValue := "0"
-	args := g.callArgs(r)
-	if len(args) != 0 {
-		v, err := g.indexValue(args[0], r)
-		if err != nil {
-			return "", "", err
-		}
-		capValue = v
-	}
-	ptr := "null"
-	if lit := intLitValue(args, g); lit > 0 {
-		ptr = g.newTmp()
-		g.gcAllocSequence(ptr, fmt.Sprintf("%d", lit*size), descriptor)
-	} else if lit < 0 {
-		g.emitGuardedAlloc(&ptr, capValue, size, descriptor)
-	}
-	dataPin := g.pinContainerData(ptr)
-	ptr = dataPin
-	defer g.unpinContainer(dataPin)
-	dataField := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataField, slot)
-	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", ptr, dataField)
-	lenField := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenField, slot)
-	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", lenField)
-	capField := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 2\n", capField, slot)
-	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", capValue, capField)
-	// The new handle is not a root by itself. Publish its data word into the
-	// frame root before the construction pin is released.
-	g.gcInlineReady[r.ID] = true
-	g.refreshInlineRoot(r.ID)
-	return slot, "{ ptr, i64, i64 }", nil
 }
 
 // emitGuardedAlloc allocates cap*size bytes, skipping the allocation when the
@@ -148,7 +75,7 @@ func (g *generator) emitGuardedAlloc(ptr *string, capValue string, size int, des
 	fmt.Fprintf(g.out, "  %s = phi ptr [ null, %%%s ], [ %s, %%%s ]\n", *ptr, zero, allocated, alloc)
 }
 
-// containerCallResult returns the LLVM and will result types of a Map or Set
+// containerCallResult returns the LLVM and will result types of a dict or set
 // method. known is true for a method the lowering handles; llvm is empty for a
 // method that returns no value.
 func (g *generator) containerCallResult(r willc.Record) (llvm, text string, known bool) {
@@ -160,15 +87,8 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 		return "", "", false
 	}
 	recvText = stripPredeclaredPackage(recvText)
-	isDictRecv := false
-	if k, v, ok := dictTypeText(recvText); ok {
-		recvText = "Map<" + k + "," + v + ">"
-		isDictRecv = true
-	} else if elem, ok := finalSetTypeText(recvText); ok {
-		recvText = "Set<" + elem + ">"
-	}
 	name := fieldText(r, "text")
-	if k, v, ok := mapTypeText(recvText); ok {
+	if k, v, ok := dictTypeText(recvText); ok {
 		switch name {
 		case "len":
 			return "i64", "usize", true
@@ -183,25 +103,13 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 		case "set", "clear", "each":
 			return "", "", true
 		case "keys":
-			if isDictRecv {
-				return "ptr", "list[" + k + "]", true
-			}
-			if _, ok := g.containerValueType(k); !ok {
-				return "", "", false
-			}
-			return "{ ptr, i64, i64 }", "Array<" + k + ">", true
+			return "ptr", "list[" + k + "]", true
 		case "values":
-			if isDictRecv {
-				return "ptr", "list[" + v + "]", true
-			}
-			if _, ok := g.containerValueType(v); !ok {
-				return "", "", false
-			}
-			return "{ ptr, i64, i64 }", "Array<" + v + ">", true
+			return "ptr", "list[" + v + "]", true
 		}
 		return "", "", false
 	}
-	if _, ok := setTypeText(recvText); ok {
+	if _, ok := finalSetTypeText(recvText); ok {
 		switch name {
 		case "len":
 			return "i64", "usize", true
@@ -214,7 +122,7 @@ func (g *generator) containerCallResult(r willc.Record) (llvm, text string, know
 	return "", "", false
 }
 
-// containerMethod lowers a method call on Map<K,V> or Set<T>.
+// containerMethod lowers a method call on dict[K,V] or set[T].
 func (g *generator) containerMethod(r willc.Record, recvText string) (string, string, error) {
 	ownerPin, owner, err := g.pinContainerReceiver(refField(r, "recv"))
 	if err != nil {
@@ -249,13 +157,6 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 	if err != nil {
 		return "", "", err
 	}
-	isDictRecv := false
-	if k, v, ok := dictTypeText(recvText); ok {
-		recvText = "Map<" + k + "," + v + ">"
-		isDictRecv = true
-	} else if elem, ok := finalSetTypeText(recvText); ok {
-		recvText = "Set<" + elem + ">"
-	}
 	if baseType != "{ ptr, i64, i64 }" {
 		return "", "", g.errf(r.ID, "cannot translate node #%d: the receiver is not a container", r.ID)
 	}
@@ -274,16 +175,16 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 	g.publishContainerData(dataPtr, data)
 	length := g.load("i64", lenPtr)
 	name := fieldText(r, "text")
-	if k, v, ok := mapTypeText(recvText); ok {
+	if k, v, ok := dictTypeText(recvText); ok {
 		kt, _ := g.containerValueType(k)
 		vt, _ := g.containerValueType(v)
 		entry, ok := g.mapEntryLLVM(k, v)
 		if !ok {
-			return "", "", g.errf(r.ID, "cannot translate node %d: the Map entry is not lowered yet", r.ID)
+			return "", "", g.errf(r.ID, "cannot translate node %d: the dict entry is not lowered yet", r.ID)
 		}
 		entrySize, _, ok := g.sizeAlign(entry)
 		if !ok {
-			return "", "", g.errf(r.ID, "cannot translate node %d: the Map entry has no layout", r.ID)
+			return "", "", g.errf(r.ID, "cannot translate node %d: the dict entry has no layout", r.ID)
 		}
 		descriptor, err := g.mapEntryDescriptor(k, v)
 		if err != nil {
@@ -333,20 +234,17 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 				field = 1
 				elemText = v
 			}
-			if isDictRecv {
-				return g.mapList(r, entry, data, length, field, elemText)
-			}
-			return g.mapArray(r, entry, entrySize, data, length, field, elemText)
+			return g.mapList(r, entry, data, length, field, elemText)
 		case "each":
 			return g.dictEach(r, entry, data, length, kt, vt)
 		}
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Map.%s is not lowered yet", r.ID, name)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: dict.%s is not lowered yet", r.ID, name)
 	}
-	if elem, ok := setTypeText(recvText); ok {
+	if elem, ok := finalSetTypeText(recvText); ok {
 		et, _ := g.containerValueType(elem)
 		entrySize, _, ok := g.sizeAlign(et)
 		if !ok {
-			return "", "", g.errf(r.ID, "cannot translate node %d: the Set element has no layout", r.ID)
+			return "", "", g.errf(r.ID, "cannot translate node %d: the set element has no layout", r.ID)
 		}
 		descriptor, err := g.sequenceDescriptor(elem)
 		if err != nil {
@@ -384,9 +282,9 @@ func (g *generator) containerMethod(r willc.Record, recvText string) (string, st
 		case "each":
 			return g.setEach(r, et, data, length)
 		}
-		return "", "", g.errf(r.ID, "cannot translate node #%d: Set.%s is not lowered yet", r.ID, name)
+		return "", "", g.errf(r.ID, "cannot translate node #%d: set.%s is not lowered yet", r.ID, name)
 	}
-	return "", "", g.errf(r.ID, "cannot translate node #%d: the receiver is not a Map or Set", r.ID)
+	return "", "", g.errf(r.ID, "cannot translate node #%d: the receiver is not a dict or set", r.ID)
 }
 
 // findMapKey scans a Map for a key and returns the found flag and the entry
@@ -562,10 +460,6 @@ func (g *generator) storeValueAt(dst string, id int) error {
 		return err
 	}
 	text, textErr := g.willTypeText(id)
-	if textErr == nil && isRcText(text) && !isWeakText(text) {
-		g.needRcDecl = true
-		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-	}
 	if textErr == nil {
 		g.gcStoreContainerScalar(dst, value, typ, text)
 		return nil
@@ -873,101 +767,6 @@ func (g *generator) mapGet(r willc.Record, text, valueText, entry, keyLLVM, valu
 	fmt.Fprintf(g.out, "  br label %%%s\n", done)
 	g.out.WriteString(done + ":\n")
 	return g.load(adt.llvm, slot), text, nil
-}
-
-// mapArray copies one field of every Map entry into a new Array.
-func (g *generator) mapArray(r willc.Record, entry string, entrySize int, data, length string, field int, elemText string) (string, string, error) {
-	elemLLVM, ok := g.typeLLVMOf(elemText)
-	if !ok {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: %s is not lowered yet", r.ID, elemText)
-	}
-	elemSize, _, ok := g.sizeAlign(elemLLVM)
-	if !ok {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: %s has no layout", r.ID, elemText)
-	}
-	slot := g.callSlots[r.ID]
-	if slot == "" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: the Array result has no slot", r.ID)
-	}
-	pinned := g.pinContainerData(data)
-	defer g.unpinContainer(pinned)
-	newData := "null"
-	g.labels++
-	n := g.labels
-	zero := fmt.Sprintf("keys.zero.%d", n)
-	alloc := fmt.Sprintf("keys.alloc.%d", n)
-	ready := fmt.Sprintf("keys.ready.%d", n)
-	cond := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = icmp eq i64 %s, 0\n", cond, length)
-	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, zero, alloc)
-	g.out.WriteString(alloc + ":\n")
-	bytes := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, length, elemSize)
-	descriptor, err := g.sequenceDescriptor(elemText)
-	if err != nil {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: %v", r.ID, err)
-	}
-	allocated := g.newTmp()
-	g.gcAllocSequence(allocated, bytes, descriptor)
-	fmt.Fprintf(g.out, "  br label %%%s\n", ready)
-	g.out.WriteString(zero + ":\n")
-	fmt.Fprintf(g.out, "  br label %%%s\n", ready)
-	g.out.WriteString(ready + ":\n")
-	newData = g.newTmp()
-	fmt.Fprintf(g.out, "  %s = phi ptr [ null, %%%s ], [ %s, %%%s ]\n", newData, zero, allocated, alloc)
-	if err := g.emitFieldCopy(entry, elemLLVM, elemText, data, newData, length, field); err != nil {
-		return "", "", err
-	}
-	dataField := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataField, slot)
-	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", newData, dataField)
-	lenField := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenField, slot)
-	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, lenField)
-	capField := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 2\n", capField, slot)
-	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, capField)
-	_ = entrySize
-	return g.load("{ ptr, i64, i64 }", slot), "Array<" + elemText + ">", nil
-}
-
-// emitFieldCopy copies one field of every entry into a flat array. The copy is
-// owned by the new array, so an rc field gains a reference and a str or nested
-// container gets its own buffer.
-func (g *generator) emitFieldCopy(entry, elem, elemText, src, dst, length string, field int) error {
-	g.labels++
-	n := g.labels
-	pre := fmt.Sprintf("fld.pre.%d", n)
-	cond := fmt.Sprintf("fld.cond.%d", n)
-	body := fmt.Sprintf("fld.body.%d", n)
-	next := fmt.Sprintf("fld.next.%d", n)
-	done := fmt.Sprintf("fld.done.%d", n)
-	fmt.Fprintf(g.out, "  br label %%%s\n", pre)
-	g.out.WriteString(pre + ":\n")
-	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
-	g.out.WriteString(cond + ":\n")
-	i := g.newTmp()
-	nextValue := "%fld.next.v." + fmt.Sprint(n)
-	fmt.Fprintf(g.out, "  %s = phi i64 [ 0, %%%s ], [ %s, %%%s ]\n", i, pre, nextValue, next)
-	more := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", more, i, length)
-	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", more, body, done)
-	g.out.WriteString(body + ":\n")
-	entryPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", entryPtr, entry, src, i)
-	fieldPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n", fieldPtr, entry, entryPtr, field)
-	dstPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", dstPtr, elem, dst, i)
-	if err := g.cloneOwnedValue(fieldPtr, dstPtr, elemText); err != nil {
-		return err
-	}
-	fmt.Fprintf(g.out, "  br label %%%s\n", next)
-	g.out.WriteString(next + ":\n")
-	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", nextValue, i)
-	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
-	g.out.WriteString(done + ":\n")
-	return nil
 }
 
 // mapList copies one entry field of every live entry into a fresh list.

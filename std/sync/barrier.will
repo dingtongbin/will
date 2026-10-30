@@ -11,30 +11,36 @@ import c "barrier.h" {
 
 struct Barrier {
     handle: raw
+
+    def init(self, parties: usize) {
+        self.handle = c.willrt_sync_barrier_new(i64(parties))
+    }
+
+    def wait_blocking(self) -> Result<(), Error> {
+        var status: i32 = c.willrt_sync_barrier_wait_blocking(self.handle)
+        if status == 0 {
+            return Ok(())
+        }
+        return Err(errors.Io)
+    }
+
+    async def wait(self) -> Result<(), Error> {
+        var status: i32 = await c.willrt_sync_barrier_wait_async(self.handle)
+        if status == 0 {
+            return Ok(())
+        }
+        if status == -5 {
+            return Err(Canceled)
+        }
+        if status == -6 {
+            return Err(Deadline)
+        }
+        return Err(errors.Io)
+    }
 }
 
-def (b: mut Barrier) init(parties: usize) {
-    b.handle = c.willrt_sync_barrier_new(i64(parties))
-}
 
-def (b: ref Barrier) wait_blocking() -> Result<(), Error> {
-    var status: i32 = c.willrt_sync_barrier_wait_blocking(b.handle)
-    if status == 0 {
-        return Ok(())
-    }
-    return Err(errors.Io)
-}
 
-async def (b: ref Barrier) wait() -> Result<(), Error> {
-    var status: i32 = await c.willrt_sync_barrier_wait_async(b.handle)
-    if status == 0 {
-        return Ok(())
-    }
-    if status == -5 {
-        return Err(Canceled)
-    }
-    if status == -6 {
-        return Err(Deadline)
-    }
-    return Err(errors.Io)
-}
+
+
+

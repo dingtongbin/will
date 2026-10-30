@@ -1,2 +1,2 @@
-newp.will:6:12: T0007 type P has no init; use a literal
-    help: write P { ... } or add an init method
+newp.will:6:12: T0011 type P has no value for field x
+    help: initialize it in P(...) or give it a default

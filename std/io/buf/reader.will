@@ -5,37 +5,37 @@ import "std/io"
 
 struct ReaderBuf {
     src: io.Reader
-    data: Array<u8>
+    data: list[u8]
     pos: usize
     limit: usize
-}
 
-# init wraps r in a buffer of size bytes. A size of zero passes every read
-# straight through.
-def (b: mut ReaderBuf) init(r: io.Reader, size: usize) {
-    b.src = r.clone()
-    b.data = new Array<u8>(size)
-    b.pos = 0usize
-    b.limit = size
-}
-
-# Read appends the next buffered bytes to out. It returns the count appended;
-# zero means the wrapped Reader has no more bytes.
-async def (b: mut ReaderBuf) read(out: mut Array<u8>) -> Result<usize, Error> {
-    if b.limit == 0usize {
-        return await b.src.read(out)
+    def init(self, r: io.Reader, size: usize) {
+        self.src = r.clone()
+        self.data = list[u8](size)
+        self.pos = 0usize
+        self.limit = size
     }
-    if b.pos >= b.data.len() {
-        b.data.clear()
-        b.pos = 0usize
-        var n: usize = (await b.src.read(b.data))?
-        if n == 0usize {
-            return Ok(0usize)
+
+    async def read(self, out: list[u8]) -> Result<usize, Error> {
+        if self.limit == 0usize {
+            return await self.src.read(out)
         }
+        if self.pos >= self.data.len() {
+            self.data.clear()
+            self.pos = 0usize
+            var n: usize = (await self.src.read(self.data))?
+            if n == 0usize {
+                return Ok(0usize)
+            }
+        }
+        var start: usize = self.pos
+        var end: usize = self.data.len()
+        self.pos = end
+        out.append(self.data[Range(start, end)])
+        return Ok(end - start)
     }
-    var start: usize = b.pos
-    var end: usize = b.data.len()
-    b.pos = end
-    out.append(b.data[Range(start, end)])
-    return Ok(end - start)
 }
+
+
+
+

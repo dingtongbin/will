@@ -1,11 +1,15 @@
 struct Box<T> {
     value: T
+
+    def get(self) -> T {
+        return self.value.clone()
+    }
+
+    def set(self, v: T) {
+        self.value = v
+    }
 }
 
-def (b: ref Box<T>) get() -> T {
-    return b.value.clone()
-}
 
-def (b: mut Box<T>) set(v: T) {
-    b.value = v
-}
+
+

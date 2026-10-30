@@ -18,336 +18,352 @@ struct treeNode<K, V> {
 # Tree is an ordered map. Set, Get, Delete, Min, Max, Floor, and Ceil all walk
 # the AVL height, so they stay logarithmic.
 struct Tree<K, V> {
-    nodes: Array<treeNode<K, V>>
-    free: Array<i32>
+    nodes: list[treeNode<K, V>]
+    free: list[i32]
     root: i32
     count: usize
     less: func(K, K) -> bool
     deleted: bool
-}
 
-# init stores the key comparison and starts with no nodes.
-def (t: mut Tree<K, V>) init(less: func(K, K) -> bool) {
-    t.nodes = new Array<treeNode<K, V>>(0)
-    t.free = new Array<i32>(0)
-    t.root = -1i32
-    t.count = 0usize
-    t.less = less
-    t.deleted = False
-}
-
-# Set inserts a key or replaces the value of an existing key.
-def (t: mut Tree<K, V>) set(k: K, v: V) {
-    var at: i32 = t.find_index(k)
-    if at >= 0i32 {
-        var node: treeNode<K, V> = t.nodes.get(usize(at))
-        node.value = v
-        t.nodes.set(usize(at), node)
-        return
+    def init(self, less: func(K, K) -> bool) {
+        self.nodes = list[treeNode<K, V>](0)
+        self.free = list[i32](0)
+        self.root = -1i32
+        self.count = 0usize
+        self.less = less
+        self.deleted = False
     }
-    t.root = t.insert_at(t.root, k, v)
-    t.count += 1usize
-}
 
-# Get returns the value stored under k, or None when the key is absent.
-def (t: ref Tree<K, V>) get(k: K) -> Option<V> {
-    var at: i32 = t.find_index(k)
-    if at < 0i32 {
-        return None
-    }
-    var node: treeNode<K, V> = t.nodes.get(usize(at))
-    return Some(node.value)
-}
-
-# Delete removes one key. It returns false when the key was not present.
-def (t: mut Tree<K, V>) delete(k: K) -> bool {
-    if t.root < 0i32 {
-        return False
-    }
-    t.deleted = False
-    t.root = t.delete_at(t.root, k)
-    if not t.deleted {
-        return False
-    }
-    t.count -= 1usize
-    return True
-}
-
-# Len reports the number of stored entries.
-def (t: ref Tree<K, V>) len() -> usize {
-    return t.count
-}
-
-# Min returns the smallest entry, or None when the tree is empty.
-def (t: ref Tree<K, V>) min() -> Option<Pair<K, V>> {
-    if t.root < 0i32 {
-        return None
-    }
-    var at: i32 = t.root
-    while True {
-        var node: treeNode<K, V> = t.nodes.get(usize(at))
-        if node.left < 0i32 {
-            return Some(Pair<K, V> { first: node.key, second: node.value })
+    def set(self, k: K, v: V) {
+        var at: i32 = self.find_index(k)
+        if at >= 0i32 {
+            var node: treeNode<K, V> = self.nodes.get(usize(at))
+            node.value = v
+            self.nodes.set(usize(at), node)
+            return
         }
-        at = node.left
+        self.root = self.insert_at(self.root, k, v)
+        self.count += 1usize
     }
-}
 
-# Max returns the largest entry, or None when the tree is empty.
-def (t: ref Tree<K, V>) max() -> Option<Pair<K, V>> {
-    if t.root < 0i32 {
-        return None
-    }
-    var at: i32 = t.root
-    while True {
-        var node: treeNode<K, V> = t.nodes.get(usize(at))
-        if node.right < 0i32 {
-            return Some(Pair<K, V> { first: node.key, second: node.value })
-        }
-        at = node.right
-    }
-}
-
-# Floor returns the largest entry whose key is not greater than k.
-def (t: ref Tree<K, V>) floor(k: K) -> Option<Pair<K, V>> {
-    var at: i32 = t.root
-    var best: i32 = -1i32
-    var cmp: func(K, K) -> bool = t.less
-    while True {
+    def get(self, k: K) -> Option<V> {
+        var at: i32 = self.find_index(k)
         if at < 0i32 {
-            break
+            return None
         }
-        var node: treeNode<K, V> = t.nodes.get(usize(at))
-        if cmp(node.key, k) {
-            best = at
-            at = node.right
-        } else if cmp(k, node.key) {
+        var node: treeNode<K, V> = self.nodes.get(usize(at))
+        return Some(node.value)
+    }
+
+    def delete(self, k: K) -> bool {
+        if self.root < 0i32 {
+            return False
+        }
+        self.deleted = False
+        self.root = self.delete_at(self.root, k)
+        if not self.deleted {
+            return False
+        }
+        self.count -= 1usize
+        return True
+    }
+
+    def len(self) -> usize {
+        return self.count
+    }
+
+    def min(self) -> Option<Pair<K, V>> {
+        if self.root < 0i32 {
+            return None
+        }
+        var at: i32 = self.root
+        while True {
+            var node: treeNode<K, V> = self.nodes.get(usize(at))
+            if node.left < 0i32 {
+                return Some(Pair<K, V> { first: node.key.clone(), second: node.value.clone() })
+            }
             at = node.left
-        } else {
-            best = at
-            break
         }
     }
-    if best < 0i32 {
-        return None
-    }
-    var found: treeNode<K, V> = t.nodes.get(usize(best))
-    return Some(Pair<K, V> { first: found.key, second: found.value })
-}
 
-# Ceil returns the smallest entry whose key is not less than k.
-def (t: ref Tree<K, V>) ceil(k: K) -> Option<Pair<K, V>> {
-    var at: i32 = t.root
-    var best: i32 = -1i32
-    var cmp: func(K, K) -> bool = t.less
-    while True {
-        if at < 0i32 {
-            break
+    def max(self) -> Option<Pair<K, V>> {
+        if self.root < 0i32 {
+            return None
         }
-        var node: treeNode<K, V> = t.nodes.get(usize(at))
+        var at: i32 = self.root
+        while True {
+            var node: treeNode<K, V> = self.nodes.get(usize(at))
+            if node.right < 0i32 {
+                return Some(Pair<K, V> { first: node.key.clone(), second: node.value.clone() })
+            }
+            at = node.right
+        }
+    }
+
+    def floor(self, k: K) -> Option<Pair<K, V>> {
+        var at: i32 = self.root
+        var best: i32 = -1i32
+        var cmp: func(K, K) -> bool = self.less
+        while True {
+            if at < 0i32 {
+                break
+            }
+            var node: treeNode<K, V> = self.nodes.get(usize(at))
+            if cmp(node.key, k) {
+                best = at
+                at = node.right
+            } else if cmp(k, node.key) {
+                at = node.left
+            } else {
+                best = at
+                break
+            }
+        }
+        if best < 0i32 {
+            return None
+        }
+        var found: treeNode<K, V> = self.nodes.get(usize(best))
+        return Some(Pair<K, V> { first: found.key.clone(), second: found.value.clone() })
+    }
+
+    def ceil(self, k: K) -> Option<Pair<K, V>> {
+        var at: i32 = self.root
+        var best: i32 = -1i32
+        var cmp: func(K, K) -> bool = self.less
+        while True {
+            if at < 0i32 {
+                break
+            }
+            var node: treeNode<K, V> = self.nodes.get(usize(at))
+            if cmp(k, node.key) {
+                best = at
+                at = node.left
+            } else if cmp(node.key, k) {
+                at = node.right
+            } else {
+                best = at
+                break
+            }
+        }
+        if best < 0i32 {
+            return None
+        }
+        var found: treeNode<K, V> = self.nodes.get(usize(best))
+        return Some(Pair<K, V> { first: found.key.clone(), second: found.value.clone() })
+    }
+
+    def find_index(self, k: K) -> i32 {
+        var at: i32 = self.root
+        var cmp: func(K, K) -> bool = self.less
+        while True {
+            if at < 0i32 {
+                return -1i32
+            }
+            var node: treeNode<K, V> = self.nodes.get(usize(at))
+            if cmp(k, node.key) {
+                at = node.left
+            } else if cmp(node.key, k) {
+                at = node.right
+            } else {
+                return at
+            }
+        }
+    }
+
+    def height_at(self, at: i32) -> i32 {
+        if at < 0i32 {
+            return 0i32
+        }
+        var node: treeNode<K, V> = self.nodes.get(usize(at))
+        return node.height
+    }
+
+    def update_height(self, at: i32) {
+        var node: treeNode<K, V> = self.nodes.get(usize(at))
+        var leftHeight: i32 = self.height_at(node.left)
+        var rightHeight: i32 = self.height_at(node.right)
+        var taller: i32 = leftHeight
+        if rightHeight > taller {
+            taller = rightHeight
+        }
+        node.height = taller + 1i32
+        self.nodes.set(usize(at), node)
+    }
+
+    def rotate_right(self, y: i32) -> i32 {
+        var ynode: treeNode<K, V> = self.nodes.get(usize(y))
+        var x: i32 = ynode.left
+        var xnode: treeNode<K, V> = self.nodes.get(usize(x))
+        var moved: i32 = xnode.right
+        ynode.left = moved
+        xnode.right = y
+        self.nodes.set(usize(y), ynode)
+        self.nodes.set(usize(x), xnode)
+        self.update_height(y)
+        self.update_height(x)
+        return x
+    }
+
+    def rotate_left(self, x: i32) -> i32 {
+        var xnode: treeNode<K, V> = self.nodes.get(usize(x))
+        var y: i32 = xnode.right
+        var ynode: treeNode<K, V> = self.nodes.get(usize(y))
+        var moved: i32 = ynode.left
+        xnode.right = moved
+        ynode.left = x
+        self.nodes.set(usize(x), xnode)
+        self.nodes.set(usize(y), ynode)
+        self.update_height(x)
+        self.update_height(y)
+        return y
+    }
+
+    def balance(self, at: i32) -> i32 {
+        self.update_height(at)
+        var node: treeNode<K, V> = self.nodes.get(usize(at))
+        var leftHeight: i32 = self.height_at(node.left)
+        var rightHeight: i32 = self.height_at(node.right)
+        var factor: i32 = leftHeight - rightHeight
+        if factor > 1i32 {
+            var leftNode: treeNode<K, V> = self.nodes.get(usize(node.left))
+            if self.height_at(leftNode.left) < self.height_at(leftNode.right) {
+                node.left = self.rotate_left(node.left)
+                self.nodes.set(usize(at), node)
+            }
+            return self.rotate_right(at)
+        }
+        if factor < -1i32 {
+            var rightNode: treeNode<K, V> = self.nodes.get(usize(node.right))
+            if self.height_at(rightNode.right) < self.height_at(rightNode.left) {
+                node.right = self.rotate_right(node.right)
+                self.nodes.set(usize(at), node)
+            }
+            return self.rotate_left(at)
+        }
+        return at
+    }
+
+    def new_node(self, k: K, v: V) -> i32 {
+        var node: treeNode<K, V> = treeNode<K, V> {
+            key: k,
+            value: v,
+            left: -1i32,
+            right: -1i32,
+            height: 1i32,
+        }
+        if self.free.len() > 0usize {
+            match self.free.pop() {
+                Some(at) => {
+                    self.nodes.set(usize(at), node)
+                    return at
+                }
+                None => {
+                }
+            }
+        }
+        self.nodes.push(node)
+        return i32(self.nodes.len() - 1usize)
+    }
+
+    def free_node(self, at: i32) {
+        var empty: treeNode<K, V>
+        self.nodes.set(usize(at), empty)
+        self.free.push(at)
+    }
+
+    def insert_at(self, at: i32, k: K, v: V) -> i32 {
+        if at < 0i32 {
+            return self.new_node(k, v)
+        }
+        var node: treeNode<K, V> = self.nodes.get(usize(at))
+        var cmp: func(K, K) -> bool = self.less
         if cmp(k, node.key) {
-            best = at
-            at = node.left
-        } else if cmp(node.key, k) {
-            at = node.right
+            node.left = self.insert_at(node.left, k, v)
         } else {
-            best = at
-            break
+            node.right = self.insert_at(node.right, k, v)
+        }
+        self.nodes.set(usize(at), node)
+        return self.balance(at)
+    }
+
+    def min_index(self, at: i32) -> i32 {
+        var cur: i32 = at
+        while True {
+            var node: treeNode<K, V> = self.nodes.get(usize(cur))
+            if node.left < 0i32 {
+                return cur
+            }
+            cur = node.left
         }
     }
-    if best < 0i32 {
-        return None
-    }
-    var found: treeNode<K, V> = t.nodes.get(usize(best))
-    return Some(Pair<K, V> { first: found.key, second: found.value })
-}
 
-# findIndex returns the node index of k, or -1. A read-only receiver keeps the
-# public lookups from borrowing the tree mutably.
-def (t: ref Tree<K, V>) find_index(k: K) -> i32 {
-    var at: i32 = t.root
-    var cmp: func(K, K) -> bool = t.less
-    while True {
+    def delete_at(self, at: i32, k: K) -> i32 {
         if at < 0i32 {
             return -1i32
         }
-        var node: treeNode<K, V> = t.nodes.get(usize(at))
+        var node: treeNode<K, V> = self.nodes.get(usize(at))
+        var cmp: func(K, K) -> bool = self.less
         if cmp(k, node.key) {
-            at = node.left
+            node.left = self.delete_at(node.left, k)
         } else if cmp(node.key, k) {
-            at = node.right
+            node.right = self.delete_at(node.right, k)
         } else {
-            return at
-        }
-    }
-}
-
-# heightAt returns the stored height of one child index.
-def (t: ref Tree<K, V>) height_at(at: i32) -> i32 {
-    if at < 0i32 {
-        return 0i32
-    }
-    var node: treeNode<K, V> = t.nodes.get(usize(at))
-    return node.height
-}
-
-# updateHeight recomputes one node after a child changed.
-def (t: mut Tree<K, V>) update_height(at: i32) {
-    var node: treeNode<K, V> = t.nodes.get(usize(at))
-    var leftHeight: i32 = t.height_at(node.left)
-    var rightHeight: i32 = t.height_at(node.right)
-    var taller: i32 = leftHeight
-    if rightHeight > taller {
-        taller = rightHeight
-    }
-    node.height = taller + 1i32
-    t.nodes.set(usize(at), node)
-}
-
-# rotateRight turns y down and returns the new subtree root.
-def (t: mut Tree<K, V>) rotate_right(y: i32) -> i32 {
-    var ynode: treeNode<K, V> = t.nodes.get(usize(y))
-    var x: i32 = ynode.left
-    var xnode: treeNode<K, V> = t.nodes.get(usize(x))
-    var moved: i32 = xnode.right
-    ynode.left = moved
-    xnode.right = y
-    t.nodes.set(usize(y), ynode)
-    t.nodes.set(usize(x), xnode)
-    t.update_height(y)
-    t.update_height(x)
-    return x
-}
-
-# rotateLeft turns x down and returns the new subtree root.
-def (t: mut Tree<K, V>) rotate_left(x: i32) -> i32 {
-    var xnode: treeNode<K, V> = t.nodes.get(usize(x))
-    var y: i32 = xnode.right
-    var ynode: treeNode<K, V> = t.nodes.get(usize(y))
-    var moved: i32 = ynode.left
-    xnode.right = moved
-    ynode.left = x
-    t.nodes.set(usize(x), xnode)
-    t.nodes.set(usize(y), ynode)
-    t.update_height(x)
-    t.update_height(y)
-    return y
-}
-
-# balance restores the AVL invariant at one subtree root and returns the new
-# root. The four rotation cases are spelled out so the branch is explicit.
-def (t: mut Tree<K, V>) balance(at: i32) -> i32 {
-    t.update_height(at)
-    var node: treeNode<K, V> = t.nodes.get(usize(at))
-    var leftHeight: i32 = t.height_at(node.left)
-    var rightHeight: i32 = t.height_at(node.right)
-    var factor: i32 = leftHeight - rightHeight
-    if factor > 1i32 {
-        var leftNode: treeNode<K, V> = t.nodes.get(usize(node.left))
-        if t.height_at(leftNode.left) < t.height_at(leftNode.right) {
-            node.left = t.rotate_left(node.left)
-            t.nodes.set(usize(at), node)
-        }
-        return t.rotate_right(at)
-    }
-    if factor < -1i32 {
-        var rightNode: treeNode<K, V> = t.nodes.get(usize(node.right))
-        if t.height_at(rightNode.right) < t.height_at(rightNode.left) {
-            node.right = t.rotate_right(node.right)
-            t.nodes.set(usize(at), node)
-        }
-        return t.rotate_left(at)
-    }
-    return at
-}
-
-# newNode allocates one node, reusing a deleted slot when one is available.
-def (t: mut Tree<K, V>) new_node(k: K, v: V) -> i32 {
-    var node: treeNode<K, V> = treeNode<K, V> {
-        key: k,
-        value: v,
-        left: -1i32,
-        right: -1i32,
-        height: 1i32,
-    }
-    if t.free.len() > 0usize {
-        match t.free.pop() {
-            Some(at) => {
-                t.nodes.set(usize(at), node)
-                return at
+            self.deleted = True
+            if node.left < 0i32 {
+                self.free_node(at)
+                return node.right
             }
-            None => {
+            if node.right < 0i32 {
+                self.free_node(at)
+                return node.left
             }
+            var next: i32 = self.min_index(node.right)
+            var successor: treeNode<K, V> = self.nodes.get(usize(next))
+            node.key = successor.key.clone()
+            node.value = successor.value.clone()
+            node.right = self.delete_at(node.right, successor.key)
         }
-    }
-    t.nodes.push(node)
-    return i32(t.nodes.len() - 1usize)
-}
-
-# freeNode clears the removed node and marks its index as reusable. Clearing
-# releases the fields the node owned instead of holding them until reuse.
-def (t: mut Tree<K, V>) free_node(at: i32) {
-    var empty: treeNode<K, V>
-    t.nodes.set(usize(at), empty)
-    t.free.push(at)
-}
-
-# insertAt inserts below one subtree and returns its new root.
-def (t: mut Tree<K, V>) insert_at(at: i32, k: K, v: V) -> i32 {
-    if at < 0i32 {
-        return t.new_node(k, v)
-    }
-    var node: treeNode<K, V> = t.nodes.get(usize(at))
-    var cmp: func(K, K) -> bool = t.less
-    if cmp(k, node.key) {
-        node.left = t.insert_at(node.left, k, v)
-    } else {
-        node.right = t.insert_at(node.right, k, v)
-    }
-    t.nodes.set(usize(at), node)
-    return t.balance(at)
-}
-
-# minIndex returns the leftmost node of one subtree. The caller has already
-# checked that the subtree is not empty.
-def (t: ref Tree<K, V>) min_index(at: i32) -> i32 {
-    var cur: i32 = at
-    while True {
-        var node: treeNode<K, V> = t.nodes.get(usize(cur))
-        if node.left < 0i32 {
-            return cur
-        }
-        cur = node.left
+        self.nodes.set(usize(at), node)
+        return self.balance(at)
     }
 }
 
-# deleteAt removes one key below a subtree and returns its new root.
-def (t: mut Tree<K, V>) delete_at(at: i32, k: K) -> i32 {
-    if at < 0i32 {
-        return -1i32
-    }
-    var node: treeNode<K, V> = t.nodes.get(usize(at))
-    var cmp: func(K, K) -> bool = t.less
-    if cmp(k, node.key) {
-        node.left = t.delete_at(node.left, k)
-    } else if cmp(node.key, k) {
-        node.right = t.delete_at(node.right, k)
-    } else {
-        t.deleted = True
-        if node.left < 0i32 {
-            t.free_node(at)
-            return node.right
-        }
-        if node.right < 0i32 {
-            t.free_node(at)
-            return node.left
-        }
-        var next: i32 = t.min_index(node.right)
-        var successor: treeNode<K, V> = t.nodes.get(usize(next))
-        node.key = successor.key
-        node.value = successor.value
-        node.right = t.delete_at(node.right, successor.key)
-    }
-    t.nodes.set(usize(at), node)
-    return t.balance(at)
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

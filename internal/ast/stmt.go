@@ -94,14 +94,6 @@ type RegionStmt struct {
 
 func (*RegionStmt) stmtNode() {}
 
-// ParallelStmt opens a CPU-parallel block.
-type ParallelStmt struct {
-	Span
-	Body *Block
-}
-
-func (*ParallelStmt) stmtNode() {}
-
 // SelectStmt waits on several channel operations.
 type SelectStmt struct {
 	Span

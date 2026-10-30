@@ -27,7 +27,7 @@ def use() -> i32 {
 // predeclared len call. The omitted bounds become zero and the live length.
 func TestSliceBoundsAndLenBuiltin(t *testing.T) {
 	src := `def main() -> i32 {
-    var xs: Array<i32> = new Array<i32>(4)
+    var xs: list[i32] = list[i32](4)
     xs.push(1)
     xs.push(2)
     xs.push(3)

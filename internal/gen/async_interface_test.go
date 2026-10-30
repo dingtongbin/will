@@ -15,11 +15,12 @@ func TestAsyncInterfaceVtableCallsConstructor(t *testing.T) {
 
 struct Adder {
     base: i32
+
+    async def handle(self, value: i32) -> i32 {
+        return self.base + value
+    }
 }
 
-async def (a: ref Adder) handle(value: i32) -> i32 {
-    return a.base + value
-}
 
 async def main() -> i32 {
     var a: Adder = Adder { base: 40 }

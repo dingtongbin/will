@@ -37,8 +37,6 @@ const (
 	CodeUnusedImport = "N0004"
 	// CodeUnusedVar reports a variable that is never read.
 	CodeUnusedVar = "N0005"
-	// CodeMethodsTwoPackages reports a type with methods in two packages.
-	CodeMethodsTwoPackages = "N0006"
 	// CodeDuplicateName reports a duplicate top-level name.
 	CodeDuplicateName = "N0007"
 	// CodeDuplicateDerive reports the same derive twice for one type.
@@ -69,8 +67,9 @@ const (
 	CodeConstantRange = "T0005"
 	// CodeChainedComparison reports a chained comparison.
 	CodeChainedComparison = "T0006"
-	// CodeNewWithoutInit reports new on a type that has no init.
-	CodeNewWithoutInit = "T0007"
+	// CodeBadConstruct reports a type used as a constructor when it is not a
+	// class or struct.
+	CodeBadConstruct = "T0007"
 	// CodeBuiltinConstraintAsInterface reports a built-in constraint used
 	// where an interface value is needed.
 	CodeBuiltinConstraintAsInterface = "T0008"
@@ -118,16 +117,11 @@ const (
 	// CodeExternalToolMissing reports a missing or too old external tool.
 	CodeExternalToolMissing = "X0003"
 
-	// Ownership and borrow codes.
-	CodeMoved             = "O0001"
-	CodeMissingClone      = "O0002"
-	CodeBorrowConflict    = "O0003"
-	CodeBorrowOutlives    = "O0004"
-	CodeBorrowStored      = "O0005"
-	CodeMoveWhileBorrowed = "O0006"
-	CodeContainerChanged  = "O0007"
-	CodeCopyNotBorrow     = "O0008"
-	CodeTopLevelWrite     = "O0009"
+	// Ownership codes.
+	CodeMoved            = "O0001"
+	CodeMissingClone     = "O0002"
+	CodeContainerChanged = "O0007"
+	CodeTopLevelWrite    = "O0009"
 
 	// Memory and release codes.
 	CodeExplicitLeak = "M0004"
@@ -174,17 +168,16 @@ var Codes = []string{
 	CodeBadSymbol, CodeBadChar,
 	CodeUnexpectedToken, CodeKeywordName, CodeTypeArgs,
 	CodeUndefinedName, CodePrivateName, CodeShadow, CodeUnusedImport, CodeUnusedVar,
-	CodeMethodsTwoPackages, CodeDuplicateName, CodeDuplicateDerive, CodeDuplicateImport,
+	CodeDuplicateName, CodeDuplicateDerive, CodeDuplicateImport,
 	CodeTopLevelDiscard, CodeNoField, CodeNoMethod, CodeBadDeriveName,
 	CodeTypeMismatch, CodeInterfaceUnsatisfied, CodeBadArgument, CodeTypeArgCount,
-	CodeConstantRange, CodeChainedComparison, CodeNewWithoutInit, CodeInitReturn,
+	CodeConstantRange, CodeChainedComparison, CodeBadConstruct, CodeInitReturn,
 	CodeBuiltinConstraintAsInterface,
 	CodeShiftAmount,
 	CodeFeatureOutsideIf,
 	CodeNoZero,
 	CodeVariadicWiden, CodeTypeAliasCycle, CodeCrossTask,
-	CodeMoved, CodeMissingClone, CodeBorrowConflict, CodeBorrowOutlives, CodeBorrowStored,
-	CodeMoveWhileBorrowed, CodeContainerChanged, CodeCopyNotBorrow,
+	CodeMoved, CodeMissingClone, CodeContainerChanged,
 	CodeExplicitLeak,
 	CodeGuardAcrossSuspend, CodeTaskEscapesRegion, CodeTaskNotAwaited,
 	CodeSpawnNotCall, CodeDeadlock,

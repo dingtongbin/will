@@ -131,9 +131,6 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		}
 	}
 	args := g.callArgs(call)
-	// The spawn expression is the crossing: every captured rc handle gets its
-	// promotion recorded under this position.
-	g.crossingPos = fieldText(r, "pos")
 	var frameTypes []string
 	var argTypes []string
 	var argTexts []string
@@ -219,9 +216,6 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			}
 			value := g.load(argTypes[i], src)
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argTypes[i], value, field)
-			if err := g.shareValue(field, argTexts[i]); err != nil {
-				return "", err
-			}
 			if err := g.zeroTransferredSource(a, field); err != nil {
 				return "", err
 			}
@@ -237,17 +231,6 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 				field, value)
 		} else {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argTypes[i], value, field)
-		}
-		if err := g.shareValue(field, argTexts[i]); err != nil {
-			return "", err
-		}
-		// An rc handle is a copyable handle, not an owning value. The task keeps
-		// its own reference and the source stays usable.
-		if isRcText(argTexts[i]) {
-			if err := g.retainValue(field, argTexts[i]); err != nil {
-				return "", err
-			}
-			continue
 		}
 		if isChanText(argTexts[i]) {
 			if g.isCopySource(a) {
@@ -394,7 +377,7 @@ func (g *generator) finishAsyncSpawnArgs(call willc.Record, targetSym string) er
 		if err != nil || !ownsReleaseText(g, text) {
 			continue
 		}
-		if isRcText(text) || isChanText(text) {
+		if isChanText(text) {
 			if !g.isCopySource(a) {
 				continue
 			}
@@ -550,9 +533,6 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)
-	if err := g.shareValue(slot, result); err != nil {
-		return err
-	}
 	size := g.sizeOf(retLLVM)
 	g.needTaskDecl = true
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, size)
@@ -619,9 +599,6 @@ func (g *generator) emitIndirectSpawnStep(req spawnRequest, call willc.Record, t
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)
-	if err := g.shareValue(slot, result); err != nil {
-		return err
-	}
 	size := g.sizeOf(retLLVM)
 	g.needTaskDecl = true
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, size)
@@ -986,9 +963,6 @@ func (g *generator) emitJoinResumeStep(req spawnRequest, call willc.Record, fram
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)
-	if err := g.shareValue(slot, result); err != nil {
-		return err
-	}
 	sizeResult := g.sizeOf(retLLVM)
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, sizeResult)
 	g.out.WriteString("  ret i32 1\n}\n")
@@ -1066,9 +1040,6 @@ func (g *generator) emitJoinStep(req spawnRequest, frameType string, frameTypes 
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, resultLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", resultLLVM, value, slot)
-	if err := g.shareValue(slot, result); err != nil {
-		return err
-	}
 	sizeResult := g.sizeOf(resultLLVM)
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, sizeResult)
 	g.out.WriteString("  ret i32 1\n}\n")
@@ -1253,9 +1224,6 @@ func (g *generator) lowerSend(r willc.Record) error {
 		_, err := g.lowerSendResult(r)
 		return err
 	}
-	// The send is the crossing: the ring's copy and the sender's binding
-	// reach the count from two lanes.
-	g.crossingPos = fieldText(r, "pos")
 	chanPtr, err := g.value(refField(r, "chan"))
 	if err != nil {
 		return err
@@ -1282,9 +1250,6 @@ func (g *generator) lowerSend(r willc.Record) error {
 			return err
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
-	}
-	if err := g.shareValue(ptr, valueText); err != nil {
-		return err
 	}
 	keep := isChanText(valueText) && g.isCopySource(valueID)
 	if keep {
@@ -1306,9 +1271,6 @@ func (g *generator) lowerSend(r willc.Record) error {
 // lowerSendResult builds Result<(), Error> around one send. A closed channel
 // stores the built-in Closed fault in the error payload.
 func (g *generator) lowerSendResult(r willc.Record) (string, error) {
-	// The send is the crossing: the ring's copy and the sender's binding
-	// reach the count from two lanes.
-	g.crossingPos = fieldText(r, "pos")
 	chanPtr, err := g.value(refField(r, "chan"))
 	if err != nil {
 		return "", err
@@ -1335,9 +1297,6 @@ func (g *generator) lowerSendResult(r willc.Record) (string, error) {
 			return "", err
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
-	}
-	if err := g.shareValue(ptr, valueText); err != nil {
-		return "", err
 	}
 	keep := isChanText(valueText) && g.isCopySource(valueID)
 	if keep {
@@ -1528,10 +1487,6 @@ func (g *generator) lowerTrySend(r willc.Record) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	valueText, err := g.willTypeText(valueID)
-	if err != nil {
-		return "", err
-	}
 	ptr := ""
 	if isAggregateType(typ) {
 		ptr, _, err = g.place(valueID)
@@ -1545,9 +1500,6 @@ func (g *generator) lowerTrySend(r willc.Record) (string, error) {
 			return "", err
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
-	}
-	if err := g.shareValue(ptr, valueText); err != nil {
-		return "", err
 	}
 	g.needTaskDecl = true
 	status := g.newTmp()

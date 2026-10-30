@@ -209,7 +209,7 @@ func (g *generator) strReplace(r willc.Record, data, length, oldData, oldLen, ne
 	return g.storeStrValue(r, buf, total)
 }
 
-// strChars decodes one str into an Array<u32> of Unicode scalars. Invalid UTF-8
+// strChars decodes one str into an list[u32] of Unicode scalars. Invalid UTF-8
 // raises the same panic as str iteration.
 func (g *generator) strChars(r willc.Record, data, length string) (string, string, error) {
 	g.needUTF8Decl = true
@@ -278,7 +278,7 @@ func (g *generator) strChars(r willc.Record, data, length string) (string, strin
 	capField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 2\n", capField, slot)
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, capField)
-	return g.load("{ ptr, i64, i64 }", slot), "Array<u32>", nil
+	return g.load("{ ptr, i64, i64 }", slot), "list[u32]", nil
 }
 
 // strSplit builds a []str view over a plate of two-word parts.

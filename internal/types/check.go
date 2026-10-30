@@ -238,8 +238,6 @@ func (c *checker) walkStmt(s ast.Stmt) {
 		c.walkBlock(st.Body)
 	case *ast.RegionStmt:
 		c.walkBlock(st.Body)
-	case *ast.ParallelStmt:
-		c.walkBlock(st.Body)
 	case *ast.SelectStmt:
 		for _, arm := range st.Arms {
 			c.walkExpr(arm.Chan)
@@ -301,8 +299,6 @@ func (c *checker) walkExpr(e ast.Expr) {
 		for _, e := range x.Elems {
 			c.walkExpr(e)
 		}
-	case *ast.NewExpr:
-		c.walkArgs(x.Args)
 	case *ast.UnaryExpr:
 		c.walkExpr(x.X)
 	case *ast.BinaryExpr:

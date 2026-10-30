@@ -80,7 +80,6 @@ entry:
 @.str.4 = private unnamed_addr constant [30 x i8] c"example.com/fnfield.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
-declare ptr @willrt_closure_new(i64, ptr, ptr)
+declare ptr @willrt_closure_new(i64, ptr)
 declare void @willrt_closure_retain(ptr)
 declare void @willrt_closure_release(ptr)
-declare void @willrt_closure_share(ptr)

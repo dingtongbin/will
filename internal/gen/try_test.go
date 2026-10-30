@@ -11,15 +11,17 @@ import (
 func TestTryUploadsConcreteErrorAndMatchesUnit(t *testing.T) {
 	src := `struct E {
     msg: str
+
+    def message(self) -> str {
+        return self.msg
+    }
+
+    def status(self) -> i32 {
+        return 7
+    }
 }
 
-def (e: ref E) message() -> str {
-    return e.msg
-}
 
-def (e: ref E) status() -> i32 {
-    return 7
-}
 
 def fail() -> Result<(), E> {
     return Err(E { msg: "bad" })

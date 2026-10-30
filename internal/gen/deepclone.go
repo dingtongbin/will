@@ -9,24 +9,12 @@ import (
 )
 
 // cloneOwnedValue copies one value into fresh storage deep enough that the
-// destination can outlive the source. rc handles gain one reference, str and
-// container buffers are duplicated, and nested fields follow the same rule.
+// destination can outlive the source. Channel handles gain one reference, str
+// and container buffers are duplicated, and nested fields follow the same rule.
 // It is the capture half of a deferred argument whose source may be reassigned
 // or released before the thunk runs.
 func (g *generator) cloneOwnedValue(src, dst, text string) error {
 	text = g.qualifyTypeText(g.pkg, text)
-	if isWeakText(text) {
-		typ, _ := g.typeLLVMOf(text)
-		g.copyValue(src, dst, typ)
-		return nil
-	}
-	if isRcText(text) {
-		value := g.load("i64", src)
-		fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", value, dst)
-		g.needRcDecl = true
-		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-		return nil
-	}
 	if isChanText(text) {
 		value := g.load("ptr", src)
 		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", value, dst)
@@ -38,12 +26,10 @@ func (g *generator) cloneOwnedValue(src, dst, text string) error {
 	if text == "str" {
 		return g.cloneStrValue(src, dst)
 	}
-	if elem, ok := arrayElemText(text); ok {
-		return g.cloneArrayValue(src, dst, elem)
-	}
 	if isFinalContainerText(text) {
-		// Final containers are shared references; a value copy keeps the same
-		// payload, so no deep clone happens here.
+		// Final containers are shared references, so a value copy duplicates
+		// the pointer word without cloning the payload.
+		g.copyValue(src, dst, "ptr")
 		return nil
 	}
 	if iface, ok := g.ifaceOfText(text); ok {
@@ -107,10 +93,7 @@ func (g *generator) fieldNeedsClone(text string) bool {
 // the field spelling alone. The generator calls fieldNeedsClone so nested
 // structs, enums, and fixed arrays are included.
 func fieldTextNeedsClone(text string) bool {
-	if text == "str" || isRcText(text) || isWeakText(text) {
-		return true
-	}
-	if _, ok := arrayElemText(text); ok {
+	if text == "str" {
 		return true
 	}
 	if isFinalContainerText(text) {
@@ -163,60 +146,6 @@ func (g *generator) cloneStrValue(src, dst string) error {
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64 }, ptr %s, i32 0, i32 1\n", outLen, dst)
 	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, outLen)
 	return nil
-}
-
-// cloneArrayValue duplicates the header and every element of an Array.
-func (g *generator) cloneArrayValue(src, dst, elem string) error {
-	elemLLVM, ok := g.typeLLVMOf(elem)
-	if !ok || elemLLVM == "" {
-		return fmt.Errorf("array element %s is not lowered yet", elem)
-	}
-	elemSize, _, ok := g.sizeAlign(elemLLVM)
-	if !ok {
-		return fmt.Errorf("array element %s has no layout", elem)
-	}
-	srcDataPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", srcDataPtr, src)
-	srcLenPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", srcLenPtr, src)
-	srcData := g.loadContainerData(srcDataPtr)
-	length := g.load("i64", srcLenPtr)
-	bytes := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = mul i64 %s, %d\n", bytes, length, elemSize)
-	descriptor, err := g.sequenceDescriptor(elem)
-	if err != nil {
-		return err
-	}
-	newData := g.newTmp()
-	g.gcAllocSequence(newData, bytes, descriptor)
-	g.labels++
-	n := g.labels
-	cond := fmt.Sprintf("deep.arr.cond.%d", n)
-	body := fmt.Sprintf("deep.arr.body.%d", n)
-	done := fmt.Sprintf("deep.arr.done.%d", n)
-	index := g.newTmp()
-	g.tempAlloca(index, "i64")
-	fmt.Fprintf(g.out, "  store i64 0, ptr %s\n", index)
-	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
-	g.out.WriteString(cond + ":\n")
-	at := g.load("i64", index)
-	more := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", more, at, length)
-	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", more, body, done)
-	g.out.WriteString(body + ":\n")
-	from := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", from, elemLLVM, srcData, at)
-	to := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", to, elemLLVM, newData, at)
-	if err := g.cloneOwnedValue(from, to, elem); err != nil {
-		return err
-	}
-	next := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = add i64 %s, 1\n", next, at)
-	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", next, index)
-	fmt.Fprintf(g.out, "  br label %%%s\n", cond)
-	g.out.WriteString(done + ":\n")
-	return g.storeContainerHeader(dst, newData, length)
 }
 
 // cloneFixedArray deep-copies every element of one inline [N]T. The array has
@@ -307,20 +236,6 @@ func (g *generator) cloneEnumValue(src, dst string, info *enumInfo) error {
 		fmt.Fprintf(g.out, "  br label %%%s\n", done)
 		g.out.WriteString(done + ":\n")
 	}
-	return nil
-}
-
-// storeContainerHeader writes a cloned container's three-word header.
-func (g *generator) storeContainerHeader(dst, data, length string) error {
-	dataField := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataField, dst)
-	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", data, dataField)
-	lenField := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenField, dst)
-	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, lenField)
-	capField := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 2\n", capField, dst)
-	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, capField)
 	return nil
 }
 
@@ -472,9 +387,6 @@ func (g *generator) cloneValueCall(r willc.Record, text string) (string, string,
 // null owner instead of releasing the same value twice.
 func (g *generator) releaseOwnedValue(ptr, text string) error {
 	text = g.qualifyTypeText(g.pkg, text)
-	if isWeakText(text) {
-		return nil
-	}
 	if err := g.releaseOwnedValueInner(ptr, text); err != nil {
 		return err
 	}
@@ -487,7 +399,7 @@ func (g *generator) releaseOwnedValue(ptr, text string) error {
 // zeroOwnedSlot writes the zero value for one owned type. It is used after a
 // release and as the constructor state of a frame that may be dropped early.
 func (g *generator) zeroOwnedSlot(ptr, text string) {
-	if ptr == "" || text == "" || isWeakText(text) {
+	if ptr == "" || text == "" {
 		return
 	}
 	typ, ok := g.typeLLVMOf(text)
@@ -498,9 +410,6 @@ func (g *generator) zeroOwnedSlot(ptr, text string) {
 }
 
 func (g *generator) releaseOwnedValueInner(ptr, text string) error {
-	if isWeakText(text) {
-		return nil
-	}
 	// An enum has a tag in front of every variant payload; walking it as a
 	// plain struct would release the wrong variant.
 	if iface, ok := g.ifaceOfText(text); ok {
@@ -511,12 +420,6 @@ func (g *generator) releaseOwnedValueInner(ptr, text string) error {
 	}
 	if info := g.enumInfoForText(qualify(g.pkg, text)); info != nil {
 		return g.releaseEnumValue(ptr, info)
-	}
-	if isRcText(text) {
-		g.needRcDecl = true
-		value := g.load("i64", ptr)
-		fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", value)
-		return nil
 	}
 	if isChanText(text) {
 		g.needTaskDecl = true
@@ -543,9 +446,6 @@ func (g *generator) releaseOwnedValueInner(ptr, text string) error {
 		data := g.loadContainerData(dataPtr)
 		fmt.Fprintf(g.out, "  call void @willrt_free_str(ptr %s)\n", data)
 		return nil
-	}
-	if elem, ok := arrayElemText(text); ok {
-		return g.releaseArrayValue(ptr, elem)
 	}
 	if n, elem, ok := arrayTypeText(text); ok {
 		return g.releaseFixedArray(ptr, elem, n)
@@ -637,26 +537,6 @@ func (g *generator) releaseFixedArray(ptr, elem string, n int) error {
 		if err := g.releaseOwnedValue(at, elem); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-// releaseArrayValue releases every live element and the data buffer.
-func (g *generator) releaseArrayValue(ptr, elem string) error {
-	elemLLVM, ok := g.typeLLVMOf(elem)
-	if !ok || elemLLVM == "" {
-		return fmt.Errorf("array element %s is not lowered yet", elem)
-	}
-	dataPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, ptr)
-	lenPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, ptr)
-	data := g.loadContainerData(dataPtr)
-	length := g.load("i64", lenPtr)
-	if err := g.emitElementLoop("deep.rel.arr", data, elemLLVM, length, func(element string) error {
-		return g.releaseOwnedValue(element, elem)
-	}); err != nil {
-		return err
 	}
 	return nil
 }

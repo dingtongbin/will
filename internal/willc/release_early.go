@@ -2,11 +2,11 @@ package willc
 
 import "github.com/will-lang/will/internal/ast"
 
-// nonRcReleases finds value owners whose remaining uses only inspect or mutate
+// earlyReleases finds value owners whose remaining uses only inspect or mutate
 // the owner itself. A view, field read, call argument, move, closure, defer, or
 // nested statement could keep a buffer reachable past the lexical use, so those
 // shapes pin the owner to the block end.
-func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*ast.VarDecl]earlyRelease {
+func (em *emitter) earlyReleases(b *ast.Block, types map[string]*ast.Type) map[*ast.VarDecl]earlyRelease {
 	out := map[*ast.VarDecl]earlyRelease{}
 	if b == nil {
 		return out
@@ -17,7 +17,7 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 			continue
 		}
 		vd, ok := vs.Decl.(*ast.VarDecl)
-		if !ok || vd.Type == nil || vd.Name == "" || vd.Name == "_" || rcType(vd.Type) || !em.needsRelease(vd.Type) {
+		if !ok || vd.Type == nil || vd.Name == "" || vd.Name == "_" || !em.needsRelease(vd.Type) {
 			continue
 		}
 		if !em.releaseType(vd.Type) {
@@ -26,7 +26,6 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 		views := em.blockViews(b, vd.Name, types)
 		last := -1
 		var lastNode ast.Node
-		var lastStmt ast.Stmt
 		safe := true
 		for j, stmt := range b.Stmts {
 			if j == i {
@@ -44,7 +43,6 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 			if em.viewCallCreates(stmt, views, vd.Name) {
 				last = j
 				lastNode = lastNodeInStmt(stmt, vd.Name)
-				lastStmt = stmt
 				continue
 			}
 			if containsViewInNested(stmt, views) {
@@ -58,10 +56,9 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 				}
 				last = j
 				lastNode = lastViewNode(stmt, views)
-				lastStmt = stmt
 				continue
 			}
-			ok, used, node := em.safeNonRcTree(stmt, vd.Name, vd.Type, types)
+			ok, used, node := em.safeEarlyTree(stmt, vd.Name, vd.Type, types)
 			if !ok {
 				safe = false
 				break
@@ -69,15 +66,9 @@ func (em *emitter) nonRcReleases(b *ast.Block, types map[string]*ast.Type) map[*
 			if used {
 				last = j
 				lastNode = node
-				lastStmt = stmt
 			}
 		}
 		if safe && last >= 0 {
-			if vd.Type != nil && vd.Type.Kind == ast.NamedType && vd.Type.Name == "Array" && lastStmt != nil {
-				// A container group shares the statement position; this lets
-				// several arrays released by one statement be one plate group.
-				lastNode = lastStmt
-			}
 			out[vd] = earlyRelease{after: last, node: lastNode}
 		}
 	}
@@ -94,9 +85,8 @@ func (em *emitter) releaseType(t *ast.Type) bool {
 	case ast.ScalarType:
 		return t.Name == "str"
 	case ast.NamedType:
-		switch t.Name {
-		case "Array", "Map", "Set":
-			return true
+		if t.Name == "list" || t.Name == "dict" || t.Name == "set" {
+			return false
 		}
 		if _, ok := em.structs[shortName(t.Name)]; ok {
 			return true
@@ -110,19 +100,19 @@ func (em *emitter) releaseType(t *ast.Type) bool {
 	return false
 }
 
-// safeNonRcTree accepts direct and nested uses. The release point stays after
+// safeEarlyTree accepts direct and nested uses. The release point stays after
 // the top-level statement, so a loop use releases after the loop and an if use
-// releases after the if. A view, call, move, defer, or parallel use still pins.
-func (em *emitter) safeNonRcTree(st ast.Stmt, name string, typ *ast.Type, types map[string]*ast.Type) (bool, bool, ast.Node) {
+// releases after the if. A view, call, move, or defer use still pins.
+func (em *emitter) safeEarlyTree(st ast.Stmt, name string, typ *ast.Type, types map[string]*ast.Type) (bool, bool, ast.Node) {
 	switch s := st.(type) {
 	case *ast.Block:
-		return em.safeNonRcBlock(s, name, typ, types)
+		return em.safeEarlyBlock(s, name, typ, types)
 	case *ast.IfExpr:
-		ok, used, node := em.safeNonRcExprUse(s.Cond, name, typ, types)
+		ok, used, node := em.safeEarlyExprUse(s.Cond, name, typ, types)
 		if !ok {
 			return false, false, nil
 		}
-		tok, tused, tnode := em.safeNonRcBlock(s.Then, name, typ, types)
+		tok, tused, tnode := em.safeEarlyBlock(s.Then, name, typ, types)
 		if !tok {
 			return false, false, nil
 		}
@@ -131,7 +121,7 @@ func (em *emitter) safeNonRcTree(st ast.Stmt, name string, typ *ast.Type, types 
 			node = tnode
 		}
 		if s.Else != nil {
-			eok, eused, enode := em.safeNonRcTree(s.Else, name, typ, types)
+			eok, eused, enode := em.safeEarlyTree(s.Else, name, typ, types)
 			if !eok {
 				return false, false, nil
 			}
@@ -142,11 +132,11 @@ func (em *emitter) safeNonRcTree(st ast.Stmt, name string, typ *ast.Type, types 
 		}
 		return true, used, node
 	case *ast.ForStmt:
-		ok, used, node := em.safeNonRcExprUse(s.Iter, name, typ, types)
+		ok, used, node := em.safeEarlyExprUse(s.Iter, name, typ, types)
 		if !ok {
 			return false, false, nil
 		}
-		bok, bused, bnode := em.safeNonRcBlock(s.Body, name, typ, types)
+		bok, bused, bnode := em.safeEarlyBlock(s.Body, name, typ, types)
 		if !bok {
 			return false, false, nil
 		}
@@ -156,14 +146,12 @@ func (em *emitter) safeNonRcTree(st ast.Stmt, name string, typ *ast.Type, types 
 		}
 		return true, used, node
 	case *ast.RegionStmt:
-		return em.safeNonRcBlock(s.Body, name, typ, types)
-	case *ast.ParallelStmt:
-		return em.safeNonRcBlock(s.Body, name, typ, types)
+		return em.safeEarlyBlock(s.Body, name, typ, types)
 	case *ast.SelectStmt:
 		used := false
 		var node ast.Node
 		for _, arm := range s.Arms {
-			ok, u, n := em.safeNonRcExprUse(arm.Chan, name, typ, types)
+			ok, u, n := em.safeEarlyExprUse(arm.Chan, name, typ, types)
 			if !ok {
 				return false, false, nil
 			}
@@ -171,7 +159,7 @@ func (em *emitter) safeNonRcTree(st ast.Stmt, name string, typ *ast.Type, types 
 			if n != nil {
 				node = n
 			}
-			ok, u, n = em.safeNonRcExprUse(arm.Timeout, name, typ, types)
+			ok, u, n = em.safeEarlyExprUse(arm.Timeout, name, typ, types)
 			if !ok {
 				return false, false, nil
 			}
@@ -179,7 +167,7 @@ func (em *emitter) safeNonRcTree(st ast.Stmt, name string, typ *ast.Type, types 
 			if n != nil {
 				node = n
 			}
-			ok, u, n = em.safeNonRcTree(arm.Body, name, typ, types)
+			ok, u, n = em.safeEarlyTree(arm.Body, name, typ, types)
 			if !ok {
 				return false, false, nil
 			}
@@ -190,12 +178,12 @@ func (em *emitter) safeNonRcTree(st ast.Stmt, name string, typ *ast.Type, types 
 		}
 		return true, used, node
 	case *ast.MatchExpr:
-		ok, used, node := em.safeNonRcExprUse(s.Subject, name, typ, types)
+		ok, used, node := em.safeEarlyExprUse(s.Subject, name, typ, types)
 		if !ok {
 			return false, false, nil
 		}
 		for _, arm := range s.Arms {
-			gok, gused, gnode := em.safeNonRcExprUse(arm.Guard, name, typ, types)
+			gok, gused, gnode := em.safeEarlyExprUse(arm.Guard, name, typ, types)
 			if !gok {
 				return false, false, nil
 			}
@@ -203,7 +191,7 @@ func (em *emitter) safeNonRcTree(st ast.Stmt, name string, typ *ast.Type, types 
 			if gnode != nil {
 				node = gnode
 			}
-			bok, bused, bnode := em.safeNonRcTree(arm.Body, name, typ, types)
+			bok, bused, bnode := em.safeEarlyTree(arm.Body, name, typ, types)
 			if !bok {
 				return false, false, nil
 			}
@@ -214,11 +202,11 @@ func (em *emitter) safeNonRcTree(st ast.Stmt, name string, typ *ast.Type, types 
 		}
 		return true, used, node
 	case *ast.DeadlineExpr:
-		ok, used, node := em.safeNonRcExprUse(s.Duration, name, typ, types)
+		ok, used, node := em.safeEarlyExprUse(s.Duration, name, typ, types)
 		if !ok {
 			return false, false, nil
 		}
-		bok, bused, bnode := em.safeNonRcBlock(s.Body, name, typ, types)
+		bok, bused, bnode := em.safeEarlyBlock(s.Body, name, typ, types)
 		if !bok {
 			return false, false, nil
 		}
@@ -228,7 +216,7 @@ func (em *emitter) safeNonRcTree(st ast.Stmt, name string, typ *ast.Type, types 
 		}
 		return true, used, node
 	}
-	ok, node := em.safeNonRcStmt(st, name, typ, types)
+	ok, node := em.safeEarlyStmt(st, name, typ, types)
 	if !ok {
 		return false, false, nil
 	}
@@ -239,14 +227,14 @@ func (em *emitter) safeNonRcTree(st ast.Stmt, name string, typ *ast.Type, types 
 	return true, used, node
 }
 
-func (em *emitter) safeNonRcBlock(b *ast.Block, name string, typ *ast.Type, types map[string]*ast.Type) (bool, bool, ast.Node) {
+func (em *emitter) safeEarlyBlock(b *ast.Block, name string, typ *ast.Type, types map[string]*ast.Type) (bool, bool, ast.Node) {
 	used := false
 	var node ast.Node
 	if b == nil {
 		return true, false, nil
 	}
 	for _, st := range b.Stmts {
-		ok, u, n := em.safeNonRcTree(st, name, typ, types)
+		ok, u, n := em.safeEarlyTree(st, name, typ, types)
 		if !ok {
 			return false, false, nil
 		}
@@ -258,11 +246,11 @@ func (em *emitter) safeNonRcBlock(b *ast.Block, name string, typ *ast.Type, type
 	return true, used, node
 }
 
-func (em *emitter) safeNonRcExprUse(e ast.Expr, name string, typ *ast.Type, types map[string]*ast.Type) (bool, bool, ast.Node) {
+func (em *emitter) safeEarlyExprUse(e ast.Expr, name string, typ *ast.Type, types map[string]*ast.Type) (bool, bool, ast.Node) {
 	if e == nil || !containsNameInExpr(e, name) {
 		return true, false, nil
 	}
-	if !em.safeNonRcExpr(e, name, typ, types) {
+	if !em.safeEarlyExpr(e, name, typ, types) {
 		return false, false, nil
 	}
 	return true, true, lastNode(e, name)
@@ -283,10 +271,10 @@ func lastNodeInStmt(st ast.Stmt, name string) ast.Node {
 	return nil
 }
 
-// safeNonRcStmt accepts a statement that only calls methods which do not keep
-// or return a borrow of the owner, or reads a non-owning scalar/rc field. It
+// safeEarlyStmt accepts a statement that only calls methods which do not keep
+// or return a borrow of the owner, or reads a non-owning scalar field. It
 // returns the last name node on success.
-func (em *emitter) safeNonRcStmt(st ast.Stmt, name string, typ *ast.Type, types map[string]*ast.Type) (bool, ast.Node) {
+func (em *emitter) safeEarlyStmt(st ast.Stmt, name string, typ *ast.Type, types map[string]*ast.Type) (bool, ast.Node) {
 	switch s := st.(type) {
 	case *ast.VarStmt:
 		d, ok := s.Decl.(*ast.VarDecl)
@@ -296,7 +284,7 @@ func (em *emitter) safeNonRcStmt(st ast.Stmt, name string, typ *ast.Type, types 
 		if d.Type != nil && d.Type.Kind == ast.ViewType && viewRootOwner(d.Value) == name {
 			return true, lastNameNode(d.Value, name)
 		}
-		if !em.safeNonRcExpr(d.Value, name, typ, types) {
+		if !em.safeEarlyExpr(d.Value, name, typ, types) {
 			return false, nil
 		}
 		return true, lastNameNode(d.Value, name)
@@ -311,12 +299,12 @@ func (em *emitter) safeNonRcStmt(st ast.Stmt, name string, typ *ast.Type, types 
 		} else if n, ok := s.Value.(*ast.NameExpr); ok && n.Name == name {
 			return true, n
 		}
-		if !em.safeNonRcExpr(s.Value, name, typ, types) {
+		if !em.safeEarlyExpr(s.Value, name, typ, types) {
 			return false, nil
 		}
 		return true, lastNameNode(s.Value, name)
 	case *ast.ExprStmt:
-		if !em.safeNonRcExpr(s.Expr, name, typ, types) {
+		if !em.safeEarlyExpr(s.Expr, name, typ, types) {
 			return false, nil
 		}
 		return true, lastNameNode(s.Expr, name)
@@ -324,11 +312,11 @@ func (em *emitter) safeNonRcStmt(st ast.Stmt, name string, typ *ast.Type, types 
 	return !containsNameInStmt(st, name), nil
 }
 
-// safeNonRcExpr accepts a method call on the owner whose method does not build a
-// view, a read of a scalar or rc field, plus scalar operators over such calls.
+// safeEarlyExpr accepts a method call on the owner whose method does not build a
+// view, a read of a scalar field, plus scalar operators over such calls.
 // A bare name is never accepted: it is either a move/copy or a value passed to
 // something unknown.
-func (em *emitter) safeNonRcExpr(e ast.Expr, name string, typ *ast.Type, types map[string]*ast.Type) bool {
+func (em *emitter) safeEarlyExpr(e ast.Expr, name string, typ *ast.Type, types map[string]*ast.Type) bool {
 	switch x := e.(type) {
 	case nil:
 		return true
@@ -348,7 +336,7 @@ func (em *emitter) safeNonRcExpr(e ast.Expr, name string, typ *ast.Type, types m
 			return false
 		}
 		for _, a := range x.Args {
-			if containsNameInExpr(a.Expr, name) && !em.safeNonRcExpr(a.Expr, name, typ, types) {
+			if containsNameInExpr(a.Expr, name) && !em.safeEarlyExpr(a.Expr, name, typ, types) {
 				return false
 			}
 		}
@@ -362,9 +350,9 @@ func (em *emitter) safeNonRcExpr(e ast.Expr, name string, typ *ast.Type, types m
 		if !containsNameInExpr(x.L, name) && !containsNameInExpr(x.R, name) {
 			return true
 		}
-		return em.safeNonRcExpr(x.L, name, typ, types) && em.safeNonRcExpr(x.R, name, typ, types)
+		return em.safeEarlyExpr(x.L, name, typ, types) && em.safeEarlyExpr(x.R, name, typ, types)
 	case *ast.UnaryExpr:
-		return em.safeNonRcExpr(x.X, name, typ, types)
+		return em.safeEarlyExpr(x.X, name, typ, types)
 	case *ast.LambdaExpr:
 		// The closure environment deep-copies an owning capture, so the source
 		// only has to survive closure construction. A lambda passed, returned,
@@ -414,7 +402,7 @@ func (em *emitter) safeLocalCall(call *ast.CallExpr, name string, typ *ast.Type,
 }
 
 // fieldReadSafe accepts a field chain rooted at the owner when every read is a
-// scalar or a copyable rc handle. A view or an owning field would either borrow
+// scalar. A view or an owning field would either borrow
 // the owner or need an explicit Clone, so those pin it.
 func (em *emitter) fieldReadSafe(e ast.Expr, name string, typ *ast.Type, types map[string]*ast.Type) bool {
 	field, ok := e.(*ast.FieldExpr)
@@ -460,9 +448,6 @@ func (em *emitter) fieldType(t *ast.Type, name string) *ast.Type {
 	if t == nil {
 		return nil
 	}
-	if t.Kind == ast.NamedType && t.Name == "rc" && len(t.Args) == 1 {
-		t = t.Args[0]
-	}
 	if t.Kind != ast.NamedType {
 		return nil
 	}
@@ -503,10 +488,12 @@ func (em *emitter) typeOwnsDepth(t *ast.Type, active map[string]bool) bool {
 		return false
 	case ast.NamedType:
 		switch t.Name {
-		case "rc", "arc", "weak_rc", "weak_arc", "chan", "Task", "Duration", "Value", "Show", "Error":
+		case "chan", "Task", "Duration", "Value", "Show", "Error":
 			return false
-		case "str", "Array", "Map", "Set":
+		case "str":
 			return true
+		case "list", "dict", "set":
+			return false
 		case "Option", "Result":
 			for _, a := range t.Args {
 				if em.typeOwnsDepth(a, active) {
@@ -616,8 +603,6 @@ func (em *emitter) viewCallCreates(stmt ast.Stmt, views map[string]bool, owner s
 
 func viewRootOwner(e ast.Expr) string {
 	switch x := e.(type) {
-	case *ast.BorrowExpr:
-		return exprRootName(x.X)
 	case *ast.SliceExpr:
 		return exprRootName(x.Recv)
 	case *ast.IndexExpr:
@@ -676,8 +661,6 @@ func containsViewInNested(st ast.Stmt, views map[string]bool) bool {
 	case *ast.ForStmt:
 		return containsViewInBlock(s.Body, views)
 	case *ast.RegionStmt:
-		return containsViewInBlock(s.Body, views)
-	case *ast.ParallelStmt:
 		return containsViewInBlock(s.Body, views)
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {
@@ -835,17 +818,17 @@ func safeContainerMethod(t *ast.Type, method string) bool {
 		return false
 	}
 	switch t.Name {
-	case "Array":
+	case "list":
 		switch method {
 		case "len", "cap", "is_empty", "push", "append", "set", "insert", "pop", "remove", "clear", "reserve", "resize", "shrink_to_fit", "clone":
 			return true
 		}
-	case "Map":
+	case "dict":
 		switch method {
 		case "len", "is_empty", "has", "set", "delete", "clear":
 			return true
 		}
-	case "Set":
+	case "set":
 		switch method {
 		case "len", "is_empty", "has", "add", "delete", "clear":
 			return true

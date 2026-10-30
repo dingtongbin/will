@@ -197,8 +197,6 @@ func (w *captureWalker) stmt(st ast.Stmt) {
 		w.pop()
 	case *ast.RegionStmt:
 		w.block(s.Body)
-	case *ast.ParallelStmt:
-		w.block(s.Body)
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {
 			w.expr(arm.Chan)
@@ -270,17 +268,11 @@ func (w *captureWalker) expr(e ast.Expr) {
 		w.expr(x.Recv)
 		w.expr(x.Lo)
 		w.expr(x.Hi)
-	case *ast.BorrowExpr:
-		w.expr(x.X)
 	case *ast.UnaryExpr:
 		w.expr(x.X)
 	case *ast.BinaryExpr:
 		w.expr(x.L)
 		w.expr(x.R)
-	case *ast.NewExpr:
-		for _, a := range x.Args {
-			w.expr(a.Expr)
-		}
 	case *ast.AggregateExpr:
 		for _, f := range x.Fields {
 			w.expr(f.Value)

@@ -1,11 +1,13 @@
 struct Box<T> {
     value: T
     tag: i32
+
+    def get(self) -> T {
+        return self.value.clone()
+    }
 }
 
-def (b: ref Box<T>) get() -> T {
-    return b.value.clone()
-}
+
 
 def main() -> i32 {
     var a: Box<i32> = Box<i32> { value: 3, tag: 4 }

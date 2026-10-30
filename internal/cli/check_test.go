@@ -197,49 +197,6 @@ func TestCheckCacheMissAfterChange(t *testing.T) {
 	}
 }
 
-func TestCheckDirectoryCache(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "app")
-	writeModuleFile(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	writeModuleFile(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n")
-	writeModuleFile(t, filepath.Join(root, "sub", "method.will"), "def (t: ref T) move() {\n}\n")
-	cacheDir := filepath.Join(t.TempDir(), "cache")
-	t.Setenv("WILL_CACHE", cacheDir)
-
-	code1, out1, _ := runCLI("check", root)
-	if code1 != 1 || !strings.Contains(out1, "N0006") {
-		t.Fatalf("first run: code = %d, stdout = %q", code1, out1)
-	}
-	entries, err := os.ReadDir(cacheDir)
-	if err != nil || len(entries) != 1 {
-		t.Fatalf("cache entries = %v, err = %v", entries, err)
-	}
-	code2, out2, _ := runCLI("check", root)
-	if code2 != code1 || out2 != out1 {
-		t.Fatalf("second run differed: code = %d, stdout = %q", code2, out2)
-	}
-
-	// A change anywhere the run reads must miss: here the module file.
-	writeModuleFile(t, filepath.Join(root, "will.mod"), "module example.com/other\nwill 1\n")
-	if code, out, _ := runCLI("check", root); code != code1 || out == out1 {
-		t.Fatalf("module change hit the old entry: code = %d, stdout = %q", code, out)
-	}
-}
-
-func TestCheckModuleDirectory(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "app")
-	writeModuleFile(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	writeModuleFile(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n")
-	writeModuleFile(t, filepath.Join(root, "sub", "method.will"), "def (t: ref T) move() {\n}\n")
-
-	code, out, _ := runCLI("check", root)
-	if code != 1 {
-		t.Fatalf("code = %d, want 1", code)
-	}
-	if !strings.Contains(out, "N0006 methods of T are declared in two packages") {
-		t.Fatalf("stdout = %q", out)
-	}
-}
-
 func TestCheckModuleDirectoryGood(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "app")
 	writeModuleFile(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")

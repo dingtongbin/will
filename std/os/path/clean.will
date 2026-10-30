@@ -23,7 +23,7 @@ def __is_dot_dot_element(p: str, a: usize, b: usize) -> bool {
 # pushElement adds one element to the cleaned path or resolves a dot-dot. It
 # returns the new element count; a dot-dot removes the previous element unless
 # that would leave a relative path, in which case the dot-dot itself is kept.
-def __push_element(p: str, a: usize, b: usize, rooted: bool, starts: Array<usize>, ends: Array<usize>, count: usize) -> usize {
+def __push_element(p: str, a: usize, b: usize, rooted: bool, starts: list[usize], ends: list[usize], count: usize) -> usize {
     if __is_dot_element(p, a, b) {
         return count
     }
@@ -84,8 +84,8 @@ def clean(p: str) -> str {
             rooted = True
         }
     }
-    var starts: Array<usize> = new Array<usize>(0)
-    var ends: Array<usize> = new Array<usize>(0)
+    var starts: list[usize] = list[usize](0)
+    var ends: list[usize] = list[usize](0)
     var count: usize = 0usize
     var start: usize = 0usize
     var inElement: bool = False
@@ -107,7 +107,7 @@ def clean(p: str) -> str {
         count = __push_element(s, start, n, rooted, starts, ends, count)
     }
     var sep: u8 = separator()
-    var out: Array<u8> = new Array<u8>(0)
+    var out: list[u8] = list[u8](0)
     if volumeEnd > 0usize {
         var driveLetter: u32 = s[0]
         var driveColon: u32 = s[1]

@@ -2,15 +2,19 @@
 # status of Invalid, so a caller classifies it without knowing this type.
 struct decodeError {
     message: str
+
+    def message(self) -> str {
+        return self.message
+    }
+
+    def status(self) -> i32 {
+        return 2
+    }
 }
 
-def (e: ref decodeError) message() -> str {
-    return e.message
-}
 
-def (e: ref decodeError) status() -> i32 {
-    return 2
-}
+
+
 
 def fail(message: str) -> decodeError {
     return decodeError { message: message }
@@ -19,21 +23,21 @@ def fail(message: str) -> decodeError {
 # 61 is the ASCII code of the padding character '='.
 const padScalar: u32 = 61
 
-def decode(s: str) -> Result<Array<u8>, Error> {
-    return decode(s, False)
+def decode(s: str) -> Result<list[u8], Error> {
+    return decode_mode(s, False)
 }
 
-def decode_url(s: str) -> Result<Array<u8>, Error> {
-    return decode(s, True)
+def decode_url(s: str) -> Result<list[u8], Error> {
+    return decode_mode(s, True)
 }
 
-# decode reads one padded base64 text. Every group is four characters, the
+# decode_mode reads one padded base64 text. Every group is four characters, the
 # last two of which may be padding; text that is not a whole number of groups,
 # has data after padding, or uses a character outside the alphabet is rejected.
 # A padded group is emitted when the padding completes it, so the pad count
 # decides how many bytes of that group are real.
-def decode(s: str, url: bool) -> Result<Array<u8>, Error> {
-    var out: Array<u8> = new Array<u8>(0)
+def decode_mode(s: str, url: bool) -> Result<list[u8], Error> {
+    var out: list[u8] = list[u8](0)
     var q0: u32 = 0
     var q1: u32 = 0
     var q2: u32 = 0

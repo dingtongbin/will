@@ -78,10 +78,6 @@ func (g *generator) ifaceOwnedValue(dst string, valueID int, iface *ifaceInfo, c
 			if err != nil {
 				return "", err
 			}
-			if isRcText(concrete) {
-				g.needRcDecl = true
-				fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-			}
 			if isChanText(concrete) {
 				g.needTaskDecl = true
 				g.needChanDecl = true

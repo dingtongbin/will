@@ -7,7 +7,7 @@ def main() -> i32 {
     var pre: bool = view.has_prefix(word)
     var suf: bool = view.has_suffix(word)
     var idx: Option<usize> = view.index(word)
-    var copy: Array<u8> = view.clone()
+    var copy: list[u8] = view.clone()
     var head: str = str(text[Range(0, 2)])
     var letter: str = str(65u32)
     _ = idx

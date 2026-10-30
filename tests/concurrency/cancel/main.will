@@ -12,7 +12,7 @@ async def worker(ch: chan<i32>) -> i32 {
 }
 
 async def main() -> i32 {
-    var ch: chan<i32> = new chan<i32>(1)
+    var ch: chan<i32> = chan<i32>(1)
     var value: i32 = 0
     region {
         var task: Task<i32> = spawn worker(ch)

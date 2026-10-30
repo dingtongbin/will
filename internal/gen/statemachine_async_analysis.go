@@ -135,9 +135,6 @@ func (g *generator) asyncParamABI(p willc.Record) (string, bool, error) {
 	if base, kind := borrowText(text); kind == "mutview" {
 		text = base
 	}
-	if isRcText(text) || isWeakText(text) {
-		return "i64", false, nil
-	}
 	if _, ok := taskElemText(text); ok {
 		return "ptr", false, nil
 	}

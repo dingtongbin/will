@@ -3,24 +3,34 @@
 # are placeholders so the type checker and monomorphizer see ordinary methods.
 struct Atomic<T> {
     value: T
+
+    def init(self, value: T) {
+        self.value = value
+    }
+
+    def load(self) -> T {
+        panic("Atomic.load is self compiler intrinsic")
+    }
+
+    def store(self, value: T) {
+        panic("Atomic.store is self compiler intrinsic")
+    }
+
+    def add(self, delta: T) -> T {
+        panic("Atomic.add is self compiler intrinsic")
+    }
+
+    def cas(self, old: T, new: T) -> bool {
+        return False
+    }
 }
 
-def (a: mut Atomic<T>) init(value: T) {
-    a.value = value
-}
 
-def (a: ref Atomic<T>) load() -> T {
-    panic("Atomic.load is a compiler intrinsic")
-}
 
-def (a: mut Atomic<T>) store(value: T) {
-    panic("Atomic.store is a compiler intrinsic")
-}
 
-def (a: mut Atomic<T>) add(delta: T) -> T {
-    panic("Atomic.add is a compiler intrinsic")
-}
 
-def (a: mut Atomic<T>) cas(old: T, new: T) -> bool {
-    return False
-}
+
+
+
+
+

@@ -1,10 +1,12 @@
 struct Counter {
     n: i32
+
+    def get(self) -> i32 {
+        return self.n
+    }
 }
 
-def (c: ref Counter) get() -> i32 {
-    return c.n
-}
+
 
 def new(n: i32) -> Counter {
     return Counter { n: n }

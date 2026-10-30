@@ -78,11 +78,21 @@ func sourceUnits(path string, stdout, stderr io.Writer) ([]sourceUnit, int) {
 			return nil, 1
 		}
 		var out []sourceUnit
+		seen := map[string]bool{}
 		for _, p := range b.Packages {
 			for _, f := range p.Files {
-				if f.AST != nil {
-					out = append(out, sourceUnit{file: f.AST, prefix: p.Path})
+				if f.AST == nil {
+					continue
 				}
+				key := f.AST.Pos().File
+				if key == "" {
+					key = filepath.Join(p.Root, f.Path)
+				}
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+				out = append(out, sourceUnit{file: f.AST, prefix: p.Path})
 			}
 		}
 		return out, 0
@@ -216,7 +226,7 @@ func registerTypes(res *layout.Resolver, u sourceUnit) error {
 // without a declaration in the package.
 func predeclaredLayoutType(name string) bool {
 	switch name {
-	case "Array", "Map", "Set", "chan", "Task", "rc", "arc", "weak_rc", "weak_arc", "Option", "Result", "Range",
+	case "chan", "Task", "Option", "Result", "Range",
 		"list", "dict", "set":
 		return true
 	}
@@ -230,9 +240,6 @@ func isContainerLayoutName(name string) bool {
 }
 
 func layoutSpec(t *ast.Type, prefix string) (*layout.Spec, error) {
-	if t != nil && t.Borrow != ast.OwnedBorrow {
-		return &layout.Spec{Kind: layout.RefKind}, nil
-	}
 	if t == nil {
 		return nil, fmt.Errorf("the type is missing")
 	}

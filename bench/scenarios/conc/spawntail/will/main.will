@@ -26,8 +26,8 @@ def work(index: i32, slot: i32) -> i32 {
 }
 
 def main() -> i32 {
-    var samples: Array<u64> = new Array<u64>(0)
-    var rounds: Array<u64> = new Array<u64>(0)
+    var samples: list[u64] = list[u64](0)
+    var rounds: list[u64] = list[u64](0)
     var checksum: i64 = 0i64
     for r in Range(0, repetitions) {
         var startIndex: i32 = r * count
