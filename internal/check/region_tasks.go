@@ -131,7 +131,8 @@ func (c *concurrencyChecker) consumeTasks(st ast.Stmt, tasks map[string]bool, po
 	case *ast.AssignStmt:
 		c.consumeExpr(s.Value, tasks)
 	case *ast.ReturnStmt:
-		c.consumeExpr(s.Value, tasks)
+		// A returned handle leaves the function with the result.
+		c.consumeArg(s.Value, tasks)
 		c.reportPending(tasks, positions, s.Pos().Offset, c.k15Scope)
 	case *ast.VarStmt:
 		if d, ok := s.Decl.(*ast.VarDecl); ok {

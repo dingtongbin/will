@@ -142,3 +142,51 @@ def work(x: i32) -> i32 { return x }
 		t.Fatalf("a handle joined inside its region is fine: %v", ds)
 	}
 }
+func TestFunctionRejectsDroppedTask(t *testing.T) {
+	ds := runConcurrency(t, `async def zero() -> i32 {
+    return 0
+}
+
+async def f() {
+    var task: Task<i32> = spawn zero()
+    _ = task
+}
+`)
+	if !hasCode(ds, diag.CodeTaskNotAwaited) {
+		t.Fatalf("expected K0015 for a dropped task, got:\n%s", diag.FormatAll(ds))
+	}
+}
+
+func TestFunctionAcceptsReturnedTask(t *testing.T) {
+	ds := runConcurrency(t, `async def zero() -> i32 {
+    return 0
+}
+
+async def make() -> Task<i32> {
+    var task: Task<i32> = spawn zero()
+    return task
+}
+`)
+	if hasCode(ds, diag.CodeTaskNotAwaited) {
+		t.Fatalf("a returned task must be accepted: %v", ds)
+	}
+}
+
+func TestFunctionAcceptsHandedOffTask(t *testing.T) {
+	ds := runConcurrency(t, `async def zero() -> i32 {
+    return 0
+}
+
+async def use(t: Task<i32>) -> i32 {
+    return await t
+}
+
+async def f() -> i32 {
+    var task: Task<i32> = spawn zero()
+    return await use(task)
+}
+`)
+	if hasCode(ds, diag.CodeTaskNotAwaited) {
+		t.Fatalf("a task handed to a call must be accepted: %v", ds)
+	}
+}
