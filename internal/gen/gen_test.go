@@ -581,7 +581,7 @@ func TestEmitStrConcatAndSlice(t *testing.T) {
 
 func TestEmitMapContainer(t *testing.T) {
 	src := "def main() -> i32 {\n" +
-		"    var m: Map<i32, i32> = new Map<i32, i32>()\n" +
+		"    var m: dict[i32, i32] = dict[i32, i32]()\n" +
 		"    m.set(1, 10)\n" +
 		"    var s: i32 = 0\n" +
 		"    for v in m {\n        s = s + v\n    }\n" +
@@ -595,7 +595,7 @@ func TestEmitMapContainer(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`alloca { ptr, i64, i64 }`,
+		`getelementptr inbounds { i32, i32 }`,
 		`getelementptr inbounds { i32, i32 }`,
 		`call ptr @willrt_gc_alloc(i64`,
 		`phi i64 [ %t`,
@@ -608,7 +608,7 @@ func TestEmitMapContainer(t *testing.T) {
 
 func TestEmitSetContainer(t *testing.T) {
 	src := "def main() -> i32 {\n" +
-		"    var s: Set<i32> = new Set<i32>()\n" +
+		"    var s: set[i32] = set[i32]()\n" +
 		"    s.add(1)\n" +
 		"    var n: i32 = 0\n" +
 		"    for v in s {\n        n = n + v\n    }\n" +
@@ -622,7 +622,6 @@ func TestEmitSetContainer(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`alloca { ptr, i64, i64 }`,
 		`call void @memmove(ptr`,
 		`declare void @memmove(ptr, ptr, i64)`,
 	} {

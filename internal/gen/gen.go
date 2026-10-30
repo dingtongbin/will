@@ -3850,12 +3850,6 @@ func (g *generator) forStmt(r willc.Record, void bool) (bool, error) {
 		if elem, ok := listElemText(iterText); ok {
 			return g.forList(r, elem, iterText, void, n)
 		}
-		if k, v, ok := mapTypeText(iterText); ok {
-			return g.forMap(r, k, v, void, n)
-		}
-		if elem, ok := setTypeText(iterText); ok {
-			return g.forSet(r, elem, void, n)
-		}
 		if k, v, ok := dictTypeText(iterText); ok {
 			return g.forMap(r, k, v, void, n)
 		}
