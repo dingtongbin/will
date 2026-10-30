@@ -419,24 +419,6 @@ static int exec_owned_copy(const exec_str* path, const exec_view* args,
     return 0;
 }
 
-typedef struct exec_async_run {
-    const void* path;
-    const void* args;
-    const void* env;
-    const void* dir;
-    void* status;
-} exec_async_run;
-
-typedef struct exec_async_output {
-    const void* path;
-    const void* args;
-    const void* env;
-    const void* dir;
-    void* out;
-    void* err;
-    void* status;
-} exec_async_output;
-
 int32_t willrt_exec_run(const void* path_raw, const void* args_raw,
                         const void* env_raw, const void* dir_raw,
                         void* status_raw);
@@ -469,18 +451,6 @@ static int32_t exec_async_output_worker(void* raw, void* ignored) {
                                 owned->out, owned->err, owned->status);
     exec_owned_free(owned);
     return result;
-}
-
-/* exec_async_wait is the machine-declined fallback: a call the async lowering
-   does not cover yet blocks the calling thread. The _start forms are what
-   generated state machines call; they park the task and the pool wakes its
-   owner directly. */
-static int32_t exec_async_wait(void* fn, void* arg) {
-    willrt_blocking_op* op = willrt_blocking_submit(fn, arg, NULL);
-    if (op == NULL) {
-        return 1;
-    }
-    return willrt_blocking_wait(op);
 }
 
 int32_t willrt_exec_run_async(const void* path_raw, const void* args_raw,
