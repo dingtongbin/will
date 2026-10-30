@@ -916,3 +916,61 @@ Evidence commands:
 - tests/std/os runs; cold-cache gate -full is green.
 - Leftover: the old exec_async_run/exec_async_output structs and
   exec_async_wait in exec.c are unused now and should be deleted next.
+## std package matrix gap (round 61)
+
+Missing from the package table (desc/标准库/总览.md) versus std/:
+- std/encoding/json (decoder + @derive(Json))
+- std/io/pipe (Pipe with reader/writer ends, close wakes waiters)
+- std/parallel (map/reduce/for_each CPU job chunking)
+Everything else in the table exists (errors, fmt, str, bytes, container/*,
+bits, math, math/rand, time, io, io/buf, os, os/fs, os/path, os/exec, sync,
+task, gc, test, encoding/{base64,csv,hex,url}, hash/{crc32,fnv}).
+
+chan API confirmed from corpora: new chan<T>(cap), await ch.send(v),
+await ch.recv() -> Option<T> (None after close), ch.close().
+
+bytes/view -> str stays a recorded spec gap (desc/理由/缺口清单.md section),
+so Array->list migration remains paused there by decision, not by an
+implementation choice.
+
+Next: implement std/io/pipe (PipeState class with two notification channels,
+PipeReader/PipeWriter implementing io.Reader/io.Writer), then
+std/parallel, then json.
+## std/io/pipe written, blocked by async-loop SSA (round 62, uncommitted)
+
+- std/io/pipe/pipe.will: PipeState class (list[u8] buffer, capacity, two
+  chan<bool> notification channels, closed flags), PipeReader/PipeWriter
+  implementing io.Reader/io.Writer, Pipe pair, pipe(capacity), close on both
+  ends. tests/std/pipe (require std) exercises write/close/read/EOF.
+- The corpus fails LLVM verification with the same dominance class as
+  std/test: inside an async loop, a value computed before an await (the
+  buffer load/gep) is used by the continuation, which the state machine does
+  not keep in a frame slot. Storing the closed flags in locals did not fix
+  it; the remaining value is the buffer/len load itself.
+- This is a compiler P1: the async loop state machine must spill body values
+  that live across an await into frame slots (or re-load them in the
+  continuation). std/io/pipe cannot run until that is fixed.
+## pipe: await point needs a place-cache reset (round 63)
+
+- Storing the two closed flags and the receiver in locals (`Byte`, `taken`,
+  `st`) did not clear the dominance error. The failing values are loads of the
+  state reference and its length (`load ptr, ptr %t326`,
+  `load i64, ptr %t328`) computed in the await-preceding block and reused by
+  the continuation.
+- Cause: gen caches a computed place (GEP/load address) and the state machine
+  reuses that SSA pointer in a later step block; the pointer's definition does
+  not dominate the step block. A fix must invalidate the place cache at an
+  await point (or spill the addresses into frame slots), in the state machine
+  lowering, not in std code.
+- std/io/pipe and tests/std/pipe stay uncommitted until that lowering fix.
+## std/io/pipe landed; container loop bounds fixed (round 64)
+
+- b6352c5: forContainer now keeps the view data pointer and length in temp
+  slots and reloads them in the condition and body; the back edge no longer
+  reads a preheader SSA value. Corpora re-recorded.
+- cd0cef9: std/io/pipe (PipeState class, chan<bool> notifications,
+  PipeReader/PipeWriter implementing io.Reader/io.Writer, close, pipe).
+  tests/std/pipe writes "hello", closes, reads to EOF (exit 5).
+- Cold-cache gate -full is green.
+- Next: std/parallel, then std/encoding/json; the await/place-cache note for
+  pipe is resolved by the slot reloads.
