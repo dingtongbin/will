@@ -762,3 +762,68 @@ Evidence commands:
   cold-cache gate -full is green.
 - Next: migrate std/test (arc<TestState>) the same way, then the remaining
   rc/arc corpora and the rc/arc compiler surface.
+## std/test class migration started (round 48, uncommitted)
+
+- std/test/test.will: TestState is now a class with an init; T and caseResult
+  store a TestState reference; new_t constructs it with new TestState(...);
+  run_case uses the reference. No arc text remains in the file.
+- Compiling tests/std/test now reports two checker errors:
+  1. `test/test.will:15:21 O0002 a copy is required here` on the T.state
+     field declaration (the message position points at the field, not the
+     construction);
+  2. `test/test.will:205:39 T0016 this value cannot cross a task boundary` on
+     spawn with a T that carries a class reference. The spec allows sharing a
+     GC reference across tasks (with Mutex/atomics/channels), so the Send
+     analysis must accept class fields.
+- Next: check the checker's Send/Sync rule for class fields and the O0002
+  position for a struct literal that stores a class reference; then rerun the
+  test corpora and the cold gate.
+## std/test migration: Send fixed, O0002 remains (round 50)
+
+- `sendsync.go` now returns true for a class type in both namedSend and
+  namedSync (GC reference shared across tasks).
+- `std/test/test.will` copies each Case into an owned local before spawn
+  (`var spec: Case = cases.get(usize(i))`), which cleared T0016.
+- Only `test/test.will:15:21 O0002 a copy is required here` remains; the
+  position points at the `state: TestState` field declaration. The move pass
+  treats a struct whose fields include an owned field (T also has `name: str`)
+  as owning; the class reference itself should not need a clone. Next: trace
+  which move rule reports at that position (placeCopy caller) once the shell
+  quoting is sorted, or exempt class reference fields from the owning walk.
+- Not committed: check tests/std/test still fails on O0002.
+## std/test: check passes, IR dominance error (round 51)
+
+- The O0002 was a correct diagnostic: TestState.init stored the borrowed `logs`
+  parameter into the field, so the fix is `self.logs = logs.clone()` in std.
+  Debug prints in move.go were removed; `check tests/std/test` now passes.
+- Running tests/std/test fails LLVM verification: `Instruction does not
+  dominate all uses` around `%t924 = trunc i64 ...` / `%t926 = icmp slt`,
+  in the parallel/region part. This appeared after the class migration and the
+  owned-Case-before-spawn change; next is to inspect the IR around those
+  temporaries (likely a value computed in one branch and used after the join).
+- Worktree (uncommitted): sendsync.go class rule, std/test/test.will class
+  migration, move.go clean.
+## Range bound dominance fixed; next async-loop dominance (round 52)
+
+- Fixed the Range loop lowering: the end bound is evaluated once and stored
+  in a temp alloca, and the condition loads it. A bare SSA bound did not
+  dominate the condition because the back edge bypasses the preheader. The
+  first `trunc/icmp` dominance error in std/test is gone.
+- The next LLVM error is the same class inside the async loop:
+  `%t985 = getelementptr struct caseResult, ptr %t983, i64 %t984` used by
+  `%t1030 = getelementptr i8, ptr %t985` after the loop. The await
+  continuation of the loop body still refers to body-local SSA temporaries;
+  they need frame slots, not SSA values.
+- Uncommitted: gen.go Range slot, sendsync class rule, std/test migration,
+  move.go clean.
+## std/test class surface landed (round 53)
+
+- Commits e4892f2 (Range end bound in a slot; corpora re-recorded),
+  1368a4d (class references are Send/Sync), d1e7ae6 (std/test class surface:
+  TestState class with clone in init, T/caseResult hold the reference, Case
+  copied before spawn, awaited result bound before push).
+- tests/std/test runs (prints RR), corpus re-recorded, cold-cache gate -full
+  is green.
+- std/sync and std/test are now on the final class surface. Remaining rc/arc
+  text lives in ~55/15 corpus files and in the compiler rc surface; that is
+  the next deprecation batch.
