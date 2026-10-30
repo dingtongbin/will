@@ -35,6 +35,14 @@ func (g *generator) initDeclForNew(d *docState, r willc.Record) (*docState, will
 	if len(params) != len(args) {
 		return nil, willc.Record{}, "", nil, nil, false
 	}
+	for _, a := range args {
+		if contains(params, a) {
+			// A construction inside the generic declaration still names the
+			// type parameter: it is not an instance, and an instance of it
+			// would keep the parameter unsubstituted.
+			return nil, willc.Record{}, "", nil, nil, false
+		}
+	}
 	for _, fn := range def.recs {
 		if fn.Kind != "func" || fieldText(fn, "text") != "init" {
 			continue
