@@ -4885,12 +4885,16 @@ declare void @willrt_gc_unpin(ptr)
 @"willrt.gc.type.value.bool" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 16, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 17, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.i64" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 18, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.raw" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 19, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Array<u8>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 19, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Fault" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 20, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut File" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 21, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut fsError" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 22, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.raw" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 23, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.str" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 20, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.u32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 21, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 22, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.usize" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 23, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 24, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 25, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 26, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.usize" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 27, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 declare i32 @willrt_gc_register_type(ptr)
 define internal void @willrt.gc.register_types() {
 entry:
@@ -4912,6 +4916,10 @@ entry:
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.bool")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i64")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Array<u8>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Fault")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut File")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut fsError")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.raw")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.str")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.u32")

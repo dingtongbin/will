@@ -4123,11 +4123,25 @@ declare i32 @willrt_weak_upgrade(i64, ptr)
 @"willrt.gc.type.value.func()" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 10, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.func()", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 11, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.i64" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 12, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.raw" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 13, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Barrier" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 13, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Count" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 14, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Fault" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 15, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Mutex<Counter>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 16, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Once" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 17, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Permit" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 18, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut RwLock<Counter>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 19, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Semaphore" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 20, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.raw" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 21, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.ref Barrier" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 22, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.ref Count" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 23, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.ref Mutex<Counter>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 24, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.ref Once" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 25, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.ref RwLock<Counter>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 26, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.ref Semaphore" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 27, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.str" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 14, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 15, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.usize" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 16, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 28, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 29, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.usize" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 30, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 declare i32 @willrt_gc_register_type(ptr)
 define internal void @willrt.gc.register_types() {
 entry:
@@ -4143,7 +4157,21 @@ entry:
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.func()")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i64")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Barrier")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Count")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Fault")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Mutex<Counter>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Once")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Permit")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut RwLock<Counter>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Semaphore")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.raw")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.ref Barrier")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.ref Count")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.ref Mutex<Counter>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.ref Once")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.ref RwLock<Counter>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.ref Semaphore")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.str")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.u8")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.usize")

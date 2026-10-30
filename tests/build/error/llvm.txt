@@ -181,9 +181,10 @@ declare void @willrt_gc_unpin(ptr)
 @"willrt.gc.variants.value.Result<i32,Error>" = private constant [2 x { i32, i32, ptr }] [{ i32, i32, ptr } { i32 0, i32 8, ptr @"willrt.gc.type.value.i32" }, { i32, i32, ptr } { i32 1, i32 8, ptr @"willrt.gc.type.value.Error" }]
 @"willrt.gc.type.value.Result<i32,Error>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 3, i32 24, i32 8, i32 32, i32 2, ptr @"willrt.gc.variants.value.Result<i32,Error>", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 4, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.ref E" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 5, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.str" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 5, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 6, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 6, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 7, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 declare i32 @willrt_gc_register_type(ptr)
 define internal void @willrt.gc.register_types() {
 entry:
@@ -191,6 +192,7 @@ entry:
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Error")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.Result<i32,Error>")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.ref E")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.str")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.u8")
   ret void

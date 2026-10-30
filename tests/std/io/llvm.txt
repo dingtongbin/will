@@ -7193,17 +7193,23 @@ declare void @willrt_gc_unpin(ptr)
 @"willrt.gc.type.value.bool" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 22, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 23, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.type.value.i64" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 24, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.raw" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 25, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Array<u8>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 25, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Array<usize>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 26, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Fault" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 27, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut File" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 28, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut Poller" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 29, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.mut fsError" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 30, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.raw" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 31, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.std/io.Reader" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.std/io.Reader" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 26, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.std/io.Reader", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.std/io.Reader" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 32, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.std/io.Reader", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.std/io.Writer" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.std/io.Writer" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 27, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.std/io.Writer", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.std/io.Writer" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 33, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.std/io.Writer", i32 0, ptr null, i32 0, ptr null }
 @"willrt.gc.refs.value.str" = private constant [1 x i32] [i32 0]
-@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 28, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.u32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 29, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.u64" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 30, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 31, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
-@"willrt.gc.type.value.usize" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 32, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 34, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 35, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u64" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 36, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 37, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.usize" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 38, i32 8, i32 8, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
 declare i32 @willrt_gc_register_type(ptr)
 define internal void @willrt.gc.register_types() {
 entry:
@@ -7231,6 +7237,12 @@ entry:
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.bool")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i64")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Array<u8>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Array<usize>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Fault")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut File")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut Poller")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.mut fsError")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.raw")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.std/io.Reader")
   call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.std/io.Writer")

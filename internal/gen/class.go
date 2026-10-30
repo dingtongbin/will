@@ -647,10 +647,7 @@ func (g *generator) classTypeOfText(text string) (*gcmeta.Type, bool) {
 	if g.gcProgram == nil {
 		return nil, false
 	}
-	base, kind := borrowText(text)
-	if kind == "ref" || kind == "mut" {
-		return nil, false
-	}
+	base, _ := borrowText(text)
 	name, ok := g.gcProgram.TypeText(g.pkg, g.canonicalTypeText(base))
 	if !ok {
 		return nil, false
