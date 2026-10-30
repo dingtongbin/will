@@ -1,230 +1,43 @@
-# Deque is a double-ended queue backed by two stacks. Both ends push in
-# constant time; a pop that finds one stack empty moves half of the other
-# stack, so every element moves amortized constant time.
-struct Deque<T> {
-    front: list[T]
-    back: list[T]
+# Deque is a double-ended queue with indexed access.
+class Deque<T> {
+    items: list[T]
 
-    def init(self) {
-        self.front = list[T](0)
-        self.back = list[T](0)
+    def init(self, capacity: usize) {
+        self.items = list[T](capacity)
     }
 
     def push_front(self, v: T) {
-        self.front.push(v)
+        self.items.insert(0usize, v)
     }
 
     def push_back(self, v: T) {
-        self.back.push(v)
+        self.items.push(v)
     }
 
     def pop_front(self) -> Option<T> {
-        if self.front.len() > 0 {
-            return self.front.pop()
-        }
-        if self.back.len() == 0 {
+        if self.items.len() == 0usize {
             return None
         }
-        var tmp: list[T] = list[T](0)
-        while True {
-            if self.back.len() == 0 {
-                break
-            }
-            match self.back.pop() {
-                Some(v) => {
-                    tmp.push(v)
-                }
-                None => {
-                    break
-                }
-            }
-        }
-        var half: usize = tmp.len() / 2usize
-        if half == 0usize {
-            half = 1usize
-        }
-        var rev: list[T] = list[T](0)
-        var i: usize = 0usize
-        while True {
-            if i >= half {
-                break
-            }
-            match tmp.pop() {
-                Some(v) => {
-                    rev.push(v)
-                }
-                None => {
-                    break
-                }
-            }
-            i += 1usize
-        }
-        while True {
-            if rev.len() == 0 {
-                break
-            }
-            match rev.pop() {
-                Some(v) => {
-                    self.front.push(v)
-                }
-                None => {
-                    break
-                }
-            }
-        }
-        while True {
-            if tmp.len() == 0 {
-                break
-            }
-            match tmp.pop() {
-                Some(v) => {
-                    self.back.push(v)
-                }
-                None => {
-                    break
-                }
-            }
-        }
-        return self.front.pop()
+        return Some(self.items.remove(0usize))
     }
 
     def pop_back(self) -> Option<T> {
-        if self.back.len() > 0 {
-            return self.back.pop()
-        }
-        if self.front.len() == 0 {
-            return None
-        }
-        var tmp: list[T] = list[T](0)
-        while True {
-            if self.front.len() == 0 {
-                break
-            }
-            match self.front.pop() {
-                Some(v) => {
-                    tmp.push(v)
-                }
-                None => {
-                    break
-                }
-            }
-        }
-        var half: usize = tmp.len() / 2usize
-        if half == 0usize {
-            half = 1usize
-        }
-        var rev: list[T] = list[T](0)
-        var i: usize = 0usize
-        while True {
-            if i >= half {
-                break
-            }
-            match tmp.pop() {
-                Some(v) => {
-                    rev.push(v)
-                }
-                None => {
-                    break
-                }
-            }
-            i += 1usize
-        }
-        while True {
-            if tmp.len() == 0 {
-                break
-            }
-            match tmp.pop() {
-                Some(v) => {
-                    self.front.push(v)
-                }
-                None => {
-                    break
-                }
-            }
-        }
-        var rev2: list[T] = list[T](0)
-        while True {
-            if rev.len() == 0 {
-                break
-            }
-            match rev.pop() {
-                Some(v) => {
-                    rev2.push(v)
-                }
-                None => {
-                    break
-                }
-            }
-        }
-        while True {
-            if rev2.len() == 0 {
-                break
-            }
-            match rev2.pop() {
-                Some(v) => {
-                    self.back.push(v)
-                }
-                None => {
-                    break
-                }
-            }
-        }
-        return self.back.pop()
+        return self.items.pop()
     }
 
-    def peek_front(self) -> Option<T> {
-        if self.front.len() > 0 {
-            return Some(self.front.get(self.front.len() - 1usize))
-        }
-        if self.back.len() == 0 {
-            return None
-        }
-        return Some(self.back.get(0usize))
+    def get(self, i: usize) -> T {
+        return self.items.get(i)
     }
 
-    def peek_back(self) -> Option<T> {
-        if self.back.len() > 0 {
-            return Some(self.back.get(self.back.len() - 1usize))
-        }
-        if self.front.len() == 0 {
-            return None
-        }
-        return Some(self.front.get(0usize))
+    def set(self, i: usize, v: T) {
+        self.items.set(i, v)
     }
 
     def len(self) -> usize {
-        return self.front.len() + self.back.len()
+        return self.items.len()
     }
 
     def clear(self) {
-        self.front.clear()
-        self.back.clear()
-    }
-
-    def clone(self) -> Deque<T> {
-        var out: Deque<T>
-        out.front = self.front.clone()
-        out.back = self.back.clone()
-        return out
+        self.items.clear()
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,369 +1,89 @@
-# Pair is the key and value a Tree returns from an ordered lookup. It mirrors
-# the core Pair shape for the operations that need two values at once.
-struct Pair<K, V> {
-    first: K
-    second: V
+# Pair is the ordered key/value pair exposed by std/container.
+struct Pair<A, B> {
+    first: A
+    second: B
 }
 
-# treeNode is one node of the AVL tree. The index is signed so -1 can mean no
-# child without a separate Option in every recursive call.
-struct treeNode<K, V> {
-    key: K
-    value: V
-    left: i32
-    right: i32
-    height: i32
-}
+# Tree is an ordered map. Keys are kept sorted by Ord; iteration order is
+# deterministic.
+class Tree<K: Ord, V> {
+    keys_list: list[K]
+    values_list: list[V]
 
-# Tree is an ordered map. Set, Get, Delete, Min, Max, Floor, and Ceil all walk
-# the AVL height, so they stay logarithmic.
-struct Tree<K, V> {
-    nodes: list[treeNode<K, V>]
-    free: list[i32]
-    root: i32
-    count: usize
-    less: func(K, K) -> bool
-    deleted: bool
-
-    def init(self, less: func(K, K) -> bool) {
-        self.nodes = list[treeNode<K, V>](0)
-        self.free = list[i32](0)
-        self.root = -1i32
-        self.count = 0usize
-        self.less = less
-        self.deleted = False
-    }
-
-    def set(self, k: K, v: V) {
-        var at: i32 = self.find_index(k)
-        if at >= 0i32 {
-            var node: treeNode<K, V> = self.nodes.get(usize(at))
-            node.value = v
-            self.nodes.set(usize(at), node)
-            return
-        }
-        self.root = self.insert_at(self.root, k, v)
-        self.count += 1usize
+    def init(self) {
+        self.keys_list = list[K](0usize)
+        self.values_list = list[V](0usize)
     }
 
     def get(self, k: K) -> Option<V> {
-        var at: i32 = self.find_index(k)
-        if at < 0i32 {
-            return None
+        var i: usize = 0usize
+        while i < self.keys_list.len() {
+            var current: K = self.keys_list.get(i)
+            if current < k {
+                i += 1usize
+                continue
+            }
+            if k < current {
+                return None
+            }
+            return Some(self.values_list.get(i))
         }
-        var node: treeNode<K, V> = self.nodes.get(usize(at))
-        return Some(node.value)
+        return None
     }
 
-    def delete(self, k: K) -> bool {
-        if self.root < 0i32 {
-            return False
+    def set(self, k: K, v: V) -> Option<V> {
+        var i: usize = 0usize
+        while i < self.keys_list.len() {
+            var current: K = self.keys_list.get(i)
+            if current < k {
+                i += 1usize
+                continue
+            }
+            if k < current {
+                break
+            }
+            var old: V = self.values_list.get(i)
+            self.values_list.set(i, v.clone())
+            return Some(old)
         }
-        self.deleted = False
-        self.root = self.delete_at(self.root, k)
-        if not self.deleted {
-            return False
+        self.keys_list.insert(i, k.clone())
+        self.values_list.insert(i, v.clone())
+        return None
+    }
+
+    def delete(self, k: K) -> Option<V> {
+        var i: usize = 0usize
+        while i < self.keys_list.len() {
+            var current: K = self.keys_list.get(i)
+            if current < k {
+                i += 1usize
+                continue
+            }
+            if k < current {
+                return None
+            }
+            var old: V = self.values_list.get(i)
+            self.keys_list.remove(i)
+            self.values_list.remove(i)
+            return Some(old)
         }
-        self.count -= 1usize
-        return True
+        return None
     }
 
     def len(self) -> usize {
-        return self.count
+        return self.keys_list.len()
     }
 
-    def min(self) -> Option<Pair<K, V>> {
-        if self.root < 0i32 {
-            return None
-        }
-        var at: i32 = self.root
-        while True {
-            var node: treeNode<K, V> = self.nodes.get(usize(at))
-            if node.left < 0i32 {
-                return Some(Pair<K, V> { first: node.key.clone(), second: node.value.clone() })
-            }
-            at = node.left
-        }
+    def clear(self) {
+        self.keys_list.clear()
+        self.values_list.clear()
     }
 
-    def max(self) -> Option<Pair<K, V>> {
-        if self.root < 0i32 {
-            return None
-        }
-        var at: i32 = self.root
-        while True {
-            var node: treeNode<K, V> = self.nodes.get(usize(at))
-            if node.right < 0i32 {
-                return Some(Pair<K, V> { first: node.key.clone(), second: node.value.clone() })
-            }
-            at = node.right
-        }
+    def keys(self) -> list[K] {
+        return self.keys_list.clone()
     }
 
-    def floor(self, k: K) -> Option<Pair<K, V>> {
-        var at: i32 = self.root
-        var best: i32 = -1i32
-        var cmp: func(K, K) -> bool = self.less
-        while True {
-            if at < 0i32 {
-                break
-            }
-            var node: treeNode<K, V> = self.nodes.get(usize(at))
-            if cmp(node.key, k) {
-                best = at
-                at = node.right
-            } else if cmp(k, node.key) {
-                at = node.left
-            } else {
-                best = at
-                break
-            }
-        }
-        if best < 0i32 {
-            return None
-        }
-        var found: treeNode<K, V> = self.nodes.get(usize(best))
-        return Some(Pair<K, V> { first: found.key.clone(), second: found.value.clone() })
-    }
-
-    def ceil(self, k: K) -> Option<Pair<K, V>> {
-        var at: i32 = self.root
-        var best: i32 = -1i32
-        var cmp: func(K, K) -> bool = self.less
-        while True {
-            if at < 0i32 {
-                break
-            }
-            var node: treeNode<K, V> = self.nodes.get(usize(at))
-            if cmp(k, node.key) {
-                best = at
-                at = node.left
-            } else if cmp(node.key, k) {
-                at = node.right
-            } else {
-                best = at
-                break
-            }
-        }
-        if best < 0i32 {
-            return None
-        }
-        var found: treeNode<K, V> = self.nodes.get(usize(best))
-        return Some(Pair<K, V> { first: found.key.clone(), second: found.value.clone() })
-    }
-
-    def find_index(self, k: K) -> i32 {
-        var at: i32 = self.root
-        var cmp: func(K, K) -> bool = self.less
-        while True {
-            if at < 0i32 {
-                return -1i32
-            }
-            var node: treeNode<K, V> = self.nodes.get(usize(at))
-            if cmp(k, node.key) {
-                at = node.left
-            } else if cmp(node.key, k) {
-                at = node.right
-            } else {
-                return at
-            }
-        }
-    }
-
-    def height_at(self, at: i32) -> i32 {
-        if at < 0i32 {
-            return 0i32
-        }
-        var node: treeNode<K, V> = self.nodes.get(usize(at))
-        return node.height
-    }
-
-    def update_height(self, at: i32) {
-        var node: treeNode<K, V> = self.nodes.get(usize(at))
-        var leftHeight: i32 = self.height_at(node.left)
-        var rightHeight: i32 = self.height_at(node.right)
-        var taller: i32 = leftHeight
-        if rightHeight > taller {
-            taller = rightHeight
-        }
-        node.height = taller + 1i32
-        self.nodes.set(usize(at), node)
-    }
-
-    def rotate_right(self, y: i32) -> i32 {
-        var ynode: treeNode<K, V> = self.nodes.get(usize(y))
-        var x: i32 = ynode.left
-        var xnode: treeNode<K, V> = self.nodes.get(usize(x))
-        var moved: i32 = xnode.right
-        ynode.left = moved
-        xnode.right = y
-        self.nodes.set(usize(y), ynode)
-        self.nodes.set(usize(x), xnode)
-        self.update_height(y)
-        self.update_height(x)
-        return x
-    }
-
-    def rotate_left(self, x: i32) -> i32 {
-        var xnode: treeNode<K, V> = self.nodes.get(usize(x))
-        var y: i32 = xnode.right
-        var ynode: treeNode<K, V> = self.nodes.get(usize(y))
-        var moved: i32 = ynode.left
-        xnode.right = moved
-        ynode.left = x
-        self.nodes.set(usize(x), xnode)
-        self.nodes.set(usize(y), ynode)
-        self.update_height(x)
-        self.update_height(y)
-        return y
-    }
-
-    def balance(self, at: i32) -> i32 {
-        self.update_height(at)
-        var node: treeNode<K, V> = self.nodes.get(usize(at))
-        var leftHeight: i32 = self.height_at(node.left)
-        var rightHeight: i32 = self.height_at(node.right)
-        var factor: i32 = leftHeight - rightHeight
-        if factor > 1i32 {
-            var leftNode: treeNode<K, V> = self.nodes.get(usize(node.left))
-            if self.height_at(leftNode.left) < self.height_at(leftNode.right) {
-                node.left = self.rotate_left(node.left)
-                self.nodes.set(usize(at), node)
-            }
-            return self.rotate_right(at)
-        }
-        if factor < -1i32 {
-            var rightNode: treeNode<K, V> = self.nodes.get(usize(node.right))
-            if self.height_at(rightNode.right) < self.height_at(rightNode.left) {
-                node.right = self.rotate_right(node.right)
-                self.nodes.set(usize(at), node)
-            }
-            return self.rotate_left(at)
-        }
-        return at
-    }
-
-    def new_node(self, k: K, v: V) -> i32 {
-        var node: treeNode<K, V> = treeNode<K, V> {
-            key: k,
-            value: v,
-            left: -1i32,
-            right: -1i32,
-            height: 1i32,
-        }
-        if self.free.len() > 0usize {
-            match self.free.pop() {
-                Some(at) => {
-                    self.nodes.set(usize(at), node)
-                    return at
-                }
-                None => {
-                }
-            }
-        }
-        self.nodes.push(node)
-        return i32(self.nodes.len() - 1usize)
-    }
-
-    def free_node(self, at: i32) {
-        var empty: treeNode<K, V>
-        self.nodes.set(usize(at), empty)
-        self.free.push(at)
-    }
-
-    def insert_at(self, at: i32, k: K, v: V) -> i32 {
-        if at < 0i32 {
-            return self.new_node(k, v)
-        }
-        var node: treeNode<K, V> = self.nodes.get(usize(at))
-        var cmp: func(K, K) -> bool = self.less
-        if cmp(k, node.key) {
-            node.left = self.insert_at(node.left, k, v)
-        } else {
-            node.right = self.insert_at(node.right, k, v)
-        }
-        self.nodes.set(usize(at), node)
-        return self.balance(at)
-    }
-
-    def min_index(self, at: i32) -> i32 {
-        var cur: i32 = at
-        while True {
-            var node: treeNode<K, V> = self.nodes.get(usize(cur))
-            if node.left < 0i32 {
-                return cur
-            }
-            cur = node.left
-        }
-    }
-
-    def delete_at(self, at: i32, k: K) -> i32 {
-        if at < 0i32 {
-            return -1i32
-        }
-        var node: treeNode<K, V> = self.nodes.get(usize(at))
-        var cmp: func(K, K) -> bool = self.less
-        if cmp(k, node.key) {
-            node.left = self.delete_at(node.left, k)
-        } else if cmp(node.key, k) {
-            node.right = self.delete_at(node.right, k)
-        } else {
-            self.deleted = True
-            if node.left < 0i32 {
-                self.free_node(at)
-                return node.right
-            }
-            if node.right < 0i32 {
-                self.free_node(at)
-                return node.left
-            }
-            var next: i32 = self.min_index(node.right)
-            var successor: treeNode<K, V> = self.nodes.get(usize(next))
-            node.key = successor.key.clone()
-            node.value = successor.value.clone()
-            node.right = self.delete_at(node.right, successor.key)
-        }
-        self.nodes.set(usize(at), node)
-        return self.balance(at)
+    def values(self) -> list[V] {
+        return self.values_list.clone()
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

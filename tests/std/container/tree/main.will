@@ -1,13 +1,7 @@
 import "std/container/tree"
 
-def less(a: i32, b: i32) -> bool {
-    return a < b
-}
-
-# Tree must keep ordered lookups correct through rotations and through both
-# one-child and two-child deletion.
 def main() -> i32 {
-    var t: tree.Tree<i32, i32> = tree.Tree<i32, i32>(less)
+    var t: tree.Tree<i32, i32> = tree.Tree<i32, i32>()
     if t.len() != 0usize {
         return 1
     }
@@ -18,94 +12,84 @@ def main() -> i32 {
     t.set(3, 30)
     t.set(7, 70)
     t.set(9, 90)
-    t.set(2, 21)
+    match t.set(2, 21) {
+        Some(v) => {
+            if v != 20 {
+                return 2
+            }
+        }
+        None => {
+            return 3
+        }
+    }
     if t.len() != 7usize {
-        return 2
+        return 4
     }
     match t.get(2) {
         Some(v) => {
             if v != 21 {
-                return 3
+                return 5
             }
         }
         None => {
-            return 4
+            return 6
         }
     }
     match t.get(4) {
         Some(v) => {
             _ = v
-            return 5
-        }
-        None => {
-        }
-    }
-    match t.min() {
-        Some(p) => {
-            if p.first != 1 or p.second != 10 {
-                return 6
-            }
-        }
-        None => {
             return 7
         }
+        None => {
+        }
     }
-    match t.max() {
-        Some(p) => {
-            if p.first != 9 or p.second != 90 {
-                return 8
+    var wantKeys: list[i32] = list[i32](7usize)
+    wantKeys.push(1)
+    wantKeys.push(2)
+    wantKeys.push(3)
+    wantKeys.push(5)
+    wantKeys.push(7)
+    wantKeys.push(8)
+    wantKeys.push(9)
+    var keys: list[i32] = t.keys()
+    if keys.len() != 7usize {
+        return 8
+    }
+    var values: list[i32] = t.values()
+    if values.len() != 7usize {
+        return 9
+    }
+    var i: usize = 0usize
+    while i < 7usize {
+        if keys.get(i) != wantKeys.get(i) {
+            return 10
+        }
+        i += 1usize
+    }
+    match t.delete(2) {
+        Some(v) => {
+            if v != 21 {
+                return 11
             }
         }
         None => {
-            return 9
+            return 12
         }
     }
-    match t.floor(6) {
-        Some(p) => {
-            if p.first != 5 {
-                return 10
-            }
-        }
-        None => {
-            return 11
-        }
+    if t.len() != 6usize {
+        return 13
     }
-    match t.ceil(6) {
-        Some(p) => {
-            if p.first != 7 {
-                return 12
-            }
-        }
-        None => {
-            return 13
-        }
-    }
-    if not t.delete(8) or t.len() != 6usize {
-        return 14
-    }
-    if t.delete(8) {
-        return 15
-    }
-    match t.get(8) {
+    match t.delete(4) {
         Some(v) => {
             _ = v
-            return 16
+            return 14
         }
         None => {
         }
     }
-    if not t.delete(5) or t.len() != 5usize {
-        return 17
-    }
-    match t.min() {
-        Some(p) => {
-            if p.first != 1 {
-                return 18
-            }
-        }
-        None => {
-            return 19
-        }
+    t.clear()
+    if t.len() != 0usize {
+        return 15
     }
     return 0
 }

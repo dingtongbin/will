@@ -1,12 +1,12 @@
-# Queue is a FIFO backed by two stacks. Push and Pop are amortized constant
-# time; Peek copies the front value without removing it.
-struct Queue<T> {
+# Queue is a FIFO container. The front list is drained first; pushing after a
+# partial drain still appends behind the older values.
+class Queue<T> {
     front: list[T]
     back: list[T]
 
-    def init(self) {
-        self.front = list[T](0)
-        self.back = list[T](0)
+    def init(self, capacity: usize) {
+        self.front = list[T](capacity)
+        self.back = list[T](capacity)
     }
 
     def push(self, v: T) {
@@ -14,22 +14,15 @@ struct Queue<T> {
     }
 
     def pop(self) -> Option<T> {
-        if self.front.len() > 0 {
-            return self.front.pop()
-        }
-        if self.back.len() == 0 {
-            return None
-        }
-        while True {
-            if self.back.len() == 0 {
-                break
-            }
-            match self.back.pop() {
-                Some(v) => {
-                    self.front.push(v)
-                }
-                None => {
-                    break
+        if self.front.len() == 0usize {
+            while self.back.len() > 0usize {
+                match self.back.pop() {
+                    Some(v) => {
+                        self.front.push(v)
+                    }
+                    None => {
+                        break
+                    }
                 }
             }
         }
@@ -37,13 +30,13 @@ struct Queue<T> {
     }
 
     def peek(self) -> Option<T> {
-        if self.front.len() > 0 {
-            return Some(self.front.get(self.front.len() - 1))
+        if self.front.len() > 0usize {
+            return Some(self.front.get(self.front.len() - 1usize))
         }
-        if self.back.len() == 0 {
+        if self.back.len() == 0usize {
             return None
         }
-        return Some(self.back.get(0))
+        return Some(self.back.get(0usize))
     }
 
     def len(self) -> usize {
@@ -55,15 +48,3 @@ struct Queue<T> {
         self.back.clear()
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-

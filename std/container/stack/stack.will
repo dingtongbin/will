@@ -1,10 +1,9 @@
-# Stack is an explicit work stack. Push, Pop, Peek, and Len are constant time;
-# Reserve and Clone copy the live elements once.
-struct Stack<T> {
+# Stack is a LIFO container backed by a growable list.
+class Stack<T> {
     items: list[T]
 
-    def init(self) {
-        self.items = list[T](0)
+    def init(self, capacity: usize) {
+        self.items = list[T](capacity)
     }
 
     def push(self, v: T) {
@@ -16,11 +15,10 @@ struct Stack<T> {
     }
 
     def peek(self) -> Option<T> {
-        var n: usize = self.items.len()
-        if n == 0 {
+        if self.items.len() == 0usize {
             return None
         }
-        return Some(self.items.get(n - 1))
+        return Some(self.items.get(self.items.len() - 1usize))
     }
 
     def len(self) -> usize {
@@ -31,29 +29,9 @@ struct Stack<T> {
         self.items.clear()
     }
 
-    def reserve(self, n: usize) {
-        self.items.reserve(n)
-    }
-
     def clone(self) -> Stack<T> {
-        var out: Stack<T>
+        var out: Stack<T> = Stack<T>(0usize)
         out.items = self.items.clone()
         return out
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

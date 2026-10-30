@@ -171,6 +171,19 @@ func (g *generator) genericStructDoc(name string) (*docState, string, bool) {
 	return nil, "", false
 }
 
+// sameTypeArgs reports whether two type-argument lists are identical.
+func sameTypeArgs(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // typeDeclIn returns one struct or class declaration by its bare name.
 func typeDeclIn(recs map[int]willc.Record, name string) (willc.Record, bool) {
 	for _, r := range recs {

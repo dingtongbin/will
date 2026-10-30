@@ -434,6 +434,9 @@ func (g *generator) methodInstance(r willc.Record) (genericMethodCall, bool) {
 		if len(params) != len(recvArgs) {
 			return genericMethodCall{}, false
 		}
+		if sameTypeArgs(params, recvArgs) {
+			return genericMethodCall{}, false
+		}
 		if call, ok := g.genericMethodIn(g.cur, g.recs, recvName, params, recvArgs, fieldText(r, "text")); ok {
 			call.doc = g.cur
 			return call, true
@@ -460,6 +463,9 @@ func (g *generator) methodInstance(r willc.Record) (genericMethodCall, bool) {
 	}
 	params := g.typeParamNamesIn(doc, decl)
 	if len(params) != len(recvArgs) {
+		return genericMethodCall{}, false
+	}
+	if sameTypeArgs(params, recvArgs) {
 		return genericMethodCall{}, false
 	}
 	call, ok := g.genericMethodIn(doc, doc.recs, local, params, recvArgs, fieldText(r, "text"))
@@ -551,6 +557,12 @@ func (g *generator) genericMethodDecl(fn willc.Record) bool {
 	name, args, ok := splitGenericType(baseBorrowText(fieldText(*recv, "type")))
 	if !ok {
 		return false
+	}
+	if i := strings.LastIndexByte(name, '/'); i >= 0 {
+		name = name[i+1:]
+	}
+	if i := strings.LastIndexByte(name, '.'); i >= 0 {
+		name = name[i+1:]
 	}
 	id, ok := typeDeclIn(g.recs, name)
 	if !ok {

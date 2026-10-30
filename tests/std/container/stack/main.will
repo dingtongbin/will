@@ -1,11 +1,10 @@
 import "std/container/stack"
 
 def main() -> i32 {
-    var s: stack.Stack<i32> = stack.Stack<i32>()
+    var s: stack.Stack<i32> = stack.Stack<i32>(8usize)
     s.push(1)
     s.push(2)
     s.push(3)
-    s.reserve(8usize)
     if s.len() != 3usize {
         return 1
     }

@@ -1,22 +1,35 @@
 import "std/container/ring"
 
-# A ring must stop at its capacity, preserve FIFO order, and free a slot when
-# Pop removes a value so a later Push can use it again.
 def main() -> i32 {
-    var r: ring.Ring<i32> = ring.Ring<i32>(3usize)!
-    if r.len() != 0usize or r.full() {
+    var r: ring.Ring<i32> = ring.Ring<i32>(3usize)
+    if r.len() != 0usize {
         return 1
     }
-    if not r.push(1) or not r.push(2) or not r.push(3) {
-        return 2
+    match r.push(1) {
+        Some(v) => {
+            _ = v
+            return 2
+        }
+        None => {
+        }
     }
-    if not r.full() or r.len() != 3usize {
-        return 3
+    match r.push(2) {
+        Some(v) => {
+            _ = v
+            return 3
+        }
+        None => {
+        }
     }
-    if r.push(4) {
-        return 4
+    match r.push(3) {
+        Some(v) => {
+            _ = v
+            return 4
+        }
+        None => {
+        }
     }
-    match r.pop() {
+    match r.push(4) {
         Some(v) => {
             if v != 1 {
                 return 5
@@ -26,7 +39,7 @@ def main() -> i32 {
             return 6
         }
     }
-    if not r.push(4) or r.len() != 3usize {
+    if r.len() != 3usize {
         return 7
     }
     match r.peek() {
@@ -77,23 +90,9 @@ def main() -> i32 {
         None => {
         }
     }
-    if not r.push(5) or not r.push(6) {
-        return 17
-    }
     r.clear()
-    if r.len() != 0usize or r.full() {
-        return 18
-    }
-    match ring.Ring<i32>(0usize) {
-        Ok(bad) => {
-            _ = bad
-            return 19
-        }
-        Err(e) => {
-            if e.status() != 2 {
-                return 20
-            }
-        }
+    if r.len() != 0usize {
+        return 17
     }
     return 0
 }
