@@ -877,3 +877,42 @@ Evidence commands:
 - Remaining rc dead code is concentrated in internal/gen (rc.go and rc
   branches of the owned/release/clone helpers); removing it needs the helpers
   refactored, which is the next cleanup item.
+## rc.go cleanup needs a refactor (round 59)
+
+- Deleting strongName/weakName from gen/rc.go broke new.go and rc.go itself;
+  rc.go is not a standalone dead unit (strongName is used by new.go's rc
+  construction path, and constructRc/rcMethodCall sit inside the
+  needsRelease/retain helpers). The file was restored; gen builds.
+- A safe removal needs the owned/release/clone helpers rewritten to drop
+  their rc branches and the rc call sites in adt/array/arrayliteral/
+  arraymethods/container/deepclone/defer/gen/new/struct/task removed first.
+  That is a multi-step refactor, not a mechanical delete.
+- Next: either do that refactor (compiler-internal cleanliness) or the
+  higher-priority C-boundary item: exec/poller pass `raw(array)` of str
+  arrays (GC references) to C (exec.will:33/55, poller.will:48). The spec says
+  a container payload with GC references must not be exposed to C beyond the
+  call; exec keeps args/envpairs for the whole child run, so the C side must
+  copy them at call entry (gap recorded in desc/理由/缺口清单.md).
+## exec C boundary is a real UAF (round 60)
+
+- std/os/exec/exec.c: `willrt_exec_run_async` stores will GC pointers
+  (path/args/env/dir) in an exec_async_run and the blocking worker reads them
+  on another thread. `willrt_exec_run_async_start` only copies the struct, not
+  the referenced strings, so the blocking thread reads GC memory that the
+  caller may have released or moved. This violates C interop section 7.8 and
+  is a use-after-free, not only a spec gap.
+- The fix is to deep-copy path/args/env/dir into C memory at the call site
+  (exec_copy each exec_str), hand the owned copy to the worker, and free it
+  when the worker finishes. This belongs to the C boundary batch.
+- poller.will's `raw(self.fds)`/`raw(out)` passes Array<usize> payloads (no GC
+  references) only for the call duration, which the auto-pin covers; exec is
+  the one that keeps them past the call.
+## exec C boundary fixed (round 60)
+
+- Commit: exec.c deep-copies path/args/env/dir into C memory at the call site
+  (exec_owned_copy) and the blocking worker frees the copy; the *_start and
+  _async forms both pass the owned copy through willrt_blocking_submit_copy.
+  This removes the cross-thread read of will GC memory (UAF) in exec.
+- tests/std/os runs; cold-cache gate -full is green.
+- Leftover: the old exec_async_run/exec_async_output structs and
+  exec_async_wait in exec.c are unused now and should be deleted next.
