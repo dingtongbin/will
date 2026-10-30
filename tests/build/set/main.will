@@ -1,5 +1,5 @@
 def main() -> i32 {
-    var s: Set<i32> = new Set<i32>()
+    var s: set[i32] = set[i32]()
     if s.add(1) {
         s.add(2)
     }

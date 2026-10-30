@@ -4,14 +4,14 @@
 struct Cmd {
     path: str
     args: []str
-    env: Map<str, str>
+    env: dict[str, str]
     dir: str
 }
 
 # Command builds a command for path with args. The environment and the working
 # directory are inherited until WithEnv or WithDir sets them.
 def command(path: str, args: ...str) -> Cmd {
-    return Cmd { path: path.clone(), args: args, env: new Map<str, str>(0), dir: ""}
+    return Cmd { path: path.clone(), args: args, env: dict[str, str](0), dir: ""}
 }
 
 # WithEnv returns a command whose environment is c's environment plus the
@@ -24,10 +24,10 @@ def (c: ref Cmd) with_env(kv: ...str) -> Cmd {
     if kv.len() % 2usize != 0usize {
         panic("exec: WithEnv takes key and value pairs")
     }
-    var env: Map<str, str> = new Map<str, str>(0)
-    for key, value in c.env {
+    var env: dict[str, str] = dict[str, str](0)
+    c.env.each(func(key: str, value: str) {
         env.set(key, value)
-    }
+    })
     var i: usize = 0
     while True {
         if i >= kv.len() {
@@ -46,10 +46,10 @@ def (c: ref Cmd) with_dir(dir: str) -> Cmd {
 }
 
 # copyEnv makes an independent map so changing the copy cannot alter c.
-def copy_env(src: Map<str, str>) -> Map<str, str> {
-    var out: Map<str, str> = new Map<str, str>(src.len())
-    for key, value in src {
+def copy_env(src: dict[str, str]) -> dict[str, str] {
+    var out: dict[str, str] = dict[str, str](src.len())
+    src.each(func(key: str, value: str) {
         out.set(key.clone(), value.clone())
-    }
+    })
     return out
 }

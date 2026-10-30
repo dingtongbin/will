@@ -6,7 +6,7 @@ struct C {
 # another, and Clear releases only the map's own reference.
 def main() -> i32 {
     var r: rc<C> = new rc<C>(C { n: 7 })
-    var m: Map<str, rc<C>> = new Map<str, rc<C>>(0usize)
+    var m: dict[str, rc<C>] = dict[str, rc<C>](0usize)
     m.set("x", r)
     if m.len() != 1usize {
         return 1

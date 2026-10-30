@@ -44,8 +44,8 @@ def setenv(name: str, value: str) -> Result<(), Error> {
 }
 
 # Environ returns every environment entry whose key and value are valid UTF-8.
-def environ() -> Map<str, str> {
-    var out: Map<str, str> = new Map<str, str>(0)
+def environ() -> dict[str, str] {
+    var out: dict[str, str] = dict[str, str](0)
     var pairs: []str
     var status: i32 = c.willrt_os_environ(raw(pairs))
     if status != 0 {

@@ -21,9 +21,13 @@ struct execError {
 # AsyncRun runs c and returns its exit status.
 async def (cmd: ref Cmd) run() -> Result<ExitStatus, Error> {
     var envpairs: Array<str> = new Array<str>(0)
-    for key, value in cmd.env {
-        envpairs.push(key)
-        envpairs.push(value)
+    var keys: list[str] = cmd.env.keys()
+    var values: list[str] = cmd.env.values()
+    var i: usize = 0
+    while i < len(keys) {
+        envpairs.push(keys.get(i))
+        envpairs.push(values.get(i))
+        i += 1
     }
     var status: ExitStatus
     var code: i32 = await c.willrt_exec_run_async(raw(cmd.path), raw(cmd.args), raw(envpairs),
@@ -37,9 +41,13 @@ async def (cmd: ref Cmd) run() -> Result<ExitStatus, Error> {
 # AsyncOutput runs c and captures both output streams.
 async def (cmd: ref Cmd) output() -> Result<Output, Error> {
     var envpairs: Array<str> = new Array<str>(0)
-    for key, value in cmd.env {
-        envpairs.push(key)
-        envpairs.push(value)
+    var keys: list[str] = cmd.env.keys()
+    var values: list[str] = cmd.env.values()
+    var i: usize = 0
+    while i < len(keys) {
+        envpairs.push(keys.get(i))
+        envpairs.push(values.get(i))
+        i += 1
     }
     var out: Array<u8>
     var err: Array<u8>

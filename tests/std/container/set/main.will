@@ -1,7 +1,7 @@
 # Set keeps insertion order, Add reports whether the value was new, and Delete
 # removes it.
 def main() -> i32 {
-    var s: Set<i32> = new Set<i32>(0usize)
+    var s: set[i32] = set[i32](0usize)
     if not s.add(3) or not s.add(1) or s.add(3) {
         return 1
     }

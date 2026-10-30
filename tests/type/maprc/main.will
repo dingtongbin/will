@@ -1,5 +1,5 @@
 def main() -> i32 {
-    var values: Map<rc<i32>, i32> = new Map<rc<i32>, i32>(0usize)
+    var values: dict[rc<i32>, i32] = dict[rc<i32>, i32](0usize)
     if values.len() != 0usize {
         return 1
     }
