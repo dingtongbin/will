@@ -74,7 +74,6 @@ type FuncDecl struct {
 	TypeParams []*TypeParam
 	Params     []*Param
 	Result     *Type
-	From       []Expr
 	Body       *Block
 	Async      bool
 	Test       bool
@@ -88,7 +87,6 @@ type Receiver struct {
 	Name    string
 	NamePos source.Pos
 	Type    *Type
-	Mut     bool
 }
 
 // Param is one function parameter.
@@ -97,7 +95,6 @@ type Param struct {
 	Name     string
 	NamePos  source.Pos
 	Type     *Type
-	Mut      bool
 	Variadic bool
 	Default  Expr
 }
@@ -110,7 +107,9 @@ type TypeParam struct {
 	Constraints []*Type
 }
 
-// StructDecl declares a struct.
+// StructDecl declares a struct or, when Class is set, a GC class. Methods are
+// stored here when they are written inside the type body; a flat receiver
+// declaration is the older spelling and is being removed.
 type StructDecl struct {
 	Span
 	Doc        string
@@ -118,6 +117,8 @@ type StructDecl struct {
 	NamePos    source.Pos
 	TypeParams []*TypeParam
 	Fields     []*Field
+	Methods    []*FuncDecl
+	Class      bool
 }
 
 func (*StructDecl) declNode() {}
@@ -170,7 +171,6 @@ type MethodSig struct {
 	NamePos source.Pos
 	Params  []*Param
 	Result  *Type
-	From    []Expr
 	Async   bool
 }
 

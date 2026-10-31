@@ -1,0 +1,121 @@
+%willrt_error = type { ptr, i64, ptr, ptr }
+%willrt.task_error = type { %willrt_error, i32 }
+%willrt_gc_stack_slot = type { i32, i32, ptr }
+%willrt_gc_stack_map_data = type { ptr, ptr, i64 }
+%willrt_gc_frame = type { ptr, ptr, ptr }
+%"class.example.com/genericclass.Box<example.com/genericclass.Node>" = type { ptr, i32 }
+%"class.example.com/genericclass.Node" = type { i32 }
+define i32 @"example.com/genericclass.will$main"() {
+entry:
+  %v.b = alloca ptr
+  %v.gcroots = alloca [3 x ptr]
+  store [3 x ptr] zeroinitializer, ptr %v.gcroots
+  %v.gcframe = alloca %willrt_gc_frame
+  %t1 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 0
+  %t2 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 1
+  %t3 = getelementptr inbounds [3 x ptr], ptr %v.gcroots, i32 0, i32 2
+  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.example.com/genericclass.will$main", ptr %v.gcroots)
+  %v.class.27 = alloca ptr
+  %v.class.28 = alloca ptr
+  %t4 = call ptr @willrt_gc_alloc(i64 16, ptr @"willrt.gc.type.example.com/genericclass.Box<example.com/genericclass.Node>")
+  store ptr %t4, ptr %v.class.27
+  call void @willrt_gc_write_barrier(ptr %t2, ptr %t4)
+  %t5 = call ptr @willrt_gc_pin(ptr %t4)
+  %t6 = getelementptr inbounds %"class.example.com/genericclass.Box<example.com/genericclass.Node>", ptr %t5, i32 0, i32 0
+  %t7 = call ptr @willrt_gc_alloc(i64 4, ptr @"willrt.gc.type.example.com/genericclass.Node")
+  store ptr %t7, ptr %v.class.28
+  call void @willrt_gc_write_barrier(ptr %t3, ptr %t7)
+  %t8 = call ptr @willrt_gc_pin(ptr %t7)
+  %t9 = getelementptr inbounds %"class.example.com/genericclass.Node", ptr %t8, i32 0, i32 0
+  store i32 41, ptr %t9
+  call void @willrt_gc_safepoint(i32 0)
+  call void @willrt_gc_unpin(ptr %t8)
+  %t10 = load ptr, ptr %v.class.28
+  call void @willrt_gc_write_barrier(ptr %t6, ptr %t10)
+  %t11 = getelementptr inbounds %"class.example.com/genericclass.Box<example.com/genericclass.Node>", ptr %t5, i32 0, i32 1
+  store i32 1, ptr %t11
+  call void @willrt_gc_safepoint(i32 0)
+  call void @willrt_gc_unpin(ptr %t5)
+  %t12 = load ptr, ptr %v.class.27
+  call void @willrt_gc_write_barrier(ptr %v.b, ptr %t12)
+  call void @willrt_gc_write_barrier(ptr %t1, ptr %t12)
+  %t13 = call ptr @willrt_gc_read_barrier_slot(ptr %t1)
+  %t14 = call ptr @willrt_gc_pin(ptr %t13)
+  call void @willrt_gc_safepoint(i32 3)
+  %t15 = call ptr @"example.com/genericclass.Box<Node>.get"(ptr %t14)
+  call void @willrt_gc_unpin(ptr %t14)
+  %t16 = getelementptr inbounds %"class.example.com/genericclass.Node", ptr %t15, i32 0, i32 0
+  %t17 = load i32, ptr %t16
+  %t18 = call ptr @willrt_gc_read_barrier_slot(ptr %t1)
+  %t19 = getelementptr inbounds %"class.example.com/genericclass.Box<example.com/genericclass.Node>", ptr %t18, i32 0, i32 1
+  %t20 = load i32, ptr %t19
+  %t21 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t17, i32 %t20)
+  %t22 = extractvalue {i32, i1} %t21, 0
+  %t23 = extractvalue {i32, i1} %t21, 1
+  br i1 %t23, label %panic.1, label %panic.ok.1
+panic.1:
+  call void @willrt_panic(ptr @.str.0, ptr @.str.1, ptr @.str.2)
+  unreachable
+panic.ok.1:
+  call void @willrt_gc_frame_leave(ptr %v.gcframe)
+  ret i32 %t22
+}
+define hidden ptr @"example.com/genericclass.Box<Node>.get"(ptr %self) inlinehint {
+entry:
+  %v.gcroots = alloca [1 x ptr]
+  store [1 x ptr] zeroinitializer, ptr %v.gcroots
+  %v.gcframe = alloca %willrt_gc_frame
+  %t1 = getelementptr inbounds [1 x ptr], ptr %v.gcroots, i32 0, i32 0
+  call void @willrt_gc_write_barrier(ptr %t1, ptr %self)
+  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.example.com/genericclass.Box<Node>.get", ptr %v.gcroots)
+  %t2 = call ptr @willrt_gc_read_barrier_slot(ptr %t1)
+  %t3 = getelementptr inbounds %"class.example.com/genericclass.Box<example.com/genericclass.Node>", ptr %t2, i32 0, i32 0
+  %t4 = call ptr @willrt_gc_read_barrier_slot(ptr %t3)
+  call void @willrt_gc_frame_leave(ptr %v.gcframe)
+  ret ptr %t4
+}
+declare void @willrt_init()
+declare void @willrt_shutdown()
+define i32 @main() {
+entry:
+  call void @willrt_init()
+  %r = call i32 @"example.com/genericclass.will$main"()
+  call void @willrt_shutdown()
+  ret i32 %r
+}
+@.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
+@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:16:12\00", align 1
+@.str.2 = private unnamed_addr constant [35 x i8] c"example.com/genericclass.will$main\00", align 1
+declare void @willrt_panic(ptr, ptr, ptr)
+declare void @willrt_panic_n(ptr, i64, ptr, ptr)
+declare ptr @willrt_gc_alloc(i64, ptr)
+declare ptr @willrt_gc_read_barrier(ptr)
+declare ptr @willrt_gc_read_barrier_slot(ptr)
+declare void @willrt_gc_write_barrier(ptr, ptr)
+declare void @willrt_gc_write_barrier_untagged(ptr, ptr)
+declare void @willrt_gc_frame_enter(ptr, ptr, ptr)
+declare void @willrt_gc_frame_leave(ptr)
+declare void @willrt_gc_safepoint(i32)
+declare void @willrt_gc_root_register(ptr, ptr)
+declare ptr @willrt_gc_pin(ptr)
+declare void @willrt_gc_unpin(ptr)
+@"willrt.gc.refs.example.com/genericclass.Box<example.com/genericclass.Node>" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.example.com/genericclass.Box<example.com/genericclass.Node>" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 1, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.example.com/genericclass.Box<example.com/genericclass.Node>", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.example.com/genericclass.Node" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 2, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.refs.value.example.com/genericclass.Node" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.value.example.com/genericclass.Node" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 3, i32 8, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.example.com/genericclass.Node", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 4, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+declare i32 @willrt_gc_register_type(ptr)
+define internal void @willrt.gc.register_types() {
+entry:
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.example.com/genericclass.Box<example.com/genericclass.Node>")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.example.com/genericclass.Node")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.example.com/genericclass.Node")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
+  ret void
+}
+@llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @willrt.gc.register_types, ptr null }]
+@"willrt.gc.stack.slots.example.com/genericclass.will$main" = private constant [3 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 1, ptr @"willrt.gc.type.example.com/genericclass.Box<example.com/genericclass.Node>" }, %willrt_gc_stack_slot { i32 8, i32 1, ptr @"willrt.gc.type.example.com/genericclass.Box<example.com/genericclass.Node>" }, %willrt_gc_stack_slot { i32 16, i32 1, ptr @"willrt.gc.type.example.com/genericclass.Node" }]
+@"willrt.gc.stack.example.com/genericclass.will$main" = private constant %willrt_gc_stack_map_data { ptr @"example.com/genericclass.will$main", ptr @"willrt.gc.stack.slots.example.com/genericclass.will$main", i64 3 }
+@"willrt.gc.stack.slots.example.com/genericclass.Box<Node>.get" = private constant [1 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 1, ptr @"willrt.gc.type.example.com/genericclass.Box<example.com/genericclass.Node>" }]
+@"willrt.gc.stack.example.com/genericclass.Box<Node>.get" = private constant %willrt_gc_stack_map_data { ptr @"example.com/genericclass.Box<Node>.get", ptr @"willrt.gc.stack.slots.example.com/genericclass.Box<Node>.get", i64 1 }

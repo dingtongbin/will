@@ -32,7 +32,7 @@ func (g *generator) castPlace(r willc.Record) (string, string, error) {
 			return g.place(exprID)
 		case "[]u8":
 			return g.bytesToStr(r, exprID)
-		case "Array<u8>":
+		case "list[u8]":
 			return g.arrayToStr(r, exprID)
 		case "u32", "u8":
 			return g.scalarToStr(r, exprID)
@@ -60,9 +60,10 @@ func (g *generator) displayToStr(r willc.Record, exprID int, fromText string) (s
 	g.needInterpDecl = true
 	length := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call i64 @willrt_fmt_%s_len(%s %s)\n", length, kind, llvm, wide)
-	g.needAllocDecl = true
 	buffer := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buffer, length)
+	if err := g.gcAllocText(buffer, length); err != nil {
+		return "", "", err
+	}
 	fmt.Fprintf(g.out, "  call i64 @willrt_fmt_%s_into(ptr %s, i64 %s, %s %s)\n", kind, buffer, length, llvm, wide)
 	return g.storeStr(r, buffer, length)
 }
@@ -85,21 +86,26 @@ func (g *generator) bytesToStr(r willc.Record, exprID int) (string, string, erro
 	return g.copyBytesToStr(r, data, length)
 }
 
-// arrayToStr validates an owned byte array and copies it into a str.
+// arrayToStr validates a byte list and copies it into a str.
 func (g *generator) arrayToStr(r willc.Record, exprID int) (string, string, error) {
 	src, typ, err := g.place(exprID)
 	if err != nil {
 		return "", "", err
 	}
-	if typ != "{ ptr, i64, i64 }" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: the source needs Array<u8>", r.ID)
+	if typ != "ptr" {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: the source needs list[u8]", r.ID)
 	}
-	dataPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, src)
-	data := g.load("ptr", dataPtr)
-	lenPtr := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenPtr, src)
-	length := g.load("i64", lenPtr)
+	t, ok := g.classTypeOfText("list[u8]")
+	if !ok {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: no GC layout for list[u8]", r.ID)
+	}
+	payload, err := g.ensureClassPayload(t)
+	if err != nil {
+		return "", "", err
+	}
+	object := g.load("ptr", src)
+	data := g.load("ptr", g.listField(object, payload, 0))
+	length := g.load("i64", g.listField(object, payload, 1))
 	return g.copyBytesToStr(r, data, length)
 }
 
@@ -122,9 +128,10 @@ func (g *generator) copyBytesToStr(r willc.Record, data, length string) (string,
 		message, g.globalString(fieldText(r, "pos")), g.globalString(g.fnSymbol))
 	g.out.WriteString("  unreachable\n")
 	g.out.WriteString(okLabel + ":\n")
-	g.needAllocDecl = true
 	dst := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", dst, length)
+	if err := g.gcAllocText(dst, length); err != nil {
+		return "", "", err
+	}
 	g.needMemcpyDecl = true
 	fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %s)\n", dst, data, length)
 	return g.storeStr(r, dst, length)
@@ -145,9 +152,10 @@ func (g *generator) scalarToStr(r willc.Record, exprID int) (string, string, err
 		wide = g.newTmp()
 		fmt.Fprintf(g.out, "  %s = zext %s %s to i32\n", wide, typ, value)
 	}
-	g.needAllocDecl = true
 	buffer := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 4)\n", buffer)
+	if err := g.gcAllocText(buffer, "4"); err != nil {
+		return "", "", err
+	}
 	g.needUtf8Decl = true
 	size := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = call i32 @willrt_utf8_encode(i32 %s, ptr %s)\n", size, wide, buffer)

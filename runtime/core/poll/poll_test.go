@@ -59,9 +59,14 @@ func TestPollerContract(t *testing.T) {
 		filepath.Join(dir, "..", "task", "src", "task.c"),
 		filepath.Join(dir, "..", "timer", "src", "timer.c"),
 		filepath.Join(dir, "..", "mem", "src", "alloc.c"),
-		filepath.Join(dir, "..", "rc", "src", "rc.c"),
 		filepath.Join(dir, "..", "report", "src", "report.c"),
 		filepath.Join(root, "platform", platform))
+	for _, source := range []string{
+		"types.c", "region.c", "chunks.c", "heap.c", "object.c", "roots.c",
+		"safepoint.c", "barrier.c", "mark.c", "evac.c", "cycle.c", "pacer.c",
+	} {
+		args = append(args, filepath.Join(root, "core", "gc", "src", source))
+	}
 	if runtime.GOOS == "windows" {
 		args = append(args, "-lws2_32")
 	}

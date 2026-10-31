@@ -13,8 +13,15 @@ func structInstanceKey(name string, args []string) string {
 
 // splitGenericType splits Name<A,B> into its name and its top-level arguments.
 func splitGenericType(text string) (string, []string, bool) {
-	open := strings.IndexByte(text, '<')
-	if open <= 0 || !strings.HasSuffix(text, ">") {
+	open := strings.IndexAny(text, "<[")
+	if open <= 0 || len(text) < open+2 {
+		return "", nil, false
+	}
+	last := text[len(text)-1]
+	if text[open] == '<' && last != '>' {
+		return "", nil, false
+	}
+	if text[open] == '[' && last != ']' {
 		return "", nil, false
 	}
 	inner := text[open+1 : len(text)-1]
@@ -85,10 +92,26 @@ func (g *generator) typeRecordArgs(r willc.Record) []string {
 	var texts []string
 	for _, id := range refsOf(r, "arg") {
 		if t, ok := g.recs[id]; ok {
-			texts = append(texts, fieldText(t, "text"))
+			texts = append(texts, typeRecordText(t))
 		}
 	}
 	return texts
+}
+
+// canonicalTypeArgs rewrites import-alias prefixes in type arguments, including
+// arguments of a nested generic. A method instance is cloned into the defining
+// package, which cannot resolve the caller's alias.
+func (g *generator) canonicalTypeArgs(args []string) []string {
+	out := make([]string, len(args))
+	for i, arg := range args {
+		arg = g.canonicalTypeText(arg)
+		if name, inner, ok := splitGenericType(arg); ok {
+			out[i] = name + "<" + strings.Join(g.canonicalTypeArgs(inner), ",") + ">"
+			continue
+		}
+		out[i] = arg
+	}
+	return out
 }
 
 // structInstanceFromText instantiates a generic struct named by a type text.
@@ -128,7 +151,7 @@ func (g *generator) structInstanceFromText(text string) (string, bool) {
 }
 
 // genericStructDoc finds the document and unqualified name of a generic
-// struct named by a canonical qualified type name.
+// struct or class named by a canonical qualified type name.
 func (g *generator) genericStructDoc(name string) (*docState, string, bool) {
 	dot := strings.LastIndexByte(name, '.')
 	if dot <= 0 {
@@ -140,12 +163,35 @@ func (g *generator) genericStructDoc(name string) (*docState, string, bool) {
 			continue
 		}
 		for _, r := range d.recs {
-			if r.Kind == "struct" && fieldText(r, "text") == local {
+			if (r.Kind == "struct" || r.Kind == "class") && fieldText(r, "text") == local {
 				return d, local, true
 			}
 		}
 	}
 	return nil, "", false
+}
+
+// sameTypeArgs reports whether two type-argument lists are identical.
+func sameTypeArgs(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// typeDeclIn returns one struct or class declaration by its bare name.
+func typeDeclIn(recs map[int]willc.Record, name string) (willc.Record, bool) {
+	for _, r := range recs {
+		if (r.Kind == "struct" || r.Kind == "class") && fieldText(r, "text") == name {
+			return r, true
+		}
+	}
+	return willc.Record{}, false
 }
 
 // ensureImportedStructInstance lowers the field layout of a generic struct
@@ -277,6 +323,9 @@ func (g *generator) fieldLLVMType(text string) (string, bool) {
 	text = base
 	if typ, _, ok := llvmScalar(text); ok {
 		return typ, true
+	}
+	if g.isClassText(text) {
+		return "ptr", true
 	}
 	if typ, ok := llvmTypeText(text); ok {
 		return typ, true

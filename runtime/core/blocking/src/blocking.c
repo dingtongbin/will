@@ -202,7 +202,6 @@ int32_t willrt_blocking_call(void* fn, void* arg, void* out) {
         && willrt_blocking_idle == 0) {
         size_t index = willrt_blocking_created;
 
-        willrt_rc_set_threaded();
         willrt_mem_set_shared();
         if (willrt_os_thread_start(&willrt_blocking_threads[index],
                                    willrt_blocking_worker, NULL)
@@ -264,7 +263,6 @@ willrt_blocking_op* willrt_blocking_submit(void* fn, void* arg, void* out) {
         willrt_blocking_idle == 0) {
         size_t index = willrt_blocking_created;
 
-        willrt_rc_set_threaded();
         willrt_mem_set_shared();
         if (willrt_os_thread_start(&willrt_blocking_threads[index],
                                    willrt_blocking_worker, NULL) == 0) {
@@ -326,7 +324,6 @@ willrt_blocking_op* willrt_blocking_submit_copy(void* fn, const void* arg,
         willrt_blocking_idle == 0) {
         size_t index = willrt_blocking_created;
 
-        willrt_rc_set_threaded();
         willrt_mem_set_shared();
         if (willrt_os_thread_start(&willrt_blocking_threads[index],
                                    willrt_blocking_worker, NULL) == 0) {

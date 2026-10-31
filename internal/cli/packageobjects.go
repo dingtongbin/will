@@ -8,6 +8,8 @@ import (
 	"sort"
 
 	"github.com/will-lang/will/internal/cache"
+	"github.com/will-lang/will/internal/decisions"
+	"github.com/will-lang/will/internal/gcmeta"
 	"github.com/will-lang/will/internal/gen"
 	"github.com/will-lang/will/internal/toolchain"
 	"github.com/will-lang/will/internal/willc"
@@ -26,6 +28,12 @@ func compilePackages(opts buildOptions, stdout, stderr io.Writer) ([]string, str
 		reportTranslate(stderr, err)
 		return nil, "", 1
 	}
+	gcRecords, err := gcmeta.DecisionRecords(docs)
+	if err != nil {
+		reportTranslate(stderr, err)
+		return nil, "", 1
+	}
+	gcKey := string(decisions.Write(gcRecords))
 	if len(docs) == 0 {
 		return nil, "", 1
 	}
@@ -61,7 +69,7 @@ func compilePackages(opts buildOptions, stdout, stderr io.Writer) ([]string, str
 	limit, _ := cache.Limit()
 	objects := make([]string, 0, len(packages))
 	for _, path := range packages {
-		key := packageObjectKey(fe, path, textByPath, opts)
+		key := packageObjectKey(fe, path, textByPath, opts, gcKey)
 		ext := ".o"
 		if opts.lto {
 			ext = ".bc"
@@ -124,9 +132,14 @@ func packageObjectArgs(opts buildOptions) []string {
 // packageObjectKey includes the target package and its transitive imports. A
 // change outside that closure cannot affect this package object; a change
 // inside it rebuilds the object.
-func packageObjectKey(fe frontEnd, path string, textByPath map[string]string, opts buildOptions) string {
+func packageObjectKey(fe frontEnd, path string, textByPath map[string]string,
+	opts buildOptions, gcKeys ...string) string {
 	h := cache.NewHasher()
 	h.AddStrings("package", path, opts.entry, fe.modulePath, compilerIdentity())
+	h.AddStrings("gc-lowering", "layout-v1", "barrier-v1", "stackmap-v1")
+	for _, key := range gcKeys {
+		h.AddStrings("gc-decisions", key)
+	}
 	h.AddStrings("flags", opts.opt, fmt.Sprintf("debug=%v", opts.debug),
 		fmt.Sprintf("lib=%v", opts.lib), fmt.Sprintf("lto=%v", opts.lto),
 		fmt.Sprintf("freestanding=%v", opts.freestanding), "target="+opts.target,

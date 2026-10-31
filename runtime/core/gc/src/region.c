@@ -15,6 +15,7 @@ gc_region** gc_granule_table;
 uint8_t* gc_heap_base;
 size_t gc_heap_size;
 size_t gc_heap_granule_count;
+static _Atomic size_t gc_used_bytes;
 
 static gc_region* gc_free_lists[WILLRT_GC_REGION_ORDER_MAX + 1u];
 static willrt_os_mutex gc_region_lock;
@@ -226,6 +227,7 @@ void gc_region_init(void) {
     size_t count;
 
     willrt_os_mutex_init(&gc_region_lock);
+    atomic_store_explicit(&gc_used_bytes, 0, memory_order_release);
     gc_heap_granule_count = gc_heap_size / WILLRT_GC_GRANULE_SIZE;
     gc_region_table = (gc_region**)willrt_alloc(
         gc_heap_granule_count * sizeof(*gc_region_table));
@@ -274,6 +276,7 @@ void gc_region_shutdown(void) {
     willrt_free(gc_granule_table);
     gc_region_table = NULL;
     gc_granule_table = NULL;
+    atomic_store_explicit(&gc_used_bytes, 0, memory_order_release);
     memset(gc_free_lists, 0, sizeof(gc_free_lists));
 }
 
@@ -325,6 +328,8 @@ gc_region* gc_region_alloc(size_t order, uint32_t kind) {
         return NULL;
     }
     gc_region_map(region);
+    atomic_fetch_add_explicit(&gc_used_bytes, region->size,
+                              memory_order_relaxed);
     willrt_os_mutex_unlock(&gc_region_lock);
     return region;
 }
@@ -342,6 +347,8 @@ void gc_region_free(gc_region* region) {
         willrt_os_thread_yield();
     }
     willrt_os_mutex_lock(&gc_region_lock);
+    atomic_fetch_sub_explicit(&gc_used_bytes, region->size,
+                              memory_order_relaxed);
     if (region->start_bits != NULL) {
         willrt_free(region->start_bits);
         region->start_bits = NULL;
@@ -479,6 +486,10 @@ void gc_region_scan_objects(gc_region* region, void (*visit)(void*, void*),
 
 void gc_region_add_live(gc_region* region, size_t bytes) {
     atomic_fetch_add_explicit(&region->live_bytes, bytes, memory_order_relaxed);
+}
+
+size_t gc_heap_used_bytes(void) {
+    return atomic_load_explicit(&gc_used_bytes, memory_order_relaxed);
 }
 
 void gc_region_clear_nonmoving_retired(void) {

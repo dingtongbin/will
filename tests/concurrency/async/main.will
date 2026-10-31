@@ -1,7 +1,7 @@
 import "std/os/fs"
 
 async def read_file(path: str) -> Result<usize, Error> {
-    var bytes: Array<u8> = await fs.read_file(path)?
+    var bytes: list[u8] = await fs.read_file(path)?
     return Ok(bytes.len())
 }
 

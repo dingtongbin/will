@@ -67,16 +67,6 @@ func (p *Parser) parseExpr(minPrec int, allowBrace bool) ast.Expr {
 }
 
 func (p *Parser) parseUnary(allowBrace bool) ast.Expr {
-	if p.atText("ref") || p.atText("mut") {
-		tok := p.next()
-		p.skipNL()
-		x := p.parseUnary(allowBrace)
-		return &ast.BorrowExpr{
-			Span: ast.Span{Start: tok.Pos, End: x.EndPos()},
-			Mut:  tok.Text == "mut",
-			X:    x,
-		}
-	}
 	switch p.cur().Kind {
 	case token.Minus, token.KwNot, token.Tilde:
 		op := p.next()
@@ -117,6 +107,14 @@ func (p *Parser) parsePostfixUntil(allowBrace, stopWaitSuffix bool) ast.Expr {
 		case token.LParen:
 			x = p.parseCall(x, nil)
 		case token.LBracket:
+			if name, ok := x.(*ast.NameExpr); ok && isContainerCtor(name.Name) {
+				if end, ok := p.bracketArgsEnd(p.pos); ok &&
+					end+1 < len(p.toks) && p.toks[end+1].Kind == token.LParen {
+					typeArgs := p.parseBracketTypeArgs()
+					x = p.parseCall(x, typeArgs)
+					continue
+				}
+			}
 			x = p.parseIndex(x)
 		case token.Dot:
 			x = p.parseFieldOrMethod(x)
@@ -146,6 +144,12 @@ func (p *Parser) parsePostfixUntil(allowBrace, stopWaitSuffix bool) ast.Expr {
 }
 
 func (p *Parser) parseTypeArgsPostfix(x ast.Expr, allowBrace bool) (ast.Expr, bool) {
+	if name, ok := x.(*ast.NameExpr); ok && isContainerCtor(name.Name) {
+		p.bag.Error(p.cur().Pos, diag.CodeUnexpectedToken,
+			"container type arguments use brackets", "write "+name.Name+"[...]")
+		p.failed = true
+		return x, false
+	}
 	end, ok := p.typeArgsEnd(p.pos)
 	if !ok || end+1 >= len(p.toks) {
 		return x, false
@@ -268,9 +272,6 @@ func (p *Parser) parsePrimary(allowBrace bool) ast.Expr {
 		}
 	case token.Ident:
 		p.next()
-		if tok.Text == "new" && startsType(p.cur().Kind) {
-			return p.parseNew(tok)
-		}
 		return &ast.NameExpr{Span: p.emptySpan(tok), Name: tok.Text}
 	case token.KwIf:
 		return p.parseIf()
@@ -327,20 +328,6 @@ func (p *Parser) parseArrayLiteral() ast.Expr {
 	p.leaveGroup()
 	lit.Span = p.spanFrom(start)
 	return lit
-}
-
-func startsType(k token.Kind) bool {
-	return k == token.Ident || k == token.LBracket || k == token.KwFunc
-}
-
-func (p *Parser) parseNew(start token.Token) ast.Expr {
-	typ := p.parseType()
-	args := p.parseCallArgs()
-	return &ast.NewExpr{
-		Span: ast.Span{Start: start.Pos, End: p.prev().End},
-		Type: typ,
-		Args: args,
-	}
 }
 
 func (p *Parser) parseLaneHere() ast.Expr {

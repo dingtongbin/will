@@ -29,8 +29,8 @@ func count(ds []diag.Diagnostic, message string) int {
 
 func TestFreestandingRuntimeUses(t *testing.T) {
 	src := "def f() {\n" +
-		"    var xs: Array<i64> = new Array<i64>(0)\n" +
-		"    var ch: chan<i64> = new chan<i64>(1)\n" +
+		"    var xs: list[i64] = list[i64](0)\n" +
+		"    var ch: chan<i64> = chan<i64>(1)\n" +
 		"    _ = ch\n" +
 		"    _ = xs\n" +
 		"    panic(\"boom\")\n" +

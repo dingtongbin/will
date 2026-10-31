@@ -184,6 +184,9 @@ int gc_object_marked(void* object) {
         return 0;
     }
     object = WILLRT_GC_UNTAG(object);
+    if (gc_region_by_address(object) == NULL) {
+        return 0;
+    }
     header = gc_header_of(object);
     state = atomic_load_explicit(&header->state, memory_order_acquire);
     if ((state & WILLRT_GC_STATE_FORWARDED) != 0) {
@@ -221,8 +224,12 @@ void* gc_object_forward(void* object) {
     object = WILLRT_GC_UNTAG(object);
     source = gc_region_by_address(object);
     if (source == NULL || (source->flags & GC_REGION_EVACUATING) == 0 ||
-        source->kind == GC_REGION_LARGE || source->kind == GC_REGION_PINNED ||
-        atomic_load_explicit(&source->pin_count, memory_order_acquire) != 0) {
+        source->kind == GC_REGION_LARGE || source->kind == GC_REGION_PINNED) {
+        return object;
+    }
+    if (atomic_load_explicit(&source->pin_count, memory_order_acquire) != 0) {
+        atomic_fetch_or_explicit(&source->flags, GC_REGION_PINNED_SURVIVOR,
+                                 memory_order_acq_rel);
         return object;
     }
     header = gc_header_of(object);
@@ -230,8 +237,19 @@ void* gc_object_forward(void* object) {
     if ((state & WILLRT_GC_STATE_FORWARDED) != 0) {
         return WILLRT_GC_STATE_FORWARD_ADDRESS(state);
     }
-    if ((state & WILLRT_GC_STATE_BUSY) != 0 ||
-        WILLRT_GC_STATE_PIN(state) != 0) {
+    while ((state & WILLRT_GC_STATE_BUSY) != 0) {
+        /* Another thread owns the forwarding decision. Returning the old
+           object here would let a slot write undo a forwarding pointer that
+           the copy owner publishes after this load. */
+        willrt_os_thread_yield();
+        state = atomic_load_explicit(&header->state, memory_order_acquire);
+        if ((state & WILLRT_GC_STATE_FORWARDED) != 0) {
+            return WILLRT_GC_STATE_FORWARD_ADDRESS(state);
+        }
+    }
+    if (WILLRT_GC_STATE_PIN(state) != 0) {
+        atomic_fetch_or_explicit(&source->flags, GC_REGION_PINNED_SURVIVOR,
+                                 memory_order_acq_rel);
         return object;
     }
     if ((uint8_t*)object < source->base + WILLRT_GC_OBJECT_PAYLOAD_OFFSET) {
@@ -278,32 +296,114 @@ void* gc_object_forward(void* object) {
     return payload;
 }
 
+static void gc_evac_pinned_object(void* context, void* object) {
+    willrt_gc_header* header;
+    uint64_t state;
+
+    (void)context;
+    if (object == NULL) {
+        return;
+    }
+    header = gc_header_of(object);
+    state = atomic_load_explicit(&header->state, memory_order_acquire);
+    if ((state & WILLRT_GC_STATE_FORWARDED) != 0 ||
+        WILLRT_GC_STATE_PIN(state) == 0) {
+        return;
+    }
+    gc_scan_object_fields(object, gc_evac_slot, NULL);
+}
+
+/* Pinned objects never enter the copy queue, so their reference fields must
+   be forwarded explicitly. A pinned class must not keep a field pointing at a
+   young object that moved during the same evacuation. */
+void gc_evac_pinned_objects(void) {
+    size_t granule;
+
+    for (granule = 0; granule < gc_heap_granule_count; granule++) {
+        gc_region* region = gc_region_table[granule];
+
+        if (region == NULL || region->kind == GC_REGION_FREE) {
+            continue;
+        }
+        gc_region_scan_objects(region, gc_evac_pinned_object, NULL);
+    }
+}
+
 void gc_evac_slot(void* context, void** slot) {
     void* ref;
     void* object;
+    void* updated;
+    gc_region* owner;
+    gc_region* target;
 
     (void)context;
     if (slot == NULL) {
         return;
     }
-    ref = atomic_load_explicit((_Atomic(void*)*)slot, memory_order_acquire);
-    if (ref == NULL) {
+    for (;;) {
+        ref = atomic_load_explicit((_Atomic(void*)*)slot,
+                                   memory_order_acquire);
+        if (ref == NULL) {
+            return;
+        }
+        object = WILLRT_GC_UNTAG(ref);
+        if (atomic_load_explicit(&gc_marking, memory_order_acquire) != 0) {
+            gc_mark_object(object);
+        }
+        if (gc_region_by_address(object) == NULL) {
+            /* Preserve a foreign pointer, including any high address bits
+               that overlap the color mask. */
+            updated = ref;
+        } else {
+            object = gc_object_forward(object);
+            if (object == NULL) {
+                return;
+            }
+            if (gc_scan_in_sequence()) {
+                updated = object;
+            } else {
+                updated = WILLRT_GC_TAG(
+                    object, atomic_load_explicit(&gc_good_color,
+                                                 memory_order_acquire));
+            }
+        }
+        /* A mutator can replace the slot while the collector is forwarding
+           its old value. An unconditional store would undo the new reference;
+           retry against the value that is actually present. */
+        if (atomic_compare_exchange_strong_explicit(
+                (_Atomic(void*)*)slot, &ref, updated, memory_order_acq_rel,
+                memory_order_acquire)) {
+            break;
+        }
+    }
+    /* Evacuating a slot in an old or pinned object can introduce an
+       old-to-young reference. The write barrier never ran for this update, so
+       the owner needs a card before the next young collection. */
+    owner = gc_region_by_address(slot);
+    target = gc_region_by_address(object);
+    if (owner != NULL && target != NULL && target->kind == GC_REGION_YOUNG &&
+        (owner->kind != GC_REGION_YOUNG ||
+         atomic_load_explicit(&owner->pin_count, memory_order_acquire) != 0)) {
+        gc_region_note_card(owner, (size_t)((uint8_t*)slot - owner->base));
+    }
+}
+
+typedef struct gc_card_mark_context {
+    gc_region* owner;
+} gc_card_mark_context;
+
+static void gc_card_mark_visit(void* context, void** slot) {
+    gc_card_mark_context* mark = (gc_card_mark_context*)context;
+    gc_region* target;
+
+    if (slot == NULL || *slot == NULL) {
         return;
     }
-    object = WILLRT_GC_UNTAG(ref);
-    if (atomic_load_explicit(&gc_marking, memory_order_acquire) != 0) {
-        gc_mark_object(object);
+    target = gc_region_by_address(WILLRT_GC_UNTAG(*slot));
+    if (target != NULL && target->kind == GC_REGION_YOUNG) {
+        gc_region_note_card(mark->owner,
+                            (size_t)((uint8_t*)slot - mark->owner->base));
     }
-    object = gc_object_forward(object);
-    if (object == NULL) {
-        return;
-    }
-    atomic_store_explicit((_Atomic(void*)*)slot,
-                          WILLRT_GC_TAG(object,
-                                        atomic_load_explicit(
-                                            &gc_good_color,
-                                            memory_order_acquire)),
-                          memory_order_release);
 }
 
 static void gc_mark_object_cards(void* object) {
@@ -322,6 +422,26 @@ static void gc_mark_object_cards(void* object) {
     state = atomic_load_explicit(&header->state, memory_order_acquire);
     type = gc_type_get(WILLRT_GC_STATE_TYPE(state));
     if (type == NULL) {
+        return;
+    }
+    if ((type->flags & WILLRT_GC_TYPE_SEQUENCE) != 0 &&
+        type->element_type != NULL && type->element_size != 0) {
+        size_t payload = gc_object_payload_size(object);
+        size_t count = payload / type->element_size;
+        size_t at;
+        gc_card_mark_context mark = {owner};
+
+        for (at = 0; at < count; at++) {
+            willrt_gc_scan_value((uint8_t*)object + at * type->element_size,
+                                 type->element_type, gc_card_mark_visit,
+                                 &mark);
+        }
+        return;
+    }
+    if ((type->flags & (WILLRT_GC_TYPE_NESTED | WILLRT_GC_TYPE_ENUM)) != 0) {
+        gc_card_mark_context mark = {owner};
+
+        willrt_gc_scan_value(object, type, gc_card_mark_visit, &mark);
         return;
     }
     for (i = 0; i < type->reference_count; i++) {
@@ -379,21 +499,22 @@ void gc_weak_slot(void* context, void** slot) {
         return;
     }
     target = WILLRT_GC_UNTAG(ref);
+    if (gc_region_by_address(target) == NULL) {
+        /* A weak slot can carry a foreign pointer; never rewrite it. */
+        atomic_store_explicit((_Atomic(void*)*)slot, ref, memory_order_release);
+        return;
+    }
     if (!gc_object_is_forwarded(target, &target)) {
-        gc_region* region = gc_region_by_address(target);
-
-        if (region == NULL ||
-            (atomic_load_explicit(&gc_marking, memory_order_acquire) != 0 &&
-             !gc_object_marked(target)) ||
-            (region->kind == GC_REGION_YOUNG &&
-             (region->flags & GC_REGION_EVACUATING) != 0)) {
+        if (atomic_load_explicit(&gc_marking, memory_order_acquire) != 0 &&
+            !gc_object_marked(target)) {
             atomic_store_explicit((_Atomic(void*)*)slot, NULL,
                                   memory_order_release);
             return;
         }
     }
     target = gc_object_forward(target);
-    if (target == NULL) {
+    if (target == NULL ||
+        gc_region_by_address(WILLRT_GC_UNTAG(target)) == NULL) {
         atomic_store_explicit((_Atomic(void*)*)slot, NULL,
                               memory_order_release);
         return;

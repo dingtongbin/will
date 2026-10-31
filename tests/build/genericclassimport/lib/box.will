@@ -1,0 +1,15 @@
+class Node {
+    value: i32
+}
+
+class Box<T> {
+    value: T
+
+    def init(self, value: T) {
+        self.value = value
+    }
+
+    def get(self) -> T {
+        return self.value.clone()
+    }
+}

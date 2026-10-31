@@ -6,53 +6,55 @@ import "std/io"
 
 struct WriterBuf {
     dst: io.Writer
-    data: Array<u8>
+    data: list[u8]
     limit: usize
+
+    def init(self, w: io.Writer, size: usize) {
+        self.dst = w.clone()
+        self.data = list[u8](size)
+        self.limit = size
+    }
+
+    async def write(self, bytes: []u8) -> Result<(), Error> {
+        if self.limit == 0usize {
+            return await self.dst.write(bytes)
+        }
+        if self.data.len() == 0usize and bytes.len() >= self.limit {
+            return await self.dst.write(bytes)
+        }
+        if self.data.len() + bytes.len() > self.limit {
+            _ = (await self.flush())?
+        }
+        if bytes.len() >= self.limit {
+            return await self.dst.write(bytes)
+        }
+        self.data.append(bytes)
+        if self.data.len() >= self.limit {
+            _ = (await self.flush())?
+        }
+        return Ok(())
+    }
+
+    async def flush(self) -> Result<(), Error> {
+        if self.data.len() != 0usize {
+            var out: list[u8] = self.data.clone()
+            var n: usize = out.len()
+            self.data.clear()
+            _ = (await self.dst.write(out[Range(0, n)]))?
+        }
+        return Ok(())
+    }
+
+    async def sync(self) -> Result<(), Error> {
+        _ = (await self.flush())?
+        return await self.dst.sync()
+    }
 }
 
-# init wraps w in a buffer of size bytes. A size of zero passes every write
-# straight through.
-def (b: mut WriterBuf) init(w: io.Writer, size: usize) {
-    b.dst = w.clone()
-    b.data = new Array<u8>(size)
-    b.limit = size
-}
 
-# Write appends bytes, flushing first when they would not fit.
-async def (b: mut WriterBuf) write(bytes: []u8) -> Result<(), Error> {
-    if b.limit == 0usize {
-        return await b.dst.write(bytes)
-    }
-    if b.data.len() == 0usize and bytes.len() >= b.limit {
-        return await b.dst.write(bytes)
-    }
-    if b.data.len() + bytes.len() > b.limit {
-        _ = (await b.flush())?
-    }
-    if bytes.len() >= b.limit {
-        return await b.dst.write(bytes)
-    }
-    b.data.append(bytes)
-    if b.data.len() >= b.limit {
-        _ = (await b.flush())?
-    }
-    return Ok(())
-}
 
-# Flush writes the buffered bytes. The buffer is copied first so the write does
-# not alias the array it clears.
-async def (b: mut WriterBuf) flush() -> Result<(), Error> {
-    if b.data.len() != 0usize {
-        var out: Array<u8> = b.data.clone()
-        var n: usize = out.len()
-        b.data.clear()
-        _ = (await b.dst.write(out[Range(0, n)]))?
-    }
-    return Ok(())
-}
 
-# Sync flushes the buffer and syncs the wrapped Writer.
-async def (b: mut WriterBuf) sync() -> Result<(), Error> {
-    _ = (await b.flush())?
-    return await b.dst.sync()
-}
+
+
+
+

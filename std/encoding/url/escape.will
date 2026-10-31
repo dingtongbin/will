@@ -2,7 +2,7 @@
 # pass through; every other byte becomes %XX with uppercase hexadecimal. The
 # slash is encoded too, because a path segment cannot carry it.
 def escape(s: str) -> str {
-    var out: Array<u8> = new Array<u8>(0)
+    var out: list[u8] = list[u8](0)
     var data: []u8 = s[Range(0, s.len())]
     for b in data {
         if unreserved(b) {

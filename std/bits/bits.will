@@ -4,159 +4,160 @@ import "std/math"
 # i%64 of word i/64, so the low bits of the first word are the first bits of
 # the set and no bit outside [0, n) is ever stored.
 struct Bits {
-    words: Array<u64>
+    words: list[u64]
     n: usize
-}
 
-# init sizes the word array to ceil(n/64) zero words. The constructor is
-# new Bits(n), because the language has no T.New form.
-def (b: mut Bits) init(n: usize) {
-    var count: usize = (n + 63) / 64
-    var i: usize = 0
-    while True {
-        if i >= count {
-            break
+    # init sizes the word array to ceil(n/64) zero words. The constructor is
+    # Bits(n), because the language has no T.New form.
+    def init(self, n: usize) {
+        var count: usize = (n + 63) / 64
+        var i: usize = 0
+        while True {
+            if i >= count {
+                break
+            }
+            self.words.push(0u64)
+            i += 1
         }
-        b.words.push(0u64)
-        i += 1
+        self.n = n
     }
-    b.n = n
-}
 
-# Len returns the number of bits the set holds.
-def (b: ref Bits) len() -> usize {
-    return b.n
-}
+    # len returns the number of bits the set holds.
+    def len(self) -> usize {
+        return self.n
+    }
 
-# Set turns bit i on.
-def (b: mut Bits) set(i: usize) {
-    b.require(i)
-    var w: usize = i / 64
-    var bit: u64 = u64(i % 64)
-    b.words.set(w, b.words.get(w) | (1u64 << bit))
-}
+    # set turns bit i on.
+    def set(self, i: usize) {
+        self.require(i)
+        var w: usize = i / 64
+        var bit: u64 = u64(i % 64)
+        self.words.set(w, self.words.get(w) | (1u64 << bit))
+    }
 
-# Clear turns bit i off. It clears one bit, not the whole set.
-def (b: mut Bits) clear(i: usize) {
-    b.require(i)
-    var w: usize = i / 64
-    var bit: u64 = u64(i % 64)
-    b.words.set(w, b.words.get(w) & (math.U64Max ^ (1u64 << bit)))
-}
+    # clear turns bit i off. It clears one bit, not the whole set.
+    def clear(self, i: usize) {
+        self.require(i)
+        var w: usize = i / 64
+        var bit: u64 = u64(i % 64)
+        self.words.set(w, self.words.get(w) & (math.U64Max ^ (1u64 << bit)))
+    }
 
-# Flip turns bit i to its opposite.
-def (b: mut Bits) flip(i: usize) {
-    b.require(i)
-    var w: usize = i / 64
-    var bit: u64 = u64(i % 64)
-    b.words.set(w, b.words.get(w) ^ (1u64 << bit))
-}
+    # flip turns bit i to its opposite.
+    def flip(self, i: usize) {
+        self.require(i)
+        var w: usize = i / 64
+        var bit: u64 = u64(i % 64)
+        self.words.set(w, self.words.get(w) ^ (1u64 << bit))
+    }
 
-# Has reports whether bit i is on.
-def (b: ref Bits) has(i: usize) -> bool {
-    b.require(i)
-    var w: usize = i / 64
-    var bit: u64 = u64(i % 64)
-    return ((b.words.get(w) >> bit) & 1u64) == 1u64
-}
+    # has reports whether bit i is on.
+    def has(self, i: usize) -> bool {
+        self.require(i)
+        var w: usize = i / 64
+        var bit: u64 = u64(i % 64)
+        return ((self.words.get(w) >> bit) & 1u64) == 1u64
+    }
 
-# Count returns how many bits are on.
-def (b: ref Bits) count() -> usize {
-    var total: usize = 0
-    var i: usize = 0
-    while True {
-        if i >= b.words.len() {
-            break
+    # count returns how many bits are on.
+    def count(self) -> usize {
+        var total: usize = 0
+        var i: usize = 0
+        while True {
+            if i >= self.words.len() {
+                break
+            }
+            total += usize(math.pop_count64(self.words.get(i)))
+            i += 1
         }
-        total += usize(math.pop_count64(b.words.get(i)))
-        i += 1
+        return total
     }
-    return total
-}
 
-# And keeps the bits that are on in both sets, in place.
-def (b: mut Bits) and(other: Bits) {
-    b.require_same(other)
-    var i: usize = 0
-    while True {
-        if i >= b.words.len() {
-            break
+    # intersect keeps the bits that are on in both sets, in place.
+    def intersect(self, other: Bits) {
+        self.require_same(other)
+        var i: usize = 0
+        while True {
+            if i >= self.words.len() {
+                break
+            }
+            self.words.set(i, self.words.get(i) & other.words.get(i))
+            i += 1
         }
-        b.words.set(i, b.words.get(i) & other.words.get(i))
-        i += 1
     }
-}
 
-# Or turns on every bit that is on in either set, in place.
-def (b: mut Bits) or(other: Bits) {
-    b.require_same(other)
-    var i: usize = 0
-    while True {
-        if i >= b.words.len() {
-            break
+    # union turns on every bit that is on in either set, in place.
+    def union(self, other: Bits) {
+        self.require_same(other)
+        var i: usize = 0
+        while True {
+            if i >= self.words.len() {
+                break
+            }
+            self.words.set(i, self.words.get(i) | other.words.get(i))
+            i += 1
         }
-        b.words.set(i, b.words.get(i) | other.words.get(i))
-        i += 1
     }
-}
 
-# Xor keeps the bits that differ between the two sets, in place.
-def (b: mut Bits) xor(other: Bits) {
-    b.require_same(other)
-    var i: usize = 0
-    while True {
-        if i >= b.words.len() {
-            break
+    # symmetric_difference keeps the bits that differ between the two sets, in place.
+    def symmetric_difference(self, other: Bits) {
+        self.require_same(other)
+        var i: usize = 0
+        while True {
+            if i >= self.words.len() {
+                break
+            }
+            self.words.set(i, self.words.get(i) ^ other.words.get(i))
+            i += 1
         }
-        b.words.set(i, b.words.get(i) ^ other.words.get(i))
-        i += 1
     }
-}
 
-# AndNot keeps the bits that are on in b and off in other, in place.
-def (b: mut Bits) and_not(other: Bits) {
-    b.require_same(other)
-    var i: usize = 0
-    while True {
-        if i >= b.words.len() {
-            break
+    # difference keeps the bits that are on in self and off in other, in place.
+    def difference(self, other: Bits) {
+        self.require_same(other)
+        var i: usize = 0
+        while True {
+            if i >= self.words.len() {
+                break
+            }
+            self.words.set(i, self.words.get(i) & (math.U64Max ^ other.words.get(i)))
+            i += 1
         }
-        b.words.set(i, b.words.get(i) & (math.U64Max ^ other.words.get(i)))
-        i += 1
     }
-}
 
-# Shrink releases spare capacity in the word array while keeping the bits.
-def (b: mut Bits) shrink() {
-    b.words.shrink_to_fit()
-}
+    # shrink releases spare capacity in the word array while keeping the bits.
+    def shrink(self) {
+        self.words.shrink_to_fit()
+    }
 
-# Clone returns an independent copy of the set.
-def (b: ref Bits) clone() -> Bits {
-    var words: Array<u64> = new Array<u64>(0)
-    var i: usize = 0
-    while True {
-        if i >= b.words.len() {
-            break
+    # clone returns an independent copy of the set.
+    def clone(self) -> Bits {
+        var words: list[u64] = list[u64](0)
+        var i: usize = 0
+        while True {
+            if i >= self.words.len() {
+                break
+            }
+            words.push(self.words.get(i))
+            i += 1
         }
-        words.push(b.words.get(i))
-        i += 1
+        return Bits { words: words, n: self.n }
     }
-    return Bits { words: words, n: b.n }
-}
 
-# require panics for an index outside the set. Set states that rule; Clear,
-# Flip, and Has follow it so no operation can reach a bit the set does not hold.
-def (b: ref Bits) require(i: usize) {
-    if i >= b.n {
-        panic("index out of bounds")
+    # require panics for an index outside the set. set states that rule; clear,
+    # flip, and has follow it so no operation can reach a bit the set does not
+    # hold.
+    def require(self, i: usize) {
+        if i >= self.n {
+            panic("index out of bounds")
+        }
     }
-}
 
-# requireSame panics when the two sets cover different numbers of bits, since a
-# bitwise operation over two widths has no single meaning.
-def (b: ref Bits) require_same(other: Bits) {
-    if b.n != other.n {
-        panic("bit set length mismatch")
+    # require_same panics when the two sets cover different numbers of bits,
+    # since a bitwise operation over two widths has no single meaning.
+    def require_same(self, other: Bits) {
+        if self.n != other.n {
+            panic("bit set length mismatch")
+        }
     }
 }

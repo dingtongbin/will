@@ -20,15 +20,43 @@ func (p *Parser) parseFile() *ast.File {
 	for !p.at(token.EOF) && !p.failed {
 		doc := p.takeDoc()
 		if p.at(token.At) {
-			f.Decls = append(f.Decls, p.parseDecorated(doc)...)
+			f.Decls = p.appendDecl(f.Decls, p.parseDecorated(doc)...)
 		} else {
-			f.Decls = append(f.Decls, p.parseDecl(doc))
+			f.Decls = p.appendDecl(f.Decls, p.parseDecl(doc))
 		}
 		p.endStatement()
 		p.skipNL()
 	}
 	f.Span = ast.Span{Start: start.Pos, End: p.prev().End}
 	return f
+}
+
+// appendDecl adds one declaration and the methods written inside its type
+// body. A method is a top-level declaration after parsing, so every later
+// pass sees the same method table a flat receiver declaration would produce.
+func (p *Parser) appendDecl(out []ast.Decl, decls ...ast.Decl) []ast.Decl {
+	for _, d := range decls {
+		out = append(out, d)
+		if s, ok := d.(*ast.StructDecl); ok && len(s.Methods) != 0 {
+			out = append(out, toDecls(s.Methods)...)
+			s.Methods = nil
+		}
+		if lane, ok := d.(*ast.LaneDecl); ok {
+			if s, ok := lane.Decl.(*ast.StructDecl); ok && len(s.Methods) != 0 {
+				out = append(out, toDecls(s.Methods)...)
+				s.Methods = nil
+			}
+		}
+	}
+	return out
+}
+
+func toDecls(methods []*ast.FuncDecl) []ast.Decl {
+	out := make([]ast.Decl, len(methods))
+	for i, m := range methods {
+		out[i] = m
+	}
+	return out
 }
 
 func (p *Parser) takeDoc() string {
@@ -191,8 +219,10 @@ func (p *Parser) parseDecl(doc string) ast.Decl {
 		return p.parseAsyncFuncDecl(doc)
 	case token.KwType:
 		return p.parseTypeAliasDecl(doc)
+	case token.KwClass:
+		return p.parseTypeDecl(doc, true)
 	case token.KwStruct:
-		return p.parseStructDecl(doc)
+		return p.parseTypeDecl(doc, false)
 	case token.KwEnum:
 		return p.parseEnumDecl(doc)
 	case token.KwInterface:
@@ -242,9 +272,6 @@ func (p *Parser) parseAsyncFuncDecl(doc string) *ast.FuncDecl {
 func (p *Parser) parseFuncDeclFrom(doc string, start token.Token, async bool) *ast.FuncDecl {
 	p.expect(token.KwDef, "def")
 	fn := &ast.FuncDecl{Doc: doc, Async: async}
-	if p.at(token.LParen) {
-		fn.Recv = p.parseReceiver()
-	}
 	name, nameTok := p.expectName("a function name")
 	fn.Name = name
 	fn.NamePos = nameTok.Pos
@@ -255,27 +282,9 @@ func (p *Parser) parseFuncDeclFrom(doc string, start token.Token, async bool) *a
 		p.skipNL()
 		fn.Result = p.parseType()
 	}
-	fn.From = p.parseFromSources()
 	fn.Body = p.parseBlock("a function body")
 	fn.Span = p.spanFrom(start)
 	return fn
-}
-
-func (p *Parser) parseReceiver() *ast.Receiver {
-	start := p.expect(token.LParen, "(")
-	p.enterGroup()
-	p.skipNL()
-	recv := &ast.Receiver{}
-	name, nameTok := p.expectName("a receiver name")
-	recv.Name = name
-	recv.NamePos = nameTok.Pos
-	p.expect(token.Colon, ":")
-	recv.Type = p.parseType()
-	recv.Mut = recv.Type.IsMutRef() || recv.Type.ViewMut
-	p.expect(token.RParen, ")")
-	p.leaveGroup()
-	recv.Span = p.spanFrom(start)
-	return recv
 }
 
 func (p *Parser) parseParams() []*ast.Param {
@@ -313,7 +322,6 @@ func (p *Parser) parseParam() *ast.Param {
 		p.next()
 	}
 	param.Type = p.parseType()
-	param.Mut = param.Type.IsMutRef() || param.Type.ViewMut
 	if p.at(token.Assign) {
 		p.next()
 		p.skipNL()
@@ -380,10 +388,15 @@ func (p *Parser) parseTypeParams() []*ast.TypeParam {
 	return params
 }
 
-func (p *Parser) parseStructDecl(doc string) *ast.StructDecl {
-	start := p.expect(token.KwStruct, "struct")
-	s := &ast.StructDecl{Doc: doc}
-	name, nameTok := p.expectName("a struct name")
+func (p *Parser) parseTypeDecl(doc string, class bool) *ast.StructDecl {
+	start := p.cur()
+	keyword := "struct"
+	if class {
+		keyword = "class"
+	}
+	p.expect(start.Kind, keyword)
+	s := &ast.StructDecl{Doc: doc, Class: class}
+	name, nameTok := p.expectName("a " + keyword + " name")
 	s.Name = name
 	s.NamePos = nameTok.Pos
 	s.TypeParams = p.parseTypeParams()
@@ -392,6 +405,12 @@ func (p *Parser) parseStructDecl(doc string) *ast.StructDecl {
 	p.ignoreNL = 0
 	p.skipNL()
 	for !p.at(token.RBrace) && !p.at(token.EOF) && !p.failed {
+		if p.at(token.KwDef) || p.at(token.KwAsync) {
+			s.Methods = append(s.Methods, p.parseTypeMethod(s.Name, class, s.TypeParams))
+			p.endStatement()
+			p.skipNL()
+			continue
+		}
 		fstart := p.cur()
 		field := &ast.Field{}
 		name, nameTok := p.expectName("a field name")
@@ -407,11 +426,83 @@ func (p *Parser) parseStructDecl(doc string) *ast.StructDecl {
 		field.Span = p.spanFrom(fstart)
 		s.Fields = append(s.Fields, field)
 		p.endStatement()
+		p.skipNL()
 	}
 	p.expect(token.RBrace, "}")
 	p.ignoreNL = old
 	s.Span = p.spanFrom(start)
 	return s
+}
+
+// parseTypeMethod parses a method written inside a type body. The receiver is
+// the explicit self parameter; it carries the declared type identity and is
+// not repeated in the callable parameter list.
+func (p *Parser) parseTypeMethod(typeName string, class bool, typeParams []*ast.TypeParam) *ast.FuncDecl {
+	start := p.cur()
+	async := false
+	if p.at(token.KwAsync) {
+		p.next()
+		async = true
+	}
+	p.expect(token.KwDef, "def")
+	fn := &ast.FuncDecl{Async: async}
+	name, nameTok := p.expectName("a method name")
+	fn.Name = name
+	fn.NamePos = nameTok.Pos
+	fn.TypeParams = p.parseTypeParams()
+	p.expect(token.LParen, "(")
+	p.enterGroup()
+	p.skipNL()
+	recvStart := p.cur()
+	recvName, recvTok := p.expectName("self")
+	recv := &ast.Receiver{Name: recvName, NamePos: recvTok.Pos}
+	if p.at(token.Colon) {
+		p.next()
+		recv.Type = p.parseType()
+	} else {
+		recv.Type = &ast.Type{Span: ast.Span{Start: recvStart.Pos, End: recvTok.End},
+			Kind: ast.NamedType, Name: typeName}
+		// A method of a generic type carries the type parameters in its
+		// receiver type, so the checker and the emitter specialize the
+		// receiver exactly like a written Box<T>.
+		for _, tp := range typeParams {
+			recv.Type.Args = append(recv.Type.Args, &ast.Type{
+				Span: ast.Span{Start: tp.NamePos, End: tp.NamePos},
+				Kind: ast.NamedType, Name: tp.Name})
+		}
+	}
+	if recvName != "self" {
+		p.bag.Error(recvTok.Pos, diag.CodeUnexpectedToken,
+			"a method starts with self", "write self as the first parameter")
+	}
+	if !p.at(token.RParen) {
+		if !p.at(token.Comma) {
+			p.unexpected(",")
+		} else {
+			p.next()
+			p.skipNL()
+		}
+	}
+	for !p.at(token.RParen) && !p.at(token.EOF) && !p.failed {
+		fn.Params = append(fn.Params, p.parseParam())
+		if !p.at(token.Comma) {
+			break
+		}
+		p.next()
+		p.skipNL()
+	}
+	p.expect(token.RParen, ")")
+	p.leaveGroup()
+	recv.Span = ast.Span{Start: recvStart.Pos, End: recvTok.End}
+	fn.Recv = recv
+	if p.at(token.Arrow) {
+		p.next()
+		p.skipNL()
+		fn.Result = p.parseType()
+	}
+	fn.Body = p.parseBlock("a method body")
+	fn.Span = p.spanFrom(start)
+	return fn
 }
 
 func (p *Parser) parseEnumDecl(doc string) *ast.EnumDecl {
@@ -500,34 +591,44 @@ func (p *Parser) parseMethodSig() *ast.MethodSig {
 	name, nameTok := p.expectName("a method name")
 	sig.Name = name
 	sig.NamePos = nameTok.Pos
-	sig.Params = p.parseParams()
+	sig.Params = p.parseSignatureParams()
 	if p.at(token.Arrow) {
 		p.next()
 		p.skipNL()
 		sig.Result = p.parseType()
 	}
-	sig.From = p.parseFromSources()
 	sig.Span = p.spanFrom(start)
 	return sig
 }
 
 // parseFromSources reads the optional from clause after a return type. Each
 // source is a place expression, so a field path stays attached to its root.
-func (p *Parser) parseFromSources() []ast.Expr {
-	if !p.atText("from") {
-		return nil
+// parseSignatureParams reads an interface method's parameter list. The
+// receiver is written as self for an interface that documents it, but it is
+// not part of the callable parameter list.
+func (p *Parser) parseSignatureParams() []*ast.Param {
+	p.expect(token.LParen, "(")
+	p.enterGroup()
+	p.skipNL()
+	if p.atText("self") && (p.peekRaw(1).Kind == token.Comma || p.peekRaw(1).Kind == token.RParen) {
+		p.next()
+		if !p.at(token.RParen) {
+			p.next()
+			p.skipNL()
+		}
 	}
-	p.next()
-	var out []ast.Expr
-	for {
-		p.skipNL()
-		out = append(out, p.parseExpr(0, false))
+	var params []*ast.Param
+	for !p.at(token.RParen) && !p.at(token.EOF) && !p.failed {
+		params = append(params, p.parseParam())
 		if !p.at(token.Comma) {
 			break
 		}
 		p.next()
+		p.skipNL()
 	}
-	return out
+	p.expect(token.RParen, ")")
+	p.leaveGroup()
+	return params
 }
 
 func (p *Parser) parseDeriveDecl(doc string) *ast.DeriveDecl {
@@ -549,8 +650,10 @@ func (p *Parser) parseLaneDecl() *ast.LaneDecl {
 	l.Name = name
 	l.NamePos = nameTok.Pos
 	switch p.cur().Kind {
+	case token.KwClass:
+		l.Decl = p.parseTypeDecl("", true)
 	case token.KwStruct:
-		l.Decl = p.parseStructDecl("")
+		l.Decl = p.parseTypeDecl("", false)
 	case token.KwEnum:
 		l.Decl = p.parseEnumDecl("")
 	case token.KwInterface:

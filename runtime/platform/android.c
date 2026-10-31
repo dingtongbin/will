@@ -6,6 +6,8 @@
 
 #include "../include/willrt.h"
 
+#define WILLRT_POSIX_VIEW_BASE UINT64_C(0x4000000000)
+
 #include "views_posix.h"
 
 int32_t willrt_os_cpu_count(void) {

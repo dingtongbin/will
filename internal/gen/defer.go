@@ -177,14 +177,6 @@ func (g *generator) captureDefer(st willc.Record, call willc.Record) (deferCall,
 				return deferCall{}, deferRequest{}, err
 			}
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, field)
-			if text, err := g.willTypeText(id); err == nil && isRcText(text) && !isWeakText(text) {
-				// The source may be reassigned or released before the block
-				// exits, so the frame owns one reference of its own.
-				g.needRcDecl = true
-				fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-				capture.text = text
-				capture.release = "rc"
-			}
 		}
 		fields = append(fields, capture)
 	}
@@ -323,7 +315,7 @@ func (g *generator) runDefers(lowest int) error {
 }
 
 // lowerDeferredCall runs one captured call and releases the frame's owned
-// references. A direct call record without a thunk is the old fallback.
+// references.
 func (g *generator) lowerDeferredCall(call deferCall) error {
 	fmt.Fprintf(g.out, "  call void @%s(ptr %s)\n", llvmSymbol(call.thunk), call.frame)
 	for _, field := range call.fields {
@@ -337,10 +329,6 @@ func (g *generator) lowerDeferredCall(call deferCall) error {
 			llvm:      field.llvm,
 		})
 		switch field.release {
-		case "rc":
-			g.needRcDecl = true
-			value := g.load("i64", ptr)
-			fmt.Fprintf(g.out, "  call void @willrt_rc_release(i64 %s)\n", value)
 		case "deep":
 			if err := g.releaseOwnedValue(ptr, field.text); err != nil {
 				return err

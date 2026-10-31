@@ -33,32 +33,23 @@ func arrayTypeText(text string) (int, string, bool) {
 	return n, elem, true
 }
 
-// containerElem returns the element text of a view or Array type. Only a
-// scalar element is lowered so far.
+// containerElem returns the element text of a view. List elements are read
+// through the container lowering, not this view helper.
 func containerElem(text string) (string, bool) {
-	var elem string
-	switch {
-	case strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">"):
-		elem = text[len("Array<") : len(text)-1]
-	case strings.HasPrefix(text, "[]"):
-		elem = text[2:]
-	default:
+	if !strings.HasPrefix(text, "[]") {
 		return "", false
 	}
+	elem := text[2:]
 	if elem == "" {
 		return "", false
 	}
 	return elem, true
 }
 
-// containerLLVM maps a view or Array type to its literal struct. A view is two
-// words and an Array is three, as the layout volume fixes.
+// containerLLVM maps a view type to its two-word literal struct.
 func containerLLVM(text string) (string, bool) {
 	if _, ok := containerElem(text); !ok {
 		return "", false
-	}
-	if strings.HasPrefix(text, "Array<") {
-		return "{ ptr, i64, i64 }", true
 	}
 	return "{ ptr, i64 }", true
 }
@@ -76,11 +67,6 @@ func llvmTypeText(text string) (string, bool) {
 		// A duration is a signed count of nanoseconds.
 		return "i64", true
 	}
-	if strings.HasPrefix(text, "rc<") || strings.HasPrefix(text, "arc<") ||
-		strings.HasPrefix(text, "weak_rc<") || strings.HasPrefix(text, "weak_arc<") {
-		// A handle packs the slot and the generation in one u64.
-		return "i64", true
-	}
 	if strings.HasPrefix(text, "Task<") || strings.HasPrefix(text, "chan<") {
 		// A task handle and a channel handle are opaque pointers.
 		return "ptr", true
@@ -88,19 +74,13 @@ func llvmTypeText(text string) (string, bool) {
 	if strings.HasPrefix(text, "[]") && len(text) > 2 {
 		return "{ ptr, i64 }", true
 	}
-	if strings.HasPrefix(text, "Array<") && strings.HasSuffix(text, ">") {
-		return "{ ptr, i64, i64 }", true
+	if strings.HasPrefix(text, "list[") && strings.HasSuffix(text, "]") {
+		return "ptr", true
 	}
 	if strings.HasPrefix(text, "func(") {
 		// A function value is a code pointer and the environment it reads.
 		// A closure without captures carries a null environment.
 		return "{ ptr, ptr }", true
-	}
-	if _, _, ok := mapTypeText(text); ok {
-		return "{ ptr, i64, i64 }", true
-	}
-	if _, ok := setTypeText(text); ok {
-		return "{ ptr, i64, i64 }", true
 	}
 	if typ, ok := containerLLVM(text); ok {
 		return typ, true
@@ -180,6 +160,9 @@ func (g *generator) sliceElem(r willc.Record) (string, error) {
 		// A str slice is a byte view, as the text volume fixes.
 		return "u8", nil
 	}
+	if elem, ok := listElemText(stripPredeclaredPackage(text)); ok {
+		return elem, nil
+	}
 	if elem, ok := containerElem(text); ok {
 		return elem, nil
 	}
@@ -191,6 +174,11 @@ func (g *generator) sliceElem(r willc.Record) (string, error) {
 // bounds are the usize values the index expression yields; a bound check needs
 // the runtime panic and is not emitted yet.
 func (g *generator) sliceValue(r willc.Record) (string, error) {
+	if recvText, err := g.willTypeText(refField(r, "recv")); err == nil {
+		if elem, ok := listElemText(stripPredeclaredPackage(recvText)); ok {
+			return g.listSliceSlot(r, elem)
+		}
+	}
 	elem, err := g.sliceElem(r)
 	if err != nil {
 		return "", err
@@ -317,6 +305,8 @@ func (g *generator) forContainer(r willc.Record, elem string, void bool, label i
 	elemName := names[len(names)-1]
 
 	// The data pointer and the length are the first two words of both shapes.
+	// The back edge reaches the condition without passing this block, so both
+	// values live in slots and are reloaded where they are used.
 	g.tmp++
 	dataField := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", dataField, baseType, base)
@@ -325,6 +315,12 @@ func (g *generator) forContainer(r willc.Record, elem string, void bool, label i
 	lenField := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", lenField, baseType, base)
 	length := g.load("i64", lenField)
+	dataSlot := g.newTmp()
+	g.tempAlloca(dataSlot, "ptr")
+	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", data, dataSlot)
+	lenSlot := g.newTmp()
+	g.tempAlloca(lenSlot, "i64")
+	fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, lenSlot)
 
 	condLabel := fmt.Sprintf("for.cond.%d", label)
 	bodyLabel := fmt.Sprintf("for.body.%d", label)
@@ -335,11 +331,13 @@ func (g *generator) forContainer(r willc.Record, elem string, void bool, label i
 	fmt.Fprintf(g.out, "  br label %%%s\n", condLabel)
 	g.out.WriteString(condLabel + ":\n")
 	current := g.load("i64", idx)
+	bound := g.load("i64", lenSlot)
 	g.tmp++
 	cond := "%t" + strconv.Itoa(g.tmp)
-	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", cond, current, length)
+	fmt.Fprintf(g.out, "  %s = icmp ult i64 %s, %s\n", cond, current, bound)
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", cond, bodyLabel, endLabel)
 	g.out.WriteString(bodyLabel + ":\n")
+	data = g.load("ptr", dataSlot)
 	g.tmp++
 	ptr := "%t" + strconv.Itoa(g.tmp)
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i64 %s\n", ptr, elemType, data, current)

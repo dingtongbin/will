@@ -10,11 +10,12 @@ import (
 func TestSpawnSyncMethodStartsOneJob(t *testing.T) {
 	src := `struct Counter {
     n: i32
+
+    def get(self) -> i32 {
+        return self.n
+    }
 }
 
-def (c: ref Counter) get() -> i32 {
-    return c.n
-}
 
 async def main() -> i32 {
     var c: Counter = Counter { n: 7 }
@@ -44,11 +45,12 @@ async def main() -> i32 {
 func TestSpawnAsyncMethodStartsOneTask(t *testing.T) {
 	src := `struct Counter {
     n: i32
+
+    async def get(self) -> i32 {
+        return self.n
+    }
 }
 
-async def (c: ref Counter) get() -> i32 {
-    return c.n
-}
 
 async def main() -> i32 {
     var c: Counter = Counter { n: 7 }

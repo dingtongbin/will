@@ -79,7 +79,7 @@ type emitter struct {
 	moved    map[ast.Node]bool
 	leaked   map[ast.Node]bool
 	// structs holds the local struct declarations, so a field read can be
-	// classified as a scalar/rc copy, a view, or an owning value.
+	// classified as a scalar copy, a view, or an owning value.
 	structs map[string]*ast.StructDecl
 	// external holds struct declarations from other files or packages, keyed by
 	// their short and package-qualified names. Imported fields need the same
@@ -134,8 +134,6 @@ func collectViewReturns(f *ast.File) map[string]int {
 			case *ast.ForStmt:
 				walkStmt(s.Body)
 			case *ast.RegionStmt:
-				walkStmt(s.Body)
-			case *ast.ParallelStmt:
 				walkStmt(s.Body)
 			case *ast.IfExpr:
 				walkStmt(s.Then)
@@ -440,7 +438,11 @@ func (e *emitter) emitDecl(d ast.Decl) {
 	case *ast.FuncDecl:
 		e.emitFunc(decl)
 	case *ast.StructDecl:
-		rec := e.add("struct", decl)
+		kind := "struct"
+		if decl.Class {
+			kind = "class"
+		}
+		rec := e.add(kind, decl)
 		e.text(rec, "text", decl.Name)
 		e.push(rec)
 		e.emitTypeParams(decl.TypeParams)
@@ -488,10 +490,6 @@ func (e *emitter) emitDecl(d ast.Decl) {
 			e.push(mid)
 			e.emitParams(m.Params)
 			e.emitType(m.Result)
-			for _, src := range m.From {
-				id := e.emitExpr(src)
-				e.field(mid, "from", Ref(id))
-			}
 			e.pop()
 		}
 		e.pop()
@@ -538,10 +536,6 @@ func (e *emitter) emitFunc(fn *ast.FuncDecl) {
 	e.emitTypeParams(fn.TypeParams)
 	e.emitParams(fn.Params)
 	e.emitType(fn.Result)
-	for _, src := range fn.From {
-		id := e.emitExpr(src)
-		e.field(rec, "from", Ref(id))
-	}
 	e.emitBlock(fn.Body)
 	e.pop()
 }
@@ -589,10 +583,11 @@ func (e *emitter) emitType(t *ast.Type) int {
 	}
 	rec := e.add("type", t)
 	e.text(rec, "text", typeText(t))
-	e.word(rec, "kind", typeKind(t))
-	if t.Kind == ast.ViewType && t.ViewMut {
-		e.boolean(rec, "mut", true)
+	kind := typeKind(t)
+	if e.isClassType(t) {
+		kind = "class"
 	}
+	e.word(rec, "kind", kind)
 	e.typeRef(rec, t)
 	e.push(rec)
 	switch t.Kind {
@@ -644,13 +639,35 @@ func typeText(t *ast.Type) string {
 	return ast.TypeText(t)
 }
 
-func typeKind(t *ast.Type) string {
-	switch t.Borrow {
-	case ast.RefBorrow:
-		return "ref"
-	case ast.MutBorrow:
-		return "mutref"
+// needsRelease keeps class references out of the lexical release plan. Their
+// lifetime belongs to the collector, not to a reference count.
+func (e *emitter) needsRelease(t *ast.Type) bool {
+	return ast.NeedsRelease(t) && !e.isClassType(t)
+}
+
+// isClassType reports whether a named type expression denotes a class in this
+// file or in an imported file whose declaration is visible to the batch.
+func (e *emitter) isClassType(t *ast.Type) bool {
+	if t == nil || t.Kind != ast.NamedType {
+		return false
 	}
+	name := t.Name
+	if i := lastDot(name); i >= 0 {
+		name = name[i+1:]
+	}
+	if s, ok := e.structs[name]; ok {
+		return s.Class
+	}
+	if s, ok := e.external[name]; ok {
+		return s.Class
+	}
+	if s, ok := e.external[t.Name]; ok {
+		return s.Class
+	}
+	return false
+}
+
+func typeKind(t *ast.Type) string {
 	switch t.Kind {
 	case ast.ScalarType:
 		return "scalar"
@@ -668,14 +685,6 @@ func typeKind(t *ast.Type) string {
 		return "option"
 	case "Result":
 		return "result"
-	case "rc":
-		return "rc"
-	case "arc":
-		return "arc"
-	case "weak_rc":
-		return "weak_rc"
-	case "weak_arc":
-		return "weak_arc"
 	case "chan":
 		return "chan"
 	case "Task":

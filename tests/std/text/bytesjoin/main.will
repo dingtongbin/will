@@ -1,27 +1,27 @@
 import "std/bytes"
 
 # one returns a byte array holding a single byte.
-def one(value: u8) -> Array<u8> {
-    var p: Array<u8> = new Array<u8>(1)
+def one(value: u8) -> list[u8] {
+    var p: list[u8] = list[u8](1)
     p.push(value)
     return p
 }
 
 # empty returns a byte array with no bytes.
-def empty() -> Array<u8> {
-    var p: Array<u8> = new Array<u8>(0)
+def empty() -> list[u8] {
+    var p: list[u8] = list[u8](0)
     return p
 }
 
 # Join must place the separator only between parts, keep an empty part in
 # place, accept an empty separator, and copy every byte value unchanged.
 def main() -> i32 {
-    var comma: Array<u8> = new Array<u8>(1)
+    var comma: list[u8] = list[u8](1)
     comma.push(u8(44))
-    var two: Array<Array<u8>> = new Array<Array<u8>>(2)
+    var two: list[list[u8]] = list[list[u8]](2)
     two.push(one(u8(65)))
     two.push(one(u8(66)))
-    var joined: Array<u8> = bytes.join(two[Range(0, 2)], comma[Range(0, 1)])
+    var joined: list[u8] = bytes.join(two[Range(0, 2)], comma[Range(0, 1)])
     if joined.len() != usize(3) {
         return 1
     }
@@ -34,39 +34,39 @@ def main() -> i32 {
     if joined.get(2) != u8(66) {
         return 4
     }
-    var three: Array<Array<u8>> = new Array<Array<u8>>(3)
+    var three: list[list[u8]] = list[list[u8]](3)
     three.push(one(u8(65)))
     three.push(empty())
     three.push(one(u8(66)))
-    var gap: Array<u8> = bytes.join(three[Range(0, 3)], comma[Range(0, 1)])
+    var gap: list[u8] = bytes.join(three[Range(0, 3)], comma[Range(0, 1)])
     if gap.len() != usize(4) {
         return 5
     }
     if gap.get(2) != u8(44) {
         return 6
     }
-    var none: Array<u8> = bytes.join(three[Range(0, 0)], comma[Range(0, 1)])
+    var none: list[u8] = bytes.join(three[Range(0, 0)], comma[Range(0, 1)])
     if none.len() != usize(0) {
         return 7
     }
-    var single: Array<u8> = bytes.join(two[Range(0, 1)], comma[Range(0, 1)])
+    var single: list[u8] = bytes.join(two[Range(0, 1)], comma[Range(0, 1)])
     if single.len() != usize(1) {
         return 8
     }
     if single.get(0) != u8(65) {
         return 9
     }
-    var bare: Array<u8> = bytes.join(two[Range(0, 2)], comma[Range(0, 0)])
+    var bare: list[u8] = bytes.join(two[Range(0, 2)], comma[Range(0, 0)])
     if bare.len() != usize(2) {
         return 10
     }
     if bare.get(1) != u8(66) {
         return 11
     }
-    var dashes: Array<u8> = new Array<u8>(2)
+    var dashes: list[u8] = list[u8](2)
     dashes.push(u8(45))
     dashes.push(u8(45))
-    var wide: Array<u8> = bytes.join(two[Range(0, 2)], dashes[Range(0, 2)])
+    var wide: list[u8] = bytes.join(two[Range(0, 2)], dashes[Range(0, 2)])
     if wide.len() != usize(4) {
         return 12
     }
@@ -76,10 +76,10 @@ def main() -> i32 {
     if wide.get(2) != u8(45) {
         return 14
     }
-    var high: Array<Array<u8>> = new Array<Array<u8>>(2)
+    var high: list[list[u8]] = list[list[u8]](2)
     high.push(one(u8(251)))
     high.push(one(u8(255)))
-    var binary: Array<u8> = bytes.join(high[Range(0, 2)], comma[Range(0, 1)])
+    var binary: list[u8] = bytes.join(high[Range(0, 2)], comma[Range(0, 1)])
     if binary.len() != usize(3) {
         return 15
     }

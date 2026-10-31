@@ -72,17 +72,12 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", arg, field)
 		} else if pab[i].byPtr {
 			g.copyValue(arg, field, pab[i].typ)
+		} else if g.isClassText(pab[i].text) {
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				field, arg)
 		} else {
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", pab[i].typ, arg, field)
-		}
-		// The capture is the crossing whether the parameter moves by value
-		// or by pointer: an rc handle lands in a frame another lane runs.
-		share := field
-		if pab[i].byPtr && isSingleBorrow(pab[i].text) {
-			share = arg
-		}
-		if err := g.shareValue(share, pab[i].text); err != nil {
-			return err
 		}
 	}
 	for i := len(paramRecs); i < len(info.fields); i++ {
@@ -121,13 +116,25 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", auto, autoLabel, laneLabel)
 	fmt.Fprintf(g.out, "%s:\n", autoLabel)
 	autoTask := g.newTmp()
+	gcMap := g.taskGCMap(info.symbol, info.gcSlots, info.gcTypes)
+	resultType := g.taskResultDescriptor(info.resultText)
 	if dropPtr != "" {
 		dropValue := dropPtr
 		if dropPtr == ownDrop || dropPtr == borrowDrop {
 			dropValue = "@" + llvmSymbol(dropPtr)
 		}
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr %s)\n",
-			autoTask, llvmSymbol(info.symbol), frame, size, dropValue)
+		if g.gcProgram != nil {
+			g.needTaskGCDecl = true
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop_gc(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr %s, ptr %s, ptr %s)\n",
+				autoTask, llvmSymbol(info.symbol), frame, size, dropValue, gcMap, resultType)
+		} else {
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr %s)\n",
+				autoTask, llvmSymbol(info.symbol), frame, size, dropValue)
+		}
+	} else if g.gcProgram != nil {
+		g.needTaskGCDecl = true
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_gc(ptr @%s, ptr %s, i64 %s, i32 0, i32 0, ptr %s, ptr %s)\n",
+			autoTask, llvmSymbol(info.symbol), frame, size, gcMap, resultType)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 0, i32 0)\n",
 			autoTask, llvmSymbol(info.symbol), frame, size)
@@ -144,8 +151,18 @@ func (g *generator) emitAsyncConstructor(info *asyncMachineInfo) error {
 		if dropPtr == ownDrop || dropPtr == borrowDrop {
 			dropValue = "@" + llvmSymbol(dropPtr)
 		}
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr %s)\n",
-			laneTask, llvmSymbol(info.symbol), frame, size, laneValue, dropValue)
+		if g.gcProgram != nil {
+			g.needTaskGCDecl = true
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop_gc(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr %s, ptr %s, ptr %s)\n",
+				laneTask, llvmSymbol(info.symbol), frame, size, laneValue, dropValue, gcMap, resultType)
+		} else {
+			fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_drop(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr %s)\n",
+				laneTask, llvmSymbol(info.symbol), frame, size, laneValue, dropValue)
+		}
+	} else if g.gcProgram != nil {
+		g.needTaskGCDecl = true
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new_gc(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0, ptr %s, ptr %s)\n",
+			laneTask, llvmSymbol(info.symbol), frame, size, laneValue, gcMap, resultType)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_task_new(ptr @%s, ptr %s, i64 %s, i32 %s, i32 0)\n",
 			laneTask, llvmSymbol(info.symbol), frame, size, laneValue)
@@ -223,9 +240,20 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
 	}
 	declParams := make([]string, 0, len(args)+1)
 	if g.methodSymbols[targetSym] {
-		recv, _, err := g.place(refField(call, "recv"))
-		if err != nil {
-			return "", err
+		recvID := refField(call, "recv")
+		recv := ""
+		if text, err := g.willTypeText(recvID); err == nil && g.isClassText(text) {
+			object, err := g.classPointerValue(recvID)
+			if err != nil {
+				return "", err
+			}
+			recv = object
+		} else {
+			ptr, _, err := g.place(recvID)
+			if err != nil {
+				return "", err
+			}
+			recv = ptr
 		}
 		parts = append(parts, "ptr "+recv)
 		declParams = append(declParams, "ptr")
@@ -237,6 +265,23 @@ func (g *generator) emitConstructorCall(call willc.Record, targetSym string,
 		}
 		mut := i < len(paramMuts) && paramMuts[i]
 		text, textErr := g.willTypeText(a)
+		if textErr == nil && i < len(paramTypes) {
+			if iface, ok := g.ifaceOfText(paramTypes[i]); ok {
+				if _, already := g.ifaceOfText(text); !already {
+					key := fmt.Sprintf("%d.%d", call.ID, i)
+					slot := g.ifaceSlots[key]
+					if slot == "" {
+						return "", g.errf(call.ID, "cannot translate node #%d: the interface argument has no slot", call.ID)
+					}
+					if _, err := g.ifaceStoreValue(slot, a, iface, text); err != nil {
+						return "", err
+					}
+					parts = append(parts, "ptr "+slot)
+					declParams = append(declParams, "ptr")
+					continue
+				}
+			}
+		}
 		if owns && !mut && textErr == nil && g.argIsParameter(a) && ownsReleaseText(g, text) {
 			// A borrowed parameter cannot be handed to the frame by clearing the
 			// caller's place. Give the spawned frame its own copy instead.

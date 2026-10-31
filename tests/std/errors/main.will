@@ -2,15 +2,19 @@ import "std/errors"
 
 struct probeError {
     status: i32
+
+    def message(self) -> str {
+        return "probe"
+    }
+
+    def status(self) -> i32 {
+        return self.status
+    }
 }
 
-def (e: ref probeError) message() -> str {
-    return "probe"
-}
 
-def (e: ref probeError) status() -> i32 {
-    return e.status
-}
+
+
 
 def class_of_status(status: i32) -> errors.ErrorClass {
     var v: probeError = probeError { status: status }

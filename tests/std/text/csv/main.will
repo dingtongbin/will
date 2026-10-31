@@ -3,92 +3,108 @@ import "std/encoding/csv"
 # Source hands out at most chunk bytes per read, so the decoder must keep a
 # partial record across reads.
 struct Source {
-    data: Array<u8>
+    data: list[u8]
     pos: usize
     chunk: usize
-}
 
-def (s: mut Source) read(buf: mut Array<u8>) -> Result<usize, Error> {
-    var n: usize = 0usize
-    while True {
-        if s.pos >= s.data.len() or n >= s.chunk {
-            break
+    def read(self, buf: list[u8]) -> Result<usize, Error> {
+        var n: usize = 0usize
+        while True {
+            if self.pos >= self.data.len() or n >= self.chunk {
+                break
+            }
+            buf.push(self.data.get(self.pos))
+            self.pos += 1usize
+            n += 1usize
         }
-        buf.push(s.data.get(s.pos))
-        s.pos += 1usize
-        n += 1usize
+        return Ok(n)
     }
-    return Ok(n)
 }
 
-# Buffer carries the bytes the sink collects. The rc handle below shares this
+
+
+# Buffer carries the bytes the sink collects. The class reference below shares this
 # value so the test can read the output after the interface takes its boxed
-# copy. Push is a declared method because a predeclared Array method is not
-# reached through an rc handle.
-struct Buffer {
-    data: Array<u8>
-}
+# copy. Push is a declared method because a predeclared list method is not
+# reached through a class reference.
+class Buffer {
+    data: list[u8]
 
-def (b: mut Buffer) push(v: u8) {
-    b.data.push(v)
-}
-
-def (b: ref Buffer) copy() -> Array<u8> {
-    return b.data.clone()
-}
-
-def (b: ref Buffer) same_as(values: ...u8) -> bool {
-    if b.data.len() != values.len() {
-        return False
+    def init(self, data: list[u8]) {
+        self.data = data.clone()
     }
-    var i: usize = 0usize
-    for v in values {
-        if b.data.get(i) != v {
+
+    def push(self, v: u8) {
+        self.data.push(v)
+    }
+
+    def copy(self) -> list[u8] {
+        return self.data.clone()
+    }
+
+    def same_as(self, values: ...u8) -> bool {
+        if self.data.len() != values.len() {
             return False
         }
-        i += 1usize
+        var i: usize = 0usize
+        for v in values {
+            if self.data.get(i) != v {
+                return False
+            }
+            i += 1usize
+        }
+        return True
     }
-    return True
 }
 
-# Sink shares its buffer through rc so the test can read what the writer
+
+
+
+
+
+
+# Sink shares its buffer through a class reference so the test can read what the writer
 # wrote after the interface value has taken its own boxed copy.
 struct Sink {
-    data: rc<Buffer>
-}
+    data: Buffer
 
-def (s: mut Sink) write(buf: []u8) -> Result<(), Error> {
-    for b in buf {
-        s.data.push(b)
+    def write(self, buf: []u8) -> Result<(), Error> {
+        for b in buf {
+            self.data.push(b)
+        }
+        return Ok(())
     }
-    return Ok(())
+
+    def sync(self) -> Result<(), Error> {
+        return Ok(())
+    }
 }
 
-def (s: ref Sink) sync() -> Result<(), Error> {
-    return Ok(())
-}
 
-def ascii(s: str) -> Array<u8> {
-    var out: Array<u8> = new Array<u8>(0)
+
+
+
+def ascii(s: str) -> list[u8] {
+    var out: list[u8] = list[u8](0)
     for b in s[Range(0, s.len())] {
         out.push(b)
     }
     return out
 }
 
-def append_ascii(out: mut Array<u8>, s: str) {
+def append_ascii(out: list[u8], s: str) {
     for b in s[Range(0, s.len())] {
         out.push(b)
     }
 }
 
-def append_crlf(out: mut Array<u8>) {
+def append_crlf(out: list[u8]) {
     out.push(13u8)
     out.push(10u8)
 }
 
-def bytes(values: ...u8) -> Array<u8> {
-    var out: Array<u8> = new Array<u8>(0)
+def bytes(values: ...u8) -> list[u8] {
+    var out: list[u8] = list[u8](0)
     for v in values {
         out.push(v)
     }
@@ -96,7 +112,7 @@ def bytes(values: ...u8) -> Array<u8> {
 }
 
 def text_bytes(values: ...u8) -> str {
-    var out: Array<u8> = new Array<u8>(0)
+    var out: list[u8] = list[u8](0)
     for v in values {
         out.push(v)
     }
@@ -104,7 +120,7 @@ def text_bytes(values: ...u8) -> str {
 }
 
 def row_of(a: str, b: str, c: str) -> csv.Row {
-    var fields: Array<str> = new Array<str>(0)
+    var fields: list[str] = list[str](0)
     fields.push(a.clone())
     fields.push(b.clone())
     fields.push(c.clone())
@@ -125,7 +141,7 @@ def fields_equal(row: csv.Row, expected: ...str) -> bool {
     return True
 }
 
-async def decode_all(reader: mut csv.Reader, rows: mut Array<csv.Row>) -> Result<usize, Error> {
+async def decode_all(reader: csv.Reader, rows: list[csv.Row]) -> Result<usize, Error> {
     var total: usize = 0usize
     while True {
         var batch: Result<usize, Error> = await reader.decode(rows)
@@ -157,8 +173,8 @@ def failed(r: Result<usize, Error>) -> bool {
 }
 
 async def main() -> i32 {
-    var rows: Array<csv.Row> = new Array<csv.Row>(0)
-    var firstData: Array<u8> = bytes(
+    var rows: list[csv.Row] = list[csv.Row](0)
+    var firstData: list[u8] = bytes(
         97u8, 44u8, 34u8, 98u8, 44u8, 99u8, 34u8, 44u8,
         34u8, 100u8, 34u8, 34u8, 101u8, 34u8,
     )
@@ -169,7 +185,7 @@ async def main() -> i32 {
         pos: 0usize,
         chunk: 3usize,
     }
-    var reader: csv.Reader = new csv.Reader(source, 44u8)
+    var reader: csv.Reader = csv.Reader(source, 44u8)
     match await decode_all(reader, rows) {
         Ok(n) => {
             if n != 2usize {
@@ -190,13 +206,13 @@ async def main() -> i32 {
         return 5
     }
 
-    var emptyRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var emptyRows: list[csv.Row] = list[csv.Row](0)
     var emptySource: Source = Source {
         data: ascii(",x,\n"),
         pos: 0usize,
         chunk: 2usize,
     }
-    var emptyReader: csv.Reader = new csv.Reader(emptySource, 44u8)
+    var emptyReader: csv.Reader = csv.Reader(emptySource, 44u8)
     match await decode_all(emptyReader, emptyRows) {
         Ok(n) => {
             if n != 1usize {
@@ -211,15 +227,15 @@ async def main() -> i32 {
         return 8
     }
 
-    var lineRows: Array<csv.Row> = new Array<csv.Row>(0)
-    var lineData: Array<u8> = bytes(34u8, 97u8, 10u8, 98u8, 34u8, 44u8, 99u8)
+    var lineRows: list[csv.Row] = list[csv.Row](0)
+    var lineData: list[u8] = bytes(34u8, 97u8, 10u8, 98u8, 34u8, 44u8, 99u8)
     append_crlf(lineData)
     var lineSource: Source = Source {
         data: lineData,
         pos: 0usize,
         chunk: 4usize,
     }
-    var lineReader: csv.Reader = new csv.Reader(lineSource, 44u8)
+    var lineReader: csv.Reader = csv.Reader(lineSource, 44u8)
     match await decode_all(lineReader, lineRows) {
         Ok(n) => {
             if n != 1usize {
@@ -234,13 +250,13 @@ async def main() -> i32 {
         return 11
     }
 
-    var tailRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var tailRows: list[csv.Row] = list[csv.Row](0)
     var tailSource: Source = Source {
         data: ascii("a,\n\nb,"),
         pos: 0usize,
         chunk: 5usize,
     }
-    var tailReader: csv.Reader = new csv.Reader(tailSource, 44u8)
+    var tailReader: csv.Reader = csv.Reader(tailSource, 44u8)
     match await decode_all(tailReader, tailRows) {
         Ok(n) => {
             if n != 3usize {
@@ -261,12 +277,12 @@ async def main() -> i32 {
         return 16
     }
 
-    var outRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var outRows: list[csv.Row] = list[csv.Row](0)
     outRows.push(row_of("a", "b,c", text_bytes(100u8, 34u8, 101u8)))
     outRows.push(row_of("1", "2", "3"))
     outRows.push(row_of("x\ny", "z", ""))
-    var shared: rc<Buffer> = new rc<Buffer>(Buffer { data: new Array<u8>(0) })
-    var writer: csv.Writer = new csv.Writer(Sink { data: shared }, 44u8)
+    var shared: Buffer = Buffer(list[u8](0))
+    var writer: csv.Writer = csv.Writer(Sink { data: shared }, 44u8)
     match await writer.encode(outRows[Range(0, outRows.len())]) {
         Ok(_) => {
         }
@@ -290,13 +306,13 @@ async def main() -> i32 {
         return 19
     }
 
-    var roundRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var roundRows: list[csv.Row] = list[csv.Row](0)
     var roundSource: Source = Source {
         data: shared.copy(),
         pos: 0usize,
         chunk: 1usize,
     }
-    var roundReader: csv.Reader = new csv.Reader(roundSource, 44u8)
+    var roundReader: csv.Reader = csv.Reader(roundSource, 44u8)
     match await decode_all(roundReader, roundRows) {
         Ok(n) => {
             if n != 3usize {
@@ -314,35 +330,35 @@ async def main() -> i32 {
         return 26
     }
 
-    var badRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var badRows: list[csv.Row] = list[csv.Row](0)
     var badSource: Source = Source {
         data: bytes(97u8, 34u8, 98u8, 10u8),
         pos: 0usize,
         chunk: 4usize,
     }
-    var badReader: csv.Reader = new csv.Reader(badSource, 44u8)
+    var badReader: csv.Reader = csv.Reader(badSource, 44u8)
     if not failed(await badReader.decode(badRows)) {
         return 23
     }
 
-    var openRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var openRows: list[csv.Row] = list[csv.Row](0)
     var openSource: Source = Source {
         data: bytes(34u8, 97u8, 98u8, 99u8),
         pos: 0usize,
         chunk: 2usize,
     }
-    var openReader: csv.Reader = new csv.Reader(openSource, 44u8)
+    var openReader: csv.Reader = csv.Reader(openSource, 44u8)
     if not failed(await openReader.decode(openRows)) {
         return 24
     }
 
-    var utfRows: Array<csv.Row> = new Array<csv.Row>(0)
+    var utfRows: list[csv.Row] = list[csv.Row](0)
     var utfSource: Source = Source {
         data: bytes(0xffu8, 10u8),
         pos: 0usize,
         chunk: 2usize,
     }
-    var utfReader: csv.Reader = new csv.Reader(utfSource, 44u8)
+    var utfReader: csv.Reader = csv.Reader(utfSource, 44u8)
     if not failed(await utfReader.decode(utfRows)) {
         return 25
     }

@@ -9,28 +9,28 @@ import c "clock.h" {
 # not change its result.
 struct clockError {
     message: str
-}
 
-def (e: ref clockError) message() -> str {
-    return e.message.clone()
-}
+    def message(self) -> str {
+        return self.message.clone()
+    }
 
-def (e: ref clockError) status() -> i32 {
-    return 2
+    def status(self) -> i32 {
+        return 2
+    }
 }
 
 struct Stopwatch {
     start: i64
-}
 
-# init records the monotonic clock at construction.
-def (s: mut Stopwatch) init() {
-    s.start = c.willrt_now_ns()
-}
+    # init records the monotonic clock at construction.
+    def init(self) {
+        self.start = c.willrt_now_ns()
+    }
 
-# Elapsed returns the time since construction.
-def (s: ref Stopwatch) elapsed() -> Duration {
-    return Duration(c.willrt_now_ns() - s.start)
+    # elapsed returns the time since construction.
+    def elapsed(self) -> Duration {
+        return Duration(c.willrt_now_ns() - self.start)
+    }
 }
 
 # Sleep suspends the current task for d. Callers await it inside an async

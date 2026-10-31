@@ -93,8 +93,6 @@ func (c *checker) crossStmt(probe *Result, st ast.Stmt) {
 		c.crossBlock(probe, s.Body)
 	case *ast.RegionStmt:
 		c.crossBlock(probe, s.Body)
-	case *ast.ParallelStmt:
-		c.crossBlock(probe, s.Body)
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {
 			c.crossExpr(probe, arm.Chan)
@@ -132,11 +130,6 @@ func (c *checker) crossExpr(probe *Result, e ast.Expr) {
 		for _, t := range x.TypeArgs {
 			c.crossType(probe, t)
 		}
-		for _, a := range x.Args {
-			c.crossExpr(probe, a.Expr)
-		}
-	case *ast.NewExpr:
-		c.crossType(probe, x.Type)
 		for _, a := range x.Args {
 			c.crossExpr(probe, a.Expr)
 		}

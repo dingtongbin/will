@@ -4,14 +4,14 @@ const padByte: u8 = 61
 # Encode returns the standard base64 text of b, padded to a whole group. Any
 # byte value is accepted and the result is ASCII, so the call cannot fail.
 def encode(b: []u8) -> str {
-    var out: Array<u8> = encode_bytes(b, False)
+    var out: list[u8] = encode_bytes(b, False)
     return str(out)
 }
 
 # EncodeUrl returns the URL- and filename-safe base64 text of b: '-' and '_'
 # replace '+' and '/', so the text needs no escaping in a URL or a file name.
 def encode_url(b: []u8) -> str {
-    var out: Array<u8> = encode_bytes(b, True)
+    var out: list[u8] = encode_bytes(b, True)
     return str(out)
 }
 
@@ -19,10 +19,10 @@ def encode_url(b: []u8) -> str {
 # of three bytes becomes four characters; one or two leftover bytes become two
 # or three characters and the rest of the group is padding. Push doubles the
 # array when it is full, so the whole encode stays linear in the input length.
-def encode_bytes(b: []u8, url: bool) -> Array<u8> {
+def encode_bytes(b: []u8, url: bool) -> list[u8] {
     var n: usize = b.len()
     var groups: usize = n / 3
-    var out: Array<u8> = new Array<u8>(0)
+    var out: list[u8] = list[u8](0)
     var i: usize = 0
     var whole: usize = groups * 3
     while True {

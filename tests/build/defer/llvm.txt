@@ -1,18 +1,21 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
+%willrt_gc_stack_slot = type { i32, i32, ptr }
+%willrt_gc_stack_map_data = type { ptr, ptr, i64 }
+%willrt_gc_frame = type { ptr, ptr, ptr }
 %"struct.example.com/defer.C" = type { i32 }
 %"struct.example.com/defer.E" = type { { ptr, i64 } }
-define hidden { ptr, i64 } @"example.com/defer.E.message"(ptr %e) inlinehint {
+define hidden { ptr, i64 } @"example.com/defer.E.message"(ptr %self) inlinehint {
 entry:
   %v.ret.14 = alloca { ptr, i64 }
   %v.strm.14 = alloca { ptr, i64 }
-  %t1 = getelementptr inbounds %"struct.example.com/defer.E", ptr %e, i32 0, i32 0
-  %t2 = getelementptr inbounds %"struct.example.com/defer.E", ptr %e, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.example.com/defer.E", ptr %self, i32 0, i32 0
+  %t2 = getelementptr inbounds %"struct.example.com/defer.E", ptr %self, i32 0, i32 0
   %t3 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 0
   %t4 = load ptr, ptr %t3
   %t5 = getelementptr inbounds { ptr, i64 }, ptr %t2, i32 0, i32 1
   %t6 = load i64, ptr %t5
-  %t7 = call ptr @willrt_alloc(i64 %t6)
+  %t7 = call ptr @willrt_gc_alloc(i64 %t6, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   call void @memcpy(ptr %t7, ptr %t4, i64 %t6)
   %t8 = getelementptr inbounds { ptr, i64 }, ptr %v.strm.14, i32 0, i32 0
   store ptr %t7, ptr %t8
@@ -23,8 +26,14 @@ entry:
   %t11 = load { ptr, i64 }, ptr %v.ret.14
   ret { ptr, i64 } %t11
 }
-define hidden i32 @"example.com/defer.E.status"(ptr %e) alwaysinline {
+define hidden i32 @"example.com/defer.E.status"(ptr %self) alwaysinline {
 entry:
+  %v.gcroots = alloca [1 x ptr]
+  store [1 x ptr] zeroinitializer, ptr %v.gcroots
+  %v.gcframe = alloca %willrt_gc_frame
+  %t12 = getelementptr inbounds [1 x ptr], ptr %v.gcroots, i32 0, i32 0
+  call void @willrt_gc_frame_enter(ptr %v.gcframe, ptr @"willrt.gc.stack.example.com/defer.E.status", ptr %v.gcroots)
+  call void @willrt_gc_frame_leave(ptr %v.gcframe)
   ret i32 1
 }
 define hidden { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.maybe"(i1 %ok) inlinehint {
@@ -35,89 +44,89 @@ entry:
   %v.adt.39 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
   br i1 %ok, label %if.then.1, label %if.end.1
 if.then.1:
-  %t12 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.35, i32 0, i32 0
-  store i32 0, ptr %t12
-  %t13 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.35, i32 0, i32 2
-  store i32 1, ptr %t13
-  %t14 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.35
-  ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t14
+  %t13 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.35, i32 0, i32 0
+  store i32 0, ptr %t13
+  %t14 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.35, i32 0, i32 2
+  store i32 1, ptr %t14
+  %t15 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.35
+  ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t15
 if.end.1:
-  %t15 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.39, i32 0, i32 0
-  store i32 1, ptr %t15
-  %t16 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.39, i32 0, i32 2
-  %t17 = getelementptr inbounds %"struct.example.com/defer.E", ptr %v.agg.41, i32 0, i32 0
-  %t18 = getelementptr inbounds { ptr, i64 }, ptr %v.str.42, i32 0, i32 0
-  store ptr @.bytes.1, ptr %t18
-  %t19 = getelementptr inbounds { ptr, i64 }, ptr %v.str.42, i32 0, i32 1
-  store i64 2, ptr %t19
-  %t20 = load { ptr, i64 }, ptr %v.str.42
-  store { ptr, i64 } %t20, ptr %t17
-  %t21 = load %"struct.example.com/defer.E", ptr %v.agg.41
-  store %"struct.example.com/defer.E" %t21, ptr %t16
-  %t22 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.39
-  ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t22
+  %t16 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.39, i32 0, i32 0
+  store i32 1, ptr %t16
+  %t17 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.39, i32 0, i32 2
+  %t18 = getelementptr inbounds %"struct.example.com/defer.E", ptr %v.agg.41, i32 0, i32 0
+  %t19 = getelementptr inbounds { ptr, i64 }, ptr %v.str.42, i32 0, i32 0
+  store ptr @.bytes.1, ptr %t19
+  %t20 = getelementptr inbounds { ptr, i64 }, ptr %v.str.42, i32 0, i32 1
+  store i64 2, ptr %t20
+  %t21 = load { ptr, i64 }, ptr %v.str.42
+  store { ptr, i64 } %t21, ptr %t18
+  %t22 = load %"struct.example.com/defer.E", ptr %v.agg.41
+  store %"struct.example.com/defer.E" %t22, ptr %t17
+  %t23 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.39
+  ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t23
 }
 define hidden i32 @"example.com/defer.order"() inlinehint {
 entry:
   %v.str.49 = alloca { ptr, i64 }
   %v.str.53 = alloca { ptr, i64 }
   %v.str.57 = alloca { ptr, i64 }
-  %t23 = getelementptr { { ptr, i64 } }, ptr null, i32 1
-  %t24 = ptrtoint ptr %t23 to i64
-  %t25 = call ptr @willrt_alloc(i64 %t24)
-  %t26 = getelementptr { { ptr, i64 } }, ptr %t25, i32 0, i32 0
-  %t27 = getelementptr inbounds { ptr, i64 }, ptr %v.str.49, i32 0, i32 0
-  store ptr @.bytes.2, ptr %t27
-  %t28 = getelementptr inbounds { ptr, i64 }, ptr %v.str.49, i32 0, i32 1
-  store i64 4, ptr %t28
-  %t29 = load { ptr, i64 }, ptr %v.str.49
-  store { ptr, i64 } %t29, ptr %t26
-  %t30 = getelementptr { { ptr, i64 } }, ptr null, i32 1
-  %t31 = ptrtoint ptr %t30 to i64
-  %t32 = call ptr @willrt_alloc(i64 %t31)
-  %t33 = getelementptr { { ptr, i64 } }, ptr %t32, i32 0, i32 0
-  %t34 = getelementptr inbounds { ptr, i64 }, ptr %v.str.53, i32 0, i32 0
-  store ptr @.bytes.3, ptr %t34
-  %t35 = getelementptr inbounds { ptr, i64 }, ptr %v.str.53, i32 0, i32 1
-  store i64 4, ptr %t35
-  %t36 = load { ptr, i64 }, ptr %v.str.53
-  store { ptr, i64 } %t36, ptr %t33
-  %t37 = getelementptr inbounds { ptr, i64 }, ptr %v.str.57, i32 0, i32 0
-  store ptr @.bytes.4, ptr %t37
-  %t38 = getelementptr inbounds { ptr, i64 }, ptr %v.str.57, i32 0, i32 1
-  store i64 5, ptr %t38
-  %t39 = getelementptr inbounds { ptr, i64 }, ptr %v.str.57, i32 0, i32 0
-  %t40 = load ptr, ptr %t39
-  %t41 = getelementptr inbounds { ptr, i64 }, ptr %v.str.57, i32 0, i32 1
-  %t42 = load i64, ptr %t41
-  call void @willrt_write_stdout(ptr %t40, i64 %t42)
-  call void @"example.com/defer.defer.1"(ptr %t32)
-  call void @willrt_free(ptr %t32)
-  call void @"example.com/defer.defer.0"(ptr %t25)
-  call void @willrt_free(ptr %t25)
+  %t24 = getelementptr { { ptr, i64 } }, ptr null, i32 1
+  %t25 = ptrtoint ptr %t24 to i64
+  %t26 = call ptr @willrt_alloc(i64 %t25)
+  %t27 = getelementptr { { ptr, i64 } }, ptr %t26, i32 0, i32 0
+  %t28 = getelementptr inbounds { ptr, i64 }, ptr %v.str.49, i32 0, i32 0
+  store ptr @.bytes.2, ptr %t28
+  %t29 = getelementptr inbounds { ptr, i64 }, ptr %v.str.49, i32 0, i32 1
+  store i64 4, ptr %t29
+  %t30 = load { ptr, i64 }, ptr %v.str.49
+  store { ptr, i64 } %t30, ptr %t27
+  %t31 = getelementptr { { ptr, i64 } }, ptr null, i32 1
+  %t32 = ptrtoint ptr %t31 to i64
+  %t33 = call ptr @willrt_alloc(i64 %t32)
+  %t34 = getelementptr { { ptr, i64 } }, ptr %t33, i32 0, i32 0
+  %t35 = getelementptr inbounds { ptr, i64 }, ptr %v.str.53, i32 0, i32 0
+  store ptr @.bytes.3, ptr %t35
+  %t36 = getelementptr inbounds { ptr, i64 }, ptr %v.str.53, i32 0, i32 1
+  store i64 4, ptr %t36
+  %t37 = load { ptr, i64 }, ptr %v.str.53
+  store { ptr, i64 } %t37, ptr %t34
+  %t38 = getelementptr inbounds { ptr, i64 }, ptr %v.str.57, i32 0, i32 0
+  store ptr @.bytes.4, ptr %t38
+  %t39 = getelementptr inbounds { ptr, i64 }, ptr %v.str.57, i32 0, i32 1
+  store i64 5, ptr %t39
+  %t40 = getelementptr inbounds { ptr, i64 }, ptr %v.str.57, i32 0, i32 0
+  %t41 = load ptr, ptr %t40
+  %t42 = getelementptr inbounds { ptr, i64 }, ptr %v.str.57, i32 0, i32 1
+  %t43 = load i64, ptr %t42
+  call void @willrt_write_stdout(ptr %t41, i64 %t43)
+  call void @"example.com/defer.defer.1"(ptr %t33)
+  call void @willrt_free(ptr %t33)
+  call void @"example.com/defer.defer.0"(ptr %t26)
+  call void @willrt_free(ptr %t26)
   ret i32 5
 }
 define hidden i32 @"example.com/defer.early"(i1 %c) inlinehint {
 entry:
   %v.str.68 = alloca { ptr, i64 }
-  %t43 = getelementptr { { ptr, i64 } }, ptr null, i32 1
-  %t44 = ptrtoint ptr %t43 to i64
-  %t45 = call ptr @willrt_alloc(i64 %t44)
-  %t46 = getelementptr { { ptr, i64 } }, ptr %t45, i32 0, i32 0
-  %t47 = getelementptr inbounds { ptr, i64 }, ptr %v.str.68, i32 0, i32 0
-  store ptr @.bytes.5, ptr %t47
-  %t48 = getelementptr inbounds { ptr, i64 }, ptr %v.str.68, i32 0, i32 1
-  store i64 6, ptr %t48
-  %t49 = load { ptr, i64 }, ptr %v.str.68
-  store { ptr, i64 } %t49, ptr %t46
+  %t44 = getelementptr { { ptr, i64 } }, ptr null, i32 1
+  %t45 = ptrtoint ptr %t44 to i64
+  %t46 = call ptr @willrt_alloc(i64 %t45)
+  %t47 = getelementptr { { ptr, i64 } }, ptr %t46, i32 0, i32 0
+  %t48 = getelementptr inbounds { ptr, i64 }, ptr %v.str.68, i32 0, i32 0
+  store ptr @.bytes.5, ptr %t48
+  %t49 = getelementptr inbounds { ptr, i64 }, ptr %v.str.68, i32 0, i32 1
+  store i64 6, ptr %t49
+  %t50 = load { ptr, i64 }, ptr %v.str.68
+  store { ptr, i64 } %t50, ptr %t47
   br i1 %c, label %if.then.1, label %if.end.1
 if.then.1:
-  call void @"example.com/defer.defer.2"(ptr %t45)
-  call void @willrt_free(ptr %t45)
+  call void @"example.com/defer.defer.2"(ptr %t46)
+  call void @willrt_free(ptr %t46)
   ret i32 1
 if.end.1:
-  call void @"example.com/defer.defer.2"(ptr %t45)
-  call void @willrt_free(ptr %t45)
+  call void @"example.com/defer.defer.2"(ptr %t46)
+  call void @willrt_free(ptr %t46)
   ret i32 2
 }
 define hidden i32 @"example.com/defer.loop"() inlinehint {
@@ -125,279 +134,277 @@ entry:
   %v.str.87 = alloca { ptr, i64 }
   %v.str.103 = alloca { ptr, i64 }
   %v.i = alloca i32
+  %t51 = alloca i32
   store i32 0, ptr %v.i
+  store i32 4, ptr %t51
   br label %for.cond.1
 for.cond.1:
-  %t50 = load i32, ptr %v.i
-  %t51 = icmp slt i32 %t50, 4
-  br i1 %t51, label %for.body.1, label %for.end.1
+  call void @willrt_gc_safepoint(i32 2)
+  %t52 = load i32, ptr %v.i
+  %t53 = load i32, ptr %t51
+  %t54 = icmp slt i32 %t52, %t53
+  br i1 %t54, label %for.body.1, label %for.end.1
 for.body.1:
-  %t52 = getelementptr { { ptr, i64 } }, ptr null, i32 1
-  %t53 = ptrtoint ptr %t52 to i64
-  %t54 = call ptr @willrt_alloc(i64 %t53)
-  %t55 = getelementptr { { ptr, i64 } }, ptr %t54, i32 0, i32 0
-  %t56 = getelementptr inbounds { ptr, i64 }, ptr %v.str.87, i32 0, i32 0
-  store ptr @.bytes.6, ptr %t56
-  %t57 = getelementptr inbounds { ptr, i64 }, ptr %v.str.87, i32 0, i32 1
-  store i64 5, ptr %t57
-  %t58 = load { ptr, i64 }, ptr %v.str.87
-  store { ptr, i64 } %t58, ptr %t55
-  %t59 = load i32, ptr %v.i
-  %t60 = icmp eq i32 %t59, 1
-  br i1 %t60, label %if.then.2, label %if.end.2
+  %t55 = getelementptr { { ptr, i64 } }, ptr null, i32 1
+  %t56 = ptrtoint ptr %t55 to i64
+  %t57 = call ptr @willrt_alloc(i64 %t56)
+  %t58 = getelementptr { { ptr, i64 } }, ptr %t57, i32 0, i32 0
+  %t59 = getelementptr inbounds { ptr, i64 }, ptr %v.str.87, i32 0, i32 0
+  store ptr @.bytes.6, ptr %t59
+  %t60 = getelementptr inbounds { ptr, i64 }, ptr %v.str.87, i32 0, i32 1
+  store i64 5, ptr %t60
+  %t61 = load { ptr, i64 }, ptr %v.str.87
+  store { ptr, i64 } %t61, ptr %t58
+  %t62 = load i32, ptr %v.i
+  %t63 = icmp eq i32 %t62, 1
+  br i1 %t63, label %if.then.2, label %if.end.2
 if.then.2:
-  call void @"example.com/defer.defer.3"(ptr %t54)
-  call void @willrt_free(ptr %t54)
+  call void @"example.com/defer.defer.3"(ptr %t57)
+  call void @willrt_free(ptr %t57)
   br label %for.step.1
 if.end.2:
-  %t61 = load i32, ptr %v.i
-  %t62 = icmp eq i32 %t61, 3
-  br i1 %t62, label %if.then.3, label %if.end.3
+  %t64 = load i32, ptr %v.i
+  %t65 = icmp eq i32 %t64, 3
+  br i1 %t65, label %if.then.3, label %if.end.3
 if.then.3:
-  call void @"example.com/defer.defer.3"(ptr %t54)
-  call void @willrt_free(ptr %t54)
+  call void @"example.com/defer.defer.3"(ptr %t57)
+  call void @willrt_free(ptr %t57)
   br label %for.end.1
 if.end.3:
-  %t63 = getelementptr inbounds { ptr, i64 }, ptr %v.str.103, i32 0, i32 0
-  store ptr @.bytes.4, ptr %t63
-  %t64 = getelementptr inbounds { ptr, i64 }, ptr %v.str.103, i32 0, i32 1
-  store i64 5, ptr %t64
-  %t65 = getelementptr inbounds { ptr, i64 }, ptr %v.str.103, i32 0, i32 0
-  %t66 = load ptr, ptr %t65
+  %t66 = getelementptr inbounds { ptr, i64 }, ptr %v.str.103, i32 0, i32 0
+  store ptr @.bytes.4, ptr %t66
   %t67 = getelementptr inbounds { ptr, i64 }, ptr %v.str.103, i32 0, i32 1
-  %t68 = load i64, ptr %t67
-  call void @willrt_write_stdout(ptr %t66, i64 %t68)
-  call void @"example.com/defer.defer.3"(ptr %t54)
-  call void @willrt_free(ptr %t54)
+  store i64 5, ptr %t67
+  %t68 = getelementptr inbounds { ptr, i64 }, ptr %v.str.103, i32 0, i32 0
+  %t69 = load ptr, ptr %t68
+  %t70 = getelementptr inbounds { ptr, i64 }, ptr %v.str.103, i32 0, i32 1
+  %t71 = load i64, ptr %t70
+  call void @willrt_write_stdout(ptr %t69, i64 %t71)
+  call void @"example.com/defer.defer.3"(ptr %t57)
+  call void @willrt_free(ptr %t57)
   br label %for.step.1
 for.step.1:
-  %t69 = load i32, ptr %v.i
-  %t70 = add i32 %t69, 1
-  store i32 %t70, ptr %v.i
+  %t72 = load i32, ptr %v.i
+  %t73 = add i32 %t72, 1
+  store i32 %t73, ptr %v.i
   br label %for.cond.1
 for.end.1:
   ret i32 0
 }
 define hidden { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 %c) inlinehint {
 entry:
-  %v.x = alloca i64
+  %v.x = alloca %"struct.example.com/defer.C"
   %v.v = alloca i32
-  %v.agg.117 = alloca %"struct.example.com/defer.C"
-  %v.ret.127 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
-  %v.str.122 = alloca { ptr, i64 }
-  %v.adt.131 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
-  %v.try.126 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
-  %t71 = getelementptr inbounds %"struct.example.com/defer.C", ptr %v.agg.117, i32 0, i32 0
-  store i32 7, ptr %t71
-  %t72 = getelementptr %"struct.example.com/defer.C", ptr null, i32 1
-  %t73 = ptrtoint ptr %t72 to i64
-  %t74 = call i64 @willrt_rc_new(ptr %v.agg.117, i64 %t73)
-  store i64 %t74, ptr %v.x
-  %t75 = getelementptr { { ptr, i64 } }, ptr null, i32 1
-  %t76 = ptrtoint ptr %t75 to i64
-  %t77 = call ptr @willrt_alloc(i64 %t76)
-  %t78 = getelementptr { { ptr, i64 } }, ptr %t77, i32 0, i32 0
-  %t79 = getelementptr inbounds { ptr, i64 }, ptr %v.str.122, i32 0, i32 0
-  store ptr @.bytes.7, ptr %t79
-  %t80 = getelementptr inbounds { ptr, i64 }, ptr %v.str.122, i32 0, i32 1
-  store i64 5, ptr %t80
-  %t81 = load { ptr, i64 }, ptr %v.str.122
-  store { ptr, i64 } %t81, ptr %t78
-  %t82 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.maybe"(i1 %c)
-  store { i32, [4 x i8], %"struct.example.com/defer.E" } %t82, ptr %v.ret.127
-  %t83 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.127, i32 0, i32 0
-  %t84 = load i32, ptr %t83
-  %t85 = icmp eq i32 %t84, 1
-  br i1 %t85, label %try.err.1, label %try.ok.1
+  %v.agg.115 = alloca %"struct.example.com/defer.C"
+  %v.ret.125 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
+  %v.str.120 = alloca { ptr, i64 }
+  %v.adt.129 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
+  %v.try.124 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
+  %v.try.out.124 = alloca i32
+  %t74 = getelementptr inbounds %"struct.example.com/defer.C", ptr %v.agg.115, i32 0, i32 0
+  store i32 7, ptr %t74
+  %t75 = load %"struct.example.com/defer.C", ptr %v.agg.115
+  store %"struct.example.com/defer.C" %t75, ptr %v.x
+  %t76 = getelementptr { { ptr, i64 } }, ptr null, i32 1
+  %t77 = ptrtoint ptr %t76 to i64
+  %t78 = call ptr @willrt_alloc(i64 %t77)
+  %t79 = getelementptr { { ptr, i64 } }, ptr %t78, i32 0, i32 0
+  %t80 = getelementptr inbounds { ptr, i64 }, ptr %v.str.120, i32 0, i32 0
+  store ptr @.bytes.7, ptr %t80
+  %t81 = getelementptr inbounds { ptr, i64 }, ptr %v.str.120, i32 0, i32 1
+  store i64 5, ptr %t81
+  %t82 = load { ptr, i64 }, ptr %v.str.120
+  store { ptr, i64 } %t82, ptr %t79
+  call void @willrt_gc_safepoint(i32 3)
+  %t83 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.maybe"(i1 %c)
+  store { i32, [4 x i8], %"struct.example.com/defer.E" } %t83, ptr %v.ret.125
+  %t84 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.125, i32 0, i32 0
+  %t85 = load i32, ptr %t84
+  %t86 = icmp eq i32 %t85, 1
+  br i1 %t86, label %try.err.1, label %try.ok.1
 try.err.1:
-  %t86 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.try.126, i32 0, i32 0
-  store i32 1, ptr %t86
-  %t87 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.127, i32 0, i32 2
-  %t88 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.try.126, i32 0, i32 2
-  %t89 = load %"struct.example.com/defer.E", ptr %t87
-  store %"struct.example.com/defer.E" %t89, ptr %t88
-  %t90 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.try.126
-  call void @"example.com/defer.defer.4"(ptr %t77)
-  call void @willrt_free(ptr %t77)
-  %t91 = load i64, ptr %v.x
-  call void @willrt_rc_release(i64 %t91)
-  ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t90
+  %t87 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.try.124, i32 0, i32 0
+  store i32 1, ptr %t87
+  %t88 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.125, i32 0, i32 2
+  %t89 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.try.124, i32 0, i32 2
+  %t90 = load %"struct.example.com/defer.E", ptr %t88
+  store %"struct.example.com/defer.E" %t90, ptr %t89
+  %t91 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.try.124
+  call void @"example.com/defer.defer.4"(ptr %t78)
+  call void @willrt_free(ptr %t78)
+  ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t91
   unreachable
 try.ok.1:
-  %t92 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.127, i32 0, i32 2
-  %v.try.out.126 = alloca i32
-  store i32 0, ptr %v.try.out.126
+  %t92 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.125, i32 0, i32 2
+  store i32 0, ptr %v.try.out.124
   %t93 = load i32, ptr %t92
-  store i32 %t93, ptr %v.try.out.126
-  %t94 = load i32, ptr %v.try.out.126
-  store i32 0, ptr %v.try.out.126
+  store i32 %t93, ptr %v.try.out.124
+  %t94 = load i32, ptr %v.try.out.124
+  store i32 0, ptr %v.try.out.124
   store i32 %t94, ptr %v.v
-  store i32 0, ptr %v.try.out.126
-  %t95 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.131, i32 0, i32 0
+  store i32 0, ptr %v.try.out.124
+  %t95 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.129, i32 0, i32 0
   store i32 0, ptr %t95
-  %t96 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.131, i32 0, i32 2
+  %t96 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.129, i32 0, i32 2
   %t97 = load i32, ptr %v.v
-  %t98 = load i64, ptr %v.x
-  %t99 = call ptr @willrt_rc_deref(i64 %t98)
-  %t100 = getelementptr inbounds %"struct.example.com/defer.C", ptr %t99, i32 0, i32 0
-  %t101 = load i32, ptr %t100
-  %t102 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t97, i32 %t101)
-  %t103 = extractvalue {i32, i1} %t102, 0
-  %t104 = extractvalue {i32, i1} %t102, 1
-  br i1 %t104, label %panic.2, label %panic.ok.2
+  %t98 = getelementptr inbounds %"struct.example.com/defer.C", ptr %v.x, i32 0, i32 0
+  %t99 = load i32, ptr %t98
+  %t100 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t97, i32 %t99)
+  %t101 = extractvalue {i32, i1} %t100, 0
+  %t102 = extractvalue {i32, i1} %t100, 1
+  br i1 %t102, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.7, ptr @.str.8, ptr @.str.9)
   unreachable
 panic.ok.2:
-  store i32 %t103, ptr %t96
-  %t105 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.131
-  call void @"example.com/defer.defer.4"(ptr %t77)
-  call void @willrt_free(ptr %t77)
-  %t106 = load i64, ptr %v.x
-  call void @willrt_rc_release(i64 %t106)
-  ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t105
+  store i32 %t101, ptr %t96
+  %t103 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.129
+  call void @"example.com/defer.defer.4"(ptr %t78)
+  call void @willrt_free(ptr %t78)
+  ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t103
 }
 define hidden { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.tail"(i1 %c) inlinehint {
 entry:
-  %v.x = alloca i64
-  %v.agg.148 = alloca %"struct.example.com/defer.C"
-  %v.ret.160 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
-  %v.str.153 = alloca { ptr, i64 }
-  %v.adt.156 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
-  %v.try.159 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
-  %t107 = getelementptr inbounds %"struct.example.com/defer.C", ptr %v.agg.148, i32 0, i32 0
-  store i32 9, ptr %t107
-  %t108 = getelementptr %"struct.example.com/defer.C", ptr null, i32 1
-  %t109 = ptrtoint ptr %t108 to i64
-  %t110 = call i64 @willrt_rc_new(ptr %v.agg.148, i64 %t109)
-  store i64 %t110, ptr %v.x
-  %t111 = getelementptr { { ptr, i64 } }, ptr null, i32 1
-  %t112 = ptrtoint ptr %t111 to i64
-  %t113 = call ptr @willrt_alloc(i64 %t112)
-  %t114 = getelementptr { { ptr, i64 } }, ptr %t113, i32 0, i32 0
-  %t115 = getelementptr inbounds { ptr, i64 }, ptr %v.str.153, i32 0, i32 0
-  store ptr @.bytes.8, ptr %t115
-  %t116 = getelementptr inbounds { ptr, i64 }, ptr %v.str.153, i32 0, i32 1
-  store i64 5, ptr %t116
-  %t117 = load { ptr, i64 }, ptr %v.str.153
-  store { ptr, i64 } %t117, ptr %t114
-  %t118 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.156, i32 0, i32 0
-  store i32 0, ptr %t118
-  %t119 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.156, i32 0, i32 2
-  %t120 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.maybe"(i1 %c)
-  store { i32, [4 x i8], %"struct.example.com/defer.E" } %t120, ptr %v.ret.160
-  %t121 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.160, i32 0, i32 0
-  %t122 = load i32, ptr %t121
-  %t123 = icmp eq i32 %t122, 1
-  br i1 %t123, label %try.err.1, label %try.ok.1
+  %v.x = alloca %"struct.example.com/defer.C"
+  %v.agg.144 = alloca %"struct.example.com/defer.C"
+  %v.ret.156 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
+  %v.str.149 = alloca { ptr, i64 }
+  %v.adt.152 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
+  %v.try.155 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
+  %v.try.out.155 = alloca i32
+  %t104 = getelementptr inbounds %"struct.example.com/defer.C", ptr %v.agg.144, i32 0, i32 0
+  store i32 9, ptr %t104
+  %t105 = load %"struct.example.com/defer.C", ptr %v.agg.144
+  store %"struct.example.com/defer.C" %t105, ptr %v.x
+  %t106 = getelementptr { { ptr, i64 } }, ptr null, i32 1
+  %t107 = ptrtoint ptr %t106 to i64
+  %t108 = call ptr @willrt_alloc(i64 %t107)
+  %t109 = getelementptr { { ptr, i64 } }, ptr %t108, i32 0, i32 0
+  %t110 = getelementptr inbounds { ptr, i64 }, ptr %v.str.149, i32 0, i32 0
+  store ptr @.bytes.8, ptr %t110
+  %t111 = getelementptr inbounds { ptr, i64 }, ptr %v.str.149, i32 0, i32 1
+  store i64 5, ptr %t111
+  %t112 = load { ptr, i64 }, ptr %v.str.149
+  store { ptr, i64 } %t112, ptr %t109
+  %t113 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.152, i32 0, i32 0
+  store i32 0, ptr %t113
+  %t114 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.152, i32 0, i32 2
+  call void @willrt_gc_safepoint(i32 3)
+  %t115 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.maybe"(i1 %c)
+  store { i32, [4 x i8], %"struct.example.com/defer.E" } %t115, ptr %v.ret.156
+  %t116 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.156, i32 0, i32 0
+  %t117 = load i32, ptr %t116
+  %t118 = icmp eq i32 %t117, 1
+  br i1 %t118, label %try.err.1, label %try.ok.1
 try.err.1:
-  %t124 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.try.159, i32 0, i32 0
-  store i32 1, ptr %t124
-  %t125 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.160, i32 0, i32 2
-  %t126 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.try.159, i32 0, i32 2
-  %t127 = load %"struct.example.com/defer.E", ptr %t125
-  store %"struct.example.com/defer.E" %t127, ptr %t126
-  %t128 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.try.159
-  call void @"example.com/defer.defer.5"(ptr %t113)
-  call void @willrt_free(ptr %t113)
-  %t129 = load i64, ptr %v.x
-  call void @willrt_rc_release(i64 %t129)
-  ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t128
+  %t119 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.try.155, i32 0, i32 0
+  store i32 1, ptr %t119
+  %t120 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.156, i32 0, i32 2
+  %t121 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.try.155, i32 0, i32 2
+  %t122 = load %"struct.example.com/defer.E", ptr %t120
+  store %"struct.example.com/defer.E" %t122, ptr %t121
+  %t123 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.try.155
+  call void @"example.com/defer.defer.5"(ptr %t108)
+  call void @willrt_free(ptr %t108)
+  ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t123
   unreachable
 try.ok.1:
-  %t130 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.160, i32 0, i32 2
-  %v.try.out.159 = alloca i32
-  store i32 0, ptr %v.try.out.159
-  %t131 = load i32, ptr %t130
-  store i32 %t131, ptr %v.try.out.159
-  %t132 = load i32, ptr %v.try.out.159
-  store i32 0, ptr %v.try.out.159
-  %t133 = load i64, ptr %v.x
-  %t134 = call ptr @willrt_rc_deref(i64 %t133)
-  %t135 = getelementptr inbounds %"struct.example.com/defer.C", ptr %t134, i32 0, i32 0
-  %t136 = load i32, ptr %t135
-  %t137 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t132, i32 %t136)
-  %t138 = extractvalue {i32, i1} %t137, 0
-  %t139 = extractvalue {i32, i1} %t137, 1
-  br i1 %t139, label %panic.2, label %panic.ok.2
+  %t124 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.156, i32 0, i32 2
+  store i32 0, ptr %v.try.out.155
+  %t125 = load i32, ptr %t124
+  store i32 %t125, ptr %v.try.out.155
+  %t126 = load i32, ptr %v.try.out.155
+  store i32 0, ptr %v.try.out.155
+  %t127 = getelementptr inbounds %"struct.example.com/defer.C", ptr %v.x, i32 0, i32 0
+  %t128 = load i32, ptr %t127
+  %t129 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t126, i32 %t128)
+  %t130 = extractvalue {i32, i1} %t129, 0
+  %t131 = extractvalue {i32, i1} %t129, 1
+  br i1 %t131, label %panic.2, label %panic.ok.2
 panic.2:
   call void @willrt_panic(ptr @.str.7, ptr @.str.11, ptr @.str.12)
   unreachable
 panic.ok.2:
-  store i32 %t138, ptr %t119
-  %t140 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.156
-  store i32 0, ptr %v.try.out.159
-  call void @"example.com/defer.defer.5"(ptr %t113)
-  call void @willrt_free(ptr %t113)
-  ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t140
+  store i32 %t130, ptr %t114
+  %t132 = load { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.adt.152
+  store i32 0, ptr %v.try.out.155
+  call void @"example.com/defer.defer.5"(ptr %t108)
+  call void @willrt_free(ptr %t108)
+  ret { i32, [4 x i8], %"struct.example.com/defer.E" } %t132
 }
 define i32 @"example.com/defer.will$main"() {
 entry:
-  %v.ret.178 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
-  %v.ret.195 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
-  %v.ret.212 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
-  %t141 = call i32 @"example.com/defer.order"()
-  %t142 = call i32 @"example.com/defer.early"(i1 false)
-  %t143 = call i32 @"example.com/defer.loop"()
-  %t144 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 true)
-  store { i32, [4 x i8], %"struct.example.com/defer.E" } %t144, ptr %v.ret.178
-  %t145 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.178, i32 0, i32 0
-  %t146 = load i32, ptr %t145
-  %t147 = icmp eq i32 %t146, 0
-  br i1 %t147, label %match.arm.1.0, label %match.next.1.0
+  %v.ret.174 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
+  %v.ret.191 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
+  %v.ret.208 = alloca { i32, [4 x i8], %"struct.example.com/defer.E" }
+  call void @willrt_gc_safepoint(i32 3)
+  %t133 = call i32 @"example.com/defer.order"()
+  call void @willrt_gc_safepoint(i32 3)
+  %t134 = call i32 @"example.com/defer.early"(i1 false)
+  call void @willrt_gc_safepoint(i32 3)
+  %t135 = call i32 @"example.com/defer.loop"()
+  call void @willrt_gc_safepoint(i32 3)
+  %t136 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 true)
+  store { i32, [4 x i8], %"struct.example.com/defer.E" } %t136, ptr %v.ret.174
+  %t137 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.174, i32 0, i32 0
+  %t138 = load i32, ptr %t137
+  %t139 = icmp eq i32 %t138, 0
+  br i1 %t139, label %match.arm.1.0, label %match.next.1.0
 match.arm.1.0:
-  %t148 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.178, i32 0, i32 2
-  %t149 = load i32, ptr %t148
+  %t140 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.174, i32 0, i32 2
+  %t141 = load i32, ptr %t140
   br label %match.end.1
 match.next.1.0:
-  %t150 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.178, i32 0, i32 0
-  %t151 = load i32, ptr %t150
-  %t152 = icmp eq i32 %t151, 1
-  br i1 %t152, label %match.arm.1.1, label %match.next.1.1
+  %t142 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.174, i32 0, i32 0
+  %t143 = load i32, ptr %t142
+  %t144 = icmp eq i32 %t143, 1
+  br i1 %t144, label %match.arm.1.1, label %match.next.1.1
 match.arm.1.1:
-  %t153 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.178, i32 0, i32 2
+  %t145 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.174, i32 0, i32 2
   br label %match.end.1
 match.next.1.1:
   unreachable
 match.end.1:
-  %t154 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 false)
-  store { i32, [4 x i8], %"struct.example.com/defer.E" } %t154, ptr %v.ret.195
-  %t155 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.195, i32 0, i32 0
-  %t156 = load i32, ptr %t155
-  %t157 = icmp eq i32 %t156, 0
-  br i1 %t157, label %match.arm.2.0, label %match.next.2.0
+  call void @willrt_gc_safepoint(i32 3)
+  %t146 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.held"(i1 false)
+  store { i32, [4 x i8], %"struct.example.com/defer.E" } %t146, ptr %v.ret.191
+  %t147 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.191, i32 0, i32 0
+  %t148 = load i32, ptr %t147
+  %t149 = icmp eq i32 %t148, 0
+  br i1 %t149, label %match.arm.2.0, label %match.next.2.0
 match.arm.2.0:
-  %t158 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.195, i32 0, i32 2
-  %t159 = load i32, ptr %t158
+  %t150 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.191, i32 0, i32 2
+  %t151 = load i32, ptr %t150
   br label %match.end.2
 match.next.2.0:
-  %t160 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.195, i32 0, i32 0
-  %t161 = load i32, ptr %t160
-  %t162 = icmp eq i32 %t161, 1
-  br i1 %t162, label %match.arm.2.1, label %match.next.2.1
+  %t152 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.191, i32 0, i32 0
+  %t153 = load i32, ptr %t152
+  %t154 = icmp eq i32 %t153, 1
+  br i1 %t154, label %match.arm.2.1, label %match.next.2.1
 match.arm.2.1:
-  %t163 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.195, i32 0, i32 2
+  %t155 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.191, i32 0, i32 2
   br label %match.end.2
 match.next.2.1:
   unreachable
 match.end.2:
-  %t164 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.tail"(i1 false)
-  store { i32, [4 x i8], %"struct.example.com/defer.E" } %t164, ptr %v.ret.212
-  %t165 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.212, i32 0, i32 0
-  %t166 = load i32, ptr %t165
-  %t167 = icmp eq i32 %t166, 0
-  br i1 %t167, label %match.arm.3.0, label %match.next.3.0
+  call void @willrt_gc_safepoint(i32 3)
+  %t156 = call { i32, [4 x i8], %"struct.example.com/defer.E" } @"example.com/defer.tail"(i1 false)
+  store { i32, [4 x i8], %"struct.example.com/defer.E" } %t156, ptr %v.ret.208
+  %t157 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.208, i32 0, i32 0
+  %t158 = load i32, ptr %t157
+  %t159 = icmp eq i32 %t158, 0
+  br i1 %t159, label %match.arm.3.0, label %match.next.3.0
 match.arm.3.0:
-  %t168 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.212, i32 0, i32 2
-  %t169 = load i32, ptr %t168
+  %t160 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.208, i32 0, i32 2
+  %t161 = load i32, ptr %t160
   br label %match.end.3
 match.next.3.0:
-  %t170 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.212, i32 0, i32 0
-  %t171 = load i32, ptr %t170
-  %t172 = icmp eq i32 %t171, 1
-  br i1 %t172, label %match.arm.3.1, label %match.next.3.1
+  %t162 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.208, i32 0, i32 0
+  %t163 = load i32, ptr %t162
+  %t164 = icmp eq i32 %t163, 1
+  br i1 %t164, label %match.arm.3.1, label %match.next.3.1
 match.arm.3.1:
-  %t173 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.212, i32 0, i32 2
+  %t165 = getelementptr inbounds { i32, [4 x i8], %"struct.example.com/defer.E" }, ptr %v.ret.208, i32 0, i32 2
   br label %match.end.3
 match.next.3.1:
   unreachable
@@ -481,10 +488,10 @@ entry:
 @.bytes.6 = private unnamed_addr constant [5 x i8] c"loop\0A", align 1
 @.bytes.7 = private unnamed_addr constant [5 x i8] c"held\0A", align 1
 @.str.7 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
-@.str.8 = private unnamed_addr constant [16 x i8] c"main.will:57:15\00", align 1
+@.str.8 = private unnamed_addr constant [16 x i8] c"main.will:61:15\00", align 1
 @.str.9 = private unnamed_addr constant [23 x i8] c"example.com/defer.held\00", align 1
 @.bytes.8 = private unnamed_addr constant [5 x i8] c"tail\0A", align 1
-@.str.11 = private unnamed_addr constant [16 x i8] c"main.will:63:15\00", align 1
+@.str.11 = private unnamed_addr constant [16 x i8] c"main.will:67:15\00", align 1
 @.str.12 = private unnamed_addr constant [23 x i8] c"example.com/defer.tail\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
@@ -496,11 +503,36 @@ declare void @willrt_print_i64(i64)
 declare void @willrt_print_u64(i64)
 declare void @willrt_print_f64(double)
 declare void @willrt_print_bool(i32)
-declare i64 @willrt_rc_new(ptr, i64)
-declare i64 @willrt_rc_new_drop(ptr, i64, ptr)
-declare void @willrt_rc_retain(i64)
-declare void @willrt_rc_share(i64)
-declare void @willrt_rc_release(i64)
-declare ptr @willrt_rc_deref(i64)
-declare i64 @willrt_weak_new(i64)
-declare i32 @willrt_weak_upgrade(i64, ptr)
+declare ptr @willrt_gc_alloc(i64, ptr)
+declare ptr @willrt_gc_read_barrier(ptr)
+declare ptr @willrt_gc_read_barrier_slot(ptr)
+declare void @willrt_gc_write_barrier(ptr, ptr)
+declare void @willrt_gc_write_barrier_untagged(ptr, ptr)
+declare void @willrt_gc_frame_enter(ptr, ptr, ptr)
+declare void @willrt_gc_frame_leave(ptr)
+declare void @willrt_gc_safepoint(i32)
+declare void @willrt_gc_root_register(ptr, ptr)
+declare ptr @willrt_gc_pin(ptr)
+declare void @willrt_gc_unpin(ptr)
+@"willrt.gc.type.example.com/defer.C" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 0, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.refs.example.com/defer.E" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.example.com/defer.E" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 0, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.example.com/defer.E", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 1, i32 0, i32 8, i32 8, i32 0, ptr null, i32 0, ptr null, i32 1, ptr null }
+@"willrt.gc.type.value.bool" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 2, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.i32" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 3, i32 4, i32 4, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.refs.value.str" = private constant [1 x i32] [i32 0]
+@"willrt.gc.type.value.str" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 4, i32 16, i32 8, i32 1, i32 1, ptr @"willrt.gc.refs.value.str", i32 0, ptr null, i32 0, ptr null }
+@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 5, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+declare i32 @willrt_gc_register_type(ptr)
+define internal void @willrt.gc.register_types() {
+entry:
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.bool")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.i32")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.str")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.u8")
+  ret void
+}
+@llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @willrt.gc.register_types, ptr null }]
+@"willrt.gc.stack.slots.example.com/defer.E.status" = private constant [1 x %willrt_gc_stack_slot] [%willrt_gc_stack_slot { i32 0, i32 5, ptr null }]
+@"willrt.gc.stack.example.com/defer.E.status" = private constant %willrt_gc_stack_map_data { ptr @"example.com/defer.E.status", ptr @"willrt.gc.stack.slots.example.com/defer.E.status", i64 1 }

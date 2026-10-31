@@ -1,9 +1,12 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
+%willrt_gc_stack_slot = type { i32, i32, ptr }
+%willrt_gc_stack_map_data = type { ptr, ptr, i64 }
+%willrt_gc_frame = type { ptr, ptr, ptr }
 %"struct.example.com/new.P" = type { i32, i32 }
-define hidden void @"example.com/new.P.init"(ptr %p, i32 %y) alwaysinline {
+define hidden void @"example.com/new.P.init"(ptr %self, i32 %y) alwaysinline {
 entry:
-  %t1 = getelementptr inbounds %"struct.example.com/new.P", ptr %p, i32 0, i32 1
+  %t1 = getelementptr inbounds %"struct.example.com/new.P", ptr %self, i32 0, i32 1
   store i32 %y, ptr %t1
   ret void
 }
@@ -49,7 +52,7 @@ entry:
   ret i32 %r
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
-@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:16:12\00", align 1
+@.str.1 = private unnamed_addr constant [16 x i8] c"main.will:18:12\00", align 1
 @.str.2 = private unnamed_addr constant [26 x i8] c"example.com/new.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

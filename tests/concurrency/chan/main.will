@@ -4,7 +4,7 @@ async def producer(ch: chan<i32>) {
 }
 
 async def main() -> i32 {
-    var ch: chan<i32> = new chan<i32>(1)
+    var ch: chan<i32> = chan<i32>(1)
     var value: i32 = 0
     region {
         var task: Task<()> = spawn producer(ch)

@@ -29,15 +29,26 @@ func (g *generator) typeParamNames(fn willc.Record) []string {
 	return names
 }
 
-// typeArgTexts returns the type argument texts a call writes.
+// typeArgTexts returns the type argument texts a call writes. A cross-package
+// type record carries its qualified name in to; the short spelling is not
+// resolvable from the defining package.
 func (g *generator) typeArgTexts(r willc.Record) []string {
 	var texts []string
 	for _, id := range refsOf(r, "typearg") {
 		if t, ok := g.recs[id]; ok {
-			texts = append(texts, fieldText(t, "text"))
+			texts = append(texts, typeRecordText(t))
 		}
 	}
 	return texts
+}
+
+// typeRecordText is the canonical text of one type record: the qualified to
+// spelling when the record has one, otherwise the source text.
+func typeRecordText(t willc.Record) string {
+	if to := textField(t, "to"); to != "" {
+		return to
+	}
+	return fieldText(t, "text")
 }
 
 // instanceName mangles a generic function with its type arguments.
@@ -124,8 +135,18 @@ func (g *generator) planInitInstances(base int, seen map[string]bool) {
 					g.ifaceDecl[fieldText(decl, "text")] = decl.ID
 				}
 			}
-			def, fn, local, names, args, ok := g.initDeclForNew(d, r)
-			if !ok {
+			var def *docState
+			var fn willc.Record
+			var local string
+			var names, args []string
+			found := false
+			for _, cand := range g.docs {
+				def, fn, local, names, args, found = g.initDeclForNew(cand, r)
+				if found {
+					break
+				}
+			}
+			if !found {
 				continue
 			}
 			key := def.path + "|" + local + "|init|" + strings.Join(args, ",")
@@ -133,6 +154,9 @@ func (g *generator) planInitInstances(base int, seen map[string]bool) {
 				continue
 			}
 			seen[key] = true
+			// The receiver text carries the instance (MutexState<Counter>), so
+			// the init keeps its declared name and the symbol is generated from
+			// the receiver; mangling the text here would repeat the receiver.
 			doc, ok := g.cloneFuncInstance(def, fn, names, args, "")
 			if !ok {
 				continue
@@ -212,7 +236,7 @@ func typeArgTextsIn(d *docState, r willc.Record) []string {
 	var texts []string
 	for _, id := range refsOf(r, "typearg") {
 		if t, ok := d.recs[id]; ok {
-			texts = append(texts, fieldText(t, "text"))
+			texts = append(texts, typeRecordText(t))
 		}
 	}
 	return texts
@@ -404,9 +428,13 @@ func (g *generator) methodInstance(r willc.Record) (genericMethodCall, bool) {
 	if !ok {
 		return genericMethodCall{}, false
 	}
-	if id, ok := g.structDecl[recvName]; ok {
-		params := g.typeParamNames(g.recs[id])
+	recvArgs = g.canonicalTypeArgs(recvArgs)
+	if decl, ok := typeDeclIn(g.recs, recvName); ok {
+		params := g.typeParamNames(decl)
 		if len(params) != len(recvArgs) {
+			return genericMethodCall{}, false
+		}
+		if sameTypeArgs(params, recvArgs) {
 			return genericMethodCall{}, false
 		}
 		if call, ok := g.genericMethodIn(g.cur, g.recs, recvName, params, recvArgs, fieldText(r, "text")); ok {
@@ -425,7 +453,7 @@ func (g *generator) methodInstance(r willc.Record) (genericMethodCall, bool) {
 	}
 	var decl willc.Record
 	for _, rec := range doc.recs {
-		if rec.Kind == "struct" && fieldText(rec, "text") == local {
+		if (rec.Kind == "struct" || rec.Kind == "class") && fieldText(rec, "text") == local {
 			decl = rec
 			break
 		}
@@ -435,6 +463,9 @@ func (g *generator) methodInstance(r willc.Record) (genericMethodCall, bool) {
 	}
 	params := g.typeParamNamesIn(doc, decl)
 	if len(params) != len(recvArgs) {
+		return genericMethodCall{}, false
+	}
+	if sameTypeArgs(params, recvArgs) {
 		return genericMethodCall{}, false
 	}
 	call, ok := g.genericMethodIn(doc, doc.recs, local, params, recvArgs, fieldText(r, "text"))
@@ -527,11 +558,17 @@ func (g *generator) genericMethodDecl(fn willc.Record) bool {
 	if !ok {
 		return false
 	}
-	id, ok := g.structDecl[name]
+	if i := strings.LastIndexByte(name, '/'); i >= 0 {
+		name = name[i+1:]
+	}
+	if i := strings.LastIndexByte(name, '.'); i >= 0 {
+		name = name[i+1:]
+	}
+	id, ok := typeDeclIn(g.recs, name)
 	if !ok {
 		return false
 	}
-	params := g.typeParamNames(g.recs[id])
+	params := g.typeParamNames(id)
 	for _, a := range args {
 		if contains(params, a) {
 			return true
@@ -646,8 +683,16 @@ func (g *generator) inferGenericArgs(d *docState, fn willc.Record, call willc.Re
 	subst := map[string]string{}
 	for i, arg := range args {
 		actual := ""
-		if r, ok := g.recs[arg]; ok && (r.Kind == "func" || r.Kind == "lambda") {
-			actual = g.lambdaTypeText(r)
+		if r, ok := g.recs[arg]; ok {
+			switch r.Kind {
+			case "func", "lambda":
+				actual = g.lambdaTypeText(r)
+			case "name":
+				// A function name used as an argument names its declaration.
+				if target, ok := g.recs[refField(r, "to")]; ok && target.Kind == "func" {
+					actual = g.lambdaTypeText(target)
+				}
+			}
 		}
 		if actual == "" {
 			actual, _ = g.willTypeText(arg)
@@ -662,7 +707,9 @@ func (g *generator) inferGenericArgs(d *docState, fn willc.Record, call willc.Re
 	out := make([]string, 0, len(names))
 	for _, name := range names {
 		value := subst[name]
-		if value == "" {
+		if value == "" || contains(names, value) {
+			// A still-unbound parameter means the call lives inside a generic
+			// declaration; it is instantiated when its caller is.
 			return nil
 		}
 		out = append(out, value)
@@ -755,7 +802,14 @@ func (g *generator) genericCallResult(r willc.Record) string {
 	if !ok {
 		return ""
 	}
-	return substituteText(fieldText(fn, "type"), typeParamNamesIn(d, fn), args)
+	names := typeParamNamesIn(d, fn)
+	subst := make(map[string]string, len(names))
+	for i, name := range names {
+		if i < len(args) {
+			subst[name] = args[i]
+		}
+	}
+	return substituteTypeText(fieldText(fn, "type"), subst)
 }
 
 // receiverOfIn returns the receiver record of a function in one document.
@@ -778,4 +832,25 @@ func typeParamNamesIn(d *docState, fn willc.Record) []string {
 		}
 	}
 	return names
+}
+
+// awaitTaskJoin joins one Task value and returns its result slot as a place.
+func (g *generator) awaitTaskJoin(r willc.Record) (string, string, error) {
+	if p, ok := g.smPlaces[r.ID]; ok {
+		return p.ptr, p.typ, nil
+	}
+	task, elem, err := g.awaitTaskValue(refField(r, "expr"))
+	if err != nil {
+		return "", "", err
+	}
+	slot, err := g.lowerTaskResult(task, elem, r.ID)
+	if err != nil {
+		return "", "", err
+	}
+	info, ok := g.adtType("Result<" + elem + ",TaskError>")
+	if !ok {
+		return "", "", g.errf(r.ID, "cannot translate node #%d: Result<%s, TaskError> is not lowered", r.ID, elem)
+	}
+	g.smPlaces[r.ID] = smPlace{ptr: slot, typ: info.llvm}
+	return slot, info.llvm, nil
 }

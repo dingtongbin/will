@@ -52,8 +52,7 @@ func (g *generator) collectSuspendable() {
 }
 
 // channelWaitBody reports whether the function waits on a channel, a task, or
-// a select. A parallel block joins its own children on the job pool, so a
-// function that has one keeps the ordinary shape.
+// a select.
 func (g *generator) channelWaitBody(fn int) bool {
 	body := g.functionBody(fn)
 	if body == 0 {
@@ -65,8 +64,6 @@ func (g *generator) channelWaitBody(fn int) bool {
 			continue
 		}
 		switch r.Kind {
-		case "parallel":
-			return false
 		case "send", "recv", "join", "select":
 			found = true
 		}
@@ -86,8 +83,6 @@ func (g *generator) markedBody(fn int) bool {
 			continue
 		}
 		switch r.Kind {
-		case "parallel":
-			return false
 		case "call", "mcall":
 			if g.spawnedCall(r) {
 				continue

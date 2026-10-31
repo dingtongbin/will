@@ -21,7 +21,7 @@ async def wait_for(m: sync.Mutex<Counter>, entered: chan<i32>) -> i32 {
 }
 
 async def main() -> i32 {
-    var m: sync.Mutex<Counter> = new sync.Mutex<Counter>(Counter { n: 0 })
+    var m: sync.Mutex<Counter> = sync.Mutex<Counter>(Counter { n: 0 })
     region {
         var t1: Task<i32> = spawn bump(m)
         var t2: Task<i32> = spawn bump(m)
@@ -37,7 +37,7 @@ async def main() -> i32 {
         return 1
     }
 
-    var entered: chan<i32> = new chan<i32>(1)
+    var entered: chan<i32> = chan<i32>(1)
     region {
         var waiter: Task<i32>
         if True {
@@ -57,7 +57,7 @@ async def main() -> i32 {
         return 3
     }
 
-    var rw: sync.RwLock<Counter> = new sync.RwLock<Counter>(Counter { n: 0 })
+    var rw: sync.RwLock<Counter> = sync.RwLock<Counter>(Counter { n: 0 })
     var shared: i32 = 0
     if True {
         var r1: sync.ReadGuard<Counter> = await rw.r_lock()

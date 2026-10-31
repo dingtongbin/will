@@ -3,7 +3,7 @@
 # with no non-empty part is "" rather than ".".
 def join(parts: ...str) -> str {
     var sep: u8 = separator()
-    var out: Array<u8> = new Array<u8>(0)
+    var out: list[u8] = list[u8](0)
     var any: bool = False
     for p in parts {
         if p.len() == 0usize {

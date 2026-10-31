@@ -5,6 +5,11 @@ const Limit: i32 = 100
 struct Point {
     x: i32
     y: i32 = 0
+
+    def move(self, dx: i32, dy: i32) {
+        self.x += dx
+        self.y += dy
+    }
 }
 
 enum Shape {
@@ -20,10 +25,7 @@ def work(n: i32) -> i32 {
     return n
 }
 
-def (p: mut Point) move(dx: i32, dy: i32) {
-    p.x += dx
-    p.y += dy
-}
+
 
 def max<T: Show>(a: T, b: T) -> T {
     if a > b {
@@ -33,7 +35,7 @@ def max<T: Show>(a: T, b: T) -> T {
 }
 
 async def run(n: i32) -> i32 {
-    var xs: Array<i32> = new Array<i32>(0)
+    var xs: list[i32] = list[i32](0)
     var total: i32 = 0
     for i, x in xs {
         total += i32(i) + x
@@ -49,7 +51,7 @@ async def run(n: i32) -> i32 {
     }
     var text: str = f"value {n} {{ok}}"
     _ = text
-    var ch: chan<i32> = new chan<i32>(8)
+    var ch: chan<i32> = chan<i32>(8)
     var t: Task<i32> = spawn work(n)
     _ = await t
     select {

@@ -1,13 +1,13 @@
 import "std/bytes"
 
-# A []u8 source cannot be built from Array<u8> yet, so this wrapper keeps the
+# A []u8 source cannot be built from list[u8] yet, so this wrapper keeps the
 # Copy signature in the compile check without a call site.
-def fill(dst: Array<u8>, src: []u8) -> usize {
+def fill(dst: list[u8], src: []u8) -> usize {
     return bytes.copy(dst, src)
 }
 
 def main() -> i32 {
-    var a: Array<u8> = new Array<u8>(2)
+    var a: list[u8] = list[u8](2)
     a.push(u8(1))
     a.push(u8(2))
     return i32(a.len()) + i32(a.get(0))

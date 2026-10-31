@@ -79,7 +79,6 @@ func (ix *Index) buildLookups() {
 			Name: m.Name,
 			Vis:  visibility(m.Name),
 			Type: m.Type,
-			Recv: m.Recv,
 		}
 	}
 

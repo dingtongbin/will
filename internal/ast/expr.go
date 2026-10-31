@@ -13,16 +13,6 @@ type NameExpr struct {
 
 func (*NameExpr) exprNode() {}
 
-// BorrowExpr takes an explicit borrow of one place. Mut distinguishes ref x
-// from mut x.
-type BorrowExpr struct {
-	Span
-	Mut bool
-	X   Expr
-}
-
-func (*BorrowExpr) exprNode() {}
-
 // LiteralExpr is a literal. Text is the source spelling and Value is the
 // decoded value for quoted literals.
 type LiteralExpr struct {
@@ -122,15 +112,6 @@ type ArrayLitExpr struct {
 }
 
 func (*ArrayLitExpr) exprNode() {}
-
-// NewExpr constructs a heap value.
-type NewExpr struct {
-	Span
-	Type *Type
-	Args []*CallArg
-}
-
-func (*NewExpr) exprNode() {}
 
 // UnaryExpr applies a prefix operator.
 type UnaryExpr struct {

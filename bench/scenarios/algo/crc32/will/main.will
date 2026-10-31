@@ -26,7 +26,7 @@ const polynomial: u32 = 3988292384u32
 #
 # The buffer is created with the capacity of the fill, so the pushes never
 # grow it.
-def fill(buf: mut Array<u8>, size: i32, start: u64) {
+def fill(buf: list[u8], size: i32, start: u64) {
     var state: u64 = start
     var whole: i32 = size / 8
     for i in Range(0, whole) {
@@ -51,7 +51,7 @@ def fill(buf: mut Array<u8>, size: i32, start: u64) {
 # The seed takes part in the work, so two calls with different seeds give
 # different results. Without it the compiler may run the loop once and
 # reuse the result, and the measurement would time nothing.
-def crc32(buf: Array<u8>, start: u32) -> u32 {
+def crc32(buf: list[u8], start: u32) -> u32 {
     var crc: u32 = start ^ allOnes
     for b in buf {
         crc = crc ^ u32(b)
@@ -68,8 +68,8 @@ def crc32(buf: Array<u8>, start: u32) -> u32 {
 }
 
 def main() -> i32 {
-    var samples: Array<u64> = new Array<u64>(0)
-    var buf: Array<u8> = new Array<u8>(usize(bufferSize))
+    var samples: list[u64] = list[u64](0)
+    var buf: list[u8] = list[u8](usize(bufferSize))
     fill(buf, bufferSize, seed)
     # The warm up pays for the first touch of the pages and of the caches.
     var warm: u32 = crc32(buf, 0u32)

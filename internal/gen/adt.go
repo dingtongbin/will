@@ -59,6 +59,9 @@ func (g *generator) typeLLVMOf(text string) (string, bool) {
 		}
 		return "%interface.empty", true
 	}
+	if g.isClassText(text) {
+		return "ptr", true
+	}
 	if _, ok := chanElemText(text); ok {
 		return "ptr", true
 	}
@@ -315,10 +318,6 @@ func (g *generator) adtConstruct(r willc.Record, info *adtInfo, variant string, 
 	value, err := g.value(argID)
 	if err != nil {
 		return "", "", err
-	}
-	if text, err := g.willTypeText(argID); err == nil && isRcText(text) && g.isCopySource(argID) {
-		g.needRcDecl = true
-		fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
 	}
 	if text, err := g.willTypeText(argID); err == nil && isChanText(text) && g.isCopySource(argID) {
 		g.needTaskDecl = true

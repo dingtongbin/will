@@ -33,6 +33,11 @@ var counter: i64 = 0
 struct Point {
     x: i32
     y: i32 = 0
+
+    def move(self, dx: i32, dy: i32) {
+        self.x += dx
+        self.y += dy
+    }
 }
 
 enum Shape {
@@ -44,10 +49,6 @@ interface Showable {
     def show() -> str
 }
 
-def (p: mut Point) move(dx: i32, dy: i32) {
-    p.x += dx
-    p.y += dy
-}
 
 def max<T: Ord>(a: T, b: T) -> T {
     if a > b {
@@ -60,8 +61,8 @@ def run(n: i32) -> Result<i32, Error> {
     var total: i32 = 0
     var p: Point = Point { x: 1, y: n }
     var text: str = f"value {n} {{ok}}"
-    var ch: chan<i32> = new chan<i32>(8)
-    var box: Box<i64> = new Box<i64>(5)
+    var ch: chan<i32> = chan<i32>(8)
+    var box: Box<i64> = Box<i64>(5)
     var cb: func(i32) -> bool = func(x: i32) -> bool { return x > 0 }
     for i, x in items {
         total += x
@@ -149,41 +150,64 @@ func TestParseProgram(t *testing.T) {
 	if !f.Imports[2].Links[1].Blocking || f.Imports[2].Links[1].Name != "read" {
 		t.Errorf("second link = %+v", f.Imports[2].Links[1])
 	}
-	if len(f.Decls) != 9 {
-		t.Fatalf("declarations = %d, want 9", len(f.Decls))
+	var (
+		point  *ast.StructDecl
+		derive *ast.DeriveDecl
+		shape  *ast.EnumDecl
+		iface  *ast.InterfaceDecl
+		move   *ast.FuncDecl
+		max    *ast.FuncDecl
+		run    *ast.FuncDecl
+	)
+	for _, d := range f.Decls {
+		switch x := d.(type) {
+		case *ast.StructDecl:
+			if x.Name == "Point" {
+				point = x
+			}
+		case *ast.DeriveDecl:
+			if x.Name == "Show" {
+				derive = x
+			}
+		case *ast.EnumDecl:
+			if x.Name == "Shape" {
+				shape = x
+			}
+		case *ast.InterfaceDecl:
+			if x.Name == "Showable" {
+				iface = x
+			}
+		case *ast.FuncDecl:
+			switch x.Name {
+			case "move":
+				move = x
+			case "max":
+				max = x
+			case "run":
+				run = x
+			}
+		}
 	}
-	if _, ok := f.Decls[0].(*ast.ConstDecl); !ok {
-		t.Errorf("decl 0 = %T, want const", f.Decls[0])
+	if point == nil || len(point.Fields) != 2 || point.Fields[1].Default == nil {
+		t.Fatalf("point = %+v, want Point with a default", point)
 	}
-	if _, ok := f.Decls[1].(*ast.VarDecl); !ok {
-		t.Errorf("decl 1 = %T, want var", f.Decls[1])
+	if derive == nil {
+		t.Fatalf("derive Show missing")
 	}
-	point, ok := f.Decls[2].(*ast.StructDecl)
-	if !ok || point.Name != "Point" || len(point.Fields) != 2 || point.Fields[1].Default == nil {
-		t.Fatalf("decl 2 = %+v, want Point with a default", f.Decls[2])
+	if shape == nil || len(shape.Variants) != 2 || len(shape.Variants[0].Args) != 1 {
+		t.Fatalf("shape = %+v, want Shape", shape)
 	}
-	derive, ok := f.Decls[3].(*ast.DeriveDecl)
-	if !ok || derive.Name != "Show" {
-		t.Fatalf("decl 3 = %+v, want derive Show", f.Decls[3])
+	if iface == nil || len(iface.Methods) != 1 || iface.Methods[0].Name != "show" {
+		t.Fatalf("iface = %+v, want Showable", iface)
 	}
-	shape, ok := f.Decls[4].(*ast.EnumDecl)
-	if !ok || len(shape.Variants) != 2 || len(shape.Variants[0].Args) != 1 {
-		t.Fatalf("decl 4 = %+v, want Shape", f.Decls[4])
+	if move == nil || move.Recv == nil || move.Name != "move" {
+		t.Fatalf("move = %+v, want method move", move)
 	}
-	iface, ok := f.Decls[5].(*ast.InterfaceDecl)
-	if !ok || len(iface.Methods) != 1 || iface.Methods[0].Name != "show" {
-		t.Fatalf("decl 5 = %+v, want Showable", f.Decls[5])
+	if max == nil || len(max.TypeParams) != 1 || len(max.TypeParams[0].Constraints) != 1 {
+		t.Fatalf("max = %+v, want generic Max", max)
 	}
-	move, ok := f.Decls[6].(*ast.FuncDecl)
-	if !ok || move.Recv == nil || !move.Recv.Mut || move.Name != "move" {
-		t.Fatalf("decl 6 = %+v, want method move", f.Decls[6])
-	}
-	max, ok := f.Decls[7].(*ast.FuncDecl)
-	if !ok || len(max.TypeParams) != 1 || len(max.TypeParams[0].Constraints) != 1 {
-		t.Fatalf("decl 7 = %+v, want generic Max", f.Decls[7])
-	}
-	if _, ok := f.Decls[8].(*ast.FuncDecl); !ok {
-		t.Fatalf("decl 8 = %+v, want run", f.Decls[8])
+	if run == nil {
+		t.Fatalf("run missing")
 	}
 }
 

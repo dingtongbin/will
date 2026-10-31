@@ -1,9 +1,12 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
+%willrt_gc_stack_slot = type { i32, i32, ptr }
+%willrt_gc_stack_map_data = type { ptr, ptr, i64 }
+%willrt_gc_frame = type { ptr, ptr, ptr }
 %"struct.example.com/crossmethod/lib.Counter" = type { i32 }
-define hidden i32 @"example.com/crossmethod/lib.Counter.get"(ptr %c) alwaysinline {
+define hidden i32 @"example.com/crossmethod/lib.Counter.get"(ptr %self) alwaysinline {
 entry:
-  %t1 = getelementptr inbounds %"struct.example.com/crossmethod/lib.Counter", ptr %c, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.example.com/crossmethod/lib.Counter", ptr %self, i32 0, i32 0
   %t2 = load i32, ptr %t1
   ret i32 %t2
 }

@@ -116,8 +116,6 @@ func (g *guardWalker) stmt(st ast.Stmt) {
 		}
 	case *ast.RegionStmt:
 		g.block(s.Body)
-	case *ast.ParallelStmt:
-		g.block(s.Body)
 	}
 }
 
@@ -152,8 +150,6 @@ func (g *guardWalker) expr(e ast.Expr) {
 		g.expr(x.Recv)
 		g.expr(x.Lo)
 		g.expr(x.Hi)
-	case *ast.BorrowExpr:
-		g.expr(x.X)
 	case *ast.AggregateExpr:
 		for _, field := range x.Fields {
 			g.expr(field.Value)
@@ -161,10 +157,6 @@ func (g *guardWalker) expr(e ast.Expr) {
 	case *ast.ArrayLitExpr:
 		for _, elem := range x.Elems {
 			g.expr(elem)
-		}
-	case *ast.NewExpr:
-		for _, arg := range x.Args {
-			g.expr(arg.Expr)
 		}
 	case *ast.UnaryExpr:
 		g.expr(x.X)

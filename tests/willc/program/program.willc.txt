@@ -9,192 +9,192 @@
 #9 field parent=#6 pos="program.will:7:5" text="y" type="i32" default=#11
 #10 type parent=#9 pos="program.will:7:8" text="i32" kind=scalar
 #11 lit parent=#9 pos="program.will:7:14" kind=int text="0" type="i32"
-#12 enum parent=#1 pos="program.will:10:1" text="Shape"
-#13 variant parent=#12 pos="program.will:11:5" text="Circle" arg=#14
-#14 type parent=#13 pos="program.will:11:12" text="f64" kind=scalar
-#15 variant parent=#12 pos="program.will:12:5" text="Square"
-#16 interface parent=#1 pos="program.will:15:1" text="Showable"
-#17 method-sig parent=#16 pos="program.will:16:5" text="show" type="str"
-#18 type parent=#17 pos="program.will:16:19" text="str" kind=scalar
-#19 func parent=#1 pos="program.will:19:1" text="work" type="i32"
-#20 param parent=#19 pos="program.will:19:10" text="n" type="i32"
-#21 type parent=#20 pos="program.will:19:13" text="i32" kind=scalar
-#22 type parent=#19 pos="program.will:19:21" text="i32" kind=scalar
-#23 block parent=#19 pos="program.will:19:25"
-#24 return parent=#23 pos="program.will:20:5" value=#25
-#25 name parent=#24 pos="program.will:20:12" text="n" to=#20
-#26 func parent=#1 pos="program.will:23:1" text="move"
-#27 receiver parent=#26 pos="program.will:23:5" text="p" type="mut Point"
-#28 type parent=#27 pos="program.will:23:9" text="mut Point" kind=mutref to=#6
-#29 param parent=#26 pos="program.will:23:25" text="dx" type="i32"
-#30 type parent=#29 pos="program.will:23:29" text="i32" kind=scalar
-#31 param parent=#26 pos="program.will:23:34" text="dy" type="i32"
-#32 type parent=#31 pos="program.will:23:38" text="i32" kind=scalar
-#33 block parent=#26 pos="program.will:23:43"
-#34 assign parent=#33 pos="program.will:24:5" op="+=" target=#35 value=#37
-#35 field parent=#34 pos="program.will:24:5" text="x" recv=#36
-#36 name parent=#35 pos="program.will:24:5" text="p" to=#27
-#37 name parent=#34 pos="program.will:24:12" text="dx" to=#29
-#38 assign parent=#33 pos="program.will:25:5" op="+=" target=#39 value=#41
-#39 field parent=#38 pos="program.will:25:5" text="y" recv=#40
-#40 name parent=#39 pos="program.will:25:5" text="p" to=#27
-#41 name parent=#38 pos="program.will:25:12" text="dy" to=#31
-#42 func parent=#1 pos="program.will:28:1" text="max" type="T"
-#43 typeparam parent=#42 pos="program.will:28:9" text="T" constraint="Show"
-#44 type parent=#43 pos="program.will:28:12" text="Show" kind=named
-#45 param parent=#42 pos="program.will:28:18" text="a" type="T"
-#46 type parent=#45 pos="program.will:28:21" text="T" kind=named to=#43
-#47 param parent=#42 pos="program.will:28:24" text="b" type="T"
-#48 type parent=#47 pos="program.will:28:27" text="T" kind=named to=#43
-#49 type parent=#42 pos="program.will:28:33" text="T" kind=named to=#43
-#50 block parent=#42 pos="program.will:28:35"
-#51 if parent=#50 pos="program.will:29:5" cond=#52 then=#55
-#52 bin parent=#51 pos="program.will:29:8" op=">" l=#53 r=#54
-#53 name parent=#52 pos="program.will:29:8" text="a" to=#45
-#54 name parent=#52 pos="program.will:29:12" text="b" to=#47
-#55 block parent=#51 pos="program.will:29:14"
-#56 return parent=#55 pos="program.will:30:9" value=#57
-#57 name parent=#56 pos="program.will:30:16" text="a" to=#45
-#58 return parent=#50 pos="program.will:32:5" value=#59
-#59 name parent=#58 pos="program.will:32:12" text="b" to=#47
-#60 func parent=#1 pos="program.will:35:1" text="run" type="i32" async=true
-#61 param parent=#60 pos="program.will:35:15" text="n" type="i32"
-#62 type parent=#61 pos="program.will:35:18" text="i32" kind=scalar
-#63 type parent=#60 pos="program.will:35:26" text="i32" kind=scalar
-#64 block parent=#60 pos="program.will:35:30"
-#65 var parent=#64 pos="program.will:36:5" text="xs" type="Array<i32>"
-#66 type parent=#65 pos="program.will:36:13" text="Array<i32>" kind=named arg=#67
-#67 type parent=#66 pos="program.will:36:19" text="i32" kind=scalar
-#68 new parent=#65 pos="program.will:36:26" type="Array<i32>" arg=#69
-#69 lit parent=#68 pos="program.will:36:41" kind=int text="0" type="usize"
-#70 var parent=#64 pos="program.will:37:5" text="total" type="i32"
-#71 type parent=#70 pos="program.will:37:16" text="i32" kind=scalar
-#72 lit parent=#70 pos="program.will:37:22" kind=int text="0" type="i32"
-#73 for parent=#64 pos="program.will:38:5" bind="i" bind="x" iter=#74 body=#75
-#74 name parent=#73 pos="program.will:38:17" text="xs" to=#65
-#75 block parent=#73 pos="program.will:38:20"
-#76 assign parent=#75 pos="program.will:39:9" op="+=" target=#77 value=#78
-#77 name parent=#76 pos="program.will:39:9" text="total" to=#70
-#78 bin parent=#76 pos="program.will:39:18" op="+" l=#79 r=#82
-#79 cast parent=#78 pos="program.will:39:18" to=#80 expr=#81
+#12 func parent=#1 pos="program.will:9:5" text="move"
+#13 receiver parent=#12 pos="program.will:9:14" text="self" type="Point"
+#14 type parent=#13 pos="program.will:9:14" text="Point" kind=named to=#6
+#15 param parent=#12 pos="program.will:9:20" text="dx" type="i32"
+#16 type parent=#15 pos="program.will:9:24" text="i32" kind=scalar
+#17 param parent=#12 pos="program.will:9:29" text="dy" type="i32"
+#18 type parent=#17 pos="program.will:9:33" text="i32" kind=scalar
+#19 block parent=#12 pos="program.will:9:38"
+#20 assign parent=#19 pos="program.will:10:9" op="+=" target=#21 value=#23
+#21 field parent=#20 pos="program.will:10:9" text="x" recv=#22
+#22 name parent=#21 pos="program.will:10:9" text="self" to=#13
+#23 name parent=#20 pos="program.will:10:19" text="dx" to=#15
+#24 assign parent=#19 pos="program.will:11:9" op="+=" target=#25 value=#27
+#25 field parent=#24 pos="program.will:11:9" text="y" recv=#26
+#26 name parent=#25 pos="program.will:11:9" text="self" to=#13
+#27 name parent=#24 pos="program.will:11:19" text="dy" to=#17
+#28 enum parent=#1 pos="program.will:15:1" text="Shape"
+#29 variant parent=#28 pos="program.will:16:5" text="Circle" arg=#30
+#30 type parent=#29 pos="program.will:16:12" text="f64" kind=scalar
+#31 variant parent=#28 pos="program.will:17:5" text="Square"
+#32 interface parent=#1 pos="program.will:20:1" text="Showable"
+#33 method-sig parent=#32 pos="program.will:21:5" text="show" type="str"
+#34 type parent=#33 pos="program.will:21:19" text="str" kind=scalar
+#35 func parent=#1 pos="program.will:24:1" text="work" type="i32"
+#36 param parent=#35 pos="program.will:24:10" text="n" type="i32"
+#37 type parent=#36 pos="program.will:24:13" text="i32" kind=scalar
+#38 type parent=#35 pos="program.will:24:21" text="i32" kind=scalar
+#39 block parent=#35 pos="program.will:24:25"
+#40 return parent=#39 pos="program.will:25:5" value=#41
+#41 name parent=#40 pos="program.will:25:12" text="n" to=#36
+#42 func parent=#1 pos="program.will:30:1" text="max" type="T"
+#43 typeparam parent=#42 pos="program.will:30:9" text="T" constraint="Show"
+#44 type parent=#43 pos="program.will:30:12" text="Show" kind=named
+#45 param parent=#42 pos="program.will:30:18" text="a" type="T"
+#46 type parent=#45 pos="program.will:30:21" text="T" kind=named to=#43
+#47 param parent=#42 pos="program.will:30:24" text="b" type="T"
+#48 type parent=#47 pos="program.will:30:27" text="T" kind=named to=#43
+#49 type parent=#42 pos="program.will:30:33" text="T" kind=named to=#43
+#50 block parent=#42 pos="program.will:30:35"
+#51 if parent=#50 pos="program.will:31:5" cond=#52 then=#55
+#52 bin parent=#51 pos="program.will:31:8" op=">" l=#53 r=#54
+#53 name parent=#52 pos="program.will:31:8" text="a" to=#45
+#54 name parent=#52 pos="program.will:31:12" text="b" to=#47
+#55 block parent=#51 pos="program.will:31:14"
+#56 return parent=#55 pos="program.will:32:9" value=#57
+#57 name parent=#56 pos="program.will:32:16" text="a" to=#45
+#58 return parent=#50 pos="program.will:34:5" value=#59
+#59 name parent=#58 pos="program.will:34:12" text="b" to=#47
+#60 func parent=#1 pos="program.will:37:1" text="run" type="i32" async=true
+#61 param parent=#60 pos="program.will:37:15" text="n" type="i32"
+#62 type parent=#61 pos="program.will:37:18" text="i32" kind=scalar
+#63 type parent=#60 pos="program.will:37:26" text="i32" kind=scalar
+#64 block parent=#60 pos="program.will:37:30"
+#65 var parent=#64 pos="program.will:38:5" text="xs" type="list[i32]"
+#66 type parent=#65 pos="program.will:38:13" text="list[i32]" kind=named arg=#67
+#67 type parent=#66 pos="program.will:38:18" text="i32" kind=scalar
+#68 new parent=#65 pos="program.will:38:25" type="list[i32]" arg=#69
+#69 lit parent=#68 pos="program.will:38:35" kind=int text="0" type="usize"
+#70 var parent=#64 pos="program.will:39:5" text="total" type="i32"
+#71 type parent=#70 pos="program.will:39:16" text="i32" kind=scalar
+#72 lit parent=#70 pos="program.will:39:22" kind=int text="0" type="i32"
+#73 for parent=#64 pos="program.will:40:5" bind="i" bind="x" iter=#74 body=#75
+#74 name parent=#73 pos="program.will:40:17" text="xs" to=#65
+#75 block parent=#73 pos="program.will:40:20"
+#76 assign parent=#75 pos="program.will:41:9" op="+=" target=#77 value=#78
+#77 name parent=#76 pos="program.will:41:9" text="total" to=#70
+#78 bin parent=#76 pos="program.will:41:18" op="+" l=#79 r=#82
+#79 cast parent=#78 pos="program.will:41:18" to=#80 expr=#81
 #80 type parent=#79 pos="0" text="i32" kind=named
-#81 name parent=#79 pos="program.will:39:22" text="i" to=#73
-#82 name parent=#78 pos="program.will:39:27" text="x" to=#73
-#83 var parent=#64 pos="program.will:41:5" text="p" type="Point"
-#84 type parent=#83 pos="program.will:41:12" text="Point" kind=named to=#6
-#85 agg parent=#83 pos="program.will:41:20" to=#6 field="x=#86" field="y=#87"
-#86 lit parent=#85 pos="program.will:41:31" kind=int text="1" type="i32"
-#87 name parent=#85 pos="program.will:41:37" text="n" to=#61
-#88 exprstmt parent=#64 pos="program.will:42:5" expr=#89
-#89 mcall parent=#88 pos="program.will:42:5" text="move" recv=#90 arg=#91 arg=#92
-#90 name parent=#89 pos="program.will:42:5" text="p" to=#83
-#91 name parent=#89 pos="program.will:42:12" text="n" to=#61
-#92 lit parent=#89 pos="program.will:42:15" kind=int text="2" type="i32"
-#93 var parent=#64 pos="program.will:43:5" text="shape" type="Shape"
-#94 type parent=#93 pos="program.will:43:16" text="Shape" kind=named to=#12
-#95 call parent=#93 pos="program.will:43:24" to=#13 arg=#96
-#96 lit parent=#95 pos="program.will:43:31" kind=float text="1.5" type="f64"
-#97 exprstmt parent=#64 pos="program.will:44:5" expr=#98
-#98 discard parent=#97 pos="program.will:44:5" expr=#99
-#99 name parent=#98 pos="program.will:44:9" text="shape" to=#93
-#100 match parent=#64 pos="program.will:45:5" subject=#101
-#101 name parent=#100 pos="program.will:45:11" text="total" to=#70
-#102 arm parent=#100 pos="program.will:46:9" pattern=#103 body=#104
-#103 pattern parent=#102 pos="program.will:46:9" text="0" kind=literal
-#104 block parent=#102 pos="program.will:46:14"
-#105 assign parent=#104 pos="program.will:46:16" op="=" target=#106 value=#107
-#106 name parent=#105 pos="program.will:46:16" text="total" to=#70
-#107 lit parent=#105 pos="program.will:46:24" kind=int text="1" type="i32"
-#108 arm parent=#100 pos="program.will:47:9" pattern=#109 guard=#110 body=#113
-#109 pattern parent=#108 pos="program.will:47:9" text="9" kind=literal
-#110 bin parent=#108 pos="program.will:47:14" op=">" l=#111 r=#112
-#111 name parent=#110 pos="program.will:47:14" text="total" to=#70
-#112 lit parent=#110 pos="program.will:47:22" kind=int text="2" type="i32"
-#113 block parent=#108 pos="program.will:47:27"
-#114 assign parent=#113 pos="program.will:47:29" op="=" target=#115 value=#116
-#115 name parent=#114 pos="program.will:47:29" text="total" to=#70
-#116 lit parent=#114 pos="program.will:47:37" kind=int text="3" type="i32"
-#117 arm parent=#100 pos="program.will:48:9" pattern=#118 body=#119
-#118 pattern parent=#117 pos="program.will:48:9" text="_" kind=wild
-#119 block parent=#117 pos="program.will:48:14"
-#120 assign parent=#119 pos="program.will:48:16" op="=" target=#121 value=#122
-#121 name parent=#120 pos="program.will:48:16" text="total" to=#70
-#122 lit parent=#120 pos="program.will:48:24" kind=int text="4" type="i32"
-#123 var parent=#64 pos="program.will:50:5" text="text" type="str"
-#124 type parent=#123 pos="program.will:50:15" text="str" kind=scalar
-#125 interp parent=#123 pos="program.will:50:21" part="value " part=#126 part=" {ok}"
-#126 name parent=#125 pos="program.will:50:30" text="n" to=#61
-#127 exprstmt parent=#64 pos="program.will:51:5" expr=#128
-#128 discard parent=#127 pos="program.will:51:5" expr=#129
-#129 name parent=#128 pos="program.will:51:9" text="text" to=#123
-#130 release parent=#64 pos="program.will:51:9" owner=#123 kind="value"
-#131 var parent=#64 pos="program.will:52:5" text="ch" type="chan<i32>"
-#132 type parent=#131 pos="program.will:52:13" text="chan<i32>" kind=chan arg=#133
-#133 type parent=#132 pos="program.will:52:18" text="i32" kind=scalar
-#134 channew parent=#131 pos="program.will:52:25" type="chan<i32>" cap=#135
-#135 lit parent=#134 pos="program.will:52:39" kind=int text="8" type="usize"
-#136 var parent=#64 pos="program.will:53:5" text="t" type="Task<i32>"
-#137 type parent=#136 pos="program.will:53:12" text="Task<i32>" kind=task arg=#138
-#138 type parent=#137 pos="program.will:53:17" text="i32" kind=scalar
-#139 spawn parent=#136 pos="program.will:53:24" call=#140
-#140 call parent=#139 pos="program.will:53:30" to=#19 arg=#141
-#141 name parent=#140 pos="program.will:53:35" text="n" to=#61
-#142 exprstmt parent=#64 pos="program.will:54:5" expr=#143
-#143 discard parent=#142 pos="program.will:54:5" expr=#144
-#144 await parent=#143 pos="program.will:54:9" expr=#145
-#145 name parent=#144 pos="program.will:54:15" text="t" to=#136
-#146 select parent=#64 pos="program.will:55:5"
-#147 selarm parent=#146 pos="program.will:56:9" bind="v" chan=#148 body=#150
-#148 recv parent=#147 pos="program.will:56:13" chan=#149
-#149 name parent=#148 pos="program.will:56:13" text="ch" to=#131
-#150 block parent=#147 pos="program.will:56:26"
-#151 assign parent=#150 pos="program.will:56:28" op="=" target=#152 value=#153
-#152 name parent=#151 pos="program.will:56:28" text="total" to=#70
-#153 name parent=#151 pos="program.will:56:36" text="v" to=#147
-#154 selarm parent=#146 pos="program.will:57:9" timeout=#155 body=#156
-#155 lit parent=#154 pos="program.will:57:17" kind=duration text="5ms" type="Duration"
-#156 block parent=#154 pos="program.will:57:24"
-#157 assign parent=#156 pos="program.will:57:26" op="=" target=#158 value=#159
-#158 name parent=#157 pos="program.will:57:26" text="total" to=#70
-#159 un parent=#157 pos="program.will:57:34" op="-" expr=#160
-#160 lit parent=#159 pos="program.will:57:35" kind=int text="1" type="i32"
-#161 selarm parent=#146 pos="program.will:58:9" default=true body=#162
-#162 block parent=#161 pos="program.will:58:20"
-#163 assign parent=#162 pos="program.will:58:22" op="=" target=#164 value=#165
-#164 name parent=#163 pos="program.will:58:22" text="total" to=#70
-#165 lit parent=#163 pos="program.will:58:30" kind=int text="0" type="i32"
-#166 deadline parent=#64 pos="program.will:60:5" d=#167 body=#168
-#167 lit parent=#166 pos="program.will:60:14" kind=duration text="3ms" type="Duration"
-#168 block parent=#166 pos="program.will:60:18"
-#169 assign parent=#168 pos="program.will:61:9" op="+=" target=#170 value=#171
-#170 name parent=#169 pos="program.will:61:9" text="total" to=#70
-#171 lit parent=#169 pos="program.will:61:18" kind=int text="1" type="i32"
-#172 region parent=#64 pos="program.will:63:5" body=#173
-#173 block parent=#172 pos="program.will:63:12"
-#174 exprstmt parent=#173 pos="program.will:64:9" expr=#175
-#175 call parent=#174 pos="program.will:64:9" to=#19 arg=#176
-#176 name parent=#175 pos="program.will:64:14" text="n" to=#61
-#177 if parent=#64 pos="program.will:66:5" cond=#178 then=#181
-#178 bin parent=#177 pos="program.will:66:8" op="==" l=#179 r=#180
-#179 name parent=#178 pos="program.will:66:8" text="total" to=#70
-#180 lit parent=#178 pos="program.will:66:17" kind=int text="0" type="i32"
-#181 block parent=#177 pos="program.will:66:19"
-#182 release parent=#181 pos="program.will:67:9" owner=#131 kind="value"
-#183 release parent=#181 pos="program.will:67:9" owner=#93 kind="value"
-#184 release parent=#181 pos="program.will:67:9" owner=#83 kind="value"
-#185 release parent=#181 pos="program.will:67:9" owner=#65 kind="value"
-#186 return parent=#181 pos="program.will:67:9" value=#187
-#187 lit parent=#186 pos="program.will:67:16" kind=int text="0" type="i32"
-#188 release parent=#64 pos="program.will:69:5" owner=#131 kind="value"
-#189 release parent=#64 pos="program.will:69:5" owner=#93 kind="value"
-#190 release parent=#64 pos="program.will:69:5" owner=#83 kind="value"
-#191 release parent=#64 pos="program.will:69:5" owner=#65 kind="value"
-#192 return parent=#64 pos="program.will:69:5" value=#193
-#193 bin parent=#192 pos="program.will:69:12" op="+" l=#194 r=#199
-#194 bin parent=#193 pos="program.will:69:12" op="+" l=#195 r=#198
-#195 mcall parent=#194 pos="program.will:69:12" text="status" to="example.com/app/http.status" recv=#196 arg=#197
-#196 name parent=#195 pos="program.will:69:12" text="http" to=#2
-#197 lit parent=#195 pos="program.will:69:24" kind=int text="200" type="i32"
-#198 name parent=#194 pos="program.will:69:31" text="total" to=#70
-#199 name parent=#193 pos="program.will:69:39" text="Limit" to=#3
+#81 name parent=#79 pos="program.will:41:22" text="i" to=#73
+#82 name parent=#78 pos="program.will:41:27" text="x" to=#73
+#83 var parent=#64 pos="program.will:43:5" text="p" type="Point"
+#84 type parent=#83 pos="program.will:43:12" text="Point" kind=named to=#6
+#85 agg parent=#83 pos="program.will:43:20" to=#6 field="x=#86" field="y=#87"
+#86 lit parent=#85 pos="program.will:43:31" kind=int text="1" type="i32"
+#87 name parent=#85 pos="program.will:43:37" text="n" to=#61
+#88 exprstmt parent=#64 pos="program.will:44:5" expr=#89
+#89 mcall parent=#88 pos="program.will:44:5" text="move" recv=#90 arg=#91 arg=#92
+#90 name parent=#89 pos="program.will:44:5" text="p" to=#83
+#91 name parent=#89 pos="program.will:44:12" text="n" to=#61
+#92 lit parent=#89 pos="program.will:44:15" kind=int text="2" type="i32"
+#93 var parent=#64 pos="program.will:45:5" text="shape" type="Shape"
+#94 type parent=#93 pos="program.will:45:16" text="Shape" kind=named to=#28
+#95 call parent=#93 pos="program.will:45:24" to=#29 arg=#96
+#96 lit parent=#95 pos="program.will:45:31" kind=float text="1.5" type="f64"
+#97 exprstmt parent=#64 pos="program.will:46:5" expr=#98
+#98 discard parent=#97 pos="program.will:46:5" expr=#99
+#99 name parent=#98 pos="program.will:46:9" text="shape" to=#93
+#100 match parent=#64 pos="program.will:47:5" subject=#101
+#101 name parent=#100 pos="program.will:47:11" text="total" to=#70
+#102 arm parent=#100 pos="program.will:48:9" pattern=#103 body=#104
+#103 pattern parent=#102 pos="program.will:48:9" text="0" kind=literal
+#104 block parent=#102 pos="program.will:48:14"
+#105 assign parent=#104 pos="program.will:48:16" op="=" target=#106 value=#107
+#106 name parent=#105 pos="program.will:48:16" text="total" to=#70
+#107 lit parent=#105 pos="program.will:48:24" kind=int text="1" type="i32"
+#108 arm parent=#100 pos="program.will:49:9" pattern=#109 guard=#110 body=#113
+#109 pattern parent=#108 pos="program.will:49:9" text="9" kind=literal
+#110 bin parent=#108 pos="program.will:49:14" op=">" l=#111 r=#112
+#111 name parent=#110 pos="program.will:49:14" text="total" to=#70
+#112 lit parent=#110 pos="program.will:49:22" kind=int text="2" type="i32"
+#113 block parent=#108 pos="program.will:49:27"
+#114 assign parent=#113 pos="program.will:49:29" op="=" target=#115 value=#116
+#115 name parent=#114 pos="program.will:49:29" text="total" to=#70
+#116 lit parent=#114 pos="program.will:49:37" kind=int text="3" type="i32"
+#117 arm parent=#100 pos="program.will:50:9" pattern=#118 body=#119
+#118 pattern parent=#117 pos="program.will:50:9" text="_" kind=wild
+#119 block parent=#117 pos="program.will:50:14"
+#120 assign parent=#119 pos="program.will:50:16" op="=" target=#121 value=#122
+#121 name parent=#120 pos="program.will:50:16" text="total" to=#70
+#122 lit parent=#120 pos="program.will:50:24" kind=int text="4" type="i32"
+#123 var parent=#64 pos="program.will:52:5" text="text" type="str"
+#124 type parent=#123 pos="program.will:52:15" text="str" kind=scalar
+#125 interp parent=#123 pos="program.will:52:21" part="value " part=#126 part=" {ok}"
+#126 name parent=#125 pos="program.will:52:30" text="n" to=#61
+#127 exprstmt parent=#64 pos="program.will:53:5" expr=#128
+#128 discard parent=#127 pos="program.will:53:5" expr=#129
+#129 name parent=#128 pos="program.will:53:9" text="text" to=#123
+#130 release parent=#64 pos="program.will:53:9" owner=#123 kind="value"
+#131 var parent=#64 pos="program.will:54:5" text="ch" type="chan<i32>"
+#132 type parent=#131 pos="program.will:54:13" text="chan<i32>" kind=chan arg=#133
+#133 type parent=#132 pos="program.will:54:18" text="i32" kind=scalar
+#134 channew parent=#131 pos="program.will:54:25" type="chan<i32>" cap=#135
+#135 lit parent=#134 pos="program.will:54:35" kind=int text="8" type="usize"
+#136 var parent=#64 pos="program.will:55:5" text="t" type="Task<i32>"
+#137 type parent=#136 pos="program.will:55:12" text="Task<i32>" kind=task arg=#138
+#138 type parent=#137 pos="program.will:55:17" text="i32" kind=scalar
+#139 spawn parent=#136 pos="program.will:55:24" call=#140
+#140 call parent=#139 pos="program.will:55:30" to=#35 arg=#141
+#141 name parent=#140 pos="program.will:55:35" text="n" to=#61
+#142 exprstmt parent=#64 pos="program.will:56:5" expr=#143
+#143 discard parent=#142 pos="program.will:56:5" expr=#144
+#144 await parent=#143 pos="program.will:56:9" expr=#145
+#145 name parent=#144 pos="program.will:56:15" text="t" to=#136
+#146 select parent=#64 pos="program.will:57:5"
+#147 selarm parent=#146 pos="program.will:58:9" bind="v" chan=#148 body=#150
+#148 recv parent=#147 pos="program.will:58:13" chan=#149
+#149 name parent=#148 pos="program.will:58:13" text="ch" to=#131
+#150 block parent=#147 pos="program.will:58:26"
+#151 assign parent=#150 pos="program.will:58:28" op="=" target=#152 value=#153
+#152 name parent=#151 pos="program.will:58:28" text="total" to=#70
+#153 name parent=#151 pos="program.will:58:36" text="v" to=#147
+#154 selarm parent=#146 pos="program.will:59:9" timeout=#155 body=#156
+#155 lit parent=#154 pos="program.will:59:17" kind=duration text="5ms" type="Duration"
+#156 block parent=#154 pos="program.will:59:24"
+#157 assign parent=#156 pos="program.will:59:26" op="=" target=#158 value=#159
+#158 name parent=#157 pos="program.will:59:26" text="total" to=#70
+#159 un parent=#157 pos="program.will:59:34" op="-" expr=#160
+#160 lit parent=#159 pos="program.will:59:35" kind=int text="1" type="i32"
+#161 selarm parent=#146 pos="program.will:60:9" default=true body=#162
+#162 block parent=#161 pos="program.will:60:20"
+#163 assign parent=#162 pos="program.will:60:22" op="=" target=#164 value=#165
+#164 name parent=#163 pos="program.will:60:22" text="total" to=#70
+#165 lit parent=#163 pos="program.will:60:30" kind=int text="0" type="i32"
+#166 deadline parent=#64 pos="program.will:62:5" d=#167 body=#168
+#167 lit parent=#166 pos="program.will:62:14" kind=duration text="3ms" type="Duration"
+#168 block parent=#166 pos="program.will:62:18"
+#169 assign parent=#168 pos="program.will:63:9" op="+=" target=#170 value=#171
+#170 name parent=#169 pos="program.will:63:9" text="total" to=#70
+#171 lit parent=#169 pos="program.will:63:18" kind=int text="1" type="i32"
+#172 region parent=#64 pos="program.will:65:5" body=#173
+#173 block parent=#172 pos="program.will:65:12"
+#174 exprstmt parent=#173 pos="program.will:66:9" expr=#175
+#175 call parent=#174 pos="program.will:66:9" to=#35 arg=#176
+#176 name parent=#175 pos="program.will:66:14" text="n" to=#61
+#177 if parent=#64 pos="program.will:68:5" cond=#178 then=#181
+#178 bin parent=#177 pos="program.will:68:8" op="==" l=#179 r=#180
+#179 name parent=#178 pos="program.will:68:8" text="total" to=#70
+#180 lit parent=#178 pos="program.will:68:17" kind=int text="0" type="i32"
+#181 block parent=#177 pos="program.will:68:19"
+#182 release parent=#181 pos="program.will:69:9" owner=#131 kind="value"
+#183 release parent=#181 pos="program.will:69:9" owner=#93 kind="value"
+#184 release parent=#181 pos="program.will:69:9" owner=#83 kind="value"
+#185 release parent=#181 pos="program.will:69:9" owner=#65 kind="value"
+#186 return parent=#181 pos="program.will:69:9" value=#187
+#187 lit parent=#186 pos="program.will:69:16" kind=int text="0" type="i32"
+#188 release parent=#64 pos="program.will:71:5" owner=#131 kind="value"
+#189 release parent=#64 pos="program.will:71:5" owner=#93 kind="value"
+#190 release parent=#64 pos="program.will:71:5" owner=#83 kind="value"
+#191 release parent=#64 pos="program.will:71:5" owner=#65 kind="value"
+#192 return parent=#64 pos="program.will:71:5" value=#193
+#193 bin parent=#192 pos="program.will:71:12" op="+" l=#194 r=#199
+#194 bin parent=#193 pos="program.will:71:12" op="+" l=#195 r=#198
+#195 mcall parent=#194 pos="program.will:71:12" text="status" to="example.com/app/http.status" recv=#196 arg=#197
+#196 name parent=#195 pos="program.will:71:12" text="http" to=#2
+#197 lit parent=#195 pos="program.will:71:24" kind=int text="200" type="i32"
+#198 name parent=#194 pos="program.will:71:31" text="total" to=#70
+#199 name parent=#193 pos="program.will:71:39" text="Limit" to=#3
 #200 end

@@ -1,16 +1,16 @@
 import "std/os/fs"
 
-def main() -> i32 {
+async def main() -> i32 {
     var path: str = "will-fs-contract.bin"
-    var data: Array<u8> = new Array<u8>(0)
+    var data: list[u8] = list[u8](0)
     data.push(65u8)
     data.push(66u8)
-    var wrote: Result<(), Error> = fs.write_file_blocking(path, data[Range(0, data.len())])
+    var wrote: Result<(), Error> = await fs.write_file(path, data[Range(0, data.len())])
     _ = wrote
-    var read: Result<Array<u8>, Error> = fs.read_file_blocking(path)
-    var got: Array<u8> = new Array<u8>(0)
+    var read: Result<list[u8], Error> = await fs.read_file(path)
+    var got: list[u8] = list[u8](0)
     match read {
-        Ok(v) => { got = v }
+        Ok(v) => { got = v.clone() }
         Err(e) => { _ = e }
     }
     if got.len() != 2usize {

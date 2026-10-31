@@ -4,15 +4,19 @@ struct C {
 
 struct E {
     m: str
+
+    def message(self) -> str {
+        return self.m.clone()
+    }
+
+    def status(self) -> i32 {
+        return 1
+    }
 }
 
-def (e: ref E) message() -> str {
-    return e.m.clone()
-}
 
-def (e: ref E) status() -> i32 {
-    return 1
-}
+
+
 
 def maybe(ok: bool) -> Result<i32, E> {
     if ok {
@@ -51,14 +55,14 @@ def loop() -> i32 {
 }
 
 def held(c: bool) -> Result<i32, E> {
-    var x: rc<C> = new rc<C>(C { n: 7 })
+    var x: C = C { n: 7 }
     defer print("held\n")
     var v: i32 = maybe(c)?
     return Ok(v + x.n)
 }
 
 def tail(c: bool) -> Result<i32, E> {
-    var x: rc<C> = new rc<C>(C { n: 9 })
+    var x: C = C { n: 9 }
     defer print("tail\n")
     return Ok(maybe(c)? + x.n)
 }

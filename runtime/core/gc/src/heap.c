@@ -51,6 +51,7 @@ static void gc_heap_setup(void) {
     int expected = 0;
     size_t page;
     size_t heap_size;
+    int mapped = 0;
 
     if (atomic_load_explicit(&gc_heap_state, memory_order_acquire) == 2) {
         return;
@@ -66,16 +67,25 @@ static void gc_heap_setup(void) {
     }
     willrt_os_mutex_init(&gc_heap_lock);
     page = willrt_os_page_size();
-    heap_size = gc_round_up((size_t)WILLRT_GC_HEAP_DEFAULT, page);
-    if (heap_size < (size_t)WILLRT_GC_GRANULE_SIZE ||
-        (heap_size & ((size_t)WILLRT_GC_GRANULE_SIZE - 1u)) != 0) {
-        gc_heap_fail("GC heap size is not a region multiple");
+    heap_size = gc_round_up((size_t)WILLRT_GC_HEAP_MAX, page);
+    for (;;) {
+        if (heap_size < (size_t)WILLRT_GC_HEAP_MIN) {
+            break;
+        }
+        if (willrt_os_gc_views_open(&gc_views, heap_size,
+                                    (size_t)WILLRT_GC_VIEW_STRIDE) == 0) {
+            mapped = 1;
+            break;
+        }
+        if (heap_size < (size_t)WILLRT_GC_GRANULE_SIZE * 2u) {
+            break;
+        }
+        heap_size >>= 1u;
     }
-    gc_heap_size = heap_size;
-    if (willrt_os_gc_views_open(&gc_views, gc_heap_size,
-                                (size_t)WILLRT_GC_VIEW_STRIDE) != 0) {
+    if (!mapped) {
         gc_heap_fail("GC multi-view mapping failed");
     }
+    gc_heap_size = gc_views.size;
     gc_heap_base = (uint8_t*)gc_views.base;
     gc_region_init();
     gc_lane_init();
@@ -269,7 +279,7 @@ static void* gc_alloc_inner(size_t size, const willrt_gc_type* type) {
     uint8_t* base;
 
     gc_heap_setup();
-    if (gc_lane_current() < 0) {
+    if (!gc_lane_has_current()) {
         willrt_gc_lane_enter(0);
     }
     if (type != NULL && type->size > size) {
@@ -384,7 +394,7 @@ void* willrt_gc_alloc(size_t size, const willrt_gc_type* type) {
 }
 
 void willrt_gc_shutdown(void) {
-    if (gc_lane_current() >= 0) {
+    if (gc_lane_has_current()) {
         willrt_gc_lane_leave();
     }
     gc_heap_shutdown();
@@ -415,6 +425,14 @@ void* willrt_gc_pin(void* object) {
         if ((old & WILLRT_GC_STATE_FORWARDED) != 0) {
             object = WILLRT_GC_STATE_FORWARD_ADDRESS(old);
             header = gc_header_from_object(object);
+            continue;
+        }
+        /* A collector that set BUSY owns the header while it copies the
+           object. Pinning the old header would lose the pin when the copy
+           publishes the forwarding address. Wait for the forwarding decision
+           before changing the pin count. */
+        if ((old & WILLRT_GC_STATE_BUSY) != 0) {
+            willrt_os_thread_yield();
             continue;
         }
         count = (uint32_t)((old & WILLRT_GC_STATE_PIN_MASK) >>
@@ -455,6 +473,10 @@ void willrt_gc_unpin(void* object) {
         if ((old & WILLRT_GC_STATE_FORWARDED) != 0) {
             object = WILLRT_GC_STATE_FORWARD_ADDRESS(old);
             header = gc_header_from_object(object);
+            continue;
+        }
+        if ((old & WILLRT_GC_STATE_BUSY) != 0) {
+            willrt_os_thread_yield();
             continue;
         }
         count = (uint32_t)((old & WILLRT_GC_STATE_PIN_MASK) >>

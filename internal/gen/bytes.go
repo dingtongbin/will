@@ -21,22 +21,7 @@ func (g *generator) viewDataLen(base, lenField string) (string, string) {
 func (g *generator) byteViewMethod(r willc.Record, base, lenField, name string) (string, string, error) {
 	data, length := g.viewDataLen(base, lenField)
 	if name == "clone" {
-		g.needAllocDecl = true
-		buffer := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buffer, length)
-		g.needMemcpyDecl = true
-		fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %s)\n", buffer, data, length)
-		slot := g.allocSlot(g.callSlots, "ret", r.ID, "{ ptr, i64, i64 }")
-		dataField := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataField, slot)
-		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", buffer, dataField)
-		lenDst := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 1\n", lenDst, slot)
-		fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, lenDst)
-		capDst := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 2\n", capDst, slot)
-		fmt.Fprintf(g.out, "  store i64 %s, ptr %s\n", length, capDst)
-		return g.load("{ ptr, i64, i64 }", slot), "Array<u8>", nil
+		return g.listFromSequence(data, length, "u8", r)
 	}
 	args := g.callArgs(r)
 	if len(args) != 1 {

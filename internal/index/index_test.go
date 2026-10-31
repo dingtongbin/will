@@ -31,11 +31,12 @@ interface Shape {
 
 struct Square {
     s: i32
+
+    def area(self) -> i32 {
+        return self.s * self.s
+    }
 }
 
-def (q: ref Square) area() -> i32 {
-    return q.s * q.s
-}
 
 struct Dot {
     s: i32
@@ -69,11 +70,11 @@ func TestIndexLines(t *testing.T) {
 		`cfunc header="stdio.h" name="puts" linkage="fast"`,
 		`decl file="api.will" line=7 col=1 kind="interface" name="Shape" vis="public"`,
 		`decl file="api.will" line=11 col=1 kind="struct" name="Square" vis="public"`,
-		`decl file="api.will" line=19 col=1 kind="struct" name="Dot" vis="public"`,
-		`decl file="api.will" line=23 col=1 kind="func" name="use" vis="public"`,
-		`method file="api.will" line=15 col=1 type="Square" name="area" recv="ref"`,
+		`decl file="api.will" line=20 col=1 kind="struct" name="Dot" vis="public"`,
+		`decl file="api.will" line=24 col=1 kind="func" name="use" vis="public"`,
+		`method file="api.will" line=14 col=5 type="Square" name="area"`,
 		`satisfies type="example.com/app.Square" interface="example.com/app.Shape"`,
-		`dispatch file="api.will" line=24 col=12 interface="example.com/app.Shape" targets="example.com/app.Square"`,
+		`dispatch file="api.will" line=25 col=12 interface="example.com/app.Shape" targets="example.com/app.Square"`,
 	}
 	for _, w := range want {
 		if !strings.Contains(text, w+"\n") {
@@ -100,15 +101,17 @@ func TestIndexBuiltinError(t *testing.T) {
 	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
 	src := `struct E {
     code: i32
+
+    def message(self) -> str {
+        return "failed"
+    }
+
+    def status(self) -> i32 {
+        return self.code
+    }
 }
 
-def (e: ref E) message() -> str {
-    return "failed"
-}
 
-def (e: ref E) status() -> i32 {
-    return e.code
-}
 `
 	write(t, filepath.Join(root, "api.will"), src)
 	text := string(Build(pkg.Load(root)))

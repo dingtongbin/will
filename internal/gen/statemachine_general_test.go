@@ -11,14 +11,14 @@ import (
 func TestGeneralFrameDropReleasesOwnedLocals(t *testing.T) {
 	src := `async def worker(ch: chan<i32>) -> i32 {
     var text: str = "hello"
-    var items: Array<i32> = new Array<i32>(2)
+    var items: list[i32] = list[i32](2)
     var got: Option<i32> = await ch.recv()
     _ = got
     return i32(text.len()) + i32(items.len())
 }
 
 async def main() -> i32 {
-    var ch: chan<i32> = new chan<i32>(1)
+    var ch: chan<i32> = chan<i32>(1)
     region {
         var task: Task<i32> = spawn worker(ch)
         _ = await ch.send(1)
@@ -35,10 +35,9 @@ async def main() -> i32 {
 	text := string(ir)
 	for _, want := range []string{
 		`define internal i32 @"example.com/app.worker.sm"(ptr %frame)`,
-		`call ptr @willrt_task_new_drop(ptr @"example.com/app.worker.sm"`,
+		`call ptr @willrt_task_new_drop_gc(ptr @"example.com/app.worker.sm"`,
 		`define internal void @"example.com/app.worker.drop"(ptr %frame) {`,
 		`call void @willrt_free_str(ptr`,
-		`call void @willrt_free(ptr`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -57,7 +56,7 @@ func TestSendLoopBecomesStateMachine(t *testing.T) {
 }
 
 def main() -> i32 {
-    var ch: chan<i32> = new chan<i32>(1)
+    var ch: chan<i32> = chan<i32>(1)
     region {
         var task: Task<()> = spawn produce(ch, 1)
         _ = await task!

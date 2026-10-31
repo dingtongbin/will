@@ -1,0 +1,16 @@
+import c "willrt.h" {
+    fast willrt_gc_memory_limit
+    fast willrt_gc_set_memory_limit
+}
+
+# set_memory_limit sets the soft GC memory target and returns the previous
+# value. Zero removes the explicit target; it never changes the reserved address
+# space or forces a fixed heap size.
+def set_memory_limit(limit: usize) -> usize {
+    return usize(c.willrt_gc_set_memory_limit(u64(limit)))
+}
+
+# memory_limit returns the current soft memory target, or zero when unset.
+def memory_limit() -> usize {
+    return usize(c.willrt_gc_memory_limit())
+}

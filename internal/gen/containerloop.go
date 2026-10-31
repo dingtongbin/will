@@ -7,9 +7,9 @@ import (
 )
 
 // prepareContainerLoop allocates the index and binding slots of a loop over a
-// Map or a Set. It reports whether the iterator is such a container.
+// dict or a set. It reports whether the iterator is such a container.
 func (g *generator) prepareContainerLoop(r willc.Record, text string) bool {
-	if k, v, ok := mapTypeText(text); ok {
+	if k, v, ok := dictTypeText(text); ok {
 		kt, ok := g.typeLLVMOf(k)
 		if !ok {
 			return false
@@ -47,7 +47,7 @@ func (g *generator) prepareContainerLoop(r willc.Record, text string) bool {
 		g.entryAlloca(fmt.Sprintf("  %s = alloca %s", vSlot, vt))
 		return true
 	}
-	if elem, ok := setTypeText(text); ok {
+	if elem, ok := finalSetTypeText(text); ok {
 		et, ok := g.typeLLVMOf(elem)
 		if !ok {
 			return false
@@ -80,16 +80,31 @@ func (g *generator) prepareContainerLoop(r willc.Record, text string) bool {
 
 // forMap lowers `for k, v in m` and `for v in m`.
 func (g *generator) forMap(r willc.Record, k, v string, void bool, label int) (bool, error) {
-	base, baseType, err := g.place(refField(r, "iter"))
+	iterText, err := g.willTypeText(refField(r, "iter"))
 	if err != nil {
 		return false, err
 	}
+	var base, baseType string
+	if isFinalContainerText(stripPredeclaredPackage(iterText)) {
+		object, err := g.classPointerValue(refField(r, "iter"))
+		if err != nil {
+			return false, err
+		}
+		object = g.pinObjectValue(object)
+		defer g.unpinContainer(object)
+		base, baseType = object, "{ ptr, i64, i64 }"
+	} else {
+		base, baseType, err = g.place(refField(r, "iter"))
+		if err != nil {
+			return false, err
+		}
+	}
 	if baseType != "{ ptr, i64, i64 }" {
-		return false, g.errf(r.ID, "cannot translate node #%d: the loop needs a Map", r.ID)
+		return false, g.errf(r.ID, "cannot translate node #%d: the loop needs a dict", r.ID)
 	}
 	entry, ok := g.mapEntryLLVM(k, v)
 	if !ok {
-		return false, g.errf(r.ID, "cannot translate node #%d: the Map entry is not lowered yet", r.ID)
+		return false, g.errf(r.ID, "cannot translate node #%d: the dict entry is not lowered yet", r.ID)
 	}
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)
@@ -155,16 +170,31 @@ func (g *generator) forMap(r willc.Record, k, v string, void bool, label int) (b
 
 // forSet lowers `for v in s` and `for i, v in s`.
 func (g *generator) forSet(r willc.Record, elem string, void bool, label int) (bool, error) {
-	base, baseType, err := g.place(refField(r, "iter"))
+	iterText, err := g.willTypeText(refField(r, "iter"))
 	if err != nil {
 		return false, err
 	}
+	var base, baseType string
+	if isFinalContainerText(stripPredeclaredPackage(iterText)) {
+		object, err := g.classPointerValue(refField(r, "iter"))
+		if err != nil {
+			return false, err
+		}
+		object = g.pinObjectValue(object)
+		defer g.unpinContainer(object)
+		base, baseType = object, "{ ptr, i64, i64 }"
+	} else {
+		base, baseType, err = g.place(refField(r, "iter"))
+		if err != nil {
+			return false, err
+		}
+	}
 	if baseType != "{ ptr, i64, i64 }" {
-		return false, g.errf(r.ID, "cannot translate node #%d: the loop needs a Set", r.ID)
+		return false, g.errf(r.ID, "cannot translate node #%d: the loop needs a set", r.ID)
 	}
 	elemLLVM, ok := g.typeLLVMOf(elem)
 	if !ok {
-		return false, g.errf(r.ID, "cannot translate node #%d: the Set element is not lowered yet", r.ID)
+		return false, g.errf(r.ID, "cannot translate node #%d: the set element is not lowered yet", r.ID)
 	}
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i64 }, ptr %s, i32 0, i32 0\n", dataPtr, base)

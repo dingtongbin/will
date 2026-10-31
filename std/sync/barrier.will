@@ -1,0 +1,46 @@
+# Barrier is a reusable generation barrier. The CPU form parks the calling
+# worker; the async form is added when the task wait node can join the same
+# generation without occupying a worker thread.
+import "std/errors"
+
+import c "barrier.h" {
+    fast willrt_sync_barrier_new
+    fast willrt_sync_barrier_wait_blocking
+    fast willrt_sync_barrier_wait_async
+}
+
+struct Barrier {
+    handle: raw
+
+    def init(self, parties: usize) {
+        self.handle = c.willrt_sync_barrier_new(i64(parties))
+    }
+
+    def wait_blocking(self) -> Result<(), Error> {
+        var status: i32 = c.willrt_sync_barrier_wait_blocking(self.handle)
+        if status == 0 {
+            return Ok(())
+        }
+        return Err(errors.Io)
+    }
+
+    async def wait(self) -> Result<(), Error> {
+        var status: i32 = await c.willrt_sync_barrier_wait_async(self.handle)
+        if status == 0 {
+            return Ok(())
+        }
+        if status == -5 {
+            return Err(Canceled)
+        }
+        if status == -6 {
+            return Err(Deadline)
+        }
+        return Err(errors.Io)
+    }
+}
+
+
+
+
+
+

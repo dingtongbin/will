@@ -1,0 +1,36 @@
+# Atomic stores one value with sequentially consistent operations. The compiler
+# lowers load/store/add/cas to LLVM atomic instructions; the method bodies below
+# are placeholders so the type checker and monomorphizer see ordinary methods.
+struct Atomic<T> {
+    value: T
+
+    def init(self, value: T) {
+        self.value = value
+    }
+
+    def load(self) -> T {
+        panic("Atomic.load is self compiler intrinsic")
+    }
+
+    def store(self, value: T) {
+        panic("Atomic.store is self compiler intrinsic")
+    }
+
+    def add(self, delta: T) -> T {
+        panic("Atomic.add is self compiler intrinsic")
+    }
+
+    def cas(self, old: T, new: T) -> bool {
+        return False
+    }
+}
+
+
+
+
+
+
+
+
+
+

@@ -25,7 +25,7 @@ func TestCanonicalSpacing(t *testing.T) {
 		{"call and comma", "def f() {\n    g ( 1 ,2 )\n}\n", "def f() {\n    g(1, 2)\n}\n"},
 		{"colon and assign", "def f() {\n    var x : i32=1\n}\n", "def f() {\n    var x: i32 = 1\n}\n"},
 		{"brace joins header", "def f()\n{\n    g()\n}\n", "def f() {\n    g()\n}\n"},
-		{"type arguments keep adjacency", "def f(x: Array<i64>) {\n}\n", "def f(x: Array<i64>) {}\n"},
+		{"type arguments keep adjacency", "def f(x: list[i64]) {\n}\n", "def f(x: list[i64]) {}\n"},
 		{"empty block is one line", "def f() {\n\n}\n", "def f() {}\n"},
 		{"nested empty block", "def f() {\n    if x {\n    }\n}\n", "def f() {\n    if x {}\n}\n"},
 		{"slice index keeps call spacing", "def f() {\n    var s: []i32 = xs[Range(1, 3)]\n}\n", "def f() {\n    var s: []i32 = xs[Range(1, 3)]\n}\n"},

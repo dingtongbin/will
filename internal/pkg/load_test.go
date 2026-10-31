@@ -3,7 +3,6 @@ package pkg
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/will-lang/will/internal/diag"
@@ -59,36 +58,6 @@ func TestInvalidPackageDirectoryName(t *testing.T) {
 	write(t, filepath.Join(root, "Bad", "x.will"), "def f() {\n}\n")
 	b := Load(root)
 	findCode(t, b.Diags, diag.CodePackageNameMismatch)
-}
-
-func TestMethodLeavesTypePackage(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "app")
-	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	write(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n")
-	write(t, filepath.Join(root, "sub", "method.will"), "def (t: ref T) move() {\n}\n")
-	b := Load(root)
-	d := findCode(t, b.Diags, diag.CodeMethodsTwoPackages)
-	if d.Message != "methods of T are declared in two packages" {
-		t.Errorf("message = %q", d.Message)
-	}
-	if d.Help != "a method can only be declared where its type is declared" {
-		t.Errorf("help = %q", d.Help)
-	}
-	if !strings.HasSuffix(d.Pos.File, "method.will") {
-		t.Errorf("position = %s, want the method file", d.Pos.File)
-	}
-}
-
-func TestMethodInDeclaringPackageIsFine(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "app")
-	write(t, filepath.Join(root, "will.mod"), "module example.com/app\nwill 1\n")
-	write(t, filepath.Join(root, "type.will"), "struct T {\n    x: i32\n}\n\ndef (t: ref T) move() {\n}\n")
-	b := Load(root)
-	for _, d := range b.Diags {
-		if d.Code == diag.CodeMethodsTwoPackages {
-			t.Fatalf("unexpected N0006:\n%s", diag.FormatAll(b.Diags))
-		}
-	}
 }
 
 func TestCrossPackageMemberResolution(t *testing.T) {

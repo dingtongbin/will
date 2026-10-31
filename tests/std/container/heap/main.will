@@ -1,13 +1,7 @@
 import "std/container/heap"
 
-def less(a: i32, b: i32) -> bool {
-    return a < b
-}
-
-# Heap must keep the root smallest through every Push and Pop, including the
-# sift-down path with two children.
 def main() -> i32 {
-    var h: heap.Heap<i32> = new heap.Heap<i32>(less)
+    var h: heap.Heap<i32> = heap.Heap<i32>(0usize)
     if h.len() != 0usize {
         return 1
     }
@@ -21,7 +15,7 @@ def main() -> i32 {
     }
     match h.peek() {
         Some(v) => {
-            if v != 1 {
+            if v != 9 {
                 return 3
             }
         }
@@ -29,17 +23,14 @@ def main() -> i32 {
             return 4
         }
     }
-    var expected: Array<i32> = new Array<i32>(0)
-    expected.push(1)
-    expected.push(3)
-    expected.push(5)
-    expected.push(7)
+    var expected: list[i32] = list[i32](5usize)
     expected.push(9)
+    expected.push(7)
+    expected.push(5)
+    expected.push(3)
+    expected.push(1)
     var i: usize = 0usize
-    while True {
-        if i >= 5usize {
-            break
-        }
+    while i < 5usize {
         match h.pop() {
             Some(v) => {
                 if v != expected.get(i) {
@@ -59,6 +50,10 @@ def main() -> i32 {
         }
         None => {
         }
+    }
+    h.clear()
+    if h.len() != 0usize {
+        return 8
     }
     return 0
 }

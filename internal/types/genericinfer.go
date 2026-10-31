@@ -1,6 +1,9 @@
 package types
 
-import "github.com/will-lang/will/internal/ast"
+import (
+	"github.com/will-lang/will/internal/ast"
+	"github.com/will-lang/will/internal/resolve"
+)
 
 // inferCallTypeArgs fills the type parameters of a generic call from the
 // argument types when the caller wrote no explicit type arguments. A parameter
@@ -20,6 +23,18 @@ func (c *checker) inferCallTypeArgs(s *inferScope, args []*ast.CallArg, typeArgs
 			break
 		}
 		actual := c.inferExpr(s, arg.Expr)
+		if actual == nil {
+			// A bare function name in value position has no inferred type;
+			// resolve it from its declaration so func(T) -> U unifies.
+			if name, ok := arg.Expr.(*ast.NameExpr); ok {
+				if sym := c.symbolOf(name); sym != nil && sym.Kind == resolve.FuncKind {
+					if decl, ok := sym.Node.(*ast.FuncDecl); ok {
+						fn := c.buildSig(decl)
+						actual = c.in.funcT(fn.params, fn.result)
+					}
+				}
+			}
+		}
 		if !unifyType(sig.params[i], actual, names, subst) {
 			return sig
 		}
@@ -50,7 +65,7 @@ func unifyType(want, actual *Type, names map[string]bool, subst map[string]*Type
 		if actual.Kind() == ViewKind {
 			return unifyType(want.Elem(), actual.Elem(), names, subst)
 		}
-		if actual.Kind() == NamedKind && actual.Name() == "Array" && len(actual.Args()) == 1 {
+		if actual.Kind() == NamedKind && actual.Name() == "list" && len(actual.Args()) == 1 {
 			return unifyType(want.Elem(), actual.Args()[0], names, subst)
 		}
 	}

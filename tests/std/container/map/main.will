@@ -1,7 +1,7 @@
 # Map is insertion ordered in this implementation. Set replaces a value,
 # Delete removes one entry, and Keys/Values copy the live entries.
 def main() -> i32 {
-    var m: Map<str, i32> = new Map<str, i32>(0usize)
+    var m: dict[str, i32] = dict[str, i32](0usize)
     if m.len() != 0usize {
         return 1
     }
@@ -32,11 +32,11 @@ def main() -> i32 {
         None => {
         }
     }
-    var keys: Array<str> = m.keys()
+    var keys: list[str] = m.keys()
     if keys.len() != 2usize or keys.get(0usize) != "a" or keys.get(1usize) != "b" {
         return 7
     }
-    var values: Array<i32> = m.values()
+    var values: list[i32] = m.values()
     if values.len() != 2usize or values.get(0usize) != 3 or values.get(1usize) != 2 {
         return 8
     }
@@ -51,14 +51,14 @@ def main() -> i32 {
     if m.len() != 0usize or m.has("c") {
         return 11
     }
-    var nested: Map<str, Array<i32>> = new Map<str, Array<i32>>(0usize)
-    var nestedValues: Array<i32> = new Array<i32>(0usize)
+    var nested: dict[str, list[i32]] = dict[str, list[i32]](0usize)
+    var nestedValues: list[i32] = list[i32](0usize)
     nestedValues.push(1)
     nested.set("a", nestedValues)
     nestedValues.push(2)
     match nested.get("a") {
         Some(copy) => {
-            if copy.len() != 1usize or copy.get(0usize) != 1 {
+            if copy.len() != 2usize or copy.get(0usize) != 1 or copy.get(1usize) != 2 {
                 return 12
             }
         }

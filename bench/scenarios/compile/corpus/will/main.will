@@ -14,19 +14,20 @@ struct Record {
 struct Reader {
     state: u64
     count: i32
+
+    def next(self) -> i64 {
+        self.state = self.state *% 6364136223846793005 +% 1442695040888963407
+        var value: i64 = i64(self.state >> 12i64) % 1000i64
+        self.count += 1
+        return value
+    }
 }
 
-# Next returns the next latency of the reader.
-def (r: mut Reader) next() -> i64 {
-    r.state = r.state *% 6364136223846793005 +% 1442695040888963407
-    var value: i64 = i64(r.state >> 12i64) % 1000i64
-    r.count += 1
-    return value
-}
+
 
 # MakeRecords builds the records of the corpus.
-def make_records(count: i32) -> Array<Record> {
-    var records: Array<Record> = new Array<Record>(0)
+def make_records(count: i32) -> list[Record] {
+    var records: list[Record] = list[Record](0)
     var reader: Reader = Reader { state: 0x1234, count: 0}
     for i in Range(0, count) {
         var latency: i64 = reader.next()
@@ -51,8 +52,8 @@ def make_records(count: i32) -> Array<Record> {
 }
 
 # Latencies returns the latencies of the records.
-def latencies(records: Array<Record>) -> Array<i64> {
-    var out: Array<i64> = new Array<i64>(0)
+def latencies(records: list[Record]) -> list[i64] {
+    var out: list[i64] = list[i64](0)
     for r in records {
         out.push(r.latency)
     }
@@ -60,8 +61,8 @@ def latencies(records: Array<Record>) -> Array<i64> {
 }
 
 # Bytes returns the sizes of the records.
-def bytes(records: Array<Record>) -> Array<i64> {
-    var out: Array<i64> = new Array<i64>(0)
+def bytes(records: list[Record]) -> list[i64] {
+    var out: list[i64] = list[i64](0)
     for r in records {
         out.push(r.bytes)
     }
@@ -81,11 +82,11 @@ struct Report {
 }
 
 # Build computes the report of the records.
-def build(records: Array<Record>) -> Report {
-    var latencies: Array<i64> = latencies(records)
-    var sizes: Array<i64> = bytes(records)
-    var histogram: Array<i64> = lib.histogram(latencies, 100i64)
-    var rolling: Array<i64> = lib.rolling(latencies, 16)
+def build(records: list[Record]) -> Report {
+    var latencies: list[i64] = latencies(records)
+    var sizes: list[i64] = bytes(records)
+    var histogram: list[i64] = lib.histogram(latencies, 100i64)
+    var rolling: list[i64] = lib.rolling(latencies, 16)
     var rollingTotal: i64 = 0i64
     for v in rolling {
         rollingTotal += v
@@ -116,7 +117,7 @@ def print(report: Report) {
 }
 
 def main() -> i32 {
-    var records: Array<Record> = make_records(2000)
+    var records: list[Record] = make_records(2000)
     var report: Report = build(records)
     print(report)
     return 0

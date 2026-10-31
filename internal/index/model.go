@@ -31,7 +31,6 @@ type Decl struct {
 	Name string
 	Vis  string
 	Type string
-	Recv string
 }
 
 // Alias is one type alias declaration. Target is the canonical target type
@@ -52,7 +51,6 @@ type Method struct {
 	Col  int
 	Type string
 	Name string
-	Recv string
 }
 
 // Satisfies is one structural satisfaction fact.

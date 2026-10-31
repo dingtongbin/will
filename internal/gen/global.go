@@ -45,6 +45,19 @@ func (g *generator) collectGlobals() {
 			}
 			d.globals[r.ID] = info
 			g.globalSymbols[info.sym] = info
+			if g.isClassText(text) {
+				g.needGCDecl = true
+				g.gcGlobalRoots = append(g.gcGlobalRoots,
+					gcGlobalRoot{sym: info.sym})
+			} else if _, ok := g.ifaceOfText(text); ok {
+				g.needGCDecl = true
+				g.gcGlobalRoots = append(g.gcGlobalRoots,
+					gcGlobalRoot{sym: info.sym})
+			} else if isFuncText(text) {
+				g.needGCDecl = true
+				g.gcGlobalRoots = append(g.gcGlobalRoots,
+					gcGlobalRoot{sym: info.sym, offset: 8})
+			}
 		}
 		for _, r := range d.recs {
 			if r.Kind != "const" || refField(r, "parent") != d.moduleID {
@@ -118,6 +131,7 @@ func (g *generator) emitInit(d *docState) error {
 	g.loops = nil
 	g.scope = map[int]string{}
 	fmt.Fprintf(g.out, "define void @%s() {\nentry:\n", llvmSymbol(sym))
+	g.gcGlobalInit = true
 	for _, r := range vars {
 		info := d.globals[r.ID]
 		child := g.children(r.ID)[0].ID
@@ -130,6 +144,13 @@ func (g *generator) emitInit(d *docState) error {
 			if _, err := g.ifaceStoreValue(ptr, child, iface, sourceText); err != nil {
 				return err
 			}
+			if g.gcProgram != nil {
+				dataPtr, _ := g.ifaceWords(ptr, iface)
+				data := g.load("ptr", dataPtr)
+				g.needGCDecl = true
+				fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+					ptr, data)
+			}
 			continue
 		}
 		if isAggregateType(info.typ) {
@@ -141,14 +162,31 @@ func (g *generator) emitInit(d *docState) error {
 				return g.errf(r.ID, "cannot translate node #%d: the initializer needs %s", r.ID, info.typ)
 			}
 			g.copyValue(src, ptr, info.typ)
+			if g.gcProgram != nil && isFuncText(info.text) {
+				g.needGCDecl = true
+				envPtr := g.newTmp()
+				fmt.Fprintf(g.out, "  %s = getelementptr i8, ptr %s, i64 8\n",
+					envPtr, ptr)
+				env := g.load("ptr", envPtr)
+				fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+					envPtr, env)
+			}
 			continue
 		}
 		value, err := g.value(child)
 		if err != nil {
 			return err
 		}
+		if g.isClassText(info.text) {
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				ptr, value)
+			g.gcSafepoint(0)
+			continue
+		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", info.typ, value, ptr)
 	}
+	g.gcGlobalInit = false
 	g.out.WriteString("  ret void\n}\n")
 	return nil
 }

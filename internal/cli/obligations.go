@@ -52,8 +52,6 @@ func walkObligationStmt(s ast.Stmt, out *[]decisions.Record) {
 		walkObligationExpr(st, out)
 	case *ast.RegionStmt:
 		walkObligationBlock(st.Body, out)
-	case *ast.ParallelStmt:
-		walkObligationBlock(st.Body, out)
 	case *ast.SelectStmt:
 		for _, arm := range st.Arms {
 			walkObligationExpr(arm.Chan, out)
@@ -104,10 +102,6 @@ func walkObligationExpr(e ast.Expr, out *[]decisions.Record) {
 	case *ast.AggregateExpr:
 		for _, f := range x.Fields {
 			walkObligationExpr(f.Value, out)
-		}
-	case *ast.NewExpr:
-		for _, a := range x.Args {
-			walkObligationExpr(a.Expr, out)
 		}
 	case *ast.UnaryExpr:
 		walkObligationExpr(x.X, out)

@@ -1,5 +1,8 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
+%willrt_gc_stack_slot = type { i32, i32, ptr }
+%willrt_gc_stack_map_data = type { ptr, ptr, i64 }
+%willrt_gc_frame = type { ptr, ptr, ptr }
 %"struct.example.com/fnfield.Handler" = type { { ptr, ptr } }
 define hidden i32 @"example.com/fnfield.inc"(i32 %x) alwaysinline {
 entry:
@@ -77,7 +80,6 @@ entry:
 @.str.4 = private unnamed_addr constant [30 x i8] c"example.com/fnfield.will$main\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)
-declare ptr @willrt_closure_new(i64, ptr, ptr)
+declare ptr @willrt_closure_new(i64, ptr)
 declare void @willrt_closure_retain(ptr)
 declare void @willrt_closure_release(ptr)
-declare void @willrt_closure_share(ptr)

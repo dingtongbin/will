@@ -50,22 +50,10 @@ func (e *emitter) emitExpr(x ast.Expr) int {
 		e.field(rec, "hi", Ref(hid))
 		e.pop()
 		return rec
-	case *ast.BorrowExpr:
-		rec := e.add("borrow", v)
-		if v.Mut {
-			e.boolean(rec, "mut", true)
-		}
-		e.push(rec)
-		xid := e.emitExpr(v.X)
-		e.field(rec, "expr", Ref(xid))
-		e.pop()
-		return rec
 	case *ast.AggregateExpr:
 		return e.emitAggregate(v)
 	case *ast.ArrayLitExpr:
 		return e.emitArrayLiteral(v)
-	case *ast.NewExpr:
-		return e.emitNew(v)
 	case *ast.UnaryExpr:
 		rec := e.add("un", v)
 		e.text(rec, "op", v.Op.String())
@@ -237,6 +225,29 @@ func (e *emitter) emitCallArg(rec int, a *ast.CallArg) {
 func (e *emitter) emitCall(c *ast.CallExpr) int {
 	if name, ok := c.Callee.(*ast.NameExpr); ok {
 		sym := e.refs[name]
+		if sym != nil && sym.Predeclared && sym.Kind == resolve.PredeclaredTypeKind &&
+			(name.Name == "list" || name.Name == "dict" || name.Name == "set") {
+			return e.emitContainerNew(c, name.Name)
+		}
+		if sym != nil && sym.Predeclared && sym.Kind == resolve.PredeclaredTypeKind && name.Name == "chan" {
+			rec := e.add("channew", c)
+			e.text(rec, "type", constructorTypeText("chan", c.TypeArgs))
+			e.push(rec)
+			if len(c.Args) > 0 {
+				aid := e.emitExpr(c.Args[0].Expr)
+				e.field(rec, "cap", Ref(aid))
+			}
+			e.pop()
+			return rec
+		}
+		if sym != nil && sym.Kind == resolve.StructKind {
+			if decl, ok := sym.Node.(*ast.StructDecl); ok {
+				if decl.Class {
+					return e.emitClassNew(c, decl.Name)
+				}
+				return e.emitStructNew(c, decl.Name)
+			}
+		}
 		if sym != nil && sym.Predeclared && (name.Name == "panic" || name.Name == "assert") {
 			rec := e.add(name.Name, c)
 			e.push(rec)
@@ -279,6 +290,18 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 		e.pop()
 		return rec
 	}
+	if field, ok := c.Callee.(*ast.FieldExpr); ok {
+		if sym := e.refs[field]; sym != nil && sym.Kind == resolve.StructKind {
+			if decl, ok := sym.Node.(*ast.StructDecl); ok {
+				if name, ok := e.importedTypeName(field); ok {
+					if decl.Class {
+						return e.emitClassNew(c, name)
+					}
+					return e.emitStructNew(c, name)
+				}
+			}
+		}
+	}
 	rec := e.add("call", c)
 	e.push(rec)
 	cid := e.emitExpr(c.Callee)
@@ -286,6 +309,97 @@ func (e *emitter) emitCall(c *ast.CallExpr) int {
 	e.emitTypeArgsField(rec, c.TypeArgs)
 	for _, a := range c.Args {
 		e.emitCallArg(rec, a)
+	}
+	e.pop()
+	return rec
+}
+
+// importedTypeName returns the canonical package-qualified name behind one
+// package-qualified type expression.
+func (e *emitter) importedTypeName(field *ast.FieldExpr) (string, bool) {
+	recv, ok := field.Recv.(*ast.NameExpr)
+	if !ok {
+		return "", false
+	}
+	sym := e.refs[recv]
+	if sym == nil || sym.Kind != resolve.ImportKind {
+		return "", false
+	}
+	imp, ok := sym.Node.(*ast.Import)
+	if !ok {
+		return "", false
+	}
+	path := imp.Path
+	if canonical := e.aliases[path]; canonical != "" {
+		path = canonical
+	}
+	return path + "." + field.Name, true
+}
+
+// emitClassNew writes a class constructor call. T(...) allocates one GC
+// object; init, when present, is invoked by the class lowering after field
+// defaults are written. A generic constructor carries its concrete type
+// arguments in the new record, which has no separate argument field.
+// emitContainerNew writes a list constructor. It is the same allocation a new
+// expression performs; the type arguments come from the call's bracket list.
+func (e *emitter) emitContainerNew(c *ast.CallExpr, name string) int {
+	rec := e.add("new", c)
+	args := make([]string, len(c.TypeArgs))
+	for i, t := range c.TypeArgs {
+		args[i] = typeText(t)
+	}
+	e.text(rec, "type", name+"["+strings.Join(args, ",")+"]")
+	e.push(rec)
+	for _, a := range c.Args {
+		aid := e.emitExpr(a.Expr)
+		e.field(rec, "arg", Ref(aid))
+	}
+	e.pop()
+	return rec
+}
+
+func (e *emitter) emitClassNew(c *ast.CallExpr, name string) int {
+	return e.emitNewArgs(c, c.Args, constructorTypeText(name, c.TypeArgs))
+}
+
+func constructorTypeText(name string, typeArgs []*ast.Type) string {
+	if len(typeArgs) == 0 {
+		return name
+	}
+	args := make([]string, len(typeArgs))
+	for i, a := range typeArgs {
+		args[i] = typeText(a)
+	}
+	return name + "<" + strings.Join(args, ",") + ">"
+}
+
+func (e *emitter) emitNewArgs(node ast.Node, args []*ast.CallArg, name string) int {
+	rec := e.add("new", node)
+	e.text(rec, "type", name)
+	e.push(rec)
+	for _, a := range args {
+		if a.Name != "" {
+			e.text(rec, "name", a.Name)
+		}
+		aid := e.emitExpr(a.Expr)
+		e.field(rec, "arg", Ref(aid))
+	}
+	e.pop()
+	return rec
+}
+
+// emitStructNew writes a value-type constructor call. The backend builds the
+// value in a slot, applies defaults, and runs init when the type declares one.
+func (e *emitter) emitStructNew(c *ast.CallExpr, name string) int {
+	rec := e.add("new", c)
+	e.text(rec, "type", constructorTypeText(name, c.TypeArgs))
+	e.push(rec)
+	for _, a := range c.Args {
+		if a.Name != "" {
+			e.text(rec, "name", a.Name)
+		}
+		aid := e.emitExpr(a.Expr)
+		e.field(rec, "arg", Ref(aid))
 	}
 	e.pop()
 	return rec
@@ -306,6 +420,23 @@ func (e *emitter) emitTypeArgsField(rec int, types []*ast.Type) {
 }
 
 func (e *emitter) emitMethodCall(v *ast.MethodCallExpr) int {
+	if recv, ok := v.Recv.(*ast.NameExpr); ok {
+		if sym := e.refs[recv]; sym != nil && sym.Kind == resolve.ImportKind {
+			imp, _ := sym.Node.(*ast.Import)
+			if imp != nil {
+				path := imp.Path
+				if canonical := e.aliases[path]; canonical != "" {
+					path = canonical
+				}
+				if member := e.refs[v]; member != nil && member.IsType() {
+					return e.emitNewArgs(v, v.Args, constructorTypeText(path+"."+v.Name, v.TypeArgs))
+				}
+				if decl := e.external[path+"."+v.Name]; decl != nil {
+					return e.emitNewArgs(v, v.Args, constructorTypeText(path+"."+v.Name, v.TypeArgs))
+				}
+			}
+		}
+	}
 	if special, ok := specialCall(v.Name, len(v.Args)); ok {
 		rec := e.add(special, v)
 		e.push(rec)
@@ -384,28 +515,6 @@ func (e *emitter) emitArrayLiteral(v *ast.ArrayLitExpr) int {
 	for _, elem := range v.Elems {
 		id := e.emitExpr(elem)
 		e.field(rec, "elem", Ref(id))
-	}
-	e.pop()
-	return rec
-}
-
-func (e *emitter) emitNew(v *ast.NewExpr) int {
-	if v.Type != nil && v.Type.Kind == ast.NamedType && v.Type.Name == "chan" {
-		rec := e.add("channew", v)
-		e.text(rec, "type", typeText(v.Type))
-		e.push(rec)
-		if len(v.Args) > 0 {
-			aid := e.emitExpr(v.Args[0].Expr)
-			e.field(rec, "cap", Ref(aid))
-		}
-		e.pop()
-		return rec
-	}
-	rec := e.add("new", v)
-	e.text(rec, "type", typeText(v.Type))
-	e.push(rec)
-	for _, a := range v.Args {
-		e.emitCallArg(rec, a)
 	}
 	e.pop()
 	return rec

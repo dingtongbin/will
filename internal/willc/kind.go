@@ -9,9 +9,10 @@ var kindSpecs = map[string]KindSpec{
 	"const":     {Required: []string{"text", "type"}},
 	"var":       {Required: []string{"text", "type"}},
 	"typealias": {Required: []string{"text", "to"}},
-	"func":      {Required: []string{"text"}, Optional: []string{"type", "async", "test"}, Repeatable: []string{"from"}},
+	"func":      {Required: []string{"text"}, Optional: []string{"type", "async", "test"}},
 	"receiver":  {Required: []string{"text", "type"}},
 	"param":     {Required: []string{"text", "type"}, Optional: []string{"variadic", "default"}},
+	"class":     {Required: []string{"text"}},
 	"struct":    {Required: []string{"text"}},
 	"field": {
 		RequiredAny: [][]string{{"text", "type"}, {"recv", "text"}},
@@ -20,12 +21,12 @@ var kindSpecs = map[string]KindSpec{
 	"enum":       {Required: []string{"text"}},
 	"variant":    {Required: []string{"text"}, Repeatable: []string{"arg"}},
 	"interface":  {Required: []string{"text"}},
-	"method-sig": {Required: []string{"text", "type"}, Optional: []string{"async"}, Repeatable: []string{"from"}},
+	"method-sig": {Required: []string{"text", "type"}, Optional: []string{"async"}},
 	"derive":     {Required: []string{"text", "to"}},
 	"typeparam":  {Required: []string{"text"}, Optional: []string{"constraint"}},
 	"instance":   {Required: []string{"to"}, Repeatable: []string{"arg"}, Optional: []string{"text"}},
 
-	"type": {Required: []string{"text", "kind"}, Optional: []string{"mut"}, Repeatable: []string{"arg"}},
+	"type": {Required: []string{"text", "kind"}, Repeatable: []string{"arg"}},
 
 	"block":    {},
 	"if":       {Required: []string{"cond"}, Optional: []string{"then", "else"}},
@@ -57,7 +58,6 @@ var kindSpecs = map[string]KindSpec{
 	},
 	"index":   {Required: []string{"recv", "i"}},
 	"slice":   {Required: []string{"recv", "lo", "hi"}},
-	"borrow":  {Required: []string{"expr"}, Optional: []string{"mut"}},
 	"agg":     {Required: []string{"to"}, Repeatable: []string{"field", "typearg"}},
 	"arrlit":  {Required: []string{"type"}, Repeatable: []string{"elem"}},
 	"new":     {Required: []string{"type"}, Repeatable: []string{"arg", "name"}},
@@ -83,6 +83,11 @@ var kindSpecs = map[string]KindSpec{
 		Required: []string{"owner"},
 		Optional: []string{"kind"},
 	},
+
+	"safepoint": {Required: []string{"pos"}, Optional: []string{"kind"}},
+	"stackmap":  {Required: []string{"func", "slot", "type"}},
+	"barrier":   {Required: []string{"pos", "kind"}, Optional: []string{"type"}},
+	"alloc":     {Required: []string{"pos", "type"}, Optional: []string{"site"}},
 	"diagnostic": {
 		Required:   []string{"code", "severity", "message"},
 		Optional:   []string{"pos", "end", "help"},

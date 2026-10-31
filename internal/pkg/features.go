@@ -127,8 +127,6 @@ func (p *pruner) pruneStmt(st ast.Stmt) {
 		p.pruneBlock(x.Body)
 	case *ast.RegionStmt:
 		p.pruneBlock(x.Body)
-	case *ast.ParallelStmt:
-		p.pruneBlock(x.Body)
 	case *ast.SelectStmt:
 		for _, arm := range x.Arms {
 			p.walkExpr(arm.Chan, false)
@@ -335,10 +333,6 @@ func (p *pruner) walkExpr(e ast.Expr, inCondition bool) {
 	case *ast.AggregateExpr:
 		for _, f := range x.Fields {
 			p.walkExpr(f.Value, false)
-		}
-	case *ast.NewExpr:
-		for _, a := range x.Args {
-			p.walkExpr(a.Expr, false)
 		}
 	case *ast.UnaryExpr:
 		p.walkExpr(x.X, false)

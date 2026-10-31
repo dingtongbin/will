@@ -83,8 +83,8 @@ var predeclaredTypes = []string{
 	"i8", "i16", "i32", "i64", "isize",
 	"u8", "u16", "u32", "u64", "usize",
 	"f32", "f64",
-	"Array", "Map", "Set",
-	"chan", "rc", "arc", "weak_rc", "weak_arc", "Task",
+	"list", "dict", "set",
+	"chan", "Task",
 	"Option", "Result", "Value", "Duration",
 	"Show", "Error", "TaskError",
 	// Equal and Ord are built-in constraints: they name a property the
@@ -105,12 +105,10 @@ func isPredeclaredType(name string) bool {
 }
 
 var predeclaredValues = []string{
-	"Some", "None", "Ok", "Err", "wait",
+	"Some", "None", "Ok", "Err",
 	"Canceled", "Deadline",
-	"print", "panic", "assert", "leak",
-	"take_c", "take_c_rc",
+	"print", "panic", "assert", "leak", "len",
 	"SizeOf", "AlignOf", "OffsetOf",
-	"Cancel", "Priority",
 }
 
 func (r *resolver) addPredeclared() {
@@ -396,9 +394,6 @@ func (r *resolver) walkDecl(d ast.Decl) {
 				r.walkExpr(pm.Default, true)
 			}
 			r.walkType(m.Result)
-			for _, src := range m.From {
-				r.walkExpr(src, true)
-			}
 			r.pop()
 		}
 		r.pop()
@@ -449,9 +444,6 @@ func (r *resolver) walkFunc(decl *ast.FuncDecl) {
 		r.walkExpr(pm.Default, true)
 	}
 	r.walkType(decl.Result)
-	for _, src := range decl.From {
-		r.walkExpr(src, true)
-	}
 	r.walkBlock(decl.Body)
 	r.pop()
 }

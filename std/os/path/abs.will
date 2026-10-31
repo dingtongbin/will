@@ -4,8 +4,11 @@
 import "std/os"
 
 def abs(p: str) -> Result<str, Error> {
-    if is_abs(p) {
-        return Ok(clean(p))
+    if p.len() != 0usize {
+        var s: str = p.clone()
+        if __is_separator(s[0]) or __is_drive_abs(s) {
+            return Ok(clean(p))
+        }
     }
     var cwd: str = os.cwd()?
     return Ok(clean(join(cwd, p)))

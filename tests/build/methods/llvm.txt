@@ -1,15 +1,18 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
+%willrt_gc_stack_slot = type { i32, i32, ptr }
+%willrt_gc_stack_map_data = type { ptr, ptr, i64 }
+%willrt_gc_frame = type { ptr, ptr, ptr }
 %"struct.example.com/methods.Counter" = type { i32 }
-define hidden i32 @"example.com/methods.Counter.get"(ptr %c) alwaysinline {
+define hidden i32 @"example.com/methods.Counter.get"(ptr %self) alwaysinline {
 entry:
-  %t1 = getelementptr inbounds %"struct.example.com/methods.Counter", ptr %c, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.example.com/methods.Counter", ptr %self, i32 0, i32 0
   %t2 = load i32, ptr %t1
   ret i32 %t2
 }
-define hidden void @"example.com/methods.Counter.add"(ptr %c, i32 %d) alwaysinline {
+define hidden void @"example.com/methods.Counter.add"(ptr %self, i32 %d) alwaysinline {
 entry:
-  %t3 = getelementptr inbounds %"struct.example.com/methods.Counter", ptr %c, i32 0, i32 0
+  %t3 = getelementptr inbounds %"struct.example.com/methods.Counter", ptr %self, i32 0, i32 0
   %t4 = load i32, ptr %t3
   %t5 = call {i32, i1} @llvm.sadd.with.overflow.i32(i32 %t4, i32 %d)
   %t6 = extractvalue {i32, i1} %t5, 0
@@ -44,7 +47,7 @@ entry:
   ret i32 %r
 }
 @.str.0 = private unnamed_addr constant [17 x i8] c"integer overflow\00", align 1
-@.str.1 = private unnamed_addr constant [15 x i8] c"main.will:10:5\00", align 1
+@.str.1 = private unnamed_addr constant [14 x i8] c"main.will:9:9\00", align 1
 @.str.2 = private unnamed_addr constant [32 x i8] c"example.com/methods.Counter.add\00", align 1
 declare void @willrt_panic(ptr, ptr, ptr)
 declare void @willrt_panic_n(ptr, i64, ptr, ptr)

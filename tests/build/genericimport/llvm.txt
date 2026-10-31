@@ -1,5 +1,8 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
+%willrt_gc_stack_slot = type { i32, i32, ptr }
+%willrt_gc_stack_map_data = type { ptr, ptr, i64 }
+%willrt_gc_frame = type { ptr, ptr, ptr }
 %"struct.example.com/genericimport/lib.Box$i32" = type { i32 }
 define i32 @"example.com/genericimport.will$main"() {
 entry:
@@ -20,15 +23,15 @@ panic.1:
 panic.ok.1:
   ret i32 %t4
 }
-define hidden void @"example.com/genericimport/lib.Box<i32>.set"(ptr %b, i32 %v) alwaysinline {
+define hidden void @"example.com/genericimport/lib.Box<i32>.set"(ptr %self, i32 %v) alwaysinline {
 entry:
-  %t1 = getelementptr inbounds %"struct.example.com/genericimport/lib.Box$i32", ptr %b, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.example.com/genericimport/lib.Box$i32", ptr %self, i32 0, i32 0
   store i32 %v, ptr %t1
   ret void
 }
-define hidden i32 @"example.com/genericimport/lib.Box<i32>.get"(ptr %b) inlinehint {
+define hidden i32 @"example.com/genericimport/lib.Box<i32>.get"(ptr %self) inlinehint {
 entry:
-  %t1 = getelementptr inbounds %"struct.example.com/genericimport/lib.Box$i32", ptr %b, i32 0, i32 0
+  %t1 = getelementptr inbounds %"struct.example.com/genericimport/lib.Box$i32", ptr %self, i32 0, i32 0
   %t2 = load i32, ptr %t1
   ret i32 %t2
 }

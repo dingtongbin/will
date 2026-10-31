@@ -1,5 +1,5 @@
 def sum() -> i32 {
-    var a: Array<i32> = new Array<i32>(0)
+    var a: list[i32] = list[i32](0)
     a.push(1)
     a.push(2)
     a.push(3)

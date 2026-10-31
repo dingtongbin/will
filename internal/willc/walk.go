@@ -68,8 +68,6 @@ func walkExprs(e ast.Expr, visit func(ast.Expr)) {
 		walkExprs(x.Recv, visit)
 		walkExprs(x.Lo, visit)
 		walkExprs(x.Hi, visit)
-	case *ast.BorrowExpr:
-		walkExprs(x.X, visit)
 	case *ast.AggregateExpr:
 		for _, f := range x.Fields {
 			walkExprs(f.Value, visit)
@@ -77,10 +75,6 @@ func walkExprs(e ast.Expr, visit func(ast.Expr)) {
 	case *ast.ArrayLitExpr:
 		for _, elem := range x.Elems {
 			walkExprs(elem, visit)
-		}
-	case *ast.NewExpr:
-		for _, a := range x.Args {
-			walkExprs(a.Expr, visit)
 		}
 	case *ast.UnaryExpr:
 		walkExprs(x.X, visit)

@@ -150,7 +150,6 @@ func load(root string, skipSums bool) *Build {
 	edges := importEdges(pkgs, table)
 	bag.AddAll(checkTwoPaths(pkgs, table))
 	bag.AddAll(checkImportCycles(pkgs, edges))
-	bag.AddAll(checkMethodPackages(pkgs))
 	b.Packages = orderPackages(pkgs, edges)
 	b.Diags = bag.Diagnostics()
 	return b
@@ -218,57 +217,6 @@ func validPackageName(name string) bool {
 		return false
 	}
 	return true
-}
-
-type methodDecl struct {
-	typ     string
-	name    string
-	pos     source.Pos
-	pkgPath string
-}
-
-// checkMethodPackages reports N0006 for a method declared outside the package
-// that declares its receiver type.
-func checkMethodPackages(pkgs []*Package) []diag.Diagnostic {
-	declared := map[string]map[string]bool{}
-	var methods []methodDecl
-	for _, p := range pkgs {
-		for _, f := range p.Files {
-			if f.AST == nil {
-				continue
-			}
-			for _, d := range f.AST.Decls {
-				switch decl := d.(type) {
-				case *ast.StructDecl:
-					markDeclared(declared, decl.Name, p.Path)
-				case *ast.EnumDecl:
-					markDeclared(declared, decl.Name, p.Path)
-				case *ast.InterfaceDecl:
-					markDeclared(declared, decl.Name, p.Path)
-				case *ast.FuncDecl:
-					if decl.Recv != nil {
-						methods = append(methods, methodDecl{
-							typ:     receiverName(decl.Recv.Type),
-							name:    decl.Name,
-							pos:     decl.NamePos,
-							pkgPath: p.Path,
-						})
-					}
-				}
-			}
-		}
-	}
-	var bag diag.Bag
-	for _, m := range methods {
-		owners := declared[m.typ]
-		if len(owners) == 0 || owners[m.pkgPath] {
-			continue
-		}
-		bag.Error(m.pos, diag.CodeMethodsTwoPackages,
-			"methods of "+m.typ+" are declared in two packages",
-			"a method can only be declared where its type is declared")
-	}
-	return bag.Diagnostics()
 }
 
 // markDeclared records that pkgPath declares the type name. Types of two
@@ -454,13 +402,11 @@ func (b *Build) CheckAll() []diag.Diagnostic {
 			}
 		}
 		ownership := check.NewOwnership(ownershipFiles)
-		effects := check.NewMutEffects(ownershipFiles)
 		for _, p := range b.Packages {
 			for _, f := range p.Files {
 				if f.AST != nil {
 					bag.AddAll(check.MovesWithOwnership(f.AST, ownership))
-					bag.AddAll(check.BorrowsWithEffects(f.AST, ownership, effects))
-					bag.AddAll(check.TopLevelWritesWithEffects(f.AST, effects))
+					bag.AddAll(check.TopLevelWrites(f.AST))
 					bag.AddAll(check.Leaks(f.AST))
 					bag.AddAll(check.CrossTask(f.AST, checkedByFile[f.AST]))
 					bag.AddAll(check.Concurrency(f.AST))

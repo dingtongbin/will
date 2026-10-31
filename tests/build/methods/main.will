@@ -1,14 +1,18 @@
 struct Counter {
     n: i32
+
+    def get(self) -> i32 {
+        return self.n
+    }
+
+    def add(self, d: i32) {
+        self.n += d
+    }
 }
 
-def (c: ref Counter) get() -> i32 {
-    return c.n
-}
 
-def (c: mut Counter) add(d: i32) {
-    c.n += d
-}
+
+
 
 def main() -> i32 {
     var c: Counter = Counter { n: 7 }

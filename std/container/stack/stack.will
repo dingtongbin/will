@@ -1,66 +1,37 @@
-# Stack is an explicit work stack. Push, Pop, Peek, and Len are constant time;
-# Reserve and Clone copy the live elements once.
-struct Stack<T> {
-    items: Array<T>
-}
+# Stack is a LIFO container backed by a growable list.
+class Stack<T> {
+    items: list[T]
 
-# init starts with no allocated storage. The first Push grows it to four
-# elements.
-def (s: mut Stack<T>) init() {
-    s.items = new Array<T>(0)
-}
-
-# Push adds one value at the top.
-def (s: mut Stack<T>) push(v: T) {
-    s.items.push(v)
-}
-
-# Pop removes and returns the top value, or None when the stack is empty.
-def (s: mut Stack<T>) pop() -> Option<T> {
-    return s.items.pop()
-}
-
-# Peek returns a copy of the top value without removing it.
-def (s: ref Stack<T>) peek() -> Option<T> {
-    var n: usize = s.items.len()
-    if n == 0 {
-        return None
+    def init(self, capacity: usize) {
+        self.items = list[T](capacity)
     }
-    return Some(s.items.get(n - 1))
-}
 
-# Len reports the number of stored values.
-def (s: ref Stack<T>) len() -> usize {
-    return s.items.len()
-}
-
-# Clear releases every value and keeps the allocated storage.
-def (s: mut Stack<T>) clear() {
-    s.items.clear()
-}
-
-# Reserve grows the backing storage to at least n elements. Existing values
-# keep their order.
-def (s: mut Stack<T>) reserve(n: usize) {
-    if n <= s.items.cap() {
-        return
+    def push(self, v: T) {
+        self.items.push(v)
     }
-    var grown: Array<T> = new Array<T>(n)
-    var i: usize = 0
-    while True {
-        if i >= s.items.len() {
-            break
+
+    def pop(self) -> Option<T> {
+        return self.items.pop()
+    }
+
+    def peek(self) -> Option<T> {
+        if self.items.len() == 0usize {
+            return None
         }
-        grown.push(s.items.get(i))
-        i += 1
+        return Some(self.items.get(self.items.len() - 1usize))
     }
-    s.items = grown
-}
 
-# Clone returns a stack with the same values. Elements that own references use
-# the same copy discipline as Array.Push.
-def (s: ref Stack<T>) clone() -> Stack<T> {
-    var out: Stack<T>
-    out.items = s.items.clone()
-    return out
+    def len(self) -> usize {
+        return self.items.len()
+    }
+
+    def clear(self) {
+        self.items.clear()
+    }
+
+    def clone(self) -> Stack<T> {
+        var out: Stack<T> = Stack<T>(0usize)
+        out.items = self.items.clone()
+        return out
+    }
 }

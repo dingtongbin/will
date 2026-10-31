@@ -87,6 +87,7 @@ type Resolver struct {
 	structs    map[string][]Field
 	enums      map[string][]Variant
 	interfaces map[string]bool
+	classes    map[string]bool
 	order      []string
 	computed   map[string]Named
 	busy       map[string]bool
@@ -103,6 +104,7 @@ func New(t Target) *Resolver {
 		structs:    make(map[string][]Field),
 		enums:      make(map[string][]Variant),
 		interfaces: make(map[string]bool),
+		classes:    make(map[string]bool),
 		computed:   make(map[string]Named),
 		busy:       make(map[string]bool),
 	}
@@ -114,6 +116,17 @@ func (r *Resolver) AddStruct(name string, fields []Field) error {
 		return fmt.Errorf("type %s is declared twice", name)
 	}
 	r.structs[name] = fields
+	r.order = append(r.order, name)
+	return nil
+}
+
+// AddClass registers one GC class. A class value is one reference word, so its
+// inline layout never depends on its payload and recursive fields are legal.
+func (r *Resolver) AddClass(name string) error {
+	if r.known(name) {
+		return fmt.Errorf("type %s is declared twice", name)
+	}
+	r.classes[name] = true
 	r.order = append(r.order, name)
 	return nil
 }
@@ -148,12 +161,22 @@ func (r *Resolver) Names() []string {
 func (r *Resolver) known(name string) bool {
 	_, isStruct := r.structs[name]
 	_, isEnum := r.enums[name]
-	return isStruct || isEnum || r.interfaces[name]
+	return isStruct || isEnum || r.interfaces[name] || r.classes[name]
 }
 
 // Layout returns the layout of one named type and the place of each of its
 // fields or variants.
 func (r *Resolver) Layout(name string) (Named, error) {
+	if !r.known(name) {
+		// A field may spell another package's type through its import alias
+		// (io.Reader); declarations are registered under their qualified name,
+		// so retry with the registered name that ends in the bare segment.
+		if i := lastDot(name); i >= 0 {
+			if q := r.findBare(name[i+1:]); q != "" {
+				name = q
+			}
+		}
+	}
 	if got, ok := r.computed[name]; ok {
 		return got, nil
 	}
@@ -169,6 +192,8 @@ func (r *Resolver) Layout(name string) (Named, error) {
 		got, err = r.structLayout(name, fields)
 	} else if variants, ok := r.enums[name]; ok {
 		got, err = r.enumLayout(name, variants)
+	} else if r.classes[name] {
+		got = Named{Name: name, Type: Type{Size: r.word, Align: r.word}}
 	} else if r.interfaces[name] {
 		got = Named{Name: name, Type: Type{Size: 2 * r.word, Align: r.word}}
 	} else if name == "Error" {
@@ -344,20 +369,7 @@ func (r *Resolver) scalar(name string) (Type, error) {
 // generic returns the layout of one predeclared generic type.
 func (r *Resolver) generic(s *Spec) (Type, error) {
 	switch s.Name {
-	case "Array", "Set":
-		if len(s.Args) != 1 {
-			return Type{}, fmt.Errorf("%s needs one type argument", s.Name)
-		}
-		return Type{Size: 3 * r.word, Align: r.word}, nil
-	case "Map":
-		if len(s.Args) != 2 {
-			return Type{}, fmt.Errorf("Map needs two type arguments")
-		}
-		return Type{Size: 3 * r.word, Align: r.word}, nil
-	case "rc", "arc", "weak_rc", "weak_arc":
-		if len(s.Args) != 1 {
-			return Type{}, fmt.Errorf("%s needs one type argument", s.Name)
-		}
+	case "list", "dict", "set":
 		return Type{Size: r.word, Align: r.word}, nil
 	case "chan", "Task":
 		if len(s.Args) != 1 {
@@ -411,4 +423,43 @@ func roundUp(n, align int) int {
 		n += align - rest
 	}
 	return n
+}
+
+func lastDot(s string) int {
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] == '.' {
+			return i
+		}
+	}
+	return -1
+}
+
+// findBare returns the registered name whose last segment is bare, or "" when
+// none or more than one matches.
+func (r *Resolver) findBare(bare string) string {
+	found := ""
+	check := func(name string) {
+		if len(name) <= len(bare) || name[len(name)-len(bare)-1] != '.' ||
+			name[len(name)-len(bare):] != bare {
+			return
+		}
+		if found != "" && found != name {
+			found = ""
+			return
+		}
+		found = name
+	}
+	for name := range r.structs {
+		check(name)
+	}
+	for name := range r.enums {
+		check(name)
+	}
+	for name := range r.interfaces {
+		check(name)
+	}
+	for name := range r.classes {
+		check(name)
+	}
+	return found
 }

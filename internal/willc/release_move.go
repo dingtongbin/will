@@ -38,10 +38,6 @@ func (em *emitter) markMoves(st ast.Stmt) {
 		for _, inner := range s.Body.Stmts {
 			em.markMoves(inner)
 		}
-	case *ast.ParallelStmt:
-		for _, inner := range s.Body.Stmts {
-			em.markMoves(inner)
-		}
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {
 			em.scanUnzeroed(arm.Chan)
@@ -106,17 +102,11 @@ func (em *emitter) scanUnzeroed(x ast.Expr) {
 		em.scanUnzeroed(v.Recv)
 		em.scanUnzeroed(v.Lo)
 		em.scanUnzeroed(v.Hi)
-	case *ast.BorrowExpr:
-		em.scanUnzeroed(v.X)
 	case *ast.UnaryExpr:
 		em.scanUnzeroed(v.X)
 	case *ast.BinaryExpr:
 		em.scanUnzeroed(v.L)
 		em.scanUnzeroed(v.R)
-	case *ast.NewExpr:
-		for _, a := range v.Args {
-			em.scanUnzeroed(a.Expr)
-		}
 	case *ast.AggregateExpr:
 		for _, f := range v.Fields {
 			em.scanUnzeroed(f.Value)
@@ -200,12 +190,6 @@ func (em *emitter) ownerForName(name string) *ast.VarDecl {
 
 func (em *emitter) moveType(t *ast.Type) bool {
 	if t == nil || !ast.NeedsRelease(t) {
-		return false
-	}
-	if rcType(t) {
-		return false
-	}
-	if t.Kind == ast.NamedType && (t.Name == "weak_rc" || t.Name == "weak_arc") {
 		return false
 	}
 	return true

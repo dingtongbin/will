@@ -14,7 +14,7 @@ func TestAsyncCallerWaitsOnAChildTask(t *testing.T) {
 		"    fast willrt_fs_async_read_file\n" +
 		"}\n" +
 		"def inner(path: str) -> Result<i32, i32> {\n" +
-		"    var out: Array<u8>\n" +
+		"    var out: list[u8]\n" +
 		"    var status: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
 		"    if status != 0 { return Err(1) }\n" +
 		"    return Ok(1)\n" +
@@ -50,8 +50,8 @@ func TestAsyncFrameDropReleasesOwnedLocals(t *testing.T) {
 		"}\n" +
 		"async def read(path: str) -> i32 {\n" +
 		"    var text: str = \"hello\"\n" +
-		"    var items: Array<i32> = new Array<i32>(2)\n" +
-		"    var out: Array<u8>\n" +
+		"    var items: list[i32] = list[i32](2)\n" +
+		"    var out: list[u8]\n" +
 		"    var status: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
 		"    if status != 0 { return 1 }\n" +
 		"    return i32(text.len()) + i32(items.len())\n" +
@@ -63,10 +63,9 @@ func TestAsyncFrameDropReleasesOwnedLocals(t *testing.T) {
 	}
 	text := normalizeIR(string(ir))
 	for _, want := range []string{
-		`call ptr @willrt_task_new_drop(ptr @"example.com/app.read.sm"`,
+		`call ptr @willrt_task_new_drop_gc(ptr @"example.com/app.read.sm"`,
 		`define void @"example.com/app.read.drop"(ptr %frame) {`,
 		`call void @willrt_free_str(ptr`,
-		`call void @willrt_free(ptr`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("IR lacks %q:\n%s", want, text)
@@ -81,7 +80,7 @@ func TestAsyncFrameDropSkipsExplicitLeak(t *testing.T) {
 		"    fast willrt_task_sleep_async\n" +
 		"}\n" +
 		"async def read(ns: i64) -> i32 {\n" +
-		"    var items: Array<i32> = new Array<i32>(2)\n" +
+		"    var items: list[i32] = list[i32](2)\n" +
 		"    leak(items)\n" +
 		"    var status: i32 = c.willrt_task_sleep_async(ns)\n" +
 		"    return status\n" +
@@ -156,7 +155,7 @@ func TestTwoDirectAsyncCallsGetTwoWaitStates(t *testing.T) {
 		"    fast willrt_fs_async_read_file\n" +
 		"}\n" +
 		"def two(path: str) -> i32 {\n" +
-		"    var out: Array<u8>\n" +
+		"    var out: list[u8]\n" +
 		"    var first: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
 		"    var second: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
 		"    return first + second\n" +
@@ -184,7 +183,7 @@ func TestAsyncFileCallBecomesStateMachine(t *testing.T) {
 		"    fast willrt_fs_async_read_file\n" +
 		"}\n" +
 		"def load(path: str) -> i32 {\n" +
-		"    var out: Array<u8>\n" +
+		"    var out: list[u8]\n" +
 		"    var status: i32 = c.willrt_fs_async_read_file(raw(path), raw(out))\n" +
 		"    return status\n" +
 		"}\n"

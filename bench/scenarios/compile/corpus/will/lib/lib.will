@@ -3,7 +3,7 @@
 # has to be ordinary code of a few hundred lines.
 
 # Count counts the values that are not negative.
-def count(values: Array<i64>) -> i64 {
+def count(values: list[i64]) -> i64 {
     var total: i64 = 0i64
     for v in values {
         if v >= 0i64 {
@@ -14,7 +14,7 @@ def count(values: Array<i64>) -> i64 {
 }
 
 # Sum adds the values.
-def sum(values: Array<i64>) -> i64 {
+def sum(values: list[i64]) -> i64 {
     var total: i64 = 0i64
     for v in values {
         total += v
@@ -23,7 +23,7 @@ def sum(values: Array<i64>) -> i64 {
 }
 
 # Max returns the largest value, or zero for an empty slice.
-def max(values: Array<i64>) -> i64 {
+def max(values: list[i64]) -> i64 {
     var best: i64 = 0i64
     var first: bool = True
     for v in values {
@@ -36,7 +36,7 @@ def max(values: Array<i64>) -> i64 {
 }
 
 # Min returns the smallest value, or zero for an empty slice.
-def min(values: Array<i64>) -> i64 {
+def min(values: list[i64]) -> i64 {
     var best: i64 = 0i64
     var first: bool = True
     for v in values {
@@ -49,7 +49,7 @@ def min(values: Array<i64>) -> i64 {
 }
 
 # Mean returns the mean of the values, or zero for an empty slice.
-def mean(values: Array<i64>) -> i64 {
+def mean(values: list[i64]) -> i64 {
     if values.len() == 0usize {
         return 0i64
     }
@@ -57,8 +57,8 @@ def mean(values: Array<i64>) -> i64 {
 }
 
 # Histogram counts how many values fall into each bucket of the given width.
-def histogram(values: Array<i64>, width: i64) -> Array<i64> {
-    var buckets: Array<i64> = new Array<i64>(0)
+def histogram(values: list[i64], width: i64) -> list[i64] {
+    var buckets: list[i64] = list[i64](0)
     if width <= 0i64 {
         return buckets
     }
@@ -84,8 +84,8 @@ def histogram(values: Array<i64>, width: i64) -> Array<i64> {
 }
 
 # Rolling returns the mean of every window of the given size.
-def rolling(values: Array<i64>, size: i32) -> Array<i64> {
-    var out: Array<i64> = new Array<i64>(0)
+def rolling(values: list[i64], size: i32) -> list[i64] {
+    var out: list[i64] = list[i64](0)
     if size <= 0 {
         return out
     }

@@ -5,7 +5,7 @@
 # package that imports io makes the current method lookup resolve to the io
 # type.
 interface byteReader {
-    def read(buf: mut Array<u8>) -> Result<usize, Error>
+    def read(buf: list[u8]) -> Result<usize, Error>
 }
 
 interface byteWriter {

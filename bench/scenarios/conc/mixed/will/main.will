@@ -41,7 +41,7 @@ def cpu(slot: i32) -> i32 {
 # inside one region.
 async def cpu_batch(base: i32) -> i32 {
     region {
-        var tasks: Array<Task<i32>> = new Array<Task<i32>>(cpuCount)
+        var tasks: list[Task<i32>] = list[Task<i32>](cpuCount)
         for i in Range(0, cpuCount) {
             var slot: i32 = base + i
             c.bench_latency_start(slot)
@@ -62,7 +62,7 @@ async def io_worker(path: str, base: i32) -> i32 {
     for i in Range(0, ioPerWorker) {
         var slot: i32 = base + i
         c.bench_latency_start(slot)
-        var bytes: Array<u8> = await fs.read_file(path)!
+        var bytes: list[u8] = await fs.read_file(path)!
         for b in bytes {
             sum += i32(b)
         }
@@ -73,7 +73,7 @@ async def io_worker(path: str, base: i32) -> i32 {
 
 # Fill writes the read buffer once, outside the measured region.
 def fill(path: str) -> bool {
-    var data: Array<u8> = new Array<u8>(usize(fileSize))
+    var data: list[u8] = list[u8](usize(fileSize))
     for i in Range(0, fileSize) {
         data.push(u8(i % 251))
     }
@@ -93,17 +93,17 @@ async def main() -> i32 {
     if not fill(path) {
         return 1
     }
-    var io: Array<u64> = new Array<u64>(0)
-    var cpu: Array<u64> = new Array<u64>(0)
-    var all: Array<u64> = new Array<u64>(0)
-    var rounds: Array<u64> = new Array<u64>(0)
+    var io: list[u64] = list[u64](0)
+    var cpu: list[u64] = list[u64](0)
+    var all: list[u64] = list[u64](0)
+    var rounds: list[u64] = list[u64](0)
     var checksum: i64 = 0i64
     for r in Range(0, repetitions) {
         _ = r
         var roundStart: u64 = c.bench_now_ns()
         region {
             var cpuTask: Task<i32> = spawn cpu_batch(ioCount)
-            var ioTasks: Array<Task<i32>> = new Array<Task<i32>>(ioWorkers)
+            var ioTasks: list[Task<i32>] = list[Task<i32>](ioWorkers)
             for i in Range(0, ioWorkers) {
                 var base: i32 = i * ioPerWorker
                 ioTasks.push(spawn io_worker(path, base))

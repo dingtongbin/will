@@ -56,7 +56,6 @@ func TestBlockingPoolContract(t *testing.T) {
 		filepath.Join(dir, "src", "blocking.c"),
 		filepath.Join(dir, "src", "blocking_test.c"),
 		filepath.Join(dir, "..", "mem", "src", "alloc.c"),
-		filepath.Join(dir, "..", "rc", "src", "rc.c"),
 		filepath.Join(root, "platform", platform))
 	build := exec.Command(gcc, args...)
 	build.Dir = dir

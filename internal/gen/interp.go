@@ -82,8 +82,9 @@ func (g *generator) interpValue(r willc.Record) (string, string, error) {
 	fmt.Fprintf(g.out, "  br i1 %s, label %%%s, label %%%s\n", empty, zero, alloc)
 	g.out.WriteString(alloc + ":\n")
 	buffer := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", buffer, total)
-	g.needAllocDecl = true
+	if err := g.gcAllocText(buffer, total); err != nil {
+		return "", "", err
+	}
 	fmt.Fprintf(g.out, "  br label %%%s\n", ready)
 	g.out.WriteString(zero + ":\n")
 	fmt.Fprintf(g.out, "  br label %%%s\n", ready)

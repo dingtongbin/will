@@ -43,7 +43,9 @@ func guardFactory(recv, name string) bool {
 		return false
 	}
 	switch name {
-	case "lock", "try_lock", "r_lock", "try_rlock", "w_lock", "try_wlock":
+	case "lock", "try_lock", "lock_blocking",
+		"r_lock", "try_rlock", "try_r_lock", "r_lock_blocking",
+		"w_lock", "try_wlock", "try_w_lock", "w_lock_blocking":
 		return true
 	}
 	return false

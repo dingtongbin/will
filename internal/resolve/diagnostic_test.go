@@ -147,7 +147,7 @@ func TestUnusedLocal(t *testing.T) {
 
 func TestUnusedLoopBinding(t *testing.T) {
 	src := `def f() {
-    var xs: Array<i32> = new Array<i32>(0)
+    var xs: list[i32] = list[i32](0)
     for i, x in xs {
         _ = x
     }

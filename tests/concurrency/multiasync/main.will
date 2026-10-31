@@ -20,7 +20,7 @@ async def main() -> i32 {
         _ = await fs.remove(path)
         return 1
     }
-    var loaded: Result<Array<u8>, Error> = await fs.read_file(path)
+    var loaded: Result<list[u8], Error> = await fs.read_file(path)
     _ = await fs.remove(path)
     match loaded {
         Ok(bytes) => {

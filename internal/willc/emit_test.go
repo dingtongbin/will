@@ -119,37 +119,6 @@ def use() -> i32 {
 	}
 }
 
-func TestEmitRefAndFromRoundTrip(t *testing.T) {
-	src := `struct User {
-    score: i32
-}
-
-def better(a: ref User, b: ref User) -> ref User from a, b {
-    if a.score >= b.score {
-        return a
-    }
-    return b
-}
-`
-	data := emitCheckedSourceIn(t, "ref.will", src, "example.com/app", nil)
-	for _, want := range []string{
-		`type="ref User"`,
-		`kind=ref`,
-		`from=#`,
-	} {
-		if !strings.Contains(string(data), want) {
-			t.Fatalf("willc lacks %q:\n%s", want, data)
-		}
-	}
-	doc, err := Read(data)
-	if err != nil {
-		t.Fatalf("read emitted: %v\n%s", err, data)
-	}
-	if again := Write(doc); !bytes.Equal(again, data) {
-		t.Fatalf("round trip differs:\n--- want\n%s\n--- got\n%s", data, again)
-	}
-}
-
 func TestEmitRoundTrip(t *testing.T) {
 	src := `def f(n: i32) -> i32 {
     var x: i32 = n + 1
@@ -182,9 +151,7 @@ func TestEmitMethodTypeArgs(t *testing.T) {
 	// A generic method call carries its type arguments on mcall, the same way
 	// a call does. The corpus cannot show this yet because instantiation of
 	// generic methods is not modelled by the checker.
-	src := "struct Box {\n    v: i64\n}\n\n" +
-		"def (b: ref Box) get<T>(x: T) -> T {\n    return x\n}\n\n" +
-		"def use(b: Box) -> i64 {\n    return b.get<i64>(1)\n}\n"
+	src := "struct Box {\n    v: i64\n\n    def get<T>(self, x: T) -> T {\n        return x\n    }\n}\n\n\ndef use(b: Box) -> i64 {\n    return b.get<i64>(1)\n}\n"
 	data := emitSource(t, "test.will", src, "example.com/app")
 	if _, err := Read(data); err != nil {
 		t.Fatalf("read emitted: %v\n%s", err, data)
@@ -210,32 +177,6 @@ func TestEmitVariantPatternsWithoutPayload(t *testing.T) {
 	}
 	if strings.Contains(text, `text="Dot" kind=bind`) {
 		t.Fatalf("a variant name was written as a binding:\n%s", text)
-	}
-}
-
-func TestEmitRcReleaseAtLastUse(t *testing.T) {
-	src := "def f() {\n" +
-		"    var r: rc<i32> = new rc<i32>(1)\n" +
-		"    var s: rc<i32> = r\n" +
-		"    _ = s\n" +
-		"    var n: i32 = 1\n" +
-		"    _ = n\n" +
-		"}\n"
-	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
-	var positions []string
-	for _, r := range doc.Records {
-		if r.Kind == "release" {
-			positions = append(positions, testFieldText(r, "pos"))
-		}
-	}
-	want := []string{"test.will:3:22", "test.will:4:9"}
-	if len(positions) != len(want) {
-		t.Fatalf("release positions = %v, want %v", positions, want)
-	}
-	for i := range want {
-		if positions[i] != want[i] {
-			t.Fatalf("release position %d = %q, want %q", i, positions[i], want[i])
-		}
 	}
 }
 
@@ -273,47 +214,6 @@ func TestEmitFixedArrayLiteral(t *testing.T) {
 	}
 }
 
-func TestEmitArrayReleaseAtLastSafeUse(t *testing.T) {
-	src := "def f() {\n" +
-		"    var xs: Array<i32> = new Array<i32>(0)\n" +
-		"    var n: usize = xs.len()\n" +
-		"    _ = n\n" +
-		"    var later: i32 = 1\n" +
-		"    _ = later\n" +
-		"}\n"
-	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
-	var positions []string
-	for _, r := range doc.Records {
-		if r.Kind == "release" {
-			positions = append(positions, testFieldText(r, "pos"))
-		}
-	}
-	want := []string{"test.will:3:5"}
-	if len(positions) != len(want) || positions[0] != want[0] {
-		t.Fatalf("release positions = %v, want %v", positions, want)
-	}
-}
-
-func TestEmitViewPinsArrayUntilLastViewUse(t *testing.T) {
-	src := "def f() {\n" +
-		"    var xs: Array<i32> = new Array<i32>(0)\n" +
-		"    var v: []i32 = xs[Range(0, xs.len())]\n" +
-		"    _ = v\n" +
-		"    xs.push(1)\n" +
-		"}\n"
-	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
-	var positions []string
-	for _, r := range doc.Records {
-		if r.Kind == "release" {
-			positions = append(positions, testFieldText(r, "pos"))
-		}
-	}
-	want := []string{"test.will:5:5"}
-	if len(positions) != len(want) || positions[0] != want[0] {
-		t.Fatalf("release positions = %v, want after the last owner use %v", positions, want)
-	}
-}
-
 func TestEmitStructReleaseAfterScalarFieldRead(t *testing.T) {
 	src := "struct Holder {\n" +
 		"    n: i32\n" +
@@ -340,10 +240,10 @@ func TestEmitStructReleaseAfterScalarFieldRead(t *testing.T) {
 
 func TestEmitStructOwningFieldPinsToBlockEnd(t *testing.T) {
 	src := "struct Holder {\n" +
-		"    items: Array<i32>\n" +
+		"    items: list[i32]\n" +
 		"}\n" +
 		"def f() {\n" +
-		"    var h: Holder = Holder { items: new Array<i32>(0) }\n" +
+		"    var h: Holder = Holder { items: list[i32](0) }\n" +
 		"    var n: i32 = 1\n" +
 		"    _ = h.items.len()\n" +
 		"    _ = n\n" +
@@ -361,148 +261,9 @@ func TestEmitStructOwningFieldPinsToBlockEnd(t *testing.T) {
 	}
 }
 
-func TestEmitArrayReleaseAfterNestedIfUse(t *testing.T) {
-	src := "def f() {\n" +
-		"    var xs: Array<i32> = new Array<i32>(4)\n" +
-		"    if True {\n" +
-		"        xs.push(1)\n" +
-		"    }\n" +
-		"    var later: i32 = 2\n" +
-		"    _ = later\n" +
-		"}\n"
-	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
-	var positions []string
-	for _, r := range doc.Records {
-		if r.Kind == "release" {
-			positions = append(positions, testFieldText(r, "pos"))
-		}
-	}
-	want := []string{"test.will:3:5"}
-	if len(positions) != len(want) || positions[0] != want[0] {
-		t.Fatalf("release positions = %v, want %v", positions, want)
-	}
-}
-
-func TestEmitArrayReleaseAfterLoopUse(t *testing.T) {
-	src := "def f() {\n" +
-		"    var xs: Array<i32> = new Array<i32>(4)\n" +
-		"    for i in Range(0, 3) {\n" +
-		"        xs.push(i)\n" +
-		"    }\n" +
-		"    var later: i32 = 2\n" +
-		"    _ = later\n" +
-		"}\n"
-	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
-	var positions []string
-	for _, r := range doc.Records {
-		if r.Kind == "release" {
-			positions = append(positions, testFieldText(r, "pos"))
-		}
-	}
-	want := []string{"test.will:3:5"}
-	if len(positions) != len(want) || positions[0] != want[0] {
-		t.Fatalf("release positions = %v, want %v", positions, want)
-	}
-}
-
-func TestEmitArrayReleaseAfterViewLastUse(t *testing.T) {
-	src := "def f() {\n" +
-		"    var xs: Array<i32> = new Array<i32>(0)\n" +
-		"    var v: []i32 = xs[Range(0, xs.len())]\n" +
-		"    _ = v\n" +
-		"    var later: i32 = 1\n" +
-		"    _ = later\n" +
-		"}\n"
-	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
-	var positions []string
-	for _, r := range doc.Records {
-		if r.Kind == "release" {
-			positions = append(positions, testFieldText(r, "pos"))
-		}
-	}
-	want := []string{"test.will:4:5"}
-	if len(positions) != len(want) || positions[0] != want[0] {
-		t.Fatalf("release positions = %v, want %v", positions, want)
-	}
-}
-
-func TestEmitArrayReleaseAfterViewReturningCall(t *testing.T) {
-	src := "def slice(xs: Array<i32>) -> []i32 {\n" +
-		"    return xs[Range(0, xs.len())]\n" +
-		"}\n" +
-		"def f() {\n" +
-		"    var xs: Array<i32> = new Array<i32>(4)\n" +
-		"    var v: []i32 = slice(xs)\n" +
-		"    _ = v\n" +
-		"    var later: i32 = 1\n" +
-		"    _ = later\n" +
-		"}\n"
-	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
-	var positions []string
-	for _, r := range doc.Records {
-		if r.Kind == "release" {
-			positions = append(positions, testFieldText(r, "pos"))
-		}
-	}
-	want := []string{"test.will:7:5"}
-	if len(positions) != len(want) || positions[0] != want[0] {
-		t.Fatalf("release positions = %#v, want %#v", positions, want)
-	}
-}
-
-func TestEmitArrayReleaseAfterScalarLocalCall(t *testing.T) {
-	src := "def touch(xs: Array<i32>) -> i32 {\n" +
-		"    return i32(xs.len())\n" +
-		"}\n" +
-		"def f() {\n" +
-		"    var xs: Array<i32> = new Array<i32>(0)\n" +
-		"    var n: i32 = touch(xs)\n" +
-		"    var later: i32 = 1\n" +
-		"    _ = later\n" +
-		"    _ = n\n" +
-		"}\n"
-	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
-	var positions []string
-	for _, r := range doc.Records {
-		if r.Kind == "release" {
-			positions = append(positions, testFieldText(r, "pos"))
-		}
-	}
-	want := []string{"test.will:6:5"}
-	if len(positions) != len(want) || positions[0] != want[0] {
-		t.Fatalf("release positions = %v, want %v", positions, want)
-	}
-}
-
-func TestEmitOwnerReleasedAfterClosureCapture(t *testing.T) {
-	src := "def f() {\n" +
-		"    var xs: Array<i32> = new Array<i32>(4)\n" +
-		"    var fn: func() -> i32 = func() -> i32 { return i32(xs.len()) }\n" +
-		"    var later: i32 = 1\n" +
-		"    _ = later\n" +
-		"    _ = fn\n" +
-		"}\n"
-	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
-	var positions []string
-	for _, r := range doc.Records {
-		if r.Kind == "release" {
-			positions = append(positions, testFieldText(r, "pos"))
-		}
-	}
-	want := []string{"test.will:3:5", "test.will:1:9"}
-	if len(positions) != len(want) {
-		t.Fatalf("release positions len=%d = %#v, want %d", len(positions), positions, len(want))
-	}
-	for i := range want {
-		if positions[i] != want[i] {
-			t.Fatalf("release positions = %#v, want %#v", positions, want)
-		}
-	}
-}
-
 func TestEmitClosureViewCapturePinsOwner(t *testing.T) {
 	src := "def f() {\n" +
-		"    var xs: Array<i32> = new Array<i32>(4)\n" +
+		"    var xs: list[i32] = list[i32](4)\n" +
 		"    var v: []i32 = xs[Range(0, xs.len())]\n" +
 		"    var fn: func() -> i32 = func() -> i32 { return i32(v.len()) }\n" +
 		"    var later: i32 = 1\n" +
@@ -529,8 +290,8 @@ func TestEmitClosureViewCapturePinsOwner(t *testing.T) {
 
 func TestEmitMovedArrayKeepsReleaseForMovedSource(t *testing.T) {
 	src := "def f() {\n" +
-		"    var first: Array<i32> = new Array<i32>(0)\n" +
-		"    var second: Array<i32> = first\n" +
+		"    var first: list[i32] = list[i32](0)\n" +
+		"    var second: list[i32] = first\n" +
 		"    _ = second\n" +
 		"}\n"
 	doc := mustRead(t, emitSource(t, "test.will", src, "example.com/app"))
@@ -687,5 +448,21 @@ func TestEmitEmptyFile(t *testing.T) {
 	}
 	if _, err := Read(data); err != nil {
 		t.Fatalf("read emitted empty file: %v\n%s", err, data)
+	}
+}
+
+func TestEmitGenericClassNewCarriesInstance(t *testing.T) {
+	src := "class Box<T> {\n    value: T\n}\n\n" +
+		"def main() -> i32 {\n    var b: Box<i32> = Box<i32>(value=7)\n    return b.value\n}\n"
+	data := emitSource(t, "test.will", src, "example.com/app")
+	text := string(data)
+	if !strings.Contains(text, `type="Box<i32>"`) {
+		t.Fatalf("generic constructor does not carry its instance type:\n%s", text)
+	}
+	if !strings.Contains(text, `text="Box<i32>" kind=class`) {
+		t.Fatalf("generic variable type is not the instance text:\n%s", text)
+	}
+	if _, err := Read(data); err != nil {
+		t.Fatalf("read emitted: %v\n%s", err, data)
 	}
 }

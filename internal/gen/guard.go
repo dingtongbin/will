@@ -12,7 +12,8 @@ import (
 // not treated as the built-in guard.
 func (g *generator) guardElemText(text string) (string, bool) {
 	text = g.canonicalTypeText(text)
-	for _, prefix := range []string{"std/sync.Guard<", "std/sync.ReadGuard<"} {
+	for _, prefix := range []string{"std/sync.Guard<", "std/sync.ReadGuard<",
+		"sync.Guard<", "sync.ReadGuard<", "Guard<", "ReadGuard<"} {
 		if strings.HasPrefix(text, prefix) && strings.HasSuffix(text, ">") {
 			inner := strings.TrimSpace(text[len(prefix) : len(text)-1])
 			if inner != "" {
@@ -26,7 +27,9 @@ func (g *generator) guardElemText(text string) (string, bool) {
 // guardReadOnly reports whether the guard type is the read side.
 func (g *generator) guardReadOnly(text string) bool {
 	text = g.canonicalTypeText(text)
-	return strings.HasPrefix(text, "std/sync.ReadGuard<") &&
+	return (strings.HasPrefix(text, "std/sync.ReadGuard<") ||
+		strings.HasPrefix(text, "sync.ReadGuard<") ||
+		strings.HasPrefix(text, "ReadGuard<")) &&
 		strings.HasSuffix(text, ">")
 }
 
@@ -34,22 +37,24 @@ func (g *generator) guardReadOnly(text string) bool {
 // state field text is written in the defining package, so an unqualified name
 // is completed with std/sync before the instance lookup.
 func (g *generator) guardStateInfo(stateText string) (*structInfo, string, bool) {
-	elem, ok := rcElemText(strings.TrimSpace(stateText))
-	if !ok {
-		return nil, "", false
-	}
+	base, _ := borrowText(strings.TrimSpace(stateText))
+	elem := base
 	if !strings.Contains(elem, ".") {
 		elem = "std/sync." + elem
 	}
-	llvm, ok := g.fieldLLVMType(elem)
+	t, ok := g.classTypeOfText(elem)
 	if !ok {
 		return nil, "", false
 	}
-	info := g.structInfoByLLVM(llvm)
+	payload, err := g.ensureClassPayload(t)
+	if err != nil {
+		return nil, "", false
+	}
+	info := g.structInfoByLLVM(payload)
 	if info == nil || !info.ok {
 		return nil, "", false
 	}
-	return info, info.llvm, true
+	return info, payload, true
 }
 
 // guardValue lowers the value one guard points at. It checks the held bit
@@ -91,10 +96,7 @@ func (g *generator) guardValue(recvID int, recvText string, r willc.Record) (str
 	statePtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
 		statePtr, guardLLVM, base, stateIndex)
-	handle := g.load("i64", statePtr)
-	g.needRcDecl = true
-	object := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_rc_deref(i64 %s)\n", object, handle)
+	object := g.load("ptr", statePtr)
 	stateInfo, stateLLVM, ok := g.guardStateInfo(guardInfo.texts[stateIndex])
 	if !ok {
 		return "", "", "", g.errf(recvID, "cannot translate node #%d: the guard state is not lowered yet", recvID)
@@ -110,7 +112,8 @@ func (g *generator) guardValue(recvID int, recvText string, r willc.Record) (str
 }
 
 // guardFieldPlace forwards one field access to the guarded value. It reports
-// false when the receiver is not a guard.
+// false when the receiver is not a guard. The name "value" denotes the guarded
+// value itself; every other name is a field of that value.
 func (g *generator) guardFieldPlace(recvID int, field string, r willc.Record) (string, string, bool, error) {
 	recvText, err := g.willTypeText(recvID)
 	if err != nil {
@@ -122,6 +125,9 @@ func (g *generator) guardFieldPlace(recvID int, field string, r willc.Record) (s
 	valuePtr, elemLLVM, _, err := g.guardValue(recvID, recvText, r)
 	if err != nil {
 		return "", "", true, err
+	}
+	if field == "value" {
+		return valuePtr, elemLLVM, true, nil
 	}
 	info := g.structInfoByLLVM(elemLLVM)
 	if info == nil || !info.ok {
@@ -196,10 +202,7 @@ func (g *generator) guardUnlock(slot, text string) error {
 	statePtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
 		statePtr, guardLLVM, slot, stateIndex)
-	handle := g.load("i64", statePtr)
-	g.needRcDecl = true
-	object := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_rc_deref(i64 %s)\n", object, handle)
+	object := g.load("ptr", statePtr)
 	stateInfo, stateLLVM, ok := g.guardStateInfo(guardInfo.texts[stateIndex])
 	if !ok {
 		g.out.WriteString("  br label %" + done + "\n")

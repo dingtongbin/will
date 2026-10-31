@@ -72,8 +72,6 @@ func walkStmt(st ast.Stmt, mf *Func) {
 	case *ast.RegionStmt:
 		mf.Regions = append(mf.Regions, s)
 		walkBlock(s.Body, mf)
-	case *ast.ParallelStmt:
-		walkBlock(s.Body, mf)
 	case *ast.SelectStmt:
 		mf.Suspends = append(mf.Suspends, s.Span)
 		for _, arm := range s.Arms {
@@ -113,10 +111,6 @@ func walkExpr(e ast.Expr, mf *Func) {
 	}
 	switch x := e.(type) {
 	case *ast.CallExpr:
-		if name, ok := x.Callee.(*ast.NameExpr); ok && name.Name == "wait" {
-			mf.Waits = append(mf.Waits, x.Span)
-			mf.Suspends = append(mf.Suspends, x.Span)
-		}
 		if name, ok := x.Callee.(*ast.FieldExpr); ok && isQualifiedName(name, "time", "sleep") {
 			mf.Suspends = append(mf.Suspends, x.Span)
 		}
@@ -145,8 +139,6 @@ func walkExpr(e ast.Expr, mf *Func) {
 		for _, elem := range x.Elems {
 			walkExpr(elem, mf)
 		}
-	case *ast.NewExpr:
-		walkArgs(x.Args, mf)
 	case *ast.UnaryExpr:
 		walkExpr(x.X, mf)
 	case *ast.BinaryExpr:

@@ -19,7 +19,7 @@ const seed: u64 = 0x2545F4914F6CDD1D
 #
 # The array is created with the capacity of the fill, so the pushes never
 # grow it.
-def fill(values: mut Array<i64>) {
+def fill(values: list[i64]) {
     var state: u64 = seed
     for i in Range(0, count) {
         _ = i
@@ -29,8 +29,8 @@ def fill(values: mut Array<i64>) {
 }
 
 def main() -> i32 {
-    var samples: Array<u64> = new Array<u64>(0)
-    var values: Array<i64> = new Array<i64>(usize(count))
+    var samples: list[u64] = list[u64](0)
+    var values: list[i64] = list[i64](usize(count))
     fill(values)
     # The warm up pays for the first touch of the pages and of the caches.
     var warm: u64 = 0u64

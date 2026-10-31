@@ -1,3 +1,5 @@
+import strpkg "std/str"
+
 # Int formats a signed value in the given base. The digits are lowercase and
 # the magnitude is the value without its sign, so the i64 minimum formats too.
 # A width larger than the result fills the gap with pad bytes between the sign
@@ -51,7 +53,7 @@ def check_base(base: i32) {
 }
 
 # numberText renders an integer field with its sign and fill bytes.
-def number_text(f: ref Format) -> str {
+def number_text(f: Format) -> str {
     return signed_text(f.negative, digits_of(f.value, f.base), f.width, f.pad)
 }
 
@@ -76,7 +78,7 @@ def digits_of(v: u64, base: u32) -> str {
     if v == 0u64 {
         return "0"
     }
-    var reversed: Array<u8> = new Array<u8>(0)
+    var reversed: list[u8] = list[u8](0)
     var rest: u64 = v
     while True {
         if rest == 0u64 {
@@ -90,7 +92,7 @@ def digits_of(v: u64, base: u32) -> str {
         }
         rest = rest / u64(base)
     }
-    var out: Array<u8> = new Array<u8>(reversed.len())
+    var out: list[u8] = list[u8](reversed.len())
     var i: usize = reversed.len()
     while True {
         if i == 0usize {
@@ -99,5 +101,5 @@ def digits_of(v: u64, base: u32) -> str {
         i -= 1usize
         out.push(reversed.get(i))
     }
-    return str(out)
+    return strpkg.from_bytes(out.slice(0, out.len()))
 }

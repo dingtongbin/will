@@ -2,75 +2,75 @@
 #2 struct parent=#1 pos="nodes.will:1:1" text="Box"
 #3 field parent=#2 pos="nodes.will:2:5" text="v" type="i64"
 #4 type parent=#3 pos="nodes.will:2:8" text="i64" kind=scalar
-#5 func parent=#1 pos="nodes.will:5:1" text="value" type="i64"
-#6 receiver parent=#5 pos="nodes.will:5:5" text="b" type="ref Box"
-#7 type parent=#6 pos="nodes.will:5:9" text="ref Box" kind=ref to=#2
-#8 type parent=#5 pos="nodes.will:5:29" text="i64" kind=scalar
-#9 block parent=#5 pos="nodes.will:5:33"
-#10 return parent=#9 pos="nodes.will:6:5" value=#11
-#11 field parent=#10 pos="nodes.will:6:12" text="v" recv=#12
-#12 name parent=#11 pos="nodes.will:6:12" text="b" to=#6
-#13 enum parent=#1 pos="nodes.will:9:1" text="Shape"
-#14 variant parent=#13 pos="nodes.will:10:5" text="Dot"
-#15 variant parent=#13 pos="nodes.will:11:5" text="Line"
-#16 func parent=#1 pos="nodes.will:14:1" text="unit" type="Result<(),Error>"
-#17 type parent=#16 pos="nodes.will:14:15" text="Result<(),Error>" kind=result arg=#18 arg=#19
-#18 type parent=#17 pos="nodes.will:14:22" text="()" kind=unit
-#19 type parent=#17 pos="nodes.will:14:26" text="Error" kind=named
-#20 block parent=#16 pos="nodes.will:14:33"
-#21 return parent=#20 pos="nodes.will:15:5" value=#22
-#22 call parent=#21 pos="nodes.will:15:12" type="Result<(),Error>" to=#23 arg=#24
-#23 name parent=#22 pos="nodes.will:15:12" text="Ok"
-#24 lit parent=#22 pos="nodes.will:15:15" kind=unit text="()" type="()"
-#25 func parent=#1 pos="nodes.will:18:1" text="use" type="i64"
-#26 param parent=#25 pos="nodes.will:18:9" text="b" type="Box"
-#27 type parent=#26 pos="nodes.will:18:12" text="Box" kind=named to=#2
-#28 param parent=#25 pos="nodes.will:18:17" text="s" type="Shape"
-#29 type parent=#28 pos="nodes.will:18:20" text="Shape" kind=named to=#13
-#30 type parent=#25 pos="nodes.will:18:30" text="i64" kind=scalar
-#31 block parent=#25 pos="nodes.will:18:34"
-#32 var parent=#31 pos="nodes.will:19:5" text="here" type="usize"
-#33 type parent=#32 pos="nodes.will:19:15" text="usize" kind=scalar
-#34 lit parent=#32 pos="nodes.will:19:23" kind=int text="0usize" type="usize"
-#35 var parent=#31 pos="nodes.will:20:5" text="text" type="str"
-#36 type parent=#35 pos="nodes.will:20:15" text="str" kind=scalar
-#37 interp parent=#35 pos="nodes.will:20:21" part="v=" part=#38 part=" end"
-#38 field parent=#37 pos="nodes.will:20:26" text="v" recv=#39
-#39 name parent=#38 pos="nodes.will:20:26" text="b" to=#26
-#40 var parent=#31 pos="nodes.will:21:5" text="p" type="Box"
-#41 type parent=#40 pos="nodes.will:21:12" text="Box" kind=named to=#2
-#42 name parent=#40 pos="nodes.will:21:18" text="b" to=#26
-#43 var parent=#31 pos="nodes.will:22:5" text="n" type="i64"
-#44 type parent=#43 pos="nodes.will:22:12" text="i64" kind=scalar
-#45 mcall parent=#43 pos="nodes.will:22:18" text="value" recv=#46
-#46 name parent=#45 pos="nodes.will:22:18" text="p" to=#40
-#47 var parent=#31 pos="nodes.will:23:5" text="ch" type="chan<i64>"
-#48 type parent=#47 pos="nodes.will:23:13" text="chan<i64>" kind=chan arg=#49
-#49 type parent=#48 pos="nodes.will:23:18" text="i64" kind=scalar
-#50 channew parent=#47 pos="nodes.will:23:25" type="chan<i64>" cap=#51
-#51 lit parent=#50 pos="nodes.will:23:39" kind=int text="4" type="usize"
-#52 var parent=#31 pos="nodes.will:24:5" text="kind" type="i64"
-#53 type parent=#52 pos="nodes.will:24:15" text="i64" kind=scalar
-#54 match parent=#52 pos="nodes.will:24:21" subject=#55
-#55 name parent=#54 pos="nodes.will:24:27" text="s" to=#28
-#56 arm parent=#54 pos="nodes.will:25:9" pattern=#57 body=#60
-#57 pattern parent=#56 pos="nodes.will:25:9" text="Dot | Line" kind=or
-#58 pattern parent=#57 pos="nodes.will:25:9" text="Dot" kind=variant to=#14
-#59 pattern parent=#57 pos="nodes.will:25:15" text="Line" kind=variant to=#15
-#60 exprstmt parent=#56 pos="nodes.will:25:23" expr=#61
-#61 name parent=#60 pos="nodes.will:25:23" text="n" to=#43
-#62 exprstmt parent=#31 pos="nodes.will:27:5" expr=#63
-#63 discard parent=#62 pos="nodes.will:27:5" expr=#64
-#64 name parent=#63 pos="nodes.will:27:9" text="here" to=#32
-#65 exprstmt parent=#31 pos="nodes.will:28:5" expr=#66
-#66 discard parent=#65 pos="nodes.will:28:5" expr=#67
-#67 name parent=#66 pos="nodes.will:28:9" text="text" to=#35
-#68 release parent=#31 pos="nodes.will:28:9" owner=#35 kind="value"
-#69 exprstmt parent=#31 pos="nodes.will:29:5" expr=#70
-#70 discard parent=#69 pos="nodes.will:29:5" expr=#71
-#71 name parent=#70 pos="nodes.will:29:9" text="ch" to=#47
-#72 release parent=#31 pos="nodes.will:30:5" owner=#47 kind="value"
-#73 release parent=#31 pos="nodes.will:30:5" owner=#40 kind="value"
-#74 return parent=#31 pos="nodes.will:30:5" value=#75
-#75 name parent=#74 pos="nodes.will:30:12" text="kind" to=#52
+#5 func parent=#1 pos="nodes.will:4:5" text="value" type="i64"
+#6 receiver parent=#5 pos="nodes.will:4:15" text="self" type="Box"
+#7 type parent=#6 pos="nodes.will:4:15" text="Box" kind=named to=#2
+#8 type parent=#5 pos="nodes.will:4:24" text="i64" kind=scalar
+#9 block parent=#5 pos="nodes.will:4:28"
+#10 return parent=#9 pos="nodes.will:5:9" value=#11
+#11 field parent=#10 pos="nodes.will:5:16" text="v" recv=#12
+#12 name parent=#11 pos="nodes.will:5:16" text="self" to=#6
+#13 enum parent=#1 pos="nodes.will:11:1" text="Shape"
+#14 variant parent=#13 pos="nodes.will:12:5" text="Dot"
+#15 variant parent=#13 pos="nodes.will:13:5" text="Line"
+#16 func parent=#1 pos="nodes.will:16:1" text="unit" type="Result<(),Error>"
+#17 type parent=#16 pos="nodes.will:16:15" text="Result<(),Error>" kind=result arg=#18 arg=#19
+#18 type parent=#17 pos="nodes.will:16:22" text="()" kind=unit
+#19 type parent=#17 pos="nodes.will:16:26" text="Error" kind=named
+#20 block parent=#16 pos="nodes.will:16:33"
+#21 return parent=#20 pos="nodes.will:17:5" value=#22
+#22 call parent=#21 pos="nodes.will:17:12" type="Result<(),Error>" to=#23 arg=#24
+#23 name parent=#22 pos="nodes.will:17:12" text="Ok"
+#24 lit parent=#22 pos="nodes.will:17:15" kind=unit text="()" type="()"
+#25 func parent=#1 pos="nodes.will:20:1" text="use" type="i64"
+#26 param parent=#25 pos="nodes.will:20:9" text="b" type="Box"
+#27 type parent=#26 pos="nodes.will:20:12" text="Box" kind=named to=#2
+#28 param parent=#25 pos="nodes.will:20:17" text="s" type="Shape"
+#29 type parent=#28 pos="nodes.will:20:20" text="Shape" kind=named to=#13
+#30 type parent=#25 pos="nodes.will:20:30" text="i64" kind=scalar
+#31 block parent=#25 pos="nodes.will:20:34"
+#32 var parent=#31 pos="nodes.will:21:5" text="here" type="usize"
+#33 type parent=#32 pos="nodes.will:21:15" text="usize" kind=scalar
+#34 lit parent=#32 pos="nodes.will:21:23" kind=int text="0usize" type="usize"
+#35 var parent=#31 pos="nodes.will:22:5" text="text" type="str"
+#36 type parent=#35 pos="nodes.will:22:15" text="str" kind=scalar
+#37 interp parent=#35 pos="nodes.will:22:21" part="v=" part=#38 part=" end"
+#38 field parent=#37 pos="nodes.will:22:26" text="v" recv=#39
+#39 name parent=#38 pos="nodes.will:22:26" text="b" to=#26
+#40 var parent=#31 pos="nodes.will:23:5" text="p" type="Box"
+#41 type parent=#40 pos="nodes.will:23:12" text="Box" kind=named to=#2
+#42 name parent=#40 pos="nodes.will:23:18" text="b" to=#26
+#43 var parent=#31 pos="nodes.will:24:5" text="n" type="i64"
+#44 type parent=#43 pos="nodes.will:24:12" text="i64" kind=scalar
+#45 mcall parent=#43 pos="nodes.will:24:18" text="value" recv=#46
+#46 name parent=#45 pos="nodes.will:24:18" text="p" to=#40
+#47 var parent=#31 pos="nodes.will:25:5" text="ch" type="chan<i64>"
+#48 type parent=#47 pos="nodes.will:25:13" text="chan<i64>" kind=chan arg=#49
+#49 type parent=#48 pos="nodes.will:25:18" text="i64" kind=scalar
+#50 channew parent=#47 pos="nodes.will:25:25" type="chan<i64>" cap=#51
+#51 lit parent=#50 pos="nodes.will:25:35" kind=int text="4" type="usize"
+#52 var parent=#31 pos="nodes.will:26:5" text="kind" type="i64"
+#53 type parent=#52 pos="nodes.will:26:15" text="i64" kind=scalar
+#54 match parent=#52 pos="nodes.will:26:21" subject=#55
+#55 name parent=#54 pos="nodes.will:26:27" text="s" to=#28
+#56 arm parent=#54 pos="nodes.will:27:9" pattern=#57 body=#60
+#57 pattern parent=#56 pos="nodes.will:27:9" text="Dot | Line" kind=or
+#58 pattern parent=#57 pos="nodes.will:27:9" text="Dot" kind=variant to=#14
+#59 pattern parent=#57 pos="nodes.will:27:15" text="Line" kind=variant to=#15
+#60 exprstmt parent=#56 pos="nodes.will:27:23" expr=#61
+#61 name parent=#60 pos="nodes.will:27:23" text="n" to=#43
+#62 exprstmt parent=#31 pos="nodes.will:29:5" expr=#63
+#63 discard parent=#62 pos="nodes.will:29:5" expr=#64
+#64 name parent=#63 pos="nodes.will:29:9" text="here" to=#32
+#65 exprstmt parent=#31 pos="nodes.will:30:5" expr=#66
+#66 discard parent=#65 pos="nodes.will:30:5" expr=#67
+#67 name parent=#66 pos="nodes.will:30:9" text="text" to=#35
+#68 release parent=#31 pos="nodes.will:30:9" owner=#35 kind="value"
+#69 exprstmt parent=#31 pos="nodes.will:31:5" expr=#70
+#70 discard parent=#69 pos="nodes.will:31:5" expr=#71
+#71 name parent=#70 pos="nodes.will:31:9" text="ch" to=#47
+#72 release parent=#31 pos="nodes.will:32:5" owner=#47 kind="value"
+#73 release parent=#31 pos="nodes.will:32:5" owner=#40 kind="value"
+#74 return parent=#31 pos="nodes.will:32:5" value=#75
+#75 name parent=#74 pos="nodes.will:32:12" text="kind" to=#52
 #76 end

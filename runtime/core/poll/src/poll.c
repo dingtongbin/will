@@ -219,9 +219,9 @@ static void willrt_poll_lock_init(void) {
     }
 }
 
-/* The out array mirrors the will Array<usize> layout: buffer, length,
+/* The out list mirrors the will list[usize] payload: data, length,
    capacity. Delivery appends ready tags straight into the waiting task's
-   array. */
+   list. */
 typedef struct willrt_poll_wait_array {
     void* data;
     int64_t len;
@@ -438,7 +438,6 @@ void willrt_poll_init(void) {
         }
         willrt_poll_lock_init();
         atomic_store(&willrt_poll_stop, 0);
-        willrt_rc_set_threaded();
         willrt_mem_set_shared();
         if (willrt_os_thread_start(&willrt_poll_thread, willrt_poll_main, NULL)
             != 0) {

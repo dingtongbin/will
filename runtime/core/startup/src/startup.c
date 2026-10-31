@@ -22,13 +22,21 @@ extern void willrt_blocking_shutdown(void) __attribute__((weak));
 extern void willrt_timer_shutdown(void) __attribute__((weak));
 extern void willrt_mem_thread_flush(void) __attribute__((weak));
 extern void willrt_gc_shutdown(void) __attribute__((weak));
+extern void willrt_gc_lane_enter(int32_t lane) __attribute__((weak));
 #endif
 
 static atomic_int willrt_started;
 
 void willrt_init(void) {
     int expected = 0;
-    atomic_compare_exchange_strong(&willrt_started, &expected, 1);
+
+    if (atomic_compare_exchange_strong(&willrt_started, &expected, 1)) {
+        /* The entry thread owns GC lane 0 before any frame is registered. Task
+           workers use distinct lanes, so their frames never race this one. */
+        if (willrt_gc_lane_enter != NULL) {
+            willrt_gc_lane_enter(0);
+        }
+    }
 }
 
 void willrt_shutdown(void) {

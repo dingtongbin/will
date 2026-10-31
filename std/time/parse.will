@@ -11,14 +11,14 @@ const maxUnixSecond: i64 = 9223372036
 # knowing this type.
 struct timeError {
     message: str
-}
 
-def (e: ref timeError) message() -> str {
-    return e.message.clone()
-}
+    def message(self) -> str {
+        return self.message.clone()
+    }
 
-def (e: ref timeError) status() -> i32 {
-    return 2
+    def status(self) -> i32 {
+        return 2
+    }
 }
 
 def fail(message: str) -> timeError {
@@ -40,8 +40,8 @@ const charLowerZ: u32 = 122
 
 # charsOf copies the scalars of s. The parsers look at fixed positions, and a
 # byte offset inside a multi-byte scalar would not be a valid index into s.
-def chars_of(s: str) -> Array<u32> {
-    var out: Array<u32> = new Array<u32>(0)
+def chars_of(s: str) -> list[u32] {
+    var out: list[u32] = list[u32](0)
     for c in s {
         out.push(c)
     }
@@ -93,7 +93,7 @@ def second_in_range(sec: i64) -> bool {
 # text names as the zone of the result. Up to nine fractional digits are
 # kept; any further digits are accepted and dropped.
 def parse_rfc3339(s: str) -> Result<Instant, Error> {
-    var cs: Array<u32> = chars_of(s)
+    var cs: list[u32] = chars_of(s)
     var c: []u32 = cs[Range(0, cs.len())]
     var n: i32 = i32(c.len())
     if n < 20 {
@@ -197,7 +197,7 @@ def parse_rfc3339(s: str) -> Result<Instant, Error> {
 
 # ParseDate reads a calendar date as midnight in tz.
 def parse_date(s: str, tz: Timezone) -> Result<Instant, Error> {
-    var cs: Array<u32> = chars_of(s)
+    var cs: list[u32] = chars_of(s)
     var c: []u32 = cs[Range(0, cs.len())]
     var n: i32 = i32(c.len())
     if n != 10 {

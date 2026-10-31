@@ -10,7 +10,7 @@ async def mix(ch: chan<i32>, path: str) -> Result<(), Error> {
 async def main() -> i32 {
     var path: str = "will-concurrency-mixasync.tmp"
     _ = fs.remove(path)
-    var ch: chan<i32> = new chan<i32>(1)
+    var ch: chan<i32> = chan<i32>(1)
     var result: Result<(), Error> = Ok(())
     var value: i32 = 0
     region {

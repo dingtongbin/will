@@ -1,14 +1,16 @@
 struct P {
     x: i32 = 5
     y: i32
+
+    def init(self, y: i32) {
+        self.y = y
+    }
 }
 
-def (p: mut P) init(y: i32) {
-    p.y = y
-}
+
 
 def make() -> P {
-    return new P(7)
+    return P(7)
 }
 
 def main() -> i32 {

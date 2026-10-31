@@ -240,45 +240,6 @@ func TestHighestVersionWins(t *testing.T) {
 	}
 }
 
-// TestSameTypeNameInTwoPackages checks that methods are matched to the package
-// that declares their type, not to the first package with that type name. Two
-// packages may each declare its own T.
-func TestSameTypeNameInTwoPackages(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "app")
-	writeModule(t, root, "example.com/app", map[string]string{
-		"a.will":     "struct T {\n    v: i32\n}\n\ndef (t: ref T) value() -> i32 {\n    return t.v\n}\n",
-		"sub/b.will": "struct T {\n    v: i32\n}\n\ndef (t: ref T) value() -> i32 {\n    return t.v\n}\n",
-	})
-	b := Load(root)
-	for _, d := range b.Diags {
-		if d.Code == diag.CodeMethodsTwoPackages {
-			t.Fatalf("unexpected N0006 for two packages with their own T:\n%s", diag.FormatAll(b.Diags))
-		}
-	}
-}
-
-// TestSameTypeNameInTwoModules checks the same rule across a local replace:
-// the dependency and the root may both declare T without an N0006.
-func TestSameTypeNameInTwoModules(t *testing.T) {
-	parent := t.TempDir()
-	app := filepath.Join(parent, "app")
-	lib := filepath.Join(parent, "lib")
-	writeModule(t, lib, "example.com/lib", map[string]string{
-		"lib.will": "struct T {\n    v: i32\n}\n\ndef (t: ref T) value() -> i32 {\n    return t.v\n}\n",
-	})
-	writeModule(t, app, "example.com/app", map[string]string{
-		"main.will": "struct T {\n    v: i32\n}\n\ndef (t: ref T) value() -> i32 {\n    return t.v\n}\n",
-	})
-	requireReplace(t, app, "example.com/lib", "v1.0.0", "../lib")
-
-	b := Load(app)
-	for _, d := range b.Diags {
-		if d.Code == diag.CodeMethodsTwoPackages {
-			t.Fatalf("unexpected N0006 across modules:\n%s", diag.FormatAll(b.Diags))
-		}
-	}
-}
-
 // TestSamePackageTwoPaths checks B0009: two replace keys point at one
 // directory, so the same package is reachable under two import paths.
 func TestSamePackageTwoPaths(t *testing.T) {

@@ -65,7 +65,6 @@ var lineSpecs = map[string][]fieldSpec{
 		{name: "col", kind: intField},
 		{name: "type", kind: textField},
 		{name: "name", kind: textField},
-		{name: "recv", kind: textField},
 	},
 	"satisfies": {
 		{name: "type", kind: textField},
@@ -323,14 +322,9 @@ func (ix *Index) addRecord(no int, kind string, f []field) error {
 			Col:  f[2].num,
 			Type: f[3].text,
 			Name: f[4].text,
-			Recv: f[5].text,
 		}
 		if err := checkPos(no, "method", m.Line, m.Col); err != nil {
 			return err
-		}
-		if m.Recv != "value" && m.Recv != "ref" && m.Recv != "mut" {
-			return &Error{Line: no, Message: "method recv has the value " + strconv.Quote(m.Recv) +
-				"; it must be value, ref, or mut"}
 		}
 		ix.Methods = append(ix.Methods, m)
 	case "satisfies":

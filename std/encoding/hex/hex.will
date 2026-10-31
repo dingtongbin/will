@@ -2,15 +2,19 @@
 # status of Invalid, so a caller classifies it without knowing this type.
 struct decodeError {
     message: str
+
+    def message(self) -> str {
+        return self.message
+    }
+
+    def status(self) -> i32 {
+        return 2
+    }
 }
 
-def (e: ref decodeError) message() -> str {
-    return e.message
-}
 
-def (e: ref decodeError) status() -> i32 {
-    return 2
-}
+
+
 
 def fail(message: str) -> decodeError {
     return decodeError { message: message }
@@ -18,8 +22,8 @@ def fail(message: str) -> decodeError {
 
 # Decode reads pairs of hexadecimal digits, upper or lower case. An odd number
 # of digits is a rejected text, not a partial byte.
-def decode(s: str) -> Result<Array<u8>, Error> {
-    var out: Array<u8> = new Array<u8>(0)
+def decode(s: str) -> Result<list[u8], Error> {
+    var out: list[u8] = list[u8](0)
     var high: i32 = -1
     for c in s {
         var v: i32 = digit_value(c)

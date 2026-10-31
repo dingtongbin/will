@@ -1,5 +1,8 @@
 %willrt_error = type { ptr, i64, ptr, ptr }
 %willrt.task_error = type { %willrt_error, i32 }
+%willrt_gc_stack_slot = type { i32, i32, ptr }
+%willrt_gc_stack_map_data = type { ptr, ptr, i64 }
+%willrt_gc_frame = type { ptr, ptr, ptr }
 define i32 @"example.com/print.will$main"() {
 entry:
   %v.n = alloca i32
@@ -52,7 +55,7 @@ entry:
   %t30 = icmp eq i64 %t29, 0
   br i1 %t30, label %interp.zero.1, label %interp.alloc.1
 interp.alloc.1:
-  %t31 = call ptr @willrt_alloc(i64 %t29)
+  %t31 = call ptr @willrt_gc_alloc(i64 %t29, ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
   br label %interp.ready.1
 interp.zero.1:
   br label %interp.ready.1
@@ -107,14 +110,23 @@ entry:
 @.bytes.3 = private unnamed_addr constant [3 x i8] c"ok=", align 1
 @.bytes.4 = private unnamed_addr constant [3 x i8] c" x=", align 1
 @.bytes.5 = private unnamed_addr constant [3 x i8] c" u=", align 1
-declare ptr @willrt_alloc(i64)
-declare void @willrt_free(ptr)
 declare void @memcpy(ptr, ptr, i64)
 declare void @willrt_write_stdout(ptr, i64)
 declare void @willrt_print_i64(i64)
 declare void @willrt_print_u64(i64)
 declare void @willrt_print_f64(double)
 declare void @willrt_print_bool(i32)
+declare ptr @willrt_gc_alloc(i64, ptr)
+declare ptr @willrt_gc_read_barrier(ptr)
+declare ptr @willrt_gc_read_barrier_slot(ptr)
+declare void @willrt_gc_write_barrier(ptr, ptr)
+declare void @willrt_gc_write_barrier_untagged(ptr, ptr)
+declare void @willrt_gc_frame_enter(ptr, ptr, ptr)
+declare void @willrt_gc_frame_leave(ptr)
+declare void @willrt_gc_safepoint(i32)
+declare void @willrt_gc_root_register(ptr, ptr)
+declare ptr @willrt_gc_pin(ptr)
+declare void @willrt_gc_unpin(ptr)
 declare i64 @willrt_fmt_i64_len(i64)
 declare i64 @willrt_fmt_u64_len(i64)
 declare i64 @willrt_fmt_f64_len(double)
@@ -123,3 +135,13 @@ declare i64 @willrt_fmt_i64_into(ptr, i64, i64)
 declare i64 @willrt_fmt_u64_into(ptr, i64, i64)
 declare i64 @willrt_fmt_f64_into(ptr, i64, double)
 declare i64 @willrt_fmt_bool_into(ptr, i64, i32)
+@"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 1, i32 0, i32 8, i32 8, i32 0, ptr null, i32 0, ptr null, i32 1, ptr null }
+@"willrt.gc.type.value.u8" = private constant { i32, i32, i32, i32, i32, ptr, i32, ptr, i32, ptr } { i32 2, i32 1, i32 1, i32 0, i32 0, ptr null, i32 0, ptr null, i32 0, ptr null }
+declare i32 @willrt_gc_register_type(ptr)
+define internal void @willrt.gc.register_types() {
+entry:
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.container.sequence.d408ad74a2b25ef75513681d")
+  call i32 @willrt_gc_register_type(ptr @"willrt.gc.type.value.u8")
+  ret void
+}
+@llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @willrt.gc.register_types, ptr null }]

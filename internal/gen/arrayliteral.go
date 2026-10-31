@@ -72,10 +72,6 @@ func (g *generator) storeArrayLiteral(r willc.Record) error {
 		if err != nil {
 			return err
 		}
-		if isRcText(elem) && g.isCopySource(id) {
-			g.needRcDecl = true
-			fmt.Fprintf(g.out, "  call void @willrt_rc_retain(i64 %s)\n", value)
-		}
 		if isChanText(elem) && g.isCopySource(id) {
 			g.needTaskDecl = true
 			g.needChanDecl = true

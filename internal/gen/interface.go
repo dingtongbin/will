@@ -367,7 +367,10 @@ func (g *generator) vtable(iface *ifaceInfo, concrete string) (string, error) {
 		if method == "" {
 			return "", g.errf(iface.id, "cannot translate node #%d: %s has no method %s", iface.id, concrete, m.name)
 		}
-		if m.async {
+		// An imported interface may be read from a document whose method
+		// metadata was collected before the task-constructor table was built.
+		// The constructor is the authoritative ABI for an async method.
+		if m.async || g.sigs[method+".task"] != "" || g.taskCtors[method+".task"] {
 			method += ".task"
 		}
 		entries = append(entries, "ptr @"+llvmSymbol(method))
@@ -458,7 +461,7 @@ func (g *generator) interfaceAsyncTask(r willc.Record, iface *ifaceInfo) (string
 	}
 	dataField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", dataField, iface.llvm, base)
-	data := g.load("ptr", dataField)
+	data := g.ifaceData(dataField)
 	tableField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", tableField, iface.llvm, base)
 	table := g.load("ptr", tableField)
@@ -502,7 +505,7 @@ func (g *generator) interfaceCall(r willc.Record, iface *ifaceInfo) (string, str
 	}
 	dataField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 0\n", dataField, iface.llvm, base)
-	data := g.load("ptr", dataField)
+	data := g.ifaceData(dataField)
 	tableField := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 1\n", tableField, iface.llvm, base)
 	table := g.load("ptr", tableField)

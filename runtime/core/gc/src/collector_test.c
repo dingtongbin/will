@@ -11,22 +11,22 @@ static const uint32_t node_refs[] = {0};
 static const uint32_t weak_refs[] = {0};
 static const willrt_gc_type node_type = {
     1, sizeof(void*), sizeof(void*), WILLRT_GC_TYPE_REFERENCES, 1,
-    node_refs, 0, NULL
+    node_refs, 0, NULL, 0, NULL
 };
 static const willrt_gc_type weak_type = {
-    2, sizeof(void*), sizeof(void*), 0, 0, NULL, 1, weak_refs
+    2, sizeof(void*), sizeof(void*), 0, 0, NULL, 1, weak_refs, 0, NULL
 };
 static const willrt_gc_type large_type = {
-    3, 0, 8, WILLRT_GC_TYPE_LARGE, 0, NULL, 0, NULL
+    3, 0, 8, WILLRT_GC_TYPE_LARGE, 0, NULL, 0, NULL, 0, NULL
 };
 static const willrt_gc_type bulk_type = {
-    4, 1024, 8, 0, 0, NULL, 0, NULL
+    4, 1024, 8, 0, 0, NULL, 0, NULL, 0, NULL
 };
 static const willrt_gc_type aligned_type = {
-    5, 24, 64, WILLRT_GC_TYPE_REFERENCES, 1, node_refs, 0, NULL
+    5, 24, 64, WILLRT_GC_TYPE_REFERENCES, 1, node_refs, 0, NULL, 0, NULL
 };
 static const willrt_gc_type aligned_large_type = {
-    6, 64, 4096, WILLRT_GC_TYPE_LARGE, 0, NULL, 0, NULL
+    6, 64, 4096, WILLRT_GC_TYPE_LARGE, 0, NULL, 0, NULL, 0, NULL
 };
 
 static void* root_slot;
@@ -222,6 +222,19 @@ static void test_pinned_root(void) {
     willrt_gc_unpin(parent);
 }
 
+static void test_foreign_colored_pointer(void) {
+    void* slot = NULL;
+    void* foreign =
+        (void*)((uintptr_t)&root_slot | (uintptr_t)WILLRT_GC_COLOR_MASK);
+
+    gc_write_barrier(&slot, foreign);
+    assert(slot == foreign);
+    assert(gc_read_barrier(slot) == foreign);
+    slot = foreign;
+    assert(gc_read_barrier_slot(&slot) == foreign);
+    assert(slot == foreign);
+}
+
 static void test_frame_root(void) {
     void* object;
     void* frame_root[1];
@@ -314,7 +327,13 @@ static void test_concurrent_allocation(void) {
 }
 
 int main(void) {
+    uint64_t previous_limit;
+
     willrt_gc_lane_enter(0);
+    previous_limit = willrt_gc_set_memory_limit(32u * 1024u * 1024u);
+    assert(willrt_gc_memory_limit() == 32u * 1024u * 1024u);
+    assert(willrt_gc_set_memory_limit(previous_limit) ==
+           32u * 1024u * 1024u);
     assert(willrt_gc_register_type(&node_type) == 0);
     assert(willrt_gc_register_type(&weak_type) == 0);
     assert(willrt_gc_register_type(&large_type) == 0);
@@ -329,6 +348,7 @@ int main(void) {
         test_weak_clear();
         test_pin();
         test_pinned_root();
+        test_foreign_colored_pointer();
         test_frame_root();
         test_large_object();
         test_automatic_pacing();

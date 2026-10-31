@@ -7,20 +7,90 @@ import (
 	"testing"
 )
 
-// TestRunEarlyRcRelease checks that releasing a copy-only rc handle at its
-// last use leaves the retained copy alive.
-func TestRunEarlyRcRelease(t *testing.T) {
+// TestRunClassSourceSurface checks the final class syntax end to end: fields,
+// init, a method, a no-init constructor, and the GC lowering behind them.
+func TestRunClassSourceSurface(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `struct Counter {
-    n: i32
+	src := `class Node {
+    value: i32
+
+    def init(self, value: i32) {
+        self.value = value
+    }
+
+    def get(self) -> i32 {
+        return self.value + 1
+    }
+}
+
+class Point {
+    x: i32
+    y: i32 = 2
 }
 
 def main() -> i32 {
-    var first: rc<Counter> = new rc<Counter>(Counter { n: 7 })
-    var second: rc<Counter> = first
-    _ = second
+    var p: Point = Point(x=4)
+    var n: Node = Node(6)
+    if p.x != 4 or p.y != 2 {
+        return 11
+    }
+    return n.get()
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 7 {
+		t.Fatalf("code = %d, want 7, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+func TestRunClassContainerRoots(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class Node {
+    value: i32
+
+    def init(self, value: i32) {
+        self.value = value
+    }
+
+    def get(self) -> i32 {
+        return self.value
+    }
+}
+
+class Box {
+    items: list[Node]
+
+    def init(self) {
+        self.items = list[Node](0)
+    }
+}
+
+def main() -> i32 {
+    var box: Box = Box()
+    var i: i32 = 0
+    while i < 5000 {
+        box.items.push(Node(i))
+        i = i + 1
+    }
+    var total: i32 = 0
+    var j: i32 = 0
+    while j < 5000 {
+        var node: Node = box.items.get(usize(j))
+        total = total + node.get()
+        j = j + 1
+    }
+    if total != 12497500 {
+        return 1
+    }
     return 0
 }
 `
@@ -29,7 +99,736 @@ def main() -> i32 {
 	if code != 0 {
 		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
 	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
 }
+
+func TestRunClassFieldContainers(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class Box {
+    values: dict[i32, i32]
+    seen: set[i32]
+
+    def init(self) {
+        self.values = dict[i32, i32](8)
+        self.seen = set[i32](8)
+    }
+}
+
+def main() -> i32 {
+    var round: i32 = 0
+    while round < 40 {
+        var box: Box = Box()
+        var i: i32 = 0
+        while i < 300 {
+            box.values.set(i, i + 1)
+            box.seen.add(i)
+            i += 1
+        }
+        var total: i32 = 0
+        var j: i32 = 0
+        while j < 300 {
+            match box.values.get(j) {
+                Some(v) => {
+                    total += v
+                }
+                None => {
+                    return 10
+                }
+            }
+            if not box.seen.has(j) {
+                return 11
+            }
+            j += 1
+        }
+        if total != 45150 {
+            return 12
+        }
+        round += 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+func TestRunClassListAppendAndMutate(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class Box {
+    items: list[i32]
+
+    def init(self) {
+        self.items = list[i32](2)
+    }
+}
+
+def main() -> i32 {
+    var round: i32 = 0
+    while round < 60 {
+        var box: Box = Box()
+        var i: i32 = 0
+        while i < 200 {
+            box.items.push(i)
+            i += 1
+        }
+        var view: []i32 = box.items.slice(0, 200)
+        box.items.append(view)
+        if box.items.len() != 400 {
+            return 1000 + round
+        }
+        box.items.insert(usize(0), 99)
+        if box.items.len() != 401 or box.items.get(0) != 99 {
+            return 2000 + round
+        }
+        if box.items.remove(usize(0)) != 99 {
+            return 3000 + round
+        }
+        box.items.shrink_to_fit()
+        if box.items.len() != 400 {
+            return 4000 + round
+        }
+        round += 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+func TestRunClassContainerMillion(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class Box {
+    values: dict[i32, i32]
+    seen: set[i32]
+
+    def init(self) {
+        self.values = dict[i32, i32](8)
+        self.seen = set[i32](8)
+    }
+}
+
+def main() -> i32 {
+    var round: i32 = 0
+    while round < 1000 {
+        var box: Box = Box()
+        var i: i32 = 0
+        while i < 500 {
+            box.values.set(i, i + 1)
+            box.seen.add(i)
+            i += 1
+        }
+        if box.values.len() != 500 or box.seen.len() != 500 {
+            return 3000 + round
+        }
+        var j: i32 = 0
+        while j < 500 {
+            match box.values.get(j) {
+                Some(v) => {
+                    if v != j + 1 {
+                        return 5000 + j
+                    }
+                }
+                None => {
+                    return 6000 + j
+                }
+            }
+            if not box.seen.has(j) {
+                return 7000 + j
+            }
+            j += 1
+        }
+        round += 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+func TestRunClassStrLifetime(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class TextBox {
+    text: str
+
+    def init(self) {
+        self.text = "seed"
+    }
+
+    def replace(self, round: i32) {
+        self.text = "value=" + str(round) + ":tail"
+    }
+}
+
+def main() -> i32 {
+    var round: i32 = 0
+    while round < 120 {
+        var box: TextBox = TextBox()
+        box.replace(round)
+        if box.text.len() < 8 {
+            return 1000 + round
+        }
+        var copy: str = box.text.clone()
+        if copy.len() != box.text.len() {
+            return 2000 + round
+        }
+        var view: []u8 = box.text[0:2]
+        if view.len() != 2 or view.get(0) != 118u8 {
+            return 2500 + round
+        }
+        var i: i32 = 0
+        while i < 100 {
+            var tmp: str = "head" + str(i)
+            if tmp.len() < 4 {
+                return 3000 + round
+            }
+            i += 1
+        }
+        round += 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+func TestRunClassInlineAggregateRoot(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class Node {
+    value: i32
+
+    def init(self, value: i32) {
+        self.value = value
+    }
+}
+
+struct Pair {
+    node: Node
+    label: str
+}
+
+class Holder {
+    pair: Pair
+
+    def init(self, value: i32) {
+        self.pair = Pair(node=Node(value), label="node=" + str(value))
+    }
+}
+
+def main() -> i32 {
+    var round: i32 = 0
+    while round < 200 {
+        var holder: Holder = Holder(round)
+        if holder.pair.node.value != round {
+            return 1000 + round
+        }
+        if holder.pair.label.len() < 5 {
+            return 2000 + round
+        }
+        var text: str = holder.pair.label.clone()
+        if text.len() != holder.pair.label.len() {
+            return 3000 + round
+        }
+        round += 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+func TestRunArrayOfStrRoot(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `def main() -> i32 {
+    var round: i32 = 0
+    while round < 120 {
+        var xs: list[str] = list[str](2)
+        var i: i32 = 0
+        while i < 80 {
+            xs.push("v=" + str(i))
+            i += 1
+        }
+        if xs.len() != 80 {
+            return 1000 + round
+        }
+        var j: i32 = 0
+        while j < 80 {
+            if xs.get(usize(j)).len() < 2 {
+                return 2000 + round
+            }
+            j += 1
+        }
+        round += 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+func TestRunSelectClassLocalRoot(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class Holder {
+    value: i32
+
+    def init(self, value: i32) {
+        self.value = value
+    }
+}
+
+async def pick(ch: chan<i32>) -> i32 {
+    var holder: Holder = Holder(11)
+    var i: i32 = 0
+    while i < 100 {
+        var tmp: Holder = Holder(i)
+        if tmp.value < 0 {
+            return 4
+        }
+        i += 1
+    }
+    select {
+        item = ch.recv() => {
+            match item {
+                Some(v) => {
+                    if v < 0 {
+                        return 3
+                    }
+                }
+                None => {
+                    return 3
+                }
+            }
+        }
+        default => {
+        }
+    }
+    return holder.value
+}
+
+async def main() -> i32 {
+    var ch: chan<i32> = chan<i32>(1)
+    var first: i32 = await pick(ch)
+    if first != 11 {
+        return 1
+    }
+    _ = await ch.send(3)
+    var second: i32 = await pick(ch)
+    if second != 11 {
+        return 2
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+func TestRunCpuSyncPrimitives(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("repo root: %v", err)
+	}
+	dir := filepath.Join(t.TempDir(), "cpusync")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("make module: %v", err)
+	}
+	writeFile(t, dir, "will.mod", "module example.com/cpusync\nwill 1\n"+
+		"require std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(filepath.Join(root, "std"))+"\n")
+	src := `import "std/sync"
+
+def main() -> i32 {
+    var mu: sync.Mutex<i32> = sync.Mutex<i32>(0)
+    var g: sync.Guard<i32> = mu.lock_blocking()
+    g.value = 7
+    var taken: Option<sync.Guard<i32>> = mu.try_lock()
+    match taken {
+        Some(_) => {
+            return 1
+        }
+        None => {}
+    }
+    var total: i32 = g.value
+    var sem: sync.Semaphore = sync.Semaphore(1)
+    match sem.acquire_blocking() {
+        Ok(p) => {
+            p.release()
+        }
+        Err(_) => {
+            return 2
+        }
+    }
+    var count: sync.Count = sync.Count(1)
+    count.add(-1)
+    match count.wait_blocking() {
+        Ok(_) => {}
+        Err(_) => {
+            return 3
+        }
+    }
+    var atom: sync.Atomic<i32> = sync.Atomic<i32>(1)
+    _ = atom.add(2)
+    atom.store(4)
+    if atom.load() != 4 or atom.cas(4, 9) == False {
+        return 4
+    }
+    var once: sync.Once = sync.Once()
+    if once.done() {
+        return 5
+    }
+    var body: func() = func() {
+    }
+    once.do_blocking(body)
+    once.do_blocking(body)
+    if once.done() == False {
+        return 6
+    }
+    var barrier: sync.Barrier = sync.Barrier(1)
+    match barrier.wait_blocking() {
+        Ok(_) => {}
+        Err(_) => {
+            return 8
+        }
+    }
+    if total != 7 {
+        return 9
+    }
+    return 0
+}
+`
+	writeFile(t, dir, "main.will", src)
+	code, out, errOut := runCLI("run", dir)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+}
+
+func TestRunCpuSyncAcrossJobs(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("repo root: %v", err)
+	}
+	dir := filepath.Join(t.TempDir(), "parallelsync")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("make module: %v", err)
+	}
+	writeFile(t, dir, "will.mod", "module example.com/parallelsync\nwill 1\n"+
+		"require std@v0.1.0\nreplace std@v0.1.0 => "+filepath.ToSlash(filepath.Join(root, "std"))+"\n")
+	src := `import "std/sync"
+
+def worker(mu: sync.Mutex<i32>, count: i32) -> i32 {
+    var i: i32 = 0
+    while i < count {
+        var g: sync.Guard<i32> = mu.lock_blocking()
+        g.value = g.value + 1
+        i = i + 1
+    }
+    return 0
+}
+
+async def main() -> i32 {
+    var mu: sync.Mutex<i32> = sync.Mutex<i32>(0)
+    var a: Task<i32> = spawn worker(mu, 1000)
+    var b: Task<i32> = spawn worker(mu, 1000)
+    var c: Task<i32> = spawn worker(mu, 1000)
+    var d: Task<i32> = spawn worker(mu, 1000)
+    _ = await a!
+    _ = await b!
+    _ = await c!
+    _ = await d!
+    var final: sync.Guard<i32> = await mu.lock()
+    if final.value != 4000 {
+        return 1
+    }
+    return 0
+}
+`
+	writeFile(t, dir, "main.will", src)
+	code, out, errOut := runCLI("run", dir)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+}
+
+// TestRunClassReferencesInterfaceClosureAndAsync checks the root graph around
+// class references: a self-referential class field, an interface box, a
+// closure capture, and a class allocation inside an async function.
+func TestRunClassReferencesInterfaceClosureAndAsync(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `interface Value {
+    def get(self) -> i32
+}
+
+class Node {
+    value: i32
+    next: Node
+
+    def init(self, value: i32) {
+        self.value = value
+    }
+
+    def get(self) -> i32 {
+        return self.value
+    }
+
+    def link(self, other: Node) {
+        self.next = other
+    }
+}
+
+class Holder {
+    node: Node
+}
+
+def capture(n: Node) -> i32 {
+    var f: func() -> i32 = func() -> i32 {
+        return n.get()
+    }
+    return f()
+}
+
+async def make(value: i32) -> i32 {
+    var n: Node = Node(value)
+    return n.get()
+}
+
+async def main() -> i32 {
+    var first: Node = Node(4)
+    var second: Node = Node(5)
+    first.link(second)
+    if first.next.get() != 5 {
+        return 1
+    }
+    var holder: Holder = Holder(node=first)
+    if holder.node.get() != 4 {
+        return 2
+    }
+    var iface: Value = second
+    if iface.get() != 5 {
+        return 3
+    }
+    if capture(first) != 4 {
+        return 4
+    }
+    if await make(9) != 9 {
+        return 5
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+// TestRunClassAsyncDefaultRoots checks a class constructor whose field default
+// allocates another class inside an async frame. Both half-built objects must
+// stay in the state-machine root map across the default's safepoint.
+func TestRunClassAsyncDefaultRoots(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class Inner {
+    value: i32
+}
+
+class Outer {
+    inner: Inner = Inner(value=1)
+    value: i32 = 2
+}
+
+async def make() -> i32 {
+    var o: Outer = Outer()
+    return o.inner.value + o.value
+}
+
+async def main() -> i32 {
+    var total: i32 = 0
+    for _ in Range(0, 64) {
+        total += await make()
+    }
+    if total != 192 {
+        return 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+// TestRunAsyncStructFieldRoot checks the same shadow-root rule in a general
+// async frame: the struct local lives in the byte frame, not a C alloca, so its
+// class field needs an explicit pointer slot in the task map.
+func TestRunAsyncStructFieldRoot(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class Node {
+    value: i32
+}
+
+struct Holder {
+    node: Node
+}
+
+async def wait() -> i32 {
+    return 1
+}
+
+async def main() -> i32 {
+    var h: Holder = Holder(node=Node(value=77))
+    _ = await wait()
+    var i: i32 = 0
+    while i < 5000 {
+        var junk: Node = Node(value=i)
+        _ = junk
+        i += 1
+    }
+    if h.node.value != 77 {
+        return 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+// TestRunStructFieldRoot checks that a class reference inside an inline struct
+// local is mirrored into the exact GC frame root. A full cycle must not collect
+// the object the struct field still names.
+func TestRunStructFieldRoot(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `class Node {
+    value: i32
+}
+
+struct Holder {
+    node: Node
+}
+
+def main() -> i32 {
+    var h: Holder = Holder(node=Node(value=77))
+    var i: i32 = 0
+    while i < 2000 {
+        var junk: Node = Node(value=i)
+        _ = junk
+        i += 1
+    }
+    return h.node.value
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 77 {
+		t.Fatalf("code = %d, want 77, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
+// TestRunEarlyRcRelease checks that releasing a copy-only rc handle at its
+// last use leaves the retained copy alive.
 
 // TestRunEscapingClosureOwnsItsCapture checks that a closure returned from a
 // frame moves an owning capture; the source release must not free the value
@@ -356,13 +1155,13 @@ func TestRunFieldMoveZeroesTheSourceField(t *testing.T) {
 		t.Skip("clang is not installed")
 	}
 	src := `struct Box {
-    items: Array<i32>
+    items: list[i32]
 }
 
 def main() -> i32 {
-    var b: Box = Box { items: new Array<i32>(4) }
+    var b: Box = Box { items: list[i32](4) }
     b.items.push(7)
-    var items: Array<i32> = b.items
+    var items: list[i32] = b.items
     items.push(8)
     return i32(items.len())
 }
@@ -409,15 +1208,17 @@ func TestRunInterfaceFieldAndArray(t *testing.T) {
 	}
 	src := `struct P {
     s: str
+
+    def message(self) -> str {
+        return self.s.clone()
+    }
+
+    def status(self) -> i32 {
+        return 1
+    }
 }
 
-def (p: ref P) message() -> str {
-    return p.s.clone()
-}
 
-def (p: ref P) status() -> i32 {
-    return 1
-}
 
 struct H {
     e: Error
@@ -426,7 +1227,7 @@ struct H {
 def main() -> i32 {
     var e: Error = P { s: "hello" }
     var h: H = H { e: e }
-    var xs: Array<Error> = new Array<Error>(2)
+    var xs: list[Error] = list[Error](2)
     xs.push(e)
     return i32(h.e.message().len()) + i32(xs.get(0).message().len())
 }
@@ -457,15 +1258,17 @@ interface Labeled {
 
 struct Square {
     n: i32
+
+    def area(self) -> i32 {
+        return self.n
+    }
+
+    def label(self) -> str {
+        return "square"
+    }
 }
 
-def (s: ref Square) area() -> i32 {
-    return s.n
-}
 
-def (s: ref Square) label() -> str {
-    return "square"
-}
 
 def main() -> i32 {
     var s: Shape = Square { n: 3 }
@@ -512,7 +1315,7 @@ func TestRunChannelHandleCopies(t *testing.T) {
 		t.Skip("clang is not installed")
 	}
 	src := `async def main() -> i32 {
-    var ch: chan<str> = new chan<str>(2)
+    var ch: chan<str> = chan<str>(2)
     var ch2: chan<str> = ch
     var sent: Result<(), Error> = await ch2.send("hello")
     match sent {
@@ -575,15 +1378,17 @@ func TestRunInterfaceBoxAndClone(t *testing.T) {
 	}
 	src := `struct P {
     s: str
+
+    def message(self) -> str {
+        return self.s.clone()
+    }
+
+    def status(self) -> i32 {
+        return 1
+    }
 }
 
-def (p: ref P) message() -> str {
-    return p.s.clone()
-}
 
-def (p: ref P) status() -> i32 {
-    return 1
-}
 
 def main() -> i32 {
     var e: Error = P { s: "hello" }
@@ -608,12 +1413,12 @@ func TestRunSpawnDropsArrayCapture(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
-	src := `def count(xs: Array<str>) -> i32 {
+	src := `def count(xs: list[str]) -> i32 {
     return i32(xs.len())
 }
 
 async def main() -> i32 {
-    var xs: Array<str> = new Array<str>(2)
+    var xs: list[str] = list[str](2)
     xs.push("a")
     xs.push("b")
     var t: Task<i32> = spawn count(xs)
@@ -646,7 +1451,7 @@ def main() -> i32 {
 		t.Fatalf("code = %d, stdout = %q", code, out)
 	}
 	if !strings.Contains(out, "O0009 top-level counter is published and read-only") ||
-		!strings.Contains(out, "help: put the mutable state behind an rc and a guard") {
+		!strings.Contains(out, "help: put the mutable state behind a Mutex or a channel") {
 		t.Fatalf("stdout = %q", out)
 	}
 }
@@ -672,7 +1477,7 @@ def field_return() -> str {
 }
 
 def index_return() -> str {
-    var xs: Array<str> = new Array<str>(2)
+    var xs: list[str] = list[str](2)
     xs.push("wxyz")
     return xs[0]
 }
@@ -774,10 +1579,10 @@ func TestRunBranchMoveReleasesThePathThatStillOwnsTheValue(t *testing.T) {
 		t.Skip("clang is not installed")
 	}
 	src := `def take(flag: bool) -> i32 {
-    var a: Array<i32> = new Array<i32>(4)
+    var a: list[i32] = list[i32](4)
     a.push(7)
     if flag {
-        var b: Array<i32> = a
+        var b: list[i32] = a
         b.push(8)
         return i32(b.len())
     }
@@ -800,28 +1605,6 @@ def main() -> i32 {
 
 // TestEmitSomeRcRetainsTheHandle checks that storing an rc handle in an Option
 // copy retains it; the source owner may still be released later.
-func TestEmitSomeRcRetainsTheHandle(t *testing.T) {
-	src := `struct C {
-    n: i32
-}
-
-def main() -> i32 {
-    var r: rc<C> = new rc<C>(C { n: 7 })
-    var o: Option<rc<C>> = Some(r)
-    _ = o
-    _ = r
-    return 0
-}
-`
-	path := writeFile(t, t.TempDir(), "main.will", src)
-	code, out, errOut := runCLI("emit-llvm", path)
-	if code != 0 {
-		t.Fatalf("code = %d, stderr = %q", code, errOut)
-	}
-	if !strings.Contains(out, "willrt_rc_retain") {
-		t.Fatalf("Some(rc) did not retain the handle:\n%s", out)
-	}
-}
 
 // TestEmitEnumReleaseBranches checks that the active enum payload is released,
 // not the tag or an inactive variant.
@@ -850,14 +1633,87 @@ def main() -> i32 {
 // TestRunMovedArrayIsReleasedOnce checks that a value move suppresses the
 // source release. Releasing both owners would report a dead block and double
 // free the same buffer.
+func TestRunVariantEnumRoot(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	t.Setenv("WILL_GC_MEMLIMIT", "1")
+	src := `enum E {
+    text(str)
+    Number(i32)
+}
+
+class Box {
+    value: E
+    label: str
+
+    def init(self, value: E) {
+        self.value = value.clone()
+        self.label = "box"
+    }
+}
+
+def main() -> i32 {
+    var round: i32 = 0
+    while round < 120 {
+        var local: E = E.text("local=" + str(round))
+        var box: Box = Box(E.text("class=" + str(round)))
+        var i: i32 = 0
+        while i < 100 {
+            var tmp: str = "x" + str(i)
+            if tmp.len() < 1usize {
+                return 2000 + round
+            }
+            i += 1
+        }
+        match local {
+            text(s) => {
+                if s.len() < 7usize {
+                    return 1000 + round
+                }
+            }
+            Number(n) => {
+                _ = n
+                return 3000 + round
+            }
+        }
+        if box.label.len() != 3usize {
+            return 4500 + round
+        }
+        match box.value {
+            text(s) => {
+                if s.len() < 7usize {
+                    return 4000 + round
+                }
+            }
+            Number(n) => {
+                _ = n
+                return 5000 + round
+            }
+        }
+        round += 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
+	}
+}
+
 func TestRunMovedArrayIsReleasedOnce(t *testing.T) {
 	if !hasClang() {
 		t.Skip("clang is not installed")
 	}
 	src := `def main() -> i32 {
-    var first: Array<i32> = new Array<i32>(4)
+    var first: list[i32] = list[i32](4)
     first.push(7)
-    var second: Array<i32> = first
+    var second: list[i32] = first
     second.push(8)
     return i32(second.len())
 }
@@ -880,7 +1736,7 @@ func TestRunContainerPushMovesTheElement(t *testing.T) {
 	}
 	src := `def main() -> i32 {
     var text: str = "abc".clone()
-    var xs: Array<str> = new Array<str>(0)
+    var xs: list[str] = list[str](0)
     xs.push(text)
     return i32(xs.get(0).len())
 }
@@ -902,7 +1758,7 @@ func TestRunArrayReleaseAtLastSafeUse(t *testing.T) {
 		t.Skip("clang is not installed")
 	}
 	src := `def main() -> i32 {
-    var xs: Array<i32> = new Array<i32>(4)
+    var xs: list[i32] = list[i32](4)
     xs.push(7)
     var n: usize = xs.len()
     var later: i32 = 1
@@ -1061,7 +1917,7 @@ func TestRunAsyncFrameDropsOwnedLocalsOnPanic(t *testing.T) {
 
 async def worker() -> i32 {
     var text: str = "hello"
-    var items: Array<i32> = new Array<i32>(2)
+    var items: list[i32] = list[i32](2)
     _ = await time.sleep(1ms)!
     panic("stop")
     return i32(text.len()) + i32(items.len())
@@ -1140,15 +1996,17 @@ interface Labeled {
 
 struct Square {
     n: i32
+
+    def area(self) -> i32 {
+        return self.n
+    }
+
+    def label(self) -> str {
+        return "square"
+    }
 }
 
-def (s: ref Square) area() -> i32 {
-    return s.n
-}
 
-def (s: ref Square) label() -> str {
-    return "square"
-}
 
 def main() -> i32 {
     var shape: Shape = Square { n: 12 }
@@ -1288,84 +2146,6 @@ def main() -> i32 {
 
 // TestRunMutableScalarParameters checks that a mutable scalar is a pointer in
 // both the ordinary call ABI and the async task ABI.
-func TestRunMutableScalarParameters(t *testing.T) {
-	if !hasClang() {
-		t.Skip("clang is not installed")
-	}
-	src := `def inc(value: mut i32) -> i32 {
-    value += 1
-    return value
-}
-
-async def add(value: mut i32) -> i32 {
-    value += 2
-    return value
-}
-
-async def main() -> i32 {
-    var first: i32 = 1
-    var inc: i32 = inc(first)
-    var second: i32 = 4
-    var add: i32 = await add(second)
-    print(first, " ", inc, " ", second, " ", add, "\n")
-    if first != 2 or inc != 2 or second != 6 or add != 6 {
-        return 1
-    }
-    return 0
-}
-`
-	path := writeFile(t, t.TempDir(), "main.will", src)
-	code, out, errOut := runCLI("run", path)
-	if code != 0 {
-		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
-	}
-	if !strings.Contains(out, "2 2 6 6\n") {
-		t.Fatalf("stdout = %q", out)
-	}
-}
-
-// TestRunAsyncMutParameters checks that a task frame keeps the caller's
-// pointer for a mutable receiver and a mutable Array parameter.
-func TestRunAsyncMutParameters(t *testing.T) {
-	if !hasClang() {
-		t.Skip("clang is not installed")
-	}
-	src := `struct Counter {
-    n: i32
-}
-
-async def (c: mut Counter) add(value: i32) -> i32 {
-    c.n += value
-    return c.n
-}
-
-async def grow(values: mut Array<i32>) -> i32 {
-    values.push(7)
-    return i32(values.len())
-}
-
-async def main() -> i32 {
-    var counter: Counter = Counter { n: 1 }
-    var added: i32 = await counter.add(4)
-    var values: Array<i32> = new Array<i32>(0)
-    var grown: i32 = await grow(values)
-    print(counter.n, " ", values.len(), "\n")
-    if counter.n != 5 or added != 5 or grown != 1 or values.len() != 1 {
-        return 1
-    }
-    return 0
-}
-`
-	path := writeFile(t, t.TempDir(), "main.will", src)
-	code, out, errOut := runCLI("run", path)
-	if code != 0 {
-		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
-	}
-	if !strings.Contains(out, "5 1\n") {
-		t.Fatalf("stdout = %q", out)
-	}
-}
-
 // TestRunMPMCCountsEveryMessage moves values across lanes through one channel
 // with two producers and two consumers. The result crosses two task boundaries,
 // so a truncated or duplicated join value changes the sum.
@@ -1396,7 +2176,7 @@ async def consume(ch: chan<i32>) -> i64 {
 }
 
 async def main() -> i32 {
-    var ch: chan<i32> = new chan<i32>(64)
+    var ch: chan<i32> = chan<i32>(64)
     var total: i64 = 0
     region {
         var p1: Task<()> = spawn produce(ch, 20000)
@@ -1424,5 +2204,35 @@ async def main() -> i32 {
 	}
 	if !strings.Contains(out, "total=399980000\n") {
 		t.Fatalf("stdout = %q", out)
+	}
+}
+
+// TestRunLoopAllocaDoesNotGrowStack checks that array temporaries created in a
+// loop stay in the entry block. An alloca executed per iteration overflows the
+// default thread stack at 65536 iterations; this loop is above that bound.
+func TestRunLoopAllocaDoesNotGrowStack(t *testing.T) {
+	if !hasClang() {
+		t.Skip("clang is not installed")
+	}
+	src := `def main() -> i32 {
+    var i: i32 = 0
+    while i < 70000 {
+        var a: list[i32] = list[i32](4)
+        a.push(i)
+        var c: list[i32] = a.clone()
+        var n: usize = c.len()
+        _ = n
+        i += 1
+    }
+    return 0
+}
+`
+	path := writeFile(t, t.TempDir(), "main.will", src)
+	code, out, errOut := runCLI("run", path)
+	if code != 0 {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, out, errOut)
+	}
+	if errOut != "" {
+		t.Fatalf("stderr = %q, want no diagnostics", errOut)
 	}
 }

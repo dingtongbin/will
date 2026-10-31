@@ -1,0 +1,135 @@
+# Pipe is one in-memory byte stream with a reader end and a writer end. The two
+# ends share the buffer; closing one end wakes the other.
+import "std/errors"
+
+# PipeState is the shared buffer. The two channels wake the opposite side when
+# data or space appears; closing one end closes its channel so the other end
+# stops waiting.
+class PipeState {
+    data: list[u8]
+    capacity: usize
+    closedRead: bool
+    closedWrite: bool
+    readable: chan<bool>
+    writable: chan<bool>
+
+    def init(self, capacity: usize) {
+        self.data = list[u8]()
+        self.capacity = capacity
+        self.closedRead = False
+        self.closedWrite = False
+        self.readable = chan<bool>(1)
+        self.writable = chan<bool>(1)
+    }
+}
+
+# PipeReader is the read end of one pipe.
+struct PipeReader {
+    state: PipeState
+
+    async def read(self, out: list[u8]) -> Result<usize, Error> {
+        var st: PipeState = self.state
+        while True {
+            if st.closedRead {
+                return Err(errors.Io)
+            }
+            if st.data.len() > 0 {
+                var n: usize = st.data.len()
+                var i: usize = 0
+                while i < n {
+                    out.push(st.data.get(i))
+                    i += 1
+                }
+                st.data = list[u8]()
+                _ = await st.writable.send(True)
+                return Ok(n)
+            }
+            if st.closedWrite {
+                return Ok(0)
+            }
+            var wasClosed: bool = st.closedWrite
+            var wake: Option<bool> = await st.readable.recv()
+            match wake {
+                Some(_) => {
+                }
+                None => {
+                    if wasClosed {
+                        return Ok(0)
+                    }
+                }
+            }
+        }
+    }
+
+    def close(self) {
+        self.state.closedRead = True
+        self.state.readable.close()
+    }
+}
+
+# PipeWriter is the write end of one pipe.
+struct PipeWriter {
+    state: PipeState
+
+    async def write(self, buf: []u8) -> Result<(), Error> {
+        var st: PipeState = self.state
+        for b in buf {
+            var byte: u8 = b
+            while st.data.len() >= st.capacity {
+                if st.closedRead {
+                    return Err(errors.Io)
+                }
+                var wasReadClosed: bool = st.closedRead
+                var wake: Option<bool> = await st.writable.recv()
+                match wake {
+                    Some(_) => {
+                    }
+                    None => {
+                        if wasReadClosed {
+                            return Err(errors.Io)
+                        }
+                    }
+                }
+            }
+            st.data.push(byte)
+        }
+        if buf.len() > 0 {
+            _ = await st.readable.send(True)
+        }
+        return Ok(())
+    }
+
+    async def sync(self) -> Result<(), Error> {
+        return Ok(())
+    }
+
+    def close(self) {
+        self.state.closedWrite = True
+        self.state.readable.close()
+    }
+}
+
+# Pipe is the pair of ends returned by pipe.
+struct Pipe {
+    reader: PipeReader
+    writer: PipeWriter
+}
+
+# pipe returns the two ends of one pipe; capacity caps the buffered bytes.
+def pipe(capacity: usize) -> Pipe {
+    var shared: PipeState = PipeState(capacity)
+    return Pipe {
+        reader: PipeReader { state: shared },
+        writer: PipeWriter { state: shared }
+    }
+}
+
+
+
+
+
+
+
+
+
+

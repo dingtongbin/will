@@ -4,33 +4,41 @@ import "std/io"
 # NullWriter counts the bytes it is asked to write and discards them.
 struct NullWriter {
     n: usize
+
+    async def write(self, buf: []u8) -> Result<(), Error> {
+        return Ok(())
+    }
+
+    async def sync(self) -> Result<(), Error> {
+        return Ok(())
+    }
 }
 
-async def (w: ref NullWriter) write(buf: []u8) -> Result<(), Error> {
-    return Ok(())
-}
 
-async def (w: ref NullWriter) sync() -> Result<(), Error> {
-    return Ok(())
-}
+
+
 
 # Wrap holds a Writer as a field and forwards both methods, so the method set
 # of the field type is reached from another package.
 struct Wrap {
     inner: io.Writer
+
+    async def write(self, buf: []u8) -> Result<(), Error> {
+        return await self.inner.write(buf)
+    }
+
+    async def sync(self) -> Result<(), Error> {
+        return await self.inner.sync()
+    }
 }
 
-async def (w: ref Wrap) write(buf: []u8) -> Result<(), Error> {
-    return await w.inner.write(buf)
-}
 
-async def (w: ref Wrap) sync() -> Result<(), Error> {
-    return await w.inner.sync()
-}
+
+
 
 # sink takes the interface and calls a method whose result is an enum.
 async def sink(w: io.Writer) -> Result<(), Error> {
-    var storage: Array<u8> = new Array<u8>(0)
+    var storage: list[u8] = list[u8](0)
     var bytes: []u8 = storage[Range(0, storage.len())]
     _ = (await w.write(bytes))?
     _ = (await w.sync())?
@@ -45,27 +53,31 @@ var last: u8 = 0u8
 
 struct Recorder {
     pad: usize
-}
 
-async def (w: ref Recorder) write(buf: []u8) -> Result<(), Error> {
-    var i: usize = 0
-    while True {
-        if i >= buf.len() {
-            break
+    async def write(self, buf: []u8) -> Result<(), Error> {
+        var i: usize = 0
+        while True {
+            if i >= buf.len() {
+                break
+            }
+            if written == 0usize and i == 0usize {
+                first = buf[i]
+            }
+            last = buf[i]
+            i += 1
         }
-        if written == 0usize and i == 0usize {
-            first = buf[i]
-        }
-        last = buf[i]
-        i += 1
+        written += buf.len()
+        return Ok(())
     }
-    written += buf.len()
-    return Ok(())
+
+    async def sync(self) -> Result<(), Error> {
+        return Ok(())
+    }
 }
 
-async def (w: ref Recorder) sync() -> Result<(), Error> {
-    return Ok(())
-}
+
+
+
 
 async def check_printf() -> i32 {
     written = 0usize

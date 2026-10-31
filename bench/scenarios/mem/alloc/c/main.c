@@ -1,6 +1,6 @@
 // main.c is the C baseline of the mem/alloc scenario. It allocates and
 // releases one million small objects, the same way the will side does with
-// its reference counted cells.
+// its GC cells.
 //
 // The allocators are not the same: the C side uses the system allocator, the
 // will side the allocator of the runtime. The numbers therefore report the

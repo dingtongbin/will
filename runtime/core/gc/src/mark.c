@@ -57,9 +57,15 @@ void gc_mark_object(void* object) {
     }
     object = WILLRT_GC_UNTAG(object);
     for (;;) {
-        willrt_gc_header* header = gc_header_of(object);
-        uint64_t state = atomic_load_explicit(&header->state,
-                                              memory_order_acquire);
+        willrt_gc_header* header;
+        uint64_t state;
+
+        if (gc_region_by_address(object) == NULL) {
+            return;
+        }
+        header = gc_header_of(object);
+        state = atomic_load_explicit(&header->state,
+                                     memory_order_acquire);
 
         if ((state & WILLRT_GC_STATE_FORWARDED) != 0) {
             object = WILLRT_GC_STATE_FORWARD_ADDRESS(state);
@@ -93,6 +99,9 @@ static void gc_mark_pinned_object(void* context, void* object) {
     uint64_t state;
 
     (void)context;
+    if (object == NULL || gc_region_by_address(object) == NULL) {
+        return;
+    }
     header = gc_header_of(object);
     state = atomic_load_explicit(&header->state, memory_order_acquire);
     if ((state & WILLRT_GC_STATE_FORWARDED) != 0) {
@@ -180,8 +189,19 @@ void gc_mark_stack(const willrt_gc_stack_map_data* map, void* frame) {
         if ((slot->flags & WILLRT_GC_SLOT_REFERENCE) != 0) {
             void** address = (void**)((uint8_t*)frame + slot->slot);
 
-            gc_mark_object(atomic_load_explicit((_Atomic(void*)*)address,
-                                                memory_order_acquire));
+            if ((slot->flags & WILLRT_GC_SLOT_INDIRECT) != 0) {
+                address = *(void***)address;
+            }
+            if (address == NULL) {
+                continue;
+            }
+            if ((slot->flags & WILLRT_GC_SLOT_INLINE) != 0) {
+                willrt_gc_scan_value(address, slot->type, gc_mark_visit,
+                                     NULL);
+            } else {
+                gc_mark_object(atomic_load_explicit(
+                    (_Atomic(void*)*)address, memory_order_acquire));
+            }
         }
     }
 }

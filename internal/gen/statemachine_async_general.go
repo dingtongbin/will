@@ -81,6 +81,15 @@ func (g *generator) generalAsyncC(r willc.Record) (string, error) {
 // state-machine step. The child result stays in the frame; the caller sees
 // either a scalar value or the result slot.
 func (g *generator) generalCallWait(r willc.Record) (string, error) {
+	if r.Kind == "await" {
+		if op, ok := g.recs[refField(r, "expr")]; ok && op.Kind == "name" {
+			ptr, typ, err := g.awaitTaskJoin(r)
+			if err != nil || typ == "" {
+				return "", err
+			}
+			return g.load(typ, ptr), nil
+		}
+	}
 	sym := g.awaitTargetSymbol(r)
 	if sym == "" {
 		return "", g.errf(r.ID, "cannot translate node #%d: the called function has no symbol", r.ID)
@@ -145,6 +154,13 @@ func (g *generator) generalCallWaitPlace(r willc.Record) (string, string, error)
 	text, err := g.callResultText(r)
 	if err != nil {
 		return "", "", err
+	}
+	if text == "" || text == "()" {
+		// A void child has no result slot: reuse the scalar join path.
+		if _, err := g.generalCallWait(r); err != nil {
+			return "", "", err
+		}
+		return "", "", nil
 	}
 	llvm := g.resultLLVM(text)
 	if llvm == "" {

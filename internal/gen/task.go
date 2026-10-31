@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/will-lang/will/internal/gcmeta"
 	"github.com/will-lang/will/internal/willc"
 )
 
@@ -130,9 +131,6 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		}
 	}
 	args := g.callArgs(call)
-	// The spawn expression is the crossing: every captured rc handle gets its
-	// promotion recorded under this position.
-	g.crossingPos = fieldText(r, "pos")
 	var frameTypes []string
 	var argTypes []string
 	var argTexts []string
@@ -140,12 +138,18 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		frameTypes = append(frameTypes, "{ ptr, ptr }")
 	}
 	recvOffset := 0
+	recvText := ""
+	recvClass := false
 	if call.Kind == "mcall" {
 		// The receiver is the hidden first parameter of a method. Keep it as a
 		// pointer in the job frame; the method body reads through it.
 		frameTypes = append(frameTypes, "ptr")
 		argTexts = append(argTexts, "")
 		recvOffset = 1
+		if text, err := g.willTypeText(refField(call, "recv")); err == nil {
+			recvText = text
+			recvClass = g.isClassText(text)
+		}
 	}
 	for _, a := range args {
 		typ, err := g.typeOf(a)
@@ -176,7 +180,13 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		}
 		field := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = getelementptr %s, ptr %s, i32 0, i32 0\n", field, frameType, frame)
-		fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", recv, field)
+		if g.gcProgram != nil && recvClass {
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				field, recv)
+		} else {
+			fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", recv, field)
+		}
 	}
 	if indirect {
 		code, env, err := g.closureCode(target)
@@ -206,9 +216,6 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 			}
 			value := g.load(argTypes[i], src)
 			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argTypes[i], value, field)
-			if err := g.shareValue(field, argTexts[i]); err != nil {
-				return "", err
-			}
 			if err := g.zeroTransferredSource(a, field); err != nil {
 				return "", err
 			}
@@ -218,17 +225,12 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argTypes[i], value, field)
-		if err := g.shareValue(field, argTexts[i]); err != nil {
-			return "", err
-		}
-		// An rc handle is a copyable handle, not an owning value. The task keeps
-		// its own reference and the source stays usable.
-		if isRcText(argTexts[i]) {
-			if err := g.retainValue(field, argTexts[i]); err != nil {
-				return "", err
-			}
-			continue
+		if g.gcProgram != nil && g.isClassText(argTexts[i]) {
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				field, value)
+		} else {
+			fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", argTypes[i], value, field)
 		}
 		if isChanText(argTexts[i]) {
 			if g.isCopySource(a) {
@@ -264,9 +266,27 @@ func (g *generator) lowerSpawn(r willc.Record) (string, error) {
 	// A sync call is a CPU job: it enters the submitting lane's deque and may
 	// be stolen, but it never suspends. Async calls returned above as tasks.
 	g.needJobDecl = true
-	if dropSym != "" {
+	gcSlots, gcTypes := g.spawnGCSlots(frameTypes, argTexts, recvClass, indirect, recvText)
+	gcMap := "null"
+	resultType := "null"
+	if len(gcSlots) != 0 || g.gcProgram != nil {
+		gcMap = g.taskGCMap(step, gcSlots, gcTypes)
+		if text, err := g.callResultText(call); err == nil {
+			resultType = g.taskResultDescriptor(text)
+		}
+	}
+	if g.gcProgram != nil {
+		g.needJobGCDecl = true
+	}
+	if dropSym != "" && g.gcProgram != nil {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new_drop_gc(ptr @%s, ptr %s, i64 %s, i32 0, ptr @%s, ptr %s, ptr %s)\n",
+			task, llvmSymbol(step), frame, size, llvmSymbol(dropSym), gcMap, resultType)
+	} else if dropSym != "" {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new_drop(ptr @%s, ptr %s, i64 %s, i32 0, ptr @%s)\n",
 			task, llvmSymbol(step), frame, size, llvmSymbol(dropSym))
+	} else if g.gcProgram != nil {
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new_gc(ptr @%s, ptr %s, i64 %s, i32 0, ptr %s, ptr %s)\n",
+			task, llvmSymbol(step), frame, size, gcMap, resultType)
 	} else {
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_job_new(ptr @%s, ptr %s, i64 %s, i32 0)\n",
 			task, llvmSymbol(step), frame, size)
@@ -357,7 +377,7 @@ func (g *generator) finishAsyncSpawnArgs(call willc.Record, targetSym string) er
 		if err != nil || !ownsReleaseText(g, text) {
 			continue
 		}
-		if isRcText(text) || isChanText(text) {
+		if isChanText(text) {
 			if !g.isCopySource(a) {
 				continue
 			}
@@ -513,9 +533,6 @@ func (g *generator) emitSpawnStep(req spawnRequest) error {
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)
-	if err := g.shareValue(slot, result); err != nil {
-		return err
-	}
 	size := g.sizeOf(retLLVM)
 	g.needTaskDecl = true
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, size)
@@ -582,9 +599,6 @@ func (g *generator) emitIndirectSpawnStep(req spawnRequest, call willc.Record, t
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)
-	if err := g.shareValue(slot, result); err != nil {
-		return err
-	}
 	size := g.sizeOf(retLLVM)
 	g.needTaskDecl = true
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, size)
@@ -949,9 +963,6 @@ func (g *generator) emitJoinResumeStep(req spawnRequest, call willc.Record, fram
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, retLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", retLLVM, value, slot)
-	if err := g.shareValue(slot, result); err != nil {
-		return err
-	}
 	sizeResult := g.sizeOf(retLLVM)
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, sizeResult)
 	g.out.WriteString("  ret i32 1\n}\n")
@@ -1029,9 +1040,6 @@ func (g *generator) emitJoinStep(req spawnRequest, frameType string, frameTypes 
 	slot := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = alloca %s\n", slot, resultLLVM)
 	fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", resultLLVM, value, slot)
-	if err := g.shareValue(slot, result); err != nil {
-		return err
-	}
 	sizeResult := g.sizeOf(resultLLVM)
 	fmt.Fprintf(g.out, "  call i32 @willrt_task_store_result(ptr %s, i64 %s)\n", slot, sizeResult)
 	g.out.WriteString("  ret i32 1\n}\n")
@@ -1186,11 +1194,20 @@ func (g *generator) lowerChanNew(r willc.Record) (string, error) {
 	}
 	cap64 := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = sext i32 %s to i64\n", cap64, capValue)
-	size := g.sizeOf(elemLLVM)
+	size := "8"
+	if !g.isClassText(elem) {
+		size = g.sizeOf(elemLLVM)
+	}
 	g.needTaskDecl = true
 	g.needChanDecl = true
 	chanPtr := g.newTmp()
-	if ownsReleaseText(g, elem) {
+	if inline, ok := g.inlineGCType(elem); ok && (len(inline.Refs) != 0 ||
+		len(inline.Weaks) != 0 || g.isClassText(elem)) {
+		g.needGCDecl = true
+		g.needChanGCDecl = true
+		fmt.Fprintf(g.out, "  %s = call ptr @willrt_chan_new_gc(i64 %s, i64 %s, i32 0, ptr null, ptr %s)\n",
+			chanPtr, size, cap64, gcmeta.DescriptorSymbol(inline.Name))
+	} else if ownsReleaseText(g, elem) {
 		drop := g.channelDrop(elem)
 		fmt.Fprintf(g.out, "  %s = call ptr @willrt_chan_new_drop(i64 %s, i64 %s, i32 0, ptr @%s)\n",
 			chanPtr, size, cap64, llvmSymbol(drop))
@@ -1207,9 +1224,6 @@ func (g *generator) lowerSend(r willc.Record) error {
 		_, err := g.lowerSendResult(r)
 		return err
 	}
-	// The send is the crossing: the ring's copy and the sender's binding
-	// reach the count from two lanes.
-	g.crossingPos = fieldText(r, "pos")
 	chanPtr, err := g.value(refField(r, "chan"))
 	if err != nil {
 		return err
@@ -1236,9 +1250,6 @@ func (g *generator) lowerSend(r willc.Record) error {
 			return err
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
-	}
-	if err := g.shareValue(ptr, valueText); err != nil {
-		return err
 	}
 	keep := isChanText(valueText) && g.isCopySource(valueID)
 	if keep {
@@ -1260,9 +1271,6 @@ func (g *generator) lowerSend(r willc.Record) error {
 // lowerSendResult builds Result<(), Error> around one send. A closed channel
 // stores the built-in Closed fault in the error payload.
 func (g *generator) lowerSendResult(r willc.Record) (string, error) {
-	// The send is the crossing: the ring's copy and the sender's binding
-	// reach the count from two lanes.
-	g.crossingPos = fieldText(r, "pos")
 	chanPtr, err := g.value(refField(r, "chan"))
 	if err != nil {
 		return "", err
@@ -1289,9 +1297,6 @@ func (g *generator) lowerSendResult(r willc.Record) (string, error) {
 			return "", err
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
-	}
-	if err := g.shareValue(ptr, valueText); err != nil {
-		return "", err
 	}
 	keep := isChanText(valueText) && g.isCopySource(valueID)
 	if keep {
@@ -1482,10 +1487,6 @@ func (g *generator) lowerTrySend(r willc.Record) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	valueText, err := g.willTypeText(valueID)
-	if err != nil {
-		return "", err
-	}
 	ptr := ""
 	if isAggregateType(typ) {
 		ptr, _, err = g.place(valueID)
@@ -1499,9 +1500,6 @@ func (g *generator) lowerTrySend(r willc.Record) (string, error) {
 			return "", err
 		}
 		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", typ, value, ptr)
-	}
-	if err := g.shareValue(ptr, valueText); err != nil {
-		return "", err
 	}
 	g.needTaskDecl = true
 	status := g.newTmp()

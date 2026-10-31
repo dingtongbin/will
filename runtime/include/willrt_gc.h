@@ -38,9 +38,9 @@ _Static_assert(_Alignof(willrt_gc_header) == WILLRT_GC_OBJECT_ALIGN,
    relocation publishes a forwarding address and the load barrier self-heals
    the reference view. */
 #define WILLRT_GC_VIEW_COUNT 4u
-#define WILLRT_GC_COLOR_SHIFT 34u
-#define WILLRT_GC_VIEW_STRIDE 0x400000000ull
-#define WILLRT_GC_COLOR_MASK 0xC00000000ull
+#define WILLRT_GC_COLOR_SHIFT 36u
+#define WILLRT_GC_VIEW_STRIDE 0x1000000000ull
+#define WILLRT_GC_COLOR_MASK 0x3000000000ull
 #define WILLRT_GC_POINTER_MASK (~(uintptr_t)WILLRT_GC_COLOR_MASK)
 
 enum willrt_gc_color {
@@ -129,8 +129,34 @@ enum willrt_gc_barrier_kind {
 enum willrt_gc_type_flag {
     WILLRT_GC_TYPE_REFERENCES = 1u << 0,
     WILLRT_GC_TYPE_LARGE = 1u << 1,
-    WILLRT_GC_TYPE_PINNED = 1u << 2
+    WILLRT_GC_TYPE_PINNED = 1u << 2,
+    /* A sequence object has no fixed size. Its payload is an array of
+       element_size-byte elements described by element_type. The collector
+       derives the element count from the object bounds in the region bitmap. */
+    WILLRT_GC_TYPE_SEQUENCE = 1u << 3,
+    /* reference_offsets points at a table of { offset, flags, type } fields.
+       A field with a non-null type is scanned recursively. */
+    WILLRT_GC_TYPE_NESTED = 1u << 4,
+    /* reference_offsets points at a table of { tag, payload_offset, type }
+       variants. The active tag is an i32 at offset zero. */
+    WILLRT_GC_TYPE_ENUM = 1u << 5
 };
+
+enum willrt_gc_field_flag {
+    WILLRT_GC_FIELD_WEAK = 1u << 0
+};
+
+typedef struct willrt_gc_field {
+    uint32_t offset;
+    uint32_t flags;
+    const struct willrt_gc_type* type;
+} willrt_gc_field;
+
+typedef struct willrt_gc_variant {
+    int32_t tag;
+    uint32_t payload_offset;
+    const struct willrt_gc_type* payload;
+} willrt_gc_variant;
 
 #define WILLRT_GC_TYPE_ID_MAX 0x7fffffu
 
@@ -143,6 +169,10 @@ typedef struct willrt_gc_type {
     const uint32_t* reference_offsets;
     uint32_t weak_count;
     const uint32_t* weak_offsets;
+    /* element_size and element_type are meaningful when SEQUENCE is set. A
+       null element_type means the elements contain no references. */
+    uint32_t element_size;
+    const struct willrt_gc_type* element_type;
 } willrt_gc_type;
 
 /* One precise stack slot. The slot is a byte offset from the frame base; a
@@ -150,7 +180,14 @@ typedef struct willrt_gc_type {
    object that must not move for the duration of the frame. */
 enum willrt_gc_slot_flag {
     WILLRT_GC_SLOT_REFERENCE = 1u << 0,
-    WILLRT_GC_SLOT_PINNED = 1u << 1
+    WILLRT_GC_SLOT_PINNED = 1u << 1,
+    /* The root entry holds the address of a reference field rather than the
+       reference itself. The field is part of a frame object whose address is
+       stable, so the collector can update the handle in place. */
+    WILLRT_GC_SLOT_INDIRECT = 1u << 2,
+    /* The slot points at one inline value. type is its descriptor and the
+       collector scans it recursively, including enum variant tables. */
+    WILLRT_GC_SLOT_INLINE = 1u << 3
 };
 
 typedef struct willrt_gc_stack_slot {
@@ -181,6 +218,13 @@ typedef void (*willrt_gc_root_scan)(void* context,
                                     willrt_gc_root_visit visit,
                                     void* visit_context);
 
+/* willrt_gc_scan_value reports every reference field of one inline value. The
+   type descriptor describes the value itself, not an object with a header, so
+   base points at the first payload byte. This is the scan used for task frames,
+   task results, and channel elements. */
+void willrt_gc_scan_value(void* base, const willrt_gc_type* type,
+                          willrt_gc_root_visit visit, void* visit_context);
+
 /* Registration is once per compiler-emitted type, before any allocation of
    that type. It returns 0 on success and -1 when the descriptor is invalid or
    two descriptors claim the same id. */
@@ -191,6 +235,13 @@ int32_t willrt_gc_register_type(const willrt_gc_type* type);
    no references. */
 void* willrt_gc_alloc(size_t size, const willrt_gc_type* type);
 
+/* A zero memory limit means no explicit limit. A nonzero limit is a soft GC
+   target: the pacer starts a cycle before the runtime reaches it. Setting the
+   limit returns the previous value; it never changes the reserved address
+   space. WILL_GC_MEMLIMIT supplies the startup value. */
+uint64_t willrt_gc_set_memory_limit(uint64_t bytes);
+uint64_t willrt_gc_memory_limit(void);
+
 /* willrt_gc_shutdown stops the GC worker and releases the view mapping. It is
    called by willrt_shutdown after tasks have joined. */
 void willrt_gc_shutdown(void);
@@ -198,10 +249,13 @@ void willrt_gc_shutdown(void);
 /* read_barrier returns the current untagged address and checks the object for
    forwarding. read_barrier_slot also writes the remapped reference back to the
    slot. write_barrier publishes a new reference and records the old value for
-   SATB and remembered-set work. */
+   SATB and remembered-set work. write_barrier_untagged does the same bookkeeping
+   for storage that the compiler accesses as a raw pointer, such as container
+   elements. */
 void* willrt_gc_read_barrier(const void* ref);
 void* willrt_gc_read_barrier_slot(void** slot);
 void willrt_gc_write_barrier(void** slot, void* value);
+void willrt_gc_write_barrier_untagged(void** slot, void* value);
 
 /* Lane and frame registration. Every thread that can touch a GC object enters
    a lane before its first allocation. A safepoint polls for a GC handshake and

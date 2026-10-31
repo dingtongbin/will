@@ -7,30 +7,22 @@ import (
 	"github.com/will-lang/will/internal/willc"
 )
 
-// constructNew builds `new T(args)`: zero the storage, apply the field
+// constructNew builds `T(args)`: zero the storage, apply the field
 // defaults, then call T.init with a mutable borrow of the storage. The value
 // is the storage itself, which the caller copies or returns.
 func (g *generator) constructNew(r willc.Record) (string, string, error) {
 	text := fieldText(r, "type")
-	if elem, ok := rcElemText(text); ok && isRcText(text) {
-		return g.constructRc(r, elem, strongName(text))
+	if _, ok := listElemText(text); ok {
+		return g.constructList(r)
 	}
-	if elem, ok := arrayElemText(text); ok {
-		return g.constructArray(r, elem)
+	if _, _, ok := dictTypeText(text); ok {
+		return g.constructDictSet(r)
 	}
-	if k, v, ok := mapTypeText(text); ok {
-		entry, ok := g.mapEntryLLVM(k, v)
-		if !ok {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: the Map entry is not lowered yet", r.ID)
-		}
-		return g.constructMapSet(r, entry)
+	if _, ok := finalSetTypeText(text); ok {
+		return g.constructDictSet(r)
 	}
-	if elem, ok := setTypeText(text); ok {
-		entry, ok := g.containerValueType(elem)
-		if !ok {
-			return "", "", g.errf(r.ID, "cannot translate node #%d: the Set element is not lowered yet", r.ID)
-		}
-		return g.constructMapSet(r, entry)
+	if g.isClassText(text) {
+		return g.classNew(r)
 	}
 	info := g.byName[text]
 	if info == nil {
@@ -89,7 +81,10 @@ func (g *generator) constructNew(r willc.Record) (string, string, error) {
 		}
 	}
 	if initSym == "" {
-		return "", "", g.errf(r.ID, "cannot translate node #%d: %s has no init", r.ID, text)
+		if err := g.structFieldArgs(r, info, storeSlot); err != nil {
+			return "", "", err
+		}
+		return slot, info.llvm, nil
 	}
 	value, initText, err := g.callNewInit(r, storeSlot, initSym, params, initResult)
 	if err != nil {
@@ -137,8 +132,12 @@ func (g *generator) newInitParams(r willc.Record) []string {
 func (g *generator) callNewInit(r willc.Record, slot, initSym string, params []string, initResult string) (string, string, error) {
 	g.noteExternalFunc(initSym)
 	muts := g.paramMut[initSym]
+	args, err := g.orderedCallArgs(r, initSym, g.callArgs(r))
+	if err != nil {
+		return "", "", err
+	}
 	parts := []string{"ptr " + slot}
-	for i, a := range g.callArgs(r) {
+	for i, a := range args {
 		paramType := ""
 		if i < len(params) {
 			paramType = params[i]
@@ -297,6 +296,92 @@ func (g *generator) constructImportedNew(r willc.Record, q string) (string, stri
 	}
 	fmt.Fprintf(g.out, "  call void @%s(%s)\n", llvmSymbol(initSym), strings.Join(parts, ", "))
 	return slot, typ, nil
+}
+
+// structFieldArgs writes constructor arguments into a value type that has no
+// init. Positional arguments follow field declaration order; named arguments
+// select a field. Omitted fields keep their zero or declared default.
+func (g *generator) structFieldArgs(r willc.Record, info *structInfo, slot string) error {
+	args := g.callArgs(r)
+	var names []string
+	for _, f := range r.Fields {
+		if f.Name == "name" {
+			names = append(names, f.Value.Text)
+		}
+	}
+	used := map[int]bool{}
+	positional := 0
+	for i, arg := range args {
+		index := -1
+		if i < len(names) && names[i] != "" {
+			if j, ok := info.index[names[i]]; ok {
+				index = j
+			}
+			if index < 0 {
+				return g.errf(arg, "cannot translate node #%d: struct %s has no field %s",
+					arg, info.name, names[i])
+			}
+		} else {
+			for positional < len(info.names) && used[positional] {
+				positional++
+			}
+			if positional >= len(info.names) {
+				return g.errf(arg, "cannot translate node #%d: struct %s has too many arguments",
+					arg, info.name)
+			}
+			index = positional
+			positional++
+		}
+		if used[index] {
+			return g.errf(arg, "cannot translate node #%d: duplicate constructor field %s",
+				arg, info.names[index])
+		}
+		used[index] = true
+		addr := g.newTmp()
+		fmt.Fprintf(g.out, "  %s = getelementptr inbounds %s, ptr %s, i32 0, i32 %d\n",
+			addr, info.llvm, slot, index)
+		fieldText := info.texts[index]
+		if g.isClassText(fieldText) {
+			value, err := g.value(arg)
+			if err != nil {
+				return err
+			}
+			g.needGCDecl = true
+			fmt.Fprintf(g.out, "  call void @willrt_gc_write_barrier(ptr %s, ptr %s)\n",
+				addr, value)
+			continue
+		}
+		argType, err := g.typeOf(arg)
+		if err != nil {
+			return err
+		}
+		want := info.types[index]
+		if isAggregateType(argType) {
+			ptr, _, err := g.place(arg)
+			if err != nil {
+				return err
+			}
+			if argType != want {
+				return g.errf(arg, "cannot translate node #%d: field %s needs %s, got %s",
+					arg, info.names[index], want, argType)
+			}
+			g.needMemcpyDecl = true
+			size := g.sizeOf(want)
+			fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %s, i64 %s)\n",
+				addr, ptr, size)
+			continue
+		}
+		if argType != want {
+			return g.errf(arg, "cannot translate node #%d: field %s needs %s, got %s",
+				arg, info.names[index], want, argType)
+		}
+		value, err := g.value(arg)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(g.out, "  store %s %s, ptr %s\n", want, value, addr)
+	}
+	return nil
 }
 
 // fieldDefaults stores the declared default of every field that has one, in

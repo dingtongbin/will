@@ -8,8 +8,8 @@ import (
 
 func TestNestedTypeArguments(t *testing.T) {
 	src := `def f(y: i64) {
-    var a: Array<Array<i64>> = x
-    var b: i64 = call<Array<i64>>(y)
+    var a: list[list[i64]] = x
+    var b: i64 = call<list[i64]>(y)
     var c: Box<i64> = Box<i64> {
         value: 1,
     }
@@ -20,15 +20,15 @@ func TestNestedTypeArguments(t *testing.T) {
 `
 	f := parse(t, src)
 	av := varDecl(t, f, "a")
-	if av.Type.Name != "Array" || len(av.Type.Args) != 1 || av.Type.Args[0].Name != "Array" {
-		t.Fatalf("a type = %+v, want Array<Array<i64>>", av.Type)
+	if av.Type.Name != "list" || len(av.Type.Args) != 1 || av.Type.Args[0].Name != "list" {
+		t.Fatalf("a type = %+v, want list[list[i64]]", av.Type)
 	}
 	if len(av.Type.Args[0].Args) != 1 || av.Type.Args[0].Args[0].Name != "i64" {
-		t.Fatalf("a inner type = %+v, want Array<i64>", av.Type.Args[0])
+		t.Fatalf("a inner type = %+v, want list[i64]", av.Type.Args[0])
 	}
 	b, ok := varValue(t, f, "b").(*ast.CallExpr)
 	if !ok || len(b.TypeArgs) != 1 || len(b.TypeArgs[0].Args) != 1 {
-		t.Fatalf("b = %T, want call with Array<i64>", varValue(t, f, "b"))
+		t.Fatalf("b = %T, want call with list[i64]", varValue(t, f, "b"))
 	}
 	c, ok := varValue(t, f, "c").(*ast.AggregateExpr)
 	if !ok || len(c.TypeArgs) != 1 || len(c.Fields) != 1 {
@@ -45,6 +45,20 @@ func TestNestedTypeArguments(t *testing.T) {
 	fv := varDecl(t, f, "f")
 	if fv.Type.Kind != ast.FuncType || len(fv.Type.Params) != 1 || fv.Type.Result == nil {
 		t.Fatalf("f type = %+v, want func(i32) -> bool", fv.Type)
+	}
+}
+
+func TestContainerTypeArgumentsUseBrackets(t *testing.T) {
+	cases := []string{
+		"def f() { var xs: list<i32> = list<i32>() }\n",
+		"def f() { var xs: dict<str, i32> = dict<str, i32>() }\n",
+		"def f() { var xs: set<i32> = set<i32>() }\n",
+	}
+	for _, src := range cases {
+		_, ds := Parse("test.will", []byte(src))
+		if len(ds) == 0 {
+			t.Errorf("source parsed without diagnostics:\n%s", src)
+		}
 	}
 }
 
@@ -111,44 +125,6 @@ func TestSliceRejectsStep(t *testing.T) {
 	_, ds := Parse("test.will", []byte("def f(xs: []i32) { var v = xs[1:2:3] }\n"))
 	if len(ds) == 0 {
 		t.Fatal("a slice with a step parsed")
-	}
-}
-
-func TestBorrowAndFromSyntax(t *testing.T) {
-	src := `def (r: ref Reader) read(buf: mut []u8) -> ref Item from r {
-    var shared: ref Item = ref r.item
-    var exclusive: mut []u8 = mut buf
-    return shared
-}
-`
-	f := parse(t, src)
-	fn := firstFunc(t, f)
-	if fn.Recv == nil || !fn.Recv.Type.IsRef() || fn.Recv.Type.Name != "Reader" {
-		t.Fatalf("receiver = %+v, want ref Reader", fn.Recv)
-	}
-	if len(fn.Params) != 1 || !fn.Params[0].Type.ViewMut {
-		t.Fatalf("params = %+v, want one mut []u8", fn.Params)
-	}
-	if len(fn.From) != 1 {
-		t.Fatalf("from = %+v, want one source", fn.From)
-	}
-	if _, ok := fn.From[0].(*ast.NameExpr); !ok {
-		t.Fatalf("from source = %T, want name", fn.From[0])
-	}
-	if !fn.Result.IsRef() || fn.Result.Name != "Item" {
-		t.Fatalf("result = %+v, want ref Item", fn.Result)
-	}
-	shared := varDecl(t, f, "shared")
-	if !shared.Type.IsRef() || shared.Type.Name != "Item" {
-		t.Fatalf("shared type = %+v, want ref Item", shared.Type)
-	}
-	exclusive := varDecl(t, f, "exclusive")
-	if exclusive.Type.Kind != ast.ViewType || !exclusive.Type.ViewMut {
-		t.Fatalf("exclusive type = %+v, want mut []u8", exclusive.Type)
-	}
-	b, ok := exclusive.Value.(*ast.BorrowExpr)
-	if !ok || !b.Mut {
-		t.Fatalf("exclusive value = %T, want mut borrow", exclusive.Value)
 	}
 }
 

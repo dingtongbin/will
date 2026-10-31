@@ -17,7 +17,10 @@ var runtimeMethodNames = map[string]bool{
 }
 
 // runtimeBuiltinNames are the predefined functions that reach the runtime.
-var runtimeBuiltinNames = map[string]bool{"panic": true, "assert": true, "print": true}
+var runtimeBuiltinNames = map[string]bool{
+	"panic": true, "assert": true, "print": true,
+	"list": true, "dict": true, "set": true, "chan": true,
+}
 
 const (
 	runtimeMessage = "the runtime is not available with --freestanding"
@@ -114,9 +117,6 @@ func (c *checker) stmt(s ast.Stmt) {
 	case *ast.RegionStmt:
 		c.use(st.Pos())
 		c.block(st.Body)
-	case *ast.ParallelStmt:
-		c.use(st.Pos())
-		c.block(st.Body)
 	case *ast.SelectStmt:
 		c.use(st.Pos())
 		for _, arm := range st.Arms {
@@ -147,11 +147,6 @@ func (c *checker) stmt(s ast.Stmt) {
 func (c *checker) expr(e ast.Expr) {
 	switch x := e.(type) {
 	case nil, *ast.LiteralExpr, *ast.NameExpr, *ast.UnitExpr, *ast.LaneHereExpr:
-	case *ast.NewExpr:
-		c.use(x.Pos())
-		for _, a := range x.Args {
-			c.expr(a.Expr)
-		}
 	case *ast.CallExpr:
 		if name, ok := x.Callee.(*ast.NameExpr); ok && runtimeBuiltinNames[name.Name] {
 			c.use(x.Pos())

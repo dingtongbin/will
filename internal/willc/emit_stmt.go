@@ -31,10 +31,7 @@ func (e *emitter) emitBlock(b *ast.Block) int {
 			}
 		}
 	}
-	early := earlyReleases(b)
-	for owner, point := range e.nonRcReleases(b, e.localTypes) {
-		early[owner] = point
-	}
+	early := e.earlyReleases(b, e.localTypes)
 	var last ast.Stmt
 	for i, s := range b.Stmts {
 		e.markMoves(s)
@@ -51,7 +48,7 @@ func (e *emitter) emitBlock(b *ast.Block) int {
 		}
 		e.emitStmt(s)
 		if vs, ok := s.(*ast.VarStmt); ok {
-			if vd, ok := vs.Decl.(*ast.VarDecl); ok && ast.NeedsRelease(vd.Type) && vd.Name != "_" {
+			if vd, ok := vs.Decl.(*ast.VarDecl); ok && e.needsRelease(vd.Type) && vd.Name != "_" {
 				e.scopes[scope] = append(e.scopes[scope], vd)
 			}
 		}

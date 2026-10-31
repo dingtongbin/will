@@ -23,7 +23,7 @@ async def main() -> i32 {
     if time.unix(time.from_unix(zero)) == 0i64 {
         ok += 1
     }
-    var sw: time.Stopwatch = new time.Stopwatch()
+    var sw: time.Stopwatch = time.Stopwatch()
     var slept: Result<(), Error> = await time.sleep(1ms)
     _ = slept
     if sw.elapsed() > 0ns {

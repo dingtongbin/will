@@ -25,8 +25,9 @@ type signature struct {
 
 // fieldInfo is one struct field.
 type fieldInfo struct {
-	name string
-	typ  *Type
+	name       string
+	typ        *Type
+	hasDefault bool
 }
 
 // variantInfo is one enum variant.
@@ -63,6 +64,7 @@ type env struct {
 	// them that no declaration provides is an error; built-in types have
 	// methods the checker does not model, so they are not in this set.
 	userTypes  map[string]bool
+	classes    map[string]bool
 	typeParams map[string]bool
 }
 
@@ -82,6 +84,7 @@ func newEnv() *env {
 		derives:    map[string]map[string]bool{},
 		aliases:    map[string]*ast.TypeAliasDecl{},
 		userTypes:  map[string]bool{},
+		classes:    map[string]bool{},
 		typeParams: map[string]bool{},
 	}
 }
@@ -136,7 +139,13 @@ func (b *envBuilder) decl(d ast.Decl) {
 		}
 	case *ast.StructDecl:
 		tp := typeParamSet(decl.TypeParams)
-		t := c.in.named(decl.Name, nil)
+		var t *Type
+		if decl.Class {
+			t = c.in.namedClass(decl.Name, nil)
+			e.classes[decl.Name] = true
+		} else {
+			t = c.in.named(decl.Name, nil)
+		}
 		e.types[decl.Name] = t
 		e.arity[decl.Name] = len(decl.TypeParams)
 		e.params[decl.Name] = typeParamNames(decl.TypeParams)
@@ -146,7 +155,8 @@ func (b *envBuilder) decl(d ast.Decl) {
 		}
 		var fields []*fieldInfo
 		for _, fd := range decl.Fields {
-			fields = append(fields, &fieldInfo{name: fd.Name, typ: c.buildType(fd.Type, tp)})
+			fields = append(fields, &fieldInfo{name: fd.Name, typ: c.buildType(fd.Type, tp),
+				hasDefault: fd.Default != nil})
 		}
 		e.fields[decl.Name] = fields
 	case *ast.EnumDecl:
@@ -190,6 +200,10 @@ func (b *envBuilder) decl(d ast.Decl) {
 			e.typeParams[p.Name] = true
 		}
 		sig := c.buildSig(decl)
+		if decl.Name == "init" && decl.Result != nil {
+			c.bag.Error(decl.Result.Pos(), diag.CodeInitReturn,
+				"init must return nothing", "use try_new for a fallible constructor")
+		}
 		switch {
 		case decl.Recv == nil:
 			e.funcs[decl.Name] = sig
@@ -238,14 +252,14 @@ func typeParamSet(params []*ast.TypeParam) map[string]bool {
 	return set
 }
 
-// keyType reports whether a type can be a Map key or Set element. The language
+// keyType reports whether a type can be a dict key or set element. The language
 // gives Equal only to values with stable equality, so handles, raw addresses,
 // floats, and structs holding one of them are rejected here.
 func (c *checker) keyType(t *Type) bool {
 	if t == nil {
 		return true
 	}
-	if t.Borrow() != ast.OwnedBorrow || t.Kind() == ViewKind {
+	if t.Kind() == ViewKind {
 		return false
 	}
 	switch t.Kind() {
@@ -254,7 +268,7 @@ func (c *checker) keyType(t *Type) bool {
 		return name != "raw" && name != "f32" && name != "f64"
 	case NamedKind:
 		switch t.Name() {
-		case "raw", "rc", "arc", "weak_rc", "weak_arc", "chan", "Task", "f32", "f64":
+		case "raw", "chan", "Task", "f32", "f64":
 			return false
 		}
 		if fields, ok := c.env.fields[t.Name()]; ok {
@@ -275,12 +289,23 @@ func (c *checker) keyType(t *Type) bool {
 
 func (c *checker) buildSig(decl *ast.FuncDecl) *signature {
 	tp := typeParamSet(decl.TypeParams)
+	if decl.Recv != nil && len(decl.Recv.Type.Args) != 0 {
+		// The receiver of a generic method writes the type parameters it uses,
+		// so its signature mentions them as free type parameters.
+		if tp == nil {
+			tp = map[string]bool{}
+		}
+		for _, a := range decl.Recv.Type.Args {
+			if a.Kind == ast.NamedType && len(a.Args) == 0 {
+				tp[a.Name] = true
+			}
+		}
+	}
 	sig := &signature{name: decl.Name, typeParams: len(decl.TypeParams), async: decl.Async}
 	for _, p := range decl.TypeParams {
 		sig.typeNames = append(sig.typeNames, p.Name)
 	}
 	if decl.Recv != nil {
-		sig.recvMut = decl.Recv.Mut
 		for _, a := range decl.Recv.Type.Args {
 			sig.recvParams = append(sig.recvParams, a.Name)
 		}
@@ -330,12 +355,6 @@ func (c *checker) qualifyForeignType(t *Type, pkg string, params map[string]bool
 	if t == nil {
 		return nil
 	}
-	if t.borrow != ast.OwnedBorrow {
-		base := *t
-		base.borrow = ast.OwnedBorrow
-		base.text = strings.TrimPrefix(strings.TrimPrefix(t.text, "ref "), "mut ")
-		return c.in.borrowed(c.qualifyForeignType(&base, pkg, params), t.borrow)
-	}
 	args := func() []*Type {
 		if len(t.Args()) == 0 {
 			return nil
@@ -361,7 +380,7 @@ func (c *checker) qualifyForeignType(t *Type, pkg string, params map[string]bool
 		}
 		return c.in.named(pkg+"."+name, a)
 	case ViewKind:
-		return c.in.view(c.qualifyForeignType(t.Elem(), pkg, params), t.viewMut)
+		return c.in.view(c.qualifyForeignType(t.Elem(), pkg, params))
 	case ArrayKind:
 		return c.in.array(t.length, c.qualifyForeignType(t.Elem(), pkg, params))
 	case FuncKind:
@@ -428,12 +447,12 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 		for i, a := range t.Args {
 			args[i] = c.buildType(a, tp)
 		}
-		if t.Name == "Set" && len(args) == 1 && !c.keyType(args[0]) {
-			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "Set element type does not support equal",
+		if t.Name == "set" && len(args) == 1 && !c.keyType(args[0]) {
+			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "set element type does not support equal",
 				"use a type with a stable equality, such as an integer, str, struct, or enum")
 		}
-		if t.Name == "Map" && len(args) == 2 && !c.keyType(args[0]) {
-			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "Map key type does not support equal",
+		if t.Name == "dict" && len(args) == 2 && !c.keyType(args[0]) {
+			c.bag.Error(t.Pos(), diag.CodeTypeMismatch, "dict key type does not support equal",
 				"use a type with a stable equality, such as an integer, str, struct, or enum")
 		}
 		if want, ok := c.env.arity[t.Name]; ok {
@@ -441,7 +460,11 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 				c.bag.Error(t.Pos(), diag.CodeTypeArgCount, "wrong number of type arguments",
 					"the declaration takes "+strconv.Itoa(want))
 			}
-			out = c.in.named(t.Name, args)
+			if c.env.classes[t.Name] {
+				out = c.in.namedClass(t.Name, args)
+			} else {
+				out = c.in.named(t.Name, args)
+			}
 			break
 		}
 		if bt := c.in.builtin(t.Name); bt != nil {
@@ -463,7 +486,7 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 	case ast.ArrayType:
 		out = c.in.array(t.Len, c.buildType(t.Elem, tp))
 	case ast.ViewType:
-		out = c.in.view(c.buildType(t.Elem, tp), t.ViewMut)
+		out = c.in.view(c.buildType(t.Elem, tp))
 	case ast.FuncType:
 		params := make([]*Type, len(t.Params))
 		for i, p := range t.Params {
@@ -476,5 +499,5 @@ func (c *checker) buildType(t *ast.Type, tp map[string]bool) *Type {
 	if out == nil {
 		return nil
 	}
-	return c.in.borrowed(out, t.Borrow)
+	return out
 }

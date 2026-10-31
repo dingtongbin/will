@@ -1,17 +1,21 @@
 struct Box<T> {
     tag: i32
+
+    def init(self) {
+        self.tag = 0
+    }
+
+    def bump(self) {
+        self.tag += 1
+    }
 }
 
-def (b: mut Box<T>) init() {
-    b.tag = 0
-}
 
-def (b: mut Box<T>) bump() {
-    b.tag += 1
-}
+
+
 
 def main() -> i32 {
-    var a: Box<i64> = new Box<i64>()
+    var a: Box<i64> = Box<i64>()
     a.bump()
     return a.tag
 }

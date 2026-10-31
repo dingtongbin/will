@@ -3,7 +3,7 @@ import "std/os/fs"
 # Checksum reads the whole file through the completion engine and sums every
 # byte, so a short or reordered read cannot pass.
 async def checksum(path: str) -> Result<i64, Error> {
-    var bytes: Array<u8> = await fs.read_file(path)?
+    var bytes: list[u8] = await fs.read_file(path)?
     var sum: i64 = 0
     for b in bytes {
         sum += i64(b)
@@ -21,7 +21,7 @@ async def append_tail(path: str) -> Result<(), Error> {
 async def main() -> i32 {
     var path: str = "will-concurrency-asyncfile.tmp"
     var n: usize = 262144
-    var data: Array<u8> = new Array<u8>(n)
+    var data: list[u8] = list[u8](n)
     for i in Range(0, 262144) {
         data.push(u8(i % 251))
     }
@@ -78,7 +78,7 @@ async def main() -> i32 {
         }
         _ => {}
     }
-    var back: Result<Array<u8>, Error> = await fs.read_file(path)
+    var back: Result<list[u8], Error> = await fs.read_file(path)
     match back {
         Ok(bytes) => {
             if bytes.len() != n + 3 {

@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/will-lang/will/internal/gcmeta"
 	"github.com/will-lang/will/internal/willc"
 )
 
@@ -30,6 +31,13 @@ func EmitPackageModule(docs []*willc.Doc, pkg, entry, entryPkg string, aliases m
 	g.emittedFuncs = map[string]bool{}
 	for _, doc := range docs {
 		g.docs = append(g.docs, newDocState(doc))
+	}
+	if g.hasGCMeta() {
+		program, err := gcmeta.Build(g.rawDocs())
+		if err != nil {
+			return nil, err
+		}
+		g.gcProgram = program
 	}
 	if !lib {
 		g.findEntry(entry, entryPkg)
@@ -66,6 +74,7 @@ func EmitPackageModule(docs []*willc.Doc, pkg, entry, entryPkg string, aliases m
 	if g.usesSelect() {
 		g.out.WriteString("%willrt_arm = type { ptr, ptr, ptr, i32, i64 }\n")
 	}
+	g.emitGCTypes()
 	// A package object may mention the predeclared Error interface only through
 	// an imported signature or an ADT payload, so define it unconditionally.
 	g.out.WriteString("%interface.Error = type { ptr, ptr }\n")
@@ -98,6 +107,9 @@ func EmitPackageModule(docs []*willc.Doc, pkg, entry, entryPkg string, aliases m
 		g.buildEnums()
 		g.buildInterfaces()
 	}
+	if err := g.buildClasses(); err != nil {
+		return nil, err
+	}
 	for _, d := range g.docs {
 		if !emits(d) {
 			continue
@@ -123,6 +135,9 @@ func EmitPackageModule(docs []*willc.Doc, pkg, entry, entryPkg string, aliases m
 		}
 	}
 	g.emitAux()
+	if err := g.emitGCMetadata(); err != nil {
+		return nil, err
+	}
 	return []byte(g.out.String()), nil
 }
 
@@ -160,6 +175,7 @@ func newGenerator(lib bool, aliases map[string]string) *generator {
 		ifaceDataSlots: map[int]string{},
 		builtinErrors:  map[int]bool{},
 		liveValues:     map[int]string{},
+		gcInlineTypes:  map[string]*gcmeta.Type{},
 	}
 }
 

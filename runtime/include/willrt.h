@@ -130,16 +130,12 @@ void willrt_free(void* ptr);
    passing it to willrt_free would report a false error for every literal. */
 void willrt_free_str(void* ptr);
 
-/* A closure environment starts with share and drop callbacks and an atomic
-   reference count; the captured fields follow. retain/release may run on a
-   lane other than the one that built the closure. */
-void* willrt_closure_new(size_t bytes, void (*drop)(void*),
-                         void (*share)(void*));
+/* A closure environment starts with a drop callback and an atomic reference
+   count; the captured fields follow. retain/release may run on a lane other
+   than the one that built the closure. */
+void* willrt_closure_new(size_t bytes, void (*drop)(void*));
 void willrt_closure_retain(void* env);
 void willrt_closure_release(void* env);
-/* willrt_closure_share promotes every rc handle captured by the environment.
-   A null environment or a closure without captures does nothing. */
-void willrt_closure_share(void* env);
 
 /* willrt_alloc_count reports how many allocations were counted. Counting is
    off unless WILLRT_COUNT_ALLOC=1 was set before the first allocation; the
@@ -176,67 +172,6 @@ void* willrt_plate_new(size_t count, size_t elem);
    plate magic, is rejected with one line on standard error, and its memory is
    left alone. */
 void willrt_plate_release(void* plate);
-
-/* willrt_take_c adopts an object owned by C. ptr is returned unchanged by
-   willrt_rc_deref; the handle carries a foreign marker instead of a slot.
-   retain_code and release_code use the closure ABI: (environment, ptr).
-   retain_code may be NULL for the TakeC form; release_code is required. */
-uint64_t willrt_take_c(void* ptr, void* retain_code, void* retain_env,
-                       void* release_code, void* release_env);
-
-/* willrt_rc_new copies size bytes from value into a new rc object and returns
-   its handle, or 0 when the allocation fails. A handle carries the slot index
-   in the high 32 bits and the slot generation in the low 32 bits, and 0 is
-   never valid. value must point to size bytes when size is nonzero. */
-uint64_t willrt_rc_new(const void* value, size_t size);
-
-/* willrt_rc_new_drop is willrt_rc_new with drop glue: drop(object) runs on the
-   last release, before the object storage is returned. */
-uint64_t willrt_rc_new_drop(const void* value, size_t size,
-                            void (*drop)(void*));
-
-/* willrt_rc_set_shared switches reference counts from the single-thread fast
-   path to atomic compare-and-swap. A worker must be marked before it can touch
-   an rc handle. */
-void willrt_rc_set_shared(void);
-
-/* willrt_rc_set_threaded tells the table that a second thread exists. It does
-   not make every count atomic; willrt_rc_share does that per object. */
-void willrt_rc_set_threaded(void);
-
-/* willrt_rc_share marks one object as reachable from more than one thread. The
-   compiler calls it before a handle enters a task frame or a channel. Until
-   then this object keeps the plain count path even when other workers exist. */
-void willrt_rc_share(uint64_t handle);
-
-/* willrt_rc_retain adds one reference to the object named by handle. A zero,
-   out-of-range, or released handle is ignored, so a stale handle never
-   faults. */
-void willrt_rc_retain(uint64_t handle);
-
-/* willrt_rc_release removes one reference from the object named by handle and
-   releases its storage when the count reaches zero. A zero, out-of-range, or
-   released handle is ignored. */
-void willrt_rc_release(uint64_t handle);
-
-/* willrt_rc_deref returns the object named by handle after checking the slot
-   generation, or NULL when the handle is zero, out of range, or released. The
-   lookup is O(1). The caller must own a reference for as long as the result is
-   used. */
-void* willrt_rc_deref(uint64_t handle);
-
-/* willrt_weak_new returns a weak handle for a live rc handle, or 0 when the
-   handle is not live. A weak handle does not change the strong count and does
-   not keep the slot from being reused; it is encoded exactly like a strong
-   handle, so it must not be passed to willrt_rc_retain or
-   willrt_rc_release. */
-uint64_t willrt_weak_new(uint64_t handle);
-
-/* willrt_weak_upgrade writes the strong handle to *(uint64_t*)out and returns
-   WILLRT_OK when the weak handle still names a live object. It returns
-   WILLRT_EMPTY when the object was released or out is NULL. On success the
-   strong count is incremented, so the caller owns the returned reference. */
-int32_t willrt_weak_upgrade(uint64_t weak, void* out);
 
 /* willrt_now_ns returns the monotonic clock in nanoseconds. It never goes
    backwards and is the time base for timer deadlines. */
@@ -389,6 +324,25 @@ int32_t willrt_sync_lock_async(void* s, int32_t mode);
 int32_t willrt_sync_sema_acquire_async(void* s);
 int32_t willrt_sync_count_wait_async(void* s);
 int32_t willrt_sync_gate_wait_async(void* s);
+/* The blocking forms run entirely on the calling thread and never create or
+   resume a task state machine. CPU jobs use these forms; async tasks use the
+   awaitable forms above. */
+int32_t willrt_sync_lock_blocking(void* s, int32_t mode);
+int32_t willrt_sync_sema_acquire_blocking(void* s);
+int32_t willrt_sync_count_wait_blocking(void* s);
+int32_t willrt_sync_gate_wait_blocking(void* s);
+
+/* A reusable barrier has a blocking CPU form and an awaitable task form. The
+   task form follows the sync wait protocol: start, poll, finish, deadline,
+   abandon. */
+void* willrt_sync_barrier_new(int64_t parties);
+int32_t willrt_sync_barrier_wait_blocking(void* barrier);
+int32_t willrt_sync_barrier_wait_async(void* barrier);
+willrt_sync_wait* willrt_sync_barrier_wait_async_start(void* barrier);
+int32_t willrt_sync_barrier_wait_poll(willrt_sync_wait* wait);
+int32_t willrt_sync_barrier_wait_finish(willrt_sync_wait* wait);
+int64_t willrt_sync_barrier_wait_deadline(willrt_sync_wait* wait);
+void willrt_sync_barrier_wait_abandon(willrt_sync_wait* wait);
 /* The start forms register the current task's embedded node and return it. A
    caller outside a task blocks in the start form and returns a granted or
    timed-out node. */
@@ -479,18 +433,40 @@ willrt_task* willrt_task_new(void* step, void* frame, size_t size,
 willrt_task* willrt_task_new_drop(void* step, void* frame, size_t size,
                                   int32_t lane, int32_t prio,
                                   void (*frame_drop)(void*));
+/* willrt_task_new_gc declares the frame's exact reference slots and the result
+   type before the task becomes reachable to another lane or to the cycle
+   thread. The frame map belongs to compiler static storage. */
+willrt_task* willrt_task_new_gc(void* step, void* frame, size_t size,
+                                int32_t lane, int32_t prio,
+                                const willrt_gc_stack_map_data* frame_map,
+                                const willrt_gc_type* result_type);
+willrt_task* willrt_task_new_drop_gc(void* step, void* frame, size_t size,
+                                     int32_t lane, int32_t prio,
+                                     void (*frame_drop)(void*),
+                                     const willrt_gc_stack_map_data* frame_map,
+                                     const willrt_gc_type* result_type);
 /* willrt_task_own_frame marks the frame as allocated on the heap, so the
    region barrier frees it with the task. A frame that lives anywhere else
    must not be marked. */
 void willrt_task_own_frame(willrt_task* task);
 /* willrt_job_new queues a task on the current or least-loaded non-reserved
-   lane. The caller only uses it from a parallel block; the block body must not
-   suspend. The returned handle is joined like a task handle. */
+   lane. The job body must not suspend. The returned handle is joined like a
+   task handle. */
 willrt_task* willrt_job_new(void* step, void* frame, size_t size,
                             int32_t prio);
 /* willrt_job_new_drop is willrt_job_new with the frame drop callback. */
 willrt_task* willrt_job_new_drop(void* step, void* frame, size_t size,
                                  int32_t prio, void (*frame_drop)(void*));
+/* The GC-aware job constructors take the frame map and result type for the
+   same reason as willrt_task_new_gc. */
+willrt_task* willrt_job_new_gc(void* step, void* frame, size_t size,
+                               int32_t prio,
+                               const willrt_gc_stack_map_data* frame_map,
+                               const willrt_gc_type* result_type);
+willrt_task* willrt_job_new_drop_gc(void* step, void* frame, size_t size,
+                                    int32_t prio, void (*frame_drop)(void*),
+                                    const willrt_gc_stack_map_data* frame_map,
+                                    const willrt_gc_type* result_type);
 /* willrt_job_pop removes the oldest job from one lane's local queue. The lane
    worker calls it while it holds that lane's lock, so a concurrent enqueue
    cannot lose the wake. */
@@ -585,7 +561,7 @@ void willrt_sched_wake_all(void);
    Async file IO. An operation is one whole-file read, overwrite, or append.
    Start copies the path and the write bytes, submits the OS call, and returns
    a handle the generated step polls. The buffer of a successful read becomes
-   the data of the caller's Array<u8>; every other buffer belongs to the
+   the data of the caller's list[u8]; every other buffer belongs to the
    operation and is released by finish. poll never blocks. A task that is
    canceled or past its scoped deadline leaves the kernel completion to retire
    the operation, so the frame can unwind without waiting for the disk.
@@ -651,6 +627,12 @@ willrt_chan* willrt_chan_new(size_t elem, size_t cap, int32_t prio);
    element when the last channel handle is released. */
 willrt_chan* willrt_chan_new_drop(size_t elem, size_t cap, int32_t prio,
                                   void (*drop)(void*));
+/* willrt_chan_new_gc also declares the element's reference layout. The channel
+   is a GC root while it is live, so buffered values stay reachable and direct
+   handoffs use the write barrier. */
+willrt_chan* willrt_chan_new_gc(size_t elem, size_t cap, int32_t prio,
+                                void (*drop)(void*),
+                                const willrt_gc_type* elem_type);
 /* Channel handles are reference counted. */
 void willrt_chan_retain(willrt_chan* chan);
 void willrt_chan_release(willrt_chan* chan);

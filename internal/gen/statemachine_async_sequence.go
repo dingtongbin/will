@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/will-lang/will/internal/willc"
@@ -30,7 +31,7 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 	stmts := g.children(body.ID)
 	sortByID(stmts)
 	var sites []asyncCallSite
-	for _, r := range g.recs {
+	for _, r := range sortedRecords(g.recs) {
 		if !g.insideBlock(r.ID, body.ID) {
 			continue
 		}
@@ -63,7 +64,7 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 	sortAsyncSites(sites)
 	var params []willc.Record
 	var locals []willc.Record
-	for _, r := range g.recs {
+	for _, r := range sortedRecords(g.recs) {
 		if g.enclosingFunc(r.ID) != fnID {
 			continue
 		}
@@ -104,6 +105,48 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 		indexes[l.ID] = len(fields)
 		fields = append(fields, f)
 	}
+	// A class allocation is a root before init or a nested default can
+	// allocate. The frame reserves its own pointer field so the collector can
+	// find the half-built object across those safepoints.
+	for _, r := range sortedRecords(g.recs) {
+		if r.Kind != "new" {
+			continue
+		}
+		text := fieldText(r, "type")
+		if !g.isClassText(text) {
+			continue
+		}
+		fields = append(fields, asyncField{id: r.ID, text: "class." + strconv.Itoa(r.ID),
+			willText: text, llvm: "ptr"})
+	}
+	inlineRoots := map[int][]int{}
+	appendInlineRoots := func(decl int, text string) {
+		if g.isClassText(text) {
+			return
+		}
+		if _, ok := g.ifaceOfText(text); ok {
+			return
+		}
+		if isFuncText(text) {
+			return
+		}
+		inline, ok := g.inlineGCType(text)
+		if !ok || len(inline.Refs) == 0 {
+			return
+		}
+		for range inline.Refs {
+			inlineRoots[decl] = append(inlineRoots[decl], len(fields))
+			fields = append(fields, asyncField{
+				id: -decl*16 - len(inlineRoots[decl]), gcRoot: true, llvm: "ptr",
+			})
+		}
+	}
+	for _, r := range append(append([]willc.Record(nil), locals...), params...) {
+		appendInlineRoots(r.ID, fieldText(r, "type"))
+	}
+	if recv := receiverOfIn(g.cur, fnID); recv != nil {
+		appendInlineRoots(recv.ID, fieldText(*recv, "type"))
+	}
 	for i := range sites {
 		if sites[i].kind == "c" {
 			parent := refField(sites[i].call, "parent")
@@ -139,6 +182,7 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 		fieldTypes = append(fieldTypes, f.llvm)
 	}
 	frameType := "{ i32, ptr, " + strings.Join(fieldTypes, ", ") + " }"
+	gcSlots, gcTypes := g.asyncGCSlots(fields)
 	resultText := fieldText(fn, "type")
 	resultLLVM := ""
 	if resultText != "" {
@@ -160,6 +204,9 @@ func (g *generator) asyncSequenceMachine(fnID int) (*asyncMachineInfo, bool) {
 		constructor: sym + ".task",
 		frameType:   frameType,
 		fields:      fields,
+		gcSlots:     gcSlots,
+		gcTypes:     gcTypes,
+		inlineRoots: inlineRoots,
 		resultText:  resultText,
 		resultLLVM:  resultLLVM,
 	}

@@ -1,0 +1,9 @@
+import "std/sync"
+
+def main() -> i32 {
+    var m: sync.Mutex<i32> = sync.Mutex<i32>(5)
+    var g: sync.Guard<i32> = m.lock_blocking()
+    g.value = 7
+    var v: i32 = g.value
+    return v
+}

@@ -15,13 +15,13 @@ def main() -> i32 {
     if hex.encode(empty[Range(0, 0)]) != "" {
         return 3
     }
-    var bytesIn: Array<u8> = new Array<u8>(2)
+    var bytesIn: list[u8] = list[u8](2)
     bytesIn.push(u8(251))
     bytesIn.push(u8(255))
     if hex.encode(bytesIn[Range(0, 2)]) != "fbff" {
         return 4
     }
-    var back: Result<Array<u8>, Error> = hex.decode(hex.encode(utf8[Range(0, 6)]))
+    var back: Result<list[u8], Error> = hex.decode(hex.encode(utf8[Range(0, 6)]))
     match back {
         Ok(v) => {
             if v.len() != usize(6) {
@@ -38,7 +38,7 @@ def main() -> i32 {
             return e.status()
         }
     }
-    var none: Result<Array<u8>, Error> = hex.decode(hex.encode(empty[Range(0, 0)]))
+    var none: Result<list[u8], Error> = hex.decode(hex.encode(empty[Range(0, 0)]))
     match none {
         Ok(v) => {
             if v.len() != usize(0) {

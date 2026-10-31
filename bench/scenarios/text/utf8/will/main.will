@@ -49,7 +49,7 @@ def walk(seed: u64) -> u64 {
 }
 
 def main() -> i32 {
-    var samples: Array<u64> = new Array<u64>(0)
+    var samples: list[u64] = list[u64](0)
     # The warm up pays for the first touch of the pages and of the caches.
     var warm: u64 = walk(0u64)
     _ = warm

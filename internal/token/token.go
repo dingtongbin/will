@@ -44,6 +44,8 @@ const (
 	KwAsync
 	// KwAwait starts one explicit wait.
 	KwAwait
+	// KwClass introduces a GC reference type declaration.
+	KwClass
 	// KwStruct introduces a struct declaration.
 	KwStruct
 	// KwEnum introduces an enum declaration.
@@ -80,8 +82,6 @@ const (
 	KwSpawn
 	// KwRegion opens a structured task region.
 	KwRegion
-	// KwParallel opens a CPU-parallel block.
-	KwParallel
 	// KwDeadline opens a scoped deadline.
 	KwDeadline
 	// KwSelect waits on several channel operations.
@@ -248,6 +248,7 @@ var names = map[Kind]string{
 	KwFunc:          "func",
 	KwAsync:         "async",
 	KwAwait:         "await",
+	KwClass:         "class",
 	KwStruct:        "struct",
 	KwEnum:          "enum",
 	KwInterface:     "interface",
@@ -266,7 +267,6 @@ var names = map[Kind]string{
 	KwMatch:         "match",
 	KwSpawn:         "spawn",
 	KwRegion:        "region",
-	KwParallel:      "parallel",
 	KwDeadline:      "deadline",
 	KwSelect:        "select",
 	KwDefer:         "defer",
@@ -355,6 +355,7 @@ var Keywords = map[string]Kind{
 	"func":      KwFunc,
 	"async":     KwAsync,
 	"await":     KwAwait,
+	"class":     KwClass,
 	"struct":    KwStruct,
 	"enum":      KwEnum,
 	"interface": KwInterface,

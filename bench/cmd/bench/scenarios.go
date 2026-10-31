@@ -112,14 +112,6 @@ var scenarios = []scenario{
 		note:    "the C side uses the system allocator, the will side the runtime allocator",
 	},
 	{
-		name:    "mem/rc",
-		kind:    kindProgram,
-		desc:    "reference counted object creation, dereference and release",
-		cFile:   "scenarios/mem/rc/c/main.c",
-		willDir: "scenarios/mem/rc/will",
-		note:    "the C side counts with an atomic reference count",
-	},
-	{
 		name:    "mem/steady",
 		kind:    kindProgram,
 		desc:    "steady loop that must not allocate",

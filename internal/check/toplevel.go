@@ -9,28 +9,19 @@ import (
 	"github.com/will-lang/will/internal/source"
 )
 
-const topWriteHelp = "put the mutable state behind an rc and a guard"
+const topWriteHelp = "put the mutable state behind a Mutex or a channel"
 
 // TopLevelWrites reports O0009 for writes to a package-level var or const from
-// any function body, including writes through a field or index. A call to a
-// mut receiver or a mut parameter counts as a write. Top-level handles of rc,
-// weak, chan, and Task are immutable bindings; their pointees stay usable.
+// any function body, including writes through a field or index. A top-level chan
+// or Task is an immutable binding; its pointee stays usable.
 func TopLevelWrites(f *ast.File) []diag.Diagnostic {
-	return TopLevelWritesWithEffects(f, nil)
-}
-
-// TopLevelWritesWithEffects adds the package-wide mut summaries, so a write
-// through a sibling file's mut method or mut parameter is still O0009.
-func TopLevelWritesWithEffects(f *ast.File, effects *MutEffects) []diag.Diagnostic {
 	if f == nil {
 		return nil
 	}
 	w := &topWriteWalker{
-		top:        map[string]*ast.Type{},
-		consts:     map[string]bool{},
-		funcs:      map[string]*ast.FuncDecl{},
-		mutMethods: map[string]bool{},
-		effects:    effects,
+		top:    map[string]*ast.Type{},
+		consts: map[string]bool{},
+		funcs:  map[string]*ast.FuncDecl{},
 	}
 	for _, d := range f.Decls {
 		switch decl := d.(type) {
@@ -40,9 +31,6 @@ func TopLevelWritesWithEffects(f *ast.File, effects *MutEffects) []diag.Diagnost
 			w.consts[decl.Name] = true
 		case *ast.FuncDecl:
 			w.funcs[decl.Name] = decl
-			if decl.Recv != nil && decl.Recv.Mut {
-				w.mutMethods[decl.Name] = true
-			}
 		}
 	}
 	for _, d := range f.Decls {
@@ -63,13 +51,11 @@ func TopLevelWritesWithEffects(f *ast.File, effects *MutEffects) []diag.Diagnost
 }
 
 type topWriteWalker struct {
-	bag        diag.Bag
-	top        map[string]*ast.Type
-	consts     map[string]bool
-	funcs      map[string]*ast.FuncDecl
-	mutMethods map[string]bool
-	effects    *MutEffects
-	scopes     []map[string]bool
+	bag    diag.Bag
+	top    map[string]*ast.Type
+	consts map[string]bool
+	funcs  map[string]*ast.FuncDecl
+	scopes []map[string]bool
 }
 
 func (w *topWriteWalker) shadowed(name string) bool {
@@ -152,8 +138,6 @@ func (w *topWriteWalker) stmt(st ast.Stmt) {
 		w.block(s.Body, scope)
 	case *ast.RegionStmt:
 		w.block(s.Body, nil)
-	case *ast.ParallelStmt:
-		w.block(s.Body, nil)
 	case *ast.SelectStmt:
 		for _, arm := range s.Arms {
 			scope := map[string]bool{}
@@ -203,9 +187,8 @@ func patternNames(p *ast.Pattern, out map[string]bool) {
 	}
 }
 
-// write checks one assignment target. A root top-level handle of rc, weak,
-// chan, or Task may still have its pointee mutated; only the binding itself is
-// read-only.
+// write checks one assignment target. A root top-level chan or Task may still
+// have its pointee mutated; only the binding itself is read-only.
 func (w *topWriteWalker) write(target ast.Expr) {
 	root := rootName(target)
 	if w.isTop(root) {
@@ -232,7 +215,7 @@ func isHandleType(t *ast.Type) bool {
 		return false
 	}
 	switch t.Name {
-	case "rc", "arc", "weak_rc", "weak_arc", "chan", "Task":
+	case "chan", "Task":
 		return true
 	}
 	return false
@@ -244,22 +227,6 @@ func (w *topWriteWalker) expr(e ast.Expr) {
 	}
 	switch x := e.(type) {
 	case *ast.CallExpr:
-		if name, ok := x.Callee.(*ast.NameExpr); ok {
-			var modes []bool
-			if fn := w.funcs[name.Name]; fn != nil {
-				modes = make([]bool, len(fn.Params))
-				for i, p := range fn.Params {
-					modes[i] = p.Mut
-				}
-			} else {
-				modes = w.effects.FuncMut(name.Name)
-			}
-			for i, arg := range x.Args {
-				if i < len(modes) && modes[i] && w.isTop(rootName(arg.Expr)) {
-					w.report(rootName(arg.Expr), arg.Pos())
-				}
-			}
-		}
 		w.expr(x.Callee)
 		for _, a := range x.Args {
 			w.expr(a.Expr)
@@ -288,10 +255,6 @@ func (w *topWriteWalker) expr(e ast.Expr) {
 	case *ast.BinaryExpr:
 		w.expr(x.L)
 		w.expr(x.R)
-	case *ast.NewExpr:
-		for _, a := range x.Args {
-			w.expr(a.Expr)
-		}
 	case *ast.AggregateExpr:
 		for _, f := range x.Fields {
 			w.expr(f.Value)
@@ -331,9 +294,6 @@ func (w *topWriteWalker) expr(e ast.Expr) {
 }
 
 func (w *topWriteWalker) mutatingMethod(recv *ast.Type, name string) bool {
-	if w.mutMethods[name] || w.effects.MethodMut(recv, name) {
-		return true
-	}
 	switch name {
 	case "push", "append", "set", "insert", "remove", "pop", "clear", "reserve", "resize", "shrink_to_fit", "add", "delete":
 		return true

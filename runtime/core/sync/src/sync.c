@@ -356,11 +356,20 @@ void willrt_sync_wait_abandon(willrt_sync_wait* wait) {
    borrowed: a caller outside the task engine has nowhere to keep it. */
 static int32_t willrt_sync_plain(void* s, int32_t mode) {
     willrt_sync_wait* wait = willrt_sync_wait_common(s, mode);
+    struct willrt_sync* sync = (struct willrt_sync*)s;
     int32_t status;
     int32_t heap;
 
     if (wait == NULL) {
         return WILLRT_FAILED;
+    }
+    while (!willrt_sync_wait_poll(wait)) {
+        willrt_os_mutex_lock(&sync->lock);
+        if (wait->linked) {
+            willrt_os_cond_timedwait(&sync->cond, &sync->lock,
+                                     willrt_sync_step());
+        }
+        willrt_os_mutex_unlock(&sync->lock);
     }
     heap = wait->task == NULL;
     status = willrt_sync_wait_finish(wait);
@@ -383,6 +392,268 @@ int32_t willrt_sync_count_wait_async(void* s) {
 }
 
 int32_t willrt_sync_gate_wait_async(void* s) {
+    return willrt_sync_plain(s, WILLRT_SYNC_EXCLUSIVE);
+}
+
+int32_t willrt_sync_lock_blocking(void* s, int32_t mode) {
+    return willrt_sync_plain(s, mode);
+}
+
+int32_t willrt_sync_sema_acquire_blocking(void* s) {
+    return willrt_sync_plain(s, WILLRT_SYNC_EXCLUSIVE);
+}
+
+int32_t willrt_sync_count_wait_blocking(void* s) {
+    return willrt_sync_plain(s, WILLRT_SYNC_EXCLUSIVE);
+}
+
+typedef struct willrt_sync_barrier {
+    willrt_os_mutex lock;
+    willrt_os_cond cond;
+    int64_t parties;
+    int64_t arrived;
+    uint64_t generation;
+    willrt_sync_wait* head;
+    willrt_sync_wait* tail;
+} willrt_sync_barrier;
+
+static void willrt_sync_barrier_link(willrt_sync_barrier* barrier,
+                                     willrt_sync_wait* wait) {
+    wait->linked = 1;
+    wait->prev = barrier->tail;
+    wait->next = NULL;
+    if (barrier->tail != NULL) {
+        barrier->tail->next = wait;
+    } else {
+        barrier->head = wait;
+    }
+    barrier->tail = wait;
+}
+
+static void willrt_sync_barrier_unlink(willrt_sync_barrier* barrier,
+                                       willrt_sync_wait* wait) {
+    if (!wait->linked) {
+        return;
+    }
+    if (wait->prev != NULL) {
+        wait->prev->next = wait->next;
+    } else {
+        barrier->head = wait->next;
+    }
+    if (wait->next != NULL) {
+        wait->next->prev = wait->prev;
+    } else {
+        barrier->tail = wait->prev;
+    }
+    wait->prev = NULL;
+    wait->next = NULL;
+    wait->linked = 0;
+}
+
+static void willrt_sync_barrier_release(willrt_sync_barrier* barrier,
+                                        willrt_sync_wait* current) {
+    int64_t count = barrier->arrived;
+    void** wake;
+    int64_t n = 0;
+
+    if (count <= 0) {
+        count = 0;
+    }
+    wake = count == 0 ? NULL : (void**)willrt_alloc(
+        (size_t)count * sizeof(*wake));
+    barrier->arrived = 0;
+    barrier->generation++;
+    while (barrier->head != NULL) {
+        willrt_sync_wait* wait = barrier->head;
+        willrt_sync_barrier_unlink(barrier, wait);
+        wait->status = WILLRT_OK;
+        if (wait->task != NULL && wake != NULL) {
+            wake[n++] = wait->task;
+        }
+    }
+    current->status = WILLRT_OK;
+    willrt_os_cond_broadcast(&barrier->cond);
+    willrt_os_mutex_unlock(&barrier->lock);
+    if (n > 0) {
+        willrt_task_wake_batch(wake, n);
+    }
+    if (wake != NULL) {
+        willrt_free(wake);
+    }
+}
+
+void* willrt_sync_barrier_new(int64_t parties) {
+    willrt_sync_barrier* barrier;
+
+    if (parties <= 0) {
+        return NULL;
+    }
+    barrier = (willrt_sync_barrier*)willrt_alloc(sizeof(*barrier));
+    if (barrier == NULL) {
+        return NULL;
+    }
+    memset(barrier, 0, sizeof(*barrier));
+    barrier->parties = parties;
+    willrt_os_mutex_init(&barrier->lock);
+    willrt_os_cond_init(&barrier->cond);
+    return barrier;
+}
+
+int32_t willrt_sync_barrier_wait_blocking(void* raw) {
+    willrt_sync_barrier* barrier = (willrt_sync_barrier*)raw;
+    uint64_t generation;
+
+    if (barrier == NULL) {
+        return -1;
+    }
+    willrt_os_mutex_lock(&barrier->lock);
+    generation = barrier->generation;
+    barrier->arrived++;
+    if (barrier->arrived == barrier->parties) {
+        barrier->arrived = 0;
+        barrier->generation++;
+        willrt_os_cond_broadcast(&barrier->cond);
+        willrt_os_mutex_unlock(&barrier->lock);
+        return 0;
+    }
+    while (barrier->generation == generation) {
+        willrt_os_cond_wait(&barrier->cond, &barrier->lock);
+    }
+    willrt_os_mutex_unlock(&barrier->lock);
+    return 0;
+}
+
+willrt_sync_wait* willrt_sync_barrier_wait_async_start(void* raw) {
+    willrt_sync_barrier* barrier = (willrt_sync_barrier*)raw;
+    willrt_task* task;
+    willrt_sync_wait* wait;
+
+    if (barrier == NULL) {
+        return NULL;
+    }
+    task = willrt_task_current();
+    if (task == NULL) {
+        int32_t status = willrt_sync_barrier_wait_blocking(raw);
+
+        wait = (willrt_sync_wait*)willrt_alloc(sizeof(*wait));
+        if (wait == NULL) {
+            return NULL;
+        }
+        memset(wait, 0, sizeof(*wait));
+        wait->status = status == 0 ? WILLRT_OK : WILLRT_FAILED;
+        return wait;
+    }
+    wait = willrt_task_sync_node();
+    if (wait == NULL || wait->active) {
+        return NULL;
+    }
+    wait->active = 1;
+    wait->task = task;
+    wait->owner = raw;
+    wait->mode = WILLRT_SYNC_EXCLUSIVE;
+    wait->status = WILLRT_SUSPEND;
+    willrt_os_mutex_lock(&barrier->lock);
+    willrt_sync_barrier_link(barrier, wait);
+    barrier->arrived++;
+    if (barrier->arrived == barrier->parties) {
+        willrt_sync_barrier_release(barrier, wait);
+    } else {
+        willrt_os_mutex_unlock(&barrier->lock);
+    }
+    return wait;
+}
+
+int32_t willrt_sync_barrier_wait_async(void* raw) {
+    willrt_sync_wait* wait = willrt_sync_barrier_wait_async_start(raw);
+
+    if (wait == NULL) {
+        return WILLRT_FAILED;
+    }
+    while (!willrt_sync_barrier_wait_poll(wait)) {
+        willrt_os_thread_yield();
+    }
+    return willrt_sync_barrier_wait_finish(wait);
+}
+
+int32_t willrt_sync_barrier_wait_poll(willrt_sync_wait* wait) {
+    willrt_sync_barrier* barrier;
+    willrt_task* task;
+
+    if (wait == NULL) {
+        return 1;
+    }
+    barrier = (willrt_sync_barrier*)wait->owner;
+    if (barrier == NULL) {
+        return 1;
+    }
+    task = willrt_task_current();
+    willrt_os_mutex_lock(&barrier->lock);
+    if (!wait->linked) {
+        willrt_os_mutex_unlock(&barrier->lock);
+        return 1;
+    }
+    if (task != NULL && willrt_task_canceled()) {
+        willrt_sync_barrier_unlink(barrier, wait);
+        barrier->arrived--;
+        wait->status = WILLRT_CANCELED;
+        willrt_os_mutex_unlock(&barrier->lock);
+        return 1;
+    }
+    if (task != NULL) {
+        int64_t deadline = willrt_task_deadline();
+        if (deadline != 0 && willrt_now_ns() >= deadline) {
+            willrt_sync_barrier_unlink(barrier, wait);
+            barrier->arrived--;
+            wait->status = WILLRT_TIMEDOUT;
+            willrt_os_mutex_unlock(&barrier->lock);
+            return 1;
+        }
+    }
+    willrt_os_mutex_unlock(&barrier->lock);
+    return 0;
+}
+
+int32_t willrt_sync_barrier_wait_finish(willrt_sync_wait* wait) {
+    int32_t status;
+
+    if (wait == NULL) {
+        return WILLRT_FAILED;
+    }
+    status = wait->status;
+    wait->active = 0;
+    wait->owner = NULL;
+    wait->task = NULL;
+    wait->status = 0;
+    if (wait->linked) {
+        willrt_sync_barrier_wait_abandon(wait);
+    }
+    return status;
+}
+
+int64_t willrt_sync_barrier_wait_deadline(willrt_sync_wait* wait) {
+    (void)wait;
+    return 0;
+}
+
+void willrt_sync_barrier_wait_abandon(willrt_sync_wait* wait) {
+    willrt_sync_barrier* barrier;
+
+    if (wait == NULL || !wait->linked) {
+        return;
+    }
+    barrier = (willrt_sync_barrier*)wait->owner;
+    if (barrier == NULL) {
+        return;
+    }
+    willrt_os_mutex_lock(&barrier->lock);
+    willrt_sync_barrier_unlink(barrier, wait);
+    barrier->arrived--;
+    willrt_os_mutex_unlock(&barrier->lock);
+    wait->active = 0;
+    wait->owner = NULL;
+}
+
+int32_t willrt_sync_gate_wait_blocking(void* s) {
     return willrt_sync_plain(s, WILLRT_SYNC_EXCLUSIVE);
 }
 

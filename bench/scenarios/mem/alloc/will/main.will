@@ -12,14 +12,14 @@ const count: i32 = 1000000
 const repetitions: i32 = 5
 
 # Cell is the object the workload allocates.
-struct Cell {
+class Cell {
     value: i64
 }
 
 def main() -> i32 {
-    var samples: Array<u64> = new Array<u64>(0)
+    var samples: list[u64] = list[u64](0)
     # The warm up pays for the first touch of the pages and of the caches.
-    var warm: rc<Cell> = new rc<Cell>(Cell { value: 0i64})
+    var warm: Cell = Cell(0i64)
     _ = warm
 
     var checksum: i64 = 0i64
@@ -28,7 +28,7 @@ def main() -> i32 {
         var start: u64 = c.bench_now_ns()
         var total: i64 = 0i64
         for i in Range(0, count) {
-            var cell: rc<Cell> = new rc<Cell>(Cell { value: i64(i)})
+            var cell: Cell = Cell(i64(i))
             total += cell.value
         }
         var stop: u64 = c.bench_now_ns()

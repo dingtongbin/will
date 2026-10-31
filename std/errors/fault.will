@@ -3,21 +3,21 @@
 struct Fault {
     message: str
     status: i32
-}
 
-def (f: mut Fault) init(message: str, status: i32) {
-    f.message = message.clone()
-    f.status = status
-}
+    def init(self, message: str, status: i32) {
+        self.message = message.clone()
+        self.status = status
+    }
 
-def (f: ref Fault) message() -> str {
-    return f.message.clone()
-}
+    def message(self) -> str {
+        return self.message.clone()
+    }
 
-def (f: ref Fault) status() -> i32 {
-    return f.status
-}
+    def status(self) -> i32 {
+        return self.status
+    }
 
-def (f: ref Fault) class() -> ErrorClass {
-    return class_of_status(f.status)
+    def error_class(self) -> ErrorClass {
+        return class_of_status(self.status)
+    }
 }

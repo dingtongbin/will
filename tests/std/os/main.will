@@ -1,8 +1,8 @@
 import "std/os"
 
 def check_env() -> i32 {
-    var set: Result<(), Error> = os.setenv("WILL_OS_PROBE", "value")
-    match set {
+    var result: Result<(), Error> = os.setenv("WILL_OS_PROBE", "value")
+    match result {
         Err(e) => {
             if e.status() != 7 {
                 return 1
@@ -24,7 +24,7 @@ def check_env() -> i32 {
         }
     }
 
-    var environ: Map<str, str> = os.environ()
+    var environ: dict[str, str] = os.environ()
     if not environ.has("WILL_OS_PROBE") {
         return 5
     }

@@ -1,10 +1,6 @@
 package types
 
-import (
-	"strings"
-
-	"github.com/will-lang/will/internal/ast"
-)
+import "strings"
 
 // Send reports whether a value of t can move to another task. The answer is
 // structural: a handle is sendable only when its payload is, a task when its
@@ -25,7 +21,7 @@ func (r *Result) send(t *Type, active map[string]bool) bool {
 	if t == nil || r == nil || r.env == nil {
 		return true
 	}
-	if t.Borrow() != ast.OwnedBorrow || t.Kind() == ViewKind {
+	if t.Kind() == ViewKind {
 		return false
 	}
 	key := t.String()
@@ -53,7 +49,7 @@ func (r *Result) sync(t *Type, active map[string]bool) bool {
 	if t == nil || r == nil || r.env == nil {
 		return true
 	}
-	if t.Borrow() != ast.OwnedBorrow || t.Kind() == ViewKind {
+	if t.Kind() == ViewKind {
 		return false
 	}
 	key := t.String()
@@ -85,15 +81,13 @@ func (r *Result) namedSend(t *Type, active map[string]bool) bool {
 		return len(t.Args()) == 1 && r.send(t.Args()[0], active)
 	}
 	switch t.Name() {
-	case "rc", "weak_rc", "raw":
+	case "raw":
 		return false
-	case "arc", "weak_arc":
-		return len(t.Args()) == 1 && r.send(t.Args()[0], active) && r.sync(t.Args()[0], active)
 	case "Task":
 		return len(t.Args()) == 1 && r.send(t.Args()[0], active)
 	case "chan":
 		return len(t.Args()) == 1 && r.send(t.Args()[0], active)
-	case "Option", "Array", "Map", "Set", "Result":
+	case "Option", "Result", "list", "dict", "set":
 		for _, arg := range t.Args() {
 			if !r.send(arg, active) {
 				return false
@@ -106,9 +100,15 @@ func (r *Result) namedSend(t *Type, active map[string]bool) bool {
 	if isGuardType(t) {
 		return false
 	}
+	if isSyncHandleType(t.Name()) {
+		return true
+	}
 	short := shortNamed(t.Name())
 	if _, ok := r.env.ifaces[short]; ok {
 		return false
+	}
+	if r.env.classes[short] {
+		return true
 	}
 	if fields, ok := r.env.fields[short]; ok {
 		bind := r.bindings(short, t.Args())
@@ -150,13 +150,11 @@ func (r *Result) namedSync(t *Type, active map[string]bool) bool {
 		return r.send(t.Args()[0], active) && r.sync(t.Args()[0], active)
 	}
 	switch t.Name() {
-	case "rc", "weak_rc", "Task", "raw":
+	case "Task", "raw":
 		return false
-	case "arc", "weak_arc":
-		return len(t.Args()) == 1 && r.send(t.Args()[0], active) && r.sync(t.Args()[0], active)
 	case "chan":
 		return len(t.Args()) == 1 && r.send(t.Args()[0], active)
-	case "Option", "Array", "Map", "Set", "Result":
+	case "Option", "Result", "list", "dict", "set":
 		for _, arg := range t.Args() {
 			if !r.sync(arg, active) {
 				return false
@@ -169,9 +167,15 @@ func (r *Result) namedSync(t *Type, active map[string]bool) bool {
 	if isGuardType(t) {
 		return false
 	}
+	if isSyncHandleType(t.Name()) {
+		return true
+	}
 	short := shortNamed(t.Name())
 	if _, ok := r.env.ifaces[short]; ok {
 		return false
+	}
+	if r.env.classes[short] {
+		return true
 	}
 	if fields, ok := r.env.fields[short]; ok {
 		bind := r.bindings(short, t.Args())
@@ -265,6 +269,16 @@ func substitute(t *Type, bind map[string]*Type) *Type {
 func isLockType(name string) bool {
 	short := shortNamed(name)
 	return short == "Mutex" || short == "RwLock"
+}
+
+// isSyncHandleType reports the std/sync primitive handles whose raw state is
+// protected by the runtime lock protocol. Their state is shared, not copied.
+func isSyncHandleType(name string) bool {
+	switch shortNamed(name) {
+	case "Semaphore", "Count", "Barrier", "Once":
+		return true
+	}
+	return false
 }
 
 func shortNamed(name string) string {

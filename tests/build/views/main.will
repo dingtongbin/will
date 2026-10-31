@@ -9,7 +9,7 @@ def sum(xs: []i32) -> i32 {
     return total
 }
 
-def count(xs: Array<i32>) -> i64 {
+def count(xs: list[i32]) -> i64 {
     var n: i64 = 0
     for x in xs {
         if x > 0 {

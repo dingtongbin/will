@@ -1,0 +1,7 @@
+import "example.com/genericclassimport/lib"
+
+def main() -> i32 {
+    var b: lib.Box<lib.Node> = lib.Box<lib.Node>(value=lib.Node(value=41))
+    var n: lib.Node = b.get()
+    return n.value
+}

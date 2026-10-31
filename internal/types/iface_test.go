@@ -7,21 +7,20 @@ import (
 )
 
 func TestAsyncInterfaceRequiresAnAsyncImplementation(t *testing.T) {
-	base := `interface Handler {
+	syncImpl := `interface Handler {
     async def handle() -> i32
 }
 
 struct S {
     n: i32
+
+    def handle(self) -> i32 {
+        return self.n
+    }
 }
 
 def use(h: Handler) -> i32 {
     return 0
-}
-`
-	syncImpl := base + `
-def (s: ref S) handle() -> i32 {
-    return s.n
 }
 
 def f() {
@@ -34,9 +33,20 @@ def f() {
 	if len(ds) != 1 || ds[0].Code != diag.CodeInterfaceUnsatisfied {
 		t.Fatalf("sync implementation diagnostics:\n%s", diag.FormatAll(ds))
 	}
-	asyncImpl := base + `
-async def (s: ref S) handle() -> i32 {
-    return s.n
+	asyncImpl := `interface Handler {
+    async def handle() -> i32
+}
+
+struct S {
+    n: i32
+
+    async def handle(self) -> i32 {
+        return self.n
+    }
+}
+
+def use(h: Handler) -> i32 {
+    return 0
 }
 
 def f() {
@@ -57,11 +67,12 @@ const ifaceProgram = `interface Shape {
 
 struct Square {
     s: i32
+
+    def area(self) -> i32 {
+        return self.s * self.s
+    }
 }
 
-def (q: ref Square) area() -> i32 {
-    return q.s * q.s
-}
 
 struct Dot {
     s: i32
@@ -142,11 +153,12 @@ func TestInterfaceDowncasts(t *testing.T) {
 
 struct Square {
     s: i32
+
+    def area(self) -> i32 {
+        return self.s
+    }
 }
 
-def (q: ref Square) area() -> i32 {
-    return q.s
-}
 
 def use(x: Shape) -> i32 {
     var yes: bool = x.is<Square>()
@@ -263,15 +275,17 @@ def f() {
 func TestBuiltinErrorInterface(t *testing.T) {
 	ok := `struct E {
     code: i32
+
+    def message(self) -> str {
+        return "failed"
+    }
+
+    def status(self) -> i32 {
+        return self.code
+    }
 }
 
-def (e: ref E) message() -> str {
-    return "failed"
-}
 
-def (e: ref E) status() -> i32 {
-    return e.code
-}
 
 def f() {
     var x: Error = E { code: 1 }
@@ -286,11 +300,12 @@ def f() {
 
 	bad := `struct E {
     code: i32
+
+    def message(self) -> str {
+        return "failed"
+    }
 }
 
-def (e: ref E) message() -> str {
-    return "failed"
-}
 
 def f() {
     var x: Error = E { code: 1 }
@@ -310,11 +325,12 @@ func TestInterfaceMethodSignatureMismatch(t *testing.T) {
 
 struct Square {
     s: i32
+
+    def area(self) -> i64 {
+        return self.s
+    }
 }
 
-def (q: ref Square) area() -> i64 {
-    return q.s
-}
 
 def f() {
     var x: Shape = Square { s: 1 }

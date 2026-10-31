@@ -8,7 +8,7 @@ enum ErrorClass {
 }
 
 interface Classified {
-    def class() -> ErrorClass
+    def error_class() -> ErrorClass
 }
 
 # ClassOf maps the stable status code to a class. Only the statuses that name

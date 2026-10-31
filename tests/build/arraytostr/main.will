@@ -1,5 +1,5 @@
 def main() -> i32 {
-    var bytes: Array<u8> = new Array<u8>(2)
+    var bytes: list[u8] = list[u8](2)
     bytes[0] = 65u8
     bytes[1] = 66u8
     var text: str = str(bytes)

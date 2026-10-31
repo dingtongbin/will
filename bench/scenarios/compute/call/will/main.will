@@ -15,12 +15,13 @@ const repetitions: i32 = 5
 # Counter is the struct the method call works on.
 struct Counter {
     total: i64
+
+    def add(self, value: i64) {
+        self.total += value
+    }
 }
 
-# Add adds a value to the total of the counter.
-def (counter: mut Counter) add(value: i64) {
-    counter.total += value
-}
+
 
 # Shape is the interface of the scenario.
 interface Shape {
@@ -30,12 +31,13 @@ interface Shape {
 # Square is one shape with an area.
 struct Square {
     side: i64
+
+    def area(self, scale: i64) -> i64 {
+        return self.side * self.side + scale
+    }
 }
 
-# Area returns the area of the square, scaled by the value it is given.
-def (s: ref Square) area(scale: i64) -> i64 {
-    return s.side * s.side + scale
-}
+
 
 # Direct is the direct call of the scenario.
 def direct(value: i64) -> i64 {
@@ -53,10 +55,10 @@ def baseline(n: i32) -> i64 {
 }
 
 def main() -> i32 {
-    var directSamples: Array<u64> = new Array<u64>(0)
-    var crossSamples: Array<u64> = new Array<u64>(0)
-    var methodSamples: Array<u64> = new Array<u64>(0)
-    var ifaceSamples: Array<u64> = new Array<u64>(0)
+    var directSamples: list[u64] = list[u64](0)
+    var crossSamples: list[u64] = list[u64](0)
+    var methodSamples: list[u64] = list[u64](0)
+    var ifaceSamples: list[u64] = list[u64](0)
     var counter: Counter = Counter { total: 0i64}
     var shape: Shape = Square { side: 3i64}
 

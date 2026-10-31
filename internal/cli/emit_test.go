@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,5 +58,119 @@ func TestEmitWillcRefusesBadProgram(t *testing.T) {
 func TestEmitWillcUsage(t *testing.T) {
 	if code, _, _ := runCLI("emit-willc"); code != 2 {
 		t.Fatalf("code = %d, want 2", code)
+	}
+}
+
+// deterministicSource has an async state machine, a class field and a
+// container, so the lowering decisions exercise frame layout and roots.
+const deterministicSource = `class Node {
+    value: i32
+}
+
+class Holder {
+    node: Node
+    items: list[i32]
+}
+
+async def pause(n: i32) -> i32 {
+    return n
+}
+
+async def load(n: i32) -> i32 {
+    var h: Holder = Holder(node=Node(value=n), items=list[i32](4))
+    var x: i32 = await pause(n)
+    return h.node.value + x
+}
+
+async def main() -> i32 {
+    return await load(3)
+}
+`
+
+// TestEmitLLVMIsDeterministic checks that two cold caches produce the same
+// lowering. State-machine frame layout is the part that used to follow map
+// iteration order and change between identical builds.
+func TestEmitLLVMIsDeterministic(t *testing.T) {
+	src := deterministicSource
+	dir := t.TempDir()
+	path := writeFile(t, dir, "main.will", src)
+	t.Setenv("WILL_CACHE", filepath.Join(dir, "cache-a"))
+	code, first, errOut := runCLI("emit-llvm", path)
+	if code != 0 {
+		t.Fatalf("first emit: code = %d, stderr = %q", code, errOut)
+	}
+	t.Setenv("WILL_CACHE", filepath.Join(dir, "cache-b"))
+	code, second, errOut := runCLI("emit-llvm", path)
+	if code != 0 {
+		t.Fatalf("second emit: code = %d, stderr = %q", code, errOut)
+	}
+	if first != second {
+		t.Fatalf("two identical builds differ:\n--- first\n%s\n--- second\n%s", first, second)
+	}
+}
+
+// TestReplayEightTimesIsByteIdentical pins the build determinism rule: the
+// same input run eight times, each with a cold cache, must produce the same
+// willc, LLVM, decisions, and index bytes.
+func TestReplayEightTimesIsByteIdentical(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "app")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir app: %v", err)
+	}
+	writeFile(t, root, "will.mod", "module example.com/app\nwill 1\n")
+	mainPath := writeFile(t, root, "main.will", deterministicSource)
+	commands := []struct {
+		name string
+		arg  string
+	}{
+		{"emit-willc", mainPath},
+		{"emit-llvm", root},
+		{"emit-decisions", root},
+		{"index", root},
+	}
+	for _, c := range commands {
+		var first string
+		for i := 0; i < 8; i++ {
+			t.Setenv("WILL_CACHE", filepath.Join(root, fmt.Sprintf("%s-%d", c.name, i)))
+			code, out, errOut := runCLI(c.name, c.arg)
+			if code != 0 {
+				t.Fatalf("%s run %d: code = %d, stderr = %q", c.name, i, code, errOut)
+			}
+			if i == 0 {
+				first = out
+				continue
+			}
+			if out != first {
+				t.Fatalf("%s run %d differs from run 0", c.name, i)
+			}
+		}
+	}
+}
+
+// TestEmitDecisionsAndIndexAreDeterministic checks the two replay products the
+// gate compares byte for byte. They must not depend on cache state or map
+// iteration order.
+func TestEmitDecisionsAndIndexAreDeterministic(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "app")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir app: %v", err)
+	}
+	writeFile(t, root, "will.mod", "module example.com/app\nwill 1\n")
+	writeFile(t, root, "main.will", deterministicSource)
+	for _, command := range []string{"emit-decisions", "index"} {
+		t.Setenv("WILL_CACHE", filepath.Join(root, command+"-a"))
+		code, first, errOut := runCLI(command, root)
+		if code != 0 {
+			t.Fatalf("%s first: code = %d, stderr = %q", command, code, errOut)
+		}
+		t.Setenv("WILL_CACHE", filepath.Join(root, command+"-b"))
+		code, second, errOut := runCLI(command, root)
+		if code != 0 {
+			t.Fatalf("%s second: code = %d, stderr = %q", command, code, errOut)
+		}
+		if first != second {
+			t.Fatalf("%s differs between two cold caches:\n--- first\n%s\n--- second\n%s",
+				command, first, second)
+		}
 	}
 }

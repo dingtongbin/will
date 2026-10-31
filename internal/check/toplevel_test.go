@@ -29,13 +29,13 @@ def f() {
 	}
 	if ds[0].Code != diag.CodeTopLevelWrite ||
 		ds[0].Message != "top-level counter is published and read-only" ||
-		ds[0].Help != "put the mutable state behind an rc and a guard" {
+		ds[0].Help != "put the mutable state behind a Mutex or a channel" {
 		t.Fatalf("diagnostic = %+v", ds[0])
 	}
 }
 
 func TestTopLevelWriteRejectsContainerMutation(t *testing.T) {
-	src := `var xs: Array<i32> = new Array<i32>(0)
+	src := `var xs: list[i32] = list[i32](0)
 
 def f() {
     xs.push(1)
@@ -61,46 +61,5 @@ def f() {
 	ds := topWrites(t, src)
 	if len(ds) != 1 || ds[0].Code != diag.CodeTopLevelWrite {
 		t.Fatalf("diagnostics = %s", diag.FormatAll(ds))
-	}
-}
-
-func TestTopLevelWriteRejectsMutArgument(t *testing.T) {
-	src := `var counter: i32 = 0
-
-def set(x: mut i32) {
-    x = 1
-}
-
-def f() {
-    set(counter)
-}
-`
-	ds := topWrites(t, src)
-	if len(ds) != 1 || ds[0].Code != diag.CodeTopLevelWrite {
-		t.Fatalf("diagnostics = %s", diag.FormatAll(ds))
-	}
-}
-
-func TestTopLevelWriteAllowsShadowAndHandleMethod(t *testing.T) {
-	src := `struct C {
-    n: i32
-}
-
-var counter: i32 = 0
-var c: rc<C> = new rc<C>(C { n: 0 })
-
-def (x: mut C) bump() {
-    x.n += 1
-}
-
-def f() {
-    var counter: i32 = 1
-    counter = 2
-    c.bump()
-}
-`
-	ds := topWrites(t, src)
-	if len(ds) != 0 {
-		t.Fatalf("unexpected diagnostics:\n%s", diag.FormatAll(ds))
 	}
 }

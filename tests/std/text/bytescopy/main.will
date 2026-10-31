@@ -5,7 +5,7 @@ import "std/bytes"
 # empty source writes nothing.
 def main() -> i32 {
     var src: str = "abcdef"
-    var dst: Array<u8> = new Array<u8>(3)
+    var dst: list[u8] = list[u8](3)
     dst.push(u8(0))
     dst.push(u8(0))
     dst.push(u8(0))
@@ -22,7 +22,7 @@ def main() -> i32 {
     if dst.get(2) != u8(99) {
         return 4
     }
-    var short: Array<u8> = new Array<u8>(2)
+    var short: list[u8] = list[u8](2)
     short.push(u8(0))
     short.push(u8(0))
     var cut: usize = bytes.copy(short, src[Range(0, 4)])

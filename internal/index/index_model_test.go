@@ -54,7 +54,7 @@ func TestParseGoldenIndex(t *testing.T) {
 	}
 
 	area, ok := ix.MethodOf("example.com/app", "Square", "area")
-	if !ok || area.Line != 9 || area.Col != 1 || area.Recv != "ref" || area.File != "api.will" {
+	if !ok || area.Line != 8 || area.Col != 5 || area.File != "api.will" {
 		t.Errorf("MethodOf(Square.area) = %+v, %v", area, ok)
 	}
 	if _, ok := ix.MethodOf("example.com/app", "Dot", "area"); ok {
@@ -65,12 +65,12 @@ func TestParseGoldenIndex(t *testing.T) {
 		t.Errorf("ImportsOf(example.com/app) = %v, want nil", got)
 	}
 
-	targets, ok := ix.DispatchTargets(DispatchKey{File: "api.will", Line: 18, Col: 12})
+	targets, ok := ix.DispatchTargets(DispatchKey{File: "api.will", Line: 20, Col: 12})
 	if !ok || !reflect.DeepEqual(targets, []string{"example.com/app.Square"}) {
-		t.Errorf("DispatchTargets(18:12) = %v, %v", targets, ok)
+		t.Errorf("DispatchTargets(20:12) = %v, %v", targets, ok)
 	}
-	if _, ok := ix.DispatchTargets(DispatchKey{File: "api.will", Line: 18, Col: 13}); ok {
-		t.Error("DispatchTargets(18:13) reported a dispatch")
+	if _, ok := ix.DispatchTargets(DispatchKey{File: "api.will", Line: 20, Col: 13}); ok {
+		t.Error("DispatchTargets(20:13) reported a dispatch")
 	}
 
 	if got := ix.InterfacesOf("example.com/app.Square"); !reflect.DeepEqual(got, []string{"example.com/app.Shape"}) {
@@ -110,9 +110,9 @@ func TestDeclAt(t *testing.T) {
 	if !ok || square.Name != "Square" || square.Kind != "struct" || square.Vis != "public" {
 		t.Errorf("DeclAt(5:1) = %+v, %v", square, ok)
 	}
-	area, ok := ix.DeclAt("api.will", 9, 1)
-	if !ok || area.Kind != "method" || area.Name != "area" || area.Type != "Square" || area.Recv != "ref" {
-		t.Errorf("DeclAt(9:1) = %+v, %v", area, ok)
+	area, ok := ix.DeclAt("api.will", 8, 5)
+	if !ok || area.Kind != "method" || area.Name != "area" || area.Type != "Square" {
+		t.Errorf("DeclAt(8:5) = %+v, %v", area, ok)
 	}
 	if _, ok := ix.DeclAt("api.will", 2, 1); ok {
 		t.Error("DeclAt(2:1) hit a declaration")
@@ -204,8 +204,6 @@ func TestParseRejectsBadInput(t *testing.T) {
 			2, "a decl name is never empty"},
 		{"bad vis", declPrefix + "decl file=\"a.will\" line=1 col=1 kind=\"func\" name=\"F\" vis=\"internal\"\n",
 			2, "it must be public or private"},
-		{"bad recv", declPrefix + "method file=\"a.will\" line=1 col=1 type=\"T\" name=\"M\" recv=\"const\"\n",
-			2, "it must be value, ref, or mut"},
 		{"bad linkage", "cfunc header=\"stdio.h\" name=\"puts\" linkage=\"slow\"\n",
 			1, "it must be fast, blocking, or plain"},
 		{"empty target", "dispatch file=\"a.will\" line=1 col=1 interface=\"p.I\" targets=\"a,,b\"\n",

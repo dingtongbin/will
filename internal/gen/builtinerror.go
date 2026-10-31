@@ -3,17 +3,9 @@ package gen
 import (
 	"fmt"
 	"sort"
-	"strconv"
 
 	"github.com/will-lang/will/internal/willc"
 )
-
-func (g *generator) builtinErrorSize() string {
-	if size, _, ok := g.sizeAlign("{ ptr, i64, i32 }"); ok {
-		return strconv.Itoa(size)
-	}
-	return "24"
-}
 
 // builtinErrorPlace returns the predeclared error as a module-level constant.
 // A per-use alloca does not survive the frame relocation of a state machine,
@@ -41,15 +33,12 @@ func (g *generator) builtinErrorInto(ptr string, kind int) {
 		g.builtinErrors = map[int]bool{}
 	}
 	g.builtinErrors[kind] = true
-	g.needAllocDecl = true
-	g.needMemcpyDecl = true
-	box := g.newTmp()
-	fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", box, g.builtinErrorSize())
-	fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr @will.error.data.%d, i64 %s)\n",
-		box, kind, g.builtinErrorSize())
+	// The builtin fault payload is immutable static data. Storing it directly
+	// avoids one allocation per Err(Canceled)/Err(Deadline) and keeps the drop
+	// path from trying to free the literal message.
 	dataPtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%interface.Error, ptr %s, i32 0, i32 0\n", dataPtr, ptr)
-	fmt.Fprintf(g.out, "  store ptr %s, ptr %s\n", box, dataPtr)
+	fmt.Fprintf(g.out, "  store ptr @will.error.data.%d, ptr %s\n", kind, dataPtr)
 	tablePtr := g.newTmp()
 	fmt.Fprintf(g.out, "  %s = getelementptr inbounds %%interface.Error, ptr %s, i32 0, i32 1\n", tablePtr, ptr)
 	fmt.Fprintf(g.out, "  store ptr @will.error.table.%d, ptr %s\n", kind, tablePtr)
@@ -100,21 +89,11 @@ func (g *generator) emitBuiltinErrors() {
 		status := g.newTmp()
 		fmt.Fprintf(g.out, "  %s = load i32, ptr %s\n", status, statusPtr)
 		fmt.Fprintf(g.out, "  ret i32 %s\n}\n", status)
-		g.needAllocDecl = true
-		g.needMemcpyDecl = true
-		g.needFreeStrDecl = true
-		cloneSize := g.builtinErrorSize()
-		fmt.Fprintf(g.out, "define internal ptr @will.error.clone.%d(ptr %%data) {\nentry:\n", kind)
-		box := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = call ptr @willrt_alloc(i64 %s)\n", box, cloneSize)
-		fmt.Fprintf(g.out, "  call void @memcpy(ptr %s, ptr %%data, i64 %s)\n", box, cloneSize)
-		fmt.Fprintf(g.out, "  ret ptr %s\n}\n", box)
-		fmt.Fprintf(g.out, "define internal void @will.error.drop.%d(ptr %%data) {\nentry:\n", kind)
-		msg := g.newTmp()
-		fmt.Fprintf(g.out, "  %s = getelementptr inbounds { ptr, i64, i32 }, ptr %%data, i32 0, i32 0\n", msg)
-		messageData := g.load("ptr", msg)
-		fmt.Fprintf(g.out, "  call void @willrt_free_str(ptr %s)\n", messageData)
-		g.out.WriteString("  ret void\n}\n")
+		// A builtin fault is immutable static data. Clone returns the same
+		// payload and drop does nothing; freeing the literal message or the
+		// static payload would corrupt the allocator.
+		fmt.Fprintf(g.out, "define internal ptr @will.error.clone.%d(ptr %%data) {\nentry:\n  ret ptr %%data\n}\n", kind)
+		fmt.Fprintf(g.out, "define internal void @will.error.drop.%d(ptr %%data) {\nentry:\n  ret void\n}\n", kind)
 		identity := g.typeIdentity("std/errors.Fault")
 		fmt.Fprintf(g.out, "@will.error.table.%d = private constant [5 x ptr] [ptr @will.error.message.%d, ptr @will.error.status.%d, ptr @will.error.clone.%d, ptr @will.error.drop.%d, ptr @%s]\n",
 			kind, kind, kind, kind, kind, llvmSymbol(identity))

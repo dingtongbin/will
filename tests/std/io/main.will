@@ -9,7 +9,7 @@ async def check_read_all() -> i32 {
             var text: str = "abc"
             _ = await file.write(text[Range(0, 3)])
             _ = await file.seek(0i64, 0)
-            var buf: Array<u8> = new Array<u8>(0)
+            var buf: list[u8] = list[u8](0)
             var count: usize = (await io.read_all(file, buf))!
             _ = file.close()
             _ = await fs.remove(path)
@@ -30,8 +30,8 @@ async def main() -> i32 {
         return readCode
     }
     var poller: io.Poller = io.new_poller()
-    var out: Array<usize> = new Array<usize>(0)
-    var next: Result<usize, Error> = poller.next_blocking(0ns, out)
+    var out: list[usize] = list[usize](0)
+    var next: Result<usize, Error> = await poller.next(0ns, out)
     match next {
         Ok(count) => {
             if count != 0usize {
@@ -40,18 +40,6 @@ async def main() -> i32 {
         }
         Err(_) => {
             return 2
-        }
-    }
-
-    var asyncNext: Result<usize, Error> = await poller.next(0ns, out)
-    match asyncNext {
-        Ok(count) => {
-            if count != 0usize {
-                return 7
-            }
-        }
-        Err(_) => {
-            return 8
         }
     }
 

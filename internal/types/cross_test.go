@@ -7,10 +7,9 @@ import (
 )
 
 func TestChannelAndTaskPayloadsMustBeSend(t *testing.T) {
-	src := `struct Local { n: i64 }
-struct HoldsRc { value: rc<Local> }
+	src := `struct HoldsRaw { value: raw }
 
-def f(ch: chan<HoldsRc>, task: Task<HoldsRc>) {
+def f(ch: chan<HoldsRaw>, task: Task<HoldsRaw>) {
     _ = ch
     _ = task
 }

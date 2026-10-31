@@ -63,6 +63,11 @@ func (g *generator) castValue(r willc.Record) (string, error) {
 		if err != nil {
 			return "", g.errf(r.ID, "cannot translate node #%d: raw() takes a place or a usize", r.ID)
 		}
+		if isFinalContainerText(fromText) {
+			// A container is one GC reference; C reads the payload's
+			// data/length/capacity words, not the slot holding the reference.
+			return g.load("ptr", ptr), nil
+		}
 		return ptr, nil
 	}
 	if toText == "raw" && fromText != "usize" {

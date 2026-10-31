@@ -48,9 +48,19 @@ func TestNegativeLiteralMayBeTheTypeMinimum(t *testing.T) {
 }
 
 func TestGenericStructFieldsAndMethods(t *testing.T) {
-	src := "struct Box<T> {\n    value: T\n}\n\n" +
-		"def (b: ref Box<T>) get() -> T {\n    return b.value\n}\n\n" +
-		"def main() -> i32 {\n    var b: Box<i32> = Box<i32> { value: 3 }\n    return b.get()\n}\n"
+	src := `struct Box<T> {
+    value: T
+
+    def get(self) -> T {
+        return self.value
+    }
+}
+
+def main() -> i32 {
+    var b: Box<i32> = Box<i32> { value: 3 }
+    return b.get()
+}
+`
 	if ds := checkWithResolve(t, src); len(ds) != 0 {
 		t.Fatalf("a generic struct field and method were not instantiated:\n%s", diag.FormatAll(ds))
 	}
@@ -121,36 +131,23 @@ func TestSendResultMustBeHandled(t *testing.T) {
 	}
 }
 
-func TestNewWithoutInit(t *testing.T) {
-	src := "struct P {\n    x: i32\n}\ndef f() {\n    var p: P = new P(1)\n    _ = p\n}\n"
-	ds := checkWithResolve(t, src)
-	d := findCode(t, ds, diag.CodeNewWithoutInit)
-	if d.Message != "type P has no init; use a literal" {
-		t.Errorf("message = %q", d.Message)
-	}
-	if d.Help != "write P { ... } or add an init method" {
-		t.Errorf("help = %q", d.Help)
-	}
-}
-
-func TestNewWithInit(t *testing.T) {
+func TestConstructWithInit(t *testing.T) {
 	src := `struct P {
     x: i32
+
+    def init(self, x: i32) {
+        self.x = x
+    }
 }
-def (p: mut P) init(x: i32) -> Result<(), Error> {
-    p.x = x
-    return Ok(())
-}
+
 def f() {
-    var p: P = new P(1)!
+    var p: P = P(1)
     _ = p
 }
 `
 	ds := checkWithResolve(t, src)
-	for _, d := range ds {
-		if d.Code == diag.CodeNewWithoutInit {
-			t.Fatalf("unexpected T0007:\n%s", diag.FormatAll(ds))
-		}
+	if len(ds) != 0 {
+		t.Fatalf("unexpected diagnostics:\n%s", diag.FormatAll(ds))
 	}
 }
 

@@ -4,7 +4,7 @@ import "std/str"
 # the boundary scalars and every rejected shape: stray continuation, overlong
 # form, surrogate, truncated sequence, and a value past U+10FFFF.
 def valid(values: ...u8) -> bool {
-    var data: Array<u8> = new Array<u8>(0)
+    var data: list[u8] = list[u8](0)
     for v in values {
         data.push(v)
     }

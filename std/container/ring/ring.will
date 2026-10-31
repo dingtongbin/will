@@ -1,91 +1,67 @@
-# ringError is the concrete Error returned by a zero-capacity constructor.
-struct ringError {
-    message: str
-}
-
-def (e: ref ringError) message() -> str {
-    return e.message
-}
-
-def (e: ref ringError) status() -> i32 {
-    return 2
-}
-
-# Ring is a fixed-capacity FIFO. A full ring rejects the value instead of
-# overwriting the oldest one, so the caller decides which policy to use.
-struct Ring<T> {
-    front: Array<T>
-    back: Array<T>
+# Ring is a fixed-capacity FIFO. A full ring overwrites its oldest value and
+# returns that value to the caller.
+class Ring<T> {
+    front: list[T]
+    back: list[T]
     cap: usize
-}
 
-# init reserves the two stacks used by the ring. A zero capacity is invalid.
-def (r: mut Ring<T>) init(cap: usize) -> Result<(), Error> {
-    if cap == 0usize {
-        return Err(ringError { message: "ring capacity must be positive" })
+    def init(self, capacity: usize) {
+        self.front = list[T](0)
+        self.back = list[T](0)
+        self.cap = capacity
     }
-    r.front = new Array<T>(0)
-    r.back = new Array<T>(0)
-    r.cap = cap
-    return Ok(())
-}
 
-# Push adds one value at the back. It returns false when the ring is full.
-def (r: mut Ring<T>) push(v: T) -> bool {
-    if r.len() >= r.cap {
-        return False
-    }
-    r.back.push(v)
-    return True
-}
-
-# Pop removes and returns the front value, or None when the ring is empty.
-def (r: mut Ring<T>) pop() -> Option<T> {
-    if r.front.len() > 0 {
-        return r.front.pop()
-    }
-    if r.back.len() == 0 {
-        return None
-    }
-    while True {
-        if r.back.len() == 0 {
-            break
+    def push(self, v: T) -> Option<T> {
+        if self.cap == 0usize {
+            return Some(v)
         }
-        match r.back.pop() {
-            Some(v) => {
-                r.front.push(v)
-            }
-            None => {
+        var evicted: Option<T> = None
+        if self.len() >= self.cap {
+            evicted = self.pop()
+        }
+        self.back.push(v)
+        return evicted
+    }
+
+    def pop(self) -> Option<T> {
+        if self.front.len() > 0 {
+            return self.front.pop()
+        }
+        if self.back.len() == 0 {
+            return None
+        }
+        while True {
+            if self.back.len() == 0 {
                 break
             }
+            match self.back.pop() {
+                Some(v) => {
+                    self.front.push(v)
+                }
+                None => {
+                    break
+                }
+            }
         }
+        return self.front.pop()
     }
-    return r.front.pop()
-}
 
-# Peek returns a copy of the front value without removing it.
-def (r: ref Ring<T>) peek() -> Option<T> {
-    if r.front.len() > 0 {
-        return Some(r.front.get(r.front.len() - 1))
+    def peek(self) -> Option<T> {
+        if self.front.len() > 0 {
+            return Some(self.front.get(self.front.len() - 1))
+        }
+        if self.back.len() == 0 {
+            return None
+        }
+        return Some(self.back.get(0))
     }
-    if r.back.len() == 0 {
-        return None
+
+    def len(self) -> usize {
+        return self.front.len() + self.back.len()
     }
-    return Some(r.back.get(0))
-}
 
-# Len reports the number of stored values.
-def (r: ref Ring<T>) len() -> usize {
-    return r.front.len() + r.back.len()
-}
-
-# Full reports whether no more values fit.
-def (r: ref Ring<T>) full() -> bool {
-    return r.len() >= r.cap
-}
-
-# Clear releases every value and keeps the capacity setting.
-def (r: mut Ring<T>) clear() {
-    r.front.clear()
-    r.back.clear()
+    def clear(self) {
+        self.front.clear()
+        self.back.clear()
+    }
 }

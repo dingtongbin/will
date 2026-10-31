@@ -1,5 +1,5 @@
 async def main() -> i32 {
-    var ch: chan<i32> = new chan<i32>(1)
+    var ch: chan<i32> = chan<i32>(1)
     var got: bool = False
     deadline 1ms {
         var item: Option<i32> = await ch.recv()

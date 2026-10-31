@@ -54,10 +54,6 @@ func lastUses(b *ast.Block) map[string]source.Pos {
 			for _, inner := range s.Body.Stmts {
 				walkStmt(inner)
 			}
-		case *ast.ParallelStmt:
-			for _, inner := range s.Body.Stmts {
-				walkStmt(inner)
-			}
 		case *ast.SelectStmt:
 			for _, arm := range s.Arms {
 				walkExpr(arm.Chan)
@@ -109,17 +105,11 @@ func lastUses(b *ast.Block) map[string]source.Pos {
 			walkExpr(x.Recv)
 			walkExpr(x.Lo)
 			walkExpr(x.Hi)
-		case *ast.BorrowExpr:
-			walkExpr(x.X)
 		case *ast.UnaryExpr:
 			walkExpr(x.X)
 		case *ast.BinaryExpr:
 			walkExpr(x.L)
 			walkExpr(x.R)
-		case *ast.NewExpr:
-			for _, a := range x.Args {
-				walkExpr(a.Expr)
-			}
 		case *ast.AggregateExpr:
 			for _, f := range x.Fields {
 				walkExpr(f.Value)

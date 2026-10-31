@@ -43,8 +43,8 @@ async def consume(ch: chan<i32>) -> i32 {
 }
 
 async def main() -> i32 {
-    var first: chan<i32> = new chan<i32>(64)
-    var second: chan<i32> = new chan<i32>(64)
+    var first: chan<i32> = chan<i32>(64)
+    var second: chan<i32> = chan<i32>(64)
     var total: i32 = 0
     region {
         var p0: Task<()> = spawn produce(first, 10000)
